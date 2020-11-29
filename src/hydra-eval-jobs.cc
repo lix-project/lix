@@ -3,19 +3,19 @@
 #include <thread>
 
 #include <nix/config.h>
-#include "shared.hh"
-#include "store-api.hh"
-#include "eval.hh"
-#include "eval-inline.hh"
-#include "util.hh"
-#include "get-drvs.hh"
-#include "globals.hh"
-#include "common-eval-args.hh"
-#include "flake/flakeref.hh"
-#include "flake/flake.hh"
-#include "attr-path.hh"
-#include "derivations.hh"
-#include "local-fs-store.hh"
+#include <nix/shared.hh>
+#include <nix/store-api.hh>
+#include <nix/eval.hh>
+#include <nix/eval-inline.hh>
+#include <nix/util.hh>
+#include <nix/get-drvs.hh>
+#include <nix/globals.hh>
+#include <nix/common-eval-args.hh>
+#include <nix/flake/flakeref.hh>
+#include <nix/flake/flake.hh>
+#include <nix/attr-path.hh>
+#include <nix/derivations.hh>
+#include <nix/local-fs-store.hh>
 
 #include <sys/types.h>
 #include <sys/wait.h>
