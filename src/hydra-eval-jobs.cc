@@ -41,13 +41,12 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
             .longName = "help",
             .description = "show usage information",
             .handler = {[&]() {
-                std::cout << "Usage:" << std::endl;
-                std::cout << "  " << "hydra-eval-jobs [options] expr" << std::endl;
+                printf("USAGE: hydra-eval-jobs [options] expr\n\n");
                 for (const auto & [name, flag] : longFlags) {
                     if (hiddenCategories.count(flag->category)) {
                         continue;
                     }
-                    printf("    --%-20s %s\n", name.c_str(), flag->description.c_str());
+                    printf("  --%-20s %s\n", name.c_str(), flag->description.c_str());
                 }
             }},
         });
