@@ -1,6 +1,8 @@
 #include <map>
 #include <iostream>
+#include <iomanip>
 #include <thread>
+#include <algorithm>
 
 #include <nix/config.h>
 #include <nix/shared.hh>
@@ -41,9 +43,15 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
             .longName = "help",
             .description = "show usage information",
             .handler = {[&]() {
-                printHelp(programName, std::cout);
-                throw Exit();
-            }}
+                std::cout << "Usage:" << std::endl;
+                std::cout << "  " << "hydra-eval-jobs [options] expr" << std::endl;
+                for (const auto & [name, flag] : longFlags) {
+                    if (hiddenCategories.count(flag->category)) {
+                        continue;
+                    }
+                    printf("    --%-20s %s\n", name.c_str(), flag->description.c_str());
+                }
+            }},
         });
 
         addFlag({
@@ -96,12 +104,12 @@ static std::string queryMetaStrings(EvalState & state, DrvInfo & drv, const stri
 
     rec = [&](Value & v) {
         state.forceValue(v);
-        if (v.type == tString)
+        if (v.type() == nString)
             res.push_back(v.string.s);
         else if (v.isList())
             for (unsigned int n = 0; n < v.listSize(); ++n)
                 rec(*v.listElems()[n]);
-        else if (v.type == tAttrs) {
+        else if (v.type() == nAttrs) {
             auto a = v.attrs->find(state.symbols.create(subAttribute));
             if (a != v.attrs->end())
                 res.push_back(state.forceString(*a->value));
@@ -219,7 +227,7 @@ static void worker(
                     for (unsigned int n = 0; n < a->value->listSize(); ++n) {
                         auto v = a->value->listElems()[n];
                         state.forceValue(*v);
-                        if (v->type == tString)
+                        if (v->type() == nString)
                             job["namedConstituents"].push_back(state.forceStringNoCtx(*v));
                     }
                 }
@@ -242,7 +250,7 @@ static void worker(
                 reply["job"] = std::move(job);
             }
 
-            else if (v->type == tAttrs) {
+            else if (v->type() == nAttrs) {
                 auto attrs = nlohmann::json::array();
                 StringSet ss;
                 for (auto & i : v->attrs->lexicographicOrder()) {
@@ -256,18 +264,19 @@ static void worker(
                 reply["attrs"] = std::move(attrs);
             }
 
-            else if (v->type == tNull)
+            else if (v->type() == nNull)
                 ;
 
             else throw TypeError("attribute '%s' is %s, which is not supported", attrPath, showType(*v));
 
         } catch (EvalError & e) {
+            auto msg = e.msg();
             // Transmits the error we got from the previous evaluation
             // in the JSON output.
-            reply["error"] = filterANSIEscapes(e.msg(), true);
+            reply["error"] = filterANSIEscapes(msg, true);
             // Don't forget to print it into the STDERR log, this is
             // what's shown in the Hydra UI.
-            printError("error: %s", reply["error"]);
+            printError(msg);
         }
 
         writeLine(to.get(), reply.dump());
@@ -347,13 +356,15 @@ int main(int argc, char * * argv)
                                     EvalState state(myArgs.searchPath, openStore());
                                     Bindings & autoArgs = *myArgs.getAutoArgs(state);
                                     worker(state, autoArgs, *to, *from);
-                                } catch (std::exception & e) {
+                                } catch (Error & e) {
                                     nlohmann::json err;
-                                    err["error"] = e.what();
+                                    auto msg = e.msg();
+                                    err["error"] = filterANSIEscapes(msg, true);
+                                    printError(msg);
                                     writeLine(to->get(), err.dump());
                                     // Don't forget to print it into the STDERR log, this is
                                     // what's shown in the Hydra UI.
-                                    printError("error: %s", err["error"]);
+                                    writeLine(to->get(), "restart");
                                 }
                             },
                             ProcessOptions { .allowVfork = false });
