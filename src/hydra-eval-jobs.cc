@@ -1,8 +1,6 @@
 #include <map>
 #include <iostream>
-#include <iomanip>
 #include <thread>
-#include <algorithm>
 
 #include <nix/config.h>
 #include <nix/shared.hh>
