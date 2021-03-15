@@ -130,7 +130,7 @@ static void worker(
     if (myArgs.flake) {
         using namespace flake;
 
-        auto flakeRef = parseFlakeRef(myArgs.releaseExpr);
+        auto flakeRef = parseFlakeRef(myArgs.releaseExpr, absPath("."));
 
         auto vFlake = state.allocValue();
 
