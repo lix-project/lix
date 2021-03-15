@@ -1,0 +1,20 @@
+name: "Test"
+on:
+  pull_request:
+  push:
+  schedule:
+    - cron:  '51 2 * * *'
+jobs:
+  tests:
+    strategy:
+      matrix:
+        nixPath:
+          - nixpkgs=https://github.com/NixOS/nixpkgs/archive/nixos-20.09.tar.gz
+          - nixpkgs=https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz
+        os: [ ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: cachix/install-nix-action@v12
+    - name: build
+      run: NIX_PATH=nixpkgs=https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz nix-build
