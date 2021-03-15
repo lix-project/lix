@@ -6,7 +6,7 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system: {
-      packages.hydra-eval-jobs = nixpkgs.legacyPackages.${system}.callPackage ./. {
+      packages.hydra-eval-jobs = nixpkgs.legacyPackages.${system}.callPackage ./hydra.nix {
         srcDir = self;
       };
       defaultPackage = self.packages.${system}.hydra-eval-jobs;

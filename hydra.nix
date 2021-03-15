@@ -6,7 +6,7 @@
 , pkg-config
 , boost
 , nlohmann_json
-, srcDir ? ./.
+, srcDir ? null
 }:
 
 let
@@ -16,7 +16,7 @@ in
 stdenv.mkDerivation rec {
   pname = "hydra-eval-jobs";
   version = "0.0.1";
-  src = filterMesonBuild srcDir;
+  src = if srcDir == null then filterMesonBuild ./. else srcDir;
   buildInputs = [
     nlohmann_json nixFlakes boost
   ];
