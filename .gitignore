@@ -40,3 +40,5 @@ tmp/
 
 # build directory
 /build
+# nix-build
+/result
