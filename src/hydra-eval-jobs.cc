@@ -25,6 +25,7 @@
 
 using namespace nix;
 
+typedef enum { evalAuto, evalImpure, evalPure } pureEval;
 
 struct MyArgs : MixEvalArgs, MixCommonArgs
 {
@@ -34,6 +35,7 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
     bool dryRun = false;
     size_t nrWorkers = 1;
     size_t maxMemorySize = 4096;
+    pureEval evalMode = evalAuto;
 
     MyArgs() : MixCommonArgs("hydra-eval-jobs")
     {
@@ -52,6 +54,13 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
             }},
         });
 
+        addFlag({
+            .longName = "impure",
+            .description = "set evaluation mode",
+            .handler = {[&]() {
+                evalMode = evalImpure;
+            }},
+        });
         addFlag({
             .longName = "gc-roots-dir",
             .description = "garbage collector roots directory",
@@ -311,7 +320,7 @@ int main(int argc, char * * argv)
 
         /* When building a flake, use pure evaluation (no access to
            'getEnv', 'currentSystem' etc. */
-        evalSettings.pureEval = myArgs.flake;
+        evalSettings.pureEval = myArgs.evalMode == evalAuto ? myArgs.flake : myArgs.evalMode == evalPure;
 
         if (myArgs.dryRun) settings.readOnlyMode = true;
 
