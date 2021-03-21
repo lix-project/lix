@@ -25,15 +25,16 @@
 
 using namespace nix;
 
-static Path gcRootsDir;
+typedef enum { evalAuto, evalImpure, evalPure } pureEval;
 
 struct MyArgs : MixEvalArgs, MixCommonArgs
 {
     Path releaseExpr;
+    Path gcRootsDir;
     bool flake = false;
-    bool dryRun = false;
     size_t nrWorkers = 1;
     size_t maxMemorySize = 4096;
+    pureEval evalMode = evalAuto;
 
     MyArgs() : MixCommonArgs("hydra-eval-jobs")
     {
@@ -48,6 +49,15 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
                     }
                     printf("  --%-20s %s\n", name.c_str(), flag->description.c_str());
                 }
+                ::exit(0);
+            }},
+        });
+
+        addFlag({
+            .longName = "impure",
+            .description = "set evaluation mode",
+            .handler = {[&]() {
+                evalMode = evalImpure;
             }},
         });
 
@@ -74,12 +84,6 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
             .handler = {[=](std::string s) {
                 maxMemorySize = std::stoi(s);
             }}
-        });
-
-        addFlag({
-            .longName = "dry-run",
-            .description = "don't create store derivations",
-            .handler = {&dryRun, true}
         });
 
         addFlag({
@@ -119,11 +123,20 @@ static std::string queryMetaStrings(EvalState & state, DrvInfo & drv, const stri
     return concatStringsSep(", ", res);
 }
 
+static nlohmann::json serializeStorePathSet(StorePathSet &paths, LocalFSStore &store) {
+    auto array = nlohmann::json::array();
+    for (auto & p : paths) {
+        array.push_back(store.printStorePath(p));
+    }
+    return array;
+}
+
 static void worker(
     EvalState & state,
     Bindings & autoArgs,
     AutoCloseFD & to,
-    AutoCloseFD & from)
+    AutoCloseFD & from,
+    const Path &gcRootsDir)
 {
     Value vTop;
 
@@ -233,16 +246,39 @@ static void worker(
                    registers roots for jobs that we may have already
                    done. */
                 auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
+                auto storePath = localStore->parseStorePath(drvPath);
                 if (gcRootsDir != "" && localStore) {
                     Path root = gcRootsDir + "/" + std::string(baseNameOf(drvPath));
                     if (!pathExists(root))
-                        localStore->addPermRoot(localStore->parseStorePath(drvPath), root);
+                        localStore->addPermRoot(storePath, root);
                 }
 
+                uint64_t downloadSize, narSize;
+                StorePathSet willBuild, willSubstitute, unknown;
+                std::vector<nix::StorePathWithOutputs> paths;
+                StringSet outputNames;
+
+                for (auto & output : outputs) {
+                    outputNames.insert(output.first);
+                }
+                paths.push_back({storePath, outputNames});
+
+                localStore->queryMissing(paths,
+                                         willBuild,
+                                         willSubstitute,
+                                         unknown,
+                                         downloadSize,
+                                         narSize);
+
                 nlohmann::json out;
-                for (auto & j : outputs)
-                    out[j.first] = j.second;
+                for (auto & p : outputs) {
+                    out[p.first] = p.second;
+                }
                 job["outputs"] = std::move(out);
+
+                job["builds"] = serializeStorePathSet(willBuild, *localStore);
+                job["substitutes"] = serializeStorePathSet(willSubstitute, *localStore);
+                job["unknown"] = serializeStorePathSet(unknown, *localStore);
 
                 reply["job"] = std::move(job);
             }
@@ -309,13 +345,11 @@ int main(int argc, char * * argv)
 
         /* When building a flake, use pure evaluation (no access to
            'getEnv', 'currentSystem' etc. */
-        evalSettings.pureEval = myArgs.flake;
-
-        if (myArgs.dryRun) settings.readOnlyMode = true;
+        evalSettings.pureEval = myArgs.evalMode == evalAuto ? myArgs.flake : myArgs.evalMode == evalPure;
 
         if (myArgs.releaseExpr == "") throw UsageError("no expression specified");
 
-        if (gcRootsDir == "") printMsg(lvlError, "warning: `--gc-roots-dir' not specified");
+        if (myArgs.gcRootsDir == "") printMsg(lvlError, "warning: `--gc-roots-dir' not specified");
 
         struct State
         {
@@ -352,7 +386,7 @@ int main(int argc, char * * argv)
                                 try {
                                     EvalState state(myArgs.searchPath, openStore());
                                     Bindings & autoArgs = *myArgs.getAutoArgs(state);
-                                    worker(state, autoArgs, *to, *from);
+                                    worker(state, autoArgs, *to, *from, myArgs.gcRootsDir);
                                 } catch (Error & e) {
                                     nlohmann::json err;
                                     auto msg = e.msg();
@@ -466,42 +500,32 @@ int main(int argc, char * * argv)
             auto named = job.find("namedConstituents");
             if (named == job.end()) continue;
 
-            if (myArgs.dryRun) {
-                for (std::string jobName2 : *named) {
-                    auto job2 = state->jobs.find(jobName2);
-                    if (job2 == state->jobs.end())
-                        throw Error("aggregate job '%s' references non-existent job '%s'", jobName, jobName2);
-                    std::string drvPath2 = (*job2)["drvPath"];
-                    job["constituents"].push_back(drvPath2);
-                }
-            } else {
-                auto drvPath = store->parseStorePath((std::string) job["drvPath"]);
-                auto drv = store->readDerivation(drvPath);
+            auto drvPath = store->parseStorePath((std::string) job["drvPath"]);
+            auto drv = store->readDerivation(drvPath);
 
-                for (std::string jobName2 : *named) {
-                    auto job2 = state->jobs.find(jobName2);
-                    if (job2 == state->jobs.end())
-                        throw Error("aggregate job '%s' references non-existent job '%s'", jobName, jobName2);
-                    auto drvPath2 = store->parseStorePath((std::string) (*job2)["drvPath"]);
-                    auto drv2 = store->readDerivation(drvPath2);
-                    job["constituents"].push_back(store->printStorePath(drvPath2));
-                    drv.inputDrvs[drvPath2] = {drv2.outputs.begin()->first};
-                }
-
-                std::string drvName(drvPath.name());
-                assert(hasSuffix(drvName, drvExtension));
-                drvName.resize(drvName.size() - drvExtension.size());
-                auto h = std::get<Hash>(hashDerivationModulo(*store, drv, true));
-                auto outPath = store->makeOutputPath("out", h, drvName);
-                drv.env["out"] = store->printStorePath(outPath);
-                drv.outputs.insert_or_assign("out", DerivationOutput { .output = DerivationOutputInputAddressed { .path = outPath } });
-                auto newDrvPath = store->printStorePath(writeDerivation(*store, drv));
-
-                debug("rewrote aggregate derivation %s -> %s", store->printStorePath(drvPath), newDrvPath);
-
-                job["drvPath"] = newDrvPath;
-                job["outputs"]["out"] = store->printStorePath(outPath);
+            for (std::string jobName2 : *named) {
+                auto job2 = state->jobs.find(jobName2);
+                if (job2 == state->jobs.end())
+                    throw Error("aggregate job '%s' references non-existent job '%s'", jobName, jobName2);
+                auto drvPath2 = store->parseStorePath((std::string) (*job2)["drvPath"]);
+                auto drv2 = store->readDerivation(drvPath2);
+                job["constituents"].push_back(store->printStorePath(drvPath2));
+                drv.inputDrvs[drvPath2] = {drv2.outputs.begin()->first};
             }
+
+            std::string drvName(drvPath.name());
+            assert(hasSuffix(drvName, drvExtension));
+            drvName.resize(drvName.size() - drvExtension.size());
+            auto h = std::get<Hash>(hashDerivationModulo(*store, drv, true));
+            auto outPath = store->makeOutputPath("out", h, drvName);
+            drv.env["out"] = store->printStorePath(outPath);
+            drv.outputs.insert_or_assign("out", DerivationOutput { .output = DerivationOutputInputAddressed { .path = outPath } });
+            auto newDrvPath = store->printStorePath(writeDerivation(*store, drv));
+
+            debug("rewrote aggregate derivation %s -> %s", store->printStorePath(drvPath), newDrvPath);
+
+            job["drvPath"] = newDrvPath;
+            job["outputs"]["out"] = store->printStorePath(outPath);
 
             job.erase("namedConstituents");
         }

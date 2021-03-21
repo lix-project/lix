@@ -5,10 +5,19 @@
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system: {
-      packages.hydra-eval-jobs = nixpkgs.legacyPackages.${system}.callPackage ./hydra.nix {
-        srcDir = self;
-      };
-      defaultPackage = self.packages.${system}.hydra-eval-jobs;
-    });
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = nixpkgs.legacyPackages.${system};
+      in
+      rec {
+        packages.hydra-eval-jobs = pkgs.callPackage ./hydra.nix {
+          srcDir = self;
+        };
+        defaultPackage = self.packages.${system}.hydra-eval-jobs;
+        devShell = defaultPackage.overrideAttrs (old: {
+          nativeBuildInputs = old.nativeBuildInputs ++ [
+            pkgs.python3.pkgs.pytest
+          ];
+        });
+      });
 }
