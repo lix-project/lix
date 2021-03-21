@@ -25,11 +25,11 @@
 
 using namespace nix;
 
-static Path gcRootsDir;
 
 struct MyArgs : MixEvalArgs, MixCommonArgs
 {
     Path releaseExpr;
+    Path gcRootsDir;
     bool flake = false;
     bool dryRun = false;
     size_t nrWorkers = 1;
@@ -123,7 +123,8 @@ static void worker(
     EvalState & state,
     Bindings & autoArgs,
     AutoCloseFD & to,
-    AutoCloseFD & from)
+    AutoCloseFD & from,
+    const Path &gcRootsDir)
 {
     Value vTop;
 
@@ -315,7 +316,7 @@ int main(int argc, char * * argv)
 
         if (myArgs.releaseExpr == "") throw UsageError("no expression specified");
 
-        if (gcRootsDir == "") printMsg(lvlError, "warning: `--gc-roots-dir' not specified");
+        if (myArgs.gcRootsDir == "") printMsg(lvlError, "warning: `--gc-roots-dir' not specified");
 
         struct State
         {
@@ -352,7 +353,7 @@ int main(int argc, char * * argv)
                                 try {
                                     EvalState state(myArgs.searchPath, openStore());
                                     Bindings & autoArgs = *myArgs.getAutoArgs(state);
-                                    worker(state, autoArgs, *to, *from);
+                                    worker(state, autoArgs, *to, *from, myArgs.gcRootsDir);
                                 } catch (Error & e) {
                                     nlohmann::json err;
                                     auto msg = e.msg();
