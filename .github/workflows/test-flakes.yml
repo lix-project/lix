@@ -26,4 +26,8 @@ jobs:
     - name: List flake structure
       run: nix flake show
     - name: Build
-      run: nix build
+      run: nix build --out-link result
+    - name: Run tests
+      run: |
+        nix develop -c install -D ./result/bin/hydra-eval-jobs ./build/src/hydra-eval-jobs
+        nix develop -c pytest ./tests
