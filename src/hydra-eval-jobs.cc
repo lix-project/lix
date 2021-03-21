@@ -48,6 +48,7 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
                     }
                     printf("  --%-20s %s\n", name.c_str(), flag->description.c_str());
                 }
+                ::exit(0);
             }},
         });
 
