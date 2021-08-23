@@ -17,6 +17,8 @@
 #include <nix/derivations.hh>
 #include <nix/local-fs-store.hh>
 
+#include <nix/value-to-json.hh>
+
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/resource.h>
@@ -216,6 +218,16 @@ static void worker(
                 job["timeout"] = drv->queryMetaInt("timeout", 36000);
                 job["maxSilent"] = drv->queryMetaInt("maxSilent", 7200);
                 job["isChannel"] = drv->queryMetaBool("isHydraChannel", false);
+
+                nlohmann::json meta;
+                for (auto & name : drv->queryMetaNames()) {
+                  PathSet context;
+                  std::stringstream ss;
+                  printValueAsJSON(state, true, *drv->queryMeta(name), ss, context);
+                  nlohmann::json field = nlohmann::json::parse(ss.str());
+                  meta[name] = field;
+                }
+                job["meta"] = meta;
 
                 /* If this is an aggregate, then get its constituents. */
                 auto a = v->attrs->get(state.symbols.create("_hydraAggregate"));
