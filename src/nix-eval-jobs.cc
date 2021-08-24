@@ -196,31 +196,6 @@ static void worker(
                 }
                 job["meta"] = meta;
 
-                /* If this is an aggregate, then get its constituents. */
-                auto a = v->attrs->get(state.symbols.create("_hydraAggregate"));
-                if (a && state.forceBool(*a->value, *a->pos)) {
-                    auto a = v->attrs->get(state.symbols.create("constituents"));
-                    if (!a)
-                        throw EvalError("derivation must have a ‘constituents’ attribute");
-
-
-                    PathSet context;
-                    state.coerceToString(*a->pos, *a->value, context, true, false);
-                    for (auto & i : context)
-                        if (i.at(0) == '!') {
-                            size_t index = i.find("!", 1);
-                            job["constituents"].push_back(string(i, index + 1));
-                        }
-
-                    state.forceList(*a->value, *a->pos);
-                    for (unsigned int n = 0; n < a->value->listSize(); ++n) {
-                        auto v = a->value->listElems()[n];
-                        state.forceValue(*v);
-                        if (v->type() == nString)
-                            job["namedConstituents"].push_back(state.forceStringNoCtx(*v));
-                    }
-                }
-
                 /* Register the derivation as a GC root.  !!! This
                    registers roots for jobs that we may have already
                    done. */
@@ -465,49 +440,6 @@ int main(int argc, char * * argv)
 
         if (state->exc)
             std::rethrow_exception(state->exc);
-
-        /* For aggregate jobs that have named consistuents
-           (i.e. constituents that are a job name rather than a
-           derivation), look up the referenced job and add it to the
-           dependencies of the aggregate derivation. */
-        auto store = openStore();
-
-        for (auto i = state->jobs.begin(); i != state->jobs.end(); ++i) {
-            auto jobName = i.key();
-            auto & job = i.value();
-
-            auto named = job.find("namedConstituents");
-            if (named == job.end()) continue;
-
-            auto drvPath = store->parseStorePath((std::string) job["drvPath"]);
-            auto drv = store->readDerivation(drvPath);
-
-            for (std::string jobName2 : *named) {
-                auto job2 = state->jobs.find(jobName2);
-                if (job2 == state->jobs.end())
-                    throw Error("aggregate job '%s' references non-existent job '%s'", jobName, jobName2);
-                auto drvPath2 = store->parseStorePath((std::string) (*job2)["drvPath"]);
-                auto drv2 = store->readDerivation(drvPath2);
-                job["constituents"].push_back(store->printStorePath(drvPath2));
-                drv.inputDrvs[drvPath2] = {drv2.outputs.begin()->first};
-            }
-
-            std::string drvName(drvPath.name());
-            assert(hasSuffix(drvName, drvExtension));
-            drvName.resize(drvName.size() - drvExtension.size());
-            auto h = std::get<Hash>(hashDerivationModulo(*store, drv, true));
-            auto outPath = store->makeOutputPath("out", h, drvName);
-            drv.env["out"] = store->printStorePath(outPath);
-            drv.outputs.insert_or_assign("out", DerivationOutput { .output = DerivationOutputInputAddressed { .path = outPath } });
-            auto newDrvPath = store->printStorePath(writeDerivation(*store, drv));
-
-            debug("rewrote aggregate derivation %s -> %s", store->printStorePath(drvPath), newDrvPath);
-
-            job["drvPath"] = newDrvPath;
-            job["outputs"]["out"] = store->printStorePath(outPath);
-
-            job.erase("namedConstituents");
-        }
 
         std::cout << state->jobs.dump(2) << "\n";
     });
