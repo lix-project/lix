@@ -29,7 +29,7 @@ stdenv.mkDerivation rec {
   meta = with lib; {
     description = "Hydra's builtin hydra-eval-jobs as a standalone";
     homepage = "https://github.com/nix-community/nix-eval-jobs";
-    license = licenses.mit;
+    license = licenses.gpl3;
     maintainers = with maintainers; [ mic92 ];
     platforms = platforms.unix;
   };
