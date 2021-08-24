@@ -1,4 +1,5 @@
 { stdenv
+, lib
 , nixFlakes
 , meson
 , cmake
@@ -25,7 +26,7 @@ stdenv.mkDerivation rec {
     # nlohmann_json can be only discovered via cmake files
     cmake
   ];
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Hydra's builtin hydra-eval-jobs as a standalone";
     homepage = "https://github.com/nix-community/nix-eval-jobs";
     license = licenses.mit;
