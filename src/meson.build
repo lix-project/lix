@@ -1,8 +1,8 @@
 src = [
-  'hydra-eval-jobs.cc',
+  'nix-eval-jobs.cc',
 ]
 
-executable('hydra-eval-jobs', src,
+executable('nix-eval-jobs', src,
            dependencies : [
              nix_main_dep,
              nix_store_dep,

@@ -8,7 +8,7 @@ from typing import List
 
 TEST_ROOT = Path(__file__).parent.resolve()
 PROJECT_ROOT = TEST_ROOT.parent
-BIN = PROJECT_ROOT.joinpath("build", "src", "hydra-eval-jobs")
+BIN = PROJECT_ROOT.joinpath("build", "src", "nix-eval-jobs")
 
 
 def common_test(extra_args: List[str]) -> None:

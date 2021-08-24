@@ -10,10 +10,10 @@
         pkgs = nixpkgs.legacyPackages.${system};
       in
       rec {
-        packages.hydra-eval-jobs = pkgs.callPackage ./hydra.nix {
+        packages.nix-eval-jobs = pkgs.callPackage ./hydra.nix {
           srcDir = self;
         };
-        defaultPackage = self.packages.${system}.hydra-eval-jobs;
+        defaultPackage = self.packages.${system}.nix-eval-jobs;
         devShell = defaultPackage.overrideAttrs (old: {
           nativeBuildInputs = old.nativeBuildInputs ++ [
             (pkgs.python3.withPackages(ps: [

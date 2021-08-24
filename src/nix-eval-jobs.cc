@@ -38,13 +38,13 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
     size_t maxMemorySize = 4096;
     pureEval evalMode = evalAuto;
 
-    MyArgs() : MixCommonArgs("hydra-eval-jobs")
+    MyArgs() : MixCommonArgs("nix-eval-jobs")
     {
         addFlag({
             .longName = "help",
             .description = "show usage information",
             .handler = {[&]() {
-                printf("USAGE: hydra-eval-jobs [options] expr\n\n");
+                printf("USAGE: nix-eval-jobs [options] expr\n\n");
                 for (const auto & [name, flag] : longFlags) {
                     if (hiddenCategories.count(flag->category)) {
                         continue;
