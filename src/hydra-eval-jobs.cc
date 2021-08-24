@@ -17,6 +17,8 @@
 #include <nix/derivations.hh>
 #include <nix/local-fs-store.hh>
 
+#include <nix/value-to-json.hh>
+
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/resource.h>
@@ -97,31 +99,6 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
 };
 
 static MyArgs myArgs;
-
-static std::string queryMetaStrings(EvalState & state, DrvInfo & drv, const string & name, const string & subAttribute)
-{
-    Strings res;
-    std::function<void(Value & v)> rec;
-
-    rec = [&](Value & v) {
-        state.forceValue(v);
-        if (v.type() == nString)
-            res.push_back(v.string.s);
-        else if (v.isList())
-            for (unsigned int n = 0; n < v.listSize(); ++n)
-                rec(*v.listElems()[n]);
-        else if (v.type() == nAttrs) {
-            auto a = v.attrs->find(state.symbols.create(subAttribute));
-            if (a != v.attrs->end())
-                res.push_back(state.forceString(*a->value));
-        }
-    };
-
-    Value * v = drv.queryMeta(name);
-    if (v) rec(*v);
-
-    return concatStringsSep(", ", res);
-}
 
 static nlohmann::json serializeStorePathSet(StorePathSet &paths, LocalFSStore &store) {
     auto array = nlohmann::json::array();
@@ -208,14 +185,16 @@ static void worker(
                 job["nixName"] = drv->queryName();
                 job["system"] =drv->querySystem();
                 job["drvPath"] = drvPath;
-                job["description"] = drv->queryMetaString("description");
-                job["license"] = queryMetaStrings(state, *drv, "license", "shortName");
-                job["homepage"] = drv->queryMetaString("homepage");
-                job["maintainers"] = queryMetaStrings(state, *drv, "maintainers", "email");
-                job["schedulingPriority"] = drv->queryMetaInt("schedulingPriority", 100);
-                job["timeout"] = drv->queryMetaInt("timeout", 36000);
-                job["maxSilent"] = drv->queryMetaInt("maxSilent", 7200);
-                job["isChannel"] = drv->queryMetaBool("isHydraChannel", false);
+
+                nlohmann::json meta;
+                for (auto & name : drv->queryMetaNames()) {
+                  PathSet context;
+                  std::stringstream ss;
+                  printValueAsJSON(state, true, *drv->queryMeta(name), ss, context);
+                  nlohmann::json field = nlohmann::json::parse(ss.str());
+                  meta[name] = field;
+                }
+                job["meta"] = meta;
 
                 /* If this is an aggregate, then get its constituents. */
                 auto a = v->attrs->get(state.symbols.create("_hydraAggregate"));

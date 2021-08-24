@@ -16,7 +16,9 @@
         defaultPackage = self.packages.${system}.hydra-eval-jobs;
         devShell = defaultPackage.overrideAttrs (old: {
           nativeBuildInputs = old.nativeBuildInputs ++ [
-            pkgs.python3.pkgs.pytest
+            (pkgs.python3.withPackages(ps: [
+              ps.pytest
+            ]))
           ];
         });
       });
