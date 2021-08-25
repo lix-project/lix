@@ -29,5 +29,5 @@ jobs:
       run: nix build --out-link result
     - name: Run tests
       run: |
-        nix develop -c install -D ./result/bin/hydra-eval-jobs ./build/src/hydra-eval-jobs
+        nix develop -c install -D ./result/bin/nix-eval-jobs ./build/src/nix-eval-jobs
         nix develop -c pytest ./tests
