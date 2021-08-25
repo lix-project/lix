@@ -21,12 +21,18 @@ def common_test(extra_args: List[str]) -> None:
             check=True,
             stdout=subprocess.PIPE,
         )
-        data = json.loads(res.stdout)
 
-        assert data["builtJob"]["nixName"] == "job1"
-        assert "out" in data["builtJob"]["outputs"]
+        results = [json.loads(r) for r in res.stdout.split("\n") if r]
+        assert len(results) == 2
 
-        assert data["substitutedJob"]["nixName"].startswith("hello-")
+        built_job = results[0]
+        assert built_job["attr"] == "builtJob"
+        assert built_job["job"]["nixName"] == "job1"
+
+
+        substituted_job = results[1]
+        assert substituted_job["attr"] == "substitutedJob"
+        assert substituted_job["job"]["nixName"].startswith("hello-")
 
 
 def test_flake() -> None:

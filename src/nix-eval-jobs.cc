@@ -156,6 +156,7 @@ static void worker(
 
         /* Evaluate it and send info back to the master. */
         nlohmann::json reply;
+        reply["attr"] = attrPath;
 
         try {
             auto vTmp = findAlongAttrPath(state, attrPath, autoArgs, *vRoot).first;
@@ -215,7 +216,8 @@ static void worker(
                 reply["job"] = std::move(job);
             }
 
-            else if (v->type() == nAttrs) {
+            else if (v->type() == nAttrs)
+              {
                 auto attrs = nlohmann::json::array();
                 StringSet ss;
                 for (auto & i : v->attrs->lexicographicOrder()) {
@@ -287,7 +289,6 @@ int main(int argc, char * * argv)
         {
             std::set<std::string> todo{""};
             std::set<std::string> active;
-            nlohmann::json jobs;
             std::exception_ptr exc;
         };
 
@@ -369,26 +370,19 @@ int main(int argc, char * * argv)
                     writeLine(to.get(), "do " + attrPath);
 
                     /* Wait for the response. */
-                    auto response = nlohmann::json::parse(readLine(from.get()));
+                    auto respString = readLine(from.get());
+                    auto response = nlohmann::json::parse(respString);
 
                     /* Handle the response. */
                     StringSet newAttrs;
-
-                    if (response.find("job") != response.end()) {
-                        auto state(state_.lock());
-                        state->jobs[attrPath] = response["job"];
-                    }
-
                     if (response.find("attrs") != response.end()) {
                         for (auto & i : response["attrs"]) {
                             auto s = (attrPath.empty() ? "" : attrPath + ".") + (std::string) i;
                             newAttrs.insert(s);
                         }
-                    }
-
-                    if (response.find("error") != response.end()) {
+                    } else {
                         auto state(state_.lock());
-                        state->jobs[attrPath]["error"] = response["error"];
+                        std::cout << respString << "\n";
                     }
 
                     /* Add newly discovered job names to the queue. */
@@ -419,6 +413,5 @@ int main(int argc, char * * argv)
         if (state->exc)
             std::rethrow_exception(state->exc);
 
-        std::cout << state->jobs.dump(2) << "\n";
     });
 }
