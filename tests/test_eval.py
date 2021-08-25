@@ -22,8 +22,11 @@ def common_test(extra_args: List[str]) -> None:
             stdout=subprocess.PIPE,
         )
         data = json.loads(res.stdout)
-        assert len(data["builtJob"]["builds"]) == 1
-        assert len(data["substitutedJob"]["substitutes"]) >= 1
+
+        assert data["builtJob"]["nixName"] == "job1"
+        assert "out" in data["builtJob"]["outputs"]
+
+        assert data["substitutedJob"]["nixName"].startswith("hello-")
 
 
 def test_flake() -> None:
