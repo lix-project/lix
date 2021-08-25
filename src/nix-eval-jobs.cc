@@ -180,7 +180,15 @@ static void worker(
                 for (auto & name : drv->queryMetaNames()) {
                   PathSet context;
                   std::stringstream ss;
-                  printValueAsJSON(state, true, *drv->queryMeta(name), ss, context);
+
+                  auto metaValue = drv->queryMeta(name);
+                  // Skip non-serialisable types
+                  // TODO: Fix serialisation of derivations to store paths
+                  if (metaValue == 0) {
+                    continue;
+                  }
+
+                  printValueAsJSON(state, true, *metaValue, ss, context);
                   nlohmann::json field = nlohmann::json::parse(ss.str());
                   meta[name] = field;
                 }
