@@ -25,6 +25,8 @@
             touch $out
           '';
 
+          build = packages.nix-eval-jobs;
+
         };
 
         defaultPackage = self.packages.${system}.nix-eval-jobs;
