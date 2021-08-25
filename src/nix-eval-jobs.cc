@@ -173,8 +173,6 @@ static void worker(
 
             if (auto drv = getDerivation(state, *v, false)) {
 
-                DrvInfo::Outputs outputs = drv->queryOutputs();
-
                 if (drv->querySystem() == "unknown")
                     throw EvalError("derivation must have a 'system' attribute");
 
@@ -224,6 +222,7 @@ static void worker(
                                          downloadSize,
                                          narSize);
 
+                DrvInfo::Outputs outputs = drv->queryOutputs();
                 nlohmann::json out;
                 for (auto & p : outputs) {
                     out[p.first] = p.second;
