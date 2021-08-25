@@ -13,12 +13,31 @@
         packages.nix-eval-jobs = pkgs.callPackage ./hydra.nix {
           srcDir = self;
         };
+
+        checks = {
+
+          editorconfig = pkgs.runCommand "editorconfig-checks" {
+            nativeBuildInputs = [
+              pkgs.editorconfig-checker
+            ];
+          } ''
+            editorconfig-checker ${self}
+            touch $out
+          '';
+
+        };
+
         defaultPackage = self.packages.${system}.nix-eval-jobs;
         devShell = defaultPackage.overrideAttrs (old: {
+
           nativeBuildInputs = old.nativeBuildInputs ++ [
+
+            pkgs.editorconfig-checker
+
             (pkgs.python3.withPackages(ps: [
               ps.pytest
             ]))
+
           ];
         });
       });

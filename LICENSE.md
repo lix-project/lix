@@ -1,7 +1,7 @@
 GNU General Public License
 ==========================
 
-_Version 3, 29 June 2007_  
+_Version 3, 29 June 2007_
 _Copyright © 2007 Free Software Foundation, Inc. &lt;<http://fsf.org/>&gt;_
 
 Everyone is permitted to copy and distribute verbatim copies of this license
@@ -593,5 +593,3 @@ more useful to permit linking proprietary applications with the library. If this
 what you want to do, use the GNU Lesser General Public License instead of this
 License. But first, please read
 &lt;<http://www.gnu.org/philosophy/why-not-lgpl.html>&gt;.
-
-
