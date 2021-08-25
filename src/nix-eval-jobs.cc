@@ -100,14 +100,6 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
 
 static MyArgs myArgs;
 
-static nlohmann::json serializeStorePathSet(StorePathSet &paths, LocalFSStore &store) {
-    auto array = nlohmann::json::array();
-    for (auto & p : paths) {
-        array.push_back(store.printStorePath(p));
-    }
-    return array;
-}
-
 static void worker(
     EvalState & state,
     Bindings & autoArgs,
@@ -205,33 +197,12 @@ static void worker(
                         localStore->addPermRoot(storePath, root);
                 }
 
-                uint64_t downloadSize, narSize;
-                StorePathSet willBuild, willSubstitute, unknown;
-                std::vector<nix::StorePathWithOutputs> paths;
-                StringSet outputNames;
-
-                for (auto & output : outputs) {
-                    outputNames.insert(output.first);
-                }
-                paths.push_back({storePath, outputNames});
-
-                localStore->queryMissing(paths,
-                                         willBuild,
-                                         willSubstitute,
-                                         unknown,
-                                         downloadSize,
-                                         narSize);
-
                 DrvInfo::Outputs outputs = drv->queryOutputs();
                 nlohmann::json out;
                 for (auto & p : outputs) {
                     out[p.first] = p.second;
                 }
                 job["outputs"] = std::move(out);
-
-                job["builds"] = serializeStorePathSet(willBuild, *localStore);
-                job["substitutes"] = serializeStorePathSet(willSubstitute, *localStore);
-                job["unknown"] = serializeStorePathSet(unknown, *localStore);
 
                 reply["job"] = std::move(job);
             }
