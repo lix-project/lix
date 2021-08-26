@@ -112,7 +112,7 @@ static void worker(
     if (myArgs.flake) {
         using namespace flake;
 
-        auto flakeRef = parseFlakeRef(myArgs.releaseExpr, absPath("."));
+        auto [flakeRef, fragment] = parseFlakeRefWithFragment(myArgs.releaseExpr, absPath("."));
 
         auto vFlake = state.allocValue();
 
@@ -127,14 +127,15 @@ static void worker(
 
         auto vOutputs = vFlake->attrs->get(state.symbols.create("outputs"))->value;
         state.forceValue(*vOutputs);
+        vTop = *vOutputs;
 
-        auto aHydraJobs = vOutputs->attrs->get(state.symbols.create("hydraJobs"));
-        if (!aHydraJobs)
-            aHydraJobs = vOutputs->attrs->get(state.symbols.create("checks"));
-        if (!aHydraJobs)
-            throw Error("flake '%s' does not provide any Hydra jobs or checks", flakeRef);
-
-        vTop = *aHydraJobs->value;
+        if (fragment.length() > 0) {
+            Bindings & bindings(*state.allocBindings(0));
+            auto [nTop, pos] = findAlongAttrPath(state, fragment, bindings, vTop);
+            if (!nTop)
+                throw Error("error: attribute '%s' missing", nTop);
+            vTop = *nTop;
+        }
 
     } else {
         state.evalFile(lookupFileArg(state, myArgs.releaseExpr), vTop);

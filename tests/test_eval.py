@@ -36,7 +36,7 @@ def common_test(extra_args: List[str]) -> None:
 
 
 def test_flake() -> None:
-    common_test(["--flake", ".#"])
+    common_test(["--flake", ".#hydraJobs"])
 
 
 def test_expression() -> None:
