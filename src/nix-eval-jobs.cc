@@ -171,11 +171,9 @@ static void worker(
 
                 auto drvPath = drv->queryDrvPath();
 
-                nlohmann::json job;
-
-                job["nixName"] = drv->queryName();
-                job["system"] =drv->querySystem();
-                job["drvPath"] = drvPath;
+                reply["name"] = drv->queryName();
+                reply["system"] = drv->querySystem();
+                reply["drvPath"] = drvPath;
 
                 nlohmann::json meta;
                 for (auto & name : drv->queryMetaNames()) {
@@ -193,7 +191,6 @@ static void worker(
                   nlohmann::json field = nlohmann::json::parse(ss.str());
                   meta[name] = field;
                 }
-                job["meta"] = meta;
 
                 /* Register the derivation as a GC root.  !!! This
                    registers roots for jobs that we may have already
@@ -206,14 +203,6 @@ static void worker(
                         localStore->addPermRoot(storePath, root);
                 }
 
-                DrvInfo::Outputs outputs = drv->queryOutputs();
-                nlohmann::json out;
-                for (auto & p : outputs) {
-                    out[p.first] = p.second;
-                }
-                job["outputs"] = std::move(out);
-
-                reply["job"] = std::move(job);
             }
 
             else if (v->type() == nAttrs)

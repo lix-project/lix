@@ -27,12 +27,12 @@ def common_test(extra_args: List[str]) -> None:
 
         built_job = results[0]
         assert built_job["attr"] == "builtJob"
-        assert built_job["job"]["nixName"] == "job1"
+        assert built_job["name"] == "job1"
 
 
         substituted_job = results[1]
         assert substituted_job["attr"] == "substitutedJob"
-        assert substituted_job["job"]["nixName"].startswith("hello-")
+        assert substituted_job["name"].startswith("hello-")
 
 
 def test_flake() -> None:
