@@ -10,7 +10,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
       in
       rec {
-        packages.nix-eval-jobs = pkgs.callPackage ./hydra.nix {
+        packages.nix-eval-jobs = pkgs.callPackage ./default.nix {
           srcDir = self;
         };
 
