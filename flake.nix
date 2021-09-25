@@ -8,11 +8,10 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        drvArgs = { srcDir = self; };
       in
       rec {
-        packages.nix-eval-jobs = pkgs.callPackage ./default.nix {
-          srcDir = self;
-        };
+        packages.nix-eval-jobs = pkgs.callPackage ./default.nix drvArgs;
 
         checks = {
 
@@ -30,17 +29,7 @@
         };
 
         defaultPackage = self.packages.${system}.nix-eval-jobs;
-        devShell = defaultPackage.overrideAttrs (old: {
+        devShell = pkgs.callPackage ./shell.nix drvArgs;
 
-          nativeBuildInputs = old.nativeBuildInputs ++ [
-
-            pkgs.editorconfig-checker
-
-            (pkgs.python3.withPackages(ps: [
-              ps.pytest
-            ]))
-
-          ];
-        });
       });
 }
