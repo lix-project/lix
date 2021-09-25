@@ -12,17 +12,22 @@
 
 let
   filterMesonBuild = dir: builtins.filterSource
-    (path: type: type != "directory" || baseNameOf path != "build") dir;
+    (path: type: type != "directory" || baseNameOf path != "build")
+    dir;
 in
 stdenv.mkDerivation rec {
   pname = "nix-eval-jobs";
   version = "0.0.1";
   src = if srcDir == null then filterMesonBuild ./. else srcDir;
   buildInputs = [
-    nlohmann_json nixFlakes boost
+    nlohmann_json
+    nixFlakes
+    boost
   ];
   nativeBuildInputs = [
-    meson pkg-config ninja
+    meson
+    pkg-config
+    ninja
     # nlohmann_json can be only discovered via cmake files
     cmake
   ];

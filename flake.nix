@@ -15,12 +15,23 @@
 
         checks = {
 
-          editorconfig = pkgs.runCommand "editorconfig-checks" {
-            nativeBuildInputs = [
-              pkgs.editorconfig-checker
-            ];
-          } ''
+          editorconfig = pkgs.runCommand "editorconfig-check"
+            {
+              nativeBuildInputs = [
+                pkgs.editorconfig-checker
+              ];
+            } ''
             editorconfig-checker ${self}
+            touch $out
+          '';
+
+          nixpkgs-fmt = pkgs.runCommand "fmt-check"
+            {
+              nativeBuildInputs = [
+                pkgs.nixpkgs-fmt
+              ];
+            } ''
+            nixpkgs-fmt --check .
             touch $out
           '';
 
@@ -31,5 +42,6 @@
         defaultPackage = self.packages.${system}.nix-eval-jobs;
         devShell = pkgs.callPackage ./shell.nix drvArgs;
 
-      });
+      }
+    );
 }

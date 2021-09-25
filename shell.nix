@@ -2,13 +2,15 @@
 , srcDir ? null
 }:
 
-(pkgs.callPackage ./default.nix { inherit srcDir; }).overrideAttrs(old: {
+(pkgs.callPackage ./default.nix { inherit srcDir; }).overrideAttrs (old: {
 
   nativeBuildInputs = old.nativeBuildInputs ++ [
 
     pkgs.editorconfig-checker
 
-    (pkgs.python3.withPackages(ps: [
+    pkgs.nixpkgs-fmt
+
+    (pkgs.python3.withPackages (ps: [
       ps.pytest
     ]))
 
