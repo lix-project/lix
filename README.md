@@ -68,7 +68,7 @@ USAGE: nix-eval-jobs [options] expr
 ## Potential use-cases for the tool
 
 **Faster evaluator in deployment tools.** When evaluating nixos machines evaluation can take several minutes when performed on a single core.
-This limits the usuability of current deployment tools such as [NixOps](https://github.com/NixOS/nixops).
+This limits the scalability for large deployment with deployment tools such as [NixOps](https://github.com/NixOS/nixops).
 **Faster evaluator in CI.** In addition to evaluation speed for CIs it is also useful if evaluation of individual jobs can fail in CIs in contrast to failing the whole jobset.
 Furthermore for CIs that allow to create dynamic build steps, one can leverage the fact that nix-eval-jobs outputs derivation path seperatly.
 This allows to have seperate logs and success status per job rather than one big log file.
