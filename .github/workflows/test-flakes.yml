@@ -18,11 +18,6 @@ jobs:
           # Nix Flakes doesn't work on shallow clones
           fetch-depth: 0
     - uses: cachix/install-nix-action@v15
-      with:
-        install_url: https://github.com/numtide/nix-unstable-installer/releases/download/nix-2.4pre20210823_af94b54/install
-        extra_nix_config: |
-          experimental-features = nix-command flakes
-          system-features = nixos-test benchmark big-parallel kvm
     - name: List flake structure
       run: nix flake show
     - name: Build
