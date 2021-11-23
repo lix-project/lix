@@ -14,6 +14,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v15
+    - uses: cachix/install-nix-action@v16
     - name: build
       run: NIX_PATH=nixpkgs=https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz nix-build --expr '(import <nixpkgs> { }).callPackage ./. { }'
