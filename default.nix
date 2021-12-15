@@ -1,6 +1,6 @@
 { stdenv
 , lib
-, nixFlakes
+, nixUnstable
 , meson
 , cmake
 , ninja
@@ -21,7 +21,7 @@ stdenv.mkDerivation rec {
   src = if srcDir == null then filterMesonBuild ./. else srcDir;
   buildInputs = [
     nlohmann_json
-    nixFlakes
+    nixUnstable
     boost
   ];
   nativeBuildInputs = [

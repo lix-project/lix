@@ -188,7 +188,7 @@ static void worker(
                     continue;
                   }
 
-                  printValueAsJSON(state, true, *metaValue, ss, context);
+                  printValueAsJSON(state, true, *metaValue, noPos, ss, context);
                   nlohmann::json field = nlohmann::json::parse(ss.str());
                   meta[name] = field;
                 }
