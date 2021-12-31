@@ -171,10 +171,13 @@ static void worker(
                     throw EvalError("derivation must have a 'system' attribute");
 
                 auto drvPath = drv->queryDrvPath();
+                auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
+                auto storePath = localStore->parseStorePath(drvPath);
 
                 reply["name"] = drv->queryName();
                 reply["system"] = drv->querySystem();
                 reply["drvPath"] = drvPath;
+                reply["storePath"] = localStore->printStorePath(storePath);
 
                 nlohmann::json meta;
                 for (auto & name : drv->queryMetaNames()) {
@@ -196,9 +199,7 @@ static void worker(
                 /* Register the derivation as a GC root.  !!! This
                    registers roots for jobs that we may have already
                    done. */
-                auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
-                auto storePath = localStore->parseStorePath(drvPath);
-                if (gcRootsDir != "" && localStore) {
+                if (gcRootsDir != "") {
                     Path root = gcRootsDir + "/" + std::string(baseNameOf(drvPath));
                     if (!pathExists(root))
                         localStore->addPermRoot(storePath, root);
