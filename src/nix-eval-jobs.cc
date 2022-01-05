@@ -173,11 +173,14 @@ static void worker(
                 auto drvPath = drv->queryDrvPath();
                 auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
                 auto storePath = localStore->parseStorePath(drvPath);
+                auto outputs = drv->queryOutputs(false);
 
                 reply["name"] = drv->queryName();
                 reply["system"] = drv->querySystem();
                 reply["drvPath"] = drvPath;
-                reply["storePath"] = localStore->printStorePath(storePath);
+                for (auto out : outputs){
+                    reply["outputs"][out.first] = out.second;
+                }
 
                 nlohmann::json meta;
                 for (auto & name : drv->queryMetaNames()) {

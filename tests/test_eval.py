@@ -28,7 +28,7 @@ def common_test(extra_args: List[str]) -> None:
         built_job = results[0]
         assert built_job["attr"] == "builtJob"
         assert built_job["name"] == "job1"
-        assert built_job["storePath"].startswith("/nix/store")
+        assert built_job["outputs"]["out"].startswith("/nix/store")
         assert built_job["drvPath"].endswith(".drv")
 
 
