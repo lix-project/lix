@@ -13,7 +13,7 @@ BIN = PROJECT_ROOT.joinpath("build", "src", "nix-eval-jobs")
 
 def common_test(extra_args: List[str]) -> None:
     with TemporaryDirectory() as tempdir:
-        cmd = [str(BIN), "--gc-roots-dir", tempdir] + extra_args
+        cmd = [str(BIN), "--gc-roots-dir", tempdir, "--meta"] + extra_args
         res = subprocess.run(
             cmd,
             cwd=TEST_ROOT.joinpath("assets"),
@@ -30,11 +30,12 @@ def common_test(extra_args: List[str]) -> None:
         assert built_job["name"] == "job1"
         assert built_job["outputs"]["out"].startswith("/nix/store")
         assert built_job["drvPath"].endswith(".drv")
-
+        assert built_job["meta"]['broken'] is False
 
         substituted_job = results[1]
         assert substituted_job["attr"] == "substitutedJob"
         assert substituted_job["name"].startswith("hello-")
+        assert substituted_job["meta"]['broken'] is False
 
 
 def test_flake() -> None:

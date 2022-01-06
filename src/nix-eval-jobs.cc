@@ -34,6 +34,7 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
     Path releaseExpr;
     Path gcRootsDir;
     bool flake = false;
+    bool meta = false;
     size_t nrWorkers = 1;
     size_t maxMemorySize = 4096;
     pureEval evalMode = evalAuto;
@@ -92,6 +93,12 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
             .longName = "flake",
             .description = "build a flake",
             .handler = {&flake, true}
+        });
+
+        addFlag({
+            .longName = "meta",
+            .description = "include derivation meta field in output",
+            .handler = {&meta, true}
         });
 
         expectArg("expr", &releaseExpr);
@@ -182,21 +189,24 @@ static void worker(
                     reply["outputs"][out.first] = out.second;
                 }
 
-                nlohmann::json meta;
-                for (auto & name : drv->queryMetaNames()) {
-                  PathSet context;
-                  std::stringstream ss;
+                if (myArgs.meta) {
+                    nlohmann::json meta;
+                    for (auto & name : drv->queryMetaNames()) {
+                      PathSet context;
+                      std::stringstream ss;
 
-                  auto metaValue = drv->queryMeta(name);
-                  // Skip non-serialisable types
-                  // TODO: Fix serialisation of derivations to store paths
-                  if (metaValue == 0) {
-                    continue;
-                  }
+                      auto metaValue = drv->queryMeta(name);
+                      // Skip non-serialisable types
+                      // TODO: Fix serialisation of derivations to store paths
+                      if (metaValue == 0) {
+                        continue;
+                      }
 
-                  printValueAsJSON(state, true, *metaValue, noPos, ss, context);
-                  nlohmann::json field = nlohmann::json::parse(ss.str());
-                  meta[name] = field;
+                      printValueAsJSON(state, true, *metaValue, noPos, ss, context);
+                      nlohmann::json field = nlohmann::json::parse(ss.str());
+                      meta[name] = field;
+                    }
+                    reply["meta"] = meta;
                 }
 
                 /* Register the derivation as a GC root.  !!! This
