@@ -57,6 +57,7 @@ USAGE: nix-eval-jobs [options] expr
   --include              Add *path* to the list of locations used to look up `<...>` file names.
   --log-format           Set the format of log output; one of `raw`, `internal-json`, `bar` or `bar-with-logs`.
   --max-memory-size      maximum evaluation memory size
+  --meta                 include derivation meta field in output
   --option               Set the Nix configuration setting *name* to *value* (overriding `nix.conf`).
   --override-flake       Override the flake registries, redirecting *original-ref* to *resolved-ref*.
   --quiet                Decrease the logging verbosity level.
