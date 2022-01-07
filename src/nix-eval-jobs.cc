@@ -16,6 +16,8 @@
 #include <nix/attr-path.hh>
 #include <nix/derivations.hh>
 #include <nix/local-fs-store.hh>
+#include <nix/logging.hh>
+#include <nix/error.hh>
 
 #include <nix/value-to-json.hh>
 
@@ -35,6 +37,7 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
     Path gcRootsDir;
     bool flake = false;
     bool meta = false;
+    bool showTrace = false;
     size_t nrWorkers = 1;
     size_t maxMemorySize = 4096;
     pureEval evalMode = evalAuto;
@@ -99,6 +102,12 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
             .longName = "meta",
             .description = "include derivation meta field in output",
             .handler = {&meta, true}
+        });
+
+        addFlag({
+            .longName = "show-trace",
+            .description = "print out a stack trace in case of evaluation errors",
+            .handler = {&showTrace, true}
         });
 
         expectArg("expr", &releaseExpr);
@@ -241,13 +250,18 @@ static void worker(
             else throw TypeError("attribute '%s' is %s, which is not supported", attrPath, showType(*v));
 
         } catch (EvalError & e) {
-            auto msg = e.msg();
+            auto err = e.info();
+
+            std::ostringstream oss;
+            showErrorInfo(oss, err, loggerSettings.showTrace.get());
+            auto msg = oss.str();
+
             // Transmits the error we got from the previous evaluation
             // in the JSON output.
             reply["error"] = filterANSIEscapes(msg, true);
             // Don't forget to print it into the STDERR log, this is
             // what's shown in the Hydra UI.
-            printError(msg);
+            printError(e.msg());
         }
 
         writeLine(to.get(), reply.dump());
@@ -288,6 +302,10 @@ int main(int argc, char * * argv)
         if (myArgs.releaseExpr == "") throw UsageError("no expression specified");
 
         if (myArgs.gcRootsDir == "") printMsg(lvlError, "warning: `--gc-roots-dir' not specified");
+
+        if (myArgs.showTrace) {
+            loggerSettings.showTrace.assign(true);
+        }
 
         struct State
         {
