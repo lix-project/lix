@@ -13,31 +13,38 @@
       rec {
         packages.nix-eval-jobs = pkgs.callPackage ./default.nix drvArgs;
 
-        checks = {
+        checks =
+          let
+            mkVariant = nix: packages.nix-eval-jobs.overrideAttrs (_: {
+              name = "nix-eval-jobs-${nix.version}";
+              inherit (nix) version;
+            });
+          in
+          {
 
-          editorconfig = pkgs.runCommand "editorconfig-check"
-            {
-              nativeBuildInputs = [
-                pkgs.editorconfig-checker
-              ];
-            } ''
-            editorconfig-checker ${self}
-            touch $out
-          '';
+            editorconfig = pkgs.runCommand "editorconfig-check"
+              {
+                nativeBuildInputs = [
+                  pkgs.editorconfig-checker
+                ];
+              } ''
+              editorconfig-checker ${self}
+              touch $out
+            '';
 
-          nixpkgs-fmt = pkgs.runCommand "fmt-check"
-            {
-              nativeBuildInputs = [
-                pkgs.nixpkgs-fmt
-              ];
-            } ''
-            nixpkgs-fmt --check .
-            touch $out
-          '';
+            nixpkgs-fmt = pkgs.runCommand "fmt-check"
+              {
+                nativeBuildInputs = [
+                  pkgs.nixpkgs-fmt
+                ];
+              } ''
+              nixpkgs-fmt --check .
+              touch $out
+            '';
 
-          build = packages.nix-eval-jobs;
-
-        };
+            build = mkVariant pkgs.nix;
+            build-unstable = mkVariant pkgs.nixUnstable;
+          };
 
         defaultPackage = self.packages.${system}.nix-eval-jobs;
         devShell = pkgs.callPackage ./shell.nix drvArgs;
