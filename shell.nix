@@ -13,7 +13,10 @@
 , srcDir ? null
 }:
 
-(pkgs.callPackage ./default.nix { inherit srcDir; }).overrideAttrs (old: {
+(pkgs.callPackage ./default.nix {
+  inherit srcDir;
+  nix = pkgs.nixUnstable;
+}).overrideAttrs (old: {
 
   nativeBuildInputs = old.nativeBuildInputs ++ [
 
