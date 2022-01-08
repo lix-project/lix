@@ -15,7 +15,9 @@
 
         checks =
           let
-            mkVariant = nix: packages.nix-eval-jobs.overrideAttrs (_: {
+            mkVariant = nix: (packages.nix-eval-jobs.override {
+              inherit nix;
+            }).overrideAttrs (_: {
               name = "nix-eval-jobs-${nix.version}";
               inherit (nix) version;
             });
