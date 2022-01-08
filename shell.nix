@@ -18,6 +18,8 @@
   nix = pkgs.nixUnstable;
 }).overrideAttrs (old: {
 
+  src = null;
+
   nativeBuildInputs = old.nativeBuildInputs ++ [
 
     pkgs.editorconfig-checker
