@@ -1,19 +1,20 @@
 # nix-eval-jobs
 
-This project evaluates nix attributes sets in parallel with a streamable json output.
-This is useful for time and memory-intensive evaluations such as nixos machines i.e. in a CI context.
-Evaluation happens with a controlable number of threads that are restarted if
-their memory consumption grows beyond a threshold.
+This project evaluates nix attributes sets in parallel with streamable json
+output.  This is useful for time and memory intensive evaluations such as NixOS
+machines, i.e. in a CI context.  The evaluation is done with a controllable
+number of threads that are restarted when their memory consumption exceeds a
+certain threshold.
 
-For ease of integration nix-eval-jobs creates garbage collection roots for each
-evaluated derivation (drv file not the build) inside the supplied attribute.
-This prevent race conditions between nix garbage collection service and nix
-builds processes started by the user.
+To facilitate integration, nix-eval-jobs creates garbage collection roots for
+each evaluated derivation (drv file, not the build) within the provided
+attribute.  This prevents race conditions between the nix garbage collection
+service and user-started nix builds processes.
 
 ## Why using nix-eval-jobs?
 
-- Faster evaluation due the use of threads
-- Memory used for evaluation is reclaimed after nix-eval-jobs is finished so that the build can use it.
+- Faster evaluation by using threads
+- Memory used for evaluation is reclaimed after nix-eval-jobs finish, so that the build can use it.
 - Evaluation of jobs can fail individually
 
 ## Example
@@ -35,7 +36,7 @@ $ nix-eval-jobs --gc-roots-dir $(pwd)/gcroot --flake 'github:NixOS/patchelf#hydr
 
 ```
 
-The output here newline-seperated json according to https://jsonlines.org/
+The output here is newline-seperated json according to https://jsonlines.org.
 
 The code is derived from [hydra's](https://github.com/nixos/hydra) eval-jobs executable.
 
@@ -67,8 +68,14 @@ USAGE: nix-eval-jobs [options] expr
 
 ## Potential use-cases for the tool
 
-**Faster evaluator in deployment tools.** When evaluating nixos machines evaluation can take several minutes when performed on a single core.
-This limits the scalability for large deployment with deployment tools such as [NixOps](https://github.com/NixOS/nixops).
-**Faster evaluator in CI.** In addition to evaluation speed for CIs it is also useful if evaluation of individual jobs can fail in CIs in contrast to failing the whole jobset.
-Furthermore for CIs that allow to create dynamic build steps, one can leverage the fact that nix-eval-jobs outputs derivation path seperatly.
-This allows to have seperate logs and success status per job rather than one big log file.
+**Faster evaluator in deployment tools.** When evaluating NixOS machines,
+evaluation can take several minutes when run on a single core.  This limits
+scalability for large deployments with deployment tools such as
+[NixOps](https://github.com/NixOS/nixops).
+
+**Faster evaluator in CIs.** In addition to evaluation speed for CIs, it is also
+useful if evaluation of individual jobs in CIs can fail, as opposed to failing
+the entire jobset.  For CIs that allow dynamic build steps to be created, one
+can also take advantage of the fact that nix-eval-jobs outputs the derivation
+path separately.  This allows separate logs and success status per job instead
+of a single large log file.
