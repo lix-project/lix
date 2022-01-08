@@ -1,0 +1,45 @@
+name: "Flake checks"
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+jobs:
+
+  flake-checks:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v2.4.0
+        with:
+          # Nix Flakes doesn't work on shallow clones
+          fetch-depth: 0
+      - uses: cachix/install-nix-action@v16
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - id: set-matrix
+        run: |
+          set -euo pipefail
+
+          matrix="$(nix flake show --json | jq '.checks."x86_64-linux" | keys' | jq -rcM '{attr: ., os: ["ubuntu-latest", "macos-latest"]}')"
+          echo "::set-output name=matrix::$matrix"
+
+  builds:
+    needs: flake-checks
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix: ${{fromJSON(needs.flake-checks.outputs.matrix)}}
+    steps:
+      - uses: actions/checkout@v2.4.0
+        with:
+          # Nix Flakes doesn't work on shallow clones
+          fetch-depth: 0
+      - uses: cachix/install-nix-action@v16
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - run: |
+          set -euo pipefail
+
+          system=$(nix-instantiate --eval --expr builtins.currentSystem | jq -r)
+          nix build -L .#checks.$system.${{ matrix.attr }}
