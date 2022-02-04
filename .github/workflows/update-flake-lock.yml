@@ -16,6 +16,6 @@ jobs:
         #   extra_nix_config: |
         #     access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Update flake.lock
-        uses: Mic92/update-flake-lock@main
+        uses: DeterminateSystems/update-flake-lock@v7
         with:
           token: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
