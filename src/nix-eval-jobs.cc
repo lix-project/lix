@@ -404,7 +404,7 @@ int main(int argc, char * * argv)
                         }
                     } else {
                         auto state(state_.lock());
-                        std::cout << respString << "\n";
+                        std::cout << respString << "\n" << std::flush;
                     }
 
                     /* Add newly discovered job names to the queue. */
