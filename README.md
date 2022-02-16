@@ -79,3 +79,9 @@ the entire jobset.  For CIs that allow dynamic build steps to be created, one
 can also take advantage of the fact that nix-eval-jobs outputs the derivation
 path separately.  This allows separate logs and success status per job instead
 of a single large log file.
+
+
+## Projects using nix-eval-jobs
+
+- [colmena](https://github.com/zhaofengli/colmena) -  A simple, stateless NixOS deployment tool
+- [robotnix](https://github.com/danielfullmer/robotnix) -  Build Android (AOSP) using Nix, used in their [CI](https://github.com/danielfullmer/robotnix/blob/38b80700ee4265c306dcfdcce45056e32ab2973f/.github/workflows/instantiate.yml#L18)
