@@ -142,7 +142,7 @@ static void worker(
         callFlake(state, lockedFlake, *vFlake);
 
         auto vOutputs = vFlake->attrs->get(state.symbols.create("outputs"))->value;
-        state.forceValue(*vOutputs);
+        state.forceValue(*vOutputs, noPos);
         vTop = *vOutputs;
 
         if (fragment.length() > 0) {
@@ -186,8 +186,8 @@ static void worker(
                 if (drv->querySystem() == "unknown")
                     throw EvalError("derivation must have a 'system' attribute");
 
-                auto drvPath = drv->queryDrvPath();
                 auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
+                auto drvPath = localStore->printStorePath(drv->requireDrvPath());
                 auto storePath = localStore->parseStorePath(drvPath);
                 auto outputs = drv->queryOutputs(false);
 
@@ -195,7 +195,7 @@ static void worker(
                 reply["system"] = drv->querySystem();
                 reply["drvPath"] = drvPath;
                 for (auto out : outputs){
-                    reply["outputs"][out.first] = out.second;
+                    reply["outputs"][out.first] = localStore->printStorePath(out.second);
                 }
 
                 if (myArgs.meta) {
