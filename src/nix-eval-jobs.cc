@@ -298,6 +298,50 @@ static void worker(
     writeLine(to.get(), "restart");
 }
 
+typedef std::function<void(EvalState & state, Bindings & autoArgs, AutoCloseFD & to, AutoCloseFD & from)>
+    Processor;
+
+/* Auto-cleanup of fork's process and fds. */
+struct Proc {
+    AutoCloseFD to, from;
+    Pid pid;
+
+    Proc(const Processor & proc) {
+        Pipe toPipe, fromPipe;
+        toPipe.create();
+        fromPipe.create();
+        auto p = startProcess(
+            [&,
+             to{std::make_shared<AutoCloseFD>(std::move(fromPipe.writeSide))},
+             from{std::make_shared<AutoCloseFD>(std::move(toPipe.readSide))}
+             ]()
+            {
+                debug("created worker process %d", getpid());
+                try {
+                    EvalState state(myArgs.searchPath, openStore());
+                    Bindings & autoArgs = *myArgs.getAutoArgs(state);
+                    proc(state, autoArgs, *to, *from);
+                } catch (Error & e) {
+                    nlohmann::json err;
+                    auto msg = e.msg();
+                    err["error"] = filterANSIEscapes(msg, true);
+                    printError(msg);
+                    writeLine(to->get(), err.dump());
+                    // Don't forget to print it into the STDERR log, this is
+                    // what's shown in the Hydra UI.
+                    writeLine(to->get(), "restart");
+                }
+            },
+            ProcessOptions { .allowVfork = false });
+
+        to = std::move(toPipe.writeSide);
+        from = std::move(fromPipe.readSide);
+        pid = p;
+    }
+
+    ~Proc() { }
+};
+
 int main(int argc, char * * argv)
 {
     /* Prevent undeclared dependencies in the evaluation via
