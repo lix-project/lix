@@ -16,7 +16,9 @@
         checks =
           let
             mkVariant = nix: (packages.nix-eval-jobs.override {
-              inherit nix;
+              # TODO: fix to stable after next nix release
+              nix = pkgs.nixUnstable;
+              #inherit nix;
             }).overrideAttrs (_: {
               name = "nix-eval-jobs-${nix.version}";
               inherit (nix) version;
@@ -44,7 +46,9 @@
               touch $out
             '';
 
-            build = mkVariant pkgs.nix;
+            # TODO fix to unstable in next release
+            build = mkVariant pkgs.nixUnstable;
+            #build = mkVariant pkgs.nix;
             build-unstable = mkVariant pkgs.nixUnstable;
           };
 

@@ -217,7 +217,9 @@ static void worker(
                 reply["system"] = drv->querySystem();
                 reply["drvPath"] = drvPath;
                 for (auto out : outputs){
-                    reply["outputs"][out.first] = localStore->printStorePath(out.second);
+                    if (out.second) {
+                        reply["outputs"][out.first] = localStore->printStorePath(*out.second);
+                    }
                 }
 
                 if (myArgs.meta) {
