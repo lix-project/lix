@@ -252,9 +252,7 @@ static void worker(
         debug("worker process %d at '%s'", getpid(), attrPath);
 
         /* Evaluate it and send info back to the collector. */
-        nlohmann::json reply;
-        reply["attr"] = attrPath;
-
+        nlohmann::json reply = nlohmann::json{ { "attr", attrPath } };
         try {
             auto vTmp = findAlongAttrPath(state, attrPath, autoArgs, *vRoot).first;
 
@@ -264,9 +262,7 @@ static void worker(
             if (auto drvInfo = getDerivation(state, *v, false)) {
 
                 auto drv = Drv(state, *drvInfo);
-
-                reply = drv;
-                reply["attr"] = attrPath;
+                reply.update(drv);
 
                 /* Register the derivation as a GC root.  !!! This
                    registers roots for jobs that we may have already
