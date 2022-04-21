@@ -282,6 +282,9 @@ int main(int argc, char * * argv)
        $NIX_PATH. */
     unsetenv("NIX_PATH");
 
+    /* We are doing the garbage collection by killing forks */
+    setenv("GC_DONT_GC", "1", 1);
+
     return handleExceptions(argv[0], [&]() {
         initNix();
         initGC();
