@@ -32,4 +32,7 @@
 
   ];
 
+  shellHook = ''
+    export NIX_DEBUG_INFO_DIRS="${pkgs.curl.debug}/lib/debug:${pkgs.nixUnstable.debug}/lib/debug''${NIX_DEBUG_INFO_DIRS:+:$NIX_DEBUG_INFO_DIRS}"
+  '';
 })
