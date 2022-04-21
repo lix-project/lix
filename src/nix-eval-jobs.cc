@@ -264,8 +264,6 @@ static void worker(
             if (auto drvInfo = getDerivation(state, *v, false)) {
 
                 auto drv = Drv(state, *drvInfo);
-                auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
-                auto storePath = localStore->parseStorePath(drv.drvPath);
 
                 reply = drv;
                 reply["attr"] = attrPath;
@@ -275,8 +273,11 @@ static void worker(
                    done. */
                 if (myArgs.gcRootsDir != "") {
                     Path root = myArgs.gcRootsDir + "/" + std::string(baseNameOf(drv.drvPath));
-                    if (!pathExists(root))
+                    if (!pathExists(root)) {
+                        auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
+                        auto storePath = localStore->parseStorePath(drv.drvPath);
                         localStore->addPermRoot(storePath, root);
+                    }
                 }
 
             }
