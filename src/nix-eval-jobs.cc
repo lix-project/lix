@@ -128,6 +128,40 @@ static Value* releaseExprTopLevelValue(EvalState & state, Bindings & autoArgs) {
     return vRoot;
 }
 
+static Value* flakeTopLevelValue(EvalState & state, Bindings & autoArgs) {
+    using namespace flake;
+
+    auto [flakeRef, fragment] = parseFlakeRefWithFragment(myArgs.releaseExpr, absPath("."));
+
+    auto vFlake = state.allocValue();
+
+    auto lockedFlake = lockFlake(state, flakeRef,
+        LockFlags {
+            .updateLockFile = false,
+            .useRegistries = false,
+            .allowMutable = false,
+        });
+
+    callFlake(state, lockedFlake, *vFlake);
+
+    auto vOutputs = vFlake->attrs->get(state.symbols.create("outputs"))->value;
+    state.forceValue(*vOutputs, noPos);
+    auto vTop = *vOutputs;
+
+    if (fragment.length() > 0) {
+        Bindings & bindings(*state.allocBindings(0));
+        auto [nTop, pos] = findAlongAttrPath(state, fragment, bindings, vTop);
+        if (!nTop)
+            throw Error("error: attribute '%s' missing", nTop);
+        vTop = *nTop;
+    }
+
+    auto vRoot = state.allocValue();
+    state.autoCallFunction(autoArgs, vTop, *vRoot);
+
+    return vRoot;
+}
+
 static void worker(
     EvalState & state,
     Bindings & autoArgs,
