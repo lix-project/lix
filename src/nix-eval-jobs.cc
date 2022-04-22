@@ -173,6 +173,65 @@ Value * topLevelValue(EvalState & state, Bindings & autoArgs) {
         : releaseExprTopLevelValue(state, autoArgs);
 }
 
+/* The fields of a derivation that are printed in json form */
+struct Drv {
+    std::string name;
+    std::string system;
+    std::string drvPath;
+    std::map<std::string, std::string> outputs;
+    std::optional<nlohmann::json> meta;
+
+    Drv (EvalState & state, DrvInfo & drvInfo) {
+        if (drvInfo.querySystem() == "unknown")
+            throw EvalError("derivation must have a 'system' attribute");
+
+        auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
+
+        for (auto out : drvInfo.queryOutputs(true)) {
+            if (out.second)
+                outputs[out.first] = localStore->printStorePath(*out.second);
+
+        }
+
+        if (myArgs.meta) {
+            nlohmann::json meta_;
+            for (auto & name : drvInfo.queryMetaNames()) {
+                PathSet context;
+                std::stringstream ss;
+
+                auto metaValue = drvInfo.queryMeta(name);
+                // Skip non-serialisable types
+                // TODO: Fix serialisation of derivations to store paths
+                if (metaValue == 0) {
+                    continue;
+                }
+
+                printValueAsJSON(state, true, *metaValue, noPos, ss, context);
+
+                meta_[name] = nlohmann::json::parse(ss.str());
+            }
+            meta = meta_;
+        }
+
+        name = drvInfo.queryName();
+        system = drvInfo.querySystem();
+        drvPath = localStore->printStorePath(drvInfo.requireDrvPath());
+    }
+};
+
+static void to_json(nlohmann::json & json, const Drv & drv) {
+    json = nlohmann::json{
+        { "name", drv.name },
+        { "system", drv.system },
+        { "drvPath", drv.drvPath },
+        { "outputs", drv.outputs },
+    };
+
+    if (drv.meta.has_value())
+        json["meta"] = drv.meta.value();
+
+}
+
 static void worker(
     EvalState & state,
     Bindings & autoArgs,
@@ -193,61 +252,28 @@ static void worker(
         debug("worker process %d at '%s'", getpid(), attrPath);
 
         /* Evaluate it and send info back to the collector. */
-        nlohmann::json reply;
-        reply["attr"] = attrPath;
-
+        nlohmann::json reply = nlohmann::json{ { "attr", attrPath } };
         try {
             auto vTmp = findAlongAttrPath(state, attrPath, autoArgs, *vRoot).first;
 
             auto v = state.allocValue();
             state.autoCallFunction(autoArgs, *vTmp, *v);
 
-            if (auto drv = getDerivation(state, *v, false)) {
+            if (auto drvInfo = getDerivation(state, *v, false)) {
 
-                if (drv->querySystem() == "unknown")
-                    throw EvalError("derivation must have a 'system' attribute");
-
-                auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
-                auto drvPath = localStore->printStorePath(drv->requireDrvPath());
-                auto storePath = localStore->parseStorePath(drvPath);
-                auto outputs = drv->queryOutputs();
-
-                reply["name"] = drv->queryName();
-                reply["system"] = drv->querySystem();
-                reply["drvPath"] = drvPath;
-                for (auto out : outputs){
-                    if (out.second) {
-                        reply["outputs"][out.first] = localStore->printStorePath(*out.second);
-                    }
-                }
-
-                if (myArgs.meta) {
-                    nlohmann::json meta;
-                    for (auto & name : drv->queryMetaNames()) {
-                      PathSet context;
-                      std::stringstream ss;
-
-                      auto metaValue = drv->queryMeta(name);
-                      // Skip non-serialisable types
-                      // TODO: Fix serialisation of derivations to store paths
-                      if (metaValue == 0) {
-                        continue;
-                      }
-
-                      printValueAsJSON(state, true, *metaValue, noPos, ss, context);
-                      nlohmann::json field = nlohmann::json::parse(ss.str());
-                      meta[name] = field;
-                    }
-                    reply["meta"] = meta;
-                }
+                auto drv = Drv(state, *drvInfo);
+                reply.update(drv);
 
                 /* Register the derivation as a GC root.  !!! This
                    registers roots for jobs that we may have already
                    done. */
                 if (myArgs.gcRootsDir != "") {
-                    Path root = myArgs.gcRootsDir + "/" + std::string(baseNameOf(drvPath));
-                    if (!pathExists(root))
+                    Path root = myArgs.gcRootsDir + "/" + std::string(baseNameOf(drv.drvPath));
+                    if (!pathExists(root)) {
+                        auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
+                        auto storePath = localStore->parseStorePath(drv.drvPath);
                         localStore->addPermRoot(storePath, root);
+                    }
                 }
 
             }
