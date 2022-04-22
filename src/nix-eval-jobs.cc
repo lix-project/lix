@@ -211,13 +211,15 @@ static void worker(
                 auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
                 auto drvPath = localStore->printStorePath(drv->requireDrvPath());
                 auto storePath = localStore->parseStorePath(drvPath);
-                auto outputs = drv->queryOutputs(false);
+                auto outputs = drv->queryOutputs();
 
                 reply["name"] = drv->queryName();
                 reply["system"] = drv->querySystem();
                 reply["drvPath"] = drvPath;
                 for (auto out : outputs){
-                    reply["outputs"][out.first] = localStore->printStorePath(out.second);
+                    if (out.second) {
+                        reply["outputs"][out.first] = localStore->printStorePath(*out.second);
+                    }
                 }
 
                 if (myArgs.meta) {

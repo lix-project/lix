@@ -1,9 +1,7 @@
 {
   description = "Hydra's builtin hydra-eval-jobs as a standalone";
 
-  # switch back when https://github.com/NixOS/nixpkgs/pull/164012 is merged
-  #inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-  inputs.nixpkgs.url = "github:Mic92/nixpkgs/nix-unstable";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   outputs = { self, nixpkgs, flake-utils }:
@@ -18,7 +16,9 @@
         checks =
           let
             mkVariant = nix: (packages.nix-eval-jobs.override {
-              inherit nix;
+              # TODO: fix to stable after next nix release
+              nix = pkgs.nixUnstable;
+              #inherit nix;
             }).overrideAttrs (_: {
               name = "nix-eval-jobs-${nix.version}";
               inherit (nix) version;
@@ -46,7 +46,9 @@
               touch $out
             '';
 
-            build = mkVariant pkgs.nix;
+            # TODO fix to unstable in next release
+            build = mkVariant pkgs.nixUnstable;
+            #build = mkVariant pkgs.nix;
             build-unstable = mkVariant pkgs.nixUnstable;
           };
 
