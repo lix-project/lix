@@ -13,9 +13,13 @@
 , srcDir ? null
 }:
 
-(pkgs.callPackage ./default.nix {
-  inherit srcDir;
+let
+  inherit (pkgs) lib stdenv;
   nix = pkgs.nixUnstable;
+
+in
+(pkgs.callPackage ./default.nix {
+  inherit nix srcDir;
 }).overrideAttrs (old: {
 
   src = null;
@@ -32,4 +36,7 @@
 
   ];
 
+  shellHook = lib.optionalString stdenv.isLinux ''
+    export NIX_DEBUG_INFO_DIRS="${pkgs.curl.debug}/lib/debug:${nix.debug}/lib/debug''${NIX_DEBUG_INFO_DIRS:+:$NIX_DEBUG_INFO_DIRS}"
+  '';
 })
