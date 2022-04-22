@@ -6,9 +6,6 @@
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
     in
     {
-      hydraJobs = {
-        builtJob = pkgs.writeText "job1" "job1";
-        substitutedJob = pkgs.hello;
-      };
+      hydraJobs = import ./ci.nix { inherit pkgs; };
     };
 }
