@@ -1,4 +1,4 @@
-name: "Development workflow - flakes"
+name: "Development workflow"
 on:
   pull_request:
   push:
