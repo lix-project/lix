@@ -31,6 +31,9 @@ using namespace nix;
 
 typedef enum { evalAuto, evalImpure, evalPure } pureEval;
 
+// Safe to ignore - the args will be static.
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+#pragma clang diagnostic ignored "-Wnon-virtual-dtor"
 struct MyArgs : MixEvalArgs, MixCommonArgs
 {
     Path releaseExpr;
@@ -113,6 +116,8 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
         expectArg("expr", &releaseExpr);
     }
 };
+#pragma GCC diagnostic warning "-Wnon-virtual-dtor"
+#pragma clang diagnostic warning "-Wnon-virtual-dtor"
 
 static MyArgs myArgs;
 
