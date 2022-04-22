@@ -116,6 +116,58 @@ struct MyArgs : MixEvalArgs, MixCommonArgs
 
 static MyArgs myArgs;
 
+static Value* releaseExprTopLevelValue(EvalState & state, Bindings & autoArgs) {
+    Value vTop;
+
+    state.evalFile(lookupFileArg(state, myArgs.releaseExpr), vTop);
+
+    auto vRoot = state.allocValue();
+
+    state.autoCallFunction(autoArgs, vTop, *vRoot);
+
+    return vRoot;
+}
+
+static Value* flakeTopLevelValue(EvalState & state, Bindings & autoArgs) {
+    using namespace flake;
+
+    auto [flakeRef, fragment] = parseFlakeRefWithFragment(myArgs.releaseExpr, absPath("."));
+
+    auto vFlake = state.allocValue();
+
+    auto lockedFlake = lockFlake(state, flakeRef,
+        LockFlags {
+            .updateLockFile = false,
+            .useRegistries = false,
+            .allowMutable = false,
+        });
+
+    callFlake(state, lockedFlake, *vFlake);
+
+    auto vOutputs = vFlake->attrs->get(state.symbols.create("outputs"))->value;
+    state.forceValue(*vOutputs, noPos);
+    auto vTop = *vOutputs;
+
+    if (fragment.length() > 0) {
+        Bindings & bindings(*state.allocBindings(0));
+        auto [nTop, pos] = findAlongAttrPath(state, fragment, bindings, vTop);
+        if (!nTop)
+            throw Error("error: attribute '%s' missing", nTop);
+        vTop = *nTop;
+    }
+
+    auto vRoot = state.allocValue();
+    state.autoCallFunction(autoArgs, vTop, *vRoot);
+
+    return vRoot;
+}
+
+Value * topLevelValue(EvalState & state, Bindings & autoArgs) {
+    return myArgs.flake
+        ? flakeTopLevelValue(state, autoArgs)
+        : releaseExprTopLevelValue(state, autoArgs);
+}
+
 static void worker(
     EvalState & state,
     Bindings & autoArgs,
@@ -123,42 +175,7 @@ static void worker(
     AutoCloseFD & from,
     const Path &gcRootsDir)
 {
-    Value vTop;
-
-    if (myArgs.flake) {
-        using namespace flake;
-
-        auto [flakeRef, fragment] = parseFlakeRefWithFragment(myArgs.releaseExpr, absPath("."));
-
-        auto vFlake = state.allocValue();
-
-        auto lockedFlake = lockFlake(state, flakeRef,
-            LockFlags {
-                .updateLockFile = false,
-                .useRegistries = false,
-                .allowMutable = false,
-            });
-
-        callFlake(state, lockedFlake, *vFlake);
-
-        auto vOutputs = vFlake->attrs->get(state.symbols.create("outputs"))->value;
-        state.forceValue(*vOutputs, noPos);
-        vTop = *vOutputs;
-
-        if (fragment.length() > 0) {
-            Bindings & bindings(*state.allocBindings(0));
-            auto [nTop, pos] = findAlongAttrPath(state, fragment, bindings, vTop);
-            if (!nTop)
-                throw Error("error: attribute '%s' missing", nTop);
-            vTop = *nTop;
-        }
-
-    } else {
-        state.evalFile(lookupFileArg(state, myArgs.releaseExpr), vTop);
-    }
-
-    auto vRoot = state.allocValue();
-    state.autoCallFunction(autoArgs, vTop, *vRoot);
+    auto vRoot = topLevelValue(state, autoArgs);
 
     while (true) {
         /* Wait for the master to send us a job name. */
