@@ -211,7 +211,7 @@ static void worker(
                 auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
                 auto drvPath = localStore->printStorePath(drv->requireDrvPath());
                 auto storePath = localStore->parseStorePath(drvPath);
-                auto outputs = drv->queryOutputs(false);
+                auto outputs = drv->queryOutputs();
 
                 reply["name"] = drv->queryName();
                 reply["system"] = drv->querySystem();
