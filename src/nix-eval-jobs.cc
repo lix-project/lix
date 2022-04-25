@@ -33,8 +33,11 @@ using namespace nlohmann;
 typedef enum { evalAuto, evalImpure, evalPure } pureEval;
 
 // Safe to ignore - the args will be static.
+#ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+#elif __clang__
 #pragma clang diagnostic ignored "-Wnon-virtual-dtor"
+#endif
 struct MyArgs : MixEvalArgs, MixCommonArgs {
     Path releaseExpr;
     Path gcRootsDir;
@@ -101,8 +104,11 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
         expectArg("expr", &releaseExpr);
     }
 };
-#pragma GCC diagnostic warning "-Wnon-virtual-dtor"
-#pragma clang diagnostic warning "-Wnon-virtual-dtor"
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+#elif __clang__
+#pragma clang diagnostic ignored "-Wnon-virtual-dtor"
+#endif
 
 static MyArgs myArgs;
 
