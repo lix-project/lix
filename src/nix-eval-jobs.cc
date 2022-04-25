@@ -281,7 +281,8 @@ static void worker(
             else if (v->type() == nAttrs)
               {
                 auto attrs = nlohmann::json::array();
-                StringSet ss;
+                bool recurse = attrPath == "";  // Dont require `recurseForDerivations = true;` for top-level attrset
+
                 for (auto & i : v->attrs->lexicographicOrder()) {
                     std::string name(i->name);
                     if (name.find('.') != std::string::npos || name.find(' ') != std::string::npos) {
@@ -289,8 +290,16 @@ static void worker(
                         continue;
                     }
                     attrs.push_back(name);
+
+                    if (name == "recurseForDerivations") {
+                      auto attrv = v->attrs->get(state.sRecurseForDerivations);
+                      recurse = state.forceBool(*attrv->value, *attrv->pos);
+                    }
                 }
-                reply["attrs"] = std::move(attrs);
+                if (recurse)
+                  reply["attrs"] = std::move(attrs);
+                else
+                  reply["attrs"] = nlohmann::json::array();
             }
 
             else if (v->type() == nNull)

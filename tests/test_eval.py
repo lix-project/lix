@@ -23,7 +23,7 @@ def common_test(extra_args: List[str]) -> None:
         )
 
         results = [json.loads(r) for r in res.stdout.split("\n") if r]
-        assert len(results) == 3
+        assert len(results) == 4
 
         built_job = results[0]
         assert built_job["attr"] == "builtJob"
@@ -32,11 +32,14 @@ def common_test(extra_args: List[str]) -> None:
         assert built_job["drvPath"].endswith(".drv")
         assert built_job["meta"]['broken'] is False
 
-        nested_job = results[1]
-        assert nested_job["attr"] == "nested.job"
-        assert nested_job["name"].startswith("hello-")
+        recurse_drv = results[1]
+        assert recurse_drv["attr"] == "recurse.drvB"
+        assert recurse_drv["name"] == "drvB"
 
-        substituted_job = results[2]
+        recurse_recurse_bool = results[2]
+        assert "error" in recurse_recurse_bool
+
+        substituted_job = results[3]
         assert substituted_job["attr"] == "substitutedJob"
         assert substituted_job["name"].startswith("hello-")
         assert substituted_job["meta"]['broken'] is False
