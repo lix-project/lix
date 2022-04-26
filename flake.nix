@@ -25,18 +25,24 @@
           in
           {
 
-            treefmt = stdenv.mkDerivation {
-              name = "treefmt-check";
-              src = self;
-              nativeBuildInputs = devShells.default.nativeBuildInputs;
-              dontConfigure = true;
+            treefmt =
+              let
+                devShell = devShells.default;
+              in
+              stdenv.mkDerivation {
+                name = "treefmt-check";
+                src = self;
+                nativeBuildInputs = devShell.nativeBuildInputs;
+                dontConfigure = true;
 
-              buildPhase = ''
-                env HOME=$(mktemp -d) treefmt --fail-on-change
-              '';
+                inherit (devShell) NODE_PATH;
 
-              installPhase = "touch $out";
-            };
+                buildPhase = ''
+                  env HOME=$(mktemp -d) treefmt --fail-on-change
+                '';
+
+                installPhase = "touch $out";
+              };
 
             build = mkVariant pkgs.nix;
             build-unstable = mkVariant pkgs.nixUnstable;
