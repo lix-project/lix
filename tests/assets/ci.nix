@@ -31,4 +31,6 @@
     };
   };
 
+  "dotted.attr" = pkgs.hello;
+
 }
