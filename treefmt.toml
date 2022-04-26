@@ -1,3 +1,8 @@
+[formatter."c++"]
+command = "clang-format"
+options = [ "-i", "-style", "{BasedOnStyle: llvm, IndentWidth: 4, SortIncludes: false}" ]
+includes = [ "*.c", "*.cpp", "*.cc", "*.h", "*.hpp" ]
+
 [formatter.nix]
 command = "nixpkgs-fmt"
 includes = ["*.nix"]

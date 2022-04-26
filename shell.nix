@@ -27,6 +27,7 @@ in
   nativeBuildInputs = old.nativeBuildInputs ++ [
 
     pkgs.treefmt
+    pkgs.llvmPackages.clang # clang-format
     pkgs.nixpkgs-fmt
 
     (pkgs.python3.withPackages (ps: [
