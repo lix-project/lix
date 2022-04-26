@@ -26,8 +26,7 @@ in
 
   nativeBuildInputs = old.nativeBuildInputs ++ [
 
-    pkgs.editorconfig-checker
-
+    pkgs.treefmt
     pkgs.nixpkgs-fmt
 
     (pkgs.python3.withPackages (ps: [
