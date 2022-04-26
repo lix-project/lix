@@ -8,6 +8,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        inherit (pkgs) stdenv;
         drvArgs = { srcDir = self; };
       in
       rec {
@@ -16,9 +17,7 @@
         checks =
           let
             mkVariant = nix: (packages.nix-eval-jobs.override {
-              # TODO: fix to stable after next nix release
-              nix = pkgs.nix;
-              #inherit nix;
+              inherit nix;
             }).overrideAttrs (_: {
               name = "nix-eval-jobs-${nix.version}";
               inherit (nix) version;
@@ -26,32 +25,31 @@
           in
           {
 
-            editorconfig = pkgs.runCommand "editorconfig-check"
-              {
-                nativeBuildInputs = [
-                  pkgs.editorconfig-checker
-                ];
-              } ''
-              editorconfig-checker ${self}
-              touch $out
-            '';
+            treefmt =
+              let
+                devShell = devShells.default;
+              in
+              stdenv.mkDerivation {
+                name = "treefmt-check";
+                src = self;
+                nativeBuildInputs = devShell.nativeBuildInputs;
+                dontConfigure = true;
 
-            nixpkgs-fmt = pkgs.runCommand "fmt-check"
-              {
-                nativeBuildInputs = [
-                  pkgs.nixpkgs-fmt
-                ];
-              } ''
-              nixpkgs-fmt --check .
-              touch $out
-            '';
+                inherit (devShell) NODE_PATH;
+
+                buildPhase = ''
+                  env HOME=$(mktemp -d) treefmt --fail-on-change
+                '';
+
+                installPhase = "touch $out";
+              };
 
             build = mkVariant pkgs.nix;
             build-unstable = mkVariant pkgs.nixUnstable;
           };
 
-        defaultPackage = self.packages.${system}.nix-eval-jobs;
-        devShell = pkgs.callPackage ./shell.nix drvArgs;
+        packages.default = self.packages.${system}.nix-eval-jobs;
+        devShells.default = pkgs.callPackage ./shell.nix drvArgs;
 
       }
     );

@@ -26,15 +26,19 @@ in
 
   nativeBuildInputs = old.nativeBuildInputs ++ [
 
-    pkgs.editorconfig-checker
-
+    pkgs.treefmt
+    pkgs.llvmPackages.clang # clang-format
     pkgs.nixpkgs-fmt
+    pkgs.nodePackages.prettier
 
     (pkgs.python3.withPackages (ps: [
       ps.pytest
+      ps.black
     ]))
 
   ];
+
+  NODE_PATH = "${pkgs.nodePackages.prettier-plugin-toml}/lib/node_modules";
 
   shellHook = lib.optionalString stdenv.isLinux ''
     export NIX_DEBUG_INFO_DIRS="${pkgs.curl.debug}/lib/debug:${nix.debug}/lib/debug''${NIX_DEBUG_INFO_DIRS:+:$NIX_DEBUG_INFO_DIRS}"
