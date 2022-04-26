@@ -44,8 +44,8 @@
             build-unstable = mkVariant pkgs.nixUnstable;
           };
 
-        defaultPackage = self.packages.${system}.nix-eval-jobs;
-        devShell = pkgs.callPackage ./shell.nix drvArgs;
+        packages.default = self.packages.${system}.nix-eval-jobs;
+        devShells.default = pkgs.callPackage ./shell.nix drvArgs;
 
       }
     );
