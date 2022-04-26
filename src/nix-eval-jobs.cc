@@ -28,6 +28,7 @@
 #include <nlohmann/json.hpp>
 
 using namespace nix;
+using namespace nlohmann;
 
 typedef enum { evalAuto, evalImpure, evalPure } pureEval;
 
@@ -232,6 +233,17 @@ static void to_json(nlohmann::json & json, const Drv & drv) {
 
 }
 
+std::string attrPathJoin(json input) {
+    return std::accumulate(input.begin(), input.end(), std::string(),
+                           [](std::string ss, std::string s) {
+                               // Escape token if containing dots
+                               if (s.find(".") != std::string::npos) {
+                                   s = "\"" + s + "\"";
+                               }
+                               return ss.empty() ? s : ss + "." + s;
+                           });
+}
+
 static void worker(
     EvalState & state,
     Bindings & autoArgs,
@@ -247,14 +259,15 @@ static void worker(
         auto s = readLine(from.get());
         if (s == "exit") break;
         if (!hasPrefix(s, "do ")) abort();
-        std::string attrPath(s, 3);
+        auto path = json::parse(s.substr(3));
+        auto attrPathS = attrPathJoin(path);
 
-        debug("worker process %d at '%s'", getpid(), attrPath);
+        debug("worker process %d at '%s'", getpid(), path);
 
         /* Evaluate it and send info back to the collector. */
-        nlohmann::json reply = nlohmann::json{ { "attr", attrPath } };
+        json reply = json{ {"attr", attrPathS }, {"attrPath", path} };
         try {
-            auto vTmp = findAlongAttrPath(state, attrPath, autoArgs, *vRoot).first;
+            auto vTmp = findAlongAttrPath(state, attrPathS, autoArgs, *vRoot).first;
 
             auto v = state.allocValue();
             state.autoCallFunction(autoArgs, *vTmp, *v);
@@ -281,14 +294,10 @@ static void worker(
             else if (v->type() == nAttrs)
               {
                 auto attrs = nlohmann::json::array();
-                bool recurse = attrPath == "";  // Dont require `recurseForDerivations = true;` for top-level attrset
+                bool recurse = path.size() == 0;  // Dont require `recurseForDerivations = true;` for top-level attrset
 
                 for (auto & i : v->attrs->lexicographicOrder()) {
                     std::string name(i->name);
-                    if (name.find('.') != std::string::npos || name.find(' ') != std::string::npos) {
-                        printError("skipping job with illegal name '%s'", name);
-                        continue;
-                    }
                     attrs.push_back(name);
 
                     if (name == "recurseForDerivations") {
@@ -305,7 +314,7 @@ static void worker(
             else if (v->type() == nNull)
                 ;
 
-            else throw TypeError("attribute '%s' is %s, which is not supported", attrPath, showType(*v));
+            else throw TypeError("attribute '%s' is %s, which is not supported", path, showType(*v));
 
         } catch (EvalError & e) {
             auto err = e.info();
@@ -380,9 +389,9 @@ struct Proc {
 
 struct State
 {
-    std::set<std::string> todo{""};
-    std::set<std::string> active;
-    std::exception_ptr exc;
+  std::set<json> todo = json::array({ json::array() });
+  std::set<json> active;
+  std::exception_ptr exc;
 };
 
 std::function<void()> collector(Sync<State> & state_, std::condition_variable & wakeup) {
@@ -402,12 +411,12 @@ std::function<void()> collector(Sync<State> & state_, std::condition_variable & 
                     proc_ = std::nullopt;
                     continue;
                 } else if (s != "next") {
-                    auto json = nlohmann::json::parse(s);
+                    auto json = json::parse(s);
                     throw Error("worker error: %s", (std::string) json["error"]);
                 }
 
                 /* Wait for a job name to become available. */
-                std::string attrPath;
+                json attrPath;
 
                 while (true) {
                     checkInterrupt();
@@ -426,18 +435,19 @@ std::function<void()> collector(Sync<State> & state_, std::condition_variable & 
                 }
 
                 /* Tell the worker to evaluate it. */
-                writeLine(proc->to.get(), "do " + attrPath);
+                writeLine(proc->to.get(), "do " + attrPath.dump());
 
                 /* Wait for the response. */
                 auto respString = readLine(proc->from.get());
-                auto response = nlohmann::json::parse(respString);
+                auto response = json::parse(respString);
 
                 /* Handle the response. */
-                StringSet newAttrs;
+                std::vector<json> newAttrs;
                 if (response.find("attrs") != response.end()) {
                     for (auto & i : response["attrs"]) {
-                        auto s = (attrPath.empty() ? "" : attrPath + ".") + (std::string) i;
-                        newAttrs.insert(s);
+                      json newAttr = json(response["attrPath"]);
+                      newAttr.emplace_back(i);
+                      newAttrs.push_back(newAttr);
                     }
                 } else {
                     auto state(state_.lock());
@@ -450,8 +460,9 @@ std::function<void()> collector(Sync<State> & state_, std::condition_variable & 
                 {
                     auto state(state_.lock());
                     state->active.erase(attrPath);
-                    for (auto & s : newAttrs)
-                        state->todo.insert(s);
+                    for (auto p : newAttrs) {
+                        state->todo.insert(p);
+                    }
                     wakeup.notify_all();
                 }
             }
