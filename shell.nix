@@ -33,6 +33,7 @@ in
 
     (pkgs.python3.withPackages (ps: [
       ps.pytest
+      ps.black
     ]))
 
   ];

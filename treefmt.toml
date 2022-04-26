@@ -15,3 +15,7 @@ includes = ["*.nix"]
 command = "prettier"
 options = ["--write"]
 includes = ["*.toml"]
+
+[formatter.python]
+command = "black"
+includes = ["*.py"]

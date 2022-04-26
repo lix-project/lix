@@ -30,11 +30,11 @@ def common_test(extra_args: List[str]) -> None:
         assert built_job["name"] == "job1"
         assert built_job["outputs"]["out"].startswith("/nix/store")
         assert built_job["drvPath"].endswith(".drv")
-        assert built_job["meta"]['broken'] is False
+        assert built_job["meta"]["broken"] is False
 
         dotted_job = results[1]
-        assert dotted_job["attr"] == "\"dotted.attr\""
-        assert dotted_job["attrPath"] == [ "dotted.attr" ]
+        assert dotted_job["attr"] == '"dotted.attr"'
+        assert dotted_job["attrPath"] == ["dotted.attr"]
 
         recurse_drv = results[2]
         assert recurse_drv["attr"] == "recurse.drvB"
@@ -46,7 +46,7 @@ def common_test(extra_args: List[str]) -> None:
         substituted_job = results[4]
         assert substituted_job["attr"] == "substitutedJob"
         assert substituted_job["name"].startswith("hello-")
-        assert substituted_job["meta"]['broken'] is False
+        assert substituted_job["meta"]["broken"] is False
 
 
 def test_flake() -> None:
