@@ -287,14 +287,14 @@ static void worker(EvalState &state, Bindings &autoArgs, AutoCloseFD &to,
                     path.size() == 0; // Dont require `recurseForDerivations =
                                       // true;` for top-level attrset
 
-                for (auto &i : v->attrs->lexicographicOrder()) {
-                    std::string name(i->name);
+                for (auto &i : v->attrs->lexicographicOrder(state.symbols)) {
+                    const std::string &name = state.symbols[i->name];
                     attrs.push_back(name);
 
                     if (name == "recurseForDerivations") {
                         auto attrv =
                             v->attrs->get(state.sRecurseForDerivations);
-                        recurse = state.forceBool(*attrv->value, *attrv->pos);
+                        recurse = state.forceBool(*attrv->value, attrv->pos);
                     }
                 }
                 if (recurse)
