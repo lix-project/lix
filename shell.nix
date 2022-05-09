@@ -11,15 +11,15 @@
     import nixpkgs { }
   )
 , srcDir ? null
+, nix
 }:
 
 let
   inherit (pkgs) lib stdenv;
-  nix = pkgs.nixUnstable;
 
 in
 (pkgs.callPackage ./default.nix {
-  inherit nix srcDir;
+  inherit srcDir nix;
 }).overrideAttrs (old: {
 
   src = null;
