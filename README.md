@@ -81,6 +81,15 @@ path separately.  This allows separate logs and success status per job instead
 of a single large log file.
 
 
+## Organisation of this repository
+
+On the `main` branch we target nixUnstable. When a release of nix happens, we
+fork for a release branch i.e. `release-2.8` and change the nix version in
+`.nix-version`. Changes and improvements made in `main` also may be backported
+to these release branches. At the time of writing we only intent to support the
+latest release branch.
+
+
 ## Projects using nix-eval-jobs
 
 - [colmena](https://github.com/zhaofengli/colmena) -  A simple, stateless NixOS deployment tool
