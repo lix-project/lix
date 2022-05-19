@@ -2,14 +2,10 @@ pull_request_rules:
   - name: automatic merge on CI success
     conditions:
       - check-success=flake-checks
-      - check-success=builds (build, ubuntu-latest)
-      - check-success=builds (build, macos-latest)
-      - check-success=builds (build-unstable, ubuntu-latest)
-      - check-success=builds (build-unstable, macos-latest)
-      - check-success=builds (editorconfig, ubuntu-latest)
-      - check-success=builds (editorconfig, macos-latest)
-      - check-success=builds (nixpkgs-fmt, ubuntu-latest)
-      - check-success=builds (nixpkgs-fmt, macos-latest)
+      - check-success=builds (treefmt, ubuntu-latest)
+      - check-success=builds (treefmt, macos-latest)
+      - check-success=tests (ubuntu-latest)
+      - check-success=tests (macos-latest)
       - author=nix-eval-jobs-bot
     actions:
       merge:
