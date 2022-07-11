@@ -75,10 +75,13 @@ scalability for large deployments with deployment tools such as
 
 **Faster evaluator in CIs.** In addition to evaluation speed for CIs, it is also
 useful if evaluation of individual jobs in CIs can fail, as opposed to failing
-the entire jobset.  For CIs that allow dynamic build steps to be created, one
-can also take advantage of the fact that nix-eval-jobs outputs the derivation
-path separately.  This allows separate logs and success status per job instead
-of a single large log file.
+the entire jobset. For CIs that allow dynamic build steps to be created, one can
+also take advantage of the fact that nix-eval-jobs outputs the derivation path
+separately. This allows separate logs and success status per job instead of a
+single large log file. In the
+[wiki](https://github.com/nix-community/nix-eval-jobs/wiki#ci-example-configurations)
+we collect example ci configuration for various CIs.
+
 
 
 ## Organisation of this repository
