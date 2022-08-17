@@ -30,8 +30,6 @@
 using namespace nix;
 using namespace nlohmann;
 
-typedef enum { evalAuto, evalImpure, evalPure } pureEval;
-
 // Safe to ignore - the args will be static.
 #ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
@@ -44,9 +42,9 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
     bool flake = false;
     bool meta = false;
     bool showTrace = false;
+    bool impure = false;
     size_t nrWorkers = 1;
     size_t maxMemorySize = 4096;
-    pureEval evalMode = evalAuto;
 
     MyArgs() : MixCommonArgs("nix-eval-jobs") {
         addFlag({
@@ -65,11 +63,9 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
             }},
         });
 
-        addFlag({
-            .longName = "impure",
-            .description = "set evaluation mode",
-            .handler = {[&]() { evalMode = evalImpure; }},
-        });
+        addFlag({.longName = "impure",
+                 .description = "allow impure expressions",
+                 .handler = {&impure, true}});
 
         addFlag({.longName = "gc-roots-dir",
                  .description = "garbage collector roots directory",
@@ -493,9 +489,11 @@ int main(int argc, char **argv) {
 
         /* When building a flake, use pure evaluation (no access to
            'getEnv', 'currentSystem' etc. */
-        evalSettings.pureEval = myArgs.evalMode == evalAuto
-                                    ? myArgs.flake
-                                    : myArgs.evalMode == evalPure;
+        if (myArgs.impure) {
+            evalSettings.pureEval = false;
+        } else if (myArgs.flake) {
+            evalSettings.pureEval = true;
+        }
 
         if (myArgs.releaseExpr == "")
             throw UsageError("no expression specified");
