@@ -55,3 +55,6 @@ def test_flake() -> None:
 
 def test_expression() -> None:
     common_test(["ci.nix"])
+
+    with open(TEST_ROOT.joinpath("assets/ci.nix"), "r") as ci_nix:
+        common_test(["-E", ci_nix.read()])

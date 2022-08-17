@@ -37,9 +37,10 @@ using namespace nlohmann;
 #pragma clang diagnostic ignored "-Wnon-virtual-dtor"
 #endif
 struct MyArgs : MixEvalArgs, MixCommonArgs {
-    Path releaseExpr;
+    std::string releaseExpr;
     Path gcRootsDir;
     bool flake = false;
+    bool fromArgs = false;
     bool meta = false;
     bool showTrace = false;
     bool impure = false;
@@ -97,6 +98,11 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
                      "print out a stack trace in case of evaluation errors",
                  .handler = {&showTrace, true}});
 
+        addFlag({.longName = "expr",
+                 .shortName = 'E',
+                 .description = "treat the argument as a Nix expression",
+                 .handler = {&fromArgs, true}});
+
         expectArg("expr", &releaseExpr);
     }
 };
@@ -111,7 +117,12 @@ static MyArgs myArgs;
 static Value *releaseExprTopLevelValue(EvalState &state, Bindings &autoArgs) {
     Value vTop;
 
-    state.evalFile(lookupFileArg(state, myArgs.releaseExpr), vTop);
+    if (myArgs.fromArgs) {
+        Expr *e = state.parseExprFromString(myArgs.releaseExpr, absPath("."));
+        state.eval(e, vTop);
+    } else {
+        state.evalFile(lookupFileArg(state, myArgs.releaseExpr), vTop);
+    }
 
     auto vRoot = state.allocValue();
 
