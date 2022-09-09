@@ -4,14 +4,14 @@ import subprocess
 import json
 from tempfile import TemporaryDirectory
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Any
 
 TEST_ROOT = Path(__file__).parent.resolve()
 PROJECT_ROOT = TEST_ROOT.parent
 BIN = PROJECT_ROOT.joinpath("build", "src", "nix-eval-jobs")
 
 
-def common_test(extra_args: List[str]) -> None:
+def common_test(extra_args: List[str]) -> List[Dict[str, Any]]:
     with TemporaryDirectory() as tempdir:
         cmd = [str(BIN), "--gc-roots-dir", tempdir, "--meta"] + extra_args
         res = subprocess.run(
@@ -47,14 +47,26 @@ def common_test(extra_args: List[str]) -> None:
         assert substituted_job["attr"] == "substitutedJob"
         assert substituted_job["name"].startswith("hello-")
         assert substituted_job["meta"]["broken"] is False
+        return results
 
 
 def test_flake() -> None:
-    common_test(["--flake", ".#hydraJobs"])
+    results = common_test(["--flake", ".#hydraJobs"])
+    for result in results:
+        assert "isCached" not in result
+
+
+def test_query_cache_status() -> None:
+    results = common_test(["--flake", ".#hydraJobs", "--check-cache-status"])
+    # FIXME in the nix sandbox we cannot query binary caches, this would need some local one
+    for result in results:
+        assert "isCached" in result
 
 
 def test_expression() -> None:
-    common_test(["ci.nix"])
+    results = common_test(["ci.nix"])
+    for result in results:
+        assert "isCached" not in result
 
     with open(TEST_ROOT.joinpath("assets/ci.nix"), "r") as ci_nix:
         common_test(["-E", ci_nix.read()])
