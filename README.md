@@ -48,12 +48,14 @@ USAGE: nix-eval-jobs [options] expr
 
   --arg                  Pass the value *expr* as the argument *name* to Nix functions.
   --argstr               Pass the string *string* as the argument *name* to Nix functions.
+  --check-cache-status   Check if the derivations are present locally or in any configured substituters (i.e. binary cache). The information will be exposed in the `isCached` field of the JSON output.
   --debug                Set the logging verbosity level to 'debug'.
   --eval-store           The Nix store to use for evaluations.
+  --expr                 treat the argument as a Nix expression
   --flake                build a flake
   --gc-roots-dir         garbage collector roots directory
   --help                 show usage information
-  --impure               set evaluation mode
+  --impure               allow impure expressions
   --include              Add *path* to the list of locations used to look up `<...>` file names.
   --log-format           Set the format of log output; one of `raw`, `internal-json`, `bar` or `bar-with-logs`.
   --max-memory-size      maximum evaluation memory size
@@ -61,6 +63,7 @@ USAGE: nix-eval-jobs [options] expr
   --option               Set the Nix configuration setting *name* to *value* (overriding `nix.conf`).
   --override-flake       Override the flake registries, redirecting *original-ref* to *resolved-ref*.
   --quiet                Decrease the logging verbosity level.
+  --show-trace           print out a stack trace in case of evaluation errors
   --verbose              Increase the logging verbosity level.
   --workers              number of evaluate workers
 ```
@@ -81,7 +84,6 @@ separately. This allows separate logs and success status per job instead of a
 single large log file. In the
 [wiki](https://github.com/nix-community/nix-eval-jobs/wiki#ci-example-configurations)
 we collect example ci configuration for various CIs.
-
 
 
 ## Organisation of this repository
