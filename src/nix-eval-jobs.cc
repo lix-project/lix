@@ -297,60 +297,55 @@ static void worker(EvalState &state, Bindings &autoArgs, AutoCloseFD &to,
             auto v = state.allocValue();
             state.autoCallFunction(autoArgs, *vTmp, *v);
 
-            if (auto drvInfo = getDerivation(state, *v, false)) {
+            if (v->type() == nAttrs) {
+                if (auto drvInfo = getDerivation(state, *v, false)) {
+                    auto drv = Drv(state, *drvInfo);
+                    reply.update(drv);
 
-                auto drv = Drv(state, *drvInfo);
-                reply.update(drv);
-
-                /* Register the derivation as a GC root.  !!! This
-                   registers roots for jobs that we may have already
-                   done. */
-                if (myArgs.gcRootsDir != "") {
-                    Path root = myArgs.gcRootsDir + "/" +
-                                std::string(baseNameOf(drv.drvPath));
-                    if (!pathExists(root)) {
-                        auto localStore =
-                            state.store.dynamic_pointer_cast<LocalFSStore>();
-                        auto storePath =
-                            localStore->parseStorePath(drv.drvPath);
-                        localStore->addPermRoot(storePath, root);
+                    /* Register the derivation as a GC root.  !!! This
+                       registers roots for jobs that we may have already
+                       done. */
+                    if (myArgs.gcRootsDir != "") {
+                        Path root = myArgs.gcRootsDir + "/" +
+                                    std::string(baseNameOf(drv.drvPath));
+                        if (!pathExists(root)) {
+                            auto localStore =
+                                state.store
+                                    .dynamic_pointer_cast<LocalFSStore>();
+                            auto storePath =
+                                localStore->parseStorePath(drv.drvPath);
+                            localStore->addPermRoot(storePath, root);
+                        }
                     }
-                }
+                } else {
+                    auto attrs = nlohmann::json::array();
+                    bool recurse =
+                        path.size() == 0; // Dont require `recurseForDerivations
+                                          // = true;` for top-level attrset
 
-            }
+                    for (auto &i :
+                         v->attrs->lexicographicOrder(state.symbols)) {
+                        const std::string &name = state.symbols[i->name];
+                        attrs.push_back(name);
 
-            else if (v->type() == nAttrs) {
-                auto attrs = nlohmann::json::array();
-                bool recurse =
-                    path.size() == 0; // Dont require `recurseForDerivations =
-                                      // true;` for top-level attrset
-
-                for (auto &i : v->attrs->lexicographicOrder(state.symbols)) {
-                    const std::string &name = state.symbols[i->name];
-                    attrs.push_back(name);
-
-                    if (name == "recurseForDerivations") {
-                        auto attrv =
-                            v->attrs->get(state.sRecurseForDerivations);
-                        recurse = state.forceBool(*attrv->value, attrv->pos);
+                        if (name == "recurseForDerivations") {
+                            auto attrv =
+                                v->attrs->get(state.sRecurseForDerivations);
+                            recurse =
+                                state.forceBool(*attrv->value, attrv->pos);
+                        }
                     }
+                    if (recurse)
+                        reply["attrs"] = std::move(attrs);
+                    else
+                        reply["attrs"] = nlohmann::json::array();
                 }
-                if (recurse)
-                    reply["attrs"] = std::move(attrs);
-                else
-                    reply["attrs"] = nlohmann::json::array();
+            } else {
+                // We ignore everything that cannot be build
+                reply["attrs"] = nlohmann::json::array();
             }
-
-            else if (v->type() == nNull)
-                ;
-
-            else
-                throw TypeError("attribute '%s' is %s, which is not supported",
-                                path, showType(*v));
-
         } catch (EvalError &e) {
             auto err = e.info();
-
             std::ostringstream oss;
             showErrorInfo(oss, err, loggerSettings.showTrace.get());
             auto msg = oss.str();
