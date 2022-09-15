@@ -4,14 +4,14 @@ import subprocess
 import json
 from tempfile import TemporaryDirectory
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Any
 
 TEST_ROOT = Path(__file__).parent.resolve()
 PROJECT_ROOT = TEST_ROOT.parent
 BIN = PROJECT_ROOT.joinpath("build", "src", "nix-eval-jobs")
 
 
-def common_test(extra_args: List[str]) -> None:
+def common_test(extra_args: List[str]) -> List[Dict[str, Any]]:
     with TemporaryDirectory() as tempdir:
         cmd = [str(BIN), "--gc-roots-dir", tempdir, "--meta"] + extra_args
         res = subprocess.run(
@@ -23,7 +23,7 @@ def common_test(extra_args: List[str]) -> None:
         )
 
         results = [json.loads(r) for r in res.stdout.split("\n") if r]
-        assert len(results) == 5
+        assert len(results) == 4
 
         built_job = results[0]
         assert built_job["attr"] == "builtJob"
@@ -40,21 +40,30 @@ def common_test(extra_args: List[str]) -> None:
         assert recurse_drv["attr"] == "recurse.drvB"
         assert recurse_drv["name"] == "drvB"
 
-        recurse_recurse_bool = results[3]
-        assert "error" in recurse_recurse_bool
-
-        substituted_job = results[4]
+        substituted_job = results[3]
         assert substituted_job["attr"] == "substitutedJob"
         assert substituted_job["name"].startswith("hello-")
         assert substituted_job["meta"]["broken"] is False
+        return results
 
 
 def test_flake() -> None:
-    common_test(["--flake", ".#hydraJobs"])
+    results = common_test(["--flake", ".#hydraJobs"])
+    for result in results:
+        assert "isCached" not in result
+
+
+def test_query_cache_status() -> None:
+    results = common_test(["--flake", ".#hydraJobs", "--check-cache-status"])
+    # FIXME in the nix sandbox we cannot query binary caches, this would need some local one
+    for result in results:
+        assert "isCached" in result
 
 
 def test_expression() -> None:
-    common_test(["ci.nix"])
+    results = common_test(["ci.nix"])
+    for result in results:
+        assert "isCached" not in result
 
     with open(TEST_ROOT.joinpath("assets/ci.nix"), "r") as ci_nix:
         common_test(["-E", ci_nix.read()])

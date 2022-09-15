@@ -44,6 +44,7 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
     bool meta = false;
     bool showTrace = false;
     bool impure = false;
+    bool checkCacheStatus = false;
     size_t nrWorkers = 1;
     size_t maxMemorySize = 4096;
 
@@ -92,6 +93,15 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
         addFlag({.longName = "meta",
                  .description = "include derivation meta field in output",
                  .handler = {&meta, true}});
+
+        addFlag(
+            {.longName = "check-cache-status",
+             .description =
+                 "Check if the derivations are present locally or in "
+                 "any configured substituters (i.e. binary cache). The "
+                 "information "
+                 "will be exposed in the `isCached` field of the JSON output.",
+             .handler = {&checkCacheStatus, true}});
 
         addFlag({.longName = "show-trace",
                  .description =
@@ -171,11 +181,26 @@ Value *topLevelValue(EvalState &state, Bindings &autoArgs) {
                         : releaseExprTopLevelValue(state, autoArgs);
 }
 
+bool queryIsCached(Store &store, std::map<std::string, std::string> &outputs) {
+    uint64_t downloadSize, narSize;
+    StorePathSet willBuild, willSubstitute, unknown;
+
+    std::vector<StorePathWithOutputs> paths;
+    for (auto const &[key, val] : outputs) {
+        paths.push_back(followLinksToStorePathWithOutputs(store, val));
+    }
+
+    store.queryMissing(toDerivedPaths(paths), willBuild, willSubstitute,
+                       unknown, downloadSize, narSize);
+    return willBuild.empty() && unknown.empty();
+}
+
 /* The fields of a derivation that are printed in json form */
 struct Drv {
     std::string name;
     std::string system;
     std::string drvPath;
+    bool isCached;
     std::map<std::string, std::string> outputs;
     std::optional<nlohmann::json> meta;
 
@@ -209,6 +234,9 @@ struct Drv {
             }
             meta = meta_;
         }
+        if (myArgs.checkCacheStatus) {
+            isCached = queryIsCached(*localStore, outputs);
+        }
 
         name = drvInfo.queryName();
         system = drvInfo.querySystem();
@@ -217,15 +245,18 @@ struct Drv {
 };
 
 static void to_json(nlohmann::json &json, const Drv &drv) {
-    json = nlohmann::json{
-        {"name", drv.name},
-        {"system", drv.system},
-        {"drvPath", drv.drvPath},
-        {"outputs", drv.outputs},
-    };
+    json = nlohmann::json{{"name", drv.name},
+                          {"system", drv.system},
+                          {"drvPath", drv.drvPath},
+                          {"outputs", drv.outputs}};
 
-    if (drv.meta.has_value())
+    if (drv.meta.has_value()) {
         json["meta"] = drv.meta.value();
+    }
+
+    if (myArgs.checkCacheStatus) {
+        json["isCached"] = drv.isCached;
+    }
 }
 
 std::string attrPathJoin(json input) {
@@ -266,60 +297,55 @@ static void worker(EvalState &state, Bindings &autoArgs, AutoCloseFD &to,
             auto v = state.allocValue();
             state.autoCallFunction(autoArgs, *vTmp, *v);
 
-            if (auto drvInfo = getDerivation(state, *v, false)) {
+            if (v->type() == nAttrs) {
+                if (auto drvInfo = getDerivation(state, *v, false)) {
+                    auto drv = Drv(state, *drvInfo);
+                    reply.update(drv);
 
-                auto drv = Drv(state, *drvInfo);
-                reply.update(drv);
-
-                /* Register the derivation as a GC root.  !!! This
-                   registers roots for jobs that we may have already
-                   done. */
-                if (myArgs.gcRootsDir != "") {
-                    Path root = myArgs.gcRootsDir + "/" +
-                                std::string(baseNameOf(drv.drvPath));
-                    if (!pathExists(root)) {
-                        auto localStore =
-                            state.store.dynamic_pointer_cast<LocalFSStore>();
-                        auto storePath =
-                            localStore->parseStorePath(drv.drvPath);
-                        localStore->addPermRoot(storePath, root);
+                    /* Register the derivation as a GC root.  !!! This
+                       registers roots for jobs that we may have already
+                       done. */
+                    if (myArgs.gcRootsDir != "") {
+                        Path root = myArgs.gcRootsDir + "/" +
+                                    std::string(baseNameOf(drv.drvPath));
+                        if (!pathExists(root)) {
+                            auto localStore =
+                                state.store
+                                    .dynamic_pointer_cast<LocalFSStore>();
+                            auto storePath =
+                                localStore->parseStorePath(drv.drvPath);
+                            localStore->addPermRoot(storePath, root);
+                        }
                     }
-                }
+                } else {
+                    auto attrs = nlohmann::json::array();
+                    bool recurse =
+                        path.size() == 0; // Dont require `recurseForDerivations
+                                          // = true;` for top-level attrset
 
-            }
+                    for (auto &i :
+                         v->attrs->lexicographicOrder(state.symbols)) {
+                        const std::string &name = state.symbols[i->name];
+                        attrs.push_back(name);
 
-            else if (v->type() == nAttrs) {
-                auto attrs = nlohmann::json::array();
-                bool recurse =
-                    path.size() == 0; // Dont require `recurseForDerivations =
-                                      // true;` for top-level attrset
-
-                for (auto &i : v->attrs->lexicographicOrder(state.symbols)) {
-                    const std::string &name = state.symbols[i->name];
-                    attrs.push_back(name);
-
-                    if (name == "recurseForDerivations") {
-                        auto attrv =
-                            v->attrs->get(state.sRecurseForDerivations);
-                        recurse = state.forceBool(*attrv->value, attrv->pos);
+                        if (name == "recurseForDerivations") {
+                            auto attrv =
+                                v->attrs->get(state.sRecurseForDerivations);
+                            recurse =
+                                state.forceBool(*attrv->value, attrv->pos);
+                        }
                     }
+                    if (recurse)
+                        reply["attrs"] = std::move(attrs);
+                    else
+                        reply["attrs"] = nlohmann::json::array();
                 }
-                if (recurse)
-                    reply["attrs"] = std::move(attrs);
-                else
-                    reply["attrs"] = nlohmann::json::array();
+            } else {
+                // We ignore everything that cannot be build
+                reply["attrs"] = nlohmann::json::array();
             }
-
-            else if (v->type() == nNull)
-                ;
-
-            else
-                throw TypeError("attribute '%s' is %s, which is not supported",
-                                path, showType(*v));
-
         } catch (EvalError &e) {
             auto err = e.info();
-
             std::ostringstream oss;
             showErrorInfo(oss, err, loggerSettings.showTrace.get());
             auto msg = oss.str();
