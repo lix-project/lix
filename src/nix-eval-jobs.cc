@@ -217,11 +217,11 @@ struct Drv {
 
         if (myArgs.meta) {
             nlohmann::json meta_;
-            for (auto &name : drvInfo.queryMetaNames()) {
+            for (auto &metaName : drvInfo.queryMetaNames()) {
                 PathSet context;
                 std::stringstream ss;
 
-                auto metaValue = drvInfo.queryMeta(name);
+                auto metaValue = drvInfo.queryMeta(metaName);
                 // Skip non-serialisable types
                 // TODO: Fix serialisation of derivations to store paths
                 if (metaValue == 0) {
@@ -230,7 +230,7 @@ struct Drv {
 
                 printValueAsJSON(state, true, *metaValue, noPos, ss, context);
 
-                meta_[name] = nlohmann::json::parse(ss.str());
+                meta_[metaName] = nlohmann::json::parse(ss.str());
             }
             meta = meta_;
         }
