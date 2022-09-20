@@ -1,6 +1,7 @@
 #include <map>
 #include <iostream>
 #include <thread>
+#include <filesystem>
 
 #include <nix/config.h>
 #include <nix/shared.hh>
@@ -535,8 +536,11 @@ int main(int argc, char **argv) {
         if (myArgs.releaseExpr == "")
             throw UsageError("no expression specified");
 
-        if (myArgs.gcRootsDir == "")
+        if (myArgs.gcRootsDir == "") {
             printMsg(lvlError, "warning: `--gc-roots-dir' not specified");
+        } else {
+            myArgs.gcRootsDir = std::filesystem::absolute(myArgs.gcRootsDir);
+        }
 
         if (myArgs.showTrace) {
             loggerSettings.showTrace.assign(true);
