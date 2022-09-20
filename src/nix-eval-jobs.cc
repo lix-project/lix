@@ -1,6 +1,7 @@
 #include <map>
 #include <iostream>
 #include <thread>
+#include <filesystem>
 
 #include <nix/config.h>
 #include <nix/shared.hh>
@@ -217,11 +218,11 @@ struct Drv {
 
         if (myArgs.meta) {
             nlohmann::json meta_;
-            for (auto &name : drvInfo.queryMetaNames()) {
+            for (auto &metaName : drvInfo.queryMetaNames()) {
                 PathSet context;
                 std::stringstream ss;
 
-                auto metaValue = drvInfo.queryMeta(name);
+                auto metaValue = drvInfo.queryMeta(metaName);
                 // Skip non-serialisable types
                 // TODO: Fix serialisation of derivations to store paths
                 if (metaValue == 0) {
@@ -230,7 +231,7 @@ struct Drv {
 
                 printValueAsJSON(state, true, *metaValue, noPos, ss, context);
 
-                meta_[name] = nlohmann::json::parse(ss.str());
+                meta_[metaName] = nlohmann::json::parse(ss.str());
             }
             meta = meta_;
         }
@@ -535,8 +536,11 @@ int main(int argc, char **argv) {
         if (myArgs.releaseExpr == "")
             throw UsageError("no expression specified");
 
-        if (myArgs.gcRootsDir == "")
+        if (myArgs.gcRootsDir == "") {
             printMsg(lvlError, "warning: `--gc-roots-dir' not specified");
+        } else {
+            myArgs.gcRootsDir = std::filesystem::absolute(myArgs.gcRootsDir);
+        }
 
         if (myArgs.showTrace) {
             loggerSettings.showTrace.assign(true);
