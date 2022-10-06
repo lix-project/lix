@@ -22,18 +22,10 @@ service and user-started nix builds processes.
 In the following example we evaluate the hydraJobs attribute of the [patchelf](https://github.com/NixOS/patchelf) flake:
 
 ```console
-$ nix-eval-jobs --gc-roots-dir $(pwd)/gcroot --flake 'github:NixOS/patchelf#hydraJobs'
-{"attr":"build-sanitized-clang.x86_64-linux","drvPath":"/nix/store/igmkq61cwys8nj34yqvnpdg921h0i0mp-patchelf-0.14.3.drv","name":"patchelf-0.14.3","outputs":{"out":"/nix/store/nwwgff1fwkws4wxv7k7cfvvin8ab9gbh-patchelf-0.14.3"},"system":"x86_64-linux"}
-{"attr":"build-sanitized.aarch64-linux","drvPath":"/nix/store/d8ma8d7gjwx6ix4ibs910z9fkm3hwdvz-patchelf-0.14.3.drv","name":"patchelf-0.14.3","outputs":{"out":"/nix/store/6j26m4sznwdyfk4sbmnls3sk0lxm38ih-patchelf-0.14.3"},"system":"aarch64-linux"}
-{"attr":"build-sanitized.i686-linux","drvPath":"/nix/store/87rwijvfqqs7dw9lbmckmz4nbryvjaq3-patchelf-0.14.3.drv","name":"patchelf-0.14.3","outputs":{"out":"/nix/store/za5w0gzf97na44fza9sdys15qnjqayd7-patchelf-0.14.3"},"system":"i686-linux"}
-{"attr":"build-sanitized.x86_64-linux","drvPath":"/nix/store/nmx50wly2qvd00svx0vqsjfh0jv7q3kl-patchelf-0.14.3.drv","name":"patchelf-0.14.3","outputs":{"out":"/nix/store/38d6bhz3a5jq48gm1diji0rjfcm5vi9n-patchelf-0.14.3"},"system":"x86_64-linux"}
-{"attr":"build.aarch64-linux","drvPath":"/nix/store/yjz9msbr6pl8mj7im5kiyhk7wwkvxywa-patchelf-0.14.3.drv","name":"patchelf-0.14.3","outputs":{"out":"/nix/store/as9xhcfwnhfy5x30kxh7lfgla1qrk182-patchelf-0.14.3"},"system":"aarch64-linux"}
-{"attr":"build.i686-linux","drvPath":"/nix/store/nwcmdcimnaci0knri5ga019lgbvc4am4-patchelf-0.14.3.drv","name":"patchelf-0.14.3","outputs":{"out":"/nix/store/64x12dmbscnnl42r4y2av52y55ksphhk-patchelf-0.14.3"},"system":"i686-linux"}
-{"attr":"build.x86_64-linux","drvPath":"/nix/store/k6p4qnjryr2l1lz31pf085ay9bd7j8gj-patchelf-0.14.3.drv","name":"patchelf-0.14.3","outputs":{"out":"/nix/store/h9a779ghpibfqkkdchx6s08bb3v3i8vy-patchelf-0.14.3"},"system":"x86_64-linux"}
-{"attr":"coverage","drvPath":"/nix/store/lsrg05dx3hyi5b6ak99pn9g1rn8xwx39-patchelf-coverage-0.14.3.drv","name":"patchelf-coverage-0.14.3","outputs":{"out":"/nix/store/6h4l5axy5lvxzq662yw47y9r60mxw3zz-patchelf-coverage-0.14.3"},"system":"x86_64-linux"}
-{"attr":"release","drvPath":"/nix/store/dgn5gy64pjskfnv7vqh0s86nb998f8sq-patchelf-0.14.3.drv","name":"patchelf-0.14.3","outputs":{"out":"/nix/store/nn05yaznr5af8g8mpgd82yx16pvfzjcy-patchelf-0.14.3"},"system":"x86_64-linux"}
-{"attr":"tarball","drvPath":"/nix/store/5ajrgfd5nx29ykgg942k154mcaqfbhxd-patchelf-tarball-0.14.3.drv","name":"patchelf-tarball-0.14.3","outputs":{"out":"/nix/store/5cli6rh0h32yhfcgjkgbplcc73cqvplv-patchelf-tarball-0.14.3"},"system":"x86_64-linux"}
-
+$ nix-eval-jobs --gc-roots-dir gcroot --flake 'github:NixOS/patchelf#hydraJobs'
+{"attr":"coverage","attrPath":["coverage"],"drvPath":"/nix/store/8hq9f09xa5s6g9m02lw0sw59kkkvj57c-patchelf-coverage-0.15.0.drv","name":"patchelf-coverage-0.15.0","outputs":{"out":"/nix/store/dwf255bdbfvvbiqak941r83zlvxyipcs-patchelf-coverage-0.15.0"},"system":"x86_64-linux"}
+{"attr":"release","attrPath":["release"],"drvPath":"/nix/store/ip9dy4vlyha5a7kq4bnf4pxk0sfwjfda-patchelf-0.15.0.drv","name":"patchelf-0.15.0","outputs":{"out":"/nix/store/5z9ynn29asakf1b5736im2glcqpf6s2f-patchelf-0.15.0"},"system":"x86_64-linux"}
+{"attr":"tarball","attrPath":["tarball"],"drvPath":"/nix/store/g1alnfi3mrkcb9blclr77fpyp35mpsdd-patchelf-tarball-0.15.0.drv","name":"patchelf-tarball-0.15.0","outputs":{"out":"/nix/store/iy0w42pffhjg6wy0w46r4cjc1yjk410y-patchelf-tarball-0.15.0"},"system":"x86_64-linux"}
 ```
 
 The output here is newline-seperated json according to https://jsonlines.org.
