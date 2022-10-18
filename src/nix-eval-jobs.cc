@@ -392,7 +392,8 @@ struct Proc {
                  std::make_shared<AutoCloseFD>(std::move(toPipe.readSide))}]() {
                 debug("created worker process %d", getpid());
                 try {
-                    EvalState state(myArgs.searchPath, openStore());
+                    EvalState state(myArgs.searchPath,
+                                    openStore(*myArgs.evalStoreUrl));
                     Bindings &autoArgs = *myArgs.getAutoArgs(state);
                     proc(state, autoArgs, *to, *from);
                 } catch (Error &e) {
