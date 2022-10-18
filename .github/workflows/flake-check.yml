@@ -15,7 +15,7 @@ jobs:
         with:
           # Nix Flakes doesn't work on shallow clones
           fetch-depth: 0
-      - uses: cachix/install-nix-action@v17
+      - uses: cachix/install-nix-action@v18
         with:
           nix_path: nixpkgs=channel:nixos-unstable
       - id: set-matrix
@@ -35,7 +35,7 @@ jobs:
         with:
           # Nix Flakes doesn't work on shallow clones
           fetch-depth: 0
-      - uses: cachix/install-nix-action@v17
+      - uses: cachix/install-nix-action@v18
         with:
           nix_path: nixpkgs=channel:nixos-unstable
       - run: |

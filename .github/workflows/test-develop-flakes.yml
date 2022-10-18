@@ -15,7 +15,7 @@ jobs:
       with:
           # Nix Flakes doesn't work on shallow clones
           fetch-depth: 0
-    - uses: cachix/install-nix-action@v17
+    - uses: cachix/install-nix-action@v18
     - name: Build
       run: nix develop -c bash -c 'meson build && cd build && ninja'
     - name: Run tests
