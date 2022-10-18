@@ -45,6 +45,7 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
     bool meta = false;
     bool showTrace = false;
     bool impure = false;
+    bool forceRecurse = false;
     bool checkCacheStatus = false;
     size_t nrWorkers = 1;
     size_t maxMemorySize = 4096;
@@ -69,6 +70,11 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
         addFlag({.longName = "impure",
                  .description = "allow impure expressions",
                  .handler = {&impure, true}});
+
+        addFlag(
+            {.longName = "force-recurse",
+             .description = "force recursion (don't respect recurseIntoAttrs)",
+             .handler = {&forceRecurse, true}});
 
         addFlag({.longName = "gc-roots-dir",
                  .description = "garbage collector roots directory",
@@ -321,6 +327,7 @@ static void worker(EvalState &state, Bindings &autoArgs, AutoCloseFD &to,
                 } else {
                     auto attrs = nlohmann::json::array();
                     bool recurse =
+                        myArgs.forceRecurse ||
                         path.size() == 0; // Dont require `recurseForDerivations
                                           // = true;` for top-level attrset
 
