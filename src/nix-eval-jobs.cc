@@ -19,6 +19,7 @@
 #include <nix/local-fs-store.hh>
 #include <nix/logging.hh>
 #include <nix/error.hh>
+#include <nix/installables.hh>
 
 #include <nix/value-to-json.hh>
 
@@ -148,44 +149,10 @@ static Value *releaseExprTopLevelValue(EvalState &state, Bindings &autoArgs) {
     return vRoot;
 }
 
-static Value *flakeTopLevelValue(EvalState &state, Bindings &autoArgs) {
-    using namespace flake;
-
-    auto [flakeRef, fragment] =
-        parseFlakeRefWithFragment(myArgs.releaseExpr, absPath("."));
-
-    auto vFlake = state.allocValue();
-
-    auto lockedFlake = lockFlake(state, flakeRef,
-                                 LockFlags{
-                                     .updateLockFile = false,
-                                     .useRegistries = false,
-                                     .allowMutable = false,
-                                 });
-
-    callFlake(state, lockedFlake, *vFlake);
-
-    auto vOutputs = vFlake->attrs->get(state.symbols.create("outputs"))->value;
-    state.forceValue(*vOutputs, noPos);
-    auto vTop = *vOutputs;
-
-    if (fragment.length() > 0) {
-        Bindings &bindings(*state.allocBindings(0));
-        auto [nTop, pos] = findAlongAttrPath(state, fragment, bindings, vTop);
-        if (!nTop)
-            throw Error("error: attribute '%s' missing", nTop);
-        vTop = *nTop;
-    }
-
-    auto vRoot = state.allocValue();
-    state.autoCallFunction(autoArgs, vTop, *vRoot);
-
-    return vRoot;
-}
-
-Value *topLevelValue(EvalState &state, Bindings &autoArgs) {
-    return myArgs.flake ? flakeTopLevelValue(state, autoArgs)
-                        : releaseExprTopLevelValue(state, autoArgs);
+Value *topLevelValue(EvalState &state, Bindings &autoArgs,
+                     std::optional<InstallableFlake> flake) {
+    return flake.has_value() ? flake.value().toValue(state).first
+                             : releaseExprTopLevelValue(state, autoArgs);
 }
 
 bool queryIsCached(Store &store, std::map<std::string, std::string> &outputs) {
@@ -279,7 +246,24 @@ std::string attrPathJoin(json input) {
 
 static void worker(EvalState &state, Bindings &autoArgs, AutoCloseFD &to,
                    AutoCloseFD &from) {
-    auto vRoot = topLevelValue(state, autoArgs);
+
+    std::optional<InstallableFlake> flake;
+    if (myArgs.flake) {
+        auto [flakeRef, fragment, outputSpec] =
+            parseFlakeRefWithFragmentAndOutputsSpec(myArgs.releaseExpr,
+                                                    absPath("."));
+
+        flake.emplace(InstallableFlake({}, ref<EvalState>(&state),
+                                       std::move(flakeRef), fragment,
+                                       outputSpec, {}, {},
+                                       flake::LockFlags{
+                                           .updateLockFile = false,
+                                           .useRegistries = false,
+                                           .allowMutable = false,
+                                       }));
+    };
+
+    auto vRoot = topLevelValue(state, autoArgs, flake);
 
     while (true) {
         /* Wait for the collector to send us a job name. */
