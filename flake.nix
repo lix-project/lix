@@ -5,6 +5,13 @@
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
   inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
 
+  nixConfig.extra-substituters = [
+    "https://cache.garnix.io"
+  ];
+  nixConfig.extra-trusted-public-keys = [
+    "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
+  ];
+
   outputs = inputs @ { flake-parts, ... }:
     let
       inherit (inputs.nixpkgs) lib;
