@@ -184,9 +184,14 @@ struct Drv {
 
         auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
 
-        for (auto out : drvInfo.queryOutputs(true)) {
-            if (out.second)
-                outputs[out.first] = localStore->printStorePath(*out.second);
+        try {
+            for (auto out : drvInfo.queryOutputs(true)) {
+                if (out.second)
+                    outputs[out.first] =
+                        localStore->printStorePath(*out.second);
+            }
+        } catch (const std::exception &e) {
+            throw EvalError("derivation must have valid outputs: %s", e.what());
         }
 
         if (myArgs.meta) {
