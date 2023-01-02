@@ -16,16 +16,13 @@
 
 let
   inherit (pkgs) lib stdenv;
-
+  nix-eval-jobs = pkgs.callPackage ./default.nix {
+    inherit srcDir nix;
+  };
 in
-(pkgs.callPackage ./default.nix {
-  inherit srcDir nix;
-}).overrideAttrs (old: {
-
-  src = null;
-
-  nativeBuildInputs = old.nativeBuildInputs ++ [
-
+pkgs.mkShell {
+  inherit (nix-eval-jobs) buildInputs;
+  nativeBuildInputs = nix-eval-jobs.nativeBuildInputs ++ [
     pkgs.treefmt
     pkgs.llvmPackages.clang # clang-format
     pkgs.nixpkgs-fmt
@@ -37,10 +34,9 @@ in
     ]))
 
   ];
-
   NODE_PATH = "${pkgs.nodePackages.prettier-plugin-toml}/lib/node_modules";
 
   shellHook = lib.optionalString stdenv.isLinux ''
     export NIX_DEBUG_INFO_DIRS="${pkgs.curl.debug}/lib/debug:${nix.debug}/lib/debug''${NIX_DEBUG_INFO_DIRS:+:$NIX_DEBUG_INFO_DIRS}"
   '';
-})
+}
