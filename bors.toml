@@ -1,2 +1,12 @@
 cut_body_after = "" # don't include text from the PR body in the merge commit message
-status = ["tests (ubuntu-latest)", "tests (macos-latest)"]
+status = [
+  # garnix
+  "Evaluate flake.nix",
+  "package nix-eval-jobs [x86_64-linux]",
+  "devShell default [x86_64-linux]",
+  "check treefmt [x86_64-linux]",
+  "package default [x86_64-linux]",
+  # github actions
+  "tests (ubuntu-latest)",
+  "tests (macos-latest)"
+]
