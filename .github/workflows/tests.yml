@@ -1,9 +1,10 @@
-name: "Development workflow"
+name: "Tests"
 on:
   pull_request:
   push:
     branches:
       - main
+      - staging
       - release-*
 jobs:
   tests:
@@ -17,6 +18,10 @@ jobs:
           # Nix Flakes doesn't work on shallow clones
           fetch-depth: 0
     - uses: cachix/install-nix-action@v18
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          accept-flake-config = true
     - name: Build
       run: nix develop -c bash -c 'meson build && cd build && ninja'
     - name: Run tests

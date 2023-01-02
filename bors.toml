@@ -1,6 +1,2 @@
 cut_body_after = "" # don't include text from the PR body in the merge commit message
-status = [
-  "flake-checks",
-  "builds (treefmt, ubuntu-latest)",
-  "builds (treefmt, macos-latest)"
-]
+status = ["tests (ubuntu-latest)", "tests (macos-latest)"]
