@@ -20,6 +20,7 @@
 #include <nix/logging.hh>
 #include <nix/error.hh>
 #include <nix/installables.hh>
+#include <nix/path-with-outputs.hh>
 
 #include <nix/value-to-json.hh>
 
@@ -255,15 +256,15 @@ static void worker(ref<EvalState> state, Bindings &autoArgs, AutoCloseFD &to,
     std::optional<InstallableFlake> flake;
     if (myArgs.flake) {
         auto [flakeRef, fragment, outputSpec] =
-            parseFlakeRefWithFragmentAndOutputsSpec(myArgs.releaseExpr,
-                                                    absPath("."));
+            parseFlakeRefWithFragmentAndExtendedOutputsSpec(myArgs.releaseExpr,
+                                                            absPath("."));
 
         flake.emplace(InstallableFlake({}, state, std::move(flakeRef), fragment,
                                        outputSpec, {}, {},
                                        flake::LockFlags{
                                            .updateLockFile = false,
                                            .useRegistries = false,
-                                           .allowMutable = false,
+                                           .allowUnlocked = false,
                                        }));
     };
 
