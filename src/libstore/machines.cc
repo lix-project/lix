@@ -69,10 +69,10 @@ ref<Store> Machine::openStore() const
     Store::Params storeParams;
     if (storeUri.starts_with("ssh://")) {
         storeParams["max-connections"] = "1";
-        storeParams["log-fd"] = "4";
     }
 
     if (storeUri.starts_with("ssh://") || storeUri.starts_with("ssh-ng://")) {
+        storeParams["log-fd"] = "4";
         if (sshKey != "")
             storeParams["ssh-key"] = sshKey;
         if (sshPublicHostKey != "")
