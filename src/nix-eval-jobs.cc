@@ -249,7 +249,7 @@ std::string attrPathJoin(json input) {
                            });
 }
 
-static void worker(EvalState &state, Bindings &autoArgs, AutoCloseFD &to,
+static void worker(ref<EvalState> state, Bindings &autoArgs, AutoCloseFD &to,
                    AutoCloseFD &from) {
 
     std::optional<InstallableFlake> flake;
@@ -258,8 +258,7 @@ static void worker(EvalState &state, Bindings &autoArgs, AutoCloseFD &to,
             parseFlakeRefWithFragmentAndOutputsSpec(myArgs.releaseExpr,
                                                     absPath("."));
 
-        flake.emplace(InstallableFlake({}, ref<EvalState>(&state),
-                                       std::move(flakeRef), fragment,
+        flake.emplace(InstallableFlake({}, state, std::move(flakeRef), fragment,
                                        outputSpec, {}, {},
                                        flake::LockFlags{
                                            .updateLockFile = false,
@@ -268,7 +267,7 @@ static void worker(EvalState &state, Bindings &autoArgs, AutoCloseFD &to,
                                        }));
     };
 
-    auto vRoot = topLevelValue(state, autoArgs, flake);
+    auto vRoot = topLevelValue(*state, autoArgs, flake);
 
     while (true) {
         /* Wait for the collector to send us a job name. */
@@ -288,14 +287,14 @@ static void worker(EvalState &state, Bindings &autoArgs, AutoCloseFD &to,
         json reply = json{{"attr", attrPathS}, {"attrPath", path}};
         try {
             auto vTmp =
-                findAlongAttrPath(state, attrPathS, autoArgs, *vRoot).first;
+                findAlongAttrPath(*state, attrPathS, autoArgs, *vRoot).first;
 
-            auto v = state.allocValue();
-            state.autoCallFunction(autoArgs, *vTmp, *v);
+            auto v = state->allocValue();
+            state->autoCallFunction(autoArgs, *vTmp, *v);
 
             if (v->type() == nAttrs) {
-                if (auto drvInfo = getDerivation(state, *v, false)) {
-                    auto drv = Drv(state, *drvInfo);
+                if (auto drvInfo = getDerivation(*state, *v, false)) {
+                    auto drv = Drv(*state, *drvInfo);
                     reply.update(drv);
 
                     /* Register the derivation as a GC root.  !!! This
@@ -306,7 +305,7 @@ static void worker(EvalState &state, Bindings &autoArgs, AutoCloseFD &to,
                                     std::string(baseNameOf(drv.drvPath));
                         if (!pathExists(root)) {
                             auto localStore =
-                                state.store
+                                state->store
                                     .dynamic_pointer_cast<LocalFSStore>();
                             auto storePath =
                                 localStore->parseStorePath(drv.drvPath);
@@ -321,15 +320,15 @@ static void worker(EvalState &state, Bindings &autoArgs, AutoCloseFD &to,
                                           // = true;` for top-level attrset
 
                     for (auto &i :
-                         v->attrs->lexicographicOrder(state.symbols)) {
-                        const std::string &name = state.symbols[i->name];
+                         v->attrs->lexicographicOrder(state->symbols)) {
+                        const std::string &name = state->symbols[i->name];
                         attrs.push_back(name);
 
                         if (name == "recurseForDerivations") {
                             auto attrv =
-                                v->attrs->get(state.sRecurseForDerivations);
+                                v->attrs->get(state->sRecurseForDerivations);
                             recurse =
-                                state.forceBool(*attrv->value, attrv->pos);
+                                state->forceBool(*attrv->value, attrv->pos);
                         }
                     }
                     if (recurse)
@@ -368,7 +367,7 @@ static void worker(EvalState &state, Bindings &autoArgs, AutoCloseFD &to,
     writeLine(to.get(), "restart");
 }
 
-typedef std::function<void(EvalState &state, Bindings &autoArgs,
+typedef std::function<void(ref<EvalState> state, Bindings &autoArgs,
                            AutoCloseFD &to, AutoCloseFD &from)>
     Processor;
 
@@ -388,10 +387,10 @@ struct Proc {
                  std::make_shared<AutoCloseFD>(std::move(toPipe.readSide))}]() {
                 debug("created worker process %d", getpid());
                 try {
-                    EvalState state(myArgs.searchPath,
-                                    openStore(*myArgs.evalStoreUrl));
-                    Bindings &autoArgs = *myArgs.getAutoArgs(state);
-                    proc(state, autoArgs, *to, *from);
+                    auto state = std::make_shared<EvalState>(
+                        myArgs.searchPath, openStore(*myArgs.evalStoreUrl));
+                    Bindings &autoArgs = *myArgs.getAutoArgs(*state);
+                    proc(ref<EvalState>(state), autoArgs, *to, *from);
                 } catch (Error &e) {
                     nlohmann::json err;
                     auto msg = e.msg();
