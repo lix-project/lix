@@ -21,6 +21,7 @@
 #include <nix/error.hh>
 #include <nix/installables.hh>
 #include <nix/path-with-outputs.hh>
+#include <nix/installable-flake.hh>
 
 #include <nix/value-to-json.hh>
 
@@ -328,8 +329,9 @@ static void worker(ref<EvalState> state, Bindings &autoArgs, AutoCloseFD &to,
                         if (name == "recurseForDerivations") {
                             auto attrv =
                                 v->attrs->get(state->sRecurseForDerivations);
-                            recurse =
-                                state->forceBool(*attrv->value, attrv->pos);
+                            recurse = state->forceBool(
+                                *attrv->value, attrv->pos,
+                                "while evaluating recurseForDerivations");
                         }
                     }
                     if (recurse)
