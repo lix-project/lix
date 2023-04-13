@@ -90,11 +90,13 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
              .labels = {"workers"},
              .handler = {[=](std::string s) { nrWorkers = std::stoi(s); }}});
 
-        addFlag({.longName = "max-memory-size",
-                 .description = "maximum evaluation memory size",
-                 .labels = {"size"},
-                 .handler = {
-                     [=](std::string s) { maxMemorySize = std::stoi(s); }}});
+        addFlag(
+            {.longName = "max-memory-size",
+             .description =
+                 "maximum evaluation memory size (4GiB per worker by default)",
+             .labels = {"size"},
+             .handler = {
+                 [=](std::string s) { maxMemorySize = std::stoi(s); }}});
 
         addFlag({.longName = "flake",
                  .description = "build a flake",
