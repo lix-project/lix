@@ -91,3 +91,32 @@ latest release branch.
 
 - [colmena](https://github.com/zhaofengli/colmena) -  A simple, stateless NixOS deployment tool
 - [robotnix](https://github.com/danielfullmer/robotnix) -  Build Android (AOSP) using Nix, used in their [CI](https://github.com/danielfullmer/robotnix/blob/38b80700ee4265c306dcfdcce45056e32ab2973f/.github/workflows/instantiate.yml#L18)
+
+## FAQ
+
+### nix-eval-jobs consumes too much memory / is too slow
+
+By default, nix-eval-jobs spawns as many worker processes as there are
+hardware threads in the system and limits the memory usage for each worker to
+4GB.
+
+However, keep in mind that each worker process may need to re-evaluate shared
+dependencies of the attributes, which can introduce some overhead for each
+evaluation or cause workers to exceed their memory limit. If you encounter
+these situations, you can tune the following options:
+
+`--workers`: This option allows you to set the number of evaluation workers that
+nix-eval-jobs should spawn. You can increase or decrease this number to
+optimize the evaluation speed and memory usage. For example, if you have a
+system with many CPU cores but limited memory, you may want to reduce the
+number of workers to avoid exceeding the memory limit.
+
+`--max-memory-size`: This option allows you to adjust the memory limit for each
+worker process. By default, it's set to 4GiB, but you can increase or decrease
+this value as needed. For example, if you have a system with a lot of memory
+and want to speed up the evaluation, you may want to increase the memory limit
+to allow workers to cache more data in memory before getting restarted by
+nix-eval-jobs.
+
+Overall, tuning these options can help you optimize the performance and memory
+usage of nix-eval-jobs to better fit your system and evaluation needs.
