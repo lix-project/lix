@@ -180,6 +180,7 @@ struct Drv {
     std::string drvPath;
     bool isCached;
     std::map<std::string, std::string> outputs;
+    std::map<std::string, std::set<std::string>> inputDrvs;
     std::optional<nlohmann::json> meta;
 
     Drv(EvalState &state, DrvInfo &drvInfo) {
@@ -224,6 +225,11 @@ struct Drv {
         name = drvInfo.queryName();
         system = drvInfo.querySystem();
         drvPath = localStore->printStorePath(drvInfo.requireDrvPath());
+
+        auto drv = localStore->readDerivation(drvInfo.requireDrvPath());
+        for (auto &input : drv.inputDrvs) {
+            inputDrvs[localStore->printStorePath(input.first)] = input.second;
+        }
     }
 };
 
@@ -231,7 +237,8 @@ static void to_json(nlohmann::json &json, const Drv &drv) {
     json = nlohmann::json{{"name", drv.name},
                           {"system", drv.system},
                           {"drvPath", drv.drvPath},
-                          {"outputs", drv.outputs}};
+                          {"outputs", drv.outputs},
+                          {"inputDrvs", drv.inputDrvs}};
 
     if (drv.meta.has_value()) {
         json["meta"] = drv.meta.value();
