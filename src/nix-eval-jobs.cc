@@ -328,7 +328,8 @@ static void worker(ref<EvalState> state, Bindings &autoArgs, AutoCloseFD &to,
                         const std::string &name = state->symbols[i->name];
                         attrs.push_back(name);
 
-                        if (name == "recurseForDerivations") {
+                        if (name == "recurseForDerivations" &&
+                            !myArgs.forceRecurse) {
                             auto attrv =
                                 v->attrs->get(state->sRecurseForDerivations);
                             recurse = state->forceBool(
