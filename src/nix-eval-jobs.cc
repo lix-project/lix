@@ -140,7 +140,8 @@ static Value *releaseExprTopLevelValue(EvalState &state, Bindings &autoArgs) {
     Value vTop;
 
     if (myArgs.fromArgs) {
-        Expr *e = state.parseExprFromString(myArgs.releaseExpr, absPath("."));
+        Expr *e = state.parseExprFromString(
+            myArgs.releaseExpr, state.rootPath(CanonPath::fromCwd()));
         state.eval(e, vTop);
     } else {
         state.evalFile(lookupFileArg(state, myArgs.releaseExpr), vTop);
@@ -202,7 +203,7 @@ struct Drv {
         if (myArgs.meta) {
             nlohmann::json meta_;
             for (auto &metaName : drvInfo.queryMetaNames()) {
-                PathSet context;
+                NixStringContext context;
                 std::stringstream ss;
 
                 auto metaValue = drvInfo.queryMeta(metaName);
