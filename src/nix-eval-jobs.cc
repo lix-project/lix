@@ -84,11 +84,11 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
                  .labels = {"path"},
                  .handler = {&gcRootsDir}});
 
-        addFlag(
-            {.longName = "workers",
-             .description = "number of evaluate workers",
-             .labels = {"workers"},
-             .handler = {[=](std::string s) { nrWorkers = std::stoi(s); }}});
+        addFlag({.longName = "workers",
+                 .description = "number of evaluate workers",
+                 .labels = {"workers"},
+                 .handler = {
+                     [=, this](std::string s) { nrWorkers = std::stoi(s); }}});
 
         addFlag(
             {.longName = "max-memory-size",
@@ -96,7 +96,7 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
                  "maximum evaluation memory size (4GiB per worker by default)",
              .labels = {"size"},
              .handler = {
-                 [=](std::string s) { maxMemorySize = std::stoi(s); }}});
+                 [=, this](std::string s) { maxMemorySize = std::stoi(s); }}});
 
         addFlag({.longName = "flake",
                  .description = "build a flake",
