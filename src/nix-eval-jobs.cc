@@ -84,11 +84,11 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
                  .labels = {"path"},
                  .handler = {&gcRootsDir}});
 
-        addFlag(
-            {.longName = "workers",
-             .description = "number of evaluate workers",
-             .labels = {"workers"},
-             .handler = {[=](std::string s) { nrWorkers = std::stoi(s); }}});
+        addFlag({.longName = "workers",
+                 .description = "number of evaluate workers",
+                 .labels = {"workers"},
+                 .handler = {
+                     [=, this](std::string s) { nrWorkers = std::stoi(s); }}});
 
         addFlag(
             {.longName = "max-memory-size",
@@ -96,7 +96,7 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
                  "maximum evaluation memory size (4GiB per worker by default)",
              .labels = {"size"},
              .handler = {
-                 [=](std::string s) { maxMemorySize = std::stoi(s); }}});
+                 [=, this](std::string s) { maxMemorySize = std::stoi(s); }}});
 
         addFlag({.longName = "flake",
                  .description = "build a flake",
@@ -140,7 +140,8 @@ static Value *releaseExprTopLevelValue(EvalState &state, Bindings &autoArgs) {
     Value vTop;
 
     if (myArgs.fromArgs) {
-        Expr *e = state.parseExprFromString(myArgs.releaseExpr, absPath("."));
+        Expr *e = state.parseExprFromString(
+            myArgs.releaseExpr, state.rootPath(CanonPath::fromCwd()));
         state.eval(e, vTop);
     } else {
         state.evalFile(lookupFileArg(state, myArgs.releaseExpr), vTop);
@@ -202,7 +203,7 @@ struct Drv {
         if (myArgs.meta) {
             nlohmann::json meta_;
             for (auto &metaName : drvInfo.queryMetaNames()) {
-                PathSet context;
+                NixStringContext context;
                 std::stringstream ss;
 
                 auto metaValue = drvInfo.queryMeta(metaName);
