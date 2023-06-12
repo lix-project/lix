@@ -1,15 +1,21 @@
-pull_request_rules:
-  - name: automatic merge on CI success
-    conditions:
+queue_rules:
+  - name: default
+    merge_conditions:
       - check-success=Evaluate flake.nix
-      - check-success=package nix-eval-jobs [x86_64-linux]
-      - check-success=devShell default [x86_64-linux]
       - check-success=check treefmt [x86_64-linux]
+      - check-success=devShell default [x86_64-linux]
       - check-success=package default [x86_64-linux]
-      - check-success=tests (ubuntu-latest)
+      - check-success=package nix-eval-jobs [x86_64-linux]
       - check-success=tests (macos-latest)
-      - author=nix-eval-jobs-bot
+      - check-success=tests (ubuntu-latest)
+defaults:
+  actions:
+    queue:
+      allow_merging_configuration_change: true
+pull_request_rules:
+  - name: merge using the merge queue
+    conditions:
+      - base=main
+      - label=merge-queue
     actions:
-      merge:
-        method: merge
-      delete_head_branch: {}
+      queue: {}

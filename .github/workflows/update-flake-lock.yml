@@ -19,3 +19,5 @@ jobs:
         uses: DeterminateSystems/update-flake-lock@v19
         with:
           token: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
+          pr-labels: |                  # Labels to be set on the PR
+            merge-queue
