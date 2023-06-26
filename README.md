@@ -117,6 +117,8 @@ this value as needed. For example, if you have a system with a lot of memory
 and want to speed up the evaluation, you may want to increase the memory limit
 to allow workers to cache more data in memory before getting restarted by
 nix-eval-jobs.
+Note that this is not a hard limit and memory usage may rise above the limit momentarily
+before the worker process exits.
 
 Overall, tuning these options can help you optimize the performance and memory
 usage of nix-eval-jobs to better fit your system and evaluation needs.
