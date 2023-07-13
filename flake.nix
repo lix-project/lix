@@ -31,6 +31,7 @@
           in
           {
             packages.nix-eval-jobs = pkgs.callPackage ./default.nix drvArgs;
+            packages.clangStdenv-nix-eval-jobs = pkgs.callPackage ./default.nix (drvArgs // { stdenv = pkgs.clangStdenv; });
 
             checks.treefmt = pkgs.stdenv.mkDerivation {
               name = "treefmt-check";

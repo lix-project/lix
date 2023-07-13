@@ -1,36 +1,31 @@
 { stdenv
 , lib
 , nix
-, meson
-, cmake
-, ninja
-, pkg-config
-, boost
-, nlohmann_json
+, pkgs
 , srcDir ? null
 }:
 
 let
-  filterMesonBuild = dir: builtins.filterSource
-    (path: type: type != "directory" || baseNameOf path != "build")
-    dir;
+  filterMesonBuild = builtins.filterSource
+    (path: type: type != "directory" || baseNameOf path != "build");
 in
-stdenv.mkDerivation rec {
+stdenv.mkDerivation {
   pname = "nix-eval-jobs";
   version = "2.16.0";
   src = if srcDir == null then filterMesonBuild ./. else srcDir;
-  buildInputs = [
+  buildInputs = with pkgs; [
     nlohmann_json
     nix
     boost
   ];
-  nativeBuildInputs = [
+  nativeBuildInputs = with pkgs; [
+    bear
     meson
     pkg-config
     ninja
     # nlohmann_json can be only discovered via cmake files
     cmake
-  ];
+  ] ++ (lib.optional stdenv.cc.isClang [ pkgs.bear pkgs.clang-tools ]);
 
   meta = {
     description = "Hydra's builtin hydra-eval-jobs as a standalone";
