@@ -154,12 +154,6 @@ static Value *releaseExprTopLevelValue(EvalState &state, Bindings &autoArgs) {
     return vRoot;
 }
 
-Value *topLevelValue(EvalState &state, Bindings &autoArgs,
-                     std::optional<InstallableFlake> flake) {
-    return flake.has_value() ? flake.value().toValue(state).first
-                             : releaseExprTopLevelValue(state, autoArgs);
-}
-
 bool queryIsCached(Store &store, std::map<std::string, std::string> &outputs) {
     uint64_t downloadSize, narSize;
     StorePathSet willBuild, willSubstitute, unknown;
@@ -264,22 +258,25 @@ std::string attrPathJoin(json input) {
 static void worker(ref<EvalState> state, Bindings &autoArgs, AutoCloseFD &to,
                    AutoCloseFD &from) {
 
-    std::optional<InstallableFlake> flake;
-    if (myArgs.flake) {
-        auto [flakeRef, fragment, outputSpec] =
-            parseFlakeRefWithFragmentAndExtendedOutputsSpec(myArgs.releaseExpr,
-                                                            absPath("."));
+    nix::Value *vRoot = [&]() {
+        if (myArgs.flake) {
+            auto [flakeRef, fragment, outputSpec] =
+                parseFlakeRefWithFragmentAndExtendedOutputsSpec(myArgs.releaseExpr,
+                                                                absPath("."));
+            InstallableFlake flake {
+                {}, state, std::move(flakeRef), fragment,
+                outputSpec, {}, {},
+                flake::LockFlags{
+                    .updateLockFile = false,
+                    .useRegistries = false,
+                    .allowUnlocked = false,
+                }};
 
-        flake.emplace(InstallableFlake({}, state, std::move(flakeRef), fragment,
-                                       outputSpec, {}, {},
-                                       flake::LockFlags{
-                                           .updateLockFile = false,
-                                           .useRegistries = false,
-                                           .allowUnlocked = false,
-                                       }));
-    };
-
-    auto vRoot = topLevelValue(*state, autoArgs, flake);
+            return flake.toValue(*state).first;
+        } else {
+            return releaseExprTopLevelValue(*state, autoArgs);
+        }
+    }();
 
     while (true) {
         /* Wait for the collector to send us a job name. */
