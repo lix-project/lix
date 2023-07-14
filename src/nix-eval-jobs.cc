@@ -53,6 +53,14 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
     size_t nrWorkers = 1;
     size_t maxMemorySize = 4096;
 
+    // usually in MixFlakeOptions
+    flake::LockFlags lockFlags = {
+        .updateLockFile = false,
+        .writeLockFile = false,
+        .useRegistries = false,
+        .allowUnlocked = false
+    };
+
     MyArgs() : MixCommonArgs("nix-eval-jobs") {
         addFlag({
             .longName = "help",
@@ -124,6 +132,21 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
                  .shortName = 'E',
                  .description = "treat the argument as a Nix expression",
                  .handler = {&fromArgs, true}});
+
+        // usually in MixFlakeOptions
+        addFlag({
+            .longName = "override-input",
+            .description = "Override a specific flake input (e.g. `dwarffs/nixpkgs`).",
+            .category = category,
+            .labels = {"input-path", "flake-url"},
+            .handler = {[&](std::string inputPath, std::string flakeRef) {
+                // overriden inputs are unlocked
+                lockFlags.allowUnlocked = true;
+                lockFlags.inputOverrides.insert_or_assign(
+                    flake::parseInputPath(inputPath),
+                    parseFlakeRef(flakeRef, absPath("."), true));
+            }},
+        });
 
         expectArg("expr", &releaseExpr);
     }
@@ -265,12 +288,8 @@ static void worker(ref<EvalState> state, Bindings &autoArgs, AutoCloseFD &to,
                                                                 absPath("."));
             InstallableFlake flake {
                 {}, state, std::move(flakeRef), fragment,
-                outputSpec, {}, {},
-                flake::LockFlags{
-                    .updateLockFile = false,
-                    .useRegistries = false,
-                    .allowUnlocked = false,
-                }};
+                outputSpec, {}, {}, myArgs.lockFlags
+            };
 
             return flake.toValue(*state).first;
         } else {
