@@ -55,7 +55,8 @@ def test_flake() -> None:
 
 def test_query_cache_status() -> None:
     results = common_test(["--flake", ".#hydraJobs", "--check-cache-status"])
-    # FIXME in the nix sandbox we cannot query binary caches, this would need some local one
+    # FIXME in the nix sandbox we cannot query binary caches
+    # this would need some local one
     for result in results:
         assert "isCached" in result
 
