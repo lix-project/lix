@@ -26,7 +26,6 @@
         imports = [ inputs.treefmt-nix.flakeModule ];
         perSystem = { pkgs, self', ... }:
           let
-            devShell = self'.devShells.default;
             drvArgs = {
               srcDir = self;
               nix = if nixVersion == "unstable" then pkgs.nixUnstable else pkgs.nixVersions."nix_${nixVersion}";
