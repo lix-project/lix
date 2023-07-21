@@ -4,6 +4,8 @@
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/master";
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
   inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
+  inputs.treefmt-nix.url = "github:numtide/treefmt-nix";
+  inputs.treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
 
   nixConfig.extra-substituters = [
     "https://cache.garnix.io"
@@ -21,6 +23,7 @@
     flake-parts.lib.mkFlake { inherit inputs; }
       {
         systems = inputs.nixpkgs.lib.systems.flakeExposed;
+        imports = [ inputs.treefmt-nix.flakeModule ];
         perSystem = { pkgs, self', ... }:
           let
             devShell = self'.devShells.default;
@@ -30,24 +33,9 @@
             };
           in
           {
+            treefmt.imports = [ ./dev/treefmt.nix ];
             packages.nix-eval-jobs = pkgs.callPackage ./default.nix drvArgs;
             packages.clangStdenv-nix-eval-jobs = pkgs.callPackage ./default.nix (drvArgs // { stdenv = pkgs.clangStdenv; });
-
-            checks.treefmt = pkgs.stdenv.mkDerivation {
-              name = "treefmt-check";
-              src = self;
-              nativeBuildInputs = devShell.nativeBuildInputs;
-              dontConfigure = true;
-
-              inherit (devShell) NODE_PATH;
-
-              buildPhase = ''
-                env HOME=$(mktemp -d) treefmt --fail-on-change
-              '';
-
-              installPhase = "touch $out";
-            };
-
             packages.default = self'.packages.nix-eval-jobs;
             devShells.default = pkgs.callPackage ./shell.nix drvArgs;
           };
