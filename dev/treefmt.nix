@@ -5,7 +5,7 @@
   programs.prettier.enable = true;
   programs.prettier.package = pkgs.writeShellScriptBin "prettier" ''
     export NODE_PATH=${pkgs.nodePackages.prettier-plugin-toml}/lib/node_modules
-    exec ${lib.getExe pkgs.nodePackages.prettier} "$@"
+    exec ${pkgs.nodePackages.prettier}/bin/prettier "$@"
   '';
 
   programs.clang-format.enable = true;
@@ -16,13 +16,13 @@
       options = [
         "-eucx"
         ''
-          ${pkgs.lib.getExe pkgs.deadnix} --edit "$@"
+          ${pkgs.deadnix}/bin/deadnix --edit "$@"
 
           for i in "$@"; do
-            ${pkgs.lib.getExe pkgs.statix} fix "$i"
+            ${pkgs.statix}/bin/statix fix "$i"
           done
 
-          ${pkgs.lib.getExe pkgs.nixpkgs-fmt} "$@"
+          ${pkgs.nixpkgs-fmt}/bin/nixpkgs-fmt "$@"
         ''
         "--"
       ];
@@ -39,8 +39,8 @@
       options = [
         "-eucx"
         ''
-          ${pkgs.lib.getExe pkgs.python3.pkgs.black} "$@"
-          ${pkgs.lib.getExe pkgs.ruff} --fix "$@"
+          ${pkgs.python3.pkgs.black}/bin/black "$@"
+          ${pkgs.ruff}/bin/ruff --fix "$@"
         ''
         "--" # this argument is ignored by bash
       ];
