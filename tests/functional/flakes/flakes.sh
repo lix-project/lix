@@ -79,6 +79,10 @@ nix registry add --registry $registry nixpkgs flake1
 nix registry list | grep        '^global'
 nix registry list | grepInverse '^user' # nothing in user registry
 
+# Test fuzzy and exact flake attribute syntax.
+expectStderr 1 nix eval flake1#ERROR | grepQuiet "error:.*does not provide attribute.*or 'ERROR'$"
+expectStderr 1 nix eval flake1#.ERROR | grepQuiet "error:.*does not provide attribute 'ERROR'$"
+
 # Test 'nix flake metadata'.
 nix flake metadata flake1
 nix flake metadata flake1 | grepQuiet 'Locked URL:.*flake1.*'
