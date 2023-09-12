@@ -96,13 +96,13 @@ struct MyArgs : MixEvalArgs, MixCommonArgs {
                  .handler = {
                      [=, this](std::string s) { nrWorkers = std::stoi(s); }}});
 
-        addFlag(
-            {.longName = "max-memory-size",
-             .description =
-                 "maximum evaluation memory size (4GiB per worker by default)",
-             .labels = {"size"},
-             .handler = {
-                 [=, this](std::string s) { maxMemorySize = std::stoi(s); }}});
+        addFlag({.longName = "max-memory-size",
+                 .description = "maximum evaluation memory size in megabyte "
+                                "(4GiB per worker by default)",
+                 .labels = {"size"},
+                 .handler = {[=, this](std::string s) {
+                     maxMemorySize = std::stoi(s);
+                 }}});
 
         addFlag({.longName = "flake",
                  .description = "build a flake",
@@ -201,8 +201,11 @@ struct Drv {
     std::optional<nlohmann::json> meta;
 
     Drv(EvalState &state, DrvInfo &drvInfo) {
-        if (drvInfo.querySystem() == "unknown")
-            throw EvalError("derivation must have a 'system' attribute");
+        name = drvInfo.queryName();
+        system = drvInfo.querySystem();
+        if (system == "unknown")
+            throw EvalError("derivation '" + name +
+                            "' must have a 'system' attribute");
 
         auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
 
@@ -239,8 +242,6 @@ struct Drv {
             isCached = queryIsCached(*localStore, outputs);
         }
 
-        name = drvInfo.queryName();
-        system = drvInfo.querySystem();
         drvPath = localStore->printStorePath(drvInfo.requireDrvPath());
 
         auto drv = localStore->readDerivation(drvInfo.requireDrvPath());
