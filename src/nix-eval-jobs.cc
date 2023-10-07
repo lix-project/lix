@@ -201,11 +201,6 @@ struct Drv {
     std::optional<nlohmann::json> meta;
 
     Drv(EvalState &state, DrvInfo &drvInfo) {
-        name = drvInfo.queryName();
-        system = drvInfo.querySystem();
-        if (system == "unknown")
-            throw EvalError("derivation '" + name +
-                            "' must have a 'system' attribute");
 
         auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
 
@@ -248,6 +243,8 @@ struct Drv {
         for (auto &input : drv.inputDrvs) {
             inputDrvs[localStore->printStorePath(input.first)] = input.second;
         }
+        name = drvInfo.queryName();
+        system = drv.platform;
     }
 };
 
