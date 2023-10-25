@@ -3,13 +3,14 @@
 
 #include "types.hh"
 #include "hash.hh"
+#include "canon-path.hh"
 #include "path.hh"
 #include "attrs.hh"
 #include "url.hh"
 
 #include <memory>
 
-namespace nix { class Store; }
+namespace nix { class Store; class StorePath; }
 
 namespace nix::fetchers {
 
@@ -97,8 +98,13 @@ public:
 
     std::optional<Path> getSourcePath() const;
 
-    void markChangedFile(
-        std::string_view file,
+    /**
+     * Write a file to this input, for input types that support
+     * writing. Optionally commit the change (for e.g. Git inputs).
+     */
+    void putFile(
+        const CanonPath & path,
+        std::string_view contents,
         std::optional<std::string> commitMsg) const;
 
     std::string getName() const;
@@ -144,9 +150,13 @@ struct InputScheme
 
     virtual void clone(const Input & input, const Path & destDir) const;
 
-    virtual std::optional<Path> getSourcePath(const Input & input);
+    virtual std::optional<Path> getSourcePath(const Input & input) const;
 
-    virtual void markChangedFile(const Input & input, std::string_view file, std::optional<std::string> commitMsg);
+    virtual void putFile(
+        const Input & input,
+        const CanonPath & path,
+        std::string_view contents,
+        std::optional<std::string> commitMsg) const;
 
     virtual std::pair<StorePath, Input> fetch(ref<Store> store, const Input & input) = 0;
 };
