@@ -77,7 +77,7 @@ git -C $flakeFollowsA add flake.nix flakeB/flake.nix \
 
 nix flake metadata $flakeFollowsA
 
-nix flake update $flakeFollowsA
+nix flake update --flake $flakeFollowsA
 
 nix flake lock $flakeFollowsA
 
@@ -228,5 +228,5 @@ git -C "$flakeFollowsOverloadA" add flake.nix flakeB/flake.nix \
   flakeB/flakeC/flake.nix flakeB/flakeC/flakeD/flake.nix
 
 nix flake metadata "$flakeFollowsOverloadA"
-nix flake update "$flakeFollowsOverloadA"
+nix flake update --flake "$flakeFollowsOverloadA"
 nix flake lock "$flakeFollowsOverloadA"
