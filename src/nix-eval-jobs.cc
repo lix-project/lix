@@ -241,8 +241,13 @@ struct Drv {
         drvPath = localStore->printStorePath(drvInfo.requireDrvPath());
 
         auto drv = localStore->readDerivation(drvInfo.requireDrvPath());
-        for (auto &input : drv.inputDrvs) {
-            inputDrvs[localStore->printStorePath(input.first)] = input.second;
+        for (const auto &[inputDrvPath, inputNode] : drv.inputDrvs.map) {
+            std::set<std::string> inputDrvOutputs;
+            for (auto &outputName : inputNode.value) {
+                inputDrvOutputs.insert(outputName);
+            }
+            inputDrvs[localStore->printStorePath(inputDrvPath)] =
+                inputDrvOutputs;
         }
         name = drvInfo.queryName();
         system = drv.platform;
