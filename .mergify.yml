@@ -3,11 +3,13 @@ queue_rules:
     merge_conditions:
       - author=renovate[bot]
       - check-success=collect
+
 defaults:
   actions:
     queue:
       allow_merging_configuration_change: true
       method: rebase
+
 pull_request_rules:
   - name: merge using the merge queue
     conditions:
