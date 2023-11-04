@@ -6,13 +6,8 @@
   inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
   inputs.treefmt-nix.url = "github:numtide/treefmt-nix";
   inputs.treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
-
-  nixConfig.extra-substituters = [
-    "https://cache.garnix.io"
-  ];
-  nixConfig.extra-trusted-public-keys = [
-    "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
-  ];
+  inputs.nix-github-actions.url = "github:nix-community/nix-github-actions";
+  inputs.nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
 
   outputs = inputs @ { flake-parts, ... }:
     let
@@ -24,6 +19,14 @@
       {
         systems = inputs.nixpkgs.lib.systems.flakeExposed;
         imports = [ inputs.treefmt-nix.flakeModule ];
+
+        flake.githubActions = inputs.nix-github-actions.lib.mkGithubMatrix {
+          checks = {
+            inherit (self.checks) x86_64-linux;
+            x86_64-darwin = builtins.removeAttrs self.checks.x86_64-darwin [ "treefmt" ];
+          };
+        };
+
         perSystem = { pkgs, self', ... }:
           let
             drvArgs = {
@@ -37,6 +40,10 @@
             packages.clangStdenv-nix-eval-jobs = pkgs.callPackage ./default.nix (drvArgs // { stdenv = pkgs.clangStdenv; });
             packages.default = self'.packages.nix-eval-jobs;
             devShells.default = pkgs.callPackage ./shell.nix drvArgs;
+
+            checks = builtins.removeAttrs self'.packages [ "default" ] // {
+              shell = self'.devShells.default;
+            };
           };
       };
 }

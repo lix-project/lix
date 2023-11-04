@@ -1,18 +1,15 @@
 queue_rules:
   - name: default
     merge_conditions:
-      - check-success=Evaluate flake.nix
-      - check-success=check treefmt [x86_64-linux]
-      - check-success=devShell default [x86_64-linux]
-      - check-success=package default [x86_64-linux]
-      - check-success=package nix-eval-jobs [x86_64-linux]
-      - check-success=tests (macos-latest)
-      - check-success=tests (ubuntu-latest)
+      - author=renovate[bot]
+      - check-success=collect
+
 defaults:
   actions:
     queue:
       allow_merging_configuration_change: true
       method: rebase
+
 pull_request_rules:
   - name: merge using the merge queue
     conditions:
