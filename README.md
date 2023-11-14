@@ -1,6 +1,6 @@
 # nix-eval-jobs
 
-This project evaluates nix attributes sets in parallel with streamable json
+This project evaluates nix attribute sets in parallel with streamable json
 output.  This is useful for time and memory intensive evaluations such as NixOS
 machines, i.e. in a CI context.  The evaluation is done with a controllable
 number of threads that are restarted when their memory consumption exceeds a
