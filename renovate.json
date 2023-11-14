@@ -9,6 +9,7 @@
       "schedule:weekly"
     ]
   },
+  "labels": ["dependencies"],
   "nix": {
     "enabled": true
   }
