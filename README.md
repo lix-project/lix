@@ -89,6 +89,8 @@ latest release branch.
 
 ## Projects using nix-eval-jobs
 
+- [nix-fast-build](https://github.com/Mic92/nix-fast-build) - Combine the power of nix-eval-jobs with nix-output-monitor to speed-up your evaluation and building process
+- [buildbot-nix](https://github.com/Mic92/buildbot-nix) -  A nixos module to make buildbot a proper Nix-CI
 - [colmena](https://github.com/zhaofengli/colmena) -  A simple, stateless NixOS deployment tool
 - [robotnix](https://github.com/danielfullmer/robotnix) -  Build Android (AOSP) using Nix, used in their [CI](https://github.com/danielfullmer/robotnix/blob/38b80700ee4265c306dcfdcce45056e32ab2973f/.github/workflows/instantiate.yml#L18)
 
