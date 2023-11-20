@@ -1,7 +1,6 @@
 queue_rules:
   - name: default
     merge_conditions:
-      - author=renovate[bot]
       - check-success=collect
 
 defaults:
