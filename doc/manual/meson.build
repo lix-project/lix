@@ -197,6 +197,8 @@ endforeach
 nix3_manpages = [
   'nix3-build',
   'nix3-bundle',
+  'nix3-config',
+  'nix3-config-show',
   'nix3-copy',
   'nix3-daemon',
   'nix3-derivation-add',
@@ -258,7 +260,6 @@ nix3_manpages = [
   'nix3-run',
   'nix3-search',
   'nix3-shell',
-  'nix3-show-config',
   'nix3-store-add-file',
   'nix3-store-add-path',
   'nix3-store-cat',
