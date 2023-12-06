@@ -21,6 +21,8 @@
 #include <nix/logging.hh>
 #include <nix/error.hh>
 #include <nix/installables.hh>
+#include <nix/signals.hh>
+#include <nix/terminal.hh>
 #include <nix/path-with-outputs.hh>
 #include <nix/installable-flake.hh>
 
