@@ -43,7 +43,7 @@ using namespace nlohmann;
 #elif __clang__
 #pragma clang diagnostic ignored "-Wnon-virtual-dtor"
 #endif
-struct MyArgs : MixEvalArgs, MixCommonArgs {
+struct MyArgs : virtual MixEvalArgs, virtual MixCommonArgs, virtual RootArgs {
     std::string releaseExpr;
     Path gcRootsDir;
     bool flake = false;
@@ -545,7 +545,7 @@ int main(int argc, char **argv) {
         initNix();
         initGC();
 
-        myArgs.parseCmdline(argvToStrings(argc, argv));
+        myArgs.parseCmdline(argvToStrings(argc, argv), 0);
 
         /* FIXME: The build hook in conjunction with import-from-derivation is
          * causing "unexpected EOF" during eval */
