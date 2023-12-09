@@ -1,25 +1,27 @@
 # nix-eval-jobs
 
 This project evaluates nix attribute sets in parallel with streamable json
-output.  This is useful for time and memory intensive evaluations such as NixOS
-machines, i.e. in a CI context.  The evaluation is done with a controllable
+output. This is useful for time and memory intensive evaluations such as NixOS
+machines, i.e. in a CI context. The evaluation is done with a controllable
 number of threads that are restarted when their memory consumption exceeds a
 certain threshold.
 
 To facilitate integration, nix-eval-jobs creates garbage collection roots for
 each evaluated derivation (drv file, not the build) within the provided
-attribute.  This prevents race conditions between the nix garbage collection
+attribute. This prevents race conditions between the nix garbage collection
 service and user-started nix builds processes.
 
 ## Why using nix-eval-jobs?
 
 - Faster evaluation by using threads
-- Memory used for evaluation is reclaimed after nix-eval-jobs finish, so that the build can use it.
+- Memory used for evaluation is reclaimed after nix-eval-jobs finish, so that
+  the build can use it.
 - Evaluation of jobs can fail individually
 
 ## Example
 
-In the following example we evaluate the hydraJobs attribute of the [patchelf](https://github.com/NixOS/patchelf) flake:
+In the following example we evaluate the hydraJobs attribute of the
+[patchelf](https://github.com/NixOS/patchelf) flake:
 
 ```console
 $ nix-eval-jobs --gc-roots-dir gcroot --flake 'github:NixOS/patchelf#hydraJobs'
@@ -30,11 +32,12 @@ $ nix-eval-jobs --gc-roots-dir gcroot --flake 'github:NixOS/patchelf#hydraJobs'
 
 The output here is newline-seperated json according to https://jsonlines.org.
 
-The code is derived from [hydra's](https://github.com/nixos/hydra) eval-jobs executable.
+The code is derived from [hydra's](https://github.com/nixos/hydra) eval-jobs
+executable.
 
 ## Further options
 
-``` console
+```console
 $ nix-eval-jobs --help
 USAGE: nix-eval-jobs [options] expr
 
@@ -60,11 +63,10 @@ USAGE: nix-eval-jobs [options] expr
   --workers              number of evaluate workers
 ```
 
-
 ## Potential use-cases for the tool
 
 **Faster evaluator in deployment tools.** When evaluating NixOS machines,
-evaluation can take several minutes when run on a single core.  This limits
+evaluation can take several minutes when run on a single core. This limits
 scalability for large deployments with deployment tools such as
 [NixOps](https://github.com/NixOS/nixops).
 
@@ -77,7 +79,6 @@ single large log file. In the
 [wiki](https://github.com/nix-community/nix-eval-jobs/wiki#ci-example-configurations)
 we collect example ci configuration for various CIs.
 
-
 ## Organisation of this repository
 
 On the `main` branch we target nixUnstable. When a release of nix happens, we
@@ -86,41 +87,44 @@ fork for a release branch i.e. `release-2.8` and change the nix version in
 to these release branches. At the time of writing we only intent to support the
 latest release branch.
 
-
 ## Projects using nix-eval-jobs
 
-- [nix-fast-build](https://github.com/Mic92/nix-fast-build) - Combine the power of nix-eval-jobs with nix-output-monitor to speed-up your evaluation and building process
-- [buildbot-nix](https://github.com/Mic92/buildbot-nix) -  A nixos module to make buildbot a proper Nix-CI
-- [colmena](https://github.com/zhaofengli/colmena) -  A simple, stateless NixOS deployment tool
-- [robotnix](https://github.com/danielfullmer/robotnix) -  Build Android (AOSP) using Nix, used in their [CI](https://github.com/danielfullmer/robotnix/blob/38b80700ee4265c306dcfdcce45056e32ab2973f/.github/workflows/instantiate.yml#L18)
+- [nix-fast-build](https://github.com/Mic92/nix-fast-build) - Combine the power
+  of nix-eval-jobs with nix-output-monitor to speed-up your evaluation and
+  building process
+- [buildbot-nix](https://github.com/Mic92/buildbot-nix) - A nixos module to make
+  buildbot a proper Nix-CI
+- [colmena](https://github.com/zhaofengli/colmena) - A simple, stateless NixOS
+  deployment tool
+- [robotnix](https://github.com/danielfullmer/robotnix) - Build Android (AOSP)
+  using Nix, used in their
+  [CI](https://github.com/danielfullmer/robotnix/blob/38b80700ee4265c306dcfdcce45056e32ab2973f/.github/workflows/instantiate.yml#L18)
 
 ## FAQ
 
 ### nix-eval-jobs consumes too much memory / is too slow
 
-By default, nix-eval-jobs spawns as many worker processes as there are
-hardware threads in the system and limits the memory usage for each worker to
-4GB.
+By default, nix-eval-jobs spawns as many worker processes as there are hardware
+threads in the system and limits the memory usage for each worker to 4GB.
 
 However, keep in mind that each worker process may need to re-evaluate shared
 dependencies of the attributes, which can introduce some overhead for each
-evaluation or cause workers to exceed their memory limit. If you encounter
-these situations, you can tune the following options:
+evaluation or cause workers to exceed their memory limit. If you encounter these
+situations, you can tune the following options:
 
 `--workers`: This option allows you to set the number of evaluation workers that
-nix-eval-jobs should spawn. You can increase or decrease this number to
-optimize the evaluation speed and memory usage. For example, if you have a
-system with many CPU cores but limited memory, you may want to reduce the
-number of workers to avoid exceeding the memory limit.
+nix-eval-jobs should spawn. You can increase or decrease this number to optimize
+the evaluation speed and memory usage. For example, if you have a system with
+many CPU cores but limited memory, you may want to reduce the number of workers
+to avoid exceeding the memory limit.
 
 `--max-memory-size`: This option allows you to adjust the memory limit for each
 worker process. By default, it's set to 4GiB, but you can increase or decrease
-this value as needed. For example, if you have a system with a lot of memory
-and want to speed up the evaluation, you may want to increase the memory limit
-to allow workers to cache more data in memory before getting restarted by
-nix-eval-jobs.
-Note that this is not a hard limit and memory usage may rise above the limit momentarily
-before the worker process exits.
+this value as needed. For example, if you have a system with a lot of memory and
+want to speed up the evaluation, you may want to increase the memory limit to
+allow workers to cache more data in memory before getting restarted by
+nix-eval-jobs. Note that this is not a hard limit and memory usage may rise
+above the limit momentarily before the worker process exits.
 
 Overall, tuning these options can help you optimize the performance and memory
 usage of nix-eval-jobs to better fit your system and evaluation needs.

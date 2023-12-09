@@ -1,12 +1,8 @@
-{ pkgs, lib, ... }: {
+{ pkgs, ... }: {
   # Used to find the project root
   projectRootFile = "flake.lock";
 
-  programs.prettier.enable = true;
-  programs.prettier.package = pkgs.writeShellScriptBin "prettier" ''
-    export NODE_PATH=${pkgs.nodePackages.prettier-plugin-toml}/lib/node_modules
-    exec ${pkgs.nodePackages.prettier}/bin/prettier "$@"
-  '';
+  programs.deno.enable = true;
 
   programs.clang-format.enable = true;
 
@@ -31,8 +27,6 @@
     };
 
     clang-format = { };
-
-    prettier.includes = lib.mkForce [ "*.toml" ];
 
     python = {
       command = "sh";
