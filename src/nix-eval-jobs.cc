@@ -129,7 +129,7 @@ void collector(Sync<State> &state_, std::condition_variable &wakeup) {
 
             /* Check whether the existing worker process is still there. */
             auto s = fromReader->readLine();
-            if (s == "") {
+            if (s.empty()) {
                 handleBrokenWorkerPipe(*proc.get());
             } else if (s == "restart") {
                 proc_ = std::nullopt;
@@ -140,8 +140,9 @@ void collector(Sync<State> &state_, std::condition_variable &wakeup) {
                     auto json = json::parse(s);
                     throw Error("worker error: %s", (std::string)json["error"]);
                 } catch (const json::exception &e) {
-                    throw Error("Received invalid JSON from worker: %s '%s'",
-                                e.what(), s);
+                    throw Error(
+                        "Received invalid JSON from worker: %s\n json: '%s'",
+                        e.what(), s);
                 }
             }
 
@@ -174,15 +175,16 @@ void collector(Sync<State> &state_, std::condition_variable &wakeup) {
 
             /* Wait for the response. */
             auto respString = fromReader->readLine();
-            if (respString == "") {
+            if (respString.empty()) {
                 handleBrokenWorkerPipe(*proc.get());
             }
             json response;
             try {
                 response = json::parse(respString);
             } catch (const json::exception &e) {
-                throw Error("Received invalid JSON from worker: %s '%s'",
-                            e.what(), respString);
+                throw Error(
+                    "Received invalid JSON from worker: %s\n json: '%s'",
+                    e.what(), respString);
             }
 
             /* Handle the response. */
