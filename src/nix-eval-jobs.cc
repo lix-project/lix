@@ -1,4 +1,5 @@
 #include <map>
+#include <sys/signal.h>
 #include <thread>
 #include <condition_variable>
 #include <filesystem>
@@ -85,23 +86,23 @@ struct State {
 };
 
 void handleBrokenWorkerPipe(Proc &proc) {
+    // we already took the process status from Proc, no
+    // need to wait for it again to avoid error messages
+    pid_t pid = proc.pid.release();
     while (1) {
-        int rc = waitpid(proc.pid, nullptr, WNOHANG);
+        int rc = waitpid(pid, nullptr, WNOHANG);
         if (rc == 0) {
-            proc.pid = -1; // we already took the process status from Proc, no
-                           // need to wait for it again to avoid error messages
+            kill(pid, SIGKILL);
             throw Error("BUG: worker pipe closed but worker still running?");
         } else if (rc == -1) {
-            proc.pid = -1;
+            kill(pid, SIGKILL);
             throw Error("BUG: waitpid waiting for worker failed: %s",
                         strerror(errno));
         } else {
             if (WIFEXITED(rc)) {
-                proc.pid = -1;
                 throw Error("evaluation worker exited with %d",
                             WEXITSTATUS(rc));
             } else if (WIFSIGNALED(rc)) {
-                proc.pid = -1;
                 if (WTERMSIG(rc) == SIGKILL) {
                     throw Error("evaluation worker killed by SIGKILL, maybe "
                                 "memory limit reached?");
