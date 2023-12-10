@@ -366,10 +366,14 @@ static void worker(ref<EvalState> state, Bindings &autoArgs, AutoCloseFD &to,
         }
 
         auto s = fromReader.readLine();
-        if (s == "exit")
+        if (s == "exit") {
             break;
-        if (!hasPrefix(s, "do "))
+        }
+        if (!hasPrefix(s, "do ")) {
+            fprintf(stderr, "worker error: received invalid command '%s'\n",
+                    s.data());
             abort();
+        }
         auto path = json::parse(s.substr(3));
         auto attrPathS = attrPathJoin(path);
 
