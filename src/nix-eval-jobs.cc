@@ -190,10 +190,6 @@ std::function<void()> collector(Sync<State> &state_,
                 json response;
                 try {
                     response = json::parse(respString);
-                    if (response.find("error") != response.end()) {
-                        throw Error("worker error: %s",
-                                    (std::string)response["error"]);
-                    }
                 } catch (const json::exception &e) {
                     throw Error("Received invalid JSON from worker: %s '%s'",
                                 e.what(), respString);
