@@ -27,12 +27,6 @@
 using namespace nix;
 using namespace nlohmann;
 
-// Safe to ignore - the args will be static.
-#ifdef __GNUC__
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#elif __clang__
-#pragma clang diagnostic ignored "-Wnon-virtual-dtor"
-#endif
 static MyArgs myArgs;
 
 typedef std::function<void(ref<EvalState> state, Bindings &autoArgs,
