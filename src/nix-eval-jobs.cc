@@ -11,18 +11,17 @@
 #include <nix/sync.hh>
 #include <nix/terminal.hh>
 #include <nix/eval.hh>
-#include <nix/path-with-outputs.hh>
 #include <nix/local-fs-store.hh>
 #include <nix/installable-flake.hh>
 #include <nix/get-drvs.hh>
 #include <nix/attr-path.hh>
 #include <nix/value-to-json.hh>
 #include <nix/signals.hh>
-#include <nix/derivations.hh>
 #include <sys/wait.h>
 #include <sys/resource.h>
 
 #include "eval-args.hh"
+#include "drv.hh"
 
 #include <nlohmann/json.hpp>
 
@@ -55,99 +54,6 @@ static Value *releaseExprTopLevelValue(EvalState &state, Bindings &autoArgs) {
     return vRoot;
 }
 
-bool queryIsCached(Store &store, std::map<std::string, std::string> &outputs) {
-    uint64_t downloadSize, narSize;
-    StorePathSet willBuild, willSubstitute, unknown;
-
-    std::vector<StorePathWithOutputs> paths;
-    for (auto const &[key, val] : outputs) {
-        paths.push_back(followLinksToStorePathWithOutputs(store, val));
-    }
-
-    store.queryMissing(toDerivedPaths(paths), willBuild, willSubstitute,
-                       unknown, downloadSize, narSize);
-    return willBuild.empty() && unknown.empty();
-}
-
-/* The fields of a derivation that are printed in json form */
-struct Drv {
-    std::string name;
-    std::string system;
-    std::string drvPath;
-    bool isCached;
-    std::map<std::string, std::string> outputs;
-    std::map<std::string, std::set<std::string>> inputDrvs;
-    std::optional<nlohmann::json> meta;
-
-    Drv(std::string &attrPath, EvalState &state, DrvInfo &drvInfo) {
-
-        auto localStore = state.store.dynamic_pointer_cast<LocalFSStore>();
-
-        try {
-            for (auto out : drvInfo.queryOutputs(true)) {
-                if (out.second)
-                    outputs[out.first] =
-                        localStore->printStorePath(*out.second);
-            }
-        } catch (const std::exception &e) {
-            throw EvalError("derivation '%s' does not have valid outputs: %s",
-                            attrPath, e.what());
-        }
-
-        if (myArgs.meta) {
-            nlohmann::json meta_;
-            for (auto &metaName : drvInfo.queryMetaNames()) {
-                NixStringContext context;
-                std::stringstream ss;
-
-                auto metaValue = drvInfo.queryMeta(metaName);
-                // Skip non-serialisable types
-                // TODO: Fix serialisation of derivations to store paths
-                if (metaValue == 0) {
-                    continue;
-                }
-
-                printValueAsJSON(state, true, *metaValue, noPos, ss, context);
-
-                meta_[metaName] = nlohmann::json::parse(ss.str());
-            }
-            meta = meta_;
-        }
-        if (myArgs.checkCacheStatus) {
-            isCached = queryIsCached(*localStore, outputs);
-        }
-
-        drvPath = localStore->printStorePath(drvInfo.requireDrvPath());
-
-        auto drv = localStore->readDerivation(drvInfo.requireDrvPath());
-        for (const auto &[inputDrvPath, inputNode] : drv.inputDrvs.map) {
-            std::set<std::string> inputDrvOutputs;
-            for (auto &outputName : inputNode.value) {
-                inputDrvOutputs.insert(outputName);
-            }
-            inputDrvs[localStore->printStorePath(inputDrvPath)] =
-                inputDrvOutputs;
-        }
-        name = drvInfo.queryName();
-        system = drv.platform;
-    }
-};
-
-static void to_json(nlohmann::json &json, const Drv &drv) {
-    json = nlohmann::json{{"name", drv.name},
-                          {"system", drv.system},
-                          {"drvPath", drv.drvPath},
-                          {"outputs", drv.outputs},
-                          {"inputDrvs", drv.inputDrvs}};
-
-    if (drv.meta.has_value()) {
-        json["meta"] = drv.meta.value();
-    }
-
-    if (myArgs.checkCacheStatus) {
-        json["isCached"] = drv.isCached;
-    }
-}
 
 std::string attrPathJoin(json input) {
     return std::accumulate(input.begin(), input.end(), std::string(),
@@ -267,7 +173,7 @@ static void worker(ref<EvalState> state, Bindings &autoArgs, AutoCloseFD &to,
 
             if (v->type() == nAttrs) {
                 if (auto drvInfo = getDerivation(*state, *v, false)) {
-                    auto drv = Drv(attrPathS, *state, *drvInfo);
+                    auto drv = Drv(attrPathS, *state, *drvInfo, myArgs);
                     reply.update(drv);
 
                     /* Register the derivation as a GC root.  !!! This
