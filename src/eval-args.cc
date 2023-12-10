@@ -88,6 +88,6 @@ MyArgs::MyArgs() : MixCommonArgs("nix-eval-jobs") {
     expectArg("expr", &releaseExpr);
 }
 
-void MyArgs::parseArgs(char** argv, int argc) {
+void MyArgs::parseArgs(char **argv, int argc) {
     parseCmdline(nix::argvToStrings(argc, argv), 0);
 }

@@ -6,9 +6,8 @@
 #include <nix/value-to-json.hh>
 #include <nix/derivations.hh>
 
-
 static bool queryIsCached(nix::Store &store,
-                   std::map<std::string, std::string> &outputs) {
+                          std::map<std::string, std::string> &outputs) {
     uint64_t downloadSize, narSize;
     nix::StorePathSet willBuild, willSubstitute, unknown;
 
@@ -23,7 +22,8 @@ static bool queryIsCached(nix::Store &store,
 }
 
 /* The fields of a derivation that are printed in json form */
-Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo, MyArgs &args) {
+Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
+         MyArgs &args) {
 
     auto localStore = state.store.dynamic_pointer_cast<nix::LocalFSStore>();
 
@@ -58,8 +58,9 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo, My
         meta = meta_;
     }
     if (args.checkCacheStatus) {
-        cacheStatus = queryIsCached(*localStore, outputs) ? Drv::CacheStatus::Cached
-                                                          : Drv::CacheStatus::Uncached;
+        cacheStatus = queryIsCached(*localStore, outputs)
+                          ? Drv::CacheStatus::Cached
+                          : Drv::CacheStatus::Uncached;
     } else {
         cacheStatus = Drv::CacheStatus::Unknown;
     }
