@@ -7,5 +7,7 @@
     in
     {
       hydraJobs = import ./ci.nix { inherit pkgs; };
+
+      legacyPackages.x86_64-linux.brokenPackage = throw "this is an evaluation error";
     };
 }

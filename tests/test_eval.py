@@ -68,3 +68,16 @@ def test_expression() -> None:
 
     with open(TEST_ROOT.joinpath("assets/ci.nix"), "r") as ci_nix:
         common_test(["-E", ci_nix.read()])
+
+def test_eval_error() -> None:
+    with TemporaryDirectory() as tempdir:
+        cmd = [str(BIN), "--gc-roots-dir", tempdir, "--meta", "--flake", ".#legacyPackages.x86_64-linux"]
+        res = subprocess.run(
+            cmd,
+            cwd=TEST_ROOT.joinpath("assets"),
+            text=True,
+            stdout=subprocess.PIPE,
+        )
+        attrs = json.loads(res.stdout)
+        assert attrs["attr"] == "brokenPackage"
+        assert "this is an evaluation error" in  attrs["error"]
