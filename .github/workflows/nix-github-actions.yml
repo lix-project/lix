@@ -47,7 +47,7 @@ jobs:
         extra_nix_config: |
           accept-flake-config = true
     - name: Build
-      run: nix develop -c bash -c 'meson build && cd build && ninja'
+      run: nix develop -c bash -c 'meson setup -Db_sanitize=address,undefined build && ninja -C build'
     - name: Run tests
       run: nix develop -c pytest ./tests
 
