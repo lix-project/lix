@@ -153,6 +153,12 @@ void worker(nix::ref<nix::EvalState> state, nix::Bindings &autoArgs,
             // Don't forget to print it into the STDERR log, this is
             // what's shown in the Hydra UI.
             fprintf(stderr, "%s\n", msg.c_str());
+        } catch (
+            const std::exception &e) { // FIXME: for some reason the catch block
+                                       // above, doesn't trigger on macOS (?)
+            auto msg = e.what();
+            reply["error"] = nix::filterANSIEscapes(msg, true);
+            fprintf(stderr, "%s\n", msg);
         }
 
         if (tryWriteLine(to.get(), reply.dump()) < 0) {
