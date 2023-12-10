@@ -1,12 +1,12 @@
-
 #include <map>
 #include <thread>
 #include <condition_variable>
+#include <filesystem>
+
 #include <nix/config.h>
 #include <nix/eval-settings.hh>
 #include <nix/common-eval-args.hh>
 #include <nix/args/root.hh>
-
 #include <nix/shared.hh>
 #include <nix/sync.hh>
 #include <nix/eval.hh>
