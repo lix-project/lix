@@ -1,7 +1,9 @@
 src = [
   'nix-eval-jobs.cc',
   'eval-args.cc',
-  'drv.cc'
+  'drv.cc',
+  'buffered-io.cc',
+  'worker.cc'
 ]
 
 executable('nix-eval-jobs', src,

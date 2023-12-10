@@ -1,4 +1,4 @@
-#include "drvs.hh"
+#include "drv.hh"
 #include <nix/config.h>
 #include <nix/path-with-outputs.hh>
 #include <nix/store-api.hh>
