@@ -1,35 +1,28 @@
+
 #include <map>
-#include <iostream>
 #include <thread>
-#include <filesystem>
-#include <nix/eval-settings.hh>
+#include <condition_variable>
 #include <nix/config.h>
-#include <nix/shared.hh>
-#include <nix/store-api.hh>
-#include <nix/eval.hh>
-#include <nix/eval-inline.hh>
-#include <nix/util.hh>
-#include <nix/get-drvs.hh>
-#include <nix/globals.hh>
+#include <nix/eval-settings.hh>
 #include <nix/common-eval-args.hh>
-#include <nix/flake/flakeref.hh>
-#include <nix/flake/flake.hh>
-#include <nix/attr-path.hh>
-#include <nix/derivations.hh>
-#include <nix/local-fs-store.hh>
-#include <nix/logging.hh>
-#include <nix/error.hh>
-#include <nix/installables.hh>
-#include <nix/signals.hh>
+#include <nix/args/root.hh>
+
+#include <nix/shared.hh>
+#include <nix/sync.hh>
 #include <nix/terminal.hh>
+#include <nix/eval.hh>
 #include <nix/path-with-outputs.hh>
+#include <nix/local-fs-store.hh>
 #include <nix/installable-flake.hh>
-
+#include <nix/get-drvs.hh>
+#include <nix/attr-path.hh>
 #include <nix/value-to-json.hh>
-
-#include <sys/types.h>
+#include <nix/signals.hh>
+#include <nix/derivations.hh>
 #include <sys/wait.h>
 #include <sys/resource.h>
+
+#include "eval-args.hh"
 
 #include <nlohmann/json.hpp>
 
@@ -42,122 +35,6 @@ using namespace nlohmann;
 #elif __clang__
 #pragma clang diagnostic ignored "-Wnon-virtual-dtor"
 #endif
-struct MyArgs : virtual MixEvalArgs, virtual MixCommonArgs, virtual RootArgs {
-    std::string releaseExpr;
-    Path gcRootsDir;
-    bool flake = false;
-    bool fromArgs = false;
-    bool meta = false;
-    bool showTrace = false;
-    bool impure = false;
-    bool forceRecurse = false;
-    bool checkCacheStatus = false;
-    size_t nrWorkers = 1;
-    size_t maxMemorySize = 4096;
-
-    // usually in MixFlakeOptions
-    flake::LockFlags lockFlags = {.updateLockFile = false,
-                                  .writeLockFile = false,
-                                  .useRegistries = false,
-                                  .allowUnlocked = false};
-
-    MyArgs() : MixCommonArgs("nix-eval-jobs") {
-        addFlag({
-            .longName = "help",
-            .description = "show usage information",
-            .handler = {[&]() {
-                printf("USAGE: nix-eval-jobs [options] expr\n\n");
-                for (const auto &[name, flag] : longFlags) {
-                    if (hiddenCategories.count(flag->category)) {
-                        continue;
-                    }
-                    printf("  --%-20s %s\n", name.c_str(),
-                           flag->description.c_str());
-                }
-                ::exit(0);
-            }},
-        });
-
-        addFlag({.longName = "impure",
-                 .description = "allow impure expressions",
-                 .handler = {&impure, true}});
-
-        addFlag(
-            {.longName = "force-recurse",
-             .description = "force recursion (don't respect recurseIntoAttrs)",
-             .handler = {&forceRecurse, true}});
-
-        addFlag({.longName = "gc-roots-dir",
-                 .description = "garbage collector roots directory",
-                 .labels = {"path"},
-                 .handler = {&gcRootsDir}});
-
-        addFlag({.longName = "workers",
-                 .description = "number of evaluate workers",
-                 .labels = {"workers"},
-                 .handler = {
-                     [=, this](std::string s) { nrWorkers = std::stoi(s); }}});
-
-        addFlag({.longName = "max-memory-size",
-                 .description = "maximum evaluation memory size in megabyte "
-                                "(4GiB per worker by default)",
-                 .labels = {"size"},
-                 .handler = {[=, this](std::string s) {
-                     maxMemorySize = std::stoi(s);
-                 }}});
-
-        addFlag({.longName = "flake",
-                 .description = "build a flake",
-                 .handler = {&flake, true}});
-
-        addFlag({.longName = "meta",
-                 .description = "include derivation meta field in output",
-                 .handler = {&meta, true}});
-
-        addFlag(
-            {.longName = "check-cache-status",
-             .description =
-                 "Check if the derivations are present locally or in "
-                 "any configured substituters (i.e. binary cache). The "
-                 "information "
-                 "will be exposed in the `isCached` field of the JSON output.",
-             .handler = {&checkCacheStatus, true}});
-
-        addFlag({.longName = "show-trace",
-                 .description =
-                     "print out a stack trace in case of evaluation errors",
-                 .handler = {&showTrace, true}});
-
-        addFlag({.longName = "expr",
-                 .shortName = 'E',
-                 .description = "treat the argument as a Nix expression",
-                 .handler = {&fromArgs, true}});
-
-        // usually in MixFlakeOptions
-        addFlag({
-            .longName = "override-input",
-            .description =
-                "Override a specific flake input (e.g. `dwarffs/nixpkgs`).",
-            .category = category,
-            .labels = {"input-path", "flake-url"},
-            .handler = {[&](std::string inputPath, std::string flakeRef) {
-                // overriden inputs are unlocked
-                lockFlags.allowUnlocked = true;
-                lockFlags.inputOverrides.insert_or_assign(
-                    flake::parseInputPath(inputPath),
-                    parseFlakeRef(flakeRef, absPath("."), true));
-            }},
-        });
-
-        expectArg("expr", &releaseExpr);
-    }
-};
-#ifdef __GNUC__
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#elif __clang__
-#pragma clang diagnostic ignored "-Wnon-virtual-dtor"
-#endif
-
 static MyArgs myArgs;
 
 static Value *releaseExprTopLevelValue(EvalState &state, Bindings &autoArgs) {
@@ -679,7 +556,7 @@ int main(int argc, char **argv) {
         initNix();
         initGC();
 
-        myArgs.parseCmdline(argvToStrings(argc, argv), 0);
+        myArgs.parseArgs(argv, argc);
 
         /* FIXME: The build hook in conjunction with import-from-derivation is
          * causing "unexpected EOF" during eval */
