@@ -1,10 +1,27 @@
-#include "drv.hh"
-#include <nix/config.h>
+#include <nix/config.h> // IWYU pragma: keep
+
 #include <nix/path-with-outputs.hh>
 #include <nix/store-api.hh>
 #include <nix/local-fs-store.hh>
 #include <nix/value-to-json.hh>
 #include <nix/derivations.hh>
+#include <stdint.h>
+#include <nix/derived-path-map.hh>
+#include <nix/eval.hh>
+#include <nix/get-drvs.hh>
+#include <nix/nixexpr.hh>
+#include <nlohmann/detail/json_ref.hpp>
+#include <nix/path.hh>
+#include <nix/ref.hh>
+#include <nix/value/context.hh>
+#include <exception>
+#include <memory>
+#include <sstream>
+#include <utility>
+#include <vector>
+
+#include "drv.hh"
+#include "eval-args.hh"
 
 static bool queryIsCached(nix::Store &store,
                           std::map<std::string, std::string> &outputs) {

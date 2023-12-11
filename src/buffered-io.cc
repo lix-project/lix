@@ -1,7 +1,11 @@
-#include "buffered-io.hh"
 #include <string.h>
 #include <unistd.h>
 #include <nix/signals.hh>
+#include <errno.h>
+#include <stdlib.h>
+#include <error.hh>
+
+#include "buffered-io.hh"
 
 [[nodiscard]] int tryWriteLine(int fd, std::string s) {
     s += "\n";

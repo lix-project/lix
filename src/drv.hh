@@ -1,15 +1,21 @@
+#include <nix/get-drvs.hh>
+#include <nix/eval.hh>
+#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <string>
 #include <map>
 #include <set>
 #include <string>
 #include <optional>
 
-#include <nix/get-drvs.hh>
-#include <nix/eval.hh>
-
-#include <nlohmann/json.hpp>
-
 #include "eval-args.hh"
+
+class MyArgs;
+
+namespace nix {
+class EvalState;
+struct DrvInfo;
+}  // namespace nix
 
 /* The fields of a derivation that are printed in json form */
 struct Drv {

@@ -1,3 +1,15 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <nix/args.hh>
+#include <nix/file-system.hh>
+#include <nix/flake/flake.hh>
+#include <nix/flake/lockfile.hh>
+#include <functional>
+#include <map>
+#include <memory>
+#include <set>
+#include <utility>
+
 #include "eval-args.hh"
 
 MyArgs::MyArgs() : MixCommonArgs("nix-eval-jobs") {

@@ -1,29 +1,48 @@
-#include <map>
-#include <sys/signal.h>
-#include <thread>
-#include <condition_variable>
-#include <filesystem>
+#include <nix/config.h> // IWYU pragma: keep
 
-#include <nix/config.h>
 #include <nix/eval-settings.hh>
-#include <nix/common-eval-args.hh>
-#include <nix/args/root.hh>
 #include <nix/shared.hh>
 #include <nix/sync.hh>
 #include <nix/eval.hh>
-#include <nix/get-drvs.hh>
-#include <nix/value-to-json.hh>
-#include <nix/local-fs-store.hh>
 #include <nix/signals.hh>
 #include <nix/terminal.hh>
 #include <sys/wait.h>
+#include <nlohmann/json.hpp>
+#include <errno.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <nix/attr-set.hh>
+#include <nix/config.hh>
+#include <nix/error.hh>
+#include <nix/file-descriptor.hh>
+#include <nix/globals.hh>
+#include <nix/logging.hh>
+#include <nlohmann/detail/iterators/iter_impl.hpp>
+#include <nlohmann/detail/json_ref.hpp>
+#include <nlohmann/json_fwd.hpp>
+#include <nix/processes.hh>
+#include <nix/ref.hh>
+#include <nix/store-api.hh>
+#include <map>
+#include <thread>
+#include <condition_variable>
+#include <filesystem>
+#include <exception>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <set>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #include "eval-args.hh"
-#include "drv.hh"
 #include "buffered-io.hh"
 #include "worker.hh"
-
-#include <nlohmann/json.hpp>
 
 using namespace nix;
 using namespace nlohmann;
