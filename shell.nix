@@ -26,8 +26,14 @@ pkgs.mkShell {
     (pkgs.python3.withPackages (ps: [
       ps.pytest
     ]))
-
-  ];
+  ] ++ lib.optional stdenv.isLinux # broken on darwin
+    (pkgs.writeShellScriptBin "update-include-what-you-use" ''
+      #!${pkgs.stdenv.shell}
+      export PATH=${pkgs.include-what-you-use}/bin:$PATH
+      find src -type f -name '*.cpp' -o -name '*.hh' -print0 | \
+        xargs -n1 --null include-what-you-use -std=c++20 -isystem ${lib.getDev nix}/include/nix 2>&1 | \
+        fix_includes.py
+    '');
 
   shellHook = lib.optionalString stdenv.isLinux ''
     export NIX_DEBUG_INFO_DIRS="${pkgs.curl.debug}/lib/debug:${nix.debug}/lib/debug''${NIX_DEBUG_INFO_DIRS:+:$NIX_DEBUG_INFO_DIRS}"
