@@ -116,5 +116,5 @@ def test_recursion_error() -> None:
         )
         assert res.returncode == 1
         print(res.stderr)
-        assert 'packageWithInfiniteRecursion' in res.stderr
+        assert "packageWithInfiniteRecursion" in res.stderr
         assert "possible infinite recursion" in res.stderr
