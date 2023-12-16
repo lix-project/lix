@@ -109,7 +109,8 @@ void handleBrokenWorkerPipe(Proc &proc) {
     // need to wait for it again to avoid error messages
     pid_t pid = proc.pid.release();
     while (1) {
-        int rc = waitpid(pid, nullptr, WNOHANG);
+        int status;
+        int rc = waitpid(pid, &status, WNOHANG);
         if (rc == 0) {
             kill(pid, SIGKILL);
             throw Error("BUG: worker pipe closed but worker still running?");
@@ -118,16 +119,16 @@ void handleBrokenWorkerPipe(Proc &proc) {
             throw Error("BUG: waitpid waiting for worker failed: %s",
                         strerror(errno));
         } else {
-            if (WIFEXITED(rc)) {
+            if (WIFEXITED(status)) {
                 throw Error("evaluation worker exited with %d",
-                            WEXITSTATUS(rc));
-            } else if (WIFSIGNALED(rc)) {
-                if (WTERMSIG(rc) == SIGKILL) {
+                            WEXITSTATUS(status));
+            } else if (WIFSIGNALED(status)) {
+                if (WTERMSIG(status) == SIGKILL) {
                     throw Error("evaluation worker killed by SIGKILL, maybe "
                                 "memory limit reached?");
                 }
-                throw Error("evaluation worker killed by signal %d",
-                            WTERMSIG(rc));
+                throw Error("evaluation worker killed by signal %d (%s)",
+                            WTERMSIG(status), strsignal(WTERMSIG(status)));
             } // else ignore WIFSTOPPED and WIFCONTINUED
         }
     }
