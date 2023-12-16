@@ -113,13 +113,14 @@ void handleBrokenWorkerPipe(Proc &proc, std::string_view msg) {
         int rc = waitpid(pid, &status, WNOHANG);
         if (rc == 0) {
             kill(pid, SIGKILL);
-            throw Error(
-                "BUG: while %s, worker pipe got closed but evaluation worker still running?",
-                msg);
+            throw Error("BUG: while %s, worker pipe got closed but evaluation "
+                        "worker still running?",
+                        msg);
         } else if (rc == -1) {
             kill(pid, SIGKILL);
-            throw Error("BUG: while %s, waitpid for evaluation worker failed: %s",
-                        msg, strerror(errno));
+            throw Error(
+                "BUG: while %s, waitpid for evaluation worker failed: %s", msg,
+                strerror(errno));
         } else {
             if (WIFEXITED(status)) {
                 if (WEXITSTATUS(status) == 1) {
@@ -128,14 +129,14 @@ void handleBrokenWorkerPipe(Proc &proc, std::string_view msg) {
                         "(possibly an infinite recursion)",
                         msg);
                 }
-                throw Error("while %s, evaluation worker exited with %d",
-                            msg, WEXITSTATUS(status));
+                throw Error("while %s, evaluation worker exited with %d", msg,
+                            WEXITSTATUS(status));
             } else if (WIFSIGNALED(status)) {
                 if (WTERMSIG(status) == SIGKILL) {
-                    throw Error(
-                        "while %s, evaluation worker got killed by SIGKILL, maybe "
-                        "memory limit reached?",
-                        msg);
+                    throw Error("while %s, evaluation worker got killed by "
+                                "SIGKILL, maybe "
+                                "memory limit reached?",
+                                msg);
                 }
                 throw Error(
                     "while %s, evaluation worker got killed by signal %d (%s)",
@@ -147,7 +148,7 @@ void handleBrokenWorkerPipe(Proc &proc, std::string_view msg) {
 
 std::string joinAttrPath(json &attrPath) {
     std::string joined;
-    for (auto& element : attrPath) {
+    for (auto &element : attrPath) {
         if (!joined.empty()) {
             joined += '.';
         }
@@ -220,7 +221,8 @@ void collector(Sync<State> &state_, std::condition_variable &wakeup) {
             /* Wait for the response. */
             auto respString = fromReader->readLine();
             if (respString.empty()) {
-                auto msg = "reading result for attrPath '" + joinAttrPath(attrPath) + "'";
+                auto msg = "reading result for attrPath '" +
+                           joinAttrPath(attrPath) + "'";
                 handleBrokenWorkerPipe(*proc.get(), msg);
             }
             json response;
