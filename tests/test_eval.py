@@ -2,6 +2,7 @@
 
 import json
 import subprocess
+import pytest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List
@@ -94,6 +95,7 @@ def test_eval_error() -> None:
         assert "this is an evaluation error" in attrs["error"]
 
 
+@pytest.mark.infiniterecursion
 def test_recursion_error() -> None:
     with TemporaryDirectory() as tempdir:
         cmd = [

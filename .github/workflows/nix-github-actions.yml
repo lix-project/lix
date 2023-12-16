@@ -49,7 +49,13 @@ jobs:
     - name: Build
       run: nix develop -c bash -c 'meson setup -Db_sanitize=address,undefined build && ninja -C build'
     - name: Run tests
-      run: nix develop -c pytest ./tests
+      run: nix develop -c pytest ./tests -m 'not infiniterecursion'
+
+    # address sanitizer will lead to out-of-memory in the infinite recursion case
+    - name: Build without sanitizer
+      run: nix develop -c bash -c 'rm -rf build && meson setup build && ninja -C build'
+    - name: Run tests
+      run: nix develop -c pytest ./tests -m 'infiniterecursion'
 
   collect:
     runs-on: ubuntu-latest
