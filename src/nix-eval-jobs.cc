@@ -126,17 +126,34 @@ void handleBrokenWorkerPipe(Proc &proc, std::string_view msg) {
                 if (WEXITSTATUS(status) == 1) {
                     throw Error(
                         "while %s, evaluation worker exited with exit code 1, "
-                        "(possibly an infinite recursion)",
+                        "(possible infinite recursion)",
                         msg);
                 }
                 throw Error("while %s, evaluation worker exited with %d", msg,
                             WEXITSTATUS(status));
             } else if (WIFSIGNALED(status)) {
-                if (WTERMSIG(status) == SIGKILL) {
-                    throw Error("while %s, evaluation worker got killed by "
-                                "SIGKILL, maybe "
-                                "memory limit reached?",
-                                msg);
+                switch (WTERMSIG(status)) {
+                case SIGKILL:
+                    throw Error(
+                        "while %s, evaluation worker got killed by SIGKILL, "
+                        "maybe "
+                        "memory limit reached?",
+                        msg);
+                    break;
+#ifdef __APPLE__
+                case SIGBUS:
+                    throw Error(
+                        "while %s, evaluation worker got killed by SIGBUS, "
+                        "(possible infinite recursion)",
+                        msg);
+                    break;
+#else
+                case SIGSEGV:
+                    throw Error(
+                        "while %s, evaluation worker got killed by SIGSEGV, "
+                        "(possible infinite recursion)",
+                        msg);
+#endif
                 }
                 throw Error(
                     "while %s, evaluation worker got killed by signal %d (%s)",
