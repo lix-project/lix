@@ -25,9 +25,11 @@ In the following example we evaluate the hydraJobs attribute of the
 
 ```console
 $ nix-eval-jobs --gc-roots-dir gcroot --flake 'github:NixOS/patchelf#hydraJobs'
-{"attr":"coverage","attrPath":["coverage"],"drvPath":"/nix/store/8hq9f09xa5s6g9m02lw0sw59kkkvj57c-patchelf-coverage-0.15.0.drv","name":"patchelf-coverage-0.15.0","outputs":{"out":"/nix/store/dwf255bdbfvvbiqak941r83zlvxyipcs-patchelf-coverage-0.15.0"},"system":"x86_64-linux"}
-{"attr":"release","attrPath":["release"],"drvPath":"/nix/store/ip9dy4vlyha5a7kq4bnf4pxk0sfwjfda-patchelf-0.15.0.drv","name":"patchelf-0.15.0","outputs":{"out":"/nix/store/5z9ynn29asakf1b5736im2glcqpf6s2f-patchelf-0.15.0"},"system":"x86_64-linux"}
-{"attr":"tarball","attrPath":["tarball"],"drvPath":"/nix/store/g1alnfi3mrkcb9blclr77fpyp35mpsdd-patchelf-tarball-0.15.0.drv","name":"patchelf-tarball-0.15.0","outputs":{"out":"/nix/store/iy0w42pffhjg6wy0w46r4cjc1yjk410y-patchelf-tarball-0.15.0"},"system":"x86_64-linux"}
+{"attr":"coverage","attrPath":["coverage"],"drvPath":"/nix/store/fmbqzaq8mim1423879lhn9whs6imx5w4-patchelf-coverage-0.18.0.drv","inputDrvs":{"/nix/store/23632hx2c98lbbjld279dx0w08lxn6kp-hook.drv":["out"],"/nix/store/6z1jfnqqgyqr221zgbpm30v91yfj3r45-bash-5.1-p16.drv":["out"],"/nix/store/ap9g09fxbicj836zm88d56dn3ff4clxl-stdenv-linux.drv":["out"],"/nix/store/c0gg7lj101xhd8v2b3cjl5dwwkpxfc0q-patchelf-tarball-0.18.0.drv":["out"],"/nix/store/vslywm6kbazi37q1vbq8y7bi884yc6yx-lcov-1.16.drv":["out"],"/nix/store/y964yq4vz1gsn7azd44vyg65gnr4gpvi-hook.drv":["out"]},"name":"patchelf-coverage-0.18.0","outputs":{"out":"/nix/store/gfni9sbhhwhxxfqziq1fs3n82bvw962l-patchelf-coverage-0.18.0"},"system":"x86_64-linux"}
+{"attr":"patchelf-win32","attrPath":["patchelf-win32"],"drvPath":"/nix/store/s38l0fg5ja6j8qpws7slw2ws0c6v0qcf-patchelf-i686-w64-mingw32-0.18.0.drv","inputDrvs":{"/nix/store/6z1jfnqqgyqr221zgbpm30v91yfj3r45-bash-5.1-p16.drv":["out"],"/nix/store/b2p151ilwqpd47fbmzz50a5cmj12ixbf-hook.drv":["out"],"/nix/store/fbnhh18m4jh6cwa92am2sv3aqzjnzpdd-stdenv-linux.drv":["out"]},"name":"patchelf-i686-w64-mingw32-0.18.0","outputs":{"out":"/nix/store/w8r4h1xk71fryb99df8aszp83kfhw3bc-patchelf-i686-w64-mingw32-0.18.0"},"system":"x86_64-linux"}
+{"attr":"patchelf-win64","attrPath":["patchelf-win64"],"drvPath":"/nix/store/wxpym6d3dxr1w9syhinp7f058gwxfmd3-patchelf-x86_64-w64-mingw32-0.18.0.drv","inputDrvs":{"/nix/store/6z1jfnqqgyqr221zgbpm30v91yfj3r45-bash-5.1-p16.drv":["out"],"/nix/store/71lv5lsr1y59bv1b91jc9gg0n85kf1sq-stdenv-linux.drv":["out"],"/nix/store/b2p151ilwqpd47fbmzz50a5cmj12ixbf-hook.drv":["out"]},"name":"patchelf-x86_64-w64-mingw32-0.18.0","outputs":{"out":"/nix/store/fkq5428l2xsb84yj0cc6q1lkvsrga7sv-patchelf-x86_64-w64-mingw32-0.18.0"},"system":"x86_64-linux"}
+{"attr":"release","attrPath":["release"],"drvPath":"/nix/store/3xpwg8f623dpkh6cblv2fzcq5n99xl0j-patchelf-0.18.0.drv","inputDrvs":{"/nix/store/6z1jfnqqgyqr221zgbpm30v91yfj3r45-bash-5.1-p16.drv":["out"],"/nix/store/9rmihrl9ys0sap6827xyns0y73vqafjx-patchelf-0.18.0.drv":["out"],"/nix/store/am2zqx3pyc1i14f888jna785h0f841sg-patchelf-0.18.0.drv":["out"],"/nix/store/c0gg7lj101xhd8v2b3cjl5dwwkpxfc0q-patchelf-tarball-0.18.0.drv":["out"],"/nix/store/csjiccxbwpfv55m8kqs2xwrkkha14dnq-patchelf-0.18.0.drv":["out"],"/nix/store/jsrnpxdx5vmpnakd9bkb3sk3lgh0k8hm-patchelf-0.18.0.drv":["out"],"/nix/store/k8a51ax83554c67g98xf3y751vjgjs7m-patchelf-0.18.0.drv":["out"],"/nix/store/wq3ncl207isqqkqmsa5ql4fg19jbrhxg-stdenv-linux.drv":["out"]},"name":"patchelf-0.18.0","outputs":{"out":"/nix/store/d0mzprvv3vhasj23r1a6qn8qip0srbc4-patchelf-0.18.0"},"system":"x86_64-linux"}
+{"attr":"tarball","attrPath":["tarball"],"drvPath":"/nix/store/c0gg7lj101xhd8v2b3cjl5dwwkpxfc0q-patchelf-tarball-0.18.0.drv","inputDrvs":{"/nix/store/6z1jfnqqgyqr221zgbpm30v91yfj3r45-bash-5.1-p16.drv":["out"],"/nix/store/9d754glmsvpjm5kxvgsjslvgv356kbmn-libtool-2.4.7.drv":["out"],"/nix/store/ap9g09fxbicj836zm88d56dn3ff4clxl-stdenv-linux.drv":["out"],"/nix/store/f1ksgsyplvb0sli4pls6k6vsfvmv519d-autoconf-2.71.drv":["out"],"/nix/store/jf58lcnch1bmpbi2188c59w5zr1cqrx2-automake-1.16.5.drv":["out"]},"name":"patchelf-tarball-0.18.0","outputs":{"out":"/nix/store/72pz5awc7gpwdqxrdsy8j0bvg2n7z78q-patchelf-tarball-0.18.0"},"system":"x86_64-linux"}
 ```
 
 The output here is newline-seperated json according to https://jsonlines.org.
@@ -45,19 +47,25 @@ USAGE: nix-eval-jobs [options] expr
   --argstr               Pass the string *string* as the argument *name* to Nix functions.
   --check-cache-status   Check if the derivations are present locally or in any configured substituters (i.e. binary cache). The information will be exposed in the `isCached` field of the JSON output.
   --debug                Set the logging verbosity level to 'debug'.
-  --eval-store           The Nix store to use for evaluations.
+  --eval-store
+            The [URL of the Nix store](@docroot@/command-ref/new-cli/nix3-help-stores.md#store-url-format)
+            to use for evaluation, i.e. to store derivations (`.drv` files) and inputs referenced by them.
+
   --expr                 treat the argument as a Nix expression
   --flake                build a flake
+  --force-recurse        force recursion (don't respect recurseIntoAttrs)
   --gc-roots-dir         garbage collector roots directory
   --help                 show usage information
   --impure               allow impure expressions
-  --include              Add *path* to the list of locations used to look up `<...>` file names.
+
   --log-format           Set the format of log output; one of `raw`, `internal-json`, `bar` or `bar-with-logs`.
-  --max-memory-size      maximum evaluation memory size
+  --max-memory-size      maximum evaluation memory size in megabyte (4GiB per worker by default)
   --meta                 include derivation meta field in output
   --option               Set the Nix configuration setting *name* to *value* (overriding `nix.conf`).
   --override-flake       Override the flake registries, redirecting *original-ref* to *resolved-ref*.
+  --override-input       Override a specific flake input (e.g. `dwarffs/nixpkgs`).
   --quiet                Decrease the logging verbosity level.
+  --repair               During evaluation, rewrite missing or corrupted files in the Nix store. During building, rebuild missing or corrupted store paths.
   --show-trace           print out a stack trace in case of evaluation errors
   --verbose              Increase the logging verbosity level.
   --workers              number of evaluate workers
