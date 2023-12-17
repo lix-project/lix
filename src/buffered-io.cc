@@ -51,6 +51,8 @@ LineReader::LineReader(LineReader &&other) {
         return {}; // Return an empty string_view in case of error
     }
 
+    nix::checkInterrupt();
+
     // Remove trailing newline
     return std::string_view(buffer, read - 1);
 }
