@@ -110,6 +110,20 @@ latest release branch.
 
 ## FAQ
 
+### How can I check if my package already have been uploaded in the binary cache?
+
+If you provide the `--check-cache-status`, the json will contain a `"isCached"`
+key in its json, that is true or false based on the status.
+
+### How can I evaluate nixpkgs?
+
+If you want to evaluate nixpkgs in the same way
+[hydra](https://hydra.nixos.org/) does it, use this snippet:
+
+```console
+$ nix-eval-jobs --force-recurse pkgs/top-level/release.nix
+```
+
 ### nix-eval-jobs consumes too much memory / is too slow
 
 By default, nix-eval-jobs spawns as many worker processes as there are hardware
