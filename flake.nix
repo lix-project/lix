@@ -313,6 +313,7 @@
               inherit stdenv versionSuffix fileset;
               boehmgc = pkgs.boehmgc-nix;
               busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
+              forDevShell = true;
             };
           in
             nix.overrideAttrs (prev: {

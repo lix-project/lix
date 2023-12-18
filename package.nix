@@ -44,6 +44,8 @@
   # Set to true to build the release notes for the next release.
   buildUnreleasedNotes ? false,
   internalApiDocs ? false,
+  # Avoid setting things that would interfere with a functioning devShell
+  forDevShell ? false,
 
   # Not a real argument, just the only way to approximate let-binding some
   # stuff for argument defaults.
@@ -205,12 +207,12 @@ in stdenv.mkDerivation (finalAttrs: {
     "--with-sandbox-shell=${busybox-sandbox-shell}/bin/busybox"
   ] ++ lib.optionals (stdenv.isLinux && !(stdenv.hostPlatform.isStatic && stdenv.system == "aarch64-linux")) [
     "LDFLAGS=-fuse-ld=gold"
-  ] ++ [ "--sysconfdir=/etc" ]
+  ]
     ++ lib.optional stdenv.hostPlatform.isStatic "--enable-embedded-sandbox-shell"
     ++ lib.optionals (finalAttrs.doCheck || internalApiDocs) testConfigureFlags
     ++ lib.optional (!canRunInstalled) "--disable-doc-gen"
     ++ [ (lib.enableFeature internalApiDocs "internal-api-docs") ]
-  ;
+    ++ lib.optional (!forDevShell) "--sysconfdir=/etc";
 
   installTargets = lib.optional internalApiDocs "internal-api-html";
 
