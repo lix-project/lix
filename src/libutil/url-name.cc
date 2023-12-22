@@ -5,7 +5,7 @@
 
 namespace nix {
 
-static std::string const attributeNamePattern("[a-z0-9_-]+");
+static std::string const attributeNamePattern("[a-zA-Z0-9_-]+");
 static std::regex const lastAttributeRegex("(?:" + attributeNamePattern + "\\.)*(?!default)(" + attributeNamePattern +")(\\^.*)?");
 static std::string const pathSegmentPattern("[a-zA-Z0-9_-]+");
 static std::regex const lastPathSegmentRegex(".*/(" + pathSegmentPattern +")");
