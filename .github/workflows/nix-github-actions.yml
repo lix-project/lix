@@ -15,7 +15,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v24
+      - uses: cachix/install-nix-action@v25
       - id: set-matrix
         name: Generate Nix Matrix
         run: |
@@ -29,7 +29,7 @@ jobs:
       matrix: ${{fromJSON(needs.nix-matrix.outputs.matrix)}}
     steps:
       - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v24
+      - uses: cachix/install-nix-action@v25
       - run: nix build -L ".#${{ matrix.attr }}"
   tests:
     strategy:
@@ -41,7 +41,7 @@ jobs:
       with:
           # Nix Flakes doesn't work on shallow clones
           fetch-depth: 0
-    - uses: cachix/install-nix-action@v24
+    - uses: cachix/install-nix-action@v25
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
         extra_nix_config: |
