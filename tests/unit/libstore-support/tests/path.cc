@@ -47,13 +47,8 @@ Gen<StorePathName> Arbitrary<StorePathName>::arbitrary()
                 pre += '-';
                 break;
             case 64:
-                // names aren't permitted to start with a period,
-                // so just fall through to the next case here
-                if (c != 0) {
-                    pre += '.';
-                    break;
-                }
-                [[fallthrough]];
+                pre += '.';
+                break;
             case 65:
                 pre += '_';
                 break;
