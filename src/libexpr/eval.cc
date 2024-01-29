@@ -2745,9 +2745,12 @@ Expr * EvalState::parseExprFromFile(const SourcePath & path, std::shared_ptr<Sta
 
 Expr * EvalState::parseExprFromString(std::string s_, const SourcePath & basePath, std::shared_ptr<StaticEnv> & staticEnv)
 {
-    auto s = make_ref<std::string>(std::move(s_));
-    s->append("\0\0", 2);
-    return parse(s->data(), s->size(), Pos::String{.source = s}, basePath, staticEnv);
+    // NOTE this method (and parseStdin) must take care to *fully copy* their input
+    // into their respective Pos::Origin until the parser stops overwriting its input
+    // data.
+    auto s = make_ref<std::string>(s_);
+    s_.append("\0\0", 2);
+    return parse(s_.data(), s_.size(), Pos::String{.source = s}, basePath, staticEnv);
 }
 
 
@@ -2759,12 +2762,15 @@ Expr * EvalState::parseExprFromString(std::string s, const SourcePath & basePath
 
 Expr * EvalState::parseStdin()
 {
+    // NOTE this method (and parseExprFromString) must take care to *fully copy* their
+    // input into their respective Pos::Origin until the parser stops overwriting its
+    // input data.
     //Activity act(*logger, lvlTalkative, "parsing standard input");
     auto buffer = drainFD(0);
     // drainFD should have left some extra space for terminators
+    auto s = make_ref<std::string>(buffer);
     buffer.append("\0\0", 2);
-    auto s = make_ref<std::string>(std::move(buffer));
-    return parse(s->data(), s->size(), Pos::Stdin{.source = s}, rootPath(CanonPath::fromCwd()), staticBaseEnv);
+    return parse(buffer.data(), buffer.size(), Pos::Stdin{.source = s}, rootPath(CanonPath::fromCwd()), staticBaseEnv);
 }
 
 
