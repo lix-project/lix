@@ -227,10 +227,9 @@ static Flake getFlake(
         .sourceInfo = std::make_shared<fetchers::Tree>(std::move(sourceInfo))
     };
 
+    // NOTE evalFile forces vInfo to be an attrset because mustBeTrivial is true.
     Value vInfo;
     state.evalFile(CanonPath(flakeFile), vInfo, true); // FIXME: symlink attack
-
-    expectType(state, nAttrs, vInfo, state.positions.add({CanonPath(flakeFile)}, 1, 1));
 
     if (auto description = vInfo.attrs->get(state.sDescription)) {
         expectType(state, nString, *description->value, description->pos);

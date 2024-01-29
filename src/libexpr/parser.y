@@ -435,7 +435,7 @@ Expr * parseExprFromBuf(
         .symbols = symbols,
         .positions = positions,
         .basePath = basePath,
-        .origin = {origin},
+        .origin = positions.addOrigin(origin, length),
         .s = astSymbols,
     };
 
