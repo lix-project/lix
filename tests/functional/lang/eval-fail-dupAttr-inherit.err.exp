@@ -1,4 +1,4 @@
-error: attribute 'a' already defined at /pwd/lang/eval-fail-dupAttr-inherit.nix:1:15
+error: attribute 'a' already defined at /pwd/lang/eval-fail-dupAttr-inherit.nix:1:16
        at /pwd/lang/eval-fail-dupAttr-inherit.nix:1:19:
             1| { inherit ({}) a; a.b = 1; }
              |                   ^
