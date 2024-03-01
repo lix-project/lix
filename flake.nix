@@ -118,11 +118,34 @@
           cross = forAllCrossSystems (crossSystem: make-pkgs crossSystem "stdenv");
         });
 
-      commonDeps =
-        { pkgs
-        , isStatic ? pkgs.stdenv.hostPlatform.isStatic
-        }:
-        with pkgs; rec {
+      commonDeps = {
+        pkgs,
+        isStatic ? pkgs.stdenv.hostPlatform.isStatic
+      }: let
+        inherit (pkgs) stdenv buildPackages
+          busybox curl bzip2 xz brotli editline openssl sqlite libarchive boost
+          libseccomp libsodium libcpuid gtest rapidcheck aws-sdk-cpp boehmgc nlohmann_json
+          lowdown;
+        changelog-d = pkgs.buildPackages.callPackage ./misc/changelog-d.nix { };
+        boehmgc-nix = (boehmgc.override {
+          enableLargeConfig = true;
+        }).overrideAttrs (o: {
+          patches = (o.patches or [ ]) ++ [
+            ./boehmgc-coroutine-sp-fallback.diff
+
+            # https://github.com/ivmai/bdwgc/pull/586
+            ./boehmgc-traceable_allocator-public.diff
+          ];
+        });
+      in rec {
+        calledPackage = pkgs.callPackage ./package.nix {
+          inherit stdenv versionSuffix fileset changelog-d officialRelease buildUnreleasedNotes lowdown;
+          boehmgc = boehmgc-nix;
+          busybox-sandbox-shell = sh;
+        };
+
+        inherit boehmgc-nix;
+
         # Use "busybox-sandbox-shell" if present,
         # if not (legacy) fallback and hope it's sufficient.
         sh = pkgs.busybox-sandbox-shell or (busybox.override {
@@ -166,45 +189,12 @@
           "--enable-internal-api-docs"
         ];
 
-        changelog-d = pkgs.buildPackages.callPackage ./misc/changelog-d.nix { };
+        inherit changelog-d;
+        nativeBuildDeps = calledPackage.nativeBuildInputs;
 
-        nativeBuildDeps =
-          [
-            buildPackages.bison
-            buildPackages.flex
-            (lib.getBin buildPackages.lowdown)
-            buildPackages.mdbook
-            buildPackages.mdbook-linkcheck
-            buildPackages.autoconf-archive
-            buildPackages.autoreconfHook
-            buildPackages.pkg-config
+        buildDeps = calledPackage.buildInputs;
 
-            # Tests
-            buildPackages.git
-            buildPackages.mercurial # FIXME: remove? only needed for tests
-            buildPackages.jq # Also for custom mdBook preprocessor.
-          ]
-          ++ lib.optionals stdenv.hostPlatform.isLinux [(buildPackages.util-linuxMinimal or buildPackages.utillinuxMinimal)]
-          # Official releases don't have rl-next, so we don't need to compile a changelog
-          ++ lib.optional (!officialRelease && buildUnreleasedNotes) changelog-d
-          ;
-
-        buildDeps =
-          [ curl
-            bzip2 xz brotli editline
-            openssl sqlite
-            libarchive
-            boost
-            lowdown
-            libsodium
-          ]
-          ++ lib.optionals stdenv.isLinux [libseccomp]
-          ++ lib.optional stdenv.hostPlatform.isx86_64 libcpuid;
-
-        checkDeps = [
-          gtest
-          rapidcheck
-        ];
+        checkDeps = calledPackage.finalAttrs.passthru._checkInputs;
 
         internalApiDocsDeps = [
           buildPackages.doxygen
@@ -216,20 +206,7 @@
             customMemoryManagement = false;
           });
 
-        propagatedDeps =
-          [ ((boehmgc.override {
-              enableLargeConfig = true;
-            }).overrideAttrs(o: {
-              patches = (o.patches or []) ++ [
-                ./boehmgc-coroutine-sp-fallback.diff
-
-                # https://github.com/ivmai/bdwgc/pull/586
-                ./boehmgc-traceable_allocator-public.diff
-              ];
-            })
-            )
-            nlohmann_json
-          ];
+        propagatedDeps = calledPackage.propagatedBuildInputs;
       };
 
       installScriptFor = systems:
@@ -387,109 +364,50 @@
           '';
 
       overlayFor = getStdenv: final: prev:
-        let currentStdenv = getStdenv final; in
-        {
-          nixStable = prev.nix;
-
-          nix =
-          with final;
-          with commonDeps {
+        let
+          currentStdenv = getStdenv final;
+          comDeps = with final; commonDeps {
             inherit pkgs;
             inherit (currentStdenv.hostPlatform) isStatic;
           };
-          let
-            canRunInstalled = currentStdenv.buildPlatform.canExecute currentStdenv.hostPlatform;
-          in currentStdenv.mkDerivation (finalAttrs: {
-            name = "nix-${version}";
-            inherit version;
+        in {
+          nixStable = prev.nix;
 
-            src = nixSrc;
-            VERSION_SUFFIX = versionSuffix;
+          # Forward from the previous stage as we don’t want it to pick the lowdown override
+          nixUnstable = prev.nixUnstable;
 
-            outputs = [ "out" "dev" "doc" ];
+          inherit (comDeps) boehmgc-nix;
 
-            nativeBuildInputs = nativeBuildDeps;
-            buildInputs = buildDeps
-              # There have been issues building these dependencies
-              ++ lib.optionals (currentStdenv.hostPlatform == currentStdenv.buildPlatform) awsDeps
-              ++ lib.optionals finalAttrs.doCheck checkDeps;
+          default-busybox-sandbox-shell = final.busybox.override {
+            useMusl = true;
+            enableStatic = true;
+            enableMinimal = true;
+            extraConfig = ''
+              CONFIG_FEATURE_FANCY_ECHO y
+              CONFIG_FEATURE_SH_MATH y
+              CONFIG_FEATURE_SH_MATH_64 y
 
-            propagatedBuildInputs = propagatedDeps;
+              CONFIG_ASH y
+              CONFIG_ASH_OPTIMIZE_FOR_SIZE y
 
-            disallowedReferences = [ boost ];
-
-            preConfigure = lib.optionalString (! currentStdenv.hostPlatform.isStatic)
-              ''
-                # Copy libboost_context so we don't get all of Boost in our closure.
-                # https://github.com/NixOS/nixpkgs/issues/45462
-                mkdir -p $out/lib
-                cp -pd ${boost}/lib/{libboost_context*,libboost_thread*,libboost_system*} $out/lib
-                rm -f $out/lib/*.a
-                ${lib.optionalString currentStdenv.hostPlatform.isLinux ''
-                  chmod u+w $out/lib/*.so.*
-                  patchelf --set-rpath $out/lib:${currentStdenv.cc.cc.lib}/lib $out/lib/libboost_thread.so.*
-                ''}
-                ${lib.optionalString currentStdenv.hostPlatform.isDarwin ''
-                  for LIB in $out/lib/*.dylib; do
-                    chmod u+w $LIB
-                    install_name_tool -id $LIB $LIB
-                    install_name_tool -delete_rpath ${boost}/lib/ $LIB || true
-                  done
-                  install_name_tool -change ${boost}/lib/libboost_system.dylib $out/lib/libboost_system.dylib $out/lib/libboost_thread.dylib
-                ''}
-              '';
-
-            configureFlags = configureFlags ++
-              [ "--sysconfdir=/etc" ] ++
-              lib.optional stdenv.hostPlatform.isStatic "--enable-embedded-sandbox-shell" ++
-              [ (lib.enableFeature finalAttrs.doCheck "tests") ] ++
-              lib.optionals finalAttrs.doCheck testConfigureFlags ++
-              lib.optional (!canRunInstalled) "--disable-doc-gen";
-
-            enableParallelBuilding = true;
-
-            makeFlags = "profiledir=$(out)/etc/profile.d PRECOMPILE_HEADERS=1";
-
-            doCheck = true;
-
-            installFlags = "sysconfdir=$(out)/etc";
-
-            postInstall = ''
-              mkdir -p $doc/nix-support
-              echo "doc manual $doc/share/doc/nix/manual" >> $doc/nix-support/hydra-build-products
-              ${lib.optionalString currentStdenv.hostPlatform.isStatic ''
-              mkdir -p $out/nix-support
-              echo "file binary-dist $out/bin/nix" >> $out/nix-support/hydra-build-products
-              ''}
-              ${lib.optionalString currentStdenv.isDarwin ''
-              install_name_tool \
-                -change ${boost}/lib/libboost_context.dylib \
-                $out/lib/libboost_context.dylib \
-                $out/lib/libnixutil.dylib
-              ''}
+              CONFIG_ASH_ALIAS y
+              CONFIG_ASH_BASH_COMPAT y
+              CONFIG_ASH_CMDCMD y
+              CONFIG_ASH_ECHO y
+              CONFIG_ASH_GETOPTS y
+              CONFIG_ASH_INTERNAL_GLOB y
+              CONFIG_ASH_JOB_CONTROL y
+              CONFIG_ASH_PRINTF y
+              CONFIG_ASH_TEST y
             '';
+          };
 
-            doInstallCheck = finalAttrs.doCheck;
-            installCheckFlags = "sysconfdir=$(out)/etc";
-            installCheckTarget = "installcheck"; # work around buggy detection in stdenv
-
-            preInstallCheck = lib.optionalString stdenv.hostPlatform.isDarwin ''
-              export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
-            '';
-
-            separateDebugInfo = !currentStdenv.hostPlatform.isStatic;
-
-            strictDeps = true;
-
-            hardeningDisable = lib.optional stdenv.hostPlatform.isStatic "pie";
-
-            passthru.perl-bindings = final.callPackage ./perl {
-              inherit fileset;
-              stdenv = currentStdenv;
-            };
-
-            meta.platforms = lib.platforms.unix;
-          });
+          nix = final.callPackage ./package.nix {
+            inherit versionSuffix fileset;
+            stdenv = currentStdenv;
+            boehmgc = final.boehmgc-nix;
+            busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
+          };
         };
 
     in {
