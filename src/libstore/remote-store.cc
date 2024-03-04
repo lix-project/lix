@@ -1071,6 +1071,7 @@ void RemoteStore::ConnectionHandle::withFramedSink(std::function<void(Sink & sin
     std::thread stderrThread([&]()
     {
         try {
+            ReceiveInterrupts receiveInterrupts;
             processStderr(nullptr, nullptr, false);
         } catch (...) {
             ex = std::current_exception();

@@ -77,6 +77,8 @@ void ThreadPool::process()
 
 void ThreadPool::doWork(bool mainThread)
 {
+    ReceiveInterrupts receiveInterrupts;
+
     if (!mainThread)
         interruptCheck = [&]() { return (bool) quit; };
 

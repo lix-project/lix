@@ -217,6 +217,8 @@ void PathSubstitutionGoal::tryToRun()
 
     thr = std::thread([this]() {
         try {
+            ReceiveInterrupts receiveInterrupts;
+
             /* Wake up the worker loop when we're done. */
             Finally updateStats([this]() { outPipe.writeSide.close(); });
 
