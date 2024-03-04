@@ -1,6 +1,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "eval-settings.hh"
+
 #include "tests/libexpr.hh"
 
 namespace nix {
@@ -614,7 +616,7 @@ namespace nix {
 
     TEST_F(PrimOpTest, currentSystem) {
         auto v = eval("builtins.currentSystem");
-        ASSERT_THAT(v, IsStringEq(settings.thisSystem.get()));
+        ASSERT_THAT(v, IsStringEq(evalSettings.getCurrentSystem()));
     }
 
     TEST_F(PrimOpTest, derivation) {
