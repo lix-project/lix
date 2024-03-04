@@ -61,7 +61,6 @@
 
       configureFiles = fileset.unions [
         ./.version
-        ./bootstrap.sh
         ./configure.ac
         ./m4
         # TODO: do we really need README.md? It doesn't seem used in the build.
