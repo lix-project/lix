@@ -470,9 +470,6 @@ void ExprCall::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> &
 
 void ExprLet::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debugRepl)
-        es.exprEnvs.insert(std::make_pair(this, env));
-
     auto newEnv = std::make_shared<StaticEnv>(nullptr, env.get(), attrs->attrs.size());
 
     Displacement displ = 0;
@@ -483,6 +480,9 @@ void ExprLet::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & 
 
     for (auto & i : attrs->attrs)
         i.second.e->bindVars(es, i.second.inherited ? env : newEnv);
+
+    if (es.debugRepl)
+        es.exprEnvs.insert(std::make_pair(this, newEnv));
 
     body->bindVars(es, newEnv);
 }
@@ -507,9 +507,6 @@ void ExprWith::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> &
             prevWith = level;
             break;
         }
-
-    if (es.debugRepl)
-        es.exprEnvs.insert(std::make_pair(this, env));
 
     attrs->bindVars(es, env);
     auto newEnv = std::make_shared<StaticEnv>(this, env.get());
