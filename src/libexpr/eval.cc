@@ -810,7 +810,8 @@ void printEnvBindings(const SymbolTable & st, const StaticEnv & se, const Env & 
     if (se.up && env.up) {
         std::cout << "static: ";
         printStaticEnvBindings(st, se);
-        printWithBindings(st, env);
+        if (se.isWith)
+            printWithBindings(st, env);
         std::cout << std::endl;
         printEnvBindings(st, *se.up, *env.up, ++lvl);
     } else {
@@ -822,7 +823,8 @@ void printEnvBindings(const SymbolTable & st, const StaticEnv & se, const Env & 
                 std::cout << st[i.first] << " ";
         std::cout << ANSI_NORMAL;
         std::cout << std::endl;
-        printWithBindings(st, env);  // probably nothing there for the top level.
+        if (se.isWith)
+            printWithBindings(st, env);  // probably nothing there for the top level.
         std::cout << std::endl;
 
     }
@@ -844,7 +846,7 @@ void mapStaticEnvBindings(const SymbolTable & st, const StaticEnv & se, const En
     if (env.up && se.up) {
         mapStaticEnvBindings(st, *se.up, *env.up, vm);
 
-        if (!env.values[0]->isThunk()) {
+        if (se.isWith && !env.values[0]->isThunk()) {
             // add 'with' bindings.
             Bindings::iterator j = env.values[0]->attrs->begin();
             while (j != env.values[0]->attrs->end()) {
