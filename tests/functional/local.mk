@@ -1,3 +1,7 @@
+# whether to run the tests that assume that we have a local build of
+# Nix
+HAVE_LOCAL_NIX_BUILD ?= 1
+
 nix_tests = \
   test-infra.sh \
   init.sh \
@@ -118,7 +122,6 @@ nix_tests = \
   flakes/show.sh \
   impure-derivations.sh \
   path-from-hash-part.sh \
-  test-libstoreconsumer.sh \
   toString-path.sh \
   read-only-store.sh \
   nested-sandboxing.sh
@@ -127,8 +130,12 @@ ifeq ($(HAVE_LIBCPUID), 1)
 	nix_tests += compute-levels.sh
 endif
 
-ifeq ($(BUILD_SHARED_LIBS), 1)
-	nix_tests += plugins.sh
+ifeq ($(HAVE_LOCAL_NIX_BUILD), 1)
+	nix_tests += test-libstoreconsumer.sh
+
+	ifeq ($(BUILD_SHARED_LIBS), 1)
+		nix_tests += plugins.sh
+	endif
 endif
 
 $(d)/test-libstoreconsumer.sh.test $(d)/test-libstoreconsumer.sh.test-debug: \
