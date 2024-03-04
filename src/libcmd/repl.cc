@@ -221,7 +221,7 @@ static std::ostream & showDebugTrace(std::ostream & out, const PosTable & positi
         : static_cast<std::shared_ptr<AbstractPos>>(positions[dt.expr.getPos() ? dt.expr.getPos() : noPos]);
 
     if (pos) {
-        out << pos;
+        out << *pos;
         if (auto loc = pos->getCodeLines()) {
             out << "\n";
             printCodeLines(out, "", *pos, *loc);
