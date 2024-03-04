@@ -113,7 +113,7 @@ struct CmdShell : InstallablesCommand, MixEnvironment
 
         setEnviron();
 
-        auto unixPath = tokenizeString<Strings>(getEnv("PATH").value_or(""), ":");
+        std::vector<std::string> pathAdditions;
 
         while (!todo.empty()) {
             auto path = todo.front();
@@ -121,7 +121,7 @@ struct CmdShell : InstallablesCommand, MixEnvironment
             if (!done.insert(path).second) continue;
 
             if (true)
-                unixPath.push_front(store->printStorePath(path) + "/bin");
+                pathAdditions.push_back(store->printStorePath(path) + "/bin");
 
             auto propPath = store->printStorePath(path) + "/nix-support/propagated-user-env-packages";
             if (accessor->stat(propPath).type == FSAccessor::tRegular) {
@@ -130,7 +130,10 @@ struct CmdShell : InstallablesCommand, MixEnvironment
             }
         }
 
-        setenv("PATH", concatStringsSep(":", unixPath).c_str(), 1);
+        auto unixPath = tokenizeString<Strings>(getEnv("PATH").value_or(""), ":");
+        unixPath.insert(unixPath.begin(), pathAdditions.begin(), pathAdditions.end());
+        auto unixPathString = concatStringsSep(":", unixPath);
+        setenv("PATH", unixPathString.c_str(), 1);
 
         Strings args;
         for (auto & arg : command) args.push_back(arg);
