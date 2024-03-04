@@ -142,3 +142,6 @@ result
 
 # clangd and possibly more
 .cache/
+
+# Mac OS
+.DS_Store
