@@ -304,7 +304,7 @@ fi
 if test "$ENABLE_TESTS" = yes; then
 
 # Look for gtest.
-PKG_CHECK_MODULES([GTEST], [gtest_main])
+PKG_CHECK_MODULES([GTEST], [gtest_main gmock_main])
 
 
 # Look for rapidcheck.
