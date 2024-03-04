@@ -205,8 +205,16 @@ static Flake getFlake(
     auto [sourceInfo, resolvedRef, lockedRef] = fetchOrSubstituteTree(
         state, originalRef, allowLookup, flakeCache);
 
+    // We need to guard against symlink attacks, but before we start doing
+    // filesystem operations we should make sure there's a flake.nix in the
+    // first place.
+    auto unsafeFlakeDir = sourceInfo.actualPath + "/" + lockedRef.subdir;
+    auto unsafeFlakeFile = unsafeFlakeDir + "/flake.nix";
+    if (!pathExists(unsafeFlakeFile))
+        throw Error("source tree referenced by '%s' does not contain a '%s/flake.nix' file", lockedRef, lockedRef.subdir);
+
     // Guard against symlink attacks.
-    auto flakeDir = canonPath(sourceInfo.actualPath + "/" + lockedRef.subdir, true);
+    auto flakeDir = canonPath(unsafeFlakeDir, true);
     auto flakeFile = canonPath(flakeDir + "/flake.nix", true);
     if (!isInDir(flakeFile, sourceInfo.actualPath))
         throw Error("'flake.nix' file of flake '%s' escapes from '%s'",
@@ -218,9 +226,6 @@ static Flake getFlake(
         .lockedRef = lockedRef,
         .sourceInfo = std::make_shared<fetchers::Tree>(std::move(sourceInfo))
     };
-
-    if (!pathExists(flakeFile))
-        throw Error("source tree referenced by '%s' does not contain a '%s/flake.nix' file", lockedRef, lockedRef.subdir);
 
     Value vInfo;
     state.evalFile(CanonPath(flakeFile), vInfo, true); // FIXME: symlink attack
