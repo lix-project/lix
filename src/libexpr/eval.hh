@@ -467,8 +467,7 @@ public:
      */
     inline void forceValue(Value & v, const PosIdx pos);
 
-    template <typename Callable>
-    inline void forceValue(Value & v, Callable getPos);
+    void tryFixupBlackHolePos(Value & v, PosIdx pos);
 
     /**
      * Force a value, then recursively force list elements and

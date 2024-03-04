@@ -31,7 +31,6 @@ typedef enum {
     tThunk,
     tApp,
     tLambda,
-    tBlackhole,
     tPrimOp,
     tPrimOpApp,
     tExternal,
@@ -61,6 +60,7 @@ class Bindings;
 struct Env;
 struct Expr;
 struct ExprLambda;
+struct ExprBlackHole;
 struct PrimOp;
 class Symbol;
 class PosIdx;
@@ -151,7 +151,7 @@ public:
     // type() == nThunk
     inline bool isThunk() const { return internalType == tThunk; };
     inline bool isApp() const { return internalType == tApp; };
-    inline bool isBlackhole() const { return internalType == tBlackhole; };
+    inline bool isBlackhole() const;
 
     // type() == nFunction
     inline bool isLambda() const { return internalType == tLambda; };
@@ -236,7 +236,7 @@ public:
             case tLambda: case tPrimOp: case tPrimOpApp: return nFunction;
             case tExternal: return nExternal;
             case tFloat: return nFloat;
-            case tThunk: case tApp: case tBlackhole: return nThunk;
+            case tThunk: case tApp: return nThunk;
         }
         if (invalidIsThunk)
             return nThunk;
@@ -343,11 +343,7 @@ public:
         lambda.fun = f;
     }
 
-    inline void mkBlackhole()
-    {
-        internalType = tBlackhole;
-        // Value will be overridden anyways
-    }
+    inline void mkBlackhole();
 
     void mkPrimOp(PrimOp * p);
 
@@ -441,6 +437,20 @@ public:
         return std::string_view(string.s);
     }
 };
+
+
+extern ExprBlackHole eBlackHole;
+
+bool Value::isBlackhole() const
+{
+    return internalType == tThunk && thunk.expr == (Expr*) &eBlackHole;
+}
+
+void Value::mkBlackhole()
+{
+    internalType = tThunk;
+    thunk.expr = (Expr*) &eBlackHole;
+}
 
 
 #if HAVE_BOEHMGC

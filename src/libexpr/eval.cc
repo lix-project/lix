@@ -158,7 +158,17 @@ void Value::print(const SymbolTable &symbols, std::ostream &str,
         break;
     case tThunk:
     case tApp:
-        str << "<CODE>";
+        if (!isBlackhole()) {
+            str << "<CODE>";
+        } else {
+            // Although we know for sure that it's going to be an infinite recursion
+            // when this value is accessed _in the current context_, it's likely
+            // that the user will misinterpret a simpler «infinite recursion» output
+            // as a definitive statement about the value, while in fact it may be
+            // a valid value after `builtins.trace` and perhaps some other steps
+            // have completed.
+            str << "«potential infinite recursion»";
+        }
         break;
     case tLambda:
         str << "<LAMBDA>";
@@ -174,15 +184,6 @@ void Value::print(const SymbolTable &symbols, std::ostream &str,
         break;
     case tFloat:
         str << fpoint;
-        break;
-    case tBlackhole:
-        // Although we know for sure that it's going to be an infinite recursion
-        // when this value is accessed _in the current context_, it's likely
-        // that the user will misinterpret a simpler «infinite recursion» output
-        // as a definitive statement about the value, while in fact it may be
-        // a valid value after `builtins.trace` and perhaps some other steps
-        // have completed.
-        str << "«potential infinite recursion»";
         break;
     default:
         printError("Nix evaluator internal error: Value::print(): invalid value type %1%", internalType);
@@ -251,9 +252,8 @@ std::string showType(const Value & v)
         case tPrimOpApp:
             return fmt("the partially applied built-in function '%s'", std::string(getPrimOp(v)->primOp->name));
         case tExternal: return v.external->showType();
-        case tThunk: return "a thunk";
+        case tThunk: return v.isBlackhole() ? "a black hole" : "a thunk";
         case tApp: return "a function application";
-        case tBlackhole: return "a black hole";
     default:
         return std::string(showType(v.type()));
     }
@@ -1666,15 +1666,15 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 return;
             } else {
                 /* We have all the arguments, so call the primop. */
-                auto name = vCur.primOp->name;
+                auto * fn = vCur.primOp;
 
                 nrPrimOpCalls++;
-                if (countCalls) primOpCalls[name]++;
+                if (countCalls) primOpCalls[fn->name]++;
 
                 try {
-                    vCur.primOp->fun(*this, vCur.determinePos(noPos), args, vCur);
+                    fn->fun(*this, vCur.determinePos(noPos), args, vCur);
                 } catch (Error & e) {
-                    addErrorTrace(e, pos, "while calling the '%1%' builtin", name);
+                    addErrorTrace(e, pos, "while calling the '%1%' builtin", fn->name);
                     throw;
                 }
 
@@ -1711,18 +1711,18 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 for (size_t i = 0; i < argsLeft; ++i)
                     vArgs[argsDone + i] = args[i];
 
-                auto name = primOp->primOp->name;
+                auto fn = primOp->primOp;
                 nrPrimOpCalls++;
-                if (countCalls) primOpCalls[name]++;
+                if (countCalls) primOpCalls[fn->name]++;
 
                 try {
                     // TODO:
                     // 1. Unify this and above code. Heavily redundant.
                     // 2. Create a fake env (arg1, arg2, etc.) and a fake expr (arg1: arg2: etc: builtins.name arg1 arg2 etc)
                     //    so the debugger allows to inspect the wrong parameters passed to the builtin.
-                    primOp->primOp->fun(*this, vCur.determinePos(noPos), vArgs, vCur);
+                    fn->fun(*this, vCur.determinePos(noPos), vArgs, vCur);
                 } catch (Error & e) {
-                    addErrorTrace(e, pos, "while calling the '%1%' builtin", name);
+                    addErrorTrace(e, pos, "while calling the '%1%' builtin", fn->name);
                     throw;
                 }
 
@@ -2076,6 +2076,29 @@ void ExprPos::eval(EvalState & state, Env & env, Value & v)
 }
 
 
+void ExprBlackHole::eval(EvalState & state, Env & env, Value & v)
+{
+    state.error("infinite recursion encountered")
+        .debugThrow<InfiniteRecursionError>();
+}
+
+// always force this to be separate, otherwise forceValue may inline it and take
+// a massive perf hit
+[[gnu::noinline]]
+void EvalState::tryFixupBlackHolePos(Value & v, PosIdx pos)
+{
+    if (!v.isBlackhole())
+        return;
+    auto e = std::current_exception();
+    try {
+        std::rethrow_exception(e);
+    } catch (InfiniteRecursionError & e) {
+        e.err.errPos = positions[pos];
+    } catch (...) {
+    }
+}
+
+
 void EvalState::forceValueDeep(Value & v)
 {
     std::set<const Value *> seen;
@@ -2085,7 +2108,7 @@ void EvalState::forceValueDeep(Value & v)
     recurse = [&](Value & v) {
         if (!seen.insert(&v).second) return;
 
-        forceValue(v, [&]() { return v.determinePos(noPos); });
+        forceValue(v, v.determinePos(noPos));
 
         if (v.type() == nAttrs) {
             for (auto & i : *v.attrs)
