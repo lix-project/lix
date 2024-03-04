@@ -285,3 +285,41 @@ can build it yourself:
 
 Metrics about the change in line/function coverage over time are also
 [available](https://hydra.nixos.org/job/nix/master/coverage#tabs-charts).
+
+## Add a release note
+
+`doc/manual/rl-next` contains release notes entries for all unreleased changes.
+
+User-visible changes should come with a release note.
+
+### Add an entry
+
+Here's what a complete entry looks like. The file name is not incorporated in the document.
+
+```
+synopsis: Basically a title
+issues: #1234
+prs: #1238
+description: {
+
+Here's one or more paragraphs that describe the change.
+
+- It's markdown
+- Add references to the manual using @docroot@
+
+}
+```
+
+Significant changes should add the following header, which moves them to the top.
+
+```
+significance: significant
+```
+
+<!-- Keep an eye on https://codeberg.org/fgaz/changelog-d/issues/1 -->
+See also the [format documentation](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#changelog).
+
+### Build process
+
+Releases have a precomputed `rl-MAJOR.MINOR.md`, and no `rl-next.md`.
+Set `buildUnreleasedNotes = true;` in `flake.nix` to build the release notes on the fly.
