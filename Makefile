@@ -1,3 +1,7 @@
+-include Makefile.config
+clean-files += Makefile.config
+
+ifeq ($(ENABLE_BUILD), yes)
 makefiles = \
   mk/precompiled-headers.mk \
   local.mk \
@@ -18,15 +22,18 @@ makefiles = \
   misc/upstart/local.mk \
   doc/manual/local.mk \
   doc/internal-api/local.mk
+endif
 
--include Makefile.config
-
-ifeq ($(tests), yes)
+ifeq ($(ENABLE_BUILD)_$(ENABLE_TESTS), yes_yes)
 UNIT_TEST_ENV = _NIX_TEST_UNIT_DATA=unit-test-data
 makefiles += \
   tests/unit/libutil/local.mk \
   tests/unit/libutil-support/local.mk \
-  tests/unit/libstore/local.mk \
+  tests/unit/libstore/local.mk
+endif
+
+ifeq ($(ENABLE_TESTS), yes)
+makefiles += \
   tests/unit/libstore-support/local.mk \
   tests/unit/libexpr/local.mk \
   tests/unit/libexpr-support/local.mk \
