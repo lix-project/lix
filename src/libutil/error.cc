@@ -172,10 +172,9 @@ static bool printUnknownLocations = getEnv("_NIX_DEVELOPER_SHOW_UNKNOWN_LOCATION
 static bool printPosMaybe(std::ostream & oss, std::string_view indent, const std::shared_ptr<AbstractPos> & pos) {
     bool hasPos = pos && *pos;
     if (hasPos) {
-        oss << "\n" << indent << ANSI_BLUE << "at " ANSI_WARNING << *pos << ANSI_NORMAL << ":";
+        oss << indent << ANSI_BLUE << "at " ANSI_WARNING << *pos << ANSI_NORMAL << ":";
 
         if (auto loc = pos->getCodeLines()) {
-            oss << "\n";
             printCodeLines(oss, "", *pos, *loc);
             oss << "\n";
         }
