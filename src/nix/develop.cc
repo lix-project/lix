@@ -262,7 +262,6 @@ struct Common : InstallableCommand, MixProfile
         "NIX_LOG_FD",
         "NIX_REMOTE",
         "PPID",
-        "SHELL",
         "SHELLOPTS",
         "SSL_CERT_FILE", // FIXME: only want to ignore /no-cert-file.crt
         "TEMP",
@@ -527,7 +526,7 @@ struct CmdDevelop : Common, MixEnvironment
 
         setEnviron();
         // prevent garbage collection until shell exits
-        setenv("NIX_GCROOT", gcroot.data(), 1);
+        setenv("NIX_GCROOT", gcroot.c_str(), 1);
 
         Path shell = "bash";
 
@@ -569,6 +568,10 @@ struct CmdDevelop : Common, MixEnvironment
         } catch (Error &) {
             ignoreException();
         }
+
+        // Override SHELL with the one chosen for this environment.
+        // This is to make sure the system shell doesn't leak into the build environment.
+        setenv("SHELL", shell.c_str(), 1);
 
         // If running a phase or single command, don't want an interactive shell running after
         // Ctrl-C, so don't pass --rcfile
