@@ -33,7 +33,7 @@
         "x86_64-freebsd13" "x86_64-netbsd"
       ];
 
-      stdenvs = [ "gccStdenv" "clangStdenv" "clang11Stdenv" "stdenv" "libcxxStdenv" "ccacheStdenv" ];
+      stdenvs = [ "gccStdenv" "clangStdenv" "stdenv" "libcxxStdenv" "ccacheStdenv" ];
 
       forAllSystems = lib.genAttrs systems;
 
