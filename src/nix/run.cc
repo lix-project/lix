@@ -24,6 +24,7 @@ std::string chrootHelperName = "__run_in_chroot";
 namespace nix {
 
 void runProgramInStore(ref<Store> store,
+    UseSearchPath useSearchPath,
     const std::string & program,
     const Strings & args,
     std::optional<std::string_view> system)
@@ -57,7 +58,10 @@ void runProgramInStore(ref<Store> store,
     if (system)
         setPersonality(*system);
 
-    execvp(program.c_str(), stringsToCharPtrs(args).data());
+    if (useSearchPath == UseSearchPath::Use)
+        execvp(program.c_str(), stringsToCharPtrs(args).data());
+    else
+        execv(program.c_str(), stringsToCharPtrs(args).data());
 
     throw SysError("unable to execute '%s'", program);
 }
@@ -131,7 +135,7 @@ struct CmdShell : InstallablesCommand, MixEnvironment
         Strings args;
         for (auto & arg : command) args.push_back(arg);
 
-        runProgramInStore(store, *command.begin(), args);
+        runProgramInStore(store, UseSearchPath::Use, *command.begin(), args);
     }
 };
 
@@ -193,7 +197,7 @@ struct CmdRun : InstallableValueCommand
         Strings allArgs{app.program};
         for (auto & i : args) allArgs.push_back(i);
 
-        runProgramInStore(store, app.program, allArgs);
+        runProgramInStore(store, UseSearchPath::DontUse, app.program, allArgs);
     }
 };
 
