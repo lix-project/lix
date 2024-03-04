@@ -2,10 +2,48 @@
 
 ## Unit-tests
 
-The unit-tests for each Nix library (`libexpr`, `libstore`, etc..) are defined
-under `tests/unit/{library_name}/tests` using the
-[googletest](https://google.github.io/googletest/) and
-[rapidcheck](https://github.com/emil-e/rapidcheck) frameworks.
+The unit tests are defined using the [googletest] and [rapidcheck] frameworks.
+
+[googletest]: https://google.github.io/googletest/
+[rapidcheck]: https://github.com/emil-e/rapidcheck
+
+### Source and header layout
+
+> An example of some files, demonstrating much of what is described below
+>
+> ```
+> src
+> ├── libexpr
+> │   ├── value/context.hh
+> │   ├── value/context.cc
+> │   │
+> │   …
+>     └── tests
+> │       ├── value/context.hh
+> │       ├── value/context.cc
+> │       │
+> │       …
+> │
+> ├── unit-test-data
+> │   ├── libstore
+> │   │   ├── worker-protocol/content-address.bin
+> │   │   …
+> │   …
+> …
+> ```
+
+The unit tests for each Nix library (`libnixexpr`, `libnixstore`, etc..) live inside a directory `src/${library_shortname}/tests` within the directory for the library (`src/${library_shortname}`).
+
+The data is in `unit-test-data`, with one subdir per library, with the same name as where the code goes.
+For example, `libnixstore` code is in `src/libstore`, and its test data is in `unit-test-data/libstore`.
+The path to the `unit-test-data` directory is passed to the unit test executable with the environment variable `_NIX_TEST_UNIT_DATA`.
+
+> **Note**
+> Due to the way googletest works, downstream unit test executables will actually include and re-run upstream library tests.
+> Therefore it is important that the same value for `_NIX_TEST_UNIT_DATA` be used with the tests for each library.
+> That is why we have the test data nested within a single `unit-test-data` directory.
+
+### Running tests
 
 You can run the whole testsuite with `make check`, or the tests for a specific component with `make libfoo-tests_RUN`.
 Finer-grained filtering is also possible using the [--gtest_filter](https://google.github.io/googletest/advanced.html#running-a-subset-of-the-tests) command-line option, or the `GTEST_FILTER` environment variable.
@@ -21,6 +59,24 @@ Downstream types frequently contain upstream types, so it is very important that
 It is important that these testing libraries don't contain any actual tests themselves.
 On some platforms they would be run as part of every test executable that uses them, which is redundant.
 On other platforms they wouldn't be run at all.
+
+### Characterization testing
+
+See [below](#characterization-testing-1) for a broader discussion of characterization testing.
+
+Like with the functional characterization, `_NIX_TEST_ACCEPT=1` is also used.
+For example:
+```shell-session
+$ _NIX_TEST_ACCEPT=1 make libstore-tests-exe_RUN
+...
+[  SKIPPED ] WorkerProtoTest.string_read
+[  SKIPPED ] WorkerProtoTest.string_write
+[  SKIPPED ] WorkerProtoTest.storePath_read
+[  SKIPPED ] WorkerProtoTest.storePath_write
+...
+```
+will regenerate the "golden master" expected result for the `libnixstore` characterization tests.
+The characterization tests will mark themselves "skipped" since they regenerated the expected result instead of actually testing anything.
 
 ## Functional tests
 

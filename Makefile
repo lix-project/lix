@@ -22,6 +22,7 @@ makefiles = \
 -include Makefile.config
 
 ifeq ($(tests), yes)
+UNIT_TEST_ENV = _NIX_TEST_UNIT_DATA=unit-test-data
 makefiles += \
   tests/unit/libutil/local.mk \
   tests/unit/libutil-support/local.mk \

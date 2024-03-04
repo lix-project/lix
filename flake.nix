@@ -77,6 +77,7 @@
           ./src
           ./tests/functional
           ./tests/unit
+          ./unit-test-data
           ./COPYING
           ./scripts/local.mk
           (fileset.fileFilter (f: lib.strings.hasPrefix "nix-profile" f.name) ./scripts)
