@@ -13,6 +13,7 @@
 #include "function-trace.hh"
 #include "profiles.hh"
 #include "print.hh"
+#include "gc-small-vector.hh"
 
 #include <algorithm>
 #include <chrono>
@@ -28,6 +29,7 @@
 
 #include <sys/resource.h>
 #include <nlohmann/json.hpp>
+#include <boost/container/small_vector.hpp>
 
 #if HAVE_BOEHMGC
 
@@ -1701,7 +1703,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 /* We have all the arguments, so call the primop with
                    the previous and new arguments. */
 
-                Value * vArgs[arity];
+                Value * vArgs[maxPrimOpArity];
                 auto n = argsDone;
                 for (Value * arg = &vCur; arg->isPrimOpApp(); arg = arg->primOpApp.left)
                     vArgs[--n] = arg->primOpApp.right;
@@ -1764,11 +1766,11 @@ void ExprCall::eval(EvalState & state, Env & env, Value & v)
     // 4: about 60
     // 5: under 10
     // This excluded attrset lambdas (`{...}:`). Contributions of mixed lambdas appears insignificant at ~150 total.
-    Value * vArgs[args.size()];
+    SmallValueVector<4> vArgs(args.size());
     for (size_t i = 0; i < args.size(); ++i)
         vArgs[i] = args[i]->maybeThunk(state, env);
 
-    state.callFunction(vFun, args.size(), vArgs, v, pos);
+    state.callFunction(vFun, args.size(), vArgs.data(), v, pos);
 }
 
 
@@ -2007,8 +2009,9 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
         return result;
     };
 
-    Value values[es->size()];
-    Value * vTmpP = values;
+    // List of returned strings. References to these Values must NOT be persisted.
+    SmallTemporaryValueVector<conservativeStackReservation> values(es->size());
+    Value * vTmpP = values.data();
 
     for (auto & [i_pos, i] : *es) {
         Value & vTmp = *vTmpP++;
