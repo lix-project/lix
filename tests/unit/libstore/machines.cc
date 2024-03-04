@@ -12,6 +12,7 @@ using testing::SizeIs;
 
 using nix::absPath;
 using nix::FormatError;
+using nix::UsageError;
 using nix::getMachines;
 using nix::Machine;
 using nix::Machines;
@@ -131,7 +132,7 @@ TEST(machines, getMachinesWithIncorrectFormat) {
     settings.builders = "nix@scratchy.labs.cs.uu.nl - - 8 three";
     EXPECT_THROW(getMachines(), FormatError);
     settings.builders = "nix@scratchy.labs.cs.uu.nl - - 8 -3";
-    EXPECT_THROW(getMachines(), FormatError);
+    EXPECT_THROW(getMachines(), UsageError);
     settings.builders = "nix@scratchy.labs.cs.uu.nl - - 8 3 - - BAD_BASE64";
     EXPECT_THROW(getMachines(), FormatError);
 }
