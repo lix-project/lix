@@ -7,6 +7,8 @@
 #include "pathlocks.hh"
 #include "util.hh"
 #include "git.hh"
+#include "logging.hh"
+#include "finally.hh"
 
 #include "fetch-settings.hh"
 
@@ -378,6 +380,9 @@ struct GitInputScheme : InputScheme
         runProgram("git", true,
             { "-C", *sourcePath, "--git-dir", gitDir, "add", "--intent-to-add", "--", std::string(file) });
 
+        // Pause the logger to allow for user input (such as a gpg passphrase) in `git commit`
+        logger->pause();
+        Finally restoreLogger([]() { logger->resume(); });
         if (commitMsg)
             runProgram("git", true,
                 { "-C", *sourcePath, "--git-dir", gitDir, "commit", std::string(file), "-m", *commitMsg });
