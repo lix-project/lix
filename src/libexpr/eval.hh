@@ -218,6 +218,11 @@ public:
 
     Bindings emptyBindings;
 
+    /**
+     * Empty list constant.
+     */
+    Value vEmptyList;
+
     const SourcePath derivationInternal;
 
     /**
