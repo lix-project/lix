@@ -250,7 +250,7 @@ void Worker::childTerminated(Goal * goal, bool wakeSleepers)
 
 void Worker::waitForBuildSlot(GoalPtr goal)
 {
-    debug("wait for build slot");
+    goal->trace("wait for build slot");
     bool isSubstitutionGoal = goal->jobCategory() == JobCategory::Substitution;
     if ((!isSubstitutionGoal && getNrLocalBuilds() < settings.maxBuildJobs) ||
         (isSubstitutionGoal && getNrSubstitutions() < settings.maxSubstitutionJobs))
