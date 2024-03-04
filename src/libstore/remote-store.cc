@@ -65,6 +65,7 @@ void RemoteStore::initConnection(Connection & conn)
 {
     /* Send the magic greeting, check for the reply. */
     try {
+        conn.from.endOfFileError = "Nix daemon disconnected unexpectedly (maybe it crashed?)";
         conn.to << WORKER_MAGIC_1;
         conn.to.flush();
         StringSink saved;
