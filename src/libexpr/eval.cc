@@ -28,7 +28,6 @@
 
 #include <sys/resource.h>
 #include <nlohmann/json.hpp>
-#include <boost/container/small_vector.hpp>
 
 #if HAVE_BOEHMGC
 
@@ -1702,7 +1701,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 /* We have all the arguments, so call the primop with
                    the previous and new arguments. */
 
-                Value * vArgs[maxPrimOpArity];
+                Value * vArgs[arity];
                 auto n = argsDone;
                 for (Value * arg = &vCur; arg->isPrimOpApp(); arg = arg->primOpApp.left)
                     vArgs[--n] = arg->primOpApp.right;
@@ -1765,11 +1764,11 @@ void ExprCall::eval(EvalState & state, Env & env, Value & v)
     // 4: about 60
     // 5: under 10
     // This excluded attrset lambdas (`{...}:`). Contributions of mixed lambdas appears insignificant at ~150 total.
-    boost::container::small_vector<Value *, 4> vArgs(args.size());
+    Value * vArgs[args.size()];
     for (size_t i = 0; i < args.size(); ++i)
         vArgs[i] = args[i]->maybeThunk(state, env);
 
-    state.callFunction(vFun, args.size(), vArgs.data(), v, pos);
+    state.callFunction(vFun, args.size(), vArgs, v, pos);
 }
 
 
@@ -2008,8 +2007,8 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
         return result;
     };
 
-    boost::container::small_vector<Value, conservativeStackReservation> values(es->size());
-    Value * vTmpP = values.data();
+    Value values[es->size()];
+    Value * vTmpP = values;
 
     for (auto & [i_pos, i] : *es) {
         Value & vTmp = *vTmpP++;
