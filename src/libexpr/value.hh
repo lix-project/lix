@@ -349,13 +349,7 @@ public:
         // Value will be overridden anyways
     }
 
-    inline void mkPrimOp(PrimOp * p)
-    {
-        clearValue();
-        internalType = tPrimOp;
-        primOp = p;
-    }
-
+    void mkPrimOp(PrimOp * p);
 
     inline void mkPrimOpApp(Value * l, Value * r)
     {
