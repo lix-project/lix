@@ -53,36 +53,6 @@
 
   version = lib.fileContents ./.version + versionSuffix;
 
-  # .gitignore has already been processed, so any changes in it are irrelevant
-  # at this point. It is not represented verbatim for test purposes because
-  # that would interfere with repo semantics.
-  baseFiles = fileset.fileFilter (f: f.name != ".gitignore") ./.;
-  src = fileset.toSource {
-    root = ./.;
-    fileset = fileset.intersection baseFiles (fileset.unions [
-      ./.version
-      ./boehmgc-coroutine-sp-fallback.diff
-      ./configure.ac
-      ./doc
-      ./local.mk
-      ./m4
-      ./Makefile
-      ./Makefile.config.in
-      ./misc
-      ./mk
-      ./precompiled-headers.h
-      ./src
-      ./tests/functional
-      ./tests/unit
-      ./unit-test-data
-      ./COPYING
-      ./scripts/local.mk
-      (fileset.fileFilter (f: lib.strings.hasPrefix "nix-profile" f.name) ./scripts)
-      # TODO: do we really need README.md? It doesn't seem used in the build.
-      ./README.md
-    ]);
-  };
-
   aws-sdk-cpp-nix = aws-sdk-cpp.override {
     apis = [ "s3" "transfer" ];
     customMemoryManagement = false;
@@ -92,19 +62,64 @@
     "RAPIDCHECK_HEADERS=${lib.getDev rapidcheck}/extras/gtest/include"
   ];
 
-in stdenv.mkDerivation (finalAttrs: {
-  name = "nix-${version}";
-  inherit version;
+  # .gitignore has already been processed, so any changes in it are irrelevant
+  # at this point. It is not represented verbatim for test purposes because
+  # that would interfere with repo semantics.
+  baseFiles = fileset.fileFilter (f: f.name != ".gitignore") ./.;
 
-  inherit src;
+  configureFiles = fileset.unions [
+    ./.version
+    ./configure.ac
+    ./m4
+    # TODO: do we really need README.md? It doesn't seem used in the build.
+    ./README.md
+  ];
+
+  topLevelBuildFiles = fileset.unions [
+    ./local.mk
+    ./Makefile
+    ./Makefile.config.in
+    ./mk
+  ];
+
+ functionalTestFiles = fileset.unions [
+    ./tests/functional
+    ./tests/unit
+    (fileset.fileFilter (f: lib.strings.hasPrefix "nix-profile" f.name) ./scripts)
+ ];
+
+in stdenv.mkDerivation (finalAttrs: {
+  inherit pname version;
+
+  src = fileset.toSource {
+    root = ./.;
+    fileset = fileset.intersection baseFiles (fileset.unions ([
+      configureFiles
+      topLevelBuildFiles
+      functionalTestFiles
+      ./unit-test-data
+    ] ++ lib.optionals (!finalAttrs.dontBuild) [
+      ./boehmgc-coroutine-sp-fallback.diff
+      ./doc
+      ./misc
+      ./precompiled-headers.h
+      ./src
+      ./COPYING
+      ./scripts/local.mk
+    ]));
+  };
 
   VERSION_SUFFIX = versionSuffix;
 
-  outputs = [ "out" "dev" "doc" ];
+  outputs = [ "out" ]
+    ++ lib.optionals (!finalAttrs.dontBuild) [ "dev" "doc" ];
+
+  dontBuild = false;
 
   nativeBuildInputs = [
     bison
     flex
+  ] ++ [
     (lib.getBin lowdown)
     mdbook
     mdbook-linkcheck
@@ -145,6 +160,9 @@ in stdenv.mkDerivation (finalAttrs: {
     rapidcheck
   ];
 
+  # FIXME(Qyriad): remove at the end of refactoring.
+  checkInputs = finalAttrs.passthru._checkInputs;
+
   propagatedBuildInputs = [
     boehmgc
     nlohmann_json
@@ -154,24 +172,22 @@ in stdenv.mkDerivation (finalAttrs: {
     boost
   ];
 
-  preConfigure = lib.optionalString (! stdenv.hostPlatform.isStatic) ''
+  preConfigure = lib.optionalString (!finalAttrs.dontBuild && !stdenv.hostPlatform.isStatic) ''
     # Copy libboost_context so we don't get all of Boost in our closure.
     # https://github.com/NixOS/nixpkgs/issues/45462
     mkdir -p $out/lib
     cp -pd ${boost}/lib/{libboost_context*,libboost_thread*,libboost_system*} $out/lib
     rm -f $out/lib/*.a
-    ${lib.optionalString stdenv.hostPlatform.isLinux ''
-      chmod u+w $out/lib/*.so.*
-      patchelf --set-rpath $out/lib:${stdenv.cc.cc.lib}/lib $out/lib/libboost_thread.so.*
-    ''}
-    ${lib.optionalString stdenv.hostPlatform.isDarwin ''
-      for LIB in $out/lib/*.dylib; do
-        chmod u+w $LIB
-        install_name_tool -id $LIB $LIB
-        install_name_tool -delete_rpath ${boost}/lib/ $LIB || true
-      done
-      install_name_tool -change ${boost}/lib/libboost_system.dylib $out/lib/libboost_system.dylib $out/lib/libboost_thread.dylib
-    ''}
+  '' + lib.optionalString stdenv.hostPlatform.isLinux ''
+    chmod u+w $out/lib/*.so.*
+    patchelf --set-rpath $out/lib:${stdenv.cc.cc.lib}/lib $out/lib/libboost_thread.so.*
+  '' + lib.optionalString stdenv.hostPlatform.isDarwin ''
+    for LIB in $out/lib/*.dylib; do
+      chmod u+w $LIB
+      install_name_tool -id $LIB $LIB
+      install_name_tool -delete_rpath ${boost}/lib/ $LIB || true
+    done
+    install_name_tool -change ${boost}/lib/libboost_system.dylib $out/lib/libboost_system.dylib $out/lib/libboost_thread.dylib
   '';
 
   configureFlags = lib.optionals stdenv.isLinux [
@@ -217,7 +233,7 @@ in stdenv.mkDerivation (finalAttrs: {
     export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
   '';
 
-  separateDebugInfo = !stdenv.hostPlatform.isStatic;
+  separateDebugInfo = !stdenv.hostPlatform.isStatic && !finalAttrs.dontBuild;
 
   strictDeps = true;
 
