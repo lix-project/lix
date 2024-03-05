@@ -243,51 +243,40 @@
             echo "file installer $out/install" >> $out/nix-support/hydra-build-products
           '';
 
-      testNixVersions = pkgs: client: daemon: with commonDeps { inherit pkgs; }; with pkgs.lib; pkgs.stdenv.mkDerivation {
+      testNixVersions = pkgs: client: daemon: let
+        nix = pkgs.callPackage ./package.nix {
+          pname =
+            "nix-tests"
+            + lib.optionalString
+            (lib.versionAtLeast daemon.version "2.4pre20211005" &&
+            lib.versionAtLeast client.version "2.4pre20211005")
+            "-${client.version}-against-${daemon.version}";
+
+            inherit fileset;
+        };
+      in nix.overrideAttrs (prevAttrs: {
         NIX_DAEMON_PACKAGE = daemon;
         NIX_CLIENT_PACKAGE = client;
-        name =
-          "nix-tests"
-          + optionalString
-            (versionAtLeast daemon.version "2.4pre20211005" &&
-             versionAtLeast client.version "2.4pre20211005")
-            "-${client.version}-against-${daemon.version}";
-        inherit version;
 
-        src = fileset.toSource {
-          root = ./.;
-          fileset = fileset.intersection baseFiles (fileset.unions [
-            configureFiles
-            topLevelBuildFiles
-            functionalTestFiles
-          ]);
-        };
-
-        VERSION_SUFFIX = versionSuffix;
-
-        nativeBuildInputs = nativeBuildDeps;
-        buildInputs = buildDeps ++ awsDeps ++ checkDeps;
-        propagatedBuildInputs = propagatedDeps;
-
-        enableParallelBuilding = true;
-
-        configureFlags =
-          testConfigureFlags # otherwise configure fails
-          ++ [ "--disable-build" ];
         dontBuild = true;
         doInstallCheck = true;
+
+        configureFlags = prevAttrs.configureFlags ++ [
+          # We don't need the actual build here.
+          "--disable-build"
+        ];
 
         installPhase = ''
           mkdir -p $out
         '';
 
-        installCheckPhase = (optionalString pkgs.stdenv.hostPlatform.isDarwin ''
+        installCheckPhase = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
           export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
-        '') + ''
+        '' + ''
           mkdir -p src/nix-channel
           make installcheck -j$NIX_BUILD_CORES -l$NIX_BUILD_CORES
         '';
-      };
+      });
 
       binaryTarball = nix: pkgs:
         let
