@@ -3,10 +3,9 @@
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.05-small";
   inputs.nixpkgs-regression.url = "github:NixOS/nixpkgs/215d4d0fd80ca5163643b03a33fde804a29cc1e2";
-  inputs.lowdown-src = { url = "github:kristapsdz/lowdown"; flake = false; };
   inputs.flake-compat = { url = "github:edolstra/flake-compat"; flake = false; };
 
-  outputs = { self, nixpkgs, nixpkgs-regression, lowdown-src, flake-compat }:
+  outputs = { self, nixpkgs, nixpkgs-regression, flake-compat }:
 
     let
       inherit (nixpkgs) lib;
@@ -178,7 +177,7 @@
           [
             buildPackages.bison
             buildPackages.flex
-            (lib.getBin buildPackages.lowdown-nix)
+            (lib.getBin buildPackages.lowdown)
             buildPackages.mdbook
             buildPackages.mdbook-linkcheck
             buildPackages.autoconf-archive
@@ -201,7 +200,7 @@
             openssl sqlite
             libarchive
             boost
-            lowdown-nix
+            lowdown
             libsodium
           ]
           ++ lib.optionals stdenv.isLinux [libseccomp]
@@ -395,9 +394,6 @@
         {
           nixStable = prev.nix;
 
-          # Forward from the previous stage as we don’t want it to pick the lowdown override
-          nixUnstable = prev.nixUnstable;
-
           nix =
           with final;
           with commonDeps {
@@ -493,23 +489,6 @@
 
             meta.platforms = lib.platforms.unix;
           });
-
-          lowdown-nix = with final; currentStdenv.mkDerivation rec {
-            name = "lowdown-0.9.0";
-
-            src = lowdown-src;
-
-            outputs = [ "out" "bin" "dev" ];
-
-            nativeBuildInputs = [ buildPackages.which ];
-
-            configurePhase = ''
-                ${if (currentStdenv.isDarwin && currentStdenv.isAarch64) then "echo \"HAVE_SANDBOX_INIT=false\" > configure.local" else ""}
-                ./configure \
-                  PREFIX=${placeholder "dev"} \
-                  BINDIR=${placeholder "bin"}/bin
-            '';
-          };
         };
 
     in {
