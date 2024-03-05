@@ -21,9 +21,7 @@ makefiles = \
   misc/zsh/local.mk \
   misc/systemd/local.mk \
   misc/launchd/local.mk \
-  misc/upstart/local.mk \
-  doc/manual/local.mk \
-  doc/internal-api/local.mk
+  misc/upstart/local.mk
 endif
 
 ifeq ($(ENABLE_BUILD)_$(ENABLE_TESTS), yes_yes)
@@ -48,6 +46,16 @@ else
 makefiles += \
   mk/disable-tests.mk
 endif
+
+# Some makefiles require access to built programs and must be included late.
+makefiles-late =
+
+ifeq ($(ENABLE_BUILD), yes)
+makefiles-late += doc/manual/local.mk
+makefiles-late += doc/internal-api/local.mk
+endif
+
+# Miscellaneous global Flags
 
 OPTIMIZE = 1
 

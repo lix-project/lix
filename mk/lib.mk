@@ -113,6 +113,10 @@ $(foreach test-group, $(install-tests-groups), \
     $(eval $(call run-install-test,$(test))) \
     $(eval $(test-group).test-group: $(test).test)))
 
+# Include makefiles requiring built programs.
+$(foreach mf, $(makefiles-late), $(eval $(call include-sub-makefile,$(mf))))
+
+
 $(foreach file, $(man-pages), $(eval $(call install-data-in, $(file), $(mandir)/man$(patsubst .%,%,$(suffix $(file))))))
 
 
