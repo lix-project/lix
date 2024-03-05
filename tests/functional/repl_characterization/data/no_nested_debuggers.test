@@ -1,0 +1,39 @@
+we enter a debugger via builtins.break in the input file.
+
+  info: breakpoint reached
+
+causing another debugger even should not nest, but simply
+print the error, skip the breakpoint, etc as appropriate.
+
+  nix-repl> "values show"
+  "values show"
+
+  nix-repl> builtins.break 2
+  2
+
+  nix-repl> builtins.throw "foo"
+  error:
+         … while calling the 'throw' builtin
+           at «string»:1:1:
+              1| builtins.throw "foo"
+               | ^
+
+         error: foo
+
+  nix-repl> assert false; 2
+  error: assertion 'false' failed
+         at «string»:1:1:
+              1| assert false; 2
+               | ^
+
+exiting the debug frame should allow another to open.
+
+  nix-repl> :c
+
+  nix-repl> builtins.throw "bar"
+  error: bar
+
+and once again, more breakpoints are ignored.
+
+  nix-repl> builtins.break 3
+  3

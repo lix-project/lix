@@ -126,5 +126,6 @@ DEBUGGER_TEST(regression_9918);
 DEBUGGER_TEST(regression_9917);
 DEBUGGER_TEST(regression_l145);
 DEBUGGER_TEST(stack_vars);
+DEBUGGER_TEST(no_nested_debuggers);
 
 };
