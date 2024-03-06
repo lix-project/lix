@@ -8,6 +8,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/resource.h>
 #include <dirent.h>
 #include <unistd.h>
 #include <signal.h>
@@ -447,7 +448,7 @@ void runProgram2(const RunOptions & options);
 /**
  * Change the stack size.
  */
-void setStackSize(size_t stackSize);
+void setStackSize(rlim_t stackSize);
 
 
 /**
