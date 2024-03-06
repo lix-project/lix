@@ -1,4 +1,5 @@
 #include "error.hh"
+#include "position.hh"
 
 #include <iostream>
 #include <optional>
@@ -9,7 +10,7 @@ namespace nix {
 
 const std::string nativeSystem = SYSTEM;
 
-void BaseError::addTrace(std::shared_ptr<AbstractPos> && e, hintformat hint, bool frame)
+void BaseError::addTrace(std::shared_ptr<Pos> && e, hintformat hint, bool frame)
 {
     err.traces.push_front(Trace { .pos = std::move(e), .hint = hint, .frame = frame });
 }
@@ -40,15 +41,6 @@ std::ostream & operator <<(std::ostream & os, const hintformat & hf)
     return os << hf.str();
 }
 
-std::ostream & operator <<(std::ostream & str, const AbstractPos & pos)
-{
-    pos.print(str);
-    str << ":" << pos.line;
-    if (pos.column > 0)
-        str << ":" << pos.column;
-    return str;
-}
-
 /**
  * An arbitrarily defined value comparison for the purpose of using traces in the key of a sorted container.
  */
@@ -75,49 +67,10 @@ inline bool operator> (const Trace& lhs, const Trace& rhs) { return rhs < lhs; }
 inline bool operator<=(const Trace& lhs, const Trace& rhs) { return !(lhs > rhs); }
 inline bool operator>=(const Trace& lhs, const Trace& rhs) { return !(lhs < rhs); }
 
-std::optional<LinesOfCode> AbstractPos::getCodeLines() const
-{
-    if (line == 0)
-        return std::nullopt;
-
-    if (auto source = getSource()) {
-
-        std::istringstream iss(*source);
-        // count the newlines.
-        int count = 0;
-        std::string curLine;
-        int pl = line - 1;
-
-        LinesOfCode loc;
-
-        do {
-            std::getline(iss, curLine);
-            ++count;
-            if (count < pl)
-                ;
-            else if (count == pl) {
-                loc.prevLineOfCode = curLine;
-            } else if (count == pl + 1) {
-                loc.errLineOfCode = curLine;
-            } else if (count == pl + 2) {
-                loc.nextLineOfCode = curLine;
-                break;
-            }
-
-            if (!iss.good())
-                break;
-        } while (true);
-
-        return loc;
-    }
-
-    return std::nullopt;
-}
-
 // print lines of code to the ostream, indicating the error column.
 void printCodeLines(std::ostream & out,
     const std::string & prefix,
-    const AbstractPos & errPos,
+    const Pos & errPos,
     const LinesOfCode & loc)
 {
     // previous line of code.
@@ -195,7 +148,7 @@ static bool printUnknownLocations = getEnv("_NIX_DEVELOPER_SHOW_UNKNOWN_LOCATION
  *
  * @return true if a position was printed.
  */
-static bool printPosMaybe(std::ostream & oss, std::string_view indent, const std::shared_ptr<AbstractPos> & pos) {
+static bool printPosMaybe(std::ostream & oss, std::string_view indent, const std::shared_ptr<Pos> & pos) {
     bool hasPos = pos && *pos;
     if (hasPos) {
         oss << indent << ANSI_BLUE << "at " ANSI_WARNING << *pos << ANSI_NORMAL << ":";

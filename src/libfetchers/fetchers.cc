@@ -1,5 +1,7 @@
 #include "fetchers.hh"
 #include "store-api.hh"
+#include "source-path.hh"
+#include "fetch-to-store.hh"
 
 #include <nlohmann/json.hpp>
 

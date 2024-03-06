@@ -14,6 +14,7 @@
 #include "config.hh"
 #include "path-info.hh"
 #include "repair-flag.hh"
+#include "source-path.hh"
 
 #include <nlohmann/json_fwd.hpp>
 #include <atomic>

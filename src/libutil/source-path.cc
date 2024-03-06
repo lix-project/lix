@@ -1,5 +1,4 @@
-#include "input-accessor.hh"
-#include "store-api.hh"
+#include "source-path.hh"
 
 namespace nix {
 
@@ -55,18 +54,6 @@ InputAccessor::DirEntries SourcePath::readDirectory() const
         res.emplace(entry.name, type);
     }
     return res;
-}
-
-StorePath SourcePath::fetchToStore(
-    ref<Store> store,
-    std::string_view name,
-    PathFilter * filter,
-    RepairFlag repair) const
-{
-    return
-        settings.readOnlyMode
-        ? store->computeStorePathForPath(name, path.abs(), FileIngestionMethod::Recursive, htSHA256, filter ? *filter : defaultPathFilter).first
-        : store->addToStore(name, path.abs(), FileIngestionMethod::Recursive, htSHA256, filter ? *filter : defaultPathFilter, repair);
 }
 
 SourcePath SourcePath::resolveSymlinks() const

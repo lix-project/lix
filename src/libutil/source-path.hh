@@ -1,41 +1,16 @@
 #pragma once
+/**
+ * @file
+ *
+ * @brief SourcePath
+ */
 
 #include "ref.hh"
-#include "types.hh"
-#include "archive.hh"
 #include "canon-path.hh"
 #include "repair-flag.hh"
+#include "input-accessor.hh"
 
 namespace nix {
-
-class StorePath;
-class Store;
-
-struct InputAccessor
-{
-    enum Type {
-      tRegular, tSymlink, tDirectory,
-      /**
-        Any other node types that may be encountered on the file system, such as device nodes, sockets, named pipe, and possibly even more exotic things.
-
-        Responsible for `"unknown"` from `builtins.readFileType "/dev/null"`.
-
-        Unlike `DT_UNKNOWN`, this must not be used for deferring the lookup of types.
-      */
-      tMisc
-    };
-
-    struct Stat
-    {
-        Type type = tMisc;
-        //uint64_t fileSize = 0; // regular files only
-        bool isExecutable = false; // regular files only
-    };
-
-    typedef std::optional<Type> DirEntry;
-
-    typedef std::map<std::string, DirEntry> DirEntries;
-};
 
 /**
  * An abstraction for accessing source files during
@@ -105,15 +80,6 @@ struct SourcePath
         Sink & sink,
         PathFilter & filter = defaultPathFilter) const
     { return nix::dumpPath(path.abs(), sink, filter); }
-
-    /**
-     * Copy this `SourcePath` to the Nix store.
-     */
-    StorePath fetchToStore(
-        ref<Store> store,
-        std::string_view name = "source",
-        PathFilter * filter = nullptr,
-        RepairFlag repair = NoRepair) const;
 
     /**
      * Return the location of this path in the "real" filesystem, if
