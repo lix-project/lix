@@ -111,7 +111,7 @@ StringMap EvalState::realiseContext(const NixStringContext & context)
         for (auto & outputPath : outputsToCopyAndAllow) {
             /* Add the output of this derivations to the allowed
                paths. */
-            allowPath(store->toRealPath(outputPath));
+            allowPath(outputPath);
         }
     }
 
