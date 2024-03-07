@@ -115,7 +115,7 @@ void replaceEnv(const std::map<std::string, std::string> & newEnv)
 
 Path absPath(Path path, std::optional<PathView> dir, bool resolveSymlinks)
 {
-    if (path[0] != '/') {
+    if (path.empty() || path[0] != '/') {
         if (!dir) {
 #ifdef __GNU__
             /* GNU (aka. GNU/Hurd) doesn't have any limitation on path
