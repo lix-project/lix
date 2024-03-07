@@ -5,14 +5,28 @@ let
   nixos-lib = import (nixpkgs + "/nixos/lib") { };
 
   # https://nixos.org/manual/nixos/unstable/index.html#sec-calling-nixos-tests
-  runNixOSTestFor = system: test: nixos-lib.runTest {
-    imports = [ test ];
-    hostPkgs = nixpkgsFor.${system}.native;
-    defaults = {
-      nixpkgs.pkgs = nixpkgsFor.${system}.native;
+  runNixOSTestFor = system: test:
+    (nixos-lib.runTest {
+      imports = [ test ];
+      hostPkgs = nixpkgsFor.${system}.native;
+      defaults = {
+        nixpkgs.pkgs = nixpkgsFor.${system}.native;
+        nix.checkAllErrors = false;
+      };
+      _module.args.nixpkgs = nixpkgs;
+      _module.args.system = system;
+    })
+    // {
+      # allow running tests against older nix versions via `nix eval --apply`
+      # Example:
+      #   nix build "$(nix eval --raw --impure .#hydraJobs.tests.fetch-git --apply 't: (t.forNix "2.19.2").drvPath')^*"
+      forNix = nixVersion: runNixOSTestFor system {
+        imports = [test];
+        defaults.nixpkgs.overlays = [(curr: prev: {
+          nix = (builtins.getFlake "nix/${nixVersion}").packages.${system}.nix;
+        })];
+      };
     };
-    _module.args.nixpkgs = nixpkgs;
-  };
 
   # Checks that a NixOS configuration does not contain any references to our
   # locally defined Nix version.
@@ -142,4 +156,6 @@ in
     (system: runNixOSTestFor system ./setuid.nix);
 
   ca-fd-leak = runNixOSTestFor "x86_64-linux" ./ca-fd-leak;
+
+  fetch-git = runNixOSTestFor "x86_64-linux" ./fetch-git;
 }
