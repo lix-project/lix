@@ -20,6 +20,12 @@
 #pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
 #endif
 
+// yacc generates code that uses unannotated fallthrough.
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+
 #include <boost/lexical_cast.hpp>
 
 #include "nixexpr.hh"

@@ -33,6 +33,7 @@ Gen<StorePathName> Arbitrary<StorePathName>::arbitrary()
         switch (auto i = *gen::inRange<uint8_t>(0, 10 + 2 * 26 + 6)) {
             case 0 ... 9:
                 pre += '0' + i;
+                break;
             case 10 ... 35:
                 pre += 'A' + (i - 10);
                 break;
@@ -52,6 +53,7 @@ Gen<StorePathName> Arbitrary<StorePathName>::arbitrary()
                     pre += '.';
                     break;
                 }
+                [[fallthrough]];
             case 65:
                 pre += '_';
                 break;

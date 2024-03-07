@@ -68,4 +68,4 @@ endif
 
 include mk/lib.mk
 
-GLOBAL_CXXFLAGS += -g -Wall -include $(buildprefix)config.h -std=c++2a -I src
+GLOBAL_CXXFLAGS += -g -Wall -Wimplicit-fallthrough -include $(buildprefix)config.h -std=c++2a -I src
