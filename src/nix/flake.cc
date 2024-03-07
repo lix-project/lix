@@ -359,8 +359,16 @@ struct CmdFlakeCheck : FlakeCommand
                 auto drvInfo = getDerivation(*state, v, false);
                 if (!drvInfo)
                     throw Error("flake attribute '%s' is not a derivation", attrPath);
-                // FIXME: check meta attributes
-                return drvInfo->queryDrvPath();
+                else {
+                    // FIXME: check meta attributes
+                    auto storePath = drvInfo->queryDrvPath();
+                    if (storePath) {
+                        logger->log(lvlInfo,
+                            fmt("derivation evaluated to %s",
+                                store->printStorePath(storePath.value())));
+                    }
+                    return storePath;
+                }
             } catch (Error & e) {
                 e.addTrace(resolve(pos), hintfmt("while checking the derivation '%s'", attrPath));
                 reportError(e);
@@ -389,7 +397,7 @@ struct CmdFlakeCheck : FlakeCommand
         auto checkOverlay = [&](const std::string & attrPath, Value & v, const PosIdx pos) {
             try {
                 Activity act(*logger, lvlInfo, actUnknown,
-                    fmt("checking overlay %s", attrPath));
+                    fmt("checking overlay '%s'", attrPath));
                 state->forceValue(v, pos);
                 if (!v.isLambda()) {
                     throw Error("overlay is not a function, but %s instead", showType(v));
@@ -413,7 +421,7 @@ struct CmdFlakeCheck : FlakeCommand
         auto checkModule = [&](const std::string & attrPath, Value & v, const PosIdx pos) {
             try {
                 Activity act(*logger, lvlInfo, actUnknown,
-                    fmt("checking NixOS module %s", attrPath));
+                    fmt("checking NixOS module '%s'", attrPath));
                 state->forceValue(v, pos);
             } catch (Error & e) {
                 e.addTrace(resolve(pos), hintfmt("while checking the NixOS module '%s'", attrPath));
@@ -426,7 +434,7 @@ struct CmdFlakeCheck : FlakeCommand
         checkHydraJobs = [&](const std::string & attrPath, Value & v, const PosIdx pos) {
             try {
                 Activity act(*logger, lvlInfo, actUnknown,
-                    fmt("checking Hydra job %s", attrPath));
+                    fmt("checking Hydra job '%s'", attrPath));
                 state->forceAttrs(v, pos, "");
 
                 if (state->isDerivation(v))
@@ -501,7 +509,7 @@ struct CmdFlakeCheck : FlakeCommand
         auto checkBundler = [&](const std::string & attrPath, Value & v, const PosIdx pos) {
             try {
                 Activity act(*logger, lvlInfo, actUnknown,
-                    fmt("checking bundler %s", attrPath));
+                    fmt("checking bundler '%s'", attrPath));
                 state->forceValue(v, pos);
                 if (!v.isLambda())
                     throw Error("bundler must be a function");
