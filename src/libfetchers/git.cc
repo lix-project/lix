@@ -377,15 +377,26 @@ struct GitInputScheme : InputScheme
         assert(sourcePath);
         auto gitDir = ".git";
 
-        runProgram("git", true,
-            { "-C", *sourcePath, "--git-dir", gitDir, "add", "--intent-to-add", "--", std::string(file) });
+        auto result = runProgram(RunOptions {
+            .program = "git",
+            .args = {"-C", *sourcePath, "--git-dir", gitDir, "check-ignore", "--quiet", std::string(file)},
+        });
+        auto exitCode = WEXITSTATUS(result.first);
 
-        // Pause the logger to allow for user input (such as a gpg passphrase) in `git commit`
-        logger->pause();
-        Finally restoreLogger([]() { logger->resume(); });
-        if (commitMsg)
+        if (exitCode != 0) {
+            // The path is not `.gitignore`d, we can add the file.
             runProgram("git", true,
-                { "-C", *sourcePath, "--git-dir", gitDir, "commit", std::string(file), "-m", *commitMsg });
+                { "-C", *sourcePath, "--git-dir", gitDir, "add", "--intent-to-add", "--", std::string(file) });
+
+
+            if (commitMsg) {
+                // Pause the logger to allow for user input (such as a gpg passphrase) in `git commit`
+                logger->pause();
+                Finally restoreLogger([]() { logger->resume(); });
+                runProgram("git", true,
+                    { "-C", *sourcePath, "--git-dir", gitDir, "commit", std::string(file), "-m", *commitMsg });
+            }
+        }
     }
 
     std::pair<bool, std::string> getActualUrl(const Input & input) const
