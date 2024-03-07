@@ -1540,11 +1540,12 @@ static void prim_pathExists(EvalState & state, const PosIdx pos, Value * * args,
             || arg.str().ends_with("/."));
 
     try {
-        auto checked = state.checkSourcePath(path);
-        auto exists = checked.pathExists();
-        if (exists && mustBeDir) {
-            exists = checked.lstat().type == InputAccessor::tDirectory;
-        }
+        auto checked = state
+            .checkSourcePath(path)
+            .resolveSymlinks(mustBeDir ? SymlinkResolution::Full : SymlinkResolution::Ancestors);
+
+        auto st = checked.maybeLstat();
+        auto exists = st && (!mustBeDir || st->type == InputAccessor::tDirectory);
         v.mkBool(exists);
     } catch (SysError & e) {
         /* Don't give away info from errors while canonicalising
