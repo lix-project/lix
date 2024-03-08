@@ -140,8 +140,8 @@ static FlakeInput parseFlakeInput(EvalState & state,
                         attrs.emplace(state.symbols[attr.name], (long unsigned int)attr.value->integer);
                         break;
                     default:
-                        throw TypeError("flake input attribute '%s' is %s while a string, Boolean, or integer is expected",
-                            state.symbols[attr.name], showType(*attr.value));
+                        state.error<TypeError>("flake input attribute '%s' is %s while a string, Boolean, or integer is expected",
+                            state.symbols[attr.name], showType(*attr.value)).debugThrow();
                 }
                 #pragma GCC diagnostic pop
             }
@@ -288,15 +288,15 @@ static Flake getFlake(
                 std::vector<std::string> ss;
                 for (auto elem : setting.value->listItems()) {
                     if (elem->type() != nString)
-                        throw TypeError("list element in flake configuration setting '%s' is %s while a string is expected",
-                            state.symbols[setting.name], showType(*setting.value));
+                        state.error<TypeError>("list element in flake configuration setting '%s' is %s while a string is expected",
+                            state.symbols[setting.name], showType(*setting.value)).debugThrow();
                     ss.emplace_back(state.forceStringNoCtx(*elem, setting.pos, ""));
                 }
                 flake.config.settings.emplace(state.symbols[setting.name], ss);
             }
             else
-                throw TypeError("flake configuration setting '%s' is %s",
-                    state.symbols[setting.name], showType(*setting.value));
+                state.error<TypeError>("flake configuration setting '%s' is %s",
+                    state.symbols[setting.name], showType(*setting.value)).debugThrow();
         }
     }
 
@@ -857,11 +857,11 @@ static void prim_flakeRefToString(
             attrs.emplace(state.symbols[attr.name],
                           std::string(attr.value->str()));
         } else {
-            state.error(
+            state.error<EvalError>(
                 "flake reference attribute sets may only contain integers, Booleans, "
                 "and strings, but attribute '%s' is %s",
                 state.symbols[attr.name],
-                showType(*attr.value)).debugThrow<EvalError>();
+                showType(*attr.value)).debugThrow();
         }
     }
     auto flakeRef = FlakeRef::fromAttrs(attrs);

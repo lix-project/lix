@@ -10,8 +10,6 @@
 
 namespace nix::eval_cache {
 
-MakeError(CachedEvalError, EvalError);
-
 struct AttrDb;
 class AttrCursor;
 
