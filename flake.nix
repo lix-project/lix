@@ -501,23 +501,6 @@
         # Binary package for various platforms.
         build = forAllSystems (system: self.packages.${system}.nix);
 
-        shellInputs = forAllSystems (system: self.devShells.${system}.default.inputDerivation);
-
-        buildStatic = lib.genAttrs linux64BitSystems (system: self.packages.${system}.nix-static);
-
-        buildCross = forAllCrossSystems (crossSystem:
-          lib.genAttrs ["x86_64-linux"] (system: self.packages.${system}."nix-${crossSystem}"));
-
-        buildNoGc = forAllSystems (system: self.packages.${system}.nix.overrideAttrs (a: { configureFlags = (a.configureFlags or []) ++ ["--enable-gc=no"];}));
-
-        buildNoTests = forAllSystems (system:
-          self.packages.${system}.nix.overrideAttrs (a: {
-            doCheck =
-              assert ! a?dontCheck;
-              false;
-          })
-        );
-
         # Perl bindings for various platforms.
         perlBindings = forAllSystems (system: nixpkgsFor.${system}.native.nix.perl-bindings);
 
@@ -526,50 +509,8 @@
         # the installation script.
         binaryTarball = forAllSystems (system: binaryTarball nixpkgsFor.${system}.native.nix nixpkgsFor.${system}.native);
 
-        binaryTarballCross = lib.genAttrs ["x86_64-linux"] (system:
-          forAllCrossSystems (crossSystem:
-            binaryTarball
-              self.packages.${system}."nix-${crossSystem}"
-              nixpkgsFor.${system}.cross.${crossSystem}));
-
-        # The first half of the installation script. This is uploaded
-        # to https://nixos.org/nix/install. It downloads the binary
-        # tarball for the user's system and calls the second half of the
-        # installation script.
-        installerScript = installScriptFor [ "x86_64-linux" "i686-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" "armv6l-linux" "armv7l-linux" ];
-        installerScriptForGHA = installScriptFor [ "x86_64-linux" "x86_64-darwin" "armv6l-linux" "armv7l-linux"];
-
         # docker image with Nix inside
         dockerImage = lib.genAttrs linux64BitSystems (system: self.packages.${system}.dockerImage);
-
-        # Line coverage analysis.
-        coverage =
-          with nixpkgsFor.x86_64-linux.native;
-          with commonDeps { inherit pkgs; };
-
-          releaseTools.coverageAnalysis {
-            name = "nix-coverage-${version}";
-
-            src = nixSrc;
-
-            configureFlags = testConfigureFlags;
-
-            enableParallelBuilding = true;
-
-            nativeBuildInputs = nativeBuildDeps;
-            buildInputs = buildDeps ++ propagatedDeps ++ awsDeps ++ checkDeps;
-
-            dontInstall = false;
-
-            doInstallCheck = true;
-            installCheckTarget = "installcheck"; # work around buggy detection in stdenv
-
-            lcovFilter = [ "*/boost/*" "*-tab.*" ];
-
-            hardeningDisable = ["fortify"];
-
-            NIX_CFLAGS_COMPILE = "-DCOVERAGE=1";
-          };
 
         # API docs for Nix's unstable internal C++ interfaces.
         internal-api-docs =
@@ -623,11 +564,6 @@
             );
         };
 
-        metrics.nixpkgs = import "${nixpkgs-regression}/pkgs/top-level/metrics.nix" {
-          pkgs = nixpkgsFor.x86_64-linux.native;
-          nixpkgs = nixpkgs-regression;
-        };
-
         installTests = forAllSystems (system:
           let pkgs = nixpkgsFor.${system}.native; in
           pkgs.runCommand "install-tests" {
@@ -641,12 +577,6 @@
             # `NIX_DAEMON_SOCKET_PATH` which is required for the tests to work
             # againstLatestStable = testNixVersions pkgs pkgs.nix pkgs.nixStable;
           } "touch $out");
-
-        installerTests = import ./tests/installer {
-          binaryTarballs = self.hydraJobs.binaryTarball;
-          inherit nixpkgsFor;
-        };
-
       };
 
       checks = forAllSystems (system: {
