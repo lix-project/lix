@@ -58,7 +58,7 @@ in
     imports = [ ./remote-builds.nix ];
     builders.config = { lib, pkgs, ... }: {
       imports = [ checkOverrideNixVersion ];
-      nix.package = lib.mkForce pkgs.nixVersions.nix_2_3;
+      nix.package = lib.mkForce pkgs.nixVersions.nix_2_13;
     };
   });
 
