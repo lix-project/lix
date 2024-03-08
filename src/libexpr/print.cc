@@ -151,6 +151,7 @@ struct ImportantFirstAttrNameCmp
 };
 
 typedef std::set<const void *> ValuesSeen;
+typedef std::vector<std::pair<std::string, Value *>> AttrVec;
 
 class Printer
 {
@@ -161,6 +162,21 @@ private:
     std::optional<ValuesSeen> seen;
     size_t attrsPrinted = 0;
     size_t listItemsPrinted = 0;
+    std::string indent;
+
+    void increaseIndent()
+    {
+        if (options.prettyPrint()) {
+            indent.append(options.prettyIndent, ' ');
+        }
+    }
+
+    void decreaseIndent()
+    {
+        if (options.prettyPrint()) {
+            indent.resize(indent.size() - options.prettyIndent);
+        }
+    }
 
     void printRepeated()
     {
@@ -258,6 +274,28 @@ private:
         }
     }
 
+    bool shouldPrettyPrintAttrs(AttrVec & v)
+    {
+        if (!options.prettyPrint() || v.empty()) {
+            return false;
+        }
+
+        // Pretty-print attrsets with more than one item.
+        if (v.size() > 1) {
+            return true;
+        }
+
+        auto item = v[0].second;
+        if (!item) {
+            return true;
+        }
+
+        // Pretty-print single-item attrsets only if they contain nested
+        // structures.
+        auto itemType = item->type();
+        return itemType == nList || itemType == nAttrs || itemType == nThunk;
+    }
+
     void printAttrs(Value & v, size_t depth)
     {
         if (seen && !seen->insert(v.attrs).second) {
@@ -268,9 +306,10 @@ private:
         if (options.force && options.derivationPaths && state.isDerivation(v)) {
             printDerivation(v);
         } else if (depth < options.maxDepth) {
-            output << "{ ";
+            increaseIndent();
+            output << "{";
 
-            std::vector<std::pair<std::string, Value *>> sorted;
+            AttrVec sorted;
             for (auto & i : *v.attrs)
                 sorted.emplace_back(std::pair(state.symbols[i.name], i.value));
 
@@ -279,7 +318,15 @@ private:
             else
                 std::sort(sorted.begin(), sorted.end(), ImportantFirstAttrNameCmp());
 
+            auto prettyPrint = shouldPrettyPrintAttrs(sorted);
+
             for (auto & i : sorted) {
+                if (prettyPrint) {
+                    output << "\n" << indent;
+                } else {
+                    output << " ";
+                }
+
                 if (attrsPrinted >= options.maxAttrs) {
                     printElided(sorted.size() - attrsPrinted, "attribute", "attributes");
                     break;
@@ -288,13 +335,42 @@ private:
                 printAttributeName(output, i.first);
                 output << " = ";
                 print(*i.second, depth + 1);
-                output << "; ";
+                output << ";";
                 attrsPrinted++;
             }
 
+            decreaseIndent();
+            if (prettyPrint) {
+                output << "\n" << indent;
+            } else {
+                output << " ";
+            }
             output << "}";
-        } else
+        } else {
             output << "{ ... }";
+        }
+    }
+
+    bool shouldPrettyPrintList(std::span<Value * const> list)
+    {
+        if (!options.prettyPrint() || list.empty()) {
+            return false;
+        }
+
+        // Pretty-print lists with more than one item.
+        if (list.size() > 1) {
+            return true;
+        }
+
+        auto item = list[0];
+        if (!item) {
+            return true;
+        }
+
+        // Pretty-print single-item lists only if they contain nested
+        // structures.
+        auto itemType = item->type();
+        return itemType == nList || itemType == nAttrs || itemType == nThunk;
     }
 
     void printList(Value & v, size_t depth)
@@ -304,9 +380,18 @@ private:
             return;
         }
 
-        output << "[ ";
         if (depth < options.maxDepth) {
-            for (auto elem : v.listItems()) {
+            increaseIndent();
+            output << "[";
+            auto listItems = v.listItems();
+            auto prettyPrint = shouldPrettyPrintList(listItems);
+            for (auto elem : listItems) {
+                if (prettyPrint) {
+                    output << "\n" << indent;
+                } else {
+                    output << " ";
+                }
+
                 if (listItemsPrinted >= options.maxListItems) {
                     printElided(v.listSize() - listItemsPrinted, "item", "items");
                     break;
@@ -317,13 +402,19 @@ private:
                 } else {
                     printNullptr();
                 }
-                output << " ";
                 listItemsPrinted++;
             }
+
+            decreaseIndent();
+            if (prettyPrint) {
+                output << "\n" << indent;
+            } else {
+                output << " ";
+            }
+            output << "]";
+        } else {
+            output << "[ ... ]";
         }
-        else
-            output << "... ";
-        output << "]";
     }
 
     void printFunction(Value & v)
@@ -486,6 +577,7 @@ public:
     {
         attrsPrinted = 0;
         listItemsPrinted = 0;
+        indent.clear();
 
         if (options.trackRepeated) {
             seen.emplace();

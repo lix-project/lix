@@ -98,7 +98,8 @@ struct NixRepl
             .ansiColors = true,
             .force = true,
             .derivationPaths = true,
-            .maxDepth = maxDepth
+            .maxDepth = maxDepth,
+            .prettyIndent = 2
         });
     }
 };
