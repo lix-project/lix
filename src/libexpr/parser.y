@@ -31,6 +31,18 @@
 #define YY_DECL int yylex \
     (YYSTYPE * yylval_param, YYLTYPE * yylloc_param, yyscan_t yyscanner, nix::ParserState * state)
 
+namespace nix {
+
+Expr * parseExprFromBuf(
+    char * text,
+    size_t length,
+    Pos::Origin origin,
+    const SourcePath & basePath,
+    SymbolTable & symbols,
+    PosTable & positions);
+
+}
+
 #endif
 
 }
@@ -51,7 +63,7 @@ void yyerror(YYLTYPE * loc, yyscan_t scanner, ParserState * state, const char * 
 {
     throw ParseError({
         .msg = hintfmt(error),
-        .errPos = state->state.positions[state->at(*loc)]
+        .errPos = state->positions[state->at(*loc)]
     });
 }
 
@@ -140,7 +152,7 @@ expr_function
     { if (!$2->dynamicAttrs.empty())
         throw ParseError({
             .msg = hintfmt("dynamic attributes not allowed in let"),
-            .errPos = state->state.positions[CUR_POS]
+            .errPos = state->positions[CUR_POS]
         });
       $$ = new ExprLet($2, $4);
     }
@@ -230,7 +242,7 @@ expr_simple
       if (noURLLiterals)
           throw ParseError({
               .msg = hintfmt("URL literals are disabled"),
-              .errPos = state->state.positions[CUR_POS]
+              .errPos = state->positions[CUR_POS]
           });
       $$ = new ExprString(std::string($1));
   }
@@ -326,7 +338,7 @@ attrs
       } else
           throw ParseError({
               .msg = hintfmt("dynamic attributes not allowed in inherit"),
-              .errPos = state->state.positions[state->at(@2)]
+              .errPos = state->positions[state->at(@2)]
           });
     }
   | { $$ = new AttrPath; }
@@ -393,17 +405,18 @@ formal
 
 namespace nix {
 
-Expr * EvalState::parse(
+Expr * parseExprFromBuf(
     char * text,
     size_t length,
     Pos::Origin origin,
     const SourcePath & basePath,
-    std::shared_ptr<StaticEnv> & staticEnv)
+    SymbolTable & symbols,
+    PosTable & positions)
 {
     yyscan_t scanner;
     ParserState state {
-        .state = *this,
         .symbols = symbols,
+        .positions = positions,
         .basePath = basePath,
         .origin = {origin},
     };
@@ -413,8 +426,6 @@ Expr * EvalState::parse(
 
     yy_scan_buffer(text, length, scanner);
     yyparse(scanner, &state);
-
-    state.result->bindVars(*this, staticEnv);
 
     return state.result;
 }
