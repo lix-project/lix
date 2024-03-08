@@ -9,6 +9,8 @@
 #include "eval.hh"
 #include "eval-inline.hh"
 #include "profiles.hh"
+#include "print-ambiguous.hh"
+#include <limits>
 
 
 namespace nix {
@@ -106,7 +108,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
        the store; we need it for future modifications of the
        environment. */
     std::ostringstream str;
-    manifest.print(state.symbols, str, true);
+    printAmbiguous(manifest, state.symbols, str, nullptr, std::numeric_limits<int>::max());
     auto manifestFile = state.store->addTextToStore("env-manifest.nix",
         str.str(), references);
 

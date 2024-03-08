@@ -1,4 +1,5 @@
 #include "globals.hh"
+#include "print-ambiguous.hh"
 #include "shared.hh"
 #include "eval.hh"
 #include "eval-inline.hh"
@@ -24,7 +25,6 @@ static int rootNr = 0;
 
 
 enum OutputKind { okPlain, okXML, okJSON };
-
 
 void processExpr(EvalState & state, const Strings & attrPaths,
     bool parseOnly, bool strict, Bindings & autoArgs,
@@ -57,7 +57,8 @@ void processExpr(EvalState & state, const Strings & attrPaths,
                 std::cout << std::endl;
             } else {
                 if (strict) state.forceValueDeep(vRes);
-                vRes.print(state.symbols, std::cout);
+                std::set<const void *> seen;
+                printAmbiguous(vRes, state.symbols, std::cout, &seen, std::numeric_limits<int>::max());
                 std::cout << std::endl;
             }
         } else {
