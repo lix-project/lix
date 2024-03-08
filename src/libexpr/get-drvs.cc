@@ -296,21 +296,15 @@ void DrvInfo::setMeta(const std::string & name, Value * v)
 typedef std::set<Bindings *> Done;
 
 
-/* Evaluate value `v'.  If it evaluates to a set of type `derivation',
-   then put information about it in `drvs' (unless it's already in `done').
-   The result boolean indicates whether it makes sense
+/* The result boolean indicates whether it makes sense
    for the caller to recursively search for derivations in `v'. */
 static bool getDerivation(EvalState & state, Value & v,
-    const std::string & attrPath, DrvInfos & drvs, Done & done,
+    const std::string & attrPath, DrvInfos & drvs,
     bool ignoreAssertionFailures)
 {
     try {
         state.forceValue(v, v.determinePos(noPos));
         if (!state.isDerivation(v)) return true;
-
-        /* Remove spurious duplicates (e.g., a set like `rec { x =
-           derivation {...}; y = x;}'. */
-        if (!done.insert(v.attrs).second) return false;
 
         DrvInfo drv(state, attrPath, v.attrs);
 
@@ -330,9 +324,8 @@ static bool getDerivation(EvalState & state, Value & v,
 std::optional<DrvInfo> getDerivation(EvalState & state, Value & v,
     bool ignoreAssertionFailures)
 {
-    Done done;
     DrvInfos drvs;
-    getDerivation(state, v, "", drvs, done, ignoreAssertionFailures);
+    getDerivation(state, v, "", drvs, ignoreAssertionFailures);
     if (drvs.size() != 1) return {};
     return std::move(drvs.front());
 }
@@ -347,6 +340,9 @@ static std::string addToPath(const std::string & s1, const std::string & s2)
 static std::regex attrRegex("[A-Za-z_][A-Za-z0-9-_+]*");
 
 
+/* Evaluate value `v'.  If it evaluates to a set of type `derivation',
+   then put information about it in `drvs'. If it evaluates to a different
+   kind of set recurse (unless it's already in `done'). */
 static void getDerivations(EvalState & state, Value & vIn,
     const std::string & pathPrefix, Bindings & autoArgs,
     DrvInfos & drvs, Done & done,
@@ -356,9 +352,13 @@ static void getDerivations(EvalState & state, Value & vIn,
     state.autoCallFunction(autoArgs, vIn, v);
 
     /* Process the expression. */
-    if (!getDerivation(state, v, pathPrefix, drvs, done, ignoreAssertionFailures)) ;
+    if (!getDerivation(state, v, pathPrefix, drvs, ignoreAssertionFailures)) ;
 
     else if (v.type() == nAttrs) {
+
+        /* Dont consider sets we've already seen, e.g. y in
+           `rec { x.d = derivation {...}; y = x; }`. */
+        if (!done.insert(v.attrs).second) return;
 
         /* !!! undocumented hackery to support combining channels in
            nix-env.cc. */
@@ -376,7 +376,7 @@ static void getDerivations(EvalState & state, Value & vIn,
             std::string pathPrefix2 = addToPath(pathPrefix, state.symbols[i->name]);
             if (combineChannels)
                 getDerivations(state, *i->value, pathPrefix2, autoArgs, drvs, done, ignoreAssertionFailures);
-            else if (getDerivation(state, *i->value, pathPrefix2, drvs, done, ignoreAssertionFailures)) {
+            else if (getDerivation(state, *i->value, pathPrefix2, drvs, ignoreAssertionFailures)) {
                 /* If the value of this attribute is itself a set,
                    should we recurse into it?  => Only if it has a
                    `recurseForDerivations = true' attribute. */
@@ -390,9 +390,11 @@ static void getDerivations(EvalState & state, Value & vIn,
     }
 
     else if (v.type() == nList) {
+        // NOTE we can't really deduplicate here because small lists don't have stable addresses
+        // and can cause spurious duplicate detections due to v being on the stack.
         for (auto [n, elem] : enumerate(v.listItems())) {
             std::string pathPrefix2 = addToPath(pathPrefix, fmt("%d", n));
-            if (getDerivation(state, *elem, pathPrefix2, drvs, done, ignoreAssertionFailures))
+            if (getDerivation(state, *elem, pathPrefix2, drvs, ignoreAssertionFailures))
                 getDerivations(state, *elem, pathPrefix2, autoArgs, drvs, done, ignoreAssertionFailures);
         }
     }
