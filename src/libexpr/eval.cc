@@ -422,7 +422,7 @@ EvalState::EvalState(
         .or_ = symbols.create("or"),
         .findFile = symbols.create("__findFile"),
         .nixPath = symbols.create("__nixPath"),
-        .body = symbols.create("body")
+        .body = symbols.create("body"),
     }
     , repair(NoRepair)
     , emptyBindings(0)
