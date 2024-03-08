@@ -201,6 +201,8 @@ struct ExprAttrs : Expr
     ExprAttrs() : recursive(false) { };
     PosIdx getPos() const override { return pos; }
     COMMON_METHODS
+
+    void showBindings(const SymbolTable & symbols, std::ostream & str) const;
 };
 
 struct ExprList : Expr
