@@ -35,7 +35,7 @@ using namespace nix;
 
 namespace nix {
 
-#define CUR_POS state->makeCurPos(*yylloc)
+#define CUR_POS state->at(*yylloc)
 
 static void initLoc(YYLTYPE * loc)
 {
