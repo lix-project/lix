@@ -805,7 +805,7 @@ static void prim_addErrorContext(EvalState & state, const PosIdx pos, Value * * 
         auto message = state.coerceToString(pos, *args[0], context,
                 "while evaluating the error message passed to builtins.addErrorContext",
                 false, false).toOwned();
-        e.addTrace(nullptr, HintFmt(message), true);
+        e.addTrace(nullptr, HintFmt(message));
         throw;
     }
 }
@@ -1069,7 +1069,7 @@ static void prim_derivationStrict(EvalState & state, const PosIdx pos, Value * *
         e.addTrace(nullptr, HintFmt(
                 "while evaluating derivation '%s'\n"
                 "  whose name attribute is located at %s",
-                drvName, pos), true);
+                drvName, pos));
         throw;
     }
 }
@@ -1227,8 +1227,7 @@ drvName, Bindings * attrs, Value & v)
 
         } catch (Error & e) {
             e.addTrace(state.positions[i->pos],
-                HintFmt("while evaluating attribute '%1%' of derivation '%2%'", key, drvName),
-                true);
+                HintFmt("while evaluating attribute '%1%' of derivation '%2%'", key, drvName));
             throw;
         }
     }
