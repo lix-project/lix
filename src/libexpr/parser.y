@@ -63,7 +63,7 @@ using namespace nix;
 void yyerror(YYLTYPE * loc, yyscan_t scanner, ParserState * state, const char * error)
 {
     throw ParseError({
-        .msg = hintfmt(error),
+        .msg = HintFmt(error),
         .pos = state->positions[state->at(*loc)]
     });
 }
@@ -152,7 +152,7 @@ expr_function
   | LET binds IN expr_function
     { if (!$2->dynamicAttrs.empty())
         throw ParseError({
-            .msg = hintfmt("dynamic attributes not allowed in let"),
+            .msg = HintFmt("dynamic attributes not allowed in let"),
             .pos = state->positions[CUR_POS]
         });
       $$ = new ExprLet($2, $4);
@@ -242,7 +242,7 @@ expr_simple
       static bool noURLLiterals = experimentalFeatureSettings.isEnabled(Xp::NoUrlLiterals);
       if (noURLLiterals)
           throw ParseError({
-              .msg = hintfmt("URL literals are disabled"),
+              .msg = HintFmt("URL literals are disabled"),
               .pos = state->positions[CUR_POS]
           });
       $$ = new ExprString(std::string($1));
@@ -338,7 +338,7 @@ attrs
           delete str;
       } else
           throw ParseError({
-              .msg = hintfmt("dynamic attributes not allowed in inherit"),
+              .msg = HintFmt("dynamic attributes not allowed in inherit"),
               .pos = state->positions[state->at(@2)]
           });
     }

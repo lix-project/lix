@@ -147,7 +147,7 @@ struct DebugTrace {
     std::shared_ptr<Pos> pos;
     const Expr & expr;
     const Env & env;
-    hintformat hint;
+    HintFmt hint;
     bool isError;
 };
 

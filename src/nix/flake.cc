@@ -370,7 +370,7 @@ struct CmdFlakeCheck : FlakeCommand
                     return storePath;
                 }
             } catch (Error & e) {
-                e.addTrace(resolve(pos), hintfmt("while checking the derivation '%s'", attrPath));
+                e.addTrace(resolve(pos), HintFmt("while checking the derivation '%s'", attrPath));
                 reportError(e);
             }
             return std::nullopt;
@@ -389,7 +389,7 @@ struct CmdFlakeCheck : FlakeCommand
                 }
                 #endif
             } catch (Error & e) {
-                e.addTrace(resolve(pos), hintfmt("while checking the app definition '%s'", attrPath));
+                e.addTrace(resolve(pos), HintFmt("while checking the app definition '%s'", attrPath));
                 reportError(e);
             }
         };
@@ -413,7 +413,7 @@ struct CmdFlakeCheck : FlakeCommand
                 // FIXME: if we have a 'nixpkgs' input, use it to
                 // evaluate the overlay.
             } catch (Error & e) {
-                e.addTrace(resolve(pos), hintfmt("while checking the overlay '%s'", attrPath));
+                e.addTrace(resolve(pos), HintFmt("while checking the overlay '%s'", attrPath));
                 reportError(e);
             }
         };
@@ -424,7 +424,7 @@ struct CmdFlakeCheck : FlakeCommand
                     fmt("checking NixOS module '%s'", attrPath));
                 state->forceValue(v, pos);
             } catch (Error & e) {
-                e.addTrace(resolve(pos), hintfmt("while checking the NixOS module '%s'", attrPath));
+                e.addTrace(resolve(pos), HintFmt("while checking the NixOS module '%s'", attrPath));
                 reportError(e);
             }
         };
@@ -452,7 +452,7 @@ struct CmdFlakeCheck : FlakeCommand
                 }
 
             } catch (Error & e) {
-                e.addTrace(resolve(pos), hintfmt("while checking the Hydra jobset '%s'", attrPath));
+                e.addTrace(resolve(pos), HintFmt("while checking the Hydra jobset '%s'", attrPath));
                 reportError(e);
             }
         };
@@ -467,7 +467,7 @@ struct CmdFlakeCheck : FlakeCommand
                 if (!state->isDerivation(*vToplevel))
                     throw Error("attribute 'config.system.build.toplevel' is not a derivation");
             } catch (Error & e) {
-                e.addTrace(resolve(pos), hintfmt("while checking the NixOS configuration '%s'", attrPath));
+                e.addTrace(resolve(pos), HintFmt("while checking the NixOS configuration '%s'", attrPath));
                 reportError(e);
             }
         };
@@ -501,7 +501,7 @@ struct CmdFlakeCheck : FlakeCommand
                         throw Error("template '%s' has unsupported attribute '%s'", attrPath, name);
                 }
             } catch (Error & e) {
-                e.addTrace(resolve(pos), hintfmt("while checking the template '%s'", attrPath));
+                e.addTrace(resolve(pos), HintFmt("while checking the template '%s'", attrPath));
                 reportError(e);
             }
         };
@@ -515,7 +515,7 @@ struct CmdFlakeCheck : FlakeCommand
                     throw Error("bundler must be a function");
                 // TODO: check types of inputs/outputs?
             } catch (Error & e) {
-                e.addTrace(resolve(pos), hintfmt("while checking the template '%s'", attrPath));
+                e.addTrace(resolve(pos), HintFmt("while checking the template '%s'", attrPath));
                 reportError(e);
             }
         };
@@ -735,7 +735,7 @@ struct CmdFlakeCheck : FlakeCommand
                             warn("unknown flake output '%s'", name);
 
                     } catch (Error & e) {
-                        e.addTrace(resolve(pos), hintfmt("while checking flake output '%s'", name));
+                        e.addTrace(resolve(pos), HintFmt("while checking flake output '%s'", name));
                         reportError(e);
                     }
                 });

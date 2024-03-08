@@ -10,7 +10,7 @@ namespace nix {
 
 const std::string nativeSystem = SYSTEM;
 
-void BaseError::addTrace(std::shared_ptr<Pos> && e, hintformat hint, bool frame)
+void BaseError::addTrace(std::shared_ptr<Pos> && e, HintFmt hint, bool frame)
 {
     err.traces.push_front(Trace { .pos = std::move(e), .hint = hint, .frame = frame });
 }
@@ -36,7 +36,7 @@ const std::string & BaseError::calcWhat() const
 
 std::optional<std::string> ErrorInfo::programName = std::nullopt;
 
-std::ostream & operator <<(std::ostream & os, const hintformat & hf)
+std::ostream & operator <<(std::ostream & os, const HintFmt & hf)
 {
     return os << hf.str();
 }

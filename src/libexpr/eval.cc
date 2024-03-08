@@ -809,7 +809,7 @@ void EvalState::addErrorTrace(Error & e, const char * s, const std::string & s2)
 
 void EvalState::addErrorTrace(Error & e, const PosIdx pos, const char * s, const std::string & s2, bool frame) const
 {
-    e.addTrace(positions[pos], hintfmt(s, s2), frame);
+    e.addTrace(positions[pos], HintFmt(s, s2), frame);
 }
 
 template<typename... Args>
@@ -825,7 +825,7 @@ static std::unique_ptr<DebugTraceStacker> makeDebugTraceStacker(
             .pos = std::move(pos),
             .expr = expr,
             .env = env,
-            .hint = hintfmt(formatArgs...),
+            .hint = HintFmt(formatArgs...),
             .isError = false
         });
 }
@@ -2782,7 +2782,7 @@ std::optional<std::string> EvalState::resolveSearchPathPath(const SearchPath::Pa
             res = { store->toRealPath(storePath) };
         } catch (FileTransferError & e) {
             logWarning({
-                .msg = hintfmt("Nix search path entry '%1%' cannot be downloaded, ignoring", value)
+                .msg = HintFmt("Nix search path entry '%1%' cannot be downloaded, ignoring", value)
             });
             res = std::nullopt;
         }
@@ -2802,7 +2802,7 @@ std::optional<std::string> EvalState::resolveSearchPathPath(const SearchPath::Pa
             res = { path };
         else {
             logWarning({
-                .msg = hintfmt("Nix search path entry '%1%' does not exist, ignoring", value)
+                .msg = HintFmt("Nix search path entry '%1%' does not exist, ignoring", value)
             });
             res = std::nullopt;
         }
