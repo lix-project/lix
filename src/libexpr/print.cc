@@ -18,7 +18,7 @@ void printElided(
 {
     if (ansiColors)
         output << ANSI_FAINT;
-    output << " «";
+    output << "«";
     pluralize(output, value, single, plural);
     output << " elided»";
     if (ansiColors)
@@ -35,7 +35,7 @@ printLiteralString(std::ostream & str, const std::string_view string, size_t max
     str << "\"";
     for (auto i = string.begin(); i != string.end(); ++i) {
         if (charsPrinted >= maxLength) {
-            str << "\"";
+            str << "\" ";
             printElided(str, string.length() - charsPrinted, "byte", "bytes", ansiColors);
             return str;
         }
@@ -159,6 +159,8 @@ private:
     EvalState & state;
     PrintOptions options;
     std::optional<ValuesSeen> seen;
+    size_t attrsPrinted = 0;
+    size_t listItemsPrinted = 0;
 
     void printRepeated()
     {
@@ -277,7 +279,6 @@ private:
             else
                 std::sort(sorted.begin(), sorted.end(), ImportantFirstAttrNameCmp());
 
-            size_t attrsPrinted = 0;
             for (auto & i : sorted) {
                 if (attrsPrinted >= options.maxAttrs) {
                     printElided(sorted.size() - attrsPrinted, "attribute", "attributes");
@@ -305,7 +306,6 @@ private:
 
         output << "[ ";
         if (depth < options.maxDepth) {
-            size_t listItemsPrinted = 0;
             for (auto elem : v.listItems()) {
                 if (listItemsPrinted >= options.maxListItems) {
                     printElided(v.listSize() - listItemsPrinted, "item", "items");
@@ -484,6 +484,9 @@ public:
 
     void print(Value & v)
     {
+        attrsPrinted = 0;
+        listItemsPrinted = 0;
+
         if (options.trackRepeated) {
             seen.emplace();
         } else {
