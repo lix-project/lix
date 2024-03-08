@@ -39,7 +39,8 @@ Expr * parseExprFromBuf(
     Pos::Origin origin,
     const SourcePath & basePath,
     SymbolTable & symbols,
-    PosTable & positions);
+    PosTable & positions,
+    const Expr::AstSymbols & astSymbols);
 
 }
 
@@ -166,13 +167,13 @@ expr_if
 
 expr_op
   : '!' expr_op %prec NOT { $$ = new ExprOpNot($2); }
-  | '-' expr_op %prec NEGATE { $$ = new ExprCall(CUR_POS, new ExprVar(state->symbols.create("__sub")), {new ExprInt(0), $2}); }
+  | '-' expr_op %prec NEGATE { $$ = new ExprCall(CUR_POS, new ExprVar(state->s.sub), {new ExprInt(0), $2}); }
   | expr_op EQ expr_op { $$ = new ExprOpEq($1, $3); }
   | expr_op NEQ expr_op { $$ = new ExprOpNEq($1, $3); }
-  | expr_op '<' expr_op { $$ = new ExprCall(state->at(@2), new ExprVar(state->symbols.create("__lessThan")), {$1, $3}); }
-  | expr_op LEQ expr_op { $$ = new ExprOpNot(new ExprCall(state->at(@2), new ExprVar(state->symbols.create("__lessThan")), {$3, $1})); }
-  | expr_op '>' expr_op { $$ = new ExprCall(state->at(@2), new ExprVar(state->symbols.create("__lessThan")), {$3, $1}); }
-  | expr_op GEQ expr_op { $$ = new ExprOpNot(new ExprCall(state->at(@2), new ExprVar(state->symbols.create("__lessThan")), {$1, $3})); }
+  | expr_op '<' expr_op { $$ = new ExprCall(state->at(@2), new ExprVar(state->s.lessThan), {$1, $3}); }
+  | expr_op LEQ expr_op { $$ = new ExprOpNot(new ExprCall(state->at(@2), new ExprVar(state->s.lessThan), {$3, $1})); }
+  | expr_op '>' expr_op { $$ = new ExprCall(state->at(@2), new ExprVar(state->s.lessThan), {$3, $1}); }
+  | expr_op GEQ expr_op { $$ = new ExprOpNot(new ExprCall(state->at(@2), new ExprVar(state->s.lessThan), {$1, $3})); }
   | expr_op AND expr_op { $$ = new ExprOpAnd(state->at(@2), $1, $3); }
   | expr_op OR expr_op { $$ = new ExprOpOr(state->at(@2), $1, $3); }
   | expr_op IMPL expr_op { $$ = new ExprOpImpl(state->at(@2), $1, $3); }
@@ -180,9 +181,9 @@ expr_op
   | expr_op '?' attrpath { $$ = new ExprOpHasAttr($1, std::move(*$3)); delete $3; }
   | expr_op '+' expr_op
     { $$ = new ExprConcatStrings(state->at(@2), false, new std::vector<std::pair<PosIdx, Expr *> >({{state->at(@1), $1}, {state->at(@3), $3}})); }
-  | expr_op '-' expr_op { $$ = new ExprCall(state->at(@2), new ExprVar(state->symbols.create("__sub")), {$1, $3}); }
-  | expr_op '*' expr_op { $$ = new ExprCall(state->at(@2), new ExprVar(state->symbols.create("__mul")), {$1, $3}); }
-  | expr_op '/' expr_op { $$ = new ExprCall(state->at(@2), new ExprVar(state->symbols.create("__div")), {$1, $3}); }
+  | expr_op '-' expr_op { $$ = new ExprCall(state->at(@2), new ExprVar(state->s.sub), {$1, $3}); }
+  | expr_op '*' expr_op { $$ = new ExprCall(state->at(@2), new ExprVar(state->s.mul), {$1, $3}); }
+  | expr_op '/' expr_op { $$ = new ExprCall(state->at(@2), new ExprVar(state->s.div), {$1, $3}); }
   | expr_op CONCAT expr_op { $$ = new ExprOpConcatLists(state->at(@2), $1, $3); }
   | expr_app
   ;
@@ -206,7 +207,7 @@ expr_select
   | /* Backwards compatibility: because Nixpkgs has a rarely used
        function named ‘or’, allow stuff like ‘map or [...]’. */
     expr_simple OR_KW
-    { $$ = new ExprCall(CUR_POS, $1, {new ExprVar(CUR_POS, state->symbols.create("or"))}); }
+    { $$ = new ExprCall(CUR_POS, $1, {new ExprVar(CUR_POS, state->s.or_)}); }
   | expr_simple
   ;
 
@@ -233,8 +234,8 @@ expr_simple
   | SPATH {
       std::string path($1.p + 1, $1.l - 2);
       $$ = new ExprCall(CUR_POS,
-          new ExprVar(state->symbols.create("__findFile")),
-          {new ExprVar(state->symbols.create("__nixPath")),
+          new ExprVar(state->s.findFile),
+          {new ExprVar(state->s.nixPath),
            new ExprString(std::move(path))});
   }
   | URI {
@@ -250,7 +251,7 @@ expr_simple
   /* Let expressions `let {..., body = ...}' are just desugared
      into `(rec {..., body = ...}).body'. */
   | LET '{' binds '}'
-    { $3->recursive = true; $$ = new ExprSelect(noPos, $3, state->symbols.create("body")); }
+    { $3->recursive = true; $$ = new ExprSelect(noPos, $3, state->s.body); }
   | REC '{' binds '}'
     { $3->recursive = true; $$ = $3; }
   | '{' binds '}'
@@ -411,7 +412,8 @@ Expr * parseExprFromBuf(
     Pos::Origin origin,
     const SourcePath & basePath,
     SymbolTable & symbols,
-    PosTable & positions)
+    PosTable & positions,
+    const Expr::AstSymbols & astSymbols)
 {
     yyscan_t scanner;
     ParserState state {
@@ -419,6 +421,7 @@ Expr * parseExprFromBuf(
         .positions = positions,
         .basePath = basePath,
         .origin = {origin},
+        .s = astSymbols,
     };
 
     yylex_init(&scanner);

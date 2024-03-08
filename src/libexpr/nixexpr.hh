@@ -141,6 +141,11 @@ std::string showAttrPath(const SymbolTable & symbols, const AttrPath & attrPath)
 
 struct Expr
 {
+    struct AstSymbols {
+        Symbol sub, lessThan, mul, div, or_, findFile, nixPath, body;
+    };
+
+
     virtual ~Expr() { };
     virtual void show(const SymbolTable & symbols, std::ostream & str) const;
     virtual void bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env);

@@ -206,6 +206,8 @@ public:
         sPrefix,
         sOutputSpecified;
 
+    const Expr::AstSymbols exprSymbols;
+
     /**
      * If set, force copying files to the Nix store even if they
      * already exist there.
