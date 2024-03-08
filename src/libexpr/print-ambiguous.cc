@@ -1,5 +1,6 @@
 #include "print-ambiguous.hh"
 #include "print.hh"
+#include "eval.hh"
 
 namespace nix {
 

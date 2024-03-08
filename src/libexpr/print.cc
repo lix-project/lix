@@ -5,6 +5,7 @@
 #include "ansicolor.hh"
 #include "store-api.hh"
 #include "english.hh"
+#include "eval.hh"
 
 namespace nix {
 
@@ -497,6 +498,12 @@ public:
 void printValue(EvalState & state, std::ostream & output, Value & v, PrintOptions options)
 {
     Printer(output, state, options).print(v);
+}
+
+std::ostream & operator<<(std::ostream & output, const ValuePrinter & printer)
+{
+    printValue(printer.state, output, printer.value, printer.options);
+    return output;
 }
 
 }
