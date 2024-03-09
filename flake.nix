@@ -48,50 +48,6 @@
             })
             stdenvs);
 
-      baseFiles =
-        # .gitignore has already been processed, so any changes in it are irrelevant
-        # at this point. It is not represented verbatim for test purposes because
-        # that would interfere with repo semantics.
-        fileset.fileFilter (f: f.name != ".gitignore") ./.;
-
-      configureFiles = fileset.unions [
-        ./.version
-        ./configure.ac
-        ./m4
-        # TODO: do we really need README.md? It doesn't seem used in the build.
-        ./README.md
-      ];
-
-      topLevelBuildFiles = fileset.unions [
-        ./local.mk
-        ./Makefile
-        ./Makefile.config.in
-        ./mk
-      ];
-
-      functionalTestFiles = fileset.unions [
-        ./tests/functional
-        ./tests/unit
-        (fileset.fileFilter (f: lib.strings.hasPrefix "nix-profile" f.name) ./scripts)
-      ];
-
-      nixSrc = fileset.toSource {
-        root = ./.;
-        fileset = fileset.intersection baseFiles (fileset.unions [
-          configureFiles
-          topLevelBuildFiles
-          ./boehmgc-coroutine-sp-fallback.diff
-          ./doc
-          ./misc
-          ./precompiled-headers.h
-          ./src
-          ./unit-test-data
-          ./COPYING
-          ./scripts/local.mk
-          functionalTestFiles
-        ]);
-      };
-
       # Memoize nixpkgs for different platforms for efficiency.
       nixpkgsFor = forAllSystems
         (system: let
@@ -117,97 +73,6 @@
           static = native.pkgsStatic;
           cross = forAllCrossSystems (crossSystem: make-pkgs crossSystem "stdenv");
         });
-
-      commonDeps = {
-        pkgs,
-        isStatic ? pkgs.stdenv.hostPlatform.isStatic
-      }: let
-        inherit (pkgs) stdenv buildPackages
-          busybox curl bzip2 xz brotli editline openssl sqlite libarchive boost
-          libseccomp libsodium libcpuid gtest rapidcheck aws-sdk-cpp boehmgc nlohmann_json
-          lowdown;
-        changelog-d = pkgs.buildPackages.callPackage ./misc/changelog-d.nix { };
-        boehmgc-nix = (boehmgc.override {
-          enableLargeConfig = true;
-        }).overrideAttrs (o: {
-          patches = (o.patches or [ ]) ++ [
-            ./boehmgc-coroutine-sp-fallback.diff
-
-            # https://github.com/ivmai/bdwgc/pull/586
-            ./boehmgc-traceable_allocator-public.diff
-          ];
-        });
-      in rec {
-        calledPackage = pkgs.callPackage ./package.nix {
-          inherit stdenv versionSuffix fileset changelog-d officialRelease buildUnreleasedNotes lowdown;
-          boehmgc = boehmgc-nix;
-          busybox-sandbox-shell = sh;
-        };
-
-        inherit boehmgc-nix;
-
-        # Use "busybox-sandbox-shell" if present,
-        # if not (legacy) fallback and hope it's sufficient.
-        sh = pkgs.busybox-sandbox-shell or (busybox.override {
-          useMusl = true;
-          enableStatic = true;
-          enableMinimal = true;
-          extraConfig = ''
-            CONFIG_FEATURE_FANCY_ECHO y
-            CONFIG_FEATURE_SH_MATH y
-            CONFIG_FEATURE_SH_MATH_64 y
-
-            CONFIG_ASH y
-            CONFIG_ASH_OPTIMIZE_FOR_SIZE y
-
-            CONFIG_ASH_ALIAS y
-            CONFIG_ASH_BASH_COMPAT y
-            CONFIG_ASH_CMDCMD y
-            CONFIG_ASH_ECHO y
-            CONFIG_ASH_GETOPTS y
-            CONFIG_ASH_INTERNAL_GLOB y
-            CONFIG_ASH_JOB_CONTROL y
-            CONFIG_ASH_PRINTF y
-            CONFIG_ASH_TEST y
-          '';
-        });
-
-        configureFlags =
-          lib.optionals stdenv.isLinux [
-            "--with-boost=${boost}/lib"
-            "--with-sandbox-shell=${sh}/bin/busybox"
-          ]
-          ++ lib.optionals (stdenv.isLinux && !(isStatic && stdenv.system == "aarch64-linux")) [
-            "LDFLAGS=-fuse-ld=gold"
-          ];
-
-        testConfigureFlags = [
-          "RAPIDCHECK_HEADERS=${lib.getDev rapidcheck}/extras/gtest/include"
-        ];
-
-        internalApiDocsConfigureFlags = [
-          "--enable-internal-api-docs"
-        ];
-
-        inherit changelog-d;
-        nativeBuildDeps = calledPackage.nativeBuildInputs;
-
-        buildDeps = calledPackage.buildInputs;
-
-        checkDeps = calledPackage.finalAttrs.passthru._checkInputs;
-
-        internalApiDocsDeps = [
-          buildPackages.doxygen
-        ];
-
-        awsDeps = lib.optional (stdenv.isLinux || stdenv.isDarwin)
-          (aws-sdk-cpp.override {
-            apis = ["s3" "transfer"];
-            customMemoryManagement = false;
-          });
-
-        propagatedDeps = calledPackage.propagatedBuildInputs;
-      };
 
       installScriptFor = systems:
         with nixpkgsFor.x86_64-linux.native;
@@ -365,7 +230,17 @@
           # Forward from the previous stage as we don’t want it to pick the lowdown override
           nixUnstable = prev.nixUnstable;
 
-          inherit (comDeps) boehmgc-nix;
+          changelog-d = final.buildPackages.callPackage ./misc/changelog-d.nix { };
+          boehmgc-nix = (final.boehmgc.override {
+            enableLargeConfig = true;
+          }).overrideAttrs (o: {
+            patches = (o.patches or [ ]) ++ [
+              ./boehmgc-coroutine-sp-fallback.diff
+
+              # https://github.com/ivmai/bdwgc/pull/586
+              ./boehmgc-traceable_allocator-public.diff
+            ];
+          });
 
           default-busybox-sandbox-shell = final.busybox.override {
             useMusl = true;
@@ -424,14 +299,13 @@
         internal-api-docs = let
           nixpkgs = nixpkgsFor.x86_64-linux.native;
           inherit (nixpkgs) pkgs;
-          comDeps = commonDeps { inherit pkgs; };
 
-          nix = nixpkgs.pkgs.callPackage ./package.nix {
+          nix = pkgs.callPackage ./package.nix {
             inherit versionSuffix fileset officialRelease buildUnreleasedNotes;
-            inherit (comDeps) changelog-d;
+            inherit (pkgs) changelog-d;
             internalApiDocs = true;
-            boehmgc = comDeps.boehmgc-nix;
-            busybox-sandbox-shell = comDeps.sh;
+            boehmgc = pkgs.boehmgc-nix;
+            busybox-sandbox-shell = pkgs.busybox-sandbox-shell;
           };
         in
           nix.overrideAttrs (prev: {
@@ -490,7 +364,7 @@
         rl-next =
           let pkgs = nixpkgsFor.${system}.native;
           in pkgs.buildPackages.runCommand "test-rl-next-release-notes" { } ''
-          LANG=C.UTF-8 ${(commonDeps { inherit pkgs; }).changelog-d}/bin/changelog-d ${./doc/manual/rl-next} >$out
+          LANG=C.UTF-8 ${pkgs.changelog-d}/bin/changelog-d ${./doc/manual/rl-next} >$out
         '';
       } // (lib.optionalAttrs (builtins.elem system linux64BitSystems)) {
         dockerImage = self.hydraJobs.dockerImage.${system};

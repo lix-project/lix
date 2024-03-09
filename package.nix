@@ -36,7 +36,7 @@
   utillinuxMinimal ? null,
   xz,
 
-  busybox-sandbox-shell ? null,
+  busybox-sandbox-shell,
 
   pname ? "nix",
   versionSuffix ? "",
@@ -162,18 +162,13 @@ in stdenv.mkDerivation (finalAttrs: {
     ++ lib.optional stdenv.hostPlatform.isx86_64 libcpuid
     # There have been issues building these dependencies
     ++ lib.optional (stdenv.hostPlatform == stdenv.buildPlatform) aws-sdk-cpp-nix
-    # FIXME(Qyriad): This is how the flake.nix version does it, but this is cursed.
-    ++ lib.optionals (finalAttrs.doCheck) finalAttrs.passthru._checkInputs
     ++ lib.optionals (finalAttrs.dontBuild) maybePropagatedInputs
   ;
 
-  passthru._checkInputs = [
+  checkInputs = [
     gtest
     rapidcheck
   ];
-
-  # FIXME(Qyriad): remove at the end of refactoring.
-  checkInputs = finalAttrs.passthru._checkInputs;
 
   propagatedBuildInputs = lib.optionals (!finalAttrs.dontBuild) maybePropagatedInputs;
 
@@ -197,6 +192,13 @@ in stdenv.mkDerivation (finalAttrs: {
       install_name_tool -delete_rpath ${boost}/lib/ $LIB || true
     done
     install_name_tool -change ${boost}/lib/libboost_system.dylib $out/lib/libboost_system.dylib $out/lib/libboost_thread.dylib
+  '' + ''
+    # Workaround https://github.com/NixOS/nixpkgs/issues/294890.
+    if [[ -n "''${doCheck:-}" ]]; then
+      appendToVar configureFlags "--enable-tests"
+    else
+      appendToVar configureFlags "--disable-tests"
+    fi
   '';
 
   configureFlags = lib.optionals stdenv.isLinux [
@@ -206,7 +208,6 @@ in stdenv.mkDerivation (finalAttrs: {
     "LDFLAGS=-fuse-ld=gold"
   ] ++ [ "--sysconfdir=/etc" ]
     ++ lib.optional stdenv.hostPlatform.isStatic "--enable-embedded-sandbox-shell"
-    ++ [ (lib.enableFeature finalAttrs.doCheck "tests") ]
     ++ lib.optionals (finalAttrs.doCheck || internalApiDocs) testConfigureFlags
     ++ lib.optional (!canRunInstalled) "--disable-doc-gen"
     ++ [ (lib.enableFeature internalApiDocs "internal-api-docs") ]
@@ -254,7 +255,6 @@ in stdenv.mkDerivation (finalAttrs: {
 
   meta.platforms = lib.platforms.unix;
 
-  passthru.finalAttrs = finalAttrs;
   passthru.perl-bindings = pkgs.callPackage ./perl {
     inherit fileset stdenv;
   };
