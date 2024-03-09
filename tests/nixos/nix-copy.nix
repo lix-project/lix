@@ -54,8 +54,12 @@ in {
 
     start_all()
 
-    server.wait_for_unit("sshd")
-    client.wait_for_unit("network.target")
+    server.succeed("systemctl start network-online.target")
+    client.succeed("systemctl start network-online.target")
+    server.wait_for_unit("network-online.target")
+    client.wait_for_unit("network-online.target")
+
+    server.wait_for_unit("sshd.service")
     client.wait_for_unit("getty@tty1.service")
     # Either the prompt: ]#
     # or an OCR misreading of it: 1#
@@ -82,7 +86,7 @@ in {
     # Install the SSH key on the server.
     server.copy_from_host("key.pub", "/root/.ssh/authorized_keys")
     server.succeed("systemctl restart sshd")
-    client.succeed(f"ssh -o StrictHostKeyChecking=no {server.name} 'echo hello world'")
+    client.succeed(f"ssh -o StrictHostKeyChecking=no {server.name} 'echo hello world' >&2")
     client.succeed(f"ssh -O check {server.name}")
     client.succeed(f"ssh -O exit {server.name}")
     client.fail(f"ssh -O check {server.name}")
