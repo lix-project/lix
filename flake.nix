@@ -531,36 +531,25 @@
       devShells = let
         makeShell = pkgs: stdenv:
           let
-            canRunInstalled = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
+            nix = pkgs.callPackage ./package.nix {
+              inherit stdenv versionSuffix fileset;
+              boehmgc = pkgs.boehmgc-nix;
+              busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
+            };
           in
-          with commonDeps { inherit pkgs; };
-          stdenv.mkDerivation {
-            name = "nix";
+            nix.overrideAttrs (prev: {
+              nativeBuildInputs = prev.nativeBuildInputs
+                ++ lib.optional (stdenv.cc.isClang && !stdenv.buildPlatform.isDarwin) pkgs.buildPackages.bear
+                ++ lib.optional
+                  (stdenv.cc.isClang && stdenv.hostPlatform == stdenv.buildPlatform)
+                  pkgs.buildPackages.clang-tools;
 
-            outputs = [ "out" "dev" "doc" ];
+              src = null;
 
-            nativeBuildInputs = nativeBuildDeps
-              ++ lib.optional (stdenv.cc.isClang && !stdenv.buildPlatform.isDarwin) pkgs.buildPackages.bear
-              ++ lib.optional
-                (stdenv.cc.isClang && stdenv.hostPlatform == stdenv.buildPlatform)
-                pkgs.buildPackages.clang-tools
-              # We want changelog-d in the shell even if the current build doesn't need it
-              ++ lib.optional (officialRelease || ! buildUnreleasedNotes) changelog-d
-              ;
+              installFlags = "sysconfdir=$(out)/etc";
+              strictDeps = false;
 
-            buildInputs = buildDeps ++ propagatedDeps
-              ++ awsDeps ++ checkDeps ++ internalApiDocsDeps;
-
-            configureFlags = configureFlags
-              ++ testConfigureFlags ++ internalApiDocsConfigureFlags
-              ++ lib.optional (!canRunInstalled) "--disable-doc-gen";
-
-            enableParallelBuilding = true;
-
-            installFlags = "sysconfdir=$(out)/etc";
-
-            shellHook =
-              ''
+              shellHook = ''
                 PATH=$prefix/bin:$PATH
                 unset PYTHONPATH
                 export MANPATH=$out/share/man:$MANPATH
@@ -568,7 +557,7 @@
                 # Make bash completion work.
                 XDG_DATA_DIRS+=:$out/share
               '';
-          };
+            });
         in
         forAllSystems (system:
           let
