@@ -437,6 +437,34 @@ void OptionalPathSetting::operator =(const std::optional<Path> & v)
     this->assign(v);
 }
 
+PathsSetting::PathsSetting(Config * options,
+    const Paths & def,
+    const std::string & name,
+    const std::string & description,
+    const std::set<std::string> & aliases)
+    : BaseSetting<Paths>(def, true, name, description, aliases)
+{
+    options->addSetting(this);
+}
+
+
+Paths PathsSetting::parse(const std::string & str) const
+{
+    auto strings = tokenizeString<Strings>(str);
+    Paths parsed;
+
+    for (auto str : strings) {
+        parsed.push_back(canonPath(str));
+    }
+
+    return parsed;
+}
+
+PathsSetting::operator bool() const noexcept
+{
+    return !get().empty();
+}
+
 bool GlobalConfig::set(const std::string & name, const std::string & value)
 {
     for (auto & config : *configRegistrations)
