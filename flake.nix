@@ -638,7 +638,7 @@
             outputs = [ "out" "dev" "doc" ];
 
             nativeBuildInputs = nativeBuildDeps
-              ++ lib.optional stdenv.cc.isClang pkgs.buildPackages.bear
+              ++ lib.optional (stdenv.cc.isClang && !stdenv.buildPlatform.isDarwin) pkgs.buildPackages.bear
               ++ lib.optional
                 (stdenv.cc.isClang && stdenv.hostPlatform == stdenv.buildPlatform)
                 pkgs.buildPackages.clang-tools
