@@ -13,6 +13,7 @@
   brotli,
   bzip2,
   curl,
+  doxygen,
   editline,
   fileset,
   flex,
@@ -42,6 +43,7 @@
   officialRelease ? true,
   # Set to true to build the release notes for the next release.
   buildUnreleasedNotes ? false,
+  internalApiDocs ? false,
 
   # Not a real argument, just the only way to approximate let-binding some
   # stuff for argument defaults.
@@ -60,6 +62,13 @@
 
   testConfigureFlags = [
     "RAPIDCHECK_HEADERS=${lib.getDev rapidcheck}/extras/gtest/include"
+  ];
+
+  # The internal API docs need these for the build, but if we're not building
+  # Nix itself, then these don't need to be propagated.
+  maybePropagatedInputs = [
+    boehmgc
+    nlohmann_json
   ];
 
   # .gitignore has already been processed, so any changes in it are irrelevant
@@ -98,7 +107,7 @@ in stdenv.mkDerivation (finalAttrs: {
       topLevelBuildFiles
       functionalTestFiles
       ./unit-test-data
-    ] ++ lib.optionals (!finalAttrs.dontBuild) [
+    ] ++ lib.optionals (!finalAttrs.dontBuild || internalApiDocs) [
       ./boehmgc-coroutine-sp-fallback.diff
       ./doc
       ./misc
@@ -132,7 +141,9 @@ in stdenv.mkDerivation (finalAttrs: {
     mercurial
     jq
   ] ++ lib.optional stdenv.hostPlatform.isLinux util-linuxMinimal
-    ++ lib.optional (!officialRelease && buildUnreleasedNotes) changelog-d;
+    ++ lib.optional (!officialRelease && buildUnreleasedNotes) changelog-d
+    ++ lib.optional internalApiDocs doxygen
+  ;
 
   buildInputs = [
     curl
@@ -153,6 +164,7 @@ in stdenv.mkDerivation (finalAttrs: {
     ++ lib.optional (stdenv.hostPlatform == stdenv.buildPlatform) aws-sdk-cpp-nix
     # FIXME(Qyriad): This is how the flake.nix version does it, but this is cursed.
     ++ lib.optionals (finalAttrs.doCheck) finalAttrs.passthru._checkInputs
+    ++ lib.optionals (finalAttrs.dontBuild) maybePropagatedInputs
   ;
 
   passthru._checkInputs = [
@@ -163,10 +175,7 @@ in stdenv.mkDerivation (finalAttrs: {
   # FIXME(Qyriad): remove at the end of refactoring.
   checkInputs = finalAttrs.passthru._checkInputs;
 
-  propagatedBuildInputs = [
-    boehmgc
-    nlohmann_json
-  ];
+  propagatedBuildInputs = lib.optionals (!finalAttrs.dontBuild) maybePropagatedInputs;
 
   disallowedReferences = [
     boost
@@ -198,9 +207,12 @@ in stdenv.mkDerivation (finalAttrs: {
   ] ++ [ "--sysconfdir=/etc" ]
     ++ lib.optional stdenv.hostPlatform.isStatic "--enable-embedded-sandbox-shell"
     ++ [ (lib.enableFeature finalAttrs.doCheck "tests") ]
-    ++ lib.optionals finalAttrs.doCheck testConfigureFlags
+    ++ lib.optionals (finalAttrs.doCheck || internalApiDocs) testConfigureFlags
     ++ lib.optional (!canRunInstalled) "--disable-doc-gen"
+    ++ [ (lib.enableFeature internalApiDocs "internal-api-docs") ]
   ;
+
+  installTargets = lib.optional internalApiDocs "internal-api-html";
 
   enableParallelBuilding = true;
 
@@ -210,19 +222,20 @@ in stdenv.mkDerivation (finalAttrs: {
 
   installFlags = "sysconfdir=$(out)/etc";
 
-  postInstall = ''
-      mkdir -p $doc/nix-support
-      echo "doc manual $doc/share/doc/nix/manual" >> $doc/nix-support/hydra-build-products
-      ${lib.optionalString stdenv.hostPlatform.isStatic ''
-      mkdir -p $out/nix-support
-      echo "file binary-dist $out/bin/nix" >> $out/nix-support/hydra-build-products
-      ''}
-      ${lib.optionalString stdenv.isDarwin ''
-      install_name_tool \
-        -change ${boost}/lib/libboost_context.dylib \
-        $out/lib/libboost_context.dylib \
-        $out/lib/libnixutil.dylib
-      ''}
+  postInstall = lib.optionalString (!finalAttrs.dontBuild) ''
+    mkdir -p $doc/nix-support
+    echo "doc manual $doc/share/doc/nix/manual" >> $doc/nix-support/hydra-build-products
+  '' + lib.optionalString stdenv.hostPlatform.isStatic ''
+    mkdir -p $out/nix-support
+    echo "file binary-dist $out/bin/nix" >> $out/nix-support/hydra-build-products
+  '' + lib.optionalString stdenv.isDarwin ''
+    install_name_tool \
+      -change ${boost}/lib/libboost_context.dylib \
+      $out/lib/libboost_context.dylib \
+      $out/lib/libnixutil.dylib
+  '' + lib.optionalString internalApiDocs ''
+    mkdir -p $out/nix-support
+    echo "doc internal-api-docs $out/share/doc/nix/internal-api/html" >> "$out/nix-support/hydra-build-products"
   '';
 
   doInstallCheck = finalAttrs.doCheck;

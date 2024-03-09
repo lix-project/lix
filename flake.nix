@@ -421,31 +421,26 @@
         dockerImage = lib.genAttrs linux64BitSystems (system: self.packages.${system}.dockerImage);
 
         # API docs for Nix's unstable internal C++ interfaces.
-        internal-api-docs =
-          with nixpkgsFor.x86_64-linux.native;
-          with commonDeps { inherit pkgs; };
+        internal-api-docs = let
+          nixpkgs = nixpkgsFor.x86_64-linux.native;
+          inherit (nixpkgs) pkgs;
+          comDeps = commonDeps { inherit pkgs; };
 
-          stdenv.mkDerivation {
-            pname = "nix-internal-api-docs";
-            inherit version;
-
-            src = nixSrc;
-
-            configureFlags = testConfigureFlags ++ internalApiDocsConfigureFlags;
-
-            nativeBuildInputs = nativeBuildDeps;
-            buildInputs = buildDeps ++ propagatedDeps
-              ++ awsDeps ++ checkDeps ++ internalApiDocsDeps;
-
-            dontBuild = true;
-
-            installTargets = [ "internal-api-html" ];
-
-            postInstall = ''
-              mkdir -p $out/nix-support
-              echo "doc internal-api-docs $out/share/doc/nix/internal-api/html" >> $out/nix-support/hydra-build-products
-            '';
+          nix = nixpkgs.pkgs.callPackage ./package.nix {
+            inherit versionSuffix fileset officialRelease buildUnreleasedNotes;
+            inherit (comDeps) changelog-d;
+            internalApiDocs = true;
+            boehmgc = comDeps.boehmgc-nix;
+            busybox-sandbox-shell = comDeps.sh;
           };
+        in
+          nix.overrideAttrs (prev: {
+            # This Hydra job is just for the internal API docs.
+            # We don't need the build artifacts here.
+            dontBuild = true;
+            doCheck = false;
+            doInstallCheck = false;
+          });
 
         # System tests.
         tests = import ./tests/nixos { inherit lib nixpkgs nixpkgsFor; } // {
