@@ -1,6 +1,7 @@
 ---
 synopsis: Concise error printing in `nix repl`
 prs: 9928
+cls: 811
 ---
 
 Previously, if an element of a list or attribute set threw an error while
