@@ -5,7 +5,7 @@
 #include "derivations.hh"
 
 #include "tests/libstore.hh"
-#include "characterization.hh"
+#include "tests/characterization.hh"
 
 namespace nix {
 

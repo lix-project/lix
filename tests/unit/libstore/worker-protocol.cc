@@ -8,7 +8,7 @@
 #include "derived-path.hh"
 #include "build-result.hh"
 #include "protocol.hh"
-#include "characterization.hh"
+#include "tests/characterization.hh"
 
 namespace nix {
 

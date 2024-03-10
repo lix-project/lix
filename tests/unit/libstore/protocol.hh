@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 
 #include "tests/libstore.hh"
-#include "characterization.hh"
+#include "tests/characterization.hh"
 
 namespace nix {
 
