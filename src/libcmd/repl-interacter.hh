@@ -45,4 +45,13 @@ public:
     virtual ~ReadlineLikeInteracter() override;
 };
 
+class AutomationInteracter : public virtual ReplInteracter
+{
+public:
+    AutomationInteracter() = default;
+    virtual Guard init(detail::ReplCompleterMixin * repl) override;
+    virtual bool getLine(std::string & input, ReplPromptType promptType) override;
+    virtual ~AutomationInteracter() override = default;
+};
+
 };

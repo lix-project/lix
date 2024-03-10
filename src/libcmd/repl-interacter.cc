@@ -1,4 +1,6 @@
 #include <cstdio>
+#include <iostream>
+#include <string>
 
 #ifdef READLINE
 #include <readline/history.h>
@@ -181,6 +183,26 @@ bool ReadlineLikeInteracter::getLine(std::string & input, ReplPromptType promptT
 ReadlineLikeInteracter::~ReadlineLikeInteracter()
 {
     write_history(historyFile.c_str());
+}
+
+AutomationInteracter::Guard AutomationInteracter::init(detail::ReplCompleterMixin *)
+{
+    return Guard([] {});
+}
+
+// ASCII ENQ character
+constexpr const char * automationPrompt = "\x05";
+
+bool AutomationInteracter::getLine(std::string & input, ReplPromptType promptType)
+{
+    std::cout << std::unitbuf;
+    std::cout << automationPrompt;
+    if (!std::getline(std::cin, input)) {
+        // reset failure bits on EOF
+        std::cin.clear();
+        return false;
+    }
+    return true;
 }
 
 };

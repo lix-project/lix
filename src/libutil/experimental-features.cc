@@ -12,7 +12,19 @@ struct ExperimentalFeatureDetails
     std::string_view description;
 };
 
-constexpr std::array<ExperimentalFeatureDetails, 14> xpFeatureDetails = {{
+/**
+ * If two different PRs both add an experimental feature, and we just
+ * used a number for this, we *woudln't* get merge conflict and the
+ * counter will be incremented once instead of twice, causing a build
+ * failure.
+ *
+ * By instead defining this instead as 1 + the bottom experimental
+ * feature, we either have no issue at all if few features are not added
+ * at the end of the list, or a proper merge conflict if they are.
+ */
+constexpr size_t numXpFeatures = 1 + static_cast<size_t>(Xp::ReplAutomation);
+
+constexpr std::array<ExperimentalFeatureDetails, numXpFeatures> xpFeatureDetails = {{
     {
         .tag = Xp::CaDerivations,
         .name = "ca-derivations",
@@ -217,6 +229,13 @@ constexpr std::array<ExperimentalFeatureDetails, 14> xpFeatureDetails = {{
         .name = "read-only-local-store",
         .description = R"(
             Allow the use of the `read-only` parameter in [local store](@docroot@/command-ref/new-cli/nix3-help-stores.md#local-store) URIs.
+        )",
+    },
+    {
+        .tag = Xp::ReplAutomation,
+        .name = "repl-automation",
+        .description = R"(
+            Makes the repl not use readline/editline, print ENQ (U+0005) when ready for a command, and take commands followed by newline.
         )",
     },
 }};

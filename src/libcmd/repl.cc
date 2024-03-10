@@ -121,6 +121,12 @@ std::string removeWhitespace(std::string s)
     return s;
 }
 
+static box_ptr<ReplInteracter> makeInteracter() {
+    if (experimentalFeatureSettings.isEnabled(Xp::ReplAutomation))
+        return make_box_ptr<AutomationInteracter>();
+    else
+        return make_box_ptr<ReadlineLikeInteracter>(getDataDir() + "/nix/repl-history");
+}
 
 NixRepl::NixRepl(const SearchPath & searchPath, nix::ref<Store> store, ref<EvalState> state,
             std::function<NixRepl::AnnotatedValues()> getValues)
@@ -128,7 +134,7 @@ NixRepl::NixRepl(const SearchPath & searchPath, nix::ref<Store> store, ref<EvalS
     , debugTraceIndex(0)
     , getValues(getValues)
     , staticEnv(new StaticEnv(nullptr, state->staticBaseEnv.get()))
-    , interacter(make_box_ptr<ReadlineLikeInteracter>(getDataDir() + "/nix/repl-history"))
+    , interacter(makeInteracter())
 {
 }
 
