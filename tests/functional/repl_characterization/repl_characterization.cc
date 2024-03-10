@@ -4,6 +4,7 @@
 #include <string_view>
 #include <optional>
 #include <unistd.h>
+#include <boost/algorithm/string/replace.hpp>
 
 #include "test-session.hh"
 #include "util.hh"
@@ -68,7 +69,10 @@ public:
         }
         session.close();
 
-        auto parsedOutLog = CLILiterateParser::parse(AUTOMATION_PROMPT, trimOutLog(session.outLog), 0);
+        auto replacedOutLog = boost::algorithm::replace_all_copy(session.outLog, unitTestData, "TEST_DATA");
+        auto cleanedOutLog = trimOutLog(replacedOutLog);
+
+        auto parsedOutLog = CLILiterateParser::parse(AUTOMATION_PROMPT, cleanedOutLog, 0);
 
         parsedOutLog = CLILiterateParser::tidyOutputForComparison(std::move(parsedOutLog));
         syntax = CLILiterateParser::tidyOutputForComparison(std::move(syntax));
@@ -86,6 +90,19 @@ TEST_F(ReplSessionTest, parses)
 
         std::ostringstream out{};
         for (auto & bit : parser.syntax()) {
+            out << bit.print() << "\n";
+        }
+        return out.str();
+    });
+
+    writeTest("basic_tidied.ast", [this]() {
+        const std::string content = readFile(goldenMaster("basic.test"));
+        auto syntax = CLILiterateParser::parse(REPL_PROMPT, content);
+
+        syntax = CLILiterateParser::tidyOutputForComparison(std::move(syntax));
+
+        std::ostringstream out{};
+        for (auto & bit : syntax) {
             out << bit.print() << "\n";
         }
         return out.str();
