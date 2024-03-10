@@ -2,6 +2,7 @@
 #include "shared.hh"
 #include "store-api.hh"
 #include "thread-pool.hh"
+#include "signals.hh"
 
 #include <atomic>
 

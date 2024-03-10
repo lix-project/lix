@@ -8,6 +8,7 @@
 #include "references.hh"
 #include "callback.hh"
 #include "topo-sort.hh"
+#include "signals.hh"
 #include "finally.hh"
 #include "compression.hh"
 

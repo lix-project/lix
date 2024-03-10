@@ -3,6 +3,7 @@
 #include "globals.hh"
 #include "store-api.hh"
 #include "s3.hh"
+#include "signals.hh"
 #include "compression.hh"
 #include "finally.hh"
 #include "callback.hh"

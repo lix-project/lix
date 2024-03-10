@@ -5,6 +5,7 @@
 #include "ansicolor.hh"
 #include "store-api.hh"
 #include "english.hh"
+#include "signals.hh"
 #include "eval.hh"
 
 namespace nix {

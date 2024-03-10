@@ -3,6 +3,7 @@
 #include "store-api.hh"
 #include "sync.hh"
 #include "thread-pool.hh"
+#include "signals.hh"
 #include "references.hh"
 
 #include <atomic>

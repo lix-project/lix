@@ -12,6 +12,7 @@
 #include "derivations.hh"
 #include "finally.hh"
 #include "legacy.hh"
+#include "signals.hh"
 #include "daemon.hh"
 
 #include <algorithm>
