@@ -124,5 +124,6 @@ TEST_F(ReplSessionTest, repl_basic)
 
 DEBUGGER_TEST(regression_9918);
 DEBUGGER_TEST(regression_9917);
+DEBUGGER_TEST(stack_vars);
 
 };
