@@ -85,6 +85,13 @@ in
 
       start_all()
 
+      builder1.succeed("systemctl start network-online.target")
+      builder2.succeed("systemctl start network-online.target")
+      client.succeed("systemctl start network-online.target")
+      builder1.wait_for_unit("network-online.target")
+      builder2.wait_for_unit("network-online.target")
+      client.wait_for_unit("network-online.target")
+
       # Create an SSH key on the client.
       subprocess.run([
         "${hostPkgs.openssh}/bin/ssh-keygen", "-t", "ed25519", "-f", "key", "-N", ""
@@ -94,12 +101,11 @@ in
       client.succeed("chmod 600 /root/.ssh/id_ed25519")
 
       # Install the SSH key on the builders.
-      client.wait_for_unit("network.target")
       for builder in [builder1, builder2]:
         builder.succeed("mkdir -p -m 700 /root/.ssh")
         builder.copy_from_host("key.pub", "/root/.ssh/authorized_keys")
-        builder.wait_for_unit("sshd")
-        client.succeed(f"ssh -o StrictHostKeyChecking=no {builder.name} 'echo hello world'")
+        builder.wait_for_unit("sshd.service")
+        client.succeed(f"ssh -o StrictHostKeyChecking=no {builder.name} 'echo hello world' >&2")
 
       # Perform a build and check that it was performed on the builder.
       out = client.succeed(
