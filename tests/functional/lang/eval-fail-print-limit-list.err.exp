@@ -1,0 +1,12 @@
+error:
+       … in the condition of the assert statement
+         at /pwd/lang/eval-fail-print-limit-list.nix:1:1:
+            1| assert (
+             | ^
+            2|   let x = [ 1 [ 2 3 4 5 6 7 8 9 x 10 11 ] 12 ];
+
+       error: expected a Boolean but found a list: [ 1 [ 2 3 4 5 6 7 8 9 [ 1 «2 items elided» ] «2 items elided» ] «1 item elided» ]
+       at /pwd/lang/eval-fail-print-limit-list.nix:1:1:
+            1| assert (
+             | ^
+            2|   let x = [ 1 [ 2 3 4 5 6 7 8 9 x 10 11 ] 12 ];

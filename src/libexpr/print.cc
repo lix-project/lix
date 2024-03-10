@@ -337,11 +337,12 @@ private:
 
             auto prettyPrint = shouldPrettyPrintAttrs(sorted);
 
+            size_t printedHere = 0;
             for (auto & i : sorted) {
                 printSpace(prettyPrint);
 
                 if (attrsPrinted >= options.maxAttrs) {
-                    printElided(sorted.size() - attrsPrinted, "attribute", "attributes");
+                    printElided(sorted.size() - printedHere, "attribute", "attributes");
                     break;
                 }
 
@@ -350,6 +351,7 @@ private:
                 print(*i.second, depth + 1);
                 output << ";";
                 attrsPrinted++;
+                printedHere++;
             }
 
             decreaseIndent();
@@ -394,11 +396,12 @@ private:
             output << "[";
             auto listItems = v.listItems();
             auto prettyPrint = shouldPrettyPrintList(listItems);
+            size_t printedHere = 0;
             for (auto elem : listItems) {
                 printSpace(prettyPrint);
 
                 if (listItemsPrinted >= options.maxListItems) {
-                    printElided(v.listSize() - listItemsPrinted, "item", "items");
+                    printElided(v.listSize() - printedHere, "item", "items");
                     break;
                 }
 
@@ -408,6 +411,7 @@ private:
                     printNullptr();
                 }
                 listItemsPrinted++;
+                printedHere++;
             }
 
             decreaseIndent();
