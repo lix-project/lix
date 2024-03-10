@@ -131,7 +131,7 @@ ifeq ($(HAVE_LIBCPUID), 1)
 endif
 
 ifeq ($(ENABLE_BUILD), yes)
-	nix_tests += test-libstoreconsumer.sh
+	nix_tests += test-libstoreconsumer.sh test-repl-characterization.sh
 
 	ifeq ($(BUILD_SHARED_LIBS), 1)
 		nix_tests += plugins.sh
@@ -142,6 +142,8 @@ $(d)/test-libstoreconsumer.sh.test $(d)/test-libstoreconsumer.sh.test-debug: \
   $(buildprefix)$(d)/test-libstoreconsumer/test-libstoreconsumer
 $(d)/plugins.sh.test $(d)/plugins.sh.test-debug: \
   $(buildprefix)$(d)/plugins/libplugintest.$(SO_EXT)
+$(d)/test-repl-characterization.sh.test $(d)/test-repl-characterization.sh.test-debug: \
+  $(buildprefix)$(d)/repl_characterization/test-repl-characterization
 
 install-tests += $(foreach x, $(nix_tests), $(d)/$(x))
 
