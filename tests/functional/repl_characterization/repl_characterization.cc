@@ -185,5 +185,6 @@ REPL_TEST(regression_9917);
 REPL_TEST(regression_9918);
 REPL_TEST(regression_l145);
 REPL_TEST(stack_vars);
+REPL_TEST(repl_printing);
 
 }; // namespace nix

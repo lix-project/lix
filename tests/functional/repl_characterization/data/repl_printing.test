@@ -1,0 +1,92 @@
+Printing a string with escapes in it will render as a string normally.
+
+  nix-repl> "meow\n\nmeowmeowmeow"
+  "meow\n\nmeowmeowmeow"
+
+But with :p on the string itself it will print it literally to the output.
+
+  nix-repl> :p "meow\n\nmeowmeowmeow"
+  meow
+
+  meowmeowmeow
+
+  nix-repl> builtins.listToAttrs (builtins.genList (x: { name = "meow${toString x}"; value = { meow = { inherit x; s = "meowmeow\n\n${toString x}"; }; }; }) 10)
+  {
+    meow0 = { ... };
+    meow1 = { ... };
+    meow2 = { ... };
+    meow3 = { ... };
+    meow4 = { ... };
+    meow5 = { ... };
+    meow6 = { ... };
+    meow7 = { ... };
+    meow8 = { ... };
+    meow9 = { ... };
+  }
+
+Also, :p will expand attrs, but it will leave the strings escaped as normal if
+they aren't the top level item being printed.
+
+  nix-repl> :p builtins.listToAttrs (builtins.genList (x: { name = "meow${toString x}"; value = { meow = { inherit x; s = "meowmeow\n\n${toString x}"; }; }; }) 10)
+  {
+    meow0 = {
+      meow = {
+        s = "meowmeow\n\n0";
+        x = 0;
+      };
+    };
+    meow1 = {
+      meow = {
+        s = "meowmeow\n\n1";
+        x = 1;
+      };
+    };
+    meow2 = {
+      meow = {
+        s = "meowmeow\n\n2";
+        x = 2;
+      };
+    };
+    meow3 = {
+      meow = {
+        s = "meowmeow\n\n3";
+        x = 3;
+      };
+    };
+    meow4 = {
+      meow = {
+        s = "meowmeow\n\n4";
+        x = 4;
+      };
+    };
+    meow5 = {
+      meow = {
+        s = "meowmeow\n\n5";
+        x = 5;
+      };
+    };
+    meow6 = {
+      meow = {
+        s = "meowmeow\n\n6";
+        x = 6;
+      };
+    };
+    meow7 = {
+      meow = {
+        s = "meowmeow\n\n7";
+        x = 7;
+      };
+    };
+    meow8 = {
+      meow = {
+        s = "meowmeow\n\n8";
+        x = 8;
+      };
+    };
+    meow9 = {
+      meow = {
+        s = "meowmeow\n\n9";
+        x = 9;
+      };
+    };
+  }

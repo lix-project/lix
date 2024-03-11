@@ -71,7 +71,7 @@ namespace nix {
         if (arg.type() != nString) {
             return false;
         }
-        return std::string_view(arg.string.s) == s;
+        return std::string_view(arg.string.s) == std::string_view(s);
     }
 
     MATCHER_P(IsIntEq, v, fmt("The string is equal to \"%1%\"", v)) {
@@ -106,7 +106,7 @@ namespace nix {
             if (arg.type() != nPath) {
                 *result_listener << "Expected a path got " << arg.type();
                 return false;
-            } else if (std::string_view(arg.string.s) != p) {
+            } else if (std::string_view(arg._path) != p) {
                 *result_listener << "Expected a path that equals \"" << p << "\" but got: " << arg.string.s;
                 return false;
             }
