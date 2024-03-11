@@ -40,6 +40,7 @@ extern "C" {
 #include "finally.hh"
 #include "markdown.hh"
 #include "local-fs-store.hh"
+#include "signals.hh"
 #include "print.hh"
 
 #if HAVE_BOEHMGC

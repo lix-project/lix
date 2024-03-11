@@ -5,6 +5,7 @@
 #include "shared.hh"
 #include "globals.hh"
 #include "legacy.hh"
+#include "signals.hh"
 
 #include <iostream>
 #include <cerrno>

@@ -3,6 +3,7 @@
 #include "substitution-goal.hh"
 #include "drv-output-substitution-goal.hh"
 #include "local-derivation-goal.hh"
+#include "signals.hh"
 #include "hook-instance.hh"
 
 #include <poll.h>

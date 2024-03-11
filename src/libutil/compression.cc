@@ -2,6 +2,7 @@
 #include "tarfile.hh"
 #include "util.hh"
 #include "finally.hh"
+#include "signals.hh"
 #include "logging.hh"
 
 #include <archive.h>

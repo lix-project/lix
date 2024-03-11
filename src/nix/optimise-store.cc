@@ -1,5 +1,6 @@
 #include "command.hh"
 #include "shared.hh"
+#include "signals.hh"
 #include "store-api.hh"
 
 #include <atomic>

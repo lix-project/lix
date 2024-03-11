@@ -1,5 +1,6 @@
 #include "serialise.hh"
 #include "util.hh"
+#include "signals.hh"
 #include "path-with-outputs.hh"
 #include "gc-store.hh"
 #include "remote-fs-accessor.hh"
