@@ -1,7 +1,14 @@
 #include "config.hh"
 #include "primops.hh"
+#include <stdlib.h>
 
 using namespace nix;
+
+#ifdef MISSING_REFERENCE
+extern void meow();
+#else
+#define meow() {}
+#endif
 
 struct MySettings : Config
 {
@@ -12,6 +19,11 @@ struct MySettings : Config
 MySettings mySettings;
 
 static GlobalConfig::Register rs(&mySettings);
+
+[[gnu::used, gnu::unused, gnu::retain]]
+static void maybeRequireMeowForDlopen() {
+    meow();
+}
 
 static void prim_anotherNull (EvalState & state, const PosIdx pos, Value ** args, Value & v)
 {
