@@ -48,50 +48,6 @@
             })
             stdenvs);
 
-      baseFiles =
-        # .gitignore has already been processed, so any changes in it are irrelevant
-        # at this point. It is not represented verbatim for test purposes because
-        # that would interfere with repo semantics.
-        fileset.fileFilter (f: f.name != ".gitignore") ./.;
-
-      configureFiles = fileset.unions [
-        ./.version
-        ./configure.ac
-        ./m4
-        # TODO: do we really need README.md? It doesn't seem used in the build.
-        ./README.md
-      ];
-
-      topLevelBuildFiles = fileset.unions [
-        ./local.mk
-        ./Makefile
-        ./Makefile.config.in
-        ./mk
-      ];
-
-      functionalTestFiles = fileset.unions [
-        ./tests/functional
-        ./tests/unit
-        (fileset.fileFilter (f: lib.strings.hasPrefix "nix-profile" f.name) ./scripts)
-      ];
-
-      nixSrc = fileset.toSource {
-        root = ./.;
-        fileset = fileset.intersection baseFiles (fileset.unions [
-          configureFiles
-          topLevelBuildFiles
-          ./boehmgc-coroutine-sp-fallback.diff
-          ./doc
-          ./misc
-          ./precompiled-headers.h
-          ./src
-          ./unit-test-data
-          ./COPYING
-          ./scripts/local.mk
-          functionalTestFiles
-        ]);
-      };
-
       # Memoize nixpkgs for different platforms for efficiency.
       nixpkgsFor = forAllSystems
         (system: let
@@ -117,120 +73,6 @@
           static = native.pkgsStatic;
           cross = forAllCrossSystems (crossSystem: make-pkgs crossSystem "stdenv");
         });
-
-      commonDeps =
-        { pkgs
-        , isStatic ? pkgs.stdenv.hostPlatform.isStatic
-        }:
-        with pkgs; rec {
-        # Use "busybox-sandbox-shell" if present,
-        # if not (legacy) fallback and hope it's sufficient.
-        sh = pkgs.busybox-sandbox-shell or (busybox.override {
-          useMusl = true;
-          enableStatic = true;
-          enableMinimal = true;
-          extraConfig = ''
-            CONFIG_FEATURE_FANCY_ECHO y
-            CONFIG_FEATURE_SH_MATH y
-            CONFIG_FEATURE_SH_MATH_64 y
-
-            CONFIG_ASH y
-            CONFIG_ASH_OPTIMIZE_FOR_SIZE y
-
-            CONFIG_ASH_ALIAS y
-            CONFIG_ASH_BASH_COMPAT y
-            CONFIG_ASH_CMDCMD y
-            CONFIG_ASH_ECHO y
-            CONFIG_ASH_GETOPTS y
-            CONFIG_ASH_INTERNAL_GLOB y
-            CONFIG_ASH_JOB_CONTROL y
-            CONFIG_ASH_PRINTF y
-            CONFIG_ASH_TEST y
-          '';
-        });
-
-        configureFlags =
-          lib.optionals stdenv.isLinux [
-            "--with-boost=${boost}/lib"
-            "--with-sandbox-shell=${sh}/bin/busybox"
-          ]
-          ++ lib.optionals (stdenv.isLinux && !(isStatic && stdenv.system == "aarch64-linux")) [
-            "LDFLAGS=-fuse-ld=gold"
-          ];
-
-        testConfigureFlags = [
-          "RAPIDCHECK_HEADERS=${lib.getDev rapidcheck}/extras/gtest/include"
-        ];
-
-        internalApiDocsConfigureFlags = [
-          "--enable-internal-api-docs"
-        ];
-
-        changelog-d = pkgs.buildPackages.callPackage ./misc/changelog-d.nix { };
-
-        nativeBuildDeps =
-          [
-            buildPackages.bison
-            buildPackages.flex
-            (lib.getBin buildPackages.lowdown)
-            buildPackages.mdbook
-            buildPackages.mdbook-linkcheck
-            buildPackages.autoconf-archive
-            buildPackages.autoreconfHook
-            buildPackages.pkg-config
-
-            # Tests
-            buildPackages.git
-            buildPackages.mercurial # FIXME: remove? only needed for tests
-            buildPackages.jq # Also for custom mdBook preprocessor.
-          ]
-          ++ lib.optionals stdenv.hostPlatform.isLinux [(buildPackages.util-linuxMinimal or buildPackages.utillinuxMinimal)]
-          # Official releases don't have rl-next, so we don't need to compile a changelog
-          ++ lib.optional (!officialRelease && buildUnreleasedNotes) changelog-d
-          ;
-
-        buildDeps =
-          [ curl
-            bzip2 xz brotli editline
-            openssl sqlite
-            libarchive
-            boost
-            lowdown
-            libsodium
-          ]
-          ++ lib.optionals stdenv.isLinux [libseccomp]
-          ++ lib.optional stdenv.hostPlatform.isx86_64 libcpuid;
-
-        checkDeps = [
-          gtest
-          rapidcheck
-        ];
-
-        internalApiDocsDeps = [
-          buildPackages.doxygen
-        ];
-
-        awsDeps = lib.optional (stdenv.isLinux || stdenv.isDarwin)
-          (aws-sdk-cpp.override {
-            apis = ["s3" "transfer"];
-            customMemoryManagement = false;
-          });
-
-        propagatedDeps =
-          [ ((boehmgc.override {
-              enableLargeConfig = true;
-            }).overrideAttrs(o: {
-              patches = (o.patches or []) ++ [
-                ./boehmgc-coroutine-sp-fallback.diff
-
-                # https://github.com/ivmai/bdwgc/pull/586
-                ./boehmgc-traceable_allocator-public.diff
-              ];
-            })
-            )
-            nlohmann_json
-          ];
-      };
 
       installScriptFor = systems:
         with nixpkgsFor.x86_64-linux.native;
@@ -266,51 +108,40 @@
             echo "file installer $out/install" >> $out/nix-support/hydra-build-products
           '';
 
-      testNixVersions = pkgs: client: daemon: with commonDeps { inherit pkgs; }; with pkgs.lib; pkgs.stdenv.mkDerivation {
+      testNixVersions = pkgs: client: daemon: let
+        nix = pkgs.callPackage ./package.nix {
+          pname =
+            "nix-tests"
+            + lib.optionalString
+            (lib.versionAtLeast daemon.version "2.4pre20211005" &&
+            lib.versionAtLeast client.version "2.4pre20211005")
+            "-${client.version}-against-${daemon.version}";
+
+            inherit fileset;
+        };
+      in nix.overrideAttrs (prevAttrs: {
         NIX_DAEMON_PACKAGE = daemon;
         NIX_CLIENT_PACKAGE = client;
-        name =
-          "nix-tests"
-          + optionalString
-            (versionAtLeast daemon.version "2.4pre20211005" &&
-             versionAtLeast client.version "2.4pre20211005")
-            "-${client.version}-against-${daemon.version}";
-        inherit version;
 
-        src = fileset.toSource {
-          root = ./.;
-          fileset = fileset.intersection baseFiles (fileset.unions [
-            configureFiles
-            topLevelBuildFiles
-            functionalTestFiles
-          ]);
-        };
-
-        VERSION_SUFFIX = versionSuffix;
-
-        nativeBuildInputs = nativeBuildDeps;
-        buildInputs = buildDeps ++ awsDeps ++ checkDeps;
-        propagatedBuildInputs = propagatedDeps;
-
-        enableParallelBuilding = true;
-
-        configureFlags =
-          testConfigureFlags # otherwise configure fails
-          ++ [ "--disable-build" ];
         dontBuild = true;
         doInstallCheck = true;
+
+        configureFlags = prevAttrs.configureFlags ++ [
+          # We don't need the actual build here.
+          "--disable-build"
+        ];
 
         installPhase = ''
           mkdir -p $out
         '';
 
-        installCheckPhase = (optionalString pkgs.stdenv.hostPlatform.isDarwin ''
+        installCheckPhase = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
           export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
-        '') + ''
+        '' + ''
           mkdir -p src/nix-channel
           make installcheck -j$NIX_BUILD_CORES -l$NIX_BUILD_CORES
         '';
-      };
+      });
 
       binaryTarball = nix: pkgs:
         let
@@ -387,109 +218,60 @@
           '';
 
       overlayFor = getStdenv: final: prev:
-        let currentStdenv = getStdenv final; in
-        {
-          nixStable = prev.nix;
-
-          nix =
-          with final;
-          with commonDeps {
+        let
+          currentStdenv = getStdenv final;
+          comDeps = with final; commonDeps {
             inherit pkgs;
             inherit (currentStdenv.hostPlatform) isStatic;
           };
-          let
-            canRunInstalled = currentStdenv.buildPlatform.canExecute currentStdenv.hostPlatform;
-          in currentStdenv.mkDerivation (finalAttrs: {
-            name = "nix-${version}";
-            inherit version;
+        in {
+          nixStable = prev.nix;
 
-            src = nixSrc;
-            VERSION_SUFFIX = versionSuffix;
+          # Forward from the previous stage as we don’t want it to pick the lowdown override
+          nixUnstable = prev.nixUnstable;
 
-            outputs = [ "out" "dev" "doc" ];
+          changelog-d = final.buildPackages.callPackage ./misc/changelog-d.nix { };
+          boehmgc-nix = (final.boehmgc.override {
+            enableLargeConfig = true;
+          }).overrideAttrs (o: {
+            patches = (o.patches or [ ]) ++ [
+              ./boehmgc-coroutine-sp-fallback.diff
 
-            nativeBuildInputs = nativeBuildDeps;
-            buildInputs = buildDeps
-              # There have been issues building these dependencies
-              ++ lib.optionals (currentStdenv.hostPlatform == currentStdenv.buildPlatform) awsDeps
-              ++ lib.optionals finalAttrs.doCheck checkDeps;
-
-            propagatedBuildInputs = propagatedDeps;
-
-            disallowedReferences = [ boost ];
-
-            preConfigure = lib.optionalString (! currentStdenv.hostPlatform.isStatic)
-              ''
-                # Copy libboost_context so we don't get all of Boost in our closure.
-                # https://github.com/NixOS/nixpkgs/issues/45462
-                mkdir -p $out/lib
-                cp -pd ${boost}/lib/{libboost_context*,libboost_thread*,libboost_system*} $out/lib
-                rm -f $out/lib/*.a
-                ${lib.optionalString currentStdenv.hostPlatform.isLinux ''
-                  chmod u+w $out/lib/*.so.*
-                  patchelf --set-rpath $out/lib:${currentStdenv.cc.cc.lib}/lib $out/lib/libboost_thread.so.*
-                ''}
-                ${lib.optionalString currentStdenv.hostPlatform.isDarwin ''
-                  for LIB in $out/lib/*.dylib; do
-                    chmod u+w $LIB
-                    install_name_tool -id $LIB $LIB
-                    install_name_tool -delete_rpath ${boost}/lib/ $LIB || true
-                  done
-                  install_name_tool -change ${boost}/lib/libboost_system.dylib $out/lib/libboost_system.dylib $out/lib/libboost_thread.dylib
-                ''}
-              '';
-
-            configureFlags = configureFlags ++
-              [ "--sysconfdir=/etc" ] ++
-              lib.optional stdenv.hostPlatform.isStatic "--enable-embedded-sandbox-shell" ++
-              [ (lib.enableFeature finalAttrs.doCheck "tests") ] ++
-              lib.optionals finalAttrs.doCheck testConfigureFlags ++
-              lib.optional (!canRunInstalled) "--disable-doc-gen";
-
-            enableParallelBuilding = true;
-
-            makeFlags = "profiledir=$(out)/etc/profile.d PRECOMPILE_HEADERS=1";
-
-            doCheck = true;
-
-            installFlags = "sysconfdir=$(out)/etc";
-
-            postInstall = ''
-              mkdir -p $doc/nix-support
-              echo "doc manual $doc/share/doc/nix/manual" >> $doc/nix-support/hydra-build-products
-              ${lib.optionalString currentStdenv.hostPlatform.isStatic ''
-              mkdir -p $out/nix-support
-              echo "file binary-dist $out/bin/nix" >> $out/nix-support/hydra-build-products
-              ''}
-              ${lib.optionalString currentStdenv.isDarwin ''
-              install_name_tool \
-                -change ${boost}/lib/libboost_context.dylib \
-                $out/lib/libboost_context.dylib \
-                $out/lib/libnixutil.dylib
-              ''}
-            '';
-
-            doInstallCheck = finalAttrs.doCheck;
-            installCheckFlags = "sysconfdir=$(out)/etc";
-            installCheckTarget = "installcheck"; # work around buggy detection in stdenv
-
-            preInstallCheck = lib.optionalString stdenv.hostPlatform.isDarwin ''
-              export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
-            '';
-
-            separateDebugInfo = !currentStdenv.hostPlatform.isStatic;
-
-            strictDeps = true;
-
-            hardeningDisable = lib.optional stdenv.hostPlatform.isStatic "pie";
-
-            passthru.perl-bindings = final.callPackage ./perl {
-              inherit fileset;
-              stdenv = currentStdenv;
-            };
-
-            meta.platforms = lib.platforms.unix;
+              # https://github.com/ivmai/bdwgc/pull/586
+              ./boehmgc-traceable_allocator-public.diff
+            ];
           });
+
+          default-busybox-sandbox-shell = final.busybox.override {
+            useMusl = true;
+            enableStatic = true;
+            enableMinimal = true;
+            extraConfig = ''
+              CONFIG_FEATURE_FANCY_ECHO y
+              CONFIG_FEATURE_SH_MATH y
+              CONFIG_FEATURE_SH_MATH_64 y
+
+              CONFIG_ASH y
+              CONFIG_ASH_OPTIMIZE_FOR_SIZE y
+
+              CONFIG_ASH_ALIAS y
+              CONFIG_ASH_BASH_COMPAT y
+              CONFIG_ASH_CMDCMD y
+              CONFIG_ASH_ECHO y
+              CONFIG_ASH_GETOPTS y
+              CONFIG_ASH_INTERNAL_GLOB y
+              CONFIG_ASH_JOB_CONTROL y
+              CONFIG_ASH_PRINTF y
+              CONFIG_ASH_TEST y
+            '';
+          };
+
+          nix = final.callPackage ./package.nix {
+            inherit versionSuffix fileset;
+            stdenv = currentStdenv;
+            boehmgc = final.boehmgc-nix;
+            busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
+          };
         };
 
     in {
@@ -514,31 +296,25 @@
         dockerImage = lib.genAttrs linux64BitSystems (system: self.packages.${system}.dockerImage);
 
         # API docs for Nix's unstable internal C++ interfaces.
-        internal-api-docs =
-          with nixpkgsFor.x86_64-linux.native;
-          with commonDeps { inherit pkgs; };
+        internal-api-docs = let
+          nixpkgs = nixpkgsFor.x86_64-linux.native;
+          inherit (nixpkgs) pkgs;
 
-          stdenv.mkDerivation {
-            pname = "nix-internal-api-docs";
-            inherit version;
-
-            src = nixSrc;
-
-            configureFlags = testConfigureFlags ++ internalApiDocsConfigureFlags;
-
-            nativeBuildInputs = nativeBuildDeps;
-            buildInputs = buildDeps ++ propagatedDeps
-              ++ awsDeps ++ checkDeps ++ internalApiDocsDeps;
-
-            dontBuild = true;
-
-            installTargets = [ "internal-api-html" ];
-
-            postInstall = ''
-              mkdir -p $out/nix-support
-              echo "doc internal-api-docs $out/share/doc/nix/internal-api/html" >> $out/nix-support/hydra-build-products
-            '';
+          nix = pkgs.callPackage ./package.nix {
+            inherit versionSuffix fileset officialRelease buildUnreleasedNotes;
+            inherit (pkgs) changelog-d;
+            internalApiDocs = true;
+            boehmgc = pkgs.boehmgc-nix;
+            busybox-sandbox-shell = pkgs.busybox-sandbox-shell;
           };
+        in
+          nix.overrideAttrs (prev: {
+            # This Hydra job is just for the internal API docs.
+            # We don't need the build artifacts here.
+            dontBuild = true;
+            doCheck = false;
+            doInstallCheck = false;
+          });
 
         # System tests.
         tests = import ./tests/nixos { inherit lib nixpkgs nixpkgsFor; } // {
@@ -588,7 +364,7 @@
         rl-next =
           let pkgs = nixpkgsFor.${system}.native;
           in pkgs.buildPackages.runCommand "test-rl-next-release-notes" { } ''
-          LANG=C.UTF-8 ${(commonDeps { inherit pkgs; }).changelog-d}/bin/changelog-d ${./doc/manual/rl-next} >$out
+          LANG=C.UTF-8 ${pkgs.changelog-d}/bin/changelog-d ${./doc/manual/rl-next} >$out
         '';
       } // (lib.optionalAttrs (builtins.elem system linux64BitSystems)) {
         dockerImage = self.hydraJobs.dockerImage.${system};
@@ -629,36 +405,25 @@
       devShells = let
         makeShell = pkgs: stdenv:
           let
-            canRunInstalled = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
+            nix = pkgs.callPackage ./package.nix {
+              inherit stdenv versionSuffix fileset;
+              boehmgc = pkgs.boehmgc-nix;
+              busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
+            };
           in
-          with commonDeps { inherit pkgs; };
-          stdenv.mkDerivation {
-            name = "nix";
+            nix.overrideAttrs (prev: {
+              nativeBuildInputs = prev.nativeBuildInputs
+                ++ lib.optional (stdenv.cc.isClang && !stdenv.buildPlatform.isDarwin) pkgs.buildPackages.bear
+                ++ lib.optional
+                  (stdenv.cc.isClang && stdenv.hostPlatform == stdenv.buildPlatform)
+                  pkgs.buildPackages.clang-tools;
 
-            outputs = [ "out" "dev" "doc" ];
+              src = null;
 
-            nativeBuildInputs = nativeBuildDeps
-              ++ lib.optional (stdenv.cc.isClang && !stdenv.buildPlatform.isDarwin) pkgs.buildPackages.bear
-              ++ lib.optional
-                (stdenv.cc.isClang && stdenv.hostPlatform == stdenv.buildPlatform)
-                pkgs.buildPackages.clang-tools
-              # We want changelog-d in the shell even if the current build doesn't need it
-              ++ lib.optional (officialRelease || ! buildUnreleasedNotes) changelog-d
-              ;
+              installFlags = "sysconfdir=$(out)/etc";
+              strictDeps = false;
 
-            buildInputs = buildDeps ++ propagatedDeps
-              ++ awsDeps ++ checkDeps ++ internalApiDocsDeps;
-
-            configureFlags = configureFlags
-              ++ testConfigureFlags ++ internalApiDocsConfigureFlags
-              ++ lib.optional (!canRunInstalled) "--disable-doc-gen";
-
-            enableParallelBuilding = true;
-
-            installFlags = "sysconfdir=$(out)/etc";
-
-            shellHook =
-              ''
+              shellHook = ''
                 PATH=$prefix/bin:$PATH
                 unset PYTHONPATH
                 export MANPATH=$out/share/man:$MANPATH
@@ -666,7 +431,7 @@
                 # Make bash completion work.
                 XDG_DATA_DIRS+=:$out/share
               '';
-          };
+            });
         in
         forAllSystems (system:
           let
