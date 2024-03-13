@@ -423,6 +423,9 @@
               installFlags = "sysconfdir=$(out)/etc";
               strictDeps = false;
 
+              # Required to make non-NixOS Linux not complain about missing locale files during configure in a dev shell
+              LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
+
               shellHook = ''
                 PATH=$prefix/bin:$PATH
                 unset PYTHONPATH
