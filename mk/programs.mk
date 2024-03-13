@@ -6,6 +6,9 @@ programs-list :=
 # - $(1)_NAME: the name of the program (e.g. ‘foo’); defaults to
 #   $(1).
 #
+# - $(1)_ENV: environment variables to set when running the program
+#   from the Makefile using the $(1)_RUN target.
+#
 # - $(1)_DIR: the directory where the (non-installed) program will be
 #   placed.
 #
@@ -87,6 +90,6 @@ define build-program
   # Phony target to run this program (typically as a dependency of 'check').
   .PHONY: $(1)_RUN
   $(1)_RUN: $$($(1)_PATH)
-	$(trace-test) $$(UNIT_TEST_ENV) $$($(1)_PATH)
+	$(trace-test) $$($(1)_ENV) $$($(1)_PATH)
 
 endef

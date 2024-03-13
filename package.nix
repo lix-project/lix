@@ -106,7 +106,6 @@ in stdenv.mkDerivation (finalAttrs: {
       configureFiles
       topLevelBuildFiles
       functionalTestFiles
-      ./unit-test-data
     ] ++ lib.optionals (!finalAttrs.dontBuild || internalApiDocs) [
       ./boehmgc-coroutine-sp-fallback.diff
       ./doc
