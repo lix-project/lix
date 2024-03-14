@@ -328,7 +328,7 @@
               strictDeps = false;
 
               # Required to make non-NixOS Linux not complain about missing locale files during configure in a dev shell
-              LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
+              ${if stdenv.isLinux then "LOCALE_ARCHIVE" else null} = "${pkgs.glibcLocales}/lib/locale/locale-archive";
 
               shellHook = ''
                 PATH=$prefix/bin:$PATH
