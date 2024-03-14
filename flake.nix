@@ -74,40 +74,6 @@
           cross = forAllCrossSystems (crossSystem: make-pkgs crossSystem "stdenv");
         });
 
-      installScriptFor = systems:
-        with nixpkgsFor.x86_64-linux.native;
-        runCommand "installer-script"
-          { buildInputs = [ nix ];
-          }
-          ''
-            mkdir -p $out/nix-support
-
-            # Converts /nix/store/50p3qk8k...-nix-2.4pre20201102_550e11f/bin/nix to 50p3qk8k.../bin/nix.
-            tarballPath() {
-              # Remove the store prefix
-              local path=''${1#${builtins.storeDir}/}
-              # Get the path relative to the derivation root
-              local rest=''${path#*/}
-              # Get the derivation hash
-              local drvHash=''${path%%-*}
-              echo "$drvHash/$rest"
-            }
-
-            substitute ${./scripts/install.in} $out/install \
-              ${pkgs.lib.concatMapStrings
-                (system: let
-                    tarball = if builtins.elem system crossSystems then self.hydraJobs.binaryTarballCross.x86_64-linux.${system} else self.hydraJobs.binaryTarball.${system};
-                  in '' \
-                  --replace '@tarballHash_${system}@' $(nix --experimental-features nix-command hash-file --base16 --type sha256 ${tarball}/*.tar.xz) \
-                  --replace '@tarballPath_${system}@' $(tarballPath ${tarball}/*.tar.xz) \
-                  ''
-                )
-                systems
-              } --replace '@nixVersion@' ${version}
-
-            echo "file installer $out/install" >> $out/nix-support/hydra-build-products
-          '';
-
       testNixVersions = pkgs: client: daemon: let
         nix = pkgs.callPackage ./package.nix {
           pname =
@@ -146,8 +112,7 @@
       binaryTarball = nix: pkgs:
         let
           inherit (pkgs) buildPackages;
-          inherit (pkgs) cacert;
-          installerClosureInfo = buildPackages.closureInfo { rootPaths = [ nix cacert ]; };
+          installerClosureInfo = buildPackages.closureInfo { rootPaths = [ nix ]; };
         in
 
         buildPackages.runCommand "nix-binary-tarball-${version}"
@@ -156,45 +121,7 @@
           }
           ''
             cp ${installerClosureInfo}/registration $TMPDIR/reginfo
-            cp ${./scripts/create-darwin-volume.sh} $TMPDIR/create-darwin-volume.sh
-            substitute ${./scripts/install-nix-from-closure.sh} $TMPDIR/install \
-              --subst-var-by nix ${nix} \
-              --subst-var-by cacert ${cacert}
 
-            substitute ${./scripts/install-darwin-multi-user.sh} $TMPDIR/install-darwin-multi-user.sh \
-              --subst-var-by nix ${nix} \
-              --subst-var-by cacert ${cacert}
-            substitute ${./scripts/install-systemd-multi-user.sh} $TMPDIR/install-systemd-multi-user.sh \
-              --subst-var-by nix ${nix} \
-              --subst-var-by cacert ${cacert}
-            substitute ${./scripts/install-multi-user.sh} $TMPDIR/install-multi-user \
-              --subst-var-by nix ${nix} \
-              --subst-var-by cacert ${cacert}
-
-            if type -p shellcheck; then
-              # SC1090: Don't worry about not being able to find
-              #         $nix/etc/profile.d/nix.sh
-              shellcheck --exclude SC1090 $TMPDIR/install
-              shellcheck $TMPDIR/create-darwin-volume.sh
-              shellcheck $TMPDIR/install-darwin-multi-user.sh
-              shellcheck $TMPDIR/install-systemd-multi-user.sh
-
-              # SC1091: Don't panic about not being able to source
-              #         /etc/profile
-              # SC2002: Ignore "useless cat" "error", when loading
-              #         .reginfo, as the cat is a much cleaner
-              #         implementation, even though it is "useless"
-              # SC2116: Allow ROOT_HOME=$(echo ~root) for resolving
-              #         root's home directory
-              shellcheck --external-sources \
-                --exclude SC1091,SC2002,SC2116 $TMPDIR/install-multi-user
-            fi
-
-            chmod +x $TMPDIR/install
-            chmod +x $TMPDIR/create-darwin-volume.sh
-            chmod +x $TMPDIR/install-darwin-multi-user.sh
-            chmod +x $TMPDIR/install-systemd-multi-user.sh
-            chmod +x $TMPDIR/install-multi-user
             dir=nix-${version}-${pkgs.system}
             fn=$out/$dir.tar.xz
             mkdir -p $out/nix-support
@@ -204,15 +131,8 @@
               --mtime='1970-01-01' \
               --absolute-names \
               --hard-dereference \
-              --transform "s,$TMPDIR/install,$dir/install," \
-              --transform "s,$TMPDIR/create-darwin-volume.sh,$dir/create-darwin-volume.sh," \
               --transform "s,$TMPDIR/reginfo,$dir/.reginfo," \
               --transform "s,$NIX_STORE,$dir/store,S" \
-              $TMPDIR/install \
-              $TMPDIR/create-darwin-volume.sh \
-              $TMPDIR/install-darwin-multi-user.sh \
-              $TMPDIR/install-systemd-multi-user.sh \
-              $TMPDIR/install-multi-user \
               $TMPDIR/reginfo \
               $(cat ${installerClosureInfo}/store-paths)
           '';
@@ -288,8 +208,7 @@
         perlBindings = forAllSystems (system: nixpkgsFor.${system}.native.nix.perl-bindings);
 
         # Binary tarball for various platforms, containing a Nix store
-        # with the closure of 'nix' package, and the second half of
-        # the installation script.
+        # with the closure of 'nix' package.
         binaryTarball = forAllSystems (system: binaryTarball nixpkgsFor.${system}.native.nix nixpkgsFor.${system}.native);
 
         # docker image with Nix inside
@@ -340,26 +259,11 @@
                 }
             );
         };
-
-        installTests = forAllSystems (system:
-          let pkgs = nixpkgsFor.${system}.native; in
-          pkgs.runCommand "install-tests" {
-            againstSelf = testNixVersions pkgs pkgs.nix pkgs.pkgs.nix;
-            againstCurrentUnstable =
-              # FIXME: temporarily disable this on macOS because of #3605.
-              if system == "x86_64-linux"
-              then testNixVersions pkgs pkgs.nix pkgs.nixUnstable
-              else null;
-            # Disabled because the latest stable version doesn't handle
-            # `NIX_DAEMON_SOCKET_PATH` which is required for the tests to work
-            # againstLatestStable = testNixVersions pkgs pkgs.nix pkgs.nixStable;
-          } "touch $out");
       };
 
       checks = forAllSystems (system: {
         binaryTarball = self.hydraJobs.binaryTarball.${system};
         perlBindings = self.hydraJobs.perlBindings.${system};
-        installTests = self.hydraJobs.installTests.${system};
         nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
         rl-next =
           let pkgs = nixpkgsFor.${system}.native;
