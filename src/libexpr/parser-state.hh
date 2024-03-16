@@ -90,10 +90,10 @@ inline void ParserState::addAttr(ExprAttrs * attrs, AttrPath && attrPath, Expr *
             if (j != attrs->attrs.end()) {
                 if (j->second.kind != ExprAttrs::AttrDef::Kind::Inherited) {
                     ExprAttrs * attrs2 = dynamic_cast<ExprAttrs *>(j->second.e);
-                    if (!attrs2) dupAttr(attrPath, pos, j->second.pos);
+                    if (!attrs2) dupAttr({attrPath.begin(), i + 1}, pos, j->second.pos);
                     attrs = attrs2;
                 } else
-                    dupAttr(attrPath, pos, j->second.pos);
+                    dupAttr({attrPath.begin(), i + 1}, pos, j->second.pos);
             } else {
                 ExprAttrs * nested = new ExprAttrs;
                 attrs->attrs[i->symbol] = ExprAttrs::AttrDef(nested, pos);
