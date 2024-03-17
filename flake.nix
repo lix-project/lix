@@ -328,9 +328,6 @@
               installFlags = "sysconfdir=$(out)/etc";
               strictDeps = false;
 
-              # Required to make non-NixOS Linux not complain about missing locale files during configure in a dev shell
-              ${if stdenv.isLinux then "LOCALE_ARCHIVE" else null} = "${pkgs.glibcLocales}/lib/locale/locale-archive";
-
               shellHook = ''
                 PATH=$prefix/bin:$PATH
                 unset PYTHONPATH
@@ -339,6 +336,9 @@
                 # Make bash completion work.
                 XDG_DATA_DIRS+=:$out/share
               '';
+            } // lib.optionalAttrs (stdenv.isLinux && pkgs.glibcLocales != null) {
+              # Required to make non-NixOS Linux not complain about missing locale files during configure in a dev shell
+              LOCALE_ARCHIVE = "${lib.getLib pkgs.glibcLocales}/lib/locale/locale-archive";
             });
         in
         forAllSystems (system:
