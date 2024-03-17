@@ -15,11 +15,6 @@ void BaseError::addTrace(std::shared_ptr<Pos> && e, HintFmt hint)
     err.traces.push_front(Trace { .pos = std::move(e), .hint = hint });
 }
 
-void throwExceptionSelfCheck(){
-    // This is meant to be caught in initLibUtil()
-    throw SysError("C++ exception handling is broken. This would appear to be a problem with the way Nix was compiled and/or linked and/or loaded.");
-}
-
 // c++ std::exception descendants must have a 'const char* what()' function.
 // This stringifies the error and caches it for use by what(), or similarly by msg().
 const std::string & BaseError::calcWhat() const

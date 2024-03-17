@@ -33,8 +33,6 @@ namespace nix {
 struct Sink;
 struct Source;
 
-void initLibUtil();
-
 /**
  * The system for which Nix is compiled.
  */

@@ -402,8 +402,6 @@ void assertLibStoreInitialized() {
 
 void initLibStore() {
 
-    initLibUtil();
-
     if (sodium_init() == -1)
         throw Error("could not initialise libsodium");
 
