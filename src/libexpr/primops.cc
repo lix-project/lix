@@ -4299,25 +4299,16 @@ void EvalState::createBaseEnv()
         .impureOnly = true,
     });
 
-    v.mkString(nixVersion);
+    v.mkString("2.18.3-lix");
     addConstant("__nixVersion", v, {
         .type = nString,
         .doc = R"(
-          The version of Nix.
+          Legacy version of Nix. Always returns "2.18.3-lix" on Lix.
 
-          For example, where the command line returns the current Nix version,
-
-          ```shell-session
-          $ nix --version
-          nix (Nix) 2.16.0
-          ```
-
-          the Nix language evaluator returns the same value:
-
-          ```nix-repl
-          nix-repl> builtins.nixVersion
-          "2.16.0"
-          ```
+          To determine if features exist, Nix scripts should instead use direct
+          means of feature detection, such as checking for existence of
+          builtins they want to use. Doing so allows for much better compatibility
+          across implementations.
         )",
     });
 

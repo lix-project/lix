@@ -611,7 +611,7 @@ namespace nix {
 
     TEST_F(PrimOpTest, nixVersion) {
         auto v = eval("builtins.nixVersion");
-        ASSERT_THAT(v, IsStringEq(nixVersion));
+        ASSERT_THAT(v, IsStringEq("2.18.3-lix"));
     }
 
     TEST_F(PrimOpTest, currentSystem) {
