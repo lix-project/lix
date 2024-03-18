@@ -484,7 +484,7 @@ SourcePath EvalState::checkSourcePath(const SourcePath & path_)
      */
     Path abspath = canonPath(path_.path.abs());
 
-    if (hasPrefix(abspath, corepkgsPrefix)) return CanonPath(abspath);
+    if (abspath.starts_with(corepkgsPrefix)) return CanonPath(abspath);
 
     for (auto & i : *allowedPaths) {
         if (isDirOrInDir(abspath, i)) {
@@ -527,18 +527,18 @@ void EvalState::checkURI(const std::string & uri)
         if (uri == prefix ||
             (uri.size() > prefix.size()
             && prefix.size() > 0
-            && hasPrefix(uri, prefix)
+            && uri.starts_with(prefix)
             && (prefix[prefix.size() - 1] == '/' || uri[prefix.size()] == '/')))
             return;
 
     /* If the URI is a path, then check it against allowedPaths as
        well. */
-    if (hasPrefix(uri, "/")) {
+    if (uri.starts_with("/")) {
         checkSourcePath(CanonPath(uri));
         return;
     }
 
-    if (hasPrefix(uri, "file://")) {
+    if (uri.starts_with("file://")) {
         checkSourcePath(CanonPath(std::string(uri, 7)));
         return;
     }
@@ -642,7 +642,7 @@ Value * EvalState::addPrimOp(PrimOp && primOp)
     }
 
     auto envName = symbols.create(primOp.name);
-    if (hasPrefix(primOp.name, "__"))
+    if (primOp.name.starts_with("__"))
         primOp.name = primOp.name.substr(2);
 
     Value * v = allocValue();
@@ -719,7 +719,7 @@ void printEnvBindings(const SymbolTable & st, const StaticEnv & se, const Env & 
         // for the top level, don't print the double underscore ones;
         // they are in builtins.
         for (auto & i : se.vars)
-            if (!hasPrefix(st[i.first], "__"))
+            if (!std::string_view(st[i.first]).starts_with("__"))
                 std::cout << st[i.first] << " ";
         std::cout << ANSI_NORMAL;
         std::cout << std::endl;
@@ -2795,7 +2795,7 @@ SourcePath EvalState::findFile(const SearchPath & searchPath, const std::string_
         if (pathExists(res)) return CanonPath(canonPath(res));
     }
 
-    if (hasPrefix(path, "nix/"))
+    if (path.starts_with("nix/"))
         return CanonPath(concatStrings(corepkgsPrefix, path.substr(4)));
 
     error<ThrownError>(
@@ -2828,7 +2828,7 @@ std::optional<std::string> EvalState::resolveSearchPathPath(const SearchPath::Pa
         }
     }
 
-    else if (hasPrefix(value, "flake:")) {
+    else if (value.starts_with("flake:")) {
         experimentalFeatureSettings.require(Xp::Flakes);
         auto flakeRef = parseFlakeRef(value.substr(6), {}, true, false);
         debug("fetching flake search path element '%s''", value);

@@ -334,7 +334,7 @@ struct CmdFlakeCheck : FlakeCommand
             return
                 name == expected
                 || name == "_"
-                || (hasPrefix(name, "_") && name.substr(1) == expected);
+                || (name.starts_with("_") && name.substr(1) == expected);
         };
 
         auto checkSystemName = [&](const std::string & system, const PosIdx pos) {

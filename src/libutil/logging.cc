@@ -266,7 +266,7 @@ static Logger::Fields getFields(nlohmann::json & json)
 
 std::optional<nlohmann::json> parseJSONMessage(const std::string & msg)
 {
-    if (!hasPrefix(msg, "@nix ")) return std::nullopt;
+    if (!msg.starts_with("@nix ")) return std::nullopt;
     try {
         return nlohmann::json::parse(std::string(msg, 5));
     } catch (std::exception & e) {

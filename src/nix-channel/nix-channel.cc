@@ -200,7 +200,7 @@ static int main_nix_channel(int argc, char ** argv)
             } else if (*arg == "--rollback") {
                 cmd = cRollback;
             } else {
-                if (hasPrefix(*arg, "-"))
+                if ((*arg).starts_with("-"))
                     throw UsageError("unsupported argument '%s'", *arg);
                 args.push_back(std::move(*arg));
             }

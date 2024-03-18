@@ -181,7 +181,7 @@ struct MercurialInputScheme : InputScheme
                 Path actualPath(absPath(actualUrl));
 
                 PathFilter filter = [&](const Path & p) -> bool {
-                    assert(hasPrefix(p, actualPath));
+                    assert(p.starts_with(actualPath));
                     std::string file(p, actualPath.size() + 1);
 
                     auto st = lstat(p);
@@ -189,7 +189,7 @@ struct MercurialInputScheme : InputScheme
                     if (S_ISDIR(st.st_mode)) {
                         auto prefix = file + "/";
                         auto i = files.lower_bound(prefix);
-                        return i != files.end() && hasPrefix(*i, prefix);
+                        return i != files.end() && (*i).starts_with(prefix);
                     }
 
                     return files.count(file);

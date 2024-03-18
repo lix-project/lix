@@ -235,36 +235,6 @@ namespace nix {
     }
 
     /* ----------------------------------------------------------------------------
-     * hasPrefix
-     * --------------------------------------------------------------------------*/
-
-    TEST(hasPrefix, emptyStringHasNoPrefix) {
-        ASSERT_FALSE(hasPrefix("", "foo"));
-    }
-
-    TEST(hasPrefix, emptyStringIsAlwaysPrefix) {
-        ASSERT_TRUE(hasPrefix("foo", ""));
-        ASSERT_TRUE(hasPrefix("jshjkfhsadf", ""));
-    }
-
-    TEST(hasPrefix, trivialCase) {
-        ASSERT_TRUE(hasPrefix("foobar", "foo"));
-    }
-
-    /* ----------------------------------------------------------------------------
-     * hasSuffix
-     * --------------------------------------------------------------------------*/
-
-    TEST(hasSuffix, emptyStringHasNoSuffix) {
-        ASSERT_FALSE(hasSuffix("", "foo"));
-    }
-
-    TEST(hasSuffix, trivialCase) {
-        ASSERT_TRUE(hasSuffix("foo", "foo"));
-        ASSERT_TRUE(hasSuffix("foobar", "bar"));
-    }
-
-    /* ----------------------------------------------------------------------------
      * base64Encode
      * --------------------------------------------------------------------------*/
 

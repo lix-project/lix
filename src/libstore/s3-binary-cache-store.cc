@@ -213,7 +213,7 @@ struct S3BinaryCacheStoreConfig : virtual BinaryCacheStoreConfig
           support it.
 
           > **Note**
-          > 
+          >
           > HTTPS should be used if the cache might contain sensitive
           > information.
         )"};
@@ -224,7 +224,7 @@ struct S3BinaryCacheStoreConfig : virtual BinaryCacheStoreConfig
           Do not specify this setting if you're using Amazon S3.
 
           > **Note**
-          > 
+          >
           > This endpoint must support HTTPS and will use path-based
           > addressing instead of virtual host based addressing.
         )"};
@@ -448,11 +448,11 @@ struct S3BinaryCacheStoreImpl : virtual S3BinaryCacheStoreConfig, public virtual
             return std::make_shared<std::stringstream>(std::move(compressed));
         };
 
-        if (narinfoCompression != "" && hasSuffix(path, ".narinfo"))
+        if (narinfoCompression != "" && path.ends_with(".narinfo"))
             uploadFile(path, compress(narinfoCompression), mimeType, narinfoCompression);
-        else if (lsCompression != "" && hasSuffix(path, ".ls"))
+        else if (lsCompression != "" && path.ends_with(".ls"))
             uploadFile(path, compress(lsCompression), mimeType, lsCompression);
-        else if (logCompression != "" && hasPrefix(path, "log/"))
+        else if (logCompression != "" && path.starts_with("log/"))
             uploadFile(path, compress(logCompression), mimeType, logCompression);
         else
             uploadFile(path, istream, mimeType, "");
@@ -499,7 +499,7 @@ struct S3BinaryCacheStoreImpl : virtual S3BinaryCacheStoreConfig, public virtual
 
             for (auto object : contents) {
                 auto & key = object.GetKey();
-                if (key.size() != 40 || !hasSuffix(key, ".narinfo")) continue;
+                if (key.size() != 40 || !key.ends_with(".narinfo")) continue;
                 paths.insert(parseStorePath(storeDir + "/" + key.substr(0, key.size() - 8) + "-" + MissingName));
             }
 

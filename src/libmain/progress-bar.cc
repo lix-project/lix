@@ -188,7 +188,7 @@ public:
 
         if (type == actBuild) {
             std::string name(storePathToName(getS(fields, 0)));
-            if (hasSuffix(name, ".drv"))
+            if (name.ends_with(".drv"))
                 name = name.substr(0, name.size() - 4);
             i->s = fmt("building " ANSI_BOLD "%s" ANSI_NORMAL, name);
             auto machineName = getS(fields, 1);
@@ -207,7 +207,7 @@ public:
             auto name = storePathToName(getS(fields, 0));
             auto sub = getS(fields, 1);
             i->s = fmt(
-                hasPrefix(sub, "local")
+                sub.starts_with("local")
                 ? "copying " ANSI_BOLD "%s" ANSI_NORMAL " from %s"
                 : "fetching " ANSI_BOLD "%s" ANSI_NORMAL " from %s",
                 name, sub);
@@ -215,7 +215,7 @@ public:
 
         if (type == actPostBuildHook) {
             auto name = storePathToName(getS(fields, 0));
-            if (hasSuffix(name, ".drv"))
+            if (name.ends_with(".drv"))
                 name = name.substr(0, name.size() - 4);
             i->s = fmt("post-build " ANSI_BOLD "%s" ANSI_NORMAL, name);
             i->name = DrvName(name).name;

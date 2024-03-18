@@ -24,10 +24,10 @@ Machine::Machine(decltype(storeUri) storeUri,
         || storeUri == "auto"
         || storeUri == "daemon"
         || storeUri == "local"
-        || hasPrefix(storeUri, "auto?")
-        || hasPrefix(storeUri, "daemon?")
-        || hasPrefix(storeUri, "local?")
-        || hasPrefix(storeUri, "?")
+        || storeUri.starts_with("auto?")
+        || storeUri.starts_with("daemon?")
+        || storeUri.starts_with("local?")
+        || storeUri.starts_with("?")
         ? storeUri
         : "ssh://" + storeUri),
     systemTypes(systemTypes),
@@ -67,12 +67,12 @@ bool Machine::mandatoryMet(const std::set<std::string> & features) const
 ref<Store> Machine::openStore() const
 {
     Store::Params storeParams;
-    if (hasPrefix(storeUri, "ssh://")) {
+    if (storeUri.starts_with("ssh://")) {
         storeParams["max-connections"] = "1";
         storeParams["log-fd"] = "4";
     }
 
-    if (hasPrefix(storeUri, "ssh://") || hasPrefix(storeUri, "ssh-ng://")) {
+    if (storeUri.starts_with("ssh://") || storeUri.starts_with("ssh-ng://")) {
         if (sshKey != "")
             storeParams["ssh-key"] = sshKey;
         if (sshPublicHostKey != "")

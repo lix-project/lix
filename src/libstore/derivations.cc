@@ -658,7 +658,7 @@ std::string Derivation::unparse(const Store & store, bool maskOutputs,
 // FIXME: remove
 bool isDerivation(std::string_view fileName)
 {
-    return hasSuffix(fileName, drvExtension);
+    return fileName.ends_with(drvExtension);
 }
 
 
@@ -927,7 +927,7 @@ std::string_view BasicDerivation::nameFromPath(const StorePath & drvPath)
 {
     auto nameWithSuffix = drvPath.name();
     constexpr std::string_view extension = ".drv";
-    assert(hasSuffix(nameWithSuffix, extension));
+    assert(nameWithSuffix.ends_with(extension));
     nameWithSuffix.remove_suffix(extension.size());
     return nameWithSuffix;
 }

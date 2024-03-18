@@ -41,7 +41,7 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData)
             request.decompress = false;
 
             auto decompressor = makeDecompressionSink(
-                unpack && hasSuffix(mainUrl, ".xz") ? "xz" : "none", sink);
+                unpack && mainUrl.ends_with(".xz") ? "xz" : "none", sink);
             fileTransfer->download(std::move(request), *decompressor);
             decompressor->finish();
         });
@@ -62,7 +62,7 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData)
     if (getAttr("outputHashMode") == "flat")
         for (auto hashedMirror : settings.hashedMirrors.get())
             try {
-                if (!hasSuffix(hashedMirror, "/")) hashedMirror += '/';
+                if (!hashedMirror.ends_with("/")) hashedMirror += '/';
                 std::optional<HashType> ht = parseHashTypeOpt(getAttr("outputHashAlgo"));
                 Hash h = newHashAllowEmpty(getAttr("outputHash"), ht);
                 fetch(hashedMirror + printHashType(h.type) + "/" + h.to_string(Base16, false));

@@ -85,7 +85,7 @@ protected:
 
         for (auto & entry : readDirectory(binaryCacheDir)) {
             if (entry.name.size() != 40 ||
-                !hasSuffix(entry.name, ".narinfo"))
+                !entry.name.ends_with(".narinfo"))
                 continue;
             paths.insert(parseStorePath(
                     storeDir + "/" + entry.name.substr(0, entry.name.size() - 8)

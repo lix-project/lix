@@ -670,8 +670,8 @@ struct curlFileTransfer : public FileTransfer
     void enqueueItem(std::shared_ptr<TransferItem> item)
     {
         if (item->request.data
-            && !hasPrefix(item->request.uri, "http://")
-            && !hasPrefix(item->request.uri, "https://"))
+            && !item->request.uri.starts_with("http://")
+            && !item->request.uri.starts_with("https://"))
             throw nix::Error("uploading to '%s' is not supported", item->request.uri);
 
         {
@@ -703,7 +703,7 @@ struct curlFileTransfer : public FileTransfer
         Callback<FileTransferResult> callback) override
     {
         /* Ugly hack to support s3:// URIs. */
-        if (hasPrefix(request.uri, "s3://")) {
+        if (request.uri.starts_with("s3://")) {
             // FIXME: do this on a worker thread
             try {
 #if ENABLE_S3

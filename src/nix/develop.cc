@@ -448,7 +448,7 @@ struct Common : InstallableCommand, MixProfile
     StorePath getShellOutPath(ref<Store> store, ref<Installable> installable)
     {
         auto path = installable->getStorePath();
-        if (path && hasSuffix(path->to_string(), "-env"))
+        if (path && path->to_string().ends_with("-env"))
             return *path;
         else {
             auto drvs = Installable::toDerivations(store, {installable});

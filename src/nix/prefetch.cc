@@ -42,7 +42,7 @@ std::string resolveMirrorUrl(EvalState & state, const std::string & url)
         throw Error("mirror URL '%s' did not expand to anything", url);
 
     std::string mirror(state.forceString(*mirrorList->value->listElems()[0], noPos, "while evaluating the first available mirror"));
-    return mirror + (hasSuffix(mirror, "/") ? "" : "/") + s.substr(p + 1);
+    return mirror + (mirror.ends_with("/") ? "" : "/") + s.substr(p + 1);
 }
 
 std::tuple<StorePath, Hash> prefetchFile(

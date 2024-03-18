@@ -101,7 +101,7 @@ struct CmdDoctor : StoreCommand
             try {
                 Path userEnv = canonPath(profileDir, true);
 
-                if (store->isStorePath(userEnv) && hasSuffix(userEnv, "user-environment")) {
+                if (store->isStorePath(userEnv) && userEnv.ends_with("user-environment")) {
                     while (profileDir.find("/profiles/") == std::string::npos && isLink(profileDir))
                         profileDir = absPath(readLink(profileDir), dirOf(profileDir));
 

@@ -145,7 +145,7 @@ protected:
     FileTransferRequest makeRequest(const std::string & path)
     {
         return FileTransferRequest(
-            hasPrefix(path, "https://") || hasPrefix(path, "http://") || hasPrefix(path, "file://")
+            path.starts_with("https://") || path.starts_with("http://") || path.starts_with("file://")
             ? path
             : cacheUri + "/" + path);
 

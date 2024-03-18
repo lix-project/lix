@@ -105,7 +105,7 @@ bool isSymlink(const Path & path)
 Path resolveSymlink(const Path & path)
 {
     auto target = readLink(path);
-    return hasPrefix(target, "/")
+    return target.starts_with("/")
         ? target
         : concatStrings(dirOf(path), "/", target);
 }
@@ -125,7 +125,7 @@ std::set<std::string> resolveTree(const Path & path, PathSet & deps)
 
 std::set<std::string> getPath(const Path & path)
 {
-    if (hasPrefix(path, "/dev")) return {};
+    if (path.starts_with("/dev")) return {};
 
     Path cacheFile = resolveCacheFile(path);
     if (pathExists(cacheFile))

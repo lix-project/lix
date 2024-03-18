@@ -125,13 +125,13 @@ static void getAllExprs(EvalState & state,
             continue; // ignore dangling symlinks in ~/.nix-defexpr
         }
 
-        if (isNixExpr(path2, st) && (st.type != InputAccessor::tRegular || hasSuffix(path2.baseName(), ".nix"))) {
+        if (isNixExpr(path2, st) && (st.type != InputAccessor::tRegular || path2.baseName().ends_with(".nix"))) {
             /* Strip off the `.nix' filename suffix (if applicable),
                otherwise the attribute cannot be selected with the
                `-A' option.  Useful if you want to stick a Nix
                expression directly in ~/.nix-defexpr. */
             std::string attrName = i;
-            if (hasSuffix(attrName, ".nix"))
+            if (attrName.ends_with(".nix"))
                 attrName = std::string(attrName, 0, attrName.size() - 4);
             if (!seen.insert(attrName).second) {
                 std::string suggestionMessage = "";
@@ -241,7 +241,7 @@ std::set<std::string> searchByPrefix(const DrvInfos & allElems, std::string_view
     std::set<std::string> result;
     for (const auto & drvInfo : allElems) {
         const auto drvName = DrvName { drvInfo.queryName() };
-        if (hasPrefix(drvName.name, prefix)) {
+        if (drvName.name.starts_with(prefix)) {
             result.emplace(drvName.name);
 
             if (result.size() >= maxResults) {

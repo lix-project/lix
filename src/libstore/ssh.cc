@@ -12,7 +12,7 @@ SSHMaster::SSHMaster(const std::string & host, const std::string & keyFile, cons
     , compress(compress)
     , logFD(logFD)
 {
-    if (host == "" || hasPrefix(host, "-"))
+    if (host == "" || host.starts_with("-"))
         throw Error("invalid SSH host name '%s'", host);
 
     auto state(state_.lock());
