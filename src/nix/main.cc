@@ -243,7 +243,7 @@ static void showHelp(std::vector<std::string> subcommand, NixArgs & toplevel)
 
     auto attr = vRes->attrs->get(state.symbols.create(mdName + ".md"));
     if (!attr)
-        throw UsageError("Nix has no subcommand '%s'", concatStringsSep("", subcommand));
+        throw UsageError("`nix` has no subcommand '%s'", concatStringsSep("", subcommand));
 
     auto markdown = state.forceString(*attr->value, noPos, "while evaluating the lowdown help text");
 

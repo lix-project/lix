@@ -47,7 +47,7 @@ extern char * * environ __attribute__((weak));
 
 
 #ifdef NDEBUG
-#error "Nix may not be built with assertions disabled (i.e. with -DNDEBUG)."
+#error "Lix may not be built with assertions disabled (i.e. with -DNDEBUG)."
 #endif
 
 namespace nix {
