@@ -1,0 +1,14 @@
+  info: breakpoint reached
+
+debugger should not crash now, but also not show any with variables
+  nix-repl> :st
+  0: error: breakpoint reached
+  «none»:0
+  Env level 0
+  static: x
+
+  Env level 1
+  static:
+
+  Env level 2
+  abort baseNameOf break builtins derivation derivationStrict dirOf false fetchGit fetchMercurial fetchTarball fetchTree fromTOML import isNull map null placeholder removeAttrs scopedImport throw toString true
