@@ -14,7 +14,7 @@ as it is in scope.
   static: a b
 
   Env level 2
-  builtins true false null scopedImport import isNull break abort throw derivationStrict placeholder baseNameOf dirOf removeAttrs map toString fetchMercurial fetchTree fetchTarball fetchGit fromTOML derivation
+  abort baseNameOf break builtins derivation derivationStrict dirOf false fetchGit fetchMercurial fetchTarball fetchTree fromTOML import isNull map null placeholder removeAttrs scopedImport throw toString true
 
   nix-repl> meow
   2
@@ -35,7 +35,7 @@ If we :st past the frame in the backtrace with the meow in it, the meow should n
   static: a b
 
   Env level 1
-  builtins true false null scopedImport import isNull break abort throw derivationStrict placeholder baseNameOf dirOf removeAttrs map toString fetchMercurial fetchTree fetchTarball fetchGit fromTOML derivation
+  abort baseNameOf break builtins derivation derivationStrict dirOf false fetchGit fetchMercurial fetchTarball fetchTree fromTOML import isNull map null placeholder removeAttrs scopedImport throw toString true
 
   nix-repl> :c
   trace: before inner break
@@ -52,7 +52,7 @@ If we :st past the frame in the backtrace with the meow in it, the meow should n
   static: a b
 
   Env level 2
-  builtins true false null scopedImport import isNull break abort throw derivationStrict placeholder baseNameOf dirOf removeAttrs map toString fetchMercurial fetchTree fetchTarball fetchGit fromTOML derivation
+  abort baseNameOf break builtins derivation derivationStrict dirOf false fetchGit fetchMercurial fetchTarball fetchTree fromTOML import isNull map null placeholder removeAttrs scopedImport throw toString true
 
   nix-repl> meow'
   3
@@ -71,4 +71,4 @@ If we :st past the frame in the backtrace with the meow in it, the meow should n
   static: a b
 
   Env level 1
-  builtins true false null scopedImport import isNull break abort throw derivationStrict placeholder baseNameOf dirOf removeAttrs map toString fetchMercurial fetchTree fetchTarball fetchGit fromTOML derivation
+  abort baseNameOf break builtins derivation derivationStrict dirOf false fetchGit fetchMercurial fetchTarball fetchTree fromTOML import isNull map null placeholder removeAttrs scopedImport throw toString true

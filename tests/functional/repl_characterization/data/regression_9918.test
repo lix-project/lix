@@ -10,7 +10,7 @@ We expect to be able to see locals like r in the debugger:
 
   nix-repl> :env
   Env level 0
-  static: x r
+  static: r x
 
   Env level 1
-  builtins true false null scopedImport import isNull break abort throw derivationStrict placeholder baseNameOf dirOf removeAttrs map toString fetchMercurial fetchTree fetchTarball fetchGit fromTOML derivation
+  abort baseNameOf break builtins derivation derivationStrict dirOf false fetchGit fetchMercurial fetchTarball fetchTree fromTOML import isNull map null placeholder removeAttrs scopedImport throw toString true

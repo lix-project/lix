@@ -677,12 +677,21 @@ std::optional<EvalState::Doc> EvalState::getDoc(Value & v)
 }
 
 
+static std::set<std::string_view> sortedBindingNames(const SymbolTable & st, const StaticEnv & se)
+{
+    std::set<std::string_view> bindings;
+    for (auto [symbol, displ] : se.vars)
+        bindings.emplace(st[symbol]);
+    return bindings;
+}
+
+
 // just for the current level of StaticEnv, not the whole chain.
 void printStaticEnvBindings(const SymbolTable & st, const StaticEnv & se)
 {
     std::cout << ANSI_MAGENTA;
-    for (auto & i : se.vars)
-        std::cout << st[i.first] << " ";
+    for (auto & i : sortedBindingNames(st, se))
+        std::cout << i << " ";
     std::cout << ANSI_NORMAL;
     std::cout << std::endl;
 }
@@ -691,13 +700,14 @@ void printStaticEnvBindings(const SymbolTable & st, const StaticEnv & se)
 void printWithBindings(const SymbolTable & st, const Env & env)
 {
     if (!env.values[0]->isThunk()) {
+        std::set<std::string_view> bindings;
+        for (const auto & attr : *env.values[0]->attrs)
+            bindings.emplace(st[attr.name]);
+
         std::cout << "with: ";
         std::cout << ANSI_MAGENTA;
-        Bindings::iterator j = env.values[0]->attrs->begin();
-        while (j != env.values[0]->attrs->end()) {
-            std::cout << st[j->name] << " ";
-            ++j;
-        }
+        for (auto & i : bindings)
+            std::cout << i << " ";
         std::cout << ANSI_NORMAL;
         std::cout << std::endl;
     }
@@ -718,9 +728,9 @@ void printEnvBindings(const SymbolTable & st, const StaticEnv & se, const Env & 
         std::cout << ANSI_MAGENTA;
         // for the top level, don't print the double underscore ones;
         // they are in builtins.
-        for (auto & i : se.vars)
-            if (!std::string_view(st[i.first]).starts_with("__"))
-                std::cout << st[i.first] << " ";
+        for (auto & i : sortedBindingNames(st, se))
+            if (!i.starts_with("__"))
+                std::cout << i << " ";
         std::cout << ANSI_NORMAL;
         std::cout << std::endl;
         if (se.isWith)
