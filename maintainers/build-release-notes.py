@@ -38,7 +38,7 @@ for p in paths:
     try:
         e = frontmatter.load(p)
         if 'synopsis' not in e.metadata:
-            raise Exception('missing synposis')
+            raise Exception('missing synopsis')
         unknownKeys = set(e.metadata.keys()) - set(('synopsis', 'cls', 'issues', 'prs', 'significance'))
         if unknownKeys:
             raise Exception('unknown keys', unknownKeys)

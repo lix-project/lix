@@ -36,7 +36,25 @@
 #include <gc/gc_cpp.h>
 #endif
 
+// XXX: These are for nix-doc features and will be removed in a future rewrite where this functionality is integrated more natively.
+extern "C" {
+    char const *nd_get_function_docs(char const *filename, size_t line, size_t col);
+    void nd_free_string(char const *str);
+}
+
 namespace nix {
+
+
+/** Wrapper around std::unique_ptr with a custom deleter for strings from nix-doc **/
+using NdString = std::unique_ptr<const char, decltype(&nd_free_string)>;
+
+/**
+ * Fetch a string representing the doc comment using nix-doc and wrap it in an RAII wrapper.
+ */
+NdString lambdaDocsForPos(SourcePath const path, nix::Pos const &pos) {
+  std::string const file = path.to_string();
+  return NdString{nd_get_function_docs(file.c_str(), pos.line, pos.column), &nd_free_string};
+}
 
 /**
  * Returned by `NixRepl::processLine`.
@@ -400,7 +418,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
              << "                               nix-shell\n"
              << "  :t <expr>                    Describe result of evaluation\n"
              << "  :u <expr>                    Build derivation, then start nix-shell\n"
-             << "  :doc <expr>                  Show documentation of a builtin function\n"
+             << "  :doc <expr>                  Show documentation for the provided function (experimental lambda support)\n"
              << "  :log <expr>                  Show logs for a derivation\n"
              << "  :te, :trace-enable [bool]    Enable, disable or toggle showing traces for\n"
              << "                               errors\n"
@@ -629,8 +647,24 @@ ProcessLineResult NixRepl::processLine(std::string line)
             markdown += stripIndentation(doc->doc);
 
             logger->cout(trim(renderMarkdownToTerminal(markdown)));
-        } else
-            throw Error("value does not have documentation");
+        } else if (v.isLambda()) {
+            auto pos = state->positions[v.lambda.fun->pos];
+            if (auto path = std::get_if<SourcePath>(&pos.origin)) {
+                // Path and position have now been obtained, feed to nix-doc library to get data.
+                auto docComment = lambdaDocsForPos(*path, pos);
+                if (!docComment) {
+                    throw Error("lambda '%s' has no documentation comment", pos);
+                }
+
+                // Build and print Markdown representation of documentation comment.
+                std::string markdown = stripIndentation(docComment.get());
+                logger->cout(trim(renderMarkdownToTerminal(markdown)));
+            } else {
+                throw Error("lambda '%s' doesn't have a determinable source file", pos);
+            }
+        } else {
+            throw Error("value '%s' does not have documentation", arg);
+        }
     }
 
     else if (command == ":te" || command == ":trace-enable") {

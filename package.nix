@@ -43,6 +43,8 @@
 
   busybox-sandbox-shell,
 
+  nix-doc,
+
   pname ? "nix",
   versionSuffix ? "",
   officialRelease ? true,
@@ -186,6 +188,7 @@ in stdenv.mkDerivation (finalAttrs: {
     lowdown
     libsodium
     toml11
+    nix-doc
   ]
     ++ lib.optionals stdenv.hostPlatform.isLinux [ libseccomp busybox-sandbox-shell ]
     ++ lib.optional stdenv.hostPlatform.isx86_64 libcpuid

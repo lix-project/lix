@@ -198,11 +198,14 @@
             '';
           };
 
+          nix-doc = final.callPackage ./nix-doc/package.nix {};
+
           nix = final.callPackage ./package.nix {
             inherit versionSuffix fileset;
             stdenv = currentStdenv;
             boehmgc = final.boehmgc-nix;
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
+            nix-doc = final.nix-doc;
           };
         };
 

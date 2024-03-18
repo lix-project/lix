@@ -1,0 +1,17 @@
+[package]
+description = "Nix documentation grepping tool"
+edition = "2018"
+name = "nix-doc"
+version = "0.0.1"
+license = "BSD-2-Clause OR MIT"
+homepage = "https://github.com/lf-/nix-doc"
+repository = "https://github.com/lf-/nix-doc"
+
+[lib]
+crate_type = ["staticlib"]
+
+[dependencies]
+rnix = "0.8.0"
+
+[dev-dependencies]
+expect-test = "1.1.0"
