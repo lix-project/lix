@@ -83,7 +83,7 @@ static void update(const StringSet & channelNames)
     writeFull(fd.get(),
         #include "unpack-channel.nix.gen.hh"
         );
-    fd = -1;
+    fd.reset();
     AutoDelete del(unpackChannelPath, false);
 
     // Download each channel.

@@ -61,8 +61,8 @@ HookInstance::HookInstance()
     });
 
     pid.setSeparatePG(true);
-    fromHook.writeSide = -1;
-    toHook.readSide = -1;
+    fromHook.writeSide.reset();
+    toHook.readSide.reset();
 
     sink = FdSink(toHook.writeSide.get());
     std::map<std::string, Config::SettingInfo> settings;
@@ -76,7 +76,7 @@ HookInstance::HookInstance()
 HookInstance::~HookInstance()
 {
     try {
-        toHook.writeSide = -1;
+        toHook.writeSide.reset();
         if (pid != -1) pid.kill();
     } catch (...) {
         ignoreException();

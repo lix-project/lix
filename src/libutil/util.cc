@@ -379,7 +379,7 @@ std::string readFile(int fd)
 
 std::string readFile(const Path & path)
 {
-    AutoCloseFD fd = open(path.c_str(), O_RDONLY | O_CLOEXEC);
+    AutoCloseFD fd{open(path.c_str(), O_RDONLY | O_CLOEXEC)};
     if (!fd)
         throw SysError("opening file '%1%'", path);
     return readFile(fd.get());
@@ -388,7 +388,7 @@ std::string readFile(const Path & path)
 
 void readFile(const Path & path, Sink & sink)
 {
-    AutoCloseFD fd = open(path.c_str(), O_RDONLY | O_CLOEXEC);
+    AutoCloseFD fd{open(path.c_str(), O_RDONLY | O_CLOEXEC)};
     if (!fd)
         throw SysError("opening file '%s'", path);
     drainFD(fd.get(), sink);
@@ -397,7 +397,7 @@ void readFile(const Path & path, Sink & sink)
 
 void writeFile(const Path & path, std::string_view s, mode_t mode, bool sync)
 {
-    AutoCloseFD fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode);
+    AutoCloseFD fd{open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
     if (!fd)
         throw SysError("opening file '%1%'", path);
     try {
@@ -417,7 +417,7 @@ void writeFile(const Path & path, std::string_view s, mode_t mode, bool sync)
 
 void writeFile(const Path & path, Source & source, mode_t mode, bool sync)
 {
-    AutoCloseFD fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode);
+    AutoCloseFD fd{open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
     if (!fd)
         throw SysError("opening file '%1%'", path);
 
@@ -444,7 +444,7 @@ void writeFile(const Path & path, Source & source, mode_t mode, bool sync)
 
 void syncParent(const Path & path)
 {
-    AutoCloseFD fd = open(dirOf(path).c_str(), O_RDONLY, 0);
+    AutoCloseFD fd{open(dirOf(path).c_str(), O_RDONLY, 0)};
     if (!fd)
         throw SysError("opening file '%1%'", path);
     fd.fsync();
@@ -941,8 +941,8 @@ void Pipe::create()
     closeOnExec(fds[0]);
     closeOnExec(fds[1]);
 #endif
-    readSide = fds[0];
-    writeSide = fds[1];
+    readSide = AutoCloseFD{fds[0]};
+    writeSide = AutoCloseFD{fds[1]};
 }
 
 
@@ -1718,11 +1718,11 @@ void saveMountNamespace()
 #if __linux__
     static std::once_flag done;
     std::call_once(done, []() {
-        fdSavedMountNamespace = open("/proc/self/ns/mnt", O_RDONLY);
+        fdSavedMountNamespace = AutoCloseFD{open("/proc/self/ns/mnt", O_RDONLY)};
         if (!fdSavedMountNamespace)
             throw SysError("saving parent mount namespace");
 
-        fdSavedRoot = open("/proc/self/root", O_RDONLY);
+        fdSavedRoot = AutoCloseFD{open("/proc/self/root", O_RDONLY)};
     });
 #endif
 }
@@ -1777,11 +1777,11 @@ void restoreProcessContext(bool restoreMounts)
 
 AutoCloseFD createUnixDomainSocket()
 {
-    AutoCloseFD fdSocket = socket(PF_UNIX, SOCK_STREAM
+    AutoCloseFD fdSocket{socket(PF_UNIX, SOCK_STREAM
         #ifdef SOCK_CLOEXEC
         | SOCK_CLOEXEC
         #endif
-        , 0);
+        , 0)};
     if (!fdSocket)
         throw SysError("cannot create Unix domain socket");
     closeOnExec(fdSocket.get());

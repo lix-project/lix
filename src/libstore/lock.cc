@@ -76,7 +76,7 @@ struct SimpleUserLock : UserLock
 
             auto fnUserLock = fmt("%s/userpool/%s", settings.nixStateDir,pw->pw_uid);
 
-            AutoCloseFD fd = open(fnUserLock.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+            AutoCloseFD fd{open(fnUserLock.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600)};
             if (!fd)
                 throw SysError("opening user lock '%s'", fnUserLock);
 
@@ -148,7 +148,7 @@ struct AutoUserLock : UserLock
 
             auto fnUserLock = fmt("%s/userpool2/slot-%d", settings.nixStateDir, i);
 
-            AutoCloseFD fd = open(fnUserLock.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+            AutoCloseFD fd{open(fnUserLock.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600)};
             if (!fd)
                 throw SysError("opening user lock '%s'", fnUserLock);
 

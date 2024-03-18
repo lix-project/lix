@@ -846,8 +846,8 @@ int DerivationGoal::getChildStatus()
 
 void DerivationGoal::closeReadPipes()
 {
-    hook->builderOut.readSide = -1;
-    hook->fromHook.readSide = -1;
+    hook->builderOut.readSide.reset();
+    hook->fromHook.readSide.reset();
 }
 
 
@@ -1227,7 +1227,7 @@ HookReply DerivationGoal::tryBuildHook()
     }
 
     hook->sink = FdSink();
-    hook->toHook.writeSide = -1;
+    hook->toHook.writeSide.reset();
 
     /* Create the log file and pipe. */
     Path logFile = openLogFile();
@@ -1273,7 +1273,7 @@ Path DerivationGoal::openLogFile()
     Path logFileName = fmt("%s/%s%s", dir, baseName.substr(2),
         settings.compressLog ? ".bz2" : "");
 
-    fdLogFile = open(logFileName.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0666);
+    fdLogFile = AutoCloseFD{open(logFileName.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0666)};
     if (!fdLogFile) throw SysError("creating log file '%1%'", logFileName);
 
     logFileSink = std::make_shared<FdSink>(fdLogFile.get());
@@ -1293,7 +1293,7 @@ void DerivationGoal::closeLogFile()
     if (logSink2) logSink2->finish();
     if (logFileSink) logFileSink->flush();
     logSink = logFileSink = 0;
-    fdLogFile = -1;
+    fdLogFile.reset();
 }
 
 

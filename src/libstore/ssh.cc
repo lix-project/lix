@@ -100,8 +100,8 @@ std::unique_ptr<SSHMaster::Connection> SSHMaster::startCommand(const std::string
     }, options);
 
 
-    in.readSide = -1;
-    out.writeSide = -1;
+    in.readSide.reset();
+    out.writeSide.reset();
 
     // Wait for the SSH connection to be established,
     // So that we don't overwrite the password prompt with our progress bar.
@@ -162,7 +162,7 @@ Path SSHMaster::startMaster()
         throw SysError("unable to execute '%s'", args.front());
     }, options);
 
-    out.writeSide = -1;
+    out.writeSide.reset();
 
     std::string reply;
     try {

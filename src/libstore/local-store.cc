@@ -263,7 +263,7 @@ LocalStore::LocalStore(const Params & params)
         if (stat(reservedPath.c_str(), &st) == -1 ||
             st.st_size != settings.reservedSize)
         {
-            AutoCloseFD fd = open(reservedPath.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC, 0600);
+            AutoCloseFD fd{open(reservedPath.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC, 0600)};
             int res = -1;
 #if HAVE_POSIX_FALLOCATE
             res = posix_fallocate(fd.get(), 0, settings.reservedSize);
@@ -453,7 +453,7 @@ LocalStore::LocalStore(std::string scheme, std::string path, const Params & para
 AutoCloseFD LocalStore::openGCLock()
 {
     Path fnGCLock = stateDir + "/gc.lock";
-    auto fdGCLock = open(fnGCLock.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+    AutoCloseFD fdGCLock{open(fnGCLock.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600)};
     if (!fdGCLock)
         throw SysError("opening global GC lock '%1%'", fnGCLock);
     return fdGCLock;
@@ -478,7 +478,7 @@ LocalStore::~LocalStore()
     try {
         auto fdTempRoots(_fdTempRoots.lock());
         if (*fdTempRoots) {
-            *fdTempRoots = -1;
+            fdTempRoots->reset();
             unlink(fnTempRoots.c_str());
         }
     } catch (...) {
@@ -1484,7 +1484,7 @@ std::pair<Path, AutoCloseFD> LocalStore::createTempDirInStore()
            the GC between createTempDir() and when we acquire a lock on it.
            We'll repeat until 'tmpDir' exists and we've locked it. */
         tmpDirFn = createTempDir(realStoreDir, "tmp");
-        tmpDirFd = open(tmpDirFn.c_str(), O_RDONLY | O_DIRECTORY);
+        tmpDirFd = AutoCloseFD{open(tmpDirFn.c_str(), O_RDONLY | O_DIRECTORY)};
         if (tmpDirFd.get() < 0) {
             continue;
         }

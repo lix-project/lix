@@ -126,7 +126,7 @@ static int main_build_remote(int argc, char * * argv)
             mkdir(currentLoad.c_str(), 0777);
 
             while (true) {
-                bestSlotLock = -1;
+                bestSlotLock.reset();
                 AutoCloseFD lock = openLockFile(currentLoad + "/main-lock", true);
                 lockFile(lock.get(), ltWrite, true);
 
@@ -229,7 +229,7 @@ static int main_build_remote(int argc, char * * argv)
                 futimens(bestSlotLock.get(), NULL);
 #endif
 
-                lock = -1;
+                lock.reset();
 
                 try {
 
@@ -282,7 +282,7 @@ connected:
             copyPaths(*store, *sshStore, store->parseStorePathSet(inputs), NoRepair, NoCheckSigs, substitute);
         }
 
-        uploadLock = -1;
+        uploadLock.reset();
 
         auto drv = store->readDerivation(*drvPath);
 

@@ -549,7 +549,7 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
             if (fds[1].revents) {
                 /* Accept a new connection. */
                 assert(fds[1].revents & POLLIN);
-                AutoCloseFD fdClient = accept(fdServer.get(), nullptr, nullptr);
+                AutoCloseFD fdClient{accept(fdServer.get(), nullptr, nullptr)};
                 if (!fdClient) continue;
 
                 debug("GC roots server accepted new client");
@@ -647,7 +647,7 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
            by another process. We need to be sure that we can acquire an
            exclusive lock before deleting them. */
         if (baseName.find("tmp-", 0) == 0) {
-            AutoCloseFD tmpDirFd = open(realPath.c_str(), O_RDONLY | O_DIRECTORY);
+            AutoCloseFD tmpDirFd{open(realPath.c_str(), O_RDONLY | O_DIRECTORY)};
             if (tmpDirFd.get() == -1 || !lockFile(tmpDirFd.get(), ltWrite, false)) {
                 debug("skipping locked tempdir '%s'", realPath);
                 return;

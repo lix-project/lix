@@ -332,7 +332,7 @@ class AutoCloseFD
     int fd;
 public:
     AutoCloseFD();
-    AutoCloseFD(int fd);
+    explicit AutoCloseFD(int fd);
     AutoCloseFD(const AutoCloseFD & fd) = delete;
     AutoCloseFD(AutoCloseFD&& fd);
     ~AutoCloseFD();
@@ -343,6 +343,7 @@ public:
     int release();
     void close();
     void fsync();
+    void reset() { *this = {}; }
 };
 
 

@@ -309,8 +309,8 @@ void LocalDerivationGoal::cleanupHookFinally()
 
 void LocalDerivationGoal::cleanupPreChildKill()
 {
-    sandboxMountNamespace = -1;
-    sandboxUserNamespace = -1;
+    sandboxMountNamespace.reset();
+    sandboxUserNamespace.reset();
 }
 
 
@@ -807,7 +807,7 @@ void LocalDerivationGoal::startBuilder()
     Path logFile = openLogFile();
 
     /* Create a pseudoterminal to get the output of the builder. */
-    builderOut = posix_openpt(O_RDWR | O_NOCTTY);
+    builderOut = AutoCloseFD{posix_openpt(O_RDWR | O_NOCTTY)};
     if (!builderOut)
         throw SysError("opening pseudoterminal master");
 
@@ -834,7 +834,7 @@ void LocalDerivationGoal::startBuilder()
     /* Open the slave side of the pseudoterminal and use it as stderr. */
     auto openSlave = [&]()
     {
-        AutoCloseFD builderOut = open(slaveName.c_str(), O_RDWR | O_NOCTTY);
+        AutoCloseFD builderOut{open(slaveName.c_str(), O_RDWR | O_NOCTTY)};
         if (!builderOut)
             throw SysError("opening pseudoterminal slave");
 
@@ -937,12 +937,12 @@ void LocalDerivationGoal::startBuilder()
         if (helper.wait() != 0)
             throw Error("unable to start build process");
 
-        userNamespaceSync.readSide = -1;
+        userNamespaceSync.readSide.reset();
 
         /* Close the write side to prevent runChild() from hanging
            reading from this. */
         Finally cleanup([&]() {
-            userNamespaceSync.writeSide = -1;
+            userNamespaceSync.writeSide.reset();
         });
 
         auto ss = tokenizeString<std::vector<std::string>>(readLine(sendPid.readSide.get()));
@@ -981,12 +981,12 @@ void LocalDerivationGoal::startBuilder()
 
         /* Save the mount- and user namespace of the child. We have to do this
            *before* the child does a chroot. */
-        sandboxMountNamespace = open(fmt("/proc/%d/ns/mnt", (pid_t) pid).c_str(), O_RDONLY);
+        sandboxMountNamespace = AutoCloseFD{open(fmt("/proc/%d/ns/mnt", (pid_t) pid).c_str(), O_RDONLY)};
         if (sandboxMountNamespace.get() == -1)
             throw SysError("getting sandbox mount namespace");
 
         if (usingUserNamespace) {
-            sandboxUserNamespace = open(fmt("/proc/%d/ns/user", (pid_t) pid).c_str(), O_RDONLY);
+            sandboxUserNamespace = AutoCloseFD{open(fmt("/proc/%d/ns/user", (pid_t) pid).c_str(), O_RDONLY)};
             if (sandboxUserNamespace.get() == -1)
                 throw SysError("getting sandbox user namespace");
         }
@@ -1471,8 +1471,8 @@ void LocalDerivationGoal::startDaemon()
             struct sockaddr_un remoteAddr;
             socklen_t remoteAddrLen = sizeof(remoteAddr);
 
-            AutoCloseFD remote = accept(daemonSocket.get(),
-                (struct sockaddr *) &remoteAddr, &remoteAddrLen);
+            AutoCloseFD remote{accept(daemonSocket.get(),
+                (struct sockaddr *) &remoteAddr, &remoteAddrLen)};
             if (!remote) {
                 if (errno == EINTR || errno == EAGAIN) continue;
                 if (errno == EINVAL || errno == ECONNABORTED) break;
@@ -1705,12 +1705,12 @@ void LocalDerivationGoal::runChild()
 #if __linux__
         if (useChroot) {
 
-            userNamespaceSync.writeSide = -1;
+            userNamespaceSync.writeSide.reset();
 
             if (drainFD(userNamespaceSync.readSide.get()) != "1")
                 throw Error("user namespace initialisation failed");
 
-            userNamespaceSync.readSide = -1;
+            userNamespaceSync.readSide.reset();
 
             if (privateNetwork) {
 

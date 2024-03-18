@@ -30,7 +30,7 @@ std::set<std::string> readCacheFile(const Path & file)
 
 std::set<std::string> runResolver(const Path & filename)
 {
-    AutoCloseFD fd = open(filename.c_str(), O_RDONLY);
+    AutoCloseFD fd{open(filename.c_str(), O_RDONLY)};
     if (!fd)
         throw SysError("opening '%s'", filename);
 

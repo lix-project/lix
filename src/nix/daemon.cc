@@ -294,7 +294,7 @@ static void daemonLoop(std::optional<TrustedFlag> forceTrustClientOpt)
     if (listenFds) {
         if (getEnv("LISTEN_PID") != std::to_string(getpid()) || listenFds != "1")
             throw Error("unexpected systemd environment variables");
-        fdSocket = SD_LISTEN_FDS_START;
+        fdSocket = AutoCloseFD{SD_LISTEN_FDS_START};
         closeOnExec(fdSocket.get());
     }
 
@@ -315,8 +315,8 @@ static void daemonLoop(std::optional<TrustedFlag> forceTrustClientOpt)
             struct sockaddr_un remoteAddr;
             socklen_t remoteAddrLen = sizeof(remoteAddr);
 
-            AutoCloseFD remote = accept(fdSocket.get(),
-                (struct sockaddr *) &remoteAddr, &remoteAddrLen);
+            AutoCloseFD remote{accept(fdSocket.get(),
+                    (struct sockaddr *) &remoteAddr, &remoteAddrLen)};
             checkInterrupt();
             if (!remote) {
                 if (errno == EINTR) continue;
@@ -348,7 +348,7 @@ static void daemonLoop(std::optional<TrustedFlag> forceTrustClientOpt)
             options.dieWithParent = false;
             options.runExitHandlers = true;
             startProcess([&]() {
-                fdSocket = -1;
+                fdSocket.reset();
 
                 //  Background the daemon.
                 if (setsid() == -1)
