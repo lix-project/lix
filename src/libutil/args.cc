@@ -162,7 +162,7 @@ bool Args::processFlag(Strings::iterator & pos, Strings::iterator end)
         if (auto prefix = needsCompletion(*pos)) {
             for (auto & [name, flag] : longFlags) {
                 if (!hiddenCategories.count(flag->category)
-                    && hasPrefix(name, std::string(*prefix, 2)))
+                    && name.starts_with(std::string(*prefix, 2)))
                 {
                     if (auto & f = flag->experimentalFeature)
                         flagExperimentalFeatures.insert(*f);
@@ -274,7 +274,7 @@ nlohmann::json Args::toJSON()
 static void hashTypeCompleter(size_t index, std::string_view prefix)
 {
     for (auto & type : hashTypes)
-        if (hasPrefix(type, prefix))
+        if (type.starts_with(prefix))
             completions->add(type);
 }
 
@@ -370,7 +370,7 @@ MultiCommand::MultiCommand(const Commands & commands_)
         }},
         .completer = {[&](size_t, std::string_view prefix) {
             for (auto & [name, command] : commands)
-                if (hasPrefix(name, prefix))
+                if (name.starts_with(prefix))
                     completions->add(name);
         }}
     });

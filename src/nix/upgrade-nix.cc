@@ -115,7 +115,7 @@ struct CmdUpgradeNix : MixDryRun, StoreCommand
 
         printInfo("found Nix in '%s'", where);
 
-        if (hasPrefix(where, "/run/current-system"))
+        if (where.starts_with("/run/current-system"))
             throw Error("Nix on NixOS must be upgraded via 'nixos-rebuild'");
 
         Path profileDir = dirOf(where);
@@ -129,7 +129,7 @@ struct CmdUpgradeNix : MixDryRun, StoreCommand
         Path userEnv = canonPath(profileDir, true);
 
         if (baseNameOf(where) != "bin" ||
-            !hasSuffix(userEnv, "user-environment"))
+            !userEnv.ends_with("user-environment"))
             throw Error("directory '%s' does not appear to be part of a Nix profile", where);
 
         if (!store->isValidPath(store->parseStorePath(userEnv)))

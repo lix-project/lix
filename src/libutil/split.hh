@@ -27,7 +27,7 @@ static inline std::optional<std::string_view> splitPrefixTo(std::string_view & s
 }
 
 static inline bool splitPrefix(std::string_view & string, std::string_view prefix) {
-    bool res = hasPrefix(string, prefix);
+    bool res = string.starts_with(prefix);
     if (res)
         string.remove_prefix(prefix.length());
     return res;

@@ -35,7 +35,7 @@ void ConfigFile::apply()
 
     for (auto & [name, value] : settings) {
 
-        auto baseName = hasPrefix(name, "extra-") ? std::string(name, 6) : name;
+        auto baseName = name.starts_with("extra-") ? std::string(name, 6) : name;
 
         // FIXME: Move into libutil/config.cc.
         std::string valueS;

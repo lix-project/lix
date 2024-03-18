@@ -596,7 +596,7 @@ void LocalDerivationGoal::startBuilder()
             else
                 pathsInChroot[i.substr(0, p)] = {i.substr(p + 1), optional};
         }
-        if (hasPrefix(worker.store.storeDir, tmpDirInSandbox))
+        if (worker.store.storeDir.starts_with(tmpDirInSandbox))
         {
             throw Error("`sandbox-build-dir` must not contain the storeDir");
         }

@@ -241,7 +241,7 @@ bool Settings::isWSL1()
     uname(&utsbuf);
     // WSL1 uses -Microsoft suffix
     // WSL2 uses -microsoft-standard suffix
-    return hasSuffix(utsbuf.release, "-Microsoft");
+    return std::string_view(utsbuf.release).ends_with("-Microsoft");
 }
 
 Path Settings::getDefaultSSLCertFile()
@@ -415,7 +415,7 @@ void initLibStore() {
        sshd). This breaks build users because they don't have access
        to the TMPDIR, in particular in ‘nix-store --serve’. */
 #if __APPLE__
-    if (hasPrefix(getEnv("TMPDIR").value_or("/tmp"), "/var/folders/"))
+    if (getEnv("TMPDIR").value_or("/tmp").starts_with("/var/folders/"))
         unsetenv("TMPDIR");
 #endif
 

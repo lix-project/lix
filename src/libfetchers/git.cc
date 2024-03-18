@@ -223,7 +223,7 @@ std::pair<StorePath, Input> fetchFromWorkdir(ref<Store> store, Input & input, co
     Path actualPath(absPath(workdir));
 
     PathFilter filter = [&](const Path & p) -> bool {
-        assert(hasPrefix(p, actualPath));
+        assert(p.starts_with(actualPath));
         std::string file(p, actualPath.size() + 1);
 
         auto st = lstat(p);
@@ -231,7 +231,7 @@ std::pair<StorePath, Input> fetchFromWorkdir(ref<Store> store, Input & input, co
         if (S_ISDIR(st.st_mode)) {
             auto prefix = file + "/";
             auto i = files.lower_bound(prefix);
-            return i != files.end() && hasPrefix(*i, prefix);
+            return i != files.end() && (*i).starts_with(prefix);
         }
 
         return files.count(file);
@@ -267,7 +267,7 @@ struct GitInputScheme : InputScheme
             url.scheme != "git+file") return {};
 
         auto url2(url);
-        if (hasPrefix(url2.scheme, "git+")) url2.scheme = std::string(url2.scheme, 4);
+        if (url2.scheme.starts_with("git+")) url2.scheme = std::string(url2.scheme, 4);
         url2.query.clear();
 
         Attrs attrs;

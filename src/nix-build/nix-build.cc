@@ -305,7 +305,7 @@ static void main_nix_build(int argc, char * * argv)
                     absolute = canonPath(absPath(i), true);
                 } catch (Error & e) {};
                 auto [path, outputNames] = parsePathWithOutputs(absolute);
-                if (evalStore->isStorePath(path) && hasSuffix(path, ".drv"))
+                if (evalStore->isStorePath(path) && path.ends_with(".drv"))
                     drvs.push_back(DrvInfo(*state, evalStore, absolute));
                 else
                     /* If we're in a #! script, interpret filenames

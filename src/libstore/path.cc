@@ -42,7 +42,7 @@ StorePath::StorePath(const Hash & hash, std::string_view _name)
 
 bool StorePath::isDerivation() const
 {
-    return hasSuffix(name(), drvExtension);
+    return name().ends_with(drvExtension);
 }
 
 StorePath StorePath::dummy("ffffffffffffffffffffffffffffffff-x");

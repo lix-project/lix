@@ -83,7 +83,7 @@ SourcePath SourcePath::resolveSymlinks(SymlinkResolution mode) const
                         throw Error("infinite symlink recursion in path '%s'", path);
                     auto target = res.readLink();
                     res.path.pop();
-                    if (hasPrefix(target, "/"))
+                    if (target.starts_with("/"))
                         res.path = CanonPath::root;
                     todo.splice(todo.begin(), tokenizeString<std::list<std::string>>(target, "/"));
                 }

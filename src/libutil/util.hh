@@ -665,19 +665,6 @@ T readLittleEndian(unsigned char * p)
     return x;
 }
 
-
-/**
- * @return true iff `s` starts with `prefix`.
- */
-bool hasPrefix(std::string_view s, std::string_view prefix);
-
-
-/**
- * @return true iff `s` ends in `suffix`.
- */
-bool hasSuffix(std::string_view s, std::string_view suffix);
-
-
 /**
  * Convert a string to lower case.
  */

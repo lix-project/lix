@@ -186,7 +186,7 @@ std::pair<FlakeRef, std::string> parseFlakeRefWithFragment(
             }
 
         } else {
-            if (!hasPrefix(path, "/"))
+            if (!path.starts_with("/"))
                 throw BadURL("flake reference '%s' is not an absolute path", url);
             auto query = decodeQuery(match[2]);
             path = canonPath(path + "/" + getOr(query, "dir", ""));

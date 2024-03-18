@@ -159,7 +159,7 @@ void MixFlakeOptions::completeFlakeInput(std::string_view prefix)
         auto flakeRef = parseFlakeRefWithFragment(expandTilde(flakeRefS), absPath(".")).first;
         auto flake = flake::getFlake(*evalState, flakeRef, true);
         for (auto & input : flake.inputs)
-            if (hasPrefix(input.first, prefix))
+            if (input.first.starts_with(prefix))
                 completions->add(input.first);
     }
 }
@@ -320,7 +320,7 @@ void completeFlakeRefWithFragment(
                 auto attrPath = parseAttrPath(*evalState, attrPathS);
 
                 std::string lastAttr;
-                if (!attrPath.empty() && !hasSuffix(attrPathS, ".")) {
+                if (!attrPath.empty() && !attrPathS.ends_with(".")) {
                     lastAttr = evalState->symbols[attrPath.back()];
                     attrPath.pop_back();
                 }
@@ -329,7 +329,7 @@ void completeFlakeRefWithFragment(
                 if (!attr) continue;
 
                 for (auto & attr2 : (*attr)->getAttrs()) {
-                    if (hasPrefix(evalState->symbols[attr2], lastAttr)) {
+                    if (std::string_view(evalState->symbols[attr2]).starts_with(lastAttr)) {
                         auto attrPath2 = (*attr)->getAttrPath(attr2);
                         /* Strip the attrpath prefix. */
                         attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
@@ -367,12 +367,12 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
     for (auto & registry : fetchers::getRegistries(store)) {
         for (auto & entry : registry->entries) {
             auto from = entry.from.to_string();
-            if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
+            if (!prefix.starts_with("flake:") && from.starts_with("flake:")) {
                 std::string from2(from, 6);
-                if (hasPrefix(from2, prefix))
+                if (from2.starts_with(prefix))
                     completions->add(from2);
             } else {
-                if (hasPrefix(from, prefix))
+                if (from.starts_with(prefix))
                     completions->add(from);
             }
         }
