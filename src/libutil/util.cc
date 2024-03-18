@@ -1095,16 +1095,9 @@ void killUser(uid_t uid)
 //////////////////////////////////////////////////////////////////////
 
 
-/* Wrapper around vfork to prevent the child process from clobbering
-   the caller's stack frame in the parent. */
-static pid_t doFork(bool allowVfork, std::function<void()> fun) __attribute__((noinline));
-static pid_t doFork(bool allowVfork, std::function<void()> fun)
+static pid_t doFork(std::function<void()> fun)
 {
-#ifdef __linux__
-    pid_t pid = allowVfork ? vfork() : fork();
-#else
     pid_t pid = fork();
-#endif
     if (pid != 0) return pid;
     fun();
     abort();
@@ -1124,8 +1117,7 @@ static int childEntry(void * arg)
 pid_t startProcess(std::function<void()> fun, const ProcessOptions & options)
 {
     std::function<void()> wrapper = [&]() {
-        if (!options.allowVfork)
-            logger = makeSimpleLogger();
+        logger = makeSimpleLogger();
         try {
 #if __linux__
             if (options.dieWithParent && prctl(PR_SET_PDEATHSIG, SIGKILL) == -1)
@@ -1162,7 +1154,7 @@ pid_t startProcess(std::function<void()> fun, const ProcessOptions & options)
         throw Error("clone flags are only supported on Linux");
         #endif
     } else
-        pid = doFork(options.allowVfork, wrapper);
+        pid = doFork(wrapper);
 
     if (pid == -1) throw SysError("unable to fork");
 
@@ -1226,10 +1218,6 @@ void runProgram2(const RunOptions & options)
     if (source) in.create();
 
     ProcessOptions processOptions;
-    // vfork implies that the environment of the main process and the fork will
-    // be shared (technically this is undefined, but in practice that's the
-    // case), so we can't use it if we alter the environment
-    processOptions.allowVfork = !options.environment;
 
     std::optional<Finally<std::function<void()>>> resumeLoggerDefer;
     if (options.isInteractive) {

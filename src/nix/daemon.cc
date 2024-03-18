@@ -347,7 +347,6 @@ static void daemonLoop(std::optional<TrustedFlag> forceTrustClientOpt)
             options.errorPrefix = "unexpected Nix daemon error: ";
             options.dieWithParent = false;
             options.runExitHandlers = true;
-            options.allowVfork = false;
             startProcess([&]() {
                 fdSocket = -1;
 
