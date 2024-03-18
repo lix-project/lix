@@ -483,7 +483,7 @@ void ExprLet::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & 
         i.second.e->bindVars(es, i.second.chooseByKind(newEnv, env, inheritFromEnv));
 
     if (es.debugRepl)
-        es.exprEnvs.insert(std::make_pair(this, newEnv));
+        es.exprEnvs.insert(std::make_pair(this, env));
 
     body->bindVars(es, newEnv);
 }
