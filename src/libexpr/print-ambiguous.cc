@@ -93,7 +93,7 @@ void printAmbiguous(
         str << v.fpoint;
         break;
     default:
-        printError("Nix evaluator internal error: printAmbiguous: invalid value type");
+        printError("Lix evaluator internal error: printAmbiguous: invalid value type");
         abort();
     }
 }

@@ -1090,7 +1090,7 @@ void processConnection(
                 tunnelLogger->stopWork(&e);
                 if (!errorAllowed) throw;
             } catch (std::bad_alloc & e) {
-                auto ex = Error("Nix daemon out of memory");
+                auto ex = Error("Lix daemon out of memory");
                 tunnelLogger->stopWork(&ex);
                 throw;
             }

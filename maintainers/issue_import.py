@@ -96,7 +96,7 @@ def issues_to_import():
     yield from paginate('GET', '/repos/nixos/nix/issues?state=open&labels=lix-import')
 
 def issues_already_imported():
-    yield from paginate('GET', '/repos/lix-project/lix/issues?state=open&labels=imported')
+    yield from paginate('GET', '/repos/lix-project/lix/issues?state=all&labels=imported')
 
 
 UPSTREAM_ISSUE_RE = re.compile(r'^Upstream-Issue: https://git\.lix\.systems/NixOS/nix/issues/(\d+)$', re.MULTILINE)
@@ -139,7 +139,7 @@ def import_issue(iss: Issue):
     new_issue(new_title, new_body, new_labels)
 
 def go():
-    print('Have you turned off the forgejo mailer or limited the queue workers to 0 (assuming that works)? Enter "We have" if so:')
+    print('Have you turned off the forgejo mailer? Enter "We have" if so:')
     answer = input('> ')
     if answer != 'We have':
         return
