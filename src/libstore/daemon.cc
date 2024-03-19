@@ -160,8 +160,7 @@ struct TunnelSink : Sink
     TunnelSink(Sink & to) : to(to) { }
     void operator () (std::string_view data)
     {
-        to << STDERR_WRITE;
-        writeString(data, to);
+        to << STDERR_WRITE << data;
     }
 };
 

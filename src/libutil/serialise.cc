@@ -330,55 +330,40 @@ void writePadding(size_t len, Sink & sink)
 }
 
 
-void writeString(std::string_view data, Sink & sink)
+WireFormatGenerator SerializingTransform::operator()(std::string_view s)
 {
-    sink << data.size();
-    sink(data);
-    writePadding(data.size(), sink);
+    co_yield s.size();
+    co_yield Bytes(s.begin(), s.size());
+    co_yield SerializingTransform::padding(s.size());
 }
 
-
-Sink & operator << (Sink & sink, std::string_view s)
+WireFormatGenerator SerializingTransform::operator()(const Strings & ss)
 {
-    writeString(s, sink);
-    return sink;
+    co_yield ss.size();
+    for (const auto & s : ss)
+        co_yield std::string_view(s);
 }
 
-
-template<class T> void writeStrings(const T & ss, Sink & sink)
+WireFormatGenerator SerializingTransform::operator()(const StringSet & ss)
 {
-    sink << ss.size();
-    for (auto & i : ss)
-        sink << i;
+    co_yield ss.size();
+    for (const auto & s : ss)
+        co_yield std::string_view(s);
 }
 
-Sink & operator << (Sink & sink, const Strings & s)
-{
-    writeStrings(s, sink);
-    return sink;
-}
-
-Sink & operator << (Sink & sink, const StringSet & s)
-{
-    writeStrings(s, sink);
-    return sink;
-}
-
-Sink & operator << (Sink & sink, const Error & ex)
+WireFormatGenerator SerializingTransform::operator()(const Error & ex)
 {
     auto & info = ex.info();
-    sink
-        << "Error"
-        << info.level
-        << "Error" // removed
-        << info.msg.str()
-        << 0 // FIXME: info.errPos
-        << info.traces.size();
+    co_yield "Error";
+    co_yield info.level;
+    co_yield "Error"; // removed
+    co_yield info.msg.str();
+    co_yield 0; // FIXME: info.errPos
+    co_yield info.traces.size();
     for (auto & trace : info.traces) {
-        sink << 0; // FIXME: trace.pos
-        sink << trace.hint.str();
+        co_yield 0; // FIXME: trace.pos
+        co_yield trace.hint.str();
     }
-    return sink;
 }
 
 

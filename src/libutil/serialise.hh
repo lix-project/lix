@@ -350,32 +350,81 @@ inline Sink & operator<<(Sink & sink, Generator<Bytes> && g)
     return sink;
 }
 
-void writePadding(size_t len, Sink & sink);
-void writeString(std::string_view s, Sink & sink);
+struct SerializingTransform;
+using WireFormatGenerator = Generator<Bytes, SerializingTransform>;
 
-inline Sink & operator << (Sink & sink, uint64_t n)
+struct SerializingTransform
 {
-    unsigned char buf[8];
-    buf[0] = n & 0xff;
-    buf[1] = (n >> 8) & 0xff;
-    buf[2] = (n >> 16) & 0xff;
-    buf[3] = (n >> 24) & 0xff;
-    buf[4] = (n >> 32) & 0xff;
-    buf[5] = (n >> 40) & 0xff;
-    buf[6] = (n >> 48) & 0xff;
-    buf[7] = (unsigned char) (n >> 56) & 0xff;
-    sink({(char *) buf, sizeof(buf)});
-    return sink;
+    std::array<unsigned char, 8> buf;
+
+    Bytes operator()(uint64_t n)
+    {
+        buf[0] = n & 0xff;
+        buf[1] = (n >> 8) & 0xff;
+        buf[2] = (n >> 16) & 0xff;
+        buf[3] = (n >> 24) & 0xff;
+        buf[4] = (n >> 32) & 0xff;
+        buf[5] = (n >> 40) & 0xff;
+        buf[6] = (n >> 48) & 0xff;
+        buf[7] = (unsigned char) (n >> 56) & 0xff;
+        return {reinterpret_cast<const char *>(buf.begin()), 8};
+    }
+
+    static Bytes padding(size_t unpadded)
+    {
+        return Bytes("\0\0\0\0\0\0\0", unpadded % 8 ? 8 - unpadded % 8 : 0);
+    }
+
+    // opt in to generator chaining. without this co_yielding
+    // another generator of any type will cause a type error.
+    auto operator()(Generator<Bytes> && g)
+    {
+        return std::move(g);
+    }
+
+    // only choose this for *exactly* char spans, do not allow implicit
+    // conversions. this would cause ambiguities with strings literals,
+    // and resolving those with more string-like overloads needs a lot.
+    template<typename Span>
+        requires std::same_as<Span, std::span<char>> || std::same_as<Span, std::span<const char>>
+    Bytes operator()(Span s)
+    {
+        return s;
+    }
+    WireFormatGenerator operator()(std::string_view s);
+    WireFormatGenerator operator()(const Strings & s);
+    WireFormatGenerator operator()(const StringSet & s);
+    WireFormatGenerator operator()(const Error & s);
+};
+
+void writePadding(size_t len, Sink & sink);
+
+inline Sink & operator<<(Sink & sink, uint64_t u)
+{
+    return sink << [&]() -> WireFormatGenerator { co_yield u; }();
 }
 
-Sink & operator << (Sink & in, const Error & ex);
-Sink & operator << (Sink & sink, std::string_view s);
-Sink & operator << (Sink & sink, const Strings & s);
-Sink & operator << (Sink & sink, const StringSet & s);
+inline Sink & operator<<(Sink & sink, std::string_view s)
+{
+    return sink << [&]() -> WireFormatGenerator { co_yield s; }();
+}
 
+inline Sink & operator<<(Sink & sink, const Strings & s)
+{
+    return sink << [&]() -> WireFormatGenerator { co_yield s; }();
+}
+
+inline Sink & operator<<(Sink & sink, const StringSet & s)
+{
+    return sink << [&]() -> WireFormatGenerator { co_yield s; }();
+}
+
+inline Sink & operator<<(Sink & sink, const Error & ex)
+{
+    return sink << [&]() -> WireFormatGenerator { co_yield ex; }();
+}
 
 MakeError(SerialisationError, Error);
-
 
 template<typename T>
 T readNum(Source & source)

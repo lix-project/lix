@@ -897,7 +897,7 @@ std::exception_ptr RemoteStore::Connection::processStderr(Sink * sink, Source * 
             if (!source) throw Error("no source");
             size_t len = readNum<size_t>(from);
             auto buf = std::make_unique<char[]>(len);
-            writeString({(const char *) buf.get(), source->read(buf.get(), len)}, to);
+            to << std::string_view((const char *) buf.get(), source->read(buf.get(), len));
             to.flush();
         }
 
