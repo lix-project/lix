@@ -72,6 +72,7 @@ libutil_headers = files(
   'file-system.hh',
   'finally.hh',
   'fmt.hh',
+  'generator.hh',
   'git.hh',
   'hash.hh',
   'hilite.hh',

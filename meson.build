@@ -142,6 +142,16 @@ else
   cpp_pch = []
 endif
 
+# gcc 12 is known to miscompile some coroutine-based code quite horribly,
+# causing (among other things) copies of move-only objects and the double
+# frees one would expect when the objects are unique_ptrs. these problems
+# often show up as memory corruption when nesting generators (since we do
+# treat generators like owned memory) and will cause inexplicable crashs.
+assert(
+  cxx.get_id() != 'gcc' or cxx.version().version_compare('>=13'),
+  'GCC 12 and earlier are known to miscompile lix coroutines, use GCC 13 or clang.'
+)
+
 
 # Translate some historical and Mesony CPU names to Lixy CPU names.
 # FIXME(Qyriad): the 32-bit x86 code is not tested right now, because cross compilation for Lix
