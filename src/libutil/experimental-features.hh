@@ -1,9 +1,7 @@
 #pragma once
 ///@file
 
-#include "comparator.hh"
 #include "error.hh"
-#include "json-utils.hh"
 #include "types.hh"
 
 namespace nix {
@@ -53,13 +51,6 @@ const std::optional<ExperimentalFeature> parseExperimentalFeature(
 std::string_view showExperimentalFeature(const ExperimentalFeature);
 
 /**
- * Compute the documentation of all experimental features.
- *
- * See `doc/manual` for how this information is used.
- */
-nlohmann::json documentExperimentalFeatures();
-
-/**
  * Shorthand for `str << showExperimentalFeature(feature)`.
  */
 std::ostream & operator<<(
@@ -86,18 +77,5 @@ public:
 
     MissingExperimentalFeature(ExperimentalFeature missingFeature);
 };
-
-/**
- * Semi-magic conversion to and from json.
- * See the nlohmann/json readme for more details.
- */
-void to_json(nlohmann::json &, const ExperimentalFeature &);
-void from_json(const nlohmann::json &, ExperimentalFeature &);
-
-/**
- * It is always rendered as a string
- */
-template<>
-struct json_avoids_null<ExperimentalFeature> : std::true_type {};
 
 }

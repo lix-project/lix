@@ -8,6 +8,7 @@
 #include "common-protocol.hh"
 #include "common-protocol-impl.hh"
 #include "fs-accessor.hh"
+#include "json-utils.hh"
 #include <boost/container/small_vector.hpp>
 #include <nlohmann/json.hpp>
 

@@ -4,6 +4,8 @@
 #include <nlohmann/json.hpp>
 #include "config.hh"
 #include "json-utils.hh"
+// Required for instances of to_json and from_json for ExperimentalFeature
+#include "experimental-features-json.hh"
 
 namespace nix {
 template<typename T>

@@ -3,6 +3,7 @@
 #include "debug-char.hh"
 #include "types.hh"
 #include "util.hh"
+#include <ranges>
 #include <iostream>
 #include <memory>
 #include <boost/algorithm/string/trim.hpp>

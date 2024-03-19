@@ -13,6 +13,7 @@
 #include "finally.hh"
 #include "loggers.hh"
 #include "markdown.hh"
+#include "experimental-features-json.hh"
 
 #include <sys/types.h>
 #include <sys/socket.h>

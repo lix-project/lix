@@ -1,4 +1,5 @@
 #include <limits>
+#include <span>
 #include <unordered_set>
 
 #include "print.hh"

@@ -2,6 +2,7 @@
 #include "args/root.hh"
 #include "hash.hh"
 #include "json-utils.hh"
+#include "experimental-features-json.hh"
 
 #include <glob.h>
 

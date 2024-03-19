@@ -13,6 +13,7 @@
 #include "topo-sort.hh"
 #include "callback.hh"
 #include "local-store.hh" // TODO remove, along with remaining downcasts
+#include "logging-json.hh"
 
 #include <regex>
 #include <queue>

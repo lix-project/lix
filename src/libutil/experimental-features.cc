@@ -1,4 +1,6 @@
 #include "experimental-features.hh"
+// Required for instances of to_json and from_json for ExperimentalFeature
+#include "experimental-features-json.hh"
 #include "util.hh"
 
 #include "nlohmann/json.hpp"
