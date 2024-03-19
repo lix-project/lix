@@ -296,7 +296,7 @@ struct curlFileTransfer : public FileTransfer
             curl_easy_setopt(req, CURLOPT_MAXREDIRS, 10);
             curl_easy_setopt(req, CURLOPT_NOSIGNAL, 1);
             curl_easy_setopt(req, CURLOPT_USERAGENT,
-                ("curl/" LIBCURL_VERSION " Nix/" + nixVersion +
+                ("curl/" LIBCURL_VERSION " Lix/" + nixVersion +
                     (fileTransferSettings.userAgentSuffix != "" ? " " + fileTransferSettings.userAgentSuffix.get() : "")).c_str());
             #if LIBCURL_VERSION_NUM >= 0x072b00
             curl_easy_setopt(req, CURLOPT_PIPEWAIT, 1);
@@ -724,7 +724,7 @@ struct curlFileTransfer : public FileTransfer
                 res.data = std::move(*s3Res.data);
                 callback(std::move(res));
 #else
-                throw nix::Error("cannot download '%s' because Nix is not built with S3 support", request.uri);
+                throw nix::Error("cannot download '%s' because Lix is not built with S3 support", request.uri);
 #endif
             } catch (...) { callback.rethrow(); }
             return;
