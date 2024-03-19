@@ -31,6 +31,10 @@ option('tests-brief', type : 'boolean', value : false,
   description : 'set to true for shorter tests output',
 )
 
+option('profile-build', type : 'feature', value: 'disabled',
+  description : 'whether to enable -ftime-trace in clang builds, allowing for speeding up the build.'
+)
+
 option('store-dir', type : 'string', value : '/nix/store',
   description : 'path of the Nix store',
 )

@@ -307,6 +307,14 @@ if cxx.get_linker_id() in ['ld.bfd', 'ld.gold']
   add_project_link_arguments('-Wl,--no-copy-dt-needed-entries', language : 'cpp')
 endif
 
+# Generate Chromium tracing files for each compiled file, which enables
+# maintainers/buildtime_report.sh BUILD-DIR to simply work in clang builds.
+#
+# They can also be manually viewed at https://ui.perfetto.dev
+if get_option('profile-build').require(meson.get_compiler('cpp').get_id() == 'clang').enabled()
+  add_project_arguments('-ftime-trace', language: 'cpp')
+endif
+
 subdir('src')
 if enable_tests
   subdir('tests/unit')

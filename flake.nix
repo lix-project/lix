@@ -152,6 +152,7 @@
 
           build-release-notes =
             final.buildPackages.callPackage ./maintainers/build-release-notes.nix { };
+          clangbuildanalyzer = final.buildPackages.callPackage ./misc/clangbuildanalyzer.nix { };
           boehmgc-nix = (final.boehmgc.override {
             enableLargeConfig = true;
           }).overrideAttrs (o: {
@@ -360,6 +361,8 @@
                   # FIXME(Qyriad): remove once the migration to Meson is complete.
                   pkgs.buildPackages.meson
                   pkgs.buildPackages.ninja
+
+                  pkgs.buildPackages.clangbuildanalyzer
                 ];
 
               src = null;

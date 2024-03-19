@@ -154,3 +154,6 @@ result-*
 
 # Mac OS
 .DS_Store
+
+# ClangBuildAnalyzer output, see maintainers/buildtime_report.sh
+buildtime.bin
