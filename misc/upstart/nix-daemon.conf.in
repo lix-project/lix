@@ -1,5 +1,0 @@
-description "Nix Daemon"
-start on filesystem
-stop on shutdown
-respawn
-exec @bindir@/nix-daemon --daemon

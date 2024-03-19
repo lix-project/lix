@@ -20,8 +20,7 @@ makefiles = \
   misc/fish/local.mk \
   misc/zsh/local.mk \
   misc/systemd/local.mk \
-  misc/launchd/local.mk \
-  misc/upstart/local.mk
+  misc/launchd/local.mk
 endif
 
 ifeq ($(ENABLE_BUILD)_$(ENABLE_TESTS), yes_yes)
