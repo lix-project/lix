@@ -279,18 +279,21 @@
         };
       };
 
-      checks = forAllSystems (system: {
+      checks = forAllSystems (system: let
+        rl-next-check = name: dir:
+          let pkgs = nixpkgsFor.${system}.native;
+          in pkgs.buildPackages.runCommand "test-${name}-release-notes" { } ''
+          LANG=C.UTF-8 ${lib.getExe pkgs.build-release-notes} ${dir} >$out
+        '';
+      in {
         # FIXME(Qyriad): remove this when the migration to Meson has been completed.
         mesonBuild = self.hydraJobs.mesonBuild.${system};
         mesonBuildClang = self.hydraJobs.mesonBuildClang.${system};
         binaryTarball = self.hydraJobs.binaryTarball.${system};
         perlBindings = self.hydraJobs.perlBindings.${system};
         nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
-        rl-next =
-          let pkgs = nixpkgsFor.${system}.native;
-          in pkgs.buildPackages.runCommand "test-rl-next-release-notes" { } ''
-          LANG=C.UTF-8 ${lib.getExe pkgs.build-release-notes} ${./doc/manual/rl-next} >$out
-        '';
+        rl-next = rl-next-check "rl-next" ./doc/manual/rl-next;
+        rl-next-dev = rl-next-check "rl-next-dev" ./doc/manual/rl-next-dev;
       } // (lib.optionalAttrs (builtins.elem system linux64BitSystems)) {
         dockerImage = self.hydraJobs.dockerImage.${system};
       });
