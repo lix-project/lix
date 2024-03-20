@@ -593,7 +593,7 @@ Pos PosTable::operator[](PosIdx p) const
 
     Pos result{0, 0, origin->origin};
     auto lines = this->lines.lock();
-    auto linesForInput = (*lines)[origin->offset];
+    auto & linesForInput = (*lines)[origin->offset];
 
     if (linesForInput.empty()) {
         auto source = result.getSource().value_or("");
