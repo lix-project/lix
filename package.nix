@@ -251,6 +251,10 @@ in stdenv.mkDerivation (finalAttrs: {
 
   doCheck = true;
 
+  mesonCheckFlags = lib.optionals (buildWithMeson || forDevShell) [
+    "--suite=check"
+  ];
+
   installFlags = "sysconfdir=$(out)/etc";
 
   postInstall = lib.optionalString (!finalAttrs.dontBuild) ''

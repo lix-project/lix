@@ -19,6 +19,18 @@ option('sandbox-shell', type : 'string', value : 'busybox',
   description : 'path to a statically-linked shell to use as /bin/sh in sandboxes (usually busybox)',
 )
 
+option('enable-tests', type : 'boolean', value : true,
+  description : 'whether to enable tests or not (requires rapidcheck and gtest)',
+)
+
+option('tests-color', type : 'boolean', value : true,
+  description : 'set to false to disable color output in gtest',
+)
+
+option('tests-brief', type : 'boolean', value : false,
+  description : 'set to true for shorter tests output',
+)
+
 option('store-dir', type : 'string', value : '/nix/store',
   description : 'path of the Nix store',
 )

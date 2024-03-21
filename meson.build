@@ -16,6 +16,8 @@
 # that become part of the final Nix command (things like `src/nix-build/*.cc`).
 #
 # Finally, src/nix/meson.build defines the Nix command itself, relying on all prior meson files.
+#
+# Unit tests are setup in tests/unit/meson.build, under the test suite "check".
 
 project('lix', 'cpp',
   version : run_command('bash', '-c', 'echo -n $(cat ./.version)$VERSION_SUFFIX', check : true).stdout().strip(),
@@ -55,6 +57,20 @@ foreach optname : path_opts
     set_variable(varname, prefix / path)
   endif
 endforeach
+
+
+enable_tests = get_option('enable-tests')
+
+tests_args = []
+
+if get_option('tests-color')
+  tests_args += '--gtest_color=yes'
+endif
+
+if get_option('tests-brief')
+  tests_args += '--gtest_brief=1'
+endif
+
 
 cxx = meson.get_compiler('cpp')
 
@@ -170,10 +186,17 @@ deps += editline
 lowdown = dependency('lowdown', version : '>=0.9.0', required : true)
 deps += lowdown
 
-rapidcheck = dependency('rapidcheck', required : false)
+# HACK(Qyriad): rapidcheck's pkg-config doesn't include the libs lol
+rapidcheck_meson = dependency('rapidcheck', required : enable_tests)
+rapidcheck = declare_dependency(dependencies : rapidcheck_meson, link_args : ['-lrapidcheck'])
 deps += rapidcheck
 
-gtest = dependency('gtest', required : false)
+gtest = [
+  dependency('gtest', required : enable_tests),
+  dependency('gtest_main', required : enable_tests),
+  dependency('gmock', required : enable_tests),
+  dependency('gmock_main', required : enable_tests),
+]
 deps += gtest
 
 #
@@ -285,3 +308,6 @@ if cxx.get_linker_id() in ['ld.bfd', 'ld.gold']
 endif
 
 subdir('src')
+if enable_tests
+  subdir('tests/unit')
+endif
