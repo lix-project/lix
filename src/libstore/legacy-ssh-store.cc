@@ -46,7 +46,6 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
         FdSink to;
         FdSource from;
         ServeProto::Version remoteVersion;
-        bool good = true;
 
         /**
          * Coercion to `ServeProto::ReadConn`. This makes it easy to use the
@@ -97,8 +96,7 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
         , host(host)
         , connections(make_ref<Pool<Connection>>(
             std::max(1, (int) maxConnections),
-            [this]() { return openConnection(); },
-            [](const ref<Connection> & r) { return r->good; }
+            [this]() { return openConnection(); }
             ))
         , master(
             host,
@@ -196,12 +194,7 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
                 << info.ultimate
                 << info.sigs
                 << renderContentAddress(info.ca);
-            try {
-                copyNAR(source, conn->to);
-            } catch (...) {
-                conn->good = false;
-                throw;
-            }
+            copyNAR(source, conn->to);
             conn->to.flush();
 
         } else {
@@ -209,12 +202,7 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
             conn->to
                 << ServeProto::Command::ImportPaths
                 << 1;
-            try {
-                copyNAR(source, conn->to);
-            } catch (...) {
-                conn->good = false;
-                throw;
-            }
+            copyNAR(source, conn->to);
             conn->to
                 << exportMagic
                 << printStorePath(info.path);
