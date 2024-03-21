@@ -336,7 +336,7 @@
                 # Make bash completion work.
                 XDG_DATA_DIRS+=:$out/share
               '';
-            } // lib.optionalAttrs (stdenv.isLinux && pkgs.glibcLocales != null) {
+            } // lib.optionalAttrs (stdenv.buildPlatform.isLinux && pkgs.glibcLocales != null) {
               # Required to make non-NixOS Linux not complain about missing locale files during configure in a dev shell
               LOCALE_ARCHIVE = "${lib.getLib pkgs.glibcLocales}/lib/locale/locale-archive";
             });
