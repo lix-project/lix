@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include <exception>
 #include <functional>
 #include <limits>
 #include <list>
@@ -118,7 +119,7 @@ public:
             if (!r) return;
             {
                 auto state_(pool.state.lock());
-                if (!bad)
+                if (!bad && !std::uncaught_exceptions())
                     state_->idle.push_back(ref<R>(r));
                 assert(state_->inUse);
                 state_->inUse--;
@@ -134,6 +135,12 @@ public:
 
     Handle get()
     {
+        // we do not want to handle the complexity that comes with allocating
+        // resources during stack unwinding. it would be possible to do this,
+        // but doing so requires more per-handle bookkeeping to properly free
+        // resources allocated during unwinding. that effort is not worth it.
+        assert(std::uncaught_exceptions() == 0);
+
         {
             auto state_(state.lock());
 
