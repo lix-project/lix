@@ -103,7 +103,6 @@ public:
     private:
         Pool & pool;
         std::shared_ptr<R> r;
-        bool bad = false;
 
         friend Pool;
 
@@ -119,7 +118,7 @@ public:
             if (!r) return;
             {
                 auto state_(pool.state.lock());
-                if (!bad && !std::uncaught_exceptions())
+                if (!std::uncaught_exceptions())
                     state_->idle.push_back(ref<R>(r));
                 assert(state_->inUse);
                 state_->inUse--;
@@ -129,8 +128,6 @@ public:
 
         R * operator -> () { return &*r; }
         R & operator * () { return *r; }
-
-        void markBad() { bad = true; }
     };
 
     Handle get()

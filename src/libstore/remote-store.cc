@@ -155,7 +155,6 @@ void RemoteStore::setOptions(Connection & conn)
 RemoteStore::ConnectionHandle::~ConnectionHandle()
 {
     if (!daemonException && std::uncaught_exceptions()) {
-        handle.markBad();
         debug("closing daemon connection because of an exception");
     }
 }
