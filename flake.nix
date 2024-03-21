@@ -317,11 +317,18 @@
             };
           in
             nix.overrideAttrs (prev: {
+              # Required for clang-tidy checks
+              buildInputs = prev.buildInputs ++ lib.optionals (stdenv.cc.isClang) [ pkgs.llvmPackages.llvm pkgs.llvmPackages.clang-unwrapped.dev ];
               nativeBuildInputs = prev.nativeBuildInputs
                 ++ lib.optional (stdenv.cc.isClang && !stdenv.buildPlatform.isDarwin) pkgs.buildPackages.bear
+                # Required for clang-tidy checks
+                ++ lib.optionals (stdenv.cc.isClang) [ pkgs.buildPackages.cmake pkgs.buildPackages.ninja pkgs.buildPackages.llvmPackages.llvm.dev ]
                 ++ lib.optional
                   (stdenv.cc.isClang && stdenv.hostPlatform == stdenv.buildPlatform)
-                  pkgs.buildPackages.clang-tools;
+                  # for some reason that seems accidental and was changed in
+                  # NixOS 24.05-pre, clang-tools is pinned to LLVM 14 when
+                  # default LLVM is newer.
+                  (pkgs.buildPackages.clang-tools.override { inherit (pkgs.buildPackages) llvmPackages; });
 
               src = null;
 
