@@ -19,5 +19,5 @@ public:
     Finally(Finally &&other) : fun(std::move(other.fun)) {
         other.movedFrom = true;
     }
-    ~Finally() { if (!movedFrom) fun(); }
+    ~Finally() noexcept(false) { if (!movedFrom) fun(); }
 };
