@@ -49,6 +49,7 @@ libutil_tests_sources = files(
   'libutil/paths-setting.cc',
   'libutil/pool.cc',
   'libutil/references.cc',
+  'libutil/serialise.cc',
   'libutil/suggestions.cc',
   'libutil/tests.cc',
   'libutil/url.cc',
