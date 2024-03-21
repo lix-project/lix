@@ -39,9 +39,7 @@ RemoteStore::RemoteStore(const Params & params)
             },
             [this](const ref<Connection> & r) {
                 return
-                    r->to.good()
-                    && r->from.good()
-                    && std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::duration_cast<std::chrono::seconds>(
                         std::chrono::steady_clock::now() - r->startTime).count() < maxConnectionAge;
             }
             ))
@@ -180,6 +178,10 @@ void RemoteStore::ConnectionHandle::processStderr(Sink * sink, Source * source, 
                     m.find("Derive([") != std::string::npos)
                     throw Error("%s, this might be because the daemon is too old to understand dependencies on dynamic derivations. Check to see if the raw derivation is in the form '%s'", std::move(m), "DrvWithVersion(..)");
             }
+            // the daemon can still handle more requests, so the connection itself
+            // is still valid. the current *handle* however should be considered a
+            // lost cause and abandoned entirely.
+            handle.release();
             throw;
         }
     }
