@@ -745,7 +745,7 @@ void drainFD(int fd, Sink & sink, bool block)
         }
     });
 
-    std::vector<unsigned char> buf(64 * 1024);
+    std::array<unsigned char, 64 * 1024> buf;
     while (1) {
         checkInterrupt();
         ssize_t rd = read(fd, buf.data(), buf.size());
