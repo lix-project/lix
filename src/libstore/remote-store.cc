@@ -940,11 +940,6 @@ std::optional<TrustedFlag> RemoteStore::isTrustedClient()
     return conn->remoteTrustsUs;
 }
 
-void RemoteStore::flushBadConnections()
-{
-    connections->flushBad();
-}
-
 
 RemoteStore::Connection::~Connection()
 {

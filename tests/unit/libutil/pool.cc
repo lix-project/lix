@@ -65,21 +65,6 @@ namespace nix {
         ASSERT_EQ(pool.capacity(), 0);
     }
 
-    TEST(Pool, flushBadDropsOutOfScopeResources) {
-        auto isGood = [](const ref<TestResource> & r) { return false; };
-        auto createResource = []() { return make_ref<TestResource>(); };
-
-        Pool<TestResource> pool = Pool<TestResource>((size_t)1, createResource, isGood);
-
-        {
-            auto _r = pool.get();
-            ASSERT_EQ(pool.count(), 1);
-        }
-
-        pool.flushBad();
-        ASSERT_EQ(pool.count(), 0);
-    }
-
     // Test that the resources we allocate are being reused when they are still good.
     TEST(Pool, reuseResource) {
         auto isGood = [](const ref<TestResource> & r) { return true; };

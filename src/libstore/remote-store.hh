@@ -161,8 +161,6 @@ public:
 
     std::optional<TrustedFlag> isTrustedClient() override;
 
-    void flushBadConnections();
-
     struct Connection;
 
     ref<Connection> openConnectionWrapper();
