@@ -204,6 +204,16 @@
         # Binary package for various platforms.
         build = forAllSystems (system: self.packages.${system}.nix);
 
+        # FIXME(Qyriad): remove this when the migration to Meson has been completed.
+        mesonBuild = forAllSystems (system: self.packages.${system}.nix.override {
+          buildWithMeson = true;
+        });
+        mesonBuildClang = forAllSystems (system:
+            nixpkgsFor.${system}.stdenvs.clangStdenvPackages.nix.override {
+              buildWithMeson = true;
+            }
+        );
+
         # Perl bindings for various platforms.
         perlBindings = forAllSystems (system: nixpkgsFor.${system}.native.nix.perl-bindings);
 
@@ -262,6 +272,9 @@
       };
 
       checks = forAllSystems (system: {
+        # FIXME(Qyriad): remove this when the migration to Meson has been completed.
+        mesonBuild = self.hydraJobs.mesonBuild.${system};
+        mesonBuildClang = self.hydraJobs.mesonBuildClang.${system};
         binaryTarball = self.hydraJobs.binaryTarball.${system};
         perlBindings = self.hydraJobs.perlBindings.${system};
         nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
@@ -328,7 +341,12 @@
                   # for some reason that seems accidental and was changed in
                   # NixOS 24.05-pre, clang-tools is pinned to LLVM 14 when
                   # default LLVM is newer.
-                  (pkgs.buildPackages.clang-tools.override { inherit (pkgs.buildPackages) llvmPackages; });
+                  (pkgs.buildPackages.clang-tools.override { inherit (pkgs.buildPackages) llvmPackages; })
+                ++ [
+                  # FIXME(Qyriad): remove once the migration to Meson is complete.
+                  pkgs.buildPackages.meson
+                  pkgs.buildPackages.ninja
+                ];
 
               src = null;
 

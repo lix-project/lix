@@ -24,10 +24,13 @@
   libcpuid,
   libseccomp,
   libsodium,
+  lsof,
   lowdown,
   mdbook,
   mdbook-linkcheck,
   mercurial,
+  meson,
+  ninja,
   openssl,
   pkg-config,
   rapidcheck,
@@ -46,6 +49,10 @@
   internalApiDocs ? false,
   # Avoid setting things that would interfere with a functioning devShell
   forDevShell ? false,
+
+  # FIXME(Qyriad): build Lix using Meson instead of autoconf and make.
+  # This flag will be removed when the migration to Meson is complete.
+  buildWithMeson ? false,
 
   # Not a real argument, just the only way to approximate let-binding some
   # stuff for argument defaults.
@@ -86,12 +93,16 @@
     ./README.md
   ];
 
-  topLevelBuildFiles = fileset.unions [
+  topLevelBuildFiles = fileset.unions ([
     ./local.mk
     ./Makefile
     ./Makefile.config.in
     ./mk
-  ];
+  ] ++ lib.optionals buildWithMeson [
+    ./meson.build
+    ./meson.options
+    ./meson/cleanup-install.bash
+  ]);
 
  functionalTestFiles = fileset.unions [
     ./tests/functional
@@ -126,6 +137,11 @@ in stdenv.mkDerivation (finalAttrs: {
 
   dontBuild = false;
 
+  # FIXME(Qyriad): see if this is still needed once the migration to Meson is completed.
+  mesonFlags = lib.optionals (buildWithMeson && stdenv.hostPlatform.isLinux) [
+    "-Dsandbox-shell=${lib.getBin busybox-sandbox-shell}/bin/busybox"
+  ];
+
   nativeBuildInputs = [
     bison
     flex
@@ -134,17 +150,21 @@ in stdenv.mkDerivation (finalAttrs: {
     mdbook
     mdbook-linkcheck
     autoconf-archive
-    autoreconfHook
+  ] ++ lib.optional (!buildWithMeson) autoreconfHook ++ [
     pkg-config
 
     # Tests
     git
     mercurial
     jq
+    lsof
   ] ++ lib.optional stdenv.hostPlatform.isLinux util-linuxMinimal
     ++ lib.optional (!officialRelease && buildUnreleasedNotes) changelog-d
     ++ lib.optional internalApiDocs doxygen
-  ;
+    ++ lib.optionals buildWithMeson [
+      meson
+      ninja
+  ];
 
   buildInputs = [
     curl
@@ -159,7 +179,7 @@ in stdenv.mkDerivation (finalAttrs: {
     lowdown
     libsodium
   ]
-    ++ lib.optionals stdenv.isLinux [ libseccomp ]
+    ++ lib.optionals stdenv.hostPlatform.isLinux [ libseccomp busybox-sandbox-shell ]
     ++ lib.optional stdenv.hostPlatform.isx86_64 libcpuid
     # There have been issues building these dependencies
     ++ lib.optional (stdenv.hostPlatform == stdenv.buildPlatform) aws-sdk-cpp-nix
@@ -176,6 +196,13 @@ in stdenv.mkDerivation (finalAttrs: {
   disallowedReferences = [
     boost
   ];
+
+  # Needed for Meson to find Boost.
+  # https://github.com/NixOS/nixpkgs/issues/86131.
+  env = lib.optionalAttrs (buildWithMeson || forDevShell) {
+    BOOST_INCLUDEDIR = "${lib.getDev boost}/include";
+    BOOST_LIBRARYDIR = "${lib.getLib boost}/lib";
+  };
 
   preConfigure = lib.optionalString (!finalAttrs.dontBuild && !stdenv.hostPlatform.isStatic) ''
     # Copy libboost_context so we don't get all of Boost in our closure.
@@ -214,6 +241,8 @@ in stdenv.mkDerivation (finalAttrs: {
     ++ [ (lib.enableFeature internalApiDocs "internal-api-docs") ]
     ++ lib.optional (!forDevShell) "--sysconfdir=/etc";
 
+  mesonBuildType = lib.optional (buildWithMeson || forDevShell) "debugoptimized";
+
   installTargets = lib.optional internalApiDocs "internal-api-html";
 
   enableParallelBuilding = true;
@@ -231,10 +260,12 @@ in stdenv.mkDerivation (finalAttrs: {
     mkdir -p $out/nix-support
     echo "file binary-dist $out/bin/nix" >> $out/nix-support/hydra-build-products
   '' + lib.optionalString stdenv.isDarwin ''
-    install_name_tool \
-      -change ${boost}/lib/libboost_context.dylib \
-      $out/lib/libboost_context.dylib \
-      $out/lib/libnixutil.dylib
+    for lib in libnixutil.dylib libnixexpr.dylib; do
+      install_name_tool \
+        -change "${lib.getLib boost}/lib/libboost_context.dylib" \
+        "$out/lib/libboost_context.dylib" \
+        "$out/lib/$lib"
+    done
   '' + lib.optionalString internalApiDocs ''
     mkdir -p $out/nix-support
     echo "doc internal-api-docs $out/share/doc/nix/internal-api/html" >> "$out/nix-support/hydra-build-products"

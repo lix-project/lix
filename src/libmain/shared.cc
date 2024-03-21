@@ -114,10 +114,8 @@ static void sigHandler(int signo) { }
 void initNix()
 {
     /* Turn on buffering for cerr. */
-#if HAVE_PUBSETBUF
     static char buf[1024];
     std::cerr.rdbuf()->pubsetbuf(buf, sizeof(buf));
-#endif
 
     initLibStore();
 

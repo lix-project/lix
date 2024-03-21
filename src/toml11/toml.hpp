@@ -22,6 +22,9 @@
  * THE SOFTWARE.
  */
 
+// TODO(Qyriad): let's get vendored toml11 out of here.
+#pragma GCC system_header
+
 #ifndef TOML_FOR_MODERN_CPP
 #define TOML_FOR_MODERN_CPP
 
