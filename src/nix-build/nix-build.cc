@@ -414,8 +414,7 @@ static void main_nix_build(int argc, char * * argv)
         // Set the environment.
         auto env = getEnv();
 
-        auto tmp = getEnv("TMPDIR");
-        if (!tmp) tmp = getEnv("XDG_RUNTIME_DIR").value_or("/tmp");
+        auto tmp = defaultTempDir();
 
         if (pure) {
             decltype(env) newEnv;
@@ -427,7 +426,7 @@ static void main_nix_build(int argc, char * * argv)
             env["__ETC_PROFILE_SOURCED"] = "1";
         }
 
-        env["NIX_BUILD_TOP"] = env["TMPDIR"] = env["TEMPDIR"] = env["TMP"] = env["TEMP"] = *tmp;
+        env["NIX_BUILD_TOP"] = env["TMPDIR"] = env["TEMPDIR"] = env["TMP"] = env["TEMP"] = tmp;
         env["NIX_STORE"] = store->storeDir;
         env["NIX_BUILD_CORES"] = std::to_string(settings.buildCores);
 

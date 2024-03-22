@@ -495,7 +495,7 @@ void LocalDerivationGoal::startBuilder()
 
     /* Create a temporary directory where the build will take
        place. */
-    tmpDir = createTempDir("", "nix-build-" + std::string(drvPath.name()), false, false, 0700);
+    tmpDir = createTempDir(settings.buildDir.get().value_or(""), "nix-build-" + std::string(drvPath.name()), false, false, 0700);
 
     chownToBuilder(tmpDir);
 
@@ -2107,8 +2107,8 @@ void LocalDerivationGoal::runChild()
         bool allowLocalNetworking = parsedDrv->getBoolAttr("__darwinAllowLocalNetworking");
 
         /* The tmpDir in scope points at the temporary build directory for our derivation. Some packages try different mechanisms
-           to find temporary directories, so we want to open up a broader place for them to dump their files, if needed. */
-        Path globalTmpDir = canonPath(getEnvNonEmpty("TMPDIR").value_or("/tmp"), true);
+           to find temporary directories, so we want to open up a broader place for them to put their files, if needed. */
+        Path globalTmpDir = canonPath(defaultTempDir(), true);
 
         /* They don't like trailing slashes on subpath directives */
         if (globalTmpDir.back() == '/') globalTmpDir.pop_back();

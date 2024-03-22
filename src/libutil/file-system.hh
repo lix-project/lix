@@ -259,6 +259,11 @@ Path createTempDir(const Path & tmpRoot = "", const Path & prefix = "nix",
 std::pair<AutoCloseFD, Path> createTempFile(const Path & prefix = "nix");
 
 /**
+ * Return `TMPDIR`, or the default temporary directory if unset or empty.
+ */
+Path defaultTempDir();
+
+/**
  * Used in various places.
  */
 typedef std::function<bool(const Path & path)> PathFilter;

@@ -274,6 +274,11 @@ grepQuietInverse() {
     ! grep "$@" > /dev/null
 }
 
+# Return the number of arguments
+count() {
+  echo $#
+}
+
 trap onError ERR
 
 fi # COMMON_VARS_AND_FUNCTIONS_SH_SOURCED
