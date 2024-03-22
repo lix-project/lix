@@ -71,7 +71,7 @@ DownloadFileResult downloadFile(
         storePath = std::move(cached->storePath);
     } else {
         StringSink sink;
-        dumpString(res.data, sink);
+        sink << dumpString(res.data);
         auto hash = hashString(htSHA256, res.data);
         ValidPathInfo info {
             *store,

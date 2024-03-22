@@ -30,7 +30,7 @@ struct CmdAddToStore : MixDryRun, StoreCommand
         if (!namePart) namePart = baseNameOf(path);
 
         StringSink sink;
-        dumpPath(path, sink);
+        sink << dumpPath(path);
 
         auto narHash = hashString(htSHA256, sink.s);
 

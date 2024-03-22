@@ -1406,7 +1406,7 @@ StorePath LocalStore::addToStoreFromDump(Source & source0, std::string_view name
             auto narHash = std::pair { hash, size };
             if (method != FileIngestionMethod::Recursive || hashAlgo != htSHA256) {
                 HashSink narSink { htSHA256 };
-                dumpPath(realPath, narSink);
+                narSink << dumpPath(realPath);
                 narHash = narSink.finish();
             }
 
@@ -1461,7 +1461,7 @@ StorePath LocalStore::addTextToStore(
             canonicalisePathMetaData(realPath, {});
 
             StringSink sink;
-            dumpString(s, sink);
+            sink << dumpString(s);
             auto narHash = hashString(htSHA256, sink.s);
 
             optimisePath(realPath, repair);
@@ -1601,7 +1601,7 @@ bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
 
                 auto hashSink = HashSink(info->narHash.type);
 
-                dumpPath(Store::toRealPath(i), hashSink);
+                hashSink << dumpPath(Store::toRealPath(i));
                 auto current = hashSink.finish();
 
                 if (info->narHash != nullHash && info->narHash != current.first) {
@@ -1895,7 +1895,7 @@ ContentAddress LocalStore::hashCAPath(
         [&](const FileIngestionMethod & m2) {
             switch (m2) {
             case FileIngestionMethod::Recursive:
-                dumpPath(path, caSink);
+                caSink << dumpPath(path);
                 break;
             case FileIngestionMethod::Flat:
                 readFileSource(path)->drainInto(caSink);

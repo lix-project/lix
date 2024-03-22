@@ -2158,7 +2158,7 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
                 /* FIXME: Is this actually streaming? */
                 auto source = sinkToSource([&](Sink & nextSink) {
                     RewritingSink rsink(rewrites, nextSink);
-                    dumpPath(actualPath, rsink);
+                    rsink << dumpPath(actualPath);
                     rsink.flush();
                 });
                 Path tmpPath = actualPath + ".tmp";
@@ -2224,7 +2224,7 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
                 [&](const FileIngestionMethod & m2) {
                     switch (m2) {
                     case FileIngestionMethod::Recursive:
-                        dumpPath(actualPath, caSink);
+                        caSink << dumpPath(actualPath);
                         break;
                     case FileIngestionMethod::Flat:
                         readFileSource(actualPath)->drainInto(caSink);

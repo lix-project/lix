@@ -244,7 +244,7 @@ StorePath ProfileManifest::build(ref<Store> store)
 
     /* Add the symlink tree to the store. */
     StringSink sink;
-    dumpPath(tempDir, sink);
+    sink << dumpPath(tempDir);
 
     auto narHash = hashString(htSHA256, sink.s);
 

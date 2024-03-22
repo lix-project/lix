@@ -101,7 +101,7 @@ struct SourcePath
     void dumpPath(
         Sink & sink,
         PathFilter & filter = defaultPathFilter) const
-    { return nix::dumpPath(path.abs(), sink, filter); }
+    { sink << nix::dumpPath(path.abs(), filter); }
 
     /**
      * Return the location of this path in the "real" filesystem, if

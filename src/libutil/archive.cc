@@ -40,10 +40,10 @@ static GlobalConfig::Register rArchiveSettings(&archiveSettings);
 PathFilter defaultPathFilter = [](const Path &) { return true; };
 
 
-static void dumpContents(const Path & path, off_t size,
-    Sink & sink)
+static WireFormatGenerator dumpContents(const Path & path, off_t size)
 {
-    sink << "contents" << size;
+    co_yield "contents";
+    co_yield size;
 
     AutoCloseFD fd{open(path.c_str(), O_RDONLY | O_CLOEXEC)};
     if (!fd) throw SysError("opening file '%1%'", path);
@@ -55,31 +55,35 @@ static void dumpContents(const Path & path, off_t size,
         auto n = std::min(left, buf.size());
         readFull(fd.get(), buf.data(), n);
         left -= n;
-        sink({buf.data(), n});
+        co_yield std::span{buf.data(), n};
     }
 
-    writePadding(size, sink);
+    co_yield SerializingTransform::padding(size);
 }
 
 
-static time_t dump(const Path & path, Sink & sink, PathFilter & filter)
+static WireFormatGenerator dump(const Path & path, time_t & mtime, PathFilter & filter)
 {
     checkInterrupt();
 
     auto st = lstat(path);
-    time_t result = st.st_mtime;
+    mtime = st.st_mtime;
 
-    sink << "(";
+    co_yield "(";
 
     if (S_ISREG(st.st_mode)) {
-        sink << "type" << "regular";
-        if (st.st_mode & S_IXUSR)
-            sink << "executable" << "";
-        dumpContents(path, st.st_size, sink);
+        co_yield "type";
+        co_yield "regular";
+        if (st.st_mode & S_IXUSR) {
+            co_yield "executable";
+            co_yield "";
+        }
+        co_yield dumpContents(path, st.st_size);
     }
 
     else if (S_ISDIR(st.st_mode)) {
-        sink << "type" << "directory";
+        co_yield "type";
+        co_yield "directory";
 
         /* If we're on a case-insensitive system like macOS, undo
            the case hack applied by restorePath(). */
@@ -101,41 +105,55 @@ static time_t dump(const Path & path, Sink & sink, PathFilter & filter)
 
         for (auto & i : unhacked)
             if (filter(path + "/" + i.first)) {
-                sink << "entry" << "(" << "name" << i.first << "node";
-                auto tmp_mtime = dump(path + "/" + i.second, sink, filter);
-                if (tmp_mtime > result) {
-                    result = tmp_mtime;
+                co_yield "entry";
+                co_yield "(";
+                co_yield "name";
+                co_yield i.first;
+                co_yield "node";
+                time_t tmp_mtime;
+                co_yield dump(path + "/" + i.second, tmp_mtime, filter);
+                if (tmp_mtime > mtime) {
+                    mtime = tmp_mtime;
                 }
-                sink << ")";
+                co_yield ")";
             }
     }
 
-    else if (S_ISLNK(st.st_mode))
-        sink << "type" << "symlink" << "target" << readLink(path);
+    else if (S_ISLNK(st.st_mode)) {
+        co_yield "type";
+        co_yield "symlink";
+        co_yield "target";
+        co_yield readLink(path);
+    }
 
     else throw Error("file '%1%' has an unsupported type", path);
 
-    sink << ")";
-
-    return result;
+    co_yield ")";
 }
 
 
-time_t dumpPathAndGetMtime(const Path & path, Sink & sink, PathFilter & filter)
+WireFormatGenerator dumpPathAndGetMtime(Path path, time_t & mtime, PathFilter & filter)
 {
-    sink << narVersionMagic1;
-    return dump(path, sink, filter);
+    co_yield narVersionMagic1;
+    co_yield dump(path, mtime, filter);
 }
 
-void dumpPath(const Path & path, Sink & sink, PathFilter & filter)
+WireFormatGenerator dumpPath(Path path, PathFilter & filter)
 {
-    dumpPathAndGetMtime(path, sink, filter);
+    time_t ignored;
+    co_yield dumpPathAndGetMtime(path, ignored, filter);
 }
 
 
-void dumpString(std::string_view s, Sink & sink)
+WireFormatGenerator dumpString(std::string_view s)
 {
-    sink << narVersionMagic1 << "(" << "type" << "regular" << "contents" << s << ")";
+    co_yield narVersionMagic1;
+    co_yield "(";
+    co_yield "type";
+    co_yield "regular";
+    co_yield "contents";
+    co_yield s;
+    co_yield ")";
 }
 
 

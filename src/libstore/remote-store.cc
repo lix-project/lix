@@ -422,7 +422,7 @@ ref<const ValidPathInfo> RemoteStore::addCAToStore(
                             dump.drainInto(conn->to);
                         } else {
                             std::string contents = dump.drain();
-                            dumpString(contents, conn->to);
+                            conn->to << dumpString(contents);
                         }
                     }
                     conn.processStderr();

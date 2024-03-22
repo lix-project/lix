@@ -61,7 +61,7 @@ StorePathSet scanForReferences(
     TeeSink sink { refsSink, toTee };
 
     /* Look for the hashes in the NAR dump of the path. */
-    dumpPath(path, sink);
+    sink << dumpPath(path);
 
     return refsSink.getResultPaths();
 }

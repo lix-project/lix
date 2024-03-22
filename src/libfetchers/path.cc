@@ -130,10 +130,8 @@ struct PathInputScheme : InputScheme
         time_t mtime = 0;
         if (!storePath || storePath->name() != "source" || !store->isValidPath(*storePath)) {
             // FIXME: try to substitute storePath.
-            auto src = sinkToSource([&](Sink & sink) {
-                mtime = dumpPathAndGetMtime(absPath, sink, defaultPathFilter);
-            });
-            storePath = store->addToStoreFromDump(*src, "source");
+            auto src = GeneratorSource{dumpPathAndGetMtime(absPath, mtime, defaultPathFilter)};
+            storePath = store->addToStoreFromDump(src, "source");
         }
         input.attrs.insert_or_assign("lastModified", uint64_t(mtime));
 

@@ -58,7 +58,7 @@ struct CmdDumpPath2 : Command
     {
         logger->pause();
         FdSink sink(STDOUT_FILENO);
-        dumpPath(path, sink);
+        sink << dumpPath(path);
         sink.flush();
     }
 };
