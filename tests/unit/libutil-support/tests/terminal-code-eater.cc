@@ -1,5 +1,5 @@
 #include "terminal-code-eater.hh"
-#include "debug-char.hh"
+#include "escape-char.hh"
 #include <assert.h>
 #include <cstdint>
 #include <iostream>
@@ -14,7 +14,7 @@ void TerminalCodeEater::feed(char c, std::function<void(char)> on_char)
     auto isIntermediateChar = [](char v) -> bool { return v >= 0x20 && v <= 0x2f; };
     auto isFinalChar = [](char v) -> bool { return v >= 0x40 && v <= 0x7e; };
     if constexpr (DEBUG_EATER) {
-        std::cerr << "eater" << DebugChar{c} << "\n";
+        std::cerr << "eater" << MaybeHexEscapedChar{c} << "\n";
     }
 
     switch (state) {
@@ -28,7 +28,7 @@ void TerminalCodeEater::feed(char c, std::function<void(char)> on_char)
             return;
         }
         if constexpr (DEBUG_EATER) {
-            std::cerr << "eater uneat" << DebugChar{c} << "\n";
+            std::cerr << "eater uneat" << MaybeHexEscapedChar{c} << "\n";
         }
         on_char(c);
         break;
