@@ -12,6 +12,7 @@ EOF
 [[ $testStdinHeredoc == '{ bar = 4; foo = 4; }' ]]
 
 nix eval --expr 'assert 1 + 2 == 3; true'
+nix eval -E 'assert 1 + 2 == 3; true'
 
 [[ $(nix eval int -f "./eval.nix") == 123 ]]
 [[ $(nix eval str -f "./eval.nix") == '"foo"' ]]
