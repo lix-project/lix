@@ -1,3 +1,4 @@
+@args --debugger
 we enter a debugger via builtins.break in the input file.
 
   info: breakpoint reached
@@ -37,3 +38,4 @@ and once again, more breakpoints are ignored.
 
   nix-repl> builtins.break 3
   3
+  error: bar

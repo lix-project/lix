@@ -1,3 +1,4 @@
+@args --debugger
   error:
          … while evaluating the error message passed to builtin.throw
 
@@ -14,3 +15,18 @@ We expect to be able to see locals like r in the debugger:
 
   Env level 1
   abort baseNameOf break builtins derivation derivationStrict dirOf false fetchGit fetchMercurial fetchTarball fetchTree fromTOML import isNull map null placeholder removeAttrs scopedImport throw toString true
+
+  nix-repl> :quit
+  error:
+         … while evaluating the file '$TEST_DATA/regression_9918.nix':
+
+         … while calling the 'throw' builtin
+           at $TEST_DATA/regression_9918.nix:3:7:
+              2|   r = [];
+              3|   x = builtins.throw r;
+               |       ^
+              4| in
+
+         … while evaluating the error message passed to builtin.throw
+
+         error: cannot coerce a list to a string: [ ]

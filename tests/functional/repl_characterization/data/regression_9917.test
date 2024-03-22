@@ -1,6 +1,7 @@
 https://github.com/NixOS/nix/pull/9917 (Enter debugger more reliably in let expressions and function calls)
 
 This test ensures that continues don't skip opportunities to enter the debugger.
+@args --debugger
   trace: before outer break
   info: breakpoint reached
 
@@ -13,7 +14,7 @@ This test ensures that continues don't skip opportunities to enter the debugger.
   0: error: breakpoint reached
   «none»:0
   1: while calling a function
-  TEST_DATA/regression_9917.nix:3:5
+  $TEST_DATA/regression_9917.nix:3:5
 
        2|   a = builtins.trace "before inner break" (
        3|     builtins.break { msg = "hello"; }
@@ -21,7 +22,7 @@ This test ensures that continues don't skip opportunities to enter the debugger.
        4|   );
 
   2: while calling a function
-  TEST_DATA/regression_9917.nix:2:7
+  $TEST_DATA/regression_9917.nix:2:7
 
        1| let
        2|   a = builtins.trace "before inner break" (

@@ -1,3 +1,4 @@
+@args --debugger
   info: breakpoint reached
 
 debugger should not crash now, but also not show any with variables
@@ -12,3 +13,14 @@ debugger should not crash now, but also not show any with variables
 
   Env level 2
   abort baseNameOf break builtins derivation derivationStrict dirOf false fetchGit fetchMercurial fetchTarball fetchTree fromTOML import isNull map null placeholder removeAttrs scopedImport throw toString true
+  error:
+         … while evaluating the file '$TEST_DATA/regression_l145.nix':
+
+         … while calling the 'break' builtin
+           at $TEST_DATA/regression_l145.nix:3:7:
+              2| let
+              3|   x = builtins.break 1;
+               |       ^
+              4| in
+
+         error: breakpoint reached

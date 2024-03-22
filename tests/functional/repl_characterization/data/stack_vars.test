@@ -1,3 +1,4 @@
+@args --debugger
   trace: before outer break
   info: breakpoint reached
 
@@ -24,7 +25,7 @@ If we :st past the frame in the backtrace with the meow in it, the meow should n
   nix-repl> :st 3
 
   3: while calling a function
-  TEST_DATA/stack_vars.nix:5:7
+  $TEST_DATA/stack_vars.nix:5:7
 
        4|   );
        5|   b = builtins.trace "before outer break" (
@@ -58,9 +59,8 @@ If we :st past the frame in the backtrace with the meow in it, the meow should n
   3
 
   nix-repl> :st 3
-
   3: while calling a function
-  TEST_DATA/stack_vars.nix:2:7
+  $TEST_DATA/stack_vars.nix:2:7
 
        1| let
        2|   a = builtins.trace "before inner break" (
@@ -72,3 +72,21 @@ If we :st past the frame in the backtrace with the meow in it, the meow should n
 
   Env level 1
   abort baseNameOf break builtins derivation derivationStrict dirOf false fetchGit fetchMercurial fetchTarball fetchTree fromTOML import isNull map null placeholder removeAttrs scopedImport throw toString true
+
+  nix-repl> :quit
+  error:
+         … while calling the 'trace' builtin
+           at $TEST_DATA/stack_vars.nix:2:7:
+              1| let
+              2|   a = builtins.trace "before inner break" (
+               |       ^
+              3|     let meow' = 3; in builtins.break { msg = "hello"; }
+
+         … while calling the 'break' builtin
+           at $TEST_DATA/stack_vars.nix:3:23:
+              2|   a = builtins.trace "before inner break" (
+              3|     let meow' = 3; in builtins.break { msg = "hello"; }
+               |                       ^
+              4|   );
+
+         error: breakpoint reached
