@@ -143,7 +143,7 @@ unsigned char getFileType(const Path & path);
  * Read the contents of a file into a string.
  */
 std::string readFile(const Path & path);
-box_ptr<Source> readFileSource(const Path & path);
+Generator<Bytes> readFileSource(const Path & path);
 
 /**
  * Write a string to a file.

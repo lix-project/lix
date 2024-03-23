@@ -71,7 +71,7 @@ protected:
     void getFile(const std::string & path, Sink & sink) override
     {
         try {
-            readFileSource(binaryCacheDir + "/" + path)->drainInto(sink);
+            sink << readFileSource(binaryCacheDir + "/" + path);
         } catch (SysError & e) {
             if (e.errNo == ENOENT)
                 throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache", path);

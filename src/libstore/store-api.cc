@@ -275,13 +275,11 @@ StorePath Store::addToStore(
     const StorePathSet & references)
 {
     Path srcPath(absPath(_srcPath));
-    auto source = sinkToSource([&](Sink & sink) {
-        if (method == FileIngestionMethod::Recursive)
-            sink << dumpPath(srcPath, filter);
-        else
-            readFileSource(srcPath)->drainInto(sink);
-    });
-    return addToStoreFromDump(*source, name, method, hashAlgo, repair, references);
+    auto source = GeneratorSource{
+        method == FileIngestionMethod::Recursive ? dumpPath(srcPath, filter).decay()
+                                                 : readFileSource(srcPath)
+    };
+    return addToStoreFromDump(source, name, method, hashAlgo, repair, references);
 }
 
 void Store::addMultipleToStore(

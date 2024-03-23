@@ -1890,7 +1890,7 @@ ContentAddress LocalStore::hashCAPath(
     HashModuloSink caSink ( hashType, std::string(pathHash) );
     std::visit(overloaded {
         [&](const TextIngestionMethod &) {
-            readFileSource(path)->drainInto(caSink);
+            caSink << readFileSource(path);
         },
         [&](const FileIngestionMethod & m2) {
             switch (m2) {
@@ -1898,7 +1898,7 @@ ContentAddress LocalStore::hashCAPath(
                 caSink << dumpPath(path);
                 break;
             case FileIngestionMethod::Flat:
-                readFileSource(path)->drainInto(caSink);
+                caSink << readFileSource(path);
                 break;
             }
         },

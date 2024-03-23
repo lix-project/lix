@@ -385,7 +385,7 @@ StorePath BinaryCacheStore::addToStore(
     if (method == FileIngestionMethod::Recursive) {
         sink << dumpPath(srcPath, filter);
     } else {
-        readFileSource(srcPath)->drainInto(sink);
+        sink << readFileSource(srcPath);
     }
     auto h = sink.finish().first;
 
