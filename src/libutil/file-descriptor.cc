@@ -81,12 +81,12 @@ std::string drainFD(int fd, bool block, const size_t reserveSize)
     // the parser needs two extra bytes to append terminating characters, other users will
     // not care very much about the extra memory.
     StringSink sink(reserveSize + 2);
-    drainFD(fd, sink, block);
+    sink << drainFDSource(fd, block);
     return std::move(sink.s);
 }
 
 
-void drainFD(int fd, Sink & sink, bool block)
+Generator<Bytes> drainFDSource(int fd, bool block)
 {
     // silence GCC maybe-uninitialized warning in finally
     int saved = 0;
@@ -115,7 +115,7 @@ void drainFD(int fd, Sink & sink, bool block)
                 throw SysError("reading from file");
         }
         else if (rd == 0) break;
-        else sink({(char *) buf.data(), (size_t) rd});
+        else co_yield std::span{(char *) buf.data(), (size_t) rd};
     }
 }
 

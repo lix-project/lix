@@ -315,7 +315,7 @@ void runProgram2(const RunOptions & options)
     out.writeSide.close();
 
     if (options.standardOut)
-        drainFD(out.readSide.get(), *options.standardOut);
+        *options.standardOut << drainFDSource(out.readSide.get());
 
     /* Wait for the child to finish. */
     int status = pid.wait();

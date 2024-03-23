@@ -2,6 +2,7 @@
 ///@file
 
 #include "error.hh"
+#include "generator.hh"
 
 namespace nix {
 
@@ -35,7 +36,7 @@ void writeFull(int fd, std::string_view s, bool allowInterrupts = true);
  */
 std::string drainFD(int fd, bool block = true, const size_t reserveSize=0);
 
-void drainFD(int fd, Sink & sink, bool block = true);
+Generator<Bytes> drainFDSource(int fd, bool block = true);
 
 class AutoCloseFD
 {
