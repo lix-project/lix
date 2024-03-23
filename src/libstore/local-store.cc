@@ -550,7 +550,12 @@ void LocalStore::openDB(State & state, bool create)
     if (mode == "wal" ) {
          /* persist the WAL files when the DB connection is closed.
          * This allows for read-only connections without any write permissions
-         * on the state directory to succeed on a closed database. */
+         * on the state directory to succeed on a closed database. Setting the
+         * journal_size_limit to 2^40 bytes results in the WAL files getting
+         * truncated to 0 on exit and limits the on disk size of the WAL files
+         * to 2^40 bytes following a checkpoint */
+        if (sqlite3_exec(db, "pragma main.journal_size_limit = 1099511627776;", 0, 0, 0) != SQLITE_OK)
+            SQLiteError::throw_(db, "setting journal_size_limit");
         int enable = 1;
         if (sqlite3_file_control(db, NULL, SQLITE_FCNTL_PERSIST_WAL, &enable) != SQLITE_OK)
             SQLiteError::throw_(db, "setting persistent WAL mode");
