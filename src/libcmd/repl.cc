@@ -29,6 +29,7 @@
 #include "local-fs-store.hh"
 #include "signals.hh"
 #include "print.hh"
+#include "progress-bar.hh"
 
 #if HAVE_BOEHMGC
 #define GC_INCLUDE_NEW
@@ -195,11 +196,13 @@ ReplExitStatus NixRepl::mainLoop()
 
     auto _guard = interacter->init(static_cast<detail::ReplCompleterMixin *>(this));
 
+    /* Stop the progress bar because it interferes with the display of
+       the repl. */
+    stopProgressBar();
+
     std::string input;
 
     while (true) {
-        // Hide the progress bar while waiting for user input, so that it won't interfere.
-        logger->pause();
         // When continuing input from previous lines, don't print a prompt, just align to the same
         // number of chars as the prompt.
         if (!interacter->getLine(input, input.empty() ? ReplPromptType::ReplPrompt : ReplPromptType::ContinuationPrompt)) {
@@ -210,7 +213,6 @@ ReplExitStatus NixRepl::mainLoop()
             // the entire program?
             return ReplExitStatus::QuitAll;
         }
-        logger->resume();
         try {
             switch (processLine(input)) {
                 case ProcessLineResult::Quit:
