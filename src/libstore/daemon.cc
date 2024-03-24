@@ -453,9 +453,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
                        command. (We don't trust `addToStoreFromDump` to not
                        eagerly consume the entire stream it's given, past the
                        length of the Nar. */
-                    TeeSource savedNARSource(from, saved);
-                    ParseSink sink; /* null sink; just parse the NAR */
-                    parseDump(sink, savedNARSource);
+                    copyNAR(from, saved);
                 } else {
                     /* Incrementally parse the NAR file, stripping the
                        metadata, and streaming the sole file we expect into
@@ -907,9 +905,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
             if (GET_PROTOCOL_MINOR(clientVersion) >= 21)
                 source = std::make_unique<TunnelSource>(from, to);
             else {
-                TeeSource tee { from, saved };
-                ParseSink ether;
-                parseDump(ether, tee);
+                copyNAR(from, saved);
                 source = std::make_unique<StringSource>(saved.s);
             }
 
