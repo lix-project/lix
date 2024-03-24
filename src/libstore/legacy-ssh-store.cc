@@ -124,20 +124,9 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
             conn->to << SERVE_MAGIC_1 << SERVE_PROTOCOL_VERSION;
             conn->to.flush();
 
-            StringSink saved;
-            try {
-                TeeSource tee(conn->from, saved);
-                unsigned int magic = readInt(tee);
-                if (magic != SERVE_MAGIC_2)
-                    throw Error("'nix-store --serve' protocol mismatch from '%s'", host);
-            } catch (SerialisationError & e) {
-                /* In case the other side is waiting for our input,
-                   close it. */
-                conn->sshConn->in.close();
-                auto msg = conn->from.drain();
-                throw Error("'nix-store --serve' protocol mismatch from '%s', got '%s'",
-                    host, chomp(saved.s + msg));
-            }
+            uint64_t magic = readLongLong(conn->from);
+            if (magic != SERVE_MAGIC_2)
+                throw Error("'nix-store --serve' protocol mismatch from '%s'", host);
             conn->remoteVersion = readInt(conn->from);
             if (GET_PROTOCOL_MAJOR(conn->remoteVersion) != 0x200)
                 throw Error("unsupported 'nix-store --serve' protocol version on '%s'", host);

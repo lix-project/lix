@@ -69,19 +69,10 @@ void RemoteStore::initConnection(Connection & conn)
         conn.from.endOfFileError = "Nix daemon disconnected unexpectedly (maybe it crashed?)";
         conn.to << WORKER_MAGIC_1;
         conn.to.flush();
-        StringSink saved;
-        try {
-            TeeSource tee(conn.from, saved);
-            unsigned int magic = readInt(tee);
-            if (magic != WORKER_MAGIC_2)
-                throw Error("protocol mismatch");
-        } catch (SerialisationError & e) {
-            /* In case the other side is waiting for our input, close
-               it. */
-            conn.closeWrite();
-            auto msg = conn.from.drain();
-            throw Error("protocol mismatch, got '%s'", chomp(saved.s + msg));
-        }
+
+        uint64_t magic = readLongLong(conn.from);
+        if (magic != WORKER_MAGIC_2)
+            throw Error("protocol mismatch");
 
         conn.from >> conn.daemonVersion;
         if (GET_PROTOCOL_MAJOR(conn.daemonVersion) != GET_PROTOCOL_MAJOR(PROTOCOL_VERSION))
