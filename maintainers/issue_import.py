@@ -117,6 +117,7 @@ def new_issue(title, body, labels):
         'labels': labels,
         'body': body,
         'title': title,
+        'dont_notify': True,
     })
 
 already_imported = make_already_imported()
@@ -139,11 +140,6 @@ def import_issue(iss: Issue):
     new_issue(new_title, new_body, new_labels)
 
 def go():
-    print('Have you turned off the forgejo mailer? Enter "We have" if so:')
-    answer = input('> ')
-    if answer != 'We have':
-        return
-
     log.info('Importing issues!')
     for issue in issues_to_import():
         import_issue(DataClassUnpack.instantiate(Issue, issue))
