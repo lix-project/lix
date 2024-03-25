@@ -302,6 +302,23 @@ add_project_arguments(
   language : 'cpp',
 )
 
+if cxx.get_id() in ['gcc', 'clang']
+  # 2024-03-24: jade benchmarked the default sanitize reporting in clang and got
+  # a regression of about 10% on hackage-packages.nix with clang. So we are trapping instead.
+  #
+  # This has an overhead of 0-4% on gcc and unmeasurably little on clang, in
+  # Nix evaluation benchmarks.
+  #
+  # N.B. Meson generates a completely nonsense warning here:
+  # https://github.com/mesonbuild/meson/issues/9822
+  # Both of these args cannot be written in the default meson configuration.
+  # b_sanitize=signed-integer-overflow is ignored, and
+  # -fsanitize-undefined-trap-on-error is not representable.
+  sanitize_args = ['-fsanitize=signed-integer-overflow', '-fsanitize-undefined-trap-on-error']
+  add_project_arguments(sanitize_args, language: 'cpp')
+  add_project_link_arguments(sanitize_args, language: 'cpp')
+endif
+
 add_project_link_arguments('-pthread', language : 'cpp')
 if cxx.get_linker_id() in ['ld.bfd', 'ld.gold']
   add_project_link_arguments('-Wl,--no-copy-dt-needed-entries', language : 'cpp')

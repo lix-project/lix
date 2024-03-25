@@ -287,7 +287,9 @@ in stdenv.mkDerivation (finalAttrs: {
 
   strictDeps = true;
 
-  hardeningDisable = lib.optional stdenv.hostPlatform.isStatic "pie";
+  # strictoverflow is disabled because we trap on signed overflow instead
+  hardeningDisable = [ "strictoverflow" ]
+    ++ lib.optional stdenv.hostPlatform.isStatic "pie";
 
   meta.platforms = lib.platforms.unix;
 

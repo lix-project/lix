@@ -78,11 +78,7 @@ define build-library
         $(1)_LDFLAGS += -undefined suppress -flat_namespace
       endif
     else
-      ifndef HOST_DARWIN
-        ifndef HOST_CYGWIN
-          $(1)_LDFLAGS += -Wl,-z,defs
-        endif
-      endif
+      # -Wl,-z,defs is broken with sanitizers on Linux/clang at least.
     endif
 
     ifndef HOST_DARWIN
