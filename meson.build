@@ -18,6 +18,12 @@
 # Finally, src/nix/meson.build defines the Nix command itself, relying on all prior meson files.
 #
 # Unit tests are setup in tests/unit/meson.build, under the test suite "check".
+#
+# Functional tests are a bit more complicated. Generally they're defined in
+# tests/functional/meson.build, and rely on helper scripts meson/setup-functional-tests.py
+# and meson/run-test.py. Scattered around also are configure_file() invocations, which must
+# be placed in specific directories' meson.build files to create the right directory tree
+# in the build directory.
 
 project('lix', 'cpp',
   version : run_command('bash', '-c', 'echo -n $(cat ./.version)$VERSION_SUFFIX', check : true).stdout().strip(),
@@ -27,6 +33,7 @@ project('lix', 'cpp',
     'warning_level=1',
     'debug=true',
     'optimization=2',
+    'errorlogs=true', # Please print logs for tests that fail
   ],
 )
 
@@ -48,6 +55,11 @@ path_opts = [
   'state-dir',
   'log-dir',
 ]
+# For your grepping pleasure, this loop sets the following variables that aren't mentioned
+# literally above:
+# store_dir
+# state_dir
+# log_dir
 foreach optname : path_opts
   varname = optname.replace('-', '_')
   path = get_option(optname)
@@ -203,6 +215,10 @@ deps += gtest
 # Build-time tools
 #
 bash = find_program('bash')
+coreutils = find_program('coreutils')
+dot = find_program('dot', required : false)
+pymod = import('python')
+python = pymod.find_installation('python3')
 
 # Used to workaround https://github.com/mesonbuild/meson/issues/2320 in src/nix/meson.build.
 installcmd = find_program('install')
@@ -316,6 +332,13 @@ if get_option('profile-build').require(meson.get_compiler('cpp').get_id() == 'cl
 endif
 
 subdir('src')
+
 if enable_tests
+  # Just configures `scripts/nix-profile.sh.in` (and copies the original to the build directory).
+  # Done as a subdirectory to convince Meson to put the configured files
+  # in `build/scripts` instead of just `build`.
+  subdir('scripts')
+
   subdir('tests/unit')
+  subdir('tests/functional')
 endif
