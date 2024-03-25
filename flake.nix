@@ -205,13 +205,20 @@
         build = forAllSystems (system: self.packages.${system}.nix);
 
         # FIXME(Qyriad): remove this when the migration to Meson has been completed.
-        mesonBuild = forAllSystems (system: self.packages.${system}.nix.override {
-          buildWithMeson = true;
-        });
+        # NOTE: mesonBuildClang depends on mesonBuild depends on build to avoid OOMs
+        # on aarch64 builders caused by too many parallel compiler/linker processes.
+        mesonBuild = forAllSystems (system:
+          (self.packages.${system}.nix.override {
+            buildWithMeson = true;
+          }).overrideAttrs (prev: {
+            buildInputs = prev.buildInputs ++ [ self.packages.${system}.nix ];
+          }));
         mesonBuildClang = forAllSystems (system:
-            nixpkgsFor.${system}.stdenvs.clangStdenvPackages.nix.override {
+          (nixpkgsFor.${system}.stdenvs.clangStdenvPackages.nix.override {
               buildWithMeson = true;
-            }
+          }).overrideAttrs (prev: {
+            buildInputs = prev.buildInputs ++ [ self.hydraJobs.mesonBuild.${system} ];
+          })
         );
 
         # Perl bindings for various platforms.
