@@ -25,7 +25,7 @@ you probably want to file an issue at https://github.com/NixOS/nixpkgs/issues.
 
 A clear and concise description of what you expected to happen.
 
-## `nix-env --version` output
+## `nix --version` output
 
 ## Additional context
 
