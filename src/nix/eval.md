@@ -8,10 +8,10 @@ R""(
   # nix eval --expr '1 + 2'
   ```
 
-* Evaluate a Nix expression to JSON:
+* Evaluate a Nix expression to JSON using the short-form expression flag:
 
   ```console
-  # nix eval --json --expr '{ x = 1; }'
+  # nix eval --json -E '{ x = 1; }'
   {"x":1}
   ```
 

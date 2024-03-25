@@ -187,6 +187,7 @@ SourceExprCommand::SourceExprCommand()
 
     addFlag({
         .longName = "expr",
+        .shortName = 'E',
         .description = "Interpret [*installables*](@docroot@/command-ref/new-cli/nix.md#installables) as attribute paths relative to the Nix expression *expr*.",
         .category = installablesCategory,
         .labels = {"expr"},
