@@ -146,6 +146,7 @@ result
 result-*
 
 .vscode/
+.direnv/
 
 # clangd and possibly more
 .cache/
