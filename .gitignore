@@ -147,6 +147,7 @@ result-*
 
 .vscode/
 .direnv/
+.envrc.local
 
 # clangd and possibly more
 .cache/
