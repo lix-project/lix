@@ -150,7 +150,8 @@
           # Forward from the previous stage as we don’t want it to pick the lowdown override
           nixUnstable = prev.nixUnstable;
 
-          changelog-d = final.buildPackages.callPackage ./misc/changelog-d.nix { };
+          build-release-notes =
+            final.buildPackages.callPackage ./maintainers/build-release-notes.nix { };
           boehmgc-nix = (final.boehmgc.override {
             enableLargeConfig = true;
           }).overrideAttrs (o: {
@@ -238,7 +239,7 @@
 
           nix = pkgs.callPackage ./package.nix {
             inherit versionSuffix fileset officialRelease buildUnreleasedNotes;
-            inherit (pkgs) changelog-d;
+            inherit (pkgs) build-release-notes;
             internalApiDocs = true;
             boehmgc = pkgs.boehmgc-nix;
             busybox-sandbox-shell = pkgs.busybox-sandbox-shell;
@@ -288,7 +289,7 @@
         rl-next =
           let pkgs = nixpkgsFor.${system}.native;
           in pkgs.buildPackages.runCommand "test-rl-next-release-notes" { } ''
-          LANG=C.UTF-8 ${pkgs.changelog-d}/bin/changelog-d ${./doc/manual/rl-next} >$out
+          LANG=C.UTF-8 ${lib.getExe pkgs.build-release-notes} ${./doc/manual/rl-next} >$out
         '';
       } // (lib.optionalAttrs (builtins.elem system linux64BitSystems)) {
         dockerImage = self.hydraJobs.dockerImage.${system};

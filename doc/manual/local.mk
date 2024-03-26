@@ -151,9 +151,9 @@ $(d)/language.json: $(doc_nix)
 
 # Generate "Upcoming release" notes (or clear it and remove from menu)
 $(d)/src/release-notes/rl-next.md: $(d)/rl-next $(d)/rl-next/*
-	@if type -p changelog-d > /dev/null; then \
+	@if type -p build-release-notes > /dev/null; then \
 		echo "  GEN   " $@; \
-		changelog-d doc/manual/rl-next > $@; \
+		build-release-notes doc/manual/rl-next > $@; \
 	else \
 		echo "  NULL  " $@; \
 		true > $@; \

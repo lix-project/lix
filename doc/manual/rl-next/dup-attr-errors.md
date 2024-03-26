@@ -1,6 +1,6 @@
 ---
 synopsis: Duplicate attribute reports are more accurate
-# prs: cl 557
+cls: 557
 ---
 
 Duplicate attribute errors are now more accurate, showing the path at which an error was detected rather than the full, possibly longer, path that caused the error.

@@ -1,6 +1,6 @@
 ---
 synopsis: Upstart scripts removed
-# prs: cl 574
+cls: 574
 ---
 
 Upstart scripts have been removed from Lix, since Upstart is obsolete and has

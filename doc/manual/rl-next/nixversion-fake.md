@@ -1,6 +1,6 @@
 ---
 synopsis: "`builtins.nixVersion` now returns a fixed value \"2.18.3-lix\""
-# prs: cl 558
+cls: 558
 ---
 
 `builtins.nixVersion` now returns a fixed value `"2.18.3-lix"`. This prevents

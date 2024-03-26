@@ -1,6 +1,6 @@
 ---
 synopsis: reintroduce shortened `-E` form for `--expr` to new CLI
-# prs: cl 605
+cls: 605
 ---
 
 In the past, it was possible to supply a shorter `-E` flag instead of fully

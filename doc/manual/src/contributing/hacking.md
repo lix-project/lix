@@ -340,9 +340,6 @@ Significant changes should add the following header, which moves them to the top
 significance: significant
 ```
 
-<!-- Keep an eye on https://codeberg.org/fgaz/changelog-d/issues/1 -->
-See also the [format documentation](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#changelog).
-
 ### Build process
 
 Releases have a precomputed `rl-MAJOR.MINOR.md`, and no `rl-next.md`.

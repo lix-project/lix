@@ -8,7 +8,7 @@
   boehmgc,
   nlohmann_json,
   bison,
-  changelog-d,
+  build-release-notes,
   boost,
   brotli,
   bzip2,
@@ -159,7 +159,7 @@ in stdenv.mkDerivation (finalAttrs: {
     jq
     lsof
   ] ++ lib.optional stdenv.hostPlatform.isLinux util-linuxMinimal
-    ++ lib.optional (!officialRelease && buildUnreleasedNotes) changelog-d
+    ++ lib.optional (!officialRelease && buildUnreleasedNotes) build-release-notes
     ++ lib.optional internalApiDocs doxygen
     ++ lib.optionals buildWithMeson [
       meson
