@@ -1,5 +1,5 @@
 ---
-synposis: "`Overhaul `nix flake update` and `nix flake lock` UX"
+synopsis: "`Overhaul `nix flake update` and `nix flake lock` UX"
 prs: 8817
 ---
 

@@ -1,7 +1,7 @@
 ---
 synopsis: Type errors include the failing value
-issues: #561
-prs: #9753
+issues: 561
+prs: 9753
 ---
 
 In errors like `value is an integer while a list was expected`, the message now
