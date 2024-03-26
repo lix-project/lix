@@ -337,7 +337,10 @@
               forDevShell = true;
             };
           in
-            nix.overrideAttrs (prev: {
+            (nix.override {
+              buildUnreleasedNotes = true;
+              officialRelease = false;
+            }).overrideAttrs (prev: {
               # Required for clang-tidy checks
               buildInputs = prev.buildInputs ++ lib.optionals (stdenv.cc.isClang) [ pkgs.llvmPackages.llvm pkgs.llvmPackages.clang-unwrapped.dev ];
               nativeBuildInputs = prev.nativeBuildInputs
