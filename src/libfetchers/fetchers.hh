@@ -10,7 +10,7 @@
 
 #include <memory>
 
-namespace nix { class Store; class StorePath; }
+namespace nix { class Store; }
 
 namespace nix::fetchers {
 
