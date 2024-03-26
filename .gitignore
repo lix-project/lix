@@ -157,3 +157,5 @@ result-*
 
 # ClangBuildAnalyzer output, see maintainers/buildtime_report.sh
 buildtime.bin
+
+.envrc.local
