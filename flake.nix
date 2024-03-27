@@ -331,6 +331,10 @@
               stages = [ "commit" ];
               excludes = [ "^tests/functional/lang/" ];
             };
+            treefmt = {
+              enable = true;
+              settings.formatters = [ ];
+            };
           };
         }) pre-commit-hooks.lib;
       };
