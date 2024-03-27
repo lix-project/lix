@@ -5,17 +5,17 @@ features:
 
   - Signed binary cache support. You can enable signature checking by
     adding the following to `nix.conf`:
-    
+
         signed-binary-caches = *
         binary-cache-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
-    
+
     This will prevent Nix from downloading any binary from the cache
     that is not signed by one of the keys listed in
     `binary-cache-public-keys`.
-    
+
     Signature checking is only supported if you built Nix with the
     `libsodium` package.
-    
+
     Note that while Nix has had experimental support for signed binary
     caches since version 1.7, this release changes the signature format
     in a backwards-incompatible way.
@@ -24,79 +24,79 @@ features:
     you can now specify the URL of a tarball containing Nix expressions
     (such as Nixpkgs), which will be downloaded and unpacked
     automatically. For example:
-    
+
       - In `nix-env`:
-        
+
             $ nix-env -f https://github.com/NixOS/nixpkgs-channels/archive/nixos-14.12.tar.gz -iA firefox
-        
+
         This installs Firefox from the latest tested and built revision
         of the NixOS 14.12 channel.
-    
+
       - In `nix-build` and `nix-shell`:
-        
+
             $ nix-build https://github.com/NixOS/nixpkgs/archive/master.tar.gz -A hello
-        
+
         This builds GNU Hello from the latest revision of the Nixpkgs
         master branch.
-    
+
       - In the Nix search path (as specified via `NIX_PATH` or `-I`).
         For example, to start a shell containing the Pan package from a
         specific version of Nixpkgs:
-        
+
             $ nix-shell -p pan -I nixpkgs=https://github.com/NixOS/nixpkgs-channels/archive/8a3eea054838b55aca962c3fbde9c83c102b8bf2.tar.gz
-    
+
       - In `nixos-rebuild` (on NixOS):
-        
+
             $ nixos-rebuild test -I nixpkgs=https://github.com/NixOS/nixpkgs-channels/archive/nixos-unstable.tar.gz
-    
+
       - In Nix expressions, via the new builtin function `fetchTarball`:
-        
+
             with import (fetchTarball https://github.com/NixOS/nixpkgs-channels/archive/nixos-14.12.tar.gz) {}; …
-        
+
         (This is not allowed in restricted mode.)
 
   - `nix-shell` improvements:
-    
+
       - `nix-shell` now has a flag `--run` to execute a command in the
         `nix-shell` environment, e.g. `nix-shell --run make`. This is
         like the existing `--command` flag, except that it uses a
         non-interactive shell (ensuring that hitting Ctrl-C won’t drop
         you into the child shell).
-    
+
       - `nix-shell` can now be used as a `#!`-interpreter. This allows
         you to write scripts that dynamically fetch their own
         dependencies. For example, here is a Haskell script that, when
         invoked, first downloads GHC and the Haskell packages on which
         it depends:
-        
+
             #! /usr/bin/env nix-shell
             #! nix-shell -i runghc -p haskellPackages.ghc haskellPackages.HTTP
-            
+
             import Network.HTTP
-            
+
             main = do
               resp <- Network.HTTP.simpleHTTP (getRequest "http://nixos.org/")
               body <- getResponseBody resp
               print (take 100 body)
-        
+
         Of course, the dependencies are cached in the Nix store, so the
         second invocation of this script will be much faster.
 
   - Chroot improvements:
-    
+
       - Chroot builds are now supported on Mac OS X (using its sandbox
         mechanism).
-    
+
       - If chroots are enabled, they are now used for all derivations,
         including fixed-output derivations (such as `fetchurl`). The
         latter do have network access, but can no longer access the host
         filesystem. If you need the old behaviour, you can set the
         option `build-use-chroot` to `relaxed`.
-    
+
       - On Linux, if chroots are enabled, builds are performed in a
         private PID namespace once again. (This functionality was lost
         in Nix 1.8.)
-    
+
       - Store paths listed in `build-chroot-dirs` are now automatically
         expanded to their closure. For instance, if you want
         `/nix/store/…-bash/bin/sh` mounted in your chroot as `/bin/sh`,

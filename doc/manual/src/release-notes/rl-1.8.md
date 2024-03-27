@@ -10,24 +10,24 @@
 
   - `nix-env` selectors are now regular expressions. For instance, you
     can do
-    
+
         $ nix-env -qa '.*zip.*'
-    
+
     to query all packages with a name containing `zip`.
 
   - `nix-store --read-log` can now fetch remote build logs. If a build
     log is not available locally, then ‘nix-store -l’ will now try to
     download it from the servers listed in the ‘log-servers’ option in
     nix.conf. For instance, if you have the configuration option
-    
+
         log-servers = http://hydra.nixos.org/log
-    
+
     then it will try to get logs from `http://hydra.nixos.org/log/base
     name of the
     store path`. This allows you to do things like:
-    
+
         $ nix-store -l $(which xterm)
-    
+
     and get a log even if `xterm` wasn't built locally.
 
   - New builtin functions: `attrValues`, `deepSeq`, `fromJSON`,

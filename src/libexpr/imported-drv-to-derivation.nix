@@ -15,7 +15,7 @@ let
         inherit outputName;
       };
     };
-    
+
   outputsList = map outputToAttrListElement outputs;
-    
+
 in (builtins.head outputsList).value

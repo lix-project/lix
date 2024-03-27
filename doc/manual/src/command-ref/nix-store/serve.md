@@ -35,4 +35,3 @@ $ cat <<EOF >>/root/.ssh/authorized_keys
 command="nice -n20 nix-store --serve --write" ssh-rsa AAAAB3NzaC1yc2EAAAA...
 EOF
 ```
-

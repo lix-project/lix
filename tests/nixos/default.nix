@@ -109,7 +109,7 @@ in
       nix.package = lib.mkForce pkgs.nixVersions.nix_2_13;
     };
   };
-  
+
   # TODO: (nixpkgs update) remoteBuildsSshNg_remote_2_18 = ...
 
   # Test our Nix as a builder for clients that are older

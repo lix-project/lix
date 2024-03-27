@@ -5,26 +5,26 @@ This release has the following improvements:
   - On Linux, when doing a chroot build, Nix now uses various namespace
     features provided by the Linux kernel to improve build isolation.
     Namely:
-    
+
       - The private network namespace ensures that builders cannot talk
         to the outside world (or vice versa): each build only sees a
         private loopback interface. This also means that two concurrent
         builds can listen on the same port (e.g. as part of a test)
         without conflicting with each other.
-    
+
       - The PID namespace causes each build to start as PID 1. Processes
         outside of the chroot are not visible to those on the inside. On
         the other hand, processes inside the chroot *are* visible from
         the outside (though with different PIDs).
-    
+
       - The IPC namespace prevents the builder from communicating with
         outside processes using SysV IPC mechanisms (shared memory,
         message queues, semaphores). It also ensures that all IPC
         objects are destroyed when the builder exits.
-    
+
       - The UTS namespace ensures that builders see a hostname of
         `localhost` rather than the actual hostname.
-    
+
       - The private mount namespace was already used by Nix to ensure
         that the bind-mounts used to set up the chroot are cleaned up
         automatically.

@@ -16,7 +16,7 @@ it will fall back to using the binary cache substituter, and then to
 building from source.
 
 > **Note**
-> 
+>
 > The SSH substituter currently does not allow you to enter an SSH
 > passphrase interactively. Therefore, you should use `ssh-add` to load
 > the decrypted private key into `ssh-agent`.

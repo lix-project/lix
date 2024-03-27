@@ -27,4 +27,3 @@ contain just Firefox:
 ```console
 $ nix-env --profile /nix/var/nix/profiles/browser --set firefox
 ```
-

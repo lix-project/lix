@@ -189,8 +189,7 @@ release:
 
 * Bump the version number of the release branch as above (e.g. to
   `2.12.2`).
-  
+
 ## Recovering from mistakes
 
 `upload-release.pl` should be idempotent. For instance a wrong `IS_LATEST` value can be fixed that way, by running the script on the actual latest release.
-

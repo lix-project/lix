@@ -152,5 +152,3 @@ void ThreadPool::doWork(bool mainThread)
 }
 
 }
-
-

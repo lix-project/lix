@@ -144,7 +144,7 @@ struct SourcePath
      * Resolve any symlinks in this `SourcePath` according to the
      * given resolution mode.
      *
-     * @param mode might only be a temporary solution for this. 
+     * @param mode might only be a temporary solution for this.
      * See the discussion in https://github.com/NixOS/nix/pull/9985.
      */
     SourcePath resolveSymlinks(

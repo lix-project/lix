@@ -79,4 +79,3 @@ To make files from `binutils` take precedence over files from `gcc`:
 $ nix-env --set-flag priority 5 binutils
 $ nix-env --set-flag priority 10 gcc
 ```
-

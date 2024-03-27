@@ -14,7 +14,7 @@ builds) are forwarded to a *Nix daemon* running under the owner of the
 Nix store/database that performs the operation.
 
 > **Note**
-> 
+>
 > Multi-user mode has one important limitation: only root and a set of
 > trusted users specified in `nix.conf` can specify arbitrary binary
 > caches. So while unprivileged users may install packages from

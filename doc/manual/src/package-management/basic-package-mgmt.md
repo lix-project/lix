@@ -37,7 +37,7 @@ $ nix-channel --update
 ```
 
 > **Note**
-> 
+>
 > On NixOS, you’re automatically subscribed to a NixOS channel
 > corresponding to your NixOS major release (e.g.
 > <http://nixos.org/channels/nixos-21.11>). A NixOS channel is identical
@@ -120,7 +120,7 @@ will install the package called `subversion` from `nixpkgs` channel (which is, o
 [Subversion version management system](http://subversion.tigris.org/)).
 
 > **Note**
-> 
+>
 > When you ask Nix to install a package, it will first try to get it in
 > pre-compiled form from a *binary cache*. By default, Nix will use the
 > binary cache <https://cache.nixos.org>; it contains binaries for most

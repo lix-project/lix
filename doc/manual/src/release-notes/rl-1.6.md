@@ -25,28 +25,28 @@ features:
     declarative package management similar to NixOS’s
     `environment.systemPackages`. For instance, if you have a
     specification `my-packages.nix` like this:
-    
+
         with import <nixpkgs> {};
         [ thunderbird
           geeqie
           ...
         ]
-    
+
     then after any change to this file, you can run:
-    
+
         $ nix-env -f my-packages.nix -ir
-    
+
     to update your profile to match the specification.
 
   - The ‘`with`’ language construct is now more lazy. It only evaluates
     its argument if a variable might actually refer to an attribute in
     the argument. For instance, this now works:
-    
+
         let
           pkgs = with pkgs; { foo = "old"; bar = foo; } // overrides;
           overrides = { foo = "new"; };
         in pkgs.bar
-    
+
     This evaluates to `"new"`, while previously it gave an “infinite
     recursion” error.
 

@@ -5,23 +5,23 @@ features:
 
   - `nix-prefetch-url` can now download URLs specified in a Nix
     expression. For example,
-    
+
         $ nix-prefetch-url -A hello.src
-    
+
     will prefetch the file specified by the `fetchurl` call in the
     attribute `hello.src` from the Nix expression in the current
     directory, and print the cryptographic hash of the resulting file on
     stdout. This differs from `nix-build -A
                     hello.src` in that it doesn't verify the hash, and is thus useful
     when you’re updating a Nix expression.
-    
+
     You can also prefetch the result of functions that unpack a tarball,
     such as `fetchFromGitHub`. For example:
-    
+
         $ nix-prefetch-url --unpack https://github.com/NixOS/patchelf/archive/0.8.tar.gz
-    
+
     or from a Nix expression:
-    
+
         $ nix-prefetch-url -A nix-repl.src
 
   - The builtin function `<nix/fetchurl.nix>` now supports downloading
@@ -49,12 +49,12 @@ features:
     same derivation and `-K` is given, will make the output of the other
     run available under `store-path-check`. This makes it easier to
     investigate the non-determinism using tools like `diffoscope`, e.g.,
-    
+
         $ nix-build pkgs/stdenv/linux -A stage1.pkgs.zlib --check -K
         error: derivation ‘/nix/store/l54i8wlw2265…-zlib-1.2.8.drv’ may not
         be deterministic: output ‘/nix/store/11a27shh6n2i…-zlib-1.2.8’
         differs from ‘/nix/store/11a27shh6n2i…-zlib-1.2.8-check’
-        
+
         $ diffoscope /nix/store/11a27shh6n2i…-zlib-1.2.8 /nix/store/11a27shh6n2i…-zlib-1.2.8-check
         …
         ├── lib/libz.a

@@ -33,4 +33,3 @@ The following options are allowed for all `nix-store` operations, but may not al
   If there are multiple results, then multiple symlinks will be
   created by sequentially numbering symlinks beyond the first one
   (e.g., `foo`, `foo-2`, `foo-3`, and so on).
-

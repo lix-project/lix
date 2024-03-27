@@ -24,22 +24,22 @@ the attributes of which specify the inputs of the build.
 
   - Every attribute is passed as an environment variable to the builder.
     Attribute values are translated to environment variables as follows:
-    
+
       - Strings and numbers are just passed verbatim.
-    
+
       - A *path* (e.g., `../foo/sources.tar`) causes the referenced file
         to be copied to the store; its location in the store is put in
         the environment variable. The idea is that all sources should
         reside in the Nix store, since all inputs to a derivation should
         reside in the Nix store.
-    
+
       - A *derivation* causes that derivation to be built prior to the
         present derivation; its default output path is put in the
         environment variable.
-    
+
       - Lists of the previous types are also allowed. They are simply
         concatenated, separated by spaces.
-    
+
       - `true` is passed as the string `1`, `false` and `null` are
         passed as an empty string.
 
@@ -56,36 +56,36 @@ the attributes of which specify the inputs of the build.
     library doesn’t need the header files and documentation at runtime,
     and it doesn’t need the documentation at build time. Thus, the
     library package could specify:
-    
+
     ```nix
     outputs = [ "lib" "headers" "doc" ];
     ```
-    
+
     This will cause Nix to pass environment variables `lib`, `headers`
     and `doc` to the builder containing the intended store paths of each
     output. The builder would typically do something like
-    
+
     ```bash
     ./configure \
       --libdir=$lib/lib \
       --includedir=$headers/include \
       --docdir=$doc/share/doc
     ```
-    
+
     for an Autoconf-style package. You can refer to each output of a
     derivation by selecting it as an attribute, e.g.
-    
+
     ```nix
     buildInputs = [ pkg.lib pkg.headers ];
     ```
-    
+
     The first element of `outputs` determines the *default output*.
     Thus, you could also write
-    
+
     ```nix
     buildInputs = [ pkg pkg.headers ];
     ```
-    
+
     since `pkg` is equivalent to `pkg.lib`.
 
 The function `mkDerivation` in the Nixpkgs standard environment is a
@@ -103,24 +103,24 @@ The builder is executed as follows:
     specified above.
 
   - In addition, the following variables are set:
-    
+
       - `NIX_BUILD_TOP` contains the path of the temporary directory for
         this build.
-    
+
       - Also, `TMPDIR`, `TEMPDIR`, `TMP`, `TEMP` are set to point to the
         temporary directory. This is to prevent the builder from
         accidentally writing temporary files anywhere else. Doing so
         might cause interference by other processes.
-    
+
       - `PATH` is set to `/path-not-set` to prevent shells from
         initialising it to their built-in default value.
-    
+
       - `HOME` is set to `/homeless-shelter` to prevent programs from
         using `/etc/passwd` or the like to find the user's home
         directory, which could cause impurity. Usually, when `HOME` is
         set, it is used as the location of the home directory, even if
         it points to a non-existent path.
-    
+
       - `NIX_STORE` is set to the path of the top-level Nix store
         directory (typically, `/nix/store`).
 
@@ -128,7 +128,7 @@ The builder is executed as follows:
         is set to `true` for the dervation. A detailed explanation of this
         behavior can be found in the
         [section about structured attrs](./advanced-attributes.md#adv-attr-structuredAttrs).
-    
+
       - For each output declared in `outputs`, the corresponding
         environment variable is set to point to the intended path in the
         Nix store for that output. Each output path is a concatenation

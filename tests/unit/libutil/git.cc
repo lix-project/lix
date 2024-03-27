@@ -30,4 +30,3 @@ namespace nix {
         ASSERT_EQ(res->reference, "refs/head/main");
     }
 }
-

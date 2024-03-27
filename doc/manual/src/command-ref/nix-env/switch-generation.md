@@ -30,4 +30,3 @@ Switching will fail if the specified generation does not exist.
 $ nix-env --switch-generation 42
 switching from generation 50 to 42
 ```
-

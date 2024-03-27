@@ -69,4 +69,3 @@ To delete at least 100 MiBs of unreachable paths:
 ```console
 $ nix-store --gc --max-freed $((100 * 1024 * 1024))
 ```
-

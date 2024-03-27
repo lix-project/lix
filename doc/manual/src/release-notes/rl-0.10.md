@@ -1,67 +1,67 @@
 # Release 0.10 (2006-10-06)
 
 > **Note**
-> 
+>
 > This version of Nix uses Berkeley DB 4.4 instead of 4.3. The database
 > is upgraded automatically, but you should be careful not to use old
 > versions of Nix that still use Berkeley DB 4.3. In particular, if you
 > use a Nix installed through Nix, you should run
-> 
+>
 >     $ nix-store --clear-substitutes
-> 
+>
 > first.
 
 > **Warning**
-> 
+>
 > Also, the database schema has changed slighted to fix a performance
 > issue (see below). When you run any Nix 0.10 command for the first
 > time, the database will be upgraded automatically. This is
 > irreversible.
 
   - `nix-env` usability improvements:
-    
+
       - An option `--compare-versions` (or `-c`) has been added to
         `nix-env
                                                         --query` to allow you to compare installed versions of packages
         to available versions, or vice versa. An easy way to see if you
         are up to date with what’s in your subscribed channels is
         `nix-env -qc \*`.
-    
+
       - `nix-env --query` now takes as arguments a list of package names
         about which to show information, just like `--install`, etc.:
         for example, `nix-env -q gcc`. Note that to show all
         derivations, you need to specify `\*`.
-    
+
       - `nix-env -i
                                                         pkgname` will now install the highest available version of
         *pkgname*, rather than installing all available versions (which
         would probably give collisions) (`NIX-31`).
-    
+
       - `nix-env (-i|-u) --dry-run` now shows exactly which missing
         paths will be built or substituted.
-    
+
       - `nix-env -qa --description` shows human-readable descriptions of
         packages, provided that they have a `meta.description` attribute
         (which most packages in Nixpkgs don’t have yet).
 
   - New language features:
-    
+
       - Reference scanning (which happens after each build) is much
         faster and takes a constant amount of memory.
-    
+
       - String interpolation. Expressions like
-        
+
             "--with-freetype2-library=" + freetype + "/lib"
-        
+
         can now be written as
-        
+
             "--with-freetype2-library=${freetype}/lib"
-        
+
         You can write arbitrary expressions within `${...}`, not just
         identifiers.
-    
+
       - Multi-line string literals.
-    
+
       - String concatenations can now involve derivations, as in the
         example `"--with-freetype2-library="
                                                         + freetype + "/lib"`. This was not previously possible because
@@ -69,17 +69,17 @@
         dependent on `freetype`. The evaluator now properly propagates
         this information. Consequently, the subpath operator (`~`) has
         been deprecated.
-    
+
       - Default values of function arguments can now refer to other
         function arguments; that is, all arguments are in scope in the
         default values (`NIX-45`).
-    
+
       - Lots of new built-in primitives, such as functions for list
         manipulation and integer arithmetic. See the manual for a
         complete list. All primops are now available in the set
         `builtins`, allowing one to test for the availability of primop
         in a backwards-compatible way.
-    
+
       - Real let-expressions: `let x = ...;
                                                         ... z = ...; in ...`.
 
@@ -89,15 +89,15 @@
     your machine and you want to copy it somewhere else.
 
   - XML support:
-    
+
       - `nix-env -q --xml` prints the installed or available packages in
         an XML representation for easy processing by other tools.
-    
+
       - `nix-instantiate --eval-only
                                                         --xml` prints an XML representation of the resulting term. (The
         new flag `--strict` forces ‘deep’ evaluation of the result,
         i.e., list elements and attributes are evaluated recursively.)
-    
+
       - In Nix expressions, the primop `builtins.toXML` converts a term
         to an XML representation. This is primarily useful for passing
         structured information to builders.
@@ -133,21 +133,21 @@
     something other than `result`.
 
   - Platform support:
-    
+
       - Support for 64-bit platforms, provided a [suitably patched ATerm
         library](http://bugzilla.sen.cwi.nl:8080/show_bug.cgi?id=606) is
         used. Also, files larger than 2 GiB are now supported.
-    
+
       - Added support for Cygwin (Windows, `i686-cygwin`), Mac OS X on
         Intel (`i686-darwin`) and Linux on PowerPC (`powerpc-linux`).
-    
+
       - Users of SMP and multicore machines will appreciate that the
         number of builds to be performed in parallel can now be
         specified in the configuration file in the `build-max-jobs`
         setting.
 
   - Garbage collector improvements:
-    
+
       - Open files (such as running programs) are now used as roots of
         the garbage collector. This prevents programs that have been
         uninstalled from being garbage collected while they are still
@@ -155,17 +155,17 @@
         (`find-runtime-roots.pl`) is inherently system-specific, but it
         should work on Linux and on all platforms that have the `lsof`
         utility.
-    
+
       - `nix-store --gc` (a.k.a. `nix-collect-garbage`) prints out the
         number of bytes freed on standard output. `nix-store
                                                         --gc --print-dead` shows how many bytes would be freed by an
         actual garbage collection.
-    
+
       - `nix-collect-garbage -d` removes all old generations of *all*
         profiles before calling the actual garbage collector (`nix-store
                                                         --gc`). This is an easy way to get rid of all old packages in
         the Nix store.
-    
+
       - `nix-store` now has an operation `--delete` to delete specific
         paths from the Nix store. It won’t delete reachable
         (non-garbage) paths unless `--ignore-liveness` is specified.
@@ -192,13 +192,13 @@
     memoisation of path hashing.
 
   - Lots of bug fixes, notably:
-    
+
       - Make sure that the garbage collector can run successfully when
         the disk is full (`NIX-18`).
-    
+
       - `nix-env` now locks the profile to prevent races between
         concurrent `nix-env` operations on the same profile (`NIX-7`).
-    
+
       - Removed misleading messages from `nix-env -i` (e.g.,
         ``installing
                                                         `foo'`` followed by ``uninstalling

@@ -67,4 +67,3 @@ Configuration options can be set on the command line, overriding the values set 
 The `extra-` prefix is supported for settings that take a list of items (e.g. `--extra-trusted users alice` or `--option extra-trusted-users alice`).
 
 # Available settings
-

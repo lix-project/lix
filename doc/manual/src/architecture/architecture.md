@@ -112,4 +112,3 @@ Build inputs used as instructions to a build task are marked accordingly:
 |                                                                    |
 +--------------------------------------------------------------------+
 ```
-

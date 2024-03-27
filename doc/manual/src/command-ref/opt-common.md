@@ -37,7 +37,7 @@ Most Nix commands accept the following command-line options:
     Print even more informational messages.
 
   - `4` “Debug”
-   
+
     Print debug information.
 
   - `5` “Vomit”

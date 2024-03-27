@@ -21,7 +21,7 @@ Nix keeps its *store* (the place where packages are stored) in
 `--with-store-dir=path`.
 
 > **Warning**
-> 
+>
 > It is best *not* to change the Nix store from its default, since doing
 > so makes it impossible to use pre-built binaries from the standard
 > Nixpkgs channels — that is, all packages will need to be built from

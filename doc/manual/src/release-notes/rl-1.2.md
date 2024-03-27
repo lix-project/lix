@@ -8,9 +8,9 @@ This release has the following improvements and changes:
     binary caches to see if any of them has a pre-built binary of that
     path. The configuration setting `binary-caches` contains a list of
     URLs of binary caches. For instance, doing
-    
+
         $ nix-env -i thunderbird --option binary-caches http://cache.nixos.org
-    
+
     will install Thunderbird and its dependencies, using the available
     pre-built binaries in <http://cache.nixos.org>. The main advantage
     over the old “manifest”-based method of getting pre-built binaries
@@ -19,12 +19,12 @@ This release has the following improvements and changes:
     need to run `nix-pull` to update your manifest. It’s also more
     scalable because you don’t need to redownload a giant manifest file
     every time.
-    
+
     A Nix channel can provide a binary cache URL that will be used
     automatically if you subscribe to that channel. If you use the
     Nixpkgs or NixOS channels (<http://nixos.org/channels>) you
     automatically get the cache <http://cache.nixos.org>.
-    
+
     Binary caches are created using `nix-push`. For details on the
     operation and format of binary caches, see the `nix-push` manpage.
     More details are provided in [this nix-dev
@@ -33,16 +33,16 @@ This release has the following improvements and changes:
   - Multiple output support should now be usable. A derivation can
     declare that it wants to produce multiple store paths by saying
     something like
-    
+
         outputs = [ "lib" "headers" "doc" ];
-    
+
     This will cause Nix to pass the intended store path of each output
     to the builder through the environment variables `lib`, `headers`
     and `doc`. Other packages can refer to a specific output by
     referring to `pkg.output`, e.g.
-    
+
         buildInputs = [ pkg.lib pkg.headers ];
-    
+
     If you install a package with multiple outputs using `nix-env`, each
     output path will be symlinked into the user environment.
 
@@ -60,10 +60,10 @@ This release has the following improvements and changes:
     Instead, the recommended way to guard the Nix store against
     accidental modification on Linux is to make it a read-only bind
     mount, like this:
-    
+
         $ mount --bind /nix/store /nix/store
         $ mount -o remount,ro,bind /nix/store
-    
+
     Nix will automatically make `/nix/store` writable as needed (using a
     private mount namespace) to allow modifications.
 

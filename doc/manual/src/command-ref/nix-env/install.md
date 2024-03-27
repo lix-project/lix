@@ -184,4 +184,3 @@ channel:
 ```console
 $ nix-env --file https://github.com/NixOS/nixpkgs/archive/nixos-14.12.tar.gz --install --attr firefox
 ```
-
