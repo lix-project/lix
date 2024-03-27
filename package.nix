@@ -12,6 +12,7 @@
   boost,
   brotli,
   bzip2,
+  cmake,
   curl,
   doxygen,
   editline,
@@ -35,6 +36,7 @@
   pkg-config,
   rapidcheck,
   sqlite,
+  toml11,
   util-linuxMinimal ? utillinuxMinimal,
   utillinuxMinimal ? null,
   xz,
@@ -142,6 +144,9 @@ in stdenv.mkDerivation (finalAttrs: {
     "-Dsandbox-shell=${lib.getBin busybox-sandbox-shell}/bin/busybox"
   ];
 
+  # We only include CMake so that Meson can locate toml11, which only ships CMake dependency metadata.
+  dontUseCmakeConfigure = true;
+
   nativeBuildInputs = [
     bison
     flex
@@ -164,6 +169,7 @@ in stdenv.mkDerivation (finalAttrs: {
     ++ lib.optionals buildWithMeson [
       meson
       ninja
+      cmake
   ];
 
   buildInputs = [
@@ -178,6 +184,7 @@ in stdenv.mkDerivation (finalAttrs: {
     boost
     lowdown
     libsodium
+    toml11
   ]
     ++ lib.optionals stdenv.hostPlatform.isLinux [ libseccomp busybox-sandbox-shell ]
     ++ lib.optional stdenv.hostPlatform.isx86_64 libcpuid
@@ -239,7 +246,10 @@ in stdenv.mkDerivation (finalAttrs: {
     ++ lib.optionals (finalAttrs.doCheck || internalApiDocs) testConfigureFlags
     ++ lib.optional (!canRunInstalled) "--disable-doc-gen"
     ++ [ (lib.enableFeature internalApiDocs "internal-api-docs") ]
-    ++ lib.optional (!forDevShell) "--sysconfdir=/etc";
+    ++ lib.optional (!forDevShell) "--sysconfdir=/etc"
+    ++ [
+      "TOML11_HEADERS=${lib.getDev toml11}/include"
+    ];
 
   mesonBuildType = lib.optional (buildWithMeson || forDevShell) "debugoptimized";
 

@@ -131,6 +131,7 @@ libexpr = library(
     liblixfetchers,
     boehm,
     boost,
+    toml11,
   ],
   # for shared.hh
   include_directories : [

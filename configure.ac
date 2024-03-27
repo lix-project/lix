@@ -342,6 +342,13 @@ AC_SUBST(doc_generate)
 # Look for lowdown library.
 PKG_CHECK_MODULES([LOWDOWN], [lowdown >= 0.9.0], [CXXFLAGS="$LOWDOWN_CFLAGS $CXXFLAGS"])
 
+# Look for toml11, a required dependency.
+AC_ARG_VAR([TOML11_HEADERS], [include path of toml11 headers])
+AC_LANG_PUSH(C++)
+[CXXFLAGS="-I $TOML11_HEADERS $CXXFLAGS"]
+AC_CHECK_HEADER([toml.hpp], [], [AC_MSG_ERROR([toml11 is not found.])])
+AC_LANG_POP(C++)
+
 # Setuid installations.
 AC_CHECK_FUNCS([setresuid setreuid lchown])
 

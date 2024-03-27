@@ -199,6 +199,9 @@ gtest = [
 ]
 deps += gtest
 
+toml11 = dependency('toml11', version : '>=3.7.0', required : true)
+deps += toml11
+
 #
 # Build-time tools
 #
