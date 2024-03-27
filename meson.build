@@ -214,6 +214,9 @@ deps += gtest
 toml11 = dependency('toml11', version : '>=3.7.0', required : true)
 deps += toml11
 
+nlohmann_json = dependency('nlohmann_json', required : true)
+deps += nlohmann_json
+
 #
 # Build-time tools
 #

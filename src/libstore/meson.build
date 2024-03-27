@@ -180,6 +180,7 @@ libstore = library(
     aws_sdk,
     aws_s3,
     aws_sdk_transfer,
+    nlohmann_json,
   ],
   cpp_args : cpp_args,
   install : true,

@@ -63,6 +63,7 @@ libutil_tester = executable(
     liblixutil,
     liblixexpr,
     liblixutil_test_support,
+    nlohmann_json,
   ],
 )
 
@@ -127,6 +128,7 @@ libstore_tester = executable(
     liblixutil,
     rapidcheck,
     gtest,
+    nlohmann_json,
   ],
 )
 
@@ -191,6 +193,7 @@ libexpr_tester = executable(
     rapidcheck,
     boehm,
     gtest,
+    nlohmann_json,
   ],
 )
 

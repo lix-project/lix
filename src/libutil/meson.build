@@ -105,6 +105,7 @@ libutil = library(
     libarchive,
     brotli,
     openssl,
+    nlohmann_json,
   ],
   implicit_include_directories : true,
   install : true,

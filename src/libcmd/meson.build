@@ -44,6 +44,7 @@ libcmd = library(
     boehm,
     editline,
     lowdown,
+    nlohmann_json,
   ],
   install : true,
   # FIXME(Qyriad): is this right?

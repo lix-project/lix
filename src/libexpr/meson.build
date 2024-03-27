@@ -139,6 +139,7 @@ libexpr = library(
     boehm,
     boost,
     toml11,
+    nlohmann_json,
   ],
   # for shared.hh
   include_directories : [

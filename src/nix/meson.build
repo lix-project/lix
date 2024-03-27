@@ -87,6 +87,7 @@ nix = executable(
     liblixfetchers,
     liblixmain,
     boehm,
+    nlohmann_json,
   ],
   install : true,
   # FIXME(Qyriad): is this right?
