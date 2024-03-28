@@ -103,7 +103,8 @@
   ] ++ lib.optionals buildWithMeson [
     ./meson.build
     ./meson.options
-    ./meson/cleanup-install.bash
+    ./meson
+    ./scripts/meson.build
   ]);
 
  functionalTestFiles = fileset.unions [
@@ -289,8 +290,19 @@ in stdenv.mkDerivation (finalAttrs: {
   installCheckFlags = "sysconfdir=$(out)/etc";
   installCheckTarget = "installcheck"; # work around buggy detection in stdenv
 
+  mesonInstallCheckFlags = [
+    "--suite=installcheck"
+  ];
+
   preInstallCheck = lib.optionalString stdenv.hostPlatform.isDarwin ''
     export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+  '';
+
+  installCheckPhase = lib.optionalString buildWithMeson ''
+    runHook preInstallCheck
+    flagsArray=($mesonInstallCheckFlags "''${mesonInstallCheckFlagsArray[@]}")
+    meson test --no-rebuild "''${flagsArray[@]}"
+    runHook postInstallCheck
   '';
 
   separateDebugInfo = !stdenv.hostPlatform.isStatic && !finalAttrs.dontBuild;

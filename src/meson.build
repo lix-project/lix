@@ -63,3 +63,7 @@ nix2_commands_sources = [
 # Finally, the nix command itself, which all of the other commands are implmented in terms of
 # as a multicall binary.
 subdir('nix')
+
+# Just copies nix-channel/unpack-channel.nix to the build directory.
+# Done as a subdir to get Meson to respect the path hierarchy.
+subdir('nix-channel')
