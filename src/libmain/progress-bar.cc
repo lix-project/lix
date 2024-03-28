@@ -12,6 +12,8 @@
 
 namespace nix {
 
+using namespace std::literals::chrono_literals;
+
 static std::string_view getS(const std::vector<Logger::Field> & fields, size_t n)
 {
     assert(n < fields.size());
@@ -32,6 +34,9 @@ static std::string_view storePathToName(std::string_view path)
     auto i = base.find('-');
     return i == std::string::npos ? base.substr(0, 0) : base.substr(i + 1);
 }
+
+// 100 years ought to be enough for anyone (yet sufficiently smaller than max() to not cause signed integer overflow).
+constexpr const auto A_LONG_TIME = std::chrono::duration_cast<std::chrono::milliseconds>(100 * 365 * 86400s);
 
 class ProgressBar : public Logger
 {
@@ -93,7 +98,7 @@ public:
         state_.lock()->active = isTTY;
         updateThread = std::thread([&]() {
             auto state(state_.lock());
-            auto nextWakeup = std::chrono::milliseconds::max();
+            auto nextWakeup = A_LONG_TIME;
             while (state->active) {
                 if (!state->haveUpdate)
                     state.wait_for(updateCV, nextWakeup);
@@ -350,7 +355,7 @@ public:
 
     std::chrono::milliseconds draw(State & state)
     {
-        auto nextWakeup = std::chrono::milliseconds::max();
+        auto nextWakeup = A_LONG_TIME;
 
         state.haveUpdate = false;
         if (state.paused || !state.active) return nextWakeup;
