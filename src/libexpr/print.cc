@@ -198,12 +198,14 @@ private:
 
     void printString(Value & v)
     {
-        // NB: Non-printing characters won't be escaped.
         escapeString(
             output,
             v.string.s,
-            options.maxStringLength,
-            options.ansiColors
+            {
+                .maxLength = options.maxStringLength,
+                .outputAnsiColors = options.ansiColors,
+                // NB: Non-printing characters won't be escaped.
+            }
         );
     }
 
