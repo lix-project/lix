@@ -4,6 +4,7 @@
 #include "symbol-table.hh"
 #include "util.hh"
 #include "print.hh"
+#include "escape-string.hh"
 
 #include <cstdlib>
 
@@ -36,7 +37,7 @@ void ExprFloat::show(const SymbolTable & symbols, std::ostream & str) const
 
 void ExprString::show(const SymbolTable & symbols, std::ostream & str) const
 {
-    printLiteralString(str, s);
+    escapeString(str, s);
 }
 
 void ExprPath::show(const SymbolTable & symbols, std::ostream & str) const

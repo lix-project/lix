@@ -2,6 +2,7 @@
 #include <span>
 #include <unordered_set>
 
+#include "escape-string.hh"
 #include "print.hh"
 #include "ansicolor.hh"
 #include "store-api.hh"
@@ -10,57 +11,6 @@
 #include "eval.hh"
 
 namespace nix {
-
-void printElided(
-    std::ostream & output,
-    unsigned int value,
-    const std::string_view single,
-    const std::string_view plural,
-    bool ansiColors)
-{
-    if (ansiColors)
-        output << ANSI_FAINT;
-    output << "«";
-    pluralize(output, value, single, plural);
-    output << " elided»";
-    if (ansiColors)
-        output << ANSI_NORMAL;
-}
-
-
-std::ostream &
-printLiteralString(std::ostream & str, const std::string_view string, size_t maxLength, bool ansiColors)
-{
-    size_t charsPrinted = 0;
-    if (ansiColors)
-        str << ANSI_MAGENTA;
-    str << "\"";
-    for (auto i = string.begin(); i != string.end(); ++i) {
-        if (charsPrinted >= maxLength) {
-            str << "\" ";
-            printElided(str, string.length() - charsPrinted, "byte", "bytes", ansiColors);
-            return str;
-        }
-
-        if (*i == '\"' || *i == '\\') str << "\\" << *i;
-        else if (*i == '\n') str << "\\n";
-        else if (*i == '\r') str << "\\r";
-        else if (*i == '\t') str << "\\t";
-        else if (*i == '$' && *(i+1) == '{') str << "\\" << *i;
-        else str << *i;
-        charsPrinted++;
-    }
-    str << "\"";
-    if (ansiColors)
-        str << ANSI_NORMAL;
-    return str;
-}
-
-std::ostream &
-printLiteralString(std::ostream & str, const std::string_view string)
-{
-    return printLiteralString(str, string, std::numeric_limits<size_t>::max(), false);
-}
 
 std::ostream &
 printLiteralBool(std::ostream & str, bool boolean)
@@ -93,7 +43,7 @@ printIdentifier(std::ostream & str, std::string_view s) {
     else {
         char c = s[0];
         if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')) {
-            printLiteralString(str, s);
+            escapeString(str, s);
             return str;
         }
         for (auto c : s)
@@ -101,7 +51,7 @@ printIdentifier(std::ostream & str, std::string_view s) {
                   (c >= 'A' && c <= 'Z') ||
                   (c >= '0' && c <= '9') ||
                   c == '_' || c == '\'' || c == '-')) {
-                printLiteralString(str, s);
+                escapeString(str, s);
                 return str;
             }
         str << s;
@@ -129,7 +79,7 @@ printAttributeName(std::ostream & str, std::string_view name) {
     if (isVarName(name))
         str << name;
     else
-        printLiteralString(str, name);
+        escapeString(str, name);
     return str;
 }
 
@@ -248,7 +198,13 @@ private:
 
     void printString(Value & v)
     {
-        printLiteralString(output, v.string.s, options.maxStringLength, options.ansiColors);
+        // NB: Non-printing characters won't be escaped.
+        escapeString(
+            output,
+            v.string.s,
+            options.maxStringLength,
+            options.ansiColors
+        );
     }
 
     void printPath(Value & v)

@@ -1,4 +1,5 @@
 #include "cli-literate-parser.hh"
+#include "escape-string.hh"
 #include "libexpr/print.hh"
 #include "escape-char.hh"
 #include "types.hh"
@@ -41,7 +42,7 @@ auto CLILiterateParser::Node::print() const -> std::string
         s << "Output ";
         break;
     }
-    printLiteralString(s, this->text);
+    escapeString(s, this->text);
     return s.str();
 }
 

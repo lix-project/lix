@@ -2,6 +2,7 @@
 #include "print.hh"
 #include "eval.hh"
 #include "signals.hh"
+#include "escape-string.hh"
 
 namespace nix {
 
@@ -27,7 +28,7 @@ void printAmbiguous(
         printLiteralBool(str, v.boolean);
         break;
     case nString:
-        printLiteralString(str, v.string.s);
+        escapeString(str, v.string.s);
         break;
     case nPath:
         str << v.path().to_string(); // !!! escaping?

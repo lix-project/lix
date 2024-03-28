@@ -11,27 +11,12 @@
 
 #include "fmt.hh"
 #include "print-options.hh"
+#include "print-elided.hh"
 
 namespace nix {
 
 class EvalState;
 struct Value;
-
-/**
- * Print a string as a Nix string literal.
- *
- * Quotes and fairly minimal escaping are added.
- *
- * @param o The output stream to print to
- * @param s The logical string
- */
-std::ostream & printLiteralString(std::ostream & o, std::string_view s);
-inline std::ostream & printLiteralString(std::ostream & o, const char * s) {
-    return printLiteralString(o, std::string_view(s));
-}
-inline std::ostream & printLiteralString(std::ostream & o, const std::string & s) {
-    return printLiteralString(o, std::string_view(s));
-}
 
 /** Print `true` or `false`. */
 std::ostream & printLiteralBool(std::ostream & o, bool b);
