@@ -23,69 +23,12 @@
 #include "common-eval-args.hh"
 #include "attr-path.hh"
 #include "legacy.hh"
+#include "shlex.hh"
 
 using namespace nix;
 using namespace std::string_literals;
 
 extern char * * environ __attribute__((weak));
-
-/* Recreate the effect of the perl shellwords function, breaking up a
- * string into arguments like a shell word, including escapes
- */
-static std::vector<std::string> shellwords(const std::string & s)
-{
-    std::regex whitespace("^\\s+");
-    auto begin = s.cbegin();
-    std::vector<std::string> res;
-    std::string cur;
-    enum state {
-        sBegin,
-        sSingleQuote,
-        sDoubleQuote
-    };
-    state st = sBegin;
-    auto it = begin;
-    for (; it != s.cend(); ++it) {
-        if (st == sBegin) {
-            std::smatch match;
-            if (regex_search(it, s.cend(), match, whitespace)) {
-                cur.append(begin, it);
-                res.push_back(cur);
-                it = match[0].second;
-                if (it == s.cend()) return res;
-                begin = it;
-                cur.clear();
-            }
-        }
-        switch (*it) {
-            case '\'':
-                if (st != sDoubleQuote) {
-                    cur.append(begin, it);
-                    begin = it + 1;
-                    st = st == sBegin ? sSingleQuote : sBegin;
-                }
-                break;
-            case '"':
-                if (st != sSingleQuote) {
-                    cur.append(begin, it);
-                    begin = it + 1;
-                    st = st == sBegin ? sDoubleQuote : sBegin;
-                }
-                break;
-            case '\\':
-                if (st != sSingleQuote) {
-                    /* perl shellwords mostly just treats the next char as part of the string with no special processing */
-                    cur.append(begin, it);
-                    begin = ++it;
-                }
-                break;
-        }
-    }
-    if (st != sBegin) throw Error("unterminated quote in shebang line");
-    cur.append(begin, it);
-    res.push_back(cur);
-    return res;
-}
 
 static void main_nix_build(int argc, char * * argv)
 {
@@ -143,7 +86,7 @@ static void main_nix_build(int argc, char * * argv)
                     line = chomp(line);
                     std::smatch match;
                     if (std::regex_match(line, match, std::regex("^#!\\s*nix-shell\\s+(.*)$")))
-                        for (const auto & word : shellwords(match[1].str()))
+                        for (const auto & word : shell_split(match[1].str()))
                             args.push_back(word);
                 }
             }
