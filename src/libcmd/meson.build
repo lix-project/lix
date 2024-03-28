@@ -56,3 +56,17 @@ liblixcmd = declare_dependency(
   include_directories : '.',
   link_with : libcmd,
 )
+
+# FIXME: not using the pkg-config module because it creates way too many deps
+# while meson migration is in progress, and we want to not include boost here
+configure_file(
+  input : 'nix-cmd.pc.in',
+  output : 'nix-cmd.pc',
+  install_dir : libdir / 'pkgconfig',
+  configuration : {
+    'prefix' : prefix,
+    'libdir' : libdir,
+    'includedir' : includedir,
+    'PACKAGE_VERSION' : meson.project_version(),
+  },
+)

@@ -152,3 +152,17 @@ liblixexpr = declare_dependency(
   include_directories : include_directories('.'),
   link_with : libexpr,
 )
+
+# FIXME: not using the pkg-config module because it creates way too many deps
+# while meson migration is in progress, and we want to not include boost here
+configure_file(
+  input : 'nix-expr.pc.in',
+  output : 'nix-expr.pc',
+  install_dir : libdir / 'pkgconfig',
+  configuration : {
+    'prefix' : prefix,
+    'libdir' : libdir,
+    'includedir' : includedir,
+    'PACKAGE_VERSION' : meson.project_version(),
+  },
+)
