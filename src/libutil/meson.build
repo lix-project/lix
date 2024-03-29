@@ -35,6 +35,7 @@ libutil_headers = files(
   'abstract-setting-to-json.hh',
   'ansicolor.hh',
   'archive.hh',
+  'args/root.hh',
   'args.hh',
   'box_ptr.hh',
   'callback.hh',

@@ -244,13 +244,12 @@ bison = find_program('bison')
 flex = find_program('flex')
 
 # This is how Nix does generated headers...
+# other instances of header generation use a very similar command.
 # FIXME(Qyriad): do we really need to use the shell for this?
+gen_header_sh = 'echo \'R"__NIX_STR(\' | cat - @INPUT@ && echo \')__NIX_STR"\''
 gen_header = generator(
   bash,
-  arguments : [
-    '-c',
-    'echo \'R"__NIX_STR(\' | cat - @INPUT@ && echo \')__NIX_STR"\'',
-  ],
+  arguments : [ '-c', gen_header_sh ],
   capture : true,
   output : '@PLAINNAME@.gen.hh',
 )

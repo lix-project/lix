@@ -1,5 +1,14 @@
-schema_sql_gen = gen_header.process('schema.sql')
-ca_specific_schema_gen = gen_header.process('ca-specific-schema.sql')
+libstore_generated_headers = []
+foreach header : [ 'schema.sql', 'ca-specific-schema.sql' ]
+  libstore_generated_headers += custom_target(
+    command : [ 'bash', '-c', 'echo \'R"__NIX_STR(\' | cat - @INPUT@ && echo \')__NIX_STR"\'' ],
+    input : header,
+    output : '@PLAINNAME@.gen.hh',
+    capture : true,
+    install : true,
+    install_dir : includedir / 'nix',
+  )
+endforeach
 
 libstore_sources = files(
   'binary-cache-store.cc',
@@ -157,8 +166,7 @@ endforeach
 
 libstore = library(
   'nixstore',
-  schema_sql_gen,
-  ca_specific_schema_gen,
+  libstore_generated_headers,
   libstore_sources,
   dependencies : [
     libarchive,

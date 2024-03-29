@@ -49,10 +49,20 @@ meson.add_install_script(
   '@0@'.format(includedir),
 )
 
-imported_drv_to_derivation_gen = gen_header.process('imported-drv-to-derivation.nix')
-fetchurl_gen = gen_header.process('fetchurl.nix')
-derivation_gen = gen_header.process('primops/derivation.nix', preserve_path_from : meson.current_source_dir())
-call_flake_gen = gen_header.process('flake/call-flake.nix')
+libexpr_generated_headers = [
+  gen_header.process('primops/derivation.nix', preserve_path_from : meson.current_source_dir()),
+]
+foreach header : [ 'imported-drv-to-derivation.nix', 'fetchurl.nix' ]
+  libexpr_generated_headers += custom_target(
+    command : [ 'bash', '-c', 'echo \'R"__NIX_STR(\' | cat - @INPUT@ && echo \')__NIX_STR"\'' ],
+    input : header,
+    output : '@PLAINNAME@.gen.hh',
+    capture : true,
+    install : true,
+    install_dir : includedir / 'nix',
+  )
+endforeach
+subdir('flake')
 
 libexpr_sources = files(
   'attr-path.cc',
@@ -121,10 +131,7 @@ libexpr = library(
   libexpr_sources,
   parser_tab,
   lexer_tab,
-  imported_drv_to_derivation_gen,
-  fetchurl_gen,
-  derivation_gen,
-  call_flake_gen,
+  libexpr_generated_headers,
   dependencies : [
     liblixutil,
     liblixstore,
