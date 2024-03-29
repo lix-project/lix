@@ -356,6 +356,7 @@ endif
 subdir('src')
 subdir('scripts')
 subdir('misc')
+subdir('doc/manual')
 
 if enable_tests
   subdir('tests/unit')
