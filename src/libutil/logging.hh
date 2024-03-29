@@ -230,9 +230,7 @@ extern Verbosity verbosity;
 template<typename... Args>
 inline void warn(const std::string & fs, const Args & ... args)
 {
-    boost::format f(fs);
-    formatHelper(f, args...);
-    logger->warn(f.str());
+    logger->warn(HintFmt(fs, args...).str());
 }
 
 #define warnOnce(haveWarned, args...) \

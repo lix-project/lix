@@ -185,16 +185,6 @@ static int main_build_remote(int argc, char * * argv)
                         std::cerr << "# postpone\n";
                     else
                     {
-                        // build the hint template.
-                        std::string errorText =
-                            "Failed to find a machine for remote build!\n"
-                            "derivation: %s\nrequired (system, features): (%s, [%s])";
-                        errorText += "\n%s available machines:";
-                        errorText += "\n(systems, maxjobs, supportedFeatures, mandatoryFeatures)";
-
-                        for (unsigned int i = 0; i < machines.size(); ++i)
-                            errorText += "\n([%s], %s, [%s], [%s])";
-
                         // add the template values.
                         std::string drvstr;
                         if (drvPath.has_value())
@@ -202,19 +192,30 @@ static int main_build_remote(int argc, char * * argv)
                         else
                             drvstr = "<unknown>";
 
-                        auto error = HintFmt::fromFormatString(errorText);
-                        error
-                            % drvstr
-                            % neededSystem
-                            % concatStringsSep<StringSet>(", ", requiredFeatures)
-                            % machines.size();
+                        std::string machinesFormatted;
 
-                        for (auto & m : machines)
-                            error
-                                % concatStringsSep<StringSet>(", ", m.systemTypes)
-                                % m.maxJobs
-                                % concatStringsSep<StringSet>(", ", m.supportedFeatures)
-                                % concatStringsSep<StringSet>(", ", m.mandatoryFeatures);
+                        for (auto & m : machines) {
+                            machinesFormatted += HintFmt(
+                                "\n([%s], %s, [%s], [%s])",
+                                concatStringsSep<StringSet>(", ", m.systemTypes),
+                                m.maxJobs,
+                                concatStringsSep<StringSet>(", ", m.supportedFeatures),
+                                concatStringsSep<StringSet>(", ", m.mandatoryFeatures)
+                            ).str();
+                        }
+
+                        auto error = HintFmt(
+                            "Failed to find a machine for remote build!\n"
+                            "derivation: %s\n"
+                            "required (system, features): (%s, [%s])\n"
+                            "%s available machines:\n"
+                            "(systems, maxjobs, supportedFeatures, mandatoryFeatures)%s",
+                            drvstr,
+                            neededSystem,
+                            concatStringsSep<StringSet>(", ", requiredFeatures),
+                            machines.size(),
+                            Uncolored(machinesFormatted)
+                       );
 
                         printMsg(couldBuildLocally ? lvlChatty : lvlWarn, error.str());
 

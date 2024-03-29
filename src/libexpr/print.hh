@@ -86,6 +86,6 @@ std::ostream & operator<<(std::ostream & output, const ValuePrinter & printer);
  * magenta.
  */
 template<>
-HintFmt & HintFmt::operator%(const ValuePrinter & value);
+fmt_internal::HintFmt & fmt_internal::HintFmt::operator%(const ValuePrinter & value);
 
 }

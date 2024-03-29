@@ -608,7 +608,7 @@ std::ostream & operator<<(std::ostream & output, const ValuePrinter & printer)
 }
 
 template<>
-HintFmt & HintFmt::operator%(const ValuePrinter & value)
+fmt_internal::HintFmt & fmt_internal::HintFmt::operator%(const ValuePrinter & value)
 {
         fmt % value;
         return *this;
