@@ -176,5 +176,8 @@ foreach script : functional_tests_scripts
     env : {
       'MESON_BUILD_ROOT': meson.project_build_root(),
     },
+    # some tests take 15+ seconds even on an otherwise idle machine, on a loaded machine
+    # this can easily drive them to failure. give them more time, 5min rather than 30sec
+    timeout : 300,
   )
 endforeach
