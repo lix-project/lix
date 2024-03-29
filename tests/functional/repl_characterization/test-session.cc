@@ -3,7 +3,7 @@
 
 #include "test-session.hh"
 #include "util.hh"
-#include "tests/debug-char.hh"
+#include "escape-char.hh"
 
 namespace nix {
 
@@ -60,7 +60,7 @@ std::ostream & operator<<(std::ostream & os, ReplOutputParser::State s)
 void ReplOutputParser::transition(State new_state, char responsible_char, bool wasPrompt)
 {
     if constexpr (DEBUG_REPL_PARSER) {
-        std::cerr << "transition " << new_state << " for " << DebugChar{responsible_char}
+        std::cerr << "transition " << new_state << " for " << MaybeHexEscapedChar{responsible_char}
                   << (wasPrompt ? " [prompt]" : "") << "\n";
     }
     state = new_state;
@@ -118,7 +118,7 @@ bool TestSession::waitForPrompt()
             });
 
             if constexpr (DEBUG_REPL_PARSER) {
-                std::cerr << "raw " << DebugChar{buf[i]} << (wasEaten ? " [eaten]" : "") << "\n";
+                std::cerr << "raw " << MaybeHexEscapedChar{buf[i]} << (wasEaten ? " [eaten]" : "") << "\n";
             }
         }
 

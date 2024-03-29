@@ -1,6 +1,6 @@
 #include "cli-literate-parser.hh"
 #include "libexpr/print.hh"
-#include "debug-char.hh"
+#include "escape-char.hh"
 #include "types.hh"
 #include "util.hh"
 #include <ranges>
@@ -77,7 +77,7 @@ CLILiterateParser::CLILiterateParser(std::string prompt, size_t indent)
 void CLILiterateParser::feed(char c)
 {
     if constexpr (DEBUG_PARSER) {
-        std::cout << stateDebug(state_) << " " << DebugChar{c} << "\n";
+        std::cout << stateDebug(state_) << " " << MaybeHexEscapedChar{c} << "\n";
     }
 
     if (c == '\n') {
