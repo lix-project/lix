@@ -39,7 +39,7 @@ option('store-dir', type : 'string', value : '/nix/store',
   description : 'path of the Nix store',
 )
 
-option('state-dir', type : 'string', value : '/nix/var/nix',
+option('state-dir', type : 'string', value : '/nix/var',
   description : 'path to store state in for Nix',
 )
 

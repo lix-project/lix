@@ -149,7 +149,7 @@ cpp_str_defines = {
   'NIX_PREFIX':    prefix,
   'NIX_STORE_DIR': store_dir,
   'NIX_DATA_DIR':  datadir,
-  'NIX_STATE_DIR': state_dir,
+  'NIX_STATE_DIR': state_dir / 'nix',
   'NIX_LOG_DIR':   log_dir,
   'NIX_CONF_DIR':  sysconfdir,
   'NIX_BIN_DIR':   bindir,
