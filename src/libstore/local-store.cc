@@ -548,6 +548,15 @@ void LocalStore::openDB(State & state, bool create)
         sqlite3_exec(db, ("pragma main.journal_mode = " + mode + ";").c_str(), 0, 0, 0) != SQLITE_OK)
         SQLiteError::throw_(db, "setting journal mode");
 
+    if (mode == "wal" ) {
+         /* persist the WAL files when the DB connection is closed.
+         * This allows for read-only connections without any write permissions
+         * on the state directory to succeed on a closed database. */
+        int enable = 1;
+        if (sqlite3_file_control(db, NULL, SQLITE_FCNTL_PERSIST_WAL, &enable) != SQLITE_OK)
+            SQLiteError::throw_(db, "setting persistent WAL mode");
+    }
+
     /* Increase the auto-checkpoint interval to 40000 pages.  This
        seems enough to ensure that instantiating the NixOS system
        derivation is done in a single fsync(). */
