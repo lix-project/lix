@@ -354,13 +354,10 @@ if get_option('profile-build').require(meson.get_compiler('cpp').get_id() == 'cl
 endif
 
 subdir('src')
+subdir('scripts')
+subdir('misc')
 
 if enable_tests
-  # Just configures `scripts/nix-profile.sh.in` (and copies the original to the build directory).
-  # Done as a subdirectory to convince Meson to put the configured files
-  # in `build/scripts` instead of just `build`.
-  subdir('scripts')
-
   subdir('tests/unit')
   subdir('tests/functional')
 endif
