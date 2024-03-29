@@ -39,67 +39,30 @@ dummy-env = env -i \
 
 nix-eval = $(dummy-env) $(doc_nix) eval --experimental-features nix-command -I nix/corepkgs=corepkgs --store dummy:// --impure --raw
 
-# re-implement mdBook's include directive to make it usable for terminal output and for proper @docroot@ substitution
-define process-includes
-	while read -r line; do \
-		set -euo pipefail; \
-		filename="$$(dirname $(1))/$$(sed 's/{{#include \(.*\)}}/\1/'<<< $$line)"; \
-		test -f "$$filename" || ( echo "#include-d file '$$filename' does not exist." >&2; exit 1; ); \
-		matchline="$$(sed 's|/|\\/|g' <<< $$line)"; \
-		sed -i "/$$matchline/r $$filename" $(2); \
-		sed -i "s/$$matchline//" $(2); \
-	done < <(grep '{{#include' $(1))
-endef
-
 $(d)/nix-env-%.1: $(d)/src/command-ref/nix-env/%.md
-	@printf "Title: %s\n\n" "$(subst nix-env-,nix-env --,$$(basename "$@" .1))" > $^.tmp
-	$(render-subcommand)
+	$(trace-gen) doc/manual/render-manpage.sh \
+		--unescape-dashes "$(subst nix-env-,nix-env --,$$(basename "$@" .1))" 1 $^ $^.tmp $@
 
 $(d)/nix-store-%.1: $(d)/src/command-ref/nix-store/%.md
-	@printf -- 'Title: %s\n\n' "$(subst nix-store-,nix-store --,$$(basename "$@" .1))" > $^.tmp
-	$(render-subcommand)
-
-# FIXME: there surely is some more deduplication to be achieved here with even darker Make magic
-define render-subcommand
-  @cat $^ >> $^.tmp
-	@$(call process-includes,$^,$^.tmp)
-	$(trace-gen) lowdown -sT man --nroff-nolinks -M section=1 $^.tmp -o $@
-	@# fix up `lowdown`'s automatic escaping of `--`
-	@# https://github.com/kristapsdz/lowdown/blob/edca6ce6d5336efb147321a43c47a698de41bb7c/entity.c#L202
-	@sed -i 's/\e\[u2013\]/--/' $@
-	@rm $^.tmp
-endef
+	$(trace-gen) doc/manual/render-manpage.sh \
+		--unescape-dashes "$(subst nix-store-,nix-store --,$$(basename "$@" .1))" 1 $^ $^.tmp $@
 
 
 $(d)/%.1: $(d)/src/command-ref/%.md
-	@printf "Title: %s\n\n" "$$(basename $@ .1)" > $^.tmp
-	@cat $^ >> $^.tmp
-	@$(call process-includes,$^,$^.tmp)
-	$(trace-gen) lowdown -sT man --nroff-nolinks -M section=1 $^.tmp -o $@
-	@rm $^.tmp
+	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .1)" 1 $^ $^.tmp $@
 
 $(d)/%.8: $(d)/src/command-ref/%.md
-	@printf "Title: %s\n\n" "$$(basename $@ .8)" > $^.tmp
-	@cat $^ >> $^.tmp
-	$(trace-gen) lowdown -sT man --nroff-nolinks -M section=8 $^.tmp -o $@
-	@rm $^.tmp
+	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .8)" 8 $^ $^.tmp $@
 
 $(d)/nix.conf.5: $(d)/src/command-ref/conf-file.md
-	@printf "Title: %s\n\n" "$$(basename $@ .5)" > $^.tmp
-	@cat $^ >> $^.tmp
-	@$(call process-includes,$^,$^.tmp)
-	$(trace-gen) lowdown -sT man --nroff-nolinks -M section=5 $^.tmp -o $@
-	@rm $^.tmp
+	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .5)" 5 $^ $^.tmp $@
 
 $(d)/nix-profiles.5: $(d)/src/command-ref/files/profiles.md
-	@printf "Title: %s\n\n" "$$(basename $@ .5)" > $^.tmp
-	@cat $^ >> $^.tmp
-	$(trace-gen) lowdown -sT man --nroff-nolinks -M section=5 $^.tmp -o $@
-	@rm $^.tmp
+	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .5)" 5 $^ $^.tmp $@
 
 $(d)/src/SUMMARY.md: $(d)/src/SUMMARY.md.in $(d)/src/SUMMARY-rl-next.md $(d)/src/command-ref/new-cli $(d)/src/contributing/experimental-feature-descriptions.md
 	@cp $< $@
-	@$(call process-includes,$@,$@)
+	@doc/manual/process-includes.sh $@ $@
 
 $(d)/src/command-ref/new-cli: $(d)/nix.json $(d)/utils.nix $(d)/generate-manpage.nix $(doc_nix)
 	@rm -rf $@ $@.tmp
@@ -201,7 +164,7 @@ $(docdir)/manual/index.html: $(MANUAL_SRCS) $(d)/book.toml $(d)/anchors.jq $(d)/
 		tmp="$$(mktemp -d)"; \
 		cp -r doc/manual "$$tmp"; \
 		find "$$tmp" -name '*.md' | while read -r file; do \
-			$(call process-includes,$$file,$$file); \
+			doc/manual/process-includes.sh $$file $$file; \
 		done; \
 		find "$$tmp" -name '*.md' | while read -r file; do \
 			docroot="$$(realpath --relative-to="$$(dirname "$$file")" $$tmp/manual/src)"; \
