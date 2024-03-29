@@ -50,6 +50,7 @@ path_opts = [
   'mandir',
   'libdir',
   'includedir',
+  'libexecdir',
   # Homecooked Lix directories.
   'store-dir',
   'state-dir',
