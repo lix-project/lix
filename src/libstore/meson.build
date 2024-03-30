@@ -162,6 +162,9 @@ libstore_headers = files(
 if host_machine.system() == 'linux'
   libstore_sources += files('platform/linux.cc')
   libstore_headers += files('platform/linux.hh')
+elif host_machine.system() == 'darwin'
+  libstore_sources += files('platform/darwin.cc')
+  libstore_headers += files('platform/darwin.hh')
 else
   libstore_sources += files('platform/fallback.cc')
   libstore_headers += files('platform/fallback.hh')
