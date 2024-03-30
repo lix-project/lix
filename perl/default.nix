@@ -36,14 +36,11 @@ perl.pkgs.toPerlModule (stdenv.mkDerivation {
       xz
       perl
       boost
+      perlPackages.DBI
+      perlPackages.DBDSQLite
     ]
     ++ lib.optional (stdenv.isLinux || stdenv.isDarwin) libsodium
     ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security;
-
-  configureFlags = [
-    "--with-dbi=${perlPackages.DBI}/${perl.libPrefix}"
-    "--with-dbd-sqlite=${perlPackages.DBDSQLite}/${perl.libPrefix}"
-  ];
 
   enableParallelBuilding = true;
 
