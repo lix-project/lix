@@ -112,7 +112,7 @@ foreach command : nix_nested_manpages
     custom_target(
       command : [
         './render-manpage.sh',
-        '--unescape-dashes',
+        '--out-no-smarty',
         command[0] + ' --' + page,
         '1',
         '@INPUT@',

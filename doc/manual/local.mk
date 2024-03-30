@@ -41,11 +41,11 @@ nix-eval = $(dummy-env) $(doc_nix) eval --experimental-features nix-command -I n
 
 $(d)/nix-env-%.1: $(d)/src/command-ref/nix-env/%.md
 	$(trace-gen) doc/manual/render-manpage.sh \
-		--unescape-dashes "$(subst nix-env-,nix-env --,$$(basename "$@" .1))" 1 $^ $^.tmp $@
+		--out-no-smarty "$(subst nix-env-,nix-env --,$$(basename "$@" .1))" 1 $^ $^.tmp $@
 
 $(d)/nix-store-%.1: $(d)/src/command-ref/nix-store/%.md
 	$(trace-gen) doc/manual/render-manpage.sh \
-		--unescape-dashes "$(subst nix-store-,nix-store --,$$(basename "$@" .1))" 1 $^ $^.tmp $@
+		--out-no-smarty "$(subst nix-store-,nix-store --,$$(basename "$@" .1))" 1 $^ $^.tmp $@
 
 
 $(d)/%.1: $(d)/src/command-ref/%.md

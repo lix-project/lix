@@ -2,10 +2,10 @@
 
 set -euo pipefail
 
-unescape_dashes=
+lowdown_args=
 
-if [ "$1" = --unescape-dashes ]; then
-    unescape_dashes=yes
+if [ "$1" = --out-no-smarty ]; then
+    lowdown_args=--out-no-smarty
     shift
 fi
 
@@ -18,10 +18,5 @@ outfile="$5"
 printf "Title: %s\n\n" "$title" > "$tmpfile"
 cat "$infile" >> "$tmpfile"
 "$(dirname "$0")"/process-includes.sh "$infile" "$tmpfile"
-lowdown -sT man --nroff-nolinks -M section="$section" "$tmpfile" -o "$outfile"
-if [ -n "$unescape_dashes" ]; then
-    # fix up `lowdown`'s automatic escaping of `--`
-    # https://github.com/kristapsdz/lowdown/blob/edca6ce6d5336efb147321a43c47a698de41bb7c/entity.c#L202
-    sed -i 's/\e\[u2013\]/--/' "$outfile"
-fi
+lowdown -sT man --nroff-nolinks $lowdown_args -M section="$section" "$tmpfile" -o "$outfile"
 rm "$tmpfile"
