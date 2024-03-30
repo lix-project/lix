@@ -1,0 +1,18 @@
+UseColor: true
+Checks:
+  - -*
+  - bugprone-*
+    # too many warnings
+  - -bugprone-assignment-in-if-condition
+    # too many warnings
+  - -bugprone-narrowing-conversions
+    # kind of nonsense
+  - -bugprone-easily-swappable-parameters
+    # too many warnings for now
+  - -bugprone-implicit-widening-of-multiplication-result
+    # Lix's exception handling is Questionable
+  - -bugprone-empty-catch
+    # many warnings
+  - -bugprone-unchecked-optional-access
+    # many warnings, seems like a questionable lint
+  - -bugprone-branch-clone
