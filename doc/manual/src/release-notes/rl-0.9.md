@@ -18,36 +18,36 @@ first.
     derivations can mutually refer to each other (as long as there are
     no data dependencies on the `outPath` and `drvPath` attributes
     computed by `derivation`).
-    
+
     For example, the expression `derivation
             attrs` now evaluates to (essentially)
-    
+
         attrs // {
           type = "derivation";
           outPath = derivation! attrs;
           drvPath = derivation! attrs;
         }
-    
+
     where `derivation!` is a primop that does the actual derivation
     instantiation (i.e., it does what `derivation` used to do). The
     advantage is that it allows commands such as `nix-env -qa` and
     `nix-env -i` to be much faster since they no longer need to
     instantiate all derivations, just the `name` attribute.
-    
+
     Also, it allows derivations to cyclically reference each other, for
     example,
-    
+
         webServer = derivation {
           ...
           hostName = "svn.cs.uu.nl";
           services = [svnService];
         };
-         
+
         svnService = derivation {
           ...
           hostName = webServer.hostName;
         };
-    
+
     Previously, this would yield a black hole (infinite recursion).
 
   - `nix-build` now defaults to using `./default.nix` if no Nix

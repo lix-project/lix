@@ -63,4 +63,3 @@ grepQuiet 'item.*attrPath="foo".*name="dependencies-top"' $TEST_ROOT/meta.xml
 # Do an install.
 nix-env -i dependencies-top
 [ -e $TEST_HOME/.nix-profile/foobar ]
-

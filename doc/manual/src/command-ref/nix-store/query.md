@@ -225,4 +225,3 @@ $ nix-store --query --roots $(which svn)
 /nix/var/nix/profiles/default-82-link
 /home/eelco/.local/state/nix/profiles/profile-97-link
 ```
-

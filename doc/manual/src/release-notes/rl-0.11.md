@@ -50,7 +50,7 @@ on Nix. Here is an (incomplete) list:
     multiple packages with the same name, then pick the package with the
     highest priority, and only use the version if there are multiple
     packages with the same priority.
-    
+
     This makes it possible to mark specific versions/variant in Nixpkgs
     more or less desirable than others. A typical example would be a
     beta version of some package (e.g., `gcc-4.2.0rc1`) which should not
@@ -62,14 +62,14 @@ on Nix. Here is an (incomplete) list:
     be modified. There are several attributes that can be usefully
     modified, because they affect the behaviour of `nix-env` or the user
     environment build script:
-    
+
       - `meta.priority` can be changed to resolve filename clashes (see
         above).
-    
+
       - `meta.keep` can be set to `true` to prevent the package from
         being upgraded or replaced. Useful if you want to hang on to an
         older version of a package.
-    
+
       - `meta.active` can be set to `false` to “disable” the package.
         That is, no symlinks will be generated to the files of the
         package, but it remains part of the profile (so it won’t be

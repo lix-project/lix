@@ -27,4 +27,3 @@ mkDerivation (
     normal = { };
   }.${mode}
 )
-

@@ -102,13 +102,13 @@ In particular, notice the
 has copied the build results to that directory where you can examine it.
 
 > []{#check-dirs-are-unregistered} **Note**
-> 
+>
 > Check paths are not protected against garbage collection, and this
 > path will be deleted on the next garbage collection.
-> 
+>
 > The path is guaranteed to be alive for the duration of
 > the `diff-hook`'s execution, but may be deleted any time after.
-> 
+>
 > If the comparison is performed as part of automated tooling, please
 > use the diff-hook or author your tooling to handle the case where the
 > build was not deterministic and also a check path does not exist.
@@ -117,7 +117,7 @@ has copied the build results to that directory where you can examine it.
 already. If the derivation has not been built Nix will fail with the
 error:
 
-    error: some outputs of '/nix/store/hzi1h60z2qf0nb85iwnpvrai3j2w7rr6-unstable.drv' 
+    error: some outputs of '/nix/store/hzi1h60z2qf0nb85iwnpvrai3j2w7rr6-unstable.drv'
     are not valid, so checking is not possible
 
 Run the build without `--check`, and then try with `--check` again.

@@ -1,11 +1,23 @@
 {
   description = "The purely functional package manager";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11-small";
-  inputs.nixpkgs-regression.url = "github:NixOS/nixpkgs/215d4d0fd80ca5163643b03a33fde804a29cc1e2";
-  inputs.flake-compat = { url = "github:edolstra/flake-compat"; flake = false; };
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11-small";
+    nixpkgs-regression.url = "github:NixOS/nixpkgs/215d4d0fd80ca5163643b03a33fde804a29cc1e2";
+    pre-commit-hooks = {
+      # Can go back to `cachix/git-hooks.nix` when this is merged:
+      # https://github.com/cachix/git-hooks.nix/pull/401
+      url = "github:9999years/git-hooks.nix/add-default-pre-commit-hooks";
+      inputs = {
+        flake-compat.follows = "flake-compat";
+        nixpkgs.follows = "nixpkgs";
+        nixpkgs-stable.follows = "nixpkgs";
+      };
+    };
+    flake-compat = { url = "github:edolstra/flake-compat"; flake = false; };
+  };
 
-  outputs = { self, nixpkgs, nixpkgs-regression, flake-compat }:
+  outputs = { self, nixpkgs, nixpkgs-regression, pre-commit-hooks, flake-compat }:
 
     let
       inherit (nixpkgs) lib;
@@ -278,6 +290,49 @@
                 }
             );
         };
+
+        pre-commit = builtins.mapAttrs (system: pre-commit-lib: pre-commit-lib.run {
+          src = self;
+          hooks = {
+            no-commit-to-branch = {
+              enable = true;
+              settings.branch = ["main"];
+            };
+            check-case-conflicts.enable = true;
+            check-executables-have-shebangs = {
+              enable = true;
+              stages = [ "commit" ];
+            };
+            check-shebang-scripts-are-executable = {
+              enable = true;
+              stages = [ "commit" ];
+            };
+            check-symlinks = {
+              enable = true;
+              excludes = [ "^tests/functional/lang/symlink-resolution/broken$" ];
+            };
+            check-merge-conflicts.enable = true;
+            end-of-file-fixer = {
+              enable = true;
+              excludes = [
+                "\\.drv$"
+                "^tests/functional/lang/"
+              ];
+            };
+            mixed-line-endings = {
+              enable = true;
+              excludes = [ "^tests/functional/lang/" ];
+            };
+            # TODO: Once the test suite is nicer, clean up and start
+            # enforcing trailing whitespace on tests that don't explicitly
+            # check for it.
+            trim-trailing-whitespace = {
+              enable = true;
+              stages = [ "commit" ];
+              excludes = [ "^tests/functional/lang/" ];
+            };
+          };
+        }) pre-commit-hooks.lib;
       };
 
       checks = forAllSystems (system: let
@@ -295,6 +350,7 @@
         nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
         rl-next = rl-next-check "rl-next" ./doc/manual/rl-next;
         rl-next-dev = rl-next-check "rl-next-dev" ./doc/manual/rl-next-dev;
+        pre-commit = self.hydraJobs.pre-commit.${system};
       } // (lib.optionalAttrs (builtins.elem system linux64BitSystems)) {
         dockerImage = self.hydraJobs.dockerImage.${system};
       });
@@ -340,6 +396,7 @@
               busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
               forDevShell = true;
             };
+            pre-commit = self.hydraJobs.pre-commit.${pkgs.system} or {};
           in
             (nix.override {
               buildUnreleasedNotes = true;
@@ -348,6 +405,7 @@
               # Required for clang-tidy checks
               buildInputs = prev.buildInputs
                 ++ [ pkgs.just ]
+                ++ lib.optional (pre-commit ? enabledPackages) pre-commit.enabledPackages
                 ++ lib.optionals (stdenv.cc.isClang) [ pkgs.llvmPackages.llvm pkgs.llvmPackages.clang-unwrapped.dev ];
               nativeBuildInputs = prev.nativeBuildInputs
                 ++ lib.optional (stdenv.cc.isClang && !stdenv.buildPlatform.isDarwin) pkgs.buildPackages.bear
@@ -379,6 +437,8 @@
 
                 # Make bash completion work.
                 XDG_DATA_DIRS+=:$out/share
+
+                ${lib.optionalString (pre-commit ? shellHook) pre-commit.shellHook}
               '';
             } // lib.optionalAttrs (stdenv.buildPlatform.isLinux && pkgs.glibcLocales != null) {
               # Required to make non-NixOS Linux not complain about missing locale files during configure in a dev shell

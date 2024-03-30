@@ -47,4 +47,3 @@ nix flake update b --flake $flakeA
 
 # Test list-inputs with circular dependencies
 nix flake metadata $flakeA
-

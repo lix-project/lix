@@ -3,20 +3,20 @@
 # nix-daemon: Starts the nix package manager daemon
 #
 # chkconfig:   345 24 02
-# description: This is a daemon which enable the multi-user mode 
+# description: This is a daemon which enable the multi-user mode
 #               of the nix package manager.
 # processname: nix-daemon
 # pidfile:     /var/run/nix/nix-daemon.pid
 
 ### BEGIN INIT INFO
-# Required-Start:    
-# Required-Stop:     
-# Should-Start:      
-# Should-Stop:       
+# Required-Start:
+# Required-Stop:
+# Should-Start:
+# Should-Stop:
 # Default-Start:     3 4 5
 # Default-Stop:      0 1 2 6
 # Short-Description: Starts the nix daemon
-# Description:       This is a daemon which enable the multi-user mode 
+# Description:       This is a daemon which enable the multi-user mode
 #                     of the nix package manager.
 ### END INIT INFO
 

@@ -27,4 +27,3 @@
 /package-management/channels* /command-ref/nix-channel 301!
 
 /package-management/s3-substituter* /command-ref/new-cli/nix3-help-stores#s3-binary-cache-store 301!
-

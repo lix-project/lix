@@ -26,4 +26,3 @@ nix run --no-write-lock-file .#pkgAsPkg
 ! nix run --no-write-lock-file .#appAsPkg || fail "elements of 'apps' should be of type 'app'"
 
 clearStore
-

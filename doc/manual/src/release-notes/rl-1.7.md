@@ -25,7 +25,7 @@ features:
     builds a previously built derivation again, and prints an error
     message if the output is not exactly the same. This helps to verify
     whether a derivation is truly deterministic. For example:
-    
+
         $ nix-build '<nixpkgs>' -A patchelf
         …
         $ nix-build '<nixpkgs>' -A patchelf --check
@@ -43,31 +43,31 @@ features:
                     '1 + 2'` will print `3`.
 
   - `nix-shell` improvements:
-    
+
       - It has a new flag, `--packages` (or `-p`), that sets up a build
         environment containing the specified packages from Nixpkgs. For
         example, the command
-        
+
             $ nix-shell -p sqlite xorg.libX11 hello
-        
+
         will start a shell in which the given packages are present.
-    
+
       - It now uses `shell.nix` as the default expression, falling back
         to `default.nix` if the former doesn’t exist. This makes it
         convenient to have a `shell.nix` in your project to set up a
         nice development environment.
-    
+
       - It evaluates the derivation attribute `shellHook`, if set. Since
         `stdenv` does not normally execute this hook, it allows you to
         do `nix-shell`-specific setup.
-    
+
       - It preserves the user’s timezone setting.
 
   - In chroots, Nix now sets up a `/dev` containing only a minimal set
     of devices (such as `/dev/null`). Note that it only does this if you
     *don’t* have `/dev` listed in your `build-chroot-dirs` setting;
     otherwise, it will bind-mount the `/dev` from outside the chroot.
-    
+
     Similarly, if you don’t have `/dev/pts` listed in
     `build-chroot-dirs`, Nix will mount a private `devpts` filesystem on
     the chroot’s `/dev/pts`.
@@ -82,7 +82,7 @@ features:
     such as attribute sets.
 
   - The `-A` flag now allows attribute names with dots in them, e.g.
-    
+
         $ nix-instantiate --eval '<nixos>' -A 'config.systemd.units."nscd.service".text'
 
   - The `--max-freed` option to `nix-store --gc` now accepts a unit
@@ -106,7 +106,7 @@ features:
     `unsafeGetAttrPos`, that returns the position of an attribute. This
     is used by Nixpkgs to provide location information in error
     messages, e.g.
-    
+
         $ nix-build '<nixpkgs>' -A libreoffice --argstr system x86_64-darwin
         error: the package ‘libreoffice-4.0.5.2’ in ‘.../applications/office/libreoffice/default.nix:263’
           is not supported on ‘x86_64-darwin’
@@ -116,12 +116,12 @@ features:
 
   - The binary tarball installer has been improved. You can now install
     Nix by running:
-    
+
         $ bash <(curl -L https://nixos.org/nix/install)
 
   - More evaluation errors include position information. For instance,
     selecting a missing attribute will print something like
-    
+
         error: attribute `nixUnstabl' missing, at /etc/nixos/configurations/misc/eelco/mandark.nix:216:15
 
   - The command `nix-setuid-helper` is gone.

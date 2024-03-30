@@ -145,4 +145,3 @@ which you may remove.
 > complete. macOS (Catalina+) directly controls root directories and its
 > read-only root will prevent you from manually deleting the empty `/nix`
 > mountpoint.
-

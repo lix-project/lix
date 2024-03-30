@@ -35,4 +35,3 @@ ktorrent-2.2.1/
 ktorrent-2.2.1/NEWS
 ...
 ```
-

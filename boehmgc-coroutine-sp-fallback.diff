@@ -9,7 +9,7 @@ index 0468aaec..b348d869 100644
 +  size_t stack_limit;
    if (!EXPECT(GC_thr_initialized, TRUE))
      GC_thr_init();
- 
+
 @@ -411,6 +412,19 @@ GC_INNER void GC_push_all_stacks(void)
              GC_push_all_stack_sections(lo, hi, p->traced_stack_sect);
            }
@@ -37,7 +37,7 @@ index edab6c22..f2c61282 100644
 @@ -2172,6 +2172,11 @@ GC_API void GC_CALL GC_win32_free_heap(void);
          (*GC_amiga_allocwrapper_do)(a,GC_malloc_atomic_ignore_off_page)
  #endif /* _AMIGA && !GC_AMIGA_MAKINGLIB */
- 
+
 +#if !__APPLE__
 +/* Patch doesn't work on apple */
 +#define NIX_BOEHM_PATCH_VERSION 1

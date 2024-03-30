@@ -32,4 +32,3 @@ This operation has the following options:
 $ nix-store --add-fixed sha256 ./hello-2.10.tar.gz
 /nix/store/3x7dwzq014bblazs7kq20p9hyzz0qh8g-hello-2.10.tar.gz
 ```
-

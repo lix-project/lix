@@ -167,7 +167,7 @@ nix flake lock "$flakeFollowsA" 2>&1 | grep "warning: input 'B' has an override 
 #
 # The message was
 #    error: input 'B/D' follows a non-existent input 'B/C/D'
-# 
+#
 # Note that for `B` to resolve its follow for `D`, it needs `C/D`, for which it needs to resolve the follow on `C` first.
 flakeFollowsOverloadA="$TEST_ROOT/follows/overload/flakeA"
 flakeFollowsOverloadB="$TEST_ROOT/follows/overload/flakeA/flakeB"

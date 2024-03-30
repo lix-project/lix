@@ -161,4 +161,3 @@ All comparison operators are implemented in terms of `<`, and the following equi
 Equivalent to `!`*b1* `||` *b2*.
 
 [Logical implication]: #logical-implication
-

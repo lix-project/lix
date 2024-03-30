@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Don't start the daemon
 source common/vars-and-functions.sh
 

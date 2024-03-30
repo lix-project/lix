@@ -147,4 +147,3 @@ expectStderr 1 nix eval -v --raw --expr "
     inputAddressed = true;
   }
 " | grepQuiet 'error.*The store object referred to by.*fromPath.* at .* is not input-addressed, but .*inputAddressed.* is set to .*true.*'
-

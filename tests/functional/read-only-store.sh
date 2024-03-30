@@ -9,7 +9,7 @@ clearStore
 happy () {
     # We can do a read-only query just fine with a read-only store
     nix --store local?read-only=true path-info $dummyPath
-    
+
     # We can "write" an already-present store-path a read-only store, because no IO is actually required
     nix-store --store local?read-only=true --add dummy
 }

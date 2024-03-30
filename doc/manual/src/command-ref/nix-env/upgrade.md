@@ -138,4 +138,3 @@ This is illustrated by the following examples:
     2.3a < 2.3c
     2.3pre1 < 2.3c
     2.3pre1 < 2.3q
-
