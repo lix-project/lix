@@ -215,7 +215,7 @@ struct DerivationGoal : public Goal
     DerivationGoal(const StorePath & drvPath, const BasicDerivation & drv,
         const OutputsSpec & wantedOutputs, Worker & worker,
         BuildMode buildMode = bmNormal);
-    virtual ~DerivationGoal();
+    virtual ~DerivationGoal() noexcept(false);
 
     void timedOut(Error && ex) override;
 

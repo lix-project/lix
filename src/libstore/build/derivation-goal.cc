@@ -108,7 +108,7 @@ DerivationGoal::DerivationGoal(const StorePath & drvPath, const BasicDerivation 
 }
 
 
-DerivationGoal::~DerivationGoal()
+DerivationGoal::~DerivationGoal() noexcept(false)
 {
     /* Careful: we should never ever throw an exception from a
        destructor. */

@@ -96,7 +96,7 @@ void handleDiffHook(
 const Path LocalDerivationGoal::homeDir = "/homeless-shelter";
 
 
-LocalDerivationGoal::~LocalDerivationGoal()
+LocalDerivationGoal::~LocalDerivationGoal() noexcept(false)
 {
     /* Careful: we should never ever throw an exception from a
        destructor. */

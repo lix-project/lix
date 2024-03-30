@@ -127,7 +127,7 @@ public:
         : worker(worker)
     { }
 
-    virtual ~Goal()
+    virtual ~Goal() noexcept(false)
     {
         trace("goal destroyed");
     }
