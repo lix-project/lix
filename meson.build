@@ -71,6 +71,7 @@ foreach optname : path_opts
   endif
 endforeach
 
+enable_docs = get_option('enable-docs')
 
 enable_tests = get_option('enable-tests')
 
@@ -357,7 +358,10 @@ endif
 subdir('src')
 subdir('scripts')
 subdir('misc')
-subdir('doc/manual')
+
+if enable_docs
+  subdir('doc/manual')
+endif
 
 if enable_tests
   subdir('tests/unit')

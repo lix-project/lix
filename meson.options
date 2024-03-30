@@ -46,3 +46,7 @@ option('state-dir', type : 'string', value : '/nix/var',
 option('log-dir', type : 'string', value : '/nix/var/log',
   description : 'path to store logs in for Nix',
 )
+
+option('enable-docs', type : 'boolean', value : true,
+  description : 'whether to build documentation',
+)
