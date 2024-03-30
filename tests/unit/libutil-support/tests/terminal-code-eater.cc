@@ -26,6 +26,7 @@ void TerminalCodeEater::feed(char c, std::function<void(char)> on_char)
         // Just eat \r, since it is part of clearing a line
         case '\r':
             return;
+        default: break;
         }
         if constexpr (DEBUG_EATER) {
             std::cerr << "eater uneat" << MaybeHexEscapedChar{c} << "\n";

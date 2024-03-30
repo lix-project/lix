@@ -157,7 +157,7 @@ size_t StoreReferences::size() const
     return (self ? 1 : 0) + others.size();
 }
 
-ContentAddressWithReferences ContentAddressWithReferences::withoutRefs(const ContentAddress & ca) noexcept
+ContentAddressWithReferences ContentAddressWithReferences::withoutRefs(const ContentAddress & ca)
 {
     return std::visit(overloaded {
         [&](const TextIngestionMethod &) -> ContentAddressWithReferences {
@@ -177,7 +177,7 @@ ContentAddressWithReferences ContentAddressWithReferences::withoutRefs(const Con
 }
 
 std::optional<ContentAddressWithReferences> ContentAddressWithReferences::fromPartsOpt(
-    ContentAddressMethod method, Hash hash, StoreReferences refs) noexcept
+    ContentAddressMethod method, Hash hash, StoreReferences refs)
 {
     return std::visit(overloaded {
         [&](TextIngestionMethod _) -> std::optional<ContentAddressWithReferences> {

@@ -1315,10 +1315,12 @@ StorePath LocalStore::addToStoreFromDump(Source & source0, std::string_view name
         auto oldSize = dump.size();
         constexpr size_t chunkSize = 65536;
         auto want = std::min(chunkSize, settings.narBufferSize - oldSize);
-        if (auto tmp = realloc(dumpBuffer.get(), oldSize + want)) {
-            dumpBuffer.release();
-            dumpBuffer.reset((char*) tmp);
+
+        auto *toRealloc = dumpBuffer.release();
+        if (auto realloced = realloc(toRealloc, oldSize + want)) {
+            dumpBuffer.reset((char*) realloced);
         } else {
+            free(toRealloc);
             throw std::bad_alloc();
         }
         auto got = 0;
