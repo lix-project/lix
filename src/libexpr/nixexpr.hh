@@ -243,6 +243,7 @@ struct Formal
     Expr * def;
 };
 
+/** Attribute set destructuring in arguments of a lambda, if present */
 struct Formals
 {
     typedef std::vector<Formal> Formals_;
@@ -270,9 +271,18 @@ struct Formals
 
 struct ExprLambda : Expr
 {
+    /** Where the lambda is defined in Nix code. May be falsey if the
+     * position is not known. */
     PosIdx pos;
+    /** Name of the lambda. This is set if the lambda is defined in a
+     * let-expression or an attribute set, such that there is a name.
+     * Lambdas may have a falsey symbol as the name if they are anonymous */
     Symbol name;
+    /** The argument name of this particular lambda. Is a falsey symbol if there
+     * is no such argument. */
     Symbol arg;
+    /** Formals are present when the lambda destructures an attr set as
+     * argument, with or without ellipsis */
     Formals * formals;
     Expr * body;
     ExprLambda(PosIdx pos, Symbol arg, Formals * formals, Expr * body)
