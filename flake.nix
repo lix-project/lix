@@ -346,7 +346,9 @@
               officialRelease = false;
             }).overrideAttrs (prev: {
               # Required for clang-tidy checks
-              buildInputs = prev.buildInputs ++ lib.optionals (stdenv.cc.isClang) [ pkgs.llvmPackages.llvm pkgs.llvmPackages.clang-unwrapped.dev ];
+              buildInputs = prev.buildInputs
+                ++ [ pkgs.just ]
+                ++ lib.optionals (stdenv.cc.isClang) [ pkgs.llvmPackages.llvm pkgs.llvmPackages.clang-unwrapped.dev ];
               nativeBuildInputs = prev.nativeBuildInputs
                 ++ lib.optional (stdenv.cc.isClang && !stdenv.buildPlatform.isDarwin) pkgs.buildPackages.bear
                 # Required for clang-tidy checks
