@@ -179,7 +179,7 @@ struct LocalDerivationGoal : public DerivationGoal
 
     using DerivationGoal::DerivationGoal;
 
-    virtual ~LocalDerivationGoal() override;
+    virtual ~LocalDerivationGoal() noexcept(false) override;
 
     /**
      * Whether we need to perform hash rewriting if there are valid output paths.

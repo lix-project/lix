@@ -108,7 +108,7 @@ struct StoreConfig : public Config
 
     static StringSet getDefaultSystemFeatures();
 
-    virtual ~StoreConfig() { }
+    virtual ~StoreConfig() noexcept(false) { }
 
     /**
      * The name of this type of store.
@@ -220,7 +220,7 @@ public:
      */
     virtual void init() {};
 
-    virtual ~Store() { }
+    virtual ~Store() noexcept(false) { }
 
     virtual std::string getUri() = 0;
 

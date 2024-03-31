@@ -255,7 +255,7 @@ struct ContentAddressWithReferences
      * Create a `ContentAddressWithReferences` from a mere
      * `ContentAddress`, by claiming no references.
      */
-    static ContentAddressWithReferences withoutRefs(const ContentAddress &) noexcept;
+    static ContentAddressWithReferences withoutRefs(const ContentAddress &);
 
     /**
      * Create a `ContentAddressWithReferences` from 3 parts:
@@ -270,7 +270,7 @@ struct ContentAddressWithReferences
      * returns for invalid combinations.
      */
     static std::optional<ContentAddressWithReferences> fromPartsOpt(
-        ContentAddressMethod method, Hash hash, StoreReferences refs) noexcept;
+        ContentAddressMethod method, Hash hash, StoreReferences refs);
 
     ContentAddressMethod getMethod() const;
 

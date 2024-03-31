@@ -50,6 +50,7 @@ InputAccessor::DirEntries SourcePath::readDirectory() const
         case DT_REG: type = InputAccessor::Type::tRegular; break;
         case DT_LNK: type = InputAccessor::Type::tSymlink; break;
         case DT_DIR: type = InputAccessor::Type::tDirectory; break;
+        default: break; // unknown type
         }
         res.emplace(entry.name, type);
     }

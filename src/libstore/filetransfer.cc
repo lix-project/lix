@@ -142,7 +142,7 @@ struct curlFileTransfer : public FileTransfer
         template<class T>
         void fail(T && e)
         {
-            failEx(std::make_exception_ptr(std::move(e)));
+            failEx(std::make_exception_ptr(std::forward<T>(e)));
         }
 
         LambdaSink finalSink;
@@ -270,6 +270,9 @@ struct curlFileTransfer : public FileTransfer
                 return 0;
             auto count = std::min(size * nitems, request.data->length() - readOffset);
             assert(count);
+            // Lint: this is turning a string into a byte array to hand to
+            // curl, which is fine.
+            // NOLINTNEXTLINE(bugprone-not-null-terminated-result)
             memcpy(buffer, request.data->data() + readOffset, count);
             readOffset += count;
             return count;

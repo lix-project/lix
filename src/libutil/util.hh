@@ -335,7 +335,7 @@ public:
     AutoCloseFD(AutoCloseFD&& fd);
     ~AutoCloseFD();
     AutoCloseFD& operator =(const AutoCloseFD & fd) = delete;
-    AutoCloseFD& operator =(AutoCloseFD&& fd);
+    AutoCloseFD& operator =(AutoCloseFD&& fd) noexcept(false);
     int get() const;
     explicit operator bool() const;
     int release();
@@ -384,7 +384,7 @@ class Pid
 public:
     Pid();
     Pid(pid_t pid);
-    ~Pid();
+    ~Pid() noexcept(false);
     void operator =(pid_t pid);
     operator pid_t();
     int kill();

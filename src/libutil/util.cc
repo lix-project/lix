@@ -947,7 +947,7 @@ Pid::Pid(pid_t pid)
 }
 
 
-Pid::~Pid()
+Pid::~Pid() noexcept(false)
 {
     if (pid != -1) kill();
 }

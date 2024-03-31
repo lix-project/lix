@@ -32,13 +32,13 @@ Gen<StorePathName> Arbitrary<StorePathName>::arbitrary()
     for (size_t c = 0; c < len; ++c) {
         switch (auto i = *gen::inRange<uint8_t>(0, 10 + 2 * 26 + 6)) {
             case 0 ... 9:
-                pre += '0' + i;
+                pre += static_cast<uint8_t>('0' + i);
                 break;
             case 10 ... 35:
-                pre += 'A' + (i - 10);
+                pre += static_cast<uint8_t>('A' + (i - 10));
                 break;
             case 36 ... 61:
-                pre += 'a' + (i - 36);
+                pre += static_cast<uint8_t>('a' + (i - 36));
                 break;
             case 62:
                 pre += '+';
