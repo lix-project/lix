@@ -421,6 +421,7 @@
                   # FIXME(Qyriad): remove once the migration to Meson is complete.
                   pkgs.buildPackages.meson
                   pkgs.buildPackages.ninja
+                  pkgs.buildPackages.cmake
 
                   pkgs.buildPackages.clangbuildanalyzer
                 ];
