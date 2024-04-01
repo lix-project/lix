@@ -5,9 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11-small";
     nixpkgs-regression.url = "github:NixOS/nixpkgs/215d4d0fd80ca5163643b03a33fde804a29cc1e2";
     pre-commit-hooks = {
-      # Can go back to `cachix/git-hooks.nix` when this is merged:
-      # https://github.com/cachix/git-hooks.nix/pull/401
-      url = "github:9999years/git-hooks.nix/add-default-pre-commit-hooks";
+      url = "github:cachix/git-hooks.nix";
       inputs = {
         flake-compat.follows = "flake-compat";
         nixpkgs.follows = "nixpkgs";

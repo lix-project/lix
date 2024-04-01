@@ -102,16 +102,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1711562502,
-        "narHash": "sha256-SLo1yf/lfozph818VME9Y56uhaZWY0juZcj/qJZPPrs=",
-        "owner": "9999years",
+        "lastModified": 1711981679,
+        "narHash": "sha256-pnbHEXJOdGkPrHBdkZLv/a2V09On+V3J4aPE/BfAJC8=",
+        "owner": "cachix",
         "repo": "git-hooks.nix",
-        "rev": "d2f6f9376c38fb0c48526720793a17f10cd3ac10",
+        "rev": "f3bb95498eaaa49a93bacaf196cdb6cf8e872cdf",
         "type": "github"
       },
       "original": {
-        "owner": "9999years",
-        "ref": "add-default-pre-commit-hooks",
+        "owner": "cachix",
         "repo": "git-hooks.nix",
         "type": "github"
       }
