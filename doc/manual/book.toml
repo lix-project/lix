@@ -7,6 +7,15 @@ additional-js = ["redirects.js"]
 edit-url-template = "https://github.com/NixOS/nix/tree/master/doc/manual/{path}"
 git-repository-url = "https://github.com/NixOS/nix"
 
+# Handles replacing @docroot@ with a path to ./src relative to that markdown file.
+[preprocessor.docroot]
+renderers = ["html", "linkcheck"]
+command = "python3 doc/manual/docroot.py"
+# I would have thought that @docroot@ replacement had to be done *before*
+# the link preprocessor gets its hands on this book, but nope it's actually
+# the opposite.
+after = ["links"]
+
 [preprocessor.anchors]
 renderers = ["html"]
 command = "jq --from-file doc/manual/anchors.jq"

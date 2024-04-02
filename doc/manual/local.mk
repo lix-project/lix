@@ -159,16 +159,12 @@ doc/manual/generated/man1/nix3-manpages: $(d)/src/command-ref/new-cli
 	done
 	@touch $@
 
-$(docdir)/manual/index.html: $(MANUAL_SRCS) $(d)/book.toml $(d)/anchors.jq $(d)/custom.css $(d)/src/SUMMARY.md $(d)/src/command-ref/new-cli $(d)/src/contributing/experimental-feature-descriptions.md $(d)/src/command-ref/conf-file.md $(d)/src/language/builtins.md $(d)/src/language/builtin-constants.md $(d)/src/release-notes/rl-next.md
+$(docdir)/manual/index.html: $(MANUAL_SRCS) $(d)/book.toml $(d)/anchors.jq $(d)/custom.css $(d)/src/SUMMARY.md $(d)/src/command-ref/new-cli $(d)/src/contributing/experimental-feature-descriptions.md $(d)/src/command-ref/conf-file.md $(d)/src/language/builtins.md $(d)/src/language/builtin-constants.md $(d)/src/release-notes/rl-next.md $(d)/docroot.py
 	$(trace-gen) \
 		tmp="$$(mktemp -d)"; \
 		cp -r doc/manual "$$tmp"; \
 		find "$$tmp" -name '*.md' | while read -r file; do \
 			doc/manual/process-includes.sh $$file $$file; \
-		done; \
-		find "$$tmp" -name '*.md' | while read -r file; do \
-			docroot="$$(realpath --relative-to="$$(dirname "$$file")" $$tmp/manual/src)"; \
-			sed -i "s,@docroot@,$$docroot,g" "$$file"; \
 		done; \
 		set -euo pipefail; \
 		RUST_LOG=warn mdbook build "$$tmp/manual" -d $(DESTDIR)$(docdir)/manual.tmp 2>&1 \
