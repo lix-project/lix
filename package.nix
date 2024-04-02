@@ -316,6 +316,6 @@ in stdenv.mkDerivation (finalAttrs: {
   meta.platforms = lib.platforms.unix;
 
   passthru.perl-bindings = pkgs.callPackage ./perl {
-    inherit fileset stdenv;
+    inherit fileset stdenv buildWithMeson;
   };
 })
