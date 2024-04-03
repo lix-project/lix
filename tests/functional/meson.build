@@ -181,3 +181,5 @@ foreach script : functional_tests_scripts
     timeout : 300,
   )
 endforeach
+
+subdir('repl_characterization')
