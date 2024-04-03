@@ -25,9 +25,37 @@ subdir('ca')
 # Just configures `dyn-drv/config.nix.in`. Same as above.
 subdir('dyn-drv')
 
+subdir('plugins')
+subdir('test-libstoreconsumer')
+
 functional_tests_scripts = [
   'init.sh',
   'test-infra.sh',
+  'ca/build.sh',
+  'ca/build-cache.sh',
+  'ca/concurrent-builds.sh',
+  'ca/derivation-json.sh',
+  'ca/duplicate-realisation-in-closure.sh',
+  'ca/eval-store.sh',
+  'ca/gc.sh',
+  'ca/import-derivation.sh',
+  'ca/new-build-cmd.sh',
+  'ca/nix-copy.sh',
+  'ca/nix-run.sh',
+  'ca/nix-shell.sh',
+  'ca/post-hook.sh',
+  'ca/recursive.sh',
+  'ca/repl.sh',
+  'ca/selfref-gc.sh',
+  'ca/signatures.sh',
+  'ca/substitute.sh',
+  'ca/why-depends.sh',
+  'dyn-drv/text-hashed-output.sh',
+  'dyn-drv/recursive-mod-json.sh',
+  'dyn-drv/build-built-drv.sh',
+  'dyn-drv/eval-outputOf.sh',
+  'dyn-drv/dep-built-drv.sh',
+  'dyn-drv/old-daemon-error-hack.sh',
   'flakes/flakes.sh',
   'flakes/develop.sh',
   'flakes/develop-r8854.sh',
@@ -152,6 +180,8 @@ functional_tests_scripts = [
   'read-only-store.sh',
   'nested-sandboxing.sh',
   'debugger.sh',
+  'plugins.sh',
+  'test-libstoreconsumer.sh',
 ]
 
 # TODO(Qyriad): this will hopefully be able to be removed when we remove the autoconf+Make
@@ -165,6 +195,21 @@ foreach script : functional_tests_scripts
   # Turns, e.g., `tests/functional/flakes/show.sh` into a Meson test target called
   # `functional-flakes-show`.
   name = 'functional-@0@'.format(fs.replace_suffix(script, '')).replace('/', '-')
+
+  extra_deps = []
+  if script == 'plugins.sh'
+    extra_deps += [
+      # Set in tests/functional/plugins/meson.build
+      libplugintest,
+      libplugintestfail,
+    ]
+  elif script == 'test-libstoreconsumer.sh'
+    extra_deps += [
+      # Set in tests/functional/test-libstoreconsumer/meson.build
+      libstoreconsumer_tester,
+    ]
+  endif
+
   test(
     name,
     python,
@@ -179,5 +224,7 @@ foreach script : functional_tests_scripts
     # some tests take 15+ seconds even on an otherwise idle machine, on a loaded machine
     # this can easily drive them to failure. give them more time, 5min rather than 30sec
     timeout : 300,
+    # Used for target dependency/ordering tracking, not adding compiler flags or anything.
+    depends : extra_deps,
   )
 endforeach
