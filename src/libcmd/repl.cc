@@ -30,6 +30,7 @@
 #include "signals.hh"
 #include "print.hh"
 #include "progress-bar.hh"
+#include "gc-small-vector.hh"
 
 #if HAVE_BOEHMGC
 #define GC_INCLUDE_NEW
@@ -117,6 +118,45 @@ struct NixRepl
     Expr * parseString(std::string s);
     void evalString(std::string s, Value & v);
     void loadDebugTraceEnv(DebugTrace & dt);
+
+    /**
+     * Load the `repl-overlays` and add the resulting AttrSet to the top-level
+     * bindings.
+     */
+    void loadReplOverlays();
+
+    /**
+     * Get a list of each of the `repl-overlays` (parsed and evaluated).
+     */
+    Value * replOverlays();
+
+    /**
+     * Get the Nix function that composes the `repl-overlays` together.
+     */
+    Value * getReplOverlaysEvalFunction();
+
+    /**
+     * Cached return value of `getReplOverlaysEvalFunction`.
+     *
+     * Note: This is `shared_ptr` to avoid garbage collection.
+     */
+    std::shared_ptr<Value *> replOverlaysEvalFunction =
+        std::allocate_shared<Value *>(traceable_allocator<Value *>(), nullptr);
+
+    /**
+     * Get the `info` AttrSet that's passed as the first argument to each
+     * of the `repl-overlays`.
+     */
+    Value * replInitInfo();
+
+    /**
+     * Get the current top-level bindings as an AttrSet.
+     */
+    Value * bindingsToAttrs();
+    /**
+     * Parse a file, evaluate its result, and force the resulting value.
+     */
+    Value * evalFile(SourcePath & path);
 
     void printValue(std::ostream & str,
                               Value & v,
@@ -770,14 +810,114 @@ void NixRepl::loadFiles()
     loadedFiles.clear();
 
     for (auto & i : old) {
-        notice("Loading '%1%'...", i);
+        notice("Loading '%1%'...", Magenta(i));
         loadFile(i);
     }
 
     for (auto & [i, what] : getValues()) {
-        notice("Loading installable '%1%'...", what);
+        notice("Loading installable '%1%'...", Magenta(what));
         addAttrsToScope(*i);
     }
+
+    loadReplOverlays();
+}
+
+void NixRepl::loadReplOverlays()
+{
+    if (!evalSettings.replOverlays) {
+        return;
+    }
+
+    notice("Loading '%1%'...", Magenta("repl-overlays"));
+    auto replInitFilesFunction = getReplOverlaysEvalFunction();
+
+    Value &newAttrs(*state->allocValue());
+    SmallValueVector<3> args = {replInitInfo(), bindingsToAttrs(), replOverlays()};
+    state->callFunction(
+        *replInitFilesFunction,
+        args.size(),
+        args.data(),
+        newAttrs,
+        replInitFilesFunction->determinePos(noPos)
+    );
+
+    addAttrsToScope(newAttrs);
+}
+
+Value * NixRepl::getReplOverlaysEvalFunction()
+{
+    if (replOverlaysEvalFunction && *replOverlaysEvalFunction) {
+        return *replOverlaysEvalFunction;
+    }
+
+    auto evalReplInitFilesPath = CanonPath::root + "repl-overlays.nix";
+    *replOverlaysEvalFunction = state->allocValue();
+    auto code =
+        #include "repl-overlays.nix.gen.hh"
+        ;
+    auto expr = state->parseExprFromString(
+        code,
+        SourcePath(evalReplInitFilesPath),
+        state->staticBaseEnv
+    );
+
+    state->eval(expr, **replOverlaysEvalFunction);
+
+    return *replOverlaysEvalFunction;
+}
+
+Value * NixRepl::replOverlays()
+{
+    Value * replInits(state->allocValue());
+    state->mkList(*replInits, evalSettings.replOverlays.get().size());
+    Value ** replInitElems = replInits->listElems();
+
+    size_t i = 0;
+    for (auto path : evalSettings.replOverlays.get()) {
+        debug("Loading '%1%' path '%2%'...", "repl-overlays", path);
+        SourcePath sourcePath((CanonPath(path)));
+        auto replInit = evalFile(sourcePath);
+
+        if (!replInit->isLambda()) {
+            state->error<TypeError>(
+                "Expected `repl-overlays` to be a lambda but found %1%: %2%",
+                showType(*replInit),
+                ValuePrinter(*state, *replInit, errorPrintOptions)
+            )
+            .atPos(replInit->determinePos(noPos))
+            .debugThrow();
+        }
+
+        if (replInit->lambda.fun->hasFormals()
+            && !replInit->lambda.fun->formals->ellipsis) {
+            state->error<TypeError>(
+                "Expected first argument of %1% to have %2% to allow future versions of Lix to add additional attributes to the argument",
+                "repl-overlays",
+                "..."
+            )
+                .atPos(replInit->determinePos(noPos))
+                .debugThrow();
+        }
+
+        replInitElems[i] = replInit;
+        i++;
+    }
+
+
+    return replInits;
+}
+
+Value * NixRepl::replInitInfo()
+{
+    auto builder = state->buildBindings(2);
+
+    Value * currentSystem(state->allocValue());
+    currentSystem->mkString(evalSettings.getCurrentSystem());
+    builder.insert(state->symbols.create("currentSystem"), currentSystem);
+
+    Value * info(state->allocValue());
+    info->mkAttrs(builder.finish());
+    return info;
 }
 
 
@@ -810,6 +950,18 @@ void NixRepl::addVarToScope(const Symbol name, Value & v)
     varNames.emplace(state->symbols[name]);
 }
 
+Value * NixRepl::bindingsToAttrs()
+{
+    auto builder = state->buildBindings(staticEnv->vars.size());
+    for (auto & [symbol, displacement] : staticEnv->vars) {
+        builder.insert(symbol, env->values[displacement]);
+    }
+
+    Value * attrs(state->allocValue());
+    attrs->mkAttrs(builder.finish());
+    return attrs;
+}
+
 
 Expr * NixRepl::parseString(std::string s)
 {
@@ -822,6 +974,15 @@ void NixRepl::evalString(std::string s, Value & v)
     Expr * e = parseString(s);
     e->eval(*state, *env, v);
     state->forceValue(v, v.determinePos(noPos));
+}
+
+Value * NixRepl::evalFile(SourcePath & path)
+{
+    auto expr = state->parseExprFromFile(path, staticEnv);
+    Value * result(state->allocValue());
+    expr->eval(*state, *env, *result);
+    state->forceValue(*result, result->determinePos(noPos));
+    return result;
 }
 
 

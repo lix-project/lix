@@ -1,0 +1,7 @@
+Check that multiple `repl-overlays` can compose together
+@args --repl-overlays
+@args "${PWD}/extra_data/repl-overlays-compose-1.nix ${PWD}/extra_data/repl-overlays-compose-2.nix"
+  nix-repl> var
+  "abc"
+  nix-repl> varUsingFinal
+  "final value is: puppy"
