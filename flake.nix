@@ -71,6 +71,9 @@
             };
             overlays = [
               (overlayFor (p: p.${stdenv}))
+              (final: prev: {
+                nixfmt = final.callPackage ./nix-support/nixfmt.nix {};
+              })
             ];
 
             config.permittedInsecurePackages = [ "nix-2.13.6" ];
@@ -296,7 +299,11 @@
             };
             treefmt = {
               enable = true;
-              settings.formatters = [ ];
+              settings.formatters =
+                let
+                  pkgs = nixpkgsFor.${system}.native;
+                in
+                [ pkgs.nixfmt ];
             };
           };
         }) pre-commit-hooks.lib;
@@ -366,7 +373,7 @@
             }).overrideAttrs (prev: {
               # Required for clang-tidy checks
               buildInputs = prev.buildInputs
-                ++ [ pkgs.just ]
+                ++ [ pkgs.just pkgs.nixfmt ]
                 ++ lib.optional (pre-commit ? enabledPackages) pre-commit.enabledPackages
                 ++ lib.optionals (stdenv.cc.isClang) [ pkgs.llvmPackages.llvm pkgs.llvmPackages.clang-unwrapped.dev ];
               nativeBuildInputs = prev.nativeBuildInputs
