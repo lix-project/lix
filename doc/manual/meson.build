@@ -132,10 +132,19 @@ nix3_cli_json = custom_target(
   capture : true,
   output : 'nix.json',
 )
-
-# Creates nix3_cli_files custom target variable,
-# which outputs the entire src/command-ref/new-cli directory.
-subdir('src/command-ref')
+nix3_cli_files = custom_target(
+  command : nix_eval_for_docs + [
+    '--write-to', '@OUTPUT@',
+    '--expr',
+    'import @INPUT1@ true (builtins.readFile @INPUT0@)',
+  ],
+  input : [
+    nix3_cli_json,
+    'generate-manpage.nix',
+    'utils.nix',
+  ],
+  output : 'new-cli',
+)
 
 nix3_manpages = [
   'nix3-build',
@@ -236,7 +245,6 @@ foreach page : nix3_manpages
       '@OUTPUT@.tmp',
       '@OUTPUT@',
     ],
-    # nix3_cli_files set in doc/manual/src/command-ref/meson.build.
     input : nix3_cli_files,
     output : page + '.1',
     install : true,
