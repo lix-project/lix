@@ -5,7 +5,13 @@ in
 
 builtinsInfo:
 let
-  showBuiltin = name: { doc, type, impure-only }:
+  showBuiltin =
+    name:
+    {
+      doc,
+      type,
+      impure-only,
+    }:
     let
       type' = optionalString (type != null) " (${type})";
 

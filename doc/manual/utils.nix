@@ -5,10 +5,15 @@ rec {
 
   concatStrings = concatStringsSep "";
 
-  attrsToList = a:
-    map (name: { inherit name; value = a.${name}; }) (builtins.attrNames a);
+  attrsToList =
+    a:
+    map (name: {
+      inherit name;
+      value = a.${name};
+    }) (builtins.attrNames a);
 
-  replaceStringsRec = from: to: string:
+  replaceStringsRec =
+    from: to: string:
     # recursively replace occurrences of `from` with `to` within `string`
     # example:
     #     replaceStringRec "--" "-" "hello-----world"
@@ -16,14 +21,16 @@ rec {
     let
       replaced = replaceStrings [ from ] [ to ] string;
     in
-      if replaced == string then string else replaceStringsRec from to replaced;
+    if replaced == string then string else replaceStringsRec from to replaced;
 
   squash = replaceStringsRec "\n\n\n" "\n\n";
 
-  trim = string:
+  trim =
+    string:
     # trim trailing spaces and squash non-leading spaces
     let
-      trimLine = line:
+      trimLine =
+        line:
         let
           # separate leading spaces from the rest
           parts = split "(^ *)" line;
@@ -31,76 +38,102 @@ rec {
           rest = elemAt parts 2;
           # drop trailing spaces
           body = head (split " *$" rest);
-        in spaces + replaceStringsRec "  " " " body;
-    in concatStringsSep "\n" (map trimLine (splitLines string));
+        in
+        spaces + replaceStringsRec "  " " " body;
+    in
+    concatStringsSep "\n" (map trimLine (splitLines string));
 
   # FIXME: O(n^2)
-  unique = foldl' (acc: e: if elem e acc then acc else acc ++ [ e ]) [];
+  unique = foldl' (acc: e: if elem e acc then acc else acc ++ [ e ]) [ ];
 
   nameValuePair = name: value: { inherit name value; };
 
-  filterAttrs = pred: set:
-    listToAttrs (concatMap (name: let v = set.${name}; in if pred name v then [(nameValuePair name v)] else []) (attrNames set));
+  filterAttrs =
+    pred: set:
+    listToAttrs (
+      concatMap (
+        name:
+        let
+          v = set.${name};
+        in
+        if pred name v then [ (nameValuePair name v) ] else [ ]
+      ) (attrNames set)
+    );
 
   optionalString = cond: string: if cond then string else "";
 
-  showSetting = { inlineHTML }: name: { description, documentDefault, defaultValue, aliases, value, experimentalFeature }:
+  showSetting =
+    { inlineHTML }:
+    name:
+    {
+      description,
+      documentDefault,
+      defaultValue,
+      aliases,
+      value,
+      experimentalFeature,
+    }:
     let
       result = squash ''
-          - ${if inlineHTML
-              then ''<span id="conf-${name}">[`${name}`](#conf-${name})</span>''
-              else ''`${name}`''}
+        - ${
+          if inlineHTML then ''<span id="conf-${name}">[`${name}`](#conf-${name})</span>'' else ''`${name}`''
+        }
 
-          ${indent "  " body}
-        '';
+        ${indent "  " body}
+      '';
 
       experimentalFeatureNote = optionalString (experimentalFeature != null) ''
-          > **Warning**
-          > This setting is part of an
-          > [experimental feature](@docroot@/contributing/experimental-features.md).
+        > **Warning**
+        > This setting is part of an
+        > [experimental feature](@docroot@/contributing/experimental-features.md).
 
-          To change this setting, you need to make sure the corresponding experimental feature,
-          [`${experimentalFeature}`](@docroot@/contributing/experimental-features.md#xp-feature-${experimentalFeature}),
-          is enabled.
-          For example, include the following in [`nix.conf`](#):
+        To change this setting, you need to make sure the corresponding experimental feature,
+        [`${experimentalFeature}`](@docroot@/contributing/experimental-features.md#xp-feature-${experimentalFeature}),
+        is enabled.
+        For example, include the following in [`nix.conf`](#):
 
-          ```
-          extra-experimental-features = ${experimentalFeature}
-          ${name} = ...
-          ```
-        '';
+        ```
+        extra-experimental-features = ${experimentalFeature}
+        ${name} = ...
+        ```
+      '';
 
       # separate body to cleanly handle indentation
       body = ''
-          ${description}
+        ${description}
 
-          ${experimentalFeatureNote}
+        ${experimentalFeatureNote}
 
-          **Default:** ${showDefault documentDefault defaultValue}
+        **Default:** ${showDefault documentDefault defaultValue}
 
-          ${showAliases aliases}
-        '';
+        ${showAliases aliases}
+      '';
 
-      showDefault = documentDefault: defaultValue:
+      showDefault =
+        documentDefault: defaultValue:
         if documentDefault then
           # a StringMap value type is specified as a string, but
           # this shows the value type. The empty stringmap is `null` in
           # JSON, but that converts to `{ }` here.
-          if defaultValue == "" || defaultValue == [] || isAttrs defaultValue
-            then "*empty*"
-            else if isBool defaultValue then
-              if defaultValue then "`true`" else "`false`"
-            else "`${toString defaultValue}`"
-        else "*machine-specific*";
+          if defaultValue == "" || defaultValue == [ ] || isAttrs defaultValue then
+            "*empty*"
+          else if isBool defaultValue then
+            if defaultValue then "`true`" else "`false`"
+          else
+            "`${toString defaultValue}`"
+        else
+          "*machine-specific*";
 
-      showAliases = aliases:
-          optionalString (aliases != [])
-            "**Deprecated alias:** ${(concatStringsSep ", " (map (s: "`${s}`") aliases))}";
+      showAliases =
+        aliases:
+        optionalString (aliases != [ ])
+          "**Deprecated alias:** ${(concatStringsSep ", " (map (s: "`${s}`") aliases))}";
+    in
+    result;
 
-    in result;
+  indent =
+    prefix: s: concatStringsSep "\n" (map (x: if x == "" then x else "${prefix}${x}") (splitLines s));
 
-  indent = prefix: s:
-    concatStringsSep "\n" (map (x: if x == "" then x else "${prefix}${x}") (splitLines s));
-
-  showSettings = args: settingsInfo: concatStrings (attrValues (mapAttrs (showSetting args) settingsInfo));
+  showSettings =
+    args: settingsInfo: concatStrings (attrValues (mapAttrs (showSetting args) settingsInfo));
 }

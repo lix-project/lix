@@ -1,6 +1,11 @@
 # Upstreaming here, can be deleted once it's upstreamed:
 # https://github.com/NixOS/nixpkgs/pull/297102
-{ stdenv, lib, cmake, fetchFromGitHub }:
+{
+  stdenv,
+  lib,
+  cmake,
+  fetchFromGitHub,
+}:
 stdenv.mkDerivation (finalAttrs: {
   pname = "clangbuildanalyzer";
   version = "1.5.0";
@@ -12,9 +17,7 @@ stdenv.mkDerivation (finalAttrs: {
     sha256 = "sha256-kmgdk634zM0W0OoRoP/RzepArSipa5bNqdVgdZO9gxo=";
   };
 
-  nativeBuildInputs = [
-    cmake
-  ];
+  nativeBuildInputs = [ cmake ];
 
   meta = {
     description = "Tool for analyzing Clang's -ftrace-time files";

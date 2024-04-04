@@ -1,7 +1,4 @@
-{
-  rustPlatform,
-  lib
-}:
+{ rustPlatform, lib }:
 
 rustPlatform.buildRustPackage {
   name = "lix-doc";
