@@ -1067,15 +1067,27 @@ void RemoteStore::ConnectionHandle::withFramedSink(std::function<void(Sink & sin
 
     Finally joinStderrThread([&]()
     {
-        stderrThread.join();
-        if (ex) {
-            std::rethrow_exception(ex);
+        if (stderrThread.joinable()) {
+            stderrThread.join();
+            if (ex) {
+                try {
+                    std::rethrow_exception(ex);
+                } catch (...) {
+                    ignoreException();
+                }
+            }
         }
     });
 
-    FramedSink sink((*this)->to, ex);
-    fun(sink);
-    sink.flush();
+    {
+        FramedSink sink((*this)->to, ex);
+        fun(sink);
+        sink.flush();
+    }
+
+    stderrThread.join();
+    if (ex)
+        std::rethrow_exception(ex);
 }
 
 }
