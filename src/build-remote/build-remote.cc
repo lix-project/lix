@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <set>
 #include <memory>
+#include <string_view>
 #include <tuple>
 #include <iomanip>
 #if __APPLE__
@@ -20,9 +21,9 @@
 #include "local-store.hh"
 #include "legacy.hh"
 #include "experimental-features.hh"
+#include "hash.hh"
 
 using namespace nix;
-using std::cin;
 
 static void handleAlarm(int sig) {
 }
@@ -35,9 +36,19 @@ std::string escapeUri(std::string uri)
 
 static std::string currentLoad;
 
+static std::string makeLockFilename(const std::string & storeUri) {
+    // We include 48 bytes of escaped URI to give an idea of what the lock
+    // is on, then 16 bytes of hash to disambiguate.
+    // This avoids issues with the escaped URI being very long and causing
+    // path too long errors, while also avoiding any possibility of collision
+    // caused by simple truncation.
+    auto hash = hashString(HashType::htSHA256, storeUri).to_string(Base::Base32, false);
+    return escapeUri(storeUri).substr(0, 48) + "-" + hash.substr(0, 16);
+}
+
 static AutoCloseFD openSlotLock(const Machine & m, uint64_t slot)
 {
-    return openLockFile(fmt("%s/%s-%d", currentLoad, escapeUri(m.storeUri), slot), true);
+    return openLockFile(fmt("%s/%s-%d", currentLoad, makeLockFilename(m.storeUri), slot), true);
 }
 
 static bool allSupportedLocally(Store & store, const std::set<std::string>& requiredFeatures) {
@@ -263,7 +274,9 @@ connected:
         auto inputs = readStrings<PathSet>(source);
         auto wantedOutputs = readStrings<StringSet>(source);
 
-        AutoCloseFD uploadLock = openLockFile(currentLoad + "/" + escapeUri(storeUri) + ".upload-lock", true);
+        auto lockFileName = currentLoad + "/" + makeLockFilename(storeUri) + ".upload-lock";
+
+        AutoCloseFD uploadLock = openLockFile(lockFileName, true);
 
         {
             Activity act(*logger, lvlTalkative, actUnknown, fmt("waiting for the upload lock to '%s'", storeUri));
