@@ -39,6 +39,7 @@ libutil_tests_sources = files(
   'libutil/closure.cc',
   'libutil/compression.cc',
   'libutil/config.cc',
+  'libutil/escape-string.cc',
   'libutil/git.cc',
   'libutil/hash.cc',
   'libutil/hilite.cc',

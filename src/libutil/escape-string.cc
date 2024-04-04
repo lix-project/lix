@@ -11,30 +11,51 @@
 namespace nix {
 
 std::ostream &
-escapeString(std::ostream & str, const std::string_view string, size_t maxLength, bool ansiColors)
+escapeString(std::ostream & output, std::string_view string, EscapeStringOptions options)
 {
     size_t charsPrinted = 0;
-    if (ansiColors)
-        str << ANSI_MAGENTA;
-    str << "\"";
+    if (options.outputAnsiColors) {
+        output << ANSI_MAGENTA;
+    }
+    output << "\"";
     for (auto i = string.begin(); i != string.end(); ++i) {
-        if (charsPrinted >= maxLength) {
-            str << "\" ";
-            printElided(str, string.length() - charsPrinted, "byte", "bytes", ansiColors);
-            return str;
+        if (charsPrinted >= options.maxLength) {
+            output << "\" ";
+            printElided(
+                output, string.length() - charsPrinted, "byte", "bytes", options.outputAnsiColors
+            );
+            return output;
         }
-        if (*i == '\"' || *i == '\\') str << "\\" << *i;
-        else if (*i == '\n') str << "\\n";
-        else if (*i == '\r') str << "\\r";
-        else if (*i == '\t') str << "\\t";
-        else if (*i == '$' && *(i+1) == '{') str << "\\" << *i;
-        else str << *i;
+
+        if (*i == '\"' || *i == '\\') {
+            output << "\\" << *i;
+        } else if (*i == '\n') {
+            output << "\\n";
+        } else if (*i == '\r') {
+            output << "\\r";
+        } else if (*i == '\t') {
+            output << "\\t";
+        } else if (*i == '$' && *(i + 1) == '{') {
+            output << "\\" << *i;
+        } else if (options.escapeNonPrinting && !isprint(*i)) {
+            output << MaybeHexEscapedChar{*i};
+        } else {
+            output << *i;
+        }
         charsPrinted++;
     }
-    str << "\"";
-    if (ansiColors)
-        str << ANSI_NORMAL;
-    return str;
+    output << "\"";
+    if (options.outputAnsiColors) {
+        output << ANSI_NORMAL;
+    }
+    return output;
+}
+
+std::string escapeString(std::string_view s, EscapeStringOptions options)
+{
+    std::ostringstream output;
+    escapeString(output, s, options);
+    return output.str();
 }
 
 }; // namespace nix
