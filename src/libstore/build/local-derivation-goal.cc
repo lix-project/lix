@@ -906,7 +906,7 @@ void LocalDerivationGoal::startBuilder()
         Pipe sendPid;
         sendPid.create();
 
-        Pid helper = startProcess([&]() {
+        Pid helper{startProcess([&]() {
             sendPid.readSide.close();
 
             /* We need to open the slave early, before
@@ -934,7 +934,7 @@ void LocalDerivationGoal::startBuilder()
 
             writeFull(sendPid.writeSide.get(), fmt("%d\n", child));
             _exit(0);
-        });
+        })};
 
         sendPid.writeSide.close();
 
@@ -951,7 +951,7 @@ void LocalDerivationGoal::startBuilder()
 
         auto ss = tokenizeString<std::vector<std::string>>(readLine(sendPid.readSide.get()));
         assert(ss.size() == 1);
-        pid = string2Int<pid_t>(ss[0]).value();
+        pid = Pid{string2Int<pid_t>(ss[0]).value()};
 
         if (usingUserNamespace) {
             /* Set the UID/GID mapping of the builder's user namespace
@@ -1010,10 +1010,10 @@ void LocalDerivationGoal::startBuilder()
     } else
 #endif
     {
-        pid = startProcess([&]() {
+        pid = Pid{startProcess([&]() {
             openSlave();
             runChild();
-        });
+        })};
     }
 
     /* parent */

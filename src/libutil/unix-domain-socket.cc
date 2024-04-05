@@ -65,7 +65,7 @@ static void bindConnectProcHelper(
     if (path.size() + 1 >= sizeof(addr.sun_path)) {
         Pipe pipe;
         pipe.create();
-        Pid pid = startProcess([&] {
+        Pid pid{startProcess([&] {
             try {
                 pipe.readSide.close();
                 Path dir = dirOf(path);
@@ -83,7 +83,7 @@ static void bindConnectProcHelper(
             } catch (...) {
                 writeFull(pipe.writeSide.get(), "-1\n");
             }
-        });
+        })};
         pipe.writeSide.close();
         auto errNo = string2Int<int>(chomp(drainFD(pipe.readSide.get())));
         if (!errNo || *errNo == -1)

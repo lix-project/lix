@@ -26,9 +26,10 @@ class Pid
     int killSignal = SIGKILL;
 public:
     Pid();
-    Pid(pid_t pid);
+    explicit Pid(pid_t pid): pid(pid) {}
+    Pid(Pid && other);
+    Pid & operator=(Pid && other);
     ~Pid() noexcept(false);
-    void operator =(pid_t pid);
     explicit operator bool() const { return pid != -1; }
     int kill();
     int wait();

@@ -354,7 +354,7 @@ RunPager::RunPager()
     Pipe toPager;
     toPager.create();
 
-    pid = startProcess([&]() {
+    pid = Pid{startProcess([&]() {
         if (dup2(toPager.readSide.get(), STDIN_FILENO) == -1)
             throw SysError("dupping stdin");
         if (!getenv("LESS"))
@@ -366,7 +366,7 @@ RunPager::RunPager()
         execlp("less", "less", nullptr);
         execlp("more", "more", nullptr);
         throw SysError("executing '%1%'", pager);
-    });
+    })};
 
     pid.setKillSignal(SIGINT);
     std_out = fcntl(STDOUT_FILENO, F_DUPFD_CLOEXEC, 0);

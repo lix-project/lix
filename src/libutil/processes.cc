@@ -35,23 +35,25 @@ Pid::Pid()
 }
 
 
-Pid::Pid(pid_t pid)
-    : pid(pid)
+Pid::Pid(Pid && other) : pid(other.pid), separatePG(other.separatePG), killSignal(other.killSignal)
 {
+    other.pid = -1;
+}
+
+
+Pid & Pid::operator=(Pid && other)
+{
+    Pid tmp(std::move(other));
+    std::swap(pid, tmp.pid);
+    std::swap(separatePG, tmp.separatePG);
+    std::swap(killSignal, tmp.killSignal);
+    return *this;
 }
 
 
 Pid::~Pid() noexcept(false)
 {
     if (pid != -1) kill();
-}
-
-
-void Pid::operator =(pid_t pid)
-{
-    if (this->pid != -1 && this->pid != pid) kill();
-    this->pid = pid;
-    killSignal = SIGKILL; // reset signal to default
 }
 
 
@@ -125,7 +127,7 @@ void killUser(uid_t uid)
        users to which the current process can send signals.  So we
        fork a process, switch to uid, and send a mass kill. */
 
-    Pid pid = startProcess([&]() {
+    Pid pid{startProcess([&]() {
 
         if (setuid(uid) == -1)
             throw SysError("setting uid");
@@ -147,7 +149,7 @@ void killUser(uid_t uid)
         }
 
         _exit(0);
-    });
+    })};
 
     int status = pid.wait();
     if (status != 0)
@@ -288,7 +290,7 @@ void runProgram2(const RunOptions & options)
     }
 
     /* Fork. */
-    Pid pid = startProcess([&]() {
+    Pid pid{startProcess([&]() {
         if (options.environment)
             replaceEnv(*options.environment);
         if (options.standardOut && dup2(out.writeSide.get(), STDOUT_FILENO) == -1)
@@ -322,7 +324,7 @@ void runProgram2(const RunOptions & options)
             execv(options.program.c_str(), stringsToCharPtrs(args_).data());
 
         throw SysError("executing '%1%'", options.program);
-    }, processOptions);
+    }, processOptions)};
 
     out.writeSide.close();
 
