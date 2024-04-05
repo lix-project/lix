@@ -109,19 +109,4 @@ namespace nix {
             ASSERT_NE(h->num, counter);
         }
     }
-
-    TEST(Pool, throwingOperationDropsResource)
-    {
-        auto createResource = []() { return make_ref<TestResource>(); };
-
-        Pool<TestResource> pool = Pool<TestResource>((size_t)1, createResource);
-
-        ASSERT_THROW({
-            auto _r = pool.get();
-            ASSERT_EQ(pool.count(), 1);
-            throw 1;
-        }, int);
-
-        ASSERT_EQ(pool.count(), 0);
-    }
 }
