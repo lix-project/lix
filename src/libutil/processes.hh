@@ -29,13 +29,14 @@ public:
     Pid(pid_t pid);
     ~Pid() noexcept(false);
     void operator =(pid_t pid);
-    operator pid_t();
+    explicit operator bool() const { return pid != -1; }
     int kill();
     int wait();
 
     void setSeparatePG(bool separatePG);
     void setKillSignal(int signal);
     pid_t release();
+    pid_t get() const { return pid; }
 };
 
 /**

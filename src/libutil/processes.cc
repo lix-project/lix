@@ -55,12 +55,6 @@ void Pid::operator =(pid_t pid)
 }
 
 
-Pid::operator pid_t()
-{
-    return pid;
-}
-
-
 int Pid::kill()
 {
     assert(pid != -1);

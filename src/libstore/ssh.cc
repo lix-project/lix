@@ -131,7 +131,7 @@ Path SSHMaster::startMaster()
 
     auto state(state_.lock());
 
-    if (state->sshMaster != -1) return state->socketPath;
+    if (state->sshMaster) return state->socketPath;
 
     state->socketPath = (Path) *state->tmpDir + "/ssh.sock";
 

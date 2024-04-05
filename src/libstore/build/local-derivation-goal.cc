@@ -137,7 +137,7 @@ LocalStore & LocalDerivationGoal::getLocalStore()
 
 void LocalDerivationGoal::killChild()
 {
-    if (pid != -1) {
+    if (pid) {
         worker.childTerminated(this);
 
         /* If we're using a build user, then there is a tricky race
@@ -145,7 +145,7 @@ void LocalDerivationGoal::killChild()
            done its setuid() to the build user uid, then it won't be
            killed, and we'll potentially lock up in pid.wait().  So
            also send a conventional kill to the child. */
-        ::kill(-pid, SIGKILL); /* ignore the result */
+        ::kill(-pid.get(), SIGKILL); /* ignore the result */
 
         killSandbox(true);
 
@@ -961,13 +961,13 @@ void LocalDerivationGoal::startBuilder()
             uid_t hostGid = buildUser ? buildUser->getGID() : getgid();
             uid_t nrIds = buildUser ? buildUser->getUIDCount() : 1;
 
-            writeFile("/proc/" + std::to_string(pid) + "/uid_map",
+            writeFile("/proc/" + std::to_string(pid.get()) + "/uid_map",
                 fmt("%d %d %d", sandboxUid(), hostUid, nrIds));
 
             if (!buildUser || buildUser->getUIDCount() == 1)
-                writeFile("/proc/" + std::to_string(pid) + "/setgroups", "deny");
+                writeFile("/proc/" + std::to_string(pid.get()) + "/setgroups", "deny");
 
-            writeFile("/proc/" + std::to_string(pid) + "/gid_map",
+            writeFile("/proc/" + std::to_string(pid.get()) + "/gid_map",
                 fmt("%d %d %d", sandboxGid(), hostGid, nrIds));
         } else {
             debug("note: not using a user namespace");
@@ -990,19 +990,19 @@ void LocalDerivationGoal::startBuilder()
 
         /* Save the mount- and user namespace of the child. We have to do this
            *before* the child does a chroot. */
-        sandboxMountNamespace = AutoCloseFD{open(fmt("/proc/%d/ns/mnt", (pid_t) pid).c_str(), O_RDONLY)};
+        sandboxMountNamespace = AutoCloseFD{open(fmt("/proc/%d/ns/mnt", pid.get()).c_str(), O_RDONLY)};
         if (sandboxMountNamespace.get() == -1)
             throw SysError("getting sandbox mount namespace");
 
         if (usingUserNamespace) {
-            sandboxUserNamespace = AutoCloseFD{open(fmt("/proc/%d/ns/user", (pid_t) pid).c_str(), O_RDONLY)};
+            sandboxUserNamespace = AutoCloseFD{open(fmt("/proc/%d/ns/user", pid.get()).c_str(), O_RDONLY)};
             if (sandboxUserNamespace.get() == -1)
                 throw SysError("getting sandbox user namespace");
         }
 
         /* Move the child into its own cgroup. */
         if (cgroup)
-            writeFile(*cgroup + "/cgroup.procs", fmt("%d", (pid_t) pid));
+            writeFile(*cgroup + "/cgroup.procs", fmt("%d", pid.get()));
 
         /* Signal the builder that we've updated its user namespace. */
         writeFull(userNamespaceSync.writeSide.get(), "1");

@@ -79,7 +79,7 @@ HookInstance::~HookInstance()
 {
     try {
         toHook.writeSide.reset();
-        if (pid != -1) pid.kill();
+        if (pid) pid.kill();
     } catch (...) {
         ignoreException();
     }

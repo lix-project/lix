@@ -378,7 +378,7 @@ RunPager::RunPager()
 RunPager::~RunPager()
 {
     try {
-        if (pid != -1) {
+        if (pid) {
             std::cout.flush();
             dup2(std_out, STDOUT_FILENO);
             pid.wait();
