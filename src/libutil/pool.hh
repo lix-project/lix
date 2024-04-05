@@ -108,19 +108,6 @@ public:
 
         Handle(Pool & pool, std::shared_ptr<R> r) : pool(pool), r(r) { }
 
-        void drop(bool stillValid)
-        {
-            {
-                auto state_(pool.state.lock());
-                if (stillValid)
-                    state_->idle.emplace_back(std::move(r));
-                assert(state_->inUse);
-                state_->inUse--;
-            }
-            pool.wakeup.notify_one();
-            r = nullptr;
-        }
-
     public:
         Handle(Handle && h) : pool(h.pool), r(h.r) { h.r.reset(); }
 
@@ -128,13 +115,15 @@ public:
 
         ~Handle()
         {
-            if (r)
-                drop(std::uncaught_exceptions() == 0);
-        }
-
-        void release()
-        {
-            drop(true);
+            if (!r) return;
+            {
+                auto state_(pool.state.lock());
+                if (!std::uncaught_exceptions())
+                    state_->idle.push_back(ref<R>(r));
+                assert(state_->inUse);
+                state_->inUse--;
+            }
+            pool.wakeup.notify_one();
         }
 
         R * operator -> () { return &*r; }
