@@ -928,7 +928,7 @@ void runPostBuildHook(
         .environment = hookEnvironment,
         .standardOut = &sink,
         .mergeStderrToStdout = true,
-    });
+    }).wait();
 }
 
 void DerivationGoal::buildDone()

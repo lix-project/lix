@@ -87,9 +87,26 @@ struct RunOptions
     bool isInteractive = false;
 };
 
+struct [[nodiscard("you must call RunningProgram::wait()")]] RunningProgram
+{
+    friend RunningProgram runProgram2(const RunOptions & options);
+
+private:
+    Path program;
+    Pid pid;
+
+    RunningProgram(Path program, Pid pid) : program(std::move(program)), pid(std::move(pid)) {}
+
+public:
+    RunningProgram() = default;
+    ~RunningProgram();
+
+    void wait();
+};
+
 std::pair<int, std::string> runProgram(RunOptions && options);
 
-void runProgram2(const RunOptions & options);
+RunningProgram runProgram2(const RunOptions & options);
 
 class ExecError : public Error
 {

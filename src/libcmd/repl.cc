@@ -251,7 +251,7 @@ void runNix(Path program, const Strings & args)
         .program = settings.nixBinDir+ "/" + program,
         .args = args,
         .environment = subprocessEnv,
-    });
+    }).wait();
 
     return;
 }
@@ -650,7 +650,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
 
         // runProgram redirects stdout to a StringSink,
         // using runProgram2 to allow editors to display their UI
-        runProgram2(RunOptions { .program = editor, .searchPath = true, .args = args });
+        runProgram2(RunOptions { .program = editor, .searchPath = true, .args = args }).wait();
 
         // Reload right after exiting the editor
         state->resetFileCache();

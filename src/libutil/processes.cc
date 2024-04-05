@@ -249,7 +249,7 @@ std::pair<int, std::string> runProgram(RunOptions && options)
     int status = 0;
 
     try {
-        runProgram2(options);
+        runProgram2(options).wait();
     } catch (ExecError & e) {
         status = e.status;
     }
@@ -257,7 +257,25 @@ std::pair<int, std::string> runProgram(RunOptions && options)
     return {status, std::move(sink.s)};
 }
 
-void runProgram2(const RunOptions & options)
+RunningProgram::~RunningProgram()
+{
+    if (pid) {
+        // we will not kill a subprocess because we *can't* kill a subprocess
+        // reliably without placing it in its own process group, and cleaning
+        // up a subprocess only when `separatePG` is set is a loaded footgun.
+        assert(false && "destroying un-wait()ed running process");
+        std::terminate();
+    }
+}
+
+void RunningProgram::wait()
+{
+    int status = pid.wait();
+    if (status)
+        throw ExecError(status, "program '%1%' %2%", program, statusToString(status));
+}
+
+RunningProgram runProgram2(const RunOptions & options)
 {
     checkInterrupt();
 
@@ -317,11 +335,7 @@ void runProgram2(const RunOptions & options)
     if (options.standardOut)
         *options.standardOut << drainFDSource(out.readSide.get());
 
-    /* Wait for the child to finish. */
-    int status = pid.wait();
-
-    if (status)
-        throw ExecError(status, "program '%1%' %2%", options.program, statusToString(status));
+    return RunningProgram{options.program, std::move(pid)};
 }
 
 std::string statusToString(int status)

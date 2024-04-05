@@ -695,7 +695,7 @@ struct GitInputScheme : InputScheme
                     .program = "git",
                     .args = { "-C", repoDir, "--git-dir", gitDir, "archive", input.getRev()->gitRev() },
                     .standardOut = &sink
-                });
+                }).wait();
             });
 
             unpackTarfile(*source, tmpDir);
