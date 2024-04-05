@@ -240,8 +240,9 @@ in stdenv.mkDerivation (finalAttrs: {
     fi
   '';
 
-  configureFlags = lib.optionals stdenv.isLinux [
+  configureFlags = [
     "--with-boost=${boost}/lib"
+  ] ++ lib.optionals stdenv.isLinux [
     "--with-sandbox-shell=${busybox-sandbox-shell}/bin/busybox"
   ] ++ lib.optionals (stdenv.isLinux && !(stdenv.hostPlatform.isStatic && stdenv.system == "aarch64-linux")) [
     "LDFLAGS=-fuse-ld=gold"
