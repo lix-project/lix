@@ -688,17 +688,14 @@ struct GitInputScheme : InputScheme
 
             filter = isNotDotGitDirectory;
         } else {
-            // FIXME: should pipe this, or find some better way to extract a
-            // revision.
-            auto source = sinkToSource([&](Sink & sink) {
-                runProgram2({
-                    .program = "git",
-                    .args = { "-C", repoDir, "--git-dir", gitDir, "archive", input.getRev()->gitRev() },
-                    .standardOut = &sink
-                }).wait();
+            auto proc = runProgram2({
+                .program = "git",
+                .args = { "-C", repoDir, "--git-dir", gitDir, "archive", input.getRev()->gitRev() },
+                .captureStdout = true,
             });
+            Finally const _wait([&] { proc.wait(); });
 
-            unpackTarfile(*source, tmpDir);
+            unpackTarfile(*proc.stdout(), tmpDir);
         }
 
         auto storePath = store->addToStore(name, tmpDir, FileIngestionMethod::Recursive, htSHA256, filter);

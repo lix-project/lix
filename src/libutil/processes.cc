@@ -243,18 +243,28 @@ std::string runProgram(Path program, bool searchPath, const Strings & args, bool
 // Output = error code + "standard out" output stream
 std::pair<int, std::string> runProgram(RunOptions && options)
 {
-    StringSink sink;
-    options.standardOut = &sink;
+    options.captureStdout = true;
 
     int status = 0;
+    std::string stdout;
 
     try {
-        runProgram2(options).wait();
+        auto proc = runProgram2(options);
+        Finally const _wait([&] { proc.wait(); });
+        stdout = proc.stdout()->drain();
     } catch (ExecError & e) {
         status = e.status;
     }
 
-    return {status, std::move(sink.s)};
+    return {status, std::move(stdout)};
+}
+
+RunningProgram::RunningProgram(PathView program, Pid pid, AutoCloseFD stdout)
+    : program(program)
+    , pid(std::move(pid))
+    , stdoutSource(stdout ? std::make_unique<FdSource>(stdout.get()) : nullptr)
+    , stdout_(std::move(stdout))
+{
 }
 
 RunningProgram::~RunningProgram()
@@ -281,7 +291,7 @@ RunningProgram runProgram2(const RunOptions & options)
 
     /* Create a pipe. */
     Pipe out;
-    if (options.standardOut) out.create();
+    if (options.captureStdout) out.create();
 
     ProcessOptions processOptions;
 
@@ -299,7 +309,7 @@ RunningProgram runProgram2(const RunOptions & options)
     Pid pid{startProcess([&]() {
         if (options.environment)
             replaceEnv(*options.environment);
-        if (options.standardOut && dup2(out.writeSide.get(), STDOUT_FILENO) == -1)
+        if (options.captureStdout && dup2(out.writeSide.get(), STDOUT_FILENO) == -1)
             throw SysError("dupping stdout");
         if (options.mergeStderrToStdout)
             if (dup2(STDOUT_FILENO, STDERR_FILENO) == -1)
@@ -332,10 +342,11 @@ RunningProgram runProgram2(const RunOptions & options)
 
     out.writeSide.close();
 
-    if (options.standardOut)
-        *options.standardOut << drainFDSource(out.readSide.get());
-
-    return RunningProgram{options.program, std::move(pid)};
+    return RunningProgram{
+        options.program,
+        std::move(pid),
+        options.captureStdout ? std::move(out.readSide) : AutoCloseFD{}
+    };
 }
 
 std::string statusToString(int status)

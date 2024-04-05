@@ -923,12 +923,16 @@ void runPostBuildHook(
     };
     LogSink sink(act);
 
-    runProgram2({
+    auto proc = runProgram2({
         .program = settings.postBuildHook,
         .environment = hookEnvironment,
-        .standardOut = &sink,
+        .captureStdout = true,
         .mergeStderrToStdout = true,
-    }).wait();
+    });
+    Finally const _wait([&] { proc.wait(); });
+
+    // FIXME just process the data, without a wrapper sink class
+    proc.stdout()->drainInto(sink);
 }
 
 void DerivationGoal::buildDone()

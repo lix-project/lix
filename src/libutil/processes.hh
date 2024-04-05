@@ -3,6 +3,7 @@
 
 #include "types.hh"
 #include "error.hh"
+#include "file-descriptor.hh"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -82,7 +83,7 @@ struct RunOptions
     std::optional<uid_t> gid;
     std::optional<Path> chdir;
     std::optional<std::map<std::string, std::string>> environment;
-    Sink * standardOut = nullptr;
+    bool captureStdout = false;
     bool mergeStderrToStdout = false;
     bool isInteractive = false;
 };
@@ -94,14 +95,18 @@ struct [[nodiscard("you must call RunningProgram::wait()")]] RunningProgram
 private:
     Path program;
     Pid pid;
+    std::unique_ptr<Source> stdoutSource;
+    AutoCloseFD stdout_;
 
-    RunningProgram(Path program, Pid pid) : program(std::move(program)), pid(std::move(pid)) {}
+    RunningProgram(PathView program, Pid pid, AutoCloseFD stdout);
 
 public:
     RunningProgram() = default;
     ~RunningProgram();
 
     void wait();
+
+    Source * stdout() const { return stdoutSource.get(); }
 };
 
 std::pair<int, std::string> runProgram(RunOptions && options);
