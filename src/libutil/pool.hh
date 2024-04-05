@@ -1,7 +1,6 @@
 #pragma once
 ///@file
 
-#include <exception>
 #include <functional>
 #include <limits>
 #include <list>
@@ -103,23 +102,11 @@ public:
     private:
         Pool & pool;
         std::shared_ptr<R> r;
+        bool bad = false;
 
         friend Pool;
 
         Handle(Pool & pool, std::shared_ptr<R> r) : pool(pool), r(r) { }
-
-        void drop(bool stillValid)
-        {
-            {
-                auto state_(pool.state.lock());
-                if (stillValid)
-                    state_->idle.emplace_back(std::move(r));
-                assert(state_->inUse);
-                state_->inUse--;
-            }
-            pool.wakeup.notify_one();
-            r = nullptr;
-        }
 
     public:
         Handle(Handle && h) : pool(h.pool), r(h.r) { h.r.reset(); }
@@ -128,27 +115,25 @@ public:
 
         ~Handle()
         {
-            if (r)
-                drop(std::uncaught_exceptions() == 0);
-        }
-
-        void release()
-        {
-            drop(true);
+            if (!r) return;
+            {
+                auto state_(pool.state.lock());
+                if (!bad)
+                    state_->idle.push_back(ref<R>(r));
+                assert(state_->inUse);
+                state_->inUse--;
+            }
+            pool.wakeup.notify_one();
         }
 
         R * operator -> () { return &*r; }
         R & operator * () { return *r; }
+
+        void markBad() { bad = true; }
     };
 
     Handle get()
     {
-        // we do not want to handle the complexity that comes with allocating
-        // resources during stack unwinding. it would be possible to do this,
-        // but doing so requires more per-handle bookkeeping to properly free
-        // resources allocated during unwinding. that effort is not worth it.
-        assert(std::uncaught_exceptions() == 0);
-
         {
             auto state_(state.lock());
 

@@ -39,7 +39,9 @@ RemoteStore::RemoteStore(const Params & params)
             },
             [this](const ref<Connection> & r) {
                 return
-                    std::chrono::duration_cast<std::chrono::seconds>(
+                    r->to.good()
+                    && r->from.good()
+                    && std::chrono::duration_cast<std::chrono::seconds>(
                         std::chrono::steady_clock::now() - r->startTime).count() < maxConnectionAge;
             }
             ))
@@ -153,6 +155,7 @@ void RemoteStore::setOptions(Connection & conn)
 RemoteStore::ConnectionHandle::~ConnectionHandle()
 {
     if (!daemonException && std::uncaught_exceptions()) {
+        handle.markBad();
         debug("closing daemon connection because of an exception");
     }
 }
@@ -178,10 +181,6 @@ void RemoteStore::ConnectionHandle::processStderr(Sink * sink, Source * source, 
                     m.find("Derive([") != std::string::npos)
                     throw Error("%s, this might be because the daemon is too old to understand dependencies on dynamic derivations. Check to see if the raw derivation is in the form '%s'", std::move(m), "DrvWithVersion(..)");
             }
-            // the daemon can still handle more requests, so the connection itself
-            // is still valid. the current *handle* however should be considered a
-            // lost cause and abandoned entirely.
-            handle.release();
             throw;
         }
     }
@@ -1069,15 +1068,27 @@ void RemoteStore::ConnectionHandle::withFramedSink(std::function<void(Sink & sin
 
     Finally joinStderrThread([&]()
     {
-        stderrThread.join();
-        if (ex) {
-            std::rethrow_exception(ex);
+        if (stderrThread.joinable()) {
+            stderrThread.join();
+            if (ex) {
+                try {
+                    std::rethrow_exception(ex);
+                } catch (...) {
+                    ignoreException();
+                }
+            }
         }
     });
 
-    FramedSink sink((*this)->to, ex);
-    fun(sink);
-    sink.flush();
+    {
+        FramedSink sink((*this)->to, ex);
+        fun(sink);
+        sink.flush();
+    }
+
+    stderrThread.join();
+    if (ex)
+        std::rethrow_exception(ex);
 }
 
 }
