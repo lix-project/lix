@@ -183,7 +183,7 @@ static int childEntry(void * arg)
 #endif
 
 
-pid_t startProcess(std::function<void()> fun, const ProcessOptions & options)
+Pid startProcess(std::function<void()> fun, const ProcessOptions & options)
 {
     std::function<void()> wrapper = [&]() {
         logger = makeSimpleLogger();
@@ -227,7 +227,7 @@ pid_t startProcess(std::function<void()> fun, const ProcessOptions & options)
 
     if (pid == -1) throw SysError("unable to fork");
 
-    return pid;
+    return Pid{pid};
 }
 
 std::string runProgram(Path program, bool searchPath, const Strings & args,

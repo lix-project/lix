@@ -906,7 +906,7 @@ void LocalDerivationGoal::startBuilder()
         Pipe sendPid;
         sendPid.create();
 
-        Pid helper{startProcess([&]() {
+        Pid helper = startProcess([&]() {
             sendPid.readSide.close();
 
             /* We need to open the slave early, before
@@ -930,11 +930,11 @@ void LocalDerivationGoal::startBuilder()
             if (usingUserNamespace)
                 options.cloneFlags |= CLONE_NEWUSER;
 
-            pid_t child = startProcess([&]() { runChild(); }, options);
+            pid_t child = startProcess([&]() { runChild(); }, options).release();
 
             writeFull(sendPid.writeSide.get(), fmt("%d\n", child));
             _exit(0);
-        })};
+        });
 
         sendPid.writeSide.close();
 
@@ -1010,10 +1010,10 @@ void LocalDerivationGoal::startBuilder()
     } else
 #endif
     {
-        pid = Pid{startProcess([&]() {
+        pid = startProcess([&]() {
             openSlave();
             runChild();
-        })};
+        });
     }
 
     /* parent */
@@ -1570,7 +1570,7 @@ void LocalDerivationGoal::addDependency(const StorePath & path)
                entering its mount namespace, which is not possible
                in multithreaded programs. So we do this in a
                child process.*/
-            Pid child(startProcess([&]() {
+            Pid child = startProcess([&]() {
 
                 if (usingUserNamespace && (setns(sandboxUserNamespace.get(), 0) == -1))
                     throw SysError("entering sandbox user namespace");
@@ -1581,7 +1581,7 @@ void LocalDerivationGoal::addDependency(const StorePath & path)
                 doBind(source, target);
 
                 _exit(0);
-            }));
+            });
 
             int status = child.wait();
             if (status != 0)

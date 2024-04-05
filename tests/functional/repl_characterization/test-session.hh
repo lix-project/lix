@@ -7,13 +7,14 @@
 #include <string>
 
 #include "file-descriptor.hh"
+#include "processes.hh"
 #include "tests/terminal-code-eater.hh"
 
 namespace nix {
 
 struct RunningProcess
 {
-    pid_t pid;
+    Pid pid;
     Pipe procStdin;
     Pipe procStdout;
 

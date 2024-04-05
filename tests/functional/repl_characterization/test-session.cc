@@ -22,7 +22,7 @@ RunningProcess RunningProcess::start(std::string executable, Strings args)
     procStdout.create();
 
     // This is separate from runProgram2 because we have different IO requirements
-    pid_t pid = startProcess([&]() {
+    auto pid = startProcess([&]() {
         if (dup2(procStdout.writeSide.get(), STDOUT_FILENO) == -1) {
             throw SysError("dupping stdout");
         }
@@ -42,7 +42,7 @@ RunningProcess RunningProcess::start(std::string executable, Strings args)
     procStdin.readSide.close();
 
     return RunningProcess{
-        .pid = pid,
+        .pid = std::move(pid),
         .procStdin = std::move(procStdin),
         .procStdout = std::move(procStdout),
     };

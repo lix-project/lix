@@ -62,7 +62,8 @@ struct ProcessOptions
     int cloneFlags = 0;
 };
 
-pid_t startProcess(std::function<void()> fun, const ProcessOptions & options = ProcessOptions());
+[[nodiscard]]
+Pid startProcess(std::function<void()> fun, const ProcessOptions & options = ProcessOptions());
 
 
 /**

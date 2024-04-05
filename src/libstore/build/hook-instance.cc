@@ -35,7 +35,7 @@ HookInstance::HookInstance()
     builderOut.create();
 
     /* Fork the hook. */
-    pid = Pid{startProcess([&]() {
+    pid = startProcess([&]() {
 
         if (dup2(fromHook.writeSide.get(), STDERR_FILENO) == -1)
             throw SysError("cannot pipe standard error into log file");
@@ -60,7 +60,7 @@ HookInstance::HookInstance()
         execv(buildHook.c_str(), stringsToCharPtrs(args).data());
 
         throw SysError("executing '%s'", buildHook);
-    })};
+    });
 
     pid.setSeparatePG(true);
     fromHook.writeSide.reset();

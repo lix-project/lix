@@ -369,7 +369,7 @@ static void daemonLoop(std::optional<TrustedFlag> forceTrustClientOpt)
                 processConnection(openUncachedStore(), from, to, trusted, NotRecursive);
 
                 exit(0);
-            }, options);
+            }, options).release();
 
         } catch (Interrupted & e) {
             return;

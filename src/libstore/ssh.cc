@@ -70,7 +70,7 @@ std::unique_ptr<SSHMaster::Connection> SSHMaster::startCommand(const std::string
     }
     Finally cleanup = [&]() { logger->resume(); };
 
-    conn->sshPid = Pid{startProcess([&]() {
+    conn->sshPid = startProcess([&]() {
         restoreProcessContext();
 
         close(in.writeSide.get());
@@ -99,7 +99,7 @@ std::unique_ptr<SSHMaster::Connection> SSHMaster::startCommand(const std::string
 
         // could not exec ssh/bash
         throw SysError("unable to execute '%s'", args.front());
-    }, options)};
+    }, options);
 
 
     in.readSide.reset();
@@ -147,7 +147,7 @@ Path SSHMaster::startMaster()
     if (isMasterRunning())
         return state->socketPath;
 
-    state->sshMaster = Pid{startProcess([&]() {
+    state->sshMaster = startProcess([&]() {
         restoreProcessContext();
 
         close(out.readSide.get());
@@ -160,7 +160,7 @@ Path SSHMaster::startMaster()
         execvp(args.begin()->c_str(), stringsToCharPtrs(args).data());
 
         throw SysError("unable to execute '%s'", args.front());
-    }, options)};
+    }, options);
 
     out.writeSide.reset();
 
