@@ -52,7 +52,18 @@ FdSink::~FdSink()
 void FdSink::writeUnbuffered(std::string_view data)
 {
     written += data.size();
-    writeFull(fd, data);
+    try {
+        writeFull(fd, data);
+    } catch (SysError & e) {
+        _good = false;
+        throw;
+    }
+}
+
+
+bool FdSink::good()
+{
+    return _good;
 }
 
 
@@ -117,10 +128,16 @@ size_t FdSource::readUnbuffered(char * data, size_t len)
         checkInterrupt();
         n = ::read(fd, data, len);
     } while (n == -1 && errno == EINTR);
-    if (n == -1) { throw SysError("reading from file"); }
-    if (n == 0) { throw EndOfFile(std::string(*endOfFileError)); }
+    if (n == -1) { _good = false; throw SysError("reading from file"); }
+    if (n == 0) { _good = false; throw EndOfFile(std::string(*endOfFileError)); }
     read += n;
     return n;
+}
+
+
+bool FdSource::good()
+{
+    return _good;
 }
 
 

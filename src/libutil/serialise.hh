@@ -18,6 +18,7 @@ struct Sink
 {
     virtual ~Sink() { }
     virtual void operator () (std::string_view data) = 0;
+    virtual bool good() { return true; }
 };
 
 /**
@@ -79,6 +80,8 @@ struct Source
      */
     virtual size_t read(char * data, size_t len) = 0;
 
+    virtual bool good() { return true; }
+
     void drainInto(Sink & sink);
 
     std::string drain();
@@ -133,6 +136,11 @@ struct FdSink : BufferedSink
     ~FdSink();
 
     void writeUnbuffered(std::string_view data) override;
+
+    bool good() override;
+
+private:
+    bool _good = true;
 };
 
 
@@ -157,8 +165,11 @@ struct FdSource : BufferedSource
         return *this;
     }
 
+    bool good() override;
 protected:
     size_t readUnbuffered(char * data, size_t len) override;
+private:
+    bool _good = true;
 };
 
 
