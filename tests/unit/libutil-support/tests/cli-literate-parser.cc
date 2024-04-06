@@ -35,7 +35,7 @@ struct Parser
         : input(input)
         , rest(this->input)
         , prompt(config.prompt)
-        , indentString(std::string(config.indent, ' '))
+        , indentString(config.indent, ' ')
         , lastWasOutput(false)
         , syntax{}
     {
@@ -260,12 +260,11 @@ struct Parser
         std::vector<Node> newSyntax;
         auto shouldStart = true;
 
-        for (auto it = syntax.begin(); it != syntax.end(); ++it) {
-            Node node = std::move(*it);
+        for (auto & node : syntax) {
             std::visit(
                 overloaded{
                     [&](Args & e) {
-                        auto split = shell_split(std::string(e.text));
+                        auto split = shell_split(e.text);
                         args.insert(args.end(), split.begin(), split.end());
                     },
                     [&](ShouldStart & e) { shouldStart = e.shouldStart; },
@@ -293,8 +292,7 @@ auto tidySyntax(View syntax) -> std::vector<Node>
     auto lastWasCommand = true;
     std::vector<Node> newSyntax;
 
-    for (auto it = syntax.begin(); it != syntax.end(); ++it) {
-        Node node = *it;
+    for (auto & node : syntax) {
         // Only compare `Command` and `Output` nodes.
         if (std::visit([&](auto && e) { return !e.shouldCompare(); }, node)) {
             continue;
