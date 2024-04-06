@@ -74,20 +74,20 @@ public:
     {
         auto file = goldenMaster(testStem);
 
-        auto got = test();
+        auto actual = test();
 
         if (testAccept())
         {
             createDirs(dirOf(file));
-            writeFile2(file, got);
+            writeFile2(file, actual);
             GTEST_SKIP()
                 << "Updating golden master "
                 << file;
         }
         else
         {
-            decltype(got) expected = readFile2(file);
-            ASSERT_EQ(got, expected);
+            decltype(actual) expected = readFile2(file);
+            ASSERT_EQ(expected, actual);
         }
     }
 
