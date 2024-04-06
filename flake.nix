@@ -163,16 +163,6 @@
           build-release-notes =
             final.buildPackages.callPackage ./maintainers/build-release-notes.nix { };
           clangbuildanalyzer = final.buildPackages.callPackage ./misc/clangbuildanalyzer.nix { };
-          boehmgc-nix = (final.boehmgc.override {
-            enableLargeConfig = true;
-          }).overrideAttrs (o: {
-            patches = (o.patches or [ ]) ++ [
-              ./boehmgc-coroutine-sp-fallback.diff
-
-              # https://github.com/ivmai/bdwgc/pull/586
-              ./boehmgc-traceable_allocator-public.diff
-            ];
-          });
 
           default-busybox-sandbox-shell = final.busybox.override {
             useMusl = true;
@@ -203,10 +193,13 @@
           nix = final.callPackage ./package.nix {
             inherit versionSuffix fileset;
             stdenv = currentStdenv;
-            boehmgc = final.boehmgc-nix;
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
             nix-doc = final.nix-doc;
           };
+
+          # Export the patched version of boehmgc that Lix uses into the overlay
+          # for consumers of this flake.
+          boehmgc-nix = final.nix.boehmgc-nix;
         };
 
     in {
@@ -268,7 +261,6 @@
             inherit versionSuffix fileset officialRelease buildUnreleasedNotes;
             inherit (pkgs) build-release-notes;
             internalApiDocs = true;
-            boehmgc = pkgs.boehmgc-nix;
             busybox-sandbox-shell = pkgs.busybox-sandbox-shell;
           };
         in
@@ -406,7 +398,6 @@
           let
             nix = pkgs.callPackage ./package.nix {
               inherit stdenv versionSuffix fileset;
-              boehmgc = pkgs.boehmgc-nix;
               busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
               forDevShell = true;
             };

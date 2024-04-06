@@ -5,6 +5,11 @@
   autoconf-archive,
   autoreconfHook,
   aws-sdk-cpp,
+  # If the patched version of Boehm isn't passed, then patch it based off of
+  # pkgs.boehmgc. This allows `callPackage`ing this file without needing to
+  # to implement behavior that this package flat out doesn't build without
+  # anyway, but also allows easily overriding the patch logic.
+  boehmgc-nix ? __forDefaults.boehmgc-nix,
   boehmgc,
   nlohmann_json,
   bison,
@@ -63,6 +68,20 @@
   # stuff for argument defaults.
   __forDefaults ? {
     canRunInstalled = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
+
+    boehmgc-nix = (boehmgc.override {
+      enableLargeConfig = true;
+    }).overrideAttrs {
+      patches = [
+        # We do *not* include prev.patches (which doesn't exist in normal pkgs.boehmgc anyway)
+        # because if the caller of this package passed a patched boehm as `boehmgc` instead of
+        # `boehmgc-nix` then this will almost certainly have duplicate patches, which means
+        # the patches won't apply and we'll get a build failure.
+        ./boehmgc-coroutine-sp-fallback.diff
+        # https://github.com/ivmai/bdwgc/pull/586
+        ./boehmgc-traceable_allocator-public.diff
+      ];
+    };
   },
 }: let
   inherit (__forDefaults) canRunInstalled;
@@ -81,7 +100,7 @@
   # The internal API docs need these for the build, but if we're not building
   # Nix itself, then these don't need to be propagated.
   maybePropagatedInputs = [
-    boehmgc
+    boehmgc-nix
     nlohmann_json
   ];
 
@@ -324,4 +343,8 @@ in stdenv.mkDerivation (finalAttrs: {
   passthru.perl-bindings = pkgs.callPackage ./perl {
     inherit fileset stdenv buildWithMeson;
   };
+
+  # Export the patched version of boehmgc.
+  # flake.nix exports that into its overlay.
+  passthru.boehmgc-nix = __forDefaults.boehmgc-nix;
 })
