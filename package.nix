@@ -34,6 +34,7 @@
   ninja,
   openssl,
   pkg-config,
+  python3,
   rapidcheck,
   sqlite,
   toml11,
@@ -153,6 +154,7 @@ in stdenv.mkDerivation (finalAttrs: {
   nativeBuildInputs = [
     bison
     flex
+    python3
   ] ++ [
     (lib.getBin lowdown)
     mdbook
