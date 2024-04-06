@@ -92,8 +92,22 @@ host_system = host_machine.cpu_family() + '-' + host_machine.system()
 message('canonical Nix system name:', host_system)
 
 is_linux = host_machine.system() == 'linux'
+is_darwin = host_machine.system() == 'darwin'
 is_x64 = host_machine.cpu_family() == 'x86_64'
 
+# Per-platform arguments that you should probably pass to shared_module() invocations.
+# Something like add_project_arguments() can't be scoped on only shared modules, so this
+# variable is here instead.
+# This corresponds to the $(1)_ALLOW_UNDEFINED option from the Make buildsystem.
+# Mostly this is load-bearing on the plugin tests defined in tests/functional/plugins/meson.build.
+shared_module_link_args = []
+if is_darwin
+  shared_module_link_args += ['-undefined', 'suppress', '-flat_namespace']
+elif is_linux
+  # -Wl,-z,defs is the equivalent, but a comment in the Make buildsystem says that breaks
+  # Clang sanitizers on Linux.
+  # FIXME(Qyriad): is that true?
+endif
 deps = [ ]
 configdata = { }
 
