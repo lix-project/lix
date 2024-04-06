@@ -219,6 +219,19 @@
         # Binary package for various platforms.
         build = forAllSystems (system: self.packages.${system}.nix);
 
+        rl-next = forAllSystems (system:
+          let
+            rl-next-check = name: dir:
+              let pkgs = nixpkgsFor.${system}.native;
+              in pkgs.buildPackages.runCommand "test-${name}-release-notes" { } ''
+              LANG=C.UTF-8 ${lib.getExe pkgs.build-release-notes} ${dir} >$out
+            '';
+          in
+            {
+              user = rl-next-check "rl-next" ./doc/manual/rl-next;
+              dev = rl-next-check "rl-next-dev" ./doc/manual/rl-next-dev;
+            });
+
         # FIXME(Qyriad): remove this when the migration to Meson has been completed.
         # NOTE: mesonBuildClang depends on mesonBuild depends on build to avoid OOMs
         # on aarch64 builders caused by too many parallel compiler/linker processes.
@@ -340,21 +353,17 @@
         }) pre-commit-hooks.lib;
       };
 
-      checks = forAllSystems (system: let
-        rl-next-check = name: dir:
-          let pkgs = nixpkgsFor.${system}.native;
-          in pkgs.buildPackages.runCommand "test-${name}-release-notes" { } ''
-          LANG=C.UTF-8 ${lib.getExe pkgs.build-release-notes} ${dir} >$out
-        '';
-      in {
+      # NOTE *do not* add fresh derivations to checks, always add them to
+      # hydraJobs first (so CI will pick them up) and only link them here
+      checks = forAllSystems (system: {
         # FIXME(Qyriad): remove this when the migration to Meson has been completed.
         mesonBuild = self.hydraJobs.mesonBuild.${system};
         mesonBuildClang = self.hydraJobs.mesonBuildClang.${system};
         binaryTarball = self.hydraJobs.binaryTarball.${system};
         perlBindings = self.hydraJobs.perlBindings.${system};
         nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
-        rl-next = rl-next-check "rl-next" ./doc/manual/rl-next;
-        rl-next-dev = rl-next-check "rl-next-dev" ./doc/manual/rl-next-dev;
+        rl-next = self.hydraJobs.tests.nixpkgsLibTests.${system}.user;
+        rl-next-dev = self.hydraJobs.tests.nixpkgsLibTests.${system}.dev;
         pre-commit = self.hydraJobs.pre-commit.${system};
       } // (lib.optionalAttrs (builtins.elem system linux64BitSystems)) {
         dockerImage = self.hydraJobs.dockerImage.${system};
