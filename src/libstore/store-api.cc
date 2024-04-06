@@ -1072,8 +1072,6 @@ void copyStorePath(
         });
         TeeSink tee { sink, progressSink };
         srcStore.narFromPath(storePath, tee);
-    }, [&]() {
-           throw EndOfFile("NAR for '%s' fetched from '%s' is incomplete", srcStore.printStorePath(storePath), srcStore.getUri());
     });
 
     dstStore.addToStore(*info, *source, repair, checkSigs);

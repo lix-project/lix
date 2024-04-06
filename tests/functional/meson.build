@@ -182,6 +182,7 @@ functional_tests_scripts = [
   'debugger.sh',
   'test-libstoreconsumer.sh',
   'extra-sandbox-profile.sh',
+  'substitute-truncated-nar.sh',
 ]
 
 # Plugin tests require shared libraries support.

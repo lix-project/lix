@@ -338,11 +338,7 @@ std::unique_ptr<FinishSink> sourceToSink(std::function<void(Source &)> fun);
  * Convert a function that feeds data into a Sink into a Source. The
  * Source executes the function as a coroutine.
  */
-std::unique_ptr<Source> sinkToSource(
-    std::function<void(Sink &)> fun,
-    std::function<void()> eof = []() {
-        throw EndOfFile("coroutine has finished");
-    });
+std::unique_ptr<Source> sinkToSource(std::function<void(Sink &)> fun);
 
 
 void writePadding(size_t len, Sink & sink);

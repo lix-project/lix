@@ -217,6 +217,7 @@ void PathSubstitutionGoal::tryToRun()
     promise = std::promise<void>();
 
     thr = std::thread([this]() {
+        auto & fetchPath = subPath ? *subPath : storePath;
         try {
             ReceiveInterrupts receiveInterrupts;
 
@@ -226,10 +227,17 @@ void PathSubstitutionGoal::tryToRun()
             Activity act(*logger, actSubstitute, Logger::Fields{worker.store.printStorePath(storePath), sub->getUri()});
             PushActivity pact(act.id);
 
-            copyStorePath(*sub, worker.store,
-                subPath ? *subPath : storePath, repair, sub->isTrusted ? NoCheckSigs : CheckSigs);
+            copyStorePath(
+                *sub, worker.store, fetchPath, repair, sub->isTrusted ? NoCheckSigs : CheckSigs
+            );
 
             promise.set_value();
+        } catch (const EndOfFile &) {
+            promise.set_exception(std::make_exception_ptr(EndOfFile(
+                "NAR for '%s' fetched from '%s' is incomplete",
+                sub->printStorePath(fetchPath),
+                sub->getUri()
+            )));
         } catch (...) {
             promise.set_exception(std::current_exception());
         }
