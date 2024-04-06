@@ -132,15 +132,26 @@ nix3_cli_json = custom_target(
   capture : true,
   output : 'nix.json',
 )
+# `nix eval --write-to` is rather picky, and refuses to write to a directory that exists at all.
+# This is fine for clean builds because it creates the directory and then is never run again,
+# but during development if nix.json changes, then using `nix eval --write-to` will error,
+# since that part of the build directory already exists.
+# Thus, another Python script. It runs the relevant `nix eval --write-to` command in a temporary
+# directory, and then copies that tree to our build output directory.
 nix3_cli_files = custom_target(
-  command : nix_eval_for_docs + [
-    '--write-to', '@OUTPUT@',
-    '--expr',
-    'import @INPUT1@ true (builtins.readFile @INPUT0@)',
+  command : [
+    python,
+    '@INPUT0@',
+    '--nix=@INPUT1@',
+    '--generator=@INPUT2@',
+    '--cli-json=@INPUT3@',
+    '--output=@OUTPUT@',
   ],
   input : [
-    nix3_cli_json,
-    'generate-manpage.nix',
+    'generate-manpage.py', # INPUT0
+    nix, # INPUT1
+    'generate-manpage.nix', # INPUT2
+    nix3_cli_json, # INPUT3
     'utils.nix',
   ],
   output : 'new-cli',
