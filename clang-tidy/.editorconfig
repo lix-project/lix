@@ -1,0 +1,4 @@
+# LLVM style code is 2-space indented
+[*.{cc,hh}]
+indent_style = space
+indent_size = 2
