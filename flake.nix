@@ -351,8 +351,8 @@
         binaryTarball = self.hydraJobs.binaryTarball.${system};
         perlBindings = self.hydraJobs.perlBindings.${system};
         nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
-        rl-next = self.hydraJobs.tests.nixpkgsLibTests.${system}.user;
-        rl-next-dev = self.hydraJobs.tests.nixpkgsLibTests.${system}.dev;
+        rl-next = self.hydraJobs.rl-next.${system}.user;
+        rl-next-dev = self.hydraJobs.rl-next.${system}.dev;
         pre-commit = self.hydraJobs.pre-commit.${system};
       } // (lib.optionalAttrs (builtins.elem system linux64BitSystems)) {
         dockerImage = self.hydraJobs.dockerImage.${system};
