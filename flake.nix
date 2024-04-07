@@ -83,39 +83,6 @@
           cross = forAllCrossSystems (crossSystem: make-pkgs crossSystem "stdenv");
         });
 
-      testNixVersions = pkgs: client: daemon: let
-        nix = pkgs.callPackage ./package.nix {
-          pname =
-            "nix-tests"
-            + lib.optionalString
-            (lib.versionAtLeast daemon.version "2.4pre20211005" &&
-            lib.versionAtLeast client.version "2.4pre20211005")
-            "-${client.version}-against-${daemon.version}";
-        };
-      in nix.overrideAttrs (prevAttrs: {
-        NIX_DAEMON_PACKAGE = daemon;
-        NIX_CLIENT_PACKAGE = client;
-
-        dontBuild = true;
-        doInstallCheck = true;
-
-        configureFlags = prevAttrs.configureFlags ++ [
-          # We don't need the actual build here.
-          "--disable-build"
-        ];
-
-        installPhase = ''
-          mkdir -p $out
-        '';
-
-        installCheckPhase = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
-          export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
-        '' + ''
-          mkdir -p src/nix-channel
-          make installcheck -j$NIX_BUILD_CORES -l$NIX_BUILD_CORES
-        '';
-      });
-
       binaryTarball = nix: pkgs:
         let
           inherit (pkgs) buildPackages;
@@ -147,10 +114,6 @@
       overlayFor = getStdenv: final: prev:
         let
           currentStdenv = getStdenv final;
-          comDeps = with final; commonDeps {
-            inherit pkgs;
-            inherit (currentStdenv.hostPlatform) isStatic;
-          };
         in {
           nixStable = prev.nix;
 
