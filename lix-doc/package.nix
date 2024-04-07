@@ -4,8 +4,8 @@
 }:
 
 rustPlatform.buildRustPackage {
-  name = "nix-doc";
+  name = "lix-doc";
 
-  cargoHash = "sha256-HXL235loBJnRje7KaMCCCTighv6WNYRrZ/jgkAQbEY0=";
+  cargoLock.lockFile = ./Cargo.lock;
   src = lib.cleanSource ./.;
 }

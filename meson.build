@@ -233,10 +233,13 @@ deps += toml11
 nlohmann_json = dependency('nlohmann_json', required : true)
 deps += nlohmann_json
 
-# nix-doc is a Rust project provided via buildInputs and unfortunately doesn't have any way to be detected.
+# lix-doc is a Rust project provided via buildInputs and unfortunately doesn't have any way to be detected.
 # Just declare it manually to resolve this.
-nix_doc = declare_dependency(link_args : [ '-lnix_doc' ])
-deps += nix_doc
+#
+# FIXME: build this with meson in the future after we drop Make (with which we
+# *absolutely* are not going to make it work)
+lix_doc = declare_dependency(link_args : [ '-llix_doc' ])
+deps += lix_doc
 
 #
 # Build-time tools
