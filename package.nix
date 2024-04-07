@@ -21,7 +21,6 @@
   curl,
   doxygen,
   editline,
-  fileset,
   flex,
   git,
   gtest,
@@ -85,6 +84,7 @@
   },
 }: let
   inherit (__forDefaults) canRunInstalled;
+  inherit (lib) fileset;
 
   version = lib.fileContents ./.version + versionSuffix;
 

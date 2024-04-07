@@ -19,7 +19,6 @@
 
     let
       inherit (nixpkgs) lib;
-      inherit (lib) fileset;
 
       officialRelease = true;
 
@@ -92,8 +91,6 @@
             (lib.versionAtLeast daemon.version "2.4pre20211005" &&
             lib.versionAtLeast client.version "2.4pre20211005")
             "-${client.version}-against-${daemon.version}";
-
-            inherit fileset;
         };
       in nix.overrideAttrs (prevAttrs: {
         NIX_DAEMON_PACKAGE = daemon;
@@ -191,7 +188,7 @@
           nix-doc = final.callPackage ./nix-doc/package.nix {};
 
           nix = final.callPackage ./package.nix {
-            inherit versionSuffix fileset;
+            inherit versionSuffix;
             stdenv = currentStdenv;
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
             nix-doc = final.nix-doc;
@@ -258,7 +255,7 @@
           inherit (nixpkgs) pkgs;
 
           nix = pkgs.callPackage ./package.nix {
-            inherit versionSuffix fileset officialRelease buildUnreleasedNotes;
+            inherit versionSuffix officialRelease buildUnreleasedNotes;
             inherit (pkgs) build-release-notes;
             internalApiDocs = true;
             busybox-sandbox-shell = pkgs.busybox-sandbox-shell;
@@ -397,7 +394,7 @@
         makeShell = pkgs: stdenv:
           let
             nix = pkgs.callPackage ./package.nix {
-              inherit stdenv versionSuffix fileset;
+              inherit stdenv versionSuffix;
               busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
               forDevShell = true;
             };
