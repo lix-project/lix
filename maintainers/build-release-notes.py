@@ -28,8 +28,7 @@ def format_issue(issue: str) -> str:
     return format_link(issue, "issues", "issues")
 def format_pr(pr: str) -> str:
     return format_link(pr, "pull", "pulls")
-def format_cl(cl: str) -> str:
-    clid = int(cl)
+def format_cl(clid: int) -> str:
     return f"[cl/{clid}]({GERRIT_BASE}/{clid})"
 
 paths = pathlib.Path(sys.argv[1]).glob('*.md')
@@ -47,13 +46,19 @@ for p in paths:
         e.add_note(f"in {p}")
         raise
 
+def listify(l: list | int) -> list:
+    if not isinstance(l, list):
+        return [l]
+    else:
+        return l
+
 for p, entry in sorted(entries, key=lambda e: (-SIGNIFICANCECES[e[1].metadata.get('significance')], e[0])):
     try:
         header = entry.metadata['synopsis']
         links = []
-        links += map(format_issue, str(entry.metadata.get('issues', "")).split())
-        links += map(format_pr, str(entry.metadata.get('prs', "")).split())
-        links += map(format_cl, str(entry.metadata.get('cls', "")).split())
+        links += [format_issue(str(s)) for s in listify(entry.metadata.get('issues', []))]
+        links += [format_pr(str(s)) for s in listify(entry.metadata.get('prs', []))]
+        links += [format_cl(cl) for cl in listify(entry.metadata.get('cls', []))]
         if links != []:
             header += " " + " ".join(links)
         if header:
