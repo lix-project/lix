@@ -121,7 +121,7 @@ bool TestSession::readOutThen(ReadOutThenCallback cb)
 
 bool TestSession::waitForPrompt()
 {
-    bool notEof = readOutThen([&](std::span<char> s) -> ReadOutThenCallbackResult {
+    bool notEof = readOutThen([&](std::span<const char> s) -> ReadOutThenCallbackResult {
         bool foundPrompt = false;
 
         for (auto ch : s) {
@@ -147,7 +147,7 @@ bool TestSession::waitForPrompt()
 
 void TestSession::wait()
 {
-    readOutThen([&](std::span<char> s) {
+    readOutThen([&](std::span<const char> s) {
         for (auto ch : s) {
             eater.feed(ch, [&](char c) {
                 outputParser.feed(c);

@@ -123,11 +123,6 @@ public:
     {
         runReplTestPath(nameBase, {});
     }
-
-    void runDebuggerTest(const std::string_view & nameBase)
-    {
-        runReplTestPath(nameBase, {"--debugger"});
-    }
 };
 
 TEST_F(ReplSessionTest, round_trip)

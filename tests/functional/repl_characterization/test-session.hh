@@ -76,7 +76,7 @@ private:
     void wait();
 
     enum class ReadOutThenCallbackResult { Stop, Continue };
-    using ReadOutThenCallback = std::function<ReadOutThenCallbackResult(std::span<char>)>;
+    using ReadOutThenCallback = std::function<ReadOutThenCallbackResult(std::span<const char>)>;
     /** Reads some chunks of output, calling the callback provided for each
      * chunk and stopping if it returns Stop.
      *
