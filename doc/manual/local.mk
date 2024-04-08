@@ -163,9 +163,6 @@ $(docdir)/manual/index.html: $(MANUAL_SRCS) $(d)/book.toml $(d)/anchors.jq $(d)/
 	$(trace-gen) \
 		tmp="$$(mktemp -d)"; \
 		cp -r doc/manual "$$tmp"; \
-		find "$$tmp" -name '*.md' | while read -r file; do \
-			doc/manual/process-includes.sh $$file $$file; \
-		done; \
 		set -euo pipefail; \
 		RUST_LOG=warn mdbook build "$$tmp/manual" -d $(DESTDIR)$(docdir)/manual.tmp 2>&1 \
 			| { grep -Fv "because fragment resolution isn't implemented" || :; }; \

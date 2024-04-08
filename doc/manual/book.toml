@@ -15,6 +15,7 @@ command = "python3 doc/manual/docroot.py"
 # the link preprocessor gets its hands on this book, but nope it's actually
 # the opposite.
 after = ["links"]
+before = ["anchors"]
 
 [preprocessor.anchors]
 renderers = ["html"]
