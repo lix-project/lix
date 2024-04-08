@@ -182,12 +182,6 @@ let
     toplevel = commandInfo.args;
   };
 
-  tableOfContents =
-    let
-      showEntry = page: "    - [${page.command}](command-ref/new-cli/${page.name})";
-    in
-    concatStringsSep "\n" (map showEntry manpages) + "\n";
-
   storeDocs =
     let
       showStore =
@@ -227,4 +221,4 @@ let
     in
     concatStrings (attrValues (mapAttrs showStore commandInfo.stores));
 in
-(listToAttrs manpages) // { "SUMMARY.md" = tableOfContents; }
+listToAttrs manpages

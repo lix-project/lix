@@ -60,10 +60,6 @@ $(d)/nix.conf.5: $(d)/src/command-ref/conf-file.md
 $(d)/nix-profiles.5: $(d)/src/command-ref/files/profiles.md
 	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .5)" 5 $^ $^.tmp $@
 
-$(d)/src/SUMMARY.md: $(d)/src/SUMMARY.md.in $(d)/src/command-ref/new-cli $(d)/src/contributing/experimental-feature-descriptions.md
-	@cp $< $@
-	@doc/manual/process-includes.sh $@ $@
-
 $(d)/src/command-ref/new-cli: $(d)/nix.json $(d)/utils.nix $(d)/generate-manpage.nix $(doc_nix)
 	@rm -rf $@ $@.tmp
 	$(trace-gen) $(nix-eval) --write-to $@.tmp --expr 'import doc/manual/generate-manpage.nix true (builtins.readFile $<)'
