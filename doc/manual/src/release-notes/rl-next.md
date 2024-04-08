@@ -1,3 +1,3 @@
 # Upcoming release
 
-{{#include rl-next-generated.md}}
+{{#include @generated@/release-notes/rl-next-generated.md}}

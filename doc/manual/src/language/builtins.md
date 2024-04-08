@@ -14,3 +14,7 @@ For convenience, some built-ins can be accessed directly:
   <dt id="builtins-derivation"><a href="#builtins-derivation"><code>derivation <var>attrs</var></code></a></dt>
   <dd><p><var>derivation</var> is described in
          <a href="derivations.md">its own section</a>.</p></dd>
+
+{{#include @generated@/language/builtins.md}}
+
+</dl>

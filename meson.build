@@ -258,6 +258,10 @@ dot = find_program('dot', required : false)
 pymod = import('python')
 python = pymod.find_installation('python3')
 
+if enable_docs
+  mdbook = find_program('mdbook')
+endif
+
 # Used to workaround https://github.com/mesonbuild/meson/issues/2320 in src/nix/meson.build.
 installcmd = find_program('install')
 
