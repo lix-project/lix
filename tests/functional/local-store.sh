@@ -20,3 +20,6 @@ PATH3=$(nix path-info --store "local?root=$PWD/x" $CORRECT_PATH)
 
 # Ensure store ping trusted works with local store
 nix --store ./x store ping --json | jq -e '.trusted'
+
+# Suppress grumpiness about multiple nixes on PATH
+(nix --store ./x doctor || true) 2>&1 | grep 'You are trusted by'
