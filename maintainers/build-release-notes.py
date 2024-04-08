@@ -31,41 +31,46 @@ def format_pr(pr: str) -> str:
 def format_cl(clid: int) -> str:
     return f"[cl/{clid}]({GERRIT_BASE}/{clid})"
 
-paths = pathlib.Path(sys.argv[1]).glob('*.md')
-entries = []
-for p in paths:
-    try:
-        e = frontmatter.load(p)
-        if 'synopsis' not in e.metadata:
-            raise Exception('missing synopsis')
-        unknownKeys = set(e.metadata.keys()) - set(('synopsis', 'cls', 'issues', 'prs', 'significance'))
-        if unknownKeys:
-            raise Exception('unknown keys', unknownKeys)
-        entries.append((p, e))
-    except Exception as e:
-        e.add_note(f"in {p}")
-        raise
+def run_on_dir(d):
+    paths = pathlib.Path(d).glob('*.md')
+    entries = []
+    for p in paths:
+        try:
+            e = frontmatter.load(p)
+            if 'synopsis' not in e.metadata:
+                raise Exception('missing synopsis')
+            unknownKeys = set(e.metadata.keys()) - set(('synopsis', 'cls', 'issues', 'prs', 'significance'))
+            if unknownKeys:
+                raise Exception('unknown keys', unknownKeys)
+            entries.append((p, e))
+        except Exception as e:
+            e.add_note(f"in {p}")
+            raise
 
-def listify(l: list | int) -> list:
-    if not isinstance(l, list):
-        return [l]
-    else:
-        return l
+    def listify(l: list | int) -> list:
+        if not isinstance(l, list):
+            return [l]
+        else:
+            return l
 
-for p, entry in sorted(entries, key=lambda e: (-SIGNIFICANCECES[e[1].metadata.get('significance')], e[0])):
-    try:
-        header = entry.metadata['synopsis']
-        links = []
-        links += [format_issue(str(s)) for s in listify(entry.metadata.get('issues', []))]
-        links += [format_pr(str(s)) for s in listify(entry.metadata.get('prs', []))]
-        links += [format_cl(cl) for cl in listify(entry.metadata.get('cls', []))]
-        if links != []:
-            header += " " + " ".join(links)
-        if header:
-            print(f"- {header}")
+    for p, entry in sorted(entries, key=lambda e: (-SIGNIFICANCECES[e[1].metadata.get('significance')], e[0])):
+        try:
+            header = entry.metadata['synopsis']
+            links = []
+            links += [format_issue(str(s)) for s in listify(entry.metadata.get('issues', []))]
+            links += [format_pr(str(s)) for s in listify(entry.metadata.get('prs', []))]
+            links += [format_cl(cl) for cl in listify(entry.metadata.get('cls', []))]
+            if links != []:
+                header += " " + " ".join(links)
+            if header:
+                print(f"- {header}")
+                print()
+            print(textwrap.indent(entry.content, '  '))
             print()
-        print(textwrap.indent(entry.content, '  '))
-        print()
-    except Exception as e:
-        e.add_note(f"in {p}")
-        raise
+        except Exception as e:
+            e.add_note(f"in {p}")
+            raise
+
+if __name__ == '__main__':
+    for d in sys.argv[1:]:
+        run_on_dir(d)

@@ -344,6 +344,15 @@
                 enable = true;
                 excludes = [ "^tests/functional/lang/" ];
               };
+              release-notes = {
+                enable = true;
+                package = pkgs.build-release-notes;
+                files = "^doc/manual/rl-next(-dev)?";
+                pass_filenames = false;
+                entry = ''
+                  ${lib.getExe pkgs.build-release-notes} doc/manual/rl-next doc/manual/rl-next-dev
+                '';
+              };
               # TODO: Once the test suite is nicer, clean up and start
               # enforcing trailing whitespace on tests that don't explicitly
               # check for it.
