@@ -147,16 +147,15 @@ doc/manual/generated/man1/nix3-manpages: $(d)/src/command-ref/new-cli
 	done
 	@touch $@
 
-$(docdir)/manual/index.html: $(MANUAL_SRCS) $(d)/book.toml $(d)/anchors.jq $(d)/custom.css $(d)/src/SUMMARY.md $(d)/src/command-ref/new-cli $(d)/src/contributing/experimental-feature-descriptions.md $(d)/src/command-ref/conf-file.md $(d)/src/language/builtins.md $(d)/src/language/builtin-constants.md $(d)/src/release-notes/rl-next-generated.md $(d)/docroot.py
+doc/manual/generated/out: $(MANUAL_SRCS) $(d)/book.toml $(d)/anchors.jq $(d)/custom.css $(d)/src/SUMMARY.md $(d)/src/command-ref/new-cli $(d)/src/contributing/experimental-feature-descriptions.md $(d)/src/command-ref/conf-file.md $(d)/src/language/builtins.md $(d)/src/language/builtin-constants.md $(d)/src/release-notes/rl-next-generated.md $(d)/docroot.py
+	@rm -rf $@
 	$(trace-gen) \
-		tmp="$$(mktemp -d)"; \
-		cp -r doc/manual "$$tmp"; \
-		set -euo pipefail; \
-		RUST_LOG=warn mdbook build "$$tmp/manual" -d $(DESTDIR)$(docdir)/manual.tmp 2>&1 \
-			| { grep -Fv "because fragment resolution isn't implemented" || :; }; \
-		rm -rf "$$tmp/manual"
+		RUST_LOG=warn mdbook build doc/manual -d generated/out 2>&1 \
+			| { grep -Fv "because fragment resolution isn't implemented" || :; }
+
+$(docdir)/manual/index.html: doc/manual/generated/out
+	@mkdir -p $(DESTDIR)$(docdir)
 	@rm -rf $(DESTDIR)$(docdir)/manual
-	@mv $(DESTDIR)$(docdir)/manual.tmp/html $(DESTDIR)$(docdir)/manual
-	@rm -rf $(DESTDIR)$(docdir)/manual.tmp
+	@cp -r $</html $(DESTDIR)$(docdir)/manual
 
 endif
