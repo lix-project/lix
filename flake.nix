@@ -157,6 +157,7 @@
           nixUnstable = prev.nixUnstable;
 
           build-release-notes = final.buildPackages.callPackage ./maintainers/build-release-notes.nix { };
+          check-headers = final.buildPackages.callPackage ./maintainers/check-headers.nix { };
           clangbuildanalyzer = final.buildPackages.callPackage ./misc/clangbuildanalyzer.nix { };
 
           default-busybox-sandbox-shell = final.busybox.override {
@@ -352,6 +353,23 @@
                 entry = ''
                   ${lib.getExe pkgs.build-release-notes} doc/manual/rl-next doc/manual/rl-next-dev
                 '';
+              };
+              check-headers = {
+                enable = true;
+                package = pkgs.check-headers;
+                files = "^src/";
+                types = [
+                  "c++"
+                  "file"
+                  "header"
+                ];
+                # generated files; these will never actually be seen by this
+                # check, and are left here as documentation
+                excludes = [
+                  "(parser|lexer)-tab\\.hh$"
+                  "\\.gen\\.hh$"
+                ];
+                entry = lib.getExe pkgs.check-headers;
               };
               # TODO: Once the test suite is nicer, clean up and start
               # enforcing trailing whitespace on tests that don't explicitly
