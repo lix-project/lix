@@ -115,9 +115,9 @@ For backwards compatibility, Nix commands will follow the standard only when [`u
 
 The following environment variables are used to determine locations of various state and configuration files:
 
-- [`XDG_CONFIG_HOME`]{#env-XDG_CONFIG_HOME} (default `~/.config`)
-- [`XDG_STATE_HOME`]{#env-XDG_STATE_HOME} (default `~/.local/state`)
-- [`XDG_CACHE_HOME`]{#env-XDG_CACHE_HOME} (default `~/.cache`)
+- `XDG_CONFIG_HOME` (default `~/.config`)
+- `XDG_STATE_HOME` (default `~/.local/state`)
+- `XDG_CACHE_HOME` (default `~/.cache`)
 
 
 [XDG Base Directory Specification]: https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
