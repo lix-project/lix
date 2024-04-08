@@ -1,4 +1,5 @@
 #pragma once
+///@file
 #include "config.hh"
 
 namespace nix {

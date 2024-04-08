@@ -1,4 +1,5 @@
 #pragma once
+///@file
 
 #include "source-path.hh"
 #include "store-api.hh"

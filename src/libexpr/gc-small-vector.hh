@@ -1,4 +1,5 @@
 #pragma once
+///@file
 
 #include <boost/container/small_vector.hpp>
 

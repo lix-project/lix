@@ -1,4 +1,6 @@
 #pragma once
+///@file
+
 #include <ostream>
 
 namespace nix {
