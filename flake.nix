@@ -6,11 +6,7 @@
     nixpkgs-regression.url = "github:NixOS/nixpkgs/215d4d0fd80ca5163643b03a33fde804a29cc1e2";
     pre-commit-hooks = {
       url = "github:cachix/git-hooks.nix";
-      inputs = {
-        flake-compat.follows = "flake-compat";
-        nixpkgs.follows = "nixpkgs";
-        nixpkgs-stable.follows = "nixpkgs";
-      };
+      flake = false;
     };
     flake-compat = {
       url = "github:edolstra/flake-compat";
@@ -301,9 +297,22 @@
           );
         };
 
-        pre-commit = builtins.mapAttrs (
-          system: pre-commit-lib:
-          pre-commit-lib.run {
+        pre-commit = forAllSystems (
+          system:
+          let
+            pkgs = nixpkgsFor.${system}.native;
+            # Import pre-commit bypassing the flake because flakes don't let
+            # you have overlays. Also their implementation forces an
+            # unnecessary reimport of nixpkgs for our use cases.
+            tools = import (pre-commit-hooks + "/nix/call-tools.nix") pkgs;
+            pre-commit-run = pkgs.callPackage (pre-commit-hooks + "/nix/run.nix") {
+              inherit tools;
+              isFlakes = true;
+              # unused!
+              gitignore-nix-src = builtins.throw "gitignore-nix-src is unused";
+            };
+          in
+          pre-commit-run {
             src = self;
             hooks = {
               no-commit-to-branch = {
@@ -345,15 +354,11 @@
               };
               treefmt = {
                 enable = true;
-                settings.formatters =
-                  let
-                    pkgs = nixpkgsFor.${system}.native;
-                  in
-                  [ pkgs.nixfmt ];
+                settings.formatters = [ pkgs.nixfmt ];
               };
             };
           }
-        ) pre-commit-hooks.lib;
+        );
       };
 
       # NOTE *do not* add fresh derivations to checks, always add them to
