@@ -4,7 +4,7 @@
 # This has an overhead of 0-4% on gcc and unmeasurably little on clang, in
 # Nix evaluation benchmarks.
 DEFAULT_SANITIZE_FLAGS = -fsanitize=signed-integer-overflow -fsanitize-undefined-trap-on-error
-GLOBAL_CXXFLAGS += -Wno-deprecated-declarations -Werror=switch $(DEFAULT_SANITIZE_FLAGS)
+GLOBAL_CXXFLAGS += -Wno-deprecated-declarations -Werror=switch $(DEFAULT_SANITIZE_FLAGS) -D_GLIBCXX_ASSERTIONS=1
 GLOBAL_LDFLAGS += $(DEFAULT_SANITIZE_FLAGS)
 # Allow switch-enum to be overridden for files that do not support it, usually because of dependency headers.
 ERROR_SWITCH_ENUM = -Werror=switch-enum

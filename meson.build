@@ -344,6 +344,12 @@ add_project_arguments(
   '-Wimplicit-fallthrough',
   '-Werror=switch',
   '-Werror=switch-enum',
+  # Enable assertions in libstdc++ by default. Harmless on libc++. Benchmarked
+  # at ~1% overhead in `nix search`.
+  #
+  # FIXME: remove when we get meson 1.4.0 which will default this to on for us:
+  # https://mesonbuild.com/Release-notes-for-1-4-0.html#ndebug-setting-now-controls-c-stdlib-assertions
+  '-D_GLIBCXX_ASSERTIONS=1',
   language : 'cpp',
 )
 
@@ -351,8 +357,7 @@ if cxx.get_id() in ['gcc', 'clang']
   # 2024-03-24: jade benchmarked the default sanitize reporting in clang and got
   # a regression of about 10% on hackage-packages.nix with clang. So we are trapping instead.
   #
-  # This has an overhead of 0-4% on gcc and unmeasurably little on clang, in
-  # Nix evaluation benchmarks.
+  # This has an unmeasurably low overhead in Nix evaluation benchmarks.
   #
   # N.B. Meson generates a completely nonsense warning here:
   # https://github.com/mesonbuild/meson/issues/9822
