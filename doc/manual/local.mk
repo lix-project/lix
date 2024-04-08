@@ -60,7 +60,7 @@ $(d)/nix.conf.5: $(d)/src/command-ref/conf-file.md
 $(d)/nix-profiles.5: $(d)/src/command-ref/files/profiles.md
 	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .5)" 5 $^ $^.tmp $@
 
-$(d)/src/SUMMARY.md: $(d)/src/SUMMARY.md.in $(d)/src/SUMMARY-rl-next.md $(d)/src/command-ref/new-cli $(d)/src/contributing/experimental-feature-descriptions.md
+$(d)/src/SUMMARY.md: $(d)/src/SUMMARY.md.in $(d)/src/command-ref/new-cli $(d)/src/contributing/experimental-feature-descriptions.md
 	@cp $< $@
 	@doc/manual/process-includes.sh $@ $@
 
@@ -113,21 +113,13 @@ $(d)/language.json: $(doc_nix)
 	@mv $@.tmp $@
 
 # Generate "Upcoming release" notes (or clear it and remove from menu)
-$(d)/src/release-notes/rl-next.md: $(d)/rl-next $(d)/rl-next/*
+$(d)/src/release-notes/rl-next-generated.md: $(d)/rl-next $(d)/rl-next/*
 	@if type -p build-release-notes > /dev/null; then \
 		echo "  GEN   " $@; \
 		build-release-notes doc/manual/rl-next > $@; \
 	else \
 		echo "  NULL  " $@; \
 		true > $@; \
-	fi
-
-$(d)/src/SUMMARY-rl-next.md: $(d)/src/release-notes/rl-next.md
-	$(trace-gen) true
-	@if [ -s $< ]; then \
-		echo '  - [Upcoming release](release-notes/rl-next.md)' > $@; \
-	else \
-	  true > $@; \
 	fi
 
 # Generate the HTML manual.
@@ -159,7 +151,7 @@ doc/manual/generated/man1/nix3-manpages: $(d)/src/command-ref/new-cli
 	done
 	@touch $@
 
-$(docdir)/manual/index.html: $(MANUAL_SRCS) $(d)/book.toml $(d)/anchors.jq $(d)/custom.css $(d)/src/SUMMARY.md $(d)/src/command-ref/new-cli $(d)/src/contributing/experimental-feature-descriptions.md $(d)/src/command-ref/conf-file.md $(d)/src/language/builtins.md $(d)/src/language/builtin-constants.md $(d)/src/release-notes/rl-next.md $(d)/docroot.py
+$(docdir)/manual/index.html: $(MANUAL_SRCS) $(d)/book.toml $(d)/anchors.jq $(d)/custom.css $(d)/src/SUMMARY.md $(d)/src/command-ref/new-cli $(d)/src/contributing/experimental-feature-descriptions.md $(d)/src/command-ref/conf-file.md $(d)/src/language/builtins.md $(d)/src/language/builtin-constants.md $(d)/src/release-notes/rl-next-generated.md $(d)/docroot.py
 	$(trace-gen) \
 		tmp="$$(mktemp -d)"; \
 		cp -r doc/manual "$$tmp"; \

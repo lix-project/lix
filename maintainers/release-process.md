@@ -60,6 +60,7 @@ release:
 
   ```console
   $ sed -e 's/officialRelease = false;/officialRelease = true;/' -i flake.nix
+  $ sed -e '/rl-next.md/ d' -i doc/manual/src/SUMMARY.md
   ```
 
   This removes the link to `rl-next.md` from the manual and sets
