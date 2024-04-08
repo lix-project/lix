@@ -46,6 +46,7 @@ libutil_tests_sources = files(
   'libutil/json-utils.cc',
   'libutil/logging.cc',
   'libutil/lru-cache.cc',
+  'libutil/paths-setting.cc',
   'libutil/pool.cc',
   'libutil/references.cc',
   'libutil/suggestions.cc',
