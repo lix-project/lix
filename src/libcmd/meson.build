@@ -45,7 +45,7 @@ libcmd = library(
     editline,
     lowdown,
     nlohmann_json,
-    nix_doc
+    lix_doc
   ],
   install : true,
   # FIXME(Qyriad): is this right?

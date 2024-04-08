@@ -48,7 +48,8 @@
 
   busybox-sandbox-shell,
 
-  nix-doc,
+  # internal fork of nix-doc providing :doc in the repl
+  lix-doc ? __forDefaults.lix-doc,
 
   pname ? "nix",
   versionSuffix ? "",
@@ -81,6 +82,8 @@
         ./boehmgc-traceable_allocator-public.diff
       ];
     };
+
+    lix-doc = pkgs.callPackage ./lix-doc/package.nix { };
   },
 }: let
   inherit (__forDefaults) canRunInstalled;
@@ -209,7 +212,7 @@ in stdenv.mkDerivation (finalAttrs: {
     lowdown
     libsodium
     toml11
-    nix-doc
+    lix-doc
   ]
     ++ lib.optionals stdenv.hostPlatform.isLinux [ libseccomp busybox-sandbox-shell ]
     ++ lib.optional stdenv.hostPlatform.isx86_64 libcpuid

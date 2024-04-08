@@ -148,13 +148,10 @@
             '';
           };
 
-          nix-doc = final.callPackage ./nix-doc/package.nix {};
-
           nix = final.callPackage ./package.nix {
             inherit versionSuffix;
             stdenv = currentStdenv;
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
-            nix-doc = final.nix-doc;
           };
 
           # Export the patched version of boehmgc that Lix uses into the overlay

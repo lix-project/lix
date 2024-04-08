@@ -1,9 +1,10 @@
 [package]
-description = "Nix documentation grepping tool"
+description = "Nix function documentation tool, stripped down into a library"
 edition = "2018"
-name = "nix-doc"
+name = "lix-doc"
 version = "0.0.1"
 license = "BSD-2-Clause OR MIT"
+# upstream details
 homepage = "https://github.com/lf-/nix-doc"
 repository = "https://github.com/lf-/nix-doc"
 

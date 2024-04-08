@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nix-doc"
+name = "lix-doc"
 version = "0.0.1"
 dependencies = [
  "expect-test",
