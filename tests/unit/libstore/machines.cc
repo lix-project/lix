@@ -1,5 +1,6 @@
 #include "machines.hh"
 #include "globals.hh"
+#include "tests/test-data.hh"
 
 #include <gmock/gmock-matchers.h>
 
@@ -17,7 +18,6 @@ using nix::getMachines;
 using nix::Machine;
 using nix::Machines;
 using nix::pathExists;
-using nix::Settings;
 using nix::settings;
 
 class Environment : public ::testing::Environment {
@@ -138,7 +138,7 @@ TEST(machines, getMachinesWithIncorrectFormat) {
 }
 
 TEST(machines, getMachinesWithCorrectFileReference) {
-    auto path = absPath("tests/unit/libstore/test-data/machines.valid");
+    auto path = nix::getUnitTestDataPath("machines.valid");
     ASSERT_TRUE(pathExists(path));
 
     settings.builders = std::string("@") + path;
@@ -165,6 +165,6 @@ TEST(machines, getMachinesWithIncorrectFileReference) {
 }
 
 TEST(machines, getMachinesWithCorrectFileReferenceToIncorrectFile) {
-    settings.builders = std::string("@") + absPath("tests/unit/libstore/test-data/machines.bad_format");
+    settings.builders = std::string("@") + nix::getUnitTestDataPath("machines.bad_format");
     EXPECT_THROW(getMachines(), FormatError);
 }

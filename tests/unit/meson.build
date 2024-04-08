@@ -85,6 +85,7 @@ libstore_test_support_sources = files(
   'libstore-support/tests/derived-path.cc',
   'libstore-support/tests/outputs-spec.cc',
   'libstore-support/tests/path.cc',
+  'libstore-support/tests/test-data.hh',
 )
 
 libstore_test_support = library(
@@ -142,7 +143,6 @@ test(
     '_NIX_TEST_UNIT_DATA': meson.project_source_root() / 'tests/unit/libstore/data',
   },
   suite : 'check',
-  workdir : meson.project_source_root(),
   protocol : 'gtest',
   verbose : true,
 )
