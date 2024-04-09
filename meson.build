@@ -45,7 +45,6 @@ prefix = get_option('prefix')
 path_opts = [
   # Meson built-ins.
   'datadir',
-  'sysconfdir',
   'bindir',
   'mandir',
   'libdir',
@@ -55,12 +54,14 @@ path_opts = [
   'store-dir',
   'state-dir',
   'log-dir',
+  'profile-dir',
 ]
 # For your grepping pleasure, this loop sets the following variables that aren't mentioned
 # literally above:
 # store_dir
 # state_dir
 # log_dir
+# profile_dir
 foreach optname : path_opts
   varname = optname.replace('-', '_')
   path = get_option(optname)
@@ -70,6 +71,13 @@ foreach optname : path_opts
     set_variable(varname, prefix / path)
   endif
 endforeach
+
+# sysconfdir doesn't get anything installed to directly, and is only used to
+# tell Lix where to look for nix.conf, so it doesn't get appended to prefix.
+sysconfdir = get_option('sysconfdir')
+if not fs.is_absolute(sysconfdir)
+  sysconfdir = '/' / sysconfdir
+endif
 
 enable_docs = get_option('enable-docs')
 

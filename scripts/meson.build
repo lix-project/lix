@@ -20,7 +20,7 @@ foreach rc : [ '.sh', '.fish', '-daemon.sh', '-daemon.fish' ]
     input : 'nix-profile' + rc  + '.in',
     output : 'nix' + rc,
     install : true,
-    install_dir : sysconfdir / 'profile.d',
+    install_dir : profile_dir,
     install_mode : 'rw-r--r--',
     configuration : {
       'localstatedir': state_dir,

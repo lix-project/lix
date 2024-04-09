@@ -50,3 +50,8 @@ option('log-dir', type : 'string', value : '/nix/var/log',
 option('enable-docs', type : 'boolean', value : true,
   description : 'whether to build documentation',
 )
+
+# A relative path means it gets appended to prefix.
+option('profile-dir', type : 'string', value : 'etc/profile.d',
+  description : 'the path to install shell profile files',
+)
