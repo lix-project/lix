@@ -1,0 +1,22 @@
+`repl-overlays` that fail to evaluate should error.
+@args --repl-overlays
+@args ${PWD}/extra_data/repl-overlay-fail.nix
+@should-start false
+  error:
+         … while calling the 'foldl'' builtin
+           at «string»:5:13:
+              4| functions:
+              5| let final = builtins.foldl'
+               |             ^
+              6|               (prev: function: prev // (function info final prev))
+
+         … in the right operand of the update (//) operator
+           at «string»:6:37:
+              5| let final = builtins.foldl'
+              6|               (prev: function: prev // (function info final prev))
+               |                                     ^
+              7|               initial
+
+         (stack trace truncated; use '--show-trace' to show the full trace)
+
+         error: evaluation aborted with the following error message: 'uh oh!'

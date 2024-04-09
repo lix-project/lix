@@ -32,8 +32,13 @@ libcmd_headers = files(
   'repl.hh',
 )
 
+libcmd_generated_headers = [
+  gen_header.process('repl-overlays.nix', preserve_path_from: meson.current_source_dir()),
+]
+
 libcmd = library(
   'nixcmd',
+  libcmd_generated_headers,
   libcmd_sources,
   dependencies : [
     liblixutil,
