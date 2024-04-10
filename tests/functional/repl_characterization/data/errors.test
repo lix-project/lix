@@ -1,0 +1,27 @@
+Errors at the top of an expression are printed normally:
+
+  nix-repl> builtins.throw "Evil puppy detected!!!"
+  error:
+         … while calling the 'throw' builtin
+           at «string»:1:1:
+              1| builtins.throw "Evil puppy detected!!!"
+               | ^
+
+         error: Evil puppy detected!!!
+
+Errors in attribute values are printed inline, to make it easier to explore
+values like nixpkgs where some parts of the value fail to evaluate:
+
+  nix-repl> { puppy = builtins.throw "This puppy is EVIL!!!"; puppy2 = "This puppy is GOOD :)"; }
+  {
+    puppy = «error: This puppy is EVIL!!!»;
+    puppy2 = "This puppy is GOOD :)";
+  }
+
+Same for list values:
+
+  nix-repl> [ (builtins.throw "This puppy is EVIL!!!") ("This puppy is GOOD :)") ]
+  [
+    «error: This puppy is EVIL!!!»
+    "This puppy is GOOD :)"
+  ]
