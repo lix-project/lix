@@ -63,6 +63,7 @@ nix3_cli_json = custom_target(
   command : [ nix, '__dump-cli' ],
   capture : true,
   output : 'nix.json',
+  env : nix_env_for_docs,
 )
 
 generate_manual_deps = files(

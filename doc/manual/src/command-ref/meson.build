@@ -62,4 +62,5 @@ conf_file_md = custom_target(
     experimental_features_shortlist_md,
   ],
   output : 'conf-file.md',
+  env : nix_env_for_docs,
 )
