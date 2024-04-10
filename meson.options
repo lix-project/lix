@@ -43,7 +43,7 @@ option('state-dir', type : 'string', value : '/nix/var',
   description : 'path to store state in for Nix',
 )
 
-option('log-dir', type : 'string', value : '/nix/var/log',
+option('log-dir', type : 'string', value : '/nix/var/log/nix',
   description : 'path to store logs in for Nix',
 )
 
