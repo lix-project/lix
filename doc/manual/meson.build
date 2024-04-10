@@ -7,13 +7,13 @@ nix_env_for_docs = {
 }
 
 nix_for_docs = [ nix, '--experimental-features', 'nix-command' ]
-nix_eval_for_docs = nix_for_docs + [
+nix_eval_for_docs_common = nix_for_docs + [
   'eval',
   '-I', 'nix/corepkgs=corepkgs',
   '--store', 'dummy://',
   '--impure',
-  '--raw',
 ]
+nix_eval_for_docs = nix_eval_for_docs_common + '--raw'
 
 nix_conf_file_json = custom_target(
   command : nix_for_docs + [ 'show-config', '--json' ],
@@ -132,27 +132,34 @@ nix3_cli_json = custom_target(
   capture : true,
   output : 'nix.json',
 )
-# `nix eval --write-to` is rather picky, and refuses to write to a directory that exists at all.
-# This is fine for clean builds because it creates the directory and then is never run again,
-# but during development if nix.json changes, then using `nix eval --write-to` will error,
-# since that part of the build directory already exists.
-# Thus, another Python script. It runs the relevant `nix eval --write-to` command in a temporary
-# directory, and then copies that tree to our build output directory.
+
+# Intermediate step for manpage generation.
+# This splorks the output of generate-manpage.nix as JSON,
+# which gets written as a directory tree below.
+nix3_cli_files_json = custom_target(
+  command : nix_eval_for_docs_common + [
+    '--json',
+    '--expr',
+    'import @INPUT0@ true (builtins.readFile @INPUT1@)',
+  ],
+  input : [
+    'generate-manpage.nix',
+    nix3_cli_json,
+  ],
+  capture : true,
+  output : 'new-cli.json',
+  env : nix_env_for_docs,
+)
 nix3_cli_files = custom_target(
   command : [
     python,
     '@INPUT0@',
-    '--nix=@INPUT1@',
-    '--generator=@INPUT2@',
-    '--cli-json=@INPUT3@',
-    '--output=@OUTPUT@',
+    '-i', '@INPUT1@',
+    '-o', '@OUTPUT@',
   ],
   input : [
-    'generate-manpage.py', # INPUT0
-    nix, # INPUT1
-    'generate-manpage.nix', # INPUT2
-    nix3_cli_json, # INPUT3
-    'utils.nix',
+    'json-to-tree.py',
+    nix3_cli_files_json,
   ],
   output : 'new-cli',
 )
