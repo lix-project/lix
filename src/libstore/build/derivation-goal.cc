@@ -1009,7 +1009,7 @@ void DerivationGoal::buildDone()
             if (diskFull)
                 msg += "\nnote: build failure may have been caused by lack of free disk space";
 
-            throw BuildError(msg);
+            throw BuildError("%s", msg);
         }
 
         /* Compute the FS closure of the outputs and register them as
