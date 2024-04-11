@@ -15,7 +15,7 @@ nix_eval_for_docs_common = nix_for_docs + [
 ]
 nix_eval_for_docs = nix_eval_for_docs_common + '--raw'
 
-nix_conf_file_json = custom_target(
+conf_file_json = custom_target(
   command : nix_for_docs + [ 'show-config', '--json' ],
   capture : true,
   output : 'conf-file.json',
@@ -30,7 +30,7 @@ nix_conf_file_md_body = custom_target(
   capture : true,
   input : [
     'utils.nix',
-    nix_conf_file_json,
+    conf_file_json,
   ],
   output : 'conf-file.md.body',
   env : nix_env_for_docs,
@@ -40,7 +40,7 @@ nix_conf_file_md = custom_target(
   command : [ 'cat', '@INPUT@' ],
   capture : true,
   input : [
-    'src/command-ref/conf-file-prefix.md',
+    'src/command-ref/conf-file.md',
     nix_conf_file_md_body,
   ],
   output : 'conf-file.md',
@@ -51,18 +51,82 @@ nix_exp_features_json = custom_target(
   capture : true,
   output : 'xp-features.json',
 )
-nix_exp_feature_shortlist = custom_target(
-  command : nix_eval_for_docs + [
-    '--expr',
-    'import @INPUT0@ (builtins.fromJSON (builtins.readFile @INPUT1@))',
-  ],
-  input : [
-    'generate-xp-features-shortlist.nix',
-    nix_exp_features_json,
-  ],
-  output : 'experimental-features-shortlist.md',
+
+language_json = custom_target(
+  command: [nix, '__dump-language'],
+  output : 'language.json',
   capture : true,
   env : nix_env_for_docs,
+)
+
+nix3_cli_json = custom_target(
+  command : [ nix, '__dump-cli' ],
+  capture : true,
+  output : 'nix.json',
+  env : nix_env_for_docs,
+)
+
+generate_manual_deps = files(
+  'generate-deps.py',
+)
+
+# Generates builtins.md and builtin-constants.md.
+subdir('src/language')
+# Generates new-cli pages, experimental-features-shortlist.md, and conf-file.md.
+subdir('src/command-ref')
+# Generates experimental-feature-descriptions.md.
+subdir('src/contributing')
+# Generates rl-next-generated.md.
+subdir('src/release-notes')
+
+manual = custom_target(
+  'manual',
+  command : [
+    bash,
+    '-euo', 'pipefail',
+    '-c',
+    '''
+        @0@ @INPUT0@ @CURRENT_SOURCE_DIR@ > @DEPFILE@
+        cd @SOURCE_ROOT@
+        @1@ build doc/manual -d @2@ | { grep -Fv "because fragment resolution isn't implemented" || :; }
+        rm -rf @2@/manual
+        mv @2@/html @2@/manual
+        find @2@/manual -iname meson.build -delete
+    '''.format(
+      python.full_path(),
+      mdbook.full_path(),
+      meson.current_build_dir(),
+    ),
+  ],
+  input : [
+    generate_manual_deps,
+    'book.toml',
+    'anchors.jq',
+    'custom.css',
+    nix3_cli_files,
+    experimental_features_shortlist_md,
+    experimental_feature_descriptions_md,
+    conf_file_md,
+    builtins_md,
+    builtin_constants_md,
+    rl_next_generated,
+  ],
+  output : [
+    'manual',
+    'markdown',
+  ],
+  depfile : 'manual.d',
+  env : {
+    'RUST_LOG': 'info',
+    'MDBOOK_SUBSTITUTE_SEARCH': meson.current_build_dir() / 'src',
+  },
+)
+manual_html = manual[0]
+manual_md = manual[1]
+
+install_subdir(
+  manual_html.full_path(),
+  install_dir : datadir / 'doc/nix',
 )
 
 nix_nested_manpages = [
@@ -109,60 +173,26 @@ nix_nested_manpages = [
 
 foreach command : nix_nested_manpages
   foreach page : command[1]
+    title = command[0] + ' --' + page
+    section = '1'
     custom_target(
       command : [
         './render-manpage.sh',
         '--out-no-smarty',
-        command[0] + ' --' + page,
-        '1',
-        '@INPUT@',
-        '@OUTPUT@.tmp',
-        '@OUTPUT@',
+        title,
+        section,
+        '@INPUT0@/command-ref' / command[0] / (page + '.md'),
+        '@OUTPUT0@',
       ],
-      input : 'src/command-ref' / command[0] / (page + '.md'),
+      input : [
+        manual_md,
+      ],
       output : command[0] + '-' + page + '.1',
       install : true,
       install_dir : mandir / 'man1',
     )
   endforeach
 endforeach
-
-nix3_cli_json = custom_target(
-  command : [ nix, '__dump-cli' ],
-  capture : true,
-  output : 'nix.json',
-)
-
-# Intermediate step for manpage generation.
-# This splorks the output of generate-manpage.nix as JSON,
-# which gets written as a directory tree below.
-nix3_cli_files_json = custom_target(
-  command : nix_eval_for_docs_common + [
-    '--json',
-    '--expr',
-    'import @INPUT0@ true (builtins.readFile @INPUT1@)',
-  ],
-  input : [
-    'generate-manpage.nix',
-    nix3_cli_json,
-  ],
-  capture : true,
-  output : 'new-cli.json',
-  env : nix_env_for_docs,
-)
-nix3_cli_files = custom_target(
-  command : [
-    python,
-    '@INPUT0@',
-    '-i', '@INPUT1@',
-    '-o', '@OUTPUT@',
-  ],
-  input : [
-    'json-to-tree.py',
-    nix3_cli_files_json,
-  ],
-  output : 'new-cli',
-)
 
 nix3_manpages = [
   'nix3-build',
@@ -254,16 +284,20 @@ nix3_manpages = [
 ]
 
 foreach page : nix3_manpages
+  section = '1'
   custom_target(
     command : [
-      './render-manpage.sh',
+      bash,
+      '@INPUT0@',
       page,
-      '1',
-      '@INPUT0@/' + page + '.md',
-      '@OUTPUT@.tmp',
+      section,
+      '@INPUT1@/command-ref/new-cli/@0@.md'.format(page),
       '@OUTPUT@',
     ],
-    input : nix3_cli_files,
+    input : [
+      'render-manpage.sh',
+      manual_md,
+    ],
     output : page + '.1',
     install : true,
     install_dir : mandir / 'man1',
@@ -281,24 +315,30 @@ nix_manpages = [
   [ 'nix-channel', 1 ],
   [ 'nix-hash', 1 ],
   [ 'nix-copy-closure', 1 ],
-  [ 'nix.conf', 5, nix_conf_file_md, nix_exp_feature_shortlist ],
+  [ 'nix.conf', 5, 'conf-file.md' ],
   [ 'nix-daemon', 8 ],
-  [ 'nix-profiles', 5, 'src/command-ref/files/profiles.md', nix_exp_feature_shortlist ],
+  [ 'nix-profiles', 5, 'files/profiles.md' ],
 ]
 
 foreach entry : nix_manpages
+  title = entry[0]
+  # nix.conf.5 and nix-profiles.5 are based off of conf-file.md and files/profiles.md,
+  # rather than a stem identical to its mdbook source.
+  # Therefore we use an optional third element of this array to override the name pattern
+  md_file = entry.get(2, title + '.md')
+  section = entry[1].to_string()
   custom_target(
     command : [
-      './render-manpage.sh',
-      entry[0],
-      entry[1].to_string(),
+      bash,
       '@INPUT0@',
-      '@OUTPUT@.tmp',
+      title,
+      section,
+      '@INPUT1@/command-ref/@0@'.format(md_file),
       '@OUTPUT@',
-      meson.current_build_dir(),
     ],
     input : [
-      entry.get(2, 'src/command-ref' / (entry[0] + '.md')),
+      'render-manpage.sh',
+      manual_md,
       entry.get(3, []),
     ],
     output : '@0@.@1@'.format(entry[0], entry[1]),

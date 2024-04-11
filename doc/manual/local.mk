@@ -17,14 +17,14 @@ man-pages := $(foreach n, \
 	nix-hash.1 nix-copy-closure.1 \
 	nix.conf.5 nix-daemon.8 \
 	nix-profiles.5 \
-, $(d)/$(n))
+, doc/manual/generated/in/$(n))
 
 # man pages for subcommands
 # convert from `$(d)/src/command-ref/nix-{1}/{2}.md` to `$(d)/nix-{1}-{2}.1`
 # FIXME: unify with how nix3-cli man pages are generated
 man-pages += $(foreach subcommand, \
 	$(filter-out %opt-common.md %env-common.md, $(wildcard $(d)/src/command-ref/nix-*/*.md)), \
-	$(d)/$(subst /,-,$(subst $(d)/src/command-ref/,,$(subst .md,.1,$(subcommand)))))
+	doc/manual/generated/in/$(subst /,-,$(subst $(d)/src/command-ref/,,$(subst .md,.1,$(subcommand)))))
 
 clean-files += $(d)/*.1 $(d)/*.5 $(d)/*.8
 
@@ -39,77 +39,91 @@ dummy-env = env -i \
 
 nix-eval = $(dummy-env) $(doc_nix) eval --experimental-features nix-command -I nix/corepkgs=corepkgs --store dummy:// --impure --raw
 
-$(d)/nix-env-%.1: $(d)/src/command-ref/nix-env/%.md
+doc/manual/generated/in/nix-env-%.1: doc/manual/generated/out
 	$(trace-gen) doc/manual/render-manpage.sh \
-		--out-no-smarty "$(subst nix-env-,nix-env --,$$(basename "$@" .1))" 1 $^ $^.tmp $@
+		--out-no-smarty "$(subst nix-env-,nix-env --,$$(basename "$@" .1))" 1 \
+		doc/manual/generated/out/markdown/command-ref/nix-env/$*.md \
+		$@
 
-$(d)/nix-store-%.1: $(d)/src/command-ref/nix-store/%.md
+doc/manual/generated/in/nix-store-%.1: doc/manual/generated/out
 	$(trace-gen) doc/manual/render-manpage.sh \
-		--out-no-smarty "$(subst nix-store-,nix-store --,$$(basename "$@" .1))" 1 $^ $^.tmp $@
+		--out-no-smarty "$(subst nix-store-,nix-store --,$$(basename "$@" .1))" 1 \
+		doc/manual/generated/out/markdown/command-ref/nix-store/$*.md \
+		$@
 
 
-$(d)/%.1: $(d)/src/command-ref/%.md
-	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .1)" 1 $^ $^.tmp $@
+doc/manual/generated/in/%.1: doc/manual/generated/out
+	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .1)" 1 \
+		doc/manual/generated/out/markdown/command-ref/$*.md \
+		$@
 
-$(d)/%.8: $(d)/src/command-ref/%.md
-	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .8)" 8 $^ $^.tmp $@
+doc/manual/generated/in/%.8: doc/manual/generated/out
+	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .8)" 8 \
+		doc/manual/generated/out/markdown/command-ref/$*.md \
+		$@
 
-$(d)/nix.conf.5: $(d)/src/command-ref/conf-file.md
-	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .5)" 5 $^ $^.tmp $@
+doc/manual/generated/in/nix.conf.5: doc/manual/generated/out
+	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .5)" 5 \
+		doc/manual/generated/out/markdown/command-ref/conf-file.md \
+		$@
 
-$(d)/nix-profiles.5: $(d)/src/command-ref/files/profiles.md
-	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .5)" 5 $^ $^.tmp $@
+doc/manual/generated/in/nix-profiles.5: doc/manual/generated/out
+	$(trace-gen) doc/manual/render-manpage.sh "$$(basename $@ .5)" 5 \
+		doc/manual/generated/out/markdown/command-ref/files/profiles.md \
+		$@
 
-$(d)/src/command-ref/new-cli: $(d)/nix.json $(d)/utils.nix $(d)/generate-manpage.nix $(doc_nix)
+doc/manual/generated/in/command-ref/new-cli: doc/manual/generated/in/nix.json $(d)/utils.nix $(d)/generate-manpage.nix $(doc_nix)
+	@mkdir -p doc/manual/generated/in/command-ref
 	@rm -rf $@ $@.tmp
 	$(trace-gen) $(nix-eval) --write-to $@.tmp --expr 'import doc/manual/generate-manpage.nix true (builtins.readFile $<)'
 	@mv $@.tmp $@
 
-$(d)/src/command-ref/conf-file.md: $(d)/conf-file.json $(d)/utils.nix $(d)/src/command-ref/conf-file-prefix.md $(d)/src/command-ref/experimental-features-shortlist.md $(doc_nix)
-	@cat doc/manual/src/command-ref/conf-file-prefix.md > $@.tmp
-	$(trace-gen) $(nix-eval) --expr '(import doc/manual/utils.nix).showSettings { inlineHTML = true; } (builtins.fromJSON (builtins.readFile $<))' >> $@.tmp;
-	@mv $@.tmp $@
+doc/manual/generated/in/command-ref/conf-file.md: doc/manual/generated/in/conf-file.json $(d)/utils.nix doc/manual/generated/in/command-ref/experimental-features-shortlist.md $(doc_nix)
+	@mkdir -p doc/manual/generated/in/command-ref
+	$(trace-gen) $(nix-eval) --expr '(import doc/manual/utils.nix).showSettings { inlineHTML = true; } (builtins.fromJSON (builtins.readFile $<))' >> $@
 
-$(d)/nix.json: $(doc_nix)
+doc/manual/generated/in/nix.json: $(doc_nix)
+	@mkdir -p doc/manual/generated/in
 	$(trace-gen) $(dummy-env) $(doc_nix) __dump-cli > $@.tmp
 	@mv $@.tmp $@
 
-$(d)/conf-file.json: $(doc_nix)
+doc/manual/generated/in/conf-file.json: $(doc_nix)
+	@mkdir -p doc/manual/generated/in
 	$(trace-gen) $(dummy-env) $(doc_nix) show-config --json --experimental-features nix-command > $@.tmp
 	@mv $@.tmp $@
 
-$(d)/src/contributing/experimental-feature-descriptions.md: $(d)/xp-features.json $(d)/utils.nix $(d)/generate-xp-features.nix $(doc_nix)
+doc/manual/generated/in/contributing/experimental-feature-descriptions.md: doc/manual/generated/in/xp-features.json $(d)/utils.nix $(d)/generate-xp-features.nix $(doc_nix)
+	@mkdir -p doc/manual/generated/in/contributing
 	@rm -rf $@ $@.tmp
 	$(trace-gen) $(nix-eval) --write-to $@.tmp --expr 'import doc/manual/generate-xp-features.nix (builtins.fromJSON (builtins.readFile $<))'
 	@mv $@.tmp $@
 
-$(d)/src/command-ref/experimental-features-shortlist.md: $(d)/xp-features.json $(d)/utils.nix $(d)/generate-xp-features-shortlist.nix $(doc_nix)
+doc/manual/generated/in/command-ref/experimental-features-shortlist.md: doc/manual/generated/in/xp-features.json $(d)/utils.nix $(d)/generate-xp-features-shortlist.nix $(doc_nix)
+	@mkdir -p doc/manual/generated/in/command-ref
 	@rm -rf $@ $@.tmp
 	$(trace-gen) $(nix-eval) --write-to $@.tmp --expr 'import doc/manual/generate-xp-features-shortlist.nix (builtins.fromJSON (builtins.readFile $<))'
 	@mv $@.tmp $@
 
-$(d)/xp-features.json: $(doc_nix)
+doc/manual/generated/in/xp-features.json: $(doc_nix)
 	$(trace-gen) $(dummy-env) NIX_PATH=nix/corepkgs=corepkgs $(doc_nix) __dump-xp-features > $@.tmp
 	@mv $@.tmp $@
 
-$(d)/src/language/builtins.md: $(d)/language.json $(d)/generate-builtins.nix $(d)/src/language/builtins-prefix.md $(doc_nix)
-	@cat doc/manual/src/language/builtins-prefix.md > $@.tmp
-	$(trace-gen) $(nix-eval) --expr 'import doc/manual/generate-builtins.nix (builtins.fromJSON (builtins.readFile $<)).builtins' >> $@.tmp;
-	@cat doc/manual/src/language/builtins-suffix.md >> $@.tmp
-	@mv $@.tmp $@
+doc/manual/generated/in/language/builtins.md: doc/manual/generated/in/language.json $(d)/generate-builtins.nix $(doc_nix)
+	@mkdir -p doc/manual/generated/in/language
+	$(trace-gen) $(nix-eval) --expr 'import doc/manual/generate-builtins.nix (builtins.fromJSON (builtins.readFile $<)).builtins' >> $@
 
-$(d)/src/language/builtin-constants.md: $(d)/language.json $(d)/generate-builtin-constants.nix $(d)/src/language/builtin-constants-prefix.md $(doc_nix)
-	@cat doc/manual/src/language/builtin-constants-prefix.md > $@.tmp
-	$(trace-gen) $(nix-eval) --expr 'import doc/manual/generate-builtin-constants.nix (builtins.fromJSON (builtins.readFile $<)).constants' >> $@.tmp;
-	@cat doc/manual/src/language/builtin-constants-suffix.md >> $@.tmp
-	@mv $@.tmp $@
+doc/manual/generated/in/language/builtin-constants.md: doc/manual/generated/in/language.json $(d)/generate-builtin-constants.nix $(doc_nix)
+	@mkdir -p doc/manual/generated/in/language
+	$(trace-gen) $(nix-eval) --expr 'import doc/manual/generate-builtin-constants.nix (builtins.fromJSON (builtins.readFile $<)).constants' >> $@
 
-$(d)/language.json: $(doc_nix)
+doc/manual/generated/in/language.json: $(doc_nix)
+	@mkdir -p doc/manual/generated/in
 	$(trace-gen) $(dummy-env) NIX_PATH=nix/corepkgs=corepkgs $(doc_nix) __dump-language > $@.tmp
 	@mv $@.tmp $@
 
 # Generate "Upcoming release" notes (or clear it and remove from menu)
-$(d)/src/release-notes/rl-next-generated.md: $(d)/rl-next $(d)/rl-next/*
+doc/manual/generated/in/release-notes/rl-next-generated.md: $(d)/rl-next $(d)/rl-next/*
+	@mkdir -p doc/manual/generated/in/release-notes
 	@if type -p build-release-notes > /dev/null; then \
 		echo "  GEN   " $@; \
 		build-release-notes doc/manual/rl-next > $@; \
@@ -134,9 +148,9 @@ $(mandir)/man1/nix3-manpages: doc/manual/generated/man1/nix3-manpages
 	@mkdir -p $(DESTDIR)$$(dirname $@)
 	$(trace-install) install -m 0644 $$(dirname $<)/* $(DESTDIR)$$(dirname $@)
 
-doc/manual/generated/man1/nix3-manpages: $(d)/src/command-ref/new-cli
+doc/manual/generated/man1/nix3-manpages: doc/manual/generated/out
 	@mkdir -p $(DESTDIR)$$(dirname $@)
-	$(trace-gen) for i in doc/manual/src/command-ref/new-cli/*.md; do \
+	$(trace-gen) for i in doc/manual/generated/out/markdown/command-ref/new-cli/*.md; do \
 		name=$$(basename $$i .md); \
 		tmpFile=$$(mktemp); \
 		if [[ $$name = SUMMARY ]]; then continue; fi; \
@@ -147,11 +161,14 @@ doc/manual/generated/man1/nix3-manpages: $(d)/src/command-ref/new-cli
 	done
 	@touch $@
 
-doc/manual/generated/out: $(MANUAL_SRCS) $(d)/book.toml $(d)/anchors.jq $(d)/custom.css $(d)/src/SUMMARY.md $(d)/src/command-ref/new-cli $(d)/src/contributing/experimental-feature-descriptions.md $(d)/src/command-ref/conf-file.md $(d)/src/language/builtins.md $(d)/src/language/builtin-constants.md $(d)/src/release-notes/rl-next-generated.md $(d)/docroot.py
+doc/manual/generated/out: $(MANUAL_SRCS) $(d)/book.toml $(d)/anchors.jq $(d)/custom.css $(d)/src/SUMMARY.md doc/manual/generated/in/command-ref/new-cli doc/manual/generated/in/command-ref/experimental-features-shortlist.md doc/manual/generated/in/contributing/experimental-feature-descriptions.md doc/manual/generated/in/command-ref/conf-file.md doc/manual/generated/in/language/builtins.md doc/manual/generated/in/language/builtin-constants.md doc/manual/generated/in/release-notes/rl-next-generated.md $(d)/substitute.py
 	@rm -rf $@
 	$(trace-gen) \
-		RUST_LOG=warn mdbook build doc/manual -d generated/out 2>&1 \
+		MDBOOK_SUBSTITUTE_SEARCH=doc/manual/generated/in \
+		RUST_LOG=warn \
+		mdbook build doc/manual -d generated/out 2>&1 \
 			| { grep -Fv "because fragment resolution isn't implemented" || :; }
+	@find $@ -iname meson.build -delete
 
 $(docdir)/manual/index.html: doc/manual/generated/out
 	@mkdir -p $(DESTDIR)$(docdir)

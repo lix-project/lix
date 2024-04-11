@@ -436,7 +436,7 @@ struct ExperimentalFeatureSettings : Config {
 
           The following experimental features are available:
 
-          {{#include experimental-features-shortlist.md}}
+          {{#include @generated@/command-ref/experimental-features-shortlist.md}}
 
           Experimental features are [further documented in the manual](@docroot@/contributing/experimental-features.md).
         )"};

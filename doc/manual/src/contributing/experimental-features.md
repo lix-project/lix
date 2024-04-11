@@ -92,4 +92,4 @@ This means that experimental features and RFCs are orthogonal mechanisms, and ca
 
 # Currently available experimental features
 
-{{#include ./experimental-feature-descriptions.md}}
+{{#include @generated@/contributing/experimental-feature-descriptions.md}}

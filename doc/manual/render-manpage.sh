@@ -9,14 +9,17 @@ if [ "$1" = --out-no-smarty ]; then
     shift
 fi
 
+[ "$#" = 4 ] || {
+    echo "wrong number of args passed" >&2
+    exit 1
+}
+
 title="$1"
 section="$2"
 infile="$3"
-tmpfile="$4"
-outfile="$5"
+outfile="$4"
 
-printf "Title: %s\n\n" "$title" > "$tmpfile"
-cat "$infile" >> "$tmpfile"
-"$(dirname "$0")"/process-includes.sh "$infile" "$tmpfile"
-lowdown -sT man --nroff-nolinks $lowdown_args -M section="$section" "$tmpfile" -o "$outfile"
-rm "$tmpfile"
+(
+    printf "Title: %s\n\n" "$title"
+    cat "$infile"
+) | lowdown -sT man --nroff-nolinks $lowdown_args -M section="$section" -o "$outfile"
