@@ -15,9 +15,9 @@ TEST(HintFmt, arg_count)
     ASSERT_EQ(HintFmt("%1%", "hello").str(), ANSI_MAGENTA "hello" ANSI_NORMAL);
 
     // Argument counts are detected at construction.
-    ASSERT_THROW(HintFmt("%s %s", 1), boost::io::too_few_args);
+    ASSERT_DEATH(HintFmt("%s %s", 1), "HintFmt received incorrect");
 
-    ASSERT_THROW(HintFmt("%s", 1, 2), boost::io::too_many_args);
+    ASSERT_DEATH(HintFmt("%s", 1, 2), "HintFmt received incorrect");
 }
 
 }

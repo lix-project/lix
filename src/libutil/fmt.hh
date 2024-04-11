@@ -1,8 +1,15 @@
 #pragma once
 ///@file
 
-#include <boost/format.hpp>
+#include <iostream>
 #include <string>
+#include <optional>
+#include <boost/format.hpp>
+// Darwin stdenv does not define _GNU_SOURCE but does have _Unwind_Backtrace.
+#ifdef __APPLE__
+#define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
+#endif
+#include <boost/stacktrace.hpp>
 #include "ansicolor.hh"
 
 namespace nix {
@@ -157,22 +164,26 @@ public:
      */
     template<typename... Args>
     HintFmt(const std::string & format, const Args &... args)
-        : HintFmt(boost::format(format), args...)
+        // Note the function try block.
+        try : fmt(fmt_internal::HintFmt(boost::format(format), args...).into_format())
     {
+        if (this->fmt.remaining_args() != 0) {
+            // Abort. I don't want anything to catch this, I want a coredump.
+            std::cerr << "HintFmt received incorrect number of format args. Original format string: '";
+            std::cerr << format << "'; number of arguments: " << sizeof...(args) << "\n";
+            // And regardless of the coredump give me a damn stacktrace.
+            std::cerr << boost::stacktrace::stacktrace() << std::endl;
+            abort();
+        }
+    } catch (boost::io::format_error & ex) {
+        // Same thing, but for anything that happens in the member initializers.
+        std::cerr << "HintFmt received incorrect format string. Original format string: '";
+        std::cerr << format << "'; number of arguments: " << sizeof...(args) << "\n";
+        std::cerr << boost::stacktrace::stacktrace() << std::endl;
+        abort();
     }
 
     HintFmt(const HintFmt & hf) : fmt(hf.fmt) {}
-
-    template<typename... Args>
-    HintFmt(boost::format && fmt, const Args &... args)
-        : fmt(fmt_internal::HintFmt(std::move(fmt), args...).into_format())
-    {
-        if (this->fmt.remaining_args() != 0) {
-            throw boost::io::too_few_args(
-                this->fmt.bound_args() + this->fmt.fed_args(), this->fmt.expected_args()
-            );
-        }
-    }
 
     std::string str() const
     {
