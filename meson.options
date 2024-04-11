@@ -1,4 +1,9 @@
 # vim: filetype=meson
+
+option('enable-build', type : 'boolean', value : true,
+  description : 'Set to false to not actually build. Only really makes sense with -Dinternal-api-docs=true',
+)
+
 option('gc', type : 'feature',
   description : 'enable garbage collection in the Nix expression evaluator (requires Boehm GC)',
 )
@@ -49,6 +54,10 @@ option('log-dir', type : 'string', value : '/nix/var/log',
 
 option('enable-docs', type : 'boolean', value : true,
   description : 'whether to build documentation',
+)
+
+option('internal-api-docs', type : 'feature', value : 'auto',
+  description : 'whether to build internal API documentation (requires doxygen)',
 )
 
 # A relative path means it gets appended to prefix.
