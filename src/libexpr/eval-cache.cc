@@ -576,8 +576,9 @@ std::string AttrCursor::getString()
 
     auto & v = forceValue();
 
-    if (v.type() != nString && v.type() != nPath)
-        root->state.error<TypeError>("'%s' is not a string but %s", getAttrPathStr()).debugThrow();
+    if (v.type() != nString && v.type() != nPath) {
+        root->state.error<TypeError>("'%s' is not a string but %s", getAttrPathStr(), v.type()).debugThrow();
+    }
 
     return v.type() == nString ? v.string.s : v.path().to_string();
 }
@@ -622,11 +623,11 @@ string_t AttrCursor::getStringWithContext()
         NixStringContext context;
         copyContext(v, context);
         return {v.string.s, std::move(context)};
-    }
-    else if (v.type() == nPath)
+    } else if (v.type() == nPath) {
         return {v.path().to_string(), {}};
-    else
-        root->state.error<TypeError>("'%s' is not a string but %s", getAttrPathStr()).debugThrow();
+    } else {
+        root->state.error<TypeError>("'%s' is not a string but %s", getAttrPathStr(), v.type()).debugThrow();
+    }
 }
 
 bool AttrCursor::getBool()
