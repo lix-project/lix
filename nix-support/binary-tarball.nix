@@ -1,11 +1,17 @@
 {
   buildPackages,
+  cacert,
   nix,
   system,
   version,
 }:
 let
-  installerClosureInfo = buildPackages.closureInfo { rootPaths = [ nix ]; };
+  installerClosureInfo = buildPackages.closureInfo {
+    rootPaths = [
+      nix
+      cacert
+    ];
+  };
 
   meta.description = "Distribution-independent Nix bootstrap binaries for ${system}";
 in
