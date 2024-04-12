@@ -116,34 +116,7 @@
       );
 
       binaryTarball =
-        nix: pkgs:
-        let
-          inherit (pkgs) buildPackages;
-          installerClosureInfo = buildPackages.closureInfo { rootPaths = [ nix ]; };
-        in
-
-        buildPackages.runCommand "nix-binary-tarball-${version}"
-          {
-            #nativeBuildInputs = lib.optional (system != "aarch64-linux") shellcheck;
-            meta.description = "Distribution-independent Nix bootstrap binaries for ${pkgs.system}";
-          }
-          ''
-            cp ${installerClosureInfo}/registration $TMPDIR/reginfo
-
-            dir=nix-${version}-${pkgs.system}
-            fn=$out/$dir.tar.xz
-            mkdir -p $out/nix-support
-            echo "file binary-dist $fn" >> $out/nix-support/hydra-build-products
-            tar cvfJ $fn \
-              --owner=0 --group=0 --mode=u+rw,uga+r \
-              --mtime='1970-01-01' \
-              --absolute-names \
-              --hard-dereference \
-              --transform "s,$TMPDIR/reginfo,$dir/.reginfo," \
-              --transform "s,$NIX_STORE,$dir/store,S" \
-              $TMPDIR/reginfo \
-              $(cat ${installerClosureInfo}/store-paths)
-          '';
+        nix: pkgs: pkgs.callPackage ./nix-support/binary-tarball.nix { inherit nix version; };
 
       overlayFor =
         getStdenv: final: prev:
