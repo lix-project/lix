@@ -410,7 +410,7 @@ static void doBind(const Path & source, const Path & target, bool optional = fal
     } else if (S_ISLNK(st.st_mode)) {
         // Symlinks can (apparently) not be bind-mounted, so just copy it
         createDirs(dirOf(target));
-        copyFile(source, target, /* andDelete */ false);
+        copyFile(source, target, {});
     } else {
         createDirs(dirOf(target));
         writeFile(target, "");
@@ -1811,8 +1811,25 @@ void LocalDerivationGoal::runChild()
                    happens when testing Nix building fixed-output derivations
                    within a pure derivation. */
                 for (auto & path : { "/etc/resolv.conf", "/etc/services", "/etc/hosts" })
-                    if (pathExists(path))
-                        ss.push_back(path);
+                    if (pathExists(path)) {
+                        // Copy the actual file, not the symlink, because we don't know where
+                        // the symlink is pointing, and we don't want to chase down the entire
+                        // chain.
+                        //
+                        // This means if your network config changes during a FOD build,
+                        // the DNS in the sandbox will be wrong. However, this is pretty unlikely
+                        // to actually be a problem, because FODs are generally pretty fast,
+                        // and machines with often-changing network configurations probably
+                        // want to run resolved or some other local resolver anyway.
+                        //
+                        // There's also just no simple way to do this correctly, you have to manually
+                        // inotify watch the files for changes on the outside and update the sandbox
+                        // while the build is running (or at least that's what Flatpak does).
+                        //
+                        // I also just generally feel icky about modifying sandbox state under a build,
+                        // even though it really shouldn't be a big deal. -K900
+                        copyFile(path, chrootRootDir + path, { .followSymlinks = true });
+                    }
 
                 if (settings.caFile != "")
                     pathsInChroot.try_emplace("/etc/ssl/certs/ca-certificates.crt", settings.caFile, true);
@@ -2542,7 +2559,7 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
                 // that there's no stale file descriptor pointing to it
                 Path tmpOutput = actualPath + ".tmp";
                 movePath(actualPath, tmpOutput);
-                copyFile(tmpOutput, actualPath, true);
+                copyFile(tmpOutput, actualPath, { .deleteAfter = true });
 
                 auto newInfo0 = newInfoFromCA(DerivationOutput::CAFloating {
                     .method = dof.ca.method,

@@ -279,13 +279,26 @@ void renameFile(const Path & src, const Path & dst);
  */
 void moveFile(const Path & src, const Path & dst);
 
+struct CopyFileFlags
+{
+    /**
+     * Delete the file after copying.
+     */
+    bool deleteAfter = false;
+
+    /**
+     * Follow symlinks and copy the eventual target.
+     */
+    bool followSymlinks = false;
+};
+
 /**
  * Recursively copy the content of `oldPath` to `newPath`. If `andDelete` is
  * `true`, then also remove `oldPath` (making this equivalent to `moveFile`, but
  * with the guaranty that the destination will be “fresh”, with no stale inode
  * or file descriptor pointing to it).
  */
-void copyFile(const Path & oldPath, const Path & newPath, bool andDelete);
+void copyFile(const Path & oldPath, const Path & newPath, CopyFileFlags flags);
 
 /**
  * Wrappers arount read()/write() that read/write exactly the
