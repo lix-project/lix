@@ -158,4 +158,6 @@ in
   ca-fd-leak = runNixOSTestFor "x86_64-linux" ./ca-fd-leak;
 
   fetch-git = runNixOSTestFor "x86_64-linux" ./fetch-git;
+
+  symlinkResolvconf = runNixOSTestFor "x86_64-linux" ./symlink-resolvconf.nix;
 }

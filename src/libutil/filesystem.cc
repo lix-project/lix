@@ -103,31 +103,37 @@ void setWriteTime(const fs::path & p, const struct stat & st)
         throw SysError("changing modification time of '%s'", p);
 }
 
-void copy(const fs::directory_entry & from, const fs::path & to, bool andDelete)
+void copy(const fs::directory_entry & from, const fs::path & to, CopyFileFlags flags)
 {
     // TODO: Rewrite the `is_*` to use `symlink_status()`
     auto statOfFrom = lstat(from.path().c_str());
     auto fromStatus = from.symlink_status();
 
     // Mark the directory as writable so that we can delete its children
-    if (andDelete && fs::is_directory(fromStatus)) {
+    if (flags.deleteAfter && fs::is_directory(fromStatus)) {
         fs::permissions(from.path(), fs::perms::owner_write, fs::perm_options::add | fs::perm_options::nofollow);
     }
 
 
     if (fs::is_symlink(fromStatus) || fs::is_regular_file(fromStatus)) {
-        fs::copy(from.path(), to, fs::copy_options::copy_symlinks | fs::copy_options::overwrite_existing);
+        auto opts = fs::copy_options::overwrite_existing;
+
+        if (!flags.followSymlinks) {
+            opts |= fs::copy_options::copy_symlinks;
+        }
+
+        fs::copy(from.path(), to, opts);
     } else if (fs::is_directory(fromStatus)) {
         fs::create_directory(to);
         for (auto & entry : fs::directory_iterator(from.path())) {
-            copy(entry, to / entry.path().filename(), andDelete);
+            copy(entry, to / entry.path().filename(), flags);
         }
     } else {
         throw Error("file '%s' has an unsupported type", from.path());
     }
 
     setWriteTime(to, statOfFrom);
-    if (andDelete) {
+    if (flags.deleteAfter) {
         if (!fs::is_symlink(fromStatus))
             fs::permissions(from.path(), fs::perms::owner_write, fs::perm_options::add | fs::perm_options::nofollow);
         fs::remove(from.path());
@@ -135,9 +141,9 @@ void copy(const fs::directory_entry & from, const fs::path & to, bool andDelete)
 }
 
 
-void copyFile(const Path & oldPath, const Path & newPath, bool andDelete)
+void copyFile(const Path & oldPath, const Path & newPath, CopyFileFlags flags)
 {
-    return copy(fs::directory_entry(fs::path(oldPath)), fs::path(newPath), andDelete);
+    return copy(fs::directory_entry(fs::path(oldPath)), fs::path(newPath), flags);
 }
 
 void renameFile(const Path & oldName, const Path & newName)
@@ -160,7 +166,7 @@ void moveFile(const Path & oldName, const Path & newName)
         if (e.code().value() == EXDEV) {
             fs::remove(newPath);
             warn("Can’t rename %s as %s, copying instead", oldName, newName);
-            copy(fs::directory_entry(oldPath), tempCopyTarget, true);
+            copy(fs::directory_entry(oldPath), tempCopyTarget, { .deleteAfter = true });
             renameFile(tempCopyTarget, newPath);
         }
     }
