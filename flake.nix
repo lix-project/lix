@@ -163,9 +163,10 @@
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
           };
 
-          # Export the patched version of boehmgc that Lix uses into the overlay
+          # Export the patched version of boehmgc & libseccomp that Lix uses into the overlay
           # for consumers of this flake.
           boehmgc-nix = final.nix.boehmgc-nix;
+          libseccomp-nix = final.nix.libseccomp-nix;
         };
     in
     {

@@ -181,7 +181,7 @@ deps += cpuid
 
 # seccomp only makes sense on Linux
 seccomp_required = is_linux ? get_option('seccomp-sandboxing') : false
-seccomp = dependency('libseccomp', 'seccomp', required : seccomp_required)
+seccomp = dependency('libseccomp', 'seccomp', required : seccomp_required, version : '>=2.5.5')
 configdata += {
   'HAVE_SECCOMP': seccomp.found().to_int(),
 }

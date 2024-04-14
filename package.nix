@@ -21,12 +21,14 @@
   curl,
   doxygen,
   editline,
+  fetchurl,
   flex,
   git,
   gtest,
   jq,
   libarchive,
   libcpuid,
+  libseccomp-nix ? __forDefaults.libseccomp-nix,
   libseccomp,
   libsodium,
   lsof,
@@ -82,6 +84,18 @@
     };
 
     lix-doc = pkgs.callPackage ./lix-doc/package.nix { };
+
+    # remove when we drop 23.11 support (which includes a version too old to know about fchmodat2)
+    # see src/libstore/linux/fchmodat2-compat.hh
+    libseccomp-nix =
+      assert lib.versionOlder (lib.getVersion libseccomp) "2.5.5";
+      libseccomp.overrideAttrs (_: rec {
+        version = "2.5.5";
+        src = fetchurl {
+          url = "https://github.com/seccomp/libseccomp/releases/download/v${version}/libseccomp-${version}.tar.gz";
+          hash = "sha256-JIosik2bmFiqa69ScSw0r+/PnJ6Ut23OAsHJqiX7M3U=";
+        };
+      });
   },
 }:
 let
@@ -273,7 +287,7 @@ stdenv.mkDerivation (finalAttrs: {
       lix-doc
     ]
     ++ lib.optionals stdenv.hostPlatform.isLinux [
-      libseccomp
+      libseccomp-nix
       busybox-sandbox-shell
     ]
     ++ lib.optional internalApiDocs rapidcheck
@@ -411,7 +425,9 @@ stdenv.mkDerivation (finalAttrs: {
 
   passthru.perl-bindings = pkgs.callPackage ./perl { inherit fileset stdenv buildWithMeson; };
 
-  # Export the patched version of boehmgc.
+  # Export the patched version of boehmgc & libseccomp.
   # flake.nix exports that into its overlay.
-  passthru.boehmgc-nix = __forDefaults.boehmgc-nix;
+  passthru = {
+    inherit (__forDefaults) boehmgc-nix libseccomp-nix;
+  };
 })

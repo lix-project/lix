@@ -5,6 +5,16 @@
 let
   pkgs = config.nodes.machine.nixpkgs.pkgs;
 
+  fchmodat2-builder = pkgs.runCommandCC "fchmodat2-suid" {
+    passAsFile = [ "code" ];
+    code = builtins.readFile ./fchmodat2-suid.c;
+    # Doesn't work with -O0, shuts up the warning about that.
+    hardeningDisable = [ "fortify" ];
+  } ''
+    mkdir -p $out/bin/
+    $CC -x c "$codePath" -O0 -g -o $out/bin/fchmodat2-suid
+  '';
+
 in
 {
   name = "setuid";
@@ -14,12 +24,28 @@ in
     { virtualisation.writableStore = true;
       nix.settings.substituters = lib.mkForce [ ];
       nix.nixPath = [ "nixpkgs=${lib.cleanSource pkgs.path}" ];
-      virtualisation.additionalPaths = [ pkgs.stdenvNoCC pkgs.pkgsi686Linux.stdenvNoCC ];
+      virtualisation.additionalPaths = [
+        pkgs.stdenvNoCC
+        pkgs.pkgsi686Linux.stdenvNoCC
+        fchmodat2-builder
+      ];
+      # need at least 6.6 to test for fchmodat2
+      boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_6;
+
     };
 
   testScript = { nodes }: ''
     # fmt: off
     start_all()
+
+    with subtest("fchmodat2 suid regression test"):
+      machine.succeed("""
+      nix-build -E '(with import <nixpkgs> {}; runCommand "fchmodat2-suid" {
+        BUILDER = builtins.storePath ${fchmodat2-builder};
+      } "
+        exec \\"$BUILDER\\"/bin/fchmodat2-suid
+      ")'
+      """)
 
     # Copying to /tmp should succeed.
     machine.succeed(r"""
