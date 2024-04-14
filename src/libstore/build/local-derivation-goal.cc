@@ -41,6 +41,7 @@
 #include <sched.h>
 #include <sys/param.h>
 #include <sys/mount.h>
+#include <sys/prctl.h>
 #include <sys/syscall.h>
 #if HAVE_SECCOMP
 #include <seccomp.h>
@@ -1949,6 +1950,10 @@ void LocalDerivationGoal::runChild()
                 throw SysError("setuid failed");
 
             setUser = false;
+
+            // Make sure we can't possibly gain new privileges in the sandbox
+            if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == -1)
+                throw SysError("PR_SET_NO_NEW_PRIVS failed");
         }
 #endif
 
