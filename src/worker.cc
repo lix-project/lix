@@ -106,7 +106,7 @@ void worker(nix::ref<nix::EvalState> state, nix::Bindings &autoArgs,
         if (s == "exit") {
             break;
         }
-        if (!nix::hasPrefix(s, "do ")) {
+        if (!s.starts_with("do ")) {
             fprintf(stderr, "worker error: received invalid command '%s'\n",
                     s.data());
             abort();
