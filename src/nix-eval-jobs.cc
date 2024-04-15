@@ -85,7 +85,7 @@ struct Proc {
                     }
                 }
             },
-            ProcessOptions{.allowVfork = false});
+            ProcessOptions{});
 
         to = std::move(toPipe.writeSide);
         from = std::move(fromPipe.readSide);
