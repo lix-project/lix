@@ -100,5 +100,5 @@ MyArgs::MyArgs() : MixCommonArgs("nix-eval-jobs") {
 }
 
 void MyArgs::parseArgs(char **argv, int argc) {
-    parseCmdline(nix::argvToStrings(argc, argv), 0);
+    parseCmdline(nix::argvToStrings(argc, argv));
 }
