@@ -1,11 +1,10 @@
 #include <nix/config.h> // IWYU pragma: keep
 
-#include <nix/eval-settings.hh>
-#include <nix/shared.hh>
-#include <nix/sync.hh>
-#include <nix/eval.hh>
-#include <nix/signals.hh>
-#include <nix/terminal.hh>
+#include <eval-settings.hh>
+#include <shared.hh>
+#include <sync.hh>
+#include <eval.hh>
+#include <signals.hh>
 #include <sys/wait.h>
 #include <nlohmann/json.hpp>
 #include <errno.h>
@@ -13,18 +12,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <nix/attr-set.hh>
-#include <nix/config.hh>
-#include <nix/error.hh>
-#include <nix/file-descriptor.hh>
-#include <nix/globals.hh>
-#include <nix/logging.hh>
+#include <attr-set.hh>
+#include <config.hh>
+#include <error.hh>
+#include <globals.hh>
+#include <logging.hh>
 #include <nlohmann/detail/iterators/iter_impl.hpp>
 #include <nlohmann/detail/json_ref.hpp>
 #include <nlohmann/json_fwd.hpp>
-#include <nix/processes.hh>
-#include <nix/ref.hh>
-#include <nix/store-api.hh>
+#include <ref.hh>
+#include <store-api.hh>
 #include <map>
 #include <thread>
 #include <condition_variable>

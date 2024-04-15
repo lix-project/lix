@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <nix/args.hh>
-#include <nix/file-system.hh>
-#include <nix/flake/flake.hh>
-#include <nix/flake/lockfile.hh>
+#include <args.hh>
+#include <flake/flake.hh>
+#include <flake/lockfile.hh>
 #include <functional>
 #include <map>
 #include <memory>
