@@ -160,4 +160,6 @@ in
   fetch-git = runNixOSTestFor "x86_64-linux" ./fetch-git;
 
   symlinkResolvconf = runNixOSTestFor "x86_64-linux" ./symlink-resolvconf.nix;
+
+  rootInSandbox = runNixOSTestFor "x86_64-linux" ./root-in-sandbox;
 }

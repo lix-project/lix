@@ -1,5 +1,6 @@
 { pkgs, ... }:
 let
+  # Can't use the cool helper because inputDerivation does not work with FODs :(
   checkResolvconfInSandbox = pkgs.runCommand "resolvconf-works-in-sandbox" {
     # must be an FOD to have a resolv.conf in the first place
     outputHash = "sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=";
