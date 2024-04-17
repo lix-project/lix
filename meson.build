@@ -79,7 +79,25 @@ if not fs.is_absolute(sysconfdir)
   sysconfdir = '/' / sysconfdir
 endif
 
+# All of this has to go before the rest of the dependency checking,
+# so that internal-api-docs can be built with -Denable-build=false
+
 enable_docs = get_option('enable-docs')
+enable_internal_api_docs = get_option('internal-api-docs')
+
+doxygen = find_program('doxygen', required : enable_internal_api_docs)
+bash = find_program('bash')
+
+rapidcheck_meson = dependency('rapidcheck', required : enable_internal_api_docs)
+
+if enable_internal_api_docs.enabled()
+  message('subdiring()')
+  subdir('doc/internal-api')
+endif
+
+if not get_option('enable-build')
+  subdir_done()
+endif
 
 enable_tests = get_option('enable-tests')
 
@@ -223,6 +241,8 @@ lowdown = dependency('lowdown', version : '>=0.9.0', required : true)
 deps += lowdown
 
 # HACK(Qyriad): rapidcheck's pkg-config doesn't include the libs lol
+# Note: technically we 'check' for rapidcheck twice, for the internal-api-docs handling above,
+# but Meson will cache the result of the first one, and the required : arguments are different.
 rapidcheck_meson = dependency('rapidcheck', required : enable_tests)
 rapidcheck = declare_dependency(dependencies : rapidcheck_meson, link_args : ['-lrapidcheck'])
 deps += rapidcheck
@@ -252,7 +272,6 @@ deps += lix_doc
 #
 # Build-time tools
 #
-bash = find_program('bash')
 coreutils = find_program('coreutils')
 dot = find_program('dot', required : false)
 pymod = import('python')

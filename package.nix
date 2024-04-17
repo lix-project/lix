@@ -178,9 +178,15 @@ stdenv.mkDerivation (finalAttrs: {
   dontBuild = false;
 
   # FIXME(Qyriad): see if this is still needed once the migration to Meson is completed.
-  mesonFlags = lib.optionals (buildWithMeson && stdenv.hostPlatform.isLinux) [
-    "-Dsandbox-shell=${lib.getBin busybox-sandbox-shell}/bin/busybox"
-  ];
+  mesonFlags =
+    lib.optionals (buildWithMeson && stdenv.hostPlatform.isLinux) [
+      "-Dsandbox-shell=${lib.getBin busybox-sandbox-shell}/bin/busybox"
+    ]
+    ++ lib.optional (finalAttrs.dontBuild) "-Denable-build=false"
+    # mesonConfigurePhase automatically passes -Dauto_features=enabled,
+    # so we must explicitly enable or disable features that we are not passing
+    # dependencies for.
+    ++ lib.singleton (lib.mesonEnable "internal-api-docs" internalApiDocs);
 
   # We only include CMake so that Meson can locate toml11, which only ships CMake dependency metadata.
   dontUseCmakeConfigure = true;
@@ -209,7 +215,7 @@ stdenv.mkDerivation (finalAttrs: {
     ]
     ++ lib.optional stdenv.hostPlatform.isLinux util-linuxMinimal
     ++ lib.optional (!officialRelease && buildUnreleasedNotes) build-release-notes
-    ++ lib.optional internalApiDocs doxygen
+    ++ lib.optional (internalApiDocs || forDevShell) doxygen
     ++ lib.optionals buildWithMeson [
       meson
       ninja
@@ -236,6 +242,7 @@ stdenv.mkDerivation (finalAttrs: {
       libseccomp
       busybox-sandbox-shell
     ]
+    ++ lib.optional internalApiDocs rapidcheck
     ++ lib.optional stdenv.hostPlatform.isx86_64 libcpuid
     # There have been issues building these dependencies
     ++ lib.optional (stdenv.hostPlatform == stdenv.buildPlatform) aws-sdk-cpp-nix
@@ -312,6 +319,13 @@ stdenv.mkDerivation (finalAttrs: {
   mesonCheckFlags = lib.optionals (buildWithMeson || forDevShell) [ "--suite=check" ];
 
   installFlags = "sysconfdir=$(out)/etc";
+
+  # Make sure the internal API docs are already built, because mesonInstallPhase
+  # won't let us build them there. They would normally be built in buildPhase,
+  # but the internal API docs are conventionally built with doBuild = false.
+  preInstall = lib.optional (buildWithMeson && internalApiDocs) ''
+    meson ''${mesonBuildFlags:-} compile "$installTargets"
+  '';
 
   postInstall =
     lib.optionalString (!finalAttrs.dontBuild) ''

@@ -26,7 +26,7 @@
     let
       inherit (nixpkgs) lib;
 
-      officialRelease = true;
+      officialRelease = false;
 
       # Set to true to build the release notes for the next release.
       buildUnreleasedNotes = false;
@@ -237,6 +237,7 @@
               inherit (pkgs) build-release-notes;
               internalApiDocs = true;
               busybox-sandbox-shell = pkgs.busybox-sandbox-shell;
+              buildWithMeson = true;
             };
           in
           nix.overrideAttrs (prev: {
