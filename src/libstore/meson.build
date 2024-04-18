@@ -156,6 +156,12 @@ cpp_str_defines = {
   'NIX_MAN_DIR':   mandir,
 }
 
+if busybox.found()
+  cpp_str_defines += {
+    'SANDBOX_SHELL': busybox.full_path()
+  }
+endif
+
 cpp_args = []
 
 foreach name, value : cpp_str_defines
