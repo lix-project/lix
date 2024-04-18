@@ -160,6 +160,10 @@ in
     def cat_log():
          github.succeed("cat /var/log/httpd/*.log >&2")
 
+    client.succeed("systemctl start network-online.target")
+    github.succeed("systemctl start network-online.target")
+    client.wait_for_unit("network-online.target")
+    github.wait_for_unit("network-online.target")
     github.wait_for_unit("httpd.service")
 
     client.succeed("curl -v https://github.com/ >&2")

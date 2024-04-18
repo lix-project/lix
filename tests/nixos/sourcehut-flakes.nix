@@ -121,6 +121,10 @@ in
 
       start_all()
 
+      client.succeed("systemctl start network-online.target")
+      sourcehut.succeed("systemctl start network-online.target")
+      client.wait_for_unit("network-online.target")
+      sourcehut.wait_for_unit("network-online.target")
       sourcehut.wait_for_unit("httpd.service")
 
       client.succeed("curl -v https://git.sr.ht/ >&2")
