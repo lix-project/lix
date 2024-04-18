@@ -62,7 +62,7 @@
 
   # FIXME(Qyriad): build Lix using Meson instead of autoconf and make.
   # This flag will be removed when the migration to Meson is complete.
-  buildWithMeson ? false,
+  buildWithMeson ? true,
 
   # Not a real argument, just the only way to approximate let-binding some
   # stuff for argument defaults.

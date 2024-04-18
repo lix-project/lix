@@ -1,60 +1,124 @@
 # Hacking
 
-This section provides some notes on how to hack on Nix. To get the
-latest version of Nix from GitHub:
+This section provides some notes on how to hack on Nix. To get the latest version of Lix from Forgejo:
 
 ```console
-$ git clone https://github.com/NixOS/nix.git
-$ cd nix
+$ git clone https://git.lix.systems/lix-project/lix
+$ cd lix
 ```
 
-The following instructions assume you already have some version of Nix installed locally, so that you can use it to set up the development environment. If you don't have it installed, follow the [installation instructions].
+The following instructions assume you already have some version of Nix or Lix installed locally, so that you can use it to set up the development environment. If you don't have it installed, follow the [installation instructions].
 
 [installation instructions]: ../installation/installation.md
 
-## Building Nix with flakes
+## Building Lix in a development shell
 
-This section assumes you are using Nix with the [`flakes`] and [`nix-command`] experimental features enabled.
-See the [Building Nix](#building-nix) section for equivalent instructions using stable Nix interfaces.
+### Setting up the development shell
+
+If you are using Lix or Nix with the [`flakes`] and [`nix-command`] experimental features enabled, the following command will build all dependencies and start a shell in which all environment variables are setup for those dependencies to be found:
+
+```bash
+$ nix develop
+```
+
+That will use the default stdenv for your system. To get a shell with one of the other [supported compilation environments](#compilation-environments), specify its attribute name after a hash (which you may need to quote, depending on your shell):
+
+```bash
+$ nix develop ".#native-clangStdenvPackages"
+```
+
+For classic Nix, use:
+
+```bash
+$ nix-shell -A native-clangStdenvPackages
+```
 
 [`flakes`]: @docroot@/contributing/experimental-features.md#xp-feature-flakes
 [`nix-command`]: @docroot@/contributing/experimental-features.md#xp-nix-command
 
-To build all dependencies and start a shell in which all environment variables are set up so that those dependencies can be found:
 
-```console
-$ nix develop
+### Building from the development shell
+
+As always you may run [stdenv's phases by name](https://nixos.org/manual/nixpkgs/unstable/#sec-building-stdenv-package-in-nix-shell), e.g.:
+
+```bash
+$ configurePhase
+$ buildPhase
+$ checkPhase
+$ installPhase
+$ installCheckPhase
 ```
 
-This shell also adds `./outputs/bin/nix` to your `$PATH` so you can run `nix` immediately after building it.
+To build manually, however, use the following:
 
-To get a shell with one of the other [supported compilation environments](#compilation-environments):
-
-```console
-$ nix develop .#native-clangStdenvPackages
+```bash
+$ meson setup ./build "--prefix=$out" $mesonFlags
 ```
 
-> **Note**
->
-> Use `ccacheStdenv` to drastically improve rebuild time.
-> By default, [ccache](https://ccache.dev) keeps artifacts in `~/.cache/ccache/`.
+(A simple `meson setup ./build` will also build, but will do a different thing, not having the settings from package.nix applied).
 
-To build Nix itself in this shell:
-
-```console
-[nix-shell]$ autoreconfPhase
-[nix-shell]$ configurePhase
-[nix-shell]$ make -j $NIX_BUILD_CORES
+```bash
+$ meson compile -C build
+$ meson test -C build --suite=check
+$ meson install -C build
+$ meson test -C build --suite=installcheck
 ```
 
-To install it in `$(pwd)/outputs` and test it:
+(Check and installcheck may both be done after install, allowing you to omit the --suite argument entirely, but this is the order package.nix runs them in.)
 
-```console
-[nix-shell]$ make install
-[nix-shell]$ make installcheck -j $NIX_BUILD_CORES
-[nix-shell]$ nix --version
-nix (Nix) 2.12
+This will install Lix to `$PWD/outputs`, the `/bin` of which is prepended to PATH in the development shells.
+
+If the tests fail and Meson helpfully has no output for why, use the `--print-error-logs` option to `meson test`.
+
+If you change a setting in the buildsystem (i.e., any of the `meson.build` files), most cases will automatically regenerate the Meson configuration just before compiling.
+Some cases, however, like trying to build a specific target whose name is new to the buildsystem (e.g. `meson compile -C build src/libmelt/libmelt.dylib`, when `libmelt.dylib` did not exist as a target the last time the buildsystem was generated), then you can reconfigure using new settings but existing options, and only recompiling stuff affected by the changes:
+
+```bash
+$ meson setup --reconfigure build
 ```
+
+Note that changes to the default values in `meson.options` or in the `default_options :` argument to `project()` are **not** propagated with `--reconfigure`.
+
+If you want a totally clean build, you can use:
+
+```bash
+$ meson setup --wipe build
+```
+
+That will work regardless of if `./build` exists or not.
+
+Specific, named targets may be addressed in `meson build -C build <target>`, with the "target ID", if there is one, which is the first string argument passed to target functions that have one, and unrelated to the variable name, e.g.:
+
+```meson
+libexpr_dylib = library('nixexpr', …)
+```
+
+can be addressed with:
+
+```bash
+$ meson compile -C build nixexpr
+```
+
+All targets may be addressed as their output, relative to the build directory, e.g.:
+
+```bash
+$ meson compile -C build src/libexpr/libnixexpr.so
+```
+
+But Meson does not consider intermediate files like object files targets.
+To build a specific object file, use Ninja directly and specify the output file relative to the build directory:
+
+```bash
+$ ninja -C build src/libexpr/libnixexpr.so.p/nixexpr.cc.o
+```
+
+To inspect the canonical source of truth on what the state of the buildsystem configuration is, use:
+
+```bash
+$ meson introspect
+```
+
+## Building Lix outside of development shells
 
 To build a release version of Nix for the current operating system and CPU architecture:
 
@@ -64,49 +128,10 @@ $ nix build
 
 You can also build Nix for one of the [supported platforms](#platforms).
 
-## Building Nix
-
-To build all dependencies and start a shell in which all environment variables are set up so that those dependencies can be found:
-
-```console
-$ nix-shell
-```
-
-To get a shell with one of the other [supported compilation environments](#compilation-environments):
-
-```console
-$ nix-shell --attr devShells.x86_64-linux.native-clangStdenvPackages
-```
-
 > **Note**
 >
 > You can use `native-ccacheStdenvPackages` to drastically improve rebuild time.
 > By default, [ccache](https://ccache.dev) keeps artifacts in `~/.cache/ccache/`.
-
-To build Nix itself in this shell:
-
-```console
-[nix-shell]$ autoreconfPhase
-[nix-shell]$ ./configure $configureFlags --prefix=$(pwd)/outputs/out
-[nix-shell]$ make -j $NIX_BUILD_CORES
-```
-
-To install it in `$(pwd)/outputs` and test it:
-
-```console
-[nix-shell]$ make install
-[nix-shell]$ make installcheck -j $NIX_BUILD_CORES
-[nix-shell]$ ./outputs/out/bin/nix --version
-nix (Nix) 2.12
-```
-
-To build a release version of Nix for the current operating system and CPU architecture:
-
-```console
-$ nix-build
-```
-
-You can also build Nix for one of the [supported platforms](#platforms).
 
 ## Platforms
 
@@ -148,55 +173,38 @@ Add more [system types](#system-type) to `crossSystems` in `flake.nix` to bootst
 
 ### Building for multiple platforms at once
 
-It is useful to perform multiple cross and native builds on the same source tree,
-for example to ensure that better support for one platform doesn't break the build for another.
-In order to facilitate this, Nix has some support for being built out of tree – that is, placing build artefacts in a different directory than the source code:
+It is useful to perform multiple cross and native builds on the same source tree, for example to ensure that better support for one platform doesn't break the build for another.
+As Lix now uses Meson, out-of-tree builds are supported first class. In the invocation
 
-1. Create a directory for the build, e.g.
+```bash
+$ meson setup build
+```
 
-   ```bash
-   mkdir build
-   ```
+the argument after `setup` specifies the directory for this build, conventionally simply called "build", but it may be called anything, and you may run `meson setup <somedir>` for as many different directories as you want.
+To compile the configuration for a given build directory, pass that build directory to the `-C` argument of `meson compile`:
 
-2. Run the configure script from that directory, e.g.
-
-   ```bash
-   cd build
-   ../configure <configure flags>
-   ```
-
-3. Run make from the source directory, but with the build directory specified, e.g.
-
-   ```bash
-   make builddir=build <make flags>
-   ```
+```bash
+$ meson setup some-custom-build
+$ meson compile -C some-custom-build
+```
 
 ## System type
 
-Nix uses a string with he following format to identify the *system type* or *platform* it runs on:
+Lix uses a string with the following format to identify the *system type* or *platform* it runs on:
 
 ```
 <cpu>-<os>[-<abi>]
 ```
 
-It is set when Nix is compiled for the given system, and based on the output of [`config.guess`](https://github.com/nixos/nix/blob/master/config/config.guess) ([upstream](https://git.savannah.gnu.org/cgit/config.git/tree/config.guess)):
+It is set when Nix is compiled for the given system, and determined by [Meson's `host_machine.cpu_family()` and `host_machine.system()` values](https://mesonbuild.com/Reference-manual_builtin_host_machine.html).
 
-```
-<cpu>-<vendor>-<os>[<version>][-<abi>]
-```
+For historic reasons and backward-compatibility, some CPU and OS identifiers are translated from the GNU Autotools naming convention in [`meson.build`](https://git.lix.systems/lix-project/lix/blob/main/meson.build) as follows:
 
-When Nix is built such that `./configure` is passed any of the `--host`, `--build`, `--target` options, the value is based on the output of [`config.sub`](https://github.com/nixos/nix/blob/master/config/config.sub) ([upstream](https://git.savannah.gnu.org/cgit/config.git/tree/config.sub)):
-
-```
-<cpu>-<vendor>[-<kernel>]-<os>
-```
-
-For historic reasons and backward-compatibility, some CPU and OS identifiers are translated from the GNU Autotools naming convention in [`configure.ac`](https://github.com/nixos/nix/blob/master/configure.ac) as follows:
-
-| `config.guess`             | Nix                 |
+| `host_machine.cpu_family()`             | Nix                 |
 |----------------------------|---------------------|
-| `amd64`                    | `x86_64`            |
-| `i*86`                     | `i686`              |
+| `x86`                      | `i686`              |
+| `i686`                     | `i686`              |
+| `i686`                     | `i686`              |
 | `arm6`                     | `arm6l`             |
 | `arm7`                     | `arm7l`             |
 | `linux-gnu*`               | `linux`             |
@@ -229,13 +237,14 @@ You can use any of the other supported environments in place of `nix-ccacheStden
 
 ## Editor integration
 
-The `clangd` LSP server is installed by default on the `clang`-based `devShell`s.
+The `clangd` LSP server is installed by default in each development shell.
 See [supported compilation environments](#compilation-environments) and instructions how to set up a shell [with flakes](#nix-with-flakes) or in [classic Nix](#classic-nix).
 
-To use the LSP with your editor, you first need to [set up `clangd`](https://clangd.llvm.org/installation#project-setup) by running:
+Clangd requires a compilation database, which Meson generates by default. After running `meson setup`, there will already be a `compile_commands.json` file in the build directory.
+Some editor configurations may prefer that file to be in the root directory, which you can accomplish with a simple:
 
-```console
-make clean && bear -- make -j$NIX_BUILD_CORES install
+```bash
+$ ln -sf ./build/compile_commands.json ./compile_commands.json
 ```
 
 Configure your editor to use the `clangd` from the shell, either by running it inside the development shell, or by using [nix-direnv](https://github.com/nix-community/nix-direnv) and [the appropriate editor plugin](https://github.com/direnv/direnv/wiki#editor-integration).
@@ -253,15 +262,7 @@ This happens late in the process, so `nix build` is not suitable for iterating.
 To build the manual incrementally, run:
 
 ```console
-make html -j $NIX_BUILD_CORES
-```
-
-In order to reflect changes to the [Makefile], clear all generated files before re-building:
-
-[Makefile]: https://github.com/NixOS/nix/blob/master/doc/manual/local.mk
-
-```console
-rm $(git ls-files doc/manual/ -o | grep -F '.md') && rmdir doc/manual/src/command-ref/new-cli && make html -j $NIX_BUILD_CORES
+meson compile -C build manual
 ```
 
 [`mdbook-linkcheck`] does not implement checking [URI fragments] yet.
@@ -292,9 +293,9 @@ can also build and view it yourself:
 
 or inside a `nix develop` shell by running:
 
-```
-# make internal-api-html
-# xdg-open ./outputs/doc/share/doc/nix/internal-api/html/index.html
+```bash
+$ meson compile -C build internal-api-docs
+$ xdg-open ./outputs/doc/share/doc/nix/internal-api/html/index.html
 ```
 
 ## Coverage analysis
