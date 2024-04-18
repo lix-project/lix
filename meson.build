@@ -413,6 +413,21 @@ if get_option('profile-build').require(meson.get_compiler('cpp').get_id() == 'cl
   add_project_arguments('-ftime-trace', language: 'cpp')
 endif
 
+if cxx.get_id() in ['clang', 'gcc']
+  add_project_arguments([
+      # Meson uses out of source builds, conventionally usually in a subdirectory
+      # of the source tree (e.g. meson setup ./build). This means that unlike in
+      # the previous Make buildsystem, all compilation sources are passed as a relative
+      # parent, e.g. `cc -o src/libexpr/nixexpr.cc.o ../src/libexpr/nixexpr.cc`.
+      # These paths show up when debugging, and in asserts, which look both look strange
+      # and confuse debuggers.
+      # So let's just tell GCC and Clang that ../src really means src.
+      '-ffile-prefix-map=../src=src',
+    ],
+    language : 'cpp',
+  )
+endif
+
 subdir('src')
 subdir('scripts')
 subdir('misc')
