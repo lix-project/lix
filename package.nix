@@ -182,6 +182,7 @@ stdenv.mkDerivation (finalAttrs: {
     lib.optionals (buildWithMeson && stdenv.hostPlatform.isLinux) [
       "-Dsandbox-shell=${lib.getBin busybox-sandbox-shell}/bin/busybox"
     ]
+    ++ lib.optional stdenv.hostPlatform.isStatic "-Denable-embedded-sandbox-shell=true"
     ++ lib.optional (finalAttrs.dontBuild) "-Denable-build=false"
     # mesonConfigurePhase automatically passes -Dauto_features=enabled,
     # so we must explicitly enable or disable features that we are not passing

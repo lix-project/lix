@@ -284,6 +284,16 @@ endif
 # Used to workaround https://github.com/mesonbuild/meson/issues/2320 in src/nix/meson.build.
 installcmd = find_program('install')
 
+enable_embedded_sandbox_shell = get_option('enable-embedded-sandbox-shell')
+if enable_embedded_sandbox_shell
+  # This one goes in config.h
+  # The path to busybox is passed as a -D flag when compiling libstore.
+  # Idk why, ask the old buildsystem.
+  configdata += {
+    'HAVE_EMBEDDED_SANDBOX_SHELL': 1,
+  }
+endif
+
 sandbox_shell = get_option('sandbox-shell')
 # Consider it required if we're on Linux and the user explicitly specified a non-default value.
 sandbox_shell_required = sandbox_shell != 'busybox' and host_machine.system() == 'linux'

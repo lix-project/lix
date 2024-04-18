@@ -7,8 +7,8 @@ option('enable-build', type : 'boolean', value : true,
 option('gc', type : 'feature',
   description : 'enable garbage collection in the Nix expression evaluator (requires Boehm GC)',
 )
-# TODO(Qyriad): is this feature maintained?
-option('embedded-sandbox-shell', type : 'feature',
+
+option('enable-embedded-sandbox-shell', type : 'boolean', value : false,
   description : 'include the sandbox shell in the Nix binary',
 )
 

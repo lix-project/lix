@@ -10,6 +10,24 @@ foreach header : [ 'schema.sql', 'ca-specific-schema.sql' ]
   )
 endforeach
 
+if enable_embedded_sandbox_shell
+  hexdump = find_program('hexdump', required : true)
+  embedded_sandbox_shell_gen = custom_target(
+    'embedded-sandbox-shell.gen.hh',
+    command : [
+      hexdump,
+      '-v',
+      '-e',
+      '1/1 "0x%x," "\n"'
+    ],
+    input : busybox.full_path(),
+    output : 'embedded-sandbox-shell.gen.hh',
+    capture : true,
+    feed : true,
+  )
+  libstore_generated_headers += embedded_sandbox_shell_gen
+endif
+
 libstore_sources = files(
   'binary-cache-store.cc',
   'build-result.cc',
