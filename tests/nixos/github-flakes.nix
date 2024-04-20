@@ -119,6 +119,9 @@ in
                 [ { urlPath = "/repos/NixOS/nixpkgs";
                     dir = nixpkgs-api;
                   }
+                  { urlPath = "/repos/fork/nixpkgs";
+                    dir = nixpkgs-api;
+                  }
                   { urlPath = "/repos/fancy-enterprise/private-flake";
                     dir = private-flake-api;
                   }
@@ -189,6 +192,10 @@ in
 
     client.succeed("nix registry pin nixpkgs")
     client.succeed("nix flake metadata nixpkgs --tarball-ttl 0 >&2")
+
+    # fetching a fork with the same commit ID should fail, even if the revision is cached
+    client.succeed("nix flake metadata github:NixOS/nixpkgs")
+    client.fail("nix flake metadata github:fork/nixpkgs")
 
     # Shut down the web server. The flake should be cached on the client.
     github.succeed("systemctl stop httpd.service")

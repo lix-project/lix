@@ -195,31 +195,11 @@ struct GitArchiveInputScheme : InputScheme
         input.attrs.erase("ref");
         input.attrs.insert_or_assign("rev", rev->gitRev());
 
-        Attrs lockedAttrs({
-            {"type", "git-tarball"},
-            {"rev", rev->gitRev()},
-        });
-
-        if (auto res = getCache()->lookup(store, lockedAttrs)) {
-            input.attrs.insert_or_assign("lastModified", getIntAttr(res->first, "lastModified"));
-            return {std::move(res->second), input};
-        }
-
         auto url = getDownloadUrl(input);
 
         auto result = downloadTarball(store, url.url, input.getName(), true, url.headers);
 
         input.attrs.insert_or_assign("lastModified", uint64_t(result.lastModified));
-
-        getCache()->add(
-            store,
-            lockedAttrs,
-            {
-                {"rev", rev->gitRev()},
-                {"lastModified", uint64_t(result.lastModified)}
-            },
-            result.tree.storePath,
-            true);
 
         return {result.tree.storePath, input};
     }
