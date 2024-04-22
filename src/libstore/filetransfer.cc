@@ -51,6 +51,7 @@ struct curlFileTransfer : public FileTransfer
         Callback<FileTransferResult> callback;
         CURL * req = 0;
         bool active = false; // whether the handle has been added to the multi object
+        bool headersProcessed = false;
         std::string statusMsg;
 
         unsigned int attempt = 0;
@@ -151,9 +152,33 @@ struct curlFileTransfer : public FileTransfer
 
         std::exception_ptr writeException;
 
+        std::optional<std::string> getHeader(const char * name)
+        {
+            curl_header * result;
+            auto e = curl_easy_header(req, name, 0, CURLH_HEADER, -1, &result);
+            if (e == CURLHE_OK) {
+                return result->value;
+            } else if (e == CURLHE_MISSING || e == CURLHE_NOHEADERS) {
+                return std::nullopt;
+            } else {
+                throw nix::Error("unexpected error from curl_easy_header(): %i", e);
+            }
+        }
+
         size_t writeCallback(void * contents, size_t size, size_t nmemb)
         {
             try {
+                if (!headersProcessed) {
+                    if (auto h = getHeader("content-encoding")) {
+                        encoding = std::move(*h);
+                    }
+                    if (auto h = getHeader("accept-ranges"); h && *h == "bytes") {
+                        acceptRanges = true;
+                    }
+
+                    headersProcessed = true;
+                }
+
                 size_t realSize = size * nmemb;
                 result.bodySize += realSize;
 
@@ -196,31 +221,7 @@ struct curlFileTransfer : public FileTransfer
                 statusMsg = trim(match.str(1));
                 acceptRanges = false;
                 encoding = "";
-            } else {
-
-                auto i = line.find(':');
-                if (i != std::string::npos) {
-                    std::string name = toLower(trim(line.substr(0, i)));
-
-                    if (name == "etag") {
-                        result.etag = trim(line.substr(i + 1));
-                    }
-
-                    else if (name == "content-encoding")
-                        encoding = trim(line.substr(i + 1));
-
-                    else if (name == "accept-ranges" && toLower(trim(line.substr(i + 1))) == "bytes")
-                        acceptRanges = true;
-
-                    else if (name == "link" || name == "x-amz-meta-link") {
-                        auto value = trim(line.substr(i + 1));
-                        static std::regex linkRegex("<([^>]*)>; rel=\"immutable\"", std::regex::extended | std::regex::icase);
-                        if (std::smatch match; std::regex_match(value, match, linkRegex))
-                            result.immutableUrl = match.str(1);
-                        else
-                            debug("got invalid link header '%s'", value);
-                    }
-                }
+                headersProcessed = false;
             }
             return realSize;
         }
@@ -362,6 +363,25 @@ struct curlFileTransfer : public FileTransfer
                 } catch (...) {
                     writeException = std::current_exception();
                 }
+            }
+
+            auto link = getHeader("link");
+            if (!link) {
+                link = getHeader("x-amz-meta-link");
+            }
+            if (link) {
+                static std::regex linkRegex(
+                    "<([^>]*)>; rel=\"immutable\"", std::regex::extended | std::regex::icase
+                );
+                if (std::smatch match; std::regex_match(*link, match, linkRegex)) {
+                    result.immutableUrl = match.str(1);
+                } else {
+                    debug("got invalid link header '%s'", *link);
+                }
+            }
+
+            if (auto etag = getHeader("etag")) {
+                result.etag = std::move(*etag);
             }
 
             if (writeException)
