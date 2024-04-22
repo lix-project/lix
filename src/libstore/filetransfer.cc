@@ -301,15 +301,11 @@ struct curlFileTransfer : public FileTransfer
             curl_easy_setopt(req, CURLOPT_USERAGENT,
                 ("curl/" LIBCURL_VERSION " Lix/" + nixVersion +
                     (fileTransferSettings.userAgentSuffix != "" ? " " + fileTransferSettings.userAgentSuffix.get() : "")).c_str());
-            #if LIBCURL_VERSION_NUM >= 0x072b00
             curl_easy_setopt(req, CURLOPT_PIPEWAIT, 1);
-            #endif
-            #if LIBCURL_VERSION_NUM >= 0x072f00
             if (fileTransferSettings.enableHttp2)
                 curl_easy_setopt(req, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
             else
                 curl_easy_setopt(req, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-            #endif
             curl_easy_setopt(req, CURLOPT_WRITEFUNCTION, TransferItem::writeCallbackWrapper);
             curl_easy_setopt(req, CURLOPT_WRITEDATA, this);
             curl_easy_setopt(req, CURLOPT_HEADERFUNCTION, TransferItem::headerCallbackWrapper);
@@ -523,13 +519,9 @@ struct curlFileTransfer : public FileTransfer
 
         curlm = curl_multi_init();
 
-        #if LIBCURL_VERSION_NUM >= 0x072b00 // Multiplex requires >= 7.43.0
         curl_multi_setopt(curlm, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
-        #endif
-        #if LIBCURL_VERSION_NUM >= 0x071e00 // Max connections requires >= 7.30.0
         curl_multi_setopt(curlm, CURLMOPT_MAX_TOTAL_CONNECTIONS,
             fileTransferSettings.httpConnections.get());
-        #endif
 
         wakeupPipe.create();
         fcntl(wakeupPipe.readSide.get(), F_SETFL, O_NONBLOCK);
