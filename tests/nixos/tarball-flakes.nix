@@ -64,15 +64,18 @@ in
     info = json.loads(out)
 
     # Check that we got redirected to the immutable URL.
-    assert info["locked"]["url"] == "http://localhost/stable/${nixpkgs.rev}.tar.gz"
+    locked_url = info["locked"]["url"]
+    assert locked_url == "http://localhost/stable/${nixpkgs.rev}.tar.gz", f"{locked_url=} != http://localhost/stable/${nixpkgs.rev}.tar.gz"
 
     # Check that we got the rev and revCount attributes.
-    assert info["revision"] == "${nixpkgs.rev}"
-    assert info["revCount"] == 1234
+    revision = info["revision"]
+    rev_count = info["revCount"]
+    assert revision == "${nixpkgs.rev}", f"{revision=} != ${nixpkgs.rev}"
+    assert rev_count == 1234, f"{rev_count=} != 1234"
 
     # Check that fetching with rev/revCount/narHash succeeds.
-    machine.succeed("nix flake metadata --json http://localhost/latest.tar.gz?rev=" + info["revision"])
-    machine.succeed("nix flake metadata --json http://localhost/latest.tar.gz?revCount=" + str(info["revCount"]))
+    machine.succeed("nix flake metadata --json http://localhost/latest.tar.gz?rev=" + revision)
+    machine.succeed("nix flake metadata --json http://localhost/latest.tar.gz?revCount=" + str(rev_count))
     machine.succeed("nix flake metadata --json http://localhost/latest.tar.gz?narHash=" + info["locked"]["narHash"])
 
     # Check that fetching fails if we provide incorrect attributes.
