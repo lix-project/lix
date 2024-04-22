@@ -204,17 +204,6 @@ struct curlFileTransfer : public FileTransfer
 
                     if (name == "etag") {
                         result.etag = trim(line.substr(i + 1));
-                        /* Hack to work around a GitHub bug: it sends
-                           ETags, but ignores If-None-Match. So if we get
-                           the expected ETag on a 200 response, then shut
-                           down the connection because we already have the
-                           data. */
-                        long httpStatus = 0;
-                        curl_easy_getinfo(req, CURLINFO_RESPONSE_CODE, &httpStatus);
-                        if (result.etag == request.expectedETag && httpStatus == 200) {
-                            debug("shutting down on 200 HTTP response with expected ETag");
-                            return 0;
-                        }
                     }
 
                     else if (name == "content-encoding")
@@ -375,24 +364,12 @@ struct curlFileTransfer : public FileTransfer
                 }
             }
 
-            if (code == CURLE_WRITE_ERROR && result.etag == request.expectedETag) {
-                code = CURLE_OK;
-                httpStatus = 304;
-            }
-
             if (writeException)
                 failEx(writeException);
 
             else if (code == CURLE_OK && successfulStatuses.count(httpStatus))
             {
                 result.cached = httpStatus == 304;
-
-                // In 2021, GitHub responds to If-None-Match with 304,
-                // but omits ETag. We just use the If-None-Match etag
-                // since 304 implies they are the same.
-                if (httpStatus == 304 && result.etag == "")
-                    result.etag = request.expectedETag;
-
                 act.progress(result.bodySize, result.bodySize);
                 done = true;
                 callback(std::move(result));
