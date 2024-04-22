@@ -1426,7 +1426,7 @@ std::shared_ptr<Store> openFromNonUri(const std::string & uri, const Store::Para
     if (uri == "" || uri == "auto") {
         auto stateDir = getOr(params, "state", settings.nixStateDir);
         if (access(stateDir.c_str(), R_OK | W_OK) == 0)
-            return std::make_shared<LocalStore>(params);
+            return LocalStore::makeLocalStore(params);
         else if (pathExists(settings.nixDaemonSocketFile))
             return std::make_shared<UDSRemoteStore>(params);
         #if __linux__
@@ -1444,26 +1444,26 @@ std::shared_ptr<Store> openFromNonUri(const std::string & uri, const Store::Para
                 try {
                     createDirs(chrootStore);
                 } catch (Error & e) {
-                    return std::make_shared<LocalStore>(params);
+                    return LocalStore::makeLocalStore(params);
                 }
                 warn("'%s' does not exist, so Nix will use '%s' as a chroot store", stateDir, chrootStore);
             } else
                 debug("'%s' does not exist, so Nix will use '%s' as a chroot store", stateDir, chrootStore);
             Store::Params params2;
             params2["root"] = chrootStore;
-            return std::make_shared<LocalStore>(params2);
+            return LocalStore::makeLocalStore(params);
         }
         #endif
         else
-            return std::make_shared<LocalStore>(params);
+            return LocalStore::makeLocalStore(params);
     } else if (uri == "daemon") {
         return std::make_shared<UDSRemoteStore>(params);
     } else if (uri == "local") {
-        return std::make_shared<LocalStore>(params);
+        return LocalStore::makeLocalStore(params);
     } else if (isNonUriPath(uri)) {
         Store::Params params2 = params;
         params2["root"] = absPath(uri);
-        return std::make_shared<LocalStore>(params2);
+        return LocalStore::makeLocalStore(params2);
     } else {
         return nullptr;
     }
