@@ -85,8 +85,8 @@ endif
 enable_docs = get_option('enable-docs')
 enable_internal_api_docs = get_option('internal-api-docs')
 
-doxygen = find_program('doxygen', required : enable_internal_api_docs)
-bash = find_program('bash')
+doxygen = find_program('doxygen', required : enable_internal_api_docs, native : true)
+bash = find_program('bash', native : true)
 
 rapidcheck_meson = dependency('rapidcheck', required : enable_internal_api_docs)
 
@@ -113,6 +113,25 @@ endif
 
 
 cxx = meson.get_compiler('cpp')
+
+# Translate some historical and Mesony CPU names to Lixy CPU names.
+# FIXME(Qyriad): the 32-bit x86 code is not tested right now, because cross compilation for Lix
+# to those architectures is currently broken for other reasons, namely:
+# - nixos-23.11's x86_64-linux -> i686-linux glibc does not build (also applies to cppnix)
+# - nixpkgs-unstable (as of 2024/04)'s boehmgc is not compatible with our patches
+# It's also broken in cppnix, though.
+host_cpu = host_machine.cpu_family()
+if host_cpu in ['x86', 'i686', 'i386']
+  # Meson considers 32-bit x86 CPUs to be "x86", and does not consider 64-bit
+  # x86 CPUs to be "x86" (instead using "x86_64", which needs no translation).
+  host_cpu = 'i686'
+elif host_cpu == 'amd64'
+  # This should not be needed under normal circumstances, but someone could pass a --cross-file
+  # that sets the cpu_family to this.
+  host_cpu = 'x86_64'
+elif host_cpu in ['armv6', 'armv7']
+  host_cpu += 'l'
+endif
 
 host_system = host_machine.cpu_family() + '-' + host_machine.system()
 message('canonical Nix system name:', host_system)
@@ -181,6 +200,7 @@ openssl = dependency('libcrypto', 'openssl', required : true)
 deps += openssl
 
 aws_sdk = dependency('aws-cpp-sdk-core', required : false)
+aws_sdk_transfer = dependency('aws-cpp-sdk-transfer', required : aws_sdk.found())
 if aws_sdk.found()
   # The AWS pkg-config adds -std=c++11.
   # https://github.com/aws/aws-sdk-cpp/issues/2673
@@ -198,7 +218,7 @@ if aws_sdk.found()
     'AWS_VERSION_MINOR': s[1].to_int(),
     'AWS_VERSION_PATCH': s[2].to_int(),
   }
-  aws_sdk_transfer = dependency('aws-cpp-sdk-transfer', required : true).partial_dependency(
+  aws_sdk_transfer = aws_sdk_transfer.partial_dependency(
     compile_args : false,
     includes : true,
     link_args : true,
@@ -255,7 +275,7 @@ gtest = [
 ]
 deps += gtest
 
-toml11 = dependency('toml11', version : '>=3.7.0', required : true)
+toml11 = dependency('toml11', version : '>=3.7.0', required : true, method : 'cmake')
 deps += toml11
 
 nlohmann_json = dependency('nlohmann_json', required : true)
@@ -272,17 +292,17 @@ deps += lix_doc
 #
 # Build-time tools
 #
-coreutils = find_program('coreutils')
-dot = find_program('dot', required : false)
+coreutils = find_program('coreutils', native : true)
+dot = find_program('dot', required : false, native : true)
 pymod = import('python')
 python = pymod.find_installation('python3')
 
 if enable_docs
-  mdbook = find_program('mdbook')
+  mdbook = find_program('mdbook', native : true)
 endif
 
 # Used to workaround https://github.com/mesonbuild/meson/issues/2320 in src/nix/meson.build.
-installcmd = find_program('install')
+installcmd = find_program('install', native : true)
 
 enable_embedded_sandbox_shell = get_option('enable-embedded-sandbox-shell')
 if enable_embedded_sandbox_shell
@@ -307,9 +327,9 @@ endif
 # FIXME(Qyriad): the autoconf system checks that busybox has the "standalone" feature, indicating
 # that busybox sh won't run busybox applets as builtins (which would break our sandbox).
 
-lsof = find_program('lsof')
-bison = find_program('bison')
-flex = find_program('flex')
+lsof = find_program('lsof', native : true)
+bison = find_program('bison', native : true)
+flex = find_program('flex', native : true)
 
 # This is how Nix does generated headers...
 # other instances of header generation use a very similar command.
