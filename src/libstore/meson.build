@@ -11,7 +11,7 @@ foreach header : [ 'schema.sql', 'ca-specific-schema.sql' ]
 endforeach
 
 if enable_embedded_sandbox_shell
-  hexdump = find_program('hexdump', required : true)
+  hexdump = find_program('hexdump', required : true, native : true)
   embedded_sandbox_shell_gen = custom_target(
     'embedded-sandbox-shell.gen.hh',
     command : [

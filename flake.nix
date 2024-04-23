@@ -196,24 +196,6 @@
           }
         );
 
-        # FIXME(Qyriad): remove this when the migration to Meson has been completed.
-        # NOTE: mesonBuildClang depends on mesonBuild depends on build to avoid OOMs
-        # on aarch64 builders caused by too many parallel compiler/linker processes.
-        mesonBuild = forAllSystems (
-          system:
-          (self.packages.${system}.nix.override { buildWithMeson = true; }).overrideAttrs (prev: {
-            buildInputs = prev.buildInputs ++ [ self.packages.${system}.nix ];
-          })
-        );
-        mesonBuildClang = forAllSystems (
-          system:
-          (nixpkgsFor.${system}.stdenvs.clangStdenvPackages.nix.override { buildWithMeson = true; })
-          .overrideAttrs
-            (prev: {
-              buildInputs = prev.buildInputs ++ [ self.hydraJobs.mesonBuild.${system} ];
-            })
-        );
-
         # Perl bindings for various platforms.
         perlBindings = forAllSystems (system: nixpkgsFor.${system}.native.nix.perl-bindings);
 
@@ -237,7 +219,6 @@
               inherit (pkgs) build-release-notes;
               internalApiDocs = true;
               busybox-sandbox-shell = pkgs.busybox-sandbox-shell;
-              buildWithMeson = true;
             };
           in
           nix.overrideAttrs (prev: {
@@ -367,9 +348,6 @@
       checks = forAllSystems (
         system:
         {
-          # FIXME(Qyriad): remove this when the migration to Meson has been completed.
-          mesonBuild = self.hydraJobs.mesonBuild.${system};
-          mesonBuildClang = self.hydraJobs.mesonBuildClang.${system};
           binaryTarball = self.hydraJobs.binaryTarball.${system};
           perlBindings = self.hydraJobs.perlBindings.${system};
           nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
