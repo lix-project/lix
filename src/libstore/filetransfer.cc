@@ -90,19 +90,12 @@ struct curlFileTransfer : public FileTransfer
                 {request.uri}, request.parentAct)
             , callback(std::move(callback))
             , finalSink([this](std::string_view data) {
-                if (errorSink) {
-                    (*errorSink)(data);
-                }
-
-                if (this->request.dataCallback) {
-                    auto httpStatus = getHTTPStatus();
-
+                auto httpStatus = getHTTPStatus();
                     /* Only write data to the sink if this is a
                        successful response. */
-                    if (successfulStatuses.count(httpStatus)) {
-                        writtenToSink += data.size();
-                        this->request.dataCallback(data);
-                    }
+                if (successfulStatuses.count(httpStatus) && this->request.dataCallback) {
+                    writtenToSink += data.size();
+                    this->request.dataCallback(data);
                 } else
                     this->result.data.append(data);
               })
@@ -148,7 +141,6 @@ struct curlFileTransfer : public FileTransfer
 
         LambdaSink finalSink;
         std::shared_ptr<FinishSink> decompressionSink;
-        std::optional<StringSink> errorSink;
 
         std::exception_ptr writeException;
 
@@ -184,13 +176,6 @@ struct curlFileTransfer : public FileTransfer
 
                 if (!decompressionSink) {
                     decompressionSink = makeDecompressionSink(encoding, finalSink);
-                    if (! successfulStatuses.count(getHTTPStatus())) {
-                        // In this case we want to construct a TeeSink, to keep
-                        // the response around (which we figure won't be big
-                        // like an actual download should be) to improve error
-                        // messages.
-                        errorSink = StringSink { };
-                    }
                 }
 
                 (*decompressionSink)({(char *) contents, realSize});
@@ -448,8 +433,8 @@ struct curlFileTransfer : public FileTransfer
                 attempt++;
 
                 std::optional<std::string> response;
-                if (errorSink)
-                    response = std::move(errorSink->s);
+                if (!successfulStatuses.count(httpStatus))
+                    response = std::move(result.data);
                 auto exc =
                     code == CURLE_ABORTED_BY_CALLBACK && _isInterrupted
                     ? FileTransferError(Interrupted, std::move(response), "%s of '%s' was interrupted", request.verb(), request.uri)
