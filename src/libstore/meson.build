@@ -66,6 +66,7 @@ libstore_sources = files(
   'path-with-outputs.cc',
   'path.cc',
   'pathlocks.cc',
+  'platform.cc',
   'profiles.cc',
   'realisation.cc',
   'remote-fs-accessor.cc',
@@ -157,6 +158,14 @@ libstore_headers = files(
   'worker-protocol-impl.hh',
   'worker-protocol.hh',
 )
+
+if host_machine.system() == 'linux'
+  libstore_sources += files('platform/linux.cc')
+  libstore_headers += files('platform/linux.hh')
+else
+  libstore_sources += files('platform/fallback.cc')
+  libstore_headers += files('platform/fallback.hh')
+endif
 
 # These variables (aside from LSOF) are created pseudo-dynamically, near the beginning of
 # the top-level meson.build. Aside from prefix itself, each of these was

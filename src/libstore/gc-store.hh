@@ -7,7 +7,14 @@
 namespace nix {
 
 
+/**
+ * Garbage-collector roots, referring to a store path
+ */
 typedef std::unordered_map<StorePath, std::unordered_set<std::string>> Roots;
+/**
+ * Possible garbage collector roots, referring to any path
+ */
+typedef std::unordered_map<Path, std::unordered_set<std::string>> UncheckedRoots;
 
 
 struct GCOptions

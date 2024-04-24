@@ -1940,6 +1940,4 @@ std::optional<std::string> LocalStore::getVersion()
     return nixVersion;
 }
 
-static RegisterStoreImplementation<LocalStore, LocalStoreConfig> regLocalStore;
-
 }  // namespace nix

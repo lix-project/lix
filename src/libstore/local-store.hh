@@ -127,6 +127,17 @@ private:
 
     const PublicKeys & getPublicKeys();
 
+protected:
+
+    /**
+     * Initialise the local store, upgrading the schema if
+     * necessary.
+     * Protected so that users don't accidentally create a LocalStore
+     * instead of a platform's subclass.
+     */
+    LocalStore(const Params & params);
+    LocalStore(std::string scheme, std::string path, const Params & params);
+
 public:
 
     /**
@@ -134,17 +145,15 @@ public:
      */
     PathSet locksHeld;
 
-    /**
-     * Initialise the local store, upgrading the schema if
-     * necessary.
-     */
-    LocalStore(const Params & params);
-    LocalStore(std::string scheme, std::string path, const Params & params);
-
-    ~LocalStore();
+    virtual ~LocalStore();
 
     static std::set<std::string> uriSchemes()
     { return {}; }
+
+    /**
+     * Create a LocalStore, possibly a platform-specific subclass
+     */
+    static std::shared_ptr<LocalStore> makeLocalStore(const Params & params);
 
     /**
      * Implementations of abstract store API methods.
@@ -329,6 +338,12 @@ private:
     void findRoots(const Path & path, unsigned char type, Roots & roots);
 
     void findRootsNoTemp(Roots & roots, bool censor);
+
+    /**
+     * Find possible garbage collector roots in a platform-specific manner,
+     * e.g. by looking in `/proc` or using `lsof`
+     */
+    virtual void findPlatformRoots(UncheckedRoots & unchecked);
 
     void findRuntimeRoots(Roots & roots, bool censor);
 
