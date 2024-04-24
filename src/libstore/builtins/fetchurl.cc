@@ -38,7 +38,6 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData)
                the result anyway. */
             FileTransferRequest request(url);
             request.verifyTLS = false;
-            request.decompress = false;
 
             auto decompressor = makeDecompressionSink(
                 unpack && mainUrl.ends_with(".xz") ? "xz" : "none", sink);

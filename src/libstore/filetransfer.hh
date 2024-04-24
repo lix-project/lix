@@ -59,7 +59,6 @@ struct FileTransferRequest
     size_t tries = fileTransferSettings.tries;
     unsigned int baseRetryTimeMs = 250;
     ActivityId parentAct;
-    bool decompress = true;
     std::optional<std::string> data;
     std::string mimeType;
     std::function<void(std::string_view data)> dataCallback;
