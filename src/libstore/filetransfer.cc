@@ -456,8 +456,8 @@ struct curlFileTransfer : public FileTransfer
                     : httpStatus != 0
                     ? FileTransferError(err,
                         std::move(response),
-                        "unable to %s '%s': HTTP error %d%s",
-                        request.verb(), request.uri, httpStatus,
+                        "unable to %s '%s': HTTP error %d (%s)%s",
+                        request.verb(), request.uri, httpStatus, statusMsg,
                         code == CURLE_OK ? "" : fmt(" (curl error: %s)", curl_easy_strerror(code)))
                     : FileTransferError(err,
                         std::move(response),
