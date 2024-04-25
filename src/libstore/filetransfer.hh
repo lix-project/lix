@@ -115,7 +115,7 @@ struct FileTransfer
      * Download a file, writing its data to a sink. The sink will be
      * invoked on the thread of the caller.
      */
-    void download(FileTransferRequest && request, Sink & sink);
+    virtual void download(FileTransferRequest && request, Sink & sink) = 0;
 
     enum Error { NotFound, Forbidden, Misc, Transient, Interrupted };
 };
