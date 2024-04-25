@@ -61,7 +61,6 @@ struct FileTransferRequest
     ActivityId parentAct;
     std::optional<std::string> data;
     std::string mimeType;
-    std::function<void(std::string_view data)> dataCallback;
 
     FileTransferRequest(std::string_view uri)
         : uri(uri), parentAct(getCurActivity()) { }
