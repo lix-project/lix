@@ -51,7 +51,7 @@ class DrvOutputSubstitutionGoal : public Goal {
     struct DownloadState
     {
         Pipe outPipe;
-        std::promise<std::shared_ptr<const Realisation>> promise;
+        std::future<std::shared_ptr<const Realisation>> result;
     };
 
     std::shared_ptr<DownloadState> downloadState;

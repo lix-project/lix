@@ -72,25 +72,18 @@ void DrvOutputSubstitutionGoal::tryNext()
     sub = subs.front();
     subs.pop_front();
 
-    // FIXME: Make async
-    // outputInfo = sub->queryRealisation(id);
-
-    /* The callback of the curl download below can outlive `this` (if
+    /* The async call to a curl download below can outlive `this` (if
        some other error occurs), so it must not touch `this`. So put
        the shared state in a separate refcounted object. */
     downloadState = std::make_shared<DownloadState>();
     downloadState->outPipe.create();
 
-    sub->queryRealisation(
-        id,
-        { [downloadState(downloadState)](std::future<std::shared_ptr<const Realisation>> res) {
-            try {
-                Finally updateStats([&]() { downloadState->outPipe.writeSide.close(); });
-                downloadState->promise.set_value(res.get());
-            } catch (...) {
-                downloadState->promise.set_exception(std::current_exception());
-            }
-        } });
+    downloadState->result =
+        std::async(std::launch::async, [downloadState{downloadState}, id{id}, sub{sub}] {
+            ReceiveInterrupts receiveInterrupts;
+            Finally updateStats([&]() { downloadState->outPipe.writeSide.close(); });
+            return sub->queryRealisation(id);
+        });
 
     worker.childStarted(shared_from_this(), {downloadState->outPipe.readSide.get()}, true, false);
 
@@ -103,7 +96,7 @@ void DrvOutputSubstitutionGoal::realisationFetched()
     maintainRunningSubstitutions.reset();
 
     try {
-        outputInfo = downloadState->promise.get_future().get();
+        outputInfo = downloadState->result.get();
     } catch (std::exception & e) {
         printError(e.what());
         substituterFailed = true;
