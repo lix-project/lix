@@ -14,10 +14,9 @@ namespace nix {
 void Store::computeFSClosure(const StorePathSet & startPaths,
     StorePathSet & paths_, bool flipDirection, bool includeOutputs, bool includeDerivers)
 {
-    std::function<std::set<StorePath>(const StorePath & path, std::future<ref<const ValidPathInfo>> &)> queryDeps;
+    std::function<std::set<StorePath>(const StorePath & path, ref<const ValidPathInfo>)> queryDeps;
     if (flipDirection)
-        queryDeps = [&](const StorePath& path,
-                        std::future<ref<const ValidPathInfo>> & fut) {
+        queryDeps = [&](const StorePath& path, ref<const ValidPathInfo>) {
             StorePathSet res;
             StorePathSet referrers;
             queryReferrers(path, referrers);
@@ -36,10 +35,8 @@ void Store::computeFSClosure(const StorePathSet & startPaths,
             return res;
         };
     else
-        queryDeps = [&](const StorePath& path,
-                        std::future<ref<const ValidPathInfo>> & fut) {
+        queryDeps = [&](const StorePath& path, ref<const ValidPathInfo> info) {
             StorePathSet res;
-            auto info = fut.get();
             for (auto& ref : info->references)
                 if (ref != path)
                     res.insert(ref);
@@ -54,24 +51,11 @@ void Store::computeFSClosure(const StorePathSet & startPaths,
             return res;
         };
 
-    computeClosure<StorePath>(
-        startPaths, paths_,
-        [&](const StorePath& path,
-            std::function<void(std::promise<std::set<StorePath>>&)>
-                processEdges) {
-            std::promise<std::set<StorePath>> promise;
-            std::function<void(std::future<ref<const ValidPathInfo>>)>
-                getDependencies =
-                    [&](std::future<ref<const ValidPathInfo>> fut) {
-                        try {
-                            promise.set_value(queryDeps(path, fut));
-                        } catch (...) {
-                            promise.set_exception(std::current_exception());
-                        }
-                    };
-            queryPathInfo(path, getDependencies);
-            processEdges(promise);
-        });
+    paths_.merge(computeClosure<StorePath>(
+        startPaths,
+        [&](const StorePath& path) -> std::set<StorePath> {
+            return queryDeps(path, queryPathInfo(path));
+        }));
 }
 
 void Store::computeFSClosure(const StorePath & startPath,

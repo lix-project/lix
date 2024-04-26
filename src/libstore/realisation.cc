@@ -43,20 +43,7 @@ void Realisation::closure(Store & store, const std::set<Realisation> & startOutp
         return res;
     };
 
-    computeClosure<Realisation>(
-        startOutputs, res,
-        [&](const Realisation& current,
-            std::function<void(std::promise<std::set<Realisation>>&)>
-                processEdges) {
-            std::promise<std::set<Realisation>> promise;
-            try {
-                auto res = getDeps(current);
-                promise.set_value(res);
-            } catch (...) {
-                promise.set_exception(std::current_exception());
-            }
-            return processEdges(promise);
-        });
+    res.merge(computeClosure<Realisation>(startOutputs, getDeps));
 }
 
 nlohmann::json Realisation::toJSON() const {

@@ -16,15 +16,11 @@ map<string, set<string>> testGraph = {
 };
 
 TEST(closure, correctClosure) {
-    set<string> aClosure;
     set<string> expectedClosure = {"A", "B", "C", "F", "G"};
-    computeClosure<string>(
+    set<string> aClosure = computeClosure<string>(
         {"A"},
-        aClosure,
-        [&](const string currentNode, function<void(promise<set<string>> &)> processEdges) {
-            promise<set<string>> promisedNodes;
-            promisedNodes.set_value(testGraph[currentNode]);
-            processEdges(promisedNodes);
+        [&](const string currentNode) {
+            return testGraph[currentNode];
         }
     );
 
@@ -33,34 +29,11 @@ TEST(closure, correctClosure) {
 
 TEST(closure, properlyHandlesDirectExceptions) {
     struct TestExn {};
-    set<string> aClosure;
     EXPECT_THROW(
         computeClosure<string>(
             {"A"},
-            aClosure,
-            [&](const string currentNode, function<void(promise<set<string>> &)> processEdges) {
+            [&](const string currentNode) -> set<string> {
                 throw TestExn();
-            }
-        ),
-        TestExn
-    );
-}
-
-TEST(closure, properlyHandlesExceptionsInPromise) {
-    struct TestExn {};
-    set<string> aClosure;
-    EXPECT_THROW(
-        computeClosure<string>(
-            {"A"},
-            aClosure,
-            [&](const string currentNode, function<void(promise<set<string>> &)> processEdges) {
-                promise<set<string>> promise;
-                try {
-                    throw TestExn();
-                } catch (...) {
-                    promise.set_exception(std::current_exception());
-                }
-                processEdges(promise);
             }
         ),
         TestExn
