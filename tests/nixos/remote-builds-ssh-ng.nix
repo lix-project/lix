@@ -95,6 +95,10 @@ in
       builder.succeed("mkdir -p -m 700 /root/.ssh")
       builder.copy_from_host("key.pub", "/root/.ssh/authorized_keys")
       builder.wait_for_unit("sshd.service")
+
+      out = client.fail("nix-build ${expr nodes.client 1} 2>&1")
+      assert "error: failed to start SSH connection to 'root@builder': Host key verification failed" in out, f"No host verification error in {out}"
+
       client.succeed(f"ssh -o StrictHostKeyChecking=no {builder.name} 'echo hello world' >&2")
 
       # Perform a build
