@@ -6,13 +6,13 @@ clean:
 setup:
     meson setup build --prefix="$PWD/outputs/out"
 
-build:
-    meson compile -C build
+build *OPTIONS:
+    meson compile -C build {{ OPTIONS }}
 
 compile:
     just build
 
-install:
+install *OPTIONS: (build OPTIONS)
     meson install -C build
 
 test *OPTIONS:
