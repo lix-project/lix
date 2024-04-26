@@ -1,6 +1,7 @@
 #include "gc-store.hh"
 #include "signals.hh"
 #include "platform/linux.hh"
+#include "regex.hh"
 
 #include <regex>
 
@@ -26,12 +27,6 @@ static void readProcLink(const std::string & file, UncheckedRoots & roots)
     }
 }
 
-static std::string quoteRegexChars(const std::string & raw)
-{
-    static auto specialRegex = std::regex(R"([.^$\\*+?()\[\]{}|])");
-    return std::regex_replace(raw, specialRegex, R"(\$&)");
-}
-
 static void readFileRoots(const char * path, UncheckedRoots & roots)
 {
     try {
@@ -50,8 +45,7 @@ void LinuxLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
         struct dirent * ent;
         auto digitsRegex = std::regex(R"(^\d+$)");
         auto mapRegex = std::regex(R"(^\s*\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+(/\S+)\s*$)");
-        auto storePathRegex =
-            std::regex(quoteRegexChars(storeDir) + R"(/[0-9a-z]+[0-9a-zA-Z\+\-\._\?=]*)");
+        auto storePathRegex = regex::storePathRegex(storeDir);
         while (errno = 0, ent = readdir(procDir.get())) {
             checkInterrupt();
             if (std::regex_match(ent->d_name, digitsRegex)) {

@@ -7,6 +7,8 @@ libstore_DIR := $(d)
 libstore_SOURCES := $(wildcard $(d)/*.cc $(d)/builtins/*.cc $(d)/build/*.cc)
 ifdef HOST_LINUX
 libstore_SOURCES += $(d)/platform/linux.cc
+else ifdef HOST_DARWIN
+libstore_SOURCES += $(d)/platform/darwin.cc
 else
 libstore_SOURCES += $(d)/platform/fallback.cc
 endif
