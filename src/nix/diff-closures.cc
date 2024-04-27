@@ -1,4 +1,5 @@
 #include "command.hh"
+#include "cmd-profiles.hh"
 #include "shared.hh"
 #include "store-api.hh"
 #include "common-args.hh"
@@ -41,15 +42,6 @@ GroupedPaths getClosureInfo(ref<Store> store, const StorePath & toplevel)
     }
 
     return groupedPaths;
-}
-
-std::string showVersions(const std::set<std::string> & versions)
-{
-    if (versions.empty()) return "∅";
-    std::set<std::string> versions2;
-    for (auto & version : versions)
-        versions2.insert(version.empty() ? "ε" : version);
-    return concatStringsSep(", ", versions2);
 }
 
 void printClosureDiff(

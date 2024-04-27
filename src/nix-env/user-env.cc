@@ -16,22 +16,6 @@
 namespace nix {
 
 
-DrvInfos queryInstalled(EvalState & state, const Path & userEnv)
-{
-    DrvInfos elems;
-    if (pathExists(userEnv + "/manifest.json"))
-        throw Error("profile '%s' is incompatible with 'nix-env'; please use 'nix profile' instead", userEnv);
-    auto manifestFile = userEnv + "/manifest.nix";
-    if (pathExists(manifestFile)) {
-        Value v;
-        state.evalFile(state.rootPath(CanonPath(manifestFile)), v);
-        Bindings & bindings(*state.allocBindings(0));
-        getDerivations(state, v, "", bindings, elems, false);
-    }
-    return elems;
-}
-
-
 bool createUserEnv(EvalState & state, DrvInfos & elems,
     const Path & profile, bool keepDerivations,
     const std::string & lockToken)
