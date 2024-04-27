@@ -880,16 +880,12 @@ uint64_t LocalStore::addValidPath(State & state,
 }
 
 
-void LocalStore::queryPathInfoUncached(const StorePath & path,
-    Callback<std::shared_ptr<const ValidPathInfo>> callback) noexcept
+std::shared_ptr<const ValidPathInfo> LocalStore::queryPathInfoUncached(const StorePath & path)
 {
-    try {
-        callback(retrySQLite<std::shared_ptr<const ValidPathInfo>>([&]() {
-            auto state(_state.lock());
-            return queryPathInfoInternal(*state, path);
-        }));
-
-    } catch (...) { callback.rethrow(); }
+    return retrySQLite<std::shared_ptr<const ValidPathInfo>>([&]() {
+        auto state(_state.lock());
+        return queryPathInfoInternal(*state, path);
+    });
 }
 
 

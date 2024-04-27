@@ -53,8 +53,7 @@ public:
 
     StorePathSet queryAllValidPaths() override;
 
-    void queryPathInfoUncached(const StorePath & path,
-        Callback<std::shared_ptr<const ValidPathInfo>> callback) noexcept override;
+    std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) override;
 
     void queryReferrers(const StorePath & path, StorePathSet & referrers) override;
 

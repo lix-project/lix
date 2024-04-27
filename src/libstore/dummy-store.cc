@@ -33,10 +33,9 @@ struct DummyStore : public virtual DummyStoreConfig, public virtual Store
         return *uriSchemes().begin();
     }
 
-    void queryPathInfoUncached(const StorePath & path,
-        Callback<std::shared_ptr<const ValidPathInfo>> callback) noexcept override
+    std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) override
     {
-        callback(nullptr);
+        return nullptr;
     }
 
     /**

@@ -660,23 +660,6 @@ bool Store::isValidPathUncached(const StorePath & path)
 }
 
 
-ref<const ValidPathInfo> Store::queryPathInfo(const StorePath & storePath)
-{
-    std::promise<ref<const ValidPathInfo>> promise;
-
-    queryPathInfo(storePath,
-        {[&](std::future<ref<const ValidPathInfo>> result) {
-            try {
-                promise.set_value(result.get());
-            } catch (...) {
-                promise.set_exception(std::current_exception());
-            }
-        }});
-
-    return promise.get_future().get();
-}
-
-
 static bool goodStorePath(const StorePath & expected, const StorePath & actual)
 {
     return
@@ -685,64 +668,52 @@ static bool goodStorePath(const StorePath & expected, const StorePath & actual)
 }
 
 
-void Store::queryPathInfo(const StorePath & storePath,
-    Callback<ref<const ValidPathInfo>> callback) noexcept
+ref<const ValidPathInfo> Store::queryPathInfo(const StorePath & storePath)
 {
     auto hashPart = std::string(storePath.hashPart());
 
-    try {
-        {
-            auto res = state.lock()->pathInfoCache.get(std::string(storePath.to_string()));
-            if (res && res->isKnownNow()) {
-                stats.narInfoReadAverted++;
-                if (!res->didExist())
-                    throw InvalidPath("path '%s' is not valid", printStorePath(storePath));
-                return callback(ref<const ValidPathInfo>(res->value));
-            }
+    {
+        auto res = state.lock()->pathInfoCache.get(std::string(storePath.to_string()));
+        if (res && res->isKnownNow()) {
+            stats.narInfoReadAverted++;
+            if (!res->didExist())
+                throw InvalidPath("path '%s' is not valid", printStorePath(storePath));
+            return ref<const ValidPathInfo>(res->value);
         }
+    }
 
-        if (diskCache) {
-            auto res = diskCache->lookupNarInfo(getUri(), hashPart);
-            if (res.first != NarInfoDiskCache::oUnknown) {
-                stats.narInfoReadAverted++;
-                {
-                    auto state_(state.lock());
-                    state_->pathInfoCache.upsert(std::string(storePath.to_string()),
-                        res.first == NarInfoDiskCache::oInvalid ? PathInfoCacheValue{} : PathInfoCacheValue{ .value = res.second });
-                    if (res.first == NarInfoDiskCache::oInvalid ||
-                        !goodStorePath(storePath, res.second->path))
-                        throw InvalidPath("path '%s' is not valid", printStorePath(storePath));
-                }
-                return callback(ref<const ValidPathInfo>(res.second));
-            }
-        }
-
-    } catch (...) { return callback.rethrow(); }
-
-    auto callbackPtr = std::make_shared<decltype(callback)>(std::move(callback));
-
-    queryPathInfoUncached(storePath,
-        {[this, storePath, hashPart, callbackPtr](std::future<std::shared_ptr<const ValidPathInfo>> fut) {
-
-            try {
-                auto info = fut.get();
-
-                if (diskCache)
-                    diskCache->upsertNarInfo(getUri(), hashPart, info);
-
-                {
-                    auto state_(state.lock());
-                    state_->pathInfoCache.upsert(std::string(storePath.to_string()), PathInfoCacheValue { .value = info });
-                }
-
-                if (!info || !goodStorePath(storePath, info->path)) {
-                    stats.narInfoMissing++;
+    if (diskCache) {
+        auto res = diskCache->lookupNarInfo(getUri(), hashPart);
+        if (res.first != NarInfoDiskCache::oUnknown) {
+            stats.narInfoReadAverted++;
+            {
+                auto state_(state.lock());
+                state_->pathInfoCache.upsert(std::string(storePath.to_string()),
+                    res.first == NarInfoDiskCache::oInvalid ? PathInfoCacheValue{} : PathInfoCacheValue{ .value = res.second });
+                if (res.first == NarInfoDiskCache::oInvalid ||
+                    !goodStorePath(storePath, res.second->path))
                     throw InvalidPath("path '%s' is not valid", printStorePath(storePath));
-                }
+            }
+            return ref<const ValidPathInfo>(res.second);
+        }
+    }
 
-                (*callbackPtr)(ref<const ValidPathInfo>(info));
-            } catch (...) { callbackPtr->rethrow(); }
-        }});
+    auto info = queryPathInfoUncached(storePath);
+
+    if (diskCache)
+        diskCache->upsertNarInfo(getUri(), hashPart, info);
+
+    {
+        auto state_(state.lock());
+        state_->pathInfoCache.upsert(std::string(storePath.to_string()), PathInfoCacheValue { .value = info });
+    }
+
+    if (!info || !goodStorePath(storePath, info->path)) {
+        stats.narInfoMissing++;
+        throw InvalidPath("path '%s' is not valid", printStorePath(storePath));
+    }
+
+    return ref<const ValidPathInfo>(info);
 }
 
 void Store::queryRealisation(const DrvOutput & id,
@@ -852,19 +823,17 @@ StorePathSet Store::queryValidPaths(const StorePathSet & paths, SubstituteFlag m
 
     auto doQuery = [&](const StorePath & path) {
         checkInterrupt();
-        queryPathInfo(path, {[path, &state_, &wakeup](std::future<ref<const ValidPathInfo>> fut) {
-            auto state(state_.lock());
-            try {
-                auto info = fut.get();
-                state->valid.insert(path);
-            } catch (InvalidPath &) {
-            } catch (...) {
-                state->exc = std::current_exception();
-            }
-            assert(state->left);
-            if (!--state->left)
-                wakeup.notify_one();
-        }});
+        auto state(state_.lock());
+        try {
+            auto info = queryPathInfo(path);
+            state->valid.insert(path);
+        } catch (InvalidPath &) {
+        } catch (...) {
+            state->exc = std::current_exception();
+        }
+        assert(state->left);
+        if (!--state->left)
+            wakeup.notify_one();
     };
 
     for (auto & path : paths)

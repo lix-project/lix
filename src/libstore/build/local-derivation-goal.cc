@@ -1260,8 +1260,7 @@ struct RestrictedStore : public virtual RestrictedStoreConfig, public virtual In
         return paths;
     }
 
-    void queryPathInfoUncached(const StorePath & path,
-        Callback<std::shared_ptr<const ValidPathInfo>> callback) noexcept override
+    std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) override
     {
         if (goal.isAllowed(path)) {
             try {
@@ -1271,12 +1270,12 @@ struct RestrictedStore : public virtual RestrictedStoreConfig, public virtual In
                 info->registrationTime = 0;
                 info->ultimate = false;
                 info->sigs.clear();
-                callback(info);
+                return info;
             } catch (InvalidPath &) {
-                callback(nullptr);
+                return nullptr;
             }
         } else
-            callback(nullptr);
+            return nullptr;
     };
 
     void queryReferrers(const StorePath & path, StorePathSet & referrers) override

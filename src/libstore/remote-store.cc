@@ -304,32 +304,25 @@ void RemoteStore::querySubstitutablePathInfos(const StorePathCAMap & pathsMap, S
 }
 
 
-void RemoteStore::queryPathInfoUncached(const StorePath & path,
-    Callback<std::shared_ptr<const ValidPathInfo>> callback) noexcept
+std::shared_ptr<const ValidPathInfo> RemoteStore::queryPathInfoUncached(const StorePath & path)
 {
+    auto conn(getConnection());
+    conn->to << WorkerProto::Op::QueryPathInfo << printStorePath(path);
     try {
-        std::shared_ptr<const ValidPathInfo> info;
-        {
-            auto conn(getConnection());
-            conn->to << WorkerProto::Op::QueryPathInfo << printStorePath(path);
-            try {
-                conn.processStderr();
-            } catch (Error & e) {
-                // Ugly backwards compatibility hack.
-                if (e.msg().find("is not valid") != std::string::npos)
-                    throw InvalidPath(std::move(e.info()));
-                throw;
-            }
-            if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 17) {
-                bool valid; conn->from >> valid;
-                if (!valid) throw InvalidPath("path '%s' is not valid", printStorePath(path));
-            }
-            info = std::make_shared<ValidPathInfo>(
-                StorePath{path},
-                WorkerProto::Serialise<UnkeyedValidPathInfo>::read(*this, *conn));
-        }
-        callback(std::move(info));
-    } catch (...) { callback.rethrow(); }
+        conn.processStderr();
+    } catch (Error & e) {
+        // Ugly backwards compatibility hack.
+        if (e.msg().find("is not valid") != std::string::npos)
+            throw InvalidPath(std::move(e.info()));
+        throw;
+    }
+    if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 17) {
+        bool valid; conn->from >> valid;
+        if (!valid) throw InvalidPath("path '%s' is not valid", printStorePath(path));
+    }
+    return std::make_shared<ValidPathInfo>(
+        StorePath{path},
+        WorkerProto::Serialise<UnkeyedValidPathInfo>::read(*this, *conn));
 }
 
 

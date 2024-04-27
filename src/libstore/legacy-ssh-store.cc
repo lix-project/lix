@@ -143,36 +143,33 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
         return *uriSchemes().begin() + "://" + host;
     }
 
-    void queryPathInfoUncached(const StorePath & path,
-        Callback<std::shared_ptr<const ValidPathInfo>> callback) noexcept override
+    std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) override
     {
-        try {
-            auto conn(connections->get());
+        auto conn(connections->get());
 
-            /* No longer support missing NAR hash */
-            assert(GET_PROTOCOL_MINOR(conn->remoteVersion) >= 4);
+        /* No longer support missing NAR hash */
+        assert(GET_PROTOCOL_MINOR(conn->remoteVersion) >= 4);
 
-            debug("querying remote host '%s' for info on '%s'", host, printStorePath(path));
+        debug("querying remote host '%s' for info on '%s'", host, printStorePath(path));
 
-            conn->to << ServeProto::Command::QueryPathInfos << PathSet{printStorePath(path)};
-            conn->to.flush();
+        conn->to << ServeProto::Command::QueryPathInfos << PathSet{printStorePath(path)};
+        conn->to.flush();
 
-            auto p = readString(conn->from);
-            if (p.empty()) return callback(nullptr);
-            auto path2 = parseStorePath(p);
-            assert(path == path2);
-            auto info = std::make_shared<ValidPathInfo>(
-                path,
-                ServeProto::Serialise<UnkeyedValidPathInfo>::read(*this, *conn));
+        auto p = readString(conn->from);
+        if (p.empty()) return nullptr;
+        auto path2 = parseStorePath(p);
+        assert(path == path2);
+        auto info = std::make_shared<ValidPathInfo>(
+            path,
+            ServeProto::Serialise<UnkeyedValidPathInfo>::read(*this, *conn));
 
-            if (info->narHash == Hash::dummy)
-                throw Error("NAR hash is now mandatory");
+        if (info->narHash == Hash::dummy)
+            throw Error("NAR hash is now mandatory");
 
-            auto s = readString(conn->from);
-            assert(s == "");
+        auto s = readString(conn->from);
+        assert(s == "");
 
-            callback(std::move(info));
-        } catch (...) { callback.rethrow(); }
+        return info;
     }
 
     void addToStore(const ValidPathInfo & info, Source & source,

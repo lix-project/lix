@@ -349,8 +349,7 @@ void BinaryCacheStore::narFromPath(const StorePath & storePath, Sink & sink)
     stats.narReadBytes += narSize.length;
 }
 
-void BinaryCacheStore::queryPathInfoUncached(const StorePath & storePath,
-    Callback<std::shared_ptr<const ValidPathInfo>> callback) noexcept
+std::shared_ptr<const ValidPathInfo> BinaryCacheStore::queryPathInfoUncached(const StorePath & storePath)
 {
     auto uri = getUri();
     auto storePathS = printStorePath(storePath);
@@ -360,17 +359,13 @@ void BinaryCacheStore::queryPathInfoUncached(const StorePath & storePath,
 
     auto narInfoFile = narInfoFileFor(storePath);
 
-    try {
-        auto data = getFile(narInfoFile);
+    auto data = getFile(narInfoFile);
 
-        if (!data) return callback({});
+    if (!data) return {};
 
-        stats.narInfoRead++;
+    stats.narInfoRead++;
 
-        callback(std::make_shared<NarInfo>(*this, *data, narInfoFile));
-    } catch (...) {
-        callback.rethrow();
-    }
+    return std::make_shared<NarInfo>(*this, *data, narInfoFile);
 }
 
 StorePath BinaryCacheStore::addToStore(
