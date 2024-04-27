@@ -716,65 +716,36 @@ ref<const ValidPathInfo> Store::queryPathInfo(const StorePath & storePath)
     return ref<const ValidPathInfo>(info);
 }
 
-void Store::queryRealisation(const DrvOutput & id,
-        Callback<std::shared_ptr<const Realisation>> callback) noexcept
-{
-
-    try {
-        if (diskCache) {
-            auto [cacheOutcome, maybeCachedRealisation]
-                = diskCache->lookupRealisation(getUri(), id);
-            switch (cacheOutcome) {
-            case NarInfoDiskCache::oValid:
-                debug("Returning a cached realisation for %s", id.to_string());
-                callback(maybeCachedRealisation);
-                return;
-            case NarInfoDiskCache::oInvalid:
-                debug(
-                    "Returning a cached missing realisation for %s",
-                    id.to_string());
-                callback(nullptr);
-                return;
-            case NarInfoDiskCache::oUnknown:
-                break;
-            }
-        }
-    } catch (...) {
-        return callback.rethrow();
-    }
-
-    try {
-        auto info = queryRealisationUncached(id);
-
-        if (diskCache) {
-            if (info)
-                diskCache->upsertRealisation(getUri(), *info);
-            else
-                diskCache->upsertAbsentRealisation(getUri(), id);
-        }
-
-        callback(std::shared_ptr<const Realisation>(info));
-
-    } catch (...) {
-        callback.rethrow();
-    }
-}
-
 std::shared_ptr<const Realisation> Store::queryRealisation(const DrvOutput & id)
 {
-    using RealPtr = std::shared_ptr<const Realisation>;
-    std::promise<RealPtr> promise;
 
-    queryRealisation(id,
-        {[&](std::future<RealPtr> result) {
-            try {
-                promise.set_value(result.get());
-            } catch (...) {
-                promise.set_exception(std::current_exception());
-            }
-        }});
+    if (diskCache) {
+        auto [cacheOutcome, maybeCachedRealisation]
+            = diskCache->lookupRealisation(getUri(), id);
+        switch (cacheOutcome) {
+        case NarInfoDiskCache::oValid:
+            debug("Returning a cached realisation for %s", id.to_string());
+            return maybeCachedRealisation;
+        case NarInfoDiskCache::oInvalid:
+            debug(
+                "Returning a cached missing realisation for %s",
+                id.to_string());
+            return nullptr;
+        case NarInfoDiskCache::oUnknown:
+            break;
+        }
+    }
 
-    return promise.get_future().get();
+    auto info = queryRealisationUncached(id);
+
+    if (diskCache) {
+        if (info)
+            diskCache->upsertRealisation(getUri(), *info);
+        else
+            diskCache->upsertAbsentRealisation(getUri(), id);
+    }
+
+    return info;
 }
 
 void Store::substitutePaths(const StorePathSet & paths)

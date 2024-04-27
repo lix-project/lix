@@ -371,12 +371,6 @@ public:
      */
     std::shared_ptr<const Realisation> queryRealisation(const DrvOutput &);
 
-    /**
-     * Asynchronous version of queryRealisation().
-     */
-    void queryRealisation(const DrvOutput &,
-        Callback<std::shared_ptr<const Realisation>> callback) noexcept;
-
 
     /**
      * Check whether the given valid path info is sufficiently attested, by
