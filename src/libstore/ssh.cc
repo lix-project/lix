@@ -88,8 +88,6 @@ std::unique_ptr<SSHMaster::Connection> SSHMaster::startCommand(const std::string
             addCommonSSHOpts(args);
             if (socketPath != "")
                 args.insert(args.end(), {"-S", socketPath});
-            if (verbosity >= lvlChatty)
-                args.push_back("-v");
         }
 
         args.push_back(command);
@@ -154,8 +152,6 @@ Path SSHMaster::startMaster()
             throw SysError("duping over stdout");
 
         Strings args = { "ssh", host.c_str(), "-M", "-N", "-S", state->socketPath };
-        if (verbosity >= lvlChatty)
-            args.push_back("-v");
         addCommonSSHOpts(args);
         execvp(args.begin()->c_str(), stringsToCharPtrs(args).data());
 
