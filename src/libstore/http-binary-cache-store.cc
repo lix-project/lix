@@ -165,33 +165,20 @@ protected:
         }
     }
 
-    void getFile(const std::string & path,
-        Callback<std::optional<std::string>> callback) noexcept override
+    std::optional<std::string> getFile(const std::string & path) override
     {
-        try {
-            checkEnabled();
-        } catch (...) {
-            callback.rethrow();
-            return;
-        }
+        checkEnabled();
 
         auto request(makeRequest(path));
 
-        auto callbackPtr = std::make_shared<decltype(callback)>(std::move(callback));
-
-        getFileTransfer()->enqueueFileTransfer(request,
-            {[callbackPtr, this](std::future<FileTransferResult> result) {
-                try {
-                    (*callbackPtr)(std::move(result.get().data));
-                } catch (FileTransferError & e) {
-                    if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
-                        return (*callbackPtr)({});
-                    maybeDisable();
-                    callbackPtr->rethrow();
-                } catch (...) {
-                    callbackPtr->rethrow();
-                }
-            }});
+        try {
+            return std::move(getFileTransfer()->enqueueFileTransfer(request).get().data);
+        } catch (FileTransferError & e) {
+            if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
+                return {};
+            maybeDisable();
+            throw;
+        }
     }
 
     /**

@@ -85,15 +85,7 @@ public:
      */
     virtual void getFile(const std::string & path, Sink & sink);
 
-    /**
-     * Fetch the specified file and call the specified callback with
-     * the result. A subclass may implement this asynchronously.
-     */
-    virtual void getFile(
-        const std::string & path,
-        Callback<std::optional<std::string>> callback) noexcept;
-
-    std::optional<std::string> getFile(const std::string & path);
+    virtual std::optional<std::string> getFile(const std::string & path);
 
 public:
 

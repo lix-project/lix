@@ -67,26 +67,9 @@ void BinaryCacheStore::upsertFile(const std::string & path,
     upsertFile(path, std::make_shared<std::stringstream>(std::move(data)), mimeType);
 }
 
-void BinaryCacheStore::getFile(const std::string & path,
-    Callback<std::optional<std::string>> callback) noexcept
-{
-    try {
-        callback(getFile(path));
-    } catch (...) { callback.rethrow(); }
-}
-
 void BinaryCacheStore::getFile(const std::string & path, Sink & sink)
 {
-    std::promise<std::optional<std::string>> promise;
-    getFile(path,
-        {[&](std::future<std::optional<std::string>> result) {
-            try {
-                promise.set_value(result.get());
-            } catch (...) {
-                promise.set_exception(std::current_exception());
-            }
-        }});
-    sink(*promise.get_future().get());
+    sink(*getFile(path));
 }
 
 std::optional<std::string> BinaryCacheStore::getFile(const std::string & path)
@@ -377,25 +360,17 @@ void BinaryCacheStore::queryPathInfoUncached(const StorePath & storePath,
 
     auto narInfoFile = narInfoFileFor(storePath);
 
-    auto callbackPtr = std::make_shared<decltype(callback)>(std::move(callback));
+    try {
+        auto data = getFile(narInfoFile);
 
-    getFile(narInfoFile,
-        {[=,this](std::future<std::optional<std::string>> fut) {
-            try {
-                auto data = fut.get();
+        if (!data) return callback({});
 
-                if (!data) return (*callbackPtr)({});
+        stats.narInfoRead++;
 
-                stats.narInfoRead++;
-
-                (*callbackPtr)((std::shared_ptr<ValidPathInfo>)
-                    std::make_shared<NarInfo>(*this, *data, narInfoFile));
-
-                (void) act; // force Activity into this lambda to ensure it stays alive
-            } catch (...) {
-                callbackPtr->rethrow();
-            }
-        }});
+        callback(std::make_shared<NarInfo>(*this, *data, narInfoFile));
+    } catch (...) {
+        callback.rethrow();
+    }
 }
 
 StorePath BinaryCacheStore::addToStore(
@@ -477,24 +452,16 @@ void BinaryCacheStore::queryRealisationUncached(const DrvOutput & id,
 {
     auto outputInfoFilePath = realisationsPrefix + "/" + id.to_string() + ".doi";
 
-    auto callbackPtr = std::make_shared<decltype(callback)>(std::move(callback));
+    try {
+        auto data = getFile(outputInfoFilePath);
+        if (!data) return callback({});
 
-    Callback<std::optional<std::string>> newCallback = {
-        [=](std::future<std::optional<std::string>> fut) {
-            try {
-                auto data = fut.get();
-                if (!data) return (*callbackPtr)({});
-
-                auto realisation = Realisation::fromJSON(
-                    nlohmann::json::parse(*data), outputInfoFilePath);
-                return (*callbackPtr)(std::make_shared<const Realisation>(realisation));
-            } catch (...) {
-                callbackPtr->rethrow();
-            }
-        }
-    };
-
-    getFile(outputInfoFilePath, std::move(newCallback));
+        auto realisation = Realisation::fromJSON(
+            nlohmann::json::parse(*data), outputInfoFilePath);
+        return callback(std::make_shared<const Realisation>(realisation));
+    } catch (...) {
+        callback.rethrow();
+    }
 }
 
 void BinaryCacheStore::registerDrvOutput(const Realisation& info) {
