@@ -25,17 +25,17 @@ individual users can switch between different environments.
 `nix-env` takes exactly one *operation* flag which indicates the
 subcommand to be performed. The following operations are available:
 
-- [`--install`](./nix-env/install.md)
-- [`--upgrade`](./nix-env/upgrade.md)
-- [`--uninstall`](./nix-env/uninstall.md)
-- [`--set`](./nix-env/set.md)
-- [`--set-flag`](./nix-env/set-flag.md)
-- [`--query`](./nix-env/query.md)
-- [`--switch-profile`](./nix-env/switch-profile.md)
-- [`--list-generations`](./nix-env/list-generations.md)
-- [`--delete-generations`](./nix-env/delete-generations.md)
-- [`--switch-generation`](./nix-env/switch-generation.md)
-- [`--rollback`](./nix-env/rollback.md)
+- [`--install`](./nix-env/install.md) - add packages to user environment
+- [`--upgrade`](./nix-env/upgrade.md) - upgrade packages in user environment
+- [`--uninstall`](./nix-env/uninstall.md) - remove packages from user environment
+- [`--set`](./nix-env/set.md) - set profile to contain a specified derivation
+- [`--set-flag`](./nix-env/set-flag.md) - modify meta attributes of installed packages
+- [`--query`](./nix-env/query.md) - display information about packages
+- [`--switch-profile`](./nix-env/switch-profile.md) - set user environment to a given profile
+- [`--list-generations`](./nix-env/list-generations.md) - list profile generations
+- [`--delete-generations`](./nix-env/delete-generations.md) - delete profile generations
+- [`--switch-generation`](./nix-env/switch-generation.md) - set user environment to a given profile generation
+- [`--rollback`](./nix-env/rollback.md) - set user environment to previous generation
 
 These pages can be viewed offline:
 
