@@ -3,6 +3,7 @@
 #include "worker.hh"
 #include "substitution-goal.hh"
 #include "callback.hh"
+#include "signals.hh"
 
 namespace nix {
 
@@ -37,6 +38,18 @@ void DrvOutputSubstitutionGoal::init()
 void DrvOutputSubstitutionGoal::tryNext()
 {
     trace("trying next substituter");
+
+    /* Make sure that we are allowed to start a substitution.  Note that even
+       if maxSubstitutionJobs == 0, we still allow a substituter to run. This
+       prevents infinite waiting. */
+    if (worker.runningCASubstitutions >= std::max(1U, settings.maxSubstitutionJobs.get())) {
+        worker.waitForBuildSlot(shared_from_this());
+        return;
+    }
+
+    maintainRunningSubstitutions =
+        std::make_unique<MaintainCount<uint64_t>>(worker.runningCASubstitutions);
+    worker.updateProgress();
 
     if (subs.size() == 0) {
         /* None left.  Terminate this goal and let someone else deal
@@ -87,6 +100,7 @@ void DrvOutputSubstitutionGoal::tryNext()
 void DrvOutputSubstitutionGoal::realisationFetched()
 {
     worker.childTerminated(this);
+    maintainRunningSubstitutions.reset();
 
     try {
         outputInfo = downloadState->promise.get_future().get();

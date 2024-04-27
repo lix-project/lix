@@ -41,6 +41,13 @@ class DrvOutputSubstitutionGoal : public Goal {
      */
     std::shared_ptr<Store> sub;
 
+    /**
+     * The substituter thread.
+     */
+    std::thread thr;
+
+    std::unique_ptr<MaintainCount<uint64_t>> maintainRunningSubstitutions;
+
     struct DownloadState
     {
         Pipe outPipe;
