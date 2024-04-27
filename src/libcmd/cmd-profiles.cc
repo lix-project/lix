@@ -141,10 +141,7 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
             }
             elements.emplace_back(std::move(element));
         }
-    }
-
-    else if (pathExists(profile + "/manifest.nix"))
-    {
+    } else if (pathExists(profile + "/manifest.nix")) {
         // FIXME: needed because of pure mode; ugly.
         state.allowPath(state.store->followLinksToStore(profile));
         state.allowPath(state.store->followLinksToStore(profile + "/manifest.nix"));
