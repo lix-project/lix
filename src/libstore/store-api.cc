@@ -1085,8 +1085,6 @@ void copyStorePath(
 
     auto info = srcStore.queryPathInfo(storePath);
 
-    uint64_t total = 0;
-
     // recompute store path on the chance dstStore does it differently
     if (info->ca && info->references.empty()) {
         auto info2 = make_ref<ValidPathInfo>(*info);
@@ -1105,7 +1103,7 @@ void copyStorePath(
     }
 
     auto source = sinkToSource([&](Sink & sink) {
-        LambdaSink progressSink([&](std::string_view data) {
+        LambdaSink progressSink([&, total = 0ULL](std::string_view data) mutable {
             total += data.size();
             act.progress(total, info->narSize);
         });
@@ -1218,9 +1216,6 @@ std::map<StorePath, StorePath> copyPaths(
         return storePathForDst;
     };
 
-    // total is accessed by each copy, which are each handled in separate threads
-    std::atomic<uint64_t> total = 0;
-
     for (auto & missingPath : sortedMissing) {
         auto info = srcStore.queryPathInfo(missingPath);
 
@@ -1241,7 +1236,7 @@ std::map<StorePath, StorePath> copyPaths(
                 {storePathS, srcUri, dstUri});
             PushActivity pact(act.id);
 
-            LambdaSink progressSink([&](std::string_view data) {
+            LambdaSink progressSink([&, total = 0ULL](std::string_view data) mutable {
                 total += data.size();
                 act.progress(total, info->narSize);
             });
