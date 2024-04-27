@@ -1353,14 +1353,13 @@ struct RestrictedStore : public virtual RestrictedStoreConfig, public virtual In
     // corresponds to an allowed derivation
     { throw Error("registerDrvOutput"); }
 
-    void queryRealisationUncached(const DrvOutput & id,
-        Callback<std::shared_ptr<const Realisation>> callback) noexcept override
+    std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput & id) override
     // XXX: This should probably be allowed if the realisation corresponds to
     // an allowed derivation
     {
         if (!goal.isAllowed(id))
-            callback(nullptr);
-        next->queryRealisation(id, std::move(callback));
+            return nullptr;
+        return next->queryRealisation(id);
     }
 
     void buildPaths(const std::vector<DerivedPath> & paths, BuildMode buildMode, std::shared_ptr<Store> evalStore) override

@@ -67,9 +67,8 @@ struct DummyStore : public virtual DummyStoreConfig, public virtual Store
     void narFromPath(const StorePath & path, Sink & sink) override
     { unsupported("narFromPath"); }
 
-    void queryRealisationUncached(const DrvOutput &,
-        Callback<std::shared_ptr<const Realisation>> callback) noexcept override
-    { callback(nullptr); }
+    std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput &) override
+    { return nullptr; }
 
     virtual ref<FSAccessor> getFSAccessor() override
     { unsupported("getFSAccessor"); }

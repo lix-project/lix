@@ -442,21 +442,16 @@ StorePath BinaryCacheStore::addTextToStore(
     })->path;
 }
 
-void BinaryCacheStore::queryRealisationUncached(const DrvOutput & id,
-    Callback<std::shared_ptr<const Realisation>> callback) noexcept
+std::shared_ptr<const Realisation> BinaryCacheStore::queryRealisationUncached(const DrvOutput & id)
 {
     auto outputInfoFilePath = realisationsPrefix + "/" + id.to_string() + ".doi";
 
-    try {
-        auto data = getFile(outputInfoFilePath);
-        if (!data) return callback({});
+    auto data = getFile(outputInfoFilePath);
+    if (!data) return {};
 
-        auto realisation = Realisation::fromJSON(
-            nlohmann::json::parse(*data), outputInfoFilePath);
-        return callback(std::make_shared<const Realisation>(realisation));
-    } catch (...) {
-        callback.rethrow();
-    }
+    auto realisation = Realisation::fromJSON(
+        nlohmann::json::parse(*data), outputInfoFilePath);
+    return std::make_shared<const Realisation>(realisation);
 }
 
 void BinaryCacheStore::registerDrvOutput(const Realisation& info) {

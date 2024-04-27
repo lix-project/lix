@@ -743,29 +743,21 @@ void Store::queryRealisation(const DrvOutput & id,
         return callback.rethrow();
     }
 
-    auto callbackPtr
-        = std::make_shared<decltype(callback)>(std::move(callback));
+    try {
+        auto info = queryRealisationUncached(id);
 
-    queryRealisationUncached(
-        id,
-        { [this, id, callbackPtr](
-              std::future<std::shared_ptr<const Realisation>> fut) {
-            try {
-                auto info = fut.get();
+        if (diskCache) {
+            if (info)
+                diskCache->upsertRealisation(getUri(), *info);
+            else
+                diskCache->upsertAbsentRealisation(getUri(), id);
+        }
 
-                if (diskCache) {
-                    if (info)
-                        diskCache->upsertRealisation(getUri(), *info);
-                    else
-                        diskCache->upsertAbsentRealisation(getUri(), id);
-                }
+        callback(std::shared_ptr<const Realisation>(info));
 
-                (*callbackPtr)(std::shared_ptr<const Realisation>(info));
-
-            } catch (...) {
-                callbackPtr->rethrow();
-            }
-        } });
+    } catch (...) {
+        callback.rethrow();
+    }
 }
 
 std::shared_ptr<const Realisation> Store::queryRealisation(const DrvOutput & id)

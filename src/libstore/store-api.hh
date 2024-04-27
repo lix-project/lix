@@ -402,8 +402,7 @@ public:
 protected:
 
     virtual std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) = 0;
-    virtual void queryRealisationUncached(const DrvOutput &,
-        Callback<std::shared_ptr<const Realisation>> callback) noexcept = 0;
+    virtual std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput &) = 0;
 
 public:
 

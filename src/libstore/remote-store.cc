@@ -612,39 +612,32 @@ void RemoteStore::registerDrvOutput(const Realisation & info)
     conn.processStderr();
 }
 
-void RemoteStore::queryRealisationUncached(const DrvOutput & id,
-    Callback<std::shared_ptr<const Realisation>> callback) noexcept
+std::shared_ptr<const Realisation> RemoteStore::queryRealisationUncached(const DrvOutput & id)
 {
-    try {
-        auto conn(getConnection());
+    auto conn(getConnection());
 
-        if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 27) {
-            warn("the daemon is too old to support content-addressed derivations, please upgrade it to 2.4");
-            return callback(nullptr);
-        }
+    if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 27) {
+        warn("the daemon is too old to support content-addressed derivations, please upgrade it to 2.4");
+        return nullptr;
+    }
 
-        conn->to << WorkerProto::Op::QueryRealisation;
-        conn->to << id.to_string();
-        conn.processStderr();
+    conn->to << WorkerProto::Op::QueryRealisation;
+    conn->to << id.to_string();
+    conn.processStderr();
 
-        auto real = [&]() -> std::shared_ptr<const Realisation> {
-            if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 31) {
-                auto outPaths = WorkerProto::Serialise<std::set<StorePath>>::read(
-                    *this, *conn);
-                if (outPaths.empty())
-                    return nullptr;
-                return std::make_shared<const Realisation>(Realisation { .id = id, .outPath = *outPaths.begin() });
-            } else {
-                auto realisations = WorkerProto::Serialise<std::set<Realisation>>::read(
-                    *this, *conn);
-                if (realisations.empty())
-                    return nullptr;
-                return std::make_shared<const Realisation>(*realisations.begin());
-            }
-        }();
-
-        callback(std::shared_ptr<const Realisation>(real));
-    } catch (...) { return callback.rethrow(); }
+    if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 31) {
+        auto outPaths = WorkerProto::Serialise<std::set<StorePath>>::read(
+            *this, *conn);
+        if (outPaths.empty())
+            return nullptr;
+        return std::make_shared<const Realisation>(Realisation { .id = id, .outPath = *outPaths.begin() });
+    } else {
+        auto realisations = WorkerProto::Serialise<std::set<Realisation>>::read(
+            *this, *conn);
+        if (realisations.empty())
+            return nullptr;
+        return std::make_shared<const Realisation>(*realisations.begin());
+    }
 }
 
 void RemoteStore::copyDrvsFromEvalStore(
