@@ -141,6 +141,8 @@ in
 
   nix-copy = runNixOSTestFor "x86_64-linux" ./nix-copy.nix;
 
+  nix-upgrade-nix = runNixOSTestFor "x86_64-linux" ./nix-upgrade-nix.nix;
+
   nssPreload = runNixOSTestFor "x86_64-linux" ./nss-preload.nix;
 
   githubFlakes = runNixOSTestFor "x86_64-linux" ./github-flakes.nix;
