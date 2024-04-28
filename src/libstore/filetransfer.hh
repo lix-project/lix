@@ -95,10 +95,7 @@ struct FileTransfer
      * the download. The future may throw a FileTransferError
      * exception.
      */
-    virtual void enqueueFileTransfer(const FileTransferRequest & request,
-        Callback<FileTransferResult> callback) = 0;
-
-    std::future<FileTransferResult> enqueueFileTransfer(const FileTransferRequest & request);
+    virtual std::future<FileTransferResult> enqueueFileTransfer(const FileTransferRequest & request) = 0;
 
     /**
      * Synchronously download a file.
