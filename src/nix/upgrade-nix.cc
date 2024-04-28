@@ -21,6 +21,8 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
     Path profileDir;
     std::string storePathsUrl = "https://github.com/NixOS/nixpkgs/raw/master/nixos/modules/installer/tools/nix-fallback-paths.nix";
 
+    std::optional<Path> overrideStorePath;
+
     CmdUpgradeNix()
     {
         addFlag({
@@ -29,6 +31,13 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
             .description = "The path to the Nix profile to upgrade.",
             .labels = {"profile-dir"},
             .handler = {&profileDir}
+        });
+
+        addFlag({
+            .longName = "store-path",
+            .description = "A specific store path to upgrade Nix to",
+            .labels = {"store-path"},
+            .handler = {&overrideStorePath},
         });
 
         addFlag({
@@ -246,6 +255,14 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
     /* Return the store path of the latest stable Nix. */
     StorePath getLatestNix(ref<Store> store)
     {
+        if (this->overrideStorePath) {
+            printTalkative(
+                "skipping Nix version query and using '%s' as latest Nix",
+                *this->overrideStorePath
+            );
+            return store->parseStorePath(*this->overrideStorePath);
+        }
+
         Activity act(*logger, lvlInfo, actUnknown, "querying latest Nix version");
 
         // FIXME: use nixos.org?
