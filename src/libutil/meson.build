@@ -43,7 +43,6 @@ libutil_headers = files(
   'args/root.hh',
   'args.hh',
   'box_ptr.hh',
-  'callback.hh',
   'canon-path.hh',
   'cgroup.hh',
   'chunked-vector.hh',

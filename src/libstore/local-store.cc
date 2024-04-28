@@ -6,7 +6,6 @@
 #include "derivations.hh"
 #include "nar-info.hh"
 #include "references.hh"
-#include "callback.hh"
 #include "topo-sort.hh"
 #include "signals.hh"
 #include "finally.hh"

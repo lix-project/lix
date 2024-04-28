@@ -1,5 +1,4 @@
 #include "store-api.hh"
-#include "callback.hh"
 
 namespace nix {
 

@@ -15,7 +15,6 @@
 #include "pool.hh"
 #include "finally.hh"
 #include "logging.hh"
-#include "callback.hh"
 #include "filetransfer.hh"
 #include <nlohmann/json.hpp>
 

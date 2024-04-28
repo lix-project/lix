@@ -11,7 +11,6 @@
 #include "nar-accessor.hh"
 #include "thread-pool.hh"
 #include "signals.hh"
-#include "callback.hh"
 
 #include <chrono>
 #include <future>

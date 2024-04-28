@@ -836,10 +836,6 @@ std::optional<typename T::value_type> pop(T & c)
 }
 
 
-template<typename T>
-class Callback;
-
-
 /**
  * A RAII helper that increments a counter on construction and
  * decrements it on destruction.

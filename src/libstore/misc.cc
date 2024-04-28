@@ -5,7 +5,6 @@
 #include "store-api.hh"
 #include "thread-pool.hh"
 #include "topo-sort.hh"
-#include "callback.hh"
 #include "closure.hh"
 #include "filetransfer.hh"
 

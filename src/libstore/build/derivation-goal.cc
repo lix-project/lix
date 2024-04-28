@@ -11,7 +11,6 @@
 #include "common-protocol.hh"
 #include "common-protocol-impl.hh"
 #include "topo-sort.hh"
-#include "callback.hh"
 #include "local-store.hh" // TODO remove, along with remaining downcasts
 #include "logging-json.hh"
 

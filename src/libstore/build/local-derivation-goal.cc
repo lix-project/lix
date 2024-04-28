@@ -11,7 +11,6 @@
 #include "compression.hh"
 #include "daemon.hh"
 #include "topo-sort.hh"
-#include "callback.hh"
 #include "json-utils.hh"
 #include "cgroup.hh"
 #include "personality.hh"

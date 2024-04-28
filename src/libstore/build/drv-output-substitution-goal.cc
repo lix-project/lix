@@ -2,7 +2,6 @@
 #include "finally.hh"
 #include "worker.hh"
 #include "substitution-goal.hh"
-#include "callback.hh"
 #include "signals.hh"
 
 namespace nix {

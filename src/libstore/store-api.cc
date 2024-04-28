@@ -9,7 +9,6 @@
 #include "url.hh"
 #include "references.hh"
 #include "archive.hh"
-#include "callback.hh"
 #include "remote-store.hh"
 #include "signals.hh"
 // FIXME this should not be here, see TODO below on
