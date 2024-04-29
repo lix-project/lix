@@ -1,5 +1,7 @@
 R""(
 
+**Note:** this command's interface is based heavily around [*installables*](./nix.md#installables), which you may want to read about first (`nix --help`).
+
 # Examples
 
 * Apply the build environment of GNU hello to the current shell:

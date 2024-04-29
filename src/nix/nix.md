@@ -162,7 +162,7 @@ The Nix expression in that file, or any selected attribute, must evaluate to a d
 
 Example: `--expr 'import <nixpkgs> {}' hello`
 
-When the option `--expr` *expression* \[*attrpath*...\] is given, installables are interpreted as the value of the of the Nix expression.
+When the option `-E` / `--expr` *expression* \[*attrpath*...\] is given, installables are interpreted as the value of the of the Nix expression.
 If attribute paths are provided, commands will operate on the corresponding values accessible at these paths.
 The Nix expression, or any selected attribute, must evaluate to a derivation.
 

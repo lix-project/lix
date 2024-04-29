@@ -1,5 +1,7 @@
 R""(
 
+**Note**: unlike [`nix profile install`](./nix3-profile-install.md), this command does *not* take installables.
+
 # Examples
 
 * Remove a package by position:
