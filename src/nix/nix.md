@@ -162,6 +162,12 @@ When the option `-f` / `--file` *path* \[*attrpath*...\] is given, installables 
 If attribute paths are provided, commands will operate on the corresponding values accessible at these paths.
 The Nix expression in that file, or any selected attribute, must evaluate to a derivation.
 
+To emulate the `nix-build '<nixpkgs>' -A hello` pattern, use:
+
+```console
+$ nix build -f '<nixpkgs>' hello
+```
+
 ### Nix expression
 
 Example: `--expr 'import <nixpkgs> {}' hello`
@@ -171,6 +177,12 @@ If attribute paths are provided, commands will operate on the corresponding valu
 The Nix expression, or any selected attribute, must evaluate to a derivation.
 
 You may need to specify `--impure` if the expression references impure inputs (such as `<nixpkgs>`).
+
+To emulate the `nix-build -E 'with import <nixpkgs> { }; hello' pattern use:
+
+```console
+$ nix build --impure -E 'with import <nixpkgs> { }; hello'
+```
 
 ## Derivation output selection
 
