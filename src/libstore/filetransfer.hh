@@ -99,14 +99,9 @@ struct FileTransfer
     virtual std::future<FileTransferResult> enqueueFileTransfer(const FileTransferRequest & request) = 0;
 
     /**
-     * Synchronously download a file.
+     * Synchronously transfer a file.
      */
-    FileTransferResult download(const FileTransferRequest & request);
-
-    /**
-     * Synchronously upload a file.
-     */
-    FileTransferResult upload(const FileTransferRequest & request);
+    FileTransferResult transfer(const FileTransferRequest & request);
 
     /**
      * Download a file, writing its data to a sink. The sink will be

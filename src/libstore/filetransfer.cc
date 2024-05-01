@@ -817,14 +817,8 @@ ref<FileTransfer> makeFileTransfer()
     return makeCurlFileTransfer();
 }
 
-FileTransferResult FileTransfer::download(const FileTransferRequest & request)
+FileTransferResult FileTransfer::transfer(const FileTransferRequest & request)
 {
-    return enqueueFileTransfer(request).get();
-}
-
-FileTransferResult FileTransfer::upload(const FileTransferRequest & request)
-{
-    /* Note: this method is the same as download, but helps in readability */
     return enqueueFileTransfer(request).get();
 }
 

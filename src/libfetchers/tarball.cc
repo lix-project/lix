@@ -46,7 +46,7 @@ DownloadFileResult downloadFile(
         request.expectedETag = getStrAttr(cached->infoAttrs, "etag");
     FileTransferResult res;
     try {
-        res = getFileTransfer()->download(request);
+        res = getFileTransfer()->transfer(request);
     } catch (FileTransferError & e) {
         if (cached) {
             warn("%s; using cached version", e.msg());
