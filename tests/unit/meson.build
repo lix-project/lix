@@ -52,6 +52,7 @@ libutil_tests_sources = files(
   'libutil/suggestions.cc',
   'libutil/tests.cc',
   'libutil/url.cc',
+  'libutil/url-name.cc',
   'libutil/xml-writer.cc',
 )
 
