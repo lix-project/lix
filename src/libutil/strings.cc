@@ -1,4 +1,5 @@
 #include "strings.hh"
+#include "references.hh"
 #include <boost/lexical_cast.hpp>
 #include <stdint.h>
 
@@ -65,30 +66,13 @@ std::string replaceStrings(
 Rewriter::Rewriter(std::map<std::string, std::string> rewrites)
     : rewrites(std::move(rewrites))
 {
-    for (const auto & [k, v] : this->rewrites) {
-        assert(!k.empty());
-        initials.push_back(k[0]);
-    }
-    std::ranges::sort(initials);
-    auto [firstDupe, end] = std::ranges::unique(initials);
-    initials.erase(firstDupe, end);
 }
 
 std::string Rewriter::operator()(std::string s)
 {
-    size_t j = 0;
-    while ((j = s.find_first_of(initials, j)) != std::string::npos) {
-        size_t skip = 1;
-        for (auto & [from, to] : rewrites) {
-            if (s.compare(j, from.size(), from) == 0) {
-                s.replace(j, from.size(), to);
-                skip = to.size();
-                break;
-            }
-        }
-        j += skip;
-    }
-    return s;
+    StringSource src{s};
+    RewritingSource inner{RewritingSource::may_change_size, rewrites, src};
+    return inner.drain();
 }
 
 template<class N>

@@ -2150,14 +2150,10 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
             if (!rewrites.empty()) {
                 debug("rewriting hashes in '%1%'; cross fingers", actualPath);
 
-                /* FIXME: Is this actually streaming? */
-                auto source = sinkToSource([&](Sink & nextSink) {
-                    RewritingSink rsink(rewrites, nextSink);
-                    rsink << dumpPath(actualPath);
-                    rsink.flush();
-                });
+                GeneratorSource dump{dumpPath(actualPath)};
+                RewritingSource rewritten(rewrites, dump);
                 Path tmpPath = actualPath + ".tmp";
-                restorePath(tmpPath, *source);
+                restorePath(tmpPath, rewritten);
                 deletePath(actualPath);
                 movePath(tmpPath, actualPath);
 

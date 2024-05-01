@@ -25,11 +25,8 @@ class RewriteTest : public ::testing::TestWithParam<RewriteParams> {
 
 TEST_P(RewriteTest, IdentityRewriteIsIdentity) {
     RewriteParams param = GetParam();
-    StringSink rewritten;
-    auto rewriter = RewritingSink(param.rewrites, rewritten);
-    rewriter(param.originalString);
-    rewriter.flush();
-    ASSERT_EQ(rewritten.s, param.finalString);
+    StringSource src{param.originalString};
+    ASSERT_EQ(RewritingSource(param.rewrites, src).drain(), param.finalString);
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -38,7 +35,8 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Values(
         RewriteParams{ "foooo", "baroo", {{"foo", "bar"}, {"bar", "baz"}}},
         RewriteParams{ "foooo", "bazoo", {{"fou", "bar"}, {"foo", "baz"}}},
-        RewriteParams{ "foooo", "foooo", {}}
+        RewriteParams{ "foooo", "foooo", {}},
+        RewriteParams{ "babb", "bbbb", {{"ab", "aa"}, {"babb", "bbbb"}}}
     )
 );
 

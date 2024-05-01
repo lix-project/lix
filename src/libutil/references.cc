@@ -65,56 +65,102 @@ void RefScanSink::operator () (std::string_view data)
 }
 
 
-RewritingSink::RewritingSink(const std::string & from, const std::string & to, Sink & nextSink)
-    : RewritingSink({{from, to}}, nextSink)
+RewritingSource::RewritingSource(const std::string & from, const std::string & to, Source & inner)
+    : RewritingSource({{from, to}}, inner)
 {
 }
 
-RewritingSink::RewritingSink(const StringMap & rewrites, Sink & nextSink)
-    : rewrites(rewrites), nextSink(nextSink)
+RewritingSource::RewritingSource(StringMap rewrites, Source & inner)
+    : RewritingSource(may_change_size, std::move(rewrites), inner)
 {
-    std::string::size_type maxRewriteSize = 0;
-    for (auto & [from, to] : rewrites) {
+    for (auto & [from, to] : this->rewrites) {
         assert(from.size() == to.size());
-        maxRewriteSize = std::max(maxRewriteSize, from.size());
     }
-    this->maxRewriteSize = maxRewriteSize;
 }
 
-void RewritingSink::operator () (std::string_view data)
+RewritingSource::RewritingSource(may_change_size_t, StringMap rewrites, Source & inner)
+    : maxRewriteSize([&, result = size_t(0)]() mutable {
+        for (auto & [k, v] : rewrites) {
+            result = std::max(result, k.size());
+        }
+        return result;
+    }())
+    , initials([&]() -> std::string {
+        std::string initials;
+        for (const auto & [k, v] : rewrites) {
+            assert(!k.empty());
+            initials.push_back(k[0]);
+        }
+        std::ranges::sort(initials);
+        auto [firstDupe, _end] = std::ranges::unique(initials);
+        return {initials.begin(), firstDupe};
+    }())
+    , rewrites(std::move(rewrites))
+    , inner(&inner)
 {
-    std::string s(prev);
-    s.append(data);
-
-    s = rewriteStrings(s, rewrites);
-
-    prev = s.size() < maxRewriteSize
-        ? s
-        : maxRewriteSize == 0
-            ? ""
-            : std::string(s, s.size() - maxRewriteSize + 1, maxRewriteSize - 1);
-
-    auto consumed = s.size() - prev.size();
-
-    if (consumed) nextSink(s.substr(0, consumed));
 }
 
-void RewritingSink::flush()
+size_t RewritingSource::read(char * data, size_t len)
 {
-    if (prev.empty()) return;
-    nextSink(prev);
-    prev.clear();
+    if (rewrites.empty()) {
+        return inner->read(data, len);
+    }
+
+    if (unreturned.empty()) {
+        // always make sure to have at least *two* full rewrites in the buffer,
+        // otherwise we may end up incorrectly rewriting if the replacement map
+        // contains keys that are proper infixes of other keys in the map. take
+        // for example the set { ab -> cc, babb -> bbbb } on the input babb. if
+        // we feed the input bytewise without additional windowing we will miss
+        // the full babb match once the second b has been seen and bab has been
+        // rewritten to ccb, even though babb occurs first in the input string.
+        while (inner && buffered.size() < std::max(2 * maxRewriteSize, len)) {
+            try {
+                auto read = inner->read(data, std::min(2 * maxRewriteSize, len));
+                buffered.append(data, read);
+            } catch (EndOfFile &) {
+                inner = nullptr;
+            }
+        }
+
+        if (buffered.empty() && !inner) {
+            throw EndOfFile("rewritten source exhausted");
+        }
+
+        const size_t reserved = inner ? maxRewriteSize : 0;
+        size_t j = 0;
+        while ((j = buffered.find_first_of(initials, j)) < buffered.size() - reserved) {
+            size_t skip = 1;
+            for (const auto & [from, to] : rewrites) {
+                if (buffered.compare(j, from.size(), from) == 0) {
+                    buffered.replace(j, from.size(), to);
+                    skip = to.size();
+                    break;
+                }
+            }
+            j += skip;
+        }
+
+        rewritten = std::move(buffered);
+        buffered = rewritten.substr(rewritten.size() - reserved);
+        unreturned = rewritten;
+        unreturned.remove_suffix(reserved);
+    }
+
+    len = std::min(len, unreturned.size());
+    memcpy(data, unreturned.data(), len);
+    unreturned.remove_prefix(len);
+    return len;
 }
 
 HashResult computeHashModulo(HashType ht, const std::string & modulus, Source & source)
 {
     HashSink hashSink(ht);
     LengthSink lengthSink;
-    RewritingSink rewritingSink(modulus, std::string(modulus.size(), 0), hashSink);
+    RewritingSource rewritingSource(modulus, std::string(modulus.size(), 0), source);
 
-    TeeSink tee{rewritingSink, lengthSink};
-    source.drainInto(tee);
-    rewritingSink.flush();
+    TeeSink tee{hashSink, lengthSink};
+    rewritingSource.drainInto(tee);
 
     /* Hash the positions of the self-references. This ensures that a
        NAR with self-references and a NAR with some of the

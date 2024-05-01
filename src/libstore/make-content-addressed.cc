@@ -61,15 +61,12 @@ std::map<StorePath, StorePath> makeContentAddressed(
 
         printInfo("rewriting '%s' to '%s'", pathS, dstStore.printStorePath(info.path));
 
-        StringSink sink2;
-        RewritingSink rsink2(oldHashPart, std::string(info.path.hashPart()), sink2);
-        rsink2(sink.s);
-        rsink2.flush();
+        const auto rewritten = rewriteStrings(sink.s, {{oldHashPart, std::string(info.path.hashPart())}});
 
-        info.narHash = hashString(htSHA256, sink2.s);
+        info.narHash = hashString(htSHA256, rewritten);
         info.narSize = sink.s.size();
 
-        StringSource source(sink2.s);
+        StringSource source(rewritten);
         dstStore.addToStore(info, source);
 
         remappings.insert_or_assign(std::move(path), std::move(info.path));
