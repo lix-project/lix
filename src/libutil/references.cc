@@ -109,19 +109,12 @@ void RewritingSink::flush()
     prev.clear();
 }
 
-HashModuloSink::HashModuloSink(HashType ht, const std::string & modulus)
-    : hashSink(ht)
-    , rewritingSink(modulus, std::string(modulus.size(), 0), hashSink)
+HashResult computeHashModulo(HashType ht, const std::string & modulus, Source & source)
 {
-}
+    HashSink hashSink(ht);
+    RewritingSink rewritingSink(modulus, std::string(modulus.size(), 0), hashSink);
 
-void HashModuloSink::operator () (std::string_view data)
-{
-    rewritingSink(data);
-}
-
-HashResult HashModuloSink::finish()
-{
+    source.drainInto(rewritingSink);
     rewritingSink.flush();
 
     /* Hash the positions of the self-references. This ensures that a

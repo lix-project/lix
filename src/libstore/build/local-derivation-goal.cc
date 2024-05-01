@@ -2216,23 +2216,21 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
             rewriteOutput(outputRewrites);
             /* FIXME optimize and deduplicate with addToStore */
             std::string oldHashPart { scratchPath->hashPart() };
-            HashModuloSink caSink { outputHash.hashType, oldHashPart };
-            std::visit(overloaded {
-                [&](const TextIngestionMethod &) {
-                    caSink << readFileSource(actualPath);
+            auto input = std::visit(overloaded {
+                [&](const TextIngestionMethod &) -> GeneratorSource {
+                    return GeneratorSource(readFileSource(actualPath));
                 },
-                [&](const FileIngestionMethod & m2) {
+                [&](const FileIngestionMethod & m2) -> GeneratorSource {
                     switch (m2) {
                     case FileIngestionMethod::Recursive:
-                        caSink << dumpPath(actualPath);
-                        break;
+                        return GeneratorSource(dumpPath(actualPath));
                     case FileIngestionMethod::Flat:
-                        caSink << readFileSource(actualPath);
-                        break;
+                        return GeneratorSource(readFileSource(actualPath));
                     }
+                    assert(false);
                 },
             }, outputHash.method.raw);
-            auto got = caSink.finish().first;
+            auto got = computeHashModulo(outputHash.hashType, oldHashPart, input).first;
 
             auto optCA = ContentAddressWithReferences::fromPartsOpt(
                 outputHash.method,

@@ -1887,25 +1887,23 @@ ContentAddress LocalStore::hashCAPath(
     const std::string_view pathHash
 )
 {
-    HashModuloSink caSink ( hashType, std::string(pathHash) );
-    std::visit(overloaded {
-        [&](const TextIngestionMethod &) {
-            caSink << readFileSource(path);
+    auto data = std::visit(overloaded {
+        [&](const TextIngestionMethod &) -> GeneratorSource {
+            return GeneratorSource(readFileSource(path));
         },
-        [&](const FileIngestionMethod & m2) {
+        [&](const FileIngestionMethod & m2) -> GeneratorSource {
             switch (m2) {
             case FileIngestionMethod::Recursive:
-                caSink << dumpPath(path);
-                break;
+                return GeneratorSource(dumpPath(path));
             case FileIngestionMethod::Flat:
-                caSink << readFileSource(path);
-                break;
+                return GeneratorSource(readFileSource(path));
             }
+            assert(false);
         },
     }, method.raw);
     return ContentAddress {
         .method = method,
-        .hash = caSink.finish().first,
+        .hash = computeHashModulo(hashType, std::string(pathHash), data).first,
     };
 }
 

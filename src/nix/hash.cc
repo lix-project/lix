@@ -76,23 +76,19 @@ struct CmdHashBase : Command
     void run() override
     {
         for (auto path : paths) {
+            auto source = [&] () -> GeneratorSource {
+                switch (mode) {
+                case FileIngestionMethod::Flat:
+                    return GeneratorSource(readFileSource(path));
+                case FileIngestionMethod::Recursive:
+                    return GeneratorSource(dumpPath(path));
+                }
+                assert(false);
+            }();
 
-            std::unique_ptr<AbstractHashSink> hashSink;
-            if (modulus)
-                hashSink = std::make_unique<HashModuloSink>(ht, *modulus);
-            else
-                hashSink = std::make_unique<HashSink>(ht);
-
-            switch (mode) {
-            case FileIngestionMethod::Flat:
-                *hashSink << readFileSource(path);
-                break;
-            case FileIngestionMethod::Recursive:
-                *hashSink << dumpPath(path);
-                break;
-            }
-
-            Hash h = hashSink->finish().first;
+            Hash h = modulus
+                ? computeHashModulo(ht, *modulus, source).first
+                : hashSource(ht, source).first;
             if (truncate && h.hashSize > 20) h = compressHash(h, 20);
             logger->cout(h.to_string(base, base == SRI));
         }

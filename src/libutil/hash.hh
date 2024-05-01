@@ -203,5 +203,12 @@ public:
     HashResult currentHash();
 };
 
+inline HashResult hashSource(HashType ht, Source & source)
+{
+    HashSink h(ht);
+    source.drainInto(h);
+    return h.finish();
+}
+
 
 }

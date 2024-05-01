@@ -43,10 +43,10 @@ std::map<StorePath, StorePath> makeContentAddressed(
 
         sink.s = rewriteStrings(sink.s, rewrites);
 
-        HashModuloSink hashModuloSink(htSHA256, oldHashPart);
-        hashModuloSink(sink.s);
-
-        auto narModuloHash = hashModuloSink.finish().first;
+        auto narModuloHash = [&] {
+            StringSource source{sink.s};
+            return computeHashModulo(htSHA256, oldHashPart, source).first;
+        }();
 
         ValidPathInfo info {
             dstStore,

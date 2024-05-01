@@ -41,16 +41,6 @@ struct RewritingSink : Sink
     void flush();
 };
 
-struct HashModuloSink : AbstractHashSink
-{
-    HashSink hashSink;
-    RewritingSink rewritingSink;
-
-    HashModuloSink(HashType ht, const std::string & modulus);
-
-    void operator () (std::string_view data) override;
-
-    HashResult finish() override;
-};
+HashResult computeHashModulo(HashType ht, const std::string & modulus, Source & source);
 
 }
