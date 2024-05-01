@@ -1385,13 +1385,31 @@ std::string replaceStrings(
 }
 
 
-std::string rewriteStrings(std::string s, const StringMap & rewrites)
+Rewriter::Rewriter(std::map<std::string, std::string> rewrites)
+    : rewrites(std::move(rewrites))
 {
-    for (auto & i : rewrites) {
-        if (i.first == i.second) continue;
-        size_t j = 0;
-        while ((j = s.find(i.first, j)) != std::string::npos)
-            s.replace(j, i.first.size(), i.second);
+    for (const auto & [k, v] : this->rewrites) {
+        assert(!k.empty());
+        initials.push_back(k[0]);
+    }
+    std::ranges::sort(initials);
+    auto [firstDupe, end] = std::ranges::unique(initials);
+    initials.erase(firstDupe, end);
+}
+
+std::string Rewriter::operator()(std::string s)
+{
+    size_t j = 0;
+    while ((j = s.find_first_of(initials, j)) != std::string::npos) {
+        size_t skip = 1;
+        for (auto & [from, to] : rewrites) {
+            if (s.compare(j, from.size(), from) == 0) {
+                s.replace(j, from.size(), to);
+                skip = to.size();
+                break;
+            }
+        }
+        j += skip;
     }
     return s;
 }

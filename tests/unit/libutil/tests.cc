@@ -404,6 +404,45 @@ namespace nix {
         ASSERT_EQ(rewriteStrings("this and that", rewrites), "that and that");
     }
 
+    TEST(rewriteStrings, intransitive) {
+        StringMap rewrites;
+        // transitivity can happen both in forward and reverse iteration order of the rewrite map.
+        rewrites["a"] = "b";
+        rewrites["b"] = "c";
+        rewrites["e"] = "b";
+
+        ASSERT_EQ(rewriteStrings("abcde", rewrites), "bccdb");
+    }
+
+    TEST(rewriteStrings, nonoverlapping) {
+        StringMap rewrites;
+        rewrites["ab"] = "ca";
+
+        ASSERT_EQ(rewriteStrings("abb", rewrites), "cab");
+    }
+
+    TEST(rewriteStrings, differentLength) {
+        StringMap rewrites;
+        rewrites["a"] = "an has a trea";
+
+        ASSERT_EQ(rewriteStrings("cat", rewrites), "can has a treat");
+    }
+
+    TEST(rewriteStrings, sorted) {
+        StringMap rewrites;
+        rewrites["a"] = "meow";
+        rewrites["abc"] = "puppy";
+
+        ASSERT_EQ(rewriteStrings("abcde", rewrites), "meowbcde");
+    }
+
+    TEST(rewriteStrings, multiple) {
+        StringMap rewrites;
+        rewrites["a"] = "b";
+
+        ASSERT_EQ(rewriteStrings("a1a2a3a", rewrites), "b1b2b3b");
+    }
+
     TEST(rewriteStrings, doesntOccur) {
         StringMap rewrites;
         rewrites["foo"] = "bar";

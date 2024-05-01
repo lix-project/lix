@@ -604,7 +604,33 @@ std::string replaceStrings(
     std::string_view to);
 
 
-std::string rewriteStrings(std::string s, const StringMap & rewrites);
+/**
+ * Rewrites a string given a map of replacements, applying the replacements in
+ * sorted order, only once, considering only the strings appearing in the input
+ * string in performing replacement.
+ *
+ * - Replacements are not performed on intermediate strings. That is, for an input
+ *   `"abb"` with replacements `{"ab" -> "ba"}`, the result is `"bab"`.
+ * - Transitive replacements are not performed. For example, for the input `"abcde"`
+ *   with replacements `{"a" -> "b", "b" -> "c", "e" -> "b"}`, the result is
+ *   `"bccdb"`.
+ */
+class Rewriter
+{
+private:
+    std::string initials;
+    std::map<std::string, std::string> rewrites;
+
+public:
+    explicit Rewriter(std::map<std::string, std::string> rewrites);
+
+    std::string operator()(std::string s);
+};
+
+inline std::string rewriteStrings(std::string s, const StringMap & rewrites)
+{
+    return Rewriter(rewrites)(s);
+}
 
 
 /**
