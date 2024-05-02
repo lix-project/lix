@@ -230,7 +230,7 @@ std::unique_ptr<FinishSink> sourceToSink(std::function<void(Source &)> fun)
                         if (cur.empty()) {
                             yield();
                             if (yield.get()) {
-                                return (size_t)0;
+                                throw EndOfFile("coroutine exhausted");
                             }
                         }
 
