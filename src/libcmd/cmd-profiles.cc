@@ -153,8 +153,6 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
             std::string name =
                 elems.is_object()
                 ? elem.key()
-                : e.contains("name")
-                ? static_cast<std::string>(e["name"])
                 : element.source
                 ? getNameFromURL(parseURL(element.source->to_string())).value_or(element.identifier())
                 : element.identifier();
