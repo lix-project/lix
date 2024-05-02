@@ -189,13 +189,24 @@ public:
     {
         std::vector<Matcher> res;
 
+        auto anyIndexMatchers = false;
+
         for (auto & s : _matchers) {
-            if (auto n = string2Int<size_t>(s))
+            if (auto n = string2Int<size_t>(s)) {
                 res.push_back(*n);
-            else if (store->isStorePath(s))
+                anyIndexMatchers = true;
+            } else if (store->isStorePath(s)) {
                 res.push_back(s);
-            else
+            } else {
                 res.push_back(RegexPattern{s,std::regex(s, std::regex::extended | std::regex::icase)});
+            }
+        }
+
+        if (anyIndexMatchers) {
+            warn(
+                "Indices are deprecated and be removed in a future version!\n"
+                "    Refer to packages by their `Name` printed by `nix profile list`.\n"
+            );
         }
 
         return res;
@@ -206,12 +217,13 @@ public:
         for (auto & matcher : matchers) {
             if (auto n = std::get_if<size_t>(&matcher)) {
                 if (*n == pos) return true;
+
             } else if (auto path = std::get_if<Path>(&matcher)) {
                 if (element.storePaths.count(store.parseStorePath(*path))) return true;
             } else if (auto regex = std::get_if<RegexPattern>(&matcher)) {
-                if (element.source
-                    && std::regex_match(element.source->attrPath, regex->reg))
+                if (std::regex_match(element.name, regex->reg)) {
                     return true;
+                }
             }
         }
 
@@ -294,62 +306,100 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
         Installables installables;
         std::vector<size_t> indices;
 
+        auto matchedCount = 0;
         auto upgradedCount = 0;
 
         for (size_t i = 0; i < manifest.elements.size(); ++i) {
             auto & element(manifest.elements[i]);
-            if (element.source
-                && !element.source->originalRef.input.isLocked()
-                && matches(*store, element, i, matchers))
-            {
-                upgradedCount++;
-
-                Activity act(*logger, lvlChatty, actUnknown,
-                    fmt("checking '%s' for updates", element.source->attrPath));
-
-                auto installable = make_ref<InstallableFlake>(
-                    this,
-                    getEvalState(),
-                    FlakeRef(element.source->originalRef),
-                    "",
-                    element.source->outputs,
-                    Strings{element.source->attrPath},
-                    Strings{},
-                    lockFlags);
-
-                auto derivedPaths = installable->toDerivedPaths();
-                if (derivedPaths.empty()) continue;
-                auto * infop = dynamic_cast<ExtraPathInfoFlake *>(&*derivedPaths[0].info);
-                // `InstallableFlake` should use `ExtraPathInfoFlake`.
-                assert(infop);
-                auto & info = *infop;
-
-                if (element.source->lockedRef == info.flake.lockedRef) continue;
-
-                printInfo("upgrading '%s' from flake '%s' to '%s'",
-                    element.source->attrPath, element.source->lockedRef, info.flake.lockedRef);
-
-                element.source = ProfileElementSource {
-                    .originalRef = installable->flakeRef,
-                    .lockedRef = info.flake.lockedRef,
-                    .attrPath = info.value.attrPath,
-                    .outputs = installable->extendedOutputsSpec,
-                };
-
-                installables.push_back(installable);
-                indices.push_back(i);
+            if (!matches(*store, element, i, matchers)) {
+                continue;
             }
+
+            matchedCount += 1;
+
+            if (!element.source) {
+                warn(
+                    "Found package '%s', but it was not installed from a flake, so it can't be checked for upgrades",
+                    element.identifier()
+                );
+                continue;
+            }
+
+            if (element.source->originalRef.input.isLocked()) {
+                warn(
+                    "Found package '%s', but it was installed from a locked flake reference so it can't be upgraded",
+                    element.identifier()
+                );
+                continue;
+            }
+
+            upgradedCount++;
+
+             Activity act(
+                *logger,
+                lvlChatty,
+                actUnknown,
+                fmt("checking '%s' for updates", element.source->attrPath),
+                Logger::Fields{element.source->attrPath}
+            );
+
+            auto installable = make_ref<InstallableFlake>(
+                this,
+                getEvalState(),
+                FlakeRef(element.source->originalRef),
+                "",
+                element.source->outputs,
+                Strings{element.source->attrPath},
+                Strings{},
+                lockFlags
+            );
+
+            auto derivedPaths = installable->toDerivedPaths();
+            if (derivedPaths.empty()) {
+                continue;
+            }
+
+            auto * infop = dynamic_cast<ExtraPathInfoFlake *>(&*derivedPaths[0].info);
+            // `InstallableFlake` should use `ExtraPathInfoFlake`.
+            assert(infop);
+            auto & info = *infop;
+
+            if (element.source->lockedRef == info.flake.lockedRef) {
+                continue;
+            }
+
+            printInfo(
+                "upgrading '%s' from flake '%s' to '%s'",
+                element.source->attrPath,
+                element.source->lockedRef,
+                info.flake.lockedRef
+            );
+
+            element.source = ProfileElementSource {
+                .originalRef = installable->flakeRef,
+                .lockedRef = info.flake.lockedRef,
+                .attrPath = info.value.attrPath,
+                .outputs = installable->extendedOutputsSpec,
+            };
+
+            installables.push_back(installable);
+            indices.push_back(i);
+
         }
 
         if (upgradedCount == 0) {
-            for (auto & matcher : matchers) {
-                if (const size_t * index = std::get_if<size_t>(&matcher)){
-                    warn("'%d' is not a valid index", *index);
-                } else if (const Path * path = std::get_if<Path>(&matcher)){
-                    warn("'%s' does not match any paths", *path);
-                } else if (const RegexPattern * regex = std::get_if<RegexPattern>(&matcher)){
-                    warn("'%s' does not match any packages", regex->pattern);
+            if (matchedCount == 0) {
+                for (auto & matcher : matchers) {
+                    if (const size_t * index = std::get_if<size_t>(&matcher)){
+                        warn("'%d' is not a valid index", *index);
+                    } else if (const Path * path = std::get_if<Path>(&matcher)){
+                        warn("'%s' does not match any paths", *path);
+                    } else if (const RegexPattern * regex = std::get_if<RegexPattern>(&matcher)){
+                        warn("'%s' does not match any packages", regex->pattern);
+                    }
                 }
+            } else {
+                warn("Found some packages but none of them could be upgraded");
             }
             warn ("Use 'nix profile list' to see the current profile.");
         }
@@ -394,10 +444,18 @@ struct CmdProfileList : virtual EvalCommand, virtual StoreCommand, MixDefaultPro
         } else {
             for (size_t i = 0; i < manifest.elements.size(); ++i) {
                 auto & element(manifest.elements[i]);
-                if (i) logger->cout("");
-                logger->cout("Index:              " ANSI_BOLD "%s" ANSI_NORMAL "%s",
-                    i,
-                    element.active ? "" : " " ANSI_RED "(inactive)" ANSI_NORMAL);
+                if (i) {
+                    logger->cout("");
+                }
+                logger->cout(
+                    "Name:               " ANSI_BOLD "%s" ANSI_NORMAL "%s",
+                    element.name,
+                    element.active ? "" : " " ANSI_RED "(inactive)" ANSI_NORMAL
+                );
+                logger->cout(
+                    "Index:              " ANSI_BOLD "%s" ANSI_NORMAL "%S",
+                    i
+                );
                 if (element.source) {
                     logger->cout("Flake attribute:    %s%s", element.source->attrPath, element.source->outputs.to_string());
                     logger->cout("Original flake URL: %s", element.source->originalRef.to_string());

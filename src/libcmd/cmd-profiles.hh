@@ -6,6 +6,8 @@
 #include "flake/flakeref.hh"
 #include "get-drvs.hh"
 #include "types.hh"
+#include "url.hh"
+#include "url-name.hh"
 
 #include <string>
 #include <set>
@@ -33,6 +35,7 @@ constexpr int DEFAULT_PRIORITY = 5;
 struct ProfileElement
 {
     StorePathSet storePaths;
+    std::string name;
     std::optional<ProfileElementSource> source;
     bool active = true;
     int priority = DEFAULT_PRIORITY;

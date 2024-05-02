@@ -1,6 +1,9 @@
+#include <set>
+
 #include "cmd-profiles.hh"
 #include "built-path.hh"
 #include "builtins/buildenv.hh"
+#include "logging.hh"
 #include "names.hh"
 #include "store-api.hh"
 
@@ -106,6 +109,8 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
 
     if (pathExists(manifestPath)) {
         auto json = nlohmann::json::parse(readFile(manifestPath));
+        // Keep track of already found names so we can prevent duplicates.
+        std::set<std::string> foundNames;
 
         auto version = json.value("version", 0);
         std::string sUrl;
@@ -139,6 +144,26 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
                     e["attrPath"],
                     e["outputs"].get<ExtendedOutputsSpec>()};
             }
+
+            std::string nameCandidate(element.identifier());
+
+            if (e.contains("name")) {
+                nameCandidate = e["name"];
+            } else if (element.source) {
+                auto const url = parseURL(element.source->to_string());
+                auto const name = getNameFromURL(url);
+                if (name) {
+                    nameCandidate = *name;
+                }
+            }
+
+            auto finalName = nameCandidate;
+            for (unsigned appendedIndex = 1; foundNames.contains(finalName); ++appendedIndex) {
+                finalName = nameCandidate + std::to_string(appendedIndex);
+            }
+            element.name = finalName;
+            foundNames.insert(element.name);
+
             elements.emplace_back(std::move(element));
         }
     } else if (pathExists(profile + "/manifest.nix")) {
@@ -151,6 +176,7 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
         for (auto & drvInfo : drvInfos) {
             ProfileElement element;
             element.storePaths = {drvInfo.queryOutPath()};
+            element.name = element.identifier();
             elements.emplace_back(std::move(element));
         }
     }
