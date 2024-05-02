@@ -7,13 +7,11 @@ R""(
   ```console
   # nix profile list
   Name:               gdb
-  Index:              0
   Flake attribute:    legacyPackages.x86_64-linux.gdb
   Original flake URL: flake:nixpkgs
   Locked flake URL:   github:NixOS/nixpkgs/7b38b03d76ab71bdc8dc325e3f6338d984cc35ca
   Store paths:        /nix/store/indzcw5wvlhx6vwk7k4iq29q15chvr3d-gdb-11.1
 
-  Index:              1
   Name:               blender-bin
   Flake attribute:    packages.x86_64-linux.default
   Original flake URL: flake:blender-bin
@@ -39,9 +37,6 @@ information:
 * `Name`: A unique name used to unambiguously identify the
   package in invocations of `nix profile remove` and `nix profile
   upgrade`.
-
-* `Index`: An integer that can be used to unambiguously identify the package in invocations of `nix profile remove` and `nix profile upgrade`.
-  (*Deprecated, will be removed in a future version in favor of `Name`.*)
 
 * `Flake attribute`: The flake output attribute path that provides the
   package (e.g. `packages.x86_64-linux.hello`).

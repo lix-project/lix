@@ -183,18 +183,15 @@ public:
         std::string pattern;
         std::regex  reg;
     };
-    typedef std::variant<size_t, Path, RegexPattern> Matcher;
+    using Matcher = std::variant<Path, RegexPattern>;
 
     std::vector<Matcher> getMatchers(ref<Store> store)
     {
         std::vector<Matcher> res;
 
-        auto anyIndexMatchers = false;
-
         for (auto & s : _matchers) {
             if (auto n = string2Int<size_t>(s)) {
-                res.push_back(*n);
-                anyIndexMatchers = true;
+                throw Error("'nix profile' no longer supports indices ('%d')", *n);
             } else if (store->isStorePath(s)) {
                 res.push_back(s);
             } else {
@@ -202,23 +199,13 @@ public:
             }
         }
 
-        if (anyIndexMatchers) {
-            warn(
-                "Indices are deprecated and be removed in a future version!\n"
-                "    Refer to packages by their `Name` printed by `nix profile list`.\n"
-            );
-        }
-
         return res;
     }
 
-    bool matches(const Store & store, const ProfileElement & element, size_t pos, const std::vector<Matcher> & matchers)
+    bool matches(const Store & store, const ProfileElement & element, const std::vector<Matcher> & matchers)
     {
         for (auto & matcher : matchers) {
-            if (auto n = std::get_if<size_t>(&matcher)) {
-                if (*n == pos) return true;
-
-            } else if (auto path = std::get_if<Path>(&matcher)) {
+            if (auto path = std::get_if<Path>(&matcher)) {
                 if (element.storePaths.count(store.parseStorePath(*path))) return true;
             } else if (auto regex = std::get_if<RegexPattern>(&matcher)) {
                 if (std::regex_match(element.name, regex->reg)) {
@@ -255,7 +242,7 @@ struct CmdProfileRemove : virtual EvalCommand, MixDefaultProfile, MixProfileElem
 
         for (size_t i = 0; i < oldManifest.elements.size(); ++i) {
             auto & element(oldManifest.elements[i]);
-            if (!matches(*store, element, i, matchers)) {
+            if (!matches(*store, element, matchers)) {
                 newManifest.elements.push_back(std::move(element));
             } else {
                 notice("removing '%s'", element.identifier());
@@ -269,9 +256,7 @@ struct CmdProfileRemove : virtual EvalCommand, MixDefaultProfile, MixProfileElem
 
         if (removedCount == 0) {
             for (auto matcher: matchers) {
-                if (const size_t * index = std::get_if<size_t>(&matcher)){
-                    warn("'%d' is not a valid index", *index);
-                } else if (const Path * path = std::get_if<Path>(&matcher)){
+                if (const Path * path = std::get_if<Path>(&matcher)) {
                     warn("'%s' does not match any paths", *path);
                 } else if (const RegexPattern * regex = std::get_if<RegexPattern>(&matcher)){
                     warn("'%s' does not match any packages", regex->pattern);
@@ -311,7 +296,7 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
 
         for (size_t i = 0; i < manifest.elements.size(); ++i) {
             auto & element(manifest.elements[i]);
-            if (!matches(*store, element, i, matchers)) {
+            if (!matches(*store, element, matchers)) {
                 continue;
             }
 
@@ -390,11 +375,9 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
         if (upgradedCount == 0) {
             if (matchedCount == 0) {
                 for (auto & matcher : matchers) {
-                    if (const size_t * index = std::get_if<size_t>(&matcher)){
-                        warn("'%d' is not a valid index", *index);
-                    } else if (const Path * path = std::get_if<Path>(&matcher)){
+                    if (const Path * path = std::get_if<Path>(&matcher)){
                         warn("'%s' does not match any paths", *path);
-                    } else if (const RegexPattern * regex = std::get_if<RegexPattern>(&matcher)){
+                    } else if (const RegexPattern * regex = std::get_if<RegexPattern>(&matcher)) {
                         warn("'%s' does not match any packages", regex->pattern);
                     }
                 }
@@ -451,10 +434,6 @@ struct CmdProfileList : virtual EvalCommand, virtual StoreCommand, MixDefaultPro
                     "Name:               " ANSI_BOLD "%s" ANSI_NORMAL "%s",
                     element.name,
                     element.active ? "" : " " ANSI_RED "(inactive)" ANSI_NORMAL
-                );
-                logger->cout(
-                    "Index:              " ANSI_BOLD "%s" ANSI_NORMAL "%S",
-                    i
                 );
                 if (element.source) {
                     logger->cout("Flake attribute:    %s%s", element.source->attrPath, element.source->outputs.to_string());

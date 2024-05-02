@@ -19,12 +19,6 @@ R""(
   # nix profile upgrade packages.x86_64-linux.hello
   ```
 
-* Upgrade a specific package by index:
-
-  ```console
-  # nix profile upgrade 0
-  ```
-
 # Description
 
 This command upgrades a previously installed package in a Nix profile,
