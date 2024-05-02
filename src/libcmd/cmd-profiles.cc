@@ -6,6 +6,7 @@
 #include "logging.hh"
 #include "names.hh"
 #include "store-api.hh"
+#include "url-name.hh"
 
 namespace nix
 {
@@ -109,8 +110,6 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
 
     if (pathExists(manifestPath)) {
         auto json = nlohmann::json::parse(readFile(manifestPath));
-        // Keep track of already found names so we can prevent duplicates.
-        std::set<std::string> foundNames;
 
         auto version = json.value("version", 0);
         std::string sUrl;
@@ -121,6 +120,8 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
             sOriginalUrl = "originalUri";
             break;
         case 2:
+            [[fallthrough]];
+        case 3:
             sUrl = "url";
             sOriginalUrl = "originalUrl";
             break;
@@ -128,7 +129,10 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
             throw Error("profile manifest '%s' has unsupported version %d", manifestPath, version);
         }
 
-        for (auto & e : json["elements"]) {
+        auto elems = json["elements"];
+
+        for (auto & elem : elems.items()) {
+            auto & e = elem.value();
             ProfileElement element;
             for (auto & p : e["storePaths"]) {
                 element.storePaths.insert(state.store->parseStorePath((std::string) p));
@@ -145,26 +149,17 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
                     e["outputs"].get<ExtendedOutputsSpec>()};
             }
 
-            std::string nameCandidate(element.identifier());
+            // TODO(Qyriad): holy crap this chain of ternaries needs cleanup.
+            std::string name =
+                elems.is_object()
+                ? elem.key()
+                : e.contains("name")
+                ? static_cast<std::string>(e["name"])
+                : element.source
+                ? getNameFromURL(parseURL(element.source->to_string())).value_or(element.identifier())
+                : element.identifier();
 
-            if (e.contains("name")) {
-                nameCandidate = e["name"];
-            } else if (element.source) {
-                auto const url = parseURL(element.source->to_string());
-                auto const name = getNameFromURL(url);
-                if (name) {
-                    nameCandidate = *name;
-                }
-            }
-
-            auto finalName = nameCandidate;
-            for (unsigned appendedIndex = 1; foundNames.contains(finalName); ++appendedIndex) {
-                finalName = nameCandidate + std::to_string(appendedIndex);
-            }
-            element.name = finalName;
-            foundNames.insert(element.name);
-
-            elements.emplace_back(std::move(element));
+            addElement(name, std::move(element));
         }
     } else if (pathExists(profile + "/manifest.nix")) {
         // FIXME: needed because of pure mode; ugly.
@@ -176,16 +171,37 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
         for (auto & drvInfo : drvInfos) {
             ProfileElement element;
             element.storePaths = {drvInfo.queryOutPath()};
-            element.name = element.identifier();
-            elements.emplace_back(std::move(element));
+            addElement(std::move(element));
         }
     }
 }
 
+void ProfileManifest::addElement(std::string_view nameCandidate, ProfileElement element)
+{
+    std::string finalName(nameCandidate);
+
+    for (unsigned i = 1; elements.contains(finalName); ++i) {
+        finalName = nameCandidate + "-" + std::to_string(i);
+    }
+
+    elements.insert_or_assign(finalName, std::move(element));
+}
+
+void ProfileManifest::addElement(ProfileElement element)
+{
+    auto name =
+        element.source
+        ? getNameFromURL(parseURL(element.source->to_string()))
+        : std::nullopt;
+
+    auto finalName = name.value_or(element.identifier());
+    addElement(finalName, std::move(element));
+}
+
 nlohmann::json ProfileManifest::toJSON(Store & store) const
 {
-    auto array = nlohmann::json::array();
-    for (auto & element : elements) {
+    auto es = nlohmann::json::object();
+    for (auto & [name, element] : elements) {
         auto paths = nlohmann::json::array();
         for (auto & path : element.storePaths) {
             paths.push_back(store.printStorePath(path));
@@ -200,11 +216,11 @@ nlohmann::json ProfileManifest::toJSON(Store & store) const
             obj["attrPath"] = element.source->attrPath;
             obj["outputs"] = element.source->outputs;
         }
-        array.push_back(obj);
+        es[name] = obj;
     }
     nlohmann::json json;
-    json["version"] = 2;
-    json["elements"] = array;
+    json["version"] = 3;
+    json["elements"] = es;
     return json;
 }
 
@@ -215,7 +231,7 @@ StorePath ProfileManifest::build(ref<Store> store)
     StorePathSet references;
 
     Packages pkgs;
-    for (auto & element : elements) {
+    for (auto & [name, element] : elements) {
         for (auto & path : element.storePaths) {
             if (element.active) {
                 pkgs.emplace_back(store->printStorePath(path), true, element.priority);
@@ -261,35 +277,29 @@ void ProfileManifest::printDiff(
     const ProfileManifest & prev, const ProfileManifest & cur, std::string_view indent
 )
 {
-    auto prevElems = prev.elements;
-    std::sort(prevElems.begin(), prevElems.end());
-
-    auto curElems = cur.elements;
-    std::sort(curElems.begin(), curElems.end());
-
-    auto i = prevElems.begin();
-    auto j = curElems.begin();
+    auto prevElemIt = prev.elements.begin();
+    auto curElemIt = cur.elements.begin();
 
     bool changes = false;
 
-    while (i != prevElems.end() || j != curElems.end()) {
-        if (j != curElems.end() && (i == prevElems.end() || i->identifier() > j->identifier())) {
-            logger->cout("%s%s: ∅ -> %s", indent, j->identifier(), j->versions());
+    while (prevElemIt != prev.elements.end() || curElemIt != cur.elements.end()) {
+        if (curElemIt != cur.elements.end() && (prevElemIt == prev.elements.end() || prevElemIt->first > curElemIt->first)) {
+            logger->cout("%s%s: ∅ -> %s", indent, curElemIt->second.identifier(), curElemIt->second.versions());
             changes = true;
-            ++j;
-        } else if (i != prevElems.end() && (j == curElems.end() || i->identifier() < j->identifier())) {
-            logger->cout("%s%s: %s -> ∅", indent, i->identifier(), i->versions());
+            ++curElemIt;
+        } else if (prevElemIt != prev.elements.end() && (curElemIt == cur.elements.end() || prevElemIt->first < curElemIt->first)) {
+            logger->cout("%s%s: %s -> ∅", indent, prevElemIt->second.identifier(), prevElemIt->second.versions());
             changes = true;
-            ++i;
+            ++prevElemIt;
         } else {
-            auto v1 = i->versions();
-            auto v2 = j->versions();
+            auto v1 = prevElemIt->second.versions();
+            auto v2 = curElemIt->second.versions();
             if (v1 != v2) {
-                logger->cout("%s%s: %s -> %s", indent, i->identifier(), v1, v2);
+                logger->cout("%s%s: %s -> %s", indent, prevElemIt->second.identifier(), v1, v2);
                 changes = true;
             }
-            ++i;
-            ++j;
+            ++prevElemIt;
+            ++curElemIt;
         }
     }
 

@@ -35,7 +35,6 @@ constexpr int DEFAULT_PRIORITY = 5;
 struct ProfileElement
 {
     StorePathSet storePaths;
-    std::string name;
     std::optional<ProfileElementSource> source;
     bool active = true;
     int priority = DEFAULT_PRIORITY;
@@ -57,7 +56,7 @@ struct ProfileElement
 
 struct ProfileManifest
 {
-    std::vector<ProfileElement> elements;
+    std::map<std::string, ProfileElement> elements;
 
     ProfileManifest() { }
 
@@ -66,6 +65,9 @@ struct ProfileManifest
     nlohmann::json toJSON(Store & store) const;
 
     StorePath build(ref<Store> store);
+
+    void addElement(std::string_view nameCandidate, ProfileElement element);
+    void addElement(ProfileElement element);
 
     static void printDiff(const ProfileManifest & prev, const ProfileManifest & cur, std::string_view indent);
 };

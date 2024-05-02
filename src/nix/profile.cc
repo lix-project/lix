@@ -105,7 +105,7 @@ struct CmdProfileInstall : InstallablesCommand, MixDefaultProfile
 
             element.updateStorePaths(getEvalStore(), store, res);
 
-            manifest.elements.push_back(std::move(element));
+            manifest.addElement(std::move(element));
         }
 
         try {
@@ -115,7 +115,7 @@ struct CmdProfileInstall : InstallablesCommand, MixDefaultProfile
             //       See https://github.com/NixOS/nix/compare/3efa476c5439f8f6c1968a6ba20a31d1239c2f04..1fe5d172ece51a619e879c4b86f603d9495cc102
             auto findRefByFilePath = [&]<typename Iterator>(Iterator begin, Iterator end) {
                 for (auto it = begin; it != end; it++) {
-                    auto profileElement = *it;
+                    auto & profileElement = it->second;
                     for (auto & storePath : profileElement.storePaths) {
                         if (conflictError.fileA.starts_with(store->printStorePath(storePath))) {
                             return std::pair(conflictError.fileA, profileElement.toInstallables(*store));
@@ -202,13 +202,19 @@ public:
         return res;
     }
 
-    bool matches(const Store & store, const ProfileElement & element, const std::vector<Matcher> & matchers)
+    bool matches(
+        Store const & store,
+        // regex_match doesn't take a string_view lol
+        std::string const & name,
+        ProfileElement const & element,
+        std::vector<Matcher> const & matchers
+    )
     {
         for (auto & matcher : matchers) {
             if (auto path = std::get_if<Path>(&matcher)) {
                 if (element.storePaths.count(store.parseStorePath(*path))) return true;
             } else if (auto regex = std::get_if<RegexPattern>(&matcher)) {
-                if (std::regex_match(element.name, regex->reg)) {
+                if (std::regex_match(name, regex->reg)) {
                     return true;
                 }
             }
@@ -240,10 +246,9 @@ struct CmdProfileRemove : virtual EvalCommand, MixDefaultProfile, MixProfileElem
 
         ProfileManifest newManifest;
 
-        for (size_t i = 0; i < oldManifest.elements.size(); ++i) {
-            auto & element(oldManifest.elements[i]);
-            if (!matches(*store, element, matchers)) {
-                newManifest.elements.push_back(std::move(element));
+        for (auto & [name, element] : oldManifest.elements) {
+            if (!matches(*store, name, element, matchers)) {
+                newManifest.elements.insert_or_assign(name, std::move(element));
             } else {
                 notice("removing '%s'", element.identifier());
             }
@@ -289,14 +294,13 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
         auto matchers = getMatchers(store);
 
         Installables installables;
-        std::vector<size_t> indices;
+        std::vector<ProfileElement *> elems;
 
         auto matchedCount = 0;
         auto upgradedCount = 0;
 
-        for (size_t i = 0; i < manifest.elements.size(); ++i) {
-            auto & element(manifest.elements[i]);
-            if (!matches(*store, element, matchers)) {
+        for (auto & [name, element] : manifest.elements) {
+            if (!matches(*store, name, element, matchers)) {
                 continue;
             }
 
@@ -368,7 +372,7 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
             };
 
             installables.push_back(installable);
-            indices.push_back(i);
+            elems.push_back(&element);
 
         }
 
@@ -393,7 +397,7 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
 
         for (size_t i = 0; i < installables.size(); ++i) {
             auto & installable = installables.at(i);
-            auto & element = manifest.elements[indices.at(i)];
+            auto & element = *elems.at(i);
             element.updateStorePaths(
                 getEvalStore(),
                 store,
@@ -425,14 +429,14 @@ struct CmdProfileList : virtual EvalCommand, virtual StoreCommand, MixDefaultPro
         if (json) {
             std::cout << manifest.toJSON(*store).dump() << "\n";
         } else {
-            for (size_t i = 0; i < manifest.elements.size(); ++i) {
-                auto & element(manifest.elements[i]);
+            for (auto const & [i, nameElemPair] : enumerate(manifest.elements)) {
+                auto & [name, element] = nameElemPair;
                 if (i) {
                     logger->cout("");
                 }
                 logger->cout(
                     "Name:               " ANSI_BOLD "%s" ANSI_NORMAL "%s",
-                    element.name,
+                    name,
                     element.active ? "" : " " ANSI_RED "(inactive)" ANSI_NORMAL
                 );
                 if (element.source) {
