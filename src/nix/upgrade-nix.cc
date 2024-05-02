@@ -208,7 +208,8 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         // Find which profile element has Nix in it.
         // It should be impossible to *not* have Nix, since we grabbed this
         // store path by looking for things with bin/nix-env in them anyway.
-        auto findNix = [&](ProfileElement const & elem) -> bool {
+        auto findNix = [&](std::pair<std::string, ProfileElement> const & nameElemPair) -> bool {
+            auto const & [name, elem] = nameElemPair;
             for (auto const & ePath : elem.storePaths) {
                 auto const nixEnv = store->printStorePath(ePath) + "/bin/nix-env";
                 if (pathExists(nixEnv)) {
@@ -226,14 +227,15 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         // *Should* be impossible...
         assert(elemWithNix != std::end(manifest.elements));
 
+        auto const nixElemName = elemWithNix->first;
+
         // Now create a new profile element for the new Nix version...
         ProfileElement elemForNewNix = {
             .storePaths = {newNix},
         };
 
         // ...and splork it into the manifest where the old profile element was.
-        // (Remember, elemWithNix is an iterator)
-        *elemWithNix = elemForNewNix;
+        manifest.elements.at(nixElemName) = elemForNewNix;
 
         // Build the new profile, and switch to it.
         StorePath const newProfile = manifest.build(store);

@@ -16,7 +16,7 @@ ParsedURL parseURL(const std::string & url)
         "((" + schemeRegex + "):"
         + "(?:(?://(" + authorityRegex + ")(" + absPathRegex + "))|(/?" + pathRegex + ")))"
         + "(?:\\?(" + queryRegex + "))?"
-        + "(?:#(" + queryRegex + "))?",
+        + "(?:#(" + fragmentRegex + "))?",
         std::regex::ECMAScript);
 
     std::smatch match;

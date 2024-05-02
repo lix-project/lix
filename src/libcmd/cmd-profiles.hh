@@ -6,6 +6,8 @@
 #include "flake/flakeref.hh"
 #include "get-drvs.hh"
 #include "types.hh"
+#include "url.hh"
+#include "url-name.hh"
 
 #include <string>
 #include <set>
@@ -54,7 +56,7 @@ struct ProfileElement
 
 struct ProfileManifest
 {
-    std::vector<ProfileElement> elements;
+    std::map<std::string, ProfileElement> elements;
 
     ProfileManifest() { }
 
@@ -63,6 +65,9 @@ struct ProfileManifest
     nlohmann::json toJSON(Store & store) const;
 
     StorePath build(ref<Store> store);
+
+    void addElement(std::string_view nameCandidate, ProfileElement element);
+    void addElement(ProfileElement element);
 
     static void printDiff(const ProfileManifest & prev, const ProfileManifest & cur, std::string_view indent);
 };

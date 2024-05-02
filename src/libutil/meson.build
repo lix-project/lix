@@ -31,6 +31,7 @@ libutil_sources = files(
   'tarfile.cc',
   'thread-pool.cc',
   'url.cc',
+  'url-name.cc',
   'util.cc',
   'xml-writer.cc',
 )
@@ -92,6 +93,7 @@ libutil_headers = files(
   'topo-sort.hh',
   'types.hh',
   'url-parts.hh',
+  'url-name.hh',
   'url.hh',
   'util.hh',
   'variant-wrapper.hh',
