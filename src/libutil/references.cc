@@ -96,15 +96,12 @@ void RewritingSink::operator () (std::string_view data)
 
     auto consumed = s.size() - prev.size();
 
-    pos += consumed;
-
     if (consumed) nextSink(s.substr(0, consumed));
 }
 
 void RewritingSink::flush()
 {
     if (prev.empty()) return;
-    pos += prev.size();
     nextSink(prev);
     prev.clear();
 }
@@ -112,20 +109,23 @@ void RewritingSink::flush()
 HashResult computeHashModulo(HashType ht, const std::string & modulus, Source & source)
 {
     HashSink hashSink(ht);
+    LengthSink lengthSink;
     RewritingSink rewritingSink(modulus, std::string(modulus.size(), 0), hashSink);
 
-    source.drainInto(rewritingSink);
+    TeeSink tee{rewritingSink, lengthSink};
+    source.drainInto(tee);
     rewritingSink.flush();
 
     /* Hash the positions of the self-references. This ensures that a
        NAR with self-references and a NAR with some of the
        self-references already zeroed out do not produce a hash
        collision. FIXME: proof. */
-    for (auto & pos : rewritingSink.matches)
-        hashSink(fmt("|%d", pos));
+    // NOTE(horrors) RewritingSink didn't track any matches!
+    //for (auto & pos : rewritingSource.matches)
+    //    hashSink(fmt("|%d", pos));
 
     auto h = hashSink.finish();
-    return {h.first, rewritingSink.pos};
+    return {h.first, lengthSink.length};
 }
 
 }
