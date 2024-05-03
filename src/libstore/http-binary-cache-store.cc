@@ -164,7 +164,7 @@ protected:
         }
     }
 
-    std::optional<std::string> getFile(const std::string & path) override
+    std::optional<std::string> getFileContents(const std::string & path) override
     {
         checkEnabled();
 

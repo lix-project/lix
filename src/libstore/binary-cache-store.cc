@@ -38,7 +38,7 @@ void BinaryCacheStore::init()
 {
     std::string cacheInfoFile = "nix-cache-info";
 
-    auto cacheInfo = getFile(cacheInfoFile);
+    auto cacheInfo = getFileContents(cacheInfoFile);
     if (!cacheInfo) {
         upsertFile(cacheInfoFile, "StoreDir: " + storeDir + "\n", "text/x-nix-cache-info");
     } else {
@@ -69,10 +69,10 @@ void BinaryCacheStore::upsertFile(const std::string & path,
 
 void BinaryCacheStore::getFile(const std::string & path, Sink & sink)
 {
-    sink(*getFile(path));
+    sink(*getFileContents(path));
 }
 
-std::optional<std::string> BinaryCacheStore::getFile(const std::string & path)
+std::optional<std::string> BinaryCacheStore::getFileContents(const std::string & path)
 {
     StringSink sink;
     try {
@@ -359,7 +359,7 @@ std::shared_ptr<const ValidPathInfo> BinaryCacheStore::queryPathInfoUncached(con
 
     auto narInfoFile = narInfoFileFor(storePath);
 
-    auto data = getFile(narInfoFile);
+    auto data = getFileContents(narInfoFile);
 
     if (!data) return nullptr;
 
@@ -446,7 +446,7 @@ std::shared_ptr<const Realisation> BinaryCacheStore::queryRealisationUncached(co
 {
     auto outputInfoFilePath = realisationsPrefix + "/" + id.to_string() + ".doi";
 
-    auto data = getFile(outputInfoFilePath);
+    auto data = getFileContents(outputInfoFilePath);
     if (!data) return {};
 
     auto realisation = Realisation::fromJSON(
@@ -486,7 +486,7 @@ std::optional<std::string> BinaryCacheStore::getBuildLogExact(const StorePath & 
 
     debug("fetching build log from binary cache '%s/%s'", getUri(), logPath);
 
-    return getFile(logPath);
+    return getFileContents(logPath);
 }
 
 void BinaryCacheStore::addBuildLog(const StorePath & drvPath, std::string_view log)

@@ -85,7 +85,7 @@ public:
      */
     virtual void getFile(const std::string & path, Sink & sink);
 
-    virtual std::optional<std::string> getFile(const std::string & path);
+    virtual std::optional<std::string> getFileContents(const std::string & path);
 
 public:
 
