@@ -192,6 +192,7 @@ void LocalDerivationGoal::tryLocalBuild()
                 throw Error("derivation '%s' has '__noChroot' set, "
                     "but that's not allowed when 'sandbox' is 'true'", worker.store.printStorePath(drvPath));
 #if __APPLE__
+            additionalSandboxProfile = parsedDrv->getStringAttr("__sandboxProfile").value_or("");
             if (additionalSandboxProfile != "")
                 throw Error("derivation '%s' specifies a sandbox profile, "
                     "but this is only allowed when 'sandbox' is 'relaxed'", worker.store.printStorePath(drvPath));
@@ -491,10 +492,6 @@ void LocalDerivationGoal::startBuilder()
             worker.store.printStorePath(drvPath),
             settings.thisSystem,
             concatStringsSep<StringSet>(", ", worker.store.systemFeatures));
-
-#if __APPLE__
-    additionalSandboxProfile = parsedDrv->getStringAttr("__sandboxProfile").value_or("");
-#endif
 
     /* Create a temporary directory where the build will take
        place. */
