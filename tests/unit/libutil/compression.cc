@@ -81,16 +81,17 @@ namespace nix {
     }
 
     TEST(makeCompressionSink, compressAndDecompress) {
-        StringSink strSink;
         auto inputString = "slfja;sljfklsa;jfklsjfkl;sdjfkl;sadjfkl;sdjf;lsdfjsadlf";
-        auto decompressionSink = makeDecompressionSink("bzip2", strSink);
-        auto sink = makeCompressionSink("bzip2", *decompressionSink);
 
+        StringSink strSink;
+        auto sink = makeCompressionSink("bzip2", strSink);
         (*sink)(inputString);
         sink->finish();
-        decompressionSink->finish();
 
-        ASSERT_STREQ(strSink.s.c_str(), inputString);
+        StringSource strSource{strSink.s};
+        auto decompressionSource = makeDecompressionSource("bzip2", strSource);
+
+        ASSERT_STREQ(decompressionSource->drain().c_str(), inputString);
     }
 
 }

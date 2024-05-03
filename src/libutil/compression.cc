@@ -192,11 +192,9 @@ struct BrotliDecompressionSource : Source
 
 std::string decompress(const std::string & method, std::string_view in)
 {
-    StringSink ssink;
-    auto sink = makeDecompressionSink(method, ssink);
-    (*sink)(in);
-    sink->finish();
-    return std::move(ssink.s);
+    StringSource src{in};
+    auto filter = makeDecompressionSource(method, src);
+    return filter->drain();
 }
 
 std::unique_ptr<FinishSink> makeDecompressionSink(const std::string & method, Sink & nextSink)
@@ -222,6 +220,19 @@ std::unique_ptr<FinishSink> makeDecompressionSink(const std::string & method, Si
             auto decompressionSource = std::make_unique<ArchiveDecompressionSource>(source);
             decompressionSource->drainInto(nextSink);
         });
+}
+
+std::unique_ptr<Source> makeDecompressionSource(const std::string & method, Source & inner)
+{
+    if (method == "none" || method == "") {
+        return std::make_unique<LambdaSource>([&](char * data, size_t len) {
+            return inner.read(data, len);
+        });
+    } else if (method == "br") {
+        return std::make_unique<BrotliDecompressionSource>(inner);
+    } else {
+        return std::make_unique<ArchiveDecompressionSource>(inner);
+    }
 }
 
 struct BrotliCompressionSink : ChunkedCompressionSink
