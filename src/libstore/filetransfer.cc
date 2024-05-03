@@ -708,7 +708,7 @@ struct curlFileTransfer : public FileTransfer
            download thread and the calling thread. */
 
         struct State {
-            bool quit = false;
+            bool done = false, failed = false;
             std::exception_ptr exc;
             std::string data;
             std::condition_variable avail, request;
@@ -717,18 +717,17 @@ struct curlFileTransfer : public FileTransfer
 
         auto _state = std::make_shared<Sync<State>>();
 
-        /* In case of an exception, wake up the download thread. FIXME:
-           abort the download request. */
+        /* In case of an exception, wake up the download thread. */
         Finally finally([&]() {
             auto state(_state->lock());
-            state->quit = true;
+            state->failed |= std::uncaught_exceptions() != 0;
             state->request.notify_one();
         });
 
         enqueueFileTransfer(request,
             {[_state](std::future<FileTransferResult> fut) {
                 auto state(_state->lock());
-                state->quit = true;
+                state->done = true;
                 try {
                     fut.get();
                 } catch (...) {
@@ -740,7 +739,10 @@ struct curlFileTransfer : public FileTransfer
             [_state, &sink](TransferItem & transfer, std::string_view data) {
                 auto state(_state->lock());
 
-                if (state->quit) return;
+                if (state->failed) {
+                    // actual exception doesn't matter, the other end is already dead
+                    throw std::exception{};
+                }
 
                 if (!state->decompressor) {
                     state->decompressor = makeDecompressionSink(transfer.encoding, sink);
@@ -775,7 +777,7 @@ struct curlFileTransfer : public FileTransfer
 
                 if (state->data.empty()) {
 
-                    if (state->quit) {
+                    if (state->done) {
                         if (state->exc) std::rethrow_exception(state->exc);
                         if (state->decompressor) {
                             state->decompressor->finish();

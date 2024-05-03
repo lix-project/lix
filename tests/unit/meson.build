@@ -113,6 +113,7 @@ libstore_tests_sources = files(
   'libstore/derivation.cc',
   'libstore/derived-path.cc',
   'libstore/downstream-placeholder.cc',
+  'libstore/filetransfer.cc',
   'libstore/machines.cc',
   'libstore/nar-info-disk-cache.cc',
   'libstore/outputs-spec.cc',
