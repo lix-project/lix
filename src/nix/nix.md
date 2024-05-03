@@ -59,9 +59,13 @@ These are command line arguments that represent something that can be realised i
 The following types of installable are supported by most commands:
 
 - [Flake output attribute](#flake-output-attribute) (experimental)
+  - This is the default
 - [Store path](#store-path)
+  - This is assumed if the argument is a Nix store path or a symlink to a Nix store path
 - [Nix file](#nix-file), optionally qualified by an attribute path
+  - Specified with `--file`/`-f`
 - [Nix expression](#nix-expression), optionally qualified by an attribute path
+  - Specified with `--expr`/`-E`
 
 For most commands, if no installable is specified, `.` is assumed.
 That is, Nix will operate on the default flake output attribute of the flake in the current directory.
@@ -158,15 +162,27 @@ When the option `-f` / `--file` *path* \[*attrpath*...\] is given, installables 
 If attribute paths are provided, commands will operate on the corresponding values accessible at these paths.
 The Nix expression in that file, or any selected attribute, must evaluate to a derivation.
 
+To emulate the `nix-build '<nixpkgs>' -A hello` pattern, use:
+
+```console
+$ nix build -f '<nixpkgs>' hello
+```
+
 ### Nix expression
 
 Example: `--expr 'import <nixpkgs> {}' hello`
 
-When the option `--expr` *expression* \[*attrpath*...\] is given, installables are interpreted as the value of the of the Nix expression.
+When the option `-E` / `--expr` *expression* \[*attrpath*...\] is given, installables are interpreted as the value of the of the Nix expression.
 If attribute paths are provided, commands will operate on the corresponding values accessible at these paths.
 The Nix expression, or any selected attribute, must evaluate to a derivation.
 
 You may need to specify `--impure` if the expression references impure inputs (such as `<nixpkgs>`).
+
+To emulate the `nix-build -E 'with import <nixpkgs> { }; hello' pattern use:
+
+```console
+$ nix build --impure -E 'with import <nixpkgs> { }; hello'
+```
 
 ## Derivation output selection
 
@@ -176,9 +192,10 @@ that contains programs, and a `dev` output that provides development
 artifacts like C/C++ header files. The outputs on which `nix` commands
 operate are determined as follows:
 
-* You can explicitly specify the desired outputs using the syntax
-  *installable*`^`*output1*`,`*...*`,`*outputN*. For example, you can
-  obtain the `dev` and `static` outputs of the `glibc` package:
+* You can explicitly specify the desired outputs using the syntax *installable*`^`*output1*`,`*...*`,`*outputN* — that is, a caret followed immediately by a comma-separated list of derivation outputs to select.
+  For installables specified as [Flake output attributes](#flake-output-attribute) or [Store paths](#store-path), the output is specified in the same argument:
+
+  For example, you can obtain the `dev` and `static` outputs of the `glibc` package:
 
   ```console
   # nix build 'nixpkgs#glibc^dev,static'
@@ -191,6 +208,19 @@ operate are determined as follows:
   ```console
   # nix build '/nix/store/gzaflydcr6sb3567hap9q6srzx8ggdgg-glibc-2.33-78.drv^dev,static'
   …
+  ```
+
+  For `-e`/`--expr` and `-f`/`--file`, the derivation output is specified as part of the attribute path:
+
+  ```console
+  $ nix build -f '<nixpkgs>' 'glibc^dev,static'
+  $ nix build --impure -E 'import <nixpkgs> { }' 'glibc^dev,static'
+  ```
+
+  This syntax is the same even if the actual attribute path is empty:
+
+  ```console
+  $ nix build -E 'let pkgs = import <nixpkgs> { }; in pkgs.glibc' '^dev,static'
   ```
 
 * You can also specify that *all* outputs should be used using the

@@ -1,5 +1,7 @@
 R""(
 
+**Note:** this command's interface is based heavily around [*installables*](./nix.md#installables), which you may want to read about first (`nix --help`).
+
 # Examples
 
 * Show one path through the dependency graph leading from Hello to

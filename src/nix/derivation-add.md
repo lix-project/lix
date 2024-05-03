@@ -1,5 +1,7 @@
 R""(
 
+**Note:** this command's interface is based heavily around [*installables*](./nix.md#installables), which you may want to read about first (`nix --help`).
+
 # Description
 
 This command reads from standard input a JSON representation of a

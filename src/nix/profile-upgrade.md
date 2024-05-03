@@ -1,5 +1,7 @@
 R""(
 
+**Note**: unlike [`nix profile install`](./nix3-profile-install.md), this command does *not* take installables.
+
 # Examples
 
 * Upgrade all packages that were installed using an unlocked flake

@@ -1,5 +1,7 @@
 R""(
 
+**Note:** this command's interface is based heavily around [*installables*](./nix.md#installables), which you may want to read about first (`nix --help`).
+
 # Examples
 
 * Start a shell with the build environment of the default package of
