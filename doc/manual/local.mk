@@ -29,7 +29,7 @@ man-pages += $(foreach subcommand, \
 clean-files += $(d)/*.1 $(d)/*.5 $(d)/*.8
 
 # Provide a dummy environment for nix, so that it will not access files outside the macOS sandbox.
-# Set cores to 0 because otherwise nix show-config resolves the cores based on the current machine
+# Set cores to 0 because otherwise nix config show resolves the cores based on the current machine
 dummy-env = env -i \
 	HOME=/dummy \
 	NIX_CONF_DIR=/dummy \
@@ -89,7 +89,7 @@ doc/manual/generated/in/nix.json: $(doc_nix)
 
 doc/manual/generated/in/conf-file.json: $(doc_nix)
 	@mkdir -p doc/manual/generated/in
-	$(trace-gen) $(dummy-env) $(doc_nix) show-config --json --experimental-features nix-command > $@.tmp
+	$(trace-gen) $(dummy-env) $(doc_nix) config show --json --experimental-features nix-command > $@.tmp
 	@mv $@.tmp $@
 
 doc/manual/generated/in/contributing/experimental-feature-descriptions.md: doc/manual/generated/in/xp-features.json $(d)/utils.nix $(d)/generate-xp-features.nix $(doc_nix)

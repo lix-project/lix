@@ -59,7 +59,7 @@ nix_sources = files(
   'repl.cc',
   'run.cc',
   'search.cc',
-  'show-config.cc',
+  'config.cc',
   'sigs.cc',
   'store-copy-log.cc',
   'store-delete.cc',

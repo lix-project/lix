@@ -91,6 +91,8 @@
     - [nix](command-ref/new-cli/nix.md)
     - [nix build](command-ref/new-cli/nix3-build.md)
     - [nix bundle](command-ref/new-cli/nix3-bundle.md)
+    - [nix config](command-ref/new-cli/nix3-config.md)
+    - [nix config show](command-ref/new-cli/nix3-config-show.md)
     - [nix copy](command-ref/new-cli/nix3-copy.md)
     - [nix daemon](command-ref/new-cli/nix3-daemon.md)
     - [nix derivation](command-ref/new-cli/nix3-derivation.md)
