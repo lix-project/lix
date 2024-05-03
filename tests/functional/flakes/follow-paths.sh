@@ -290,3 +290,20 @@ EOF
 nix flake update --flake $flakeFollowsA
 
 [[ $(jq -c .nodes.B.inputs.D $flakeFollowsA/flake.lock) = '["B","C","D"]' ]]
+
+cat <<EOF > $flakeFollowsA/flake.nix
+{
+  inputs.B.url = "path:$flakeFollowsB";
+  inputs.C.url = "path:$flakeFollowsC";
+  inputs.B.inputs.C.inputs.E.follows = "C";
+    outputs = _: {};
+}
+EOF
+cat <<EOF > $flakeFollowsB/flake.nix
+{
+  inputs.C.url = "path:$flakeFollowsC";
+  outputs = _: {};
+}
+EOF
+
+nix flake update --flake $flakeFollowsA 2>&1 | grepQuiet "warning: input 'B/C' has an override for a non-existent input 'E'"
