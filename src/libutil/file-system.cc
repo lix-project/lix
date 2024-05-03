@@ -289,12 +289,17 @@ std::string readFile(const Path & path)
 }
 
 
-void readFile(const Path & path, Sink & sink)
+box_ptr<Source> readFileSource(const Path & path)
 {
     AutoCloseFD fd{open(path.c_str(), O_RDONLY | O_CLOEXEC)};
     if (!fd)
         throw SysError("opening file '%s'", path);
-    drainFD(fd.get(), sink);
+
+    struct FileSource : FdSource {
+        AutoCloseFD fd;
+        explicit FileSource(AutoCloseFD fd) : FdSource(fd.get()), fd(std::move(fd)) {}
+    };
+    return make_box_ptr<FileSource>(std::move(fd));
 }
 
 

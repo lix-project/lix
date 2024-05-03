@@ -5,6 +5,7 @@
  * Utiltities for working with the file sytem and file paths.
  */
 
+#include "box_ptr.hh"
 #include "types.hh"
 #include "file-descriptor.hh"
 
@@ -142,7 +143,7 @@ unsigned char getFileType(const Path & path);
  * Read the contents of a file into a string.
  */
 std::string readFile(const Path & path);
-void readFile(const Path & path, Sink & sink);
+box_ptr<Source> readFileSource(const Path & path);
 
 /**
  * Write a string to a file.

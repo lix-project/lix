@@ -37,7 +37,7 @@ struct CmdAddToStore : MixDryRun, StoreCommand
         Hash hash = narHash;
         if (ingestionMethod == FileIngestionMethod::Flat) {
             HashSink hsink(htSHA256);
-            readFile(path, hsink);
+            readFileSource(path)->drainInto(hsink);
             hash = hsink.finish().first;
         }
 

@@ -279,7 +279,7 @@ StorePath Store::addToStore(
         if (method == FileIngestionMethod::Recursive)
             dumpPath(srcPath, sink, filter);
         else
-            readFile(srcPath, sink);
+            readFileSource(srcPath)->drainInto(sink);
     });
     return addToStoreFromDump(*source, name, method, hashAlgo, repair, references);
 }

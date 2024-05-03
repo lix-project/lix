@@ -324,7 +324,7 @@ Hash hashString(HashType ht, std::string_view s)
 Hash hashFile(HashType ht, const Path & path)
 {
     HashSink sink(ht);
-    readFile(path, sink);
+    readFileSource(path)->drainInto(sink);
     return sink.finish().first;
 }
 
