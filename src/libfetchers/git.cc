@@ -273,17 +273,14 @@ struct GitInputScheme : InputScheme
 
         Attrs attrs;
         attrs.emplace("type", "git");
-
-        for (auto & [name, value] : url.query) {
-            if (name == "rev" || name == "ref")
-                attrs.emplace(name, value);
-            else if (name == "shallow" || name == "submodules" || name == "allRefs")
-                attrs.emplace(name, Explicit<bool> { value == "1" });
-            else
-                url2.query.emplace(name, value);
-        }
-
         attrs.emplace("url", url2.to_string());
+
+        emplaceURLQueryIntoAttrs(
+            url,
+            attrs,
+            {"lastModified", "revCount"},
+            {"shallow", "submodules", "allRefs"}
+        );
 
         return inputFromAttrs(attrs);
     }

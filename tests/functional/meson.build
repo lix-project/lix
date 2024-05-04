@@ -93,6 +93,7 @@ functional_tests_scripts = [
   'fetchGitRefs.sh',
   'gc-runtime.sh',
   'tarball.sh',
+  'fetchers.sh',
   'fetchGit.sh',
   'fetchurl.sh',
   'fetchPath.sh',
