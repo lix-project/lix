@@ -85,17 +85,14 @@
 
     lix-doc = pkgs.callPackage ./lix-doc/package.nix { };
 
-    # remove when we drop 23.11 support (which includes a version too old to know about fchmodat2)
-    # see src/libstore/linux/fchmodat2-compat.hh
-    libseccomp-nix =
-      assert lib.versionOlder (lib.getVersion libseccomp) "2.5.5";
-      libseccomp.overrideAttrs (_: rec {
-        version = "2.5.5";
-        src = fetchurl {
-          url = "https://github.com/seccomp/libseccomp/releases/download/v${version}/libseccomp-${version}.tar.gz";
-          hash = "sha256-JIosik2bmFiqa69ScSw0r+/PnJ6Ut23OAsHJqiX7M3U=";
-        };
-      });
+    # FIXME remove when we have libsecomp 2.5.5 (currently in staging-23.11)
+    libseccomp-nix = libseccomp.overrideAttrs (_: rec {
+      version = "2.5.5";
+      src = fetchurl {
+        url = "https://github.com/seccomp/libseccomp/releases/download/v${version}/libseccomp-${version}.tar.gz";
+        hash = "sha256-JIosik2bmFiqa69ScSw0r+/PnJ6Ut23OAsHJqiX7M3U=";
+      };
+    });
   },
 }:
 let
