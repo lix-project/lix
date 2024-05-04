@@ -319,7 +319,7 @@ static RegisterPrimOp primop_fetchTarball({
       a particular version of Nixpkgs, e.g.
 
       ```nix
-      with import (fetchTarball https://github.com/NixOS/nixpkgs/archive/nixos-14.12.tar.gz) {};
+      with import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/nixos-14.12.tar.gz") {};
 
       stdenv.mkDerivation { … }
       ```
