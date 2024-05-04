@@ -215,17 +215,6 @@ void LocalDerivationGoal::tryLocalBuild()
         #endif
     }
 
-    #if __linux__
-    if (useChroot) {
-        if (!mountAndPidNamespacesSupported()) {
-            if (!settings.sandboxFallback)
-                throw Error("this system does not support the kernel namespaces that are required for sandboxing; use '--no-sandbox' to disable sandboxing");
-            debug("auto-disabling sandboxing because the prerequisite namespaces are not available");
-            useChroot = false;
-        }
-    }
-    #endif
-
     if (useBuildUsers()) {
         if (!buildUser)
             buildUser = acquireUserLock(parsedDrv->useUidRange() ? 65536 : 1, useChroot);
@@ -238,6 +227,26 @@ void LocalDerivationGoal::tryLocalBuild()
             return;
         }
     }
+
+    #if __linux__
+    // FIXME: should user namespaces being unsupported also require
+    // sandbox-fallback to be allowed? I don't think so, since they aren't a
+    // huge security win to have enabled.
+    usingUserNamespace = userNamespacesSupported();
+
+    if (useChroot) {
+        if (!mountAndPidNamespacesSupported()) {
+            if (!settings.sandboxFallback)
+                throw Error("this system does not support the kernel namespaces that are required for sandboxing; use '--no-sandbox' to disable sandboxing. Pass --debug for diagnostics on what is broken.");
+            debug("auto-disabling sandboxing because the prerequisite namespaces are not available");
+            useChroot = false;
+        }
+
+        if (!usingUserNamespace && !buildUser) {
+            throw Error("cannot perform a sandboxed build because user namespaces are not available.\nIn this Lix's configuration, user namespaces are required due to either being non-root, or build-users-group being disabled without also enabling auto-allocate-uids");
+        }
+    }
+    #endif
 
     actLock.reset();
 
@@ -697,13 +706,6 @@ void LocalDerivationGoal::startBuilder()
         if (parsedDrv->useUidRange() && (!buildUser || buildUser->getUIDCount() < 65536))
             throw Error("feature 'uid-range' requires the setting '%s' to be enabled", settings.autoAllocateUids.name);
 
-        /* Declare the build user's group so that programs get a consistent
-           view of the system (e.g., "id -gn"). */
-        writeFile(chrootRootDir + "/etc/group",
-            fmt("root:x:0:\n"
-                "nixbld:!:%1%:\n"
-                "nogroup:x:65534:\n", sandboxGid()));
-
         /* Create /etc/hosts with localhost entry. */
         if (derivationType->isSandboxed())
             writeFile(chrootRootDir + "/etc/hosts", "127.0.0.1 localhost\n::1 localhost\n");
@@ -911,8 +913,6 @@ void LocalDerivationGoal::startBuilder()
 
         userNamespaceSync.create();
 
-        usingUserNamespace = userNamespacesSupported();
-
         Pipe sendPid;
         sendPid.create();
 
@@ -981,8 +981,6 @@ void LocalDerivationGoal::startBuilder()
                 fmt("%d %d %d", sandboxGid(), hostGid, nrIds));
         } else {
             debug("note: not using a user namespace");
-            if (!buildUser)
-                throw Error("cannot perform a sandboxed build because user namespaces are not enabled; check /proc/sys/user/max_user_namespaces");
         }
 
         /* Now that we now the sandbox uid, we can write
@@ -992,6 +990,13 @@ void LocalDerivationGoal::startBuilder()
                 "nixbld:x:%1%:%2%:Nix build user:%3%:/noshell\n"
                 "nobody:x:65534:65534:Nobody:/:/noshell\n",
                 sandboxUid(), sandboxGid(), settings.sandboxBuildDir));
+
+        /* Declare the build user's group so that programs get a consistent
+           view of the system (e.g., "id -gn"). */
+        writeFile(chrootRootDir + "/etc/group",
+            fmt("root:x:0:\n"
+                "nixbld:!:%1%:\n"
+                "nogroup:x:65534:\n", sandboxGid()));
 
         /* Save the mount- and user namespace of the child. We have to do this
            *before* the child does a chroot. */

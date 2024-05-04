@@ -164,4 +164,6 @@ in
   symlinkResolvconf = runNixOSTestFor "x86_64-linux" ./symlink-resolvconf.nix;
 
   rootInSandbox = runNixOSTestFor "x86_64-linux" ./root-in-sandbox;
+
+  broken-userns = runNixOSTestFor "x86_64-linux" ./broken-userns.nix;
 }
