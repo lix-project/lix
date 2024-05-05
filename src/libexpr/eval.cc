@@ -316,13 +316,14 @@ void initGC()
        (resident) memory to be allocated.  This might be a problem on
        systems that don't overcommit. */
     if (!getEnv("GC_INITIAL_HEAP_SIZE")) {
-        size_t size = 32 * 1024 * 1024;
+        int64_t size = 32 * 1024 * 1024;
 #if HAVE_SYSCONF && defined(_SC_PAGESIZE) && defined(_SC_PHYS_PAGES)
-        size_t maxSize = 384 * 1024 * 1024;
-        long pageSize = sysconf(_SC_PAGESIZE);
-        long pages = sysconf(_SC_PHYS_PAGES);
-        if (pageSize != -1)
+        int64_t maxSize = 384 * 1024 * 1024;
+        int64_t pageSize = sysconf(_SC_PAGESIZE);
+        int64_t pages = sysconf(_SC_PHYS_PAGES);
+        if (pageSize != -1) {
             size = (pageSize * pages) / 4; // 25% of RAM
+        }
         if (size > maxSize) size = maxSize;
 #endif
         debug("setting initial heap size to %1% bytes", size);
