@@ -156,3 +156,4 @@ buildtime.bin
 .envrc.local
 # We generate this with a Nix shell hook
 /.pre-commit-config.yaml
+/.nocontribmsg
