@@ -710,9 +710,8 @@ struct curlFileTransfer : public FileTransfer
         struct State {
             bool done = false, failed = false;
             std::exception_ptr exc;
-            std::string data;
+            std::string data, encoding;
             std::condition_variable avail, request;
-            std::unique_ptr<FinishSink> decompressor;
         };
 
         auto _state = std::make_shared<Sync<State>>();
@@ -736,16 +735,12 @@ struct curlFileTransfer : public FileTransfer
                 state->avail.notify_one();
                 state->request.notify_one();
             }},
-            [_state, &sink](TransferItem & transfer, std::string_view data) {
+            [_state](TransferItem & transfer, std::string_view data) {
                 auto state(_state->lock());
 
                 if (state->failed) {
                     // actual exception doesn't matter, the other end is already dead
                     throw std::exception{};
-                }
-
-                if (!state->decompressor) {
-                    state->decompressor = makeDecompressionSink(transfer.encoding, sink);
                 }
 
                 /* If the buffer is full, then go to sleep until the calling
@@ -764,11 +759,12 @@ struct curlFileTransfer : public FileTransfer
                 state->avail.notify_one();
             });
 
+        std::unique_ptr<FinishSink> decompressor;
+
         while (true) {
             checkInterrupt();
 
             std::string chunk;
-            FinishSink * sink = nullptr;
 
             /* Grab data if available, otherwise wait for the download
                thread to wake us up. */
@@ -779,8 +775,8 @@ struct curlFileTransfer : public FileTransfer
 
                     if (state->done) {
                         if (state->exc) std::rethrow_exception(state->exc);
-                        if (state->decompressor) {
-                            state->decompressor->finish();
+                        if (decompressor) {
+                            decompressor->finish();
                         }
                         return;
                     }
@@ -791,9 +787,12 @@ struct curlFileTransfer : public FileTransfer
                 }
 
                 chunk = std::move(state->data);
-                sink = state->decompressor.get();
                 /* Reset state->data after the move, since we check data.empty() */
                 state->data = "";
+
+                if (!decompressor) {
+                    decompressor = makeDecompressionSink(state->encoding, sink);
+                }
 
                 state->request.notify_one();
             }
@@ -802,7 +801,7 @@ struct curlFileTransfer : public FileTransfer
                if it's blocked on a full buffer. We don't hold the state
                lock while doing this to prevent blocking the download
                thread if sink() takes a long time. */
-            (*sink)(chunk);
+            (*decompressor)(chunk);
         }
     }
 };
