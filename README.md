@@ -1,11 +1,8 @@
-# Nix
+# Lix
 
-[![Open Collective supporters](https://opencollective.com/nixos/tiers/supporter/badge.svg?label=Supporters&color=brightgreen)](https://opencollective.com/nixos)
-[![Test](https://github.com/NixOS/nix/workflows/Test/badge.svg)](https://github.com/NixOS/nix/actions)
+**Lix** is an implementation of **Nix**, a powerful package management system for Linux and other Unix systems that makes package management reliable and reproducible.
 
-Nix is a powerful package manager for Linux and other Unix systems that makes package
-management reliable and reproducible. Please refer to the [Nix manual](https://nixos.org/nix/manual)
-for more details.
+Read more about us at https://lix.systems.
 
 ## Installation
 
@@ -13,24 +10,20 @@ On Linux and macOS the easiest way to install Nix is to run the following shell 
 (as a user other than root):
 
 ```console
-$ curl -L https://nixos.org/nix/install | sh
+$ curl -sSf -L https://install.lix.systems/lix | sh -s -- install
 ```
 
-Information on additional installation methods is available on the [Nix download page](https://nixos.org/download.html).
+For systems that **already have Nix installed**, such as NixOS systems, read our [install page](https://lix.systems/install)
 
 ## Building And Developing
 
-See our [Hacking guide](https://nixos.org/manual/nix/unstable/contributing/hacking.html) in our manual for instruction on how to
-to set up a development environment and build Nix from source.
+See our [Hacking guide](https://git.lix.systems/lix-project/lix/src/branch/main/doc/manual/src/contributing/hacking.md) in our manual for instruction on how to to set up a development environment and build Lix from source.
 
 ## Additional Resources
 
-- [Nix manual](https://nixos.org/nix/manual)
-- [Nix jobsets on hydra.nixos.org](https://hydra.nixos.org/project/nix)
-- [NixOS Discourse](https://discourse.nixos.org/)
-- [Matrix - #nix:nixos.org](https://matrix.to/#/#nix:nixos.org)
-- [IRC - #nixos on libera.chat](irc://irc.libera.chat/#nixos)
+- [Our wiki](https://wiki.lix.systems)
+- [Matrix - #nix:nixos.org](https://matrix.to/#/#space:lix.systems)
 
 ## License
 
-Nix is released under the [LGPL v2.1](./COPYING).
+Lix is released under the [LGPL v2.1](./COPYING).
