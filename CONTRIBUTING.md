@@ -1,76 +1,53 @@
-# Contributing to Nix
+# Contributing to Lix
 
-Welcome and thank you for your interest in contributing to Nix!
-We appreciate your support.
+Welcome and thank you for considering contributing to Lix! We're currently in a soft release phase, and your support means a lot to us.
 
-Reading and following these guidelines will help us make the contribution process easy and effective for everyone involved.
+To ensure a smooth and effective contribution process, here is a summary of our guidelines:
+
+## Getting help?
+
+If you have any question regarding getting started or reporting bugs, feel free
+to reach out to us.
+
+On Matrix, we have a space at `#space:lix.systems`, composed of:
+
+- [`#discuss:lix.systems`](https://matrix.to/#/#discuss:lix.systems) for discussions on Lix.
+- [`#dev:lix.systems`](https://matrix.to/#/#dev:lix.systems) for the development channel on Lix.
 
 ## Report a bug
 
-1. Check on the [GitHub issue tracker](https://github.com/NixOS/nix/issues) if your bug was already reported.
+- Check if your bug has already been reported in the [issue tracker](https://git.lix.systems/lix-project/lix/issues).
+- If you can't find the bug or feature, please open a new issue.
 
-2. If you were not able to find the bug or feature [open a new issue](https://github.com/NixOS/nix/issues/new/choose)
-
-3. The issue templates will guide you in specifying your issue.
-   The more complete the information you provide, the more likely it can be found by others and the more useful it is in the future.
-   Make sure reported bugs can be reproduced easily.
-
-4. Once submitted, do not expect issues to be picked up or solved right away.
-   The only way to ensure this, is to [work on the issue yourself](#making-changes-to-nix).
+We maintain a copy of the upstream Nix bugs. Their organisation can be read about [here](https://wiki.lix.systems/books/lix-contributors/page/bug-tracker-organisation).
 
 ## Report a security vulnerability
 
-Check out the [security policy](https://github.com/NixOS/nix/security/policy).
+For security vulnerabilities, reach out by email at `security at lix dot systems`.
 
-## Making changes to Nix
+## Making changes to Lix
 
-1. Check for [pull requests](https://github.com/NixOS/nix/pulls) that might already cover the contribution you are about to make.
-   There are many open pull requests that might already do what you intent to work on.
-   You can use [labels](https://github.com/NixOS/nix/labels) to filter for relevant topics.
+Before diving into making changes, we want to engage with you and your ideas.
 
-2. Search for related issues that cover what you're going to work on. It could help to mention there that you will work on the issue.
+We have a few policies in effect; please take the time to familiarize yourself:
 
-   Issues labeled [good first issue](https://github.com/NixOS/nix/labels/good-first-issue) should be relatively easy to fix and are likely to get merged quickly.
-   Pull requests addressing issues labeled [idea approved](https://github.com/NixOS/nix/labels/idea%20approved) are especially welcomed by maintainers and will receive prioritised review.
+- [Style guide on code](https://wiki.lix.systems/books/lix-contributors/page/code)
+- [Freeze policy and recommended contributions](https://wiki.lix.systems/books/lix-contributors/page/freezes-and-recommended-contributions)
 
-3. Check the [Nix reference manual](https://nixos.org/manual/nix/unstable/contributing/hacking.html) for information on building Nix and running its tests.
+To avoid duplication of effort, it may be a good idea to check out the list of
+[pending pull requests](https://gerrit.lix.systems/q/status:open+-is:wip) (or "change lists", as Gerrit calls them). Once you have
+an idea of what you might want to do, we recommend dropping a message on our
+Matrix to ensure your contribution fits with our current schedule and plans
 
-   For contributions to the command line interface, please check the [CLI guidelines](https://nixos.org/manual/nix/unstable/contributing/cli-guideline.html).
+When you're ready and your changes are ready to go:
 
-4. Make your changes!
+- Submit your code.
+  - Submitting a GitHub PR [on our mirror](https://github.com/lix-project/lix) is totally ok if that's easier for you and your change is relatively small (300 lines or so).
 
-5. [Create a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request) for your changes.
-   * Link related issues in your pull request to inform interested parties and future contributors about your change.
-   * Make sure to have [a clean history of commits on your branch by using rebase](https://www.digitalocean.com/community/tutorials/how-to-rebase-and-update-a-pull-request).
-     If your pull request closes one or multiple issues, note that in the description using `Closes: #<number>`, as it will then happen automatically when your change is merged.
-   * [Mark the pull request as draft](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request) if you're not done with the changes.
+    We may ask you to resubmit it as a Gerrit CL if it is necessary for the change you're making.
+  - Our primary code review system is [our Gerrit instance](https://gerrit.lix.systems), where you can open a change list (CL).
+    If you're new to Gerrit, check out [our wiki page about Gerrit](https://wiki.lix.systems/books/lix-contributors/page/gerrit).
+- Make sure to link any related issues.
+- If needed, indicate that the change is 'work in progress'.
 
-6. Do not expect your pull request to be reviewed immediately.
-   Nix maintainers follow a [structured process for reviews and design decisions](https://github.com/NixOS/nix/tree/master/maintainers#project-board-protocol), which may or may not prioritise your work.
-
-   Following this checklist will make the process smoother for everyone:
-
-   - [ ] Fixes an [idea approved](https://github.com/NixOS/nix/labels/idea%20approved) issue
-   - [ ] Tests, as appropriate:
-     - Functional tests – [`tests/functional/**.sh`](./tests/functional)
-     - Unit tests – [`src/*/tests`](./src/)
-     - Integration tests – [`tests/nixos/*`](./tests/nixos)
-   - [ ] User documentation in the [manual](..doc/manual/src)
-   - [ ] API documentation in header files
-   - [ ] Code and comments are self-explanatory
-   - [ ] Commit message explains **why** the change was made
-   - [ ] New feature or incompatible change: updated [release notes](./doc/manual/src/release-notes/rl-next.md)
-
-7. If you need additional feedback or help to getting pull request into shape, ask other contributors using [@mentions](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#mentioning-people-and-teams).
-
-## Making changes to the Nix manual
-
-The Nix reference manual is hosted on https://nixos.org/manual/nix.
-The underlying source files are located in [`doc/manual/src`](./doc/manual/src).
-For small changes you can [use GitHub to edit these files](https://docs.github.com/en/repositories/working-with-files/managing-files/editing-files)
-For larger changes see the [Nix reference manual](https://nixos.org/manual/nix/unstable/contributing/hacking.html).
-
-## Getting help
-
-Whenever you're stuck or do not know how to proceed, you can always ask for help.
-The appropriate channels to do so can be found on the [NixOS Community](https://nixos.org/community/) page.
+You can obtain an account on our platforms by clicking "Sign In with GitHub" on the sign-in page.
