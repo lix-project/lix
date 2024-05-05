@@ -19,7 +19,7 @@ using namespace nix;
 struct CmdUpgradeNix : MixDryRun, EvalCommand
 {
     Path profileDir;
-    std::string storePathsUrl = "https://github.com/NixOS/nixpkgs/raw/master/nixos/modules/installer/tools/nix-fallback-paths.nix";
+    std::string storePathsUrl = "https://releases.lix.systems/manifest.nix";
 
     std::optional<Path> overrideStorePath;
 
