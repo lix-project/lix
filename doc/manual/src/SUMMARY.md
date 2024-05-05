@@ -154,7 +154,6 @@
     - [nix run](command-ref/new-cli/nix3-run.md)
     - [nix search](command-ref/new-cli/nix3-search.md)
     - [nix shell](command-ref/new-cli/nix3-shell.md)
-    - [nix show-config](command-ref/new-cli/nix3-show-config.md)
     - [nix store](command-ref/new-cli/nix3-store.md)
     - [nix store add-file](command-ref/new-cli/nix3-store-add-file.md)
     - [nix store add-path](command-ref/new-cli/nix3-store-add-path.md)

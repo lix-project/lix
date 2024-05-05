@@ -1,6 +1,9 @@
 [book]
 title = "Nix Reference Manual"
 
+[build]
+create-missing = false
+
 [output.html]
 additional-css = ["custom.css"]
 additional-js = ["redirects.js"]
