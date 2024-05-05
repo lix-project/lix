@@ -26,6 +26,34 @@
     let
       inherit (nixpkgs) lib;
 
+      # This notice gets echoed as a dev shell hook, and can be turned off with
+      # `touch .nocontribmsg`
+      sgr = ''['';
+      freezePage = "https://wiki.lix.systems/books/lix-contributors/page/freezes-and-recommended-contributions";
+      codebaseOverview = "https://wiki.lix.systems/books/lix-contributors/page/codebase-overview";
+      contribNotice = builtins.toFile "lix-contrib-notice" ''
+        Hey there!
+
+        If you're thinking of working on Lix, please consider talking to us about it!
+        You should be aware that we are ${sgr}1mnot${sgr}0m accepting major features without some conditions,
+        and we highly recommend looking at our freeze status page on the wiki:
+          ${sgr}32m${freezePage}${sgr}0m
+
+        We also have an overview of the codebase at
+          ${sgr}32m${codebaseOverview}${sgr}0m,
+        and other helpful information on the wiki.
+
+        But above all else, ${sgr}1mwe want to hear from you!${sgr}0m
+        We can help you figure out where in the codebase to look for whatever you want to do,
+        and we'd like to work together with all contributors as much as possible.
+        Lix is a collaborative project :)
+
+        You can open an issue at https://git.lix.systems/lix-project/lix/issues
+        or chat with us on Matrix: #space:lix.systems.
+
+        (Run `touch .nocontribmsg` to hide this message.)
+      '';
+
       officialRelease = false;
 
       # Set to true to build the release notes for the next release.
@@ -471,6 +499,10 @@
                     XDG_DATA_DIRS+=:$out/share
 
                     ${lib.optionalString (pre-commit ? shellHook) pre-commit.shellHook}
+                    # Allow `touch .nocontribmsg` to turn this notice off.
+                    if ! [[ -f .nocontribmsg ]]; then
+                      cat ${contribNotice}
+                    fi
                   '';
                 }
                 // lib.optionalAttrs (stdenv.buildPlatform.isLinux && pkgs.glibcLocales != null) {
