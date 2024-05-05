@@ -1,5 +1,15 @@
 # Prerequisites
 
+<div class="warning">
+
+FIXME(meson): This section is very wrong with respect to meson and we have commented it out.
+We are sorry.
+The most current alternative to this section is to read `package.nix` and see which things are being depended on.
+
+</div>
+
+<!--
+
   - GNU Autoconf (<https://www.gnu.org/software/autoconf/>) and the
     autoconf-archive macro collection
     (<https://www.gnu.org/software/autoconf-archive/>). These are
@@ -76,3 +86,5 @@
     RapidCheck are required, which are available at
     <https://google.github.io/googletest/> and
     <https://github.com/emil-e/rapidcheck> respectively.
+
+-->

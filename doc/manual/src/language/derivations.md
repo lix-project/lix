@@ -61,7 +61,7 @@ the attributes of which specify the inputs of the build.
     outputs = [ "lib" "headers" "doc" ];
     ```
 
-    This will cause Nix to pass environment variables `lib`, `headers`
+    This will cause Lix to pass environment variables `lib`, `headers`
     and `doc` to the builder containing the intended store paths of each
     output. The builder would typically do something like
 
@@ -137,7 +137,7 @@ The builder is executed as follows:
         it’s `out`.)
 
   - If an output path already exists, it is removed. Also, locks are
-    acquired to prevent multiple Nix instances from performing the same
+    acquired to prevent multiple Lix instances from performing the same
     build at the same time.
 
   - A log of the combined standard output and error is written to
@@ -150,17 +150,17 @@ The builder is executed as follows:
   - The temporary directory is removed (unless the `-K` option was
     specified).
 
-  - If the build was successful, Nix scans each output path for
+  - If the build was successful, Lix scans each output path for
     references to input paths by looking for the hash parts of the input
-    paths. Since these are potential runtime dependencies, Nix registers
+    paths. Since these are potential runtime dependencies, Lix registers
     them as dependencies of the output paths.
 
-  - After the build, Nix sets the last-modified timestamp on all files
+  - After the build, Lix sets the last-modified timestamp on all files
     in the build result to 1 (00:00:01 1/1/1970 UTC), sets the group to
     the default group, and sets the mode of the file to 0444 or 0555
     (i.e., read-only, with execute permission enabled if the file was
     originally executable). Note that possible `setuid` and `setgid`
     bits are cleared. Setuid and setgid programs are not currently
-    supported by Nix. This is because the Nix archives used in
+    supported by Lix. This is because the Lix archives used in
     deployment have no concept of ownership information, and because it
     makes the build result dependent on the user performing the build.

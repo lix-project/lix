@@ -1,5 +1,5 @@
 [book]
-title = "Nix Reference Manual"
+title = "Lix Reference Manual"
 
 [build]
 create-missing = false
@@ -7,8 +7,10 @@ create-missing = false
 [output.html]
 additional-css = ["custom.css"]
 additional-js = ["redirects.js"]
-edit-url-template = "https://github.com/NixOS/nix/tree/master/doc/manual/{path}"
-git-repository-url = "https://github.com/NixOS/nix"
+# Using our GitHub mirror enables easier typo fixes since there is no easy way
+# to just submit a Gerrit CL by the web for trivial stuff.
+edit-url-template = "https://github.com/lix-project/lix/tree/main/doc/manual/{path}"
+git-repository-url = "https://git.lix.systems/lix-project/lix"
 
 # Handles replacing @docroot@ with a path to ./src relative to that markdown file,
 # {{#include handlebars}}, and the @generated@ syntax used within these. it mostly

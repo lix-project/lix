@@ -1,6 +1,6 @@
 # File System Object
 
-Nix uses a simplified model of the file system, which consists of file system objects.
+Nix implementations use a simplified model of the file system, which consists of file system objects.
 Every file system object is one of the following:
 
  - File
@@ -15,7 +15,7 @@ Every file system object is one of the following:
  - [Symbolic link](https://en.m.wikipedia.org/wiki/Symbolic_link)
 
    An arbitrary string.
-   Nix does not assign any semantics to symbolic links.
+   Nix implementations do not assign any semantics to symbolic links.
 
 File system objects and their children form a tree.
 A bare file or symlink can be a root file system object.

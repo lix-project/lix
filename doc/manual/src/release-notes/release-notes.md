@@ -1,1 +1,1 @@
-# Nix Release Notes
+# Lix Release Notes

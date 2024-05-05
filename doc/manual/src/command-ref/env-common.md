@@ -1,6 +1,6 @@
 # Common Environment Variables
 
-Most Nix commands interpret the following environment variables:
+Most commands in Lix interpret the following environment variables:
 
   - <span id="env-IN_NIX_SHELL">[`IN_NIX_SHELL`](#env-IN_NIX_SHELL)</span>\
     Indicator that tells if the current environment was set up by
@@ -13,7 +13,7 @@ Most Nix commands interpret the following environment variables:
     e.g. `/home/eelco/Dev:/etc/nixos`. It can be extended using the
     [`-I` option](@docroot@/command-ref/opt-common.md#opt-I).
 
-    If `NIX_PATH` is not set at all, Nix will fall back to the following list in [impure](@docroot@/command-ref/conf-file.md#conf-pure-eval) and [unrestricted](@docroot@/command-ref/conf-file.md#conf-restrict-eval) evaluation mode:
+    If `NIX_PATH` is not set at all, Lix will fall back to the following list in [impure](@docroot@/command-ref/conf-file.md#conf-pure-eval) and [unrestricted](@docroot@/command-ref/conf-file.md#conf-restrict-eval) evaluation mode:
 
       1. `$HOME/.nix-defexpr/channels`
       2. `nixpkgs=/nix/var/nix/profiles/per-user/root/channels/nixpkgs`
@@ -50,28 +50,28 @@ Most Nix commands interpret the following environment variables:
     Overrides the location of the Nix store (default `prefix/store`).
 
   - <span id="env-NIX_DATA_DIR">[`NIX_DATA_DIR`](#env-NIX_DATA_DIR)</span>\
-    Overrides the location of the Nix static data directory (default
+    Overrides the location of the Lix static data directory (default
     `prefix/share`).
 
   - <span id="env-NIX_LOG_DIR">[`NIX_LOG_DIR`](#env-NIX_LOG_DIR)</span>\
-    Overrides the location of the Nix log directory (default
+    Overrides the location of the Lix log directory (default
     `prefix/var/log/nix`).
 
   - <span id="env-NIX_STATE_DIR">[`NIX_STATE_DIR`](#env-NIX_STATE_DIR)</span>\
-    Overrides the location of the Nix state directory (default
+    Overrides the location of the Lix state directory (default
     `prefix/var/nix`).
 
   - <span id="env-NIX_CONF_DIR">[`NIX_CONF_DIR`](#env-NIX_CONF_DIR)</span>\
-    Overrides the location of the system Nix configuration directory
+    Overrides the location of the system Lix configuration directory
     (default `prefix/etc/nix`).
 
   - <span id="env-NIX_CONFIG">[`NIX_CONFIG`](#env-NIX_CONFIG)</span>\
-    Applies settings from Nix configuration from the environment.
-    The content is treated as if it was read from a Nix configuration file.
+    Applies settings from Lix configuration from the environment.
+    The content is treated as if it was read from a Lix configuration file.
     Settings are separated by the newline character.
 
   - <span id="env-NIX_USER_CONF_FILES">[`NIX_USER_CONF_FILES`](#env-NIX_USER_CONF_FILES)</span>\
-    Overrides the location of the Nix user configuration files to load from.
+    Overrides the location of the Lix user configuration files to load from.
 
     The default are the locations according to the [XDG Base Directory Specification].
     See the [XDG Base Directories](#xdg-base-directories) sub-section for details.
@@ -84,19 +84,19 @@ Most Nix commands interpret the following environment variables:
     substantial amounts of disk space. The default is `/tmp`.
 
   - <span id="env-NIX_REMOTE">[`NIX_REMOTE`](#env-NIX_REMOTE)</span>\
-    This variable should be set to `daemon` if you want to use the Nix
+    This variable should be set to `daemon` if you want to use the Lix
     daemon to execute Nix operations. This is necessary in [multi-user
-    Nix installations](@docroot@/installation/multi-user.md). If the Nix
+    Nix installations](@docroot@/installation/multi-user.md). If the Lix
     daemon's Unix socket is at some non-standard path, this variable
     should be set to `unix://path/to/socket`. Otherwise, it should be
     left unset.
 
   - <span id="env-NIX_SHOW_STATS">[`NIX_SHOW_STATS`](#env-NIX_SHOW_STATS)</span>\
-    If set to `1`, Nix will print some evaluation statistics, such as
+    If set to `1`, Lix will print some evaluation statistics, such as
     the number of values allocated.
 
   - <span id="env-NIX_COUNT_CALLS">[`NIX_COUNT_CALLS`](#env-NIX_COUNT_CALLS)</span>\
-    If set to `1`, Nix will print how often functions were called during
+    If set to `1`, Lix will print how often functions were called during
     Nix expression evaluation. This is useful for profiling your Nix
     expressions.
 
@@ -108,9 +108,9 @@ Most Nix commands interpret the following environment variables:
 
 ## XDG Base Directories
 
-Nix follows the [XDG Base Directory Specification].
+Lix follows the [XDG Base Directory Specification].
 
-For backwards compatibility, Nix commands will follow the standard only when [`use-xdg-base-directories`] is enabled.
+For backwards compatibility, commands in Lix will follow the standard only when [`use-xdg-base-directories`] is enabled.
 [New Nix commands](@docroot@/command-ref/new-cli/nix.md) (experimental) conform to the standard by default.
 
 The following environment variables are used to determine locations of various state and configuration files:

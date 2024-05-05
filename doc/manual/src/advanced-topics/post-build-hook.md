@@ -8,7 +8,7 @@ simple and working example, but it is not suitable for all use cases.
 The post build hook program runs after each executed build, and blocks
 the build loop. The build loop exits if the hook program fails.
 
-Concretely, this implementation will make Nix slow or unusable when the
+Concretely, this implementation will make Lix slow or unusable when the
 internet is slow or unreliable.
 
 A more advanced implementation might pass the store paths to a
@@ -76,7 +76,7 @@ Then make sure the hook program is executable by the `root` user:
 # chmod +x /etc/nix/upload-to-cache.sh
 ```
 
-# Updating Nix Configuration
+# Updating Lix Configuration
 
 Edit `/etc/nix/nix.conf` to run our hook, by adding the following
 configuration snippet at the end:
@@ -119,7 +119,7 @@ warning: you did not specify '--add-root'; the result might be removed by the ga
 
 # Conclusion
 
-We now have a Nix installation configured to automatically sign and
+We now have a Lix installation configured to automatically sign and
 upload every local build to a remote binary cache.
 
 Before deploying this to production, be sure to consider the

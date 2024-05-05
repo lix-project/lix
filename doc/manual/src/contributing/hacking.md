@@ -1,6 +1,6 @@
 # Hacking
 
-This section provides some notes on how to hack on Nix. To get the latest version of Lix from Forgejo:
+This section provides some notes on how to hack on Lix. To get the latest version of Lix from Forgejo:
 
 ```console
 $ git clone https://git.lix.systems/lix-project/lix
@@ -120,13 +120,13 @@ $ meson introspect
 
 ## Building Lix outside of development shells
 
-To build a release version of Nix for the current operating system and CPU architecture:
+To build a release version of Lix for the current operating system and CPU architecture:
 
 ```console
 $ nix build
 ```
 
-You can also build Nix for one of the [supported platforms](#platforms).
+You can also build Lix for one of the [supported platforms](#platforms).
 
 > **Note**
 >
@@ -135,7 +135,7 @@ You can also build Nix for one of the [supported platforms](#platforms).
 
 ## Platforms
 
-Nix can be built for various platforms, as specified in [`flake.nix`]:
+Lix can be built for various platforms, as specified in [`flake.nix`]:
 
 [`flake.nix`]: https://github.com/nixos/nix/blob/master/flake.nix
 
@@ -147,7 +147,7 @@ Nix can be built for various platforms, as specified in [`flake.nix`]:
 - `armv6l-linux`
 - `armv7l-linux`
 
-In order to build Nix for a different platform than the one you're currently
+In order to build Lix for a different platform than the one you're currently
 on, you need a way for your current Nix installation to build code for that
 platform. Common solutions include [remote builders] and [binary format emulation]
 (only supported on NixOS).
@@ -196,7 +196,7 @@ Lix uses a string with the following format to identify the *system type* or *pl
 <cpu>-<os>[-<abi>]
 ```
 
-It is set when Nix is compiled for the given system, and determined by [Meson's `host_machine.cpu_family()` and `host_machine.system()` values](https://mesonbuild.com/Reference-manual_builtin_host_machine.html).
+It is set when Lix is compiled for the given system, and determined by [Meson's `host_machine.cpu_family()` and `host_machine.system()` values](https://mesonbuild.com/Reference-manual_builtin_host_machine.html).
 
 For historic reasons and backward-compatibility, some CPU and OS identifiers are translated from the GNU Autotools naming convention in [`meson.build`](https://git.lix.systems/lix-project/lix/blob/main/meson.build) as follows:
 
@@ -212,7 +212,7 @@ For historic reasons and backward-compatibility, some CPU and OS identifiers are
 
 ## Compilation environments
 
-Nix can be compiled using multiple environments:
+Lix can be compiled using multiple environments:
 
 - `stdenv`: default;
 - `gccStdenv`: force the use of `gcc` compiler;
@@ -325,8 +325,13 @@ Here's what a complete entry looks like. The file name is not incorporated in th
 ```
 ---
 synopsis: Basically a title
-issues: 1234
+# 1234 or gh#1234 will refer to CppNix GitHub, fj#1234 will refer to a Lix forgejo issue.
+issues: [1234, fj#1234]
+# Use this *only* if there is a CppNix pull request associated with this change
 prs: 1238
+# List of Lix Gerrit changelist numbers; if there is an associated Lix GitHub
+# PR, just put in the Gerrit CL number.
+cls: [123]
 ---
 
 Here's one or more paragraphs that describe the change.

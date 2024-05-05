@@ -1,6 +1,6 @@
 # Serving a Nix store via SSH
 
-You can tell Nix to automatically fetch needed binaries from a remote
+You can tell Lix to automatically fetch needed binaries from a remote
 Nix store via SSH. For example, the following installs Firefox,
 automatically fetching any store paths in Firefox’s closure if they are
 available on the server `avalon`:
@@ -9,8 +9,8 @@ available on the server `avalon`:
 $ nix-env --install --attr nixpkgs.firefox --substituters ssh://alice@avalon
 ```
 
-This works similar to the binary cache substituter that Nix usually
-uses, only using SSH instead of HTTP: if a store path `P` is needed, Nix
+This works similar to the binary cache substituter that Lix usually
+uses, only using SSH instead of HTTP: if a store path `P` is needed, Lix
 will first check if it’s available in the Nix store on `avalon`. If not,
 it will fall back to using the binary cache substituter, and then to
 building from source.

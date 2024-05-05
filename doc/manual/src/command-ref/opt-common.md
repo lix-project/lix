@@ -1,6 +1,6 @@
 # Common Options
 
-Most Nix commands accept the following command-line options:
+Most commands in Lix accept the following command-line options:
 
 - <span id="opt-help">[`--help`](#opt-help)</span>
 
@@ -8,12 +8,12 @@ Most Nix commands accept the following command-line options:
 
 - <span id="opt-version">[`--version`](#opt-version)</span>
 
-  Prints out the Nix version number on standard output and exits.
+  Prints out the Lix version number on standard output and exits.
 
 - <span id="opt-verbose">[`--verbose`](#opt-verbose)</span> / `-v`
 
   Increases the level of verbosity of diagnostic messages printed on standard error.
-  For each Nix operation, the information printed on standard output is well-defined;
+  For each Lix operation, the information printed on standard output is well-defined;
   any diagnostic information is printed on standard error, never on standard output.
 
   This option may be specified repeatedly.
@@ -21,11 +21,11 @@ Most Nix commands accept the following command-line options:
 
   - `0` “Errors only”
 
-    Only print messages explaining why the Nix invocation failed.
+    Only print messages explaining why the Lix invocation failed.
 
   - `1` “Informational”
 
-    Print *useful* messages about what Nix is doing.
+    Print *useful* messages about what Lix is doing.
     This is the default.
 
   - `2` “Talkative”
@@ -80,13 +80,13 @@ Most Nix commands accept the following command-line options:
 
 - <span id="opt-no-build-output">[`--no-build-output`](#opt-no-build-output)</span> / `-Q`
 
-  By default, output written by builders to standard output and standard error is echoed to the Nix command's standard error.
+  By default, output written by builders to standard output and standard error is echoed to the Lix command's standard error.
   This option suppresses this behaviour.
   Note that the builder's standard output and error are always written to a log file in `prefix/nix/var/log/nix`.
 
 - <span id="opt-max-jobs">[`--max-jobs`](#opt-max-jobs)</span> / `-j` *number*
 
-  Sets the maximum number of build jobs that Nix will perform in parallel to the specified number.
+  Sets the maximum number of build jobs that Lix will perform in parallel to the specified number.
   Specify `auto` to use the number of CPUs in the system.
   The default is specified by the `max-jobs` configuration setting, which itself defaults to `1`.
   A higher value is useful on SMP systems or to exploit I/O latency.
@@ -116,8 +116,8 @@ Most Nix commands accept the following command-line options:
 - <span id="opt-keep-going">[`--keep-going`](#opt-keep-going)</span> / `-k`
 
   Keep going in case of failed builds, to the greatest extent possible.
-  That is, if building an input of some derivation fails, Nix will still build the other inputs, but not the derivation itself.
-  Without this option, Nix stops if any build fails (except for builds of substitutes), possibly killing builds in progress (in case of parallel or distributed builds).
+  That is, if building an input of some derivation fails, Lix will still build the other inputs, but not the derivation itself.
+  Without this option, Lix stops if any build fails (except for builds of substitutes), possibly killing builds in progress (in case of parallel or distributed builds).
 
 - <span id="opt-keep-failed">[`--keep-failed`](#opt-keep-failed)</span> / `-K`
 
@@ -126,18 +126,24 @@ Most Nix commands accept the following command-line options:
 
 - <span id="opt-fallback">[`--fallback`](#opt-fallback)</span>
 
-  Whenever Nix attempts to build a derivation for which substitutes are known for each output path, but realising the output paths through the substitutes fails, fall back on building the derivation.
+  Whenever Lix attempts to build a derivation for which substitutes are known for each output path, but realising the output paths through the substitutes fails, fall back on building the derivation.
 
   The most common scenario in which this is useful is when we have registered substitutes in order to perform binary distribution from, say, a network repository.
   If the repository is down, the realisation of the derivation will fail.
-  When this option is specified, Nix will build the derivation instead.
+  When this option is specified, Lix will build the derivation instead.
   Thus, installation from binaries falls back on installation from source.
   This option is not the default since it is generally not desirable for a transient failure in obtaining the substitutes to lead to a full build from source (with the related consumption of resources).
 
 - <span id="opt-readonly-mode">[`--readonly-mode`](#opt-readonly-mode)</span>
 
-  When this option is used, no attempt is made to open the Nix database.
-  Most Nix operations do need database access, so those operations will fail.
+  When this option is used, no attempt is made to open the Lix database.
+  Most Lix operations do need database access, so those operations will fail.
+
+  <div class="warning">
+
+  FIXME(Lix): sometimes you want `--store dummy` instead, because this option sometimes doesn't work. Document why this is.
+
+  </div>
 
 - <span id="opt-arg">[`--arg`](#opt-arg)</span> *name* *value*
 
@@ -195,8 +201,8 @@ Most Nix commands accept the following command-line options:
 
 - <span id="opt-option">[`--option`](#opt-option)</span> *name* *value*
 
-  Set the Nix configuration option *name* to *value*.
-  This overrides settings in the Nix configuration file (see nix.conf5).
+  Set the Lix configuration option *name* to *value*.
+  This overrides settings in the Lix configuration file (see nix.conf(5)).
 
 - <span id="opt-repair">[`--repair`](#opt-repair)</span>
 

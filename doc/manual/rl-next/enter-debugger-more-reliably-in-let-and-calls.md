@@ -18,8 +18,8 @@ in
   b
 ```
 
-Nix would correctly enter the debugger at `builtins.break a`, but if you asked
+Lix would correctly enter the debugger at `builtins.break a`, but if you asked
 it to `:continue`, it would skip over the `builtins.break "hello"` expression
 entirely.
 
-Now, Nix will correctly enter the debugger at both breakpoints.
+Now, Lix will correctly enter the debugger at both breakpoints.

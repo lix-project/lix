@@ -1,14 +1,14 @@
 # Name
 
-`nix.conf` - Nix configuration file
+`nix.conf` - Lix configuration file
 
 # Description
 
-Nix supports a variety of configuration settings, which are read from configuration files or taken as command line flags.
+Lix supports a variety of configuration settings, which are read from configuration files or taken as command line flags.
 
 ## Configuration file
 
-By default Nix reads settings from the following places, in that order:
+By default Lix reads settings from the following places, in that order:
 
 1. The system-wide configuration file `sysconfdir/nix/nix.conf` (i.e. `/etc/nix/nix.conf` on most systems), or `$NIX_CONF_DIR/nix.conf` if [`NIX_CONF_DIR`](./env-common.md#env-NIX_CONF_DIR) is set.
 

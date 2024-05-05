@@ -1,4 +1,11 @@
-This section describes the notion of *experimental features*, and how it fits into the big picture of the development of Nix.
+This section describes the notion of *experimental features*, and how it fits into the big picture of the development of Lix.
+
+<div class="warning">
+
+This section has not been updated for Lix *development practices* and should not be considered authoritative with respect to those; see the Lix wiki for more up-to-date information as it gets written <https://wiki.lix.systems/books/lix-contributors>. The technical content on this page is correct.
+
+</div>
+
 
 # What are experimental features?
 
@@ -12,7 +19,7 @@ This was a source of confusion and controversy.
 
 # When should a new feature be marked experimental?
 
-A change in the Nix codebase should be guarded by an experimental feature flag if it is considered likely to be reverted or adapted in a backwards-incompatible manner after gathering more experience with it in practice.
+A change in the Lix codebase should be guarded by an experimental feature flag if it is considered likely to be reverted or adapted in a backwards-incompatible manner after gathering more experience with it in practice.
 
 Examples:
 

@@ -57,12 +57,12 @@
   The location in the file system where store objects live. Typically
   `/nix/store`.
 
-  From   the  perspective   of   the  location   where  Nix   is
+  From   the  perspective   of   the  location   where  Lix   is
   invoked, the  Nix store can be  referred to
   as a "_local_" or a "_remote_" one:
 
   + A [local store]{#gloss-local-store} exists on the filesystem of
-    the machine where Nix is  invoked. You can use other
+    the machine where Lix is  invoked. You can use other
     local stores  by passing  the `--store` flag  to the
     `nix` command.  Local stores can be used for building derivations.
 
@@ -133,7 +133,7 @@
 
 - [substituter]{#gloss-substituter}
 
-  An additional [store]{#gloss-store} from which Nix can obtain store objects instead of building them.
+  An additional [store]{#gloss-store} from which Lix can obtain store objects instead of building them.
   Often the substituter is a [binary cache](#gloss-binary-cache), but any store can serve as substituter.
 
   See the [`substituters` configuration option](./command-ref/conf-file.md#conf-substituters) for details.
@@ -159,7 +159,7 @@
 - [Nix expression]{#gloss-nix-expression}
 
   A high-level description of software packages and compositions
-  thereof. Deploying software using Nix entails writing Nix
+  thereof. Deploying software using Lix entails writing Nix
   expressions for your packages. Nix expressions are translated to
   derivations that are stored in the Nix store. These derivations can
   then be built.

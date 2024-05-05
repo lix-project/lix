@@ -1,6 +1,6 @@
 # Name
 
-`nix-daemon` - Nix multi-user support daemon
+`nix-daemon` - Lix multi-user support daemon
 
 # Synopsis
 
@@ -8,6 +8,6 @@
 
 # Description
 
-The Nix daemon is necessary in multi-user Nix installations. It runs
+The Lix daemon is necessary in multi-user Lix installations. It runs
 build tasks and other operations on the Nix store on behalf of
 unprivileged users.
