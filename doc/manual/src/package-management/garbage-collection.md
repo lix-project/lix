@@ -6,7 +6,7 @@ is to create a new user environment that no longer contains symlinks to
 the “deleted” packages.
 
 Of course, since disk space is not infinite, unused packages should be
-removed at some point. You can do this by running the Nix garbage
+removed at some point. You can do this by running the Lix garbage
 collector. It will remove from the Nix store any package not used
 (directly or indirectly) by any generation of any profile.
 

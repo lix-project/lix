@@ -1,5 +1,11 @@
 # Installing a Binary Distribution
 
+See https://lix.systems/install/ for more details.
+
+<!--
+
+FIXME(Lix): There are a bunch of technical details on *how* nix is installed in here that we want to keep but it would need serious rewriting.
+
 The easiest way to install Nix is to run the following command:
 
 ```console
@@ -81,7 +87,7 @@ extension. The installer will also create `/etc/profile.d/nix.sh`.
 # macOS Installation
 
 []{#sect-macos-installation-change-store-prefix}[]{#sect-macos-installation-encrypted-volume}[]{#sect-macos-installation-symlink}[]{#sect-macos-installation-recommended-notes}
-<!-- Note: anchors above to catch permalinks to old explanations -->
+<!~~ Note: anchors above to catch permalinks to old explanations ~~>
 
 We believe we have ironed out how to cleanly support the read-only root
 on modern macOS. New installs will do this automatically.
@@ -101,7 +107,7 @@ this to run the installer, but it may help if you run into trouble:
   - `nobrowse`: prevent the Nix Store volume from showing up on your
     desktop; also keeps Spotlight from spending resources to index
     this volume
-  <!-- TODO:
+  <!~~ TODO:
   - `suid`: honor setuid? surely not? ...
   - `owners`: honor file ownership on the volume
 
@@ -117,7 +123,7 @@ this to run the installer, but it may help if you run into trouble:
     new reports from coming in. But I hesitate to celebrate because we
     haven't really named and catalogued the behavior, understood what
     we're fixing, and validated that all 3 components are essential.
-  -->
+  ~~>
 - if you have FileVault enabled
     - generate an encryption password
     - put it in your system Keychain
@@ -156,3 +162,5 @@ $ ./install
 If you need to edit the multi-user installation script to use different
 group ID or a different user ID range, modify the variables set in the
 file named `install-multi-user`.
+
+-->

@@ -1,11 +1,20 @@
 # Basic Package Management
 
+<div class="warning">
+
+FIXME(Lix): This section does not document the most common modern practices in terms of avoiding channels, pinning, declarative software installation (see flakey-profile or home-manager or NixOS), or using flakes, etc.
+It is, however, likely correct at a technical level.
+
+For more information on modern practices, see the [resources](https://lix.systems/resources) page on the Lix site.
+
+</div>
+
 The main command for package management is
 [`nix-env`](../command-ref/nix-env.md).  You can use it to install,
 upgrade, and erase packages, and to query what packages are installed
 or are available for installation.
 
-In Nix, different users can have different “views” on the set of
+In Nix systems, different users can have different “views” on the set of
 installed applications. That is, there might be lots of applications
 present on the system (possibly in many different versions), but users
 can have a specific selection of those active — where “active” just
@@ -14,12 +23,12 @@ on the set of installed applications is called a *user environment*,
 which is just a directory tree consisting of symlinks to the files of
 the active applications.
 
-Components are installed from a set of *Nix expressions* that tell Nix
+Components are installed from a set of *Nix expressions* that tell Lix
 how to build those packages, including, if necessary, their
-dependencies. There is a collection of Nix expressions called the
+dependencies. There is a very large collection of Nix expressions called the
 Nixpkgs package collection that contains packages ranging from basic
 development stuff such as GCC and Glibc, to end-user applications like
-Mozilla Firefox. (Nix is however not tied to the Nixpkgs package
+Mozilla Firefox. (Lix is however not tied to the Nixpkgs package
 collection; you could write your own Nix expressions based on Nixpkgs,
 or completely new ones.)
 
@@ -28,7 +37,7 @@ You can manually download the latest version of Nixpkgs from
 convenient to use the Nixpkgs [*channel*](../command-ref/nix-channel.md), since it makes
 it easy to stay up to date with new versions of Nixpkgs. Nixpkgs is
 automatically added to your list of “subscribed” channels when you
-install Nix. If this is not the case for some reason, you can add it
+install Lix. If this is not the case for some reason, you can add it
 as follows:
 
 ```console
@@ -107,7 +116,7 @@ present on your system (in which case installing it into your user
 environment would be a very quick operation). The last one (`S`)
 indicates whether there is a so-called *substitute* for the package,
 which is Nix’s mechanism for doing binary deployment. It just means that
-Nix knows that it can fetch a pre-built package from somewhere
+Lix knows that it can fetch a pre-built package from somewhere
 (typically a network server) instead of building it locally.
 
 You can install a package using `nix-env --install --attr `. For instance,
@@ -121,12 +130,12 @@ will install the package called `subversion` from `nixpkgs` channel (which is, o
 
 > **Note**
 >
-> When you ask Nix to install a package, it will first try to get it in
-> pre-compiled form from a *binary cache*. By default, Nix will use the
+> When you ask Lix to install a package, it will first try to get it in
+> pre-compiled form from a *binary cache*. By default, Lix will use the
 > binary cache <https://cache.nixos.org>; it contains binaries for most
 > packages in Nixpkgs. Only if no binary is available in the binary
-> cache, Nix will build the package from source. So if `nix-env
-> -iA nixpkgs.subversion` results in Nix building stuff from source, then either
+> cache, Lix will build the package from source. So if `nix-env
+> -iA nixpkgs.subversion` results in Lix building stuff from source, then either
 > the package is not built for your platform by the Nixpkgs build
 > servers, or your version of Nixpkgs is too old or too new. For
 > instance, if you have a very recent checkout of Nixpkgs, then the
@@ -147,7 +156,7 @@ $ nix-env --uninstall subversion
 ```
 
 Upgrading to a new version is just as easy. If you have a new release of
-Nix Packages, you can do:
+nixpkgs, you can do:
 
 ```console
 $ nix-env --upgrade --attr nixpkgs.subversion

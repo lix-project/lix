@@ -1,7 +1,7 @@
 # Architecture
 
 This chapter describes how Nix works.
-It should help users understand why Nix behaves as it does, and it should help developers understand how to modify Nix and how to write similar tools.
+It should help users understand why Lix behaves as it does, and it should help developers understand how to modify Lix and how to write similar tools.
 
 ## Overview
 
@@ -21,8 +21,8 @@ The following [concept map] shows its main components (rectangles), the objects 
            |              passed to
            |                   |
 +----------|-------------------|--------------------------------+
-| Nix      |                   V                                |
-|          |      +-------------------------+                   |
+| Nix impl.|                   V                                |
+| (Lix)    |      +-------------------------+                   |
 |          |      | commmand line interface |------.            |
 |          |      +-------------------------+      |            |
 |          |                   |                   |            |

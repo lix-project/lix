@@ -1,6 +1,13 @@
-# Building Nix from Source
+# Building Lix from Source
 
-After cloning Nix's Git repository, issue the following commands:
+<div class="warning">
+
+FIXME(meson): This section is outdated for meson and has been commented out. See https://git.lix.systems/lix-project/lix/issues/258
+
+</div>
+
+<!--
+After cloning Lix's Git repository, issue the following commands:
 
 ```console
 $ autoreconf -vfi
@@ -29,3 +36,4 @@ Nix keeps its *store* (the place where packages are stored) in
 
 Nix keeps state (such as its database and log files) in `/nix/var` by
 default. This can be changed using `--localstatedir=path`.
+-->

@@ -1,8 +1,18 @@
-# Uninstalling Nix
+# Uninstalling Lix
+
+<div class="warning">
+
+FIXME(Lix): This section is outdated and commented out due to the Lix installer being replaced such that it has an actual uninstaller.
+
+See https://git.lix.systems/lix-project/lix-installer#uninstalling for up-to-date uninstallation instructions using the installer.
+
+</div>
+
+<!--
 
 ## Single User
 
-If you have a [single-user installation](./installing-binary.md#single-user-installation) of Nix, uninstall it by running:
+If you have a [single-user installation](./installing-binary.md#single-user-installation) of Lix, uninstall it by running:
 
 ```console
 $ rm -rf /nix
@@ -10,7 +20,7 @@ $ rm -rf /nix
 
 ## Multi User
 
-Removing a [multi-user installation](./installing-binary.md#multi-user-installation) of Nix is more involved, and depends on the operating system.
+Removing a [multi-user installation](./installing-binary.md#multi-user-installation) of Lix is more involved, and depends on the operating system.
 
 ### Linux
 
@@ -24,7 +34,7 @@ If you are on Linux with systemd:
    sudo systemctl daemon-reload
    ```
 
-Remove files created by Nix:
+Remove files created by Lix:
 
 ```console
 sudo rm -rf /etc/nix /etc/profile.d/nix.sh /etc/tmpfiles.d/nix-daemon.conf /nix ~root/.nix-channels ~root/.nix-defexpr ~root/.nix-profile
@@ -39,7 +49,7 @@ done
 sudo groupdel nixbld
 ```
 
-There may also be references to Nix in
+There may also be references to Lix in
 
 - `/etc/bash.bashrc`
 - `/etc/bashrc`
@@ -145,3 +155,4 @@ which you may remove.
 > complete. macOS (Catalina+) directly controls root directories and its
 > read-only root will prevent you from manually deleting the empty `/nix`
 > mountpoint.
+-->

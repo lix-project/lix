@@ -1,17 +1,30 @@
 # Quick Start
 
+<div class="warning">
+
+FIXME(Lix): This chapter is quite outdated with respect to recommended practices in 2024 and needs updating.
+The commands in here will work, however, and the installation section is up to date.
+
+For more updated guidance, see the links on <https://lix.systems/resources/>
+
+</div>
+
 This chapter is for impatient people who don't like reading
 documentation.  For more in-depth information you are kindly referred
 to subsequent chapters.
 
-1. Install Nix by running the following:
+1. Install Lix:
+
+   On Linux and macOS the easiest way to install Lix is to run the following shell command
+   (as a user other than root):
 
    ```console
-   $ curl -L https://nixos.org/nix/install | sh
+   $ curl -sSf -L https://install.lix.systems/lix | sh -s -- install
    ```
 
+   For systems that **already have Nix installed**, such as NixOS systems, read our [install page](https://lix.systems/install)
+
    The install script will use `sudo`, so make sure you have sufficient rights.
-   On Linux, `--daemon` can be omitted for a single-user install.
 
    For other installation methods, see [here](installation/installation.md).
 
@@ -90,10 +103,12 @@ to subsequent chapters.
    $ nix-env --rollback
    ```
 
-1. You should periodically run the Nix garbage collector to get rid of
+1. You should periodically run the Lix garbage collector to get rid of
    unused packages, since uninstalls or upgrades don't actually delete
    them:
 
    ```console
    $ nix-collect-garbage --delete-old
    ```
+
+   N.B. on NixOS there is an option [`nix.gc.automatic`](https://nixos.org/manual/nixos/stable/options#opt-nix.gc.automatic) to enable a systemd timer to automate this task.

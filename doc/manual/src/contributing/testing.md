@@ -32,7 +32,9 @@ The unit tests are defined using the [googletest] and [rapidcheck] frameworks.
 > …
 > ```
 
-The unit tests for each Nix library (`libnixexpr`, `libnixstore`, etc..) live inside a directory `src/${library_shortname}/tests` within the directory for the library (`src/${library_shortname}`).
+<!-- FIXME(Lix): this might get renamed to liblixexpr, etc? -->
+
+The unit tests for each Lix library (`libnixexpr`, `libnixstore`, etc..) live inside a directory `src/${library_shortname}/tests` within the directory for the library (`src/${library_shortname}`).
 
 The data is in `unit-test-data`, with one subdir per library, with the same name as where the code goes.
 For example, `libnixstore` code is in `src/libstore`, and its test data is in `unit-test-data/libstore`.
@@ -45,8 +47,13 @@ The path to the `unit-test-data` directory is passed to the unit test executable
 
 ### Running tests
 
-You can run the whole testsuite with `make check`, or the tests for a specific component with `make libfoo-tests_RUN`.
-Finer-grained filtering is also possible using the [--gtest_filter](https://google.github.io/googletest/advanced.html#running-a-subset-of-the-tests) command-line option, or the `GTEST_FILTER` environment variable.
+You can run the whole testsuite with `just test` (see justfile for exact invocation of meson), and if you want to run just one test suite, use `just test --suite installcheck functional-init` where `installcheck` is the name of the test suite in this case and `functional-init` is the name of the test.
+
+To get a list of tests, use `meson test -C build --list`.
+
+For `installcheck` specifically, first run `just install` before running the test suite (this is due to meson limitations that don't let us put a dependency on installing before doing the test).
+
+Finer-grained filtering within a test suite is also possible using the [--gtest_filter](https://google.github.io/googletest/advanced.html#running-a-subset-of-the-tests) command-line option to a test suite executable, or the `GTEST_FILTER` environment variable.
 
 ### Unit test support libraries
 
@@ -85,6 +92,11 @@ Each test is a bash script.
 
 ### Running the whole test suite
 
+<div class="warning">
+FIXME(meson): this section is wrong for meson and commented out accordingly. See "Running Tests" above, and ask the Lix team if you need further clarification.
+</div>
+
+<!--
 The whole test suite can be run with:
 
 ```shell-session
@@ -148,6 +160,8 @@ output from bar
 
 The test script will then be traced with `set -x` and the output displayed as it happens, regardless of whether the test succeeds or fails.
 
+-->
+
 ### Debugging failing functional tests
 
 When a functional test fails, it usually does so somewhere in the middle of the script.
@@ -170,6 +184,10 @@ edit it like so:
  bar
 ```
 
+<div class="warning">
+FIXME(meson): the command here may be incorrect for meson.
+</div>
+
 Then, running the test with `./mk/debug-test.sh` will drop you into GDB once the script reaches that point:
 
 ```shell-session
@@ -186,10 +204,14 @@ For example, enter `run` to start the Nix invocation.
 
 ### Characterization testing
 
-Occasionally, Nix utilizes a technique called [Characterization Testing](https://en.wikipedia.org/wiki/Characterization_test) as part of the functional tests.
-This technique is to include the exact output/behavior of a former version of Nix in a test in order to check that Nix continues to produce the same behavior going forward.
+Occasionally, Lix utilizes a technique called [Characterization Testing](https://en.wikipedia.org/wiki/Characterization_test) as part of the functional tests.
+This technique is to include the exact output/behavior of a former version of Nix in a test in order to check that Lix continues to produce the same behavior going forward.
 
 For example, this technique is used for the language tests, to check both the printed final value if evaluation was successful, and any errors and warnings encountered.
+
+<div class="warning">
+FIXME(meson): this is incorrect for meson. `_NIX_TEST_ACCEPT=1` is still valid but the test invocation needs to change.
+</div>
 
 It is frequently useful to regenerate the expected output.
 To do that, rerun the failed test(s) with `_NIX_TEST_ACCEPT=1`.
@@ -214,14 +236,21 @@ To ensure that characterization testing doesn't make it harder to intentionally 
 ## Integration tests
 
 The integration tests are defined in the Nix flake under the `hydraJobs.tests` attribute.
-These tests include everything that needs to interact with external services or run Nix in a non-trivial distributed setup.
+These tests include everything that needs to interact with external services or run Lix in a non-trivial distributed setup.
 Because these tests are expensive and require more than what the standard github-actions setup provides, they only run on the master branch (on <https://hydra.nixos.org/jobset/nix/master>).
 
 You can run them manually with `nix build .#hydraJobs.tests.{testName}` or `nix-build -A hydraJobs.tests.{testName}`
 
+<div class="warning">
+
+Installer tests section is outdated and commented out, see https://git.lix.systems/lix-project/lix/issues/33
+
+</div>
+
+<!--
 ## Installer tests
 
-After a one-time setup, the Nix repository's GitHub Actions continuous integration (CI) workflow can test the installer each time you push to a branch.
+After a one-time setup, the Lix repository's GitHub Actions continuous integration (CI) workflow can test the installer each time you push to a branch.
 
 Creating a Cachix cache for your installer tests and adding its authorization token to GitHub enables [two installer-specific jobs in the CI workflow](https://github.com/NixOS/nix/blob/88a45d6149c0e304f6eb2efcc2d7a4d0d569f8af/.github/workflows/ci.yml#L50-L91):
 
@@ -261,7 +290,7 @@ After the CI run completes, you can check the output to extract the installer UR
     curl -L <install_url> | sh -s -- --tarball-url-prefix https://<github-username>-nix-install-tests.cachix.org/serve
     ```
 
-<!-- #### Manually generating test installers
+<!~~ #### Manually generating test installers
 
 There's obviously a manual way to do this, and it's still the only way for
 platforms that lack GA runners.
@@ -288,4 +317,6 @@ search/replaced in it for each new build.
 
 The installer now supports a `--tarball-url-prefix` flag which _may_ have
 solved this need?
+~~>
+
 -->

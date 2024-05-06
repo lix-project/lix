@@ -1,13 +1,13 @@
 # Tuning Cores and Jobs
 
-Nix has two relevant settings with regards to how your CPU cores will
+Lix has two relevant settings with regards to how your CPU cores will
 be utilized: `cores` and `max-jobs`. This chapter will talk about what
 they are, how they interact, and their configuration trade-offs.
 
   - `max-jobs`\
     Dictates how many separate derivations will be built at the same
     time. If you set this to zero, the local machine will do no
-    builds.  Nix will still substitute from binary caches, and build
+    builds.  Lix will still substitute from binary caches, and build
     remotely if remote builders are configured.
 
   - `cores`\

@@ -1,17 +1,28 @@
 # Serving a Nix store via S3
 
-Nix has [built-in support](@docroot@/command-ref/new-cli/nix3-help-stores.md#s3-binary-cache-store)
-for storing and fetching store paths from
-Amazon S3 and S3-compatible services. This uses the same *binary*
-cache mechanism that Nix usually uses to fetch prebuilt binaries from
+Lix has [built-in support](@docroot@/command-ref/new-cli/nix3-help-stores.md#s3-binary-cache-store)
+for storing and fetching store paths from Amazon S3 and S3-compatible services.
+
+<div class="warning">
+
+FIXME(Lix): document the correct setup to fetch from a s3 cache via HTTP rather than just through `s3://` (which works, but forces you to remain s3-like on the client side)
+
+</div>
+
+<!--
+FIXME(Lix): no it doesn't! cache.nixos.org is just http!
+
+This uses the same *binary*
+cache mechanism that Lix usually uses to fetch prebuilt binaries from
 [cache.nixos.org](https://cache.nixos.org/).
+-->
 
 In this example we will use the bucket named `example-nix-cache`.
 
 ## Anonymous Reads to your S3-compatible binary cache
 
 If your binary cache is publicly accessible and does not require
-authentication, the simplest and easiest way to use Nix with your S3
+authentication, the simplest and easiest way to use Lix with your S3
 compatible binary cache is to use the HTTP URL for that cache.
 
 For AWS S3 the binary cache URL for example bucket will be exactly
@@ -48,11 +59,11 @@ Your bucket will need the following bucket policy:
 For AWS S3 the binary cache URL for example bucket will be exactly
 <s3://example-nix-cache>.
 
-Nix will use the [default credential provider
+Lix will use the [default credential provider
 chain](https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/credentials.html)
 for authenticating requests to Amazon S3.
 
-Nix supports authenticated reads from Amazon S3 and S3 compatible binary
+Lix supports authenticated reads from Amazon S3 and S3 compatible binary
 caches.
 
 Your bucket will need a bucket policy allowing the desired users to
@@ -63,11 +74,11 @@ updated to have a restricted `Principal` to support this.
 
 ## Authenticated Writes to your S3-compatible binary cache
 
-Nix support fully supports writing to Amazon S3 and S3 compatible
+Lix support fully supports writing to Amazon S3 and S3 compatible
 buckets. The binary cache URL for our example bucket will be
 <s3://example-nix-cache>.
 
-Nix will use the [default credential provider
+Lix will use the [default credential provider
 chain](https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/credentials.html)
 for authenticating requests to Amazon S3.
 

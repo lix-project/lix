@@ -1,10 +1,10 @@
 # Remote Builds
 
-Nix supports remote builds, where a local Nix installation can forward
+Lix supports remote builds, where a local Lix installation can forward
 Nix builds to other machines. This allows multiple builds to be
-performed in parallel and allows Nix to perform multi-platform builds in
+performed in parallel and allows Lix to perform multi-platform builds in
 a semi-transparent way. For instance, if you perform a build for a
-`x86_64-darwin` on an `i686-linux` machine, Nix can automatically
+`x86_64-darwin` on an `i686-linux` machine, Lix can automatically
 forward the build to a `x86_64-darwin` machine, if available.
 
 To forward a build to a remote machine, it’s required that the remote
@@ -38,12 +38,15 @@ contains Nix.
 
 > **Warning**
 >
-> If you are building via the Nix daemon, it is the Nix daemon user account (that is, `root`) that should have SSH access to a user (not necessarily `root`) on the remote machine.
+> If you are building via the Lix daemon (default on Linux and macOS), it is the Lix daemon user account (that is, `root`) that should have SSH access to a user (not necessarily `root`) on the remote machine.
+>
+> Furthermore, `root` needs to have the public host keys for the remote system in its `.ssh/known_hosts`.
+> To add them to `known_hosts` for root, do `ssh-keyscan USER@HOST | sudo tee -a ~root/.ssh/known_hosts`.
 >
 > If you can’t or don’t want to configure `root` to be able to access the remote machine, you can use a private Nix store instead by passing e.g. `--store ~/my-nix` when running a Nix command from the local machine.
 
 The list of remote machines can be specified on the command line or in
-the Nix configuration file. The former is convenient for testing. For
+the Lix configuration file. The former is convenient for testing. For
 example, the following command allows you to build a derivation for
 `x86_64-darwin` on a Linux machine:
 
@@ -84,17 +87,17 @@ default, set it to `-`.
 3.  The SSH identity file to be used to log in to the remote machine. If
     omitted, SSH will use its regular identities.
 
-4.  The maximum number of builds that Nix will execute in parallel on
+4.  The maximum number of builds that Lix will execute in parallel on
     the machine. Typically this should be equal to the number of CPU
     cores. For instance, the machine `itchy` in the example will execute
     up to 8 builds in parallel.
 
 5.  The “speed factor”, indicating the relative speed of the machine. If
-    there are multiple machines of the right type, Nix will prefer the
+    there are multiple machines of the right type, Lix will prefer the
     fastest, taking load into account.
 
 6.  A comma-separated list of *supported features*. If a derivation has
-    the `requiredSystemFeatures` attribute, then Nix will only perform
+    the `requiredSystemFeatures` attribute, then Lix will only perform
     the derivation on a machine that has the specified features. For
     instance, the attribute
 

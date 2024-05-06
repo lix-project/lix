@@ -11,12 +11,12 @@ follow to ensure a consistent and approachable user experience.
 `nix` command provides a single entry to a number of sub-commands that help
 **developers and system administrators** in the life-cycle of a software
 project. We particularly need to pay special attention to help and assist new
-users of Nix.
+users of Lix.
 
 # Naming the `COMMANDS`
 
 Words matter. Naming is an important part of the usability. Users will be
-interacting with Nix on a regular basis so we should **name things for ease of
+interacting with Lix on a regular basis so we should **name things for ease of
 understanding**.
 
 We recommend following the [Principle of Least
@@ -184,7 +184,7 @@ Initializing Nix project at `/path/to/here`.
 ### Next steps
 
 It can be invaluable to newcomers to show what a possible next steps and what
-is the usual development workflow with Nix. For example:
+is the usual development workflow with Lix. For example:
 
 
 ```shell
@@ -317,7 +317,7 @@ compromise between being terse and being verbose, between showing help to
 beginners and annoying advance users. For this it is important that we know
 what are the priorities.
 
-Nix command line should be first and foremost written with beginners in mind.
+Lix command line should be first and foremost written with beginners in mind.
 But users won't stay beginners for long and what was once useful might quickly
 become annoying. There is no golden rule that we can give in this guideline
 that would make it easier how to draw a line and find best compromise.
@@ -331,7 +331,7 @@ certain `OPTIONS`, etc…)
 
 ## Follow best practices
 
-Needless to say we Nix must be a good citizen and follow best practices in
+Needless to say we Lix must be a good citizen and follow best practices in
 command line.
 
 In short: **STDOUT is for output, STDERR is for (human) messaging.**
@@ -462,7 +462,7 @@ However, simply converting everything to records is not enough, because the orde
 { "outputs": { "bin": {}, "out": {} } }
 ```
 
-The first item is the default output. Deriving this information from the outputs ordering is not great, but this is how Nix currently happens to work.
+The first item is the default output. Deriving this information from the outputs ordering is not great, but this is how Lix currently happens to work.
 While it is possible for a JSON parser to preserve the order of fields, we can not rely on this capability to be present in all JSON libraries.
 
 This representation is extensible and preserves the ordering:

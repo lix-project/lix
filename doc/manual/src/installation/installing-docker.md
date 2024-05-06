@@ -1,6 +1,10 @@
-# Using Nix within Docker
+# Using Lix within Docker
 
-To run the latest stable release of Nix with Docker run the following command:
+Currently the Lix project doesn't ship docker images. However, we have the infrastructure to do it, it's just not yet been done. See https://git.lix.systems/lix-project/lix/issues/252
+
+<!--
+
+To run the latest stable release of Lix with Docker run the following command:
 
 ```console
 $ docker run -ti nixos/nix
@@ -16,7 +20,7 @@ nix (Nix) 2.3.12
 35ca4ada6e96:/# exit
 ```
 
-# What is included in Nix's Docker image?
+# What is included in Lix's Docker image?
 
 The official Docker image is created using `pkgs.dockerTools.buildLayeredImage`
 (and not with `Dockerfile` as it is usual with Docker images). You can still
@@ -24,7 +28,7 @@ base your custom Docker image on it as you would do with any other Docker
 image.
 
 The Docker image is also not based on any other image and includes minimal set
-of runtime dependencies that are required to use Nix:
+of runtime dependencies that are required to use Lix:
 
  - pkgs.nix
  - pkgs.bashInteractive
@@ -40,7 +44,7 @@ of runtime dependencies that are required to use Nix:
  - pkgs.cacert.out
  - pkgs.findutils
 
-# Docker image with the latest development version of Nix
+# Docker image with the latest development version of Lix
 
 To get the latest image that was built by [Hydra](https://hydra.nixos.org) run
 the following command:
@@ -57,3 +61,4 @@ $ nix build ./\#hydraJobs.dockerImage.x86_64-linux
 $ docker load -i ./result/image.tar.gz
 $ docker run -ti nix:2.5pre20211105
 ```
+-->

@@ -116,7 +116,7 @@ Derivations can declare some infrequently used optional attributes.
     These attributes declare that the derivation is a so-called
     *fixed-output derivation*, which means that a cryptographic hash of
     the output is already known in advance. When the build of a
-    fixed-output derivation finishes, Nix computes the cryptographic
+    fixed-output derivation finishes, Lix computes the cryptographic
     hash of the output and compares it to the hash declared with these
     attributes. If there is a mismatch, the build fails.
 
@@ -241,7 +241,7 @@ Derivations can declare some infrequently used optional attributes.
     then when the builder runs, the environment variable `bigPath`
     will contain the absolute path to a temporary file containing `a
     very long string`. That is, for any attribute *x* listed in
-    `passAsFile`, Nix will pass an environment variable `xPath`
+    `passAsFile`, Lix will pass an environment variable `xPath`
     holding the path of the file containing the value of attribute
     *x*. This is useful when you need to pass large strings to a
     builder, since most operating systems impose a limit on the size
@@ -256,13 +256,13 @@ Derivations can declare some infrequently used optional attributes.
     the cost of building locally.
 
   - [`allowSubstitutes`]{#adv-attr-allowSubstitutes}\
-    If this attribute is set to `false`, then Nix will always build this
+    If this attribute is set to `false`, then Lix will always build this
     derivation; it will not try to substitute its outputs. This is
     useful for very trivial derivations (such as `writeText` in Nixpkgs)
     that are cheaper to build than to substitute from a binary cache.
 
     You may disable the effects of this attibute by enabling the
-    `always-allow-substitutes` configuration option in Nix.
+    `always-allow-substitutes` configuration option in Lix.
 
     > **Note**
     >
@@ -284,7 +284,7 @@ Derivations can declare some infrequently used optional attributes.
     [`outputChecks`](#adv-attr-outputChecks) for example.
 
     As a convenience to Bash builders,
-    Nix writes a script that initialises shell variables
+    Lix writes a script that initialises shell variables
     corresponding to all attributes that are representable in Bash. The
     environment variable `NIX_ATTRS_SH_FILE` points to the exact
     location of the script, both in a build and a

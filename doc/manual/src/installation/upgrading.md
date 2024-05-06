@@ -1,14 +1,23 @@
-# Upgrading Nix
+# Upgrading Lix
 
-Multi-user Nix users on macOS can upgrade Nix by running: `sudo -i sh -c
-'nix-channel --update &&
-nix-env --install --attr nixpkgs.nix &&
-launchctl remove org.nixos.nix-daemon &&
-launchctl load /Library/LaunchDaemons/org.nixos.nix-daemon.plist'`
+<div class="warning">
 
-Single-user installations of Nix should run this: `nix-channel --update;
-nix-env --install --attr nixpkgs.nix nixpkgs.cacert`
+FIXME(Lix): does Lix forward to the installer for `nix upgrade-nix`? Should it, if present? Lix *should* restart the daemon for you [but currently doesn't (issue)](https://git.lix.systems/lix-project/lix/issues/267).
 
-Multi-user Nix users on Linux should run this with sudo: `nix-channel
---update; nix-env --install --attr nixpkgs.nix nixpkgs.cacert; systemctl
-daemon-reload; systemctl restart nix-daemon`
+</div>
+
+**For instructions to switch to Lix**, see <https://lix.systems/install>.
+
+Lix may be upgraded by running `nix upgrade-nix` and then restarting the Nix daemon.
+
+## Restarting daemon on Linux
+
+`sudo systemctl daemon-reload && sudo systemctl restart nix-daemon`
+
+## Restarting daemon on macOS
+
+<div class="warning">
+
+FIXME(Lix): Write instructions that, according to the [beta installation guide](https://wiki.lix.systems/link/1) do not sometimes crash macOS (?!)
+
+</div>
