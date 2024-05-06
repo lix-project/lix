@@ -458,6 +458,15 @@ if cxx.get_id() in ['clang', 'gcc']
   )
 endif
 
+if is_darwin
+  configure_file(
+    input : 'misc/launchd/org.nixos.nix-daemon.plist.in',
+    output : 'org.nixos.nix-daemon.plist',
+    copy : true,
+    install_dir : prefix / 'Library/LaunchDaemons',
+  )
+endif
+
 subdir('src')
 subdir('scripts')
 subdir('misc')
