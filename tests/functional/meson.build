@@ -182,6 +182,7 @@ functional_tests_scripts = [
   'debugger.sh',
   'plugins.sh',
   'test-libstoreconsumer.sh',
+  'extra-sandbox-profile.sh',
 ]
 
 # TODO(Qyriad): this will hopefully be able to be removed when we remove the autoconf+Make
