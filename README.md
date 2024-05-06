@@ -22,7 +22,7 @@ See our [Hacking guide](https://git.lix.systems/lix-project/lix/src/branch/main/
 ## Additional Resources
 
 - [Our wiki](https://wiki.lix.systems)
-- [Matrix - #nix:nixos.org](https://matrix.to/#/#space:lix.systems)
+- [Matrix - #space:lix.systems](https://matrix.to/#/#space:lix.systems)
 
 ## License
 
