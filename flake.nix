@@ -54,7 +54,7 @@
         (Run `touch .nocontribmsg` to hide this message.)
       '';
 
-      officialRelease = false;
+      officialRelease = true;
 
       # Set to true to build the release notes for the next release.
       buildUnreleasedNotes = false;
