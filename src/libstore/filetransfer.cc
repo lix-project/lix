@@ -149,6 +149,8 @@ struct curlFileTransfer : public FileTransfer
 
         size_t writeCallback(void * contents, size_t size, size_t nmemb)
         {
+            const size_t realSize = size * nmemb;
+
             try {
                 if (!headersProcessed) {
                     if (auto h = getHeader("content-encoding")) {
@@ -161,7 +163,6 @@ struct curlFileTransfer : public FileTransfer
                     headersProcessed = true;
                 }
 
-                size_t realSize = size * nmemb;
                 result.bodySize += realSize;
 
                 if (successfulStatuses.count(getHTTPStatus()) && this->dataCallback) {
@@ -174,7 +175,7 @@ struct curlFileTransfer : public FileTransfer
                 return realSize;
             } catch (...) {
                 writeException = std::current_exception();
-                return 0;
+                return CURL_WRITEFUNC_ERROR;
             }
         }
 
