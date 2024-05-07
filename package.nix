@@ -11,7 +11,7 @@
   boehmgc,
   nlohmann_json,
   bison,
-  build-release-notes,
+  build-release-notes ? __forDefaults.build-release-notes,
   boost,
   brotli,
   bzip2,
@@ -78,6 +78,7 @@
     };
 
     lix-doc = pkgs.callPackage ./lix-doc/package.nix { };
+    build-release-notes = pkgs.callPackage ./maintainers/build-release-notes.nix { };
 
     # FIXME remove when we have libsecomp 2.5.5 (currently in staging-23.11)
     libseccomp-nix = libseccomp.overrideAttrs (_: rec {
@@ -377,6 +378,6 @@ stdenv.mkDerivation (finalAttrs: {
   # Export the patched version of boehmgc & libseccomp.
   # flake.nix exports that into its overlay.
   passthru = {
-    inherit (__forDefaults) boehmgc-nix libseccomp-nix;
+    inherit (__forDefaults) boehmgc-nix build-release-notes libseccomp-nix;
   };
 })

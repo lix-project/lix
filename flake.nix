@@ -161,7 +161,6 @@
           # Forward from the previous stage as we don’t want it to pick the lowdown override
           nixUnstable = prev.nixUnstable;
 
-          build-release-notes = final.buildPackages.callPackage ./maintainers/build-release-notes.nix { };
           check-headers = final.buildPackages.callPackage ./maintainers/check-headers.nix { };
           clangbuildanalyzer = final.buildPackages.callPackage ./misc/clangbuildanalyzer.nix { };
 
@@ -199,6 +198,8 @@
           # for consumers of this flake.
           boehmgc-nix = final.nix.boehmgc-nix;
           libseccomp-nix = final.nix.libseccomp-nix;
+          # And same thing for our build-release-notes package.
+          build-release-notes = final.nix.build-release-notes;
         };
     in
     {
