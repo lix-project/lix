@@ -57,8 +57,6 @@
   # Set to true to build the release notes for the next release.
   buildUnreleasedNotes ? false,
   internalApiDocs ? false,
-  # Avoid setting things that would interfere with a functioning devShell
-  forDevShell ? false,
 
   # Not a real argument, just the only way to approximate let-binding some
   # stuff for argument defaults.
@@ -241,7 +239,7 @@ stdenv.mkDerivation (finalAttrs: {
     ]
     ++ lib.optional stdenv.hostPlatform.isLinux util-linuxMinimal
     ++ lib.optional (!officialRelease && buildUnreleasedNotes) build-release-notes
-    ++ lib.optional (internalApiDocs || forDevShell) doxygen;
+    ++ lib.optional internalApiDocs doxygen;
 
   buildInputs =
     [
@@ -379,5 +377,87 @@ stdenv.mkDerivation (finalAttrs: {
   # flake.nix exports that into its overlay.
   passthru = {
     inherit (__forDefaults) boehmgc-nix build-release-notes libseccomp-nix;
+
+    # The collection of dependency logic for this derivation is complicated enough that
+    # it's easier to parameterize the devShell off an already called package.nix.
+    mkDevShell =
+      {
+        mkShell,
+        just,
+        nixfmt,
+        glibcLocales,
+        bear,
+        pre-commit-checks,
+        clang-tools,
+        llvmPackages,
+        clangbuildanalyzer,
+        contribNotice,
+      }:
+      let
+        glibcFix = lib.optionalAttrs (stdenv.buildPlatform.isLinux && glibcLocales != null) {
+          # Required to make non-NixOS Linux not complain about missing locale files during configure in a dev shell
+          LOCALE_ARCHIVE = "${lib.getLib pkgs.glibcLocales}/lib/locale/locale-archive";
+        };
+        # for some reason that seems accidental and was changed in
+        # NixOS 24.05-pre, clang-tools is pinned to LLVM 14 when
+        # default LLVM is newer.
+        clang-tools_llvm = clang-tools.override { inherit llvmPackages; };
+
+        # pkgs.mkShell uses pkgs.stdenv by default, regardless of inputsFrom.
+        actualMkShell = mkShell.override { inherit stdenv; };
+      in
+      actualMkShell (
+        glibcFix
+        // {
+
+          inputsFrom = [ finalAttrs ];
+
+          # For Meson to find Boost.
+          env = finalAttrs.env;
+
+          packages =
+            lib.optional (stdenv.cc.isClang && stdenv.hostPlatform == stdenv.buildPlatform) clang-tools_llvm
+            ++ [
+              just
+              nixfmt
+              # Load-bearing order. Must come before clang-unwrapped below, but after clang_tools above.
+              stdenv.cc
+            ]
+            ++ lib.optionals stdenv.cc.isClang [
+              # Required for clang-tidy checks.
+              llvmPackages.llvm
+              llvmPackages.clang-unwrapped.dev
+            ]
+            ++ lib.optional (pre-commit-checks ? enabledPackages) pre-commit-checks.enabledPackages
+            ++ lib.optional (stdenv.cc.isClang && !stdenv.buildPlatform.isDarwin) bear
+            ++ lib.optional (lib.meta.availableOn stdenv.buildPlatform clangbuildanalyzer) clangbuildanalyzer
+            ++ finalAttrs.checkInputs;
+
+          shellHook = ''
+            PATH=$prefix/bin:$PATH
+            unset PYTHONPATH
+            export MANPATH=$out/share/man:$MANPATH
+
+            # Make bash completion work.
+            XDG_DATA_DIRS+=:$out/share
+
+            ${lib.optionalString (pre-commit-checks ? shellHook) pre-commit-checks.shellHook}
+            # Allow `touch .nocontribmsg` to turn this notice off.
+            if ! [[ -f .nocontribmsg ]]; then
+              cat ${contribNotice}
+            fi
+
+            # Install the Gerrit commit-msg hook.
+            # (git common dir is the main .git, including for worktrees)
+            if gitcommondir=$(git rev-parse --git-common-dir 2>/dev/null) && [[ ! -f "$gitcommondir/hooks/commit-msg" ]]; then
+              echo 'Installing Gerrit commit-msg hook (adds Change-Id to commit messages)' >&2
+              mkdir -p "$gitcommondir/hooks"
+              curl -s -Lo "$gitcommondir/hooks/commit-msg" https://gerrit.lix.systems/tools/hooks/commit-msg
+              chmod u+x "$gitcommondir/hooks/commit-msg"
+            fi
+            unset gitcommondir
+          '';
+        }
+      );
   };
 })

@@ -366,82 +366,14 @@
               nix = pkgs.callPackage ./package.nix {
                 inherit stdenv versionSuffix;
                 busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
-                forDevShell = true;
+                internalApiDocs = true;
               };
               pre-commit = self.hydraJobs.pre-commit.${pkgs.system} or { };
             in
-            (nix.override {
-              buildUnreleasedNotes = true;
-              officialRelease = false;
-            }).overrideAttrs
-              (
-                prev:
-                {
-                  # Required for clang-tidy checks
-                  buildInputs =
-                    prev.buildInputs
-                    ++ [
-                      pkgs.just
-                      pkgs.nixfmt
-                    ]
-                    ++ lib.optional (pre-commit ? enabledPackages) pre-commit.enabledPackages
-                    ++ lib.optionals (stdenv.cc.isClang) [
-                      pkgs.llvmPackages.llvm
-                      pkgs.llvmPackages.clang-unwrapped.dev
-                    ];
-                  nativeBuildInputs =
-                    prev.nativeBuildInputs
-                    ++ lib.optional (stdenv.cc.isClang && !stdenv.buildPlatform.isDarwin) pkgs.buildPackages.bear
-                    # Required for clang-tidy checks
-                    ++ lib.optionals (stdenv.cc.isClang) [
-                      pkgs.buildPackages.cmake
-                      pkgs.buildPackages.ninja
-                      pkgs.buildPackages.llvmPackages.llvm.dev
-                    ]
-                    ++
-                      lib.optional (stdenv.cc.isClang && stdenv.hostPlatform == stdenv.buildPlatform)
-                        # for some reason that seems accidental and was changed in
-                        # NixOS 24.05-pre, clang-tools is pinned to LLVM 14 when
-                        # default LLVM is newer.
-                        (pkgs.buildPackages.clang-tools.override { inherit (pkgs.buildPackages) llvmPackages; })
-                    ++
-                      lib.optionals (lib.meta.availableOn pkgs.stdenv.hostPlatform pkgs.buildPackages.clangbuildanalyzer)
-                        [ pkgs.buildPackages.clangbuildanalyzer ];
-
-                  src = null;
-
-                  strictDeps = false;
-
-                  shellHook = ''
-                    PATH=$prefix/bin:$PATH
-                    unset PYTHONPATH
-                    export MANPATH=$out/share/man:$MANPATH
-
-                    # Make bash completion work.
-                    XDG_DATA_DIRS+=:$out/share
-
-                    ${lib.optionalString (pre-commit ? shellHook) pre-commit.shellHook}
-                    # Allow `touch .nocontribmsg` to turn this notice off.
-                    if ! [[ -f .nocontribmsg ]]; then
-                      cat ${contribNotice}
-                    fi
-
-                    # Install the Gerrit commit-msg hook.
-                    # (git common dir is the main .git, including for worktrees)
-                    if gitcommondir=$(git rev-parse --git-common-dir 2>/dev/null) && [[ ! -f "$gitcommondir/hooks/commit-msg" ]]; then
-                      echo 'Installing Gerrit commit-msg hook (adds Change-Id to commit messages)' >&2
-                      mkdir -p "$gitcommondir/hooks"
-                      curl -s -Lo "$gitcommondir/hooks/commit-msg" https://gerrit.lix.systems/tools/hooks/commit-msg
-                      chmod u+x "$gitcommondir/hooks/commit-msg"
-                    fi
-                    unset gitcommondir
-                  '';
-                }
-                // lib.optionalAttrs (stdenv.buildPlatform.isLinux && pkgs.glibcLocales != null) {
-                  # Required to make non-NixOS Linux not complain about missing locale files during configure in a dev shell
-                  LOCALE_ARCHIVE = "${lib.getLib pkgs.glibcLocales}/lib/locale/locale-archive";
-                }
-              );
+            pkgs.callPackage nix.mkDevShell {
+              pre-commit-checks = pre-commit;
+              inherit contribNotice;
+            };
         in
         forAllSystems (
           system:
