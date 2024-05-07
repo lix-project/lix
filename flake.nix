@@ -96,6 +96,10 @@
       ];
 
       forAllSystems = lib.genAttrs systems;
+      # Same as forAllSystems, but removes nulls, in case something is broken
+      # on that system.
+      forAvailableSystems =
+        f: lib.filterAttrs (name: value: value != null && value != { }) (forAllSystems f);
 
       forAllCrossSystems = lib.genAttrs crossSystems;
 
@@ -282,18 +286,21 @@
           );
         };
 
-        pre-commit = forAllSystems (
+        pre-commit = forAvailableSystems (
           system:
           let
             pkgs = nixpkgsFor.${system}.native;
+            pre-commit-check = import ./misc/pre-commit.nix { inherit self pkgs pre-commit-hooks; };
+            # dotnet-sdk_6, a nativeBuildInputs of pre-commit, is broken on i686-linux.
+            available = lib.meta.availableOn { inherit system; } pkgs.dotnet-sdk_6;
           in
-          import ./misc/pre-commit.nix { inherit self pkgs pre-commit-hooks; }
+          lib.optionalAttrs available pre-commit-check
         );
       };
 
       # NOTE *do not* add fresh derivations to checks, always add them to
       # hydraJobs first (so CI will pick them up) and only link them here
-      checks = forAllSystems (
+      checks = forAvailableSystems (
         system:
         {
           binaryTarball = self.hydraJobs.binaryTarball.${system};
@@ -301,6 +308,7 @@
           nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
           rl-next = self.hydraJobs.rl-next.${system}.user;
           rl-next-dev = self.hydraJobs.rl-next.${system}.dev;
+          # Will be empty attr set on i686-linux, and filtered out by forAvailableSystems.
           pre-commit = self.hydraJobs.pre-commit.${system};
         }
         // (lib.optionalAttrs (builtins.elem system linux64BitSystems)) {
