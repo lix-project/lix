@@ -431,6 +431,16 @@
                     if ! [[ -f .nocontribmsg ]]; then
                       cat ${contribNotice}
                     fi
+
+                    # Install the Gerrit commit-msg hook.
+                    # (git common dir is the main .git, including for worktrees)
+                    if gitcommondir=$(git rev-parse --git-common-dir 2>/dev/null) && [[ ! -f "$gitcommondir/hooks/commit-msg" ]]; then
+                      echo 'Installing Gerrit commit-msg hook (adds Change-Id to commit messages)' >&2
+                      mkdir -p "$gitcommondir/hooks"
+                      curl -s -Lo "$gitcommondir/hooks/commit-msg" https://gerrit.lix.systems/tools/hooks/commit-msg
+                      chmod u+x "$gitcommondir/hooks/commit-msg"
+                    fi
+                    unset gitcommondir
                   '';
                 }
                 // lib.optionalAttrs (stdenv.buildPlatform.isLinux && pkgs.glibcLocales != null) {
