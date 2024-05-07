@@ -398,10 +398,6 @@ stdenv.mkDerivation (finalAttrs: {
 
   mesonInstallCheckFlags = [ "--suite=installcheck" ];
 
-  preInstallCheck = lib.optionalString stdenv.hostPlatform.isDarwin ''
-    export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
-  '';
-
   installCheckPhase = lib.optionalString buildWithMeson ''
     runHook preInstallCheck
     flagsArray=($mesonInstallCheckFlags "''${mesonInstallCheckFlagsArray[@]}")
