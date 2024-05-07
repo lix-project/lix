@@ -403,19 +403,12 @@
                         # NixOS 24.05-pre, clang-tools is pinned to LLVM 14 when
                         # default LLVM is newer.
                         (pkgs.buildPackages.clang-tools.override { inherit (pkgs.buildPackages) llvmPackages; })
-                    ++ [
-                      # FIXME(Qyriad): remove once the migration to Meson is complete.
-                      pkgs.buildPackages.meson
-                      pkgs.buildPackages.ninja
-                      pkgs.buildPackages.cmake
-                    ]
                     ++
                       lib.optionals (lib.meta.availableOn pkgs.stdenv.hostPlatform pkgs.buildPackages.clangbuildanalyzer)
                         [ pkgs.buildPackages.clangbuildanalyzer ];
 
                   src = null;
 
-                  installFlags = "sysconfdir=$(out)/etc";
                   strictDeps = false;
 
                   shellHook = ''

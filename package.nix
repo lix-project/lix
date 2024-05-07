@@ -2,8 +2,6 @@
   pkgs,
   lib,
   stdenv,
-  autoconf-archive,
-  autoreconfHook,
   aws-sdk-cpp,
   # If the patched version of Boehm isn't passed, then patch it based off of
   # pkgs.boehmgc. This allows `callPackage`ing this file without needing to
@@ -62,10 +60,6 @@
   # Avoid setting things that would interfere with a functioning devShell
   forDevShell ? false,
 
-  # FIXME(Qyriad): build Lix using Meson instead of autoconf and make.
-  # This flag will be removed when the migration to Meson is complete.
-  buildWithMeson ? true,
-
   # Not a real argument, just the only way to approximate let-binding some
   # stuff for argument defaults.
   __forDefaults ? {
@@ -109,8 +103,6 @@ let
     customMemoryManagement = false;
   };
 
-  testConfigureFlags = [ "RAPIDCHECK_HEADERS=${lib.getDev rapidcheck}/extras/gtest/include" ];
-
   # Reimplementation of Nixpkgs' Meson cross file, with some additions to make
   # it actually work.
   mesonCrossFile =
@@ -151,26 +143,14 @@ let
   # that would interfere with repo semantics.
   baseFiles = fileset.fileFilter (f: f.name != ".gitignore") ./.;
 
-  configureFiles = fileset.unions [
-    ./.version
-    ./configure.ac
-    ./m4
-  ];
+  configureFiles = fileset.unions [ ./.version ];
 
-  topLevelBuildFiles = fileset.unions (
-    [
-      ./local.mk
-      ./Makefile
-      ./Makefile.config.in
-      ./mk
-    ]
-    ++ lib.optionals buildWithMeson [
-      ./meson.build
-      ./meson.options
-      ./meson
-      ./scripts/meson.build
-    ]
-  );
+  topLevelBuildFiles = fileset.unions ([
+    ./meson.build
+    ./meson.options
+    ./meson
+    ./scripts/meson.build
+  ]);
 
   functionalTestFiles = fileset.unions [
     ./tests/functional
@@ -197,7 +177,6 @@ stdenv.mkDerivation (finalAttrs: {
           ./precompiled-headers.h
           ./src
           ./COPYING
-          ./scripts/local.mk
         ]
       )
     );
@@ -214,10 +193,12 @@ stdenv.mkDerivation (finalAttrs: {
 
   dontBuild = false;
 
-  # FIXME(Qyriad): see if this is still needed once the migration to Meson is completed.
   mesonFlags =
-    lib.optionals (buildWithMeson && stdenv.hostPlatform.isLinux) [
-      "-Dsandbox-shell=${lib.getBin busybox-sandbox-shell}/bin/busybox"
+    lib.optionals stdenv.hostPlatform.isLinux [
+      # You'd think meson could just find this in PATH, but busybox is in buildInputs,
+      # which don't actually get added to PATH. And buildInputs is correct over
+      # nativeBuildInputs since this should be a busybox executable on the host.
+      "-Dsandbox-shell=${lib.getExe' busybox-sandbox-shell "busybox"}"
     ]
     ++ lib.optional stdenv.hostPlatform.isStatic "-Denable-embedded-sandbox-shell=true"
     ++ lib.optional (finalAttrs.dontBuild) "-Denable-build=false"
@@ -239,14 +220,15 @@ stdenv.mkDerivation (finalAttrs: {
       bison
       flex
       python3
+      meson
+      ninja
+      cmake
     ]
     ++ [
       (lib.getBin lowdown)
       mdbook
       mdbook-linkcheck
-      autoconf-archive
     ]
-    ++ lib.optional (!buildWithMeson) autoreconfHook
     ++ [
       pkg-config
 
@@ -258,12 +240,7 @@ stdenv.mkDerivation (finalAttrs: {
     ]
     ++ lib.optional stdenv.hostPlatform.isLinux util-linuxMinimal
     ++ lib.optional (!officialRelease && buildUnreleasedNotes) build-release-notes
-    ++ lib.optional (internalApiDocs || forDevShell) doxygen
-    ++ lib.optionals buildWithMeson [
-      meson
-      ninja
-      cmake
-    ];
+    ++ lib.optional (internalApiDocs || forDevShell) doxygen;
 
   buildInputs =
     [
@@ -302,7 +279,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   # Needed for Meson to find Boost.
   # https://github.com/NixOS/nixpkgs/issues/86131.
-  env = lib.optionalAttrs (buildWithMeson || forDevShell) {
+  env = {
     BOOST_INCLUDEDIR = "${lib.getDev boost}/include";
     BOOST_LIBRARYDIR = "${lib.getLib boost}/lib";
   };
@@ -336,37 +313,20 @@ stdenv.mkDerivation (finalAttrs: {
       fi
     '';
 
-  configureFlags =
-    [ "--with-boost=${boost}/lib" ]
-    ++ lib.optionals stdenv.isLinux [ "--with-sandbox-shell=${busybox-sandbox-shell}/bin/busybox" ]
-    ++ lib.optionals (
-      stdenv.isLinux && !(stdenv.hostPlatform.isStatic && stdenv.system == "aarch64-linux")
-    ) [ "LDFLAGS=-fuse-ld=gold" ]
-    ++ lib.optional stdenv.hostPlatform.isStatic "--enable-embedded-sandbox-shell"
-    ++ lib.optionals (finalAttrs.doCheck || internalApiDocs) testConfigureFlags
-    ++ lib.optional (!canRunInstalled) "--disable-doc-gen"
-    ++ [ (lib.enableFeature internalApiDocs "internal-api-docs") ]
-    ++ lib.optional (!forDevShell) "--sysconfdir=/etc"
-    ++ [ "TOML11_HEADERS=${lib.getDev toml11}/include" ];
-
-  mesonBuildType = lib.optional (buildWithMeson || forDevShell) "debugoptimized";
+  mesonBuildType = "debugoptimized";
 
   installTargets = lib.optional internalApiDocs "internal-api-html";
 
   enableParallelBuilding = true;
 
-  makeFlags = "profiledir=$(out)/etc/profile.d PRECOMPILE_HEADERS=1";
-
   doCheck = canRunInstalled;
 
-  mesonCheckFlags = lib.optionals (buildWithMeson || forDevShell) [ "--suite=check" ];
-
-  installFlags = "sysconfdir=$(out)/etc";
+  mesonCheckFlags = [ "--suite=check" ];
 
   # Make sure the internal API docs are already built, because mesonInstallPhase
   # won't let us build them there. They would normally be built in buildPhase,
   # but the internal API docs are conventionally built with doBuild = false.
-  preInstall = lib.optional (buildWithMeson && internalApiDocs) ''
+  preInstall = lib.optional internalApiDocs ''
     meson ''${mesonBuildFlags:-} compile "$installTargets"
   '';
 
@@ -393,12 +353,10 @@ stdenv.mkDerivation (finalAttrs: {
     '';
 
   doInstallCheck = finalAttrs.doCheck;
-  installCheckFlags = "sysconfdir=$(out)/etc";
-  installCheckTarget = "installcheck"; # work around buggy detection in stdenv
 
   mesonInstallCheckFlags = [ "--suite=installcheck" ];
 
-  installCheckPhase = lib.optionalString buildWithMeson ''
+  installCheckPhase = ''
     runHook preInstallCheck
     flagsArray=($mesonInstallCheckFlags "''${mesonInstallCheckFlagsArray[@]}")
     meson test --no-rebuild "''${flagsArray[@]}"
@@ -414,7 +372,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   meta.platforms = lib.platforms.unix;
 
-  passthru.perl-bindings = pkgs.callPackage ./perl { inherit fileset stdenv buildWithMeson; };
+  passthru.perl-bindings = pkgs.callPackage ./perl { inherit fileset stdenv; };
 
   # Export the patched version of boehmgc & libseccomp.
   # flake.nix exports that into its overlay.

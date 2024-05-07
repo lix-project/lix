@@ -4,8 +4,6 @@
   stdenv,
   perl,
   perlPackages,
-  autoconf-archive,
-  autoreconfHook,
   pkg-config,
   nix,
   curl,
@@ -16,7 +14,6 @@
   darwin,
   meson,
   ninja,
-  buildWithMeson ? false,
 }:
 
 perl.pkgs.toPerlModule (
@@ -25,36 +22,18 @@ perl.pkgs.toPerlModule (
 
     src = fileset.toSource {
       root = ../.;
-      fileset = fileset.unions (
-        [
-          ../.version
-          ./lib
-        ]
-        ++ lib.optionals (!buildWithMeson) [
-          # FIXME(Qyriad): What the hell is this?
-          # What is it used for and do we still need it?
-          ./MANIFEST
-          ../m4
-          ../mk
-          ./Makefile
-          ./Makefile.config.in
-          ./configure.ac
-          ./local.mk
-        ]
-        ++ lib.optionals buildWithMeson [ ./meson.build ]
-      );
+      fileset = fileset.unions ([
+        ../.version
+        ./lib
+        ./meson.build
+      ]);
     };
 
-    nativeBuildInputs =
-      [ pkg-config ]
-      ++ lib.optionals (!buildWithMeson) [
-        autoconf-archive
-        autoreconfHook
-      ]
-      ++ lib.optionals buildWithMeson [
-        meson
-        ninja
-      ];
+    nativeBuildInputs = [
+      pkg-config
+      meson
+      ninja
+    ];
 
     buildInputs =
       [
