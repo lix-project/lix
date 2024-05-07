@@ -25,6 +25,9 @@ stdenv.mkDerivation (finalAttrs: {
     maintainers = with lib.maintainers; [ lf- ];
     license = lib.licenses.unlicense;
     platforms = lib.platforms.unix;
+    # `long long int` != `size_t`
+    # There's no convenient lib.platforms.32bit or anything, but it's easy enough to do ourselves.
+    badPlatforms = lib.filter (plat: (lib.systems.elaborate plat).is32bit) lib.platforms.all;
     mainProgram = "ClangBuildAnalyzer";
   };
 })

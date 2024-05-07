@@ -408,9 +408,10 @@
                       pkgs.buildPackages.meson
                       pkgs.buildPackages.ninja
                       pkgs.buildPackages.cmake
-
-                      pkgs.buildPackages.clangbuildanalyzer
-                    ];
+                    ]
+                    ++
+                      lib.optionals (lib.meta.availableOn pkgs.stdenv.hostPlatform pkgs.buildPackages.clangbuildanalyzer)
+                        [ pkgs.buildPackages.clangbuildanalyzer ];
 
                   src = null;
 
