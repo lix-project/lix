@@ -22,6 +22,15 @@ nix eval -E 'assert 1 + 2 == 3; true'
 [[ $(nix eval int -f - < "./eval.nix") == 123 ]]
 [[ "$(nix eval --expr '{"assert"=1;bar=2;}')" == '{ "assert" = 1; bar = 2; }' ]]
 
+# Top-level eval errors should be printed to stderr with a traceback.
+topLevelThrow="$(expectStderr 1 nix eval --expr 'throw "a sample throw message"')"
+[[ "$topLevelThrow" =~ "a sample throw message" ]]
+[[ "$topLevelThrow" =~ "while calling the 'throw' builtin" ]]
+
+# But errors inside something should print an elided version, and exit with 0.
+outputOfNestedThrow="$(nix eval --expr '{ throws = throw "a sample throw message"; }')"
+[[ "${outputOfNestedThrow}" == "{ throws = «error: a sample throw message»; }" ]]
+
 # Check if toFile can be utilized during restricted eval
 [[ $(nix eval --restrict-eval --expr 'import (builtins.toFile "source" "42")') == 42 ]]
 
