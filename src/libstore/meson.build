@@ -210,7 +210,6 @@ libstore = library(
     seccomp,
     sqlite,
     sodium,
-    seccomp,
     curl,
     openssl,
     aws_sdk,

@@ -184,7 +184,9 @@ in
 
   symlinkResolvconf = runNixOSTestFor "x86_64-linux" ./symlink-resolvconf.nix;
 
-  rootInSandbox = runNixOSTestFor "x86_64-linux" ./root-in-sandbox;
+  noNewPrivilegesInSandbox = runNixOSTestFor "x86_64-linux" ./no-new-privileges/sandbox.nix;
+
+  noNewPrivilegesOutsideSandbox = runNixOSTestFor "x86_64-linux" ./no-new-privileges/no-sandbox.nix;
 
   broken-userns = runNixOSTestFor "x86_64-linux" ./broken-userns.nix;
 

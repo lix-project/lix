@@ -68,10 +68,7 @@ The most current alternative to this section is to read `package.nix` and see wh
     may also work, but ancient versions like the ubiquitous 2.5.4a
     won't.
 
-  - The `libseccomp` is used to provide syscall filtering on Linux. This
-    is an optional dependency and can be disabled passing a
-    `--disable-seccomp-sandboxing` option to the `configure` script (Not
-    recommended unless your system doesn't support `libseccomp`). To get
+  - The `libseccomp` is used to provide syscall filtering on Linux. To get
     the library, visit <https://github.com/seccomp/libseccomp>.
 
   - On 64-bit x86 machines only, `libcpuid` library

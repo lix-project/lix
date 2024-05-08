@@ -20,18 +20,16 @@
 #pragma once
 ///@file
 
-#if HAVE_SECCOMP
-#  if defined(__alpha__)
-#    define NIX_SYSCALL_FCHMODAT2 562
-#  elif defined(__x86_64__) && SIZE_MAX == 0xFFFFFFFF // x32
-#    define NIX_SYSCALL_FCHMODAT2 1073742276
-#  elif defined(__mips__) && defined(__mips64) && defined(_ABIN64) // mips64/n64
-#    define NIX_SYSCALL_FCHMODAT2 5452
-#  elif defined(__mips__) && defined(__mips64) && defined(_ABIN32) // mips64/n32
-#    define NIX_SYSCALL_FCHMODAT2 6452
-#  elif defined(__mips__) && defined(_ABIO32) // mips32
-#    define NIX_SYSCALL_FCHMODAT2 4452
-#  else
-#    define NIX_SYSCALL_FCHMODAT2 452
-#  endif
-#endif // HAVE_SECCOMP
+#if defined(__alpha__)
+#  define NIX_SYSCALL_FCHMODAT2 562
+#elif defined(__x86_64__) && SIZE_MAX == 0xFFFFFFFF // x32
+#  define NIX_SYSCALL_FCHMODAT2 1073742276
+#elif defined(__mips__) && defined(__mips64) && defined(_ABIN64) // mips64/n64
+#  define NIX_SYSCALL_FCHMODAT2 5452
+#elif defined(__mips__) && defined(__mips64) && defined(_ABIN32) // mips64/n32
+#  define NIX_SYSCALL_FCHMODAT2 6452
+#elif defined(__mips__) && defined(_ABIO32) // mips32
+#  define NIX_SYSCALL_FCHMODAT2 4452
+#else
+#  define NIX_SYSCALL_FCHMODAT2 452
+#endif

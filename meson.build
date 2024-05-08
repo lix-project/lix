@@ -182,6 +182,9 @@ deps += cpuid
 # seccomp only makes sense on Linux
 seccomp_required = is_linux ? get_option('seccomp-sandboxing') : false
 seccomp = dependency('libseccomp', 'seccomp', required : seccomp_required, version : '>=2.5.5')
+if is_linux and not seccomp.found()
+  warning('Sandbox security is reduced because libseccomp has not been found! Please provide libseccomp if it supports your CPU architecture.')
+endif
 configdata += {
   'HAVE_SECCOMP': seccomp.found().to_int(),
 }
