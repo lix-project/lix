@@ -8,6 +8,10 @@
   inputs.treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
   inputs.nix-github-actions.url = "github:nix-community/nix-github-actions";
   inputs.nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
+  inputs.lix = {
+    url = "git+https://git@git.lix.systems/lix-project/lix?ref=refs/tags/2.90-beta.1";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
 
   outputs = inputs @ { flake-parts, ... }:
     let
@@ -27,11 +31,11 @@
           };
         };
 
-        perSystem = { pkgs, self', ... }:
+        perSystem = { pkgs, self', inputs', ... }:
           let
             drvArgs = {
               srcDir = self;
-              nix = if nixVersion == "unstable" then pkgs.nixUnstable else pkgs.nixVersions."nix_${nixVersion}";
+              nix = inputs'.lix.packages.default;
             };
           in
           {
