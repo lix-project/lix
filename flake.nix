@@ -83,7 +83,9 @@
       crossSystems = [
         "armv6l-linux"
         "armv7l-linux"
-        "x86_64-freebsd13"
+        # FIXME: doesn't evaluate, plausibly fixed in >=24.05, so recheck when
+        # we update to 24.05
+        # "x86_64-freebsd13"
         "x86_64-netbsd"
       ];
 
