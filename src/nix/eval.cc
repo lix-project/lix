@@ -1,5 +1,6 @@
 #include "command-installable-value.hh"
 #include "common-args.hh"
+#include "print-options.hh"
 #include "shared.hh"
 #include "store-api.hh"
 #include "eval.hh"
@@ -127,7 +128,8 @@ struct CmdEval : MixJSON, InstallableValueCommand, MixReadOnlyOption
                     *v,
                     PrintOptions {
                         .force = true,
-                        .derivationPaths = true
+                        .derivationPaths = true,
+                        .errors = ErrorPrintBehavior::ThrowTopLevel,
                     }
                 )
             );
