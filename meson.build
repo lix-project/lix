@@ -405,6 +405,7 @@ add_project_arguments(
   '-Wimplicit-fallthrough',
   '-Werror=switch',
   '-Werror=switch-enum',
+  '-Wdeprecated-copy',
   # Enable assertions in libstdc++ by default. Harmless on libc++. Benchmarked
   # at ~1% overhead in `nix search`.
   #
