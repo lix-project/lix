@@ -605,6 +605,14 @@ ProcessLineResult NixRepl::processLine(std::string line)
         Path drvPathRaw = state->store->printStorePath(drvPath);
 
         if (command == ":b" || command == ":bl") {
+            // TODO: this only shows a progress bar for explicitly initiated builds,
+            // not eval-time fetching or builds performed for IFD.
+            // But we can't just show it everywhere, since that would erase partial output from evaluation.
+            startProgressBar();
+            Finally stopLogger([&]() {
+                stopProgressBar();
+            });
+
             state->store->buildPaths({
                 DerivedPath::Built {
                     .drvPath = makeConstantStorePathRef(drvPath),
