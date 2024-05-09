@@ -186,7 +186,7 @@ struct CurlInputScheme : InputScheme
     virtual const std::string inputType() const = 0;
     const std::set<std::string> transportUrlSchemes = {"file", "http", "https"};
 
-    const bool hasTarballExtension(std::string_view path) const
+    bool hasTarballExtension(std::string_view path) const
     {
         return path.ends_with(".zip") || path.ends_with(".tar")
             || path.ends_with(".tgz") || path.ends_with(".tar.gz")
