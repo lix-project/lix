@@ -41,7 +41,7 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData)
 
             auto decompressor = makeDecompressionSink(
                 unpack && mainUrl.ends_with(".xz") ? "xz" : "none", sink);
-            fileTransfer->download(std::move(request), *decompressor);
+            fileTransfer->download(std::move(request))->drainInto(*decompressor);
             decompressor->finish();
         });
 

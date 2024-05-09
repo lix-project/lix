@@ -155,7 +155,7 @@ protected:
         checkEnabled();
         auto request(makeRequest(path));
         try {
-            getFileTransfer()->download(std::move(request), sink);
+            getFileTransfer()->download(std::move(request))->drainInto(sink);
         } catch (FileTransferError & e) {
             if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
                 throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache '%s'", path, getUri());

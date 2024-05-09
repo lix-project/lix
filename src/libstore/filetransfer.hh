@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "box_ptr.hh"
 #include "logging.hh"
 #include "serialise.hh"
 #include "types.hh"
@@ -104,10 +105,13 @@ struct FileTransfer
     FileTransferResult transfer(const FileTransferRequest & request);
 
     /**
-     * Download a file, writing its data to a sink. The sink will be
-     * invoked on the thread of the caller.
+     * Download a file, returning its contents through a source. Will not return
+     * before the transfer has fully started, ensuring that any errors thrown by
+     * the setup phase (e.g. HTTP 404 or similar errors) are not postponed to be
+     * thrown by the returned source. The source will only throw errors detected
+     * during the transfer itself (decompression errors, connection drops, etc).
      */
-    virtual void download(FileTransferRequest && request, Sink & sink) = 0;
+    virtual box_ptr<Source> download(FileTransferRequest && request) = 0;
 
     enum Error { NotFound, Forbidden, Misc, Transient, Interrupted };
 };

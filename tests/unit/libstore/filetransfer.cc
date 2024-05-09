@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 #include <netinet/in.h>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <sys/poll.h>
 #include <sys/socket.h>
@@ -136,7 +137,7 @@ TEST(FileTransfer, exceptionAbortsDownload)
 
     LambdaSink broken([](auto block) { throw Done(); });
 
-    ASSERT_THROW(ft->download(FileTransferRequest("file:///dev/zero"), broken), Done);
+    ASSERT_THROW(ft->download(FileTransferRequest("file:///dev/zero"))->drainInto(broken), Done);
 
     // makeFileTransfer returns a ref<>, which cannot be cleared. since we also
     // can't default-construct it we'll have to overwrite it instead, but we'll
@@ -159,16 +160,21 @@ TEST(FileTransfer, NOT_ON_DARWIN(reportsSetupErrors))
         FileTransferError);
 }
 
-TEST(FileTransfer, NOT_ON_DARWIN(reportsTransferError))
+TEST(FileTransfer, NOT_ON_DARWIN(defersFailures))
 {
-    auto [port, srv] = serveHTTP("200 ok", "content-length: 100\r\n", [] {
+    auto [port, srv] = serveHTTP("200 ok", "content-length: 100000000\r\n", [] {
         std::this_thread::sleep_for(10ms);
-        return "";
+        // just a bunch of data to fill the curl wrapper buffer, otherwise the
+        // initial wait for header data will also wait for the the response to
+        // complete (the source is only woken when curl returns data, and curl
+        // might only do so once its internal buffer has already been filled.)
+        return std::string(1024 * 1024, ' ');
     });
     auto ft = makeFileTransfer();
     FileTransferRequest req(fmt("http://[::1]:%d/index", port));
     req.baseRetryTimeMs = 0;
-    ASSERT_THROW(ft->transfer(req), FileTransferError);
+    auto src = ft->download(std::move(req));
+    ASSERT_THROW(src->drain(), FileTransferError);
 }
 
 TEST(FileTransfer, NOT_ON_DARWIN(handlesContentEncoding))
@@ -180,7 +186,7 @@ TEST(FileTransfer, NOT_ON_DARWIN(handlesContentEncoding))
     auto ft = makeFileTransfer();
 
     StringSink sink;
-    ft->download(FileTransferRequest(fmt("http://[::1]:%d/index", port)), sink);
+    ft->download(FileTransferRequest(fmt("http://[::1]:%d/index", port)))->drainInto(sink);
     EXPECT_EQ(sink.s, original);
 }
 
