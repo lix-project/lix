@@ -185,6 +185,8 @@ public:
 
     HintFmt(const HintFmt & hf) : fmt(hf.fmt) {}
 
+    HintFmt & operator=(HintFmt const & rhs) = default;
+
     std::string str() const
     {
         return fmt.str();
