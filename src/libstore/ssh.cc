@@ -110,7 +110,7 @@ std::unique_ptr<SSHMaster::Connection> SSHMaster::startCommand(const std::string
         } catch (EndOfFile & e) { }
 
         if (reply != "started") {
-            printTalkative("SSH stdout first line: %s", reply);
+            warn("SSH to '%s' failed, stdout first line: '%s'", host, reply);
             throw Error("failed to start SSH connection to '%s'", host);
         }
     }
