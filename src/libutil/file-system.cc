@@ -294,7 +294,9 @@ Generator<Bytes> readFileSource(const Path & path)
     AutoCloseFD fd{open(path.c_str(), O_RDONLY | O_CLOEXEC)};
     if (!fd)
         throw SysError("opening file '%s'", path);
-    co_yield drainFDSource(fd.get());
+    return [](AutoCloseFD fd) -> Generator<Bytes> {
+        co_yield drainFDSource(fd.get());
+    }(std::move(fd));
 }
 
 

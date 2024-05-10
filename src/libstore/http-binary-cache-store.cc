@@ -150,12 +150,12 @@ protected:
 
     }
 
-    void getFile(const std::string & path, Sink & sink) override
+    box_ptr<Source> getFile(const std::string & path) override
     {
         checkEnabled();
         auto request(makeRequest(path));
         try {
-            getFileTransfer()->download(std::move(request))->drainInto(sink);
+            return getFileTransfer()->download(std::move(request));
         } catch (FileTransferError & e) {
             if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
                 throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache '%s'", path, getUri());

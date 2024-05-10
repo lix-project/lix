@@ -67,16 +67,18 @@ void BinaryCacheStore::upsertFile(const std::string & path,
     upsertFile(path, std::make_shared<std::stringstream>(std::move(data)), mimeType);
 }
 
-void BinaryCacheStore::getFile(const std::string & path, Sink & sink)
+box_ptr<Source> BinaryCacheStore::getFile(const std::string & path)
 {
-    sink(*getFileContents(path));
+    return make_box_ptr<GeneratorSource>([](std::string data) -> Generator<Bytes> {
+        co_yield std::span{data.data(), data.size()};
+    }(std::move(*getFileContents(path))));
 }
 
 std::optional<std::string> BinaryCacheStore::getFileContents(const std::string & path)
 {
     StringSink sink;
     try {
-        getFile(path, sink);
+        return getFile(path)->drain();
     } catch (NoSuchBinaryCacheFile &) {
         return std::nullopt;
     }
@@ -334,15 +336,14 @@ void BinaryCacheStore::narFromPath(const StorePath & storePath, Sink & sink)
     LengthSink narSize;
     TeeSink tee { sink, narSize };
 
-    auto decompressor = makeDecompressionSink(info->compression, tee);
 
     try {
-        getFile(info->url, *decompressor);
+        auto file = getFile(info->url);
+        auto decompressor = makeDecompressionSource(info->compression, *file);
+        decompressor->drainInto(tee);
     } catch (NoSuchBinaryCacheFile & e) {
         throw SubstituteGone(std::move(e.info()));
     }
-
-    decompressor->finish();
 
     stats.narRead++;
     //stats.narReadCompressedBytes += nar->size(); // FIXME

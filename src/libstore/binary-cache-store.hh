@@ -83,7 +83,7 @@ public:
     /**
      * Dump the contents of the specified file to a sink.
      */
-    virtual void getFile(const std::string & path, Sink & sink);
+    virtual box_ptr<Source> getFile(const std::string & path);
 
     virtual std::optional<std::string> getFileContents(const std::string & path);
 

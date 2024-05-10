@@ -68,10 +68,10 @@ protected:
         del.cancel();
     }
 
-    void getFile(const std::string & path, Sink & sink) override
+    box_ptr<Source> getFile(const std::string & path) override
     {
         try {
-            sink << readFileSource(binaryCacheDir + "/" + path);
+            return make_box_ptr<GeneratorSource>(readFileSource(binaryCacheDir + "/" + path));
         } catch (SysError & e) {
             if (e.errNo == ENOENT)
                 throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache", path);

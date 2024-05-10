@@ -455,7 +455,7 @@ struct S3BinaryCacheStoreImpl : virtual S3BinaryCacheStoreConfig, public virtual
             uploadFile(path, istream, mimeType, "");
     }
 
-    void getFile(const std::string & path, Sink & sink) override
+    box_ptr<Source> getFile(const std::string & path) override
     {
         stats.get++;
 
@@ -469,7 +469,11 @@ struct S3BinaryCacheStoreImpl : virtual S3BinaryCacheStoreConfig, public virtual
             printTalkative("downloaded 's3://%s/%s' (%d bytes) in %d ms",
                 bucketName, path, res.data->size(), res.durationMs);
 
-            sink(*res.data);
+            return make_box_ptr<GeneratorSource>(
+                [](std::string data) -> Generator<Bytes> {
+                    co_yield std::span{data.data(), data.size()};
+                }(std::move(*res.data))
+            );
         } else
             throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache '%s'", path, getUri());
     }
