@@ -198,31 +198,6 @@ std::string decompress(const std::string & method, std::string_view in)
     return filter->drain();
 }
 
-std::unique_ptr<FinishSink> makeDecompressionSink(const std::string & method, Sink & nextSink)
-{
-    if (method == "none" || method == "")
-        return std::make_unique<NoneSink>(nextSink);
-    else if (method == "br")
-        return sourceToSink([&](Source & source) {
-            BrotliDecompressionSource wrapped{source};
-            wrapped.drainInto(nextSink);
-            // special handling because sourceToSink is screwy: try
-            // to read the source one final time and fail when that
-            // succeeds (to reject trailing garbage in input data).
-            try {
-                char buf;
-                source(&buf, 1);
-                throw Error("garbage at end of brotli stream detected");
-            } catch (EndOfFile &) {
-            }
-        });
-    else
-        return sourceToSink([&](Source & source) {
-            auto decompressionSource = std::make_unique<ArchiveDecompressionSource>(source);
-            decompressionSource->drainInto(nextSink);
-        });
-}
-
 std::unique_ptr<Source> makeDecompressionSource(const std::string & method, Source & inner)
 {
     if (method == "none" || method == "") {

@@ -32,23 +32,19 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData)
 
     auto fetch = [&](const std::string & url) {
 
-        auto source = sinkToSource([&](Sink & sink) {
+        /* No need to do TLS verification, because we check the hash of
+           the result anyway. */
+        FileTransferRequest request(url);
+        request.verifyTLS = false;
 
-            /* No need to do TLS verification, because we check the hash of
-               the result anyway. */
-            FileTransferRequest request(url);
-            request.verifyTLS = false;
-
-            auto decompressor = makeDecompressionSink(
-                unpack && mainUrl.ends_with(".xz") ? "xz" : "none", sink);
-            fileTransfer->download(std::move(request))->drainInto(*decompressor);
-            decompressor->finish();
-        });
+        auto raw = fileTransfer->download(std::move(request));
+        auto decompressor = makeDecompressionSource(
+            unpack && mainUrl.ends_with(".xz") ? "xz" : "none", *raw);
 
         if (unpack)
-            restorePath(storePath, *source);
+            restorePath(storePath, *decompressor);
         else
-            writeFile(storePath, *source);
+            writeFile(storePath, *decompressor);
 
         auto executable = drv.env.find("executable");
         if (executable != drv.env.end() && executable->second == "1") {
