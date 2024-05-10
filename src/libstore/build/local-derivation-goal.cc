@@ -1977,6 +1977,9 @@ void LocalDerivationGoal::runChild()
 
         /* Disable core dumps by default. */
         struct rlimit limit = { 0, RLIM_INFINITY };
+        if (settings.enableCoreDumps) {
+            limit.rlim_cur = RLIM_INFINITY;
+        }
         setrlimit(RLIMIT_CORE, &limit);
 
         // FIXME: set other limits to deterministic values?

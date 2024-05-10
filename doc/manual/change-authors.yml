@@ -61,3 +61,8 @@ edolstra:
 roberth:
   display_name: Robert Hensing
   github: roberth
+
+midnightveil:
+  display_name: julia
+  forgejo: midnightveil
+  github: midnightveil
