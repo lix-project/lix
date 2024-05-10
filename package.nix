@@ -62,15 +62,7 @@
   __forDefaults ? {
     canRunInstalled = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
 
-    boehmgc-nix = (boehmgc.override { enableLargeConfig = true; }).overrideAttrs {
-      patches = [
-        # We do *not* include prev.patches (which doesn't exist in normal pkgs.boehmgc anyway)
-        # because if the caller of this package passed a patched boehm as `boehmgc` instead of
-        # `boehmgc-nix` then this will almost certainly have duplicate patches, which means
-        # the patches won't apply and we'll get a build failure.
-        ./boehmgc-coroutine-sp-fallback.diff
-      ];
-    };
+    boehmgc-nix = boehmgc.override { enableLargeConfig = true; };
 
     editline-lix = editline.overrideAttrs (prev: {
       configureFlags = prev.configureFlags or [ ] ++ [ (lib.enableFeature true "sigstop") ];
@@ -167,7 +159,6 @@ stdenv.mkDerivation (finalAttrs: {
           functionalTestFiles
         ]
         ++ lib.optionals (!finalAttrs.dontBuild || internalApiDocs) [
-          ./boehmgc-coroutine-sp-fallback.diff
           ./doc
           ./misc
           ./src

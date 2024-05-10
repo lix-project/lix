@@ -362,14 +362,6 @@ private:
     Bytes buf{};
 };
 
-std::unique_ptr<FinishSink> sourceToSink(std::function<void(Source &)> fun);
-
-/**
- * Convert a function that feeds data into a Sink into a Source. The
- * Source executes the function as a coroutine.
- */
-std::unique_ptr<Source> sinkToSource(std::function<void(Sink &)> fun);
-
 inline Sink & operator<<(Sink & sink, Generator<Bytes> && g)
 {
     while (auto buffer = g.next()) {

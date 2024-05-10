@@ -192,42 +192,6 @@ static void * oomHandler(size_t requested)
     throw std::bad_alloc();
 }
 
-class BoehmGCStackAllocator : public StackAllocator {
-    boost::coroutines2::protected_fixedsize_stack stack {
-        // We allocate 8 MB, the default max stack size on NixOS.
-        // A smaller stack might be quicker to allocate but reduces the stack
-        // depth available for source filter expressions etc.
-        std::max(boost::context::stack_traits::default_size(), static_cast<std::size_t>(8 * 1024 * 1024))
-    };
-
-    // This is specific to boost::coroutines2::protected_fixedsize_stack.
-    // The stack protection page is included in sctx.size, so we have to
-    // subtract one page size from the stack size.
-    std::size_t pfss_usable_stack_size(boost::context::stack_context &sctx) {
-        return sctx.size - boost::context::stack_traits::page_size();
-    }
-
-  public:
-    boost::context::stack_context allocate() override {
-        auto sctx = stack.allocate();
-
-        // Stacks generally start at a high address and grow to lower addresses.
-        // Architectures that do the opposite are rare; in fact so rare that
-        // boost_routine does not implement it.
-        // So we subtract the stack size.
-        GC_add_roots(static_cast<char *>(sctx.sp) - pfss_usable_stack_size(sctx), sctx.sp);
-        return sctx;
-    }
-
-    void deallocate(boost::context::stack_context sctx) override {
-        GC_remove_roots(static_cast<char *>(sctx.sp) - pfss_usable_stack_size(sctx), sctx.sp);
-        stack.deallocate(sctx);
-    }
-
-};
-
-static BoehmGCStackAllocator boehmGCStackAllocator;
-
 #endif
 
 
@@ -242,23 +206,6 @@ static Symbol getName(const AttrName & name, EvalState & state, Env & env)
         return state.symbols.create(nameValue.string.s);
     }
 }
-
-#if HAVE_BOEHMGC
-/* Disable GC while this object lives. Used by CoroutineContext.
- *
- * Boehm keeps a count of GC_disable() and GC_enable() calls,
- * and only enables GC when the count matches.
- */
-class BoehmDisableGC {
-public:
-    BoehmDisableGC() {
-        GC_disable();
-    };
-    ~BoehmDisableGC() {
-        GC_enable();
-    };
-};
-#endif
 
 static bool gcInitialised = false;
 
@@ -280,17 +227,6 @@ void initGC()
     GC_INIT();
 
     GC_set_oom_fn(oomHandler);
-
-    StackAllocator::defaultAllocator = &boehmGCStackAllocator;
-
-
-#if NIX_BOEHM_PATCH_VERSION != 1
-    printTalkative("Unpatched BoehmGC, disabling GC inside coroutines");
-    /* Used to disable GC when entering coroutines on macOS */
-    create_coro_gc_hook = []() -> std::shared_ptr<void> {
-        return std::make_shared<BoehmDisableGC>();
-    };
-#endif
 
     /* Set the initial heap size to something fairly big (25% of
        physical RAM, up to a maximum of 384 MiB) so that in most cases
