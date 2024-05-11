@@ -9,21 +9,14 @@ namespace nix {
 
 std::atomic<bool> _isInterrupted = false;
 
-static thread_local bool interruptThrown = false;
 thread_local std::function<bool()> interruptCheck;
-
-void setInterruptThrown()
-{
-    interruptThrown = true;
-}
 
 void _interrupted()
 {
     /* Block user interrupts while an exception is being handled.
        Throwing an exception while another exception is being handled
        kills the program! */
-    if (!interruptThrown && !std::uncaught_exceptions()) {
-        interruptThrown = true;
+    if (!std::uncaught_exceptions()) {
         throw Interrupted("interrupted by the user");
     }
 }
