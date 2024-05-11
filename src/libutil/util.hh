@@ -240,11 +240,15 @@ std::optional<Path> getSelfExe();
 
 /**
  * @return $XDG_STATE_HOME or $HOME/.local/state.
+ *
+ * @note Not to be confused with settings.nixStateDir.
  */
 Path getStateDir();
 
 /**
- * Create the Nix state directory and return the path to it.
+ * Create $XDG_STATE_HOME/nix or $HOME/.local/state/nix, and return
+ * the path to it.
+ * @note Not to be confused with settings.nixStateDir.
  */
 Path createNixStateDir();
 
