@@ -1,4 +1,5 @@
 #include "filetransfer.hh"
+#include "compression.hh"
 
 #include <cstdint>
 #include <exception>
@@ -25,7 +26,7 @@ using namespace std::chrono_literals;
 namespace nix {
 
 static std::tuple<uint16_t, AutoCloseFD>
-serveHTTP(std::string_view status, std::string_view headers, std::function<std::string_view()> content)
+serveHTTP(std::string_view status, std::string_view headers, std::function<std::string()> content)
 {
     AutoCloseFD listener(::socket(AF_INET6, SOCK_STREAM, 0));
     if (!listener) {
@@ -151,5 +152,18 @@ TEST(FileTransfer, NOT_ON_DARWIN(reportsTransferError))
     FileTransferRequest req(fmt("http://[::1]:%d/index", port));
     req.baseRetryTimeMs = 0;
     ASSERT_THROW(ft->download(req), FileTransferError);
+}
+
+TEST(FileTransfer, NOT_ON_DARWIN(handlesContentEncoding))
+{
+    std::string original = "Test data string";
+    std::string compressed = compress("gzip", original);
+
+    auto [port, srv] = serveHTTP("200 ok", "content-encoding: gzip\r\n", [&] { return compressed; });
+    auto ft = makeFileTransfer();
+
+    StringSink sink;
+    ft->download(FileTransferRequest(fmt("http://[::1]:%d/index", port)), sink);
+    EXPECT_EQ(sink.s, original);
 }
 }
