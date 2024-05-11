@@ -761,6 +761,10 @@ struct curlFileTransfer : public FileTransfer
                     state.wait_for(state->request, std::chrono::seconds(10));
                 }
 
+                if (state->encoding.empty()) {
+                    state->encoding = transfer.encoding;
+                }
+
                 /* Append data to the buffer and wake up the calling
                 thread. */
                 state->data.append(data);
