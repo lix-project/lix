@@ -51,9 +51,6 @@
 #endif
 
 #if __APPLE__
-#include <spawn.h>
-#include <sys/sysctl.h>
-
 /* This definition is undocumented but depended upon by all major browsers. */
 extern "C" int sandbox_init_with_parameters(const char *profile, uint64_t flags, const char *const parameters[], char **errorbuf);
 #endif
@@ -161,19 +158,7 @@ void LocalDerivationGoal::killChild()
 
 void LocalDerivationGoal::killSandbox(bool getStats)
 {
-    if (cgroup) {
-        #if __linux__
-        auto stats = destroyCgroup(*cgroup);
-        if (getStats) {
-            buildResult.cpuUser = stats.cpuUser;
-            buildResult.cpuSystem = stats.cpuSystem;
-        }
-        #else
-        abort();
-        #endif
-    }
-
-    else if (buildUser) {
+    if (buildUser) {
         auto uid = buildUser->getUID();
         assert(uid != 0);
         killUser(uid);
@@ -2177,31 +2162,8 @@ void LocalDerivationGoal::runChild()
             }
         }
 
-#if __APPLE__
-        posix_spawnattr_t attrp;
-
-        if (posix_spawnattr_init(&attrp))
-            throw SysError("failed to initialize builder");
-
-        if (posix_spawnattr_setflags(&attrp, POSIX_SPAWN_SETEXEC))
-            throw SysError("failed to initialize builder");
-
-        if (drv->platform == "aarch64-darwin") {
-            // Unset kern.curproc_arch_affinity so we can escape Rosetta
-            int affinity = 0;
-            sysctlbyname("kern.curproc_arch_affinity", NULL, NULL, &affinity, sizeof(affinity));
-
-            cpu_type_t cpu = CPU_TYPE_ARM64;
-            posix_spawnattr_setbinpref_np(&attrp, 1, &cpu, NULL);
-        } else if (drv->platform == "x86_64-darwin") {
-            cpu_type_t cpu = CPU_TYPE_X86_64;
-            posix_spawnattr_setbinpref_np(&attrp, 1, &cpu, NULL);
-        }
-
-        posix_spawn(NULL, drv->builder.c_str(), NULL, &attrp, stringsToCharPtrs(args).data(), stringsToCharPtrs(envStrs).data());
-#else
-        execve(drv->builder.c_str(), stringsToCharPtrs(args).data(), stringsToCharPtrs(envStrs).data());
-#endif
+        execBuilder(drv->builder, args, envStrs);
+        // execBuilder should not return
 
         throw SysError("executing '%1%'", drv->builder);
 
@@ -2215,6 +2177,11 @@ void LocalDerivationGoal::runChild()
             std::cerr << e.msg();
         _exit(1);
     }
+}
+
+void LocalDerivationGoal::execBuilder(std::string builder, Strings args, Strings envStrs)
+{
+    execve(builder.c_str(), stringsToCharPtrs(args).data(), stringsToCharPtrs(envStrs).data());
 }
 
 

@@ -65,8 +65,8 @@ std::shared_ptr<DerivationGoal> Worker::makeDerivationGoal(const StorePath & drv
 {
     return makeDerivationGoalCommon(drvPath, wantedOutputs, [&]() -> std::shared_ptr<DerivationGoal> {
         return !dynamic_cast<LocalStore *>(&store)
-            ? std::make_shared</* */DerivationGoal>(drvPath, wantedOutputs, *this, buildMode)
-            : std::make_shared<LocalDerivationGoal>(drvPath, wantedOutputs, *this, buildMode);
+            ? std::make_shared<DerivationGoal>(drvPath, wantedOutputs, *this, buildMode)
+            : LocalDerivationGoal::makeLocalDerivationGoal(drvPath, wantedOutputs, *this, buildMode);
     });
 }
 
@@ -76,8 +76,8 @@ std::shared_ptr<DerivationGoal> Worker::makeBasicDerivationGoal(const StorePath 
 {
     return makeDerivationGoalCommon(drvPath, wantedOutputs, [&]() -> std::shared_ptr<DerivationGoal> {
         return !dynamic_cast<LocalStore *>(&store)
-            ? std::make_shared</* */DerivationGoal>(drvPath, drv, wantedOutputs, *this, buildMode)
-            : std::make_shared<LocalDerivationGoal>(drvPath, drv, wantedOutputs, *this, buildMode);
+            ? std::make_shared<DerivationGoal>(drvPath, drv, wantedOutputs, *this, buildMode)
+            : LocalDerivationGoal::makeLocalDerivationGoal(drvPath, drv, wantedOutputs, *this, buildMode);
     });
 }
 

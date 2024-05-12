@@ -6,6 +6,7 @@
 #include <sys/proc_info.h>
 #include <sys/sysctl.h>
 #include <libproc.h>
+#include <spawn.h>
 
 #include <regex>
 
@@ -219,5 +220,30 @@ void DarwinLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
             throw;
         }
     }
+}
+
+void DarwinLocalDerivationGoal::execBuilder(std::string builder, Strings args, Strings envStrs)
+{
+    posix_spawnattr_t attrp;
+
+    if (posix_spawnattr_init(&attrp))
+        throw SysError("failed to initialize builder");
+
+    if (posix_spawnattr_setflags(&attrp, POSIX_SPAWN_SETEXEC))
+        throw SysError("failed to initialize builder");
+
+    if (drv->platform == "aarch64-darwin") {
+        // Unset kern.curproc_arch_affinity so we can escape Rosetta
+        int affinity = 0;
+        sysctlbyname("kern.curproc_arch_affinity", NULL, NULL, &affinity, sizeof(affinity));
+
+        cpu_type_t cpu = CPU_TYPE_ARM64;
+        posix_spawnattr_setbinpref_np(&attrp, 1, &cpu, NULL);
+    } else if (drv->platform == "x86_64-darwin") {
+        cpu_type_t cpu = CPU_TYPE_X86_64;
+        posix_spawnattr_setbinpref_np(&attrp, 1, &cpu, NULL);
+    }
+
+    posix_spawn(NULL, builder.c_str(), NULL, &attrp, stringsToCharPtrs(args).data(), stringsToCharPtrs(envStrs).data());
 }
 }

@@ -178,7 +178,28 @@ struct LocalDerivationGoal : public DerivationGoal
 
     friend struct RestrictedStore;
 
-    using DerivationGoal::DerivationGoal;
+    /**
+     * Create a LocalDerivationGoal without an on-disk .drv file,
+     * possibly a platform-specific subclass
+     */
+    static std::shared_ptr<LocalDerivationGoal> makeLocalDerivationGoal(
+        const StorePath & drvPath,
+        const OutputsSpec & wantedOutputs,
+        Worker & worker,
+        BuildMode buildMode
+    );
+
+    /**
+     * Create a LocalDerivationGoal for an on-disk .drv file,
+     * possibly a platform-specific subclass
+     */
+    static std::shared_ptr<LocalDerivationGoal> makeLocalDerivationGoal(
+        const StorePath & drvPath,
+        const BasicDerivation & drv,
+        const OutputsSpec & wantedOutputs,
+        Worker & worker,
+        BuildMode buildMode
+    );
 
     virtual ~LocalDerivationGoal() noexcept(false) override;
 
@@ -282,7 +303,7 @@ struct LocalDerivationGoal : public DerivationGoal
      * Kill any processes running under the build user UID or in the
      * cgroup of the build.
      */
-    void killSandbox(bool getStats);
+    virtual void killSandbox(bool getStats);
 
     /**
      * Create alternative path calculated from but distinct from the
@@ -299,6 +320,16 @@ struct LocalDerivationGoal : public DerivationGoal
      * rewrites caught everything
      */
     StorePath makeFallbackPath(OutputNameView outputName);
+
+protected:
+    using DerivationGoal::DerivationGoal;
+
+    /**
+     * Execute the builder, replacing the current process.
+     * Generally this means an `execve` call.
+     */
+    virtual void execBuilder(std::string builder, Strings args, Strings envStrs);
+
 };
 
 }
