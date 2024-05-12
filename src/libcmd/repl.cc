@@ -262,6 +262,8 @@ ReplExitStatus NixRepl::mainLoop()
     std::string input;
 
     while (true) {
+        _isInterrupted = false;
+
         // When continuing input from previous lines, don't print a prompt, just align to the same
         // number of chars as the prompt.
         if (!interacter->getLine(input, input.empty() ? ReplPromptType::ReplPrompt : ReplPromptType::ContinuationPrompt)) {
@@ -423,8 +425,6 @@ ProcessLineResult NixRepl::processLine(std::string line)
     line = trim(line);
     if (line.empty())
         return ProcessLineResult::PromptAgain;
-
-    _isInterrupted = false;
 
     std::string command, arg;
 
