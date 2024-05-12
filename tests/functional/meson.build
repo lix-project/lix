@@ -7,7 +7,6 @@ test_confdata = {
   'sandbox_shell': busybox.found() ? busybox.full_path() : '',
   'PACKAGE_VERSION': meson.project_version(),
   'system': host_system,
-  'BUILD_SHARED_LIBS': '1', # XXX(Qyriad): detect this!
 }
 
 # Just configures `common/vars-and-functions.sh.in`.
@@ -180,10 +179,14 @@ functional_tests_scripts = [
   'read-only-store.sh',
   'nested-sandboxing.sh',
   'debugger.sh',
-  'plugins.sh',
   'test-libstoreconsumer.sh',
   'extra-sandbox-profile.sh',
 ]
+
+# Plugin tests require shared libraries support.
+if get_option('default_library') != 'static'
+  functional_tests_scripts += ['plugins.sh']
+endif
 
 # TODO(Qyriad): this will hopefully be able to be removed when we remove the autoconf+Make
 # buildsystem. See the comments at the top of setup-functional-tests.py for why this is here.

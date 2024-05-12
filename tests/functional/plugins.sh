@@ -1,9 +1,5 @@
 source common.sh
 
-if [[ $BUILD_SHARED_LIBS != 1 ]]; then
-    skipTest "Plugins are not supported"
-fi
-
 # FIXME(Qyriad): this is working around Meson putting `libplugintest.so.p` in the same place
 # as `libplugintest.so`, so `libplugintest.*` grabs both.
 libext=so
