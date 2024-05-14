@@ -51,3 +51,7 @@ mkdir -p $TEST_ROOT/xyzzy $TEST_ROOT/foo
 ln -sfn ../xyzzy $TEST_ROOT/foo/bar
 printf 123 > $TEST_ROOT/xyzzy/default.nix
 [[ $(nix eval --impure --expr "import $TEST_ROOT/foo/bar") = 123 ]]
+
+# Test that unknown settings are warned about
+out="$(expectStderr 0 nix eval --option foobar baz --expr '""' --raw)"
+[[ "$(echo "$out" | grep foobar | wc -l)" = 1 ]]

@@ -36,6 +36,10 @@ artemist:
   display_name: Artemis Tosini
   forgejo: artemist
 
+cole-h:
+  display_name: Cole Helbling
+  github: cole-h
+
 edolstra:
   display_name: Eelco Dolstra
   github: edolstra
