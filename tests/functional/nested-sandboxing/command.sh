@@ -1,5 +1,5 @@
 export NIX_BIN_DIR=$(dirname $(type -p nix))
-# TODO Get Nix and its closure more flexibly
+# TODO Get Lix and its closure more flexibly
 export EXTRA_SANDBOX="/nix/store $(dirname $NIX_BIN_DIR)"
 
 badStoreUrl () {

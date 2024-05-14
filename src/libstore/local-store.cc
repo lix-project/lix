@@ -313,13 +313,13 @@ LocalStore::LocalStore(const Params & params)
             throw Error(
                 "Your Nix store has a database in Berkeley DB format,\n"
                 "which is no longer supported. To convert to the new format,\n"
-                "please upgrade Nix to version 0.12 first.");
+                "please use the original Nix version 0.12 first.");
 
         if (curSchema < 6)
             throw Error(
                 "Your Nix store has a database in flat file format,\n"
                 "which is no longer supported. To convert to the new format,\n"
-                "please upgrade Nix to version 1.11 first.");
+                "please use the original Nix version 1.11 first.");
 
         if (!lockFile(globalLock.get(), ltWrite, false)) {
             printInfo("waiting for exclusive access to the Nix store...");

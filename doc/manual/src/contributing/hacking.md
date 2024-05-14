@@ -137,7 +137,7 @@ You can also build Lix for one of the [supported platforms](#platforms).
 
 Lix can be built for various platforms, as specified in [`flake.nix`]:
 
-[`flake.nix`]: https://github.com/nixos/nix/blob/master/flake.nix
+[`flake.nix`]: https://git.lix.systems/lix-project/lix/src/branch/main/flake.nix
 
 - `x86_64-linux`
 - `x86_64-darwin`

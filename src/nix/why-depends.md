@@ -53,18 +53,18 @@ R""(
 
 # Description
 
-Nix automatically determines potential runtime dependencies between
+Lix automatically determines potential runtime dependencies between
 store paths by scanning for the *hash parts* of store paths. For
 instance, if there exists a store path
 `/nix/store/9df65igwjmf2wbw0gbrrgair6piqjgmi-glibc-2.31`, and a file
 inside another store path contains the string `9df65igw…`, then the
 latter store path *refers* to the former, and thus might need it at
-runtime. Nix always maintains the existence of the transitive closure
+runtime. Lix always maintains the existence of the transitive closure
 of a store path under the references relationship; it is therefore not
 possible to install a store path without having all of its references
 present.
 
-Sometimes Nix packages end up with unexpected runtime dependencies;
+Sometimes Lix packages end up with unexpected runtime dependencies;
 for instance, a reference to a compiler might accidentally end up in a
 binary, causing the former to be in the latter's closure. This kind of
 *closure size bloat* is undesirable.

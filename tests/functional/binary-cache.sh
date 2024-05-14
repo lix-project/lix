@@ -70,7 +70,7 @@ export _NIX_FORCE_HTTP=1
 basicDownloadTests
 
 
-# Test whether Nix notices if the NAR doesn't match the hash in the NAR info.
+# Test whether Lix notices if the NAR doesn't match the hash in the NAR info.
 clearStore
 
 nar=$(ls $cacheDir/nar/*.nar.xz | head -n1)

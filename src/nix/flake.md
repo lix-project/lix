@@ -98,7 +98,7 @@ Flakes corresponding to a local path can also be referred to by a direct path re
 The semantic of such a path is as follows:
 
 * If the directory is part of a Git repository, then the input will be treated as a `git+file:` URL, otherwise it will be treated as a `path:` url;
-* If the directory doesn't contain a `flake.nix` file, then Nix will search for such a file upwards in the file system hierarchy until it finds any of:
+* If the directory doesn't contain a `flake.nix` file, then Lix will search for such a file upwards in the file system hierarchy until it finds any of:
     1. The Git repository root, or
     2. The filesystem root (/), or
     3. A folder on a different mount point.
@@ -176,7 +176,7 @@ Currently the `type` attribute can be one of the following:
   The `ref` attribute defaults to resolving the `HEAD` reference.
 
   The `rev` attribute must denote a commit that exists in the branch
-  or tag specified by the `ref` attribute, since Nix doesn't do a full
+  or tag specified by the `ref` attribute, since Lix doesn't do a full
   clone of the remote repository by default (and the Git protocol
   doesn't allow fetching a `rev` without a known `ref`). The default
   is the commit currently pointed to by `ref`.

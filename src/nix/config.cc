@@ -14,7 +14,7 @@ struct CmdConfig : virtual NixMultiCommand
 
     std::string description() override
     {
-        return "manipulate the Nix configuration";
+        return "manipulate the Lix configuration";
     }
 
     Category category() override { return catUtility; }
@@ -41,7 +41,7 @@ struct CmdConfigShow : Command, MixJSON
 
     std::string description() override
     {
-        return "show the Nix configuration or the value of a specific setting";
+        return "show the Lix configuration or the value of a specific setting";
     }
 
     Category category() override { return catUtility; }

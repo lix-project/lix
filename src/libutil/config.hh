@@ -13,7 +13,7 @@
 namespace nix {
 
 /**
- * The Config class provides Nix runtime configurations.
+ * The Config class provides Lix runtime configurations.
  *
  * What is a Configuration?
  *   A collection of uniquely named Settings.

@@ -18,12 +18,12 @@ struct LocalFSStoreConfig : virtual StoreConfig
     const PathSetting stateDir{this,
         rootDir.get() ? *rootDir.get() + "/nix/var/nix" : settings.nixStateDir,
         "state",
-        "Directory where Nix will store state."};
+        "Directory where Lix will store state."};
 
     const PathSetting logDir{this,
         rootDir.get() ? *rootDir.get() + "/nix/var/log/nix" : settings.nixLogDir,
         "log",
-        "directory where Nix will store log files."};
+        "directory where Lix will store log files."};
 
     const PathSetting realStoreDir{this,
         rootDir.get() ? *rootDir.get() + "/nix/store" : storeDir, "real",

@@ -42,7 +42,7 @@ struct Generation
      * of the generation.
      *
      * These store paths / objects are not unique to the generation
-     * within a profile. Nix tries to ensure successive generations have
+     * within a profile. Lix tries to ensure successive generations have
      * distinct contents to avoid bloat, but nothing stops two
      * non-adjacent generations from having the same contents.
      *

@@ -2,7 +2,7 @@
 
 source common.sh
 
-# Only run this if we have an older Nix available
+# Only run this if we have an older Lix available
 # XXX: This assumes that the `daemon` package is older than the `client` one
 if [[ -z "${NIX_DAEMON_PACKAGE-}" ]]; then
     skipTest "not using the Nix daemon"

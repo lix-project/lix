@@ -13,7 +13,7 @@ let
     ];
   };
 
-  meta.description = "Distribution-independent Nix bootstrap binaries for ${system}";
+  meta.description = "Distribution-independent Lix bootstrap binaries for ${system}";
 in
 buildPackages.runCommand "nix-binary-tarball-${version}" { inherit meta; } ''
   cp ${installerClosureInfo}/registration $TMPDIR/reginfo

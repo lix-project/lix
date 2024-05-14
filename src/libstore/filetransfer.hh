@@ -40,12 +40,12 @@ struct FileTransferSettings : Config
         this, 300, "stalled-download-timeout",
         R"(
           The timeout (in seconds) for receiving data from servers
-          during download. Nix cancels idle downloads after this
+          during download. Lix cancels idle downloads after this
           timeout's duration.
         )"};
 
     Setting<unsigned int> tries{this, 5, "download-attempts",
-        "How often Nix will attempt to download a file before giving up."};
+        "How often Lix will attempt to download a file before giving up."};
 };
 
 extern FileTransferSettings fileTransferSettings;

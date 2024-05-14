@@ -26,7 +26,7 @@ R""(
 
 This command prints the log of a previous build of the [*installable*](./nix.md#installables) on standard output.
 
-Nix looks for build logs in two places:
+Lix looks for build logs in two places:
 
 * In the directory `/nix/var/log/nix/drvs`, which contains logs for
   locally built derivations.
@@ -35,7 +35,7 @@ Nix looks for build logs in two places:
   should be named `<cache>/log/<base-name-of-store-path>`, where
   `store-path` is a derivation,
   e.g. `https://cache.nixos.org/log/dvmig8jgrdapvbyxb1rprckdmdqx08kv-hello-2.10.drv`.
-  For non-derivation store paths, Nix will first try to determine the
+  For non-derivation store paths, Lix will first try to determine the
   deriver by fetching the `.narinfo` file for this store path.
 
 )""

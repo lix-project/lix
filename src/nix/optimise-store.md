@@ -16,7 +16,7 @@ links to a single instance.
 
 Note that you can also set `auto-optimise-store` to `true` in
 `nix.conf` to perform this optimisation incrementally whenever a new
-path is added to the Nix store. To make this efficient, Nix maintains
+path is added to the Nix store. To make this efficient, Lix maintains
 a content-addressed index of all the files in the Nix store in the
 directory `/nix/store/.links/`.
 

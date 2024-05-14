@@ -74,7 +74,7 @@ void WorkerProto::Serialise<DerivedPath>::write(const Store & store, WorkerProto
                     GET_PROTOCOL_MINOR(conn.version));
             },
             [&](std::monostate) {
-                throw Error("wanted to build a derivation that is itself a build product, but protocols do not support that. Try upgrading the Nix on the other end of this connection");
+                throw Error("wanted to build a derivation that is itself a build product, but protocols do not support that. Try upgrading the Nix implementation on the other end of this connection");
             },
         }, sOrDrvPath);
     }

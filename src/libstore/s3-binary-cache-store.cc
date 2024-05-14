@@ -196,7 +196,7 @@ struct S3BinaryCacheStoreConfig : virtual BinaryCacheStoreConfig
     const Setting<std::string> profile{this, "", "profile",
         R"(
           The name of the AWS configuration profile to use. By default
-          Nix will use the `default` profile.
+          Lix will use the `default` profile.
         )"};
 
     const Setting<std::string> region{this, Aws::Region::US_EAST_1, "region",

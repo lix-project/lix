@@ -89,7 +89,7 @@
     bool1 = true
     bool2 = false
 
-    # FIXME: not supported because Nix doesn't have a date/time type.
+    # FIXME: not supported because Nix language doesn't have a date/time type.
     #odt1 = 1979-05-27T07:32:00Z
     #odt2 = 1979-05-27T00:32:00-07:00
     #odt3 = 1979-05-27T00:32:00.999999-07:00

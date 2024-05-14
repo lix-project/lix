@@ -202,7 +202,7 @@ let
         # use a plain tarpipe instead
         tar -C ${mockChannel pkgs} -c channel | ssh -p 20022 $ssh_opts vagrant@localhost tar x -f-
 
-        echo "Testing Nix installation..."
+        echo "Testing Lix installation..."
         $ssh <<EOF
           set -ex
 

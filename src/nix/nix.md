@@ -41,10 +41,11 @@ R""(
 
 # Description
 
-Nix is a tool for building software, configurations and other
+Lix is a tool for building software, configurations and other
 artifacts in a reproducible and declarative way. For more information,
-see the [Nix homepage](https://nixos.org/) or the [Nix
-manual](https://nixos.org/manual/nix/stable/).
+see the [Lix homepage](https://lix.systems).
+
+Lix is a fork of the original implementation [CppNix](https://github.com/nixos/nix).
 
 # Installables
 
@@ -68,7 +69,7 @@ The following types of installable are supported by most commands:
   - Specified with `--expr`/`-E`
 
 For most commands, if no installable is specified, `.` is assumed.
-That is, Nix will operate on the default flake output attribute of the flake in the current directory.
+That is, Lix will operate on the default flake output attribute of the flake in the current directory.
 
 ### Flake output attribute
 
@@ -99,7 +100,7 @@ way:
   and `RELATIVE_FLAKE_DIR_PATH` is the path (relative to the directory
   root) of the closest parent of the given path that contains a `flake.nix` within
   the git repository.
-  If no such directory exists, then Nix will error-out.
+  If no such directory exists, then Lix will error-out.
 
   Note that the search will only include files indexed by git. In particular, files
   which are matched by `.gitignore` or have never been `git add`-ed will not be
@@ -120,12 +121,12 @@ way:
 - If the supplied path is not a git repository, then the url will have the form
   `path:FLAKE_DIR_PATH` where `FLAKE_DIR_PATH` is the closest parent
   of the supplied path that contains a `flake.nix` file (within the same file-system).
-  If no such directory exists, then Nix will error-out.
+  If no such directory exists, then Lix will error-out.
 
   For example, if `/foo/bar/flake.nix` exists, then `/foo/bar/baz/` will resolve to
  `path:/foo/bar`
 
-If *attrpath* is omitted, Nix tries some default values; for most
+If *attrpath* is omitted, Lix tries some default values; for most
 subcommands, the default is `packages.`*system*`.default`
 (e.g. `packages.x86_64-linux.default`), but some subcommands have
 other defaults. If *attrpath* *is* specified, *attrpath* is
@@ -243,7 +244,7 @@ operate are determined as follows:
   …
   ```
 * If you didn't specify the desired outputs, but the derivation has an
-  attribute `meta.outputsToInstall`, Nix will use those outputs. For
+  attribute `meta.outputsToInstall`, Lix will use those outputs. For
   example, since the package `nixpkgs#libxml2` has this attribute:
 
   ```console
@@ -259,7 +260,7 @@ operate are determined as follows:
 
   [store derivation]: ../../glossary.md#gloss-store-derivation
 
-* Otherwise, Nix will use all outputs of the derivation.
+* Otherwise, Lix will use all outputs of the derivation.
 
 # Nix stores
 

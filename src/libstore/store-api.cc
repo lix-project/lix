@@ -1379,9 +1379,9 @@ std::shared_ptr<Store> openFromNonUri(const std::string & uri, const Store::Para
                 } catch (Error & e) {
                     return LocalStore::makeLocalStore(params);
                 }
-                warn("'%s' does not exist, so Nix will use '%s' as a chroot store", stateDir, chrootStore);
+                warn("'%s' does not exist, so Lix will use '%s' as a chroot store", stateDir, chrootStore);
             } else
-                debug("'%s' does not exist, so Nix will use '%s' as a chroot store", stateDir, chrootStore);
+                debug("'%s' does not exist, so Lix will use '%s' as a chroot store", stateDir, chrootStore);
             Store::Params chrootStoreParams;
             chrootStoreParams["root"] = chrootStore;
             // FIXME? this ignores *all* store parameters passed to this function?

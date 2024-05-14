@@ -173,7 +173,7 @@ void TestSession::runCommand(std::string command)
         std::cerr << "runCommand " << command << "\n";
     }
     command += "\n";
-    // We have to feed a newline into the output parser, since Nix might not
+    // We have to feed a newline into the output parser, since Lix might not
     // give us a newline before a prompt in all cases (it might clear line
     // first, e.g.)
     outputParser.feed('\n');

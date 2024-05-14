@@ -23,6 +23,9 @@ namespace nix {
  * 0.7.  Version 2 was Nix 0.8 and 0.9.  Version 3 is Nix 0.10.
  * Version 4 is Nix 0.11.  Version 5 is Nix 0.12-0.16.  Version 6 is
  * Nix 1.0.  Version 7 is Nix 1.3. Version 10 is 2.0.
+ *
+ * Lix started at 2.90, it cannot ever go past version 10 (Nix 2.18),
+ * since doing so will break compatibility with future CppNix versions.
  */
 const int nixSchemaVersion = 10;
 
@@ -49,7 +52,7 @@ struct LocalStoreConfig : virtual LocalFSStoreConfig
         R"(
           Allow this store to be opened when its [database](@docroot@/glossary.md#gloss-nix-database) is on a read-only filesystem.
 
-          Normally Nix will attempt to open the store database in read-write mode, even for querying (when write access is not needed), causing it to fail if the database is on a read-only filesystem.
+          Normally Lix will attempt to open the store database in read-write mode, even for querying (when write access is not needed), causing it to fail if the database is on a read-only filesystem.
 
           Enable read-only mode to disable locking and open the SQLite database with the [`immutable` parameter](https://www.sqlite.org/c3ref/open.html) set.
 

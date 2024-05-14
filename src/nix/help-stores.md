@@ -1,6 +1,6 @@
 R"(
 
-Nix supports different types of stores. These are described below.
+Lix supports different types of stores. These are described below.
 
 ## Store URL format
 
@@ -22,11 +22,11 @@ instance,
 --store ssh://machine.example.org?ssh-key=/path/to/my/key
 ```
 
-tells Nix to access the store on a remote machine via the SSH
+tells Lix to access the store on a remote machine via the SSH
 protocol, using `/path/to/my/key` as the SSH private key. The
 supported settings for each store type are documented below.
 
-The special store URL `auto` causes Nix to automatically select a
+The special store URL `auto` causes Lix to automatically select a
 store as follows:
 
 * Use the [local store](#local-store) `/nix/store` if `/nix/var/nix`

@@ -240,7 +240,7 @@
           system: binaryTarball nixpkgsFor.${system}.native.nix nixpkgsFor.${system}.native
         );
 
-        # docker image with Nix inside
+        # docker image with Lix inside
         dockerImage = lib.genAttrs linux64BitSystems (system: self.packages.${system}.dockerImage);
 
         # API docs for Nix's unstable internal C++ interfaces.
@@ -336,7 +336,7 @@
                 };
               in
               pkgs.runCommand "docker-image-tarball-${version}"
-                { meta.description = "Docker image with Nix for ${system}"; }
+                { meta.description = "Docker image with Lix for ${system}"; }
                 ''
                   mkdir -p $out/nix-support
                   image=$out/image.tar.gz

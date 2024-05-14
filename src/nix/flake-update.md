@@ -39,7 +39,7 @@ R""(
   >
   > When trying to refer to a flake in a subdirectory, write `./another`
   > instead of `another`.
-  > Otherwise Nix will try to look up the flake in the registry.
+  > Otherwise Lix will try to look up the flake in the registry.
 
 # Description
 

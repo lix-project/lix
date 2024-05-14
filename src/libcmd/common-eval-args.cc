@@ -45,7 +45,7 @@ MixEvalArgs::MixEvalArgs()
   -I /etc/nixos
   ```
 
-  will cause Nix to look for paths relative to `/home/eelco/Dev` and
+  will cause Lix to look for paths relative to `/home/eelco/Dev` and
   `/etc/nixos`, in that order. This is equivalent to setting the
   `NIX_PATH` environment variable to
 
@@ -61,7 +61,7 @@ MixEvalArgs::MixEvalArgs()
   -I /etc/nixos
   ```
 
-  will cause Nix to search for `<nixpkgs/path>` in
+  will cause Lix to search for `<nixpkgs/path>` in
   `/home/eelco/Dev/nixpkgs-branch/path` and `/etc/nixos/nixpkgs/path`.
 
   If a path in the Nix search path starts with `http://` or `https://`,
@@ -73,7 +73,7 @@ MixEvalArgs::MixEvalArgs()
   -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/master.tar.gz
   ```
 
-  tells Nix to download and use the current contents of the `master`
+  tells Lix to download and use the current contents of the `master`
   branch in the `nixpkgs` repository.
 
   The URLs of the tarballs from the official `nixos.org` channels

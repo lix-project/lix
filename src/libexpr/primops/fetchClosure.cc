@@ -51,7 +51,7 @@ static void runFetchClosureWithRewrite(EvalState & state, const PosIdx pos, Stor
         throw Error({
             .msg = HintFmt(
                 "The 'toPath' value '%s' is input-addressed, so it can't possibly be the result of rewriting to a content-addressed path.\n\n"
-                "Set 'toPath' to an empty string to make Nix report the correct content-addressed path.",
+                "Set 'toPath' to an empty string to make Lix report the correct content-addressed path.",
                 state.store->printStorePath(toPath)),
             .pos = state.positions[pos]
         });
@@ -271,7 +271,7 @@ static RegisterPrimOp primop_fetchClosure({
       ```
 
       It is possible to fetch an [input-addressed store path](@docroot@/glossary.md#gloss-input-addressed-store-object) and return it as is.
-      However, this is the least preferred way of invoking `fetchClosure`, because it requires that the input-addressed paths are trusted by the Nix configuration.
+      However, this is the least preferred way of invoking `fetchClosure`, because it requires that the input-addressed paths are trusted by the Lix configuration.
 
       **`builtins.storePath`**
 

@@ -1,13 +1,13 @@
 # Obtaining the Source
 
-The most recent sources of Nix can be obtained from its [Git
-repository](https://github.com/NixOS/nix). For example, the following
+The most recent sources of Lix can be obtained from its [Git
+repository](https://git.lix.systems/lix-project/lix). For example, the following
 command will check out the latest revision into a directory called
 `nix`:
 
 ```console
-$ git clone https://github.com/NixOS/nix
+$ git clone https://git.lix.systems/lix-project/lix
 ```
 
 Likewise, specific releases can be obtained from the
-[tags](https://github.com/NixOS/nix/tags) of the repository.
+[tags](https://git.lix.systems/lix-project/lix/tags) of the repository.

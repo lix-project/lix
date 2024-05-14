@@ -131,7 +131,7 @@ public:
     Setting<bool> tryFallback{
         this, false, "fallback",
         R"(
-          If set to `true`, Nix will fall back to building from source if a
+          If set to `true`, Lix will fall back to building from source if a
           binary substitute fails. This is equivalent to the `--fallback`
           flag. The default is `false`.
         )",
@@ -149,9 +149,9 @@ public:
     MaxBuildJobsSetting maxBuildJobs{
         this, 1, "max-jobs",
         R"(
-          This option defines the maximum number of jobs that Nix will try to
+          This option defines the maximum number of jobs that Lix will try to
           build in parallel. The default is `1`. The special value `auto`
-          causes Nix to use the number of CPUs in your system. `0` is useful
+          causes Lix to use the number of CPUs in your system. `0` is useful
           when using remote builders to prevent any local builds (except for
           `preferLocalBuild` derivation attribute which executes locally
           regardless). It can be overridden using the `--max-jobs` (`-j`)
@@ -195,11 +195,11 @@ public:
     Setting<std::string> thisSystem{
         this, SYSTEM, "system",
         R"(
-          The system type of the current Nix installation.
-          Nix will only build a given [derivation](@docroot@/language/derivations.md) locally when its `system` attribute equals any of the values specified here or in [`extra-platforms`](#conf-extra-platforms).
+          The system type of the current Lix installation.
+          Lix will only build a given [derivation](@docroot@/language/derivations.md) locally when its `system` attribute equals any of the values specified here or in [`extra-platforms`](#conf-extra-platforms).
 
-          The default value is set when Nix itself is compiled for the system it will run on.
-          The following system types are widely used, as [Nix is actively supported on these platforms](@docroot@/contributing/hacking.md#platforms):
+          The default value is set when Lix itself is compiled for the system it will run on.
+          The following system types are widely used, as [Lix is actively supported on these platforms](@docroot@/contributing/hacking.md#platforms):
 
           - `x86_64-linux`
           - `x86_64-darwin`
@@ -210,7 +210,7 @@ public:
           - `armv7l-linux`
 
           In general, you do not have to modify this setting.
-          While you can force Nix to run a Darwin-specific `builder` executable on a Linux machine, the result would obviously be wrong.
+          While you can force Lix to run a Darwin-specific `builder` executable on a Linux machine, the result would obviously be wrong.
 
           This value is available in the Nix language as
           [`builtins.currentSystem`](@docroot@/language/builtin-constants.md#builtins-currentSystem)
@@ -252,8 +252,8 @@ public:
         R"(
           The path to the helper program that executes remote builds.
 
-          Nix communicates with the build hook over `stdio` using a custom protocol to request builds that cannot be performed directly by the Nix daemon.
-          The default value is the internal Nix binary that implements remote building.
+          Lix communicates with the build hook over `stdio` using a custom protocol to request builds that cannot be performed directly by the Nix daemon.
+          The default value is the internal Lix binary that implements remote building.
 
           > **Important**
           >
@@ -270,7 +270,7 @@ public:
     Setting<bool> alwaysAllowSubstitutes{
         this, false, "always-allow-substitutes",
         R"(
-          If set to `true`, Nix will ignore the `allowSubstitutes` attribute in
+          If set to `true`, Lix will ignore the `allowSubstitutes` attribute in
           derivations and always attempt to use available substituters.
           For more information on `allowSubstitutes`, see [the manual chapter on advanced attributes](../language/advanced-attributes.md).
         )"};
@@ -278,7 +278,7 @@ public:
     Setting<bool> buildersUseSubstitutes{
         this, false, "builders-use-substitutes",
         R"(
-          If set to `true`, Nix will instruct remote build machines to use
+          If set to `true`, Lix will instruct remote build machines to use
           their own binary substitutes if available. In practical terms, this
           means that remote hosts will fetch as many build dependencies as
           possible from their own substitutes (e.g, from `cache.nixos.org`),
@@ -317,7 +317,7 @@ public:
     Setting<bool> useSubstitutes{
         this, true, "substitute",
         R"(
-          If set to `true` (default), Nix will use binary substitutes if
+          If set to `true` (default), Lix will use binary substitutes if
           available. This option can be disabled to force building from
           source.
         )",
@@ -326,9 +326,9 @@ public:
     Setting<std::string> buildUsersGroup{
         this, "", "build-users-group",
         R"(
-          This options specifies the Unix group containing the Nix build user
-          accounts. In multi-user Nix installations, builds should not be
-          performed by the Nix account since that would allow users to
+          This options specifies the Unix group containing the Lix build user
+          accounts. In multi-user Lix installations, builds should not be
+          performed by the Lix account since that would allow users to
           arbitrarily modify the Nix store and database by supplying specially
           crafted builders; and they cannot be performed by the calling user
           since that would allow him/her to influence the build result.
@@ -338,11 +338,11 @@ public:
           of the group specified here (as listed in `/etc/group`). Those user
           accounts should not be used for any other purpose\!
 
-          Nix will never run two builds under the same user account at the
+          Lix will never run two builds under the same user account at the
           same time. This is to prevent an obvious security hole: a malicious
           user writing a Nix expression that modifies the build result of a
           legitimate Nix expression being built by another user. Therefore it
-          is good to have as many Nix build user accounts as you can spare.
+          is good to have as many Lix build user accounts as you can spare.
           (Remember: uids are cheap.)
 
           The build users should have permission to create files in the Nix
@@ -351,7 +351,7 @@ public:
           and its mode should be `1775`.
 
           If the build users group is empty, builds will be performed under
-          the uid of the Nix process (that is, the uid of the caller if
+          the uid of the Lix process (that is, the uid of the caller if
           `NIX_REMOTE` is empty, the uid under which the Nix daemon runs if
           `NIX_REMOTE` is `daemon`). Obviously, this should not be used
           with a nix daemon accessible to untrusted clients.
@@ -405,7 +405,7 @@ public:
     Setting<bool> keepLog{
         this, true, "keep-build-log",
         R"(
-          If set to `true` (the default), Nix will write the build log of a
+          If set to `true` (the default), Lix will write the build log of a
           derivation (i.e. the standard output and error of its builder) to
           the directory `/nix/var/log/nix/drvs`. The build log can be
           retrieved using the command `nix-store -l path`.
@@ -468,7 +468,7 @@ public:
     Setting<bool> autoOptimiseStore{
         this, false, "auto-optimise-store",
         R"(
-          If set to `true`, Nix automatically detects files in the store
+          If set to `true`, Lix automatically detects files in the store
           that have identical contents, and replaces them with hard links to
           a single copy. This saves disk space. If set to `false` (the
           default), you can still run `nix-store --optimise` to get rid of
@@ -519,7 +519,7 @@ public:
           network).
 
           Currently, sandboxing only work on Linux and macOS. The use of a
-          sandbox requires that Nix is run as root (so you should use the
+          sandbox requires that Lix is run as root (so you should use the
           “build users” feature to perform the actual builds under different
           users than root).
 
@@ -545,7 +545,7 @@ public:
           If the source is in the Nix store, then its closure will be added to
           the sandbox as well.
 
-          Depending on how Nix was built, the default value for this option
+          Depending on how Lix was built, the default value for this option
           may be empty or provide `/bin/sh` as a bind-mount of `bash`.
         )",
         {"build-chroot-dirs", "build-sandbox-paths"}};
@@ -556,7 +556,7 @@ public:
     Setting<bool> requireDropSupplementaryGroups{this, getuid() == 0, "require-drop-supplementary-groups",
         R"(
           Following the principle of least privilege,
-          Nix will attempt to drop supplementary groups when building with sandboxing.
+          Lix will attempt to drop supplementary groups when building with sandboxing.
 
           However this can fail under some circumstances.
           For example, if the user lacks the `CAP_SETGID` capability.
@@ -642,7 +642,7 @@ public:
           A whitespace-separated list of public keys.
 
           At least one of the following condition must be met
-          for Nix to accept copying a store object from another
+          for Lix to accept copying a store object from another
           Nix store (such as a substituter):
 
           - the store object has been signed using a key in the trusted keys list
@@ -665,14 +665,14 @@ public:
         this, 60 * 60, "tarball-ttl",
         R"(
           The number of seconds a downloaded tarball is considered fresh. If
-          the cached tarball is stale, Nix will check whether it is still up
-          to date using the ETag header. Nix will download a new version if
+          the cached tarball is stale, Lix will check whether it is still up
+          to date using the ETag header. Lix will download a new version if
           the ETag header is unsupported, or the cached ETag doesn't match.
 
-          Setting the TTL to `0` forces Nix to always check if the tarball is
+          Setting the TTL to `0` forces Lix to always check if the tarball is
           up to date.
 
-          Nix caches tarballs in `$XDG_CACHE_HOME/nix/tarballs`.
+          Lix caches tarballs in `$XDG_CACHE_HOME/nix/tarballs`.
 
           Files fetched via `NIX_PATH`, `fetchGit`, `fetchMercurial`,
           `fetchTarball`, and `fetchurl` respect this TTL.
@@ -701,7 +701,7 @@ public:
         R"(
           System types of executables that can be run on this machine.
 
-          Nix will only build a given [derivation](@docroot@/language/derivations.md) locally when its `system` attribute equals any of the values specified here or in the [`system` option](#conf-system).
+          Lix will only build a given [derivation](@docroot@/language/derivations.md) locally when its `system` attribute equals any of the values specified here or in the [`system` option](#conf-system).
 
           Setting this can be useful to build derivations locally on compatible machines:
           - `i686-linux` executables can be run on `x86_64-linux` machines (set by default)
@@ -748,16 +748,16 @@ public:
         "substituters",
         R"(
           A list of [URLs of Nix stores](@docroot@/command-ref/new-cli/nix3-help-stores.md#store-url-format) to be used as substituters, separated by whitespace.
-          A substituter is an additional [store](@docroot@/glossary.md#gloss-store) from which Nix can obtain [store objects](@docroot@/glossary.md#gloss-store-object) instead of building them.
+          A substituter is an additional [store](@docroot@/glossary.md#gloss-store) from which Lix can obtain [store objects](@docroot@/glossary.md#gloss-store-object) instead of building them.
 
           Substituters are tried based on their priority value, which each substituter can set independently.
           Lower value means higher priority.
           The default is `https://cache.nixos.org`, which has a priority of 40.
 
-          At least one of the following conditions must be met for Nix to use a substituter:
+          At least one of the following conditions must be met for Lix to use a substituter:
 
           - The substituter is in the [`trusted-substituters`](#conf-trusted-substituters) list
-          - The user calling Nix is in the [`trusted-users`](#conf-trusted-users) list
+          - The user calling Lix is in the [`trusted-users`](#conf-trusted-users) list
 
           In addition, each store path should be trusted as described in [`trusted-public-keys`](#conf-trusted-public-keys)
         )",
@@ -866,13 +866,13 @@ public:
         this, 0, "download-speed",
         R"(
           Specify the maximum transfer rate in kilobytes per second you want
-          Nix to use for downloads.
+          Lix to use for downloads.
         )"};
 
     Setting<std::string> netrcFile{
         this, fmt("%s/%s", nixConfDir, "netrc"), "netrc-file",
         R"(
-          If set to an absolute path to a `netrc` file, Nix will use the HTTP
+          If set to an absolute path to a `netrc` file, Lix will use the HTTP
           authentication credentials in this file when trying to download from
           a remote host through HTTP or HTTPS. Defaults to
           `$NIX_CONF_DIR/netrc`.
@@ -898,7 +898,7 @@ public:
         this, getDefaultSSLCertFile(), "ssl-cert-file",
         R"(
           The path of a file containing CA certificates used to
-          authenticate `https://` downloads. Nix by default will use
+          authenticate `https://` downloads. Lix by default will use
           the first of the following files that exists:
 
           1. `/etc/ssl/certs/ca-certificates.crt`
@@ -915,7 +915,7 @@ public:
     Setting<StringSet> ignoredAcls{
         this, {"security.selinux", "system.nfs4_acl", "security.csm"}, "ignored-acls",
         R"(
-          A list of ACLs that should be ignored, normally Nix attempts to
+          A list of ACLs that should be ignored, normally Lix attempts to
           remove all ACLs from files and directories in the Nix store, but
           some ACLs like `security.selinux` or `system.nfs4_acl` can't be
           removed even by root. Therefore it's best to just ignore them.
@@ -926,7 +926,7 @@ public:
         this, {}, "hashed-mirrors",
         R"(
           A list of web servers used by `builtins.fetchurl` to obtain files by
-          hash. Given a hash type *ht* and a base-16 hash *h*, Nix will try to
+          hash. Given a hash type *ht* and a base-16 hash *h*, Lix will try to
           download the file from *hashed-mirror*/*ht*/*h*. This allows files to
           be downloaded even if they have disappeared from their original URI.
           For example, given an example mirror `http://tarballs.nixos.org/`,
@@ -939,7 +939,7 @@ public:
           }
           ```
 
-          Nix will attempt to download this file from
+          Lix will attempt to download this file from
           `http://tarballs.nixos.org/sha256/2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae`
           first. If it is not available there, if will try the original URI.
         )"};
@@ -948,7 +948,7 @@ public:
         this, 0, "min-free",
         R"(
           When free disk space in `/nix/store` drops below `min-free` during a
-          build, Nix performs a garbage-collection until `max-free` bytes are
+          build, Lix performs a garbage-collection until `max-free` bytes are
           available or there is no more garbage. A value of `0` (the default)
           disables this feature.
         )"};
@@ -983,7 +983,7 @@ public:
           itself, they must be DSOs compatible with the instance of Nix
           running at the time (i.e. compiled against the same headers, not
           linked to any incompatible libraries). They should not be linked to
-          any Nix libs directly, as those will be available already at load
+          any Lix libs directly, as those will be available already at load
           time.
 
           If an entry in the list is a directory, all files in the directory
@@ -996,7 +996,7 @@ public:
     Setting<bool> allowSymlinkedStore{
         this, false, "allow-symlinked-store",
         R"(
-          If set to `true`, Nix will stop complaining if the store directory
+          If set to `true`, Lix will stop complaining if the store directory
           (typically /nix/store) contains symlink components.
 
           This risks making some builds "impure" because builders sometimes
@@ -1009,13 +1009,13 @@ public:
     Setting<bool> useXDGBaseDirectories{
         this, false, "use-xdg-base-directories",
         R"(
-          If set to `true`, Nix will conform to the [XDG Base Directory Specification] for files in `$HOME`.
+          If set to `true`, Lix will conform to the [XDG Base Directory Specification] for files in `$HOME`.
           The environment variables used to implement this are documented in the [Environment Variables section](@docroot@/command-ref/env-common.md).
 
           [XDG Base Directory Specification]: https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
 
           > **Warning**
-          > This changes the location of some well-known symlinks that Nix creates, which might break tools that rely on the old, non-XDG-conformant locations.
+          > This changes the location of some well-known symlinks that Lix creates, which might break tools that rely on the old, non-XDG-conformant locations.
 
           In particular, the following locations change:
 
@@ -1025,7 +1025,7 @@ public:
           | `~/.nix-defexpr`  | `$XDG_STATE_HOME/nix/defexpr`  |
           | `~/.nix-channels` | `$XDG_STATE_HOME/nix/channels` |
 
-          If you already have Nix installed and are using [profiles](@docroot@/package-management/profiles.md) or [channels](@docroot@/command-ref/nix-channel.md), you should migrate manually when you enable this option.
+          If you already have Lix installed and are using [profiles](@docroot@/package-management/profiles.md) or [channels](@docroot@/command-ref/nix-channel.md), you should migrate manually when you enable this option.
           If `$XDG_STATE_HOME` is not set, use `$HOME/.local/state/nix` instead of `$XDG_STATE_HOME/nix`.
           This can be achieved with the following shell commands:
 

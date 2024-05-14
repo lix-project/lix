@@ -5,7 +5,7 @@
  * a glibc git checkout via `rg --pcre2 'define __NR_fchmodat2 (?!452)'`.
  *
  * The problem is that glibc 2.39 and libseccomp 2.5.5 are needed to
- * get the syscall number. However, a Nix built against nixpkgs 23.11
+ * get the syscall number. However, a Lix built against nixpkgs 23.11
  * (glibc 2.38) should still have the issue fixed without depending
  * on the build environment.
  *

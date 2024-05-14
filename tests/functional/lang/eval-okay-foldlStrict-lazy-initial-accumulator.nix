@@ -1,5 +1,5 @@
 # Checks that the nul value for the accumulator is not forced unconditionally.
-# Some languages provide a foldl' that is strict in this argument, but Nix does not.
+# Some languages provide a foldl' that is strict in this argument, but Nix language does not.
 builtins.foldl'
   (_: x: x)
   (throw "This is never forced")

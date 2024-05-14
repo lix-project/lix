@@ -6,14 +6,14 @@ Read more about us at https://lix.systems.
 
 ## Installation
 
-On Linux and macOS the easiest way to install Nix is to run the following shell command
+On Linux and macOS the easiest way to install Lix is to run the following shell command
 (as a user other than root):
 
 ```console
 $ curl -sSf -L https://install.lix.systems/lix | sh -s -- install
 ```
 
-For systems that **already have Nix installed**, such as NixOS systems, read our [install page](https://lix.systems/install)
+For systems that **already have a Nix implementation installed**, such as NixOS systems, read our [install page](https://lix.systems/install)
 
 ## Building And Developing
 

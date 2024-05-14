@@ -87,7 +87,7 @@ Settings::Settings()
 
     /* Set the build hook location
 
-       For builds we perform a self-invocation, so Nix has to be self-aware.
+       For builds we perform a self-invocation, so Lix has to be self-aware.
        That is, it has to know where it is installed. We don't think it's sentient.
 
        Normally, nix is installed according to `nixBinDir`, which is set at compile time,
@@ -101,7 +101,7 @@ Settings::Settings()
        current executable, using `getSelfExe()`.
 
        As a last resort, we resort to `PATH`. Hopefully we find a `nix` there that's compatible.
-       If you're porting Nix to a new platform, that might be good enough for a while, but
+       If you're porting Lix to a new platform, that might be good enough for a while, but
        you'll want to improve `getSelfExe()` to work on your platform.
      */
     std::string nixExePath = nixBinDir + "/nix";

@@ -18,7 +18,7 @@ nix-build build-hook.nix -A passthru.input2 \
   --store "$TEST_ROOT/local" \
   --option system-features bar
 
-# Now when we go to build that downstream derivation, Nix will try to
+# Now when we go to build that downstream derivation, Lix will try to
 # copy our already-build `input2` to the remote store. That store object
 # is input-addressed, so this will fail.
 

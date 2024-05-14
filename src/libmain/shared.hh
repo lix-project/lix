@@ -124,7 +124,7 @@ void detectStackOverflow();
  *
  * This is called by the handler installed by detectStackOverflow().
  *
- * This gives Nix library consumers a limit opportunity to report the error
+ * This gives Lix library consumers a limit opportunity to report the error
  * condition. The handler should exit the process.
  * See defaultStackOverflowHandler() for a reference implementation.
  *

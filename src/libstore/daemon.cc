@@ -243,7 +243,7 @@ struct ClientSettings
                 } else if (name == settings.pluginFiles.name) {
                     if (tokenizeString<Paths>(value) != settings.pluginFiles.get())
                         warn("Ignoring the client-specified plugin-files.\n"
-                             "The client specifying plugins to the daemon never made sense, and was removed in Nix >=2.14.");
+                             "The client specifying plugins to the daemon never made sense, and was removed in Nix.");
                 }
                 else if (trusted
                     || name == settings.buildTimeout.name

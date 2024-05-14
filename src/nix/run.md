@@ -26,7 +26,7 @@ R""(
   ```
 
   Note that `vim` (as of the time of writing of this page) is not an
-  app but a package. Thus, Nix runs the eponymous file from the `vim`
+  app but a package. Thus, Lix runs the eponymous file from the `vim`
   package.
 
 * Run `vim` with arguments:
