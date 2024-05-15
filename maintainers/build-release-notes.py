@@ -4,9 +4,13 @@ import sys
 import pathlib
 import textwrap
 from typing import Any, Tuple
+import dataclasses
+import yaml
 
-GH_BASE = "https://github.com/NixOS/nix"
-FORGEJO_BASE = "https://git.lix.systems/lix-project/lix"
+GH_ROOT = "https://github.com/"
+GH_REPO_BASE = "https://github.com/NixOS/nix"
+FORGEJO_REPO_BASE = "https://git.lix.systems/lix-project/lix"
+FORGEJO_ROOT = "https://git.lix.systems/"
 GERRIT_BASE = "https://gerrit.lix.systems/c/lix/+"
 KNOWN_KEYS = ('synopsis', 'cls', 'issues', 'prs', 'significance', 'category', 'credits')
 
@@ -26,14 +30,49 @@ CATEGORIES = [
     'Miscellany',
 ]
 
+
+@dataclasses.dataclass
+class AuthorInfo:
+    name: str
+    github: str | None = None
+    forgejo: str | None = None
+    display_name: str | None = None
+
+    def show_name(self) -> str:
+        return self.display_name or self.name
+
+    def __str__(self) -> str:
+        if self.forgejo:
+            return f'[{self.show_name()}]({FORGEJO_ROOT}{self.forgejo})'
+        elif self.github:
+            return f'[{self.show_name()}]({GH_ROOT}{self.github})'
+        else:
+            return self.show_name()
+
+
+class AuthorInfoDB:
+    def __init__(self, author_info: dict[str, dict], throw_on_missing: bool):
+        self.author_info = {name: AuthorInfo(name=name, **d) for (name, d) in author_info.items()}
+        self.throw_on_missing = throw_on_missing
+
+    def __getitem__(self, name) -> str:
+        if name in self.author_info:
+            return str(self.author_info[name])
+        else:
+            if self.throw_on_missing:
+                raise Exception(f'Missing author info for author {name}')
+            else:
+                return name
+
+
 def format_link(ident: str, gh_part: str, fj_part: str) -> str:
     # FIXME: deprecate github as default
     if ident.isdigit():
-        num, link, base = int(ident), f"#{ident}", f"{GH_BASE}/{gh_part}"
+        num, link, base = int(ident), f"#{ident}", f"{GH_REPO_BASE}/{gh_part}"
     elif ident.startswith("gh#"):
-        num, link, base = int(ident[3:]), ident, f"{GH_BASE}/{gh_part}"
+        num, link, base = int(ident[3:]), ident, f"{GH_REPO_BASE}/{gh_part}"
     elif ident.startswith("fj#"):
-        num, link, base = int(ident[3:]), ident, f"{FORGEJO_BASE}/{fj_part}"
+        num, link, base = int(ident[3:]), ident, f"{FORGEJO_REPO_BASE}/{fj_part}"
     else:
         raise Exception("unrecognized reference format", ident)
     return f"[{link}]({base}/{num})"
@@ -58,7 +97,7 @@ def listify(l: list | int) -> list:
     else:
         return l
 
-def do_category(entries: list[Tuple[pathlib.Path, Any]]):
+def do_category(author_info: AuthorInfoDB, entries: list[Tuple[pathlib.Path, Any]]):
     for p, entry in sorted(entries, key=lambda e: (-SIGNIFICANCECES[e[1].metadata.get('significance')], e[0])):
         try:
             header = entry.metadata['synopsis']
@@ -74,13 +113,13 @@ def do_category(entries: list[Tuple[pathlib.Path, Any]]):
             print(textwrap.indent(entry.content, '  '))
             if credits := listify(entry.metadata.get('credits', [])):
                 print()
-                print(textwrap.indent('Many thanks to {} for this.'.format(plural_list(credits)), '  '))
+                print(textwrap.indent('Many thanks to {} for this.'.format(plural_list(list(author_info[c] for c in credits))), '  '))
         except Exception as e:
             e.add_note(f"in {p}")
             raise
 
 
-def run_on_dir(d):
+def run_on_dir(author_info: AuthorInfoDB, d):
     d = pathlib.Path(d)
     if not d.is_dir():
         raise ValueError(f'provided path {d} is not a directory')
@@ -105,9 +144,24 @@ def run_on_dir(d):
     for category in CATEGORIES:
         if entries[category]:
             print('\n#', category)
-            do_category(entries[category])
+            do_category(author_info, entries[category])
+
+def main():
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--change-authors', help='File name of the change authors metadata YAML file', type=argparse.FileType('r'))
+    ap.add_argument('dirs', help='Directories to run on', nargs='+')
+
+    args = ap.parse_args()
+
+    author_info = AuthorInfoDB(yaml.safe_load(args.change_authors), throw_on_missing=True) \
+        if args.change_authors \
+        else AuthorInfoDB({}, throw_on_missing=False)
+
+    for d in args.dirs:
+        run_on_dir(author_info, d)
 
 
 if __name__ == '__main__':
-    for d in sys.argv[1:]:
-        run_on_dir(d)
+    main()
