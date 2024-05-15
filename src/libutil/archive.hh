@@ -116,6 +116,7 @@ struct RetrieveRegularNARSink : ParseSink
     }
 };
 
+WireFormatGenerator parseAndCopyDump(ParseSink & sink, Source & source);
 void parseDump(ParseSink & sink, Source & source);
 
 void restorePath(const Path & path, Source & source);

@@ -174,9 +174,10 @@ static void skipGeneric(Source & source)
 #endif
 
 
-static void parseContents(ParseSink & sink, Source & source, const Path & path)
+static WireFormatGenerator parseContents(ParseSink & sink, Source & source, const Path & path)
 {
     uint64_t size = readLongLong(source);
+    co_yield size;
 
     sink.preallocateContents(size);
 
@@ -188,11 +189,13 @@ static void parseContents(ParseSink & sink, Source & source, const Path & path)
         auto n = buf.size();
         if ((uint64_t)n > left) n = left;
         source(buf.data(), n);
+        co_yield std::span{buf.data(), n};
         sink.receiveContents({buf.data(), n});
         left -= n;
     }
 
     readPadding(size, source);
+    co_yield SerializingTransform::padding(size);
 }
 
 
@@ -204,12 +207,12 @@ struct CaseInsensitiveCompare
     }
 };
 
-
-static void parse(ParseSink & sink, Source & source, const Path & path)
+static WireFormatGenerator parse(ParseSink & sink, Source & source, const Path & path)
 {
     std::string s;
 
     s = readString(source);
+    co_yield s;
     if (s != "(") throw badArchive("expected open tag");
 
     enum { tpUnknown, tpRegular, tpDirectory, tpSymlink } type = tpUnknown;
@@ -220,6 +223,7 @@ static void parse(ParseSink & sink, Source & source, const Path & path)
         checkInterrupt();
 
         s = readString(source);
+        co_yield s;
 
         if (s == ")") {
             break;
@@ -229,6 +233,7 @@ static void parse(ParseSink & sink, Source & source, const Path & path)
             if (type != tpUnknown)
                 throw badArchive("multiple type fields");
             std::string t = readString(source);
+            co_yield t;
 
             if (t == "regular") {
                 type = tpRegular;
@@ -249,12 +254,13 @@ static void parse(ParseSink & sink, Source & source, const Path & path)
         }
 
         else if (s == "contents" && type == tpRegular) {
-            parseContents(sink, source, path);
+            co_yield parseContents(sink, source, path);
             sink.closeRegularFile();
         }
 
         else if (s == "executable" && type == tpRegular) {
             auto s = readString(source);
+            co_yield s;
             if (s != "") throw badArchive("executable marker has non-empty value");
             sink.isExecutable();
         }
@@ -263,17 +269,20 @@ static void parse(ParseSink & sink, Source & source, const Path & path)
             std::string name, prevName;
 
             s = readString(source);
+            co_yield s;
             if (s != "(") throw badArchive("expected open tag");
 
             while (1) {
                 checkInterrupt();
 
                 s = readString(source);
+                co_yield s;
 
                 if (s == ")") {
                     break;
                 } else if (s == "name") {
                     name = readString(source);
+                    co_yield name;
                     if (name.empty() || name == "." || name == ".." || name.find('/') != std::string::npos || name.find((char) 0) != std::string::npos)
                         throw Error("NAR contains invalid file name '%1%'", name);
                     if (name <= prevName)
@@ -290,7 +299,7 @@ static void parse(ParseSink & sink, Source & source, const Path & path)
                     }
                 } else if (s == "node") {
                     if (name.empty()) throw badArchive("entry name missing");
-                    parse(sink, source, path + "/" + name);
+                    co_yield parse(sink, source, path + "/" + name);
                 } else
                     throw badArchive("unknown field " + s);
             }
@@ -298,6 +307,7 @@ static void parse(ParseSink & sink, Source & source, const Path & path)
 
         else if (s == "target" && type == tpSymlink) {
             std::string target = readString(source);
+            co_yield target;
             sink.createSymlink(path, target);
         }
 
@@ -307,20 +317,28 @@ static void parse(ParseSink & sink, Source & source, const Path & path)
 }
 
 
-void parseDump(ParseSink & sink, Source & source)
+WireFormatGenerator parseAndCopyDump(ParseSink & sink, Source & source)
 {
     std::string version;
     try {
         version = readString(source, narVersionMagic1.size());
+        co_yield version;
     } catch (SerialisationError & e) {
         /* This generally means the integer at the start couldn't be
            decoded.  Ignore and throw the exception below. */
     }
     if (version != narVersionMagic1)
         throw badArchive("input doesn't look like a Nix archive");
-    parse(sink, source, "");
+    co_yield parse(sink, source, "");
 }
 
+void parseDump(ParseSink & sink, Source & source)
+{
+    auto parser = parseAndCopyDump(sink, source);
+    while (parser.next()) {
+        // ignore the actual item
+    }
+}
 
 struct RestoreSink : ParseSink
 {
