@@ -22,8 +22,6 @@ extern std::atomic<bool> _isInterrupted;
 
 extern thread_local std::function<bool()> interruptCheck;
 
-void setInterruptThrown();
-
 void _interrupted();
 
 void inline checkInterrupt()
