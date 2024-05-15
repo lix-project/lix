@@ -222,7 +222,7 @@
                 pkgs = nixpkgsFor.${system}.native;
               in
               pkgs.buildPackages.runCommand "test-${name}-release-notes" { } ''
-                LANG=C.UTF-8 ${lib.getExe pkgs.build-release-notes} ${dir} >$out
+                LANG=C.UTF-8 ${lib.getExe pkgs.build-release-notes} --change-authors ${./doc/manual/change-authors.yml} ${dir} >$out
               '';
           in
           {

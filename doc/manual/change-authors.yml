@@ -1,0 +1,63 @@
+# This file is a mapping of metadata for change authors, sort of like
+# maintainer-list.nix in nixpkgs.
+#
+# It's used for crediting people accurately in release notes. The release notes
+# script will link to forgejo, then to GitHub if forgejo is not present.
+horrors:
+  display_name: eldritch horrors
+  forgejo: pennae
+  github: pennae
+
+Qyriad:
+  forgejo: Qyriad
+  github: Qyriad
+
+jade:
+  forgejo: jade
+  github: lf-
+
+iFreilicht:
+  github: iFreilicht
+
+ma27:
+  forgejo: ma27
+  github: ma27
+
+Lunaphied:
+  forgejo: Lunaphied
+  github: Lunaphied
+
+9999years:
+  display_name: wiggles
+  github: 9999years
+  forgejo: rbt
+
+matthewbauer:
+  github: matthewbauer
+
+raito:
+  display_name: Raito Bezarius
+  github: RaitoBezarius
+  forgejo: raito
+
+winter:
+  github: winterqt
+  forgejo: winter
+
+Kha:
+  github: Kha
+
+Artturin:
+  github: Artturin
+
+thufschmitt:
+  display_name: Théophane Hufschmitt
+  github: thufschmitt
+
+edolstra:
+  display_name: Eelco Dolstra
+  github: edolstra
+
+roberth:
+  display_name: Robert Hensing
+  github: roberth

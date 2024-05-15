@@ -60,10 +60,10 @@ pre-commit-run {
     release-notes = {
       enable = true;
       package = pkgs.build-release-notes;
-      files = "^doc/manual/rl-next(-dev)?";
+      files = ''^doc/manual/(change-authors\.yml|rl-next(-dev)?)'';
       pass_filenames = false;
       entry = ''
-        ${lib.getExe pkgs.build-release-notes} doc/manual/rl-next doc/manual/rl-next-dev
+        ${lib.getExe pkgs.build-release-notes} --change-authors doc/manual/change-authors.yml doc/manual/rl-next doc/manual/rl-next-dev
       '';
     };
     check-headers = {
