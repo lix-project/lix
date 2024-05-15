@@ -57,7 +57,7 @@
       officialRelease = false;
 
       # Set to true to build the release notes for the next release.
-      buildUnreleasedNotes = false;
+      buildUnreleasedNotes = true;
 
       version = lib.fileContents ./.version + versionSuffix;
       versionSuffix =

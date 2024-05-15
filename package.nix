@@ -51,9 +51,9 @@
 
   pname ? "nix",
   versionSuffix ? "",
-  officialRelease ? true,
+  officialRelease ? false,
   # Set to true to build the release notes for the next release.
-  buildUnreleasedNotes ? false,
+  buildUnreleasedNotes ? true,
   internalApiDocs ? false,
 
   # Not a real argument, just the only way to approximate let-binding some
