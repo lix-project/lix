@@ -2,6 +2,9 @@
 synopsis: Fix nested flake input `follows`
 prs: 6621
 cls: 994
+credits: [Kha, ma27]
+category: Fixes
+significance: significant
 ---
 
 Previously nested-input overrides were ignored; that is, the following did not

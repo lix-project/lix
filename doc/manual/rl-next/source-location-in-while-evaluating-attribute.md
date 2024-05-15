@@ -1,6 +1,8 @@
 ---
 synopsis: "In the debugger, `while evaluating the attribute` errors now include position information"
 prs: 9915
+credits: 9999years
+category: Fixes
 ---
 
 Before:

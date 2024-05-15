@@ -1,6 +1,9 @@
 ---
 synopsis: Experimental REPL support for documentation comments using `:doc`
 cls: 564
+category: Features
+credits: [Lunaphied, jade]
+significance: significant
 ---
 
 Using `:doc` in the REPL now supports showing documentation comments when defined on a function.

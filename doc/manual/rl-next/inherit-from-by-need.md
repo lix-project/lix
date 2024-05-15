@@ -1,6 +1,8 @@
 ---
 synopsis: "`inherit (x) ...` evaluates `x` only once"
 prs: 9847
+category: Fixes
+credits: horrors
 ---
 
 `inherit (x) a b ...` now evaluates the expression `x` only once for all inherited attributes rather than once for each inherited attribute.

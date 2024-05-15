@@ -1,6 +1,8 @@
 ---
 synopsis: Add new `eval-system` setting
 prs: 4093
+credits: [matthewbauer, horrors]
+category: Features
 ---
 
 Add a new `eval-system` option.

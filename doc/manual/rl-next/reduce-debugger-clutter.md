@@ -1,6 +1,8 @@
 ---
 synopsis: "Visual clutter in `--debugger` is reduced"
 prs: 9919
+category: Improvements
+credits: [9999years, horrors]
 ---
 
 Before:

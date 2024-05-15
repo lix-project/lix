@@ -1,6 +1,8 @@
 ---
 synopsis: re-evaluate cached evaluation errors
 cls: 771
+credits: Qyriad
+category: Fixes
 ---
 
 "cached failure of [expr]" errors have been removed: expressions already in the

@@ -2,6 +2,8 @@
 synopsis: The `--debugger` will start more reliably in `let` expressions and function calls
 prs: 9917
 issues: 6649
+credits: [9999years, horrors]
+category: Fixes
 ---
 
 Previously, if you attempted to evaluate this file with the debugger:

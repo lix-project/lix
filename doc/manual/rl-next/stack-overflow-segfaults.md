@@ -2,6 +2,9 @@
 synopsis: Some stack overflow segfaults are fixed
 issues: 9616
 prs: 9617
+cls: 205
+category: Improvements
+credits: [9999years, horrors]
 ---
 
 The number of nested function calls has been restricted, to detect and report

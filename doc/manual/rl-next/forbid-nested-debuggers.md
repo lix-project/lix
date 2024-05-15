@@ -1,6 +1,8 @@
 ---
 synopsis: Nested debuggers are no longer supported
 prs: 9920
+credits: 9999years
+category: Improvements
 ---
 
 Previously, evaluating an expression that throws an error in the debugger would

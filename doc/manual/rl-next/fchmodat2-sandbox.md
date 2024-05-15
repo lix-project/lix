@@ -1,6 +1,8 @@
 ---
 synopsis: Creating setuid/setgid binaries with fchmodat2 is now prohibited by the build sandbox
 prs: 10501
+credits: ma27
+category: Fixes
 ---
 
 The build sandbox blocks any attempt to create setuid/setgid binaries, but didn't check

@@ -2,6 +2,10 @@
 synopsis: "`nix flake check` logs the checks"
 issues: 8882
 prs: 8893
+cls: [259, 260, 261, 262]
+credits: [9999years, raito, horrors]
+category: Improvements
+significance: significant
 ---
 
 `nix flake check` now logs the checks it runs and the derivations it evaluates:

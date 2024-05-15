@@ -1,6 +1,9 @@
 ---
 synopsis: Better error reporting for `with` expressions
 prs: 9658
+cls: 207
+credits: horrors
+category: Improvements
 ---
 
 `with` expressions using non-attrset values to resolve variables are now reported with proper positions.

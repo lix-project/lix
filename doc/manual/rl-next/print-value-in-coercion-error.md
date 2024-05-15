@@ -2,6 +2,8 @@
 synopsis: Coercion errors include the failing value
 issues: 561
 prs: 9754
+credits: [9999years, horrors]
+category: Improvements
 ---
 
 The `error: cannot coerce a <TYPE> to a string` message now includes the value

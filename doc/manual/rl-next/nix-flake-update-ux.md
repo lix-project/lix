@@ -1,6 +1,8 @@
 ---
-synopsis: "`Overhaul `nix flake update` and `nix flake lock` UX"
+synopsis: "Overhaul `nix flake update` and `nix flake lock` UX"
 prs: 8817
+credits: [iFreilicht, Lunaphied, thufschmitt]
+category: Breaking Changes
 ---
 
 The interface for creating and updating lock files has been overhauled:

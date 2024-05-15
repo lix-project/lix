@@ -2,6 +2,8 @@
 synopsis: Source locations are printed more consistently in errors
 issues: 561
 prs: 9555
+credits: [9999years, horrors]
+category: Improvements
 ---
 
 Source location information is now included in error messages more

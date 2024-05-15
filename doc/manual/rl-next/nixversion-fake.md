@@ -1,6 +1,8 @@
 ---
 synopsis: "`builtins.nixVersion` now returns a fixed value \"2.18.3-lix\""
 cls: 558
+credits: jade
+category: Breaking Changes
 ---
 
 `builtins.nixVersion` now returns a fixed value `"2.18.3-lix"`. This prevents

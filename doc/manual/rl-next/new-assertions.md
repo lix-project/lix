@@ -1,6 +1,9 @@
 ---
 synopsis: Lix turns more internal bugs into crashes
 cls: [797, 626]
+credits: jade
+category: Packaging
+significance: significant
 ---
 
 Lix now enables build options such as trapping on signed overflow and enabling

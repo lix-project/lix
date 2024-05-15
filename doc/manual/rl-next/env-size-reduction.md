@@ -1,6 +1,9 @@
 ---
 synopsis: Reduce eval memory usage and wall time
 prs: 9658
+cls: 207
+credits: horrors
+category: Improvements
 ---
 
 Reduce the size of the `Env` struct used in the evaluator by a pointer, or 8 bytes on most modern machines.

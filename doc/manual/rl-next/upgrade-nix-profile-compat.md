@@ -1,6 +1,8 @@
 ---
 synopsis: using `nix profile` on `/nix/var/nix/profiles/default` no longer breaks `nix upgrade-nix`
 cls: 952
+credits: Qyriad
+category: Fixes
 ---
 
 On non-NixOS, Nix is conventionally installed into a `nix-env` style profile at /nix/var/nix/profiles/default.

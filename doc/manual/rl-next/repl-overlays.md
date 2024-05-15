@@ -2,6 +2,9 @@
 synopsis: Add `repl-overlays` option
 prs: 10203
 cls: 504
+credits: 9999years
+significance: significant
+category: Features
 ---
 
 A `repl-overlays` option has been added, which specifies files that can overlay

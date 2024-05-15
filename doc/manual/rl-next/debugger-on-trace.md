@@ -1,6 +1,8 @@
 ---
 synopsis: Enter the `--debugger` when `builtins.trace` is called if `debugger-on-trace` is set
 prs: 9914
+category: Features
+credits: 9999years
 ---
 
 If the `debugger-on-trace` option is set and `--debugger` is given,
