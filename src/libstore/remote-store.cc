@@ -469,7 +469,7 @@ void RemoteStore::addToStore(const ValidPathInfo & info, Source & source,
 
     if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 23) {
         conn.withFramedSink([&](Sink & sink) {
-            copyNAR(source, sink);
+            sink << copyNAR(source);
         });
     } else {
         conn.processStderr(0, &source);
@@ -853,7 +853,7 @@ void RemoteStore::narFromPath(const StorePath & path, Sink & sink)
     auto conn(connections->get());
     conn->to << WorkerProto::Op::NarFromPath << printStorePath(path);
     conn->processStderr();
-    copyNAR(conn->from, sink);
+    sink << copyNAR(conn->from);
 }
 
 ref<FSAccessor> RemoteStore::getFSAccessor()

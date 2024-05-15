@@ -193,7 +193,7 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
                 << info.sigs
                 << renderContentAddress(info.ca);
             try {
-                copyNAR(source, conn->to);
+                conn->to << copyNAR(source);
             } catch (...) {
                 conn->good = false;
                 throw;
@@ -206,7 +206,7 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
                 << ServeProto::Command::ImportPaths
                 << 1;
             try {
-                copyNAR(source, conn->to);
+                conn->to << copyNAR(source);
             } catch (...) {
                 conn->good = false;
                 throw;
@@ -233,7 +233,7 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
 
         conn->to << ServeProto::Command::DumpStorePath << printStorePath(path);
         conn->to.flush();
-        copyNAR(conn->from, sink);
+        sink << copyNAR(conn->from);
     }
 
     std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override

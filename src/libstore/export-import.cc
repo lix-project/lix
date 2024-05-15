@@ -64,7 +64,7 @@ StorePaths Store::importPaths(Source & source, CheckSigsFlag checkSigs)
 
         /* Extract the NAR from the source. */
         StringSink saved;
-        copyNAR(source, saved);
+        saved << copyNAR(source);
 
         uint32_t magic = readInt(source);
         if (magic != exportMagic)

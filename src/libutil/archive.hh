@@ -122,9 +122,9 @@ void parseDump(ParseSink & sink, Source & source);
 void restorePath(const Path & path, Source & source);
 
 /**
- * Read a NAR from 'source' and write it to 'sink'.
+ * Read a NAR from 'source' and return it as a generator.
  */
-void copyNAR(Source & source, Sink & sink);
+WireFormatGenerator copyNAR(Source & source);
 
 
 inline constexpr std::string_view narVersionMagic1 = "nix-archive-1";

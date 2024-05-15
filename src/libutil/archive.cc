@@ -413,16 +413,14 @@ void restorePath(const Path & path, Source & source)
 }
 
 
-void copyNAR(Source & source, Sink & sink)
+WireFormatGenerator copyNAR(Source & source)
 {
     // FIXME: if 'source' is the output of dumpPath() followed by EOF,
     // we should just forward all data directly without parsing.
 
-    ParseSink parseSink; /* null sink; just parse the NAR */
+    static ParseSink parseSink; /* null sink; just parse the NAR */
 
-    TeeSource wrapper { source, sink };
-
-    parseDump(parseSink, wrapper);
+    return parseAndCopyDump(parseSink, source);
 }
 
 

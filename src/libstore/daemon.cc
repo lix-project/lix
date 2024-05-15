@@ -463,7 +463,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
                        command. (We don't trust `addToStoreFromDump` to not
                        eagerly consume the entire stream it's given, past the
                        length of the Nar. */
-                    copyNAR(from, saved);
+                    saved << copyNAR(from);
                 } else {
                     /* Incrementally parse the NAR file, stripping the
                        metadata, and streaming the sole file we expect into
@@ -884,7 +884,6 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
 
         else {
             std::unique_ptr<Source> source;
-            StringSink saved;
             source = std::make_unique<TunnelSource>(from, to);
 
             logger->startWork();
