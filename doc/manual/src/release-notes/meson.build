@@ -1,6 +1,8 @@
 rl_next_generated = custom_target(
   command : [
     'bash',
+    '-euo',
+    'pipefail',
     '-c',
     '''
       if type -p build-release-notes > /dev/null; then

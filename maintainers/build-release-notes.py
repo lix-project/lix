@@ -40,7 +40,10 @@ def plural_list(strs: list[str]) -> str:
         return '{}{} and {}'.format(', '.join(strs[:-1]), comma, strs[-1])
 
 def run_on_dir(d):
-    paths = pathlib.Path(d).glob('*.md')
+    d = pathlib.Path(d)
+    if not d.is_dir():
+        raise ValueError(f'provided path {d} is not a directory')
+    paths = d.glob('*.md')
     entries = []
     for p in paths:
         try:
