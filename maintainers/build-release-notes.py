@@ -1,17 +1,30 @@
+from collections import defaultdict
 import frontmatter
 import sys
 import pathlib
 import textwrap
+from typing import Any, Tuple
 
 GH_BASE = "https://github.com/NixOS/nix"
 FORGEJO_BASE = "https://git.lix.systems/lix-project/lix"
 GERRIT_BASE = "https://gerrit.lix.systems/c/lix/+"
-KNOWN_KEYS = ('synopsis', 'cls', 'issues', 'prs', 'significance', 'credits')
+KNOWN_KEYS = ('synopsis', 'cls', 'issues', 'prs', 'significance', 'category', 'credits')
 
 SIGNIFICANCECES = {
     None: 0,
     'significant': 10,
 }
+
+# This is just hardcoded for better validation. If you think there should be
+# more of them, feel free to add more.
+CATEGORIES = [
+    'Breaking Changes',
+    'Features',
+    'Improvements',
+    'Fixes',
+    'Packaging',
+    'Miscellany',
+]
 
 def format_link(ident: str, gh_part: str, fj_part: str) -> str:
     # FIXME: deprecate github as default
@@ -39,31 +52,13 @@ def plural_list(strs: list[str]) -> str:
         comma = ',' if len(strs) >= 3 else ''
         return '{}{} and {}'.format(', '.join(strs[:-1]), comma, strs[-1])
 
-def run_on_dir(d):
-    d = pathlib.Path(d)
-    if not d.is_dir():
-        raise ValueError(f'provided path {d} is not a directory')
-    paths = d.glob('*.md')
-    entries = []
-    for p in paths:
-        try:
-            e = frontmatter.load(p)
-            if 'synopsis' not in e.metadata:
-                raise Exception('missing synopsis')
-            unknownKeys = set(e.metadata.keys()) - set(KNOWN_KEYS)
-            if unknownKeys:
-                raise Exception('unknown keys', unknownKeys)
-            entries.append((p, e))
-        except Exception as e:
-            e.add_note(f"in {p}")
-            raise
+def listify(l: list | int) -> list:
+    if not isinstance(l, list):
+        return [l]
+    else:
+        return l
 
-    def listify(l: list | int) -> list:
-        if not isinstance(l, list):
-            return [l]
-        else:
-            return l
-
+def do_category(entries: list[Tuple[pathlib.Path, Any]]):
     for p, entry in sorted(entries, key=lambda e: (-SIGNIFICANCECES[e[1].metadata.get('significance')], e[0])):
         try:
             header = entry.metadata['synopsis']
@@ -83,6 +78,35 @@ def run_on_dir(d):
         except Exception as e:
             e.add_note(f"in {p}")
             raise
+
+
+def run_on_dir(d):
+    d = pathlib.Path(d)
+    if not d.is_dir():
+        raise ValueError(f'provided path {d} is not a directory')
+    paths = pathlib.Path(d).glob('*.md')
+    entries = defaultdict(list)
+    for p in paths:
+        try:
+            e = frontmatter.load(p)
+            if 'synopsis' not in e.metadata:
+                raise Exception('missing synopsis')
+            unknownKeys = set(e.metadata.keys()) - set(KNOWN_KEYS)
+            if unknownKeys:
+                raise Exception('unknown keys', unknownKeys)
+            category = e.metadata.get('category', 'Miscellany')
+            if category not in CATEGORIES:
+                raise Exception('unknown category', category)
+            entries[category].append((p, e))
+        except Exception as e:
+            e.add_note(f"in {p}")
+            raise
+
+    for category in CATEGORIES:
+        if entries[category]:
+            print('\n#', category)
+            do_category(entries[category])
+
 
 if __name__ == '__main__':
     for d in sys.argv[1:]:
