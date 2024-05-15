@@ -6,6 +6,7 @@ import textwrap
 GH_BASE = "https://github.com/NixOS/nix"
 FORGEJO_BASE = "https://git.lix.systems/lix-project/lix"
 GERRIT_BASE = "https://gerrit.lix.systems/c/lix/+"
+KNOWN_KEYS = ('synopsis', 'cls', 'issues', 'prs', 'significance', 'credits')
 
 SIGNIFICANCECES = {
     None: 0,
@@ -31,6 +32,13 @@ def format_pr(pr: str) -> str:
 def format_cl(clid: int) -> str:
     return f"[cl/{clid}]({GERRIT_BASE}/{clid})"
 
+def plural_list(strs: list[str]) -> str:
+    if len(strs) <= 1:
+        return ''.join(strs)
+    else:
+        comma = ',' if len(strs) >= 3 else ''
+        return '{}{} and {}'.format(', '.join(strs[:-1]), comma, strs[-1])
+
 def run_on_dir(d):
     paths = pathlib.Path(d).glob('*.md')
     entries = []
@@ -39,7 +47,7 @@ def run_on_dir(d):
             e = frontmatter.load(p)
             if 'synopsis' not in e.metadata:
                 raise Exception('missing synopsis')
-            unknownKeys = set(e.metadata.keys()) - set(('synopsis', 'cls', 'issues', 'prs', 'significance'))
+            unknownKeys = set(e.metadata.keys()) - set(KNOWN_KEYS)
             if unknownKeys:
                 raise Exception('unknown keys', unknownKeys)
             entries.append((p, e))
@@ -66,7 +74,9 @@ def run_on_dir(d):
                 print(f"- {header}")
                 print()
             print(textwrap.indent(entry.content, '  '))
-            print()
+            if credits := listify(entry.metadata.get('credits', [])):
+                print()
+                print(textwrap.indent('Many thanks to {} for this.'.format(plural_list(credits)), '  '))
         except Exception as e:
             e.add_note(f"in {p}")
             raise
