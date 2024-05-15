@@ -16,8 +16,12 @@ std::shared_ptr<Registry> Registry::read(
 {
     auto registry = std::make_shared<Registry>(type);
 
-    if (!pathExists(path))
+    if (!pathExists(path)) {
+        if (type == RegistryType::Global) {
+            warn("cannot read flake registry '%s': path does not exist", path);
+        }
         return std::make_shared<Registry>(type);
+    }
 
     try {
 
@@ -155,9 +159,13 @@ static std::shared_ptr<Registry> getGlobalRegistry(ref<Store> store)
         auto path = fetchSettings.flakeRegistry.get();
         if (path == "") {
             return std::make_shared<Registry>(Registry::Global); // empty registry
+        } else if (path == "vendored") {
+            return Registry::read(settings.nixDataDir + "/flake-registry.json", Registry::Global);
         }
 
         if (!path.starts_with("/")) {
+            warn("config option flake-registry referring to a URL is deprecated and will be removed in Lix 3.0; yours is: `%s'", path);
+
             auto storePath = downloadFile(store, path, "flake-registry.json", false).storePath;
             if (auto store2 = store.dynamic_pointer_cast<LocalFSStore>())
                 store2->addPermRoot(storePath, getCacheDir() + "/nix/flake-registry.json");

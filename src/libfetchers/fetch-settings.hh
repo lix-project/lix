@@ -71,9 +71,12 @@ struct FetchSettings : public Config
     Setting<bool> warnDirty{this, true, "warn-dirty",
         "Whether to warn about dirty Git/Mercurial trees."};
 
-    Setting<std::string> flakeRegistry{this, "https://channels.nixos.org/flake-registry.json", "flake-registry",
+    Setting<std::string> flakeRegistry{this, "vendored", "flake-registry",
         R"(
           Path or URI of the global flake registry.
+
+          URIs are deprecated. When set to 'vendored', defaults to a vendored
+          copy of https://channels.nixos.org/flake-registry.json.
 
           When empty, disables the global flake registry.
         )",

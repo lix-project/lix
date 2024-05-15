@@ -146,6 +146,8 @@ in
           virtualisation.additionalPaths = [ pkgs.hello pkgs.fuse ];
           virtualisation.memorySize = 4096;
           nix.settings.substituters = lib.mkForce [ ];
+          # note: URL flake-registries are currently deprecated.
+          nix.settings.flake-registry = "https://channels.nixos.org/flake-registry.json";
           nix.extraOptions = "experimental-features = nix-command flakes";
           networking.hosts.${(builtins.head nodes.github.networking.interfaces.eth1.ipv4.addresses).address} =
             [ "channels.nixos.org" "api.github.com" "github.com" ];

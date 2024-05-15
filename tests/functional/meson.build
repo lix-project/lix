@@ -69,6 +69,7 @@ functional_tests_scripts = [
   'flakes/unlocked-override.sh',
   'flakes/absolute-paths.sh',
   'flakes/build-paths.sh',
+  'flakes/flake-registry.sh',
   'flakes/flake-in-submodule.sh',
   'gc.sh',
   'nix-collect-garbage-d.sh',

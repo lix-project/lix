@@ -313,6 +313,8 @@ stdenv.mkDerivation (finalAttrs: {
     "--suite=check"
     "--print-errorlogs"
   ];
+  # the tests access localhost.
+  __darwinAllowLocalNetworking = true;
 
   # Make sure the internal API docs are already built, because mesonInstallPhase
   # won't let us build them there. They would normally be built in buildPhase,
