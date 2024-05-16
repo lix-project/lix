@@ -453,7 +453,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
                 hashAlgo = parseHashType(hashAlgoRaw);
             }
 
-            auto dumpSource = sinkToSource([&](Sink & saved) {
+            GeneratorSource dumpSource{[&]() -> WireFormatGenerator {
                 if (method == FileIngestionMethod::Recursive) {
                     /* We parse the NAR dump through into `saved` unmodified,
                        so why all this extra work? We still parse the NAR so
@@ -463,18 +463,35 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
                        command. (We don't trust `addToStoreFromDump` to not
                        eagerly consume the entire stream it's given, past the
                        length of the Nar. */
-                    saved << copyNAR(from);
+                    co_yield copyNAR(from);
                 } else {
                     /* Incrementally parse the NAR file, stripping the
                        metadata, and streaming the sole file we expect into
                        `saved`. */
-                    RetrieveRegularNARSink savedRegular { saved };
-                    parseDump(savedRegular, from);
-                    if (!savedRegular.regular) throw Error("regular file expected");
+                    auto parser = nar::parse(from);
+                    nar::File * file = nullptr;
+                    while (auto entry = parser.next()) {
+                        file = std::visit(
+                            overloaded{
+                                [](nar::MetadataString) -> nar::File * { return nullptr; },
+                                [](nar::MetadataRaw) -> nar::File * { return nullptr; },
+                                [](nar::File & f) -> nar::File * { return &f; },
+                                [](auto &) -> nar::File * { throw Error("regular file expected"); },
+                            },
+                            *entry
+                        );
+                        if (file) {
+                            break;
+                        }
+                    }
+                    if (!file) {
+                        throw Error("regular file expected");
+                    }
+                    co_yield std::move(file->contents);
                 }
-            });
+            }()};
             logger->startWork();
-            auto path = store->addToStoreFromDump(*dumpSource, baseName, method, hashAlgo);
+            auto path = store->addToStoreFromDump(dumpSource, baseName, method, hashAlgo);
             logger->stopWork();
 
             to << store->printStorePath(path);
