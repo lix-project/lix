@@ -4355,10 +4355,13 @@ void EvalState::createBaseEnv()
         .doc = R"(
           Legacy version of Nix. Always returns "2.18.3-lix" on Lix.
 
-          To determine if features exist, Nix scripts should instead use direct
-          means of feature detection, such as checking for existence of
-          builtins they want to use. Doing so allows for much better compatibility
-          across implementations.
+          Code in the Nix language should use other means of feature detection
+          like detecting the presence of builtins, rather than trying to find
+          the version of the Nix implementation, as there may be other Nix
+          implementations with different feature combinations.
+
+          If the feature you want to write compatibility code for cannot be
+          detected by any means, please file a Lix bug.
         )",
     });
 
@@ -4377,15 +4380,23 @@ void EvalState::createBaseEnv()
         )",
     });
 
-    /* Language version.  This should be increased every time a new
-       language feature gets added.  It's not necessary to increase it
-       when primops get added, because you can just use `builtins ?
-       primOp' to check. */
+    /* Legacy language version.
+     * This is fixed at 6, and will never change in the future on Lix.
+     * A better language versioning construct needs to be built instead. */
     v.mkInt(6);
     addConstant("__langVersion", v, {
         .type = nInt,
         .doc = R"(
-          The current version of the Nix language.
+          The legacy version of the Nix language. Always is `6` on Lix,
+          matching Nix 2.18.
+
+          Code in the Nix language should use other means of feature detection
+          like detecting the presence of builtins, rather than trying to find
+          the version of the Nix implementation, as there may be other Nix
+          implementations with different feature combinations.
+
+          If the feature you want to write compatibility code for cannot be
+          detected by any means, please file a Lix bug.
         )",
     });
 
