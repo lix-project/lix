@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "generator.hh"
 #include "types.hh"
 #include "serialise.hh"
 #include "file-system.hh"
@@ -115,6 +116,49 @@ struct RetrieveRegularNARSink : ParseSink
         regular = false;
     }
 };
+
+namespace nar {
+
+struct MetadataString;
+struct MetadataRaw;
+struct File;
+struct Symlink;
+struct Directory;
+using Entry = std::variant<MetadataString, MetadataRaw, File, Symlink, Directory>;
+
+struct MetadataString
+{
+    std::string_view data;
+};
+
+struct MetadataRaw
+{
+    Bytes raw;
+};
+
+struct File
+{
+    const Path & path;
+    bool executable;
+    uint64_t size;
+    Generator<Bytes> contents;
+};
+
+struct Symlink
+{
+    const Path & path;
+    const Path & target;
+};
+
+struct Directory
+{
+    const Path & path;
+    Generator<Entry> contents;
+};
+
+Generator<Entry> parse(Source & source);
+
+}
 
 WireFormatGenerator parseAndCopyDump(ParseSink & sink, Source & source);
 void parseDump(ParseSink & sink, Source & source);

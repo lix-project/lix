@@ -1,5 +1,6 @@
 #include <cerrno>
 #include <algorithm>
+#include <string_view>
 #include <vector>
 #include <map>
 
@@ -13,6 +14,8 @@
 
 #include "archive.hh"
 #include "file-system.hh"
+#include "finally.hh"
+#include "serialise.hh"
 #include "config.hh"
 #include "logging.hh"
 #include "signals.hh"
@@ -174,31 +177,6 @@ static void skipGeneric(Source & source)
 #endif
 
 
-static WireFormatGenerator parseContents(ParseSink & sink, Source & source, const Path & path)
-{
-    uint64_t size = readLongLong(source);
-    co_yield size;
-
-    sink.preallocateContents(size);
-
-    uint64_t left = size;
-    std::array<char, 65536> buf;
-
-    while (left) {
-        checkInterrupt();
-        auto n = buf.size();
-        if ((uint64_t)n > left) n = left;
-        source(buf.data(), n);
-        co_yield std::span{buf.data(), n};
-        sink.receiveContents({buf.data(), n});
-        left -= n;
-    }
-
-    readPadding(size, source);
-    co_yield SerializingTransform::padding(size);
-}
-
-
 struct CaseInsensitiveCompare
 {
     bool operator() (const std::string & a, const std::string & b) const
@@ -207,129 +185,201 @@ struct CaseInsensitiveCompare
     }
 };
 
-static WireFormatGenerator parse(ParseSink & sink, Source & source, const Path & path)
+namespace nar {
+
+static Generator<Entry> parseObject(Source & source, const Path & path)
 {
-    std::string s;
+#define EXPECT(raw, kind)                              \
+    do {                                               \
+        const auto s = readString(source);             \
+        if (s != raw) {                                \
+            throw badArchive("expected " kind " tag"); \
+        }                                              \
+        co_yield MetadataString{s};                    \
+    } while (0)
 
-    s = readString(source);
-    co_yield s;
-    if (s != "(") throw badArchive("expected open tag");
+    EXPECT("(", "open");
+    EXPECT("type", "type");
 
-    enum { tpUnknown, tpRegular, tpDirectory, tpSymlink } type = tpUnknown;
+    checkInterrupt();
 
-    std::map<Path, int, CaseInsensitiveCompare> names;
+    const auto t = readString(source);
+    co_yield MetadataString{t};
 
-    while (1) {
-        checkInterrupt();
-
-        s = readString(source);
-        co_yield s;
-
-        if (s == ")") {
-            break;
-        }
-
-        else if (s == "type") {
-            if (type != tpUnknown)
-                throw badArchive("multiple type fields");
-            std::string t = readString(source);
-            co_yield t;
-
-            if (t == "regular") {
-                type = tpRegular;
-                sink.createRegularFile(path);
-            }
-
-            else if (t == "directory") {
-                sink.createDirectory(path);
-                type = tpDirectory;
-            }
-
-            else if (t == "symlink") {
-                type = tpSymlink;
-            }
-
-            else throw badArchive("unknown file type " + t);
-
-        }
-
-        else if (s == "contents" && type == tpRegular) {
-            co_yield parseContents(sink, source, path);
-            sink.closeRegularFile();
-        }
-
-        else if (s == "executable" && type == tpRegular) {
+    if (t == "regular") {
+        auto contentsOrFlag = readString(source);
+        co_yield MetadataString{contentsOrFlag};
+        const bool executable = contentsOrFlag == "executable";
+        if (executable) {
             auto s = readString(source);
-            co_yield s;
-            if (s != "") throw badArchive("executable marker has non-empty value");
-            sink.isExecutable();
+            co_yield MetadataString{s};
+            if (s != "") {
+                throw badArchive("executable marker has non-empty value");
+            }
+            contentsOrFlag = readString(source);
+            co_yield MetadataString{contentsOrFlag};
         }
+        if (contentsOrFlag == "contents") {
+            const uint64_t size = readLongLong(source);
+            co_yield MetadataRaw{SerializingTransform()(size)};
+            auto makeReader = [](Source & source, uint64_t & left) -> Generator<Bytes> {
+                std::array<char, 65536> buf;
 
-        else if (s == "entry" && type == tpDirectory) {
-            std::string name, prevName;
-
-            s = readString(source);
-            co_yield s;
-            if (s != "(") throw badArchive("expected open tag");
+                while (left) {
+                    checkInterrupt();
+                    auto n = std::min<uint64_t>(buf.size(), left);
+                    source(buf.data(), n);
+                    co_yield std::span{buf.data(), n};
+                    left -= n;
+                }
+            };
+            auto left = size;
+            co_yield File{path, executable, size, makeReader(source, left)};
+            // we could drain the remainder of the file, but coroutines being interruptible
+            // at any time makes this difficult. for files this is not that hard, but being
+            // consistent with directories is more important than handling the simple case.
+            assert(left == 0);
+            readPadding(size, source);
+            co_yield MetadataRaw{SerializingTransform::padding(size)};
+        } else {
+            throw badArchive("file without contents found: " + path);
+        }
+    } else if (t == "directory") {
+        auto makeReader = [](Source & source, const Path & path, bool & completed
+                          ) -> Generator<Entry> {
+            std::map<Path, int, CaseInsensitiveCompare> names;
+            std::string prevName;
 
             while (1) {
                 checkInterrupt();
 
-                s = readString(source);
-                co_yield s;
-
-                if (s == ")") {
-                    break;
-                } else if (s == "name") {
-                    name = readString(source);
-                    co_yield name;
-                    if (name.empty() || name == "." || name == ".." || name.find('/') != std::string::npos || name.find((char) 0) != std::string::npos)
-                        throw Error("NAR contains invalid file name '%1%'", name);
-                    if (name <= prevName)
-                        throw Error("NAR directory is not sorted");
-                    prevName = name;
-                    if (archiveSettings.useCaseHack) {
-                        auto i = names.find(name);
-                        if (i != names.end()) {
-                            debug("case collision between '%1%' and '%2%'", i->first, name);
-                            name += caseHackSuffix;
-                            name += std::to_string(++i->second);
-                        } else
-                            names[name] = 0;
+                {
+                    const auto s = readString(source);
+                    co_yield MetadataString{s};
+                    if (s == ")") {
+                        completed = true;
+                        co_return;
+                    } else if (s != "entry") {
+                        throw badArchive("expected entry tag");
                     }
-                } else if (s == "node") {
-                    if (name.empty()) throw badArchive("entry name missing");
-                    co_yield parse(sink, source, path + "/" + name);
-                } else
-                    throw badArchive("unknown field " + s);
+                    EXPECT("(", "open");
+                }
+
+                EXPECT("name", "name");
+                auto name = readString(source);
+                co_yield MetadataString{name};
+                if (name.empty() || name == "." || name == ".."
+                    || name.find('/') != std::string::npos
+                    || name.find((char) 0) != std::string::npos)
+                {
+                    throw Error("NAR contains invalid file name '%1%'", name);
+                }
+                if (name <= prevName) {
+                    throw Error("NAR directory is not sorted");
+                }
+                prevName = name;
+                if (archiveSettings.useCaseHack) {
+                    auto i = names.find(name);
+                    if (i != names.end()) {
+                        debug("case collision between '%1%' and '%2%'", i->first, name);
+                        name += caseHackSuffix;
+                        name += std::to_string(++i->second);
+                    } else {
+                        names[name] = 0;
+                    }
+                }
+
+                EXPECT("node", "node");
+                co_yield parseObject(source, path + "/" + name);
+                EXPECT(")", "close");
             }
-        }
-
-        else if (s == "target" && type == tpSymlink) {
-            std::string target = readString(source);
-            co_yield target;
-            sink.createSymlink(path, target);
-        }
-
-        else
-            throw badArchive("unknown field " + s);
+        };
+        bool completed = false;
+        co_yield Directory{path, makeReader(source, path, completed)};
+        // directories may nest, so to drain a directory properly we'd have to add a Finally
+        // argument to the generator to ensure that the draining code is always run. this is
+        // usually not necessary, hard to follow, and rather error-prone on top of all that.
+        assert(completed);
+        // directories are terminated already, don't try to read another ")"
+        co_return;
+    } else if (t == "symlink") {
+        EXPECT("target", "target");
+        std::string target = readString(source);
+        co_yield MetadataString{target};
+        co_yield Symlink{path, target};
+    } else {
+        throw badArchive("unknown file type " + t);
     }
+
+    EXPECT(")", "close");
+
+#undef EXPECT
 }
 
-
-WireFormatGenerator parseAndCopyDump(ParseSink & sink, Source & source)
+Generator<Entry> parse(Source & source)
 {
     std::string version;
     try {
         version = readString(source, narVersionMagic1.size());
-        co_yield version;
+        co_yield MetadataString{version};
     } catch (SerialisationError & e) {
         /* This generally means the integer at the start couldn't be
            decoded.  Ignore and throw the exception below. */
     }
     if (version != narVersionMagic1)
         throw badArchive("input doesn't look like a Nix archive");
-    co_yield parse(sink, source, "");
+    co_yield parseObject(source, "");
+}
+
+}
+
+
+static WireFormatGenerator restore(ParseSink & sink, Generator<nar::Entry> nar)
+{
+    while (auto entry = nar.next()) {
+        co_yield std::visit(
+            overloaded{
+                [](nar::MetadataString m) -> WireFormatGenerator {
+                    co_yield m.data;
+                },
+                [](nar::MetadataRaw r) -> WireFormatGenerator {
+                    co_yield r.raw;
+                },
+                [&](nar::File f) {
+                    return [](auto f, auto & sink) -> WireFormatGenerator {
+                        sink.createRegularFile(f.path);
+                        sink.preallocateContents(f.size);
+                        if (f.executable) {
+                            sink.isExecutable();
+                        }
+                        while (auto block = f.contents.next()) {
+                            sink.receiveContents(std::string_view{block->data(), block->size()});
+                            co_yield *block;
+                        }
+                        sink.closeRegularFile();
+                    }(std::move(f), sink);
+                },
+                [&](nar::Symlink sl) {
+                    return [](auto sl, auto & sink) -> WireFormatGenerator {
+                        sink.createSymlink(sl.path, sl.target);
+                        co_return;
+                    }(std::move(sl), sink);
+                },
+                [&](nar::Directory d) {
+                    return [](auto d, auto & sink) -> WireFormatGenerator {
+                        sink.createDirectory(d.path);
+                        return restore(sink, std::move(d.contents));
+                    }(std::move(d), sink);
+                },
+            },
+            std::move(*entry)
+        );
+    }
+}
+
+WireFormatGenerator parseAndCopyDump(ParseSink & sink, Source & source)
+{
+    return restore(sink, nar::parse(source));
 }
 
 void parseDump(ParseSink & sink, Source & source)
