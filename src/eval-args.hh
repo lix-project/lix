@@ -1,12 +1,12 @@
 #pragma once
 
-#include <nix/flake/flake.hh>
-#include <nix/args/root.hh>
-#include <nix/common-eval-args.hh>
+#include <lix/libexpr/flake/flake.hh>
+#include <lix/libutil/args/root.hh>
+#include <lix/libcmd/common-eval-args.hh>
 #include <stddef.h>
-#include <nix/common-args.hh>
-#include <nix/flake/flakeref.hh>
-#include <nix/types.hh>
+#include <lix/libmain/common-args.hh>
+#include <lix/libexpr/flake/flakeref.hh>
+#include <lix/libutil/types.hh>
 #include <string>
 #include <optional>
 

@@ -1,9 +1,9 @@
 #include <string.h>
 #include <unistd.h>
-#include <nix/signals.hh>
+#include <lix/libutil/signals.hh>
 #include <errno.h>
 #include <stdlib.h>
-#include <error.hh>
+#include <lix/libutil/error.hh>
 
 #include "buffered-io.hh"
 

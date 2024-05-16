@@ -1,5 +1,5 @@
-#include <nix/get-drvs.hh>
-#include <nix/eval.hh>
+#include <lix/libexpr/get-drvs.hh>
+#include <lix/libexpr/eval.hh>
 #include <nlohmann/json.hpp>
 #include <nlohmann/json_fwd.hpp>
 #include <string>
