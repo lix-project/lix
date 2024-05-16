@@ -227,13 +227,15 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
             throw Error("failed to add path '%s' to remote host '%s'", printStorePath(info.path), host);
     }
 
-    void narFromPath(const StorePath & path, Sink & sink) override
+    WireFormatGenerator narFromPath(const StorePath & path) override
     {
         auto conn(connections->get());
 
         conn->to << ServeProto::Command::DumpStorePath << printStorePath(path);
         conn->to.flush();
-        sink << copyNAR(conn->from);
+        return [] (auto conn) -> WireFormatGenerator {
+            co_yield copyNAR(conn->from);
+        }(std::move(conn));
     }
 
     std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override

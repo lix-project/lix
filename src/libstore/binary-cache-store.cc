@@ -329,25 +329,32 @@ std::optional<StorePath> BinaryCacheStore::queryPathFromHashPart(const std::stri
     }
 }
 
-void BinaryCacheStore::narFromPath(const StorePath & storePath, Sink & sink)
+WireFormatGenerator BinaryCacheStore::narFromPath(const StorePath & storePath)
 {
     auto info = queryPathInfo(storePath).cast<const NarInfo>();
 
-    LengthSink narSize;
-    TeeSink tee { sink, narSize };
-
-
     try {
         auto file = getFile(info->url);
-        auto decompressor = makeDecompressionSource(info->compression, *file);
-        decompressor->drainInto(tee);
+        return [](auto info, auto file, auto & stats) -> WireFormatGenerator {
+            std::unique_ptr<char[]> buf(new char[65536]);
+            size_t total = 0;
+            auto decompressor = makeDecompressionSource(info->compression, *file);
+            try {
+                while (true) {
+                    const auto len = decompressor->read(buf.get(), sizeof(buf));
+                    co_yield std::span{buf.get(), len};
+                    total += len;
+                }
+            } catch (EndOfFile &) {
+            }
+
+            stats.narRead++;
+            //stats.narReadCompressedBytes += nar->size(); // FIXME
+            stats.narReadBytes += total;
+        }(std::move(info), std::move(file), stats);
     } catch (NoSuchBinaryCacheFile & e) {
         throw SubstituteGone(std::move(e.info()));
     }
-
-    stats.narRead++;
-    //stats.narReadCompressedBytes += nar->size(); // FIXME
-    stats.narReadBytes += narSize.length;
 }
 
 std::shared_ptr<const ValidPathInfo> BinaryCacheStore::queryPathInfoUncached(const StorePath & storePath)

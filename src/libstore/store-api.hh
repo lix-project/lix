@@ -577,9 +577,9 @@ public:
     { return registerDrvOutput(output); }
 
     /**
-     * Write a NAR dump of a store path.
+     * Generate a NAR dump of a store path.
      */
-    virtual void narFromPath(const StorePath & path, Sink & sink) = 0;
+    virtual WireFormatGenerator narFromPath(const StorePath & path) = 0;
 
     /**
      * For each path, if it's a derivation, build it.  Building a

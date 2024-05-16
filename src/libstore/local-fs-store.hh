@@ -42,7 +42,7 @@ public:
 
     LocalFSStore(const Params & params);
 
-    void narFromPath(const StorePath & path, Sink & sink) override;
+    WireFormatGenerator narFromPath(const StorePath & path) override;
     ref<FSAccessor> getFSAccessor() override;
 
     /**

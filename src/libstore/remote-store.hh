@@ -183,7 +183,7 @@ protected:
 
     virtual ref<FSAccessor> getFSAccessor() override;
 
-    virtual void narFromPath(const StorePath & path, Sink & sink) override;
+    virtual WireFormatGenerator narFromPath(const StorePath & path) override;
 
 private:
 

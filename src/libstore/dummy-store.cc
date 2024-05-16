@@ -63,7 +63,7 @@ struct DummyStore : public virtual DummyStoreConfig, public virtual Store
         RepairFlag repair) override
     { unsupported("addTextToStore"); }
 
-    void narFromPath(const StorePath & path, Sink & sink) override
+    WireFormatGenerator narFromPath(const StorePath & path) override
     { unsupported("narFromPath"); }
 
     std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput &) override

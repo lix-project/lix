@@ -136,7 +136,7 @@ public:
 
     std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput &) override;
 
-    void narFromPath(const StorePath & path, Sink & sink) override;
+    WireFormatGenerator narFromPath(const StorePath & path) override;
 
     ref<FSAccessor> getFSAccessor() override;
 

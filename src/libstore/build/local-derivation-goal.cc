@@ -1085,11 +1085,11 @@ struct RestrictedStore : public virtual RestrictedStoreConfig, public virtual In
         return path;
     }
 
-    void narFromPath(const StorePath & path, Sink & sink) override
+    WireFormatGenerator narFromPath(const StorePath & path) override
     {
         if (!goal.isAllowed(path))
             throw InvalidPath("cannot dump unknown path '%s' in recursive Nix", printStorePath(path));
-        LocalFSStore::narFromPath(path, sink);
+        return LocalFSStore::narFromPath(path);
     }
 
     void ensurePath(const StorePath & path) override

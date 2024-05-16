@@ -763,7 +763,7 @@ static void opVerifyPath(Strings opFlags, Strings opArgs)
         printMsg(lvlTalkative, "checking path '%s'...", store->printStorePath(path));
         auto info = store->queryPathInfo(path);
         HashSink sink(info->narHash.type);
-        store->narFromPath(path, sink);
+        sink << store->narFromPath(path);
         auto current = sink.finish();
         if (current.first != info->narHash) {
             printError("path '%s' was modified! expected hash '%s', got '%s'",
@@ -900,7 +900,7 @@ static void opServe(Strings opFlags, Strings opArgs)
             }
 
             case ServeProto::Command::DumpStorePath:
-                store->narFromPath(store->parseStorePath(readString(in)), out);
+                out << store->narFromPath(store->parseStorePath(readString(in)));
                 break;
 
             case ServeProto::Command::ImportPaths: {

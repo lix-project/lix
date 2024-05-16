@@ -1065,7 +1065,7 @@ void copyStorePath(
             act.progress(total, info->narSize);
         });
         TeeSink tee { sink, progressSink };
-        srcStore.narFromPath(storePath, tee);
+        tee << srcStore.narFromPath(storePath);
     });
 
     dstStore.addToStore(*info, *source, repair, checkSigs);
@@ -1202,7 +1202,7 @@ std::map<StorePath, StorePath> copyPaths(
                 });
                 TeeSink tee{sink, progressSink};
 
-                srcStore.narFromPath(missingPath, tee);
+                tee << srcStore.narFromPath(missingPath);
             });
         pathsToCopy.push_back(std::pair{infoForDst, std::move(source)});
     }

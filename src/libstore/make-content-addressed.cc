@@ -23,7 +23,7 @@ std::map<StorePath, StorePath> makeContentAddressed(
         std::string oldHashPart(path.hashPart());
 
         StringSink sink;
-        srcStore.narFromPath(path, sink);
+        sink << srcStore.narFromPath(path);
 
         StringMap rewrites;
 
