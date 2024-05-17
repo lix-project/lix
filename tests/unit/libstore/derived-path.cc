@@ -77,6 +77,15 @@ TEST_F(DerivedPathTest, built_built_xp) {
         MissingExperimentalFeature);
 }
 
+/**
+ * Built paths with a non-derivation base should fail parsing.
+ */
+TEST_F(DerivedPathTest, non_derivation_base) {
+    ASSERT_THROW(
+        DerivedPath::parse(*store, "/nix/store/g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-x^foo"),
+        InvalidPath);
+}
+
 #ifndef COVERAGE
 
 RC_GTEST_FIXTURE_PROP(
