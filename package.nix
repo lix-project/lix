@@ -309,7 +309,10 @@ stdenv.mkDerivation (finalAttrs: {
 
   doCheck = canRunInstalled;
 
-  mesonCheckFlags = [ "--suite=check" ];
+  mesonCheckFlags = [
+    "--suite=check"
+    "--print-errorlogs"
+  ];
 
   # Make sure the internal API docs are already built, because mesonInstallPhase
   # won't let us build them there. They would normally be built in buildPhase,
@@ -342,7 +345,10 @@ stdenv.mkDerivation (finalAttrs: {
 
   doInstallCheck = finalAttrs.doCheck;
 
-  mesonInstallCheckFlags = [ "--suite=installcheck" ];
+  mesonInstallCheckFlags = [
+    "--suite=installcheck"
+    "--print-errorlogs"
+  ];
 
   installCheckPhase = ''
     runHook preInstallCheck
