@@ -3,6 +3,7 @@
 #include "store-api.hh"
 #include "thread-pool.hh"
 #include "signals.hh"
+#include "progress-bar.hh"
 
 #include <atomic>
 
@@ -220,6 +221,8 @@ struct CmdKey : NixMultiCommand
     {
         if (!command)
             throw UsageError("'nix key' requires a sub-command.");
+
+        stopProgressBar();
         command->second->run();
     }
 };
