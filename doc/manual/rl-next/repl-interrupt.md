@@ -1,6 +1,8 @@
 ---
 synopsis: Interrupting builds in the REPL works more than once
 cls: 1097
+category: Fixes
+credits: alois31
 ---
 
 Builds in the REPL can be interrupted by pressing Ctrl+C.
