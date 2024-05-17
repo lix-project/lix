@@ -375,7 +375,6 @@ stdenv.mkDerivation (finalAttrs: {
         just,
         nixfmt,
         glibcLocales,
-        bear,
         pre-commit-checks,
         clang-tools,
         llvmPackages,
@@ -418,7 +417,6 @@ stdenv.mkDerivation (finalAttrs: {
               llvmPackages.clang-unwrapped.dev
             ]
             ++ lib.optional (pre-commit-checks ? enabledPackages) pre-commit-checks.enabledPackages
-            ++ lib.optional (stdenv.cc.isClang && !stdenv.buildPlatform.isDarwin) bear
             ++ lib.optional (lib.meta.availableOn stdenv.buildPlatform clangbuildanalyzer) clangbuildanalyzer
             ++ finalAttrs.checkInputs;
 
