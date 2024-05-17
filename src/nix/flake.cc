@@ -87,11 +87,13 @@ public:
         expectArgs({
             .label="inputs",
             .optional=true,
-            .handler={[&](std::string inputToUpdate){
-                auto inputPath = flake::parseInputPath(inputToUpdate);
-                if (lockFlags.inputUpdates.contains(inputPath))
-                    warn("Input '%s' was specified multiple times. You may have done this by accident.");
-                lockFlags.inputUpdates.insert(inputPath);
+            .handler={[&](std::vector<std::string> inputsToUpdate) {
+                for (const auto & inputToUpdate : inputsToUpdate) {
+                    auto inputPath = flake::parseInputPath(inputToUpdate);
+                    if (lockFlags.inputUpdates.contains(inputPath))
+                        warn("Input '%s' was specified multiple times. You may have done this by accident.", inputToUpdate);
+                    lockFlags.inputUpdates.insert(inputPath);
+                }
             }},
             .completer = {[&](AddCompletions & completions, size_t, std::string_view prefix) {
                 completeFlakeInputPath(completions, getEvalState(), getFlakeRefsForCompletion(), prefix);
