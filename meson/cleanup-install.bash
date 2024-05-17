@@ -47,4 +47,4 @@ fi
 
 # Intentionally not using -f.
 # If these files don't exist then our assumptions have been violated and we should fail.
-rm -v "$includedir/nix/parser-tab.cc" "$includedir/nix/lexer-tab.cc"
+rm -v "$includedir/lix/libexpr/parser-tab.cc" "$includedir/lix/libexpr/lexer-tab.cc"

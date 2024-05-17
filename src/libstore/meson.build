@@ -6,7 +6,7 @@ foreach header : [ 'schema.sql', 'ca-specific-schema.sql' ]
     output : '@PLAINNAME@.gen.hh',
     capture : true,
     install : true,
-    install_dir : includedir / 'nix',
+    install_dir : includedir / 'lix/libstore',
   )
 endforeach
 
@@ -201,7 +201,7 @@ foreach name, value : cpp_str_defines
 endforeach
 
 libstore = library(
-  'nixstore',
+  'lixstore',
   libstore_generated_headers,
   libstore_sources,
   dependencies : [
@@ -224,7 +224,7 @@ libstore = library(
   install_rpath : libdir,
 )
 
-install_headers(libstore_headers, subdir : 'nix', preserve_path : true)
+install_headers(libstore_headers, subdir : 'lix/libstore', preserve_path : true)
 
 # Used by libfetchers.
 liblixstore = declare_dependency(
@@ -235,8 +235,8 @@ liblixstore = declare_dependency(
 # FIXME: not using the pkg-config module because it creates way too many deps
 # while meson migration is in progress, and we want to not include boost here
 configure_file(
-  input : 'nix-store.pc.in',
-  output : 'nix-store.pc',
+  input : 'lix-store.pc.in',
+  output : 'lix-store.pc',
   install_dir : libdir / 'pkgconfig',
   configuration : {
     'prefix' : prefix,

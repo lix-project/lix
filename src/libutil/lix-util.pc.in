@@ -1,0 +1,10 @@
+prefix=@prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: Lix libutil
+Description: Lix Package Manager (libutil)
+Version: @PACKAGE_VERSION@
+Requires: lix-base lix-util
+Libs: -L${libdir} -llixutil
+Cflags: -I${includedir}/lix/libutil

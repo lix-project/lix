@@ -1,0 +1,10 @@
+prefix=@prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: Lix libstore
+Description: Lix Package Manager (libstore)
+Version: @PACKAGE_VERSION@
+Requires: lix-base lix-util
+Libs: -L${libdir} -llixstore -llixutil
+Cflags: -I${includedir}/lix/libstore

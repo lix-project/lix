@@ -64,6 +64,6 @@ if cxx.get_linker_id() in ['ld.bfd', 'ld.gold']
   add_project_link_arguments('-Wl,--no-copy-dt-needed-entries', language : 'cpp')
 endif
 
-libstore = dependency('nixstore', 'nix-store', required : true)
+libstore = dependency('lixstore', 'lix-store', required : true)
 
 subdir('lib/Nix')

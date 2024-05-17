@@ -1,0 +1,8 @@
+prefix=@prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: Lix base
+Description: Lix Package Manager (config.hh fixup)
+Version: @PACKAGE_VERSION@
+Cflags: -I${includedir}/lix
