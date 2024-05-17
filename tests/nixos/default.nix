@@ -166,4 +166,6 @@ in
   rootInSandbox = runNixOSTestFor "x86_64-linux" ./root-in-sandbox;
 
   broken-userns = runNixOSTestFor "x86_64-linux" ./broken-userns.nix;
+
+  coredumps = runNixOSTestFor "x86_64-linux" ./coredumps;
 }

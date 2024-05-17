@@ -1,5 +1,6 @@
 {
-  mkNixBuildTest = { name, expressionFile, extraMachineConfig ? {} }:
+  mkNixBuildTest =
+    { name, expressionFile, extraMachineConfig ? {}, testScriptPre ? "", testScriptPost ? "" }:
     { lib, pkgs, ... }:
     {
       inherit name;
@@ -17,7 +18,11 @@
       testScript = { nodes }: ''
         start_all()
 
+        ${testScriptPre}
+
         machine.succeed('nix-build --expr "let pkgs = import <nixpkgs> {}; in pkgs.callPackage ${expressionFile} {}"')
+
+        ${testScriptPost}
       '';
     };
 }

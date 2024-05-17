@@ -290,6 +290,15 @@ public:
     Setting<off_t> reservedSize{this, 8 * 1024 * 1024, "gc-reserved-space",
         "Amount of reserved disk space for the garbage collector."};
 
+    Setting<bool> enableCoreDumps{
+        this, false, "enable-core-dumps",
+        R"(
+          If set to `false` (the default), `RLIMIT_CORE` has a soft limit of zero.
+          If set to `true`, the soft limit is infinite.
+
+          The hard limit is always infinite.
+        )"};
+
     Setting<bool> fsyncMetadata{
         this, true, "fsync-metadata",
         R"(
