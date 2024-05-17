@@ -384,7 +384,7 @@ public:
         return internalType == tList1 || internalType == tList2 ? smallList : bigList.elems;
     }
 
-    const Value * const * listElems() const
+    Value * const * listElems() const
     {
         return internalType == tList1 || internalType == tList2 ? smallList : bigList.elems;
     }
