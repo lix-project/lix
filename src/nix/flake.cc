@@ -134,6 +134,15 @@ struct CmdFlakeLock : FlakeCommand
 
     CmdFlakeLock()
     {
+        addFlag({
+            .longName="update-input",
+            .description="Replaced with `nix flake update input...`",
+            .labels={"input-path"},
+            .handler={[&](std::string inputToUpdate){
+                throw UsageError("`nix flake lock --update-input %1%` has been replaced by `nix flake update %1%`", inputToUpdate);
+            }}
+        });
+
         /* Remove flags that don't make sense. */
         removeFlag("no-write-lock-file");
     }
