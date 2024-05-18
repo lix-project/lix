@@ -1,6 +1,7 @@
 #include "command.hh"
 #include "store-api.hh"
 #include "archive.hh"
+#include "progress-bar.hh"
 
 using namespace nix;
 
@@ -20,6 +21,7 @@ struct CmdDumpPath : StorePathCommand
 
     void run(ref<Store> store, const StorePath & storePath) override
     {
+        stopProgressBar();
         FdSink sink(STDOUT_FILENO);
         store->narFromPath(storePath, sink);
         sink.flush();
@@ -55,6 +57,7 @@ struct CmdDumpPath2 : Command
 
     void run() override
     {
+        stopProgressBar();
         FdSink sink(STDOUT_FILENO);
         dumpPath(path, sink);
         sink.flush();

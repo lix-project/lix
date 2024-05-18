@@ -2,6 +2,7 @@
 #include "store-api.hh"
 #include "fs-accessor.hh"
 #include "nar-accessor.hh"
+#include "progress-bar.hh"
 
 using namespace nix;
 
@@ -17,7 +18,10 @@ struct MixCat : virtual Args
         if (st.type != FSAccessor::Type::tRegular)
             throw Error("path '%1%' is not a regular file", path);
 
-        writeFull(STDOUT_FILENO, accessor->readFile(path));
+        auto file = accessor->readFile(path);
+
+        stopProgressBar();
+        writeFull(STDOUT_FILENO, file);
     }
 };
 
