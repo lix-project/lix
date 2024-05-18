@@ -485,17 +485,26 @@ void RemoteStore::addMultipleToStore(
 {
     auto remoteVersion = getProtocol();
 
-    auto source = sinkToSource([&](Sink & sink) {
-        sink << pathsToCopy.size();
-        for (auto & [pathInfo, pathSource] : pathsToCopy) {
-            sink << WorkerProto::Serialise<ValidPathInfo>::write(*this,
-                 WorkerProto::WriteConn {remoteVersion},
-                 pathInfo);
-            pathSource->drainInto(sink);
-        }
-    });
+    GeneratorSource source{
+        [](auto self, auto & pathsToCopy, auto remoteVersion) -> WireFormatGenerator {
+            co_yield pathsToCopy.size();
+            for (auto & [pathInfo, pathSource] : pathsToCopy) {
+                co_yield WorkerProto::Serialise<ValidPathInfo>::write(*self,
+                    WorkerProto::WriteConn {remoteVersion},
+                    pathInfo);
+                try {
+                    char buf[65536];
+                    while (true) {
+                        const auto read = pathSource->read(buf, sizeof(buf));
+                        co_yield std::span{buf, read};
+                    }
+                } catch (EndOfFile &) {
+                }
+            }
+        }(this, pathsToCopy, remoteVersion)
+    };
 
-    addMultipleToStore(*source, repair, checkSigs);
+    addMultipleToStore(source, repair, checkSigs);
 }
 
 void RemoteStore::addMultipleToStore(
