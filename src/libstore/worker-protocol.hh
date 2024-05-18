@@ -122,7 +122,7 @@ struct WorkerProto
 #if 0
     {
         static T read(const Store & store, ReadConn conn);
-        static void write(const Store & store, WriteConn conn, const T & t);
+        static WireFormatGenerator write(const Store & store, WriteConn conn, const T & t);
     };
 #endif
 
@@ -131,9 +131,10 @@ struct WorkerProto
      * infer the type instead of having to write it down explicitly.
      */
     template<typename T>
-    static void write(const Store & store, WriteConn conn, const T & t)
+    [[nodiscard]]
+    static WireFormatGenerator write(const Store & store, WriteConn conn, const T & t)
     {
-        WorkerProto::Serialise<T>::write(store, conn, t);
+        return WorkerProto::Serialise<T>::write(store, conn, t);
     }
 };
 
@@ -219,7 +220,7 @@ inline std::ostream & operator << (std::ostream & s, WorkerProto::Op op)
     struct WorkerProto::Serialise< T > \
     { \
         static T read(const Store & store, WorkerProto::ReadConn conn); \
-        static void write(const Store & store, WorkerProto::WriteConn conn, const T & t); \
+        [[nodiscard]] static WireFormatGenerator write(const Store & store, WorkerProto::WriteConn conn, const T & t); \
     };
 
 template<>

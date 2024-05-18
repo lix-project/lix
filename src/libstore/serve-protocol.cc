@@ -34,23 +34,22 @@ BuildResult ServeProto::Serialise<BuildResult>::read(const Store & store, ServeP
     return status;
 }
 
-void ServeProto::Serialise<BuildResult>::write(const Store & store, ServeProto::WriteConn conn, const BuildResult & status)
+WireFormatGenerator ServeProto::Serialise<BuildResult>::write(const Store & store, ServeProto::WriteConn conn, const BuildResult & status)
 {
-    conn.to
-        << status.status
-        << status.errorMsg;
+    co_yield status.status;
+    co_yield status.errorMsg;
 
-    if (GET_PROTOCOL_MINOR(conn.version) >= 3)
-        conn.to
-            << status.timesBuilt
-            << status.isNonDeterministic
-            << status.startTime
-            << status.stopTime;
+    if (GET_PROTOCOL_MINOR(conn.version) >= 3) {
+        co_yield status.timesBuilt;
+        co_yield status.isNonDeterministic;
+        co_yield status.startTime;
+        co_yield status.stopTime;
+    }
     if (GET_PROTOCOL_MINOR(conn.version) >= 6) {
         DrvOutputs builtOutputs;
         for (auto & [output, realisation] : status.builtOutputs)
             builtOutputs.insert_or_assign(realisation.id, realisation);
-        ServeProto::write(store, conn, builtOutputs);
+        co_yield ServeProto::write(store, conn, builtOutputs);
     }
 }
 
@@ -80,21 +79,19 @@ UnkeyedValidPathInfo ServeProto::Serialise<UnkeyedValidPathInfo>::read(const Sto
     return info;
 }
 
-void ServeProto::Serialise<UnkeyedValidPathInfo>::write(const Store & store, WriteConn conn, const UnkeyedValidPathInfo & info)
+WireFormatGenerator ServeProto::Serialise<UnkeyedValidPathInfo>::write(const Store & store, WriteConn conn, const UnkeyedValidPathInfo & info)
 {
-    conn.to
-        << (info.deriver ? store.printStorePath(*info.deriver) : "");
+    co_yield (info.deriver ? store.printStorePath(*info.deriver) : "");
 
-    ServeProto::write(store, conn, info.references);
+    co_yield ServeProto::write(store, conn, info.references);
     // !!! Maybe we want compression?
-    conn.to
-        << info.narSize // downloadSize, lie a little
-        << info.narSize;
-    if (GET_PROTOCOL_MINOR(conn.version) >= 4)
-        conn.to
-            << info.narHash.to_string(Base32, true)
-            << renderContentAddress(info.ca)
-            << info.sigs;
+    co_yield info.narSize; // downloadSize, lie a little
+    co_yield info.narSize;
+    if (GET_PROTOCOL_MINOR(conn.version) >= 4) {
+        co_yield info.narHash.to_string(Base32, true);
+        co_yield renderContentAddress(info.ca);
+        co_yield info.sigs;
+    }
 }
 
 }

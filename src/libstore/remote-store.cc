@@ -203,7 +203,7 @@ StorePathSet RemoteStore::queryValidPaths(const StorePathSet & paths, Substitute
 {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::QueryValidPaths;
-    WorkerProto::write(*this, *conn, paths);
+    conn->to << WorkerProto::write(*this, *conn, paths);
     if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 27) {
         conn->to << maybeSubstitute;
     }
@@ -225,7 +225,7 @@ StorePathSet RemoteStore::querySubstitutablePaths(const StorePathSet & paths)
 {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::QuerySubstitutablePaths;
-    WorkerProto::write(*this, *conn, paths);
+    conn->to << WorkerProto::write(*this, *conn, paths);
     conn.processStderr();
     return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
 }
@@ -243,9 +243,9 @@ void RemoteStore::querySubstitutablePathInfos(const StorePathCAMap & pathsMap, S
         StorePathSet paths;
         for (auto & path : pathsMap)
             paths.insert(path.first);
-        WorkerProto::write(*this, *conn, paths);
+        conn->to << WorkerProto::write(*this, *conn, paths);
     } else
-        WorkerProto::write(*this, *conn, pathsMap);
+        conn->to << WorkerProto::write(*this, *conn, pathsMap);
     conn.processStderr();
     size_t count = readNum<size_t>(conn->from);
     for (size_t n = 0; n < count; n++) {
@@ -377,7 +377,7 @@ ref<const ValidPathInfo> RemoteStore::addCAToStore(
             << WorkerProto::Op::AddToStore
             << name
             << caMethod.render(hashType);
-        WorkerProto::write(*this, *conn, references);
+        conn->to << WorkerProto::write(*this, *conn, references);
         conn->to << repair;
 
         // The dump source may invoke the store, so we need to make some room.
@@ -402,7 +402,7 @@ ref<const ValidPathInfo> RemoteStore::addCAToStore(
                         name, printHashType(hashType));
                 std::string s = dump.drain();
                 conn->to << WorkerProto::Op::AddTextToStore << name << s;
-                WorkerProto::write(*this, *conn, references);
+                conn->to << WorkerProto::write(*this, *conn, references);
                 conn.processStderr();
             },
             [&](const FileIngestionMethod & fim) -> void {
@@ -462,7 +462,7 @@ void RemoteStore::addToStore(const ValidPathInfo & info, Source & source,
              << printStorePath(info.path)
              << (info.deriver ? printStorePath(*info.deriver) : "")
              << info.narHash.to_string(Base16, false);
-    WorkerProto::write(*this, *conn, info.references);
+    conn->to << WorkerProto::write(*this, *conn, info.references);
     conn->to << info.registrationTime << info.narSize
              << info.ultimate << info.sigs << renderContentAddress(info.ca)
              << repair << !checkSigs;
@@ -488,7 +488,7 @@ void RemoteStore::addMultipleToStore(
     auto source = sinkToSource([&](Sink & sink) {
         sink << pathsToCopy.size();
         for (auto & [pathInfo, pathSource] : pathsToCopy) {
-            WorkerProto::Serialise<ValidPathInfo>::write(*this,
+            sink << WorkerProto::Serialise<ValidPathInfo>::write(*this,
                  WorkerProto::WriteConn {sink, remoteVersion},
                  pathInfo);
             pathSource->drainInto(sink);
@@ -536,7 +536,7 @@ void RemoteStore::registerDrvOutput(const Realisation & info)
         conn->to << info.id.to_string();
         conn->to << std::string(info.outPath.to_string());
     } else {
-        WorkerProto::write(*this, *conn, info);
+        conn->to << WorkerProto::write(*this, *conn, info);
     }
     conn.processStderr();
 }
@@ -597,7 +597,7 @@ void RemoteStore::buildPaths(const std::vector<DerivedPath> & drvPaths, BuildMod
 
     auto conn(getConnection());
     conn->to << WorkerProto::Op::BuildPaths;
-    WorkerProto::write(*this, *conn, drvPaths);
+    conn->to << WorkerProto::write(*this, *conn, drvPaths);
     conn->to << buildMode;
     conn.processStderr();
     readInt(conn->from);
@@ -615,7 +615,7 @@ std::vector<KeyedBuildResult> RemoteStore::buildPathsWithResults(
 
     if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 34) {
         conn->to << WorkerProto::Op::BuildPathsWithResults;
-        WorkerProto::write(*this, *conn, paths);
+        conn->to << WorkerProto::write(*this, *conn, paths);
         conn->to << buildMode;
         conn.processStderr();
         return WorkerProto::Serialise<std::vector<KeyedBuildResult>>::read(*this, *conn);
@@ -740,7 +740,7 @@ void RemoteStore::collectGarbage(const GCOptions & options, GCResults & results)
 
     conn->to
         << WorkerProto::Op::CollectGarbage << options.action;
-    WorkerProto::write(*this, *conn, options.pathsToDelete);
+    conn->to << WorkerProto::write(*this, *conn, options.pathsToDelete);
     conn->to << options.ignoreLiveness
         << options.maxFreed
         /* removed options */
@@ -792,7 +792,7 @@ void RemoteStore::queryMissing(const std::vector<DerivedPath> & targets,
 {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::QueryMissing;
-    WorkerProto::write(*this, *conn, targets);
+    conn->to << WorkerProto::write(*this, *conn, targets);
     conn.processStderr();
     willBuild = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
     willSubstitute = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);

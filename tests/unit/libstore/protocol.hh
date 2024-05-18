@@ -56,7 +56,7 @@ public:
         auto file = ProtoTest<Proto, protocolDir>::goldenMaster(testStem);
 
         StringSink to;
-        Proto::write(
+        to << Proto::write(
             *LibStoreTest::store,
             typename Proto::WriteConn {to, version},
             value);

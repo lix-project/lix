@@ -28,17 +28,17 @@ std::optional<TrustedFlag> WorkerProto::Serialise<std::optional<TrustedFlag>>::r
     }
 }
 
-void WorkerProto::Serialise<std::optional<TrustedFlag>>::write(const Store & store, WorkerProto::WriteConn conn, const std::optional<TrustedFlag> & optTrusted)
+WireFormatGenerator WorkerProto::Serialise<std::optional<TrustedFlag>>::write(const Store & store, WorkerProto::WriteConn conn, const std::optional<TrustedFlag> & optTrusted)
 {
     if (!optTrusted)
-        conn.to << (uint8_t)0;
+        co_yield (uint8_t)0;
     else {
         switch (*optTrusted) {
         case Trusted:
-            conn.to << (uint8_t)1;
+            co_yield (uint8_t)1;
             break;
         case NotTrusted:
-            conn.to << (uint8_t)2;
+            co_yield (uint8_t)2;
             break;
         default:
             assert(false);
@@ -57,23 +57,23 @@ DerivedPath WorkerProto::Serialise<DerivedPath>::read(const Store & store, Worke
     }
 }
 
-void WorkerProto::Serialise<DerivedPath>::write(const Store & store, WorkerProto::WriteConn conn, const DerivedPath & req)
+WireFormatGenerator WorkerProto::Serialise<DerivedPath>::write(const Store & store, WorkerProto::WriteConn conn, const DerivedPath & req)
 {
     if (GET_PROTOCOL_MINOR(conn.version) >= 30) {
-        conn.to << req.to_string_legacy(store);
+        co_yield req.to_string_legacy(store);
     } else {
         auto sOrDrvPath = StorePathWithOutputs::tryFromDerivedPath(req);
-        std::visit(overloaded {
-            [&](const StorePathWithOutputs & s) {
-                conn.to << s.to_string(store);
+        co_yield std::visit(overloaded {
+            [&](const StorePathWithOutputs & s) -> std::string {
+                return s.to_string(store);
             },
-            [&](const StorePath & drvPath) {
+            [&](const StorePath & drvPath) -> std::string {
                 throw Error("trying to request '%s', but daemon protocol %d.%d is too old (< 1.29) to request a derivation file",
                     store.printStorePath(drvPath),
                     GET_PROTOCOL_MAJOR(conn.version),
                     GET_PROTOCOL_MINOR(conn.version));
             },
-            [&](std::monostate) {
+            [&](std::monostate) -> std::string {
                 throw Error("wanted to build a derivation that is itself a build product, but protocols do not support that. Try upgrading the Nix implementation on the other end of this connection");
             },
         }, sOrDrvPath);
@@ -91,10 +91,10 @@ KeyedBuildResult WorkerProto::Serialise<KeyedBuildResult>::read(const Store & st
     };
 }
 
-void WorkerProto::Serialise<KeyedBuildResult>::write(const Store & store, WorkerProto::WriteConn conn, const KeyedBuildResult & res)
+WireFormatGenerator WorkerProto::Serialise<KeyedBuildResult>::write(const Store & store, WorkerProto::WriteConn conn, const KeyedBuildResult & res)
 {
-    WorkerProto::write(store, conn, res.path);
-    WorkerProto::write(store, conn, static_cast<const BuildResult &>(res));
+    co_yield WorkerProto::write(store, conn, res.path);
+    co_yield WorkerProto::write(store, conn, static_cast<const BuildResult &>(res));
 }
 
 
@@ -120,23 +120,21 @@ BuildResult WorkerProto::Serialise<BuildResult>::read(const Store & store, Worke
     return res;
 }
 
-void WorkerProto::Serialise<BuildResult>::write(const Store & store, WorkerProto::WriteConn conn, const BuildResult & res)
+WireFormatGenerator WorkerProto::Serialise<BuildResult>::write(const Store & store, WorkerProto::WriteConn conn, const BuildResult & res)
 {
-    conn.to
-        << res.status
-        << res.errorMsg;
+    co_yield res.status;
+    co_yield res.errorMsg;
     if (GET_PROTOCOL_MINOR(conn.version) >= 29) {
-        conn.to
-            << res.timesBuilt
-            << res.isNonDeterministic
-            << res.startTime
-            << res.stopTime;
+        co_yield res.timesBuilt;
+        co_yield res.isNonDeterministic;
+        co_yield res.startTime;
+        co_yield res.stopTime;
     }
     if (GET_PROTOCOL_MINOR(conn.version) >= 28) {
         DrvOutputs builtOutputs;
         for (auto & [output, realisation] : res.builtOutputs)
             builtOutputs.insert_or_assign(realisation.id, realisation);
-        WorkerProto::write(store, conn, builtOutputs);
+        co_yield WorkerProto::write(store, conn, builtOutputs);
     }
 }
 
@@ -150,10 +148,10 @@ ValidPathInfo WorkerProto::Serialise<ValidPathInfo>::read(const Store & store, R
     };
 }
 
-void WorkerProto::Serialise<ValidPathInfo>::write(const Store & store, WriteConn conn, const ValidPathInfo & pathInfo)
+WireFormatGenerator WorkerProto::Serialise<ValidPathInfo>::write(const Store & store, WriteConn conn, const ValidPathInfo & pathInfo)
 {
-    WorkerProto::write(store, conn, pathInfo.path);
-    WorkerProto::write(store, conn, static_cast<const UnkeyedValidPathInfo &>(pathInfo));
+    co_yield WorkerProto::write(store, conn, pathInfo.path);
+    co_yield WorkerProto::write(store, conn, static_cast<const UnkeyedValidPathInfo &>(pathInfo));
 }
 
 
@@ -173,18 +171,17 @@ UnkeyedValidPathInfo WorkerProto::Serialise<UnkeyedValidPathInfo>::read(const St
     return info;
 }
 
-void WorkerProto::Serialise<UnkeyedValidPathInfo>::write(const Store & store, WriteConn conn, const UnkeyedValidPathInfo & pathInfo)
+WireFormatGenerator WorkerProto::Serialise<UnkeyedValidPathInfo>::write(const Store & store, WriteConn conn, const UnkeyedValidPathInfo & pathInfo)
 {
-    conn.to
-        << (pathInfo.deriver ? store.printStorePath(*pathInfo.deriver) : "")
-        << pathInfo.narHash.to_string(Base16, false);
-    WorkerProto::write(store, conn, pathInfo.references);
-    conn.to << pathInfo.registrationTime << pathInfo.narSize;
+    co_yield (pathInfo.deriver ? store.printStorePath(*pathInfo.deriver) : "");
+    co_yield pathInfo.narHash.to_string(Base16, false);
+    co_yield WorkerProto::write(store, conn, pathInfo.references);
+    co_yield pathInfo.registrationTime;
+    co_yield pathInfo.narSize;
 
-    conn.to
-        << pathInfo.ultimate
-        << pathInfo.sigs
-        << renderContentAddress(pathInfo.ca);
+    co_yield pathInfo.ultimate;
+    co_yield pathInfo.sigs;
+    co_yield renderContentAddress(pathInfo.ca);
 }
 
 }

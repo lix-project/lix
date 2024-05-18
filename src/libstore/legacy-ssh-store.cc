@@ -185,7 +185,7 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
                 << printStorePath(info.path)
                 << (info.deriver ? printStorePath(*info.deriver) : "")
                 << info.narHash.to_string(Base16, false);
-            ServeProto::write(*this, *conn, info.references);
+            conn->to << ServeProto::write(*this, *conn, info.references);
             conn->to
                 << info.registrationTime
                 << info.narSize
@@ -214,7 +214,7 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
             conn->to
                 << exportMagic
                 << printStorePath(info.path);
-            ServeProto::write(*this, *conn, info.references);
+            conn->to << ServeProto::write(*this, *conn, info.references);
             conn->to
                 << (info.deriver ? printStorePath(*info.deriver) : "")
                 << 0
@@ -366,7 +366,7 @@ public:
         conn->to
             << ServeProto::Command::QueryClosure
             << includeOutputs;
-        ServeProto::write(*this, *conn, paths);
+        conn->to << ServeProto::write(*this, *conn, paths);
         conn->to.flush();
 
         for (auto & i : ServeProto::Serialise<StorePathSet>::read(*this, *conn))
@@ -382,7 +382,7 @@ public:
             << ServeProto::Command::QueryValidPaths
             << false // lock
             << maybeSubstitute;
-        ServeProto::write(*this, *conn, paths);
+        conn->to << ServeProto::write(*this, *conn, paths);
         conn->to.flush();
 
         return ServeProto::Serialise<StorePathSet>::read(*this, *conn);

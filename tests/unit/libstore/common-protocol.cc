@@ -50,7 +50,7 @@ public:
         auto file = goldenMaster(testStem);
 
         StringSink to;
-        CommonProto::write(
+        to << CommonProto::write(
             *store,
             CommonProto::WriteConn { .to = to },
             value);

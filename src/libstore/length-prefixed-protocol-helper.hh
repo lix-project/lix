@@ -7,6 +7,7 @@
  */
 
 #include "types.hh"
+#include "serialise.hh"
 
 namespace nix {
 
@@ -45,7 +46,7 @@ struct LengthPrefixedProtoHelper;
     struct LengthPrefixedProtoHelper< Inner, T > \
     { \
         static T read(const Store & store, typename Inner::ReadConn conn); \
-        static void write(const Store & store, typename Inner::WriteConn conn, const T & str); \
+        [[nodiscard]] static WireFormatGenerator write(const Store & store, typename Inner::WriteConn conn, const T & str); \
     private: \
         template<typename U> using S = typename Inner::template Serialise<U>; \
     }
@@ -78,13 +79,13 @@ LengthPrefixedProtoHelper<Inner, std::vector<T>>::read(
 }
 
 template<class Inner, typename T>
-void
+WireFormatGenerator
 LengthPrefixedProtoHelper<Inner, std::vector<T>>::write(
     const Store & store, typename Inner::WriteConn conn, const std::vector<T> & resSet)
 {
-    conn.to << resSet.size();
+    co_yield resSet.size();
     for (auto & key : resSet) {
-        S<T>::write(store, conn, key);
+        co_yield S<T>::write(store, conn, key);
     }
 }
 
@@ -102,13 +103,13 @@ LengthPrefixedProtoHelper<Inner, std::set<T>>::read(
 }
 
 template<class Inner, typename T>
-void
+WireFormatGenerator
 LengthPrefixedProtoHelper<Inner, std::set<T>>::write(
     const Store & store, typename Inner::WriteConn conn, const std::set<T> & resSet)
 {
-    conn.to << resSet.size();
+    co_yield resSet.size();
     for (auto & key : resSet) {
-        S<T>::write(store, conn, key);
+        co_yield S<T>::write(store, conn, key);
     }
 }
 
@@ -128,14 +129,14 @@ LengthPrefixedProtoHelper<Inner, std::map<K, V>>::read(
 }
 
 template<class Inner, typename K, typename V>
-void
+WireFormatGenerator
 LengthPrefixedProtoHelper<Inner, std::map<K, V>>::write(
     const Store & store, typename Inner::WriteConn conn, const std::map<K, V> & resMap)
 {
-    conn.to << resMap.size();
+    co_yield resMap.size();
     for (auto & i : resMap) {
-        S<K>::write(store, conn, i.first);
-        S<V>::write(store, conn, i.second);
+        co_yield S<K>::write(store, conn, i.first);
+        co_yield S<V>::write(store, conn, i.second);
     }
 }
 
@@ -150,13 +151,24 @@ LengthPrefixedProtoHelper<Inner, std::tuple<Ts...>>::read(
 }
 
 template<class Inner, typename... Ts>
-void
+WireFormatGenerator
 LengthPrefixedProtoHelper<Inner, std::tuple<Ts...>>::write(
     const Store & store, typename Inner::WriteConn conn, const std::tuple<Ts...> & res)
 {
-    std::apply([&]<typename... Us>(const Us &... args) {
-        (S<Us>::write(store, conn, args), ...);
-    }, res);
+    auto fullArgs = std::apply(
+        [&](auto &... rest) {
+            return std::tuple<const Store &, typename Inner::WriteConn &, const Ts &...>(
+                std::cref(store), conn, rest...
+            );
+        },
+        res
+    );
+    return std::apply(
+        []<typename... Us>(auto & store, auto conn, const Us &... args) -> WireFormatGenerator {
+            (co_yield S<Us>::write(store, conn, args), ...);
+        },
+        fullArgs
+    );
 }
 
 }

@@ -79,7 +79,7 @@ struct ServeProto
 #if 0
     {
         static T read(const Store & store, ReadConn conn);
-        static void write(const Store & store, WriteConn conn, const T & t);
+        static WireFormatGenerator write(const Store & store, WriteConn conn, const T & t);
     };
 #endif
 
@@ -88,9 +88,10 @@ struct ServeProto
      * infer the type instead of having to write it down explicitly.
      */
     template<typename T>
-    static void write(const Store & store, WriteConn conn, const T & t)
+    [[nodiscard]]
+    static WireFormatGenerator write(const Store & store, WriteConn conn, const T & t)
     {
-        ServeProto::Serialise<T>::write(store, conn, t);
+        return ServeProto::Serialise<T>::write(store, conn, t);
     }
 };
 
@@ -142,7 +143,7 @@ inline std::ostream & operator << (std::ostream & s, ServeProto::Command op)
     struct ServeProto::Serialise< T > \
     { \
         static T read(const Store & store, ServeProto::ReadConn conn); \
-        static void write(const Store & store, ServeProto::WriteConn conn, const T & t); \
+        [[nodiscard]] static WireFormatGenerator write(const Store & store, ServeProto::WriteConn conn, const T & t); \
     };
 
 template<>

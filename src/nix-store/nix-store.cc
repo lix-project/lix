@@ -880,7 +880,8 @@ static void opServe(Strings opFlags, Strings opArgs)
                     store->substitutePaths(paths);
                 }
 
-                ServeProto::write(*store, wconn, store->queryValidPaths(paths));
+                auto valid = store->queryValidPaths(paths);
+                wconn.to << ServeProto::write(*store, wconn, valid);
                 break;
             }
 
@@ -891,7 +892,7 @@ static void opServe(Strings opFlags, Strings opArgs)
                     try {
                         auto info = store->queryPathInfo(i);
                         out << store->printStorePath(info->path);
-                        ServeProto::write(*store, wconn, static_cast<const UnkeyedValidPathInfo &>(*info));
+                        wconn.to << ServeProto::write(*store, wconn, static_cast<const UnkeyedValidPathInfo &>(*info));
                     } catch (InvalidPath &) {
                     }
                 }
@@ -950,7 +951,7 @@ static void opServe(Strings opFlags, Strings opArgs)
                 MonitorFdHup monitor(in.fd);
                 auto status = store->buildDerivation(drvPath, drv);
 
-                ServeProto::write(*store, wconn, status);
+                wconn.to << ServeProto::write(*store, wconn, status);
                 break;
             }
 
@@ -959,7 +960,7 @@ static void opServe(Strings opFlags, Strings opArgs)
                 StorePathSet closure;
                 store->computeFSClosure(ServeProto::Serialise<StorePathSet>::read(*store, rconn),
                     closure, false, includeOutputs);
-                ServeProto::write(*store, wconn, closure);
+                wconn.to << ServeProto::write(*store, wconn, closure);
                 break;
             }
 

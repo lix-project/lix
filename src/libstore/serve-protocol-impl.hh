@@ -20,9 +20,9 @@ namespace nix {
     { \
         return LengthPrefixedProtoHelper<ServeProto, T >::read(store, conn); \
     } \
-    TEMPLATE void ServeProto::Serialise< T >::write(const Store & store, ServeProto::WriteConn conn, const T & t) \
+    TEMPLATE [[nodiscard]] WireFormatGenerator ServeProto::Serialise< T >::write(const Store & store, ServeProto::WriteConn conn, const T & t) \
     { \
-        LengthPrefixedProtoHelper<ServeProto, T >::write(store, conn, t); \
+        return LengthPrefixedProtoHelper<ServeProto, T >::write(store, conn, t); \
     }
 
 SERVE_USE_LENGTH_PREFIX_SERIALISER(template<typename T>, std::vector<T>)
@@ -46,9 +46,10 @@ struct ServeProto::Serialise
         return CommonProto::Serialise<T>::read(store,
             CommonProto::ReadConn { .from = conn.from });
     }
-    static void write(const Store & store, ServeProto::WriteConn conn, const T & t)
+    [[nodiscard]]
+    static WireFormatGenerator write(const Store & store, ServeProto::WriteConn conn, const T & t)
     {
-        CommonProto::Serialise<T>::write(store,
+        return CommonProto::Serialise<T>::write(store,
             CommonProto::WriteConn { .to = conn.to },
             t);
     }
