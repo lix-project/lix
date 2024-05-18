@@ -55,7 +55,7 @@ std::pair<ref<FSAccessor>, Path> RemoteFSAccessor::fetch(const Path & path_, boo
     auto [storePath, restPath] = store->toStorePath(path);
 
     if (requireValidPath && !store->isValidPath(storePath))
-        throw InvalidPath("path '%1%' is not a valid store path", store->printStorePath(storePath));
+        throw InvalidPath("path '%1%' does not exist in remote store", store->printStorePath(storePath));
 
     auto i = nars.find(std::string(storePath.hashPart()));
     if (i != nars.end()) return {i->second, restPath};

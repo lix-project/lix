@@ -170,7 +170,7 @@ ref<const ValidPathInfo> BinaryCacheStore::addToStoreCommon(
             if (ref != info.path)
                 queryPathInfo(ref);
         } catch (InvalidPath &) {
-            throw Error("cannot add '%s' to the binary cache because the reference '%s' is not valid",
+            throw Error("cannot add '%s' to the binary cache because the reference '%s' does not exist",
                 printStorePath(info.path), printStorePath(ref));
         }
 
