@@ -899,7 +899,7 @@ std::shared_ptr<const ValidPathInfo> LocalStore::queryPathInfoInternal(State & s
     auto useQueryPathInfo(state.stmts->QueryPathInfo.use()(printStorePath(path)));
 
     if (!useQueryPathInfo.next())
-        return std::shared_ptr<ValidPathInfo>();
+        return nullptr;
 
     auto id = useQueryPathInfo.getInt(0);
 

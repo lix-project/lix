@@ -361,7 +361,7 @@ std::shared_ptr<const ValidPathInfo> BinaryCacheStore::queryPathInfoUncached(con
 
     auto data = getFile(narInfoFile);
 
-    if (!data) return {};
+    if (!data) return nullptr;
 
     stats.narInfoRead++;
 

@@ -666,11 +666,19 @@ bool Store::isValidPathUncached(const StorePath & path)
 }
 
 
-static bool goodStorePath(const StorePath & expected, const StorePath & actual)
+static void ensureGoodStorePath(Store * store, const StorePath & expected, const StorePath & actual)
 {
-    return
-        expected.hashPart() == actual.hashPart()
-        && (expected.name() == Store::MissingName || expected.name() == actual.name());
+    if (expected.hashPart() != actual.hashPart()) {
+        throw Error(
+            "the queried store path hash '%s' did not match expected '%s' while querying the store path '%s'",
+            expected.hashPart(), actual.hashPart(), store->printStorePath(expected)
+        );
+    } else if (expected.name() != Store::MissingName && expected.name() != actual.name()) {
+        throw Error(
+            "the queried store path name '%s' did not match expected '%s' while querying the store path '%s'",
+            expected.name(), actual.name(), store->printStorePath(expected)
+        );
+    }
 }
 
 
@@ -683,7 +691,7 @@ ref<const ValidPathInfo> Store::queryPathInfo(const StorePath & storePath)
         if (res && res->isKnownNow()) {
             stats.narInfoReadAverted++;
             if (!res->didExist())
-                throw InvalidPath("path '%s' is not valid", printStorePath(storePath));
+                throw InvalidPath("path '%s' does not exist in the store", printStorePath(storePath));
             return ref<const ValidPathInfo>(res->value);
         }
     }
@@ -696,27 +704,31 @@ ref<const ValidPathInfo> Store::queryPathInfo(const StorePath & storePath)
                 auto state_(state.lock());
                 state_->pathInfoCache.upsert(std::string(storePath.to_string()),
                     res.first == NarInfoDiskCache::oInvalid ? PathInfoCacheValue{} : PathInfoCacheValue{ .value = res.second });
-                if (res.first == NarInfoDiskCache::oInvalid ||
-                    !goodStorePath(storePath, res.second->path))
-                    throw InvalidPath("path '%s' is not valid", printStorePath(storePath));
+                if (res.first == NarInfoDiskCache::oInvalid)
+                    throw InvalidPath("path '%s' does not exist in the store", printStorePath(storePath));
             }
             return ref<const ValidPathInfo>(res.second);
         }
     }
 
     auto info = queryPathInfoUncached(storePath);
+    if (info) {
+        // first, before we cache anything, check that the store gave us valid data.
+        ensureGoodStorePath(this, storePath, info->path);
+    }
 
-    if (diskCache)
+    if (diskCache) {
         diskCache->upsertNarInfo(getUri(), hashPart, info);
+    }
 
     {
         auto state_(state.lock());
         state_->pathInfoCache.upsert(std::string(storePath.to_string()), PathInfoCacheValue { .value = info });
     }
 
-    if (!info || !goodStorePath(storePath, info->path)) {
+    if (!info) {
         stats.narInfoMissing++;
-        throw InvalidPath("path '%s' is not valid", printStorePath(storePath));
+        throw InvalidPath("path '%s' does not exist in the store", printStorePath(storePath));
     }
 
     return ref<const ValidPathInfo>(info);

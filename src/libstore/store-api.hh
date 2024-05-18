@@ -399,6 +399,10 @@ public:
 
 protected:
 
+    /**
+     * Queries the path info without caching.
+     * Note to implementors: should return `nullptr` when the path is not found.
+     */
     virtual std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) = 0;
     virtual std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput &) = 0;
 
