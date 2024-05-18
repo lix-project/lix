@@ -509,7 +509,8 @@ void RemoteStore::addToStore(const ValidPathInfo & info, Source & source,
             sink
                 << exportMagic
                 << printStorePath(info.path);
-            WorkerProto::write(*this, *conn, info.references);
+            WorkerProto::WriteConn nested { .to = sink, .version = conn->daemonVersion };
+            WorkerProto::write(*this, nested, info.references);
             sink
                 << (info.deriver ? printStorePath(*info.deriver) : "")
                 << 0 // == no legacy signature
