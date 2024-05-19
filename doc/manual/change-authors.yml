@@ -66,3 +66,8 @@ midnightveil:
   display_name: julia
   forgejo: midnightveil
   github: midnightveil
+
+puck:
+  display_name: puck
+  forgejo: puck
+  github: puckipedia
