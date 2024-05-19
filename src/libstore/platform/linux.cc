@@ -1,10 +1,12 @@
 #include "build/worker.hh"
 #include "cgroup.hh"
+#include "finally.hh"
 #include "gc-store.hh"
 #include "signals.hh"
 #include "platform/linux.hh"
 #include "regex.hh"
 
+#include <grp.h>
 #include <regex>
 
 namespace nix {
@@ -202,6 +204,158 @@ void LinuxLocalDerivationGoal::prepareSandbox()
         chownToBuilder(*cgroup + "/cgroup.threads");
         //chownToBuilder(*cgroup + "/cgroup.subtree_control");
     }
+}
+
+Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
+{
+    // If we're not sandboxing no need to faff about, use the fallback
+    if (!useChroot) {
+        return LocalDerivationGoal::startChild(openSlave);
+    }
+    /* Set up private namespaces for the build:
+
+       - The PID namespace causes the build to start as PID 1.
+         Processes outside of the chroot are not visible to those
+         on the inside, but processes inside the chroot are
+         visible from the outside (though with different PIDs).
+
+       - The private mount namespace ensures that all the bind
+         mounts we do will only show up in this process and its
+         children, and will disappear automatically when we're
+         done.
+
+       - The private network namespace ensures that the builder
+         cannot talk to the outside world (or vice versa).  It
+         only has a private loopback interface. (Fixed-output
+         derivations are not run in a private network namespace
+         to allow functions like fetchurl to work.)
+
+       - The IPC namespace prevents the builder from communicating
+         with outside processes using SysV IPC mechanisms (shared
+         memory, message queues, semaphores).  It also ensures
+         that all IPC objects are destroyed when the builder
+         exits.
+
+       - The UTS namespace ensures that builders see a hostname of
+         localhost rather than the actual hostname.
+
+       We use a helper process to do the clone() to work around
+       clone() being broken in multi-threaded programs due to
+       at-fork handlers not being run. Note that we use
+       CLONE_PARENT to ensure that the real builder is parented to
+       us.
+    */
+
+    if (derivationType->isSandboxed())
+        privateNetwork = true;
+
+    userNamespaceSync.create();
+
+    Pipe sendPid;
+    sendPid.create();
+
+    Pid helper = startProcess([&]() {
+        sendPid.readSide.close();
+
+        /* We need to open the slave early, before
+           CLONE_NEWUSER. Otherwise we get EPERM when running as
+           root. */
+        openSlave();
+
+        /* Drop additional groups here because we can't do it
+           after we've created the new user namespace. */
+        if (setgroups(0, 0) == -1) {
+            if (errno != EPERM)
+                throw SysError("setgroups failed");
+            if (settings.requireDropSupplementaryGroups)
+                throw Error("setgroups failed. Set the require-drop-supplementary-groups option to false to skip this step.");
+        }
+
+        ProcessOptions options;
+        options.cloneFlags = CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWUTS | CLONE_PARENT | SIGCHLD;
+        if (privateNetwork)
+            options.cloneFlags |= CLONE_NEWNET;
+        if (usingUserNamespace)
+            options.cloneFlags |= CLONE_NEWUSER;
+
+        pid_t child = startProcess([&]() { runChild(); }, options).release();
+
+        writeFull(sendPid.writeSide.get(), fmt("%d\n", child));
+        _exit(0);
+    });
+
+    sendPid.writeSide.close();
+
+    if (helper.wait() != 0)
+        throw Error("unable to start build process");
+
+    userNamespaceSync.readSide.reset();
+
+    /* Close the write side to prevent runChild() from hanging
+       reading from this. */
+    Finally cleanup([&]() {
+        userNamespaceSync.writeSide.reset();
+    });
+
+    auto ss = tokenizeString<std::vector<std::string>>(readLine(sendPid.readSide.get()));
+    assert(ss.size() == 1);
+    Pid pid = Pid{string2Int<pid_t>(ss[0]).value()};
+
+    if (usingUserNamespace) {
+        /* Set the UID/GID mapping of the builder's user namespace
+           such that the sandbox user maps to the build user, or to
+           the calling user (if build users are disabled). */
+        uid_t hostUid = buildUser ? buildUser->getUID() : getuid();
+        uid_t hostGid = buildUser ? buildUser->getGID() : getgid();
+        uid_t nrIds = buildUser ? buildUser->getUIDCount() : 1;
+
+        writeFile("/proc/" + std::to_string(pid.get()) + "/uid_map",
+            fmt("%d %d %d", sandboxUid(), hostUid, nrIds));
+
+        if (!buildUser || buildUser->getUIDCount() == 1)
+            writeFile("/proc/" + std::to_string(pid.get()) + "/setgroups", "deny");
+
+        writeFile("/proc/" + std::to_string(pid.get()) + "/gid_map",
+            fmt("%d %d %d", sandboxGid(), hostGid, nrIds));
+    } else {
+        debug("note: not using a user namespace");
+    }
+
+    /* Now that we now the sandbox uid, we can write
+       /etc/passwd. */
+    writeFile(chrootRootDir + "/etc/passwd", fmt(
+            "root:x:0:0:Nix build user:%3%:/noshell\n"
+            "nixbld:x:%1%:%2%:Nix build user:%3%:/noshell\n"
+            "nobody:x:65534:65534:Nobody:/:/noshell\n",
+            sandboxUid(), sandboxGid(), settings.sandboxBuildDir));
+
+    /* Declare the build user's group so that programs get a consistent
+       view of the system (e.g., "id -gn"). */
+    writeFile(chrootRootDir + "/etc/group",
+        fmt("root:x:0:\n"
+            "nixbld:!:%1%:\n"
+            "nogroup:x:65534:\n", sandboxGid()));
+
+    /* Save the mount- and user namespace of the child. We have to do this
+       *before* the child does a chroot. */
+    sandboxMountNamespace = AutoCloseFD{open(fmt("/proc/%d/ns/mnt", pid.get()).c_str(), O_RDONLY)};
+    if (sandboxMountNamespace.get() == -1)
+        throw SysError("getting sandbox mount namespace");
+
+    if (usingUserNamespace) {
+        sandboxUserNamespace = AutoCloseFD{open(fmt("/proc/%d/ns/user", pid.get()).c_str(), O_RDONLY)};
+        if (sandboxUserNamespace.get() == -1)
+            throw SysError("getting sandbox user namespace");
+    }
+
+    /* Move the child into its own cgroup. */
+    if (cgroup)
+        writeFile(*cgroup + "/cgroup.procs", fmt("%d", pid.get()));
+
+    /* Signal the builder that we've updated its user namespace. */
+    writeFull(userNamespaceSync.writeSide.get(), "1");
+
+    return pid;
 }
 
 void LinuxLocalDerivationGoal::killSandbox(bool getStats)

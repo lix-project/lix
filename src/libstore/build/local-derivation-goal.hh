@@ -334,6 +334,12 @@ protected:
     };
 
     /**
+     * Create a new process that runs `openSlave` and `runChild`
+     * On some platforms this process is created with sandboxing flags.
+     */
+    virtual Pid startChild(std::function<void()> openSlave);
+
+    /**
      * Execute the builder, replacing the current process.
      * Generally this means an `execve` call.
      */
