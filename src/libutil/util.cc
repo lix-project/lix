@@ -184,6 +184,11 @@ Path canonPath(PathView path, bool resolveSymlinks)
     return s.empty() ? "/" : std::move(s);
 }
 
+void chmodPath(const Path & path, mode_t mode)
+{
+    if (chmod(path.c_str(), mode) == -1)
+        throw SysError("setting permissions on '%s'", path);
+}
 
 Path dirOf(const PathView path)
 {
@@ -1799,8 +1804,7 @@ AutoCloseFD createUnixDomainSocket(const Path & path, mode_t mode)
 
     bind(fdSocket.get(), path);
 
-    if (chmod(path.c_str(), mode) == -1)
-        throw SysError("changing permissions on '%1%'", path);
+    chmodPath(path.c_str(), mode);
 
     if (listen(fdSocket.get(), 100) == -1)
         throw SysError("cannot listen on socket '%1%'", path);

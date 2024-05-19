@@ -272,12 +272,6 @@ void LocalDerivationGoal::tryLocalBuild()
     started();
 }
 
-static void chmod_(const Path & path, mode_t mode)
-{
-    if (chmod(path.c_str(), mode) == -1)
-        throw SysError("setting permissions on '%s'", path);
-}
-
 
 /* Move/rename path 'src' to 'dst'. Temporarily make 'src' writable if
    it's a directory and we're not root (to be able to update the
@@ -289,12 +283,12 @@ static void movePath(const Path & src, const Path & dst)
     bool changePerm = (geteuid() && S_ISDIR(st.st_mode) && !(st.st_mode & S_IWUSR));
 
     if (changePerm)
-        chmod_(src, st.st_mode | S_IWUSR);
+        chmodPath(src, st.st_mode | S_IWUSR);
 
     renameFile(src, dst);
 
     if (changePerm)
-        chmod_(dst, st.st_mode);
+        chmodPath(dst, st.st_mode);
 }
 
 
@@ -696,7 +690,7 @@ void LocalDerivationGoal::startBuilder()
            instead.) */
         Path chrootTmpDir = chrootRootDir + "/tmp";
         createDirs(chrootTmpDir);
-        chmod_(chrootTmpDir, 01777);
+        chmodPath(chrootTmpDir, 01777);
 
         /* Create a /etc/passwd with entries for the build user and the
            nobody account.  The latter is kind of a hack to support
@@ -721,7 +715,7 @@ void LocalDerivationGoal::startBuilder()
            build user. */
         Path chrootStoreDir = chrootRootDir + worker.store.storeDir;
         createDirs(chrootStoreDir);
-        chmod_(chrootStoreDir, 01775);
+        chmodPath(chrootStoreDir, 01775);
 
         if (buildUser && chown(chrootStoreDir.c_str(), 0, buildUser->getGID()) == -1)
             throw SysError("cannot change ownership of '%1%'", chrootStoreDir);
@@ -1862,7 +1856,7 @@ void LocalDerivationGoal::runChild()
                     auto dst = chrootRootDir + i.first;
                     createDirs(dirOf(dst));
                     writeFile(dst, std::string_view((const char *) sh, sizeof(sh)));
-                    chmod_(dst, 0555);
+                    chmodPath(dst, 0555);
                 } else
                 #endif
                     doBind(i.second.source, chrootRootDir + i.first, i.second.optional);
@@ -1900,7 +1894,7 @@ void LocalDerivationGoal::runChild()
 
                     /* Make sure /dev/pts/ptmx is world-writable.  With some
                        Linux versions, it is created with permissions 0.  */
-                    chmod_(chrootRootDir + "/dev/pts/ptmx", 0666);
+                    chmodPath(chrootRootDir + "/dev/pts/ptmx", 0666);
                 } else {
                     if (errno != EINVAL)
                         throw SysError("mounting /dev/pts");
@@ -1911,7 +1905,7 @@ void LocalDerivationGoal::runChild()
 
             /* Make /etc unwritable */
             if (!parsedDrv->useUidRange())
-                chmod_(chrootRootDir + "/etc", 0555);
+                chmodPath(chrootRootDir + "/etc", 0555);
 
             /* Unshare this mount namespace. This is necessary because
                pivot_root() below changes the root of the mount
