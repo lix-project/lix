@@ -42,7 +42,23 @@ public:
     using LocalDerivationGoal::LocalDerivationGoal;
 
 private:
+    /**
+     * Create and populate chroot
+     */
+    void prepareSandbox() override;
+
+    /**
+     * Kill all processes by build user, possibly using a reused
+     * cgroup if we have one
+     */
     void killSandbox(bool getStatus) override;
+
+
+    bool supportsUidRange() override
+    {
+        return true;
+    }
+
 };
 
 }

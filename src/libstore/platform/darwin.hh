@@ -43,6 +43,12 @@ public:
 
 private:
     /**
+     * Prepare the sandbox: This is empty on Darwin since sandbox setup happens in
+     * enterSandbox
+     */
+    void prepareSandbox() override{};
+
+    /**
      * Set process flags to enter or leave rosetta, then execute the builder
      */
     void execBuilder(std::string builder, Strings args, Strings envStrs) override;

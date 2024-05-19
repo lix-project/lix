@@ -325,10 +325,27 @@ protected:
     using DerivationGoal::DerivationGoal;
 
     /**
+     * Setup dependencies outside the sandbox.
+     * Called in the parent nix process.
+     */
+    virtual void prepareSandbox()
+    {
+        throw Error("sandboxing builds is not supported on this platform");
+    };
+
+    /**
      * Execute the builder, replacing the current process.
      * Generally this means an `execve` call.
      */
     virtual void execBuilder(std::string builder, Strings args, Strings envStrs);
+
+    /**
+     * Whether derivation can be built on current platform with `uid-range` feature
+     */
+    virtual bool supportsUidRange()
+    {
+        return false;
+    }
 
 };
 
