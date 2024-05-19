@@ -175,6 +175,8 @@ bool ReadlineLikeInteracter::getLine(std::string & input, ReplPromptType promptT
 
     if (!s)
         return false;
+
+    write_history(historyFile.c_str());
     input += s;
     input += '\n';
     return true;
