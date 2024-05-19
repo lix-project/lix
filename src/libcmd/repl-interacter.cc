@@ -1,6 +1,8 @@
 #include <cstdio>
 #include <iostream>
 #include <string>
+#include <string_view>
+#include <cerrno>
 
 #ifdef READLINE
 #include <readline/history.h>
@@ -176,15 +178,42 @@ bool ReadlineLikeInteracter::getLine(std::string & input, ReplPromptType promptT
     if (!s)
         return false;
 
-    write_history(historyFile.c_str());
+    this->writeHistory();
     input += s;
     input += '\n';
     return true;
 }
 
+void ReadlineLikeInteracter::writeHistory()
+{
+    int ret = write_history(historyFile.c_str());
+    int writeHistErr = errno;
+
+    if (ret == 0) {
+        return;
+    }
+
+    // If the open fails, editline returns EOF. If the close fails, editline
+    // forwards the return value of fclose(), which is EOF on error.
+    // readline however, returns the errno.
+    // So if we didn't get exactly EOF, then consider the return value the error
+    // code; otherwise use the errno we saved above.
+    // https://github.com/troglobit/editline/issues/66
+    if (ret != EOF) {
+        writeHistErr = ret;
+    }
+
+    // In any of these cases, we should explicitly ignore the error, but log
+    // them so the user isn't confused why their history is getting eaten.
+
+    std::string_view const errMsg(std::strerror(writeHistErr));
+    warn("ignoring error writing repl history to %s: %s", this->historyFile, errMsg);
+
+}
+
 ReadlineLikeInteracter::~ReadlineLikeInteracter()
 {
-    write_history(historyFile.c_str());
+    this->writeHistory();
 }
 
 AutomationInteracter::Guard AutomationInteracter::init(detail::ReplCompleterMixin *)

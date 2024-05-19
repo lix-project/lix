@@ -42,6 +42,11 @@ public:
     }
     virtual Guard init(detail::ReplCompleterMixin * repl) override;
     virtual bool getLine(std::string & input, ReplPromptType promptType) override;
+    /** Writes the current history to the history file.
+     *
+     * This function logs but ignores errors from readline's write_history().
+     */
+    virtual void writeHistory();
     virtual ~ReadlineLikeInteracter() override;
 };
 
