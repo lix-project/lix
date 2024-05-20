@@ -164,28 +164,30 @@ Bindings * MixEvalArgs::getAutoArgs(EvalState & state)
     return res.finish();
 }
 
-SourcePath lookupFileArg(EvalState & state, std::string_view s)
+SourcePath lookupFileArg(EvalState & state, std::string_view fileArg)
 {
-    if (EvalSettings::isPseudoUrl(s)) {
-        auto storePath = fetchers::downloadTarball(
-            state.store, EvalSettings::resolvePseudoUrl(s), "source", false).tree.storePath;
+    if (EvalSettings::isPseudoUrl(fileArg)) {
+        auto const url = EvalSettings::resolvePseudoUrl(fileArg);
+        auto const downloaded = fetchers::downloadTarball(
+            state.store,
+            url,
+            /* name */ "source",
+            /* locked */ false
+        );
+        StorePath const storePath = downloaded.tree.storePath;
         return state.rootPath(CanonPath(state.store->toRealPath(storePath)));
-    }
-
-    else if (s.starts_with("flake:")) {
+    } else if (fileArg.starts_with("flake:")) {
         experimentalFeatureSettings.require(Xp::Flakes);
-        auto flakeRef = parseFlakeRef(std::string(s.substr(6)), {}, true, false);
+        static constexpr size_t FLAKE_LEN = std::string_view("flake:").size();
+        auto flakeRef = parseFlakeRef(std::string(fileArg.substr(FLAKE_LEN)), {}, true, false);
         auto storePath = flakeRef.resolve(state.store).fetchTree(state.store).first.storePath;
         return state.rootPath(CanonPath(state.store->toRealPath(storePath)));
-    }
-
-    else if (s.size() > 2 && s.at(0) == '<' && s.at(s.size() - 1) == '>') {
-        Path p(s.substr(1, s.size() - 2));
+    } else if (fileArg.size() > 2 && fileArg.at(0) == '<' && fileArg.at(fileArg.size() - 1) == '>') {
+        Path p(fileArg.substr(1, fileArg.size() - 2));
         return state.findFile(p);
+    } else {
+        return state.rootPath(CanonPath::fromCwd(fileArg));
     }
-
-    else
-        return state.rootPath(CanonPath::fromCwd(s));
 }
 
 }
