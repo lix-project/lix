@@ -110,6 +110,8 @@ protected:
 public:
     BaseError(const BaseError &) = default;
 
+    BaseError & operator=(BaseError const & rhs) = default;
+
     template<typename... Args>
     BaseError(unsigned int status, const Args & ... args)
         : err { .level = lvlError, .msg = HintFmt(args...), .status = status }
