@@ -62,6 +62,27 @@ roberth:
   display_name: Robert Hensing
   github: roberth
 
+ericson:
+  display_name: John Ericson
+  github: ericson2314
+
+tomberek:
+  display_name: Tom Bereknyei
+  github: tomberek
+
+valentin:
+  display_name: Valentin Gagarin
+  github: fricklerhandwerk
+
+lovesegfault:
+  github: lovesegfault
+
+yshui:
+  github: yshui
+
+ncfavier:
+  github: ncfavier
+
 midnightveil:
   display_name: julia
   forgejo: midnightveil
@@ -75,3 +96,16 @@ puck:
 alois31:
   forgejo: alois31
   github: alois31
+
+DavHau:
+  github: DavHau
+
+SharzyL:
+  github: SharzyL
+
+r-vdp:
+  github: r-vdp
+
+artemist:
+  display_name: Artemis Tosini
+  forgejo: artemist
