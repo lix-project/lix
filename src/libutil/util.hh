@@ -78,6 +78,13 @@ Path absPath(Path path,
 Path canonPath(PathView path, bool resolveSymlinks = false);
 
 /**
+ * Change the permissions of a path
+ * Not called `chmod` as it shadows and could be confused with
+ * `int chmod(char *, mode_t)`, which does not handle errors
+ */
+void chmodPath(const Path & path, mode_t mode);
+
+/**
  * @return The directory part of the given canonical path, i.e.,
  * everything before the final `/`.  If the path is the root or an
  * immediate child thereof (e.g., `/foo`), this means `/`

@@ -786,13 +786,6 @@ void DerivationGoal::tryLocalBuild() {
 }
 
 
-static void chmod_(const Path & path, mode_t mode)
-{
-    if (chmod(path.c_str(), mode) == -1)
-        throw SysError("setting permissions on '%s'", path);
-}
-
-
 /* Move/rename path 'src' to 'dst'. Temporarily make 'src' writable if
    it's a directory and we're not root (to be able to update the
    directory's parent link ".."). */
@@ -803,12 +796,12 @@ static void movePath(const Path & src, const Path & dst)
     bool changePerm = (geteuid() && S_ISDIR(st.st_mode) && !(st.st_mode & S_IWUSR));
 
     if (changePerm)
-        chmod_(src, st.st_mode | S_IWUSR);
+        chmodPath(src, st.st_mode | S_IWUSR);
 
     renameFile(src, dst);
 
     if (changePerm)
-        chmod_(dst, st.st_mode);
+        chmodPath(dst, st.st_mode);
 }
 
 
