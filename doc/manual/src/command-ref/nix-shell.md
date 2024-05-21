@@ -33,10 +33,9 @@ the environment of a derivation for development.
 If *path* is not given, `nix-shell` defaults to `shell.nix` if it
 exists, and `default.nix` otherwise.
 
-If *path* starts with `http://` or `https://`, it is interpreted as the
-URL of a tarball that will be downloaded and unpacked to a temporary
-location. The tarball must include a single top-level directory
-containing at least a file named `default.nix`.
+If *path* is given it is interpreted like a [*fileish* argument to nix-build](./nix-build.md#fileish-syntax):
+
+{{#include ./fileish-summary.md}}
 
 If the derivation defines the variable `shellHook`, it will be run
 after `$stdenv/setup` has been sourced. Since this hook is not executed
