@@ -212,3 +212,30 @@ test(
   protocol : 'gtest',
   verbose : true,
 )
+
+libcmd_tester = executable(
+  'liblixcmd-tests',
+  files('libcmd/args.cc'),
+  dependencies : [
+    liblixcmd,
+    liblixutil,
+    liblixmain,
+    liblixexpr,
+    liblixstore,
+    gtest,
+    boost,
+  ],
+)
+
+test(
+  'libcmd-unit-tests',
+  libcmd_tester,
+  args : tests_args,
+  env : {
+    # No special meaning here, it's just a file laying around that is unlikely to go anywhere
+    # any time soon.
+    '_NIX_TEST_UNIT_DATA': meson.project_source_root() / 'src/nix-env/buildenv.nix',
+  },
+  suite : 'check',
+  protocol : 'gtest',
+)
