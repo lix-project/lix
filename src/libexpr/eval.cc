@@ -42,10 +42,6 @@
 #include <gc/gc.h>
 #include <gc/gc_cpp.h>
 
-#include <boost/coroutine2/coroutine.hpp>
-#include <boost/coroutine2/protected_fixedsize_stack.hpp>
-#include <boost/context/stack_context.hpp>
-
 #endif
 
 using json = nlohmann::json;

@@ -204,7 +204,7 @@ configdata += {
   'HAVE_BOEHMGC': boehm.found().to_int(),
 }
 
-boost = dependency('boost', required : true, modules : ['context', 'coroutine', 'container'])
+boost = dependency('boost', required : true, modules : ['container'])
 
 # cpuid only makes sense on x86_64
 cpuid_required = is_x64 ? get_option('cpuid') : false

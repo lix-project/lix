@@ -5,8 +5,6 @@
 #include <cerrno>
 #include <memory>
 
-#include <boost/coroutine2/coroutine.hpp>
-
 
 namespace nix {
 
