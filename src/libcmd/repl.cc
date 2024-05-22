@@ -107,6 +107,11 @@ struct NixRepl
     void initEnv() override;
 
     virtual StringSet completePrefix(const std::string & prefix) override;
+
+    /**
+     * @exception nix::Error thrown directly if the expression does not evaluate
+     * to a derivation, or evaluates to an invalid derivation.
+     */
     StorePath getDerivationPath(Value & v);
     ProcessLineResult processLine(std::string line);
 
