@@ -34,7 +34,16 @@ struct CacheImpl : Cache
         auto state(_state.lock());
 
         auto dbPath = getCacheDir() + "/nix/fetcher-cache-v1.sqlite";
-        createDirs(dirOf(dbPath));
+        // It would be silly to fail fetcher operations if e.g. the user has no
+        // XDG_CACHE_HOME and their HOME directory doesn't exist.
+        // We'll warn the user if that happens, but fallback to an in-memory
+        // backend for the SQLite database.
+        try {
+            createDirs(dirOf(dbPath));
+        } catch (SysError const & ex) {
+            warn("ignoring error initializing Lix fetcher cache: %s", ex.what());
+            dbPath = ":memory:";
+        }
 
         state->db = SQLite(dbPath);
         state->db.isCache();
