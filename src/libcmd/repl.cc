@@ -90,7 +90,8 @@ struct NixRepl
     Strings loadedFiles;
     std::function<AnnotatedValues()> getValues;
 
-    const static int envSize = 32768;
+    // Uses 8MiB of memory. It's fine.
+    const static int envSize = 1 << 20;
     std::shared_ptr<StaticEnv> staticEnv;
     Env * env;
     int displ;
@@ -854,6 +855,11 @@ void NixRepl::loadReplOverlays()
         replInitFilesFunction->determinePos(noPos)
     );
 
+    // n.b. this does in fact load the stuff into the environment twice (once
+    // from the superset of the environment returned by repl-overlays and once
+    // from the thing itself), but it's not fixable because clearEnv here could
+    // lead to dangling references to the old environment in thunks.
+    // https://git.lix.systems/lix-project/lix/issues/337#issuecomment-3745
     addAttrsToScope(newAttrs);
 }
 
