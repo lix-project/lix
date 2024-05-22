@@ -66,6 +66,18 @@ pre-commit-run {
         ${lib.getExe pkgs.build-release-notes} --change-authors doc/manual/change-authors.yml doc/manual/rl-next doc/manual/rl-next-dev
       '';
     };
+    change-authors-sorted = {
+      enable = true;
+      package = pkgs.yq;
+      files = ''^doc/manual/change-authors\.yml'';
+      entry = "${pkgs.writeShellScript "change-authors-sorted" ''
+        set -euo pipefail
+        shopt -s inherit_errexit
+
+        echo "changes necessary to sort $1:"
+        diff -U3 <(${lib.getExe pkgs.yq} -y . "$1") <(${lib.getExe pkgs.yq} -Sy . "$1")
+      ''}";
+    };
     check-headers = {
       enable = true;
       package = pkgs.check-headers;

@@ -3,68 +3,97 @@
 #
 # It's used for crediting people accurately in release notes. The release notes
 # script will link to forgejo, then to GitHub if forgejo is not present.
-horrors:
-  display_name: eldritch horrors
-  forgejo: pennae
-  github: pennae
+9999years:
+  display_name: wiggles
+  forgejo: rbt
+  github: 9999years
 
-Qyriad:
-  forgejo: Qyriad
-  github: Qyriad
+Artturin:
+  github: Artturin
 
-jade:
-  forgejo: jade
-  github: lf-
+DavHau:
+  github: DavHau
 
-iFreilicht:
-  github: iFreilicht
-
-ma27:
-  forgejo: ma27
-  github: ma27
+Kha:
+  github: Kha
 
 Lunaphied:
   forgejo: Lunaphied
   github: Lunaphied
 
-9999years:
-  display_name: wiggles
-  github: 9999years
-  forgejo: rbt
+Qyriad:
+  forgejo: Qyriad
+  github: Qyriad
 
-matthewbauer:
-  github: matthewbauer
+SharzyL:
+  github: SharzyL
 
-raito:
-  display_name: Raito Bezarius
-  github: RaitoBezarius
-  forgejo: raito
+alois31:
+  forgejo: alois31
+  github: alois31
 
-winter:
-  github: winterqt
-  forgejo: winter
-
-Kha:
-  github: Kha
-
-Artturin:
-  github: Artturin
-
-thufschmitt:
-  display_name: Théophane Hufschmitt
-  github: thufschmitt
+artemist:
+  display_name: Artemis Tosini
+  forgejo: artemist
 
 edolstra:
   display_name: Eelco Dolstra
   github: edolstra
 
+ericson:
+  display_name: John Ericson
+  github: ericson2314
+
+horrors:
+  display_name: eldritch horrors
+  forgejo: pennae
+  github: pennae
+
+iFreilicht:
+  github: iFreilicht
+
+jade:
+  forgejo: jade
+  github: lf-
+
+lovesegfault:
+  github: lovesegfault
+
+ma27:
+  forgejo: ma27
+  github: ma27
+
+matthewbauer:
+  github: matthewbauer
+
+midnightveil:
+  display_name: julia
+  forgejo: midnightveil
+  github: midnightveil
+
+ncfavier:
+  github: ncfavier
+
+puck:
+  display_name: puck
+  forgejo: puck
+  github: puckipedia
+
+r-vdp:
+  github: r-vdp
+
+raito:
+  display_name: Raito Bezarius
+  forgejo: raito
+  github: RaitoBezarius
+
 roberth:
   display_name: Robert Hensing
   github: roberth
 
-ericson:
-  display_name: John Ericson
-  github: ericson2314
+thufschmitt:
+  display_name: Théophane Hufschmitt
+  github: thufschmitt
 
 tomberek:
   display_name: Tom Bereknyei
@@ -74,38 +103,9 @@ valentin:
   display_name: Valentin Gagarin
   github: fricklerhandwerk
 
-lovesegfault:
-  github: lovesegfault
+winter:
+  forgejo: winter
+  github: winterqt
 
 yshui:
   github: yshui
-
-ncfavier:
-  github: ncfavier
-
-midnightveil:
-  display_name: julia
-  forgejo: midnightveil
-  github: midnightveil
-
-puck:
-  display_name: puck
-  forgejo: puck
-  github: puckipedia
-
-alois31:
-  forgejo: alois31
-  github: alois31
-
-DavHau:
-  github: DavHau
-
-SharzyL:
-  github: SharzyL
-
-r-vdp:
-  github: r-vdp
-
-artemist:
-  display_name: Artemis Tosini
-  forgejo: artemist
