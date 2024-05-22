@@ -71,3 +71,7 @@ puck:
   display_name: puck
   forgejo: puck
   github: puckipedia
+
+alois31:
+  forgejo: alois31
+  github: alois31
