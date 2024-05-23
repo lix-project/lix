@@ -44,32 +44,41 @@ void FixIncludesCallbacks::LexedFileChanged(FileID, LexedFileChangeReason,
 }
 
 void FixIncludesCallbacks::InclusionDirective(
-    SourceLocation, const Token &, StringRef, bool,
+    SourceLocation, const Token &, StringRef FileName, bool IsAngled,
     CharSourceRange FilenameRange, OptionalFileEntryRef File, StringRef,
     StringRef, const Module *, SrcMgr::CharacteristicKind) {
   if (Ignore)
     return;
 
   // FIXME: this is kinda evil, but this is a one-time fixup
-  const std::string SourceDir = "src/";
+  const std::vector<std::string> SourceDirs = {"src/", "include/lix/"};
 
-  if (File && File->getNameAsRequested().contains(SourceDir)) {
-    StringRef Name = File->getNameAsRequested();
-    auto Idx = Name.find(SourceDir);
-    assert(Idx != std::string::npos);
-    StringRef Suffix = Name.drop_front(Idx + SourceDir.length());
+  const auto Bracketize = [IsAngled](StringRef s) {
+    return IsAngled ? ("<" + s + ">").str() : ("\"" + s + "\"").str();
+  };
 
-    if (!Suffix.starts_with("lib")) {
-      llvm::dbgs() << "ignored: " << Suffix << "\n";
-      return;
+  for (const auto &SourceDir : SourceDirs) {
+    const bool IsAlreadyFixed = FileName.starts_with("lix/lib");
+    if (File && File->getNameAsRequested().contains(SourceDir) &&
+        !IsAlreadyFixed) {
+      StringRef Name = File->getNameAsRequested();
+      auto Idx = Name.find(SourceDir);
+      assert(Idx != std::string::npos);
+      std::string Suffix = Name.drop_front(Idx + SourceDir.length()).str();
+
+      if (!Suffix.starts_with("lib")) {
+        llvm::dbgs() << "ignored: " << Suffix << "\n";
+        return;
+      }
+
+      Suffix = "lix/" + Suffix;
+
+      auto Diag = Check.diag(FilenameRange.getBegin(),
+                             "include needs to specify the source subdir");
+
+      Diag << FilenameRange
+           << FixItHint::CreateReplacement(FilenameRange, Bracketize(Suffix));
     }
-
-    auto Diag = Check.diag(FilenameRange.getBegin(),
-                           "include needs to specify the source subdir");
-
-    Diag << FilenameRange
-         << FixItHint::CreateReplacement(FilenameRange,
-                                         ("\"" + Suffix + "\"").str());
   }
 }
 
