@@ -24,4 +24,4 @@ install *OPTIONS: (build OPTIONS)
 
 # Run tests
 test *OPTIONS:
-    meson test -C build --print-errorlogs --quiet {{ OPTIONS }}
+    meson test -C build --print-errorlogs {{ OPTIONS }}
