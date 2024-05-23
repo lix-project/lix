@@ -24,3 +24,8 @@ indent_size = 4
 # Match diffs, avoid to trim trailing whitespace
 [*.{diff,patch}]
 trim_trailing_whitespace = false
+
+[*.md]
+indent_style = space
+indent_size = 2
+max_line_length = 0
