@@ -1,34 +1,34 @@
-#include <nix/config.h> // IWYU pragma: keep
+#include <lix/config.h> // IWYU pragma: keep
 
 // doesn't exist on macOS
 // IWYU pragma: no_include <bits/types/struct_rusage.h>
 
-#include <attr-path.hh>
-#include <local-fs-store.hh>
-#include <installable-flake.hh>
+#include <lix/libexpr/attr-path.hh>
+#include <lix/libstore/local-fs-store.hh>
+#include <lix/libcmd/installable-flake.hh>
 #include <sys/resource.h>
 #include <nlohmann/json.hpp>
 #include <stdio.h>
 #include <stdlib.h>
-#include <attr-set.hh>
-#include <canon-path.hh>
-#include <common-eval-args.hh>
-#include <error.hh>
-#include <eval-inline.hh>
-#include <eval.hh>
-#include <flake/flakeref.hh>
-#include <get-drvs.hh>
-#include <input-accessor.hh>
-#include <logging.hh>
-#include <nixexpr.hh>
+#include <lix/libexpr/attr-set.hh>
+#include <lix/libutil/canon-path.hh>
+#include <lix/libcmd/common-eval-args.hh>
+#include <lix/libutil/error.hh>
+#include <lix/libexpr/eval-inline.hh>
+#include <lix/libexpr/eval.hh>
+#include <lix/libexpr/flake/flakeref.hh>
+#include <lix/libexpr/get-drvs.hh>
+#include <lix/libutil/input-accessor.hh>
+#include <lix/libutil/logging.hh>
+#include <lix/libexpr/nixexpr.hh>
 #include <nlohmann/detail/json_ref.hpp>
 #include <nlohmann/json_fwd.hpp>
-#include <ref.hh>
-#include <store-api.hh>
-#include <symbol-table.hh>
-#include <types.hh>
-#include <util.hh>
-#include <value.hh>
+#include <lix/libutil/ref.hh>
+#include <lix/libstore/store-api.hh>
+#include <lix/libexpr/symbol-table.hh>
+#include <lix/libutil/types.hh>
+#include <lix/libutil/util.hh>
+#include <lix/libexpr/value.hh>
 #include <exception>
 #include <map>
 #include <memory>

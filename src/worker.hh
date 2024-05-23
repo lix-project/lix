@@ -1,6 +1,6 @@
 #pragma once
-#include <nix/shared.hh>
-#include <nix/eval.hh>
+#include <lix/libmain/shared.hh>
+#include <lix/libexpr/eval.hh>
 
 #include "eval-args.hh"
 

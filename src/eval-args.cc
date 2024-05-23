@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <args.hh>
-#include <flake/flake.hh>
-#include <flake/lockfile.hh>
+#include <lix/libutil/args.hh>
+#include <lix/libexpr/flake/flake.hh>
+#include <lix/libexpr/flake/lockfile.hh>
 #include <functional>
 #include <map>
 #include <memory>

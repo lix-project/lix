@@ -1,19 +1,19 @@
-#include <nix/config.h> // IWYU pragma: keep
+#include <lix/config.h> // IWYU pragma: keep
 
-#include <nix/path-with-outputs.hh>
-#include <nix/store-api.hh>
-#include <nix/local-fs-store.hh>
-#include <nix/value-to-json.hh>
-#include <nix/derivations.hh>
+#include <lix/libstore/path-with-outputs.hh>
+#include <lix/libstore/store-api.hh>
+#include <lix/libstore/local-fs-store.hh>
+#include <lix/libexpr/value-to-json.hh>
+#include <lix/libstore/derivations.hh>
 #include <stdint.h>
-#include <nix/derived-path-map.hh>
-#include <nix/eval.hh>
-#include <nix/get-drvs.hh>
-#include <nix/nixexpr.hh>
+#include <lix/libstore/derived-path-map.hh>
+#include <lix/libexpr/eval.hh>
+#include <lix/libexpr/get-drvs.hh>
+#include <lix/libexpr/nixexpr.hh>
 #include <nlohmann/detail/json_ref.hpp>
-#include <nix/path.hh>
-#include <nix/ref.hh>
-#include <nix/value/context.hh>
+#include <lix/libstore/path.hh>
+#include <lix/libutil/ref.hh>
+#include <lix/libexpr/value/context.hh>
 #include <exception>
 #include <memory>
 #include <sstream>

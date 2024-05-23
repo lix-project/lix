@@ -1,10 +1,10 @@
-#include <nix/config.h> // IWYU pragma: keep
+#include <lix/config.h> // IWYU pragma: keep
 
-#include <eval-settings.hh>
-#include <shared.hh>
-#include <sync.hh>
-#include <eval.hh>
-#include <signals.hh>
+#include <lix/libexpr/eval-settings.hh>
+#include <lix/libmain/shared.hh>
+#include <lix/libutil/sync.hh>
+#include <lix/libexpr/eval.hh>
+#include <lix/libutil/signals.hh>
 #include <sys/wait.h>
 #include <nlohmann/json.hpp>
 #include <errno.h>
@@ -12,16 +12,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <attr-set.hh>
-#include <config.hh>
-#include <error.hh>
-#include <globals.hh>
-#include <logging.hh>
+#include <lix/libexpr/attr-set.hh>
+#include <lix/libutil/config.hh>
+#include <lix/libutil/error.hh>
+#include <lix/libstore/globals.hh>
+#include <lix/libutil/logging.hh>
 #include <nlohmann/detail/iterators/iter_impl.hpp>
 #include <nlohmann/detail/json_ref.hpp>
 #include <nlohmann/json_fwd.hpp>
-#include <ref.hh>
-#include <store-api.hh>
+#include <lix/libutil/ref.hh>
+#include <lix/libstore/store-api.hh>
 #include <map>
 #include <thread>
 #include <condition_variable>
