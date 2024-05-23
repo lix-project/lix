@@ -28,6 +28,7 @@ internal_api_docs = custom_target(
   output : 'html',
   install : true,
   install_dir : datadir / 'doc/nix/internal-api',
+  build_always_stale : true,
 )
 
 alias_target('internal-api-html', internal_api_docs)

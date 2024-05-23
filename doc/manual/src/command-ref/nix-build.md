@@ -14,9 +14,8 @@
 
 # Disambiguation
 
-This man page describes the command `nix-build`, which is distinct from `nix
-build`. For documentation on the latter, run `nix build --help` or see `man
-nix3-build`.
+This man page describes the command `nix-build`, which is distinct from [`nix build`](./new-cli/nix3-build.md).
+For documentation on the latter, run `nix build --help` or see `man nix3-build`.
 
 # Description
 
