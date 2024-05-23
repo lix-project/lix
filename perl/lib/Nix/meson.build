@@ -27,7 +27,7 @@ perl_libstore = shared_module(
   ],
   link_args : [
     # Nix doesn't provide a pkg-config file for libutil.
-    '-lnixutil',
+    '-llixutil',
     soname_args,
   ],
   install : true,

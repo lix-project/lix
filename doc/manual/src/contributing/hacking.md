@@ -102,14 +102,14 @@ $ meson compile -C build nixexpr
 All targets may be addressed as their output, relative to the build directory, e.g.:
 
 ```bash
-$ meson compile -C build src/libexpr/libnixexpr.so
+$ meson compile -C build src/libexpr/liblixexpr.so
 ```
 
 But Meson does not consider intermediate files like object files targets.
 To build a specific object file, use Ninja directly and specify the output file relative to the build directory:
 
 ```bash
-$ ninja -C build src/libexpr/libnixexpr.so.p/nixexpr.cc.o
+$ ninja -C build src/libexpr/liblixexpr.so.p/nixexpr.cc.o
 ```
 
 To inspect the canonical source of truth on what the state of the buildsystem configuration is, use:

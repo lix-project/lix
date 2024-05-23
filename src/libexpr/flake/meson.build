@@ -4,5 +4,5 @@ libexpr_generated_headers += custom_target(
   output : '@PLAINNAME@.gen.hh',
   capture : true,
   install : true,
-  install_dir : includedir / 'nix/flake',
+  install_dir : includedir / 'lix/libexpr/flake',
 )

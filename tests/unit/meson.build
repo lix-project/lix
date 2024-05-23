@@ -17,7 +17,7 @@ libutil_test_support_sources = files(
   'libutil-support/tests/terminal-code-eater.cc',
 )
 libutil_test_support = library(
-  'nixutil-test-support',
+  'lixutil-test-support',
   libutil_test_support_sources,
   dependencies : [
     liblixutil,
@@ -57,7 +57,7 @@ libutil_tests_sources = files(
 )
 
 libutil_tester = executable(
-  'libnixutil-tests',
+  'liblixutil-tests',
   libutil_tests_sources,
   dependencies : [
     rapidcheck,
@@ -90,7 +90,7 @@ libstore_test_support_sources = files(
 )
 
 libstore_test_support = library(
-  'nixstore-test-support',
+  'lixstore-test-support',
   libstore_test_support_sources,
   dependencies : [
     liblixutil_test_support,
@@ -124,7 +124,7 @@ libstore_tests_sources = files(
 )
 
 libstore_tester = executable(
-  'libnixstore-tests',
+  'liblixstore-tests',
   libstore_tests_sources,
   dependencies : [
     liblixstore_test_support,
@@ -154,7 +154,7 @@ libexpr_test_support_sources = files(
 )
 
 libexpr_test_support = library(
-  'nixexpr-test-support',
+  'lixexpr-test-support',
   libexpr_test_support_sources,
   dependencies : [
     liblixstore_test_support,
@@ -185,7 +185,7 @@ libexpr_tests_sources = files(
 )
 
 libexpr_tester = executable(
-  'libnixexpr-tests',
+  'liblixexpr-tests',
   libexpr_tests_sources,
   dependencies : [
     liblixexpr_test_support,

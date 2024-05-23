@@ -15,7 +15,7 @@ parser_tab = custom_target(
   # NOTE(Qyriad): Meson doesn't support installing only part of a custom target, so we add
   # an install script below which removes parser-tab.cc.
   install : true,
-  install_dir : includedir / 'nix',
+  install_dir : includedir / 'lix/libexpr',
 )
 
 lexer_tab = custom_target(
@@ -37,7 +37,7 @@ lexer_tab = custom_target(
   # NOTE(Qyriad): Meson doesn't support installing only part of a custom target, so we add
   # an install script below which removes lexer-tab.cc.
   install : true,
-  install_dir : includedir / 'nix',
+  install_dir : includedir / 'lix/libexpr',
 )
 
 # TODO(Qyriad): When the parser and lexer are rewritten this should be removed.
@@ -59,7 +59,7 @@ foreach header : [ 'imported-drv-to-derivation.nix', 'fetchurl.nix' ]
     output : '@PLAINNAME@.gen.hh',
     capture : true,
     install : true,
-    install_dir : includedir / 'nix',
+    install_dir : includedir / 'lix/libexpr',
   )
 endforeach
 subdir('flake')
@@ -127,7 +127,7 @@ libexpr_headers = files(
 )
 
 libexpr = library(
-  'nixexpr',
+  'lixexpr',
   libexpr_sources,
   parser_tab,
   lexer_tab,
@@ -152,7 +152,7 @@ libexpr = library(
 
 install_headers(
   libexpr_headers,
-  subdir : 'nix',
+  subdir : 'lix/libexpr',
   preserve_path : true,
 )
 
@@ -164,8 +164,8 @@ liblixexpr = declare_dependency(
 # FIXME: not using the pkg-config module because it creates way too many deps
 # while meson migration is in progress, and we want to not include boost here
 configure_file(
-  input : 'nix-expr.pc.in',
-  output : 'nix-expr.pc',
+  input : 'lix-expr.pc.in',
+  output : 'lix-expr.pc',
   install_dir : libdir / 'pkgconfig',
   configuration : {
     'prefix' : prefix,

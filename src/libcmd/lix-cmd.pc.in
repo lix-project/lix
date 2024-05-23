@@ -1,0 +1,10 @@
+prefix=@prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: Lix (libcmd)
+Description: Lix Package Manager (libcmd)
+Version: @PACKAGE_VERSION@
+Requires: lix-base lix-util
+Libs: -L${libdir} -llixcmd
+Cflags: -I${includedir}/lix/libcmd

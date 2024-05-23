@@ -14,7 +14,7 @@ libmain_headers = files(
 )
 
 libmain = library(
-  'nixmain',
+  'lixmain',
   libmain_sources,
   dependencies : [
     liblixutil,
@@ -25,7 +25,7 @@ libmain = library(
   install_rpath : libdir,
 )
 
-install_headers(libmain_headers, subdir : 'nix', preserve_path : true)
+install_headers(libmain_headers, subdir : 'lix/libmain', preserve_path : true)
 
 liblixmain = declare_dependency(
   include_directories : include_directories('.'),
@@ -35,8 +35,8 @@ liblixmain = declare_dependency(
 # FIXME: not using the pkg-config module because it creates way too many deps
 # while meson migration is in progress, and we want to not include boost here
 configure_file(
-  input : 'nix-main.pc.in',
-  output : 'nix-main.pc',
+  input : 'lix-main.pc.in',
+  output : 'lix-main.pc',
   install_dir : libdir / 'pkgconfig',
   configuration : {
     'prefix' : prefix,

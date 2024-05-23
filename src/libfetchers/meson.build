@@ -23,7 +23,7 @@ libfetchers_headers = files(
 )
 
 libfetchers = library(
-  'nixfetchers',
+  'lixfetchers',
   libfetchers_sources,
   dependencies : [
     liblixstore,
@@ -35,7 +35,21 @@ libfetchers = library(
   install_rpath : libdir,
 )
 
-install_headers(libfetchers_headers, subdir : 'nix', preserve_path : true)
+install_headers(libfetchers_headers, subdir : 'lix/libfetchers', preserve_path : true)
+
+# FIXME: not using the pkg-config module because it creates way too many deps
+# while meson migration is in progress, and we want to not include boost here
+configure_file(
+  input : 'lix-fetchers.pc.in',
+  output : 'lix-fetchers.pc',
+  install_dir : libdir / 'pkgconfig',
+  configuration : {
+    'prefix' : prefix,
+    'libdir' : libdir,
+    'includedir' : includedir,
+    'PACKAGE_VERSION' : meson.project_version(),
+  },
+)
 
 liblixfetchers = declare_dependency(
   include_directories : include_directories('.'),

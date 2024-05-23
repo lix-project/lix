@@ -39,7 +39,7 @@ libcmd_generated_headers = [
 ]
 
 libcmd = library(
-  'nixcmd',
+  'lixcmd',
   libcmd_generated_headers,
   libcmd_sources,
   dependencies : [
@@ -59,13 +59,13 @@ libcmd = library(
   install_rpath : libdir,
 )
 
-install_headers(libcmd_headers, subdir : 'nix', preserve_path : true)
+install_headers(libcmd_headers, subdir : 'lix/libcmd', preserve_path : true)
 custom_target(
   command : [ 'cp', '@INPUT@', '@OUTPUT@' ],
   input : libcmd_generated_headers,
   output : '@PLAINNAME@',
   install : true,
-  install_dir : includedir / 'nix',
+  install_dir : includedir / 'lix/libcmd',
 )
 
 liblixcmd = declare_dependency(
@@ -76,8 +76,8 @@ liblixcmd = declare_dependency(
 # FIXME: not using the pkg-config module because it creates way too many deps
 # while meson migration is in progress, and we want to not include boost here
 configure_file(
-  input : 'nix-cmd.pc.in',
-  output : 'nix-cmd.pc',
+  input : 'lix-cmd.pc.in',
+  output : 'lix-cmd.pc',
   install_dir : libdir / 'pkgconfig',
   configuration : {
     'prefix' : prefix,

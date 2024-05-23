@@ -395,7 +395,21 @@ config_h = configure_file(
   output : 'config.h',
 )
 
-install_headers(config_h, subdir : 'nix')
+install_headers(config_h, subdir : 'lix')
+
+# FIXME: not using the pkg-config module because it creates way too many deps
+# while meson migration is in progress, and we want to not include boost here
+configure_file(
+  input : 'src/lix-base.pc.in',
+  output : 'lix-base.pc',
+  install_dir : libdir / 'pkgconfig',
+  configuration : {
+    'prefix' : prefix,
+    'libdir' : libdir,
+    'includedir' : includedir,
+    'PACKAGE_VERSION' : meson.project_version(),
+  },
+)
 
 add_project_arguments(
   # TODO(Qyriad): Yes this is how the autoconf+Make system did it.
