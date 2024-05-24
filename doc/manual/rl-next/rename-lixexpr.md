@@ -22,10 +22,10 @@ Migration path:
 To apply this migration automatically, remove all `<nix/>` from includes, so `#include <nix/expr.hh>` -> `#include <expr.hh>`.
 Then, the correct paths will be resolved from the tangled mess, and the clang-tidy automated fix will work.
 
-Then run the following for out of tree projects:
+Then run the following for out of tree projects (header filter is set to only fix instances in headers in `../src` relative to the compiler's working directory, as would be the case in nix-eval-jobs or other things built with meson, e.g.):
 
 ```console
 lix_root=$HOME/lix
 (cd $lix_root/clang-tidy && nix develop -c 'meson setup build && ninja -C build')
-run-clang-tidy -checks='-*,lix-fixincludes' -load=$lix_root/clang-tidy/build/liblix-clang-tidy.so -p build/ -fix src
+run-clang-tidy -checks='-*,lix-fixincludes' -load=$lix_root/clang-tidy/build/liblix-clang-tidy.so -p build/ -header-filter '\.\./src/.*\.h' -fix src
 ```

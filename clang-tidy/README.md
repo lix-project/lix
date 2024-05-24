@@ -1,6 +1,6 @@
-# Clang tidy lints for Nix
+# Clang tidy lints for Lix
 
-This is a skeleton of a clang-tidy lints library for Nix.
+This is a skeleton of a clang-tidy lints library for Lix.
 
 Currently there is one check (which is already obsolete as it has served its
 goal and is there as an example), `HasPrefixSuffixCheck`.
@@ -10,13 +10,13 @@ goal and is there as an example), `HasPrefixSuffixCheck`.
 One file:
 
 ```
-ninja -C build && clang-tidy --checks='-*,nix-*' --load=build/libnix-clang-tidy.so -p ../compile_commands.json --fix ../src/libcmd/installables.cc
+ninja -C build && clang-tidy --checks='-*,lix-*' --load=build/liblix-clang-tidy.so -p ../compile_commands.json -header-filter '\.\./src/.*\.h' --fix ../src/libcmd/installables.cc
 ```
 
 Several files, in parallel:
 
 ```
-ninja -C build && run-clang-tidy -checks='-*,nix-*' -load=build/libnix-clang-tidy.so -p .. -fix ../src | tee -a clang-tidy-result
+ninja -C build && run-clang-tidy -checks='-*,lix-*' -load=build/liblix-clang-tidy.so -p .. -header-filter '\.\./src/.*\.h' -fix ../src | tee -a clang-tidy-result
 ```
 
 ## Resources
