@@ -133,6 +133,10 @@ std::pair<Tree, Input> Input::fetch(ref<Store> store) const
     }
 
     auto [storePath, input] = [&]() -> std::pair<StorePath, Input> {
+        // *sighs*, we print the base URL, rather than the full URL because the Nixpkgs
+        // fileset lib tests assume that fetching shallow and non-shallow prints exactly the
+        // same stderr...
+        printInfo("fetching %s input '%s'", this->getType(), this->toURL().base);
         try {
             return scheme->fetch(store, *this);
         } catch (Error & e) {
