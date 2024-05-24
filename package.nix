@@ -18,6 +18,7 @@
   cmake,
   curl,
   doxygen,
+  editline-lix ? __forDefaults.editline-lix,
   editline,
   flex,
   git,
@@ -72,6 +73,10 @@
         ./boehmgc-traceable_allocator-public.diff
       ];
     };
+
+    editline-lix = editline.overrideAttrs (prev: {
+      configureFlags = prev.configureFlags or [ ] ++ [ (lib.enableFeature true "sigstop") ];
+    });
 
     lix-doc = pkgs.callPackage ./lix-doc/package.nix { };
     build-release-notes = pkgs.callPackage ./maintainers/build-release-notes.nix { };
@@ -236,7 +241,7 @@ stdenv.mkDerivation (finalAttrs: {
       bzip2
       xz
       brotli
-      editline
+      editline-lix
       openssl
       sqlite
       libarchive
@@ -376,7 +381,7 @@ stdenv.mkDerivation (finalAttrs: {
   # Export the patched version of boehmgc.
   # flake.nix exports that into its overlay.
   passthru = {
-    inherit (__forDefaults) boehmgc-nix build-release-notes;
+    inherit (__forDefaults) boehmgc-nix editline-lix build-release-notes;
 
     # The collection of dependency logic for this derivation is complicated enough that
     # it's easier to parameterize the devShell off an already called package.nix.
