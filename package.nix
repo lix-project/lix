@@ -366,7 +366,10 @@ stdenv.mkDerivation (finalAttrs: {
   # strictoverflow is disabled because we trap on signed overflow instead
   hardeningDisable = [ "strictoverflow" ] ++ lib.optional stdenv.hostPlatform.isStatic "pie";
 
-  meta.platforms = lib.platforms.unix;
+  meta = {
+    mainProgram = "nix";
+    platforms = lib.platforms.unix;
+  };
 
   passthru.perl-bindings = pkgs.callPackage ./perl { inherit fileset stdenv; };
 
