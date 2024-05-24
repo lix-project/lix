@@ -1115,7 +1115,7 @@ void EvalState::evalFile(const SourcePath & path_, Value & v, bool mustBeTrivial
         return;
     }
 
-    printTalkative("evaluating file '%1%'", resolvedPath);
+    debug("evaluating file '%1%'", resolvedPath);
     Expr * e = nullptr;
 
     auto j = fileParseCache.find(resolvedPath);

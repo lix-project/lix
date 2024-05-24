@@ -242,7 +242,7 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
             // No need to call staticEnv.sort(), because
             // args[0]->attrs is already sorted.
 
-            printTalkative("evaluating file '%1%'", path);
+            debug("evaluating file '%1%'", path);
             Expr * e = state.parseExprFromFile(resolveExprPath(path), staticEnv);
 
             e->eval(state, *env, v);
