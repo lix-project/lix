@@ -75,17 +75,14 @@ void RemoteStore::initConnection(Connection & conn)
         conn.from >> conn.daemonVersion;
         if (GET_PROTOCOL_MAJOR(conn.daemonVersion) != GET_PROTOCOL_MAJOR(PROTOCOL_VERSION))
             throw Error("Nix daemon protocol version not supported");
-        if (GET_PROTOCOL_MINOR(conn.daemonVersion) < 10)
+        if (GET_PROTOCOL_MINOR(conn.daemonVersion) < MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION)
             throw Error("the Nix daemon version is too old");
         conn.to << PROTOCOL_VERSION;
 
-        if (GET_PROTOCOL_MINOR(conn.daemonVersion) >= 14) {
-            // Obsolete CPU affinity.
-            conn.to << 0;
-        }
+        // Obsolete CPU affinity.
+        conn.to << 0;
 
-        if (GET_PROTOCOL_MINOR(conn.daemonVersion) >= 11)
-            conn.to << false; // obsolete reserveSpace
+        conn.to << false; // obsolete reserveSpace
 
         if (GET_PROTOCOL_MINOR(conn.daemonVersion) >= 33) {
             conn.to.flush();
@@ -126,24 +123,22 @@ void RemoteStore::setOptions(Connection & conn)
        << settings.buildCores
        << settings.useSubstitutes;
 
-    if (GET_PROTOCOL_MINOR(conn.daemonVersion) >= 12) {
-        std::map<std::string, Config::SettingInfo> overrides;
-        settings.getSettings(overrides, true); // libstore settings
-        fileTransferSettings.getSettings(overrides, true);
-        overrides.erase(settings.keepFailed.name);
-        overrides.erase(settings.keepGoing.name);
-        overrides.erase(settings.tryFallback.name);
-        overrides.erase(settings.maxBuildJobs.name);
-        overrides.erase(settings.maxSilentTime.name);
-        overrides.erase(settings.buildCores.name);
-        overrides.erase(settings.useSubstitutes.name);
-        overrides.erase(loggerSettings.showTrace.name);
-        overrides.erase(experimentalFeatureSettings.experimentalFeatures.name);
-        overrides.erase(settings.pluginFiles.name);
-        conn.to << overrides.size();
-        for (auto & i : overrides)
-            conn.to << i.first << i.second.value;
-    }
+    std::map<std::string, Config::SettingInfo> overrides;
+    settings.getSettings(overrides, true); // libstore settings
+    fileTransferSettings.getSettings(overrides, true);
+    overrides.erase(settings.keepFailed.name);
+    overrides.erase(settings.keepGoing.name);
+    overrides.erase(settings.tryFallback.name);
+    overrides.erase(settings.maxBuildJobs.name);
+    overrides.erase(settings.maxSilentTime.name);
+    overrides.erase(settings.buildCores.name);
+    overrides.erase(settings.useSubstitutes.name);
+    overrides.erase(loggerSettings.showTrace.name);
+    overrides.erase(experimentalFeatureSettings.experimentalFeatures.name);
+    overrides.erase(settings.pluginFiles.name);
+    conn.to << overrides.size();
+    for (auto & i : overrides)
+        conn.to << i.first << i.second.value;
 
     auto ex = conn.processStderr();
     if (ex) std::rethrow_exception(ex);
@@ -207,20 +202,13 @@ bool RemoteStore::isValidPathUncached(const StorePath & path)
 StorePathSet RemoteStore::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
 {
     auto conn(getConnection());
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 12) {
-        StorePathSet res;
-        for (auto & i : paths)
-            if (isValidPath(i)) res.insert(i);
-        return res;
-    } else {
-        conn->to << WorkerProto::Op::QueryValidPaths;
-        WorkerProto::write(*this, *conn, paths);
-        if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 27) {
-            conn->to << maybeSubstitute;
-        }
-        conn.processStderr();
-        return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    conn->to << WorkerProto::Op::QueryValidPaths;
+    WorkerProto::write(*this, *conn, paths);
+    if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 27) {
+        conn->to << maybeSubstitute;
     }
+    conn.processStderr();
+    return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
 }
 
 
@@ -236,20 +224,10 @@ StorePathSet RemoteStore::queryAllValidPaths()
 StorePathSet RemoteStore::querySubstitutablePaths(const StorePathSet & paths)
 {
     auto conn(getConnection());
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 12) {
-        StorePathSet res;
-        for (auto & i : paths) {
-            conn->to << WorkerProto::Op::HasSubstitutes << printStorePath(i);
-            conn.processStderr();
-            if (readInt(conn->from)) res.insert(i);
-        }
-        return res;
-    } else {
-        conn->to << WorkerProto::Op::QuerySubstitutablePaths;
-        WorkerProto::write(*this, *conn, paths);
-        conn.processStderr();
-        return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
-    }
+    conn->to << WorkerProto::Op::QuerySubstitutablePaths;
+    WorkerProto::write(*this, *conn, paths);
+    conn.processStderr();
+    return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
 }
 
 
@@ -259,45 +237,25 @@ void RemoteStore::querySubstitutablePathInfos(const StorePathCAMap & pathsMap, S
 
     auto conn(getConnection());
 
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 12) {
 
-        for (auto & i : pathsMap) {
-            SubstitutablePathInfo info;
-            conn->to << WorkerProto::Op::QuerySubstitutablePathInfo << printStorePath(i.first);
-            conn.processStderr();
-            unsigned int reply = readInt(conn->from);
-            if (reply == 0) continue;
-            auto deriver = readString(conn->from);
-            if (deriver != "")
-                info.deriver = parseStorePath(deriver);
-            info.references = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
-            info.downloadSize = readLongLong(conn->from);
-            info.narSize = readLongLong(conn->from);
-            infos.insert_or_assign(i.first, std::move(info));
-        }
-
-    } else {
-
-        conn->to << WorkerProto::Op::QuerySubstitutablePathInfos;
-        if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 22) {
-            StorePathSet paths;
-            for (auto & path : pathsMap)
-                paths.insert(path.first);
-            WorkerProto::write(*this, *conn, paths);
-        } else
-            WorkerProto::write(*this, *conn, pathsMap);
-        conn.processStderr();
-        size_t count = readNum<size_t>(conn->from);
-        for (size_t n = 0; n < count; n++) {
-            SubstitutablePathInfo & info(infos[parseStorePath(readString(conn->from))]);
-            auto deriver = readString(conn->from);
-            if (deriver != "")
-                info.deriver = parseStorePath(deriver);
-            info.references = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
-            info.downloadSize = readLongLong(conn->from);
-            info.narSize = readLongLong(conn->from);
-        }
-
+    conn->to << WorkerProto::Op::QuerySubstitutablePathInfos;
+    if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 22) {
+        StorePathSet paths;
+        for (auto & path : pathsMap)
+            paths.insert(path.first);
+        WorkerProto::write(*this, *conn, paths);
+    } else
+        WorkerProto::write(*this, *conn, pathsMap);
+    conn.processStderr();
+    size_t count = readNum<size_t>(conn->from);
+    for (size_t n = 0; n < count; n++) {
+        SubstitutablePathInfo & info(infos[parseStorePath(readString(conn->from))]);
+        auto deriver = readString(conn->from);
+        if (deriver != "")
+            info.deriver = parseStorePath(deriver);
+        info.references = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+        info.downloadSize = readLongLong(conn->from);
+        info.narSize = readLongLong(conn->from);
     }
 }
 
@@ -314,10 +272,10 @@ std::shared_ptr<const ValidPathInfo> RemoteStore::queryPathInfoUncached(const St
             return nullptr;
         throw;
     }
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 17) {
-        bool valid; conn->from >> valid;
-        if (!valid) return nullptr;
-    }
+
+    bool valid; conn->from >> valid;
+    if (!valid) return nullptr;
+
     return std::make_shared<ValidPathInfo>(
         StorePath{path},
         WorkerProto::Serialise<UnkeyedValidPathInfo>::read(*this, *conn));
@@ -346,7 +304,7 @@ StorePathSet RemoteStore::queryValidDerivers(const StorePath & path)
 
 StorePathSet RemoteStore::queryDerivationOutputs(const StorePath & path)
 {
-    if (GET_PROTOCOL_MINOR(getProtocol()) >= 0x16) {
+    if (GET_PROTOCOL_MINOR(getProtocol()) >= 22) {
         return Store::queryDerivationOutputs(path);
     }
     auto conn(getConnection());
@@ -358,7 +316,7 @@ StorePathSet RemoteStore::queryDerivationOutputs(const StorePath & path)
 
 std::map<std::string, std::optional<StorePath>> RemoteStore::queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore_)
 {
-    if (GET_PROTOCOL_MINOR(getProtocol()) >= 0x16) {
+    if (GET_PROTOCOL_MINOR(getProtocol()) >= 22) {
         if (!evalStore_) {
             auto conn(getConnection());
             conn->to << WorkerProto::Op::QueryDerivationOutputMap << printStorePath(path);
@@ -669,13 +627,7 @@ void RemoteStore::buildPaths(const std::vector<DerivedPath> & drvPaths, BuildMod
     conn->to << WorkerProto::Op::BuildPaths;
     assert(GET_PROTOCOL_MINOR(conn->daemonVersion) >= 13);
     WorkerProto::write(*this, *conn, drvPaths);
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 15)
-        conn->to << buildMode;
-    else
-        /* Old daemons did not take a 'buildMode' parameter, so we
-           need to validate it here on the client side.  */
-        if (buildMode != bmNormal)
-            throw Error("repairing or checking is not supported when building through the Nix daemon");
+    conn->to << buildMode;
     conn.processStderr();
     readInt(conn->from);
 }
