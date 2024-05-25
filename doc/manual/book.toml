@@ -11,6 +11,10 @@ additional-js = ["redirects.js"]
 # to just submit a Gerrit CL by the web for trivial stuff.
 edit-url-template = "https://github.com/lix-project/lix/tree/main/doc/manual/{path}"
 git-repository-url = "https://git.lix.systems/lix-project/lix"
+# Folding by default would prevent things like "Ctrl+F for nix-env" from working
+# trivially, but the user should be able to fold if they want to.
+fold.enable = true
+fold.level = 30
 
 # Handles replacing @docroot@ with a path to ./src relative to that markdown file,
 # {{#include handlebars}}, and the @generated@ syntax used within these. it mostly
