@@ -22,6 +22,14 @@ using json = nlohmann::json;
 
 namespace nix {
 
+BuildMode buildModeFromInteger(int raw) {
+    switch (raw) {
+    case bmNormal: return bmNormal;
+    case bmRepair: return bmRepair;
+    case bmCheck: return bmCheck;
+    default: throw Error("Invalid BuildMode");
+    }
+}
 
 bool Store::isInStore(PathView path) const
 {
