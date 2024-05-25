@@ -456,51 +456,21 @@ void RemoteStore::addToStore(const ValidPathInfo & info, Source & source,
 {
     auto conn(getConnection());
 
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 18) {
-        conn->to << WorkerProto::Op::ImportPaths;
+    conn->to << WorkerProto::Op::AddToStoreNar
+             << printStorePath(info.path)
+             << (info.deriver ? printStorePath(*info.deriver) : "")
+             << info.narHash.to_string(Base16, false);
+    WorkerProto::write(*this, *conn, info.references);
+    conn->to << info.registrationTime << info.narSize
+             << info.ultimate << info.sigs << renderContentAddress(info.ca)
+             << repair << !checkSigs;
 
-        auto source2 = sinkToSource([&](Sink & sink) {
-            sink << 1 // == path follows
-                ;
+    if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 23) {
+        conn.withFramedSink([&](Sink & sink) {
             copyNAR(source, sink);
-            sink
-                << exportMagic
-                << printStorePath(info.path);
-            WorkerProto::WriteConn nested { sink, conn->daemonVersion };
-            WorkerProto::write(*this, nested, info.references);
-            sink
-                << (info.deriver ? printStorePath(*info.deriver) : "")
-                << 0 // == no legacy signature
-                << 0 // == no path follows
-                ;
         });
-
-        conn.processStderr(0, source2.get());
-
-        auto importedPaths = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
-        assert(importedPaths.size() <= 1);
-    }
-
-    else {
-        conn->to << WorkerProto::Op::AddToStoreNar
-                 << printStorePath(info.path)
-                 << (info.deriver ? printStorePath(*info.deriver) : "")
-                 << info.narHash.to_string(Base16, false);
-        WorkerProto::write(*this, *conn, info.references);
-        conn->to << info.registrationTime << info.narSize
-                 << info.ultimate << info.sigs << renderContentAddress(info.ca)
-                 << repair << !checkSigs;
-
-        if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 23) {
-            conn.withFramedSink([&](Sink & sink) {
-                copyNAR(source, sink);
-            });
-        } else if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 21) {
-            conn.processStderr(0, &source);
-        } else {
-            copyNAR(source, conn->to);
-            conn.processStderr(0, nullptr);
-        }
+    } else {
+        conn.processStderr(0, &source);
     }
 }
 
@@ -624,7 +594,6 @@ void RemoteStore::buildPaths(const std::vector<DerivedPath> & drvPaths, BuildMod
 
     auto conn(getConnection());
     conn->to << WorkerProto::Op::BuildPaths;
-    assert(GET_PROTOCOL_MINOR(conn->daemonVersion) >= 13);
     WorkerProto::write(*this, *conn, drvPaths);
     conn->to << buildMode;
     conn.processStderr();
@@ -817,25 +786,14 @@ void RemoteStore::queryMissing(const std::vector<DerivedPath> & targets,
     StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
     uint64_t & downloadSize, uint64_t & narSize)
 {
-    {
-        auto conn(getConnection());
-        if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 19)
-            // Don't hold the connection handle in the fallback case
-            // to prevent a deadlock.
-            goto fallback;
-        conn->to << WorkerProto::Op::QueryMissing;
-        WorkerProto::write(*this, *conn, targets);
-        conn.processStderr();
-        willBuild = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
-        willSubstitute = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
-        unknown = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
-        conn->from >> downloadSize >> narSize;
-        return;
-    }
-
- fallback:
-    return Store::queryMissing(targets, willBuild, willSubstitute,
-        unknown, downloadSize, narSize);
+    auto conn(getConnection());
+    conn->to << WorkerProto::Op::QueryMissing;
+    WorkerProto::write(*this, *conn, targets);
+    conn.processStderr();
+    willBuild = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    willSubstitute = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    unknown = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    conn->from >> downloadSize >> narSize;
 }
 
 
