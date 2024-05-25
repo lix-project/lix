@@ -264,14 +264,8 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
     TrustedFlag trusted, RecursiveFlag recursive, WorkerProto::Version clientVersion,
     Source & from, BufferedSink & to, WorkerProto::Op op)
 {
-    WorkerProto::ReadConn rconn {
-        .from = from,
-        .version = clientVersion,
-    };
-    WorkerProto::WriteConn wconn {
-        .to = to,
-        .version = clientVersion,
-    };
+    WorkerProto::ReadConn rconn{from, clientVersion};
+    WorkerProto::WriteConn wconn{to, clientVersion};
 
     switch (op) {
 
@@ -1030,10 +1024,7 @@ void processConnection(
         auto temp = trusted
             ? store->isTrustedClient()
             : std::optional { NotTrusted };
-        WorkerProto::WriteConn wconn {
-            .to = to,
-            .version = clientVersion,
-        };
+        WorkerProto::WriteConn wconn {to, clientVersion};
         WorkerProto::write(*store, wconn, temp);
     }
 

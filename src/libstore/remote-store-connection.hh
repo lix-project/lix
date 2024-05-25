@@ -68,10 +68,7 @@ struct RemoteStore::Connection
      */
     operator WorkerProto::ReadConn ()
     {
-        return WorkerProto::ReadConn {
-            .from = from,
-            .version = daemonVersion,
-        };
+        return WorkerProto::ReadConn {from, daemonVersion};
     }
 
     /**
@@ -84,10 +81,7 @@ struct RemoteStore::Connection
      */
     operator WorkerProto::WriteConn ()
     {
-        return WorkerProto::WriteConn {
-            .to = to,
-            .version = daemonVersion,
-        };
+        return WorkerProto::WriteConn {to, daemonVersion};
     }
 
     virtual ~Connection();

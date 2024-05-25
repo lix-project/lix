@@ -368,15 +368,14 @@ void Store::addMultipleToStore(
     RepairFlag repair,
     CheckSigsFlag checkSigs)
 {
+    auto remoteVersion = getProtocol();
+
     auto expected = readNum<uint64_t>(source);
     for (uint64_t i = 0; i < expected; ++i) {
-        // FIXME we should not be using the worker protocol here, let
-        // alone the worker protocol with a hard-coded version!
+        // FIXME we should not be using the worker protocol here at all!
         auto info = WorkerProto::Serialise<ValidPathInfo>::read(*this,
-            WorkerProto::ReadConn {
-                .from = source,
-                .version = 16,
-            });
+            WorkerProto::ReadConn {source, remoteVersion}
+        );
         info.ultimate = false;
         addToStore(info, source, repair, checkSigs);
     }

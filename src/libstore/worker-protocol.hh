@@ -72,6 +72,10 @@ struct WorkerProto
     struct ReadConn {
         Source & from;
         Version version;
+
+        ReadConn(Source & from, Version version) : from(from), version(version) {
+            assert(version >= MIN_SUPPORTED_WORKER_PROTO_VERSION);
+        }
     };
 
     /**
@@ -81,6 +85,10 @@ struct WorkerProto
     struct WriteConn {
         Sink & to;
         Version version;
+
+        WriteConn(Sink & to, Version version) : to(to), version(version) {
+            assert(version >= MIN_SUPPORTED_WORKER_PROTO_VERSION);
+        }
     };
 
     /**

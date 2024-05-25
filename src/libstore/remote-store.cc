@@ -466,7 +466,7 @@ void RemoteStore::addToStore(const ValidPathInfo & info, Source & source,
             sink
                 << exportMagic
                 << printStorePath(info.path);
-            WorkerProto::WriteConn nested { .to = sink, .version = conn->daemonVersion };
+            WorkerProto::WriteConn nested { sink, conn->daemonVersion };
             WorkerProto::write(*this, nested, info.references);
             sink
                 << (info.deriver ? printStorePath(*info.deriver) : "")
@@ -511,14 +511,13 @@ void RemoteStore::addMultipleToStore(
     RepairFlag repair,
     CheckSigsFlag checkSigs)
 {
+    auto remoteVersion = getProtocol();
+
     auto source = sinkToSource([&](Sink & sink) {
         sink << pathsToCopy.size();
         for (auto & [pathInfo, pathSource] : pathsToCopy) {
             WorkerProto::Serialise<ValidPathInfo>::write(*this,
-                 WorkerProto::WriteConn {
-                     .to = sink,
-                     .version = 16,
-                 },
+                 WorkerProto::WriteConn {sink, remoteVersion},
                  pathInfo);
             pathSource->drainInto(sink);
         }
