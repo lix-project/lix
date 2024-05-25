@@ -90,6 +90,9 @@ const uint32_t exportMagic = 0x4558494e;
 
 
 enum BuildMode { bmNormal, bmRepair, bmCheck };
+/** Checks that a build mode is a valid one, then returns it */
+BuildMode buildModeFromInteger(int);
+
 enum TrustedFlag : bool { NotTrusted = false, Trusted = true };
 
 struct BuildResult;
