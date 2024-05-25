@@ -18,9 +18,9 @@ struct WorkerProtoTest : VersionedProtoTest<WorkerProto, workerProtoDir>
 {
     /**
      * For serializers that don't care about the minimum version, we
-     * used the oldest one: 1.0.
+     * have to use the minimum supported to not throw an assert.
      */
-    WorkerProto::Version defaultVersion = 1 << 8 | 0;
+    WorkerProto::Version defaultVersion = MIN_SUPPORTED_WORKER_PROTO_VERSION;
 };
 
 
@@ -331,9 +331,9 @@ VERSIONED_CHARACTERIZATION_TEST(
 
 VERSIONED_CHARACTERIZATION_TEST(
     WorkerProtoTest,
-    unkeyedValidPathInfo_1_15,
-    "unkeyed-valid-path-info-1.15",
-    1 << 8 | 15,
+    unkeyedValidPathInfo,
+    "unkeyed-valid-path-info",
+    defaultVersion,
     (std::tuple<UnkeyedValidPathInfo, UnkeyedValidPathInfo> {
         ({
             UnkeyedValidPathInfo info {
@@ -363,56 +363,9 @@ VERSIONED_CHARACTERIZATION_TEST(
 
 VERSIONED_CHARACTERIZATION_TEST(
     WorkerProtoTest,
-    validPathInfo_1_15,
-    "valid-path-info-1.15",
-    1 << 8 | 15,
-    (std::tuple<ValidPathInfo, ValidPathInfo> {
-        ({
-            ValidPathInfo info {
-                StorePath {
-                    "g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-bar",
-                },
-                UnkeyedValidPathInfo {
-                    Hash::parseSRI("sha256-FePFYIlMuycIXPZbWi7LGEiMmZSX9FMbaQenWBzm1Sc="),
-                },
-            };
-            info.registrationTime = 23423;
-            info.narSize = 34878;
-            info;
-        }),
-        ({
-            ValidPathInfo info {
-                StorePath {
-                    "g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-bar",
-                },
-                UnkeyedValidPathInfo {
-                    Hash::parseSRI("sha256-FePFYIlMuycIXPZbWi7LGEiMmZSX9FMbaQenWBzm1Sc="),
-                },
-            };
-            info.deriver = StorePath {
-                "g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-bar.drv",
-            };
-            info.references = {
-                // other reference
-                StorePath {
-                    "g1w7hyyyy1w7hy3qg1w7hy3qgqqqqy3q-foo",
-                },
-                // self reference
-                StorePath {
-                    "g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-bar",
-                },
-            };
-            info.registrationTime = 23423;
-            info.narSize = 34878;
-            info;
-        }),
-    }))
-
-VERSIONED_CHARACTERIZATION_TEST(
-    WorkerProtoTest,
-    validPathInfo_1_16,
-    "valid-path-info-1.16",
-    1 << 8 | 16,
+    validPathInfo,
+    "valid-path-info",
+    defaultVersion,
     (std::tuple<ValidPathInfo, ValidPathInfo, ValidPathInfo> {
         ({
             ValidPathInfo info {
