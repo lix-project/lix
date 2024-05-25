@@ -2008,8 +2008,6 @@ void LocalDerivationGoal::runChild()
         /* Fill in the arguments. */
         Strings args;
 
-        std::string builder = "invalid";
-
 #if __APPLE__
         /* This has to appear before import statements. */
         std::string sandboxProfile = "(version 1)\n";
@@ -2130,15 +2128,9 @@ void LocalDerivationGoal::runChild()
                 _exit(1);
             }
         }
-
-        builder = drv->builder;
-        args.push_back(std::string(baseNameOf(drv->builder)));
-#else
-        if (!drv->isBuiltin()) {
-            builder = drv->builder;
-            args.push_back(std::string(baseNameOf(drv->builder)));
-        }
 #endif
+
+        args.push_back(std::string(baseNameOf(drv->builder)));
 
         for (auto & i : drv->args)
             args.push_back(rewriteStrings(i, inputRewrites));
@@ -2193,9 +2185,9 @@ void LocalDerivationGoal::runChild()
             posix_spawnattr_setbinpref_np(&attrp, 1, &cpu, NULL);
         }
 
-        posix_spawn(NULL, builder.c_str(), NULL, &attrp, stringsToCharPtrs(args).data(), stringsToCharPtrs(envStrs).data());
+        posix_spawn(NULL, drv->builder.c_str(), NULL, &attrp, stringsToCharPtrs(args).data(), stringsToCharPtrs(envStrs).data());
 #else
-        execve(builder.c_str(), stringsToCharPtrs(args).data(), stringsToCharPtrs(envStrs).data());
+        execve(drv->builder.c_str(), stringsToCharPtrs(args).data(), stringsToCharPtrs(envStrs).data());
 #endif
 
         throw SysError("executing '%1%'", drv->builder);
