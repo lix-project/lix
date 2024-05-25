@@ -155,6 +155,7 @@ diff -u <(
     nix --offline profile install $flake2Dir 2>&1 1> /dev/null \
         | grep -vE "^warning: " \
         | grep -vE "^error \(ignored\): " \
+        | grep -vE "^fetching .+ input" \
         || true
 ) <(cat << EOF
 error: An existing package already provides the following file:
