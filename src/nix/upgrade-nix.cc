@@ -111,7 +111,23 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
 
         if (pathExists(canonProfileDir + "/manifest.nix")) {
 
-            std::string nixEnvCmd = settings.nixBinDir + "/nix-env";
+            // {settings.nixBinDir}/nix-env is a symlink to a {settings.nixBinDir}/nix, which *then*
+            // is a symlink to /nix/store/meow-nix/bin/nix. We want /nix/store/meow-nix/bin/nix-env.
+            Path const nixInStore = canonPath(settings.nixBinDir + "/nix-env", true);
+            Path const nixEnvCmd = dirOf(nixInStore) + "/nix-env";
+
+            // First remove the existing Nix, then use that Nix by absolute path to
+            // install the new one, in case the new and old versions aren't considered
+            // to be "the same package" by nix-env's logic (e.g., if their pnames differ).
+            Strings removeArgs = {
+                "--uninstall",
+                nixEnvCmd,
+                "--profile",
+                this->profileDir,
+            };
+            printTalkative("running %s %s", nixEnvCmd, concatStringsSep(" ", removeArgs));
+            runProgram(nixEnvCmd, false, removeArgs);
+
             Strings upgradeArgs = {
                 "--profile",
                 this->profileDir,
