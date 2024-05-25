@@ -27,11 +27,8 @@ struct RemoteStore::Connection
     FdSource from;
 
     /**
-     * Worker protocol version used for the connection.
-     *
-     * Despite its name, I think it is actually the maximum version both
-     * sides support. (If the maximum doesn't exist, we would fail to
-     * establish a connection and produce a value of this type.)
+     * The worker protocol version of the connected daemon. This may be newer
+     * than this Lix supports.
      */
     WorkerProto::Version daemonVersion;
 

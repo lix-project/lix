@@ -47,10 +47,15 @@ struct TunnelLogger : public Logger
 
     Sync<State> state_;
 
-    WorkerProto::Version clientVersion;
+    /**
+     * Worker protocol version of the other side. May be newer than this daemon.
+     */
+    const WorkerProto::Version clientVersion;
 
     TunnelLogger(FdSink & to, WorkerProto::Version clientVersion)
-        : to(to), clientVersion(clientVersion) { }
+        : to(to), clientVersion(clientVersion) {
+        assert(clientVersion >= MIN_SUPPORTED_WORKER_PROTO_VERSION);
+    }
 
     void enqueueMsg(const std::string & s)
     {
@@ -129,12 +134,6 @@ struct TunnelLogger : public Logger
     void startActivity(ActivityId act, Verbosity lvl, ActivityType type,
         const std::string & s, const Fields & fields, ActivityId parent) override
     {
-        if (GET_PROTOCOL_MINOR(clientVersion) < 20) {
-            if (!s.empty())
-                log(lvl, s + "...");
-            return;
-        }
-
         StringSink buf;
         buf << STDERR_START_ACTIVITY << act << lvl << type << s << fields << parent;
         enqueueMsg(buf.s);
@@ -142,7 +141,6 @@ struct TunnelLogger : public Logger
 
     void stopActivity(ActivityId act) override
     {
-        if (GET_PROTOCOL_MINOR(clientVersion) < 20) return;
         StringSink buf;
         buf << STDERR_STOP_ACTIVITY << act;
         enqueueMsg(buf.s);
@@ -150,7 +148,6 @@ struct TunnelLogger : public Logger
 
     void result(ActivityId act, ResultType type, const Fields & fields) override
     {
-        if (GET_PROTOCOL_MINOR(clientVersion) < 20) return;
         StringSink buf;
         buf << STDERR_RESULT << act << type << fields;
         enqueueMsg(buf.s);
@@ -527,22 +524,19 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
 
     case WorkerProto::Op::BuildPaths: {
         auto drvs = WorkerProto::Serialise<DerivedPaths>::read(*store, rconn);
-        BuildMode mode = bmNormal;
-        if (GET_PROTOCOL_MINOR(clientVersion) >= 15) {
-            mode = buildModeFromInteger(readInt(from));
+        BuildMode mode = buildModeFromInteger(readInt(from));
 
-            /* Repairing is not atomic, so disallowed for "untrusted"
-               clients.
+        /* Repairing is not atomic, so disallowed for "untrusted"
+           clients.
 
-               FIXME: layer violation in this message: the daemon code (i.e.
-               this file) knows whether a client/connection is trusted, but it
-               does not how how the client was authenticated. The mechanism
-               need not be getting the UID of the other end of a Unix Domain
-               Socket.
-              */
-            if (mode == bmRepair && !trusted)
-                throw Error("repairing is not allowed because you are not in 'trusted-users'");
-        }
+           FIXME: layer violation in this message: the daemon code (i.e.
+           this file) knows whether a client/connection is trusted, but it
+           does not how how the client was authenticated. The mechanism
+           need not be getting the UID of the other end of a Unix Domain
+           Socket.
+          */
+        if (mode == bmRepair && !trusted)
+            throw Error("repairing is not allowed because you are not in 'trusted-users'");
         logger->startWork();
         store->buildPaths(drvs, mode);
         logger->stopWork();
@@ -746,13 +740,11 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         clientSettings.buildCores = readInt(from);
         clientSettings.useSubstitutes = readInt(from);
 
-        if (GET_PROTOCOL_MINOR(clientVersion) >= 12) {
-            unsigned int n = readInt(from);
-            for (unsigned int i = 0; i < n; i++) {
-                auto name = readString(from);
-                auto value = readString(from);
-                clientSettings.overrides.emplace(name, value);
-            }
+        unsigned int n = readInt(from);
+        for (unsigned int i = 0; i < n; i++) {
+            auto name = readString(from);
+            auto value = readString(from);
+            clientSettings.overrides.emplace(name, value);
         }
 
         logger->startWork();
@@ -822,15 +814,14 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         try {
             info = store->queryPathInfo(path);
         } catch (InvalidPath &) {
-            if (GET_PROTOCOL_MINOR(clientVersion) < 17) throw;
+            // The path being invalid isn't fatal here since it will just be
+            // sent as not present.
         }
         logger->stopWork();
         if (info) {
-            if (GET_PROTOCOL_MINOR(clientVersion) >= 17)
-                to << 1;
+            to << 1;
             WorkerProto::write(*store, wconn, static_cast<const UnkeyedValidPathInfo &>(*info));
         } else {
-            assert(GET_PROTOCOL_MINOR(clientVersion) >= 17);
             to << 0;
         }
         break;
@@ -904,12 +895,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         else {
             std::unique_ptr<Source> source;
             StringSink saved;
-            if (GET_PROTOCOL_MINOR(clientVersion) >= 21)
-                source = std::make_unique<TunnelSource>(from, to);
-            else {
-                copyNAR(from, saved);
-                source = std::make_unique<StringSource>(saved.s);
-            }
+            source = std::make_unique<TunnelSource>(from, to);
 
             logger->startWork();
 
@@ -1011,7 +997,7 @@ void processConnection(
     to.flush();
     WorkerProto::Version clientVersion = readInt(from);
 
-    if (clientVersion < 0x10a)
+    if (clientVersion < MIN_SUPPORTED_WORKER_PROTO_VERSION)
         throw Error("the Nix client version is too old");
 
     auto tunnelLogger = new TunnelLogger(to, clientVersion);
@@ -1027,13 +1013,13 @@ void processConnection(
         printMsgUsing(prevLogger, lvlDebug, "%d operations", opCount);
     });
 
-    if (GET_PROTOCOL_MINOR(clientVersion) >= 14 && readInt(from)) {
+    // FIXME: what is *supposed* to be in this even?
+    if (readInt(from)) {
         // Obsolete CPU affinity.
         readInt(from);
     }
 
-    if (GET_PROTOCOL_MINOR(clientVersion) >= 11)
-        readInt(from); // obsolete reserveSpace
+    readInt(from); // obsolete reserveSpace
 
     if (GET_PROTOCOL_MINOR(clientVersion) >= 33)
         to << nixVersion;
