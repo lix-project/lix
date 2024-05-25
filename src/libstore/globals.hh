@@ -912,29 +912,6 @@ public:
         )"};
 
 #if __linux__
-    Setting<bool> filterSyscalls{
-        this, true, "filter-syscalls",
-        R"(
-          Whether to prevent certain dangerous system calls, such as
-          creation of setuid/setgid files or adding ACLs or extended
-          attributes. Only disable this if you're aware of the
-          security implications.
-        )"};
-
-    Setting<bool> allowNewPrivileges{
-        this, false, "allow-new-privileges",
-        R"(
-          (Linux-specific.) By default, builders on Linux cannot acquire new
-          privileges by calling setuid/setgid programs or programs that have
-          file capabilities. For example, programs such as `sudo` or `ping`
-          will fail. (Note that in sandbox builds, no such programs are
-          available unless you bind-mount them into the sandbox via the
-          `sandbox-paths` option.) You can allow the use of such programs by
-          enabling this option. This is impure and usually undesirable, but
-          may be useful in certain scenarios (e.g. to spin up containers or
-          set up userspace network interfaces in tests).
-        )"};
-
     Setting<StringSet> ignoredAcls{
         this, {"security.selinux", "system.nfs4_acl", "security.csm"}, "ignored-acls",
         R"(

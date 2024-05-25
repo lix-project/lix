@@ -24,7 +24,6 @@ const redirects = {
     "chap-writing-nix-expressions": "language/index.html",
     "part-command-ref": "command-ref/command-ref.html",
     "conf-allow-import-from-derivation": "command-ref/conf-file.html#conf-allow-import-from-derivation",
-    "conf-allow-new-privileges": "command-ref/conf-file.html#conf-allow-new-privileges",
     "conf-allowed-uris": "command-ref/conf-file.html#conf-allowed-uris",
     "conf-allowed-users": "command-ref/conf-file.html#conf-allowed-users",
     "conf-auto-optimise-store": "command-ref/conf-file.html#conf-auto-optimise-store",

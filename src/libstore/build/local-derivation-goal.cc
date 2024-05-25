@@ -34,7 +34,6 @@
 /* Includes required for chroot support. */
 #if __linux__
 #include <sys/ioctl.h>
-#include "linux/fchmodat2-compat.hh"
 #include <net/if.h>
 #include <netinet/ip.h>
 #include <sys/mman.h>
@@ -44,6 +43,7 @@
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #if HAVE_SECCOMP
+#include "linux/fchmodat2-compat.hh"
 #include <seccomp.h>
 #endif
 #define pivot_root(new_root, put_old) (syscall(SYS_pivot_root, new_root, put_old))
@@ -1612,7 +1612,6 @@ void LocalDerivationGoal::chownToBuilder(const Path & path)
 void setupSeccomp()
 {
 #if __linux__
-    if (!settings.filterSyscalls) return;
 #if HAVE_SECCOMP
     scmp_filter_ctx ctx;
 
@@ -1678,15 +1677,18 @@ void setupSeccomp()
         seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOTSUP), SCMP_SYS(fsetxattr), 0) != 0)
         throw SysError("unable to add seccomp rule");
 
-    if (seccomp_attr_set(ctx, SCMP_FLTATR_CTL_NNP, settings.allowNewPrivileges ? 0 : 1) != 0)
+    // Set the NO_NEW_PRIVS prctl flag.
+    // This both makes loading seccomp filters work for unprivileged users,
+    // and is an additional security measure in its own right.
+    if (seccomp_attr_set(ctx, SCMP_FLTATR_CTL_NNP, 1) != 0)
         throw SysError("unable to set 'no new privileges' seccomp attribute");
 
     if (seccomp_load(ctx) != 0)
         throw SysError("unable to load seccomp BPF program");
 #else
-    throw Error(
-        "seccomp is not supported on this platform; "
-        "you can bypass this error by setting the option 'filter-syscalls' to false, but note that untrusted builds can then create setuid binaries!");
+    // Still set the no-new-privileges flag if libseccomp is not available.
+    if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == -1)
+        throw SysError("PR_SET_NO_NEW_PRIVS failed");
 #endif
 #endif
 }
@@ -1954,10 +1956,6 @@ void LocalDerivationGoal::runChild()
                 throw SysError("setuid failed");
 
             setUser = false;
-
-            // Make sure we can't possibly gain new privileges in the sandbox
-            if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == -1)
-                throw SysError("PR_SET_NO_NEW_PRIVS failed");
         }
 #endif
 
