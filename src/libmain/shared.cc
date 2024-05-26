@@ -282,7 +282,7 @@ void parseCmdLine(const std::string & programName, const Strings & args,
 void printVersion(const std::string & programName)
 {
     std::cout << fmt("%1% (Lix, like Nix) %2%", programName, nixVersion) << std::endl;
-    if (verbosity > lvlNotice) {
+    if (verbosity > lvlInfo) {
         Strings cfg;
 #if HAVE_BOEHMGC
         cfg.push_back("gc");
