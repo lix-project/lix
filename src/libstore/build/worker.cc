@@ -429,6 +429,28 @@ void Worker::waitForInput()
         GoalPtr goal = j->goal.lock();
         assert(goal);
 
+        if (goal->exitCode == Goal::ecBusy &&
+            0 != settings.maxSilentTime &&
+            j->respectTimeouts &&
+            after - j->lastOutput >= std::chrono::seconds(settings.maxSilentTime))
+        {
+            goal->timedOut(Error(
+                    "%1% timed out after %2% seconds of silence",
+                    goal->getName(), settings.maxSilentTime));
+            continue;
+        }
+
+        else if (goal->exitCode == Goal::ecBusy &&
+            0 != settings.buildTimeout &&
+            j->respectTimeouts &&
+            after - j->timeStarted >= std::chrono::seconds(settings.buildTimeout))
+        {
+            goal->timedOut(Error(
+                    "%1% timed out after %2% seconds",
+                    goal->getName(), settings.buildTimeout));
+            continue;
+        }
+
         std::set<int> fds2(j->fds);
         std::vector<unsigned char> buffer(4096);
         for (auto & k : fds2) {
@@ -454,26 +476,6 @@ void Worker::waitForInput()
                     goal->handleChildOutput(k, data);
                 }
             }
-        }
-
-        if (goal->exitCode == Goal::ecBusy &&
-            0 != settings.maxSilentTime &&
-            j->respectTimeouts &&
-            after - j->lastOutput >= std::chrono::seconds(settings.maxSilentTime))
-        {
-            goal->timedOut(Error(
-                    "%1% timed out after %2% seconds of silence",
-                    goal->getName(), settings.maxSilentTime));
-        }
-
-        else if (goal->exitCode == Goal::ecBusy &&
-            0 != settings.buildTimeout &&
-            j->respectTimeouts &&
-            after - j->timeStarted >= std::chrono::seconds(settings.buildTimeout))
-        {
-            goal->timedOut(Error(
-                    "%1% timed out after %2% seconds",
-                    goal->getName(), settings.buildTimeout));
         }
     }
 
