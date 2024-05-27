@@ -414,6 +414,8 @@ stdenv.mkDerivation (finalAttrs: {
         glibcFix
         // {
 
+          name = "lix-shell-env";
+
           inputsFrom = [ finalAttrs ];
 
           # For Meson to find Boost.
@@ -437,6 +439,11 @@ stdenv.mkDerivation (finalAttrs: {
             ++ finalAttrs.checkInputs;
 
           shellHook = ''
+            # don't re-run the hook in (other) nested nix-shells
+            if [[ $name != lix-shell-env ]]; then
+              return;
+            fi
+
             PATH=$prefix/bin:$PATH
             unset PYTHONPATH
             export MANPATH=$out/share/man:$MANPATH
