@@ -65,6 +65,10 @@ protected:
      */
     std::set<ExperimentalFeature> flagExperimentalFeatures;
 
+    virtual std::optional<std::reference_wrapper<RootArgs>> asRootArgs() override {
+        return *this;
+    }
+
 private:
 
     std::optional<std::string> needsCompletion(std::string_view s);

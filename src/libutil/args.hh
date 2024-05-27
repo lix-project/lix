@@ -244,6 +244,13 @@ protected:
      */
     virtual void initialFlagsProcessed() {}
 
+    /**
+     * Returns this Args as a RootArgs if it is one, or \ref std::nullopt otherwise.
+     */
+    virtual std::optional<std::reference_wrapper<RootArgs>> asRootArgs() {
+        return std::nullopt;
+    }
+
 public:
 
     void addFlag(Flag && flag);
