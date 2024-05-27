@@ -1460,11 +1460,7 @@ void LocalDerivationGoal::runChild()
 
         commonChildInit();
 
-        try {
-            setupSeccomp();
-        } catch (...) {
-            if (buildUser) throw;
-        }
+        setupSeccomp();
 
         bool setUser = true;
 
