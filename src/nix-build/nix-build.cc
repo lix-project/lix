@@ -13,6 +13,7 @@
 #include "store-api.hh"
 #include "local-fs-store.hh"
 #include "globals.hh"
+#include "current-process.hh"
 #include "derivations.hh"
 #include "util.hh"
 #include "shared.hh"

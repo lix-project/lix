@@ -6,6 +6,7 @@
 #include "signals.hh"
 #include "loggers.hh"
 #include "progress-bar.hh"
+#include "current-process.hh"
 
 #include <algorithm>
 #include <cctype>

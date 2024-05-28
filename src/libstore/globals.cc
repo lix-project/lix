@@ -5,6 +5,7 @@
 #include "args.hh"
 #include "abstract-setting-to-json.hh"
 #include "compute-levels.hh"
+#include "current-process.hh"
 
 #include <algorithm>
 #include <map>

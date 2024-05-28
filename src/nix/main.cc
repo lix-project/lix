@@ -3,6 +3,7 @@
 #include "args/root.hh"
 #include "command.hh"
 #include "common-args.hh"
+#include "current-process.hh"
 #include "eval.hh"
 #include "eval-settings.hh"
 #include "globals.hh"

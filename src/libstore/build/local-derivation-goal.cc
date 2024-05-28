@@ -6,7 +6,6 @@
 #include "builtins/buildenv.hh"
 #include "path-references.hh"
 #include "finally.hh"
-#include "util.hh"
 #include "archive.hh"
 #include "compression.hh"
 #include "daemon.hh"

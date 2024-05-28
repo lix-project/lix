@@ -1,3 +1,4 @@
+#include "current-process.hh"
 #include "environment-variables.hh"
 #include "ssh.hh"
 #include "finally.hh"

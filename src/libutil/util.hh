@@ -72,11 +72,6 @@ std::vector<Path> getConfigDirs();
 Path getDataDir();
 
 /**
- * @return the path of the current executable.
- */
-std::optional<Path> getSelfExe();
-
-/**
  * @return $XDG_STATE_HOME or $HOME/.local/state.
  *
  * @note Not to be confused with settings.nixStateDir.
@@ -90,27 +85,6 @@ Path getStateDir();
  */
 Path createNixStateDir();
 
-
-/**
- * If cgroups are active, attempt to calculate the number of CPUs available.
- * If cgroups are unavailable or if cpu.max is set to "max", return 0.
- */
-unsigned int getMaxCPU();
-
-
-/**
- * Change the stack size.
- */
-void setStackSize(rlim_t stackSize);
-
-
-/**
- * Restore the original inherited Unix process context (such as signal
- * masks, stack size).
-
- * See startSignalHandlerThread(), saveSignalMask().
- */
-void restoreProcessContext(bool restoreMounts = true);
 
 /**
  * Save the current mount namespace. Ignored if called more than
