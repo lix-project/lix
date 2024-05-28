@@ -12,7 +12,7 @@ if [ $status -ne 101 ]; then
     exit 1
 fi
 
-if echo "$messages" | grepQuietInvert "timed out"; then
+if echo "$messages" | grepQuietInverse "timed out"; then
     echo "error: build may have failed for reasons other than timeout; output:"
     echo "$messages" >&2
     exit 1
