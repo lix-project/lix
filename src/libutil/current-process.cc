@@ -1,6 +1,7 @@
 #include "current-process.hh"
 #include "file-system.hh"
 #include "logging.hh"
+#include "namespaces.hh"
 #include "signals.hh"
 #include "util.hh"
 #include "strings.hh"

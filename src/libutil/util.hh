@@ -40,26 +40,6 @@ extern const std::string nativeSystem;
 
 
 /**
- * Save the current mount namespace. Ignored if called more than
- * once.
- */
-void saveMountNamespace();
-
-/**
- * Restore the mount namespace saved by saveMountNamespace(). Ignored
- * if saveMountNamespace() was never called.
- */
-void restoreMountNamespace();
-
-/**
- * Cause this thread to not share any FS attributes with the main
- * thread, because this causes setns() in restoreMountNamespace() to
- * fail.
- */
-void unshareFilesystem();
-
-
-/**
  * Exception handling in destructors: print an error message, then
  * ignore the exception.
  */

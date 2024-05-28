@@ -8,6 +8,7 @@
 #include "eval-settings.hh"
 #include "globals.hh"
 #include "legacy.hh"
+#include "namespaces.hh"
 #include "shared.hh"
 #include "store-api.hh"
 #include "filetransfer.hh"

@@ -1,5 +1,4 @@
-#if __linux__
-
+#include "file-descriptor.hh"
 #include "file-system.hh"
 #include "logging.hh"
 #include "namespaces.hh"
@@ -8,7 +7,66 @@
 
 #include <sys/mount.h>
 
+#if __linux__
+# include <mutex>
+# include <sys/resource.h>
+#endif
+
 namespace nix {
+
+#if __linux__
+static AutoCloseFD fdSavedMountNamespace;
+static AutoCloseFD fdSavedRoot;
+#endif
+
+void saveMountNamespace()
+{
+#if __linux__
+    static std::once_flag done;
+    std::call_once(done, []() {
+        fdSavedMountNamespace = AutoCloseFD{open("/proc/self/ns/mnt", O_RDONLY)};
+        if (!fdSavedMountNamespace)
+            throw SysError("saving parent mount namespace");
+
+        fdSavedRoot = AutoCloseFD{open("/proc/self/root", O_RDONLY)};
+    });
+#endif
+}
+
+void restoreMountNamespace()
+{
+#if __linux__
+    try {
+        auto savedCwd = absPath(".");
+
+        if (fdSavedMountNamespace && setns(fdSavedMountNamespace.get(), CLONE_NEWNS) == -1)
+            throw SysError("restoring parent mount namespace");
+
+        if (fdSavedRoot) {
+            if (fchdir(fdSavedRoot.get()))
+                throw SysError("chdir into saved root");
+            if (chroot("."))
+                throw SysError("chroot into saved root");
+        }
+
+        if (chdir(savedCwd.c_str()) == -1)
+            throw SysError("restoring cwd");
+    } catch (Error & e) {
+        debug(e.msg());
+    }
+#endif
+}
+
+void unshareFilesystem()
+{
+#ifdef __linux__
+    if (unshare(CLONE_FS) != 0 && errno != EPERM)
+        throw SysError("unsharing filesystem state in download thread");
+#endif
+}
+
+
+#if __linux__
 
 static void diagnoseUserNamespaces()
 {
@@ -95,6 +153,6 @@ bool mountAndPidNamespacesSupported()
     return res;
 }
 
-}
-
 #endif
+
+}
