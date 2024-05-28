@@ -26,6 +26,7 @@
 #include "config-impl.hh"
 
 #ifdef __APPLE__
+#include "processes.hh"
 #include <curl/curl.h>
 #include <sys/sysctl.h>
 #endif

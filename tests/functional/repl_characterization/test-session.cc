@@ -5,6 +5,7 @@
 #include "test-session.hh"
 #include "util.hh"
 #include "escape-char.hh"
+#include "processes.hh"
 
 namespace nix {
 

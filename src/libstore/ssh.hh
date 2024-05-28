@@ -2,7 +2,7 @@
 ///@file
 
 #include "file-system.hh"
-#include "util.hh"
+#include "processes.hh"
 #include "sync.hh"
 
 namespace nix {

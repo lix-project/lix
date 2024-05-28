@@ -7,6 +7,7 @@
 #include "common-args.hh"
 #include "path.hh"
 #include "derived-path.hh"
+#include "processes.hh"
 #include "exit.hh"
 
 #include <signal.h>

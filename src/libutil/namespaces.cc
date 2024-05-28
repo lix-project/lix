@@ -1,9 +1,10 @@
 #if __linux__
 
 #include "file-system.hh"
-#include "namespaces.hh"
+#include "logging.hh"
 #include "util.hh"
-#include "finally.hh"
+#include "namespaces.hh"
+#include "processes.hh"
 
 #include <sys/mount.h>
 

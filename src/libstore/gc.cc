@@ -1,6 +1,7 @@
 #include "derivations.hh"
 #include "globals.hh"
 #include "local-store.hh"
+#include "processes.hh"
 #include "signals.hh"
 #include "finally.hh"
 

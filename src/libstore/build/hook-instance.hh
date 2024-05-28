@@ -2,6 +2,7 @@
 ///@file
 
 #include "logging.hh"
+#include "processes.hh"
 #include "serialise.hh"
 
 namespace nix {

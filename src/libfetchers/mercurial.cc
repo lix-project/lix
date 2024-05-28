@@ -1,7 +1,6 @@
 #include "fetchers.hh"
 #include "cache.hh"
-#include "globals.hh"
-#include "tarfile.hh"
+#include "processes.hh"
 #include "store-api.hh"
 #include "url-parts.hh"
 
