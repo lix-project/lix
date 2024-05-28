@@ -2,7 +2,6 @@
 #include "derivations.hh"
 #include "eval.hh"
 #include "symbol-table.hh"
-#include "util.hh"
 #include "print.hh"
 #include "escape-string.hh"
 

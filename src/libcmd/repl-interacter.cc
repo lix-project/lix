@@ -1,3 +1,7 @@
+#include "error.hh"
+#include "file-system.hh"
+#include "logging.hh"
+#include <csignal>
 #include <cstdio>
 #include <iostream>
 #include <string>
@@ -18,11 +22,8 @@ extern "C" {
 }
 #endif
 
-#include "signals.hh"
 #include "finally.hh"
 #include "repl-interacter.hh"
-#include "util.hh"
-#include "repl.hh"
 
 namespace nix {
 

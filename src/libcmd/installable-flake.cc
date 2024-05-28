@@ -2,7 +2,6 @@
 #include "installable-flake.hh"
 #include "installable-derived-path.hh"
 #include "outputs-spec.hh"
-#include "util.hh"
 #include "command.hh"
 #include "attr-path.hh"
 #include "common-eval-args.hh"

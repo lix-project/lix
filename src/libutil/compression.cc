@@ -1,7 +1,5 @@
 #include "compression.hh"
 #include "tarfile.hh"
-#include "util.hh"
-#include "finally.hh"
 #include "signals.hh"
 #include "logging.hh"
 
@@ -13,7 +11,6 @@
 #include <brotli/decode.h>
 #include <brotli/encode.h>
 
-#include <iostream>
 
 namespace nix {
 

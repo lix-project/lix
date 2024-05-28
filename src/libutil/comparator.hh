@@ -1,6 +1,8 @@
 #pragma once
 ///@file
 
+#include <tuple>
+
 #define DECLARE_ONE_CMP(PRE, QUAL, COMPARATOR, MY_TYPE) \
     PRE bool QUAL operator COMPARATOR(const MY_TYPE & other) const;
 #define DECLARE_EQUAL(prefix, qualification, my_type) \

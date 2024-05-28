@@ -1,5 +1,5 @@
 #include "markdown.hh"
-#include "util.hh"
+#include "error.hh"
 #include "finally.hh"
 #include "terminal.hh"
 

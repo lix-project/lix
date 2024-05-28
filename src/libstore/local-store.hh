@@ -3,11 +3,9 @@
 
 #include "sqlite.hh"
 
-#include "pathlocks.hh"
 #include "store-api.hh"
 #include "indirect-root-store.hh"
 #include "sync.hh"
-#include "util.hh"
 
 #include <chrono>
 #include <future>

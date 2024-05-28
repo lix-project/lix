@@ -5,7 +5,6 @@
 
 #include "strings.hh"
 #include "types.hh"
-#include "util.hh"
 #include "file-descriptor.hh"
 
 namespace boost::context { struct stack_context; }

@@ -13,8 +13,8 @@
 
 #include "archive.hh"
 #include "file-system.hh"
-#include "util.hh"
 #include "config.hh"
+#include "logging.hh"
 #include "signals.hh"
 
 namespace nix {

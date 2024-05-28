@@ -2,8 +2,11 @@
 ///@file
 
 #include "comparator.hh"
-#include "types.hh"
+
 #include <set>
+#include <string_view>
+#include <string>
+#include <variant>
 
 namespace nix {
 

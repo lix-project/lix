@@ -15,7 +15,6 @@
 #include "globals.hh"
 #include "current-process.hh"
 #include "derivations.hh"
-#include "util.hh"
 #include "shared.hh"
 #include "path-with-outputs.hh"
 #include "eval.hh"

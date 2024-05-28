@@ -5,7 +5,6 @@
 #include "outputs-spec.hh"
 #include "path-regex.hh"
 #include "strings.hh"
-#include "util.hh"
 
 namespace nix {
 

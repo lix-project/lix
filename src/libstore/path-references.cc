@@ -1,12 +1,8 @@
 #include "path-references.hh"
 #include "hash.hh"
-#include "util.hh"
 #include "archive.hh"
 
 #include <map>
-#include <cstdlib>
-#include <mutex>
-#include <algorithm>
 
 
 namespace nix {

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <ostream>
+#include <vector>
 
 namespace nix {
 

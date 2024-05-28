@@ -3,7 +3,6 @@
 #include "escape-char.hh"
 #include "libexpr/print.hh"
 #include "types.hh"
-#include "util.hh"
 #include <ranges>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/trim.hpp>
@@ -18,7 +17,6 @@
 #include "libexpr/print.hh"
 #include "shlex.hh"
 #include "types.hh"
-#include "util.hh"
 #include "strings.hh"
 
 static constexpr const bool DEBUG_PARSER = false;

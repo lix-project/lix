@@ -1,7 +1,6 @@
 #pragma once
 /// @file
 
-#include "types.hh"
 #include "error.hh"
 
 #include <sys/types.h>
@@ -12,7 +11,6 @@
 
 #include <atomic>
 #include <functional>
-#include <sstream>
 
 namespace nix {
 

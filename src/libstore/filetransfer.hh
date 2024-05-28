@@ -1,8 +1,9 @@
 #pragma once
 ///@file
 
+#include "logging.hh"
+#include "serialise.hh"
 #include "types.hh"
-#include "hash.hh"
 #include "config.hh"
 
 #include <string>

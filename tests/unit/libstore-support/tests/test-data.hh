@@ -1,6 +1,6 @@
 #pragma once
 
-#include "util.hh"
+#include "environment-variables.hh"
 #include "types.hh"
 
 namespace nix {

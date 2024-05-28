@@ -110,7 +110,6 @@ libutil_headers = files(
   'url-name.hh',
   'url.hh',
   'users.hh',
-  'util.hh',
   'variant-wrapper.hh',
   'xml-writer.hh',
 )

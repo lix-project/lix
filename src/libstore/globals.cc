@@ -1,14 +1,15 @@
 #include "environment-variables.hh"
 #include "globals.hh"
+#include "file-system.hh"
+#include "logging.hh"
+#include "strings.hh"
 #include "users.hh"
-#include "archive.hh"
 #include "args.hh"
 #include "abstract-setting-to-json.hh"
 #include "compute-levels.hh"
 #include "current-process.hh"
 
 #include <algorithm>
-#include <map>
 #include <mutex>
 #include <thread>
 #include <dlfcn.h>

@@ -3,7 +3,6 @@
 #include "strings.hh"
 #include "types.hh"
 #include "terminal.hh"
-#include "util.hh"
 
 #include <gtest/gtest.h>
 
@@ -11,7 +10,7 @@
 
 namespace nix {
 
-/* ----------- tests for util.hh ------------------------------------------------*/
+/* ----------- tests for libutil ------------------------------------------------*/
 
     /* ----------------------------------------------------------------------------
      * absPath

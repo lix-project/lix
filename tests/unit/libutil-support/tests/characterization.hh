@@ -8,7 +8,6 @@
 
 #include <filesystem>
 
-#include "util.hh"
 #include "types.hh"
 
 namespace nix {

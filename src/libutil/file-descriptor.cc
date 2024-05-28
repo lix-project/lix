@@ -1,5 +1,6 @@
 #include "file-system.hh"
 #include "finally.hh"
+#include "logging.hh"
 #include "serialise.hh"
 #include "signals.hh"
 

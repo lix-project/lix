@@ -1,5 +1,4 @@
 #include "signals.hh"
-#include "util.hh"
 #include "error.hh"
 #include "sync.hh"
 #include "terminal.hh"

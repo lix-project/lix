@@ -5,7 +5,6 @@
 #include "print-options.hh"
 #include "shared.hh"
 #include "types.hh"
-#include "util.hh"
 #include "store-api.hh"
 #include "derivations.hh"
 #include "downstream-placeholder.hh"

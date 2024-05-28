@@ -1,15 +1,12 @@
 #include "environment-variables.hh"
 #include "file-descriptor.hh"
 #include "logging.hh"
-#include "util.hh"
 #include "config.hh"
-#include "source-path.hh"
 #include "position.hh"
 #include "terminal.hh"
 
 #include <atomic>
 #include <nlohmann/json.hpp>
-#include <iostream>
 
 namespace nix {
 

@@ -12,7 +12,9 @@
  * instantiation.
  */
 
+#include "args.hh"
 #include "config.hh"
+#include "logging.hh"
 
 namespace nix {
 

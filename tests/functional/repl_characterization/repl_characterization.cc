@@ -6,12 +6,9 @@
 #include <string_view>
 #include <unistd.h>
 
-#include "escape-string.hh"
 #include "test-session.hh"
 #include "tests/characterization.hh"
 #include "tests/cli-literate-parser.hh"
-#include "tests/terminal-code-eater.hh"
-#include "util.hh"
 #include "strings.hh"
 
 using namespace std::string_literals;
