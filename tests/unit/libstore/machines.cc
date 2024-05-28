@@ -1,6 +1,7 @@
 #include "file-system.hh"
 #include "machines.hh"
 #include "globals.hh"
+#include "strings.hh"
 #include "tests/test-data.hh"
 
 #include <gmock/gmock-matchers.h>

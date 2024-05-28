@@ -3,6 +3,7 @@
 #include "abstract-setting-to-json.hh"
 #include "experimental-features.hh"
 #include "file-system.hh"
+#include "strings.hh"
 
 #include "config-impl.hh"
 

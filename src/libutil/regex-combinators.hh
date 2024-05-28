@@ -1,6 +1,8 @@
 #pragma once
 ///@file
 
+#include "strings.hh"
+
 #include <string_view>
 
 namespace nix::regex {

@@ -2,9 +2,9 @@
 
 #include "file-system.hh"
 #include "logging.hh"
-#include "util.hh"
 #include "namespaces.hh"
 #include "processes.hh"
+#include "strings.hh"
 
 #include <sys/mount.h>
 

@@ -12,6 +12,7 @@
 #include "tests/cli-literate-parser.hh"
 #include "tests/terminal-code-eater.hh"
 #include "util.hh"
+#include "strings.hh"
 
 using namespace std::string_literals;
 

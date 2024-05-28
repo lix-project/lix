@@ -2,7 +2,8 @@
 #include "environment-variables.hh"
 #include "ssh.hh"
 #include "finally.hh"
-#include "util.hh"
+#include "logging.hh"
+#include "strings.hh"
 
 namespace nix {
 

@@ -1,7 +1,7 @@
 #include "file-system.hh"
 #include "processes.hh"
 #include "unix-domain-socket.hh"
-#include "util.hh"
+#include "strings.hh"
 
 #include <sys/socket.h>
 #include <sys/un.h>

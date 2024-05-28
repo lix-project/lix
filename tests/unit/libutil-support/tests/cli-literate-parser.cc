@@ -19,6 +19,7 @@
 #include "shlex.hh"
 #include "types.hh"
 #include "util.hh"
+#include "strings.hh"
 
 static constexpr const bool DEBUG_PARSER = false;
 

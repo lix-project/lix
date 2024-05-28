@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "strings.hh"
 #include "types.hh"
 #include "util.hh"
 #include "file-descriptor.hh"

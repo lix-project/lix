@@ -3,6 +3,7 @@
 #include "logging.hh"
 #include "signals.hh"
 #include "util.hh"
+#include "strings.hh"
 
 #ifdef __APPLE__
 # include <mach-o/dyld.h>

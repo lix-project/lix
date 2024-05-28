@@ -1,5 +1,5 @@
 #include "shlex.hh"
-#include "util.hh"
+#include "strings.hh"
 
 namespace nix {
 
