@@ -407,17 +407,6 @@ struct MaintainCount
 
 
 /**
- * Bind a Unix domain socket to a path.
- */
-void bind(int fd, const std::string & path);
-
-/**
- * Connect to a Unix domain socket.
- */
-void connect(int fd, const std::string & path);
-
-
-/**
  * A Rust/Python-like enumerate() iterator adapter.
  *
  * Borrowed from http://reedbeta.com/blog/python-like-enumerate-in-cpp17.

@@ -14,6 +14,7 @@
 #include "legacy.hh"
 #include "signals.hh"
 #include "daemon.hh"
+#include "unix-domain-socket.hh"
 
 #include <algorithm>
 #include <climits>

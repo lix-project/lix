@@ -4,6 +4,7 @@
 #include "processes.hh"
 #include "signals.hh"
 #include "finally.hh"
+#include "unix-domain-socket.hh"
 
 #include <functional>
 #include <queue>

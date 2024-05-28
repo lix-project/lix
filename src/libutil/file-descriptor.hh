@@ -77,13 +77,4 @@ void closeOnExec(int fd);
 
 MakeError(EndOfFile, Error);
 
-/**
- * Create a Unix domain socket.
- */
-AutoCloseFD createUnixDomainSocket();
-
-/**
- * Create a Unix domain socket in listen mode.
- */
-AutoCloseFD createUnixDomainSocket(const Path & path, mode_t mode);
 }
