@@ -31,4 +31,4 @@ executable('nix-eval-jobs', src,
              threads_dep
            ],
            install: true,
-           cpp_args: ['-std=c++2a', '-fvisibility=hidden', '--include', 'autotools-config.h'])
+           cpp_args: ['-std=c++2a', '--include', 'autotools-config.h'])

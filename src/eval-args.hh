@@ -12,7 +12,7 @@
 
 class MyArgs : virtual public nix::MixEvalArgs,
                virtual public nix::MixCommonArgs,
-               virtual nix::RootArgs {
+               virtual public nix::RootArgs {
   public:
     std::string releaseExpr;
     nix::Path gcRootsDir;
