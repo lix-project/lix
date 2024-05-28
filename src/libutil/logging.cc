@@ -4,6 +4,7 @@
 #include "config.hh"
 #include "source-path.hh"
 #include "position.hh"
+#include "terminal.hh"
 
 #include <atomic>
 #include <nlohmann/json.hpp>

@@ -1,5 +1,6 @@
 #include "util.hh"
 #include "types.hh"
+#include "terminal.hh"
 
 #include <limits.h>
 #include <gtest/gtest.h>

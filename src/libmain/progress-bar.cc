@@ -3,6 +3,7 @@
 #include "sync.hh"
 #include "store-api.hh"
 #include "names.hh"
+#include "terminal.hh"
 
 #include <atomic>
 #include <map>

@@ -1,6 +1,7 @@
 #include "environment-variables.hh"
 #include "error.hh"
 #include "position.hh"
+#include "terminal.hh"
 
 #include <iostream>
 #include <optional>
