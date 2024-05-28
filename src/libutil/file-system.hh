@@ -6,7 +6,7 @@
  */
 
 #include "types.hh"
-#include "util.hh"
+#include "file-descriptor.hh"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -143,7 +143,6 @@ unsigned char getFileType(const Path & path);
 /**
  * Read the contents of a file into a string.
  */
-std::string readFile(int fd);
 std::string readFile(const Path & path);
 void readFile(const Path & path, Sink & sink);
 

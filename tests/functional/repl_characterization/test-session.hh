@@ -6,7 +6,7 @@
 #include <span>
 #include <string>
 
-#include "util.hh"
+#include "file-descriptor.hh"
 #include "tests/terminal-code-eater.hh"
 
 namespace nix {

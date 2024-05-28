@@ -1,4 +1,5 @@
 #include "lock.hh"
+#include "logging.hh"
 #include "file-system.hh"
 #include "globals.hh"
 #include "pathlocks.hh"

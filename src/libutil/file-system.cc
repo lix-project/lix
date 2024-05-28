@@ -3,10 +3,10 @@
 #include <atomic>
 
 #include "environment-variables.hh"
+#include "file-descriptor.hh"
 #include "file-system.hh"
 #include "finally.hh"
 #include "serialise.hh"
-#include "util.hh"
 #include "signals.hh"
 #include "types.hh"
 
@@ -275,16 +275,6 @@ unsigned char getFileType(const Path & path)
     if (S_ISLNK(st.st_mode)) return DT_LNK;
     if (S_ISREG(st.st_mode)) return DT_REG;
     return DT_UNKNOWN;
-}
-
-
-std::string readFile(int fd)
-{
-    struct stat st;
-    if (fstat(fd, &st) == -1)
-        throw SysError("statting file");
-
-    return drainFD(fd, true, st.st_size);
 }
 
 
