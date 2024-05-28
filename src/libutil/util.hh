@@ -407,12 +407,6 @@ struct MaintainCount
 
 
 /**
- * Common initialisation performed in child processes.
- */
-void commonChildInit();
-
-
-/**
  * Bind a Unix domain socket to a path.
  */
 void bind(int fd, const std::string & path);
