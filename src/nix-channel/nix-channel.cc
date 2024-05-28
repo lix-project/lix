@@ -6,7 +6,7 @@
 #include "legacy.hh"
 #include "fetchers.hh"
 #include "eval-settings.hh" // for defexpr
-#include "util.hh"
+#include "users.hh"
 
 #include <fcntl.h>
 #include <regex>

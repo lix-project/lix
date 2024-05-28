@@ -31,6 +31,7 @@
 #include "print.hh"
 #include "progress-bar.hh"
 #include "gc-small-vector.hh"
+#include "users.hh"
 
 #if HAVE_BOEHMGC
 #define GC_INCLUDE_NEW

@@ -2,6 +2,7 @@
 #include "sqlite.hh"
 #include "sync.hh"
 #include "store-api.hh"
+#include "users.hh"
 
 #include <nlohmann/json.hpp>
 

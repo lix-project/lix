@@ -1,8 +1,8 @@
 #include "eval-cache.hh"
 #include "sqlite.hh"
 #include "eval.hh"
-#include "eval-inline.hh"
 #include "store-api.hh"
+#include "users.hh"
 
 namespace nix::eval_cache {
 

@@ -39,6 +39,7 @@ libutil_sources = files(
   'unix-domain-socket.cc',
   'url.cc',
   'url-name.cc',
+  'users.cc',
   'util.cc',
   'xml-writer.cc',
 )
@@ -109,6 +110,7 @@ libutil_headers = files(
   'url-parts.hh',
   'url-name.hh',
   'url.hh',
+  'users.hh',
   'util.hh',
   'variant-wrapper.hh',
   'xml-writer.hh',

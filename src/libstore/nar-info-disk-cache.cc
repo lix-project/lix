@@ -2,6 +2,7 @@
 #include "sync.hh"
 #include "sqlite.hh"
 #include "globals.hh"
+#include "users.hh"
 
 #include <sqlite3.h>
 #include <nlohmann/json.hpp>

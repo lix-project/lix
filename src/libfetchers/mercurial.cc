@@ -3,6 +3,7 @@
 #include "processes.hh"
 #include "store-api.hh"
 #include "url-parts.hh"
+#include "users.hh"
 
 #include "fetch-settings.hh"
 

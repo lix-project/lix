@@ -1,6 +1,7 @@
+#include "file-system.hh"
 #include "globals.hh"
 #include "profiles.hh"
-#include "eval.hh"
+#include "users.hh"
 #include "eval-settings.hh"
 
 namespace nix {

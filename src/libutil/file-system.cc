@@ -9,6 +9,7 @@
 #include "serialise.hh"
 #include "signals.hh"
 #include "types.hh"
+#include "users.hh"
 
 namespace fs = std::filesystem;
 

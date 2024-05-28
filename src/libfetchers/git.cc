@@ -6,7 +6,7 @@
 #include "store-api.hh"
 #include "url-parts.hh"
 #include "pathlocks.hh"
-#include "util.hh"
+#include "users.hh"
 #include "git.hh"
 #include "logging.hh"
 #include "finally.hh"
