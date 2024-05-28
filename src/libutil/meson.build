@@ -40,7 +40,6 @@ libutil_sources = files(
   'url.cc',
   'url-name.cc',
   'users.cc',
-  'util.cc',
   'xml-writer.cc',
 )
 
