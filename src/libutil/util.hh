@@ -33,11 +33,6 @@ namespace nix {
 struct Sink;
 struct Source;
 
-/**
- * The system for which Nix is compiled.
- */
-extern const std::string nativeSystem;
-
 
 
 

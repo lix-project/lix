@@ -10,8 +10,6 @@
 
 namespace nix {
 
-const std::string nativeSystem = SYSTEM;
-
 void BaseError::addTrace(std::shared_ptr<Pos> && e, HintFmt hint)
 {
     err.traces.push_front(Trace { .pos = std::move(e), .hint = hint });
