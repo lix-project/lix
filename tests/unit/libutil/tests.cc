@@ -1,3 +1,4 @@
+#include "file-system.hh"
 #include "util.hh"
 #include "types.hh"
 #include "terminal.hh"

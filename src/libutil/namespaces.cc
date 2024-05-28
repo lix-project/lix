@@ -1,5 +1,6 @@
 #if __linux__
 
+#include "file-system.hh"
 #include "namespaces.hh"
 #include "util.hh"
 #include "finally.hh"

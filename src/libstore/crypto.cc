@@ -1,5 +1,6 @@
 #include "crypto.hh"
 #include "util.hh"
+#include "file-system.hh"
 #include "globals.hh"
 
 #include <sodium.h>

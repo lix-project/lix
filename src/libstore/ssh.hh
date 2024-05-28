@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "file-system.hh"
 #include "util.hh"
 #include "sync.hh"
 

@@ -2,6 +2,8 @@
 ///@file
 
 #include "environment-variables.hh"
+#include "file-system.hh"
+
 #include <gtest/gtest.h>
 
 #include <filesystem>

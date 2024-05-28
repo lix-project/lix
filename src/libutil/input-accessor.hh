@@ -1,8 +1,10 @@
 #pragma once
 ///@file
 
-#include "types.hh"
-#include "archive.hh"
+
+#include <map>
+#include <optional>
+#include <string>
 
 namespace nix {
 

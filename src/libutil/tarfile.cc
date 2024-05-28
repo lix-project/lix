@@ -1,6 +1,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 
+#include "file-system.hh"
 #include "serialise.hh"
 #include "tarfile.hh"
 
