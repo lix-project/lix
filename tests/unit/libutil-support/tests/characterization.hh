@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "environment-variables.hh"
 #include <gtest/gtest.h>
 
 #include <filesystem>

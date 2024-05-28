@@ -1,3 +1,4 @@
+#include "environment-variables.hh"
 #include "error.hh"
 #include "position.hh"
 

@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <atomic>
 
+#include "environment-variables.hh"
 #include "finally.hh"
 #include "util.hh"
 #include "signals.hh"

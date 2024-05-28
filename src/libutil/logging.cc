@@ -1,3 +1,4 @@
+#include "environment-variables.hh"
 #include "logging.hh"
 #include "util.hh"
 #include "config.hh"

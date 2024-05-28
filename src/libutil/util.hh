@@ -40,27 +40,6 @@ extern const std::string nativeSystem;
 
 
 /**
- * @return an environment variable.
- */
-std::optional<std::string> getEnv(const std::string & key);
-
-/**
- * @return a non empty environment variable. Returns nullopt if the env
- * variable is set to ""
- */
-std::optional<std::string> getEnvNonEmpty(const std::string & key);
-
-/**
- * Get the entire environment.
- */
-std::map<std::string, std::string> getEnv();
-
-/**
- * Clear the environment.
- */
-void clearEnv();
-
-/**
  * @return An absolutized path, resolving paths relative to the
  * specified directory, or the current directory otherwise.  The path
  * is also canonicalised.

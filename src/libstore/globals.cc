@@ -1,3 +1,4 @@
+#include "environment-variables.hh"
 #include "globals.hh"
 #include "util.hh"
 #include "archive.hh"
