@@ -417,4 +417,17 @@ std::ostream & showErrorInfo(std::ostream & out, const ErrorInfo & einfo, bool s
     return out;
 }
 
+void ignoreException(Verbosity lvl)
+{
+    /* Make sure no exceptions leave this function.
+       printError() also throws when remote is closed. */
+    try {
+        try {
+            throw;
+        } catch (std::exception & e) {
+            printMsg(lvl, "error (ignored): %1%", e.what());
+        }
+    } catch (...) { }
+}
+
 }

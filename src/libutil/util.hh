@@ -39,13 +39,6 @@ struct Source;
 extern const std::string nativeSystem;
 
 
-/**
- * Exception handling in destructors: print an error message, then
- * ignore the exception.
- */
-void ignoreException(Verbosity lvl = lvlError);
-
-
 
 /**
  * Get a value for the specified key from an associate container.

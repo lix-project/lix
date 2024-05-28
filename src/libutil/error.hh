@@ -202,4 +202,10 @@ public:
     }
 };
 
+/**
+ * Exception handling in destructors: print an error message, then
+ * ignore the exception.
+ */
+void ignoreException(Verbosity lvl = lvlError);
+
 }
