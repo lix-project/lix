@@ -23,10 +23,19 @@
 
 using namespace std::chrono_literals;
 
+namespace {
+
+struct Reply {
+    std::string status, headers;
+    std::function<std::string()> content;
+};
+
+}
+
 namespace nix {
 
 static std::tuple<uint16_t, AutoCloseFD>
-serveHTTP(std::string_view status, std::string_view headers, std::function<std::string()> content)
+serveHTTP(std::vector<Reply> replies)
 {
     AutoCloseFD listener(::socket(AF_INET6, SOCK_STREAM, 0));
     if (!listener) {
@@ -52,7 +61,7 @@ serveHTTP(std::string_view status, std::string_view headers, std::function<std::
     }
 
     std::thread(
-        [status, headers, content](AutoCloseFD socket, AutoCloseFD trigger) {
+        [replies, at{0}](AutoCloseFD socket, AutoCloseFD trigger) mutable {
             while (true) {
                 pollfd pfds[2] = {
                     {
@@ -90,12 +99,14 @@ serveHTTP(std::string_view status, std::string_view headers, std::function<std::
                     }
                 };
 
+                const auto & reply = replies[at++ % replies.size()];
+
                 send("HTTP/1.1 ");
-                send(status);
+                send(reply.status);
                 send("\r\n");
-                send(headers);
+                send(reply.headers);
                 send("\r\n");
-                send(content());
+                send(reply.content());
                 ::shutdown(conn.get(), SHUT_RDWR);
             }
         },
@@ -108,6 +119,12 @@ serveHTTP(std::string_view status, std::string_view headers, std::function<std::
         ntohs(addr.sin6_port),
         std::move(trigger.writeSide),
     };
+}
+
+static std::tuple<uint16_t, AutoCloseFD>
+serveHTTP(std::string status, std::string headers, std::function<std::string()> content)
+{
+    return serveHTTP({{{status, headers, content}}});
 }
 
 TEST(FileTransfer, exceptionAbortsDownload)
@@ -166,4 +183,30 @@ TEST(FileTransfer, NOT_ON_DARWIN(handlesContentEncoding))
     ft->download(FileTransferRequest(fmt("http://[::1]:%d/index", port)), sink);
     EXPECT_EQ(sink.s, original);
 }
+
+TEST(FileTransfer, usesIntermediateLinkHeaders)
+{
+    auto [port, srv] = serveHTTP({
+        {"301 ok",
+         "location: /second\r\n"
+         "content-length: 0\r\n",
+         [] { return ""; }},
+        {"307 ok",
+         "location: /third\r\n"
+         "content-length: 0\r\n",
+         [] { return ""; }},
+        {"307 ok",
+         "location: /fourth\r\n"
+         "link: <http://foo>; rel=\"immutable\"\r\n"
+         "content-length: 0\r\n",
+         [] { return ""; }},
+        {"200 ok", "content-length: 1\r\n", [] { return "a"; }},
+    });
+    auto ft = makeFileTransfer();
+    FileTransferRequest req(fmt("http://[::1]:%d/first", port));
+    req.baseRetryTimeMs = 0;
+    auto result = ft->download(req);
+    ASSERT_EQ(result.immutableUrl, "http://foo");
+}
+
 }
