@@ -322,9 +322,15 @@ struct GitLabInputScheme : GitArchiveInputScheme
             readFile(
                 store->toRealPath(
                     downloadFile(store, url, "source", false, headers).storePath)));
-        auto rev = Hash::parseAny(std::string(json[0]["id"]), htSHA1);
-        debug("HEAD revision for '%s' is %s", url, rev.gitRev());
-        return rev;
+        if (json.is_array() && json.size() == 1 && json[0]["id"] != nullptr) {
+            auto rev = Hash::parseAny(std::string(json[0]["id"]), htSHA1);
+            debug("HEAD revision for '%s' is %s", url, rev.gitRev());
+            return rev;
+        } else if (json.is_array() && json.size() == 0) {
+            throw Error("No commits returned by GitLab API -- does the ref really exist?");
+        } else {
+            throw Error("Didn't know what to do with response from GitLab: %s", json);
+        }
     }
 
     DownloadUrl getDownloadUrl(const Input & input) const override
