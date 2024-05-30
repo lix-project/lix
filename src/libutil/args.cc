@@ -93,7 +93,6 @@ void RootArgs::parseCmdline(const Strings & _cmdline)
         verbosity = lvlError;
     }
 
-    bool argsSeen = false;
     for (auto pos = cmdline.begin(); pos != cmdline.end(); ) {
 
         auto arg = *pos;
@@ -122,10 +121,6 @@ void RootArgs::parseCmdline(const Strings & _cmdline)
                 throw UsageError("unrecognised flag '%1%'", arg);
         }
         else {
-            if (!argsSeen) {
-                argsSeen = true;
-                initialFlagsProcessed();
-            }
             pos = rewriteArgs(cmdline, pos);
             pendingArgs.push_back(*pos++);
             if (processArgs(pendingArgs, false))
@@ -135,8 +130,7 @@ void RootArgs::parseCmdline(const Strings & _cmdline)
 
     processArgs(pendingArgs, true);
 
-    if (!argsSeen)
-        initialFlagsProcessed();
+    initialFlagsProcessed();
 
     /* Now that we are done parsing, make sure that any experimental
      * feature required by the flags is enabled */
