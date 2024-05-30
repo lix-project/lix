@@ -16,6 +16,7 @@
 #include <future>
 #include <regex>
 #include <fstream>
+#include <sstream>
 
 #include <nlohmann/json.hpp>
 

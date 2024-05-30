@@ -10,8 +10,6 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include <boost/lexical_cast.hpp>
-
 #include <functional>
 #include <map>
 #include <optional>

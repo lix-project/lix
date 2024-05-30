@@ -4,7 +4,6 @@
 #include "error.hh"
 #include "types.hh"
 
-#include <boost/lexical_cast.hpp>
 #include <vector>
 
 namespace nix {
@@ -130,16 +129,7 @@ inline std::string rewriteStrings(std::string s, const StringMap & rewrites)
  * Parse a string into an integer.
  */
 template<class N>
-std::optional<N> string2Int(const std::string_view s)
-{
-    if (s.substr(0, 1) == "-" && !std::numeric_limits<N>::is_signed)
-        return std::nullopt;
-    try {
-        return boost::lexical_cast<N>(s.data(), s.size());
-    } catch (const boost::bad_lexical_cast &) {
-        return std::nullopt;
-    }
-}
+std::optional<N> string2Int(const std::string_view s);
 
 /**
  * Like string2Int(), but support an optional suffix 'K', 'M', 'G' or
@@ -169,14 +159,7 @@ N string2IntWithUnitPrefix(std::string_view s)
  * Parse a string into a float.
  */
 template<class N>
-std::optional<N> string2Float(const std::string_view s)
-{
-    try {
-        return boost::lexical_cast<N>(s.data(), s.size());
-    } catch (const boost::bad_lexical_cast &) {
-        return std::nullopt;
-    }
-}
+std::optional<N> string2Float(const std::string_view s);
 
 
 /**

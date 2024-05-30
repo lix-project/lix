@@ -5,6 +5,7 @@
 #include "namespaces.hh"
 #include "signals.hh"
 #include "strings.hh"
+#include <math.h>
 
 #ifdef __APPLE__
 # include <mach-o/dyld.h>

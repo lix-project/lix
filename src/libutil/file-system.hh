@@ -13,8 +13,6 @@
 #include <dirent.h>
 #include <unistd.h>
 
-#include <boost/lexical_cast.hpp>
-
 #include <functional>
 #include <optional>
 

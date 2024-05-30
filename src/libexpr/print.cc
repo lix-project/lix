@@ -1,6 +1,7 @@
 #include <limits>
 #include <span>
 #include <unordered_set>
+#include <sstream>
 
 #include "escape-string.hh"
 #include "print.hh"
