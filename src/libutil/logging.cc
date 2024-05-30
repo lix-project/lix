@@ -6,6 +6,7 @@
 #include "terminal.hh"
 
 #include <atomic>
+#include <sstream>
 #include <nlohmann/json.hpp>
 
 namespace nix {

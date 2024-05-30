@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <sstream>
 #include <regex>
 #include <dlfcn.h>
 

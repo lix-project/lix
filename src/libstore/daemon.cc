@@ -14,6 +14,8 @@
 #include "derivations.hh"
 #include "args.hh"
 
+#include <sstream>
+
 namespace nix::daemon {
 
 Sink & operator << (Sink & sink, const Logger::Fields & fields)

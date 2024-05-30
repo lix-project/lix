@@ -26,10 +26,9 @@
 #pragma clang diagnostic ignored "-Wimplicit-fallthrough"
 #endif
 
-#include <boost/lexical_cast.hpp>
-
 #include "nixexpr.hh"
 #include "parser-tab.hh"
+#include "strings.hh"
 
 using namespace nix;
 
@@ -132,9 +131,10 @@ or          { return OR_KW; }
 
 {ID}        { yylval->id = {yytext, (size_t) yyleng}; return ID; }
 {INT}       { errno = 0;
-              try {
-                  yylval->n = boost::lexical_cast<int64_t>(yytext);
-              } catch (const boost::bad_lexical_cast &) {
+              std::optional<int64_t> numMay = string2Int<int64_t>(yytext);
+              if (numMay.has_value()) {
+                  yylval->n = *numMay;
+              } else {
                   throw ParseError(ErrorInfo{
                       .msg = HintFmt("invalid integer '%1%'", yytext),
                       .pos = state->positions[CUR_POS],

@@ -6,6 +6,7 @@
 #include "escape-string.hh"
 
 #include <cstdlib>
+#include <sstream>
 
 namespace nix {
 

@@ -64,10 +64,13 @@ extern "C" int sandbox_init_with_parameters(const char *profile, uint64_t flags,
 
 namespace nix {
 
+namespace {
 /**
  * The system for which Nix is compiled.
  */
-constexpr std::string_view nativeSystem = SYSTEM;
+[[gnu::unused]]
+constexpr const std::string_view nativeSystem = SYSTEM;
+}
 
 void handleDiffHook(
     uid_t uid, uid_t gid,
