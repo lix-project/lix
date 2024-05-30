@@ -144,6 +144,7 @@ let
     ./meson.options
     ./meson
     ./scripts/meson.build
+    ./subprojects
   ]);
 
   functionalTestFiles = fileset.unions [
@@ -259,7 +260,7 @@ stdenv.mkDerivation (finalAttrs: {
     ++ lib.optional internalApiDocs rapidcheck
     ++ lib.optional hostPlatform.isx86_64 libcpuid
     # There have been issues building these dependencies
-    ++ lib.optional (hostPlatform == buildPlatform) aws-sdk-cpp-nix
+    ++ lib.optional (hostPlatform.canExecute buildPlatform) aws-sdk-cpp-nix
     ++ lib.optionals (finalAttrs.dontBuild) maybePropagatedInputs;
 
   checkInputs = [
