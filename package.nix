@@ -85,6 +85,7 @@
 let
   inherit (__forDefaults) canRunInstalled;
   inherit (lib) fileset;
+  inherit (stdenv) hostPlatform buildPlatform;
 
   version = lib.fileContents ./.version + versionSuffix;
 
@@ -187,13 +188,13 @@ stdenv.mkDerivation (finalAttrs: {
   dontBuild = false;
 
   mesonFlags =
-    lib.optionals stdenv.hostPlatform.isLinux [
+    lib.optionals hostPlatform.isLinux [
       # You'd think meson could just find this in PATH, but busybox is in buildInputs,
       # which don't actually get added to PATH. And buildInputs is correct over
       # nativeBuildInputs since this should be a busybox executable on the host.
       "-Dsandbox-shell=${lib.getExe' busybox-sandbox-shell "busybox"}"
     ]
-    ++ lib.optional stdenv.hostPlatform.isStatic "-Denable-embedded-sandbox-shell=true"
+    ++ lib.optional hostPlatform.isStatic "-Denable-embedded-sandbox-shell=true"
     ++ lib.optional (finalAttrs.dontBuild) "-Denable-build=false"
     ++ [
       # mesonConfigurePhase automatically passes -Dauto_features=enabled,
@@ -203,7 +204,7 @@ stdenv.mkDerivation (finalAttrs: {
       (lib.mesonBool "enable-tests" finalAttrs.doCheck)
       (lib.mesonBool "enable-docs" canRunInstalled)
     ]
-    ++ lib.optional (stdenv.hostPlatform != stdenv.buildPlatform) "--cross-file=${mesonCrossFile}";
+    ++ lib.optional (hostPlatform != buildPlatform) "--cross-file=${mesonCrossFile}";
 
   # We only include CMake so that Meson can locate toml11, which only ships CMake dependency metadata.
   dontUseCmakeConfigure = true;
@@ -231,7 +232,7 @@ stdenv.mkDerivation (finalAttrs: {
       jq
       lsof
     ]
-    ++ lib.optional stdenv.hostPlatform.isLinux util-linuxMinimal
+    ++ lib.optional hostPlatform.isLinux util-linuxMinimal
     ++ lib.optional (!officialRelease && buildUnreleasedNotes) build-release-notes
     ++ lib.optional internalApiDocs doxygen;
 
@@ -251,14 +252,14 @@ stdenv.mkDerivation (finalAttrs: {
       toml11
       lix-doc
     ]
-    ++ lib.optionals stdenv.hostPlatform.isLinux [
+    ++ lib.optionals hostPlatform.isLinux [
       libseccomp
       busybox-sandbox-shell
     ]
     ++ lib.optional internalApiDocs rapidcheck
-    ++ lib.optional stdenv.hostPlatform.isx86_64 libcpuid
+    ++ lib.optional hostPlatform.isx86_64 libcpuid
     # There have been issues building these dependencies
-    ++ lib.optional (stdenv.hostPlatform == stdenv.buildPlatform) aws-sdk-cpp-nix
+    ++ lib.optional (hostPlatform == buildPlatform) aws-sdk-cpp-nix
     ++ lib.optionals (finalAttrs.dontBuild) maybePropagatedInputs;
 
   checkInputs = [
@@ -278,18 +279,18 @@ stdenv.mkDerivation (finalAttrs: {
   };
 
   preConfigure =
-    lib.optionalString (!finalAttrs.dontBuild && !stdenv.hostPlatform.isStatic) ''
+    lib.optionalString (!finalAttrs.dontBuild && !hostPlatform.isStatic) ''
       # Copy libboost_context so we don't get all of Boost in our closure.
       # https://github.com/NixOS/nixpkgs/issues/45462
       mkdir -p $out/lib
       cp -pd ${boost}/lib/{libboost_context*,libboost_thread*,libboost_system*} $out/lib
       rm -f $out/lib/*.a
     ''
-    + lib.optionalString (!finalAttrs.dontBuild && stdenv.hostPlatform.isLinux) ''
+    + lib.optionalString (!finalAttrs.dontBuild && hostPlatform.isLinux) ''
       chmod u+w $out/lib/*.so.*
       patchelf --set-rpath $out/lib:${stdenv.cc.cc.lib}/lib $out/lib/libboost_thread.so.*
     ''
-    + lib.optionalString (!finalAttrs.dontBuild && stdenv.hostPlatform.isDarwin) ''
+    + lib.optionalString (!finalAttrs.dontBuild && hostPlatform.isDarwin) ''
       for LIB in $out/lib/*.dylib; do
         chmod u+w $LIB
         install_name_tool -id $LIB $LIB
@@ -333,7 +334,7 @@ stdenv.mkDerivation (finalAttrs: {
       mkdir -p $doc/nix-support
       echo "doc manual $doc/share/doc/nix/manual" >> $doc/nix-support/hydra-build-products
     ''
-    + lib.optionalString stdenv.hostPlatform.isStatic ''
+    + lib.optionalString hostPlatform.isStatic ''
       mkdir -p $out/nix-support
       echo "file binary-dist $out/bin/nix" >> $out/nix-support/hydra-build-products
     ''
@@ -364,12 +365,12 @@ stdenv.mkDerivation (finalAttrs: {
     runHook postInstallCheck
   '';
 
-  separateDebugInfo = !stdenv.hostPlatform.isStatic && !finalAttrs.dontBuild;
+  separateDebugInfo = !hostPlatform.isStatic && !finalAttrs.dontBuild;
 
   strictDeps = true;
 
   # strictoverflow is disabled because we trap on signed overflow instead
-  hardeningDisable = [ "strictoverflow" ] ++ lib.optional stdenv.hostPlatform.isStatic "pie";
+  hardeningDisable = [ "strictoverflow" ] ++ lib.optional hostPlatform.isStatic "pie";
 
   meta = {
     mainProgram = "nix";
@@ -398,7 +399,7 @@ stdenv.mkDerivation (finalAttrs: {
         contribNotice,
       }:
       let
-        glibcFix = lib.optionalAttrs (stdenv.buildPlatform.isLinux && glibcLocales != null) {
+        glibcFix = lib.optionalAttrs (buildPlatform.isLinux && glibcLocales != null) {
           # Required to make non-NixOS Linux not complain about missing locale files during configure in a dev shell
           LOCALE_ARCHIVE = "${lib.getLib pkgs.glibcLocales}/lib/locale/locale-archive";
         };
@@ -422,7 +423,7 @@ stdenv.mkDerivation (finalAttrs: {
           env = finalAttrs.env;
 
           packages =
-            lib.optional (stdenv.cc.isClang && stdenv.hostPlatform == stdenv.buildPlatform) clang-tools_llvm
+            lib.optional (stdenv.cc.isClang && hostPlatform == buildPlatform) clang-tools_llvm
             ++ [
               just
               nixfmt
@@ -435,7 +436,7 @@ stdenv.mkDerivation (finalAttrs: {
               llvmPackages.clang-unwrapped.dev
             ]
             ++ lib.optional (pre-commit-checks ? enabledPackages) pre-commit-checks.enabledPackages
-            ++ lib.optional (lib.meta.availableOn stdenv.buildPlatform clangbuildanalyzer) clangbuildanalyzer
+            ++ lib.optional (lib.meta.availableOn buildPlatform clangbuildanalyzer) clangbuildanalyzer
             ++ finalAttrs.checkInputs;
 
           shellHook = ''
