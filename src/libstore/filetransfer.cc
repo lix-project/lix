@@ -196,7 +196,6 @@ struct curlFileTransfer : public FileTransfer
                             result.immutableUrl = match.str(1);
                         else
                             debug("got invalid link header '%s'", value);
-                        warn("foo %s", value);
                     }
                 }
             }
