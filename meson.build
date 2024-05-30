@@ -17,6 +17,19 @@
 #
 # Finally, src/nix/meson.build defines the Nix command itself, relying on all prior meson files.
 #
+# libstore, libexpr, and libfetchers have some special handling to make static builds work.
+# Their use static constructors for dynamic registration of primops, store backends, etc
+# gets borked during static link. We can't simply wholesale apply `link_whole :` either,
+# because these libraries get linked multiple times since Lix's components are transitively
+# dependent. So instead, each of those libraries have two dependency objects:
+# liblix{store,expr,fetchers,util} and liblix{store,expr,fetchers,util}_mstatic ("maybe static").
+# The _mstatic versions should be used in the `dependencies :` arguments to ALL EXECUTABLES
+# but executables ONLY. When we are not building statically (default_library != 'static'),
+# they are equivalent. When we are building statically, the _mstatic version will be
+# `link_whole :` rather than `link_with :`.
+# FIXME: This hack should be removed when https://git.lix.systems/lix-project/lix/issues/359
+# is fixed.
+#
 # Unit tests are setup in tests/unit/meson.build, under the test suite "check".
 #
 # Functional tests are a bit more complicated. Generally they're defined in
@@ -78,6 +91,8 @@ sysconfdir = get_option('sysconfdir')
 if not fs.is_absolute(sysconfdir)
   sysconfdir = '/' / sysconfdir
 endif
+
+is_static = get_option('default_library') == 'static'
 
 # All of this has to go before the rest of the dependency checking,
 # so that internal-api-docs can be built with -Denable-build=false

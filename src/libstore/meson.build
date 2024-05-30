@@ -234,6 +234,16 @@ liblixstore = declare_dependency(
   link_with : libstore,
 )
 
+# FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
+if is_static
+  liblixstore_mstatic = declare_dependency(
+    include_directories : include_directories('.'),
+    link_whole : libstore,
+  )
+else
+  liblixstore_mstatic = liblixstore
+endif
+
 # FIXME: not using the pkg-config module because it creates way too many deps
 # while meson migration is in progress, and we want to not include boost here
 configure_file(
