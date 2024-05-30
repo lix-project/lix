@@ -9,7 +9,7 @@
   inputs.nix-github-actions.url = "github:nix-community/nix-github-actions";
   inputs.nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
   inputs.lix = {
-    url = "git+https://git@git.lix.systems/lix-project/lix?ref=refs/tags/2.90-beta.1";
+    url = "git+https://git@git.lix.systems/lix-project/lix";
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
