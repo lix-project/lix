@@ -203,7 +203,7 @@ openssl = dependency('libcrypto', 'openssl', required : true)
 deps += openssl
 
 aws_sdk = dependency('aws-cpp-sdk-core', required : false)
-aws_sdk_transfer = dependency('aws-cpp-sdk-transfer', required : aws_sdk.found())
+aws_sdk_transfer = dependency('aws-cpp-sdk-transfer', required : aws_sdk.found(), fallback : ['aws_sdk', 'aws_cpp_sdk_transfer_dep'])
 if aws_sdk.found()
   # The AWS pkg-config adds -std=c++11.
   # https://github.com/aws/aws-sdk-cpp/issues/2673
@@ -230,7 +230,7 @@ if aws_sdk.found()
   )
 endif
 
-aws_s3 = dependency('aws-cpp-sdk-s3', required : false)
+aws_s3 = dependency('aws-cpp-sdk-s3', required : aws_sdk.found(), fallback : ['aws_sdk', 'aws_cpp_sdk_s3_dep'])
 if aws_s3.found()
   # The AWS pkg-config adds -std=c++11.
   # https://github.com/aws/aws-sdk-cpp/issues/2673
