@@ -13,14 +13,6 @@
 #include <thread>
 #include <unistd.h>
 
-// local server tests don't work on darwin without some incantations
-// the horrors do not want to look up. contributions welcome though!
-#if __APPLE__
-#define NOT_ON_DARWIN(n) DISABLED_##n
-#else
-#define NOT_ON_DARWIN(n) n
-#endif
-
 using namespace std::chrono_literals;
 
 namespace {
@@ -150,7 +142,7 @@ TEST(FileTransfer, exceptionAbortsDownload)
     }
 }
 
-TEST(FileTransfer, NOT_ON_DARWIN(reportsSetupErrors))
+TEST(FileTransfer, reportsSetupErrors)
 {
     auto [port, srv] = serveHTTP("404 not found", "", [] { return ""; });
     auto ft = makeFileTransfer();
@@ -159,7 +151,7 @@ TEST(FileTransfer, NOT_ON_DARWIN(reportsSetupErrors))
         FileTransferError);
 }
 
-TEST(FileTransfer, NOT_ON_DARWIN(reportsTransferError))
+TEST(FileTransfer, reportsTransferError)
 {
     auto [port, srv] = serveHTTP("200 ok", "content-length: 100\r\n", [] {
         std::this_thread::sleep_for(10ms);
@@ -171,7 +163,7 @@ TEST(FileTransfer, NOT_ON_DARWIN(reportsTransferError))
     ASSERT_THROW(ft->download(req), FileTransferError);
 }
 
-TEST(FileTransfer, NOT_ON_DARWIN(handlesContentEncoding))
+TEST(FileTransfer, handlesContentEncoding)
 {
     std::string original = "Test data string";
     std::string compressed = compress("gzip", original);
