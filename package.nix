@@ -441,32 +441,36 @@ stdenv.mkDerivation (finalAttrs: {
 
           shellHook = ''
             # don't re-run the hook in (other) nested nix-shells
-            if [[ $name != lix-shell-env ]]; then
-              return;
-            fi
+            function lixShellHook() {
+              if [[ $name != lix-shell-env ]]; then
+                return;
+              fi
 
-            PATH=$prefix/bin:$PATH
-            unset PYTHONPATH
-            export MANPATH=$out/share/man:$MANPATH
+              PATH=$prefix/bin:$PATH
+              unset PYTHONPATH
+              export MANPATH=$out/share/man:$MANPATH
 
-            # Make bash completion work.
-            XDG_DATA_DIRS+=:$out/share
+              # Make bash completion work.
+              XDG_DATA_DIRS+=:$out/share
 
-            ${lib.optionalString (pre-commit-checks ? shellHook) pre-commit-checks.shellHook}
-            # Allow `touch .nocontribmsg` to turn this notice off.
-            if ! [[ -f .nocontribmsg ]]; then
-              cat ${contribNotice}
-            fi
+              ${lib.optionalString (pre-commit-checks ? shellHook) pre-commit-checks.shellHook}
+              # Allow `touch .nocontribmsg` to turn this notice off.
+              if ! [[ -f .nocontribmsg ]]; then
+                cat ${contribNotice}
+              fi
 
-            # Install the Gerrit commit-msg hook.
-            # (git common dir is the main .git, including for worktrees)
-            if gitcommondir=$(git rev-parse --git-common-dir 2>/dev/null) && [[ ! -f "$gitcommondir/hooks/commit-msg" ]]; then
-              echo 'Installing Gerrit commit-msg hook (adds Change-Id to commit messages)' >&2
-              mkdir -p "$gitcommondir/hooks"
-              curl -s -Lo "$gitcommondir/hooks/commit-msg" https://gerrit.lix.systems/tools/hooks/commit-msg
-              chmod u+x "$gitcommondir/hooks/commit-msg"
-            fi
-            unset gitcommondir
+              # Install the Gerrit commit-msg hook.
+              # (git common dir is the main .git, including for worktrees)
+              if gitcommondir=$(git rev-parse --git-common-dir 2>/dev/null) && [[ ! -f "$gitcommondir/hooks/commit-msg" ]]; then
+                echo 'Installing Gerrit commit-msg hook (adds Change-Id to commit messages)' >&2
+                mkdir -p "$gitcommondir/hooks"
+                curl -s -Lo "$gitcommondir/hooks/commit-msg" https://gerrit.lix.systems/tools/hooks/commit-msg
+                chmod u+x "$gitcommondir/hooks/commit-msg"
+              fi
+              unset gitcommondir
+            }
+
+            lixShellHook
           '';
         }
       );
