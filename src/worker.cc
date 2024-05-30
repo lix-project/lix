@@ -27,8 +27,8 @@
 #include <lix/libstore/store-api.hh>
 #include <lix/libexpr/symbol-table.hh>
 #include <lix/libutil/types.hh>
-#include <lix/libutil/util.hh>
 #include <lix/libexpr/value.hh>
+#include <lix/libutil/terminal.hh>
 #include <exception>
 #include <map>
 #include <memory>

@@ -17,6 +17,7 @@
 #include <lix/libutil/error.hh>
 #include <lix/libstore/globals.hh>
 #include <lix/libutil/logging.hh>
+#include <lix/libutil/terminal.hh>
 #include <nlohmann/detail/iterators/iter_impl.hpp>
 #include <nlohmann/detail/json_ref.hpp>
 #include <nlohmann/json_fwd.hpp>
