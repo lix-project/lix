@@ -3,7 +3,6 @@
 #include "store-api.hh"
 #include "globals.hh"
 #include "types.hh"
-#include "util.hh"
 #include "split.hh"
 #include "common-protocol.hh"
 #include "common-protocol-impl.hh"

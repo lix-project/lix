@@ -1,6 +1,7 @@
 #include "print-ambiguous.hh"
+#include "attr-set.hh"
+#include "logging.hh"
 #include "print.hh"
-#include "eval.hh"
 #include "signals.hh"
 #include "escape-string.hh"
 

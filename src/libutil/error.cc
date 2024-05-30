@@ -1,14 +1,14 @@
+#include "environment-variables.hh"
 #include "error.hh"
+#include "logging.hh"
 #include "position.hh"
+#include "terminal.hh"
 
 #include <iostream>
 #include <optional>
-#include "serialise.hh"
 #include <sstream>
 
 namespace nix {
-
-const std::string nativeSystem = SYSTEM;
 
 void BaseError::addTrace(std::shared_ptr<Pos> && e, HintFmt hint)
 {
@@ -413,6 +413,19 @@ std::ostream & showErrorInfo(std::ostream & out, const ErrorInfo & einfo, bool s
     out << indent(prefix, std::string(filterANSIEscapes(prefix, true).size(), ' '), chomp(oss.str()));
 
     return out;
+}
+
+void ignoreException(Verbosity lvl)
+{
+    /* Make sure no exceptions leave this function.
+       printError() also throws when remote is closed. */
+    try {
+        try {
+            throw;
+        } catch (std::exception & e) {
+            printMsg(lvl, "error (ignored): %1%", e.what());
+        }
+    } catch (...) { }
 }
 
 }

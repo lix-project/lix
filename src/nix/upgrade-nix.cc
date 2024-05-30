@@ -5,6 +5,7 @@
 #include "common-args.hh"
 #include "local-fs-store.hh"
 #include "logging.hh"
+#include "processes.hh"
 #include "profiles.hh"
 #include "store-api.hh"
 #include "filetransfer.hh"

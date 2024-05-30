@@ -1,12 +1,15 @@
+#include "environment-variables.hh"
 #include "globals.hh"
-#include "util.hh"
-#include "archive.hh"
+#include "file-system.hh"
+#include "logging.hh"
+#include "strings.hh"
+#include "users.hh"
 #include "args.hh"
 #include "abstract-setting-to-json.hh"
 #include "compute-levels.hh"
+#include "current-process.hh"
 
 #include <algorithm>
-#include <map>
 #include <mutex>
 #include <thread>
 #include <dlfcn.h>
@@ -25,6 +28,7 @@
 #include "config-impl.hh"
 
 #ifdef __APPLE__
+#include "processes.hh"
 #include <curl/curl.h>
 #include <sys/sysctl.h>
 #endif

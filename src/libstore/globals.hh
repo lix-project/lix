@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
+#include "environment-variables.hh"
 #include "types.hh"
 #include "config.hh"
-#include "util.hh"
 
 #include <map>
 #include <limits>

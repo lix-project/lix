@@ -1,7 +1,8 @@
 #pragma once
 ///@file
 
-#include "util.hh"
+#include "file-system.hh"
+#include "processes.hh"
 #include "sync.hh"
 
 namespace nix {

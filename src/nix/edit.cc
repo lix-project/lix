@@ -4,6 +4,7 @@
 #include "attr-path.hh"
 #include "progress-bar.hh"
 #include "editor-for.hh"
+#include "current-process.hh"
 
 #include <unistd.h>
 

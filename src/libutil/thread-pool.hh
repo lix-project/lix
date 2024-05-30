@@ -1,13 +1,12 @@
 #pragma once
 ///@file
 
+#include "error.hh"
 #include "sync.hh"
-#include "util.hh"
 
 #include <queue>
 #include <functional>
 #include <thread>
-#include <map>
 #include <atomic>
 
 namespace nix {

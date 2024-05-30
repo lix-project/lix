@@ -1,7 +1,7 @@
 #include "url.hh"
 #include "url-parts.hh"
-#include "util.hh"
 #include "split.hh"
+#include "strings.hh"
 
 namespace nix {
 

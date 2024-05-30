@@ -1,7 +1,6 @@
 #include "globals.hh"
 #include "installable-attr-path.hh"
 #include "outputs-spec.hh"
-#include "util.hh"
 #include "command.hh"
 #include "attr-path.hh"
 #include "common-eval-args.hh"

@@ -2,10 +2,10 @@
 #include "shared.hh"
 #include "store-api.hh"
 #include "gc-store.hh"
-#include "util.hh"
 #include "signals.hh"
 #include "loggers.hh"
 #include "progress-bar.hh"
+#include "current-process.hh"
 
 #include <algorithm>
 #include <cctype>

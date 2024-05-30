@@ -1,4 +1,3 @@
-#include <iostream>
 #include <cstring>
 
 #include <openssl/crypto.h>
@@ -8,8 +7,8 @@
 #include "args.hh"
 #include "hash.hh"
 #include "archive.hh"
+#include "logging.hh"
 #include "split.hh"
-#include "util.hh"
 
 #include <sys/types.h>
 #include <sys/stat.h>

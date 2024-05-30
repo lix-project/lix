@@ -9,6 +9,7 @@
 #include "english.hh"
 #include "signals.hh"
 #include "eval.hh"
+#include "terminal.hh"
 
 namespace nix {
 

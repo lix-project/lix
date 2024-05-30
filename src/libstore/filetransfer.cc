@@ -1,5 +1,5 @@
 #include "filetransfer.hh"
-#include "util.hh"
+#include "namespaces.hh"
 #include "globals.hh"
 #include "store-api.hh"
 #include "s3.hh"
@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <iostream>
 #include <queue>
 #include <random>
 #include <thread>

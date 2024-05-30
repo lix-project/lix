@@ -3,7 +3,6 @@
 
 #include "source-path.hh"
 #include "store-api.hh"
-#include "util.hh"
 #include "repair-flag.hh"
 #include "content-address.hh"
 

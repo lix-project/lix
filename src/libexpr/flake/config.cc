@@ -1,5 +1,6 @@
 #include "flake.hh"
-#include "globals.hh"
+#include "logging.hh"
+#include "users.hh"
 #include "fetch-settings.hh"
 
 #include <nlohmann/json.hpp>

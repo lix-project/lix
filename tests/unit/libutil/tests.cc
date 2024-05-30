@@ -1,14 +1,16 @@
-#include "util.hh"
+#include "file-system.hh"
+#include "processes.hh"
+#include "strings.hh"
 #include "types.hh"
+#include "terminal.hh"
 
-#include <limits.h>
 #include <gtest/gtest.h>
 
 #include <numeric>
 
 namespace nix {
 
-/* ----------- tests for util.hh ------------------------------------------------*/
+/* ----------- tests for libutil ------------------------------------------------*/
 
     /* ----------------------------------------------------------------------------
      * absPath

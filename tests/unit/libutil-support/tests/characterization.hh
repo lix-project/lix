@@ -1,11 +1,13 @@
 #pragma once
 ///@file
 
+#include "environment-variables.hh"
+#include "file-system.hh"
+
 #include <gtest/gtest.h>
 
 #include <filesystem>
 
-#include "util.hh"
 #include "types.hh"
 
 namespace nix {

@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "logging.hh"
 #include "nar-info.hh"
 #include "realisation.hh"
 #include "path.hh"

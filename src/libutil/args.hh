@@ -1,13 +1,17 @@
 #pragma once
 ///@file
 
-#include <iostream>
+#include "experimental-features.hh"
+#include "types.hh"
+#include <functional>
 #include <map>
 #include <memory>
+#include <limits>
 
 #include <nlohmann/json_fwd.hpp>
+#include <optional>
+#include <set>
 
-#include "util.hh"
 
 namespace nix {
 

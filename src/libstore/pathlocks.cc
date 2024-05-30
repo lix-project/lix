@@ -1,10 +1,8 @@
 #include "pathlocks.hh"
-#include "util.hh"
+#include "logging.hh"
 #include "signals.hh"
-#include "sync.hh"
 
 #include <cerrno>
-#include <cstdlib>
 
 #include <fcntl.h>
 #include <sys/types.h>

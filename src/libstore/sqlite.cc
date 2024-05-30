@@ -1,12 +1,11 @@
 #include "sqlite.hh"
 #include "globals.hh"
-#include "util.hh"
+#include "logging.hh"
 #include "signals.hh"
 #include "url.hh"
 
 #include <sqlite3.h>
 
-#include <atomic>
 
 namespace nix {
 

@@ -1,9 +1,7 @@
-#include "crypto.hh"
 #include "fs-accessor.hh"
 #include "globals.hh"
 #include "derivations.hh"
 #include "store-api.hh"
-#include "util.hh"
 #include "nar-info-disk-cache.hh"
 #include "thread-pool.hh"
 #include "url.hh"
@@ -14,6 +12,7 @@
 // FIXME this should not be here, see TODO below on
 // `addMultipleToStore`.
 #include "worker-protocol.hh"
+#include "users.hh"
 
 #include <nlohmann/json.hpp>
 #include <regex>

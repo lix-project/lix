@@ -5,7 +5,6 @@
 #include "local-store.hh"
 #include "remote-store.hh"
 #include "remote-store-connection.hh"
-#include "util.hh"
 #include "serialise.hh"
 #include "archive.hh"
 #include "globals.hh"
@@ -14,6 +13,7 @@
 #include "legacy.hh"
 #include "signals.hh"
 #include "daemon.hh"
+#include "unix-domain-socket.hh"
 
 #include <algorithm>
 #include <climits>

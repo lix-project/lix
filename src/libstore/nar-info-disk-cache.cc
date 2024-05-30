@@ -1,7 +1,9 @@
 #include "nar-info-disk-cache.hh"
+#include "logging.hh"
 #include "sync.hh"
 #include "sqlite.hh"
 #include "globals.hh"
+#include "users.hh"
 
 #include <sqlite3.h>
 #include <nlohmann/json.hpp>

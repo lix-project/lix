@@ -1,10 +1,10 @@
 #include <regex>
 #include <nlohmann/json.hpp>
 
-#include "util.hh"
 #include "regex-combinators.hh"
 #include "outputs-spec.hh"
 #include "path-regex.hh"
+#include "strings.hh"
 
 namespace nix {
 

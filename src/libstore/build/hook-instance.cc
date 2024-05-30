@@ -1,3 +1,5 @@
+#include "child.hh"
+#include "file-system.hh"
 #include "globals.hh"
 #include "hook-instance.hh"
 

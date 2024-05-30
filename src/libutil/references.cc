@@ -1,9 +1,7 @@
 #include "references.hh"
 #include "hash.hh"
-#include "util.hh"
-#include "archive.hh"
+#include "logging.hh"
 
-#include <map>
 #include <cstdlib>
 #include <mutex>
 #include <algorithm>

@@ -1,3 +1,4 @@
+#include "file-system.hh"
 #include "store-api.hh"
 #include "store-cast.hh"
 #include "gc-store.hh"

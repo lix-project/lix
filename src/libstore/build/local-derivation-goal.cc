@@ -6,7 +6,6 @@
 #include "builtins/buildenv.hh"
 #include "path-references.hh"
 #include "finally.hh"
-#include "util.hh"
 #include "archive.hh"
 #include "compression.hh"
 #include "daemon.hh"
@@ -15,6 +14,8 @@
 #include "cgroup.hh"
 #include "personality.hh"
 #include "namespaces.hh"
+#include "child.hh"
+#include "unix-domain-socket.hh"
 
 #include <regex>
 #include <queue>
@@ -62,6 +63,11 @@ extern "C" int sandbox_init_with_parameters(const char *profile, uint64_t flags,
 #include <iostream>
 
 namespace nix {
+
+/**
+ * The system for which Nix is compiled.
+ */
+constexpr std::string_view nativeSystem = SYSTEM;
 
 void handleDiffHook(
     uid_t uid, uid_t gid,

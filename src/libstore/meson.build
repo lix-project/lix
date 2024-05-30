@@ -79,6 +79,7 @@ libstore_sources = files(
   'store-api.cc',
   'uds-remote-store.cc',
   'worker-protocol.cc',
+  'build/child.cc',
   'build/derivation-goal.cc',
   'build/drv-output-substitution-goal.cc',
   'build/entry-points.cc',
@@ -96,6 +97,7 @@ libstore_sources = files(
 
 libstore_headers = files(
   'binary-cache-store.hh',
+  'build/child.hh',
   'build/derivation-goal.hh',
   'build/drv-output-substitution-goal.hh',
   'build/goal.hh',

@@ -1,7 +1,10 @@
 #include "suggestions.hh"
 #include "ansicolor.hh"
-#include "util.hh"
+#include "terminal.hh"
+
 #include <algorithm>
+#include <ostream>
+#include <vector>
 
 namespace nix {
 

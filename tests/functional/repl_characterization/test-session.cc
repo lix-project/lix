@@ -3,8 +3,9 @@
 #include <unistd.h>
 
 #include "test-session.hh"
-#include "util.hh"
 #include "escape-char.hh"
+#include "processes.hh"
+#include "strings.hh"
 
 namespace nix {
 

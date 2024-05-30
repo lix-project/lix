@@ -6,7 +6,9 @@
  */
 
 #include "ref.hh"
+#include "archive.hh"
 #include "canon-path.hh"
+#include "file-system.hh"
 #include "repair-flag.hh"
 #include "input-accessor.hh"
 

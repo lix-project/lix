@@ -10,7 +10,6 @@
 #include "filetransfer.hh"
 #include "shared.hh"
 #include "store-api.hh"
-#include "util.hh"
 
 constexpr std::string_view INVALID_CHANNEL = "channel:example";
 constexpr std::string_view CHANNEL_URL = "https://nixos.org/channels/example/nixexprs.tar.xz";

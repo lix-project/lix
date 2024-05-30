@@ -1,16 +1,14 @@
-#include "derivations.hh"
 #include "globals.hh"
 #include "local-store.hh"
+#include "pathlocks.hh"
+#include "processes.hh"
 #include "signals.hh"
 #include "finally.hh"
+#include "unix-domain-socket.hh"
 
-#include <functional>
 #include <queue>
-#include <algorithm>
 #include <regex>
-#include <random>
 
-#include <climits>
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>

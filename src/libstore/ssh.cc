@@ -1,5 +1,9 @@
+#include "current-process.hh"
+#include "environment-variables.hh"
 #include "ssh.hh"
 #include "finally.hh"
+#include "logging.hh"
+#include "strings.hh"
 
 namespace nix {
 

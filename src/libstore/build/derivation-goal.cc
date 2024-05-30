@@ -5,7 +5,6 @@
 #include "builtins/buildenv.hh"
 #include "references.hh"
 #include "finally.hh"
-#include "util.hh"
 #include "archive.hh"
 #include "compression.hh"
 #include "common-protocol.hh"

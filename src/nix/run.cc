@@ -10,6 +10,7 @@
 #include "progress-bar.hh"
 #include "eval.hh"
 #include "build/personality.hh"
+#include "current-process.hh"
 
 #if __linux__
 #include <sys/mount.h>

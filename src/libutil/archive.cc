@@ -12,8 +12,9 @@
 #include <fcntl.h>
 
 #include "archive.hh"
-#include "util.hh"
+#include "file-system.hh"
 #include "config.hh"
+#include "logging.hh"
 #include "signals.hh"
 
 namespace nix {
