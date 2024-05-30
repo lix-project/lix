@@ -37,6 +37,17 @@ AutoCloseFD createUnixDomainSocket(const Path & path, mode_t mode)
     return fdSocket;
 }
 
+/**
+ * Workaround for the max length of Unix socket names being between 102
+ * (darwin) and 108 (Linux), which is extremely short. This limitation is
+ * caused by historical restrictions on sizeof(struct sockaddr):
+ * https://unix.stackexchange.com/a/367012.
+ *
+ * Our solution here is to start a process inheriting the socket, chdir into
+ * the directory of the socket, then connect with just the filename. This is
+ * rather silly but it works around working directory being process-wide state,
+ * and is as clearly sound as possible.
+ */
 static void bindConnectProcHelper(
     std::string_view operationName, auto && operation,
     int fd, const std::string & path)
