@@ -89,6 +89,7 @@ nix = executable(
     boehm,
     nlohmann_json,
   ],
+  cpp_pch : ['../pch/precompiled-headers.hh'],
   install : true,
   # FIXME(Qyriad): is this right?
   install_rpath : libdir,

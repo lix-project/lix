@@ -169,7 +169,6 @@ stdenv.mkDerivation (finalAttrs: {
           ./boehmgc-coroutine-sp-fallback.diff
           ./doc
           ./misc
-          ./precompiled-headers.h
           ./src
           ./COPYING
         ]

@@ -87,11 +87,12 @@ pre-commit-run {
         "file"
         "header"
       ];
-      # generated files; these will never actually be seen by this
-      # check, and are left here as documentation
       excludes = [
-        "(parser|lexer)-tab\\.hh$"
-        "\\.gen\\.hh$"
+        ''^src/pch/.*$''
+        # generated files; these will never actually be seen by this
+        # check, and are left here as documentation
+        ''(parser|lexer)-tab\.hh$''
+        ''\.gen\.hh$''
       ];
       entry = lib.getExe pkgs.check-headers;
     };
