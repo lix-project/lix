@@ -201,7 +201,7 @@ stdenv.mkDerivation (finalAttrs: {
       # so we must explicitly enable or disable features that we are not passing
       # dependencies for.
       (lib.mesonEnable "internal-api-docs" internalApiDocs)
-      (lib.mesonBool "enable-tests" finalAttrs.doCheck)
+      (lib.mesonBool "enable-tests" finalAttrs.finalPackage.doCheck)
       (lib.mesonBool "enable-docs" canRunInstalled)
     ]
     ++ lib.optional (hostPlatform != buildPlatform) "--cross-file=${mesonCrossFile}";
@@ -286,7 +286,7 @@ stdenv.mkDerivation (finalAttrs: {
       cp -pd ${boost}/lib/{libboost_context*,libboost_thread*,libboost_system*} $out/lib
       rm -f $out/lib/*.a
     ''
-    + lib.optionalString (!finalAttrs.dontBuild && hostPlatform.isLinux) ''
+    + lib.optionalString (!finalAttrs.dontBuild && hostPlatform.isLinux && !hostPlatform.isStatic) ''
       chmod u+w $out/lib/*.so.*
       patchelf --set-rpath $out/lib:${stdenv.cc.cc.lib}/lib $out/lib/libboost_thread.so.*
     ''
@@ -417,10 +417,16 @@ stdenv.mkDerivation (finalAttrs: {
 
           name = "lix-shell-env";
 
-          inputsFrom = [ finalAttrs ];
+          # finalPackage is necessary to propagate stuff that is set by mkDerivation itself,
+          # like doCheck.
+          inputsFrom = [ finalAttrs.finalPackage ];
 
           # For Meson to find Boost.
           env = finalAttrs.env;
+
+          # I guess this is necessary because mesonFlags to mkDerivation doesn't propagate in inputsFrom,
+          # which only propagates stuff set in hooks? idk.
+          inherit (finalAttrs) mesonFlags;
 
           packages =
             lib.optional (stdenv.cc.isClang && hostPlatform == buildPlatform) clang-tools_llvm
