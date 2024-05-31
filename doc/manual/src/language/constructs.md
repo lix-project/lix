@@ -380,3 +380,70 @@ let a = 1; in let a = 2; in let a = 3; in let a = 4; in ...
 
 Comments can be single-line, started with a `#` character, or
 inline/multi-line, enclosed within `/* ... */`.
+
+## Context-dependent keywords
+
+<dl>
+<dt id="keywords-__curPos">
+  <a href="#keywords-__curPos"><code>__curPos</code></a>
+</dt>
+<dd>
+
+A quasi-constant which will be replaced with an attribute set describing
+the location where `__curPos` was used, with attributes `file`, `line`,
+and `column`. For example, `import ./file.nix` will result in
+
+```nix
+{
+  column = 1;
+  file = "/path/to/some/file.nix";
+  line = 1;
+}
+```
+
+assuming `file.nix` contains nothing but `__curPos`.
+
+In context without a source file (such as `nix-repl`), it will always
+be replaced with `null`:
+
+```nix-repl
+nix-repl> __curPos
+null
+```
+
+While it may vaguely look like a builtin, this is a very different beast
+that is handled directly by the parser. It thus cannot be shadowed,
+bound to a different name, and is also not available under
+[`builtins`](@docroot@/language/builtin-constants.md#builtins-builtins).
+
+```nix-repl
+nix-repl> let __curPos = "no"; in __curPos
+null
+```
+
+Despite this `__curPos`, much like `or`, may still be used as an identifier,
+it is only treated specially when it appears as an unqualified name:
+
+```nix-repl
+nix-repl> { __curPos = 1; }.__curPos
+1
+```
+
+</dd>
+
+<dt id="keywords-or">
+  <a href="#keywords-or"><code>or</code></a>
+</dt>
+<dd>
+
+`or` is used in [Attribute selection](@docroot@/language/operators.html#attribute-selection),
+where it is a keyword.
+
+However, it is not a keyword in some other contexts, and can be used as
+a binding name in attribute sets, let-bindings, non-initial function
+application position, and as a label in attribute paths.
+
+Its use as anything other than a keyword is discouraged.
+
+</dd>
+</dl>
