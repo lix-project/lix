@@ -322,7 +322,7 @@ struct GitLabInputScheme : GitArchiveInputScheme
             readFile(
                 store->toRealPath(
                     downloadFile(store, url, "source", false, headers).storePath)));
-        if (json.is_array() && json.size() == 1 && json[0]["id"] != nullptr) {
+        if (json.is_array() && json.size() >= 1 && json[0]["id"] != nullptr) {
             auto rev = Hash::parseAny(std::string(json[0]["id"]), htSHA1);
             debug("HEAD revision for '%s' is %s", url, rev.gitRev());
             return rev;
