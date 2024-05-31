@@ -207,7 +207,6 @@
       overlays.default = overlayFor (p: p.stdenv);
 
       hydraJobs = {
-
         # Binary package for various platforms.
         build = forAllSystems (system: self.packages.${system}.nix);
 
@@ -295,6 +294,11 @@
           in
           lib.optionalAttrs available pre-commit-check
         );
+      };
+
+      release-jobs = import ./releng/release-jobs.nix {
+        inherit (self) hydraJobs;
+        pkgs = nixpkgsFor.x86_64-linux.native;
       };
 
       # NOTE *do not* add fresh derivations to checks, always add them to
