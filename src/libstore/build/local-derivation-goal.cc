@@ -1847,8 +1847,12 @@ void LocalDerivationGoal::runChild()
                         copyFile(path, chrootRootDir + path, { .followSymlinks = true });
                     }
 
-                if (settings.caFile != "")
-                    pathsInChroot.try_emplace("/etc/ssl/certs/ca-certificates.crt", settings.caFile, true);
+                if (settings.caFile != "" && pathExists(settings.caFile)) {
+                    // For the same reasons as above, copy the CA certificates file too.
+                    // It should be even less likely to change during the build than resolv.conf.
+                    createDirs(chrootRootDir + "/etc/ssl/certs");
+                    copyFile(settings.caFile, chrootRootDir + "/etc/ssl/certs/ca-certificates.crt", { .followSymlinks = true });
+                }
             }
 
             for (auto & i : ss) pathsInChroot.emplace(i, i);
