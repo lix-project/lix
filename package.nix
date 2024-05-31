@@ -169,7 +169,6 @@ stdenv.mkDerivation (finalAttrs: {
           ./boehmgc-coroutine-sp-fallback.diff
           ./doc
           ./misc
-          ./precompiled-headers.h
           ./src
           ./COPYING
         ]
@@ -449,7 +448,10 @@ stdenv.mkDerivation (finalAttrs: {
           shellHook = ''
             # don't re-run the hook in (other) nested nix-shells
             function lixShellHook() {
-              if [[ $name != lix-shell-env ]]; then
+              # n.b. how the heck does this become -env-env? well, `nix develop` does it:
+              # https://git.lix.systems/lix-project/lix/src/commit/7575db522e9008685c4009423398f6900a16bcce/src/nix/develop.cc#L240-L241
+              # this is, of course, absurd.
+              if [[ $name != lix-shell-env && $name != lix-shell-env-env ]]; then
                 return;
               fi
 

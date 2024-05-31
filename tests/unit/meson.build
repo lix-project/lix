@@ -68,6 +68,7 @@ libutil_tester = executable(
     liblixutil_test_support,
     nlohmann_json,
   ],
+  cpp_pch : ['../../src/pch/precompiled-headers.hh'],
 )
 
 test(
@@ -102,6 +103,7 @@ libstore_test_support = library(
   include_directories : include_directories(
     'libstore-support',
   ),
+  cpp_pch : ['../../src/pch/precompiled-headers.hh'],
 )
 liblixstore_test_support = declare_dependency(
   include_directories : include_directories('libstore-support'),
@@ -135,6 +137,7 @@ libstore_tester = executable(
     gtest,
     nlohmann_json,
   ],
+  cpp_pch : ['../../src/pch/precompiled-headers.hh'],
 )
 
 test(
@@ -166,6 +169,7 @@ libexpr_test_support = library(
   include_directories : include_directories(
     'libexpr-support',
   ),
+  cpp_pch : ['../../src/pch/precompiled-headers.hh'],
 )
 liblixexpr_test_support = declare_dependency(
   include_directories : include_directories('libexpr-support'),
@@ -199,6 +203,7 @@ libexpr_tester = executable(
     gtest,
     nlohmann_json,
   ],
+  cpp_pch : ['../../src/pch/precompiled-headers.hh'],
 )
 
 test(
@@ -225,6 +230,7 @@ libcmd_tester = executable(
     gtest,
     boost,
   ],
+  cpp_pch : ['../../src/pch/precompiled-headers.hh'],
 )
 
 test(
