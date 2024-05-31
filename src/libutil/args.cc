@@ -64,7 +64,7 @@ RootArgs & Args::getRoot()
     while (p->parent)
         p = p->parent;
 
-    auto * res = dynamic_cast<RootArgs *>(p);
+    auto res = p->asRootArgs();
     assert(res);
     return *res;
 }
