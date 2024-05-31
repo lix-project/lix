@@ -297,6 +297,31 @@ struct ExprLambda : Expr
     std::string showNamePos(const EvalState & state) const;
     inline bool hasFormals() const { return formals != nullptr; }
     PosIdx getPos() const override { return pos; }
+
+    /** Returns the name of the lambda,
+     * or "anonymous lambda" if it doesn't have one.
+     */
+    inline std::string getName(SymbolTable const & symbols) const
+    {
+        if (this->name) {
+            return symbols[this->name];
+        }
+
+        return "anonymous lambda";
+    }
+
+    /** Returns the name of the lambda in single quotes,
+     * or "anonymous lambda" if it doesn't have one.
+     */
+    inline std::string getQuotedName(SymbolTable const & symbols) const
+    {
+        if (this->name) {
+            return concatStrings("'", symbols[this->name], "'");
+        }
+
+        return "anonymous lambda";
+    }
+
     COMMON_METHODS
 };
 

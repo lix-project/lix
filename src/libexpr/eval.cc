@@ -1595,7 +1595,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     if (!j) {
                         if (!i.def) {
                             error<TypeError>("function '%1%' called without required argument '%2%'",
-                                             (lambda.name ? std::string(symbols[lambda.name]) : "anonymous lambda"),
+                                             lambda.getName(symbols),
                                              symbols[i.name])
                                     .atPos(lambda.pos)
                                     .withTrace(pos, "from call site")
@@ -1621,7 +1621,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                                 formalNames.insert(symbols[formal.name]);
                             auto suggestions = Suggestions::bestMatches(formalNames, symbols[i.name]);
                             error<TypeError>("function '%1%' called with unexpected argument '%2%'",
-                                             (lambda.name ? std::string(symbols[lambda.name]) : "anonymous lambda"),
+                                             lambda.getName(symbols),
                                              symbols[i.name])
                                 .atPos(lambda.pos)
                                 .withTrace(pos, "from call site")
@@ -1642,9 +1642,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     ? makeDebugTraceStacker(
                         *this, *lambda.body, env2, positions[lambda.pos],
                         "while calling %s",
-                        lambda.name
-                        ? concatStrings("'", symbols[lambda.name], "'")
-                        : "anonymous lambda")
+                        lambda.getQuotedName(symbols))
                     : nullptr;
 
                 lambda.body->eval(*this, env2, vCur);
@@ -1654,9 +1652,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                         e,
                         lambda.pos,
                         "while calling %s",
-                        lambda.name
-                        ? concatStrings("'", symbols[lambda.name], "'")
-                        : "anonymous lambda");
+                        lambda.getQuotedName(symbols));
                     if (pos) addErrorTrace(e, pos, "from call site");
                 }
                 throw;
