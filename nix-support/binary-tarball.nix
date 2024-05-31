@@ -15,10 +15,10 @@ let
 
   meta.description = "Distribution-independent Lix bootstrap binaries for ${system}";
 in
-buildPackages.runCommand "nix-binary-tarball-${version}" { inherit meta; } ''
+buildPackages.runCommand "lix-binary-tarball-${version}" { inherit meta; } ''
   cp ${installerClosureInfo}/registration $TMPDIR/reginfo
 
-  dir=nix-${version}-${system}
+  dir=lix-${version}-${system}
   fn=$out/$dir.tar.xz
   mkdir -p $out/nix-support
   echo "file binary-dist $fn" >> $out/nix-support/hydra-build-products

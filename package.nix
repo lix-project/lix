@@ -50,7 +50,7 @@
   # internal fork of nix-doc providing :doc in the repl
   lix-doc ? __forDefaults.lix-doc,
 
-  pname ? "nix",
+  pname ? "lix",
   versionSuffix ? "",
   officialRelease ? false,
   # Set to true to build the release notes for the next release.
