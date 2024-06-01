@@ -155,3 +155,13 @@ liblixutil = declare_dependency(
   include_directories : include_directories('.'),
   link_with : libutil
 )
+
+# FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
+if is_static
+  liblixutil_mstatic = declare_dependency(
+    include_directories : include_directories('.'),
+    link_whole : libutil,
+  )
+else
+  liblixutil_mstatic = liblixutil
+endif
