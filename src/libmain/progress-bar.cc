@@ -95,8 +95,7 @@ void ProgressBar::logEI(const ErrorInfo & ei)
 void ProgressBar::log(State & state, Verbosity lvl, std::string_view s)
 {
     if (state.active) {
-        writeToStderr("\r\e[K" + filterANSIEscapes(s, !isTTY) + ANSI_NORMAL "\n");
-        draw(state);
+        draw(state, s);
     } else {
         auto s2 = s + ANSI_NORMAL "\n";
         if (!isTTY) s2 = filterANSIEscapes(s2, true);
@@ -234,10 +233,14 @@ void ProgressBar::result(ActivityId act, ResultType type, const std::vector<Fiel
                 }
                 log(*state, lvlInfo, ANSI_FAINT + info.name.value_or("unnamed") + suffix + ANSI_NORMAL + lastLine);
             } else {
-                state->activities.erase(i->second);
-                info.lastLine = lastLine;
-                state->activities.emplace_back(info);
-                i->second = std::prev(state->activities.end());
+                if (!printMultiline) {
+                    state->activities.erase(i->second);
+                    info.lastLine = lastLine;
+                    state->activities.emplace_back(info);
+                    i->second = std::prev(state->activities.end());
+                } else {
+                    i->second->lastLine = lastLine;
+                }
                 update(*state);
             }
         }
@@ -290,60 +293,93 @@ void ProgressBar::update(State & state)
     updateCV.notify_one();
 }
 
-std::chrono::milliseconds ProgressBar::draw(State & state)
+std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<std::string_view> & s)
 {
     auto nextWakeup = A_LONG_TIME;
 
     state.haveUpdate = false;
     if (state.paused || !state.active) return nextWakeup;
 
-    std::string line;
+    auto windowSize = getWindowSize();
+    auto width = windowSize.second;
+    if (width <= 0) {
+        width = std::numeric_limits<decltype(width)>::max();
+    }
 
+    if (printMultiline && (state.lastLines >= 1)) {
+        // FIXME: make sure this works on windows
+        writeToStderr(fmt("\e[G\e[%dF\e[J", state.lastLines));
+    }
+
+    state.lastLines = 0;
+
+    if (s != std::nullopt)
+        writeToStderr("\r\e[K" + filterANSIEscapes(s.value(), !isTTY) + ANSI_NORMAL "\n");
+
+    std::string line;
     std::string status = getStatus(state);
     if (!status.empty()) {
         line += '[';
         line += status;
         line += "]";
     }
+    if (printMultiline && !line.empty()) {
+        writeToStderr(filterANSIEscapes(line, false, width) + "\n");
+        state.lastLines++;
+    }
 
+     auto height = windowSize.first > 0 ? windowSize.first : 25;
+     auto moreActivities = 0;
     auto now = std::chrono::steady_clock::now();
 
+    std::string activity_line;
     if (!state.activities.empty()) {
-        if (!status.empty()) line += " ";
-        auto i = state.activities.rbegin();
-
-        while (i != state.activities.rend()) {
-            if (i->visible && (!i->s.empty() || !i->lastLine.empty())) {
-                /* Don't show activities until some time has
-                   passed, to avoid displaying very short
-                   activities. */
-                auto delay = std::chrono::milliseconds(10);
-                if (i->startTime + delay < now)
-                    break;
-                else
-                    nextWakeup = std::min(nextWakeup, std::chrono::duration_cast<std::chrono::milliseconds>(delay - (now - i->startTime)));
+        for (auto i = state.activities.begin(); i != state.activities.end(); ++i) {
+            if (!(i->visible && (!i->s.empty() || !i->lastLine.empty()))) {
+                continue;
             }
-            ++i;
-        }
+            /* Don't show activities until some time has
+               passed, to avoid displaying very short
+               activities. */
+            auto delay = std::chrono::milliseconds(10);
+            if (i->startTime + delay >= now) {
+                nextWakeup = std::min(
+                    nextWakeup,
+                    std::chrono::duration_cast<std::chrono::milliseconds>(
+                        delay - (now - i->startTime)
+                        )
+                    );
+            }
 
-        if (i != state.activities.rend()) {
-            line += i->s;
+            activity_line = i->s;
+
             if (!i->phase.empty()) {
-                line += " (";
-                line += i->phase;
-                line += ")";
+                activity_line += " (";
+                activity_line += i->phase;
+                activity_line += ")";
             }
             if (!i->lastLine.empty()) {
-                if (!i->s.empty()) line += ": ";
-                line += i->lastLine;
+                if (!i->s.empty())
+                    activity_line += ": ";
+                activity_line += i->lastLine;
+            }
+
+            if (printMultiline) {
+                if (state.lastLines < (height -1)) {
+                    writeToStderr(filterANSIEscapes(activity_line, false, width) + "\n");
+                    state.lastLines++;
+                } else moreActivities++;
             }
         }
     }
 
-    auto width = getWindowSize().second;
-    if (width <= 0) width = std::numeric_limits<decltype(width)>::max();
+    if (printMultiline && moreActivities)
+        writeToStderr(fmt("And %d more...", moreActivities));
 
-    writeToStderr("\r" + filterANSIEscapes(line, false, width) + ANSI_NORMAL + "\e[K");
+    if (!printMultiline) {
+        line += " " + activity_line;
+         writeToStderr("\r" + filterANSIEscapes(line, false, width) + ANSI_NORMAL + "\e[K");
+    }
 
     return nextWakeup;
 }
@@ -442,9 +478,8 @@ void ProgressBar::writeToStdout(std::string_view s)
 {
     auto state(state_.lock());
     if (state->active) {
-        std::cerr << "\r\e[K";
         Logger::writeToStdout(s);
-        draw(*state);
+        draw(*state, {});
     } else {
         Logger::writeToStdout(s);
     }
@@ -457,13 +492,18 @@ std::optional<char> ProgressBar::ask(std::string_view msg)
     std::cerr << fmt("\r\e[K%s ", msg);
     auto s = trim(readLine(STDIN_FILENO));
     if (s.size() != 1) return {};
-    draw(*state);
+    draw(*state, {});
     return s[0];
 }
 
 void ProgressBar::setPrintBuildLogs(bool printBuildLogs)
 {
     this->printBuildLogs = printBuildLogs;
+}
+
+void ProgressBar::setPrintMultiline(bool printMultiline)
+{
+    this->printMultiline = printMultiline;
 }
 
 Logger * makeProgressBar()

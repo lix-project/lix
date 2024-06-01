@@ -78,6 +78,16 @@ Most commands in Lix accept the following command-line options:
 
     Display the raw logs, with the progress bar at the bottom.
 
+  - `multiline`
+
+    Display a progress bar during the builds and in the lines below that one line per activity.
+
+
+  - `multiline-with-logs`
+
+    Displayes the raw logs, with a progress bar and activities each in a new line at the bottom.
+
+
 - <span id="opt-no-build-output">[`--no-build-output`](#opt-no-build-output)</span> / `-Q`
 
   By default, output written by builders to standard output and standard error is echoed to the Lix command's standard error.

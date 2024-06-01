@@ -11,6 +11,8 @@ enum class LogFormat {
   internalJSON,
   bar,
   barWithLogs,
+  multiline,
+  multilineWithLogs,
 };
 
 void setLogFormat(const std::string & logFormatStr);

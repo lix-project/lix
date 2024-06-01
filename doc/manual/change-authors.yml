@@ -60,6 +60,10 @@ jade:
   forgejo: jade
   github: lf-
 
+kloenk:
+  forgejo: kloenk
+  github: kloenk
+
 lovesegfault:
   github: lovesegfault
 

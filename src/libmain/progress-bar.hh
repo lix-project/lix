@@ -47,6 +47,8 @@ struct ProgressBar : public Logger
 
         std::map<ActivityType, ActivitiesByType> activitiesByType;
 
+        int lastLines = 0;
+
         uint64_t filesLinked = 0, bytesLinked = 0;
 
         uint64_t corruptedPaths = 0, untrustedPaths = 0;
@@ -63,6 +65,7 @@ struct ProgressBar : public Logger
     std::condition_variable quitCV, updateCV;
 
     bool printBuildLogs = false;
+    bool printMultiline = false;
     bool isTTY;
 
     ProgressBar(bool isTTY)
@@ -75,7 +78,7 @@ struct ProgressBar : public Logger
             while (state->active) {
                 if (!state->haveUpdate)
                     state.wait_for(updateCV, nextWakeup);
-                nextWakeup = draw(*state);
+                nextWakeup = draw(*state, {});
                 state.wait_for(quitCV, std::chrono::milliseconds(50));
             }
         });
@@ -114,7 +117,7 @@ struct ProgressBar : public Logger
 
     void update(State & state);
 
-    std::chrono::milliseconds draw(State & state);
+    std::chrono::milliseconds draw(State & state, const std::optional<std::string_view> & s);
 
     std::string getStatus(State & state);
 
@@ -123,6 +126,8 @@ struct ProgressBar : public Logger
     std::optional<char> ask(std::string_view msg) override;
 
     void setPrintBuildLogs(bool printBuildLogs) override;
+
+    void setPrintMultiline(bool printMultiline) override;
 };
 
 Logger * makeProgressBar();
