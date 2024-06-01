@@ -1,7 +1,9 @@
+#include <editline.h>
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
 #include <climits>
+#include <string_view>
 
 #include "box_ptr.hh"
 #include "repl-interacter.hh"
@@ -79,6 +81,8 @@ enum class ProcessLineResult {
     PromptAgain,
 };
 
+using namespace std::literals::string_view_literals;
+
 struct NixRepl
     : AbstractNixRepl
     , detail::ReplCompleterMixin
@@ -86,6 +90,35 @@ struct NixRepl
     , gc
     #endif
 {
+    /* clang-format: off */
+    static constexpr std::array COMMANDS = {
+        "add"sv, "a"sv,
+        "load"sv, "l"sv,
+        "load-flake"sv, "lf"sv,
+        "reload"sv, "r"sv,
+        "edit"sv, "e"sv,
+        "t"sv,
+        "u"sv,
+        "b"sv,
+        "bl"sv,
+        "i"sv,
+        "sh"sv,
+        "log"sv,
+        "print"sv, "p"sv,
+        "quit"sv, "q"sv,
+        "doc"sv,
+        "te"sv,
+    };
+
+    static constexpr std::array DEBUG_COMMANDS = {
+        "env"sv,
+        "bt"sv, "backtrace"sv,
+        "st"sv,
+        "c"sv, "continue"sv,
+        "s"sv, "step"sv,
+    };
+    /* clang-format: on */
+
     size_t debugTraceIndex;
 
     Strings loadedFiles;
@@ -322,6 +355,36 @@ ReplExitStatus NixRepl::mainLoop()
 StringSet NixRepl::completePrefix(const std::string & prefix)
 {
     StringSet completions;
+
+    // We should only complete colon commands if there's a colon at the beginning,
+    // but editline (for... whatever reason) doesn't *give* us the colon in the
+    // completion callback. If the user types :rel<TAB>, `prefix` will only be `rel`.
+    // Luckily, editline provides a global variable for its current buffer, so we can
+    // check for the presence of a colon there.
+    if (rl_line_buffer != nullptr && rl_line_buffer[0] == ':') {
+        for (auto const & colonCmd : this->COMMANDS) {
+            if (colonCmd.starts_with(prefix)) {
+                completions.insert(std::string(colonCmd));
+            }
+        }
+
+        if (state->debugRepl) {
+            for (auto const & colonCmd : this->DEBUG_COMMANDS) {
+                if (colonCmd.starts_with(prefix)) {
+                    completions.insert(std::string(colonCmd));
+                }
+            }
+        }
+
+        // If there were : command completions, then we should only return those,
+        // because otherwise this is not valid Nix syntax.
+        // However if we didn't get any completions, then this could be something
+        // like `:b pkgs.hel<TAB>`, in which case we should do expression completion
+        // as normal.
+        if (!completions.empty()) {
+            return completions;
+        }
+    }
 
     size_t start = prefix.find_last_of(" \n\r\t(){}[]");
     std::string prev, cur;
