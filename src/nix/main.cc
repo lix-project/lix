@@ -365,6 +365,11 @@ void mainWrapped(int argc, char * * argv)
 
     setLogFormat("bar");
     settings.verboseBuild = false;
+    if (isatty(STDERR_FILENO)) {
+        verbosity = lvlNotice;
+    } else {
+        verbosity = lvlInfo;
+    }
 
     NixArgs args;
 
