@@ -26,4 +26,6 @@ struct CommonSSHStoreConfig : virtual StoreConfig
         )"};
 };
 
+void registerSSHStore();
+
 }

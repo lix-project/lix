@@ -33,6 +33,16 @@
 #include <sys/sysctl.h>
 #endif
 
+// All built-in store implementations.
+#include "dummy-store.hh"
+#include "http-binary-cache-store.hh"
+#include "legacy-ssh-store.hh"
+#include "local-binary-cache-store.hh"
+#include "local-store.hh"
+#include "s3-binary-cache-store.hh"
+#include "ssh-store.hh"
+#include "uds-remote-store.hh"
+
 namespace nix {
 
 
@@ -396,6 +406,17 @@ static void preloadNSS()
     });
 }
 
+static void registerStoreImplementations() {
+  registerDummyStore();
+  registerHttpBinaryCacheStore();
+  registerLegacySSHStore();
+  registerLocalBinaryCacheStore();
+  registerLocalStore();
+  registerS3BinaryCacheStore();
+  registerSSHStore();
+  registerUDSRemoteStore();
+}
+
 static bool initLibStoreDone = false;
 
 void assertLibStoreInitialized() {
@@ -432,6 +453,8 @@ void initLibStore() {
     if (defaultTempDir().starts_with("/var/folders/"))
         unsetenv("TMPDIR");
 #endif
+
+    registerStoreImplementations();
 
     initLibStoreDone = true;
 }

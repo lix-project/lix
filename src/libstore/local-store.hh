@@ -421,4 +421,7 @@ void canonicaliseTimestampAndPermissions(const Path & path);
 
 MakeError(PathInUse, Error);
 
+// Implemented by the relevant platform/ module being used.
+void registerLocalStore();
+
 }

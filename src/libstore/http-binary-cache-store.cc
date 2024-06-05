@@ -1,3 +1,4 @@
+#include "http-binary-cache-store.hh"
 #include "binary-cache-store.hh"
 #include "filetransfer.hh"
 #include "globals.hh"
@@ -194,6 +195,8 @@ protected:
     }
 };
 
-static RegisterStoreImplementation<HttpBinaryCacheStore, HttpBinaryCacheStoreConfig> regHttpBinaryCacheStore;
+void registerHttpBinaryCacheStore() {
+    StoreImplementations::add<HttpBinaryCacheStore, HttpBinaryCacheStoreConfig>();
+}
 
 }

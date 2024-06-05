@@ -261,4 +261,9 @@ void DarwinLocalDerivationGoal::execBuilder(std::string builder, Strings args, S
 
     posix_spawn(nullptr, builder.c_str(), nullptr, &attrp, stringsToCharPtrs(args).data(), stringsToCharPtrs(envStrs).data());
 }
+
+void registerLocalStore() {
+    StoreImplementations::add<DarwinLocalStore, LocalStoreConfig>();
+}
+
 }

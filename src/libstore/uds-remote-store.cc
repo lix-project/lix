@@ -88,6 +88,8 @@ void UDSRemoteStore::addIndirectRoot(const Path & path)
 }
 
 
-static RegisterStoreImplementation<UDSRemoteStore, UDSRemoteStoreConfig> regUDSRemoteStore;
+void registerUDSRemoteStore() {
+    StoreImplementations::add<UDSRemoteStore, UDSRemoteStoreConfig>();
+}
 
 }

@@ -25,7 +25,9 @@ namespace {
 constexpr const std::string_view nativeSystem = SYSTEM;
 }
 
-static RegisterStoreImplementation<LinuxLocalStore, LocalStoreConfig> regLocalStore;
+void registerLocalStore() {
+    StoreImplementations::add<LinuxLocalStore, LocalStoreConfig>();
+}
 
 static void readProcLink(const std::string & file, UncheckedRoots & roots)
 {

@@ -1,3 +1,4 @@
+#include "local-binary-cache-store.hh"
 #include "binary-cache-store.hh"
 #include "globals.hh"
 #include "nar-info-disk-cache.hh"
@@ -124,6 +125,8 @@ std::set<std::string> LocalBinaryCacheStore::uriSchemes()
         return {"file"};
 }
 
-static RegisterStoreImplementation<LocalBinaryCacheStore, LocalBinaryCacheStoreConfig> regLocalBinaryCacheStore;
+void registerLocalBinaryCacheStore() {
+    StoreImplementations::add<LocalBinaryCacheStore, LocalBinaryCacheStoreConfig>();
+}
 
 }
