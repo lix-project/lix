@@ -16,6 +16,7 @@ $XONSH_SHOW_TRACEBACK = True
 RELENG_ENV = environment.STAGING
 
 RELEASES_BUCKET = RELENG_ENV.releases_bucket
+DOCS_BUCKET = RELENG_ENV.docs_bucket
 CACHE_STORE = RELENG_ENV.cache_store_uri()
 REPO = RELENG_ENV.git_repo
 
@@ -23,6 +24,7 @@ GCROOTS_DIR = Path('./release/gcroots')
 BUILT_GCROOTS_DIR = Path('./release/gcroots-build')
 DRVS_TXT = Path('./release/drvs.txt')
 ARTIFACTS = Path('./release/artifacts')
+MANUAL = Path('./release/manual')
 
 RELENG_MSG = "Release created with releng/create_release.xsh"
 
@@ -265,6 +267,8 @@ def upload_artifacts(noconfirm=False, force_push_tag=False):
 
     print('[+] Upload to release bucket')
     aws s3 cp --recursive @(ARTIFACTS)/ @(RELEASES_BUCKET)/
+    print('[+] Upload manual')
+    upload_manual()
 
     print('[+] git push tag')
     git push @(['-f'] if force_push_tag else []) @(REPO) f'{VERSION}:refs/tags/{VERSION}'
@@ -278,7 +282,29 @@ def do_tag_merge(force_tag=False, no_check_git=False):
     git switch --detach @(VERSION)
 
 
+def build_manual(eval_result):
+    manual = next(x['outputs']['doc'] for x in eval_result if x['attr'] == 'build.x86_64-linux')
+    print('[+] Building manual')
+    realise([manual])
+
+    cp --no-preserve=mode -vr @(manual)/share/doc/nix @(MANUAL)
+
+
+def upload_manual():
+    stable = json.loads($(nix eval --json '.#nix.officialRelease'))
+    if stable:
+        version = MAJOR
+    else:
+        version = 'nightly'
+
+    print('[+] aws s3 sync manual')
+    aws s3 sync @(MANUAL)/ @(DOCS_BUCKET)/manual/lix/@(version)/
+    if stable:
+        aws s3 sync @(MANUAL)/ @(DOCS_BUCKET)/manual/lix/stable/
+
+
 def build_artifacts(no_check_git=False):
+    rm -rf release/
     if not no_check_git:
         verify_are_on_tag()
         git_preconditions()
@@ -289,6 +315,7 @@ def build_artifacts(no_check_git=False):
 
     print('[+] Building')
     realise(drv_paths)
+    build_manual(eval_result)
 
     with open(DRVS_TXT, 'w') as fh:
         fh.write('\n'.join(drv_paths))

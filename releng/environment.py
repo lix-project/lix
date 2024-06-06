@@ -20,10 +20,10 @@ DEFAULT_STORE_URI_BITS = {
 class RelengEnvironment:
     name: str
 
-    aws_profile: str
     cache_store_overlay: dict[str, str]
     cache_bucket: str
     releases_bucket: str
+    docs_bucket: str
     git_repo: str
 
     def cache_store_uri(self):
@@ -33,7 +33,7 @@ class RelengEnvironment:
 
 STAGING = RelengEnvironment(
     name='staging',
-    aws_profile='garage_staging',
+    docs_bucket='s3://staging-docs',
     cache_bucket='s3://staging-cache',
     cache_store_overlay={
         'secret-key': 'staging.key'
