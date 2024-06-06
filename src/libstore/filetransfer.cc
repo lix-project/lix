@@ -656,7 +656,7 @@ struct curlFileTransfer : public FileTransfer
         /* Ugly hack to support s3:// URIs. */
         if (request.uri.starts_with("s3://")) {
             // FIXME: do this on a worker thread
-            return std::async(std::launch::deferred, [uri{request.uri}] {
+            return std::async(std::launch::deferred, [uri{request.uri}]() -> FileTransferResult {
 #if ENABLE_S3
                 auto [bucketName, key, params] = parseS3Uri(uri);
 
