@@ -59,7 +59,6 @@
       # Set to true to build the release notes for the next release.
       buildUnreleasedNotes = true;
 
-      version = lib.fileContents ./.version + versionSuffix;
       versionSuffix =
         if officialRelease then
           ""
@@ -149,8 +148,7 @@
         }
       );
 
-      binaryTarball =
-        nix: pkgs: pkgs.callPackage ./nix-support/binary-tarball.nix { inherit nix version; };
+      binaryTarball = nix: pkgs: pkgs.callPackage ./nix-support/binary-tarball.nix { inherit nix; };
 
       overlayFor =
         getStdenv: final: prev:
@@ -330,10 +328,10 @@
                 pkgs = nixpkgsFor.${system}.native;
                 image = import ./docker.nix {
                   inherit pkgs;
-                  tag = version;
+                  tag = pkgs.nix.version;
                 };
               in
-              pkgs.runCommand "docker-image-tarball-${version}"
+              pkgs.runCommand "docker-image-tarball-${pkgs.nix.version}"
                 { meta.description = "Docker image with Lix for ${system}"; }
                 ''
                   mkdir -p $out/nix-support

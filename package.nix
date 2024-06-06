@@ -88,7 +88,8 @@ let
   inherit (lib) fileset;
   inherit (stdenv) hostPlatform buildPlatform;
 
-  version = lib.fileContents ./.version + versionSuffix;
+  versionJson = builtins.fromJSON (builtins.readFile ./version.json);
+  version = versionJson.version + versionSuffix;
 
   aws-sdk-cpp-nix = aws-sdk-cpp.override {
     apis = [
@@ -138,7 +139,7 @@ let
   # that would interfere with repo semantics.
   baseFiles = fileset.fileFilter (f: f.name != ".gitignore") ./.;
 
-  configureFiles = fileset.unions [ ./.version ];
+  configureFiles = fileset.unions [ ./version.json ];
 
   topLevelBuildFiles = fileset.unions ([
     ./meson.build

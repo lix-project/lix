@@ -23,7 +23,7 @@ perl.pkgs.toPerlModule (
     src = fileset.toSource {
       root = ../.;
       fileset = fileset.unions ([
-        ../.version
+        ../version.json
         ./lib
         ./meson.build
       ]);

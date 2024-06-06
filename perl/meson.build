@@ -1,5 +1,5 @@
 project('lix-perl', 'cpp',
-  version : run_command('bash', '-c', 'echo -n $(cat ../.version)$VERSION_SUFFIX', check : true).stdout().strip(),
+  version : run_command('bash', '-c', 'echo -n $(jq -r .version < ../version.json)$VERSION_SUFFIX', check : true).stdout().strip(),
   default_options : [
     'cpp_std=c++2a',
     # TODO(Qyriad): increase the warning level

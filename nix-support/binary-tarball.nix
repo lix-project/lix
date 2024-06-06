@@ -3,7 +3,6 @@
   cacert,
   nix,
   system,
-  version,
 }:
 let
   installerClosureInfo = buildPackages.closureInfo {
@@ -15,10 +14,10 @@ let
 
   meta.description = "Distribution-independent Lix bootstrap binaries for ${system}";
 in
-buildPackages.runCommand "lix-binary-tarball-${version}" { inherit meta; } ''
+buildPackages.runCommand "lix-binary-tarball-${nix.version}" { inherit meta; } ''
   cp ${installerClosureInfo}/registration $TMPDIR/reginfo
 
-  dir=lix-${version}-${system}
+  dir=lix-${nix.version}-${system}
   fn=$out/$dir.tar.xz
   mkdir -p $out/nix-support
   echo "file binary-dist $fn" >> $out/nix-support/hydra-build-products
