@@ -64,3 +64,7 @@ option('internal-api-docs', type : 'feature', value : 'auto',
 option('profile-dir', type : 'string', value : 'etc/profile.d',
   description : 'the path to install shell profile files',
 )
+
+option('enable-pch-std', type : 'boolean', value : true,
+  description : 'whether to use precompiled headers for C++\'s standard library (breaks clangd if you\'re using GCC)',
+)
