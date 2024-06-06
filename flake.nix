@@ -227,7 +227,6 @@
           in
           {
             user = rl-next-check "rl-next" ./doc/manual/rl-next;
-            dev = rl-next-check "rl-next-dev" ./doc/manual/rl-next-dev;
           }
         );
 
@@ -309,7 +308,6 @@
           perlBindings = self.hydraJobs.perlBindings.${system};
           nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
           rl-next = self.hydraJobs.rl-next.${system}.user;
-          rl-next-dev = self.hydraJobs.rl-next.${system}.dev;
           # Will be empty attr set on i686-linux, and filtered out by forAvailableSystems.
           pre-commit = self.hydraJobs.pre-commit.${system};
         }

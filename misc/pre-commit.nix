@@ -63,7 +63,7 @@ pre-commit-run {
       files = ''^doc/manual/(change-authors\.yml|rl-next(-dev)?)'';
       pass_filenames = false;
       entry = ''
-        ${lib.getExe pkgs.build-release-notes} --change-authors doc/manual/change-authors.yml doc/manual/rl-next doc/manual/rl-next-dev
+        ${lib.getExe pkgs.build-release-notes} --change-authors doc/manual/change-authors.yml doc/manual/rl-next
       '';
     };
     change-authors-sorted = {
