@@ -30,7 +30,7 @@ libfetchers = library(
     liblixutil,
     nlohmann_json,
   ],
-  cpp_pch : ['../pch/precompiled-headers.hh'],
+  cpp_pch : cpp_pch,
   install : true,
   # FIXME(Qyriad): is this right?
   install_rpath : libdir,

@@ -129,7 +129,7 @@ libutil = library(
     openssl,
     nlohmann_json,
   ],
-  cpp_pch : ['../pch/precompiled-headers.hh'],
+  cpp_pch : cpp_pch,
   implicit_include_directories : true,
   install : true,
 )

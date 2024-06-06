@@ -129,6 +129,20 @@ endif
 
 cxx = meson.get_compiler('cpp')
 
+
+# clangd breaks when GCC is using precompiled headers lmao
+# https://git.lix.systems/lix-project/lix/issues/374
+should_pch = get_option('enable-pch-std')
+summary('PCH C++ stdlib', should_pch, bool_yn : true)
+if should_pch
+  # Unlike basically everything else that takes a file, Meson requires the arguments to
+  # cpp_pch : to be strings and doesn't accept files(). So absolute path it is.
+  cpp_pch = [meson.project_source_root() / 'src/pch/precompiled-headers.hh']
+else
+  cpp_pch = []
+endif
+
+
 # Translate some historical and Mesony CPU names to Lixy CPU names.
 # FIXME(Qyriad): the 32-bit x86 code is not tested right now, because cross compilation for Lix
 # to those architectures is currently broken for other reasons, namely:
