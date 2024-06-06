@@ -43,6 +43,7 @@
   toml11,
   util-linuxMinimal ? utillinuxMinimal,
   utillinuxMinimal ? null,
+  xonsh-unwrapped,
   xz,
 
   busybox-sandbox-shell,
@@ -408,6 +409,17 @@ stdenv.mkDerivation (finalAttrs: {
         # default LLVM is newer.
         clang-tools_llvm = clang-tools.override { inherit llvmPackages; };
 
+        pythonPackages = (
+          p: [
+            p.yapf
+            p.python-frontmatter
+            (p.toPythonModule xonsh-unwrapped)
+          ]
+        );
+        # FIXME: This will explode when we switch to 24.05 if we don't backport
+        # https://github.com/NixOS/nixpkgs/pull/317636 first
+        pythonEnv = python3.withPackages pythonPackages;
+
         # pkgs.mkShell uses pkgs.stdenv by default, regardless of inputsFrom.
         actualMkShell = mkShell.override { inherit stdenv; };
       in
@@ -431,6 +443,7 @@ stdenv.mkDerivation (finalAttrs: {
           packages =
             lib.optional (stdenv.cc.isClang && hostPlatform == buildPlatform) clang-tools_llvm
             ++ [
+              pythonEnv
               just
               nixfmt
               # Load-bearing order. Must come before clang-unwrapped below, but after clang_tools above.
