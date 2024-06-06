@@ -424,9 +424,14 @@ stdenv.mkDerivation (finalAttrs: {
           # For Meson to find Boost.
           env = finalAttrs.env;
 
-          # I guess this is necessary because mesonFlags to mkDerivation doesn't propagate in inputsFrom,
-          # which only propagates stuff set in hooks? idk.
-          inherit (finalAttrs) mesonFlags;
+          mesonFlags =
+            # I guess this is necessary because mesonFlags to mkDerivation doesn't propagate in inputsFrom,
+            # which only propagates stuff set in hooks? idk.
+            finalAttrs.mesonFlags
+            # Clangd breaks when GCC is using precompiled headers, so for the devshell specifically
+            # we make precompiled C++ stdlib conditional on using Clang.
+            # https://git.lix.systems/lix-project/lix/issues/374
+            ++ [ (lib.mesonBool "enable-pch-std" stdenv.cc.isClang) ];
 
           packages =
             lib.optional (stdenv.cc.isClang && hostPlatform == buildPlatform) clang-tools_llvm
