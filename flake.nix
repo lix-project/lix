@@ -189,7 +189,7 @@
           };
 
           nix = final.callPackage ./package.nix {
-            inherit versionSuffix;
+            inherit versionSuffix officialRelease;
             stdenv = currentStdenv;
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
           };
@@ -365,7 +365,7 @@
             pkgs: stdenv:
             let
               nix = pkgs.callPackage ./package.nix {
-                inherit stdenv versionSuffix;
+                inherit stdenv officialRelease versionSuffix;
                 busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
                 internalApiDocs = true;
               };

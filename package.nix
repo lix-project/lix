@@ -386,6 +386,8 @@ stdenv.mkDerivation (finalAttrs: {
   passthru = {
     inherit (__forDefaults) boehmgc-nix editline-lix build-release-notes;
 
+    inherit officialRelease;
+
     # The collection of dependency logic for this derivation is complicated enough that
     # it's easier to parameterize the devShell off an already called package.nix.
     mkDevShell =
