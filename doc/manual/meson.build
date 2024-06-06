@@ -110,6 +110,7 @@ manual = custom_target(
     builtins_md,
     builtin_constants_md,
     rl_next_generated,
+    nix,
   ],
   output : [
     'manual',
@@ -186,6 +187,7 @@ foreach command : nix_nested_manpages
       ],
       input : [
         manual_md,
+        nix,
       ],
       output : command[0] + '-' + page + '.1',
       install : true,
@@ -298,6 +300,7 @@ foreach page : nix3_manpages
     input : [
       'render-manpage.sh',
       manual_md,
+      nix,
     ],
     output : page + '.1',
     install : true,
@@ -341,6 +344,7 @@ foreach entry : nix_manpages
       'render-manpage.sh',
       manual_md,
       entry.get(3, []),
+      nix,
     ],
     output : '@0@.@1@'.format(entry[0], entry[1]),
     install : true,
