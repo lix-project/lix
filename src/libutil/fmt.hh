@@ -5,8 +5,8 @@
 #include <string>
 #include <optional>
 #include <boost/format.hpp>
-// Darwin stdenv does not define _GNU_SOURCE but does have _Unwind_Backtrace.
-#ifdef __APPLE__
+// Darwin and FreeBSD stdenv do not define _GNU_SOURCE but do have _Unwind_Backtrace.
+#if __APPLE__ || __FreeBSD__
 #define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
 #endif
 #include <boost/stacktrace.hpp>
