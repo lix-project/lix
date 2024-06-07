@@ -167,6 +167,7 @@ message('canonical Nix system name:', host_system)
 
 is_linux = host_machine.system() == 'linux'
 is_darwin = host_machine.system() == 'darwin'
+is_freebsd = host_machine.system() == 'freebsd'
 is_x64 = host_machine.cpu_family() == 'x86_64'
 
 # Per-platform arguments that you should probably pass to shared_module() invocations.
@@ -460,6 +461,12 @@ endif
 add_project_link_arguments('-pthread', language : 'cpp')
 if cxx.get_linker_id() in ['ld.bfd', 'ld.gold']
   add_project_link_arguments('-Wl,--no-copy-dt-needed-entries', language : 'cpp')
+endif
+
+if is_freebsd
+  # FreeBSD's `environ` is defined in `crt1.o`, not `libc.so`,
+  # so the linker thinks it's undefined
+  add_project_link_arguments('-Wl,-z,undefs', language: 'cpp')
 endif
 
 # Generate Chromium tracing files for each compiled file, which enables
