@@ -182,7 +182,6 @@ elif is_linux
   # Clang sanitizers on Linux.
   # FIXME(Qyriad): is that true?
 endif
-deps = [ ]
 configdata = { }
 
 #
@@ -190,15 +189,11 @@ configdata = { }
 #
 
 boehm = dependency('bdw-gc', required : get_option('gc'))
-if boehm.found()
-  deps += boehm
-endif
 configdata += {
   'HAVE_BOEHMGC': boehm.found().to_int(),
 }
 
 boost = dependency('boost', required : true, modules : ['context', 'coroutine', 'container'])
-deps += boost
 
 # cpuid only makes sense on x86_64
 cpuid_required = is_x64 ? get_option('cpuid') : false
@@ -206,7 +201,6 @@ cpuid = dependency('libcpuid', 'cpuid', required : cpuid_required)
 configdata += {
   'HAVE_LIBCPUID': cpuid.found().to_int(),
 }
-deps += cpuid
 
 # seccomp only makes sense on Linux
 seccomp_required = is_linux ? get_option('seccomp-sandboxing') : false
@@ -219,17 +213,14 @@ configdata += {
 }
 
 libarchive = dependency('libarchive', required : true)
-deps += libarchive
 
 brotli = [
   dependency('libbrotlicommon', required : true),
   dependency('libbrotlidec', required : true),
   dependency('libbrotlienc', required : true),
 ]
-deps += brotli
 
 openssl = dependency('libcrypto', 'openssl', required : true)
-deps += openssl
 
 aws_sdk = dependency('aws-cpp-sdk-core', required : false)
 aws_sdk_transfer = dependency('aws-cpp-sdk-transfer', required : aws_sdk.found(), fallback : ['aws_sdk', 'aws_cpp_sdk_transfer_dep'])
@@ -243,7 +234,6 @@ if aws_sdk.found()
     links : true,
     sources : true,
   )
-  deps += aws_sdk
   s = aws_sdk.version().split('.')
   configdata += {
     'AWS_VERSION_MAJOR': s[0].to_int(),
@@ -270,7 +260,6 @@ if aws_s3.found()
     links : true,
     sources : true,
   )
-  deps += aws_s3
 endif
 
 configdata += {
@@ -278,26 +267,20 @@ configdata += {
 }
 
 sqlite = dependency('sqlite3', 'sqlite', version : '>=3.6.19', required : true)
-deps += sqlite
 
 sodium = dependency('libsodium', 'sodium', required : true)
-deps += sodium
 
 curl = dependency('libcurl', 'curl', required : true)
-deps += curl
 
 editline = dependency('libeditline', 'editline', version : '>=1.14', required : true)
-deps += editline
 
 lowdown = dependency('lowdown', version : '>=0.9.0', required : true)
-deps += lowdown
 
 # HACK(Qyriad): rapidcheck's pkg-config doesn't include the libs lol
 # Note: technically we 'check' for rapidcheck twice, for the internal-api-docs handling above,
 # but Meson will cache the result of the first one, and the required : arguments are different.
 rapidcheck_meson = dependency('rapidcheck', required : enable_tests)
 rapidcheck = declare_dependency(dependencies : rapidcheck_meson, link_args : ['-lrapidcheck'])
-deps += rapidcheck
 
 gtest = [
   dependency('gtest', required : enable_tests),
@@ -305,13 +288,10 @@ gtest = [
   dependency('gmock', required : enable_tests),
   dependency('gmock_main', required : enable_tests),
 ]
-deps += gtest
 
 toml11 = dependency('toml11', version : '>=3.7.0', required : true, method : 'cmake')
-deps += toml11
 
 nlohmann_json = dependency('nlohmann_json', required : true)
-deps += nlohmann_json
 
 # lix-doc is a Rust project provided via buildInputs and unfortunately doesn't have any way to be detected.
 # Just declare it manually to resolve this.
@@ -319,7 +299,6 @@ deps += nlohmann_json
 # FIXME: build this with meson in the future after we drop Make (with which we
 # *absolutely* are not going to make it work)
 lix_doc = declare_dependency(link_args : [ '-llix_doc' ])
-deps += lix_doc
 
 #
 # Build-time tools
