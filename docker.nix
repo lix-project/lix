@@ -1,7 +1,7 @@
 {
   pkgs ? import <nixpkgs> { },
   lib ? pkgs.lib,
-  name ? "nix",
+  name ? "lix",
   tag ? "latest",
   bundleNixpkgs ? true,
   channelName ? "nixpkgs",

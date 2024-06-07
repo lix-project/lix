@@ -59,7 +59,6 @@
       # Set to true to build the release notes for the next release.
       buildUnreleasedNotes = true;
 
-      version = lib.fileContents ./.version + versionSuffix;
       versionSuffix =
         if officialRelease then
           ""
@@ -149,8 +148,7 @@
         }
       );
 
-      binaryTarball =
-        nix: pkgs: pkgs.callPackage ./nix-support/binary-tarball.nix { inherit nix version; };
+      binaryTarball = nix: pkgs: pkgs.callPackage ./nix-support/binary-tarball.nix { inherit nix; };
 
       overlayFor =
         getStdenv: final: prev:
@@ -227,7 +225,6 @@
           in
           {
             user = rl-next-check "rl-next" ./doc/manual/rl-next;
-            dev = rl-next-check "rl-next-dev" ./doc/manual/rl-next-dev;
           }
         );
 
@@ -309,7 +306,6 @@
           perlBindings = self.hydraJobs.perlBindings.${system};
           nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
           rl-next = self.hydraJobs.rl-next.${system}.user;
-          rl-next-dev = self.hydraJobs.rl-next.${system}.dev;
           # Will be empty attr set on i686-linux, and filtered out by forAvailableSystems.
           pre-commit = self.hydraJobs.pre-commit.${system};
         }
@@ -332,10 +328,10 @@
                 pkgs = nixpkgsFor.${system}.native;
                 image = import ./docker.nix {
                   inherit pkgs;
-                  tag = version;
+                  tag = pkgs.nix.version;
                 };
               in
-              pkgs.runCommand "docker-image-tarball-${version}"
+              pkgs.runCommand "docker-image-tarball-${pkgs.nix.version}"
                 { meta.description = "Docker image with Lix for ${system}"; }
                 ''
                   mkdir -p $out/nix-support

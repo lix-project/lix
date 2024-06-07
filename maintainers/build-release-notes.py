@@ -1,6 +1,5 @@
 from collections import defaultdict
 import frontmatter
-import sys
 import pathlib
 import textwrap
 from typing import Any, Tuple
@@ -27,6 +26,7 @@ CATEGORIES = [
     'Improvements',
     'Fixes',
     'Packaging',
+    'Development',
     'Miscellany',
 ]
 
