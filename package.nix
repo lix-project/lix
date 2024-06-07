@@ -39,6 +39,7 @@
   pkg-config,
   python3,
   rapidcheck,
+  skopeo,
   sqlite,
   toml11,
   util-linuxMinimal ? utillinuxMinimal,
@@ -447,6 +448,8 @@ stdenv.mkDerivation (finalAttrs: {
             lib.optional (stdenv.cc.isClang && hostPlatform == buildPlatform) clang-tools_llvm
             ++ [
               pythonEnv
+              # docker image tool
+              skopeo
               just
               nixfmt
               # Load-bearing order. Must come before clang-unwrapped below, but after clang_tools above.

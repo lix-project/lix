@@ -2,11 +2,12 @@ from xonsh.main import setup
 setup()
 del setup
 
-from releng import environment
-from releng import create_release
-from releng import keys
-from releng import version
-from releng import cli
+from . import environment
+from . import create_release
+from . import keys
+from . import version
+from . import cli
+from . import docker
 
 def reload():
     import importlib
@@ -15,3 +16,4 @@ def reload():
     importlib.reload(keys)
     importlib.reload(version)
     importlib.reload(cli)
+    importlib.reload(docker)

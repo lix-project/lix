@@ -7,18 +7,13 @@ import tempfile
 import hashlib
 import datetime
 from . import environment
+from .environment import RelengEnvironment
 from . import keys
+from . import docker
 from .version import VERSION, RELEASE_NAME, MAJOR
 
 $RAISE_SUBPROC_ERROR = True
 $XONSH_SHOW_TRACEBACK = True
-
-RELENG_ENV = environment.STAGING
-
-RELEASES_BUCKET = RELENG_ENV.releases_bucket
-DOCS_BUCKET = RELENG_ENV.docs_bucket
-CACHE_STORE = RELENG_ENV.cache_store_uri()
-REPO = RELENG_ENV.git_repo
 
 GCROOTS_DIR = Path('./release/gcroots')
 BUILT_GCROOTS_DIR = Path('./release/gcroots-build')
@@ -35,8 +30,8 @@ MAX_JOBS = 2
 RELEASE_SYSTEMS = ["x86_64-linux"]
 
 
-def setup_creds():
-    key = keys.get_ephemeral_key(RELENG_ENV)
+def setup_creds(env: RelengEnvironment):
+    key = keys.get_ephemeral_key(env)
     $AWS_SECRET_ACCESS_KEY = key.secret_key
     $AWS_ACCESS_KEY_ID = key.id
     $AWS_DEFAULT_REGION = 'garage'
@@ -102,13 +97,13 @@ def eval_jobs():
     ]
 
 
-def upload_drv_paths_and_outputs(paths: list[str]):
+def upload_drv_paths_and_outputs(env: RelengEnvironment, paths: list[str]):
     proc = subprocess.Popen([
             'nix',
             'copy',
             '-v',
             '--to',
-            CACHE_STORE,
+            env.cache_store_uri(),
             '--stdin',
         ],
         stdin=subprocess.PIPE,
@@ -250,7 +245,10 @@ def verify_are_on_tag():
     assert current_tag == VERSION
 
 
-def upload_artifacts(noconfirm=False, force_push_tag=False):
+def upload_artifacts(env: RelengEnvironment, noconfirm=False, no_check_git=False, force_push_tag=False):
+    if not no_check_git:
+        verify_are_on_tag()
+        git_preconditions()
     assert 'AWS_SECRET_ACCESS_KEY' in __xonsh__.env
 
     tree @(ARTIFACTS)
@@ -262,16 +260,21 @@ def upload_artifacts(noconfirm=False, force_push_tag=False):
 
     print('[+] Upload to cache')
     with open(DRVS_TXT) as fh:
-        upload_drv_paths_and_outputs([x.strip() for x in fh.readlines() if x])
+        upload_drv_paths_and_outputs(env, [x.strip() for x in fh.readlines() if x])
 
+    docker_images = (ARTIFACTS / f'lix/lix-{VERSION}').glob(f'lix-{VERSION}-docker-image-*.tar.gz')
+    print('[+] Upload docker images')
+    for image in docker_images:
+        for target in env.docker_targets:
+            docker.upload_docker_image(target, image)
 
     print('[+] Upload to release bucket')
-    aws s3 cp --recursive @(ARTIFACTS)/ @(RELEASES_BUCKET)/
+    aws s3 cp --recursive @(ARTIFACTS)/ @(env.releases_bucket)/
     print('[+] Upload manual')
-    upload_manual()
+    upload_manual(env)
 
     print('[+] git push tag')
-    git push @(['-f'] if force_push_tag else []) @(REPO) f'{VERSION}:refs/tags/{VERSION}'
+    git push @(['-f'] if force_push_tag else []) @(env.git_repo) f'{VERSION}:refs/tags/{VERSION}'
 
 
 def do_tag_merge(force_tag=False, no_check_git=False):
@@ -290,7 +293,7 @@ def build_manual(eval_result):
     cp --no-preserve=mode -vr @(manual)/share/doc/nix @(MANUAL)
 
 
-def upload_manual():
+def upload_manual(env: RelengEnvironment):
     stable = json.loads($(nix eval --json '.#nix.officialRelease'))
     if stable:
         version = MAJOR
@@ -298,9 +301,9 @@ def upload_manual():
         version = 'nightly'
 
     print('[+] aws s3 sync manual')
-    aws s3 sync @(MANUAL)/ @(DOCS_BUCKET)/manual/lix/@(version)/
+    aws s3 sync @(MANUAL)/ @(env.docs_bucket)/manual/lix/@(version)/
     if stable:
-        aws s3 sync @(MANUAL)/ @(DOCS_BUCKET)/manual/lix/stable/
+        aws s3 sync @(MANUAL)/ @(env.docs_bucket)/manual/lix/stable/
 
 
 def build_artifacts(no_check_git=False):
