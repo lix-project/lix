@@ -39,12 +39,10 @@
   pkg-config,
   python3,
   rapidcheck,
-  skopeo,
   sqlite,
   toml11,
   util-linuxMinimal ? utillinuxMinimal,
   utillinuxMinimal ? null,
-  xonsh-unwrapped,
   xz,
 
   busybox-sandbox-shell,
@@ -71,8 +69,6 @@
         # `boehmgc-nix` then this will almost certainly have duplicate patches, which means
         # the patches won't apply and we'll get a build failure.
         ./boehmgc-coroutine-sp-fallback.diff
-        # https://github.com/ivmai/bdwgc/pull/586
-        ./boehmgc-traceable_allocator-public.diff
       ];
     };
 
@@ -402,6 +398,8 @@ stdenv.mkDerivation (finalAttrs: {
         llvmPackages,
         clangbuildanalyzer,
         contribNotice,
+        skopeo,
+        xonsh,
       }:
       let
         glibcFix = lib.optionalAttrs (buildPlatform.isLinux && glibcLocales != null) {
@@ -419,11 +417,9 @@ stdenv.mkDerivation (finalAttrs: {
             p.python-frontmatter
             p.requests
             p.xdg-base-dirs
-            (p.toPythonModule xonsh-unwrapped)
+            (p.toPythonModule xonsh.passthru.unwrapped)
           ]
         );
-        # FIXME: This will explode when we switch to 24.05 if we don't backport
-        # https://github.com/NixOS/nixpkgs/pull/317636 first
         pythonEnv = python3.withPackages pythonPackages;
 
         # pkgs.mkShell uses pkgs.stdenv by default, regardless of inputsFrom.

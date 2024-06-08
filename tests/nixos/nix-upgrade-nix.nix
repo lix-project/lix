@@ -11,7 +11,7 @@ let
   lix = pkgs.nix;
   lixVersion = lib.getVersion lix;
 
-  newNix = pkgs.nixVersions.unstable;
+  newNix = pkgs.nixVersions.latest;
   newNixVersion = lib.getVersion newNix;
 
 in {
@@ -20,7 +20,7 @@ in {
   nodes = {
     machine = { config, lib, pkgs, ... }: {
       virtualisation.writableStore = true;
-      virtualisation.additionalPaths = [ pkgs.hello.drvPath ];
+      virtualisation.additionalPaths = [ pkgs.hello.drvPath newNix ];
       nix.settings.substituters = lib.mkForce [ ];
       nix.settings.experimental-features = [ "nix-command" "flakes" ];
       services.getty.autologinUser = "root";

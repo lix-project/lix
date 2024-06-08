@@ -33,7 +33,7 @@ let
   checkOverrideNixVersion = { pkgs, lib, ... }: {
     # pkgs.nix: The new Nix in this repo
     # We disallow it, to make sure we don't accidentally use it.
-    system.forbiddenDependenciesRegex = lib.strings.escapeRegex "nix-${pkgs.nix.version}";
+    system.forbiddenDependenciesRegexes = [ (lib.strings.escapeRegex "nix-${pkgs.nix.version}") ];
   };
 in
 
@@ -53,15 +53,6 @@ in
     };
   };
 
-  remoteBuilds_remote_2_13 = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
-    name = "remoteBuilds_remote_2_13";
-    imports = [ ./remote-builds.nix ];
-    builders.config = { lib, pkgs, ... }: {
-      imports = [ checkOverrideNixVersion ];
-      nix.package = lib.mkForce pkgs.nixVersions.nix_2_13;
-    };
-  });
-
   remoteBuilds_remote_2_18 = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
     name = "remoteBuilds_remote_2_18";
     imports = [ ./remote-builds.nix ];
@@ -79,15 +70,6 @@ in
     nodes.client = { lib, pkgs, ... }: {
       imports = [ checkOverrideNixVersion ];
       nix.package = lib.mkForce pkgs.nixVersions.nix_2_3;
-    };
-  });
-
-  remoteBuilds_local_2_13 = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
-    name = "remoteBuilds_local_2_13";
-    imports = [ ./remote-builds.nix ];
-    nodes.client = { lib, pkgs, ... }: {
-      imports = [ checkOverrideNixVersion ];
-      nix.package = lib.mkForce pkgs.nixVersions.nix_2_13;
     };
   });
 
@@ -115,15 +97,6 @@ in
     };
   };
 
-  remoteBuildsSshNg_remote_2_13 = runNixOSTestFor "x86_64-linux" {
-    name = "remoteBuildsSshNg_remote_2_13";
-    imports = [ ./remote-builds-ssh-ng.nix ];
-    builders.config = { lib, pkgs, ... }: {
-      imports = [ checkOverrideNixVersion ];
-      nix.package = lib.mkForce pkgs.nixVersions.nix_2_13;
-    };
-  };
-
   remoteBuildsSshNg_remote_2_18 = runNixOSTestFor "x86_64-linux" {
     name = "remoteBuildsSshNg_remote_2_18";
     imports = [ ./remote-builds-ssh-ng.nix ];
@@ -143,15 +116,6 @@ in
     nodes.client = { lib, pkgs, ... }: {
       imports = [ checkOverrideNixVersion ];
       nix.package = lib.mkForce pkgs.nixVersions.nix_2_3;
-    };
-  });
-
-  remoteBuildsSshNg_local_2_13 = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
-    name = "remoteBuildsSshNg_local_2_13";
-    imports = [ ./remote-builds-ssh-ng.nix ];
-    nodes.client = { lib, pkgs, ... }: {
-      imports = [ checkOverrideNixVersion ];
-      nix.package = lib.mkForce pkgs.nixVersions.nix_2_13;
     };
   });
 

@@ -2,7 +2,7 @@
   description = "The purely functional package manager";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11-small";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05-small";
     nixpkgs-regression.url = "github:NixOS/nixpkgs/215d4d0fd80ca5163643b03a33fde804a29cc1e2";
     pre-commit-hooks = {
       url = "github:cachix/git-hooks.nix";
@@ -87,10 +87,10 @@
       crossSystems = [
         "armv6l-linux"
         "armv7l-linux"
-        # FIXME: doesn't evaluate, plausibly fixed in >=24.05, so recheck when
-        # we update to 24.05
-        # "x86_64-freebsd13"
-        "x86_64-netbsd"
+        # FIXME: still broken in 24.05: fails to build rustc(??) due to missing -lstdc++ dep
+        # "x86_64-freebsd"
+        # FIXME: broken dev shell due to python
+        # "x86_64-netbsd"
       ];
 
       stdenvs = [
@@ -282,9 +282,20 @@
 
           nixpkgsLibTests = forAllSystems (
             system:
-            import (nixpkgs + "/lib/tests/release.nix") {
+            let
+              inherit (self.packages.${system}) nix;
               pkgs = nixpkgsFor.${system}.native;
-              nixVersions = [ self.packages.${system}.nix ];
+              testWithNix = import (nixpkgs + "/lib/tests/test-with-nix.nix") { inherit pkgs lib nix; };
+            in
+            pkgs.symlinkJoin {
+              name = "nixpkgs-lib-tests";
+              paths =
+                [ testWithNix ]
+                # FIXME: This is disabled on darwin due to a nixpkgs bug https://github.com/NixOS/nixpkgs/issues/319147
+                # After that is fixed, it should be restored to use lib/tests/release.nix as before, rather than this reimplementation.
+                ++ lib.optionals pkgs.stdenv.isLinux [
+                  (import (nixpkgs + "/pkgs/test/release") { inherit pkgs lib nix; })
+                ];
             }
           );
         };
