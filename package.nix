@@ -390,16 +390,20 @@ stdenv.mkDerivation (finalAttrs: {
     mkDevShell =
       {
         mkShell,
-        just,
-        nixfmt,
-        glibcLocales,
-        pre-commit-checks,
+
+        bashInteractive,
         clang-tools,
-        llvmPackages,
         clangbuildanalyzer,
-        contribNotice,
+        glibcLocales,
+        just,
+        llvmPackages,
+        nixfmt,
         skopeo,
         xonsh,
+
+        # Lix specific packages
+        pre-commit-checks,
+        contribNotice,
       }:
       let
         glibcFix = lib.optionalAttrs (buildPlatform.isLinux && glibcLocales != null) {
@@ -446,6 +450,10 @@ stdenv.mkDerivation (finalAttrs: {
           packages =
             lib.optional (stdenv.cc.isClang && hostPlatform == buildPlatform) clang-tools
             ++ [
+              # Why are we providing a bashInteractive? Well, when you run
+              # `bash` from inside `nix develop`, say, because you are using it
+              # via direnv, you will by default get bash (unusable edition).
+              bashInteractive
               pythonEnv
               # docker image tool
               skopeo
