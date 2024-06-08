@@ -37,7 +37,8 @@ in {
         { config, pkgs, ... }:
         { services.openssh.enable = true;
           services.openssh.settings.PermitRootLogin = "yes";
-					users.users.root.password = "foobar";
+          users.users.root.hashedPasswordFile = lib.mkForce null;
+          users.users.root.password = "foobar";
           virtualisation.writableStore = true;
           virtualisation.additionalPaths = [ pkgB pkgC ];
         };
