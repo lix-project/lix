@@ -70,8 +70,6 @@
         # `boehmgc-nix` then this will almost certainly have duplicate patches, which means
         # the patches won't apply and we'll get a build failure.
         ./boehmgc-coroutine-sp-fallback.diff
-        # https://github.com/ivmai/bdwgc/pull/586
-        ./boehmgc-traceable_allocator-public.diff
       ];
     };
 

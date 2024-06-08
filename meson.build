@@ -189,7 +189,7 @@ configdata = { }
 # Dependencies
 #
 
-boehm = dependency('bdw-gc', required : get_option('gc'))
+boehm = dependency('bdw-gc', required : get_option('gc'), version : '>=8.2.6')
 if boehm.found()
   deps += boehm
 endif

@@ -2,7 +2,7 @@
   description = "The purely functional package manager";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11-small";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05-small";
     nixpkgs-regression.url = "github:NixOS/nixpkgs/215d4d0fd80ca5163643b03a33fde804a29cc1e2";
     pre-commit-hooks = {
       url = "github:cachix/git-hooks.nix";
