@@ -189,7 +189,7 @@
           };
 
           nix = final.callPackage ./package.nix {
-            inherit versionSuffix;
+            inherit versionSuffix officialRelease;
             stdenv = currentStdenv;
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
           };
@@ -207,7 +207,6 @@
       overlays.default = overlayFor (p: p.stdenv);
 
       hydraJobs = {
-
         # Binary package for various platforms.
         build = forAllSystems (system: self.packages.${system}.nix);
 
@@ -297,6 +296,11 @@
         );
       };
 
+      release-jobs = import ./releng/release-jobs.nix {
+        inherit (self) hydraJobs;
+        pkgs = nixpkgsFor.x86_64-linux.native;
+      };
+
       # NOTE *do not* add fresh derivations to checks, always add them to
       # hydraJobs first (so CI will pick them up) and only link them here
       checks = forAvailableSystems (
@@ -361,7 +365,7 @@
             pkgs: stdenv:
             let
               nix = pkgs.callPackage ./package.nix {
-                inherit stdenv versionSuffix;
+                inherit stdenv officialRelease versionSuffix;
                 busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
                 internalApiDocs = true;
               };

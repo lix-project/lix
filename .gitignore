@@ -28,3 +28,4 @@ buildtime.bin
 # We generate this with a Nix shell hook
 /.pre-commit-config.yaml
 /.nocontribmsg
+/release

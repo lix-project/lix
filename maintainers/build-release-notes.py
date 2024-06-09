@@ -143,7 +143,7 @@ def run_on_dir(author_info: AuthorInfoDB, d):
 
     for category in CATEGORIES:
         if entries[category]:
-            print('\n#', category)
+            print('\n##', category)
             do_category(author_info, entries[category])
 
 def main():
