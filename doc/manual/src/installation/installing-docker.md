@@ -1,64 +1,62 @@
 # Using Lix within Docker
 
-Currently the Lix project doesn't ship docker images. However, we have the infrastructure to do it, it's just not yet been done. See https://git.lix.systems/lix-project/lix/issues/252
-
-<!--
+Lix is available on the following two container registries:
+- [ghcr.io/lix-project/lix](https://ghcr.io/lix-project/lix)
+- [git.lix.systems/lix-project/lix](https://git.lix.systems/lix-project/-/packages/container/lix)
 
 To run the latest stable release of Lix with Docker run the following command:
 
 ```console
-$ docker run -ti nixos/nix
-Unable to find image 'nixos/nix:latest' locally
-latest: Pulling from nixos/nix
-5843afab3874: Pull complete
-b52bf13f109c: Pull complete
-1e2415612aa3: Pull complete
-Digest: sha256:27f6e7f60227e959ee7ece361f75d4844a40e1cc6878b6868fe30140420031ff
-Status: Downloaded newer image for nixos/nix:latest
-35ca4ada6e96:/# nix --version
-nix (Nix) 2.3.12
-35ca4ada6e96:/# exit
+~ » sudo podman run -it ghcr.io/lix-project/lix:latest
+Trying to pull ghcr.io/lix-project/lix:latest...
+
+bash-5.2# nix --version
+nix (Lix, like Nix) 2.90.0
 ```
 
 # What is included in Lix's Docker image?
 
-The official Docker image is created using `pkgs.dockerTools.buildLayeredImage`
+The official Docker image is created using [nix2container]
 (and not with `Dockerfile` as it is usual with Docker images). You can still
 base your custom Docker image on it as you would do with any other Docker
 image.
 
-The Docker image is also not based on any other image and includes minimal set
-of runtime dependencies that are required to use Lix:
+[nix2container]: https://github.com/nlewo/nix2container
 
- - pkgs.nix
- - pkgs.bashInteractive
- - pkgs.coreutils-full
- - pkgs.gnutar
- - pkgs.gzip
- - pkgs.gnugrep
- - pkgs.which
- - pkgs.curl
- - pkgs.less
- - pkgs.wget
- - pkgs.man
- - pkgs.cacert.out
- - pkgs.findutils
+The Docker image is also not based on any other image and includes the nixpkgs
+that Lix was built with along with a minimal set of tools in the system profile:
+
+- bashInteractive
+- cacert.out
+- coreutils-full
+- curl
+- findutils
+- gitMinimal
+- gnugrep
+- gnutar
+- gzip
+- iana-etc
+- less
+- libxml2
+- lix
+- man
+- openssh
+- sqlite
+- wget
+- which
 
 # Docker image with the latest development version of Lix
 
-To get the latest image that was built by [Hydra](https://hydra.nixos.org) run
-the following command:
+FIXME: There are not currently images of development versions of Lix. Tracking issue: https://git.lix.systems/lix-project/lix/issues/381
+
+You can build a Docker image from source yourself and copy it to either:
+
+Podman: `nix run '.#dockerImage.copyTo' containers-storage:lix`
+
+Docker: `nix run '.#dockerImage.copyToDockerDaemon'`
+
+Then:
 
 ```console
-$ curl -L https://hydra.nixos.org/job/nix/master/dockerImage.x86_64-linux/latest/download/1 | docker load
-$ docker run -ti nix:2.5pre20211105
+$ docker run -ti lix
 ```
-
-You can also build a Docker image from source yourself:
-
-```console
-$ nix build ./\#hydraJobs.dockerImage.x86_64-linux
-$ docker load -i ./result/image.tar.gz
-$ docker run -ti nix:2.5pre20211105
-```
--->
