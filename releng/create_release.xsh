@@ -11,6 +11,7 @@ from .environment import RelengEnvironment
 from . import keys
 from . import docker
 from .version import VERSION, RELEASE_NAME, MAJOR
+from .gitutils import verify_are_on_tag, git_preconditions
 
 $RAISE_SUBPROC_ERROR = True
 $XONSH_SHOW_TRACEBACK = True
@@ -36,15 +37,6 @@ def setup_creds(env: RelengEnvironment):
     $AWS_ACCESS_KEY_ID = key.id
     $AWS_DEFAULT_REGION = 'garage'
     $AWS_ENDPOINT_URL = environment.S3_ENDPOINT
-
-
-def git_preconditions():
-    # verify there is nothing in index ready to stage
-    proc = !(git diff-index --quiet --cached HEAD --)
-    assert proc.rtn == 0
-    # verify there is nothing *stageable* and tracked
-    proc = !(git diff-files --quiet)
-    assert proc.rtn == 0
 
 
 def official_release_commit_tag(force_tag=False):
@@ -238,11 +230,6 @@ def prepare_release_notes():
     git rm doc/manual/rl-next/*.md
 
     git commit -m @(commit_msg)
-
-
-def verify_are_on_tag():
-    current_tag = $(git describe --tag).strip()
-    assert current_tag == VERSION
 
 
 def upload_artifacts(env: RelengEnvironment, noconfirm=False, no_check_git=False, force_push_tag=False):

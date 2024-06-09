@@ -64,7 +64,7 @@ STAGING = RelengEnvironment(
     releases_bucket='s3://staging-releases',
     git_repo='ssh://git@git.lix.systems/lix-project/lix-releng-staging',
     docker_targets=[
-        # FIXME: how do we make sure that latest gets the latest of the *most recent* branch?
+        # latest will be auto tagged if appropriate
         DockerTarget('git.lix.systems/lix-project/lix-releng-staging',
                      tags=['{version}', '{major}']),
         DockerTarget('ghcr.io/lix-project/lix-releng-staging',

@@ -11,6 +11,7 @@ from . import version
 from . import cli
 from . import docker
 from . import docker_assemble
+from . import gitutils
 
 rootLogger = logging.getLogger()
 rootLogger.setLevel(logging.DEBUG)
@@ -35,3 +36,4 @@ def reload():
     importlib.reload(cli)
     importlib.reload(docker)
     importlib.reload(docker_assemble)
+    importlib.reload(gitutils)
