@@ -1,5 +1,7 @@
 {
   pkgs ? import <nixpkgs> { },
+  # Git commit ID, if available
+  lixRevision ? null,
   nix2container,
   lib ? pkgs.lib,
   name ? "lix",
@@ -353,6 +355,23 @@ let
         "NIX_SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"
         "NIX_PATH=/nix/var/nix/profiles/per-user/root/channels:/root/.nix-defexpr/channels"
       ];
+
+      Labels = {
+        "org.opencontainers.image.title" = "Lix";
+        "org.opencontainers.image.source" = "https://git.lix.systems/lix-project/lix";
+        "org.opencontainers.image.vendor" = "Lix project";
+        "org.opencontainers.image.version" = pkgs.nix.version;
+        "org.opencontainers.image.description" = "Minimal Lix container image, with some batteries included.";
+      } // lib.optionalAttrs (lixRevision != null) { "org.opencontainers.image.revision" = lixRevision; };
+    };
+
+    meta = {
+      description = "Docker image for Lix. This is built with nix2container; see that project's README for details";
+      longDescription = ''
+        Docker image for Lix, built with nix2container.
+        To copy it to your docker daemon, nix run .#dockerImage.copyToDockerDaemon
+        To copy it to podman, nix run .#dockerImage.copyTo containers-storage:lix
+      '';
     };
   };
 in
@@ -379,12 +398,4 @@ image
         gzip $image
         echo "file binary-dist $image" >> $out/nix-support/hydra-build-products
       '';
-  meta = image.meta // {
-    description = "Docker image for Lix. This is built with nix2container; see that project's README for details";
-    longDescription = ''
-      Docker image for Lix, built with nix2container.
-      To copy it to your docker daemon, nix run .#dockerImage.copyToDockerDaemon
-      To copy it to podman, nix run .#dockerImage.copyTo containers-storage:lix
-    '';
-  };
 }

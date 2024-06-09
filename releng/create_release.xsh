@@ -258,15 +258,16 @@ def upload_artifacts(env: RelengEnvironment, noconfirm=False, no_check_git=False
         'I want to release this'
     )
 
+    docker_images = list((ARTIFACTS / f'lix/lix-{VERSION}').glob(f'lix-{VERSION}-docker-image-*.tar.gz'))
+    assert docker_images
+
     print('[+] Upload to cache')
     with open(DRVS_TXT) as fh:
         upload_drv_paths_and_outputs(env, [x.strip() for x in fh.readlines() if x])
 
-    docker_images = (ARTIFACTS / f'lix/lix-{VERSION}').glob(f'lix-{VERSION}-docker-image-*.tar.gz')
     print('[+] Upload docker images')
-    for image in docker_images:
-        for target in env.docker_targets:
-            docker.upload_docker_image(target, image)
+    for target in env.docker_targets:
+        docker.upload_docker_images(target, docker_images)
 
     print('[+] Upload to release bucket')
     aws s3 cp --recursive @(ARTIFACTS)/ @(env.releases_bucket)/
@@ -321,7 +322,8 @@ def build_artifacts(no_check_git=False):
     build_manual(eval_result)
 
     with open(DRVS_TXT, 'w') as fh:
-        fh.write('\n'.join(drv_paths))
+        # don't bother putting the release tarballs themselves because they are duplicate and huge
+        fh.write('\n'.join(x['drvPath'] for x in eval_result if x['attr'] != 'lix-release-tarballs'))
 
     make_artifacts_dir(eval_result, ARTIFACTS)
     print(f'[+] Done! See {ARTIFACTS}')

@@ -1,5 +1,5 @@
-import dataclasses
 import urllib.parse
+import dataclasses
 
 S3_HOST = 's3.lix.systems'
 S3_ENDPOINT = 'https://s3.lix.systems'
@@ -19,12 +19,19 @@ DEFAULT_STORE_URI_BITS = {
 @dataclasses.dataclass
 class DockerTarget:
     registry_path: str
+    """Registry path without the tag, e.g. ghcr.io/lix-project/lix"""
 
-    def resolve(self, version: str) -> str:
-        """Applies templates:
-        - version: the Lix version
+    tags: list[str]
+    """List of tags this image should take. There must be at least one."""
+
+    @staticmethod
+    def resolve(item: str, version: str, major: str) -> str:
         """
-        return self.registry_path.format(version=version)
+        Applies templates:
+        - version: the Lix version e.g. 2.90.0
+        - major: the major Lix version e.g. 2.90
+        """
+        return item.format(version=version, major=major)
 
     def registry_name(self) -> str:
         [a, _, _] = self.registry_path.partition('/')
@@ -57,10 +64,11 @@ STAGING = RelengEnvironment(
     releases_bucket='s3://staging-releases',
     git_repo='ssh://git@git.lix.systems/lix-project/lix-releng-staging',
     docker_targets=[
-        DockerTarget(
-            'git.lix.systems/lix-project/lix-releng-staging:{version}'),
-        DockerTarget(
-            'ghcr.io/lix-project/lix-releng-staging:{version}'),
+        # FIXME: how do we make sure that latest gets the latest of the *most recent* branch?
+        DockerTarget('git.lix.systems/lix-project/lix-releng-staging',
+                     tags=['{version}', '{major}']),
+        DockerTarget('ghcr.io/lix-project/lix-releng-staging',
+                     tags=['{version}', '{major}']),
     ],
 )
 

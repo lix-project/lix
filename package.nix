@@ -417,6 +417,8 @@ stdenv.mkDerivation (finalAttrs: {
           p: [
             p.yapf
             p.python-frontmatter
+            p.requests
+            p.xdg-base-dirs
             (p.toPythonModule xonsh-unwrapped)
           ]
         );
