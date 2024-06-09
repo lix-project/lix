@@ -240,9 +240,10 @@ def upload_artifacts(env: RelengEnvironment, noconfirm=False, no_check_git=False
 
     tree @(ARTIFACTS)
 
+    env_part = f'environment {env.name}'
     not noconfirm and confirm(
-        f'Would you like to release {ARTIFACTS} as {VERSION}? Type "I want to release this" to confirm\n',
-        'I want to release this'
+        f'Would you like to release {ARTIFACTS} as {VERSION} in {env.colour(env_part)}? Type "I want to release this to {env.name}" to confirm\n',
+        f'I want to release this to {env.name}'
     )
 
     docker_images = list((ARTIFACTS / f'lix/lix-{VERSION}').glob(f'lix-{VERSION}-docker-image-*.tar.gz'))

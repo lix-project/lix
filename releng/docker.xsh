@@ -49,7 +49,7 @@ def upload_docker_images(target: DockerTarget, paths: list[Path]):
             docker_os = inspection['Os']
             meta = inspection['Labels']
 
-            log.info('Pushing image %s for %s', path, docker_arch)
+            log.info('Pushing image %s for %s to %s', path, docker_arch, target.registry_path)
 
             # insecure-policy: we don't have any signature policy, we are just uploading an image
             # We upload to a junk tag, because otherwise it will upload to `latest`, which is undesirable
@@ -67,7 +67,7 @@ def upload_docker_images(target: DockerTarget, paths: list[Path]):
     # FIXME: this is not possible because GitHub only has a proprietary API for it. amazing. 11/10.
     # reg.delete_tag(target.registry_path, 'temp')
 
-    log.info('Pushed images, building a bigger and more menacing manifest from %r with metadata %r', manifests, meta)
+    log.info('Pushed images to %r, building a bigger and more menacing manifest from %r with metadata %r', target, manifests, meta)
     # send the multiarch manifest to each tag
     index = OCIIndex(manifests=manifests, annotations=meta)
     for tag in tag_names:
