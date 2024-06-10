@@ -406,10 +406,6 @@ stdenv.mkDerivation (finalAttrs: {
           # Required to make non-NixOS Linux not complain about missing locale files during configure in a dev shell
           LOCALE_ARCHIVE = "${lib.getLib pkgs.glibcLocales}/lib/locale/locale-archive";
         };
-        # for some reason that seems accidental and was changed in
-        # NixOS 24.05-pre, clang-tools is pinned to LLVM 14 when
-        # default LLVM is newer.
-        clang-tools_llvm = clang-tools.override { inherit llvmPackages; };
 
         pythonPackages = (
           p: [
@@ -448,7 +444,7 @@ stdenv.mkDerivation (finalAttrs: {
             ++ [ (lib.mesonBool "enable-pch-std" stdenv.cc.isClang) ];
 
           packages =
-            lib.optional (stdenv.cc.isClang && hostPlatform == buildPlatform) clang-tools_llvm
+            lib.optional (stdenv.cc.isClang && hostPlatform == buildPlatform) clang-tools
             ++ [
               pythonEnv
               # docker image tool

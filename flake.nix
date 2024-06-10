@@ -135,13 +135,11 @@
                   {
                     system = crossSystem;
                   }
-                  // lib.optionalAttrs (crossSystem == "x86_64-freebsd13") { useLLVM = true; };
+                  // lib.optionalAttrs (crossSystem == "x86_64-freebsd") { useLLVM = true; };
               overlays = [
                 (overlayFor (p: p.${stdenv}))
                 (final: prev: { nixfmt = final.callPackage ./nix-support/nixfmt.nix { }; })
               ];
-
-              config.permittedInsecurePackages = [ "nix-2.13.6" ];
             };
           stdenvs = forAllStdenvs (make-pkgs null);
           native = stdenvs.stdenvPackages;
@@ -167,7 +165,6 @@
           nixUnstable = prev.nixUnstable;
 
           check-headers = final.buildPackages.callPackage ./maintainers/check-headers.nix { };
-          clangbuildanalyzer = final.buildPackages.callPackage ./misc/clangbuildanalyzer.nix { };
 
           default-busybox-sandbox-shell = final.busybox.override {
             useMusl = true;
