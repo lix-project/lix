@@ -8,6 +8,10 @@
       url = "github:cachix/git-hooks.nix";
       flake = false;
     };
+    nix2container = {
+      url = "github:nlewo/nix2container";
+      flake = false;
+    };
     flake-compat = {
       url = "github:edolstra/flake-compat";
       flake = false;
@@ -20,6 +24,7 @@
       nixpkgs,
       nixpkgs-regression,
       pre-commit-hooks,
+      nix2container,
       flake-compat,
     }:
 
@@ -330,19 +335,13 @@
             dockerImage =
               let
                 pkgs = nixpkgsFor.${system}.native;
-                image = import ./docker.nix {
-                  inherit pkgs;
-                  tag = pkgs.nix.version;
-                };
+                nix2container' = import nix2container { inherit pkgs system; };
               in
-              pkgs.runCommand "docker-image-tarball-${pkgs.nix.version}"
-                { meta.description = "Docker image with Lix for ${system}"; }
-                ''
-                  mkdir -p $out/nix-support
-                  image=$out/image.tar.gz
-                  ln -s ${image} $image
-                  echo "file binary-dist $image" >> $out/nix-support/hydra-build-products
-                '';
+              import ./docker.nix {
+                inherit pkgs;
+                nix2container = nix2container'.nix2container;
+                tag = pkgs.nix.version;
+              };
           }
           // builtins.listToAttrs (
             map (crossSystem: {

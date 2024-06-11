@@ -33,7 +33,7 @@ let
       targetName = "*.tar.xz";
     }) systems
     ++ builtins.map (system: {
-      target = hydraJobs.dockerImage.${system};
+      target = hydraJobs.dockerImage.${system}.tarball;
       targetName = "image.tar.gz";
       rename = "lix-${lix.version}-docker-image-${system}.tar.gz";
     }) dockerSystems;

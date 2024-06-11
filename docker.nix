@@ -1,5 +1,8 @@
 {
   pkgs ? import <nixpkgs> { },
+  # Git commit ID, if available
+  lixRevision ? null,
+  nix2container,
   lib ? pkgs.lib,
   name ? "lix",
   tag ? "latest",
@@ -12,26 +15,51 @@
   flake-registry ? null,
 }:
 let
+  layerContents = with pkgs; [
+    # pulls in glibc and openssl, about 60MB
+    { contents = [ coreutils-full ]; }
+    # some stuff that is low in the closure graph and small ish, mostly to make
+    # incremental lix updates cheaper
+    {
+      contents = [
+        curl
+        libxml2
+        sqlite
+      ];
+    }
+    # 50MB of git
+    { contents = [ gitMinimal ]; }
+    # 144MB of nixpkgs
+    {
+      contents = [ channel ];
+      inProfile = false;
+    }
+  ];
+
+  # These packages are left to be auto layered by nix2container, since it is
+  # less critical that they get layered sensibly and they tend to not be deps
+  # of anything in particular
+  autoLayered = with pkgs; [
+    bashInteractive
+    gnutar
+    gzip
+    gnugrep
+    which
+    less
+    wget
+    man
+    cacert.out
+    findutils
+    iana-etc
+    openssh
+    nix
+  ];
+
   defaultPkgs =
-    with pkgs;
-    [
-      nix
-      bashInteractive
-      coreutils-full
-      gnutar
-      gzip
-      gnugrep
-      which
-      curl
-      less
-      wget
-      man
-      cacert.out
-      findutils
-      iana-etc
-      git
-      openssh
-    ]
+    lib.lists.flatten (
+      map (x: if !(x ? inProfile) || x.inProfile then x.contents else [ ]) layerContents
+    )
+    ++ autoLayered
     ++ extraPkgs;
 
   users =
@@ -139,16 +167,17 @@ let
     ))
     + "\n";
 
+  nixpkgs = pkgs.path;
+  channel = pkgs.runCommand "channel-nixpkgs" { } ''
+    mkdir $out
+    ${lib.optionalString bundleNixpkgs ''
+      ln -s ${nixpkgs} $out/nixpkgs
+      echo "[]" > $out/manifest.nix
+    ''}
+  '';
+
   baseSystem =
     let
-      nixpkgs = pkgs.path;
-      channel = pkgs.runCommand "channel-nixos" { inherit bundleNixpkgs; } ''
-        mkdir $out
-        if [ "$bundleNixpkgs" ]; then
-          ln -s ${nixpkgs} $out/nixpkgs
-          echo "[]" > $out/manifest.nix
-        fi
-      '';
       rootEnv = pkgs.buildPackages.buildEnv {
         name = "root-profile-env";
         paths = defaultPkgs;
@@ -187,7 +216,7 @@ let
       profile = pkgs.buildPackages.runCommand "user-environment" { } ''
         mkdir $out
         cp -a ${rootEnv}/* $out/
-        ln -s ${manifest} $out/manifest.nix
+        ln -sf ${manifest} $out/manifest.nix
       '';
       flake-registry-path =
         if (flake-registry == null) then
@@ -236,6 +265,7 @@ let
           ln -s /nix/var/nix/profiles/share $out/usr/
 
           mkdir -p $out/nix/var/nix/gcroots
+          ln -s /nix/var/nix/profiles $out/nix/var/nix/gcroots/profiles
 
           mkdir $out/tmp
 
@@ -248,14 +278,14 @@ let
           mkdir -p $out/nix/var/nix/profiles/per-user/root
 
           ln -s ${profile} $out/nix/var/nix/profiles/default-1-link
-          ln -s $out/nix/var/nix/profiles/default-1-link $out/nix/var/nix/profiles/default
+          ln -s /nix/var/nix/profiles/default-1-link $out/nix/var/nix/profiles/default
           ln -s /nix/var/nix/profiles/default $out/root/.nix-profile
 
           ln -s ${channel} $out/nix/var/nix/profiles/per-user/root/channels-1-link
-          ln -s $out/nix/var/nix/profiles/per-user/root/channels-1-link $out/nix/var/nix/profiles/per-user/root/channels
+          ln -s /nix/var/nix/profiles/per-user/root/channels-1-link $out/nix/var/nix/profiles/per-user/root/channels
 
           mkdir -p $out/root/.nix-defexpr
-          ln -s $out/nix/var/nix/profiles/per-user/root/channels $out/root/.nix-defexpr/channels
+          ln -s /nix/var/nix/profiles/per-user/root/channels $out/root/.nix-defexpr/channels
           echo "${channelURL} ${channelName}" > $out/root/.nix-channels
 
           mkdir -p $out/bin $out/usr/bin
@@ -273,43 +303,99 @@ let
           ln -s $globalFlakeRegistryPath $out/nix/var/nix/gcroots/auto/$rootName
         '')
       );
-in
-pkgs.dockerTools.buildLayeredImageWithNixDb {
 
-  inherit name tag maxLayers;
+  layers = builtins.foldl' (
+    layersList: el:
+    let
+      layer = nix2container.buildLayer {
+        deps = el.contents;
+        layers = layersList;
+      };
+    in
+    layersList ++ [ layer ]
+  ) [ ] layerContents;
 
-  contents = [ baseSystem ];
+  image = nix2container.buildImage {
 
-  extraCommands = ''
-    rm -rf nix-support
-    ln -s /nix/var/nix/profiles nix/var/nix/gcroots/profiles
-  '';
-  fakeRootCommands = ''
-    chmod 1777 tmp
-    chmod 1777 var/tmp
-  '';
+    inherit name tag maxLayers;
 
-  config = {
-    Cmd = [ "/root/.nix-profile/bin/bash" ];
-    Env = [
-      "USER=root"
-      "PATH=${
-        lib.concatStringsSep ":" [
-          "/root/.nix-profile/bin"
-          "/nix/var/nix/profiles/default/bin"
-          "/nix/var/nix/profiles/default/sbin"
-        ]
-      }"
-      "MANPATH=${
-        lib.concatStringsSep ":" [
-          "/root/.nix-profile/share/man"
-          "/nix/var/nix/profiles/default/share/man"
-        ]
-      }"
-      "SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"
-      "GIT_SSL_CAINFO=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"
-      "NIX_SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"
-      "NIX_PATH=/nix/var/nix/profiles/per-user/root/channels:/root/.nix-defexpr/channels"
+    inherit layers;
+
+    copyToRoot = [ baseSystem ];
+
+    initializeNixDatabase = true;
+
+    perms = [
+      {
+        path = baseSystem;
+        regex = "(/var)?/tmp";
+        mode = "1777";
+      }
     ];
+
+    config = {
+      Cmd = [ "/root/.nix-profile/bin/bash" ];
+      Env = [
+        "USER=root"
+        "PATH=${
+          lib.concatStringsSep ":" [
+            "/root/.nix-profile/bin"
+            "/nix/var/nix/profiles/default/bin"
+            "/nix/var/nix/profiles/default/sbin"
+          ]
+        }"
+        "MANPATH=${
+          lib.concatStringsSep ":" [
+            "/root/.nix-profile/share/man"
+            "/nix/var/nix/profiles/default/share/man"
+          ]
+        }"
+        "SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"
+        "GIT_SSL_CAINFO=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"
+        "NIX_SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"
+        "NIX_PATH=/nix/var/nix/profiles/per-user/root/channels:/root/.nix-defexpr/channels"
+      ];
+
+      Labels = {
+        "org.opencontainers.image.title" = "Lix";
+        "org.opencontainers.image.source" = "https://git.lix.systems/lix-project/lix";
+        "org.opencontainers.image.vendor" = "Lix project";
+        "org.opencontainers.image.version" = pkgs.nix.version;
+        "org.opencontainers.image.description" = "Minimal Lix container image, with some batteries included.";
+      } // lib.optionalAttrs (lixRevision != null) { "org.opencontainers.image.revision" = lixRevision; };
+    };
+
+    meta = {
+      description = "Docker image for Lix. This is built with nix2container; see that project's README for details";
+      longDescription = ''
+        Docker image for Lix, built with nix2container.
+        To copy it to your docker daemon, nix run .#dockerImage.copyToDockerDaemon
+        To copy it to podman, nix run .#dockerImage.copyTo containers-storage:lix
+      '';
+    };
   };
+in
+image
+// {
+  # We don't ship the tarball as the default output because it is a strange thing to want imo
+  tarball =
+    pkgs.buildPackages.runCommand "docker-image-tarball-${pkgs.nix.version}"
+      {
+        nativeBuildInputs = [ pkgs.buildPackages.bubblewrap ];
+        meta.description = "Docker image tarball with Lix for ${pkgs.system}";
+      }
+      ''
+        mkdir -p $out/nix-support
+        image=$out/image.tar
+        # bwrap for foolish temp dir selection code that forces /var/tmp:
+        # https://github.com/containers/skopeo.git/blob/60ee543f7f7c242f46cc3a7541d9ac8ab1c89168/vendor/github.com/containers/image/v5/internal/tmpdir/tmpdir.go#L15-L18
+        mkdir -p $TMPDIR/fake-var/tmp
+        args=(--unshare-user --bind "$TMPDIR/fake-var" /var)
+        for dir in /*; do
+          args+=(--dev-bind "/$dir" "/$dir")
+        done
+        bwrap ''${args[@]} -- ${lib.getExe image.copyTo} docker-archive:$image
+        gzip $image
+        echo "file binary-dist $image" >> $out/nix-support/hydra-build-products
+      '';
 }

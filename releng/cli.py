@@ -1,4 +1,8 @@
 from . import create_release
+from . import docker
+from .environment import RelengEnvironment
+from . import environment
+import functools
 import argparse
 import sys
 
@@ -18,13 +22,16 @@ def do_tag(args):
                                 no_check_git=args.no_check_git)
 
 
-def do_upload(args):
-    create_release.setup_creds()
+def do_upload(env: RelengEnvironment, args):
+    create_release.setup_creds(env)
     if args.target == 'all':
-        create_release.upload_artifacts(force_push_tag=args.force_push_tag,
-                                        noconfirm=args.noconfirm)
+        docker.check_all_logins(env)
+        create_release.upload_artifacts(env,
+                                        force_push_tag=args.force_push_tag,
+                                        noconfirm=args.noconfirm,
+                                        no_check_git=args.no_check_git)
     elif args.target == 'manual':
-        create_release.upload_manual()
+        create_release.upload_manual(env)
     else:
         raise ValueError('invalid target, unreachable')
 
@@ -77,6 +84,10 @@ def main():
 
     upload = sps.add_parser(
         'upload', help='Upload artifacts to cache and releases bucket')
+    upload.add_argument(
+        '--no-check-git',
+        action='store_true',
+        help="Don't check git state before uploading. For testing.")
     upload.add_argument('--force-push-tag',
                         action='store_true',
                         help='Force push the tag. For testing.')
@@ -90,7 +101,12 @@ def main():
         '--noconfirm',
         action='store_true',
         help="Don't ask for confirmation. For testing/automation.")
-    upload.set_defaults(cmd=do_upload)
+    upload.add_argument('--environment',
+                        choices=list(environment.ENVIRONMENTS.keys()),
+                        default='staging',
+                        help='Environment to release to')
+    upload.set_defaults(cmd=lambda args: do_upload(
+        environment.ENVIRONMENTS[args.environment], args))
 
     args = ap.parse_args()
     args.cmd(args)
