@@ -22,6 +22,7 @@ nix registry list | grep '^global flake:home-manager'
 set -m
 # port 0: auto pick a free port, unbufferred output
 python3 -u -m http.server 0 --bind 127.0.0.1 > server.out &
+
 # wait for the http server to admit it is working
 while ! grep -qP 'port \d+' server.out ; do
   echo 'waiting for python http' >&2
@@ -69,4 +70,4 @@ nix registry list | grep '^global flake:private-flake'
 # make sure we have a warning:
 nix registry list 2>&1 | grep "config option flake-registry referring to a URL is deprecated and will be removed"
 
-kill %1
+kill %python
