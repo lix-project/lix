@@ -394,14 +394,16 @@ The following attributes are supported in `flake.nix`:
   value (e.g. `packages.x86_64-linux` must be an attribute set of
   derivations built for the `x86_64-linux` platform).
 
-* `nixConfig`: a set of `nix.conf` options to be set when evaluating any
-  part of a flake. In the interests of security, only a small set of
-  set of options is allowed to be set without confirmation so long as [`accept-flake-config`](@docroot@/command-ref/conf-file.md#conf-accept-flake-config) is not enabled in the global configuration:
+* `nixConfig`: a set of `nix.conf` options to be set when evaluating any part of a flake.
+  This attribute is only considered if the flake is at top-level (i.e. if it is passed directly to `nix build`, `nix run`, etc, rather than as an input of another flake).
+  In the interests of security, only a small set of set of options is allowed to be set without confirmation so long as [`accept-flake-config`](@docroot@/command-ref/conf-file.md#conf-accept-flake-config) is not enabled in the global configuration:
    - [`bash-prompt`](@docroot@/command-ref/conf-file.md#conf-bash-prompt)
    - [`bash-prompt-prefix`](@docroot@/command-ref/conf-file.md#conf-bash-prompt-prefix)
    - [`bash-prompt-suffix`](@docroot@/command-ref/conf-file.md#conf-bash-prompt-suffix)
    - [`flake-registry`](@docroot@/command-ref/conf-file.md#conf-flake-registry)
    - [`commit-lockfile-summary`](@docroot@/command-ref/conf-file.md#conf-commit-lockfile-summary)
+
+  For the avoidance of doubt, setting `accept-flake-config` in `nix.conf` or passing `--accept-flake-config` *allows root access to your machine* if you are running as a trusted user and don't read `nixConfig` in every flake you build.
 
 ## Flake inputs
 

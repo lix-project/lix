@@ -87,7 +87,17 @@ struct FetchSettings : public Config
         {}, true, Xp::Flakes};
 
     Setting<bool> acceptFlakeConfig{this, false, "accept-flake-config",
-        "Whether to accept nix configuration from a flake without prompting.",
+        R"(
+          Whether to accept Lix configuration from the `nixConfig` attribute of
+          a flake without prompting. This is almost always a very bad idea.
+
+          Setting this setting as a trusted user allows Nix flakes to gain root
+          access on your machine if they set one of the several
+          trusted-user-only settings that execute commands as root.
+
+          See [multi-user installations](@docroot@/installation/multi-user.md)
+          for more details on the Lix security model.
+        )",
         {}, true, Xp::Flakes};
 
     Setting<std::string> commitLockFileSummary{

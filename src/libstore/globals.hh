@@ -331,7 +331,7 @@ public:
           performed by the Lix account since that would allow users to
           arbitrarily modify the Nix store and database by supplying specially
           crafted builders; and they cannot be performed by the calling user
-          since that would allow him/her to influence the build result.
+          since that would allow them to influence the build result.
 
           Therefore, if this option is non-empty and specifies a valid group,
           builds will be performed under the user accounts that are a member
@@ -352,9 +352,16 @@ public:
 
           If the build users group is empty, builds will be performed under
           the uid of the Lix process (that is, the uid of the caller if
-          `NIX_REMOTE` is empty, the uid under which the Nix daemon runs if
-          `NIX_REMOTE` is `daemon`). Obviously, this should not be used
+          both `NIX_REMOTE` is either empty or `auto` and the Nix store is
+          owned by that user, or, alternatively, the uid under which the Nix
+          daemon runs if `NIX_REMOTE` is `daemon` or if it is `auto` and the
+          store is not owned by the caller). Obviously, this should not be used
           with a nix daemon accessible to untrusted clients.
+
+          For the avoidance of doubt, explicitly setting this to *empty* with a
+          Lix daemon running as root means that builds will be executed as root
+          with respect to the rest of the system.
+          We intend to fix this: https://git.lix.systems/lix-project/lix/issues/242
 
           Defaults to `nixbld` when running as root, *empty* otherwise.
         )",
