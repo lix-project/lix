@@ -212,6 +212,11 @@
         # Binary package for various platforms.
         build = forAllSystems (system: self.packages.${system}.nix);
 
+        devShell = forAllSystems (system: {
+          default = self.devShells.${system}.default;
+          clang = self.devShells.${system}.native-clangStdenvPackages;
+        });
+
         rl-next = forAllSystems (
           system:
           let
@@ -319,6 +324,9 @@
       checks = forAvailableSystems (
         system:
         {
+          # devShells and packages already get checked by nix flake check, so
+          # this is just jobs that are special
+
           binaryTarball = self.hydraJobs.binaryTarball.${system};
           perlBindings = self.hydraJobs.perlBindings.${system};
           nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
