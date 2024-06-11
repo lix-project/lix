@@ -330,3 +330,135 @@ solved this need?
 ~~>
 
 -->
+
+## Magic environment variables
+
+FIXME: maybe this section should be moved elsewhere or turned partially into user docs, but I just need a complete index for now.
+I actually want to ban people calling getenv without writing documentation, and produce a comprehensive list of env-vars used by Lix and enforce it.
+
+This is a non-exhaustive list of almost all environment variables, magic or not, accepted or used by various parts of the test suite as well as Lix itself.
+Please add more if you find them.
+
+I looked for these in the testsuite with the following bad regexes:
+
+```
+rg '(?:[^A-Za-z]|^)(_[A-Z][^-\[ }/:");$(]+)' -r '$1' --no-filename --only-matching tests | sort -u > vars.txt
+rg '\$\{?([A-Z][^-\[ }/:");]+)' -r '$1' --no-filename --only-matching tests | sort -u > vars.txt
+```
+
+I grepped `src/` for `get[eE]nv\("` to find the mentions in Lix code.
+
+### Used by Lix testing support code
+
+- `_NIX_TEST_ACCEPT` (optional) - Writes out the result of a characterization test as the new expected value.
+  **Expected value**: 1
+
+- `_NIX_TEST_UNIT_DATA` - The path to the directory for the data for a given unit test suite.
+
+  **Expected value**: `tests/unit/libstore/data/libstore` or similar
+
+
+### Used by Lix
+
+- `_NIX_FORCE_HTTP` - Forces file URIs to be treated as remote ones.
+
+  Used by `src/libfetchers/git.cc`, `src/libstore/http-binary-cache-store.cc`,
+  `src/libstore/local-binary-cache-store.cc`. Seems to be for forcing Git
+  clones of `git+file://` URLs, making the HTTP binary
+  cache store accept `file://` URLs (presumably passing them to curl?), and
+  unknown reasons for the local binary cache.
+
+  FIXME(jade): is this obscuring a bug in https://git.lix.systems/lix-project/lix/issues/200?
+
+  **Expected value**: 1
+- `NIX_ATTRS_SH_FILE`, `NIX_ATTRS_JSON_FILE` (output) - Set by Lix builders; see
+  `structuredAttrs` documentation.
+- `NIX_BIN_DIR`, `NIX_STORE_DIR` (or its inconsistently-used old alias `NIX_STORE`), `NIX_DATA_DIR`,
+  `NIX_LOG_DIR`, `NIX_LOG_DIR`, `NIX_STATE_DIR`, `NIX_CONF_DIR` -
+  Overrides compile-time configuration of various locations used by Lix. See `src/libstore/globals.cc`.
+
+  **Expected value**: a directory
+- `NIX_DAEMON_SOCKET_PATH` (optional) - Overrides the daemon socket path from `$NIX_STATE_DIR/daemon-socket/socket`.
+
+  **Expected value**: path to a socket
+- `NIX_LOG_FD` (output) - An FD number for logs in `internal-json` format to be sent to.
+  Used for, mostly, "setPhase" in nixpkgs setup.sh, but can also be creatively used to print verbose log messages from derivations.
+
+  **Provided value**: number corresponding to an FD in the builder
+- `NIX_PATH` - Search path for `<whatever>`. Documented elsewhere in the manual.
+
+  **Expected value**: `:` separated list of things that are not necessarily pointing to filesystem paths
+- `NIX_REMOTE` - The default value of the Lix setting `store`.
+
+  **Expected value**: "daemon", usually. Could be "auto" or any other value acceptable in `store`.
+- `NIX_BUILD_SHELL` - Documented elsewhere; the shell to invoke with `nix-shell` but not `nix develop`/`nix shell`.
+  The latter ignoring it altogether seems like a bug.
+
+  **Expected value**: the path to an executable shell
+- `PRINT_PATH` - Undocumented. Used by `nix-prefetch-url` as an alternative form of `--print-path`. Why???
+- `_NIX_IN_TEST` - If present with any value, makes `fetchClosure` accept file URLs in addition to HTTP ones. Why is this not `_NIX_FORCE_HTTP`??
+
+  Not used anywhere else.
+- `NIX_ALLOW_EVAL` - Used by eval-cache tests to block evaluation if set to `0`.
+
+  **Expected value**: 1 or 0
+- `EDITOR` - Used by `editorFor()`, which has some extremely sketchy editor-detection code for jumping to line numbers.
+- `LISTEN_FDS` and `LISTEN_PID` - Used for systemd socket activation using the systemd socket activation protocol.
+- `NIX_PAGER` (alternatively, `PAGER`) - Used to select a pager for Lix output. Why does this not use libutil `getEnv()`?
+- `LESS` (output) - Sets the pager settings for `less` when invoked by Lix.
+- `NIX_IGNORE_SYMLINK_STORE` - When set, Lix allows the store to be a symlink. Why do we support this?
+
+  Apparently [someone was using it enough to fix it](https://github.com/NixOS/nix/pull/4038).
+- `NIX_SSL_CERT_FILE` (alternatively, `SSL_CERT_FILE`) - Used to set CA certificates for libcurl.
+
+  **Expected value**: "/etc/ssl/certs/ca-certificates.crt" or similar
+- `NIX_REMOTE_SYSTEMS` - Used to set `builders`. Can we please deprecate this?
+- `NIX_USER_CONF_FILES` - `:` separated list of config files to load before
+  `/nix/nix.conf` under each of `XDG_CONFIG_DIRS`.
+- `NIX_CONFIG` - Newline separated configuration to load into Lix.
+- `NIX_GET_COMPLETIONS` - Returns completions.
+  Unsure of the exact format, someone should document it; either way my shell never had any completions.
+
+  **Expected value**: number of completions to return.
+- `IN_SYSTEMD` - Used to switch the logging format so that systemd gets the correct log levels. I think.
+- `NIX_HELD_LOCKS` - Not used, what is this for?? We should surely remove it right after searching github?
+- `GC_INITIAL_HEAP_SIZE` - Used to set the initial heap size, processed by boehmgc.
+- `NIX_COUNT_CALLS` - Documented elsewhere; prints call counts for profiling purposes.
+- `NIX_SHOW_STATS` - Documented elsewhere; prints various evaluation statistics like function calls, gc info, and similar.
+- `NIX_SHOW_STATS_PATH` - Writes those statistics into a file at the given path instead of stdout. Undocumented.
+- `NIX_SHOW_SYMBOLS` - Dumps the symbol table into the show-stats json output.
+- `TERM` - If `dumb` or unset, disables ANSI colour output.
+- `NO_COLOR`, `NOCOLOR` - Disables ANSI colour output.
+- `_NIX_DEVELOPER_SHOW_UNKNOWN_LOCATIONS` - Highlights unknown locations in errors.
+- `NIX_PROFILE` - Selects which profile `nix-env` will operate on. Documented elsewhere.
+- `NIX_SSHOPTS` - Options passed to `ssh(1)` when using a ssh remote store.
+  Incorrectly documented on `nix-copy-closure` which is *surely* not the only place they are used??
+- `_NIX_TEST_NO_LSOF` - Used on non-Linux, non-macOS platforms to disable using `lsof` when finding gc roots.
+
+  Since https://git.lix.systems/lix-project/lix/issues/156 was fixed, this should probably just be removed as it was a bad workaround for a macOS issue.
+- `_NIX_TEST_GC_SYNC_1` - Path to a pipe that is used to block the GC briefly to validate invariants from the test suite.
+- `_NIX_TEST_GC_SYNC_2` - Path to a pipe that is used to block the GC briefly to validate invariants from the test suite.
+- `_NIX_TEST_FREE_SPACE_FILE` - Path to a file containing a decimal number with the free space that the GC is to believe it has.
+- Various XDG vars
+- `NIX_DEBUG_SQLITE_TRACES` - Dump all sqlite queries to the log at `notice` level.
+- `_NIX_TEST_NO_SANDBOX` - Disables actually setting up the sandbox on macOS while leaving other logic the same. Unused on other platforms.
+- `_NIX_TRACE_BUILT_OUTPUTS` - Dumps all the derivation paths alongside their outputs as lines into a file of the given name.
+
+### Used by the functional test framework
+
+- `NIX_DAEMON_PACKAGE` - Runs the test suite against an alternate Nix daemon with the current client.
+
+  **Expected value**: something like `/nix/store/...-nix-2.18.2`
+- `NIX_CLIENT_PACKAGE` - Runs the test suite against an alternate Nix client with the current daemon.
+
+  **Expected value**: something like `/nix/store/...-nix-2.18.2`
+- `NIX_TESTS_CA_BY_DEFAULT` - Pass `__contentAddressed`, `outputHashMode` and `outputHashAlgo` to builds of some input-addressed derivations in the test suite.
+
+  **Expected value**: 1
+- `TEST_DATA` - Not an environment variable! This is used in repl characterization tests to refer to `tests/functional/repl_characterization/data`.
+  More specifically, that path is replaced with the string `$TEST_DATA` in output for reproducibility.
+- `TEST_HOME` (output) - Set to the temporary directory that is set as `$HOME` inside the tests, underneath `$TEST_ROOT`.
+- `TEST_ROOT` (output) - Set to the temporary directory that is created for each test to mess with.
+- `_NIX_TEST_DAEMON_PID` (output) - Used to track the daemon pid to be able to kill it.
+
+  **Provided value**: Daemon pid as a base-10 integer, e.g. 2345
