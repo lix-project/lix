@@ -12,44 +12,51 @@ The unit tests are defined using the [googletest] and [rapidcheck] frameworks.
 > An example of some files, demonstrating much of what is described below
 >
 > ```
-> src
-> ├── libexpr
-> │   ├── value/context.hh
-> │   ├── value/context.cc
-> │   │
-> │   …
->     └── tests
-> │       ├── value/context.hh
-> │       ├── value/context.cc
-> │       │
-> │       …
-> │
-> ├── unit-test-data
-> │   ├── libstore
-> │   │   ├── worker-protocol/content-address.bin
-> │   │   …
-> │   …
 > …
+> ├── src
+> │   ├── libexpr
+> │   │   ├── …
+> │   │   ├── value
+> │   │   │   ├── context.cc
+> │   │   │   └── context.hh
+> │   …   …
+> ├── tests
+> │   …
+> │   └── unit
+> │       ├── libcmd
+> │       │   └── args.cc
+> │       ├── libexpr
+> │       │   ├── …
+> │       │   └── value
+> │       │       ├── context.cc
+> │       │       └── print.cc
+> │       ├── libexpr-support
+> │       │   └── tests
+> │       │       ├── libexpr.hh
+> │       │       └── value
+> │       │           ├── context.cc
+> │       │           └── context.hh
+> │       ├── libstore
+> │       │   ├── common-protocol.cc
+> │       │   ├── data
+> │       │   │   ├── libstore
+> │       │   │   │   ├── common-protocol
+> │       │   │   │   │   ├── content-address.bin
+> │       │   │   │   │   ├── drv-output.bin
+> …       …   …   …   …   …
 > ```
 
-<!-- FIXME(Lix): this might get renamed to liblixexpr, etc? -->
+The unit tests for each Lix library (`liblixexpr`, `liblixstore`, etc..) live inside a directory `src/${library_shortname}/tests` within the directory for the library (`src/${library_shortname}`).
 
-The unit tests for each Lix library (`libnixexpr`, `libnixstore`, etc..) live inside a directory `src/${library_shortname}/tests` within the directory for the library (`src/${library_shortname}`).
-
-The data is in `unit-test-data`, with one subdir per library, with the same name as where the code goes.
-For example, `libnixstore` code is in `src/libstore`, and its test data is in `unit-test-data/libstore`.
-The path to the `unit-test-data` directory is passed to the unit test executable with the environment variable `_NIX_TEST_UNIT_DATA`.
-
-> **Note**
-> Due to the way googletest works, downstream unit test executables will actually include and re-run upstream library tests.
-> Therefore it is important that the same value for `_NIX_TEST_UNIT_DATA` be used with the tests for each library.
-> That is why we have the test data nested within a single `unit-test-data` directory.
+The data is in `tests/unit/LIBNAME/data/LIBNAME`, with one subdir per library, with the same name as where the code goes.
+For example, `liblixstore` code is in `src/libstore`, and its test data is in `tests/unit/libstore/data/libstore`.
+The path to the unit test data directory is passed to the unit test executable with the environment variable `_NIX_TEST_UNIT_DATA`.
 
 ### Running tests
 
 You can run the whole testsuite with `just test` (see justfile for exact invocation of meson), and if you want to run just one test suite, use `just test --suite installcheck functional-init` where `installcheck` is the name of the test suite in this case and `functional-init` is the name of the test.
 
-To get a list of tests, use `meson test -C build --list`.
+To get a list of tests, use `meson test -C build --list` (or `just test --list` for short).
 
 For `installcheck` specifically, first run `just install` before running the test suite (this is due to meson limitations that don't let us put a dependency on installing before doing the test).
 
@@ -74,20 +81,27 @@ See [below](#characterization-testing-1) for a broader discussion of characteriz
 Like with the functional characterization, `_NIX_TEST_ACCEPT=1` is also used.
 For example:
 ```shell-session
-$ _NIX_TEST_ACCEPT=1 make libstore-tests-exe_RUN
+$ _NIX_TEST_ACCEPT=1 just test --suite check libstore-unit-tests
 ...
-[  SKIPPED ] WorkerProtoTest.string_read
-[  SKIPPED ] WorkerProtoTest.string_write
-[  SKIPPED ] WorkerProtoTest.storePath_read
-[  SKIPPED ] WorkerProtoTest.storePath_write
+../tests/unit/libstore/common-protocol.cc:27: Skipped
+Cannot read golden master because another test is also updating it
+
+../tests/unit/libstore/common-protocol.cc:62: Skipped
+Updating golden master
+
+../tests/unit/libstore/common-protocol.cc:27: Skipped
+Cannot read golden master because another test is also updating it
+
+../tests/unit/libstore/common-protocol.cc:62: Skipped
+Updating golden master
 ...
 ```
-will regenerate the "golden master" expected result for the `libnixstore` characterization tests.
+will regenerate the "golden master" expected result for the `liblixstore` characterization tests.
 The characterization tests will mark themselves "skipped" since they regenerated the expected result instead of actually testing anything.
 
 ## Functional tests
 
-The functional tests reside under the `tests/functional` directory and are listed in `tests/functional/local.mk`.
+The functional tests reside under the `tests/functional` directory and are listed in `tests/functional/meson.build`.
 Each test is a bash script.
 
 ### Running the whole test suite
@@ -185,7 +199,7 @@ edit it like so:
 ```
 
 <div class="warning">
-FIXME(meson): the command here may be incorrect for meson.
+FIXME(meson): the command here is incorrect for meson and this whole functionality may need rebuilding.
 </div>
 
 Then, running the test with `./mk/debug-test.sh` will drop you into GDB once the script reaches that point:
@@ -209,15 +223,11 @@ This technique is to include the exact output/behavior of a former version of Ni
 
 For example, this technique is used for the language tests, to check both the printed final value if evaluation was successful, and any errors and warnings encountered.
 
-<div class="warning">
-FIXME(meson): this is incorrect for meson. `_NIX_TEST_ACCEPT=1` is still valid but the test invocation needs to change.
-</div>
-
 It is frequently useful to regenerate the expected output.
 To do that, rerun the failed test(s) with `_NIX_TEST_ACCEPT=1`.
 For example:
 ```bash
-_NIX_TEST_ACCEPT=1 make tests/functional/lang.sh.test
+_NIX_TEST_ACCEPT=1 just test --suite installcheck -v functional-lang
 ```
 
 An interesting situation to document is the case when these tests are "overfitted".

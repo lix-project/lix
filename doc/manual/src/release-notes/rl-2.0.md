@@ -229,7 +229,7 @@ This release has the following new features:
     <https://cache.nixos.org/> or <ssh://machine>. The following store
     types are supported:
 
-      - `LocalStore` (stori URI `local` or an absolute path) and the
+      - `LocalStore` (store URI `local` or an absolute path) and the
         misnamed `RemoteStore` (`daemon`) provide access to a local Nix
         store, the latter via the Nix daemon. You can use `auto` or the
         empty string to auto-select a local or daemon store depending on
