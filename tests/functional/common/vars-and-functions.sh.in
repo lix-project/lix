@@ -144,11 +144,15 @@ if [[ $(uname) == Linux ]] && [[ -L /proc/self/ns/user ]] && unshare --user true
 fi
 
 isDaemonNewer () {
-  [[ -n "${NIX_DAEMON_PACKAGE:-}" ]] || return 0
-  local requiredVersion="$1"
-  local versionOutput=$($NIX_DAEMON_PACKAGE/bin/nix daemon --version)
-  local daemonVersion=${versionOutput##* }
-  [[ $(nix eval --expr "builtins.compareVersions ''$daemonVersion'' ''$requiredVersion''") -ge 0 ]]
+    [[ -n "${NIX_DAEMON_PACKAGE:-}" ]] || return 0
+    local requiredVersion="$1"
+    local versionOutput
+    versionOutput=$("$NIX_DAEMON_PACKAGE/bin/nix" daemon --version)
+    local daemonVersion=${versionOutput##* }
+    if [[ ! $daemonVersion =~ [[:digit:]]+\.[[:digit:]]+\..* ]]; then
+        fail "Daemon version '$daemonVersion' does not look plausible, this is a testsuite bug!"
+    fi
+    [[ $(nix eval --expr "builtins.compareVersions ''$daemonVersion'' ''$requiredVersion''") -ge 0 ]]
 }
 
 skipTest () {
