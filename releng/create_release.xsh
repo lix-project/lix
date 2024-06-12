@@ -275,11 +275,11 @@ def do_tag_merge(force_tag=False, no_check_git=False):
 
 
 def build_manual(eval_result):
-    manual = next(x['outputs']['doc'] for x in eval_result if x['attr'] == 'build.x86_64-linux')
+    (drv, manual) = next((x['drvPath'], x['outputs']['doc']) for x in eval_result if x['attr'] == 'build.x86_64-linux')
     print('[+] Building manual')
-    realise([manual])
+    realise([drv])
 
-    cp --no-preserve=mode -vr @(manual)/share/doc/nix @(MANUAL)
+    cp --no-preserve=mode -T -vr @(manual)/share/doc/nix/manual @(MANUAL)
 
 
 def upload_manual(env: RelengEnvironment):
