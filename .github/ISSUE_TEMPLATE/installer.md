@@ -9,7 +9,7 @@ assignees: ''
 
 ## Platform
 
-<!-- select the platform on which you tried to install Nix -->
+<!-- select the platform on which you tried to install Lix -->
 
 - [ ] Linux: <!-- state your distribution, e.g. Arch Linux, Ubuntu, ... -->
 - [ ] macOS

@@ -19,9 +19,10 @@ assignees: ''
 
 <!-- make sure this issue is not redundant or obsolete -->
 
-- [ ] checked [latest Nix manual] \([source])
-- [ ] checked [open documentation issues and pull requests] for possible duplicates
+- [ ] checked [latest Lix manual] \([source]\)
+- [ ] checked [documentation issues] and [recent documentation changes] for possible duplicates
 
-[latest Nix manual]: https://nixos.org/manual/nix/unstable/
-[source]: https://github.com/NixOS/nix/tree/master/doc/manual/src
-[open documentation issues and pull requests]: https://github.com/NixOS/nix/labels/documentation
+[latest Nix manual]: https://docs.lix.systems/manual/lix/nightly
+[source]: https://git.lix.systems/lix-project/lix/src/main/doc/manual/src
+[documentation issues]: https://git.lix.systems/lix-project/lix/issues?labels=151&state=all
+[recent documentation changes]: https://gerrit.lix.systems/q/p:lix+path:%22%5Edoc/manual/.*%22
