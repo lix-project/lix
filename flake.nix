@@ -17,7 +17,6 @@
     let
       inherit (inputs.nixpkgs) lib;
       inherit (inputs) self;
-      nixVersion = lib.fileContents ./.nix-version;
     in
     flake-parts.lib.mkFlake { inherit inputs; }
       {

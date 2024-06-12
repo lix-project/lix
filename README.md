@@ -1,5 +1,8 @@
 # nix-eval-jobs
 
+> [!NOTE]
+> This is a fork of nix-eval-jobs that works with Lix.
+
 This project evaluates nix attribute sets in parallel with streamable json
 output. This is useful for time and memory intensive evaluations such as NixOS
 machines, i.e. in a CI context. The evaluation is done with a controllable
@@ -89,11 +92,12 @@ we collect example ci configuration for various CIs.
 
 ## Organisation of this repository
 
-On the `main` branch we target nixUnstable. When a release of nix happens, we
-fork for a release branch i.e. `release-2.8` and change the nix version in
-`.nix-version`. Changes and improvements made in `main` also may be backported
-to these release branches. At the time of writing we only intent to support the
-latest release branch.
+`main` follows Lix HEAD, and is updated alongside the Lix NixOS module. When we
+release we will make a `release-2.90` etc branch, which receives backports.
+
+The version of nix-eval-jobs follows the major version of Lix and minor
+versions of nix-eval-jobs are released as necessary when changes are made in
+n-e-j itself.
 
 ## Projects using nix-eval-jobs
 
