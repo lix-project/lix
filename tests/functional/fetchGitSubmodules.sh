@@ -40,6 +40,7 @@ initGitRepo $rootRepo
 git -C $rootRepo submodule init
 git -C $rootRepo submodule add $subRepo sub
 git -C $rootRepo add sub
+r0=$(nix eval --impure --raw --expr "(builtins.fetchGit { url = file://$rootRepo; }).outPath")
 git -C $rootRepo commit -m "Add submodule"
 
 rev=$(git -C $rootRepo rev-parse HEAD)
@@ -48,6 +49,7 @@ r1=$(nix eval --raw --expr "(builtins.fetchGit { url = file://$rootRepo; rev = \
 r2=$(nix eval --raw --expr "(builtins.fetchGit { url = file://$rootRepo; rev = \"$rev\"; submodules = false; }).outPath")
 r3=$(nix eval --raw --expr "(builtins.fetchGit { url = file://$rootRepo; rev = \"$rev\"; submodules = true; }).outPath")
 
+[[ $r0 == $r1 ]] # verify that unfetched submodules result in empty directories in dirty mode too
 [[ $r1 == $r2 ]]
 [[ $r2 != $r3 ]]
 
