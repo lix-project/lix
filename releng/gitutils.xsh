@@ -1,6 +1,8 @@
 import subprocess
 import json
 
+from .version import VERSION
+
 
 def version_compare(v1: str, v2: str):
     return json.loads($(nix-instantiate --eval --json --argstr v1 @(v1) --argstr v2 @(v2) --expr '{v1, v2}: builtins.compareVersions v1 v2'))
