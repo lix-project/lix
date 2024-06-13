@@ -100,14 +100,6 @@ class OCIIndex:
         }
 
 
-def docker_architecture_from_nix_system(system: str) -> DockerArchitecture:
-    MAP = {
-        'x86_64-linux': 'amd64',
-        'aarch64-linux': 'arm64',
-    }
-    return MAP[system]  # type: ignore
-
-
 @dataclasses.dataclass
 class TaggingOperation:
     manifest: OCIIndex

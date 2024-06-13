@@ -27,9 +27,6 @@ RELENG_MSG = "Release created with releng/create_release.xsh"
 BUILD_CORES = 16
 MAX_JOBS = 2
 
-# TODO
-RELEASE_SYSTEMS = ["x86_64-linux"]
-
 
 def setup_creds(env: RelengEnvironment):
     key = keys.get_ephemeral_key(env)
@@ -82,11 +79,9 @@ def realise(paths: list[str]):
     nix-store @(args) @(paths)
 
 
-def eval_jobs():
-    nej_output = $(nix-eval-jobs --workers 4 --gc-roots-dir @(GCROOTS_DIR) --force-recurse --flake '.#release-jobs')
-    return [x for x in (json.loads(s) for s in nej_output.strip().split('\n'))
-        if x['system'] in RELEASE_SYSTEMS
-    ]
+def eval_jobs(build_profile):
+    nej_output = $(nix-eval-jobs --workers 4 --gc-roots-dir @(GCROOTS_DIR) --force-recurse --flake f'.#release-jobs.{build_profile}')
+    return [json.loads(s) for s in nej_output.strip().split('\n')]
 
 
 def upload_drv_paths_and_outputs(env: RelengEnvironment, paths: list[str]):
@@ -295,14 +290,14 @@ def upload_manual(env: RelengEnvironment):
         aws s3 sync @(MANUAL)/ @(env.docs_bucket)/manual/lix/stable/
 
 
-def build_artifacts(no_check_git=False):
+def build_artifacts(build_profile, no_check_git=False):
     rm -rf release/
     if not no_check_git:
         verify_are_on_tag()
         git_preconditions()
 
     print('[+] Evaluating')
-    eval_result = eval_jobs()
+    eval_result = eval_jobs(build_profile)
     drv_paths = [x['drvPath'] for x in eval_result]
 
     print('[+] Building')

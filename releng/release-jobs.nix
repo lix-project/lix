@@ -3,8 +3,27 @@ let
   inherit (pkgs) lib;
   lix = hydraJobs.build.x86_64-linux;
 
-  systems = [ "x86_64-linux" ];
-  dockerSystems = [ "x86_64-linux" ];
+  # This is all so clumsy because we can't use arguments to functions in
+  # flakes, and certainly not with n-e-j.
+  profiles = {
+    # Used for testing
+    x86_64-linux-only = {
+      systems = [ "x86_64-linux" ];
+      dockerSystems = [ "x86_64-linux" ];
+    };
+    all = {
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "aarch64-darwin"
+        "x86_64-darwin"
+      ];
+      dockerSystems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+    };
+  };
 
   doTarball =
     {
@@ -27,7 +46,8 @@ let
       sha256sum --binary $filename | cut -f1 -d' ' > $out/$basename.sha256
     '';
 
-  targets =
+  targetsFor =
+    { systems, dockerSystems }:
     builtins.map (system: {
       target = hydraJobs.binaryTarball.${system};
       targetName = "*.tar.xz";
@@ -44,14 +64,26 @@ let
     tar -cvzf "$out/lix-${lix.version}-manual.tar.gz" lix-${lix.version}-manual
   '';
 
-  tarballs = pkgs.runCommand "lix-release-tarballs" { } ''
-    mkdir -p $out
-    ${lib.concatMapStringsSep "\n" doTarball targets}
-    cp ${manualTar}/*.tar.gz $out
-    cp -r ${lix.doc}/share/doc/nix/manual $out
-  '';
+  tarballsFor =
+    { systems, dockerSystems }:
+    pkgs.runCommand "lix-release-tarballs" { } ''
+      mkdir -p $out
+      ${lib.concatMapStringsSep "\n" doTarball (targetsFor {
+        inherit systems dockerSystems;
+      })}
+      cp ${manualTar}/*.tar.gz $out
+      cp -r ${lix.doc}/share/doc/nix/manual $out
+    '';
 in
-{
+(builtins.mapAttrs (
+  _:
+  { systems, dockerSystems }:
+  {
+    build = lib.filterAttrs (x: _: builtins.elem x systems) hydraJobs.build;
+    tarballs = tarballsFor { inherit systems dockerSystems; };
+  }
+) profiles)
+// {
   inherit (hydraJobs) build;
-  inherit tarballs;
+  inherit tarballsFor;
 }
