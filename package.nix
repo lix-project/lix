@@ -376,8 +376,6 @@ stdenv.mkDerivation (finalAttrs: {
     platforms = lib.platforms.unix;
   };
 
-  passthru.perl-bindings = pkgs.callPackage ./perl { inherit fileset stdenv; };
-
   # Export the patched version of boehmgc.
   # flake.nix exports that into its overlay.
   passthru = {
@@ -509,5 +507,11 @@ stdenv.mkDerivation (finalAttrs: {
           '';
         }
       );
+
+    perl-bindings = pkgs.callPackage ./perl { inherit fileset stdenv; };
+
+    binaryTarball = pkgs.callPackage ./nix-support/binary-tarball.nix {
+      nix = finalAttrs.finalPackage;
+    };
   };
 })

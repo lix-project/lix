@@ -152,8 +152,6 @@
         }
       );
 
-      binaryTarball = nix: pkgs: pkgs.callPackage ./nix-support/binary-tarball.nix { inherit nix; };
-
       overlayFor =
         getStdenv: final: prev:
         let
@@ -236,13 +234,11 @@
         );
 
         # Perl bindings for various platforms.
-        perlBindings = forAllSystems (system: nixpkgsFor.${system}.native.nix.perl-bindings);
+        perlBindings = forAllSystems (system: nixpkgsFor.${system}.native.nix.passthru.perl-bindings);
 
         # Binary tarball for various platforms, containing a Nix store
         # with the closure of 'nix' package.
-        binaryTarball = forAllSystems (
-          system: binaryTarball nixpkgsFor.${system}.native.nix nixpkgsFor.${system}.native
-        );
+        binaryTarball = forAllSystems (system: nixpkgsFor.${system}.native.nix.passthru.binaryTarball);
 
         # docker image with Lix inside
         dockerImage = lib.genAttrs linux64BitSystems (system: self.packages.${system}.dockerImage);
