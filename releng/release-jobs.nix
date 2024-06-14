@@ -71,7 +71,10 @@ let
       ${lib.concatMapStringsSep "\n" doTarball (targetsFor {
         inherit systems dockerSystems;
       })}
-      cp ${manualTar}/*.tar.gz $out
+      ${doTarball {
+        target = manualTar;
+        targetName = "lix-*.tar.gz";
+      }}
       cp -r ${lix.doc}/share/doc/nix/manual $out
     '';
 in
