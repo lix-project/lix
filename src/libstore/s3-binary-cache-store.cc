@@ -55,6 +55,10 @@ class AwsLogger : public Aws::Utils::Logging::FormattedLogSystem
 
     void ProcessFormattedStatement(Aws::String && statement) override
     {
+        // FIXME: workaround for truly excessive log spam in debug level: https://github.com/aws/aws-sdk-cpp/pull/3003
+        if ((statement.find("(SSLDataIn)") != std::string::npos || statement.find("(SSLDataOut)") != std::string::npos) && verbosity <= lvlDebug) {
+            return;
+        }
         debug("AWS: %s", chomp(statement));
     }
 
