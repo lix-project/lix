@@ -1174,25 +1174,30 @@ std::map<StorePath, StorePath> copyPaths(
         ValidPathInfo infoForDst = *info;
         infoForDst.path = storePathForDst;
 
-        auto source = sinkToSource([&](Sink & sink) {
-            // We can reasonably assume that the copy will happen whenever we
-            // read the path, so log something about that at that point
-            auto srcUri = srcStore.getUri();
-            auto dstUri = dstStore.getUri();
-            auto storePathS = srcStore.printStorePath(missingPath);
-            Activity act(*logger, lvlInfo, actCopyPath,
-                makeCopyPathMessage(srcUri, dstUri, storePathS),
-                {storePathS, srcUri, dstUri});
-            PushActivity pact(act.id);
+        auto source =
+            sinkToSource([&srcStore, &dstStore, missingPath = missingPath, info = std::move(info)](Sink & sink) {
+                // We can reasonably assume that the copy will happen whenever we
+                // read the path, so log something about that at that point
+                auto srcUri = srcStore.getUri();
+                auto dstUri = dstStore.getUri();
+                auto storePathS = srcStore.printStorePath(missingPath);
+                Activity act(
+                    *logger,
+                    lvlInfo,
+                    actCopyPath,
+                    makeCopyPathMessage(srcUri, dstUri, storePathS),
+                    {storePathS, srcUri, dstUri}
+                );
+                PushActivity pact(act.id);
 
-            LambdaSink progressSink([&, total = 0ULL](std::string_view data) mutable {
-                total += data.size();
-                act.progress(total, info->narSize);
+                LambdaSink progressSink([&, total = 0ULL](std::string_view data) mutable {
+                    total += data.size();
+                    act.progress(total, info->narSize);
+                });
+                TeeSink tee{sink, progressSink};
+
+                srcStore.narFromPath(missingPath, tee);
             });
-            TeeSink tee { sink, progressSink };
-
-            srcStore.narFromPath(missingPath, tee);
-        });
         pathsToCopy.push_back(std::pair{infoForDst, std::move(source)});
     }
 
