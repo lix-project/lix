@@ -223,7 +223,8 @@ brotli = [
 
 openssl = dependency('libcrypto', 'openssl', required : true)
 
-aws_sdk = dependency('aws-cpp-sdk-core', required : false)
+# FIXME: confirm we actually support such old versions of aws-sdk-cpp
+aws_sdk = dependency('aws-cpp-sdk-core', required : false, version : '>=1.8')
 aws_sdk_transfer = dependency('aws-cpp-sdk-transfer', required : aws_sdk.found(), fallback : ['aws_sdk', 'aws_cpp_sdk_transfer_dep'])
 if aws_sdk.found()
   # The AWS pkg-config adds -std=c++11.
@@ -235,12 +236,6 @@ if aws_sdk.found()
     links : true,
     sources : true,
   )
-  s = aws_sdk.version().split('.')
-  configdata += {
-    'AWS_VERSION_MAJOR': s[0].to_int(),
-    'AWS_VERSION_MINOR': s[1].to_int(),
-    'AWS_VERSION_PATCH': s[2].to_int(),
-  }
   aws_sdk_transfer = aws_sdk_transfer.partial_dependency(
     compile_args : false,
     includes : true,

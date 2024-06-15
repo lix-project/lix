@@ -58,9 +58,7 @@ class AwsLogger : public Aws::Utils::Logging::FormattedLogSystem
         debug("AWS: %s", chomp(statement));
     }
 
-#if !(AWS_VERSION_MAJOR <= 1 && AWS_VERSION_MINOR <= 7 && AWS_VERSION_PATCH <= 115)
     void Flush() override {}
-#endif
 };
 
 static void initAWS()
@@ -100,12 +98,7 @@ S3Helper::S3Helper(
             : std::dynamic_pointer_cast<Aws::Auth::AWSCredentialsProvider>(
                 std::make_shared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(profile.c_str())),
             *config,
-            // FIXME: https://github.com/aws/aws-sdk-cpp/issues/759
-#if AWS_VERSION_MAJOR == 1 && AWS_VERSION_MINOR < 3
-            false,
-#else
             Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-#endif
             endpoint.empty()))
 {
 }
