@@ -2,16 +2,16 @@ from . import create_release
 from . import docker
 from .environment import RelengEnvironment
 from . import environment
-import functools
 import argparse
 import sys
 
 
 def do_build(args):
     if args.target == 'all':
-        create_release.build_artifacts(no_check_git=args.no_check_git)
+        create_release.build_artifacts(args.profile, no_check_git=args.no_check_git)
     elif args.target == 'manual':
-        eval_result = create_release.eval_jobs()
+        # n.b. args.profile does nothing here, you will just get the x86_64-linux manual no matter what.
+        eval_result = create_release.eval_jobs(args.profile)
         create_release.build_manual(eval_result)
     else:
         raise ValueError('invalid target, unreachable')
@@ -80,6 +80,10 @@ def main():
     build.add_argument('--target',
                        choices=['manual', 'all'],
                        help='Whether to build everything or just the manual')
+    build.add_argument('--profile',
+                       default='all',
+                       choices=('all', 'x86_64-linux-only'),
+                       help='Which systems to build targets for.')
     build.set_defaults(cmd=do_build)
 
     upload = sps.add_parser(

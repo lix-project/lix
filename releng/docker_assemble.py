@@ -49,8 +49,8 @@ if DEBUG_REQUESTS:
 # fix that. Thus, a little bit of homebrew containers code.
 #
 # Essentially what we are doing in here is splatting a bunch of images into the
-# registry without tagging them (except as "temp", due to podman issues), then
-# simply sending a new composite manifest ourselves.
+# registry without tagging them (with a silly workaround to skopeo issues),
+# then simply sending a new composite manifest ourselves.
 
 DockerArchitecture = Literal['amd64'] | Literal['arm64']
 MANIFEST_MIME = 'application/vnd.oci.image.manifest.v1+json'
@@ -98,14 +98,6 @@ class OCIIndex:
             'manifests': [item.serialize() for item in sorted(self.manifests)],
             'annotations': self.annotations
         }
-
-
-def docker_architecture_from_nix_system(system: str) -> DockerArchitecture:
-    MAP = {
-        'x86_64-linux': 'amd64',
-        'aarch64-linux': 'arm64',
-    }
-    return MAP[system]  # type: ignore
 
 
 @dataclasses.dataclass
@@ -284,7 +276,7 @@ class AuthState:
                                'Authorization': 'Basic ' + creds
                            }).json()
         token = resp['token']
-        self.token_cache[service] = token
+        self.token_cache[authority] = token
         return token
 
     def find_credential_for(self, image_path: str):

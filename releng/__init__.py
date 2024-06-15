@@ -1,8 +1,12 @@
 from xonsh.main import setup
+
 setup()
 del setup
 
 import logging
+import sys
+
+import xonsh.base_shell
 
 from . import environment
 from . import create_release
@@ -13,19 +17,55 @@ from . import docker
 from . import docker_assemble
 from . import gitutils
 
-rootLogger = logging.getLogger()
-rootLogger.setLevel(logging.DEBUG)
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
 
-fmt = logging.Formatter('{asctime} {levelname} {name}: {message}',
-                        datefmt='%b %d %H:%M:%S',
-                        style='{')
+def setup_logging():
+    """
+    Sets up logging to work properly. The following are intended to work:
+    - ipython/xonsh configuration files adding log handlers out of band
+    - Reloading the module in xonsh/ipython not causing Bonus Loggers (which is
+      why we check if there is already a handler. This also helps the previous
+      case)
+    - Importing the releng module from xonsh and poking at it interactively
+    """
 
-if not any(isinstance(h, logging.StreamHandler) for h in rootLogger.handlers):
-    hand = logging.StreamHandler()
-    hand.setFormatter(fmt)
-    rootLogger.addHandler(hand)
+    LEVELS = {
+        # Root logger must be DEBUG so that anything else can be DEBUG
+        None: logging.DEBUG,
+        # Everything in releng
+        __name__: logging.DEBUG,
+        # Log spam caused by prompt_toolkit
+        'asyncio': logging.INFO,
+    }
+
+    for name, level in LEVELS.items():
+        logger = logging.getLogger(name)
+        logger.setLevel(level)
+
+    root_logger = logging.getLogger()
+
+    fmt = logging.Formatter('{asctime} {levelname} {name}: {message}',
+                            datefmt='%b %d %H:%M:%S',
+                            style='{')
+
+    if not any(
+            isinstance(h, logging.StreamHandler) for h in root_logger.handlers):
+        stderr = sys.stderr
+        # XXX: Horrible hack required by the virtual stderr xonsh uses for each entered
+        # command getting closed after the command is run: we need to pull out
+        # the real stderr because this survives across multiple command runs.
+        #
+        # This only applies when running xonsh in interactive mode and importing releng.
+        if isinstance(sys.stderr, xonsh.base_shell._TeeStd):
+            stderr = stderr.std  # type: ignore
+
+        hand = logging.StreamHandler(stream=stderr)
+        hand.set_name('releng root handler')
+        hand.setFormatter(fmt)
+        root_logger.addHandler(hand)
+
+
+setup_logging()
+
 
 def reload():
     import importlib
