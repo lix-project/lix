@@ -803,17 +803,31 @@ StorePathSet Store::queryValidPaths(const StorePathSet & paths, SubstituteFlag m
 
     auto doQuery = [&](const StorePath & path) {
         checkInterrupt();
-        auto state(state_.lock());
+
+        bool exists = false;
+        std::exception_ptr newExc{};
+
         try {
-            auto info = queryPathInfo(path);
-            state->valid.insert(path);
+            queryPathInfo(path);
+            exists = true;
         } catch (InvalidPath &) {
         } catch (...) {
-            state->exc = std::current_exception();
+            newExc = std::current_exception();
         }
-        assert(state->left);
-        if (!--state->left)
-            wakeup.notify_one();
+
+        {
+            auto state(state_.lock());
+
+            if (exists) {
+                state->valid.insert(path);
+            }
+            if (newExc != nullptr) {
+                state->exc = newExc;
+            }
+            assert(state->left);
+            if (!--state->left)
+                wakeup.notify_one();
+        }
     };
 
     for (auto & path : paths)
