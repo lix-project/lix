@@ -40,50 +40,106 @@ public:
     class Lock
     {
     private:
+        // Non-owning pointer. This would be an
+        // optional<reference_wrapper<Sync>> if it didn't break gdb accessing
+        // Lock values (as of 2024-06-15, gdb 14.2)
         Sync * s;
         std::unique_lock<M> lk;
         friend Sync;
-        Lock(Sync * s) : s(s), lk(s->mutex) { }
-    public:
-        Lock(Lock && l) : s(l.s) { abort(); }
-        Lock(const Lock & l) = delete;
-        ~Lock() { }
-        T * operator -> () { return &s->data; }
-        T & operator * () { return s->data; }
+        Lock(Sync &s) : s(&s), lk(s.mutex) { }
 
-        void wait(std::condition_variable & cv)
+        inline void checkLockingInvariants()
         {
             assert(s);
+            assert(lk.owns_lock());
+        }
+
+    public:
+        Lock(Lock && l) : s(l.s), lk(std::move(l.lk))
+        {
+            l.s = nullptr;
+        }
+
+        Lock & operator=(Lock && other)
+        {
+            if (this != &other) {
+                s = other.s;
+                lk = std::move(other.lk);
+                other.s = nullptr;
+            }
+            return *this;
+        }
+
+        Lock(const Lock & l) = delete;
+
+        ~Lock() = default;
+
+        T * operator -> ()
+        {
+            checkLockingInvariants();
+            return &s->data;
+        }
+
+        T & operator * ()
+        {
+            checkLockingInvariants();
+            return s->data;
+        }
+
+        /**
+         * Wait for the given condition variable with no timeout.
+         *
+         * May spuriously wake up.
+         */
+        void wait(std::condition_variable & cv)
+        {
+            checkLockingInvariants();
             cv.wait(lk);
         }
 
+        /**
+         * Wait for the given condition variable for a maximum elapsed time of \p duration.
+         *
+         * May spuriously wake up.
+         */
         template<class Rep, class Period>
         std::cv_status wait_for(std::condition_variable & cv,
             const std::chrono::duration<Rep, Period> & duration)
         {
-            assert(s);
+            checkLockingInvariants();
             return cv.wait_for(lk, duration);
         }
 
+        /**
+         * Wait for the given condition variable for a maximum elapsed time of \p duration.
+         * Calls \p pred to check if the wakeup should be heeded: \p pred
+         * returning false will ignore the wakeup.
+         */
         template<class Rep, class Period, class Predicate>
         bool wait_for(std::condition_variable & cv,
             const std::chrono::duration<Rep, Period> & duration,
             Predicate pred)
         {
-            assert(s);
+            checkLockingInvariants();
             return cv.wait_for(lk, duration, pred);
         }
 
+        /**
+         * Wait for the given condition variable or until the time point \p duration.
+         */
         template<class Clock, class Duration>
         std::cv_status wait_until(std::condition_variable & cv,
             const std::chrono::time_point<Clock, Duration> & duration)
         {
-            assert(s);
+            checkLockingInvariants();
             return cv.wait_until(lk, duration);
         }
     };
 
-    Lock lock() { return Lock(this); }
+    /**
+     * Lock this Sync and return a RAII guard object.
+     */
+    Lock lock() { return Lock(*this); }
 };
 
 }
