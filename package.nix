@@ -10,7 +10,6 @@
   boehmgc-nix ? __forDefaults.boehmgc-nix,
   boehmgc,
   nlohmann_json,
-  bison,
   build-release-notes ? __forDefaults.build-release-notes,
   boost,
   brotli,
@@ -20,7 +19,6 @@
   doxygen,
   editline-lix ? __forDefaults.editline-lix,
   editline,
-  flex,
   git,
   gtest,
   jq,
@@ -36,6 +34,7 @@
   meson,
   ninja,
   openssl,
+  pegtl,
   pkg-config,
   python3,
   rapidcheck,
@@ -210,8 +209,6 @@ stdenv.mkDerivation (finalAttrs: {
 
   nativeBuildInputs =
     [
-      bison
-      flex
       python3
       meson
       ninja
@@ -250,6 +247,7 @@ stdenv.mkDerivation (finalAttrs: {
       libsodium
       toml11
       lix-doc
+      pegtl
     ]
     ++ lib.optionals hostPlatform.isLinux [
       libseccomp

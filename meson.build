@@ -287,6 +287,14 @@ gtest = [
 
 toml11 = dependency('toml11', version : '>=3.7.0', required : true, method : 'cmake')
 
+pegtl = dependency(
+  'pegtl',
+  version : '>=3.2.7',
+  required : true,
+  method : 'cmake',
+  modules : [ 'taocpp::pegtl' ],
+)
+
 nlohmann_json = dependency('nlohmann_json', required : true)
 
 # lix-doc is a Rust project provided via buildInputs and unfortunately doesn't have any way to be detected.
@@ -335,8 +343,6 @@ endif
 # that busybox sh won't run busybox applets as builtins (which would break our sandbox).
 
 lsof = find_program('lsof', native : true)
-bison = find_program('bison', native : true)
-flex = find_program('flex', native : true)
 
 # This is how Nix does generated headers...
 # other instances of header generation use a very similar command.
