@@ -15,6 +15,7 @@ from . import version
 from . import cli
 from . import docker
 from . import docker_assemble
+from . import release_notes
 from . import gitutils
 
 
@@ -77,3 +78,4 @@ def reload():
     importlib.reload(docker)
     importlib.reload(docker_assemble)
     importlib.reload(gitutils)
+    importlib.reload(release_notes)

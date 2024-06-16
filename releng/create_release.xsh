@@ -6,12 +6,14 @@ from pathlib import Path
 import tempfile
 import hashlib
 import datetime
+
 from . import environment
 from .environment import RelengEnvironment
 from . import keys
 from . import docker
 from .version import VERSION, RELEASE_NAME, MAJOR
 from .gitutils import verify_are_on_tag, git_preconditions
+from . import release_notes
 
 $RAISE_SUBPROC_ERROR = True
 $XONSH_SHOW_TRACEBACK = True
@@ -169,51 +171,7 @@ def make_artifacts_dir(eval_result, d: Path):
 
 
 def prepare_release_notes():
-    print('[+] Preparing release notes')
-    RELEASE_NOTES_PATH = Path('doc/manual/rl-next')
-
-    if RELEASE_NOTES_PATH.is_dir():
-        notes_body = subprocess.check_output(['build-release-notes', '--change-authors', 'doc/manual/change-authors.yml', 'doc/manual/rl-next']).decode()
-    else:
-        # I guess nobody put release notes on their changes?
-        print('[-] Warning: seemingly missing any release notes, not worrying about it')
-        notes_body = ''
-
-    rl_path = Path(f'doc/manual/src/release-notes/rl-{MAJOR}.md')
-
-    existing_rl = ''
-    try:
-        with open(rl_path, 'r') as fh:
-            existing_rl = fh.read()
-    except FileNotFoundError:
-        pass
-
-    date = datetime.datetime.now().strftime('%Y-%m-%d')
-
-    minor_header = f'# Lix {VERSION} ({date})'
-
-    header = f'# Lix {MAJOR} "{RELEASE_NAME}"'
-    if existing_rl.startswith(header):
-        # strip the header off for minor releases
-        lines = existing_rl.splitlines()
-        header = lines[0]
-        existing_rl = '\n'.join(lines[1:])
-    else:
-        header += f' ({date})\n\n'
-
-    header += '\n' + minor_header + '\n'
-
-    notes = header
-    notes += notes_body
-    notes += "\n\n"
-    notes += existing_rl
-
-    # make pre-commit happy about one newline
-    notes = notes.rstrip()
-    notes += "\n"
-
-    with open(rl_path, 'w') as fh:
-        fh.write(notes)
+    rl_path = release_notes.build_release_notes_to_file()
 
     commit_msg = textwrap.dedent("""\
         release: release notes for {VERSION}
@@ -221,8 +179,8 @@ def prepare_release_notes():
         {RELENG_MSG}
     """).format(VERSION=VERSION, RELENG_MSG=RELENG_MSG)
 
-    git add @(rl_path)
-    git rm doc/manual/rl-next/*.md
+    git add @(rl_path) @(release_notes.SUMMARY)
+    git rm --ignore-unmatch 'doc/manual/rl-next/*.md'
 
     git commit -m @(commit_msg)
 
