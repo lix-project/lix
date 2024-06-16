@@ -62,6 +62,13 @@ using namespace nix;
 // otherwise destructors cause compiler errors
 #pragma GCC diagnostic ignored "-Wswitch-enum"
 
+#define THROW(err, ...)                              \
+  do {                                               \
+    state->error.reset(new auto(err));               \
+    [](auto... d) { (delete d, ...); }(__VA_ARGS__); \
+    YYABORT;                                         \
+  } while (0)
+
 void yyerror(YYLTYPE * loc, yyscan_t scanner, ParserState * state, const char * error)
 {
     if (std::string_view(error).starts_with("syntax error, unexpected end of file")) {
@@ -153,16 +160,19 @@ expr_function
   : ID ':' expr_function
     { $$ = new ExprLambda(CUR_POS, state->symbols.create($1), 0, $3); }
   | '{' formals '}' ':' expr_function
-    { $$ = new ExprLambda(CUR_POS, state->validateFormals($2), $5); }
+    { if (auto e = state->validateFormals($2)) THROW(*e);
+      $$ = new ExprLambda(CUR_POS, $2, $5); }
   | '{' formals '}' '@' ID ':' expr_function
     {
       auto arg = state->symbols.create($5);
-      $$ = new ExprLambda(CUR_POS, arg, state->validateFormals($2, CUR_POS, arg), $7);
+      if (auto e = state->validateFormals($2, CUR_POS, arg)) THROW(*e, $2, $7);
+      $$ = new ExprLambda(CUR_POS, arg, $2, $7);
     }
   | ID '@' '{' formals '}' ':' expr_function
     {
       auto arg = state->symbols.create($1);
-      $$ = new ExprLambda(CUR_POS, arg, state->validateFormals($4, CUR_POS, arg), $7);
+      if (auto e = state->validateFormals($4, CUR_POS, arg)) THROW(*e, $4, $7);
+      $$ = new ExprLambda(CUR_POS, arg, $4, $7);
     }
   | ASSERT expr ';' expr_function
     { $$ = new ExprAssert(CUR_POS, $2, $4); }
@@ -170,10 +180,10 @@ expr_function
     { $$ = new ExprWith(CUR_POS, $2, $4); }
   | LET binds IN expr_function
     { if (!$2->dynamicAttrs.empty())
-        throw ParseError({
+        THROW(ParseError({
             .msg = HintFmt("dynamic attributes not allowed in let"),
             .pos = state->positions[CUR_POS]
-        });
+        }), $2, $4);
       $$ = new ExprLet($2, $4);
     }
   | expr_if
@@ -260,10 +270,10 @@ expr_simple
   | URI {
       static bool noURLLiterals = experimentalFeatureSettings.isEnabled(Xp::NoUrlLiterals);
       if (noURLLiterals)
-          throw ParseError({
+          THROW(ParseError({
               .msg = HintFmt("URL literals are disabled"),
               .pos = state->positions[CUR_POS]
-          });
+          }));
       $$ = new ExprString(std::string($1));
   }
   | '(' expr ')' { $$ = $2; }
@@ -306,10 +316,10 @@ path_start
   }
   | HPATH {
     if (evalSettings.pureEval) {
-        throw Error(
+        THROW(Error(
             "the path '%s' can not be resolved in pure mode",
             std::string_view($1.p, $1.l)
-        );
+        ));
     }
     Path path(getHome() + std::string($1.p + 1, $1.l - 1));
     $$ = new ExprPath(path);
@@ -323,12 +333,16 @@ ind_string_parts
   ;
 
 binds
-  : binds attrpath '=' expr ';' { $$ = $1; state->addAttr($$, std::move(*$2), $4, state->at(@2)); delete $2; }
+  : binds attrpath '=' expr ';'
+    { $$ = $1;
+      if (auto e = state->addAttr($$, std::move(*$2), $4, state->at(@2))) THROW(*e, $1, $2);
+      delete $2;
+    }
   | binds INHERIT attrs ';'
     { $$ = $1;
       for (auto & [i, iPos] : *$3) {
           if ($$->attrs.find(i.symbol) != $$->attrs.end())
-              state->dupAttr(i.symbol, iPos, $$->attrs[i.symbol].pos);
+              THROW(state->dupAttr(i.symbol, iPos, $$->attrs[i.symbol].pos), $1);
           $$->attrs.emplace(
               i.symbol,
               ExprAttrs::AttrDef(new ExprVar(iPos, i.symbol), iPos, ExprAttrs::AttrDef::Kind::Inherited));
@@ -343,7 +357,7 @@ binds
       auto from = new nix::ExprInheritFrom(state->at(@4), $$->inheritFromExprs->size() - 1);
       for (auto & [i, iPos] : *$6) {
           if ($$->attrs.find(i.symbol) != $$->attrs.end())
-              state->dupAttr(i.symbol, iPos, $$->attrs[i.symbol].pos);
+              THROW(state->dupAttr(i.symbol, iPos, $$->attrs[i.symbol].pos), $1);
           $$->attrs.emplace(
               i.symbol,
               ExprAttrs::AttrDef(
@@ -365,10 +379,10 @@ attrs
           $$->emplace_back(AttrName(state->symbols.create(str->s)), state->at(@2));
           delete str;
       } else
-          throw ParseError({
+          THROW(ParseError({
               .msg = HintFmt("dynamic attributes not allowed in inherit"),
               .pos = state->positions[state->at(@2)]
-          });
+          }), $1, $2);
     }
   | { $$ = new std::vector<std::pair<AttrName, PosIdx>>; }
   ;
@@ -457,6 +471,10 @@ Expr * parseExprFromBuf(
 
     yy_scan_buffer(text, length, scanner);
     yyparse(scanner, &state);
+    if (state.error) {
+      delete state.result;
+      throw *state.error;
+    }
 
     return state.result;
 }
