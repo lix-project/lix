@@ -59,6 +59,8 @@ using namespace nix;
 
 #define CUR_POS state->at(*yylocp)
 
+// otherwise destructors cause compiler errors
+#pragma GCC diagnostic ignored "-Wswitch-enum"
 
 void yyerror(YYLTYPE * loc, yyscan_t scanner, ParserState * state, const char * error)
 {
@@ -94,7 +96,18 @@ void yyerror(YYLTYPE * loc, yyscan_t scanner, ParserState * state, const char * 
   std::vector<std::pair<nix::PosIdx, std::variant<nix::Expr *, nix::StringToken>>> * ind_string_parts;
 }
 
-%type <e> start expr expr_function expr_if expr_op
+%destructor { delete $$; } <e>
+%destructor { delete $$; } <list>
+%destructor { delete $$; } <attrs>
+%destructor { delete $$; } <formals>
+%destructor { delete $$; } <formal>
+%destructor { delete $$; } <attrNames>
+%destructor { delete $$; } <inheritAttrs>
+%destructor { delete $$; } <string_parts>
+%destructor { delete $$; } <ind_string_parts>
+
+%type <e> start
+%type <e> expr expr_function expr_if expr_op
 %type <e> expr_select expr_simple expr_app
 %type <list> expr_list
 %type <attrs> binds
@@ -132,7 +145,7 @@ void yyerror(YYLTYPE * loc, yyscan_t scanner, ParserState * state, const char * 
 
 %%
 
-start: expr { state->result = $1; };
+start: expr { state->result = $1; $$ = 0; };
 
 expr: expr_function;
 
