@@ -172,7 +172,7 @@ def prepare_release_notes():
     print('[+] Preparing release notes')
     RELEASE_NOTES_PATH = Path('doc/manual/rl-next')
 
-    if RELEASE_NOTES_PATH.isdir():
+    if RELEASE_NOTES_PATH.is_dir():
         notes_body = subprocess.check_output(['build-release-notes', '--change-authors', 'doc/manual/change-authors.yml', 'doc/manual/rl-next']).decode()
     else:
         # I guess nobody put release notes on their changes?
