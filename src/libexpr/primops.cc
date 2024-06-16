@@ -383,7 +383,8 @@ void prim_exec(EvalState & state, const PosIdx pos, Value * * args, Value & v)
     try {
         auto _ = state.realiseContext(context); // FIXME: Handle CA derivations
     } catch (InvalidPathError & e) {
-        state.error<EvalError>("cannot execute '%1%', since path '%2%' is not valid", program, e.path).atPos(pos).debugThrow();
+        e.addTrace(state.positions[pos], "while realising the context for builtins.exec");
+        throw;
     }
 
     auto output = runProgram(program, true, commandArgs);

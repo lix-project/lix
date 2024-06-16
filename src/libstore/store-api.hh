@@ -62,10 +62,18 @@ MakeError(SubstError, Error);
  * denotes a permanent build failure
  */
 MakeError(BuildError, Error);
+/**
+ * denotes that a path in the store did not exist (but it could, had it
+ * been put there, i.e. it is still legal).
+ */
 MakeError(InvalidPath, Error);
 MakeError(Unsupported, Error);
 MakeError(SubstituteGone, Error);
 MakeError(SubstituterDisabled, Error);
+/**
+ * denotes that a path could not possibly be a store path.
+ * e.g. outside of the nix store, illegal characters in the name, etc.
+*/
 MakeError(BadStorePath, Error);
 
 MakeError(InvalidStoreURI, Error);
@@ -328,6 +336,7 @@ public:
 
     /**
      * Check whether a path is valid.
+     * A path is valid when it exists in the store *now*.
      */
     bool isValidPath(const StorePath & path);
 
@@ -399,6 +408,10 @@ public:
 
 protected:
 
+    /**
+     * Queries the path info without caching.
+     * Note to implementors: should return `nullptr` when the path is not found.
+     */
     virtual std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) = 0;
     virtual std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput &) = 0;
 

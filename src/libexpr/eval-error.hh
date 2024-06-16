@@ -47,12 +47,16 @@ MakeError(MissingArgumentError, EvalError);
 MakeError(RestrictedPathError, Error);
 MakeError(InfiniteRecursionError, EvalError);
 
+/**
+ * Represents an exception due to an invalid path; that is, it does not exist.
+ * It corresponds to `!Store::validPath()`.
+ */
 struct InvalidPathError : public EvalError
 {
 public:
     Path path;
     InvalidPathError(EvalState & state, const Path & path)
-        : EvalError(state, "path '%s' is not valid", path)
+        : EvalError(state, "path '%s' did not exist in the store during evaluation", path)
     {
     }
 };

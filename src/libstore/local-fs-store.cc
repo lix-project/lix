@@ -23,7 +23,7 @@ struct LocalStoreAccessor : public FSAccessor
     {
         auto storePath = store->toStorePath(path).first;
         if (requireValidPath && !store->isValidPath(storePath))
-            throw InvalidPath("path '%1%' is not a valid store path", store->printStorePath(storePath));
+            throw InvalidPath("path '%1%' does not exist in the store", store->printStorePath(storePath));
         return store->getRealStoreDir() + std::string(path, store->storeDir.size());
     }
 
@@ -81,7 +81,7 @@ ref<FSAccessor> LocalFSStore::getFSAccessor()
 void LocalFSStore::narFromPath(const StorePath & path, Sink & sink)
 {
     if (!isValidPath(path))
-        throw Error("path '%s' is not valid", printStorePath(path));
+        throw Error("path '%s' does not exist in store", printStorePath(path));
     dumpPath(getRealStoreDir() + std::string(printStorePath(path), storeDir.size()), sink);
 }
 

@@ -309,14 +309,14 @@ std::shared_ptr<const ValidPathInfo> RemoteStore::queryPathInfoUncached(const St
     try {
         conn.processStderr();
     } catch (Error & e) {
-        // Ugly backwards compatibility hack.
+        // Ugly backwards compatibility hack. TODO(fj#325): remove.
         if (e.msg().find("is not valid") != std::string::npos)
-            throw InvalidPath(std::move(e.info()));
+            return nullptr;
         throw;
     }
     if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 17) {
         bool valid; conn->from >> valid;
-        if (!valid) throw InvalidPath("path '%s' is not valid", printStorePath(path));
+        if (!valid) return nullptr;
     }
     return std::make_shared<ValidPathInfo>(
         StorePath{path},
