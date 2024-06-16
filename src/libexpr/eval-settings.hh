@@ -15,9 +15,21 @@ struct EvalSettings : Config
     static std::string resolvePseudoUrl(std::string_view url);
 
     Setting<bool> enableNativeCode{this, false, "allow-unsafe-native-code-during-evaluation", R"(
-        Whether builtin functions that allow executing native code should be enabled.
+        Enable built-in functions that allow executing native code.
 
-        In particular, this adds the `importNative` and `exec` builtins.
+        In particular, this adds:
+        - `builtins.importNative` *path* *symbol*
+
+          Runs function with *symbol* from a dynamic shared object (DSO) at *path*.
+          This may be used to add new builtins to the Nix language.
+          The procedure must have the following signature:
+          ```cpp
+          extern "C" typedef void (*ValueInitialiser) (EvalState & state, Value & v);
+          ```
+
+        - `builtins.exec` *arguments*
+
+          Execute a program, where *arguments* are specified as a list of strings, and parse its output as a Nix expression.
     )"};
 
     Setting<Strings> nixPath{
