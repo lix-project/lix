@@ -27,10 +27,10 @@ enum OutputKind { okPlain, okXML, okJSON };
 
 void processExpr(EvalState & state, const Strings & attrPaths,
     bool parseOnly, bool strict, Bindings & autoArgs,
-    bool evalOnly, OutputKind output, bool location, Expr * e)
+    bool evalOnly, OutputKind output, bool location, Expr & e)
 {
     if (parseOnly) {
-        e->show(state.symbols, std::cout);
+        e.show(state.symbols, std::cout);
         std::cout << "\n";
         return;
     }
@@ -175,14 +175,14 @@ static int main_nix_instantiate(int argc, char * * argv)
         }
 
         if (readStdin) {
-            Expr * e = state->parseStdin();
+            Expr & e = state->parseStdin();
             processExpr(*state, attrPaths, parseOnly, strict, autoArgs,
                 evalOnly, outputKind, xmlOutputSourceLocation, e);
         } else if (files.empty() && !fromArgs)
             files.push_back("./default.nix");
 
         for (auto & i : files) {
-            Expr * e = fromArgs
+            Expr & e = fromArgs
                 ? state->parseExprFromString(i, state->rootPath(CanonPath::fromCwd()))
                 : state->parseExprFromFile(resolveExprPath(state->checkSourcePath(lookupFileArg(*state, i))));
             processExpr(*state, attrPaths, parseOnly, strict, autoArgs,

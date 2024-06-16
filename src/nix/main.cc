@@ -234,7 +234,7 @@ static void showHelp(std::vector<std::string> subcommand, NixArgs & toplevel)
     auto vUtils = state.allocValue();
     state.cacheFile(
         CanonPath("/utils.nix"), CanonPath("/utils.nix"),
-        state.parseExprFromString(
+        &state.parseExprFromString(
             #include "utils.nix.gen.hh"
             , CanonPath::root),
         *vUtils);

@@ -234,7 +234,7 @@ static void main_nix_build(int argc, char * * argv)
     DrvInfos drvs;
 
     /* Parse the expressions. */
-    std::vector<Expr *> exprs;
+    std::vector<std::reference_wrapper<Expr>> exprs;
 
     if (readStdin)
         exprs = {state->parseStdin()};
@@ -337,7 +337,7 @@ static void main_nix_build(int argc, char * * argv)
         if (!shell) {
 
             try {
-                auto expr = state->parseExprFromString(
+                auto & expr = state->parseExprFromString(
                     "(import <nixpkgs> {}).bashInteractive",
                     state->rootPath(CanonPath::fromCwd()));
 

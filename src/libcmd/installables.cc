@@ -214,7 +214,7 @@ void SourceExprCommand::completeInstallable(AddCompletions & completions, std::s
 
             evalSettings.pureEval = false;
             auto state = getEvalState();
-            Expr *e = state->parseExprFromFile(
+            Expr & e = state->parseExprFromFile(
                 resolveExprPath(state->checkSourcePath(lookupFileArg(*state, *file)))
                 );
 
@@ -434,13 +434,13 @@ Installables SourceExprCommand::parseInstallables(
         auto vFile = state->allocValue();
 
         if (file == "-") {
-            auto e = state->parseStdin();
+            auto & e = state->parseStdin();
             state->eval(e, *vFile);
         }
         else if (file)
             state->evalFile(lookupFileArg(*state, *file), *vFile);
         else {
-            auto e = state->parseExprFromString(*expr, state->rootPath(CanonPath::fromCwd()));
+            auto & e = state->parseExprFromString(*expr, state->rootPath(CanonPath::fromCwd()));
             state->eval(e, *vFile);
         }
 
