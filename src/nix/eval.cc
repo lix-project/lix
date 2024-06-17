@@ -1,4 +1,4 @@
-#include "command-installable-value.hh"
+#include "command.hh"
 #include "common-args.hh"
 #include "print-options.hh"
 #include "shared.hh"
@@ -12,13 +12,13 @@
 
 using namespace nix;
 
-struct CmdEval : MixJSON, InstallableValueCommand, MixReadOnlyOption
+struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
 {
     bool raw = false;
     std::optional<std::string> apply;
     std::optional<Path> writeTo;
 
-    CmdEval() : InstallableValueCommand()
+    CmdEval() : InstallableCommand()
     {
         addFlag({
             .longName = "raw",
@@ -55,14 +55,16 @@ struct CmdEval : MixJSON, InstallableValueCommand, MixReadOnlyOption
 
     Category category() override { return catSecondary; }
 
-    void run(ref<Store> store, ref<InstallableValue> installable) override
+    void run(ref<Store> store, ref<Installable> installable) override
     {
         if (raw && json)
             throw UsageError("--raw and --json are mutually exclusive");
 
+        auto const installableValue = InstallableValue::require(installable);
+
         auto state = getEvalState();
 
-        auto [v, pos] = installable->toValue(*state);
+        auto [v, pos] = installableValue->toValue(*state);
         NixStringContext context;
 
         if (apply) {
