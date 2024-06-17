@@ -1,6 +1,7 @@
 #include "run.hh"
-#include "command-installable-value.hh"
+#include "command.hh"
 #include "common-args.hh"
+#include "installables.hh"
 #include "shared.hh"
 #include "store-api.hh"
 #include "derivations.hh"
@@ -145,7 +146,7 @@ struct CmdShell : InstallablesCommand, MixEnvironment
 
 static auto rCmdShell = registerCommand<CmdShell>("shell");
 
-struct CmdRun : InstallableValueCommand
+struct CmdRun : InstallableCommand
 {
     using InstallableCommand::run;
 
@@ -191,12 +192,14 @@ struct CmdRun : InstallableValueCommand
         return res;
     }
 
-    void run(ref<Store> store, ref<InstallableValue> installable) override
+    void run(ref<Store> store, ref<Installable> installable) override
     {
         auto state = getEvalState();
 
+        auto installableValue = InstallableValue::require(installable);
+
         lockFlags.applyNixConfig = true;
-        auto app = installable->toApp(*state).resolve(getEvalStore(), store);
+        auto app = installableValue->toApp(*state).resolve(getEvalStore(), store);
 
         Strings allArgs{app.program};
         for (auto & i : args) allArgs.push_back(i);
