@@ -233,6 +233,11 @@
           }
         );
 
+        # Completion tests for the Nix REPL.
+        repl-completion = forAllSystems (
+          system: nixpkgsFor.${system}.native.callPackage ./tests/repl-completion.nix { }
+        );
+
         # Perl bindings for various platforms.
         perlBindings = forAllSystems (system: nixpkgsFor.${system}.native.nix.passthru.perl-bindings);
 
@@ -330,6 +335,7 @@
           rl-next = self.hydraJobs.rl-next.${system}.user;
           # Will be empty attr set on i686-linux, and filtered out by forAvailableSystems.
           pre-commit = self.hydraJobs.pre-commit.${system};
+          repl-completion = self.hydraJobs.repl-completion.${system};
         }
         // (lib.optionalAttrs (builtins.elem system linux64BitSystems)) {
           dockerImage = self.hydraJobs.dockerImage.${system};
