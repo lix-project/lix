@@ -1,4 +1,4 @@
-#include "command-installable-value.hh"
+#include "command.hh"
 #include "shared.hh"
 #include "eval.hh"
 #include "attr-path.hh"
@@ -10,7 +10,7 @@
 
 using namespace nix;
 
-struct CmdEdit : InstallableValueCommand
+struct CmdEdit : InstallableCommand
 {
     std::string description() override
     {
@@ -26,17 +26,19 @@ struct CmdEdit : InstallableValueCommand
 
     Category category() override { return catSecondary; }
 
-    void run(ref<Store> store, ref<InstallableValue> installable) override
+    void run(ref<Store> store, ref<Installable> installable) override
     {
         auto state = getEvalState();
 
+        auto const installableValue = InstallableValue::require(installable);
+
         const auto [file, line] = [&] {
-            auto [v, pos] = installable->toValue(*state);
+            auto [v, pos] = installableValue->toValue(*state);
 
             try {
                 return findPackageFilename(*state, *v, installable->what());
             } catch (NoPositionInfo &) {
-                throw Error("cannot find position information for '%s", installable->what());
+                throw Error("cannot find position information for '%s", installableValue->what());
             }
         }();
 
