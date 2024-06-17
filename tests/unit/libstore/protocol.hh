@@ -39,10 +39,8 @@ public:
                 StringSource from { expected };
                 Proto::template Serialise<T>::read(
                     *LibStoreTest::store,
-                    typename Proto::ReadConn {
-                        .from = from,
-                        .version = version,
-                    });
+                    typename Proto::ReadConn {from, version}
+                );
             });
 
             ASSERT_EQ(got, value);
@@ -60,10 +58,7 @@ public:
         StringSink to;
         Proto::write(
             *LibStoreTest::store,
-            typename Proto::WriteConn {
-                .to = to,
-                .version = version,
-            },
+            typename Proto::WriteConn {to, version},
             value);
 
         if (testAccept())

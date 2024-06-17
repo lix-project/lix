@@ -9,7 +9,16 @@ namespace nix {
 #define WORKER_MAGIC_1 0x6e697863
 #define WORKER_MAGIC_2 0x6478696f
 
+// This must remain 1.35 (Nix 2.18) forever in Lix, since the protocol has
+// diverged in CppNix such that we cannot assign newer versions ourselves, the
+// protocol is bad in design and implementation and Lix intends to replace it
+// entirely.
 #define PROTOCOL_VERSION (1 << 8 | 35)
+// Nix 2.3 is protocol 1.21 (see RemoteStore::initConnection for client,
+// processConnection for server).
+#define MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION 21
+#define MIN_SUPPORTED_WORKER_PROTO_VERSION (1 << 8 | MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION)
+
 #define GET_PROTOCOL_MAJOR(x) ((x) & 0xff00)
 #define GET_PROTOCOL_MINOR(x) ((x) & 0x00ff)
 
@@ -63,6 +72,10 @@ struct WorkerProto
     struct ReadConn {
         Source & from;
         Version version;
+
+        ReadConn(Source & from, Version version) : from(from), version(version) {
+            assert(version >= MIN_SUPPORTED_WORKER_PROTO_VERSION);
+        }
     };
 
     /**
@@ -72,6 +85,10 @@ struct WorkerProto
     struct WriteConn {
         Sink & to;
         Version version;
+
+        WriteConn(Sink & to, Version version) : to(to), version(version) {
+            assert(version >= MIN_SUPPORTED_WORKER_PROTO_VERSION);
+        }
     };
 
     /**
