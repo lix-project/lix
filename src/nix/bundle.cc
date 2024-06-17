@@ -1,5 +1,5 @@
 #include "installable-flake.hh"
-#include "command-installable-value.hh"
+#include "command.hh"
 #include "common-args.hh"
 #include "shared.hh"
 #include "store-api.hh"
@@ -9,7 +9,7 @@
 
 using namespace nix;
 
-struct CmdBundle : InstallableValueCommand
+struct CmdBundle : InstallableCommand
 {
     std::string bundler = "github:NixOS/bundlers";
     std::optional<Path> outLink;
@@ -71,11 +71,13 @@ struct CmdBundle : InstallableValueCommand
         return res;
     }
 
-    void run(ref<Store> store, ref<InstallableValue> installable) override
+    void run(ref<Store> store, ref<Installable> installable) override
     {
         auto evalState = getEvalState();
 
-        auto val = installable->toValue(*evalState).first;
+        auto const installableValue = InstallableValue::require(installable);
+
+        auto val = installableValue->toValue(*evalState).first;
 
         auto [bundlerFlakeRef, bundlerName, extendedOutputsSpec] = parseFlakeRefWithFragmentAndExtendedOutputsSpec(bundler, absPath("."));
         const flake::LockFlags lockFlags{ .writeLockFile = false };
