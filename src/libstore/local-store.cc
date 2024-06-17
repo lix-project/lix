@@ -958,7 +958,7 @@ uint64_t LocalStore::queryValidPathId(State & state, const StorePath & path)
 {
     auto use(state.stmts->QueryPathInfo.use()(printStorePath(path)));
     if (!use.next()) // TODO: I guess if SQLITE got corrupted..?
-        throw InvalidPath("path '%s' does not exist", printStorePath(path));
+        throw InvalidPath("path '%s' does not exist in the Lix database", printStorePath(path));
     return use.getInt(0);
 }
 
