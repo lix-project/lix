@@ -1,6 +1,5 @@
 libcmd_sources = files(
   'built-path.cc',
-  'command-installable-value.cc',
   'cmd-profiles.cc',
   'command.cc',
   'common-eval-args.cc',
@@ -18,7 +17,6 @@ libcmd_sources = files(
 
 libcmd_headers = files(
   'built-path.hh',
-  'command-installable-value.hh',
   'cmd-profiles.hh',
   'command.hh',
   'common-eval-args.hh',
