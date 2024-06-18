@@ -199,7 +199,11 @@ configdata = { }
 # Dependencies
 #
 
-boehm = dependency('bdw-gc', required : get_option('gc'), version : '>=8.2.6')
+gc_opt = get_option('gc').disable_if(
+  'address' in get_option('b_sanitize'),
+  error_message: 'gc does far too many memory crimes for ASan'
+)
+boehm = dependency('bdw-gc', required : gc_opt, version : '>=8.2.6')
 configdata += {
   'HAVE_BOEHMGC': boehm.found().to_int(),
 }
@@ -482,7 +486,14 @@ if cxx.get_id() == 'clang' and get_option('b_sanitize') != ''
   add_project_link_arguments('-shared-libsan', language : 'cpp')
 endif
 
+# Clang gets grumpy about missing libasan symbols if -shared-libasan is not
+# passed when building shared libs, at least on Linux
+if cxx.get_id() == 'clang' and 'address' in get_option('b_sanitize')
+  add_project_link_arguments('-shared-libasan', language : 'cpp')
+endif
+
 add_project_link_arguments('-pthread', language : 'cpp')
+
 if cxx.get_linker_id() in ['ld.bfd', 'ld.gold']
   add_project_link_arguments('-Wl,--no-copy-dt-needed-entries', language : 'cpp')
 endif
@@ -497,7 +508,7 @@ endif
 # maintainers/buildtime_report.sh BUILD-DIR to simply work in clang builds.
 #
 # They can also be manually viewed at https://ui.perfetto.dev
-if get_option('profile-build').require(meson.get_compiler('cpp').get_id() == 'clang').enabled()
+if get_option('profile-build').require(cxx.get_id() == 'clang').enabled()
   add_project_arguments('-ftime-trace', language: 'cpp')
 endif
 

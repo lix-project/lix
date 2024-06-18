@@ -12,9 +12,18 @@ subdir('libmain')
 # libcmd depends on everything
 subdir('libcmd')
 
-
 # The rest of the subdirectories aren't separate components,
 # just source files in another directory, so we process them here.
+
+# Static library that just sets default ASan options. It needs to be included
+# in every executable.
+asanoptions = static_library(
+  'libasanoptions',
+  files('asan-options/asan-options.cc'),
+)
+libasanoptions = declare_dependency(
+  link_whole: asanoptions
+)
 
 build_remote_sources = files(
   'build-remote/build-remote.cc',
