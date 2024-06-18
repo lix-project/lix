@@ -8,6 +8,11 @@ namespace nix {
 #define SERVE_MAGIC_1 0x390c9deb
 #define SERVE_MAGIC_2 0x5452eecb
 
+// This must remain at 2.7 (Nix 2.18) forever in Lix, since the protocol
+// versioning is monotonic, so if we ever change it in the future, it will
+// break compatibility with any potential CppNix-originated protocol changes.
+//
+// Lix intends to replace this protocol entirely.
 #define SERVE_PROTOCOL_VERSION (2 << 8 | 7)
 #define GET_PROTOCOL_MAJOR(x) ((x) & 0xff00)
 #define GET_PROTOCOL_MINOR(x) ((x) & 0x00ff)

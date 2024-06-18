@@ -23,6 +23,10 @@ namespace nix {
 #define GET_PROTOCOL_MINOR(x) ((x) & 0x00ff)
 
 
+#define REMOVE_AFTER_DROPPING_PROTO_MINOR(protoMinor) \
+    static_assert(MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION <= (protoMinor))
+
+
 #define STDERR_NEXT  0x6f6c6d67
 #define STDERR_READ  0x64617461 // data needed from source
 #define STDERR_WRITE 0x64617416 // data for sink
@@ -136,30 +140,30 @@ struct WorkerProto
 enum struct WorkerProto::Op : uint64_t
 {
     IsValidPath = 1,
-    HasSubstitutes = 3,
-    QueryPathHash = 4, // obsolete
-    QueryReferences = 5, // obsolete
+    HasSubstitutes = 3, // obsolete since 2012, stubbed to error
+    QueryPathHash = 4, // obsolete since 2016, stubbed to error
+    QueryReferences = 5, // obsolete since 2016, stubbed to error
     QueryReferrers = 6,
     AddToStore = 7,
-    AddTextToStore = 8, // obsolete since 1.25, Nix 3.0. Use WorkerProto::Op::AddToStore
+    AddTextToStore = 8, // obsolete since protocol 1.25, CppNix 2.4. Use WorkerProto::Op::AddToStore
     BuildPaths = 9,
     EnsurePath = 10,
     AddTempRoot = 11,
     AddIndirectRoot = 12,
-    SyncWithGC = 13,
+    SyncWithGC = 13, // obsolete since CppNix 2.5.0
     FindRoots = 14,
-    ExportPath = 16, // obsolete
-    QueryDeriver = 18, // obsolete
+    ExportPath = 16, // obsolete since 2017, stubbed to error
+    QueryDeriver = 18, // obsolete since 2016, stubbed to error
     SetOptions = 19,
     CollectGarbage = 20,
     QuerySubstitutablePathInfo = 21,
-    QueryDerivationOutputs = 22, // obsolete
+    QueryDerivationOutputs = 22, // obsolete since protocol 1.21, CppNix 2.4
     QueryAllValidPaths = 23,
-    QueryFailedPaths = 24,
-    ClearFailedPaths = 25,
+    QueryFailedPaths = 24, // obsolete, removed
+    ClearFailedPaths = 25, // obsolete, removed
     QueryPathInfo = 26,
-    ImportPaths = 27, // obsolete
-    QueryDerivationOutputNames = 28, // obsolete
+    ImportPaths = 27, // obsolete since 2016
+    QueryDerivationOutputNames = 28, // obsolete since CppNix 2.4
     QueryPathFromHashPart = 29,
     QuerySubstitutablePathInfos = 30,
     QueryValidPaths = 31,

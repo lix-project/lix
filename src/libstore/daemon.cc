@@ -296,17 +296,6 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         break;
     }
 
-    case WorkerProto::Op::HasSubstitutes: {
-        auto path = store->parseStorePath(readString(from));
-        logger->startWork();
-        StorePathSet paths; // FIXME
-        paths.insert(path);
-        auto res = store->querySubstitutablePaths(paths);
-        logger->stopWork();
-        to << (res.count(path) != 0);
-        break;
-    }
-
     case WorkerProto::Op::QuerySubstitutablePaths: {
         auto paths = WorkerProto::Serialise<StorePathSet>::read(*store, rconn);
         logger->startWork();
@@ -316,36 +305,74 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         break;
     }
 
-    case WorkerProto::Op::QueryPathHash: {
-        auto path = store->parseStorePath(readString(from));
-        logger->startWork();
-        auto hash = store->queryPathInfo(path)->narHash;
-        logger->stopWork();
-        to << hash.to_string(Base16, false);
+    case WorkerProto::Op::HasSubstitutes: {
+        throw UnimplementedError("HasSubstitutes is not supported in Lix. This is not used if the declared server protocol is > 1.12 (Nix 1.0, 2012)");
         break;
     }
 
-    case WorkerProto::Op::QueryReferences:
+    case WorkerProto::Op::QueryPathHash: {
+        throw UnimplementedError("QueryPathHash is not supported in Lix, client usages were removed in 2016 in e0204f8d462041387651af388074491fd0bf36d6");
+        break;
+    }
+
+    case WorkerProto::Op::QueryReferences: {
+        throw UnimplementedError("QueryReferences is not supported in Lix, client usages were removed in 2016 in e0204f8d462041387651af388074491fd0bf36d6");
+        break;
+    }
+
+    case WorkerProto::Op::QueryDeriver: {
+        throw UnimplementedError("QueryDeriver is not supported in Lix, client usages were removed in 2016 in e0204f8d462041387651af388074491fd0bf36d6");
+        break;
+    }
+
+    case WorkerProto::Op::ExportPath: {
+        throw UnimplementedError("ExportPath is not supported in Lix, client usage were removed in 2017 in 27dc76c1a5dbe654465245ff5f6bc22e2c8902da");
+        break;
+    }
+
+    case WorkerProto::Op::ImportPaths: {
+        throw UnimplementedError("ImportPaths is not supported in Lix. This is not used if the declared server protocol is >= 1.18 (Nix 2.0, 2016)");
+        break;
+    }
+
     case WorkerProto::Op::QueryReferrers:
     case WorkerProto::Op::QueryValidDerivers:
     case WorkerProto::Op::QueryDerivationOutputs: {
         auto path = store->parseStorePath(readString(from));
         logger->startWork();
         StorePathSet paths;
-        if (op == WorkerProto::Op::QueryReferences)
-            for (auto & i : store->queryPathInfo(path)->references)
-                paths.insert(i);
-        else if (op == WorkerProto::Op::QueryReferrers)
-            store->queryReferrers(path, paths);
-        else if (op == WorkerProto::Op::QueryValidDerivers)
-            paths = store->queryValidDerivers(path);
-        else paths = store->queryDerivationOutputs(path);
+
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wswitch-enum"
+        switch (op) {
+            case WorkerProto::Op::QueryReferrers: {
+                store->queryReferrers(path, paths);
+                break;
+            }
+            case WorkerProto::Op::QueryValidDerivers: {
+                paths = store->queryValidDerivers(path);
+                break;
+            }
+            case WorkerProto::Op::QueryDerivationOutputs: {
+                // Only sent if server presents proto version <= 1.21
+                REMOVE_AFTER_DROPPING_PROTO_MINOR(21);
+                paths = store->queryDerivationOutputs(path);
+                break;
+            }
+            default:
+                abort();
+                break;
+        }
+        #pragma GCC diagnostic pop
+
         logger->stopWork();
         WorkerProto::write(*store, wconn, paths);
         break;
     }
 
     case WorkerProto::Op::QueryDerivationOutputNames: {
+        // Unused in CppNix >= 2.4 (removed in 045b07200c77bf1fe19c0a986aafb531e7e1ba54)
+        REMOVE_AFTER_DROPPING_PROTO_MINOR(31);
         auto path = store->parseStorePath(readString(from));
         logger->startWork();
         auto names = store->readDerivation(path).outputNames();
@@ -360,15 +387,6 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         auto outputs = store->queryPartialDerivationOutputMap(path);
         logger->stopWork();
         WorkerProto::write(*store, wconn, outputs);
-        break;
-    }
-
-    case WorkerProto::Op::QueryDeriver: {
-        auto path = store->parseStorePath(readString(from));
-        logger->startWork();
-        auto info = store->queryPathInfo(path);
-        logger->stopWork();
-        to << (info->deriver ? store->printStorePath(*info->deriver) : "");
         break;
     }
 
@@ -490,29 +508,6 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         auto path = store->addTextToStore(suffix, s, refs, NoRepair);
         logger->stopWork();
         to << store->printStorePath(path);
-        break;
-    }
-
-    case WorkerProto::Op::ExportPath: {
-        auto path = store->parseStorePath(readString(from));
-        readInt(from); // obsolete
-        logger->startWork();
-        TunnelSink sink(to);
-        store->exportPath(path, sink);
-        logger->stopWork();
-        to << 1;
-        break;
-    }
-
-    case WorkerProto::Op::ImportPaths: {
-        logger->startWork();
-        TunnelSource source(from, to);
-        auto paths = store->importPaths(source,
-            trusted ? NoCheckSigs : CheckSigs);
-        logger->stopWork();
-        Strings paths2;
-        for (auto & i : paths) paths2.push_back(store->printStorePath(i));
-        to << paths2;
         break;
     }
 
@@ -666,8 +661,10 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         break;
     }
 
-    // Obsolete.
+    // Obsolete since 9947f1646a26b339fff2e02b77798e9841fac7f0 (included in CppNix 2.5.0).
     case WorkerProto::Op::SyncWithGC: {
+        // CppNix 2.5.0 is 32
+        REMOVE_AFTER_DROPPING_PROTO_MINOR(31);
         logger->startWork();
         logger->stopWork();
         to << 1;
