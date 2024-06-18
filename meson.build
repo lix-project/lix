@@ -437,7 +437,9 @@ add_project_arguments(
   language : 'cpp',
 )
 
-if cxx.get_id() in ['gcc', 'clang']
+# We turn off the production UBSan if the slower dev UBSan is requested, to
+# give better diagnostics.
+if cxx.get_id() in ['gcc', 'clang'] and 'undefined' not in get_option('b_sanitize')
   # 2024-03-24: jade benchmarked the default sanitize reporting in clang and got
   # a regression of about 10% on hackage-packages.nix with clang. So we are trapping instead.
   #
@@ -451,6 +453,11 @@ if cxx.get_id() in ['gcc', 'clang']
   sanitize_args = ['-fsanitize=signed-integer-overflow', '-fsanitize-undefined-trap-on-error']
   add_project_arguments(sanitize_args, language: 'cpp')
   add_project_link_arguments(sanitize_args, language: 'cpp')
+endif
+# Clang's default of -no-shared-libsan on Linux causes link errors; on macOS it defaults to shared.
+# GCC defaults to shared libsan so is fine.
+if cxx.get_id() == 'clang' and get_option('b_sanitize') != ''
+  add_project_link_arguments('-shared-libsan', language : 'cpp')
 endif
 
 add_project_link_arguments('-pthread', language : 'cpp')
