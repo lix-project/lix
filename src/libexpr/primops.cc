@@ -923,14 +923,15 @@ static RegisterPrimOp primop_getEnv({
     .args = {"s"},
     .doc = R"(
       `getEnv` returns the value of the environment variable *s*, or an
-      empty string if the variable doesn’t exist. This function should be
+      empty string if the variable doesn't exist. This function should be
       used with care, as it can introduce all sorts of nasty environment
       dependencies in your Nix expression.
 
-      `getEnv` is used in Nix Packages to locate the file
-      `~/.nixpkgs/config.nix`, which contains user-local settings for Nix
-      Packages. (That is, it does a `getEnv "HOME"` to locate the user’s
-      home directory.)
+      `getEnv` is used in nixpkgs for evil impurities such as locating the file
+      `~/.config/nixpkgs/config.nix` which contains user-local settings for nixpkgs.
+      (That is, it does a `getEnv "HOME"` to locate the user's home directory.)
+
+      When in [pure evaluation mode](@docroot@/command-ref/conf-file.md#conf-pure-eval), this function always returns an empty string.
     )",
     .fun = prim_getEnv,
 });
@@ -1506,6 +1507,7 @@ static RegisterPrimOp primop_storePath({
       in a new path (e.g. `/nix/store/ld01dnzc…-source-source`).
 
       Not available in [pure evaluation mode](@docroot@/command-ref/conf-file.md#conf-pure-eval).
+      Lix may change this, tracking issue: <https://git.lix.systems/lix-project/lix/issues/402>
 
       See also [`builtins.fetchClosure`](#builtins-fetchClosure).
     )",

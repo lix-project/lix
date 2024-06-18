@@ -418,7 +418,7 @@ EvalState::EvalState(
     }
 
     if (evalSettings.restrictEval || evalSettings.pureEval) {
-        allowedPaths = PathSet();
+        allowedPaths = std::optional(PathSet());
 
         for (auto & i : searchPath.elements) {
             auto r = resolveSearchPathPath(i.path);
