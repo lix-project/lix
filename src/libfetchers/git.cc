@@ -232,7 +232,7 @@ std::pair<StorePath, Input> fetchFromWorkdir(ref<Store> store, Input & input, co
         if (S_ISDIR(st.st_mode)) {
             auto prefix = file + "/";
             auto i = files.lower_bound(prefix);
-            return i != files.end() && (*i).starts_with(prefix);
+            return (i != files.end() && (*i).starts_with(prefix)) || files.count(file);
         }
 
         return files.count(file);
