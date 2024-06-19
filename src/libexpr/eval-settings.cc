@@ -63,11 +63,9 @@ Strings EvalSettings::getDefaultNixPath()
         }
     };
 
-    if (!evalSettings.restrictEval && !evalSettings.pureEval) {
-        add(getNixDefExpr() + "/channels");
-        add(rootChannelsDir() + "/nixpkgs", "nixpkgs");
-        add(rootChannelsDir());
-    }
+    add(getNixDefExpr() + "/channels");
+    add(rootChannelsDir() + "/nixpkgs", "nixpkgs");
+    add(rootChannelsDir());
 
     return res;
 }

@@ -5,6 +5,7 @@
 #include "position.hh"
 #include "terminal.hh"
 
+#include <algorithm>
 #include <atomic>
 #include <sstream>
 #include <nlohmann/json.hpp>
@@ -109,6 +110,12 @@ public:
 };
 
 Verbosity verbosity = lvlInfo;
+
+Verbosity verbosityFromIntClamped(int val)
+{
+    int clamped = std::clamp(val, int(lvlError), int(lvlVomit));
+    return static_cast<Verbosity>(clamped);
+}
 
 void writeToStderr(std::string_view s)
 {

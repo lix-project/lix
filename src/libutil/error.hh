@@ -45,6 +45,8 @@ typedef enum {
     lvlVomit
 } Verbosity;
 
+Verbosity verbosityFromIntClamped(int val);
+
 /**
  * The lines of code surrounding an error.
  */

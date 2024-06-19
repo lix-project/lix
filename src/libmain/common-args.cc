@@ -1,5 +1,6 @@
 #include "common-args.hh"
 #include "args/root.hh"
+#include "error.hh"
 #include "globals.hh"
 #include "loggers.hh"
 #include "logging.hh"
@@ -14,14 +15,14 @@ MixCommonArgs::MixCommonArgs(const std::string & programName)
         .shortName = 'v',
         .description = "Increase the logging verbosity level.",
         .category = loggingCategory,
-        .handler = {[]() { verbosity = (Verbosity) (verbosity + 1); }},
+        .handler = {[]() { verbosity = verbosityFromIntClamped(int(verbosity) + 1); }},
     });
 
     addFlag({
         .longName = "quiet",
         .description = "Decrease the logging verbosity level.",
         .category = loggingCategory,
-        .handler = {[]() { verbosity = verbosity > lvlError ? (Verbosity) (verbosity - 1) : lvlError; }},
+        .handler = {[]() { verbosity = verbosityFromIntClamped(int(verbosity) - 1); }},
     });
 
     addFlag({
