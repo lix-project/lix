@@ -1,7 +1,7 @@
 {
   description = "Hydra's builtin hydra-eval-jobs as a standalone";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11-small";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05-small";
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
   inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
   inputs.treefmt-nix.url = "github:numtide/treefmt-nix";
@@ -9,7 +9,7 @@
   inputs.nix-github-actions.url = "github:nix-community/nix-github-actions";
   inputs.nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
   inputs.lix = {
-    url = "git+https://git@git.lix.systems/lix-project/lix";
+    url = "https://git.lix.systems/lix-project/lix/archive/release-2.90.tar.gz";
     inputs.nixpkgs.follows = "nixpkgs";
   };
 

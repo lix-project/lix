@@ -1,6 +1,11 @@
 project('nix-eval-jobs', 'cpp',
   version : '0.1.6',
   license : 'GPL-3.0',
+  default_options : [
+    'debug=true',
+    'optimization=2',
+    'cpp_std=c++20',
+  ],
 )
 
 nix_main_dep = dependency('lix-main', required: true)
