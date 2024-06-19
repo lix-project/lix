@@ -1553,10 +1553,11 @@ void DerivationGoal::waiteeDone(GoalPtr waitee, ExitCode result)
     Goal::waiteeDone(waitee, result);
 
     if (!useDerivation) return;
-    auto & fullDrv = *dynamic_cast<Derivation *>(drv.get());
 
     auto * dg = dynamic_cast<DerivationGoal *>(&*waitee);
     if (!dg) return;
+
+    auto & fullDrv = *dynamic_cast<Derivation *>(drv.get());
 
     auto * nodeP = fullDrv.inputDrvs.findSlot(DerivedPath::Opaque { .path = dg->drvPath });
     if (!nodeP) return;
