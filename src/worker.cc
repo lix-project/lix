@@ -30,15 +30,12 @@
 #include <lix/libexpr/value.hh>
 #include <lix/libutil/terminal.hh>
 #include <exception>
-#include <map>
-#include <memory>
 #include <numeric>
 #include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
-#include <vector>
 
 #include "worker.hh"
 #include "drv.hh"
@@ -51,7 +48,7 @@ static nix::Value *releaseExprTopLevelValue(nix::EvalState &state,
     nix::Value vTop;
 
     if (args.fromArgs) {
-        nix::Expr *e = state.parseExprFromString(
+        nix::Expr &e = state.parseExprFromString(
             args.releaseExpr, state.rootPath(nix::CanonPath::fromCwd()));
         state.eval(e, vTop);
     } else {

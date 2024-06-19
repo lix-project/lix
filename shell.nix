@@ -23,6 +23,7 @@ in
 pkgs.mkShell {
   inherit (nix-eval-jobs) buildInputs;
   nativeBuildInputs = nix-eval-jobs.nativeBuildInputs ++ [
+    pkgs.clang-tools
     (pkgs.python3.withPackages (ps: [
       ps.pytest
     ]))

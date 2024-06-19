@@ -9,7 +9,7 @@
   inputs.nix-github-actions.url = "github:nix-community/nix-github-actions";
   inputs.nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
   inputs.lix = {
-    url = "https://git.lix.systems/lix-project/lix/archive/release-2.90.tar.gz";
+    url = "https://git.lix.systems/lix-project/lix/archive/main.tar.gz";
     inputs.nixpkgs.follows = "nixpkgs";
   };
 

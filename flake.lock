@@ -47,15 +47,15 @@
         "pre-commit-hooks": "pre-commit-hooks"
       },
       "locked": {
-        "lastModified": 1718590005,
-        "narHash": "sha256-fiWc1ZyMlTXXSjcmoEQ+NHhIgtcImPHszbOu5c515cU=",
-        "rev": "98d0249d5c7f5dcc1d2436c4829f073fca668f80",
+        "lastModified": 1718767907,
+        "narHash": "sha256-gpd+mGQxqVHw2kO6rSPQel8TkChHh9UpqxjsmQi0QJM=",
+        "rev": "85f282ef572577899b3d80ba8def1b920a386218",
         "type": "tarball",
-        "url": "https://git.lix.systems/api/v1/repos/lix-project/lix/archive/98d0249d5c7f5dcc1d2436c4829f073fca668f80.tar.gz"
+        "url": "https://git.lix.systems/api/v1/repos/lix-project/lix/archive/85f282ef572577899b3d80ba8def1b920a386218.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://git.lix.systems/lix-project/lix/archive/release-2.90.tar.gz"
+        "url": "https://git.lix.systems/lix-project/lix/archive/main.tar.gz"
       }
     },
     "nix-github-actions": {
