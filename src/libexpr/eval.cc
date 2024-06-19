@@ -1533,6 +1533,66 @@ public:
 };
 };
 
+/** Currently these each just take one, but maybe in the future we could have diagnostics
+ * for all unexpected and missing arguments?
+ */
+struct FormalsMatch
+{
+    std::vector<Symbol> missing;
+    std::vector<Symbol> unexpected;
+};
+
+/** Matchup an attribute argument set to a lambda's formal arguments,
+ * or return what arguments were required but not given, or given but not allowed.
+ * (currently returns only one, for each).
+ */
+FormalsMatch matchupFormals(EvalState & state, Env & env, Displacement & displ, ExprLambda const & lambda, Bindings & attrs)
+{
+    size_t attrsUsed = 0;
+
+    for (auto const & formal : lambda.formals->formals) {
+
+        // The attribute whose name matches the name of the formal we're matching up, if it exists.
+        Attr const * matchingArg = attrs.get(formal.name);
+        if (matchingArg) {
+            attrsUsed += 1;
+            env.values[displ] = matchingArg->value;
+            displ += 1;
+
+            // We're done here. Move on to the next formal.
+            continue;
+        }
+
+        // The argument for this formal wasn't given.
+        // If the formal has a default, use it.
+        if (formal.def) {
+            env.values[displ] = formal.def->maybeThunk(state, env);
+            displ += 1;
+        } else {
+            // Otherwise, let our caller know what was missing.
+            return FormalsMatch{
+                .missing = {formal.name},
+            };
+        }
+    }
+
+    // Check for unexpected extra arguments.
+    if (!lambda.formals->ellipsis && attrsUsed != attrs.size()) {
+        // Return the first unexpected argument.
+        for (Attr const & attr : attrs) {
+            if (!lambda.formals->has(attr.name)) {
+                return FormalsMatch{
+                    .unexpected = {attr.name},
+                };
+            }
+        }
+
+        abort(); // unreachable.
+    }
+
+    return FormalsMatch{};
+}
+
 void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value & vRes, const PosIdx pos)
 {
     if (callDepth > evalSettings.maxCallDepth)
@@ -1586,52 +1646,41 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 if (lambda.arg)
                     env2.values[displ++] = args[0];
 
-                /* For each formal argument, get the actual argument.  If
-                   there is no matching actual argument but the formal
-                   argument has a default, use the default. */
-                size_t attrsUsed = 0;
-                for (auto & i : lambda.formals->formals) {
-                    auto j = args[0]->attrs->get(i.name);
-                    if (!j) {
-                        if (!i.def) {
-                            error<TypeError>("function '%1%' called without required argument '%2%'",
-                                             lambda.getName(symbols),
-                                             symbols[i.name])
-                                    .atPos(lambda.pos)
-                                    .withTrace(pos, "from call site")
-                                    .withFrame(*fun.lambda.env, lambda)
-                                    .debugThrow();
-                        }
-                        env2.values[displ++] = i.def->maybeThunk(*this, env2);
-                    } else {
-                        attrsUsed++;
-                        env2.values[displ++] = j->value;
+                ///* For each formal argument, get the actual argument.  If
+                //   there is no matching actual argument but the formal
+                //   argument has a default, use the default. */
+                auto const formalsMatch = matchupFormals(
+                    *this,
+                    env2,
+                    displ,
+                    lambda,
+                    *args[0]->attrs
+                );
+                for (auto const & missingArg : formalsMatch.missing) {
+                    auto const missing = symbols[missingArg];
+                    error<TypeError>("function '%s' called without required argument '%s'", lambda.getName(symbols), missing)
+                        .atPos(lambda.pos)
+                        .withTrace(pos, "from call site")
+                        .withFrame(*fun.lambda.env, lambda)
+                        .debugThrow();
+                }
+                for (auto const & unexpectedArg : formalsMatch.unexpected) {
+                    auto const unex = symbols[unexpectedArg];
+                    std::set<std::string> formalNames;
+                    for (auto const & formal : lambda.formals->formals) {
+                        formalNames.insert(symbols[formal.name]);
                     }
+                    auto sug = Suggestions::bestMatches(formalNames, unex);
+                    error<TypeError>("function '%s' called with unexpected argument '%s'", lambda.getName(symbols), unex)
+                        .atPos(lambda.pos)
+                        .withTrace(pos, "from call site")
+                        .withSuggestions(sug)
+                        .withFrame(*fun.lambda.env, lambda)
+                        .debugThrow();
                 }
 
-                /* Check that each actual argument is listed as a formal
-                   argument (unless the attribute match specifies a `...'). */
-                if (!lambda.formals->ellipsis && attrsUsed != args[0]->attrs->size()) {
-                    /* Nope, so show the first unexpected argument to the
-                       user. */
-                    for (auto & i : *args[0]->attrs)
-                        if (!lambda.formals->has(i.name)) {
-                            std::set<std::string> formalNames;
-                            for (auto & formal : lambda.formals->formals)
-                                formalNames.insert(symbols[formal.name]);
-                            auto suggestions = Suggestions::bestMatches(formalNames, symbols[i.name]);
-                            error<TypeError>("function '%1%' called with unexpected argument '%2%'",
-                                             lambda.getName(symbols),
-                                             symbols[i.name])
-                                .atPos(lambda.pos)
-                                .withTrace(pos, "from call site")
-                                .withSuggestions(suggestions)
-                                .withFrame(*fun.lambda.env, lambda)
-                                .debugThrow();
-                        }
-                    abort(); // can't happen
-                }
             }
+
 
             nrFunctionCalls++;
             if (countCalls) incrFunctionCall(&lambda);
