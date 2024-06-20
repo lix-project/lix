@@ -163,23 +163,24 @@ struct BrotliDecompressionSource : Source
         uint8_t * out = (uint8_t *) data;
         const auto * begin = out;
 
-        try {
-            while (len && !BrotliDecoderIsFinished(state.get())) {
-                checkInterrupt();
+        while (len && !BrotliDecoderIsFinished(state.get())) {
+            checkInterrupt();
 
-                while (avail_in == 0) {
+            while (avail_in == 0) {
+                try {
                     avail_in = inner->read(buf.get(), BUF_SIZE);
-                    next_in = (const uint8_t *) buf.get();
+                } catch (EndOfFile &) {
+                    break;
                 }
-
-                if (!BrotliDecoderDecompressStream(
-                        state.get(), &avail_in, &next_in, &len, &out, nullptr
-                    ))
-                {
-                    throw CompressionError("error while decompressing brotli file");
-                }
+                next_in = (const uint8_t *) buf.get();
             }
-        } catch (EndOfFile &) {
+
+            if (!BrotliDecoderDecompressStream(
+                    state.get(), &avail_in, &next_in, &len, &out, nullptr
+                ))
+            {
+                throw CompressionError("error while decompressing brotli file");
+            }
         }
 
         if (begin != out) {
