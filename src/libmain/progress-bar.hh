@@ -18,6 +18,8 @@ class ProgressBar : public Logger
 private:
     struct ActInfo
     {
+        using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
+
         std::string s, lastLine, phase;
         ActivityType type = actUnknown;
         uint64_t done = 0;
@@ -28,7 +30,7 @@ private:
         bool visible = true;
         ActivityId parent;
         std::optional<std::string> name;
-        std::chrono::time_point<std::chrono::steady_clock> startTime;
+        TimePoint startTime;
     };
 
     struct ActivitiesByType
