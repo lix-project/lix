@@ -402,31 +402,59 @@ std::string ProgressBar::getStatus(State & state)
 
         expected = std::max(expected, act.expected);
 
-        std::string s;
+        std::string rendered;
 
         if (running || done || expected || failed) {
-            if (running)
-                if (expected != 0)
-                    s = fmt(ANSI_BLUE + numberFmt + ANSI_NORMAL "/" ANSI_GREEN + numberFmt + ANSI_NORMAL "/" + numberFmt,
-                        running / unit, done / unit, expected / unit);
-                else
-                    s = fmt(ANSI_BLUE + numberFmt + ANSI_NORMAL "/" ANSI_GREEN + numberFmt + ANSI_NORMAL,
-                        running / unit, done / unit);
-            else if (expected != done)
-                if (expected != 0)
-                    s = fmt(ANSI_GREEN + numberFmt + ANSI_NORMAL "/" + numberFmt,
-                        done / unit, expected / unit);
-                else
-                    s = fmt(ANSI_GREEN + numberFmt + ANSI_NORMAL, done / unit);
-            else
-                s = fmt(done ? ANSI_GREEN + numberFmt + ANSI_NORMAL : numberFmt, done / unit);
-            s = fmt(itemFmt, s);
+            if (running) {
+                if (expected != 0) {
+                    auto const runningPart = fmt(numberFmt, running / unit);
+                    auto const donePart = fmt(numberFmt, done / unit);
+                    auto const expectedPart = fmt(numberFmt, expected / unit);
+                    rendered = fmt(
+                        ANSI_BLUE "%s" ANSI_NORMAL "/" ANSI_GREEN "%s" ANSI_NORMAL "/%s",
+                        runningPart,
+                        donePart,
+                        expectedPart
+                    );
+                } else {
+                    auto const runningPart = fmt(numberFmt, running / unit);
+                    auto const donePart = fmt(numberFmt, done / unit);
+                    rendered = fmt(
+                        ANSI_BLUE "%s" ANSI_NORMAL "/" ANSI_GREEN "%s" ANSI_NORMAL,
+                        runningPart,
+                        donePart
+                    );
+                }
+            } else if (expected != done) {
+                if (expected != 0) {
+                    auto const donePart = fmt(numberFmt, done / unit);
+                    auto const expectedPart = fmt(numberFmt, expected / unit);
+                    rendered = fmt(
+                        ANSI_GREEN "%s" ANSI_NORMAL "/%s",
+                        donePart,
+                        expectedPart
+                    );
+                } else {
+                    auto const donePart = fmt(numberFmt, done / unit);
+                    rendered = fmt(ANSI_GREEN "%s" ANSI_NORMAL, donePart);
+                }
+            } else {
+                auto const donePart = fmt(numberFmt, done / unit);
+
+                // We only color if `done` is non-zero.
+                if (done) {
+                    rendered = concatStrings(ANSI_GREEN, donePart, ANSI_NORMAL);
+                } else {
+                    rendered = donePart;
+                }
+            }
+            rendered = fmt(itemFmt, rendered);
 
             if (failed)
-                s += fmt(" (" ANSI_RED "%d failed" ANSI_NORMAL ")", failed / unit);
+                rendered += fmt(" (" ANSI_RED "%d failed" ANSI_NORMAL ")", failed / unit);
         }
 
-        return s;
+        return rendered;
     };
 
     auto showActivity = [&](ActivityType type, const std::string & itemFmt, const std::string & numberFmt = "%d", double unit = 1) {
