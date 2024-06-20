@@ -66,6 +66,16 @@ namespace nix {
         ASSERT_THROW(decompress(method, str), CompressionError);
     }
 
+    TEST(decompress, veryLongBrotli) {
+        auto method = "br";
+        auto str = std::string(65536, 'a');
+        auto o = decompress(method, compress(method, str));
+
+        // This is just to not print 64k of "a" for most failures
+        ASSERT_EQ(o.length(), str.length());
+        ASSERT_EQ(o, str);
+    }
+
     /* ----------------------------------------------------------------------------
      * compression sinks
      * --------------------------------------------------------------------------*/
