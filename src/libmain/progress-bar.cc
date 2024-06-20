@@ -414,18 +414,18 @@ public:
 
     std::string getStatus(State & state)
     {
-        auto MiB = 1024.0 * 1024.0;
+        constexpr auto MiB = 1024.0 * 1024.0;
 
         std::string res;
 
         auto renderActivity = [&](ActivityType type, const std::string & itemFmt, const std::string & numberFmt = "%d", double unit = 1) {
             auto & act = state.activitiesByType[type];
             uint64_t done = act.done, expected = act.done, running = 0, failed = act.failed;
-            for (auto & j : act.its) {
-                done += j.second->done;
-                expected += j.second->expected;
-                running += j.second->running;
-                failed += j.second->failed;
+            for (auto & [actId, infoIt] : act.its) {
+                done += infoIt->done;
+                expected += infoIt->expected;
+                running += infoIt->running;
+                failed += infoIt->failed;
             }
 
             expected = std::max(expected, act.expected);
