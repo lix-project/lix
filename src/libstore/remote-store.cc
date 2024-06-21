@@ -307,6 +307,7 @@ StorePathSet RemoteStore::queryDerivationOutputs(const StorePath & path)
     if (GET_PROTOCOL_MINOR(getProtocol()) >= 22) {
         return Store::queryDerivationOutputs(path);
     }
+    REMOVE_AFTER_DROPPING_PROTO_MINOR(21);
     auto conn(getConnection());
     conn->to << WorkerProto::Op::QueryDerivationOutputs << printStorePath(path);
     conn.processStderr();
@@ -336,6 +337,7 @@ std::map<std::string, std::optional<StorePath>> RemoteStore::queryPartialDerivat
             return outputs;
         }
     } else {
+        REMOVE_AFTER_DROPPING_PROTO_MINOR(21);
         auto & evalStore = evalStore_ ? *evalStore_ : *this;
         // Fallback for old daemon versions.
         // For floating-CA derivations (and their co-dependencies) this is an
@@ -530,6 +532,7 @@ void RemoteStore::registerDrvOutput(const Realisation & info)
     auto conn(getConnection());
     conn->to << WorkerProto::Op::RegisterDrvOutput;
     if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 31) {
+        REMOVE_AFTER_DROPPING_PROTO_MINOR(30);
         conn->to << info.id.to_string();
         conn->to << std::string(info.outPath.to_string());
     } else {
@@ -617,6 +620,7 @@ std::vector<KeyedBuildResult> RemoteStore::buildPathsWithResults(
         conn.processStderr();
         return WorkerProto::Serialise<std::vector<KeyedBuildResult>>::read(*this, *conn);
     } else {
+        REMOVE_AFTER_DROPPING_PROTO_MINOR(33);
         // Avoid deadlock.
         conn_.reset();
 
