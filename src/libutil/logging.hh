@@ -14,23 +14,71 @@ typedef enum {
     actRealise = 102,
     actCopyPaths = 103,
     actBuilds = 104,
+
+    /** Fields:
+     * 0: string: path to store derivation being built.
+     * 1: string: representing the machine this is being built on. Empty string if local machine.
+     * 2: int: curRound, not used anymore, always 1?
+     * 3: int: nrRounds, not used anymore always 1?
+     */
     actBuild = 105,
     actOptimiseStore = 106,
     actVerifyPaths = 107,
+
+    /** Fields:
+     * 0: string: store path
+     * 1: string: substituter
+     */
     actSubstitute = 108,
+
+    /** Fields:
+     * 0: string: store path
+     * 1: string: substituter
+     */
     actQueryPathInfo = 109,
+
+    /** Fields:
+     * 0: string: store path
+     */
     actPostBuildHook = 110,
     actBuildWaiting = 111,
 } ActivityType;
 
 typedef enum {
+    /** Fields:
+     * 0: int: bytes linked
+     */
     resFileLinked = 100,
+
+    /** Fields:
+     * 0: string: last line
+     */
     resBuildLogLine = 101,
     resUntrustedPath = 102,
     resCorruptedPath = 103,
+
+    /** Fields:
+     * 0: string: phase name
+     */
     resSetPhase = 104,
+
+    /** Fields:
+     * 0: int: done
+     * 1: int: expected
+     * 2: int: running
+     * 3: int: failed
+     */
     resProgress = 105,
+
+    /** Fields:
+     * 0: int: ActivityType
+     * 1: int: expected
+     */
     resSetExpected = 106,
+
+    /** Fields:
+     * 0: string: last line
+     */
     resPostBuildLogLine = 107,
 } ResultType;
 
