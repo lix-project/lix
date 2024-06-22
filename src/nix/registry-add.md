@@ -31,8 +31,9 @@ R""(
 # Description
 
 This command adds an entry to the user registry that maps flake
-reference *from-url* to flake reference *to-url*. If an entry for
-*from-url* already exists, it is overwritten.
+reference *from-url* to flake reference *to-url*, where *from-url*
+must be a shorthand like 'nixpkgs' or 'nixpkgs/nixos-20.03'. If an
+entry for *from-url* already exists, it is overwritten.
 
 Entries can be removed using [`nix registry
 remove`](./nix3-registry-remove.md).

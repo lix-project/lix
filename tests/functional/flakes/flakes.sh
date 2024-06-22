@@ -366,6 +366,17 @@ nix registry pin flake1 flake3
 nix registry remove flake1
 [[ $(nix registry list | wc -l) == 5 ]]
 
+# 'nix registry add' should accept flake shorthands (with or without branch or rev)
+# in the from argument, but reject fully-qualified from-urls (direct or indirect).
+nix registry add nixpkgz github:NixOS/nixpkgz
+nix registry remove nixpkgz
+nix registry add nixpkgz/branch github:NixOS/nixpkgz
+nix registry remove nixpkgz/branch
+nix registry add nixpkgz/branch/1db42b7fe3878f3f5f7a4f2dc210772fd080e205 github:NixOS/nixpkgz
+nix registry remove nixpkgz/branch/1db42b7fe3878f3f5f7a4f2dc210772fd080e205
+! nix registry add flake:nixpkgz github:NixOS/nixpkgz
+! nix registry add github:NixOS/nixpkgz github:NixOS/nixpkgz
+
 # Test 'nix registry list' with a disabled global registry.
 nix registry add user-flake1 git+file://$flake1Dir
 nix registry add user-flake2 git+file://$flake2Dir

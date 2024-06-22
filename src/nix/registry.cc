@@ -5,6 +5,7 @@
 #include "flake/flake.hh"
 #include "store-api.hh"
 #include "fetchers.hh"
+#include "url-parts.hh"
 #include "registry.hh"
 
 using namespace nix;
@@ -109,7 +110,14 @@ struct CmdRegistryAdd : MixEvalArgs, Command, RegistryCommand
 
     void run() override
     {
+        std::smatch match;
+        if (!std::regex_match(fromUrl, match, flakeShorthandRegex)) {
+            throw UsageError("'from-url' argument must be a shorthand like 'nixpkgs' or 'nixpkgs/nixos-20.03'");
+        }
         auto fromRef = parseFlakeRef(fromUrl);
+        if (fromRef.input.direct) {
+            throw UsageError("'from-url' argument must be an indirect flakeref like 'nixpkgs' or 'flake:nixpkgs'");
+        }
         auto toRef = parseFlakeRef(toUrl);
         auto registry = getRegistry();
         fetchers::Attrs extraAttrs;
