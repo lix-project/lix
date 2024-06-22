@@ -13,9 +13,8 @@ constexpr const auto A_LONG_TIME = std::chrono::duration_cast<std::chrono::milli
     100 * 365 * std::chrono::seconds(86400)
 );
 
-class ProgressBar : public Logger
+struct ProgressBar : public Logger
 {
-private:
     struct ActInfo
     {
         using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
@@ -65,8 +64,6 @@ private:
 
     bool printBuildLogs = false;
     bool isTTY;
-
-public:
 
     ProgressBar(bool isTTY)
         : isTTY(isTTY)

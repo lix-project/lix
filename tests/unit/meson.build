@@ -249,3 +249,25 @@ test(
   suite : 'check',
   protocol : 'gtest',
 )
+
+libmain_tester = executable(
+  'liblixmain-tests',
+  files('libmain/progress-bar.cc'),
+  dependencies : [
+    liblixmain,
+    liblixexpr,
+    liblixutil,
+    liblixstore,
+    gtest,
+    boost,
+  ],
+  cpp_pch : cpp_pch,
+)
+
+test(
+  'libmain-unit-tests',
+  libmain_tester,
+  args : tests_args,
+  suite : 'check',
+  protocol : 'gtest',
+)
