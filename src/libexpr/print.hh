@@ -15,6 +15,8 @@
 
 namespace nix {
 
+struct Expr;
+
 class EvalState;
 struct Value;
 
@@ -50,6 +52,12 @@ void printValue(EvalState & state, std::ostream & str, Value & v, PrintOptions o
 /**
  * A partially-applied form of `printValue` which can be formatted using `<<`
  * without allocating an intermediate string.
+ * This class should not outlive the eval state or it will UAF.
+ * FIXME: This should take `nix::ref`s, to avoid that, but our eval methods all have
+ * EvalState &, not ref<EvalState>, and constructing a new shared_ptr to data that
+ * already has a shared_ptr is a much bigger footgun. In the current architecture of
+ * libexpr, using a ValuePrinter after an EvalState has been destroyed would be
+ * pretty hard.
  */
 class ValuePrinter {
     friend std::ostream & operator << (std::ostream & output, const ValuePrinter & printer);
@@ -72,5 +80,27 @@ std::ostream & operator<<(std::ostream & output, const ValuePrinter & printer);
  */
 template<>
 fmt_internal::HintFmt & fmt_internal::HintFmt::operator%(const ValuePrinter & value);
+
+/**
+ * A partially-applied form of Expr::show(), which can be formatted using `<<`
+ * without allocating an intermediate string.
+ * This class should not outlive the eval state or it will UAF.
+ * FIXME: This should take `nix::ref`s, to avoid that, but our eval methods all have
+ * EvalState &, not ref<EvalState>, and constructing a new shared_ptr to data that
+ * already has a shared_ptr is a much bigger footgun. In the current architecture of
+ * libexpr, using an ExprPrinter after an EvalState has been destroyed would be
+ * pretty hard.
+ */
+class ExprPrinter
+{
+    /** The eval state used to get symbols. */
+    EvalState const & state;
+    /** The expression to print. */
+    Expr const & expr;
+
+public:
+    ExprPrinter(EvalState const & state, Expr const & expr) : state(state), expr(expr) { }
+    friend std::ostream & operator << (std::ostream & output, ExprPrinter const & printer);
+};
 
 }
