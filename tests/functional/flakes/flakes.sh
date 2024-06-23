@@ -278,6 +278,19 @@ git -C $flake3Dir commit -m 'Add nonFlakeInputs'
 # Check whether `nix build` works with a lockfile which is missing a
 # nonFlakeInputs.
 nix build -o $TEST_ROOT/result $flake3Dir#sth --commit-lock-file
+# check that the commit message is broadly correct. we can't check for
+# exact contents of the message becase the build dirs change too much.
+[[ "$(git -C $flake3Dir show -s --format=format:%B)" = \
+"flake.lock: Update
+
+Flake lock file updates:
+
+"?" Added input 'nonFlake':
+    'git+file://"*"/flakes/flakes/nonFlake?ref=refs/heads/master&rev="*"' "*"
+"?" Added input 'nonFlakeFile':
+    'path:"*"/flakes/flakes/nonFlake/README.md?lastModified="*"&narHash=sha256-cPh6hp48IOdRxVV3xGd0PDgSxgzj5N/2cK0rMPNaR4o%3D' "*"
+"?" Added input 'nonFlakeFile2':
+    'path:"*"/flakes/flakes/nonFlake/README.md?lastModified="*"&narHash=sha256-cPh6hp48IOdRxVV3xGd0PDgSxgzj5N/2cK0rMPNaR4o%3D' "* ]]
 
 nix build -o $TEST_ROOT/result flake3#fnord
 [[ $(cat $TEST_ROOT/result) = FNORD ]]
