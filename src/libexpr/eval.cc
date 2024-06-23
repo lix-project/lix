@@ -1432,7 +1432,20 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
     Value * vCurrent = &vFirst;
     // Position for the current attrset Value in this select chain.
     PosIdx posCurrent;
-    e->eval(state, env, vFirst);
+
+    try {
+        e->eval(state, env, vFirst);
+    } catch (Error & e) {
+        assert(this->e != nullptr);
+        state.addErrorTrace(
+            e,
+            getPos(),
+            "while evaluating '%s' to select '%s' on it",
+            ExprPrinter(state, *this->e),
+            showAttrPath(state.symbols, this->attrPath)
+        );
+        throw;
+    }
 
     try {
         auto dts = state.debugRepl

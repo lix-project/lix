@@ -1,4 +1,10 @@
 error:
+       … while evaluating 'a' to select 'foo' on it
+         at /pwd/lang/eval-fail-recursion.nix:1:21:
+            1| let a = {} // a; in a.foo
+             |                     ^
+            2|
+
        … in the right operand of the update (//) operator
          at /pwd/lang/eval-fail-recursion.nix:1:12:
             1| let a = {} // a; in a.foo
