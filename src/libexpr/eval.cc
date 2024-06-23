@@ -1458,12 +1458,46 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                 showAttrPath(state, env, attrPath))
             : nullptr;
 
-        for (auto const & currentAttrName : attrPath) {
+        for (auto const & [partIdx, currentAttrName] : enumerate(attrPath)) {
             state.nrLookups++;
 
             Symbol const name = getName(currentAttrName, state, env);
 
-            state.forceValue(*vCurrent, pos);
+            // For formatting errors, which should be done only when needed.
+            auto partsSoFar = [&]() -> std::string {
+                std::stringstream ss;
+                // We start with the base thing this ExprSelect is selecting on.
+                assert(this->e != nullptr);
+                this->e->show(state.symbols, ss);
+
+                // Then grab each part of the attr path up to this one.
+                assert(partIdx < attrPath.size());
+                std::span<AttrName> const parts(
+                    attrPath.begin(),
+                    attrPath.begin() + partIdx
+                );
+
+                // And convert them to strings and join them.
+                for (auto const & part : parts) {
+                    auto const partName = getName(part, state, env);
+                    ss << "." << state.symbols[partName];
+                }
+
+                return ss.str();
+            };
+
+            try {
+                state.forceValue(*vCurrent, pos);
+            } catch (Error & e) {
+                state.addErrorTrace(
+                    e,
+                    getPos(),
+                    "while evaluating '%s' to select '%s' on it",
+                    partsSoFar(),
+                    state.symbols[name]
+                );
+                throw;
+            }
 
             if (vCurrent->type() != nAttrs) {
 
@@ -1479,7 +1513,10 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                     "expected a set but found %s: %s",
                     showType(*vCurrent),
                     ValuePrinter(state, *vCurrent, errorPrintOptions)
-                ).withTrace(pos, "while selecting an attribute").debugThrow();
+                ).addTrace(
+                    pos,
+                    HintFmt("while selecting '%s' on '%s'", state.symbols[name], partsSoFar())
+                ).debugThrow();
             }
 
             // Now that we know this is actually an attrset, try to find an attr
