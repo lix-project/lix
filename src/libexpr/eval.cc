@@ -4,6 +4,7 @@
 #include "primops.hh"
 #include "print-options.hh"
 #include "shared.hh"
+#include "suggestions.hh"
 #include "types.hh"
 #include "store-api.hh"
 #include "derivations.hh"
@@ -1426,11 +1427,13 @@ static std::string showAttrPath(EvalState & state, Env & env, const AttrPath & a
 
 void ExprSelect::eval(EvalState & state, Env & env, Value & v)
 {
-    Value vTmp;
-    PosIdx pos2;
-    Value * vAttrs = &vTmp;
+    Value vFirst;
 
-    e->eval(state, env, vTmp);
+    // Pointer to the current attrset Value in this select chain.
+    Value * vCurrent = &vFirst;
+    // Position for the current attrset Value in this select chain.
+    PosIdx posCurrent;
+    e->eval(state, env, vFirst);
 
     try {
         auto dts = state.debugRepl
@@ -1443,48 +1446,75 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                 showAttrPath(state, env, attrPath))
             : nullptr;
 
-        for (auto & i : attrPath) {
+        for (auto const & currentAttrName : attrPath) {
             state.nrLookups++;
-            Bindings::iterator j;
-            auto name = getName(i, state, env);
-            if (def) {
-                state.forceValue(*vAttrs, pos);
-                if (vAttrs->type() != nAttrs ||
-                    (j = vAttrs->attrs->find(name)) == vAttrs->attrs->end())
-                {
-                    def->eval(state, env, v);
+
+            Symbol const name = getName(currentAttrName, state, env);
+
+            state.forceValue(*vCurrent, pos);
+
+            if (vCurrent->type() != nAttrs) {
+
+                // If we have an `or` provided default,
+                // then this is allowed to not be an attrset.
+                if (def != nullptr) {
+                    this->def->eval(state, env, v);
                     return;
                 }
-            } else {
-                state.forceAttrs(*vAttrs, pos, "while selecting an attribute");
-                if ((j = vAttrs->attrs->find(name)) == vAttrs->attrs->end()) {
-                    std::set<std::string> allAttrNames;
-                    for (auto & attr : *vAttrs->attrs)
-                        allAttrNames.insert(state.symbols[attr.name]);
-                    auto suggestions = Suggestions::bestMatches(allAttrNames, state.symbols[name]);
-                    state.error<EvalError>("attribute '%1%' missing", state.symbols[name])
-                        .atPos(pos).withSuggestions(suggestions).withFrame(env, *this).debugThrow();
-                }
+
+                // Otherwise, we must type error.
+                state.error<TypeError>(
+                    "expected a set but found %s: %s",
+                    showType(*vCurrent),
+                    ValuePrinter(state, *vCurrent, errorPrintOptions)
+                ).withTrace(pos, "while selecting an attribute").debugThrow();
             }
-            vAttrs = j->value;
-            pos2 = j->pos;
-            if (state.countCalls) state.attrSelects[pos2]++;
+
+            // Now that we know this is actually an attrset, try to find an attr
+            // with the selected name.
+            Bindings::iterator attrIt = vCurrent->attrs->find(name);
+            if (attrIt == vCurrent->attrs->end()) {
+
+                // If we have an `or` provided default, then we'll use that.
+                if (def != nullptr) {
+                    this->def->eval(state, env, v);
+                    return;
+                }
+
+                // Otherwise, missing attr error.
+                std::set<std::string> allAttrNames;
+                for (auto const & attr : *vCurrent->attrs) {
+                    allAttrNames.insert(state.symbols[attr.name]);
+                }
+                auto suggestions = Suggestions::bestMatches(allAttrNames, state.symbols[name]);
+                state.error<EvalError>("attribute '%s' missing", state.symbols[name])
+                    .atPos(pos)
+                    .withSuggestions(suggestions)
+                    .withFrame(env, *this)
+                    .debugThrow();
+            }
+
+            // If we're here, then we successfully found the attribute.
+            // Set our currently operated-on attrset to this one, and keep going.
+            vCurrent = attrIt->value;
+            posCurrent = attrIt->pos;
+            if (state.countCalls) state.attrSelects[posCurrent]++;
         }
 
-        state.forceValue(*vAttrs, (pos2 ? pos2 : this->pos ) );
+        state.forceValue(*vCurrent, (posCurrent ? posCurrent : this->pos));
 
     } catch (Error & e) {
-        if (pos2) {
-            auto pos2r = state.positions[pos2];
+        if (posCurrent) {
+            auto pos2r = state.positions[posCurrent];
             auto origin = std::get_if<SourcePath>(&pos2r.origin);
             if (!(origin && *origin == state.derivationInternal))
-                state.addErrorTrace(e, pos2, "while evaluating the attribute '%1%'",
+                state.addErrorTrace(e, posCurrent, "while evaluating the attribute '%1%'",
                     showAttrPath(state, env, attrPath));
         }
         throw;
     }
 
-    v = *vAttrs;
+    v = *vCurrent;
 }
 
 
