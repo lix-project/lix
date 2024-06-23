@@ -396,12 +396,15 @@ struct GitInputScheme : InputScheme
 
 
             if (commitMsg) {
+                auto [_fd, msgPath] = createTempFile("nix-msg");
+                AutoDelete const _delete{msgPath};
+                writeFile(msgPath, *commitMsg);
+
                 // Pause the logger to allow for user input (such as a gpg passphrase) in `git commit`
                 logger->pause();
                 Finally restoreLogger([]() { logger->resume(); });
                 runProgram("git", true,
-                    { "-C", *root, "--git-dir", gitDir, "commit", std::string(path.rel()), "-F", "-" },
-                    *commitMsg);
+                    { "-C", *root, "--git-dir", gitDir, "commit", std::string(path.rel()), "-F", msgPath });
             }
         }
     }
