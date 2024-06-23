@@ -204,7 +204,13 @@ std::pair<FlakeRef, std::string> parseFlakeRefWithFragment(
         std::string fragment;
         std::swap(fragment, parsedURL.fragment);
 
-        auto input = Input::fromURL(parsedURL, isFlake);
+        // This has a special meaning for flakes and must not be passed to libfetchers.
+        // Of course this means that libfetchers cannot have fetchers
+        // expecting an argument `dir` 🫠
+        ParsedURL urlForFetchers(parsedURL);
+        urlForFetchers.query.erase("dir");
+
+        auto input = Input::fromURL(urlForFetchers, isFlake);
         input.parent = baseDir;
 
         return std::make_pair(

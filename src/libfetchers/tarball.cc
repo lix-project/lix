@@ -201,29 +201,17 @@ struct CurlInputScheme : InputScheme
         if (!isValidURL(_url, requireTree))
             return std::nullopt;
 
-        Input input;
-
         auto url = _url;
+
+        Attrs attrs;
+        attrs.emplace("type", inputType());
 
         url.scheme = parseUrlScheme(url.scheme).transport;
 
-        auto narHash = url.query.find("narHash");
-        if (narHash != url.query.end())
-            input.attrs.insert_or_assign("narHash", narHash->second);
+        emplaceURLQueryIntoAttrs(url, attrs, {"revCount"}, {});
 
-        if (auto i = get(url.query, "rev"))
-            input.attrs.insert_or_assign("rev", *i);
-
-        if (auto i = get(url.query, "revCount"))
-            if (auto n = string2Int<uint64_t>(*i))
-                input.attrs.insert_or_assign("revCount", *n);
-
-        url.query.erase("rev");
-        url.query.erase("revCount");
-
-        input.attrs.insert_or_assign("type", inputType());
-        input.attrs.insert_or_assign("url", url.to_string());
-        return input;
+        attrs.emplace("url", url.to_string());
+        return inputFromAttrs(attrs);
     }
 
     std::optional<Input> inputFromAttrs(const Attrs & attrs) const override
@@ -235,7 +223,7 @@ struct CurlInputScheme : InputScheme
         std::set<std::string> allowedNames = {"type", "url", "narHash", "name", "unpack", "rev", "revCount", "lastModified"};
         for (auto & [name, value] : attrs)
             if (!allowedNames.count(name))
-                throw Error("unsupported %s input attribute '%s'", *type, name);
+                throw Error("unsupported %s input attribute '%s'. If you wanted to fetch a tarball with a query parameter, please use '{ type = \"tarball\"; url = \"...\"; }'", *type, name);
 
         Input input;
         input.attrs = attrs;
