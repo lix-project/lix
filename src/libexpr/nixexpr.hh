@@ -157,8 +157,18 @@ struct ExprInheritFrom : ExprVar
 struct ExprSelect : Expr
 {
     PosIdx pos;
-    std::unique_ptr<Expr> e, def;
+
+    /** The expression attributes are being selected on. e.g. `foo` in `foo.bar.baz`. */
+    std::unique_ptr<Expr> e;
+
+    /** A default value specified with `or`, if the selected attr doesn't exist.
+     * e.g. `bix` in `foo.bar.baz or bix`
+     */
+    std::unique_ptr<Expr> def;
+
+    /** The path of attributes being selected. e.g. `bar.baz` in `foo.bar.baz.` */
     AttrPath attrPath;
+
     ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, AttrPath attrPath, std::unique_ptr<Expr> def) : pos(pos), e(std::move(e)), def(std::move(def)), attrPath(std::move(attrPath)) { };
     ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, Symbol name) : pos(pos), e(std::move(e)) { attrPath.push_back(AttrName(name)); };
     PosIdx getPos() const override { return pos; }
