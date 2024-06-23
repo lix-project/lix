@@ -760,7 +760,7 @@ void DerivationGoal::tryToBuild()
                 /* Not now; wait until at least one child finishes or
                    the wake-up timeout expires. */
                 if (!actLock)
-                    actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
+                    actLock = std::make_unique<Activity>(*logger, lvlTalkative, actBuildWaiting,
                         fmt("waiting for a machine to build '%s'", Magenta(worker.store.printStorePath(drvPath))));
                 worker.waitForAWhile(shared_from_this());
                 outputLocks.unlock();
