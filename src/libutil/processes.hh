@@ -71,8 +71,7 @@ Pid startProcess(std::function<void()> fun, const ProcessOptions & options = Pro
  * shell backtick operator).
  */
 std::string runProgram(Path program, bool searchPath = false,
-    const Strings & args = Strings(),
-    const std::optional<std::string> & input = {}, bool isInteractive = false);
+    const Strings & args = Strings(), bool isInteractive = false);
 
 struct RunOptions
 {
@@ -83,8 +82,6 @@ struct RunOptions
     std::optional<uid_t> gid;
     std::optional<Path> chdir;
     std::optional<std::map<std::string, std::string>> environment;
-    std::optional<std::string> input;
-    Source * standardIn = nullptr;
     Sink * standardOut = nullptr;
     bool mergeStderrToStdout = false;
     bool isInteractive = false;

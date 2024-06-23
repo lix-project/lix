@@ -242,8 +242,7 @@ NixRepl::NixRepl(const SearchPath & searchPath, nix::ref<Store> store, ref<EvalS
 {
 }
 
-void runNix(Path program, const Strings & args,
-    const std::optional<std::string> & input = {})
+void runNix(Path program, const Strings & args)
 {
     auto subprocessEnv = getEnv();
     subprocessEnv["NIX_CONFIG"] = globalConfig.toKeyValue();
@@ -252,7 +251,6 @@ void runNix(Path program, const Strings & args,
         .program = settings.nixBinDir+ "/" + program,
         .args = args,
         .environment = subprocessEnv,
-        .input = input,
     });
 
     return;
