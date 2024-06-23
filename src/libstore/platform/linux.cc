@@ -1,3 +1,4 @@
+#include "cgroup.hh"
 #include "gc-store.hh"
 #include "signals.hh"
 #include "platform/linux.hh"
@@ -113,5 +114,18 @@ void LinuxLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
     readFileRoots("/proc/sys/kernel/modprobe", unchecked);
     readFileRoots("/proc/sys/kernel/fbsplash", unchecked);
     readFileRoots("/proc/sys/kernel/poweroff_cmd", unchecked);
+}
+
+void LinuxLocalDerivationGoal::killSandbox(bool getStats)
+{
+    if (cgroup) {
+        auto stats = destroyCgroup(*cgroup);
+        if (getStats) {
+            buildResult.cpuUser = stats.cpuUser;
+            buildResult.cpuSystem = stats.cpuSystem;
+        }
+    } else {
+        LocalDerivationGoal::killSandbox(getStats);
+    }
 }
 }

@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "build/local-derivation-goal.hh"
 #include "gc-store.hh"
 #include "local-store.hh"
 
@@ -30,6 +31,21 @@ public:
 private:
 
     void findPlatformRoots(UncheckedRoots & unchecked) override;
+};
+
+/**
+ * Darwin-specific implementation of LocalDerivationGoal
+ */
+class DarwinLocalDerivationGoal : public LocalDerivationGoal
+{
+public:
+    using LocalDerivationGoal::LocalDerivationGoal;
+
+private:
+    /**
+     * Set process flags to enter or leave rosetta, then execute the builder
+     */
+    void execBuilder(std::string builder, Strings args, Strings envStrs) override;
 };
 
 }

@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "build/local-derivation-goal.hh"
 #include "local-store.hh"
 
 namespace nix {
@@ -26,6 +27,16 @@ public:
     {
         throw UnimplementedError("FallbackLocalStore");
     }
+};
+
+/**
+ * Fallback platform implementation of LocalDerivationGoal
+ * Exists so we can make LocalDerivationGoal constructor protected
+ */
+class FallbackLocalDerivationGoal : public LocalDerivationGoal
+{
+public:
+    using LocalDerivationGoal::LocalDerivationGoal;
 };
 
 }

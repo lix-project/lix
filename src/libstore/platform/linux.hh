@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "build/local-derivation-goal.hh"
 #include "gc-store.hh"
 #include "local-store.hh"
 
@@ -30,6 +31,18 @@ public:
 private:
 
     void findPlatformRoots(UncheckedRoots & unchecked) override;
+};
+
+/**
+ * Linux-specific implementation of LocalDerivationGoal
+ */
+class LinuxLocalDerivationGoal : public LocalDerivationGoal
+{
+public:
+    using LocalDerivationGoal::LocalDerivationGoal;
+
+private:
+    void killSandbox(bool getStatus) override;
 };
 
 }
