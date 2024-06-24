@@ -8,11 +8,6 @@
 
 namespace nix {
 
-// 100 years ought to be enough for anyone (yet sufficiently smaller than max() to not cause signed integer overflow).
-constexpr const auto A_LONG_TIME = std::chrono::duration_cast<std::chrono::milliseconds>(
-    100 * 365 * std::chrono::seconds(86400)
-);
-
 struct ProgressBar : public Logger
 {
     struct ActInfo
@@ -68,21 +63,7 @@ struct ProgressBar : public Logger
     bool printMultiline = false;
     bool isTTY;
 
-    ProgressBar(bool isTTY)
-        : isTTY(isTTY)
-    {
-        state_.lock()->active = isTTY;
-        updateThread = std::thread([&]() {
-            auto state(state_.lock());
-            auto nextWakeup = A_LONG_TIME;
-            while (state->active) {
-                if (!state->haveUpdate)
-                    state.wait_for(updateCV, nextWakeup);
-                nextWakeup = draw(*state, {});
-                state.wait_for(quitCV, std::chrono::milliseconds(50));
-            }
-        });
-    }
+    ProgressBar(bool isTTY);
 
     ~ProgressBar();
 
