@@ -50,6 +50,13 @@ void ExprVar::show(const SymbolTable & symbols, std::ostream & str) const
     str << symbols[name];
 }
 
+void ExprInheritFrom::show(SymbolTable const & symbols, std::ostream & str) const
+{
+    str << "(/* expanded inherit (expr) */ ";
+    fromExpr->show(symbols, str);
+    str << ")";
+}
+
 void ExprSelect::show(const SymbolTable & symbols, std::ostream & str) const
 {
     str << "(";

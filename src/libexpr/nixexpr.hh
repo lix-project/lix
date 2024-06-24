@@ -154,7 +154,8 @@ struct ExprInheritFrom : ExprVar
         this->fromWith = nullptr;
     }
 
-    void bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env);
+    void show(SymbolTable const & symbols, std::ostream & str) const override;
+    void bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env) override;
 };
 
 struct ExprSelect : Expr
