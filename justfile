@@ -9,8 +9,8 @@ clean:
     rm -rf build
 
 # Prepare meson for building
-setup:
-    meson setup build --prefix="$PWD/outputs/out" $mesonFlags
+setup *OPTIONS:
+    meson setup build --prefix="$PWD/outputs/out" $mesonFlags {{ OPTIONS }}
 
 # Build lix
 build *OPTIONS:
