@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <editline.h>
 #include <iostream>
 #include <cstdlib>
