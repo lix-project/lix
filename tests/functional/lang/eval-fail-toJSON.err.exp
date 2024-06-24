@@ -40,7 +40,7 @@ error:
              |       ^
             8|     }
 
-       … while calling the 'throw' builtin
+       … caused by explicit throw
          at /pwd/lang/eval-fail-toJSON.nix:7:13:
             6|     {
             7|       c.d = throw "hah no";

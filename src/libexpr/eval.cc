@@ -1807,6 +1807,15 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
 
                 try {
                     fn->fun(*this, vCur.determinePos(noPos), args, vCur);
+                } catch (ThrownError & e) {
+                    // Distinguish between an error that simply happened while "throw"
+                    // was being evaluated and an explicit thrown error.
+                    if (fn->name == "throw") {
+                        addErrorTrace(e, pos, "caused by explicit %s", "throw");
+                    } else {
+                        addErrorTrace(e, pos, "while calling the '%s' builtin", fn->name);
+                    }
+                    throw;
                 } catch (Error & e) {
                     addErrorTrace(e, pos, "while calling the '%1%' builtin", fn->name);
                     throw;

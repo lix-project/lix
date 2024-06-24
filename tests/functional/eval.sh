@@ -25,7 +25,7 @@ nix eval -E 'assert 1 + 2 == 3; true'
 # Top-level eval errors should be printed to stderr with a traceback.
 topLevelThrow="$(expectStderr 1 nix eval --expr 'throw "a sample throw message"')"
 [[ "$topLevelThrow" =~ "a sample throw message" ]]
-[[ "$topLevelThrow" =~ "while calling the 'throw' builtin" ]]
+[[ "$topLevelThrow" =~ "caused by explicit throw" ]]
 
 # But errors inside something should print an elided version, and exit with 0.
 outputOfNestedThrow="$(nix eval --expr '{ throws = throw "a sample throw message"; }')"

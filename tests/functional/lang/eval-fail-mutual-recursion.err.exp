@@ -54,7 +54,7 @@ error:
 
        (21 duplicate frames omitted)
 
-       … while calling the 'throw' builtin
+       … caused by explicit throw
          at /pwd/lang/eval-fail-mutual-recursion.nix:34:10:
            33|     then throwAfterB true 10
            34|     else throw "Uh oh!";

@@ -5,7 +5,7 @@ error:
              |    ^
             2|
 
-       … while calling the 'throw' builtin
+       … caused by explicit throw
          at /pwd/lang/eval-fail-not-throws.nix:1:4:
             1| ! (throw "uh oh!")
              |    ^
