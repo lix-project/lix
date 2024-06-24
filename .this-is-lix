@@ -1,0 +1,1 @@
+This is a file used by the dev shell shellHook in package.nix to check that this is actually a Lix repo before installing git hooks. Its contents have no meaning.
