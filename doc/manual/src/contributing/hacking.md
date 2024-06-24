@@ -39,17 +39,19 @@ $ nix-shell -A native-clangStdenvPackages
 
 ### Building from the development shell
 
-As always you may run [stdenv's phases by name](https://nixos.org/manual/nixpkgs/unstable/#sec-building-stdenv-package-in-nix-shell), e.g.:
+You can build and test Lix with just:
 
 ```bash
-$ configurePhase
-$ buildPhase
-$ checkPhase
-$ installPhase
-$ installCheckPhase
+$ just setup
+$ just build
+$ just test --suite=check
+$ just install
+$ just test --suite=installcheck
 ```
 
-To build manually, however, use the following:
+(Check and installcheck may both be done after install, allowing you to omit the --suite argument entirely, but this is the order package.nix runs them in.)
+
+You can also build Lix manually:
 
 ```bash
 $ meson setup ./build "--prefix=$out" $mesonFlags
@@ -64,9 +66,7 @@ $ meson install -C build
 $ meson test -C build --suite=installcheck
 ```
 
-(Check and installcheck may both be done after install, allowing you to omit the --suite argument entirely, but this is the order package.nix runs them in.)
-
-This will install Lix to `$PWD/outputs`, the `/bin` of which is prepended to PATH in the development shells.
+In both cases, Lix will be installed to `$PWD/outputs`, the `/bin` of which is prepended to PATH in the development shells.
 
 If the tests fail and Meson helpfully has no output for why, use the `--print-error-logs` option to `meson test`.
 

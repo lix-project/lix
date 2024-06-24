@@ -10,7 +10,7 @@ clean:
 
 # Prepare meson for building
 setup:
-    meson setup build --prefix="$PWD/outputs/out"
+    meson setup build --prefix="$PWD/outputs/out" $mesonFlags
 
 # Build lix
 build *OPTIONS:
