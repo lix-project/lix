@@ -1,4 +1,3 @@
-#include "attrs.hh"
 #include "filetransfer.hh"
 #include "cache.hh"
 #include "globals.hh"
@@ -37,11 +36,18 @@ struct GitArchiveInputScheme : InputScheme
 
         auto path = tokenizeString<std::vector<std::string>>(url.path, "/");
 
-        std::optional<std::string> refOrRev;
+        std::optional<Hash> rev;
+        std::optional<std::string> ref;
+        std::optional<std::string> host_url;
 
         auto size = path.size();
         if (size == 3) {
-            refOrRev = path[2];
+            if (std::regex_match(path[2], revRegex))
+                rev = Hash::parseAny(path[2], htSHA1);
+            else if (std::regex_match(path[2], refRegex))
+                ref = path[2];
+            else
+                throw BadURL("in URL '%s', '%s' is not a commit hash or branch/tag name", url.url, path[2]);
         } else if (size > 3) {
             std::string rs;
             for (auto i = std::next(path.begin(), 2); i != path.end(); i++) {
@@ -52,91 +58,61 @@ struct GitArchiveInputScheme : InputScheme
             }
 
             if (std::regex_match(rs, refRegex)) {
-                refOrRev = rs;
+                ref = rs;
             } else {
                 throw BadURL("in URL '%s', '%s' is not a branch/tag name", url.url, rs);
             }
         } else if (size < 2)
             throw BadURL("URL '%s' is invalid", url.url);
 
-        Attrs attrs;
-        attrs.emplace("type", type());
-        attrs.emplace("owner", path[0]);
-        attrs.emplace("repo", path[1]);
-
         for (auto &[name, value] : url.query) {
-            if (name == "rev" || name == "ref") {
-                if (refOrRev) {
-                    throw BadURL("URL '%s' already contains a ref or rev", url.url);
-                } else {
-                    refOrRev = value;
-                }
-            } else if (name == "lastModified") {
-                if (auto n = string2Int<uint64_t>(value)) {
-                    attrs.emplace(name, *n);
-                } else {
-                    throw Error(
-                        "Attribute 'lastModified' in URL '%s' must be an integer",
-                        url.to_string()
-                    );
-                }
-            } else {
-                attrs.emplace(name, value);
+            if (name == "rev") {
+                if (rev)
+                    throw BadURL("URL '%s' contains multiple commit hashes", url.url);
+                rev = Hash::parseAny(value, htSHA1);
             }
+            else if (name == "ref") {
+                if (!std::regex_match(value, refRegex))
+                    throw BadURL("URL '%s' contains an invalid branch/tag name", url.url);
+                if (ref)
+                    throw BadURL("URL '%s' contains multiple branch/tag names", url.url);
+                ref = value;
+            }
+            else if (name == "host") {
+                if (!std::regex_match(value, hostRegex))
+                    throw BadURL("URL '%s' contains an invalid instance host", url.url);
+                host_url = value;
+            }
+            // FIXME: barf on unsupported attributes
         }
 
-        if (refOrRev) attrs.emplace("refOrRev", *refOrRev);
+        if (ref && rev)
+            throw BadURL("URL '%s' contains both a commit hash and a branch/tag name %s %s", url.url, *ref, rev->gitRev());
 
-        return inputFromAttrs(attrs);
+        Input input;
+        input.attrs.insert_or_assign("type", type());
+        input.attrs.insert_or_assign("owner", path[0]);
+        input.attrs.insert_or_assign("repo", path[1]);
+        if (rev) input.attrs.insert_or_assign("rev", rev->gitRev());
+        if (ref) input.attrs.insert_or_assign("ref", *ref);
+        if (host_url) input.attrs.insert_or_assign("host", *host_url);
+
+        return input;
     }
 
     std::optional<Input> inputFromAttrs(const Attrs & attrs) const override
     {
-        // Attributes can contain refOrRev and it needs to be figured out
-        // which one it is (see inputFromURL for when that may happen).
-        // The correct one (ref or rev) will be written into finalAttrs and
-        // it needs to be mutable for that.
-        Attrs finalAttrs(attrs);
-        auto type_ = maybeGetStrAttr(finalAttrs, "type");
-        if (type_ != type()) return {};
+        if (maybeGetStrAttr(attrs, "type") != type()) return {};
 
-        auto owner = getStrAttr(finalAttrs, "owner");
-        auto repo = getStrAttr(finalAttrs, "repo");
-
-        auto url = fmt("%s:%s/%s", *type_, owner, repo);
-        if (auto host = maybeGetStrAttr(finalAttrs, "host")) {
-            if (!std::regex_match(*host, hostRegex)) {
-                throw BadURL("URL '%s' contains an invalid instance host", url);
-            }
-        }
-
-        if (auto refOrRev = maybeGetStrAttr(finalAttrs, "refOrRev")) {
-            finalAttrs.erase("refOrRev");
-            if (std::regex_match(*refOrRev, revRegex)) {
-                finalAttrs.emplace("rev", *refOrRev);
-            } else if (std::regex_match(*refOrRev, refRegex)) {
-                finalAttrs.emplace("ref", *refOrRev);
-            } else {
-                throw Error(
-                    "in URL '%s', '%s' is not a commit hash or a branch/tag name",
-                    url,
-                    *refOrRev
-                );
-            }
-        } else if (auto ref = maybeGetStrAttr(finalAttrs, "ref")) {
-            if (!std::regex_match(*ref, refRegex)) {
-                throw BadURL("URL '%s' contains an invalid branch/tag name", url);
-            }
-        }
-
-        for (auto & [name, value] : finalAttrs) {
-            if (name != "type" && name != "owner" && name != "repo" && name != "ref" && name != "rev" && name != "narHash" && name != "lastModified" && name != "host") {
+        for (auto & [name, value] : attrs)
+            if (name != "type" && name != "owner" && name != "repo" && name != "ref" && name != "rev" && name != "narHash" && name != "lastModified" && name != "host")
                 throw Error("unsupported input attribute '%s'", name);
-            }
-        }
+
+        getStrAttr(attrs, "owner");
+        getStrAttr(attrs, "repo");
 
         Input input;
-        input.attrs = finalAttrs;
+        input.attrs = attrs;
         return input;
     }
 

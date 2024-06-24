@@ -159,37 +159,6 @@ struct InputScheme
         std::optional<std::string> commitMsg) const;
 
     virtual std::pair<StorePath, Input> fetch(ref<Store> store, const Input & input) = 0;
-
-protected:
-    void emplaceURLQueryIntoAttrs(
-        const ParsedURL & parsedURL,
-        Attrs & attrs,
-        const StringSet & numericParams,
-        const StringSet & booleanParams) const
-    {
-        for (auto &[name, value] : parsedURL.query) {
-            if (name == "url") {
-                throw BadURL(
-                    "URL '%s' must not override url via query param!",
-                    parsedURL.to_string()
-                );
-            } else if (numericParams.count(name) != 0) {
-                if (auto n = string2Int<uint64_t>(value)) {
-                    attrs.insert_or_assign(name, *n);
-                } else {
-                    throw BadURL(
-                        "URL '%s' has non-numeric parameter '%s'",
-                        parsedURL.to_string(),
-                        name
-                    );
-                }
-            } else if (booleanParams.count(name) != 0) {
-                attrs.emplace(name, Explicit<bool> { value == "1" });
-            } else {
-                attrs.emplace(name, value);
-            }
-        }
-    }
 };
 
 void registerInputScheme(std::shared_ptr<InputScheme> && fetcher);
