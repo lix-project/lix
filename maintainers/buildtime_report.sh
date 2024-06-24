@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Generates a report of build time based on a meson build using -ftime-trace in
 # Clang.
