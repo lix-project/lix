@@ -302,6 +302,9 @@ stdenv.mkDerivation (finalAttrs: {
       else
         appendToVar configureFlags "--disable-tests"
       fi
+
+      # Fix up /usr/bin/env shebangs relied on by the build
+      patchShebangs --build tests/ doc/manual/
     '';
 
   mesonBuildType = "debugoptimized";
