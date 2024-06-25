@@ -390,6 +390,7 @@ stdenv.mkDerivation (finalAttrs: {
         bashInteractive,
         clang-tools,
         clangbuildanalyzer,
+        doxygen,
         glibcLocales,
         just,
         llvmPackages,
@@ -455,6 +456,10 @@ stdenv.mkDerivation (finalAttrs: {
               skopeo
               just
               nixfmt
+              # Included above when internalApiDocs is true, but we set that to
+              # false intentionally to save dev build time.
+              # To build them in a dev shell, you can set -Dinternal-api-docs=enabled when configuring.
+              doxygen
               # Load-bearing order. Must come before clang-unwrapped below, but after clang_tools above.
               stdenv.cc
             ]

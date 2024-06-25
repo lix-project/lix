@@ -387,7 +387,7 @@
               nix = pkgs.callPackage ./package.nix {
                 inherit stdenv officialRelease versionSuffix;
                 busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
-                internalApiDocs = true;
+                internalApiDocs = false;
               };
               pre-commit = self.hydraJobs.pre-commit.${pkgs.system} or { };
             in
