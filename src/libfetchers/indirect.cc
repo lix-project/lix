@@ -17,8 +17,6 @@ struct IndirectInputScheme : InputScheme
         std::optional<Hash> rev;
         std::optional<std::string> ref;
 
-        Attrs attrs;
-
         if (path.size() == 1) {
         } else if (path.size() == 2) {
             if (std::regex_match(path[1], revRegex))
@@ -28,21 +26,29 @@ struct IndirectInputScheme : InputScheme
             else
                 throw BadURL("in flake URL '%s', '%s' is not a commit hash or branch/tag name", url.url, path[1]);
         } else if (path.size() == 3) {
+            if (!std::regex_match(path[1], refRegex))
+                throw BadURL("in flake URL '%s', '%s' is not a branch/tag name", url.url, path[1]);
             ref = path[1];
+            if (!std::regex_match(path[2], revRegex))
+                throw BadURL("in flake URL '%s', '%s' is not a commit hash", url.url, path[2]);
             rev = Hash::parseAny(path[2], htSHA1);
         } else
             throw BadURL("GitHub URL '%s' is invalid", url.url);
 
         std::string id = path[0];
+        if (!std::regex_match(id, flakeRegex))
+            throw BadURL("'%s' is not a valid flake ID", id);
 
-        attrs.emplace("type", "indirect");
-        attrs.emplace("id", id);
-        if (rev) attrs.emplace("rev", rev->gitRev());
-        if (ref) attrs.emplace("ref", *ref);
+        // FIXME: forbid query params?
 
-        emplaceURLQueryIntoAttrs(url, attrs, {}, {});
+        Input input;
+        input.direct = false;
+        input.attrs.insert_or_assign("type", "indirect");
+        input.attrs.insert_or_assign("id", id);
+        if (rev) input.attrs.insert_or_assign("rev", rev->gitRev());
+        if (ref) input.attrs.insert_or_assign("ref", *ref);
 
-        return inputFromAttrs(attrs);
+        return input;
     }
 
     std::optional<Input> inputFromAttrs(const Attrs & attrs) const override
@@ -56,18 +62,6 @@ struct IndirectInputScheme : InputScheme
         auto id = getStrAttr(attrs, "id");
         if (!std::regex_match(id, flakeRegex))
             throw BadURL("'%s' is not a valid flake ID", id);
-
-        // TODO come up with a nicer error message for those two.
-        if (auto rev = maybeGetStrAttr(attrs, "rev")) {
-            if (!std::regex_match(*rev, revRegex)) {
-                throw BadURL("in flake '%s', '%s' is not a commit hash", id, *rev);
-            }
-        }
-        if (auto ref = maybeGetStrAttr(attrs, "ref")) {
-            if (!std::regex_match(*ref, refRegex)) {
-                throw BadURL("in flake '%s', '%s' is not a valid branch/tag name", id, *ref);
-            }
-        }
 
         Input input;
         input.direct = false;

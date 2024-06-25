@@ -69,7 +69,7 @@ in
 
     # Check that we got redirected to the immutable URL.
     locked_url = info["locked"]["url"]
-    assert locked_url == "http://localhost/stable/${nixpkgs.rev}.tar.gz?rev=${nixpkgs.rev}&revCount=1234", f"{locked_url=} != http://localhost/stable/${nixpkgs.rev}.tar.gz"
+    assert locked_url == "http://localhost/stable/${nixpkgs.rev}.tar.gz", f"{locked_url=} != http://localhost/stable/${nixpkgs.rev}.tar.gz"
 
     # Check that we got the rev and revCount attributes.
     revision = info["revision"]

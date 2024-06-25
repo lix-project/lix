@@ -56,7 +56,12 @@ struct MercurialInputScheme : InputScheme
         Attrs attrs;
         attrs.emplace("type", "hg");
 
-        emplaceURLQueryIntoAttrs(url, attrs, {"revCount"}, {});
+        for (auto &[name, value] : url.query) {
+            if (name == "rev" || name == "ref")
+                attrs.emplace(name, value);
+            else
+                url2.query.emplace(name, value);
+        }
 
         attrs.emplace("url", url2.to_string());
 
