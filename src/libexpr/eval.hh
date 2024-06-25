@@ -9,14 +9,13 @@
 #include "symbol-table.hh"
 #include "config.hh"
 #include "experimental-features.hh"
-#include "input-accessor.hh"
 #include "search-path.hh"
 #include "repl-exit-status.hh"
 
+#include <gc/gc_allocator.h>
 #include <map>
 #include <optional>
 #include <unordered_map>
-#include <mutex>
 #include <functional>
 
 namespace nix {
@@ -38,11 +37,26 @@ namespace eval_cache {
     class EvalCache;
 }
 
+/** Alias for std::map which uses boehmgc's allocator conditional on us actually
+ * using boehmgc in this build.
+ */
+#if HAVE_BOEHMGC
+    template<typename KeyT, typename ValueT>
+    using GcMap = std::map<
+        KeyT,
+        ValueT,
+        std::less<KeyT>,
+        traceable_allocator<std::pair<KeyT const, ValueT>>
+    >;
+#else
+    using GcMap = std::map<KeyT, ValueT>
+#endif
+
 
 /**
  * Function that implements a primop.
  */
-typedef void (* PrimOpFun) (EvalState & state, const PosIdx pos, Value * * args, Value & v);
+using PrimOpImpl = void(EvalState & state, PosIdx pos, Value ** args, Value & v);
 
 /**
  * Info about a primitive operation, and its implementation
@@ -76,7 +90,7 @@ struct PrimOp
     /**
      * Implementation of the primop.
      */
-    std::function<std::remove_pointer<PrimOpFun>::type> fun;
+    std::function<PrimOpImpl> fun;
 
     /**
      * Optional experimental for this to be gated on.
@@ -115,11 +129,7 @@ struct Constant
     bool impureOnly = false;
 };
 
-#if HAVE_BOEHMGC
-    typedef std::map<std::string, Value *, std::less<std::string>, traceable_allocator<std::pair<const std::string, Value *> > > ValMap;
-#else
-    typedef std::map<std::string, Value *> ValMap;
-#endif
+using ValMap = GcMap<std::string, Value *>;
 
 struct Env
 {
@@ -214,7 +224,7 @@ public:
     /**
      * Debugger
      */
-    ReplExitStatus (* debugRepl)(ref<EvalState> es, const ValMap & extraEnv);
+    std::function<ReplExitStatus(ref<EvalState> es, ValMap const & extraEnv)> debugRepl;
     bool debugStop;
     bool inDebugger = false;
     int trylevel;
@@ -252,21 +262,13 @@ private:
     /**
      * A cache from path names to parse trees.
      */
-#if HAVE_BOEHMGC
-    typedef std::map<SourcePath, Expr *, std::less<SourcePath>, traceable_allocator<std::pair<const SourcePath, Expr *>>> FileParseCache;
-#else
-    typedef std::map<SourcePath, Expr *> FileParseCache;
-#endif
+    using FileParseCache = GcMap<SourcePath, Expr *>;
     FileParseCache fileParseCache;
 
     /**
      * A cache from path names to values.
      */
-#if HAVE_BOEHMGC
-    typedef std::map<SourcePath, Value, std::less<SourcePath>, traceable_allocator<std::pair<const SourcePath, Value>>> FileEvalCache;
-#else
-    typedef std::map<SourcePath, Value> FileEvalCache;
-#endif
+    using FileEvalCache = GcMap<SourcePath, Value>;
     FileEvalCache fileEvalCache;
 
     SearchPath searchPath;
@@ -737,15 +739,15 @@ private:
 
     bool countCalls;
 
-    typedef std::map<std::string, size_t> PrimOpCalls;
+    using PrimOpCalls = std::map<std::string, size_t>;
     PrimOpCalls primOpCalls;
 
-    typedef std::map<ExprLambda *, size_t> FunctionCalls;
+    using FunctionCalls = std::map<ExprLambda *, size_t>;
     FunctionCalls functionCalls;
 
     void incrFunctionCall(ExprLambda * fun);
 
-    typedef std::map<PosIdx, size_t> AttrSelects;
+    using AttrSelects = std::map<PosIdx, size_t>;
     AttrSelects attrSelects;
 
     friend struct ExprOpUpdate;
@@ -787,7 +789,7 @@ std::string showType(const Value & v);
  */
 SourcePath resolveExprPath(SourcePath path);
 
-static const std::string corepkgsPrefix{"/__corepkgs__/"};
+static constexpr std::string_view corepkgsPrefix{"/__corepkgs__/"};
 
 
 }
