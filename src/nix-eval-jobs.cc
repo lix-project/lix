@@ -93,7 +93,7 @@ struct Proc {
 
         to = std::move(toPipe.writeSide);
         from = std::move(fromPipe.readSide);
-        pid = p;
+        pid = std::move(p);
     }
 
     ~Proc() {}
