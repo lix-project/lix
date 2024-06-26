@@ -84,6 +84,8 @@
       ];
       systems = linuxSystems ++ darwinSystems;
 
+      # If you add something here, please update the list in doc/manual/src/contributing/hacking.md.
+      # Thanks~
       crossSystems = [
         "armv6l-linux"
         "armv7l-linux"
