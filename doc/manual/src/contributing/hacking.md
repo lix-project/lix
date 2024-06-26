@@ -282,9 +282,8 @@ Regular markdown files used for the manual have a base path of their own and the
 
 ## API documentation
 
-Doxygen API documentation is [available
-online](https://hydra.nixos.org/job/nix/master/internal-api-docs/latest/download-by-type/doc/internal-api-docs). You
-can also build and view it yourself:
+Doxygen API documentation will be available online [in the future](https://git.lix.systems/lix-project/lix/issues/422).
+You can also build and view it yourself:
 
 ```console
 # nix build .#hydraJobs.internal-api-docs
@@ -294,6 +293,7 @@ can also build and view it yourself:
 or inside a `nix develop` shell by running:
 
 ```bash
+$ meson configure build -Dinternal-api-docs=enabled
 $ meson compile -C build internal-api-docs
 $ xdg-open ./outputs/doc/share/doc/nix/internal-api/html/index.html
 ```
