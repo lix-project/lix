@@ -168,8 +168,26 @@ or for Nix with the [`flakes`] and [`nix-command`] experimental features enabled
 $ nix build .#packages.aarch64-linux.default
 ```
 
-Cross-compiled builds are available for ARMv6 (`armv6l-linux`) and ARMv7 (`armv7l-linux`).
-Add more [system types](#system-type) to `crossSystems` in `flake.nix` to bootstrap Nix on unsupported platforms.
+### Cross compiling using the Lix flake
+
+Lix can also be easily cross compiled to the following arbitrarily-chosen system doubles, which can be useful for bootstrapping Lix on new platforms.
+These are specified in `crossSystems` in `flake.nix`; feel free to submit changes to add new ones if they are useful to you.
+
+- `armv6l-linux`
+- `armv7l-linux`
+- `riscv64-linux`
+
+For example, to cross-compile Lix for `armv6l-linux` from another Linux, use the following:
+
+```console
+$ nix build .#nix-armv6l-linux
+```
+
+It's also possible to cross-compile a tarball of binaries suitable for the Lix installer, for example, for `riscv64-linux`:
+
+```console
+$ nix build .#nix-riscv64-linux.passthru.binaryTarball
+```
 
 ### Building for multiple platforms at once
 
@@ -282,7 +300,7 @@ Regular markdown files used for the manual have a base path of their own and the
 
 ## API documentation
 
-Doxygen API documentation will be available online [in the future](https://git.lix.systems/lix-project/lix/issues/422).
+Doxygen API documentation will be available online in the future ([tracking issue](https://git.lix.systems/lix-project/lix/issues/422)).
 You can also build and view it yourself:
 
 ```console
@@ -300,23 +318,22 @@ $ xdg-open ./outputs/doc/share/doc/nix/internal-api/html/index.html
 
 ## Coverage analysis
 
-A coverage analysis report is [available
-online](https://hydra.nixos.org/job/nix/master/coverage/latest/download-by-type/report/coverage). You
-can build it yourself:
+A coverage analysis report will be available online in the future (FIXME(lix-hydra)).
+You can build it yourself:
 
 ```
 # nix build .#hydraJobs.coverage
 # xdg-open ./result/coverage/index.html
 ```
 
-Metrics about the change in line/function coverage over time are also
-[available](https://hydra.nixos.org/job/nix/master/coverage#tabs-charts).
+Metrics about the change in line/function coverage over time will be available in the future (FIXME(lix-hydra)).
 
 ## Add a release note
 
 `doc/manual/rl-next` contains release notes entries for all unreleased changes.
 
 User-visible changes should come with a release note.
+Developer-facing changes should have a release note in the Development category if they are significant and if developers should know about them.
 
 ### Add an entry
 
