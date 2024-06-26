@@ -396,7 +396,7 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
     if (printMultiline && moreActivities)
         writeToStderr(fmt("And %d more...", moreActivities));
 
-    if (!printMultiline) {
+    if (!printMultiline && !line.empty()) {
         line += " " + activity_line;
          writeToStderr("\r" + filterANSIEscapes(line, false, width) + ANSI_NORMAL + "\e[K");
     }
