@@ -197,16 +197,19 @@
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
           };
 
-          pegtl = final.callPackage ./misc/pegtl.nix { };
+          pegtl = final.nix.passthru.pegtl;
 
           # Export the patched version of boehmgc that Lix uses into the overlay
           # for consumers of this flake.
-          boehmgc-nix = final.nix.boehmgc-nix;
+          boehmgc-nix = final.nix.passthru.boehmgc-nix;
           # And same thing for our build-release-notes package.
-          build-release-notes = final.nix.build-release-notes;
+          build-release-notes = final.nix.passthru.build-release-notes;
         };
     in
     {
+      # for repl debugging
+      inherit self;
+
       # A Nixpkgs overlay that overrides the 'nix' and
       # 'nix.perl-bindings' packages.
       overlays.default = overlayFor (p: p.stdenv);
