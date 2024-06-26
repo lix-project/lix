@@ -14,6 +14,7 @@
   boost,
   brotli,
   bzip2,
+  callPackage,
   cmake,
   curl,
   doxygen,
@@ -34,7 +35,7 @@
   meson,
   ninja,
   openssl,
-  pegtl,
+  pegtl ? __forDefaults.pegtl,
   pkg-config,
   python3,
   rapidcheck,
@@ -75,8 +76,10 @@
       configureFlags = prev.configureFlags or [ ] ++ [ (lib.enableFeature true "sigstop") ];
     });
 
-    lix-doc = pkgs.callPackage ./lix-doc/package.nix { };
-    build-release-notes = pkgs.callPackage ./maintainers/build-release-notes.nix { };
+    lix-doc = callPackage ./lix-doc/package.nix { };
+    build-release-notes = callPackage ./maintainers/build-release-notes.nix { };
+
+    pegtl = callPackage ./misc/pegtl.nix { };
   },
 }:
 let
@@ -380,7 +383,12 @@ stdenv.mkDerivation (finalAttrs: {
   # Export the patched version of boehmgc.
   # flake.nix exports that into its overlay.
   passthru = {
-    inherit (__forDefaults) boehmgc-nix editline-lix build-release-notes;
+    inherit (__forDefaults)
+      boehmgc-nix
+      editline-lix
+      build-release-notes
+      pegtl
+      ;
 
     inherit officialRelease;
 
