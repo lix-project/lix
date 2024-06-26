@@ -20,6 +20,8 @@ SIGNIFICANCECES = {
 
 # This is just hardcoded for better validation. If you think there should be
 # more of them, feel free to add more.
+#
+# Please update doc/manual/src/contributing/hacking.md if you do. Thanks~
 CATEGORIES = [
     'Breaking Changes',
     'Features',

@@ -320,18 +320,24 @@ User-visible changes should come with a release note.
 
 ### Add an entry
 
-Here's what a complete entry looks like. The file name is not incorporated in the document.
+Here's what a complete entry looks like.
+The file name is not incorporated in the final document, and is generally a super brief summary of the change synopsis.
 
-```
+```markdown
 ---
 synopsis: Basically a title
 # 1234 or gh#1234 will refer to CppNix GitHub, fj#1234 will refer to a Lix forgejo issue.
 issues: [1234, fj#1234]
-# Use this *only* if there is a CppNix pull request associated with this change
+# Use this *only* if there is a CppNix pull request associated with this change.
 prs: 1238
-# List of Lix Gerrit changelist numbers; if there is an associated Lix GitHub
-# PR, just put in the Gerrit CL number.
+# List of Lix Gerrit changelist numbers.
+# If there is an associated Lix GitHub PR, just put in the Gerrit CL number.
 cls: [123]
+# Heading that this release note will appear under.
+category: Breaking Changes
+# Add a credit mention in the bottom of the release note.
+# your-name is used as a key into doc/manual/change-authors.yml for metadata
+credits: [your-name]
 ---
 
 Here's one or more paragraphs that describe the change.
@@ -345,6 +351,31 @@ Significant changes should add the following header, which moves them to the top
 ```
 significance: significant
 ```
+
+The following categories of release notes are supported (see `maintainers/build-release-notes.py`):
+- Breaking Changes
+- Features
+- Improvements
+- Fixes
+- Packaging
+- Development
+- Miscellany
+
+The `credits` field, if present, gives credit to the author of the patch in the release notes with a message like "Many thanks to (your-name) for this" and linking to GitHub or Forgejo profiles if listed.
+
+If you are forward-porting a change from CppNix, please credit the original author, and optionally credit yourself.
+When adding credits metadata for people external to the project and deciding whether to put in a `display_name`, consider what they are generally known as in the community; even if you know their full name (e.g. from their GitHub profile), we suggest only adding it as a display name if that is what they go by in the community.
+There are multiple reasons we follow this practice, but it boils down to privacy and consent: we would rather not capture full names that are not widely used in the community without the consent of the parties involved, even if they are publicly available.
+As of this writing, the entries with full names as `display_name` are either members of the CppNix team or people who added them themselves.
+
+The names specified in `credits` are used as keys to look up the authorship info in `doc/manual/change-authors.yml`.
+The only mandatory part is that every key appearing in `credits` has an entry present in `change-authors.yml`.
+All of the following properties are optional; you can specify `{}` as the metadata if you want a simple non-hyperlinked mention.
+The following properties are supported:
+
+- `display_name`: display name used in place of the key when showing names, if present.
+- `forgejo`: Forgejo username. The name in the release notes will be a link to this, if present.
+- `github`: GitHub username, used if `forgejo` is not set, again making a link.
 
 ### Build process
 

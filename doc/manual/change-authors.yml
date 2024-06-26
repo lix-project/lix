@@ -3,6 +3,10 @@
 #
 # It's used for crediting people accurately in release notes. The release notes
 # script will link to forgejo, then to GitHub if forgejo is not present.
+#
+# When adding someone from outside the Lix project, you generally want to simply link their GitHub profile without adding a display name unless they are well-known in the community by that display name.
+#
+# See doc/manual/src/contributing/hacking.md for more documentation on this file's format and typical usage.
 9999years:
   display_name: wiggles
   forgejo: rbt
