@@ -11,6 +11,7 @@
 #include <map>
 #include <variant>
 #include <vector>
+#include <span>
 
 namespace nix {
 
@@ -18,6 +19,10 @@ typedef std::list<std::string> Strings;
 typedef std::set<std::string> StringSet;
 typedef std::map<std::string, std::string> StringMap;
 typedef std::map<std::string, std::string> StringPairs;
+
+// TODO this should be a std::byte span, but too much of the
+// current codebase predates std::byte and uses char instead
+using Bytes = std::span<const char>;
 
 /**
  * Paths are just strings.
