@@ -65,5 +65,6 @@ if cxx.get_linker_id() in ['ld.bfd', 'ld.gold']
 endif
 
 libstore = dependency('lixstore', 'lix-store', required : true)
+libutil = dependency('lixutil', 'lix-util', required : true)
 
 subdir('lib/Nix')

@@ -1,8 +1,10 @@
 #pragma once
 ///@file
 
+#include <concepts>
 #include <memory>
 
+#include "generator.hh"
 #include "strings.hh"
 #include "types.hh"
 #include "file-descriptor.hh"
@@ -340,6 +342,13 @@ std::unique_ptr<FinishSink> sourceToSink(std::function<void(Source &)> fun);
  */
 std::unique_ptr<Source> sinkToSource(std::function<void(Sink &)> fun);
 
+inline Sink & operator<<(Sink & sink, Generator<Bytes> && g)
+{
+    while (auto buffer = g.next()) {
+        sink(std::string_view(buffer->data(), buffer->size()));
+    }
+    return sink;
+}
 
 void writePadding(size_t len, Sink & sink);
 void writeString(std::string_view s, Sink & sink);
