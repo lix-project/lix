@@ -214,4 +214,25 @@ TEST(WireFormatGenerator, exampleMessage)
             }));
 }
 
+TEST(GeneratorSource, works)
+{
+    GeneratorSource src = []() -> Generator<Bytes> {
+        co_yield std::span{"", 0};
+        co_yield std::span{"a", 1};
+        co_yield std::span{"", 0};
+        co_yield std::span{"bcd", 3};
+        co_yield std::span{"", 0};
+    }();
+
+    char buf[2];
+    ASSERT_EQ(src.read(buf, sizeof(buf)), 1);
+    ASSERT_EQ(buf[0], 'a');
+    ASSERT_EQ(src.read(buf, sizeof(buf)), 2);
+    ASSERT_EQ(buf[0], 'b');
+    ASSERT_EQ(buf[1], 'c');
+    ASSERT_EQ(src.read(buf, sizeof(buf)), 1);
+    ASSERT_EQ(buf[0], 'd');
+    ASSERT_THROW(src.read(buf, sizeof(buf)), EndOfFile);
+}
+
 }

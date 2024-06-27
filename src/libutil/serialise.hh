@@ -334,6 +334,34 @@ struct ChainSource : Source
     size_t read(char * data, size_t len) override;
 };
 
+struct GeneratorSource : Source
+{
+    GeneratorSource(Generator<Bytes> && g) : g(std::move(g)) {}
+
+    virtual size_t read(char * data, size_t len)
+    {
+        // we explicitly do not poll the generator multiple times to fill the
+        // buffer, only to produce some output at all. this is allowed by the
+        // semantics of read(), only operator() must fill the buffer entirely
+        while (!buf.size()) {
+            if (auto next = g.next()) {
+                buf = *next;
+            } else {
+                throw EndOfFile("coroutine has finished");
+            }
+        }
+
+        len = std::min(len, buf.size());
+        memcpy(data, buf.data(), len);
+        buf = buf.subspan(len);
+        return len;
+    }
+
+private:
+    Generator<Bytes> g;
+    Bytes buf{};
+};
+
 std::unique_ptr<FinishSink> sourceToSink(std::function<void(Source &)> fun);
 
 /**
