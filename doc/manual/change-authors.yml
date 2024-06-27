@@ -65,9 +65,16 @@ horrors:
 iFreilicht:
   github: iFreilicht
 
+isabelroses:
+  forgejo: isabelroses
+  github: isabelroses
+
 jade:
   forgejo: jade
   github: lf-
+
+kjeremy:
+  github: kjeremy
 
 kloenk:
   forgejo: kloenk

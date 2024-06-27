@@ -20,6 +20,7 @@
   doxygen,
   editline-lix ? __forDefaults.editline-lix,
   editline,
+  expect,
   git,
   gtest,
   jq,
@@ -252,6 +253,8 @@ stdenv.mkDerivation (finalAttrs: {
     # There have been issues building these dependencies
     ++ lib.optional (hostPlatform.canExecute buildPlatform) aws-sdk-cpp-nix
     ++ lib.optionals (finalAttrs.dontBuild) maybePropagatedInputs;
+
+  nativeCheckInputs = [ expect ];
 
   checkInputs = [
     gtest
