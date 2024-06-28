@@ -433,9 +433,6 @@ I grepped `src/` for `get[eE]nv\("` to find the mentions in Lix code.
 - `NIX_PROFILE` - Selects which profile `nix-env` will operate on. Documented elsewhere.
 - `NIX_SSHOPTS` - Options passed to `ssh(1)` when using a ssh remote store.
   Incorrectly documented on `nix-copy-closure` which is *surely* not the only place they are used??
-- `_NIX_TEST_NO_LSOF` - Used on non-Linux, non-macOS platforms to disable using `lsof` when finding gc roots.
-
-  Since https://git.lix.systems/lix-project/lix/issues/156 was fixed, this should probably just be removed as it was a bad workaround for a macOS issue.
 - `_NIX_TEST_GC_SYNC_1` - Path to a pipe that is used to block the GC briefly to validate invariants from the test suite.
 - `_NIX_TEST_GC_SYNC_2` - Path to a pipe that is used to block the GC briefly to validate invariants from the test suite.
 - `_NIX_TEST_FREE_SPACE_FILE` - Path to a file containing a decimal number with the free space that the GC is to believe it has.
