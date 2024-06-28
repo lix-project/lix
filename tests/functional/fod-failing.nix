@@ -6,6 +6,7 @@ rec {
       ''
         echo $name > $out
       '';
+    url = "https://meow.puppy.forge/puppy.tar.gz";
     outputHashMode = "recursive";
     outputHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
   };
@@ -15,6 +16,7 @@ rec {
       ''
         echo $name > $out
       '';
+    urls = "https://kitty.forge/cat.tar.gz";
     outputHashMode = "recursive";
     outputHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
   };
