@@ -119,7 +119,8 @@ public:
 
     const Path dbDir;
     const Path linksDir;
-    const Path reservedPath;
+    /** Path kept around to reserve some filesystem space to be able to begin a garbage collection */
+    const Path reservedSpacePath;
     const Path schemaPath;
     const Path tempRootsDir;
     const Path fnTempRoots;
