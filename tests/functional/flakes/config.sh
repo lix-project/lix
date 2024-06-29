@@ -28,6 +28,11 @@ nix build < /dev/null
 (! [[ -f post-hook-ran ]])
 clearStore
 
+# likewise with no-accept-flake-config
+nix build --no-accept-flake-config
+(! [[ -f post-hook-ran ]])
+clearStore
+
 nix build --accept-flake-config
 test -f post-hook-ran || fail "The post hook should have ran"
 

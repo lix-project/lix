@@ -51,30 +51,46 @@ void ConfigFile::apply()
         else
             assert(false);
 
-        if (!whitelist.count(baseName) && !nix::fetchSettings.acceptFlakeConfig) {
-            bool trusted = false;
-            auto trustedList = readTrustedList();
-            auto tlname = get(trustedList, name);
-            if (auto saved = tlname ? get(*tlname, valueS) : nullptr) {
-                trusted = *saved;
-                printInfo("Using saved setting for '%s = %s' from ~/.local/share/nix/trusted-settings.json.", name, valueS);
-            } else {
-                // FIXME: filter ANSI escapes, newlines, \r, etc.
-                if (std::tolower(logger->ask(fmt("do you want to allow configuration setting '%s' to be set to '" ANSI_RED "%s" ANSI_NORMAL "' (y/N)?", name, valueS)).value_or('n')) == 'y') {
-                    trusted = true;
-                }
-                if (std::tolower(logger->ask(fmt("do you want to permanently mark this value as %s (y/N)?",  trusted ? "trusted": "untrusted" )).value_or('n')) == 'y') {
-                    trustedList[name][valueS] = trusted;
-                    writeTrustedList(trustedList);
-                }
+        bool trusted = whitelist.count(baseName);
+        if (!trusted) {
+            switch (nix::fetchSettings.acceptFlakeConfig) {
+            case AcceptFlakeConfig::True: {
+                trusted = true;
+                break;
             }
-            if (!trusted) {
-                warn("ignoring untrusted flake configuration setting '%s'.\nPass '%s' to trust it", name, "--accept-flake-config");
-                continue;
+            case AcceptFlakeConfig::Ask: {
+                auto trustedList = readTrustedList();
+                auto tlname = get(trustedList, name);
+                if (auto saved = tlname ? get(*tlname, valueS) : nullptr) {
+                    trusted = *saved;
+                    printInfo("Using saved setting for '%s = %s' from ~/.local/share/nix/trusted-settings.json.", name, valueS);
+                } else {
+                    // FIXME: filter ANSI escapes, newlines, \r, etc.
+                    if (std::tolower(logger->ask(fmt("Do you want to allow configuration setting '%s' to be set to '" ANSI_RED "%s" ANSI_NORMAL "' (y/N)? This may allow the flake to gain root, see the nix.conf manual page.", name, valueS)).value_or('n')) == 'y') {
+                        trusted = true;
+                    } else {
+                        warn("you can set '%s' to '%b' to automatically reject configuration options supplied by flakes", "accept-flake-config", false);
+                    }
+                    if (std::tolower(logger->ask(fmt("do you want to permanently mark this value as %s (y/N)?",  trusted ? "trusted": "untrusted" )).value_or('n')) == 'y') {
+                        trustedList[name][valueS] = trusted;
+                        writeTrustedList(trustedList);
+                    }
+                }
+                break;
+            }
+            case nix::AcceptFlakeConfig::False: {
+                trusted = false;
+                break;
+            };
             }
         }
 
-        globalConfig.set(name, valueS);
+        if (trusted) {
+            debug("accepting trusted flake configuration setting '%s'", name);
+            globalConfig.set(name, valueS);
+        } else {
+            warn("ignoring untrusted flake configuration setting '%s', pass '%s' to trust it (may allow the flake to gain root, see the nix.conf manual page)", name, "--accept-flake-config");
+        }
     }
 }
 
