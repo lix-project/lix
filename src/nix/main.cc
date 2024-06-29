@@ -346,8 +346,6 @@ void mainWrapped(int argc, char * * argv)
     }
     #endif
 
-    Finally f([] { logger->stop(); });
-
     programPath = argv[0];
     auto programName = std::string(baseNameOf(programPath));
 
@@ -363,7 +361,8 @@ void mainWrapped(int argc, char * * argv)
 
     evalSettings.pureEval = true;
 
-    setLogFormat("bar");
+    setLogFormat(LogFormat::bar);
+    Finally f([] { logger->pause(); });
     settings.verboseBuild = false;
     if (isatty(STDERR_FILENO)) {
         verbosity = lvlNotice;

@@ -6,7 +6,6 @@
 #include "eval.hh"
 #include "eval-inline.hh"
 #include "value-to-json.hh"
-#include "progress-bar.hh"
 
 #include <nlohmann/json.hpp>
 
@@ -76,7 +75,7 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
         }
 
         if (writeTo) {
-            stopProgressBar();
+            logger->pause();
 
             if (pathExists(*writeTo))
                 throw Error("path '%s' already exists", *writeTo);
@@ -114,7 +113,7 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
         }
 
         else if (raw) {
-            stopProgressBar();
+            logger->pause();
             writeFull(STDOUT_FILENO, *state->coerceToString(noPos, *v, context, "while generating the eval command output"));
         }
 

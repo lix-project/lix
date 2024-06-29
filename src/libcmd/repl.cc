@@ -32,7 +32,6 @@
 #include "local-fs-store.hh"
 #include "signals.hh"
 #include "print.hh"
-#include "progress-bar.hh"
 #include "gc-small-vector.hh"
 #include "users.hh"
 
@@ -300,7 +299,7 @@ ReplExitStatus NixRepl::mainLoop()
 
     /* Stop the progress bar because it interferes with the display of
        the repl. */
-    stopProgressBar();
+    logger->pause();
 
     std::string input;
 
@@ -684,9 +683,10 @@ ProcessLineResult NixRepl::processLine(std::string line)
             // TODO: this only shows a progress bar for explicitly initiated builds,
             // not eval-time fetching or builds performed for IFD.
             // But we can't just show it everywhere, since that would erase partial output from evaluation.
-            startProgressBar();
+            logger->resetProgress();
+            logger->resume();
             Finally stopLogger([&]() {
-                stopProgressBar();
+                logger->pause();
             });
 
             state->store->buildPaths({

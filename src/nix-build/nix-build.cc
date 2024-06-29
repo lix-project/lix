@@ -543,7 +543,7 @@ static void main_nix_build(int argc, char * * argv)
 
         restoreProcessContext();
 
-        logger->stop();
+        logger->pause();
 
         execvp(shell->c_str(), argPtrs.data());
 
@@ -606,7 +606,7 @@ static void main_nix_build(int argc, char * * argv)
             outPaths.push_back(outputPath);
         }
 
-        logger->stop();
+        logger->pause();
 
         for (auto & path : outPaths)
             std::cout << store->printStorePath(path) << '\n';

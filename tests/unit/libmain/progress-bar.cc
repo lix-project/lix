@@ -2,6 +2,7 @@
 
 #include "eval.hh"
 #include "progress-bar.hh"
+#include "loggers.hh"
 #include "logging.hh"
 #include "shared.hh"
 
@@ -23,7 +24,7 @@ namespace nix
         initNix();
         initGC();
 
-        startProgressBar();
+        setLogFormat(LogFormat::bar);
         ASSERT_NE(dynamic_cast<ProgressBar *>(logger), nullptr);
         ProgressBar & progressBar = dynamic_cast<ProgressBar &>(*logger);
 

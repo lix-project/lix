@@ -6,7 +6,6 @@
 #include "store-api.hh"
 #include "outputs-spec.hh"
 #include "derivations.hh"
-#include "progress-bar.hh"
 #include "run.hh"
 
 #include <iterator>
@@ -690,7 +689,7 @@ struct CmdPrintDevEnv : Common, MixJSON
     {
         auto buildEnvironment = getBuildEnvironment(store, installable).first;
 
-        stopProgressBar();
+        logger->pause();
 
         if (json) {
             logger->writeToStdout(buildEnvironment.toJSON());

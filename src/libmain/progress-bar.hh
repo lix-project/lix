@@ -48,9 +48,8 @@ struct ProgressBar : public Logger
 
         uint64_t corruptedPaths = 0, untrustedPaths = 0;
 
-        bool active = true;
-        bool paused = false;
-        bool haveUpdate = true;
+        uint32_t paused = 1;
+        bool haveUpdate = false;
     };
 
     Sync<State> state_;
@@ -67,9 +66,9 @@ struct ProgressBar : public Logger
 
     ~ProgressBar();
 
-    void stop() override final;
-
     void pause() override;
+
+    void resetProgress() override;
 
     void resume() override;
 
@@ -112,9 +111,5 @@ struct ProgressBar : public Logger
 };
 
 Logger * makeProgressBar();
-
-void startProgressBar();
-
-void stopProgressBar();
 
 }

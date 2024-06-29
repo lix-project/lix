@@ -13,7 +13,6 @@
 #include "eval-settings.hh"
 #include "attr-path.hh"
 #include "names.hh"
-#include "progress-bar.hh"
 
 using namespace nix;
 
@@ -88,7 +87,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         auto version = DrvName(storePath.name()).version;
 
         if (dryRun) {
-            stopProgressBar();
+            logger->pause();
             warn("would upgrade to version %s", version);
             return;
         }
@@ -106,7 +105,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
                 throw Error("could not verify that '%s' works", program);
         }
 
-        stopProgressBar();
+        logger->pause();
 
         auto const fullStorePath = store->printStorePath(storePath);
 

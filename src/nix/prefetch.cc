@@ -1,10 +1,10 @@
 #include "command.hh"
 #include "common-args.hh"
+#include "loggers.hh"
 #include "shared.hh"
 #include "store-api.hh"
 #include "filetransfer.hh"
 #include "finally.hh"
-#include "progress-bar.hh"
 #include "tarfile.hh"
 #include "attr-path.hh"
 #include "eval-inline.hh"
@@ -180,10 +180,8 @@ static int main_nix_prefetch_url(int argc, char * * argv)
         if (args.size() > 2)
             throw UsageError("too many arguments");
 
-        Finally f([]() { stopProgressBar(); });
-
         if (isatty(STDERR_FILENO))
-          startProgressBar();
+            setLogFormat(LogFormat::bar);
 
         auto store = openStore();
         auto state = std::make_unique<EvalState>(myArgs.searchPath, store);
@@ -237,7 +235,7 @@ static int main_nix_prefetch_url(int argc, char * * argv)
         auto [storePath, hash] = prefetchFile(
             store, resolveMirrorUrl(*state, url), name, ht, expectedHash, unpack, executable);
 
-        stopProgressBar();
+        logger->pause();
 
         if (!printPath)
             printInfo("path is '%s'", store->printStorePath(storePath));
