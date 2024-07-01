@@ -2546,9 +2546,12 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
                     /* Throw an error after registering the path as
                        valid. */
                     worker.hashMismatch = true;
+                    // XXX: shameless layering violation hack that makes the hash mismatch error at least not utterly worthless
+                    auto guessedUrl = getOr(drv->env, "urls", getOr(drv->env, "url", "(unknown)"));
                     delayedException = std::make_exception_ptr(
-                        BuildError("hash mismatch in fixed-output derivation '%s':\n  specified: %s\n     got:    %s",
+                        BuildError("hash mismatch in fixed-output derivation '%s':\n likely URL: %s\n  specified: %s\n     got:    %s",
                             worker.store.printStorePath(drvPath),
+                            guessedUrl,
                             wanted.to_string(SRI, true),
                             got.to_string(SRI, true)));
                 }
