@@ -1596,9 +1596,9 @@ void setupSeccomp()
     allowSyscall(ctx, SCMP_SYS(ioprio_set));
     allowSyscall(ctx, SCMP_SYS(io_setup));
     allowSyscall(ctx, SCMP_SYS(io_submit));
-    allowSyscall(ctx, SCMP_SYS(io_uring_enter));
-    allowSyscall(ctx, SCMP_SYS(io_uring_register));
-    allowSyscall(ctx, SCMP_SYS(io_uring_setup));
+    // skip io_uring_enter (may become dangerous)
+    // skip io_uring_register (may become dangerous)
+    // skip io_uring_setup (may become dangerous)
     allowSyscall(ctx, SCMP_SYS(ipc));
     allowSyscall(ctx, SCMP_SYS(kcmp));
     allowSyscall(ctx, SCMP_SYS(kexec_file_load));

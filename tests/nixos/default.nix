@@ -155,4 +155,6 @@ in
   broken-userns = runNixOSTestFor "x86_64-linux" ./broken-userns.nix;
 
   coredumps = runNixOSTestFor "x86_64-linux" ./coredumps;
+
+  io_uring = runNixOSTestFor "x86_64-linux" ./io_uring;
 }
