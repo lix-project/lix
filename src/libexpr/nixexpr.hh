@@ -144,7 +144,10 @@ struct ExprVar : Expr
  */
 struct ExprInheritFrom : ExprVar
 {
-    ExprInheritFrom(PosIdx pos, Displacement displ): ExprVar(pos, {})
+    ref<Expr> fromExpr;
+
+    ExprInheritFrom(PosIdx pos, Displacement displ, ref<Expr> fromExpr)
+          : ExprVar(pos, {}), fromExpr(fromExpr)
     {
         this->level = 0;
         this->displ = displ;
@@ -222,7 +225,7 @@ struct ExprAttrs : Expr
     };
     typedef std::map<Symbol, AttrDef> AttrDefs;
     AttrDefs attrs;
-    std::unique_ptr<std::vector<std::unique_ptr<Expr>>> inheritFromExprs;
+    std::unique_ptr<std::vector<ref<Expr>>> inheritFromExprs;
     struct DynamicAttrDef {
         std::unique_ptr<Expr> nameExpr, valueExpr;
         PosIdx pos;

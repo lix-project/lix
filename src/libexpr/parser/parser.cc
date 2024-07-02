@@ -317,18 +317,23 @@ template<> struct BuildAST<grammar::inherit> : change_head<InheritState> {
                 });
             }
         }
-        if (auto fromE = std::move(s.from)) {
+        if (s.from != nullptr) {
             if (!b.attrs.inheritFromExprs)
-                b.attrs.inheritFromExprs = std::make_unique<std::vector<std::unique_ptr<Expr>>>();
-            b.attrs.inheritFromExprs->push_back(std::move(fromE));
+                b.attrs.inheritFromExprs = std::make_unique<std::vector<ref<Expr>>>();
+            auto fromExpr = ref<Expr>(std::move(s.from));
+            b.attrs.inheritFromExprs->push_back(fromExpr);
             for (auto & [i, iPos] : s.attrs) {
                 if (attrs.find(i.symbol) != attrs.end())
                     ps.dupAttr(i.symbol, iPos, attrs[i.symbol].pos);
-                auto from = std::make_unique<ExprInheritFrom>(s.fromPos, b.attrs.inheritFromExprs->size() - 1);
+                auto inheritFrom = std::make_unique<ExprInheritFrom>(
+                    s.fromPos,
+                    b.attrs.inheritFromExprs->size() - 1,
+                    fromExpr
+                );
                 attrs.emplace(
                     i.symbol,
                     ExprAttrs::AttrDef(
-                        std::make_unique<ExprSelect>(iPos, std::move(from), i.symbol),
+                        std::make_unique<ExprSelect>(iPos, std::move(inheritFrom), i.symbol),
                         iPos,
                         ExprAttrs::AttrDef::Kind::InheritedFrom));
             }
