@@ -2,7 +2,6 @@
 #include "store-api.hh"
 #include "fs-accessor.hh"
 #include "nar-accessor.hh"
-#include "progress-bar.hh"
 
 using namespace nix;
 
@@ -20,7 +19,7 @@ struct MixCat : virtual Args
 
         auto file = accessor->readFile(path);
 
-        stopProgressBar();
+        logger->pause();
         writeFull(STDOUT_FILENO, file);
     }
 };

@@ -117,9 +117,8 @@ public:
 
     virtual ~Logger() { }
 
-    virtual void stop() { };
-
     virtual void pause() { };
+    virtual void resetProgress() { };
     virtual void resume() { };
 
     // Whether the logger prints the whole build log

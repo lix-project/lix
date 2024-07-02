@@ -1,6 +1,5 @@
 #include "command.hh"
 #include "store-api.hh"
-#include "progress-bar.hh"
 #include "fs-accessor.hh"
 #include "shared.hh"
 
@@ -110,7 +109,7 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
         auto dependencyPath = *optDependencyPath;
         auto dependencyPathHash = dependencyPath.hashPart();
 
-        stopProgressBar(); // FIXME
+        logger->pause(); // FIXME
 
         auto accessor = store->getFSAccessor();
 

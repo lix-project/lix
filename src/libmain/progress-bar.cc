@@ -4,7 +4,6 @@
 #include "names.hh"
 #include "terminal.hh"
 
-#include <atomic>
 #include <map>
 #include <thread>
 #include <sstream>
@@ -44,50 +43,56 @@ static std::string_view storePathToName(std::string_view path)
 ProgressBar::ProgressBar(bool isTTY)
     : isTTY(isTTY)
 {
-    state_.lock()->active = isTTY;
-    updateThread = std::thread([&]() {
-        auto state(state_.lock());
-        auto nextWakeup = A_LONG_TIME;
-        while (state->active) {
-            if (!state->haveUpdate)
-                state.wait_for(updateCV, nextWakeup);
-            nextWakeup = draw(*state, {});
-            state.wait_for(quitCV, std::chrono::milliseconds(50));
-        }
-    });
+    resume();
 }
 
 ProgressBar::~ProgressBar()
 {
-    stop();
+    pause();
 }
 
-/* Called by destructor, can't be overridden */
-void ProgressBar::stop()
+void ProgressBar::pause()
 {
+    if (!isTTY) return;
     {
         auto state(state_.lock());
-        if (!state->active) return;
-        state->active = false;
-        writeToStderr("\r\e[K");
+        state->paused++;
+        if (state->paused > 1) return; // recursive pause, the update thread is already gone
         updateCV.notify_one();
         quitCV.notify_one();
     }
     updateThread.join();
 }
 
-void ProgressBar::pause()
+void ProgressBar::resetProgress()
 {
-    state_.lock()->paused = true;
-    writeToStderr("\r\e[K");
+    auto state(state_.lock());
+    auto prevPaused = state->paused;
+    *state = ProgressBar::State {
+        .paused = prevPaused,
+    };
+    update(*state);
 }
 
 void ProgressBar::resume()
 {
-    state_.lock()->paused = false;
-    writeToStderr("\r\e[K");
-    state_.lock()->haveUpdate = true;
-    updateCV.notify_one();
+    if (!isTTY) return;
+    auto state(state_.lock());
+    assert(state->paused > 0); // should be paused
+    state->paused--;
+    if (state->paused > 0) return; // recursive pause, wait for the parents to resume too
+    state->haveUpdate = true;
+    updateThread = std::thread([&]() {
+        auto state(state_.lock());
+        auto nextWakeup = A_LONG_TIME;
+        while (state->paused == 0) {
+            if (!state->haveUpdate)
+                state.wait_for(updateCV, nextWakeup);
+            nextWakeup = draw(*state, {});
+            state.wait_for(quitCV, std::chrono::milliseconds(50));
+        }
+        writeToStderr("\r\e[K");
+    });
 }
 
 bool ProgressBar::isVerbose()
@@ -114,7 +119,7 @@ void ProgressBar::logEI(const ErrorInfo & ei)
 
 void ProgressBar::log(State & state, Verbosity lvl, std::string_view s)
 {
-    if (state.active) {
+    if (state.paused == 0) {
         draw(state, s);
     } else {
         auto s2 = s + ANSI_NORMAL "\n";
@@ -318,7 +323,7 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
     auto nextWakeup = A_LONG_TIME;
 
     state.haveUpdate = false;
-    if (state.paused || !state.active) return nextWakeup;
+    if (state.paused > 0) return nextWakeup;
 
     auto windowSize = getWindowSize();
     auto width = windowSize.second;
@@ -525,7 +530,7 @@ std::string ProgressBar::getStatus(State & state)
 void ProgressBar::writeToStdout(std::string_view s)
 {
     auto state(state_.lock());
-    if (state->active) {
+    if (state->paused == 0) {
         Logger::writeToStdout(s);
         draw(*state, {});
     } else {
@@ -536,7 +541,7 @@ void ProgressBar::writeToStdout(std::string_view s)
 std::optional<char> ProgressBar::ask(std::string_view msg)
 {
     auto state(state_.lock());
-    if (!state->active || !isatty(STDIN_FILENO)) return {};
+    if (state->paused > 0 || !isatty(STDIN_FILENO)) return {};
     std::cerr << fmt("\r\e[K%s ", msg);
     auto s = trim(readLine(STDIN_FILENO));
     if (s.size() != 1) return {};
@@ -557,18 +562,6 @@ void ProgressBar::setPrintMultiline(bool printMultiline)
 Logger * makeProgressBar()
 {
     return new ProgressBar(shouldANSI());
-}
-
-void startProgressBar()
-{
-    logger = makeProgressBar();
-}
-
-void stopProgressBar()
-{
-    auto progressBar = dynamic_cast<ProgressBar *>(logger);
-    if (progressBar) progressBar->stop();
-
 }
 
 }
