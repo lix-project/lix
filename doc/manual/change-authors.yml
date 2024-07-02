@@ -44,6 +44,11 @@ cole-h:
   display_name: Cole Helbling
   github: cole-h
 
+delan:
+  display_name: delan
+  forgejo: delan
+  github: delan
+
 edolstra:
   display_name: Eelco Dolstra
   github: edolstra

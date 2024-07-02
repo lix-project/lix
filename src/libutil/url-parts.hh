@@ -46,4 +46,7 @@ const static std::string refAndOrRevRegex = "(?:(" + revRegexS + ")|(?:(" + refR
 const static std::string flakeIdRegexS = "[a-zA-Z][a-zA-Z0-9_-]*";
 extern std::regex flakeIdRegex;
 
+const static std::string flakeShorthandRegexS = "((" + flakeIdRegexS + ")(?:/(?:" + refAndOrRevRegex + "))?)";
+extern std::regex flakeShorthandRegex;
+
 }

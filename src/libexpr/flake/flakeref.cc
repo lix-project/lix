@@ -85,8 +85,8 @@ std::pair<FlakeRef, std::string> parseFlakeRefWithFragment(
         + "(?:#(" + queryRegex + "))?",
         std::regex::ECMAScript);
 
-    static std::regex flakeRegex(
-        "((" + flakeIdRegexS + ")(?:/(?:" + refAndOrRevRegex + "))?)"
+    static std::regex flakeShorthandRegex(
+        flakeShorthandRegexS
         + "(?:#(" + queryRegex + "))?",
         std::regex::ECMAScript);
 
@@ -95,7 +95,7 @@ std::pair<FlakeRef, std::string> parseFlakeRefWithFragment(
     /* Check if 'url' is a flake ID. This is an abbreviated syntax for
        'flake:<flake-id>?ref=<ref>&rev=<rev>'. */
 
-    if (std::regex_match(url, match, flakeRegex)) {
+    if (std::regex_match(url, match, flakeShorthandRegex)) {
         auto parsedURL = ParsedURL{
             .url = url,
             .base = "flake:" + match.str(1),
