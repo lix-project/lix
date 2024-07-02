@@ -108,6 +108,9 @@ struct ProgressBar : public Logger
     void setPrintBuildLogs(bool printBuildLogs) override;
 
     void setPrintMultiline(bool printMultiline) override;
+
+private:
+    void eraseProgressDisplay(State & state);
 };
 
 Logger * makeProgressBar();

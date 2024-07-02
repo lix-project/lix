@@ -318,6 +318,16 @@ void ProgressBar::update(State & state)
     updateCV.notify_one();
 }
 
+void ProgressBar::eraseProgressDisplay(State & state)
+{
+    if (printMultiline && (state.lastLines >= 1)) {
+        // FIXME: make sure this works on windows
+        writeToStderr(fmt("\e[G\e[%dF\e[J", state.lastLines));
+    } else {
+        writeToStderr("\r\e[K");
+    }
+}
+
 std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<std::string_view> & s)
 {
     auto nextWakeup = A_LONG_TIME;
@@ -331,15 +341,12 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
         width = std::numeric_limits<decltype(width)>::max();
     }
 
-    if (printMultiline && (state.lastLines >= 1)) {
-        // FIXME: make sure this works on windows
-        writeToStderr(fmt("\e[G\e[%dF\e[J", state.lastLines));
-    }
+    eraseProgressDisplay(state);
 
     state.lastLines = 0;
 
     if (s != std::nullopt)
-        writeToStderr("\r\e[K" + filterANSIEscapes(s.value(), !isTTY) + ANSI_NORMAL "\n");
+        writeToStderr(filterANSIEscapes(s.value(), !isTTY) + ANSI_NORMAL "\n");
 
     std::string line;
     std::string status = getStatus(state);
@@ -401,9 +408,14 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
     if (printMultiline && moreActivities)
         writeToStderr(fmt("And %d more...", moreActivities));
 
-    if (!printMultiline && !line.empty()) {
-        line += " " + activity_line;
-         writeToStderr("\r" + filterANSIEscapes(line, false, width) + ANSI_NORMAL + "\e[K");
+    if (!printMultiline) {
+        if (!line.empty()) {
+            line += " ";
+        }
+        line += activity_line;
+        if (!line.empty()) {
+            writeToStderr(filterANSIEscapes(line, false, width) + ANSI_NORMAL);
+        }
     }
 
     return nextWakeup;
@@ -531,6 +543,9 @@ void ProgressBar::writeToStdout(std::string_view s)
 {
     auto state(state_.lock());
     if (state->paused == 0) {
+        if (isTTY && !printMultiline) {
+            eraseProgressDisplay(*state);
+        }
         Logger::writeToStdout(s);
         draw(*state, {});
     } else {
