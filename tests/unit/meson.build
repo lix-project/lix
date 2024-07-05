@@ -35,6 +35,7 @@ liblixutil_test_support = declare_dependency(
 
 libutil_tests_sources = files(
   'libutil/canon-path.cc',
+  'libutil/checked-arithmetic.cc',
   'libutil/chunked-vector.cc',
   'libutil/closure.cc',
   'libutil/compression.cc',
