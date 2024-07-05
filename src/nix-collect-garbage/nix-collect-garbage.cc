@@ -89,12 +89,21 @@ static int main_nix_collect_garbage(int argc, char * * argv)
 
         // Run the actual garbage collector.
         if (!dryRun) {
-            auto store = openStore();
-            auto & gcStore = require<GcStore>(*store);
             options.action = GCOptions::gcDeleteDead;
-            GCResults results;
-            PrintFreed freed(true, results);
-            gcStore.collectGarbage(options, results);
+        } else {
+            options.action = GCOptions::gcReturnDead;
+        }
+        auto store = openStore();
+        auto & gcStore = require<GcStore>(*store);
+        GCResults results;
+        PrintFreed freed(true, results);
+        gcStore.collectGarbage(options, results);
+
+        if (dryRun) {
+            // Only print results for dry run; when !dryRun, paths will be printed as they're deleted.
+            for (auto & i : results.paths) {
+                printInfo("%s", i);
+            }
         }
 
         return 0;

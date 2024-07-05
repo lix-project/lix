@@ -73,6 +73,7 @@ functional_tests_scripts = [
   'flakes/flake-in-submodule.sh',
   'gc.sh',
   'nix-collect-garbage-d.sh',
+  'nix-collect-garbage-dry-run.sh',
   'remote-store.sh',
   'legacy-ssh-store.sh',
   'lang.sh',

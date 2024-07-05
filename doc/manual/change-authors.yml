@@ -96,6 +96,10 @@ puck:
   forgejo: puck
   github: puckipedia
 
+quantumjump:
+  display_name: Quantum Jump
+  github: QuantumBJump
+
 r-vdp:
   github: r-vdp
 
