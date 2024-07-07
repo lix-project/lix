@@ -1,6 +1,7 @@
 #include "get-drvs.hh"
 #include "eval-inline.hh"
 #include "derivations.hh"
+#include "eval.hh"
 #include "store-api.hh"
 #include "path-with-outputs.hh"
 
@@ -418,56 +419,94 @@ static void getDerivations(EvalState & state, Value & vIn,
     Value v;
     state.autoCallFunction(autoArgs, vIn, v);
 
-    /* Process the expression. */
-    if (!getDerivation(state, v, pathPrefix, drvs, ignoreAssertionFailures)) ;
-
-    else if (v.type() == nAttrs) {
-
-        /* Dont consider sets we've already seen, e.g. y in
-           `rec { x.d = derivation {...}; y = x; }`. */
-        if (!done.insert(v.attrs).second) return;
-
-        /* !!! undocumented hackery to support combining channels in
-           nix-env.cc. */
-        bool combineChannels = v.attrs->find(state.symbols.create("_combineChannels")) != v.attrs->end();
-
-        /* Consider the attributes in sorted order to get more
-           deterministic behaviour in nix-env operations (e.g. when
-           there are names clashes between derivations, the derivation
-           bound to the attribute with the "lower" name should take
-           precedence). */
-        for (auto & i : v.attrs->lexicographicOrder(state.symbols)) {
-            debug("evaluating attribute '%1%'", state.symbols[i->name]);
-            if (!std::regex_match(std::string(state.symbols[i->name]), attrRegex))
-                continue;
-            std::string pathPrefix2 = addToPath(pathPrefix, state.symbols[i->name]);
-            if (combineChannels)
-                getDerivations(state, *i->value, pathPrefix2, autoArgs, drvs, done, ignoreAssertionFailures);
-            else if (getDerivation(state, *i->value, pathPrefix2, drvs, ignoreAssertionFailures)) {
-                /* If the value of this attribute is itself a set,
-                   should we recurse into it?  => Only if it has a
-                   `recurseForDerivations = true' attribute. */
-                if (i->value->type() == nAttrs) {
-                    Bindings::iterator j = i->value->attrs->find(state.sRecurseForDerivations);
-                    if (j != i->value->attrs->end() && state.forceBool(*j->value, j->pos, "while evaluating the attribute `recurseForDerivations`"))
-                        getDerivations(state, *i->value, pathPrefix2, autoArgs, drvs, done, ignoreAssertionFailures);
-                }
-            }
-        }
+    bool shouldRecurse = getDerivation(state, v, pathPrefix, drvs, ignoreAssertionFailures);
+    if (!shouldRecurse) {
+        // We're done here.
+        return;
     }
 
-    else if (v.type() == nList) {
+    if (v.type() == nList) {
         // NOTE we can't really deduplicate here because small lists don't have stable addresses
         // and can cause spurious duplicate detections due to v being on the stack.
         for (auto [n, elem] : enumerate(v.listItems())) {
-            std::string pathPrefix2 = addToPath(pathPrefix, fmt("%d", n));
-            if (getDerivation(state, *elem, pathPrefix2, drvs, ignoreAssertionFailures))
-                getDerivations(state, *elem, pathPrefix2, autoArgs, drvs, done, ignoreAssertionFailures);
+            std::string joinedAttrPath = addToPath(pathPrefix, fmt("%d", n));
+            bool shouldRecurse = getDerivation(state, *elem, joinedAttrPath, drvs, ignoreAssertionFailures);
+            if (shouldRecurse) {
+                getDerivations(
+                    state,
+                    *elem,
+                    joinedAttrPath,
+                    autoArgs,
+                    drvs,
+                    done,
+                    ignoreAssertionFailures
+                );
+            }
         }
+
+        return;
+    } else if (v.type() != nAttrs) {
+        state.error<TypeError>(
+            "expression does not evaluate to a derivation (or a list or set of those)"
+        ).debugThrow();
     }
 
-    else
-        state.error<TypeError>("expression does not evaluate to a derivation (or a set or list of those)").debugThrow();
+    /* Dont consider sets we've already seen, e.g. y in
+       `rec { x.d = derivation {...}; y = x; }`. */
+    auto const &[_, didInsert] = done.insert(v.attrs);
+    if (!didInsert) {
+        return;
+    }
+
+    // FIXME: what the fuck???
+    /* !!! undocumented hackery to support combining channels in
+       nix-env.cc. */
+    bool combineChannels = v.attrs->find(state.symbols.create("_combineChannels")) != v.attrs->end();
+
+    /* Consider the attributes in sorted order to get more
+       deterministic behaviour in nix-env operations (e.g. when
+       there are names clashes between derivations, the derivation
+       bound to the attribute with the "lower" name should take
+       precedence). */
+    for (auto & attr : v.attrs->lexicographicOrder(state.symbols)) {
+        debug("evaluating attribute '%1%'", state.symbols[attr->name]);
+        // FIXME: only consider attrs with identifier-like names?? Why???
+        if (!std::regex_match(std::string(state.symbols[attr->name]), attrRegex)) {
+            continue;
+        }
+        std::string joinedAttrPath = addToPath(pathPrefix, state.symbols[attr->name]);
+        if (combineChannels) {
+            getDerivations(state, *attr->value, joinedAttrPath, autoArgs, drvs, done, ignoreAssertionFailures);
+        } else if (getDerivation(state, *attr->value, joinedAttrPath, drvs, ignoreAssertionFailures)) {
+            /* If the value of this attribute is itself a set,
+               should we recurse into it?  => Only if it has a
+               `recurseForDerivations = true' attribute. */
+            if (attr->value->type() == nAttrs) {
+                Attr * recurseForDrvs = attr->value->attrs->get(state.sRecurseForDerivations);
+                if (recurseForDrvs == nullptr) {
+                    continue;
+                }
+                bool shouldRecurse = state.forceBool(
+                    *recurseForDrvs->value,
+                    attr->pos,
+                    fmt("while evaluating the '%s' attribute", Magenta("recurseForDerivations"))
+                );
+                if (!shouldRecurse) {
+                    continue;
+                }
+
+                getDerivations(
+                    state,
+                    *attr->value,
+                    joinedAttrPath,
+                    autoArgs,
+                    drvs,
+                    done,
+                    ignoreAssertionFailures
+                );
+            }
+        }
+    }
 }
 
 
