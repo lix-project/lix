@@ -206,7 +206,7 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * Whether we need to perform hash rewriting if there are valid output paths.
      */
-    bool needsHashRewrite();
+   virtual bool needsHashRewrite();
 
     /**
      * The additional states.

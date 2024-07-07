@@ -117,14 +117,9 @@ LocalDerivationGoal::~LocalDerivationGoal() noexcept(false)
 }
 
 
-inline bool LocalDerivationGoal::needsHashRewrite()
+bool LocalDerivationGoal::needsHashRewrite()
 {
-#if __linux__
     return !useChroot;
-#else
-    /* Darwin requires hash rewriting even when sandboxing is enabled. */
-    return true;
-#endif
 }
 
 

@@ -52,6 +52,13 @@ private:
      * Set process flags to enter or leave rosetta, then execute the builder
      */
     void execBuilder(std::string builder, Strings args, Strings envStrs) override;
+
+    /**
+     * Whether we need to rewrite output hashes.
+     * Always true on Darwin since Darwin requires hash rewriting
+     * even when sandboxing is enabled.
+     */
+    bool needsHashRewrite() override { return true; };
 };
 
 }
