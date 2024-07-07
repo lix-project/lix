@@ -37,6 +37,8 @@ private:
 
     bool checkMeta(Value & v);
 
+    void fillOutputs(bool withPaths = true);
+
 public:
     /**
      * path towards the derivation
