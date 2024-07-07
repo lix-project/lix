@@ -236,10 +236,10 @@ static void checkSelectorUse(DrvNames & selectors)
 
 namespace {
 
-std::set<std::string> searchByPrefix(const DrvInfos & allElems, std::string_view prefix) {
+std::set<std::string> searchByPrefix(DrvInfos & allElems, std::string_view prefix) {
     constexpr std::size_t maxResults = 3;
     std::set<std::string> result;
-    for (const auto & drvInfo : allElems) {
+    for (auto & drvInfo : allElems) {
         const auto drvName = DrvName { drvInfo.queryName() };
         if (drvName.name.starts_with(prefix)) {
             result.emplace(drvName.name);
@@ -319,7 +319,7 @@ std::vector<Match> pickNewestOnly(EvalState & state, std::vector<Match> matches)
 
 } // end namespace
 
-static DrvInfos filterBySelector(EvalState & state, const DrvInfos & allElems,
+static DrvInfos filterBySelector(EvalState & state, DrvInfos & allElems,
     const Strings & args, bool newestOnly)
 {
     DrvNames selectors = drvNamesFromArgs(args);
@@ -331,7 +331,7 @@ static DrvInfos filterBySelector(EvalState & state, const DrvInfos & allElems,
 
     for (auto & selector : selectors) {
         std::vector<Match> matches;
-        for (const auto & [index, drvInfo] : enumerate(allElems)) {
+        for (auto && [index, drvInfo] : enumerate(allElems)) {
             const auto drvName = DrvName { drvInfo.queryName() };
             if (selector.matches(drvName)) {
                 ++selector.hits;
@@ -457,9 +457,12 @@ static void queryInstSources(EvalState & state,
            user environment.  These are then filtered as in the
            `srcNixExprDrvs' case. */
         case srcProfile: {
-            elems = filterBySelector(state,
-                queryInstalled(state, instSource.profile),
-                args, newestOnly);
+            auto installed = queryInstalled(state, instSource.profile);
+            elems = filterBySelector(
+                state,
+                installed,
+                args, newestOnly
+            );
             break;
         }
 
@@ -838,7 +841,7 @@ static bool cmpChars(char a, char b)
 }
 
 
-static bool cmpElemByName(const DrvInfo & a, const DrvInfo & b)
+static bool cmpElemByName(DrvInfo & a, DrvInfo & b)
 {
     auto a_name = a.queryName();
     auto b_name = b.queryName();
@@ -891,7 +894,7 @@ void printTable(Table & table)
 typedef enum { cvLess, cvEqual, cvGreater, cvUnavail } VersionDiff;
 
 static VersionDiff compareVersionAgainstSet(
-    const DrvInfo & elem, const DrvInfos & elems, std::string & version)
+    DrvInfo & elem, DrvInfos & elems, std::string & version)
 {
     DrvName name(elem.queryName());
 

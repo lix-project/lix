@@ -45,7 +45,7 @@ DrvInfo::DrvInfo(EvalState & state, ref<Store> store, const std::string & drvPat
 }
 
 
-std::string DrvInfo::queryName() const
+std::string DrvInfo::queryName()
 {
     if (name == "" && attrs) {
         auto i = attrs->find(state->sName);
@@ -56,7 +56,7 @@ std::string DrvInfo::queryName() const
 }
 
 
-std::string DrvInfo::querySystem() const
+std::string DrvInfo::querySystem()
 {
     if (system == "" && attrs) {
         auto i = attrs->find(state->sSystem);
@@ -66,7 +66,7 @@ std::string DrvInfo::querySystem() const
 }
 
 
-std::optional<StorePath> DrvInfo::queryDrvPath() const
+std::optional<StorePath> DrvInfo::queryDrvPath()
 {
     if (!drvPath && attrs) {
         Bindings::iterator i = attrs->find(state->sDrvPath);
@@ -80,7 +80,7 @@ std::optional<StorePath> DrvInfo::queryDrvPath() const
 }
 
 
-StorePath DrvInfo::requireDrvPath() const
+StorePath DrvInfo::requireDrvPath()
 {
     if (auto drvPath = queryDrvPath())
         return *drvPath;
@@ -88,7 +88,7 @@ StorePath DrvInfo::requireDrvPath() const
 }
 
 
-StorePath DrvInfo::queryOutPath() const
+StorePath DrvInfo::queryOutPath()
 {
     if (!outPath && attrs) {
         Bindings::iterator i = attrs->find(state->sOutPath);
@@ -164,7 +164,7 @@ DrvInfo::Outputs DrvInfo::queryOutputs(bool withPaths, bool onlyOutputsToInstall
 }
 
 
-std::string DrvInfo::queryOutputName() const
+std::string DrvInfo::queryOutputName()
 {
     if (outputName == "" && attrs) {
         Bindings::iterator i = attrs->find(state->sOutputName);

@@ -19,11 +19,11 @@ public:
 private:
     EvalState * state;
 
-    mutable std::string name;
-    mutable std::string system;
-    mutable std::optional<std::optional<StorePath>> drvPath;
-    mutable std::optional<StorePath> outPath;
-    mutable std::string outputName;
+    std::string name;
+    std::string system;
+    std::optional<std::optional<StorePath>> drvPath;
+    std::optional<StorePath> outPath;
+    std::string outputName;
     Outputs outputs;
 
     /**
@@ -47,12 +47,12 @@ public:
     DrvInfo(EvalState & state, std::string attrPath, Bindings * attrs);
     DrvInfo(EvalState & state, ref<Store> store, const std::string & drvPathWithOutputs);
 
-    std::string queryName() const;
-    std::string querySystem() const;
-    std::optional<StorePath> queryDrvPath() const;
-    StorePath requireDrvPath() const;
-    StorePath queryOutPath() const;
-    std::string queryOutputName() const;
+    std::string queryName();
+    std::string querySystem();
+    std::optional<StorePath> queryDrvPath();
+    StorePath requireDrvPath();
+    StorePath queryOutPath();
+    std::string queryOutputName();
     /**
      * Return the unordered map of output names to (optional) output paths.
      * The "outputs to install" are determined by `meta.outputsToInstall`.
