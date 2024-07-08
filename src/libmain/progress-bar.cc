@@ -356,7 +356,7 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
         line += "]";
     }
     if (printMultiline && !line.empty()) {
-        writeToStderr(filterANSIEscapes(line, false, width) + "\n");
+        writeToStderr(filterANSIEscapes(line, false, width) + ANSI_NORMAL "\n");
         state.lastLines++;
     }
 
@@ -398,7 +398,7 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
 
             if (printMultiline) {
                 if (state.lastLines < (height -1)) {
-                    writeToStderr(filterANSIEscapes(activity_line, false, width) + "\n");
+                    writeToStderr(filterANSIEscapes(activity_line, false, width) + ANSI_NORMAL "\n");
                     state.lastLines++;
                 } else moreActivities++;
             }
