@@ -447,7 +447,8 @@ static void getDerivations(EvalState & state, Value & vIn,
         return;
     } else if (v.type() != nAttrs) {
         state.error<TypeError>(
-            "expression does not evaluate to a derivation (or a list or set of those)"
+            "expression was expected to be a derivation or collection of derivations, but instead was %s",
+            showType(v.type(), true)
         ).debugThrow();
     }
 
