@@ -87,10 +87,9 @@ struct WorkerProto
      * canonical serializers below.
      */
     struct WriteConn {
-        Sink & to;
         Version version;
 
-        WriteConn(Sink & to, Version version) : to(to), version(version) {
+        explicit WriteConn(Version version) : version(version) {
             assert(version >= MIN_SUPPORTED_WORKER_PROTO_VERSION);
         }
     };

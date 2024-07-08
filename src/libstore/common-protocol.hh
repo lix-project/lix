@@ -37,7 +37,6 @@ struct CommonProto
      * canonical serializers below.
      */
     struct WriteConn {
-        Sink & to;
     };
 
     template<typename T>

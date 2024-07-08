@@ -74,7 +74,6 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
         operator ServeProto::WriteConn ()
         {
             return ServeProto::WriteConn {
-                .to = to,
                 .version = remoteVersion,
             };
         }

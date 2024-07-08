@@ -50,7 +50,7 @@ struct ServeProto::Serialise
     static WireFormatGenerator write(const Store & store, ServeProto::WriteConn conn, const T & t)
     {
         return CommonProto::Serialise<T>::write(store,
-            CommonProto::WriteConn { .to = conn.to },
+            CommonProto::WriteConn {},
             t);
     }
 };

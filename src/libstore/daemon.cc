@@ -264,7 +264,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
     Source & from, BufferedSink & to, WorkerProto::Op op)
 {
     WorkerProto::ReadConn rconn{from, clientVersion};
-    WorkerProto::WriteConn wconn{to, clientVersion};
+    WorkerProto::WriteConn wconn{clientVersion};
 
     switch (op) {
 
@@ -291,7 +291,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         }
         auto res = store->queryValidPaths(paths, substitute);
         logger->stopWork();
-        wconn.to << WorkerProto::write(*store, wconn, res);
+        to << WorkerProto::write(*store, wconn, res);
         break;
     }
 
@@ -300,7 +300,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         logger->startWork();
         auto res = store->querySubstitutablePaths(paths);
         logger->stopWork();
-        wconn.to << WorkerProto::write(*store, wconn, res);
+        to << WorkerProto::write(*store, wconn, res);
         break;
     }
 
@@ -365,7 +365,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         #pragma GCC diagnostic pop
 
         logger->stopWork();
-        wconn.to << WorkerProto::write(*store, wconn, paths);
+        to << WorkerProto::write(*store, wconn, paths);
         break;
     }
 
@@ -385,7 +385,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         logger->startWork();
         auto outputs = store->queryPartialDerivationOutputMap(path);
         logger->stopWork();
-        wconn.to << WorkerProto::write(*store, wconn, outputs);
+        to << WorkerProto::write(*store, wconn, outputs);
         break;
     }
 
@@ -432,7 +432,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
             }();
             logger->stopWork();
 
-            wconn.to << WorkerProto::Serialise<ValidPathInfo>::write(*store, wconn, *pathInfo);
+            to << WorkerProto::Serialise<ValidPathInfo>::write(*store, wconn, *pathInfo);
         } else {
             HashType hashAlgo;
             std::string baseName;
@@ -565,7 +565,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         auto results = store->buildPathsWithResults(drvs, mode);
         logger->stopWork();
 
-        wconn.to << WorkerProto::write(*store, wconn, results);
+        to << WorkerProto::write(*store, wconn, results);
 
         break;
     }
@@ -643,7 +643,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
 
         auto res = store->buildDerivation(drvPath, drv, buildMode);
         logger->stopWork();
-        wconn.to << WorkerProto::write(*store, wconn, res);
+        to << WorkerProto::write(*store, wconn, res);
         break;
     }
 
@@ -777,7 +777,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         else {
             to << 1
                << (i->second.deriver ? store->printStorePath(*i->second.deriver) : "");
-            wconn.to << WorkerProto::write(*store, wconn, i->second.references);
+            to << WorkerProto::write(*store, wconn, i->second.references);
             to << i->second.downloadSize
                << i->second.narSize;
         }
@@ -800,7 +800,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         for (auto & i : infos) {
             to << store->printStorePath(i.first)
                << (i.second.deriver ? store->printStorePath(*i.second.deriver) : "");
-            wconn.to << WorkerProto::write(*store, wconn, i.second.references);
+            to << WorkerProto::write(*store, wconn, i.second.references);
             to << i.second.downloadSize << i.second.narSize;
         }
         break;
@@ -810,7 +810,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         logger->startWork();
         auto paths = store->queryAllValidPaths();
         logger->stopWork();
-        wconn.to << WorkerProto::write(*store, wconn, paths);
+        to << WorkerProto::write(*store, wconn, paths);
         break;
     }
 
@@ -827,7 +827,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         logger->stopWork();
         if (info) {
             to << 1;
-            wconn.to << WorkerProto::write(*store, wconn, static_cast<const UnkeyedValidPathInfo &>(*info));
+            to << WorkerProto::write(*store, wconn, static_cast<const UnkeyedValidPathInfo &>(*info));
         } else {
             to << 0;
         }
@@ -922,9 +922,9 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         uint64_t downloadSize, narSize;
         store->queryMissing(targets, willBuild, willSubstitute, unknown, downloadSize, narSize);
         logger->stopWork();
-        wconn.to << WorkerProto::write(*store, wconn, willBuild);
-        wconn.to << WorkerProto::write(*store, wconn, willSubstitute);
-        wconn.to << WorkerProto::write(*store, wconn, unknown);
+        to << WorkerProto::write(*store, wconn, willBuild);
+        to << WorkerProto::write(*store, wconn, willSubstitute);
+        to << WorkerProto::write(*store, wconn, unknown);
         to << downloadSize << narSize;
         break;
     }
@@ -952,11 +952,11 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         if (GET_PROTOCOL_MINOR(clientVersion) < 31) {
             std::set<StorePath> outPaths;
             if (info) outPaths.insert(info->outPath);
-            wconn.to << WorkerProto::write(*store, wconn, outPaths);
+            to << WorkerProto::write(*store, wconn, outPaths);
         } else {
             std::set<Realisation> realisations;
             if (info) realisations.insert(*info);
-            wconn.to << WorkerProto::write(*store, wconn, realisations);
+            to << WorkerProto::write(*store, wconn, realisations);
         }
         break;
     }
@@ -1036,8 +1036,8 @@ void processConnection(
         auto temp = trusted
             ? store->isTrustedClient()
             : std::optional { NotTrusted };
-        WorkerProto::WriteConn wconn {to, clientVersion};
-        wconn.to << WorkerProto::write(*store, wconn, temp);
+        WorkerProto::WriteConn wconn {clientVersion};
+        to << WorkerProto::write(*store, wconn, temp);
     }
 
     /* Send startup error messages to the client. */

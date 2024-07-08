@@ -47,7 +47,7 @@ void Store::exportPath(const StorePath & path, Sink & sink)
         << exportMagic
         << printStorePath(path);
     teeSink << CommonProto::write(*this,
-        CommonProto::WriteConn { .to = teeSink },
+        CommonProto::WriteConn {},
         info->references);
     teeSink
         << (info->deriver ? printStorePath(*info->deriver) : "")

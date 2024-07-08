@@ -52,7 +52,7 @@ public:
         StringSink to;
         to << CommonProto::write(
             *store,
-            CommonProto::WriteConn { .to = to },
+            CommonProto::WriteConn {},
             value);
 
         if (testAccept())

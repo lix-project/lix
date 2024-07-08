@@ -995,7 +995,7 @@ void writeDerivation(Sink & out, const Store & store, const BasicDerivation & dr
         }, i.second.raw);
     }
     out << CommonProto::write(store,
-        CommonProto::WriteConn { .to = out },
+        CommonProto::WriteConn {},
         drv.inputSrcs);
     out << drv.platform << drv.builder << drv.args;
     out << drv.env.size();

@@ -60,7 +60,6 @@ struct ServeProto
      * canonical serializers below.
      */
     struct WriteConn {
-        Sink & to;
         Version version;
     };
 

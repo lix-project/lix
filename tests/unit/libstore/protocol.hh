@@ -58,7 +58,7 @@ public:
         StringSink to;
         to << Proto::write(
             *LibStoreTest::store,
-            typename Proto::WriteConn {to, version},
+            typename Proto::WriteConn {version},
             value);
 
         if (testAccept())

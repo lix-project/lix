@@ -489,7 +489,7 @@ void RemoteStore::addMultipleToStore(
         sink << pathsToCopy.size();
         for (auto & [pathInfo, pathSource] : pathsToCopy) {
             sink << WorkerProto::Serialise<ValidPathInfo>::write(*this,
-                 WorkerProto::WriteConn {sink, remoteVersion},
+                 WorkerProto::WriteConn {remoteVersion},
                  pathInfo);
             pathSource->drainInto(sink);
         }
