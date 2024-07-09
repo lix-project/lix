@@ -90,6 +90,7 @@
         "armv6l-linux"
         "armv7l-linux"
         "riscv64-linux"
+        "aarch64-linux"
         # FIXME: still broken in 24.05: fails to build rustc(??) due to missing -lstdc++ dep
         # "x86_64-freebsd"
         # FIXME: broken dev shell due to python

@@ -175,6 +175,7 @@ These are specified in `crossSystems` in `flake.nix`; feel free to submit change
 
 - `armv6l-linux`
 - `armv7l-linux`
+- `aarch64-linux`
 - `riscv64-linux`
 
 For example, to cross-compile Lix for `armv6l-linux` from another Linux, use the following:
