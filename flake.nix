@@ -329,6 +329,25 @@
         pkgs = nixpkgsFor.x86_64-linux.native;
       };
 
+      releaseTests = lib.foldl lib.recursiveUpdate { } [
+        (lib.genAttrs (linux64BitSystems ++ darwinSystems) (system: {
+          nativeBuild = self.packages.${system}.nix;
+        }))
+        (lib.genAttrs (linux64BitSystems) (system: {
+          staticBuild = self.packages.${system}.nix-static;
+        }))
+        {
+          x86_64-linux = {
+            # TODO add more cross/static release targets?
+            crossBuild.aarch64-linux = self.packages.x86_64-linux.nix-aarch64-linux;
+
+            # TODO wire up a nixos installer test with that lix and
+            # run it, once nixpkgs can actually do that (again). :/
+            # # nix build .#nixosTests.installer.{btrfsSimple,luksroot,lvm,simple,switchToFlake}
+          };
+        }
+      ];
+
       # NOTE *do not* add fresh derivations to checks, always add them to
       # hydraJobs first (so CI will pick them up) and only link them here
       checks = forAvailableSystems (
