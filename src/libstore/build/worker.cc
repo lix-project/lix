@@ -537,15 +537,4 @@ void Worker::markContentsGood(const StorePath & path)
     pathContentsGoodCache.insert_or_assign(path, true);
 }
 
-
-GoalPtr upcast_goal(std::shared_ptr<PathSubstitutionGoal> subGoal)
-{
-    return subGoal;
-}
-
-GoalPtr upcast_goal(std::shared_ptr<DrvOutputSubstitutionGoal> subGoal)
-{
-    return subGoal;
-}
-
 }

@@ -17,21 +17,6 @@ struct DerivationGoal;
 struct PathSubstitutionGoal;
 class DrvOutputSubstitutionGoal;
 
-/**
- * Workaround for not being able to declare a something like
- *
- * ```c++
- * class PathSubstitutionGoal : public Goal;
- * ```
- * even when Goal is a complete type.
- *
- * This is still a static cast. The purpose of exporting it is to define it in
- * a place where `PathSubstitutionGoal` is concrete, and use it in a place where it
- * is opaque.
- */
-GoalPtr upcast_goal(std::shared_ptr<PathSubstitutionGoal> subGoal);
-GoalPtr upcast_goal(std::shared_ptr<DrvOutputSubstitutionGoal> subGoal);
-
 typedef std::chrono::time_point<std::chrono::steady_clock> steady_time_point;
 
 /**

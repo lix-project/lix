@@ -12,6 +12,8 @@
 #include "topo-sort.hh"
 #include "local-store.hh" // TODO remove, along with remaining downcasts
 #include "logging-json.hh"
+#include "substitution-goal.hh"
+#include "drv-output-substitution-goal.hh"
 
 #include <regex>
 #include <queue>
@@ -175,7 +177,7 @@ void DerivationGoal::getDerivation()
         return;
     }
 
-    addWaitee(upcast_goal(worker.makePathSubstitutionGoal(drvPath)));
+    addWaitee(worker.makePathSubstitutionGoal(drvPath));
 
     state = &DerivationGoal::loadDerivation;
 }
@@ -276,19 +278,17 @@ void DerivationGoal::haveDerivation()
             if (!status.wanted) continue;
             if (!status.known)
                 addWaitee(
-                    upcast_goal(
-                        worker.makeDrvOutputSubstitutionGoal(
-                            DrvOutput{status.outputHash, outputName},
-                            buildMode == bmRepair ? Repair : NoRepair
-                        )
+                    worker.makeDrvOutputSubstitutionGoal(
+                        DrvOutput{status.outputHash, outputName},
+                        buildMode == bmRepair ? Repair : NoRepair
                     )
                 );
             else {
                 auto * cap = getDerivationCA(*drv);
-                addWaitee(upcast_goal(worker.makePathSubstitutionGoal(
+                addWaitee(worker.makePathSubstitutionGoal(
                     status.known->path,
                     buildMode == bmRepair ? Repair : NoRepair,
-                    cap ? std::optional { *cap } : std::nullopt)));
+                    cap ? std::optional { *cap } : std::nullopt));
             }
         }
 
@@ -426,7 +426,7 @@ void DerivationGoal::gaveUpOnSubstitution()
         if (!settings.useSubstitutes)
             throw Error("dependency '%s' of '%s' does not exist, and substitution is disabled",
                 worker.store.printStorePath(i), worker.store.printStorePath(drvPath));
-        addWaitee(upcast_goal(worker.makePathSubstitutionGoal(i)));
+        addWaitee(worker.makePathSubstitutionGoal(i));
     }
 
     if (waitees.empty()) /* to prevent hang (no wake-up event) */
@@ -479,7 +479,7 @@ void DerivationGoal::repairClosure()
             worker.store.printStorePath(i), worker.store.printStorePath(drvPath));
         auto drvPath2 = outputsToDrv.find(i);
         if (drvPath2 == outputsToDrv.end())
-            addWaitee(upcast_goal(worker.makePathSubstitutionGoal(i, Repair)));
+            addWaitee(worker.makePathSubstitutionGoal(i, Repair));
         else
             addWaitee(worker.makeGoal(
                 DerivedPath::Built {
