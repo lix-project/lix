@@ -493,9 +493,9 @@ stdenv.mkDerivation (finalAttrs: {
                 return
               fi
 
-              PATH=$prefix/bin:$PATH
+              PATH=$prefix/bin''${PATH:+:''${PATH}}
               unset PYTHONPATH
-              export MANPATH=$out/share/man:$MANPATH
+              export MANPATH=$out/share/man''${MANPATH:+:''${MANPATH}}
 
               # Make bash completion work.
               XDG_DATA_DIRS+=:$out/share
