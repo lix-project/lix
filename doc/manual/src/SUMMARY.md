@@ -197,7 +197,7 @@
 - [Release Notes](release-notes/release-notes.md)
   - [Upcoming release](release-notes/rl-next.md)
   <!-- RELENG-AUTO-INSERTION-MARKER (see releng/release_notes.py) -->
-  - [Lix 2.90 (FIXME date)](release-notes/rl-2.90.md)
+  - [Lix 2.90 (2024-07-10)](release-notes/rl-2.90.md)
   - [Nix 2.18 (2023-09-20)](release-notes/rl-2.18.md)
   - [Nix 2.17 (2023-07-24)](release-notes/rl-2.17.md)
   - [Nix 2.16 (2023-05-31)](release-notes/rl-2.16.md)
