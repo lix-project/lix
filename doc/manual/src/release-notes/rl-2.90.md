@@ -1,7 +1,7 @@
-# Lix 2.90 "Vanilla Ice Cream" (FIXME date)
+# Lix 2.90 "Vanilla Ice Cream" (2024-07-10)
 
 
-# Lix 2.90.0 (FIXME date)
+# Lix 2.90.0 (2024-07-10)
 
 ## Breaking Changes
 - Deprecate the online flake registries and vendor the default registry [fj#183](https://git.lix.systems/lix-project/lix/issues/183) [fj#110](https://git.lix.systems/lix-project/lix/issues/110) [fj#116](https://git.lix.systems/lix-project/lix/issues/116) [#8953](https://github.com/NixOS/nix/issues/8953) [#9087](https://github.com/NixOS/nix/issues/9087) [cl/1127](https://gerrit.lix.systems/c/lix/+/1127)
