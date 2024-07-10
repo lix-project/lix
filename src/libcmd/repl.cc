@@ -40,24 +40,24 @@
 #include <gc/gc_cpp.h>
 #endif
 
-// XXX: These are for nix-doc features and will be removed in a future rewrite where this functionality is integrated more natively.
+// XXX: These are for lix-doc features and will be removed in a future rewrite where this functionality is integrated more natively.
 extern "C" {
-    char const *nd_get_function_docs(char const *filename, size_t line, size_t col);
-    void nd_free_string(char const *str);
+    char const *lixdoc_get_function_docs(char const *filename, size_t line, size_t col);
+    void lixdoc_free_string(char const *str);
 }
 
 namespace nix {
 
 
 /** Wrapper around std::unique_ptr with a custom deleter for strings from nix-doc **/
-using NdString = std::unique_ptr<const char, decltype(&nd_free_string)>;
+using NdString = std::unique_ptr<const char, decltype(&lixdoc_free_string)>;
 
 /**
  * Fetch a string representing the doc comment using nix-doc and wrap it in an RAII wrapper.
  */
 NdString lambdaDocsForPos(SourcePath const path, nix::Pos const &pos) {
   std::string const file = path.to_string();
-  return NdString{nd_get_function_docs(file.c_str(), pos.line, pos.column), &nd_free_string};
+  return NdString{lixdoc_get_function_docs(file.c_str(), pos.line, pos.column), &lixdoc_free_string};
 }
 
 /**

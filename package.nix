@@ -474,6 +474,14 @@ stdenv.mkDerivation (finalAttrs: {
               # Load-bearing order. Must come before clang-unwrapped below, but after clang_tools above.
               stdenv.cc
             ]
+            ++ [
+              pkgs.rust-analyzer
+              pkgs.cargo
+              pkgs.rustc
+              pkgs.rustfmt
+              pkgs.rustPlatform.rustLibSrc
+              pkgs.rustPlatform.rustcSrc
+            ]
             ++ lib.optionals stdenv.cc.isClang [
               # Required for clang-tidy checks.
               llvmPackages.llvm
