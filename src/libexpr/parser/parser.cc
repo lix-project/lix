@@ -113,6 +113,29 @@ struct ExprState
         return std::make_unique<ExprCall>(pos, std::make_unique<ExprVar>(fn), std::move(args));
     }
 
+    std::unique_ptr<Expr> pipe(PosIdx pos, State & state, bool flip = false)
+    {
+        if (!state.xpSettings.isEnabled(Xp::PipeOperator))
+            throw ParseError({
+                .msg = HintFmt("Pipe operator is disabled"),
+                .pos = state.positions[pos]
+            });
+
+        // Reverse the order compared to normal function application: arg |> fn
+        std::unique_ptr<Expr> fn, arg;
+        if (flip) {
+            fn = popExprOnly();
+            arg = popExprOnly();
+        } else {
+            arg = popExprOnly();
+            fn = popExprOnly();
+        }
+        std::vector<std::unique_ptr<Expr>> args{1};
+        args[0] = std::move(arg);
+
+        return std::make_unique<ExprCall>(pos, std::move(fn), std::move(args));
+    }
+
     std::unique_ptr<Expr> order(PosIdx pos, bool less, State & state)
     {
         return call(pos, state.s.lessThan, !less);
@@ -162,6 +185,8 @@ struct ExprState
                 [&] (Op::concat)      { return applyBinary<ExprOpConcatLists>(pos); },
                 [&] (has_attr & a)    { return applyUnary<ExprOpHasAttr>(std::move(a.path)); },
                 [&] (Op::unary_minus) { return negate(pos, state); },
+                [&] (Op::pipe_right)  { return pipe(pos, state, true); },
+                [&] (Op::pipe_left)   { return pipe(pos, state); },
             })(op)
         };
     }

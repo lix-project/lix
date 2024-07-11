@@ -103,6 +103,11 @@ midnightveil:
 ncfavier:
   github: ncfavier
 
+piegames:
+  display_name: piegames
+  forgejo: piegames
+  github: piegamesde
+
 puck:
   display_name: puck
   forgejo: puck
