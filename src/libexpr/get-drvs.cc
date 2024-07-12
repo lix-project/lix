@@ -241,8 +241,8 @@ NixInt DrvInfo::queryMetaInt(const std::string & name, NixInt def)
     if (v->type() == nString) {
         /* Backwards compatibility with before we had support for
            integer meta fields. */
-        if (auto n = string2Int<NixInt>(v->string.s))
-            return *n;
+        if (auto n = string2Int<NixInt::Inner>(v->string.s))
+            return NixInt{*n};
     }
     return def;
 }

@@ -9,6 +9,7 @@
 #include "input-accessor.hh"
 #include "source-path.hh"
 #include "print-options.hh"
+#include "checked-arithmetic.hh"
 
 #if HAVE_BOEHMGC
 #include <gc/gc_allocator.h>
@@ -73,8 +74,8 @@ class EvalState;
 class XMLWriter;
 class Printer;
 
-typedef int64_t NixInt;
-typedef double NixFloat;
+using NixInt = checked::Checked<int64_t>;
+using NixFloat = double;
 
 /**
  * External values must descend from ExternalValueBase, so that
@@ -252,6 +253,11 @@ public:
     inline void clearValue()
     {
         app.left = app.right = 0;
+    }
+
+    inline void mkInt(NixInt::Inner n)
+    {
+        mkInt(NixInt{n});
     }
 
     inline void mkInt(NixInt n)

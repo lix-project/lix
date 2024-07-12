@@ -981,7 +981,10 @@ public:
         )"};
 
     Setting<uint64_t> maxFree{
-        this, std::numeric_limits<uint64_t>::max(), "max-free",
+        // n.b. this is deliberately int64 max rather than uint64 max because
+        // this goes through the Nix language JSON parser and thus needs to be
+        // representable in Nix language integers.
+        this, std::numeric_limits<int64_t>::max(), "max-free",
         R"(
           When a garbage collection is triggered by the `min-free` option, it
           stops as soon as `max-free` bytes are available. The default is

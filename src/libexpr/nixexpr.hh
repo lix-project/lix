@@ -75,6 +75,7 @@ struct ExprInt : Expr
     NixInt n;
     Value v;
     ExprInt(NixInt n) : n(n) { v.mkInt(n); };
+    ExprInt(NixInt::Inner n) : n(n) { v.mkInt(n); };
     Value * maybeThunk(EvalState & state, Env & env) override;
     COMMON_METHODS
 };

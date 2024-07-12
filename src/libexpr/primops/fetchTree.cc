@@ -148,9 +148,16 @@ static void fetchTree(
             }
             else if (attr.value->type() == nBool)
                 attrs.emplace(state.symbols[attr.name], Explicit<bool>{attr.value->boolean});
-            else if (attr.value->type() == nInt)
-                attrs.emplace(state.symbols[attr.name], uint64_t(attr.value->integer));
-            else
+            else if (attr.value->type() == nInt) {
+                auto intValue = attr.value->integer.value;
+
+                if (intValue < 0) {
+                    state.error<EvalError>("negative value given for fetchTree attr %1%: %2%", state.symbols[attr.name], intValue).atPos(pos).debugThrow();
+                }
+                unsigned long asUnsigned = intValue;
+
+                attrs.emplace(state.symbols[attr.name], asUnsigned);
+            } else
                 state.error<TypeError>("fetchTree argument '%s' is %s while a string, Boolean or integer is expected",
                     state.symbols[attr.name], showType(*attr.value)).debugThrow();
         }

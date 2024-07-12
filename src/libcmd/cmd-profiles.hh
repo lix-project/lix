@@ -37,7 +37,7 @@ struct ProfileElement
     StorePathSet storePaths;
     std::optional<ProfileElementSource> source;
     bool active = true;
-    int priority = DEFAULT_PRIORITY;
+    NixInt::Inner priority = DEFAULT_PRIORITY;
 
     std::string identifier() const;
 
