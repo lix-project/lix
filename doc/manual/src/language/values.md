@@ -85,6 +85,9 @@
   Numbers, which can be *integers* (like `123`) or *floating point*
   (like `123.43` or `.27e13`).
 
+  Integers in the Nix language are 64-bit signed integers.
+  Integer overflow is defined to throw an error.
+
   See [arithmetic] and [comparison] operators for semantics.
 
   [arithmetic]: ./operators.md#arithmetic

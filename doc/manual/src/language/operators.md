@@ -59,8 +59,10 @@ The result is a [Boolean] value.
 
 ## Arithmetic
 
-Numbers are type-compatible:
-Pure integer operations will always return integers, whereas any operation involving at least one floating point number return a floating point number.
+Numbers will retain their type unless mixed with other numeric types:
+Pure integer operations will always return integers, whereas any operation involving at least one floating point number returns a floating point number.
+
+Integer overflow (of 64-bit signed integers) and division by zero are defined to throw an error.
 
 See also [Comparison] and [Equality].
 
