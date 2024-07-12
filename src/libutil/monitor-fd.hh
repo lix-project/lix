@@ -38,26 +38,17 @@ public:
                 /* Wait indefinitely until a POLLHUP occurs. */
                 struct pollfd fds[2];
                 fds[0].fd = fd;
-                /* Polling for no specific events (i.e. just waiting
-                   for an error/hangup) doesn't work on macOS
-                   anymore. So wait for read events and ignore
-                   them. */
-                // FIXME(jade): we have looked at the XNU kernel code and as
-                // far as we can tell, the above is bogus. It should be the
-                // case that the previous version of this and the current
-                // version are identical: waiting for POLLHUP and POLLRDNORM in
-                // the kernel *should* be identical.
-                // https://github.com/apple-oss-distributions/xnu/blob/94d3b452840153a99b38a3a9659680b2a006908e/bsd/kern/sys_generic.c#L1751-L1758
+                // There is a POSIX violation on macOS: you have to listen for
+                // at least POLLHUP to receive HUP events for a FD. POSIX says
+                // this is not so, and you should just receive them regardless,
+                // however, as of our testing on macOS 14.5, the events do not
+                // get delivered in such a case.
                 //
-                // So, this needs actual testing and we need to figure out if
-                // this is actually bogus.
-                fds[0].events =
-                    #ifdef __APPLE__
-                    POLLRDNORM
-                    #else
-                    0
-                    #endif
-                    ;
+                // This is allegedly filed as rdar://37537852.
+                //
+                // Relevant code, which backs this up:
+                // https://github.com/apple-oss-distributions/xnu/blob/94d3b452840153a99b38a3a9659680b2a006908e/bsd/kern/sys_generic.c#L1751-L1758
+                fds[0].events = POLLHUP;
                 fds[1].fd = terminateFd;
                 fds[1].events = POLLIN;
 
@@ -82,14 +73,16 @@ public:
                     triggerInterrupt();
                     break;
                 }
-                // No reason to actually look at the pipe FD, we just need it
-                // to be able to get woken.
+                // No reason to actually look at the pipe FD if that's what
+                // woke us, the only thing that actually matters is the quit
+                // flag.
                 if (quit_) {
                     break;
                 }
-                /* This will only happen on macOS. We sleep a bit to
-                   avoid waking up too often if the client is sending
-                   input. */
+                // On macOS, it is possible (although not observed on macOS
+                // 14.5) that in some limited cases on buggy kernel versions,
+                // all the non-POLLHUP events for the socket get delivered.
+                // Sleeping avoids pointlessly spinning a thread on those.
                 sleep(1);
             }
         });
@@ -100,7 +93,9 @@ public:
         quit = true;
         // Poke the thread out of its poll wait
         writeFull(terminatePipe.writeSide.get(), "*", false);
-        thread.join();
+        if (thread.joinable()) {
+            thread.join();
+        }
     }
 };
 
