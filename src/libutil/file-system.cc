@@ -1,4 +1,5 @@
 #include <sys/time.h>
+#include <cstdlib>
 #include <filesystem>
 #include <atomic>
 
@@ -104,6 +105,24 @@ Path canonPath(PathView path, bool resolveSymlinks)
     }
 
     return s.empty() ? "/" : std::move(s);
+}
+
+Path realPath(Path const & path)
+{
+    // With nullptr, realpath() malloc's and returns a new c-string.
+    char * resolved = realpath(path.c_str(), nullptr);
+    int saved = errno;
+    if (resolved == nullptr) {
+        throw SysError(saved, "cannot get realpath for '%s'", path);
+    }
+
+    Finally const _free([&] { free(resolved); });
+
+    // There's not really a from_raw_parts() for std::string.
+    // The copy is not a big deal.
+    Path ret(resolved);
+
+    return ret;
 }
 
 void chmodPath(const Path & path, mode_t mode)

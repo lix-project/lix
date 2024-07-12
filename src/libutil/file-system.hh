@@ -47,6 +47,22 @@ Path absPath(Path path,
 Path canonPath(PathView path, bool resolveSymlinks = false);
 
 /**
+ * Resolves a file path to a fully absolute path with no symbolic links.
+ *
+ * @param path The path to resolve. If it is relative, it will be resolved relative
+ * to the process's current directory.
+ *
+ * @note This is not a pure function; it performs this resolution by querying
+ * the filesystem.
+ *
+ * @note @ref path sadly must be (a reference to) an owned string, as std::string_view
+ * are not valid C strings...
+ *
+ * @return The fully resolved path.
+ */
+Path realPath(Path const & path);
+
+/**
  * Change the permissions of a path
  * Not called `chmod` as it shadows and could be confused with
  * `int chmod(char *, mode_t)`, which does not handle errors
