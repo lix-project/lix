@@ -440,7 +440,7 @@
             makeShell pkgs pkgs.stdenv
           ))
           // {
-            default = self.devShells.${system}.native-stdenvPackages;
+            default = self.devShells.${system}.native-clangStdenvPackages;
           }
         );
     };
