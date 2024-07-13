@@ -77,12 +77,6 @@
   }
   ```
 
-  Finally, as a convenience, *URIs* as defined in appendix B of
-  [RFC 2396](http://www.ietf.org/rfc/rfc2396.txt) can be written *as
-  is*, without quotes. For instance, the string
-  `"http://example.org/foo.tar.bz2"` can also be written as
-  `http://example.org/foo.tar.bz2`.
-
 - <a id="type-number" href="#type-number">Number</a>
 
   Numbers, which can be *integers* (like `123`) or *floating point*

@@ -488,7 +488,13 @@ struct FeatureSettings : Config {
     Setting<std::set<DeprecatedFeature>> deprecatedFeatures{
         this, {}, "deprecated-features",
         R"(
-          Deprecated features that are allowed. (Currently there are none.)
+          Deprecated features that are allowed.
+
+          Example:
+
+          ```
+          deprecated-features = url-literals
+          ```
 
           The following deprecated feature features can be re-activated:
 

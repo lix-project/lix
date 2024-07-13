@@ -18,6 +18,7 @@ namespace nix {
  */
 enum struct DeprecatedFeature
 {
+    UrlLiterals
 };
 
 /**

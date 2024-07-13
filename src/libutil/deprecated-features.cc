@@ -24,9 +24,16 @@ struct DeprecatedFeatureDetails
  * feature, we either have no issue at all if few features are not added
  * at the end of the list, or a proper merge conflict if they are.
  */
-constexpr size_t numDepFeatures = 0;
+constexpr size_t numDepFeatures = 1 + static_cast<size_t>(Dep::UrlLiterals);
 
 constexpr std::array<DeprecatedFeatureDetails, numDepFeatures> depFeatureDetails = {{
+    {
+        .tag = Dep::UrlLiterals,
+        .name = "url-literals",
+        .description = R"(
+            Allow unquoted URLs as part of the Nix language syntax.
+        )",
+    },
 }};
 
 static_assert(

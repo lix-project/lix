@@ -87,15 +87,15 @@ namespace nix {
     }
 
     TEST_F(TrivialExpressionTest, urlLiteral) {
-        auto v = eval("https://nixos.org");
+        FeatureSettings mockFeatureSettings;
+        mockFeatureSettings.set("deprecated-features", "url-literals");
+
+        auto v = eval("https://nixos.org", true, mockFeatureSettings);
         ASSERT_THAT(v, IsStringEq("https://nixos.org"));
     }
 
     TEST_F(TrivialExpressionTest, noUrlLiteral) {
-        ExperimentalFeatureSettings mockXpSettings;
-        mockXpSettings.set("experimental-features", "no-url-literals");
-
-        ASSERT_THROW(eval("https://nixos.org", true, mockXpSettings), Error);
+        ASSERT_THROW(eval("https://nixos.org"), Error);
     }
 
     TEST_F(TrivialExpressionTest, withFound) {

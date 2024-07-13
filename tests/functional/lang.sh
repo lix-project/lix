@@ -53,8 +53,13 @@ done
 for i in lang/parse-okay-*.nix; do
     echo "parsing $i (should succeed)";
     i=$(basename "$i" .nix)
+    # Hard-code that these two files are allowed to use url literals (because they test them)
+    if [[ "$i" == "parse-okay-url" || "$i" == "parse-okay-regression-20041027" ]]
+    then
+        extraArgs="--extra-deprecated-features url-literals"
+    fi
     if
-        expect 0 nix-instantiate --parse - < "lang/$i.nix" \
+        expect 0 nix-instantiate --parse ${extraArgs-} - < "lang/$i.nix" \
             1> "lang/$i.out" \
             2> "lang/$i.err"
     then

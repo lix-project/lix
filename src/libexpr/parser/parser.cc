@@ -656,10 +656,10 @@ template<> struct BuildAST<grammar::expr::path> : p::maybe_nothing {};
 
 template<> struct BuildAST<grammar::expr::uri> {
     static void apply(const auto & in, ExprState & s, State & ps) {
-       bool noURLLiterals = ps.featureSettings.isEnabled(Xp::NoUrlLiterals);
-       if (noURLLiterals)
+       bool URLLiterals = ps.featureSettings.isEnabled(Dep::UrlLiterals);
+       if (!URLLiterals)
            throw ParseError({
-               .msg = HintFmt("URL literals are disabled"),
+               .msg = HintFmt("URL literals are deprecated, allow using them with --extra-deprecated-features=url-literals"),
                .pos = ps.positions[ps.at(in)]
            });
        s.pushExpr<ExprString>(ps.at(in), in.string());

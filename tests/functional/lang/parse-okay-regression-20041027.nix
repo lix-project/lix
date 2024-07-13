@@ -1,3 +1,4 @@
+# This test needs to be run with --extra-deprecated-features url-literals
 {stdenv, fetchurl /* pkgconfig, libX11 */ }:
 
 stdenv.mkDerivation {
