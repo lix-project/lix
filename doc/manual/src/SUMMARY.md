@@ -196,7 +196,7 @@
   - [C++ style guide](contributing/cxx.md)
 - [Release Notes](release-notes/release-notes.md)
   - [Upcoming release](release-notes/rl-next.md)
-  <!-- RELENG-AUTO-INSERTION-MARKER (see releng/release_notes.py) -->
+    <!-- RELENG-AUTO-INSERTION-MARKER (see releng/release_notes.py) -->
   - [Lix 2.90 (2024-07-10)](release-notes/rl-2.90.md)
   - [Nix 2.18 (2023-09-20)](release-notes/rl-2.18.md)
   - [Nix 2.17 (2023-07-24)](release-notes/rl-2.17.md)

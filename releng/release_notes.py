@@ -16,7 +16,7 @@ def add_to_summary(date: str):
     if VERSION_RL.exists():
         return
 
-    MARKER = '<!-- RELENG-AUTO-INSERTION-MARKER'
+    MARKER = '  <!-- RELENG-AUTO-INSERTION-MARKER'
 
     new_lines = []
     for line in SUMMARY.read_text().splitlines():
