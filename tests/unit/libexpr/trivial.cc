@@ -214,36 +214,36 @@ namespace nix {
     // pipes are gated behind an experimental feature flag
     TEST_F(TrivialExpressionTest, pipeDisabled) {
         ASSERT_THROW(eval("let add = l: r: l + r; in ''a'' |> add ''b''"), Error);
-        ASSERT_THROW(eval("let add = l: r: l + r; in ''a'' <| add ''b''"), Error);
+        ASSERT_THROW(eval("let add = l: r: l + r; in add ''a'' <| ''b''"), Error);
     }
 
     TEST_F(TrivialExpressionTest, pipeRight) {
-        ExperimentalFeatureSettings mockXpSettings;
-        mockXpSettings.set("experimental-features", "pipe-operator");
+        FeatureSettings mockFeatureSettings;
+        mockFeatureSettings.set("experimental-features", "pipe-operator");
 
-        auto v = eval("let add = l: r: l + r; in ''a'' |> add ''b''", true, mockXpSettings);
+        auto v = eval("let add = l: r: l + r; in ''a'' |> add ''b''", true, mockFeatureSettings);
         ASSERT_THAT(v, IsStringEq("ba"));
-        v = eval("let add = l: r: l + r; in ''a'' |> add ''b'' |> add ''c''", true, mockXpSettings);
+        v = eval("let add = l: r: l + r; in ''a'' |> add ''b'' |> add ''c''", true, mockFeatureSettings);
         ASSERT_THAT(v, IsStringEq("cba"));
     }
 
     TEST_F(TrivialExpressionTest, pipeLeft) {
-        ExperimentalFeatureSettings mockXpSettings;
-        mockXpSettings.set("experimental-features", "pipe-operator");
+        FeatureSettings mockFeatureSettings;
+        mockFeatureSettings.set("experimental-features", "pipe-operator");
 
-        auto v = eval("let add = l: r: l + r; in add ''a'' <| ''b''", true, mockXpSettings);
+        auto v = eval("let add = l: r: l + r; in add ''a'' <| ''b''", true, mockFeatureSettings);
         ASSERT_THAT(v, IsStringEq("ab"));
-        v = eval("let add = l: r: l + r; in add ''a'' <| add ''b'' <| ''c''", true, mockXpSettings);
+        v = eval("let add = l: r: l + r; in add ''a'' <| add ''b'' <| ''c''", true, mockFeatureSettings);
         ASSERT_THAT(v, IsStringEq("abc"));
     }
 
     TEST_F(TrivialExpressionTest, pipeMixed) {
-        ExperimentalFeatureSettings mockXpSettings;
-        mockXpSettings.set("experimental-features", "pipe-operator");
+        FeatureSettings mockFeatureSettings;
+        mockFeatureSettings.set("experimental-features", "pipe-operator");
 
-        auto v = eval("let add = l: r: l + r; in add ''a'' <| ''b'' |> add ''c''", true, mockXpSettings);
+        auto v = eval("let add = l: r: l + r; in add ''a'' <| ''b'' |> add ''c''", true, mockFeatureSettings);
         ASSERT_THAT(v, IsStringEq("acb"));
-        v = eval("let add = l: r: l + r; in ''a'' |> add <| ''c''", true, mockXpSettings);
+        v = eval("let add = l: r: l + r; in ''a'' |> add <| ''c''", true, mockFeatureSettings);
         ASSERT_THAT(v, IsStringEq("ac"));
     }
 } /* namespace nix */

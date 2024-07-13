@@ -4,12 +4,25 @@
 experimental_feature_descriptions_md = custom_target(
   command : nix_eval_for_docs + [
     '--expr',
-    'import @INPUT0@ (builtins.fromJSON (builtins.readFile @INPUT1@))',
+    'import @INPUT0@ "experimental" "xp" (builtins.fromJSON (builtins.readFile @INPUT1@))',
   ],
   input : [
-    '../../generate-xp-features.nix',
+    '../../generate-features.nix',
     xp_features_json,
   ],
   capture : true,
   output : 'experimental-feature-descriptions.md',
+)
+
+deprecated_feature_descriptions_md = custom_target(
+  command : nix_eval_for_docs + [
+    '--expr',
+    'import @INPUT0@ "deprecated" "dp" (builtins.fromJSON (builtins.readFile @INPUT1@))',
+  ],
+  input : [
+    '../../generate-features.nix',
+    dp_features_json,
+  ],
+  capture : true,
+  output : 'deprecated-feature-descriptions.md',
 )

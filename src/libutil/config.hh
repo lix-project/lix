@@ -9,6 +9,7 @@
 
 #include "types.hh"
 #include "experimental-features.hh"
+#include "deprecated-features.hh"
 
 namespace nix {
 
@@ -441,7 +442,7 @@ struct GlobalConfig : public AbstractConfig
 extern GlobalConfig globalConfig;
 
 
-struct ExperimentalFeatureSettings : Config {
+struct FeatureSettings : Config {
 
     Setting<std::set<ExperimentalFeature>> experimentalFeatures{
         this, {}, "experimental-features",
@@ -483,9 +484,47 @@ struct ExperimentalFeatureSettings : Config {
      * disabled, and so the function does nothing in that case.
      */
     void require(const std::optional<ExperimentalFeature> &) const;
+
+    Setting<std::set<DeprecatedFeature>> deprecatedFeatures{
+        this, {}, "deprecated-features",
+        R"(
+          Deprecated features that are allowed. (Currently there are none.)
+
+          The following deprecated feature features can be re-activated:
+
+          {{#include @generated@/command-ref/deprecated-features-shortlist.md}}
+
+          Deprecated features are [further documented in the manual](@docroot@/contributing/deprecated-features.md).
+        )"};
+
+    /**
+     * Check whether the given deprecated feature is enabled.
+     */
+    bool isEnabled(const DeprecatedFeature &) const;
+
+    /**
+     * Require an deprecated feature be enabled, throwing an error if it is
+     * not.
+     */
+    void require(const DeprecatedFeature &) const;
+
+    /**
+     * `std::nullopt` pointer means no feature, which means there is nothing that could be
+     * disabled, and so the function returns true in that case.
+     */
+    bool isEnabled(const std::optional<DeprecatedFeature> &) const;
+
+    /**
+     * `std::nullopt` pointer means no feature, which means there is nothing that could be
+     * disabled, and so the function does nothing in that case.
+     */
+    void require(const std::optional<DeprecatedFeature> &) const;
 };
 
 // FIXME: don't use a global variable.
-extern ExperimentalFeatureSettings experimentalFeatureSettings;
+extern FeatureSettings& featureSettings;
 
+// Aliases to `featureSettings` for not having to change the name in the code everywhere
+using ExperimentalFeatureSettings = FeatureSettings;
+extern FeatureSettings experimentalFeatureSettings;
 }

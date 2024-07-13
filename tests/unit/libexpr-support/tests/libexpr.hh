@@ -26,9 +26,9 @@ namespace nix {
                 , state({}, store)
             {
             }
-            Value eval(std::string input, bool forceValue = true, const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings) {
+            Value eval(std::string input, bool forceValue = true, const FeatureSettings & fSettings = featureSettings) {
                 Value v;
-                Expr & e = state.parseExprFromString(input, state.rootPath(CanonPath::root), xpSettings);
+                Expr & e = state.parseExprFromString(input, state.rootPath(CanonPath::root), fSettings);
                 state.eval(e, v);
                 if (forceValue)
                     state.forceValue(v, noPos);

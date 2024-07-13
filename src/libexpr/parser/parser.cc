@@ -115,7 +115,7 @@ struct ExprState
 
     std::unique_ptr<Expr> pipe(PosIdx pos, State & state, bool flip = false)
     {
-        if (!state.xpSettings.isEnabled(Xp::PipeOperator))
+        if (!state.featureSettings.isEnabled(Xp::PipeOperator))
             throw ParseError({
                 .msg = HintFmt("Pipe operator is disabled"),
                 .pos = state.positions[pos]
@@ -656,7 +656,7 @@ template<> struct BuildAST<grammar::expr::path> : p::maybe_nothing {};
 
 template<> struct BuildAST<grammar::expr::uri> {
     static void apply(const auto & in, ExprState & s, State & ps) {
-       bool noURLLiterals = ps.xpSettings.isEnabled(Xp::NoUrlLiterals);
+       bool noURLLiterals = ps.featureSettings.isEnabled(Xp::NoUrlLiterals);
        if (noURLLiterals)
            throw ParseError({
                .msg = HintFmt("URL literals are disabled"),
@@ -858,7 +858,7 @@ Expr * EvalState::parse(
     Pos::Origin origin,
     const SourcePath & basePath,
     std::shared_ptr<StaticEnv> & staticEnv,
-    const ExperimentalFeatureSettings & xpSettings)
+    const FeatureSettings & featureSettings)
 {
     parser::State s = {
         symbols,
@@ -866,7 +866,7 @@ Expr * EvalState::parse(
         basePath,
         positions.addOrigin(origin, length),
         exprSymbols,
-        xpSettings
+        featureSettings,
     };
     parser::ExprState x;
 

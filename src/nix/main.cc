@@ -14,6 +14,7 @@
 #include "loggers.hh"
 #include "markdown.hh"
 #include "experimental-features-json.hh"
+#include "deprecated-features-json.hh"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -419,6 +420,11 @@ void mainWrapped(int argc, char * * argv)
 
     if (argc == 2 && std::string(argv[1]) == "__dump-xp-features") {
         logger->cout(documentExperimentalFeatures().dump());
+        return;
+    }
+
+    if (argc == 2 && std::string(argv[1]) == "__dump-dp-features") {
+        logger->cout(documentDeprecatedFeatures().dump());
         return;
     }
 

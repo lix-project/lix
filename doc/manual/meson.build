@@ -72,9 +72,9 @@ generate_manual_deps = files(
 
 # Generates builtins.md and builtin-constants.md.
 subdir('src/language')
-# Generates new-cli pages, experimental-features-shortlist.md, and conf-file.md.
+# Generates new-cli pages, {experimental,deprecated}-features-shortlist.md, and conf-file.md.
 subdir('src/command-ref')
-# Generates experimental-feature-descriptions.md.
+# Generates {experimental,deprecated}-feature-descriptions.md.
 subdir('src/contributing')
 # Generates rl-next-generated.md.
 subdir('src/release-notes')
@@ -106,6 +106,8 @@ manual = custom_target(
     nix3_cli_files,
     experimental_features_shortlist_md,
     experimental_feature_descriptions_md,
+    deprecated_features_shortlist_md,
+    deprecated_feature_descriptions_md,
     conf_file_md,
     builtins_md,
     builtin_constants_md,

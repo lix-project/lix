@@ -2,6 +2,7 @@
 #include "args.hh"
 #include "abstract-setting-to-json.hh"
 #include "experimental-features.hh"
+#include "deprecated-features.hh"
 #include "file-system.hh"
 #include "logging.hh"
 #include "strings.hh"
@@ -355,6 +356,32 @@ template<> std::string BaseSetting<std::set<ExperimentalFeature>>::to_string() c
     return concatStringsSep(" ", stringifiedXpFeatures);
 }
 
+template<> std::set<DeprecatedFeature> BaseSetting<std::set<DeprecatedFeature>>::parse(const std::string & str) const
+{
+    std::set<DeprecatedFeature> res;
+    for (auto & s : tokenizeString<StringSet>(str)) {
+        if (auto thisDpFeature = parseDeprecatedFeature(s); thisDpFeature)
+            res.insert(thisDpFeature.value());
+        else
+            warn("unknown deprecated feature '%s'", s);
+    }
+    return res;
+}
+
+template<> void BaseSetting<std::set<DeprecatedFeature>>::appendOrSet(std::set<DeprecatedFeature> newValue, bool append)
+{
+    if (!append) value.clear();
+    value.insert(std::make_move_iterator(newValue.begin()), std::make_move_iterator(newValue.end()));
+}
+
+template<> std::string BaseSetting<std::set<DeprecatedFeature>>::to_string() const
+{
+    StringSet stringifiedDpFeatures;
+    for (const auto & feature : value)
+        stringifiedDpFeatures.insert(std::string(showDeprecatedFeature(feature)));
+    return concatStringsSep(" ", stringifiedDpFeatures);
+}
+
 template<> StringMap BaseSetting<StringMap>::parse(const std::string & str) const
 {
     StringMap res;
@@ -391,6 +418,7 @@ template class BaseSetting<Strings>;
 template class BaseSetting<StringSet>;
 template class BaseSetting<StringMap>;
 template class BaseSetting<std::set<ExperimentalFeature>>;
+template class BaseSetting<std::set<DeprecatedFeature>>;
 
 static Path parsePath(const AbstractSetting & s, const std::string & str)
 {
@@ -525,28 +553,52 @@ GlobalConfig::Register::Register(Config * config)
     configRegistrations->emplace_back(config);
 }
 
-ExperimentalFeatureSettings experimentalFeatureSettings;
+FeatureSettings experimentalFeatureSettings;
+
+FeatureSettings& featureSettings = experimentalFeatureSettings;
 
 static GlobalConfig::Register rSettings(&experimentalFeatureSettings);
 
-bool ExperimentalFeatureSettings::isEnabled(const ExperimentalFeature & feature) const
+bool FeatureSettings::isEnabled(const ExperimentalFeature & feature) const
 {
     auto & f = experimentalFeatures.get();
     return std::find(f.begin(), f.end(), feature) != f.end();
 }
 
-void ExperimentalFeatureSettings::require(const ExperimentalFeature & feature) const
+void FeatureSettings::require(const ExperimentalFeature & feature) const
 {
     if (!isEnabled(feature))
         throw MissingExperimentalFeature(feature);
 }
 
-bool ExperimentalFeatureSettings::isEnabled(const std::optional<ExperimentalFeature> & feature) const
+bool FeatureSettings::isEnabled(const std::optional<ExperimentalFeature> & feature) const
 {
     return !feature || isEnabled(*feature);
 }
 
-void ExperimentalFeatureSettings::require(const std::optional<ExperimentalFeature> & feature) const
+void FeatureSettings::require(const std::optional<ExperimentalFeature> & feature) const
+{
+    if (feature) require(*feature);
+}
+
+bool FeatureSettings::isEnabled(const DeprecatedFeature & feature) const
+{
+    auto & f = deprecatedFeatures.get();
+    return std::find(f.begin(), f.end(), feature) != f.end();
+}
+
+void FeatureSettings::require(const DeprecatedFeature & feature) const
+{
+    if (!isEnabled(feature))
+        throw MissingDeprecatedFeature(feature);
+}
+
+bool FeatureSettings::isEnabled(const std::optional<DeprecatedFeature> & feature) const
+{
+    return !feature || isEnabled(*feature);
+}
+
+void FeatureSettings::require(const std::optional<DeprecatedFeature> & feature) const
 {
     if (feature) require(*feature);
 }

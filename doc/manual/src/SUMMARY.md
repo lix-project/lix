@@ -192,6 +192,7 @@
   - [Hacking](contributing/hacking.md)
   - [Testing](contributing/testing.md)
   - [Experimental Features](contributing/experimental-features.md)
+  - [Deprecated Features](contributing/deprecated-features.md)
   - [CLI guideline](contributing/cli-guideline.md)
   - [C++ style guide](contributing/cxx.md)
 - [Release Notes](release-notes/release-notes.md)

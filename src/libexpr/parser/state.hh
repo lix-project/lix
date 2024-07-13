@@ -19,7 +19,7 @@ struct State
     SourcePath basePath;
     PosTable::Origin origin;
     const Expr::AstSymbols & s;
-    const ExperimentalFeatureSettings & xpSettings;
+    const FeatureSettings & featureSettings;
 
     void dupAttr(const AttrPath & attrPath, const PosIdx pos, const PosIdx prevPos);
     void dupAttr(Symbol attr, const PosIdx pos, const PosIdx prevPos);
