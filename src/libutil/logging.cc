@@ -77,7 +77,7 @@ public:
             prefix = std::string("<") + c + ">";
         }
 
-        writeToStderr(prefix + filterANSIEscapes(s, !tty) + "\n");
+        writeLogsToStderr(prefix + filterANSIEscapes(s, !tty) + "\n");
     }
 
     void logEI(const ErrorInfo & ei) override
@@ -117,8 +117,17 @@ Verbosity verbosityFromIntClamped(int val)
     return static_cast<Verbosity>(clamped);
 }
 
-void writeToStderr(std::string_view s)
+void writeLogsToStderr(std::string_view s)
 {
+    static std::mutex lock;
+
+    // make sure only one thread uses this function at any given time.
+    // multiple concurrent threads can have deleterious effects on log
+    // output, especially when layering structured formats (like JSON)
+    // on top of a SimpleLogger which is itself not thread-safe. every
+    // Logger instance should be thread-safe in an ideal world, but we
+    // cannot really enforce that on a per-logger level at this point.
+    std::unique_lock _lock(lock);
     try {
         writeFull(STDERR_FILENO, s, false);
     } catch (SysError & e) {

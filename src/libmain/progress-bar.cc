@@ -91,7 +91,7 @@ void ProgressBar::resume()
             nextWakeup = draw(*state, {});
             state.wait_for(quitCV, std::chrono::milliseconds(50));
         }
-        writeToStderr("\r\e[K");
+        writeLogsToStderr("\r\e[K");
     });
 }
 
@@ -124,7 +124,7 @@ void ProgressBar::log(State & state, Verbosity lvl, std::string_view s)
     } else {
         auto s2 = s + ANSI_NORMAL "\n";
         if (!isTTY) s2 = filterANSIEscapes(s2, true);
-        writeToStderr(s2);
+        writeLogsToStderr(s2);
     }
 }
 
@@ -322,9 +322,9 @@ void ProgressBar::eraseProgressDisplay(State & state)
 {
     if (printMultiline && (state.lastLines >= 1)) {
         // FIXME: make sure this works on windows
-        writeToStderr(fmt("\e[G\e[%dF\e[J", state.lastLines));
+        writeLogsToStderr(fmt("\e[G\e[%dF\e[J", state.lastLines));
     } else {
-        writeToStderr("\r\e[K");
+        writeLogsToStderr("\r\e[K");
     }
 }
 
@@ -346,7 +346,7 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
     state.lastLines = 0;
 
     if (s != std::nullopt)
-        writeToStderr(filterANSIEscapes(s.value(), !isTTY) + ANSI_NORMAL "\n");
+        writeLogsToStderr(filterANSIEscapes(s.value(), !isTTY) + ANSI_NORMAL "\n");
 
     std::string line;
     std::string status = getStatus(state);
@@ -356,7 +356,7 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
         line += "]";
     }
     if (printMultiline && !line.empty()) {
-        writeToStderr(filterANSIEscapes(line, false, width) + ANSI_NORMAL "\n");
+        writeLogsToStderr(filterANSIEscapes(line, false, width) + ANSI_NORMAL "\n");
         state.lastLines++;
     }
 
@@ -398,7 +398,7 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
 
             if (printMultiline) {
                 if (state.lastLines < (height -1)) {
-                    writeToStderr(filterANSIEscapes(activity_line, false, width) + ANSI_NORMAL "\n");
+                    writeLogsToStderr(filterANSIEscapes(activity_line, false, width) + ANSI_NORMAL "\n");
                     state.lastLines++;
                 } else moreActivities++;
             }
@@ -406,7 +406,7 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
     }
 
     if (printMultiline && moreActivities)
-        writeToStderr(fmt("And %d more...", moreActivities));
+        writeLogsToStderr(fmt("And %d more...", moreActivities));
 
     if (!printMultiline) {
         if (!line.empty()) {
@@ -414,7 +414,7 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
         }
         line += activity_line;
         if (!line.empty()) {
-            writeToStderr(filterANSIEscapes(line, false, width) + ANSI_NORMAL);
+            writeLogsToStderr(filterANSIEscapes(line, false, width) + ANSI_NORMAL);
         }
     }
 

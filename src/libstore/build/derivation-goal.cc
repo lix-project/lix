@@ -1166,7 +1166,7 @@ HookReply DerivationGoal::tryBuildHook()
             }
             else {
                 s += "\n";
-                writeToStderr(s);
+                writeLogsToStderr(s);
             }
         }
 
