@@ -283,12 +283,6 @@ inline void warn(const std::string & fs, const Args & ... args)
     logger->warn(HintFmt(fs, args...).str());
 }
 
-#define warnOnce(haveWarned, args...) \
-    if (!haveWarned) {                \
-        haveWarned = true;            \
-        warn(args);                   \
-    }
-
 void writeToStderr(std::string_view s);
 
 }

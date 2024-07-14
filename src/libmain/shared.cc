@@ -33,9 +33,13 @@ void printGCWarning()
 {
     if (!gcWarning) return;
     static bool haveWarned = false;
-    warnOnce(haveWarned,
-        "you did not specify '--add-root'; "
-        "the result might be removed by the garbage collector");
+    if (!haveWarned) {
+        haveWarned = true;
+        warn(
+            "you did not specify '--add-root'; "
+            "the result might be removed by the garbage collector"
+        );
+    }
 }
 
 
