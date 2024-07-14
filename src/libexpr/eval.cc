@@ -65,19 +65,6 @@ static char * allocString(size_t size)
 }
 
 
-static char * dupString(const char * s)
-{
-    char * t;
-#if HAVE_BOEHMGC
-    t = GC_STRDUP(s);
-#else
-    t = strdup(s);
-#endif
-    if (!t) throw std::bad_alloc();
-    return t;
-}
-
-
 // When there's no need to write to the string, we can optimize away empty
 // string allocations.
 // This function handles makeImmutableString(std::string_view()) by returning
@@ -889,7 +876,7 @@ static void copyContextToValue(Value & v, const NixStringContext & context)
         v.string.context = (const char * *)
             allocBytes((context.size() + 1) * sizeof(char *));
         for (auto & i : context)
-            v.string.context[n++] = dupString(i.to_string().c_str());
+            v.string.context[n++] = makeImmutableString(i.to_string());
         v.string.context[n] = 0;
     }
 }
