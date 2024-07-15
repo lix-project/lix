@@ -97,12 +97,19 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
             store->ensurePath(storePath);
         }
 
+        // {profileDir}/bin/nix-env is a symlink to {profileDir}/bin/nix, which *then*
+        // is a symlink to /nix/store/meow-nix/bin/nix.
+        // We want /nix/store/meow-nix/bin/nix-env.
+        Path const oldNixInStore = realPath(canonProfileDir + "/bin/nix");
+        Path const oldNixEnv = dirOf(oldNixInStore) + "/nix-env";
+
+        Path const newNixEnv = store->printStorePath(storePath) + "/bin/nix-env";
+
         {
             Activity act(*logger, lvlInfo, actUnknown, fmt("verifying that '%s' works...", store->printStorePath(storePath)));
-            auto program = store->printStorePath(storePath) + "/bin/nix-env";
-            auto s = runProgram(program, false, {"--version"});
+            auto s = runProgram(newNixEnv, false, {"--version"});
             if (s.find("Nix") == std::string::npos)
-                throw Error("could not verify that '%s' works", program);
+                throw Error("could not verify that '%s' works", newNixEnv);
         }
 
         logger->pause();
@@ -110,23 +117,17 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         auto const fullStorePath = store->printStorePath(storePath);
 
         if (pathExists(canonProfileDir + "/manifest.nix")) {
-
-            // {settings.nixBinDir}/nix-env is a symlink to a {settings.nixBinDir}/nix, which *then*
-            // is a symlink to /nix/store/meow-nix/bin/nix. We want /nix/store/meow-nix/bin/nix-env.
-            Path const nixInStore = canonPath(settings.nixBinDir + "/nix-env", true);
-            Path const nixEnvCmd = dirOf(nixInStore) + "/nix-env";
-
-            // First remove the existing Nix, then use that Nix by absolute path to
+            // First remove the existing Nix, then use the *new* Nix by absolute path to
             // install the new one, in case the new and old versions aren't considered
             // to be "the same package" by nix-env's logic (e.g., if their pnames differ).
             Strings removeArgs = {
                 "--uninstall",
-                nixEnvCmd,
+                oldNixEnv,
                 "--profile",
                 this->profileDir,
             };
-            printTalkative("running %s %s", nixEnvCmd, concatStringsSep(" ", removeArgs));
-            runProgram(nixEnvCmd, false, removeArgs);
+            printTalkative("running %s %s", newNixEnv, concatStringsSep(" ", removeArgs));
+            runProgram(newNixEnv, false, removeArgs);
 
             Strings upgradeArgs = {
                 "--profile",
@@ -136,8 +137,8 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
                 "--no-sandbox",
             };
 
-            printTalkative("running %s %s", nixEnvCmd, concatStringsSep(" ", upgradeArgs));
-            runProgram(nixEnvCmd, false, upgradeArgs);
+            printTalkative("running %s %s", newNixEnv, concatStringsSep(" ", upgradeArgs));
+            runProgram(newNixEnv, false, upgradeArgs);
         } else if (pathExists(canonProfileDir + "/manifest.json")) {
             this->upgradeNewStyleProfile(store, storePath);
         } else {

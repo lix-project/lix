@@ -35,9 +35,8 @@ in {
 
     machine.succeed("nix --version >&2")
 
-    # Install Lix into the default profile, overriding /run/current-system/sw/bin/nix,
-    # and thus making Lix think we're not on NixOS.
-    machine.succeed("nix-env --install '${lib.getBin lix}' --profile /nix/var/nix/profiles/default >&2")
+    # Use Lix to install CppNix into the default profile, overriding /run/current-system/sw/bin/nix
+    machine.succeed("nix-env --install '${lib.getBin newNix}' --profile /nix/var/nix/profiles/default")
 
     # Make sure that correctly got inserted into our PATH.
     default_profile_nix_path = machine.succeed("command -v nix")
@@ -45,16 +44,15 @@ in {
     assert default_profile_nix_path.strip() == "/nix/var/nix/profiles/default/bin/nix", \
       f"{default_profile_nix_path.strip()=} != /nix/var/nix/profiles/default/bin/nix"
 
-    # And that it's the Nix we specified.
+    # And that it's the Nix we specified
     default_profile_version = machine.succeed("nix --version")
-    assert "${lixVersion}" in default_profile_version, f"${lixVersion} not in {default_profile_version}"
+    assert "${newNixVersion}" in default_profile_version, f"${newNixVersion} not in {default_profile_version}"
 
-    # Upgrade to a different version of Nix, and make sure that also worked.
-
-    machine.succeed("nix upgrade-nix --store-path ${newNix} >&2")
+    # Now upgrade to Lix, and make sure that worked.
+    machine.succeed("${lib.getExe lix} upgrade-nix --debug --store-path ${lix} 2>&1")
     default_profile_version = machine.succeed("nix --version")
     print(default_profile_version)
-    assert "${newNixVersion}" in default_profile_version, f"${newNixVersion} not in {default_profile_version}"
+    assert "${lixVersion}" in default_profile_version, f"${lixVersion} not in {default_profile_version}"
 
     # Now 'break' this profile -- use nix profile on it so nix-env will no longer work on it.
     machine.succeed(
