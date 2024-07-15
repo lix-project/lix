@@ -4,6 +4,7 @@
 #include <cassert>
 #include <climits>
 
+#include "gc-alloc.hh"
 #include "symbol-table.hh"
 #include "value/context.hh"
 #include "input-accessor.hh"
@@ -11,9 +12,6 @@
 #include "print-options.hh"
 #include "checked-arithmetic.hh"
 
-#if HAVE_BOEHMGC
-#include <gc/gc_allocator.h>
-#endif
 #include <nlohmann/json_fwd.hpp>
 
 namespace nix {
@@ -464,17 +462,9 @@ void Value::mkBlackhole()
     thunk.expr = (Expr*) &eBlackHole;
 }
 
-
-#if HAVE_BOEHMGC
-typedef std::vector<Value *, traceable_allocator<Value *>> ValueVector;
-typedef std::map<Symbol, Value *, std::less<Symbol>, traceable_allocator<std::pair<const Symbol, Value *>>> ValueMap;
-typedef std::map<Symbol, ValueVector, std::less<Symbol>, traceable_allocator<std::pair<const Symbol, ValueVector>>> ValueVectorMap;
-#else
-typedef std::vector<Value *> ValueVector;
-typedef std::map<Symbol, Value *> ValueMap;
-typedef std::map<Symbol, ValueVector> ValueVectorMap;
-#endif
-
+using ValueVector = GcVector<Value *>;
+using ValueMap = GcMap<Symbol, Value *>;
+using ValueVectorMap = std::map<Symbol, ValueVector>;
 
 /**
  * A value allocated in traceable memory.

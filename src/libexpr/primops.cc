@@ -622,13 +622,12 @@ struct CompareValues
     }
 };
 
-
+/// NOTE: this type must NEVER be outside of GC-scanned memory.
 #if HAVE_BOEHMGC
-typedef std::list<Value *, gc_allocator<Value *>> ValueList;
+using UnsafeValueList = std::list<Value *, gc_allocator<Value *>>;
 #else
-typedef std::list<Value *> ValueList;
+using UnsafeValueList = std::list<Value *>;
 #endif
-
 
 static Bindings::iterator getAttr(
     EvalState & state,
@@ -652,7 +651,7 @@ static void prim_genericClosure(EvalState & state, const PosIdx pos, Value * * a
 
     state.forceList(*startSet->value, noPos, "while evaluating the 'startSet' attribute passed as argument to builtins.genericClosure");
 
-    ValueList workSet;
+    UnsafeValueList workSet;
     for (auto elem : startSet->value->listItems())
         workSet.push_back(elem);
 
@@ -668,7 +667,7 @@ static void prim_genericClosure(EvalState & state, const PosIdx pos, Value * * a
     /* Construct the closure by applying the operator to elements of
        `workSet', adding the result to `workSet', continuing until
        no new elements are found. */
-    ValueList res;
+    UnsafeValueList res;
     // `doneKeys' doesn't need to be a GC root, because its values are
     // reachable from res.
     auto cmp = CompareValues(state, noPos, "while comparing the `key` attributes of two genericClosure elements");

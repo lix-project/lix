@@ -1,5 +1,6 @@
 #include "attr-set.hh"
-#include "eval-inline.hh"
+#include "eval.hh"
+#include "gc-alloc.hh"
 
 #include <algorithm>
 
@@ -19,7 +20,7 @@ Bindings * EvalState::allocBindings(size_t capacity)
         throw Error("attribute set of size %d is too big", capacity);
     nrAttrsets++;
     nrAttrsInAttrsets += capacity;
-    return new (allocBytes(sizeof(Bindings) + sizeof(Attr) * capacity)) Bindings((Bindings::size_t) capacity);
+    return new (gcAllocBytes(sizeof(Bindings) + sizeof(Attr) * capacity)) Bindings((Bindings::size_t) capacity);
 }
 
 

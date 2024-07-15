@@ -80,13 +80,7 @@ public:
     bool hasFailed() { return failed; };
 };
 
-
-#if HAVE_BOEHMGC
-typedef std::list<DrvInfo, traceable_allocator<DrvInfo>> DrvInfos;
-#else
-typedef std::list<DrvInfo> DrvInfos;
-#endif
-
+using DrvInfos = GcList<DrvInfo>;
 
 /**
  * If value `v` denotes a derivation, return a DrvInfo object

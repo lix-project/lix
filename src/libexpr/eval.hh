@@ -3,6 +3,7 @@
 
 #include "attr-set.hh"
 #include "eval-error.hh"
+#include "gc-alloc.hh"
 #include "types.hh"
 #include "value.hh"
 #include "nixexpr.hh"
@@ -36,22 +37,6 @@ struct MemoryInputAccessor;
 namespace eval_cache {
     class EvalCache;
 }
-
-/** Alias for std::map which uses boehmgc's allocator conditional on us actually
- * using boehmgc in this build.
- */
-#if HAVE_BOEHMGC
-    template<typename KeyT, typename ValueT>
-    using GcMap = std::map<
-        KeyT,
-        ValueT,
-        std::less<KeyT>,
-        traceable_allocator<std::pair<KeyT const, ValueT>>
-    >;
-#else
-    using GcMap = std::map<KeyT, ValueT>
-#endif
-
 
 /**
  * Function that implements a primop.

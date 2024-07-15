@@ -58,6 +58,7 @@ libexpr_headers = files(
   'function-trace.hh',
   'gc-small-vector.hh',
   'get-drvs.hh',
+  'gc-alloc.hh',
   'json-to-value.hh',
   'nixexpr.hh',
   'parser/change_head.hh',

@@ -4,25 +4,9 @@
 #include "print.hh"
 #include "eval.hh"
 #include "eval-error.hh"
+#include "gc-alloc.hh"
 
 namespace nix {
-
-/**
- * Note: Various places expect the allocated memory to be zeroed.
- */
-[[gnu::always_inline]]
-inline void * allocBytes(size_t n)
-{
-    void * p;
-#if HAVE_BOEHMGC
-    p = GC_MALLOC(n);
-#else
-    p = calloc(n, 1);
-#endif
-    if (!p) throw std::bad_alloc();
-    return p;
-}
-
 
 [[gnu::always_inline]]
 Value * EvalState::allocValue()
@@ -43,7 +27,7 @@ Value * EvalState::allocValue()
     *valueAllocCache = GC_NEXT(p);
     GC_NEXT(p) = nullptr;
 #else
-    void * p = allocBytes(sizeof(Value));
+    void * p = gcAllocBytes(sizeof(Value));
 #endif
 
     nrValues++;
@@ -73,7 +57,7 @@ Env & EvalState::allocEnv(size_t size)
         env = (Env *) p;
     } else
 #endif
-        env = (Env *) allocBytes(sizeof(Env) + size * sizeof(Value *));
+        env = (Env *) gcAllocBytes(sizeof(Env) + size * sizeof(Value *));
 
     /* We assume that env->values has been cleared by the allocator; maybeThunk() and lookupVar fromWith expect this. */
 

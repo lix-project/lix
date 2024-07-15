@@ -9,6 +9,7 @@
 #include "store-api.hh"
 #include "derivations.hh"
 #include "downstream-placeholder.hh"
+#include "gc-alloc.hh"
 #include "globals.hh"
 #include "eval-inline.hh"
 #include "filetransfer.hh"
@@ -48,19 +49,6 @@ using json = nlohmann::json;
 
 namespace nix {
 
-static char * allocString(size_t size)
-{
-    char * t;
-#if HAVE_BOEHMGC
-    t = (char *) GC_MALLOC_ATOMIC(size);
-#else
-    t = (char *) malloc(size);
-#endif
-    if (!t) throw std::bad_alloc();
-    return t;
-}
-
-
 // When there's no need to write to the string, we can optimize away empty
 // string allocations.
 // This function handles makeImmutableString(std::string_view()) by returning
@@ -70,12 +58,11 @@ static const char * makeImmutableString(std::string_view s)
     const size_t size = s.size();
     if (size == 0)
         return "";
-    auto t = allocString(size + 1);
+    auto t = gcAllocString(size + 1);
     memcpy(t, s.data(), size);
     t[size] = '\0';
     return t;
 }
-
 
 RootValue allocRootValue(Value * v)
 {
@@ -806,7 +793,7 @@ static void copyContextToValue(Value & v, const NixStringContext & context)
     if (!context.empty()) {
         size_t n = 0;
         v.string.context = (const char * *)
-            allocBytes((context.size() + 1) * sizeof(char *));
+            gcAllocBytes((context.size() + 1) * sizeof(char *));
         for (auto & i : context)
             v.string.context[n++] = makeImmutableString(i.to_string());
         v.string.context[n] = 0;
@@ -862,7 +849,7 @@ void EvalState::mkList(Value & v, size_t size)
 {
     v.mkList(size);
     if (size > 2)
-        v.bigList.elems = (Value * *) allocBytes(size * sizeof(Value *));
+        v.bigList.elems = (Value * *) gcAllocBytes(size * sizeof(Value *));
     nrListElems += size;
 }
 
@@ -2076,7 +2063,7 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
        Value. allocating a GC'd string directly and moving it into a
        Value lets us avoid an allocation and copy. */
     const auto c_str = [&] {
-        char * result = allocString(sSize + 1);
+        char * result = gcAllocString(sSize + 1);
         char * tmp = result;
         for (const auto & part : s) {
             memcpy(tmp, part->data(), part->size());
