@@ -277,13 +277,10 @@ private:
 
     void printAttrs(Value & v, size_t depth)
     {
-        if (seen && !seen->insert(v.attrs).second) {
-            printRepeated();
-            return;
-        }
-
         if (options.force && options.derivationPaths && state.isDerivation(v)) {
             printDerivation(v);
+        } else if (seen && !v.attrs->empty() && !seen->insert(v.attrs).second) {
+            printRepeated();
         } else if (depth < options.maxDepth) {
             increaseIndent();
             output << "{";
