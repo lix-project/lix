@@ -1,0 +1,13 @@
+A previously unforced thunk in an attribute set does not lead to indentation when it won't evaluate to a nested structure:
+  nix-repl> :p let x = 1 + 2; in [ { inherit x; } { inherit x; } ]
+  [
+    { x = 3; }
+    { x = 3; }
+  ]
+
+Same for a list:
+  nix-repl> :p let x = 1 + 2; in [ [ x ] [ x ] ]
+  [
+    [ 3 ]
+    [ 3 ]
+  ]

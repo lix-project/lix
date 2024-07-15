@@ -185,5 +185,6 @@ REPL_TEST(repl_overlays_error);
 REPL_TEST(repl_printing);
 REPL_TEST(stack_vars);
 REPL_TEST(errors);
+REPL_TEST(idempotent);
 
 }; // namespace nix
