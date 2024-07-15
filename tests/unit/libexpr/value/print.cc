@@ -193,6 +193,9 @@ TEST_F(ValuePrintingTests, vBlackhole)
 
 TEST_F(ValuePrintingTests, depthAttrs)
 {
+    Value vZero;
+    vZero.mkInt(0);
+
     Value vOne;
     vOne.mkInt(1);
 
@@ -203,10 +206,16 @@ TEST_F(ValuePrintingTests, depthAttrs)
     Value vAttrsEmpty;
     vAttrsEmpty.mkAttrs(builderEmpty.finish());
 
+    BindingsBuilder builderNested(state, state.allocBindings(1));
+    builderNested.insert(state.symbols.create("zero"), &vZero);
+    Value vAttrsNested;
+    vAttrsNested.mkAttrs(builderNested.finish());
+
     BindingsBuilder builder(state, state.allocBindings(10));
     builder.insert(state.symbols.create("one"), &vOne);
     builder.insert(state.symbols.create("two"), &vTwo);
-    builder.insert(state.symbols.create("nested"), &vAttrsEmpty);
+    builder.insert(state.symbols.create("empty"), &vAttrsEmpty);
+    builder.insert(state.symbols.create("nested"), &vAttrsNested);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -220,9 +229,9 @@ TEST_F(ValuePrintingTests, depthAttrs)
     vNested.mkAttrs(builder2.finish());
 
     test(vNested, "{ nested = { ... }; one = 1; two = 2; }", PrintOptions { .maxDepth = 1 });
-    test(vNested, "{ nested = { nested = { ... }; one = 1; two = 2; }; one = 1; two = 2; }", PrintOptions { .maxDepth = 2 });
-    test(vNested, "{ nested = { nested = { }; one = 1; two = 2; }; one = 1; two = 2; }", PrintOptions { .maxDepth = 3 });
-    test(vNested, "{ nested = { nested = { }; one = 1; two = 2; }; one = 1; two = 2; }", PrintOptions { .maxDepth = 4 });
+    test(vNested, "{ nested = { empty = { }; nested = { ... }; one = 1; two = 2; }; one = 1; two = 2; }", PrintOptions { .maxDepth = 2 });
+    test(vNested, "{ nested = { empty = { }; nested = { zero = 0; }; one = 1; two = 2; }; one = 1; two = 2; }", PrintOptions { .maxDepth = 3 });
+    test(vNested, "{ nested = { empty = { }; nested = { zero = 0; }; one = 1; two = 2; }; one = 1; two = 2; }", PrintOptions { .maxDepth = 4 });
 }
 
 TEST_F(ValuePrintingTests, depthList)

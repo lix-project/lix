@@ -281,7 +281,7 @@ private:
             printDerivation(v);
         } else if (seen && !v.attrs->empty() && !seen->insert(v.attrs).second) {
             printRepeated();
-        } else if (depth < options.maxDepth) {
+        } else if (depth < options.maxDepth || v.attrs->empty()) {
             increaseIndent();
             output << "{";
 
@@ -355,7 +355,7 @@ private:
             return;
         }
 
-        if (depth < options.maxDepth) {
+        if (depth < options.maxDepth || v.listSize() == 0) {
             increaseIndent();
             output << "[";
             auto listItems = v.listItems();
