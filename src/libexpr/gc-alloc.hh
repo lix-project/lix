@@ -7,6 +7,7 @@
 #include <list>
 #include <map>
 #include <new>
+#include <string_view>
 #include <vector>
 
 #if HAVE_BOEHMGC
@@ -115,5 +116,9 @@ inline char * gcAllocString(size_t size)
     }
     return cstr;
 }
+
+/// Returns a C-string copied from @ref toCopyFrom, or a single, static empty
+/// string if @ref toCopyFrom is also empty.
+char const * gcCopyStringIfNeeded(std::string_view toCopyFrom);
 
 }

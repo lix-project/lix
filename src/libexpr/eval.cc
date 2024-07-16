@@ -49,21 +49,6 @@ using json = nlohmann::json;
 
 namespace nix {
 
-// When there's no need to write to the string, we can optimize away empty
-// string allocations.
-// This function handles makeImmutableString(std::string_view()) by returning
-// the empty string.
-static const char * makeImmutableString(std::string_view s)
-{
-    const size_t size = s.size();
-    if (size == 0)
-        return "";
-    auto t = gcAllocString(size + 1);
-    memcpy(t, s.data(), size);
-    t[size] = '\0';
-    return t;
-}
-
 RootValue allocRootValue(Value * v)
 {
 #if HAVE_BOEHMGC
@@ -784,7 +769,7 @@ DebugTraceStacker::DebugTraceStacker(EvalState & evalState, DebugTrace t)
 
 void Value::mkString(std::string_view s)
 {
-    mkString(makeImmutableString(s));
+    mkString(gcCopyStringIfNeeded(s));
 }
 
 
@@ -795,7 +780,7 @@ static void copyContextToValue(Value & v, const NixStringContext & context)
         v.string.context = (const char * *)
             gcAllocBytes((context.size() + 1) * sizeof(char *));
         for (auto & i : context)
-            v.string.context[n++] = makeImmutableString(i.to_string());
+            v.string.context[n++] = gcCopyStringIfNeeded(i.to_string());
         v.string.context[n] = 0;
     }
 }
@@ -815,7 +800,7 @@ void Value::mkStringMove(const char * s, const NixStringContext & context)
 
 void Value::mkPath(const SourcePath & path)
 {
-    mkPath(makeImmutableString(path.path.abs()));
+    mkPath(gcCopyStringIfNeeded(path.path.abs()));
 }
 
 

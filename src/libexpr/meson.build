@@ -22,6 +22,7 @@ libexpr_sources = files(
   'eval.cc',
   'function-trace.cc',
   'get-drvs.cc',
+  'gc-alloc.cc',
   'json-to-value.cc',
   'nixexpr.cc',
   'parser/parser.cc',
