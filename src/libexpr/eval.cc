@@ -777,8 +777,7 @@ static void copyContextToValue(Value & v, const NixStringContext & context)
 {
     if (!context.empty()) {
         size_t n = 0;
-        v.string.context = (const char * *)
-            gcAllocBytes((context.size() + 1) * sizeof(char *));
+        v.string.context = gcAllocType<char const *>(context.size() + 1);
         for (auto & i : context)
             v.string.context[n++] = gcCopyStringIfNeeded(i.to_string());
         v.string.context[n] = 0;
@@ -834,7 +833,7 @@ void EvalState::mkList(Value & v, size_t size)
 {
     v.mkList(size);
     if (size > 2)
-        v.bigList.elems = (Value * *) gcAllocBytes(size * sizeof(Value *));
+        v.bigList.elems = gcAllocType<Value *>(size);
     nrListElems += size;
 }
 
