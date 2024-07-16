@@ -24,7 +24,7 @@ struct Drv {
     std::string drvPath;
 
     enum class CacheStatus { Cached, Uncached, Unknown } cacheStatus;
-    std::map<std::string, std::string> outputs;
+    std::map<std::string, std::optional<std::string>> outputs;
     std::map<std::string, std::set<std::string>> inputDrvs;
     std::optional<nlohmann::json> meta;
 
