@@ -58,6 +58,7 @@ libutil_headers = files(
   'comparator.hh',
   'compression.hh',
   'compute-levels.hh',
+  'concepts.hh',
   'config-impl.hh',
   'config.hh',
   'current-process.hh',

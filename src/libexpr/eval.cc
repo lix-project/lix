@@ -494,6 +494,14 @@ std::ostream & operator<<(std::ostream & output, PrimOp & primOp)
 }
 
 
+Value::Value(primop_t, PrimOp & primop)
+    : internalType(tPrimOp)
+    , primOp(&primop)
+    , _primop_pad(0)
+{
+    primop.check();
+}
+
 PrimOp * Value::primOpAppPrimOp() const
 {
     Value * left = primOpApp.left;
@@ -505,7 +513,6 @@ PrimOp * Value::primOpAppPrimOp() const
         return nullptr;
     return left->primOp;
 }
-
 
 void Value::mkPrimOp(PrimOp * p)
 {

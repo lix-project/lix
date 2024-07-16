@@ -3,6 +3,9 @@
 
 #include <cassert>
 #include <climits>
+#include <functional>
+#include <ranges>
+#include <span>
 
 #include "gc-alloc.hh"
 #include "symbol-table.hh"
@@ -11,6 +14,7 @@
 #include "source-path.hh"
 #include "print-options.hh"
 #include "checked-arithmetic.hh"
+#include "concepts.hh"
 
 #include <nlohmann/json_fwd.hpp>
 
@@ -132,6 +136,55 @@ class ExternalValueBase
 
 std::ostream & operator << (std::ostream & str, const ExternalValueBase & v);
 
+extern ExprBlackHole eBlackHole;
+
+struct NewValueAs
+{
+    struct integer_t { };
+    constexpr static integer_t integer{};
+
+    struct floating_t { };
+    constexpr static floating_t floating{};
+
+    struct boolean_t { };
+    constexpr static boolean_t boolean{};
+
+    struct string_t { };
+    constexpr static string_t string{};
+
+    struct path_t { };
+    constexpr static path_t path{};
+
+    struct list_t { };
+    constexpr static list_t list{};
+
+    struct attrs_t { };
+    constexpr static attrs_t attrs{};
+
+    struct thunk_t { };
+    constexpr static thunk_t thunk{};
+
+    struct null_t { };
+    constexpr static null_t null{};
+
+    struct app_t { };
+    constexpr static app_t app{};
+
+    struct primop_t { };
+    constexpr static primop_t primop{};
+
+    struct primOpApp_t { };
+    constexpr static primOpApp_t primOpApp{};
+
+    struct lambda_t { };
+    constexpr static lambda_t lambda{};
+
+    struct external_t { };
+    constexpr static external_t external{};
+
+    struct blackhole_t { };
+    constexpr static blackhole_t blackhole{};
+};
 
 struct Value
 {
@@ -141,6 +194,315 @@ private:
     friend std::string showType(const Value & v);
 
 public:
+
+    // Discount `using NewValueAs::*;`
+#define USING_VALUETYPE(name) using name = NewValueAs::name
+    USING_VALUETYPE(integer_t);
+    USING_VALUETYPE(floating_t);
+    USING_VALUETYPE(boolean_t);
+    USING_VALUETYPE(string_t);
+    USING_VALUETYPE(path_t);
+    USING_VALUETYPE(list_t);
+    USING_VALUETYPE(attrs_t);
+    USING_VALUETYPE(thunk_t);
+    USING_VALUETYPE(primop_t);
+    USING_VALUETYPE(app_t);
+    USING_VALUETYPE(null_t);
+    USING_VALUETYPE(primOpApp_t);
+    USING_VALUETYPE(lambda_t);
+    USING_VALUETYPE(external_t);
+    USING_VALUETYPE(blackhole_t);
+#undef USING_VALUETYPE
+
+    /// Default constructor which is still used in the codebase but should not
+    /// be used in new code. Zero initializes its members.
+    [[deprecated]] Value()
+        : internalType(static_cast<InternalType>(0))
+        , _empty{ 0, 0 }
+    { }
+
+    /// Constructs a nix language value of type "int", with the integral value
+    /// of @ref i.
+    Value(integer_t, NixInt i)
+        : internalType(tInt)
+        , _empty{ 0, 0 }
+    {
+        // the NixInt ctor here is is special because NixInt has a ctor too, so
+        // we're not allowed to have it as an anonymous aggreagte member. we do
+        // however still have the option to clear the data members using _empty
+        // and leaving the second word of data cleared by setting only integer.
+        integer = i;
+    }
+
+    /// Constructs a nix language value of type "float", with the floating
+    /// point value of @ref f.
+    Value(floating_t, NixFloat f)
+        : internalType(tFloat)
+        , fpoint(f)
+        , _float_pad(0)
+    { }
+
+    /// Constructs a nix language value of type "bool", with the boolean
+    /// value of @ref b.
+    Value(boolean_t, bool b)
+        : internalType(tBool)
+        , boolean(b)
+        , _bool_pad(0)
+    { }
+
+    /// Constructs a nix language value of type "string", with the value of the
+    /// C-string pointed to by @ref strPtr, and optionally with an array of
+    /// string context pointed to by @ref contextPtr.
+    ///
+    /// Neither the C-string nor the context array are copied; this constructor
+    /// assumes suitable memory has already been allocated (with the GC if
+    /// enabled), and string and context data copied into that memory.
+    Value(string_t, char const * strPtr, char const ** contextPtr = nullptr)
+        : internalType(tString)
+        , string({ .s = strPtr, .context = contextPtr })
+    { }
+
+    /// Constructx a nix language value of type "string", with a copy of the
+    /// string data viewed by @ref copyFrom.
+    ///
+    /// The string data *is* copied from @ref copyFrom, and this constructor
+    /// performs a dynamic (GC) allocation to do so.
+    Value(string_t, std::string_view copyFrom, NixStringContext const & context = {})
+        : internalType(tString)
+        , string({ .s = gcCopyStringIfNeeded(copyFrom), .context = nullptr })
+    {
+        if (context.empty()) {
+            // It stays nullptr.
+            return;
+        }
+
+        // Copy the context.
+        this->string.context = gcAllocType<char const *>(context.size() + 1);
+
+        size_t n = 0;
+        for (NixStringContextElem const & contextElem : context) {
+            this->string.context[n] = gcCopyStringIfNeeded(contextElem.to_string());
+            n += 1;
+        }
+
+        // Terminator sentinel.
+        this->string.context[n] = nullptr;
+    }
+
+    /// Constructx a nix language value of type "string", with the value of the
+    /// C-string pointed to by @ref strPtr, and optionally with a set of string
+    /// context @ref context.
+    ///
+    /// The C-string is not copied; this constructor assumes suitable memory
+    /// has already been allocated (with the GC if enabled), and string data
+    /// has been copied into that memory. The context data *is* copied from
+    /// @ref context, and this constructor performs a dynamic (GC) allocation
+    /// to do so.
+    Value(string_t, char const * strPtr, NixStringContext const & context)
+        : internalType(tString)
+        , string({ .s = strPtr, .context = nullptr })
+    {
+        if (context.empty()) {
+            // It stays nullptr
+            return;
+        }
+
+        // Copy the context.
+        this->string.context = gcAllocType<char const *>(context.size() + 1);
+
+        size_t n = 0;
+        for (NixStringContextElem const & contextElem : context) {
+            this->string.context[n] = gcCopyStringIfNeeded(contextElem.to_string());
+            n += 1;
+        }
+
+        // Terminator sentinel.
+        this->string.context[n] = nullptr;
+    }
+
+    /// Constructs a nix language value of type "path", with the value of the
+    /// C-string pointed to by @ref strPtr.
+    ///
+    /// The C-string is not copied; this constructor assumes suitable memory
+    /// has already been allocated (with the GC if enabled), and string data
+    /// has been copied into that memory.
+    Value(path_t, char const * strPtr)
+        : internalType(tPath)
+        , _path(strPtr)
+        , _path_pad(0)
+    { }
+
+    /// Constructs a nix language value of type "path", with the path
+    /// @ref path.
+    ///
+    /// The data from @ref path *is* copied, and this constructor performs a
+    /// dynamic (GC) allocation to do so.
+    Value(path_t, SourcePath const & path)
+        : internalType(tPath)
+        , _path(gcCopyStringIfNeeded(path.path.abs()))
+        , _path_pad(0)
+    { }
+
+    /// Constructs a nix language value of type "list", with element array
+    /// @ref items.
+    ///
+    /// Generally, the data in @ref items is neither deep copied nor shallow
+    /// copied. This construct assumes the std::span @ref items is a region of
+    /// memory that has already been allocated (with the GC if enabled), and
+    /// an array of valid Value pointers has been copied into that memory.
+    ///
+    /// Howver, as an implementation detail, if @ref items is only 2 items or
+    /// smaller, the list is stored inline, and the Value pointers in
+    /// @ref items are shallow copied into this structure, without dynamically
+    /// allocating memory.
+    Value(list_t, std::span<Value *> items)
+    {
+        if (items.size() == 1) {
+            this->internalType = tList1;
+            this->smallList[0] = items[0];
+            this->smallList[1] = nullptr;
+        } else if (items.size() == 2) {
+            this->internalType = tList2;
+            this->smallList[0] = items[0];
+            this->smallList[1] = items[1];
+        } else {
+            this->internalType = tListN;
+            this->bigList.size = items.size();
+            this->bigList.elems = items.data();
+        }
+    }
+
+    /// Constructs a nix language value of type "list", with an element array
+    /// initialized by applying @ref transformer to each element in @ref items.
+    ///
+    /// This allows "in-place" construction of a nix list when some logic is
+    /// needed to get each Value pointer. This constructor dynamically (GC)
+    /// allocates memory for the size of @ref items, and the Value pointers
+    /// returned by @ref transformer are shallow copied into it.
+    template<
+        std::ranges::sized_range SizedIterableT,
+        InvocableR<Value *, typename SizedIterableT::value_type const &> TransformerT
+    >
+    Value(list_t, SizedIterableT & items, TransformerT const & transformer)
+    {
+        if (items.size() == 1) {
+            this->internalType = tList1;
+            this->smallList[0] = transformer(*items.begin());
+            this->smallList[1] = nullptr;
+        } else if (items.size() == 2) {
+            this->internalType = tList2;
+            auto it = items.begin();
+            this->smallList[0] = transformer(*it);
+            it++;
+            this->smallList[1] = transformer(*it);
+        } else {
+            this->internalType = tListN;
+            this->bigList.size = items.size();
+            this->bigList.elems = gcAllocType<Value *>(items.size());
+            auto it = items.begin();
+            for (size_t i = 0; i < items.size(); i++, it++) {
+                this->bigList.elems[i] = transformer(*it);
+            }
+        }
+    }
+
+    /// Constructs a nix language value of the singleton type "null".
+    Value(null_t)
+        : internalType(tNull)
+        , _empty{0, 0}
+    { }
+
+    /// Constructs a nix language value of type "set", with the attribute
+    /// bindings pointed to by @ref bindings.
+    ///
+    /// The bindings are not not copied; this constructor assumes @ref bindings
+    /// has already been suitably allocated by something like nix::buildBindings.
+    Value(attrs_t, Bindings * bindings)
+        : internalType(tAttrs)
+        , attrs(bindings)
+        , _attrs_pad(0)
+    { }
+
+    /// Constructs a nix language lazy delayed computation, or "thunk".
+    ///
+    /// The thunk stores the environment it will be computed in @ref env, and
+    /// the expression that will need to be evaluated @ref expr.
+    Value(thunk_t, Env & env, Expr & expr)
+        : internalType(tThunk)
+        , thunk({ .env = &env, .expr = &expr })
+    { }
+
+    /// Constructs a nix language value of type "lambda", which represents
+    /// a builtin, primitive operation ("primop"), from the primop
+    /// implemented by @ref primop.
+    Value(primop_t, PrimOp & primop);
+
+    /// Constructs a nix language value of type "lambda", which represents a
+    /// partially applied primop.
+    Value(primOpApp_t, Value & lhs, Value & rhs)
+        : internalType(tPrimOpApp)
+        , primOpApp({ .left = &lhs, .right = &rhs })
+    { }
+
+    /// Constructs a nix language value of type "lambda", which represents a
+    /// lazy partial application of another lambda.
+    Value(app_t, Value & lhs, Value & rhs)
+        : internalType(tApp)
+        , app({ .left = &lhs, .right = &rhs })
+    { }
+
+    /// Constructs a nix language value of type "external", which is only used
+    /// by plugins. Do any existing plugins even use this mechanism?
+    Value(external_t, ExternalValueBase & external)
+        : internalType(tExternal)
+        , external(&external)
+        , _external_pad(0)
+    { }
+
+    /// Constructs a nix language value of type "lambda", which represents a
+    /// run of the mill lambda defined in nix code.
+    ///
+    /// This takes the environment the lambda is closed over @ref env, and
+    /// the lambda expression itself @ref lambda, which will not be evaluated
+    /// until it is applied.
+    Value(lambda_t, Env & env, ExprLambda & lambda)
+        : internalType(tLambda)
+        , lambda({ .env = &env, .fun = &lambda })
+    { }
+
+    /// Constructs an evil thunk, whose evaluation represents infinite recursion.
+    explicit Value(blackhole_t)
+        : internalType(tThunk)
+        , thunk({ .env = nullptr, .expr = reinterpret_cast<Expr *>(&eBlackHole) })
+    { }
+
+    Value(Value const & rhs) = default;
+
+    /// Move constructor. Does the same thing as the copy constructor, but
+    /// also zeroes out the other Value.
+    Value(Value && rhs)
+        : internalType(rhs.internalType)
+        , _empty{ 0, 0 }
+    {
+        *this = std::move(rhs);
+    }
+
+    Value & operator=(Value const & rhs) = default;
+
+    /// Move assignment operator.
+    /// Does the same thing as the copy assignment operator, but also zeroes out
+    /// the rhs.
+    inline Value & operator=(Value && rhs)
+    {
+        *this = static_cast<const Value &>(rhs);
+        if (this != &rhs) {
+            // Kill `rhs`, because non-destructive move lol.
+            rhs.internalType = static_cast<InternalType>(0);
+            rhs._empty[0] = 0;
+            rhs._empty[1] = 0;
+        }
+        return *this;
+    }
 
     void print(EvalState &state, std::ostream &str, PrintOptions options = PrintOptions {});
 
@@ -160,8 +522,15 @@ public:
 
     union
     {
+        /// Dummy field, which takes up as much space as the largest union variants
+        /// to set the union's memory to zeroed memory.
+        uintptr_t _empty[2];
+
         NixInt integer;
-        bool boolean;
+        struct {
+            bool boolean;
+            uintptr_t _bool_pad;
+        };
 
         /**
          * Strings in the evaluator carry a so-called `context` which
@@ -190,8 +559,14 @@ public:
             const char * * context; // must be in sorted order
         } string;
 
-        const char * _path;
-        Bindings * attrs;
+        struct {
+            const char * _path;
+            uintptr_t _path_pad;
+        };
+        struct {
+            Bindings * attrs;
+            uintptr_t _attrs_pad;
+        };
         struct {
             size_t size;
             Value * * elems;
@@ -208,12 +583,21 @@ public:
             Env * env;
             ExprLambda * fun;
         } lambda;
-        PrimOp * primOp;
+        struct {
+            PrimOp * primOp;
+            uintptr_t _primop_pad;
+        };
         struct {
             Value * left, * right;
         } primOpApp;
-        ExternalValueBase * external;
-        NixFloat fpoint;
+        struct {
+            ExternalValueBase * external;
+            uintptr_t _external_pad;
+        };
+        struct {
+            NixFloat fpoint;
+            uintptr_t _float_pad;
+        };
     };
 
     /**
@@ -448,8 +832,6 @@ public:
     }
 };
 
-
-extern ExprBlackHole eBlackHole;
 
 bool Value::isBlackhole() const
 {
