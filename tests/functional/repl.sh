@@ -62,21 +62,31 @@ stripColors () {
 testReplResponseGeneral () {
     local grepMode="$1"; shift
     local commands="$1"; shift
-    local expectedResponse="$1"; shift
-    local response="$(nix repl "$@" <<< "$commands" | stripColors)"
-    echo "$response" | grepQuiet "$grepMode" -s "$expectedResponse" \
-      || fail "repl command set:
+    # Expected response can contain newlines.
+    # grep can't handle multiline patterns, so replace newlines with TEST_NEWLINE
+    # in both expectedResponse and response.
+    # awk ORS always adds a trailing record separator, so we strip it with sed.
+    local expectedResponse="$(printf '%s' "$1" | awk 1 ORS=TEST_NEWLINE | sed 's/TEST_NEWLINE$//')"; shift
+    # We don't need to strip trailing record separator here, since extra data is ok.
+    local response="$(nix repl "$@" <<< "$commands" 2>&1 | stripColors | awk 1 ORS=TEST_NEWLINE)"
+    printf '%s' "$response" | grepQuiet "$grepMode" -s "$expectedResponse" \
+      || fail "$(echo "repl command set:
 
 $commands
 
 does not respond with:
 
+---
 $expectedResponse
+---
 
 but with:
 
+---
 $response
-"
+---
+
+" | sed 's/TEST_NEWLINE/\n/g')"
 }
 
 testReplResponse () {
@@ -179,7 +189,7 @@ testReplResponseNoRegex '
 let x = { y = { a = 1; }; inherit x; }; in x
 ' \
 '{
-  x = { ... };
+  x = «repeated»;
   y = { ... };
 }
 '
@@ -231,6 +241,6 @@ testReplResponseNoRegex '
 ' \
 '{
   x = «repeated»;
-  y = { a = 1 };
+  y = { a = 1; };
 }
 '
