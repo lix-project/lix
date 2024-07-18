@@ -145,18 +145,70 @@ All comparison operators are implemented in terms of `<`, and the following equi
 | *a* `>`  *b* |       *b* `<` *a*     |
 | *a* `>=` *b* | `! (` *a* `<` *b* `)` |
 
+Note that the above behaviour violates IEEE 754 for floating point numbers with respect to NaN, for instance.
+This may be fixed in a future major language revision.
+
 [Comparison]: #comparison-operators
 
 ## Equality
 
-- [Attribute sets][attribute set] and [list]s are compared recursively, and therefore are fully evaluated.
-- Comparison of [function]s always returns `false`.
-- Numbers are type-compatible, see [arithmetic] operators.
-- Floating point numbers only differ up to a limited precision.
+The following equality comparison rules are followed in order:
+
+- Comparisons are first, sometimes, performed by identity (pointer value), and whether or not this occurs varies depending on the context in which the comparison is performed; for example, through `builtins.elem`, comparison of lists, or other cases.
+  The exact instances in which this occurs, aside from direct list and attribute set comparisons as discussed below, are too dependent on implementation details to meaningfully document.
+
+  See [note on identity comparison](#identity-comparison) below.
+- Comparisons between a combination of integers and floating point numbers are first converted to floating point then compared as floating point.
+- Comparisons between values of differing types, besides the ones mentioned in the above rule, are unequal.
+- Strings are compared as their string values, disregarding string contexts.
+- Paths are compared as their absolute form (since they are stored as such).
+- [Functions][function] are always considered unequal, including with themselves.
+- The following are compared in the typical manner:
+  - Integers
+  - Floating point numbers have equality comparison per IEEE 754.
+
+    Note that this means that just like in most languages, floating point arithmetic results are not typically equality comparable, and should instead be compared by checking that the absolute difference is less than some error margin.
+  - Booleans
+  - Null
+- [Attribute sets][attribute set] are compared following these rules in order:
+  - If both attribute sets have the same identity (via pointer equality), they are considered equal, regardless of whether the contents have reflexive equality (e.g. even if there are functions contained within).
+
+    See [note on identity comparison](#identity-comparison) below.
+  - If both attribute sets have `type = "derivation"` and have an attribute `outPath` that is equal, they are considered equal.
+
+    This means that two results of `builtins.derivation`, regardless of other things added to their attributes via `//` afterwards (or `passthru` in nixpkgs), will compare equal if they passed the same arguments to `builtins.derivation`.
+  - Otherwise, they are compared element-wise in an unspecified order.
+    Although this order *may* be deterministic in some cases, this is not guaranteed, and correct code must not rely on this ordering behaviour.
+
+    The order determines which elements are evaluated first and thus, if there are throwing values in the attribute set, which of those get evaluated, if any, before the comparison returns an unequal result.
+- Lists are compared following these rules in order:
+  - If both lists have the same identity (via pointer equality), they are considered equal, regardless of whether the contents have reflexive equality (e.g. even if there are functions contained within).
+
+    See [note on identity comparison](#identity-comparison) below.
+  - Otherwise, they are compared element-wise in list order.
 
 [function]: ./constructs.md#functions
 
 [Equality]: #equality
+
+### Identity comparison
+
+In the current revision of the Nix language, values are first compared by identity (pointer equality).
+This means that values that are not reflexively equal (that is, they do not satisfy `a == a`), such as functions, are nonetheless sometimes compared as equal with themselves if they are placed in attribute sets or lists, or are compared through other indirect means.
+
+Whether identity comparison applies to a given usage of the language aside from direct list and attribute set comparison is strongly dependent on implementation details to the point it is not feasible to document the exact instances.
+
+This is rather unfortunate behaviour which is regrettably load-bearing on nixpkgs (such as with the `type` attribute of NixOS options) and cannot be changed for the time being.
+It may be changed in a future major language revision.
+
+Correct code must not rely on this behaviour.
+
+For example:
+
+```
+nix-repl> let f = x: 1; s = { func = f; }; in [ (f == f) (s == s) ]
+[ false true ]
+```
 
 ## Logical implication
 
