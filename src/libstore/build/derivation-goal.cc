@@ -781,7 +781,7 @@ void DerivationGoal::tryLocalBuild() {
     throw Error(
         "unable to build with a primary store that isn't a local store; "
         "either pass a different '--store' or enable remote builds."
-        "\nhttps://nixos.org/manual/nix/stable/advanced-topics/distributed-builds.html");
+        "\nhttps://docs.lix.systems/manual/lix/stable/advanced-topics/distributed-builds.html");
 }
 
 

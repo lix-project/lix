@@ -333,11 +333,11 @@ void Worker::run(const Goals & _topGoals)
                 if (getMachines().empty())
                    throw Error("unable to start any build; either increase '--max-jobs' "
                             "or enable remote builds."
-                            "\nhttps://nixos.org/manual/nix/stable/advanced-topics/distributed-builds.html");
+                            "\nhttps://docs.lix.systems/manual/lix/stable/advanced-topics/distributed-builds.html");
                 else
                    throw Error("unable to start any build; remote machines may not have "
                             "all required system features."
-                            "\nhttps://nixos.org/manual/nix/stable/advanced-topics/distributed-builds.html");
+                            "\nhttps://docs.lix.systems/manual/lix/stable/advanced-topics/distributed-builds.html");
 
             }
             assert(!awake.empty());

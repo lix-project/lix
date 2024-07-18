@@ -1,6 +1,6 @@
 [Unit]
 Description=Nix Daemon
-Documentation=man:nix-daemon https://nixos.org/manual
+Documentation=man:nix-daemon https://docs.lix.systems/manual/lix/stable
 RequiresMountsFor=@storedir@
 RequiresMountsFor=@localstatedir@
 RequiresMountsFor=@localstatedir@/nix/db
