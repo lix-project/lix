@@ -7,13 +7,16 @@
   *Strings* can be written in three ways.
 
   The most common way is to enclose the string between double quotes,
-  e.g., `"foo bar"`. Strings can span multiple lines. The special
-  characters `"` and `\` and the character sequence `${` must be
-  escaped by prefixing them with a backslash (`\`). Newlines, carriage
-  returns and tabs can be written as `\n`, `\r` and `\t`,
-  respectively.
+  e.g., `"foo bar"`. Strings can span multiple lines. The backslash
+  (`\`) can be used to escape characters: newlines, carriage returns
+  and tabs may be written as `\n`, `\r` and `\t` respectively; any
+  other characters can be preceded by a backslash to remove any
+  special meaning they may have, like the special characters `"` and
+  `\` and the character sequence `${`.
 
   You can include the results of other expressions into a string by enclosing them in `${ }`, a feature known as [string interpolation].
+  Due to a parser issue that has since come to be relied upon, the character sequence `$${` is interpreted literally and does not introduce an interpolation.
+  To express a `$` character immediately followed by an interpolation, the former must be escaped.
 
   [string interpolation]: ./string-interpolation.md
 
@@ -43,15 +46,15 @@
   Note that the whitespace and newline following the opening `''` is
   ignored if there is no non-whitespace text on the initial line.
 
-  Indented strings support [string interpolation].
-
   Since `${` and `''` have special meaning in indented strings, you
   need a way to quote them. `$` can be escaped by prefixing it with
   `''` (that is, two single quotes), i.e., `''$`. `''` can be escaped
-  by prefixing it with `'`, i.e., `'''`. `$` removes any special
-  meaning from the following `$`. Linefeed, carriage-return and tab
+  by prefixing it with `'`, i.e., `'''`. Linefeed, carriage-return and tab
   characters can be written as `''\n`, `''\r`, `''\t`, and `''\`
   escapes any other character.
+
+  Indented strings support [string interpolation] using `${ }` the same way regular strings do.
+  `$${` is interpreted literally in indented strings as well, so the `$` character must be escaped if it is to be followed by an interpolation.
 
   Indented strings are primarily useful in that they allow multi-line
   string literals to follow the indentation of the enclosing Nix
