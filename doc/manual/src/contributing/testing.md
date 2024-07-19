@@ -247,7 +247,6 @@ To ensure that characterization testing doesn't make it harder to intentionally 
 
 The integration tests are defined in the Nix flake under the `hydraJobs.tests` attribute.
 These tests include everything that needs to interact with external services or run Lix in a non-trivial distributed setup.
-Because these tests are expensive and require more than what the standard github-actions setup provides, they only run on the master branch (on <https://hydra.nixos.org/jobset/nix/master>).
 
 You can run them manually with `nix build .#hydraJobs.tests.{testName}` or `nix-build -A hydraJobs.tests.{testName}`
 

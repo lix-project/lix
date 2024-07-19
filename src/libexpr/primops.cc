@@ -3275,10 +3275,12 @@ static RegisterPrimOp primop_all({
 
 static void prim_genList(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
-    auto len = state.forceInt(*args[1], pos, "while evaluating the second argument passed to builtins.genList").value;
+    auto len_ = state.forceInt(*args[1], pos, "while evaluating the second argument passed to builtins.genList").value;
 
-    if (len < 0)
-        state.error<EvalError>("cannot create list of size %1%", len).atPos(pos).debugThrow();
+    if (len_ < 0)
+        state.error<EvalError>("cannot create list of size %1%", len_).atPos(pos).debugThrow();
+
+    size_t len = len_;
 
     // More strict than striclty (!) necessary, but acceptable
     // as evaluating map without accessing any values makes little sense.
