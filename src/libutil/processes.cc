@@ -280,9 +280,14 @@ RunningProgram::~RunningProgram()
 
 void RunningProgram::wait()
 {
-    int status = pid.wait();
-    if (status)
-        throw ExecError(status, "program '%1%' %2%", program, statusToString(status));
+    if (std::uncaught_exceptions() == 0) {
+        int status = pid.wait();
+        if (status)
+            throw ExecError(status, "program '%1%' %2%", program, statusToString(status));
+    } else {
+        pid.kill();
+        debug("killed subprocess %1% during exception handling", program);
+    }
 }
 
 RunningProgram runProgram2(const RunOptions & options)
