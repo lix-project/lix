@@ -193,6 +193,9 @@ TEST_F(ValuePrintingTests, vBlackhole)
 
 TEST_F(ValuePrintingTests, depthAttrs)
 {
+    Value vZero;
+    vZero.mkInt(0);
+
     Value vOne;
     vOne.mkInt(1);
 
@@ -203,10 +206,16 @@ TEST_F(ValuePrintingTests, depthAttrs)
     Value vAttrsEmpty;
     vAttrsEmpty.mkAttrs(builderEmpty.finish());
 
+    BindingsBuilder builderNested(state, state.allocBindings(1));
+    builderNested.insert(state.symbols.create("zero"), &vZero);
+    Value vAttrsNested;
+    vAttrsNested.mkAttrs(builderNested.finish());
+
     BindingsBuilder builder(state, state.allocBindings(10));
     builder.insert(state.symbols.create("one"), &vOne);
     builder.insert(state.symbols.create("two"), &vTwo);
-    builder.insert(state.symbols.create("nested"), &vAttrsEmpty);
+    builder.insert(state.symbols.create("empty"), &vAttrsEmpty);
+    builder.insert(state.symbols.create("nested"), &vAttrsNested);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -220,9 +229,9 @@ TEST_F(ValuePrintingTests, depthAttrs)
     vNested.mkAttrs(builder2.finish());
 
     test(vNested, "{ nested = { ... }; one = 1; two = 2; }", PrintOptions { .maxDepth = 1 });
-    test(vNested, "{ nested = { nested = { ... }; one = 1; two = 2; }; one = 1; two = 2; }", PrintOptions { .maxDepth = 2 });
-    test(vNested, "{ nested = { nested = { }; one = 1; two = 2; }; one = 1; two = 2; }", PrintOptions { .maxDepth = 3 });
-    test(vNested, "{ nested = { nested = { }; one = 1; two = 2; }; one = 1; two = 2; }", PrintOptions { .maxDepth = 4 });
+    test(vNested, "{ nested = { empty = { }; nested = { ... }; one = 1; two = 2; }; one = 1; two = 2; }", PrintOptions { .maxDepth = 2 });
+    test(vNested, "{ nested = { empty = { }; nested = { zero = 0; }; one = 1; two = 2; }; one = 1; two = 2; }", PrintOptions { .maxDepth = 3 });
+    test(vNested, "{ nested = { empty = { }; nested = { zero = 0; }; one = 1; two = 2; }; one = 1; two = 2; }", PrintOptions { .maxDepth = 4 });
 }
 
 TEST_F(ValuePrintingTests, depthList)
@@ -641,20 +650,24 @@ TEST_F(ValuePrintingTests, ansiColorsBlackhole)
 
 TEST_F(ValuePrintingTests, ansiColorsAttrsRepeated)
 {
-    BindingsBuilder emptyBuilder(state, state.allocBindings(1));
+    Value vZero;
+    vZero.mkInt(0);
 
-    Value vEmpty;
-    vEmpty.mkAttrs(emptyBuilder.finish());
+    BindingsBuilder innerBuilder(state, state.allocBindings(1));
+    innerBuilder.insert(state.symbols.create("x"), &vZero);
+
+    Value vInner;
+    vInner.mkAttrs(innerBuilder.finish());
 
     BindingsBuilder builder(state, state.allocBindings(10));
-    builder.insert(state.symbols.create("a"), &vEmpty);
-    builder.insert(state.symbols.create("b"), &vEmpty);
+    builder.insert(state.symbols.create("a"), &vInner);
+    builder.insert(state.symbols.create("b"), &vInner);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
 
     test(vAttrs,
-         "{ a = { }; b = " ANSI_MAGENTA "«repeated»" ANSI_NORMAL "; }",
+         "{ a = { x = " ANSI_CYAN "0" ANSI_NORMAL "; }; b = " ANSI_MAGENTA "«repeated»" ANSI_NORMAL "; }",
          PrintOptions {
              .ansiColors = true
          });
@@ -662,19 +675,23 @@ TEST_F(ValuePrintingTests, ansiColorsAttrsRepeated)
 
 TEST_F(ValuePrintingTests, ansiColorsListRepeated)
 {
-    BindingsBuilder emptyBuilder(state, state.allocBindings(1));
+    Value vZero;
+    vZero.mkInt(0);
 
-    Value vEmpty;
-    vEmpty.mkAttrs(emptyBuilder.finish());
+    BindingsBuilder innerBuilder(state, state.allocBindings(1));
+    innerBuilder.insert(state.symbols.create("x"), &vZero);
+
+    Value vInner;
+    vInner.mkAttrs(innerBuilder.finish());
 
     Value vList;
     state.mkList(vList, 3);
-    vList.bigList.elems[0] = &vEmpty;
-    vList.bigList.elems[1] = &vEmpty;
+    vList.bigList.elems[0] = &vInner;
+    vList.bigList.elems[1] = &vInner;
     vList.bigList.size = 2;
 
     test(vList,
-         "[ { } " ANSI_MAGENTA "«repeated»" ANSI_NORMAL " ]",
+         "[ { x = " ANSI_CYAN "0" ANSI_NORMAL "; } " ANSI_MAGENTA "«repeated»" ANSI_NORMAL " ]",
          PrintOptions {
              .ansiColors = true
          });
@@ -682,20 +699,24 @@ TEST_F(ValuePrintingTests, ansiColorsListRepeated)
 
 TEST_F(ValuePrintingTests, listRepeated)
 {
-    BindingsBuilder emptyBuilder(state, state.allocBindings(1));
+    Value vZero;
+    vZero.mkInt(0);
 
-    Value vEmpty;
-    vEmpty.mkAttrs(emptyBuilder.finish());
+    BindingsBuilder innerBuilder(state, state.allocBindings(1));
+    innerBuilder.insert(state.symbols.create("x"), &vZero);
+
+    Value vInner;
+    vInner.mkAttrs(innerBuilder.finish());
 
     Value vList;
     state.mkList(vList, 3);
-    vList.bigList.elems[0] = &vEmpty;
-    vList.bigList.elems[1] = &vEmpty;
+    vList.bigList.elems[0] = &vInner;
+    vList.bigList.elems[1] = &vInner;
     vList.bigList.size = 2;
 
-    test(vList, "[ { } «repeated» ]", PrintOptions { });
+    test(vList, "[ { x = 0; } «repeated» ]", PrintOptions { });
     test(vList,
-         "[ { } { } ]",
+         "[ { x = 0; } { x = 0; } ]",
          PrintOptions {
              .trackRepeated = false
          });
