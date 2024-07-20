@@ -221,12 +221,12 @@ void LocalDerivationGoal::tryLocalBuild()
     }
 
     #if __linux__
-    // FIXME: should user namespaces being unsupported also require
-    // sandbox-fallback to be allowed? I don't think so, since they aren't a
-    // huge security win to have enabled.
-    usingUserNamespace = userNamespacesSupported();
-
     if (useChroot) {
+        // FIXME: should user namespaces being unsupported also require
+        // sandbox-fallback to be allowed? I don't think so, since they aren't a
+        // huge security win to have enabled.
+        usingUserNamespace = userNamespacesSupported();
+
         if (!mountAndPidNamespacesSupported()) {
             if (!settings.sandboxFallback)
                 throw Error("this system does not support the kernel namespaces that are required for sandboxing; use '--no-sandbox' to disable sandboxing. Pass --debug for diagnostics on what is broken.");
