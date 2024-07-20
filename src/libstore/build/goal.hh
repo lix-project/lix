@@ -121,7 +121,7 @@ public:
     /**
      * Exception containing an error message, if any.
      */
-    std::optional<Error> ex;
+    std::unique_ptr<Error> ex;
 
     Goal(Worker & worker, DerivedPath path)
         : worker(worker)

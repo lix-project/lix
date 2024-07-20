@@ -22,7 +22,7 @@ void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMod
             if (ex)
                 logError(i->ex->info());
             else
-                ex = std::move(i->ex);
+                ex = std::move(*i->ex);
         }
         if (i->exitCode != Goal::ecSuccess) {
             if (auto i2 = dynamic_cast<DerivationGoal *>(i.get()))

@@ -78,7 +78,7 @@ void Goal::amDone(ExitCode result, std::optional<Error> ex)
         if (!waiters.empty())
             logError(ex->info());
         else
-            this->ex = std::move(*ex);
+            this->ex = std::make_unique<Error>(std::move(*ex));
     }
 
     for (auto & i : waiters) {
