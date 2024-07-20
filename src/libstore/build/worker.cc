@@ -414,7 +414,7 @@ void Worker::waitForInput()
         GoalPtr goal = j->goal.lock();
         assert(goal);
 
-        if (goal->exitCode == Goal::ecBusy &&
+        if (!goal->exitCode.has_value() &&
             0 != settings.maxSilentTime &&
             j->respectTimeouts &&
             after - j->lastOutput >= std::chrono::seconds(settings.maxSilentTime))
@@ -425,7 +425,7 @@ void Worker::waitForInput()
             continue;
         }
 
-        else if (goal->exitCode == Goal::ecBusy &&
+        else if (!goal->exitCode.has_value() &&
             0 != settings.buildTimeout &&
             j->respectTimeouts &&
             after - j->timeStarted >= std::chrono::seconds(settings.buildTimeout))

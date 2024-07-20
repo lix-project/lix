@@ -53,7 +53,7 @@ enum struct JobCategory {
 
 struct Goal : public std::enable_shared_from_this<Goal>
 {
-    typedef enum {ecBusy, ecSuccess, ecFailed, ecNoSubstituters, ecIncompleteClosure} ExitCode;
+    typedef enum {ecSuccess, ecFailed, ecNoSubstituters, ecIncompleteClosure} ExitCode;
 
     /**
      * Backlink to the worker.
@@ -96,7 +96,7 @@ struct Goal : public std::enable_shared_from_this<Goal>
     /**
      * Whether the goal is finished.
      */
-    ExitCode exitCode = ecBusy;
+    std::optional<ExitCode> exitCode;
 
 protected:
     /**
