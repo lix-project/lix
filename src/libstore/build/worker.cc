@@ -205,7 +205,7 @@ void Worker::childStarted(GoalPtr goal, const std::set<int> & fds,
 }
 
 
-void Worker::childTerminated(Goal * goal, bool wakeSleepers)
+void Worker::childTerminated(Goal * goal)
 {
     auto i = std::find_if(children.begin(), children.end(),
         [&](const Child & child) { return child.goal2 == goal; });
@@ -228,16 +228,13 @@ void Worker::childTerminated(Goal * goal, bool wakeSleepers)
 
     children.erase(i);
 
-    if (wakeSleepers) {
-
-        /* Wake up goals waiting for a build slot. */
-        for (auto & j : wantingToBuild) {
-            GoalPtr goal = j.lock();
-            if (goal) wakeUp(goal);
-        }
-
-        wantingToBuild.clear();
+    /* Wake up goals waiting for a build slot. */
+    for (auto & j : wantingToBuild) {
+        GoalPtr goal = j.lock();
+        if (goal) wakeUp(goal);
     }
+
+    wantingToBuild.clear();
 }
 
 

@@ -223,12 +223,9 @@ public:
         bool inBuildSlot, bool respectTimeouts);
 
     /**
-     * Unregisters a running child process.  `wakeSleepers` should be
-     * false if there is no sense in waking up goals that are sleeping
-     * because they can't run yet (e.g., there is no free build slot,
-     * or the hook would still say `postpone`).
+     * Unregisters a running child process.
      */
-    void childTerminated(Goal * goal, bool wakeSleepers = true);
+    void childTerminated(Goal * goal);
 
     /**
      * Put `goal` to sleep until a build slot becomes available (which
