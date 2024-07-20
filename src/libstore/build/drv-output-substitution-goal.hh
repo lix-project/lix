@@ -4,7 +4,6 @@
 #include "store-api.hh"
 #include "goal.hh"
 #include "realisation.hh"
-#include <thread>
 #include <future>
 
 namespace nix {
@@ -40,11 +39,6 @@ class DrvOutputSubstitutionGoal : public Goal {
      * The current substituter.
      */
     std::shared_ptr<Store> sub;
-
-    /**
-     * The substituter thread.
-     */
-    std::thread thr;
 
     std::unique_ptr<MaintainCount<uint64_t>> maintainRunningSubstitutions;
 

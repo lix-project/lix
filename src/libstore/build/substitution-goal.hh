@@ -50,9 +50,7 @@ struct PathSubstitutionGoal : public Goal
     /**
      * The substituter thread.
      */
-    std::thread thr;
-
-    std::promise<void> promise;
+    std::future<void> thr;
 
     /**
      * Whether to try to repair a valid path.

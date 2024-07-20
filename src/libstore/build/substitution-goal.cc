@@ -214,9 +214,7 @@ void PathSubstitutionGoal::tryToRun()
 
     outPipe.create();
 
-    promise = std::promise<void>();
-
-    thr = std::thread([this]() {
+    thr = std::async(std::launch::async, [this]() {
         auto & fetchPath = subPath ? *subPath : storePath;
         try {
             ReceiveInterrupts receiveInterrupts;
@@ -230,16 +228,12 @@ void PathSubstitutionGoal::tryToRun()
             copyStorePath(
                 *sub, worker.store, fetchPath, repair, sub->isTrusted ? NoCheckSigs : CheckSigs
             );
-
-            promise.set_value();
         } catch (const EndOfFile &) {
-            promise.set_exception(std::make_exception_ptr(EndOfFile(
+            throw EndOfFile(
                 "NAR for '%s' fetched from '%s' is incomplete",
                 sub->printStorePath(fetchPath),
                 sub->getUri()
-            )));
-        } catch (...) {
-            promise.set_exception(std::current_exception());
+            );
         }
     });
 
@@ -253,11 +247,10 @@ void PathSubstitutionGoal::finished()
 {
     trace("substitute finished");
 
-    thr.join();
     worker.childTerminated(this);
 
     try {
-        promise.get_future().get();
+        thr.get();
     } catch (std::exception & e) {
         printError(e.what());
 
@@ -316,9 +309,9 @@ void PathSubstitutionGoal::handleEOF(int fd)
 void PathSubstitutionGoal::cleanup()
 {
     try {
-        if (thr.joinable()) {
+        if (thr.valid()) {
             // FIXME: signal worker thread to quit.
-            thr.join();
+            thr.get();
             worker.childTerminated(this);
         }
 
