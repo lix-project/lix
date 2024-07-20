@@ -175,6 +175,4 @@ public:
     virtual JobCategory jobCategory() const = 0;
 };
 
-void addToWeakGoals(WeakGoals & goals, GoalPtr p);
-
 }

@@ -34,18 +34,10 @@ BuildResult Goal::getBuildResult(const DerivedPath & req) const {
 }
 
 
-void addToWeakGoals(WeakGoals & goals, GoalPtr p)
-{
-    if (goals.find(p) != goals.end())
-        return;
-    goals.insert(p);
-}
-
-
 void Goal::addWaitee(GoalPtr waitee)
 {
     waitees.insert(waitee);
-    addToWeakGoals(waitee->waiters, shared_from_this());
+    waitee->waiters.insert(shared_from_this());
 }
 
 

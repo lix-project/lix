@@ -163,7 +163,7 @@ void Worker::removeGoal(GoalPtr goal)
 void Worker::wakeUp(GoalPtr goal)
 {
     goal->trace("woken up");
-    addToWeakGoals(awake, goal);
+    awake.insert(goal);
 }
 
 
@@ -249,14 +249,14 @@ void Worker::waitForBuildSlot(GoalPtr goal)
         (isSubstitutionGoal && getNrSubstitutions() < settings.maxSubstitutionJobs))
         wakeUp(goal); /* we can do it right away */
     else
-        addToWeakGoals(wantingToBuild, goal);
+        wantingToBuild.insert(goal);
 }
 
 
 void Worker::waitForAWhile(GoalPtr goal)
 {
     debug("wait for a while");
-    addToWeakGoals(waitingForAWhile, goal);
+    waitingForAWhile.insert(goal);
 }
 
 
