@@ -314,6 +314,10 @@ nlohmann_json = dependency('nlohmann_json', required : true)
 # *absolutely* are not going to make it work)
 lix_doc = declare_dependency(link_args : [ '-llix_doc' ])
 
+if is_freebsd
+  libprocstat = declare_dependency(link_args : [ '-lprocstat' ])
+endif
+
 #
 # Build-time tools
 #

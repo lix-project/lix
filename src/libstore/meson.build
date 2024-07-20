@@ -167,6 +167,9 @@ if host_machine.system() == 'linux'
 elif host_machine.system() == 'darwin'
   libstore_sources += files('platform/darwin.cc')
   libstore_headers += files('platform/darwin.hh')
+elif host_machine.system() == 'freebsd'
+  libstore_sources += files('platform/freebsd.cc')
+  libstore_headers += files('platform/freebsd.hh')
 else
   libstore_sources += files('platform/fallback.cc')
   libstore_headers += files('platform/fallback.hh')
@@ -202,23 +205,29 @@ foreach name, value : cpp_str_defines
   ]
 endforeach
 
+dependencies = [
+  libarchive,
+  liblixutil, # Internal.
+  seccomp,
+  sqlite,
+  sodium,
+  curl,
+  openssl,
+  aws_sdk,
+  aws_s3,
+  aws_sdk_transfer,
+  nlohmann_json,
+]
+
+if host_machine.system() == 'freebsd'
+  dependencies += [ libprocstat ]
+endif
+
 libstore = library(
   'lixstore',
   libstore_generated_headers,
   libstore_sources,
-  dependencies : [
-    libarchive,
-    liblixutil, # Internal.
-    seccomp,
-    sqlite,
-    sodium,
-    curl,
-    openssl,
-    aws_sdk,
-    aws_s3,
-    aws_sdk_transfer,
-    nlohmann_json,
-  ],
+  dependencies : dependencies,
   cpp_args : cpp_args,
   cpp_pch : cpp_pch,
   install : true,

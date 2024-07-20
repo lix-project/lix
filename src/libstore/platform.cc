@@ -5,6 +5,8 @@
 #include "platform/linux.hh"
 #elif __APPLE__
 #include "platform/darwin.hh"
+#elif __FreeBSD__
+#include "platform/freebsd.hh"
 #else
 #include "platform/fallback.hh"
 #endif
@@ -16,6 +18,8 @@ std::shared_ptr<LocalStore> LocalStore::makeLocalStore(const Params & params)
     return std::shared_ptr<LocalStore>(new LinuxLocalStore(params));
 #elif __APPLE__
     return std::shared_ptr<LocalStore>(new DarwinLocalStore(params));
+#elif __FreeBSD__
+    return std::shared_ptr<LocalStore>(new FreeBSDLocalStore(params));
 #else
     return std::shared_ptr<LocalStore>(new FallbackLocalStore(params));
 #endif
@@ -32,6 +36,8 @@ std::shared_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoa
     return std::make_shared<LinuxLocalDerivationGoal>(drvPath, wantedOutputs, worker, buildMode);
 #elif __APPLE__
     return std::make_shared<DarwinLocalDerivationGoal>(drvPath, wantedOutputs, worker, buildMode);
+#elif __FreeBSD__
+    return std::make_shared<FreeBSDLocalDerivationGoal>(drvPath, wantedOutputs, worker, buildMode);
 #else
     return std::make_shared<FallbackLocalDerivationGoal>(drvPath, wantedOutputs, worker, buildMode);
 #endif
@@ -51,6 +57,10 @@ std::shared_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoa
     );
 #elif __APPLE__
     return std::make_shared<DarwinLocalDerivationGoal>(
+        drvPath, drv, wantedOutputs, worker, buildMode
+    );
+#elif __FreeBSD__
+    return std::make_shared<FreeBSDLocalDerivationGoal>(
         drvPath, drv, wantedOutputs, worker, buildMode
     );
 #else
