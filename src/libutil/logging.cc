@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <mutex>
 #include <sstream>
 #include <nlohmann/json.hpp>
 
