@@ -106,7 +106,7 @@ public:
 
     void wait();
 
-    Source * stdout() const { return stdoutSource.get(); }
+    Source * getStdout() const { return stdoutSource.get(); };
 };
 
 std::pair<int, std::string> runProgram(RunOptions && options);

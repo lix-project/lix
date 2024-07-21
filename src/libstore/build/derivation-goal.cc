@@ -932,7 +932,7 @@ void runPostBuildHook(
     Finally const _wait([&] { proc.wait(); });
 
     // FIXME just process the data, without a wrapper sink class
-    proc.stdout()->drainInto(sink);
+    proc.getStdout()->drainInto(sink);
 }
 
 void DerivationGoal::buildDone()

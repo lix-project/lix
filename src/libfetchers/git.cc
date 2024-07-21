@@ -695,7 +695,7 @@ struct GitInputScheme : InputScheme
             });
             Finally const _wait([&] { proc.wait(); });
 
-            unpackTarfile(*proc.stdout(), tmpDir);
+            unpackTarfile(*proc.getStdout(), tmpDir);
         }
 
         auto storePath = store->addToStore(name, tmpDir, FileIngestionMethod::Recursive, htSHA256, filter);

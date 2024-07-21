@@ -251,7 +251,7 @@ std::pair<int, std::string> runProgram(RunOptions && options)
     try {
         auto proc = runProgram2(options);
         Finally const _wait([&] { proc.wait(); });
-        stdout = proc.stdout()->drain();
+        stdout = proc.getStdout()->drain();
     } catch (ExecError & e) {
         status = e.status;
     }
