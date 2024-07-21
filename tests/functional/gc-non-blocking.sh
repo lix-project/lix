@@ -33,7 +33,7 @@ sleep 2
 pid2=$!
 
 # Start a build. This should not be blocked by the GC in progress.
-outPath=$(nix-build --max-silent-time 60 -o "$TEST_ROOT/result" -E "
+outPath=$(nix-build --max-silent-time 60 --debug -o "$TEST_ROOT/result" -E "
   with import ./config.nix;
   mkDerivation {
     name = \"non-blocking\";

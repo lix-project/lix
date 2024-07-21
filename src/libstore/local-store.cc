@@ -181,7 +181,7 @@ LocalStore::LocalStore(const Params & params)
     , LocalFSStore(params)
     , dbDir(stateDir + "/db")
     , linksDir(realStoreDir + "/.links")
-    , reservedPath(dbDir + "/reserved")
+    , reservedSpacePath(dbDir + "/reserved")
     , schemaPath(dbDir + "/schema")
     , tempRootsDir(stateDir + "/temproots")
     , fnTempRoots(fmt("%s/%d", tempRootsDir, getpid()))
@@ -259,10 +259,10 @@ LocalStore::LocalStore(const Params & params)
        before doing a garbage collection. */
     try {
         struct stat st;
-        if (stat(reservedPath.c_str(), &st) == -1 ||
+        if (stat(reservedSpacePath.c_str(), &st) == -1 ||
             st.st_size != settings.reservedSize)
         {
-            AutoCloseFD fd{open(reservedPath.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC, 0600)};
+            AutoCloseFD fd{open(reservedSpacePath.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC, 0600)};
             int res = -1;
 #if HAVE_POSIX_FALLOCATE
             res = posix_fallocate(fd.get(), 0, settings.reservedSize);
