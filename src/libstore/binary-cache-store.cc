@@ -336,12 +336,13 @@ WireFormatGenerator BinaryCacheStore::narFromPath(const StorePath & storePath)
     try {
         auto file = getFile(info->url);
         return [](auto info, auto file, auto & stats) -> WireFormatGenerator {
-            std::unique_ptr<char[]> buf(new char[65536]);
+            constexpr size_t buflen = 65536;
+            auto buf = std::make_unique<char []>(buflen);
             size_t total = 0;
             auto decompressor = makeDecompressionSource(info->compression, *file);
             try {
                 while (true) {
-                    const auto len = decompressor->read(buf.get(), sizeof(buf));
+                    const auto len = decompressor->read(buf.get(), buflen);
                     co_yield std::span{buf.get(), len};
                     total += len;
                 }
