@@ -211,7 +211,7 @@ struct TeeSink : Sink
 {
     Sink & sink1, & sink2;
     TeeSink(Sink & sink1, Sink & sink2) : sink1(sink1), sink2(sink2) { }
-    virtual void operator () (std::string_view data)
+    virtual void operator () (std::string_view data) override
     {
         sink1(data);
         sink2(data);
@@ -228,7 +228,7 @@ struct TeeSource : Source
     Sink & sink;
     TeeSource(Source & orig, Sink & sink)
         : orig(orig), sink(sink) { }
-    size_t read(char * data, size_t len)
+    size_t read(char * data, size_t len) override
     {
         size_t n = orig.read(data, len);
         sink({data, n});
@@ -245,7 +245,7 @@ struct SizedSource : Source
     size_t remain;
     SizedSource(Source & orig, size_t size)
         : orig(orig), remain(size) { }
-    size_t read(char * data, size_t len)
+    size_t read(char * data, size_t len) override
     {
         if (this->remain <= 0) {
             throw EndOfFile("sized: unexpected end-of-file");
@@ -338,7 +338,7 @@ struct GeneratorSource : Source
 {
     GeneratorSource(Generator<Bytes> && g) : g(std::move(g)) {}
 
-    virtual size_t read(char * data, size_t len)
+    virtual size_t read(char * data, size_t len) override
     {
         // we explicitly do not poll the generator multiple times to fill the
         // buffer, only to produce some output at all. this is allowed by the

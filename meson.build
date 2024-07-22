@@ -445,6 +445,7 @@ add_project_arguments(
   '-Werror=unused-result',
   '-Wdeprecated-copy',
   '-Wignored-qualifiers',
+  '-Werror=suggest-override',
   # Enable assertions in libstdc++ by default. Harmless on libc++. Benchmarked
   # at ~1% overhead in `nix search`.
   #
