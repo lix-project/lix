@@ -140,10 +140,7 @@
                     system = crossSystem;
                   }
                   // lib.optionalAttrs (crossSystem == "x86_64-freebsd") { useLLVM = true; };
-              overlays = [
-                (overlayFor (p: p.${stdenv}))
-                (final: prev: { nixfmt = final.callPackage ./nix-support/nixfmt.nix { }; })
-              ];
+              overlays = [ (overlayFor (p: p.${stdenv})) ];
             };
           stdenvs = forAllStdenvs (make-pkgs null);
           native = stdenvs.stdenvPackages;
