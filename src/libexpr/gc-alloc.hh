@@ -10,6 +10,8 @@
 #include <string_view>
 #include <vector>
 
+#include "checked-arithmetic.hh"
+
 #if HAVE_BOEHMGC
 #include <functional> // std::less
 #include <utility> // std::pair
@@ -17,8 +19,6 @@
 #include <gc/gc.h>
 #include <gc/gc_allocator.h>
 #include <gc/gc_cpp.h>
-
-#include "checked-arithmetic.hh"
 
 /// calloc, transparently GC-enabled.
 #define LIX_GC_CALLOC(size) GC_MALLOC(size)
