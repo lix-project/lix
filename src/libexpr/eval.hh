@@ -344,8 +344,8 @@ public:
     /**
      * Parse a Nix expression from the specified string.
      */
-    Expr & parseExprFromString(std::string s, const SourcePath & basePath, std::shared_ptr<StaticEnv> & staticEnv);
-    Expr & parseExprFromString(std::string s, const SourcePath & basePath);
+    Expr & parseExprFromString(std::string s, const SourcePath & basePath, std::shared_ptr<StaticEnv> & staticEnv, const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
+    Expr & parseExprFromString(std::string s, const SourcePath & basePath, const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
 
     Expr & parseStdin();
 
@@ -568,7 +568,8 @@ private:
         size_t length,
         Pos::Origin origin,
         const SourcePath & basePath,
-        std::shared_ptr<StaticEnv> & staticEnv);
+        std::shared_ptr<StaticEnv> & staticEnv,
+        const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
 
     /**
      * Current Nix call stack depth, used with `max-call-depth` setting to throw stack overflow hopefully before we run out of system stack.

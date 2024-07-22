@@ -631,7 +631,7 @@ template<> struct BuildAST<grammar::expr::path> : p::maybe_nothing {};
 
 template<> struct BuildAST<grammar::expr::uri> {
     static void apply(const auto & in, ExprState & s, State & ps) {
-       static bool noURLLiterals = experimentalFeatureSettings.isEnabled(Xp::NoUrlLiterals);
+       bool noURLLiterals = ps.xpSettings.isEnabled(Xp::NoUrlLiterals);
        if (noURLLiterals)
            throw ParseError({
                .msg = HintFmt("URL literals are disabled"),
@@ -832,7 +832,8 @@ Expr * EvalState::parse(
     size_t length,
     Pos::Origin origin,
     const SourcePath & basePath,
-    std::shared_ptr<StaticEnv> & staticEnv)
+    std::shared_ptr<StaticEnv> & staticEnv,
+    const ExperimentalFeatureSettings & xpSettings)
 {
     parser::State s = {
         symbols,
@@ -840,6 +841,7 @@ Expr * EvalState::parse(
         basePath,
         positions.addOrigin(origin, length),
         exprSymbols,
+        xpSettings
     };
     parser::ExprState x;
 

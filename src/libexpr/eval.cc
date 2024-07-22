@@ -2808,20 +2808,20 @@ Expr & EvalState::parseExprFromFile(const SourcePath & path, std::shared_ptr<Sta
 }
 
 
-Expr & EvalState::parseExprFromString(std::string s_, const SourcePath & basePath, std::shared_ptr<StaticEnv> & staticEnv)
+Expr & EvalState::parseExprFromString(std::string s_, const SourcePath & basePath, std::shared_ptr<StaticEnv> & staticEnv, const ExperimentalFeatureSettings & xpSettings)
 {
     // NOTE this method (and parseStdin) must take care to *fully copy* their input
     // into their respective Pos::Origin until the parser stops overwriting its input
     // data.
     auto s = make_ref<std::string>(s_);
     s_.append("\0\0", 2);
-    return *parse(s_.data(), s_.size(), Pos::String{.source = s}, basePath, staticEnv);
+    return *parse(s_.data(), s_.size(), Pos::String{.source = s}, basePath, staticEnv, xpSettings);
 }
 
 
-Expr & EvalState::parseExprFromString(std::string s, const SourcePath & basePath)
+Expr & EvalState::parseExprFromString(std::string s, const SourcePath & basePath, const ExperimentalFeatureSettings & xpSettings)
 {
-    return parseExprFromString(std::move(s), basePath, staticBaseEnv);
+    return parseExprFromString(std::move(s), basePath, staticBaseEnv, xpSettings);
 }
 
 

@@ -59,6 +59,11 @@ namespace nix {
         ASSERT_THAT(v, IsFloatEq(1.234));
     }
 
+    TEST_F(TrivialExpressionTest, pointfloat) {
+        auto v = eval(".234");
+        ASSERT_THAT(v, IsFloatEq(0.234));
+    }
+
     TEST_F(TrivialExpressionTest, updateAttrs) {
         auto v = eval("{ a = 1; } // { b = 2; a = 3; }");
         ASSERT_THAT(v, IsAttrsOfSize(2));
@@ -79,6 +84,18 @@ namespace nix {
     TEST_F(TrivialExpressionTest, hasAttrOpTrue) {
         auto v = eval("{ a = 123; } ? a");
         ASSERT_THAT(v, IsTrue());
+    }
+
+    TEST_F(TrivialExpressionTest, urlLiteral) {
+        auto v = eval("https://nixos.org");
+        ASSERT_THAT(v, IsStringEq("https://nixos.org"));
+    }
+
+    TEST_F(TrivialExpressionTest, noUrlLiteral) {
+        ExperimentalFeatureSettings mockXpSettings;
+        mockXpSettings.set("experimental-features", "no-url-literals");
+
+        ASSERT_THROW(eval("https://nixos.org", true, mockXpSettings), Error);
     }
 
     TEST_F(TrivialExpressionTest, withFound) {
