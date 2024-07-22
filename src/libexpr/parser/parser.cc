@@ -43,7 +43,6 @@ error_message_for(p::one<'}'>) = "expecting '}'";
 error_message_for(p::one<'"'>) = "expecting '\"'";
 error_message_for(p::one<';'>) = "expecting ';'";
 error_message_for(p::one<')'>) = "expecting ')'";
-error_message_for(p::one<'='>) = "expecting '='";
 error_message_for(p::one<']'>) = "expecting ']'";
 error_message_for(p::one<':'>) = "expecting ':'";
 error_message_for(p::string<'\'', '\''>) = "expecting \"''\"";
