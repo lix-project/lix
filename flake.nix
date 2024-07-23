@@ -59,7 +59,8 @@
         (Run `touch .nocontribmsg` to hide this message.)
       '';
 
-      officialRelease = false;
+      versionJson = builtins.fromJSON (builtins.readFile ./version.json);
+      officialRelease = versionJson.official_release;
 
       # Set to true to build the release notes for the next release.
       buildUnreleasedNotes = true;
@@ -419,7 +420,7 @@
             pkgs: stdenv:
             let
               nix = pkgs.callPackage ./package.nix {
-                inherit stdenv officialRelease versionSuffix;
+                inherit stdenv versionSuffix;
                 busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
                 internalApiDocs = false;
               };

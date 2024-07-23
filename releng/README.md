@@ -30,7 +30,7 @@ First, we prepare the release. `python -m releng prepare` is used for this.
 Then we tag the release with `python -m releng tag`:
 
 * Git HEAD is detached.
-* `officialRelease = true` is set in `flake.nix`, this is committed, and a
+* `"official_release": true` is set in `version.json`, this is committed, and a
   release is tagged.
 * The tag is merged back into the last branch (either `main` for new releases
   or `release-MAJOR` for maintenance releases) with `git merge -s ours VERSION`

@@ -52,7 +52,7 @@
 
   pname ? "lix",
   versionSuffix ? "",
-  officialRelease ? false,
+  officialRelease ? __forDefaults.versionJson.official_release,
   # Set to true to build the release notes for the next release.
   buildUnreleasedNotes ? true,
   internalApiDocs ? false,
@@ -67,6 +67,8 @@
   # stuff for argument defaults.
   __forDefaults ? {
     canRunInstalled = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
+
+    versionJson = builtins.fromJSON (builtins.readFile ./version.json);
 
     boehmgc-nix = boehmgc.override { enableLargeConfig = true; };
 
@@ -83,8 +85,7 @@ let
   inherit (lib) fileset;
   inherit (stdenv) hostPlatform buildPlatform;
 
-  versionJson = builtins.fromJSON (builtins.readFile ./version.json);
-  version = versionJson.version + versionSuffix;
+  version = __forDefaults.versionJson.version + versionSuffix;
 
   aws-sdk-cpp-nix = aws-sdk-cpp.override {
     apis = [
@@ -380,8 +381,6 @@ stdenv.mkDerivation (finalAttrs: {
       build-release-notes
       pegtl
       ;
-
-    inherit officialRelease;
 
     # The collection of dependency logic for this derivation is complicated enough that
     # it's easier to parameterize the devShell off an already called package.nix.
