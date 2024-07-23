@@ -57,6 +57,10 @@
   buildUnreleasedNotes ? true,
   internalApiDocs ? false,
 
+  # List of Meson sanitize options. Accepts values of b_sanitize, e.g.
+  # "address", "undefined", "thread".
+  sanitize ? null,
+
   # Not a real argument, just the only way to approximate let-binding some
   # stuff for argument defaults.
   __forDefaults ? {
@@ -166,6 +170,12 @@ stdenv.mkDerivation (finalAttrs: {
   dontBuild = false;
 
   mesonFlags =
+    let
+      sanitizeOpts = lib.optionals (sanitize != null) (
+        [ "-Db_sanitize=${builtins.concatStringsSep "," sanitize}" ]
+        ++ lib.optional (builtins.elem "address" sanitize) "-Dgc=disabled"
+      );
+    in
     lib.optionals hostPlatform.isLinux [
       # You'd think meson could just find this in PATH, but busybox is in buildInputs,
       # which don't actually get added to PATH. And buildInputs is correct over
@@ -182,7 +192,8 @@ stdenv.mkDerivation (finalAttrs: {
       (lib.mesonBool "enable-tests" finalAttrs.finalPackage.doCheck)
       (lib.mesonBool "enable-docs" canRunInstalled)
     ]
-    ++ lib.optional (hostPlatform != buildPlatform) "--cross-file=${mesonCrossFile}";
+    ++ lib.optional (hostPlatform != buildPlatform) "--cross-file=${mesonCrossFile}"
+    ++ sanitizeOpts;
 
   # We only include CMake so that Meson can locate toml11, which only ships CMake dependency metadata.
   dontUseCmakeConfigure = true;

@@ -275,6 +275,15 @@
 
         # System tests.
         tests = import ./tests/nixos { inherit lib nixpkgs nixpkgsFor; } // {
+          # This is x86_64-linux only, just because we have significantly
+          # cheaper x86_64-linux compute in CI.
+          # It is clangStdenv because clang's sanitizers are nicer.
+          asanBuild = self.packages.x86_64-linux.nix-clangStdenv.override {
+            sanitize = [
+              "address"
+              "undefined"
+            ];
+          };
 
           # Make sure that nix-env still produces the exact same result
           # on a particular version of Nixpkgs.
