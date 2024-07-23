@@ -60,6 +60,8 @@
   # List of Meson sanitize options. Accepts values of b_sanitize, e.g.
   # "address", "undefined", "thread".
   sanitize ? null,
+  # Turn compiler warnings into errors.
+  werror ? false,
 
   # Not a real argument, just the only way to approximate let-binding some
   # stuff for argument defaults.
@@ -191,6 +193,7 @@ stdenv.mkDerivation (finalAttrs: {
       (lib.mesonEnable "internal-api-docs" internalApiDocs)
       (lib.mesonBool "enable-tests" finalAttrs.finalPackage.doCheck)
       (lib.mesonBool "enable-docs" canRunInstalled)
+      (lib.mesonBool "werror" werror)
     ]
     ++ lib.optional (hostPlatform != buildPlatform) "--cross-file=${mesonCrossFile}"
     ++ sanitizeOpts;

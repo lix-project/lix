@@ -283,6 +283,10 @@
               "address"
               "undefined"
             ];
+            # it is very hard to make *every* CI build use this option such
+            # that we don't wind up building Lix twice, so we do it here where
+            # we are already doing so.
+            werror = true;
           };
 
           # Make sure that nix-env still produces the exact same result
