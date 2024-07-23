@@ -235,15 +235,15 @@ void DarwinLocalDerivationGoal::execBuilder(std::string builder, Strings args, S
     if (drv->platform == "aarch64-darwin") {
         // Unset kern.curproc_arch_affinity so we can escape Rosetta
         int affinity = 0;
-        sysctlbyname("kern.curproc_arch_affinity", NULL, NULL, &affinity, sizeof(affinity));
+        sysctlbyname("kern.curproc_arch_affinity", nullptr, nullptr, &affinity, sizeof(affinity));
 
         cpu_type_t cpu = CPU_TYPE_ARM64;
-        posix_spawnattr_setbinpref_np(&attrp, 1, &cpu, NULL);
+        posix_spawnattr_setbinpref_np(&attrp, 1, &cpu, nullptr);
     } else if (drv->platform == "x86_64-darwin") {
         cpu_type_t cpu = CPU_TYPE_X86_64;
-        posix_spawnattr_setbinpref_np(&attrp, 1, &cpu, NULL);
+        posix_spawnattr_setbinpref_np(&attrp, 1, &cpu, nullptr);
     }
 
-    posix_spawn(NULL, builder.c_str(), NULL, &attrp, stringsToCharPtrs(args).data(), stringsToCharPtrs(envStrs).data());
+    posix_spawn(nullptr, builder.c_str(), nullptr, &attrp, stringsToCharPtrs(args).data(), stringsToCharPtrs(envStrs).data());
 }
 }

@@ -54,7 +54,7 @@ TarArchive::TarArchive(Source & source, bool raw) : buffer(65536)
         archive_read_support_format_raw(archive);
         archive_read_support_format_empty(archive);
     }
-    archive_read_set_option(archive, NULL, "mac-ext", NULL);
+    archive_read_set_option(archive, nullptr, "mac-ext", nullptr);
     check(archive_read_open(archive, (void *)this, callback_open, callback_read, callback_close), "Failed to open archive (%s)");
 }
 
@@ -65,7 +65,7 @@ TarArchive::TarArchive(const Path & path)
 
     archive_read_support_filter_all(archive);
     archive_read_support_format_all(archive);
-    archive_read_set_option(archive, NULL, "mac-ext", NULL);
+    archive_read_set_option(archive, nullptr, "mac-ext", nullptr);
     check(archive_read_open_filename(archive, path.c_str(), 16384), "failed to open archive: %s");
 }
 

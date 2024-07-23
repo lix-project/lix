@@ -236,9 +236,9 @@ static int main_build_remote(int argc, char * * argv)
                 }
 
 #if __APPLE__
-                futimes(bestSlotLock.get(), NULL);
+                futimes(bestSlotLock.get(), nullptr);
 #else
-                futimens(bestSlotLock.get(), NULL);
+                futimens(bestSlotLock.get(), nullptr);
 #endif
 
                 lock.reset();

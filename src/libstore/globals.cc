@@ -177,14 +177,14 @@ static bool hasVirt() {
     size_t size;
 
     size = sizeof(hasVMM);
-    if (sysctlbyname("kern.hv_vmm_present", &hasVMM, &size, NULL, 0) == 0) {
+    if (sysctlbyname("kern.hv_vmm_present", &hasVMM, &size, nullptr, 0) == 0) {
         if (hasVMM)
             return false;
     }
 
     // whether the kernel and hardware supports virt
     size = sizeof(hvSupport);
-    if (sysctlbyname("kern.hv_support", &hvSupport, &size, NULL, 0) == 0) {
+    if (sysctlbyname("kern.hv_support", &hvSupport, &size, nullptr, 0) == 0) {
         return hvSupport == 1;
     } else {
         return false;
