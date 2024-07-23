@@ -92,31 +92,19 @@ let
 
   # Reimplementation of Nixpkgs' Meson cross file, with some additions to make
   # it actually work.
-  mesonCrossFile =
-    let
-      cpuFamily =
-        platform:
-        with platform;
-        if isAarch32 then
-          "arm"
-        else if isx86_32 then
-          "x86"
-        else
-          platform.uname.processor;
-    in
-    builtins.toFile "lix-cross-file.conf" ''
-      [properties]
-      # Meson is convinced that if !buildPlatform.canExecute hostPlatform then we cannot
-      # build anything at all, which is not at all correct. If we can't execute the host
-      # platform, we'll just disable tests and doc gen.
-      needs_exe_wrapper = false
+  mesonCrossFile = builtins.toFile "lix-cross-file.conf" ''
+    [properties]
+    # Meson is convinced that if !buildPlatform.canExecute hostPlatform then we cannot
+    # build anything at all, which is not at all correct. If we can't execute the host
+    # platform, we'll just disable tests and doc gen.
+    needs_exe_wrapper = false
 
-      [binaries]
-      # Meson refuses to consider any CMake binary during cross compilation if it's
-      # not explicitly specified here, in the cross file.
-      # https://github.com/mesonbuild/meson/blob/0ed78cf6fa6d87c0738f67ae43525e661b50a8a2/mesonbuild/cmake/executor.py#L72
-      cmake = 'cmake'
-    '';
+    [binaries]
+    # Meson refuses to consider any CMake binary during cross compilation if it's
+    # not explicitly specified here, in the cross file.
+    # https://github.com/mesonbuild/meson/blob/0ed78cf6fa6d87c0738f67ae43525e661b50a8a2/mesonbuild/cmake/executor.py#L72
+    cmake = 'cmake'
+  '';
 
   # The internal API docs need these for the build, but if we're not building
   # Nix itself, then these don't need to be propagated.
