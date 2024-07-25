@@ -146,7 +146,6 @@ public:
     uint64_t doneSubstitutions = 0;
     uint64_t failedSubstitutions = 0;
     uint64_t runningSubstitutions = 0;
-    uint64_t runningCASubstitutions = 0;
     uint64_t expectedDownloadSize = 0;
     uint64_t doneDownloadSize = 0;
     uint64_t expectedNarSize = 0;
