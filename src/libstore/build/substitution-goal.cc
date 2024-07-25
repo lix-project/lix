@@ -296,7 +296,7 @@ void PathSubstitutionGoal::handleChildOutput(int fd, std::string_view data)
 
 void PathSubstitutionGoal::handleEOF(int fd)
 {
-    if (fd == outPipe.readSide.get()) worker.wakeUp(shared_from_this());
+    worker.wakeUp(shared_from_this());
 }
 
 

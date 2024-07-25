@@ -164,7 +164,7 @@ void DrvOutputSubstitutionGoal::work()
 
 void DrvOutputSubstitutionGoal::handleEOF(int fd)
 {
-    if (fd == downloadState->outPipe.readSide.get()) worker.wakeUp(shared_from_this());
+    worker.wakeUp(shared_from_this());
 }
 
 
