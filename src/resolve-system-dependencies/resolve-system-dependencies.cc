@@ -48,7 +48,7 @@ std::set<std::string> runResolver(const Path & filename)
         return {};
     }
 
-    char* obj = (char*) mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd.get(), 0);
+    char* obj = (char*) mmap(nullptr, st.st_size, PROT_READ, MAP_SHARED, fd.get(), 0);
     if (!obj)
         throw SysError("mmapping '%s'", filename);
 

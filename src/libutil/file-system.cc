@@ -21,22 +21,14 @@ Path absPath(Path path, std::optional<PathView> dir, bool resolveSymlinks)
 {
     if (path.empty() || path[0] != '/') {
         if (!dir) {
-#ifdef __GNU__
-            /* GNU (aka. GNU/Hurd) doesn't have any limitation on path
-               lengths and doesn't define `PATH_MAX'.  */
-            char *buf = getcwd(NULL, 0);
-            if (buf == NULL)
-#else
             char buf[PATH_MAX];
-            if (!getcwd(buf, sizeof(buf)))
-#endif
+            if (!getcwd(buf, sizeof(buf))) {
                 throw SysError("cannot get cwd");
+            }
             path = concatStrings(buf, "/", path);
-#ifdef __GNU__
-            free(buf);
-#endif
-        } else
+        } else {
             path = concatStrings(*dir, "/", path);
+        }
     }
     return canonPath(path, resolveSymlinks);
 }
