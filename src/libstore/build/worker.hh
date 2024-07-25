@@ -281,14 +281,6 @@ public:
     bool pathContentsGood(const StorePath & path);
 
     void markContentsGood(const StorePath & path);
-
-    void updateProgress()
-    {
-        actDerivations.progress(doneBuilds, expectedBuilds + doneBuilds, runningBuilds, failedBuilds);
-        actSubstitutions.progress(doneSubstitutions, expectedSubstitutions + doneSubstitutions, runningSubstitutions, failedSubstitutions);
-        act.setExpected(actFileTransfer, expectedDownloadSize + doneDownloadSize);
-        act.setExpected(actCopyPath, expectedNarSize + doneNarSize);
-    }
 };
 
 }

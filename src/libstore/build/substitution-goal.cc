@@ -86,7 +86,6 @@ void PathSubstitutionGoal::tryNext()
 
         if (substituterFailed) {
             worker.failedSubstitutions++;
-            worker.updateProgress();
         }
 
         return;
@@ -150,8 +149,6 @@ void PathSubstitutionGoal::tryNext()
         ? std::make_unique<MaintainCount<uint64_t>>(worker.expectedDownloadSize, narInfo->fileSize)
         : nullptr;
 
-    worker.updateProgress();
-
     /* Bail out early if this substituter lacks a valid
        signature. LocalStore::addToStore() also checks for this, but
        only after we've downloaded the path. */
@@ -210,7 +207,6 @@ void PathSubstitutionGoal::tryToRun()
     }
 
     maintainRunningSubstitutions = std::make_unique<MaintainCount<uint64_t>>(worker.runningSubstitutions);
-    worker.updateProgress();
 
     outPipe.create();
 
@@ -288,8 +284,6 @@ void PathSubstitutionGoal::finished()
 
     worker.doneNarSize += maintainExpectedNar->delta;
     maintainExpectedNar.reset();
-
-    worker.updateProgress();
 
     done(ecSuccess, BuildResult::Substituted);
 }

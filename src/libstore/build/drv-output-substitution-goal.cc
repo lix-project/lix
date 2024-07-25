@@ -48,7 +48,6 @@ void DrvOutputSubstitutionGoal::tryNext()
 
     maintainRunningSubstitutions =
         std::make_unique<MaintainCount<uint64_t>>(worker.runningCASubstitutions);
-    worker.updateProgress();
 
     if (subs.size() == 0) {
         /* None left.  Terminate this goal and let someone else deal
@@ -62,7 +61,6 @@ void DrvOutputSubstitutionGoal::tryNext()
 
         if (substituterFailed) {
             worker.failedSubstitutions++;
-            worker.updateProgress();
         }
 
         return;

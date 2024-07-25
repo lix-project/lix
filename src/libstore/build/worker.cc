@@ -300,6 +300,19 @@ void Worker::run(const Goals & _topGoals)
             for (auto & goal : awake2) {
                 checkInterrupt();
                 goal->work();
+
+                actDerivations.progress(
+                    doneBuilds, expectedBuilds + doneBuilds, runningBuilds, failedBuilds
+                );
+                actSubstitutions.progress(
+                    doneSubstitutions,
+                    expectedSubstitutions + doneSubstitutions,
+                    runningSubstitutions,
+                    failedSubstitutions
+                );
+                act.setExpected(actFileTransfer, expectedDownloadSize + doneDownloadSize);
+                act.setExpected(actCopyPath, expectedNarSize + doneNarSize);
+
                 if (topGoals.empty()) break; // stuff may have been cancelled
             }
         }

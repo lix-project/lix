@@ -79,7 +79,6 @@ DerivationGoal::DerivationGoal(const StorePath & drvPath,
     trace("created");
 
     mcExpectedBuilds = std::make_unique<MaintainCount<uint64_t>>(worker.expectedBuilds);
-    worker.updateProgress();
 }
 
 
@@ -100,7 +99,6 @@ DerivationGoal::DerivationGoal(const StorePath & drvPath, const BasicDerivation 
     trace("created");
 
     mcExpectedBuilds = std::make_unique<MaintainCount<uint64_t>>(worker.expectedBuilds);
-    worker.updateProgress();
 
     /* Prevent the .chroot directory from being
        garbage-collected. (See isActiveTempFile() in gc.cc.) */
@@ -670,7 +668,6 @@ void DerivationGoal::started()
     act = std::make_unique<Activity>(*logger, lvlInfo, actBuild, msg,
         Logger::Fields{worker.store.printStorePath(drvPath), hook ? machineName : "", 1, 1});
     mcRunningBuilds = std::make_unique<MaintainCount<uint64_t>>(worker.runningBuilds);
-    worker.updateProgress();
 }
 
 void DerivationGoal::tryToBuild()
@@ -1536,8 +1533,6 @@ void DerivationGoal::done(
         if (status != BuildResult::DependencyFailed)
             worker.failedBuilds++;
     }
-
-    worker.updateProgress();
 
     auto traceBuiltOutputsFile = getEnv("_NIX_TRACE_BUILT_OUTPUTS").value_or("");
     if (traceBuiltOutputsFile != "") {
