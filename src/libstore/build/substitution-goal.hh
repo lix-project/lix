@@ -110,7 +110,6 @@ public:
      * Callback used by the worker to write to the log.
      */
     void handleChildOutput(int fd, std::string_view data) override;
-    void handleEOF(int fd) override;
 
     /* Called by destructor, can't be overridden */
     void cleanup() override final;

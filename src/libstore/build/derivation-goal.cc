@@ -1363,7 +1363,6 @@ void DerivationGoal::handleChildOutput(int fd, std::string_view data)
 void DerivationGoal::handleEOF(int fd)
 {
     if (!currentLogLine.empty()) flushLine();
-    worker.wakeUp(shared_from_this());
 }
 
 

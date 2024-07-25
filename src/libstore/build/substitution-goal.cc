@@ -294,12 +294,6 @@ void PathSubstitutionGoal::handleChildOutput(int fd, std::string_view data)
 }
 
 
-void PathSubstitutionGoal::handleEOF(int fd)
-{
-    worker.wakeUp(shared_from_this());
-}
-
-
 void PathSubstitutionGoal::cleanup()
 {
     try {

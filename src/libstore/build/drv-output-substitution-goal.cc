@@ -162,10 +162,5 @@ void DrvOutputSubstitutionGoal::work()
     (this->*state)();
 }
 
-void DrvOutputSubstitutionGoal::handleEOF(int fd)
-{
-    worker.wakeUp(shared_from_this());
-}
-
 
 }

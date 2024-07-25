@@ -459,6 +459,7 @@ void Worker::waitForInput()
                 if (rd == 0 || (rd == -1 && errno == EIO)) {
                     debug("%1%: got EOF", goal->getName());
                     goal->handleEOF(k);
+                    wakeUp(goal);
                     j->fds.erase(k);
                 } else if (rd == -1) {
                     if (errno != EINTR)

@@ -145,7 +145,6 @@ public:
 
     virtual void handleEOF(int fd)
     {
-        abort();
     }
 
     void trace(std::string_view s);

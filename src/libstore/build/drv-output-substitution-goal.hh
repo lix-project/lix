@@ -72,7 +72,6 @@ public:
     std::string key() override;
 
     void work() override;
-    void handleEOF(int fd) override;
 
     JobCategory jobCategory() const override {
         return JobCategory::Substitution;
