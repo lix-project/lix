@@ -11,6 +11,8 @@
 
 namespace nix {
 
+struct KeyedBuildResult;
+
 struct BuildResult
 {
     /**
@@ -112,6 +114,18 @@ struct BuildResult
     {
         throw Error("%s", errorMsg);
     }
+
+    /**
+     * Project a BuildResult with just the information that pertains to
+     * the given path.
+     *
+     * A `BuildResult` may hold information for multiple derived paths;
+     * this function discards information about outputs not relevant in
+     * `path`. Build `Goal`s in particular may contain more outputs for
+     * a single build result than asked for directly, it's necessary to
+     * remove any such additional result to not leak other build infos.
+     */
+    KeyedBuildResult restrictTo(DerivedPath path) const;
 };
 
 /**

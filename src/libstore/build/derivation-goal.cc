@@ -1560,7 +1560,7 @@ void DerivationGoal::waiteeDone(GoalPtr waitee, ExitCode result)
     auto & outputs = nodeP->value;
 
     for (auto & outputName : outputs) {
-        auto buildResult = dg->getBuildResult(DerivedPath::Built {
+        auto buildResult = dg->buildResult.restrictTo(DerivedPath::Built {
             .drvPath = makeConstantStorePathRef(dg->drvPath),
             .outputs = OutputsSpec::Names { outputName },
         });

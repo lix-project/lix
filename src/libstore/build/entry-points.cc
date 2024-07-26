@@ -62,10 +62,7 @@ std::vector<KeyedBuildResult> Store::buildPathsWithResults(
     std::vector<KeyedBuildResult> results;
 
     for (auto & [req, goalPtr] : state)
-        results.emplace_back(KeyedBuildResult {
-            goalPtr->getBuildResult(req),
-            /* .path = */ req,
-        });
+        results.emplace_back(goalPtr->buildResult.restrictTo(req));
 
     return results;
 }
@@ -78,7 +75,7 @@ BuildResult Store::buildDerivation(const StorePath & drvPath, const BasicDerivat
 
     try {
         worker.run(Goals{goal});
-        return goal->getBuildResult(DerivedPath::Built {
+        return goal->buildResult.restrictTo(DerivedPath::Built {
             .drvPath = makeConstantStorePathRef(drvPath),
             .outputs = OutputsSpec::All {},
         });
