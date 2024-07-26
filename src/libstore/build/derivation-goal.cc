@@ -1127,21 +1127,21 @@ void DerivationGoal::resolvedFinished()
 
 HookReply DerivationGoal::tryBuildHook()
 {
-    if (!worker.tryBuildHook || !useDerivation) return rpDecline;
+    if (!worker.hook.available || !useDerivation) return rpDecline;
 
-    if (!worker.hook)
-        worker.hook = std::make_unique<HookInstance>();
+    if (!worker.hook.instance)
+        worker.hook.instance = std::make_unique<HookInstance>();
 
     try {
 
         /* Send the request to the hook. */
-        worker.hook->sink
+        worker.hook.instance->sink
             << "try"
             << (worker.getNrLocalBuilds() < settings.maxBuildJobs ? 1 : 0)
             << drv->platform
             << worker.store.printStorePath(drvPath)
             << parsedDrv->getRequiredSystemFeatures();
-        worker.hook->sink.flush();
+        worker.hook.instance->sink.flush();
 
         /* Read the first line of input, which should be a word indicating
            whether the hook wishes to perform the build. */
@@ -1149,13 +1149,13 @@ HookReply DerivationGoal::tryBuildHook()
         while (true) {
             auto s = [&]() {
                 try {
-                    return readLine(worker.hook->fromHook.readSide.get());
+                    return readLine(worker.hook.instance->fromHook.readSide.get());
                 } catch (Error & e) {
                     e.addTrace({}, "while reading the response from the build hook");
                     throw;
                 }
             }();
-            if (handleJSONLogMessage(s, worker.act, worker.hook->activities, true))
+            if (handleJSONLogMessage(s, worker.act, worker.hook.instance->activities, true))
                 ;
             else if (s.substr(0, 2) == "# ") {
                 reply = s.substr(2);
@@ -1172,8 +1172,8 @@ HookReply DerivationGoal::tryBuildHook()
         if (reply == "decline")
             return rpDecline;
         else if (reply == "decline-permanently") {
-            worker.tryBuildHook = false;
-            worker.hook = 0;
+            worker.hook.available = false;
+            worker.hook.instance.reset();
             return rpDecline;
         }
         else if (reply == "postpone")
@@ -1185,14 +1185,14 @@ HookReply DerivationGoal::tryBuildHook()
         if (e.errNo == EPIPE) {
             printError(
                 "build hook died unexpectedly: %s",
-                chomp(drainFD(worker.hook->fromHook.readSide.get())));
-            worker.hook = 0;
+                chomp(drainFD(worker.hook.instance->fromHook.readSide.get())));
+            worker.hook.instance.reset();
             return rpDecline;
         } else
             throw;
     }
 
-    hook = std::move(worker.hook);
+    hook = std::move(worker.hook.instance);
 
     try {
         machineName = readLine(hook->fromHook.readSide.get());

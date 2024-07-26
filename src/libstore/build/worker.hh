@@ -135,7 +135,17 @@ public:
     Store & store;
     Store & evalStore;
 
-    std::unique_ptr<HookInstance> hook;
+    struct HookState {
+        std::unique_ptr<HookInstance> instance;
+
+        /**
+         * Whether to ask the build hook if it can build a derivation. If
+         * it answers with "decline-permanently", we don't try again.
+         */
+        bool available = true;
+    };
+
+    HookState hook;
 
     uint64_t expectedBuilds = 0;
     uint64_t doneBuilds = 0;
@@ -150,12 +160,6 @@ public:
     uint64_t doneDownloadSize = 0;
     uint64_t expectedNarSize = 0;
     uint64_t doneNarSize = 0;
-
-    /**
-     * Whether to ask the build hook if it can build a derivation. If
-     * it answers with "decline-permanently", we don't try again.
-     */
-    bool tryBuildHook = true;
 
     Worker(Store & store, Store & evalStore);
     ~Worker();
