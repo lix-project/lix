@@ -45,31 +45,6 @@ void Goal::waiteeDone(GoalPtr waitee, ExitCode result)
 }
 
 
-Goal::Finished Goal::amDone(ExitCode result, std::optional<Error> ex)
-{
-    trace("done");
-    assert(!exitCode.has_value());
-    exitCode = result;
-
-    if (ex) {
-        if (!waiters.empty())
-            logError(ex->info());
-        else
-            this->ex = std::make_unique<Error>(std::move(*ex));
-    }
-
-    for (auto & i : waiters) {
-        GoalPtr goal = i.lock();
-        if (goal) goal->waiteeDone(shared_from_this(), result);
-    }
-    waiters.clear();
-    worker.removeGoal(shared_from_this());
-
-    cleanup();
-    return Finished{};
-}
-
-
 void Goal::trace(std::string_view s)
 {
     debug("%1%: %2%", name, s);

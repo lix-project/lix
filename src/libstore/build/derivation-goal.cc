@@ -1534,7 +1534,10 @@ Goal::Finished DerivationGoal::done(
         fs << worker.store.printStorePath(drvPath) << "\t" << buildResult.toString() << std::endl;
     }
 
-    return amDone(buildResult.success() ? ecSuccess : ecFailed, std::move(ex));
+    return Finished{
+        .result = buildResult.success() ? ecSuccess : ecFailed,
+        .ex = ex ? std::make_unique<Error>(std::move(*ex)) : nullptr,
+    };
 }
 
 

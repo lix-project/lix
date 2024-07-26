@@ -105,10 +105,13 @@ struct Goal : public std::enable_shared_from_this<Goal>
 
 public:
 
-    struct StillAlive {};
-    struct Finished {};
+    struct [[nodiscard]] StillAlive {};
+    struct [[nodiscard]] Finished {
+        ExitCode result;
+        std::unique_ptr<Error> ex;
+    };
 
-    struct WorkResult : std::variant<StillAlive, Finished>
+    struct [[nodiscard]] WorkResult : std::variant<StillAlive, Finished>
     {
         WorkResult() = delete;
         using variant::variant;
@@ -158,8 +161,6 @@ public:
     virtual Finished timedOut(Error && ex) = 0;
 
     virtual std::string key() = 0;
-
-    Finished amDone(ExitCode result, std::optional<Error> ex = {});
 
     virtual void cleanup() { }
 

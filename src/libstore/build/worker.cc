@@ -139,6 +139,40 @@ static void removeGoal(std::shared_ptr<G> goal, std::map<K, std::weak_ptr<G>> & 
 }
 
 
+void Worker::goalFinished(GoalPtr goal, Goal::Finished & f)
+{
+    goal->trace("done");
+    assert(!goal->exitCode.has_value());
+    goal->exitCode = f.result;
+
+    if (f.ex) {
+        if (!goal->waiters.empty())
+            logError(f.ex->info());
+        else
+            goal->ex = std::move(f.ex);
+    }
+
+    for (auto & i : goal->waiters) {
+        if (GoalPtr waiting = i.lock()) {
+            waiting->waiteeDone(goal, f.result);
+        }
+    }
+    goal->waiters.clear();
+    removeGoal(goal);
+    goal->cleanup();
+}
+
+void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
+{
+    std::visit(
+        overloaded{
+            [&](Goal::StillAlive) {},
+            [&](Goal::Finished & f) { goalFinished(goal, f); },
+        },
+        how
+    );
+}
+
 void Worker::removeGoal(GoalPtr goal)
 {
     if (auto drvGoal = std::dynamic_pointer_cast<DerivationGoal>(goal))
@@ -299,7 +333,7 @@ void Worker::run(const Goals & _topGoals)
             awake.clear();
             for (auto & goal : awake2) {
                 checkInterrupt();
-                goal->work();
+                handleWorkResult(goal, goal->work());
 
                 actDerivations.progress(
                     doneBuilds, expectedBuilds + doneBuilds, runningBuilds, failedBuilds
@@ -429,9 +463,14 @@ void Worker::waitForInput()
             j->respectTimeouts &&
             after - j->lastOutput >= std::chrono::seconds(settings.maxSilentTime))
         {
-            goal->timedOut(Error(
+            handleWorkResult(
+                goal,
+                goal->timedOut(Error(
                     "%1% timed out after %2% seconds of silence",
-                    goal->getName(), settings.maxSilentTime));
+                    goal->getName(),
+                    settings.maxSilentTime
+                ))
+            );
             continue;
         }
 
@@ -440,9 +479,12 @@ void Worker::waitForInput()
             j->respectTimeouts &&
             after - j->timeStarted >= std::chrono::seconds(settings.buildTimeout))
         {
-            goal->timedOut(Error(
-                    "%1% timed out after %2% seconds",
-                    goal->getName(), settings.buildTimeout));
+            handleWorkResult(
+                goal,
+                goal->timedOut(
+                    Error("%1% timed out after %2% seconds", goal->getName(), settings.buildTimeout)
+                )
+            );
             continue;
         }
 
@@ -469,7 +511,7 @@ void Worker::waitForInput()
                         goal->getName(), rd);
                     std::string_view data((char *) buffer.data(), rd);
                     j->lastOutput = after;
-                    goal->handleChildOutput(k, data);
+                    handleWorkResult(goal, goal->handleChildOutput(k, data));
                 }
             }
         }

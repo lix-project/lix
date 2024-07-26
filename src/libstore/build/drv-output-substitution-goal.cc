@@ -26,7 +26,7 @@ Goal::WorkResult DrvOutputSubstitutionGoal::init()
 
     /* If the derivation already exists, we’re done */
     if (worker.store.queryRealisation(id)) {
-        return amDone(ecSuccess);
+        return Finished{ecSuccess};
     }
 
     subs = settings.useSubstitutes ? getDefaultSubstituters() : std::list<ref<Store>>();
@@ -60,7 +60,7 @@ Goal::WorkResult DrvOutputSubstitutionGoal::tryNext()
         /* Hack: don't indicate failure if there were no substituters.
            In that case the calling derivation should just do a
            build. */
-        return amDone(substituterFailed ? ecFailed : ecNoSubstituters);
+        return Finished{substituterFailed ? ecFailed : ecNoSubstituters};
     }
 
     sub = subs.front();
@@ -137,7 +137,9 @@ Goal::WorkResult DrvOutputSubstitutionGoal::outPathValid()
 
     if (nrFailed > 0) {
         debug("The output path of the derivation output '%s' could not be substituted", id.to_string());
-        return amDone(nrNoSubstituters > 0 || nrIncompleteClosure > 0 ? ecIncompleteClosure : ecFailed);
+        return Finished{
+            nrNoSubstituters > 0 || nrIncompleteClosure > 0 ? ecIncompleteClosure : ecFailed
+        };
     }
 
     worker.store.registerDrvOutput(*outputInfo);
@@ -147,7 +149,7 @@ Goal::WorkResult DrvOutputSubstitutionGoal::outPathValid()
 Goal::WorkResult DrvOutputSubstitutionGoal::finished()
 {
     trace("finished");
-    return amDone(ecSuccess);
+    return Finished{ecSuccess};
 }
 
 std::string DrvOutputSubstitutionGoal::key()

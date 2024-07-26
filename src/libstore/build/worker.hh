@@ -105,6 +105,9 @@ private:
      */
     std::map<StorePath, bool> pathContentsGoodCache;
 
+    void goalFinished(GoalPtr goal, Goal::Finished & f);
+    void handleWorkResult(GoalPtr goal, Goal::WorkResult how);
+
 public:
 
     const Activity act;
