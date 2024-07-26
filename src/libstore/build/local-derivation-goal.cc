@@ -161,7 +161,7 @@ void LocalDerivationGoal::killSandbox(bool getStats)
 }
 
 
-void LocalDerivationGoal::tryLocalBuild()
+Goal::WorkResult LocalDerivationGoal::tryLocalBuild()
 {
 #if __APPLE__
     additionalSandboxProfile = parsedDrv->getStringAttr("__sandboxProfile").value_or("");
@@ -172,7 +172,7 @@ void LocalDerivationGoal::tryLocalBuild()
         state = &DerivationGoal::tryToBuild;
         worker.waitForBuildSlot(shared_from_this());
         outputLocks.unlock();
-        return;
+        return StillAlive{};
     }
 
     assert(derivationType);
@@ -215,7 +215,7 @@ void LocalDerivationGoal::tryLocalBuild()
                 actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
                     fmt("waiting for a free build user ID for '%s'", Magenta(worker.store.printStorePath(drvPath))));
             worker.waitForAWhile(shared_from_this());
-            return;
+            return StillAlive{};
         }
     }
 
@@ -250,15 +250,14 @@ void LocalDerivationGoal::tryLocalBuild()
         outputLocks.unlock();
         buildUser.reset();
         worker.permanentFailure = true;
-        done(BuildResult::InputRejected, {}, std::move(e));
-        return;
+        return done(BuildResult::InputRejected, {}, std::move(e));
     }
 
     /* This state will be reached when we get EOF on the child's
        log pipe. */
     state = &DerivationGoal::buildDone;
 
-    started();
+    return started();
 }
 
 

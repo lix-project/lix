@@ -105,6 +105,15 @@ struct Goal : public std::enable_shared_from_this<Goal>
 
 public:
 
+    struct StillAlive {};
+    struct Finished {};
+
+    struct WorkResult : std::variant<StillAlive, Finished>
+    {
+        WorkResult() = delete;
+        using variant::variant;
+    };
+
     /**
      * Exception containing an error message, if any.
      */
@@ -119,13 +128,13 @@ public:
         trace("goal destroyed");
     }
 
-    virtual void work() = 0;
+    virtual WorkResult work() = 0;
 
     void addWaitee(GoalPtr waitee);
 
     virtual void waiteeDone(GoalPtr waitee, ExitCode result);
 
-    virtual void handleChildOutput(int fd, std::string_view data)
+    virtual WorkResult handleChildOutput(int fd, std::string_view data)
     {
         abort();
     }
@@ -146,11 +155,11 @@ public:
      * get rid of any running child processes that are being monitored
      * by the worker (important!), etc.
      */
-    virtual void timedOut(Error && ex) = 0;
+    virtual Finished timedOut(Error && ex) = 0;
 
     virtual std::string key() = 0;
 
-    void amDone(ExitCode result, std::optional<Error> ex = {});
+    Finished amDone(ExitCode result, std::optional<Error> ex = {});
 
     virtual void cleanup() { }
 

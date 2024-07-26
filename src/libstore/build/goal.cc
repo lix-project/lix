@@ -45,7 +45,7 @@ void Goal::waiteeDone(GoalPtr waitee, ExitCode result)
 }
 
 
-void Goal::amDone(ExitCode result, std::optional<Error> ex)
+Goal::Finished Goal::amDone(ExitCode result, std::optional<Error> ex)
 {
     trace("done");
     assert(!exitCode.has_value());
@@ -66,6 +66,7 @@ void Goal::amDone(ExitCode result, std::optional<Error> ex)
     worker.removeGoal(shared_from_this());
 
     cleanup();
+    return Finished{};
 }
 
 

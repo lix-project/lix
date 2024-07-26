@@ -20,21 +20,20 @@ DrvOutputSubstitutionGoal::DrvOutputSubstitutionGoal(
 }
 
 
-void DrvOutputSubstitutionGoal::init()
+Goal::WorkResult DrvOutputSubstitutionGoal::init()
 {
     trace("init");
 
     /* If the derivation already exists, we’re done */
     if (worker.store.queryRealisation(id)) {
-        amDone(ecSuccess);
-        return;
+        return amDone(ecSuccess);
     }
 
     subs = settings.useSubstitutes ? getDefaultSubstituters() : std::list<ref<Store>>();
-    tryNext();
+    return tryNext();
 }
 
-void DrvOutputSubstitutionGoal::tryNext()
+Goal::WorkResult DrvOutputSubstitutionGoal::tryNext()
 {
     trace("trying next substituter");
 
@@ -43,7 +42,7 @@ void DrvOutputSubstitutionGoal::tryNext()
        prevents infinite waiting. */
     if (worker.runningSubstitutions >= std::max(1U, settings.maxSubstitutionJobs.get())) {
         worker.waitForBuildSlot(shared_from_this());
-        return;
+        return StillAlive{};
     }
 
     maintainRunningSubstitutions =
@@ -54,16 +53,14 @@ void DrvOutputSubstitutionGoal::tryNext()
            with it. */
         debug("derivation output '%s' is required, but there is no substituter that can provide it", id.to_string());
 
-        /* Hack: don't indicate failure if there were no substituters.
-           In that case the calling derivation should just do a
-           build. */
-        amDone(substituterFailed ? ecFailed : ecNoSubstituters);
-
         if (substituterFailed) {
             worker.failedSubstitutions++;
         }
 
-        return;
+        /* Hack: don't indicate failure if there were no substituters.
+           In that case the calling derivation should just do a
+           build. */
+        return amDone(substituterFailed ? ecFailed : ecNoSubstituters);
     }
 
     sub = subs.front();
@@ -85,9 +82,10 @@ void DrvOutputSubstitutionGoal::tryNext()
     worker.childStarted(shared_from_this(), {downloadState->outPipe.readSide.get()}, true, false);
 
     state = &DrvOutputSubstitutionGoal::realisationFetched;
+    return StillAlive{};
 }
 
-void DrvOutputSubstitutionGoal::realisationFetched()
+Goal::WorkResult DrvOutputSubstitutionGoal::realisationFetched()
 {
     worker.childTerminated(this);
     maintainRunningSubstitutions.reset();
@@ -116,8 +114,7 @@ void DrvOutputSubstitutionGoal::realisationFetched()
                     worker.store.printStorePath(localOutputInfo->outPath),
                     worker.store.printStorePath(depPath)
                 );
-                tryNext();
-                return;
+                return tryNext();
             }
             addWaitee(worker.makeDrvOutputSubstitutionGoal(depId));
         }
@@ -125,29 +122,32 @@ void DrvOutputSubstitutionGoal::realisationFetched()
 
     addWaitee(worker.makePathSubstitutionGoal(outputInfo->outPath));
 
-    if (waitees.empty()) outPathValid();
-    else state = &DrvOutputSubstitutionGoal::outPathValid;
+    if (waitees.empty()) {
+        return outPathValid();
+    } else {
+        state = &DrvOutputSubstitutionGoal::outPathValid;
+        return StillAlive{};
+    }
 }
 
-void DrvOutputSubstitutionGoal::outPathValid()
+Goal::WorkResult DrvOutputSubstitutionGoal::outPathValid()
 {
     assert(outputInfo);
     trace("output path substituted");
 
     if (nrFailed > 0) {
         debug("The output path of the derivation output '%s' could not be substituted", id.to_string());
-        amDone(nrNoSubstituters > 0 || nrIncompleteClosure > 0 ? ecIncompleteClosure : ecFailed);
-        return;
+        return amDone(nrNoSubstituters > 0 || nrIncompleteClosure > 0 ? ecIncompleteClosure : ecFailed);
     }
 
     worker.store.registerDrvOutput(*outputInfo);
-    finished();
+    return finished();
 }
 
-void DrvOutputSubstitutionGoal::finished()
+Goal::WorkResult DrvOutputSubstitutionGoal::finished()
 {
     trace("finished");
-    amDone(ecSuccess);
+    return amDone(ecSuccess);
 }
 
 std::string DrvOutputSubstitutionGoal::key()
@@ -157,9 +157,9 @@ std::string DrvOutputSubstitutionGoal::key()
     return "a$" + std::string(id.to_string());
 }
 
-void DrvOutputSubstitutionGoal::work()
+Goal::WorkResult DrvOutputSubstitutionGoal::work()
 {
-    (this->*state)();
+    return (this->*state)();
 }
 
 

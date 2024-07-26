@@ -130,16 +130,16 @@ void DerivationGoal::killChild()
 }
 
 
-void DerivationGoal::timedOut(Error && ex)
+Goal::Finished DerivationGoal::timedOut(Error && ex)
 {
     killChild();
-    done(BuildResult::TimedOut, {}, std::move(ex));
+    return done(BuildResult::TimedOut, {}, std::move(ex));
 }
 
 
-void DerivationGoal::work()
+Goal::WorkResult DerivationGoal::work()
 {
-    (this->*state)();
+    return (this->*state)();
 }
 
 void DerivationGoal::addWantedOutputs(const OutputsSpec & outputs)
@@ -163,7 +163,7 @@ void DerivationGoal::addWantedOutputs(const OutputsSpec & outputs)
 }
 
 
-void DerivationGoal::getDerivation()
+Goal::WorkResult DerivationGoal::getDerivation()
 {
     trace("init");
 
@@ -171,23 +171,22 @@ void DerivationGoal::getDerivation()
        exists.  If it doesn't, it may be created through a
        substitute. */
     if (buildMode == bmNormal && worker.evalStore.isValidPath(drvPath)) {
-        loadDerivation();
-        return;
+        return loadDerivation();
     }
 
     addWaitee(worker.makePathSubstitutionGoal(drvPath));
 
     state = &DerivationGoal::loadDerivation;
+    return StillAlive{};
 }
 
 
-void DerivationGoal::loadDerivation()
+Goal::WorkResult DerivationGoal::loadDerivation()
 {
     trace("loading derivation");
 
     if (nrFailed != 0) {
-        done(BuildResult::MiscFailure, {}, Error("cannot build missing derivation '%s'", worker.store.printStorePath(drvPath)));
-        return;
+        return done(BuildResult::MiscFailure, {}, Error("cannot build missing derivation '%s'", worker.store.printStorePath(drvPath)));
     }
 
     /* `drvPath' should already be a root, but let's be on the safe
@@ -209,11 +208,11 @@ void DerivationGoal::loadDerivation()
     }
     assert(drv);
 
-    haveDerivation();
+    return haveDerivation();
 }
 
 
-void DerivationGoal::haveDerivation()
+Goal::WorkResult DerivationGoal::haveDerivation()
 {
     trace("have derivation");
 
@@ -241,8 +240,7 @@ void DerivationGoal::haveDerivation()
             });
         }
 
-        gaveUpOnSubstitution();
-        return;
+        return gaveUpOnSubstitution();
     }
 
     for (auto & i : drv->outputsAndOptPaths(worker.store))
@@ -264,8 +262,7 @@ void DerivationGoal::haveDerivation()
 
     /* If they are all valid, then we're done. */
     if (allValid && buildMode == bmNormal) {
-        done(BuildResult::AlreadyValid, std::move(validOutputs));
-        return;
+        return done(BuildResult::AlreadyValid, std::move(validOutputs));
     }
 
     /* We are first going to try to create the invalid output paths
@@ -290,24 +287,24 @@ void DerivationGoal::haveDerivation()
             }
         }
 
-    if (waitees.empty()) /* to prevent hang (no wake-up event) */
-        outputsSubstitutionTried();
-    else
+    if (waitees.empty()) { /* to prevent hang (no wake-up event) */
+        return outputsSubstitutionTried();
+    } else {
         state = &DerivationGoal::outputsSubstitutionTried;
+        return StillAlive{};
+    }
 }
 
-
-void DerivationGoal::outputsSubstitutionTried()
+Goal::WorkResult DerivationGoal::outputsSubstitutionTried()
 {
     trace("all outputs substituted (maybe)");
 
     assert(drv->type().isPure());
 
     if (nrFailed > 0 && nrFailed > nrNoSubstituters + nrIncompleteClosure && !settings.tryFallback) {
-        done(BuildResult::TransientFailure, {},
+        return done(BuildResult::TransientFailure, {},
             Error("some substitutes for the outputs of derivation '%s' failed (usually happens due to networking issues); try '--fallback' to build derivation from source ",
                 worker.store.printStorePath(drvPath)));
-        return;
     }
 
     /*  If the substitutes form an incomplete closure, then we should
@@ -341,32 +338,29 @@ void DerivationGoal::outputsSubstitutionTried()
 
     if (needRestart == NeedRestartForMoreOutputs::OutputsAddedDoNeed) {
         needRestart = NeedRestartForMoreOutputs::OutputsUnmodifedDontNeed;
-        haveDerivation();
-        return;
+        return haveDerivation();
     }
 
     auto [allValid, validOutputs] = checkPathValidity();
 
     if (buildMode == bmNormal && allValid) {
-        done(BuildResult::Substituted, std::move(validOutputs));
-        return;
+        return done(BuildResult::Substituted, std::move(validOutputs));
     }
     if (buildMode == bmRepair && allValid) {
-        repairClosure();
-        return;
+        return repairClosure();
     }
     if (buildMode == bmCheck && !allValid)
         throw Error("some outputs of '%s' are not valid, so checking is not possible",
             worker.store.printStorePath(drvPath));
 
     /* Nothing to wait for; tail call */
-    gaveUpOnSubstitution();
+    return gaveUpOnSubstitution();
 }
 
 
 /* At least one of the output paths could not be
    produced using a substitute.  So we have to build instead. */
-void DerivationGoal::gaveUpOnSubstitution()
+Goal::WorkResult DerivationGoal::gaveUpOnSubstitution()
 {
     /* At this point we are building all outputs, so if more are wanted there
        is no need to restart. */
@@ -427,14 +421,16 @@ void DerivationGoal::gaveUpOnSubstitution()
         addWaitee(worker.makePathSubstitutionGoal(i));
     }
 
-    if (waitees.empty()) /* to prevent hang (no wake-up event) */
-        inputsRealised();
-    else
+    if (waitees.empty()) {/* to prevent hang (no wake-up event) */
+        return inputsRealised();
+    } else {
         state = &DerivationGoal::inputsRealised;
+        return StillAlive{};
+    }
 }
 
 
-void DerivationGoal::repairClosure()
+Goal::WorkResult DerivationGoal::repairClosure()
 {
     assert(drv->type().isPure());
 
@@ -488,41 +484,39 @@ void DerivationGoal::repairClosure()
     }
 
     if (waitees.empty()) {
-        done(BuildResult::AlreadyValid, assertPathValidity());
-        return;
+        return done(BuildResult::AlreadyValid, assertPathValidity());
     }
 
     state = &DerivationGoal::closureRepaired;
+    return StillAlive{};
 }
 
 
-void DerivationGoal::closureRepaired()
+Goal::WorkResult DerivationGoal::closureRepaired()
 {
     trace("closure repaired");
     if (nrFailed > 0)
         throw Error("some paths in the output closure of derivation '%s' could not be repaired",
             worker.store.printStorePath(drvPath));
-    done(BuildResult::AlreadyValid, assertPathValidity());
+    return done(BuildResult::AlreadyValid, assertPathValidity());
 }
 
 
-void DerivationGoal::inputsRealised()
+Goal::WorkResult DerivationGoal::inputsRealised()
 {
     trace("all inputs realised");
 
     if (nrFailed != 0) {
         if (!useDerivation)
             throw Error("some dependencies of '%s' are missing", worker.store.printStorePath(drvPath));
-        done(BuildResult::DependencyFailed, {}, Error(
+        return done(BuildResult::DependencyFailed, {}, Error(
                 "%s dependencies of derivation '%s' failed to build",
                 nrFailed, worker.store.printStorePath(drvPath)));
-        return;
     }
 
     if (retrySubstitution == RetrySubstitution::YesNeed) {
         retrySubstitution = RetrySubstitution::AlreadyRetried;
-        haveDerivation();
-        return;
+        return haveDerivation();
     }
 
     /* Gather information necessary for computing the closure and/or
@@ -589,7 +583,7 @@ void DerivationGoal::inputsRealised()
             addWaitee(resolvedDrvGoal);
 
             state = &DerivationGoal::resolvedFinished;
-            return;
+            return StillAlive{};
         }
 
         std::function<void(const StorePath &, const DerivedPathMap<StringSet>::ChildNode &)> accumInputPaths;
@@ -655,9 +649,10 @@ void DerivationGoal::inputsRealised()
        build hook. */
     state = &DerivationGoal::tryToBuild;
     worker.wakeUp(shared_from_this());
+    return StillAlive{};
 }
 
-void DerivationGoal::started()
+Goal::WorkResult DerivationGoal::started()
 {
     auto msg = fmt(
         buildMode == bmRepair ? "repairing outputs of '%s'" :
@@ -668,9 +663,10 @@ void DerivationGoal::started()
     act = std::make_unique<Activity>(*logger, lvlInfo, actBuild, msg,
         Logger::Fields{worker.store.printStorePath(drvPath), hook ? machineName : "", 1, 1});
     mcRunningBuilds = std::make_unique<MaintainCount<uint64_t>>(worker.runningBuilds);
+    return StillAlive{};
 }
 
-void DerivationGoal::tryToBuild()
+Goal::WorkResult DerivationGoal::tryToBuild()
 {
     trace("trying to build");
 
@@ -706,7 +702,7 @@ void DerivationGoal::tryToBuild()
             actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
                 fmt("waiting for lock on %s", Magenta(showPaths(lockFiles))));
         worker.waitForAWhile(shared_from_this());
-        return;
+        return StillAlive{};
     }
 
     actLock.reset();
@@ -723,8 +719,7 @@ void DerivationGoal::tryToBuild()
     if (buildMode != bmCheck && allValid) {
         debug("skipping build of derivation '%s', someone beat us to it", worker.store.printStorePath(drvPath));
         outputLocks.setDeletion(true);
-        done(BuildResult::AlreadyValid, std::move(validOutputs));
-        return;
+        return done(BuildResult::AlreadyValid, std::move(validOutputs));
     }
 
     /* If any of the outputs already exist but are not valid, delete
@@ -751,8 +746,7 @@ void DerivationGoal::tryToBuild()
                 actLock.reset();
                 buildResult.startTime = time(0); // inexact
                 state = &DerivationGoal::buildDone;
-                started();
-                return;
+                return started();
             case rpPostpone:
                 /* Not now; wait until at least one child finishes or
                    the wake-up timeout expires. */
@@ -761,7 +755,7 @@ void DerivationGoal::tryToBuild()
                         fmt("waiting for a machine to build '%s'", Magenta(worker.store.printStorePath(drvPath))));
                 worker.waitForAWhile(shared_from_this());
                 outputLocks.unlock();
-                return;
+                return StillAlive{};
             case rpDecline:
                 /* We should do it ourselves. */
                 break;
@@ -772,9 +766,10 @@ void DerivationGoal::tryToBuild()
 
     state = &DerivationGoal::tryLocalBuild;
     worker.wakeUp(shared_from_this());
+    return StillAlive{};
 }
 
-void DerivationGoal::tryLocalBuild() {
+Goal::WorkResult DerivationGoal::tryLocalBuild() {
     throw Error(
         "unable to build with a primary store that isn't a local store; "
         "either pass a different '--store' or enable remote builds."
@@ -932,7 +927,7 @@ void runPostBuildHook(
     proc.getStdout()->drainInto(sink);
 }
 
-void DerivationGoal::buildDone()
+Goal::WorkResult DerivationGoal::buildDone()
 {
     trace("build done");
 
@@ -1027,8 +1022,7 @@ void DerivationGoal::buildDone()
         outputLocks.setDeletion(true);
         outputLocks.unlock();
 
-        done(BuildResult::Built, std::move(builtOutputs));
-
+        return done(BuildResult::Built, std::move(builtOutputs));
     } catch (BuildError & e) {
         outputLocks.unlock();
 
@@ -1049,12 +1043,11 @@ void DerivationGoal::buildDone()
                 BuildResult::PermanentFailure;
         }
 
-        done(st, {}, std::move(e));
-        return;
+        return done(st, {}, std::move(e));
     }
 }
 
-void DerivationGoal::resolvedFinished()
+Goal::WorkResult DerivationGoal::resolvedFinished()
 {
     trace("resolved derivation finished");
 
@@ -1122,7 +1115,7 @@ void DerivationGoal::resolvedFinished()
     if (status == BuildResult::AlreadyValid)
         status = BuildResult::ResolvesToAlreadyValid;
 
-    done(status, std::move(builtOutputs));
+    return done(status, std::move(builtOutputs));
 }
 
 HookReply DerivationGoal::tryBuildHook()
@@ -1293,7 +1286,7 @@ bool DerivationGoal::isReadDesc(int fd)
     return fd == hook->builderOut.readSide.get();
 }
 
-void DerivationGoal::handleChildOutput(int fd, std::string_view data)
+Goal::WorkResult DerivationGoal::handleChildOutput(int fd, std::string_view data)
 {
     // local & `ssh://`-builds are dealt with here.
     auto isWrittenToLog = isReadDesc(fd);
@@ -1302,11 +1295,10 @@ void DerivationGoal::handleChildOutput(int fd, std::string_view data)
         logSize += data.size();
         if (settings.maxLogSize && logSize > settings.maxLogSize) {
             killChild();
-            done(
+            return done(
                 BuildResult::LogLimitExceeded, {},
                 Error("%s killed after writing more than %d bytes of log output",
                     getName(), settings.maxLogSize));
-            return;
         }
 
         for (auto c : data)
@@ -1357,6 +1349,8 @@ void DerivationGoal::handleChildOutput(int fd, std::string_view data)
             } else
                 currentHookLine += c;
     }
+
+    return StillAlive{};
 }
 
 
@@ -1505,7 +1499,7 @@ SingleDrvOutputs DerivationGoal::assertPathValidity()
 }
 
 
-void DerivationGoal::done(
+Goal::Finished DerivationGoal::done(
     BuildResult::Status status,
     SingleDrvOutputs builtOutputs,
     std::optional<Error> ex)
@@ -1540,7 +1534,7 @@ void DerivationGoal::done(
         fs << worker.store.printStorePath(drvPath) << "\t" << buildResult.toString() << std::endl;
     }
 
-    amDone(buildResult.success() ? ecSuccess : ecFailed, std::move(ex));
+    return amDone(buildResult.success() ? ecSuccess : ecFailed, std::move(ex));
 }
 
 

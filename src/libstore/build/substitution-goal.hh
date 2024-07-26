@@ -66,7 +66,7 @@ struct PathSubstitutionGoal : public Goal
     std::unique_ptr<MaintainCount<uint64_t>> maintainExpectedSubstitutions,
         maintainRunningSubstitutions, maintainExpectedNar, maintainExpectedDownload;
 
-    typedef void (PathSubstitutionGoal::*GoalState)();
+    typedef WorkResult (PathSubstitutionGoal::*GoalState)();
     GoalState state;
 
     /**
@@ -74,7 +74,7 @@ struct PathSubstitutionGoal : public Goal
      */
     std::optional<ContentAddress> ca;
 
-    void done(
+    Finished done(
         ExitCode result,
         BuildResult::Status status,
         std::optional<std::string> errorMsg = {});
@@ -83,7 +83,7 @@ public:
     PathSubstitutionGoal(const StorePath & storePath, Worker & worker, RepairFlag repair = NoRepair, std::optional<ContentAddress> ca = std::nullopt);
     ~PathSubstitutionGoal();
 
-    void timedOut(Error && ex) override { abort(); };
+    Finished timedOut(Error && ex) override { abort(); };
 
     /**
      * We prepend "a$" to the key name to ensure substitution goals
@@ -94,22 +94,22 @@ public:
         return "a$" + std::string(storePath.name()) + "$" + worker.store.printStorePath(storePath);
     }
 
-    void work() override;
+    WorkResult work() override;
 
     /**
      * The states.
      */
-    void init();
-    void tryNext();
-    void gotInfo();
-    void referencesValid();
-    void tryToRun();
-    void finished();
+    WorkResult init();
+    WorkResult tryNext();
+    WorkResult gotInfo();
+    WorkResult referencesValid();
+    WorkResult tryToRun();
+    WorkResult finished();
 
     /**
      * Callback used by the worker to write to the log.
      */
-    void handleChildOutput(int fd, std::string_view data) override;
+    WorkResult handleChildOutput(int fd, std::string_view data) override;
 
     /* Called by destructor, can't be overridden */
     void cleanup() override final;

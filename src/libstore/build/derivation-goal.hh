@@ -188,7 +188,7 @@ struct DerivationGoal : public Goal
      */
     std::optional<DerivationType> derivationType;
 
-    typedef void (DerivationGoal::*GoalState)();
+    typedef WorkResult (DerivationGoal::*GoalState)();
     GoalState state;
 
     BuildMode buildMode;
@@ -217,11 +217,11 @@ struct DerivationGoal : public Goal
         BuildMode buildMode = bmNormal);
     virtual ~DerivationGoal() noexcept(false);
 
-    void timedOut(Error && ex) override;
+    Finished timedOut(Error && ex) override;
 
     std::string key() override;
 
-    void work() override;
+    WorkResult work() override;
 
     /**
      * Add wanted outputs to an already existing derivation goal.
@@ -231,18 +231,18 @@ struct DerivationGoal : public Goal
     /**
      * The states.
      */
-    void getDerivation();
-    void loadDerivation();
-    void haveDerivation();
-    void outputsSubstitutionTried();
-    void gaveUpOnSubstitution();
-    void closureRepaired();
-    void inputsRealised();
-    void tryToBuild();
-    virtual void tryLocalBuild();
-    void buildDone();
+    WorkResult getDerivation();
+    WorkResult loadDerivation();
+    WorkResult haveDerivation();
+    WorkResult outputsSubstitutionTried();
+    WorkResult gaveUpOnSubstitution();
+    WorkResult closureRepaired();
+    WorkResult inputsRealised();
+    WorkResult tryToBuild();
+    virtual WorkResult tryLocalBuild();
+    WorkResult buildDone();
 
-    void resolvedFinished();
+    WorkResult resolvedFinished();
 
     /**
      * Is the build hook willing to perform the build?
@@ -292,7 +292,7 @@ struct DerivationGoal : public Goal
     /**
      * Callback used by the worker to write to the log.
      */
-    void handleChildOutput(int fd, std::string_view data) override;
+    WorkResult handleChildOutput(int fd, std::string_view data) override;
     void handleEOF(int fd) override;
     void flushLine();
 
@@ -323,11 +323,11 @@ struct DerivationGoal : public Goal
      */
     virtual void killChild();
 
-    void repairClosure();
+    WorkResult repairClosure();
 
-    void started();
+    WorkResult started();
 
-    void done(
+    Finished done(
         BuildResult::Status status,
         SingleDrvOutputs builtOutputs = {},
         std::optional<Error> ex = {});
