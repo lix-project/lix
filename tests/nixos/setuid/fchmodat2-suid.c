@@ -12,10 +12,7 @@ int main(void) {
     fprintf(fd, "henlo :3");
     fclose(fd);
 
-    // FIXME use something nicer here that's less
-    // platform-dependent as soon as we go to 24.05
-    // and the glibc is new enough to support fchmodat2
-    long rs = syscall(452, NULL, name, S_ISUID, 0);
+    long rs = syscall(SYS_fchmodat2, NULL, name, S_ISUID, 0);
     assert(rs == -1);
     assert(errno == EPERM);
 }

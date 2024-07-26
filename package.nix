@@ -391,6 +391,7 @@ stdenv.mkDerivation (finalAttrs: {
         # Lix specific packages
         pre-commit-checks,
         contribNotice,
+        check-syscalls,
       }:
       let
         glibcFix = lib.optionalAttrs (buildPlatform.isLinux && glibcLocales != null) {
@@ -441,6 +442,7 @@ stdenv.mkDerivation (finalAttrs: {
               # `bash` from inside `nix develop`, say, because you are using it
               # via direnv, you will by default get bash (unusable edition).
               bashInteractive
+              check-syscalls
               pythonEnv
               # docker image tool
               skopeo

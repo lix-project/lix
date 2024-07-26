@@ -164,6 +164,7 @@
           nixUnstable = prev.nixUnstable;
 
           check-headers = final.buildPackages.callPackage ./maintainers/check-headers.nix { };
+          check-syscalls = final.buildPackages.callPackage ./maintainers/check-syscalls.nix { };
 
           default-busybox-sandbox-shell = final.busybox.override {
             useMusl = true;
