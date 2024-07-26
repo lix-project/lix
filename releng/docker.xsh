@@ -44,23 +44,8 @@ def upload_docker_images(target: DockerTarget, paths: list[Path]):
 
         for path in paths:
             digest_file = tmp / (path.name + '.digest')
-            tmp_image = tmp / 'tmp-image.tar.gz'
 
-            # insecure-policy: we don't have any signature policy, we are just uploading an image
-            #
-            # Absurd: we copy it into an OCI image first so we can get the hash
-            # we need to upload it untagged, because skopeo has no "don't tag
-            # this" option.
-            # The reason for this is that forgejo's container registry throws
-            # away old versions of tags immediately, so we cannot use a temp
-            # tag, and it *does* reduce confusion to not upload tags that
-            # should not be used.
-            #
-            # Workaround for: https://github.com/containers/skopeo/issues/2354
-            log.info('skopeo copy to temp oci-archive %s', tmp_image)
-            skopeo --insecure-policy copy --format oci --all --digestfile @(digest_file) docker-archive:@(path) oci-archive:@(tmp_image)
-
-            inspection = json.loads($(skopeo inspect oci-archive:@(tmp_image)))
+            inspection = json.loads($(skopeo inspect docker-archive:@(path)))
 
             docker_arch = inspection['Architecture']
             docker_os = inspection['Os']
@@ -68,8 +53,9 @@ def upload_docker_images(target: DockerTarget, paths: list[Path]):
 
             log.info('Pushing image %s for %s to %s', path, docker_arch, target.registry_path)
 
+            # insecure-policy: we don't have any signature policy, we are just uploading an image
+            skopeo --insecure-policy copy --digestfile @(digest_file) --all docker-archive:@(path) f'docker://{target.registry_path}@@unknown-digest@@'
             digest = digest_file.read_text().strip()
-            skopeo --insecure-policy copy --preserve-digests --all oci-archive:@(tmp_image) f'docker://{target.registry_path}@{digest}'
 
             # skopeo doesn't give us the manifest size directly, so we just ask the registry
             metadata = reg.image_info(target.registry_path, digest)
