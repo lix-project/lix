@@ -17,6 +17,7 @@
 #include "namespaces.hh"
 #include "child.hh"
 #include "unix-domain-socket.hh"
+#include "mount.hh"
 
 #include <regex>
 #include <queue>
@@ -385,39 +386,6 @@ void LocalDerivationGoal::cleanupPostOutputsRegisteredModeNonCheck()
 
     cleanupPostOutputsRegisteredModeCheck();
 }
-
-#if __linux__
-static void doBind(const Path & source, const Path & target, bool optional = false) {
-    debug("bind mounting '%1%' to '%2%'", source, target);
-
-    auto bindMount = [&]() {
-        if (mount(source.c_str(), target.c_str(), "", MS_BIND | MS_REC, 0) == -1)
-            throw SysError("bind mount from '%1%' to '%2%' failed", source, target);
-    };
-
-    auto maybeSt = maybeLstat(source);
-    if (!maybeSt) {
-        if (optional)
-            return;
-        else
-            throw SysError("getting attributes of path '%1%'", source);
-    }
-    auto st = *maybeSt;
-
-    if (S_ISDIR(st.st_mode)) {
-        createDirs(target);
-        bindMount();
-    } else if (S_ISLNK(st.st_mode)) {
-        // Symlinks can (apparently) not be bind-mounted, so just copy it
-        createDirs(dirOf(target));
-        copyFile(source, target, {});
-    } else {
-        createDirs(dirOf(target));
-        writeFile(target, "");
-        bindMount();
-    }
-};
-#endif
 
 void LocalDerivationGoal::startBuilder()
 {
@@ -1321,7 +1289,7 @@ void LocalDerivationGoal::addDependency(const StorePath & path)
             Path target = chrootRootDir + worker.store.printStorePath(path);
 
             if (pathExists(target)) {
-                // There is a similar debug message in doBind, so only run it in this block to not have double messages.
+                // There is a similar debug message in bindPath, so only run it in this block to not have double messages.
                 debug("bind-mounting %s -> %s", target, source);
                 throw Error("store path '%s' already exists in the sandbox", worker.store.printStorePath(path));
             }
@@ -1338,7 +1306,7 @@ void LocalDerivationGoal::addDependency(const StorePath & path)
                 if (setns(sandboxMountNamespace.get(), 0) == -1)
                     throw SysError("entering sandbox mount namespace");
 
-                doBind(source, target);
+                bindPath(source, target);
 
                 _exit(0);
             });
@@ -2117,7 +2085,7 @@ void LocalDerivationGoal::runChild()
                     chmodPath(dst, 0555);
                 } else
                 #endif
-                    doBind(i.second.source, chrootRootDir + i.first, i.second.optional);
+                    bindPath(i.second.source, chrootRootDir + i.first, i.second.optional);
             }
 
             /* Bind a new instance of procfs on /proc. */
@@ -2156,8 +2124,8 @@ void LocalDerivationGoal::runChild()
                 } else {
                     if (errno != EINVAL)
                         throw SysError("mounting /dev/pts");
-                    doBind("/dev/pts", chrootRootDir + "/dev/pts");
-                    doBind("/dev/ptmx", chrootRootDir + "/dev/ptmx");
+                    bindPath("/dev/pts", chrootRootDir + "/dev/pts");
+                    bindPath("/dev/ptmx", chrootRootDir + "/dev/ptmx");
                 }
             }
 
