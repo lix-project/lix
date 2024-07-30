@@ -652,9 +652,12 @@ ProcessLineResult NixRepl::processLine(std::string line)
         // using runProgram2 to allow editors to display their UI
         runProgram2(RunOptions { .program = editor, .searchPath = true, .args = args }).wait();
 
-        // Reload right after exiting the editor
-        state->resetFileCache();
-        reloadFiles();
+        // Reload right after exiting the editor if path is not in store
+        // Store is immutable, so there could be no changes, so there's no need to reload
+        if (!state->store->isInStore(path.resolveSymlinks().path.abs())) {
+            state->resetFileCache();
+            reloadFiles();
+        }
     }
 
     else if (command == ":t") {

@@ -57,6 +57,11 @@ ericson:
   display_name: John Ericson
   github: ericson2314
 
+goldstein:
+  display_name: goldstein
+  forgejo: goldstein
+  github: GoldsteinE
+
 horrors:
   display_name: eldritch horrors
   forgejo: pennae
