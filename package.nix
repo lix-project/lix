@@ -35,7 +35,7 @@
   meson,
   ninja,
   openssl,
-  pegtl ? __forDefaults.pegtl,
+  pegtl,
   pkg-config,
   python3,
   rapidcheck,
@@ -70,8 +70,6 @@
 
     lix-doc = callPackage ./lix-doc/package.nix { };
     build-release-notes = callPackage ./maintainers/build-release-notes.nix { };
-
-    pegtl = callPackage ./misc/pegtl.nix { };
   },
 }:
 let

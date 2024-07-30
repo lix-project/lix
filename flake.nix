@@ -196,8 +196,6 @@
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
           };
 
-          pegtl = final.nix.passthru.pegtl;
-
           # Export the patched version of boehmgc that Lix uses into the overlay
           # for consumers of this flake.
           boehmgc-nix = final.nix.passthru.boehmgc-nix;
