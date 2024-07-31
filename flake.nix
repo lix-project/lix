@@ -33,7 +33,7 @@
 
       # This notice gets echoed as a dev shell hook, and can be turned off with
       # `touch .nocontribmsg`
-      sgr = ''['';
+      sgr = builtins.fromJSON ''"\u001b["'';
       freezePage = "https://wiki.lix.systems/books/lix-contributors/page/freezes-and-recommended-contributions";
       codebaseOverview = "https://wiki.lix.systems/books/lix-contributors/page/codebase-overview";
       contribNotice = builtins.toFile "lix-contrib-notice" ''
