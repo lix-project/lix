@@ -1,23 +1,11 @@
-#include "globals.hh"
 #include "installable-attr-path.hh"
 #include "outputs-spec.hh"
 #include "command.hh"
 #include "attr-path.hh"
 #include "common-eval-args.hh"
-#include "derivations.hh"
-#include "eval-inline.hh"
 #include "eval.hh"
 #include "get-drvs.hh"
-#include "store-api.hh"
-#include "shared.hh"
 #include "flake/flake.hh"
-#include "eval-cache.hh"
-#include "url.hh"
-#include "registry.hh"
-#include "build-result.hh"
-
-#include <regex>
-#include <queue>
 
 #include <nlohmann/json.hpp>
 

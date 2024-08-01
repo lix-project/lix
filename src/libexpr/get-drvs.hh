@@ -37,13 +37,14 @@ private:
 
     bool checkMeta(Value & v);
 
+    void fillOutputs(bool withPaths = true);
+
 public:
     /**
      * path towards the derivation
      */
     std::string attrPath;
 
-    DrvInfo(EvalState & state) : state(&state) { };
     DrvInfo(EvalState & state, std::string attrPath, Bindings * attrs);
     DrvInfo(EvalState & state, ref<Store> store, const std::string & drvPathWithOutputs);
 

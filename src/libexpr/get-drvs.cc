@@ -1,6 +1,7 @@
 #include "get-drvs.hh"
 #include "eval-inline.hh"
 #include "derivations.hh"
+#include "eval.hh"
 #include "store-api.hh"
 #include "path-with-outputs.hh"
 
@@ -101,66 +102,134 @@ StorePath DrvInfo::queryOutPath()
     return *outPath;
 }
 
+void DrvInfo::fillOutputs(bool withPaths)
+{
+    auto fillDefault = [&]() {
+        std::optional<StorePath> outPath = std::nullopt;
+        if (withPaths) {
+            outPath.emplace(this->queryOutPath());
+        }
+        this->outputs.emplace("out", outPath);
+    };
+
+    // lol. lmao even.
+    if (this->attrs == nullptr) {
+        fillDefault();
+        return;
+    }
+
+    Attr * outputs = this->attrs->get(this->state->sOutputs);
+    if (outputs == nullptr) {
+        fillDefault();
+        return;
+    }
+
+    // NOTE(Qyriad): I don't think there is any codepath that can cause this to error.
+    this->state->forceList(
+        *outputs->value,
+        outputs->pos,
+        "while evaluating the 'outputs' attribute of a derivation"
+    );
+
+    for (auto [idx, elem] : enumerate(outputs->value->listItems())) {
+        // NOTE(Qyriad): This error should be *extremely* rare in practice.
+        // It is impossible to construct with `stdenv.mkDerivation`,
+        // `builtins.derivation`, or even `derivationStrict`. As far as we can tell,
+        // it is only possible by overriding a derivation attrset already created by
+        // one of those with `//` to introduce the failing `outputs` entry.
+        auto errMsg = fmt("while evaluating output %d of a derivation", idx);
+        std::string_view outputName = state->forceStringNoCtx(
+            *elem,
+            outputs->pos,
+            errMsg
+        );
+
+        if (withPaths) {
+            // Find the attr with this output's name...
+            Attr * out = this->attrs->get(this->state->symbols.create(outputName));
+            if (out == nullptr) {
+                // FIXME: throw error?
+                continue;
+            }
+
+            // Meanwhile we couldn't figure out any circumstances
+            // that cause this to error.
+            state->forceAttrs(*out->value, outputs->pos, errMsg);
+
+            // ...and evaluate its `outPath` attribute.
+            Attr * outPath = out->value->attrs->get(this->state->sOutPath);
+            if (outPath == nullptr) {
+                continue;
+                // FIXME: throw error?
+            }
+
+            NixStringContext context;
+            // And idk what could possibly cause this one to error
+            // that wouldn't error before here.
+            auto storePath = state->coerceToStorePath(
+                outPath->pos,
+                *outPath->value,
+                context,
+                errMsg
+            );
+            this->outputs.emplace(outputName, storePath);
+        } else {
+            this->outputs.emplace(outputName, std::nullopt);
+        }
+    }
+}
 
 DrvInfo::Outputs DrvInfo::queryOutputs(bool withPaths, bool onlyOutputsToInstall)
 {
+    // If we haven't already cached the outputs set, then do so now.
     if (outputs.empty()) {
-        /* Get the ‘outputs’ list. */
-        Bindings::iterator i;
-        if (attrs && (i = attrs->find(state->sOutputs)) != attrs->end()) {
-            state->forceList(*i->value, i->pos, "while evaluating the 'outputs' attribute of a derivation");
-
-            /* For each output... */
-            for (auto elem : i->value->listItems()) {
-                std::string output(state->forceStringNoCtx(*elem, i->pos, "while evaluating the name of an output of a derivation"));
-
-                if (withPaths) {
-                    /* Evaluate the corresponding set. */
-                    Bindings::iterator out = attrs->find(state->symbols.create(output));
-                    if (out == attrs->end()) continue; // FIXME: throw error?
-                    state->forceAttrs(*out->value, i->pos, "while evaluating an output of a derivation");
-
-                    /* And evaluate its ‘outPath’ attribute. */
-                    Bindings::iterator outPath = out->value->attrs->find(state->sOutPath);
-                    if (outPath == out->value->attrs->end()) continue; // FIXME: throw error?
-                    NixStringContext context;
-                    outputs.emplace(output, state->coerceToStorePath(outPath->pos, *outPath->value, context, "while evaluating an output path of a derivation"));
-                } else
-                    outputs.emplace(output, std::nullopt);
-            }
-        } else
-            outputs.emplace("out", withPaths ? std::optional{queryOutPath()} : std::nullopt);
+        // FIXME: this behavior seems kind of busted, since whether or not this
+        // DrvInfo will have paths is forever determined by the *first* call to
+        // this function??
+        fillOutputs(withPaths);
     }
 
+    // Things that operate on derivations like packages, like `nix-env` and `nix build`,
+    // allow derivations to specify which outputs should be used in those user-facing
+    // cases if the user didn't specify an output explicitly.
+    // If the caller just wanted all the outputs for this derivation, though,
+    // then we're done here.
     if (!onlyOutputsToInstall || !attrs)
         return outputs;
 
-    Bindings::iterator i;
-    if (attrs && (i = attrs->find(state->sOutputSpecified)) != attrs->end() && state->forceBool(*i->value, i->pos, "while evaluating the 'outputSpecified' attribute of a derivation")) {
-        Outputs result;
-        auto out = outputs.find(queryOutputName());
-        if (out == outputs.end())
-            throw Error("derivation does not have output '%s'", queryOutputName());
-        result.insert(*out);
-        return result;
+    // Regardless of `meta.outputsToInstall`, though, you can select into a derivation
+    // output by its attribute, e.g. `pkgs.lix.dev`, which (lol?) sets the magic
+    // attribute `outputSpecified = true`, and changes the `outputName` attr to the
+    // explicitly selected-into output.
+    if (Attr * outSpecAttr = attrs->get(state->sOutputSpecified)) {
+        bool outputSpecified = this->state->forceBool(
+            *outSpecAttr->value,
+            outSpecAttr->pos,
+            "while evaluating the 'outputSpecified' attribute of a derivation"
+        );
+        if (outputSpecified) {
+            auto maybeOut = outputs.find(queryOutputName());
+            if (maybeOut == outputs.end()) {
+                throw Error("derivation does not have output '%s'", queryOutputName());
+            }
+            return Outputs{*maybeOut};
+        }
     }
 
-    else {
-        /* Check for `meta.outputsToInstall` and return `outputs` reduced to that. */
-        const Value * outTI = queryMeta("outputsToInstall");
-        if (!outTI) return outputs;
-        auto errMsg = Error("this derivation has bad 'meta.outputsToInstall'");
-            /* ^ this shows during `nix-env -i` right under the bad derivation */
-        if (!outTI->isList()) throw errMsg;
-        Outputs result;
-        for (auto elem : outTI->listItems()) {
-            if (elem->type() != nString) throw errMsg;
-            auto out = outputs.find(elem->string.s);
-            if (out == outputs.end()) throw errMsg;
-            result.insert(*out);
-        }
-        return result;
+    /* Check for `meta.outputsToInstall` and return `outputs` reduced to that. */
+    const Value * outTI = queryMeta("outputsToInstall");
+    if (!outTI) return outputs;
+    auto errMsg = Error("this derivation has bad 'meta.outputsToInstall'");
+        /* ^ this shows during `nix-env -i` right under the bad derivation */
+    if (!outTI->isList()) throw errMsg;
+    Outputs result;
+    for (auto elem : outTI->listItems()) {
+        if (elem->type() != nString) throw errMsg;
+        auto out = outputs.find(elem->string.s);
+        if (out == outputs.end()) throw errMsg;
+        result.insert(*out);
     }
+    return result;
 }
 
 
@@ -350,56 +419,95 @@ static void getDerivations(EvalState & state, Value & vIn,
     Value v;
     state.autoCallFunction(autoArgs, vIn, v);
 
-    /* Process the expression. */
-    if (!getDerivation(state, v, pathPrefix, drvs, ignoreAssertionFailures)) ;
-
-    else if (v.type() == nAttrs) {
-
-        /* Dont consider sets we've already seen, e.g. y in
-           `rec { x.d = derivation {...}; y = x; }`. */
-        if (!done.insert(v.attrs).second) return;
-
-        /* !!! undocumented hackery to support combining channels in
-           nix-env.cc. */
-        bool combineChannels = v.attrs->find(state.symbols.create("_combineChannels")) != v.attrs->end();
-
-        /* Consider the attributes in sorted order to get more
-           deterministic behaviour in nix-env operations (e.g. when
-           there are names clashes between derivations, the derivation
-           bound to the attribute with the "lower" name should take
-           precedence). */
-        for (auto & i : v.attrs->lexicographicOrder(state.symbols)) {
-            debug("evaluating attribute '%1%'", state.symbols[i->name]);
-            if (!std::regex_match(std::string(state.symbols[i->name]), attrRegex))
-                continue;
-            std::string pathPrefix2 = addToPath(pathPrefix, state.symbols[i->name]);
-            if (combineChannels)
-                getDerivations(state, *i->value, pathPrefix2, autoArgs, drvs, done, ignoreAssertionFailures);
-            else if (getDerivation(state, *i->value, pathPrefix2, drvs, ignoreAssertionFailures)) {
-                /* If the value of this attribute is itself a set,
-                   should we recurse into it?  => Only if it has a
-                   `recurseForDerivations = true' attribute. */
-                if (i->value->type() == nAttrs) {
-                    Bindings::iterator j = i->value->attrs->find(state.sRecurseForDerivations);
-                    if (j != i->value->attrs->end() && state.forceBool(*j->value, j->pos, "while evaluating the attribute `recurseForDerivations`"))
-                        getDerivations(state, *i->value, pathPrefix2, autoArgs, drvs, done, ignoreAssertionFailures);
-                }
-            }
-        }
+    bool shouldRecurse = getDerivation(state, v, pathPrefix, drvs, ignoreAssertionFailures);
+    if (!shouldRecurse) {
+        // We're done here.
+        return;
     }
 
-    else if (v.type() == nList) {
+    if (v.type() == nList) {
         // NOTE we can't really deduplicate here because small lists don't have stable addresses
         // and can cause spurious duplicate detections due to v being on the stack.
         for (auto [n, elem] : enumerate(v.listItems())) {
-            std::string pathPrefix2 = addToPath(pathPrefix, fmt("%d", n));
-            if (getDerivation(state, *elem, pathPrefix2, drvs, ignoreAssertionFailures))
-                getDerivations(state, *elem, pathPrefix2, autoArgs, drvs, done, ignoreAssertionFailures);
+            std::string joinedAttrPath = addToPath(pathPrefix, fmt("%d", n));
+            bool shouldRecurse = getDerivation(state, *elem, joinedAttrPath, drvs, ignoreAssertionFailures);
+            if (shouldRecurse) {
+                getDerivations(
+                    state,
+                    *elem,
+                    joinedAttrPath,
+                    autoArgs,
+                    drvs,
+                    done,
+                    ignoreAssertionFailures
+                );
+            }
         }
+
+        return;
+    } else if (v.type() != nAttrs) {
+        state.error<TypeError>(
+            "expression was expected to be a derivation or collection of derivations, but instead was %s",
+            showType(v.type(), true)
+        ).debugThrow();
     }
 
-    else
-        state.error<TypeError>("expression does not evaluate to a derivation (or a set or list of those)").debugThrow();
+    /* Dont consider sets we've already seen, e.g. y in
+       `rec { x.d = derivation {...}; y = x; }`. */
+    auto const &[_, didInsert] = done.insert(v.attrs);
+    if (!didInsert) {
+        return;
+    }
+
+    // FIXME: what the fuck???
+    /* !!! undocumented hackery to support combining channels in
+       nix-env.cc. */
+    bool combineChannels = v.attrs->find(state.symbols.create("_combineChannels")) != v.attrs->end();
+
+    /* Consider the attributes in sorted order to get more
+       deterministic behaviour in nix-env operations (e.g. when
+       there are names clashes between derivations, the derivation
+       bound to the attribute with the "lower" name should take
+       precedence). */
+    for (auto & attr : v.attrs->lexicographicOrder(state.symbols)) {
+        debug("evaluating attribute '%1%'", state.symbols[attr->name]);
+        // FIXME: only consider attrs with identifier-like names?? Why???
+        if (!std::regex_match(std::string(state.symbols[attr->name]), attrRegex)) {
+            continue;
+        }
+        std::string joinedAttrPath = addToPath(pathPrefix, state.symbols[attr->name]);
+        if (combineChannels) {
+            getDerivations(state, *attr->value, joinedAttrPath, autoArgs, drvs, done, ignoreAssertionFailures);
+        } else if (getDerivation(state, *attr->value, joinedAttrPath, drvs, ignoreAssertionFailures)) {
+            /* If the value of this attribute is itself a set,
+               should we recurse into it?  => Only if it has a
+               `recurseForDerivations = true' attribute. */
+            if (attr->value->type() == nAttrs) {
+                Attr * recurseForDrvs = attr->value->attrs->get(state.sRecurseForDerivations);
+                if (recurseForDrvs == nullptr) {
+                    continue;
+                }
+                bool shouldRecurse = state.forceBool(
+                    *recurseForDrvs->value,
+                    attr->pos,
+                    fmt("while evaluating the '%s' attribute", Magenta("recurseForDerivations"))
+                );
+                if (!shouldRecurse) {
+                    continue;
+                }
+
+                getDerivations(
+                    state,
+                    *attr->value,
+                    joinedAttrPath,
+                    autoArgs,
+                    drvs,
+                    done,
+                    ignoreAssertionFailures
+                );
+            }
+        }
+    }
 }
 
 
