@@ -28,6 +28,8 @@
   libcpuid,
   libseccomp,
   libsodium,
+  lix-clang-tidy ? null,
+  llvmPackages,
   lsof,
   lowdown,
   mdbook,
@@ -66,6 +68,8 @@
   sanitize ? null,
   # Turn compiler warnings into errors.
   werror ? false,
+
+  lintInsteadOfBuild ? false,
 
   # Not a real argument, just the only way to approximate let-binding some
   # stuff for argument defaults.
@@ -144,6 +148,7 @@ let
     (fileset.fileFilter (f: lib.strings.hasPrefix "nix-profile" f.name) ./scripts)
   ];
 in
+assert (lintInsteadOfBuild -> lix-clang-tidy != null);
 stdenv.mkDerivation (finalAttrs: {
   inherit pname version;
 
@@ -156,12 +161,13 @@ stdenv.mkDerivation (finalAttrs: {
           topLevelBuildFiles
           functionalTestFiles
         ]
-        ++ lib.optionals (!finalAttrs.dontBuild || internalApiDocs) [
+        ++ lib.optionals (!finalAttrs.dontBuild || internalApiDocs || lintInsteadOfBuild) [
           ./doc
           ./misc
           ./src
           ./COPYING
         ]
+        ++ lib.optionals lintInsteadOfBuild [ ./.clang-tidy ]
       )
     );
   };
@@ -175,7 +181,7 @@ stdenv.mkDerivation (finalAttrs: {
       "doc"
     ];
 
-  dontBuild = false;
+  dontBuild = lintInsteadOfBuild;
 
   mesonFlags =
     let
@@ -190,14 +196,15 @@ stdenv.mkDerivation (finalAttrs: {
       "-Dsandbox-shell=${lib.getExe' busybox-sandbox-shell "busybox"}"
     ]
     ++ lib.optional hostPlatform.isStatic "-Denable-embedded-sandbox-shell=true"
-    ++ lib.optional (finalAttrs.dontBuild) "-Denable-build=false"
+    ++ lib.optional (finalAttrs.dontBuild && !lintInsteadOfBuild) "-Denable-build=false"
+    ++ lib.optional lintInsteadOfBuild "-Dlix-clang-tidy-checks-path=${lix-clang-tidy}/lib/liblix-clang-tidy.so"
     ++ [
       # mesonConfigurePhase automatically passes -Dauto_features=enabled,
       # so we must explicitly enable or disable features that we are not passing
       # dependencies for.
       (lib.mesonEnable "gc" enableGC)
       (lib.mesonEnable "internal-api-docs" internalApiDocs)
-      (lib.mesonBool "enable-tests" finalAttrs.finalPackage.doCheck)
+      (lib.mesonBool "enable-tests" (finalAttrs.finalPackage.doCheck || lintInsteadOfBuild))
       (lib.mesonBool "enable-docs" canRunInstalled)
       (lib.mesonBool "werror" werror)
     ]
@@ -230,7 +237,13 @@ stdenv.mkDerivation (finalAttrs: {
     ]
     ++ lib.optional hostPlatform.isLinux util-linuxMinimal
     ++ lib.optional (!officialRelease && buildUnreleasedNotes) build-release-notes
-    ++ lib.optional internalApiDocs doxygen;
+    ++ lib.optional internalApiDocs doxygen
+    ++ lib.optionals lintInsteadOfBuild [
+      # required for a wrapped clang-tidy
+      llvmPackages.clang-tools
+      # required for run-clang-tidy
+      llvmPackages.clang-unwrapped
+    ];
 
   buildInputs =
     [
@@ -257,7 +270,10 @@ stdenv.mkDerivation (finalAttrs: {
     ++ lib.optional hostPlatform.isx86_64 libcpuid
     # There have been issues building these dependencies
     ++ lib.optional (hostPlatform.canExecute buildPlatform) aws-sdk-cpp-nix
-    ++ lib.optionals (finalAttrs.dontBuild) maybePropagatedInputs;
+    ++ lib.optionals (finalAttrs.dontBuild) maybePropagatedInputs
+    # I am so sorry. This is because checkInputs are required to pass
+    # configure, but we don't actually want to *run* the checks here.
+    ++ lib.optionals lintInsteadOfBuild finalAttrs.checkInputs;
 
   nativeCheckInputs = [ expect ];
 
@@ -315,7 +331,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   enableParallelBuilding = true;
 
-  doCheck = canRunInstalled;
+  doCheck = canRunInstalled && !lintInsteadOfBuild;
 
   mesonCheckFlags = [
     "--suite=check"
@@ -327,8 +343,19 @@ stdenv.mkDerivation (finalAttrs: {
   # Make sure the internal API docs are already built, because mesonInstallPhase
   # won't let us build them there. They would normally be built in buildPhase,
   # but the internal API docs are conventionally built with doBuild = false.
-  preInstall = lib.optional internalApiDocs ''
-    meson ''${mesonBuildFlags:-} compile "$installTargets"
+  preInstall =
+    (lib.optionalString internalApiDocs ''
+      meson ''${mesonBuildFlags:-} compile "$installTargets"
+    '')
+    # evil, but like above, we do not want to run an actual build phase
+    + lib.optionalString lintInsteadOfBuild ''
+      ninja clang-tidy
+    '';
+
+  installPhase = lib.optionalString lintInsteadOfBuild ''
+    runHook preInstall
+    touch $out
+    runHook postInstall
   '';
 
   postInstall =
@@ -396,12 +423,10 @@ stdenv.mkDerivation (finalAttrs: {
         mkShell,
 
         bashInteractive,
-        clang-tools,
         clangbuildanalyzer,
         doxygen,
         glibcLocales,
         just,
-        llvmPackages,
         nixfmt-rfc-style,
         skopeo,
         xonsh,
@@ -454,7 +479,7 @@ stdenv.mkDerivation (finalAttrs: {
             ++ [ (lib.mesonBool "enable-pch-std" stdenv.cc.isClang) ];
 
           packages =
-            lib.optional (stdenv.cc.isClang && hostPlatform == buildPlatform) clang-tools
+            lib.optional (stdenv.cc.isClang && hostPlatform == buildPlatform) llvmPackages.clang-tools
             ++ [
               # Why are we providing a bashInteractive? Well, when you run
               # `bash` from inside `nix develop`, say, because you are using it

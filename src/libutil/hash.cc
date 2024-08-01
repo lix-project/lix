@@ -109,7 +109,6 @@ static std::string printHash32(const Hash & hash)
 
 std::string printHash16or32(const Hash & hash)
 {
-    assert(hash.type);
     return hash.to_string(hash.type == htMD5 ? Base16 : Base32, false);
 }
 
