@@ -197,6 +197,8 @@
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
           };
 
+          lix-clang-tidy = final.callPackage ./subprojects/lix-clang-tidy { };
+
           # Export the patched version of boehmgc that Lix uses into the overlay
           # for consumers of this flake.
           boehmgc-nix = final.nix.passthru.boehmgc-nix;
@@ -384,6 +386,8 @@
         rec {
           inherit (nixpkgsFor.${system}.native) nix;
           default = nix;
+
+          inherit (nixpkgsFor.${system}.native) lix-clang-tidy;
         }
         // (
           lib.optionalAttrs (builtins.elem system linux64BitSystems) {

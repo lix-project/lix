@@ -25,3 +25,13 @@ install *OPTIONS: (build OPTIONS)
 # Run tests
 test *OPTIONS:
     meson test -C build --print-errorlogs {{ OPTIONS }}
+
+alias clang-tidy := lint
+
+lint:
+    ninja -C build clang-tidy
+
+alias clang-tidy-fix := lint-fix
+
+lint-fix:
+    ninja -C build clang-tidy-fix
