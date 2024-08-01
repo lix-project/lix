@@ -9,6 +9,15 @@ namespace nix {
 /**
  * Determine whether ANSI escape sequences are appropriate for the
  * present output.
+ *
+ * This follows the rules described on https://bixense.com/clicolors/
+ * with CLICOLOR defaulted to enabled (and thus ignored).
+ *
+ * That is to say, the following procedure is followed in order:
+ * - NO_COLOR or NOCOLOR set             -> always disable colour
+ * - CLICOLOR_FORCE or FORCE_COLOR set   -> enable colour
+ * - The output is a tty; TERM != "dumb" -> enable colour
+ * - Otherwise                           -> disable colour
  */
 bool shouldANSI();
 

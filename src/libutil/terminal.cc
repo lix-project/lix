@@ -9,9 +9,21 @@ namespace nix {
 
 bool shouldANSI()
 {
-    return isatty(STDERR_FILENO)
-        && getEnv("TERM").value_or("dumb") != "dumb"
-        && !(getEnv("NO_COLOR").has_value() || getEnv("NOCOLOR").has_value());
+    // Implements the behaviour described by https://bixense.com/clicolors/
+    // As well as https://force-color.org/ for compatibility, since it fits in the same shape.
+    // NO_COLOR CLICOLOR CLICOLOR_FORCE Colours?
+    // set      x        x              No
+    // unset    x        set            Yes
+    // unset    x        unset          If attached to a terminal
+    //                                  [we choose the "modern" approach of colour-by-default]
+    auto compute = []() -> bool {
+        bool mustNotColour = getEnv("NO_COLOR").has_value() || getEnv("NOCOLOR").has_value();
+        bool shouldForce = getEnv("CLICOLOR_FORCE").has_value() || getEnv("FORCE_COLOR").has_value();
+        bool isTerminal = isatty(STDERR_FILENO) && getEnv("TERM").value_or("dumb") != "dumb";
+        return !mustNotColour && (shouldForce || isTerminal);
+    };
+    static bool cached = compute();
+    return cached;
 }
 
 std::string filterANSIEscapes(std::string_view s, bool filterAll, unsigned int width)
