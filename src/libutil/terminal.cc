@@ -26,7 +26,8 @@ bool shouldANSI()
     return cached;
 }
 
-std::string filterANSIEscapes(std::string_view s, bool filterAll, unsigned int width)
+// FIXME(jade): replace with TerminalCodeEater. wowie this is evil code.
+std::string filterANSIEscapes(std::string_view s, bool filterAll, unsigned int width, bool eatTabs)
 {
     std::string t, e;
     size_t w = 0;
@@ -55,7 +56,7 @@ std::string filterANSIEscapes(std::string_view s, bool filterAll, unsigned int w
                 t += e;
         }
 
-        else if (*i == '\t') {
+        else if (*i == '\t' && eatTabs) {
             i++; t += ' '; w++;
             while (w < (size_t) width && w % 8) {
                 t += ' '; w++;

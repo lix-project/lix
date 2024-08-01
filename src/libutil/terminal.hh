@@ -30,7 +30,8 @@ bool shouldANSI();
  */
 std::string filterANSIEscapes(std::string_view s,
     bool filterAll = false,
-    unsigned int width = std::numeric_limits<unsigned int>::max());
+    unsigned int width = std::numeric_limits<unsigned int>::max(),
+    bool eatTabs = true);
 
 /**
  * Recalculate the window size, updating a global variable. Used in the
