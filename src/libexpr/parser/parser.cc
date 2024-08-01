@@ -12,7 +12,6 @@
 #include "state.hh"
 
 #include <charconv>
-#include <clocale>
 #include <memory>
 
 // flip this define when doing parser development to enable some g checks.
@@ -254,7 +253,8 @@ struct AttrState : SubexprState {
 
     std::vector<AttrName> attrs;
 
-    void pushAttr(auto && attr, PosIdx) { attrs.emplace_back(std::move(attr)); }
+    template <typename T>
+    void pushAttr(T && attr, PosIdx) { attrs.emplace_back(std::forward<T>(attr)); }
 };
 
 template<> struct BuildAST<grammar::attr::simple> {
@@ -290,7 +290,8 @@ struct InheritState : SubexprState {
     std::unique_ptr<Expr> from;
     PosIdx fromPos;
 
-    void pushAttr(auto && attr, PosIdx pos) { attrs.emplace_back(std::move(attr), pos); }
+    template <typename T>
+    void pushAttr(T && attr, PosIdx pos) { attrs.emplace_back(std::forward<T>(attr), pos); }
 };
 
 template<> struct BuildAST<grammar::inherit::from> {

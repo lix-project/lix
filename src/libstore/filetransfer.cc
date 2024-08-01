@@ -477,8 +477,17 @@ struct curlFileTransfer : public FileTransfer
 
     ~curlFileTransfer()
     {
-        stopWorkerThread();
-
+        try {
+            stopWorkerThread();
+        } catch (nix::Error e) {
+            // This can only fail if a socket to our own process cannot be
+            // written to, so it is always a bug in the program if it fails.
+            //
+            // Joining the thread would probably only cause a deadlock if this
+            // happened, so just die on purpose.
+            printError("failed to join curl file transfer worker thread: %1%", e.what());
+            std::terminate();
+        }
         workerThread.join();
 
         if (curlm) curl_multi_cleanup(curlm);

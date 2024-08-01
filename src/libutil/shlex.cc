@@ -62,6 +62,8 @@ std::vector<std::string> shell_split(const std::string & input)
                 begin = ++iterator;
             }
             break;
+            // no other relevant cases; silence exhaustiveness compiler warning
+            default: break;
         }
     }
 

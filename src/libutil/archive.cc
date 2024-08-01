@@ -192,7 +192,7 @@ static Generator<Entry> parseObject(Source & source, const Path & path)
 #define EXPECT(raw, kind)                              \
     do {                                               \
         const auto s = readString(source);             \
-        if (s != raw) {                                \
+        if (s != (raw)) {                                \
             throw badArchive("expected " kind " tag"); \
         }                                              \
         co_yield MetadataString{s};                    \
