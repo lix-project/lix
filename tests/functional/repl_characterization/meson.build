@@ -7,6 +7,7 @@ repl_characterization_tester = executable(
   'test-repl-characterization',
   repl_characterization_tester_sources,
   dependencies : [
+    libasanoptions,
     liblixutil,
     liblixutil_test_support,
     sodium,

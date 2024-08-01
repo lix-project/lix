@@ -52,15 +52,23 @@
 
   pname ? "lix",
   versionSuffix ? "",
-  officialRelease ? false,
+  officialRelease ? __forDefaults.versionJson.official_release,
   # Set to true to build the release notes for the next release.
   buildUnreleasedNotes ? true,
   internalApiDocs ? false,
+
+  # List of Meson sanitize options. Accepts values of b_sanitize, e.g.
+  # "address", "undefined", "thread".
+  sanitize ? null,
+  # Turn compiler warnings into errors.
+  werror ? false,
 
   # Not a real argument, just the only way to approximate let-binding some
   # stuff for argument defaults.
   __forDefaults ? {
     canRunInstalled = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
+
+    versionJson = builtins.fromJSON (builtins.readFile ./version.json);
 
     boehmgc-nix = boehmgc.override { enableLargeConfig = true; };
 
@@ -77,8 +85,7 @@ let
   inherit (lib) fileset;
   inherit (stdenv) hostPlatform buildPlatform;
 
-  versionJson = builtins.fromJSON (builtins.readFile ./version.json);
-  version = versionJson.version + versionSuffix;
+  version = __forDefaults.versionJson.version + versionSuffix;
 
   aws-sdk-cpp-nix = aws-sdk-cpp.override {
     apis = [
@@ -166,6 +173,12 @@ stdenv.mkDerivation (finalAttrs: {
   dontBuild = false;
 
   mesonFlags =
+    let
+      sanitizeOpts = lib.optionals (sanitize != null) (
+        [ "-Db_sanitize=${builtins.concatStringsSep "," sanitize}" ]
+        ++ lib.optional (builtins.elem "address" sanitize) "-Dgc=disabled"
+      );
+    in
     lib.optionals hostPlatform.isLinux [
       # You'd think meson could just find this in PATH, but busybox is in buildInputs,
       # which don't actually get added to PATH. And buildInputs is correct over
@@ -181,8 +194,10 @@ stdenv.mkDerivation (finalAttrs: {
       (lib.mesonEnable "internal-api-docs" internalApiDocs)
       (lib.mesonBool "enable-tests" finalAttrs.finalPackage.doCheck)
       (lib.mesonBool "enable-docs" canRunInstalled)
+      (lib.mesonBool "werror" werror)
     ]
-    ++ lib.optional (hostPlatform != buildPlatform) "--cross-file=${mesonCrossFile}";
+    ++ lib.optional (hostPlatform != buildPlatform) "--cross-file=${mesonCrossFile}"
+    ++ sanitizeOpts;
 
   # We only include CMake so that Meson can locate toml11, which only ships CMake dependency metadata.
   dontUseCmakeConfigure = true;
@@ -366,8 +381,6 @@ stdenv.mkDerivation (finalAttrs: {
       build-release-notes
       pegtl
       ;
-
-    inherit officialRelease;
 
     # The collection of dependency logic for this derivation is complicated enough that
     # it's easier to parameterize the devShell off an already called package.nix.

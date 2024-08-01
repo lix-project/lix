@@ -80,6 +80,7 @@ nix = executable(
   profiles_md_gen,
   nix2_commands_sources,
   dependencies : [
+    libasanoptions,
     liblixcmd,
     liblixutil_mstatic,
     liblixstore_mstatic,

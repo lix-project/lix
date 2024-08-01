@@ -11,6 +11,10 @@
 # functions, the result would be way less readable than just a bit of copypasta.
 # It's only ~200 lines; better to just refactor the tests themselves which we'll want to do anyway.
 
+default_test_env = {
+  'ASAN_OPTIONS': 'detect_leaks=0:halt_on_error=1:abort_on_error=1:print_summary=1:dump_instruction_bytes=1'
+}
+
 libutil_test_support_sources = files(
   'libutil-support/tests/cli-literate-parser.cc',
   'libutil-support/tests/hash.cc',
@@ -63,6 +67,7 @@ libutil_tester = executable(
   'liblixutil-tests',
   libutil_tests_sources,
   dependencies : [
+    libasanoptions,
     rapidcheck,
     gtest,
     boehm,
@@ -78,7 +83,7 @@ test(
   'libutil-unit-tests',
   libutil_tester,
   args : tests_args,
-  env : {
+  env : default_test_env + {
     '_NIX_TEST_UNIT_DATA': meson.project_source_root() / 'tests/unit/libutil/data',
   },
   suite : 'check',
@@ -132,6 +137,7 @@ libstore_tester = executable(
   'liblixstore-tests',
   libstore_tests_sources,
   dependencies : [
+    libasanoptions,
     liblixstore_test_support,
     liblixutil_test_support,
     liblixstore_mstatic,
@@ -147,7 +153,7 @@ test(
   'libstore-unit-tests',
   libstore_tester,
   args : tests_args,
-  env : {
+  env : default_test_env + {
     '_NIX_TEST_UNIT_DATA': meson.project_source_root() / 'tests/unit/libstore/data',
   },
   suite : 'check',
@@ -196,6 +202,7 @@ libexpr_tester = executable(
   'liblixexpr-tests',
   libexpr_tests_sources,
   dependencies : [
+    libasanoptions,
     liblixexpr_test_support,
     liblixstore_test_support,
     liblixstore_mstatic,
@@ -214,7 +221,7 @@ test(
   'libexpr-unit-tests',
   libexpr_tester,
   args : tests_args,
-  env : {
+  env : default_test_env + {
     '_NIX_TEST_UNIT_DATA': meson.project_source_root() / 'tests/unit/libexpr/data',
   },
   suite : 'check',
@@ -226,6 +233,7 @@ libcmd_tester = executable(
   'liblixcmd-tests',
   files('libcmd/args.cc'),
   dependencies : [
+    libasanoptions,
     liblixcmd,
     liblixutil,
     liblixmain,
@@ -241,7 +249,7 @@ test(
   'libcmd-unit-tests',
   libcmd_tester,
   args : tests_args,
-  env : {
+  env : default_test_env + {
     # No special meaning here, it's just a file laying around that is unlikely to go anywhere
     # any time soon.
     '_NIX_TEST_UNIT_DATA': meson.project_source_root() / 'src/nix-env/buildenv.nix',
@@ -272,6 +280,7 @@ test(
   'libmain-unit-tests',
   libmain_tester,
   args : tests_args,
+  env : default_test_env,
   suite : 'check',
   protocol : 'gtest',
 )

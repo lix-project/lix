@@ -11,7 +11,7 @@ from . import environment
 from .environment import RelengEnvironment
 from . import keys
 from . import docker
-from .version import VERSION, RELEASE_NAME, MAJOR
+from .version import VERSION, RELEASE_NAME, MAJOR, OFFICIAL_RELEASE
 from .gitutils import verify_are_on_tag, git_preconditions
 from . import release_notes
 
@@ -39,12 +39,18 @@ def setup_creds(env: RelengEnvironment):
 
 
 def official_release_commit_tag(force_tag=False):
-    print('[+] Setting officialRelease in flake.nix and tagging')
+    print('[+] Setting officialRelease in version.json and tagging')
     prev_branch = $(git symbolic-ref --short HEAD).strip()
 
     git switch --detach
-    sed -i 's/officialRelease = false/officialRelease = true/' flake.nix
-    git add flake.nix
+
+    # Must be done in two parts due to buffering (opening the file immediately
+    # would truncate it).
+    new_version_json = $(jq --indent 4 '.official_release = true' version.json)
+    with open('version.json', 'w') as fh:
+        fh.write(new_version_json)
+    git add version.json
+
     message = f'release: {VERSION} "{RELEASE_NAME}"\n\nRelease produced with releng/create_release.xsh'
     git commit -m @(message)
     git tag @(['-f'] if force_tag else []) -a -m @(message) @(VERSION)
@@ -250,15 +256,14 @@ def build_manual(eval_result):
 
 
 def upload_manual(env: RelengEnvironment):
-    stable = json.loads($(nix eval --json '.#nix.officialRelease'))
-    if stable:
+    if OFFICIAL_RELEASE:
         version = MAJOR
     else:
         version = 'nightly'
 
     print('[+] aws s3 sync manual')
     aws s3 sync @(MANUAL)/ @(env.docs_bucket)/manual/lix/@(version)/
-    if stable:
+    if OFFICIAL_RELEASE:
         aws s3 sync @(MANUAL)/ @(env.docs_bucket)/manual/lix/stable/
 
 

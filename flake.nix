@@ -59,7 +59,8 @@
         (Run `touch .nocontribmsg` to hide this message.)
       '';
 
-      officialRelease = false;
+      versionJson = builtins.fromJSON (builtins.readFile ./version.json);
+      officialRelease = versionJson.official_release;
 
       # Set to true to build the release notes for the next release.
       buildUnreleasedNotes = true;
@@ -275,6 +276,19 @@
 
         # System tests.
         tests = import ./tests/nixos { inherit lib nixpkgs nixpkgsFor; } // {
+          # This is x86_64-linux only, just because we have significantly
+          # cheaper x86_64-linux compute in CI.
+          # It is clangStdenv because clang's sanitizers are nicer.
+          asanBuild = self.packages.x86_64-linux.nix-clangStdenv.override {
+            sanitize = [
+              "address"
+              "undefined"
+            ];
+            # it is very hard to make *every* CI build use this option such
+            # that we don't wind up building Lix twice, so we do it here where
+            # we are already doing so.
+            werror = true;
+          };
 
           # Make sure that nix-env still produces the exact same result
           # on a particular version of Nixpkgs.
@@ -406,7 +420,7 @@
             pkgs: stdenv:
             let
               nix = pkgs.callPackage ./package.nix {
-                inherit stdenv officialRelease versionSuffix;
+                inherit stdenv versionSuffix;
                 busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
                 internalApiDocs = false;
               };
