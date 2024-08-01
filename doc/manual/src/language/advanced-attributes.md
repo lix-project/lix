@@ -326,7 +326,6 @@ Derivations can declare some infrequently used optional attributes.
     ```
 
   - [`unsafeDiscardReferences`]{#adv-attr-unsafeDiscardReferences}\
-
     When using [structured attributes](#adv-attr-structuredAttrs), the
     attribute `unsafeDiscardReferences` is an attribute set with a boolean value for each output name.
     If set to `true`, it disables scanning the output for runtime dependencies.
