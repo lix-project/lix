@@ -209,6 +209,11 @@ struct CmdFlakeMetadata : FlakeCommand, MixJSON
     {
         auto lockedFlake = lockFlake();
         auto & flake = lockedFlake.flake;
+        auto formatTime = [](time_t time) -> std::string {
+            std::ostringstream os{};
+            os << std::put_time(std::localtime(&time), "%F %T");
+            return os.str();
+        };
 
         if (json) {
             nlohmann::json j;
@@ -260,7 +265,7 @@ struct CmdFlakeMetadata : FlakeCommand, MixJSON
             if (auto lastModified = flake.lockedRef.input.getLastModified())
                 logger->cout(
                     ANSI_BOLD "Last modified:" ANSI_NORMAL " %s",
-                    std::put_time(std::localtime(&*lastModified), "%F %T"));
+                    formatTime(*lastModified));
 
             if (!lockedFlake.lockFile.root->inputs.empty())
                 logger->cout(ANSI_BOLD "Inputs:" ANSI_NORMAL);
@@ -275,16 +280,25 @@ struct CmdFlakeMetadata : FlakeCommand, MixJSON
                     bool last = i + 1 == node.inputs.size();
 
                     if (auto lockedNode = std::get_if<0>(&input.second)) {
-                        logger->cout("%s" ANSI_BOLD "%s" ANSI_NORMAL ": %s",
-                            prefix + (last ? treeLast : treeConn), input.first,
+                        // ├───agenix: github:ryantm/agenix/8d37c5bdeade12b6479c85acd133063ab53187a0
+                        logger->cout("%s%s" ANSI_BOLD "%s" ANSI_NORMAL ": %s",
+                            prefix, last ? treeLast : treeConn, input.first,
                             (*lockedNode)->lockedRef);
+
+                        // ├───lix: https://git.lix.systems/api/v1/repos/lix-project <....>
+                        // │   Last modified: 2024-07-31 21:01:34
+                        if (auto lastModified = (*lockedNode)->lockedRef.input.getLastModified()) {
+                            logger->cout("%s%s" ANSI_BOLD "%s" ANSI_NORMAL ": %s",
+                                prefix, last ? treeNull : treeLine, "Last modified", formatTime(*lastModified));
+                        }
 
                         bool firstVisit = visited.insert(*lockedNode).second;
 
                         if (firstVisit) recurse(**lockedNode, prefix + (last ? treeNull : treeLine));
                     } else if (auto follows = std::get_if<1>(&input.second)) {
-                        logger->cout("%s" ANSI_BOLD "%s" ANSI_NORMAL " follows input '%s'",
-                            prefix + (last ? treeLast : treeConn), input.first,
+                        // │   ├───darwin follows input 'flake-utils'
+                        logger->cout("%s%s" ANSI_BOLD "%s" ANSI_NORMAL " follows input '%s'",
+                            prefix, last ? treeLast : treeConn, input.first,
                             printInputPath(*follows));
                     }
                 }
