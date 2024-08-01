@@ -20,7 +20,7 @@ OUTPUT_DIRECTORY       = @docdir@
 # for a project that appears at the top of each page and should give viewer a
 # quick idea about the purpose of the project. Keep the description short.
 
-PROJECT_BRIEF          = "Nix, the purely functional package manager; unstable internal interfaces"
+PROJECT_BRIEF          = "Lix: A modern, delicious implementation of the Nix package manager; unstable internal interfaces"
 
 # If the GENERATE_LATEX tag is set to YES, doxygen will generate LaTeX output.
 # The default value is: YES.

@@ -1,5 +1,5 @@
 {
-  description = "The purely functional package manager";
+  description = "Lix: A modern, delicious implementation of the Nix package manager";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05-small";
