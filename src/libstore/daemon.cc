@@ -416,7 +416,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
                 // TODO this is essentially RemoteStore::addCAToStore. Move it up to Store.
                 return std::visit(overloaded {
                     [&](const TextIngestionMethod &) {
-                        if (hashType != htSHA256)
+                        if (hashType != HashType::SHA256)
                             throw UnimplementedError("When adding text-hashed data called '%s', only SHA-256 is supported but '%s' was given",
                                 name, printHashType(hashType));
                         // We could stream this by changing Store
@@ -875,7 +875,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         bool repair, dontCheckSigs;
         auto path = store->parseStorePath(readString(from));
         auto deriver = readString(from);
-        auto narHash = Hash::parseAny(readString(from), htSHA256);
+        auto narHash = Hash::parseAny(readString(from), HashType::SHA256);
         ValidPathInfo info { path, narHash };
         if (deriver != "")
             info.deriver = store->parseStorePath(deriver);

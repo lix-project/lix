@@ -30,7 +30,7 @@ void Store::exportPath(const StorePath & path, Sink & sink)
 {
     auto info = queryPathInfo(path);
 
-    HashSink hashSink(htSHA256);
+    HashSink hashSink(HashType::SHA256);
     TeeSink teeSink(sink, hashSink);
 
     teeSink << narFromPath(path);
@@ -41,7 +41,7 @@ void Store::exportPath(const StorePath & path, Sink & sink)
     Hash hash = hashSink.currentHash().first;
     if (hash != info->narHash && info->narHash != Hash(info->narHash.type))
         throw Error("hash of path '%s' has changed from '%s' to '%s'!",
-            printStorePath(path), info->narHash.to_string(Base32, true), hash.to_string(Base32, true));
+            printStorePath(path), info->narHash.to_string(Base::Base32, true), hash.to_string(Base::Base32, true));
 
     teeSink
         << exportMagic
@@ -77,7 +77,7 @@ StorePaths Store::importPaths(Source & source, CheckSigsFlag checkSigs)
         auto references = CommonProto::Serialise<StorePathSet>::read(*this,
             CommonProto::ReadConn { .from = source });
         auto deriver = readString(source);
-        auto narHash = hashString(htSHA256, saved.s);
+        auto narHash = hashString(HashType::SHA256, saved.s);
 
         ValidPathInfo info { path, narHash };
         if (deriver != "")

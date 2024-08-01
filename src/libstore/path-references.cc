@@ -46,7 +46,7 @@ std::pair<StorePathSet, HashResult> scanForReferences(
     const std::string & path,
     const StorePathSet & refs)
 {
-    HashSink hashSink { htSHA256 };
+    HashSink hashSink { HashType::SHA256 };
     auto found = scanForReferences(hashSink, path, refs);
     auto hash = hashSink.finish();
     return std::pair<StorePathSet, HashResult>(found, hash);

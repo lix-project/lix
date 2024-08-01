@@ -156,7 +156,7 @@ StorePath Store::makeStorePath(std::string_view type,
     /* e.g., "source:sha256:1abc...:/nix/store:foo.tar.gz" */
     auto s = std::string(type) + ":" + std::string(hash)
         + ":" + storeDir + ":" + std::string(name);
-    auto h = compressHash(hashString(htSHA256, s), 20);
+    auto h = compressHash(hashString(HashType::SHA256, s), 20);
     return StorePath(h, name);
 }
 
@@ -164,7 +164,7 @@ StorePath Store::makeStorePath(std::string_view type,
 StorePath Store::makeStorePath(std::string_view type,
     const Hash & hash, std::string_view name) const
 {
-    return makeStorePath(type, hash.to_string(Base16, true), name);
+    return makeStorePath(type, hash.to_string(Base::Base16, true), name);
 }
 
 
@@ -194,7 +194,7 @@ static std::string makeType(
 
 StorePath Store::makeFixedOutputPath(std::string_view name, const FixedOutputInfo & info) const
 {
-    if (info.hash.type == htSHA256 && info.method == FileIngestionMethod::Recursive) {
+    if (info.hash.type == HashType::SHA256 && info.method == FileIngestionMethod::Recursive) {
         return makeStorePath(makeType(*this, "source", info.references), info.hash, name);
     } else {
         if (!info.references.empty()) {
@@ -202,10 +202,10 @@ StorePath Store::makeFixedOutputPath(std::string_view name, const FixedOutputInf
                 name);
         }
         return makeStorePath("output:out",
-            hashString(htSHA256,
+            hashString(HashType::SHA256,
                 "fixed:out:"
                 + makeFileIngestionPrefix(info.method)
-                + info.hash.to_string(Base16, true) + ":"),
+                + info.hash.to_string(Base::Base16, true) + ":"),
             name);
     }
 }
@@ -213,7 +213,7 @@ StorePath Store::makeFixedOutputPath(std::string_view name, const FixedOutputInf
 
 StorePath Store::makeTextPath(std::string_view name, const TextInfo & info) const
 {
-    assert(info.hash.type == htSHA256);
+    assert(info.hash.type == HashType::SHA256);
     return makeStorePath(
         makeType(*this, "text", StoreReferences {
             .others = info.references,
@@ -259,7 +259,7 @@ StorePath Store::computeStorePathForText(
     const StorePathSet & references) const
 {
     return makeTextPath(name, TextInfo {
-        .hash = hashString(htSHA256, s),
+        .hash = hashString(HashType::SHA256, s),
         .references = references,
     });
 }
@@ -407,7 +407,7 @@ ValidPathInfo Store::addToStoreSlow(std::string_view name, const Path & srcPath,
     FileIngestionMethod method, HashType hashAlgo,
     std::optional<Hash> expectedCAHash)
 {
-    HashSink narHashSink { htSHA256 };
+    HashSink narHashSink { HashType::SHA256 };
     HashSink caHashSink { hashAlgo };
 
     /* Note that fileSink and unusualHashTee must be mutually exclusive, since
@@ -416,7 +416,7 @@ ValidPathInfo Store::addToStoreSlow(std::string_view name, const Path & srcPath,
     RetrieveRegularNARSink fileSink { caHashSink };
     TeeSink unusualHashTee { narHashSink, caHashSink };
 
-    auto & narSink = method == FileIngestionMethod::Recursive && hashAlgo != htSHA256
+    auto & narSink = method == FileIngestionMethod::Recursive && hashAlgo != HashType::SHA256
         ? static_cast<Sink &>(unusualHashTee)
         : narHashSink;
 
@@ -442,7 +442,7 @@ ValidPathInfo Store::addToStoreSlow(std::string_view name, const Path & srcPath,
        finish. */
     auto [narHash, narSize] = narHashSink.finish();
 
-    auto hash = method == FileIngestionMethod::Recursive && hashAlgo == htSHA256
+    auto hash = method == FileIngestionMethod::Recursive && hashAlgo == HashType::SHA256
         ? narHash
         : caHashSink.finish().first;
 
@@ -854,7 +854,7 @@ std::string Store::makeValidityRegistration(const StorePathSet & paths,
         auto info = queryPathInfo(i);
 
         if (showHash) {
-            s += info->narHash.to_string(Base16, false) + "\n";
+            s += info->narHash.to_string(Base::Base16, false) + "\n";
             s += fmt("%1%\n", info->narSize);
         }
 
@@ -1257,7 +1257,7 @@ std::optional<ValidPathInfo> decodeValidPathInfo(const Store & store, std::istre
     if (!hashGiven) {
         std::string s;
         getline(str, s);
-        auto narHash = Hash::parseAny(s, htSHA256);
+        auto narHash = Hash::parseAny(s, HashType::SHA256);
         getline(str, s);
         auto narSize = string2Int<uint64_t>(s);
         if (!narSize) throw Error("number expected");

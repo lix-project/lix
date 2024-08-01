@@ -842,7 +842,7 @@ uint64_t LocalStore::addValidPath(State & state,
 
     state.stmts->RegisterValidPath.use()
         (printStorePath(info.path))
-        (info.narHash.to_string(Base16, true))
+        (info.narHash.to_string(Base::Base16, true))
         (info.registrationTime == 0 ? time(0) : info.registrationTime)
         (info.deriver ? printStorePath(*info.deriver) : "", (bool) info.deriver)
         (info.narSize, info.narSize != 0)
@@ -945,7 +945,7 @@ void LocalStore::updatePathInfo(State & state, const ValidPathInfo & info)
 {
     state.stmts->UpdatePathInfo.use()
         (info.narSize, info.narSize != 0)
-        (info.narHash.to_string(Base16, true))
+        (info.narHash.to_string(Base::Base16, true))
         (info.ultimate ? 1 : 0, info.ultimate)
         (concatStringsSep(" ", info.sigs), !info.sigs.empty())
         (renderContentAddress(info.ca), (bool) info.ca)
@@ -1123,7 +1123,7 @@ void LocalStore::registerValidPaths(const ValidPathInfos & infos)
         StorePathSet paths;
 
         for (auto & [_, i] : infos) {
-            assert(i.narHash.type == htSHA256);
+            assert(i.narHash.type == HashType::SHA256);
             if (isValidPath_(*state, i.path))
                 updatePathInfo(*state, i);
             else
@@ -1241,7 +1241,7 @@ void LocalStore::addToStore(const ValidPathInfo & info, Source & source,
 
             /* While restoring the path from the NAR, compute the hash
                of the NAR. */
-            HashSink hashSink(htSHA256);
+            HashSink hashSink(HashType::SHA256);
 
             TeeSource wrapperSource { source, hashSink };
 
@@ -1252,7 +1252,7 @@ void LocalStore::addToStore(const ValidPathInfo & info, Source & source,
 
             if (hashResult.first != info.narHash)
                 throw Error("hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
-                    printStorePath(info.path), info.narHash.to_string(Base32, true), hashResult.first.to_string(Base32, true));
+                    printStorePath(info.path), info.narHash.to_string(Base::Base32, true), hashResult.first.to_string(Base::Base32, true));
 
             if (hashResult.second != info.narSize)
                 throw Error("size mismatch importing path '%s';\n  specified: %s\n  got:       %s",
@@ -1268,8 +1268,8 @@ void LocalStore::addToStore(const ValidPathInfo & info, Source & source,
                 if (specified.hash != actualHash.hash) {
                     throw Error("ca hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
                         printStorePath(info.path),
-                        specified.hash.to_string(Base32, true),
-                        actualHash.hash.to_string(Base32, true));
+                        specified.hash.to_string(Base::Base32, true),
+                        actualHash.hash.to_string(Base::Base32, true));
                 }
             }
 
@@ -1404,8 +1404,8 @@ StorePath LocalStore::addToStoreFromDump(Source & source0, std::string_view name
             /* For computing the nar hash. In recursive SHA-256 mode, this
                is the same as the store hash, so no need to do it again. */
             auto narHash = std::pair { hash, size };
-            if (method != FileIngestionMethod::Recursive || hashAlgo != htSHA256) {
-                HashSink narSink { htSHA256 };
+            if (method != FileIngestionMethod::Recursive || hashAlgo != HashType::SHA256) {
+                HashSink narSink { HashType::SHA256 };
                 narSink << dumpPath(realPath);
                 narHash = narSink.finish();
             }
@@ -1436,7 +1436,7 @@ StorePath LocalStore::addTextToStore(
     std::string_view s,
     const StorePathSet & references, RepairFlag repair)
 {
-    auto hash = hashString(htSHA256, s);
+    auto hash = hashString(HashType::SHA256, s);
     auto dstPath = makeTextPath(name, TextInfo {
         .hash = hash,
         .references = references,
@@ -1462,7 +1462,7 @@ StorePath LocalStore::addTextToStore(
 
             StringSink sink;
             sink << dumpString(s);
-            auto narHash = hashString(htSHA256, sink.s);
+            auto narHash = hashString(HashType::SHA256, sink.s);
 
             optimisePath(realPath, repair);
 
@@ -1573,7 +1573,7 @@ bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
         for (auto & link : readDirectory(linksDir)) {
             printMsg(lvlTalkative, "checking contents of '%s'", link.name);
             Path linkPath = linksDir + "/" + link.name;
-            std::string hash = hashPath(htSHA256, linkPath).first.to_string(Base32, false);
+            std::string hash = hashPath(HashType::SHA256, linkPath).first.to_string(Base::Base32, false);
             if (hash != link.name) {
                 printError("link '%s' was modified! expected hash '%s', got '%s'",
                     linkPath, link.name, hash);
@@ -1590,7 +1590,7 @@ bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
 
         printInfo("checking store hashes...");
 
-        Hash nullHash(htSHA256);
+        Hash nullHash(HashType::SHA256);
 
         for (auto & i : validPaths) {
             try {
@@ -1606,7 +1606,7 @@ bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
 
                 if (info->narHash != nullHash && info->narHash != current.first) {
                     printError("path '%s' was modified! expected hash '%s', got '%s'",
-                        printStorePath(i), info->narHash.to_string(Base32, true), current.first.to_string(Base32, true));
+                        printStorePath(i), info->narHash.to_string(Base::Base32, true), current.first.to_string(Base::Base32, true));
                     if (repair) repairPath(i); else errors = true;
                 } else {
 

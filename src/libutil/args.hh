@@ -15,7 +15,7 @@
 
 namespace nix {
 
-enum HashType : char;
+enum class HashType : char;
 
 class MultiCommand;
 

@@ -404,8 +404,8 @@ static void opQuery(Strings opFlags, Strings opArgs)
                 for (auto & j : maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise)) {
                     auto info = store->queryPathInfo(j);
                     if (query == qHash) {
-                        assert(info->narHash.type == htSHA256);
-                        cout << fmt("%s\n", info->narHash.to_string(Base32, true));
+                        assert(info->narHash.type == HashType::SHA256);
+                        cout << fmt("%s\n", info->narHash.to_string(Base::Base32, true));
                     } else if (query == qSize)
                         cout << fmt("%d\n", info->narSize);
                 }
@@ -540,7 +540,7 @@ static void registerValidity(bool reregister, bool hashGiven, bool canonicalise)
             if (canonicalise)
                 canonicalisePathMetaData(store->printStorePath(info->path), {});
             if (!hashGiven) {
-                HashResult hash = hashPath(htSHA256, store->printStorePath(info->path));
+                HashResult hash = hashPath(HashType::SHA256, store->printStorePath(info->path));
                 info->narHash = hash.first;
                 info->narSize = hash.second;
             }
@@ -768,8 +768,8 @@ static void opVerifyPath(Strings opFlags, Strings opArgs)
         if (current.first != info->narHash) {
             printError("path '%s' was modified! expected hash '%s', got '%s'",
                 store->printStorePath(path),
-                info->narHash.to_string(Base32, true),
-                current.first.to_string(Base32, true));
+                info->narHash.to_string(Base::Base32, true),
+                current.first.to_string(Base::Base32, true));
             status = 1;
         }
     }
@@ -970,7 +970,7 @@ static void opServe(Strings opFlags, Strings opArgs)
                 auto deriver = readString(in);
                 ValidPathInfo info {
                     store->parseStorePath(path),
-                    Hash::parseAny(readString(in), htSHA256),
+                    Hash::parseAny(readString(in), HashType::SHA256),
                 };
                 if (deriver != "")
                     info.deriver = store->parseStorePath(deriver);

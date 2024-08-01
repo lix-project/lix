@@ -60,7 +60,7 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData)
                 if (!hashedMirror.ends_with("/")) hashedMirror += '/';
                 std::optional<HashType> ht = parseHashTypeOpt(getAttr("outputHashAlgo"));
                 Hash h = newHashAllowEmpty(getAttr("outputHash"), ht);
-                fetch(hashedMirror + printHashType(h.type) + "/" + h.to_string(Base16, false));
+                fetch(hashedMirror + printHashType(h.type) + "/" + h.to_string(Base::Base16, false));
                 return;
             } catch (Error & e) {
                 debug(e.what());

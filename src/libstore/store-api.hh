@@ -311,7 +311,7 @@ public:
      */
     std::pair<StorePath, Hash> computeStorePathForPath(std::string_view name,
         const Path & srcPath, FileIngestionMethod method = FileIngestionMethod::Recursive,
-        HashType hashAlgo = htSHA256, PathFilter & filter = defaultPathFilter) const;
+        HashType hashAlgo = HashType::SHA256, PathFilter & filter = defaultPathFilter) const;
 
     /**
      * Preparatory part of addTextToStore().
@@ -524,7 +524,7 @@ public:
         std::string_view name,
         const Path & srcPath,
         FileIngestionMethod method = FileIngestionMethod::Recursive,
-        HashType hashAlgo = htSHA256,
+        HashType hashAlgo = HashType::SHA256,
         PathFilter & filter = defaultPathFilter,
         RepairFlag repair = NoRepair,
         const StorePathSet & references = StorePathSet());
@@ -535,7 +535,7 @@ public:
      * memory.
      */
     ValidPathInfo addToStoreSlow(std::string_view name, const Path & srcPath,
-        FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256,
+        FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = HashType::SHA256,
         std::optional<Hash> expectedCAHash = {});
 
     /**
@@ -548,7 +548,7 @@ public:
      * \todo remove?
      */
     virtual StorePath addToStoreFromDump(Source & dump, std::string_view name,
-        FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256, RepairFlag repair = NoRepair,
+        FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = HashType::SHA256, RepairFlag repair = NoRepair,
         const StorePathSet & references = StorePathSet())
     { unsupported("addToStoreFromDump"); }
 
@@ -679,7 +679,7 @@ public:
      */
     nlohmann::json pathInfoToJSON(const StorePathSet & storePaths,
         bool includeImpureInfo, bool showClosureSize,
-        Base hashBase = Base32,
+        Base hashBase = Base::Base32,
         AllowInvalidFlag allowInvalid = DisallowInvalid);
 
     /**

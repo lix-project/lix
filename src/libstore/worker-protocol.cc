@@ -158,7 +158,7 @@ WireFormatGenerator WorkerProto::Serialise<ValidPathInfo>::write(const Store & s
 UnkeyedValidPathInfo WorkerProto::Serialise<UnkeyedValidPathInfo>::read(const Store & store, ReadConn conn)
 {
     auto deriver = readString(conn.from);
-    auto narHash = Hash::parseAny(readString(conn.from), htSHA256);
+    auto narHash = Hash::parseAny(readString(conn.from), HashType::SHA256);
     UnkeyedValidPathInfo info(narHash);
     if (deriver != "") info.deriver = store.parseStorePath(deriver);
     info.references = WorkerProto::Serialise<StorePathSet>::read(store, conn);
@@ -174,7 +174,7 @@ UnkeyedValidPathInfo WorkerProto::Serialise<UnkeyedValidPathInfo>::read(const St
 WireFormatGenerator WorkerProto::Serialise<UnkeyedValidPathInfo>::write(const Store & store, WriteConn conn, const UnkeyedValidPathInfo & pathInfo)
 {
     co_yield (pathInfo.deriver ? store.printStorePath(*pathInfo.deriver) : "");
-    co_yield pathInfo.narHash.to_string(Base16, false);
+    co_yield pathInfo.narHash.to_string(Base::Base16, false);
     co_yield WorkerProto::write(store, conn, pathInfo.references);
     co_yield pathInfo.registrationTime;
     co_yield pathInfo.narSize;

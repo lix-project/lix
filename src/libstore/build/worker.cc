@@ -580,7 +580,7 @@ bool Worker::pathContentsGood(const StorePath & path)
         res = false;
     else {
         HashResult current = hashPath(info->narHash.type, store.printStorePath(path));
-        Hash nullHash(htSHA256);
+        Hash nullHash(HashType::SHA256);
         res = info->narHash == nullHash || info->narHash == current.first;
     }
     pathContentsGoodCache.insert_or_assign(path, res);

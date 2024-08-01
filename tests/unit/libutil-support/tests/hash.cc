@@ -11,11 +11,11 @@ using namespace nix;
 
 Gen<Hash> Arbitrary<Hash>::arbitrary()
 {
-    Hash prototype(htSHA1);
+    Hash prototype(HashType::SHA1);
     return
         gen::apply(
             [](const std::vector<uint8_t> & v) {
-                Hash hash(htSHA1);
+                Hash hash(HashType::SHA1);
                 assert(v.size() == hash.hashSize);
                 std::copy(v.begin(), v.end(), hash.hash);
                 return hash;

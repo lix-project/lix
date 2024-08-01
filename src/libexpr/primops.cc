@@ -1336,7 +1336,7 @@ drvName, Bindings * attrs, Value & v)
             state.error<EvalError>("derivation cannot be both content-addressed and impure")
                 .atPos(v).debugThrow();
 
-        auto ht = parseHashTypeOpt(outputHashAlgo).value_or(htSHA256);
+        auto ht = parseHashTypeOpt(outputHashAlgo).value_or(HashType::SHA256);
         auto method = ingestionMethod.value_or(FileIngestionMethod::Recursive);
 
         for (auto & i : outputs) {
@@ -1764,7 +1764,7 @@ static void prim_hashFile(EvalState & state, const PosIdx pos, Value * * args, V
 
     auto path = realisePath(state, pos, *args[1]);
 
-    v.mkString(hashString(*ht, path.readFile()).to_string(Base16, false));
+    v.mkString(hashString(*ht, path.readFile()).to_string(Base::Base16, false));
 }
 
 static RegisterPrimOp primop_hashFile({
@@ -2346,7 +2346,7 @@ static void prim_path(EvalState & state, const PosIdx pos, Value * * args, Value
         else if (n == "recursive")
             method = FileIngestionMethod { state.forceBool(*attr.value, attr.pos, "while evaluating the `recursive` attribute passed to builtins.path") };
         else if (n == "sha256")
-            expectedHash = newHashAllowEmpty(state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the `sha256` attribute passed to builtins.path"), htSHA256);
+            expectedHash = newHashAllowEmpty(state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the `sha256` attribute passed to builtins.path"), HashType::SHA256);
         else
             state.error<EvalError>(
                 "unsupported argument '%1%' to 'addPath'",
@@ -3861,7 +3861,7 @@ static void prim_hashString(EvalState & state, const PosIdx pos, Value * * args,
     NixStringContext context; // discarded
     auto s = state.forceString(*args[1], context, pos, "while evaluating the second argument passed to builtins.hashString");
 
-    v.mkString(hashString(*ht, s).to_string(Base16, false));
+    v.mkString(hashString(*ht, s).to_string(Base::Base16, false));
 }
 
 static RegisterPrimOp primop_hashString({

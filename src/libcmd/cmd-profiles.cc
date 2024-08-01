@@ -246,7 +246,7 @@ StorePath ProfileManifest::build(ref<Store> store)
     StringSink sink;
     sink << dumpPath(tempDir);
 
-    auto narHash = hashString(htSHA256, sink.s);
+    auto narHash = hashString(HashType::SHA256, sink.s);
 
     ValidPathInfo info{
         *store,

@@ -2,14 +2,11 @@
 #include "globals.hh"
 #include "signals.hh"
 
-#include <cstdlib>
 #include <cstring>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
-#include <stdio.h>
-#include <regex>
 
 
 namespace nix {
@@ -145,17 +142,17 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
        Also note that if `path' is a symlink, then we're hashing the
        contents of the symlink (i.e. the result of readlink()), not
        the contents of the target (which may not even exist). */
-    Hash hash = hashPath(htSHA256, path).first;
-    debug("'%1%' has hash '%2%'", path, hash.to_string(Base32, true));
+    Hash hash = hashPath(HashType::SHA256, path).first;
+    debug("'%1%' has hash '%2%'", path, hash.to_string(Base::Base32, true));
 
     /* Check if this is a known hash. */
-    Path linkPath = linksDir + "/" + hash.to_string(Base32, false);
+    Path linkPath = linksDir + "/" + hash.to_string(Base::Base32, false);
 
     /* Maybe delete the link, if it has been corrupted. */
     if (pathExists(linkPath)) {
         auto stLink = lstat(linkPath);
         if (st.st_size != stLink.st_size
-            || (repair && hash != hashPath(htSHA256, linkPath).first))
+            || (repair && hash != hashPath(HashType::SHA256, linkPath).first))
         {
             // XXX: Consider overwriting linkPath with our valid version.
             warn("removing corrupted link '%s'", linkPath);

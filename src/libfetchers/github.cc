@@ -149,7 +149,7 @@ struct GitArchiveInputScheme : InputScheme
         auto path = owner + "/" + repo;
         assert(!(ref && rev));
         if (ref) path += "/" + *ref;
-        if (rev) path += "/" + rev->to_string(Base16, false);
+        if (rev) path += "/" + rev->to_string(Base::Base16, false);
         return ParsedURL {
             .scheme = type(),
             .path = path,
@@ -274,7 +274,7 @@ struct GitHubInputScheme : GitArchiveInputScheme
             readFile(
                 store->toRealPath(
                     downloadFile(store, url, "source", false, headers).storePath)));
-        auto rev = Hash::parseAny(std::string { json["sha"] }, htSHA1);
+        auto rev = Hash::parseAny(std::string { json["sha"] }, HashType::SHA1);
         debug("HEAD revision for '%s' is %s", url, rev.gitRev());
         return rev;
     }
@@ -295,7 +295,7 @@ struct GitHubInputScheme : GitArchiveInputScheme
             : "https://api.%s/repos/%s/%s/tarball/%s";
 
         const auto url = fmt(urlFmt, host, getOwner(input), getRepo(input),
-            input.getRev()->to_string(Base16, false));
+            input.getRev()->to_string(Base::Base16, false));
 
         return DownloadUrl { url, headers };
     }
@@ -347,7 +347,7 @@ struct GitLabInputScheme : GitArchiveInputScheme
                 store->toRealPath(
                     downloadFile(store, url, "source", false, headers).storePath)));
         if (json.is_array() && json.size() >= 1 && json[0]["id"] != nullptr) {
-            auto rev = Hash::parseAny(std::string(json[0]["id"]), htSHA1);
+            auto rev = Hash::parseAny(std::string(json[0]["id"]), HashType::SHA1);
             debug("HEAD revision for '%s' is %s", url, rev.gitRev());
             return rev;
         } else if (json.is_array() && json.size() == 0) {
@@ -367,7 +367,7 @@ struct GitLabInputScheme : GitArchiveInputScheme
         auto host = maybeGetStrAttr(input.attrs, "host").value_or("gitlab.com");
         auto url = fmt("https://%s/api/v4/projects/%s%%2F%s/repository/archive.tar.gz?sha=%s",
             host, getStrAttr(input.attrs, "owner"), getStrAttr(input.attrs, "repo"),
-            input.getRev()->to_string(Base16, false));
+            input.getRev()->to_string(Base::Base16, false));
 
         Headers headers = makeHeadersWithAuthTokens(host);
         return DownloadUrl { url, headers };
@@ -444,7 +444,7 @@ struct SourceHutInputScheme : GitArchiveInputScheme
         if(!id)
             throw BadURL("in '%d', couldn't find ref '%d'", input.to_string(), ref);
 
-        auto rev = Hash::parseAny(*id, htSHA1);
+        auto rev = Hash::parseAny(*id, HashType::SHA1);
         debug("HEAD revision for '%s' is %s", fmt("%s/%s", base_url, ref), rev.gitRev());
         return rev;
     }
@@ -454,7 +454,7 @@ struct SourceHutInputScheme : GitArchiveInputScheme
         auto host = maybeGetStrAttr(input.attrs, "host").value_or("git.sr.ht");
         auto url = fmt("https://%s/%s/%s/archive/%s.tar.gz",
             host, getStrAttr(input.attrs, "owner"), getStrAttr(input.attrs, "repo"),
-            input.getRev()->to_string(Base16, false));
+            input.getRev()->to_string(Base::Base16, false));
 
         Headers headers = makeHeadersWithAuthTokens(host);
         return DownloadUrl { url, headers };

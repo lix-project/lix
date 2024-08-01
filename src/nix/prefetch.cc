@@ -133,7 +133,7 @@ std::tuple<StorePath, Hash> prefetchFile(
 static int main_nix_prefetch_url(int argc, char * * argv)
 {
     {
-        HashType ht = htSHA256;
+        HashType ht = HashType::SHA256;
         std::vector<std::string> args;
         bool printPath = getEnv("PRINT_PATH") == "1";
         bool fromExpr = false;
@@ -256,7 +256,7 @@ struct CmdStorePrefetchFile : StoreCommand, MixJSON
     bool executable = false;
     bool unpack = false;
     std::optional<std::string> name;
-    HashType hashType = htSHA256;
+    HashType hashType = HashType::SHA256;
     std::optional<Hash> expectedHash;
 
     CmdStorePrefetchFile()
@@ -316,13 +316,13 @@ struct CmdStorePrefetchFile : StoreCommand, MixJSON
         if (json) {
             auto res = nlohmann::json::object();
             res["storePath"] = store->printStorePath(storePath);
-            res["hash"] = hash.to_string(SRI, true);
+            res["hash"] = hash.to_string(Base::SRI, true);
             logger->cout(res.dump());
         } else {
             notice("Downloaded '%s' to '%s' (hash '%s').",
                 url,
                 store->printStorePath(storePath),
-                hash.to_string(SRI, true));
+                hash.to_string(Base::SRI, true));
         }
     }
 };
