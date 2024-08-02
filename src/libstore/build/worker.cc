@@ -187,6 +187,7 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
     std::visit(
         overloaded{
             [&](Goal::StillAlive) {},
+            [&](Goal::WaitForSlot) { waitForBuildSlot(goal); },
             [&](Goal::Finished & f) { goalFinished(goal, f); },
         },
         how

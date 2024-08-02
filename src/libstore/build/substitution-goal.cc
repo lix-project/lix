@@ -194,8 +194,7 @@ Goal::WorkResult PathSubstitutionGoal::tryToRun()
        if maxSubstitutionJobs == 0, we still allow a substituter to run. This
        prevents infinite waiting. */
     if (worker.getNrSubstitutions() >= std::max(1U, (unsigned int) settings.maxSubstitutionJobs)) {
-        worker.waitForBuildSlot(shared_from_this());
-        return StillAlive{};
+        return WaitForSlot{};
     }
 
     maintainRunningSubstitutions = std::make_unique<MaintainCount<uint64_t>>(worker.runningSubstitutions);

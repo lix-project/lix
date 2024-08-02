@@ -158,9 +158,8 @@ Goal::WorkResult LocalDerivationGoal::tryLocalBuild()
     unsigned int curBuilds = worker.getNrLocalBuilds();
     if (curBuilds >= settings.maxBuildJobs) {
         state = &DerivationGoal::tryToBuild;
-        worker.waitForBuildSlot(shared_from_this());
         outputLocks.unlock();
-        return StillAlive{};
+        return WaitForSlot{};
     }
 
     assert(derivationType);

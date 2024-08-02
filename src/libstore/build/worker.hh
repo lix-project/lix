@@ -108,6 +108,12 @@ private:
     void goalFinished(GoalPtr goal, Goal::Finished & f);
     void handleWorkResult(GoalPtr goal, Goal::WorkResult how);
 
+    /**
+     * Put `goal` to sleep until a build slot becomes available (which
+     * might be right away).
+     */
+    void waitForBuildSlot(GoalPtr goal);
+
 public:
 
     const Activity act;
@@ -232,12 +238,6 @@ public:
      * Unregisters a running child process.
      */
     void childTerminated(Goal * goal);
-
-    /**
-     * Put `goal` to sleep until a build slot becomes available (which
-     * might be right away).
-     */
-    void waitForBuildSlot(GoalPtr goal);
 
     /**
      * Wait for a few seconds and then retry this goal.  Used when

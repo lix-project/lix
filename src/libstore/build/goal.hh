@@ -106,12 +106,13 @@ struct Goal : public std::enable_shared_from_this<Goal>
 public:
 
     struct [[nodiscard]] StillAlive {};
+    struct [[nodiscard]] WaitForSlot {};
     struct [[nodiscard]] Finished {
         ExitCode result;
         std::unique_ptr<Error> ex;
     };
 
-    struct [[nodiscard]] WorkResult : std::variant<StillAlive, Finished>
+    struct [[nodiscard]] WorkResult : std::variant<StillAlive, WaitForSlot, Finished>
     {
         WorkResult() = delete;
         using variant::variant;

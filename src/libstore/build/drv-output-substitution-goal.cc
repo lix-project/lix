@@ -41,8 +41,7 @@ Goal::WorkResult DrvOutputSubstitutionGoal::tryNext()
        if maxSubstitutionJobs == 0, we still allow a substituter to run. This
        prevents infinite waiting. */
     if (worker.runningSubstitutions >= std::max(1U, settings.maxSubstitutionJobs.get())) {
-        worker.waitForBuildSlot(shared_from_this());
-        return StillAlive{};
+        return WaitForSlot{};
     }
 
     maintainRunningSubstitutions =
