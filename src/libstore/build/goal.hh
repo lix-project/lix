@@ -135,7 +135,7 @@ public:
 
     void addWaitee(GoalPtr waitee);
 
-    virtual void waiteeDone(GoalPtr waitee, ExitCode result);
+    virtual void waiteeDone(GoalPtr waitee) { }
 
     virtual WorkResult handleChildOutput(int fd, std::string_view data)
     {

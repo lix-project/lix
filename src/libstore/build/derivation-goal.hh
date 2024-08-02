@@ -332,7 +332,7 @@ struct DerivationGoal : public Goal
         SingleDrvOutputs builtOutputs = {},
         std::optional<Error> ex = {});
 
-    void waiteeDone(GoalPtr waitee, ExitCode result) override;
+    void waiteeDone(GoalPtr waitee) override;
 
     StorePathSet exportReferences(const StorePathSet & storePaths);
 

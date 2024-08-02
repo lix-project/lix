@@ -154,7 +154,27 @@ void Worker::goalFinished(GoalPtr goal, Goal::Finished & f)
 
     for (auto & i : goal->waiters) {
         if (GoalPtr waiting = i.lock()) {
-            waiting->waiteeDone(goal, f.result);
+            assert(waiting->waitees.count(goal));
+            waiting->waitees.erase(goal);
+
+            waiting->trace(fmt("waitee '%s' done; %d left", goal->name, waiting->waitees.size()));
+
+            if (f.result != Goal::ecSuccess) ++waiting->nrFailed;
+            if (f.result == Goal::ecNoSubstituters) ++waiting->nrNoSubstituters;
+            if (f.result == Goal::ecIncompleteClosure) ++waiting->nrIncompleteClosure;
+
+            if (waiting->waitees.empty() || (f.result == Goal::ecFailed && !settings.keepGoing)) {
+                /* If we failed and keepGoing is not set, we remove all
+                   remaining waitees. */
+                for (auto & i : waiting->waitees) {
+                    i->waiters.extract(waiting);
+                }
+                waiting->waitees.clear();
+
+                wakeUp(waiting);
+            }
+
+            waiting->waiteeDone(goal);
         }
     }
     goal->waiters.clear();

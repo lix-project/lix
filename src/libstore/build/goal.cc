@@ -18,33 +18,6 @@ void Goal::addWaitee(GoalPtr waitee)
 }
 
 
-void Goal::waiteeDone(GoalPtr waitee, ExitCode result)
-{
-    assert(waitees.count(waitee));
-    waitees.erase(waitee);
-
-    trace(fmt("waitee '%s' done; %d left", waitee->name, waitees.size()));
-
-    if (result == ecFailed || result == ecNoSubstituters || result == ecIncompleteClosure) ++nrFailed;
-
-    if (result == ecNoSubstituters) ++nrNoSubstituters;
-
-    if (result == ecIncompleteClosure) ++nrIncompleteClosure;
-
-    if (waitees.empty() || (result == ecFailed && !settings.keepGoing)) {
-
-        /* If we failed and keepGoing is not set, we remove all
-           remaining waitees. */
-        for (auto & goal : waitees) {
-            goal->waiters.extract(shared_from_this());
-        }
-        waitees.clear();
-
-        worker.wakeUp(shared_from_this());
-    }
-}
-
-
 void Goal::trace(std::string_view s)
 {
     debug("%1%: %2%", name, s);

@@ -1541,10 +1541,8 @@ Goal::Finished DerivationGoal::done(
 }
 
 
-void DerivationGoal::waiteeDone(GoalPtr waitee, ExitCode result)
+void DerivationGoal::waiteeDone(GoalPtr waitee)
 {
-    Goal::waiteeDone(waitee, result);
-
     if (!useDerivation) return;
 
     auto * dg = dynamic_cast<DerivationGoal *>(&*waitee);
