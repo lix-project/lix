@@ -292,6 +292,24 @@
             werror = true;
           };
 
+          # Although this might be nicer to do with pre-commit, that would
+          # require adding 12MB of nodejs to the dev shell, whereas building it
+          # in CI with Nix avoids that at a cost of slower feedback on rarely
+          # touched files.
+          jsSyntaxCheck =
+            let
+              nixpkgs = nixpkgsFor.x86_64-linux.native;
+              inherit (nixpkgs) pkgs;
+              docSources = lib.fileset.toSource {
+                root = ./doc;
+                fileset = lib.fileset.fileFilter (f: f.hasExt "js") ./doc;
+              };
+            in
+            pkgs.runCommand "js-syntax-check" { } ''
+              find ${docSources} -type f -print -exec ${pkgs.nodejs-slim}/bin/node --check '{}' ';'
+              touch $out
+            '';
+
           # Make sure that nix-env still produces the exact same result
           # on a particular version of Nixpkgs.
           evalNixpkgs =
