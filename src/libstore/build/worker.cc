@@ -189,6 +189,7 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
             [&](Goal::StillAlive) {},
             [&](Goal::WaitForSlot) { waitForBuildSlot(goal); },
             [&](Goal::WaitForAWhile) { waitForAWhile(goal); },
+            [&](Goal::ContinueImmediately) { wakeUp(goal); },
             [&](Goal::Finished & f) { goalFinished(goal, f); },
         },
         how
@@ -523,7 +524,7 @@ void Worker::waitForInput()
                 if (rd == 0 || (rd == -1 && errno == EIO)) {
                     debug("%1%: got EOF", goal->getName());
                     goal->handleEOF(k);
-                    wakeUp(goal);
+                    handleWorkResult(goal, Goal::ContinueImmediately{});
                     j->fds.erase(k);
                 } else if (rd == -1) {
                     if (errno != EINTR)

@@ -648,8 +648,7 @@ Goal::WorkResult DerivationGoal::inputsRealised()
        slot to become available, since we don't need one if there is a
        build hook. */
     state = &DerivationGoal::tryToBuild;
-    worker.wakeUp(shared_from_this());
-    return StillAlive{};
+    return ContinueImmediately{};
 }
 
 Goal::WorkResult DerivationGoal::started()
@@ -763,8 +762,7 @@ Goal::WorkResult DerivationGoal::tryToBuild()
     actLock.reset();
 
     state = &DerivationGoal::tryLocalBuild;
-    worker.wakeUp(shared_from_this());
-    return StillAlive{};
+    return ContinueImmediately{};
 }
 
 Goal::WorkResult DerivationGoal::tryLocalBuild() {

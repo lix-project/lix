@@ -181,8 +181,7 @@ Goal::WorkResult PathSubstitutionGoal::referencesValid()
             assert(worker.store.isValidPath(i));
 
     state = &PathSubstitutionGoal::tryToRun;
-    worker.wakeUp(shared_from_this());
-    return StillAlive{};
+    return ContinueImmediately{};
 }
 
 
@@ -255,8 +254,7 @@ Goal::WorkResult PathSubstitutionGoal::finished()
 
         /* Try the next substitute. */
         state = &PathSubstitutionGoal::tryNext;
-        worker.wakeUp(shared_from_this());
-        return StillAlive{};
+        return ContinueImmediately{};
     }
 
     worker.markContentsGood(storePath);

@@ -122,6 +122,11 @@ private:
      */
     void waitForAWhile(GoalPtr goal);
 
+    /**
+     * Wake up a goal (i.e., there is something for it to do).
+     */
+    void wakeUp(GoalPtr goal);
+
 public:
 
     const Activity act;
@@ -218,11 +223,6 @@ public:
      * Remove a dead goal.
      */
     void removeGoal(GoalPtr goal);
-
-    /**
-     * Wake up a goal (i.e., there is something for it to do).
-     */
-    void wakeUp(GoalPtr goal);
 
     /**
      * Return the number of local build processes currently running (but not
