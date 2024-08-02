@@ -107,12 +107,13 @@ public:
 
     struct [[nodiscard]] StillAlive {};
     struct [[nodiscard]] WaitForSlot {};
+    struct [[nodiscard]] WaitForAWhile {};
     struct [[nodiscard]] Finished {
         ExitCode result;
         std::unique_ptr<Error> ex;
     };
 
-    struct [[nodiscard]] WorkResult : std::variant<StillAlive, WaitForSlot, Finished>
+    struct [[nodiscard]] WorkResult : std::variant<StillAlive, WaitForSlot, WaitForAWhile, Finished>
     {
         WorkResult() = delete;
         using variant::variant;

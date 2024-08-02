@@ -201,8 +201,7 @@ Goal::WorkResult LocalDerivationGoal::tryLocalBuild()
             if (!actLock)
                 actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
                     fmt("waiting for a free build user ID for '%s'", Magenta(worker.store.printStorePath(drvPath))));
-            worker.waitForAWhile(shared_from_this());
-            return StillAlive{};
+            return WaitForAWhile{};
         }
     }
 

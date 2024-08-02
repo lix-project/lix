@@ -114,6 +114,14 @@ private:
      */
     void waitForBuildSlot(GoalPtr goal);
 
+    /**
+     * Wait for a few seconds and then retry this goal.  Used when
+     * waiting for a lock held by another process.  This kind of
+     * polling is inefficient, but POSIX doesn't really provide a way
+     * to wait for multiple locks in the main select() loop.
+     */
+    void waitForAWhile(GoalPtr goal);
+
 public:
 
     const Activity act;
@@ -238,14 +246,6 @@ public:
      * Unregisters a running child process.
      */
     void childTerminated(Goal * goal);
-
-    /**
-     * Wait for a few seconds and then retry this goal.  Used when
-     * waiting for a lock held by another process.  This kind of
-     * polling is inefficient, but POSIX doesn't really provide a way
-     * to wait for multiple locks in the main select() loop.
-     */
-    void waitForAWhile(GoalPtr goal);
 
     /**
      * Loop until the specified top-level goals have finished.

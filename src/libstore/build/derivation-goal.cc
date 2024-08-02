@@ -701,8 +701,7 @@ Goal::WorkResult DerivationGoal::tryToBuild()
         if (!actLock)
             actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
                 fmt("waiting for lock on %s", Magenta(showPaths(lockFiles))));
-        worker.waitForAWhile(shared_from_this());
-        return StillAlive{};
+        return WaitForAWhile{};
     }
 
     actLock.reset();
@@ -753,9 +752,8 @@ Goal::WorkResult DerivationGoal::tryToBuild()
                 if (!actLock)
                     actLock = std::make_unique<Activity>(*logger, lvlTalkative, actBuildWaiting,
                         fmt("waiting for a machine to build '%s'", Magenta(worker.store.printStorePath(drvPath))));
-                worker.waitForAWhile(shared_from_this());
                 outputLocks.unlock();
-                return StillAlive{};
+                return WaitForAWhile{};
             case rpDecline:
                 /* We should do it ourselves. */
                 break;

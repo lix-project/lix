@@ -188,6 +188,7 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
         overloaded{
             [&](Goal::StillAlive) {},
             [&](Goal::WaitForSlot) { waitForBuildSlot(goal); },
+            [&](Goal::WaitForAWhile) { waitForAWhile(goal); },
             [&](Goal::Finished & f) { goalFinished(goal, f); },
         },
         how
