@@ -190,6 +190,12 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
             [&](Goal::WaitForSlot) { waitForBuildSlot(goal); },
             [&](Goal::WaitForAWhile) { waitForAWhile(goal); },
             [&](Goal::ContinueImmediately) { wakeUp(goal); },
+            [&](Goal::WaitForGoals & w) {
+                for (auto & dep : w.goals) {
+                    goal->waitees.insert(dep);
+                    dep->waiters.insert(goal);
+                }
+            },
             [&](Goal::Finished & f) { goalFinished(goal, f); },
         },
         how

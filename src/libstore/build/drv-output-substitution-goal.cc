@@ -100,6 +100,7 @@ Goal::WorkResult DrvOutputSubstitutionGoal::realisationFetched()
         return tryNext();
     }
 
+    WaitForGoals result;
     for (const auto & [depId, depPath] : outputInfo->dependentRealisations) {
         if (depId != id) {
             if (auto localOutputInfo = worker.store.queryRealisation(depId);
@@ -115,17 +116,17 @@ Goal::WorkResult DrvOutputSubstitutionGoal::realisationFetched()
                 );
                 return tryNext();
             }
-            addWaitee(worker.makeDrvOutputSubstitutionGoal(depId));
+            result.goals.insert(worker.makeDrvOutputSubstitutionGoal(depId));
         }
     }
 
-    addWaitee(worker.makePathSubstitutionGoal(outputInfo->outPath));
+    result.goals.insert(worker.makePathSubstitutionGoal(outputInfo->outPath));
 
-    if (waitees.empty()) {
+    if (result.goals.empty()) {
         return outPathValid();
     } else {
         state = &DrvOutputSubstitutionGoal::outPathValid;
-        return StillAlive{};
+        return result;
     }
 }
 

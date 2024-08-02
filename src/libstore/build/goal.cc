@@ -11,13 +11,6 @@ bool CompareGoalPtrs::operator() (const GoalPtr & a, const GoalPtr & b) const {
 }
 
 
-void Goal::addWaitee(GoalPtr waitee)
-{
-    waitees.insert(waitee);
-    waitee->waiters.insert(shared_from_this());
-}
-
-
 void Goal::trace(std::string_view s)
 {
     debug("%1%: %2%", name, s);

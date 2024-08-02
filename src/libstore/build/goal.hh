@@ -109,13 +109,21 @@ public:
     struct [[nodiscard]] WaitForSlot {};
     struct [[nodiscard]] WaitForAWhile {};
     struct [[nodiscard]] ContinueImmediately {};
+    struct [[nodiscard]] WaitForGoals {
+        Goals goals;
+    };
     struct [[nodiscard]] Finished {
         ExitCode result;
         std::unique_ptr<Error> ex;
     };
 
-    struct [[nodiscard]] WorkResult
-        : std::variant<StillAlive, WaitForSlot, WaitForAWhile, ContinueImmediately, Finished>
+    struct [[nodiscard]] WorkResult : std::variant<
+                                          StillAlive,
+                                          WaitForSlot,
+                                          WaitForAWhile,
+                                          ContinueImmediately,
+                                          WaitForGoals,
+                                          Finished>
     {
         WorkResult() = delete;
         using variant::variant;
@@ -136,8 +144,6 @@ public:
     }
 
     virtual WorkResult work() = 0;
-
-    void addWaitee(GoalPtr waitee);
 
     virtual void waiteeDone(GoalPtr waitee) { }
 

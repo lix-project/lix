@@ -152,15 +152,16 @@ Goal::WorkResult PathSubstitutionGoal::tryNext()
 
     /* To maintain the closure invariant, we first have to realise the
        paths referenced by this one. */
+    WaitForGoals result;
     for (auto & i : info->references)
         if (i != storePath) /* ignore self-references */
-            addWaitee(worker.makePathSubstitutionGoal(i));
+            result.goals.insert(worker.makePathSubstitutionGoal(i));
 
-    if (waitees.empty()) {/* to prevent hang (no wake-up event) */
+    if (result.goals.empty()) {/* to prevent hang (no wake-up event) */
         return referencesValid();
     } else {
         state = &PathSubstitutionGoal::referencesValid;
-        return StillAlive{};
+        return result;
     }
 }
 
