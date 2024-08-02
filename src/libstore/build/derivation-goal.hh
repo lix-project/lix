@@ -107,6 +107,9 @@ struct DerivationGoal : public Goal
      */
     NeedRestartForMoreOutputs needRestart = NeedRestartForMoreOutputs::OutputsUnmodifedDontNeed;
 
+    bool anyHashMismatchSeen = false;
+    bool anyCheckMismatchSeen = false;
+
     /**
      * See `retrySubstitution`; just for that field.
      */

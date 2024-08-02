@@ -105,6 +105,27 @@ private:
      */
     std::map<StorePath, bool> pathContentsGoodCache;
 
+    /**
+     * Set if at least one derivation had a BuildError (i.e. permanent
+     * failure).
+     */
+    bool permanentFailure = false;
+
+    /**
+     * Set if at least one derivation had a timeout.
+     */
+    bool timedOut = false;
+
+    /**
+     * Set if at least one derivation fails with a hash mismatch.
+     */
+    bool hashMismatch = false;
+
+    /**
+     * Set if at least one derivation is not deterministic in check mode.
+     */
+    bool checkMismatch = false;
+
     void goalFinished(GoalPtr goal, Goal::Finished & f);
     void handleWorkResult(GoalPtr goal, Goal::WorkResult how);
 
@@ -132,27 +153,6 @@ public:
     const Activity act;
     const Activity actDerivations;
     const Activity actSubstitutions;
-
-    /**
-     * Set if at least one derivation had a BuildError (i.e. permanent
-     * failure).
-     */
-    bool permanentFailure;
-
-    /**
-     * Set if at least one derivation had a timeout.
-     */
-    bool timedOut;
-
-    /**
-     * Set if at least one derivation fails with a hash mismatch.
-     */
-    bool hashMismatch;
-
-    /**
-     * Set if at least one derivation is not deterministic in check mode.
-     */
-    bool checkMismatch;
 
     Store & store;
     Store & evalStore;

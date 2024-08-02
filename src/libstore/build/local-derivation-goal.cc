@@ -235,8 +235,9 @@ Goal::WorkResult LocalDerivationGoal::tryLocalBuild()
     } catch (BuildError & e) {
         outputLocks.unlock();
         buildUser.reset();
-        worker.permanentFailure = true;
-        return done(BuildResult::InputRejected, {}, std::move(e));
+        auto report = done(BuildResult::InputRejected, {}, std::move(e));
+        report.permanentFailure = true;
+        return report;
     }
 
     /* This state will be reached when we get EOF on the child's
@@ -2195,7 +2196,7 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
                 if (wanted != got) {
                     /* Throw an error after registering the path as
                        valid. */
-                    worker.hashMismatch = true;
+                    anyHashMismatchSeen = true;
                     // XXX: shameless layering violation hack that makes the hash mismatch error at least not utterly worthless
                     auto guessedUrl = getOr(drv->env, "urls", getOr(drv->env, "url", "(unknown)"));
                     delayedException = std::make_exception_ptr(
@@ -2282,7 +2283,7 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
             if (!worker.store.isValidPath(newInfo.path)) continue;
             ValidPathInfo oldInfo(*worker.store.queryPathInfo(newInfo.path));
             if (newInfo.narHash != oldInfo.narHash) {
-                worker.checkMismatch = true;
+                anyCheckMismatchSeen = true;
                 if (settings.runDiffHook || settings.keepFailed) {
                     auto dst = worker.store.toRealPath(finalDestPath + checkSuffix);
                     deletePath(dst);

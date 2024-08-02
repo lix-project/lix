@@ -21,10 +21,6 @@ Worker::Worker(Store & store, Store & evalStore)
     nrLocalBuilds = 0;
     nrSubstitutions = 0;
     lastWokenUp = steady_time_point::min();
-    permanentFailure = false;
-    timedOut = false;
-    hashMismatch = false;
-    checkMismatch = false;
 }
 
 
@@ -144,6 +140,11 @@ void Worker::goalFinished(GoalPtr goal, Goal::Finished & f)
     goal->trace("done");
     assert(!goal->exitCode.has_value());
     goal->exitCode = f.result;
+
+    permanentFailure |= f.permanentFailure;
+    timedOut |= f.timedOut;
+    hashMismatch |= f.hashMismatch;
+    checkMismatch |= f.checkMismatch;
 
     if (f.ex) {
         if (!goal->waiters.empty())

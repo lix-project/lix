@@ -1506,10 +1506,6 @@ Goal::Finished DerivationGoal::done(
     buildResult.status = status;
     if (ex)
         buildResult.errorMsg = fmt("%s", Uncolored(ex->info().msg));
-    if (buildResult.status == BuildResult::TimedOut)
-        worker.timedOut = true;
-    if (buildResult.status == BuildResult::PermanentFailure)
-        worker.permanentFailure = true;
 
     mcExpectedBuilds.reset();
     mcRunningBuilds.reset();
@@ -1535,6 +1531,10 @@ Goal::Finished DerivationGoal::done(
     return Finished{
         .result = buildResult.success() ? ecSuccess : ecFailed,
         .ex = ex ? std::make_unique<Error>(std::move(*ex)) : nullptr,
+        .permanentFailure = buildResult.status == BuildResult::PermanentFailure,
+        .timedOut = buildResult.status == BuildResult::TimedOut,
+        .hashMismatch = anyHashMismatchSeen,
+        .checkMismatch = anyCheckMismatchSeen,
     };
 }
 

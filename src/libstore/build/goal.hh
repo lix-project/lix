@@ -115,6 +115,10 @@ public:
     struct [[nodiscard]] Finished {
         ExitCode result;
         std::unique_ptr<Error> ex;
+        bool permanentFailure = false;
+        bool timedOut = false;
+        bool hashMismatch = false;
+        bool checkMismatch = false;
     };
 
     struct [[nodiscard]] WorkResult : std::variant<
