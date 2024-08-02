@@ -88,13 +88,17 @@ let
 
   version = __forDefaults.versionJson.version + versionSuffix;
 
-  aws-sdk-cpp-nix = aws-sdk-cpp.override {
-    apis = [
-      "s3"
-      "transfer"
-    ];
-    customMemoryManagement = false;
-  };
+  aws-sdk-cpp-nix =
+    if aws-sdk-cpp == null then
+      null
+    else
+      aws-sdk-cpp.override {
+        apis = [
+          "s3"
+          "transfer"
+        ];
+        customMemoryManagement = false;
+      };
 
   # Reimplementation of Nixpkgs' Meson cross file, with some additions to make
   # it actually work.
