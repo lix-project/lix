@@ -15,6 +15,7 @@
 #include "registry.hh"
 #include "eval-cache.hh"
 #include "markdown.hh"
+#include "terminal.hh"
 
 #include <nlohmann/json.hpp>
 #include <queue>
@@ -1225,25 +1226,42 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                 auto showDerivation = [&]()
                 {
                     auto name = visitor.getAttr(state->sName)->getString();
+                    std::optional<std::string> description;
+                    if (auto aMeta = visitor.maybeGetAttr(state->sMeta)) {
+                        if (auto aDescription = aMeta->maybeGetAttr(state->sDescription))
+                            description = aDescription->getString();
+                    }
+
                     if (json) {
-                        std::optional<std::string> description;
-                        if (auto aMeta = visitor.maybeGetAttr(state->sMeta)) {
-                            if (auto aDescription = aMeta->maybeGetAttr(state->sDescription))
-                                description = aDescription->getString();
-                        }
                         j.emplace("type", "derivation");
                         j.emplace("name", name);
                         if (description)
                             j.emplace("description", *description);
                     } else {
-                        logger->cout("%s: %s '%s'",
-                            headerPrefix,
+                        auto type =
                             attrPath.size() == 2 && attrPathS[0] == "devShell" ? "development environment" :
                             attrPath.size() >= 2 && attrPathS[0] == "devShells" ? "development environment" :
                             attrPath.size() == 3 && attrPathS[0] == "checks" ? "derivation" :
                             attrPath.size() >= 1 && attrPathS[0] == "hydraJobs" ? "derivation" :
-                            "package",
-                            name);
+                            "package";
+                        if (description && !description->empty()) {
+                            // Trim the string and only display the first line of the description.
+                            auto desc = nix::trim(*description);
+                            auto firstLineDesc = desc.substr(0, desc.find('\n'));
+
+                            std::string output = fmt("%s: %s '%s' - '%s'", headerPrefix, type, name, firstLineDesc);
+                            if (output.size() > getWindowSize().second) {
+                                // we resize to 4 less then the window size to account for the "...'" we append to
+                                // the final string, we also include the ' since that is removed when we truncate the string
+                                output.resize(getWindowSize().second - 4);
+                                output.append("...'");
+                            }
+
+                            logger->cout("%s", output.c_str());
+                        }
+                        else {
+                            logger->cout("%s: %s '%s'", headerPrefix, type, name);
+                        }
                     }
                 };
 
