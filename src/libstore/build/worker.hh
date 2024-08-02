@@ -148,6 +148,11 @@ private:
      */
     void wakeUp(GoalPtr goal);
 
+    /**
+     * Wait for input to become available.
+     */
+    void waitForInput();
+
 public:
 
     const Activity act;
@@ -251,11 +256,6 @@ public:
      * Loop until the specified top-level goals have finished.
      */
     void run(const Goals & topGoals);
-
-    /**
-     * Wait for input to become available.
-     */
-    void waitForInput();
 
     /***
      * The exit status in case of failure.
