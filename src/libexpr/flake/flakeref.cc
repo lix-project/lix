@@ -169,14 +169,13 @@ std::pair<FlakeRef, std::string> parseFlakeRefWithFragment(
                         if (subdir != "") {
                             if (parsedURL.query.count("dir"))
                                 throw Error("flake URL '%s' has an inconsistent 'dir' parameter", url);
-                            parsedURL.query.insert_or_assign("dir", subdir);
                         }
 
                         if (pathExists(flakeRoot + "/.git/shallow"))
                             parsedURL.query.insert_or_assign("shallow", "1");
 
                         return std::make_pair(
-                            FlakeRef(Input::fromURL(parsedURL, isFlake), getOr(parsedURL.query, "dir", "")),
+                            FlakeRef(Input::fromURL(parsedURL, isFlake), subdir),
                             fragment);
                     }
 
@@ -204,7 +203,13 @@ std::pair<FlakeRef, std::string> parseFlakeRefWithFragment(
         std::string fragment;
         std::swap(fragment, parsedURL.fragment);
 
-        auto input = Input::fromURL(parsedURL, isFlake);
+        // This has a special meaning for flakes and must not be passed to libfetchers.
+        // Of course this means that libfetchers cannot have fetchers
+        // expecting an argument `dir` 🫠
+        ParsedURL urlForFetchers(parsedURL);
+        urlForFetchers.query.erase("dir");
+
+        auto input = Input::fromURL(urlForFetchers, isFlake);
         input.parent = baseDir;
 
         return std::make_pair(
