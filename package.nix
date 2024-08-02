@@ -58,8 +58,11 @@
   buildUnreleasedNotes ? true,
   internalApiDocs ? false,
 
+  # Support garbage collection in the evaluator.
+  enableGC ? sanitize == null || !builtins.elem "address" sanitize,
   # List of Meson sanitize options. Accepts values of b_sanitize, e.g.
   # "address", "undefined", "thread".
+  # Enabling the "address" sanitizer will disable garbage collection in the evaluator.
   sanitize ? null,
   # Turn compiler warnings into errors.
   werror ? false,
@@ -118,10 +121,7 @@ let
 
   # The internal API docs need these for the build, but if we're not building
   # Nix itself, then these don't need to be propagated.
-  maybePropagatedInputs = [
-    boehmgc-nix
-    nlohmann_json
-  ];
+  maybePropagatedInputs = lib.optional enableGC boehmgc-nix ++ [ nlohmann_json ];
 
   # .gitignore has already been processed, so any changes in it are irrelevant
   # at this point. It is not represented verbatim for test purposes because
@@ -179,10 +179,9 @@ stdenv.mkDerivation (finalAttrs: {
 
   mesonFlags =
     let
-      sanitizeOpts = lib.optionals (sanitize != null) (
-        [ "-Db_sanitize=${builtins.concatStringsSep "," sanitize}" ]
-        ++ lib.optional (builtins.elem "address" sanitize) "-Dgc=disabled"
-      );
+      sanitizeOpts = lib.optional (
+        sanitize != null
+      ) "-Db_sanitize=${builtins.concatStringsSep "," sanitize}";
     in
     lib.optionals hostPlatform.isLinux [
       # You'd think meson could just find this in PATH, but busybox is in buildInputs,
@@ -196,6 +195,7 @@ stdenv.mkDerivation (finalAttrs: {
       # mesonConfigurePhase automatically passes -Dauto_features=enabled,
       # so we must explicitly enable or disable features that we are not passing
       # dependencies for.
+      (lib.mesonEnable "gc" enableGC)
       (lib.mesonEnable "internal-api-docs" internalApiDocs)
       (lib.mesonBool "enable-tests" finalAttrs.finalPackage.doCheck)
       (lib.mesonBool "enable-docs" canRunInstalled)
