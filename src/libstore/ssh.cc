@@ -65,10 +65,11 @@ std::unique_ptr<SSHMaster::Connection> SSHMaster::startCommand(const std::string
     ProcessOptions options;
     options.dieWithParent = false;
 
+    std::optional<Finally<std::function<void()>>> resumeLoggerDefer;
     if (!fakeSSH && !useMaster) {
         logger->pause();
+        resumeLoggerDefer.emplace([&]() { logger->resume(); });
     }
-    Finally cleanup = [&]() { logger->resume(); };
 
     conn->sshPid = startProcess([&]() {
         restoreProcessContext();
