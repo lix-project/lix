@@ -31,17 +31,23 @@ nix3_cli_files = custom_target(
 
 conf_file_md = custom_target(
   command : [
-    nix_eval_for_docs,
-    '--expr',
-    '(import @INPUT0@).showSettings { inlineHTML = true; } (builtins.fromJSON (builtins.readFile @INPUT1@))',
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '--kernel', host_machine.system(),
+    '--docs', '@OUTPUT@',
+    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '@INPUT@',
   ],
-  capture : true,
   input : [
-    '../../utils.nix',
-    conf_file_json,
-    experimental_features_shortlist_md,
-    deprecated_features_shortlist_md,
+    libexpr_setting_definitions,
+    libfetchers_setting_definitions,
+    file_transfer_setting_definitions,
+    libstore_setting_definitions,
+    archive_setting_definitions,
+    feature_setting_definitions,
+    logging_setting_definitions,
+    daemon_setting_definitions,
+    develop_settings_definitions,
   ],
   output : 'conf-file.md',
-  env : nix_env_for_docs,
 )

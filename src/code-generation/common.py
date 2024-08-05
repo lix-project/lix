@@ -23,8 +23,18 @@ def cxx_escape_character(c):
         return str.format(r'\U{:08x}', ord(c))
 
 def cxx_literal(v):
-    if isinstance(v, str):
+    if v is None:
+        return 'std::nullopt'
+    elif isinstance(v, bool) and v == False: # 0 == False
+        return 'false'
+    elif isinstance(v, bool) and v == True: # 1 == True
+        return 'true'
+    elif isinstance(v, int):
+        return str(v)
+    elif isinstance(v, str):
         return ''.join(['"', *(cxx_escape_character(c) for c in v), '"'])
+    elif isinstance(v, list):
+        return f'{{{", ".join([cxx_literal(item) for item in v])}}}'
     else:
         raise NotImplementedError(f'cannot represent {repr(v)} in C++')
 

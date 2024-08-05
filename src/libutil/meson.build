@@ -216,6 +216,62 @@ deprecated_features_impl_header = deprecated_features_gen[1]
 deprecated_features_shortlist_md = deprecated_features_gen[2]
 deprecated_feature_descriptions_md = deprecated_features_gen[3]
 
+libutil_settings_headers = []
+
+archive_setting_definitions = files(
+  'archive-settings/preallocate-contents.md',
+  'archive-settings/use-case-hack.md',
+)
+libutil_settings_headers += custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '--kernel', host_machine.system(),
+    '--header', '@OUTPUT@',
+    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '@INPUT@',
+  ],
+  input : archive_setting_definitions,
+  output : 'archive-settings.gen.inc',
+)
+
+feature_setting_definitions = files(
+  'feature-settings/deprecated-features.md',
+  'feature-settings/experimental-features.md',
+)
+libutil_settings_headers += custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '--kernel', host_machine.system(),
+    '--header', '@OUTPUT@',
+    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '@INPUT@',
+  ],
+  input : feature_setting_definitions,
+  output : 'feature-settings.gen.inc',
+  install : true,
+  install_dir : includedir / 'lix/libutil',
+)
+
+logging_setting_definitions = files(
+  'logging-settings/show-trace.md',
+)
+libutil_settings_headers += custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '--kernel', host_machine.system(),
+    '--header', '@OUTPUT@',
+    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '@INPUT@',
+  ],
+  input : logging_setting_definitions,
+  output : 'logging-settings.gen.inc',
+  install : true,
+  install_dir : includedir / 'lix/libutil',
+)
+
 libutil = library(
   'lixutil',
   libutil_sources,
@@ -223,6 +279,7 @@ libutil = library(
   experimental_features_impl_header,
   deprecated_features_header,
   deprecated_features_impl_header,
+  libutil_settings_headers,
   dependencies : [
     aws_sdk,
     aws_s3,
@@ -262,6 +319,7 @@ liblixutil = declare_dependency(
   sources : [
     experimental_features_header,
     deprecated_features_header,
+    libutil_settings_headers,
   ],
   link_with : libutil
 )
@@ -273,6 +331,7 @@ if is_static
     sources : [
       experimental_features_header,
       deprecated_features_header,
+      libutil_settings_headers,
     ],
     link_whole : libutil,
   )

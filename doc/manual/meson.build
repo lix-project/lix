@@ -15,39 +15,6 @@ nix_eval_for_docs_common = nix_for_docs + [
 ]
 nix_eval_for_docs = nix_eval_for_docs_common + '--raw'
 
-conf_file_json = custom_target(
-  command : nix_for_docs + [ 'show-config', '--json' ],
-  capture : true,
-  output : 'conf-file.json',
-  env : nix_env_for_docs,
-  # FIXME: put the actual lib targets in here? meson have introspection challenge 2024 though.
-  build_always_stale : true,
-)
-
-nix_conf_file_md_body = custom_target(
-  command : nix_eval_for_docs + [
-    '--expr',
-    '(import @INPUT0@).showSettings { inlineHTML = true; } (builtins.fromJSON (builtins.readFile @INPUT1@))',
-  ],
-  capture : true,
-  input : [
-    'utils.nix',
-    conf_file_json,
-  ],
-  output : 'conf-file.md.body',
-  env : nix_env_for_docs,
-)
-
-nix_conf_file_md = custom_target(
-  command : [ 'cat', '@INPUT@' ],
-  capture : true,
-  input : [
-    'src/command-ref/conf-file.md',
-    nix_conf_file_md_body,
-  ],
-  output : 'conf-file.md',
-)
-
 language_json = custom_target(
   command: [nix, '__dump-language'],
   output : 'language.json',

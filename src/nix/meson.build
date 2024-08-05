@@ -23,6 +23,43 @@ nix_generated_headers += gen_header.process(
   preserve_path_from : meson.current_build_dir(),
 )
 
+nix_settings_headers = []
+
+daemon_setting_definitions = files(
+  'daemon-settings/allowed-users.md',
+  'daemon-settings/trusted-users.md',
+)
+nix_settings_headers += custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '--kernel', host_machine.system(),
+    '--header', '@OUTPUT@',
+    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '@INPUT@',
+  ],
+  input : daemon_setting_definitions,
+  output : 'daemon-settings.gen.inc',
+)
+
+develop_settings_definitions = files(
+  'develop-settings/bash-prompt-prefix.md',
+  'develop-settings/bash-prompt-suffix.md',
+  'develop-settings/bash-prompt.md',
+)
+nix_settings_headers += custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '--kernel', host_machine.system(),
+    '--header', '@OUTPUT@',
+    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '@INPUT@',
+  ],
+  input : develop_settings_definitions,
+  output : 'develop-settings.gen.inc',
+)
+
 nix_sources = files(
   'add-to-store.cc',
   'app.cc',
@@ -81,6 +118,7 @@ nix = executable(
   'nix',
   nix_sources,
   legacy_sources,
+  nix_settings_headers,
   nix_generated_headers,
   nix_headers,
   legacy_headers,

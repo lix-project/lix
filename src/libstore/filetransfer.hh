@@ -15,39 +15,7 @@ namespace nix {
 
 struct FileTransferSettings : Config
 {
-    Setting<bool> enableHttp2{this, true, "http2",
-        "Whether to enable HTTP/2 support."};
-
-    Setting<std::string> userAgentSuffix{this, "", "user-agent-suffix",
-        "String appended to the user agent in HTTP requests."};
-
-    Setting<size_t> httpConnections{
-        this, 25, "http-connections",
-        R"(
-          The maximum number of parallel TCP connections used to fetch
-          files from binary caches and by other downloads. It defaults
-          to 25. 0 means no limit.
-        )",
-        {"binary-caches-parallel-connections"}};
-
-    Setting<unsigned long> connectTimeout{
-        this, 0, "connect-timeout",
-        R"(
-          The timeout (in seconds) for establishing connections in the
-          binary cache substituter. It corresponds to `curl`’s
-          `--connect-timeout` option. A value of 0 means no limit.
-        )"};
-
-    Setting<unsigned long> stalledDownloadTimeout{
-        this, 300, "stalled-download-timeout",
-        R"(
-          The timeout (in seconds) for receiving data from servers
-          during download. Lix cancels idle downloads after this
-          timeout's duration.
-        )"};
-
-    Setting<unsigned int> tries{this, 5, "download-attempts",
-        "How often Lix will attempt to download a file before giving up."};
+    #include "file-transfer-settings.gen.inc"
 };
 
 extern FileTransferSettings fileTransferSettings;

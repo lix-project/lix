@@ -13,6 +13,37 @@ foreach header : [ 'imported-drv-to-derivation.nix', 'fetchurl.nix' ]
 endforeach
 subdir('flake')
 
+libexpr_setting_definitions = files(
+  'settings/allow-import-from-derivation.md',
+  'settings/allow-unsafe-native-code-during-evaluation.md',
+  'settings/allowed-uris.md',
+  'settings/debugger-on-trace.md',
+  'settings/eval-cache.md',
+  'settings/eval-system.md',
+  'settings/ignore-try.md',
+  'settings/max-call-depth.md',
+  'settings/nix-path.md',
+  'settings/pure-eval.md',
+  'settings/repl-overlays.md',
+  'settings/restrict-eval.md',
+  'settings/trace-function-calls.md',
+  'settings/trace-verbose.md',
+)
+libexpr_settings_header = custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '--kernel', host_machine.system(),
+    '--header', '@OUTPUT@',
+    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '@INPUT@',
+  ],
+  input : libexpr_setting_definitions,
+  output : 'libexpr-settings.gen.inc',
+  install : true,
+  install_dir : includedir / 'lib/libexpr',
+)
+
 libexpr_sources = files(
   'attr-path.cc',
   'attr-set.cc',
@@ -84,6 +115,7 @@ libexpr_headers = files(
 libexpr = library(
   'lixexpr',
   libexpr_sources,
+  libexpr_settings_header,
   libexpr_generated_headers,
   dependencies : [
     liblixutil,
@@ -112,6 +144,7 @@ install_headers(
 
 liblixexpr = declare_dependency(
   include_directories : include_directories('.'),
+  sources : libexpr_settings_header,
   link_with : libexpr,
 )
 
@@ -119,6 +152,7 @@ liblixexpr = declare_dependency(
 if is_static
   liblixexpr_mstatic = declare_dependency(
     include_directories : include_directories('.'),
+    sources : libexpr_settings_header,
     link_whole : libexpr,
   )
 else

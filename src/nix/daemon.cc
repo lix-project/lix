@@ -55,39 +55,7 @@ using namespace nix::daemon;
  * `daemon.cc`.
  */
 struct AuthorizationSettings : Config {
-
-    Setting<Strings> trustedUsers{
-        this, {"root"}, "trusted-users",
-        R"(
-          A list of user names, separated by whitespace.
-          These users will have additional rights when connecting to the Nix daemon, such as the ability to specify additional [substituters](#conf-substituters), or to import unsigned [NARs](@docroot@/glossary.md#gloss-nar).
-
-          You can also specify groups by prefixing names with `@`.
-          For instance, `@wheel` means all users in the `wheel` group.
-
-          > **Warning**
-          >
-          > Adding a user to `trusted-users` is essentially equivalent to giving that user root access to the system.
-          > For example, the user can access or replace store path contents that are critical for system security.
-        )"};
-
-    /**
-     * Who we trust to use the daemon in safe ways
-     */
-    Setting<Strings> allowedUsers{
-        this, {"*"}, "allowed-users",
-        R"(
-          A list user names, separated by whitespace.
-          These users are allowed to connect to the Nix daemon.
-
-          You can specify groups by prefixing names with `@`.
-          For instance, `@wheel` means all users in the `wheel` group.
-          Also, you can allow all users by specifying `*`.
-
-          > **Note**
-          >
-          > Trusted users (set in [`trusted-users`](#conf-trusted-users)) can always connect to the Nix daemon.
-        )"};
+    #include "daemon-settings.gen.inc"
 };
 
 AuthorizationSettings authorizationSettings;

@@ -330,18 +330,6 @@ public:
     {
         options->addSetting(this);
     }
-
-    Setting(AbstractSetting::deprecated_t,
-        Config * options,
-        const T & def,
-        const std::string & name,
-        const std::string & description,
-        const std::set<std::string> & aliases = {},
-        const bool documentDefault = true,
-        std::optional<ExperimentalFeature> experimentalFeature = std::nullopt)
-        : Setting(options, def, name, description, aliases, documentDefault, std::move(experimentalFeature), true)
-    {
-    }
 };
 
 /**
@@ -359,8 +347,9 @@ public:
         const std::string & description,
         const std::set<std::string> & aliases = {},
         const bool documentDefault = true,
-        std::optional<ExperimentalFeature> experimentalFeature = std::nullopt)
-        : BaseSetting<T>(def, documentDefault, name, description, aliases, std::move(experimentalFeature))
+        std::optional<ExperimentalFeature> experimentalFeature = std::nullopt,
+        bool deprecated = false)
+        : BaseSetting<T>(def, documentDefault, name, description, aliases, std::move(experimentalFeature), deprecated)
     {
         options->addSetting(this);
     }
@@ -396,24 +385,7 @@ extern GlobalConfig globalConfig;
 
 
 struct FeatureSettings : Config {
-
-    Setting<ExperimentalFeatures> experimentalFeatures{
-        this, {}, "experimental-features",
-        R"(
-          Experimental features that are enabled.
-
-          Example:
-
-          ```
-          experimental-features = nix-command flakes
-          ```
-
-          The following experimental features are available:
-
-          {{#include @generated@/../../../src/libutil/experimental-features-shortlist.md}}
-
-          Experimental features are [further documented in the manual](@docroot@/contributing/experimental-features.md).
-        )"};
+    #include "feature-settings.gen.inc"
 
     /**
      * Check whether the given experimental feature is enabled.
@@ -437,23 +409,6 @@ struct FeatureSettings : Config {
      * disabled, and so the function does nothing in that case.
      */
     void require(const std::optional<ExperimentalFeature> &) const;
-    Setting<DeprecatedFeatures> deprecatedFeatures{
-        this, {}, "deprecated-features",
-        R"(
-          Deprecated features that are allowed.
-
-          Example:
-
-          ```
-          deprecated-features = url-literals
-          ```
-
-          The following deprecated feature features can be re-activated:
-
-          {{#include @generated@/../../../src/libutil/deprecated-features-shortlist.md}}
-
-          Deprecated features are [further documented in the manual](@docroot@/contributing/deprecated-features.md).
-        )"};
 
     /**
      * Check whether the given deprecated feature is enabled.
