@@ -11,7 +11,6 @@
 #include "finally.hh"
 #include "compression.hh"
 
-#include <iostream>
 #include <algorithm>
 #include <cstring>
 
@@ -539,9 +538,10 @@ void LocalStore::openDB(State & state, bool create)
     {
         SQLiteStmt stmt;
         stmt.create(db, "pragma main.journal_mode;");
-        if (sqlite3_step(stmt) != SQLITE_ROW)
+        auto use = stmt.use();
+        if (use.step() != SQLITE_ROW)
             SQLiteError::throw_(db, "querying journal mode");
-        prevMode = std::string((const char *) sqlite3_column_text(stmt, 0));
+        prevMode = use.getStr(0);
     }
     if (prevMode != mode &&
         sqlite3_exec(db, ("pragma main.journal_mode = " + mode + ";").c_str(), 0, 0, 0) != SQLITE_OK)
@@ -916,19 +916,22 @@ std::shared_ptr<const ValidPathInfo> LocalStore::queryPathInfoInternal(State & s
 
     info->registrationTime = useQueryPathInfo.getInt(2);
 
-    auto s = (const char *) sqlite3_column_text(state.stmts->QueryPathInfo, 3);
-    if (s) info->deriver = parseStorePath(s);
+    if (auto deriver = useQueryPathInfo.getStrNullable(3); deriver.has_value()) {
+        info->deriver = parseStorePath(*deriver);
+    }
 
     /* Note that narSize = NULL yields 0. */
     info->narSize = useQueryPathInfo.getInt(4);
 
     info->ultimate = useQueryPathInfo.getInt(5) == 1;
 
-    s = (const char *) sqlite3_column_text(state.stmts->QueryPathInfo, 6);
-    if (s) info->sigs = tokenizeString<StringSet>(s, " ");
+    if (auto sigs = useQueryPathInfo.getStrNullable(6); sigs.has_value()) {
+        info->sigs = tokenizeString<StringSet>(*sigs, " ");
+    }
 
-    s = (const char *) sqlite3_column_text(state.stmts->QueryPathInfo, 7);
-    if (s) info->ca = ContentAddress::parseOpt(s);
+    if (auto ca = useQueryPathInfo.getStrNullable(7); ca.has_value()) {
+        info->ca = ContentAddress::parseOpt(*ca);
+    }
 
     /* Get the references. */
     auto useQueryReferences(state.stmts->QueryReferences.use()(info->id));
@@ -1063,9 +1066,9 @@ std::optional<StorePath> LocalStore::queryPathFromHashPart(const std::string & h
 
         if (!useQueryPathFromHashPart.next()) return {};
 
-        const char * s = (const char *) sqlite3_column_text(state->stmts->QueryPathFromHashPart, 0);
-        if (s && prefix.compare(0, prefix.size(), s, prefix.size()) == 0)
-            return parseStorePath(s);
+        auto s = useQueryPathFromHashPart.getStrNullable(0);
+        if (s.has_value() && s->starts_with(prefix))
+            return parseStorePath(*s);
         return {};
     });
 }

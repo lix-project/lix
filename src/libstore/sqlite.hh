@@ -107,6 +107,7 @@ struct SQLiteStmt
         bool next();
 
         std::string getStr(int col);
+        std::optional<std::string> getStrNullable(int col);
         int64_t getInt(int col);
         bool isNull(int col);
     };
