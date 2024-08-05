@@ -1,6 +1,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 
+#include "charptr-cast.hh"
 #include "file-system.hh"
 #include "logging.hh"
 #include "serialise.hh"
@@ -19,7 +20,7 @@ static ssize_t callback_read(struct archive * archive, void * _self, const void 
     *buffer = self->buffer.data();
 
     try {
-        return self->source->read(reinterpret_cast<char *>(self->buffer.data()), self->buffer.size());
+        return self->source->read(charptr_cast<char *>(self->buffer.data()), self->buffer.size());
     } catch (EndOfFile &) {
         return 0;
     } catch (std::exception & err) {

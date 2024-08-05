@@ -1,3 +1,4 @@
+#include "charptr-cast.hh"
 #include "crypto.hh"
 #include "file-system.hh"
 #include "globals.hh"
@@ -44,15 +45,15 @@ std::string SecretKey::signDetached(std::string_view data) const
 {
     unsigned char sig[crypto_sign_BYTES];
     unsigned long long sigLen;
-    crypto_sign_detached(sig, &sigLen, reinterpret_cast<const unsigned char *>(data.data()), data.size(),
-        reinterpret_cast<const unsigned char *>(key.data()));
+    crypto_sign_detached(sig, &sigLen, charptr_cast<const unsigned char *>(data.data()), data.size(),
+        charptr_cast<const unsigned char *>(key.data()));
     return name + ":" + base64Encode(std::string(reinterpret_cast<char *>(sig), sigLen));
 }
 
 PublicKey SecretKey::toPublicKey() const
 {
     unsigned char pk[crypto_sign_PUBLICKEYBYTES];
-    crypto_sign_ed25519_sk_to_pk(pk, reinterpret_cast<const unsigned char *>(key.data()));
+    crypto_sign_ed25519_sk_to_pk(pk, charptr_cast<const unsigned char *>(key.data()));
     return PublicKey(name, std::string(reinterpret_cast<char *>(pk), crypto_sign_PUBLICKEYBYTES));
 }
 
@@ -85,9 +86,9 @@ bool verifyDetached(const std::string & data, const std::string & sig,
     if (sig2.size() != crypto_sign_BYTES)
         throw Error("signature is not valid");
 
-    return crypto_sign_verify_detached(reinterpret_cast<unsigned char *>(sig2.data()),
-        reinterpret_cast<const unsigned char *>(data.data()), data.size(),
-        reinterpret_cast<const unsigned char *>(key->second.key.data())) == 0;
+    return crypto_sign_verify_detached(charptr_cast<unsigned char *>(sig2.data()),
+        charptr_cast<const unsigned char *>(data.data()), data.size(),
+        charptr_cast<const unsigned char *>(key->second.key.data())) == 0;
 }
 
 PublicKeys getDefaultPublicKeys()

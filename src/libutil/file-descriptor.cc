@@ -1,3 +1,4 @@
+#include "charptr-cast.hh"
 #include "file-system.hh"
 #include "finally.hh"
 #include "logging.hh"
@@ -115,7 +116,7 @@ Generator<Bytes> drainFDSource(int fd, bool block)
                 throw SysError("reading from file");
         }
         else if (rd == 0) break;
-        else co_yield std::span{reinterpret_cast<char *>(buf.data()), (size_t) rd};
+        else co_yield std::span{charptr_cast<char *>(buf.data()), (size_t) rd};
     }
 }
 

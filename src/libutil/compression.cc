@@ -1,3 +1,4 @@
+#include "charptr-cast.hh"
 #include "compression.hh"
 #include "tarfile.hh"
 #include "signals.hh"
@@ -160,7 +161,7 @@ struct BrotliDecompressionSource : Source
 
     size_t read(char * data, size_t len) override
     {
-        uint8_t * out = reinterpret_cast<uint8_t *>(data);
+        uint8_t * out = charptr_cast<uint8_t *>(data);
         const auto * begin = out;
 
         while (len && !BrotliDecoderIsFinished(state.get())) {
@@ -172,7 +173,7 @@ struct BrotliDecompressionSource : Source
                 } catch (EndOfFile &) {
                     break;
                 }
-                next_in = reinterpret_cast<const uint8_t *>(buf.get());
+                next_in = charptr_cast<const uint8_t *>(buf.get());
             }
 
             if (!BrotliDecoderDecompressStream(
@@ -238,7 +239,7 @@ struct BrotliCompressionSink : ChunkedCompressionSink
 
     void writeInternal(std::string_view data) override
     {
-        auto next_in = reinterpret_cast<const uint8_t *>(data.data());
+        auto next_in = charptr_cast<const uint8_t *>(data.data());
         size_t avail_in = data.size();
         uint8_t * next_out = outbuf;
         size_t avail_out = sizeof(outbuf);

@@ -134,6 +134,7 @@ template<typename To, typename From>
     requires charptr_cast_detail::IsCharCastable<From, To>
 inline To charptr_cast(From p)
 {
+    // NOLINTNEXTLINE(lix-charptrcast): stop the linter ever getting too clever and causing funny recursion
     return reinterpret_cast<To>(p);
 }
 

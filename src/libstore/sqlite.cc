@@ -1,3 +1,4 @@
+#include "charptr-cast.hh"
 #include "sqlite.hh"
 #include "globals.hh"
 #include "logging.hh"
@@ -201,7 +202,7 @@ bool SQLiteStmt::Use::next()
 
 std::optional<std::string> SQLiteStmt::Use::getStrNullable(int col)
 {
-    auto s = reinterpret_cast<const char *>(sqlite3_column_text(stmt, col));
+    auto s = charptr_cast<const char *>(sqlite3_column_text(stmt, col));
     return s != nullptr ? std::make_optional<std::string>((s)) : std::nullopt;
 }
 
