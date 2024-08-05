@@ -4,7 +4,7 @@
 #include "drv-output-substitution-goal.hh"
 #include "local-derivation-goal.hh"
 #include "signals.hh"
-#include "hook-instance.hh"
+#include "hook-instance.hh" // IWYU pragma: keep
 
 #include <poll.h>
 
@@ -529,7 +529,7 @@ void Worker::waitForInput()
                 } else {
                     printMsg(lvlVomit, "%1%: read %2% bytes",
                         goal->getName(), rd);
-                    std::string_view data((char *) buffer.data(), rd);
+                    std::string_view data(reinterpret_cast<char *>(buffer.data()), rd);
                     j->lastOutput = after;
                     handleWorkResult(goal, goal->handleChildOutput(k, data));
                 }

@@ -3,17 +3,15 @@
 #include "compression.hh"
 #include "derivations.hh"
 #include "fs-accessor.hh"
-#include "globals.hh"
 #include "nar-info.hh"
 #include "sync.hh"
 #include "remote-fs-accessor.hh"
-#include "nar-info-disk-cache.hh"
+#include "nar-info-disk-cache.hh" // IWYU pragma: keep
 #include "nar-accessor.hh"
 #include "thread-pool.hh"
 #include "signals.hh"
 
 #include <chrono>
-#include <future>
 #include <regex>
 #include <fstream>
 #include <sstream>
@@ -480,7 +478,8 @@ void BinaryCacheStore::addSignatures(const StorePath & storePath, const StringSe
        when addSignatures() is called sequentially on a path, because
        S3 might return an outdated cached version. */
 
-    auto narInfo = make_ref<NarInfo>((NarInfo &) *queryPathInfo(storePath));
+    // downcast: BinaryCacheStore always returns NarInfo from queryPathInfoUncached, making it sound
+    auto narInfo = make_ref<NarInfo>(dynamic_cast<NarInfo const &>(*queryPathInfo(storePath)));
 
     narInfo->sigs.insert(sigs.begin(), sigs.end());
 

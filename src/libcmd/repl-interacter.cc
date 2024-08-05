@@ -96,7 +96,7 @@ static int listPossibleCallback(char * s, char *** avp)
         return p;
     };
 
-    vp = check((char **) malloc(possible.size() * sizeof(char *)));
+    vp = check(static_cast<char **>(malloc(possible.size() * sizeof(char *))));
 
     for (auto & p : possible)
         vp[ac++] = check(strdup(p.c_str()));

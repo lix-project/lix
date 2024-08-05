@@ -316,7 +316,7 @@ static void daemonLoop(std::optional<TrustedFlag> forceTrustClientOpt)
             socklen_t remoteAddrLen = sizeof(remoteAddr);
 
             AutoCloseFD remote{accept(fdSocket.get(),
-                    (struct sockaddr *) &remoteAddr, &remoteAddrLen)};
+                    reinterpret_cast<struct sockaddr *>(&remoteAddr), &remoteAddrLen)};
             checkInterrupt();
             if (!remote) {
                 if (errno == EINTR) continue;

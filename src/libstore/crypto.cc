@@ -44,16 +44,16 @@ std::string SecretKey::signDetached(std::string_view data) const
 {
     unsigned char sig[crypto_sign_BYTES];
     unsigned long long sigLen;
-    crypto_sign_detached(sig, &sigLen, (unsigned char *) data.data(), data.size(),
-        (unsigned char *) key.data());
-    return name + ":" + base64Encode(std::string((char *) sig, sigLen));
+    crypto_sign_detached(sig, &sigLen, reinterpret_cast<const unsigned char *>(data.data()), data.size(),
+        reinterpret_cast<const unsigned char *>(key.data()));
+    return name + ":" + base64Encode(std::string(reinterpret_cast<char *>(sig), sigLen));
 }
 
 PublicKey SecretKey::toPublicKey() const
 {
     unsigned char pk[crypto_sign_PUBLICKEYBYTES];
-    crypto_sign_ed25519_sk_to_pk(pk, (unsigned char *) key.data());
-    return PublicKey(name, std::string((char *) pk, crypto_sign_PUBLICKEYBYTES));
+    crypto_sign_ed25519_sk_to_pk(pk, reinterpret_cast<const unsigned char *>(key.data()));
+    return PublicKey(name, std::string(reinterpret_cast<char *>(pk), crypto_sign_PUBLICKEYBYTES));
 }
 
 SecretKey SecretKey::generate(std::string_view name)
@@ -63,7 +63,7 @@ SecretKey SecretKey::generate(std::string_view name)
     if (crypto_sign_keypair(pk, sk) != 0)
         throw Error("key generation failed");
 
-    return SecretKey(name, std::string((char *) sk, crypto_sign_SECRETKEYBYTES));
+    return SecretKey(name, std::string(reinterpret_cast<char *>(sk), crypto_sign_SECRETKEYBYTES));
 }
 
 PublicKey::PublicKey(std::string_view s)
@@ -85,9 +85,9 @@ bool verifyDetached(const std::string & data, const std::string & sig,
     if (sig2.size() != crypto_sign_BYTES)
         throw Error("signature is not valid");
 
-    return crypto_sign_verify_detached((unsigned char *) sig2.data(),
-        (unsigned char *) data.data(), data.size(),
-        (unsigned char *) key->second.key.data()) == 0;
+    return crypto_sign_verify_detached(reinterpret_cast<unsigned char *>(sig2.data()),
+        reinterpret_cast<const unsigned char *>(data.data()), data.size(),
+        reinterpret_cast<const unsigned char *>(key->second.key.data())) == 0;
 }
 
 PublicKeys getDefaultPublicKeys()

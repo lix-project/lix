@@ -453,7 +453,11 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
                 hashAlgo = parseHashType(hashAlgoRaw);
             }
 
-            GeneratorSource dumpSource{[&]() -> WireFormatGenerator {
+            // Note to future maintainers: do *not* inline this into the
+            // generator statement as the lambda itself needs to live to the
+            // end of the generator's lifetime and is otherwise a UAF.
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines): does not outlive the outer function
+            auto g = [&]() -> WireFormatGenerator {
                 if (method == FileIngestionMethod::Recursive) {
                     /* We parse the NAR dump through into `saved` unmodified,
                        so why all this extra work? We still parse the NAR so
@@ -489,7 +493,8 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
                     }
                     co_yield std::move(file->contents);
                 }
-            }()};
+            };
+            GeneratorSource dumpSource{g()};
             logger->startWork();
             auto path = store->addToStoreFromDump(dumpSource, baseName, method, hashAlgo);
             logger->stopWork();

@@ -1,5 +1,3 @@
-#include <algorithm>
-
 #include "args/root.hh"
 #include "command.hh"
 #include "common-args.hh"
@@ -62,12 +60,12 @@ static bool haveInternet()
     for (auto i = addrs; i; i = i->ifa_next) {
         if (!i->ifa_addr) continue;
         if (i->ifa_addr->sa_family == AF_INET) {
-            if (ntohl(((sockaddr_in *) i->ifa_addr)->sin_addr.s_addr) != INADDR_LOOPBACK) {
+            if (ntohl(reinterpret_cast<sockaddr_in *>(i->ifa_addr)->sin_addr.s_addr) != INADDR_LOOPBACK) {
                 return true;
             }
         } else if (i->ifa_addr->sa_family == AF_INET6) {
-            if (!IN6_IS_ADDR_LOOPBACK(&((sockaddr_in6 *) i->ifa_addr)->sin6_addr) &&
-                !IN6_IS_ADDR_LINKLOCAL(&((sockaddr_in6 *) i->ifa_addr)->sin6_addr))
+            if (!IN6_IS_ADDR_LOOPBACK(&reinterpret_cast<sockaddr_in6 *>(i->ifa_addr)->sin6_addr) &&
+                !IN6_IS_ADDR_LINKLOCAL(&reinterpret_cast<sockaddr_in6 *>(i->ifa_addr)->sin6_addr))
                 return true;
         }
     }

@@ -29,12 +29,12 @@ namespace nix {
         char cwd[PATH_MAX+1];
         auto p = absPath("");
 
-        ASSERT_EQ(p, getcwd((char*)&cwd, PATH_MAX));
+        ASSERT_EQ(p, getcwd(cwd, PATH_MAX));
     }
 
     TEST(absPath, usesOptionalBasePathWhenGiven) {
         char _cwd[PATH_MAX+1];
-        char* cwd = getcwd((char*)&_cwd, PATH_MAX);
+        char* cwd = getcwd(_cwd, PATH_MAX);
 
         auto p = absPath("", cwd);
 
@@ -43,7 +43,7 @@ namespace nix {
 
     TEST(absPath, isIdempotent) {
         char _cwd[PATH_MAX+1];
-        char* cwd = getcwd((char*)&_cwd, PATH_MAX);
+        char* cwd = getcwd(_cwd, PATH_MAX);
         auto p1 = absPath(cwd);
         auto p2 = absPath(p1);
 

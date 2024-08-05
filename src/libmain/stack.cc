@@ -2,8 +2,6 @@
 #include "shared.hh"
 
 #include <cstring>
-#include <cstddef>
-#include <cstdlib>
 
 #include <unistd.h>
 #include <signal.h>
@@ -17,17 +15,17 @@ static void sigsegvHandler(int signo, siginfo_t * info, void * ctx)
        the stack pointer.  Unfortunately, getting the stack pointer is
        not portable. */
     bool haveSP = true;
-    char * sp = 0;
+    int64_t sp = 0;
 #if defined(__x86_64__) && defined(REG_RSP)
-    sp = (char *) ((ucontext_t *) ctx)->uc_mcontext.gregs[REG_RSP];
+    sp = static_cast<ucontext_t *>(ctx)->uc_mcontext.gregs[REG_RSP];
 #elif defined(REG_ESP)
-    sp = (char *) ((ucontext_t *) ctx)->uc_mcontext.gregs[REG_ESP];
+    sp = static_cast<ucontext_t *>(ctx)->uc_mcontext.gregs[REG_ESP];
 #else
     haveSP = false;
 #endif
 
     if (haveSP) {
-        ptrdiff_t diff = (char *) info->si_addr - sp;
+        int64_t diff = int64_t(info->si_addr) - sp;
         if (diff < 0) diff = -diff;
         if (diff < 4096) {
             nix::stackOverflowHandler(info, ctx);

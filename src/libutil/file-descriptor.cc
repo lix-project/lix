@@ -115,7 +115,7 @@ Generator<Bytes> drainFDSource(int fd, bool block)
                 throw SysError("reading from file");
         }
         else if (rd == 0) break;
-        else co_yield std::span{(char *) buf.data(), (size_t) rd};
+        else co_yield std::span{reinterpret_cast<char *>(buf.data()), (size_t) rd};
     }
 }
 

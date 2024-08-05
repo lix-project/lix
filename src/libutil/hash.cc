@@ -129,7 +129,7 @@ std::string Hash::to_string(Base base, bool includeType) const
         break;
     case Base::Base64:
     case Base::SRI:
-        s += base64Encode(std::string_view((const char *) hash, hashSize));
+        s += base64Encode(std::string_view(reinterpret_cast<const char *>(hash), hashSize));
         break;
     }
     return s;

@@ -1318,7 +1318,7 @@ StorePath LocalStore::addToStoreFromDump(Source & source0, std::string_view name
 
         auto *toRealloc = dumpBuffer.release();
         if (auto realloced = realloc(toRealloc, oldSize + want)) {
-            dumpBuffer.reset((char*) realloced);
+            dumpBuffer.reset(static_cast<char *>(realloced));
         } else {
             free(toRealloc);
             throw std::bad_alloc();

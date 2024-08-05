@@ -8,7 +8,8 @@ namespace nix {
 std::vector<char *> stringsToCharPtrs(const Strings & ss)
 {
     std::vector<char *> res;
-    for (auto & s : ss) res.push_back((char *) s.c_str());
+    // This is const cast since this exists for OS APIs that want char *
+    for (auto & s : ss) res.push_back(const_cast<char *>(s.data()));
     res.push_back(0);
     return res;
 }

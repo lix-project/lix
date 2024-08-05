@@ -346,7 +346,7 @@ void prim_importNative(EvalState & state, const PosIdx pos, Value * * args, Valu
         state.error<EvalError>("could not open '%1%': %2%", path, dlerror()).debugThrow();
 
     dlerror();
-    ValueInitializer func = (ValueInitializer) dlsym(handle, sym.c_str());
+    ValueInitializer func = reinterpret_cast<ValueInitializer>(dlsym(handle, sym.c_str()));
     if(!func) {
         char *message = dlerror();
         if (message)
@@ -2439,6 +2439,8 @@ static void prim_attrValues(EvalState & state, const PosIdx pos, Value * * args,
 
     state.mkList(v, args[0]->attrs->size());
 
+    // FIXME: this is incredibly evil, *why*
+    // NOLINTBEGIN(cppcoreguidelines-pro-type-cstyle-cast)
     unsigned int n = 0;
     for (auto & i : *args[0]->attrs)
         v.listElems()[n++] = (Value *) &i;
@@ -2452,6 +2454,7 @@ static void prim_attrValues(EvalState & state, const PosIdx pos, Value * * args,
 
     for (unsigned int i = 0; i < n; ++i)
         v.listElems()[i] = ((Attr *) v.listElems()[i])->value;
+    // NOLINTEND(cppcoreguidelines-pro-type-cstyle-cast)
 }
 
 static RegisterPrimOp primop_attrValues({

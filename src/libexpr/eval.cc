@@ -21,7 +21,6 @@
 #include "flake/flakeref.hh"
 
 #include <algorithm>
-#include <chrono>
 #include <iostream>
 #include <sstream>
 #include <cstring>
@@ -146,7 +145,7 @@ bool Value::isTrivial() const
         && internalType != tPrimOpApp
         && (internalType != tThunk
             || (dynamic_cast<ExprAttrs *>(thunk.expr)
-                && ((ExprAttrs *) thunk.expr)->dynamicAttrs.empty())
+                && (static_cast<ExprAttrs *>(thunk.expr))->dynamicAttrs.empty())
             || dynamic_cast<ExprLambda *>(thunk.expr)
             || dynamic_cast<ExprList *>(thunk.expr));
 }

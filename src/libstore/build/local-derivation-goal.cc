@@ -1226,7 +1226,7 @@ void LocalDerivationGoal::startDaemon()
             socklen_t remoteAddrLen = sizeof(remoteAddr);
 
             AutoCloseFD remote{accept(daemonSocket.get(),
-                (struct sockaddr *) &remoteAddr, &remoteAddrLen)};
+                reinterpret_cast<struct sockaddr *>(&remoteAddr), &remoteAddrLen)};
             if (!remote) {
                 if (errno == EINTR || errno == EAGAIN) continue;
                 if (errno == EINVAL || errno == ECONNABORTED) break;

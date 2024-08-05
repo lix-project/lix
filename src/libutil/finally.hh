@@ -22,7 +22,7 @@ public:
     Finally(Finally &&other) : fun(std::move(other.fun)) {
         other.movedFrom = true;
     }
-    ~Finally() noexcept(false)
+    ~Finally() noexcept(noexcept(fun()))
     {
         try {
             if (!movedFrom)
