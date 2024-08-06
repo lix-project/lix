@@ -59,6 +59,11 @@ private:
      */
     void killSandbox(bool getStatus) override;
 
+    /**
+     * Set up system call filtering using seccomp, unless disabled at build time.
+     * This also sets the NO_NEW_PRIVS flag.
+     */
+    void setupSyscallFilter() override;
 
     bool supportsUidRange() override
     {

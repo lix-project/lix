@@ -340,6 +340,12 @@ protected:
     virtual Pid startChild(std::function<void()> openSlave);
 
     /**
+     * Set up the system call filtering required for the sandbox.
+     * This currently only has an effect on Linux.
+     */
+    virtual void setupSyscallFilter() {}
+
+    /**
      * Execute the builder, replacing the current process.
      * Generally this means an `execve` call.
      */
