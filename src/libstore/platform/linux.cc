@@ -11,6 +11,7 @@
 #include <sys/prctl.h>
 
 #if HAVE_SECCOMP
+#include <linux/filter.h>
 #include <seccomp.h>
 #endif
 
@@ -146,11 +147,8 @@ static void allowSyscall(scmp_filter_ctx ctx, int syscall) {
         seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), syscall, 1, SCMP_A##modePos(SCMP_CMP_MASKED_EQ, S_ISGID, S_ISGID)) != 0) \
         throw SysError("unable to add seccomp rule");
 
-#endif
-
-void LinuxLocalDerivationGoal::setupSyscallFilter()
+static std::vector<struct sock_filter> compileSyscallFilter()
 {
-#if HAVE_SECCOMP
     scmp_filter_ctx ctx;
 
     // Pretend that syscalls we don't yet know about don't exist.
@@ -703,18 +701,40 @@ void LinuxLocalDerivationGoal::setupSyscallFilter()
         seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOTSUP), SCMP_SYS(fsetxattr), 0) != 0)
         throw SysError("unable to add seccomp rule");
 
+    Pipe filterPipe;
+    filterPipe.create();
+    auto filterBytes_ = std::async([&]() {
+        return drainFD(filterPipe.readSide.get());
+    });
+    if (seccomp_export_bpf(ctx, filterPipe.writeSide.get()) != 0)
+        throw SysError("unable to compile seccomp BPF program");
+    filterPipe.writeSide.close();
+    auto filterBytes = filterBytes_.get();
+
+    assert(filterBytes.size() % sizeof(struct sock_filter) == 0);
+    std::vector<struct sock_filter> filter(filterBytes.size() / sizeof(struct sock_filter));
+    std::memcpy(filter.data(), filterBytes.data(), filterBytes.size());
+    return filter;
+}
+
+#endif
+
+void LinuxLocalDerivationGoal::setupSyscallFilter()
+{
     // Set the NO_NEW_PRIVS prctl flag.
     // This both makes loading seccomp filters work for unprivileged users,
     // and is an additional security measure in its own right.
-    if (seccomp_attr_set(ctx, SCMP_FLTATR_CTL_NNP, 1) != 0)
-        throw SysError("unable to set 'no new privileges' seccomp attribute");
-
-    if (seccomp_load(ctx) != 0)
-        throw SysError("unable to load seccomp BPF program");
-#else
-    // Still set the no-new-privileges flag if libseccomp is not available.
     if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == -1)
         throw SysError("PR_SET_NO_NEW_PRIVS failed");
+#if HAVE_SECCOMP
+    auto seccompBPF = compileSyscallFilter();
+    assert(seccompBPF.size() <= std::numeric_limits<unsigned short>::max());
+    struct sock_fprog fprog = {
+        .len = static_cast<unsigned short>(seccompBPF.size()),
+        .filter = seccompBPF.data(),
+    };
+    if (syscall(SYS_seccomp, SECCOMP_SET_MODE_FILTER, 0, &fprog) != 0)
+        throw SysError("unable to load seccomp BPF program");
 #endif
 }
 
