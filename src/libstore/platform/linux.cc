@@ -717,6 +717,12 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     return filter;
 }
 
+static const std::vector<struct sock_filter> &getSyscallFilter()
+{
+    static auto filter = compileSyscallFilter();
+    return filter;
+}
+
 #endif
 
 void LinuxLocalDerivationGoal::setupSyscallFilter()
@@ -727,11 +733,12 @@ void LinuxLocalDerivationGoal::setupSyscallFilter()
     if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == -1)
         throw SysError("PR_SET_NO_NEW_PRIVS failed");
 #if HAVE_SECCOMP
-    auto seccompBPF = compileSyscallFilter();
+    const auto &seccompBPF = getSyscallFilter();
     assert(seccompBPF.size() <= std::numeric_limits<unsigned short>::max());
     struct sock_fprog fprog = {
         .len = static_cast<unsigned short>(seccompBPF.size()),
-        .filter = seccompBPF.data(),
+        // the kernel does not actually write to the filter
+        .filter = const_cast<struct sock_filter *>(seccompBPF.data()),
     };
     if (syscall(SYS_seccomp, SECCOMP_SET_MODE_FILTER, 0, &fprog) != 0)
         throw SysError("unable to load seccomp BPF program");
@@ -827,6 +834,13 @@ void LinuxLocalDerivationGoal::prepareSandbox()
 
 Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
 {
+#if HAVE_SECCOMP
+    // Our seccomp filter program is surprisingly expensive to compile (~10ms).
+    // For this reason, we precompile it once and then cache it.
+    // This has to be done in the parent so that all builds get to use the same cache.
+    getSyscallFilter();
+#endif
+
     // If we're not sandboxing no need to faff about, use the fallback
     if (!useChroot) {
         return LocalDerivationGoal::startChild(openSlave);
