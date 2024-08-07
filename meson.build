@@ -203,23 +203,23 @@ gc_opt = get_option('gc').disable_if(
   'address' in get_option('b_sanitize'),
   error_message: 'gc does far too many memory crimes for ASan'
 )
-boehm = dependency('bdw-gc', required : gc_opt, version : '>=8.2.6')
+boehm = dependency('bdw-gc', required : gc_opt, version : '>=8.2.6', include_type : 'system')
 configdata += {
   'HAVE_BOEHMGC': boehm.found().to_int(),
 }
 
-boost = dependency('boost', required : true, modules : ['container'])
+boost = dependency('boost', required : true, modules : ['container'], include_type : 'system')
 
 # cpuid only makes sense on x86_64
 cpuid_required = is_x64 ? get_option('cpuid') : false
-cpuid = dependency('libcpuid', 'cpuid', required : cpuid_required)
+cpuid = dependency('libcpuid', 'cpuid', required : cpuid_required, include_type : 'system')
 configdata += {
   'HAVE_LIBCPUID': cpuid.found().to_int(),
 }
 
 # seccomp only makes sense on Linux
 seccomp_required = is_linux ? get_option('seccomp-sandboxing') : false
-seccomp = dependency('libseccomp', 'seccomp', required : seccomp_required, version : '>=2.5.5')
+seccomp = dependency('libseccomp', 'seccomp', required : seccomp_required, version : '>=2.5.5', include_type : 'system')
 if is_linux and not seccomp.found()
   warning('Sandbox security is reduced because libseccomp has not been found! Please provide libseccomp if it supports your CPU architecture.')
 endif
@@ -227,19 +227,24 @@ configdata += {
   'HAVE_SECCOMP': seccomp.found().to_int(),
 }
 
-libarchive = dependency('libarchive', required : true)
+libarchive = dependency('libarchive', required : true, include_type : 'system')
 
 brotli = [
-  dependency('libbrotlicommon', required : true),
-  dependency('libbrotlidec', required : true),
-  dependency('libbrotlienc', required : true),
+  dependency('libbrotlicommon', required : true, include_type : 'system'),
+  dependency('libbrotlidec', required : true, include_type : 'system'),
+  dependency('libbrotlienc', required : true, include_type : 'system'),
 ]
 
-openssl = dependency('libcrypto', 'openssl', required : true)
+openssl = dependency('libcrypto', 'openssl', required : true, include_type : 'system')
 
 # FIXME: confirm we actually support such old versions of aws-sdk-cpp
-aws_sdk = dependency('aws-cpp-sdk-core', required : false, version : '>=1.8')
-aws_sdk_transfer = dependency('aws-cpp-sdk-transfer', required : aws_sdk.found(), fallback : ['aws_sdk', 'aws_cpp_sdk_transfer_dep'])
+aws_sdk = dependency('aws-cpp-sdk-core', required : false, version : '>=1.8', include_type : 'system')
+aws_sdk_transfer = dependency(
+  'aws-cpp-sdk-transfer',
+  required : aws_sdk.found(),
+  fallback : ['aws_sdk', 'aws_cpp_sdk_transfer_dep'],
+  include_type : 'system',
+)
 if aws_sdk.found()
   # The AWS pkg-config adds -std=c++11.
   # https://github.com/aws/aws-sdk-cpp/issues/2673
@@ -259,7 +264,12 @@ if aws_sdk.found()
   )
 endif
 
-aws_s3 = dependency('aws-cpp-sdk-s3', required : aws_sdk.found(), fallback : ['aws_sdk', 'aws_cpp_sdk_s3_dep'])
+aws_s3 = dependency(
+  'aws-cpp-sdk-s3',
+  required : aws_sdk.found(),
+  fallback : ['aws_sdk', 'aws_cpp_sdk_s3_dep'],
+  include_type : 'system',
+)
 if aws_s3.found()
   # The AWS pkg-config adds -std=c++11.
   # https://github.com/aws/aws-sdk-cpp/issues/2673
@@ -276,30 +286,30 @@ configdata += {
   'ENABLE_S3': aws_s3.found().to_int(),
 }
 
-sqlite = dependency('sqlite3', 'sqlite', version : '>=3.6.19', required : true)
+sqlite = dependency('sqlite3', 'sqlite', version : '>=3.6.19', required : true, include_type : 'system')
 
-sodium = dependency('libsodium', 'sodium', required : true)
+sodium = dependency('libsodium', 'sodium', required : true, include_type : 'system')
 
-curl = dependency('libcurl', 'curl', required : true)
+curl = dependency('libcurl', 'curl', required : true, include_type : 'system')
 
-editline = dependency('libeditline', 'editline', version : '>=1.14', required : true)
+editline = dependency('libeditline', 'editline', version : '>=1.14', required : true, include_type : 'system')
 
-lowdown = dependency('lowdown', version : '>=0.9.0', required : true)
+lowdown = dependency('lowdown', version : '>=0.9.0', required : true, include_type : 'system')
 
 # HACK(Qyriad): rapidcheck's pkg-config doesn't include the libs lol
 # Note: technically we 'check' for rapidcheck twice, for the internal-api-docs handling above,
 # but Meson will cache the result of the first one, and the required : arguments are different.
-rapidcheck_meson = dependency('rapidcheck', required : enable_tests)
+rapidcheck_meson = dependency('rapidcheck', required : enable_tests, include_type : 'system')
 rapidcheck = declare_dependency(dependencies : rapidcheck_meson, link_args : ['-lrapidcheck'])
 
 gtest = [
-  dependency('gtest', required : enable_tests),
-  dependency('gtest_main', required : enable_tests),
-  dependency('gmock', required : enable_tests),
-  dependency('gmock_main', required : enable_tests),
+  dependency('gtest', required : enable_tests, include_type : 'system'),
+  dependency('gtest_main', required : enable_tests, include_type : 'system'),
+  dependency('gmock', required : enable_tests, include_type : 'system'),
+  dependency('gmock_main', required : enable_tests, include_type : 'system'),
 ]
 
-toml11 = dependency('toml11', version : '>=3.7.0', required : true, method : 'cmake')
+toml11 = dependency('toml11', version : '>=3.7.0', required : true, method : 'cmake', include_type : 'system')
 
 pegtl = dependency(
   'pegtl',
@@ -307,9 +317,10 @@ pegtl = dependency(
   required : true,
   method : 'cmake',
   modules : [ 'taocpp::pegtl' ],
+  include_type : 'system',
 )
 
-nlohmann_json = dependency('nlohmann_json', required : true)
+nlohmann_json = dependency('nlohmann_json', required : true, include_type : 'system')
 
 # lix-doc is a Rust project provided via buildInputs and unfortunately doesn't have any way to be detected.
 # Just declare it manually to resolve this.
