@@ -479,7 +479,7 @@ struct curlFileTransfer : public FileTransfer
     {
         try {
             stopWorkerThread();
-        } catch (nix::Error e) {
+        } catch (nix::Error & e) {
             // This can only fail if a socket to our own process cannot be
             // written to, so it is always a bug in the program if it fails.
             //
