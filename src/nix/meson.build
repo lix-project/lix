@@ -1,8 +1,8 @@
-generate_manpage_gen = gen_header.process(meson.project_source_root() / 'doc/manual/generate-manpage.nix')
-
-utils_gen = gen_header.process(meson.project_source_root() / 'doc/manual/utils.nix')
-
-get_env_gen = gen_header.process('get-env.sh')
+nix_generated_headers = [
+  gen_header.process(meson.project_source_root() / 'doc/manual/generate-manpage.nix'),
+  gen_header.process(meson.project_source_root() / 'doc/manual/utils.nix'),
+  gen_header.process('get-env.sh'),
+]
 
 # src/nix/profile.cc includes src/nix/profile.md, which includes "doc/files/profiles.md.gen.hh".
 # Unfortunately, https://github.com/mesonbuild/meson/issues/2320.
@@ -18,7 +18,7 @@ run_command(
   meson.current_build_dir() / 'doc/files/profiles.md',
   check : true,
 )
-profiles_md_gen = gen_header.process(
+nix_generated_headers += gen_header.process(
   meson.current_build_dir() / 'doc/files/profiles.md',
   preserve_path_from : meson.current_build_dir(),
 )
@@ -74,10 +74,7 @@ nix_sources = files(
 nix = executable(
   'nix',
   nix_sources,
-  generate_manpage_gen,
-  utils_gen,
-  get_env_gen,
-  profiles_md_gen,
+  nix_generated_headers,
   nix2_commands_sources,
   dependencies : [
     libasanoptions,

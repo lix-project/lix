@@ -53,7 +53,7 @@ void ConfigFile::apply()
 
         bool trusted = whitelist.count(baseName);
         if (!trusted) {
-            switch (nix::fetchSettings.acceptFlakeConfig) {
+            switch (nix::fetchSettings.acceptFlakeConfig.get()) {
             case AcceptFlakeConfig::True: {
                 trusted = true;
                 break;

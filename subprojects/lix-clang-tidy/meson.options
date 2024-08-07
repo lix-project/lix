@@ -1,0 +1,3 @@
+option('build-by-default', type : 'boolean', value : true,
+  description : 'set to false to not actually build targets by default. This is a hack to deal with meson lacking a build_by_default default option and building subprojects by default'
+)

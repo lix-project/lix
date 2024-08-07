@@ -229,7 +229,7 @@ Hash::Hash(std::string_view rest, HashType type, bool isSRI)
 
         for (unsigned int n = 0; n < rest.size(); ++n) {
             char c = rest[rest.size() - n - 1];
-            unsigned char digit;
+            size_t digit;
             for (digit = 0; digit < base32Chars.size(); ++digit) /* !!! slow */
                 if (base32Chars[digit] == c) break;
             if (digit >= 32)

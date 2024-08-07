@@ -1,20 +1,16 @@
 #include "cli-literate-parser.hh"
 #include "escape-string.hh"
-#include "escape-char.hh"
-#include "libexpr/print.hh"
 #include "types.hh"
 #include <ranges>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <iostream>
-#include <memory>
 #include <sstream>
 #include <variant>
 
 #include "cli-literate-parser.hh"
 #include "escape-string.hh"
 #include "fmt.hh"
-#include "libexpr/print.hh"
 #include "shlex.hh"
 #include "types.hh"
 #include "strings.hh"
@@ -361,9 +357,8 @@ const char * ParseError::what() const noexcept
         return what_->c_str();
     } else {
         auto escaped = escapeString(rest, {.maxLength = 256, .escapeNonPrinting = true});
-        auto hint =
-            new HintFmt("Parse error: Expected %1%, got:\n%2%", expected, Uncolored(escaped));
-        what_ = hint->str();
+        auto hint = HintFmt("Parse error: Expected %1%, got:\n%2%", expected, Uncolored(escaped));
+        what_ = hint.str();
         return what_->c_str();
     }
 }

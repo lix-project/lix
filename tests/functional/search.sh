@@ -29,6 +29,8 @@ nix search -f search.nix '' ^ | grepQuiet hello
 
 ## Tests for multiple regex/match highlighting
 
+# FIXME: possibly not test this with colour in the future
+export CLICOLOR_FORCE=1
 e=$'\x1b' # grep doesn't support \e, \033 or even \x1b
 # Multiple overlapping regexes
 (( $(nix search -f search.nix '' 'oo' 'foo' 'oo' | grep -c "$e\[32;1mfoo$e\\[0;1m") == 1 ))

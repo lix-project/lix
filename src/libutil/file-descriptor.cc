@@ -131,7 +131,7 @@ AutoCloseFD::AutoCloseFD(AutoCloseFD && that) : fd{that.fd}
 }
 
 
-AutoCloseFD & AutoCloseFD::operator =(AutoCloseFD && that)
+AutoCloseFD & AutoCloseFD::operator =(AutoCloseFD && that) noexcept(false)
 {
     close();
     fd = that.fd;

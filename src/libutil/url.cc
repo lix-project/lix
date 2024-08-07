@@ -63,7 +63,7 @@ std::string percentDecode(std::string_view in)
             if (i + 2 >= in.size())
                 throw BadURL("invalid URI parameter '%s'", in);
             try {
-                decoded += std::stoul(std::string(in, i + 1, 2), 0, 16);
+                decoded += char8_t(std::stoul(std::string(in, i + 1, 2), 0, 16));
                 i += 3;
             } catch (...) {
                 throw BadURL("invalid URI parameter '%s'", in);

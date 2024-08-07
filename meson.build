@@ -548,3 +548,5 @@ if enable_tests
   subdir('tests/unit')
   subdir('tests/functional')
 endif
+
+subdir('meson/clang-tidy')

@@ -427,6 +427,7 @@ I grepped `src/` for `get[eE]nv\("` to find the mentions in Lix code.
 - `NIX_SHOW_STATS_PATH` - Writes those statistics into a file at the given path instead of stdout. Undocumented.
 - `NIX_SHOW_SYMBOLS` - Dumps the symbol table into the show-stats json output.
 - `TERM` - If `dumb` or unset, disables ANSI colour output.
+- `FORCE_COLOR`, `CLICOLOR_FORCE` - Enables ANSI colour output if `NO_COLOR`/`NOCOLOR` not set.
 - `NO_COLOR`, `NOCOLOR` - Disables ANSI colour output.
 - `_NIX_DEVELOPER_SHOW_UNKNOWN_LOCATIONS` - Highlights unknown locations in errors.
 - `NIX_PROFILE` - Selects which profile `nix-env` will operate on. Documented elsewhere.

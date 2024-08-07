@@ -1,7 +1,7 @@
 # vim: filetype=meson
 
 option('enable-build', type : 'boolean', value : true,
-  description : 'Set to false to not actually build. Only really makes sense with -Dinternal-api-docs=true',
+  description : 'set to false to not actually build. Only really makes sense with -Dinternal-api-docs=true',
 )
 
 option('gc', type : 'feature',
@@ -37,7 +37,7 @@ option('tests-brief', type : 'boolean', value : false,
 )
 
 option('profile-build', type : 'feature', value: 'disabled',
-  description : 'whether to enable -ftime-trace in clang builds, allowing for speeding up the build.'
+  description : 'whether to enable -ftime-trace in clang builds, allowing for diagnosing the cause of build time.'
 )
 
 option('store-dir', type : 'string', value : '/nix/store',
@@ -67,4 +67,8 @@ option('profile-dir', type : 'string', value : 'etc/profile.d',
 
 option('enable-pch-std', type : 'boolean', value : true,
   description : 'whether to use precompiled headers for C++\'s standard library (breaks clangd if you\'re using GCC)',
+)
+
+option('lix-clang-tidy-checks-path', type : 'string', value : '',
+  description: 'path to lix-clang-tidy-checks library file, if providing it externally. Uses an internal one if this is not set',
 )

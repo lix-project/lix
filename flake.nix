@@ -1,5 +1,5 @@
 {
-  description = "The purely functional package manager";
+  description = "Lix: A modern, delicious implementation of the Nix package manager";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05-small";
@@ -197,6 +197,8 @@
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
           };
 
+          lix-clang-tidy = final.callPackage ./subprojects/lix-clang-tidy { };
+
           # Export the patched version of boehmgc that Lix uses into the overlay
           # for consumers of this flake.
           boehmgc-nix = final.nix.passthru.boehmgc-nix;
@@ -289,6 +291,24 @@
             # we are already doing so.
             werror = true;
           };
+
+          # Although this might be nicer to do with pre-commit, that would
+          # require adding 12MB of nodejs to the dev shell, whereas building it
+          # in CI with Nix avoids that at a cost of slower feedback on rarely
+          # touched files.
+          jsSyntaxCheck =
+            let
+              nixpkgs = nixpkgsFor.x86_64-linux.native;
+              inherit (nixpkgs) pkgs;
+              docSources = lib.fileset.toSource {
+                root = ./doc;
+                fileset = lib.fileset.fileFilter (f: f.hasExt "js") ./doc;
+              };
+            in
+            pkgs.runCommand "js-syntax-check" { } ''
+              find ${docSources} -type f -print -exec ${pkgs.nodejs-slim}/bin/node --check '{}' ';'
+              touch $out
+            '';
 
           # Make sure that nix-env still produces the exact same result
           # on a particular version of Nixpkgs.
@@ -384,6 +404,8 @@
         rec {
           inherit (nixpkgsFor.${system}.native) nix;
           default = nix;
+
+          inherit (nixpkgsFor.${system}.native) lix-clang-tidy;
         }
         // (
           lib.optionalAttrs (builtins.elem system linux64BitSystems) {
