@@ -271,3 +271,8 @@ a = ''test string that we'll grep later''
 :e identity
 a
 " "undefined variable"
+
+# Test :log with derivation paths.
+simple_path="$(nix-instantiate "$testDir/simple.nix")"
+# `PATH=` is a part of build log.
+testReplResponseNoRegex ":log ${simple_path}" "PATH="
