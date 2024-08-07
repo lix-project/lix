@@ -13,7 +13,6 @@
 #include "search-path.hh"
 #include "repl-exit-status.hh"
 
-#include <gc/gc_allocator.h>
 #include <map>
 #include <optional>
 #include <unordered_map>
