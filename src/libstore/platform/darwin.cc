@@ -56,12 +56,27 @@ void DarwinLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
             while (fdBufSize > fds.size() * sizeof(struct proc_fdinfo)) {
                 // Reserve some extra size so we don't fail too much
                 fds.resize((fdBufSize + fdBufSize / 8) / sizeof(struct proc_fdinfo));
+                errno = 0;
                 fdBufSize = proc_pidinfo(
                     pid, PROC_PIDLISTFDS, 0, fds.data(), fds.size() * sizeof(struct proc_fdinfo)
                 );
 
+                // errno == 0???! Yes, seriously. This is because macOS has a
+                // broken syscall wrapper for proc_pidinfo that has no way of
+                // dealing with the system call successfully returning 0. It
+                // takes the -1 error result from the errno-setting syscall
+                // wrapper and turns it into a 0 result. But what if the system
+                // call actually returns 0? Then you get an errno of success.
+                //
+                // https://github.com/apple-opensource/xnu/blob/4f43d4276fc6a87f2461a3ab18287e4a2e5a1cc0/libsyscall/wrappers/libproc/libproc.c#L100-L110
+                // https://git.lix.systems/lix-project/lix/issues/446#issuecomment-5483
+                // FB14695751
                 if (fdBufSize <= 0) {
-                    throw SysError("Listing pid %1% file descriptors", pid);
+                    if (errno == 0) {
+                        break;
+                    } else {
+                        throw SysError("Listing pid %1% file descriptors", pid);
+                    }
                 }
             }
             fds.resize(fdBufSize / sizeof(struct proc_fdinfo));
