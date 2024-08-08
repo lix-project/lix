@@ -2,6 +2,7 @@ import json
 import subprocess
 import itertools
 import textwrap
+import logging
 from pathlib import Path
 import tempfile
 import hashlib
@@ -14,6 +15,8 @@ from . import docker
 from .version import VERSION, RELEASE_NAME, MAJOR, OFFICIAL_RELEASE
 from .gitutils import verify_are_on_tag, git_preconditions
 from . import release_notes
+
+log = logging.getLogger(__name__)
 
 $RAISE_SUBPROC_ERROR = True
 $XONSH_SHOW_TRACEBACK = True
@@ -54,6 +57,9 @@ def official_release_commit_tag(force_tag=False):
     message = f'release: {VERSION} "{RELEASE_NAME}"\n\nRelease produced with releng/create_release.xsh'
     git commit -m @(message)
     git tag @(['-f'] if force_tag else []) -a -m @(message) @(VERSION)
+
+    with open('releng/prev-git-branch.txt', 'w') as fh:
+        fh.write(prev_branch)
 
     return prev_branch
 
@@ -235,8 +241,24 @@ def upload_artifacts(env: RelengEnvironment, noconfirm=False, no_check_git=False
     print('[+] Upload manual')
     upload_manual(env)
 
-    print('[+] git push tag')
-    git push @(['-f'] if force_push_tag else []) @(env.git_repo) f'{VERSION}:refs/tags/{VERSION}'
+    prev_branch = None
+    try:
+        with open('releng/prev-git-branch.txt', 'r') as fh:
+            prev_branch = fh.read().strip()
+    except FileNotFoundError:
+        log.warn('Cannot find previous git branch file, skipping pushing git objects')
+
+    if prev_branch:
+        print('[+] git push to the repo')
+        # We have to push the ref to gerrit for review at least such that the
+        # commit is known, before we can push it as a tag.
+        if env.git_repo_is_gerrit:
+            git push @(env.git_repo) f'{prev_branch}:refs/for/{prev_branch}'
+        else:
+            git push @(env.git_repo) f'{prev_branch}:{prev_branch}'
+
+        print('[+] git push tag')
+        git push @(['-f'] if force_push_tag else []) @(env.git_repo) f'{VERSION}:refs/tags/{VERSION}'
 
 
 def do_tag_merge(force_tag=False, no_check_git=False):
