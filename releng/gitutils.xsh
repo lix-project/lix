@@ -1,11 +1,24 @@
 import subprocess
-import json
+from packaging.version import Version
 
 from .version import VERSION
 
 
+def remote_is_plausible(url: str) -> bool:
+    return ('git.lix.systems' in url and 'lix-project/lix' in url) or ('gerrit.lix.systems' in url and url.endswith('lix'))
+
+
 def version_compare(v1: str, v2: str):
-    return json.loads($(nix-instantiate --eval --json --argstr v1 @(v1) --argstr v2 @(v2) --expr '{v1, v2}: builtins.compareVersions v1 v2'))
+    v1 = Version(v1)
+    v2 = Version(v2)
+    if v1 < v2:
+        return -1
+    elif v1 > v2:
+        return 1
+    elif v1 == v2:
+        return 0
+    else:
+        raise ValueError('these versions are beyond each others celestial plane')
 
 
 def latest_tag_on_branch(branch: str) -> str:
@@ -13,16 +26,18 @@ def latest_tag_on_branch(branch: str) -> str:
 
 
 def is_maintenance_branch(branch: str) -> bool:
-    try:
-        main_tag = latest_tag_on_branch('main')
-        current_tag = latest_tag_on_branch(branch)
+    """
+    Returns whether the given branch is probably a maintenance branch.
 
-        return version_compare(current_tag, main_tag) < 0
-    except subprocess.CalledProcessError:
-        # This is the case before Lix releases 2.90, since main *has* no
-        # release tag on it.
-        # FIXME: delete this case after 2.91
-        return False
+    This uses a heuristic: `main` should have a newer tag than a given
+    maintenance branch if there has been a major release since that maintenance
+    branch.
+    """
+    assert remote_is_plausible($(git remote get-url origin).strip())
+    main_tag = latest_tag_on_branch('origin/main')
+    current_tag = latest_tag_on_branch(branch)
+
+    return version_compare(current_tag, main_tag) < 0
 
 
 def verify_are_on_tag():
