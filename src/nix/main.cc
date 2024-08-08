@@ -503,6 +503,11 @@ void mainWrapped(int argc, char * * argv)
 
 int main(int argc, char * * argv)
 {
+    if (argc < 1) {
+        std::cerr << "no, we don't have pkexec at home. provide argv[0]." << std::endl;
+        std::abort();
+    }
+
     // Increase the default stack size for the evaluator and for
     // libstdc++'s std::regex.
     nix::setStackSize(64 * 1024 * 1024);
