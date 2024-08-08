@@ -448,6 +448,7 @@ stdenv.mkDerivation (finalAttrs: {
             p.python-frontmatter
             p.requests
             p.xdg-base-dirs
+            p.packaging
             (p.toPythonModule xonsh.passthru.unwrapped)
           ]
         );

@@ -52,6 +52,7 @@ class RelengEnvironment:
     releases_bucket: str
     docs_bucket: str
     git_repo: str
+    git_repo_is_gerrit: bool
 
     docker_targets: list[DockerTarget]
 
@@ -79,6 +80,7 @@ STAGING = RelengEnvironment(
     cache_store_overlay={'secret-key': 'staging.key'},
     releases_bucket='s3://staging-releases',
     git_repo='ssh://git@git.lix.systems/lix-project/lix-releng-staging',
+    git_repo_is_gerrit=False,
     docker_targets=[
         # latest will be auto tagged if appropriate
         DockerTarget('git.lix.systems/lix-project/lix-releng-staging',
@@ -113,6 +115,7 @@ PROD = RelengEnvironment(
     cache_store_overlay={'secret-key': 'prod.key'},
     releases_bucket='s3://releases',
     git_repo=guess_gerrit_remote(),
+    git_repo_is_gerrit=True,
     docker_targets=[
         # latest will be auto tagged if appropriate
         DockerTarget('git.lix.systems/lix-project/lix',
