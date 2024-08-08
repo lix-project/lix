@@ -57,12 +57,10 @@ Next, we do the publication with `python -m releng upload`:
     `nix upgrade-nix`.
   * s3://releases/lix/lix-VERSION/ gets the following contents
     * Binary tarballs
-    * Docs: `manual/` (FIXME: should we actually do this? what about putting it
-      on docs.lix.systems? I think doing both is correct, since the Web site
-      should not be an archive of random old manuals)
+    * Docs: `manual/`, primarily as an archive of old manuals
     * Docs as tarball in addition to web.
     * Source tarball
-    * Docker image (FIXME: upload to forgejo registry and github registry [in the future][upload-docker])
+    * Docker image
   * s3://docs/manual/lix/MAJOR
   * s3://docs/manual/lix/stable
 
@@ -80,6 +78,7 @@ Next, we do the publication with `python -m releng upload`:
   FIXME: automate branch-off to `release-*` branch.
 * **Manually** (FIXME?) switch back to the release branch, which now has the
   correct revision.
+* Deal with the external systems (see sections below).
 * Post!!
   * Merge release blog post to [lix-website].
   * Toot about it! https://chaos.social/@lix_project
@@ -87,21 +86,32 @@ Next, we do the publication with `python -m releng upload`:
 
 [lix-website]: https://git.lix.systems/lix-project/lix-website
 
-[upload-docker]: https://git.lix.systems/lix-project/lix/issues/252
-
 ### Installer
 
-The installer is cross-built to several systems from a Mac using
-`build-all.xsh` and `upload-to-lix.xsh` in the installer repo (FIXME: currently
-at least; maybe this should be moved here?) .
+The installer is cross-built to several systems from a Mac using `build-all.xsh` and `upload-to-lix.xsh` in the installer repo (FIXME: currently at least; maybe this should be moved here?).
 
-It installs a binary tarball (FIXME: [it should be taught to substitute from
-cache instead][installer-substitute])
-from some URL; this is the `hydraJobs.binaryTarball`. The default URLs differ
-by architecture and are [configured here][tarball-urls].
+It installs a binary tarball (FIXME: [it should be taught to substitute from cache instead][installer-substitute]) from some URL; this is the `hydraJobs.binaryTarball`.
+The default URLs differ by architecture and are [configured here][tarball-urls].
+
+To automatically do the file changes for a new version, run `python3 set_version.py NEW_VERSION`, and submit the result for review.
 
 [installer-substitute]: https://git.lix.systems/lix-project/lix-installer/issues/13
 [tarball-urls]: https://git.lix.systems/lix-project/lix-installer/src/commit/693592ed10d421a885bec0a9dd45e87ab87eb90a/src/settings.rs#L14-L28
+
+### Web site
+
+The website has various release-version dependent pieces.
+You can update them with `python3 update_version.py NEW_VERSION`, which will regenerate the affected page sources.
+
+These need the release to have been done first as they need hashes for tarballs and such.
+
+### NixOS module
+
+The NixOS module has underdeveloped releng in it.
+Currently you have to do the whole branch-off dance manually to a `release-VERSION` branch and update the tarball URLs to point to the release versions manually.
+
+FIXME: this should be unified with the `set_version.py` work in `lix-installer` and probably all the releng kept in here, or kept elsewhere.
+Related: https://git.lix.systems/lix-project/lix/issues/439
 
 ## Infrastructure summary
 

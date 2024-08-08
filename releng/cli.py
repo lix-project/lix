@@ -1,10 +1,13 @@
+import logging
+import argparse
+import sys
+
 from . import create_release
 from . import docker
 from .environment import RelengEnvironment
 from . import environment
-import argparse
-import sys
 
+log = logging.getLogger(__name__)
 
 def do_build(args):
     if args.target == 'all':
@@ -20,6 +23,9 @@ def do_build(args):
 def do_tag(args):
     create_release.do_tag_merge(force_tag=args.force_tag,
                                 no_check_git=args.no_check_git)
+
+    log.info('Merged the release commit into your last branch, and switched to a detached HEAD of the artifact to be released.')
+    log.info('After you are done with releasing, switch to your previous branch and push that branch for review.')
 
 
 def do_upload(env: RelengEnvironment, args):
