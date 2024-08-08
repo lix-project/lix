@@ -5,9 +5,10 @@ project('lix-clang-tidy', ['cpp', 'c'],
 
 llvm = dependency('Clang', version: '>= 17', modules: ['libclang'])
 sources = files(
+  'CharPtrCast.cc',
+  'FixIncludes.cc',
   'HasPrefixSuffix.cc',
   'LixClangTidyChecks.cc',
-  'FixIncludes.cc',
 )
 
 lix_clang_tidy = shared_module('lix-clang-tidy', sources,

@@ -2,6 +2,7 @@
 #include <clang-tidy/ClangTidyModuleRegistry.h>
 #include "FixIncludes.hh"
 #include "HasPrefixSuffix.hh"
+#include "CharPtrCast.hh"
 
 namespace nix::clang_tidy {
 using namespace clang;
@@ -12,6 +13,7 @@ class NixClangTidyChecks : public ClangTidyModule {
         void addCheckFactories(ClangTidyCheckFactories &CheckFactories) override {
             CheckFactories.registerCheck<HasPrefixSuffixCheck>("lix-hasprefixsuffix");
             CheckFactories.registerCheck<FixIncludesCheck>("lix-fixincludes");
+            CheckFactories.registerCheck<CharPtrCastCheck>("lix-charptrcast");
         }
 };
 

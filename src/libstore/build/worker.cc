@@ -1,3 +1,4 @@
+#include "charptr-cast.hh"
 #include "machines.hh"
 #include "worker.hh"
 #include "substitution-goal.hh"
@@ -539,7 +540,7 @@ void Worker::waitForInput()
                 } else {
                     printMsg(lvlVomit, "%1%: read %2% bytes",
                         goal->getName(), rd);
-                    std::string_view data(reinterpret_cast<char *>(buffer.data()), rd);
+                    std::string_view data(charptr_cast<char *>(buffer.data()), rd);
                     j->lastOutput = after;
                     handleWorkResult(goal, goal->handleChildOutput(k, data));
                 }
