@@ -171,7 +171,7 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
            and `dependency`. */
         std::function<void(Node &, const std::string &, const std::string &)> printNode;
 
-        struct BailOut { };
+        struct BailOut : std::exception { };
 
         printNode = [&](Node & node, const std::string & firstPad, const std::string & tailPad) {
             auto pathS = store->printStorePath(node.path);

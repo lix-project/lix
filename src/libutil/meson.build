@@ -52,6 +52,7 @@ libutil_headers = files(
   'box_ptr.hh',
   'canon-path.hh',
   'cgroup.hh',
+  'charptr-cast.hh',
   'checked-arithmetic.hh',
   'chunked-vector.hh',
   'closure.hh',

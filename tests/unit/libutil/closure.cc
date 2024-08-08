@@ -28,7 +28,7 @@ TEST(closure, correctClosure) {
 }
 
 TEST(closure, properlyHandlesDirectExceptions) {
-    struct TestExn {};
+    struct TestExn : std::exception {};
     EXPECT_THROW(
         computeClosure<string>(
             {"A"},

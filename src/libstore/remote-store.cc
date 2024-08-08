@@ -397,7 +397,7 @@ ref<const ValidPathInfo> RemoteStore::addCAToStore(
 
         std::visit(overloaded {
             [&](const TextIngestionMethod & thm) -> void {
-                if (hashType != htSHA256)
+                if (hashType != HashType::SHA256)
                     throw UnimplementedError("When adding text-hashed data called '%s', only SHA-256 is supported but '%s' was given",
                         name, printHashType(hashType));
                 std::string s = dump.drain();
@@ -409,7 +409,7 @@ ref<const ValidPathInfo> RemoteStore::addCAToStore(
                 conn->to
                     << WorkerProto::Op::AddToStore
                     << name
-                    << ((hashType == htSHA256 && fim == FileIngestionMethod::Recursive) ? 0 : 1) /* backwards compatibility hack */
+                    << ((hashType == HashType::SHA256 && fim == FileIngestionMethod::Recursive) ? 0 : 1) /* backwards compatibility hack */
                     << (fim == FileIngestionMethod::Recursive ? 1 : 0)
                     << printHashType(hashType);
 
@@ -461,7 +461,7 @@ void RemoteStore::addToStore(const ValidPathInfo & info, Source & source,
     conn->to << WorkerProto::Op::AddToStoreNar
              << printStorePath(info.path)
              << (info.deriver ? printStorePath(*info.deriver) : "")
-             << info.narHash.to_string(Base16, false);
+             << info.narHash.to_string(Base::Base16, false);
     conn->to << WorkerProto::write(*this, *conn, info.references);
     conn->to << info.registrationTime << info.narSize
              << info.ultimate << info.sigs << renderContentAddress(info.ca)
@@ -533,7 +533,7 @@ StorePath RemoteStore::addTextToStore(
     RepairFlag repair)
 {
     StringSource source(s);
-    return addCAToStore(source, name, TextIngestionMethod {}, htSHA256, references, repair)->path;
+    return addCAToStore(source, name, TextIngestionMethod {}, HashType::SHA256, references, repair)->path;
 }
 
 void RemoteStore::registerDrvOutput(const Realisation & info)

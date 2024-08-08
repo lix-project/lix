@@ -6,7 +6,6 @@
 #include <future>
 #include <gtest/gtest.h>
 #include <netinet/in.h>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <sys/poll.h>
@@ -130,7 +129,7 @@ serveHTTP(std::string status, std::string headers, std::function<std::string()> 
 
 TEST(FileTransfer, exceptionAbortsDownload)
 {
-    struct Done
+    struct Done : std::exception
     {};
 
     auto ft = makeFileTransfer();

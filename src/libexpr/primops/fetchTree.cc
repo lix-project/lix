@@ -32,7 +32,7 @@ void emitTreeAttrs(
 
     auto narHash = input.getNarHash();
     assert(narHash);
-    attrs.alloc("narHash").mkString(narHash->to_string(SRI, true));
+    attrs.alloc("narHash").mkString(narHash->to_string(Base::SRI, true));
 
     if (input.getType() == "git")
         attrs.alloc("submodules").mkBool(
@@ -45,7 +45,7 @@ void emitTreeAttrs(
             attrs.alloc("shortRev").mkString(rev->gitShortRev());
         } else if (emptyRevFallback) {
             // Backwards compat for `builtins.fetchGit`: dirty repos return an empty sha1 as rev
-            auto emptyHash = Hash(htSHA1);
+            auto emptyHash = Hash(HashType::SHA1);
             attrs.alloc("rev").mkString(emptyHash.gitRev());
             attrs.alloc("shortRev").mkString(emptyHash.gitShortRev());
         }
@@ -226,7 +226,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
             if (n == "url")
                 url = state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the url we should fetch");
             else if (n == "sha256")
-                expectedHash = newHashAllowEmpty(state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the sha256 of the content we should fetch"), htSHA256);
+                expectedHash = newHashAllowEmpty(state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the sha256 of the content we should fetch"), HashType::SHA256);
             else if (n == "name")
                 name = state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the name of the content we should fetch");
             else
@@ -252,7 +252,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
         state.error<EvalError>("in pure evaluation mode, '%s' requires a 'sha256' argument", who).atPos(pos).debugThrow();
 
     // early exit if pinned and already in the store
-    if (expectedHash && expectedHash->type == htSHA256) {
+    if (expectedHash && expectedHash->type == HashType::SHA256) {
         auto expectedPath = state.store->makeFixedOutputPath(
             name,
             FixedOutputInfo {
@@ -277,13 +277,13 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
     if (expectedHash) {
         auto hash = unpack
             ? state.store->queryPathInfo(storePath)->narHash
-            : hashFile(htSHA256, state.store->toRealPath(storePath));
+            : hashFile(HashType::SHA256, state.store->toRealPath(storePath));
         if (hash != *expectedHash) {
             state.error<EvalError>(
                 "hash mismatch in file downloaded from '%s':\n  specified: %s\n  got:       %s",
                 *url,
-                expectedHash->to_string(Base32, true),
-                hash.to_string(Base32, true)
+                expectedHash->to_string(Base::Base32, true),
+                hash.to_string(Base::Base32, true)
             ).withExitStatus(102)
             .debugThrow();
         }

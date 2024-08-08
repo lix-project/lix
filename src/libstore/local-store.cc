@@ -11,7 +11,6 @@
 #include "finally.hh"
 #include "compression.hh"
 
-#include <iostream>
 #include <algorithm>
 #include <cstring>
 
@@ -539,9 +538,10 @@ void LocalStore::openDB(State & state, bool create)
     {
         SQLiteStmt stmt;
         stmt.create(db, "pragma main.journal_mode;");
-        if (sqlite3_step(stmt) != SQLITE_ROW)
+        auto use = stmt.use();
+        if (use.step() != SQLITE_ROW)
             SQLiteError::throw_(db, "querying journal mode");
-        prevMode = std::string((const char *) sqlite3_column_text(stmt, 0));
+        prevMode = use.getStr(0);
     }
     if (prevMode != mode &&
         sqlite3_exec(db, ("pragma main.journal_mode = " + mode + ";").c_str(), 0, 0, 0) != SQLITE_OK)
@@ -842,7 +842,7 @@ uint64_t LocalStore::addValidPath(State & state,
 
     state.stmts->RegisterValidPath.use()
         (printStorePath(info.path))
-        (info.narHash.to_string(Base16, true))
+        (info.narHash.to_string(Base::Base16, true))
         (info.registrationTime == 0 ? time(0) : info.registrationTime)
         (info.deriver ? printStorePath(*info.deriver) : "", (bool) info.deriver)
         (info.narSize, info.narSize != 0)
@@ -916,19 +916,22 @@ std::shared_ptr<const ValidPathInfo> LocalStore::queryPathInfoInternal(State & s
 
     info->registrationTime = useQueryPathInfo.getInt(2);
 
-    auto s = (const char *) sqlite3_column_text(state.stmts->QueryPathInfo, 3);
-    if (s) info->deriver = parseStorePath(s);
+    if (auto deriver = useQueryPathInfo.getStrNullable(3); deriver.has_value()) {
+        info->deriver = parseStorePath(*deriver);
+    }
 
     /* Note that narSize = NULL yields 0. */
     info->narSize = useQueryPathInfo.getInt(4);
 
     info->ultimate = useQueryPathInfo.getInt(5) == 1;
 
-    s = (const char *) sqlite3_column_text(state.stmts->QueryPathInfo, 6);
-    if (s) info->sigs = tokenizeString<StringSet>(s, " ");
+    if (auto sigs = useQueryPathInfo.getStrNullable(6); sigs.has_value()) {
+        info->sigs = tokenizeString<StringSet>(*sigs, " ");
+    }
 
-    s = (const char *) sqlite3_column_text(state.stmts->QueryPathInfo, 7);
-    if (s) info->ca = ContentAddress::parseOpt(s);
+    if (auto ca = useQueryPathInfo.getStrNullable(7); ca.has_value()) {
+        info->ca = ContentAddress::parseOpt(*ca);
+    }
 
     /* Get the references. */
     auto useQueryReferences(state.stmts->QueryReferences.use()(info->id));
@@ -945,7 +948,7 @@ void LocalStore::updatePathInfo(State & state, const ValidPathInfo & info)
 {
     state.stmts->UpdatePathInfo.use()
         (info.narSize, info.narSize != 0)
-        (info.narHash.to_string(Base16, true))
+        (info.narHash.to_string(Base::Base16, true))
         (info.ultimate ? 1 : 0, info.ultimate)
         (concatStringsSep(" ", info.sigs), !info.sigs.empty())
         (renderContentAddress(info.ca), (bool) info.ca)
@@ -1063,9 +1066,9 @@ std::optional<StorePath> LocalStore::queryPathFromHashPart(const std::string & h
 
         if (!useQueryPathFromHashPart.next()) return {};
 
-        const char * s = (const char *) sqlite3_column_text(state->stmts->QueryPathFromHashPart, 0);
-        if (s && prefix.compare(0, prefix.size(), s, prefix.size()) == 0)
-            return parseStorePath(s);
+        auto s = useQueryPathFromHashPart.getStrNullable(0);
+        if (s.has_value() && s->starts_with(prefix))
+            return parseStorePath(*s);
         return {};
     });
 }
@@ -1123,7 +1126,7 @@ void LocalStore::registerValidPaths(const ValidPathInfos & infos)
         StorePathSet paths;
 
         for (auto & [_, i] : infos) {
-            assert(i.narHash.type == htSHA256);
+            assert(i.narHash.type == HashType::SHA256);
             if (isValidPath_(*state, i.path))
                 updatePathInfo(*state, i);
             else
@@ -1241,7 +1244,7 @@ void LocalStore::addToStore(const ValidPathInfo & info, Source & source,
 
             /* While restoring the path from the NAR, compute the hash
                of the NAR. */
-            HashSink hashSink(htSHA256);
+            HashSink hashSink(HashType::SHA256);
 
             TeeSource wrapperSource { source, hashSink };
 
@@ -1252,7 +1255,7 @@ void LocalStore::addToStore(const ValidPathInfo & info, Source & source,
 
             if (hashResult.first != info.narHash)
                 throw Error("hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
-                    printStorePath(info.path), info.narHash.to_string(Base32, true), hashResult.first.to_string(Base32, true));
+                    printStorePath(info.path), info.narHash.to_string(Base::Base32, true), hashResult.first.to_string(Base::Base32, true));
 
             if (hashResult.second != info.narSize)
                 throw Error("size mismatch importing path '%s';\n  specified: %s\n  got:       %s",
@@ -1268,8 +1271,8 @@ void LocalStore::addToStore(const ValidPathInfo & info, Source & source,
                 if (specified.hash != actualHash.hash) {
                     throw Error("ca hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
                         printStorePath(info.path),
-                        specified.hash.to_string(Base32, true),
-                        actualHash.hash.to_string(Base32, true));
+                        specified.hash.to_string(Base::Base32, true),
+                        actualHash.hash.to_string(Base::Base32, true));
                 }
             }
 
@@ -1318,7 +1321,7 @@ StorePath LocalStore::addToStoreFromDump(Source & source0, std::string_view name
 
         auto *toRealloc = dumpBuffer.release();
         if (auto realloced = realloc(toRealloc, oldSize + want)) {
-            dumpBuffer.reset((char*) realloced);
+            dumpBuffer.reset(static_cast<char *>(realloced));
         } else {
             free(toRealloc);
             throw std::bad_alloc();
@@ -1404,8 +1407,8 @@ StorePath LocalStore::addToStoreFromDump(Source & source0, std::string_view name
             /* For computing the nar hash. In recursive SHA-256 mode, this
                is the same as the store hash, so no need to do it again. */
             auto narHash = std::pair { hash, size };
-            if (method != FileIngestionMethod::Recursive || hashAlgo != htSHA256) {
-                HashSink narSink { htSHA256 };
+            if (method != FileIngestionMethod::Recursive || hashAlgo != HashType::SHA256) {
+                HashSink narSink { HashType::SHA256 };
                 narSink << dumpPath(realPath);
                 narHash = narSink.finish();
             }
@@ -1436,7 +1439,7 @@ StorePath LocalStore::addTextToStore(
     std::string_view s,
     const StorePathSet & references, RepairFlag repair)
 {
-    auto hash = hashString(htSHA256, s);
+    auto hash = hashString(HashType::SHA256, s);
     auto dstPath = makeTextPath(name, TextInfo {
         .hash = hash,
         .references = references,
@@ -1462,7 +1465,7 @@ StorePath LocalStore::addTextToStore(
 
             StringSink sink;
             sink << dumpString(s);
-            auto narHash = hashString(htSHA256, sink.s);
+            auto narHash = hashString(HashType::SHA256, sink.s);
 
             optimisePath(realPath, repair);
 
@@ -1573,7 +1576,7 @@ bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
         for (auto & link : readDirectory(linksDir)) {
             printMsg(lvlTalkative, "checking contents of '%s'", link.name);
             Path linkPath = linksDir + "/" + link.name;
-            std::string hash = hashPath(htSHA256, linkPath).first.to_string(Base32, false);
+            std::string hash = hashPath(HashType::SHA256, linkPath).first.to_string(Base::Base32, false);
             if (hash != link.name) {
                 printError("link '%s' was modified! expected hash '%s', got '%s'",
                     linkPath, link.name, hash);
@@ -1590,7 +1593,7 @@ bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
 
         printInfo("checking store hashes...");
 
-        Hash nullHash(htSHA256);
+        Hash nullHash(HashType::SHA256);
 
         for (auto & i : validPaths) {
             try {
@@ -1606,7 +1609,7 @@ bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
 
                 if (info->narHash != nullHash && info->narHash != current.first) {
                     printError("path '%s' was modified! expected hash '%s', got '%s'",
-                        printStorePath(i), info->narHash.to_string(Base32, true), current.first.to_string(Base32, true));
+                        printStorePath(i), info->narHash.to_string(Base::Base32, true), current.first.to_string(Base::Base32, true));
                     if (repair) repairPath(i); else errors = true;
                 } else {
 

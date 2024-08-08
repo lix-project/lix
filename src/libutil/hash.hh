@@ -12,7 +12,7 @@ namespace nix {
 MakeError(BadHash, Error);
 
 
-enum HashType : char { htMD5 = 42, htSHA1, htSHA256, htSHA512 };
+enum class HashType : char { MD5 = 42, SHA1, SHA256, SHA512 };
 
 
 const int md5HashSize = 16;
@@ -24,7 +24,7 @@ extern std::set<std::string> hashTypes;
 
 extern const std::string base32Chars;
 
-enum Base : int { Base64, Base32, Base16, SRI };
+enum class Base : int { Base64, Base32, Base16, SRI };
 
 
 struct Hash
@@ -119,12 +119,12 @@ public:
 
     std::string gitRev() const
     {
-        return to_string(Base16, false);
+        return to_string(Base::Base16, false);
     }
 
     std::string gitShortRev() const
     {
-        return std::string(to_string(Base16, false), 0, 7);
+        return std::string(to_string(Base::Base16, false), 0, 7);
     }
 
     static Hash dummy;

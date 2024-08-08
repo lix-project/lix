@@ -199,11 +199,20 @@ bool SQLiteStmt::Use::next()
     return r == SQLITE_ROW;
 }
 
+std::optional<std::string> SQLiteStmt::Use::getStrNullable(int col)
+{
+    auto s = reinterpret_cast<const char *>(sqlite3_column_text(stmt, col));
+    return s != nullptr ? std::make_optional<std::string>((s)) : std::nullopt;
+}
+
 std::string SQLiteStmt::Use::getStr(int col)
 {
-    auto s = (const char *) sqlite3_column_text(stmt, col);
-    assert(s);
-    return s;
+    if (auto res = getStrNullable(col); res.has_value()) {
+        return *res;
+    } else {
+        // FIXME: turn into fatal non-exception error with actual formatting when we have those
+        assert(false && "sqlite3 retrieved unexpected null");
+    }
 }
 
 int64_t SQLiteStmt::Use::getInt(int col)

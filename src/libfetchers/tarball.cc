@@ -72,7 +72,7 @@ DownloadFileResult downloadFile(
     } else {
         StringSink sink;
         sink << dumpString(res.data);
-        auto hash = hashString(htSHA256, res.data);
+        auto hash = hashString(HashType::SHA256, res.data);
         ValidPathInfo info {
             *store,
             name,
@@ -81,7 +81,7 @@ DownloadFileResult downloadFile(
                 .hash = hash,
                 .references = {},
             },
-            hashString(htSHA256, sink.s),
+            hashString(HashType::SHA256, sink.s),
         };
         info.narSize = sink.s.size();
         auto source = StringSource { sink.s };
@@ -155,7 +155,7 @@ DownloadTarballResult downloadTarball(
             throw nix::Error("tarball '%s' contains an unexpected number of top-level files", url);
         auto topDir = tmpDir + "/" + members.begin()->name;
         lastModified = lstat(topDir).st_mtime;
-        unpackedStorePath = store->addToStore(name, topDir, FileIngestionMethod::Recursive, htSHA256, defaultPathFilter, NoRepair);
+        unpackedStorePath = store->addToStore(name, topDir, FileIngestionMethod::Recursive, HashType::SHA256, defaultPathFilter, NoRepair);
     }
 
     Attrs infoAttrs({
@@ -238,7 +238,7 @@ struct CurlInputScheme : InputScheme
         // NAR hashes are preferred over file hashes since tar/zip
         // files don't have a canonical representation.
         if (auto narHash = input.getNarHash())
-            url.query.insert_or_assign("narHash", narHash->to_string(SRI, true));
+            url.query.insert_or_assign("narHash", narHash->to_string(Base::SRI, true));
         return url;
     }
 

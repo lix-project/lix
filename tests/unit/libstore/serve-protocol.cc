@@ -53,15 +53,15 @@ VERSIONED_CHARACTERIZATION_TEST(
     (std::tuple<ContentAddress, ContentAddress, ContentAddress> {
         ContentAddress {
             .method = TextIngestionMethod {},
-            .hash = hashString(HashType::htSHA256, "Derive(...)"),
+            .hash = hashString(HashType::SHA256, "Derive(...)"),
         },
         ContentAddress {
             .method = FileIngestionMethod::Flat,
-            .hash = hashString(HashType::htSHA1, "blob blob..."),
+            .hash = hashString(HashType::SHA1, "blob blob..."),
         },
         ContentAddress {
             .method = FileIngestionMethod::Recursive,
-            .hash = hashString(HashType::htSHA256, "(...)"),
+            .hash = hashString(HashType::SHA256, "(...)"),
         },
     }))
 
@@ -278,7 +278,7 @@ VERSIONED_CHARACTERIZATION_TEST(
                 "foo",
                 FixedOutputInfo {
                     .method = FileIngestionMethod::Recursive,
-                    .hash = hashString(HashType::htSHA256, "(...)"),
+                    .hash = hashString(HashType::SHA256, "(...)"),
                     .references = {
                         .others = {
                             StorePath {
@@ -348,7 +348,7 @@ VERSIONED_CHARACTERIZATION_TEST(
         std::optional {
             ContentAddress {
                 .method = FileIngestionMethod::Flat,
-                .hash = hashString(HashType::htSHA1, "blob blob..."),
+                .hash = hashString(HashType::SHA1, "blob blob..."),
             },
         },
     }))

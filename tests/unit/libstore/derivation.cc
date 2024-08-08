@@ -148,7 +148,7 @@ TEST_JSON(DynDerivationTest, caFixedText,
 TEST_JSON(CaDerivationTest, caFloating,
     (DerivationOutput::CAFloating {
         .method = FileIngestionMethod::Recursive,
-        .hashType = htSHA256,
+        .hashType = HashType::SHA256,
     }),
     "drv-name", "output-name")
 
@@ -159,7 +159,7 @@ TEST_JSON(DerivationTest, deferred,
 TEST_JSON(ImpureDerivationTest, impure,
     (DerivationOutput::Impure {
         .method = FileIngestionMethod::Recursive,
-        .hashType = htSHA256,
+        .hashType = HashType::SHA256,
     }),
     "drv-name", "output-name")
 

@@ -226,7 +226,7 @@ struct CmdFlakeMetadata : FlakeCommand, MixJSON
             j["url"] = flake.lockedRef.to_string(); // FIXME: rename to lockedUrl
             j["locked"] = fetchers::attrsToJSON(flake.lockedRef.toAttrs());
             if (auto rev = flake.lockedRef.input.getRev())
-                j["revision"] = rev->to_string(Base16, false);
+                j["revision"] = rev->to_string(Base::Base16, false);
             if (auto dirtyRev = fetchers::maybeGetStrAttr(flake.lockedRef.toAttrs(), "dirtyRev"))
                 j["dirtyRevision"] = *dirtyRev;
             if (auto revCount = flake.lockedRef.input.getRevCount())
@@ -253,7 +253,7 @@ struct CmdFlakeMetadata : FlakeCommand, MixJSON
             if (auto rev = flake.lockedRef.input.getRev())
                 logger->cout(
                     ANSI_BOLD "Revision:" ANSI_NORMAL "      %s",
-                    rev->to_string(Base16, false));
+                    rev->to_string(Base::Base16, false));
             if (auto dirtyRev = fetchers::maybeGetStrAttr(flake.lockedRef.toAttrs(), "dirtyRev"))
                 logger->cout(
                     ANSI_BOLD "Revision:" ANSI_NORMAL "      %s",
@@ -1434,13 +1434,13 @@ struct CmdFlakePrefetch : FlakeCommand, MixJSON
         if (json) {
             auto res = nlohmann::json::object();
             res["storePath"] = store->printStorePath(tree.storePath);
-            res["hash"] = hash.to_string(SRI, true);
+            res["hash"] = hash.to_string(Base::SRI, true);
             logger->cout(res.dump());
         } else {
             notice("Downloaded '%s' to '%s' (hash '%s').",
                 lockedRef.to_string(),
                 store->printStorePath(tree.storePath),
-                hash.to_string(SRI, true));
+                hash.to_string(Base::SRI, true));
         }
     }
 };

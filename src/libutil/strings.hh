@@ -20,6 +20,8 @@ constexpr char treeNull[] = "    ";
  * Convert a list of strings to a null-terminated vector of `char
  * *`s. The result must not be accessed beyond the lifetime of the
  * list of strings.
+ *
+ * Modifying the resulting array elements violates the constness of ss.
  */
 std::vector<char *> stringsToCharPtrs(const Strings & ss);
 

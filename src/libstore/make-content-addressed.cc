@@ -45,7 +45,7 @@ std::map<StorePath, StorePath> makeContentAddressed(
 
         auto narModuloHash = [&] {
             StringSource source{sink.s};
-            return computeHashModulo(htSHA256, oldHashPart, source).first;
+            return computeHashModulo(HashType::SHA256, oldHashPart, source).first;
         }();
 
         ValidPathInfo info {
@@ -63,7 +63,7 @@ std::map<StorePath, StorePath> makeContentAddressed(
 
         const auto rewritten = rewriteStrings(sink.s, {{oldHashPart, std::string(info.path.hashPart())}});
 
-        info.narHash = hashString(htSHA256, rewritten);
+        info.narHash = hashString(HashType::SHA256, rewritten);
         info.narSize = sink.s.size();
 
         StringSource source(rewritten);

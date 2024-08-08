@@ -9,9 +9,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
-#include <future>
 #include <iostream>
-#include <thread>
 
 #include <grp.h>
 #include <sys/types.h>
@@ -176,7 +174,7 @@ static pid_t doFork(std::function<void()> fun)
 #if __linux__
 static int childEntry(void * arg)
 {
-    auto main = (std::function<void()> *) arg;
+    auto main = static_cast<std::function<void()> *>(arg);
     (*main)();
     return 1;
 }
@@ -212,8 +210,8 @@ Pid startProcess(std::function<void()> fun, const ProcessOptions & options)
         assert(!(options.cloneFlags & CLONE_VM));
 
         size_t stackSize = 1 * 1024 * 1024;
-        auto stack = (char *) mmap(0, stackSize,
-            PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
+        auto stack = static_cast<char *>(mmap(0, stackSize,
+            PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0));
         if (stack == MAP_FAILED) throw SysError("allocating stack");
 
         Finally freeStack([&]() { munmap(stack, stackSize); });

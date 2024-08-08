@@ -153,12 +153,12 @@ std::pair<Tree, Input> Input::fetch(ref<Store> store) const
     };
 
     auto narHash = store->queryPathInfo(tree.storePath)->narHash;
-    input.attrs.insert_or_assign("narHash", narHash.to_string(SRI, true));
+    input.attrs.insert_or_assign("narHash", narHash.to_string(Base::SRI, true));
 
     if (auto prevNarHash = getNarHash()) {
         if (narHash != *prevNarHash)
             throw Error((unsigned int) 102, "NAR hash mismatch in input '%s' (%s), expected '%s', got '%s'",
-                to_string(), tree.actualPath, prevNarHash->to_string(SRI, true), narHash.to_string(SRI, true));
+                to_string(), tree.actualPath, prevNarHash->to_string(Base::SRI, true), narHash.to_string(Base::SRI, true));
     }
 
     if (auto prevLastModified = getLastModified()) {
@@ -240,8 +240,8 @@ std::string Input::getType() const
 std::optional<Hash> Input::getNarHash() const
 {
     if (auto s = maybeGetStrAttr(attrs, "narHash")) {
-        auto hash = s->empty() ? Hash(htSHA256) : Hash::parseSRI(*s);
-        if (hash.type != htSHA256)
+        auto hash = s->empty() ? Hash(HashType::SHA256) : Hash::parseSRI(*s);
+        if (hash.type != HashType::SHA256)
             throw UsageError("narHash must use SHA-256");
         return hash;
     }
@@ -264,7 +264,7 @@ std::optional<Hash> Input::getRev() const
             hash = Hash::parseAnyPrefixed(*s);
         } catch (BadHash &e) {
             // Default to sha1 for backwards compatibility with existing flakes
-            hash = Hash::parseAny(*s, htSHA1);
+            hash = Hash::parseAny(*s, HashType::SHA1);
         }
     }
 

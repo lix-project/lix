@@ -817,8 +817,8 @@ void LocalDerivationGoal::initTmpDir() {
             if (passAsFile.find(i.first) == passAsFile.end()) {
                 env[i.first] = i.second;
             } else {
-                auto hash = hashString(htSHA256, i.first);
-                std::string fn = ".attr-" + hash.to_string(Base32, false);
+                auto hash = hashString(HashType::SHA256, i.first);
+                std::string fn = ".attr-" + hash.to_string(Base::Base32, false);
                 Path p = tmpDir + "/" + fn;
                 writeFile(p, rewriteStrings(i.second, inputRewrites));
                 chownToBuilder(p);
@@ -1225,7 +1225,7 @@ void LocalDerivationGoal::startDaemon()
             socklen_t remoteAddrLen = sizeof(remoteAddr);
 
             AutoCloseFD remote{accept(daemonSocket.get(),
-                (struct sockaddr *) &remoteAddr, &remoteAddrLen)};
+                reinterpret_cast<struct sockaddr *>(&remoteAddr), &remoteAddrLen)};
             if (!remote) {
                 if (errno == EINTR || errno == EAGAIN) continue;
                 if (errno == EINVAL || errno == ECONNABORTED) break;
@@ -2146,7 +2146,7 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
                                std::string(newInfo0.path.hashPart())}});
             }
 
-            HashResult narHashAndSize = hashPath(htSHA256, actualPath);
+            HashResult narHashAndSize = hashPath(HashType::SHA256, actualPath);
             newInfo0.narHash = narHashAndSize.first;
             newInfo0.narSize = narHashAndSize.second;
 
@@ -2166,7 +2166,7 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
                         std::string { scratchPath->hashPart() },
                         std::string { requiredFinalPath.hashPart() });
                 rewriteOutput(outputRewrites);
-                auto narHashAndSize = hashPath(htSHA256, actualPath);
+                auto narHashAndSize = hashPath(HashType::SHA256, actualPath);
                 ValidPathInfo newInfo0 { requiredFinalPath, narHashAndSize.first };
                 newInfo0.narSize = narHashAndSize.second;
                 auto refs = rewriteRefs();
@@ -2203,8 +2203,8 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
                         BuildError("hash mismatch in fixed-output derivation '%s':\n likely URL: %s\n  specified: %s\n     got:    %s",
                             worker.store.printStorePath(drvPath),
                             guessedUrl,
-                            wanted.to_string(SRI, true),
-                            got.to_string(SRI, true)));
+                            wanted.to_string(Base::SRI, true),
+                            got.to_string(Base::SRI, true)));
                 }
                 if (!newInfo0.references.empty())
                     delayedException = std::make_exception_ptr(
@@ -2607,7 +2607,7 @@ StorePath LocalDerivationGoal::makeFallbackPath(OutputNameView outputName)
 {
     return worker.store.makeStorePath(
         "rewrite:" + std::string(drvPath.to_string()) + ":name:" + std::string(outputName),
-        Hash(htSHA256), outputPathName(drv->name, outputName));
+        Hash(HashType::SHA256), outputPathName(drv->name, outputName));
 }
 
 
@@ -2615,7 +2615,7 @@ StorePath LocalDerivationGoal::makeFallbackPath(const StorePath & path)
 {
     return worker.store.makeStorePath(
         "rewrite:" + std::string(drvPath.to_string()) + ":" + std::string(path.to_string()),
-        Hash(htSHA256), path.name());
+        Hash(HashType::SHA256), path.name());
 }
 
 

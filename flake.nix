@@ -282,6 +282,10 @@
           # cheaper x86_64-linux compute in CI.
           # It is clangStdenv because clang's sanitizers are nicer.
           asanBuild = self.packages.x86_64-linux.nix-clangStdenv.override {
+            # Improve caching of non-code changes by not changing the
+            # derivation name every single time, since this will never be seen
+            # by users anyway.
+            versionSuffix = "";
             sanitize = [
               "address"
               "undefined"
@@ -309,6 +313,17 @@
               find ${docSources} -type f -print -exec ${pkgs.nodejs-slim}/bin/node --check '{}' ';'
               touch $out
             '';
+
+          # clang-tidy run against the Lix codebase using the Lix clang-tidy plugin
+          clang-tidy =
+            let
+              nixpkgs = nixpkgsFor.x86_64-linux.native;
+              inherit (nixpkgs) pkgs;
+            in
+            pkgs.callPackage ./package.nix {
+              versionSuffix = "";
+              lintInsteadOfBuild = true;
+            };
 
           # Make sure that nix-env still produces the exact same result
           # on a particular version of Nixpkgs.

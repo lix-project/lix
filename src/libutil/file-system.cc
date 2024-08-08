@@ -567,9 +567,8 @@ Path createTempDir(const Path & tmpRoot, const Path & prefix,
 std::pair<AutoCloseFD, Path> createTempFile(const Path & prefix)
 {
     Path tmpl(defaultTempDir() + "/" + prefix + ".XXXXXX");
-    // Strictly speaking, this is UB, but who cares...
     // FIXME: use O_TMPFILE.
-    AutoCloseFD fd(mkstemp((char *) tmpl.c_str()));
+    AutoCloseFD fd(mkstemp(tmpl.data()));
     if (!fd)
         throw SysError("creating temporary file '%s'", tmpl);
     closeOnExec(fd.get());

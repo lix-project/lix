@@ -22,14 +22,14 @@ struct IndirectInputScheme : InputScheme
         if (path.size() == 1) {
         } else if (path.size() == 2) {
             if (std::regex_match(path[1], revRegex))
-                rev = Hash::parseAny(path[1], htSHA1);
+                rev = Hash::parseAny(path[1], HashType::SHA1);
             else if (std::regex_match(path[1], refRegex))
                 ref = path[1];
             else
                 throw BadURL("in flake URL '%s', '%s' is not a commit hash or branch/tag name", url.url, path[1]);
         } else if (path.size() == 3) {
             ref = path[1];
-            rev = Hash::parseAny(path[2], htSHA1);
+            rev = Hash::parseAny(path[2], HashType::SHA1);
         } else
             throw BadURL("GitHub URL '%s' is invalid", url.url);
 

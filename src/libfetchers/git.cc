@@ -49,7 +49,7 @@ bool touchCacheFile(const Path & path, time_t touch_time)
 Path getCachePath(std::string_view key)
 {
     return getCacheDir() + "/nix/gitv3/" +
-        hashString(htSHA256, key).to_string(Base32, false);
+        hashString(HashType::SHA256, key).to_string(Base::Base32, false);
 }
 
 // Returns the name of the HEAD branch.
@@ -238,7 +238,7 @@ std::pair<StorePath, Input> fetchFromWorkdir(ref<Store> store, Input & input, co
         return files.count(file);
     };
 
-    auto storePath = store->addToStore(input.getName(), actualPath, FileIngestionMethod::Recursive, htSHA256, filter);
+    auto storePath = store->addToStore(input.getName(), actualPath, FileIngestionMethod::Recursive, HashType::SHA256, filter);
 
     // FIXME: maybe we should use the timestamp of the last
     // modified dirty file?
@@ -437,8 +437,8 @@ struct GitInputScheme : InputScheme
 
         auto checkHashType = [&](const std::optional<Hash> & hash)
         {
-            if (hash.has_value() && !(hash->type == htSHA1 || hash->type == htSHA256))
-                throw Error("Hash '%s' is not supported by Git. Supported types are sha1 and sha256.", hash->to_string(Base16, true));
+            if (hash.has_value() && !(hash->type == HashType::SHA1 || hash->type == HashType::SHA256))
+                throw Error("Hash '%s' is not supported by Git. Supported types are sha1 and sha256.", hash->to_string(Base::Base16, true));
         };
 
         auto getLockedAttrs = [&]()
@@ -501,7 +501,7 @@ struct GitInputScheme : InputScheme
 
             if (!input.getRev())
                 input.attrs.insert_or_assign("rev",
-                    Hash::parseAny(chomp(runProgram("git", true, { "-C", actualUrl, "--git-dir", gitDir, "rev-parse", *input.getRef() })), htSHA1).gitRev());
+                    Hash::parseAny(chomp(runProgram("git", true, { "-C", actualUrl, "--git-dir", gitDir, "rev-parse", *input.getRef() })), HashType::SHA1).gitRev());
 
             repoDir = actualUrl;
         } else {
@@ -521,7 +521,7 @@ struct GitInputScheme : InputScheme
             }
 
             if (auto res = getCache()->lookup(store, unlockedAttrs)) {
-                auto rev2 = Hash::parseAny(getStrAttr(res->first, "rev"), htSHA1);
+                auto rev2 = Hash::parseAny(getStrAttr(res->first, "rev"), HashType::SHA1);
                 if (!input.getRev() || input.getRev() == rev2) {
                     input.attrs.insert_or_assign("rev", rev2.gitRev());
                     return makeResult(res->first, std::move(res->second));
@@ -599,7 +599,7 @@ struct GitInputScheme : InputScheme
             }
 
             if (!input.getRev())
-                input.attrs.insert_or_assign("rev", Hash::parseAny(chomp(readFile(localRefFile)), htSHA1).gitRev());
+                input.attrs.insert_or_assign("rev", Hash::parseAny(chomp(readFile(localRefFile)), HashType::SHA1).gitRev());
 
             // cache dir lock is removed at scope end; we will only use read-only operations on specific revisions in the remainder
         }
@@ -695,7 +695,7 @@ struct GitInputScheme : InputScheme
             unpackTarfile(*proc.getStdout(), tmpDir);
         }
 
-        auto storePath = store->addToStore(name, tmpDir, FileIngestionMethod::Recursive, htSHA256, filter);
+        auto storePath = store->addToStore(name, tmpDir, FileIngestionMethod::Recursive, HashType::SHA256, filter);
 
         auto lastModified = std::stoull(runProgram("git", true, { "-C", repoDir, "--git-dir", gitDir, "log", "-1", "--format=%ct", "--no-show-signature", input.getRev()->gitRev() }));
 

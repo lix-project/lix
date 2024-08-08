@@ -5,7 +5,6 @@
 #include "s3.hh"
 #include "signals.hh"
 #include "compression.hh"
-#include "finally.hh"
 
 #if ENABLE_S3
 #include <aws/core/client/ClientConfiguration.h>
@@ -143,9 +142,9 @@ struct curlFileTransfer : public FileTransfer
 
                 if (successfulStatuses.count(getHTTPStatus()) && this->dataCallback) {
                     writtenToSink += realSize;
-                    dataCallback(*this, {(const char *) contents, realSize});
+                    dataCallback(*this, {static_cast<const char *>(contents), realSize});
                 } else {
-                    this->result.data.append((const char *) contents, realSize);
+                    this->result.data.append(static_cast<const char *>(contents), realSize);
                 }
 
                 return realSize;
@@ -157,13 +156,13 @@ struct curlFileTransfer : public FileTransfer
 
         static size_t writeCallbackWrapper(void * contents, size_t size, size_t nmemb, void * userp)
         {
-            return ((TransferItem *) userp)->writeCallback(contents, size, nmemb);
+            return static_cast<TransferItem *>(userp)->writeCallback(contents, size, nmemb);
         }
 
         size_t headerCallback(void * contents, size_t size, size_t nmemb)
         {
             size_t realSize = size * nmemb;
-            std::string line((char *) contents, realSize);
+            std::string line(static_cast<char *>(contents), realSize);
             printMsg(lvlVomit, "got header for '%s': %s", request.uri, trim(line));
 
             static std::regex statusLine("HTTP/[^ ]+ +[0-9]+(.*)", std::regex::extended | std::regex::icase);
@@ -204,7 +203,7 @@ struct curlFileTransfer : public FileTransfer
 
         static size_t headerCallbackWrapper(void * contents, size_t size, size_t nmemb, void * userp)
         {
-            return ((TransferItem *) userp)->headerCallback(contents, size, nmemb);
+            return static_cast<TransferItem *>(userp)->headerCallback(contents, size, nmemb);
         }
 
         int progressCallback(double dltotal, double dlnow)
@@ -219,7 +218,7 @@ struct curlFileTransfer : public FileTransfer
 
         static int progressCallbackWrapper(void * userp, double dltotal, double dlnow, double ultotal, double ulnow)
         {
-            return ((TransferItem *) userp)->progressCallback(dltotal, dlnow);
+            return static_cast<TransferItem *>(userp)->progressCallback(dltotal, dlnow);
         }
 
         static int debugCallback(CURL * handle, curl_infotype type, char * data, size_t size, void * userptr)
@@ -246,7 +245,7 @@ struct curlFileTransfer : public FileTransfer
 
         static size_t readCallbackWrapper(char *buffer, size_t size, size_t nitems, void * userp)
         {
-            return ((TransferItem *) userp)->readCallback(buffer, size, nitems);
+            return static_cast<TransferItem *>(userp)->readCallback(buffer, size, nitems);
         }
 
         void init()

@@ -18,10 +18,10 @@ namespace nix {
 
 static size_t regularHashSize(HashType type) {
     switch (type) {
-    case htMD5: return md5HashSize;
-    case htSHA1: return sha1HashSize;
-    case htSHA256: return sha256HashSize;
-    case htSHA512: return sha512HashSize;
+    case HashType::MD5: return md5HashSize;
+    case HashType::SHA1: return sha1HashSize;
+    case HashType::SHA256: return sha256HashSize;
+    case HashType::SHA512: return sha512HashSize;
     }
     abort();
 }
@@ -109,34 +109,33 @@ static std::string printHash32(const Hash & hash)
 
 std::string printHash16or32(const Hash & hash)
 {
-    assert(hash.type);
-    return hash.to_string(hash.type == htMD5 ? Base16 : Base32, false);
+    return hash.to_string(hash.type == HashType::MD5 ? Base::Base16 : Base::Base32, false);
 }
 
 
 std::string Hash::to_string(Base base, bool includeType) const
 {
     std::string s;
-    if (base == SRI || includeType) {
+    if (base == Base::SRI || includeType) {
         s += printHashType(type);
-        s += base == SRI ? '-' : ':';
+        s += base == Base::SRI ? '-' : ':';
     }
     switch (base) {
-    case Base16:
+    case Base::Base16:
         s += printHash16(*this);
         break;
-    case Base32:
+    case Base::Base32:
         s += printHash32(*this);
         break;
-    case Base64:
-    case SRI:
-        s += base64Encode(std::string_view((const char *) hash, hashSize));
+    case Base::Base64:
+    case Base::SRI:
+        s += base64Encode(std::string_view(reinterpret_cast<const char *>(hash), hashSize));
         break;
     }
     return s;
 }
 
-Hash Hash::dummy(htSHA256);
+Hash Hash::dummy(HashType::SHA256);
 
 Hash Hash::parseSRI(std::string_view original) {
     auto rest = original;
@@ -266,7 +265,7 @@ Hash newHashAllowEmpty(std::string_view hashStr, std::optional<HashType> ht)
         if (!ht)
             throw BadHash("empty hash requires explicit hash type");
         Hash h(*ht);
-        warn("found empty hash, assuming '%s'", h.to_string(SRI, true));
+        warn("found empty hash, assuming '%s'", h.to_string(Base::SRI, true));
         return h;
     } else
         return Hash::parseAny(hashStr, ht);
@@ -284,29 +283,29 @@ union Ctx
 
 static void start(HashType ht, Ctx & ctx)
 {
-    if (ht == htMD5) MD5_Init(&ctx.md5);
-    else if (ht == htSHA1) SHA1_Init(&ctx.sha1);
-    else if (ht == htSHA256) SHA256_Init(&ctx.sha256);
-    else if (ht == htSHA512) SHA512_Init(&ctx.sha512);
+    if (ht == HashType::MD5) MD5_Init(&ctx.md5);
+    else if (ht == HashType::SHA1) SHA1_Init(&ctx.sha1);
+    else if (ht == HashType::SHA256) SHA256_Init(&ctx.sha256);
+    else if (ht == HashType::SHA512) SHA512_Init(&ctx.sha512);
 }
 
 
 static void update(HashType ht, Ctx & ctx,
     std::string_view data)
 {
-    if (ht == htMD5) MD5_Update(&ctx.md5, data.data(), data.size());
-    else if (ht == htSHA1) SHA1_Update(&ctx.sha1, data.data(), data.size());
-    else if (ht == htSHA256) SHA256_Update(&ctx.sha256, data.data(), data.size());
-    else if (ht == htSHA512) SHA512_Update(&ctx.sha512, data.data(), data.size());
+    if (ht == HashType::MD5) MD5_Update(&ctx.md5, data.data(), data.size());
+    else if (ht == HashType::SHA1) SHA1_Update(&ctx.sha1, data.data(), data.size());
+    else if (ht == HashType::SHA256) SHA256_Update(&ctx.sha256, data.data(), data.size());
+    else if (ht == HashType::SHA512) SHA512_Update(&ctx.sha512, data.data(), data.size());
 }
 
 
 static void finish(HashType ht, Ctx & ctx, unsigned char * hash)
 {
-    if (ht == htMD5) MD5_Final(hash, &ctx.md5);
-    else if (ht == htSHA1) SHA1_Final(hash, &ctx.sha1);
-    else if (ht == htSHA256) SHA256_Final(hash, &ctx.sha256);
-    else if (ht == htSHA512) SHA512_Final(hash, &ctx.sha512);
+    if (ht == HashType::MD5) MD5_Final(hash, &ctx.md5);
+    else if (ht == HashType::SHA1) SHA1_Final(hash, &ctx.sha1);
+    else if (ht == HashType::SHA256) SHA256_Final(hash, &ctx.sha256);
+    else if (ht == HashType::SHA512) SHA512_Final(hash, &ctx.sha512);
 }
 
 
@@ -387,10 +386,10 @@ Hash compressHash(const Hash & hash, unsigned int newSize)
 
 std::optional<HashType> parseHashTypeOpt(std::string_view s)
 {
-    if (s == "md5") return htMD5;
-    else if (s == "sha1") return htSHA1;
-    else if (s == "sha256") return htSHA256;
-    else if (s == "sha512") return htSHA512;
+    if (s == "md5") return HashType::MD5;
+    else if (s == "sha1") return HashType::SHA1;
+    else if (s == "sha256") return HashType::SHA256;
+    else if (s == "sha512") return HashType::SHA512;
     else return std::optional<HashType> {};
 }
 
@@ -406,10 +405,10 @@ HashType parseHashType(std::string_view s)
 std::string_view printHashType(HashType ht)
 {
     switch (ht) {
-    case htMD5: return "md5";
-    case htSHA1: return "sha1";
-    case htSHA256: return "sha256";
-    case htSHA512: return "sha512";
+    case HashType::MD5: return "md5";
+    case HashType::SHA1: return "sha1";
+    case HashType::SHA256: return "sha256";
+    case HashType::SHA512: return "sha512";
     default:
         // illegal hash type enum value internally, as opposed to external input
         // which should be validated with nice error message.

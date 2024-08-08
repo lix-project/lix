@@ -416,7 +416,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
                 // TODO this is essentially RemoteStore::addCAToStore. Move it up to Store.
                 return std::visit(overloaded {
                     [&](const TextIngestionMethod &) {
-                        if (hashType != htSHA256)
+                        if (hashType != HashType::SHA256)
                             throw UnimplementedError("When adding text-hashed data called '%s', only SHA-256 is supported but '%s' was given",
                                 name, printHashType(hashType));
                         // We could stream this by changing Store
@@ -453,7 +453,11 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
                 hashAlgo = parseHashType(hashAlgoRaw);
             }
 
-            GeneratorSource dumpSource{[&]() -> WireFormatGenerator {
+            // Note to future maintainers: do *not* inline this into the
+            // generator statement as the lambda itself needs to live to the
+            // end of the generator's lifetime and is otherwise a UAF.
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines): does not outlive the outer function
+            auto g = [&]() -> WireFormatGenerator {
                 if (method == FileIngestionMethod::Recursive) {
                     /* We parse the NAR dump through into `saved` unmodified,
                        so why all this extra work? We still parse the NAR so
@@ -489,7 +493,8 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
                     }
                     co_yield std::move(file->contents);
                 }
-            }()};
+            };
+            GeneratorSource dumpSource{g()};
             logger->startWork();
             auto path = store->addToStoreFromDump(dumpSource, baseName, method, hashAlgo);
             logger->stopWork();
@@ -875,7 +880,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
         bool repair, dontCheckSigs;
         auto path = store->parseStorePath(readString(from));
         auto deriver = readString(from);
-        auto narHash = Hash::parseAny(readString(from), htSHA256);
+        auto narHash = Hash::parseAny(readString(from), HashType::SHA256);
         ValidPathInfo info { path, narHash };
         if (deriver != "")
             info.deriver = store->parseStorePath(deriver);

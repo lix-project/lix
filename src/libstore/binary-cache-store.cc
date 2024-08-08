@@ -3,17 +3,15 @@
 #include "compression.hh"
 #include "derivations.hh"
 #include "fs-accessor.hh"
-#include "globals.hh"
 #include "nar-info.hh"
 #include "sync.hh"
 #include "remote-fs-accessor.hh"
-#include "nar-info-disk-cache.hh"
+#include "nar-info-disk-cache.hh" // IWYU pragma: keep
 #include "nar-accessor.hh"
 #include "thread-pool.hh"
 #include "signals.hh"
 
 #include <chrono>
-#include <future>
 #include <regex>
 #include <fstream>
 #include <sstream>
@@ -128,9 +126,9 @@ ref<const ValidPathInfo> BinaryCacheStore::addToStoreCommon(
     /* Read the NAR simultaneously into a CompressionSink+FileSink (to
        write the compressed NAR to disk), into a HashSink (to get the
        NAR hash), and into a NarAccessor (to get the NAR listing). */
-    HashSink fileHashSink { htSHA256 };
+    HashSink fileHashSink { HashType::SHA256 };
     std::shared_ptr<FSAccessor> narAccessor;
-    HashSink narHashSink { htSHA256 };
+    HashSink narHashSink { HashType::SHA256 };
     {
     FdSink fileSink(fdTemp.get());
     TeeSink teeSinkCompressed { fileSink, fileHashSink };
@@ -150,7 +148,7 @@ ref<const ValidPathInfo> BinaryCacheStore::addToStoreCommon(
     auto [fileHash, fileSize] = fileHashSink.finish();
     narInfo->fileHash = fileHash;
     narInfo->fileSize = fileSize;
-    narInfo->url = "nar/" + narInfo->fileHash->to_string(Base32, false) + ".nar"
+    narInfo->url = "nar/" + narInfo->fileHash->to_string(Base::Base32, false) + ".nar"
         + (compression == "xz" ? ".xz" :
            compression == "bzip2" ? ".bz2" :
            compression == "zstd" ? ".zst" :
@@ -288,7 +286,7 @@ void BinaryCacheStore::addToStore(const ValidPathInfo & info, Source & narSource
 StorePath BinaryCacheStore::addToStoreFromDump(Source & dump, std::string_view name,
     FileIngestionMethod method, HashType hashAlgo, RepairFlag repair, const StorePathSet & references)
 {
-    if (method != FileIngestionMethod::Recursive || hashAlgo != htSHA256)
+    if (method != FileIngestionMethod::Recursive || hashAlgo != HashType::SHA256)
         unsupported("addToStoreFromDump");
     return addToStoreCommon(dump, repair, CheckSigs, [&](HashResult nar) {
         ValidPathInfo info {
@@ -425,7 +423,7 @@ StorePath BinaryCacheStore::addTextToStore(
     const StorePathSet & references,
     RepairFlag repair)
 {
-    auto textHash = hashString(htSHA256, s);
+    auto textHash = hashString(HashType::SHA256, s);
     auto path = makeTextPath(name, TextInfo { { textHash }, references });
 
     if (!repair && isValidPath(path))
@@ -480,7 +478,8 @@ void BinaryCacheStore::addSignatures(const StorePath & storePath, const StringSe
        when addSignatures() is called sequentially on a path, because
        S3 might return an outdated cached version. */
 
-    auto narInfo = make_ref<NarInfo>((NarInfo &) *queryPathInfo(storePath));
+    // downcast: BinaryCacheStore always returns NarInfo from queryPathInfoUncached, making it sound
+    auto narInfo = make_ref<NarInfo>(dynamic_cast<NarInfo const &>(*queryPathInfo(storePath)));
 
     narInfo->sigs.insert(sigs.begin(), sigs.end());
 

@@ -85,6 +85,7 @@ TEST(Generator, nestsExceptions)
         co_yield 1;
         co_yield []() -> Generator<int> {
             co_yield 9;
+            // NOLINTNEXTLINE(hicpp-exception-baseclass)
             throw 1;
             co_yield 10;
         }();
@@ -101,6 +102,7 @@ TEST(Generator, exception)
     {
         auto g = []() -> Generator<int> {
             co_yield 1;
+            // NOLINTNEXTLINE(hicpp-exception-baseclass)
             throw 1;
         }();
 
@@ -110,6 +112,7 @@ TEST(Generator, exception)
     }
     {
         auto g = []() -> Generator<int> {
+            // NOLINTNEXTLINE(hicpp-exception-baseclass)
             throw 1;
             co_return;
         }();
@@ -173,11 +176,13 @@ struct ThrowTransform
 
     int operator()(bool)
     {
+        // NOLINTNEXTLINE(hicpp-exception-baseclass)
         throw 2;
     }
 
     Generator<int, void> operator()(Generator<int> && inner)
     {
+        // NOLINTNEXTLINE(hicpp-exception-baseclass)
         throw false;
     }
 };
