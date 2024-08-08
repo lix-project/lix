@@ -26,6 +26,8 @@
 | Logical conjunction (`AND`)            | *bool* `&&` *bool*                         | left          | 12         |
 | Logical disjunction (`OR`)             | *bool* <code>\|\|</code> *bool*            | left          | 13         |
 | [Logical implication]                  | *bool* `->` *bool*                         | none          | 14         |
+| \[Experimental\] [Function piping]     | *expr* |> *func*                           | left          | 15         |
+| \[Experimental\] [Function piping]     | *expr* <| *func*                           | right         | 16         |
 
 [string]: ./values.md#type-string
 [path]: ./values.md#type-path
@@ -215,3 +217,33 @@ nix-repl> let f = x: 1; s = { func = f; }; in [ (f == f) (s == s) ]
 Equivalent to `!`*b1* `||` *b2*.
 
 [Logical implication]: #logical-implication
+
+## \[Experimental\] Function piping
+
+*This language feature is still experimental and may change at any time. Enable `--extra-experimental-features pipe-operator` to use it.*
+
+Pipes are a dedicated operator for function application, but with reverse order and a lower binding strength.
+This allows you to chain function calls together in way that is more natural to read and requires less parentheses.
+
+`a |> f b |> g` is equivalent to `g (f b a)`.
+`g <| f b <| a` is equivalent to `g (f b a)`.
+
+Example code snippet:
+
+```nix
+defaultPrefsFile = defaultPrefs
+  |> lib.mapAttrsToList (
+    key: value: ''
+      // ${value.reason}
+      pref("${key}", ${builtins.toJSON value.value});
+    ''
+  )
+  |> lib.concatStringsSep "\n"
+  |> pkgs.writeText "nixos-default-prefs.js";
+```
+
+Note how `mapAttrsToList` is called with two arguments (the lambda and `defaultPrefs`),
+but moving the last argument in front of the rest improves the reading flow.
+This is common for functions with long first argument, including all `map`-like functions.
+
+[Function piping]: #experimental-function-piping

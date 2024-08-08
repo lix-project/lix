@@ -434,6 +434,8 @@ struct op {
     struct and_       : _op<TAO_PEGTL_STRING("&&"), 12> {};
     struct or_        : _op<TAO_PEGTL_STRING("||"), 13> {};
     struct implies    : _op<TAO_PEGTL_STRING("->"), 14, kind::rightAssoc> {};
+    struct pipe_right : _op<TAO_PEGTL_STRING("|>"), 15> {};
+    struct pipe_left  : _op<TAO_PEGTL_STRING("<|"), 16, kind::rightAssoc> {};
 };
 
 struct _expr {
@@ -521,6 +523,7 @@ struct _expr {
         app
     > {};
 
+    /* Order matters here. The order is the parsing order, not the precedence order: '<=' must be parsed before '<'. */
     struct _binary_operator : sor<
         operator_<op::implies>,
         operator_<op::update>,
@@ -529,6 +532,8 @@ struct _expr {
         operator_<op::minus>,
         operator_<op::mul>,
         operator_<op::div>,
+        operator_<op::pipe_right>,
+        operator_<op::pipe_left>,
         operator_<op::less_eq>,
         operator_<op::greater_eq>,
         operator_<op::less>,
@@ -649,6 +654,8 @@ struct operator_semantics {
             grammar::op::minus,
             grammar::op::mul,
             grammar::op::div,
+            grammar::op::pipe_right,
+            grammar::op::pipe_left,
             has_attr
         > op;
     };

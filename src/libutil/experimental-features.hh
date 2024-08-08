@@ -21,6 +21,7 @@ enum struct ExperimentalFeature
     NixCommand,
     RecursiveNix,
     NoUrlLiterals,
+    PipeOperator,
     FetchClosure,
     ReplFlake,
     AutoAllocateUids,
