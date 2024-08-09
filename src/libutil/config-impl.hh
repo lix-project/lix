@@ -66,9 +66,13 @@ void BaseSetting<T>::appendOrSet(T newValue, bool append)
 template<typename T>
 void BaseSetting<T>::set(const std::string & str, bool append)
 {
-    if (experimentalFeatureSettings.isEnabled(experimentalFeature))
-        appendOrSet(parse(str), append);
-    else {
+    if (experimentalFeatureSettings.isEnabled(experimentalFeature)) {
+        auto parsed = parse(str);
+        if (deprecated && (append || parsed != value)) {
+            warn("deprecated setting '%s' found (set to '%s')", name, str);
+        }
+        appendOrSet(std::move(parsed), append);
+    } else {
         assert(experimentalFeature);
         warn("Ignoring setting '%s' because experimental feature '%s' is not enabled",
             name,

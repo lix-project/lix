@@ -175,6 +175,10 @@ class AbstractSetting
 
 public:
 
+    struct deprecated_t {
+        explicit deprecated_t() = default;
+    };
+
     const std::string name;
     const std::string description;
     const std::set<std::string> aliases;
@@ -225,6 +229,7 @@ protected:
     T value;
     const T defaultValue;
     const bool documentDefault;
+    const bool deprecated;
 
     /**
      * Parse the string into a `T`.
@@ -250,11 +255,13 @@ public:
         const std::string & name,
         const std::string & description,
         const std::set<std::string> & aliases = {},
-        std::optional<ExperimentalFeature> experimentalFeature = std::nullopt)
+        std::optional<ExperimentalFeature> experimentalFeature = std::nullopt,
+        bool deprecated = false)
         : AbstractSetting(name, description, aliases, experimentalFeature)
         , value(def)
         , defaultValue(def)
         , documentDefault(documentDefault)
+        , deprecated(deprecated)
     { }
 
     operator const T &() const { return value; }
@@ -322,10 +329,23 @@ public:
         const std::string & description,
         const std::set<std::string> & aliases = {},
         const bool documentDefault = true,
-        std::optional<ExperimentalFeature> experimentalFeature = std::nullopt)
-        : BaseSetting<T>(def, documentDefault, name, description, aliases, std::move(experimentalFeature))
+        std::optional<ExperimentalFeature> experimentalFeature = std::nullopt,
+        bool deprecated = false)
+        : BaseSetting<T>(def, documentDefault, name, description, aliases, std::move(experimentalFeature), deprecated)
     {
         options->addSetting(this);
+    }
+
+    Setting(AbstractSetting::deprecated_t,
+        Config * options,
+        const T & def,
+        const std::string & name,
+        const std::string & description,
+        const std::set<std::string> & aliases = {},
+        const bool documentDefault = true,
+        std::optional<ExperimentalFeature> experimentalFeature = std::nullopt)
+        : Setting(options, def, name, description, aliases, documentDefault, std::move(experimentalFeature), true)
+    {
     }
 
     void operator =(const T & v) { this->assign(v); }
