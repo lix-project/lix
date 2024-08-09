@@ -218,13 +218,24 @@ void Pipe::close()
 }
 
 
-void closeMostFDs(const std::set<int> & exceptions)
+void closeExtraFDs()
 {
+    constexpr int MAX_KEPT_FD = 2;
+    static_assert(std::max({STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO}) == MAX_KEPT_FD);
+
 #if __linux__
+    // first try to close_range everything we don't care about. if this
+    // returns an error with these parameters we're running on a kernel
+    // that does not implement close_range (i.e. pre 5.9) and fall back
+    // to the old method. we should remove that though, in some future.
+    if (close_range(3, ~0U, 0) == 0) {
+        return;
+    }
+
     try {
         for (auto & s : readDirectory("/proc/self/fd")) {
             auto fd = std::stoi(s.name);
-            if (!exceptions.count(fd)) {
+            if (fd > MAX_KEPT_FD) {
                 debug("closing leaked FD %d", fd);
                 close(fd);
             }
@@ -236,9 +247,8 @@ void closeMostFDs(const std::set<int> & exceptions)
 
     int maxFD = 0;
     maxFD = sysconf(_SC_OPEN_MAX);
-    for (int fd = 0; fd < maxFD; ++fd)
-        if (!exceptions.count(fd))
-            close(fd); /* ignore result */
+    for (int fd = MAX_KEPT_FD + 1; fd < maxFD; ++fd)
+        close(fd); /* ignore result */
 }
 
 

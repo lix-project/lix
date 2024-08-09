@@ -66,10 +66,10 @@ public:
 };
 
 /**
- * Close all file descriptors except those listed in the given set.
+ * Close all file descriptors except stdio fds (ie 0, 1, 2).
  * Good practice in child processes.
  */
-void closeMostFDs(const std::set<int> & exceptions);
+void closeExtraFDs();
 
 /**
  * Set the close-on-exec flag for the given file descriptor.

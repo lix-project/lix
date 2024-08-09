@@ -1618,7 +1618,7 @@ void LocalDerivationGoal::runChild()
             throw SysError("changing into '%1%'", tmpDir);
 
         /* Close all other file descriptors. */
-        closeMostFDs({STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO});
+        closeExtraFDs();
 
         setPersonality(drv->platform);
 
