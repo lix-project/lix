@@ -31,6 +31,7 @@ libexpr_sources = files(
   'print-ambiguous.cc',
   'print.cc',
   'search-path.cc',
+  'value.cc',
   'value-to-json.cc',
   'value-to-xml.cc',
   'flake/config.cc',
