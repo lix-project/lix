@@ -248,14 +248,18 @@ public:
         )",
         {"build-timeout"}};
 
-    Setting<Strings> buildHook{this, {}, "build-hook",
+    Setting<Strings> buildHook{
+        AbstractSetting::deprecated_t{},
+        this, {}, "build-hook",
         R"(
           The path to the helper program that executes remote builds.
 
           Lix communicates with the build hook over `stdio` using a custom protocol to request builds that cannot be performed directly by the Nix daemon.
           The default value is the internal Lix binary that implements remote building.
 
-          > **Important**
+          > **Warning**
+          >
+          > This setting is deprecated and will be removed in a future version of Lix.
           >
           > Change this setting only if you really know what you’re doing.
         )"};
