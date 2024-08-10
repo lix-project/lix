@@ -314,13 +314,6 @@ stdenv.mkDerivation (finalAttrs: {
       install_name_tool -change ${boost}/lib/libboost_system.dylib $out/lib/libboost_system.dylib $out/lib/libboost_thread.dylib
     ''
     + ''
-      # Workaround https://github.com/NixOS/nixpkgs/issues/294890.
-      if [[ -n "''${doCheck:-}" ]]; then
-        appendToVar configureFlags "--enable-tests"
-      else
-        appendToVar configureFlags "--disable-tests"
-      fi
-
       # Fix up /usr/bin/env shebangs relied on by the build
       patchShebangs --build tests/ doc/manual/
     '';
