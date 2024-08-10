@@ -1,22 +1,14 @@
 #include "derivation-goal.hh"
 #include "hook-instance.hh"
 #include "worker.hh"
-#include "builtins.hh"
-#include "builtins/buildenv.hh"
-#include "references.hh"
 #include "finally.hh"
-#include "archive.hh"
 #include "compression.hh"
 #include "common-protocol.hh"
-#include "common-protocol-impl.hh"
-#include "topo-sort.hh"
+#include "common-protocol-impl.hh" // IWYU pragma: keep
 #include "local-store.hh" // TODO remove, along with remaining downcasts
 #include "logging-json.hh"
 #include "substitution-goal.hh"
 #include "drv-output-substitution-goal.hh"
-
-#include <regex>
-#include <queue>
 
 #include <fstream>
 #include <sys/types.h>

@@ -1,5 +1,4 @@
 #include "goal.hh"
-#include "worker.hh"
 
 namespace nix {
 
