@@ -26,4 +26,4 @@ See our [Hacking guide](https://git.lix.systems/lix-project/lix/src/branch/main/
 
 ## License
 
-Lix is released under the [LGPL v2.1](./COPYING).
+Lix is released under [LGPL-2.1-or-later](./COPYING).
