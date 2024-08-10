@@ -191,7 +191,7 @@ struct DerivationGoal : public Goal
      */
     std::optional<DerivationType> derivationType;
 
-    typedef WorkResult (DerivationGoal::*GoalState)();
+    typedef WorkResult (DerivationGoal::*GoalState)(bool inBuildSlot);
     GoalState state;
 
     BuildMode buildMode;
@@ -224,7 +224,7 @@ struct DerivationGoal : public Goal
 
     std::string key() override;
 
-    WorkResult work() override;
+    WorkResult work(bool inBuildSlot) override;
 
     /**
      * Add wanted outputs to an already existing derivation goal.
@@ -234,23 +234,23 @@ struct DerivationGoal : public Goal
     /**
      * The states.
      */
-    WorkResult getDerivation();
-    WorkResult loadDerivation();
-    WorkResult haveDerivation();
-    WorkResult outputsSubstitutionTried();
-    WorkResult gaveUpOnSubstitution();
-    WorkResult closureRepaired();
-    WorkResult inputsRealised();
-    WorkResult tryToBuild();
-    virtual WorkResult tryLocalBuild();
-    WorkResult buildDone();
+    WorkResult getDerivation(bool inBuildSlot);
+    WorkResult loadDerivation(bool inBuildSlot);
+    WorkResult haveDerivation(bool inBuildSlot);
+    WorkResult outputsSubstitutionTried(bool inBuildSlot);
+    WorkResult gaveUpOnSubstitution(bool inBuildSlot);
+    WorkResult closureRepaired(bool inBuildSlot);
+    WorkResult inputsRealised(bool inBuildSlot);
+    WorkResult tryToBuild(bool inBuildSlot);
+    virtual WorkResult tryLocalBuild(bool inBuildSlot);
+    WorkResult buildDone(bool inBuildSlot);
 
-    WorkResult resolvedFinished();
+    WorkResult resolvedFinished(bool inBuildSlot);
 
     /**
      * Is the build hook willing to perform the build?
      */
-    HookReply tryBuildHook();
+    HookReply tryBuildHook(bool inBuildSlot);
 
     virtual int getChildStatus();
 

@@ -58,20 +58,20 @@ class DrvOutputSubstitutionGoal : public Goal {
 public:
     DrvOutputSubstitutionGoal(const DrvOutput& id, Worker & worker, RepairFlag repair = NoRepair, std::optional<ContentAddress> ca = std::nullopt);
 
-    typedef WorkResult (DrvOutputSubstitutionGoal::*GoalState)();
+    typedef WorkResult (DrvOutputSubstitutionGoal::*GoalState)(bool inBuildSlot);
     GoalState state;
 
-    WorkResult init();
-    WorkResult tryNext();
-    WorkResult realisationFetched();
-    WorkResult outPathValid();
+    WorkResult init(bool inBuildSlot);
+    WorkResult tryNext(bool inBuildSlot);
+    WorkResult realisationFetched(bool inBuildSlot);
+    WorkResult outPathValid(bool inBuildSlot);
     WorkResult finished();
 
     Finished timedOut(Error && ex) override { abort(); };
 
     std::string key() override;
 
-    WorkResult work() override;
+    WorkResult work(bool inBuildSlot) override;
 
     JobCategory jobCategory() const override {
         return JobCategory::Substitution;

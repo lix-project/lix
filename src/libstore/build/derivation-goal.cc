@@ -129,9 +129,9 @@ Goal::Finished DerivationGoal::timedOut(Error && ex)
 }
 
 
-Goal::WorkResult DerivationGoal::work()
+Goal::WorkResult DerivationGoal::work(bool inBuildSlot)
 {
-    return (this->*state)();
+    return (this->*state)(inBuildSlot);
 }
 
 void DerivationGoal::addWantedOutputs(const OutputsSpec & outputs)
@@ -155,7 +155,7 @@ void DerivationGoal::addWantedOutputs(const OutputsSpec & outputs)
 }
 
 
-Goal::WorkResult DerivationGoal::getDerivation()
+Goal::WorkResult DerivationGoal::getDerivation(bool inBuildSlot)
 {
     trace("init");
 
@@ -163,7 +163,7 @@ Goal::WorkResult DerivationGoal::getDerivation()
        exists.  If it doesn't, it may be created through a
        substitute. */
     if (buildMode == bmNormal && worker.evalStore.isValidPath(drvPath)) {
-        return loadDerivation();
+        return loadDerivation(inBuildSlot);
     }
 
 
@@ -172,7 +172,7 @@ Goal::WorkResult DerivationGoal::getDerivation()
 }
 
 
-Goal::WorkResult DerivationGoal::loadDerivation()
+Goal::WorkResult DerivationGoal::loadDerivation(bool inBuildSlot)
 {
     trace("loading derivation");
 
@@ -199,11 +199,11 @@ Goal::WorkResult DerivationGoal::loadDerivation()
     }
     assert(drv);
 
-    return haveDerivation();
+    return haveDerivation(inBuildSlot);
 }
 
 
-Goal::WorkResult DerivationGoal::haveDerivation()
+Goal::WorkResult DerivationGoal::haveDerivation(bool inBuildSlot)
 {
     trace("have derivation");
 
@@ -231,7 +231,7 @@ Goal::WorkResult DerivationGoal::haveDerivation()
             });
         }
 
-        return gaveUpOnSubstitution();
+        return gaveUpOnSubstitution(inBuildSlot);
     }
 
     for (auto & i : drv->outputsAndOptPaths(worker.store))
@@ -280,14 +280,14 @@ Goal::WorkResult DerivationGoal::haveDerivation()
         }
 
     if (result.goals.empty()) { /* to prevent hang (no wake-up event) */
-        return outputsSubstitutionTried();
+        return outputsSubstitutionTried(inBuildSlot);
     } else {
         state = &DerivationGoal::outputsSubstitutionTried;
         return result;
     }
 }
 
-Goal::WorkResult DerivationGoal::outputsSubstitutionTried()
+Goal::WorkResult DerivationGoal::outputsSubstitutionTried(bool inBuildSlot)
 {
     trace("all outputs substituted (maybe)");
 
@@ -330,7 +330,7 @@ Goal::WorkResult DerivationGoal::outputsSubstitutionTried()
 
     if (needRestart == NeedRestartForMoreOutputs::OutputsAddedDoNeed) {
         needRestart = NeedRestartForMoreOutputs::OutputsUnmodifedDontNeed;
-        return haveDerivation();
+        return haveDerivation(inBuildSlot);
     }
 
     auto [allValid, validOutputs] = checkPathValidity();
@@ -346,13 +346,13 @@ Goal::WorkResult DerivationGoal::outputsSubstitutionTried()
             worker.store.printStorePath(drvPath));
 
     /* Nothing to wait for; tail call */
-    return gaveUpOnSubstitution();
+    return gaveUpOnSubstitution(inBuildSlot);
 }
 
 
 /* At least one of the output paths could not be
    produced using a substitute.  So we have to build instead. */
-Goal::WorkResult DerivationGoal::gaveUpOnSubstitution()
+Goal::WorkResult DerivationGoal::gaveUpOnSubstitution(bool inBuildSlot)
 {
     WaitForGoals result;
 
@@ -416,7 +416,7 @@ Goal::WorkResult DerivationGoal::gaveUpOnSubstitution()
     }
 
     if (result.goals.empty()) {/* to prevent hang (no wake-up event) */
-        return inputsRealised();
+        return inputsRealised(inBuildSlot);
     } else {
         state = &DerivationGoal::inputsRealised;
         return result;
@@ -487,7 +487,7 @@ Goal::WorkResult DerivationGoal::repairClosure()
 }
 
 
-Goal::WorkResult DerivationGoal::closureRepaired()
+Goal::WorkResult DerivationGoal::closureRepaired(bool inBuildSlot)
 {
     trace("closure repaired");
     if (nrFailed > 0)
@@ -497,7 +497,7 @@ Goal::WorkResult DerivationGoal::closureRepaired()
 }
 
 
-Goal::WorkResult DerivationGoal::inputsRealised()
+Goal::WorkResult DerivationGoal::inputsRealised(bool inBuildSlot)
 {
     trace("all inputs realised");
 
@@ -511,7 +511,7 @@ Goal::WorkResult DerivationGoal::inputsRealised()
 
     if (retrySubstitution == RetrySubstitution::YesNeed) {
         retrySubstitution = RetrySubstitution::AlreadyRetried;
-        return haveDerivation();
+        return haveDerivation(inBuildSlot);
     }
 
     /* Gather information necessary for computing the closure and/or
@@ -659,7 +659,7 @@ Goal::WorkResult DerivationGoal::started()
     return StillAlive{};
 }
 
-Goal::WorkResult DerivationGoal::tryToBuild()
+Goal::WorkResult DerivationGoal::tryToBuild(bool inBuildSlot)
 {
     trace("trying to build");
 
@@ -731,7 +731,7 @@ Goal::WorkResult DerivationGoal::tryToBuild()
         && settings.maxBuildJobs.get() != 0;
 
     if (!buildLocally) {
-        switch (tryBuildHook()) {
+        switch (tryBuildHook(inBuildSlot)) {
             case rpAccept:
                 /* Yes, it has started doing so.  Wait until we get
                    EOF from the hook. */
@@ -759,7 +759,7 @@ Goal::WorkResult DerivationGoal::tryToBuild()
     return ContinueImmediately{};
 }
 
-Goal::WorkResult DerivationGoal::tryLocalBuild() {
+Goal::WorkResult DerivationGoal::tryLocalBuild(bool inBuildSlot) {
     throw Error(
         "unable to build with a primary store that isn't a local store; "
         "either pass a different '--store' or enable remote builds."
@@ -917,7 +917,7 @@ void runPostBuildHook(
     proc.getStdout()->drainInto(sink);
 }
 
-Goal::WorkResult DerivationGoal::buildDone()
+Goal::WorkResult DerivationGoal::buildDone(bool inBuildSlot)
 {
     trace("build done");
 
@@ -1037,7 +1037,7 @@ Goal::WorkResult DerivationGoal::buildDone()
     }
 }
 
-Goal::WorkResult DerivationGoal::resolvedFinished()
+Goal::WorkResult DerivationGoal::resolvedFinished(bool inBuildSlot)
 {
     trace("resolved derivation finished");
 
@@ -1108,7 +1108,7 @@ Goal::WorkResult DerivationGoal::resolvedFinished()
     return done(status, std::move(builtOutputs));
 }
 
-HookReply DerivationGoal::tryBuildHook()
+HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
 {
     if (!worker.hook.available || !useDerivation) return rpDecline;
 
@@ -1120,7 +1120,7 @@ HookReply DerivationGoal::tryBuildHook()
         /* Send the request to the hook. */
         worker.hook.instance->sink
             << "try"
-            << (worker.getNrLocalBuilds() < settings.maxBuildJobs ? 1 : 0)
+            << (inBuildSlot ? 1 : 0)
             << drv->platform
             << worker.store.printStorePath(drvPath)
             << parsedDrv->getRequiredSystemFeatures();

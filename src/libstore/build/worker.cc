@@ -232,18 +232,6 @@ void Worker::wakeUp(GoalPtr goal)
 }
 
 
-unsigned Worker::getNrLocalBuilds()
-{
-    return nrLocalBuilds;
-}
-
-
-unsigned Worker::getNrSubstitutions()
-{
-    return nrSubstitutions;
-}
-
-
 void Worker::childStarted(GoalPtr goal, const std::set<int> & fds,
     bool inBuildSlot, bool respectTimeouts)
 {
@@ -307,8 +295,8 @@ void Worker::waitForBuildSlot(GoalPtr goal)
 {
     goal->trace("wait for build slot");
     bool isSubstitutionGoal = goal->jobCategory() == JobCategory::Substitution;
-    if ((!isSubstitutionGoal && getNrLocalBuilds() < settings.maxBuildJobs) ||
-        (isSubstitutionGoal && getNrSubstitutions() < settings.maxSubstitutionJobs))
+    if ((!isSubstitutionGoal && nrLocalBuilds < settings.maxBuildJobs) ||
+        (isSubstitutionGoal && nrSubstitutions < settings.maxSubstitutionJobs))
         wakeUp(goal); /* we can do it right away */
     else
         wantingToBuild.insert(goal);
@@ -364,7 +352,12 @@ void Worker::run(const Goals & _topGoals)
             awake.clear();
             for (auto & goal : awake2) {
                 checkInterrupt();
-                handleWorkResult(goal, goal->work());
+                /* Make sure that we are always allowed to run at least one substitution.
+                   This prevents infinite waiting. */
+                const bool inSlot = goal->jobCategory() == JobCategory::Substitution
+                    ? nrSubstitutions < std::max(1U, (unsigned int) settings.maxSubstitutionJobs)
+                    : nrLocalBuilds < settings.maxBuildJobs;
+                handleWorkResult(goal, goal->work(inSlot));
 
                 actDerivations.progress(
                     doneBuilds, expectedBuilds + doneBuilds, runningBuilds, failedBuilds

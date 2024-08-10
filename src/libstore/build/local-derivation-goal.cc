@@ -150,14 +150,13 @@ void LocalDerivationGoal::killSandbox(bool getStats)
 }
 
 
-Goal::WorkResult LocalDerivationGoal::tryLocalBuild()
+Goal::WorkResult LocalDerivationGoal::tryLocalBuild(bool inBuildSlot)
 {
 #if __APPLE__
     additionalSandboxProfile = parsedDrv->getStringAttr("__sandboxProfile").value_or("");
 #endif
 
-    unsigned int curBuilds = worker.getNrLocalBuilds();
-    if (curBuilds >= settings.maxBuildJobs) {
+    if (!inBuildSlot) {
         state = &DerivationGoal::tryToBuild;
         outputLocks.unlock();
         return WaitForSlot{};

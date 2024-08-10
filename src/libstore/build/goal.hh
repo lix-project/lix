@@ -147,7 +147,7 @@ public:
         trace("goal destroyed");
     }
 
-    virtual WorkResult work() = 0;
+    virtual WorkResult work(bool inBuildSlot) = 0;
 
     virtual void waiteeDone(GoalPtr waitee) { }
 

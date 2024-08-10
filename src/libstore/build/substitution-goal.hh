@@ -66,7 +66,7 @@ struct PathSubstitutionGoal : public Goal
     std::unique_ptr<MaintainCount<uint64_t>> maintainExpectedSubstitutions,
         maintainRunningSubstitutions, maintainExpectedNar, maintainExpectedDownload;
 
-    typedef WorkResult (PathSubstitutionGoal::*GoalState)();
+    typedef WorkResult (PathSubstitutionGoal::*GoalState)(bool inBuildSlot);
     GoalState state;
 
     /**
@@ -94,16 +94,16 @@ public:
         return "a$" + std::string(storePath.name()) + "$" + worker.store.printStorePath(storePath);
     }
 
-    WorkResult work() override;
+    WorkResult work(bool inBuildSlot) override;
 
     /**
      * The states.
      */
-    WorkResult init();
-    WorkResult tryNext();
-    WorkResult referencesValid();
-    WorkResult tryToRun();
-    WorkResult finished();
+    WorkResult init(bool inBuildSlot);
+    WorkResult tryNext(bool inBuildSlot);
+    WorkResult referencesValid(bool inBuildSlot);
+    WorkResult tryToRun(bool inBuildSlot);
+    WorkResult finished(bool inBuildSlot);
 
     /**
      * Callback used by the worker to write to the log.

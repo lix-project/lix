@@ -39,13 +39,13 @@ Goal::Finished PathSubstitutionGoal::done(
 }
 
 
-Goal::WorkResult PathSubstitutionGoal::work()
+Goal::WorkResult PathSubstitutionGoal::work(bool inBuildSlot)
 {
-    return (this->*state)();
+    return (this->*state)(inBuildSlot);
 }
 
 
-Goal::WorkResult PathSubstitutionGoal::init()
+Goal::WorkResult PathSubstitutionGoal::init(bool inBuildSlot)
 {
     trace("init");
 
@@ -61,11 +61,11 @@ Goal::WorkResult PathSubstitutionGoal::init()
 
     subs = settings.useSubstitutes ? getDefaultSubstituters() : std::list<ref<Store>>();
 
-    return tryNext();
+    return tryNext(inBuildSlot);
 }
 
 
-Goal::WorkResult PathSubstitutionGoal::tryNext()
+Goal::WorkResult PathSubstitutionGoal::tryNext(bool inBuildSlot)
 {
     trace("trying next substituter");
 
@@ -97,23 +97,23 @@ Goal::WorkResult PathSubstitutionGoal::tryNext()
         if (sub->storeDir == worker.store.storeDir)
             assert(subPath == storePath);
     } else if (sub->storeDir != worker.store.storeDir) {
-        return tryNext();
+        return tryNext(inBuildSlot);
     }
 
     try {
         // FIXME: make async
         info = sub->queryPathInfo(subPath ? *subPath : storePath);
     } catch (InvalidPath &) {
-        return tryNext();
+        return tryNext(inBuildSlot);
     } catch (SubstituterDisabled &) {
         if (settings.tryFallback) {
-            return tryNext();
+            return tryNext(inBuildSlot);
         }
         throw;
     } catch (Error & e) {
         if (settings.tryFallback) {
             logError(e.info());
-            return tryNext();
+            return tryNext(inBuildSlot);
         }
         throw;
     }
@@ -126,7 +126,7 @@ Goal::WorkResult PathSubstitutionGoal::tryNext()
         } else {
             printError("asked '%s' for '%s' but got '%s'",
                 sub->getUri(), worker.store.printStorePath(storePath), sub->printStorePath(info->path));
-            return tryNext();
+            return tryNext(inBuildSlot);
         }
     }
 
@@ -147,7 +147,7 @@ Goal::WorkResult PathSubstitutionGoal::tryNext()
     {
         warn("ignoring substitute for '%s' from '%s', as it's not signed by any of the keys in 'trusted-public-keys'",
             worker.store.printStorePath(storePath), sub->getUri());
-        return tryNext();
+        return tryNext(inBuildSlot);
     }
 
     /* To maintain the closure invariant, we first have to realise the
@@ -158,7 +158,7 @@ Goal::WorkResult PathSubstitutionGoal::tryNext()
             result.goals.insert(worker.makePathSubstitutionGoal(i));
 
     if (result.goals.empty()) {/* to prevent hang (no wake-up event) */
-        return referencesValid();
+        return referencesValid(inBuildSlot);
     } else {
         state = &PathSubstitutionGoal::referencesValid;
         return result;
@@ -166,7 +166,7 @@ Goal::WorkResult PathSubstitutionGoal::tryNext()
 }
 
 
-Goal::WorkResult PathSubstitutionGoal::referencesValid()
+Goal::WorkResult PathSubstitutionGoal::referencesValid(bool inBuildSlot)
 {
     trace("all references realised");
 
@@ -186,14 +186,11 @@ Goal::WorkResult PathSubstitutionGoal::referencesValid()
 }
 
 
-Goal::WorkResult PathSubstitutionGoal::tryToRun()
+Goal::WorkResult PathSubstitutionGoal::tryToRun(bool inBuildSlot)
 {
     trace("trying to run");
 
-    /* Make sure that we are allowed to start a substitution.  Note that even
-       if maxSubstitutionJobs == 0, we still allow a substituter to run. This
-       prevents infinite waiting. */
-    if (worker.getNrSubstitutions() >= std::max(1U, (unsigned int) settings.maxSubstitutionJobs)) {
+    if (!inBuildSlot) {
         return WaitForSlot{};
     }
 
@@ -231,7 +228,7 @@ Goal::WorkResult PathSubstitutionGoal::tryToRun()
 }
 
 
-Goal::WorkResult PathSubstitutionGoal::finished()
+Goal::WorkResult PathSubstitutionGoal::finished(bool inBuildSlot)
 {
     trace("substitute finished");
 

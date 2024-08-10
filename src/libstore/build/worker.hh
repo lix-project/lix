@@ -230,17 +230,6 @@ public:
     GoalPtr makeGoal(const DerivedPath & req, BuildMode buildMode = bmNormal);
 
     /**
-     * Return the number of local build processes currently running (but not
-     * remote builds via the build hook).
-     */
-    unsigned int getNrLocalBuilds();
-
-    /**
-     * Return the number of substitution processes currently running.
-     */
-    unsigned int getNrSubstitutions();
-
-    /**
      * Registers a running child process.  `inBuildSlot` means that
      * the process counts towards the jobs limit.
      */

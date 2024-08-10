@@ -20,7 +20,7 @@ DrvOutputSubstitutionGoal::DrvOutputSubstitutionGoal(
 }
 
 
-Goal::WorkResult DrvOutputSubstitutionGoal::init()
+Goal::WorkResult DrvOutputSubstitutionGoal::init(bool inBuildSlot)
 {
     trace("init");
 
@@ -30,17 +30,14 @@ Goal::WorkResult DrvOutputSubstitutionGoal::init()
     }
 
     subs = settings.useSubstitutes ? getDefaultSubstituters() : std::list<ref<Store>>();
-    return tryNext();
+    return tryNext(inBuildSlot);
 }
 
-Goal::WorkResult DrvOutputSubstitutionGoal::tryNext()
+Goal::WorkResult DrvOutputSubstitutionGoal::tryNext(bool inBuildSlot)
 {
     trace("trying next substituter");
 
-    /* Make sure that we are allowed to start a substitution.  Note that even
-       if maxSubstitutionJobs == 0, we still allow a substituter to run. This
-       prevents infinite waiting. */
-    if (worker.runningSubstitutions >= std::max(1U, settings.maxSubstitutionJobs.get())) {
+    if (!inBuildSlot) {
         return WaitForSlot{};
     }
 
@@ -84,7 +81,7 @@ Goal::WorkResult DrvOutputSubstitutionGoal::tryNext()
     return StillAlive{};
 }
 
-Goal::WorkResult DrvOutputSubstitutionGoal::realisationFetched()
+Goal::WorkResult DrvOutputSubstitutionGoal::realisationFetched(bool inBuildSlot)
 {
     worker.childTerminated(this);
     maintainRunningSubstitutions.reset();
@@ -97,7 +94,7 @@ Goal::WorkResult DrvOutputSubstitutionGoal::realisationFetched()
     }
 
     if (!outputInfo) {
-        return tryNext();
+        return tryNext(inBuildSlot);
     }
 
     WaitForGoals result;
@@ -114,7 +111,7 @@ Goal::WorkResult DrvOutputSubstitutionGoal::realisationFetched()
                     worker.store.printStorePath(localOutputInfo->outPath),
                     worker.store.printStorePath(depPath)
                 );
-                return tryNext();
+                return tryNext(inBuildSlot);
             }
             result.goals.insert(worker.makeDrvOutputSubstitutionGoal(depId));
         }
@@ -123,14 +120,14 @@ Goal::WorkResult DrvOutputSubstitutionGoal::realisationFetched()
     result.goals.insert(worker.makePathSubstitutionGoal(outputInfo->outPath));
 
     if (result.goals.empty()) {
-        return outPathValid();
+        return outPathValid(inBuildSlot);
     } else {
         state = &DrvOutputSubstitutionGoal::outPathValid;
         return result;
     }
 }
 
-Goal::WorkResult DrvOutputSubstitutionGoal::outPathValid()
+Goal::WorkResult DrvOutputSubstitutionGoal::outPathValid(bool inBuildSlot)
 {
     assert(outputInfo);
     trace("output path substituted");
@@ -159,9 +156,9 @@ std::string DrvOutputSubstitutionGoal::key()
     return "a$" + std::string(id.to_string());
 }
 
-Goal::WorkResult DrvOutputSubstitutionGoal::work()
+Goal::WorkResult DrvOutputSubstitutionGoal::work(bool inBuildSlot)
 {
-    return (this->*state)();
+    return (this->*state)(inBuildSlot);
 }
 
 

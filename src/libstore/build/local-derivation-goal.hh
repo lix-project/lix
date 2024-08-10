@@ -211,7 +211,7 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * The additional states.
      */
-    WorkResult tryLocalBuild() override;
+    WorkResult tryLocalBuild(bool inBuildSlot) override;
 
     /**
      * Start building a derivation.
