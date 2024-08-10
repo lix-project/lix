@@ -30,6 +30,14 @@
 # FIXME: This hack should be removed when https://git.lix.systems/lix-project/lix/issues/359
 # is fixed.
 #
+# lix-doc is built with Meson in lix-doc/meson.build, and linked into libcmd in
+# src/libcmd/meson.build. When building outside the Nix sandbox, Meson will use the .wrap
+# files in subprojects/ to download and extract the dependency crates into subprojects/.
+# When building inside the Nix sandbox, Lix's derivation in package.nix uses a
+# fixed-output derivation to fetch those crates in advance instead, and then symlinks
+# them into subprojects/ with the same names that Meson uses when downloading them
+# itself -- perfect for --wrap-mode=nodownload, which mesonConfigurePhase uses.
+#
 # Unit tests are setup in tests/unit/meson.build, under the test suite "check".
 #
 # Functional tests are a bit more complicated. Generally they're defined in
@@ -38,10 +46,11 @@
 # be placed in specific directories' meson.build files to create the right directory tree
 # in the build directory.
 
-project('lix', 'cpp',
+project('lix', 'cpp', 'rust',
   version : run_command('bash', '-c', 'echo -n $(jq -r .version < ./version.json)$VERSION_SUFFIX', check : true).stdout().strip(),
   default_options : [
     'cpp_std=c++2a',
+    'rust_std=2021',
     # TODO(Qyriad): increase the warning level
     'warning_level=1',
     'debug=true',
@@ -322,13 +331,6 @@ pegtl = dependency(
 
 nlohmann_json = dependency('nlohmann_json', required : true, include_type : 'system')
 
-# lix-doc is a Rust project provided via buildInputs and unfortunately doesn't have any way to be detected.
-# Just declare it manually to resolve this.
-#
-# FIXME: build this with meson in the future after we drop Make (with which we
-# *absolutely* are not going to make it work)
-lix_doc = declare_dependency(link_args : [ '-llix_doc' ])
-
 if is_freebsd
   libprocstat = declare_dependency(link_args : [ '-lprocstat' ])
 endif
@@ -552,6 +554,7 @@ if is_darwin
   )
 endif
 
+subdir('lix-doc')
 subdir('src')
 subdir('scripts')
 subdir('misc')

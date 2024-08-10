@@ -50,7 +50,7 @@ libcmd = library(
     editline,
     lowdown,
     nlohmann_json,
-    lix_doc
+    liblix_doc,
   ],
   cpp_pch : cpp_pch,
   install : true,

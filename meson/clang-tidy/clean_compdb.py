@@ -30,7 +30,14 @@ def process_compdb(compdb: list[dict]) -> list[dict]:
         item['command'] = shlex.join(munch_command(shlex.split(item['command'])))
         return item
 
-    return [chomp(x) for x in compdb if not x['file'].endswith('precompiled-headers.hh')]
+    def cmdfilter(item: dict) -> bool:
+        file = item['file']
+        return (
+            not file.endswith('precompiled-headers.hh')
+            and not file.endswith('.rs')
+        )
+
+    return [chomp(x) for x in compdb if cmdfilter(x)]
 
 
 def main():

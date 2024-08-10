@@ -41,6 +41,8 @@
   pkg-config,
   python3,
   rapidcheck,
+  rustPlatform,
+  rustc,
   sqlite,
   toml11,
   util-linuxMinimal ? utillinuxMinimal,
@@ -48,9 +50,6 @@
   xz,
 
   busybox-sandbox-shell,
-
-  # internal fork of nix-doc providing :doc in the repl
-  lix-doc ? __forDefaults.lix-doc,
 
   pname ? "lix",
   versionSuffix ? "",
@@ -83,7 +82,6 @@
       configureFlags = prev.configureFlags or [ ] ++ [ (lib.enableFeature true "sigstop") ];
     });
 
-    lix-doc = callPackage ./lix-doc/package.nix { };
     build-release-notes = callPackage ./maintainers/build-release-notes.nix { };
   },
 }:
@@ -137,6 +135,7 @@ let
     ./meson.build
     ./meson.options
     ./meson
+    ./lix-doc
     ./scripts/meson.build
     ./subprojects
   ]);
@@ -219,6 +218,7 @@ stdenv.mkDerivation (finalAttrs: {
       meson
       ninja
       cmake
+      rustc
     ]
     ++ [
       (lib.getBin lowdown)
@@ -258,7 +258,6 @@ stdenv.mkDerivation (finalAttrs: {
       lowdown
       libsodium
       toml11
-      lix-doc
       pegtl
     ]
     ++ lib.optionals hostPlatform.isLinux [
@@ -290,6 +289,8 @@ stdenv.mkDerivation (finalAttrs: {
     BOOST_LIBRARYDIR = "${lib.getLib boost}/lib";
   };
 
+  cargoDeps = rustPlatform.importCargoLock { lockFile = ./lix-doc/Cargo.lock; };
+
   preConfigure =
     lib.optionalString (!finalAttrs.dontBuild && !hostPlatform.isStatic) ''
       # Copy libboost_context so we don't get all of Boost in our closure.
@@ -311,6 +312,17 @@ stdenv.mkDerivation (finalAttrs: {
       install_name_tool -change ${boost}/lib/libboost_system.dylib $out/lib/libboost_system.dylib $out/lib/libboost_thread.dylib
     ''
     + ''
+      # Copy the Cargo dependencies to where Meson expects them to be, so we
+      # can seamlessly use Meson's subproject wraps, but just do the download
+      # ahead of time. Luckily for us, importCargoLock-downloaded crates use
+      # the exact naming scheme Meson expects!
+      # The directory from importCargoLock does contain a lockfile, which we
+      # don't need, but all the crate directories start with a word character,
+      # then have a hyphen, and then a sequence of digits or periods for the
+      # version.
+      find "$cargoDeps" -type l -regex '.*/\w.+-[0-9.]+$' -exec \
+          ln -sv "{}" "$PWD/subprojects/" ";"
+
       # Fix up /usr/bin/env shebangs relied on by the build
       patchShebangs --build tests/ doc/manual/
     '';
