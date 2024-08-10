@@ -3,7 +3,7 @@
 #include "common-args.hh"
 #include "shared.hh"
 #include "eval.hh"
-#include "eval-inline.hh"
+#include "eval-inline.hh" // IWYU pragma: keep
 #include "eval-settings.hh"
 #include "flake/flake.hh"
 #include "get-drvs.hh"
@@ -17,8 +17,8 @@
 #include "markdown.hh"
 #include "terminal.hh"
 
+#include <limits>
 #include <nlohmann/json.hpp>
-#include <queue>
 #include <iomanip>
 
 using namespace nix;
@@ -1258,24 +1258,38 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                             attrPath.size() == 3 && attrPathS[0] == "checks" ? "derivation" :
                             attrPath.size() >= 1 && attrPathS[0] == "hydraJobs" ? "derivation" :
                             "package";
+
+                        std::string output = fmt("%s: %s '%s'", headerPrefix, type, name);
+
                         if (description && !description->empty()) {
                             // Trim the string and only display the first line of the description.
                             auto desc = nix::trim(*description);
                             auto firstLineDesc = desc.substr(0, desc.find('\n'));
+                            // three separators, two quotes
+                            constexpr auto quotesAndSepsWidth = 3 + 2;
 
-                            std::string output = fmt("%s: %s '%s' - '%s'", headerPrefix, type, name, firstLineDesc);
-                            if (output.size() > getWindowSize().second) {
-                                // we resize to 4 less then the window size to account for the "...'" we append to
-                                // the final string, we also include the ' since that is removed when we truncate the string
-                                output.resize(getWindowSize().second - 4);
-                                output.append("...'");
+                            int screenWidth = isOutputARealTerminal(StandardOutputStream::Stdout)
+                                ? getWindowSize().second
+                                : std::numeric_limits<int>::max();
+
+                            // FIXME: handle utf8 visible width properly once we get KJ which has utf8 support
+                            //        technically filterANSIEscapes knows how to do this but there is absolutely
+                            //        no clear usage of it that would actually let us do this layout.
+                            int spaceForDescription = screenWidth - output.size() - quotesAndSepsWidth;
+
+                            if (spaceForDescription <= 0) {
+                                // do nothing, it is going to wrap no matter what, and it's better to output *something*
+                            } else {
+                                const char *ellipsis = "";
+                                if (spaceForDescription < firstLineDesc.size()) {
+                                    // subtract one to make space for the ellipsis
+                                    firstLineDesc.resize(spaceForDescription - 1);
+                                    ellipsis = "…";
+                                }
+                                output.append(fmt(" - '%s%s'", firstLineDesc, ellipsis));
                             }
-
-                            logger->cout("%s", output.c_str());
                         }
-                        else {
-                            logger->cout("%s: %s '%s'", headerPrefix, type, name);
-                        }
+                        logger->cout("%s", output);
                     }
                 };
 
