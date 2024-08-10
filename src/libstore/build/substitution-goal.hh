@@ -101,7 +101,6 @@ public:
      */
     WorkResult init();
     WorkResult tryNext();
-    WorkResult gotInfo();
     WorkResult referencesValid();
     WorkResult tryToRun();
     WorkResult finished();
