@@ -417,6 +417,11 @@ check_funcs = [
   'strsignal',
   'sysconf',
 ]
+if target_machine.kernel() in ['linux', 'freebsd']
+  # musl does not have close_range as of 2024-08-10
+  # patch: https://www.openwall.com/lists/musl/2024/08/01/9
+  check_funcs += [ 'close_range' ]
+endif
 foreach funcspec : check_funcs
   define_name = 'HAVE_' + funcspec.underscorify().to_upper()
   define_value = cxx.has_function(funcspec).to_int()

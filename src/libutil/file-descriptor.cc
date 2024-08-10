@@ -223,15 +223,27 @@ void closeExtraFDs()
     constexpr int MAX_KEPT_FD = 2;
     static_assert(std::max({STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO}) == MAX_KEPT_FD);
 
-#if __linux__
+    // Both Linux and FreeBSD support close_range.
+#if __linux__ || __FreeBSD__
+    auto closeRange = [](unsigned int first, unsigned int last, int flags) -> int {
+      // musl does not have close_range as of 2024-08-10
+      // patch: https://www.openwall.com/lists/musl/2024/08/01/9
+#ifdef HAVE_CLOSE_RANGE
+        return close_range(first, last, flags);
+#else
+        return syscall(SYS_close_range, first, last, flags);
+#endif
+    };
     // first try to close_range everything we don't care about. if this
     // returns an error with these parameters we're running on a kernel
     // that does not implement close_range (i.e. pre 5.9) and fall back
     // to the old method. we should remove that though, in some future.
-    if (close_range(3, ~0U, 0) == 0) {
+    if (closeRange(3, ~0U, 0) == 0) {
         return;
     }
+#endif
 
+#if __linux__
     try {
         for (auto & s : readDirectory("/proc/self/fd")) {
             auto fd = std::stoi(s.name);
