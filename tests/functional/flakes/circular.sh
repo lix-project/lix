@@ -11,7 +11,7 @@ createGitRepo $flakeB
 
 cat > $flakeA/flake.nix <<EOF
 {
-  inputs.b.url = git+file://$flakeB;
+  inputs.b.url = "git+file://$flakeB";
   inputs.b.inputs.a.follows = "/";
 
   outputs = { self, b }: {
@@ -25,7 +25,7 @@ git -C $flakeA add flake.nix
 
 cat > $flakeB/flake.nix <<EOF
 {
-  inputs.a.url = git+file://$flakeA;
+  inputs.a.url = "git+file://$flakeA";
 
   outputs = { self, a }: {
     bar = 456 + a.xyzzy;

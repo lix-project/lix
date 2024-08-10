@@ -235,11 +235,11 @@ cat > $flake3Dir/flake.nix <<EOF
     flake1 = {};
     flake2 = {};
     nonFlake = {
-      url = git+file://$nonFlakeDir;
+      url = "git+file://$nonFlakeDir";
       flake = false;
     };
     nonFlakeFile = {
-      url = path://$nonFlakeDir/README.md;
+      url = "path://$nonFlakeDir/README.md";
       flake = false;
     };
     nonFlakeFile2 = {
@@ -442,7 +442,7 @@ cat > $flake3Dir/flake.nix <<EOF
 {
   inputs.flake2.inputs.flake1 = {
     type = "git";
-    url = file://$flake7Dir;
+    url = "file://$flake7Dir";
   };
 
   outputs = { self, flake2 }: {
@@ -456,7 +456,7 @@ nix flake lock $flake3Dir
 cat > $flake3Dir/flake.nix <<EOF
 {
   inputs.flake2.inputs.flake1.follows = "foo";
-  inputs.foo.url = git+file://$flake7Dir;
+  inputs.foo.url = "git+file://$flake7Dir";
 
   outputs = { self, flake2 }: {
   };

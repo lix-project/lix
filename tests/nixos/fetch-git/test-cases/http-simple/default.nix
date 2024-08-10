@@ -22,7 +22,7 @@
 
     # fetch the repo via nix
     fetched1 = client.succeed(f"""
-      nix eval --impure --raw --expr "(builtins.fetchGit {repo.remote}).outPath"
+      nix eval --impure --raw --expr "(builtins.fetchGit \\"{repo.remote}\\").outPath"
     """)
 
     # check if the committed file is there
@@ -32,7 +32,7 @@
 
     # check if the revision is the same
     rev1_fetched = client.succeed(f"""
-      nix eval --impure --raw --expr "(builtins.fetchGit {repo.remote}).rev"
+      nix eval --impure --raw --expr "(builtins.fetchGit \\"{repo.remote}\\").rev"
     """).strip()
     assert rev1 == rev1_fetched, f"rev1: {rev1} != rev1_fetched: {rev1_fetched}"
   '';
