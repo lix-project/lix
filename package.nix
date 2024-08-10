@@ -20,7 +20,6 @@
   doxygen,
   editline-lix ? __forDefaults.editline-lix,
   editline,
-  expect,
   git,
   gtest,
   jq,
@@ -274,8 +273,6 @@ stdenv.mkDerivation (finalAttrs: {
     # I am so sorry. This is because checkInputs are required to pass
     # configure, but we don't actually want to *run* the checks here.
     ++ lib.optionals lintInsteadOfBuild finalAttrs.checkInputs;
-
-  nativeCheckInputs = [ expect ];
 
   checkInputs = [
     gtest

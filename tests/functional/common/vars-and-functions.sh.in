@@ -234,6 +234,10 @@ enableFeatures() {
     sed -i 's/experimental-features .*/& '"$features"'/' "$NIX_CONF_DIR"/nix.conf
 }
 
+runinpty() {
+    @python@ @runinpty@ "$@"
+}
+
 set -x
 
 onError() {

@@ -7,6 +7,8 @@ test_confdata = {
   'sandbox_shell': busybox.found() ? busybox.full_path() : '',
   'PACKAGE_VERSION': meson.project_version(),
   'system': host_system,
+  'python': python.full_path(),
+  'runinpty': runinpty.full_path(),
 }
 
 # Just configures `common/vars-and-functions.sh.in`.

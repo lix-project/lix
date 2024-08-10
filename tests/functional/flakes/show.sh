@@ -104,7 +104,8 @@ cat >flake.nix<<EOF
   };
 }
 EOF
-unbuffer sh -c '
+
+runinpty sh -c '
   stty rows 20 cols 100
   nix flake show > show-output.txt
 '
