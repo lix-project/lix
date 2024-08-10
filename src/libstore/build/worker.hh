@@ -153,6 +153,11 @@ private:
      */
     void waitForInput();
 
+    /**
+     * Remove a dead goal.
+     */
+    void removeGoal(GoalPtr goal);
+
 public:
 
     const Activity act;
@@ -223,11 +228,6 @@ public:
      * a `SubstitutionGoal` for a `DerivedPath::Opaque`.
      */
     GoalPtr makeGoal(const DerivedPath & req, BuildMode buildMode = bmNormal);
-
-    /**
-     * Remove a dead goal.
-     */
-    void removeGoal(GoalPtr goal);
 
     /**
      * Return the number of local build processes currently running (but not
