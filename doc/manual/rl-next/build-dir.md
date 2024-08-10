@@ -1,6 +1,7 @@
 ---
 synopsis: "Add a `build-dir` setting to set the backing directory for builds"
 cls: 1514
+prs: [gh#10303, gh#10312, gh#10883]
 credits: [roberth, tomberek]
 category: Improvements
 ---
