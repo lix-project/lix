@@ -1,6 +1,6 @@
 ---
 synopsis: "Trace which part of a `foo.bar.baz` expression errors"
-cls: 1505, 1506
+cls: [1505, 1506]
 credits: Qyriad
 category: Improvements
 ---

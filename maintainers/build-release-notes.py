@@ -106,7 +106,7 @@ def do_category(author_info: AuthorInfoDB, entries: list[Tuple[pathlib.Path, Any
             links = []
             links += [format_issue(str(s)) for s in listify(entry.metadata.get('issues', []))]
             links += [format_pr(str(s)) for s in listify(entry.metadata.get('prs', []))]
-            links += [format_cl(cl) for cl in listify(entry.metadata.get('cls', []))]
+            links += [format_cl(int(cl)) for cl in listify(entry.metadata.get('cls', []))]
             if links != []:
                 header += " " + " ".join(links)
             if header:
@@ -129,7 +129,7 @@ def run_on_dir(author_info: AuthorInfoDB, d):
     entries = defaultdict(list)
     for p in paths:
         try:
-            e = frontmatter.load(p)
+            e = frontmatter.load(p) # type: ignore
             if 'synopsis' not in e.metadata:
                 raise Exception('missing synopsis')
             unknownKeys = set(e.metadata.keys()) - set(KNOWN_KEYS)
