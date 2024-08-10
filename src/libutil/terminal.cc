@@ -7,7 +7,12 @@
 
 namespace nix {
 
-bool shouldANSI()
+bool isOutputARealTerminal(StandardOutputStream fileno)
+{
+    return isatty(int(fileno)) && getEnv("TERM").value_or("dumb") != "dumb";
+}
+
+bool shouldANSI(StandardOutputStream fileno)
 {
     // Implements the behaviour described by https://bixense.com/clicolors/
     // As well as https://force-color.org/ for compatibility, since it fits in the same shape.
@@ -16,14 +21,14 @@ bool shouldANSI()
     // unset    x        set            Yes
     // unset    x        unset          If attached to a terminal
     //                                  [we choose the "modern" approach of colour-by-default]
-    auto compute = []() -> bool {
+    auto compute = [](StandardOutputStream fileno) -> bool {
         bool mustNotColour = getEnv("NO_COLOR").has_value() || getEnv("NOCOLOR").has_value();
         bool shouldForce = getEnv("CLICOLOR_FORCE").has_value() || getEnv("FORCE_COLOR").has_value();
-        bool isTerminal = isatty(STDERR_FILENO) && getEnv("TERM").value_or("dumb") != "dumb";
+        bool isTerminal = isOutputARealTerminal(fileno);
         return !mustNotColour && (shouldForce || isTerminal);
     };
-    static bool cached = compute();
-    return cached;
+    static bool cached[2] = {compute(StandardOutputStream::Stdout), compute(StandardOutputStream::Stderr)};
+    return cached[int(fileno) - 1];
 }
 
 // FIXME(jade): replace with TerminalCodeEater. wowie this is evil code.

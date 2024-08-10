@@ -362,6 +362,7 @@ void mainWrapped(int argc, char * * argv)
     setLogFormat(LogFormat::bar);
     Finally f([] { logger->pause(); });
     settings.verboseBuild = false;
+    // FIXME: stop messing about with log verbosity depending on if it is interactive use
     if (isatty(STDERR_FILENO)) {
         verbosity = lvlNotice;
     } else {

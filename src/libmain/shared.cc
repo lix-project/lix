@@ -5,9 +5,9 @@
 #include "signals.hh"
 #include "loggers.hh"
 #include "current-process.hh"
+#include "terminal.hh"
 
 #include <algorithm>
-#include <cctype>
 #include <exception>
 #include <iostream>
 
@@ -347,7 +347,7 @@ int handleExceptions(const std::string & programName, std::function<void()> fun)
 
 RunPager::RunPager()
 {
-    if (!isatty(STDOUT_FILENO)) return;
+    if (!isOutputARealTerminal(StandardOutputStream::Stdout)) return;
     char * pager = getenv("NIX_PAGER");
     if (!pager) pager = getenv("PAGER");
     if (pager && ((std::string) pager == "" || (std::string) pager == "cat")) return;

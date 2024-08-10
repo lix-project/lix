@@ -37,7 +37,15 @@ void Logger::warn(const std::string & msg)
 
 void Logger::writeToStdout(std::string_view s)
 {
-    writeFull(STDOUT_FILENO, filterANSIEscapes(s, !shouldANSI(), std::numeric_limits<unsigned int>::max(), false));
+    writeFull(
+        STDOUT_FILENO,
+        filterANSIEscapes(
+            s,
+            !shouldANSI(StandardOutputStream::Stdout),
+            std::numeric_limits<unsigned int>::max(),
+            false
+        )
+    );
     writeFull(STDOUT_FILENO, "\n");
 }
 

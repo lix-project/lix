@@ -4,11 +4,11 @@
 #include "shared.hh"
 #include "store-api.hh"
 #include "filetransfer.hh"
-#include "finally.hh"
 #include "tarfile.hh"
 #include "attr-path.hh"
-#include "eval-inline.hh"
+#include "eval-inline.hh" // IWYU pragma: keep
 #include "legacy.hh"
+#include "terminal.hh"
 
 #include <nlohmann/json.hpp>
 
@@ -180,7 +180,7 @@ static int main_nix_prefetch_url(int argc, char * * argv)
         if (args.size() > 2)
             throw UsageError("too many arguments");
 
-        if (isatty(STDERR_FILENO))
+        if (isOutputARealTerminal(StandardOutputStream::Stderr))
             setLogFormat(LogFormat::bar);
 
         auto store = openStore();

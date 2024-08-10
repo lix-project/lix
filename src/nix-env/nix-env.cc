@@ -1,6 +1,7 @@
 #include "attr-path.hh"
 #include "common-eval-args.hh"
 #include "derivations.hh"
+#include "terminal.hh"
 #include "eval.hh"
 #include "get-drvs.hh"
 #include "globals.hh"
@@ -17,7 +18,6 @@
 #include "legacy.hh"
 #include "eval-settings.hh" // for defexpr
 
-#include <cerrno>
 #include <ctime>
 #include <algorithm>
 #include <iostream>
@@ -1092,7 +1092,6 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
         return;
     }
 
-    bool tty = isatty(STDOUT_FILENO);
     RunPager pager;
 
     Table table;
@@ -1171,7 +1170,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                     }
                 } else {
                     auto column = (std::string) "" + ch + " " + version;
-                    if (diff == cvGreater && tty)
+                    if (diff == cvGreater && shouldANSI(StandardOutputStream::Stdout))
                         column = ANSI_RED + column + ANSI_NORMAL;
                     columns.push_back(column);
                 }
