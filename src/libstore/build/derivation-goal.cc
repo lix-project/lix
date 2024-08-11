@@ -1278,17 +1278,21 @@ bool DerivationGoal::isReadDesc(int fd)
 
 Goal::WorkResult DerivationGoal::handleChildOutput(int fd, std::string_view data)
 {
+    auto tooMuchLogs = [&] {
+        killChild();
+        return done(
+            BuildResult::LogLimitExceeded, {},
+            Error("%s killed after writing more than %d bytes of log output",
+                getName(), settings.maxLogSize));
+    };
+
     // local & `ssh://`-builds are dealt with here.
     auto isWrittenToLog = isReadDesc(fd);
     if (isWrittenToLog)
     {
         logSize += data.size();
         if (settings.maxLogSize && logSize > settings.maxLogSize) {
-            killChild();
-            return done(
-                BuildResult::LogLimitExceeded, {},
-                Error("%s killed after writing more than %d bytes of log output",
-                    getName(), settings.maxLogSize));
+            return tooMuchLogs();
         }
 
         for (auto c : data)
@@ -1317,7 +1321,13 @@ Goal::WorkResult DerivationGoal::handleChildOutput(int fd, std::string_view data
                         const auto type = (*json)["type"];
                         const auto fields = (*json)["fields"];
                         if (type == resBuildLogLine) {
-                            (*logSink)((fields.size() > 0 ? fields[0].get<std::string>() : "") + "\n");
+                            const std::string logLine =
+                                (fields.size() > 0 ? fields[0].get<std::string>() : "") + "\n";
+                            logSize += logLine.size();
+                            if (settings.maxLogSize && logSize > settings.maxLogSize) {
+                                return tooMuchLogs();
+                            }
+                            (*logSink)(logLine);
                         } else if (type == resSetPhase && ! fields.is_null()) {
                             const auto phase = fields[0];
                             if (! phase.is_null()) {
