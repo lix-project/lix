@@ -1288,9 +1288,7 @@ Goal::WorkResult DerivationGoal::handleChildOutput(int fd, std::string_view data
     };
 
     // local & `ssh://`-builds are dealt with here.
-    auto isWrittenToLog = fd == builderOutFD->get();
-    if (isWrittenToLog)
-    {
+    if (fd == builderOutFD->get()) {
         logSize += data.size();
         if (settings.maxLogSize && logSize > settings.maxLogSize) {
             return tooMuchLogs();
@@ -1308,6 +1306,7 @@ Goal::WorkResult DerivationGoal::handleChildOutput(int fd, std::string_view data
             }
 
         if (logSink) (*logSink)(data);
+        return StillAlive{};
     }
 
     if (hook && fd == hook->fromHook.readSide.get()) {
@@ -1318,7 +1317,7 @@ Goal::WorkResult DerivationGoal::handleChildOutput(int fd, std::string_view data
                     auto s = handleJSONLogMessage(*json, worker.act, hook->activities, true);
                     // ensure that logs from a builder using `ssh-ng://` as protocol
                     // are also available to `nix log`.
-                    if (s && !isWrittenToLog && logSink) {
+                    if (s && logSink) {
                         const auto type = (*json)["type"];
                         const auto fields = (*json)["fields"];
                         if (type == resBuildLogLine) {
