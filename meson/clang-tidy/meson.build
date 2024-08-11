@@ -57,6 +57,12 @@ build_all_generated_headers = custom_target(
 )
 
 if lix_clang_tidy_so_found
+  default_concurrency = run_command(python, '-c', '''
+import multiprocessing
+import os
+print(min(multiprocessing.cpu_count(), int(os.environ.get("NIX_BUILD_CORES", "16"))))
+  ''', check : true).stdout()
+
   run_clang_tidy_args = [
     '-load',
     lix_clang_tidy_so,
@@ -66,6 +72,7 @@ if lix_clang_tidy_so_found
     # https://github.com/llvm/llvm-project/issues/101440
     meson.current_build_dir(),
     '-quiet',
+    '-j', default_concurrency,
   ]
   run_target(
     'clang-tidy',
