@@ -119,6 +119,7 @@ std::string DerivationGoal::key()
 void DerivationGoal::killChild()
 {
     hook.reset();
+    builderOutFD = nullptr;
 }
 
 
@@ -814,6 +815,7 @@ void replaceValidPath(const Path & storePath, const Path & tmpPath)
 
 int DerivationGoal::getChildStatus()
 {
+    builderOutFD = nullptr;
     return hook->pid.kill();
 }
 
@@ -822,6 +824,7 @@ void DerivationGoal::closeReadPipes()
 {
     hook->builderOut.readSide.reset();
     hook->fromHook.readSide.reset();
+    builderOutFD = nullptr;
 }
 
 
@@ -1209,6 +1212,7 @@ HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
     std::set<int> fds;
     fds.insert(hook->fromHook.readSide.get());
     fds.insert(hook->builderOut.readSide.get());
+    builderOutFD = &hook->builderOut.readSide;
     worker.childStarted(shared_from_this(), fds, false, false);
 
     return rpAccept;
@@ -1271,13 +1275,10 @@ void DerivationGoal::closeLogFile()
 }
 
 
-bool DerivationGoal::isReadDesc(int fd)
-{
-    return fd == hook->builderOut.readSide.get();
-}
-
 Goal::WorkResult DerivationGoal::handleChildOutput(int fd, std::string_view data)
 {
+    assert(builderOutFD);
+
     auto tooMuchLogs = [&] {
         killChild();
         return done(
@@ -1287,7 +1288,7 @@ Goal::WorkResult DerivationGoal::handleChildOutput(int fd, std::string_view data
     };
 
     // local & `ssh://`-builds are dealt with here.
-    auto isWrittenToLog = isReadDesc(fd);
+    auto isWrittenToLog = fd == builderOutFD->get();
     if (isWrittenToLog)
     {
         logSize += data.size();

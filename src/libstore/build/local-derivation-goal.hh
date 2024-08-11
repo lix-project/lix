@@ -40,7 +40,7 @@ struct LocalDerivationGoal : public DerivationGoal
      * Master side of the pseudoterminal used for the builder's
      * standard output/error.
      */
-    AutoCloseFD builderOut;
+    AutoCloseFD builderOutPTY;
 
     /**
      * Pipe for synchronising updates to the builder namespaces.
@@ -284,8 +284,6 @@ struct LocalDerivationGoal : public DerivationGoal
     bool cleanupDecideWhetherDiskFull() override;
     void cleanupPostOutputsRegisteredModeCheck() override;
     void cleanupPostOutputsRegisteredModeNonCheck() override;
-
-    bool isReadDesc(int fd) override;
 
     /**
      * Delete the temporary directory, if we have one.

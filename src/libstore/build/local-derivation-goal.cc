@@ -279,8 +279,10 @@ void LocalDerivationGoal::closeReadPipes()
 {
     if (hook) {
         DerivationGoal::closeReadPipes();
-    } else
-        builderOut.close();
+    } else {
+        builderOutPTY.close();
+        builderOutFD = nullptr;
+    }
 }
 
 
@@ -671,12 +673,13 @@ void LocalDerivationGoal::startBuilder()
     Path logFile = openLogFile();
 
     /* Create a pseudoterminal to get the output of the builder. */
-    builderOut = AutoCloseFD{posix_openpt(O_RDWR | O_NOCTTY)};
-    if (!builderOut)
+    builderOutPTY = AutoCloseFD{posix_openpt(O_RDWR | O_NOCTTY)};
+    if (!builderOutPTY)
         throw SysError("opening pseudoterminal master");
+    builderOutFD = &builderOutPTY;
 
     // FIXME: not thread-safe, use ptsname_r
-    std::string slaveName = ptsname(builderOut.get());
+    std::string slaveName = ptsname(builderOutPTY.get());
 
     if (buildUser) {
         if (chmod(slaveName.c_str(), 0600))
@@ -687,12 +690,12 @@ void LocalDerivationGoal::startBuilder()
     }
 #if __APPLE__
     else {
-        if (grantpt(builderOut.get()))
+        if (grantpt(builderOutPTY.get()))
             throw SysError("granting access to pseudoterminal slave");
     }
 #endif
 
-    if (unlockpt(builderOut.get()))
+    if (unlockpt(builderOutPTY.get()))
         throw SysError("unlocking pseudoterminal");
 
     /* Open the slave side of the pseudoterminal and use it as stderr. */
@@ -723,14 +726,14 @@ void LocalDerivationGoal::startBuilder()
 
     /* parent */
     pid.setSeparatePG(true);
-    worker.childStarted(shared_from_this(), {builderOut.get()}, true, true);
+    worker.childStarted(shared_from_this(), {builderOutPTY.get()}, true, true);
 
     /* Check if setting up the build environment failed. */
     std::vector<std::string> msgs;
     while (true) {
         std::string msg = [&]() {
             try {
-                return readLine(builderOut.get());
+                return readLine(builderOutPTY.get());
             } catch (Error & e) {
                 auto status = pid.wait();
                 e.addTrace({}, "while waiting for the build environment for '%s' to initialize (%s, previous messages: %s)",
@@ -742,7 +745,7 @@ void LocalDerivationGoal::startBuilder()
         }();
         if (msg.substr(0, 1) == "\2") break;
         if (msg.substr(0, 1) == "\1") {
-            FdSource source(builderOut.get());
+            FdSource source(builderOutPTY.get());
             auto ex = readError(source);
             ex.addTrace({}, "while setting up the build environment");
             throw ex;
@@ -2560,13 +2563,6 @@ void LocalDerivationGoal::deleteTmpDir(bool force)
             deletePath(tmpDir);
         tmpDir = "";
     }
-}
-
-
-bool LocalDerivationGoal::isReadDesc(int fd)
-{
-    return (hook && DerivationGoal::isReadDesc(fd)) ||
-        (!hook && fd == builderOut.get());
 }
 
 

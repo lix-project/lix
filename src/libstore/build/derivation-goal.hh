@@ -187,6 +187,13 @@ struct DerivationGoal : public Goal
     std::unique_ptr<HookInstance> hook;
 
     /**
+      * Builder output is pulled from this file descriptor when not null.
+      * Owned by the derivation goal or subclass, must not be reset until
+      * the build has finished and no more output must be processed by us
+      */
+    AutoCloseFD * builderOutFD = nullptr;
+
+    /**
      * The sort of derivation we are building.
      */
     std::optional<DerivationType> derivationType;
@@ -289,8 +296,6 @@ struct DerivationGoal : public Goal
     virtual bool cleanupDecideWhetherDiskFull();
     virtual void cleanupPostOutputsRegisteredModeCheck();
     virtual void cleanupPostOutputsRegisteredModeNonCheck();
-
-    virtual bool isReadDesc(int fd);
 
     /**
      * Callback used by the worker to write to the log.
