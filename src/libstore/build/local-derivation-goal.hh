@@ -357,6 +357,10 @@ protected:
         return false;
     }
 
+    virtual bool respectsTimeouts() override
+    {
+        return true;
+    }
 };
 
 }

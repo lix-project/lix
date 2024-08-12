@@ -233,7 +233,7 @@ void Worker::wakeUp(GoalPtr goal)
 
 
 void Worker::childStarted(GoalPtr goal, const std::set<int> & fds,
-    bool inBuildSlot, bool respectTimeouts)
+    bool inBuildSlot)
 {
     Child child;
     child.goal = goal;
@@ -241,7 +241,6 @@ void Worker::childStarted(GoalPtr goal, const std::set<int> & fds,
     child.fds = fds;
     child.timeStarted = child.lastOutput = steady_time_point::clock::now();
     child.inBuildSlot = inBuildSlot;
-    child.respectTimeouts = respectTimeouts;
     children.emplace_back(child);
     if (inBuildSlot) {
         switch (goal->jobCategory()) {
@@ -427,11 +426,13 @@ void Worker::waitForInput()
         // Periodicallty wake up to see if we need to run the garbage collector.
         nearest = before + std::chrono::seconds(10);
     for (auto & i : children) {
-        if (!i.respectTimeouts) continue;
-        if (0 != settings.maxSilentTime)
-            nearest = std::min(nearest, i.lastOutput + std::chrono::seconds(settings.maxSilentTime));
-        if (0 != settings.buildTimeout)
-            nearest = std::min(nearest, i.timeStarted + std::chrono::seconds(settings.buildTimeout));
+        if (auto goal = i.goal.lock()) {
+            if (!goal->respectsTimeouts()) continue;
+            if (0 != settings.maxSilentTime)
+                nearest = std::min(nearest, i.lastOutput + std::chrono::seconds(settings.maxSilentTime));
+            if (0 != settings.buildTimeout)
+                nearest = std::min(nearest, i.timeStarted + std::chrono::seconds(settings.buildTimeout));
+        }
     }
     if (nearest != steady_time_point::max()) {
         timeout = std::max(1L, (long) std::chrono::duration_cast<std::chrono::seconds>(nearest - before).count());
@@ -484,7 +485,7 @@ void Worker::waitForInput()
 
         if (!goal->exitCode.has_value() &&
             0 != settings.maxSilentTime &&
-            j->respectTimeouts &&
+            goal->respectsTimeouts() &&
             after - j->lastOutput >= std::chrono::seconds(settings.maxSilentTime))
         {
             handleWorkResult(
@@ -500,7 +501,7 @@ void Worker::waitForInput()
 
         else if (!goal->exitCode.has_value() &&
             0 != settings.buildTimeout &&
-            j->respectTimeouts &&
+            goal->respectsTimeouts() &&
             after - j->timeStarted >= std::chrono::seconds(settings.buildTimeout))
         {
             handleWorkResult(

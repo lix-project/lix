@@ -160,6 +160,11 @@ public:
     {
     }
 
+    virtual bool respectsTimeouts()
+    {
+        return false;
+    }
+
     void trace(std::string_view s);
 
     std::string getName() const

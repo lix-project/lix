@@ -29,7 +29,6 @@ struct Child
     WeakGoalPtr goal;
     Goal * goal2; // ugly hackery
     std::set<int> fds;
-    bool respectTimeouts;
     bool inBuildSlot;
     /**
      * Time we last got output on stdout/stderr
@@ -234,7 +233,7 @@ public:
      * the process counts towards the jobs limit.
      */
     void childStarted(GoalPtr goal, const std::set<int> & fds,
-        bool inBuildSlot, bool respectTimeouts);
+        bool inBuildSlot);
 
     /**
      * Unregisters a running child process.

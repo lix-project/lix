@@ -1213,7 +1213,7 @@ HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
     fds.insert(hook->fromHook.readSide.get());
     fds.insert(hook->builderOut.readSide.get());
     builderOutFD = &hook->builderOut.readSide;
-    worker.childStarted(shared_from_this(), fds, false, false);
+    worker.childStarted(shared_from_this(), fds, false);
 
     return rpAccept;
 }

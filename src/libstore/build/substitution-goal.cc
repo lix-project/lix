@@ -221,7 +221,7 @@ Goal::WorkResult PathSubstitutionGoal::tryToRun(bool inBuildSlot)
         }
     });
 
-    worker.childStarted(shared_from_this(), {outPipe.readSide.get()}, true, false);
+    worker.childStarted(shared_from_this(), {outPipe.readSide.get()}, true);
 
     state = &PathSubstitutionGoal::finished;
     return StillAlive{};

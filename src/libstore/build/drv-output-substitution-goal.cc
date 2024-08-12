@@ -75,7 +75,7 @@ Goal::WorkResult DrvOutputSubstitutionGoal::tryNext(bool inBuildSlot)
             return sub->queryRealisation(id);
         });
 
-    worker.childStarted(shared_from_this(), {downloadState->outPipe.readSide.get()}, true, false);
+    worker.childStarted(shared_from_this(), {downloadState->outPipe.readSide.get()}, true);
 
     state = &DrvOutputSubstitutionGoal::realisationFetched;
     return StillAlive{};
