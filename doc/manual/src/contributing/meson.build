@@ -8,7 +8,7 @@ experimental_feature_descriptions_md = custom_target(
   ],
   input : [
     '../../generate-features.nix',
-    xp_features_json,
+    nix_exp_features_json,
   ],
   capture : true,
   output : 'experimental-feature-descriptions.md',
