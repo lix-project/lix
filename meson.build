@@ -554,7 +554,6 @@ if is_darwin
   )
 endif
 
-subdir('lix-doc')
 subdir('src')
 subdir('scripts')
 subdir('misc')

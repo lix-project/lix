@@ -135,7 +135,6 @@ let
     ./meson.build
     ./meson.options
     ./meson
-    ./lix-doc
     ./scripts/meson.build
     ./subprojects
   ]);
@@ -289,7 +288,7 @@ stdenv.mkDerivation (finalAttrs: {
     BOOST_LIBRARYDIR = "${lib.getLib boost}/lib";
   };
 
-  cargoDeps = rustPlatform.importCargoLock { lockFile = ./lix-doc/Cargo.lock; };
+  cargoDeps = rustPlatform.importCargoLock { lockFile = ./src/lix-doc/Cargo.lock; };
 
   preConfigure =
     lib.optionalString (!finalAttrs.dontBuild && !hostPlatform.isStatic) ''

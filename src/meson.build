@@ -1,4 +1,5 @@
 # Subcomponents: these link into artifacts themselves, and have interdependencies.
+subdir('lix-doc')
 
 subdir('libutil')
 # Load-bearing order. libstore depends on libutil.
