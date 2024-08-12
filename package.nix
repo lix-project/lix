@@ -137,6 +137,8 @@ let
     ./meson
     ./scripts/meson.build
     ./subprojects
+    # Required for meson to generate Cargo wraps
+    ./Cargo.lock
   ]);
 
   functionalTestFiles = fileset.unions [
@@ -288,7 +290,7 @@ stdenv.mkDerivation (finalAttrs: {
     BOOST_LIBRARYDIR = "${lib.getLib boost}/lib";
   };
 
-  cargoDeps = rustPlatform.importCargoLock { lockFile = ./src/lix-doc/Cargo.lock; };
+  cargoDeps = rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
 
   preConfigure =
     lib.optionalString (!finalAttrs.dontBuild && !hostPlatform.isStatic) ''

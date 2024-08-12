@@ -9,6 +9,10 @@ GTAGS
 # ccls
 /.ccls-cache
 
+# auto-generated compilation database
+compile_commands.json
+rust-project.json
+
 result
 result-*
 
@@ -29,3 +33,6 @@ buildtime.bin
 /.pre-commit-config.yaml
 /.nocontribmsg
 /release
+
+# Rust build files when using Cargo (not actually supported for building but it spews the files anyway)
+/target/
