@@ -10,19 +10,19 @@ namespace nix {
 struct HookInstance
 {
     /**
-     * Pipes for talking to the build hook.
+     * Pipe for talking to the build hook.
      */
-    Pipe toHook;
+    AutoCloseFD toHook;
 
     /**
      * Pipe for the hook's standard output/error.
      */
-    Pipe fromHook;
+    AutoCloseFD fromHook;
 
     /**
      * Pipe for the builder's standard output/error.
      */
-    Pipe builderOut;
+    AutoCloseFD builderOut;
 
     /**
      * The process ID of the hook.

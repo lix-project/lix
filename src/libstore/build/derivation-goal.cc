@@ -822,8 +822,8 @@ int DerivationGoal::getChildStatus()
 
 void DerivationGoal::closeReadPipes()
 {
-    hook->builderOut.readSide.reset();
-    hook->fromHook.readSide.reset();
+    hook->builderOut.reset();
+    hook->fromHook.reset();
     builderOutFD = nullptr;
 }
 
@@ -1135,7 +1135,7 @@ HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
         while (true) {
             auto s = [&]() {
                 try {
-                    return readLine(worker.hook.instance->fromHook.readSide.get());
+                    return readLine(worker.hook.instance->fromHook.get());
                 } catch (Error & e) {
                     e.addTrace({}, "while reading the response from the build hook");
                     throw;
@@ -1171,7 +1171,7 @@ HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
         if (e.errNo == EPIPE) {
             printError(
                 "build hook died unexpectedly: %s",
-                chomp(drainFD(worker.hook.instance->fromHook.readSide.get())));
+                chomp(drainFD(worker.hook.instance->fromHook.get())));
             worker.hook.instance.reset();
             return rpDecline;
         } else
@@ -1181,7 +1181,7 @@ HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
     hook = std::move(worker.hook.instance);
 
     try {
-        machineName = readLine(hook->fromHook.readSide.get());
+        machineName = readLine(hook->fromHook.get());
     } catch (Error & e) {
         e.addTrace({}, "while reading the machine name from the build hook");
         throw;
@@ -1204,15 +1204,15 @@ HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
     }
 
     hook->sink = FdSink();
-    hook->toHook.writeSide.reset();
+    hook->toHook.reset();
 
     /* Create the log file and pipe. */
     Path logFile = openLogFile();
 
     std::set<int> fds;
-    fds.insert(hook->fromHook.readSide.get());
-    fds.insert(hook->builderOut.readSide.get());
-    builderOutFD = &hook->builderOut.readSide;
+    fds.insert(hook->fromHook.get());
+    fds.insert(hook->builderOut.get());
+    builderOutFD = &hook->builderOut;
     worker.childStarted(shared_from_this(), fds, false);
 
     return rpAccept;
@@ -1309,7 +1309,7 @@ Goal::WorkResult DerivationGoal::handleChildOutput(int fd, std::string_view data
         return StillAlive{};
     }
 
-    if (hook && fd == hook->fromHook.readSide.get()) {
+    if (hook && fd == hook->fromHook.get()) {
         for (auto c : data)
             if (c == '\n') {
                 auto json = parseJSONMessage(currentHookLine);

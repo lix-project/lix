@@ -26,18 +26,21 @@ HookInstance::HookInstance()
     args.push_back(std::to_string(verbosity));
 
     /* Create a pipe to get the output of the child. */
-    fromHook.create();
+    Pipe fromHook_;
+    fromHook_.create();
 
     /* Create the communication pipes. */
-    toHook.create();
+    Pipe toHook_;
+    toHook_.create();
 
     /* Create a pipe to get the output of the builder. */
-    builderOut.create();
+    Pipe builderOut_;
+    builderOut_.create();
 
     /* Fork the hook. */
     pid = startProcess([&]() {
 
-        if (dup2(fromHook.writeSide.get(), STDERR_FILENO) == -1)
+        if (dup2(fromHook_.writeSide.get(), STDERR_FILENO) == -1)
             throw SysError("cannot pipe standard error into log file");
 
         commonChildInit();
@@ -45,16 +48,16 @@ HookInstance::HookInstance()
         if (chdir("/") == -1) throw SysError("changing into /");
 
         /* Dup the communication pipes. */
-        if (dup2(toHook.readSide.get(), STDIN_FILENO) == -1)
+        if (dup2(toHook_.readSide.get(), STDIN_FILENO) == -1)
             throw SysError("dupping to-hook read side");
 
         /* Use fd 4 for the builder's stdout/stderr. */
-        if (dup2(builderOut.writeSide.get(), 4) == -1)
+        if (dup2(builderOut_.writeSide.get(), 4) == -1)
             throw SysError("dupping builder's stdout/stderr");
 
         /* Hack: pass the read side of that fd to allow build-remote
            to read SSH error messages. */
-        if (dup2(builderOut.readSide.get(), 5) == -1)
+        if (dup2(builderOut_.readSide.get(), 5) == -1)
             throw SysError("dupping builder's stdout/stderr");
 
         execv(buildHook.c_str(), stringsToCharPtrs(args).data());
@@ -63,10 +66,11 @@ HookInstance::HookInstance()
     });
 
     pid.setSeparatePG(true);
-    fromHook.writeSide.reset();
-    toHook.readSide.reset();
+    fromHook = std::move(fromHook_.readSide);
+    toHook = std::move(toHook_.writeSide);
+    builderOut = std::move(builderOut_.readSide);
 
-    sink = FdSink(toHook.writeSide.get());
+    sink = FdSink(toHook.get());
     std::map<std::string, Config::SettingInfo> settings;
     globalConfig.getSettings(settings);
     for (auto & setting : settings)
@@ -78,7 +82,7 @@ HookInstance::HookInstance()
 HookInstance::~HookInstance()
 {
     try {
-        toHook.writeSide.reset();
+        toHook.reset();
         if (pid) pid.kill();
     } catch (...) {
         ignoreException();
