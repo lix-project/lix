@@ -726,7 +726,6 @@ void LocalDerivationGoal::startBuilder()
 
     /* parent */
     pid.setSeparatePG(true);
-    worker.childStarted(shared_from_this(), {builderOutPTY.get()}, true);
 
     /* Check if setting up the build environment failed. */
     std::vector<std::string> msgs;
@@ -753,6 +752,8 @@ void LocalDerivationGoal::startBuilder()
         debug("sandbox setup: " + msg);
         msgs.push_back(std::move(msg));
     }
+
+    worker.childStarted(shared_from_this(), {builderOutPTY.get()}, true);
 }
 
 
