@@ -417,7 +417,7 @@ check_funcs = [
   'strsignal',
   'sysconf',
 ]
-if target_machine.kernel() in ['linux', 'freebsd']
+if is_linux or is_freebsd
   # musl does not have close_range as of 2024-08-10
   # patch: https://www.openwall.com/lists/musl/2024/08/01/9
   check_funcs += [ 'close_range' ]
