@@ -51,7 +51,7 @@ enum struct JobCategory {
     Substitution,
 };
 
-struct Goal : public std::enable_shared_from_this<Goal>
+struct Goal
 {
     typedef enum {ecSuccess, ecFailed, ecNoSubstituters, ecIncompleteClosure} ExitCode;
 
