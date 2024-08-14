@@ -732,25 +732,34 @@ Goal::WorkResult DerivationGoal::tryToBuild(bool inBuildSlot)
         && settings.maxBuildJobs.get() != 0;
 
     if (!buildLocally) {
-        switch (tryBuildHook(inBuildSlot)) {
-            case rpAccept:
-                /* Yes, it has started doing so.  Wait until we get
-                   EOF from the hook. */
-                actLock.reset();
-                buildResult.startTime = time(0); // inexact
-                state = &DerivationGoal::buildDone;
-                return started();
-            case rpPostpone:
-                /* Not now; wait until at least one child finishes or
-                   the wake-up timeout expires. */
-                if (!actLock)
-                    actLock = std::make_unique<Activity>(*logger, lvlTalkative, actBuildWaiting,
-                        fmt("waiting for a machine to build '%s'", Magenta(worker.store.printStorePath(drvPath))));
-                outputLocks.unlock();
-                return WaitForAWhile{};
-            case rpDecline:
-                /* We should do it ourselves. */
-                break;
+        auto hookReply = tryBuildHook(inBuildSlot);
+        auto result = std::visit(
+            overloaded{
+                [&](HookReply::Accept) -> std::optional<WorkResult> {
+                    /* Yes, it has started doing so.  Wait until we get
+                       EOF from the hook. */
+                    actLock.reset();
+                    buildResult.startTime = time(0); // inexact
+                    state = &DerivationGoal::buildDone;
+                    return started();
+                },
+                [&](HookReply::Postpone) -> std::optional<WorkResult> {
+                    /* Not now; wait until at least one child finishes or
+                       the wake-up timeout expires. */
+                    if (!actLock)
+                        actLock = std::make_unique<Activity>(*logger, lvlTalkative, actBuildWaiting,
+                            fmt("waiting for a machine to build '%s'", Magenta(worker.store.printStorePath(drvPath))));
+                    outputLocks.unlock();
+                    return WaitForAWhile{};
+                },
+                [&](HookReply::Decline) -> std::optional<WorkResult> {
+                    /* We should do it ourselves. */
+                    return std::nullopt;
+                },
+            },
+            hookReply);
+        if (result) {
+            return std::move(*result);
         }
     }
 
@@ -1113,7 +1122,7 @@ Goal::WorkResult DerivationGoal::resolvedFinished(bool inBuildSlot)
 
 HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
 {
-    if (!worker.hook.available || !useDerivation) return rpDecline;
+    if (!worker.hook.available || !useDerivation) return HookReply::Decline{};
 
     if (!worker.hook.instance)
         worker.hook.instance = std::make_unique<HookInstance>();
@@ -1156,14 +1165,14 @@ HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
         debug("hook reply is '%1%'", reply);
 
         if (reply == "decline")
-            return rpDecline;
+            return HookReply::Decline{};
         else if (reply == "decline-permanently") {
             worker.hook.available = false;
             worker.hook.instance.reset();
-            return rpDecline;
+            return HookReply::Decline{};
         }
         else if (reply == "postpone")
-            return rpPostpone;
+            return HookReply::Postpone{};
         else if (reply != "accept")
             throw Error("bad hook reply '%s'", reply);
 
@@ -1173,7 +1182,7 @@ HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
                 "build hook died unexpectedly: %s",
                 chomp(drainFD(worker.hook.instance->fromHook.get())));
             worker.hook.instance.reset();
-            return rpDecline;
+            return HookReply::Decline{};
         } else
             throw;
     }
@@ -1215,7 +1224,7 @@ HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
     builderOutFD = &hook->builderOut;
     worker.childStarted(shared_from_this(), fds, false);
 
-    return rpAccept;
+    return HookReply::Accept{};
 }
 
 

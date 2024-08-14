@@ -14,7 +14,19 @@ using std::map;
 
 struct HookInstance;
 
-typedef enum {rpAccept, rpDecline, rpPostpone} HookReply;
+struct HookReplyBase {
+    struct [[nodiscard]] Accept {};
+    struct [[nodiscard]] Decline {};
+    struct [[nodiscard]] Postpone {};
+};
+
+struct [[nodiscard]] HookReply
+    : HookReplyBase,
+      std::variant<HookReplyBase::Accept, HookReplyBase::Decline, HookReplyBase::Postpone>
+{
+    HookReply() = delete;
+    using variant::variant;
+};
 
 /**
  * Unless we are repairing, we don't both to test validity and just assume it,
