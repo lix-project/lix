@@ -221,10 +221,8 @@ Goal::WorkResult PathSubstitutionGoal::tryToRun(bool inBuildSlot)
         }
     });
 
-    worker.childStarted(shared_from_this(), {outPipe.readSide.get()}, true);
-
     state = &PathSubstitutionGoal::finished;
-    return StillAlive{};
+    return WaitForWorld{{outPipe.readSide.get()}, true};
 }
 
 

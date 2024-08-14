@@ -216,7 +216,7 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * Start building a derivation.
      */
-    void startBuilder();
+    std::set<int> startBuilder();
 
     /**
      * Fill in the environment for the builder.

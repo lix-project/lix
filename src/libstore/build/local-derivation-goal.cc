@@ -230,7 +230,14 @@ Goal::WorkResult LocalDerivationGoal::tryLocalBuild(bool inBuildSlot)
     try {
 
         /* Okay, we have to build. */
-        startBuilder();
+        auto fds = startBuilder();
+
+        /* This state will be reached when we get EOF on the child's
+           log pipe. */
+        state = &DerivationGoal::buildDone;
+
+        started();
+        return WaitForWorld{std::move(fds), true};
 
     } catch (BuildError & e) {
         outputLocks.unlock();
@@ -239,12 +246,6 @@ Goal::WorkResult LocalDerivationGoal::tryLocalBuild(bool inBuildSlot)
         report.permanentFailure = true;
         return report;
     }
-
-    /* This state will be reached when we get EOF on the child's
-       log pipe. */
-    state = &DerivationGoal::buildDone;
-
-    return started();
 }
 
 
@@ -374,7 +375,7 @@ void LocalDerivationGoal::cleanupPostOutputsRegisteredModeNonCheck()
     cleanupPostOutputsRegisteredModeCheck();
 }
 
-void LocalDerivationGoal::startBuilder()
+std::set<int> LocalDerivationGoal::startBuilder()
 {
     if ((buildUser && buildUser->getUIDCount() != 1)
         #if __linux__
@@ -753,7 +754,7 @@ void LocalDerivationGoal::startBuilder()
         msgs.push_back(std::move(msg));
     }
 
-    worker.childStarted(shared_from_this(), {builderOutPTY.get()}, true);
+    return {builderOutPTY.get()};
 }
 
 

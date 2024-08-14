@@ -198,6 +198,7 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
                     dep->waiters.insert(goal);
                 }
             },
+            [&](Goal::WaitForWorld & w) { childStarted(goal, w.fds, w.inBuildSlot); },
             [&](Goal::Finished & f) { goalFinished(goal, f); },
         },
         how

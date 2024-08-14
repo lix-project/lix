@@ -646,7 +646,7 @@ Goal::WorkResult DerivationGoal::inputsRealised(bool inBuildSlot)
     return ContinueImmediately{};
 }
 
-Goal::WorkResult DerivationGoal::started()
+void DerivationGoal::started()
 {
     auto msg = fmt(
         buildMode == bmRepair ? "repairing outputs of '%s'" :
@@ -657,7 +657,6 @@ Goal::WorkResult DerivationGoal::started()
     act = std::make_unique<Activity>(*logger, lvlInfo, actBuild, msg,
         Logger::Fields{worker.store.printStorePath(drvPath), hook ? machineName : "", 1, 1});
     mcRunningBuilds = std::make_unique<MaintainCount<uint64_t>>(worker.runningBuilds);
-    return StillAlive{};
 }
 
 Goal::WorkResult DerivationGoal::tryToBuild(bool inBuildSlot)
@@ -735,13 +734,14 @@ Goal::WorkResult DerivationGoal::tryToBuild(bool inBuildSlot)
         auto hookReply = tryBuildHook(inBuildSlot);
         auto result = std::visit(
             overloaded{
-                [&](HookReply::Accept) -> std::optional<WorkResult> {
+                [&](HookReply::Accept & a) -> std::optional<WorkResult> {
                     /* Yes, it has started doing so.  Wait until we get
                        EOF from the hook. */
                     actLock.reset();
                     buildResult.startTime = time(0); // inexact
                     state = &DerivationGoal::buildDone;
-                    return started();
+                    started();
+                    return WaitForWorld{std::move(a.fds), false};
                 },
                 [&](HookReply::Postpone) -> std::optional<WorkResult> {
                     /* Not now; wait until at least one child finishes or
@@ -1222,9 +1222,8 @@ HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
     fds.insert(hook->fromHook.get());
     fds.insert(hook->builderOut.get());
     builderOutFD = &hook->builderOut;
-    worker.childStarted(shared_from_this(), fds, false);
 
-    return HookReply::Accept{};
+    return HookReply::Accept{std::move(fds)};
 }
 
 

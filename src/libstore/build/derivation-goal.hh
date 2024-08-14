@@ -15,7 +15,9 @@ using std::map;
 struct HookInstance;
 
 struct HookReplyBase {
-    struct [[nodiscard]] Accept {};
+    struct [[nodiscard]] Accept {
+        std::set<int> fds;
+    };
     struct [[nodiscard]] Decline {};
     struct [[nodiscard]] Postpone {};
 };
@@ -345,7 +347,7 @@ struct DerivationGoal : public Goal
 
     WorkResult repairClosure();
 
-    WorkResult started();
+    void started();
 
     Finished done(
         BuildResult::Status status,

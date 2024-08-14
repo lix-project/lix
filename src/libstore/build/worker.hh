@@ -157,6 +157,13 @@ private:
      */
     void removeGoal(GoalPtr goal);
 
+    /**
+     * Registers a running child process.  `inBuildSlot` means that
+     * the process counts towards the jobs limit.
+     */
+    void childStarted(GoalPtr goal, const std::set<int> & fds,
+        bool inBuildSlot);
+
 public:
 
     const Activity act;
@@ -227,13 +234,6 @@ public:
      * a `SubstitutionGoal` for a `DerivedPath::Opaque`.
      */
     GoalPtr makeGoal(const DerivedPath & req, BuildMode buildMode = bmNormal);
-
-    /**
-     * Registers a running child process.  `inBuildSlot` means that
-     * the process counts towards the jobs limit.
-     */
-    void childStarted(GoalPtr goal, const std::set<int> & fds,
-        bool inBuildSlot);
 
     /**
      * Unregisters a running child process.

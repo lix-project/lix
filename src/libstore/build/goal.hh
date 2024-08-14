@@ -112,6 +112,10 @@ public:
     struct [[nodiscard]] WaitForGoals {
         Goals goals;
     };
+    struct [[nodiscard]] WaitForWorld {
+        std::set<int> fds;
+        bool inBuildSlot;
+    };
     struct [[nodiscard]] Finished {
         ExitCode result;
         std::unique_ptr<Error> ex;
@@ -127,6 +131,7 @@ public:
                                           WaitForAWhile,
                                           ContinueImmediately,
                                           WaitForGoals,
+                                          WaitForWorld,
                                           Finished>
     {
         WorkResult() = delete;
