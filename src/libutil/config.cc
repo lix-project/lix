@@ -434,34 +434,12 @@ static Path parsePath(const AbstractSetting & s, const std::string & str)
         return canonPath(str);
 }
 
-PathSetting::PathSetting(Config * options,
-    const Path & def,
-    const std::string & name,
-    const std::string & description,
-    const std::set<std::string> & aliases)
-    : BaseSetting<Path>(def, true, name, description, aliases)
-{
-    options->addSetting(this);
-}
-
-Path PathSetting::parse(const std::string & str) const
+template<> Path PathsSetting<Path>::parse(const std::string & str) const
 {
     return parsePath(*this, str);
 }
 
-
-OptionalPathSetting::OptionalPathSetting(Config * options,
-    const std::optional<Path> & def,
-    const std::string & name,
-    const std::string & description,
-    const std::set<std::string> & aliases)
-    : BaseSetting<std::optional<Path>>(def, true, name, description, aliases)
-{
-    options->addSetting(this);
-}
-
-
-std::optional<Path> OptionalPathSetting::parse(const std::string & str) const
+template<> std::optional<Path> PathsSetting<std::optional<Path>>::parse(const std::string & str) const
 {
     if (str == "")
         return std::nullopt;
@@ -469,23 +447,7 @@ std::optional<Path> OptionalPathSetting::parse(const std::string & str) const
         return parsePath(*this, str);
 }
 
-void OptionalPathSetting::operator =(const std::optional<Path> & v)
-{
-    this->assign(v);
-}
-
-PathsSetting::PathsSetting(Config * options,
-    const Paths & def,
-    const std::string & name,
-    const std::string & description,
-    const std::set<std::string> & aliases)
-    : BaseSetting<Paths>(def, true, name, description, aliases)
-{
-    options->addSetting(this);
-}
-
-
-Paths PathsSetting::parse(const std::string & str) const
+template<> Paths PathsSetting<Paths>::parse(const std::string & str) const
 {
     auto strings = tokenizeString<Strings>(str);
     Paths parsed;
@@ -497,10 +459,10 @@ Paths PathsSetting::parse(const std::string & str) const
     return parsed;
 }
 
-PathsSetting::operator bool() const noexcept
-{
-    return !get().empty();
-}
+template class PathsSetting<Path>;
+template class PathsSetting<std::optional<Path>>;
+template class PathsSetting<Paths>;
+
 
 bool GlobalConfig::set(const std::string & name, const std::string & value)
 {

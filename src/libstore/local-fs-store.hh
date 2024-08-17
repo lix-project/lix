@@ -11,21 +11,21 @@ struct LocalFSStoreConfig : virtual StoreConfig
 {
     using StoreConfig::StoreConfig;
 
-    const OptionalPathSetting rootDir{this, std::nullopt,
+    const PathsSetting<std::optional<Path>>  rootDir{this, std::nullopt,
         "root",
         "Directory prefixed to all other paths."};
 
-    const PathSetting stateDir{this,
+    const PathsSetting<Path> stateDir{this,
         rootDir.get() ? *rootDir.get() + "/nix/var/nix" : settings.nixStateDir,
         "state",
         "Directory where Lix will store state."};
 
-    const PathSetting logDir{this,
+    const PathsSetting<Path> logDir{this,
         rootDir.get() ? *rootDir.get() + "/nix/var/log/nix" : settings.nixLogDir,
         "log",
         "directory where Lix will store log files."};
 
-    const PathSetting realStoreDir{this,
+    const PathsSetting<Path> realStoreDir{this,
         rootDir.get() ? *rootDir.get() + "/nix/store" : storeDir, "real",
         "Physical path of the Nix store."};
 };

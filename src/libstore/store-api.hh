@@ -144,7 +144,7 @@ struct StoreConfig : public Config
         return std::nullopt;
     }
 
-    const PathSetting storeDir_{this, settings.nixStore,
+    const PathsSetting<Path> storeDir_{this, settings.nixStore,
         "store",
         R"(
           Logical location of the Nix store, usually

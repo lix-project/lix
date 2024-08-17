@@ -151,7 +151,7 @@ struct EvalSettings : Config
           This is useful for debugging warnings in third-party Nix code.
         )"};
 
-    PathsSetting replOverlays{this, Paths(), "repl-overlays",
+    PathsSetting<Paths> replOverlays{this, Paths(), "repl-overlays",
         R"(
           A list of files containing Nix expressions that can be used to add
           default bindings to [`nix
