@@ -1,11 +1,10 @@
-let {
+let
   x =
     {gcc}:
     {
       inherit gcc;
     };
-
-  body = ({
-    inherit gcc;
-  }).gcc;
-}
+in
+({
+  inherit gcc;
+}).gcc

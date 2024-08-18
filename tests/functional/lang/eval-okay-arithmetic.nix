@@ -1,6 +1,6 @@
 with import ./lib.nix;
 
-let {
+let
 
   /* Supposedly tail recursive version:
 
@@ -15,7 +15,8 @@ let {
 
   err = abort "urgh";
 
-  body = sum
+in
+  sum
     [ (sum (range 1 50))
       (123 + 456)
       (0 + -10 + -(-11) + -x)
@@ -54,6 +55,5 @@ let {
       (if "aa" < "ab" then 1 else err)
       (if "aa" < "aa" then err else 1)
       (if "foo" < "foobar" then 1 else err)
-    ];
+    ]
 
-}

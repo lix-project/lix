@@ -1,4 +1,4 @@
-let {
+rec {
 
   as = {
     x = 123;
@@ -9,5 +9,5 @@ let {
     x = 789;
     inherit (as) x;
   };
-  
+
 }

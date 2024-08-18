@@ -1,4 +1,4 @@
-let {
+let
 
   a = "xyzzy";
 
@@ -15,5 +15,5 @@ let {
 
   y = with as; with bs; a + b;
 
-  body = x + y;
-}
+in
+x + y
