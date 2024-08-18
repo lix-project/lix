@@ -293,12 +293,12 @@ nlohmann::json documentExperimentalFeatures()
     return (nlohmann::json) res;
 }
 
-std::set<ExperimentalFeature> parseFeatures(const std::set<std::string> & rawFeatures)
+ExperimentalFeatures parseFeatures(const std::set<std::string> & rawFeatures)
 {
-    std::set<ExperimentalFeature> res;
+    ExperimentalFeatures res {};
     for (auto & rawFeature : rawFeatures)
         if (auto feature = parseExperimentalFeature(rawFeature))
-            res.insert(*feature);
+            res = res | *feature;
     return res;
 }
 

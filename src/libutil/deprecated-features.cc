@@ -77,12 +77,12 @@ nlohmann::json documentDeprecatedFeatures()
     return (nlohmann::json) res;
 }
 
-std::set<DeprecatedFeature> parseDeprecatedFeatures(const std::set<std::string> & rawFeatures)
+DeprecatedFeatures parseDeprecatedFeatures(const std::set<std::string> & rawFeatures)
 {
-    std::set<DeprecatedFeature> res;
+    DeprecatedFeatures res{};
     for (auto & rawFeature : rawFeatures)
         if (auto feature = parseDeprecatedFeature(rawFeature))
-            res.insert(*feature);
+            res = res | *feature;
     return res;
 }
 

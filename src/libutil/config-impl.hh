@@ -30,11 +30,11 @@ template<> struct BaseSetting<StringMap>::trait
 {
     static constexpr bool appendable = true;
 };
-template<> struct BaseSetting<std::set<ExperimentalFeature>>::trait
+template<> struct BaseSetting<ExperimentalFeatures>::trait
 {
     static constexpr bool appendable = true;
 };
-template<> struct BaseSetting<std::set<DeprecatedFeature>>::trait
+template<> struct BaseSetting<DeprecatedFeatures>::trait
 {
     static constexpr bool appendable = true;
 };
@@ -54,8 +54,8 @@ bool BaseSetting<T>::isAppendable()
 template<> void BaseSetting<Strings>::appendOrSet(Strings newValue, bool append);
 template<> void BaseSetting<StringSet>::appendOrSet(StringSet newValue, bool append);
 template<> void BaseSetting<StringMap>::appendOrSet(StringMap newValue, bool append);
-template<> void BaseSetting<std::set<ExperimentalFeature>>::appendOrSet(std::set<ExperimentalFeature> newValue, bool append);
-template<> void BaseSetting<std::set<DeprecatedFeature>>::appendOrSet(std::set<DeprecatedFeature> newValue, bool append);
+template<> void BaseSetting<ExperimentalFeatures>::appendOrSet(ExperimentalFeatures newValue, bool append);
+template<> void BaseSetting<DeprecatedFeatures>::appendOrSet(DeprecatedFeatures newValue, bool append);
 
 template<typename T>
 void BaseSetting<T>::appendOrSet(T newValue, bool append)
@@ -120,8 +120,8 @@ DECLARE_CONFIG_SERIALISER(bool)
 DECLARE_CONFIG_SERIALISER(Strings)
 DECLARE_CONFIG_SERIALISER(StringSet)
 DECLARE_CONFIG_SERIALISER(StringMap)
-DECLARE_CONFIG_SERIALISER(std::set<ExperimentalFeature>)
-DECLARE_CONFIG_SERIALISER(std::set<DeprecatedFeature>)
+DECLARE_CONFIG_SERIALISER(ExperimentalFeatures)
+DECLARE_CONFIG_SERIALISER(DeprecatedFeatures)
 
 template<typename T>
 T BaseSetting<T>::parse(const std::string & str) const

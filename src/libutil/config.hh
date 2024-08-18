@@ -444,7 +444,7 @@ extern GlobalConfig globalConfig;
 
 struct FeatureSettings : Config {
 
-    Setting<std::set<ExperimentalFeature>> experimentalFeatures{
+    Setting<ExperimentalFeatures> experimentalFeatures{
         this, {}, "experimental-features",
         R"(
           Experimental features that are enabled.
@@ -484,8 +484,7 @@ struct FeatureSettings : Config {
      * disabled, and so the function does nothing in that case.
      */
     void require(const std::optional<ExperimentalFeature> &) const;
-
-    Setting<std::set<DeprecatedFeature>> deprecatedFeatures{
+    Setting<DeprecatedFeatures> deprecatedFeatures{
         this, {}, "deprecated-features",
         R"(
           Deprecated features that are allowed.

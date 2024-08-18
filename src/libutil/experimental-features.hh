@@ -33,6 +33,20 @@ enum struct ExperimentalFeature
     ReplAutomation,
 };
 
+enum struct ExperimentalFeatures {};
+
+inline ExperimentalFeatures operator| (ExperimentalFeatures a, ExperimentalFeatures b) {
+    return static_cast<ExperimentalFeatures>(static_cast<size_t>(a) | static_cast<size_t>(b));
+}
+
+inline ExperimentalFeatures operator| (ExperimentalFeatures a, ExperimentalFeature b) {
+    return a | static_cast<ExperimentalFeatures>(1 << static_cast<size_t>(b));
+}
+
+inline ExperimentalFeatures operator& (ExperimentalFeatures a, ExperimentalFeature b) {
+    return static_cast<ExperimentalFeatures>(static_cast<size_t>(a) & (1 << static_cast<size_t>(b)));
+}
+
 /**
  * Just because writing `ExperimentalFeature::CaDerivations` is way too long
  */
@@ -62,7 +76,7 @@ std::ostream & operator<<(
  * Parse a set of strings to the corresponding set of experimental
  * features, ignoring (but warning for) any unknown feature.
  */
-std::set<ExperimentalFeature> parseFeatures(const std::set<std::string> &);
+ExperimentalFeatures parseFeatures(const std::set<std::string> &);
 
 /**
  * An experimental feature was required for some (experimental)

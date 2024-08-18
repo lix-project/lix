@@ -18,8 +18,22 @@ namespace nix {
  */
 enum struct DeprecatedFeature
 {
-    UrlLiterals
+    UrlLiterals,
 };
+
+enum struct DeprecatedFeatures {};
+
+inline DeprecatedFeatures operator| (DeprecatedFeatures a, DeprecatedFeatures b) {
+    return static_cast<DeprecatedFeatures>(static_cast<size_t>(a) | static_cast<size_t>(b));
+}
+
+inline DeprecatedFeatures operator| (DeprecatedFeatures a, DeprecatedFeature b) {
+    return a | static_cast<DeprecatedFeatures>(1 << static_cast<size_t>(b));
+}
+
+inline DeprecatedFeatures operator& (DeprecatedFeatures a, DeprecatedFeature b) {
+    return static_cast<DeprecatedFeatures>(static_cast<size_t>(a) & (1 << static_cast<size_t>(b)));
+}
 
 /**
  * Just because writing `DeprecatedFeature::UrlLiterals` is way too long
@@ -50,7 +64,7 @@ std::ostream & operator<<(
  * Parse a set of strings to the corresponding set of deprecated
  * features, ignoring (but warning for) any unknown feature.
  */
-std::set<DeprecatedFeature> parseDeprecatedFeatures(const std::set<std::string> &);
+DeprecatedFeatures parseDeprecatedFeatures(const std::set<std::string> &);
 
 /**
  * A deprecated feature used for some

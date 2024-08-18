@@ -330,55 +330,61 @@ template<> std::string BaseSetting<StringSet>::to_string() const
     return concatStringsSep(" ", value);
 }
 
-template<> std::set<ExperimentalFeature> BaseSetting<std::set<ExperimentalFeature>>::parse(const std::string & str) const
+template<> ExperimentalFeatures BaseSetting<ExperimentalFeatures>::parse(const std::string & str) const
 {
-    std::set<ExperimentalFeature> res;
+    ExperimentalFeatures res{};
     for (auto & s : tokenizeString<StringSet>(str)) {
         if (auto thisXpFeature = parseExperimentalFeature(s); thisXpFeature)
-            res.insert(thisXpFeature.value());
+            res = res | thisXpFeature.value();
         else
             warn("unknown experimental feature '%s'", s);
     }
     return res;
 }
 
-template<> void BaseSetting<std::set<ExperimentalFeature>>::appendOrSet(std::set<ExperimentalFeature> newValue, bool append)
+template<> void BaseSetting<ExperimentalFeatures>::appendOrSet(ExperimentalFeatures newValue, bool append)
 {
-    if (!append) value.clear();
-    value.insert(std::make_move_iterator(newValue.begin()), std::make_move_iterator(newValue.end()));
+    if (append)
+        value = value | newValue;
+    else
+        value = newValue;
 }
 
-template<> std::string BaseSetting<std::set<ExperimentalFeature>>::to_string() const
+template<> std::string BaseSetting<ExperimentalFeatures>::to_string() const
 {
     StringSet stringifiedXpFeatures;
-    for (const auto & feature : value)
-        stringifiedXpFeatures.insert(std::string(showExperimentalFeature(feature)));
+    for (size_t tag = 0; tag < sizeof(ExperimentalFeatures) * CHAR_BIT; tag++)
+        if ((value & ExperimentalFeature(tag)) != ExperimentalFeatures{})
+            stringifiedXpFeatures.insert(std::string(showExperimentalFeature(ExperimentalFeature(tag))));
     return concatStringsSep(" ", stringifiedXpFeatures);
 }
 
-template<> std::set<DeprecatedFeature> BaseSetting<std::set<DeprecatedFeature>>::parse(const std::string & str) const
+template<> DeprecatedFeatures BaseSetting<DeprecatedFeatures>::parse(const std::string & str) const
 {
-    std::set<DeprecatedFeature> res;
+    DeprecatedFeatures res{};
     for (auto & s : tokenizeString<StringSet>(str)) {
         if (auto thisDpFeature = parseDeprecatedFeature(s); thisDpFeature)
-            res.insert(thisDpFeature.value());
+            res = res | thisDpFeature.value();
         else
             warn("unknown deprecated feature '%s'", s);
     }
     return res;
 }
 
-template<> void BaseSetting<std::set<DeprecatedFeature>>::appendOrSet(std::set<DeprecatedFeature> newValue, bool append)
+template<> void BaseSetting<DeprecatedFeatures>::appendOrSet(DeprecatedFeatures newValue, bool append)
 {
-    if (!append) value.clear();
-    value.insert(std::make_move_iterator(newValue.begin()), std::make_move_iterator(newValue.end()));
+    if (append)
+        value = value | newValue;
+    else
+        value = newValue;
 }
 
-template<> std::string BaseSetting<std::set<DeprecatedFeature>>::to_string() const
+template<> std::string BaseSetting<DeprecatedFeatures>::to_string() const
 {
     StringSet stringifiedDpFeatures;
-    for (const auto & feature : value)
-        stringifiedDpFeatures.insert(std::string(showDeprecatedFeature(feature)));
+    for (size_t tag = 0; tag < sizeof(DeprecatedFeatures) * CHAR_BIT; tag++)
+        if ((value & DeprecatedFeature(tag)) != DeprecatedFeatures{})
+            stringifiedDpFeatures.insert(std::string(showDeprecatedFeature(DeprecatedFeature(tag))));
     return concatStringsSep(" ", stringifiedDpFeatures);
 }
 
@@ -417,8 +423,8 @@ template class BaseSetting<std::string>;
 template class BaseSetting<Strings>;
 template class BaseSetting<StringSet>;
 template class BaseSetting<StringMap>;
-template class BaseSetting<std::set<ExperimentalFeature>>;
-template class BaseSetting<std::set<DeprecatedFeature>>;
+template class BaseSetting<ExperimentalFeatures>;
+template class BaseSetting<DeprecatedFeatures>;
 
 static Path parsePath(const AbstractSetting & s, const std::string & str)
 {
@@ -562,7 +568,7 @@ static GlobalConfig::Register rSettings(&experimentalFeatureSettings);
 bool FeatureSettings::isEnabled(const ExperimentalFeature & feature) const
 {
     auto & f = experimentalFeatures.get();
-    return std::find(f.begin(), f.end(), feature) != f.end();
+    return (f & feature) != ExperimentalFeatures{};
 }
 
 void FeatureSettings::require(const ExperimentalFeature & feature) const
@@ -584,7 +590,7 @@ void FeatureSettings::require(const std::optional<ExperimentalFeature> & feature
 bool FeatureSettings::isEnabled(const DeprecatedFeature & feature) const
 {
     auto & f = deprecatedFeatures.get();
-    return std::find(f.begin(), f.end(), feature) != f.end();
+    return (f & feature) != DeprecatedFeatures{};
 }
 
 void FeatureSettings::require(const DeprecatedFeature & feature) const
