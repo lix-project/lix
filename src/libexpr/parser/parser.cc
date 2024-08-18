@@ -19,7 +19,7 @@
 #include <tao/pegtl/contrib/analyze.hpp>
 #define ANALYZE_GRAMMAR \
     ([] { \
-        const std::size_t issues = tao::pegtl::analyze<grammar::root>(); \
+        const std::size_t issues = tao::pegtl::analyze<grammar::v1::root>(); \
         assert(issues == 0); \
     })()
 #else
@@ -46,20 +46,20 @@ error_message_for(p::one<']'>) = "expecting ']'";
 error_message_for(p::one<':'>) = "expecting ':'";
 error_message_for(p::string<'\'', '\''>) = "expecting \"''\"";
 error_message_for(p::any) = "expecting any character";
-error_message_for(grammar::eof) = "expecting end of file";
-error_message_for(grammar::seps) = "expecting separators";
-error_message_for(grammar::path::forbid_prefix_triple_slash) = "too many slashes in path";
-error_message_for(grammar::path::forbid_prefix_double_slash_no_interp) = "path has a trailing slash";
-error_message_for(grammar::expr) = "expecting expression";
-error_message_for(grammar::expr::unary) = "expecting expression";
-error_message_for(grammar::binding::equal) = "expecting '='";
-error_message_for(grammar::expr::lambda::arg) = "expecting identifier";
-error_message_for(grammar::formals) = "expecting formals";
-error_message_for(grammar::attrpath) = "expecting attribute path";
-error_message_for(grammar::expr::select) = "expecting selection expression";
-error_message_for(grammar::t::kw_then) = "expecting 'then'";
-error_message_for(grammar::t::kw_else) = "expecting 'else'";
-error_message_for(grammar::t::kw_in) = "expecting 'in'";
+error_message_for(grammar::v1::eof) = "expecting end of file";
+error_message_for(grammar::v1::seps) = "expecting separators";
+error_message_for(grammar::v1::path::forbid_prefix_triple_slash) = "too many slashes in path";
+error_message_for(grammar::v1::path::forbid_prefix_double_slash_no_interp) = "path has a trailing slash";
+error_message_for(grammar::v1::expr) = "expecting expression";
+error_message_for(grammar::v1::expr::unary) = "expecting expression";
+error_message_for(grammar::v1::binding::equal) = "expecting '='";
+error_message_for(grammar::v1::expr::lambda::arg) = "expecting identifier";
+error_message_for(grammar::v1::formals) = "expecting formals";
+error_message_for(grammar::v1::attrpath) = "expecting attribute path";
+error_message_for(grammar::v1::expr::select) = "expecting selection expression";
+error_message_for(grammar::v1::t::kw_then) = "expecting 'then'";
+error_message_for(grammar::v1::t::kw_else) = "expecting 'else'";
+error_message_for(grammar::v1::t::kw_in) = "expecting 'in'";
 
 struct SyntaxErrors
 {
@@ -87,7 +87,7 @@ struct Control : p::must_if<SyntaxErrors>::control<Rule>
 };
 
 struct ExprState
-    : grammar::
+    : grammar::v1::
           operator_semantics<ExprState, PosIdx, AttrPath, std::pair<PosIdx, std::unique_ptr<Expr>>>
 {
     std::unique_ptr<Expr> popExprOnly() {
@@ -158,7 +158,7 @@ struct ExprState
     }
 
     std::pair<PosIdx, std::unique_ptr<Expr>> applyOp(PosIdx pos, auto & op, State & state) {
-        using Op = grammar::op;
+        using Op = grammar::v1::op;
 
         auto not_ = [] (auto e) {
             return std::make_unique<ExprOpNot>(std::move(e));
@@ -224,7 +224,7 @@ public:
 
 
 template<typename Rule>
-struct BuildAST : grammar::nothing<Rule> {};
+struct BuildAST : grammar::v1::nothing<Rule> {};
 
 struct LambdaState : SubexprState {
     using SubexprState::SubexprState;
@@ -240,7 +240,7 @@ struct FormalsState : SubexprState {
     Formal formal{};
 };
 
-template<> struct BuildAST<grammar::formal::name> {
+template<> struct BuildAST<grammar::v1::formal::name> {
     static void apply(const auto & in, FormalsState & s, State & ps) {
         s.formal = {
             .pos = ps.at(in),
@@ -249,25 +249,25 @@ template<> struct BuildAST<grammar::formal::name> {
     }
 };
 
-template<> struct BuildAST<grammar::formal> {
+template<> struct BuildAST<grammar::v1::formal> {
     static void apply0(FormalsState & s, State &) {
         s.formals.formals.emplace_back(std::move(s.formal));
     }
 };
 
-template<> struct BuildAST<grammar::formal::default_value> {
+template<> struct BuildAST<grammar::v1::formal::default_value> {
     static void apply0(FormalsState & s, State & ps) {
         s.formal.def = s->popExprOnly();
     }
 };
 
-template<> struct BuildAST<grammar::formals::ellipsis> {
+template<> struct BuildAST<grammar::v1::formals::ellipsis> {
     static void apply0(FormalsState & s, State &) {
         s.formals.ellipsis = true;
     }
 };
 
-template<> struct BuildAST<grammar::formals> : change_head<FormalsState> {
+template<> struct BuildAST<grammar::v1::formals> : change_head<FormalsState> {
     static void success0(FormalsState & f, LambdaState & s, State &) {
         s.formals = std::make_unique<Formals>(std::move(f.formals));
     }
@@ -282,13 +282,13 @@ struct AttrState : SubexprState {
     void pushAttr(T && attr, PosIdx) { attrs.emplace_back(std::forward<T>(attr)); }
 };
 
-template<> struct BuildAST<grammar::attr::simple> {
+template<> struct BuildAST<grammar::v1::attr::simple> {
     static void apply(const auto & in, auto & s, State & ps) {
         s.pushAttr(ps.symbols.create(in.string_view()), ps.at(in));
     }
 };
 
-template<> struct BuildAST<grammar::attr::string> {
+template<> struct BuildAST<grammar::v1::attr::string> {
     static void apply(const auto & in, auto & s, State & ps) {
         auto e = s->popExprOnly();
         if (auto str = dynamic_cast<ExprString *>(e.get()))
@@ -298,7 +298,7 @@ template<> struct BuildAST<grammar::attr::string> {
     }
 };
 
-template<> struct BuildAST<grammar::attr::expr> : BuildAST<grammar::attr::string> {};
+template<> struct BuildAST<grammar::v1::attr::expr> : BuildAST<grammar::v1::attr::string> {};
 
 struct BindingsState : SubexprState {
     using SubexprState::SubexprState;
@@ -319,14 +319,14 @@ struct InheritState : SubexprState {
     void pushAttr(T && attr, PosIdx pos) { attrs.emplace_back(std::forward<T>(attr), pos); }
 };
 
-template<> struct BuildAST<grammar::inherit::from> {
+template<> struct BuildAST<grammar::v1::inherit::from> {
     static void apply(const auto & in, InheritState & s, State & ps) {
         s.from = s->popExprOnly();
         s.fromPos = ps.at(in);
     }
 };
 
-template<> struct BuildAST<grammar::inherit> : change_head<InheritState> {
+template<> struct BuildAST<grammar::v1::inherit> : change_head<InheritState> {
     static void success0(InheritState & s, BindingsState & b, State & ps) {
         auto & attrs = b.attrs.attrs;
         // TODO this should not reuse generic attrpath rules.
@@ -377,25 +377,25 @@ template<> struct BuildAST<grammar::inherit> : change_head<InheritState> {
     }
 };
 
-template<> struct BuildAST<grammar::binding::path> : change_head<AttrState> {
+template<> struct BuildAST<grammar::v1::binding::path> : change_head<AttrState> {
     static void success0(AttrState & a, BindingsState & s, State & ps) {
         s.path = std::move(a.attrs);
     }
 };
 
-template<> struct BuildAST<grammar::binding::value> {
+template<> struct BuildAST<grammar::v1::binding::value> {
     static void apply0(BindingsState & s, State & ps) {
         s.value = s->popExprOnly();
     }
 };
 
-template<> struct BuildAST<grammar::binding> {
+template<> struct BuildAST<grammar::v1::binding> {
     static void apply(const auto & in, BindingsState & s, State & ps) {
         ps.addAttr(&s.attrs, std::move(s.path), std::move(s.value), ps.at(in));
     }
 };
 
-template<> struct BuildAST<grammar::expr::id> {
+template<> struct BuildAST<grammar::v1::expr::id> {
     static void apply(const auto & in, ExprState & s, State & ps) {
         if (in.string_view() == "__curPos")
             s.pushExpr<ExprPos>(ps.at(in), ps.at(in));
@@ -404,7 +404,7 @@ template<> struct BuildAST<grammar::expr::id> {
     }
 };
 
-template<> struct BuildAST<grammar::expr::int_> {
+template<> struct BuildAST<grammar::v1::expr::int_> {
     static void apply(const auto & in, ExprState & s, State & ps) {
         int64_t v;
         if (std::from_chars(in.begin(), in.end(), v).ec != std::errc{}) {
@@ -417,7 +417,7 @@ template<> struct BuildAST<grammar::expr::int_> {
     }
 };
 
-template<> struct BuildAST<grammar::expr::float_> {
+template<> struct BuildAST<grammar::v1::expr::float_> {
     static void apply(const auto & in, ExprState & s, State & ps) {
         // copy the input into a temporary string so we can call stod.
         // can't use from_chars because libc++ (thus darwin) does not have it,
@@ -514,33 +514,33 @@ struct StringState : SubexprState {
     }
 };
 
-template<typename... Content> struct BuildAST<grammar::string::literal<Content...>> {
+template<typename... Content> struct BuildAST<grammar::v1::string::literal<Content...>> {
     static void apply(const auto & in, StringState & s, State & ps) {
         s.append(ps.at(in), in.string_view());
     }
 };
 
-template<> struct BuildAST<grammar::string::cr_lf> {
+template<> struct BuildAST<grammar::v1::string::cr_lf> {
     static void apply(const auto & in, StringState & s, State & ps) {
         s.append(ps.at(in), in.string_view()); // FIXME compat with old parser
     }
 };
 
-template<> struct BuildAST<grammar::string::interpolation> {
+template<> struct BuildAST<grammar::v1::string::interpolation> {
     static void apply(const auto & in, StringState & s, State & ps) {
         s.endLiteral();
         s.parts.emplace_back(ps.at(in), s->popExprOnly());
     }
 };
 
-template<> struct BuildAST<grammar::string::escape> {
+template<> struct BuildAST<grammar::v1::string::escape> {
     static void apply(const auto & in, StringState & s, State & ps) {
         s.append(ps.at(in), "\\"); // FIXME compat with old parser
         s.append(ps.at(in), in.string_view());
     }
 };
 
-template<> struct BuildAST<grammar::string> : change_head<StringState> {
+template<> struct BuildAST<grammar::v1::string> : change_head<StringState> {
     static void success0(StringState & s, ExprState & e, State &) {
         e.exprs.emplace_back(noPos, s.finish());
     }
@@ -553,19 +553,19 @@ struct IndStringState : SubexprState {
 };
 
 template<bool Indented, typename... Content>
-struct BuildAST<grammar::ind_string::literal<Indented, Content...>> {
+struct BuildAST<grammar::v1::ind_string::literal<Indented, Content...>> {
     static void apply(const auto & in, IndStringState & s, State & ps) {
         s.parts.emplace_back(ps.at(in), StringToken{in.string_view(), Indented});
     }
 };
 
-template<> struct BuildAST<grammar::ind_string::interpolation> {
+template<> struct BuildAST<grammar::v1::ind_string::interpolation> {
     static void apply(const auto & in, IndStringState & s, State & ps) {
         s.parts.emplace_back(ps.at(in), s->popExprOnly());
     }
 };
 
-template<> struct BuildAST<grammar::ind_string::escape> {
+template<> struct BuildAST<grammar::v1::ind_string::escape> {
     static void apply(const auto & in, IndStringState & s, State & ps) {
         switch (*in.begin()) {
         case 'n': s.parts.emplace_back(ps.at(in), StringToken{"\n"}); break;
@@ -576,22 +576,22 @@ template<> struct BuildAST<grammar::ind_string::escape> {
     }
 };
 
-template<> struct BuildAST<grammar::ind_string> : change_head<IndStringState> {
+template<> struct BuildAST<grammar::v1::ind_string> : change_head<IndStringState> {
     static void success(const auto & in, IndStringState & s, ExprState & e, State & ps) {
         e.exprs.emplace_back(noPos, ps.stripIndentation(ps.at(in), std::move(s.parts)));
     }
 };
 
-template<typename... Content> struct BuildAST<grammar::path::literal<Content...>> {
+template<typename... Content> struct BuildAST<grammar::v1::path::literal<Content...>> {
     static void apply(const auto & in, StringState & s, State & ps) {
         s.append(ps.at(in), in.string_view());
         s.endLiteral();
     }
 };
 
-template<> struct BuildAST<grammar::path::interpolation> : BuildAST<grammar::string::interpolation> {};
+template<> struct BuildAST<grammar::v1::path::interpolation> : BuildAST<grammar::v1::string::interpolation> {};
 
-template<> struct BuildAST<grammar::path::anchor> {
+template<> struct BuildAST<grammar::v1::path::anchor> {
     static void apply(const auto & in, StringState & s, State & ps) {
         Path path(absPath(in.string(), ps.basePath.path.abs()));
         /* add back in the trailing '/' to the first segment */
@@ -601,7 +601,7 @@ template<> struct BuildAST<grammar::path::anchor> {
     }
 };
 
-template<> struct BuildAST<grammar::path::home_anchor> {
+template<> struct BuildAST<grammar::v1::path::home_anchor> {
     static void apply(const auto & in, StringState & s, State & ps) {
         if (evalSettings.pureEval)
             throw Error("the path '%s' can not be resolved in pure mode", in.string_view());
@@ -610,7 +610,7 @@ template<> struct BuildAST<grammar::path::home_anchor> {
     }
 };
 
-template<> struct BuildAST<grammar::path::searched_path> {
+template<> struct BuildAST<grammar::v1::path::searched_path> {
     static void apply(const auto & in, StringState & s, State & ps) {
         std::vector<std::unique_ptr<Expr>> args{2};
         args[0] = std::make_unique<ExprVar>(ps.s.nixPath);
@@ -624,7 +624,7 @@ template<> struct BuildAST<grammar::path::searched_path> {
     }
 };
 
-template<> struct BuildAST<grammar::path> : change_head<StringState> {
+template<> struct BuildAST<grammar::v1::path> : change_head<StringState> {
     template<typename E>
     static void check_slash(PosIdx end, StringState & s, State & ps) {
         auto e = dynamic_cast<E *>(s.parts.back().second.get());
@@ -650,11 +650,11 @@ template<> struct BuildAST<grammar::path> : change_head<StringState> {
 };
 
 // strings and paths sare handled fully by the grammar-level rule for now
-template<> struct BuildAST<grammar::expr::string> : p::maybe_nothing {};
-template<> struct BuildAST<grammar::expr::ind_string> : p::maybe_nothing {};
-template<> struct BuildAST<grammar::expr::path> : p::maybe_nothing {};
+template<> struct BuildAST<grammar::v1::expr::string> : p::maybe_nothing {};
+template<> struct BuildAST<grammar::v1::expr::ind_string> : p::maybe_nothing {};
+template<> struct BuildAST<grammar::v1::expr::path> : p::maybe_nothing {};
 
-template<> struct BuildAST<grammar::expr::uri> {
+template<> struct BuildAST<grammar::v1::expr::uri> {
     static void apply(const auto & in, ExprState & s, State & ps) {
        bool URLLiterals = ps.featureSettings.isEnabled(Dep::UrlLiterals);
        if (!URLLiterals)
@@ -666,7 +666,7 @@ template<> struct BuildAST<grammar::expr::uri> {
     }
 };
 
-template<> struct BuildAST<grammar::expr::ancient_let> : change_head<BindingsState> {
+template<> struct BuildAST<grammar::v1::expr::ancient_let> : change_head<BindingsState> {
     static void success(const auto & in, BindingsState & b, ExprState & s, State & ps) {
         // Added 2024-09-18. Turn into an error at some point in the future.
         // See the documentation on deprecated features for more details.
@@ -684,7 +684,7 @@ template<> struct BuildAST<grammar::expr::ancient_let> : change_head<BindingsSta
     }
 };
 
-template<> struct BuildAST<grammar::expr::rec_set> : change_head<BindingsState> {
+template<> struct BuildAST<grammar::v1::expr::rec_set> : change_head<BindingsState> {
     static void success(const auto & in, BindingsState & b, ExprState & s, State & ps) {
         // Before inserting new attrs, check for __override and throw an error
         // (the error will initially be a warning to ease migration)
@@ -698,7 +698,7 @@ template<> struct BuildAST<grammar::expr::rec_set> : change_head<BindingsState> 
     }
 };
 
-template<> struct BuildAST<grammar::expr::set> : change_head<BindingsState> {
+template<> struct BuildAST<grammar::v1::expr::set> : change_head<BindingsState> {
     static void success(const auto & in, BindingsState & b, ExprState & s, State & ps) {
         b.attrs.pos = ps.at(in);
         s.pushExpr<ExprAttrs>(b.attrs.pos, std::move(b.attrs));
@@ -707,7 +707,7 @@ template<> struct BuildAST<grammar::expr::set> : change_head<BindingsState> {
 
 using ListState = std::vector<std::unique_ptr<Expr>>;
 
-template<> struct BuildAST<grammar::expr::list> : change_head<ListState> {
+template<> struct BuildAST<grammar::v1::expr::list> : change_head<ListState> {
     static void success(const auto & in, ListState & ls, ExprState & s, State & ps) {
         auto e = std::make_unique<ExprList>();
         e->elems = std::move(ls);
@@ -715,7 +715,7 @@ template<> struct BuildAST<grammar::expr::list> : change_head<ListState> {
     }
 };
 
-template<> struct BuildAST<grammar::expr::list::entry> : change_head<ExprState> {
+template<> struct BuildAST<grammar::v1::expr::list::entry> : change_head<ExprState> {
     static void success0(ExprState & e, ListState & s, State & ps) {
         s.emplace_back(e.finish(ps).second);
     }
@@ -728,25 +728,25 @@ struct SelectState : SubexprState {
     ExprSelect * e = nullptr;
 };
 
-template<> struct BuildAST<grammar::expr::select::head> {
+template<> struct BuildAST<grammar::v1::expr::select::head> {
     static void apply(const auto & in, SelectState & s, State & ps) {
         s.pos = ps.at(in);
     }
 };
 
-template<> struct BuildAST<grammar::expr::select::attr> : change_head<AttrState> {
+template<> struct BuildAST<grammar::v1::expr::select::attr> : change_head<AttrState> {
     static void success0(AttrState & a, SelectState & s, State &) {
         s.e = &s->pushExpr<ExprSelect>(s.pos, s.pos, s->popExprOnly(), std::move(a.attrs), nullptr);
     }
 };
 
-template<> struct BuildAST<grammar::expr::select::attr_or> {
+template<> struct BuildAST<grammar::v1::expr::select::attr_or> {
     static void apply0(SelectState & s, State &) {
         s.e->def = s->popExprOnly();
     }
 };
 
-template<> struct BuildAST<grammar::expr::select::as_app_or> {
+template<> struct BuildAST<grammar::v1::expr::select::as_app_or> {
     static void apply(const auto & in, SelectState & s, State & ps) {
         std::vector<std::unique_ptr<Expr>> args(1);
         args[0] = std::make_unique<ExprVar>(ps.at(in), ps.s.or_);
@@ -754,7 +754,7 @@ template<> struct BuildAST<grammar::expr::select::as_app_or> {
     }
 };
 
-template<> struct BuildAST<grammar::expr::select> : change_head<SelectState> {
+template<> struct BuildAST<grammar::v1::expr::select> : change_head<SelectState> {
     static void success0(const auto &...) {}
 };
 
@@ -765,13 +765,13 @@ struct AppState : SubexprState {
     ExprCall * e = nullptr;
 };
 
-template<> struct BuildAST<grammar::expr::app::select_or_fn> {
+template<> struct BuildAST<grammar::v1::expr::app::select_or_fn> {
     static void apply(const auto & in, AppState & s, State & ps) {
         s.pos = ps.at(in);
     }
 };
 
-template<> struct BuildAST<grammar::expr::app::first_arg> {
+template<> struct BuildAST<grammar::v1::expr::app::first_arg> {
     static void apply(auto & in, AppState & s, State & ps) {
         auto arg = s->popExprOnly(), fn = s->popExprOnly();
         if ((s.e = dynamic_cast<ExprCall *>(fn.get()))) {
@@ -789,34 +789,34 @@ template<> struct BuildAST<grammar::expr::app::first_arg> {
     }
 };
 
-template<> struct BuildAST<grammar::expr::app::another_arg> {
+template<> struct BuildAST<grammar::v1::expr::app::another_arg> {
     static void apply0(AppState & s, State & ps) {
         s.e->args.push_back(s->popExprOnly());
     }
 };
 
-template<> struct BuildAST<grammar::expr::app> : change_head<AppState> {
+template<> struct BuildAST<grammar::v1::expr::app> : change_head<AppState> {
     static void success0(const auto &...) {}
 };
 
-template<typename Op> struct BuildAST<grammar::expr::operator_<Op>> {
+template<typename Op> struct BuildAST<grammar::v1::expr::operator_<Op>> {
     static void apply(const auto & in, ExprState & s, State & ps) {
         s.pushOp(ps.at(in), Op{}, ps);
     }
 };
-template<> struct BuildAST<grammar::expr::operator_<grammar::op::has_attr>> : change_head<AttrState> {
+template<> struct BuildAST<grammar::v1::expr::operator_<grammar::v1::op::has_attr>> : change_head<AttrState> {
     static void success(const auto & in, AttrState & a, ExprState & s, State & ps) {
         s.pushOp(ps.at(in), ExprState::has_attr{{}, std::move(a.attrs)}, ps);
     }
 };
 
-template<> struct BuildAST<grammar::expr::lambda::arg> {
+template<> struct BuildAST<grammar::v1::expr::lambda::arg> {
     static void apply(const auto & in, LambdaState & s, State & ps) {
         s.arg = ps.symbols.create(in.string_view());
     }
 };
 
-template<> struct BuildAST<grammar::expr::lambda> : change_head<LambdaState> {
+template<> struct BuildAST<grammar::v1::expr::lambda> : change_head<LambdaState> {
     static void success(const auto & in, LambdaState & l, ExprState & s, State & ps) {
         if (l.formals)
             l.formals = ps.validateFormals(std::move(l.formals), ps.at(in), l.arg);
@@ -824,21 +824,21 @@ template<> struct BuildAST<grammar::expr::lambda> : change_head<LambdaState> {
     }
 };
 
-template<> struct BuildAST<grammar::expr::assert_> {
+template<> struct BuildAST<grammar::v1::expr::assert_> {
     static void apply(const auto & in, ExprState & s, State & ps) {
         auto body = s.popExprOnly(), cond = s.popExprOnly();
         s.pushExpr<ExprAssert>(ps.at(in), ps.at(in), std::move(cond), std::move(body));
     }
 };
 
-template<> struct BuildAST<grammar::expr::with> {
+template<> struct BuildAST<grammar::v1::expr::with> {
     static void apply(const auto & in, ExprState & s, State & ps) {
         auto body = s.popExprOnly(), scope = s.popExprOnly();
         s.pushExpr<ExprWith>(ps.at(in), ps.at(in), std::move(scope), std::move(body));
     }
 };
 
-template<> struct BuildAST<grammar::expr::let> : change_head<BindingsState> {
+template<> struct BuildAST<grammar::v1::expr::let> : change_head<BindingsState> {
     static void success(const auto & in, BindingsState & b, ExprState & s, State & ps) {
         if (!b.attrs.dynamicAttrs.empty())
             throw ParseError({
@@ -850,14 +850,14 @@ template<> struct BuildAST<grammar::expr::let> : change_head<BindingsState> {
     }
 };
 
-template<> struct BuildAST<grammar::expr::if_> {
+template<> struct BuildAST<grammar::v1::expr::if_> {
     static void apply(const auto & in, ExprState & s, State & ps) {
         auto else_ = s.popExprOnly(), then = s.popExprOnly(), cond = s.popExprOnly();
         s.pushExpr<ExprIf>(ps.at(in), ps.at(in), std::move(cond), std::move(then), std::move(else_));
     }
 };
 
-template<> struct BuildAST<grammar::expr> : change_head<ExprState> {
+template<> struct BuildAST<grammar::v1::expr> : change_head<ExprState> {
     static void success0(ExprState & inner, ExprState & outer, State & ps) {
         outer.exprs.push_back(inner.finish(ps));
     }
@@ -893,7 +893,7 @@ Expr * EvalState::parse(
 
     p::string_input<p::tracking_mode::lazy> inp{std::string_view{text, length}, "input"};
     try {
-        p::parse<parser::grammar::root, parser::BuildAST, parser::Control>(inp, x, s);
+        p::parse<parser::grammar::v1::root, parser::BuildAST, parser::Control>(inp, x, s);
     } catch (p::parse_error & e) {
         auto pos = e.positions().back();
         throw ParseError({

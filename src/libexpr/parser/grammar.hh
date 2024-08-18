@@ -12,7 +12,7 @@
 // eolf rules in favor of reproducing the old flex lexer as faithfully as
 // possible, and deferring calculation of positions to downstream users.
 
-namespace nix::parser::grammar {
+namespace nix::parser::grammar::v1 {
 
 using namespace tao::pegtl;
 namespace p = tao::pegtl;
@@ -352,10 +352,10 @@ struct formals : semantic, _formals, seq<
 
 struct _attr {
     struct simple : semantic, sor<t::identifier, t::kw_or> {};
-    struct string : semantic, seq<grammar::string> {};
+    struct string : semantic, seq<grammar::v1::string> {};
     struct expr : semantic, seq<
         TAO_PEGTL_STRING("${"), seps,
-        must<grammar::expr>, seps,
+        must<grammar::v1::expr>, seps,
         must<one<'}'>>
     > {};
 };
@@ -452,9 +452,9 @@ struct _expr {
     struct id : semantic, t::identifier {};
     struct int_ : semantic, t::integer {};
     struct float_ : semantic, t::floating {};
-    struct string : semantic, seq<grammar::string> {};
-    struct ind_string : semantic, seq<grammar::ind_string> {};
-    struct path : semantic, seq<grammar::path> {};
+    struct string : semantic, seq<grammar::v1::string> {};
+    struct ind_string : semantic, seq<grammar::v1::ind_string> {};
+    struct path : semantic, seq<grammar::v1::path> {};
     struct uri : semantic, t::uri {};
     struct ancient_let : semantic, _attrset<must, t::kw_let, seps> {};
     struct rec_set : semantic, _attrset<must, t::kw_rec, seps> {};
@@ -628,34 +628,34 @@ struct nothing : p::nothing<Rule> {
 
 template<typename Self, typename OpCtx, typename AttrPathT, typename ExprT>
 struct operator_semantics {
-    struct has_attr : grammar::op::has_attr {
+    struct has_attr : grammar::v1::op::has_attr {
         AttrPathT path;
     };
 
     struct OpEntry {
         OpCtx ctx;
         uint8_t prec;
-        grammar::op::kind assoc;
+        grammar::v1::op::kind assoc;
         std::variant<
-            grammar::op::not_,
-            grammar::op::unary_minus,
-            grammar::op::implies,
-            grammar::op::or_,
-            grammar::op::and_,
-            grammar::op::equals,
-            grammar::op::not_equals,
-            grammar::op::less_eq,
-            grammar::op::greater_eq,
-            grammar::op::update,
-            grammar::op::concat,
-            grammar::op::less,
-            grammar::op::greater,
-            grammar::op::plus,
-            grammar::op::minus,
-            grammar::op::mul,
-            grammar::op::div,
-            grammar::op::pipe_right,
-            grammar::op::pipe_left,
+            grammar::v1::op::not_,
+            grammar::v1::op::unary_minus,
+            grammar::v1::op::implies,
+            grammar::v1::op::or_,
+            grammar::v1::op::and_,
+            grammar::v1::op::equals,
+            grammar::v1::op::not_equals,
+            grammar::v1::op::less_eq,
+            grammar::v1::op::greater_eq,
+            grammar::v1::op::update,
+            grammar::v1::op::concat,
+            grammar::v1::op::less,
+            grammar::v1::op::greater,
+            grammar::v1::op::plus,
+            grammar::v1::op::minus,
+            grammar::v1::op::mul,
+            grammar::v1::op::div,
+            grammar::v1::op::pipe_right,
+            grammar::v1::op::pipe_left,
             has_attr
         > op;
     };
@@ -676,7 +676,7 @@ struct operator_semantics {
             auto & [ctx, precedence, kind, op] = ops.back();
             // NOTE this relies on associativity not being mixed within a precedence level.
             if ((precedence > toPrecedence)
-                || (kind != grammar::op::kind::leftAssoc && precedence == toPrecedence))
+                || (kind != grammar::v1::op::kind::leftAssoc && precedence == toPrecedence))
                 break;
             std::visit([&, ctx=std::move(ctx)] (auto & op) {
                 exprs.push_back(static_cast<Self &>(*this).applyOp(ctx, op, args...));
@@ -694,9 +694,9 @@ struct operator_semantics {
 
     void pushOp(OpCtx ctx, auto o, auto &... args)
     {
-        if (o.kind != grammar::op::kind::unary)
+        if (o.kind != grammar::v1::op::kind::unary)
             reduce(o.precedence, args...);
-        if (!ops.empty() && o.kind == grammar::op::kind::nonAssoc) {
+        if (!ops.empty() && o.kind == grammar::v1::op::kind::nonAssoc) {
             auto & [_pos, _prec, _kind, _o] = ops.back();
             if (_kind == o.kind && _prec == o.precedence)
                 Self::badOperator(ctx, args...);
