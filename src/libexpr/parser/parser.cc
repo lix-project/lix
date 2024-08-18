@@ -668,6 +668,16 @@ template<> struct BuildAST<grammar::expr::uri> {
 
 template<> struct BuildAST<grammar::expr::ancient_let> : change_head<BindingsState> {
     static void success(const auto & in, BindingsState & b, ExprState & s, State & ps) {
+        // Added 2024-09-18. Turn into an error at some point in the future.
+        // See the documentation on deprecated features for more details.
+        if (!ps.featureSettings.isEnabled(Dep::AncientLet))
+            warn(
+                "%s found at %s. This feature is deprecated and will be removed in the future. Use %s to silence this warning.",
+                "let {",
+                ps.positions[ps.at(in)],
+                "--extra-deprecated-features ancient-let"
+            );
+
         b.attrs.pos = ps.at(in);
         b.attrs.recursive = true;
         s.pushExpr<ExprSelect>(b.attrs.pos, b.attrs.pos, std::make_unique<ExprAttrs>(std::move(b.attrs)), ps.s.body);

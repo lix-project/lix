@@ -37,6 +37,15 @@ constexpr std::array<DeprecatedFeatureDetails, numDepFeatures> depFeatureDetails
         )",
     },
     {
+        .tag = Dep::AncientLet,
+        .name = "ancient-let",
+        .description = R"(
+            Allow the ancient `let { body = …; … }` syntax.
+
+            Use the `let … in` syntax instead.
+        )",
+    },
+    {
         .tag = Dep::UrlLiterals,
         .name = "url-literals",
         .description = R"(
