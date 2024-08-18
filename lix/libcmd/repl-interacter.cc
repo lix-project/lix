@@ -18,6 +18,7 @@ extern "C" {
 }
 
 #include "lix/libutil/finally.hh"
+#include "lix/libutil/strings.hh"
 #include "lix/libcmd/repl-interacter.hh"
 
 namespace nix {
@@ -30,52 +31,14 @@ void sigintHandler(int signo)
 {
     g_signal_received = signo;
 }
-};
 
 static detail::ReplCompleterMixin * curRepl; // ugly
 
-static char * completionCallback(char * s, int * match)
+/**
+ *  @return a null-terminated list of completions as expected by `el_print_columns`
+ */
+char ** copyCompletions(const StringSet& possible)
 {
-    auto possible = curRepl->completePrefix(s);
-    if (possible.size() == 1) {
-        *match = 1;
-        auto * res = strdup(possible.begin()->c_str() + strlen(s));
-        if (!res)
-            throw Error("allocation failure");
-        return res;
-    } else if (possible.size() > 1) {
-        auto checkAllHaveSameAt = [&](size_t pos) {
-            auto & first = *possible.begin();
-            for (auto & p : possible) {
-                if (p.size() <= pos || p[pos] != first[pos])
-                    return false;
-            }
-            return true;
-        };
-        size_t start = strlen(s);
-        size_t len = 0;
-        while (checkAllHaveSameAt(start + len))
-            ++len;
-        if (len > 0) {
-            *match = 1;
-            auto * res = strdup(std::string(*possible.begin(), start, len).c_str());
-            if (!res)
-                throw Error("allocation failure");
-            return res;
-        }
-    }
-
-    *match = 0;
-    return nullptr;
-}
-
-static int listPossibleCallback(char * s, char *** avp)
-{
-    auto possible = curRepl->completePrefix(s);
-
-    if (possible.size() > (INT_MAX / sizeof(char *)))
-        throw Error("too many completions");
-
     int ac = 0;
     char ** vp = nullptr;
 
@@ -90,15 +53,95 @@ static int listPossibleCallback(char * s, char *** avp)
         }
         return p;
     };
-
     vp = check(static_cast<char **>(malloc(possible.size() * sizeof(char *))));
-
     for (auto & p : possible)
         vp[ac++] = check(strdup(p.c_str()));
 
-    *avp = vp;
+    return vp;
+}
 
-    return ac;
+// Instead of using the readline-provided prefix, do our own tokenization
+// to avoid the default behavior of treating dots/quotes as word boundaries.
+// See the definition of SEPS for what it treats as a boundary:
+// https://github.com/troglobit/editline/blob/caf4b3c0ce3b0785791198b11de6f3134e9f05d8/src/editline.c
+std::string getLastTokenBeforeCursor()
+{
+    std::string_view line{rl_line_buffer, static_cast<size_t>(rl_point)};
+
+    auto tokens = tokenizeString<std::vector<std::string>>(
+        line,
+        // Same as editline's SEPS, except for double and single quotes:
+        "#$&()*:;<=>?[\\]^`{|}~\n\t "
+    );
+
+    if (tokens.empty()) {
+        return "";
+    }
+
+    return tokens.back();
+}
+
+// Sometimes inserting text or listing possible completions has a side effect
+// of hiding the text after the cursor (even though it remains in the buffer).
+// This helper just refreshes the display while keeping the cursor in place.
+//
+// Inserting text also sometimes moves the whole buffer down one line, usually
+// if the cursor is inside a quoted attr name. I'm not sure why (vs unquoted)
+// but it still seems to work pretty well and is just a visual artifact.
+el_status_t redisplay()
+{
+    int cursorPos = rl_point;
+    rl_refresh_line(0, 0);
+    rl_point = cursorPos;
+    return (rl_point == rl_end) ? CSstay : CSmove;
+}
+
+};
+
+
+static el_status_t doCompletion() {
+    auto s = getLastTokenBeforeCursor();
+    auto possible = curRepl->completePrefix(s);
+
+    if (possible.empty()) {
+        return el_ring_bell();
+    }
+
+    if (possible.size() == 1) {
+        const auto completion = *possible.cbegin();
+        if (completion.size() > s.size()) {
+            rl_insert_text(completion.c_str() + s.size());
+            return redisplay();
+        }
+
+        return el_ring_bell();
+    }
+
+    auto checkAllHaveSameAt = [&](size_t pos) {
+        auto & first = *possible.begin();
+        for (auto & p : possible) {
+            if (p.size() <= pos || p[pos] != first[pos]) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    size_t start = s.size();
+    size_t len = 0;
+    while (checkAllHaveSameAt(start + len)) {
+        ++len;
+    }
+    if (len > 0) {
+        auto commonPrefix = possible.begin()->substr(start, len);
+        rl_insert_text(commonPrefix.c_str());
+        el_ring_bell();
+        return redisplay();
+    }
+
+    char** columns = copyCompletions(possible);
+    el_print_columns(possible.size(), columns);
+    return redisplay();
 }
 
 ReadlineLikeInteracter::Guard ReadlineLikeInteracter::init(detail::ReplCompleterMixin * repl)
@@ -115,8 +158,10 @@ ReadlineLikeInteracter::Guard ReadlineLikeInteracter::init(detail::ReplCompleter
     auto oldRepl = curRepl;
     curRepl = repl;
     Guard restoreRepl([oldRepl] { curRepl = oldRepl; });
-    rl_set_complete_func(completionCallback);
-    rl_set_list_possib_func(listPossibleCallback);
+    // editline does its own escaping of completions, so we rebind tab
+    // to our own completion function to skip that and do nix escaping
+    // instead of shell escaping.
+    el_bind_key(CTL('I'), doCompletion);
     return restoreRepl;
 }
 

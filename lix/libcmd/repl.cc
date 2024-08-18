@@ -12,6 +12,7 @@
 
 #include "lix/libutil/ansicolor.hh"
 #include "lix/libmain/shared.hh"
+#include "lix/libutil/escape-string.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/eval-cache.hh"
 #include "lix/libexpr/eval-inline.hh"
@@ -350,7 +351,7 @@ ReplExitStatus NixRepl::mainLoop()
     }
 }
 
-StringSet NixRepl::completePrefix(const std::string & prefix)
+StringSet NixRepl::completePrefix(const std::string &prefix)
 {
     StringSet completions;
 
@@ -415,6 +416,22 @@ StringSet NixRepl::completePrefix(const std::string & prefix)
             i++;
         }
     } else {
+        // To handle cases like `foo."bar.`, walk back the cursor
+        // to the previous dot if there are an odd number of quotes.
+        auto quoteCount =
+            std::count_if(cur.begin(), cur.begin() + dot, [](char c) { return c == '"'; });
+        if (quoteCount % 2 != 0) {
+            // Find the last quote before the dot
+            auto prevQuote = cur.rfind('"', dot - 1);
+            if (prevQuote != std::string::npos) {
+                // And the previous dot prior to that quote
+                auto prevDot = cur.rfind('.', prevQuote);
+                if (prevDot != std::string::npos) {
+                    dot = prevDot;
+                }
+            }
+        }
+
         /* Temporarily disable the debugger, to avoid re-entering readline. */
         auto debug = std::move(evaluator.debug);
         Finally restoreDebug([&]() { evaluator.debug = std::move(debug); });
@@ -431,7 +448,10 @@ StringSet NixRepl::completePrefix(const std::string & prefix)
             state.forceAttrs(v, noPos, "while evaluating an attrset for the purpose of completion (this error should not be displayed; file an issue?)");
 
             for (auto & i : *v.attrs) {
-                std::string_view name = evaluator.symbols[i.name];
+                std::ostringstream output;
+                printAttributeName(output, evaluator.symbols[i.name]);
+                std::string name = output.str();
+
                 if (name.substr(0, cur2.size()) != cur2) continue;
                 completions.insert(concatStrings(prev, expr, ".", name));
             }
