@@ -48,7 +48,7 @@ protected:
 
 public:
     struct AstSymbols {
-        Symbol sub, lessThan, mul, div, or_, findFile, nixPath, body;
+        Symbol sub, lessThan, mul, div, or_, findFile, nixPath, body, overrides;
     };
 
 

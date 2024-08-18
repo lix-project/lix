@@ -249,6 +249,7 @@ EvalState::EvalState(
         .findFile = symbols.create("__findFile"),
         .nixPath = symbols.create("__nixPath"),
         .body = symbols.create("body"),
+        .overrides = symbols.create("__overrides"),
     }
     , repair(NoRepair)
     , emptyBindings(0)

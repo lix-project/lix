@@ -28,6 +28,15 @@ constexpr size_t numDepFeatures = 1 + static_cast<size_t>(Dep::UrlLiterals);
 
 constexpr std::array<DeprecatedFeatureDetails, numDepFeatures> depFeatureDetails = {{
     {
+        .tag = Dep::RecSetOverrides,
+        .name = "rec-set-overrides",
+        .description = R"(
+            Allow `__overrides` in recursive attribute sets.
+
+            Use fix point functions (e.g. `lib.fix` in Nixpkgs) instead.
+        )",
+    },
+    {
         .tag = Dep::UrlLiterals,
         .name = "url-literals",
         .description = R"(

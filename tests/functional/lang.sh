@@ -53,10 +53,11 @@ done
 for i in lang/parse-okay-*.nix; do
     echo "parsing $i (should succeed)";
     i=$(basename "$i" .nix)
-    # Hard-code that these two files are allowed to use url literals (because they test them)
-    if [[ "$i" == "parse-okay-url" || "$i" == "parse-okay-regression-20041027" ]]
-    then
-        extraArgs="--extra-deprecated-features url-literals"
+
+    if [ -e "lang/$i.flags" ]; then
+        extraArgs="$(cat "lang/$i.flags")"
+    else
+        extraArgs=""
     fi
     if
         expect 0 nix-instantiate --parse ${extraArgs-} - < "lang/$i.nix" \
@@ -75,8 +76,14 @@ done
 for i in lang/eval-fail-*.nix; do
     echo "evaluating $i (should fail)";
     i=$(basename "$i" .nix)
+
+    if [ -e "lang/$i.flags" ]; then
+        extraArgs="$(cat "lang/$i.flags")"
+    else
+        extraArgs=""
+    fi
     if
-        expectStderr 1 nix-instantiate --eval --strict --show-trace "lang/$i.nix" \
+        expectStderr 1 nix-instantiate --eval --strict --show-trace ${extraArgs-} "lang/$i.nix" \
             | sed "s!$(pwd)!/pwd!g" > "lang/$i.err"
     then
         diffAndAccept "$i" err err.exp
@@ -90,8 +97,14 @@ for i in lang/eval-okay-*.nix; do
     echo "evaluating $i (should succeed)";
     i=$(basename "$i" .nix)
 
+    if [ -e "lang/$i.flags" ]; then
+        extraArgs="$(cat "lang/$i.flags")"
+    else
+        extraArgs=""
+    fi
+
     if test -e "lang/$i.exp.xml"; then
-        if expect 0 nix-instantiate --eval --xml --no-location --strict \
+        if expect 0 nix-instantiate --eval --xml --no-location --strict ${extraArgs-} \
                 "lang/$i.nix" > "lang/$i.out.xml"
         then
             diffAndAccept "$i" out.xml exp.xml

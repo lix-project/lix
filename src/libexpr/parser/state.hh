@@ -2,6 +2,7 @@
 ///@file
 
 #include "eval.hh"
+#include "logging.hh"
 
 namespace nix::parser {
 
@@ -23,6 +24,7 @@ struct State
 
     void dupAttr(const AttrPath & attrPath, const PosIdx pos, const PosIdx prevPos);
     void dupAttr(Symbol attr, const PosIdx pos, const PosIdx prevPos);
+    void overridesFound(const PosIdx pos);
     void addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos);
     std::unique_ptr<Formals> validateFormals(std::unique_ptr<Formals> formals, PosIdx pos = noPos, Symbol arg = {});
     std::unique_ptr<Expr> stripIndentation(const PosIdx pos,
@@ -56,6 +58,17 @@ inline void State::dupAttr(Symbol attr, const PosIdx pos, const PosIdx prevPos)
         .msg = HintFmt("attribute '%1%' already defined at %2%", symbols[attr], positions[prevPos]),
         .pos = positions[pos]
     });
+}
+
+inline void State::overridesFound(const PosIdx pos) {
+    // Added 2024-09-18. Turn into an error at some point in the future.
+    // See the documentation on deprecated features for more details.
+    warn(
+        "%s found at %s. This feature is deprecated and will be removed in the future. Use %s to silence this warning.",
+        "__overrides",
+        positions[pos],
+        "--extra-deprecated-features rec-set-overrides"
+    );
 }
 
 inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos)
@@ -123,6 +136,12 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
                 dupAttr(attrPath, pos, j->second.pos);
             }
         } else {
+            // Before inserting new attrs, check for __override and throw an error
+            // (the error will initially be a warning to ease migration)
+            if (attrs->recursive && !featureSettings.isEnabled(Dep::RecSetOverrides) && i->symbol == s.overrides) {
+                overridesFound(pos);
+            }
+
             // This attr path is not defined. Let's create it.
             e->setName(i->symbol);
             attrs->attrs.emplace(std::piecewise_construct,

@@ -676,6 +676,12 @@ template<> struct BuildAST<grammar::expr::ancient_let> : change_head<BindingsSta
 
 template<> struct BuildAST<grammar::expr::rec_set> : change_head<BindingsState> {
     static void success(const auto & in, BindingsState & b, ExprState & s, State & ps) {
+        // Before inserting new attrs, check for __override and throw an error
+        // (the error will initially be a warning to ease migration)
+        if (!featureSettings.isEnabled(Dep::RecSetOverrides) && b.attrs.attrs.contains(ps.s.overrides)) {
+            ps.overridesFound(ps.at(in));
+        }
+
         b.attrs.pos = ps.at(in);
         b.attrs.recursive = true;
         s.pushExpr<ExprAttrs>(b.attrs.pos, std::move(b.attrs));
