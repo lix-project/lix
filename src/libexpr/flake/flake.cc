@@ -342,8 +342,21 @@ static void updateOverrides(std::map<InputPath, FlakeInput> & overrideMap, const
     for (auto & [id, input] : overrides) {
         auto inputPath(inputPathPrefix);
         inputPath.push_back(id);
-        // Do not override existing assignment from outer flake
-        overrideMap.insert({inputPath, input});
+
+        /* Given
+         *
+         * { inputs.hydra.inputs.nix-eval-jobs.inputs.lix.follows = "lix"; }
+         *
+         * then `nix-eval-jobs` doesn't have an override.
+         * It's neither replaced using follows nor by a different
+         * URL. Thus no need to add it to overrides and thus re-fetch
+         * it.
+         */
+        if (input.ref || input.follows) {
+            // Do not override existing assignment from outer flake
+            overrideMap.insert({inputPath, input});
+        }
+
         updateOverrides(overrideMap, input.overrides, inputPath);
     }
 }

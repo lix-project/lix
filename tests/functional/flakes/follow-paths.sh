@@ -307,3 +307,58 @@ cat <<EOF > $flakeFollowsB/flake.nix
 EOF
 
 nix flake update --flake $flakeFollowsA 2>&1 | grepQuiet "warning: input 'B/C' has an override for a non-existent input 'E'"
+
+# Test for Nested follows cause flake interactions to update the nested input #460
+for letter in {A..E}; do
+    path="flakeFollows${letter}"
+    rm -f "${!path}"/flake.lock
+done
+
+cat <<EOF > $flakeFollowsA/flake.nix
+{
+  inputs = {
+    B.url = "path:$flakeFollowsB";
+    C = {
+      url = "path:$flakeFollowsC";
+      inputs.D.inputs.E.follows = "B";
+    };
+  };
+  outputs = _: {};
+}
+EOF
+
+cat <<EOF > $flakeFollowsB/flake.nix
+{
+  outputs = _: {};
+}
+EOF
+
+cat <<EOF > $flakeFollowsC/flake.nix
+{
+  inputs = {
+    D.url = "path:$flakeFollowsD";
+  };
+  outputs = _: {};
+}
+EOF
+
+cat <<EOF > $flakeFollowsD/flake.nix
+{
+  inputs = {
+    E.url = "path:$flakeFollowsE";
+  };
+  outputs = _: {};
+}
+EOF
+
+# Lockfiles are cleared, initially the dependency needs to be fetched.
+out="$(nix --verbose flake show path:$flakeFollowsA 2>&1)"
+echo "$out"
+[[ "$out" = *$'\n'"fetching path input 'path:"*"/flakeD'"$'\n'* ]]
+
+# But on another flake command it doesn't.
+out="$(nix --verbose flake show path:$flakeFollowsA 2>&1)"
+[[ "$out" != *$'\n'"fetching path input 'path:"*"/flakeD'"$'\n'* ]]
+
+# Make sure the nested override is actually correct in this testcase.
+[[ "$(nix flake metadata path:$flakeFollowsA --json | jq '.locks.nodes.D.inputs.E|.[]' -r)" = "B" ]]
