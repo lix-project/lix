@@ -20,6 +20,8 @@ conf_file_json = custom_target(
   capture : true,
   output : 'conf-file.json',
   env : nix_env_for_docs,
+  # FIXME: put the actual lib targets in here? meson have introspection challenge 2024 though.
+  build_always_stale : true,
 )
 
 nix_conf_file_md_body = custom_target(
@@ -50,6 +52,8 @@ nix_exp_features_json = custom_target(
   command : [ nix, '__dump-xp-features' ],
   capture : true,
   output : 'xp-features.json',
+  # FIXME: put the actual lib targets in here? meson have introspection challenge 2024 though.
+  build_always_stale : true,
 )
 
 language_json = custom_target(
@@ -57,6 +61,8 @@ language_json = custom_target(
   output : 'language.json',
   capture : true,
   env : nix_env_for_docs,
+  # FIXME: put the actual lib targets in here? meson have introspection challenge 2024 though.
+  build_always_stale : true,
 )
 
 nix3_cli_json = custom_target(
@@ -64,6 +70,8 @@ nix3_cli_json = custom_target(
   capture : true,
   output : 'nix.json',
   env : nix_env_for_docs,
+  # FIXME: put the actual lib targets in here? meson have introspection challenge 2024 though.
+  build_always_stale : true,
 )
 
 generate_manual_deps = files(

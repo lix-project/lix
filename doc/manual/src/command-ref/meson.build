@@ -1,9 +1,3 @@
-xp_features_json = custom_target(
-  command : [nix, '__dump-xp-features'],
-  capture : true,
-  output : 'xp-features.json',
-)
-
 experimental_features_shortlist_md = custom_target(
   command : nix_eval_for_docs + [
     '--expr',
@@ -11,7 +5,7 @@ experimental_features_shortlist_md = custom_target(
   ],
   input : [
     '../../generate-features-shortlist.nix',
-    xp_features_json,
+    nix_exp_features_json,
   ],
   capture : true,
   output : 'experimental-features-shortlist.md',
