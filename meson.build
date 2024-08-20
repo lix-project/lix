@@ -563,6 +563,7 @@ endif
 # that bridge when we get there...
 #
 # [1]: https://github.com/mesonbuild/meson/commit/9b8378985dbdc0112d11893dd42b33b7bc8d1e62
+# FIXME: remove (along with its generated wrap files) when we get rid of meson 1.4
 run_command(
   python,
   meson.project_source_root() / 'meson/cargo-lock-to-wraps.py',
