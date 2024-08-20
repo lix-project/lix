@@ -7,6 +7,32 @@
 
 namespace nix {
 
+void to_json(nlohmann::json & j, const AcceptFlakeConfig & e)
+{
+    if (e == AcceptFlakeConfig::False) {
+        j = false;
+    } else if (e == AcceptFlakeConfig::Ask) {
+        j = "ask";
+    } else if (e == AcceptFlakeConfig::True) {
+        j = true;
+    } else {
+        abort();
+    }
+}
+
+void from_json(const nlohmann::json & j, AcceptFlakeConfig & e)
+{
+    if (j == false) {
+        e = AcceptFlakeConfig::False;
+    } else if (j == "ask") {
+        e = AcceptFlakeConfig::Ask;
+    } else if (j == true) {
+        e = AcceptFlakeConfig::True;
+    } else {
+        throw Error("Invalid accept-flake-config value '%s'", std::string(j));
+    }
+}
+
 template<> AcceptFlakeConfig BaseSetting<AcceptFlakeConfig>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     if (str == "true") return AcceptFlakeConfig::True;

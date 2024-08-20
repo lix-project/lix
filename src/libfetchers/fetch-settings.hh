@@ -13,6 +13,9 @@ namespace nix {
 
 enum class AcceptFlakeConfig { False, Ask, True };
 
+void to_json(nlohmann::json & j, const AcceptFlakeConfig & e);
+void from_json(const nlohmann::json & j, AcceptFlakeConfig & e);
+
 struct FetchSettings : public Config
 {
     FetchSettings();
