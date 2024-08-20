@@ -228,7 +228,7 @@ void closeExtraFDs()
     auto closeRange = [](unsigned int first, unsigned int last, int flags) -> int {
       // musl does not have close_range as of 2024-08-10
       // patch: https://www.openwall.com/lists/musl/2024/08/01/9
-#ifdef HAVE_CLOSE_RANGE
+#if HAVE_CLOSE_RANGE
         return close_range(first, last, flags);
 #else
         return syscall(SYS_close_range, first, last, flags);
