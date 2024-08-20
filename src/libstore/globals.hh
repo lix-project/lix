@@ -380,7 +380,8 @@ public:
           users in `build-users-group`.
 
           UIDs are allocated starting at 872415232 (0x34000000) on Linux and 56930 on macOS.
-        )"};
+        )",
+        {}, true, Xp::AutoAllocateUids};
 
     Setting<uint32_t> startId{this,
         #if __linux__
@@ -389,7 +390,10 @@ public:
         56930,
         #endif
         "start-id",
-        "The first UID and GID to use for dynamic ID allocation."};
+        "The first UID and GID to use for dynamic ID allocation.",
+        {},
+        true,
+        Xp::AutoAllocateUids};
 
     Setting<uint32_t> uidCount{this,
         #if __linux__
@@ -398,7 +402,10 @@ public:
         128,
         #endif
         "id-count",
-        "The number of UIDs/GIDs to use for dynamic ID allocation."};
+        "The number of UIDs/GIDs to use for dynamic ID allocation.",
+        {},
+        true,
+        Xp::AutoAllocateUids};
 
     #if __linux__
     Setting<bool> useCgroups{
@@ -409,12 +416,13 @@ public:
 
           Cgroups are required and enabled automatically for derivations
           that require the `uid-range` system feature.
-        )"};
-    #endif
+        )",
+        {}, true, Xp::Cgroups};
 
     Setting<bool> impersonateLinux26{this, false, "impersonate-linux-26",
         "Whether to impersonate a Linux 2.6 machine on newer kernels.",
         {"build-impersonate-linux-26"}};
+    #endif
 
     Setting<bool> keepLog{
         this, true, "keep-build-log",
@@ -567,6 +575,7 @@ public:
     Setting<bool> sandboxFallback{this, true, "sandbox-fallback",
         "Whether to disable sandboxing when the kernel doesn't allow it."};
 
+#if __linux__
     Setting<bool> requireDropSupplementaryGroups{this, getuid() == 0, "require-drop-supplementary-groups",
         R"(
           Following the principle of least privilege,
@@ -585,7 +594,6 @@ public:
           and `false` otherwise.
         )"};
 
-#if __linux__
     Setting<std::string> sandboxShmSize{
         this, "50%", "sandbox-dev-shm-size",
         R"(
