@@ -1275,13 +1275,15 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                             // FIXME: handle utf8 visible width properly once we get KJ which has utf8 support
                             //        technically filterANSIEscapes knows how to do this but there is absolutely
                             //        no clear usage of it that would actually let us do this layout.
-                            int spaceForDescription = screenWidth - output.size() - quotesAndSepsWidth;
+                            assert(output.size() < std::numeric_limits<int>::max());
+                            int spaceForDescription = screenWidth - int(output.size()) - quotesAndSepsWidth;
 
                             if (spaceForDescription <= 0) {
                                 // do nothing, it is going to wrap no matter what, and it's better to output *something*
                             } else {
                                 const char *ellipsis = "";
-                                if (spaceForDescription < firstLineDesc.size()) {
+                                assert(firstLineDesc.size() < std::numeric_limits<int>::max());
+                                if (spaceForDescription < int(firstLineDesc.size())) {
                                     // subtract one to make space for the ellipsis
                                     firstLineDesc.resize(spaceForDescription - 1);
                                     ellipsis = "…";
