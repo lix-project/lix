@@ -14,3 +14,4 @@ and can be disabled via the flags for backwards compatibility (opt-out with `--e
   This means that all URLs must be properly put within quotes like all other strings.
 - `rec-set-overrides`: **__overrides** is an old arcane syntax which has not been in use for more than a decade.
   It is soft-deprecated with a warning only, with the plan to turn that into an error in a future release.
+- `ancient-let`: **The old `let` syntax** (`let { body = …; … }`) is soft-deprecated with a warning as well. Use the regular `let … in` instead.
