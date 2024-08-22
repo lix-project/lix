@@ -17,6 +17,7 @@
 #include "fetch-to-store.hh"
 
 #include <boost/container/small_vector.hpp>
+#include <boost/regex.hpp>
 #include <nlohmann/json.hpp>
 
 #include <sys/types.h>
@@ -26,7 +27,6 @@
 #include <algorithm>
 #include <cstring>
 #include <sstream>
-#include <regex>
 #include <dlfcn.h>
 
 #include <cmath>
@@ -3878,19 +3878,205 @@ static RegisterPrimOp primop_hashString({
     .fun = prim_hashString,
 });
 
+enum class RegexParseState {
+    // Anything outside of those
+    Regular,
+
+    // Bounded repeats, `}` shouldn't be escaped in those
+    //
+    // a{2,5}b
+    //   ^^^^
+    BoundedRepeat,
+
+    // Backslashes, as C++ regexes only support escaping what needs to be
+    // escaped and nothing else
+    //
+    // a\nb
+    //   ^
+    Backslash,
+
+    // Initial part of character set, as `[]]` is a regex for `]` character
+    //
+    // [abc] [^abc]
+    //  ^     ^
+    CharacterSetStart,
+
+    // Initial part of negated character set, as `[^]]` is a regex for
+    // anything but `]` character
+    //
+    // [^abc]
+    //   ^
+    NegatedCharacterSetStart,
+
+    // Character set after its first character
+    //
+    // [abc]
+    //   ^^
+    CharacterSetMiddle,
+
+    // Parser state after seeing [, assumes the input is character extension
+    // after seeing `:`, `.`, or `=`
+    //
+    // [a[:alpha:]b]
+    //    ^
+    PossibleCharacterSetExtension,
+
+    // Within character extension
+    //
+    // [a[:alpha:]b]
+    //     ^^^^^^^
+    CharacterSetExtension,
+
+    // Within equivalence class expression
+    //
+    // [[=a=]]
+    //    ^
+    EquivalenceClassExpression,
+};
+
+static boost::regex compile_regex(std::string_view re) {
+    // Make sure that Boost supports everything that C++ regexes do,
+    // and no non-standard extensions are available.
+    //
+    // In particular, C++ regexes only support escaping regex metacharacters.
+    // They don't support other escape sequences like `\n` and `\d`.
+    // Additionally, within character groups, it's not possible to escape
+    // anything, backslash is a literal character in those. `[\]` in regexes
+    // is a weird way to write `\\`.
+    std::string boost_re;
+    boost_re.reserve(re.size());
+    auto state = RegexParseState::Regular;
+    for (char c : re) {
+        switch (state) {
+        case RegexParseState::Regular:
+            switch (c) {
+            // Boost regex engine supports more escape sequences than C++ regexes,
+            // and as such it's necessary to ensure only escapes supported by C++
+            // are allowed.
+            case '\\':
+                state = RegexParseState::Backslash;
+                break;
+            case '[':
+                state = RegexParseState::CharacterSetStart;
+                break;
+            case '{':
+                state = RegexParseState::BoundedRepeat;
+                break;
+            // Boost doesn't permit unescaped `}`, escape it outside of
+            // bounded repeats.
+            case '}':
+                boost_re.push_back('\\');
+                break;
+            default:
+                break;
+            }
+            break;
+
+        case RegexParseState::BoundedRepeat:
+            if (c == '}') {
+                state = RegexParseState::Regular;
+            }
+            break;
+
+        case RegexParseState::Backslash:
+            switch (c) {
+                case '.': case '|': case '*': case '?': case '+': case '{':
+                case '^': case '$': case '[': case '(': case ')': case '\\':
+                    state = RegexParseState::Regular;
+                    break;
+                default:
+                    throw boost::regex_error(
+                        boost::regex_constants::error_type::error_escape
+                    );
+            }
+            break;
+
+        case RegexParseState::CharacterSetStart:
+            if (c == '^') {
+                state = RegexParseState::NegatedCharacterSetStart;
+                break;
+            }
+            [[fallthrough]];
+
+        case RegexParseState::NegatedCharacterSetStart:
+            if (c == ']') {
+                state = RegexParseState::CharacterSetMiddle;
+                break;
+            }
+            [[fallthrough]];
+
+        case RegexParseState::CharacterSetMiddle:
+        middle:
+            switch (c) {
+            case '[':
+                state = RegexParseState::PossibleCharacterSetExtension;
+                break;
+            case '\\':
+                // Backslashes aren't supported in character groups, escape them
+                boost_re.push_back('\\');
+                state = RegexParseState::CharacterSetMiddle;
+                break;
+            case ']':
+                state = RegexParseState::Regular;
+                break;
+            default:
+                state = RegexParseState::CharacterSetMiddle;
+                break;
+            }
+            break;
+
+        case RegexParseState::PossibleCharacterSetExtension:
+            switch (c) {
+                case ':': case '.':
+                    state = RegexParseState::CharacterSetExtension;
+                    break;
+                case '=':
+                    state = RegexParseState::EquivalenceClassExpression;
+                    break;
+                default:
+                    goto middle;
+            }
+            break;
+
+        case RegexParseState::CharacterSetExtension:
+            if (c == ']') {
+                state = RegexParseState::CharacterSetMiddle;
+            }
+            break;
+
+        case RegexParseState::EquivalenceClassExpression:
+            // C++'s regex parser only supports equivalence classes for
+            // alphabetic characters
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) {
+                throw boost::regex_error(
+                    boost::regex_constants::error_type::error_brack
+                );
+            }
+            // After verifying first character, this can be parsed as
+            // a regular character set extension, Boost will notice issues
+            // after that.
+            state = RegexParseState::CharacterSetExtension;
+            break;
+        }
+
+        boost_re.push_back(c);
+    }
+    return boost::regex(boost_re, boost::regex::extended);
+}
+
 struct RegexCache
 {
     // TODO use C++20 transparent comparison when available
-    std::unordered_map<std::string_view, std::regex> cache;
+    std::unordered_map<std::string_view, boost::regex> cache;
     std::list<std::string> keys;
 
-    std::regex get(std::string_view re)
+    boost::regex get(std::string_view re)
     {
         auto it = cache.find(re);
         if (it != cache.end())
             return it->second;
         keys.emplace_back(re);
-        return cache.emplace(keys.back(), std::regex(keys.back(), std::regex::extended)).first->second;
+        return cache.emplace(keys.back(), compile_regex(re)).first->second;
     }
 };
 
@@ -3910,8 +4096,8 @@ void prim_match(EvalState & state, const PosIdx pos, Value * * args, Value & v)
         NixStringContext context;
         const auto str = state.forceString(*args[1], context, pos, "while evaluating the second argument passed to builtins.match");
 
-        std::cmatch match;
-        if (!std::regex_match(str.begin(), str.end(), match, regex)) {
+        boost::cmatch match;
+        if (!boost::regex_match(str.begin(), str.end(), match, regex)) {
             v.mkNull();
             return;
         }
@@ -3926,8 +4112,8 @@ void prim_match(EvalState & state, const PosIdx pos, Value * * args, Value & v)
                 (v.listElems()[i] = state.allocValue())->mkString(match[i + 1].str());
         }
 
-    } catch (std::regex_error & e) {
-        if (e.code() == std::regex_constants::error_space) {
+    } catch (boost::regex_error & e) {
+        if (e.code() == boost::regex_constants::error_space) {
             // limit is _GLIBCXX_REGEX_STATE_LIMIT for libstdc++
             state.error<EvalError>("memory limit exceeded by regular expression '%s'", re)
                 .atPos(pos)
@@ -3988,8 +4174,8 @@ void prim_split(EvalState & state, const PosIdx pos, Value * * args, Value & v)
         NixStringContext context;
         const auto str = state.forceString(*args[1], context, pos, "while evaluating the second argument passed to builtins.split");
 
-        auto begin = std::cregex_iterator(str.begin(), str.end(), regex);
-        auto end = std::cregex_iterator();
+        auto begin = boost::cregex_iterator(str.begin(), str.end(), regex);
+        auto end = boost::cregex_iterator();
 
         // Any matches results are surrounded by non-matching results.
         const size_t len = std::distance(begin, end);
@@ -4028,8 +4214,8 @@ void prim_split(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 
         assert(idx == 2 * len + 1);
 
-    } catch (std::regex_error & e) {
-        if (e.code() == std::regex_constants::error_space) {
+    } catch (boost::regex_error & e) {
+        if (e.code() == boost::regex_constants::error_space) {
             // limit is _GLIBCXX_REGEX_STATE_LIMIT for libstdc++
             state.error<EvalError>("memory limit exceeded by regular expression '%s'", re)
                 .atPos(pos)

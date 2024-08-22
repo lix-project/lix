@@ -816,6 +816,151 @@ namespace nix {
         ASSERT_THAT(*v.listElems()[0], IsStringEq("FOO"));
     }
 
+    TEST_F(PrimOpTest, match5) {
+        auto v = eval("builtins.match ''}'' ''}''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match6) {
+        auto v = eval("builtins.match '']'' '']''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match7) {
+        auto v = eval("builtins.match ''[[]'' ''[''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match8) {
+        auto v = eval("builtins.match ''[]]'' '']''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match9) {
+        auto v = eval("builtins.match ''[[=a=]]'' ''A''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match10) {
+        auto v = eval("builtins.match ''[[.right-curly-bracket.]]'' ''}''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match11) {
+        auto v = eval("builtins.match ''[[.tilde.]]'' ''~''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match12) {
+        auto v = eval("builtins.match ''[\\n]'' ''\\''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match13) {
+        auto v = eval("builtins.match ''[\\[]'' ''\\''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match14) {
+        auto v = eval("builtins.match ''[\\]]'' ''\\]''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match15) {
+        auto v = eval("builtins.match ''[\\-z]'' ''y''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match16) {
+        auto v = eval("builtins.match ''[\\\\]'' ''\\''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match17) {
+        auto v = eval("builtins.match ''[\\]'' ''\\''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match18) {
+        auto v = eval("builtins.match ''[\\]]'' ''\\]''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match19) {
+        auto v = eval("builtins.match ''.*[Ω].*'' ''β''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match20) {
+        auto v = eval("builtins.match ''[^]]'' ''a''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match21) {
+        auto v = eval("builtins.match ''[[[:alpha:]]'' ''[''");
+        ASSERT_THAT(v, IsListOfSize(0));
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax1) {
+        ASSERT_THROW(eval("builtins.match ''{'' ''{''"), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax2) {
+        ASSERT_THROW(eval("builtins.match ''(a)\\1'' ''aa''"), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax3) {
+        ASSERT_THROW(eval("builtins.match ''\\}'' ''}''"), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax4) {
+        ASSERT_THROW(eval("builtins.match ''\\]'' '']''"), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax5) {
+        ASSERT_THROW(eval("builtins.match ''\\x41'' ''A''"), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax6) {
+        ASSERT_THROW(eval("builtins.match ''\\n'' \"\\n\""), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax7) {
+        ASSERT_THROW(eval("builtins.match ''\\d'' ''1''"), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax8) {
+        ASSERT_THROW(eval("builtins.match ''\\b1'' ''1''"), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax9) {
+        ASSERT_THROW(eval("builtins.match ''\\A1'' ''1''"), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax10) {
+        ASSERT_THROW(eval("builtins.match ''(?:1)'' ''1''"), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax11) {
+        ASSERT_THROW(eval("builtins.match ''[b-a]'' ''b''"), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax12) {
+        ASSERT_THROW(eval("builtins.match ''[[:alpha:]-a]'' ''b''"), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax13) {
+        ASSERT_THROW(eval("builtins.match ''[[=1=]]'' ''1''"), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax14) {
+        ASSERT_THROW(eval("builtins.match ''[[=]=]]'' '']''"), EvalError);
+    }
+
+    TEST_F(PrimOpTest, match_unsupported_syntax15) {
+        ASSERT_THROW(eval("builtins.match ''[a-b-c]'' ''b''"), EvalError);
+    }
+
     TEST_F(PrimOpTest, attrNames) {
         auto v = eval("builtins.attrNames { x = 1; y = 2; z = 3; a = 2; }");
         ASSERT_THAT(v, IsListOfSize(4));
