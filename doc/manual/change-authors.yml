@@ -129,10 +129,6 @@ roberth:
   display_name: Robert Hensing
   github: roberth
 
-sugar:
-  forgejo: sugar
-  github: sugar700
-
 thufschmitt:
   display_name: Théophane Hufschmitt
   github: thufschmitt
