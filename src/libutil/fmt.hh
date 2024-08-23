@@ -4,17 +4,15 @@
 #include <iostream>
 #include <string>
 #include <boost/format.hpp>
-// Darwin and FreeBSD stdenv do not define _GNU_SOURCE but do have _Unwind_Backtrace.
-#if __APPLE__ || __FreeBSD__
-#define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
-#endif
-#include <boost/stacktrace.hpp>
 #include "ansicolor.hh"
 
 // Explicit instantiation in fmt.cc
 extern template class boost::basic_format<char>;
 
 namespace nix {
+
+/** Prints a C++ stack trace to stderr using boost stacktrace */
+void printStackTrace();
 
 /**
  * Values wrapped in this struct are printed in magenta.
@@ -176,14 +174,14 @@ public:
             std::cerr << "HintFmt received incorrect number of format args. Original format string: '";
             std::cerr << format << "'; number of arguments: " << sizeof...(args) << "\n";
             // And regardless of the coredump give me a damn stacktrace.
-            std::cerr << boost::stacktrace::stacktrace() << std::endl;
+            printStackTrace();
             abort();
         }
     } catch (boost::io::format_error & ex) {
         // Same thing, but for anything that happens in the member initializers.
         std::cerr << "HintFmt received incorrect format string. Original format string: '";
         std::cerr << format << "'; number of arguments: " << sizeof...(args) << "\n";
-        std::cerr << boost::stacktrace::stacktrace() << std::endl;
+        printStackTrace();
         abort();
     }
 
