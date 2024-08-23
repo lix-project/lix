@@ -136,7 +136,9 @@ class ExternalValueBase
 
 std::ostream & operator << (std::ostream & str, const ExternalValueBase & v);
 
-extern ExprBlackHole eBlackHole;
+/** This is just the address of eBlackHole. It exists because eBlackHole has an
+ * incomplete type at usage sites so is not possible to cast. */
+extern Expr *eBlackHoleAddr;
 
 struct NewValueAs
 {
@@ -196,6 +198,7 @@ private:
 public:
 
     // Discount `using NewValueAs::*;`
+// NOLINTNEXTLINE(bugprone-macro-parentheses)
 #define USING_VALUETYPE(name) using name = NewValueAs::name
     USING_VALUETYPE(integer_t);
     USING_VALUETYPE(floating_t);
@@ -473,7 +476,7 @@ public:
     /// Constructs an evil thunk, whose evaluation represents infinite recursion.
     explicit Value(blackhole_t)
         : internalType(tThunk)
-        , thunk({ .env = nullptr, .expr = reinterpret_cast<Expr *>(&eBlackHole) })
+        , thunk({ .env = nullptr, .expr = eBlackHoleAddr })
     { }
 
     Value(Value const & rhs) = default;
@@ -513,7 +516,10 @@ public:
     // type() == nThunk
     inline bool isThunk() const { return internalType == tThunk; };
     inline bool isApp() const { return internalType == tApp; };
-    inline bool isBlackhole() const;
+    inline bool isBlackhole() const
+    {
+        return internalType == tThunk && thunk.expr == eBlackHoleAddr;
+    }
 
     // type() == nFunction
     inline bool isLambda() const { return internalType == tLambda; };
@@ -669,11 +675,6 @@ public:
 
     void mkStringMove(const char * s, const NixStringContext & context);
 
-    inline void mkString(const Symbol & s)
-    {
-        mkString(((const std::string &) s).c_str());
-    }
-
     void mkPath(const SourcePath & path);
 
     inline void mkPath(const char * path)
@@ -732,7 +733,11 @@ public:
         lambda.fun = f;
     }
 
-    inline void mkBlackhole();
+    inline void mkBlackhole()
+    {
+        internalType = tThunk;
+        thunk.expr = eBlackHoleAddr;
+    }
 
     void mkPrimOp(PrimOp * p);
 
@@ -831,18 +836,6 @@ public:
         return std::string_view(string.s);
     }
 };
-
-
-bool Value::isBlackhole() const
-{
-    return internalType == tThunk && thunk.expr == (Expr*) &eBlackHole;
-}
-
-void Value::mkBlackhole()
-{
-    internalType = tThunk;
-    thunk.expr = (Expr*) &eBlackHole;
-}
 
 using ValueVector = GcVector<Value *>;
 using ValueMap = GcMap<Symbol, Value *>;

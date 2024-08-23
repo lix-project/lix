@@ -61,9 +61,9 @@ template<class Inner, typename... Ts>
 LENGTH_PREFIXED_PROTO_HELPER(Inner, std::tuple<Ts...>);
 
 template<class Inner, typename K, typename V>
-#define _X std::map<K, V>
-LENGTH_PREFIXED_PROTO_HELPER(Inner, _X);
-#undef _X
+#define DONT_SUBSTITUTE_KV_TYPE std::map<K, V>
+LENGTH_PREFIXED_PROTO_HELPER(Inner, DONT_SUBSTITUTE_KV_TYPE);
+#undef DONT_SUBSTITUTE_KV_TYPE
 
 template<class Inner, typename T>
 std::vector<T>

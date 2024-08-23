@@ -2,8 +2,9 @@
 ///@file
 
 #include <string_view>
+#include <string>
 
-#include "types.hh"
+#include "types.hh" // IWYU pragma: keep
 
 namespace nix {
 
@@ -89,10 +90,7 @@ const std::string drvExtension = ".drv";
 namespace std {
 
 template<> struct hash<nix::StorePath> {
-    std::size_t operator()(const nix::StorePath & path) const noexcept
-    {
-        return * (std::size_t *) path.to_string().data();
-    }
+    std::size_t operator()(const nix::StorePath & path) const noexcept;
 };
 
 }

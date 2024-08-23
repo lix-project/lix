@@ -49,8 +49,12 @@ struct FdLock
 
     ~FdLock()
     {
-        if (acquired)
-            lockFile(fd, ltNone, false);
+        try {
+            if (acquired)
+                lockFile(fd, ltNone, false);
+        } catch (SysError &) {
+            ignoreException();
+        }
     }
 };
 

@@ -4,6 +4,7 @@
 #include <concepts>
 #include <memory>
 
+#include "charptr-cast.hh"
 #include "generator.hh"
 #include "strings.hh"
 #include "types.hh"
@@ -385,7 +386,7 @@ struct SerializingTransform
         buf[5] = (n >> 40) & 0xff;
         buf[6] = (n >> 48) & 0xff;
         buf[7] = (unsigned char) (n >> 56) & 0xff;
-        return {reinterpret_cast<const char *>(buf.begin()), 8};
+        return {charptr_cast<const char *>(buf.begin()), 8};
     }
 
     static Bytes padding(size_t unpadded)
@@ -417,6 +418,9 @@ struct SerializingTransform
 
 void writePadding(size_t len, Sink & sink);
 
+// NOLINTBEGIN(cppcoreguidelines-avoid-capturing-lambda-coroutines):
+// These coroutines do their entire job before the semicolon and are not
+// retained, so they live long enough.
 inline Sink & operator<<(Sink & sink, uint64_t u)
 {
     return sink << [&]() -> WireFormatGenerator { co_yield u; }();
@@ -441,6 +445,7 @@ inline Sink & operator<<(Sink & sink, const Error & ex)
 {
     return sink << [&]() -> WireFormatGenerator { co_yield ex; }();
 }
+// NOLINTEND(cppcoreguidelines-avoid-capturing-lambda-coroutines)
 
 MakeError(SerialisationError, Error);
 
@@ -448,7 +453,7 @@ template<typename T>
 T readNum(Source & source)
 {
     unsigned char buf[8];
-    source((char *) buf, sizeof(buf));
+    source(charptr_cast<char *>(buf), sizeof(buf));
 
     auto n = readLittleEndian<uint64_t>(buf);
 
@@ -540,13 +545,17 @@ struct FramedSource : Source
 
     ~FramedSource()
     {
-        if (!eof) {
-            while (true) {
-                auto n = readInt(from);
-                if (!n) break;
-                std::vector<char> data(n);
-                from(data.data(), n);
+        try {
+            if (!eof) {
+                while (true) {
+                    auto n = readInt(from);
+                    if (!n) break;
+                    std::vector<char> data(n);
+                    from(data.data(), n);
+                }
             }
+        } catch (...) {
+            ignoreException();
         }
     }
 

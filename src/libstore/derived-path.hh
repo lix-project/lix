@@ -78,10 +78,12 @@ struct SingleDerivedPathBuilt {
     DECLARE_CMP(SingleDerivedPathBuilt);
 };
 
-using _SingleDerivedPathRaw = std::variant<
+namespace derived_path::detail {
+using SingleDerivedPathRaw = std::variant<
     DerivedPathOpaque,
     SingleDerivedPathBuilt
 >;
+}
 
 /**
  * A "derived path" is a very simple sort of expression (not a Nix
@@ -94,8 +96,8 @@ using _SingleDerivedPathRaw = std::variant<
  * - built, in which case it is a pair of a derivation path and an
  *   output name.
  */
-struct SingleDerivedPath : _SingleDerivedPathRaw {
-    using Raw = _SingleDerivedPathRaw;
+struct SingleDerivedPath : derived_path::detail::SingleDerivedPathRaw {
+    using Raw = derived_path::detail::SingleDerivedPathRaw;
     using Raw::Raw;
 
     using Opaque = DerivedPathOpaque;
@@ -201,10 +203,12 @@ struct DerivedPathBuilt {
     DECLARE_CMP(DerivedPathBuilt);
 };
 
-using _DerivedPathRaw = std::variant<
+namespace derived_path::detail {
+using DerivedPathRaw = std::variant<
     DerivedPathOpaque,
     DerivedPathBuilt
 >;
+}
 
 /**
  * A "derived path" is a very simple sort of expression that evaluates
@@ -216,8 +220,8 @@ using _DerivedPathRaw = std::variant<
  * - built, in which case it is a pair of a derivation path and some
  *   output names.
  */
-struct DerivedPath : _DerivedPathRaw {
-    using Raw = _DerivedPathRaw;
+struct DerivedPath : derived_path::detail::DerivedPathRaw {
+    using Raw = derived_path::detail::DerivedPathRaw;
     using Raw::Raw;
 
     using Opaque = DerivedPathOpaque;

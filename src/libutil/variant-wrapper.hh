@@ -8,6 +8,7 @@
  * Force the default versions of all constructors (copy, move, copy
  * assignment).
  */
+// NOLINTBEGIN(bugprone-macro-parentheses)
 #define FORCE_DEFAULT_CONSTRUCTORS(CLASS_NAME) \
     CLASS_NAME(const CLASS_NAME &) = default; \
     CLASS_NAME(CLASS_NAME &) = default; \
@@ -15,6 +16,7 @@
     \
     CLASS_NAME & operator =(const CLASS_NAME &) = default; \
     CLASS_NAME & operator =(CLASS_NAME &) = default;
+// NOLINTEND(bugprone-macro-parentheses)
 
 /**
  * Make a wrapper constructor. All args are forwarded to the

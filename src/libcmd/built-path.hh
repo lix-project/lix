@@ -20,13 +20,15 @@ struct SingleBuiltPathBuilt {
     DECLARE_CMP(SingleBuiltPathBuilt);
 };
 
-using _SingleBuiltPathRaw = std::variant<
+namespace built_path::detail {
+using SingleBuiltPathRaw = std::variant<
     DerivedPathOpaque,
     SingleBuiltPathBuilt
 >;
+}
 
-struct SingleBuiltPath : _SingleBuiltPathRaw {
-    using Raw = _SingleBuiltPathRaw;
+struct SingleBuiltPath : built_path::detail::SingleBuiltPathRaw {
+    using Raw = built_path::detail::SingleBuiltPathRaw;
     using Raw::Raw;
 
     using Opaque = DerivedPathOpaque;
@@ -65,17 +67,19 @@ struct BuiltPathBuilt {
     DECLARE_CMP(BuiltPathBuilt);
 };
 
-using _BuiltPathRaw = std::variant<
+namespace built_path::detail {
+using BuiltPathRaw = std::variant<
     DerivedPath::Opaque,
     BuiltPathBuilt
 >;
+}
 
 /**
  * A built path. Similar to a DerivedPath, but enriched with the corresponding
  * output path(s).
  */
-struct BuiltPath : _BuiltPathRaw {
-    using Raw = _BuiltPathRaw;
+struct BuiltPath : built_path::detail::BuiltPathRaw {
+    using Raw = built_path::detail::BuiltPathRaw;
     using Raw::Raw;
 
     using Opaque = DerivedPathOpaque;
