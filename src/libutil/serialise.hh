@@ -1,12 +1,10 @@
 #pragma once
 ///@file
 
-#include <concepts>
 #include <memory>
 
 #include "charptr-cast.hh"
 #include "generator.hh"
-#include "strings.hh"
 #include "types.hh"
 #include "file-descriptor.hh"
 
@@ -153,7 +151,10 @@ struct FdSource : BufferedSource
 {
     int fd;
     size_t read = 0;
-    BackedStringView endOfFileError{"unexpected end-of-file"};
+    /** Defaults to "unexpected end-of-file" */
+    std::optional<std::string> specialEndOfFileError;
+
+    std::string endOfFileError() const;
 
     FdSource() : fd(-1) { }
     FdSource(int fd) : fd(fd) { }

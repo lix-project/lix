@@ -1,12 +1,11 @@
 #include "profiles.hh"
-#include "store-api.hh"
 #include "local-fs-store.hh"
 #include "users.hh"
+#include "strings.hh"
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <errno.h>
 #include <stdio.h>
 
 

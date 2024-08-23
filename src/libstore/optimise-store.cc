@@ -1,6 +1,7 @@
 #include "local-store.hh"
 #include "globals.hh"
 #include "signals.hh"
+#include "strings.hh"
 
 #include <cstring>
 #include <sys/types.h>

@@ -1,8 +1,9 @@
 #include "progress-bar.hh"
+#include "file-system.hh"
 #include "sync.hh"
-#include "store-api.hh"
 #include "names.hh"
 #include "terminal.hh"
+#include "strings.hh"
 
 #include <map>
 #include <thread>

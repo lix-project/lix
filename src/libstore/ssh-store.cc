@@ -1,13 +1,11 @@
 #include "ssh-store.hh"
 #include "store-api.hh"
-#include "local-fs-store.hh"
 #include "remote-store.hh"
 #include "remote-store-connection.hh"
-#include "remote-fs-accessor.hh"
-#include "archive.hh"
 #include "worker-protocol.hh"
 #include "pool.hh"
 #include "ssh.hh"
+#include "strings.hh"
 
 namespace nix {
 

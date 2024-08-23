@@ -6,6 +6,8 @@
 #include "loggers.hh"
 #include "current-process.hh"
 #include "terminal.hh"
+#include "strings.hh"
+#include "exit.hh"
 
 #include <algorithm>
 #include <exception>

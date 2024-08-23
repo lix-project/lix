@@ -1,6 +1,7 @@
 #include "archive.hh"
 #include "derivations.hh"
 #include "dotgraph.hh"
+#include "exit.hh"
 #include "globals.hh"
 #include "build-result.hh"
 #include "store-cast.hh"
@@ -17,7 +18,6 @@
 
 #include <iostream>
 #include <algorithm>
-#include <cstdio>
 
 #include <sys/types.h>
 #include <sys/stat.h>

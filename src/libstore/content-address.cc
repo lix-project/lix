@@ -1,6 +1,7 @@
 #include "args.hh"
 #include "content-address.hh"
 #include "split.hh"
+#include "strings.hh"
 
 namespace nix {
 

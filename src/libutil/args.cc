@@ -1,10 +1,11 @@
 #include "args.hh"
 #include "args/root.hh"
 #include "hash.hh"
-#include "json-utils.hh"
+#include "strings.hh"
+#include "json-utils.hh" // IWYU pragma: keep (instances)
 #include "environment-variables.hh"
 
-#include "experimental-features-json.hh"
+#include "experimental-features-json.hh" // IWYU pragma: keep (instances)
 #include "logging.hh"
 
 #include <glob.h>

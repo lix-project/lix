@@ -9,6 +9,21 @@
 
 namespace nix {
 
+namespace {
+/**
+ * Convert a little-endian integer to host order.
+ */
+template<typename T>
+T readLittleEndian(unsigned char * p)
+{
+    T x = 0;
+    for (size_t i = 0; i < sizeof(x); ++i, ++p) {
+        x |= ((T) *p) << (i * 8);
+    }
+    return x;
+}
+}
+
 template<typename T>
 T readNum(Source & source)
 {
@@ -152,7 +167,7 @@ size_t FdSource::readUnbuffered(char * data, size_t len)
         n = ::read(fd, data, len);
     } while (n == -1 && errno == EINTR);
     if (n == -1) { _good = false; throw SysError("reading from file"); }
-    if (n == 0) { _good = false; throw EndOfFile(std::string(*endOfFileError)); }
+    if (n == 0) { _good = false; throw EndOfFile(endOfFileError()); }
     read += n;
     return n;
 }
@@ -161,6 +176,11 @@ size_t FdSource::readUnbuffered(char * data, size_t len)
 bool FdSource::good()
 {
     return _good;
+}
+
+std::string FdSource::endOfFileError() const
+{
+    return specialEndOfFileError.has_value() ? *specialEndOfFileError : "unexpected end-of-file";
 }
 
 

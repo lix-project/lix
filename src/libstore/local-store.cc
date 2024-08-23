@@ -10,6 +10,7 @@
 #include "signals.hh"
 #include "finally.hh"
 #include "compression.hh"
+#include "strings.hh"
 
 #include <algorithm>
 #include <cstring>

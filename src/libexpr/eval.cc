@@ -19,6 +19,7 @@
 #include "gc-small-vector.hh"
 #include "fetch-to-store.hh"
 #include "flake/flakeref.hh"
+#include "exit.hh"
 
 #include <algorithm>
 #include <iostream>

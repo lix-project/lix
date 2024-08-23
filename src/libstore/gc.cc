@@ -5,6 +5,7 @@
 #include "signals.hh"
 #include "finally.hh"
 #include "unix-domain-socket.hh"
+#include "strings.hh"
 
 #include <queue>
 #include <regex>

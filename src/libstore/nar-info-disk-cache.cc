@@ -4,6 +4,7 @@
 #include "sqlite.hh"
 #include "globals.hh"
 #include "users.hh"
+#include "strings.hh"
 
 #include <sqlite3.h>
 #include <nlohmann/json.hpp>

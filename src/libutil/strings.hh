@@ -165,19 +165,6 @@ std::optional<N> string2Float(const std::string_view s);
 
 
 /**
- * Convert a little-endian integer to host order.
- */
-template<typename T>
-T readLittleEndian(unsigned char * p)
-{
-    T x = 0;
-    for (size_t i = 0; i < sizeof(x); ++i, ++p) {
-        x |= ((T) *p) << (i * 8);
-    }
-    return x;
-}
-
-/**
  * Convert a string to lower case.
  */
 std::string toLower(const std::string & s);

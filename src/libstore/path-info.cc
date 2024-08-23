@@ -1,5 +1,6 @@
 #include "path-info.hh"
 #include "store-api.hh"
+#include "strings.hh"
 
 namespace nix {
 

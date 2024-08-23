@@ -1,8 +1,8 @@
 #include <nlohmann/json.hpp>
 #include <gtest/gtest.h>
 
-#include "experimental-features.hh"
 #include "derivations.hh"
+#include "strings.hh"
 
 #include "tests/libstore.hh"
 #include "tests/characterization.hh"

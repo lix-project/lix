@@ -9,6 +9,7 @@
 #include "path-with-outputs.hh"
 #include "ssh.hh"
 #include "ssh-store.hh"
+#include "strings.hh"
 #include "derivations.hh"
 
 namespace nix {

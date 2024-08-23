@@ -1,10 +1,9 @@
 #include "command.hh"
 #include "shared.hh"
 #include "store-api.hh"
-#include "sync.hh"
 #include "thread-pool.hh"
 #include "signals.hh"
-#include "references.hh"
+#include "exit.hh"
 
 #include <atomic>
 

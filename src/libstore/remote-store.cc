@@ -15,6 +15,8 @@
 #include "finally.hh"
 #include "logging.hh"
 #include "filetransfer.hh"
+#include "strings.hh"
+
 #include <nlohmann/json.hpp>
 
 namespace nix {
@@ -64,7 +66,7 @@ void RemoteStore::initConnection(Connection & conn)
 {
     /* Send the magic greeting, check for the reply. */
     try {
-        conn.from.endOfFileError = "Nix daemon disconnected unexpectedly (maybe it crashed?)";
+        conn.from.specialEndOfFileError = "Nix daemon disconnected unexpectedly (maybe it crashed?)";
         conn.to << WORKER_MAGIC_1;
         conn.to.flush();
 

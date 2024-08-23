@@ -9,6 +9,7 @@
 #include "logging-json.hh"
 #include "substitution-goal.hh"
 #include "drv-output-substitution-goal.hh"
+#include "strings.hh"
 
 #include <fstream>
 #include <sys/types.h>

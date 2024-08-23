@@ -1,15 +1,12 @@
 #include "local-derivation-goal.hh"
 #include "indirect-root-store.hh"
-#include "hook-instance.hh"
 #include "machines.hh"
 #include "store-api.hh"
 #include "worker.hh"
 #include "builtins.hh"
 #include "builtins/buildenv.hh"
 #include "path-references.hh"
-#include "finally.hh"
 #include "archive.hh"
-#include "compression.hh"
 #include "daemon.hh"
 #include "topo-sort.hh"
 #include "json-utils.hh"
@@ -19,6 +16,7 @@
 #include "child.hh"
 #include "unix-domain-socket.hh"
 #include "mount.hh"
+#include "strings.hh"
 
 #include <regex>
 #include <queue>

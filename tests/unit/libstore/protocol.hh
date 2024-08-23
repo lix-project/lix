@@ -1,6 +1,7 @@
 #include <nlohmann/json.hpp>
 #include <gtest/gtest.h>
 
+#include "strings.hh"
 #include "tests/libstore.hh"
 #include "tests/characterization.hh"
 

@@ -1,4 +1,5 @@
 #include "references.hh"
+#include "strings.hh"
 #include <gtest/gtest.h>
 
 namespace nix {

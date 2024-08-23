@@ -5,6 +5,7 @@
 #include "signals.hh"
 #include "platform/linux.hh"
 #include "regex.hh"
+#include "strings.hh"
 
 #include <grp.h>
 #include <regex>

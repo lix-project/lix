@@ -3,6 +3,7 @@
 #include "store-api.hh"
 #include "archive.hh"
 #include "compression.hh"
+#include "strings.hh"
 
 namespace nix {
 

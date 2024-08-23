@@ -1,5 +1,6 @@
 #include "make-content-addressed.hh"
 #include "references.hh"
+#include "strings.hh"
 
 namespace nix {
 

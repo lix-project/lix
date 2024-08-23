@@ -7,11 +7,9 @@
 #include "path.hh"
 #include "derived-path.hh"
 #include "processes.hh"
-#include "exit.hh"
+#include "strings.hh"
 
 #include <signal.h>
-
-#include <locale>
 
 
 namespace nix {

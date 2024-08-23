@@ -10,6 +10,7 @@
 #include "logging.hh"
 #include "serialise.hh"
 #include "signals.hh"
+#include "strings.hh"
 #include "types.hh"
 #include "users.hh"
 

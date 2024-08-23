@@ -1,10 +1,12 @@
 #pragma once
 ///@file
 
+#include "fs-accessor.hh"
+#include "ref.hh"
+
 #include <functional>
 
 #include <nlohmann/json_fwd.hpp>
-#include "fs-accessor.hh"
 
 namespace nix {
 

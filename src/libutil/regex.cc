@@ -1,6 +1,9 @@
 #include <string>
 #include <regex>
 
+// Declared as extern in precompiled-headers.hh
+template class std::basic_regex<char>;
+
 namespace nix::regex {
 std::string quoteRegexChars(const std::string & raw)
 {

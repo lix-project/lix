@@ -7,6 +7,7 @@
 #include "globals.hh"
 #include "compression.hh"
 #include "filetransfer.hh"
+#include "strings.hh"
 
 #include <aws/core/Aws.h>
 #include <aws/core/VersionConfig.h>

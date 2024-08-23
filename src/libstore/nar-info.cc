@@ -1,4 +1,4 @@
-#include "globals.hh"
+#include "strings.hh"
 #include "nar-info.hh"
 #include "store-api.hh"
 

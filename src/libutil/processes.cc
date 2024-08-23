@@ -3,6 +3,7 @@
 #include "finally.hh"
 #include "logging.hh"
 #include "processes.hh"
+#include "strings.hh"
 #include "serialise.hh"
 #include "signals.hh"
 

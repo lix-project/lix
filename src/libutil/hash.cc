@@ -10,6 +10,7 @@
 #include "charptr-cast.hh"
 #include "logging.hh"
 #include "split.hh"
+#include "strings.hh"
 
 #include <sys/types.h>
 #include <sys/stat.h>

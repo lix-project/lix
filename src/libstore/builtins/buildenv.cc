@@ -1,4 +1,5 @@
 #include "buildenv.hh"
+#include "strings.hh"
 
 #include <sys/stat.h>
 #include <sys/types.h>

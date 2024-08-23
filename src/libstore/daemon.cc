@@ -2,7 +2,7 @@
 #include "monitor-fd.hh"
 #include "worker-protocol.hh"
 #include "worker-protocol-impl.hh"
-#include "build-result.hh"
+#include "build-result.hh" // IWYU pragma: keep
 #include "store-api.hh"
 #include "store-cast.hh"
 #include "gc-store.hh"
@@ -12,6 +12,7 @@
 #include "finally.hh"
 #include "archive.hh"
 #include "derivations.hh"
+#include "strings.hh"
 #include "args.hh"
 
 #include <sstream>

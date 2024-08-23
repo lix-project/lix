@@ -1,4 +1,5 @@
 #include "parsed-derivations.hh"
+#include "strings.hh"
 
 #include <nlohmann/json.hpp>
 #include <regex>

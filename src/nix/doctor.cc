@@ -7,6 +7,7 @@
 #include "store-api.hh"
 #include "local-fs-store.hh"
 #include "worker-protocol.hh"
+#include "exit.hh"
 
 using namespace nix;
 

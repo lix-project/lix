@@ -2,6 +2,7 @@
 ///@file
 
 #include "box_ptr.hh"
+#include "ref.hh"
 #include "logging.hh"
 #include "serialise.hh"
 #include "types.hh"

@@ -2,6 +2,7 @@
 #include "signals.hh"
 #include "platform/darwin.hh"
 #include "regex.hh"
+#include "strings.hh"
 
 #include <sys/proc_info.h>
 #include <sys/sysctl.h>

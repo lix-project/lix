@@ -1,11 +1,7 @@
-#include <cstdlib>
-#include <cstring>
 #include <algorithm>
 #include <set>
 #include <memory>
-#include <string_view>
 #include <tuple>
-#include <iomanip>
 #if __APPLE__
 #include <sys/time.h>
 #endif
@@ -18,6 +14,7 @@
 #include "build-result.hh"
 #include "store-api.hh"
 #include "derivations.hh"
+#include "strings.hh"
 #include "local-store.hh"
 #include "legacy.hh"
 #include "experimental-features.hh"

@@ -7,6 +7,8 @@
 #include "path.hh"
 #include "attrs.hh"
 #include "url.hh"
+#include "ref.hh"
+#include "strings.hh"
 
 #include <memory>
 

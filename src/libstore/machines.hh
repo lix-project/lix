@@ -1,7 +1,9 @@
 #pragma once
 ///@file
 
-#include "types.hh"
+#include "ref.hh"
+#include <set>
+#include <vector>
 
 namespace nix {
 

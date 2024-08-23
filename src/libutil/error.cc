@@ -3,6 +3,7 @@
 #include "logging.hh"
 #include "position.hh"
 #include "terminal.hh"
+#include "strings.hh"
 
 #include <iostream>
 #include <optional>

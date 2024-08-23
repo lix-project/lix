@@ -10,6 +10,7 @@
 #include "nar-accessor.hh"
 #include "thread-pool.hh"
 #include "signals.hh"
+#include "strings.hh"
 
 #include <chrono>
 #include <regex>

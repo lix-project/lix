@@ -5,6 +5,7 @@
 #include "path.hh"
 #include "outputs-spec.hh"
 #include "comparator.hh"
+#include "ref.hh"
 
 #include <variant>
 

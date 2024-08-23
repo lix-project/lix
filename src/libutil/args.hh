@@ -3,6 +3,8 @@
 
 #include "experimental-features.hh"
 #include "types.hh"
+#include "ref.hh"
+
 #include <functional>
 #include <map>
 #include <memory>

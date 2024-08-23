@@ -53,6 +53,7 @@ libutil_headers = files(
   'archive.hh',
   'args/root.hh',
   'args.hh',
+  'backed-string-view.hh',
   'box_ptr.hh',
   'canon-path.hh',
   'cgroup.hh',

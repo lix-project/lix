@@ -2,6 +2,7 @@
 #include "file-system.hh"
 #include "globals.hh"
 #include "hook-instance.hh"
+#include "strings.hh"
 
 namespace nix {
 

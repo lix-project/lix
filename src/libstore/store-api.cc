@@ -5,10 +5,10 @@
 #include "nar-info-disk-cache.hh"
 #include "thread-pool.hh"
 #include "url.hh"
-#include "references.hh"
 #include "archive.hh"
-#include "remote-store.hh"
+#include "uds-remote-store.hh"
 #include "signals.hh"
+#include "strings.hh"
 // FIXME this should not be here, see TODO below on
 // `addMultipleToStore`.
 #include "worker-protocol.hh"

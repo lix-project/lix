@@ -12,6 +12,7 @@
 #include "experimental-features.hh"
 #include "search-path.hh"
 #include "repl-exit-status.hh"
+#include "backed-string-view.hh"
 
 #include <map>
 #include <optional>
@@ -791,4 +792,4 @@ static constexpr std::string_view corepkgsPrefix{"/__corepkgs__/"};
 
 }
 
-#include "eval-inline.hh"
+#include "eval-inline.hh" // IWYU pragma: keep

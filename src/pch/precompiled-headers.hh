@@ -58,3 +58,19 @@
 #include <unistd.h>
 
 #include <nlohmann/json.hpp>
+
+// This stuff is here to force the compiler to actually apply the extern
+// template directives in all compilation units. To borrow a term, under
+// complex microarchitectural conditions, clang ignores the extern template
+// declaration, as revealed in the profile.
+//
+// In most cases, extern template works fine in the header itself. We don't
+// have any idea why this happens.
+
+// Here because of all the regexes everywhere (it is infeasible to block instantiation everywhere)
+// For some reason this does not actually prevent the instantiation of
+// regex::_M_compile, and the regex compiler (my interpretation of what this is
+// supposed to do is make the template bits out-of-line), but it *does* prevent
+// a bunch of codegen of regex stuff, which seems to save about 30s on-cpu.
+// Instantiated in libutil/regex.cc.
+extern template class std::basic_regex<char>;

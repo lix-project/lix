@@ -2,6 +2,7 @@
 #include "substitution-goal.hh"
 #include "derivation-goal.hh"
 #include "local-store.hh"
+#include "strings.hh"
 
 namespace nix {
 
