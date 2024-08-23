@@ -13,8 +13,8 @@ def process_compdb(compdb: list[dict]) -> list[dict]:
         out = []
         eat_next = False
         for i, arg in enumerate(args):
-            if arg == '-fpch-preprocess':
-                # as used with gcc
+            if arg in ['-fpch-preprocess', '-fpch-instantiate-templates']:
+                # -fpch-preprocess as used with gcc, -fpch-instantiate-templates as used by clang
                 continue
             elif arg == '-include-pch' or (arg == '-include' and args[i + 1] == 'precompiled-headers.hh'):
                 # -include-pch some-pch (clang), or -include some-pch (gcc)

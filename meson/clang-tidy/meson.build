@@ -57,34 +57,18 @@ build_all_generated_headers = custom_target(
 )
 
 if lix_clang_tidy_so_found
-  default_concurrency = run_command(python, '-c', '''
-import multiprocessing
-import os
-print(min(multiprocessing.cpu_count(), int(os.environ.get("NIX_BUILD_CORES", "16"))))
-  ''', check : true).stdout()
-
   run_clang_tidy_args = [
-    '-load',
-    lix_clang_tidy_so,
-    '-p',
-    # We have to workaround a run-clang-tidy bug too, so we must give the
-    # directory name rather than the actual compdb file.
-    # https://github.com/llvm/llvm-project/issues/101440
-    meson.current_build_dir(),
-    '-quiet',
-    '-j', default_concurrency,
+    meson.current_source_dir() / 'clang-tidy-runner.py',
+    '--run-clang-tidy-path', run_clang_tidy,
+    '--compdb-path', meson.current_build_dir(),
+    '--plugin-path', lix_clang_tidy_so,
   ]
   run_target(
     'clang-tidy',
     command : [
-      # XXX: This explicitly invokes it with python because of a nixpkgs bug
-      # where clang-unwrapped does not patch interpreters in run-clang-tidy.
-      # However, making clang-unwrapped depend on python is also silly, so idk.
       python,
-      run_clang_tidy,
       run_clang_tidy_args,
-      '-warnings-as-errors',
-      '*',
+      '--werror',
     ],
     depends : [
       build_all_generated_headers,
@@ -94,9 +78,8 @@ print(min(multiprocessing.cpu_count(), int(os.environ.get("NIX_BUILD_CORES", "16
     'clang-tidy-fix',
     command : [
       python,
-      run_clang_tidy,
       run_clang_tidy_args,
-      '-fix',
+      '--fix',
     ],
     depends : [
       build_all_generated_headers,
