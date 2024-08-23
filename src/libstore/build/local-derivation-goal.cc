@@ -436,13 +436,23 @@ std::set<int> LocalDerivationGoal::startBuilder()
     killSandbox(false);
 
     /* Right platform? */
-    if (!parsedDrv->canBuildLocally(worker.store))
-        throw Error("a '%s' with features {%s} is required to build '%s', but I am a '%s' with features {%s}",
-            drv->platform,
-            concatStringsSep(", ", parsedDrv->getRequiredSystemFeatures()),
-            worker.store.printStorePath(drvPath),
-            settings.thisSystem,
-            concatStringsSep<StringSet>(", ", worker.store.systemFeatures));
+    if (!parsedDrv->canBuildLocally(worker.store)) {
+        HintFmt addendum{""};
+        if (settings.useSubstitutes && !parsedDrv->substitutesAllowed()) {
+            addendum = HintFmt("\n\nHint: the failing derivation has %s set to %s, forcing it to be built rather than substituted.\n"
+                "Passing %s to force substitution may resolve this failure if the path is available in a substituter.",
+                "allowSubstitutes", "false", "--always-allow-substitutes");
+        }
+        throw Error({
+            .msg = HintFmt("a '%s' with features {%s} is required to build '%s', but I am a '%s' with features {%s}%s",
+                drv->platform,
+                concatStringsSep(", ", parsedDrv->getRequiredSystemFeatures()),
+                worker.store.printStorePath(drvPath),
+                settings.thisSystem,
+                concatStringsSep<StringSet>(", ", worker.store.systemFeatures),
+                Uncolored(addendum))
+        });
+    }
 
     /* Create a temporary directory where the build will take
        place. */
