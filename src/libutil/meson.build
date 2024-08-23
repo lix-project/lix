@@ -46,6 +46,7 @@ libutil_sources = files(
 )
 
 libutil_headers = files(
+  'apply-config-options.hh',
   'abstract-setting-to-json.hh',
   'ansicolor.hh',
   'archive.hh',
