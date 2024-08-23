@@ -9,6 +9,31 @@
 
 namespace nix {
 
+template<typename T>
+T readNum(Source & source)
+{
+    unsigned char buf[8];
+    source(charptr_cast<char *>(buf), sizeof(buf));
+
+    auto n = readLittleEndian<uint64_t>(buf);
+
+    if (n > (uint64_t) std::numeric_limits<T>::max())
+        throw SerialisationError("serialised integer %d is too large for type '%s'", n, typeid(T).name());
+
+    return (T) n;
+}
+
+template bool readNum<bool>(Source & source);
+
+template unsigned char readNum<unsigned char>(Source & source);
+
+template unsigned int readNum<unsigned int>(Source & source);
+
+template unsigned long readNum<unsigned long>(Source & source);
+template long readNum<long>(Source & source);
+
+template unsigned long long readNum<unsigned long long>(Source & source);
+template long long readNum<long long>(Source & source);
 
 void BufferedSink::operator () (std::string_view data)
 {

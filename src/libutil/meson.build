@@ -17,6 +17,7 @@ libutil_sources = files(
   'experimental-features.cc',
   'file-descriptor.cc',
   'file-system.cc',
+  'fmt.cc',
   'git.cc',
   'hash.cc',
   'hilite.cc',

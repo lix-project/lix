@@ -450,19 +450,7 @@ inline Sink & operator<<(Sink & sink, const Error & ex)
 MakeError(SerialisationError, Error);
 
 template<typename T>
-T readNum(Source & source)
-{
-    unsigned char buf[8];
-    source(charptr_cast<char *>(buf), sizeof(buf));
-
-    auto n = readLittleEndian<uint64_t>(buf);
-
-    if (n > (uint64_t) std::numeric_limits<T>::max())
-        throw SerialisationError("serialised integer %d is too large for type '%s'", n, typeid(T).name());
-
-    return (T) n;
-}
-
+T readNum(Source & source);
 
 inline unsigned int readInt(Source & source)
 {

@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <string>
-#include <optional>
 #include <boost/format.hpp>
 // Darwin and FreeBSD stdenv do not define _GNU_SOURCE but do have _Unwind_Backtrace.
 #if __APPLE__ || __FreeBSD__
@@ -11,6 +10,9 @@
 #endif
 #include <boost/stacktrace.hpp>
 #include "ansicolor.hh"
+
+// Explicit instantiation in fmt.cc
+extern template class boost::basic_format<char>;
 
 namespace nix {
 
@@ -157,7 +159,9 @@ public:
      * Format the given string literally, without interpolating format
      * placeholders.
      */
-    HintFmt(const std::string & literal) : HintFmt("%s", Uncolored(literal)) {}
+    // Moved out of line because it was instantiating the template below in
+    // every file in the project.
+    HintFmt(const std::string & literal);
 
     /**
      * Interpolate the given arguments into the format string.
@@ -192,6 +196,11 @@ public:
         return fmt.str();
     }
 };
+
+// Explicit instantiations in fmt.cc
+extern template HintFmt::HintFmt(const std::string &, const Uncolored<std::string> &s);
+extern template HintFmt::HintFmt(const std::string &, const std::string &s);
+extern template HintFmt::HintFmt(const std::string &, const uint64_t &, const char * const &);
 
 std::ostream & operator<<(std::ostream & os, const HintFmt & hf);
 
