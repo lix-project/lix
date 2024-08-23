@@ -634,7 +634,7 @@ public:
           line.
         )"};
 
-    OptionalPathSetting diffHook{
+    PathsSetting<std::optional<Path>> diffHook{
         this, std::nullopt, "diff-hook",
         R"(
           Absolute path to an executable capable of diffing build

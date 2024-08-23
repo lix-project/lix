@@ -15,7 +15,7 @@ public:
         : Config()
     { }
 
-    PathsSetting paths{this, Paths(), "paths", "documentation"};
+    PathsSetting<Paths> paths{this, Paths(), "paths", "documentation"};
 };
 
 struct PathsSettingTest : public ::testing::Test {
@@ -53,20 +53,6 @@ TEST_F(PathsSettingTest, parse) {
         config.paths.parse("/puppy/../doggy.nix"),
         Eq<Paths>({"/doggy.nix"})
     );
-}
-
-TEST_F(PathsSettingTest, bool) {
-    auto config = mkConfig();
-    // No paths:
-    ASSERT_FALSE(config.paths);
-    // Set a path:
-    config.set("paths", "/puppy.nix");
-    // Now there are paths:
-    ASSERT_TRUE(config.paths);
-
-    // Multiple paths count too:
-    config.set("paths", "/puppy.nix /doggy.nix");
-    ASSERT_TRUE(config.paths);
 }
 
 TEST_F(PathsSettingTest, append) {

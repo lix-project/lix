@@ -926,7 +926,7 @@ void NixRepl::loadFiles()
 
 void NixRepl::loadReplOverlays()
 {
-    if (!evalSettings.replOverlays) {
+    if (evalSettings.replOverlays.get().empty()) {
         return;
     }
 
