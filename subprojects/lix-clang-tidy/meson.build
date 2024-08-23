@@ -3,7 +3,7 @@ project('lix-clang-tidy', ['cpp', 'c'],
   default_options : ['warning_level=3', 'cpp_std=c++20']
 )
 
-llvm = dependency('Clang', version: '>= 17', modules: ['libclang'])
+llvm = dependency('Clang', version: '>= 16', modules: ['libclang'])
 sources = files(
   'CharPtrCast.cc',
   'FixIncludes.cc',
