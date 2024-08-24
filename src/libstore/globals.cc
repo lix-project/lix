@@ -269,11 +269,31 @@ Path Settings::getDefaultSSLCertFile()
 
 const std::string nixVersion = PACKAGE_VERSION;
 
-NLOHMANN_JSON_SERIALIZE_ENUM(SandboxMode, {
-    {SandboxMode::smEnabled, true},
-    {SandboxMode::smRelaxed, "relaxed"},
-    {SandboxMode::smDisabled, false},
-});
+void to_json(nlohmann::json & j, const SandboxMode & e)
+{
+    if (e == SandboxMode::smEnabled) {
+        j = true;
+    } else if (e == SandboxMode::smRelaxed) {
+        j = "relaxed";
+    } else if (e == SandboxMode::smDisabled) {
+        j = false;
+    } else {
+        abort();
+    }
+}
+
+void from_json(const nlohmann::json & j, SandboxMode & e)
+{
+    if (j == true) {
+        e = SandboxMode::smEnabled;
+    } else if (j == "relaxed") {
+        e = SandboxMode::smRelaxed;
+    } else if (j == false) {
+        e = SandboxMode::smDisabled;
+    } else {
+        throw Error("Invalid sandbox mode '%s'", std::string(j));
+    }
+}
 
 template<> SandboxMode BaseSetting<SandboxMode>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
