@@ -432,6 +432,10 @@ stdenv.mkDerivation (finalAttrs: {
         pre-commit-checks,
         contribNotice,
         check-syscalls,
+
+        # debuggers
+        gdb,
+        rr,
       }:
       let
         glibcFix = lib.optionalAttrs (buildPlatform.isLinux && glibcLocales != null) {
@@ -511,6 +515,8 @@ stdenv.mkDerivation (finalAttrs: {
             ]
             ++ lib.optional (pre-commit-checks ? enabledPackages) pre-commit-checks.enabledPackages
             ++ lib.optional (lib.meta.availableOn buildPlatform clangbuildanalyzer) clangbuildanalyzer
+            ++ lib.optional (!stdenv.isDarwin) gdb
+            ++ lib.optional (lib.meta.availableOn buildPlatform rr) rr
             ++ finalAttrs.checkInputs;
 
           shellHook = ''
