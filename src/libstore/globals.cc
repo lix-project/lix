@@ -116,14 +116,15 @@ Settings::Settings()
 
 void loadConfFile()
 {
-    auto applyConfigFile = [&](const Path & path) {
+    auto applyConfigFile = [&](const ApplyConfigOptions & options) {
         try {
-            std::string contents = readFile(path);
-            globalConfig.applyConfig(contents, path);
-        } catch (SysError &) { }
+            std::string contents = readFile(*options.path);
+            globalConfig.applyConfig(contents, options);
+        } catch (SysError &) {
+        }
     };
 
-    applyConfigFile(settings.nixConfDir + "/nix.conf");
+    applyConfigFile(ApplyConfigOptions{.path = settings.nixConfDir + "/nix.conf"});
 
     /* We only want to send overrides to the daemon, i.e. stuff from
        ~/.nix/nix.conf or the command line. */
@@ -131,14 +132,13 @@ void loadConfFile()
 
     auto files = settings.nixUserConfFiles;
     for (auto file = files.rbegin(); file != files.rend(); file++) {
-        applyConfigFile(*file);
+        applyConfigFile(ApplyConfigOptions{.path = *file});
     }
 
     auto nixConfEnv = getEnv("NIX_CONFIG");
     if (nixConfEnv.has_value()) {
-        globalConfig.applyConfig(nixConfEnv.value(), "NIX_CONFIG");
+        globalConfig.applyConfig(nixConfEnv.value(), ApplyConfigOptions{.fromEnvVar = true});
     }
-
 }
 
 std::vector<Path> getUserConfigFiles()
@@ -264,7 +264,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(SandboxMode, {
     {SandboxMode::smDisabled, false},
 });
 
-template<> SandboxMode BaseSetting<SandboxMode>::parse(const std::string & str) const
+template<> SandboxMode BaseSetting<SandboxMode>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     if (str == "true") return smEnabled;
     else if (str == "relaxed") return smRelaxed;
@@ -307,7 +307,7 @@ template<> void BaseSetting<SandboxMode>::convertToArg(Args & args, const std::s
     });
 }
 
-unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
+unsigned int MaxBuildJobsSetting::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     if (str == "auto") return std::max(1U, std::thread::hardware_concurrency());
     else {
@@ -315,15 +315,15 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
             return *n;
         else
             throw UsageError("configuration setting '%s' should be 'auto' or an integer", name);
+        }
     }
-}
 
 
-Paths PluginFilesSetting::parse(const std::string & str) const
+Paths PluginFilesSetting::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     if (pluginsLoaded)
         throw UsageError("plugin-files set after plugins were loaded, you may need to move the flag before the subcommand");
-    return BaseSetting<Paths>::parse(str);
+    return BaseSetting<Paths>::parse(str, options);
 }
 
 
