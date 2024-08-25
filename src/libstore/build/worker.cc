@@ -1,5 +1,6 @@
 #include "charptr-cast.hh"
 #include "worker.hh"
+#include "finally.hh"
 #include "substitution-goal.hh"
 #include "drv-output-substitution-goal.hh"
 #include "local-derivation-goal.hh"
@@ -59,22 +60,38 @@ std::shared_ptr<DerivationGoal> Worker::makeDerivationGoalCommon(
 std::shared_ptr<DerivationGoal> Worker::makeDerivationGoal(const StorePath & drvPath,
     const OutputsSpec & wantedOutputs, BuildMode buildMode)
 {
-    return makeDerivationGoalCommon(drvPath, wantedOutputs, [&]() -> std::shared_ptr<DerivationGoal> {
-        return !dynamic_cast<LocalStore *>(&store)
-            ? std::make_shared<DerivationGoal>(drvPath, wantedOutputs, *this, buildMode)
-            : LocalDerivationGoal::makeLocalDerivationGoal(drvPath, wantedOutputs, *this, buildMode);
-    });
+    return makeDerivationGoalCommon(
+        drvPath,
+        wantedOutputs,
+        [&]() -> std::shared_ptr<DerivationGoal> {
+            return !dynamic_cast<LocalStore *>(&store)
+                ? std::make_shared<DerivationGoal>(
+                    drvPath, wantedOutputs, *this, running, buildMode
+                )
+                : LocalDerivationGoal::makeLocalDerivationGoal(
+                    drvPath, wantedOutputs, *this, running, buildMode
+                );
+        }
+    );
 }
 
 
 std::shared_ptr<DerivationGoal> Worker::makeBasicDerivationGoal(const StorePath & drvPath,
     const BasicDerivation & drv, const OutputsSpec & wantedOutputs, BuildMode buildMode)
 {
-    return makeDerivationGoalCommon(drvPath, wantedOutputs, [&]() -> std::shared_ptr<DerivationGoal> {
-        return !dynamic_cast<LocalStore *>(&store)
-            ? std::make_shared<DerivationGoal>(drvPath, drv, wantedOutputs, *this, buildMode)
-            : LocalDerivationGoal::makeLocalDerivationGoal(drvPath, drv, wantedOutputs, *this, buildMode);
-    });
+    return makeDerivationGoalCommon(
+        drvPath,
+        wantedOutputs,
+        [&]() -> std::shared_ptr<DerivationGoal> {
+            return !dynamic_cast<LocalStore *>(&store)
+                ? std::make_shared<DerivationGoal>(
+                    drvPath, drv, wantedOutputs, *this, running, buildMode
+                )
+                : LocalDerivationGoal::makeLocalDerivationGoal(
+                    drvPath, drv, wantedOutputs, *this, running, buildMode
+                );
+        }
+    );
 }
 
 
@@ -83,7 +100,7 @@ std::shared_ptr<PathSubstitutionGoal> Worker::makePathSubstitutionGoal(const Sto
     std::weak_ptr<PathSubstitutionGoal> & goal_weak = substitutionGoals[path];
     auto goal = goal_weak.lock(); // FIXME
     if (!goal) {
-        goal = std::make_shared<PathSubstitutionGoal>(path, *this, repair, ca);
+        goal = std::make_shared<PathSubstitutionGoal>(path, *this, running, repair, ca);
         goal_weak = goal;
         wakeUp(goal);
     }
@@ -96,7 +113,7 @@ std::shared_ptr<DrvOutputSubstitutionGoal> Worker::makeDrvOutputSubstitutionGoal
     std::weak_ptr<DrvOutputSubstitutionGoal> & goal_weak = drvOutputSubstitutionGoals[id];
     auto goal = goal_weak.lock(); // FIXME
     if (!goal) {
-        goal = std::make_shared<DrvOutputSubstitutionGoal>(id, *this, repair, ca);
+        goal = std::make_shared<DrvOutputSubstitutionGoal>(id, *this, running, repair, ca);
         goal_weak = goal;
         wakeUp(goal);
     }
@@ -312,6 +329,10 @@ void Worker::waitForAWhile(GoalPtr goal)
 void Worker::run(const Goals & _topGoals)
 {
     std::vector<nix::DerivedPath> topPaths;
+
+    assert(!running);
+    running = true;
+    Finally const _stop([&] { running = false; });
 
     for (auto & i : _topGoals) {
         topGoals.insert(i);

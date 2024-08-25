@@ -61,6 +61,13 @@ struct Goal
     Worker & worker;
 
     /**
+      * Whether this goal is only a dependency of other goals. Toplevel
+      * goals that are also dependencies of other toplevel goals do not
+      * set this, only goals that are exclusively dependencies do this.
+      */
+    const bool isDependency;
+
+    /**
      * Goals that this goal is waiting for.
      */
     Goals waitees;
@@ -143,8 +150,9 @@ public:
      */
     std::shared_ptr<Error> ex;
 
-    explicit Goal(Worker & worker)
+    explicit Goal(Worker & worker, bool isDependency)
         : worker(worker)
+        , isDependency(isDependency)
     { }
 
     virtual ~Goal() noexcept(false)

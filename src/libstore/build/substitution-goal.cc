@@ -6,8 +6,14 @@
 
 namespace nix {
 
-PathSubstitutionGoal::PathSubstitutionGoal(const StorePath & storePath, Worker & worker, RepairFlag repair, std::optional<ContentAddress> ca)
-    : Goal(worker)
+PathSubstitutionGoal::PathSubstitutionGoal(
+    const StorePath & storePath,
+    Worker & worker,
+    bool isDependency,
+    RepairFlag repair,
+    std::optional<ContentAddress> ca
+)
+    : Goal(worker, isDependency)
     , storePath(storePath)
     , repair(repair)
     , ca(ca)

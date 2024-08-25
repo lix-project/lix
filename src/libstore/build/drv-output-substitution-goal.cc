@@ -9,9 +9,10 @@ namespace nix {
 DrvOutputSubstitutionGoal::DrvOutputSubstitutionGoal(
     const DrvOutput & id,
     Worker & worker,
+    bool isDependency,
     RepairFlag repair,
     std::optional<ContentAddress> ca)
-    : Goal(worker)
+    : Goal(worker, isDependency)
     , id(id)
 {
     state = &DrvOutputSubstitutionGoal::init;

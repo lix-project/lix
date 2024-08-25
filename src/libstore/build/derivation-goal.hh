@@ -234,10 +234,10 @@ struct DerivationGoal : public Goal
     std::string machineName;
 
     DerivationGoal(const StorePath & drvPath,
-        const OutputsSpec & wantedOutputs, Worker & worker,
+        const OutputsSpec & wantedOutputs, Worker & worker, bool isDependency,
         BuildMode buildMode = bmNormal);
     DerivationGoal(const StorePath & drvPath, const BasicDerivation & drv,
-        const OutputsSpec & wantedOutputs, Worker & worker,
+        const OutputsSpec & wantedOutputs, Worker & worker, bool isDependency,
         BuildMode buildMode = bmNormal);
     virtual ~DerivationGoal() noexcept(false);
 

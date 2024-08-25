@@ -80,7 +80,13 @@ struct PathSubstitutionGoal : public Goal
         std::optional<std::string> errorMsg = {});
 
 public:
-    PathSubstitutionGoal(const StorePath & storePath, Worker & worker, RepairFlag repair = NoRepair, std::optional<ContentAddress> ca = std::nullopt);
+    PathSubstitutionGoal(
+        const StorePath & storePath,
+        Worker & worker,
+        bool isDependency,
+        RepairFlag repair = NoRepair,
+        std::optional<ContentAddress> ca = std::nullopt
+    );
     ~PathSubstitutionGoal();
 
     Finished timedOut(Error && ex) override { abort(); };

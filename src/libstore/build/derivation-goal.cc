@@ -58,8 +58,8 @@
 namespace nix {
 
 DerivationGoal::DerivationGoal(const StorePath & drvPath,
-    const OutputsSpec & wantedOutputs, Worker & worker, BuildMode buildMode)
-    : Goal(worker)
+    const OutputsSpec & wantedOutputs, Worker & worker, bool isDependency, BuildMode buildMode)
+    : Goal(worker, isDependency)
     , useDerivation(true)
     , drvPath(drvPath)
     , wantedOutputs(wantedOutputs)
@@ -76,8 +76,8 @@ DerivationGoal::DerivationGoal(const StorePath & drvPath,
 
 
 DerivationGoal::DerivationGoal(const StorePath & drvPath, const BasicDerivation & drv,
-    const OutputsSpec & wantedOutputs, Worker & worker, BuildMode buildMode)
-    : Goal(worker)
+    const OutputsSpec & wantedOutputs, Worker & worker, bool isDependency, BuildMode buildMode)
+    : Goal(worker, isDependency)
     , useDerivation(false)
     , drvPath(drvPath)
     , wantedOutputs(wantedOutputs)

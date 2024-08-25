@@ -186,6 +186,7 @@ struct LocalDerivationGoal : public DerivationGoal
         const StorePath & drvPath,
         const OutputsSpec & wantedOutputs,
         Worker & worker,
+        bool isDependency,
         BuildMode buildMode
     );
 
@@ -198,6 +199,7 @@ struct LocalDerivationGoal : public DerivationGoal
         const BasicDerivation & drv,
         const OutputsSpec & wantedOutputs,
         Worker & worker,
+        bool isDependency,
         BuildMode buildMode
     );
 

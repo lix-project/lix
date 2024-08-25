@@ -47,6 +47,8 @@ class Worker
 {
 private:
 
+    bool running = false;
+
     /* Note: the worker should only have strong pointers to the
        top-level goals. */
 

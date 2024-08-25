@@ -56,7 +56,13 @@ class DrvOutputSubstitutionGoal : public Goal {
     bool substituterFailed = false;
 
 public:
-    DrvOutputSubstitutionGoal(const DrvOutput& id, Worker & worker, RepairFlag repair = NoRepair, std::optional<ContentAddress> ca = std::nullopt);
+    DrvOutputSubstitutionGoal(
+        const DrvOutput & id,
+        Worker & worker,
+        bool isDependency,
+        RepairFlag repair = NoRepair,
+        std::optional<ContentAddress> ca = std::nullopt
+    );
 
     typedef WorkResult (DrvOutputSubstitutionGoal::*GoalState)(bool inBuildSlot);
     GoalState state;

@@ -29,17 +29,18 @@ std::shared_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoa
     const StorePath & drvPath,
     const OutputsSpec & wantedOutputs,
     Worker & worker,
+    bool isDependency,
     BuildMode buildMode
 )
 {
 #if __linux__
-    return std::make_shared<LinuxLocalDerivationGoal>(drvPath, wantedOutputs, worker, buildMode);
+    return std::make_shared<LinuxLocalDerivationGoal>(drvPath, wantedOutputs, worker, isDependency, buildMode);
 #elif __APPLE__
-    return std::make_shared<DarwinLocalDerivationGoal>(drvPath, wantedOutputs, worker, buildMode);
+    return std::make_shared<DarwinLocalDerivationGoal>(drvPath, wantedOutputs, worker, isDependency, buildMode);
 #elif __FreeBSD__
-    return std::make_shared<FreeBSDLocalDerivationGoal>(drvPath, wantedOutputs, worker, buildMode);
+    return std::make_shared<FreeBSDLocalDerivationGoal>(drvPath, wantedOutputs, worker, isDependency, buildMode);
 #else
-    return std::make_shared<FallbackLocalDerivationGoal>(drvPath, wantedOutputs, worker, buildMode);
+    return std::make_shared<FallbackLocalDerivationGoal>(drvPath, wantedOutputs, worker, isDependency, buildMode);
 #endif
 }
 
@@ -48,24 +49,25 @@ std::shared_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoa
     const BasicDerivation & drv,
     const OutputsSpec & wantedOutputs,
     Worker & worker,
+    bool isDependency,
     BuildMode buildMode
 )
 {
 #if __linux__
     return std::make_shared<LinuxLocalDerivationGoal>(
-        drvPath, drv, wantedOutputs, worker, buildMode
+        drvPath, drv, wantedOutputs, worker, isDependency, buildMode
     );
 #elif __APPLE__
     return std::make_shared<DarwinLocalDerivationGoal>(
-        drvPath, drv, wantedOutputs, worker, buildMode
+        drvPath, drv, wantedOutputs, worker, isDependency, buildMode
     );
 #elif __FreeBSD__
     return std::make_shared<FreeBSDLocalDerivationGoal>(
-        drvPath, drv, wantedOutputs, worker, buildMode
+        drvPath, drv, wantedOutputs, worker, isDependency, buildMode
     );
 #else
     return std::make_shared<FallbackLocalDerivationGoal>(
-        drvPath, drv, wantedOutputs, worker, buildMode
+        drvPath, drv, wantedOutputs, worker, isDependency, buildMode
     );
 #endif
 }
