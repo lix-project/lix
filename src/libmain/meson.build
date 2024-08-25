@@ -1,5 +1,6 @@
 libmain_sources = files(
   'common-args.cc',
+  'crash-handler.cc',
   'loggers.cc',
   'progress-bar.cc',
   'shared.cc',
@@ -8,6 +9,7 @@ libmain_sources = files(
 
 libmain_headers = files(
   'common-args.hh',
+  'crash-handler.hh',
   'loggers.hh',
   'progress-bar.hh',
   'shared.hh',

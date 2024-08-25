@@ -262,9 +262,14 @@ test(
   protocol : 'gtest',
 )
 
+libmain_tests_sources = files(
+  'libmain/crash.cc',
+  'libmain/progress-bar.cc',
+)
+
 libmain_tester = executable(
   'liblixmain-tests',
-  files('libmain/progress-bar.cc'),
+  libmain_tests_sources,
   dependencies : [
     liblixmain,
     liblixexpr,

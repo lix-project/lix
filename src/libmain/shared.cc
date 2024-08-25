@@ -1,3 +1,4 @@
+#include "crash-handler.hh"
 #include "globals.hh"
 #include "shared.hh"
 #include "store-api.hh"
@@ -118,6 +119,8 @@ static void sigHandler(int signo) { }
 
 void initNix()
 {
+    registerCrashHandler();
+
     /* Turn on buffering for cerr. */
     static char buf[1024];
     std::cerr.rdbuf()->pubsetbuf(buf, sizeof(buf));
@@ -335,12 +338,15 @@ int handleExceptions(const std::string & programName, std::function<void()> fun)
     } catch (BaseError & e) {
         logError(e.info());
         return e.info().status;
-    } catch (std::bad_alloc & e) {
+    } catch (const std::bad_alloc & e) {
         printError(error + "out of memory");
         return 1;
-    } catch (std::exception & e) {
-        printError(error + e.what());
-        return 1;
+    } catch (const std::exception & e) {
+        // Random exceptions bubbling into main are cause for bug reports, crash
+        std::terminate();
+    } catch (...) {
+        // Explicitly do not tolerate non-std exceptions escaping.
+        std::terminate();
     }
 
     return 0;
