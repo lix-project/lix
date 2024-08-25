@@ -130,6 +130,7 @@ functional_tests_scripts = [
   'build-remote-trustless-should-pass-2.sh',
   'build-remote-trustless-should-pass-3.sh',
   'build-remote-trustless-should-fail-0.sh',
+  'build-jobless.sh',
   'nar-access.sh',
   'impure-eval.sh',
   'pure-eval.sh',

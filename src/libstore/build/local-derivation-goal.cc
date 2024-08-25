@@ -1,6 +1,7 @@
 #include "local-derivation-goal.hh"
 #include "indirect-root-store.hh"
 #include "hook-instance.hh"
+#include "machines.hh"
 #include "store-api.hh"
 #include "worker.hh"
 #include "builtins.hh"
@@ -159,7 +160,21 @@ Goal::WorkResult LocalDerivationGoal::tryLocalBuild(bool inBuildSlot)
     if (!inBuildSlot) {
         state = &DerivationGoal::tryToBuild;
         outputLocks.unlock();
-        return WaitForSlot{};
+        if (0U != settings.maxBuildJobs) {
+            return WaitForSlot{};
+        }
+        if (getMachines().empty()) {
+            throw Error(
+                "unable to start any build; either set '--max-jobs' to a non-zero value or enable "
+                "remote builds.\n"
+                "https://docs.lix.systems/manual/lix/stable/advanced-topics/distributed-builds.html"
+            );
+        } else {
+            throw Error(
+                "unable to start any build; remote machines may not have all required system features.\n"
+                "https://docs.lix.systems/manual/lix/stable/advanced-topics/distributed-builds.html"
+            );
+        }
     }
 
     assert(derivationType);
