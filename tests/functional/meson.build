@@ -190,6 +190,7 @@ functional_tests_scripts = [
   'test-libstoreconsumer.sh',
   'extra-sandbox-profile.sh',
   'substitute-truncated-nar.sh',
+  'regression-484.sh',
 ]
 
 # Plugin tests require shared libraries support.

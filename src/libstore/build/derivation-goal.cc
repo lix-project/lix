@@ -261,24 +261,29 @@ Goal::WorkResult DerivationGoal::haveDerivation(bool inBuildSlot)
        through substitutes.  If that doesn't work, we'll build
        them. */
     WaitForGoals result;
-    if (settings.useSubstitutes && parsedDrv->substitutesAllowed())
-        for (auto & [outputName, status] : initialOutputs) {
-            if (!status.wanted) continue;
-            if (!status.known)
-                result.goals.insert(
-                    worker.makeDrvOutputSubstitutionGoal(
-                        DrvOutput{status.outputHash, outputName},
-                        buildMode == bmRepair ? Repair : NoRepair
-                    )
-                );
-            else {
-                auto * cap = getDerivationCA(*drv);
-                result.goals.insert(worker.makePathSubstitutionGoal(
-                    status.known->path,
-                    buildMode == bmRepair ? Repair : NoRepair,
-                    cap ? std::optional { *cap } : std::nullopt));
+    if (settings.useSubstitutes) {
+        if (parsedDrv->substitutesAllowed()) {
+            for (auto & [outputName, status] : initialOutputs) {
+                if (!status.wanted) continue;
+                if (!status.known)
+                    result.goals.insert(
+                        worker.makeDrvOutputSubstitutionGoal(
+                            DrvOutput{status.outputHash, outputName},
+                            buildMode == bmRepair ? Repair : NoRepair
+                        )
+                    );
+                else {
+                    auto * cap = getDerivationCA(*drv);
+                    result.goals.insert(worker.makePathSubstitutionGoal(
+                        status.known->path,
+                        buildMode == bmRepair ? Repair : NoRepair,
+                        cap ? std::optional { *cap } : std::nullopt));
+                }
             }
+        } else {
+            trace("skipping substitute because allowSubstitutes is false");
         }
+    }
 
     if (result.goals.empty()) { /* to prevent hang (no wake-up event) */
         return outputsSubstitutionTried(inBuildSlot);
