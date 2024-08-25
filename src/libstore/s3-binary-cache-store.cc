@@ -140,6 +140,8 @@ ref<Aws::Client::ClientConfiguration> S3Helper::makeConfig(
     res->connectTimeoutMs = 5 * 1000;
     res->retryStrategy = std::make_shared<RetryStrategy>();
     res->caFile = settings.caFile;
+    // Use the system proxy env-vars in curl for s3, which is off by default for some reason
+    res->allowSystemProxy = true;
     return res;
 }
 

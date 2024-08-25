@@ -147,6 +147,17 @@ if should_pch
   # Unlike basically everything else that takes a file, Meson requires the arguments to
   # cpp_pch : to be strings and doesn't accept files(). So absolute path it is.
   cpp_pch = [meson.project_source_root() / 'src/pch/precompiled-headers.hh']
+
+  # Saves about 400s (30% at time of writing) from compile time on-cpu, mostly
+  # by removing instantiations of nlohmann from every single damned compilation
+  # unit.
+  # There is no equivalent in gcc.
+  if cxx.get_id() == 'clang'
+    add_project_arguments(
+      '-fpch-instantiate-templates',
+      language : 'cpp',
+    )
+  endif
 else
   cpp_pch = []
 endif
