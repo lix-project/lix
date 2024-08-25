@@ -157,18 +157,12 @@ void Worker::goalFinished(GoalPtr goal, Goal::Finished & f)
     goal->trace("done");
     assert(!goal->exitCode.has_value());
     goal->exitCode = f.result;
+    goal->ex = f.ex;
 
     permanentFailure |= f.permanentFailure;
     timedOut |= f.timedOut;
     hashMismatch |= f.hashMismatch;
     checkMismatch |= f.checkMismatch;
-
-    if (f.ex) {
-        if (!goal->waiters.empty())
-            logError(f.ex->info());
-        else
-            goal->ex = f.ex;
-    }
 
     for (auto & i : goal->waiters) {
         if (GoalPtr waiting = i.lock()) {

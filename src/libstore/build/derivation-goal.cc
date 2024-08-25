@@ -1544,6 +1544,10 @@ Goal::Finished DerivationGoal::done(
         fs << worker.store.printStorePath(drvPath) << "\t" << buildResult.toString() << std::endl;
     }
 
+    if (ex && isDependency) {
+        logError(ex->info());
+    }
+
     return Finished{
         .result = buildResult.success() ? ecSuccess : ecFailed,
         .ex = ex ? std::make_shared<Error>(std::move(*ex)) : nullptr,
