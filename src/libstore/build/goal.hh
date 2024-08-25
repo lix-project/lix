@@ -143,7 +143,7 @@ public:
      */
     std::unique_ptr<Error> ex;
 
-    Goal(Worker & worker, DerivedPath path)
+    explicit Goal(Worker & worker)
         : worker(worker)
     { }
 

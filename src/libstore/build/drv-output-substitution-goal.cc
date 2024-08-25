@@ -11,7 +11,7 @@ DrvOutputSubstitutionGoal::DrvOutputSubstitutionGoal(
     Worker & worker,
     RepairFlag repair,
     std::optional<ContentAddress> ca)
-    : Goal(worker, DerivedPath::Opaque { StorePath::dummy })
+    : Goal(worker)
     , id(id)
 {
     state = &DrvOutputSubstitutionGoal::init;
