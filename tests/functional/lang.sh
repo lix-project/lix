@@ -41,7 +41,12 @@ badExitCode=0
 for i in lang/parse-fail-*.nix; do
     echo "parsing $i (should fail)";
     i=$(basename "$i" .nix)
-    if expectStderr 1 nix-instantiate --parse - < "lang/$i.nix" > "lang/$i.err"
+
+    declare -a flags=()
+    if test -e "lang/$i.flags"; then
+        read -r -a flags < "lang/$i.flags"
+    fi
+    if expectStderr 1 nix-instantiate --parse "${flags[@]}" - < "lang/$i.nix" > "lang/$i.err"
     then
         diffAndAccept "$i" err err.exp
     else
@@ -54,13 +59,12 @@ for i in lang/parse-okay-*.nix; do
     echo "parsing $i (should succeed)";
     i=$(basename "$i" .nix)
 
-    if [ -e "lang/$i.flags" ]; then
-        extraArgs="$(cat "lang/$i.flags")"
-    else
-        extraArgs=""
+    declare -a flags=()
+    if test -e "lang/$i.flags"; then
+        read -r -a flags < "lang/$i.flags"
     fi
     if
-        expect 0 nix-instantiate --parse ${extraArgs-} - < "lang/$i.nix" \
+        expect 0 nix-instantiate --parse "${flags[@]}" - < "lang/$i.nix" \
             1> "lang/$i.out" \
             2> "lang/$i.err"
     then
@@ -77,13 +81,12 @@ for i in lang/eval-fail-*.nix; do
     echo "evaluating $i (should fail)";
     i=$(basename "$i" .nix)
 
-    if [ -e "lang/$i.flags" ]; then
-        extraArgs="$(cat "lang/$i.flags")"
-    else
-        extraArgs=""
+    declare -a flags=()
+    if test -e "lang/$i.flags"; then
+        read -r -a flags < "lang/$i.flags"
     fi
     if
-        expectStderr 1 nix-instantiate --eval --strict --show-trace ${extraArgs-} "lang/$i.nix" \
+        expectStderr 1 nix-instantiate --eval --strict --show-trace "${flags[@]}" "lang/$i.nix" \
             | sed "s!$(pwd)!/pwd!g" > "lang/$i.err"
     then
         diffAndAccept "$i" err err.exp
@@ -97,14 +100,13 @@ for i in lang/eval-okay-*.nix; do
     echo "evaluating $i (should succeed)";
     i=$(basename "$i" .nix)
 
-    if [ -e "lang/$i.flags" ]; then
-        extraArgs="$(cat "lang/$i.flags")"
-    else
-        extraArgs=""
+    declare -a flags=()
+    if test -e "lang/$i.flags"; then
+        read -r -a flags < "lang/$i.flags"
     fi
 
     if test -e "lang/$i.exp.xml"; then
-        if expect 0 nix-instantiate --eval --xml --no-location --strict ${extraArgs-} \
+        if expect 0 nix-instantiate --eval --xml --no-location --strict "${flags[@]}" \
                 "lang/$i.nix" > "lang/$i.out.xml"
         then
             diffAndAccept "$i" out.xml exp.xml
@@ -113,11 +115,6 @@ for i in lang/eval-okay-*.nix; do
             badExitCode=1
         fi
     elif test ! -e "lang/$i.exp-disabled"; then
-        declare -a flags=()
-        if test -e "lang/$i.flags"; then
-            read -r -a flags < "lang/$i.flags"
-        fi
-
         if
             expect 0 env \
                 NIX_PATH=lang/dir3:lang/dir4 \
