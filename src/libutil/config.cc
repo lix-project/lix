@@ -126,7 +126,7 @@ static void applyConfigInner(const std::string & contents, const ApplyConfigOpti
             if (!options.path) {
                 throw UsageError("can only include configuration '%1%' from files", tokens[1]);
             }
-            auto pathToInclude = absPath(tokens[1], dirOf(*options.path));
+            auto pathToInclude = absPath(tildePath(tokens[1], options.home), dirOf(*options.path));
             if (pathExists(pathToInclude)) {
                 auto includeOptions = ApplyConfigOptions {
                     .path = pathToInclude,
@@ -437,10 +437,16 @@ template class BaseSetting<DeprecatedFeatures>;
 
 static Path parsePath(const AbstractSetting & s, const std::string & str, const ApplyConfigOptions & options)
 {
-    if (str == "")
+    if (str == "") {
         throw UsageError("setting '%s' is a path and paths cannot be empty", s.name);
-    else
-        return canonPath(str);
+    } else {
+        auto tildeResolvedPath = tildePath(str, options.home);
+        if (options.path) {
+            return absPath(tildeResolvedPath, dirOf(*options.path));
+        } else {
+            return canonPath(tildeResolvedPath);
+        }
+    }
 }
 
 template<> Path PathsSetting<Path>::parse(const std::string & str, const ApplyConfigOptions & options) const

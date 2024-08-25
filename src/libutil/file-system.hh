@@ -63,6 +63,16 @@ Path canonPath(PathView path, bool resolveSymlinks = false);
 Path realPath(Path const & path);
 
 /**
+ * Resolve a tilde path like `~/puppy.nix` into an absolute path.
+ *
+ * If `home` is given, it's substituted for `~/` at the start of the input
+ * `path`. Otherwise, an error is thrown.
+ *
+ * If the path starts with `~` but not `~/`, an error is thrown.
+ */
+Path tildePath(Path const & path, const std::optional<Path> & home = std::nullopt);
+
+/**
  * Change the permissions of a path
  * Not called `chmod` as it shadows and could be confused with
  * `int chmod(char *, mode_t)`, which does not handle errors
