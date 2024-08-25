@@ -134,6 +134,13 @@ nix build --impure -f multiple-outputs.nix --json e --no-link | jq --exit-status
 printf "" | nix build --no-link --stdin --json | jq --exit-status '. == []'
 printf "%s\n" "$drv^*" | nix build --no-link --stdin --json | jq --exit-status '.[0]|has("drvPath")'
 
+# URL reporting
+out="$(nix-build fod-failing.nix -A x1 2>&1)" && status=0 || status=$?
+test "$status" = 102
+test "$(<<<"$out" grep -E '^error:' | wc -l)" = 1
+<<<"$out" grepQuiet -E "hash mismatch in fixed-output derivation '.*-x1\\.drv'"
+<<<"$out" grepQuiet -E "likely URL: https://meow.puppy.forge/puppy.tar.gz"
+
 # --keep-going and FOD
 out="$(nix build -f fod-failing.nix -L 2>&1)" && status=0 || status=$?
 test "$status" = 1
