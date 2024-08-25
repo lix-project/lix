@@ -16,13 +16,13 @@ void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMod
     worker.run(goals);
 
     StringSet failed;
-    std::optional<Error> ex;
+    std::shared_ptr<Error> ex;
     for (auto & i : goals) {
         if (i->ex) {
             if (ex)
                 logError(i->ex->info());
             else
-                ex = std::move(*i->ex);
+                ex = i->ex;
         }
         if (i->exitCode != Goal::ecSuccess) {
             if (auto i2 = dynamic_cast<DerivationGoal *>(i.get()))

@@ -150,7 +150,7 @@ void Worker::goalFinished(GoalPtr goal, Goal::Finished & f)
         if (!goal->waiters.empty())
             logError(f.ex->info());
         else
-            goal->ex = std::move(f.ex);
+            goal->ex = f.ex;
     }
 
     for (auto & i : goal->waiters) {

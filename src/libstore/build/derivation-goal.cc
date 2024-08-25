@@ -1545,7 +1545,7 @@ Goal::Finished DerivationGoal::done(
 
     return Finished{
         .result = buildResult.success() ? ecSuccess : ecFailed,
-        .ex = ex ? std::make_unique<Error>(std::move(*ex)) : nullptr,
+        .ex = ex ? std::make_shared<Error>(std::move(*ex)) : nullptr,
         .permanentFailure = buildResult.status == BuildResult::PermanentFailure,
         .timedOut = buildResult.status == BuildResult::TimedOut,
         .hashMismatch = anyHashMismatchSeen,

@@ -118,7 +118,7 @@ public:
     };
     struct [[nodiscard]] Finished {
         ExitCode result;
-        std::unique_ptr<Error> ex;
+        std::shared_ptr<Error> ex;
         bool permanentFailure = false;
         bool timedOut = false;
         bool hashMismatch = false;
@@ -141,7 +141,7 @@ public:
     /**
      * Exception containing an error message, if any.
      */
-    std::unique_ptr<Error> ex;
+    std::shared_ptr<Error> ex;
 
     explicit Goal(Worker & worker)
         : worker(worker)
