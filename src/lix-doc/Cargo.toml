@@ -11,7 +11,7 @@ repository = "https://github.com/lf-/nix-doc"
 [dependencies]
 rnix = "0.11.0"
 # Necessary because rnix fails to export a critical trait (Rowan's AstNode).
-rowan = "0.15.0"
+rowan = "0.15.16"
 
 [dev-dependencies]
 expect-test = "1.1.0"
