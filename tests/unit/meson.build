@@ -19,6 +19,7 @@ libutil_test_support_sources = files(
   'libutil-support/tests/cli-literate-parser.cc',
   'libutil-support/tests/hash.cc',
   'libutil-support/tests/terminal-code-eater.cc',
+  'libutil-support/tests/test-data.cc',
 )
 libutil_test_support = library(
   'lixutil-test-support',
@@ -95,7 +96,6 @@ libstore_test_support_sources = files(
   'libstore-support/tests/derived-path.cc',
   'libstore-support/tests/outputs-spec.cc',
   'libstore-support/tests/path.cc',
-  'libstore-support/tests/test-data.hh',
 )
 
 libstore_test_support = library(
