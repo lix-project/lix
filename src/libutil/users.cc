@@ -36,7 +36,7 @@ Path getHome()
         std::optional<std::string> unownedUserHomeDir = {};
         auto homeDir = getEnv("HOME");
         if (homeDir) {
-            // Only use $HOME if doesn't exist or is owned by the current user.
+            // Only use `$HOME` if it exists and is owned by the current user.
             struct stat st;
             int result = stat(homeDir->c_str(), &st);
             if (result != 0) {
