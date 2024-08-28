@@ -29,4 +29,6 @@ public:
     virtual const Stats & getS3Stats() = 0;
 };
 
+void registerS3BinaryCacheStore();
+
 }

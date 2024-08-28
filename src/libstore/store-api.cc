@@ -1472,7 +1472,7 @@ ref<Store> openStore(const std::string & uri_,
             parsedUri.authority.value_or("") + parsedUri.path
         );
 
-        for (auto implem : *Implementations::registered) {
+        for (auto implem : *StoreImplementations::registered) {
             if (implem.uriSchemes.count(parsedUri.scheme)) {
                 auto store = implem.create(parsedUri.scheme, baseURI, params);
                 if (store) {
@@ -1526,6 +1526,6 @@ std::list<ref<Store>> getDefaultSubstituters()
     return stores;
 }
 
-std::vector<StoreFactory> * Implementations::registered = 0;
+std::vector<StoreFactory> * StoreImplementations::registered = 0;
 
 }

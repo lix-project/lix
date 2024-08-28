@@ -1,4 +1,4 @@
-#include "ssh-store-config.hh"
+#include "ssh-store.hh"
 #include "store-api.hh"
 #include "local-fs-store.hh"
 #include "remote-store.hh"
@@ -110,6 +110,8 @@ ref<RemoteStore::Connection> SSHStore::openConnection()
     return conn;
 }
 
-static RegisterStoreImplementation<SSHStore, SSHStoreConfig> regSSHStore;
+void registerSSHStore() {
+    StoreImplementations::add<SSHStore, SSHStoreConfig>();
+}
 
 }

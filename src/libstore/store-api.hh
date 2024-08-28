@@ -50,11 +50,9 @@ namespace nix {
  *   that calls `StoreConfig(params)` (otherwise you're gonna encounter an
  *   `assertion failure` when trying to instantiate it).
  *
- * You can then register the new store using:
- *
- * ```
- * cpp static RegisterStoreImplementation<Foo, FooConfig> regStore;
- * ```
+ * You can then register the new store by defining a registration function
+ * (using `StoreImplementations::add`) and calling it in
+ * `registerStoreImplementations` in `globals.cc`.
  */
 
 MakeError(SubstError, Error);
@@ -1004,7 +1002,7 @@ struct StoreFactory
     std::function<std::shared_ptr<StoreConfig> ()> getConfig;
 };
 
-struct Implementations
+struct StoreImplementations
 {
     static std::vector<StoreFactory> * registered;
 
@@ -1024,15 +1022,6 @@ struct Implementations
                  { return std::make_shared<TConfig>(StringMap({})); })
         };
         registered->push_back(factory);
-    }
-};
-
-template<typename T, typename TConfig>
-struct RegisterStoreImplementation
-{
-    RegisterStoreImplementation()
-    {
-        Implementations::add<T, TConfig>();
     }
 };
 

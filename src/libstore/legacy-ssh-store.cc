@@ -1,4 +1,4 @@
-#include "ssh-store-config.hh"
+#include "legacy-ssh-store.hh"
 #include "archive.hh"
 #include "pool.hh"
 #include "remote-store.hh"
@@ -8,6 +8,7 @@
 #include "store-api.hh"
 #include "path-with-outputs.hh"
 #include "ssh.hh"
+#include "ssh-store.hh"
 #include "derivations.hh"
 
 namespace nix {
@@ -412,6 +413,8 @@ public:
     { unsupported("queryRealisation"); }
 };
 
-static RegisterStoreImplementation<LegacySSHStore, LegacySSHStoreConfig> regLegacySSHStore;
+void registerLegacySSHStore() {
+    StoreImplementations::add<LegacySSHStore, LegacySSHStoreConfig>();
+}
 
 }

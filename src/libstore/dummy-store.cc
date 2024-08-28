@@ -1,3 +1,4 @@
+#include "dummy-store.hh"
 #include "store-api.hh"
 
 namespace nix {
@@ -73,6 +74,8 @@ struct DummyStore : public virtual DummyStoreConfig, public virtual Store
     { unsupported("getFSAccessor"); }
 };
 
-static RegisterStoreImplementation<DummyStore, DummyStoreConfig> regDummyStore;
+void registerDummyStore() {
+    StoreImplementations::add<DummyStore, DummyStoreConfig>();
+}
 
 }

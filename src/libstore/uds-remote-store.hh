@@ -63,4 +63,6 @@ private:
     std::optional<std::string> path;
 };
 
+void registerUDSRemoteStore();
+
 }

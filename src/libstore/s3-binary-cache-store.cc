@@ -526,8 +526,14 @@ struct S3BinaryCacheStoreImpl : virtual S3BinaryCacheStoreConfig, public virtual
 
 };
 
-static RegisterStoreImplementation<S3BinaryCacheStoreImpl, S3BinaryCacheStoreConfig> regS3BinaryCacheStore;
+void registerS3BinaryCacheStore() {
+    StoreImplementations::add<S3BinaryCacheStoreImpl, S3BinaryCacheStoreConfig>();
+}
 
 }
 
+#else
+namespace nix {
+void registerS3BinaryCacheStore() {}
+}
 #endif
