@@ -31,7 +31,7 @@ Value * EvalState::allocValue()
 #endif
 
     nrValues++;
-    return (Value *) p;
+    return static_cast<Value *>(p);
 }
 
 
@@ -54,10 +54,10 @@ Env & EvalState::allocEnv(size_t size)
         void * p = *env1AllocCache;
         *env1AllocCache = GC_NEXT(p);
         GC_NEXT(p) = nullptr;
-        env = (Env *) p;
+        env = static_cast<Env *>(p);
     } else
 #endif
-        env = (Env *) gcAllocBytes(sizeof(Env) + size * sizeof(Value *));
+        env = static_cast<Env *>(gcAllocBytes(sizeof(Env) + size * sizeof(Value *)));
 
     /* We assume that env->values has been cleared by the allocator; maybeThunk() and lookupVar fromWith expect this. */
 

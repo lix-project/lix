@@ -11,6 +11,7 @@
 namespace nix {
 
 ExprBlackHole eBlackHole;
+Expr *eBlackHoleAddr = &eBlackHole;
 
 // FIXME: remove, because *symbols* are abstract and do not have a single
 //        textual representation; see printIdentifier()

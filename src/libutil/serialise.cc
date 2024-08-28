@@ -1,4 +1,5 @@
 #include "serialise.hh"
+#include "charptr-cast.hh"
 #include "signals.hh"
 
 #include <cstring>

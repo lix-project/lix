@@ -120,6 +120,7 @@ inline T * gcAllocType(size_t howMany = 1)
     // However, people can and do request zero sized allocations, so we need
     // to check that neither of our multiplicands were zero before complaining
     // about it.
+    // NOLINTNEXTLINE(bugprone-sizeof-expression): yeah we only seem to alloc pointers with this. the calculation *is* correct though!
     auto checkedSz = checked::Checked<size_t>(howMany) * sizeof(T);
     size_t sz = checkedSz.valueWrapping();
     if (checkedSz.overflowed()) {

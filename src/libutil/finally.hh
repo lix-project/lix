@@ -22,6 +22,7 @@ public:
     Finally(Finally &&other) : fun(std::move(other.fun)) {
         other.movedFrom = true;
     }
+    // NOLINTNEXTLINE(bugprone-exception-escape): the noexcept is declared properly here, the analysis seems broken
     ~Finally() noexcept(noexcept(fun()))
     {
         try {

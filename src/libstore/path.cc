@@ -112,3 +112,13 @@ PathSet Store::printStorePathSet(const StorePathSet & paths) const
 }
 
 }
+
+std::size_t std::hash<nix::StorePath>::operator()(const nix::StorePath & path) const noexcept
+{
+    // It's already a cryptographic hash of 160 bits (assuming that nobody gives us bogus ones...), so just parse it.
+    auto h = nix::Hash::parseNonSRIUnprefixed(path.hashPart(), nix::HashType::SHA1);
+    // This need not be stable across machines, so bit casting the start of it is fine.
+    size_t r;
+    memcpy(&r, h.hash, sizeof(r));
+    return r;
+}

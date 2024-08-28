@@ -3,6 +3,7 @@
 #include "sync.hh"
 #include "terminal.hh"
 
+#include <map>
 #include <thread>
 
 namespace nix {

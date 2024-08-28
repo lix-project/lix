@@ -20,6 +20,7 @@ namespace nix {
     { \
         return LengthPrefixedProtoHelper<WorkerProto, T >::read(store, conn); \
     } \
+    /* NOLINTNEXTLINE(bugprone-macro-parentheses) */ \
     TEMPLATE [[nodiscard]] WireFormatGenerator WorkerProto::Serialise< T >::write(const Store & store, WorkerProto::WriteConn conn, const T & t) \
     { \
         return LengthPrefixedProtoHelper<WorkerProto, T >::write(store, conn, t); \

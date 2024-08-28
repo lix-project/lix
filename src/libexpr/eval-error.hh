@@ -1,9 +1,8 @@
 #pragma once
 ///@file
 
-#include <algorithm>
-
 #include "error.hh"
+#include "types.hh"
 #include "pos-idx.hh"
 
 namespace nix {

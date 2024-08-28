@@ -4,6 +4,7 @@
 #include "error.hh"
 #include "sync.hh"
 
+#include <map>
 #include <queue>
 #include <functional>
 #include <thread>

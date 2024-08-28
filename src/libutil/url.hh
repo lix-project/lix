@@ -2,6 +2,7 @@
 ///@file
 
 #include "error.hh"
+#include <map>
 
 namespace nix {
 

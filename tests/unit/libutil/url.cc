@@ -1,4 +1,5 @@
 #include "url.hh"
+#include "types.hh"
 #include <gtest/gtest.h>
 
 namespace nix {

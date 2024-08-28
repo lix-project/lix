@@ -16,16 +16,12 @@
  */
 
 #include "suggestions.hh"
-#include "ref.hh"
-#include "types.hh"
 #include "fmt.hh"
 
 #include <cstring>
 #include <list>
 #include <memory>
-#include <map>
 #include <optional>
-#include <compare>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -173,6 +169,7 @@ public:
 };
 
 #define MakeError(newClass, superClass) \
+    /* NOLINTNEXTLINE(bugprone-macro-parentheses) */    \
     class newClass : public superClass                  \
     {                                                   \
     public:                                             \
