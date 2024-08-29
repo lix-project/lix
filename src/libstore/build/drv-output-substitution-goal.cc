@@ -112,11 +112,11 @@ Goal::WorkResult DrvOutputSubstitutionGoal::realisationFetched(bool inBuildSlot)
                 );
                 return tryNext(inBuildSlot);
             }
-            result.goals.insert(worker.makeDrvOutputSubstitutionGoal(depId));
+            result.goals.insert(worker.goalFactory().makeDrvOutputSubstitutionGoal(depId));
         }
     }
 
-    result.goals.insert(worker.makePathSubstitutionGoal(outputInfo->outPath));
+    result.goals.insert(worker.goalFactory().makePathSubstitutionGoal(outputInfo->outPath));
 
     if (result.goals.empty()) {
         return outPathValid(inBuildSlot);

@@ -170,7 +170,7 @@ Goal::WorkResult DerivationGoal::getDerivation(bool inBuildSlot)
 
 
     state = &DerivationGoal::loadDerivation;
-    return WaitForGoals{{worker.makePathSubstitutionGoal(drvPath)}};
+    return WaitForGoals{{worker.goalFactory().makePathSubstitutionGoal(drvPath)}};
 }
 
 
@@ -268,14 +268,14 @@ Goal::WorkResult DerivationGoal::haveDerivation(bool inBuildSlot)
                 if (!status.wanted) continue;
                 if (!status.known)
                     result.goals.insert(
-                        worker.makeDrvOutputSubstitutionGoal(
+                        worker.goalFactory().makeDrvOutputSubstitutionGoal(
                             DrvOutput{status.outputHash, outputName},
                             buildMode == bmRepair ? Repair : NoRepair
                         )
                     );
                 else {
                     auto * cap = getDerivationCA(*drv);
-                    result.goals.insert(worker.makePathSubstitutionGoal(
+                    result.goals.insert(worker.goalFactory().makePathSubstitutionGoal(
                         status.known->path,
                         buildMode == bmRepair ? Repair : NoRepair,
                         cap ? std::optional { *cap } : std::nullopt));
@@ -374,7 +374,7 @@ Goal::WorkResult DerivationGoal::gaveUpOnSubstitution(bool inBuildSlot)
 
         addWaiteeDerivedPath = [&](ref<SingleDerivedPath> inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode) {
             if (!inputNode.value.empty())
-                result.goals.insert(worker.makeGoal(
+                result.goals.insert(worker.goalFactory().makeGoal(
                     DerivedPath::Built {
                         .drvPath = inputDrv,
                         .outputs = inputNode.value,
@@ -419,7 +419,7 @@ Goal::WorkResult DerivationGoal::gaveUpOnSubstitution(bool inBuildSlot)
         if (!settings.useSubstitutes)
             throw Error("dependency '%s' of '%s' does not exist, and substitution is disabled",
                 worker.store.printStorePath(i), worker.store.printStorePath(drvPath));
-        result.goals.insert(worker.makePathSubstitutionGoal(i));
+        result.goals.insert(worker.goalFactory().makePathSubstitutionGoal(i));
     }
 
     if (result.goals.empty()) {/* to prevent hang (no wake-up event) */
@@ -475,9 +475,9 @@ Goal::WorkResult DerivationGoal::repairClosure()
             worker.store.printStorePath(i), worker.store.printStorePath(drvPath));
         auto drvPath2 = outputsToDrv.find(i);
         if (drvPath2 == outputsToDrv.end())
-            result.goals.insert(worker.makePathSubstitutionGoal(i, Repair));
+            result.goals.insert(worker.goalFactory().makePathSubstitutionGoal(i, Repair));
         else
-            result.goals.insert(worker.makeGoal(
+            result.goals.insert(worker.goalFactory().makeGoal(
                 DerivedPath::Built {
                     .drvPath = makeConstantStorePathRef(drvPath2->second),
                     .outputs = OutputsSpec::All { },
@@ -580,7 +580,7 @@ Goal::WorkResult DerivationGoal::inputsRealised(bool inBuildSlot)
                        worker.store.printStorePath(pathResolved),
                    });
 
-            resolvedDrvGoal = worker.makeDerivationGoal(
+            resolvedDrvGoal = worker.goalFactory().makeDerivationGoal(
                 pathResolved, wantedOutputs, buildMode);
 
             state = &DerivationGoal::resolvedFinished;

@@ -40,10 +40,57 @@ struct Child
 /* Forward definition. */
 struct HookInstance;
 
+class GoalFactory
+{
+public:
+    virtual std::shared_ptr<DerivationGoal> makeDerivationGoal(
+        const StorePath & drvPath, const OutputsSpec & wantedOutputs, BuildMode buildMode = bmNormal
+    ) = 0;
+    virtual std::shared_ptr<DerivationGoal> makeBasicDerivationGoal(
+        const StorePath & drvPath,
+        const BasicDerivation & drv,
+        const OutputsSpec & wantedOutputs,
+        BuildMode buildMode = bmNormal
+    ) = 0;
+
+    /**
+     * @ref SubstitutionGoal "substitution goal"
+     */
+    virtual std::shared_ptr<PathSubstitutionGoal> makePathSubstitutionGoal(
+        const StorePath & storePath,
+        RepairFlag repair = NoRepair,
+        std::optional<ContentAddress> ca = std::nullopt
+    ) = 0;
+    virtual std::shared_ptr<DrvOutputSubstitutionGoal> makeDrvOutputSubstitutionGoal(
+        const DrvOutput & id,
+        RepairFlag repair = NoRepair,
+        std::optional<ContentAddress> ca = std::nullopt
+    ) = 0;
+
+    /**
+     * Make a goal corresponding to the `DerivedPath`.
+     *
+     * It will be a `DerivationGoal` for a `DerivedPath::Built` or
+     * a `SubstitutionGoal` for a `DerivedPath::Opaque`.
+     */
+    virtual GoalPtr makeGoal(const DerivedPath & req, BuildMode buildMode = bmNormal) = 0;
+};
+
+// elaborate hoax to let goals access factory methods while hiding them from the public
+class WorkerBase : protected GoalFactory
+{
+    friend struct DerivationGoal;
+    friend struct PathSubstitutionGoal;
+    friend class DrvOutputSubstitutionGoal;
+
+protected:
+    GoalFactory & goalFactory() { return *this; }
+};
+
 /**
  * The worker class.
  */
-class Worker
+class Worker : public WorkerBase
 {
 private:
 
@@ -215,19 +262,18 @@ private:
     std::shared_ptr<DerivationGoal> makeDerivationGoalCommon(
         const StorePath & drvPath, const OutputsSpec & wantedOutputs,
         std::function<std::shared_ptr<DerivationGoal>()> mkDrvGoal);
-public:
     std::shared_ptr<DerivationGoal> makeDerivationGoal(
         const StorePath & drvPath,
-        const OutputsSpec & wantedOutputs, BuildMode buildMode = bmNormal);
+        const OutputsSpec & wantedOutputs, BuildMode buildMode = bmNormal) override;
     std::shared_ptr<DerivationGoal> makeBasicDerivationGoal(
         const StorePath & drvPath, const BasicDerivation & drv,
-        const OutputsSpec & wantedOutputs, BuildMode buildMode = bmNormal);
+        const OutputsSpec & wantedOutputs, BuildMode buildMode = bmNormal) override;
 
     /**
      * @ref SubstitutionGoal "substitution goal"
      */
-    std::shared_ptr<PathSubstitutionGoal> makePathSubstitutionGoal(const StorePath & storePath, RepairFlag repair = NoRepair, std::optional<ContentAddress> ca = std::nullopt);
-    std::shared_ptr<DrvOutputSubstitutionGoal> makeDrvOutputSubstitutionGoal(const DrvOutput & id, RepairFlag repair = NoRepair, std::optional<ContentAddress> ca = std::nullopt);
+    std::shared_ptr<PathSubstitutionGoal> makePathSubstitutionGoal(const StorePath & storePath, RepairFlag repair = NoRepair, std::optional<ContentAddress> ca = std::nullopt) override;
+    std::shared_ptr<DrvOutputSubstitutionGoal> makeDrvOutputSubstitutionGoal(const DrvOutput & id, RepairFlag repair = NoRepair, std::optional<ContentAddress> ca = std::nullopt) override;
 
     /**
      * Make a goal corresponding to the `DerivedPath`.
@@ -235,8 +281,9 @@ public:
      * It will be a `DerivationGoal` for a `DerivedPath::Built` or
      * a `SubstitutionGoal` for a `DerivedPath::Opaque`.
      */
-    GoalPtr makeGoal(const DerivedPath & req, BuildMode buildMode = bmNormal);
+    GoalPtr makeGoal(const DerivedPath & req, BuildMode buildMode = bmNormal) override;
 
+public:
     /**
      * Unregisters a running child process.
      */
@@ -245,7 +292,7 @@ public:
     /**
      * Loop until the specified top-level goals have finished.
      */
-    void run(const Goals & topGoals);
+    Goals run(std::function<Goals (GoalFactory &)> req);
 
     /***
      * The exit status in case of failure.

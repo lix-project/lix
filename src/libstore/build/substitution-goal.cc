@@ -161,7 +161,7 @@ Goal::WorkResult PathSubstitutionGoal::tryNext(bool inBuildSlot)
     WaitForGoals result;
     for (auto & i : info->references)
         if (i != storePath) /* ignore self-references */
-            result.goals.insert(worker.makePathSubstitutionGoal(i));
+            result.goals.insert(worker.goalFactory().makePathSubstitutionGoal(i));
 
     if (result.goals.empty()) {/* to prevent hang (no wake-up event) */
         return referencesValid(inBuildSlot);

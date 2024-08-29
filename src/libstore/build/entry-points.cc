@@ -10,11 +10,12 @@ void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMod
 {
     Worker worker(*this, evalStore ? *evalStore : *this);
 
-    Goals goals;
-    for (auto & br : reqs)
-        goals.insert(worker.makeGoal(br, buildMode));
-
-    worker.run(goals);
+    auto goals = worker.run([&](GoalFactory & gf) {
+        Goals goals;
+        for (auto & br : reqs)
+            goals.insert(gf.makeGoal(br, buildMode));
+        return goals;
+    });
 
     StringSet failed;
     std::shared_ptr<Error> ex;
@@ -48,17 +49,17 @@ std::vector<KeyedBuildResult> Store::buildPathsWithResults(
     std::shared_ptr<Store> evalStore)
 {
     Worker worker(*this, evalStore ? *evalStore : *this);
-
-    Goals goals;
     std::vector<std::pair<const DerivedPath &, GoalPtr>> state;
 
-    for (const auto & req : reqs) {
-        auto goal = worker.makeGoal(req, buildMode);
-        goals.insert(goal);
-        state.push_back({req, goal});
-    }
-
-    worker.run(goals);
+    auto goals = worker.run([&](GoalFactory & gf) {
+        Goals goals;
+        for (const auto & req : reqs) {
+            auto goal = gf.makeGoal(req, buildMode);
+            goals.insert(goal);
+            state.push_back({req, goal});
+        }
+        return goals;
+    });
 
     std::vector<KeyedBuildResult> results;
 
@@ -72,10 +73,12 @@ BuildResult Store::buildDerivation(const StorePath & drvPath, const BasicDerivat
     BuildMode buildMode)
 {
     Worker worker(*this, *this);
-    auto goal = worker.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All {}, buildMode);
 
     try {
-        worker.run(Goals{goal});
+        auto goals = worker.run([&](GoalFactory & gf) -> Goals {
+            return Goals{gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode)};
+        });
+        auto goal = *goals.begin();
         return goal->buildResult.restrictTo(DerivedPath::Built {
             .drvPath = makeConstantStorePathRef(drvPath),
             .outputs = OutputsSpec::All {},
@@ -95,10 +98,10 @@ void Store::ensurePath(const StorePath & path)
     if (isValidPath(path)) return;
 
     Worker worker(*this, *this);
-    GoalPtr goal = worker.makePathSubstitutionGoal(path);
-    Goals goals = {goal};
 
-    worker.run(goals);
+    auto goals =
+        worker.run([&](GoalFactory & gf) { return Goals{gf.makePathSubstitutionGoal(path)}; });
+    auto goal = *goals.begin();
 
     if (goal->exitCode != Goal::ecSuccess) {
         if (goal->ex) {
@@ -113,23 +116,27 @@ void Store::ensurePath(const StorePath & path)
 void Store::repairPath(const StorePath & path)
 {
     Worker worker(*this, *this);
-    GoalPtr goal = worker.makePathSubstitutionGoal(path, Repair);
-    Goals goals = {goal};
 
-    worker.run(goals);
+    auto goals = worker.run([&](GoalFactory & gf) {
+        return Goals{gf.makePathSubstitutionGoal(path, Repair)};
+    });
+    auto goal = *goals.begin();
 
     if (goal->exitCode != Goal::ecSuccess) {
         /* Since substituting the path didn't work, if we have a valid
            deriver, then rebuild the deriver. */
         auto info = queryPathInfo(path);
         if (info->deriver && isValidPath(*info->deriver)) {
-            goals.clear();
-            goals.insert(worker.makeGoal(DerivedPath::Built {
-                .drvPath = makeConstantStorePathRef(*info->deriver),
-                // FIXME: Should just build the specific output we need.
-                .outputs = OutputsSpec::All { },
-            }, bmRepair));
-            worker.run(goals);
+            worker.run([&](GoalFactory & gf) {
+                return Goals{gf.makeGoal(
+                    DerivedPath::Built{
+                        .drvPath = makeConstantStorePathRef(*info->deriver),
+                        // FIXME: Should just build the specific output we need.
+                        .outputs = OutputsSpec::All{},
+                    },
+                    bmRepair
+                )};
+            });
         } else
             throw Error(worker.failingExitStatus(), "cannot repair path '%s'", printStorePath(path));
     }

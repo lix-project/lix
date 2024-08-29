@@ -326,8 +326,9 @@ void Worker::waitForAWhile(GoalPtr goal)
 }
 
 
-void Worker::run(const Goals & _topGoals)
+Goals Worker::run(std::function<Goals (GoalFactory &)> req)
 {
+    auto _topGoals = req(goalFactory());
     std::vector<nix::DerivedPath> topPaths;
 
     assert(!running);
@@ -411,6 +412,8 @@ void Worker::run(const Goals & _topGoals)
     assert(!settings.keepGoing || awake.empty());
     assert(!settings.keepGoing || wantingToBuild.empty());
     assert(!settings.keepGoing || children.empty());
+
+    return _topGoals;
 }
 
 void Worker::waitForInput()
