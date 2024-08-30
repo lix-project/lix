@@ -124,7 +124,7 @@ public:
         bool inBuildSlot;
     };
     struct [[nodiscard]] Finished {
-        ExitCode result;
+        ExitCode exitCode;
         std::shared_ptr<Error> ex;
         bool permanentFailure = false;
         bool timedOut = false;

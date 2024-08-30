@@ -156,7 +156,7 @@ void Worker::goalFinished(GoalPtr goal, Goal::Finished & f)
 {
     goal->trace("done");
     assert(!goal->exitCode.has_value());
-    goal->exitCode = f.result;
+    goal->exitCode = f.exitCode;
     goal->ex = f.ex;
 
     permanentFailure |= f.permanentFailure;
@@ -171,11 +171,11 @@ void Worker::goalFinished(GoalPtr goal, Goal::Finished & f)
 
             waiting->trace(fmt("waitee '%s' done; %d left", goal->name, waiting->waitees.size()));
 
-            if (f.result != Goal::ecSuccess) ++waiting->nrFailed;
-            if (f.result == Goal::ecNoSubstituters) ++waiting->nrNoSubstituters;
-            if (f.result == Goal::ecIncompleteClosure) ++waiting->nrIncompleteClosure;
+            if (f.exitCode != Goal::ecSuccess) ++waiting->nrFailed;
+            if (f.exitCode == Goal::ecNoSubstituters) ++waiting->nrNoSubstituters;
+            if (f.exitCode == Goal::ecIncompleteClosure) ++waiting->nrIncompleteClosure;
 
-            if (waiting->waitees.empty() || (f.result == Goal::ecFailed && !settings.keepGoing)) {
+            if (waiting->waitees.empty() || (f.exitCode == Goal::ecFailed && !settings.keepGoing)) {
                 /* If we failed and keepGoing is not set, we remove all
                    remaining waitees. */
                 for (auto & i : waiting->waitees) {
