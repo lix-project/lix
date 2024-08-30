@@ -2,6 +2,7 @@
 ///@file
 
 #include "lock.hh"
+#include "notifying-counter.hh"
 #include "store-api.hh"
 #include "goal.hh"
 
@@ -63,7 +64,7 @@ struct PathSubstitutionGoal : public Goal
      */
     Path destPath;
 
-    std::unique_ptr<MaintainCount<uint64_t>> maintainExpectedSubstitutions,
+    NotifyingCounter<uint64_t>::Bump maintainExpectedSubstitutions,
         maintainRunningSubstitutions, maintainExpectedNar, maintainExpectedDownload;
 
     typedef WorkResult (PathSubstitutionGoal::*GoalState)(bool inBuildSlot);

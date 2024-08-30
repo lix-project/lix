@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "notifying-counter.hh"
 #include "store-api.hh"
 #include "goal.hh"
 #include "realisation.hh"
@@ -40,7 +41,7 @@ class DrvOutputSubstitutionGoal : public Goal {
      */
     std::shared_ptr<Store> sub;
 
-    std::unique_ptr<MaintainCount<uint64_t>> maintainRunningSubstitutions;
+    NotifyingCounter<uint64_t>::Bump maintainRunningSubstitutions;
 
     struct DownloadState
     {

@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "notifying-counter.hh"
 #include "types.hh"
 #include "lock.hh"
 #include "store-api.hh"
@@ -213,6 +214,21 @@ private:
     void childStarted(GoalPtr goal, const std::set<int> & fds,
         bool inBuildSlot);
 
+    /**
+      * Pass current stats counters to the logger for progress bar updates.
+      */
+    void updateStatistics();
+
+    bool statisticsOutdated = true;
+
+    /**
+      * Mark statistics as outdated, such that `updateStatistics` will be called.
+      */
+    void updateStatisticsLater()
+    {
+        statisticsOutdated = true;
+    }
+
 public:
 
     const Activity act;
@@ -234,19 +250,19 @@ public:
 
     HookState hook;
 
-    uint64_t expectedBuilds = 0;
-    uint64_t doneBuilds = 0;
-    uint64_t failedBuilds = 0;
-    uint64_t runningBuilds = 0;
+    NotifyingCounter<uint64_t> expectedBuilds{[this] { updateStatisticsLater(); }};
+    NotifyingCounter<uint64_t> doneBuilds{[this] { updateStatisticsLater(); }};
+    NotifyingCounter<uint64_t> failedBuilds{[this] { updateStatisticsLater(); }};
+    NotifyingCounter<uint64_t> runningBuilds{[this] { updateStatisticsLater(); }};
 
-    uint64_t expectedSubstitutions = 0;
-    uint64_t doneSubstitutions = 0;
-    uint64_t failedSubstitutions = 0;
-    uint64_t runningSubstitutions = 0;
-    uint64_t expectedDownloadSize = 0;
-    uint64_t doneDownloadSize = 0;
-    uint64_t expectedNarSize = 0;
-    uint64_t doneNarSize = 0;
+    NotifyingCounter<uint64_t> expectedSubstitutions{[this] { updateStatisticsLater(); }};
+    NotifyingCounter<uint64_t> doneSubstitutions{[this] { updateStatisticsLater(); }};
+    NotifyingCounter<uint64_t> failedSubstitutions{[this] { updateStatisticsLater(); }};
+    NotifyingCounter<uint64_t> runningSubstitutions{[this] { updateStatisticsLater(); }};
+    NotifyingCounter<uint64_t> expectedDownloadSize{[this] { updateStatisticsLater(); }};
+    NotifyingCounter<uint64_t> doneDownloadSize{[this] { updateStatisticsLater(); }};
+    NotifyingCounter<uint64_t> expectedNarSize{[this] { updateStatisticsLater(); }};
+    NotifyingCounter<uint64_t> doneNarSize{[this] { updateStatisticsLater(); }};
 
     Worker(Store & store, Store & evalStore);
     ~Worker();

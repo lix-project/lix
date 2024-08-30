@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "notifying-counter.hh"
 #include "parsed-derivations.hh"
 #include "lock.hh"
 #include "outputs-spec.hh"
@@ -217,7 +218,7 @@ struct DerivationGoal : public Goal
 
     BuildMode buildMode;
 
-    std::unique_ptr<MaintainCount<uint64_t>> mcExpectedBuilds, mcRunningBuilds;
+    NotifyingCounter<uint64_t>::Bump mcExpectedBuilds, mcRunningBuilds;
 
     std::unique_ptr<Activity> act;
 

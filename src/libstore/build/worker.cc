@@ -320,6 +320,27 @@ void Worker::waitForAWhile(GoalPtr goal)
 }
 
 
+void Worker::updateStatistics()
+{
+    // only update progress info while running. this notably excludes updating
+    // progress info while destroying, which causes the progress bar to assert
+    if (running && statisticsOutdated) {
+        actDerivations.progress(
+            doneBuilds, expectedBuilds + doneBuilds, runningBuilds, failedBuilds
+        );
+        actSubstitutions.progress(
+            doneSubstitutions,
+            expectedSubstitutions + doneSubstitutions,
+            runningSubstitutions,
+            failedSubstitutions
+        );
+        act.setExpected(actFileTransfer, expectedDownloadSize + doneDownloadSize);
+        act.setExpected(actCopyPath, expectedNarSize + doneNarSize);
+
+        statisticsOutdated = false;
+    }
+}
+
 Goals Worker::run(std::function<Goals (GoalFactory &)> req)
 {
     auto _topGoals = req(goalFactory());
@@ -328,6 +349,8 @@ Goals Worker::run(std::function<Goals (GoalFactory &)> req)
     assert(!running);
     running = true;
     Finally const _stop([&] { running = false; });
+
+    updateStatistics();
 
     for (auto & i : _topGoals) {
         topGoals.insert(i);
@@ -373,18 +396,7 @@ Goals Worker::run(std::function<Goals (GoalFactory &)> req)
                     ? nrSubstitutions < std::max(1U, (unsigned int) settings.maxSubstitutionJobs)
                     : nrLocalBuilds < settings.maxBuildJobs;
                 handleWorkResult(goal, goal->work(inSlot));
-
-                actDerivations.progress(
-                    doneBuilds, expectedBuilds + doneBuilds, runningBuilds, failedBuilds
-                );
-                actSubstitutions.progress(
-                    doneSubstitutions,
-                    expectedSubstitutions + doneSubstitutions,
-                    runningSubstitutions,
-                    failedSubstitutions
-                );
-                act.setExpected(actFileTransfer, expectedDownloadSize + doneDownloadSize);
-                act.setExpected(actCopyPath, expectedNarSize + doneNarSize);
+                updateStatistics();
 
                 if (topGoals.empty()) break; // stuff may have been cancelled
             }

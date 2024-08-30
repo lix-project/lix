@@ -21,7 +21,7 @@ PathSubstitutionGoal::PathSubstitutionGoal(
     state = &PathSubstitutionGoal::init;
     name = fmt("substitution of '%s'", worker.store.printStorePath(this->storePath));
     trace("created");
-    maintainExpectedSubstitutions = std::make_unique<MaintainCount<uint64_t>>(worker.expectedSubstitutions);
+    maintainExpectedSubstitutions = worker.expectedSubstitutions.addTemporarily(1);
 }
 
 
@@ -139,11 +139,11 @@ Goal::WorkResult PathSubstitutionGoal::tryNext(bool inBuildSlot)
     /* Update the total expected download size. */
     auto narInfo = std::dynamic_pointer_cast<const NarInfo>(info);
 
-    maintainExpectedNar = std::make_unique<MaintainCount<uint64_t>>(worker.expectedNarSize, info->narSize);
+    maintainExpectedNar = worker.expectedNarSize.addTemporarily(info->narSize);
 
     maintainExpectedDownload =
         narInfo && narInfo->fileSize
-        ? std::make_unique<MaintainCount<uint64_t>>(worker.expectedDownloadSize, narInfo->fileSize)
+        ? worker.expectedDownloadSize.addTemporarily(narInfo->fileSize)
         : nullptr;
 
     /* Bail out early if this substituter lacks a valid
@@ -200,7 +200,7 @@ Goal::WorkResult PathSubstitutionGoal::tryToRun(bool inBuildSlot)
         return WaitForSlot{};
     }
 
-    maintainRunningSubstitutions = std::make_unique<MaintainCount<uint64_t>>(worker.runningSubstitutions);
+    maintainRunningSubstitutions = worker.runningSubstitutions.addTemporarily(1);
 
     outPipe.create();
 
@@ -268,13 +268,10 @@ Goal::WorkResult PathSubstitutionGoal::finished(bool inBuildSlot)
     maintainExpectedSubstitutions.reset();
     worker.doneSubstitutions++;
 
-    if (maintainExpectedDownload) {
-        auto fileSize = maintainExpectedDownload->delta;
-        maintainExpectedDownload.reset();
-        worker.doneDownloadSize += fileSize;
-    }
+    worker.doneDownloadSize += maintainExpectedDownload.delta();
+    maintainExpectedDownload.reset();
 
-    worker.doneNarSize += maintainExpectedNar->delta;
+    worker.doneNarSize += maintainExpectedNar.delta();
     maintainExpectedNar.reset();
 
     return done(ecSuccess, BuildResult::Substituted);

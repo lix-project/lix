@@ -42,8 +42,7 @@ Goal::WorkResult DrvOutputSubstitutionGoal::tryNext(bool inBuildSlot)
         return WaitForSlot{};
     }
 
-    maintainRunningSubstitutions =
-        std::make_unique<MaintainCount<uint64_t>>(worker.runningSubstitutions);
+    maintainRunningSubstitutions = worker.runningSubstitutions.addTemporarily(1);
 
     if (subs.size() == 0) {
         /* None left.  Terminate this goal and let someone else deal

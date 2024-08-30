@@ -95,6 +95,7 @@ libutil_headers = files(
   'monitor-fd.hh',
   'mount.hh',
   'namespaces.hh',
+  'notifying-counter.hh',
   'pool.hh',
   'position.hh',
   'print-elided.hh',
