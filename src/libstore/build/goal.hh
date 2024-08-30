@@ -125,6 +125,7 @@ public:
     };
     struct [[nodiscard]] Finished {
         ExitCode exitCode;
+        BuildResult result;
         std::shared_ptr<Error> ex;
         bool permanentFailure = false;
         bool timedOut = false;

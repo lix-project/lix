@@ -41,7 +41,7 @@ Goal::Finished PathSubstitutionGoal::done(
         debug(*errorMsg);
         buildResult.errorMsg = *errorMsg;
     }
-    return Finished{result};
+    return Finished{result, std::move(buildResult)};
 }
 
 

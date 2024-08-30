@@ -1550,6 +1550,7 @@ Goal::Finished DerivationGoal::done(
 
     return Finished{
         .exitCode = buildResult.success() ? ecSuccess : ecFailed,
+        .result = buildResult,
         .ex = ex ? std::make_shared<Error>(std::move(*ex)) : nullptr,
         .permanentFailure = buildResult.status == BuildResult::PermanentFailure,
         .timedOut = buildResult.status == BuildResult::TimedOut,
