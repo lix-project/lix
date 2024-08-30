@@ -36,7 +36,10 @@ All users of the Lix daemon may do the following to bring things into the Nix st
     - Input-addressed, so they are run in the sandbox with no network access, with the following exceptions:
 
       - The (poorly named, since it is not *just* about chroot) property `__noChroot` is set on the derivation and `sandbox` is set to `relaxed`.
-      - On macOS, the derivation property `__darwinAllowLocalNetworking` allows network access to localhost from input-addressed derivations regardless of the `sandbox` setting value. This property exists with such semantics because macOS has no network namespace equivalent to isolate individual processes' localhost networking.
+      - On macOS, the derivation property `__darwinAllowLocalNetworking` allows network access to localhost from input-addressed derivations regardless of the `sandbox` setting value.
+        This property exists with such semantics because macOS has no network namespace equivalent to isolate individual processes' localhost networking.
+      - On macOS, the derivation property `__sandboxProfile` accepts extra sandbox profile S-expressions, allowing derivations to bypass arbitrary parts of the sandbox without altogether disabling it.
+        This is only permitted when `sandbox` is set to `relaxed`.
     - Output-addressed, so they are run with network access but their result must match an expected hash.
 
   Trusted users may set any setting, including `sandbox = false`, so the sandbox state can be different at runtime from what is described in `nix.conf` for builds invoked with such settings.
