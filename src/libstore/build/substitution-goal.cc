@@ -188,7 +188,7 @@ Goal::WorkResult PathSubstitutionGoal::referencesValid(bool inBuildSlot)
             assert(worker.store.isValidPath(i));
 
     state = &PathSubstitutionGoal::tryToRun;
-    return ContinueImmediately{};
+    return tryToRun(inBuildSlot);
 }
 
 
@@ -256,7 +256,7 @@ Goal::WorkResult PathSubstitutionGoal::finished(bool inBuildSlot)
 
         /* Try the next substitute. */
         state = &PathSubstitutionGoal::tryNext;
-        return ContinueImmediately{};
+        return tryNext(inBuildSlot);
     }
 
     worker.markContentsGood(storePath);

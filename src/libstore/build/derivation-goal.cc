@@ -649,7 +649,7 @@ Goal::WorkResult DerivationGoal::inputsRealised(bool inBuildSlot)
        slot to become available, since we don't need one if there is a
        build hook. */
     state = &DerivationGoal::tryToBuild;
-    return ContinueImmediately{};
+    return tryToBuild(inBuildSlot);
 }
 
 void DerivationGoal::started()
@@ -772,7 +772,7 @@ Goal::WorkResult DerivationGoal::tryToBuild(bool inBuildSlot)
     actLock.reset();
 
     state = &DerivationGoal::tryLocalBuild;
-    return ContinueImmediately{};
+    return tryLocalBuild(inBuildSlot);
 }
 
 Goal::WorkResult DerivationGoal::tryLocalBuild(bool inBuildSlot) {
