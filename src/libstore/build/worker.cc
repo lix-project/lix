@@ -344,7 +344,6 @@ void Worker::updateStatistics()
 Goals Worker::run(std::function<Goals (GoalFactory &)> req)
 {
     auto _topGoals = req(goalFactory());
-    std::vector<nix::DerivedPath> topPaths;
 
     assert(!running);
     running = true;
@@ -352,22 +351,7 @@ Goals Worker::run(std::function<Goals (GoalFactory &)> req)
 
     updateStatistics();
 
-    for (auto & i : _topGoals) {
-        topGoals.insert(i);
-        if (auto goal = dynamic_cast<DerivationGoal *>(i.get())) {
-            topPaths.push_back(DerivedPath::Built {
-                .drvPath = makeConstantStorePathRef(goal->drvPath),
-                .outputs = goal->wantedOutputs,
-            });
-        } else if (auto goal = dynamic_cast<PathSubstitutionGoal *>(i.get())) {
-            topPaths.push_back(DerivedPath::Opaque{goal->storePath});
-        }
-    }
-
-    /* Call queryMissing() to efficiently query substitutes. */
-    StorePathSet willBuild, willSubstitute, unknown;
-    uint64_t downloadSize, narSize;
-    store.queryMissing(topPaths, willBuild, willSubstitute, unknown, downloadSize, narSize);
+    topGoals = _topGoals;
 
     debug("entered goal loop");
 
