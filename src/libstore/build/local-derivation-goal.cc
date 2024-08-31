@@ -121,8 +121,6 @@ LocalStore & LocalDerivationGoal::getLocalStore()
 void LocalDerivationGoal::killChild()
 {
     if (pid) {
-        worker.childTerminated(this);
-
         /* If we're using a build user, then there is a tricky race
            condition: if we kill the build user before the child has
            done its setuid() to the build user uid, then it won't be
@@ -243,14 +241,14 @@ try {
     try {
 
         /* Okay, we have to build. */
-        auto fds = startBuilder();
+        auto promise = startBuilder();
 
         /* This state will be reached when we get EOF on the child's
            log pipe. */
         state = &DerivationGoal::buildDone;
 
         started();
-        return {WaitForWorld{std::move(fds), true}};
+        return {WaitForWorld{std::move(promise), true}};
 
     } catch (BuildError & e) {
         outputLocks.unlock();
@@ -390,7 +388,9 @@ void LocalDerivationGoal::cleanupPostOutputsRegisteredModeNonCheck()
     cleanupPostOutputsRegisteredModeCheck();
 }
 
-std::set<int> LocalDerivationGoal::startBuilder()
+// NOTE this one isn't noexcept because it's called from places that expect
+// exceptions to signal failure to launch. we should change this some time.
+kj::Promise<Outcome<void, Goal::Finished>> LocalDerivationGoal::startBuilder()
 {
     if ((buildUser && buildUser->getUIDCount() != 1)
         #if __linux__
@@ -779,7 +779,7 @@ std::set<int> LocalDerivationGoal::startBuilder()
         msgs.push_back(std::move(msg));
     }
 
-    return {builderOutPTY.get()};
+    return handleChildOutput();
 }
 
 

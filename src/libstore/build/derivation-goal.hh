@@ -8,6 +8,7 @@
 #include "store-api.hh"
 #include "pathlocks.hh"
 #include "goal.hh"
+#include <kj/time.h>
 
 namespace nix {
 
@@ -17,7 +18,7 @@ struct HookInstance;
 
 struct HookReplyBase {
     struct [[nodiscard]] Accept {
-        std::set<int> fds;
+        kj::Promise<Outcome<void, Goal::Finished>> promise;
     };
     struct [[nodiscard]] Decline {};
     struct [[nodiscard]] Postpone {};
@@ -70,6 +71,8 @@ struct InitialOutput {
  */
 struct DerivationGoal : public Goal
 {
+    struct InputStream;
+
     /**
      * Whether to use an on-disk .drv file.
      */
@@ -242,7 +245,7 @@ struct DerivationGoal : public Goal
         BuildMode buildMode = bmNormal);
     virtual ~DerivationGoal() noexcept(false);
 
-    Finished timedOut(Error && ex) override;
+    Finished timedOut(Error && ex);
 
     std::string key() override;
 
@@ -312,13 +315,19 @@ struct DerivationGoal : public Goal
     virtual void cleanupPostOutputsRegisteredModeCheck();
     virtual void cleanupPostOutputsRegisteredModeNonCheck();
 
-    /**
-     * Callback used by the worker to write to the log.
-     */
-    WorkResult handleChildOutput(int fd, std::string_view data) override;
-    void handleEOF(int fd) override;
+protected:
+    kj::TimePoint lastChildActivity = kj::minValue;
+
+    kj::Promise<Outcome<void, Finished>> handleChildOutput() noexcept;
+    kj::Promise<Outcome<void, Finished>>
+    handleChildStreams(InputStream & builderIn, InputStream * hookIn) noexcept;
+    kj::Promise<Outcome<void, Finished>> handleBuilderOutput(InputStream & in) noexcept;
+    kj::Promise<Outcome<void, Finished>> handleHookOutput(InputStream & in) noexcept;
+    kj::Promise<Outcome<void, Finished>> monitorForSilence() noexcept;
+    Finished tooMuchLogs();
     void flushLine();
 
+public:
     /**
      * Wrappers around the corresponding Store methods that first consult the
      * derivation.  This is currently needed because when there is no drv file
@@ -356,6 +365,11 @@ struct DerivationGoal : public Goal
         std::optional<Error> ex = {});
 
     void waiteeDone(GoalPtr waitee) override;
+
+    virtual bool respectsTimeouts()
+    {
+        return false;
+    }
 
     StorePathSet exportReferences(const StorePathSet & storePaths);
 

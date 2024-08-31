@@ -46,7 +46,7 @@ struct PathSubstitutionGoal : public Goal
     /**
      * Pipe for the substituter's standard output.
      */
-    Pipe outPipe;
+    kj::Own<kj::CrossThreadPromiseFulfiller<void>> outPipe;
 
     /**
      * The substituter thread.
@@ -90,8 +90,6 @@ public:
     );
     ~PathSubstitutionGoal();
 
-    Finished timedOut(Error && ex) override { abort(); };
-
     /**
      * We prepend "a$" to the key name to ensure substitution goals
      * happen before derivation goals.
@@ -111,11 +109,6 @@ public:
     kj::Promise<Result<WorkResult>> referencesValid(bool inBuildSlot) noexcept;
     kj::Promise<Result<WorkResult>> tryToRun(bool inBuildSlot) noexcept;
     kj::Promise<Result<WorkResult>> finished(bool inBuildSlot) noexcept;
-
-    /**
-     * Callback used by the worker to write to the log.
-     */
-    WorkResult handleChildOutput(int fd, std::string_view data) override;
 
     /* Called by destructor, can't be overridden */
     void cleanup() override final;

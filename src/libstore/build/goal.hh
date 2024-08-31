@@ -114,6 +114,8 @@ struct Goal
 
 public:
 
+    struct Finished;
+
     struct [[nodiscard]] StillAlive {};
     struct [[nodiscard]] WaitForSlot {};
     struct [[nodiscard]] WaitForAWhile {};
@@ -122,7 +124,7 @@ public:
         Goals goals;
     };
     struct [[nodiscard]] WaitForWorld {
-        std::set<int> fds;
+        kj::Promise<Outcome<void, Finished>> promise;
         bool inBuildSlot;
     };
     struct [[nodiscard]] Finished {
@@ -167,33 +169,12 @@ public:
 
     virtual void waiteeDone(GoalPtr waitee) { }
 
-    virtual WorkResult handleChildOutput(int fd, std::string_view data)
-    {
-        abort();
-    }
-
-    virtual void handleEOF(int fd)
-    {
-    }
-
-    virtual bool respectsTimeouts()
-    {
-        return false;
-    }
-
     void trace(std::string_view s);
 
     std::string getName() const
     {
         return name;
     }
-
-    /**
-     * Callback in case of a timeout.  It should wake up its waiters,
-     * get rid of any running child processes that are being monitored
-     * by the worker (important!), etc.
-     */
-    virtual Finished timedOut(Error && ex) = 0;
 
     virtual std::string key() = 0;
 

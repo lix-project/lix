@@ -45,7 +45,7 @@ class DrvOutputSubstitutionGoal : public Goal {
 
     struct DownloadState
     {
-        Pipe outPipe;
+        kj::Own<kj::CrossThreadPromiseFulfiller<void>> outPipe;
         std::future<std::shared_ptr<const Realisation>> result;
     };
 
@@ -73,8 +73,6 @@ public:
     kj::Promise<Result<WorkResult>> realisationFetched(bool inBuildSlot) noexcept;
     kj::Promise<Result<WorkResult>> outPathValid(bool inBuildSlot) noexcept;
     kj::Promise<Result<WorkResult>> finished() noexcept;
-
-    Finished timedOut(Error && ex) override { abort(); };
 
     std::string key() override;
 

@@ -69,24 +69,26 @@ try {
        some other error occurs), so it must not touch `this`. So put
        the shared state in a separate refcounted object. */
     downloadState = std::make_shared<DownloadState>();
-    downloadState->outPipe.create();
+    auto pipe = kj::newPromiseAndCrossThreadFulfiller<void>();
+    downloadState->outPipe = kj::mv(pipe.fulfiller);
 
     downloadState->result =
         std::async(std::launch::async, [downloadState{downloadState}, id{id}, sub{sub}] {
+            Finally updateStats([&]() { downloadState->outPipe->fulfill(); });
             ReceiveInterrupts receiveInterrupts;
-            Finally updateStats([&]() { downloadState->outPipe.writeSide.close(); });
             return sub->queryRealisation(id);
         });
 
     state = &DrvOutputSubstitutionGoal::realisationFetched;
-    return {WaitForWorld{{downloadState->outPipe.readSide.get()}, true}};
+    return {WaitForWorld{
+        pipe.promise.then([]() -> Outcome<void, Finished> { return result::success(); }), true
+    }};
 } catch (...) {
     return {std::current_exception()};
 }
 
 kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::realisationFetched(bool inBuildSlot) noexcept
 try {
-    worker.childTerminated(this);
     maintainRunningSubstitutions.reset();
 
     try {

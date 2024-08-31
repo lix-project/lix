@@ -208,15 +208,16 @@ try {
 
     maintainRunningSubstitutions = worker.runningSubstitutions.addTemporarily(1);
 
-    outPipe.create();
+    auto pipe = kj::newPromiseAndCrossThreadFulfiller<void>();
+    outPipe = kj::mv(pipe.fulfiller);
 
     thr = std::async(std::launch::async, [this]() {
+        /* Wake up the worker loop when we're done. */
+        Finally updateStats([this]() { outPipe->fulfill(); });
+
         auto & fetchPath = subPath ? *subPath : storePath;
         try {
             ReceiveInterrupts receiveInterrupts;
-
-            /* Wake up the worker loop when we're done. */
-            Finally updateStats([this]() { outPipe.writeSide.close(); });
 
             Activity act(*logger, actSubstitute, Logger::Fields{worker.store.printStorePath(storePath), sub->getUri()});
             PushActivity pact(act.id);
@@ -234,7 +235,9 @@ try {
     });
 
     state = &PathSubstitutionGoal::finished;
-    return {WaitForWorld{{outPipe.readSide.get()}, true}};
+    return {WaitForWorld{
+        pipe.promise.then([]() -> Outcome<void, Finished> { return result::success(); }), true
+    }};
 } catch (...) {
     return {std::current_exception()};
 }
@@ -243,8 +246,6 @@ try {
 kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::finished(bool inBuildSlot) noexcept
 try {
     trace("substitute finished");
-
-    worker.childTerminated(this);
 
     try {
         thr.get();
@@ -288,22 +289,13 @@ try {
 }
 
 
-Goal::WorkResult PathSubstitutionGoal::handleChildOutput(int fd, std::string_view data)
-{
-    return StillAlive{};
-}
-
-
 void PathSubstitutionGoal::cleanup()
 {
     try {
         if (thr.valid()) {
             // FIXME: signal worker thread to quit.
             thr.get();
-            worker.childTerminated(this);
         }
-
-        outPipe.close();
     } catch (...) {
         ignoreException();
     }

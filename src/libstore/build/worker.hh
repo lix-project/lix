@@ -21,24 +21,6 @@ class DrvOutputSubstitutionGoal;
 
 typedef std::chrono::time_point<std::chrono::steady_clock> steady_time_point;
 
-/**
- * A mapping used to remember for each child process to what goal it
- * belongs, and file descriptors for receiving log data and output
- * path creation commands.
- */
-struct Child
-{
-    WeakGoalPtr goal;
-    Goal * goal2; // ugly hackery
-    std::set<int> fds;
-    bool inBuildSlot;
-    /**
-     * Time we last got output on stdout/stderr
-     */
-    steady_time_point lastOutput;
-    steady_time_point timeStarted;
-};
-
 /* Forward definition. */
 struct HookInstance;
 
@@ -117,11 +99,6 @@ private:
     WeakGoals wantingToBuild;
 
     /**
-     * Child processes currently running.
-     */
-    std::list<Child> children;
-
-    /**
      * Number of build slots occupied.  This includes local builds but does not
      * include substitutions or remote builds via the build hook.
      */
@@ -179,6 +156,8 @@ private:
     void goalFinished(GoalPtr goal, Goal::Finished & f);
     void handleWorkResult(GoalPtr goal, Goal::WorkResult how);
 
+    kj::Own<kj::PromiseFulfiller<void>> childFinished;
+
     /**
      * Put `goal` to sleep until a build slot becomes available (which
      * might be right away).
@@ -212,8 +191,13 @@ private:
      * Registers a running child process.  `inBuildSlot` means that
      * the process counts towards the jobs limit.
      */
-    void childStarted(GoalPtr goal, const std::set<int> & fds,
+    void childStarted(GoalPtr goal, kj::Promise<Outcome<void, Goal::Finished>> promise,
         bool inBuildSlot);
+
+    /**
+     * Unregisters a running child process.
+     */
+    void childTerminated(GoalPtr goal, bool inBuildSlot);
 
     /**
       * Pass current stats counters to the logger for progress bar updates.
@@ -240,6 +224,11 @@ public:
     Store & evalStore;
     kj::AsyncIoContext & aio;
 
+private:
+    kj::TaskSet children;
+    std::exception_ptr childException;
+
+public:
     struct HookState {
         std::unique_ptr<HookInstance> instance;
 
@@ -302,11 +291,6 @@ private:
     GoalPtr makeGoal(const DerivedPath & req, BuildMode buildMode = bmNormal) override;
 
 public:
-    /**
-     * Unregisters a running child process.
-     */
-    void childTerminated(Goal * goal);
-
     /**
      * Loop until the specified top-level goals have finished.
      */

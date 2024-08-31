@@ -218,7 +218,7 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * Start building a derivation.
      */
-    std::set<int> startBuilder();
+    kj::Promise<Outcome<void, Finished>> startBuilder();
 
     /**
      * Fill in the environment for the builder.
