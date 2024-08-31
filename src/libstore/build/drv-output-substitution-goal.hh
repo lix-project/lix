@@ -65,20 +65,20 @@ public:
         std::optional<ContentAddress> ca = std::nullopt
     );
 
-    typedef WorkResult (DrvOutputSubstitutionGoal::*GoalState)(bool inBuildSlot);
+    typedef kj::Promise<Result<WorkResult>> (DrvOutputSubstitutionGoal::*GoalState)(bool inBuildSlot) noexcept;
     GoalState state;
 
-    WorkResult init(bool inBuildSlot);
-    WorkResult tryNext(bool inBuildSlot);
-    WorkResult realisationFetched(bool inBuildSlot);
-    WorkResult outPathValid(bool inBuildSlot);
-    WorkResult finished();
+    kj::Promise<Result<WorkResult>> init(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> tryNext(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> realisationFetched(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> outPathValid(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> finished() noexcept;
 
     Finished timedOut(Error && ex) override { abort(); };
 
     std::string key() override;
 
-    WorkResult work(bool inBuildSlot) override;
+    kj::Promise<Result<WorkResult>> work(bool inBuildSlot) noexcept override;
 
     JobCategory jobCategory() const override {
         return JobCategory::Substitution;

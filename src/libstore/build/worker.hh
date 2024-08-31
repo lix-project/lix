@@ -9,6 +9,7 @@
 #include "realisation.hh"
 
 #include <future>
+#include <kj/async-io.h>
 #include <thread>
 
 namespace nix {
@@ -237,6 +238,7 @@ public:
 
     Store & store;
     Store & evalStore;
+    kj::AsyncIoContext & aio;
 
     struct HookState {
         std::unique_ptr<HookInstance> instance;
@@ -264,7 +266,7 @@ public:
     NotifyingCounter<uint64_t> expectedNarSize{[this] { updateStatisticsLater(); }};
     NotifyingCounter<uint64_t> doneNarSize{[this] { updateStatisticsLater(); }};
 
-    Worker(Store & store, Store & evalStore);
+    Worker(Store & store, Store & evalStore, kj::AsyncIoContext & aio);
     ~Worker();
 
     /**

@@ -149,8 +149,8 @@ void LocalDerivationGoal::killSandbox(bool getStats)
 }
 
 
-Goal::WorkResult LocalDerivationGoal::tryLocalBuild(bool inBuildSlot)
-{
+kj::Promise<Result<Goal::WorkResult>> LocalDerivationGoal::tryLocalBuild(bool inBuildSlot) noexcept
+try {
 #if __APPLE__
     additionalSandboxProfile = parsedDrv->getStringAttr("__sandboxProfile").value_or("");
 #endif
@@ -159,7 +159,7 @@ Goal::WorkResult LocalDerivationGoal::tryLocalBuild(bool inBuildSlot)
         state = &DerivationGoal::tryToBuild;
         outputLocks.unlock();
         if (0U != settings.maxBuildJobs) {
-            return WaitForSlot{};
+            return {WaitForSlot{}};
         }
         if (getMachines().empty()) {
             throw Error(
@@ -214,7 +214,7 @@ Goal::WorkResult LocalDerivationGoal::tryLocalBuild(bool inBuildSlot)
             if (!actLock)
                 actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
                     fmt("waiting for a free build user ID for '%s'", Magenta(worker.store.printStorePath(drvPath))));
-            return WaitForAWhile{};
+            return {WaitForAWhile{}};
         }
     }
 
@@ -250,15 +250,17 @@ Goal::WorkResult LocalDerivationGoal::tryLocalBuild(bool inBuildSlot)
         state = &DerivationGoal::buildDone;
 
         started();
-        return WaitForWorld{std::move(fds), true};
+        return {WaitForWorld{std::move(fds), true}};
 
     } catch (BuildError & e) {
         outputLocks.unlock();
         buildUser.reset();
         auto report = done(BuildResult::InputRejected, {}, std::move(e));
         report.permanentFailure = true;
-        return report;
+        return {std::move(report)};
     }
+} catch (...) {
+    return {std::current_exception()};
 }
 
 

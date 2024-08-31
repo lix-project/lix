@@ -213,7 +213,7 @@ struct DerivationGoal : public Goal
      */
     std::optional<DerivationType> derivationType;
 
-    typedef WorkResult (DerivationGoal::*GoalState)(bool inBuildSlot);
+    typedef kj::Promise<Result<WorkResult>> (DerivationGoal::*GoalState)(bool inBuildSlot) noexcept;
     GoalState state;
 
     BuildMode buildMode;
@@ -246,7 +246,7 @@ struct DerivationGoal : public Goal
 
     std::string key() override;
 
-    WorkResult work(bool inBuildSlot) override;
+    kj::Promise<Result<WorkResult>> work(bool inBuildSlot) noexcept override;
 
     /**
      * Add wanted outputs to an already existing derivation goal.
@@ -256,18 +256,18 @@ struct DerivationGoal : public Goal
     /**
      * The states.
      */
-    WorkResult getDerivation(bool inBuildSlot);
-    WorkResult loadDerivation(bool inBuildSlot);
-    WorkResult haveDerivation(bool inBuildSlot);
-    WorkResult outputsSubstitutionTried(bool inBuildSlot);
-    WorkResult gaveUpOnSubstitution(bool inBuildSlot);
-    WorkResult closureRepaired(bool inBuildSlot);
-    WorkResult inputsRealised(bool inBuildSlot);
-    WorkResult tryToBuild(bool inBuildSlot);
-    virtual WorkResult tryLocalBuild(bool inBuildSlot);
-    WorkResult buildDone(bool inBuildSlot);
+    kj::Promise<Result<WorkResult>> getDerivation(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> loadDerivation(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> haveDerivation(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> outputsSubstitutionTried(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> gaveUpOnSubstitution(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> closureRepaired(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> inputsRealised(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> tryToBuild(bool inBuildSlot) noexcept;
+    virtual kj::Promise<Result<WorkResult>> tryLocalBuild(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> buildDone(bool inBuildSlot) noexcept;
 
-    WorkResult resolvedFinished(bool inBuildSlot);
+    kj::Promise<Result<WorkResult>> resolvedFinished(bool inBuildSlot) noexcept;
 
     /**
      * Is the build hook willing to perform the build?
@@ -346,7 +346,7 @@ struct DerivationGoal : public Goal
      */
     virtual void killChild();
 
-    WorkResult repairClosure();
+    kj::Promise<Result<WorkResult>> repairClosure() noexcept;
 
     void started();
 

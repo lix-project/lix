@@ -22,25 +22,27 @@ DrvOutputSubstitutionGoal::DrvOutputSubstitutionGoal(
 }
 
 
-Goal::WorkResult DrvOutputSubstitutionGoal::init(bool inBuildSlot)
-{
+kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::init(bool inBuildSlot) noexcept
+try {
     trace("init");
 
     /* If the derivation already exists, we’re done */
     if (worker.store.queryRealisation(id)) {
-        return Finished{ecSuccess, std::move(buildResult)};
+        return {Finished{ecSuccess, std::move(buildResult)}};
     }
 
     subs = settings.useSubstitutes ? getDefaultSubstituters() : std::list<ref<Store>>();
     return tryNext(inBuildSlot);
+} catch (...) {
+    return {std::current_exception()};
 }
 
-Goal::WorkResult DrvOutputSubstitutionGoal::tryNext(bool inBuildSlot)
-{
+kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::tryNext(bool inBuildSlot) noexcept
+try {
     trace("trying next substituter");
 
     if (!inBuildSlot) {
-        return WaitForSlot{};
+        return {WaitForSlot{}};
     }
 
     maintainRunningSubstitutions = worker.runningSubstitutions.addTemporarily(1);
@@ -57,7 +59,7 @@ Goal::WorkResult DrvOutputSubstitutionGoal::tryNext(bool inBuildSlot)
         /* Hack: don't indicate failure if there were no substituters.
            In that case the calling derivation should just do a
            build. */
-        return Finished{substituterFailed ? ecFailed : ecNoSubstituters, std::move(buildResult)};
+        return {Finished{substituterFailed ? ecFailed : ecNoSubstituters, std::move(buildResult)}};
     }
 
     sub = subs.front();
@@ -77,11 +79,13 @@ Goal::WorkResult DrvOutputSubstitutionGoal::tryNext(bool inBuildSlot)
         });
 
     state = &DrvOutputSubstitutionGoal::realisationFetched;
-    return WaitForWorld{{downloadState->outPipe.readSide.get()}, true};
+    return {WaitForWorld{{downloadState->outPipe.readSide.get()}, true}};
+} catch (...) {
+    return {std::current_exception()};
 }
 
-Goal::WorkResult DrvOutputSubstitutionGoal::realisationFetched(bool inBuildSlot)
-{
+kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::realisationFetched(bool inBuildSlot) noexcept
+try {
     worker.childTerminated(this);
     maintainRunningSubstitutions.reset();
 
@@ -122,31 +126,37 @@ Goal::WorkResult DrvOutputSubstitutionGoal::realisationFetched(bool inBuildSlot)
         return outPathValid(inBuildSlot);
     } else {
         state = &DrvOutputSubstitutionGoal::outPathValid;
-        return result;
+        return {std::move(result)};
     }
+} catch (...) {
+    return {std::current_exception()};
 }
 
-Goal::WorkResult DrvOutputSubstitutionGoal::outPathValid(bool inBuildSlot)
-{
+kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::outPathValid(bool inBuildSlot) noexcept
+try {
     assert(outputInfo);
     trace("output path substituted");
 
     if (nrFailed > 0) {
         debug("The output path of the derivation output '%s' could not be substituted", id.to_string());
-        return Finished{
+        return {Finished{
             nrNoSubstituters > 0 || nrIncompleteClosure > 0 ? ecIncompleteClosure : ecFailed,
             std::move(buildResult),
-        };
+        }};
     }
 
     worker.store.registerDrvOutput(*outputInfo);
     return finished();
+} catch (...) {
+    return {std::current_exception()};
 }
 
-Goal::WorkResult DrvOutputSubstitutionGoal::finished()
-{
+kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::finished() noexcept
+try {
     trace("finished");
-    return Finished{ecSuccess, std::move(buildResult)};
+    return {Finished{ecSuccess, std::move(buildResult)}};
+} catch (...) {
+    return {std::current_exception()};
 }
 
 std::string DrvOutputSubstitutionGoal::key()
@@ -156,7 +166,7 @@ std::string DrvOutputSubstitutionGoal::key()
     return "a$" + std::string(id.to_string());
 }
 
-Goal::WorkResult DrvOutputSubstitutionGoal::work(bool inBuildSlot)
+kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::work(bool inBuildSlot) noexcept
 {
     return (this->*state)(inBuildSlot);
 }

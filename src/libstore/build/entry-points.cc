@@ -6,11 +6,17 @@
 
 namespace nix {
 
+static auto runWorker(Worker & worker, auto mkGoals)
+{
+    return worker.run(mkGoals);
+}
+
 void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMode, std::shared_ptr<Store> evalStore)
 {
-    Worker worker(*this, evalStore ? *evalStore : *this);
+    auto aio = kj::setupAsyncIo();
+    Worker worker(*this, evalStore ? *evalStore : *this, aio);
 
-    auto goals = worker.run([&](GoalFactory & gf) {
+    auto goals = runWorker(worker, [&](GoalFactory & gf) {
         Goals goals;
         for (auto & br : reqs)
             goals.insert(gf.makeGoal(br, buildMode));
@@ -48,10 +54,12 @@ std::vector<KeyedBuildResult> Store::buildPathsWithResults(
     BuildMode buildMode,
     std::shared_ptr<Store> evalStore)
 {
-    Worker worker(*this, evalStore ? *evalStore : *this);
+    auto aio = kj::setupAsyncIo();
+    Worker worker(*this, evalStore ? *evalStore : *this, aio);
+
     std::vector<std::pair<const DerivedPath &, GoalPtr>> state;
 
-    auto goals = worker.run([&](GoalFactory & gf) {
+    auto goals = runWorker(worker, [&](GoalFactory & gf) {
         Goals goals;
         for (const auto & req : reqs) {
             auto goal = gf.makeGoal(req, buildMode);
@@ -72,10 +80,11 @@ std::vector<KeyedBuildResult> Store::buildPathsWithResults(
 BuildResult Store::buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
     BuildMode buildMode)
 {
-    Worker worker(*this, *this);
+    auto aio = kj::setupAsyncIo();
+    Worker worker(*this, *this, aio);
 
     try {
-        auto goals = worker.run([&](GoalFactory & gf) -> Goals {
+        auto goals = runWorker(worker, [&](GoalFactory & gf) -> Goals {
             return Goals{gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode)};
         });
         auto goal = *goals.begin();
@@ -97,10 +106,12 @@ void Store::ensurePath(const StorePath & path)
     /* If the path is already valid, we're done. */
     if (isValidPath(path)) return;
 
-    Worker worker(*this, *this);
+    auto aio = kj::setupAsyncIo();
+    Worker worker(*this, *this, aio);
 
-    auto goals =
-        worker.run([&](GoalFactory & gf) { return Goals{gf.makePathSubstitutionGoal(path)}; });
+    auto goals = runWorker(worker, [&](GoalFactory & gf) {
+        return Goals{gf.makePathSubstitutionGoal(path)};
+    });
     auto goal = *goals.begin();
 
     if (goal->exitCode != Goal::ecSuccess) {
@@ -115,9 +126,10 @@ void Store::ensurePath(const StorePath & path)
 
 void Store::repairPath(const StorePath & path)
 {
-    Worker worker(*this, *this);
+    auto aio = kj::setupAsyncIo();
+    Worker worker(*this, *this, aio);
 
-    auto goals = worker.run([&](GoalFactory & gf) {
+    auto goals = runWorker(worker, [&](GoalFactory & gf) {
         return Goals{gf.makePathSubstitutionGoal(path, Repair)};
     });
     auto goal = *goals.begin();

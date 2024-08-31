@@ -11,12 +11,13 @@
 
 namespace nix {
 
-Worker::Worker(Store & store, Store & evalStore)
+Worker::Worker(Store & store, Store & evalStore, kj::AsyncIoContext & aio)
     : act(*logger, actRealise)
     , actDerivations(*logger, actBuilds)
     , actSubstitutions(*logger, actCopyPaths)
     , store(store)
     , evalStore(evalStore)
+    , aio(aio)
 {
     /* Debugging: prevent recursive workers. */
     nrLocalBuilds = 0;
@@ -379,7 +380,7 @@ Goals Worker::run(std::function<Goals (GoalFactory &)> req)
                 const bool inSlot = goal->jobCategory() == JobCategory::Substitution
                     ? nrSubstitutions < std::max(1U, (unsigned int) settings.maxSubstitutionJobs)
                     : nrLocalBuilds < settings.maxBuildJobs;
-                handleWorkResult(goal, goal->work(inSlot));
+                handleWorkResult(goal, goal->work(inSlot).wait(aio.waitScope).value());
                 updateStatistics();
 
                 if (topGoals.empty()) break; // stuff may have been cancelled

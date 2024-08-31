@@ -221,6 +221,7 @@ dependencies = [
   aws_s3,
   aws_sdk_transfer,
   nlohmann_json,
+  kj,
 ]
 
 if host_machine.system() == 'freebsd'

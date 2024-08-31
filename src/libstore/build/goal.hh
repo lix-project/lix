@@ -1,9 +1,11 @@
 #pragma once
 ///@file
 
+#include "result.hh"
 #include "types.hh"
 #include "store-api.hh"
 #include "build-result.hh"
+#include <kj/async.h>
 
 namespace nix {
 
@@ -161,7 +163,7 @@ public:
         trace("goal destroyed");
     }
 
-    virtual WorkResult work(bool inBuildSlot) = 0;
+    virtual kj::Promise<Result<WorkResult>> work(bool inBuildSlot) noexcept = 0;
 
     virtual void waiteeDone(GoalPtr waitee) { }
 

@@ -15,6 +15,8 @@
   brotli,
   bzip2,
   callPackage,
+  capnproto-lix ? __forDefaults.capnproto-lix,
+  capnproto,
   cmake,
   curl,
   doxygen,
@@ -83,6 +85,9 @@
     });
 
     build-release-notes = callPackage ./maintainers/build-release-notes.nix { };
+
+    # needs explicit c++20 to enable coroutine support
+    capnproto-lix = capnproto.overrideAttrs { CXXFLAGS = "-std=c++20"; };
   },
 }:
 let
@@ -220,6 +225,7 @@ stdenv.mkDerivation (finalAttrs: {
       ninja
       cmake
       rustc
+      capnproto-lix
     ]
     ++ [
       (lib.getBin lowdown)
@@ -260,6 +266,7 @@ stdenv.mkDerivation (finalAttrs: {
       libsodium
       toml11
       pegtl
+      capnproto-lix
     ]
     ++ lib.optionals hostPlatform.isLinux [
       libseccomp

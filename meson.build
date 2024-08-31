@@ -229,6 +229,7 @@ configdata += {
 }
 
 boost = dependency('boost', required : true, modules : ['container'], include_type : 'system')
+kj = dependency('kj-async', required : true, include_type : 'system')
 
 # cpuid only makes sense on x86_64
 cpuid_required = is_x64 ? get_option('cpuid') : false

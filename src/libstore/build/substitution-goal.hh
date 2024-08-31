@@ -67,7 +67,7 @@ struct PathSubstitutionGoal : public Goal
     NotifyingCounter<uint64_t>::Bump maintainExpectedSubstitutions,
         maintainRunningSubstitutions, maintainExpectedNar, maintainExpectedDownload;
 
-    typedef WorkResult (PathSubstitutionGoal::*GoalState)(bool inBuildSlot);
+    typedef kj::Promise<Result<WorkResult>> (PathSubstitutionGoal::*GoalState)(bool inBuildSlot) noexcept;
     GoalState state;
 
     /**
@@ -101,16 +101,16 @@ public:
         return "a$" + std::string(storePath.name()) + "$" + worker.store.printStorePath(storePath);
     }
 
-    WorkResult work(bool inBuildSlot) override;
+    kj::Promise<Result<WorkResult>> work(bool inBuildSlot) noexcept override;
 
     /**
      * The states.
      */
-    WorkResult init(bool inBuildSlot);
-    WorkResult tryNext(bool inBuildSlot);
-    WorkResult referencesValid(bool inBuildSlot);
-    WorkResult tryToRun(bool inBuildSlot);
-    WorkResult finished(bool inBuildSlot);
+    kj::Promise<Result<WorkResult>> init(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> tryNext(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> referencesValid(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> tryToRun(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> finished(bool inBuildSlot) noexcept;
 
     /**
      * Callback used by the worker to write to the log.

@@ -45,21 +45,21 @@ Goal::Finished PathSubstitutionGoal::done(
 }
 
 
-Goal::WorkResult PathSubstitutionGoal::work(bool inBuildSlot)
+kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::work(bool inBuildSlot) noexcept
 {
     return (this->*state)(inBuildSlot);
 }
 
 
-Goal::WorkResult PathSubstitutionGoal::init(bool inBuildSlot)
-{
+kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::init(bool inBuildSlot) noexcept
+try {
     trace("init");
 
     worker.store.addTempRoot(storePath);
 
     /* If the path already exists we're done. */
     if (!repair && worker.store.isValidPath(storePath)) {
-        return done(ecSuccess, BuildResult::AlreadyValid);
+        return {done(ecSuccess, BuildResult::AlreadyValid)};
     }
 
     if (settings.readOnlyMode)
@@ -68,11 +68,13 @@ Goal::WorkResult PathSubstitutionGoal::init(bool inBuildSlot)
     subs = settings.useSubstitutes ? getDefaultSubstituters() : std::list<ref<Store>>();
 
     return tryNext(inBuildSlot);
+} catch (...) {
+    return {std::current_exception()};
 }
 
 
-Goal::WorkResult PathSubstitutionGoal::tryNext(bool inBuildSlot)
-{
+kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::tryNext(bool inBuildSlot) noexcept
+try {
     trace("trying next substituter");
 
     cleanup();
@@ -87,10 +89,10 @@ Goal::WorkResult PathSubstitutionGoal::tryNext(bool inBuildSlot)
         /* Hack: don't indicate failure if there were no substituters.
            In that case the calling derivation should just do a
            build. */
-        return done(
+        return {done(
             substituterFailed ? ecFailed : ecNoSubstituters,
             BuildResult::NoSubstituters,
-            fmt("path '%s' is required, but there is no substituter that can build it", worker.store.printStorePath(storePath)));
+            fmt("path '%s' is required, but there is no substituter that can build it", worker.store.printStorePath(storePath)))};
     }
 
     sub = subs.front();
@@ -167,20 +169,22 @@ Goal::WorkResult PathSubstitutionGoal::tryNext(bool inBuildSlot)
         return referencesValid(inBuildSlot);
     } else {
         state = &PathSubstitutionGoal::referencesValid;
-        return result;
+        return {std::move(result)};
     }
+} catch (...) {
+    return {std::current_exception()};
 }
 
 
-Goal::WorkResult PathSubstitutionGoal::referencesValid(bool inBuildSlot)
-{
+kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::referencesValid(bool inBuildSlot) noexcept
+try {
     trace("all references realised");
 
     if (nrFailed > 0) {
-        return done(
+        return {done(
             nrNoSubstituters > 0 || nrIncompleteClosure > 0 ? ecIncompleteClosure : ecFailed,
             BuildResult::DependencyFailed,
-            fmt("some references of path '%s' could not be realised", worker.store.printStorePath(storePath)));
+            fmt("some references of path '%s' could not be realised", worker.store.printStorePath(storePath)))};
     }
 
     for (auto & i : info->references)
@@ -189,15 +193,17 @@ Goal::WorkResult PathSubstitutionGoal::referencesValid(bool inBuildSlot)
 
     state = &PathSubstitutionGoal::tryToRun;
     return tryToRun(inBuildSlot);
+} catch (...) {
+    return {std::current_exception()};
 }
 
 
-Goal::WorkResult PathSubstitutionGoal::tryToRun(bool inBuildSlot)
-{
+kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::tryToRun(bool inBuildSlot) noexcept
+try {
     trace("trying to run");
 
     if (!inBuildSlot) {
-        return WaitForSlot{};
+        return {WaitForSlot{}};
     }
 
     maintainRunningSubstitutions = worker.runningSubstitutions.addTemporarily(1);
@@ -228,12 +234,14 @@ Goal::WorkResult PathSubstitutionGoal::tryToRun(bool inBuildSlot)
     });
 
     state = &PathSubstitutionGoal::finished;
-    return WaitForWorld{{outPipe.readSide.get()}, true};
+    return {WaitForWorld{{outPipe.readSide.get()}, true}};
+} catch (...) {
+    return {std::current_exception()};
 }
 
 
-Goal::WorkResult PathSubstitutionGoal::finished(bool inBuildSlot)
-{
+kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::finished(bool inBuildSlot) noexcept
+try {
     trace("substitute finished");
 
     worker.childTerminated(this);
@@ -274,7 +282,9 @@ Goal::WorkResult PathSubstitutionGoal::finished(bool inBuildSlot)
     worker.doneNarSize += maintainExpectedNar.delta();
     maintainExpectedNar.reset();
 
-    return done(ecSuccess, BuildResult::Substituted);
+    return {done(ecSuccess, BuildResult::Substituted)};
+} catch (...) {
+    return {std::current_exception()};
 }
 
 
