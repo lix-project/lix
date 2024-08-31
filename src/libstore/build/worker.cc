@@ -32,7 +32,6 @@ Worker::Worker(Store & store, Store & evalStore, kj::AsyncIoContext & aio)
     /* Debugging: prevent recursive workers. */
     nrLocalBuilds = 0;
     nrSubstitutions = 0;
-    lastWokenUp = steady_time_point::min();
 }
 
 
@@ -212,7 +211,6 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
         overloaded{
             [&](Goal::StillAlive) {},
             [&](Goal::WaitForSlot) { waitForBuildSlot(goal); },
-            [&](Goal::WaitForAWhile) { waitForAWhile(goal); },
             [&](Goal::ContinueImmediately) { wakeUp(goal); },
             [&](Goal::WaitForGoals & w) {
                 for (auto & dep : w.goals) {
@@ -221,12 +219,25 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
                 }
             },
             [&](Goal::WaitForWorld & w) {
-                childStarted(goal, std::move(w.promise), w.inBuildSlot);
+                childStarted(
+                    goal,
+                    w.promise.then([](auto r) -> Result<Goal::WorkResult> {
+                        if (r.has_value()) {
+                            return {Goal::ContinueImmediately{}};
+                        } else if (r.has_error()) {
+                            return {std::move(r).error()};
+                        } else {
+                            return r.exception();
+                        }
+                    }),
+                    w.inBuildSlot
+                );
             },
             [&](Goal::Finished & f) { goalFinished(goal, f); },
         },
         how
     );
+    updateStatistics();
 }
 
 void Worker::removeGoal(GoalPtr goal)
@@ -257,17 +268,15 @@ void Worker::wakeUp(GoalPtr goal)
 }
 
 
-void Worker::childStarted(GoalPtr goal, kj::Promise<Outcome<void, Goal::Finished>> promise,
+void Worker::childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> promise,
     bool inBuildSlot)
 {
     children.add(promise
         .then([this, goal](auto result) {
             if (result.has_value()) {
-                handleWorkResult(goal, Goal::ContinueImmediately{});
-            } else if (result.has_error()) {
-                handleWorkResult(goal, std::move(result.assume_error()));
+                handleWorkResult(goal, std::move(result.assume_value()));
             } else {
-                childException = result.assume_exception();
+                childException = result.assume_error();
             }
         })
         .attach(Finally{[this, goal, inBuildSlot] {
@@ -331,13 +340,6 @@ void Worker::waitForBuildSlot(GoalPtr goal)
 }
 
 
-void Worker::waitForAWhile(GoalPtr goal)
-{
-    debug("wait for a while");
-    waitingForAWhile.insert(goal);
-}
-
-
 void Worker::updateStatistics()
 {
     // only update progress info while running. this notably excludes updating
@@ -397,8 +399,12 @@ Goals Worker::run(std::function<Goals (GoalFactory &)> req)
                 const bool inSlot = goal->jobCategory() == JobCategory::Substitution
                     ? nrSubstitutions < std::max(1U, (unsigned int) settings.maxSubstitutionJobs)
                     : nrLocalBuilds < settings.maxBuildJobs;
-                handleWorkResult(goal, goal->work(inSlot).wait(aio.waitScope).value());
-                updateStatistics();
+                auto result = goal->work(inSlot);
+                if (result.poll(aio.waitScope)) {
+                    handleWorkResult(goal, result.wait(aio.waitScope).value());
+                } else {
+                    childStarted(goal, std::move(result), false);
+                }
 
                 if (topGoals.empty()) break; // stuff may have been cancelled
             }
@@ -407,7 +413,7 @@ Goals Worker::run(std::function<Goals (GoalFactory &)> req)
         if (topGoals.empty()) break;
 
         /* Wait for input. */
-        if (!children.isEmpty() || !waitingForAWhile.empty())
+        if (!children.isEmpty())
             waitForInput();
         else {
             assert(!awake.empty());
@@ -445,21 +451,11 @@ void Worker::waitForInput()
        terminated. */
 
     std::optional<long> timeout = 0;
-    auto before = steady_time_point::clock::now();
 
     // Periodicallty wake up to see if we need to run the garbage collector.
     if (settings.minFree.get() != 0) {
         timeout = 10;
     }
-
-    /* If we are polling goals that are waiting for a lock, then wake
-       up after a few seconds at most. */
-    if (!waitingForAWhile.empty()) {
-        if (lastWokenUp == steady_time_point::min() || lastWokenUp > before) lastWokenUp = before;
-        timeout = std::max(1L,
-            (long) std::chrono::duration_cast<std::chrono::seconds>(
-                lastWokenUp + std::chrono::seconds(settings.pollInterval) - before).count());
-    } else lastWokenUp = steady_time_point::min();
 
     if (timeout)
         vomit("sleeping %d seconds", *timeout);
@@ -475,17 +471,6 @@ void Worker::waitForInput()
     }();
 
     waitFor.wait(aio.waitScope);
-
-    auto after = steady_time_point::clock::now();
-
-    if (!waitingForAWhile.empty() && lastWokenUp + std::chrono::seconds(settings.pollInterval) <= after) {
-        lastWokenUp = after;
-        for (auto & i : waitingForAWhile) {
-            GoalPtr goal = i.lock();
-            if (goal) wakeUp(goal);
-        }
-        waitingForAWhile.clear();
-    }
 }
 
 

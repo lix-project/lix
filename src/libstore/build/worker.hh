@@ -118,16 +118,6 @@ private:
     std::map<DrvOutput, std::weak_ptr<DrvOutputSubstitutionGoal>> drvOutputSubstitutionGoals;
 
     /**
-     * Goals sleeping for a few seconds (polling a lock).
-     */
-    WeakGoals waitingForAWhile;
-
-    /**
-     * Last time the goals in `waitingForAWhile` where woken up.
-     */
-    steady_time_point lastWokenUp;
-
-    /**
      * Cache for pathContentsGood().
      */
     std::map<StorePath, bool> pathContentsGoodCache;
@@ -165,14 +155,6 @@ private:
     void waitForBuildSlot(GoalPtr goal);
 
     /**
-     * Wait for a few seconds and then retry this goal.  Used when
-     * waiting for a lock held by another process.  This kind of
-     * polling is inefficient, but POSIX doesn't really provide a way
-     * to wait for multiple locks in the main select() loop.
-     */
-    void waitForAWhile(GoalPtr goal);
-
-    /**
      * Wake up a goal (i.e., there is something for it to do).
      */
     void wakeUp(GoalPtr goal);
@@ -191,7 +173,7 @@ private:
      * Registers a running child process.  `inBuildSlot` means that
      * the process counts towards the jobs limit.
      */
-    void childStarted(GoalPtr goal, kj::Promise<Outcome<void, Goal::Finished>> promise,
+    void childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> promise,
         bool inBuildSlot);
 
     /**

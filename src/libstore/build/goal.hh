@@ -118,7 +118,6 @@ public:
 
     struct [[nodiscard]] StillAlive {};
     struct [[nodiscard]] WaitForSlot {};
-    struct [[nodiscard]] WaitForAWhile {};
     struct [[nodiscard]] ContinueImmediately {};
     struct [[nodiscard]] WaitForGoals {
         Goals goals;
@@ -140,7 +139,6 @@ public:
     struct [[nodiscard]] WorkResult : std::variant<
                                           StillAlive,
                                           WaitForSlot,
-                                          WaitForAWhile,
                                           ContinueImmediately,
                                           WaitForGoals,
                                           WaitForWorld,
@@ -149,6 +147,11 @@ public:
         WorkResult() = delete;
         using variant::variant;
     };
+
+protected:
+    kj::Promise<Result<WorkResult>> waitForAWhile();
+
+public:
 
     /**
      * Exception containing an error message, if any.

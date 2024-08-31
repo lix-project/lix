@@ -736,7 +736,7 @@ try {
         if (!actLock)
             actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
                 fmt("waiting for lock on %s", Magenta(showPaths(lockFiles))));
-        return {WaitForAWhile{}};
+        return waitForAWhile();
     }
 
     actLock.reset();
@@ -776,32 +776,32 @@ try {
         auto hookReply = tryBuildHook(inBuildSlot);
         auto result = std::visit(
             overloaded{
-                [&](HookReply::Accept & a) -> std::optional<WorkResult> {
+                [&](HookReply::Accept & a) -> std::optional<kj::Promise<Result<WorkResult>>> {
                     /* Yes, it has started doing so.  Wait until we get
                        EOF from the hook. */
                     actLock.reset();
                     buildResult.startTime = time(0); // inexact
                     state = &DerivationGoal::buildDone;
                     started();
-                    return WaitForWorld{std::move(a.promise), false};
+                    return {{WaitForWorld{std::move(a.promise), false}}};
                 },
-                [&](HookReply::Postpone) -> std::optional<WorkResult> {
+                [&](HookReply::Postpone) -> std::optional<kj::Promise<Result<WorkResult>>> {
                     /* Not now; wait until at least one child finishes or
                        the wake-up timeout expires. */
                     if (!actLock)
                         actLock = std::make_unique<Activity>(*logger, lvlTalkative, actBuildWaiting,
                             fmt("waiting for a machine to build '%s'", Magenta(worker.store.printStorePath(drvPath))));
                     outputLocks.unlock();
-                    return WaitForAWhile{};
+                    return waitForAWhile();
                 },
-                [&](HookReply::Decline) -> std::optional<WorkResult> {
+                [&](HookReply::Decline) -> std::optional<kj::Promise<Result<WorkResult>>> {
                     /* We should do it ourselves. */
                     return std::nullopt;
                 },
             },
             hookReply);
         if (result) {
-            return {std::move(*result)};
+            return std::move(*result);
         }
     }
 
