@@ -105,6 +105,7 @@ libutil_headers = files(
   'regex-combinators.hh',
   'regex.hh',
   'repair-flag.hh',
+  'result.hh',
   'serialise.hh',
   'shlex.hh',
   'signals.hh',
