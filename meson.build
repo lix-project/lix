@@ -167,10 +167,18 @@ endif
 # frees one would expect when the objects are unique_ptrs. these problems
 # often show up as memory corruption when nesting generators (since we do
 # treat generators like owned memory) and will cause inexplicable crashs.
+#
+# gcc 13 does not compile capnp coroutine code correctly. a newer version
+# may fix this. (cf. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=102051)
+# we allow gcc 13 here anyway because CI uses it for clang-tidy, and when
+# the compiler crashes outright if won't produce any bad binaries either.
 assert(
   cxx.get_id() != 'gcc' or cxx.version().version_compare('>=13'),
-  'GCC 12 and earlier are known to miscompile lix coroutines, use GCC 13 or clang.'
+  'GCC is known to miscompile coroutines, use clang.'
 )
+if cxx.get_id() == 'gcc'
+  warning('GCC is known to crash while building coroutines, use clang.')
+endif
 
 
 # Translate some historical and Mesony CPU names to Lixy CPU names.

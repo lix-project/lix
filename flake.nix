@@ -99,9 +99,10 @@
       ];
 
       stdenvs = [
-        "gccStdenv"
+        # see assertion in package.nix why these two are disabled
+        # "stdenv"
+        # "gccStdenv"
         "clangStdenv"
-        "stdenv"
         "libcxxStdenv"
         "ccacheStdenv"
       ];
@@ -121,7 +122,11 @@
             name = "${stdenvName}Packages";
             value = f stdenvName;
           }) stdenvs
-        );
+        )
+        // {
+          # TODO delete this and reënable gcc stdenvs once gcc compiles kj coros correctly
+          stdenvPackages = f "clangStdenv";
+        };
 
       # Memoize nixpkgs for different platforms for efficiency.
       nixpkgsFor = forAllSystems (

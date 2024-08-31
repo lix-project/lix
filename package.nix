@@ -90,6 +90,10 @@
     capnproto-lix = capnproto.overrideAttrs { CXXFLAGS = "-std=c++20"; };
   },
 }:
+
+# gcc miscompiles coroutines at least until 13.2, possibly longer
+assert stdenv.cc.isClang || lintInsteadOfBuild;
+
 let
   inherit (__forDefaults) canRunInstalled;
   inherit (lib) fileset;
