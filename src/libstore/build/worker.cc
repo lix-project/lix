@@ -438,37 +438,16 @@ void Worker::waitForInput()
 {
     printMsg(lvlVomit, "waiting for children");
 
-    auto childFinished = [&]{
+    auto waitFor = [&]{
         auto pair = kj::newPromiseAndFulfiller<void>();
         this->childFinished = kj::mv(pair.fulfiller);
         return kj::mv(pair.promise);
     }();
 
-    /* Process output from the file descriptors attached to the
-       children, namely log output and output path creation commands.
-       We also use this to detect child termination: if we get EOF on
-       the logger pipe of a build, we assume that the builder has
-       terminated. */
-
-    std::optional<long> timeout = 0;
-
-    // Periodicallty wake up to see if we need to run the garbage collector.
     if (settings.minFree.get() != 0) {
-        timeout = 10;
+        // Periodicallty wake up to see if we need to run the garbage collector.
+        waitFor = waitFor.exclusiveJoin(aio.provider->getTimer().afterDelay(10 * kj::SECONDS));
     }
-
-    if (timeout)
-        vomit("sleeping %d seconds", *timeout);
-
-    auto waitFor = [&] {
-        if (timeout) {
-            return aio.provider->getTimer()
-                .afterDelay(*timeout * kj::SECONDS)
-                .exclusiveJoin(kj::mv(childFinished));
-        } else {
-            return std::move(childFinished);
-        }
-    }();
 
     waitFor.wait(aio.waitScope);
 }
