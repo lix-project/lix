@@ -1,4 +1,5 @@
 #include "config.hh"
+#include "apply-config-options.hh"
 #include "args.hh"
 #include "abstract-setting-to-json.hh"
 #include "experimental-features.hh"
@@ -17,7 +18,7 @@ Config::Config(StringMap initials)
     : AbstractConfig(std::move(initials))
 { }
 
-bool Config::set(const std::string & name, const std::string & value)
+bool Config::set(const std::string & name, const std::string & value, const ApplyConfigOptions & options)
 {
     bool append = false;
     auto i = _settings.find(name);
@@ -30,7 +31,7 @@ bool Config::set(const std::string & name, const std::string & value)
         } else
             return false;
     }
-    i->second.setting->set(value, append);
+    i->second.setting->set(value, append, options);
     i->second.setting->overridden = true;
     return true;
 }
@@ -91,7 +92,7 @@ void Config::getSettings(std::map<std::string, SettingInfo> & res, bool overridd
 }
 
 
-static void applyConfigInner(const std::string & contents, const std::string & path, std::vector<std::pair<std::string, std::string>> & parsedContents) {
+static void applyConfigInner(const std::string & contents, const ApplyConfigOptions & options, std::vector<std::pair<std::string, std::string>> & parsedContents) {
     unsigned int pos = 0;
 
     while (pos < contents.size()) {
@@ -107,7 +108,7 @@ static void applyConfigInner(const std::string & contents, const std::string & p
         if (tokens.empty()) continue;
 
         if (tokens.size() < 2)
-            throw UsageError("illegal configuration line '%1%' in '%2%'", line, path);
+            throw UsageError("illegal configuration line '%1%' in '%2%'", line, options.relativeDisplay());
 
         auto include = false;
         auto ignoreMissing = false;
@@ -119,24 +120,32 @@ static void applyConfigInner(const std::string & contents, const std::string & p
         }
 
         if (include) {
-            if (tokens.size() != 2)
-                throw UsageError("illegal configuration line '%1%' in '%2%'", line, path);
-            auto p = absPath(tokens[1], dirOf(path));
-            if (pathExists(p)) {
+            if (tokens.size() != 2) {
+                throw UsageError("illegal configuration line '%1%' in '%2%'", line, options.relativeDisplay());
+            }
+            if (!options.path) {
+                throw UsageError("can only include configuration '%1%' from files", tokens[1]);
+            }
+            auto pathToInclude = absPath(tildePath(tokens[1], options.home), dirOf(*options.path));
+            if (pathExists(pathToInclude)) {
+                auto includeOptions = ApplyConfigOptions {
+                    .path = pathToInclude,
+                    .home = options.home,
+                };
                 try {
-                    std::string includedContents = readFile(path);
-                    applyConfigInner(includedContents, p, parsedContents);
+                    std::string includedContents = readFile(pathToInclude);
+                    applyConfigInner(includedContents, includeOptions, parsedContents);
                 } catch (SysError &) {
                     // TODO: Do we actually want to ignore this? Or is it better to fail?
                 }
             } else if (!ignoreMissing) {
-                throw Error("file '%1%' included from '%2%' not found", p, path);
+                throw Error("file '%1%' included from '%2%' not found", pathToInclude, *options.path);
             }
             continue;
         }
 
         if (tokens[1] != "=")
-            throw UsageError("illegal configuration line '%1%' in '%2%'", line, path);
+            throw UsageError("illegal configuration line '%1%' in '%2%'", line, options.relativeDisplay());
 
         std::string name = std::move(tokens[0]);
 
@@ -150,20 +159,20 @@ static void applyConfigInner(const std::string & contents, const std::string & p
     };
 }
 
-void AbstractConfig::applyConfig(const std::string & contents, const std::string & path) {
+void AbstractConfig::applyConfig(const std::string & contents, const ApplyConfigOptions & options) {
     std::vector<std::pair<std::string, std::string>> parsedContents;
 
-    applyConfigInner(contents, path, parsedContents);
+    applyConfigInner(contents, options, parsedContents);
 
     // First apply experimental-feature related settings
     for (const auto & [name, value] : parsedContents)
         if (name == "experimental-features" || name == "extra-experimental-features")
-            set(name, value);
+            set(name, value, options);
 
     // Then apply other settings
     for (const auto & [name, value] : parsedContents)
         if (name != "experimental-features" && name != "extra-experimental-features")
-            set(name, value);
+            set(name, value, options);
 }
 
 void Config::resetOverridden()
@@ -241,7 +250,7 @@ void AbstractSetting::convertToArg(Args & args, const std::string & category)
 
 bool AbstractSetting::isOverridden() const { return overridden; }
 
-template<> std::string BaseSetting<std::string>::parse(const std::string & str) const
+template<> std::string BaseSetting<std::string>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     return str;
 }
@@ -251,7 +260,7 @@ template<> std::string BaseSetting<std::string>::to_string() const
     return value;
 }
 
-template<> std::optional<std::string> BaseSetting<std::optional<std::string>>::parse(const std::string & str) const
+template<> std::optional<std::string> BaseSetting<std::optional<std::string>>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     if (str == "")
         return std::nullopt;
@@ -264,7 +273,7 @@ template<> std::string BaseSetting<std::optional<std::string>>::to_string() cons
     return value ? *value : "";
 }
 
-template<> bool BaseSetting<bool>::parse(const std::string & str) const
+template<> bool BaseSetting<bool>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     if (str == "true" || str == "yes" || str == "1")
         return true;
@@ -297,12 +306,12 @@ template<> void BaseSetting<bool>::convertToArg(Args & args, const std::string &
     });
 }
 
-template<> Strings BaseSetting<Strings>::parse(const std::string & str) const
+template<> Strings BaseSetting<Strings>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     return tokenizeString<Strings>(str);
 }
 
-template<> void BaseSetting<Strings>::appendOrSet(Strings newValue, bool append)
+template<> void BaseSetting<Strings>::appendOrSet(Strings newValue, bool append, const ApplyConfigOptions & options)
 {
     if (!append) value.clear();
     value.insert(value.end(), std::make_move_iterator(newValue.begin()),
@@ -314,12 +323,12 @@ template<> std::string BaseSetting<Strings>::to_string() const
     return concatStringsSep(" ", value);
 }
 
-template<> StringSet BaseSetting<StringSet>::parse(const std::string & str) const
+template<> StringSet BaseSetting<StringSet>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     return tokenizeString<StringSet>(str);
 }
 
-template<> void BaseSetting<StringSet>::appendOrSet(StringSet newValue, bool append)
+template<> void BaseSetting<StringSet>::appendOrSet(StringSet newValue, bool append, const ApplyConfigOptions & options)
 {
     if (!append) value.clear();
     value.insert(std::make_move_iterator(newValue.begin()), std::make_move_iterator(newValue.end()));
@@ -330,7 +339,7 @@ template<> std::string BaseSetting<StringSet>::to_string() const
     return concatStringsSep(" ", value);
 }
 
-template<> ExperimentalFeatures BaseSetting<ExperimentalFeatures>::parse(const std::string & str) const
+template<> ExperimentalFeatures BaseSetting<ExperimentalFeatures>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     ExperimentalFeatures res{};
     for (auto & s : tokenizeString<StringSet>(str)) {
@@ -342,7 +351,7 @@ template<> ExperimentalFeatures BaseSetting<ExperimentalFeatures>::parse(const s
     return res;
 }
 
-template<> void BaseSetting<ExperimentalFeatures>::appendOrSet(ExperimentalFeatures newValue, bool append)
+template<> void BaseSetting<ExperimentalFeatures>::appendOrSet(ExperimentalFeatures newValue, bool append, const ApplyConfigOptions & options)
 {
     if (append)
         value = value | newValue;
@@ -359,7 +368,7 @@ template<> std::string BaseSetting<ExperimentalFeatures>::to_string() const
     return concatStringsSep(" ", stringifiedXpFeatures);
 }
 
-template<> DeprecatedFeatures BaseSetting<DeprecatedFeatures>::parse(const std::string & str) const
+template<> DeprecatedFeatures BaseSetting<DeprecatedFeatures>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     DeprecatedFeatures res{};
     for (auto & s : tokenizeString<StringSet>(str)) {
@@ -371,7 +380,7 @@ template<> DeprecatedFeatures BaseSetting<DeprecatedFeatures>::parse(const std::
     return res;
 }
 
-template<> void BaseSetting<DeprecatedFeatures>::appendOrSet(DeprecatedFeatures newValue, bool append)
+template<> void BaseSetting<DeprecatedFeatures>::appendOrSet(DeprecatedFeatures newValue, bool append, const ApplyConfigOptions & options)
 {
     if (append)
         value = value | newValue;
@@ -388,7 +397,7 @@ template<> std::string BaseSetting<DeprecatedFeatures>::to_string() const
     return concatStringsSep(" ", stringifiedDpFeatures);
 }
 
-template<> StringMap BaseSetting<StringMap>::parse(const std::string & str) const
+template<> StringMap BaseSetting<StringMap>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     StringMap res;
     for (const auto & s : tokenizeString<Strings>(str)) {
@@ -399,7 +408,7 @@ template<> StringMap BaseSetting<StringMap>::parse(const std::string & str) cons
     return res;
 }
 
-template<> void BaseSetting<StringMap>::appendOrSet(StringMap newValue, bool append)
+template<> void BaseSetting<StringMap>::appendOrSet(StringMap newValue, bool append, const ApplyConfigOptions & options)
 {
     if (!append) value.clear();
     value.insert(std::make_move_iterator(newValue.begin()), std::make_move_iterator(newValue.end()));
@@ -426,34 +435,40 @@ template class BaseSetting<StringMap>;
 template class BaseSetting<ExperimentalFeatures>;
 template class BaseSetting<DeprecatedFeatures>;
 
-static Path parsePath(const AbstractSetting & s, const std::string & str)
+static Path parsePath(const AbstractSetting & s, const std::string & str, const ApplyConfigOptions & options)
 {
-    if (str == "")
+    if (str == "") {
         throw UsageError("setting '%s' is a path and paths cannot be empty", s.name);
-    else
-        return canonPath(str);
+    } else {
+        auto tildeResolvedPath = tildePath(str, options.home);
+        if (options.path) {
+            return absPath(tildeResolvedPath, dirOf(*options.path));
+        } else {
+            return canonPath(tildeResolvedPath);
+        }
+    }
 }
 
-template<> Path PathsSetting<Path>::parse(const std::string & str) const
+template<> Path PathsSetting<Path>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
-    return parsePath(*this, str);
+    return parsePath(*this, str, options);
 }
 
-template<> std::optional<Path> PathsSetting<std::optional<Path>>::parse(const std::string & str) const
+template<> std::optional<Path> PathsSetting<std::optional<Path>>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     if (str == "")
         return std::nullopt;
     else
-        return parsePath(*this, str);
+        return parsePath(*this, str, options);
 }
 
-template<> Paths PathsSetting<Paths>::parse(const std::string & str) const
+template<> Paths PathsSetting<Paths>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     auto strings = tokenizeString<Strings>(str);
     Paths parsed;
 
     for (auto str : strings) {
-        parsed.push_back(canonPath(str));
+        parsed.push_back(parsePath(*this, str, options));
     }
 
     return parsed;
@@ -464,10 +479,10 @@ template class PathsSetting<std::optional<Path>>;
 template class PathsSetting<Paths>;
 
 
-bool GlobalConfig::set(const std::string & name, const std::string & value)
+bool GlobalConfig::set(const std::string & name, const std::string & value, const ApplyConfigOptions & options)
 {
     for (auto & config : *configRegistrations)
-        if (config->set(name, value)) return true;
+        if (config->set(name, value, options)) return true;
 
     unknownSettings.emplace(name, value);
 

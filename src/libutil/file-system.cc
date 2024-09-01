@@ -118,6 +118,21 @@ Path realPath(Path const & path)
     return ret;
 }
 
+Path tildePath(Path const & path, const std::optional<Path> & home)
+{
+    if (path.starts_with("~/")) {
+        if (home) {
+            return *home + "/" + path.substr(2);
+        } else {
+            throw UsageError("`~` path not allowed: %1%", path);
+        }
+    } else if (path.starts_with('~')) {
+        throw UsageError("`~` paths must start with `~/`: %1%", path);
+    } else {
+        return path;
+    }
+}
+
 void chmodPath(const Path & path, mode_t mode)
 {
     if (chmod(path.c_str(), mode) == -1)

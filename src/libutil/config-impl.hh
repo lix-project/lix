@@ -51,14 +51,14 @@ bool BaseSetting<T>::isAppendable()
     return trait::appendable;
 }
 
-template<> void BaseSetting<Strings>::appendOrSet(Strings newValue, bool append);
-template<> void BaseSetting<StringSet>::appendOrSet(StringSet newValue, bool append);
-template<> void BaseSetting<StringMap>::appendOrSet(StringMap newValue, bool append);
-template<> void BaseSetting<ExperimentalFeatures>::appendOrSet(ExperimentalFeatures newValue, bool append);
-template<> void BaseSetting<DeprecatedFeatures>::appendOrSet(DeprecatedFeatures newValue, bool append);
+template<> void BaseSetting<Strings>::appendOrSet(Strings newValue, bool append, const ApplyConfigOptions & options);
+template<> void BaseSetting<StringSet>::appendOrSet(StringSet newValue, bool append, const ApplyConfigOptions & options);
+template<> void BaseSetting<StringMap>::appendOrSet(StringMap newValue, bool append, const ApplyConfigOptions & options);
+template<> void BaseSetting<ExperimentalFeatures>::appendOrSet(ExperimentalFeatures newValue, bool append, const ApplyConfigOptions & options);
+template<> void BaseSetting<DeprecatedFeatures>::appendOrSet(DeprecatedFeatures newValue, bool append, const ApplyConfigOptions & options);
 
 template<typename T>
-void BaseSetting<T>::appendOrSet(T newValue, bool append)
+void BaseSetting<T>::appendOrSet(T newValue, bool append, const ApplyConfigOptions & options)
 {
     static_assert(
         !trait::appendable,
@@ -69,14 +69,14 @@ void BaseSetting<T>::appendOrSet(T newValue, bool append)
 }
 
 template<typename T>
-void BaseSetting<T>::set(const std::string & str, bool append)
+void BaseSetting<T>::set(const std::string & str, bool append, const ApplyConfigOptions & options)
 {
     if (experimentalFeatureSettings.isEnabled(experimentalFeature)) {
-        auto parsed = parse(str);
+        auto parsed = parse(str, options);
         if (deprecated && (append || parsed != value)) {
             warn("deprecated setting '%s' found (set to '%s')", name, str);
         }
-        appendOrSet(std::move(parsed), append);
+        appendOrSet(std::move(parsed), append, options);
     } else {
         assert(experimentalFeature);
         warn("Ignoring setting '%s' because experimental feature '%s' is not enabled",
@@ -111,7 +111,7 @@ void BaseSetting<T>::convertToArg(Args & args, const std::string & category)
 }
 
 #define DECLARE_CONFIG_SERIALISER(TY) \
-    template<> TY BaseSetting< TY >::parse(const std::string & str) const; \
+    template<> TY BaseSetting< TY >::parse(const std::string & str, const ApplyConfigOptions & options) const; \
     template<> std::string BaseSetting< TY >::to_string() const;
 
 DECLARE_CONFIG_SERIALISER(std::string)
@@ -124,7 +124,7 @@ DECLARE_CONFIG_SERIALISER(ExperimentalFeatures)
 DECLARE_CONFIG_SERIALISER(DeprecatedFeatures)
 
 template<typename T>
-T BaseSetting<T>::parse(const std::string & str) const
+T BaseSetting<T>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     static_assert(std::is_integral<T>::value, "Integer required.");
 

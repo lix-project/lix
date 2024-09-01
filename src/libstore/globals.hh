@@ -26,7 +26,7 @@ struct MaxBuildJobsSetting : public BaseSetting<unsigned int>
         options->addSetting(this);
     }
 
-    unsigned int parse(const std::string & str) const override;
+    unsigned int parse(const std::string & str, const ApplyConfigOptions & options) const override;
 };
 
 struct PluginFilesSetting : public BaseSetting<Paths>
@@ -43,7 +43,7 @@ struct PluginFilesSetting : public BaseSetting<Paths>
         options->addSetting(this);
     }
 
-    Paths parse(const std::string & str) const override;
+    Paths parse(const std::string & str, const ApplyConfigOptions & options) const override;
 };
 
 const uint32_t maxIdsPerBuild =
@@ -1088,6 +1088,7 @@ void loadConfFile();
 
 // Used by the Settings constructor
 std::vector<Path> getUserConfigFiles();
+std::vector<Path> getHomeConfigFile();
 
 extern const std::string nixVersion;
 

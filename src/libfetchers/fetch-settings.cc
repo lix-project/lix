@@ -7,7 +7,7 @@
 
 namespace nix {
 
-template<> AcceptFlakeConfig BaseSetting<AcceptFlakeConfig>::parse(const std::string & str) const
+template<> AcceptFlakeConfig BaseSetting<AcceptFlakeConfig>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     if (str == "true") return AcceptFlakeConfig::True;
     else if (str == "ask") return AcceptFlakeConfig::Ask;

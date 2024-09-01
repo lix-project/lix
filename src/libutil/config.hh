@@ -10,6 +10,7 @@
 #include "types.hh"
 #include "experimental-features.hh"
 #include "deprecated-features.hh"
+#include "apply-config-options.hh"
 
 namespace nix {
 
@@ -61,7 +62,7 @@ public:
      * Sets the value referenced by `name` to `value`. Returns true if the
      * setting is known, false otherwise.
      */
-    virtual bool set(const std::string & name, const std::string & value) = 0;
+    virtual bool set(const std::string & name, const std::string & value, const ApplyConfigOptions & options = {}) = 0;
 
     struct SettingInfo
     {
@@ -81,7 +82,7 @@ public:
      * - contents: configuration contents to be parsed and applied
      * - path: location of the configuration file
      */
-    void applyConfig(const std::string & contents, const std::string & path = "<unknown>");
+    void applyConfig(const std::string & contents, const ApplyConfigOptions & options = {});
 
     /**
      * Resets the `overridden` flag of all Settings
@@ -155,7 +156,7 @@ public:
 
     Config(StringMap initials = {});
 
-    bool set(const std::string & name, const std::string & value) override;
+    bool set(const std::string & name, const std::string & value, const ApplyConfigOptions & options = {}) override;
 
     void addSetting(AbstractSetting * setting);
 
@@ -200,7 +201,7 @@ protected:
 
     virtual ~AbstractSetting();
 
-    virtual void set(const std::string & value, bool append = false) = 0;
+    virtual void set(const std::string & value, bool append = false, const ApplyConfigOptions & options = {}) = 0;
 
     /**
      * Whether the type is appendable; i.e. whether the `append`
@@ -237,7 +238,7 @@ protected:
      *
      * Used by `set()`.
      */
-    virtual T parse(const std::string & str) const;
+    virtual T parse(const std::string & str, const ApplyConfigOptions & options) const;
 
     /**
      * Append or overwrite `value` with `newValue`.
@@ -247,7 +248,7 @@ protected:
      *
      * @param append Whether to append or overwrite.
      */
-    virtual void appendOrSet(T newValue, bool append);
+    virtual void appendOrSet(T newValue, bool append, const ApplyConfigOptions & options);
 
 public:
 
@@ -284,7 +285,7 @@ public:
      * Uses `parse()` to get the value from `str`, and `appendOrSet()`
      * to set it.
      */
-    void set(const std::string & str, bool append = false) override final;
+    void set(const std::string & str, bool append = false, const ApplyConfigOptions & options = {}) override final;
 
     /**
      * C++ trick; This is template-specialized to compile-time indicate whether
@@ -373,7 +374,7 @@ public:
         options->addSetting(this);
     }
 
-    T parse(const std::string & str) const override;
+    T parse(const std::string & str, const ApplyConfigOptions & options) const override;
 
     void operator =(const T & v) { this->assign(v); }
 };
@@ -384,7 +385,7 @@ struct GlobalConfig : public AbstractConfig
     typedef std::vector<Config*> ConfigRegistrations;
     static ConfigRegistrations * configRegistrations;
 
-    bool set(const std::string & name, const std::string & value) override;
+    bool set(const std::string & name, const std::string & value, const ApplyConfigOptions & options = {}) override;
 
     void getSettings(std::map<std::string, SettingInfo> & res, bool overriddenOnly = false) override;
 
