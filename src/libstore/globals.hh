@@ -637,10 +637,10 @@ public:
     PathsSetting<std::optional<Path>> diffHook{
         this, std::nullopt, "diff-hook",
         R"(
-          Absolute path to an executable capable of diffing build
-          results. The hook is executed if `run-diff-hook` is true, and the
-          output of a build is known to not be the same. This program is not
-          executed to determine if two results are the same.
+          Path to an executable capable of diffing build results. The hook is
+          executed if `run-diff-hook` is true, and the output of a build is
+          known to not be the same. This program is not executed to determine
+          if two results are the same.
 
           The diff hook is executed by the same user and group who ran the
           build. However, the diff hook does not have write access to the
