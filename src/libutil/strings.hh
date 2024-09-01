@@ -200,8 +200,18 @@ std::string showBytes(uint64_t bytes);
 
 
 /**
- * Provide an addition operator between strings and string_views
+ * Provide an addition operator between `std::string` and `std::string_view`
  * inexplicably omitted from the standard library.
+ *
+ * > The reason for this is given in n3512 string_ref: a non-owning reference
+ * to a string, revision 2 by Jeffrey Yasskin:
+ * >
+ * > > I also omitted operator+(basic_string, basic_string_ref) because LLVM
+ * > > returns a lightweight object from this overload and only performs the
+ * > > concatenation lazily. If we define this overload, we'll have a hard time
+ * > > introducing that lightweight concatenation later.
+ *
+ * See: https://stackoverflow.com/a/47735624
  */
 inline std::string operator + (const std::string & s1, std::string_view s2)
 {
