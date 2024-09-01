@@ -185,6 +185,54 @@ struct EvalSettings : Config
           else
           { }
           ```
+
+          Here's a more elaborate `repl-overlay`, which provides the following
+          variables:
+          - The original, unmodified variables are aliased to `original`.
+          - `legacyPackages.${system}` (if it exists) or `packages.${system}`
+            (otherwise) is aliased to `pkgs`.
+          - All attribute set variables with a `${system}` attribute are
+            abbreviated in the same manner; e.g. `devShells.${system}` is
+            shortened to `devShells`.
+
+          For example, the following attribute set:
+
+          ```nix
+          info: final: attrs: let
+            # Equivalent to nixpkgs `lib.optionalAttrs`.
+            optionalAttrs = predicate: attrs:
+              if predicate
+              then attrs
+              else {};
+
+            # If `attrs.${oldName}.${info.currentSystem}` exists, alias `${newName}` to
+            # it.
+            collapseRenamed = oldName: newName:
+              optionalAttrs (builtins.hasAttr oldName attrs
+                && builtins.hasAttr info.currentSystem attrs.${oldName})
+              {
+                ${newName} = attrs.${oldName}.${info.currentSystem};
+              };
+
+            # Alias `attrs.${oldName}.${info.currentSystem} to `${newName}`.
+            collapse = name: collapseRenamed name name;
+
+            # Alias all `attrs` keys with an `${info.currentSystem}` attribute.
+            collapseAll =
+              builtins.foldl'
+              (prev: name: prev // collapse name)
+              {}
+              (builtins.attrNames attrs);
+          in
+            # Preserve the original bindings as `original`.
+            (optionalAttrs (! attrs ? original)
+              {
+                original = attrs;
+              })
+            // (collapseRenamed "packages" "pkgs")
+            // (collapseRenamed "legacyPackages" "pkgs")
+            // collapseAll
+          ```
         )"};
 };
 
