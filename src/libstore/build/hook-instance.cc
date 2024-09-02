@@ -74,7 +74,7 @@ HookInstance::HookInstance()
 
     sink = FdSink(toHook.get());
     std::map<std::string, Config::SettingInfo> settings;
-    globalConfig.getSettings(settings);
+    globalConfig.getSettings(settings, true);
     for (auto & setting : settings)
         sink << 1 << setting.first << setting.second.value;
     sink << 0;
