@@ -218,6 +218,7 @@ protected:
     virtual void convertToArg(Args & args, const std::string & category);
 
     bool isOverridden() const;
+
 };
 
 /**
@@ -267,15 +268,11 @@ public:
     { }
 
     operator const T &() const { return value; }
-    operator T &() { return value; }
     const T & get() const { return value; }
     template<typename U>
     bool operator ==(const U & v2) const { return value == v2; }
     template<typename U>
     bool operator !=(const U & v2) const { return value != v2; }
-    template<typename U>
-    void operator =(const U & v) { assign(v); }
-    virtual void assign(const T & v) { value = v; }
     template<typename U>
     void setDefault(const U & v) { if (!overridden) value = v; }
 
@@ -286,6 +283,8 @@ public:
      * to set it.
      */
     void set(const std::string & str, bool append = false, const ApplyConfigOptions & options = {}) override final;
+
+    void override(const T & v);
 
     /**
      * C++ trick; This is template-specialized to compile-time indicate whether
@@ -298,12 +297,6 @@ public:
      * with `trait` above.
      */
     bool isAppendable() override final;
-
-    virtual void override(const T & v)
-    {
-        overridden = true;
-        value = v;
-    }
 
     std::string to_string() const override;
 
@@ -349,8 +342,6 @@ public:
         : Setting(options, def, name, description, aliases, documentDefault, std::move(experimentalFeature), true)
     {
     }
-
-    void operator =(const T & v) { this->assign(v); }
 };
 
 /**
@@ -375,8 +366,6 @@ public:
     }
 
     T parse(const std::string & str, const ApplyConfigOptions & options) const override;
-
-    void operator =(const T & v) { this->assign(v); }
 };
 
 

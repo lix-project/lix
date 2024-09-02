@@ -212,7 +212,7 @@ void SourceExprCommand::completeInstallable(AddCompletions & completions, std::s
         if (file) {
             completions.setType(AddCompletions::Type::Attrs);
 
-            evalSettings.pureEval = false;
+            evalSettings.pureEval.override(false);
             auto state = getEvalState();
             Expr & e = state->parseExprFromFile(
                 resolveExprPath(state->checkSourcePath(lookupFileArg(*state, *file)))
@@ -435,7 +435,7 @@ Installables SourceExprCommand::parseInstallables(
             throw UsageError("'--file' and '--expr' are exclusive");
 
         // FIXME: backward compatibility hack
-        if (file) evalSettings.pureEval = false;
+        if (file) evalSettings.pureEval.override(false);
 
         auto state = getEvalState();
         auto vFile = state->allocValue();

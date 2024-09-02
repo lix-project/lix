@@ -24,20 +24,20 @@ using nix::settings;
 
 class Environment : public ::testing::Environment {
   public:
-    void SetUp() override { settings.thisSystem = "TEST_ARCH-TEST_OS"; }
+    void SetUp() override { settings.thisSystem.override("TEST_ARCH-TEST_OS"); }
 };
 
 testing::Environment* const foo_env =
     testing::AddGlobalTestEnvironment(new Environment);
 
 TEST(machines, getMachinesWithEmptyBuilders) {
-    settings.builders = "";
+    settings.builders.override("");
     Machines actual = getMachines();
     ASSERT_THAT(actual, SizeIs(0));
 }
 
 TEST(machines, getMachinesUriOnly) {
-    settings.builders = "nix@scratchy.labs.cs.uu.nl";
+    settings.builders.override("nix@scratchy.labs.cs.uu.nl");
     Machines actual = getMachines();
     ASSERT_THAT(actual, SizeIs(1));
     EXPECT_THAT(actual[0], Field(&Machine::storeUri, Eq("ssh://nix@scratchy.labs.cs.uu.nl")));
@@ -51,7 +51,7 @@ TEST(machines, getMachinesUriOnly) {
 }
 
 TEST(machines, getMachinesDefaults) {
-    settings.builders = "nix@scratchy.labs.cs.uu.nl - - - - - - -";
+    settings.builders.override("nix@scratchy.labs.cs.uu.nl - - - - - - -");
     Machines actual = getMachines();
     ASSERT_THAT(actual, SizeIs(1));
     EXPECT_THAT(actual[0], Field(&Machine::storeUri, Eq("ssh://nix@scratchy.labs.cs.uu.nl")));
@@ -65,7 +65,7 @@ TEST(machines, getMachinesDefaults) {
 }
 
 TEST(machines, getMachinesWithNewLineSeparator) {
-    settings.builders = "nix@scratchy.labs.cs.uu.nl\nnix@itchy.labs.cs.uu.nl";
+    settings.builders.override("nix@scratchy.labs.cs.uu.nl\nnix@itchy.labs.cs.uu.nl");
     Machines actual = getMachines();
     ASSERT_THAT(actual, SizeIs(2));
     EXPECT_THAT(actual, Contains(Field(&Machine::storeUri, EndsWith("nix@scratchy.labs.cs.uu.nl"))));
@@ -73,7 +73,7 @@ TEST(machines, getMachinesWithNewLineSeparator) {
 }
 
 TEST(machines, getMachinesWithSemicolonSeparator) {
-    settings.builders = "nix@scratchy.labs.cs.uu.nl ; nix@itchy.labs.cs.uu.nl";
+    settings.builders.override("nix@scratchy.labs.cs.uu.nl ; nix@itchy.labs.cs.uu.nl");
     Machines actual = getMachines();
     EXPECT_THAT(actual, SizeIs(2));
     EXPECT_THAT(actual, Contains(Field(&Machine::storeUri, EndsWith("nix@scratchy.labs.cs.uu.nl"))));
@@ -81,9 +81,9 @@ TEST(machines, getMachinesWithSemicolonSeparator) {
 }
 
 TEST(machines, getMachinesWithCorrectCompleteSingleBuilder) {
-    settings.builders = "nix@scratchy.labs.cs.uu.nl     i686-linux      "
+    settings.builders.override("nix@scratchy.labs.cs.uu.nl     i686-linux      "
                         "/home/nix/.ssh/id_scratchy_auto        8 3 kvm "
-                        "benchmark SSH+HOST+PUBLIC+KEY+BASE64+ENCODED==";
+                        "benchmark SSH+HOST+PUBLIC+KEY+BASE64+ENCODED==");
     Machines actual = getMachines();
     ASSERT_THAT(actual, SizeIs(1));
     EXPECT_THAT(actual[0], Field(&Machine::storeUri, EndsWith("nix@scratchy.labs.cs.uu.nl")));
@@ -98,10 +98,10 @@ TEST(machines, getMachinesWithCorrectCompleteSingleBuilder) {
 
 TEST(machines,
      getMachinesWithCorrectCompleteSingleBuilderWithTabColumnDelimiter) {
-    settings.builders =
+    settings.builders.override(
         "nix@scratchy.labs.cs.uu.nl\ti686-linux\t/home/nix/.ssh/"
         "id_scratchy_auto\t8\t3\tkvm\tbenchmark\tSSH+HOST+PUBLIC+"
-        "KEY+BASE64+ENCODED==";
+        "KEY+BASE64+ENCODED==");
     Machines actual = getMachines();
     ASSERT_THAT(actual, SizeIs(1));
     EXPECT_THAT(actual[0], Field(&Machine::storeUri, EndsWith("nix@scratchy.labs.cs.uu.nl")));
@@ -115,9 +115,9 @@ TEST(machines,
 }
 
 TEST(machines, getMachinesWithMultiOptions) {
-    settings.builders = "nix@scratchy.labs.cs.uu.nl Arch1,Arch2 - - - "
+    settings.builders.override("nix@scratchy.labs.cs.uu.nl Arch1,Arch2 - - - "
                         "SupportedFeature1,SupportedFeature2 "
-                        "MandatoryFeature1,MandatoryFeature2";
+                        "MandatoryFeature1,MandatoryFeature2");
     Machines actual = getMachines();
     ASSERT_THAT(actual, SizeIs(1));
     EXPECT_THAT(actual[0], Field(&Machine::storeUri, EndsWith("nix@scratchy.labs.cs.uu.nl")));
@@ -127,15 +127,15 @@ TEST(machines, getMachinesWithMultiOptions) {
 }
 
 TEST(machines, getMachinesWithIncorrectFormat) {
-    settings.builders = "nix@scratchy.labs.cs.uu.nl - - eight";
+    settings.builders.override("nix@scratchy.labs.cs.uu.nl - - eight");
     EXPECT_THROW(getMachines(), FormatError);
-    settings.builders = "nix@scratchy.labs.cs.uu.nl - - -1";
+    settings.builders.override("nix@scratchy.labs.cs.uu.nl - - -1");
     EXPECT_THROW(getMachines(), FormatError);
-    settings.builders = "nix@scratchy.labs.cs.uu.nl - - 8 three";
+    settings.builders.override("nix@scratchy.labs.cs.uu.nl - - 8 three");
     EXPECT_THROW(getMachines(), FormatError);
-    settings.builders = "nix@scratchy.labs.cs.uu.nl - - 8 -3";
+    settings.builders.override("nix@scratchy.labs.cs.uu.nl - - 8 -3");
     EXPECT_THROW(getMachines(), UsageError);
-    settings.builders = "nix@scratchy.labs.cs.uu.nl - - 8 3 - - BAD_BASE64";
+    settings.builders.override("nix@scratchy.labs.cs.uu.nl - - 8 3 - - BAD_BASE64");
     EXPECT_THROW(getMachines(), FormatError);
 }
 
@@ -143,7 +143,7 @@ TEST(machines, getMachinesWithCorrectFileReference) {
     auto path = nix::getUnitTestDataPath("machines.valid");
     ASSERT_TRUE(pathExists(path));
 
-    settings.builders = std::string("@") + path;
+    settings.builders.override(std::string("@") + path);
     Machines actual = getMachines();
     ASSERT_THAT(actual, SizeIs(3));
     EXPECT_THAT(actual, Contains(Field(&Machine::storeUri, EndsWith("nix@scratchy.labs.cs.uu.nl"))));
@@ -155,18 +155,18 @@ TEST(machines, getMachinesWithCorrectFileReferenceToEmptyFile) {
     auto path = "/dev/null";
     ASSERT_TRUE(pathExists(path));
 
-    settings.builders = std::string("@") + path;
+    settings.builders.override(std::string("@") + path);
     Machines actual = getMachines();
     ASSERT_THAT(actual, SizeIs(0));
 }
 
 TEST(machines, getMachinesWithIncorrectFileReference) {
-    settings.builders = std::string("@") + absPath("/not/a/file");
+    settings.builders.override(std::string("@") + absPath("/not/a/file"));
     Machines actual = getMachines();
     ASSERT_THAT(actual, SizeIs(0));
 }
 
 TEST(machines, getMachinesWithCorrectFileReferenceToIncorrectFile) {
-    settings.builders = std::string("@") + nix::getUnitTestDataPath("machines.bad_format");
+    settings.builders.override(std::string("@") + nix::getUnitTestDataPath("machines.bad_format"));
     EXPECT_THROW(getMachines(), FormatError);
 }

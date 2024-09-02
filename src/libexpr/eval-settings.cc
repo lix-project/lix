@@ -47,7 +47,7 @@ static Strings parseNixPath(const std::string & s)
 EvalSettings::EvalSettings()
 {
     auto var = getEnv("NIX_PATH");
-    if (var) nixPath = parseNixPath(*var);
+    if (var) nixPath.setDefault(parseNixPath(*var));
 }
 
 Strings EvalSettings::getDefaultNixPath()

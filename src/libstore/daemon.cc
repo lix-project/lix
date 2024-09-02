@@ -195,15 +195,15 @@ struct ClientSettings
 
     void apply(TrustedFlag trusted)
     {
-        settings.keepFailed = keepFailed;
-        settings.keepGoing = keepGoing;
-        settings.tryFallback = tryFallback;
+        settings.keepFailed.override(keepFailed);
+        settings.keepGoing.override(keepGoing);
+        settings.tryFallback.override(tryFallback);
         nix::verbosity = verbosity;
-        settings.maxBuildJobs.assign(maxBuildJobs);
-        settings.maxSilentTime = maxSilentTime;
+        settings.maxBuildJobs.override(maxBuildJobs);
+        settings.maxSilentTime.override(maxSilentTime);
         settings.verboseBuild = verboseBuild;
-        settings.buildCores = buildCores;
-        settings.useSubstitutes = useSubstitutes;
+        settings.buildCores.override(buildCores);
+        settings.useSubstitutes.override(useSubstitutes);
 
         for (auto & i : overrides) {
             auto & name(i.first);
@@ -225,12 +225,13 @@ struct ClientSettings
                     else
                         warn("ignoring untrusted substituter '%s', you are not a trusted user.\n"
                              "Run `man nix.conf` for more information on the `substituters` configuration option.", s);
-                res = subs;
+                res.override(subs);
                 return true;
             };
 
             try {
-                if (name == "ssh-auth-sock") // obsolete
+                if (name == "ssh-auth-sock" // obsolete
+                    || name == "store") // the daemon *is* the store
                     ;
                 else if (name == experimentalFeatureSettings.experimentalFeatures.name) {
                     // We don’t want to forward the experimental features to

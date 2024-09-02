@@ -247,8 +247,8 @@ static void showHelp(std::vector<std::string> subcommand, NixArgs & toplevel)
 {
     auto mdName = subcommand.empty() ? "nix" : fmt("nix3-%s", concatStringsSep("-", subcommand));
 
-    evalSettings.restrictEval = false;
-    evalSettings.pureEval = false;
+    evalSettings.restrictEval.override(false);
+    evalSettings.pureEval.override(false);
     EvalState state({}, openStore("dummy://"));
 
     auto vGenerateManpage = state.allocValue();
@@ -389,7 +389,7 @@ void mainWrapped(int argc, char * * argv)
         if (legacy) return legacy(argc, argv);
     }
 
-    evalSettings.pureEval = true;
+    evalSettings.pureEval.setDefault(true);
 
     setLogFormat(LogFormat::bar);
     settings.verboseBuild = false;
@@ -408,11 +408,11 @@ void mainWrapped(int argc, char * * argv)
     }
 
     if (argc == 2 && std::string(argv[1]) == "__dump-language") {
-        experimentalFeatureSettings.experimentalFeatures = ExperimentalFeatures{}
+        experimentalFeatureSettings.experimentalFeatures.override(ExperimentalFeatures{}
             | Xp::Flakes
             | Xp::FetchClosure
-            | Xp::DynamicDerivations;
-        evalSettings.pureEval = false;
+            | Xp::DynamicDerivations);
+        evalSettings.pureEval.override(false);
         EvalState state({}, openStore("dummy://"));
         auto res = nlohmann::json::object();
         res["builtins"] = ({
@@ -513,24 +513,20 @@ void mainWrapped(int argc, char * * argv)
 
     if (!args.useNet) {
         // FIXME: should check for command line overrides only.
-        if (!settings.useSubstitutes.overridden)
-            settings.useSubstitutes = false;
-        if (!settings.tarballTtl.overridden)
-            settings.tarballTtl = std::numeric_limits<unsigned int>::max();
-        if (!fileTransferSettings.tries.overridden)
-            fileTransferSettings.tries = 0;
-        if (!fileTransferSettings.connectTimeout.overridden)
-            fileTransferSettings.connectTimeout = 1;
+        settings.useSubstitutes.setDefault(false);
+        settings.tarballTtl.setDefault(std::numeric_limits<unsigned int>::max());
+        fileTransferSettings.tries.setDefault(0);
+        fileTransferSettings.connectTimeout.setDefault(1);
     }
 
     if (args.refresh) {
-        settings.tarballTtl = 0;
-        settings.ttlNegativeNarInfoCache = 0;
-        settings.ttlPositiveNarInfoCache = 0;
+        settings.tarballTtl.override(0);
+        settings.ttlNegativeNarInfoCache.override(0);
+        settings.ttlPositiveNarInfoCache.override(0);
     }
 
-    if (args.command->second->forceImpureByDefault() && !evalSettings.pureEval.overridden) {
-        evalSettings.pureEval = false;
+    if (args.command->second->forceImpureByDefault()) {
+        evalSettings.pureEval.setDefault(false);
     }
     args.command->second->run();
 }

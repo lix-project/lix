@@ -817,10 +817,10 @@ ProcessLineResult NixRepl::processLine(std::string line)
     else if (command == ":te" || command == ":trace-enable") {
         if (arg == "false" || (arg == "" && loggerSettings.showTrace)) {
             std::cout << "not showing error traces\n";
-            loggerSettings.showTrace = false;
+            loggerSettings.showTrace.override(false);
         } else if (arg == "true" || (arg == "" && !loggerSettings.showTrace)) {
             std::cout << "showing error traces\n";
-            loggerSettings.showTrace = true;
+            loggerSettings.showTrace.override(true);
         } else {
             throw Error("unexpected argument '%s' to %s", arg, command);
         };

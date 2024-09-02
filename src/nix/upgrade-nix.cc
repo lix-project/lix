@@ -72,7 +72,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
 
     void run(ref<Store> store) override
     {
-        evalSettings.pureEval = true;
+        evalSettings.pureEval.override(true);
 
         if (profileDir == "") {
             profileDir = getProfileDir(store);

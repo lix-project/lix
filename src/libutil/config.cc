@@ -32,7 +32,6 @@ bool Config::set(const std::string & name, const std::string & value, const Appl
             return false;
     }
     i->second.setting->set(value, append, options);
-    i->second.setting->overridden = true;
     return true;
 }
 
@@ -46,7 +45,6 @@ void Config::addSetting(AbstractSetting * setting)
 
     if (auto i = unknownSettings.find(setting->name); i != unknownSettings.end()) {
         setting->set(std::move(i->second));
-        setting->overridden = true;
         unknownSettings.erase(i);
         set = true;
     }
@@ -58,7 +56,6 @@ void Config::addSetting(AbstractSetting * setting)
                     alias, setting->name);
             else {
                 setting->set(std::move(i->second));
-                setting->overridden = true;
                 unknownSettings.erase(i);
                 set = true;
             }
@@ -80,7 +77,7 @@ void AbstractConfig::reapplyUnknownSettings()
 {
     auto unknownSettings2 = std::move(unknownSettings);
     unknownSettings = {};
-    for (auto & s : unknownSettings2)
+        for (auto & s : unknownSettings2)
         set(s.first, s.second);
 }
 

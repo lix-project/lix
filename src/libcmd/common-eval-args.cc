@@ -137,7 +137,7 @@ MixEvalArgs::MixEvalArgs()
         .description = "Allow access to mutable paths and repositories.",
         .category = category,
         .handler = {[&]() {
-            evalSettings.pureEval = false;
+            evalSettings.pureEval.override(false);
         }},
     });
 

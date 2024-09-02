@@ -13,11 +13,11 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData,
        this to be stored in a file. It would be nice if we could just
        pass a pointer to the data. */
     if (netrcData != "") {
-        settings.netrcFile = "netrc";
+        settings.netrcFile.override("netrc");
         writeFile(settings.netrcFile, netrcData, 0600);
     }
 
-    settings.caFile = "ca-certificates.crt";
+    settings.caFile.override("ca-certificates.crt");
     writeFile(settings.caFile, caFileData, 0600);
 
     auto getAttr = [&](const std::string & name) {
