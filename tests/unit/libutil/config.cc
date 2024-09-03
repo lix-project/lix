@@ -1,5 +1,9 @@
 #include "config.hh"
 #include "args.hh"
+#include "file-system.hh"
+#include "environment-variables.hh"
+#include "logging.hh"
+#include "tests/test-data.hh"
 
 #include <sstream>
 #include <gtest/gtest.h>
@@ -285,6 +289,35 @@ namespace nix {
             "# name-of-the-setting = foo\n"
             "include /nix/store/does/not/exist.nix"
         ), Error);
+    }
+
+    TEST(Config, includeRelativePath) {
+        Config config;
+        Setting<std::string> setting{&config, "", "puppy", "description"};
+
+        config.applyConfig("include puppy.conf", {
+            .path = getUnitTestDataPath("nix.conf")
+        });
+
+        std::map<std::string, Config::SettingInfo> settings;
+        config.getSettings(settings);
+        ASSERT_FALSE(settings.empty());
+        ASSERT_EQ(settings["puppy"].value, "doggy");
+    }
+
+    TEST(Config, includeTildePath) {
+        Config config;
+        Setting<std::string> setting{&config, "", "puppy", "description"};
+
+        config.applyConfig("include ~/puppy.conf", {
+            .path = "/doesnt-exist",
+            .home = getUnitTestData()
+        });
+
+        std::map<std::string, Config::SettingInfo> settings;
+        config.getSettings(settings);
+        ASSERT_FALSE(settings.empty());
+        ASSERT_EQ(settings["puppy"].value, "doggy");
     }
 
     TEST(Config, applyConfigInvalidThrows) {
