@@ -353,6 +353,9 @@ void mainWrapped(int argc, char * * argv)
         argv++; argc--;
     }
 
+    // Clean up the progress bar if shown using --log-format in a legacy command too.
+    // Otherwise, this is a harmless no-op.
+    Finally f([] { logger->pause(); });
     {
         auto legacy = (*RegisterLegacyCommand::commands)[programName];
         if (legacy) return legacy(argc, argv);
@@ -361,7 +364,6 @@ void mainWrapped(int argc, char * * argv)
     evalSettings.pureEval = true;
 
     setLogFormat(LogFormat::bar);
-    Finally f([] { logger->pause(); });
     settings.verboseBuild = false;
     // FIXME: stop messing about with log verbosity depending on if it is interactive use
     if (isatty(STDERR_FILENO)) {
