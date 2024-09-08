@@ -22,6 +22,7 @@
   doxygen,
   editline-lix ? __forDefaults.editline-lix,
   editline,
+  fetchpatch,
   git,
   gtest,
   jq,
@@ -38,6 +39,7 @@
   mercurial,
   meson,
   ninja,
+  ncurses,
   openssl,
   pegtl,
   pkg-config,
@@ -81,7 +83,32 @@
     boehmgc-nix = boehmgc.override { enableLargeConfig = true; };
 
     editline-lix = editline.overrideAttrs (prev: {
-      configureFlags = prev.configureFlags or [ ] ++ [ (lib.enableFeature true "sigstop") ];
+      patches = (prev.patches or [ ]) ++ [
+        # Recognize `Alt-Left` and `Alt-Right` for navigating by words in more
+        # terminals/shells/platforms.
+        #
+        # See: https://github.com/troglobit/editline/pull/70/commits
+        (fetchpatch {
+          url = "https://github.com/troglobit/editline/pull/70/commits/d0f2a5bc2300b96b2434c7838184c1dfd6a639f5.diff";
+          hash = "sha256-0bbtYDUlk1wA0kpTtlaNI6KaCjLmAesZjcWBJZ+DpyQ=";
+        })
+
+        (fetchpatch {
+          url = "https://github.com/troglobit/editline/pull/70/commits/4c4455353a0a88bee09d5f27c28f81f747682fed.diff";
+          hash = "sha256-nVezspwVzeB/8zENeKgwPVum0W1MLv4dOW0967WbX5w=";
+        })
+      ];
+
+      configureFlags = (prev.configureFlags or [ ]) ++ [
+        # Enable SIGSTOP (Ctrl-Z) behavior.
+        (lib.enableFeature true "sigstop")
+        # Enable ANSI arrow keys.
+        (lib.enableFeature true "arrow-keys")
+        # Use termcap library to query terminal size.
+        (lib.enableFeature (ncurses != null) "termcap")
+      ];
+
+      nativeBuildInputs = (prev.nativeBuildInputs or [ ]) ++ [ ncurses ];
     });
 
     build-release-notes = callPackage ./maintainers/build-release-notes.nix { };
