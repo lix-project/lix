@@ -92,7 +92,7 @@ void ProgressBar::resume()
             nextWakeup = draw(*state, {});
             state.wait_for(quitCV, std::chrono::milliseconds(50));
         }
-        writeLogsToStderr("\r\e[K");
+        eraseProgressDisplay(*state);
     });
 }
 
@@ -558,7 +558,8 @@ std::optional<char> ProgressBar::ask(std::string_view msg)
 {
     auto state(state_.lock());
     if (state->paused > 0 || !isatty(STDIN_FILENO)) return {};
-    std::cerr << fmt("\r\e[K%s ", msg);
+    eraseProgressDisplay(*state);
+    std::cerr << msg;
     auto s = trim(readLine(STDIN_FILENO));
     if (s.size() != 1) return {};
     draw(*state, {});
