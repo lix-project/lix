@@ -14,7 +14,8 @@ def main():
 
     args = ap.parse_args()
 
-    targets = [t for t in get_targets_of_rule(args.build_root, 'CUSTOM_COMMAND') if t.endswith('gen.hh')]
+    targets = [t for t in get_targets_of_rule(args.build_root, 'CUSTOM_COMMAND') if t.endswith('.gen.hh')]
+    targets += [t for t in get_targets_of_rule(args.build_root, 'CUSTOM_COMMAND') if t.endswith('.gen.inc')]
     ninja_build(args.build_root, targets)
 
 if __name__ == '__main__':

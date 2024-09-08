@@ -245,9 +245,11 @@ stdenv.mkDerivation (finalAttrs: {
 
   nativeBuildInputs =
     [
+      # python3.withPackages does not splice properly, see https://github.com/NixOS/nixpkgs/issues/305858
       (python3.pythonOnBuildForHost.withPackages (p: [
         p.pytest
         p.pytest-xdist
+        p.python-frontmatter
       ]))
       meson
       ninja

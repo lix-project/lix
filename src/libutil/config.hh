@@ -410,7 +410,7 @@ struct FeatureSettings : Config {
 
           The following experimental features are available:
 
-          {{#include @generated@/command-ref/experimental-features-shortlist.md}}
+          {{#include @generated@/../../../src/libutil/experimental-features-shortlist.md}}
 
           Experimental features are [further documented in the manual](@docroot@/contributing/experimental-features.md).
         )"};
@@ -450,7 +450,7 @@ struct FeatureSettings : Config {
 
           The following deprecated feature features can be re-activated:
 
-          {{#include @generated@/command-ref/deprecated-features-shortlist.md}}
+          {{#include @generated@/../../../src/libutil/deprecated-features-shortlist.md}}
 
           Deprecated features are [further documented in the manual](@docroot@/contributing/deprecated-features.md).
         )"};

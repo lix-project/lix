@@ -399,3 +399,17 @@ The following properties are supported:
 
 Releases have a precomputed `rl-MAJOR.MINOR.md`, and no `rl-next.md`.
 Set `buildUnreleasedNotes = true;` in `flake.nix` to build the release notes on the fly.
+
+## Adding experimental or deprecated features
+
+Experimental and deprecated features are generally referenced both in the code and in the documentation.
+To prevent duplication or divergence, they are defined in data files, and a script generates the necessary glue.
+
+The data file format is similar to the release notes: it consists of a YAML metadata header, followed by the documentation in Markdown format.
+The following metadata properties are supported:
+* `name` (required): user-facing name of the feature, to be used in `nix.conf` options and on the command line.
+  This should also be the stem of the file name (with extension `md`).
+* `internalName` (required): identifier used to refer to the feature inside the C++ code.
+
+Experimental feature data files should live in `src/libutil/experimental-features`, and deprecated features in `src/libutil/deprecated-features`.
+They must be listed in the `experimental_feature_definitions` or `deprecated_feature_definitions` lists in `src/libutil/meson.build` respectively to be considered by the build system.

@@ -9,18 +9,13 @@ namespace nix {
 /**
  * The list of available deprecated features.
  *
- * If you update this, don’t forget to also change the map defining
- * their string representation and documentation in the corresponding
- * `.cc` file as well.
- *
  * Reminder: New deprecated features should start out with a warning without throwing an error.
  * See the developer documentation for details.
  */
 enum struct DeprecatedFeature
 {
-    RecSetOverrides,
-    AncientLet,
-    UrlLiterals,
+    #include "deprecated-features.gen.inc"
+    NumDepFeatures, // number of available deprecated features, do not use
 };
 
 enum struct DeprecatedFeatures {};

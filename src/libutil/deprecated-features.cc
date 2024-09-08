@@ -20,38 +20,13 @@ struct DeprecatedFeatureDetails
  * counter will be incremented once instead of twice, causing a build
  * failure.
  *
- * By instead defining this instead as 1 + the bottom deprecated
- * feature, we either have no issue at all if few features are not added
- * at the end of the list, or a proper merge conflict if they are.
+ * By instead defining this instead as a dummy bottom deprecated
+ * feature, we do not have this issue.
  */
-constexpr size_t numDepFeatures = 1 + static_cast<size_t>(Dep::UrlLiterals);
+constexpr size_t numDepFeatures = static_cast<size_t>(Dep::NumDepFeatures);
 
 constexpr std::array<DeprecatedFeatureDetails, numDepFeatures> depFeatureDetails = {{
-    {
-        .tag = Dep::RecSetOverrides,
-        .name = "rec-set-overrides",
-        .description = R"(
-            Allow `__overrides` in recursive attribute sets.
-
-            Use fix point functions (e.g. `lib.fix` in Nixpkgs) instead.
-        )",
-    },
-    {
-        .tag = Dep::AncientLet,
-        .name = "ancient-let",
-        .description = R"(
-            Allow the ancient `let { body = …; … }` syntax.
-
-            Use the `let … in` syntax instead.
-        )",
-    },
-    {
-        .tag = Dep::UrlLiterals,
-        .name = "url-literals",
-        .description = R"(
-            Allow unquoted URLs as part of the Nix language syntax.
-        )",
-    },
+    #include "deprecated-features-impl.gen.inc"
 }};
 
 static_assert(

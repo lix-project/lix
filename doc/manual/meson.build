@@ -48,14 +48,6 @@ nix_conf_file_md = custom_target(
   output : 'conf-file.md',
 )
 
-nix_exp_features_json = custom_target(
-  command : [ nix, '__dump-xp-features' ],
-  capture : true,
-  output : 'xp-features.json',
-  # FIXME: put the actual lib targets in here? meson have introspection challenge 2024 though.
-  build_always_stale : true,
-)
-
 language_json = custom_target(
   command: [nix, '__dump-language'],
   output : 'language.json',
@@ -80,10 +72,8 @@ generate_manual_deps = files(
 
 # Generates builtins.md and builtin-constants.md.
 subdir('src/language')
-# Generates new-cli pages, {experimental,deprecated}-features-shortlist.md, and conf-file.md.
+# Generates new-cli pages  and conf-file.md.
 subdir('src/command-ref')
-# Generates {experimental,deprecated}-feature-descriptions.md.
-subdir('src/contributing')
 # Generates rl-next-generated.md.
 subdir('src/release-notes')
 
