@@ -24,11 +24,13 @@
 #include "attr-path.hh"
 #include "legacy.hh"
 #include "shlex.hh"
+#include "nix-build.hh"
 
-using namespace nix;
+extern char * * environ __attribute__((weak)); // Man what even is this
+
+namespace nix {
+
 using namespace std::string_literals;
-
-extern char * * environ __attribute__((weak));
 
 static void main_nix_build(int argc, char * * argv)
 {
@@ -613,5 +615,9 @@ static void main_nix_build(int argc, char * * argv)
     }
 }
 
-static RegisterLegacyCommand r_nix_build("nix-build", main_nix_build);
-static RegisterLegacyCommand r_nix_shell("nix-shell", main_nix_build);
+void registerNixBuildAndNixShell() {
+    LegacyCommands::add("nix-build", main_nix_build);
+    LegacyCommands::add("nix-shell", main_nix_build);
+}
+
+}

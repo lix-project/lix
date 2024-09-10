@@ -19,8 +19,9 @@
 #include "legacy.hh"
 #include "experimental-features.hh"
 #include "hash.hh"
+#include "build-remote.hh"
 
-using namespace nix;
+namespace nix {
 
 static void handleAlarm(int sig) {
 }
@@ -388,4 +389,8 @@ connected:
     }
 }
 
-static RegisterLegacyCommand r_build_remote("build-remote", main_build_remote);
+void registerBuildRemote() {
+    LegacyCommands::add("build-remote", main_build_remote);
+}
+
+}

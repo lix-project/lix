@@ -17,6 +17,7 @@
 #include "xml-writer.hh"
 #include "legacy.hh"
 #include "eval-settings.hh" // for defexpr
+#include "nix-env.hh"
 
 #include <ctime>
 #include <algorithm>
@@ -28,8 +29,9 @@
 #include <unistd.h>
 #include <nlohmann/json.hpp>
 
-using namespace nix;
 using std::cout;
+
+namespace nix {
 
 
 typedef enum {
@@ -1544,4 +1546,8 @@ static int main_nix_env(int argc, char * * argv)
     }
 }
 
-static RegisterLegacyCommand r_nix_env("nix-env", main_nix_env);
+void registerNixEnv() {
+    LegacyCommands::add("nix-env", main_nix_env);
+}
+
+}

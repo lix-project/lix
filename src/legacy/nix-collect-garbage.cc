@@ -7,11 +7,12 @@
 #include "globals.hh"
 #include "legacy.hh"
 #include "signals.hh"
+#include "nix-collect-garbage.hh"
 
 #include <iostream>
 #include <cerrno>
 
-using namespace nix;
+namespace nix {
 
 std::string deleteOlderThan;
 bool dryRun = false;
@@ -110,4 +111,8 @@ static int main_nix_collect_garbage(int argc, char * * argv)
     }
 }
 
-static RegisterLegacyCommand r_nix_collect_garbage("nix-collect-garbage", main_nix_collect_garbage);
+void registerNixCollectGarbage() {
+    LegacyCommands::add("nix-collect-garbage", main_nix_collect_garbage);
+}
+
+}

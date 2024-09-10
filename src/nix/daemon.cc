@@ -14,6 +14,7 @@
 #include "signals.hh"
 #include "daemon.hh"
 #include "unix-domain-socket.hh"
+#include "daemon-command.hh"
 
 #include <algorithm>
 #include <climits>
@@ -36,7 +37,8 @@
 #include <sys/ucred.h>
 #endif
 
-using namespace nix;
+namespace nix {
+
 using namespace nix::daemon;
 
 /**
@@ -496,7 +498,9 @@ static int main_nix_daemon(int argc, char * * argv)
     }
 }
 
-static RegisterLegacyCommand r_nix_daemon("nix-daemon", main_nix_daemon);
+void registerNixDaemon() {
+    LegacyCommands::add("nix-daemon", main_nix_daemon);
+}
 
 struct CmdDaemon : StoreCommand
 {
@@ -560,3 +564,5 @@ struct CmdDaemon : StoreCommand
 };
 
 static auto rCmdDaemon = registerCommand2<CmdDaemon>({"daemon"});
+
+}
