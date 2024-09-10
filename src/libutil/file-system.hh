@@ -30,6 +30,13 @@ struct Sink;
 struct Source;
 
 /**
+ * Get the current working directory.
+ *
+ * Throw an error if the current directory cannot get got.
+ */
+Path getCwd();
+
+/**
  * @return An absolutized path, resolving paths relative to the
  * specified directory, or the current directory otherwise.  The path
  * is also canonicalised.

@@ -18,15 +18,19 @@ namespace fs = std::filesystem;
 
 namespace nix {
 
+Path getCwd() {
+    char buf[PATH_MAX];
+    if (!getcwd(buf, sizeof(buf))) {
+        throw SysError("cannot get cwd");
+    }
+    return Path(buf);
+}
+
 Path absPath(Path path, std::optional<PathView> dir, bool resolveSymlinks)
 {
     if (path.empty() || path[0] != '/') {
         if (!dir) {
-            char buf[PATH_MAX];
-            if (!getcwd(buf, sizeof(buf))) {
-                throw SysError("cannot get cwd");
-            }
-            path = concatStrings(buf, "/", path);
+            path = concatStrings(getCwd(), "/", path);
         } else {
             path = concatStrings(*dir, "/", path);
         }
