@@ -87,16 +87,8 @@
         # Recognize `Alt-Left` and `Alt-Right` for navigating by words in more
         # terminals/shells/platforms.
         #
-        # See: https://github.com/troglobit/editline/pull/70/commits
-        (fetchpatch {
-          url = "https://github.com/troglobit/editline/pull/70/commits/d0f2a5bc2300b96b2434c7838184c1dfd6a639f5.diff";
-          hash = "sha256-0bbtYDUlk1wA0kpTtlaNI6KaCjLmAesZjcWBJZ+DpyQ=";
-        })
-
-        (fetchpatch {
-          url = "https://github.com/troglobit/editline/pull/70/commits/4c4455353a0a88bee09d5f27c28f81f747682fed.diff";
-          hash = "sha256-nVezspwVzeB/8zENeKgwPVum0W1MLv4dOW0967WbX5w=";
-        })
+        # See: https://github.com/troglobit/editline/pull/70
+        ./nix-support/editline.patch
       ];
 
       configureFlags = (prev.configureFlags or [ ]) ++ [
