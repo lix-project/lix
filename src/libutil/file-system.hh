@@ -193,7 +193,7 @@ inline Paths createDirs(PathView path)
 }
 
 /**
- * Create a symlink.
+ * Create a symlink. Throws if the symlink exists.
  */
 void createSymlink(const Path & target, const Path & link);
 

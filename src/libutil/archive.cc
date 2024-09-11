@@ -334,7 +334,7 @@ Generator<Entry> parse(Source & source)
 }
 
 
-static WireFormatGenerator restore(ParseSink & sink, Generator<nar::Entry> nar)
+static WireFormatGenerator restore(NARParseVisitor & sink, Generator<nar::Entry> nar)
 {
     while (auto entry = nar.next()) {
         co_yield std::visit(
@@ -377,12 +377,12 @@ static WireFormatGenerator restore(ParseSink & sink, Generator<nar::Entry> nar)
     }
 }
 
-WireFormatGenerator parseAndCopyDump(ParseSink & sink, Source & source)
+WireFormatGenerator parseAndCopyDump(NARParseVisitor & sink, Source & source)
 {
     return restore(sink, nar::parse(source));
 }
 
-void parseDump(ParseSink & sink, Source & source)
+void parseDump(NARParseVisitor & sink, Source & source)
 {
     auto parser = parseAndCopyDump(sink, source);
     while (parser.next()) {
@@ -390,7 +390,36 @@ void parseDump(ParseSink & sink, Source & source)
     }
 }
 
-struct RestoreSink : ParseSink
+/*
+ * Note [NAR restoration security]:
+ * It's *critical* that NAR restoration will never overwrite anything even if
+ * duplicate filenames are passed in. It is inevitable that not all NARs are
+ * fit to actually successfully restore to the target filesystem; errors may
+ * occur due to collisions, and this *must* cause the NAR to be rejected.
+ *
+ * Although the filenames are blocked from being *the same bytes* by a higher
+ * layer, filesystems have other ideas on every platform:
+ * - The store may be on a case-insensitive filesystem like APFS, ext4 with
+ *   casefold directories, zfs with casesensitivity=insensitive
+ * - The store may be on a Unicode normalizing (or normalization-insensitive)
+ *   filesystem like APFS (where files are looked up by
+ *   hash(normalize(fname))), HFS+ (where file names are always normalized to
+ *   approximately NFD), or zfs with normalization=formC, etc.
+ *
+ * It is impossible to know the version of Unicode being used by the underlying
+ * filesystem, thus it is *impossible* to stop these collisions.
+ *
+ * Overwriting files as a result of invalid NARs will cause a security bug like
+ * CppNix's CVE-2024-45593 (GHSA-h4vv-h3jq-v493)
+ */
+
+/**
+ * This code restores NARs from disk.
+ *
+ * See Note [NAR restoration security] for security invariants in this procedure.
+ *
+ */
+struct NARRestoreVisitor : NARParseVisitor
 {
     Path dstPath;
     AutoCloseFD fd;
@@ -457,7 +486,7 @@ struct RestoreSink : ParseSink
 
 void restorePath(const Path & path, Source & source)
 {
-    RestoreSink sink;
+    NARRestoreVisitor sink;
     sink.dstPath = path;
     parseDump(sink, source);
 }
@@ -468,10 +497,9 @@ WireFormatGenerator copyNAR(Source & source)
     // FIXME: if 'source' is the output of dumpPath() followed by EOF,
     // we should just forward all data directly without parsing.
 
-    static ParseSink parseSink; /* null sink; just parse the NAR */
+    static NARParseVisitor parseSink; /* null sink; just parse the NAR */
 
     return parseAndCopyDump(parseSink, source);
 }
-
 
 }

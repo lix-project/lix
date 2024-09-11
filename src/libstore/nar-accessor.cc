@@ -2,6 +2,7 @@
 #include "archive.hh"
 
 #include <map>
+#include <memory>
 #include <stack>
 #include <algorithm>
 
@@ -33,7 +34,7 @@ struct NarAccessor : public FSAccessor
 
     NarMember root;
 
-    struct NarIndexer : ParseSink, Source
+    struct NarIndexer : NARParseVisitor, Source
     {
         NarAccessor & acc;
         Source & source;

@@ -1215,7 +1215,7 @@ void LocalStore::addToStore(const ValidPathInfo & info, Source & source,
     bool narRead = false;
     Finally cleanup = [&]() {
         if (!narRead) {
-            ParseSink sink;
+            NARParseVisitor sink;
             try {
                 parseDump(sink, source);
             } catch (...) {
