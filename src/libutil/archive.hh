@@ -83,15 +83,40 @@ WireFormatGenerator dumpString(std::string_view s);
  */
 struct NARParseVisitor
 {
-    virtual void createDirectory(const Path & path) { };
+    /**
+     * A type-erased file handle specific to this particular NARParseVisitor.
+     */
+    struct FileHandle
+    {
+        FileHandle() {}
+        FileHandle(FileHandle const &) = delete;
+        FileHandle & operator=(FileHandle &) = delete;
 
-    virtual void createRegularFile(const Path & path) { };
-    virtual void closeRegularFile() { };
-    virtual void isExecutable() { };
-    virtual void preallocateContents(uint64_t size) { };
-    virtual void receiveContents(std::string_view data) { };
+        /** Puts one block of data into the file */
+        virtual void receiveContents(std::string_view data) { }
 
-    virtual void createSymlink(const Path & path, const std::string & target) { };
+        /**
+         * Explicitly closes the file. Further operations may throw an assert.
+         * This exists so that closing can fail and throw an exception without doing so in a destructor.
+         */
+        virtual void close() { }
+
+        virtual ~FileHandle() = default;
+    };
+
+    virtual void createDirectory(const Path & path) { }
+
+    /**
+     * Creates a regular file in the extraction output with the given size and executable flag.
+     * The size is guaranteed to be the true size of the file.
+     */
+    [[nodiscard]]
+    virtual std::unique_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable)
+    {
+        return std::make_unique<FileHandle>();
+    }
+
+    virtual void createSymlink(const Path & path, const std::string & target) { }
 };
 
 namespace nar {

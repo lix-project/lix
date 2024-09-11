@@ -386,17 +386,28 @@ namespace {
  */
 struct RetrieveRegularNARVisitor : NARParseVisitor
 {
+    struct MyFileHandle : public FileHandle
+    {
+        Sink & sink;
+
+        void receiveContents(std::string_view data) override
+        {
+            sink(data);
+        }
+
+    private:
+        MyFileHandle(Sink & sink) : sink(sink) {}
+
+        friend struct RetrieveRegularNARVisitor;
+    };
+
     Sink & sink;
 
     RetrieveRegularNARVisitor(Sink & sink) : sink(sink) { }
 
-    void createRegularFile(const Path & path) override
+    std::unique_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
     {
-    }
-
-    void receiveContents(std::string_view data) override
-    {
-        sink(data);
+        return std::unique_ptr<MyFileHandle>(new MyFileHandle{sink});
     }
 
     void createDirectory(const Path & path) override

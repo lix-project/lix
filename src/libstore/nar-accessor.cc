@@ -45,11 +45,12 @@ struct NarAccessor : public FSAccessor
 
         uint64_t pos = 0;
 
+    public:
         NarIndexer(NarAccessor & acc, Source & source)
             : acc(acc), source(source)
         { }
 
-        void createMember(const Path & path, NarMember member)
+        NarMember & createMember(const Path & path, NarMember member)
         {
             size_t level = std::count(path.begin(), path.end(), '/');
             while (parents.size() > level) parents.pop();
@@ -63,6 +64,8 @@ struct NarAccessor : public FSAccessor
                 auto result = parents.top()->children.emplace(baseNameOf(path), std::move(member));
                 parents.push(&result.first->second);
             }
+
+            return *parents.top();
         }
 
         void createDirectory(const Path & path) override
@@ -70,28 +73,17 @@ struct NarAccessor : public FSAccessor
             createMember(path, {FSAccessor::Type::tDirectory, false, 0, 0});
         }
 
-        void createRegularFile(const Path & path) override
+        std::unique_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
         {
-            createMember(path, {FSAccessor::Type::tRegular, false, 0, 0});
-        }
+            auto & memb = createMember(path, {FSAccessor::Type::tRegular, false, 0, 0});
 
-        void closeRegularFile() override
-        { }
-
-        void isExecutable() override
-        {
-            parents.top()->isExecutable = true;
-        }
-
-        void preallocateContents(uint64_t size) override
-        {
             assert(size <= std::numeric_limits<uint64_t>::max());
-            parents.top()->size = (uint64_t) size;
-            parents.top()->start = pos;
-        }
+            memb.size = (uint64_t) size;
+            memb.start = pos;
+            memb.isExecutable = executable;
 
-        void receiveContents(std::string_view data) override
-        { }
+            return std::make_unique<FileHandle>();
+        }
 
         void createSymlink(const Path & path, const std::string & target) override
         {

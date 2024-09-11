@@ -347,16 +347,13 @@ static WireFormatGenerator restore(NARParseVisitor & sink, Generator<nar::Entry>
                 },
                 [&](nar::File f) {
                     return [](auto f, auto & sink) -> WireFormatGenerator {
-                        sink.createRegularFile(f.path);
-                        sink.preallocateContents(f.size);
-                        if (f.executable) {
-                            sink.isExecutable();
-                        }
+                        auto handle = sink.createRegularFile(f.path, f.size, f.executable);
+
                         while (auto block = f.contents.next()) {
-                            sink.receiveContents(std::string_view{block->data(), block->size()});
+                            handle->receiveContents(std::string_view{block->data(), block->size()});
                             co_yield *block;
                         }
-                        sink.closeRegularFile();
+                        handle->close();
                     }(std::move(f), sink);
                 },
                 [&](nar::Symlink sl) {
@@ -422,8 +419,67 @@ void parseDump(NARParseVisitor & sink, Source & source)
 struct NARRestoreVisitor : NARParseVisitor
 {
     Path dstPath;
-    AutoCloseFD fd;
 
+private:
+    class MyFileHandle : public FileHandle
+    {
+        AutoCloseFD fd;
+
+        MyFileHandle(AutoCloseFD && fd, uint64_t size, bool executable) : FileHandle(), fd(std::move(fd))
+        {
+            if (executable) {
+                makeExecutable();
+            }
+
+            maybePreallocateContents(size);
+        }
+
+        void makeExecutable()
+        {
+            struct stat st;
+            if (fstat(fd.get(), &st) == -1)
+                throw SysError("fstat");
+            if (fchmod(fd.get(), st.st_mode | (S_IXUSR | S_IXGRP | S_IXOTH)) == -1)
+                throw SysError("fchmod");
+        }
+
+        void maybePreallocateContents(uint64_t len)
+        {
+            if (!archiveSettings.preallocateContents)
+                return;
+
+#if HAVE_POSIX_FALLOCATE
+            if (len) {
+                errno = posix_fallocate(fd.get(), 0, len);
+                /* Note that EINVAL may indicate that the underlying
+                   filesystem doesn't support preallocation (e.g. on
+                   OpenSolaris).  Since preallocation is just an
+                   optimisation, ignore it. */
+                if (errno && errno != EINVAL && errno != EOPNOTSUPP && errno != ENOSYS)
+                    throw SysError("preallocating file of %1% bytes", len);
+            }
+#endif
+        }
+
+    public:
+
+        ~MyFileHandle() = default;
+
+        virtual void close() override
+        {
+            /* Call close explicitly to make sure the error is checked */
+            fd.close();
+        }
+
+        void receiveContents(std::string_view data) override
+        {
+            writeFull(fd.get(), data);
+        }
+
+        friend struct NARRestoreVisitor;
+    };
+
+public:
     void createDirectory(const Path & path) override
     {
         Path p = dstPath + path;
@@ -431,49 +487,13 @@ struct NARRestoreVisitor : NARParseVisitor
             throw SysError("creating directory '%1%'", p);
     };
 
-    void createRegularFile(const Path & path) override
+    std::unique_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
     {
         Path p = dstPath + path;
-        fd = AutoCloseFD{open(p.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0666)};
+        AutoCloseFD fd = AutoCloseFD{open(p.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0666)};
         if (!fd) throw SysError("creating file '%1%'", p);
-    }
 
-    void closeRegularFile() override
-    {
-        /* Call close explicitly to make sure the error is checked */
-        fd.close();
-    }
-
-    void isExecutable() override
-    {
-        struct stat st;
-        if (fstat(fd.get(), &st) == -1)
-            throw SysError("fstat");
-        if (fchmod(fd.get(), st.st_mode | (S_IXUSR | S_IXGRP | S_IXOTH)) == -1)
-            throw SysError("fchmod");
-    }
-
-    void preallocateContents(uint64_t len) override
-    {
-        if (!archiveSettings.preallocateContents)
-            return;
-
-#if HAVE_POSIX_FALLOCATE
-        if (len) {
-            errno = posix_fallocate(fd.get(), 0, len);
-            /* Note that EINVAL may indicate that the underlying
-               filesystem doesn't support preallocation (e.g. on
-               OpenSolaris).  Since preallocation is just an
-               optimisation, ignore it. */
-            if (errno && errno != EINVAL && errno != EOPNOTSUPP && errno != ENOSYS)
-                throw SysError("preallocating file of %1% bytes", len);
-        }
-#endif
-    }
-
-    void receiveContents(std::string_view data) override
-    {
-        writeFull(fd.get(), data);
+        return std::unique_ptr<MyFileHandle>(new MyFileHandle(std::move(fd), size, executable));
     }
 
     void createSymlink(const Path & path, const std::string & target) override
