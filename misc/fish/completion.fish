@@ -14,7 +14,7 @@ function _nix_complete
   # But the variable also misses the current token so it cancels out.
   set -l nix_arg_to_complete (count $nix_args)
 
-  env NIX_GET_COMPLETIONS=$nix_arg_to_complete $nix_args $current_token
+  env NIX_GET_COMPLETIONS=$nix_arg_to_complete $nix_args $current_token 2>/dev/null
 end
 
 function _nix_accepts_files
