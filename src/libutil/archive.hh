@@ -76,45 +76,47 @@ WireFormatGenerator dumpString(std::string_view s);
 
 /**
  * \todo Fix this API, it sucks.
+ * A visitor for NAR parsing that performs filesystem (or virtual-filesystem)
+ * actions to restore a NAR.
+ *
+ * Methods of this may arbitrarily fail due to filename collisions.
  */
-struct ParseSink
+struct NARParseVisitor
 {
-    virtual void createDirectory(const Path & path) { };
-
-    virtual void createRegularFile(const Path & path) { };
-    virtual void closeRegularFile() { };
-    virtual void isExecutable() { };
-    virtual void preallocateContents(uint64_t size) { };
-    virtual void receiveContents(std::string_view data) { };
-
-    virtual void createSymlink(const Path & path, const std::string & target) { };
-};
-
-/**
- * If the NAR archive contains a single file at top-level, then save
- * the contents of the file to `s`.  Otherwise barf.
- */
-struct RetrieveRegularNARSink : ParseSink
-{
-    bool regular = true;
-    Sink & sink;
-
-    RetrieveRegularNARSink(Sink & sink) : sink(sink) { }
-
-    void createDirectory(const Path & path) override
+    /**
+     * A type-erased file handle specific to this particular NARParseVisitor.
+     */
+    struct FileHandle
     {
-        regular = false;
+        FileHandle() {}
+        FileHandle(FileHandle const &) = delete;
+        FileHandle & operator=(FileHandle &) = delete;
+
+        /** Puts one block of data into the file */
+        virtual void receiveContents(std::string_view data) { }
+
+        /**
+         * Explicitly closes the file. Further operations may throw an assert.
+         * This exists so that closing can fail and throw an exception without doing so in a destructor.
+         */
+        virtual void close() { }
+
+        virtual ~FileHandle() = default;
+    };
+
+    virtual void createDirectory(const Path & path) { }
+
+    /**
+     * Creates a regular file in the extraction output with the given size and executable flag.
+     * The size is guaranteed to be the true size of the file.
+     */
+    [[nodiscard]]
+    virtual std::unique_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable)
+    {
+        return std::make_unique<FileHandle>();
     }
 
-    void receiveContents(std::string_view data) override
-    {
-        sink(data);
-    }
-
-    void createSymlink(const Path & path, const std::string & target) override
-    {
-        regular = false;
-    }
+    virtual void createSymlink(const Path & path, const std::string & target) { }
 };
 
 namespace nar {
@@ -160,8 +162,8 @@ Generator<Entry> parse(Source & source);
 
 }
 
-WireFormatGenerator parseAndCopyDump(ParseSink & sink, Source & source);
-void parseDump(ParseSink & sink, Source & source);
+WireFormatGenerator parseAndCopyDump(NARParseVisitor & sink, Source & source);
+void parseDump(NARParseVisitor & sink, Source & source);
 
 void restorePath(const Path & path, Source & source);
 

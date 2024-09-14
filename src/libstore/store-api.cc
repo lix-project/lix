@@ -379,6 +379,48 @@ void Store::addMultipleToStore(
     }
 }
 
+namespace {
+/**
+ * If the NAR archive contains a single file at top-level, then save
+ * the contents of the file to `s`.  Otherwise assert.
+ */
+struct RetrieveRegularNARVisitor : NARParseVisitor
+{
+    struct MyFileHandle : public FileHandle
+    {
+        Sink & sink;
+
+        void receiveContents(std::string_view data) override
+        {
+            sink(data);
+        }
+
+    private:
+        MyFileHandle(Sink & sink) : sink(sink) {}
+
+        friend struct RetrieveRegularNARVisitor;
+    };
+
+    Sink & sink;
+
+    RetrieveRegularNARVisitor(Sink & sink) : sink(sink) { }
+
+    std::unique_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
+    {
+        return std::unique_ptr<MyFileHandle>(new MyFileHandle{sink});
+    }
+
+    void createDirectory(const Path & path) override
+    {
+        assert(false && "RetrieveRegularNARVisitor::createDirectory must not be called");
+    }
+
+    void createSymlink(const Path & path, const std::string & target) override
+    {
+        assert(false && "RetrieveRegularNARVisitor::createSymlink must not be called");
+    }
+};
+}
 
 /*
 The aim of this function is to compute in one pass the correct ValidPathInfo for
@@ -413,7 +455,7 @@ ValidPathInfo Store::addToStoreSlow(std::string_view name, const Path & srcPath,
     /* Note that fileSink and unusualHashTee must be mutually exclusive, since
        they both write to caHashSink. Note that that requisite is currently true
        because the former is only used in the flat case. */
-    RetrieveRegularNARSink fileSink { caHashSink };
+    RetrieveRegularNARVisitor fileSink { caHashSink };
     TeeSink unusualHashTee { narHashSink, caHashSink };
 
     auto & narSink = method == FileIngestionMethod::Recursive && hashAlgo != HashType::SHA256
@@ -429,7 +471,7 @@ ValidPathInfo Store::addToStoreSlow(std::string_view name, const Path & srcPath,
        information to narSink. */
     TeeSource tapped { fileSource, narSink };
 
-    ParseSink blank;
+    NARParseVisitor blank;
     auto & parseSink = method == FileIngestionMethod::Flat
         ? fileSink
         : blank;
