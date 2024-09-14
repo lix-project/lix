@@ -73,8 +73,16 @@ struct SimpleUserLock : UserLock
             debug("trying user '%s'", i);
 
             struct passwd * pw = getpwnam(i.c_str());
-            if (!pw)
-                throw Error("the user '%s' in the group '%s' does not exist", i, settings.buildUsersGroup);
+            if (!pw) {
+#ifdef __APPLE__
+#define APPLE_HINT "\n\nhint: this may be caused by an update to macOS Sequoia breaking existing Lix installations.\n" \
+                "See the macOS Sequoia page on the Lix wiki for detailed repair instructions: https://wiki.lix.systems/link/81"
+#else
+#define APPLE_HINT
+#endif
+                throw Error("the user '%s' in the group '%s' does not exist" APPLE_HINT, i, settings.buildUsersGroup);
+#undef APPLE_HINT
+            }
 
             auto fnUserLock = fmt("%s/userpool/%s", settings.nixStateDir,pw->pw_uid);
 
