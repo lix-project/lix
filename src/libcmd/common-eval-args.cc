@@ -9,7 +9,23 @@
 #include "store-api.hh"
 #include "command.hh"
 
+#include <regex>
+
 namespace nix {
+
+static std::regex const identifierRegex("^[A-Za-z_][A-Za-z0-9_'-]*$");
+static void warnInvalidNixIdentifier(const std::string & name)
+{
+    std::smatch match;
+    if (!std::regex_match(name, match, identifierRegex)) {
+        warn("This Nix invocation specifies a value for argument '%s' which isn't a valid \
+Nix identifier. The project is considering to drop support for this \
+or to require quotes around args that aren't valid Nix identifiers. \
+If you depend on this behvior, please reach out in \
+https://git.lix.systems/lix-project/lix/issues/496 so we can discuss \
+your use-case.", name);
+    }
+}
 
 MixEvalArgs::MixEvalArgs()
 {
@@ -18,7 +34,10 @@ MixEvalArgs::MixEvalArgs()
         .description = "Pass the value *expr* as the argument *name* to Nix functions.",
         .category = category,
         .labels = {"name", "expr"},
-        .handler = {[&](std::string name, std::string expr) { autoArgs[name] = 'E' + expr; }}
+        .handler = {[&](std::string name, std::string expr) {
+            warnInvalidNixIdentifier(name);
+            autoArgs[name] = 'E' + expr;
+        }}
     });
 
     addFlag({
@@ -26,7 +45,10 @@ MixEvalArgs::MixEvalArgs()
         .description = "Pass the string *string* as the argument *name* to Nix functions.",
         .category = category,
         .labels = {"name", "string"},
-        .handler = {[&](std::string name, std::string s) { autoArgs[name] = 'S' + s; }},
+        .handler = {[&](std::string name, std::string s) {
+            warnInvalidNixIdentifier(name);
+            autoArgs[name] = 'S' + s;
+        }},
     });
 
     addFlag({
