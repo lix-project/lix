@@ -8,10 +8,6 @@
 #include <string_view>
 #include <cerrno>
 
-#ifdef READLINE
-#include <readline/history.h>
-#include <readline/readline.h>
-#else
 // editline < 1.15.2 don't wrap their API for C++ usage
 // (added in https://github.com/troglobit/editline/commit/91398ceb3427b730995357e9d120539fb9bb7461).
 // This results in linker errors due to to name-mangling of editline C symbols.
@@ -20,7 +16,6 @@
 extern "C" {
 #include <editline.h>
 }
-#endif
 
 #include "finally.hh"
 #include "repl-interacter.hh"
@@ -115,17 +110,13 @@ ReadlineLikeInteracter::Guard ReadlineLikeInteracter::init(detail::ReplCompleter
     } catch (SysError & e) {
         logWarning(e.info());
     }
-#ifndef READLINE
     el_hist_size = 1000;
-#endif
     read_history(historyFile.c_str());
     auto oldRepl = curRepl;
     curRepl = repl;
     Guard restoreRepl([oldRepl] { curRepl = oldRepl; });
-#ifndef READLINE
     rl_set_complete_func(completionCallback);
     rl_set_list_possib_func(listPossibleCallback);
-#endif
     return restoreRepl;
 }
 

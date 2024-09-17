@@ -247,7 +247,7 @@ constexpr std::array<ExperimentalFeatureDetails, numXpFeatures> xpFeatureDetails
         .tag = Xp::ReplAutomation,
         .name = "repl-automation",
         .description = R"(
-            Makes the repl not use readline/editline, print ENQ (U+0005) when ready for a command, and take commands followed by newline.
+            Makes the repl not use editline, print ENQ (U+0005) when ready for a command, and take commands followed by newline.
         )",
     },
 }};
