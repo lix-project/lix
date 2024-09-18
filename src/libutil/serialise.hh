@@ -77,6 +77,11 @@ struct Source
      * Store up to ‘len’ in the buffer pointed to by ‘data’, and
      * return the number of bytes stored.  It blocks until at least
      * one byte is available.
+     *
+     * Should not return 0 (generally you want to throw EndOfFile), but nothing
+     * stops that.
+     *
+     * \throws EndOfFile if there is no more data.
      */
     virtual size_t read(char * data, size_t len) = 0;
 

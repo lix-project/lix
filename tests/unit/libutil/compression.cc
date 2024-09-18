@@ -136,4 +136,28 @@ TEST_P(PerTypeNonNullCompressionTest, bogusInputDecompression)
     auto bogus = "this data is bogus and should throw when decompressing";
     ASSERT_THROW(decompress(param, bogus), CompressionError);
 }
+
+TEST_P(PerTypeNonNullCompressionTest, truncatedValidInput)
+{
+    auto method = GetParam();
+
+    auto inputString = "the quick brown fox jumps over the lazy doggos";
+    auto compressed = compress(method, inputString);
+
+    /* n.b. This also tests zero-length input, which is also invalid.
+     * As of the writing of this comment, it returns empty output, but is
+     * allowed to throw a compression error instead. */
+    for (int i = 0; i < compressed.length(); ++i) {
+        auto newCompressed = compressed.substr(compressed.length() - i);
+        try {
+            decompress(method, newCompressed);
+            // Success is acceptable as well, even though it is corrupt data.
+            // The compression method is not expected to provide integrity,
+            // just, not break explosively on bad input.
+        } catch (CompressionError &) {
+            // Acceptable
+        }
+    }
+}
+
 }
