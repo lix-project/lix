@@ -337,7 +337,7 @@ struct curlFileTransfer : public FileTransfer
             // wrapping user `callback`s instead is not possible because the
             // Callback api expects std::functions, and copying Callbacks is
             // not possible due the promises they hold.
-            if (code == CURLE_OK && !dataCallback) {
+            if (code == CURLE_OK && !dataCallback && result.data.length() > 0) {
                 result.data = decompress(encoding, result.data);
             }
 

@@ -144,6 +144,7 @@ struct BrotliDecompressionSource : Source
     std::unique_ptr<char[]> buf;
     size_t avail_in = 0;
     const uint8_t * next_in;
+    std::exception_ptr inputEofException = nullptr;
 
     Source * inner;
     std::unique_ptr<BrotliDecoderState, void (*)(BrotliDecoderState *)> state;
@@ -167,23 +168,42 @@ struct BrotliDecompressionSource : Source
         while (len && !BrotliDecoderIsFinished(state.get())) {
             checkInterrupt();
 
-            while (avail_in == 0) {
+            while (avail_in == 0 && inputEofException == nullptr) {
                 try {
                     avail_in = inner->read(buf.get(), BUF_SIZE);
                 } catch (EndOfFile &) {
+                    // No more data, but brotli may still have output remaining
+                    // from the last call.
+                    inputEofException = std::current_exception();
                     break;
                 }
                 next_in = charptr_cast<const uint8_t *>(buf.get());
             }
 
-            if (!BrotliDecoderDecompressStream(
-                    state.get(), &avail_in, &next_in, &len, &out, nullptr
-                ))
-            {
+            BrotliDecoderResult res = BrotliDecoderDecompressStream(
+                state.get(), &avail_in, &next_in, &len, &out, nullptr
+            );
+
+            switch (res) {
+            case BROTLI_DECODER_RESULT_SUCCESS:
+                // We're done here!
+                goto finish;
+            case BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT:
+                // Grab more input. Don't try if we already have exhausted our input stream.
+                if (inputEofException != nullptr) {
+                    std::rethrow_exception(inputEofException);
+                } else {
+                    continue;
+                }
+            case BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT:
+                // Need more output space: we can only get another buffer by someone calling us again, so get out.
+                goto finish;
+            case BROTLI_DECODER_RESULT_ERROR:
                 throw CompressionError("error while decompressing brotli file");
             }
         }
 
+finish:
         if (begin != out) {
             return out - begin;
         } else {
