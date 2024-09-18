@@ -3,105 +3,137 @@
 
 namespace nix {
 
-    /* ----------------------------------------------------------------------------
-     * compress / decompress
-     * --------------------------------------------------------------------------*/
+/* ----------------------------------------------------------------------------
+ * compress / decompress
+ * --------------------------------------------------------------------------*/
 
-    TEST(compress, compressWithUnknownMethod) {
-        ASSERT_THROW(compress("invalid-method", "something-to-compress"), UnknownCompressionMethod);
-    }
+TEST(compress, compressWithUnknownMethod)
+{
+    ASSERT_THROW(compress("invalid-method", "something-to-compress"), UnknownCompressionMethod);
+}
 
-    TEST(compress, noneMethodDoesNothingToTheInput) {
-        auto o = compress("none", "this-is-a-test");
+TEST(compress, noneMethodDoesNothingToTheInput)
+{
+    auto o = compress("none", "this-is-a-test");
 
-        ASSERT_EQ(o, "this-is-a-test");
-    }
+    ASSERT_EQ(o, "this-is-a-test");
+}
 
-    TEST(decompress, decompressNoneCompressed) {
-        auto method = "none";
-        auto str = "slfja;sljfklsa;jfklsjfkl;sdjfkl;sadjfkl;sdjf;lsdfjsadlf";
-        auto o = decompress(method, str);
+TEST(decompress, decompressEmptyString)
+{
+    // Empty-method decompression used e.g. by S3 store
+    // (Content-Encoding == "").
+    auto o = decompress("", "this-is-a-test");
 
-        ASSERT_EQ(o, str);
-    }
+    ASSERT_EQ(o, "this-is-a-test");
+}
 
-    TEST(decompress, decompressEmptyCompressed) {
-        // Empty-method decompression used e.g. by S3 store
-        // (Content-Encoding == "").
-        auto method = "";
-        auto str = "slfja;sljfklsa;jfklsjfkl;sdjfkl;sadjfkl;sdjf;lsdfjsadlf";
-        auto o = decompress(method, str);
+/* ----------------------------------------------------------------------------
+ * compression sinks
+ * --------------------------------------------------------------------------*/
 
-        ASSERT_EQ(o, str);
-    }
+TEST(makeCompressionSink, noneSinkDoesNothingToInput)
+{
+    auto method = "none";
+    StringSink strSink;
+    auto inputString = "slfja;sljfklsa;jfklsjfkl;sdjfkl;sadjfkl;sdjf;lsdfjsadlf";
+    auto sink = makeCompressionSink(method, strSink);
+    (*sink)(inputString);
+    sink->finish();
 
-    TEST(decompress, decompressXzCompressed) {
-        auto method = "xz";
-        auto str = "slfja;sljfklsa;jfklsjfkl;sdjfkl;sadjfkl;sdjf;lsdfjsadlf";
-        auto o = decompress(method, compress(method, str));
+    ASSERT_STREQ(strSink.s.c_str(), inputString);
+}
 
-        ASSERT_EQ(o, str);
-    }
+/** Tests applied to all compression types */
+class PerTypeCompressionTest : public testing::TestWithParam<const char *>
+{};
 
-    TEST(decompress, decompressBzip2Compressed) {
-        auto method = "bzip2";
-        auto str = "slfja;sljfklsa;jfklsjfkl;sdjfkl;sadjfkl;sdjf;lsdfjsadlf";
-        auto o = decompress(method, compress(method, str));
+/** Tests applied to non-passthrough compression types */
+class PerTypeNonNullCompressionTest : public testing::TestWithParam<const char *>
+{};
 
-        ASSERT_EQ(o, str);
-    }
+constexpr const char * COMPRESSION_TYPES_NONNULL[] = {
+    // libarchive
+    "bzip2",
+    "compress",
+    "gzip",
+    "lzip",
+    "lzma",
+    "xz",
+    "zstd",
+    // Uses external program via libarchive so cannot be used :(
+    /*
+    "grzip",
+    "lrzip",
+    "lzop",
+    "lz4",
+    */
+    // custom
+    "br",
+};
 
-    TEST(decompress, decompressBrCompressed) {
-        auto method = "br";
-        auto str = "slfja;sljfklsa;jfklsjfkl;sdjfkl;sadjfkl;sdjf;lsdfjsadlf";
-        auto o = decompress(method, compress(method, str));
+INSTANTIATE_TEST_SUITE_P(
+    compressionNonNull, PerTypeNonNullCompressionTest, testing::ValuesIn(COMPRESSION_TYPES_NONNULL)
+);
+INSTANTIATE_TEST_SUITE_P(
+    compressionNonNull, PerTypeCompressionTest, testing::ValuesIn(COMPRESSION_TYPES_NONNULL)
+);
 
-        ASSERT_EQ(o, str);
-    }
+INSTANTIATE_TEST_SUITE_P(
+    compressionNull, PerTypeCompressionTest, testing::Values("none")
+);
 
-    TEST(decompress, decompressInvalidInputThrowsCompressionError) {
-        auto method = "bzip2";
-        auto str = "this is a string that does not qualify as valid bzip2 data";
+/* ---------------------------------------
+ * All compression types
+ * --------------------------------------- */
 
-        ASSERT_THROW(decompress(method, str), CompressionError);
-    }
+TEST_P(PerTypeCompressionTest, roundTrips)
+{
+    auto method = GetParam();
+    auto str = "slfja;sljfklsa;jfklsjfkl;sdjfkl;sadjfkl;sdjf;lsdfjsadlf";
+    auto o = decompress(method, compress(method, str));
 
-    TEST(decompress, veryLongBrotli) {
-        auto method = "br";
-        auto str = std::string(65536, 'a');
-        auto o = decompress(method, compress(method, str));
+    ASSERT_EQ(o, str);
+}
 
-        // This is just to not print 64k of "a" for most failures
-        ASSERT_EQ(o.length(), str.length());
-        ASSERT_EQ(o, str);
-    }
+TEST_P(PerTypeCompressionTest, longerThanBuffer)
+{
+    // This is targeted originally at regression testing a brotli bug, but we might as well do it to
+    // everything
+    auto method = GetParam();
+    auto str = std::string(65536, 'a');
+    auto o = decompress(method, compress(method, str));
 
-    /* ----------------------------------------------------------------------------
-     * compression sinks
-     * --------------------------------------------------------------------------*/
+    // This is just to not print 64k of "a" for most failures
+    ASSERT_EQ(o.length(), str.length());
+    ASSERT_EQ(o, str);
+}
 
-    TEST(makeCompressionSink, noneSinkDoesNothingToInput) {
-        StringSink strSink;
-        auto inputString = "slfja;sljfklsa;jfklsjfkl;sdjfkl;sadjfkl;sdjf;lsdfjsadlf";
-        auto sink = makeCompressionSink("none", strSink);
-        (*sink)(inputString);
-        sink->finish();
+TEST_P(PerTypeCompressionTest, sinkAndSource)
+{
+    auto method = GetParam();
+    auto inputString = "slfja;sljfklsa;jfklsjfkl;sdjfkl;sadjfkl;sdjf;lsdfjsadlf";
 
-        ASSERT_STREQ(strSink.s.c_str(), inputString);
-    }
+    StringSink strSink;
+    auto sink = makeCompressionSink(method, strSink);
+    (*sink)(inputString);
+    sink->finish();
 
-    TEST(makeCompressionSink, compressAndDecompress) {
-        auto inputString = "slfja;sljfklsa;jfklsjfkl;sdjfkl;sadjfkl;sdjf;lsdfjsadlf";
+    StringSource strSource{strSink.s};
+    auto decompressionSource = makeDecompressionSource(method, strSource);
 
-        StringSink strSink;
-        auto sink = makeCompressionSink("bzip2", strSink);
-        (*sink)(inputString);
-        sink->finish();
+    ASSERT_STREQ(decompressionSource->drain().c_str(), inputString);
+}
 
-        StringSource strSource{strSink.s};
-        auto decompressionSource = makeDecompressionSource("bzip2", strSource);
+/* ---------------------------------------
+ * Non null compression types
+ * --------------------------------------- */
 
-        ASSERT_STREQ(decompressionSource->drain().c_str(), inputString);
-    }
+TEST_P(PerTypeNonNullCompressionTest, bogusInputDecompression)
+{
+    auto param = GetParam();
 
+    auto bogus = "this data is bogus and should throw when decompressing";
+    ASSERT_THROW(decompress(param, bogus), CompressionError);
+}
 }
