@@ -82,6 +82,10 @@ struct CmdPathInfo : StorePathsCommand, MixJSON
 
     void run(ref<Store> store, StorePaths && storePaths) override
     {
+        // Wipe the progress bar to prevent interference with the output.
+        // It's not needed any more because expensive evaluation or builds are already done here.
+        logger->pause();
+
         size_t pathLen = 0;
         for (auto & storePath : storePaths)
             pathLen = std::max(pathLen, store->printStorePath(storePath).size());
