@@ -664,27 +664,6 @@ static void canonicalisePathMetaData_(
     if (!(S_ISREG(st.st_mode) || S_ISDIR(st.st_mode) || S_ISLNK(st.st_mode)))
         throw Error("file '%1%' has an unsupported type", path);
 
-#if __linux__
-    /* Remove extended attributes / ACLs. */
-    ssize_t eaSize = llistxattr(path.c_str(), nullptr, 0);
-
-    if (eaSize < 0) {
-        if (errno != ENOTSUP && errno != ENODATA)
-            throw SysError("querying extended attributes of '%s'", path);
-    } else if (eaSize > 0) {
-        std::vector<char> eaBuf(eaSize);
-
-        if ((eaSize = llistxattr(path.c_str(), eaBuf.data(), eaBuf.size())) < 0)
-            throw SysError("querying extended attributes of '%s'", path);
-
-        for (auto & eaName: tokenizeString<Strings>(std::string(eaBuf.data(), eaSize), std::string("\000", 1))) {
-            if (settings.ignoredAcls.get().count(eaName)) continue;
-            if (lremovexattr(path.c_str(), eaName.c_str()) == -1)
-                throw SysError("removing extended attribute '%s' from '%s'", eaName, path);
-        }
-     }
-#endif
-
     /* Fail if the file is not owned by the build user.  This prevents
        us from messing up the ownership/permissions of files
        hard-linked into the output (e.g. "ln /etc/shadow $out/foo").
@@ -698,6 +677,29 @@ static void canonicalisePathMetaData_(
         assert(S_ISLNK(st.st_mode) || (st.st_uid == geteuid() && (mode == 0444 || mode == 0555) && st.st_mtime == mtimeStore));
         return;
     }
+
+#if __linux__
+    /* Remove extended attributes / ACLs. */
+    ssize_t eaSize = llistxattr(path.c_str(), nullptr, 0);
+
+    if (eaSize < 0) {
+        if (errno != ENOTSUP && errno != ENODATA)
+            throw SysError("querying extended attributes of '%s'", path);
+    } else if (eaSize > 0) {
+        std::vector<char> eaBuf(eaSize);
+
+        if ((eaSize = llistxattr(path.c_str(), eaBuf.data(), eaBuf.size())) < 0)
+            throw SysError("querying extended attributes of '%s'", path);
+
+        if (S_ISREG(st.st_mode) || S_ISDIR(st.st_mode))
+            chmod(path.c_str(), st.st_mode | S_IWUSR);
+        for (auto & eaName: tokenizeString<Strings>(std::string(eaBuf.data(), eaSize), std::string("\000", 1))) {
+            if (settings.ignoredAcls.get().count(eaName)) continue;
+            if (lremovexattr(path.c_str(), eaName.c_str()) == -1)
+                throw SysError("removing extended attribute '%s' from '%s'", eaName, path);
+        }
+     }
+#endif
 
     inodesSeen.insert(Inode(st.st_dev, st.st_ino));
 
