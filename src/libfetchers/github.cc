@@ -289,10 +289,10 @@ struct GitHubInputScheme : GitArchiveInputScheme
         // urls so we do not run into rate limits.
         const auto urlFmt =
             host != "github.com"
-            ? "https://%s/api/v3/repos/%s/%s/tarball/%s"
-            : headers.empty()
-            ? "https://%s/%s/%s/archive/%s.tar.gz"
-            : "https://api.%s/repos/%s/%s/tarball/%s";
+                ? "https://%s/api/v3/repos/%s/%s/tarball/%s"
+                : !getAccessToken(host)
+                    ? "https://%s/%s/%s/archive/%s.tar.gz"
+                    : "https://api.%s/repos/%s/%s/tarball/%s";
 
         const auto url = fmt(urlFmt, host, getOwner(input), getRepo(input),
             input.getRev()->to_string(Base::Base16, false));
@@ -307,6 +307,13 @@ struct GitHubInputScheme : GitArchiveInputScheme
                 host, getOwner(input), getRepo(input)))
             .applyOverrides(input.getRef(), input.getRev())
             .clone(destDir);
+    }
+
+    Headers makeHeadersWithAuthTokens(const std::string & host) const
+    {
+        Headers headers = GitArchiveInputScheme::makeHeadersWithAuthTokens(host);
+        headers.emplace_back("X-GitHub-Api-Version", "2022-11-28");
+        return headers;
     }
 };
 
