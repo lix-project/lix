@@ -157,4 +157,6 @@ in
   coredumps = runNixOSTestFor "x86_64-linux" ./coredumps;
 
   io_uring = runNixOSTestFor "x86_64-linux" ./io_uring;
+
+  fetchurl = runNixOSTestFor "x86_64-linux" ./fetchurl.nix;
 }

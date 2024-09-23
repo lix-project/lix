@@ -32,10 +32,7 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData)
 
     auto fetch = [&](const std::string & url) {
 
-        /* No need to do TLS verification, because we check the hash of
-           the result anyway. */
         FileTransferRequest request(url);
-        request.verifyTLS = false;
 
         auto raw = fileTransfer->download(std::move(request));
         auto decompressor = makeDecompressionSource(
