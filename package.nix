@@ -110,7 +110,7 @@
 }:
 
 # gcc miscompiles coroutines at least until 13.2, possibly longer
-assert stdenv.cc.isClang || lintInsteadOfBuild;
+assert stdenv.cc.isClang || lintInsteadOfBuild || internalApiDocs;
 
 let
   inherit (__forDefaults) canRunInstalled;
