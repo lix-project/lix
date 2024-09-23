@@ -6,6 +6,7 @@
 #include "types.hh"
 #include "store-api.hh"
 #include "build-result.hh"
+#include <concepts> // IWYU pragma: keep
 #include <kj/async.h>
 
 namespace nix {
@@ -71,17 +72,6 @@ struct Goal
     const bool isDependency;
 
     /**
-     * Goals that this goal is waiting for.
-     */
-    Goals waitees;
-
-    /**
-     * Goals waiting for this one to finish.  Must use weak pointers
-     * here to prevent cycles.
-     */
-    WeakGoals waiters;
-
-    /**
      * Number of goals we are/were waiting for that have failed.
      */
     size_t nrFailed = 0;
@@ -113,6 +103,9 @@ struct Goal
      */
     BuildResult buildResult;
 
+    // for use by Worker only. will go away once work() is a promise.
+    kj::Own<kj::PromiseFulfiller<void>> notify;
+
 protected:
     AsyncSemaphore::Token slotToken;
 
@@ -122,9 +115,6 @@ public:
 
     struct [[nodiscard]] StillAlive {};
     struct [[nodiscard]] ContinueImmediately {};
-    struct [[nodiscard]] WaitForGoals {
-        Goals goals;
-    };
     struct [[nodiscard]] WaitForWorld {
         kj::Promise<Outcome<void, Finished>> promise;
     };
@@ -141,7 +131,6 @@ public:
     struct [[nodiscard]] WorkResult : std::variant<
                                           StillAlive,
                                           ContinueImmediately,
-                                          WaitForGoals,
                                           WaitForWorld,
                                           Finished>
     {
@@ -151,6 +140,15 @@ public:
 
 protected:
     kj::Promise<Result<WorkResult>> waitForAWhile();
+    kj::Promise<Result<WorkResult>>
+    waitForGoals(kj::Array<std::pair<GoalPtr, kj::Promise<void>>> dependencies) noexcept;
+
+    template<std::derived_from<Goal>... G>
+    kj::Promise<Result<Goal::WorkResult>>
+    waitForGoals(std::pair<std::shared_ptr<G>, kj::Promise<void>>... goals) noexcept
+    {
+        return waitForGoals(kj::arrOf<std::pair<GoalPtr, kj::Promise<void>>>(std::move(goals)...));
+    }
 
 public:
 

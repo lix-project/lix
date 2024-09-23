@@ -1,4 +1,5 @@
 #include "goal.hh"
+#include "async-collect.hh"
 #include "worker.hh"
 #include <kj/time.h>
 
@@ -26,6 +27,34 @@ try {
     co_return ContinueImmediately{};
 } catch (...) {
     co_return std::current_exception();
+}
+
+kj::Promise<Result<Goal::WorkResult>>
+Goal::waitForGoals(kj::Array<std::pair<GoalPtr, kj::Promise<void>>> dependencies) noexcept
+try {
+    auto left = dependencies.size();
+    auto collectDeps = asyncCollect(std::move(dependencies));
+
+    while (auto item = co_await collectDeps.next()) {
+        left--;
+        auto & dep = *item;
+
+        trace(fmt("waitee '%s' done; %d left", dep->name, left));
+
+        if (dep->exitCode != Goal::ecSuccess) ++nrFailed;
+        if (dep->exitCode == Goal::ecNoSubstituters) ++nrNoSubstituters;
+        if (dep->exitCode == Goal::ecIncompleteClosure) ++nrIncompleteClosure;
+
+        waiteeDone(dep);
+
+        if (dep->exitCode == ecFailed && !settings.keepGoing) {
+            co_return result::success(ContinueImmediately{});
+        }
+    }
+
+    co_return result::success(ContinueImmediately{});
+} catch (...) {
+    co_return result::failure(std::current_exception());
 }
 
 }

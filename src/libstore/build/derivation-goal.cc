@@ -13,8 +13,11 @@
 
 #include <boost/outcome/try.hpp>
 #include <fstream>
+#include <kj/array.h>
 #include <kj/async-unix.h>
+#include <kj/async.h>
 #include <kj/debug.h>
+#include <kj/vector.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -173,7 +176,7 @@ try {
 
 
     state = &DerivationGoal::loadDerivation;
-    return {WaitForGoals{{worker.goalFactory().makePathSubstitutionGoal(drvPath)}}};
+    return waitForGoals(worker.goalFactory().makePathSubstitutionGoal(drvPath));
 } catch (...) {
     return {std::current_exception()};
 }
@@ -272,13 +275,13 @@ try {
     /* We are first going to try to create the invalid output paths
        through substitutes.  If that doesn't work, we'll build
        them. */
-    WaitForGoals result;
+    kj::Vector<std::pair<GoalPtr, kj::Promise<void>>> dependencies;
     if (settings.useSubstitutes) {
         if (parsedDrv->substitutesAllowed()) {
             for (auto & [outputName, status] : initialOutputs) {
                 if (!status.wanted) continue;
                 if (!status.known)
-                    result.goals.insert(
+                    dependencies.add(
                         worker.goalFactory().makeDrvOutputSubstitutionGoal(
                             DrvOutput{status.outputHash, outputName},
                             buildMode == bmRepair ? Repair : NoRepair
@@ -286,7 +289,7 @@ try {
                     );
                 else {
                     auto * cap = getDerivationCA(*drv);
-                    result.goals.insert(worker.goalFactory().makePathSubstitutionGoal(
+                    dependencies.add(worker.goalFactory().makePathSubstitutionGoal(
                         status.known->path,
                         buildMode == bmRepair ? Repair : NoRepair,
                         cap ? std::optional { *cap } : std::nullopt));
@@ -297,11 +300,11 @@ try {
         }
     }
 
-    if (result.goals.empty()) { /* to prevent hang (no wake-up event) */
+    if (dependencies.empty()) { /* to prevent hang (no wake-up event) */
         return outputsSubstitutionTried(inBuildSlot);
     } else {
         state = &DerivationGoal::outputsSubstitutionTried;
-        return {std::move(result)};
+        return waitForGoals(dependencies.releaseAsArray());
     }
 } catch (...) {
     return {std::current_exception()};
@@ -383,7 +386,7 @@ try {
    produced using a substitute.  So we have to build instead. */
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::gaveUpOnSubstitution(bool inBuildSlot) noexcept
 try {
-    WaitForGoals result;
+    kj::Vector<std::pair<GoalPtr, kj::Promise<void>>> dependencies;
 
     /* At this point we are building all outputs, so if more are wanted there
        is no need to restart. */
@@ -396,7 +399,7 @@ try {
 
         addWaiteeDerivedPath = [&](ref<SingleDerivedPath> inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode) {
             if (!inputNode.value.empty())
-                result.goals.insert(worker.goalFactory().makeGoal(
+                dependencies.add(worker.goalFactory().makeGoal(
                     DerivedPath::Built {
                         .drvPath = inputDrv,
                         .outputs = inputNode.value,
@@ -441,14 +444,14 @@ try {
         if (!settings.useSubstitutes)
             throw Error("dependency '%s' of '%s' does not exist, and substitution is disabled",
                 worker.store.printStorePath(i), worker.store.printStorePath(drvPath));
-        result.goals.insert(worker.goalFactory().makePathSubstitutionGoal(i));
+        dependencies.add(worker.goalFactory().makePathSubstitutionGoal(i));
     }
 
-    if (result.goals.empty()) {/* to prevent hang (no wake-up event) */
+    if (dependencies.empty()) {/* to prevent hang (no wake-up event) */
         return inputsRealised(inBuildSlot);
     } else {
         state = &DerivationGoal::inputsRealised;
-        return {result};
+        return waitForGoals(dependencies.releaseAsArray());
     }
 } catch (...) {
     return {std::current_exception()};
@@ -491,7 +494,7 @@ try {
         }
 
     /* Check each path (slow!). */
-    WaitForGoals result;
+    kj::Vector<std::pair<GoalPtr, kj::Promise<void>>> dependencies;
     for (auto & i : outputClosure) {
         if (worker.pathContentsGood(i)) continue;
         printError(
@@ -499,9 +502,9 @@ try {
             worker.store.printStorePath(i), worker.store.printStorePath(drvPath));
         auto drvPath2 = outputsToDrv.find(i);
         if (drvPath2 == outputsToDrv.end())
-            result.goals.insert(worker.goalFactory().makePathSubstitutionGoal(i, Repair));
+            dependencies.add(worker.goalFactory().makePathSubstitutionGoal(i, Repair));
         else
-            result.goals.insert(worker.goalFactory().makeGoal(
+            dependencies.add(worker.goalFactory().makeGoal(
                 DerivedPath::Built {
                     .drvPath = makeConstantStorePathRef(drvPath2->second),
                     .outputs = OutputsSpec::All { },
@@ -509,12 +512,12 @@ try {
                 bmRepair));
     }
 
-    if (result.goals.empty()) {
+    if (dependencies.empty()) {
         return {done(BuildResult::AlreadyValid, assertPathValidity())};
     }
 
     state = &DerivationGoal::closureRepaired;
-    return {result};
+    return waitForGoals(dependencies.releaseAsArray());
 } catch (...) {
     return {std::current_exception()};
 }
@@ -614,11 +617,12 @@ try {
                        worker.store.printStorePath(pathResolved),
                    });
 
-            resolvedDrvGoal = worker.goalFactory().makeDerivationGoal(
+            auto dependency = worker.goalFactory().makeDerivationGoal(
                 pathResolved, wantedOutputs, buildMode);
+            resolvedDrvGoal = dependency.first;
 
             state = &DerivationGoal::resolvedFinished;
-            return {WaitForGoals{{resolvedDrvGoal}}};
+            return waitForGoals(std::move(dependency));
         }
 
         std::function<void(const StorePath &, const DerivedPathMap<StringSet>::ChildNode &)> accumInputPaths;

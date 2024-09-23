@@ -28,10 +28,10 @@ struct HookInstance;
 class GoalFactory
 {
 public:
-    virtual std::shared_ptr<DerivationGoal> makeDerivationGoal(
+    virtual std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> makeDerivationGoal(
         const StorePath & drvPath, const OutputsSpec & wantedOutputs, BuildMode buildMode = bmNormal
     ) = 0;
-    virtual std::shared_ptr<DerivationGoal> makeBasicDerivationGoal(
+    virtual std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> makeBasicDerivationGoal(
         const StorePath & drvPath,
         const BasicDerivation & drv,
         const OutputsSpec & wantedOutputs,
@@ -41,12 +41,14 @@ public:
     /**
      * @ref SubstitutionGoal "substitution goal"
      */
-    virtual std::shared_ptr<PathSubstitutionGoal> makePathSubstitutionGoal(
+    virtual std::pair<std::shared_ptr<PathSubstitutionGoal>, kj::Promise<void>>
+    makePathSubstitutionGoal(
         const StorePath & storePath,
         RepairFlag repair = NoRepair,
         std::optional<ContentAddress> ca = std::nullopt
     ) = 0;
-    virtual std::shared_ptr<DrvOutputSubstitutionGoal> makeDrvOutputSubstitutionGoal(
+    virtual std::pair<std::shared_ptr<DrvOutputSubstitutionGoal>, kj::Promise<void>>
+    makeDrvOutputSubstitutionGoal(
         const DrvOutput & id,
         RepairFlag repair = NoRepair,
         std::optional<ContentAddress> ca = std::nullopt
@@ -58,7 +60,8 @@ public:
      * It will be a `DerivationGoal` for a `DerivedPath::Built` or
      * a `SubstitutionGoal` for a `DerivedPath::Opaque`.
      */
-    virtual GoalPtr makeGoal(const DerivedPath & req, BuildMode buildMode = bmNormal) = 0;
+    virtual std::pair<GoalPtr, kj::Promise<void>>
+    makeGoal(const DerivedPath & req, BuildMode buildMode = bmNormal) = 0;
 };
 
 // elaborate hoax to let goals access factory methods while hiding them from the public
@@ -94,13 +97,27 @@ private:
      */
     WeakGoals awake;
 
+    template<typename G>
+    struct CachedGoal
+    {
+        std::weak_ptr<G> goal;
+        kj::Own<kj::ForkedPromise<void>> promise;
+        kj::Own<kj::PromiseFulfiller<void>> fulfiller;
+
+        CachedGoal()
+        {
+            auto pf = kj::newPromiseAndFulfiller<void>();
+            promise = kj::heap(pf.promise.fork());
+            fulfiller = std::move(pf.fulfiller);
+        }
+    };
     /**
      * Maps used to prevent multiple instantiations of a goal for the
      * same derivation / path.
      */
-    std::map<StorePath, std::weak_ptr<DerivationGoal>> derivationGoals;
-    std::map<StorePath, std::weak_ptr<PathSubstitutionGoal>> substitutionGoals;
-    std::map<DrvOutput, std::weak_ptr<DrvOutputSubstitutionGoal>> drvOutputSubstitutionGoals;
+    std::map<StorePath, CachedGoal<DerivationGoal>> derivationGoals;
+    std::map<StorePath, CachedGoal<PathSubstitutionGoal>> substitutionGoals;
+    std::map<DrvOutput, CachedGoal<DrvOutputSubstitutionGoal>> drvOutputSubstitutionGoals;
 
     /**
      * Cache for pathContentsGood().
@@ -226,21 +243,31 @@ public:
      * @ref DerivationGoal "derivation goal"
      */
 private:
-    std::shared_ptr<DerivationGoal> makeDerivationGoalCommon(
+    std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> makeDerivationGoalCommon(
         const StorePath & drvPath, const OutputsSpec & wantedOutputs,
         std::function<std::shared_ptr<DerivationGoal>()> mkDrvGoal);
-    std::shared_ptr<DerivationGoal> makeDerivationGoal(
+    std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> makeDerivationGoal(
         const StorePath & drvPath,
         const OutputsSpec & wantedOutputs, BuildMode buildMode = bmNormal) override;
-    std::shared_ptr<DerivationGoal> makeBasicDerivationGoal(
+    std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> makeBasicDerivationGoal(
         const StorePath & drvPath, const BasicDerivation & drv,
         const OutputsSpec & wantedOutputs, BuildMode buildMode = bmNormal) override;
 
     /**
      * @ref SubstitutionGoal "substitution goal"
      */
-    std::shared_ptr<PathSubstitutionGoal> makePathSubstitutionGoal(const StorePath & storePath, RepairFlag repair = NoRepair, std::optional<ContentAddress> ca = std::nullopt) override;
-    std::shared_ptr<DrvOutputSubstitutionGoal> makeDrvOutputSubstitutionGoal(const DrvOutput & id, RepairFlag repair = NoRepair, std::optional<ContentAddress> ca = std::nullopt) override;
+    std::pair<std::shared_ptr<PathSubstitutionGoal>, kj::Promise<void>>
+    makePathSubstitutionGoal(
+        const StorePath & storePath,
+        RepairFlag repair = NoRepair,
+        std::optional<ContentAddress> ca = std::nullopt
+    ) override;
+    std::pair<std::shared_ptr<DrvOutputSubstitutionGoal>, kj::Promise<void>>
+    makeDrvOutputSubstitutionGoal(
+        const DrvOutput & id,
+        RepairFlag repair = NoRepair,
+        std::optional<ContentAddress> ca = std::nullopt
+    ) override;
 
     /**
      * Make a goal corresponding to the `DerivedPath`.
@@ -248,13 +275,16 @@ private:
      * It will be a `DerivationGoal` for a `DerivedPath::Built` or
      * a `SubstitutionGoal` for a `DerivedPath::Opaque`.
      */
-    GoalPtr makeGoal(const DerivedPath & req, BuildMode buildMode = bmNormal) override;
+    std::pair<GoalPtr, kj::Promise<void>>
+    makeGoal(const DerivedPath & req, BuildMode buildMode = bmNormal) override;
 
 public:
+    using Targets = std::map<GoalPtr, kj::Promise<void>>;
+
     /**
      * Loop until the specified top-level goals have finished.
      */
-    Goals run(std::function<Goals (GoalFactory &)> req);
+    std::vector<GoalPtr> run(std::function<Targets (GoalFactory &)> req);
 
     /***
      * The exit status in case of failure.

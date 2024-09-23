@@ -4,6 +4,9 @@
 #include "worker.hh"
 #include "substitution-goal.hh"
 #include "signals.hh"
+#include <kj/array.h>
+#include <kj/async.h>
+#include <kj/vector.h>
 
 namespace nix {
 
@@ -106,7 +109,7 @@ try {
         return tryNext(inBuildSlot);
     }
 
-    WaitForGoals result;
+    kj::Vector<std::pair<GoalPtr, kj::Promise<void>>> dependencies;
     for (const auto & [depId, depPath] : outputInfo->dependentRealisations) {
         if (depId != id) {
             if (auto localOutputInfo = worker.store.queryRealisation(depId);
@@ -122,17 +125,17 @@ try {
                 );
                 return tryNext(inBuildSlot);
             }
-            result.goals.insert(worker.goalFactory().makeDrvOutputSubstitutionGoal(depId));
+            dependencies.add(worker.goalFactory().makeDrvOutputSubstitutionGoal(depId));
         }
     }
 
-    result.goals.insert(worker.goalFactory().makePathSubstitutionGoal(outputInfo->outPath));
+    dependencies.add(worker.goalFactory().makePathSubstitutionGoal(outputInfo->outPath));
 
-    if (result.goals.empty()) {
+    if (dependencies.empty()) {
         return outPathValid(inBuildSlot);
     } else {
         state = &DrvOutputSubstitutionGoal::outPathValid;
-        return {std::move(result)};
+        return waitForGoals(dependencies.releaseAsArray());
     }
 } catch (...) {
     return {std::current_exception()};

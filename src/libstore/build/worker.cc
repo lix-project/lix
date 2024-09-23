@@ -52,26 +52,28 @@ Worker::~Worker()
 }
 
 
-std::shared_ptr<DerivationGoal> Worker::makeDerivationGoalCommon(
+std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeDerivationGoalCommon(
     const StorePath & drvPath,
     const OutputsSpec & wantedOutputs,
     std::function<std::shared_ptr<DerivationGoal>()> mkDrvGoal)
 {
-    std::weak_ptr<DerivationGoal> & goal_weak = derivationGoals[drvPath];
-    std::shared_ptr<DerivationGoal> goal = goal_weak.lock();
+    auto & goal_weak = derivationGoals[drvPath];
+    std::shared_ptr<DerivationGoal> goal = goal_weak.goal.lock();
     if (!goal) {
         goal = mkDrvGoal();
-        goal_weak = goal;
+        goal->notify = std::move(goal_weak.fulfiller);
+        goal_weak.goal = goal;
         wakeUp(goal);
     } else {
         goal->addWantedOutputs(wantedOutputs);
     }
-    return goal;
+    return {goal, goal_weak.promise->addBranch()};
 }
 
 
-std::shared_ptr<DerivationGoal> Worker::makeDerivationGoal(const StorePath & drvPath,
-    const OutputsSpec & wantedOutputs, BuildMode buildMode)
+std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeDerivationGoal(
+    const StorePath & drvPath, const OutputsSpec & wantedOutputs, BuildMode buildMode
+)
 {
     return makeDerivationGoalCommon(
         drvPath,
@@ -89,8 +91,12 @@ std::shared_ptr<DerivationGoal> Worker::makeDerivationGoal(const StorePath & drv
 }
 
 
-std::shared_ptr<DerivationGoal> Worker::makeBasicDerivationGoal(const StorePath & drvPath,
-    const BasicDerivation & drv, const OutputsSpec & wantedOutputs, BuildMode buildMode)
+std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeBasicDerivationGoal(
+    const StorePath & drvPath,
+    const BasicDerivation & drv,
+    const OutputsSpec & wantedOutputs,
+    BuildMode buildMode
+)
 {
     return makeDerivationGoalCommon(
         drvPath,
@@ -108,55 +114,63 @@ std::shared_ptr<DerivationGoal> Worker::makeBasicDerivationGoal(const StorePath 
 }
 
 
-std::shared_ptr<PathSubstitutionGoal> Worker::makePathSubstitutionGoal(const StorePath & path, RepairFlag repair, std::optional<ContentAddress> ca)
+std::pair<std::shared_ptr<PathSubstitutionGoal>, kj::Promise<void>>
+Worker::makePathSubstitutionGoal(
+    const StorePath & path, RepairFlag repair, std::optional<ContentAddress> ca
+)
 {
-    std::weak_ptr<PathSubstitutionGoal> & goal_weak = substitutionGoals[path];
-    auto goal = goal_weak.lock(); // FIXME
+    auto & goal_weak = substitutionGoals[path];
+    auto goal = goal_weak.goal.lock(); // FIXME
     if (!goal) {
         goal = std::make_shared<PathSubstitutionGoal>(path, *this, running, repair, ca);
-        goal_weak = goal;
+        goal->notify = std::move(goal_weak.fulfiller);
+        goal_weak.goal = goal;
         wakeUp(goal);
     }
-    return goal;
+    return {goal, goal_weak.promise->addBranch()};
 }
 
 
-std::shared_ptr<DrvOutputSubstitutionGoal> Worker::makeDrvOutputSubstitutionGoal(const DrvOutput& id, RepairFlag repair, std::optional<ContentAddress> ca)
+std::pair<std::shared_ptr<DrvOutputSubstitutionGoal>, kj::Promise<void>>
+Worker::makeDrvOutputSubstitutionGoal(
+    const DrvOutput & id, RepairFlag repair, std::optional<ContentAddress> ca
+)
 {
-    std::weak_ptr<DrvOutputSubstitutionGoal> & goal_weak = drvOutputSubstitutionGoals[id];
-    auto goal = goal_weak.lock(); // FIXME
+    auto & goal_weak = drvOutputSubstitutionGoals[id];
+    auto goal = goal_weak.goal.lock(); // FIXME
     if (!goal) {
         goal = std::make_shared<DrvOutputSubstitutionGoal>(id, *this, running, repair, ca);
-        goal_weak = goal;
+        goal->notify = std::move(goal_weak.fulfiller);
+        goal_weak.goal = goal;
         wakeUp(goal);
     }
-    return goal;
+    return {goal, goal_weak.promise->addBranch()};
 }
 
 
-GoalPtr Worker::makeGoal(const DerivedPath & req, BuildMode buildMode)
+std::pair<GoalPtr, kj::Promise<void>> Worker::makeGoal(const DerivedPath & req, BuildMode buildMode)
 {
     return std::visit(overloaded {
-        [&](const DerivedPath::Built & bfd) -> GoalPtr {
+        [&](const DerivedPath::Built & bfd) -> std::pair<GoalPtr, kj::Promise<void>> {
             if (auto bop = std::get_if<DerivedPath::Opaque>(&*bfd.drvPath))
                 return makeDerivationGoal(bop->path, bfd.outputs, buildMode);
             else
                 throw UnimplementedError("Building dynamic derivations in one shot is not yet implemented.");
         },
-        [&](const DerivedPath::Opaque & bo) -> GoalPtr {
+        [&](const DerivedPath::Opaque & bo) -> std::pair<GoalPtr, kj::Promise<void>> {
             return makePathSubstitutionGoal(bo.path, buildMode == bmRepair ? Repair : NoRepair);
         },
     }, req.raw());
 }
 
 
-template<typename K, typename G>
-static void removeGoal(std::shared_ptr<G> goal, std::map<K, std::weak_ptr<G>> & goalMap)
+template<typename G>
+static void removeGoal(std::shared_ptr<G> goal, auto & goalMap)
 {
     /* !!! inefficient */
     for (auto i = goalMap.begin();
          i != goalMap.end(); )
-        if (i->second.lock() == goal) {
+        if (i->second.goal.lock() == goal) {
             auto j = i; ++j;
             goalMap.erase(i);
             i = j;
@@ -177,33 +191,8 @@ void Worker::goalFinished(GoalPtr goal, Goal::Finished & f)
     hashMismatch |= f.hashMismatch;
     checkMismatch |= f.checkMismatch;
 
-    for (auto & i : goal->waiters) {
-        if (GoalPtr waiting = i.lock()) {
-            assert(waiting->waitees.count(goal));
-            waiting->waitees.erase(goal);
-
-            waiting->trace(fmt("waitee '%s' done; %d left", goal->name, waiting->waitees.size()));
-
-            if (f.exitCode != Goal::ecSuccess) ++waiting->nrFailed;
-            if (f.exitCode == Goal::ecNoSubstituters) ++waiting->nrNoSubstituters;
-            if (f.exitCode == Goal::ecIncompleteClosure) ++waiting->nrIncompleteClosure;
-
-            if (waiting->waitees.empty() || (f.exitCode == Goal::ecFailed && !settings.keepGoing)) {
-                /* If we failed and keepGoing is not set, we remove all
-                   remaining waitees. */
-                for (auto & i : waiting->waitees) {
-                    i->waiters.extract(waiting);
-                }
-                waiting->waitees.clear();
-
-                wakeUp(waiting);
-            }
-
-            waiting->waiteeDone(goal);
-        }
-    }
-    goal->waiters.clear();
     removeGoal(goal);
+    goal->notify->fulfill();
     goal->cleanup();
 }
 
@@ -213,12 +202,6 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
         overloaded{
             [&](Goal::StillAlive) {},
             [&](Goal::ContinueImmediately) { wakeUp(goal); },
-            [&](Goal::WaitForGoals & w) {
-                for (auto & dep : w.goals) {
-                    goal->waitees.insert(dep);
-                    dep->waiters.insert(goal);
-                }
-            },
             [&](Goal::WaitForWorld & w) {
                 childStarted(goal, w.promise.then([](auto r) -> Result<Goal::WorkResult> {
                     if (r.has_value()) {
@@ -310,7 +293,7 @@ void Worker::updateStatistics()
     }
 }
 
-Goals Worker::run(std::function<Goals (GoalFactory &)> req)
+std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
 {
     auto _topGoals = req(goalFactory());
 
@@ -320,7 +303,10 @@ Goals Worker::run(std::function<Goals (GoalFactory &)> req)
 
     updateStatistics();
 
-    topGoals = _topGoals;
+    topGoals.clear();
+    for (auto & [goal, _promise] : _topGoals) {
+        topGoals.insert(goal);
+    }
 
     debug("entered goal loop");
 
@@ -374,7 +360,11 @@ Goals Worker::run(std::function<Goals (GoalFactory &)> req)
     assert(!settings.keepGoing || awake.empty());
     assert(!settings.keepGoing || children.isEmpty());
 
-    return _topGoals;
+    std::vector<GoalPtr> results;
+    for (auto & [i, _p] : _topGoals) {
+        results.push_back(i);
+    }
+    return results;
 }
 
 void Worker::waitForInput()

@@ -3,6 +3,8 @@
 #include "nar-info.hh"
 #include "signals.hh"
 #include "finally.hh"
+#include <kj/array.h>
+#include <kj/vector.h>
 
 namespace nix {
 
@@ -160,16 +162,16 @@ try {
 
     /* To maintain the closure invariant, we first have to realise the
        paths referenced by this one. */
-    WaitForGoals result;
+    kj::Vector<std::pair<GoalPtr, kj::Promise<void>>> dependencies;
     for (auto & i : info->references)
         if (i != storePath) /* ignore self-references */
-            result.goals.insert(worker.goalFactory().makePathSubstitutionGoal(i));
+            dependencies.add(worker.goalFactory().makePathSubstitutionGoal(i));
 
-    if (result.goals.empty()) {/* to prevent hang (no wake-up event) */
+    if (dependencies.empty()) {/* to prevent hang (no wake-up event) */
         return referencesValid(inBuildSlot);
     } else {
         state = &PathSubstitutionGoal::referencesValid;
-        return {std::move(result)};
+        return waitForGoals(dependencies.releaseAsArray());
     }
 } catch (...) {
     return {std::current_exception()};

@@ -17,9 +17,9 @@ void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMod
     Worker worker(*this, evalStore ? *evalStore : *this, aio);
 
     auto goals = runWorker(worker, [&](GoalFactory & gf) {
-        Goals goals;
+        Worker::Targets goals;
         for (auto & br : reqs)
-            goals.insert(gf.makeGoal(br, buildMode));
+            goals.emplace(gf.makeGoal(br, buildMode));
         return goals;
     });
 
@@ -60,11 +60,11 @@ std::vector<KeyedBuildResult> Store::buildPathsWithResults(
     std::vector<std::pair<const DerivedPath &, GoalPtr>> state;
 
     auto goals = runWorker(worker, [&](GoalFactory & gf) {
-        Goals goals;
+        Worker::Targets goals;
         for (const auto & req : reqs) {
             auto goal = gf.makeGoal(req, buildMode);
-            goals.insert(goal);
-            state.push_back({req, goal});
+            state.push_back({req, goal.first});
+            goals.emplace(std::move(goal));
         }
         return goals;
     });
@@ -84,8 +84,10 @@ BuildResult Store::buildDerivation(const StorePath & drvPath, const BasicDerivat
     Worker worker(*this, *this, aio);
 
     try {
-        auto goals = runWorker(worker, [&](GoalFactory & gf) -> Goals {
-            return Goals{gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode)};
+        auto goals = runWorker(worker, [&](GoalFactory & gf) {
+            Worker::Targets goals;
+            goals.emplace(gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode));
+            return goals;
         });
         auto goal = *goals.begin();
         return goal->buildResult.restrictTo(DerivedPath::Built {
@@ -110,7 +112,9 @@ void Store::ensurePath(const StorePath & path)
     Worker worker(*this, *this, aio);
 
     auto goals = runWorker(worker, [&](GoalFactory & gf) {
-        return Goals{gf.makePathSubstitutionGoal(path)};
+        Worker::Targets goals;
+        goals.emplace(gf.makePathSubstitutionGoal(path));
+        return goals;
     });
     auto goal = *goals.begin();
 
@@ -130,7 +134,9 @@ void Store::repairPath(const StorePath & path)
     Worker worker(*this, *this, aio);
 
     auto goals = runWorker(worker, [&](GoalFactory & gf) {
-        return Goals{gf.makePathSubstitutionGoal(path, Repair)};
+        Worker::Targets goals;
+        goals.emplace(gf.makePathSubstitutionGoal(path, Repair));
+        return goals;
     });
     auto goal = *goals.begin();
 
@@ -140,14 +146,16 @@ void Store::repairPath(const StorePath & path)
         auto info = queryPathInfo(path);
         if (info->deriver && isValidPath(*info->deriver)) {
             worker.run([&](GoalFactory & gf) {
-                return Goals{gf.makeGoal(
+                Worker::Targets goals;
+                goals.emplace(gf.makeGoal(
                     DerivedPath::Built{
                         .drvPath = makeConstantStorePathRef(*info->deriver),
                         // FIXME: Should just build the specific output we need.
                         .outputs = OutputsSpec::All{},
                     },
                     bmRepair
-                )};
+                ));
+                return goals;
             });
         } else
             throw Error(worker.failingExitStatus(), "cannot repair path '%s'", printStorePath(path));
