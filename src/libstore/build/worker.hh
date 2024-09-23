@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "async-semaphore.hh"
 #include "notifying-counter.hh"
 #include "types.hh"
 #include "lock.hh"
@@ -94,22 +95,6 @@ private:
     WeakGoals awake;
 
     /**
-     * Goals waiting for a build slot.
-     */
-    WeakGoals wantingToBuild;
-
-    /**
-     * Number of build slots occupied.  This includes local builds but does not
-     * include substitutions or remote builds via the build hook.
-     */
-    unsigned int nrLocalBuilds;
-
-    /**
-     * Number of substitution slots occupied.
-     */
-    unsigned int nrSubstitutions;
-
-    /**
      * Maps used to prevent multiple instantiations of a goal for the
      * same derivation / path.
      */
@@ -149,12 +134,6 @@ private:
     kj::Own<kj::PromiseFulfiller<void>> childFinished;
 
     /**
-     * Put `goal` to sleep until a build slot becomes available (which
-     * might be right away).
-     */
-    void waitForBuildSlot(GoalPtr goal);
-
-    /**
      * Wake up a goal (i.e., there is something for it to do).
      */
     void wakeUp(GoalPtr goal);
@@ -170,16 +149,14 @@ private:
     void removeGoal(GoalPtr goal);
 
     /**
-     * Registers a running child process.  `inBuildSlot` means that
-     * the process counts towards the jobs limit.
+     * Registers a running child process.
      */
-    void childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> promise,
-        bool inBuildSlot);
+    void childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> promise);
 
     /**
      * Unregisters a running child process.
      */
-    void childTerminated(GoalPtr goal, bool inBuildSlot);
+    void childTerminated(GoalPtr goal);
 
     /**
       * Pass current stats counters to the logger for progress bar updates.
@@ -205,6 +182,7 @@ public:
     Store & store;
     Store & evalStore;
     kj::AsyncIoContext & aio;
+    AsyncSemaphore substitutions, localBuilds;
 
 private:
     kj::TaskSet children;

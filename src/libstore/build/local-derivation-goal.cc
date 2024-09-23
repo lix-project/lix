@@ -156,8 +156,11 @@ try {
     if (!inBuildSlot) {
         state = &DerivationGoal::tryToBuild;
         outputLocks.unlock();
-        if (0U != settings.maxBuildJobs) {
-            return {WaitForSlot{}};
+        if (worker.localBuilds.capacity() > 0) {
+            return worker.localBuilds.acquire().then([this](auto token) {
+                slotToken = std::move(token);
+                return work();
+            });
         }
         if (getMachines().empty()) {
             throw Error(
@@ -248,7 +251,7 @@ try {
         state = &DerivationGoal::buildDone;
 
         started();
-        return {WaitForWorld{std::move(promise), true}};
+        return {WaitForWorld{std::move(promise)}};
 
     } catch (BuildError & e) {
         outputLocks.unlock();

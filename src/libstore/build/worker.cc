@@ -27,11 +27,13 @@ Worker::Worker(Store & store, Store & evalStore, kj::AsyncIoContext & aio)
     , store(store)
     , evalStore(evalStore)
     , aio(aio)
+      /* Make sure that we are always allowed to run at least one substitution.
+         This prevents infinite waiting. */
+    , substitutions(std::max<unsigned>(1, settings.maxSubstitutionJobs))
+    , localBuilds(settings.maxBuildJobs)
     , children(errorHandler)
 {
     /* Debugging: prevent recursive workers. */
-    nrLocalBuilds = 0;
-    nrSubstitutions = 0;
 }
 
 
@@ -210,7 +212,6 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
     std::visit(
         overloaded{
             [&](Goal::StillAlive) {},
-            [&](Goal::WaitForSlot) { waitForBuildSlot(goal); },
             [&](Goal::ContinueImmediately) { wakeUp(goal); },
             [&](Goal::WaitForGoals & w) {
                 for (auto & dep : w.goals) {
@@ -219,19 +220,15 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
                 }
             },
             [&](Goal::WaitForWorld & w) {
-                childStarted(
-                    goal,
-                    w.promise.then([](auto r) -> Result<Goal::WorkResult> {
-                        if (r.has_value()) {
-                            return {Goal::ContinueImmediately{}};
-                        } else if (r.has_error()) {
-                            return {std::move(r).error()};
-                        } else {
-                            return r.exception();
-                        }
-                    }),
-                    w.inBuildSlot
-                );
+                childStarted(goal, w.promise.then([](auto r) -> Result<Goal::WorkResult> {
+                    if (r.has_value()) {
+                        return {Goal::ContinueImmediately{}};
+                    } else if (r.has_error()) {
+                        return {std::move(r).error()};
+                    } else {
+                        return r.exception();
+                    }
+                }));
             },
             [&](Goal::Finished & f) { goalFinished(goal, f); },
         },
@@ -268,8 +265,7 @@ void Worker::wakeUp(GoalPtr goal)
 }
 
 
-void Worker::childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> promise,
-    bool inBuildSlot)
+void Worker::childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> promise)
 {
     children.add(promise
         .then([this, goal](auto result) {
@@ -279,64 +275,17 @@ void Worker::childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> pr
                 childException = result.assume_error();
             }
         })
-        .attach(Finally{[this, goal, inBuildSlot] {
-            childTerminated(goal, inBuildSlot);
+        .attach(Finally{[this, goal] {
+            childTerminated(goal);
         }}));
-    if (inBuildSlot) {
-        switch (goal->jobCategory()) {
-        case JobCategory::Substitution:
-            nrSubstitutions++;
-            break;
-        case JobCategory::Build:
-            nrLocalBuilds++;
-            break;
-        default:
-            abort();
-        }
-    }
 }
 
 
-void Worker::childTerminated(GoalPtr goal, bool inBuildSlot)
+void Worker::childTerminated(GoalPtr goal)
 {
     if (childFinished) {
         childFinished->fulfill();
     }
-
-    if (inBuildSlot) {
-        switch (goal->jobCategory()) {
-        case JobCategory::Substitution:
-            assert(nrSubstitutions > 0);
-            nrSubstitutions--;
-            break;
-        case JobCategory::Build:
-            assert(nrLocalBuilds > 0);
-            nrLocalBuilds--;
-            break;
-        default:
-            abort();
-        }
-    }
-
-    /* Wake up goals waiting for a build slot. */
-    for (auto & j : wantingToBuild) {
-        GoalPtr goal = j.lock();
-        if (goal) wakeUp(goal);
-    }
-
-    wantingToBuild.clear();
-}
-
-
-void Worker::waitForBuildSlot(GoalPtr goal)
-{
-    goal->trace("wait for build slot");
-    bool isSubstitutionGoal = goal->jobCategory() == JobCategory::Substitution;
-    if ((!isSubstitutionGoal && nrLocalBuilds < settings.maxBuildJobs) ||
-        (isSubstitutionGoal && nrSubstitutions < settings.maxSubstitutionJobs))
-        wakeUp(goal); /* we can do it right away */
-    else
-        wantingToBuild.insert(goal);
 }
 
 
@@ -394,16 +343,11 @@ Goals Worker::run(std::function<Goals (GoalFactory &)> req)
             awake.clear();
             for (auto & goal : awake2) {
                 checkInterrupt();
-                /* Make sure that we are always allowed to run at least one substitution.
-                   This prevents infinite waiting. */
-                const bool inSlot = goal->jobCategory() == JobCategory::Substitution
-                    ? nrSubstitutions < std::max(1U, (unsigned int) settings.maxSubstitutionJobs)
-                    : nrLocalBuilds < settings.maxBuildJobs;
-                auto result = goal->work(inSlot);
+                auto result = goal->work();
                 if (result.poll(aio.waitScope)) {
                     handleWorkResult(goal, result.wait(aio.waitScope).value());
                 } else {
-                    childStarted(goal, std::move(result), false);
+                    childStarted(goal, std::move(result));
                 }
 
                 if (topGoals.empty()) break; // stuff may have been cancelled
@@ -428,7 +372,6 @@ Goals Worker::run(std::function<Goals (GoalFactory &)> req)
        exited while some of its subgoals were still active.  But if
        --keep-going *is* set, then they must all be finished now. */
     assert(!settings.keepGoing || awake.empty());
-    assert(!settings.keepGoing || wantingToBuild.empty());
     assert(!settings.keepGoing || children.isEmpty());
 
     return _topGoals;

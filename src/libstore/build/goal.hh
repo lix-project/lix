@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "async-semaphore.hh"
 #include "result.hh"
 #include "types.hh"
 #include "store-api.hh"
@@ -112,19 +113,20 @@ struct Goal
      */
     BuildResult buildResult;
 
+protected:
+    AsyncSemaphore::Token slotToken;
+
 public:
 
     struct Finished;
 
     struct [[nodiscard]] StillAlive {};
-    struct [[nodiscard]] WaitForSlot {};
     struct [[nodiscard]] ContinueImmediately {};
     struct [[nodiscard]] WaitForGoals {
         Goals goals;
     };
     struct [[nodiscard]] WaitForWorld {
         kj::Promise<Outcome<void, Finished>> promise;
-        bool inBuildSlot;
     };
     struct [[nodiscard]] Finished {
         ExitCode exitCode;
@@ -138,7 +140,6 @@ public:
 
     struct [[nodiscard]] WorkResult : std::variant<
                                           StillAlive,
-                                          WaitForSlot,
                                           ContinueImmediately,
                                           WaitForGoals,
                                           WaitForWorld,
@@ -168,7 +169,7 @@ public:
         trace("goal destroyed");
     }
 
-    virtual kj::Promise<Result<WorkResult>> work(bool inBuildSlot) noexcept = 0;
+    virtual kj::Promise<Result<WorkResult>> work() noexcept = 0;
 
     virtual void waiteeDone(GoalPtr waitee) { }
 

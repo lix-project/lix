@@ -99,7 +99,7 @@ public:
         return "a$" + std::string(storePath.name()) + "$" + worker.store.printStorePath(storePath);
     }
 
-    kj::Promise<Result<WorkResult>> work(bool inBuildSlot) noexcept override;
+    kj::Promise<Result<WorkResult>> work() noexcept override;
 
     /**
      * The states.

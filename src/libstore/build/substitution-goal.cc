@@ -45,9 +45,9 @@ Goal::Finished PathSubstitutionGoal::done(
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::work(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::work() noexcept
 {
-    return (this->*state)(inBuildSlot);
+    return (this->*state)(slotToken.valid());
 }
 
 
@@ -203,7 +203,10 @@ try {
     trace("trying to run");
 
     if (!inBuildSlot) {
-        return {WaitForSlot{}};
+        return worker.substitutions.acquire().then([this](auto token) {
+            slotToken = std::move(token);
+            return work();
+        });
     }
 
     maintainRunningSubstitutions = worker.runningSubstitutions.addTemporarily(1);
@@ -236,7 +239,7 @@ try {
 
     state = &PathSubstitutionGoal::finished;
     return {WaitForWorld{
-        pipe.promise.then([]() -> Outcome<void, Finished> { return result::success(); }), true
+        pipe.promise.then([]() -> Outcome<void, Finished> { return result::success(); })
     }};
 } catch (...) {
     return {std::current_exception()};
@@ -248,6 +251,7 @@ try {
     trace("substitute finished");
 
     try {
+        slotToken = {};
         thr.get();
     } catch (std::exception & e) {
         printError(e.what());

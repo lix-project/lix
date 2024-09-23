@@ -134,9 +134,9 @@ Goal::Finished DerivationGoal::timedOut(Error && ex)
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::work(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::work() noexcept
 {
-    return (this->*state)(inBuildSlot);
+    return (this->*state)(slotToken.valid());
 }
 
 void DerivationGoal::addWantedOutputs(const OutputsSpec & outputs)
@@ -783,7 +783,7 @@ try {
                     buildResult.startTime = time(0); // inexact
                     state = &DerivationGoal::buildDone;
                     started();
-                    return {{WaitForWorld{std::move(a.promise), false}}};
+                    return {{WaitForWorld{std::move(a.promise)}}};
                 },
                 [&](HookReply::Postpone) -> std::optional<kj::Promise<Result<WorkResult>>> {
                     /* Not now; wait until at least one child finishes or
@@ -980,6 +980,7 @@ kj::Promise<Result<Goal::WorkResult>> DerivationGoal::buildDone(bool inBuildSlot
 try {
     trace("build done");
 
+    slotToken = {};
     Finally releaseBuildUser([&](){ this->cleanupHookFinally(); });
 
     cleanupPreChildKill();

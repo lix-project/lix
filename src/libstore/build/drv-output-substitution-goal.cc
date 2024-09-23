@@ -42,7 +42,10 @@ try {
     trace("trying next substituter");
 
     if (!inBuildSlot) {
-        return {WaitForSlot{}};
+        return worker.substitutions.acquire().then([this](auto token) {
+            slotToken = std::move(token);
+            return work();
+        });
     }
 
     maintainRunningSubstitutions = worker.runningSubstitutions.addTemporarily(1);
@@ -81,7 +84,7 @@ try {
 
     state = &DrvOutputSubstitutionGoal::realisationFetched;
     return {WaitForWorld{
-        pipe.promise.then([]() -> Outcome<void, Finished> { return result::success(); }), true
+        pipe.promise.then([]() -> Outcome<void, Finished> { return result::success(); })
     }};
 } catch (...) {
     return {std::current_exception()};
@@ -90,6 +93,7 @@ try {
 kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::realisationFetched(bool inBuildSlot) noexcept
 try {
     maintainRunningSubstitutions.reset();
+    slotToken = {};
 
     try {
         outputInfo = downloadState->result.get();
@@ -168,9 +172,9 @@ std::string DrvOutputSubstitutionGoal::key()
     return "a$" + std::string(id.to_string());
 }
 
-kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::work(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::work() noexcept
 {
-    return (this->*state)(inBuildSlot);
+    return (this->*state)(slotToken.valid());
 }
 
 

@@ -76,7 +76,7 @@ public:
 
     std::string key() override;
 
-    kj::Promise<Result<WorkResult>> work(bool inBuildSlot) noexcept override;
+    kj::Promise<Result<WorkResult>> work() noexcept override;
 
     JobCategory jobCategory() const override {
         return JobCategory::Substitution;
