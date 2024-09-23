@@ -251,7 +251,7 @@ try {
         state = &DerivationGoal::buildDone;
 
         started();
-        return {WaitForWorld{std::move(promise)}};
+        return continueOrError(std::move(promise));
 
     } catch (BuildError & e) {
         outputLocks.unlock();

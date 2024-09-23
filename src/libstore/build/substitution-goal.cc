@@ -240,9 +240,7 @@ try {
     });
 
     state = &PathSubstitutionGoal::finished;
-    return {WaitForWorld{
-        pipe.promise.then([]() -> Outcome<void, Finished> { return result::success(); })
-    }};
+    return pipe.promise.then([]() -> Result<WorkResult> { return ContinueImmediately{}; });
 } catch (...) {
     return {std::current_exception()};
 }

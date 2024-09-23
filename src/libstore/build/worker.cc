@@ -202,17 +202,6 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
         overloaded{
             [&](Goal::StillAlive) {},
             [&](Goal::ContinueImmediately) { wakeUp(goal); },
-            [&](Goal::WaitForWorld & w) {
-                childStarted(goal, w.promise.then([](auto r) -> Result<Goal::WorkResult> {
-                    if (r.has_value()) {
-                        return {Goal::ContinueImmediately{}};
-                    } else if (r.has_error()) {
-                        return {std::move(r).error()};
-                    } else {
-                        return r.exception();
-                    }
-                }));
-            },
             [&](Goal::Finished & f) { goalFinished(goal, f); },
         },
         how

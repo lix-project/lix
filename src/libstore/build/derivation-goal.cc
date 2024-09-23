@@ -787,7 +787,7 @@ try {
                     buildResult.startTime = time(0); // inexact
                     state = &DerivationGoal::buildDone;
                     started();
-                    return {{WaitForWorld{std::move(a.promise)}}};
+                    return continueOrError(std::move(a.promise));
                 },
                 [&](HookReply::Postpone) -> std::optional<kj::Promise<Result<WorkResult>>> {
                     /* Not now; wait until at least one child finishes or
@@ -1756,4 +1756,17 @@ void DerivationGoal::waiteeDone(GoalPtr waitee)
     }
 }
 
+kj::Promise<Result<Goal::WorkResult>>
+DerivationGoal::continueOrError(kj::Promise<Outcome<void, Goal::Finished>> p)
+{
+    return p.then([](auto r) -> Result<WorkResult> {
+        if (r.has_value()) {
+            return ContinueImmediately{};
+        } else if (r.has_error()) {
+            return r.assume_error();
+        } else {
+            return r.assume_exception();
+        }
+    });
+}
 }

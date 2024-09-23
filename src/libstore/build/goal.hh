@@ -115,9 +115,6 @@ public:
 
     struct [[nodiscard]] StillAlive {};
     struct [[nodiscard]] ContinueImmediately {};
-    struct [[nodiscard]] WaitForWorld {
-        kj::Promise<Outcome<void, Finished>> promise;
-    };
     struct [[nodiscard]] Finished {
         ExitCode exitCode;
         BuildResult result;
@@ -131,7 +128,6 @@ public:
     struct [[nodiscard]] WorkResult : std::variant<
                                           StillAlive,
                                           ContinueImmediately,
-                                          WaitForWorld,
                                           Finished>
     {
         WorkResult() = delete;

@@ -327,6 +327,8 @@ protected:
     Finished tooMuchLogs();
     void flushLine();
 
+    static kj::Promise<Result<WorkResult>> continueOrError(kj::Promise<Outcome<void, Goal::Finished>> p);
+
 public:
     /**
      * Wrappers around the corresponding Store methods that first consult the
