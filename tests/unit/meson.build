@@ -39,6 +39,7 @@ liblixutil_test_support = declare_dependency(
 )
 
 libutil_tests_sources = files(
+  'libutil/async-collect.cc',
   'libutil/async-semaphore.cc',
   'libutil/canon-path.cc',
   'libutil/checked-arithmetic.cc',
