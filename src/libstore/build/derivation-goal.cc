@@ -113,16 +113,6 @@ DerivationGoal::~DerivationGoal() noexcept(false)
 }
 
 
-std::string DerivationGoal::key()
-{
-    /* Ensure that derivations get built in order of their name,
-       i.e. a derivation named "aardvark" always comes before
-       "baboon". And substitution goals always happen before
-       derivation goals (due to "b$"). */
-    return "b$" + std::string(drvPath.name()) + "$" + worker.store.printStorePath(drvPath);
-}
-
-
 void DerivationGoal::killChild()
 {
     hook.reset();

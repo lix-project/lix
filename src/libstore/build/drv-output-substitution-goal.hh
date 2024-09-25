@@ -74,8 +74,6 @@ public:
     kj::Promise<Result<WorkResult>> outPathValid(bool inBuildSlot) noexcept;
     kj::Promise<Result<WorkResult>> finished() noexcept;
 
-    std::string key() override;
-
     kj::Promise<Result<WorkResult>> work() noexcept override;
 
     JobCategory jobCategory() const override {

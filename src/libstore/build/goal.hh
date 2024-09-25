@@ -22,14 +22,10 @@ class Worker;
  */
 typedef std::shared_ptr<Goal> GoalPtr;
 
-struct CompareGoalPtrs {
-    bool operator() (const GoalPtr & a, const GoalPtr & b) const;
-};
-
 /**
  * Set of goals.
  */
-typedef std::set<GoalPtr, CompareGoalPtrs> Goals;
+typedef std::set<GoalPtr> Goals;
 
 /**
  * Used as a hint to the worker on how to schedule a particular goal. For example,
@@ -166,8 +162,6 @@ public:
     {
         return name;
     }
-
-    virtual std::string key() = 0;
 
     virtual void cleanup() { }
 

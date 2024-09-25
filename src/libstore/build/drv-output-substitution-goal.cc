@@ -166,13 +166,6 @@ try {
     return {std::current_exception()};
 }
 
-std::string DrvOutputSubstitutionGoal::key()
-{
-    /* "a$" ensures substitution goals happen before derivation
-       goals. */
-    return "a$" + std::string(id.to_string());
-}
-
 kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::work() noexcept
 {
     return (this->*state)(slotToken.valid());

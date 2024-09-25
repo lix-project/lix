@@ -247,8 +247,6 @@ struct DerivationGoal : public Goal
 
     Finished timedOut(Error && ex);
 
-    std::string key() override;
-
     kj::Promise<Result<WorkResult>> work() noexcept override;
 
     /**
