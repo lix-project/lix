@@ -217,7 +217,7 @@
 
       # A Nixpkgs overlay that overrides the 'nix' and
       # 'nix.perl-bindings' packages.
-      overlays.default = overlayFor (p: p.stdenv);
+      overlays.default = overlayFor (p: p.clangStdenv);
 
       hydraJobs = {
         # Binary package for various platforms.
