@@ -17,7 +17,7 @@ try {
     /* If we are polling goals that are waiting for a lock, then wake
        up after a few seconds at most. */
     co_await worker.aio.provider->getTimer().afterDelay(settings.pollInterval.get() * kj::SECONDS);
-    co_return ContinueImmediately{};
+    co_return StillAlive{};
 } catch (...) {
     co_return std::current_exception();
 }
@@ -45,11 +45,11 @@ try {
         waiteeDone(dep);
 
         if (dep->exitCode == ecFailed && !settings.keepGoing) {
-            co_return result::success(ContinueImmediately{});
+            co_return result::success(StillAlive{});
         }
     }
 
-    co_return result::success(ContinueImmediately{});
+    co_return result::success(StillAlive{});
 } catch (...) {
     co_return result::failure(std::current_exception());
 }

@@ -1751,7 +1751,7 @@ DerivationGoal::continueOrError(kj::Promise<Outcome<void, Goal::Finished>> p)
 {
     return p.then([](auto r) -> Result<WorkResult> {
         if (r.has_value()) {
-            return ContinueImmediately{};
+            return StillAlive{};
         } else if (r.has_error()) {
             return r.assume_error();
         } else {

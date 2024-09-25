@@ -240,7 +240,7 @@ try {
     });
 
     state = &PathSubstitutionGoal::finished;
-    return pipe.promise.then([]() -> Result<WorkResult> { return ContinueImmediately{}; });
+    return pipe.promise.then([]() -> Result<WorkResult> { return StillAlive{}; });
 } catch (...) {
     return {std::current_exception()};
 }

@@ -212,8 +212,7 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
 {
     std::visit(
         overloaded{
-            [&](Goal::StillAlive) {},
-            [&](Goal::ContinueImmediately) { wakeUp(goal); },
+            [&](Goal::StillAlive) { wakeUp(goal); },
             [&](Goal::Finished & f) { goalFinished(goal, f); },
         },
         how

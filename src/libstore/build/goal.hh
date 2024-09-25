@@ -103,7 +103,6 @@ public:
     struct Finished;
 
     struct [[nodiscard]] StillAlive {};
-    struct [[nodiscard]] ContinueImmediately {};
     struct [[nodiscard]] Finished {
         ExitCode exitCode;
         BuildResult result;
@@ -116,7 +115,6 @@ public:
 
     struct [[nodiscard]] WorkResult : std::variant<
                                           StillAlive,
-                                          ContinueImmediately,
                                           Finished>
     {
         WorkResult() = delete;
