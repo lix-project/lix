@@ -182,7 +182,7 @@ struct LocalDerivationGoal : public DerivationGoal
      * Create a LocalDerivationGoal without an on-disk .drv file,
      * possibly a platform-specific subclass
      */
-    static std::shared_ptr<LocalDerivationGoal> makeLocalDerivationGoal(
+    static std::unique_ptr<LocalDerivationGoal> makeLocalDerivationGoal(
         const StorePath & drvPath,
         const OutputsSpec & wantedOutputs,
         Worker & worker,
@@ -194,7 +194,7 @@ struct LocalDerivationGoal : public DerivationGoal
      * Create a LocalDerivationGoal for an on-disk .drv file,
      * possibly a platform-specific subclass
      */
-    static std::shared_ptr<LocalDerivationGoal> makeLocalDerivationGoal(
+    static std::unique_ptr<LocalDerivationGoal> makeLocalDerivationGoal(
         const StorePath & drvPath,
         const BasicDerivation & drv,
         const OutputsSpec & wantedOutputs,

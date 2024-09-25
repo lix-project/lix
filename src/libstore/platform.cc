@@ -25,7 +25,7 @@ std::shared_ptr<LocalStore> LocalStore::makeLocalStore(const Params & params)
 #endif
 }
 
-std::shared_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoal(
+std::unique_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoal(
     const StorePath & drvPath,
     const OutputsSpec & wantedOutputs,
     Worker & worker,
@@ -34,17 +34,17 @@ std::shared_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoa
 )
 {
 #if __linux__
-    return std::make_shared<LinuxLocalDerivationGoal>(drvPath, wantedOutputs, worker, isDependency, buildMode);
+    return std::make_unique<LinuxLocalDerivationGoal>(drvPath, wantedOutputs, worker, isDependency, buildMode);
 #elif __APPLE__
-    return std::make_shared<DarwinLocalDerivationGoal>(drvPath, wantedOutputs, worker, isDependency, buildMode);
+    return std::make_unique<DarwinLocalDerivationGoal>(drvPath, wantedOutputs, worker, isDependency, buildMode);
 #elif __FreeBSD__
-    return std::make_shared<FreeBSDLocalDerivationGoal>(drvPath, wantedOutputs, worker, isDependency, buildMode);
+    return std::make_unique<FreeBSDLocalDerivationGoal>(drvPath, wantedOutputs, worker, isDependency, buildMode);
 #else
-    return std::make_shared<FallbackLocalDerivationGoal>(drvPath, wantedOutputs, worker, isDependency, buildMode);
+    return std::make_unique<FallbackLocalDerivationGoal>(drvPath, wantedOutputs, worker, isDependency, buildMode);
 #endif
 }
 
-std::shared_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoal(
+std::unique_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoal(
     const StorePath & drvPath,
     const BasicDerivation & drv,
     const OutputsSpec & wantedOutputs,
@@ -54,19 +54,19 @@ std::shared_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoa
 )
 {
 #if __linux__
-    return std::make_shared<LinuxLocalDerivationGoal>(
+    return std::make_unique<LinuxLocalDerivationGoal>(
         drvPath, drv, wantedOutputs, worker, isDependency, buildMode
     );
 #elif __APPLE__
-    return std::make_shared<DarwinLocalDerivationGoal>(
+    return std::make_unique<DarwinLocalDerivationGoal>(
         drvPath, drv, wantedOutputs, worker, isDependency, buildMode
     );
 #elif __FreeBSD__
-    return std::make_shared<FreeBSDLocalDerivationGoal>(
+    return std::make_unique<FreeBSDLocalDerivationGoal>(
         drvPath, drv, wantedOutputs, worker, isDependency, buildMode
     );
 #else
-    return std::make_shared<FallbackLocalDerivationGoal>(
+    return std::make_unique<FallbackLocalDerivationGoal>(
         drvPath, drv, wantedOutputs, worker, isDependency, buildMode
     );
 #endif

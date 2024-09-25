@@ -245,7 +245,7 @@ public:
 private:
     std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> makeDerivationGoalCommon(
         const StorePath & drvPath, const OutputsSpec & wantedOutputs,
-        std::function<std::shared_ptr<DerivationGoal>()> mkDrvGoal);
+        std::function<std::unique_ptr<DerivationGoal>()> mkDrvGoal);
     std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> makeDerivationGoal(
         const StorePath & drvPath,
         const OutputsSpec & wantedOutputs, BuildMode buildMode = bmNormal) override;

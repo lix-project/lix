@@ -55,7 +55,7 @@ Worker::~Worker()
 std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeDerivationGoalCommon(
     const StorePath & drvPath,
     const OutputsSpec & wantedOutputs,
-    std::function<std::shared_ptr<DerivationGoal>()> mkDrvGoal)
+    std::function<std::unique_ptr<DerivationGoal>()> mkDrvGoal)
 {
     auto & goal_weak = derivationGoals[drvPath];
     std::shared_ptr<DerivationGoal> goal = goal_weak.goal.lock();
@@ -78,9 +78,9 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeDeriva
     return makeDerivationGoalCommon(
         drvPath,
         wantedOutputs,
-        [&]() -> std::shared_ptr<DerivationGoal> {
+        [&]() -> std::unique_ptr<DerivationGoal> {
             return !dynamic_cast<LocalStore *>(&store)
-                ? std::make_shared<DerivationGoal>(
+                ? std::make_unique<DerivationGoal>(
                     drvPath, wantedOutputs, *this, running, buildMode
                 )
                 : LocalDerivationGoal::makeLocalDerivationGoal(
@@ -101,9 +101,9 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeBasicD
     return makeDerivationGoalCommon(
         drvPath,
         wantedOutputs,
-        [&]() -> std::shared_ptr<DerivationGoal> {
+        [&]() -> std::unique_ptr<DerivationGoal> {
             return !dynamic_cast<LocalStore *>(&store)
-                ? std::make_shared<DerivationGoal>(
+                ? std::make_unique<DerivationGoal>(
                     drvPath, drv, wantedOutputs, *this, running, buildMode
                 )
                 : LocalDerivationGoal::makeLocalDerivationGoal(
