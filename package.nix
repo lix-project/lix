@@ -22,7 +22,6 @@
   doxygen,
   editline-lix ? __forDefaults.editline-lix,
   editline,
-  fetchpatch,
   git,
   gtest,
   jq,
@@ -100,7 +99,7 @@
         (lib.enableFeature (ncurses != null) "termcap")
       ];
 
-      nativeBuildInputs = (prev.nativeBuildInputs or [ ]) ++ [ ncurses ];
+      buildInputs = (prev.buildInputs or [ ]) ++ [ ncurses ];
     });
 
     build-release-notes = callPackage ./maintainers/build-release-notes.nix { };
