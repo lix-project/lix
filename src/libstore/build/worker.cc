@@ -53,20 +53,24 @@ Worker::~Worker()
 }
 
 
-std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeDerivationGoalCommon(
-    const StorePath & drvPath,
-    const OutputsSpec & wantedOutputs,
-    std::function<std::unique_ptr<DerivationGoal>()> mkDrvGoal)
+template<typename ID, std::derived_from<Goal> G>
+std::pair<std::shared_ptr<G>, kj::Promise<void>> Worker::makeGoalCommon(
+    std::map<ID, CachedGoal<G>> & map,
+    const ID & key,
+    InvocableR<std::unique_ptr<G>> auto create,
+    std::invocable<G &> auto modify
+)
 {
-    auto & goal_weak = derivationGoals[drvPath];
-    std::shared_ptr<DerivationGoal> goal = goal_weak.goal.lock();
+    auto [it, _inserted] = map.try_emplace(key);
+    auto & goal_weak = it->second;
+    auto goal = goal_weak.goal.lock();
     if (!goal) {
-        goal = mkDrvGoal();
+        goal = create();
         goal->notify = std::move(goal_weak.fulfiller);
         goal_weak.goal = goal;
         wakeUp(goal);
     } else {
-        goal->addWantedOutputs(wantedOutputs);
+        modify(*goal);
     }
     return {goal, goal_weak.promise->addBranch()};
 }
@@ -76,9 +80,9 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeDeriva
     const StorePath & drvPath, const OutputsSpec & wantedOutputs, BuildMode buildMode
 )
 {
-    return makeDerivationGoalCommon(
+    return makeGoalCommon(
+        derivationGoals,
         drvPath,
-        wantedOutputs,
         [&]() -> std::unique_ptr<DerivationGoal> {
             return !dynamic_cast<LocalStore *>(&store)
                 ? std::make_unique<DerivationGoal>(
@@ -87,7 +91,8 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeDeriva
                 : LocalDerivationGoal::makeLocalDerivationGoal(
                     drvPath, wantedOutputs, *this, running, buildMode
                 );
-        }
+        },
+        [&](DerivationGoal & g) { g.addWantedOutputs(wantedOutputs); }
     );
 }
 
@@ -99,9 +104,9 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeBasicD
     BuildMode buildMode
 )
 {
-    return makeDerivationGoalCommon(
+    return makeGoalCommon(
+        derivationGoals,
         drvPath,
-        wantedOutputs,
         [&]() -> std::unique_ptr<DerivationGoal> {
             return !dynamic_cast<LocalStore *>(&store)
                 ? std::make_unique<DerivationGoal>(
@@ -110,7 +115,8 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeBasicD
                 : LocalDerivationGoal::makeLocalDerivationGoal(
                     drvPath, drv, wantedOutputs, *this, running, buildMode
                 );
-        }
+        },
+        [&](DerivationGoal & g) { g.addWantedOutputs(wantedOutputs); }
     );
 }
 
@@ -120,15 +126,12 @@ Worker::makePathSubstitutionGoal(
     const StorePath & path, RepairFlag repair, std::optional<ContentAddress> ca
 )
 {
-    auto & goal_weak = substitutionGoals[path];
-    auto goal = goal_weak.goal.lock(); // FIXME
-    if (!goal) {
-        goal = std::make_shared<PathSubstitutionGoal>(path, *this, running, repair, ca);
-        goal->notify = std::move(goal_weak.fulfiller);
-        goal_weak.goal = goal;
-        wakeUp(goal);
-    }
-    return {goal, goal_weak.promise->addBranch()};
+    return makeGoalCommon(
+        substitutionGoals,
+        path,
+        [&] { return std::make_unique<PathSubstitutionGoal>(path, *this, running, repair, ca); },
+        [&](auto &) {}
+    );
 }
 
 
@@ -137,15 +140,12 @@ Worker::makeDrvOutputSubstitutionGoal(
     const DrvOutput & id, RepairFlag repair, std::optional<ContentAddress> ca
 )
 {
-    auto & goal_weak = drvOutputSubstitutionGoals[id];
-    auto goal = goal_weak.goal.lock(); // FIXME
-    if (!goal) {
-        goal = std::make_shared<DrvOutputSubstitutionGoal>(id, *this, running, repair, ca);
-        goal->notify = std::move(goal_weak.fulfiller);
-        goal_weak.goal = goal;
-        wakeUp(goal);
-    }
-    return {goal, goal_weak.promise->addBranch()};
+    return makeGoalCommon(
+        drvOutputSubstitutionGoals,
+        id,
+        [&] { return std::make_unique<DrvOutputSubstitutionGoal>(id, *this, running, repair, ca); },
+        [&](auto &) {}
+    );
 }
 
 

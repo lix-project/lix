@@ -2,6 +2,7 @@
 ///@file
 
 #include "async-semaphore.hh"
+#include "concepts.hh"
 #include "notifying-counter.hh"
 #include "types.hh"
 #include "lock.hh"
@@ -240,9 +241,13 @@ public:
      * @ref DerivationGoal "derivation goal"
      */
 private:
-    std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> makeDerivationGoalCommon(
-        const StorePath & drvPath, const OutputsSpec & wantedOutputs,
-        std::function<std::unique_ptr<DerivationGoal>()> mkDrvGoal);
+    template<typename ID, std::derived_from<Goal> G>
+    std::pair<std::shared_ptr<G>, kj::Promise<void>> makeGoalCommon(
+        std::map<ID, CachedGoal<G>> & map,
+        const ID & key,
+        InvocableR<std::unique_ptr<G>> auto create,
+        std::invocable<G &> auto modify
+    );
     std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> makeDerivationGoal(
         const StorePath & drvPath,
         const OutputsSpec & wantedOutputs, BuildMode buildMode = bmNormal) override;
