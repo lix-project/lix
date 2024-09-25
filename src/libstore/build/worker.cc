@@ -44,6 +44,7 @@ Worker::~Worker()
        are in trouble, since goals may call childTerminated() etc. in
        their destructors). */
     topGoals.clear();
+    awake.clear();
     children.clear();
 
     assert(expectedSubstitutions == 0);
@@ -310,12 +311,7 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
         /* Call every wake goal (in the ordering established by
            CompareGoalPtrs). */
         while (!awake.empty() && !topGoals.empty()) {
-            Goals awake2;
-            for (auto & i : awake) {
-                GoalPtr goal = i.lock();
-                if (goal) awake2.insert(goal);
-            }
-            awake.clear();
+            Goals awake2 = std::move(awake);
             for (auto & goal : awake2) {
                 checkInterrupt();
                 auto result = goal->work();

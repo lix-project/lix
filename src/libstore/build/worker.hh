@@ -84,9 +84,6 @@ private:
 
     bool running = false;
 
-    /* Note: the worker should only have strong pointers to the
-       top-level goals. */
-
     /**
      * The top-level goals of the worker.
      */
@@ -95,7 +92,7 @@ private:
     /**
      * Goals that are ready to do some work.
      */
-    WeakGoals awake;
+    Goals awake;
 
     template<typename G>
     struct CachedGoal
