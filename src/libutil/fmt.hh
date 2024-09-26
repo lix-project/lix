@@ -136,11 +136,17 @@ inline std::string fmt(const char * s)
 
 template<typename... Args>
 inline std::string fmt(const std::string & fs, const Args &... args)
-{
+try {
     boost::format f(fs);
     fmt_internal::setExceptions(f);
     (f % ... % args);
     return f.str();
+} catch (boost::io::format_error & fe) {
+    // I don't care who catches this, we do not put up with boost format errors
+    // Give me a stack trace and a core dump
+    std::cerr << "nix::fmt threw format error. Original format string: '";
+    std::cerr << fs << "'; number of arguments: " << sizeof...(args) << "\n";
+    std::terminate();
 }
 
 /**
@@ -174,15 +180,13 @@ public:
             std::cerr << "HintFmt received incorrect number of format args. Original format string: '";
             std::cerr << format << "'; number of arguments: " << sizeof...(args) << "\n";
             // And regardless of the coredump give me a damn stacktrace.
-            printStackTrace();
-            abort();
+            std::terminate();
         }
     } catch (boost::io::format_error & ex) {
         // Same thing, but for anything that happens in the member initializers.
         std::cerr << "HintFmt received incorrect format string. Original format string: '";
         std::cerr << format << "'; number of arguments: " << sizeof...(args) << "\n";
-        printStackTrace();
-        abort();
+        std::terminate();
     }
 
     HintFmt(const HintFmt & hf) : fmt(hf.fmt) {}
