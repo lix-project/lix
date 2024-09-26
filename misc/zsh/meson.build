@@ -1,10 +1,9 @@
 foreach script : [ [ 'completion.zsh', '_nix' ], [ 'run-help-nix' ] ]
-  configure_file(
-    input : script[0],
-    output : script.get(1, script[0]),
+  fs.copyfile(
+    script[0],
+    script.get(1, script[0]),
     install : true,
     install_dir : datadir / 'zsh/site-functions',
     install_mode : 'rw-r--r--',
-    copy : true,
   )
 endforeach

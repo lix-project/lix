@@ -593,10 +593,10 @@ run_command(
 )
 
 if is_darwin
-  configure_file(
-    input : 'misc/launchd/org.nixos.nix-daemon.plist.in',
-    output : 'org.nixos.nix-daemon.plist',
-    copy : true,
+  fs.copyfile(
+    'misc/launchd/org.nixos.nix-daemon.plist.in',
+    'org.nixos.nix-daemon.plist',
+    install : true,
     install_dir : prefix / 'Library/LaunchDaemons',
   )
 endif

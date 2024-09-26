@@ -8,12 +8,7 @@ configure_file(
   }
 )
 
-# https://github.com/mesonbuild/meson/issues/860
-configure_file(
-  input : 'nix-profile.sh.in',
-  output : 'nix-profile.sh.in',
-  copy : true,
-)
+fs.copyfile('nix-profile.sh.in')
 
 foreach rc : [ '.sh', '.fish', '-daemon.sh', '-daemon.fish' ]
   configure_file(
