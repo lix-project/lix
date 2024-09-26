@@ -24,7 +24,7 @@ EOF
 
 # Create fake nixpkgs flake.
 mkdir -p $TEST_HOME/nixpkgs
-cp ../config.nix ../shell.nix $TEST_HOME/nixpkgs
+cp ../config.nix ../nix-shell/shell.nix $TEST_HOME/nixpkgs
 cat <<EOF >$TEST_HOME/nixpkgs/flake.nix
 {
     outputs = {self}: {

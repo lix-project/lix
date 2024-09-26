@@ -1,4 +1,4 @@
-source common.sh
+source ../common.sh
 
 clearStore
 
