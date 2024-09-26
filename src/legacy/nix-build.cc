@@ -490,42 +490,51 @@ static void main_nix_build(int argc, char * * argv)
            environment variables and shell functions.  Also don't
            lose the current $PATH directories. */
         auto rcfile = (Path) tmpDir + "/rc";
+        auto tz = getEnv("TZ");
         std::string rc = fmt(
-                R"(_nix_shell_clean_tmpdir() { command rm -rf %1%; }; )"s +
-                (keepTmp ?
-                    "trap _nix_shell_clean_tmpdir EXIT; "
-                    "exitHooks+=(_nix_shell_clean_tmpdir); "
-                    "failureHooks+=(_nix_shell_clean_tmpdir); ":
-                    "_nix_shell_clean_tmpdir; ") +
-                (pure ? "" : "[ -n \"$PS1\" ] && [ -e ~/.bashrc ] && source ~/.bashrc;") +
-                "%2%"
-                // always clear PATH.
-                // when nix-shell is run impure, we rehydrate it with the `p=$PATH` above
-                "unset PATH;"
-                "dontAddDisableDepTrack=1;\n"
-                + structuredAttrsRC +
-                "\n[ -e $stdenv/setup ] && source $stdenv/setup; "
-                "%3%"
-                "PATH=%4%:\"$PATH\"; "
-                "SHELL=%5%; "
-                "BASH=%5%; "
-                "set +e; "
-                R"s([ -n "$PS1" -a -z "$NIX_SHELL_PRESERVE_PROMPT" ] && )s" +
-                (getuid() == 0 ? R"s(PS1='\n\[\033[1;31m\][nix-shell:\w]\$\[\033[0m\] '; )s"
-                               : R"s(PS1='\n\[\033[1;32m\][nix-shell:\w]\$\[\033[0m\] '; )s") +
-                "if [ \"$(type -t runHook)\" = function ]; then runHook shellHook; fi; "
-                "unset NIX_ENFORCE_PURITY; "
-                "shopt -u nullglob; "
-                "unset TZ; %6%"
-                "shopt -s execfail;"
-                "%7%",
-                shellEscape(tmpDir),
-                (pure ? "" : "p=$PATH; "),
-                (pure ? "" : "PATH=$PATH:$p; unset p; "),
-                shellEscape(dirOf(*shell)),
-                shellEscape(*shell),
-                (getenv("TZ") ? (std::string("export TZ=") + shellEscape(getenv("TZ")) + "; ") : ""),
-                envCommand);
+            R"(_nix_shell_clean_tmpdir() { command rm -rf %1%; }; )"
+            "%2%"
+            "%3%"
+            // always clear PATH.
+            // when nix-shell is run impure, we rehydrate it with the `p=$PATH` above
+            "unset PATH;"
+            "dontAddDisableDepTrack=1;\n",
+            shellEscape(tmpDir),
+            (keepTmp
+                ? "trap _nix_shell_clean_tmpdir EXIT; "
+                  "exitHooks+=(_nix_shell_clean_tmpdir); "
+                  "failureHooks+=(_nix_shell_clean_tmpdir); "
+                : "_nix_shell_clean_tmpdir; "),
+            (pure
+                ? ""
+                : "[ -n \"$PS1\" ] && [ -e ~/.bashrc ] && source ~/.bashrc; p=$PATH; ")
+        );
+        rc += structuredAttrsRC;
+        rc += fmt(
+            "\n[ -e $stdenv/setup ] && source $stdenv/setup; "
+            "%1%"
+            "PATH=%2%:\"$PATH\"; "
+            "SHELL=%3%; "
+            "BASH=%3%; "
+            "set +e; "
+            R"s([ -n "$PS1" -a -z "$NIX_SHELL_PRESERVE_PROMPT" ] && )s"
+            "%4%"
+            "if [ \"$(type -t runHook)\" = function ]; then runHook shellHook; fi; "
+            "unset NIX_ENFORCE_PURITY; "
+            "shopt -u nullglob; "
+            "unset TZ; %5%"
+            "shopt -s execfail;"
+            "%6%",
+            (pure ? "" : "PATH=$PATH:$p; unset p; "),
+            shellEscape(dirOf(*shell)),
+            shellEscape(*shell),
+            (getuid() == 0 ? R"s(PS1='\n\[\033[1;31m\][nix-shell:\w]\$\[\033[0m\] '; )s"
+                           : R"s(PS1='\n\[\033[1;32m\][nix-shell:\w]\$\[\033[0m\] '; )s"),
+            (tz.has_value()
+                ? (std::string("export TZ=") + shellEscape(*tz) + "; ")
+                : ""),
+            envCommand
+        );
         vomit("Sourcing nix-shell with file %s and contents:\n%s", rcfile, rc);
         writeFile(rcfile, rc);
 
