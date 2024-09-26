@@ -443,7 +443,7 @@ static bool initLibStoreDone = false;
 void assertLibStoreInitialized() {
     if (!initLibStoreDone) {
         printError("The program must call nix::initNix() before calling any libstore library functions.");
-        abort();
+        std::terminate();
     };
 }
 
