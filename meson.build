@@ -47,6 +47,7 @@
 # in the build directory.
 
 project('lix', 'cpp', 'rust',
+  meson_version : '>=1.4.0',
   version : run_command('bash', '-c', 'echo -n $(jq -r .version < ./version.json)$VERSION_SUFFIX', check : true).stdout().strip(),
   default_options : [
     'cpp_std=c++2a',
