@@ -33,17 +33,21 @@ kj::Promise<Result<Goal::WorkResult>>
 Goal::waitForGoals(kj::Array<std::pair<GoalPtr, kj::Promise<void>>> dependencies) noexcept
 try {
     auto left = dependencies.size();
+    for (auto & [dep, p] : dependencies) {
+        p = p.then([this, dep, &left] {
+            left--;
+            trace(fmt("waitee '%s' done; %d left", dep->name, left));
+
+            if (dep->exitCode != Goal::ecSuccess) ++nrFailed;
+            if (dep->exitCode == Goal::ecNoSubstituters) ++nrNoSubstituters;
+            if (dep->exitCode == Goal::ecIncompleteClosure) ++nrIncompleteClosure;
+        }).eagerlyEvaluate(nullptr);
+    }
+
     auto collectDeps = asyncCollect(std::move(dependencies));
 
     while (auto item = co_await collectDeps.next()) {
-        left--;
         auto & dep = *item;
-
-        trace(fmt("waitee '%s' done; %d left", dep->name, left));
-
-        if (dep->exitCode != Goal::ecSuccess) ++nrFailed;
-        if (dep->exitCode == Goal::ecNoSubstituters) ++nrNoSubstituters;
-        if (dep->exitCode == Goal::ecIncompleteClosure) ++nrIncompleteClosure;
 
         waiteeDone(dep);
 
