@@ -126,19 +126,17 @@ manual = custom_target(
     'manual',
     'markdown',
   ],
+  install_dir : [
+    datadir / 'doc/nix',
+    false,
+  ],
   depfile : 'manual.d',
   env : {
     'RUST_LOG': 'info',
     'MDBOOK_SUBSTITUTE_SEARCH': meson.current_build_dir() / 'src',
   },
 )
-manual_html = manual[0]
 manual_md = manual[1]
-
-install_subdir(
-  manual_html.full_path(),
-  install_dir : datadir / 'doc/nix',
-)
 
 nix_nested_manpages = [
   [ 'nix-env',
