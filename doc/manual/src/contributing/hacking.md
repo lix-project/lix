@@ -400,9 +400,9 @@ The following properties are supported:
 Releases have a precomputed `rl-MAJOR.MINOR.md`, and no `rl-next.md`.
 Set `buildUnreleasedNotes = true;` in `flake.nix` to build the release notes on the fly.
 
-## Adding experimental or deprecated features, or global settings
+## Adding experimental or deprecated features, global settings, or builtins
 
-Experimental and deprecated features, and global settings are generally referenced both in the code and in the documentation.
+Experimental and deprecated features, global settings, and builtins are generally referenced both in the code and in the documentation.
 To prevent duplication or divergence, they are defined in data files, and a script generates the necessary glue.
 The data file format is similar to the release notes: it consists of a YAML metadata header, followed by the documentation in Markdown format.
 
@@ -443,3 +443,32 @@ Global settings support the following metadata properties:
 Settings are not collected in a single place in the source tree, so an appropriate place needs to be found for the setting to live.
 Look for related setting definition files under second-level subdirectories of `src` whose name includes `settings`.
 Then add the new file there, and don't forget to register it in the appropriate `meson.build` file.
+
+### Builtin functions
+
+The following metadata properties are supported for builtin functions:
+* `name` (required): the language-facing name (as a member of the `builtins` attribute set) of the function.
+* `implementation` (optional): a C++ expression specifying the implementation of the builtin.
+  It must be a function of signature `void(EvalState &, PosIdx, Value * *, Value &)`.
+  If not specified, defaults to `prim_${name}`.
+* `renameInGlobalScope` (optional): whether the definiton should be "hidden" in the global scope by prefixing its name with two underscores.
+  If not specified, defaults to `true`.
+* `args` (required): list containing the names of the arguments, as shown in the documentation.
+  All arguments must be listed here since the function arity is derived as the length of this list.
+* `experimental_feature` (optional): the user-facing name of the experimental feature which needs to be enabled for the bultin function to be available.
+  If not specified, no experimental feature is required.
+
+New builtin function definition files must be added to `src/libexpr/builtins` and registered in the `builtin_definitions` list in `src/libexpr/meson.build`.
+
+### Builtin constants
+The following metadata properties are supported for builtin constants:
+* `name` (required): the language-facing name (as a member of the `builtins` attribute set) of the constant.
+* `type` (required): the Nix language type of the constant; the C++ type is automatically derived.
+* `constructorArgs` (optional): list of strings containing C++ expressions passed as arguments to the appropriate `Value` constructor.
+  If the value computation is more complex, `implementation` can be used instead.
+* `implementation` (required if `constructorArgs` is not specified): string containing a C++ expressing computing the value of the constant.
+* `impure` (optional): whether the constant is considered impure.
+  Impure constants are not available when pure evaluation mode is activated.
+  Defaults to `false` when not specified.
+
+New builtin constant definition files must be added to `src/libexpr/builtin-constants` and registered in the `builtin_constant_definitions` list in `src/libexpr/meson.build`.

@@ -1,5 +1,6 @@
 #include "primops.hh"
 #include "eval-inline.hh"
+#include "extra-primops.hh"
 #include "derivations.hh"
 #include "store-api.hh"
 
@@ -19,39 +20,15 @@ static RegisterPrimOp primop_unsafeDiscardStringContext({
 });
 
 
-static void prim_hasContext(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_hasContext(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
     NixStringContext context;
     state.forceString(*args[0], context, pos, "while evaluating the argument passed to builtins.hasContext");
     v.mkBool(!context.empty());
 }
 
-static RegisterPrimOp primop_hasContext({
-    .name = "__hasContext",
-    .args = {"s"},
-    .doc = R"(
-      Return `true` if string *s* has a non-empty context.
-      The context can be obtained with
-      [`getContext`](#builtins-getContext).
 
-      > **Example**
-      >
-      > Many operations require a string context to be empty because they are intended only to work with "regular" strings, and also to help users avoid unintentionally losing track of string context elements.
-      > `builtins.hasContext` can help create better domain-specific errors in those case.
-      >
-      > ```nix
-      > name: meta:
-      >
-      > if builtins.hasContext name
-      > then throw "package name cannot contain string context"
-      > else { ${name} = meta; }
-      > ```
-    )",
-    .fun = prim_hasContext
-});
-
-
-static void prim_unsafeDiscardOutputDependency(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_unsafeDiscardOutputDependency(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
     NixStringContext context;
     auto s = state.coerceToString(pos, *args[0], context, "while evaluating the argument passed to builtins.unsafeDiscardOutputDependency");
@@ -71,27 +48,8 @@ static void prim_unsafeDiscardOutputDependency(EvalState & state, const PosIdx p
     v.mkString(*s, context2);
 }
 
-static RegisterPrimOp primop_unsafeDiscardOutputDependency({
-    .name = "__unsafeDiscardOutputDependency",
-    .args = {"s"},
-    .doc = R"(
-      Create a copy of the given string where every "derivation deep" string context element is turned into a constant string context element.
 
-      This is the opposite of [`builtins.addDrvOutputDependencies`](#builtins-addDrvOutputDependencies).
-
-      This is unsafe because it allows us to "forget" store objects we would have otherwise refered to with the string context,
-      whereas Nix normally tracks all dependencies consistently.
-      Safe operations "grow" but never "shrink" string contexts.
-      [`builtins.addDrvOutputDependencies`] in contrast is safe because "derivation deep" string context element always refers to the underlying derivation (among many more things).
-      Replacing a constant string context element with a "derivation deep" element is a safe operation that just enlargens the string context without forgetting anything.
-
-      [`builtins.addDrvOutputDependencies`]: #builtins-addDrvOutputDependencies
-    )",
-    .fun = prim_unsafeDiscardOutputDependency
-});
-
-
-static void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
     NixStringContext context;
     auto s = state.coerceToString(pos, *args[0], context, "while evaluating the argument passed to builtins.addDrvOutputDependencies");
@@ -133,22 +91,6 @@ static void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, V
     v.mkString(*s, context2);
 }
 
-static RegisterPrimOp primop_addDrvOutputDependencies({
-    .name = "__addDrvOutputDependencies",
-    .args = {"s"},
-    .doc = R"(
-      Create a copy of the given string where a single constant string context element is turned into a "derivation deep" string context element.
-
-      The store path that is the constant string context element should point to a valid derivation, and end in `.drv`.
-
-      The original string context element must not be empty or have multiple elements, and it must not have any other type of element other than a constant or derivation deep element.
-      The latter is supported so this function is idempotent.
-
-      This is the opposite of [`builtins.unsafeDiscardOutputDependency`](#builtins-unsafeDiscardOutputDependency).
-    )",
-    .fun = prim_addDrvOutputDependencies
-});
-
 
 /* Extract the context of a string as a structured Nix value.
 
@@ -169,7 +111,7 @@ static RegisterPrimOp primop_addDrvOutputDependencies({
    Note that for a given path any combination of the above attributes
    may be present.
 */
-static void prim_getContext(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_getContext(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
     struct ContextInfo {
         bool path = false;
@@ -217,31 +159,6 @@ static void prim_getContext(EvalState & state, const PosIdx pos, Value * * args,
 
     v.mkAttrs(attrs);
 }
-
-static RegisterPrimOp primop_getContext({
-    .name = "__getContext",
-    .args = {"s"},
-    .doc = R"(
-      Return the string context of *s*.
-
-      The string context tracks references to derivations within a string.
-      It is represented as an attribute set of [store derivation](@docroot@/glossary.md#gloss-store-derivation) paths mapping to output names.
-
-      Using [string interpolation](@docroot@/language/string-interpolation.md) on a derivation will add that derivation to the string context.
-      For example,
-
-      ```nix
-      builtins.getContext "${derivation { name = "a"; builder = "b"; system = "c"; }}"
-      ```
-
-      evaluates to
-
-      ```
-      { "/nix/store/arhvjaf6zmlyn8vh8fgn55rpwnxq0n7l-a.drv" = { outputs = [ "out" ]; }; }
-      ```
-    )",
-    .fun = prim_getContext
-});
 
 
 /* Append the given context to a given string.

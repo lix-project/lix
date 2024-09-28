@@ -1,6 +1,7 @@
 #include "flake.hh"
 #include "eval.hh"
 #include "eval-settings.hh"
+#include "extra-primops.hh"
 #include "lockfile.hh"
 #include "primops.hh"
 #include "eval-inline.hh"
@@ -796,7 +797,7 @@ void callFlake(EvalState & state,
     state.callFunction(*vTmp2, *vRootSubdir, vRes, noPos);
 }
 
-static void prim_getFlake(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_getFlake(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
     std::string flakeRefS(state.forceStringNoCtx(*args[0], pos, "while evaluating the argument passed to builtins.getFlake"));
     auto flakeRef = parseFlakeRef(flakeRefS, {}, true);
@@ -814,29 +815,7 @@ static void prim_getFlake(EvalState & state, const PosIdx pos, Value * * args, V
         v);
 }
 
-static RegisterPrimOp r2({
-    .name =  "__getFlake",
-    .args = {"args"},
-    .doc = R"(
-      Fetch a flake from a flake reference, and return its output attributes and some metadata. For example:
-
-      ```nix
-      (builtins.getFlake "nix/55bc52401966fbffa525c574c14f67b00bc4fb3a").packages.x86_64-linux.nix
-      ```
-
-      Unless impure evaluation is allowed (`--impure`), the flake reference
-      must be "locked", e.g. contain a Git revision or content hash. An
-      example of an unlocked usage is:
-
-      ```nix
-      (builtins.getFlake "github:edolstra/dwarffs").rev
-      ```
-    )",
-    .fun = prim_getFlake,
-    .experimentalFeature = Xp::Flakes,
-});
-
-static void prim_parseFlakeRef(
+void prim_parseFlakeRef(
     EvalState & state,
     const PosIdx pos,
     Value * * args,
@@ -858,30 +837,7 @@ static void prim_parseFlakeRef(
     v.mkAttrs(binds);
 }
 
-static RegisterPrimOp r3({
-    .name =  "__parseFlakeRef",
-    .args = {"flake-ref"},
-    .doc = R"(
-      Parse a flake reference, and return its exploded form.
-
-      For example:
-
-      ```nix
-      builtins.parseFlakeRef "github:NixOS/nixpkgs/23.05?dir=lib"
-      ```
-
-      evaluates to:
-
-      ```nix
-      { dir = "lib"; owner = "NixOS"; ref = "23.05"; repo = "nixpkgs"; type = "github"; }
-      ```
-    )",
-    .fun = prim_parseFlakeRef,
-    .experimentalFeature = Xp::Flakes,
-});
-
-
-static void prim_flakeRefToString(
+void prim_flakeRefToString(
     EvalState & state,
     const PosIdx pos,
     Value * * args,
@@ -918,30 +874,6 @@ static void prim_flakeRefToString(
     auto flakeRef = FlakeRef::fromAttrs(attrs);
     v.mkString(flakeRef.to_string());
 }
-
-static RegisterPrimOp r4({
-    .name =  "__flakeRefToString",
-    .args = {"attrs"},
-    .doc = R"(
-      Convert a flake reference from attribute set format to URL format.
-
-      For example:
-
-      ```nix
-      builtins.flakeRefToString {
-        dir = "lib"; owner = "NixOS"; ref = "23.05"; repo = "nixpkgs"; type = "github";
-      }
-      ```
-
-      evaluates to
-
-      ```nix
-      "github:NixOS/nixpkgs/23.05?dir=lib"
-      ```
-    )",
-    .fun = prim_flakeRefToString,
-    .experimentalFeature = Xp::Flakes,
-});
 
 }
 

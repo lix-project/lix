@@ -540,7 +540,7 @@ private:
 
     void createBaseEnv();
 
-    Value * addConstant(const std::string & name, Value & v, Constant info);
+    Value * addConstant(const std::string & name, const Value & v, Constant info);
 
     void addConstant(const std::string & name, Value * v, Constant info);
 

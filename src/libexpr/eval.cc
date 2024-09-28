@@ -424,7 +424,7 @@ Path EvalState::toRealPath(const Path & path, const NixStringContext & context)
 }
 
 
-Value * EvalState::addConstant(const std::string & name, Value & v, Constant info)
+Value * EvalState::addConstant(const std::string & name, const Value & v, Constant info)
 {
     Value * v2 = allocValue();
     *v2 = v;

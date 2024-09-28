@@ -15,15 +15,6 @@ nix_eval_for_docs_common = nix_for_docs + [
 ]
 nix_eval_for_docs = nix_eval_for_docs_common + '--raw'
 
-language_json = custom_target(
-  command: [nix, '__dump-language'],
-  output : 'language.json',
-  capture : true,
-  env : nix_env_for_docs,
-  # FIXME: put the actual lib targets in here? meson have introspection challenge 2024 though.
-  build_always_stale : true,
-)
-
 nix3_cli_json = custom_target(
   command : [ nix, '__dump-cli' ],
   capture : true,
@@ -37,8 +28,6 @@ generate_manual_deps = files(
   'generate-deps.py',
 )
 
-# Generates builtins.md and builtin-constants.md.
-subdir('src/language')
 # Generates new-cli pages  and conf-file.md.
 subdir('src/command-ref')
 # Generates rl-next-generated.md.
