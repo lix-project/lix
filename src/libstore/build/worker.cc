@@ -297,6 +297,18 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
         topGoals.insert(goal);
     }
 
+    auto promise = runImpl();
+    promise.wait(aio.waitScope).value();
+
+    std::vector<GoalPtr> results;
+    for (auto & [i, _p] : _topGoals) {
+        results.push_back(i);
+    }
+    return results;
+}
+
+kj::Promise<Result<void>> Worker::runImpl()
+try {
     debug("entered goal loop");
 
     while (1) {
@@ -313,12 +325,7 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
             Goals awake2 = std::move(awake);
             for (auto & goal : awake2) {
                 checkInterrupt();
-                auto result = goal->work();
-                if (result.poll(aio.waitScope)) {
-                    handleWorkResult(goal, result.wait(aio.waitScope).value());
-                } else {
-                    childStarted(goal, std::move(result));
-                }
+                childStarted(goal, goal->work());
 
                 if (topGoals.empty()) break; // stuff may have been cancelled
             }
@@ -328,7 +335,7 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
 
         /* Wait for input. */
         if (!children.isEmpty())
-            waitForInput().wait(aio.waitScope).value();
+            (co_await waitForInput()).value();
         else {
             assert(!awake.empty());
         }
@@ -344,11 +351,9 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
     assert(!settings.keepGoing || awake.empty());
     assert(!settings.keepGoing || children.isEmpty());
 
-    std::vector<GoalPtr> results;
-    for (auto & [i, _p] : _topGoals) {
-        results.push_back(i);
-    }
-    return results;
+    co_return result::success();
+} catch (...) {
+    co_return result::failure(std::current_exception());
 }
 
 kj::Promise<Result<void>> Worker::waitForInput()

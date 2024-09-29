@@ -188,6 +188,8 @@ private:
         statisticsOutdated = true;
     }
 
+    kj::Promise<Result<void>> runImpl();
+
 public:
 
     const Activity act;
