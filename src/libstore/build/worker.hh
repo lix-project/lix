@@ -167,16 +167,17 @@ private:
     /**
       * Pass current stats counters to the logger for progress bar updates.
       */
-    void updateStatistics();
+    kj::Promise<Result<void>> updateStatistics();
 
-    bool statisticsOutdated = true;
+    AsyncSemaphore statisticsUpdateSignal{1};
+    std::optional<AsyncSemaphore::Token> statisticsUpdateInhibitor;
 
     /**
       * Mark statistics as outdated, such that `updateStatistics` will be called.
       */
     void updateStatisticsLater()
     {
-        statisticsOutdated = true;
+        statisticsUpdateInhibitor = {};
     }
 
     kj::Promise<Result<void>> runImpl();

@@ -258,11 +258,13 @@ void Worker::childTerminated(GoalPtr goal)
 }
 
 
-void Worker::updateStatistics()
-{
-    // only update progress info while running. this notably excludes updating
-    // progress info while destroying, which causes the progress bar to assert
-    if (running && statisticsOutdated) {
+kj::Promise<Result<void>> Worker::updateStatistics()
+try {
+    while (true) {
+        statisticsUpdateInhibitor = co_await statisticsUpdateSignal.acquire();
+
+        // only update progress info while running. this notably excludes updating
+        // progress info while destroying, which causes the progress bar to assert
         actDerivations.progress(
             doneBuilds, expectedBuilds + doneBuilds, runningBuilds, failedBuilds
         );
@@ -275,8 +277,11 @@ void Worker::updateStatistics()
         act.setExpected(actFileTransfer, expectedDownloadSize + doneDownloadSize);
         act.setExpected(actCopyPath, expectedNarSize + doneNarSize);
 
-        statisticsOutdated = false;
+        // limit to 50fps. that should be more than good enough for anything we do
+        co_await aio.provider->getTimer().afterDelay(20 * kj::MILLISECONDS);
     }
+} catch (...) {
+    co_return result::failure(std::current_exception());
 }
 
 std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
@@ -287,14 +292,12 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
     running = true;
     Finally const _stop([&] { running = false; });
 
-    updateStatistics();
-
     topGoals.clear();
     for (auto & [goal, _promise] : _topGoals) {
         topGoals.insert(goal);
     }
 
-    auto promise = runImpl();
+    auto promise = runImpl().exclusiveJoin(updateStatistics());
 
     // TODO GC interface?
     if (auto localStore = dynamic_cast<LocalStore *>(&store); localStore && settings.minFree != 0) {
