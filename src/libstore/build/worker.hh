@@ -20,6 +20,7 @@ namespace nix {
 struct DerivationGoal;
 struct PathSubstitutionGoal;
 class DrvOutputSubstitutionGoal;
+class LocalStore;
 
 typedef std::chrono::time_point<std::chrono::steady_clock> steady_time_point;
 
@@ -189,6 +190,7 @@ private:
     }
 
     kj::Promise<Result<void>> runImpl();
+    kj::Promise<Result<void>> boopGC(LocalStore & localStore);
 
 public:
 

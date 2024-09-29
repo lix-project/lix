@@ -298,6 +298,13 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
     }
 
     auto promise = runImpl();
+
+    // TODO GC interface?
+    if (auto localStore = dynamic_cast<LocalStore *>(&store); localStore && settings.minFree != 0) {
+        // Periodically wake up to see if we need to run the garbage collector.
+        promise = promise.exclusiveJoin(boopGC(*localStore));
+    }
+
     promise.wait(aio.waitScope).value();
 
     std::vector<GoalPtr> results;
@@ -314,10 +321,6 @@ try {
     while (1) {
 
         checkInterrupt();
-
-        // TODO GC interface?
-        if (auto localStore = dynamic_cast<LocalStore *>(&store))
-            localStore->autoGC(false);
 
         /* Call every wake goal (in the ordering established by
            CompareGoalPtrs). */
@@ -356,22 +359,23 @@ try {
     co_return result::failure(std::current_exception());
 }
 
+kj::Promise<Result<void>> Worker::boopGC(LocalStore & localStore)
+try {
+    while (true) {
+        co_await aio.provider->getTimer().afterDelay(10 * kj::SECONDS);
+        localStore.autoGC(false);
+    }
+} catch (...) {
+    co_return result::failure(std::current_exception());
+}
+
 kj::Promise<Result<void>> Worker::waitForInput()
 try {
     printMsg(lvlVomit, "waiting for children");
 
-    auto waitFor = [&]{
-        auto pair = kj::newPromiseAndFulfiller<void>();
-        this->childFinished = kj::mv(pair.fulfiller);
-        return kj::mv(pair.promise);
-    }();
-
-    if (settings.minFree.get() != 0) {
-        // Periodicallty wake up to see if we need to run the garbage collector.
-        waitFor = waitFor.exclusiveJoin(aio.provider->getTimer().afterDelay(10 * kj::SECONDS));
-    }
-
-    co_await waitFor;
+    auto pair = kj::newPromiseAndFulfiller<void>();
+    this->childFinished = kj::mv(pair.fulfiller);
+    co_await pair.promise;
     co_return result::success();
 } catch (...) {
     co_return result::failure(std::current_exception());
