@@ -394,7 +394,8 @@ static RegisterPrimOp primop_fetchGit({
         [Git reference]: https://git-scm.com/book/en/v2/Git-Internals-Git-References
 
         By default, the `ref` value is prefixed with `refs/heads/`.
-        As of 2.3.0, Nix will not prefix `refs/heads/` if `ref` starts with `refs/`.
+        As of 2.3.0, Nix will not prefix `refs/heads/` if `ref` starts with `refs/` or
+        if `ref` looks like a commit hash for backwards compatibility with CppNix 2.3.
 
       - `submodules` (default: `false`)
 

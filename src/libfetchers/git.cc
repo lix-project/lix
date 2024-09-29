@@ -1,3 +1,4 @@
+#include "error.hh"
 #include "fetchers.hh"
 #include "cache.hh"
 #include "globals.hh"
@@ -256,6 +257,28 @@ std::pair<StorePath, Input> fetchFromWorkdir(ref<Store> store, Input & input, co
     return {std::move(storePath), input};
 }
 }  // end namespace
+
+static std::optional<Path> resolveRefToCachePath(
+    Input & input,
+    const Path & cacheDir,
+    std::vector<Path> & gitRefFileCandidates,
+    std::function<bool(const Path&)> condition)
+{
+    if (input.getRef()->starts_with("refs/")) {
+        Path fullpath = cacheDir + "/" + *input.getRef();
+        if (condition(fullpath)) {
+            return fullpath;
+        }
+    }
+
+    for (auto & candidate : gitRefFileCandidates) {
+        if (condition(candidate)) {
+            return candidate;
+        }
+    }
+
+    return std::nullopt;
+}
 
 struct GitInputScheme : InputScheme
 {
@@ -539,10 +562,13 @@ struct GitInputScheme : InputScheme
                 runProgram("git", true, { "-c", "init.defaultBranch=" + gitInitialBranch, "init", "--bare", repoDir });
             }
 
-            Path localRefFile =
-                input.getRef()->compare(0, 5, "refs/") == 0
-                ? cacheDir + "/" + *input.getRef()
-                : cacheDir + "/refs/heads/" + *input.getRef();
+            std::vector<Path> gitRefFileCandidates;
+            for (auto & infix : {"", "tags/", "heads/"}) {
+                Path p = cacheDir + "/refs/" + infix + *input.getRef();
+                gitRefFileCandidates.push_back(p);
+            }
+
+            Path localRefFile;
 
             bool doFetch;
             time_t now = time(0);
@@ -564,29 +590,70 @@ struct GitInputScheme : InputScheme
                 if (allRefs) {
                     doFetch = true;
                 } else {
-                    /* If the local ref is older than ‘tarball-ttl’ seconds, do a
-                       git fetch to update the local ref to the remote ref. */
-                    struct stat st;
-                    doFetch = stat(localRefFile.c_str(), &st) != 0 ||
-                        !isCacheFileWithinTtl(now, st);
+                    std::function<bool(const Path&)> condition;
+                    condition = [&now](const Path & path) {
+                        /* If the local ref is older than ‘tarball-ttl’ seconds, do a
+                           git fetch to update the local ref to the remote ref. */
+                        struct stat st;
+                        return stat(path.c_str(), &st) == 0 &&
+                            isCacheFileWithinTtl(now, st);
+                    };
+                    if (auto result = resolveRefToCachePath(
+                        input,
+                        cacheDir,
+                        gitRefFileCandidates,
+                        condition
+                    )) {
+                        localRefFile = *result;
+                        doFetch = false;
+                    } else {
+                        doFetch = true;
+                    }
                 }
             }
 
+            // When having to fetch, we don't know `localRefFile` yet.
+            // Because git needs to figure out what we're fetching
+            // (i.e. is it a rev? a branch? a tag?)
             if (doFetch) {
                 Activity act(*logger, lvlTalkative, actUnknown, fmt("fetching Git repository '%s'", actualUrl));
 
-                // FIXME: git stderr messes up our progress indicator, so
-                // we're using --quiet for now. Should process its stderr.
+                auto ref = input.getRef();
+                std::string fetchRef;
+                if (allRefs) {
+                    fetchRef = "refs/*";
+                } else if (
+                    ref->starts_with("refs/")
+                    || *ref == "HEAD"
+                    || std::regex_match(*ref, revRegex))
+                {
+                    fetchRef = *ref;
+                } else {
+                    fetchRef = "refs/*/" + *ref;
+                }
+
                 try {
-                    auto ref = input.getRef();
-                    auto fetchRef = allRefs
-                        ? "refs/*"
-                        : ref->compare(0, 5, "refs/") == 0
-                            ? *ref
-                            : ref == "HEAD"
-                                ? *ref
-                                : "refs/heads/" + *ref;
-                    runProgram("git", true, { "-C", repoDir, "--git-dir", gitDir, "fetch", "--quiet", "--force", "--", actualUrl, fmt("%s:%s", fetchRef, fetchRef) }, true);
+                    Finally finally([&]() {
+                        if (auto p = resolveRefToCachePath(
+                            input,
+                            cacheDir,
+                            gitRefFileCandidates,
+                            pathExists
+                        )) {
+                            localRefFile = *p;
+                        }
+                    });
+
+                    // FIXME: git stderr messes up our progress indicator, so
+                    // we're using --quiet for now. Should process its stderr.
+                    runProgram("git", true, {
+                        "-C", repoDir,
+                        "--git-dir", gitDir,
+                        "fetch",
+                        "--quiet",
+                        "--force",
+                        "--", actualUrl, fmt("%s:%s", fetchRef, fetchRef)
+                    }, true);
                 } catch (Error & e) {
                     if (!pathExists(localRefFile)) throw;
                     warn("could not update local clone of Git repository '%s'; continuing with the most recent version", actualUrl);

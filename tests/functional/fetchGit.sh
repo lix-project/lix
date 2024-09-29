@@ -53,7 +53,16 @@ out=$(nix eval --impure --raw --expr "builtins.fetchGit { url = \"file://$repo\"
 [[ $status == 1 ]]
 [[ $out =~ 'Cannot find Git revision' ]]
 
+# allow revs as refs (for 2.3 compat)
 [[ $(nix eval --raw --expr "builtins.readFile (builtins.fetchGit { url = \"file://$repo\"; rev = \"$devrev\"; allRefs = true; } + \"/differentbranch\")") = 'different file' ]]
+
+rm -rf "$TEST_ROOT/test-home"
+[[ $(nix eval --raw --expr "builtins.readFile (builtins.fetchGit { url = \"file://$repo\"; rev = \"$devrev\"; allRefs = true; } + \"/differentbranch\")") = 'different file' ]]
+
+rm -rf "$TEST_ROOT/test-home"
+out=$(nix eval --raw --expr "builtins.readFile (builtins.fetchGit { url = \"file://$repo\"; rev = \"$devrev\"; ref = \"lolkek\"; } + \"/differentbranch\")" 2>&1) || status=$?
+[[ $status == 1 ]]
+[[ $out =~ 'Cannot find Git revision' ]]
 
 # In pure eval mode, fetchGit without a revision should fail.
 [[ $(nix eval --impure --raw --expr "builtins.readFile (fetchGit \"file://$repo\" + \"/hello\")") = world ]]
@@ -228,6 +237,12 @@ export _NIX_FORCE_HTTP=1
 rev_tag1_nix=$(nix eval --impure --raw --expr "(builtins.fetchGit { url = \"file://$repo\"; ref = \"refs/tags/tag1\"; }).rev")
 rev_tag1=$(git -C $repo rev-parse refs/tags/tag1)
 [[ $rev_tag1_nix = $rev_tag1 ]]
+
+# Allow fetching tags w/o specifying refs/tags
+rm -rf "$TEST_ROOT/test-home"
+rev_tag1_nix_alt=$(nix eval --impure --raw --expr "(builtins.fetchGit { url = \"file://$repo\"; ref = \"tag1\"; }).rev")
+[[ $rev_tag1_nix_alt = $rev_tag1 ]]
+
 rev_tag2_nix=$(nix eval --impure --raw --expr "(builtins.fetchGit { url = \"file://$repo\"; ref = \"refs/tags/tag2\"; }).rev")
 rev_tag2=$(git -C $repo rev-parse refs/tags/tag2)
 [[ $rev_tag2_nix = $rev_tag2 ]]
@@ -254,3 +269,33 @@ git -C "$repo" add hello .gitignore
 git -C "$repo" commit -m 'Bla1'
 cd "$repo"
 path11=$(nix eval --impure --raw --expr "(builtins.fetchGit ./.).outPath")
+
+# test behavior if both branch and tag with same name exist
+repo="$TEST_ROOT/git"
+rm -rf "$repo"/.git
+git init "$repo"
+git -C "$repo" config user.email "foobar@example.com"
+git -C "$repo" config user.name "Foobar"
+
+touch "$repo"/test
+echo "hello world" > "$repo"/test
+git -C "$repo" checkout -b branch
+git -C "$repo" add test
+
+git -C "$repo" commit -m "Init"
+
+git -C "$repo" tag branch
+
+echo "goodbye world" > "$repo"/test
+git -C "$repo" add test
+git -C "$repo" commit -m "Update test"
+
+path12=$(nix eval --impure --raw --expr "(builtins.fetchGit { url = \"file://$repo\"; ref = \"branch\"; }).outPath")
+[[ "$(cat "$path12"/test)" =~ 'hello world' ]]
+[[ "$(cat "$repo"/test)" =~ 'goodbye world' ]]
+
+path13=$(nix eval --impure --raw --expr "(builtins.fetchGit { url = \"file://$repo\"; ref = \"refs/heads/branch\"; }).outPath")
+[[ "$(cat "$path13"/test)" =~ 'goodbye world' ]]
+
+path14=$(nix eval --impure --raw --expr "(builtins.fetchGit { url = \"file://$repo\"; ref = \"refs/tags/branch\"; }).outPath")
+[[ "$path14" = "$path12" ]]
