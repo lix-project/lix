@@ -19,36 +19,32 @@ DrvOutputSubstitutionGoal::DrvOutputSubstitutionGoal(
     : Goal(worker, isDependency)
     , id(id)
 {
-    state = &DrvOutputSubstitutionGoal::init;
     name = fmt("substitution of '%s'", id.to_string());
     trace("created");
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::init(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::work() noexcept
 try {
     trace("init");
 
     /* If the derivation already exists, we’re done */
     if (worker.store.queryRealisation(id)) {
-        return {Finished{ecSuccess, std::move(buildResult)}};
+        co_return Finished{ecSuccess, std::move(buildResult)};
     }
 
     subs = settings.useSubstitutes ? getDefaultSubstituters() : std::list<ref<Store>>();
-    return tryNext(inBuildSlot);
+    co_return co_await tryNext();
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
-kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::tryNext(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::tryNext() noexcept
 try {
     trace("trying next substituter");
 
-    if (!inBuildSlot) {
-        return worker.substitutions.acquire().then([this](auto token) {
-            slotToken = std::move(token);
-            return work();
-        });
+    if (!slotToken.valid()) {
+        slotToken = co_await worker.substitutions.acquire();
     }
 
     maintainRunningSubstitutions = worker.runningSubstitutions.addTemporarily(1);
@@ -65,7 +61,7 @@ try {
         /* Hack: don't indicate failure if there were no substituters.
            In that case the calling derivation should just do a
            build. */
-        return {Finished{substituterFailed ? ecFailed : ecNoSubstituters, std::move(buildResult)}};
+        co_return Finished{substituterFailed ? ecFailed : ecNoSubstituters, std::move(buildResult)};
     }
 
     sub = subs.front();
@@ -85,13 +81,13 @@ try {
             return sub->queryRealisation(id);
         });
 
-    state = &DrvOutputSubstitutionGoal::realisationFetched;
-    return pipe.promise.then([]() -> Result<WorkResult> { return StillAlive{}; });
+    co_await pipe.promise;
+    co_return co_await realisationFetched();
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
-kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::realisationFetched(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::realisationFetched() noexcept
 try {
     maintainRunningSubstitutions.reset();
     slotToken = {};
@@ -104,7 +100,7 @@ try {
     }
 
     if (!outputInfo) {
-        return tryNext(inBuildSlot);
+        co_return co_await tryNext();
     }
 
     kj::Vector<std::pair<GoalPtr, kj::Promise<void>>> dependencies;
@@ -121,7 +117,7 @@ try {
                     worker.store.printStorePath(localOutputInfo->outPath),
                     worker.store.printStorePath(depPath)
                 );
-                return tryNext(inBuildSlot);
+                co_return co_await tryNext();
             }
             dependencies.add(worker.goalFactory().makeDrvOutputSubstitutionGoal(depId));
         }
@@ -129,17 +125,15 @@ try {
 
     dependencies.add(worker.goalFactory().makePathSubstitutionGoal(outputInfo->outPath));
 
-    if (dependencies.empty()) {
-        return outPathValid(inBuildSlot);
-    } else {
-        state = &DrvOutputSubstitutionGoal::outPathValid;
-        return waitForGoals(dependencies.releaseAsArray());
+    if (!dependencies.empty()) {
+        (co_await waitForGoals(dependencies.releaseAsArray())).value();
     }
+    co_return co_await outPathValid();
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
-kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::outPathValid(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::outPathValid() noexcept
 try {
     assert(outputInfo);
     trace("output path substituted");
@@ -165,11 +159,5 @@ try {
 } catch (...) {
     return {std::current_exception()};
 }
-
-kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::work() noexcept
-{
-    return (this->*state)(slotToken.valid());
-}
-
 
 }

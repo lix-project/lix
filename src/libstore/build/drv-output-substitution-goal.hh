@@ -65,13 +65,9 @@ public:
         std::optional<ContentAddress> ca = std::nullopt
     );
 
-    typedef kj::Promise<Result<WorkResult>> (DrvOutputSubstitutionGoal::*GoalState)(bool inBuildSlot) noexcept;
-    GoalState state;
-
-    kj::Promise<Result<WorkResult>> init(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> tryNext(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> realisationFetched(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> outPathValid(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> tryNext() noexcept;
+    kj::Promise<Result<WorkResult>> realisationFetched() noexcept;
+    kj::Promise<Result<WorkResult>> outPathValid() noexcept;
     kj::Promise<Result<WorkResult>> finished() noexcept;
 
     kj::Promise<Result<WorkResult>> work() noexcept override;
