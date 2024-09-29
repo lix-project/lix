@@ -328,7 +328,7 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
 
         /* Wait for input. */
         if (!children.isEmpty())
-            waitForInput();
+            waitForInput().wait(aio.waitScope).value();
         else {
             assert(!awake.empty());
         }
@@ -351,8 +351,8 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
     return results;
 }
 
-void Worker::waitForInput()
-{
+kj::Promise<Result<void>> Worker::waitForInput()
+try {
     printMsg(lvlVomit, "waiting for children");
 
     auto waitFor = [&]{
@@ -366,7 +366,10 @@ void Worker::waitForInput()
         waitFor = waitFor.exclusiveJoin(aio.provider->getTimer().afterDelay(10 * kj::SECONDS));
     }
 
-    waitFor.wait(aio.waitScope);
+    co_await waitFor;
+    co_return result::success();
+} catch (...) {
+    co_return result::failure(std::current_exception());
 }
 
 

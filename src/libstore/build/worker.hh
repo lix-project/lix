@@ -156,7 +156,7 @@ private:
     /**
      * Wait for input to become available.
      */
-    void waitForInput();
+    kj::Promise<Result<void>> waitForInput();
 
     /**
      * Remove a dead goal.
