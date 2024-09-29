@@ -213,7 +213,7 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * The additional states.
      */
-    kj::Promise<Result<WorkResult>> tryLocalBuild(bool inBuildSlot) noexcept override;
+    kj::Promise<Result<WorkResult>> tryLocalBuild() noexcept override;
 
     /**
      * Start building a derivation.

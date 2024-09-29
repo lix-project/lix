@@ -216,9 +216,6 @@ struct DerivationGoal : public Goal
      */
     std::optional<DerivationType> derivationType;
 
-    typedef kj::Promise<Result<WorkResult>> (DerivationGoal::*GoalState)(bool inBuildSlot) noexcept;
-    GoalState state;
-
     BuildMode buildMode;
 
     NotifyingCounter<uint64_t>::Bump mcExpectedBuilds, mcRunningBuilds;
@@ -257,23 +254,23 @@ struct DerivationGoal : public Goal
     /**
      * The states.
      */
-    kj::Promise<Result<WorkResult>> getDerivation(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> loadDerivation(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> haveDerivation(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> outputsSubstitutionTried(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> gaveUpOnSubstitution(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> closureRepaired(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> inputsRealised(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> tryToBuild(bool inBuildSlot) noexcept;
-    virtual kj::Promise<Result<WorkResult>> tryLocalBuild(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> buildDone(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> getDerivation() noexcept;
+    kj::Promise<Result<WorkResult>> loadDerivation() noexcept;
+    kj::Promise<Result<WorkResult>> haveDerivation() noexcept;
+    kj::Promise<Result<WorkResult>> outputsSubstitutionTried() noexcept;
+    kj::Promise<Result<WorkResult>> gaveUpOnSubstitution() noexcept;
+    kj::Promise<Result<WorkResult>> closureRepaired() noexcept;
+    kj::Promise<Result<WorkResult>> inputsRealised() noexcept;
+    kj::Promise<Result<WorkResult>> tryToBuild() noexcept;
+    virtual kj::Promise<Result<WorkResult>> tryLocalBuild() noexcept;
+    kj::Promise<Result<WorkResult>> buildDone() noexcept;
 
-    kj::Promise<Result<WorkResult>> resolvedFinished(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> resolvedFinished() noexcept;
 
     /**
      * Is the build hook willing to perform the build?
      */
-    HookReply tryBuildHook(bool inBuildSlot);
+    HookReply tryBuildHook();
 
     virtual int getChildStatus();
 
@@ -324,8 +321,6 @@ protected:
     kj::Promise<Outcome<void, Finished>> monitorForSilence() noexcept;
     Finished tooMuchLogs();
     void flushLine();
-
-    static kj::Promise<Result<WorkResult>> continueOrError(kj::Promise<Outcome<void, Goal::Finished>> p);
 
 public:
     /**

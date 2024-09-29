@@ -71,7 +71,6 @@ DerivationGoal::DerivationGoal(const StorePath & drvPath,
     , wantedOutputs(wantedOutputs)
     , buildMode(buildMode)
 {
-    state = &DerivationGoal::getDerivation;
     name = fmt(
         "building of '%s' from .drv file",
         DerivedPath::Built { makeConstantStorePathRef(drvPath), wantedOutputs }.to_string(worker.store));
@@ -91,7 +90,6 @@ DerivationGoal::DerivationGoal(const StorePath & drvPath, const BasicDerivation 
 {
     this->drv = std::make_unique<Derivation>(drv);
 
-    state = &DerivationGoal::haveDerivation;
     name = fmt(
         "building of '%s' from in-memory derivation",
         DerivedPath::Built { makeConstantStorePathRef(drvPath), drv.outputNames() }.to_string(worker.store));
@@ -129,7 +127,7 @@ Goal::Finished DerivationGoal::timedOut(Error && ex)
 
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::work() noexcept
 {
-    return (this->*state)(slotToken.valid());
+    return useDerivation ? getDerivation() : haveDerivation();
 }
 
 void DerivationGoal::addWantedOutputs(const OutputsSpec & outputs)
@@ -153,7 +151,7 @@ void DerivationGoal::addWantedOutputs(const OutputsSpec & outputs)
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::getDerivation(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::getDerivation() noexcept
 try {
     trace("init");
 
@@ -161,18 +159,17 @@ try {
        exists.  If it doesn't, it may be created through a
        substitute. */
     if (buildMode == bmNormal && worker.evalStore.isValidPath(drvPath)) {
-        return loadDerivation(inBuildSlot);
+        co_return co_await loadDerivation();
     }
 
-
-    state = &DerivationGoal::loadDerivation;
-    return waitForGoals(worker.goalFactory().makePathSubstitutionGoal(drvPath));
+    (co_await waitForGoals(worker.goalFactory().makePathSubstitutionGoal(drvPath))).value();
+    co_return co_await loadDerivation();
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::loadDerivation(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::loadDerivation() noexcept
 try {
     trace("loading derivation");
 
@@ -203,13 +200,13 @@ try {
     }
     assert(drv);
 
-    return haveDerivation(inBuildSlot);
+    return haveDerivation();
 } catch (...) {
     return {std::current_exception()};
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::haveDerivation(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::haveDerivation() noexcept
 try {
     trace("have derivation");
 
@@ -237,7 +234,7 @@ try {
             });
         }
 
-        return gaveUpOnSubstitution(inBuildSlot);
+        co_return co_await gaveUpOnSubstitution();
     }
 
     for (auto & i : drv->outputsAndOptPaths(worker.store))
@@ -259,7 +256,7 @@ try {
 
     /* If they are all valid, then we're done. */
     if (allValid && buildMode == bmNormal) {
-        return {done(BuildResult::AlreadyValid, std::move(validOutputs))};
+        co_return done(BuildResult::AlreadyValid, std::move(validOutputs));
     }
 
     /* We are first going to try to create the invalid output paths
@@ -290,17 +287,15 @@ try {
         }
     }
 
-    if (dependencies.empty()) { /* to prevent hang (no wake-up event) */
-        return outputsSubstitutionTried(inBuildSlot);
-    } else {
-        state = &DerivationGoal::outputsSubstitutionTried;
-        return waitForGoals(dependencies.releaseAsArray());
+    if (!dependencies.empty()) { /* to prevent hang (no wake-up event) */
+        (co_await waitForGoals(dependencies.releaseAsArray())).value();
     }
+    co_return co_await outputsSubstitutionTried();
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::outputsSubstitutionTried(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::outputsSubstitutionTried() noexcept
 try {
     trace("all outputs substituted (maybe)");
 
@@ -350,7 +345,7 @@ try {
 
     if (needRestart == NeedRestartForMoreOutputs::OutputsAddedDoNeed) {
         needRestart = NeedRestartForMoreOutputs::OutputsUnmodifedDontNeed;
-        return haveDerivation(inBuildSlot);
+        return haveDerivation();
     }
 
     auto [allValid, validOutputs] = checkPathValidity();
@@ -366,7 +361,7 @@ try {
             worker.store.printStorePath(drvPath));
 
     /* Nothing to wait for; tail call */
-    return gaveUpOnSubstitution(inBuildSlot);
+    return gaveUpOnSubstitution();
 } catch (...) {
     return {std::current_exception()};
 }
@@ -374,7 +369,7 @@ try {
 
 /* At least one of the output paths could not be
    produced using a substitute.  So we have to build instead. */
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::gaveUpOnSubstitution(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::gaveUpOnSubstitution() noexcept
 try {
     kj::Vector<std::pair<GoalPtr, kj::Promise<void>>> dependencies;
 
@@ -437,14 +432,12 @@ try {
         dependencies.add(worker.goalFactory().makePathSubstitutionGoal(i));
     }
 
-    if (dependencies.empty()) {/* to prevent hang (no wake-up event) */
-        return inputsRealised(inBuildSlot);
-    } else {
-        state = &DerivationGoal::inputsRealised;
-        return waitForGoals(dependencies.releaseAsArray());
+    if (!dependencies.empty()) {/* to prevent hang (no wake-up event) */
+        (co_await waitForGoals(dependencies.releaseAsArray())).value();
     }
+    co_return co_await inputsRealised();
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
 
@@ -503,17 +496,17 @@ try {
     }
 
     if (dependencies.empty()) {
-        return {done(BuildResult::AlreadyValid, assertPathValidity())};
+        co_return done(BuildResult::AlreadyValid, assertPathValidity());
     }
 
-    state = &DerivationGoal::closureRepaired;
-    return waitForGoals(dependencies.releaseAsArray());
+    (co_await waitForGoals(dependencies.releaseAsArray())).value();
+    co_return co_await closureRepaired();
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::closureRepaired(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::closureRepaired() noexcept
 try {
     trace("closure repaired");
     if (nrFailed > 0)
@@ -525,14 +518,14 @@ try {
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::inputsRealised(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::inputsRealised() noexcept
 try {
     trace("all inputs realised");
 
     if (nrFailed != 0) {
         if (!useDerivation)
             throw Error("some dependencies of '%s' are missing", worker.store.printStorePath(drvPath));
-        return {done(
+        co_return done(
             BuildResult::DependencyFailed,
             {},
             Error(
@@ -540,12 +533,12 @@ try {
                 nrFailed,
                 worker.store.printStorePath(drvPath)
             )
-        )};
+        );
     }
 
     if (retrySubstitution == RetrySubstitution::YesNeed) {
         retrySubstitution = RetrySubstitution::AlreadyRetried;
-        return haveDerivation(inBuildSlot);
+        co_return co_await haveDerivation();
     }
 
     /* Gather information necessary for computing the closure and/or
@@ -611,8 +604,8 @@ try {
                 pathResolved, wantedOutputs, buildMode);
             resolvedDrvGoal = dependency.first;
 
-            state = &DerivationGoal::resolvedFinished;
-            return waitForGoals(std::move(dependency));
+            (co_await waitForGoals(std::move(dependency))).value();
+            co_return co_await resolvedFinished();
         }
 
         std::function<void(const StorePath &, const DerivedPathMap<StringSet>::ChildNode &)> accumInputPaths;
@@ -676,10 +669,9 @@ try {
     /* Okay, try to build.  Note that here we don't wait for a build
        slot to become available, since we don't need one if there is a
        build hook. */
-    state = &DerivationGoal::tryToBuild;
-    return tryToBuild(inBuildSlot);
+    co_return co_await tryToBuild();
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
 void DerivationGoal::started()
@@ -695,8 +687,9 @@ void DerivationGoal::started()
     mcRunningBuilds = worker.runningBuilds.addTemporarily(1);
 }
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::tryToBuild(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::tryToBuild() noexcept
 try {
+retry:
     trace("trying to build");
 
     /* Obtain locks on all output paths, if the paths are known a priori.
@@ -730,7 +723,9 @@ try {
         if (!actLock)
             actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
                 fmt("waiting for lock on %s", Magenta(showPaths(lockFiles))));
-        return waitForAWhile();
+        (co_await waitForAWhile()).value();
+        // we can loop very often, and `co_return co_await` always allocates a new frame
+        goto retry;
     }
 
     actLock.reset();
@@ -747,7 +742,7 @@ try {
     if (buildMode != bmCheck && allValid) {
         debug("skipping build of derivation '%s', someone beat us to it", worker.store.printStorePath(drvPath));
         outputLocks.setDeletion(true);
-        return {done(BuildResult::AlreadyValid, std::move(validOutputs))};
+        co_return done(BuildResult::AlreadyValid, std::move(validOutputs));
     }
 
     /* If any of the outputs already exist but are not valid, delete
@@ -767,47 +762,56 @@ try {
         && settings.maxBuildJobs.get() != 0;
 
     if (!buildLocally) {
-        auto hookReply = tryBuildHook(inBuildSlot);
-        auto result = std::visit(
-            overloaded{
-                [&](HookReply::Accept & a) -> std::optional<kj::Promise<Result<WorkResult>>> {
-                    /* Yes, it has started doing so.  Wait until we get
-                       EOF from the hook. */
-                    actLock.reset();
-                    buildResult.startTime = time(0); // inexact
-                    state = &DerivationGoal::buildDone;
-                    started();
-                    return continueOrError(std::move(a.promise));
-                },
-                [&](HookReply::Postpone) -> std::optional<kj::Promise<Result<WorkResult>>> {
-                    /* Not now; wait until at least one child finishes or
-                       the wake-up timeout expires. */
-                    if (!actLock)
-                        actLock = std::make_unique<Activity>(*logger, lvlTalkative, actBuildWaiting,
-                            fmt("waiting for a machine to build '%s'", Magenta(worker.store.printStorePath(drvPath))));
-                    outputLocks.unlock();
-                    return waitForAWhile();
-                },
-                [&](HookReply::Decline) -> std::optional<kj::Promise<Result<WorkResult>>> {
-                    /* We should do it ourselves. */
-                    return std::nullopt;
-                },
-            },
-            hookReply);
-        if (result) {
-            return std::move(*result);
+        auto hookReply = tryBuildHook();
+        switch (hookReply.index()) {
+        case 0: {
+            HookReply::Accept & a = std::get<0>(hookReply);
+            /* Yes, it has started doing so.  Wait until we get
+                EOF from the hook. */
+            actLock.reset();
+            buildResult.startTime = time(0); // inexact
+            started();
+            auto r = co_await a.promise;
+            if (r.has_value()) {
+                co_return co_await buildDone();
+            } else if (r.has_error()) {
+                co_return r.assume_error();
+            } else {
+                co_return r.assume_exception();
+            }
+        }
+
+        case 1: {
+            HookReply::Decline _ [[gnu::unused]] = std::get<1>(hookReply);
+            break;
+        }
+
+        case 2: {
+            HookReply::Postpone _ [[gnu::unused]] = std::get<2>(hookReply);
+            /* Not now; wait until at least one child finishes or
+                the wake-up timeout expires. */
+            if (!actLock)
+                actLock = std::make_unique<Activity>(*logger, lvlTalkative, actBuildWaiting,
+                    fmt("waiting for a machine to build '%s'", Magenta(worker.store.printStorePath(drvPath))));
+            outputLocks.unlock();
+            (co_await waitForAWhile()).value();
+            goto retry;
+        }
+
+        default:
+            // can't static_assert this because HookReply *subclasses* variant and std::variant_size breaks
+            assert(false && "unexpected hook reply");
         }
     }
 
     actLock.reset();
 
-    state = &DerivationGoal::tryLocalBuild;
-    return tryLocalBuild(inBuildSlot);
+    co_return co_await tryLocalBuild();
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::tryLocalBuild(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::tryLocalBuild() noexcept
 try {
     throw Error(
         "unable to build with a primary store that isn't a local store; "
@@ -970,7 +974,7 @@ void runPostBuildHook(
     proc.getStdout()->drainInto(sink);
 }
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::buildDone(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::buildDone() noexcept
 try {
     trace("build done");
 
@@ -1090,7 +1094,7 @@ try {
     return {std::current_exception()};
 }
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::resolvedFinished(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::resolvedFinished() noexcept
 try {
     trace("resolved derivation finished");
 
@@ -1163,7 +1167,7 @@ try {
     return {std::current_exception()};
 }
 
-HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
+HookReply DerivationGoal::tryBuildHook()
 {
     if (!worker.hook.available || !useDerivation) return HookReply::Decline{};
 
@@ -1175,7 +1179,7 @@ HookReply DerivationGoal::tryBuildHook(bool inBuildSlot)
         /* Send the request to the hook. */
         worker.hook.instance->sink
             << "try"
-            << (inBuildSlot ? 1 : 0)
+            << (slotToken.valid() ? 1 : 0)
             << drv->platform
             << worker.store.printStorePath(drvPath)
             << parsedDrv->getRequiredSystemFeatures();
@@ -1744,19 +1748,5 @@ void DerivationGoal::waiteeDone(GoalPtr waitee)
                     i->second.outPath);
         }
     }
-}
-
-kj::Promise<Result<Goal::WorkResult>>
-DerivationGoal::continueOrError(kj::Promise<Outcome<void, Goal::Finished>> p)
-{
-    return p.then([](auto r) -> Result<WorkResult> {
-        if (r.has_value()) {
-            return StillAlive{};
-        } else if (r.has_error()) {
-            return r.assume_error();
-        } else {
-            return r.assume_exception();
-        }
-    });
 }
 }

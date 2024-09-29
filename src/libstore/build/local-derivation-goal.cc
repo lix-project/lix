@@ -147,20 +147,18 @@ void LocalDerivationGoal::killSandbox(bool getStats)
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> LocalDerivationGoal::tryLocalBuild(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> LocalDerivationGoal::tryLocalBuild() noexcept
 try {
+retry:
 #if __APPLE__
     additionalSandboxProfile = parsedDrv->getStringAttr("__sandboxProfile").value_or("");
 #endif
 
-    if (!inBuildSlot) {
-        state = &DerivationGoal::tryToBuild;
+    if (!slotToken.valid()) {
         outputLocks.unlock();
         if (worker.localBuilds.capacity() > 0) {
-            return worker.localBuilds.acquire().then([this](auto token) {
-                slotToken = std::move(token);
-                return work();
-            });
+            slotToken = co_await worker.localBuilds.acquire();
+            co_return co_await tryToBuild();
         }
         if (getMachines().empty()) {
             throw Error(
@@ -215,7 +213,9 @@ try {
             if (!actLock)
                 actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
                     fmt("waiting for a free build user ID for '%s'", Magenta(worker.store.printStorePath(drvPath))));
-            return waitForAWhile();
+            (co_await waitForAWhile()).value();
+            // we can loop very often, and `co_return co_await` always allocates a new frame
+            goto retry;
         }
     }
 
@@ -246,22 +246,27 @@ try {
         /* Okay, we have to build. */
         auto promise = startBuilder();
 
-        /* This state will be reached when we get EOF on the child's
-           log pipe. */
-        state = &DerivationGoal::buildDone;
-
         started();
-        return continueOrError(std::move(promise));
+        auto r = co_await promise;
+        if (r.has_value()) {
+            // all good so far
+        } else if (r.has_error()) {
+            co_return r.assume_error();
+        } else {
+            co_return r.assume_exception();
+        }
 
     } catch (BuildError & e) {
         outputLocks.unlock();
         buildUser.reset();
         auto report = done(BuildResult::InputRejected, {}, std::move(e));
         report.permanentFailure = true;
-        return {std::move(report)};
+        co_return report;
     }
+
+    co_return co_await buildDone();
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
 
