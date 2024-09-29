@@ -44,7 +44,6 @@ Worker::~Worker()
        are in trouble, since goals may call childTerminated() etc. in
        their destructors). */
     topGoals.clear();
-    awake.clear();
     children.clear();
 
     assert(expectedSubstitutions == 0);
@@ -68,7 +67,10 @@ std::pair<std::shared_ptr<G>, kj::Promise<void>> Worker::makeGoalCommon(
         goal = create();
         goal->notify = std::move(goal_weak.fulfiller);
         goal_weak.goal = goal;
-        wakeUp(goal);
+        // do not start working immediately, this round of the event loop
+        // may have more calls to this function lined up that'll also run
+        // modify(). starting early can then cause the goals to misbehave
+        childStarted(goal, kj::evalLater([goal] { return goal->work(); }));
     } else {
         modify(*goal);
     }
@@ -201,7 +203,9 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
 {
     std::visit(
         overloaded{
-            [&](Goal::StillAlive) { wakeUp(goal); },
+            [&](Goal::StillAlive) {
+                childStarted(goal, kj::evalLater([goal] { return goal->work(); }));
+            },
             [&](Goal::Finished & f) { goalFinished(goal, f); },
         },
         how
@@ -227,13 +231,6 @@ void Worker::removeGoal(GoalPtr goal)
         if (goal->exitCode == Goal::ecFailed && !settings.keepGoing)
             topGoals.clear();
     }
-}
-
-
-void Worker::wakeUp(GoalPtr goal)
-{
-    goal->trace("woken up");
-    awake.insert(goal);
 }
 
 
@@ -322,26 +319,11 @@ try {
 
         checkInterrupt();
 
-        /* Call every wake goal (in the ordering established by
-           CompareGoalPtrs). */
-        while (!awake.empty() && !topGoals.empty()) {
-            Goals awake2 = std::move(awake);
-            for (auto & goal : awake2) {
-                checkInterrupt();
-                childStarted(goal, goal->work());
-
-                if (topGoals.empty()) break; // stuff may have been cancelled
-            }
-        }
-
         if (topGoals.empty()) break;
 
         /* Wait for input. */
         if (!children.isEmpty())
             (co_await waitForInput()).value();
-        else {
-            assert(!awake.empty());
-        }
 
         if (childException) {
             std::rethrow_exception(childException);
@@ -351,7 +333,6 @@ try {
     /* If --keep-going is not set, it's possible that the main goal
        exited while some of its subgoals were still active.  But if
        --keep-going *is* set, then they must all be finished now. */
-    assert(!settings.keepGoing || awake.empty());
     assert(!settings.keepGoing || children.isEmpty());
 
     co_return result::success();

@@ -91,11 +91,6 @@ private:
      */
     Goals topGoals;
 
-    /**
-     * Goals that are ready to do some work.
-     */
-    Goals awake;
-
     template<typename G>
     struct CachedGoal
     {
@@ -148,11 +143,6 @@ private:
     void handleWorkResult(GoalPtr goal, Goal::WorkResult how);
 
     kj::Own<kj::PromiseFulfiller<void>> childFinished;
-
-    /**
-     * Wake up a goal (i.e., there is something for it to do).
-     */
-    void wakeUp(GoalPtr goal);
 
     /**
      * Wait for input to become available.
