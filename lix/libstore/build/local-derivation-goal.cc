@@ -1665,10 +1665,12 @@ void LocalDerivationGoal::runChild()
             if (unshare(CLONE_NEWNS) == -1)
                 throw SysError("unsharing mount namespace");
 
+            /* Creating a new cgroup namespace is independent of whether we enabled the cgroup experimental feature.
+             * We always create a new cgroup namespace from a sandboxing perspective. */
             /* Unshare the cgroup namespace. This means
                /proc/self/cgroup will show the child's cgroup as '/'
                rather than whatever it is in the parent. */
-            if (cgroup && unshare(CLONE_NEWCGROUP) == -1)
+            if (unshare(CLONE_NEWCGROUP) == -1)
                 throw SysError("unsharing cgroup namespace");
 
             /* Do the chroot(). */
