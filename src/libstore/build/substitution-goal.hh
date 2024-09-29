@@ -67,9 +67,6 @@ struct PathSubstitutionGoal : public Goal
     NotifyingCounter<uint64_t>::Bump maintainExpectedSubstitutions,
         maintainRunningSubstitutions, maintainExpectedNar, maintainExpectedDownload;
 
-    typedef kj::Promise<Result<WorkResult>> (PathSubstitutionGoal::*GoalState)(bool inBuildSlot) noexcept;
-    GoalState state;
-
     /**
      * Content address for recomputing store path
      */
@@ -95,11 +92,10 @@ public:
     /**
      * The states.
      */
-    kj::Promise<Result<WorkResult>> init(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> tryNext(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> referencesValid(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> tryToRun(bool inBuildSlot) noexcept;
-    kj::Promise<Result<WorkResult>> finished(bool inBuildSlot) noexcept;
+    kj::Promise<Result<WorkResult>> tryNext() noexcept;
+    kj::Promise<Result<WorkResult>> referencesValid() noexcept;
+    kj::Promise<Result<WorkResult>> tryToRun() noexcept;
+    kj::Promise<Result<WorkResult>> finished() noexcept;
 
     /* Called by destructor, can't be overridden */
     void cleanup() override final;

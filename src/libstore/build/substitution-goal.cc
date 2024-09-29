@@ -20,7 +20,6 @@ PathSubstitutionGoal::PathSubstitutionGoal(
     , repair(repair)
     , ca(ca)
 {
-    state = &PathSubstitutionGoal::init;
     name = fmt("substitution of '%s'", worker.store.printStorePath(this->storePath));
     trace("created");
     maintainExpectedSubstitutions = worker.expectedSubstitutions.addTemporarily(1);
@@ -48,12 +47,6 @@ Goal::Finished PathSubstitutionGoal::done(
 
 
 kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::work() noexcept
-{
-    return (this->*state)(slotToken.valid());
-}
-
-
-kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::init(bool inBuildSlot) noexcept
 try {
     trace("init");
 
@@ -69,13 +62,13 @@ try {
 
     subs = settings.useSubstitutes ? getDefaultSubstituters() : std::list<ref<Store>>();
 
-    return tryNext(inBuildSlot);
+    return tryNext();
 } catch (...) {
     return {std::current_exception()};
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::tryNext(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::tryNext() noexcept
 try {
     trace("trying next substituter");
 
@@ -91,10 +84,10 @@ try {
         /* Hack: don't indicate failure if there were no substituters.
            In that case the calling derivation should just do a
            build. */
-        return {done(
+        co_return done(
             substituterFailed ? ecFailed : ecNoSubstituters,
             BuildResult::NoSubstituters,
-            fmt("path '%s' is required, but there is no substituter that can build it", worker.store.printStorePath(storePath)))};
+            fmt("path '%s' is required, but there is no substituter that can build it", worker.store.printStorePath(storePath)));
     }
 
     sub = subs.front();
@@ -107,26 +100,28 @@ try {
         if (sub->storeDir == worker.store.storeDir)
             assert(subPath == storePath);
     } else if (sub->storeDir != worker.store.storeDir) {
-        return tryNext(inBuildSlot);
+        co_return co_await tryNext();
     }
 
-    try {
-        // FIXME: make async
-        info = sub->queryPathInfo(subPath ? *subPath : storePath);
-    } catch (InvalidPath &) {
-        return tryNext(inBuildSlot);
-    } catch (SubstituterDisabled &) {
-        if (settings.tryFallback) {
-            return tryNext(inBuildSlot);
+    do {
+        try {
+            // FIXME: make async
+            info = sub->queryPathInfo(subPath ? *subPath : storePath);
+            break;
+        } catch (InvalidPath &) {
+        } catch (SubstituterDisabled &) {
+            if (!settings.tryFallback) {
+                throw;
+            }
+        } catch (Error & e) {
+            if (settings.tryFallback) {
+                logError(e.info());
+            } else {
+                throw;
+            }
         }
-        throw;
-    } catch (Error & e) {
-        if (settings.tryFallback) {
-            logError(e.info());
-            return tryNext(inBuildSlot);
-        }
-        throw;
-    }
+        co_return co_await tryNext();
+    } while (false);
 
     if (info->path != storePath) {
         if (info->isContentAddressed(*sub) && info->references.empty()) {
@@ -136,7 +131,7 @@ try {
         } else {
             printError("asked '%s' for '%s' but got '%s'",
                 sub->getUri(), worker.store.printStorePath(storePath), sub->printStorePath(info->path));
-            return tryNext(inBuildSlot);
+            co_return co_await tryNext();
         }
     }
 
@@ -157,7 +152,7 @@ try {
     {
         warn("ignoring substitute for '%s' from '%s', as it's not signed by any of the keys in 'trusted-public-keys'",
             worker.store.printStorePath(storePath), sub->getUri());
-        return tryNext(inBuildSlot);
+        co_return co_await tryNext();
     }
 
     /* To maintain the closure invariant, we first have to realise the
@@ -167,18 +162,16 @@ try {
         if (i != storePath) /* ignore self-references */
             dependencies.add(worker.goalFactory().makePathSubstitutionGoal(i));
 
-    if (dependencies.empty()) {/* to prevent hang (no wake-up event) */
-        return referencesValid(inBuildSlot);
-    } else {
-        state = &PathSubstitutionGoal::referencesValid;
-        return waitForGoals(dependencies.releaseAsArray());
+    if (!dependencies.empty()) {/* to prevent hang (no wake-up event) */
+        (co_await waitForGoals(dependencies.releaseAsArray())).value();
     }
+    co_return co_await referencesValid();
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::referencesValid(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::referencesValid() noexcept
 try {
     trace("all references realised");
 
@@ -193,22 +186,18 @@ try {
         if (i != storePath) /* ignore self-references */
             assert(worker.store.isValidPath(i));
 
-    state = &PathSubstitutionGoal::tryToRun;
-    return tryToRun(inBuildSlot);
+    return tryToRun();
 } catch (...) {
     return {std::current_exception()};
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::tryToRun(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::tryToRun() noexcept
 try {
     trace("trying to run");
 
-    if (!inBuildSlot) {
-        return worker.substitutions.acquire().then([this](auto token) {
-            slotToken = std::move(token);
-            return work();
-        });
+    if (!slotToken.valid()) {
+        slotToken = co_await worker.substitutions.acquire();
     }
 
     maintainRunningSubstitutions = worker.runningSubstitutions.addTemporarily(1);
@@ -239,38 +228,39 @@ try {
         }
     });
 
-    state = &PathSubstitutionGoal::finished;
-    return pipe.promise.then([]() -> Result<WorkResult> { return StillAlive{}; });
+    co_await pipe.promise;
+    co_return co_await finished();
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::finished(bool inBuildSlot) noexcept
+kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::finished() noexcept
 try {
     trace("substitute finished");
 
-    try {
-        slotToken = {};
-        thr.get();
-    } catch (std::exception & e) {
-        printError(e.what());
-
-        /* Cause the parent build to fail unless --fallback is given,
-           or the substitute has disappeared. The latter case behaves
-           the same as the substitute never having existed in the
-           first place. */
+    do {
         try {
-            throw;
-        } catch (SubstituteGone &) {
-        } catch (...) {
-            substituterFailed = true;
-        }
+            slotToken = {};
+            thr.get();
+            break;
+        } catch (std::exception & e) {
+            printError(e.what());
 
+            /* Cause the parent build to fail unless --fallback is given,
+               or the substitute has disappeared. The latter case behaves
+               the same as the substitute never having existed in the
+               first place. */
+            try {
+                throw;
+            } catch (SubstituteGone &) {
+            } catch (...) {
+                substituterFailed = true;
+            }
+        }
         /* Try the next substitute. */
-        state = &PathSubstitutionGoal::tryNext;
-        return tryNext(inBuildSlot);
-    }
+        co_return co_await tryNext();
+    } while (false);
 
     worker.markContentsGood(storePath);
 
@@ -287,9 +277,9 @@ try {
     worker.doneNarSize += maintainExpectedNar.delta();
     maintainExpectedNar.reset();
 
-    return {done(ecSuccess, BuildResult::Substituted)};
+    co_return done(ecSuccess, BuildResult::Substituted);
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
 
