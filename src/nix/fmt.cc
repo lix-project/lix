@@ -39,14 +39,8 @@ struct CmdFmt : SourceExprCommand {
         Strings programArgs{app.program};
 
         // Propagate arguments from the CLI
-        if (args.empty()) {
-            // Format the current flake out of the box
-            programArgs.push_back(".");
-        } else {
-            // User wants more power, let them decide which paths to include/exclude
-            for (auto &i : args) {
-                programArgs.push_back(i);
-            }
+        for (auto &i : args) {
+            programArgs.push_back(i);
         }
 
         runProgramInStore(store, UseSearchPath::DontUse, app.program, programArgs);

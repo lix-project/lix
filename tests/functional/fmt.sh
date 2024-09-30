@@ -26,7 +26,10 @@ cat << EOF > flake.nix
   };
 }
 EOF
-nix fmt ./file ./folder | grep 'Formatting: ./file ./folder'
+# No arguments check
+[[ "$(nix fmt)" = "Formatting(0):" ]]
+# Argument forwarding check
+nix fmt ./file ./folder | grep 'Formatting(2): ./file ./folder'
 nix flake check
 nix flake show | grep -P "package 'formatter'"
 
