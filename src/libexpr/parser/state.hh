@@ -9,8 +9,26 @@ namespace nix::parser {
 struct StringToken
 {
     std::string_view s;
-    bool hasIndentation = false;
+    // canMerge is only used to faithfully reproduce the quirks from the old code base.
+    bool canMerge = false;
     operator std::string_view() const { return s; }
+};
+
+struct IndStringLine {
+    // String containing only the leading whitespace of the line. May be empty.
+    std::string_view indentation;
+    // Position of the line start (before the indentation)
+    PosIdx pos;
+
+    // Whether the line contains anything besides indentation and line break
+    bool hasContent = false;
+
+    std::vector<
+        std::pair<
+            PosIdx,
+            std::variant<std::unique_ptr<Expr>, StringToken>
+        >
+    > parts = {};
 };
 
 struct State
@@ -27,8 +45,7 @@ struct State
     void overridesFound(const PosIdx pos);
     void addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos);
     std::unique_ptr<Formals> validateFormals(std::unique_ptr<Formals> formals, PosIdx pos = noPos, Symbol arg = {});
-    std::unique_ptr<Expr> stripIndentation(const PosIdx pos,
-        std::vector<std::pair<PosIdx, std::variant<std::unique_ptr<Expr>, StringToken>>> && es);
+    std::unique_ptr<Expr> stripIndentation(const PosIdx pos, std::vector<IndStringLine> && line);
 
     // lazy positioning means we don't get byte offsets directly, in.position() would work
     // but also requires line and column (which is expensive)
@@ -182,98 +199,115 @@ inline std::unique_ptr<Formals> State::validateFormals(std::unique_ptr<Formals> 
     return formals;
 }
 
-inline std::unique_ptr<Expr> State::stripIndentation(const PosIdx pos,
-    std::vector<std::pair<PosIdx, std::variant<std::unique_ptr<Expr>, StringToken>>> && es)
+inline std::unique_ptr<Expr> State::stripIndentation(
+    const PosIdx pos,
+    std::vector<IndStringLine> && lines)
 {
-    if (es.empty()) return std::make_unique<ExprString>("");
+    /* If the only line is whitespace-only, directly return empty string.
+     * NOTE: This is not merely an optimization, but `compatStripLeadingEmptyString`
+     * later on relies on the string not being empty for working.
+     */
+    if (lines.size() == 1 && lines.front().parts.empty()) {
+        return std::make_unique<ExprString>("");
+    }
 
-    /* Figure out the minimum indentation.  Note that by design
-       whitespace-only final lines are not taken into account.  (So
-       the " " in "\n ''" is ignored, but the " " in "\n foo''" is.) */
-    bool atStartOfLine = true; /* = seen only whitespace in the current line */
+    /* If the last line only contains whitespace, trim it to not cause excessive whitespace.
+     * (Other whitespace-only lines get stripped only of the common indentation, and excess
+     * whitespace becomes part of the string.)
+     */
+    if (lines.back().parts.empty()) {
+        lines.back().indentation = {};
+    }
+
+    /*
+     * Quirk compatibility:
+     *
+     * » nix-instantiate --parse -E $'\'\'${"foo"}\'\''
+     * "foo"
+     * » nix-instantiate --parse -E $'\'\'    ${"foo"}\'\''
+     * ("" + "foo")
+     *
+     * Our code always produces the form with the additional "" +, so we'll manually
+     * strip it at the end if necessary.
+     */
+    const bool compatStripLeadingEmptyString = !lines.empty() && lines[0].indentation.empty();
+
+    /* Figure out the minimum indentation. Note that by design
+       whitespace-only lines are not taken into account. */
     size_t minIndent = 1000000;
-    size_t curIndent = 0;
-    for (auto & [i_pos, i] : es) {
-        auto * str = std::get_if<StringToken>(&i);
-        if (!str || !str->hasIndentation) {
-            /* Anti-quotations and escaped characters end the current start-of-line whitespace. */
-            if (atStartOfLine) {
-                atStartOfLine = false;
-                if (curIndent < minIndent) minIndent = curIndent;
-            }
-            continue;
-        }
-        for (size_t j = 0; j < str->s.size(); ++j) {
-            if (atStartOfLine) {
-                if (str->s[j] == ' ')
-                    curIndent++;
-                else if (str->s[j] == '\n') {
-                    /* Empty line, doesn't influence minimum
-                       indentation. */
-                    curIndent = 0;
-                } else {
-                    atStartOfLine = false;
-                    if (curIndent < minIndent) minIndent = curIndent;
-                }
-            } else if (str->s[j] == '\n') {
-                atStartOfLine = true;
-                curIndent = 0;
-            }
+    for (auto & line : lines) {
+        if (line.hasContent) {
+            minIndent = std::min(minIndent, line.indentation.size());
         }
     }
 
     /* Strip spaces from each line. */
-    std::vector<std::pair<PosIdx, std::unique_ptr<Expr>>> es2;
-    atStartOfLine = true;
-    size_t curDropped = 0;
-    size_t n = es.size();
-    auto i = es.begin();
-    const auto trimExpr = [&] (std::unique_ptr<Expr> e) {
-        atStartOfLine = false;
-        curDropped = 0;
-        es2.emplace_back(i->first, std::move(e));
-    };
-    const auto trimString = [&] (const StringToken t) {
-        std::string s2;
-        for (size_t j = 0; j < t.s.size(); ++j) {
-            if (atStartOfLine) {
-                if (t.s[j] == ' ') {
-                    if (curDropped++ >= minIndent)
-                        s2 += t.s[j];
-                }
-                else if (t.s[j] == '\n') {
-                    curDropped = 0;
-                    s2 += t.s[j];
-                } else {
-                    atStartOfLine = false;
-                    curDropped = 0;
-                    s2 += t.s[j];
-                }
-            } else {
-                s2 += t.s[j];
-                if (t.s[j] == '\n') atStartOfLine = true;
-            }
-        }
-
-        /* Remove the last line if it is empty and consists only of
-           spaces. */
-        if (n == 1) {
-            std::string::size_type p = s2.find_last_of('\n');
-            if (p != std::string::npos && s2.find_first_not_of(' ', p + 1) == std::string::npos)
-                s2 = std::string(s2, 0, p + 1);
-        }
-
-        es2.emplace_back(i->first, std::make_unique<ExprString>(std::move(s2)));
-    };
-    for (; i != es.end(); ++i, --n) {
-        std::visit(overloaded { trimExpr, trimString }, std::move(i->second));
+    for (auto & line : lines) {
+        line.indentation.remove_prefix(std::min(minIndent, line.indentation.size()));
     }
 
-    /* If this is a single string, then don't do a concatenation. */
-    if (es2.size() == 1 && dynamic_cast<ExprString *>(es2[0].second.get())) {
-        return std::move(es2[0].second);
+    /* Concat the parts together again */
+
+    /* Note that we don't concat all adjacent string parts to fully reproduce the original code.
+     * This means that any escapes will result in string concatenation even if this is unnecessary.
+     */
+    std::vector<std::pair<PosIdx, std::unique_ptr<Expr>>> parts;
+    /* Accumulator for merging intermediates */
+    PosIdx merged_pos;
+    std::string merged = "";
+    bool has_merged = false;
+
+    auto push_merged = [&] (PosIdx i_pos, std::string_view str) {
+        merged += str;
+        if (!has_merged) {
+            has_merged = true;
+            merged_pos = i_pos;
+        }
+    };
+
+    auto flush_merged = [&] () {
+        if (has_merged) {
+            parts.emplace_back(merged_pos, std::make_unique<ExprString>(std::string(merged)));
+            merged.clear();
+            has_merged = false;
+        }
+    };
+
+    for (auto && [li, line] : enumerate(lines)) {
+        /* Always merge indentation, except for the first line when compatStripLeadingEmptyString is set (see above) */
+        if (!compatStripLeadingEmptyString || li != 0) {
+            push_merged(line.pos, line.indentation);
+        }
+
+        for (auto & val : line.parts) {
+            auto &[i_pos, item] = val;
+
+            std::visit(overloaded{
+                [&](StringToken str) {
+                    if (str.canMerge) {
+                        push_merged(i_pos, str.s);
+                    } else {
+                        flush_merged();
+                        parts.emplace_back(i_pos, std::make_unique<ExprString>(std::string(str.s)));
+                    }
+                },
+                [&](std::unique_ptr<Expr> expr) {
+                    flush_merged();
+                    parts.emplace_back(i_pos, std::move(expr));
+                },
+            }, std::move(item));
+        }
     }
-    return std::make_unique<ExprConcatStrings>(pos, true, std::move(es2));
+
+    flush_merged();
+
+    /* If this is a single string, then don't do a concatenation.
+     * (If it's a single expression, still do the ConcatStrings to properly force it being a string.)
+     */
+    if (parts.size() == 1 && dynamic_cast<ExprString *>(parts[0].second.get())) {
+        return std::move(parts[0].second);
+    }
+    return std::make_unique<ExprConcatStrings>(pos, true, std::move(parts));
 }
 
 }

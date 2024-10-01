@@ -533,36 +533,48 @@ template<> struct BuildAST<grammar::v1::string> : change_head<StringState> {
 struct IndStringState : SubexprState {
     using SubexprState::SubexprState;
 
-    std::vector<std::pair<PosIdx, std::variant<std::unique_ptr<Expr>, StringToken>>> parts;
+    std::vector<IndStringLine> lines;
 };
 
-template<bool Indented, typename... Content>
-struct BuildAST<grammar::v1::ind_string::literal<Indented, Content...>> {
+template<> struct BuildAST<grammar::v1::ind_string::line_start> {
     static void apply(const auto & in, IndStringState & s, State & ps) {
-        s.parts.emplace_back(ps.at(in), StringToken{in.string_view(), Indented});
+        s.lines.push_back(IndStringLine { in.string_view(), ps.at(in) });
+    }
+};
+
+template<bool CanMerge, typename... Content>
+struct BuildAST<grammar::v1::ind_string::literal<CanMerge, Content...>> {
+    static void apply(const auto & in, IndStringState & s, State & ps) {
+        s.lines.back().parts.emplace_back(ps.at(in), StringToken{ in.string_view(), CanMerge });
     }
 };
 
 template<> struct BuildAST<grammar::v1::ind_string::interpolation> {
     static void apply(const auto & in, IndStringState & s, State & ps) {
-        s.parts.emplace_back(ps.at(in), s->popExprOnly());
+        s.lines.back().parts.emplace_back(ps.at(in), s->popExprOnly());
     }
 };
 
 template<> struct BuildAST<grammar::v1::ind_string::escape> {
     static void apply(const auto & in, IndStringState & s, State & ps) {
         switch (*in.begin()) {
-        case 'n': s.parts.emplace_back(ps.at(in), StringToken{"\n"}); break;
-        case 'r': s.parts.emplace_back(ps.at(in), StringToken{"\r"}); break;
-        case 't': s.parts.emplace_back(ps.at(in), StringToken{"\t"}); break;
-        default:  s.parts.emplace_back(ps.at(in), StringToken{in.string_view()}); break;
+        case 'n': s.lines.back().parts.emplace_back(ps.at(in), StringToken{"\n"}); break;
+        case 'r': s.lines.back().parts.emplace_back(ps.at(in), StringToken{"\r"}); break;
+        case 't': s.lines.back().parts.emplace_back(ps.at(in), StringToken{"\t"}); break;
+        default:  s.lines.back().parts.emplace_back(ps.at(in), StringToken{in.string_view()}); break;
         }
+    }
+};
+
+template<> struct BuildAST<grammar::v1::ind_string::has_content> {
+    static void apply(const auto & in, IndStringState & s, State & ps) {
+        s.lines.back().hasContent = true;
     }
 };
 
 template<> struct BuildAST<grammar::v1::ind_string> : change_head<IndStringState> {
     static void success(const auto & in, IndStringState & s, ExprState & e, State & ps) {
-        e.exprs.emplace_back(noPos, ps.stripIndentation(ps.at(in), std::move(s.parts)));
+        e.exprs.emplace_back(noPos, ps.stripIndentation(ps.at(in), std::move(s.lines)));
     }
 };
 

@@ -225,7 +225,8 @@ struct string : _string, seq<
 > {};
 
 struct _ind_string {
-    template<bool Indented, typename... Inner>
+    struct line_start : semantic, star<one<' '>> {};
+    template<bool CanMerge, typename... Inner>
     struct literal : semantic, seq<Inner...> {};
     struct interpolation : semantic, seq<
         p::string<'$', '{'>, seps,
@@ -233,34 +234,54 @@ struct _ind_string {
         must<one<'}'>>
     > {};
     struct escape : semantic, must<any> {};
+    /* Marker for non-empty lines */
+    struct has_content : semantic, seq<> {};
 };
 struct ind_string : _ind_string, seq<
     TAO_PEGTL_STRING("''"),
+    // Strip first line completely if empty
     opt<star<one<' '>>, one<'\n'>>,
-    star<
-        sor<
-            _ind_string::literal<
-                true,
+    list<
+        seq<
+            // Start a line with some indentation
+            // (we always match even the empty string if no indentation, as this creates the line)
+            _ind_string::line_start,
+            // The actual line
+            opt<
                 plus<
                     sor<
-                        not_one<'$', '\''>,
-                        seq<one<'$'>, not_one<'{', '\''>>,
-                        seq<one<'\''>, not_one<'\'', '$'>>
-                    >
-                >
-            >,
-            _ind_string::interpolation,
-            _ind_string::literal<false, one<'$'>>,
-            _ind_string::literal<false, one<'\''>, not_at<one<'\''>>>,
-            seq<one<'\''>, _ind_string::literal<false, p::string<'\'', '\''>>>,
-            seq<
-                p::string<'\'', '\''>,
-                sor<
-                    _ind_string::literal<false, one<'$'>>,
-                    seq<one<'\\'>, _ind_string::escape>
+                        _ind_string::literal<
+                            true,
+                            plus<
+                                sor<
+                                    not_one<'$', '\'', '\n'>,
+                                    // TODO probably factor this out like the others for performance
+                                    seq<one<'$'>, not_one<'{', '\'', '\n'>>,
+                                    seq<one<'$'>, at<one<'\n'>>>,
+                                    seq<one<'\''>, not_one<'\'', '$', '\n'>>,
+                                    seq<one<'\''>, at<one<'\n'>>>
+                                >
+                            >
+                        >,
+                        _ind_string::interpolation,
+                        _ind_string::literal<false, one<'$'>>,
+                        _ind_string::literal<false, one<'\''>, not_at<one<'\''>>>,
+                        seq<one<'\''>, _ind_string::literal<false, p::string<'\'', '\''>>>,
+                        seq<
+                            p::string<'\'', '\''>,
+                            sor<
+                                _ind_string::literal<false, one<'$'>>,
+                                seq<one<'\\'>, _ind_string::escape>
+                            >
+                        >
+                    >,
+                    _ind_string::has_content
                 >
             >
-        >
+        >,
+        // End of line, LF. CR is just ignored and not treated as ending a line
+        // (for the purpose of indentation stripping)
+        _ind_string::literal<true, one<'\n'>>
     >,
     must<TAO_PEGTL_STRING("''")>
 > {};
