@@ -1,3 +1,4 @@
+#include "error.hh"
 #include "serialise.hh"
 #include "signals.hh"
 #include "path-with-outputs.hh"
@@ -855,7 +856,7 @@ RemoteStore::Connection::~Connection()
     try {
         to.flush();
     } catch (...) {
-        ignoreException();
+        ignoreExceptionInDestructor();
     }
 }
 
@@ -985,7 +986,7 @@ void RemoteStore::ConnectionHandle::withFramedSink(std::function<void(Sink & sin
                 try {
                     std::rethrow_exception(ex);
                 } catch (...) {
-                    ignoreException();
+                    ignoreExceptionExceptInterrupt();
                 }
             }
         }

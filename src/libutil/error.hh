@@ -204,7 +204,22 @@ public:
 /**
  * Exception handling in destructors: print an error message, then
  * ignore the exception.
+ *
+ * If you're not in a destructor, you usually want to use `ignoreExceptionExceptInterrupt()`.
+ *
+ * This function might also be used in callbacks whose caller may not handle exceptions,
+ * but ideally we propagate the exception using an exception_ptr in such cases.
+ * See e.g. `PackBuilderContext`
  */
-void ignoreException(Verbosity lvl = lvlError);
+void ignoreExceptionInDestructor(Verbosity lvl = lvlError);
+
+/**
+ * Not destructor-safe.
+ * Print an error message, then ignore the exception.
+ * If the exception is an `Interrupted` exception, rethrow it.
+ *
+ * This may be used in a few places where Interrupt can't happen, but that's ok.
+ */
+void ignoreExceptionExceptInterrupt(Verbosity lvl = lvlError);
 
 }

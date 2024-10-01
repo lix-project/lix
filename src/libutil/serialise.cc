@@ -83,7 +83,7 @@ void BufferedSink::flush()
 
 FdSink::~FdSink()
 {
-    try { flush(); } catch (...) { ignoreException(); }
+    try { flush(); } catch (...) { ignoreExceptionInDestructor(); }
 }
 
 

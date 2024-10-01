@@ -522,7 +522,7 @@ AutoDelete::~AutoDelete()
             }
         }
     } catch (...) {
-        ignoreException();
+        ignoreExceptionInDestructor();
     }
 }
 

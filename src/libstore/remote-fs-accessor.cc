@@ -29,7 +29,7 @@ ref<FSAccessor> RemoteFSAccessor::addToCache(std::string_view hashPart, std::str
             /* FIXME: do this asynchronously. */
             writeFile(makeCacheFile(hashPart, "nar"), nar);
         } catch (...) {
-            ignoreException();
+            ignoreExceptionExceptInterrupt();
         }
     }
 
@@ -41,7 +41,7 @@ ref<FSAccessor> RemoteFSAccessor::addToCache(std::string_view hashPart, std::str
             nlohmann::json j = listNar(narAccessor, "", true);
             writeFile(makeCacheFile(hashPart, "ls"), j.dump());
         } catch (...) {
-            ignoreException();
+            ignoreExceptionExceptInterrupt();
         }
     }
 

@@ -4,6 +4,7 @@
 #include "position.hh"
 #include "terminal.hh"
 #include "strings.hh"
+#include "signals.hh"
 
 #include <iostream>
 #include <optional>
@@ -416,7 +417,7 @@ std::ostream & showErrorInfo(std::ostream & out, const ErrorInfo & einfo, bool s
     return out;
 }
 
-void ignoreException(Verbosity lvl)
+void ignoreExceptionInDestructor(Verbosity lvl)
 {
     /* Make sure no exceptions leave this function.
        printError() also throws when remote is closed. */
@@ -427,6 +428,17 @@ void ignoreException(Verbosity lvl)
             printMsg(lvl, "error (ignored): %1%", e.what());
         }
     } catch (...) { }
+}
+
+void ignoreExceptionExceptInterrupt(Verbosity lvl)
+{
+    try {
+        throw;
+    } catch (const Interrupted & e) {
+        throw;
+    } catch (std::exception & e) {
+        printMsg(lvl, "error (ignored): %1%", e.what());
+    }
 }
 
 }

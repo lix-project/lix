@@ -481,7 +481,7 @@ LocalStore::~LocalStore()
             unlink(fnTempRoots.c_str());
         }
     } catch (...) {
-        ignoreException();
+        ignoreExceptionInDestructor();
     }
 }
 
@@ -1222,7 +1222,7 @@ void LocalStore::addToStore(const ValidPathInfo & info, Source & source,
             try {
                 parseDump(sink, source);
             } catch (...) {
-                ignoreException();
+                ignoreExceptionExceptInterrupt();
             }
         }
     };

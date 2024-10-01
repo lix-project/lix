@@ -16,6 +16,7 @@
 #include "eval-cache.hh"
 #include "markdown.hh"
 #include "terminal.hh"
+#include "signals.hh"
 
 #include <limits>
 #include <nlohmann/json.hpp>
@@ -367,9 +368,11 @@ struct CmdFlakeCheck : FlakeCommand
         auto reportError = [&](const Error & e) {
             try {
                 throw e;
+            } catch (Interrupted & e) {
+                throw;
             } catch (Error & e) {
                 if (settings.keepGoing) {
-                    ignoreException();
+                    ignoreExceptionExceptInterrupt();
                     hasErrors = true;
                 }
                 else

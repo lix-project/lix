@@ -923,8 +923,8 @@ void LocalStore::autoGC(bool sync)
 
             } catch (...) {
                 // FIXME: we could propagate the exception to the
-                // future, but we don't really care.
-                ignoreException();
+                // future, but we don't really care. (what??)
+                ignoreExceptionInDestructor();
             }
 
         }).detach();

@@ -78,7 +78,7 @@ void triggerInterrupt()
             try {
                 callback();
             } catch (...) {
-                ignoreException();
+                ignoreExceptionInDestructor();
             }
         }
     }

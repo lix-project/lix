@@ -291,7 +291,7 @@ void PathSubstitutionGoal::cleanup()
             thr.get();
         }
     } catch (...) {
-        ignoreException();
+        ignoreExceptionInDestructor();
     }
 }
 
