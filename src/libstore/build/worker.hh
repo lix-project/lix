@@ -159,6 +159,11 @@ private:
     void waitForInput();
 
     /**
+     * Remove a dead goal.
+     */
+    void removeGoal(GoalPtr goal);
+
+    /**
      * Registers a running child process.
      */
     void childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> promise);

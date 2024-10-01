@@ -65,26 +65,7 @@ std::pair<std::shared_ptr<G>, kj::Promise<void>> Worker::makeGoalCommon(
     auto & goal_weak = it->second;
     auto goal = goal_weak.goal.lock();
     if (!goal) {
-        struct Deleter
-        {
-            std::map<ID, CachedGoal<G>> * from;
-            std::map<ID, CachedGoal<G>>::const_iterator iter;
-
-            void operator()(G * g)
-            {
-                from->erase(iter);
-                delete g;
-            }
-        };
-
-        // this dance is necessary to be memory-safe in exceptional cases.
-        // if *anything* here throws we must still delete the goal object.
-        goal = [&] {
-            std::unique_ptr<G, Deleter> tmp(nullptr, Deleter{&map, it});
-            tmp.reset(create().release());
-            return tmp;
-        }();
-
+        goal = create();
         goal->notify = std::move(goal_weak.fulfiller);
         goal_weak.goal = goal;
         wakeUp(goal);
@@ -184,6 +165,21 @@ std::pair<GoalPtr, kj::Promise<void>> Worker::makeGoal(const DerivedPath & req, 
 }
 
 
+template<typename G>
+static void removeGoal(std::shared_ptr<G> goal, auto & goalMap)
+{
+    /* !!! inefficient */
+    for (auto i = goalMap.begin();
+         i != goalMap.end(); )
+        if (i->second.goal.lock() == goal) {
+            auto j = i; ++j;
+            goalMap.erase(i);
+            i = j;
+        }
+        else ++i;
+}
+
+
 void Worker::goalFinished(GoalPtr goal, Goal::Finished & f)
 {
     goal->trace("done");
@@ -196,16 +192,9 @@ void Worker::goalFinished(GoalPtr goal, Goal::Finished & f)
     hashMismatch |= f.hashMismatch;
     checkMismatch |= f.checkMismatch;
 
+    removeGoal(goal);
     goal->notify->fulfill();
     goal->cleanup();
-
-    if (topGoals.find(goal) != topGoals.end()) {
-        topGoals.erase(goal);
-        /* If a top-level goal failed, then kill all other goals
-           (unless keepGoing was set). */
-        if (goal->exitCode == Goal::ecFailed && !settings.keepGoing)
-            topGoals.clear();
-    }
 }
 
 void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
@@ -219,6 +208,27 @@ void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
     );
     updateStatistics();
 }
+
+void Worker::removeGoal(GoalPtr goal)
+{
+    if (auto drvGoal = std::dynamic_pointer_cast<DerivationGoal>(goal))
+        nix::removeGoal(drvGoal, derivationGoals);
+    else if (auto subGoal = std::dynamic_pointer_cast<PathSubstitutionGoal>(goal))
+        nix::removeGoal(subGoal, substitutionGoals);
+    else if (auto subGoal = std::dynamic_pointer_cast<DrvOutputSubstitutionGoal>(goal))
+        nix::removeGoal(subGoal, drvOutputSubstitutionGoals);
+    else
+        assert(false);
+
+    if (topGoals.find(goal) != topGoals.end()) {
+        topGoals.erase(goal);
+        /* If a top-level goal failed, then kill all other goals
+           (unless keepGoing was set). */
+        if (goal->exitCode == Goal::ecFailed && !settings.keepGoing)
+            topGoals.clear();
+    }
+}
+
 
 void Worker::wakeUp(GoalPtr goal)
 {
