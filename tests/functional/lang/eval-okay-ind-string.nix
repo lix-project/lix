@@ -64,6 +64,36 @@ let
     is significant (not whitespace).
   '';
 
+  s18 = ''
+    Lines without any indentation effectively disable the indentation
+    stripping for the entire string:
+
+        cat >$out/foo/data <<EOF
+        lasjdöaxnasd
+asdom 12398
+ä"§Æẞ¢«»”alsd
+EOF
+  '';
+
+  s19 = ''
+    Empty lines with a bit of whitespace don't affect the indentation calculation:
+  
+    And empty lines with more whitespace will have whitespace in the string:
+              
+    Unless it's the last line:
+            '';
+
+  s20 = ''
+    Indentation stripping
+    must not be impressed by
+  the last line not being empty'';
+
+  s21 = ''
+  	  Nor by people
+      weirdly mixing tabs
+  	and spaces
+  	'';
+
   s10 = ''
   '';
 
@@ -125,4 +155,4 @@ let
   # Accept dollars at end of strings 
   s17 = ''ending dollar $'' + ''$'' + "\n";
 
-in s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9 + s10 + s11 + s12 + s13 + s14 + s15 + s16 + s17
+in s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9 + s10 + s11 + s12 + s13 + s14 + s15 + s16 + s17 + s18 + s19 + s20 + s21
