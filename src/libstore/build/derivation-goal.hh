@@ -74,6 +74,12 @@ struct DerivationGoal : public Goal
     struct InputStream;
 
     /**
+      * Whether this goal has completed. Completed goals can not be
+      * asked for more outputs, a new goal must be created instead.
+      */
+    bool isDone = false;
+
+    /**
      * Whether to use an on-disk .drv file.
      */
     bool useDerivation;
@@ -249,7 +255,7 @@ struct DerivationGoal : public Goal
     /**
      * Add wanted outputs to an already existing derivation goal.
      */
-    void addWantedOutputs(const OutputsSpec & outputs);
+    bool addWantedOutputs(const OutputsSpec & outputs);
 
     /**
      * The states.

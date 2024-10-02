@@ -241,7 +241,7 @@ private:
         std::map<ID, CachedGoal<G>> & map,
         const ID & key,
         InvocableR<std::unique_ptr<G>> auto create,
-        std::invocable<G &> auto modify
+        InvocableR<bool, G &> auto modify
     );
     std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> makeDerivationGoal(
         const StorePath & drvPath,

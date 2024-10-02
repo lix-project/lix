@@ -57,24 +57,35 @@ std::pair<std::shared_ptr<G>, kj::Promise<void>> Worker::makeGoalCommon(
     std::map<ID, CachedGoal<G>> & map,
     const ID & key,
     InvocableR<std::unique_ptr<G>> auto create,
-    std::invocable<G &> auto modify
+    InvocableR<bool, G &> auto modify
 )
 {
     auto [it, _inserted] = map.try_emplace(key);
-    auto & goal_weak = it->second;
-    auto goal = goal_weak.goal.lock();
-    if (!goal) {
-        goal = create();
-        goal->notify = std::move(goal_weak.fulfiller);
-        goal_weak.goal = goal;
-        // do not start working immediately, this round of the event loop
-        // may have more calls to this function lined up that'll also run
-        // modify(). starting early can then cause the goals to misbehave
-        childStarted(goal, kj::evalLater([goal] { return goal->work(); }));
-    } else {
-        modify(*goal);
+    // try twice to create the goal. we can only loop if we hit the continue,
+    // and then we only want to recreate the goal *once*. concurrent accesses
+    // to the worker are not sound, we want to catch them if at all possible.
+    for ([[maybe_unused]] auto _attempt : {1, 2}) {
+        auto & goal_weak = it->second;
+        auto goal = goal_weak.goal.lock();
+        if (!goal) {
+            goal = create();
+            goal->notify = std::move(goal_weak.fulfiller);
+            goal_weak.goal = goal;
+            // do not start working immediately. if we are not yet running we
+            // may create dependencies as though they were toplevel goals, in
+            // which case the dependencies will not report build errors. when
+            // we are running we may be called for this same goal more times,
+            // and then we want to modify rather than recreate when possible.
+            childStarted(goal, kj::evalLater([goal] { return goal->work(); }));
+        } else {
+            if (!modify(*goal)) {
+                goal_weak = {};
+                continue;
+            }
+        }
+        return {goal, goal_weak.promise->addBranch()};
     }
-    return {goal, goal_weak.promise->addBranch()};
+    assert(false && "could not make a goal. possible concurrent worker access");
 }
 
 
@@ -94,7 +105,7 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeDeriva
                     drvPath, wantedOutputs, *this, running, buildMode
                 );
         },
-        [&](DerivationGoal & g) { g.addWantedOutputs(wantedOutputs); }
+        [&](DerivationGoal & g) { return g.addWantedOutputs(wantedOutputs); }
     );
 }
 
@@ -118,7 +129,7 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeBasicD
                     drvPath, drv, wantedOutputs, *this, running, buildMode
                 );
         },
-        [&](DerivationGoal & g) { g.addWantedOutputs(wantedOutputs); }
+        [&](DerivationGoal & g) { return g.addWantedOutputs(wantedOutputs); }
     );
 }
 
@@ -132,7 +143,7 @@ Worker::makePathSubstitutionGoal(
         substitutionGoals,
         path,
         [&] { return std::make_unique<PathSubstitutionGoal>(path, *this, running, repair, ca); },
-        [&](auto &) {}
+        [&](auto &) { return true; }
     );
 }
 
@@ -146,7 +157,7 @@ Worker::makeDrvOutputSubstitutionGoal(
         drvOutputSubstitutionGoals,
         id,
         [&] { return std::make_unique<DrvOutputSubstitutionGoal>(id, *this, running, repair, ca); },
-        [&](auto &) {}
+        [&](auto &) { return true; }
     );
 }
 

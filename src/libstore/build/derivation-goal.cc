@@ -130,8 +130,12 @@ kj::Promise<Result<Goal::WorkResult>> DerivationGoal::work() noexcept
     return useDerivation ? getDerivation() : haveDerivation();
 }
 
-void DerivationGoal::addWantedOutputs(const OutputsSpec & outputs)
+bool DerivationGoal::addWantedOutputs(const OutputsSpec & outputs)
 {
+    if (isDone) {
+        return false;
+    }
+
     auto newWanted = wantedOutputs.union_(outputs);
     switch (needRestart) {
     case NeedRestartForMoreOutputs::OutputsUnmodifedDontNeed:
@@ -148,6 +152,7 @@ void DerivationGoal::addWantedOutputs(const OutputsSpec & outputs)
         break;
     };
     wantedOutputs = newWanted;
+    return true;
 }
 
 
@@ -1680,6 +1685,8 @@ Goal::Finished DerivationGoal::done(
     SingleDrvOutputs builtOutputs,
     std::optional<Error> ex)
 {
+    isDone = true;
+
     outputLocks.unlock();
     buildResult.status = status;
     if (ex)
