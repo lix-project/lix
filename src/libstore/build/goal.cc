@@ -57,6 +57,7 @@ try {
 
     while (auto item = co_await collectDeps.next()) {
         auto & [dep, _result] = *item;
+        BOOST_OUTCOME_CO_TRYV(_result);
 
         waiteeDone(dep);
 

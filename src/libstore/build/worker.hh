@@ -84,6 +84,9 @@ protected:
  */
 class Worker : public WorkerBase
 {
+public:
+    using Targets = std::map<GoalPtr, kj::Promise<Result<Goal::WorkResult>>>;
+
 private:
 
     bool running = false;
@@ -143,13 +146,6 @@ private:
 
     void goalFinished(GoalPtr goal, Goal::WorkResult & f);
 
-    kj::Own<kj::PromiseFulfiller<void>> childFinished;
-
-    /**
-     * Wait for input to become available.
-     */
-    kj::Promise<Result<void>> waitForInput();
-
     /**
      * Remove a dead goal.
      */
@@ -159,11 +155,6 @@ private:
      * Registers a running child process.
      */
     void childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> promise);
-
-    /**
-     * Unregisters a running child process.
-     */
-    void childTerminated(GoalPtr goal);
 
     /**
       * Pass current stats counters to the logger for progress bar updates.
@@ -181,7 +172,7 @@ private:
         statisticsUpdateInhibitor = {};
     }
 
-    kj::Promise<Result<void>> runImpl();
+    kj::Promise<Result<void>> runImpl(Targets _topGoals);
     kj::Promise<Result<void>> boopGC(LocalStore & localStore);
 
 public:
@@ -197,7 +188,6 @@ public:
 
 private:
     kj::TaskSet children;
-    std::exception_ptr childException;
 
 public:
     struct HookState {
@@ -277,8 +267,6 @@ private:
     makeGoal(const DerivedPath & req, BuildMode buildMode = bmNormal) override;
 
 public:
-    using Targets = std::map<GoalPtr, kj::Promise<Result<Goal::WorkResult>>>;
-
     /**
      * Loop until the specified top-level goals have finished.
      */

@@ -1,3 +1,4 @@
+#include "async-collect.hh"
 #include "charptr-cast.hh"
 #include "worker.hh"
 #include "finally.hh"
@@ -6,6 +7,8 @@
 #include "local-derivation-goal.hh"
 #include "signals.hh"
 #include "hook-instance.hh" // IWYU pragma: keep
+#include <boost/outcome/try.hpp>
+#include <kj/vector.h>
 
 namespace nix {
 
@@ -231,20 +234,9 @@ void Worker::childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> pr
             if (result.has_value()) {
                 goalFinished(goal, result.assume_value());
             } else {
-                childException = result.assume_error();
+                goal->notify->fulfill(result.assume_error());
             }
-        })
-        .attach(Finally{[this, goal] {
-            childTerminated(goal);
-        }}));
-}
-
-
-void Worker::childTerminated(GoalPtr goal)
-{
-    if (childFinished) {
-        childFinished->fulfill();
-    }
+        }));
 }
 
 
@@ -282,9 +274,12 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
     running = true;
     Finally const _stop([&] { running = false; });
 
+    std::vector<GoalPtr> results;
+
     topGoals.clear();
     for (auto & [goal, _promise] : _topGoals) {
         topGoals.insert(goal);
+        results.push_back(goal);
     }
 
     auto onInterrupt = kj::newPromiseAndCrossThreadFulfiller<Result<void>>();
@@ -292,8 +287,9 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
         return result::failure(std::make_exception_ptr(makeInterrupted()));
     });
 
-    auto promise =
-        runImpl().exclusiveJoin(updateStatistics()).exclusiveJoin(std::move(onInterrupt.promise));
+    auto promise = runImpl(std::move(_topGoals))
+                       .exclusiveJoin(updateStatistics())
+                       .exclusiveJoin(std::move(onInterrupt.promise));
 
     // TODO GC interface?
     if (auto localStore = dynamic_cast<LocalStore *>(&store); localStore && settings.minFree != 0) {
@@ -303,27 +299,24 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
 
     promise.wait(aio.waitScope).value();
 
-    std::vector<GoalPtr> results;
-    for (auto & [i, _p] : _topGoals) {
-        results.push_back(i);
-    }
     return results;
 }
 
-kj::Promise<Result<void>> Worker::runImpl()
+kj::Promise<Result<void>> Worker::runImpl(Targets _topGoals)
 try {
     debug("entered goal loop");
 
-    while (1) {
+    kj::Vector<Targets::value_type> promises(_topGoals.size());
+    for (auto & gp : _topGoals) {
+        promises.add(std::move(gp));
+    }
+
+    auto collect = AsyncCollect(promises.releaseAsArray());
+    while (auto done = co_await collect.next()) {
+        // propagate goal exceptions outward
+        BOOST_OUTCOME_CO_TRYV(done->second);
+
         if (topGoals.empty()) break;
-
-        /* Wait for input. */
-        if (!children.isEmpty())
-            (co_await waitForInput()).value();
-
-        if (childException) {
-            std::rethrow_exception(childException);
-        }
     }
 
     /* If --keep-going is not set, it's possible that the main goal
@@ -342,18 +335,6 @@ try {
         co_await aio.provider->getTimer().afterDelay(10 * kj::SECONDS);
         localStore.autoGC(false);
     }
-} catch (...) {
-    co_return result::failure(std::current_exception());
-}
-
-kj::Promise<Result<void>> Worker::waitForInput()
-try {
-    printMsg(lvlVomit, "waiting for children");
-
-    auto pair = kj::newPromiseAndFulfiller<void>();
-    this->childFinished = kj::mv(pair.fulfiller);
-    co_await pair.promise;
-    co_return result::success();
 } catch (...) {
     co_return result::failure(std::current_exception());
 }
