@@ -46,7 +46,6 @@ Worker::~Worker()
        goals that refer to this worker should be gone.  (Otherwise we
        are in trouble, since goals may call childTerminated() etc. in
        their destructors). */
-    topGoals.clear();
     children.clear();
 
     assert(expectedSubstitutions == 0);
@@ -216,14 +215,6 @@ void Worker::removeGoal(GoalPtr goal)
         nix::removeGoal(subGoal, drvOutputSubstitutionGoals);
     else
         assert(false);
-
-    if (topGoals.find(goal) != topGoals.end()) {
-        topGoals.erase(goal);
-        /* If a top-level goal failed, then kill all other goals
-           (unless keepGoing was set). */
-        if (goal->exitCode == Goal::ecFailed && !settings.keepGoing)
-            topGoals.clear();
-    }
 }
 
 
@@ -268,7 +259,7 @@ try {
 
 std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
 {
-    auto _topGoals = req(goalFactory());
+    auto topGoals = req(goalFactory());
 
     assert(!running);
     running = true;
@@ -276,9 +267,7 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
 
     std::vector<GoalPtr> results;
 
-    topGoals.clear();
-    for (auto & [goal, _promise] : _topGoals) {
-        topGoals.insert(goal);
+    for (auto & [goal, _promise] : topGoals) {
         results.push_back(goal);
     }
 
@@ -287,7 +276,7 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
         return result::failure(std::make_exception_ptr(makeInterrupted()));
     });
 
-    auto promise = runImpl(std::move(_topGoals))
+    auto promise = runImpl(std::move(topGoals))
                        .exclusiveJoin(updateStatistics())
                        .exclusiveJoin(std::move(onInterrupt.promise));
 
@@ -302,21 +291,26 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
     return results;
 }
 
-kj::Promise<Result<void>> Worker::runImpl(Targets _topGoals)
+kj::Promise<Result<void>> Worker::runImpl(Targets topGoals)
 try {
     debug("entered goal loop");
 
-    kj::Vector<Targets::value_type> promises(_topGoals.size());
-    for (auto & gp : _topGoals) {
+    kj::Vector<Targets::value_type> promises(topGoals.size());
+    for (auto & gp : topGoals) {
         promises.add(std::move(gp));
     }
 
     auto collect = AsyncCollect(promises.releaseAsArray());
     while (auto done = co_await collect.next()) {
         // propagate goal exceptions outward
-        BOOST_OUTCOME_CO_TRYV(done->second);
+        BOOST_OUTCOME_CO_TRY(auto result, done->second);
 
-        if (topGoals.empty()) break;
+        /* If a top-level goal failed, then kill all other goals
+           (unless keepGoing was set). */
+        if (result.exitCode == Goal::ecFailed && !settings.keepGoing) {
+            children.clear();
+            break;
+        }
     }
 
     /* If --keep-going is not set, it's possible that the main goal

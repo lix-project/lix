@@ -91,11 +91,6 @@ private:
 
     bool running = false;
 
-    /**
-     * The top-level goals of the worker.
-     */
-    Goals topGoals;
-
     template<typename G>
     struct CachedGoal
     {
@@ -172,7 +167,7 @@ private:
         statisticsUpdateInhibitor = {};
     }
 
-    kj::Promise<Result<void>> runImpl(Targets _topGoals);
+    kj::Promise<Result<void>> runImpl(Targets topGoals);
     kj::Promise<Result<void>> boopGC(LocalStore & localStore);
 
 public:
