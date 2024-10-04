@@ -26,11 +26,11 @@ void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMod
     StringSet failed;
     std::shared_ptr<Error> ex;
     for (auto & [i, result] : goals) {
-        if (i->ex) {
+        if (result.ex) {
             if (ex)
-                logError(i->ex->info());
+                logError(result.ex->info());
             else
-                ex = i->ex;
+                ex = result.ex;
         }
         if (result.exitCode != Goal::ecSuccess) {
             if (auto i2 = dynamic_cast<DerivationGoal *>(i.get()))
@@ -119,9 +119,9 @@ void Store::ensurePath(const StorePath & path)
     auto [goal, result] = *goals.begin();
 
     if (result.exitCode != Goal::ecSuccess) {
-        if (goal->ex) {
-            goal->ex->withExitStatus(worker.failingExitStatus());
-            throw std::move(*goal->ex);
+        if (result.ex) {
+            result.ex->withExitStatus(worker.failingExitStatus());
+            throw std::move(*result.ex);
         } else
             throw Error(worker.failingExitStatus(), "path '%s' does not exist and cannot be created", printStorePath(path));
     }

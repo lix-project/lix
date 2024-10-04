@@ -25,7 +25,6 @@ try {
     BOOST_OUTCOME_CO_TRY(auto result, co_await workImpl());
 
     trace("done");
-    ex = result.ex;
 
     notify->fulfill(result);
     cleanup();

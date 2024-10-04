@@ -118,12 +118,6 @@ protected:
     virtual kj::Promise<Result<WorkResult>> workImpl() noexcept = 0;
 
 public:
-
-    /**
-     * Exception containing an error message, if any.
-     */
-    std::shared_ptr<Error> ex;
-
     explicit Goal(Worker & worker, bool isDependency)
         : worker(worker)
         , isDependency(isDependency)
