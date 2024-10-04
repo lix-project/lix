@@ -99,11 +99,7 @@ protected:
     AsyncSemaphore::Token slotToken;
 
 public:
-
-    struct Finished;
-
-    struct [[nodiscard]] StillAlive {};
-    struct [[nodiscard]] Finished {
+    struct [[nodiscard]] WorkResult {
         ExitCode exitCode;
         BuildResult result;
         std::shared_ptr<Error> ex;
@@ -113,21 +109,13 @@ public:
         bool checkMismatch = false;
     };
 
-    struct [[nodiscard]] WorkResult : std::variant<
-                                          StillAlive,
-                                          Finished>
-    {
-        WorkResult() = delete;
-        using variant::variant;
-    };
-
 protected:
-    kj::Promise<Result<WorkResult>> waitForAWhile();
-    kj::Promise<Result<WorkResult>>
+    kj::Promise<void> waitForAWhile();
+    kj::Promise<Result<void>>
     waitForGoals(kj::Array<std::pair<GoalPtr, kj::Promise<void>>> dependencies) noexcept;
 
     template<std::derived_from<Goal>... G>
-    kj::Promise<Result<Goal::WorkResult>>
+    kj::Promise<Result<void>>
     waitForGoals(std::pair<std::shared_ptr<G>, kj::Promise<void>>... goals) noexcept
     {
         return waitForGoals(kj::arrOf<std::pair<GoalPtr, kj::Promise<void>>>(std::move(goals)...));

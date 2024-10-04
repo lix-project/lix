@@ -193,7 +193,7 @@ static void removeGoal(std::shared_ptr<G> goal, auto & goalMap)
 }
 
 
-void Worker::goalFinished(GoalPtr goal, Goal::Finished & f)
+void Worker::goalFinished(GoalPtr goal, Goal::WorkResult & f)
 {
     goal->trace("done");
     assert(!goal->exitCode.has_value());
@@ -208,20 +208,6 @@ void Worker::goalFinished(GoalPtr goal, Goal::Finished & f)
     removeGoal(goal);
     goal->notify->fulfill();
     goal->cleanup();
-}
-
-void Worker::handleWorkResult(GoalPtr goal, Goal::WorkResult how)
-{
-    std::visit(
-        overloaded{
-            [&](Goal::StillAlive) {
-                childStarted(goal, kj::evalLater([goal] { return goal->work(); }));
-            },
-            [&](Goal::Finished & f) { goalFinished(goal, f); },
-        },
-        how
-    );
-    updateStatistics();
 }
 
 void Worker::removeGoal(GoalPtr goal)
@@ -250,7 +236,7 @@ void Worker::childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> pr
     children.add(promise
         .then([this, goal](auto result) {
             if (result.has_value()) {
-                handleWorkResult(goal, std::move(result.assume_value()));
+                goalFinished(goal, result.assume_value());
             } else {
                 childException = result.assume_error();
             }

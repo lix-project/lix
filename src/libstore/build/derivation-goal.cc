@@ -118,7 +118,7 @@ void DerivationGoal::killChild()
 }
 
 
-Goal::Finished DerivationGoal::timedOut(Error && ex)
+Goal::WorkResult DerivationGoal::timedOut(Error && ex)
 {
     killChild();
     return done(BuildResult::TimedOut, {}, std::move(ex));
@@ -728,7 +728,7 @@ retry:
         if (!actLock)
             actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
                 fmt("waiting for lock on %s", Magenta(showPaths(lockFiles))));
-        (co_await waitForAWhile()).value();
+        co_await waitForAWhile();
         // we can loop very often, and `co_return co_await` always allocates a new frame
         goto retry;
     }
@@ -799,7 +799,7 @@ retry:
                 actLock = std::make_unique<Activity>(*logger, lvlTalkative, actBuildWaiting,
                     fmt("waiting for a machine to build '%s'", Magenta(worker.store.printStorePath(drvPath))));
             outputLocks.unlock();
-            (co_await waitForAWhile()).value();
+            co_await waitForAWhile();
             goto retry;
         }
 
@@ -1331,7 +1331,7 @@ void DerivationGoal::closeLogFile()
 }
 
 
-Goal::Finished DerivationGoal::tooMuchLogs()
+Goal::WorkResult DerivationGoal::tooMuchLogs()
 {
     killChild();
     return done(
@@ -1380,7 +1380,7 @@ struct DerivationGoal::InputStream final : private kj::AsyncObject
     }
 };
 
-kj::Promise<Outcome<void, Goal::Finished>> DerivationGoal::handleBuilderOutput(InputStream & in) noexcept
+kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::handleBuilderOutput(InputStream & in) noexcept
 try {
     auto buf = kj::heapArray<char>(4096);
     while (true) {
@@ -1413,7 +1413,7 @@ try {
     co_return std::current_exception();
 }
 
-kj::Promise<Outcome<void, Goal::Finished>> DerivationGoal::handleHookOutput(InputStream & in) noexcept
+kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::handleHookOutput(InputStream & in) noexcept
 try {
     auto buf = kj::heapArray<char>(4096);
     while (true) {
@@ -1467,7 +1467,7 @@ try {
     co_return std::current_exception();
 }
 
-kj::Promise<Outcome<void, Goal::Finished>> DerivationGoal::handleChildOutput() noexcept
+kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::handleChildOutput() noexcept
 try {
     assert(builderOutFD);
 
@@ -1483,7 +1483,7 @@ try {
         handlers = handlers.exclusiveJoin(
             worker.aio.provider->getTimer()
                 .afterDelay(settings.buildTimeout.get() * kj::SECONDS)
-                .then([this]() -> Outcome<void, Finished> {
+                .then([this]() -> Outcome<void, WorkResult> {
                     return timedOut(
                         Error("%1% timed out after %2% seconds", name, settings.buildTimeout)
                     );
@@ -1491,7 +1491,7 @@ try {
         );
     }
 
-    return handlers.then([this](auto r) -> Outcome<void, Finished> {
+    return handlers.then([this](auto r) -> Outcome<void, WorkResult> {
         if (!currentLogLine.empty()) flushLine();
         return r;
     });
@@ -1499,7 +1499,7 @@ try {
     return {std::current_exception()};
 }
 
-kj::Promise<Outcome<void, Goal::Finished>> DerivationGoal::monitorForSilence() noexcept
+kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::monitorForSilence() noexcept
 {
     while (true) {
         const auto stash = lastChildActivity;
@@ -1513,13 +1513,13 @@ kj::Promise<Outcome<void, Goal::Finished>> DerivationGoal::monitorForSilence() n
     }
 }
 
-kj::Promise<Outcome<void, Goal::Finished>>
+kj::Promise<Outcome<void, Goal::WorkResult>>
 DerivationGoal::handleChildStreams(InputStream & builderIn, InputStream * hookIn) noexcept
 {
     lastChildActivity = worker.aio.provider->getTimer().now();
 
     auto handlers = kj::joinPromisesFailFast([&] {
-        kj::Vector<kj::Promise<Outcome<void, Finished>>> parts{2};
+        kj::Vector<kj::Promise<Outcome<void, WorkResult>>> parts{2};
 
         parts.add(handleBuilderOutput(builderIn));
         if (hookIn) {
@@ -1680,7 +1680,7 @@ SingleDrvOutputs DerivationGoal::assertPathValidity()
 }
 
 
-Goal::Finished DerivationGoal::done(
+Goal::WorkResult DerivationGoal::done(
     BuildResult::Status status,
     SingleDrvOutputs builtOutputs,
     std::optional<Error> ex)
@@ -1717,7 +1717,7 @@ Goal::Finished DerivationGoal::done(
         logError(ex->info());
     }
 
-    return Finished{
+    return WorkResult{
         .exitCode = buildResult.success() ? ecSuccess : ecFailed,
         .result = buildResult,
         .ex = ex ? std::make_shared<Error>(std::move(*ex)) : nullptr,

@@ -11,18 +11,15 @@ void Goal::trace(std::string_view s)
     debug("%1%: %2%", name, s);
 }
 
-kj::Promise<Result<Goal::WorkResult>> Goal::waitForAWhile()
-try {
+kj::Promise<void> Goal::waitForAWhile()
+{
     trace("wait for a while");
     /* If we are polling goals that are waiting for a lock, then wake
        up after a few seconds at most. */
-    co_await worker.aio.provider->getTimer().afterDelay(settings.pollInterval.get() * kj::SECONDS);
-    co_return StillAlive{};
-} catch (...) {
-    co_return std::current_exception();
+    return worker.aio.provider->getTimer().afterDelay(settings.pollInterval.get() * kj::SECONDS);
 }
 
-kj::Promise<Result<Goal::WorkResult>>
+kj::Promise<Result<void>>
 Goal::waitForGoals(kj::Array<std::pair<GoalPtr, kj::Promise<void>>> dependencies) noexcept
 try {
     auto left = dependencies.size();
@@ -45,11 +42,11 @@ try {
         waiteeDone(dep);
 
         if (dep->exitCode == ecFailed && !settings.keepGoing) {
-            co_return result::success(StillAlive{});
+            co_return result::success();
         }
     }
 
-    co_return result::success(StillAlive{});
+    co_return result::success();
 } catch (...) {
     co_return result::failure(std::current_exception());
 }

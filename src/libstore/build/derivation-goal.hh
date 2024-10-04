@@ -18,7 +18,7 @@ struct HookInstance;
 
 struct HookReplyBase {
     struct [[nodiscard]] Accept {
-        kj::Promise<Outcome<void, Goal::Finished>> promise;
+        kj::Promise<Outcome<void, Goal::WorkResult>> promise;
     };
     struct [[nodiscard]] Decline {};
     struct [[nodiscard]] Postpone {};
@@ -248,7 +248,7 @@ struct DerivationGoal : public Goal
         BuildMode buildMode = bmNormal);
     virtual ~DerivationGoal() noexcept(false);
 
-    Finished timedOut(Error && ex);
+    WorkResult timedOut(Error && ex);
 
     kj::Promise<Result<WorkResult>> work() noexcept override;
 
@@ -319,13 +319,13 @@ struct DerivationGoal : public Goal
 protected:
     kj::TimePoint lastChildActivity = kj::minValue;
 
-    kj::Promise<Outcome<void, Finished>> handleChildOutput() noexcept;
-    kj::Promise<Outcome<void, Finished>>
+    kj::Promise<Outcome<void, WorkResult>> handleChildOutput() noexcept;
+    kj::Promise<Outcome<void, WorkResult>>
     handleChildStreams(InputStream & builderIn, InputStream * hookIn) noexcept;
-    kj::Promise<Outcome<void, Finished>> handleBuilderOutput(InputStream & in) noexcept;
-    kj::Promise<Outcome<void, Finished>> handleHookOutput(InputStream & in) noexcept;
-    kj::Promise<Outcome<void, Finished>> monitorForSilence() noexcept;
-    Finished tooMuchLogs();
+    kj::Promise<Outcome<void, WorkResult>> handleBuilderOutput(InputStream & in) noexcept;
+    kj::Promise<Outcome<void, WorkResult>> handleHookOutput(InputStream & in) noexcept;
+    kj::Promise<Outcome<void, WorkResult>> monitorForSilence() noexcept;
+    WorkResult tooMuchLogs();
     void flushLine();
 
 public:
@@ -360,7 +360,7 @@ public:
 
     void started();
 
-    Finished done(
+    WorkResult done(
         BuildResult::Status status,
         SingleDrvOutputs builtOutputs = {},
         std::optional<Error> ex = {});

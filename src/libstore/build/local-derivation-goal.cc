@@ -214,7 +214,7 @@ retry:
             if (!actLock)
                 actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
                     fmt("waiting for a free build user ID for '%s'", Magenta(worker.store.printStorePath(drvPath))));
-            (co_await waitForAWhile()).value();
+            co_await waitForAWhile();
             // we can loop very often, and `co_return co_await` always allocates a new frame
             goto retry;
         }
@@ -399,7 +399,7 @@ void LocalDerivationGoal::cleanupPostOutputsRegisteredModeNonCheck()
 
 // NOTE this one isn't noexcept because it's called from places that expect
 // exceptions to signal failure to launch. we should change this some time.
-kj::Promise<Outcome<void, Goal::Finished>> LocalDerivationGoal::startBuilder()
+kj::Promise<Outcome<void, Goal::WorkResult>> LocalDerivationGoal::startBuilder()
 {
     if ((buildUser && buildUser->getUIDCount() != 1)
         #if __linux__

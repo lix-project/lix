@@ -139,8 +139,7 @@ private:
      */
     bool checkMismatch = false;
 
-    void goalFinished(GoalPtr goal, Goal::Finished & f);
-    void handleWorkResult(GoalPtr goal, Goal::WorkResult how);
+    void goalFinished(GoalPtr goal, Goal::WorkResult & f);
 
     kj::Own<kj::PromiseFulfiller<void>> childFinished;
 

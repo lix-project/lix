@@ -32,7 +32,7 @@ PathSubstitutionGoal::~PathSubstitutionGoal()
 }
 
 
-Goal::Finished PathSubstitutionGoal::done(
+Goal::WorkResult PathSubstitutionGoal::done(
     ExitCode result,
     BuildResult::Status status,
     std::optional<std::string> errorMsg)
@@ -42,7 +42,7 @@ Goal::Finished PathSubstitutionGoal::done(
         debug(*errorMsg);
         buildResult.errorMsg = *errorMsg;
     }
-    return Finished{result, std::move(buildResult)};
+    return WorkResult{result, std::move(buildResult)};
 }
 
 

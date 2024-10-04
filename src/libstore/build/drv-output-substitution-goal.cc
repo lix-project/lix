@@ -30,7 +30,7 @@ try {
 
     /* If the derivation already exists, we’re done */
     if (worker.store.queryRealisation(id)) {
-        co_return Finished{ecSuccess, std::move(buildResult)};
+        co_return WorkResult{ecSuccess, std::move(buildResult)};
     }
 
     subs = settings.useSubstitutes ? getDefaultSubstituters() : std::list<ref<Store>>();
@@ -61,7 +61,7 @@ try {
         /* Hack: don't indicate failure if there were no substituters.
            In that case the calling derivation should just do a
            build. */
-        co_return Finished{substituterFailed ? ecFailed : ecNoSubstituters, std::move(buildResult)};
+        co_return WorkResult{substituterFailed ? ecFailed : ecNoSubstituters, std::move(buildResult)};
     }
 
     sub = subs.front();
@@ -140,7 +140,7 @@ try {
 
     if (nrFailed > 0) {
         debug("The output path of the derivation output '%s' could not be substituted", id.to_string());
-        return {Finished{
+        return {WorkResult{
             nrNoSubstituters > 0 || nrIncompleteClosure > 0 ? ecIncompleteClosure : ecFailed,
             std::move(buildResult),
         }};
@@ -155,7 +155,7 @@ try {
 kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::finished() noexcept
 try {
     trace("finished");
-    return {Finished{ecSuccess, std::move(buildResult)}};
+    return {WorkResult{ecSuccess, std::move(buildResult)}};
 } catch (...) {
     return {std::current_exception()};
 }

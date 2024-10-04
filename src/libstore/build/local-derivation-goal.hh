@@ -218,7 +218,7 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * Start building a derivation.
      */
-    kj::Promise<Outcome<void, Finished>> startBuilder();
+    kj::Promise<Outcome<void, WorkResult>> startBuilder();
 
     /**
      * Fill in the environment for the builder.
