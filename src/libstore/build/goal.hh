@@ -82,11 +82,6 @@ struct Goal
      */
     std::string name;
 
-    struct WorkResult;
-
-    // for use by Worker and Goal only. will go away once work() is a promise.
-    kj::Own<kj::PromiseFulfiller<Result<WorkResult>>> notify;
-
 protected:
     AsyncSemaphore::Token slotToken;
 

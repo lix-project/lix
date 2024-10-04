@@ -71,25 +71,37 @@ std::pair<std::shared_ptr<G>, kj::Promise<Result<Goal::WorkResult>>> Worker::mak
     // and then we only want to recreate the goal *once*. concurrent accesses
     // to the worker are not sound, we want to catch them if at all possible.
     for ([[maybe_unused]] auto _attempt : {1, 2}) {
-        auto & goal_weak = it->second;
-        auto goal = goal_weak.goal.lock();
+        auto & cachedGoal = it->second;
+        auto & goal = cachedGoal.goal;
         if (!goal) {
             goal = create();
-            goal_weak.goal = goal;
             // do not start working immediately. if we are not yet running we
             // may create dependencies as though they were toplevel goals, in
             // which case the dependencies will not report build errors. when
             // we are running we may be called for this same goal more times,
             // and then we want to modify rather than recreate when possible.
-            goal_weak.promise = kj::evalLater([goal] { return goal->work(); }).fork();
-            childStarted(goal, goal_weak.promise.addBranch());
+            auto removeWhenDone = [goal, &map, it] {
+                // c++ lambda coroutine capture semantics are *so* fucked up.
+                return [](auto goal, auto & map, auto it) -> kj::Promise<Result<Goal::WorkResult>> {
+                    auto result = co_await goal->work();
+                    // a concurrent call to makeGoalCommon may have reset our
+                    // cached goal and replaced it with a new instance. don't
+                    // remove the goal in this case, otherwise we will crash.
+                    if (goal == it->second.goal) {
+                        map.erase(it);
+                    }
+                    co_return result;
+                }(goal, map, it);
+            };
+            cachedGoal.promise = kj::evalLater(std::move(removeWhenDone)).fork();
+            childStarted(goal, cachedGoal.promise.addBranch());
         } else {
             if (!modify(*goal)) {
-                goal_weak = {};
+                cachedGoal = {};
                 continue;
             }
         }
-        return {goal, goal_weak.promise.addBranch()};
+        return {goal, cachedGoal.promise.addBranch()};
     }
     assert(false && "could not make a goal. possible concurrent worker access");
 }
@@ -184,43 +196,13 @@ std::pair<GoalPtr, kj::Promise<Result<Goal::WorkResult>>> Worker::makeGoal(const
 }
 
 
-template<typename G>
-static void removeGoal(std::shared_ptr<G> goal, auto & goalMap)
-{
-    /* !!! inefficient */
-    for (auto i = goalMap.begin();
-         i != goalMap.end(); )
-        if (i->second.goal.lock() == goal) {
-            auto j = i; ++j;
-            goalMap.erase(i);
-            i = j;
-        }
-        else ++i;
-}
-
-
 void Worker::goalFinished(GoalPtr goal, Goal::WorkResult & f)
 {
     permanentFailure |= f.permanentFailure;
     timedOut |= f.timedOut;
     hashMismatch |= f.hashMismatch;
     checkMismatch |= f.checkMismatch;
-
-    removeGoal(goal);
 }
-
-void Worker::removeGoal(GoalPtr goal)
-{
-    if (auto drvGoal = std::dynamic_pointer_cast<DerivationGoal>(goal))
-        nix::removeGoal(drvGoal, derivationGoals);
-    else if (auto subGoal = std::dynamic_pointer_cast<PathSubstitutionGoal>(goal))
-        nix::removeGoal(subGoal, substitutionGoals);
-    else if (auto subGoal = std::dynamic_pointer_cast<DrvOutputSubstitutionGoal>(goal))
-        nix::removeGoal(subGoal, drvOutputSubstitutionGoals);
-    else
-        assert(false);
-}
-
 
 void Worker::childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> promise)
 {

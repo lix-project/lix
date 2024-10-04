@@ -95,7 +95,7 @@ private:
     template<typename G>
     struct CachedGoal
     {
-        std::weak_ptr<G> goal;
+        std::shared_ptr<G> goal;
         kj::ForkedPromise<Result<Goal::WorkResult>> promise{nullptr};
     };
     /**
@@ -133,11 +133,6 @@ private:
     bool checkMismatch = false;
 
     void goalFinished(GoalPtr goal, Goal::WorkResult & f);
-
-    /**
-     * Remove a dead goal.
-     */
-    void removeGoal(GoalPtr goal);
 
     /**
      * Registers a running child process.
