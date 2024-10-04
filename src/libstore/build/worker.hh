@@ -132,13 +132,6 @@ private:
      */
     bool checkMismatch = false;
 
-    void goalFinished(GoalPtr goal, Goal::WorkResult & f);
-
-    /**
-     * Registers a running child process.
-     */
-    void childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> promise);
-
     /**
       * Pass current stats counters to the logger for progress bar updates.
       */

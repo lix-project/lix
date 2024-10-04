@@ -94,7 +94,15 @@ std::pair<std::shared_ptr<G>, kj::Promise<Result<Goal::WorkResult>>> Worker::mak
                 }(goal, map, it);
             };
             cachedGoal.promise = kj::evalLater(std::move(removeWhenDone)).fork();
-            childStarted(goal, cachedGoal.promise.addBranch());
+            children.add(cachedGoal.promise.addBranch().then([this](auto _result) {
+                if (_result.has_value()) {
+                    auto & result = _result.value();
+                    permanentFailure |= result.permanentFailure;
+                    timedOut |= result.timedOut;
+                    hashMismatch |= result.hashMismatch;
+                    checkMismatch |= result.checkMismatch;
+                }
+            }));
         } else {
             if (!modify(*goal)) {
                 cachedGoal = {};
@@ -194,26 +202,6 @@ std::pair<GoalPtr, kj::Promise<Result<Goal::WorkResult>>> Worker::makeGoal(const
         },
     }, req.raw());
 }
-
-
-void Worker::goalFinished(GoalPtr goal, Goal::WorkResult & f)
-{
-    permanentFailure |= f.permanentFailure;
-    timedOut |= f.timedOut;
-    hashMismatch |= f.hashMismatch;
-    checkMismatch |= f.checkMismatch;
-}
-
-void Worker::childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> promise)
-{
-    children.add(promise
-        .then([this, goal](auto result) {
-            if (result.has_value()) {
-                goalFinished(goal, result.assume_value());
-            }
-        }));
-}
-
 
 kj::Promise<Result<Worker::Results>> Worker::updateStatistics()
 try {
