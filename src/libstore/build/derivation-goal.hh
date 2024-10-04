@@ -185,6 +185,11 @@ struct DerivationGoal : public Goal
     std::map<std::string, InitialOutput> initialOutputs;
 
     /**
+     * Build result.
+     */
+    BuildResult buildResult;
+
+    /**
      * File descriptor for the log file.
      */
     AutoCloseFD fdLogFile;

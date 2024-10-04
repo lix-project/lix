@@ -82,11 +82,6 @@ struct Goal
      */
     std::string name;
 
-    /**
-     * Build result.
-     */
-    BuildResult buildResult;
-
     struct WorkResult;
 
     // for use by Worker and Goal only. will go away once work() is a promise.

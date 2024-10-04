@@ -37,7 +37,7 @@ Goal::WorkResult PathSubstitutionGoal::done(
     BuildResult::Status status,
     std::optional<std::string> errorMsg)
 {
-    buildResult.status = status;
+    BuildResult buildResult{.status = status};
     if (errorMsg) {
         debug(*errorMsg);
         buildResult.errorMsg = *errorMsg;
