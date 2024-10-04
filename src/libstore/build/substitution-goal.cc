@@ -46,7 +46,7 @@ Goal::WorkResult PathSubstitutionGoal::done(
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::work() noexcept
+kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::workImpl() noexcept
 try {
     trace("init");
 

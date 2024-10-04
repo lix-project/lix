@@ -1,6 +1,7 @@
 #include "goal.hh"
 #include "async-collect.hh"
 #include "worker.hh"
+#include <boost/outcome/try.hpp>
 #include <kj/time.h>
 
 namespace nix {
@@ -17,6 +18,23 @@ kj::Promise<void> Goal::waitForAWhile()
     /* If we are polling goals that are waiting for a lock, then wake
        up after a few seconds at most. */
     return worker.aio.provider->getTimer().afterDelay(settings.pollInterval.get() * kj::SECONDS);
+}
+
+kj::Promise<Result<Goal::WorkResult>> Goal::work() noexcept
+try {
+    BOOST_OUTCOME_CO_TRY(auto result, co_await workImpl());
+
+    trace("done");
+    assert(!exitCode.has_value());
+    exitCode = result.exitCode;
+    ex = result.ex;
+
+    notify->fulfill();
+    cleanup();
+
+    co_return std::move(result);
+} catch (...) {
+    co_return result::failure(std::current_exception());
 }
 
 kj::Promise<Result<void>>

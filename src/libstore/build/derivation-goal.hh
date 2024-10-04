@@ -250,7 +250,7 @@ struct DerivationGoal : public Goal
 
     WorkResult timedOut(Error && ex);
 
-    kj::Promise<Result<WorkResult>> work() noexcept override;
+    kj::Promise<Result<WorkResult>> workImpl() noexcept override;
 
     /**
      * Add wanted outputs to an already existing derivation goal.

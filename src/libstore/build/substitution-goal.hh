@@ -87,7 +87,7 @@ public:
     );
     ~PathSubstitutionGoal();
 
-    kj::Promise<Result<WorkResult>> work() noexcept override;
+    kj::Promise<Result<WorkResult>> workImpl() noexcept override;
 
     /**
      * The states.

@@ -24,7 +24,7 @@ DrvOutputSubstitutionGoal::DrvOutputSubstitutionGoal(
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::work() noexcept
+kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::workImpl() noexcept
 try {
     trace("init");
 

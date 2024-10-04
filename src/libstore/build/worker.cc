@@ -195,19 +195,12 @@ static void removeGoal(std::shared_ptr<G> goal, auto & goalMap)
 
 void Worker::goalFinished(GoalPtr goal, Goal::WorkResult & f)
 {
-    goal->trace("done");
-    assert(!goal->exitCode.has_value());
-    goal->exitCode = f.exitCode;
-    goal->ex = f.ex;
-
     permanentFailure |= f.permanentFailure;
     timedOut |= f.timedOut;
     hashMismatch |= f.hashMismatch;
     checkMismatch |= f.checkMismatch;
 
     removeGoal(goal);
-    goal->notify->fulfill();
-    goal->cleanup();
 }
 
 void Worker::removeGoal(GoalPtr goal)

@@ -70,7 +70,7 @@ public:
     kj::Promise<Result<WorkResult>> outPathValid() noexcept;
     kj::Promise<Result<WorkResult>> finished() noexcept;
 
-    kj::Promise<Result<WorkResult>> work() noexcept override;
+    kj::Promise<Result<WorkResult>> workImpl() noexcept override;
 
     JobCategory jobCategory() const override {
         return JobCategory::Substitution;

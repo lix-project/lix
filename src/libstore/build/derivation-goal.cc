@@ -125,7 +125,7 @@ Goal::WorkResult DerivationGoal::timedOut(Error && ex)
 }
 
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::work() noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::workImpl() noexcept
 {
     return useDerivation ? getDerivation() : haveDerivation();
 }

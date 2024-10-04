@@ -92,7 +92,7 @@ struct Goal
      */
     BuildResult buildResult;
 
-    // for use by Worker only. will go away once work() is a promise.
+    // for use by Worker and Goal only. will go away once work() is a promise.
     kj::Own<kj::PromiseFulfiller<void>> notify;
 
 protected:
@@ -121,6 +121,8 @@ protected:
         return waitForGoals(kj::arrOf<std::pair<GoalPtr, kj::Promise<void>>>(std::move(goals)...));
     }
 
+    virtual kj::Promise<Result<WorkResult>> workImpl() noexcept = 0;
+
 public:
 
     /**
@@ -138,7 +140,7 @@ public:
         trace("goal destroyed");
     }
 
-    virtual kj::Promise<Result<WorkResult>> work() noexcept = 0;
+    kj::Promise<Result<WorkResult>> work() noexcept;
 
     virtual void waiteeDone(GoalPtr waitee) { }
 
