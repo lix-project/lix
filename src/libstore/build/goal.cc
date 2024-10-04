@@ -25,8 +25,6 @@ try {
     BOOST_OUTCOME_CO_TRY(auto result, co_await workImpl());
 
     trace("done");
-    assert(!exitCode.has_value());
-    exitCode = result.exitCode;
     ex = result.ex;
 
     notify->fulfill(result);
@@ -42,14 +40,17 @@ Goal::waitForGoals(kj::Array<std::pair<GoalPtr, kj::Promise<Result<WorkResult>>>
 try {
     auto left = dependencies.size();
     for (auto & [dep, p] : dependencies) {
-        p = p.then([this, dep, &left](auto _result) {
+        p = p.then([this, dep, &left](auto _result) -> Result<WorkResult> {
+            BOOST_OUTCOME_TRY(auto result, _result);
+
             left--;
             trace(fmt("waitee '%s' done; %d left", dep->name, left));
 
-            if (dep->exitCode != Goal::ecSuccess) ++nrFailed;
-            if (dep->exitCode == Goal::ecNoSubstituters) ++nrNoSubstituters;
-            if (dep->exitCode == Goal::ecIncompleteClosure) ++nrIncompleteClosure;
-            return _result;
+            if (result.exitCode != Goal::ecSuccess) ++nrFailed;
+            if (result.exitCode == Goal::ecNoSubstituters) ++nrNoSubstituters;
+            if (result.exitCode == Goal::ecIncompleteClosure) ++nrIncompleteClosure;
+
+            return std::move(result);
         }).eagerlyEvaluate(nullptr);
     }
 
@@ -57,11 +58,11 @@ try {
 
     while (auto item = co_await collectDeps.next()) {
         auto & [dep, _result] = *item;
-        BOOST_OUTCOME_CO_TRYV(_result);
+        BOOST_OUTCOME_CO_TRY(auto result, _result);
 
         waiteeDone(dep);
 
-        if (dep->exitCode == ecFailed && !settings.keepGoing) {
+        if (result.exitCode == ecFailed && !settings.keepGoing) {
             co_return result::success();
         }
     }

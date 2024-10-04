@@ -83,11 +83,6 @@ struct Goal
     std::string name;
 
     /**
-     * Whether the goal is finished.
-     */
-    std::optional<ExitCode> exitCode;
-
-    /**
      * Build result.
      */
     BuildResult buildResult;

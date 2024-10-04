@@ -32,7 +32,7 @@ void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMod
             else
                 ex = i->ex;
         }
-        if (i->exitCode != Goal::ecSuccess) {
+        if (result.exitCode != Goal::ecSuccess) {
             if (auto i2 = dynamic_cast<DerivationGoal *>(i.get()))
                 failed.insert(printStorePath(i2->drvPath));
             else if (auto i2 = dynamic_cast<PathSubstitutionGoal *>(i.get()))
@@ -118,7 +118,7 @@ void Store::ensurePath(const StorePath & path)
     });
     auto [goal, result] = *goals.begin();
 
-    if (goal->exitCode != Goal::ecSuccess) {
+    if (result.exitCode != Goal::ecSuccess) {
         if (goal->ex) {
             goal->ex->withExitStatus(worker.failingExitStatus());
             throw std::move(*goal->ex);
@@ -140,7 +140,7 @@ void Store::repairPath(const StorePath & path)
     });
     auto [goal, result] = *goals.begin();
 
-    if (goal->exitCode != Goal::ecSuccess) {
+    if (result.exitCode != Goal::ecSuccess) {
         /* Since substituting the path didn't work, if we have a valid
            deriver, then rebuild the deriver. */
         auto info = queryPathInfo(path);
