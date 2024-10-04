@@ -53,7 +53,7 @@ Worker::~Worker()
 
 
 template<typename ID, std::derived_from<Goal> G>
-std::pair<std::shared_ptr<G>, kj::Promise<void>> Worker::makeGoalCommon(
+std::pair<std::shared_ptr<G>, kj::Promise<Result<Goal::WorkResult>>> Worker::makeGoalCommon(
     std::map<ID, CachedGoal<G>> & map,
     const ID & key,
     InvocableR<std::unique_ptr<G>> auto create,
@@ -89,7 +89,7 @@ std::pair<std::shared_ptr<G>, kj::Promise<void>> Worker::makeGoalCommon(
 }
 
 
-std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeDerivationGoal(
+std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<Result<Goal::WorkResult>>> Worker::makeDerivationGoal(
     const StorePath & drvPath, const OutputsSpec & wantedOutputs, BuildMode buildMode
 )
 {
@@ -110,7 +110,7 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeDeriva
 }
 
 
-std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeBasicDerivationGoal(
+std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<Result<Goal::WorkResult>>> Worker::makeBasicDerivationGoal(
     const StorePath & drvPath,
     const BasicDerivation & drv,
     const OutputsSpec & wantedOutputs,
@@ -134,7 +134,7 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<void>> Worker::makeBasicD
 }
 
 
-std::pair<std::shared_ptr<PathSubstitutionGoal>, kj::Promise<void>>
+std::pair<std::shared_ptr<PathSubstitutionGoal>, kj::Promise<Result<Goal::WorkResult>>>
 Worker::makePathSubstitutionGoal(
     const StorePath & path, RepairFlag repair, std::optional<ContentAddress> ca
 )
@@ -148,7 +148,7 @@ Worker::makePathSubstitutionGoal(
 }
 
 
-std::pair<std::shared_ptr<DrvOutputSubstitutionGoal>, kj::Promise<void>>
+std::pair<std::shared_ptr<DrvOutputSubstitutionGoal>, kj::Promise<Result<Goal::WorkResult>>>
 Worker::makeDrvOutputSubstitutionGoal(
     const DrvOutput & id, RepairFlag repair, std::optional<ContentAddress> ca
 )
@@ -162,16 +162,16 @@ Worker::makeDrvOutputSubstitutionGoal(
 }
 
 
-std::pair<GoalPtr, kj::Promise<void>> Worker::makeGoal(const DerivedPath & req, BuildMode buildMode)
+std::pair<GoalPtr, kj::Promise<Result<Goal::WorkResult>>> Worker::makeGoal(const DerivedPath & req, BuildMode buildMode)
 {
     return std::visit(overloaded {
-        [&](const DerivedPath::Built & bfd) -> std::pair<GoalPtr, kj::Promise<void>> {
+        [&](const DerivedPath::Built & bfd) -> std::pair<GoalPtr, kj::Promise<Result<Goal::WorkResult>>> {
             if (auto bop = std::get_if<DerivedPath::Opaque>(&*bfd.drvPath))
                 return makeDerivationGoal(bop->path, bfd.outputs, buildMode);
             else
                 throw UnimplementedError("Building dynamic derivations in one shot is not yet implemented.");
         },
-        [&](const DerivedPath::Opaque & bo) -> std::pair<GoalPtr, kj::Promise<void>> {
+        [&](const DerivedPath::Opaque & bo) -> std::pair<GoalPtr, kj::Promise<Result<Goal::WorkResult>>> {
             return makePathSubstitutionGoal(bo.path, buildMode == bmRepair ? Repair : NoRepair);
         },
     }, req.raw());

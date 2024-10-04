@@ -92,8 +92,10 @@ struct Goal
      */
     BuildResult buildResult;
 
+    struct WorkResult;
+
     // for use by Worker and Goal only. will go away once work() is a promise.
-    kj::Own<kj::PromiseFulfiller<void>> notify;
+    kj::Own<kj::PromiseFulfiller<Result<WorkResult>>> notify;
 
 protected:
     AsyncSemaphore::Token slotToken;
@@ -112,13 +114,15 @@ public:
 protected:
     kj::Promise<void> waitForAWhile();
     kj::Promise<Result<void>>
-    waitForGoals(kj::Array<std::pair<GoalPtr, kj::Promise<void>>> dependencies) noexcept;
+    waitForGoals(kj::Array<std::pair<GoalPtr, kj::Promise<Result<WorkResult>>>> dependencies) noexcept;
 
     template<std::derived_from<Goal>... G>
     kj::Promise<Result<void>>
-    waitForGoals(std::pair<std::shared_ptr<G>, kj::Promise<void>>... goals) noexcept
+    waitForGoals(std::pair<std::shared_ptr<G>, kj::Promise<Result<WorkResult>>>... goals) noexcept
     {
-        return waitForGoals(kj::arrOf<std::pair<GoalPtr, kj::Promise<void>>>(std::move(goals)...));
+        return waitForGoals(
+            kj::arrOf<std::pair<GoalPtr, kj::Promise<Result<WorkResult>>>>(std::move(goals)...)
+        );
     }
 
     virtual kj::Promise<Result<WorkResult>> workImpl() noexcept = 0;

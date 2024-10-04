@@ -267,7 +267,7 @@ try {
     /* We are first going to try to create the invalid output paths
        through substitutes.  If that doesn't work, we'll build
        them. */
-    kj::Vector<std::pair<GoalPtr, kj::Promise<void>>> dependencies;
+    kj::Vector<std::pair<GoalPtr, kj::Promise<Result<WorkResult>>>> dependencies;
     if (settings.useSubstitutes) {
         if (parsedDrv->substitutesAllowed()) {
             for (auto & [outputName, status] : initialOutputs) {
@@ -376,7 +376,7 @@ try {
    produced using a substitute.  So we have to build instead. */
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::gaveUpOnSubstitution() noexcept
 try {
-    kj::Vector<std::pair<GoalPtr, kj::Promise<void>>> dependencies;
+    kj::Vector<std::pair<GoalPtr, kj::Promise<Result<WorkResult>>>> dependencies;
 
     /* At this point we are building all outputs, so if more are wanted there
        is no need to restart. */
@@ -482,7 +482,7 @@ try {
         }
 
     /* Check each path (slow!). */
-    kj::Vector<std::pair<GoalPtr, kj::Promise<void>>> dependencies;
+    kj::Vector<std::pair<GoalPtr, kj::Promise<Result<WorkResult>>>> dependencies;
     for (auto & i : outputClosure) {
         if (worker.pathContentsGood(i)) continue;
         printError(

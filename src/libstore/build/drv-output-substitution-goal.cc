@@ -103,7 +103,7 @@ try {
         co_return co_await tryNext();
     }
 
-    kj::Vector<std::pair<GoalPtr, kj::Promise<void>>> dependencies;
+    kj::Vector<std::pair<GoalPtr, kj::Promise<Result<WorkResult>>>> dependencies;
     for (const auto & [depId, depPath] : outputInfo->dependentRealisations) {
         if (depId != id) {
             if (auto localOutputInfo = worker.store.queryRealisation(depId);

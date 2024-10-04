@@ -29,7 +29,7 @@ try {
     exitCode = result.exitCode;
     ex = result.ex;
 
-    notify->fulfill();
+    notify->fulfill(result);
     cleanup();
 
     co_return std::move(result);
@@ -38,24 +38,25 @@ try {
 }
 
 kj::Promise<Result<void>>
-Goal::waitForGoals(kj::Array<std::pair<GoalPtr, kj::Promise<void>>> dependencies) noexcept
+Goal::waitForGoals(kj::Array<std::pair<GoalPtr, kj::Promise<Result<WorkResult>>>> dependencies) noexcept
 try {
     auto left = dependencies.size();
     for (auto & [dep, p] : dependencies) {
-        p = p.then([this, dep, &left] {
+        p = p.then([this, dep, &left](auto _result) {
             left--;
             trace(fmt("waitee '%s' done; %d left", dep->name, left));
 
             if (dep->exitCode != Goal::ecSuccess) ++nrFailed;
             if (dep->exitCode == Goal::ecNoSubstituters) ++nrNoSubstituters;
             if (dep->exitCode == Goal::ecIncompleteClosure) ++nrIncompleteClosure;
+            return _result;
         }).eagerlyEvaluate(nullptr);
     }
 
     auto collectDeps = asyncCollect(std::move(dependencies));
 
     while (auto item = co_await collectDeps.next()) {
-        auto & dep = *item;
+        auto & [dep, _result] = *item;
 
         waiteeDone(dep);
 

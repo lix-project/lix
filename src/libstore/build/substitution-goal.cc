@@ -157,7 +157,7 @@ try {
 
     /* To maintain the closure invariant, we first have to realise the
        paths referenced by this one. */
-    kj::Vector<std::pair<GoalPtr, kj::Promise<void>>> dependencies;
+    kj::Vector<std::pair<GoalPtr, kj::Promise<Result<WorkResult>>>> dependencies;
     for (auto & i : info->references)
         if (i != storePath) /* ignore self-references */
             dependencies.add(worker.goalFactory().makePathSubstitutionGoal(i));
