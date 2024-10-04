@@ -48,6 +48,10 @@ Worker::~Worker()
        their destructors). */
     children.clear();
 
+    derivationGoals.clear();
+    drvOutputSubstitutionGoals.clear();
+    substitutionGoals.clear();
+
     assert(expectedSubstitutions == 0);
     assert(expectedDownloadSize == 0);
     assert(expectedNarSize == 0);
@@ -71,21 +75,21 @@ std::pair<std::shared_ptr<G>, kj::Promise<Result<Goal::WorkResult>>> Worker::mak
         auto goal = goal_weak.goal.lock();
         if (!goal) {
             goal = create();
-            goal->notify = std::move(goal_weak.fulfiller);
             goal_weak.goal = goal;
             // do not start working immediately. if we are not yet running we
             // may create dependencies as though they were toplevel goals, in
             // which case the dependencies will not report build errors. when
             // we are running we may be called for this same goal more times,
             // and then we want to modify rather than recreate when possible.
-            childStarted(goal, kj::evalLater([goal] { return goal->work(); }));
+            goal_weak.promise = kj::evalLater([goal] { return goal->work(); }).fork();
+            childStarted(goal, goal_weak.promise.addBranch());
         } else {
             if (!modify(*goal)) {
                 goal_weak = {};
                 continue;
             }
         }
-        return {goal, goal_weak.promise->addBranch()};
+        return {goal, goal_weak.promise.addBranch()};
     }
     assert(false && "could not make a goal. possible concurrent worker access");
 }
@@ -224,8 +228,6 @@ void Worker::childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> pr
         .then([this, goal](auto result) {
             if (result.has_value()) {
                 goalFinished(goal, result.assume_value());
-            } else {
-                goal->notify->fulfill(result.assume_error());
             }
         }));
 }

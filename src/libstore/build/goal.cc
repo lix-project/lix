@@ -26,7 +26,6 @@ try {
 
     trace("done");
 
-    notify->fulfill(result);
     cleanup();
 
     co_return std::move(result);

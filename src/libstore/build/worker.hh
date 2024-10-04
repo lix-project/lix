@@ -96,15 +96,7 @@ private:
     struct CachedGoal
     {
         std::weak_ptr<G> goal;
-        kj::Own<kj::ForkedPromise<Result<Goal::WorkResult>>> promise;
-        kj::Own<kj::PromiseFulfiller<Result<Goal::WorkResult>>> fulfiller;
-
-        CachedGoal()
-        {
-            auto pf = kj::newPromiseAndFulfiller<Result<Goal::WorkResult>>();
-            promise = kj::heap(pf.promise.fork());
-            fulfiller = std::move(pf.fulfiller);
-        }
+        kj::ForkedPromise<Result<Goal::WorkResult>> promise{nullptr};
     };
     /**
      * Maps used to prevent multiple instantiations of a goal for the
