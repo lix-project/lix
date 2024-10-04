@@ -1,3 +1,35 @@
+internal_api_sources = [
+  'src/libcmd',
+  'src/libexpr',
+  'src/libexpr/flake',
+  'tests/unit/libexpr',
+  'tests/unit/libexpr/value',
+  'tests/unit/libexpr/test',
+  'tests/unit/libexpr/test/value',
+  'src/libexpr/value',
+  'src/libfetchers',
+  'src/libmain',
+  'src/libstore',
+  'src/libstore/build',
+  'src/libstore/builtins',
+  'tests/unit/libstore',
+  'tests/unit/libstore/test',
+  'src/libutil',
+  'tests/unit/libutil',
+  'tests/unit/libutil/test',
+  'src/nix',
+  'src/nix-env',
+  'src/nix-store',
+]
+
+# We feed Doxygen absolute paths so it can be invoked from any working directory.
+internal_api_sources_absolute = []
+foreach src : internal_api_sources
+  internal_api_sources_absolute += '"' + (meson.project_source_root() / src) + '"'
+endforeach
+
+internal_api_sources_oneline = ' \\\n  '.join(internal_api_sources_absolute)
+
 doxygen_cfg = configure_file(
   input : 'doxygen.cfg.in',
   output : 'doxygen.cfg',
@@ -5,22 +37,16 @@ doxygen_cfg = configure_file(
     'PACKAGE_VERSION': meson.project_version(),
     'RAPIDCHECK_HEADERS': rapidcheck_meson.get_variable('includedir'),
     'docdir' : meson.current_build_dir(),
+    'INPUT_PATHS' : internal_api_sources_oneline,
+    'PROJECT_SOURCE_ROOT' : meson.project_source_root(),
   },
 )
 
 internal_api_docs = custom_target(
   'internal-api-docs',
   command : [
-    bash,
-    # Meson can you please just give us a `workdir` argument to custom targets...
-    '-c',
-    # We have to prefix the doxygen_cfg path with the project build root
-    # because of the cd in front.
-    'cd @0@ && @1@ @2@/@INPUT0@'.format(
-      meson.project_source_root(),
-      doxygen.full_path(),
-      meson.project_build_root(),
-    ),
+    doxygen.full_path(),
+    '@INPUT0@',
   ],
   input : [
     doxygen_cfg,

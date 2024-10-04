@@ -33,32 +33,7 @@ GENERATE_LATEX         = NO
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-# FIXME Make this list more maintainable somehow. We could maybe generate this
-# in the Makefile, but we would need to change how `.in` files are preprocessed
-# so they can expand variables despite configure variables.
-
-INPUT                  = \
-  src/libcmd \
-  src/libexpr \
-  src/libexpr/flake \
-  tests/unit/libexpr \
-  tests/unit/libexpr/value \
-  tests/unit/libexpr/test \
-  tests/unit/libexpr/test/value \
-  src/libexpr/value \
-  src/libfetchers \
-  src/libmain \
-  src/libstore \
-  src/libstore/build \
-  src/libstore/builtins \
-  tests/unit/libstore \
-  tests/unit/libstore/test \
-  src/libutil \
-  tests/unit/libutil \
-  tests/unit/libutil/test \
-  src/nix \
-  src/nix-env \
-  src/nix-store
+INPUT                  = @INPUT_PATHS@
 
 # If the MACRO_EXPANSION tag is set to YES, doxygen will expand all macro names
 # in the source code. If set to NO, only conditional compilation will be
@@ -97,3 +72,15 @@ EXPAND_AS_DEFINED      = \
   DECLARE_WORKER_SERIALISER \
   DECLARE_SERVE_SERIALISER \
   LENGTH_PREFIXED_PROTO_HELPER
+
+# The STRIP_FROM_PATH tag can be used to strip a user-defined part of the path.
+# Stripping is only done if one of the specified strings matches the left-hand
+# part of the path. The tag can be used to show relative paths in the file list.
+# If left blank the directory from which doxygen is run is used as the path to
+# strip.
+#
+# Note that you can specify absolute paths here, but also relative paths, which
+# will be relative from the directory where doxygen is started.
+# This tag requires that the tag FULL_PATH_NAMES is set to YES.
+
+STRIP_FROM_PATH        = "@PROJECT_SOURCE_ROOT@"
