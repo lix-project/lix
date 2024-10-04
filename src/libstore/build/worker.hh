@@ -86,6 +86,7 @@ class Worker : public WorkerBase
 {
 public:
     using Targets = std::map<GoalPtr, kj::Promise<Result<Goal::WorkResult>>>;
+    using Results = std::map<GoalPtr, Goal::WorkResult>;
 
 private:
 
@@ -154,7 +155,7 @@ private:
     /**
       * Pass current stats counters to the logger for progress bar updates.
       */
-    kj::Promise<Result<void>> updateStatistics();
+    kj::Promise<Result<Results>> updateStatistics();
 
     AsyncSemaphore statisticsUpdateSignal{1};
     std::optional<AsyncSemaphore::Token> statisticsUpdateInhibitor;
@@ -167,8 +168,8 @@ private:
         statisticsUpdateInhibitor = {};
     }
 
-    kj::Promise<Result<void>> runImpl(Targets topGoals);
-    kj::Promise<Result<void>> boopGC(LocalStore & localStore);
+    kj::Promise<Result<Results>> runImpl(Targets topGoals);
+    kj::Promise<Result<Results>> boopGC(LocalStore & localStore);
 
 public:
 
@@ -265,7 +266,7 @@ public:
     /**
      * Loop until the specified top-level goals have finished.
      */
-    std::vector<GoalPtr> run(std::function<Targets (GoalFactory &)> req);
+    Results run(std::function<Targets (GoalFactory &)> req);
 
     /***
      * The exit status in case of failure.

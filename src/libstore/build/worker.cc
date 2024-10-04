@@ -231,7 +231,7 @@ void Worker::childStarted(GoalPtr goal, kj::Promise<Result<Goal::WorkResult>> pr
 }
 
 
-kj::Promise<Result<void>> Worker::updateStatistics()
+kj::Promise<Result<Worker::Results>> Worker::updateStatistics()
 try {
     while (true) {
         statisticsUpdateInhibitor = co_await statisticsUpdateSignal.acquire();
@@ -257,7 +257,7 @@ try {
     co_return result::failure(std::current_exception());
 }
 
-std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
+Worker::Results Worker::run(std::function<Targets (GoalFactory &)> req)
 {
     auto topGoals = req(goalFactory());
 
@@ -265,13 +265,7 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
     running = true;
     Finally const _stop([&] { running = false; });
 
-    std::vector<GoalPtr> results;
-
-    for (auto & [goal, _promise] : topGoals) {
-        results.push_back(goal);
-    }
-
-    auto onInterrupt = kj::newPromiseAndCrossThreadFulfiller<Result<void>>();
+    auto onInterrupt = kj::newPromiseAndCrossThreadFulfiller<Result<Results>>();
     auto interruptCallback = createInterruptCallback([&] {
         return result::failure(std::make_exception_ptr(makeInterrupted()));
     });
@@ -286,12 +280,10 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
         promise = promise.exclusiveJoin(boopGC(*localStore));
     }
 
-    promise.wait(aio.waitScope).value();
-
-    return results;
+    return promise.wait(aio.waitScope).value();
 }
 
-kj::Promise<Result<void>> Worker::runImpl(Targets topGoals)
+kj::Promise<Result<Worker::Results>> Worker::runImpl(Targets topGoals)
 try {
     debug("entered goal loop");
 
@@ -300,10 +292,13 @@ try {
         promises.add(std::move(gp));
     }
 
+    Results results;
+
     auto collect = AsyncCollect(promises.releaseAsArray());
     while (auto done = co_await collect.next()) {
         // propagate goal exceptions outward
         BOOST_OUTCOME_CO_TRY(auto result, done->second);
+        results.emplace(done->first, result);
 
         /* If a top-level goal failed, then kill all other goals
            (unless keepGoing was set). */
@@ -318,12 +313,12 @@ try {
        --keep-going *is* set, then they must all be finished now. */
     assert(!settings.keepGoing || children.isEmpty());
 
-    co_return result::success();
+    co_return std::move(results);
 } catch (...) {
     co_return result::failure(std::current_exception());
 }
 
-kj::Promise<Result<void>> Worker::boopGC(LocalStore & localStore)
+kj::Promise<Result<Worker::Results>> Worker::boopGC(LocalStore & localStore)
 try {
     while (true) {
         co_await aio.provider->getTimer().afterDelay(10 * kj::SECONDS);

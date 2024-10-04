@@ -25,7 +25,7 @@ void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMod
 
     StringSet failed;
     std::shared_ptr<Error> ex;
-    for (auto & i : goals) {
+    for (auto & [i, result] : goals) {
         if (i->ex) {
             if (ex)
                 logError(i->ex->info());
@@ -89,7 +89,7 @@ BuildResult Store::buildDerivation(const StorePath & drvPath, const BasicDerivat
             goals.emplace(gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode));
             return goals;
         });
-        auto goal = *goals.begin();
+        auto [goal, result] = *goals.begin();
         return goal->buildResult.restrictTo(DerivedPath::Built {
             .drvPath = makeConstantStorePathRef(drvPath),
             .outputs = OutputsSpec::All {},
@@ -116,7 +116,7 @@ void Store::ensurePath(const StorePath & path)
         goals.emplace(gf.makePathSubstitutionGoal(path));
         return goals;
     });
-    auto goal = *goals.begin();
+    auto [goal, result] = *goals.begin();
 
     if (goal->exitCode != Goal::ecSuccess) {
         if (goal->ex) {
@@ -138,7 +138,7 @@ void Store::repairPath(const StorePath & path)
         goals.emplace(gf.makePathSubstitutionGoal(path, Repair));
         return goals;
     });
-    auto goal = *goals.begin();
+    auto [goal, result] = *goals.begin();
 
     if (goal->exitCode != Goal::ecSuccess) {
         /* Since substituting the path didn't work, if we have a valid
