@@ -12,13 +12,18 @@ std::atomic<bool> _isInterrupted = false;
 
 thread_local std::function<bool()> interruptCheck;
 
+Interrupted makeInterrupted()
+{
+    return Interrupted("interrupted by the user");
+}
+
 void _interrupted()
 {
     /* Block user interrupts while an exception is being handled.
        Throwing an exception while another exception is being handled
        kills the program! */
     if (!std::uncaught_exceptions()) {
-        throw Interrupted("interrupted by the user");
+        throw makeInterrupted();
     }
 }
 

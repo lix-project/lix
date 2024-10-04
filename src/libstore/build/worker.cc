@@ -294,7 +294,13 @@ std::vector<GoalPtr> Worker::run(std::function<Targets (GoalFactory &)> req)
         topGoals.insert(goal);
     }
 
-    auto promise = runImpl().exclusiveJoin(updateStatistics());
+    auto onInterrupt = kj::newPromiseAndCrossThreadFulfiller<Result<void>>();
+    auto interruptCallback = createInterruptCallback([&] {
+        return result::failure(std::make_exception_ptr(makeInterrupted()));
+    });
+
+    auto promise =
+        runImpl().exclusiveJoin(updateStatistics()).exclusiveJoin(std::move(onInterrupt.promise));
 
     // TODO GC interface?
     if (auto localStore = dynamic_cast<LocalStore *>(&store); localStore && settings.minFree != 0) {
@@ -316,9 +322,6 @@ try {
     debug("entered goal loop");
 
     while (1) {
-
-        checkInterrupt();
-
         if (topGoals.empty()) break;
 
         /* Wait for input. */

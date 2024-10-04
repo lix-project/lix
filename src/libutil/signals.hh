@@ -16,10 +16,13 @@ namespace nix {
 
 /* User interruption. */
 
+class Interrupted;
+
 extern std::atomic<bool> _isInterrupted;
 
 extern thread_local std::function<bool()> interruptCheck;
 
+Interrupted makeInterrupted();
 void _interrupted();
 
 void inline checkInterrupt()
