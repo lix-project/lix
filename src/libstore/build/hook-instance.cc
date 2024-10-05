@@ -1,4 +1,5 @@
 #include "child.hh"
+#include "error.hh"
 #include "file-system.hh"
 #include "globals.hh"
 #include "hook-instance.hh"
@@ -86,7 +87,7 @@ HookInstance::~HookInstance()
         toHook.reset();
         if (pid) pid.kill();
     } catch (...) {
-        ignoreException();
+        ignoreExceptionInDestructor();
     }
 }
 

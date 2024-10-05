@@ -1,4 +1,5 @@
 #include "local-derivation-goal.hh"
+#include "error.hh"
 #include "indirect-root-store.hh"
 #include "machines.hh"
 #include "store-api.hh"
@@ -98,9 +99,9 @@ LocalDerivationGoal::~LocalDerivationGoal() noexcept(false)
 {
     /* Careful: we should never ever throw an exception from a
        destructor. */
-    try { deleteTmpDir(false); } catch (...) { ignoreException(); }
-    try { killChild(); } catch (...) { ignoreException(); }
-    try { stopDaemon(); } catch (...) { ignoreException(); }
+    try { deleteTmpDir(false); } catch (...) { ignoreExceptionInDestructor(); }
+    try { killChild(); } catch (...) { ignoreExceptionInDestructor(); }
+    try { stopDaemon(); } catch (...) { ignoreExceptionInDestructor(); }
 }
 
 
@@ -1249,7 +1250,7 @@ void LocalDerivationGoal::startDaemon()
                         NotTrusted, daemon::Recursive);
                     debug("terminated daemon connection");
                 } catch (SysError &) {
-                    ignoreException();
+                    ignoreExceptionExceptInterrupt();
                 }
             });
 

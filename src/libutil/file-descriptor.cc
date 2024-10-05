@@ -146,7 +146,7 @@ AutoCloseFD::~AutoCloseFD()
     try {
         close();
     } catch (...) {
-        ignoreException();
+        ignoreExceptionInDestructor();
     }
 }
 

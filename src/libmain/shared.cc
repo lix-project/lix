@@ -395,7 +395,7 @@ RunPager::~RunPager()
             pid.wait();
         }
     } catch (...) {
-        ignoreException();
+        ignoreExceptionInDestructor();
     }
 }
 

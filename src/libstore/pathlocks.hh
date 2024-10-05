@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "error.hh"
 #include "file-descriptor.hh"
 
 namespace nix {
@@ -53,7 +54,7 @@ struct FdLock
             if (acquired)
                 lockFile(fd, ltNone, false);
         } catch (SysError &) {
-            ignoreException();
+            ignoreExceptionInDestructor();
         }
     }
 };

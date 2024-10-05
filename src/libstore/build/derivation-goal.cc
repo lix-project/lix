@@ -107,7 +107,7 @@ DerivationGoal::~DerivationGoal() noexcept(false)
 {
     /* Careful: we should never ever throw an exception from a
        destructor. */
-    try { closeLogFile(); } catch (...) { ignoreException(); }
+    try { closeLogFile(); } catch (...) { ignoreExceptionInDestructor(); }
 }
 
 
@@ -863,7 +863,7 @@ void replaceValidPath(const Path & storePath, const Path & tmpPath)
             // attempt to recover
             movePath(oldPath, storePath);
         } catch (...) {
-            ignoreException();
+            ignoreExceptionExceptInterrupt();
         }
         throw;
     }

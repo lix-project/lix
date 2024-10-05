@@ -85,7 +85,7 @@ SQLite::~SQLite()
         if (db && sqlite3_close(db) != SQLITE_OK)
             SQLiteError::throw_(db, "closing database");
     } catch (...) {
-        ignoreException();
+        ignoreExceptionInDestructor();
     }
 }
 
@@ -124,7 +124,7 @@ SQLiteStmt::~SQLiteStmt()
         if (stmt && sqlite3_finalize(stmt) != SQLITE_OK)
             SQLiteError::throw_(db, "finalizing statement '%s'", sql);
     } catch (...) {
-        ignoreException();
+        ignoreExceptionInDestructor();
     }
 }
 
@@ -248,7 +248,7 @@ SQLiteTxn::~SQLiteTxn()
         if (active && sqlite3_exec(db, "rollback;", 0, 0, 0) != SQLITE_OK)
             SQLiteError::throw_(db, "aborting transaction");
     } catch (...) {
-        ignoreException();
+        ignoreExceptionInDestructor();
     }
 }
 

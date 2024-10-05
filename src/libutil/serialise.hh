@@ -549,7 +549,7 @@ struct FramedSource : Source
                 }
             }
         } catch (...) {
-            ignoreException();
+            ignoreExceptionInDestructor();
         }
     }
 
@@ -595,7 +595,7 @@ struct FramedSink : nix::BufferedSink
             to << 0;
             to.flush();
         } catch (...) {
-            ignoreException();
+            ignoreExceptionInDestructor();
         }
     }
 
