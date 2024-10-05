@@ -60,15 +60,14 @@ EVIL_NARS: list[tuple[str, NarItem]] = [
             (b'meow', Regular(False, b'kbityy'))
         ])),
     ])),
-    # FIXME: ban casehacked filenames being extracted from NARs
-    # ('invalid-casehack-1', Directory([
-    #     (b'ZZZ~nix~case~hack~2', Regular(False, b'meow')),
-    #     (b'zzz~nix~case~hack~1', Regular(False, b'eepy')),
-    # ])),
-    # ('invalid-casehack-2', Directory([
-    #     (b'ZZZ~nix~case~hack~1', Regular(False, b'meow')),
-    #     (b'zzz~nix~case~hack~1', Regular(False, b'eepy')),
-    # ])),
+    ('invalid-casehack-1', Directory([
+        (b'ZZZ~nix~case~hack~2', Regular(False, b'meow')),
+        (b'zzz~nix~case~hack~1', Regular(False, b'eepy')),
+    ])),
+    ('invalid-casehack-2', Directory([
+        (b'ZZZ~nix~case~hack~1', Regular(False, b'meow')),
+        (b'zzz~nix~case~hack~1', Regular(False, b'eepy')),
+    ])),
 ]
 
 @pytest.mark.parametrize(['name', 'nar'], EVIL_NARS)
