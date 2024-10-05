@@ -126,6 +126,7 @@ manual = custom_target(
     'manual',
     'markdown',
   ],
+  install : true,
   install_dir : [
     datadir / 'doc/nix',
     false,
