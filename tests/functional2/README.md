@@ -18,7 +18,7 @@ Its primary goal is to make tests more concise, more self-contained, easier to w
 - [ ] Web server fixture: we don't test our network functionality because background processes are hard and this is simply goofy.
   We could just test it.
 - [ ] Nix daemon fixture.
-- [ ] Parallelism via pytest-xdist.
+- [x] Parallelism via pytest-xdist.
 
 [pytest-expect-test]: https://pypi.org/project/pytest-expect-test/
 [pytest-insta]: https://pypi.org/project/pytest-insta/

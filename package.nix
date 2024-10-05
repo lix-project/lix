@@ -245,6 +245,7 @@ stdenv.mkDerivation (finalAttrs: {
     [
       python3
       python3.pkgs.pytest
+      python3.pkgs.pytest-xdist
       meson
       ninja
       cmake
@@ -479,6 +480,7 @@ stdenv.mkDerivation (finalAttrs: {
             # FIXME: these have to be added twice due to the nix shell using a
             # wrapped python instead of build inputs for its python inputs
             p.pytest
+            p.pytest-xdist
 
             p.yapf
             p.python-frontmatter

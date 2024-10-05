@@ -1,3 +1,10 @@
+xdist_opts = [
+  # auto number of workers, max 12 jobs
+  '-n', 'auto', '--maxprocesses=12',
+  # group tests by module or class; ensures that any setup work occurs as little as possible
+  '--dist=loadscope',
+]
+
 # surprisingly, this actually works even if PATH is set to something before
 # meson gets hold of it. neat!
 functional2_env = environment()
@@ -7,7 +14,10 @@ test(
   'functional2',
   python,
   args : [
-    '-m', 'pytest', meson.current_source_dir()
+    '-m', 'pytest',
+    '-v',
+    xdist_opts,
+    meson.current_source_dir()
   ],
   env : functional2_env,
   # FIXME: Although we can trivially use TAP here with pytest-tap, due to a meson bug, it is unusable.
