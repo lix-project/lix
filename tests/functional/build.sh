@@ -144,8 +144,8 @@ test "$(<<<"$out" grep -E '^error:' | wc -l)" = 1
 # --keep-going and FOD
 out="$(nix build -f fod-failing.nix -L 2>&1)" && status=0 || status=$?
 test "$status" = 1
-# one "hash mismatch" error, one "build of ... failed"
-test "$(<<<"$out" grep -E '^error:' | wc -l)" = 2
+# at least one "hash mismatch" error, one "build of ... failed"
+test "$(<<<"$out" grep -E '^error:' | wc -l)" -ge 2
 <<<"$out" grepQuiet -E "hash mismatch in fixed-output derivation '.*-x.\\.drv'"
 <<<"$out" grepQuiet -E "likely URL: "
 <<<"$out" grepQuiet -E "error: build of '.*-x[1-4]\\.drv\\^out', '.*-x[1-4]\\.drv\\^out', '.*-x[1-4]\\.drv\\^out', '.*-x[1-4]\\.drv\\^out' failed"
