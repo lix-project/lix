@@ -170,6 +170,7 @@ let
 
   functionalTestFiles = fileset.unions [
     ./tests/functional
+    ./tests/functional2
     ./tests/unit
     (fileset.fileFilter (f: lib.strings.hasPrefix "nix-profile" f.name) ./scripts)
   ];
@@ -243,6 +244,7 @@ stdenv.mkDerivation (finalAttrs: {
   nativeBuildInputs =
     [
       python3
+      python3.pkgs.pytest
       meson
       ninja
       cmake
@@ -474,6 +476,10 @@ stdenv.mkDerivation (finalAttrs: {
 
         pythonPackages = (
           p: [
+            # FIXME: these have to be added twice due to the nix shell using a
+            # wrapped python instead of build inputs for its python inputs
+            p.pytest
+
             p.yapf
             p.python-frontmatter
             p.requests
