@@ -829,7 +829,7 @@ StorePathSet Store::queryValidPaths(const StorePathSet & paths, SubstituteFlag m
     {
         size_t left;
         StorePathSet valid;
-        std::exception_ptr exc;
+        std::exception_ptr exc = {};
     };
 
     Sync<State> state_(State{paths.size(), StorePathSet()});

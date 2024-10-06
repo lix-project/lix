@@ -50,7 +50,7 @@ struct Realisation {
     DrvOutput id;
     StorePath outPath;
 
-    StringSet signatures;
+    StringSet signatures = {};
 
     /**
      * The realisations that are required for the current one to be valid.
@@ -58,7 +58,7 @@ struct Realisation {
      * When importing this realisation, the store will first check that all its
      * dependencies exist, and map to the correct output path
      */
-    std::map<DrvOutput, StorePath> dependentRealisations;
+    std::map<DrvOutput, StorePath> dependentRealisations = {};
 
     nlohmann::json toJSON() const;
     static Realisation fromJSON(const nlohmann::json& json, const std::string& whence);

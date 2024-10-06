@@ -20,10 +20,10 @@ struct NarMember
        file in the NAR. */
     uint64_t start = 0, size = 0;
 
-    std::string target;
+    std::string target = {};
 
     /* If this is a directory, all the children of the directory. */
-    std::map<std::string, NarMember> children;
+    std::map<std::string, NarMember> children = {};
 };
 
 struct NarAccessor : public FSAccessor

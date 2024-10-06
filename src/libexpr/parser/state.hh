@@ -9,7 +9,7 @@ namespace nix::parser {
 struct StringToken
 {
     std::string_view s;
-    bool hasIndentation;
+    bool hasIndentation = false;
     operator std::string_view() const { return s; }
 };
 

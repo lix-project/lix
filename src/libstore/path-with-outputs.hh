@@ -17,7 +17,7 @@ namespace nix {
 struct StorePathWithOutputs
 {
     StorePath path;
-    std::set<std::string> outputs;
+    std::set<std::string> outputs = {};
 
     std::string to_string(const Store & store) const;
 

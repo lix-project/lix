@@ -52,8 +52,7 @@ project('lix', 'cpp', 'rust',
   default_options : [
     'cpp_std=c++2a',
     'rust_std=2021',
-    # TODO(Qyriad): increase the warning level
-    'warning_level=1',
+    'warning_level=2',
     'debug=true',
     'optimization=2',
     'errorlogs=true', # Please print logs for tests that fail
@@ -485,7 +484,7 @@ add_project_arguments(
   # TODO(Qyriad): Yes this is how the autoconf+Make system did it.
   # It would be nice for our headers to be idempotent instead.
   '-include', 'config.h',
-  '-Wsign-compare',
+  '-Wno-unused-parameter',
   '-Wno-deprecated-declarations',
   '-Wimplicit-fallthrough',
   '-Werror=switch',

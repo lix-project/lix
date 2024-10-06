@@ -88,8 +88,8 @@ protected:
 public:
     struct [[nodiscard]] WorkResult {
         ExitCode exitCode;
-        BuildResult result;
-        std::shared_ptr<Error> ex;
+        BuildResult result = {};
+        std::shared_ptr<Error> ex = {};
         bool permanentFailure = false;
         bool timedOut = false;
         bool hashMismatch = false;

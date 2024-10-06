@@ -78,11 +78,11 @@ struct RunOptions
 {
     Path program;
     bool searchPath = true;
-    Strings args;
-    std::optional<uid_t> uid;
-    std::optional<uid_t> gid;
-    std::optional<Path> chdir;
-    std::optional<std::map<std::string, std::string>> environment;
+    Strings args = {};
+    std::optional<uid_t> uid = {};
+    std::optional<uid_t> gid = {};
+    std::optional<Path> chdir = {};
+    std::optional<std::map<std::string, std::string>> environment = {};
     bool captureStdout = false;
     bool mergeStderrToStdout = false;
     bool isInteractive = false;

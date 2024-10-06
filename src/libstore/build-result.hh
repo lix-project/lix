@@ -47,7 +47,7 @@ struct BuildResult
      * @todo This should be an entire ErrorInfo object, not just a
      * string, for richer information.
      */
-    std::string errorMsg;
+    std::string errorMsg = {};
 
     std::string toString() const {
         auto strStatus = [&]() {
@@ -90,7 +90,7 @@ struct BuildResult
      * For derivations, a mapping from the names of the wanted outputs
      * to actual paths.
      */
-    SingleDrvOutputs builtOutputs;
+    SingleDrvOutputs builtOutputs = {};
 
     /**
      * The start/stop times of the build (or one of the rounds, if it

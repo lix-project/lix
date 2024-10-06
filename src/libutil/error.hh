@@ -70,17 +70,17 @@ inline bool operator<=(const Trace& lhs, const Trace& rhs);
 inline bool operator>=(const Trace& lhs, const Trace& rhs);
 
 struct ErrorInfo {
-    Verbosity level;
+    Verbosity level = Verbosity::lvlError;
     HintFmt msg;
     std::shared_ptr<Pos> pos;
-    std::list<Trace> traces;
+    std::list<Trace> traces = {};
 
     /**
      * Exit status.
      */
     unsigned int status = 1;
 
-    Suggestions suggestions;
+    Suggestions suggestions = {};
 
     static std::optional<std::string> programName;
 };

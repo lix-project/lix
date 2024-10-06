@@ -63,7 +63,7 @@ struct InitialOutputStatus {
 struct InitialOutput {
     bool wanted;
     Hash outputHash;
-    std::optional<InitialOutputStatus> known;
+    std::optional<InitialOutputStatus> known = {};
 };
 
 /**
