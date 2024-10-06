@@ -1,4 +1,5 @@
 #include "compression.hh"
+#include <cstddef>
 #include <gtest/gtest.h>
 
 namespace nix {
@@ -147,7 +148,7 @@ TEST_P(PerTypeNonNullCompressionTest, truncatedValidInput)
     /* n.b. This also tests zero-length input, which is also invalid.
      * As of the writing of this comment, it returns empty output, but is
      * allowed to throw a compression error instead. */
-    for (int i = 0; i < compressed.length(); ++i) {
+    for (size_t i = 0u; i < compressed.length(); ++i) {
         auto newCompressed = compressed.substr(compressed.length() - i);
         try {
             decompress(method, newCompressed);

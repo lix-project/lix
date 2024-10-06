@@ -247,7 +247,7 @@ Worker::Results Worker::run(std::function<Targets (GoalFactory &)> req)
                        .exclusiveJoin(std::move(onInterrupt.promise));
 
     // TODO GC interface?
-    if (auto localStore = dynamic_cast<LocalStore *>(&store); localStore && settings.minFree != 0) {
+    if (auto localStore = dynamic_cast<LocalStore *>(&store); localStore && settings.minFree != 0u) {
         // Periodically wake up to see if we need to run the garbage collector.
         promise = promise.exclusiveJoin(boopGC(*localStore));
     }
