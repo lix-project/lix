@@ -6,6 +6,7 @@
 #include "signals.hh"
 #include "compression.hh"
 #include "strings.hh"
+#include <cstddef>
 
 #if ENABLE_S3
 #include <aws/core/client/ClientConfiguration.h>
@@ -784,8 +785,10 @@ struct curlFileTransfer : public FileTransfer
 
             size_t read(char * data, size_t len) override
             {
-                auto readPartial = [this](char * data, size_t len) {
+                auto readPartial = [this](char * data, size_t len) -> size_t {
                     const auto available = std::min(len, buffered.size());
+                    if (available == 0u) return 0u;
+
                     memcpy(data, buffered.data(), available);
                     buffered.remove_prefix(available);
                     return available;

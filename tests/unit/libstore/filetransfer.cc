@@ -150,6 +150,14 @@ TEST(FileTransfer, exceptionAbortsDownload)
     }
 }
 
+TEST(FileTransfer, exceptionAbortsRead)
+{
+    auto [port, srv] = serveHTTP("200 ok", "content-length: 0\r\n", [] { return ""; });
+    auto ft = makeFileTransfer();
+    char buf[10] = "";
+    ASSERT_THROW(ft->download(FileTransferRequest(fmt("http://[::1]:%d/index", port)))->read(buf, 10), EndOfFile);
+}
+
 TEST(FileTransfer, NOT_ON_DARWIN(reportsSetupErrors))
 {
     auto [port, srv] = serveHTTP("404 not found", "", [] { return ""; });
