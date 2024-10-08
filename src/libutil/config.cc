@@ -474,9 +474,22 @@ template<> Paths PathsSetting<Paths>::parse(const std::string & str, const Apply
     return parsed;
 }
 
+template<> PathSet PathsSetting<PathSet>::parse(const std::string &str, const ApplyConfigOptions & options) const
+{
+    auto strings = tokenizeString<Strings>(str);
+    PathSet parsed;
+
+    for (auto str : strings) {
+        parsed.insert(parsePath(*this, str, options));
+    }
+
+    return parsed;
+}
+
 template class PathsSetting<Path>;
 template class PathsSetting<std::optional<Path>>;
 template class PathsSetting<Paths>;
+template class PathsSetting<PathSet>;
 
 
 bool GlobalConfig::set(const std::string & name, const std::string & value, const ApplyConfigOptions & options)
