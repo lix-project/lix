@@ -21,6 +21,14 @@ std::ostream & operator <<(std::ostream & str, const SymbolStr & symbol)
     return printIdentifier(str, s);
 }
 
+AttrName::AttrName(Symbol s) : symbol(s)
+{
+}
+
+AttrName::AttrName(std::unique_ptr<Expr> e) : expr(std::move(e))
+{
+}
+
 void Expr::show(const SymbolTable & symbols, std::ostream & str) const
 {
     abort();

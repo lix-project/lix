@@ -30,8 +30,8 @@ struct AttrName
 {
     Symbol symbol;
     std::unique_ptr<Expr> expr;
-    AttrName(Symbol s) : symbol(s) {};
-    AttrName(std::unique_ptr<Expr> e) : expr(std::move(e)) {};
+    AttrName(Symbol s);
+    AttrName(std::unique_ptr<Expr> e);
 };
 
 typedef std::vector<AttrName> AttrPath;
