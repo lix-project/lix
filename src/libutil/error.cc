@@ -133,7 +133,7 @@ static std::string indent(std::string_view indentFirst, std::string_view indentR
 /**
  * A development aid for finding missing positions, to improve error messages. Example use:
  *
- *     NIX_DEVELOPER_SHOW_UNKNOWN_LOCATIONS=1 _NIX_TEST_ACCEPT=1 make tests/lang.sh.test
+ *     NIX_DEVELOPER_SHOW_UNKNOWN_LOCATIONS=1 _NIX_TEST_ACCEPT=1 just test --suite installcheck -v functional-lang
  *     git diff -U20 tests
  *
  */

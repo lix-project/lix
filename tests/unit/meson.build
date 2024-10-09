@@ -12,7 +12,11 @@
 # It's only ~200 lines; better to just refactor the tests themselves which we'll want to do anyway.
 
 default_test_env = {
-  'ASAN_OPTIONS': 'detect_leaks=0:halt_on_error=1:abort_on_error=1:print_summary=1:dump_instruction_bytes=1'
+  'ASAN_OPTIONS': 'detect_leaks=0:halt_on_error=1:abort_on_error=1:print_summary=1:dump_instruction_bytes=1',
+  # Prevents loading global configuration file in /etc/nix/nix.conf in tests 😱
+  'NIX_CONF_DIR': '/var/empty',
+  # Prevent loading user configuration files in tests
+  'NIX_USER_CONF_FILES': '',
 }
 
 libutil_test_support_sources = files(
