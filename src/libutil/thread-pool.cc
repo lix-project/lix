@@ -109,8 +109,21 @@ void ThreadPool::doWork(bool mainThread)
                         try {
                             std::rethrow_exception(exc);
                         } catch (std::exception & e) {
-                            if (!dynamic_cast<ThreadPoolShutDown*>(&e))
-                                ignoreExceptionExceptInterrupt();
+                            if (!dynamic_cast<ThreadPoolShutDown*>(&e)) {
+                                // Yes, this is not a destructor, but we cannot
+                                // safely propagate an exception out of here.
+                                //
+                                // What happens is that if we do, shutdown()
+                                // will have join() throw an exception if we
+                                // are on a worker thread, preventing us from
+                                // joining the rest of the threads. Although we
+                                // could make the joining eat exceptions too,
+                                // we could just as well not let Interrupted
+                                // fall out to begin with, since the thread
+                                // will immediately cleanly quit because of
+                                // quit == true anyway.
+                                ignoreExceptionInDestructor();
+                            }
                         } catch (...) {
                         }
                     }
