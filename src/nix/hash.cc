@@ -5,8 +5,9 @@
 #include "shared.hh"
 #include "references.hh"
 #include "archive.hh"
+#include "hash-command.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdHashBase : Command
 {
@@ -221,4 +222,8 @@ static int compatNixHash(int argc, char * * argv)
     return 0;
 }
 
-static RegisterLegacyCommand r_nix_hash("nix-hash", compatNixHash);
+void registerNixHash() {
+    LegacyCommands::add("nix-hash", compatNixHash);
+}
+
+}

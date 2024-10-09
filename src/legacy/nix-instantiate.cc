@@ -11,12 +11,13 @@
 #include "local-fs-store.hh"
 #include "common-eval-args.hh"
 #include "legacy.hh"
+#include "nix-instantiate.hh"
 
 #include <map>
 #include <iostream>
 
 
-using namespace nix;
+namespace nix {
 
 
 static Path gcRoot;
@@ -195,4 +196,8 @@ static int main_nix_instantiate(int argc, char * * argv)
     }
 }
 
-static RegisterLegacyCommand r_nix_instantiate("nix-instantiate", main_nix_instantiate);
+void registerNixInstantiate() {
+    LegacyCommands::add("nix-instantiate", main_nix_instantiate);
+}
+
+}

@@ -9,10 +9,11 @@
 #include "eval-inline.hh" // IWYU pragma: keep
 #include "legacy.hh"
 #include "terminal.hh"
+#include "prefetch-command.hh"
 
 #include <nlohmann/json.hpp>
 
-using namespace nix;
+namespace nix {
 
 /* If ‘url’ starts with ‘mirror://’, then resolve it using the list of
    mirrors defined in Nixpkgs. */
@@ -248,7 +249,9 @@ static int main_nix_prefetch_url(int argc, char * * argv)
     }
 }
 
-static RegisterLegacyCommand r_nix_prefetch_url("nix-prefetch-url", main_nix_prefetch_url);
+void registerNixPrefetchUrl() {
+    LegacyCommands::add("nix-prefetch-url", main_nix_prefetch_url);
+}
 
 struct CmdStorePrefetchFile : StoreCommand, MixJSON
 {
@@ -328,3 +331,5 @@ struct CmdStorePrefetchFile : StoreCommand, MixJSON
 };
 
 static auto rCmdStorePrefetchFile = registerCommand2<CmdStorePrefetchFile>({"store", "prefetch-file"});
+
+}

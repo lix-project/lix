@@ -8,7 +8,7 @@
 #include "archive.hh"
 #include "builtins/buildenv.hh"
 #include "flake/flakeref.hh"
-#include "../nix-env/user-env.hh"
+#include "user-env.hh"
 #include "profiles.hh"
 #include "names.hh"
 

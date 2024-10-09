@@ -15,6 +15,17 @@
 #include "markdown.hh"
 #include "experimental-features-json.hh"
 #include "deprecated-features-json.hh"
+#include "build-remote.hh"
+#include "daemon-command.hh"
+#include "hash-command.hh"
+#include "nix-build.hh"
+#include "nix-channel.hh"
+#include "nix-collect-garbage.hh"
+#include "nix-copy-closure.hh"
+#include "nix-env.hh"
+#include "nix-instantiate.hh"
+#include "nix-store.hh"
+#include "prefetch-command.hh"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -29,6 +40,21 @@ extern std::string chrootHelperName;
 void chrootHelper(int argc, char * * argv);
 
 namespace nix {
+
+void registerLegacyCommands()
+{
+    registerNixEnv();
+    registerNixBuildAndNixShell();
+    registerNixInstantiate();
+    registerNixCopyClosure();
+    registerNixCollectGarbage();
+    registerNixChannel();
+    registerNixStore();
+    registerBuildRemote();
+    registerNixDaemon();
+    registerNixPrefetchUrl();
+    registerNixHash();
+}
 
 static bool haveProxyEnvironmentVariables()
 {
@@ -356,8 +382,10 @@ void mainWrapped(int argc, char * * argv)
     // Clean up the progress bar if shown using --log-format in a legacy command too.
     // Otherwise, this is a harmless no-op.
     Finally f([] { logger->pause(); });
+
     {
-        auto legacy = (*RegisterLegacyCommand::commands)[programName];
+        registerLegacyCommands();
+        auto legacy = (*LegacyCommands::commands)[programName];
         if (legacy) return legacy(argc, argv);
     }
 

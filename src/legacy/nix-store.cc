@@ -15,6 +15,7 @@
 #include "graphml.hh"
 #include "legacy.hh"
 #include "path-with-outputs.hh"
+#include "nix-store.hh"
 
 #include <iostream>
 #include <algorithm>
@@ -24,10 +25,9 @@
 #include <fcntl.h>
 
 
-namespace nix_store {
+namespace nix {
 
 
-using namespace nix;
 using std::cin;
 using std::cout;
 
@@ -1176,6 +1176,8 @@ static int main_nix_store(int argc, char * * argv)
     }
 }
 
-static RegisterLegacyCommand r_nix_store("nix-store", main_nix_store);
+void registerNixStore() {
+    LegacyCommands::add("nix-store", main_nix_store);
+}
 
 }

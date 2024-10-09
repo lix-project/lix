@@ -1,8 +1,9 @@
 #include "shared.hh"
 #include "store-api.hh"
 #include "legacy.hh"
+#include "nix-copy-closure.hh"
 
-using namespace nix;
+namespace nix {
 
 static int main_nix_copy_closure(int argc, char ** argv)
 {
@@ -60,4 +61,8 @@ static int main_nix_copy_closure(int argc, char ** argv)
     }
 }
 
-static RegisterLegacyCommand r_nix_copy_closure("nix-copy-closure", main_nix_copy_closure);
+void registerNixCopyClosure() {
+    LegacyCommands::add("nix-copy-closure", main_nix_copy_closure);
+}
+
+}

@@ -71,11 +71,21 @@ nix_sources = files(
   'why-depends.cc',
 )
 
+nix_headers = files(
+  'daemon-command.hh',
+  'hash-command.hh',
+  'prefetch-command.hh',
+)
+
 nix = executable(
   'nix',
   nix_sources,
+  legacy_sources,
   nix_generated_headers,
-  nix2_commands_sources,
+  nix_headers,
+  legacy_headers,
+  legacy_generated_headers,
+  include_directories : legacy_include_directories,
   dependencies : [
     libasanoptions,
     liblixcmd,
