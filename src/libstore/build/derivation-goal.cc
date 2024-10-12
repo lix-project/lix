@@ -1211,6 +1211,7 @@ HookReply DerivationGoal::tryBuildHook()
             else {
                 s += "\n";
                 writeLogsToStderr(s);
+                logger->log(lvlInfo, s);
             }
         }
 
