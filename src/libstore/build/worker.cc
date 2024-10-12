@@ -239,7 +239,7 @@ Worker::Results Worker::run(std::function<Targets (GoalFactory &)> req)
 
     auto onInterrupt = kj::newPromiseAndCrossThreadFulfiller<Result<Results>>();
     auto interruptCallback = createInterruptCallback([&] {
-        return result::failure(std::make_exception_ptr(makeInterrupted()));
+        onInterrupt.fulfiller->fulfill(result::failure(std::make_exception_ptr(makeInterrupted())));
     });
 
     auto promise = runImpl(std::move(topGoals))
