@@ -253,6 +253,8 @@ struct CurlInputScheme : InputScheme
         return url;
     }
 
+    bool isLockedByRev() const override { return false; }
+
     bool hasAllInfo(const Input & input) const override
     {
         return true;

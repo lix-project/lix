@@ -56,6 +56,8 @@ struct PathInputScheme : InputScheme
         return input;
     }
 
+    bool isLockedByRev() const override { return false; }
+
     ParsedURL toURL(const Input & input) const override
     {
         auto query = attrsToQuery(input.attrs);

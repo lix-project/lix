@@ -39,7 +39,7 @@ static void fixupInput(Input & input)
     // Check common attributes.
     input.getType();
     input.getRef();
-    if (input.getRev())
+    if (input.scheme && input.scheme->isLockedByRev() && input.getRev())
         input.locked = true;
     input.getRevCount();
     input.getLastModified();
