@@ -607,6 +607,7 @@ endif
 if enable_tests
   subdir('tests/unit')
   subdir('tests/functional')
+  subdir('tests/functional2')
 endif
 
 subdir('meson/clang-tidy')
