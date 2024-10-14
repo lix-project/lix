@@ -32,6 +32,8 @@
   lix-clang-tidy ? null,
   llvmPackages,
   lsof,
+  # FIXME: remove default after dropping NixOS 24.05
+  lowdown-unsandboxed ? lowdown,
   lowdown,
   mdbook,
   mdbook-linkcheck,
@@ -253,7 +255,7 @@ stdenv.mkDerivation (finalAttrs: {
       capnproto-lix
     ]
     ++ [
-      (lib.getBin lowdown)
+      (lib.getBin lowdown-unsandboxed)
       mdbook
       mdbook-linkcheck
     ]
