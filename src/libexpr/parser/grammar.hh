@@ -226,7 +226,7 @@ struct string : _string, seq<
 
 struct _ind_string {
     struct line_start : semantic, star<one<' '>> {};
-    template<bool CanMerge, typename... Inner>
+    template<typename... Inner>
     struct literal : semantic, seq<Inner...> {};
     struct interpolation : semantic, seq<
         p::string<'$', '{'>, seps,
@@ -251,7 +251,6 @@ struct ind_string : _ind_string, seq<
                 plus<
                     sor<
                         _ind_string::literal<
-                            true,
                             plus<
                                 sor<
                                     not_one<'$', '\'', '\n'>,
@@ -264,13 +263,13 @@ struct ind_string : _ind_string, seq<
                             >
                         >,
                         _ind_string::interpolation,
-                        _ind_string::literal<false, one<'$'>>,
-                        _ind_string::literal<false, one<'\''>, not_at<one<'\''>>>,
-                        seq<one<'\''>, _ind_string::literal<false, p::string<'\'', '\''>>>,
+                        _ind_string::literal<one<'$'>>,
+                        _ind_string::literal<one<'\''>, not_at<one<'\''>>>,
+                        seq<one<'\''>, _ind_string::literal<p::string<'\'', '\''>>>,
                         seq<
                             p::string<'\'', '\''>,
                             sor<
-                                _ind_string::literal<false, one<'$'>>,
+                                _ind_string::literal<one<'$'>>,
                                 seq<one<'\\'>, _ind_string::escape>
                             >
                         >
@@ -281,7 +280,7 @@ struct ind_string : _ind_string, seq<
         >,
         // End of line, LF. CR is just ignored and not treated as ending a line
         // (for the purpose of indentation stripping)
-        _ind_string::literal<true, one<'\n'>>
+        _ind_string::literal<one<'\n'>>
     >,
     must<TAO_PEGTL_STRING("''")>
 > {};

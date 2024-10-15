@@ -6,14 +6,6 @@
 
 namespace nix::parser {
 
-struct StringToken
-{
-    std::string_view s;
-    // canMerge is only used to faithfully reproduce the quirks from the old code base.
-    bool canMerge = false;
-    operator std::string_view() const { return s; }
-};
-
 struct IndStringLine {
     // String containing only the leading whitespace of the line. May be empty.
     std::string_view indentation;
@@ -26,7 +18,7 @@ struct IndStringLine {
     std::vector<
         std::pair<
             PosIdx,
-            std::variant<std::unique_ptr<Expr>, StringToken>
+            std::variant<std::unique_ptr<Expr>, std::string_view>
         >
     > parts = {};
 };
@@ -204,8 +196,7 @@ inline std::unique_ptr<Expr> State::stripIndentation(
     std::vector<IndStringLine> && lines)
 {
     /* If the only line is whitespace-only, directly return empty string.
-     * NOTE: This is not merely an optimization, but `compatStripLeadingEmptyString`
-     * later on relies on the string not being empty for working.
+     * The rest of the code relies on the final string not being empty.
      */
     if (lines.size() == 1 && lines.front().parts.empty()) {
         return std::make_unique<ExprString>("");
@@ -218,19 +209,6 @@ inline std::unique_ptr<Expr> State::stripIndentation(
     if (lines.back().parts.empty()) {
         lines.back().indentation = {};
     }
-
-    /*
-     * Quirk compatibility:
-     *
-     * » nix-instantiate --parse -E $'\'\'${"foo"}\'\''
-     * "foo"
-     * » nix-instantiate --parse -E $'\'\'    ${"foo"}\'\''
-     * ("" + "foo")
-     *
-     * Our code always produces the form with the additional "" +, so we'll manually
-     * strip it at the end if necessary.
-     */
-    const bool compatStripLeadingEmptyString = !lines.empty() && lines[0].indentation.empty();
 
     /* Figure out the minimum indentation. Note that by design
        whitespace-only lines are not taken into account. */
@@ -248,48 +226,34 @@ inline std::unique_ptr<Expr> State::stripIndentation(
 
     /* Concat the parts together again */
 
-    /* Note that we don't concat all adjacent string parts to fully reproduce the original code.
-     * This means that any escapes will result in string concatenation even if this is unnecessary.
-     */
     std::vector<std::pair<PosIdx, std::unique_ptr<Expr>>> parts;
     /* Accumulator for merging intermediates */
     PosIdx merged_pos;
     std::string merged = "";
-    bool has_merged = false;
 
     auto push_merged = [&] (PosIdx i_pos, std::string_view str) {
-        merged += str;
-        if (!has_merged) {
-            has_merged = true;
+        if (merged.empty()) {
             merged_pos = i_pos;
         }
+        merged += str;
     };
 
     auto flush_merged = [&] () {
-        if (has_merged) {
+        if (!merged.empty()) {
             parts.emplace_back(merged_pos, std::make_unique<ExprString>(std::string(merged)));
             merged.clear();
-            has_merged = false;
         }
     };
 
     for (auto && [li, line] : enumerate(lines)) {
-        /* Always merge indentation, except for the first line when compatStripLeadingEmptyString is set (see above) */
-        if (!compatStripLeadingEmptyString || li != 0) {
-            push_merged(line.pos, line.indentation);
-        }
+        push_merged(line.pos, line.indentation);
 
         for (auto & val : line.parts) {
             auto &[i_pos, item] = val;
 
             std::visit(overloaded{
-                [&](StringToken str) {
-                    if (str.canMerge) {
-                        push_merged(i_pos, str.s);
-                    } else {
-                        flush_merged();
-                        parts.emplace_back(i_pos, std::make_unique<ExprString>(std::string(str.s)));
-                    }
+                [&](std::string_view str) {
+                    push_merged(i_pos, str);
                 },
                 [&](std::unique_ptr<Expr> expr) {
                     flush_merged();

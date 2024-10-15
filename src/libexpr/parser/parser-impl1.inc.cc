@@ -542,10 +542,10 @@ template<> struct BuildAST<grammar::v1::ind_string::line_start> {
     }
 };
 
-template<bool CanMerge, typename... Content>
-struct BuildAST<grammar::v1::ind_string::literal<CanMerge, Content...>> {
+template<typename... Content>
+struct BuildAST<grammar::v1::ind_string::literal<Content...>> {
     static void apply(const auto & in, IndStringState & s, State & ps) {
-        s.lines.back().parts.emplace_back(ps.at(in), StringToken{ in.string_view(), CanMerge });
+        s.lines.back().parts.emplace_back(ps.at(in), in.string_view());
     }
 };
 
@@ -558,10 +558,10 @@ template<> struct BuildAST<grammar::v1::ind_string::interpolation> {
 template<> struct BuildAST<grammar::v1::ind_string::escape> {
     static void apply(const auto & in, IndStringState & s, State & ps) {
         switch (*in.begin()) {
-        case 'n': s.lines.back().parts.emplace_back(ps.at(in), StringToken{"\n"}); break;
-        case 'r': s.lines.back().parts.emplace_back(ps.at(in), StringToken{"\r"}); break;
-        case 't': s.lines.back().parts.emplace_back(ps.at(in), StringToken{"\t"}); break;
-        default:  s.lines.back().parts.emplace_back(ps.at(in), StringToken{in.string_view()}); break;
+        case 'n': s.lines.back().parts.emplace_back(ps.at(in), "\n"); break;
+        case 'r': s.lines.back().parts.emplace_back(ps.at(in), "\r"); break;
+        case 't': s.lines.back().parts.emplace_back(ps.at(in), "\t"); break;
+        default:  s.lines.back().parts.emplace_back(ps.at(in), in.string_view()); break;
         }
     }
 };
