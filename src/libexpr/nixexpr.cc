@@ -247,9 +247,24 @@ void ExprConcatStrings::show(const SymbolTable & symbols, std::ostream & str) co
 {
     bool first = true;
     str << "(";
-    for (auto & i : es) {
-        if (first) first = false; else str << " + ";
-        i.second->show(symbols, str);
+    for (auto & [_pos, part] : es) {
+        if (first)
+            first = false;
+        else
+            str << " + ";
+
+        if (forceString && !dynamic_cast<ExprString *>(part.get())) {
+            /* Print as a string with an interpolation, to preserve the
+             * semantics of the value having to be a string.
+             * Interpolations are weird and someone should eventually
+             * move them out into their own AST node please.
+             */
+            str << "\"${";
+            part->show(symbols, str);
+            str << "}\"";
+        } else {
+            part->show(symbols, str);
+        }
     }
     str << ")";
 }
