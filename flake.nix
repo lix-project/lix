@@ -269,6 +269,8 @@
             nix = pkgs.callPackage ./package.nix {
               inherit versionSuffix officialRelease buildUnreleasedNotes;
               inherit (pkgs) build-release-notes;
+              # Required since we don't support gcc stdenv
+              stdenv = pkgs.clangStdenv;
               internalApiDocs = true;
               busybox-sandbox-shell = pkgs.busybox-sandbox-shell;
             };
@@ -326,6 +328,8 @@
               inherit (nixpkgs) pkgs;
             in
             pkgs.callPackage ./package.nix {
+              # Required since we don't support gcc stdenv
+              stdenv = pkgs.clangStdenv;
               versionSuffix = "";
               lintInsteadOfBuild = true;
             };

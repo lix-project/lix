@@ -112,7 +112,7 @@
 }:
 
 # gcc miscompiles coroutines at least until 13.2, possibly longer
-assert stdenv.cc.isClang || lintInsteadOfBuild || internalApiDocs;
+assert stdenv.cc.isClang;
 
 let
   inherit (__forDefaults) canRunInstalled;
@@ -274,6 +274,10 @@ stdenv.mkDerivation (finalAttrs: {
     ++ lib.optionals lintInsteadOfBuild [
       # required for a wrapped clang-tidy
       llvmPackages.clang-tools
+      # load-bearing order (just as below); the actual stdenv wrapped clang
+      # needs to precede the unwrapped clang in PATH such that calling `clang`
+      # can compile things.
+      stdenv.cc
       # required for run-clang-tidy
       llvmPackages.clang-unwrapped
     ];
