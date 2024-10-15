@@ -1,4 +1,5 @@
-#!/usr/bin/env bash
+#!/usr/bin/env nix-shell
+#!nix-shell -i bash -p bash -p hyperfine
 
 set -euo pipefail
 shopt -s inherit_errexit
@@ -21,16 +22,21 @@ fi
 _exit=""
 trap "$_exit" EXIT
 
-# XXX: yes this is very silly. flakes~!!
-nix build --impure --expr '(builtins.getFlake "git+file:.").inputs.nixpkgs.outPath' -o bench/nixpkgs
+flake_args=("--extra-experimental-features" "nix-command flakes")
 
+# XXX: yes this is very silly. flakes~!!
+nix build "${flake_args[@]}" --impure --expr '(builtins.getFlake "git+file:.").inputs.nixpkgs.outPath' -o bench/nixpkgs
+
+# We must ignore the global config, or else NIX_PATH won't work reliably.
+# See https://github.com/NixOS/nix/issues/9574
+export NIX_CONF_DIR='/var/empty'
 export NIX_REMOTE="$(mktemp -d)"
 _exit='rm -rfv "$NIX_REMOTE"; $_exit'
 export NIX_PATH="nixpkgs=bench/nixpkgs:nixos-config=bench/configuration.nix"
 
 builds=("$@")
 
-flake_args="--extra-experimental-features 'nix-command flakes'"
+flake_args="${flake_args[*]@Q}"
 
 hyperfineArgs=(
     --parameter-list BUILD "$(IFS=,; echo "${builds[*]}")"
