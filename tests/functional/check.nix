@@ -6,10 +6,12 @@ with import ./config.nix;
   nondeterministic = mkDerivation {
     inherit checkBuildId;
     name = "nondeterministic";
+    outputs = ["a" "b"];
     buildCommand =
       ''
-        mkdir $out
-        date +%s.%N > $out/date
+        mkdir $a $b
+        date +%s.%N > $a/date
+        date +%s.%N > $b/date
         echo "CHECK_TMPDIR=$TMPDIR"
         echo "checkBuildId=$checkBuildId"
         echo "$checkBuildId" > $TMPDIR/checkBuildId
@@ -19,10 +21,12 @@ with import ./config.nix;
   deterministic = mkDerivation {
     inherit checkBuildId;
     name = "deterministic";
+    outputs = ["a" "b"];
     buildCommand =
       ''
-        mkdir $out
-        echo date > $out/date
+        mkdir $a $b
+        echo date > $a/date
+        echo date > $b/date
         echo "CHECK_TMPDIR=$TMPDIR"
         echo "checkBuildId=$checkBuildId"
         echo "$checkBuildId" > $TMPDIR/checkBuildId
@@ -32,10 +36,12 @@ with import ./config.nix;
   failed = mkDerivation {
     inherit checkBuildId;
     name = "failed";
+    outputs = ["a" "b"];
     buildCommand =
       ''
-        mkdir $out
-        echo date > $out/date
+        mkdir $a $b
+        echo date > $a/date
+        echo date > $b/date
         echo "CHECK_TMPDIR=$TMPDIR"
         echo "checkBuildId=$checkBuildId"
         echo "$checkBuildId" > $TMPDIR/checkBuildId

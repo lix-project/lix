@@ -2021,6 +2021,8 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
 
     OutputPathMap finalOutputs;
 
+    std::vector<std::pair<Path, std::optional<Path>>> nondeterministic;
+
     for (auto & outputName : sortedOutputNames) {
         auto output = get(drv->outputs, outputName);
         auto scratchPath = get(scratchOutputs, outputName);
@@ -2307,20 +2309,20 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
                         buildUser ? buildUser->getGID() : getgid(),
                         finalDestPath, dst, worker.store.printStorePath(drvPath), tmpDir);
 
-                    throw NotDeterministic("derivation '%s' may not be deterministic: output '%s' differs from '%s'",
-                        worker.store.printStorePath(drvPath), worker.store.toRealPath(finalDestPath), dst);
+                    nondeterministic.push_back(std::make_pair(worker.store.toRealPath(finalDestPath), dst));
                 } else
-                    throw NotDeterministic("derivation '%s' may not be deterministic: output '%s' differs",
-                        worker.store.printStorePath(drvPath), worker.store.toRealPath(finalDestPath));
+                    nondeterministic.push_back(std::make_pair(worker.store.toRealPath(finalDestPath), std::nullopt));
             }
 
             /* Since we verified the build, it's now ultimately trusted. */
-            if (!oldInfo.ultimate) {
+            else if (!oldInfo.ultimate) {
                 oldInfo.ultimate = true;
                 localStore.signPathInfo(oldInfo);
                 localStore.registerValidPaths({{oldInfo.path, oldInfo}});
             }
 
+            /* Don't register anything, since we already have the
+               previous versions which we're comparing. */
             continue;
         }
 
@@ -2351,6 +2353,18 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
     }
 
     if (buildMode == bmCheck) {
+        if (!nondeterministic.empty()) {
+            std::ostringstream msg;
+            msg << HintFmt("derivation '%s' may not be deterministic: outputs differ", drvPath.to_string());
+            for (auto [oldPath, newPath]: nondeterministic) {
+                if (newPath) {
+                    msg << HintFmt("\n  output differs: output '%s' differs from '%s'", oldPath.c_str(), *newPath);
+                } else {
+                    msg << HintFmt("\n  output '%s' differs", oldPath.c_str());
+                }
+            }
+            throw NotDeterministic(msg.str());
+        }
         /* In case of fixed-output derivations, if there are
            mismatches on `--check` an error must be thrown as this is
            also a source for non-determinism. */
