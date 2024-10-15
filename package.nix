@@ -16,7 +16,6 @@
   bzip2,
   callPackage,
   capnproto-lix ? __forDefaults.capnproto-lix,
-  capnproto,
   cmake,
   curl,
   doxygen,
@@ -106,8 +105,9 @@
 
     build-release-notes = callPackage ./maintainers/build-release-notes.nix { };
 
-    # needs explicit c++20 to enable coroutine support
-    capnproto-lix = capnproto.overrideAttrs { CXXFLAGS = "-std=c++20"; };
+    # needs derivation patching to add debuginfo and coroutine library support
+    # !! must build this with clang as it is affected by the gcc coroutine bugs
+    capnproto-lix = callPackage ./misc/capnproto.nix { inherit stdenv; };
   },
 }:
 
@@ -449,6 +449,7 @@ stdenv.mkDerivation (finalAttrs: {
       editline-lix
       build-release-notes
       pegtl
+      capnproto-lix
       ;
 
     # The collection of dependency logic for this derivation is complicated enough that
