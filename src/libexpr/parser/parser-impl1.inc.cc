@@ -655,7 +655,7 @@ template<> struct BuildAST<grammar::v1::expr::uri> {
        bool URLLiterals = ps.featureSettings.isEnabled(Dep::UrlLiterals);
        if (!URLLiterals)
            throw ParseError({
-               .msg = HintFmt("URL literals are deprecated, allow using them with --extra-deprecated-features=url-literals"),
+               .msg = HintFmt("URL literals are deprecated, allow using them with %s", "--extra-deprecated-features url-literals"),
                .pos = ps.positions[ps.at(in)]
            });
        s.pushExpr<ExprString>(ps.at(in), in.string());
