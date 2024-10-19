@@ -63,6 +63,9 @@ public:
     {
     }
 
+    // oneDone promises capture `this`
+    KJ_DISALLOW_COPY_AND_MOVE(AsyncCollect);
+
     kj::Promise<std::optional<Item>> next()
     {
         if (remaining == 0 && results.empty()) {
