@@ -9,6 +9,7 @@
 #include <libproc.h>
 #include <spawn.h>
 
+#include <cstddef>
 #include <regex>
 
 namespace nix {
@@ -18,16 +19,17 @@ void DarwinLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
     auto storePathRegex = regex::storePathRegex(storeDir);
 
     std::vector<int> pids;
-    int pidBufSize = 1;
+    std::size_t pidBufSize = 1;
 
     while (pidBufSize > pids.size() * sizeof(int)) {
         // Reserve some extra size so we don't fail too much
         pids.resize((pidBufSize + pidBufSize / 8) / sizeof(int));
-        pidBufSize = proc_listpids(PROC_ALL_PIDS, 0, pids.data(), pids.size() * sizeof(int));
+        auto size = proc_listpids(PROC_ALL_PIDS, 0, pids.data(), pids.size() * sizeof(int));
 
-        if (pidBufSize <= 0) {
+        if (size <= 0) {
             throw SysError("Listing PIDs");
         }
+        pidBufSize = size;
     }
 
     pids.resize(pidBufSize / sizeof(int));
@@ -53,12 +55,12 @@ void DarwinLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
 
             // File descriptors
             std::vector<struct proc_fdinfo> fds;
-            int fdBufSize = 1;
+            std::size_t fdBufSize = 1;
             while (fdBufSize > fds.size() * sizeof(struct proc_fdinfo)) {
                 // Reserve some extra size so we don't fail too much
                 fds.resize((fdBufSize + fdBufSize / 8) / sizeof(struct proc_fdinfo));
                 errno = 0;
-                fdBufSize = proc_pidinfo(
+                auto size = proc_pidinfo(
                     pid, PROC_PIDLISTFDS, 0, fds.data(), fds.size() * sizeof(struct proc_fdinfo)
                 );
 
@@ -72,13 +74,15 @@ void DarwinLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
                 // https://github.com/apple-opensource/xnu/blob/4f43d4276fc6a87f2461a3ab18287e4a2e5a1cc0/libsyscall/wrappers/libproc/libproc.c#L100-L110
                 // https://git.lix.systems/lix-project/lix/issues/446#issuecomment-5483
                 // FB14695751
-                if (fdBufSize <= 0) {
+                if (size <= 0) {
                     if (errno == 0) {
+                        fdBufSize = 0;
                         break;
                     } else {
                         throw SysError("Listing pid %1% file descriptors", pid);
                     }
                 }
+                fdBufSize = size;
             }
             fds.resize(fdBufSize / sizeof(struct proc_fdinfo));
 
