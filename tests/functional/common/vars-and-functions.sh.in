@@ -28,6 +28,7 @@ export NIX_REMOTE=${NIX_REMOTE_-}
 unset NIX_PATH
 export TEST_HOME=$TEST_ROOT/test-home
 export HOME=$TEST_HOME
+export GIT_CONFIG_SYSTEM=/dev/null
 unset XDG_STATE_HOME
 unset XDG_DATA_HOME
 unset XDG_CONFIG_HOME
