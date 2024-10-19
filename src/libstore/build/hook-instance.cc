@@ -45,7 +45,7 @@ HookInstance::HookInstance()
         if (dup2(fromHook_.writeSide.get(), STDERR_FILENO) == -1)
             throw SysError("cannot pipe standard error into log file");
 
-        commonChildInit();
+        commonExecveingChildInit();
 
         if (chdir("/") == -1) throw SysError("changing into /");
 

@@ -118,11 +118,16 @@ void saveSignalMask() {
     savedSignalMaskIsSet = true;
 }
 
-void startSignalHandlerThread()
+void startSignalHandlerThread(DoSignalSave doSave)
 {
     updateWindowSize();
 
-    saveSignalMask();
+    switch (doSave) {
+        case DoSignalSave::Save:
+            saveSignalMask();
+            break;
+        case DoSignalSave::DontSaveBecauseAdvancedProcess: break;
+    }
 
     sigset_t set;
     sigemptyset(&set);
