@@ -9,7 +9,10 @@
 let
   inherit (lib) concatStringsSep;
 
-  deprecatedFeatures = [ ];
+  # FIXME: All of these are fixed in Nixpkgs already, so clear the list on the next `nixpkgs-regression` bump
+  deprecatedFeatures = [
+    "broken-string-indentation"
+  ];
 in
 
 runCommand "eval-nixos"

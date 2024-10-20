@@ -36,6 +36,8 @@ struct State
     void dupAttr(Symbol attr, const PosIdx pos, const PosIdx prevPos);
     void overridesFound(const PosIdx pos);
     void badLineEndingFound(const PosIdx pos, bool warnOnly);
+    void badFirstLineIndStringFound(const PosIdx pos);
+    void badSingleLineIndStringFound(const PosIdx pos);
     void nulFound(const PosIdx pos);
     void addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos);
     void mergeAttrs(AttrPath & attrPath, ExprSet * source, ExprSet * target);
@@ -95,6 +97,31 @@ inline void State::overridesFound(const PosIdx pos) {
     });
 }
 
+// Both added 2026-01-30. Probably won't turn this one into an error for a while,
+
+// as this has quite a lot of use in the wild. But it's clearly wrong code,
+// so we should warn users about it.
+// See the documentation on deprecated features for more details.
+inline void State::badSingleLineIndStringFound(const PosIdx pos)
+{
+    logWarning({
+        .msg = HintFmt(
+            "Whitespace in a ''-string will be stripped even if the string only has a single line, which is most likely not the intent of the code. To fix this, remove the whitespace or replace the string with \" instead. Use %s to silence this warning.",
+            "--extra-deprecated-features broken-string-indentation"
+        ),
+        .pos = positions[pos],
+    });
+}
+inline void State::badFirstLineIndStringFound(const PosIdx pos)
+{
+    logWarning({
+        .msg = HintFmt(
+            "Whitespace calculations for indentation stripping in a multiline ''-string include the first line, so putting text on it will effectively disable all indentation stripping. To fix this, simply break the line right after the string starts. Use %s to silence this warning.",
+            "--extra-deprecated-features broken-string-indentation"
+        ),
+        .pos = positions[pos],
+    });
+}
 // Added 2025-02-05. This is unlikely to ever occur in the wild, given how broken it is
 inline void State::badLineEndingFound(const PosIdx pos, bool warnOnly)
 {

@@ -656,7 +656,18 @@ template<> struct BuildAST<grammar::v1::string> : change_head<StringState> {
 struct IndStringState : SubexprState {
     using SubexprState::SubexprState;
 
+    // If the first line (after the '') is empty it gets completely removed.
+    // We track that in the grammar because no need to process it any further,
+    // but we still require the information to know the actual number of lines
+    // in the string.
+    bool firstLineStripped = false;
     std::vector<IndStringLine> lines;
+};
+
+template<> struct BuildAST<grammar::v1::ind_string::strip_first_line> {
+    static void apply(const auto & in, IndStringState & s, State & ps) {
+        s.firstLineStripped = true;
+    }
 };
 
 template<> struct BuildAST<grammar::v1::ind_string::line_start> {
@@ -717,6 +728,16 @@ template<> struct BuildAST<grammar::v1::ind_string::nul> {
 
 template<> struct BuildAST<grammar::v1::ind_string> : change_head<IndStringState> {
     static void success(const auto & in, IndStringState & s, ExprState & e, State & ps) {
+        if (!ps.featureSettings.isEnabled(Dep::BrokenStringIndent)) {
+            /* Check for semantically incorrect code: Single-line string with indentation */
+            if (s.lines.size() == 1 && !s.firstLineStripped && s.lines.front().indentation.size() > 0) {
+                ps.badSingleLineIndStringFound(ps.at(in));
+            }
+            /* Check for semantically incorrect code: Multi-line string with text on the first line */
+            if (s.lines.size() > 1 && !s.firstLineStripped) {
+                ps.badFirstLineIndStringFound(ps.at(in));
+            }
+        }
         e.pushExpr(noPos, ps.stripIndentation(ps.at(in), std::move(s.lines)));
     }
 };

@@ -247,6 +247,7 @@ struct string : _string, seq<
 > {};
 
 struct _ind_string {
+    struct strip_first_line : seq<star<one<' '>>, one<'\n'>> {};
     struct line_start : semantic, star<one<' '>> {};
     template<typename... Inner>
     struct literal : semantic, seq<Inner...> {};
@@ -264,7 +265,7 @@ struct _ind_string {
 struct ind_string : _ind_string, seq<
     TAO_PEGTL_STRING("''"),
     // Strip first line completely if empty
-    opt<star<one<' '>>, one<'\n'>>,
+    opt<_ind_string::strip_first_line>,
     list<
         seq<
             // Start a line with some indentation

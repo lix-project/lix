@@ -1,0 +1,13 @@
+[[test]]
+runner = "eval-okay"
+matrix = true
+flags = ["--extra-deprecated-features", "broken-string-indentation"]
+
+[[test]]
+name = "depr-warning"
+runner = "eval-okay"
+in = "in.nix"
+
+[[test]]
+runner = "parse-okay"
+flags = ["--extra-deprecated-features", "broken-string-indentation"]

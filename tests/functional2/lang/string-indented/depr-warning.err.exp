@@ -1,0 +1,18 @@
+warning: Whitespace calculations for indentation stripping in a multiline ''-string include the first line, so putting text on it will effectively disable all indentation stripping. To fix this, simply break the line right after the string starts. Use --extra-deprecated-features broken-string-indentation to silence this warning.
+         at /pwd/in.nix:19:8:
+             18|
+             19|   s2 = ''  If the string starts with whitespace
+               |        ^
+             20|     followed by a newline, it's stripped, but
+warning: Whitespace calculations for indentation stripping in a multiline ''-string include the first line, so putting text on it will effectively disable all indentation stripping. To fix this, simply break the line right after the string starts. Use --extra-deprecated-features broken-string-indentation to silence this warning.
+         at /pwd/in.nix:55:8:
+             54|
+             55|   s8 = ''    ${""}
+               |        ^
+             56|     This shows a hacky way to preserve an empty line after the start.
+warning: Whitespace in a ''-string will be stripped even if the string only has a single line, which is most likely not the intent of the code. To fix this, remove the whitespace or replace the string with " instead. Use --extra-deprecated-features broken-string-indentation to silence this warning.
+         at /pwd/in.nix:102:9:
+            101|
+            102|   s12 = ''   '';
+               |         ^
+            103|

@@ -18,7 +18,10 @@ let
   inherit (lib) concatStringsSep optionals;
 
   # Deprecated features to enable while running the nixpkgs test suite
-  deprecatedFeatures = [ ];
+  # FIXME: All of these are fixed in Nixpkgs already, so clear the list on the next `nixpkgs` bump
+  deprecatedFeatures = [
+    "broken-string-indentation"
+  ];
 
   env.NIX_CONFIG = "extra-deprecated-features = ${concatStringsSep " " deprecatedFeatures}";
 in
