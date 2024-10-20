@@ -151,22 +151,24 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
 
     /* Check if this is a known hash. */
     Path linkPath = linksDir + "/" + hash.to_string(Base::Base32, false);
+    auto stLinkOpt = maybeLstat(linkPath);
 
     /* Maybe delete the link, if it has been corrupted. */
-    if (pathExists(linkPath)) {
-        auto stLink = lstat(linkPath);
-        if (st.st_size != stLink.st_size
+    if (stLinkOpt) {
+        if (st.st_size != stLinkOpt->st_size
             || (repair && hash != hashPath(HashType::SHA256, linkPath).first))
         {
             // XXX: Consider overwriting linkPath with our valid version.
             warn("removing corrupted link '%s'", linkPath);
             warn("There may be more corrupted paths."
                  "\nYou should run `nix-store --verify --check-contents --repair` to fix them all");
-            unlink(linkPath.c_str());
+            if (unlink(linkPath.c_str()) == -1 && errno != ENOENT)
+                throw SysError("cannot unlink '%1%'", linkPath);
+            stLinkOpt.reset();
         }
     }
 
-    if (!pathExists(linkPath)) {
+    if (!stLinkOpt) {
         /* Nope, create a hard link in the links directory. */
         if (link(path.c_str(), linkPath.c_str()) == 0) {
             inodeHash.insert(st.st_ino);
@@ -177,6 +179,7 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
         case EEXIST:
             /* Fall through if another process created ‘linkPath’ before
                we did. */
+            stLinkOpt = lstat(linkPath);
             break;
 
         case ENOSPC:
@@ -194,9 +197,7 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
 
     /* Yes!  We've seen a file with the same contents.  Replace the
        current file with a hard link to that file. */
-    auto stLink = lstat(linkPath);
-
-    if (st.st_ino == stLink.st_ino) {
+    if (st.st_ino == stLinkOpt->st_ino) {
         debug("'%1%' is already linked to '%2%'", path, linkPath);
         return;
     }
