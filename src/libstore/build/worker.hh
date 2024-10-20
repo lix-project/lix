@@ -86,7 +86,32 @@ class Worker : public WorkerBase
 {
 public:
     using Targets = std::map<GoalPtr, kj::Promise<Result<Goal::WorkResult>>>;
-    using Results = std::map<GoalPtr, Goal::WorkResult>;
+    struct Results {
+        std::map<GoalPtr, Goal::WorkResult> goals;
+
+        /**
+         * The exit status in case of failure.
+         *
+         * In the case of a build failure, returned value follows this
+         * bitmask:
+         *
+         * ```
+         * 0b1100100
+         *      ^^^^
+         *      |||`- timeout
+         *      ||`-- output hash mismatch
+         *      |`--- build failure
+         *      `---- not deterministic
+         * ```
+         *
+         * In other words, the failure code is at least 100 (0b1100100), but
+         * might also be greater.
+         *
+         * Otherwise (no build failure, but some other sort of failure by
+         * assumption), this returned value is 1.
+         */
+        unsigned int failingExitStatus;
+    };
 
 private:
 
@@ -247,29 +272,6 @@ public:
      * Loop until the specified top-level goals have finished.
      */
     Results run(std::function<Targets (GoalFactory &)> req);
-
-    /***
-     * The exit status in case of failure.
-     *
-     * In the case of a build failure, returned value follows this
-     * bitmask:
-     *
-     * ```
-     * 0b1100100
-     *      ^^^^
-     *      |||`- timeout
-     *      ||`-- output hash mismatch
-     *      |`--- build failure
-     *      `---- not deterministic
-     * ```
-     *
-     * In other words, the failure code is at least 100 (0b1100100), but
-     * might also be greater.
-     *
-     * Otherwise (no build failure, but some other sort of failure by
-     * assumption), this returned value is 1.
-     */
-    unsigned int failingExitStatus();
 
     /**
      * Check whether the given valid path exists and has the right

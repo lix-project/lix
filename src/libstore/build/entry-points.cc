@@ -16,7 +16,7 @@ void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMod
     auto aio = kj::setupAsyncIo();
     Worker worker(*this, evalStore ? *evalStore : *this, aio);
 
-    auto goals = runWorker(worker, [&](GoalFactory & gf) {
+    auto results = runWorker(worker, [&](GoalFactory & gf) {
         Worker::Targets goals;
         for (auto & br : reqs)
             goals.emplace(gf.makeGoal(br, buildMode));
@@ -25,7 +25,7 @@ void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMod
 
     StringSet failed;
     std::shared_ptr<Error> ex;
-    for (auto & [i, result] : goals) {
+    for (auto & [i, result] : results.goals) {
         if (result.ex) {
             if (ex)
                 logError(result.ex->info());
@@ -41,11 +41,11 @@ void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMod
     }
 
     if (failed.size() == 1 && ex) {
-        ex->withExitStatus(worker.failingExitStatus());
+        ex->withExitStatus(results.failingExitStatus);
         throw std::move(*ex);
     } else if (!failed.empty()) {
         if (ex) logError(ex->info());
-        throw Error(worker.failingExitStatus(), "build of %s failed", concatStringsSep(", ", quoteStrings(failed)));
+        throw Error(results.failingExitStatus, "build of %s failed", concatStringsSep(", ", quoteStrings(failed)));
     }
 }
 
@@ -67,7 +67,7 @@ std::vector<KeyedBuildResult> Store::buildPathsWithResults(
             goals.emplace(std::move(goal));
         }
         return goals;
-    });
+    }).goals;
 
     std::vector<KeyedBuildResult> results;
 
@@ -84,12 +84,12 @@ BuildResult Store::buildDerivation(const StorePath & drvPath, const BasicDerivat
     Worker worker(*this, *this, aio);
 
     try {
-        auto goals = runWorker(worker, [&](GoalFactory & gf) {
+        auto results = runWorker(worker, [&](GoalFactory & gf) {
             Worker::Targets goals;
             goals.emplace(gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode));
             return goals;
         });
-        auto [goal, result] = *goals.begin();
+        auto [goal, result] = *results.goals.begin();
         return result.result.restrictTo(DerivedPath::Built {
             .drvPath = makeConstantStorePathRef(drvPath),
             .outputs = OutputsSpec::All {},
@@ -111,19 +111,19 @@ void Store::ensurePath(const StorePath & path)
     auto aio = kj::setupAsyncIo();
     Worker worker(*this, *this, aio);
 
-    auto goals = runWorker(worker, [&](GoalFactory & gf) {
+    auto results = runWorker(worker, [&](GoalFactory & gf) {
         Worker::Targets goals;
         goals.emplace(gf.makePathSubstitutionGoal(path));
         return goals;
     });
-    auto [goal, result] = *goals.begin();
+    auto [goal, result] = *results.goals.begin();
 
     if (result.exitCode != Goal::ecSuccess) {
         if (result.ex) {
-            result.ex->withExitStatus(worker.failingExitStatus());
+            result.ex->withExitStatus(results.failingExitStatus);
             throw std::move(*result.ex);
         } else
-            throw Error(worker.failingExitStatus(), "path '%s' does not exist and cannot be created", printStorePath(path));
+            throw Error(results.failingExitStatus, "path '%s' does not exist and cannot be created", printStorePath(path));
     }
 }
 
@@ -133,12 +133,12 @@ void Store::repairPath(const StorePath & path)
     auto aio = kj::setupAsyncIo();
     Worker worker(*this, *this, aio);
 
-    auto goals = runWorker(worker, [&](GoalFactory & gf) {
+    auto results = runWorker(worker, [&](GoalFactory & gf) {
         Worker::Targets goals;
         goals.emplace(gf.makePathSubstitutionGoal(path, Repair));
         return goals;
     });
-    auto [goal, result] = *goals.begin();
+    auto [goal, result] = *results.goals.begin();
 
     if (result.exitCode != Goal::ecSuccess) {
         /* Since substituting the path didn't work, if we have a valid
@@ -158,7 +158,7 @@ void Store::repairPath(const StorePath & path)
                 return goals;
             });
         } else
-            throw Error(worker.failingExitStatus(), "cannot repair path '%s'", printStorePath(path));
+            throw Error(results.failingExitStatus, "cannot repair path '%s'", printStorePath(path));
     }
 }
 
