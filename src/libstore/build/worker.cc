@@ -229,8 +229,8 @@ try {
     co_return result::failure(std::current_exception());
 }
 
-Worker::Results Worker::run(std::function<Targets (GoalFactory &)> req)
-{
+kj::Promise<Result<Worker::Results>> Worker::run(std::function<Targets (GoalFactory &)> req)
+try {
     auto topGoals = req(goalFactory());
 
     assert(!running);
@@ -252,7 +252,9 @@ Worker::Results Worker::run(std::function<Targets (GoalFactory &)> req)
         promise = promise.exclusiveJoin(boopGC(*localStore));
     }
 
-    return promise.wait(aio.waitScope).value();
+    co_return co_await promise;
+} catch (...) {
+    co_return result::failure(std::current_exception());
 }
 
 kj::Promise<Result<Worker::Results>> Worker::runImpl(Targets topGoals)

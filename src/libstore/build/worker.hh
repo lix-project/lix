@@ -278,7 +278,7 @@ public:
     /**
      * Loop until the specified top-level goals have finished.
      */
-    Results run(std::function<Targets (GoalFactory &)> req);
+    kj::Promise<Result<Results>> run(std::function<Targets (GoalFactory &)> req);
 
     /**
      * Check whether the given valid path exists and has the right
@@ -289,14 +289,18 @@ public:
     void markContentsGood(const StorePath & path);
 
     template<typename MkGoals>
-    friend Results
-    processGoals(Store & store, Store & evalStore, kj::AsyncIoContext & aio, MkGoals && mkGoals);
+    friend kj::Promise<Result<Results>> processGoals(
+        Store & store, Store & evalStore, kj::AsyncIoContext & aio, MkGoals && mkGoals
+    ) noexcept;
 };
 
 template<typename MkGoals>
-Worker::Results
-processGoals(Store & store, Store & evalStore, kj::AsyncIoContext & aio, MkGoals && mkGoals)
-{
-    return Worker(store, evalStore, aio).run(std::forward<MkGoals>(mkGoals));
+kj::Promise<Result<Worker::Results>> processGoals(
+    Store & store, Store & evalStore, kj::AsyncIoContext & aio, MkGoals && mkGoals
+) noexcept
+try {
+    co_return co_await Worker(store, evalStore, aio).run(std::forward<MkGoals>(mkGoals));
+} catch (...) {
+    co_return result::failure(std::current_exception());
 }
 }

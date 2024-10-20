@@ -15,7 +15,7 @@ void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMod
         for (auto & br : reqs)
             goals.emplace_back(gf.makeGoal(br, buildMode));
         return goals;
-    });
+    }).wait(aio.waitScope).value();
 
     StringSet failed;
     std::shared_ptr<Error> ex;
@@ -54,7 +54,7 @@ std::vector<KeyedBuildResult> Store::buildPathsWithResults(
             goals.emplace_back(gf.makeGoal(req, buildMode));
         }
         return goals;
-    }).goals;
+    }).wait(aio.waitScope).value().goals;
 
     std::vector<KeyedBuildResult> results;
 
@@ -74,7 +74,7 @@ BuildResult Store::buildDerivation(const StorePath & drvPath, const BasicDerivat
             Worker::Targets goals;
             goals.emplace_back(gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode));
             return goals;
-        });
+        }).wait(aio.waitScope).value();
         auto & result = results.goals.begin()->second;
         return result.result.restrictTo(DerivedPath::Built {
             .drvPath = makeConstantStorePathRef(drvPath),
@@ -100,7 +100,7 @@ void Store::ensurePath(const StorePath & path)
         Worker::Targets goals;
         goals.emplace_back(gf.makePathSubstitutionGoal(path));
         return goals;
-    });
+    }).wait(aio.waitScope).value();
     auto & result = results.goals.begin()->second;
 
     if (result.exitCode != Goal::ecSuccess) {
@@ -121,7 +121,7 @@ void Store::repairPath(const StorePath & path)
         Worker::Targets goals;
         goals.emplace_back(gf.makePathSubstitutionGoal(path, Repair));
         return goals;
-    });
+    }).wait(aio.waitScope).value();
     auto & result = results.goals.begin()->second;
 
     if (result.exitCode != Goal::ecSuccess) {
@@ -140,7 +140,7 @@ void Store::repairPath(const StorePath & path)
                     bmRepair
                 ));
                 return goals;
-            });
+            }).wait(aio.waitScope).value();
         } else
             throw Error(results.failingExitStatus, "cannot repair path '%s'", printStorePath(path));
     }
