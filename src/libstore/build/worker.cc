@@ -259,9 +259,9 @@ kj::Promise<Result<Worker::Results>> Worker::runImpl(Targets topGoals)
 try {
     debug("entered goal loop");
 
-    kj::Vector<Targets::value_type> promises(topGoals.size());
-    for (auto & gp : topGoals) {
-        promises.add(std::move(gp));
+    kj::Vector<std::pair<size_t, kj::Promise<Result<Goal::WorkResult>>>> promises(topGoals.size());
+    for (auto && [idx, gp] : enumerate(topGoals)) {
+        promises.add(idx, std::move(gp.second));
     }
 
     Results results;

@@ -85,9 +85,16 @@ protected:
 class Worker : public WorkerBase
 {
 public:
-    using Targets = std::map<GoalPtr, kj::Promise<Result<Goal::WorkResult>>>;
+    using Targets = std::vector<std::pair<GoalPtr, kj::Promise<Result<Goal::WorkResult>>>>;
     struct Results {
-        std::map<GoalPtr, Goal::WorkResult> goals;
+        /** Results of individual goals, if available. Goal results will be
+          * added to this map with the index they had in the `Targets` list
+          * returned by the goal factory function passed to `work`. If some
+          * goals did not complete processing, e.g. due to an early exit on
+          * goal failures, not all indices will be set. This may be used to
+          * detect which of the goals were cancelled before they completed.
+          */
+        std::map<size_t, Goal::WorkResult> goals;
 
         /**
          * The exit status in case of failure.
@@ -217,6 +224,7 @@ public:
     NotifyingCounter<uint64_t> expectedNarSize{[this] { updateStatisticsLater(); }};
     NotifyingCounter<uint64_t> doneNarSize{[this] { updateStatisticsLater(); }};
 
+private:
     Worker(Store & store, Store & evalStore, kj::AsyncIoContext & aio);
     ~Worker();
 
@@ -227,7 +235,6 @@ public:
     /**
      * @ref DerivationGoal "derivation goal"
      */
-private:
     template<typename ID, std::derived_from<Goal> G>
     std::pair<std::shared_ptr<G>, kj::Promise<Result<Goal::WorkResult>>> makeGoalCommon(
         std::map<ID, CachedGoal<G>> & map,
@@ -280,6 +287,16 @@ public:
     bool pathContentsGood(const StorePath & path);
 
     void markContentsGood(const StorePath & path);
+
+    template<typename MkGoals>
+    friend Results
+    processGoals(Store & store, Store & evalStore, kj::AsyncIoContext & aio, MkGoals && mkGoals);
 };
 
+template<typename MkGoals>
+Worker::Results
+processGoals(Store & store, Store & evalStore, kj::AsyncIoContext & aio, MkGoals && mkGoals)
+{
+    return Worker(store, evalStore, aio).run(std::forward<MkGoals>(mkGoals));
+}
 }

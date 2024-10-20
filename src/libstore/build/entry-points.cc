@@ -6,20 +6,14 @@
 
 namespace nix {
 
-static auto runWorker(Worker & worker, auto mkGoals)
-{
-    return worker.run(mkGoals);
-}
-
 void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMode, std::shared_ptr<Store> evalStore)
 {
     auto aio = kj::setupAsyncIo();
-    Worker worker(*this, evalStore ? *evalStore : *this, aio);
 
-    auto results = runWorker(worker, [&](GoalFactory & gf) {
+    auto results = processGoals(*this, evalStore ? *evalStore : *this, aio, [&](GoalFactory & gf) {
         Worker::Targets goals;
         for (auto & br : reqs)
-            goals.emplace(gf.makeGoal(br, buildMode));
+            goals.emplace_back(gf.makeGoal(br, buildMode));
         return goals;
     });
 
@@ -53,24 +47,19 @@ std::vector<KeyedBuildResult> Store::buildPathsWithResults(
     std::shared_ptr<Store> evalStore)
 {
     auto aio = kj::setupAsyncIo();
-    Worker worker(*this, evalStore ? *evalStore : *this, aio);
 
-    std::vector<std::pair<const DerivedPath &, GoalPtr>> state;
-
-    auto goals = runWorker(worker, [&](GoalFactory & gf) {
+    auto goals = processGoals(*this, evalStore ? *evalStore : *this, aio, [&](GoalFactory & gf) {
         Worker::Targets goals;
         for (const auto & req : reqs) {
-            auto goal = gf.makeGoal(req, buildMode);
-            state.push_back({req, goal.first});
-            goals.emplace(std::move(goal));
+            goals.emplace_back(gf.makeGoal(req, buildMode));
         }
         return goals;
     }).goals;
 
     std::vector<KeyedBuildResult> results;
 
-    for (auto & [req, goalPtr] : state)
-        results.emplace_back(goals[goalPtr].result.restrictTo(req));
+    for (auto && [goalIdx, req] : enumerate(reqs))
+        results.emplace_back(goals[goalIdx].result.restrictTo(req));
 
     return results;
 }
@@ -79,15 +68,14 @@ BuildResult Store::buildDerivation(const StorePath & drvPath, const BasicDerivat
     BuildMode buildMode)
 {
     auto aio = kj::setupAsyncIo();
-    Worker worker(*this, *this, aio);
 
     try {
-        auto results = runWorker(worker, [&](GoalFactory & gf) {
+        auto results = processGoals(*this, *this, aio, [&](GoalFactory & gf) {
             Worker::Targets goals;
-            goals.emplace(gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode));
+            goals.emplace_back(gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode));
             return goals;
         });
-        auto [goal, result] = *results.goals.begin();
+        auto & result = results.goals.begin()->second;
         return result.result.restrictTo(DerivedPath::Built {
             .drvPath = makeConstantStorePathRef(drvPath),
             .outputs = OutputsSpec::All {},
@@ -107,14 +95,13 @@ void Store::ensurePath(const StorePath & path)
     if (isValidPath(path)) return;
 
     auto aio = kj::setupAsyncIo();
-    Worker worker(*this, *this, aio);
 
-    auto results = runWorker(worker, [&](GoalFactory & gf) {
+    auto results = processGoals(*this, *this, aio, [&](GoalFactory & gf) {
         Worker::Targets goals;
-        goals.emplace(gf.makePathSubstitutionGoal(path));
+        goals.emplace_back(gf.makePathSubstitutionGoal(path));
         return goals;
     });
-    auto [goal, result] = *results.goals.begin();
+    auto & result = results.goals.begin()->second;
 
     if (result.exitCode != Goal::ecSuccess) {
         if (result.ex) {
@@ -129,23 +116,22 @@ void Store::ensurePath(const StorePath & path)
 void Store::repairPath(const StorePath & path)
 {
     auto aio = kj::setupAsyncIo();
-    Worker worker(*this, *this, aio);
 
-    auto results = runWorker(worker, [&](GoalFactory & gf) {
+    auto results = processGoals(*this, *this, aio, [&](GoalFactory & gf) {
         Worker::Targets goals;
-        goals.emplace(gf.makePathSubstitutionGoal(path, Repair));
+        goals.emplace_back(gf.makePathSubstitutionGoal(path, Repair));
         return goals;
     });
-    auto [goal, result] = *results.goals.begin();
+    auto & result = results.goals.begin()->second;
 
     if (result.exitCode != Goal::ecSuccess) {
         /* Since substituting the path didn't work, if we have a valid
            deriver, then rebuild the deriver. */
         auto info = queryPathInfo(path);
         if (info->deriver && isValidPath(*info->deriver)) {
-            worker.run([&](GoalFactory & gf) {
+            processGoals(*this, *this, aio, [&](GoalFactory & gf) {
                 Worker::Targets goals;
-                goals.emplace(gf.makeGoal(
+                goals.emplace_back(gf.makeGoal(
                     DerivedPath::Built{
                         .drvPath = makeConstantStorePathRef(*info->deriver),
                         // FIXME: Should just build the specific output we need.
