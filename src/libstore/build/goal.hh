@@ -94,6 +94,9 @@ public:
         bool timedOut = false;
         bool hashMismatch = false;
         bool checkMismatch = false;
+        /// Store path this goal relates to. Will be set to drvPath for
+        /// derivations, or the substituted store path for substitions.
+        std::optional<StorePath> storePath = {};
     };
 
 protected:

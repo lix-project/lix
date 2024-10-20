@@ -33,10 +33,8 @@ void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMod
                 ex = result.ex;
         }
         if (result.exitCode != Goal::ecSuccess) {
-            if (auto i2 = dynamic_cast<DerivationGoal *>(i.get()))
-                failed.insert(printStorePath(i2->drvPath));
-            else if (auto i2 = dynamic_cast<PathSubstitutionGoal *>(i.get()))
-                failed.insert(printStorePath(i2->storePath));
+            if (result.storePath)
+                failed.insert(printStorePath(*result.storePath));
         }
     }
 

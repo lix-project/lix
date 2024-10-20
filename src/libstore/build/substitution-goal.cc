@@ -3,6 +3,7 @@
 #include "nar-info.hh"
 #include "signals.hh"
 #include "finally.hh"
+#include <boost/outcome/try.hpp>
 #include <kj/array.h>
 #include <kj/vector.h>
 
@@ -54,7 +55,7 @@ try {
 
     /* If the path already exists we're done. */
     if (!repair && worker.store.isValidPath(storePath)) {
-        return {done(ecSuccess, BuildResult::AlreadyValid)};
+        co_return done(ecSuccess, BuildResult::AlreadyValid);
     }
 
     if (settings.readOnlyMode)
@@ -62,9 +63,11 @@ try {
 
     subs = settings.useSubstitutes ? getDefaultSubstituters() : std::list<ref<Store>>();
 
-    return tryNext();
+    BOOST_OUTCOME_CO_TRY(auto result, co_await tryNext());
+    result.storePath = storePath;
+    co_return result;
 } catch (...) {
-    return {std::current_exception()};
+    co_return result::failure(std::current_exception());
 }
 
 
