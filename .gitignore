@@ -36,3 +36,6 @@ buildtime.bin
 
 # Rust build files when using Cargo (not actually supported for building but it spews the files anyway)
 /target/
+
+# Python compiled files from the test suite
+*.pyc
