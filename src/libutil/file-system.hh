@@ -297,6 +297,14 @@ std::pair<AutoCloseFD, Path> createTempFile(const Path & prefix = "nix");
 Path defaultTempDir();
 
 /**
+ * Return temporary path constructed by appending a suffix to a root path.
+ *
+ * The constructed path looks like `<root><suffix>-<pid>-<unique>`. To create a
+ * path nested in a directory, provide a suffix starting with `/`.
+ */
+Path makeTempPath(const Path & root, const Path & suffix = ".tmp");
+
+/**
  * Used in various places.
  */
 typedef std::function<bool(const Path & path)> PathFilter;

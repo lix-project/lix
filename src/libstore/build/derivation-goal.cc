@@ -1,4 +1,5 @@
 #include "derivation-goal.hh"
+#include "file-system.hh"
 #include "hook-instance.hh"
 #include "worker.hh"
 #include "finally.hh"
@@ -860,23 +861,31 @@ void replaceValidPath(const Path & storePath, const Path & tmpPath)
        tmpPath (the replacement), so we have to move it out of the
        way first.  We'd better not be interrupted here, because if
        we're repairing (say) Glibc, we end up with a broken system. */
-    Path oldPath = fmt("%1%.old-%2%-%3%", storePath, getpid(), random());
-    if (pathExists(storePath))
+    Path oldPath;
+    if (pathExists(storePath)) {
+        do {
+            oldPath = makeTempPath(storePath, ".old");
+            // store paths are often directories so we can't just unlink() it
+            // let's make sure the path doesn't exist before we try to use it
+        } while (pathExists(oldPath));
         movePath(storePath, oldPath);
+    }
 
     try {
         movePath(tmpPath, storePath);
     } catch (...) {
         try {
             // attempt to recover
-            movePath(oldPath, storePath);
+            if (!oldPath.empty())
+                movePath(oldPath, storePath);
         } catch (...) {
             ignoreExceptionExceptInterrupt();
         }
         throw;
     }
 
-    deletePath(oldPath);
+    if (!oldPath.empty())
+        deletePath(oldPath);
 }
 
 

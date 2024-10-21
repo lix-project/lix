@@ -33,7 +33,8 @@ static void makeSymlink(const Path & link, const Path & target)
     createDirs(dirOf(link));
 
     /* Create the new symlink. */
-    Path tempLink = fmt("%1%.tmp-%2%-%3%", link, getpid(), random());
+    Path tempLink = makeTempPath(link);
+    unlink(tempLink.c_str()); // just in case; ignore errors
     createSymlink(target, tempLink);
 
     /* Atomically replace the old one. */

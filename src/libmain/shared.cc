@@ -172,12 +172,6 @@ void initNix()
        now.  In particular, store objects should be readable by
        everybody. */
     umask(0022);
-
-    /* Initialise the PRNG. */
-    struct timeval tv;
-    gettimeofday(&tv, 0);
-    srandom(tv.tv_usec);
-
 }
 
 

@@ -214,7 +214,8 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
        its timestamp back to 0. */
     MakeReadOnly makeReadOnly(mustToggle ? dirOfPath : "");
 
-    Path tempLink = fmt("%1%/.tmp-link-%2%-%3%", realStoreDir, getpid(), random());
+    Path tempLink = makeTempPath(realStoreDir, "/.tmp-link");
+    unlink(tempLink.c_str()); // just in case; ignore errors
 
     if (link(linkPath.c_str(), tempLink.c_str()) == -1) {
         if (errno == EMLINK) {
@@ -233,7 +234,7 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
         renameFile(tempLink, path);
     } catch (SysError & e) {
         if (unlink(tempLink.c_str()) == -1)
-            printError("unable to unlink '%1%'", tempLink);
+            printError("unable to unlink '%1%': %2%", tempLink, strerror(errno));
         if (errno == EMLINK) {
             /* Some filesystems generate too many links on the rename,
                rather than on the original link.  (Probably it
