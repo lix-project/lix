@@ -8,6 +8,7 @@
 #include "attr-path.hh"
 #include "eval-inline.hh" // IWYU pragma: keep
 #include "legacy.hh"
+#include "temporary-dir.hh"
 #include "terminal.hh"
 #include "prefetch-command.hh"
 

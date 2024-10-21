@@ -5,6 +5,7 @@
 #include "store-api.hh"
 #include "archive.hh"
 #include "tarfile.hh"
+#include "temporary-dir.hh"
 #include "types.hh"
 #include "split.hh"
 

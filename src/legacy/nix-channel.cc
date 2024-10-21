@@ -6,6 +6,7 @@
 #include "legacy.hh"
 #include "fetchers.hh"
 #include "eval-settings.hh" // for defexpr
+#include "temporary-dir.hh"
 #include "users.hh"
 #include "nix-channel.hh"
 

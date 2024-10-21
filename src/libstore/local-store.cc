@@ -2,6 +2,7 @@
 #include "globals.hh"
 #include "archive.hh"
 #include "pathlocks.hh"
+#include "temporary-dir.hh"
 #include "worker-protocol.hh"
 #include "derivations.hh"
 #include "nar-info.hh"

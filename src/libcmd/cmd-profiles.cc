@@ -6,6 +6,7 @@
 #include "logging.hh"
 #include "names.hh"
 #include "store-api.hh"
+#include "temporary-dir.hh"
 #include "url-name.hh"
 
 namespace nix

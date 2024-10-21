@@ -13,6 +13,7 @@
 #include "current-process.hh"
 
 #if __linux__
+#include "temporary-dir.hh"
 #include <sys/mount.h>
 #endif
 

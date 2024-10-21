@@ -4,6 +4,7 @@
 #include "finally.hh"
 #include "logging.hh"
 #include "strings.hh"
+#include "temporary-dir.hh"
 
 namespace nix {
 

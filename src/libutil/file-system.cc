@@ -562,21 +562,17 @@ void AutoDelete::reset(const Path & p, bool recursive) {
 
 //////////////////////////////////////////////////////////////////////
 
-std::string defaultTempDir() {
-    return getEnvNonEmpty("TMPDIR").value_or("/tmp");
-}
-
-static Path tempName(Path tmpRoot, const Path & prefix, bool includePid,
+static Path tempName(PathView parent, const Path & prefix, bool includePid,
     std::atomic<unsigned int> & counter)
 {
-    tmpRoot = canonPath(tmpRoot.empty() ? defaultTempDir() : tmpRoot, true);
+    auto tmpRoot = canonPath(parent, true);
     if (includePid)
         return fmt("%1%/%2%-%3%-%4%", tmpRoot, prefix, getpid(), counter++);
     else
         return fmt("%1%/%2%-%3%", tmpRoot, prefix, counter++);
 }
 
-Path createTempDir(const Path & tmpRoot, const Path & prefix,
+Path createTempSubdir(const Path & parent, const Path & prefix,
     bool includePid, bool useGlobalCounter, mode_t mode)
 {
     static std::atomic<unsigned int> globalCounter = 0;
@@ -585,7 +581,7 @@ Path createTempDir(const Path & tmpRoot, const Path & prefix,
 
     while (1) {
         checkInterrupt();
-        Path tmpDir = tempName(tmpRoot, prefix, includePid, counter);
+        Path tmpDir = tempName(parent, prefix, includePid, counter);
         if (mkdir(tmpDir.c_str(), mode) == 0) {
 #if __FreeBSD__
             /* Explicitly set the group of the directory.  This is to
@@ -604,18 +600,6 @@ Path createTempDir(const Path & tmpRoot, const Path & prefix,
         if (errno != EEXIST)
             throw SysError("creating directory '%1%'", tmpDir);
     }
-}
-
-
-std::pair<AutoCloseFD, Path> createTempFile(const Path & prefix)
-{
-    Path tmpl(defaultTempDir() + "/" + prefix + ".XXXXXX");
-    // FIXME: use O_TMPFILE.
-    AutoCloseFD fd(mkstemp(tmpl.data()));
-    if (!fd)
-        throw SysError("creating temporary file '%s'", tmpl);
-    closeOnExec(fd.get());
-    return {std::move(fd), tmpl};
 }
 
 Path makeTempPath(const Path & root, const Path & suffix)
@@ -721,7 +705,7 @@ void moveFile(const Path & oldName, const Path & newName)
         auto newPath = fs::path(newName);
         // For the move to be as atomic as possible, copy to a temporary
         // directory
-        fs::path temp = createTempDir(newPath.parent_path(), "rename-tmp");
+        fs::path temp = createTempSubdir(newPath.parent_path(), "rename-tmp");
         Finally removeTemp = [&]() { fs::remove(temp); };
         auto tempCopyTarget = temp / "copy-target";
         if (e.code().value() == EXDEV) {

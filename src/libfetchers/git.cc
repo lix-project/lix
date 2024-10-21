@@ -5,6 +5,7 @@
 #include "processes.hh"
 #include "tarfile.hh"
 #include "store-api.hh"
+#include "temporary-dir.hh"
 #include "url-parts.hh"
 #include "pathlocks.hh"
 #include "users.hh"

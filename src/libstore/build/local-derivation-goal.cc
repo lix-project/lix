@@ -3,6 +3,7 @@
 #include "indirect-root-store.hh"
 #include "machines.hh"
 #include "store-api.hh"
+#include "temporary-dir.hh"
 #include "worker.hh"
 #include "builtins.hh"
 #include "builtins/buildenv.hh"

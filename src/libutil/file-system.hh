@@ -288,20 +288,10 @@ struct DIRDeleter
 typedef std::unique_ptr<DIR, DIRDeleter> AutoCloseDir;
 
 /**
- * Create a temporary directory.
+ * Create a temporary directory in a given parent directory.
  */
-Path createTempDir(const Path & tmpRoot = "", const Path & prefix = "nix",
+Path createTempSubdir(const Path & parent, const Path & prefix = "nix",
     bool includePid = true, bool useGlobalCounter = true, mode_t mode = 0755);
-
-/**
- * Create a temporary file, returning a file handle and its path.
- */
-std::pair<AutoCloseFD, Path> createTempFile(const Path & prefix = "nix");
-
-/**
- * Return `TMPDIR`, or the default temporary directory if unset or empty.
- */
-Path defaultTempDir();
 
 /**
  * Return temporary path constructed by appending a suffix to a root path.
