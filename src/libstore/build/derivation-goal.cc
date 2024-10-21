@@ -127,7 +127,11 @@ Goal::WorkResult DerivationGoal::timedOut(Error && ex)
 
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::workImpl() noexcept
 {
-    return useDerivation ? getDerivation() : haveDerivation();
+    return (useDerivation ? getDerivation() : haveDerivation()).attach(kj::defer([this] {
+        act.reset();
+        actLock.reset();
+        builderActivities.clear();
+    }));
 }
 
 bool DerivationGoal::addWantedOutputs(const OutputsSpec & outputs)
