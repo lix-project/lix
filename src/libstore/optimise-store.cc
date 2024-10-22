@@ -9,6 +9,9 @@
 #include <unistd.h>
 #include <errno.h>
 
+#if __APPLE__
+#include <regex>
+#endif
 
 namespace nix {
 
