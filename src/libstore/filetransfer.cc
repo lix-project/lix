@@ -282,6 +282,8 @@ struct curlFileTransfer : public FileTransfer
             curl_easy_setopt(req, CURLOPT_PROGRESSDATA, this);
             curl_easy_setopt(req, CURLOPT_NOPROGRESS, 0);
 
+            curl_easy_setopt(req, CURLOPT_PROTOCOLS_STR, "http,https,ftp,ftps,file");
+
             curl_easy_setopt(req, CURLOPT_HTTPHEADER, requestHeaders);
 
             if (settings.downloadSpeed.get() > 0)
