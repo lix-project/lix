@@ -139,6 +139,7 @@ void RemoteStore::setOptions(Connection & conn)
     overrides.erase(loggerSettings.showTrace.name);
     overrides.erase(experimentalFeatureSettings.experimentalFeatures.name);
     overrides.erase(settings.pluginFiles.name);
+    overrides.erase(settings.storeUri.name); // the daemon *is* the store
     conn.to << overrides.size();
     for (auto & i : overrides)
         conn.to << i.first << i.second.value;

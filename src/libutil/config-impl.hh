@@ -65,6 +65,7 @@ void BaseSetting<T>::appendOrSet(T newValue, bool append, const ApplyConfigOptio
         "using default `appendOrSet` implementation with an appendable type");
     assert(!append);
 
+    overridden = true;
     value = std::move(newValue);
 }
 
@@ -85,6 +86,13 @@ void BaseSetting<T>::set(const std::string & str, bool append, const ApplyConfig
     }
 }
 
+template<typename T>
+void BaseSetting<T>::override(const T & v)
+{
+    overridden = true;
+    value = v;
+}
+
 template<> void BaseSetting<bool>::convertToArg(Args & args, const std::string & category);
 
 template<typename T>
@@ -95,7 +103,7 @@ void BaseSetting<T>::convertToArg(Args & args, const std::string & category)
         .description = fmt("Set the `%s` setting.", name),
         .category = category,
         .labels = {"value"},
-        .handler = {[this](std::string s) { overridden = true; set(s); }},
+        .handler = {[this](std::string s) { set(s); }},
         .experimentalFeature = experimentalFeature,
     });
 
@@ -105,7 +113,7 @@ void BaseSetting<T>::convertToArg(Args & args, const std::string & category)
             .description = fmt("Append to the `%s` setting.", name),
             .category = category,
             .labels = {"value"},
-            .handler = {[this](std::string s) { overridden = true; set(s, true); }},
+            .handler = {[this](std::string s) { set(s, true); }},
             .experimentalFeature = experimentalFeature,
         });
 }

@@ -69,12 +69,12 @@ Settings::Settings()
     , nixManDir(canonPath(NIX_MAN_DIR))
     , nixDaemonSocketFile(canonPath(getEnvNonEmpty("NIX_DAEMON_SOCKET_PATH").value_or(nixStateDir + DEFAULT_SOCKET_PATH)))
 {
-    buildUsersGroup = getuid() == 0 ? "nixbld" : "";
-    allowSymlinkedStore = getEnv("NIX_IGNORE_SYMLINK_STORE") == "1";
+    buildUsersGroup.setDefault(getuid() == 0 ? "nixbld" : "");
+    allowSymlinkedStore.setDefault(getEnv("NIX_IGNORE_SYMLINK_STORE") == "1");
 
     auto sslOverride = getEnv("NIX_SSL_CERT_FILE").value_or(getEnv("SSL_CERT_FILE").value_or(""));
     if (sslOverride != "")
-        caFile = sslOverride;
+        caFile.setDefault(sslOverride);
 
     /* Backwards compatibility. */
     auto s = getEnv("NIX_REMOTE_SYSTEMS");
@@ -82,17 +82,17 @@ Settings::Settings()
         Strings ss;
         for (auto & p : tokenizeString<Strings>(*s, ":"))
             ss.push_back("@" + p);
-        builders = concatStringsSep(" ", ss);
+        builders.setDefault(concatStringsSep(" ", ss));
     }
 
 #if defined(__linux__) && defined(SANDBOX_SHELL)
-    sandboxPaths = tokenizeString<StringSet>("/bin/sh=" SANDBOX_SHELL);
+    sandboxPaths.setDefault(tokenizeString<StringSet>("/bin/sh=" SANDBOX_SHELL));
 #endif
 
     /* chroot-like behavior from Apple's sandbox */
 #if __APPLE__
-    sandboxPaths = tokenizeString<StringSet>("/System/Library/Frameworks /System/Library/PrivateFrameworks /bin/sh /bin/bash /private/tmp /private/var/tmp /usr/lib");
-    allowedImpureHostPrefixes = tokenizeString<StringSet>("/System/Library /usr/lib /dev /bin/sh");
+    sandboxPaths.setDefault(tokenizeString<StringSet>("/System/Library/Frameworks /System/Library/PrivateFrameworks /bin/sh /bin/bash /private/tmp /private/var/tmp /usr/lib"));
+    allowedImpureHostPrefixes.setDefault(tokenizeString<StringSet>("/System/Library /usr/lib /dev /bin/sh"));
 #endif
 
     /* Set the build hook location
@@ -118,10 +118,10 @@ Settings::Settings()
     if (!pathExists(nixExePath)) {
         nixExePath = getSelfExe().value_or("nix");
     }
-    buildHook = {
+    buildHook.setDefault(Strings {
         nixExePath,
         "__build-remote",
-    };
+    });
 }
 
 void loadConfFile()

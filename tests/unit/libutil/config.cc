@@ -57,7 +57,7 @@ namespace nix {
         std::map<std::string, Config::SettingInfo> settings;
         Setting<std::string> setting{&config, value, "name-of-the-setting", "description"};
 
-        setting.assign("value");
+        setting.override("value");
 
         config.getSettings(settings, /* overriddenOnly = */ false);
         const auto iter = settings.find("name-of-the-setting");
@@ -131,7 +131,7 @@ namespace nix {
         {
             std::map<std::string, Config::SettingInfo> settings;
 
-            setting.set("foo");
+            setting.setDefault("foo");
             ASSERT_EQ(setting.get(), "foo");
             config.getSettings(settings, /* overriddenOnly = */ true);
             ASSERT_TRUE(settings.empty());
@@ -170,7 +170,7 @@ namespace nix {
             "name-of-the-setting",
             "description",
         };
-        setting.assign("value");
+        setting.override("value");
 
         ASSERT_EQ(config.toJSON(),
           R"#({
@@ -197,7 +197,7 @@ namespace nix {
             true,
             Xp::Flakes,
         };
-        setting.assign("value");
+        setting.override("value");
 
         ASSERT_EQ(config.toJSON(),
           R"#({

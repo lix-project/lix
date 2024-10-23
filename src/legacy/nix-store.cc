@@ -831,12 +831,12 @@ static void opServe(Strings opFlags, Strings opArgs)
         // FIXME: changing options here doesn't work if we're
         // building through the daemon.
         verbosity = lvlError;
-        settings.keepLog = false;
-        settings.useSubstitutes = false;
-        settings.maxSilentTime = readInt(in);
-        settings.buildTimeout = readInt(in);
+        settings.keepLog.override(false);
+        settings.useSubstitutes.override(false);
+        settings.maxSilentTime.override(readInt(in));
+        settings.buildTimeout.override(readInt(in));
         if (GET_PROTOCOL_MINOR(clientVersion) >= 2)
-            settings.maxLogSize = readNum<unsigned long>(in);
+            settings.maxLogSize.override(readNum<unsigned long>(in));
         if (GET_PROTOCOL_MINOR(clientVersion) >= 3) {
             auto nrRepeats = readInt(in);
             if (nrRepeats != 0) {
@@ -850,10 +850,10 @@ static void opServe(Strings opFlags, Strings opArgs)
             // asked for.
             readInt(in);
 
-            settings.runDiffHook = true;
+            settings.runDiffHook.override(true);
         }
         if (GET_PROTOCOL_MINOR(clientVersion) >= 7) {
-            settings.keepFailed = (bool) readInt(in);
+            settings.keepFailed.override((bool) readInt(in));
         }
     };
 

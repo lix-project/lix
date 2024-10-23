@@ -196,20 +196,20 @@ LegacyArgs::LegacyArgs(const std::string & programName,
         .longName = "keep-failed",
         .shortName ='K',
         .description = "Keep temporary directories of failed builds.",
-        .handler = {&(bool&) settings.keepFailed, true},
+        .handler = {[&]() { settings.keepFailed.override(true); }},
     });
 
     addFlag({
         .longName = "keep-going",
         .shortName ='k',
         .description = "Keep going after a build fails.",
-        .handler = {&(bool&) settings.keepGoing, true},
+        .handler = {[&]() { settings.keepGoing.override(true); }},
     });
 
     addFlag({
         .longName = "fallback",
         .description = "Build from source if substitution fails.",
-        .handler = {&(bool&) settings.tryFallback, true},
+        .handler = {[&]() { settings.tryFallback.override(true); }},
     });
 
     auto intSettingAlias = [&](char shortName, const std::string & longName,
@@ -247,7 +247,7 @@ LegacyArgs::LegacyArgs(const std::string & programName,
         .longName = "store",
         .description = "The URL of the Nix store to use.",
         .labels = {"store-uri"},
-        .handler = {&(std::string&) settings.storeUri},
+        .handler = {[&](std::string storeUri) { settings.storeUri.override(storeUri); }},
     });
 }
 

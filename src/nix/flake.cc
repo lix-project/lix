@@ -116,7 +116,7 @@ public:
 
     void run(nix::ref<nix::Store> store) override
     {
-        settings.tarballTtl = 0;
+        settings.tarballTtl.override(0);
         auto updateAll = lockFlags.inputUpdates.empty();
 
         lockFlags.recreateLockFile = updateAll;
@@ -158,7 +158,7 @@ struct CmdFlakeLock : FlakeCommand
 
     void run(nix::ref<nix::Store> store) override
     {
-        settings.tarballTtl = 0;
+        settings.tarballTtl.override(0);
 
         lockFlags.writeLockFile = true;
         lockFlags.applyNixConfig = true;
