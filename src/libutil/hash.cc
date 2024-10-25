@@ -8,6 +8,7 @@
 #include "hash.hh"
 #include "archive.hh"
 #include "charptr-cast.hh"
+#include "fmt.hh"
 #include "logging.hh"
 #include "split.hh"
 #include "strings.hh"
@@ -210,6 +211,17 @@ Hash Hash::parseNonSRIUnprefixed(std::string_view s, HashType type)
 Hash::Hash(std::string_view rest, HashType type, bool isSRI)
     : Hash(type)
 {
+    if (type == HashType::MD5 || type == HashType::SHA1) {
+        if (isSRI) {
+            // Forbidden as per https://w3c.github.io/webappsec-csp/#grammardef-hash-algorithm
+            throw BadHash("%s values are not allowed in SRI hashes", printHashType(type));
+        } else {
+            logWarning({
+                    .msg = HintFmt("%s hashes are considered weak, use a newer hashing algorithm instead. (value: %s)", Uncolored(printHashType(type)), rest)
+            });
+        }
+    }
+
     if (!isSRI && rest.size() == base16Len()) {
 
         auto parseHexDigit = [&](char c) {

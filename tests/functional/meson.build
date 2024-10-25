@@ -191,6 +191,7 @@ functional_tests_scripts = [
   'extra-sandbox-profile.sh',
   'substitute-truncated-nar.sh',
   'regression-484.sh',
+  'reject-weak-hashes.sh'
 ]
 
 # Plugin tests require shared libraries support.
