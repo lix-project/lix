@@ -44,7 +44,6 @@ DAEMON_PATH="$PATH"
 if [[ -n "${NIX_DAEMON_PACKAGE:-}" ]]; then
   DAEMON_PATH="${NIX_DAEMON_PACKAGE}/bin:$DAEMON_PATH"
 fi
-coreutils=@coreutils@
 lsof=@lsof@
 
 export dot=@dot@

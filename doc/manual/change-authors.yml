@@ -141,6 +141,11 @@ valentin:
   display_name: Valentin Gagarin
   github: fricklerhandwerk
 
+vigress8:
+  display_name: Vigress
+  forgejo: vigress8
+  github: vigress8
+
 winter:
   forgejo: winter
   github: winterqt

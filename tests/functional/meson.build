@@ -1,6 +1,8 @@
+ls = find_program('ls', native : true)
+
 test_confdata = {
   'bindir': bindir,
-  'coreutils': fs.parent(coreutils.full_path()),
+  'ls': fs.parent(ls.full_path()),
   'lsof': lsof.full_path(),
   'dot': dot.found() ? dot.full_path() : '',
   'bash': bash.full_path(),

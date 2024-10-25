@@ -358,7 +358,6 @@ endif
 #
 # Build-time tools
 #
-coreutils = find_program('coreutils', native : true)
 dot = find_program('dot', required : false, native : true)
 pymod = import('python')
 python = pymod.find_installation('python3')

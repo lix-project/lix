@@ -10,7 +10,7 @@ in
 rec {
   shell = "@bash@";
 
-  path = "@coreutils@";
+  path = "@ls@";
 
   system = "@system@";
 
