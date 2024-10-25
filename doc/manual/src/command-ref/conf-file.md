@@ -34,8 +34,14 @@ keep-outputs = true       # Nice for developers
 keep-derivations = true   # Idem
 ```
 
-Other files can be included with a line like `include <path>`, where `<path>` is interpreted relative to the current configuration file.
+Other files can be included with a line like `include <path>`.
 A missing file is an error unless `!include` is used instead.
+
+Paths in `include`s and option values are interpreted relative to the current configuration file.
+In user configuration files, paths starting with `~/` are tilde expanded (by replacing the tilde by the value of `$HOME`).
+
+Only user configuration files (like `$XDG_CONFIG_HOME/nix/nix.conf` or the files listed in `$NIX_USER_CONF_FILES`) can use tilde paths relative to your home directory.
+Configuration listed in the `$NIX_CONFIG` environment variable may not use relative paths.
 
 A configuration setting usually overrides any previous value.
 However, for settings that take a list of items, you can prefix the name of the setting by `extra-` to *append* to the previous value.
