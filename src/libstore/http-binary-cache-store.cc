@@ -116,7 +116,7 @@ protected:
         try {
             FileTransferRequest request{makeURI(path)};
             request.head = true;
-            getFileTransfer()->enqueueFileTransfer(request).get();
+            getFileTransfer()->enqueueDownload(request).get();
             return true;
         } catch (FileTransferError & e) {
             /* S3 buckets return 403 if a file doesn't exist and the
@@ -133,10 +133,10 @@ protected:
         const std::string & mimeType) override
     {
         FileTransferRequest req{makeURI(path)};
-        req.data = StreamToSourceAdapter(istream).drain();
+        auto data = StreamToSourceAdapter(istream).drain();
         req.headers = {{"Content-Type", mimeType}};
         try {
-            getFileTransfer()->enqueueFileTransfer(req).get();
+            getFileTransfer()->enqueueUpload(req, std::move(data)).get();
         } catch (FileTransferError & e) {
             throw UploadToHTTP("while uploading to HTTP binary cache at '%s': %s", cacheUri, e.msg());
         }
@@ -171,7 +171,7 @@ protected:
         FileTransferRequest request{makeURI(path)};
 
         try {
-            return std::move(getFileTransfer()->enqueueFileTransfer(request).get().data);
+            return std::move(getFileTransfer()->enqueueDownload(request).get().data);
         } catch (FileTransferError & e) {
             if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
                 return {};

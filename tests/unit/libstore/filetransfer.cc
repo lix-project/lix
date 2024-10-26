@@ -163,7 +163,7 @@ TEST(FileTransfer, NOT_ON_DARWIN(reportsSetupErrors))
     auto [port, srv] = serveHTTP("404 not found", "", [] { return ""; });
     auto ft = makeFileTransfer();
     ASSERT_THROW(
-        ft->enqueueFileTransfer(FileTransferRequest(fmt("http://[::1]:%d/index", port))).get(),
+        ft->enqueueDownload(FileTransferRequest(fmt("http://[::1]:%d/index", port))).get(),
         FileTransferError
     );
 }
@@ -219,7 +219,7 @@ TEST(FileTransfer, usesIntermediateLinkHeaders)
     auto ft = makeFileTransfer();
     FileTransferRequest req(fmt("http://[::1]:%d/first", port));
     req.baseRetryTimeMs = 0;
-    auto result = ft->enqueueFileTransfer(req).get();
+    auto result = ft->enqueueDownload(req).get();
     ASSERT_EQ(result.immutableUrl, "http://foo");
 }
 

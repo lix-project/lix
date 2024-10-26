@@ -46,6 +46,7 @@ struct curlFileTransfer : public FileTransfer
         FileTransferRequest request;
         FileTransferResult result;
         Activity act;
+        std::optional<std::string> uploadData;
         bool done = false; // whether either the success or failure function has been called
         std::packaged_task<FileTransferResult(std::exception_ptr, FileTransferResult)> callback;
         std::function<void(TransferItem &, std::string_view data)> dataCallback;
@@ -81,18 +82,21 @@ struct curlFileTransfer : public FileTransfer
 
         std::string verb() const
         {
-            return request.data ? "upload" : "download";
+            return uploadData ? "upload" : "download";
         }
 
         TransferItem(curlFileTransfer & fileTransfer,
             const FileTransferRequest & request,
             std::invocable<std::exception_ptr> auto callback,
-            std::function<void(TransferItem &, std::string_view data)> dataCallback)
+            std::function<void(TransferItem &, std::string_view data)> dataCallback,
+            std::optional<std::string> uploadData
+        )
             : fileTransfer(fileTransfer)
             , request(request)
             , act(*logger, lvlTalkative, actFileTransfer,
-                fmt(request.data ? "uploading '%s'" : "downloading '%s'", request.uri),
+                fmt(uploadData ? "uploading '%s'" : "downloading '%s'", request.uri),
                 {request.uri}, request.parentAct)
+            , uploadData(std::move(uploadData))
             , callback([cb{std::move(callback)}] (std::exception_ptr ex, FileTransferResult r) {
                 cb(ex);
                 return r;
@@ -236,14 +240,14 @@ struct curlFileTransfer : public FileTransfer
         size_t readOffset = 0;
         size_t readCallback(char *buffer, size_t size, size_t nitems)
         {
-            if (readOffset == request.data->length())
+            if (readOffset == uploadData->length())
                 return 0;
-            auto count = std::min(size * nitems, request.data->length() - readOffset);
+            auto count = std::min(size * nitems, uploadData->length() - readOffset);
             assert(count);
             // Lint: this is turning a string into a byte array to hand to
             // curl, which is fine.
             // NOLINTNEXTLINE(bugprone-not-null-terminated-result)
-            memcpy(buffer, request.data->data() + readOffset, count);
+            memcpy(buffer, uploadData->data() + readOffset, count);
             readOffset += count;
             return count;
         }
@@ -295,11 +299,11 @@ struct curlFileTransfer : public FileTransfer
             if (request.head)
                 curl_easy_setopt(req, CURLOPT_NOBODY, 1);
 
-            if (request.data) {
+            if (uploadData) {
                 curl_easy_setopt(req, CURLOPT_UPLOAD, 1L);
                 curl_easy_setopt(req, CURLOPT_READFUNCTION, readCallbackWrapper);
                 curl_easy_setopt(req, CURLOPT_READDATA, this);
-                curl_easy_setopt(req, CURLOPT_INFILESIZE_LARGE, (curl_off_t) request.data->length());
+                curl_easy_setopt(req, CURLOPT_INFILESIZE_LARGE, (curl_off_t) uploadData->length());
             }
 
             if (request.verifyTLS) {
@@ -620,7 +624,7 @@ struct curlFileTransfer : public FileTransfer
 
     std::shared_ptr<TransferItem> enqueueItem(std::shared_ptr<TransferItem> item)
     {
-        if (item->request.data
+        if (item->uploadData
             && !item->request.uri.starts_with("http://")
             && !item->request.uri.starts_with("https://"))
             throw nix::Error("uploading to '%s' is not supported", item->request.uri);
@@ -651,7 +655,19 @@ struct curlFileTransfer : public FileTransfer
     }
 #endif
 
-    std::future<FileTransferResult> enqueueFileTransfer(const FileTransferRequest & request) override
+    std::future<FileTransferResult> enqueueDownload(const FileTransferRequest & request) override
+    {
+        return enqueueFileTransfer(request, std::nullopt);
+    }
+
+    std::future<FileTransferResult>
+    enqueueUpload(const FileTransferRequest & request, std::string data) override
+    {
+        return enqueueFileTransfer(request, std::move(data));
+    }
+
+    std::future<FileTransferResult>
+    enqueueFileTransfer(const FileTransferRequest & request, std::optional<std::string> data)
     {
         return enqueueFileTransfer(
             request,
@@ -660,13 +676,16 @@ struct curlFileTransfer : public FileTransfer
                     std::rethrow_exception(ex);
                 }
             },
-            {}
+            {},
+            std::move(data)
         );
     }
 
     std::future<FileTransferResult> enqueueFileTransfer(const FileTransferRequest & request,
         std::invocable<std::exception_ptr> auto callback,
-        std::function<void(TransferItem &, std::string_view data)> dataCallback)
+        std::function<void(TransferItem &, std::string_view data)> dataCallback,
+        std::optional<std::string> data
+    )
     {
         /* Ugly hack to support s3:// URIs. */
         if (request.uri.starts_with("s3://")) {
@@ -695,9 +714,11 @@ struct curlFileTransfer : public FileTransfer
             });
         }
 
-        return enqueueItem(std::make_shared<TransferItem>(
-                               *this, request, std::move(callback), std::move(dataCallback)
-                           ))
+        return enqueueItem(
+                   std::make_shared<TransferItem>(
+                       *this, request, std::move(callback), std::move(dataCallback), std::move(data)
+                   )
+        )
             ->callback.get_future();
     }
 
@@ -747,7 +768,8 @@ struct curlFileTransfer : public FileTransfer
                 thread. */
                 state->data.append(data);
                 state->avail.notify_one();
-            }
+            },
+            std::nullopt
         );
 
         struct InnerSource : Source

@@ -62,7 +62,6 @@ struct FileTransferRequest
     size_t tries = fileTransferSettings.tries;
     unsigned int baseRetryTimeMs = 250;
     ActivityId parentAct;
-    std::optional<std::string> data;
 
     FileTransferRequest(std::string_view uri)
         : uri(uri), parentAct(getCurActivity()) { }
@@ -88,11 +87,17 @@ struct FileTransfer
     virtual ~FileTransfer() { }
 
     /**
-     * Enqueue a data transfer request, returning a future to the result of
-     * the download. The future may throw a FileTransferError
-     * exception.
+     * Enqueues a download request, returning a future for the result of
+     * the download. The future may throw a FileTransferError exception.
      */
-    virtual std::future<FileTransferResult> enqueueFileTransfer(const FileTransferRequest & request) = 0;
+    virtual std::future<FileTransferResult> enqueueDownload(const FileTransferRequest & request) = 0;
+
+    /**
+     * Enqueue an upload request, returning a future for the result of
+     * the upload. The future may throw a FileTransferError exception.
+     */
+    virtual std::future<FileTransferResult>
+    enqueueUpload(const FileTransferRequest & request, std::string data) = 0;
 
     /**
      * Download a file, returning its contents through a source. Will not return
