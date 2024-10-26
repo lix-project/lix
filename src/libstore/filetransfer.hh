@@ -95,11 +95,6 @@ struct FileTransfer
     virtual std::future<FileTransferResult> enqueueFileTransfer(const FileTransferRequest & request) = 0;
 
     /**
-     * Synchronously transfer a file.
-     */
-    FileTransferResult transfer(const FileTransferRequest & request);
-
-    /**
      * Download a file, returning its contents through a source. Will not return
      * before the transfer has fully started, ensuring that any errors thrown by
      * the setup phase (e.g. HTTP 404 or similar errors) are not postponed to be

@@ -116,7 +116,7 @@ protected:
         try {
             FileTransferRequest request{makeURI(path)};
             request.head = true;
-            getFileTransfer()->transfer(request);
+            getFileTransfer()->enqueueFileTransfer(request).get();
             return true;
         } catch (FileTransferError & e) {
             /* S3 buckets return 403 if a file doesn't exist and the
@@ -136,7 +136,7 @@ protected:
         req.data = StreamToSourceAdapter(istream).drain();
         req.headers = {{"Content-Type", mimeType}};
         try {
-            getFileTransfer()->transfer(req);
+            getFileTransfer()->enqueueFileTransfer(req).get();
         } catch (FileTransferError & e) {
             throw UploadToHTTP("while uploading to HTTP binary cache at '%s': %s", cacheUri, e.msg());
         }

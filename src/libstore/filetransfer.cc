@@ -868,11 +868,6 @@ ref<FileTransfer> makeFileTransfer()
     return makeCurlFileTransfer();
 }
 
-FileTransferResult FileTransfer::transfer(const FileTransferRequest & request)
-{
-    return enqueueFileTransfer(request).get();
-}
-
 template<typename... Args>
 FileTransferError::FileTransferError(FileTransfer::Error error, std::optional<std::string> response, const Args & ... args)
     : Error(args...), error(error), response(response)

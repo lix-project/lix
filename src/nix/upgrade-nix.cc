@@ -286,7 +286,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
 
         // FIXME: use nixos.org?
         auto req = FileTransferRequest(storePathsUrl);
-        auto res = getFileTransfer()->transfer(req);
+        auto res = getFileTransfer()->enqueueFileTransfer(req).get();
 
         auto state = std::make_unique<EvalState>(SearchPath{}, store);
         auto v = state->allocValue();
