@@ -227,7 +227,7 @@ static Generator<Entry> parseObject(Source & source, const Path & path)
 
                 while (left) {
                     checkInterrupt();
-                    auto n = std::min<uint64_t>(buf.size(), left);
+                    auto n = size_t(std::min<uint64_t>(buf.size(), left));
                     source(buf.data(), n);
                     co_yield std::span{buf.data(), n};
                     left -= n;
