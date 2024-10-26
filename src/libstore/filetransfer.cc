@@ -87,6 +87,7 @@ struct curlFileTransfer : public FileTransfer
 
         TransferItem(curlFileTransfer & fileTransfer,
             const FileTransferRequest & request,
+            ActivityId parentAct,
             std::invocable<std::exception_ptr> auto callback,
             std::function<void(TransferItem &, std::string_view data)> dataCallback,
             std::optional<std::string> uploadData
@@ -95,7 +96,7 @@ struct curlFileTransfer : public FileTransfer
             , request(request)
             , act(*logger, lvlTalkative, actFileTransfer,
                 fmt(uploadData ? "uploading '%s'" : "downloading '%s'", request.uri),
-                {request.uri}, request.parentAct)
+                {request.uri}, parentAct)
             , uploadData(std::move(uploadData))
             , callback([cb{std::move(callback)}] (std::exception_ptr ex, FileTransferResult r) {
                 cb(ex);
@@ -714,11 +715,14 @@ struct curlFileTransfer : public FileTransfer
             });
         }
 
-        return enqueueItem(
-                   std::make_shared<TransferItem>(
-                       *this, request, std::move(callback), std::move(dataCallback), std::move(data)
-                   )
-        )
+        return enqueueItem(std::make_shared<TransferItem>(
+                               *this,
+                               request,
+                               getCurActivity(),
+                               std::move(callback),
+                               std::move(dataCallback),
+                               std::move(data)
+                           ))
             ->callback.get_future();
     }
 

@@ -61,10 +61,9 @@ struct FileTransferRequest
     bool head = false;
     size_t tries = fileTransferSettings.tries;
     unsigned int baseRetryTimeMs = 250;
-    ActivityId parentAct;
 
     FileTransferRequest(std::string_view uri)
-        : uri(uri), parentAct(getCurActivity()) { }
+        : uri(uri) { }
 };
 
 struct FileTransferResult
