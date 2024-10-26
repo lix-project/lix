@@ -59,7 +59,6 @@ struct FileTransferRequest
     std::string expectedETag;
     bool verifyTLS = true;
     bool head = false;
-    size_t tries = fileTransferSettings.tries;
 
     FileTransferRequest(std::string_view uri)
         : uri(uri) { }

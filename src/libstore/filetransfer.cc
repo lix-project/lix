@@ -56,6 +56,7 @@ struct curlFileTransfer : public FileTransfer
         std::string statusMsg;
 
         unsigned int attempt = 0;
+        const size_t tries = fileTransferSettings.tries;
 
         /* Don't start this download until the specified time point
            has been reached. */
@@ -438,7 +439,7 @@ struct curlFileTransfer : public FileTransfer
                    sink, we can only retry if the server supports
                    ranged requests. */
                 if (err == Transient
-                    && attempt < request.tries
+                    && attempt < tries
                     && (!this->dataCallback
                         || writtenToSink == 0
                         || (acceptRanges && encoding.empty())))
