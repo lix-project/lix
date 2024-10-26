@@ -63,7 +63,6 @@ struct FileTransferRequest
     unsigned int baseRetryTimeMs = 250;
     ActivityId parentAct;
     std::optional<std::string> data;
-    std::string mimeType;
 
     FileTransferRequest(std::string_view uri)
         : uri(uri), parentAct(getCurActivity()) { }

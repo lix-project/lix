@@ -134,7 +134,7 @@ protected:
     {
         FileTransferRequest req{makeURI(path)};
         req.data = StreamToSourceAdapter(istream).drain();
-        req.mimeType = mimeType;
+        req.headers = {{"Content-Type", mimeType}};
         try {
             getFileTransfer()->transfer(req);
         } catch (FileTransferError & e) {
