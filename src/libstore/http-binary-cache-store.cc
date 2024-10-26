@@ -114,7 +114,7 @@ protected:
         checkEnabled();
 
         try {
-            FileTransferRequest request(makeRequest(path));
+            FileTransferRequest request{makeURI(path)};
             request.head = true;
             getFileTransfer()->transfer(request);
             return true;
@@ -132,7 +132,7 @@ protected:
         std::shared_ptr<std::basic_iostream<char>> istream,
         const std::string & mimeType) override
     {
-        auto req = makeRequest(path);
+        FileTransferRequest req{makeURI(path)};
         req.data = StreamToSourceAdapter(istream).drain();
         req.mimeType = mimeType;
         try {
@@ -142,19 +142,18 @@ protected:
         }
     }
 
-    FileTransferRequest makeRequest(const std::string & path)
+    std::string makeURI(const std::string & path)
     {
-        return FileTransferRequest(
-            path.starts_with("https://") || path.starts_with("http://") || path.starts_with("file://")
+        return path.starts_with("https://") || path.starts_with("http://")
+                || path.starts_with("file://")
             ? path
-            : cacheUri + "/" + path);
-
+            : cacheUri + "/" + path;
     }
 
     box_ptr<Source> getFile(const std::string & path) override
     {
         checkEnabled();
-        auto request(makeRequest(path));
+        FileTransferRequest request{makeURI(path)};
         try {
             return getFileTransfer()->download(std::move(request));
         } catch (FileTransferError & e) {
@@ -169,7 +168,7 @@ protected:
     {
         checkEnabled();
 
-        auto request(makeRequest(path));
+        FileTransferRequest request{makeURI(path)};
 
         try {
             return std::move(getFileTransfer()->enqueueFileTransfer(request).get().data);
