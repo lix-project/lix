@@ -79,6 +79,11 @@ struct curlFileTransfer : public FileTransfer
             return httpStatus;
         }
 
+        std::string verb() const
+        {
+            return request.data ? "upload" : "download";
+        }
+
         TransferItem(curlFileTransfer & fileTransfer,
             const FileTransferRequest & request,
             std::invocable<std::exception_ptr> auto callback,
@@ -332,7 +337,7 @@ struct curlFileTransfer : public FileTransfer
                 result.effectiveUri = effectiveUriCStr;
 
             debug("finished %s of '%s'; curl status = %d, HTTP status = %d, body = %d bytes",
-                request.verb(), request.uri, code, httpStatus, result.bodySize);
+                verb(), request.uri, code, httpStatus, result.bodySize);
 
             // this has to happen here until we can return an actual future.
             // wrapping user `callback`s instead is not possible because the
@@ -410,17 +415,17 @@ struct curlFileTransfer : public FileTransfer
                     response = std::move(result.data);
                 auto exc =
                     code == CURLE_ABORTED_BY_CALLBACK && _isInterrupted
-                    ? FileTransferError(Interrupted, std::move(response), "%s of '%s' was interrupted", request.verb(), request.uri)
+                    ? FileTransferError(Interrupted, std::move(response), "%s of '%s' was interrupted", verb(), request.uri)
                     : httpStatus != 0
                     ? FileTransferError(err,
                         std::move(response),
                         "unable to %s '%s': HTTP error %d (%s)%s",
-                        request.verb(), request.uri, httpStatus, statusMsg,
+                        verb(), request.uri, httpStatus, statusMsg,
                         code == CURLE_OK ? "" : fmt(" (curl error: %s)", curl_easy_strerror(code)))
                     : FileTransferError(err,
                         std::move(response),
                         "unable to %s '%s': %s (%d)",
-                        request.verb(), request.uri, curl_easy_strerror(code), code);
+                        verb(), request.uri, curl_easy_strerror(code), code);
 
                 /* If this is a transient error, then maybe retry the
                    download after a while. If we're writing to a
@@ -586,7 +591,7 @@ struct curlFileTransfer : public FileTransfer
             }
 
             for (auto & item : incoming) {
-                debug("starting %s of %s", item->request.verb(), item->request.uri);
+                debug("starting %s of %s", item->verb(), item->request.uri);
                 item->init();
                 curl_multi_add_handle(curlm, item->req);
                 item->active = true;
