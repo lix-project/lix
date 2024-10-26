@@ -39,6 +39,7 @@ struct curlFileTransfer : public FileTransfer
 
     std::random_device rd;
     std::mt19937 mt19937;
+    const unsigned int baseRetryTimeMs;
 
     struct TransferItem : public std::enable_shared_from_this<TransferItem>
     {
@@ -442,7 +443,7 @@ struct curlFileTransfer : public FileTransfer
                         || writtenToSink == 0
                         || (acceptRanges && encoding.empty())))
                 {
-                    int ms = request.baseRetryTimeMs * std::pow(2.0f, attempt - 1 + std::uniform_real_distribution<>(0.0, 0.5)(fileTransfer.mt19937));
+                    int ms = fileTransfer.baseRetryTimeMs * std::pow(2.0f, attempt - 1 + std::uniform_real_distribution<>(0.0, 0.5)(fileTransfer.mt19937));
                     if (writtenToSink)
                         warn("%s; retrying from offset %d in %d ms", exc.what(), writtenToSink, ms);
                     else
@@ -471,8 +472,9 @@ struct curlFileTransfer : public FileTransfer
 
     std::thread workerThread;
 
-    curlFileTransfer()
+    curlFileTransfer(unsigned int baseRetryTimeMs)
         : mt19937(rd())
+        , baseRetryTimeMs(baseRetryTimeMs)
     {
         static std::once_flag globalInit;
         std::call_once(globalInit, curl_global_init, CURL_GLOBAL_ALL);
@@ -874,24 +876,24 @@ struct curlFileTransfer : public FileTransfer
     }
 };
 
-ref<curlFileTransfer> makeCurlFileTransfer()
+ref<curlFileTransfer> makeCurlFileTransfer(std::optional<unsigned int> baseRetryTimeMs)
 {
-    return make_ref<curlFileTransfer>();
+    return make_ref<curlFileTransfer>(baseRetryTimeMs.value_or(250));
 }
 
 ref<FileTransfer> getFileTransfer()
 {
-    static ref<curlFileTransfer> fileTransfer = makeCurlFileTransfer();
+    static ref<curlFileTransfer> fileTransfer = makeCurlFileTransfer({});
 
     if (fileTransfer->state_.lock()->quit)
-        fileTransfer = makeCurlFileTransfer();
+        fileTransfer = makeCurlFileTransfer({});
 
     return fileTransfer;
 }
 
-ref<FileTransfer> makeFileTransfer()
+ref<FileTransfer> makeFileTransfer(std::optional<unsigned int> baseRetryTimeMs)
 {
-    return makeCurlFileTransfer();
+    return makeCurlFileTransfer(baseRetryTimeMs);
 }
 
 template<typename... Args>

@@ -178,9 +178,8 @@ TEST(FileTransfer, NOT_ON_DARWIN(defersFailures))
         // might only do so once its internal buffer has already been filled.)
         return std::string(1024 * 1024, ' ');
     });
-    auto ft = makeFileTransfer();
+    auto ft = makeFileTransfer(0);
     FileTransferRequest req(fmt("http://[::1]:%d/index", port));
-    req.baseRetryTimeMs = 0;
     auto src = ft->download(std::move(req));
     ASSERT_THROW(src->drain(), FileTransferError);
 }
@@ -216,9 +215,8 @@ TEST(FileTransfer, usesIntermediateLinkHeaders)
          [] { return ""; }},
         {"200 ok", "content-length: 1\r\n", [] { return "a"; }},
     });
-    auto ft = makeFileTransfer();
+    auto ft = makeFileTransfer(0);
     FileTransferRequest req(fmt("http://[::1]:%d/first", port));
-    req.baseRetryTimeMs = 0;
     auto result = ft->enqueueDownload(req).get();
     ASSERT_EQ(result.immutableUrl, "http://foo");
 }

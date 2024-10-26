@@ -60,7 +60,6 @@ struct FileTransferRequest
     bool verifyTLS = true;
     bool head = false;
     size_t tries = fileTransferSettings.tries;
-    unsigned int baseRetryTimeMs = 250;
 
     FileTransferRequest(std::string_view uri)
         : uri(uri) { }
@@ -123,7 +122,7 @@ ref<FileTransfer> getFileTransfer();
  *
  * Prefer getFileTransfer() to this; see its docs for why.
  */
-ref<FileTransfer> makeFileTransfer();
+ref<FileTransfer> makeFileTransfer(std::optional<unsigned int> baseRetryTimeMs = {});
 
 class FileTransferError : public Error
 {
