@@ -114,15 +114,8 @@ protected:
         checkEnabled();
 
         try {
-            FileTransferRequest request{makeURI(path)};
-            request.head = true;
-            getFileTransfer()->enqueueDownload(request).get();
-            return true;
+            return getFileTransfer()->exists(makeURI(path));
         } catch (FileTransferError & e) {
-            /* S3 buckets return 403 if a file doesn't exist and the
-               bucket is unlistable, so treat 403 as 404. */
-            if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
-                return false;
             maybeDisable();
             throw;
         }

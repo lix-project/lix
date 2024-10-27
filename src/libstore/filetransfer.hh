@@ -58,7 +58,6 @@ struct FileTransferRequest
     Headers headers;
     std::string expectedETag;
     bool verifyTLS = true;
-    bool head = false;
 
     FileTransferRequest(std::string_view uri)
         : uri(uri) { }
@@ -95,6 +94,18 @@ struct FileTransfer
      */
     virtual std::future<FileTransferResult>
     enqueueUpload(const FileTransferRequest & request, std::string data) = 0;
+
+    /**
+     * Checks whether the given URI exists. For historical reasons this function
+     * treats HTTP 403 responses like HTTP 404 responses and returns `false` for
+     * both. This was originally done to handle unlistable S3 buckets, which may
+     * return 403 (not 404) if the reuqested object doesn't exist in the bucket.
+     *
+     * ## Bugs
+     *
+     * S3 objects are downloaded completely to answer this request.
+     */
+    virtual bool exists(std::string_view uri) = 0;
 
     /**
      * Download a file, returning its contents through a source. Will not return

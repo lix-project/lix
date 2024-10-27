@@ -48,6 +48,7 @@ struct curlFileTransfer : public FileTransfer
         FileTransferResult result;
         Activity act;
         std::optional<std::string> uploadData;
+        bool noBody = false; // \equiv HTTP HEAD, don't download data
         bool done = false; // whether either the success or failure function has been called
         std::packaged_task<FileTransferResult(std::exception_ptr, FileTransferResult)> callback;
         std::function<void(TransferItem &, std::string_view data)> dataCallback;
@@ -92,7 +93,8 @@ struct curlFileTransfer : public FileTransfer
             ActivityId parentAct,
             std::invocable<std::exception_ptr> auto callback,
             std::function<void(TransferItem &, std::string_view data)> dataCallback,
-            std::optional<std::string> uploadData
+            std::optional<std::string> uploadData,
+            bool noBody
         )
             : fileTransfer(fileTransfer)
             , request(request)
@@ -100,6 +102,7 @@ struct curlFileTransfer : public FileTransfer
                 fmt(uploadData ? "uploading '%s'" : "downloading '%s'", request.uri),
                 {request.uri}, parentAct)
             , uploadData(std::move(uploadData))
+            , noBody(noBody)
             , callback([cb{std::move(callback)}] (std::exception_ptr ex, FileTransferResult r) {
                 cb(ex);
                 return r;
@@ -299,7 +302,7 @@ struct curlFileTransfer : public FileTransfer
             if (settings.downloadSpeed.get() > 0)
                 curl_easy_setopt(req, CURLOPT_MAX_RECV_SPEED_LARGE, (curl_off_t) (settings.downloadSpeed.get() * 1024));
 
-            if (request.head)
+            if (noBody)
                 curl_easy_setopt(req, CURLOPT_NOBODY, 1);
 
             if (uploadData) {
@@ -661,17 +664,18 @@ struct curlFileTransfer : public FileTransfer
 
     std::future<FileTransferResult> enqueueDownload(const FileTransferRequest & request) override
     {
-        return enqueueFileTransfer(request, std::nullopt);
+        return enqueueFileTransfer(request, std::nullopt, false);
     }
 
     std::future<FileTransferResult>
     enqueueUpload(const FileTransferRequest & request, std::string data) override
     {
-        return enqueueFileTransfer(request, std::move(data));
+        return enqueueFileTransfer(request, std::move(data), false);
     }
 
-    std::future<FileTransferResult>
-    enqueueFileTransfer(const FileTransferRequest & request, std::optional<std::string> data)
+    std::future<FileTransferResult> enqueueFileTransfer(
+        const FileTransferRequest & request, std::optional<std::string> data, bool noBody
+    )
     {
         return enqueueFileTransfer(
             request,
@@ -681,14 +685,16 @@ struct curlFileTransfer : public FileTransfer
                 }
             },
             {},
-            std::move(data)
+            std::move(data),
+            noBody
         );
     }
 
     std::future<FileTransferResult> enqueueFileTransfer(const FileTransferRequest & request,
         std::invocable<std::exception_ptr> auto callback,
         std::function<void(TransferItem &, std::string_view data)> dataCallback,
-        std::optional<std::string> data
+        std::optional<std::string> data,
+        bool noBody
     )
     {
         /* Ugly hack to support s3:// URIs. */
@@ -724,9 +730,24 @@ struct curlFileTransfer : public FileTransfer
                                getCurActivity(),
                                std::move(callback),
                                std::move(dataCallback),
-                               std::move(data)
+                               std::move(data),
+                               noBody
                            ))
             ->callback.get_future();
+    }
+
+    bool exists(std::string_view uri) override
+    {
+        try {
+            enqueueFileTransfer(FileTransferRequest{uri}, std::nullopt, true).get();
+            return true;
+        } catch (FileTransferError & e) {
+            /* S3 buckets return 403 if a file doesn't exist and the
+                bucket is unlistable, so treat 403 as 404. */
+            if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
+                return false;
+            throw;
+        }
     }
 
     box_ptr<Source> download(FileTransferRequest && request) override
@@ -776,7 +797,8 @@ struct curlFileTransfer : public FileTransfer
                 state->data.append(data);
                 state->avail.notify_one();
             },
-            std::nullopt
+            std::nullopt,
+            false
         );
 
         struct InnerSource : Source
