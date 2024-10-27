@@ -58,6 +58,7 @@ struct curlFileTransfer : public FileTransfer
 
         unsigned int attempt = 0;
         const size_t tries = fileTransferSettings.tries;
+        uint64_t bodySize = 0;
 
         /* Don't start this download until the specified time point
            has been reached. */
@@ -153,7 +154,7 @@ struct curlFileTransfer : public FileTransfer
             const size_t realSize = size * nmemb;
 
             try {
-                result.bodySize += realSize;
+                bodySize += realSize;
 
                 if (successfulStatuses.count(getHTTPStatus()) && this->dataCallback) {
                     writtenToSink += realSize;
@@ -184,7 +185,7 @@ struct curlFileTransfer : public FileTransfer
             if (std::smatch match; std::regex_match(line, match, statusLine)) {
                 result.etag = "";
                 result.data.clear();
-                result.bodySize = 0;
+                bodySize = 0;
                 statusMsg = trim(match.str(1));
                 acceptRanges = false;
                 encoding = "";
@@ -329,7 +330,7 @@ struct curlFileTransfer : public FileTransfer
                 curl_easy_setopt(req, CURLOPT_RESUME_FROM_LARGE, writtenToSink);
 
             result.data.clear();
-            result.bodySize = 0;
+            bodySize = 0;
         }
 
         void finish(CURLcode code)
@@ -342,7 +343,7 @@ struct curlFileTransfer : public FileTransfer
                 result.effectiveUri = effectiveUriCStr;
 
             debug("finished %s of '%s'; curl status = %d, HTTP status = %d, body = %d bytes",
-                verb(), request.uri, code, httpStatus, result.bodySize);
+                verb(), request.uri, code, httpStatus, bodySize);
 
             // this has to happen here until we can return an actual future.
             // wrapping user `callback`s instead is not possible because the
@@ -358,7 +359,7 @@ struct curlFileTransfer : public FileTransfer
             else if (code == CURLE_OK && successfulStatuses.count(httpStatus))
             {
                 result.cached = httpStatus == 304;
-                act.progress(result.bodySize, result.bodySize);
+                act.progress(bodySize, bodySize);
                 done = true;
                 callback(nullptr, std::move(result));
             }
