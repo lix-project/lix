@@ -56,7 +56,6 @@ struct curlFileTransfer : public FileTransfer
             callback;
         std::function<void(TransferItem &, std::string_view data)> dataCallback;
         CURL * req; // must never be nullptr
-        bool active = false; // whether the handle has been added to the multi object
         std::string statusMsg;
 
         unsigned int attempt = 0;
@@ -126,8 +125,7 @@ struct curlFileTransfer : public FileTransfer
 
         ~TransferItem()
         {
-            if (active)
-                curl_multi_remove_handle(fileTransfer.curlm, req);
+            curl_multi_remove_handle(fileTransfer.curlm, req);
             curl_easy_cleanup(req);
             if (requestHeaders) curl_slist_free_all(requestHeaders);
             try {
@@ -557,7 +555,6 @@ struct curlFileTransfer : public FileTransfer
                     assert(i != items.end());
                     i->second->finish(msg->data.result);
                     curl_multi_remove_handle(curlm, i->second->req);
-                    i->second->active = false;
                     items.erase(i);
                 }
             }
@@ -603,7 +600,6 @@ struct curlFileTransfer : public FileTransfer
                 debug("starting %s of %s", item->verb(), item->uri);
                 item->init();
                 curl_multi_add_handle(curlm, item->req);
-                item->active = true;
                 items[item->req] = item;
             }
         }
