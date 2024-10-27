@@ -3,5 +3,5 @@
 source common.sh
 
 CONTENT_ADDRESSED=true
-cd ..
-source ./nix-shell.sh
+cd ../nix-shell
+source ./basic.sh
