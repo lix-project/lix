@@ -153,6 +153,7 @@ nix_symlinks = [
   'nix-prefetch-url',
   'nix-shell',
   'nix-store',
+  'lix',
 ]
 
 foreach linkname : nix_symlinks

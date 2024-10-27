@@ -114,9 +114,9 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
     AsyncIoRoot & aio_;
     AsyncIoRoot & aio() override { return aio_; }
 
-    NixArgs(AsyncIoRoot & aio)
-        : MultiCommand(RegisterCommand::getCommandsFor({}))
-        , MixCommonArgs("nix")
+    NixArgs(const std::string & programName, AsyncIoRoot & aio)
+        : MultiCommand(RegisterCommand::getCommandsFor({}), true)
+        , MixCommonArgs(programName)
         , aio_(aio)
     {
         categories.clear();
@@ -406,7 +406,10 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
         verbosity = lvlInfo;
     }
 
-    NixArgs args(aio);
+    // NOTE: out of over-cautiousness for backward compatibility,
+    // the program name had always been `nix` for a long time.
+    // Only when we invoke it as `lix`, we should propagate `lix`.
+    NixArgs args(programName == "lix" ? programName : "nix", aio);
 
     if (argc == 2 && std::string(argv[1]) == "__dump-cli") {
         logger->cout(args.dumpCli());
