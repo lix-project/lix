@@ -167,8 +167,19 @@ struct curlFileTransfer : public FileTransfer
 
             char * effectiveUriCStr = nullptr;
             curl_easy_getinfo(req, CURLINFO_EFFECTIVE_URL, &effectiveUriCStr);
-            if (effectiveUriCStr)
+            if (effectiveUriCStr) {
+                if (!result.effectiveUri.empty() && result.effectiveUri != effectiveUriCStr) {
+                    throw FileTransferError(
+                        Misc,
+                        {},
+                        "uri %s changed final destination from %s to %s during transfer",
+                        uri,
+                        result.effectiveUri,
+                        effectiveUriCStr
+                    );
+                }
                 result.effectiveUri = effectiveUriCStr;
+            }
 
             result.cached = getHTTPStatus() == 304;
 
@@ -306,6 +317,10 @@ struct curlFileTransfer : public FileTransfer
                 curl_easy_setopt(req, CURLOPT_VERBOSE, 1);
                 curl_easy_setopt(req, CURLOPT_DEBUGFUNCTION, TransferItem::debugCallback);
             }
+
+            // use the effective URI of the previous transfer for retries. this avoids
+            // some silent corruption if a redirect changes between starting and retry.
+            const auto & uri = result.effectiveUri.empty() ? this->uri : result.effectiveUri;
 
             curl_easy_setopt(req, CURLOPT_URL, uri.c_str());
             curl_easy_setopt(req, CURLOPT_FOLLOWLOCATION, 1L);
