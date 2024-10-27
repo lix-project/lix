@@ -55,7 +55,7 @@ struct curlFileTransfer : public FileTransfer
             std::pair<FileTransferResult, std::string>(std::exception_ptr, FileTransferResult)>
             callback;
         std::function<void(TransferItem &, std::string_view data)> dataCallback;
-        CURL * req = 0;
+        CURL * req; // must never be nullptr
         bool active = false; // whether the handle has been added to the multi object
         std::string statusMsg;
 
@@ -113,7 +113,11 @@ struct curlFileTransfer : public FileTransfer
                 return std::pair{std::move(r), std::move(downloadData)};
             })
             , dataCallback(std::move(dataCallback))
+            , req(curl_easy_init())
         {
+            if (req == nullptr) {
+                throw FileTransferError(Misc, {}, "could not allocate curl handle");
+            }
             requestHeaders = curl_slist_append(requestHeaders, "Accept-Encoding: zstd, br, gzip, deflate, bzip2, xz");
             for (auto it = headers.begin(); it != headers.end(); ++it){
                 requestHeaders = curl_slist_append(requestHeaders, fmt("%s: %s", it->first, it->second).c_str());
@@ -122,11 +126,9 @@ struct curlFileTransfer : public FileTransfer
 
         ~TransferItem()
         {
-            if (req) {
-                if (active)
-                    curl_multi_remove_handle(fileTransfer.curlm, req);
-                curl_easy_cleanup(req);
-            }
+            if (active)
+                curl_multi_remove_handle(fileTransfer.curlm, req);
+            curl_easy_cleanup(req);
             if (requestHeaders) curl_slist_free_all(requestHeaders);
             try {
                 if (!done)
@@ -268,8 +270,6 @@ struct curlFileTransfer : public FileTransfer
 
         void init()
         {
-            if (!req) req = curl_easy_init();
-
             curl_easy_reset(req);
 
             if (verbosity >= lvlVomit) {
