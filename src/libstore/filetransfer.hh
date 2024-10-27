@@ -56,7 +56,6 @@ struct FileTransferRequest
 {
     std::string uri;
     Headers headers;
-    std::string expectedETag;
 
     FileTransferRequest(std::string_view uri)
         : uri(uri) { }

@@ -43,7 +43,7 @@ DownloadFileResult downloadFile(
     FileTransferRequest request(url);
     request.headers = headers;
     if (cached)
-        request.expectedETag = getStrAttr(cached->infoAttrs, "etag");
+        request.headers.emplace_back("If-None-Match", getStrAttr(cached->infoAttrs, "etag"));
     FileTransferResult res;
     try {
         res = getFileTransfer()->enqueueDownload(request).get();

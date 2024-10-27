@@ -111,8 +111,6 @@ struct curlFileTransfer : public FileTransfer
             , dataCallback(std::move(dataCallback))
         {
             requestHeaders = curl_slist_append(requestHeaders, "Accept-Encoding: zstd, br, gzip, deflate, bzip2, xz");
-            if (!request.expectedETag.empty())
-                requestHeaders = curl_slist_append(requestHeaders, ("If-None-Match: " + request.expectedETag).c_str());
             for (auto it = request.headers.begin(); it != request.headers.end(); ++it){
                 requestHeaders = curl_slist_append(requestHeaders, fmt("%s: %s", it->first, it->second).c_str());
             }
