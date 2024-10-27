@@ -215,7 +215,7 @@ TEST(FileTransfer, usesIntermediateLinkHeaders)
         {"200 ok", "content-length: 1\r\n", [] { return "a"; }},
     });
     auto ft = makeFileTransfer(0);
-    auto result = ft->enqueueDownload(fmt("http://[::1]:%d/first", port)).get();
+    auto [result, _data] = ft->enqueueDownload(fmt("http://[::1]:%d/first", port)).get();
     ASSERT_EQ(result.immutableUrl, "http://foo");
 }
 

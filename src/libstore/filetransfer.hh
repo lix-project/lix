@@ -57,7 +57,6 @@ struct FileTransferResult
     bool cached = false;
     std::string etag;
     std::string effectiveUri;
-    std::string data;
     /* An "immutable" URL for this resource (i.e. one whose contents
        will never change), as returned by the `Link: <url>;
        rel="immutable"` header. */
@@ -74,7 +73,7 @@ struct FileTransfer
      * Enqueues a download request, returning a future for the result of
      * the download. The future may throw a FileTransferError exception.
      */
-    virtual std::future<FileTransferResult>
+    virtual std::future<std::pair<FileTransferResult, std::string>>
     enqueueDownload(const std::string & uri, const Headers & headers = {}) = 0;
 
     /**

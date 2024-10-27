@@ -161,7 +161,7 @@ protected:
         checkEnabled();
 
         try {
-            return std::move(getFileTransfer()->enqueueDownload(makeURI(path)).get().data);
+            return std::move(getFileTransfer()->enqueueDownload(makeURI(path)).get().second);
         } catch (FileTransferError & e) {
             if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
                 return {};

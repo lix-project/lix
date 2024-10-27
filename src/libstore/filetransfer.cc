@@ -48,9 +48,12 @@ struct curlFileTransfer : public FileTransfer
         FileTransferResult result;
         Activity act;
         std::optional<std::string> uploadData;
+        std::string downloadData;
         bool noBody = false; // \equiv HTTP HEAD, don't download data
         bool done = false; // whether either the success or failure function has been called
-        std::packaged_task<FileTransferResult(std::exception_ptr, FileTransferResult)> callback;
+        std::packaged_task<
+            std::pair<FileTransferResult, std::string>(std::exception_ptr, FileTransferResult)>
+            callback;
         std::function<void(TransferItem &, std::string_view data)> dataCallback;
         CURL * req = 0;
         bool active = false; // whether the handle has been added to the multi object
@@ -105,9 +108,9 @@ struct curlFileTransfer : public FileTransfer
                 {uri}, parentAct)
             , uploadData(std::move(uploadData))
             , noBody(noBody)
-            , callback([cb{std::move(callback)}] (std::exception_ptr ex, FileTransferResult r) {
+            , callback([this, cb{std::move(callback)}] (std::exception_ptr ex, FileTransferResult r) {
                 cb(ex);
-                return r;
+                return std::pair{std::move(r), std::move(downloadData)};
             })
             , dataCallback(std::move(dataCallback))
         {
@@ -159,7 +162,7 @@ struct curlFileTransfer : public FileTransfer
                     writtenToSink += realSize;
                     dataCallback(*this, {static_cast<const char *>(contents), realSize});
                 } else {
-                    this->result.data.append(static_cast<const char *>(contents), realSize);
+                    this->downloadData.append(static_cast<const char *>(contents), realSize);
                 }
 
                 return realSize;
@@ -183,7 +186,7 @@ struct curlFileTransfer : public FileTransfer
             static std::regex statusLine("HTTP/[^ ]+ +[0-9]+(.*)", std::regex::extended | std::regex::icase);
             if (std::smatch match; std::regex_match(line, match, statusLine)) {
                 result.etag = "";
-                result.data.clear();
+                downloadData.clear();
                 bodySize = 0;
                 statusMsg = trim(match.str(1));
                 acceptRanges = false;
@@ -328,7 +331,7 @@ struct curlFileTransfer : public FileTransfer
             if (writtenToSink)
                 curl_easy_setopt(req, CURLOPT_RESUME_FROM_LARGE, writtenToSink);
 
-            result.data.clear();
+            downloadData.clear();
             bodySize = 0;
         }
 
@@ -348,8 +351,8 @@ struct curlFileTransfer : public FileTransfer
             // wrapping user `callback`s instead is not possible because the
             // Callback api expects std::functions, and copying Callbacks is
             // not possible due the promises they hold.
-            if (code == CURLE_OK && !dataCallback && result.data.length() > 0) {
-                result.data = decompress(encoding, result.data);
+            if (code == CURLE_OK && !dataCallback && downloadData.length() > 0) {
+                downloadData = decompress(encoding, downloadData);
             }
 
             if (writeException)
@@ -417,7 +420,7 @@ struct curlFileTransfer : public FileTransfer
 
                 std::optional<std::string> response;
                 if (!successfulStatuses.count(httpStatus))
-                    response = std::move(result.data);
+                    response = std::move(downloadData);
                 auto exc =
                     code == CURLE_ABORTED_BY_CALLBACK && _isInterrupted
                     ? FileTransferError(Interrupted, std::move(response), "%s of '%s' was interrupted", verb(), uri)
@@ -657,7 +660,7 @@ struct curlFileTransfer : public FileTransfer
     }
 #endif
 
-    std::future<FileTransferResult>
+    std::future<std::pair<FileTransferResult, std::string>>
     enqueueDownload(const std::string & uri, const Headers & headers = {}) override
     {
         return enqueueFileTransfer(uri, headers, std::nullopt, false);
@@ -668,7 +671,7 @@ struct curlFileTransfer : public FileTransfer
         enqueueFileTransfer(uri, headers, std::move(data), false).get();
     }
 
-    std::future<FileTransferResult> enqueueFileTransfer(
+    std::future<std::pair<FileTransferResult, std::string>> enqueueFileTransfer(
         const std::string & uri,
         const Headers & headers,
         std::optional<std::string> data,
@@ -689,7 +692,7 @@ struct curlFileTransfer : public FileTransfer
         );
     }
 
-    std::future<FileTransferResult> enqueueFileTransfer(
+    std::future<std::pair<FileTransferResult, std::string>> enqueueFileTransfer(
         const std::string & uri,
         const Headers & headers,
         std::invocable<std::exception_ptr> auto callback,
@@ -701,28 +704,32 @@ struct curlFileTransfer : public FileTransfer
         /* Ugly hack to support s3:// URIs. */
         if (uri.starts_with("s3://")) {
             // FIXME: do this on a worker thread
-            return std::async(std::launch::deferred, [uri]() -> FileTransferResult {
+            return std::async(
+                std::launch::deferred,
+                [uri]() -> std::pair<FileTransferResult, std::string> {
 #if ENABLE_S3
-                auto [bucketName, key, params] = parseS3Uri(uri);
+                    auto [bucketName, key, params] = parseS3Uri(uri);
 
-                std::string profile = getOr(params, "profile", "");
-                std::string region = getOr(params, "region", Aws::Region::US_EAST_1);
-                std::string scheme = getOr(params, "scheme", "");
-                std::string endpoint = getOr(params, "endpoint", "");
+                    std::string profile = getOr(params, "profile", "");
+                    std::string region = getOr(params, "region", Aws::Region::US_EAST_1);
+                    std::string scheme = getOr(params, "scheme", "");
+                    std::string endpoint = getOr(params, "endpoint", "");
 
-                S3Helper s3Helper(profile, region, scheme, endpoint);
+                    S3Helper s3Helper(profile, region, scheme, endpoint);
 
-                // FIXME: implement ETag
-                auto s3Res = s3Helper.getObject(bucketName, key);
-                FileTransferResult res;
-                if (!s3Res.data)
-                    throw FileTransferError(NotFound, "S3 object '%s' does not exist", uri);
-                res.data = std::move(*s3Res.data);
-                return res;
+                    // FIXME: implement ETag
+                    auto s3Res = s3Helper.getObject(bucketName, key);
+                    FileTransferResult res;
+                    if (!s3Res.data)
+                        throw FileTransferError(NotFound, "S3 object '%s' does not exist", uri);
+                    return {res, std::move(*s3Res.data)};
 #else
-                throw nix::Error("cannot download '%s' because Lix is not built with S3 support", uri);
+                    throw nix::Error(
+                        "cannot download '%s' because Lix is not built with S3 support", uri
+                    );
 #endif
-            });
+                }
+            );
         }
 
         return enqueueItem(std::make_shared<TransferItem>(

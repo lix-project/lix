@@ -43,8 +43,9 @@ DownloadFileResult downloadFile(
     if (cached)
         headers.emplace_back("If-None-Match", getStrAttr(cached->infoAttrs, "etag"));
     FileTransferResult res;
+    std::string data;
     try {
-        res = getFileTransfer()->enqueueDownload(url, headers).get();
+        std::tie(res, data) = getFileTransfer()->enqueueDownload(url, headers).get();
     } catch (FileTransferError & e) {
         if (cached) {
             warn("%s; using cached version", e.msg());
@@ -69,8 +70,8 @@ DownloadFileResult downloadFile(
         storePath = std::move(cached->storePath);
     } else {
         StringSink sink;
-        sink << dumpString(res.data);
-        auto hash = hashString(HashType::SHA256, res.data);
+        sink << dumpString(data);
+        auto hash = hashString(HashType::SHA256, data);
         ValidPathInfo info {
             *store,
             name,
