@@ -270,7 +270,13 @@ static Generator<Entry> parseObject(Source & source, const Path & path)
                 co_yield MetadataString{name};
                 if (name.empty() || name == "." || name == ".."
                     || name.find('/') != std::string::npos
-                    || name.find((char) 0) != std::string::npos)
+                    || name.find((char) 0) != std::string::npos
+                    // The case hack is a thing that only exists on the
+                    // filesystem.
+                    // Unpacking one appearing in a NAR is super
+                    // sketchy because it will at minimum cause corruption at
+                    // the time of repacking the NAR.
+                    || name.find(caseHackSuffix) != std::string::npos)
                 {
                     throw Error("NAR contains invalid file name '%1%'", name);
                 }

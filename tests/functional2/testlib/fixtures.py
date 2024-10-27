@@ -3,6 +3,7 @@ import json
 import subprocess
 from typing import Any
 from pathlib import Path
+from functools import partial, partialmethod
 import dataclasses
 
 
@@ -24,6 +25,14 @@ class CommandResult:
                                                 output=self.stdout)
         return self
 
+    def expect(self, rc: int):
+        if self.rc != rc:
+            raise subprocess.CalledProcessError(returncode=self.rc,
+                                                cmd=self.cmd,
+                                                stderr=self.stderr,
+                                                output=self.stdout)
+        return self
+
     def json(self) -> Any:
         self.ok()
         return json.loads(self.stdout)
@@ -33,6 +42,20 @@ class CommandResult:
 class NixSettings:
     """Settings for invoking Nix"""
     experimental_features: set[str] | None = None
+    store: str | None = None
+    """
+    The store to operate on (may be a path or other thing, see nix help-stores).
+
+    Note that this can be set to the test's store directory if you want to use
+    /nix/store paths inside that test rather than NIX_STORE_DIR renaming
+    /nix/store to some unstable name (assuming that no builds are invoked).
+    """
+    nix_store_dir: Path | None = None
+    """
+    Alternative name to use for /nix/store: breaks all references and NAR imports if
+    set, but does allow builds in tests (since builds do not require chroots if
+    the store is relocated).
+    """
 
     def feature(self, *names: str):
         self.experimental_features = (self.experimental_features
@@ -57,7 +80,59 @@ class NixSettings:
                 config += f'{name} = {serialiser(value)}\n'
 
         field_may('experimental-features', self.experimental_features)
+        field_may('store', self.store)
+        assert self.store or self.nix_store_dir, 'Failing to set either nix_store_dir or store will cause accidental use of the system store.'
         return config
+
+    def to_env_overlay(self) -> dict[str, str]:
+        ret = {'NIX_CONFIG': self.to_config()}
+        if self.nix_store_dir:
+            ret['NIX_STORE_DIR'] = str(self.nix_store_dir)
+        return ret
+
+
+@dataclasses.dataclass
+class Command:
+    argv: list[str]
+    env: dict[str, str] = dataclasses.field(default_factory=dict)
+    stdin: bytes | None = None
+    cwd: Path | None = None
+
+    def with_env(self, **kwargs) -> 'Command':
+        self.env.update(kwargs)
+        return self
+
+    def with_stdin(self, stdin: bytes) -> 'Command':
+        self.stdin = stdin
+        return self
+
+    def run(self) -> CommandResult:
+        proc = subprocess.Popen(
+            self.argv,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE if self.stdin else subprocess.DEVNULL,
+            cwd=self.cwd,
+            env=self.env,
+        )
+        (stdout, stderr) = proc.communicate(input=self.stdin)
+        rc = proc.returncode
+        return CommandResult(cmd=self.argv,
+                             rc=rc,
+                             stdout=stdout,
+                             stderr=stderr)
+
+
+@dataclasses.dataclass
+class NixCommand(Command):
+    settings: NixSettings = dataclasses.field(default_factory=NixSettings)
+
+    def apply_nix_config(self):
+        self.env.update(self.settings.to_env_overlay())
+
+    def run(self) -> CommandResult:
+        self.apply_nix_config()
+        return super().run()
 
 
 @dataclasses.dataclass
@@ -69,7 +144,6 @@ class Nix:
         home = self.test_root / 'test-home'
         home.mkdir(parents=True, exist_ok=True)
         return {
-            'NIX_STORE_DIR': self.test_root / 'store',
             'NIX_LOCALSTATE_DIR': self.test_root / 'var',
             'NIX_LOG_DIR': self.test_root / 'var/log/nix',
             'NIX_STATE_DIR': self.test_root / 'var/nix',
@@ -87,35 +161,48 @@ class Nix:
         d.update(self.hermetic_env())
         return d
 
-    def call(self, cmd: list[str], extra_env: dict[str, str] = {}):
-        """
-        Calls a process in the test environment.
-        """
-        env = self.make_env()
-        env.update(extra_env)
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=self.test_root,
-            env=env,
-        )
-        (stdout, stderr) = proc.communicate()
-        rc = proc.returncode
-        return CommandResult(cmd=cmd, rc=rc, stdout=stdout, stderr=stderr)
+    def cmd(self, argv: list[str]):
+        return Command(argv=argv, cwd=self.test_root, env=self.make_env())
 
-    def nix(self,
-            cmd: list[str],
-            settings: NixSettings = NixSettings(),
-            extra_env: dict[str, str] = {}):
-        extra_env = extra_env.copy()
-        extra_env.update({'NIX_CONFIG': settings.to_config()})
-        return self.call(['nix', *cmd], extra_env)
+    def settings(self, allow_builds: bool = False):
+        """
+        Parameters:
+        - allow_builds: relocate the Nix store so that builds work (however, makes store paths non-reproducible across test runs!)
+        """
+        settings = NixSettings()
+        store_path = self.test_root / 'store'
+        if allow_builds:
+            settings.nix_store_dir = store_path
+        else:
+            settings.store = str(store_path)
+        return settings
+
+    def nix_cmd(self, argv: list[str], allow_builds: bool = False):
+        """
+        Constructs a NixCommand with the appropriate settings.
+        """
+        return NixCommand(argv=argv,
+                          cwd=self.test_root,
+                          env=self.make_env(),
+                          settings=self.settings())
+
+    def nix(self, cmd: list[str], nix_exe: str = 'nix') -> NixCommand:
+        return self.nix_cmd([nix_exe, *cmd])
+
+    nix_build = partialmethod(nix, nix_exe='nix-build')
+    nix_shell = partialmethod(nix, nix_exe='nix-shell')
+    nix_store = partialmethod(nix, nix_exe='nix-store')
+    nix_env = partialmethod(nix, nix_exe='nix-env')
+    nix_instantiate = partialmethod(nix, nix_exe='nix-instantiate')
+    nix_channel = partialmethod(nix, nix_exe='nix-channel')
+    nix_prefetch_url = partialmethod(nix, nix_exe='nix-prefetch-url')
 
     def eval(
         self, expr: str,
-        settings: NixSettings = NixSettings()) -> CommandResult:
+        settings: NixSettings | None = None) -> CommandResult:
         # clone due to reference-shenanigans
-        settings = dataclasses.replace(settings).feature('nix-command')
+        settings = dataclasses.replace(settings or self.settings()).feature('nix-command')
 
-        return self.nix(['eval', '--json', '--expr', expr], settings=settings)
+        cmd = self.nix(['eval', '--json', '--expr', expr])
+        cmd.settings = settings
+        return cmd.run()
