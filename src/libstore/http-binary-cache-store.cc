@@ -127,9 +127,7 @@ protected:
     {
         auto data = StreamToSourceAdapter(istream).drain();
         try {
-            getFileTransfer()
-                ->enqueueUpload(makeURI(path), std::move(data), {{"Content-Type", mimeType}})
-                .get();
+            getFileTransfer()->upload(makeURI(path), std::move(data), {{"Content-Type", mimeType}});
         } catch (FileTransferError & e) {
             throw UploadToHTTP(
                 "while uploading to HTTP binary cache at '%s': %s", cacheUri, e.msg()

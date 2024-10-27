@@ -80,8 +80,8 @@ struct FileTransfer
     /**
      * Upload some data. May throw a FileTransferError exception.
      */
-    virtual std::future<FileTransferResult>
-    enqueueUpload(const std::string & uri, std::string data, const Headers & headers = {}) = 0;
+    virtual void
+    upload(const std::string & uri, std::string data, const Headers & headers = {}) = 0;
 
     /**
      * Checks whether the given URI exists. For historical reasons this function

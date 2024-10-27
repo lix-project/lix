@@ -663,10 +663,9 @@ struct curlFileTransfer : public FileTransfer
         return enqueueFileTransfer(uri, headers, std::nullopt, false);
     }
 
-    std::future<FileTransferResult>
-    enqueueUpload(const std::string & uri, std::string data, const Headers & headers) override
+    void upload(const std::string & uri, std::string data, const Headers & headers) override
     {
-        return enqueueFileTransfer(uri, headers, std::move(data), false);
+        enqueueFileTransfer(uri, headers, std::move(data), false).get();
     }
 
     std::future<FileTransferResult> enqueueFileTransfer(
