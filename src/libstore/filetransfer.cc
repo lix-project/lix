@@ -50,7 +50,17 @@ struct curlFileTransfer : public FileTransfer
         std::optional<std::string> uploadData;
         std::string downloadData;
         bool noBody = false; // \equiv HTTP HEAD, don't download data
-        bool done = false; // whether either the success or failure function has been called
+        enum {
+            /// nothing has been transferred yet
+            initialSetup,
+            /// at least some metadata has already been transferred,
+            /// but the transfer did not succeed and is now retrying
+            retrySetup,
+            /// data transfer in progress
+            transferring,
+            /// transfer complete, result or failure reported
+            transferComplete,
+        } phase = initialSetup;
         std::packaged_task<
             std::pair<FileTransferResult, std::string>(std::exception_ptr, FileTransferResult)>
             callback;
@@ -129,7 +139,7 @@ struct curlFileTransfer : public FileTransfer
             curl_easy_cleanup(req);
             if (requestHeaders) curl_slist_free_all(requestHeaders);
             try {
-                if (!done)
+                if (phase != transferComplete)
                     fail(FileTransferError(Interrupted, {}, "download of '%s' was interrupted", uri));
             } catch (...) {
                 ignoreExceptionInDestructor();
@@ -138,8 +148,8 @@ struct curlFileTransfer : public FileTransfer
 
         void failEx(std::exception_ptr ex)
         {
-            assert(!done);
-            done = true;
+            assert(phase != transferComplete);
+            phase = transferComplete;
             callback(ex, std::move(result));
         }
 
@@ -149,6 +159,22 @@ struct curlFileTransfer : public FileTransfer
             failEx(std::make_exception_ptr(std::forward<T>(e)));
         }
 
+        void maybeFinishSetup()
+        {
+            if (phase > retrySetup) {
+                return;
+            }
+
+            char * effectiveUriCStr = nullptr;
+            curl_easy_getinfo(req, CURLINFO_EFFECTIVE_URL, &effectiveUriCStr);
+            if (effectiveUriCStr)
+                result.effectiveUri = effectiveUriCStr;
+
+            result.cached = getHTTPStatus() == 304;
+
+            phase = transferring;
+        }
+
         std::exception_ptr writeException;
 
         size_t writeCallback(void * contents, size_t size, size_t nmemb)
@@ -156,6 +182,8 @@ struct curlFileTransfer : public FileTransfer
             const size_t realSize = size * nmemb;
 
             try {
+                maybeFinishSetup();
+
                 bodySize += realSize;
 
                 if (successfulStatuses.count(getHTTPStatus()) && this->dataCallback) {
@@ -268,6 +296,10 @@ struct curlFileTransfer : public FileTransfer
 
         void init()
         {
+            if (phase > initialSetup) {
+                phase = retrySetup;
+            }
+
             curl_easy_reset(req);
 
             if (verbosity >= lvlVomit) {
@@ -337,10 +369,7 @@ struct curlFileTransfer : public FileTransfer
         {
             auto httpStatus = getHTTPStatus();
 
-            char * effectiveUriCStr = nullptr;
-            curl_easy_getinfo(req, CURLINFO_EFFECTIVE_URL, &effectiveUriCStr);
-            if (effectiveUriCStr)
-                result.effectiveUri = effectiveUriCStr;
+            maybeFinishSetup();
 
             debug("finished %s of '%s'; curl status = %d, HTTP status = %d, body = %d bytes",
                 verb(), uri, code, httpStatus, bodySize);
@@ -358,9 +387,8 @@ struct curlFileTransfer : public FileTransfer
 
             else if (code == CURLE_OK && successfulStatuses.count(httpStatus))
             {
-                result.cached = httpStatus == 304;
                 act.progress(bodySize, bodySize);
-                done = true;
+                phase = transferComplete;
                 callback(nullptr, std::move(result));
             }
 
