@@ -23,8 +23,9 @@ void setStackSize(rlim_t stackSize);
 
 /**
  * Restore the original inherited Unix process context (such as signal
- * masks, stack size).
-
+ * masks, stack size). This should generally be called after fork for a process
+ * intending to simply execve.
+ *
  * See startSignalHandlerThread(), saveSignalMask().
  */
 void restoreProcessContext(bool restoreMounts = true);

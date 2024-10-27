@@ -1364,7 +1364,7 @@ void LocalDerivationGoal::runChild()
 
     try { /* child */
 
-        commonChildInit();
+        commonExecveingChildInit();
 
         setupSyscallFilter();
 

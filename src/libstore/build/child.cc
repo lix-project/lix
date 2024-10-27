@@ -3,7 +3,7 @@
 
 namespace nix {
 
-void commonChildInit()
+void commonExecveingChildInit()
 {
     logger = makeSimpleLogger();
 

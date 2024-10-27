@@ -356,6 +356,10 @@ static void daemonLoop(std::optional<TrustedFlag> forceTrustClientOpt)
                 if (setsid() == -1)
                     throw SysError("creating a new session");
 
+                // Restart the signal handler thread since it met its untimely
+                // demise at fork time.
+                startSignalHandlerThread(DoSignalSave::DontSaveBecauseAdvancedProcess);
+
                 //  Restore normal handling of SIGCHLD.
                 setSigChldAction(false);
 
