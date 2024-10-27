@@ -312,13 +312,8 @@ struct curlFileTransfer : public FileTransfer
                 curl_easy_setopt(req, CURLOPT_INFILESIZE_LARGE, (curl_off_t) uploadData->length());
             }
 
-            if (request.verifyTLS) {
-                if (settings.caFile != "")
-                    curl_easy_setopt(req, CURLOPT_CAINFO, settings.caFile.get().c_str());
-            } else {
-                curl_easy_setopt(req, CURLOPT_SSL_VERIFYPEER, 0);
-                curl_easy_setopt(req, CURLOPT_SSL_VERIFYHOST, 0);
-            }
+            if (settings.caFile != "")
+                curl_easy_setopt(req, CURLOPT_CAINFO, settings.caFile.get().c_str());
 
             curl_easy_setopt(req, CURLOPT_CONNECTTIMEOUT, fileTransferSettings.connectTimeout.get());
 

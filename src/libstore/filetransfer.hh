@@ -57,7 +57,6 @@ struct FileTransferRequest
     std::string uri;
     Headers headers;
     std::string expectedETag;
-    bool verifyTLS = true;
 
     FileTransferRequest(std::string_view uri)
         : uri(uri) { }
