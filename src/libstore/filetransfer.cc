@@ -159,6 +159,14 @@ struct curlFileTransfer : public FileTransfer
             failEx(std::make_exception_ptr(std::forward<T>(e)));
         }
 
+        [[noreturn]]
+        void throwChangedTarget(std::string_view what, std::string_view from, std::string_view to)
+        {
+            throw FileTransferError(
+                Misc, {}, "uri %s changed %s from %s to %s during transfer", uri, what, from, to
+            );
+        }
+
         void maybeFinishSetup()
         {
             if (phase > retrySetup) {
@@ -169,14 +177,7 @@ struct curlFileTransfer : public FileTransfer
             curl_easy_getinfo(req, CURLINFO_EFFECTIVE_URL, &effectiveUriCStr);
             if (effectiveUriCStr) {
                 if (!result.effectiveUri.empty() && result.effectiveUri != effectiveUriCStr) {
-                    throw FileTransferError(
-                        Misc,
-                        {},
-                        "uri %s changed final destination from %s to %s during transfer",
-                        uri,
-                        result.effectiveUri,
-                        effectiveUriCStr
-                    );
+                    throwChangedTarget("final destination", result.effectiveUri, effectiveUriCStr);
                 }
                 result.effectiveUri = effectiveUriCStr;
             }
@@ -186,7 +187,7 @@ struct curlFileTransfer : public FileTransfer
             phase = transferring;
         }
 
-        std::exception_ptr writeException;
+        std::exception_ptr callbackException;
 
         size_t writeCallback(void * contents, size_t size, size_t nmemb)
         {
@@ -206,7 +207,7 @@ struct curlFileTransfer : public FileTransfer
 
                 return realSize;
             } catch (...) {
-                writeException = std::current_exception();
+                callbackException = std::current_exception();
                 return CURL_WRITEFUNC_ERROR;
             }
         }
@@ -217,30 +218,39 @@ struct curlFileTransfer : public FileTransfer
         }
 
         size_t headerCallback(void * contents, size_t size, size_t nmemb)
-        {
+        try {
             size_t realSize = size * nmemb;
             std::string line(static_cast<char *>(contents), realSize);
             printMsg(lvlVomit, "got header for '%s': %s", uri, trim(line));
 
             static std::regex statusLine("HTTP/[^ ]+ +[0-9]+(.*)", std::regex::extended | std::regex::icase);
             if (std::smatch match; std::regex_match(line, match, statusLine)) {
-                result.etag = "";
                 downloadData.clear();
                 bodySize = 0;
                 statusMsg = trim(match.str(1));
                 acceptRanges = false;
-                encoding = "";
             } else {
                 auto i = line.find(':');
                 if (i != std::string::npos) {
                     std::string name = toLower(trim(line.substr(0, i)));
 
                     if (name == "etag") {
-                        result.etag = trim(line.substr(i + 1));
+                        // NOTE we don't check that the etag hasn't gone *missing*. technically
+                        // this is not an error as long as we get the same data from the remote.
+                        auto etag = trim(line.substr(i + 1));
+                        if (!result.etag.empty() && result.etag != etag) {
+                            throwChangedTarget("ETag", result.etag, etag);
+                        }
+                        result.etag = std::move(etag);
                     }
 
-                    else if (name == "content-encoding")
-                        encoding = trim(line.substr(i + 1));
+                    else if (name == "content-encoding") {
+                        auto encoding = trim(line.substr(i + 1));
+                        if (!this->encoding.empty() && this->encoding != encoding) {
+                            throwChangedTarget("encoding", this->encoding, encoding);
+                        }
+                        this->encoding = std::move(encoding);
+                    }
 
                     else if (name == "accept-ranges" && toLower(trim(line.substr(i + 1))) == "bytes")
                         acceptRanges = true;
@@ -248,14 +258,20 @@ struct curlFileTransfer : public FileTransfer
                     else if (name == "link" || name == "x-amz-meta-link") {
                         auto value = trim(line.substr(i + 1));
                         static std::regex linkRegex("<([^>]*)>; rel=\"immutable\"", std::regex::extended | std::regex::icase);
-                        if (std::smatch match; std::regex_match(value, match, linkRegex))
+                        if (std::smatch match; std::regex_match(value, match, linkRegex)) {
+                            if (result.immutableUrl && result.immutableUrl != match.str(1)) {
+                                throwChangedTarget("immutable url", *result.immutableUrl, match.str(1));
+                            }
                             result.immutableUrl = match.str(1);
-                        else
+                        } else
                             debug("got invalid link header '%s'", value);
                     }
                 }
             }
             return realSize;
+        } catch (...) {
+            callbackException = std::current_exception();
+            return CURL_WRITEFUNC_ERROR;
         }
 
         static size_t headerCallbackWrapper(void * contents, size_t size, size_t nmemb, void * userp)
@@ -397,8 +413,8 @@ struct curlFileTransfer : public FileTransfer
                 downloadData = decompress(encoding, downloadData);
             }
 
-            if (writeException)
-                failEx(writeException);
+            if (callbackException)
+                failEx(callbackException);
 
             else if (code == CURLE_OK && successfulStatuses.count(httpStatus))
             {
