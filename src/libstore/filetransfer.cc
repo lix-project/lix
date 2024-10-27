@@ -44,7 +44,7 @@ struct curlFileTransfer : public FileTransfer
     struct TransferItem : public std::enable_shared_from_this<TransferItem>
     {
         curlFileTransfer & fileTransfer;
-        FileTransferRequest request;
+        std::string uri;
         FileTransferResult result;
         Activity act;
         std::optional<std::string> uploadData;
@@ -90,7 +90,8 @@ struct curlFileTransfer : public FileTransfer
         }
 
         TransferItem(curlFileTransfer & fileTransfer,
-            const FileTransferRequest & request,
+            const std::string & uri,
+            const Headers & headers,
             ActivityId parentAct,
             std::invocable<std::exception_ptr> auto callback,
             std::function<void(TransferItem &, std::string_view data)> dataCallback,
@@ -98,10 +99,10 @@ struct curlFileTransfer : public FileTransfer
             bool noBody
         )
             : fileTransfer(fileTransfer)
-            , request(request)
+            , uri(uri)
             , act(*logger, lvlTalkative, actFileTransfer,
-                fmt(uploadData ? "uploading '%s'" : "downloading '%s'", request.uri),
-                {request.uri}, parentAct)
+                fmt(uploadData ? "uploading '%s'" : "downloading '%s'", uri),
+                {uri}, parentAct)
             , uploadData(std::move(uploadData))
             , noBody(noBody)
             , callback([cb{std::move(callback)}] (std::exception_ptr ex, FileTransferResult r) {
@@ -111,7 +112,7 @@ struct curlFileTransfer : public FileTransfer
             , dataCallback(std::move(dataCallback))
         {
             requestHeaders = curl_slist_append(requestHeaders, "Accept-Encoding: zstd, br, gzip, deflate, bzip2, xz");
-            for (auto it = request.headers.begin(); it != request.headers.end(); ++it){
+            for (auto it = headers.begin(); it != headers.end(); ++it){
                 requestHeaders = curl_slist_append(requestHeaders, fmt("%s: %s", it->first, it->second).c_str());
             }
         }
@@ -126,7 +127,7 @@ struct curlFileTransfer : public FileTransfer
             if (requestHeaders) curl_slist_free_all(requestHeaders);
             try {
                 if (!done)
-                    fail(FileTransferError(Interrupted, {}, "download of '%s' was interrupted", request.uri));
+                    fail(FileTransferError(Interrupted, {}, "download of '%s' was interrupted", uri));
             } catch (...) {
                 ignoreExceptionInDestructor();
             }
@@ -177,7 +178,7 @@ struct curlFileTransfer : public FileTransfer
         {
             size_t realSize = size * nmemb;
             std::string line(static_cast<char *>(contents), realSize);
-            printMsg(lvlVomit, "got header for '%s': %s", request.uri, trim(line));
+            printMsg(lvlVomit, "got header for '%s': %s", uri, trim(line));
 
             static std::regex statusLine("HTTP/[^ ]+ +[0-9]+(.*)", std::regex::extended | std::regex::icase);
             if (std::smatch match; std::regex_match(line, match, statusLine)) {
@@ -273,7 +274,7 @@ struct curlFileTransfer : public FileTransfer
                 curl_easy_setopt(req, CURLOPT_DEBUGFUNCTION, TransferItem::debugCallback);
             }
 
-            curl_easy_setopt(req, CURLOPT_URL, request.uri.c_str());
+            curl_easy_setopt(req, CURLOPT_URL, uri.c_str());
             curl_easy_setopt(req, CURLOPT_FOLLOWLOCATION, 1L);
             curl_easy_setopt(req, CURLOPT_MAXREDIRS, 10);
             curl_easy_setopt(req, CURLOPT_NOSIGNAL, 1);
@@ -341,7 +342,7 @@ struct curlFileTransfer : public FileTransfer
                 result.effectiveUri = effectiveUriCStr;
 
             debug("finished %s of '%s'; curl status = %d, HTTP status = %d, body = %d bytes",
-                verb(), request.uri, code, httpStatus, bodySize);
+                verb(), uri, code, httpStatus, bodySize);
 
             // this has to happen here until we can return an actual future.
             // wrapping user `callback`s instead is not possible because the
@@ -419,17 +420,17 @@ struct curlFileTransfer : public FileTransfer
                     response = std::move(result.data);
                 auto exc =
                     code == CURLE_ABORTED_BY_CALLBACK && _isInterrupted
-                    ? FileTransferError(Interrupted, std::move(response), "%s of '%s' was interrupted", verb(), request.uri)
+                    ? FileTransferError(Interrupted, std::move(response), "%s of '%s' was interrupted", verb(), uri)
                     : httpStatus != 0
                     ? FileTransferError(err,
                         std::move(response),
                         "unable to %s '%s': HTTP error %d (%s)%s",
-                        verb(), request.uri, httpStatus, statusMsg,
+                        verb(), uri, httpStatus, statusMsg,
                         code == CURLE_OK ? "" : fmt(" (curl error: %s)", curl_easy_strerror(code)))
                     : FileTransferError(err,
                         std::move(response),
                         "unable to %s '%s': %s (%d)",
-                        verb(), request.uri, curl_easy_strerror(code), code);
+                        verb(), uri, curl_easy_strerror(code), code);
 
                 /* If this is a transient error, then maybe retry the
                    download after a while. If we're writing to a
@@ -596,7 +597,7 @@ struct curlFileTransfer : public FileTransfer
             }
 
             for (auto & item : incoming) {
-                debug("starting %s of %s", item->verb(), item->request.uri);
+                debug("starting %s of %s", item->verb(), item->uri);
                 item->init();
                 curl_multi_add_handle(curlm, item->req);
                 item->active = true;
@@ -626,9 +627,9 @@ struct curlFileTransfer : public FileTransfer
     std::shared_ptr<TransferItem> enqueueItem(std::shared_ptr<TransferItem> item)
     {
         if (item->uploadData
-            && !item->request.uri.starts_with("http://")
-            && !item->request.uri.starts_with("https://"))
-            throw nix::Error("uploading to '%s' is not supported", item->request.uri);
+            && !item->uri.starts_with("http://")
+            && !item->uri.starts_with("https://"))
+            throw nix::Error("uploading to '%s' is not supported", item->uri);
 
         {
             auto state(state_.lock());
@@ -656,23 +657,28 @@ struct curlFileTransfer : public FileTransfer
     }
 #endif
 
-    std::future<FileTransferResult> enqueueDownload(const FileTransferRequest & request) override
+    std::future<FileTransferResult>
+    enqueueDownload(const std::string & uri, const Headers & headers = {}) override
     {
-        return enqueueFileTransfer(request, std::nullopt, false);
+        return enqueueFileTransfer(uri, headers, std::nullopt, false);
     }
 
     std::future<FileTransferResult>
-    enqueueUpload(const FileTransferRequest & request, std::string data) override
+    enqueueUpload(const std::string & uri, std::string data, const Headers & headers) override
     {
-        return enqueueFileTransfer(request, std::move(data), false);
+        return enqueueFileTransfer(uri, headers, std::move(data), false);
     }
 
     std::future<FileTransferResult> enqueueFileTransfer(
-        const FileTransferRequest & request, std::optional<std::string> data, bool noBody
+        const std::string & uri,
+        const Headers & headers,
+        std::optional<std::string> data,
+        bool noBody
     )
     {
         return enqueueFileTransfer(
-            request,
+            uri,
+            headers,
             [](std::exception_ptr ex) {
                 if (ex) {
                     std::rethrow_exception(ex);
@@ -684,7 +690,9 @@ struct curlFileTransfer : public FileTransfer
         );
     }
 
-    std::future<FileTransferResult> enqueueFileTransfer(const FileTransferRequest & request,
+    std::future<FileTransferResult> enqueueFileTransfer(
+        const std::string & uri,
+        const Headers & headers,
         std::invocable<std::exception_ptr> auto callback,
         std::function<void(TransferItem &, std::string_view data)> dataCallback,
         std::optional<std::string> data,
@@ -692,9 +700,9 @@ struct curlFileTransfer : public FileTransfer
     )
     {
         /* Ugly hack to support s3:// URIs. */
-        if (request.uri.starts_with("s3://")) {
+        if (uri.starts_with("s3://")) {
             // FIXME: do this on a worker thread
-            return std::async(std::launch::deferred, [uri{request.uri}]() -> FileTransferResult {
+            return std::async(std::launch::deferred, [uri]() -> FileTransferResult {
 #if ENABLE_S3
                 auto [bucketName, key, params] = parseS3Uri(uri);
 
@@ -720,7 +728,8 @@ struct curlFileTransfer : public FileTransfer
 
         return enqueueItem(std::make_shared<TransferItem>(
                                *this,
-                               request,
+                               uri,
+                               headers,
                                getCurActivity(),
                                std::move(callback),
                                std::move(dataCallback),
@@ -730,10 +739,10 @@ struct curlFileTransfer : public FileTransfer
             ->callback.get_future();
     }
 
-    bool exists(std::string_view uri) override
+    bool exists(const std::string & uri, const Headers & headers) override
     {
         try {
-            enqueueFileTransfer(FileTransferRequest{uri}, std::nullopt, true).get();
+            enqueueFileTransfer(uri, headers, std::nullopt, true).get();
             return true;
         } catch (FileTransferError & e) {
             /* S3 buckets return 403 if a file doesn't exist and the
@@ -744,7 +753,7 @@ struct curlFileTransfer : public FileTransfer
         }
     }
 
-    box_ptr<Source> download(FileTransferRequest && request) override
+    box_ptr<Source> download(const std::string & uri, const Headers & headers) override
     {
         struct State {
             bool done = false, failed = false;
@@ -756,7 +765,8 @@ struct curlFileTransfer : public FileTransfer
         auto _state = std::make_shared<Sync<State>>();
 
         enqueueFileTransfer(
-            request,
+            uri,
+            headers,
             [_state](std::exception_ptr ex) {
                 auto state(_state->lock());
                 state->done = true;

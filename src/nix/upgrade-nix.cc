@@ -285,8 +285,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         Activity act(*logger, lvlInfo, actUnknown, "querying latest Nix version");
 
         // FIXME: use nixos.org?
-        auto req = FileTransferRequest(storePathsUrl);
-        auto res = getFileTransfer()->enqueueDownload(req).get();
+        auto res = getFileTransfer()->enqueueDownload(storePathsUrl).get();
 
         auto state = std::make_unique<EvalState>(SearchPath{}, store);
         auto v = state->allocValue();

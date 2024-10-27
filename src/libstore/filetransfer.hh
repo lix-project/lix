@@ -52,15 +52,6 @@ struct FileTransferSettings : Config
 
 extern FileTransferSettings fileTransferSettings;
 
-struct FileTransferRequest
-{
-    std::string uri;
-    Headers headers;
-
-    FileTransferRequest(std::string_view uri)
-        : uri(uri) { }
-};
-
 struct FileTransferResult
 {
     bool cached = false;
@@ -83,14 +74,14 @@ struct FileTransfer
      * Enqueues a download request, returning a future for the result of
      * the download. The future may throw a FileTransferError exception.
      */
-    virtual std::future<FileTransferResult> enqueueDownload(const FileTransferRequest & request) = 0;
+    virtual std::future<FileTransferResult>
+    enqueueDownload(const std::string & uri, const Headers & headers = {}) = 0;
 
     /**
-     * Enqueue an upload request, returning a future for the result of
-     * the upload. The future may throw a FileTransferError exception.
+     * Upload some data. May throw a FileTransferError exception.
      */
     virtual std::future<FileTransferResult>
-    enqueueUpload(const FileTransferRequest & request, std::string data) = 0;
+    enqueueUpload(const std::string & uri, std::string data, const Headers & headers = {}) = 0;
 
     /**
      * Checks whether the given URI exists. For historical reasons this function
@@ -102,7 +93,7 @@ struct FileTransfer
      *
      * S3 objects are downloaded completely to answer this request.
      */
-    virtual bool exists(std::string_view uri) = 0;
+    virtual bool exists(const std::string & uri, const Headers & headers = {}) = 0;
 
     /**
      * Download a file, returning its contents through a source. Will not return
@@ -111,7 +102,7 @@ struct FileTransfer
      * thrown by the returned source. The source will only throw errors detected
      * during the transfer itself (decompression errors, connection drops, etc).
      */
-    virtual box_ptr<Source> download(FileTransferRequest && request) = 0;
+    virtual box_ptr<Source> download(const std::string & uri, const Headers & headers = {}) = 0;
 
     enum Error { NotFound, Forbidden, Misc, Transient, Interrupted };
 };
