@@ -7,6 +7,8 @@
 #include "strings.hh"
 #include <cstddef>
 
+#include <kj/encoding.h>
+
 #if ENABLE_S3
 #include <aws/core/client/ClientConfiguration.h>
 #endif
@@ -352,7 +354,7 @@ struct curlFileTransfer : public FileTransfer
             curl_easy_setopt(req, CURLOPT_PROGRESSDATA, this);
             curl_easy_setopt(req, CURLOPT_NOPROGRESS, 0);
 
-            curl_easy_setopt(req, CURLOPT_PROTOCOLS_STR, "http,https,ftp,ftps,file");
+            curl_easy_setopt(req, CURLOPT_PROTOCOLS_STR, "http,https,ftp,ftps");
 
             curl_easy_setopt(req, CURLOPT_HTTPHEADER, requestHeaders);
 
@@ -712,6 +714,57 @@ struct curlFileTransfer : public FileTransfer
         bool noBody
     )
     {
+        // curl transfers using file:// urls cannot be paused, and are a bit unruly
+        // in other ways too. since their metadata is trivial and we already have a
+        // backend for simple file system reads we can use that instead. we'll pass
+        // uploads to files to curl even so, those will fail in enqueueItem anyway.
+        // on all other decoding failures we also let curl fail for us a bit later.
+        //
+        // note that we use kj to decode the url, not curl. curl uses only the path
+        // component of the url to determine the file name, but it does note expose
+        // the decoding method it uses for this. for file:// transfers curl forbids
+        // only \0 characters in the urldecoded path, not all control characters as
+        // it does in the public curl_url_get(CURLUPART_PATH, CURLU_URLDECODE) api.
+        //
+        // also note: everything weird you see here is for compatibility with curl.
+        // we can't even fix it because nix-channel relies on this. even reading of
+        // directories being allowed and returning something (though hopefully it's
+        // enough to return anything instead of a directory listing like curl does)
+        if (uri.starts_with("file://") && !data.has_value()) {
+            if (!uri.starts_with("file:///")) {
+                throw FileTransferError(NotFound, std::nullopt, "file not found");
+            }
+            auto url = curl_url();
+            if (!url) {
+                throw std::bad_alloc();
+            }
+            KJ_DEFER(curl_url_cleanup(url));
+            curl_url_set(url, CURLUPART_URL, uri.c_str(), 0);
+            char * path = nullptr;
+            curl_url_get(url, CURLUPART_PATH, &path, 0);
+            auto decoded = kj::decodeUriComponent(kj::arrayPtr(path, path + strlen(path)));
+            if (!decoded.hadErrors && decoded.findFirst(0) == nullptr) {
+                Path fsPath(decoded.cStr(), decoded.size());
+                FileTransferResult metadata{.effectiveUri = std::string("file://") + path};
+                struct stat st;
+                AutoCloseFD fd(open(fsPath.c_str(), O_RDONLY));
+                if (!fd || fstat(fd.get(), &st) != 0) {
+                    throw FileTransferError(
+                        NotFound, std::nullopt, "%s: file not found (%s)", fsPath, strerror(errno)
+                    );
+                }
+                if (S_ISDIR(st.st_mode)) {
+                    return {std::move(metadata), make_box_ptr<StringSource>("")};
+                }
+                struct OwningFdSource : FdSource
+                {
+                    AutoCloseFD fd;
+                    OwningFdSource(AutoCloseFD fd) : FdSource(fd.get()), fd(std::move(fd)) {}
+                };
+                return {std::move(metadata), make_box_ptr<OwningFdSource>(std::move(fd))};
+            }
+        }
+
         /* Ugly hack to support s3:// URIs. */
         if (uri.starts_with("s3://")) {
             // FIXME: do this on a worker thread
