@@ -48,7 +48,7 @@ std::string resolveMirrorUrl(EvalState & state, const std::string & url)
 
 std::tuple<StorePath, Hash> prefetchFile(
     ref<Store> store,
-    std::string_view url,
+    const std::string & url,
     std::optional<std::string> name,
     HashType hashType,
     std::optional<Hash> expectedHash,
@@ -98,8 +98,7 @@ std::tuple<StorePath, Hash> prefetchFile(
 
             FdSink sink(fd.get());
 
-            FileTransferRequest req(url);
-            getFileTransfer()->download(std::move(req))->drainInto(sink);
+            getFileTransfer()->download(url)->drainInto(sink);
         }
 
         /* Optionally unpack the file. */

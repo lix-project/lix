@@ -285,12 +285,11 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         Activity act(*logger, lvlInfo, actUnknown, "querying latest Nix version");
 
         // FIXME: use nixos.org?
-        auto req = FileTransferRequest(storePathsUrl);
-        auto res = getFileTransfer()->enqueueDownload(req).get();
+        auto [res, data] = getFileTransfer()->enqueueDownload(storePathsUrl).get();
 
         auto state = std::make_unique<EvalState>(SearchPath{}, store);
         auto v = state->allocValue();
-        state->eval(state->parseExprFromString(res.data, state->rootPath(CanonPath("/no-such-path"))), *v);
+        state->eval(state->parseExprFromString(data, state->rootPath(CanonPath("/no-such-path"))), *v);
         Bindings & bindings(*state->allocBindings(0));
         auto v2 = findAlongAttrPath(*state, settings.thisSystem, bindings, *v).first;
 

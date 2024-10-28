@@ -114,15 +114,8 @@ protected:
         checkEnabled();
 
         try {
-            FileTransferRequest request{makeURI(path)};
-            request.head = true;
-            getFileTransfer()->enqueueDownload(request).get();
-            return true;
+            return getFileTransfer()->exists(makeURI(path));
         } catch (FileTransferError & e) {
-            /* S3 buckets return 403 if a file doesn't exist and the
-               bucket is unlistable, so treat 403 as 404. */
-            if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
-                return false;
             maybeDisable();
             throw;
         }
@@ -132,13 +125,13 @@ protected:
         std::shared_ptr<std::basic_iostream<char>> istream,
         const std::string & mimeType) override
     {
-        FileTransferRequest req{makeURI(path)};
         auto data = StreamToSourceAdapter(istream).drain();
-        req.headers = {{"Content-Type", mimeType}};
         try {
-            getFileTransfer()->enqueueUpload(req, std::move(data)).get();
+            getFileTransfer()->upload(makeURI(path), std::move(data), {{"Content-Type", mimeType}});
         } catch (FileTransferError & e) {
-            throw UploadToHTTP("while uploading to HTTP binary cache at '%s': %s", cacheUri, e.msg());
+            throw UploadToHTTP(
+                "while uploading to HTTP binary cache at '%s': %s", cacheUri, e.msg()
+            );
         }
     }
 
@@ -153,9 +146,8 @@ protected:
     box_ptr<Source> getFile(const std::string & path) override
     {
         checkEnabled();
-        FileTransferRequest request{makeURI(path)};
         try {
-            return getFileTransfer()->download(std::move(request));
+            return getFileTransfer()->download(makeURI(path));
         } catch (FileTransferError & e) {
             if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
                 throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache '%s'", path, getUri());
@@ -168,10 +160,8 @@ protected:
     {
         checkEnabled();
 
-        FileTransferRequest request{makeURI(path)};
-
         try {
-            return std::move(getFileTransfer()->enqueueDownload(request).get().data);
+            return std::move(getFileTransfer()->enqueueDownload(makeURI(path)).get().second);
         } catch (FileTransferError & e) {
             if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
                 return {};

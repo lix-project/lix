@@ -136,7 +136,7 @@ TEST(FileTransfer, exceptionAbortsDownload)
 
     LambdaSink broken([](auto block) { throw Done(); });
 
-    ASSERT_THROW(ft->download(FileTransferRequest("file:///dev/zero"))->drainInto(broken), Done);
+    ASSERT_THROW(ft->download("file:///dev/zero")->drainInto(broken), Done);
 
     // makeFileTransfer returns a ref<>, which cannot be cleared. since we also
     // can't default-construct it we'll have to overwrite it instead, but we'll
@@ -155,7 +155,7 @@ TEST(FileTransfer, exceptionAbortsRead)
     auto [port, srv] = serveHTTP("200 ok", "content-length: 0\r\n", [] { return ""; });
     auto ft = makeFileTransfer();
     char buf[10] = "";
-    ASSERT_THROW(ft->download(FileTransferRequest(fmt("http://[::1]:%d/index", port)))->read(buf, 10), EndOfFile);
+    ASSERT_THROW(ft->download(fmt("http://[::1]:%d/index", port))->read(buf, 10), EndOfFile);
 }
 
 TEST(FileTransfer, NOT_ON_DARWIN(reportsSetupErrors))
@@ -163,7 +163,7 @@ TEST(FileTransfer, NOT_ON_DARWIN(reportsSetupErrors))
     auto [port, srv] = serveHTTP("404 not found", "", [] { return ""; });
     auto ft = makeFileTransfer();
     ASSERT_THROW(
-        ft->enqueueDownload(FileTransferRequest(fmt("http://[::1]:%d/index", port))).get(),
+        ft->enqueueDownload(fmt("http://[::1]:%d/index", port)).get(),
         FileTransferError
     );
 }
@@ -179,8 +179,7 @@ TEST(FileTransfer, NOT_ON_DARWIN(defersFailures))
         return std::string(1024 * 1024, ' ');
     });
     auto ft = makeFileTransfer(0);
-    FileTransferRequest req(fmt("http://[::1]:%d/index", port));
-    auto src = ft->download(std::move(req));
+    auto src = ft->download(fmt("http://[::1]:%d/index", port));
     ASSERT_THROW(src->drain(), FileTransferError);
 }
 
@@ -193,7 +192,7 @@ TEST(FileTransfer, NOT_ON_DARWIN(handlesContentEncoding))
     auto ft = makeFileTransfer();
 
     StringSink sink;
-    ft->download(FileTransferRequest(fmt("http://[::1]:%d/index", port)))->drainInto(sink);
+    ft->download(fmt("http://[::1]:%d/index", port))->drainInto(sink);
     EXPECT_EQ(sink.s, original);
 }
 
@@ -216,8 +215,7 @@ TEST(FileTransfer, usesIntermediateLinkHeaders)
         {"200 ok", "content-length: 1\r\n", [] { return "a"; }},
     });
     auto ft = makeFileTransfer(0);
-    FileTransferRequest req(fmt("http://[::1]:%d/first", port));
-    auto result = ft->enqueueDownload(req).get();
+    auto [result, _data] = ft->enqueueDownload(fmt("http://[::1]:%d/first", port)).get();
     ASSERT_EQ(result.immutableUrl, "http://foo");
 }
 

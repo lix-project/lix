@@ -209,7 +209,7 @@ DownloadFileResult downloadFile(
     const std::string & url,
     const std::string & name,
     bool locked,
-    const Headers & headers = {});
+    Headers headers = {});
 
 struct DownloadTarballResult
 {

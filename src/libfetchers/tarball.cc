@@ -15,7 +15,7 @@ DownloadFileResult downloadFile(
     const std::string & url,
     const std::string & name,
     bool locked,
-    const Headers & headers)
+    Headers headers)
 {
     // FIXME: check store
 
@@ -40,13 +40,12 @@ DownloadFileResult downloadFile(
     if (cached && !cached->expired)
         return useCached();
 
-    FileTransferRequest request(url);
-    request.headers = headers;
     if (cached)
-        request.expectedETag = getStrAttr(cached->infoAttrs, "etag");
+        headers.emplace_back("If-None-Match", getStrAttr(cached->infoAttrs, "etag"));
     FileTransferResult res;
+    std::string data;
     try {
-        res = getFileTransfer()->enqueueDownload(request).get();
+        std::tie(res, data) = getFileTransfer()->enqueueDownload(url, headers).get();
     } catch (FileTransferError & e) {
         if (cached) {
             warn("%s; using cached version", e.msg());
@@ -71,8 +70,8 @@ DownloadFileResult downloadFile(
         storePath = std::move(cached->storePath);
     } else {
         StringSink sink;
-        sink << dumpString(res.data);
-        auto hash = hashString(HashType::SHA256, res.data);
+        sink << dumpString(data);
+        auto hash = hashString(HashType::SHA256, data);
         ValidPathInfo info {
             *store,
             name,

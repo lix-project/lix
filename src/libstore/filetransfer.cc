@@ -44,19 +44,33 @@ struct curlFileTransfer : public FileTransfer
     struct TransferItem : public std::enable_shared_from_this<TransferItem>
     {
         curlFileTransfer & fileTransfer;
-        FileTransferRequest request;
+        std::string uri;
         FileTransferResult result;
         Activity act;
         std::optional<std::string> uploadData;
-        bool done = false; // whether either the success or failure function has been called
-        std::packaged_task<FileTransferResult(std::exception_ptr, FileTransferResult)> callback;
+        std::string downloadData;
+        bool noBody = false; // \equiv HTTP HEAD, don't download data
+        enum {
+            /// nothing has been transferred yet
+            initialSetup,
+            /// at least some metadata has already been transferred,
+            /// but the transfer did not succeed and is now retrying
+            retrySetup,
+            /// data transfer in progress
+            transferring,
+            /// transfer complete, result or failure reported
+            transferComplete,
+        } phase = initialSetup;
+        std::packaged_task<
+            std::pair<FileTransferResult, std::string>(std::exception_ptr, FileTransferResult)>
+            callback;
         std::function<void(TransferItem &, std::string_view data)> dataCallback;
-        CURL * req = 0;
-        bool active = false; // whether the handle has been added to the multi object
+        CURL * req; // must never be nullptr
         std::string statusMsg;
 
         unsigned int attempt = 0;
         const size_t tries = fileTransferSettings.tries;
+        uint64_t bodySize = 0;
 
         /* Don't start this download until the specified time point
            has been reached. */
@@ -88,43 +102,45 @@ struct curlFileTransfer : public FileTransfer
         }
 
         TransferItem(curlFileTransfer & fileTransfer,
-            const FileTransferRequest & request,
+            const std::string & uri,
+            const Headers & headers,
             ActivityId parentAct,
             std::invocable<std::exception_ptr> auto callback,
             std::function<void(TransferItem &, std::string_view data)> dataCallback,
-            std::optional<std::string> uploadData
+            std::optional<std::string> uploadData,
+            bool noBody
         )
             : fileTransfer(fileTransfer)
-            , request(request)
+            , uri(uri)
             , act(*logger, lvlTalkative, actFileTransfer,
-                fmt(uploadData ? "uploading '%s'" : "downloading '%s'", request.uri),
-                {request.uri}, parentAct)
+                fmt(uploadData ? "uploading '%s'" : "downloading '%s'", uri),
+                {uri}, parentAct)
             , uploadData(std::move(uploadData))
-            , callback([cb{std::move(callback)}] (std::exception_ptr ex, FileTransferResult r) {
+            , noBody(noBody)
+            , callback([this, cb{std::move(callback)}] (std::exception_ptr ex, FileTransferResult r) {
                 cb(ex);
-                return r;
+                return std::pair{std::move(r), std::move(downloadData)};
             })
             , dataCallback(std::move(dataCallback))
+            , req(curl_easy_init())
         {
+            if (req == nullptr) {
+                throw FileTransferError(Misc, {}, "could not allocate curl handle");
+            }
             requestHeaders = curl_slist_append(requestHeaders, "Accept-Encoding: zstd, br, gzip, deflate, bzip2, xz");
-            if (!request.expectedETag.empty())
-                requestHeaders = curl_slist_append(requestHeaders, ("If-None-Match: " + request.expectedETag).c_str());
-            for (auto it = request.headers.begin(); it != request.headers.end(); ++it){
+            for (auto it = headers.begin(); it != headers.end(); ++it){
                 requestHeaders = curl_slist_append(requestHeaders, fmt("%s: %s", it->first, it->second).c_str());
             }
         }
 
         ~TransferItem()
         {
-            if (req) {
-                if (active)
-                    curl_multi_remove_handle(fileTransfer.curlm, req);
-                curl_easy_cleanup(req);
-            }
+            curl_multi_remove_handle(fileTransfer.curlm, req);
+            curl_easy_cleanup(req);
             if (requestHeaders) curl_slist_free_all(requestHeaders);
             try {
-                if (!done)
-                    fail(FileTransferError(Interrupted, {}, "download of '%s' was interrupted", request.uri));
+                if (phase != transferComplete)
+                    fail(FileTransferError(Interrupted, {}, "download of '%s' was interrupted", uri));
             } catch (...) {
                 ignoreExceptionInDestructor();
             }
@@ -132,8 +148,8 @@ struct curlFileTransfer : public FileTransfer
 
         void failEx(std::exception_ptr ex)
         {
-            assert(!done);
-            done = true;
+            assert(phase != transferComplete);
+            phase = transferComplete;
             callback(ex, std::move(result));
         }
 
@@ -143,25 +159,55 @@ struct curlFileTransfer : public FileTransfer
             failEx(std::make_exception_ptr(std::forward<T>(e)));
         }
 
-        std::exception_ptr writeException;
+        [[noreturn]]
+        void throwChangedTarget(std::string_view what, std::string_view from, std::string_view to)
+        {
+            throw FileTransferError(
+                Misc, {}, "uri %s changed %s from %s to %s during transfer", uri, what, from, to
+            );
+        }
+
+        void maybeFinishSetup()
+        {
+            if (phase > retrySetup) {
+                return;
+            }
+
+            char * effectiveUriCStr = nullptr;
+            curl_easy_getinfo(req, CURLINFO_EFFECTIVE_URL, &effectiveUriCStr);
+            if (effectiveUriCStr) {
+                if (!result.effectiveUri.empty() && result.effectiveUri != effectiveUriCStr) {
+                    throwChangedTarget("final destination", result.effectiveUri, effectiveUriCStr);
+                }
+                result.effectiveUri = effectiveUriCStr;
+            }
+
+            result.cached = getHTTPStatus() == 304;
+
+            phase = transferring;
+        }
+
+        std::exception_ptr callbackException;
 
         size_t writeCallback(void * contents, size_t size, size_t nmemb)
         {
             const size_t realSize = size * nmemb;
 
             try {
-                result.bodySize += realSize;
+                maybeFinishSetup();
+
+                bodySize += realSize;
 
                 if (successfulStatuses.count(getHTTPStatus()) && this->dataCallback) {
                     writtenToSink += realSize;
                     dataCallback(*this, {static_cast<const char *>(contents), realSize});
                 } else {
-                    this->result.data.append(static_cast<const char *>(contents), realSize);
+                    this->downloadData.append(static_cast<const char *>(contents), realSize);
                 }
 
                 return realSize;
             } catch (...) {
-                writeException = std::current_exception();
+                callbackException = std::current_exception();
                 return CURL_WRITEFUNC_ERROR;
             }
         }
@@ -172,30 +218,39 @@ struct curlFileTransfer : public FileTransfer
         }
 
         size_t headerCallback(void * contents, size_t size, size_t nmemb)
-        {
+        try {
             size_t realSize = size * nmemb;
             std::string line(static_cast<char *>(contents), realSize);
-            printMsg(lvlVomit, "got header for '%s': %s", request.uri, trim(line));
+            printMsg(lvlVomit, "got header for '%s': %s", uri, trim(line));
 
             static std::regex statusLine("HTTP/[^ ]+ +[0-9]+(.*)", std::regex::extended | std::regex::icase);
             if (std::smatch match; std::regex_match(line, match, statusLine)) {
-                result.etag = "";
-                result.data.clear();
-                result.bodySize = 0;
+                downloadData.clear();
+                bodySize = 0;
                 statusMsg = trim(match.str(1));
                 acceptRanges = false;
-                encoding = "";
             } else {
                 auto i = line.find(':');
                 if (i != std::string::npos) {
                     std::string name = toLower(trim(line.substr(0, i)));
 
                     if (name == "etag") {
-                        result.etag = trim(line.substr(i + 1));
+                        // NOTE we don't check that the etag hasn't gone *missing*. technically
+                        // this is not an error as long as we get the same data from the remote.
+                        auto etag = trim(line.substr(i + 1));
+                        if (!result.etag.empty() && result.etag != etag) {
+                            throwChangedTarget("ETag", result.etag, etag);
+                        }
+                        result.etag = std::move(etag);
                     }
 
-                    else if (name == "content-encoding")
-                        encoding = trim(line.substr(i + 1));
+                    else if (name == "content-encoding") {
+                        auto encoding = trim(line.substr(i + 1));
+                        if (!this->encoding.empty() && this->encoding != encoding) {
+                            throwChangedTarget("encoding", this->encoding, encoding);
+                        }
+                        this->encoding = std::move(encoding);
+                    }
 
                     else if (name == "accept-ranges" && toLower(trim(line.substr(i + 1))) == "bytes")
                         acceptRanges = true;
@@ -203,14 +258,20 @@ struct curlFileTransfer : public FileTransfer
                     else if (name == "link" || name == "x-amz-meta-link") {
                         auto value = trim(line.substr(i + 1));
                         static std::regex linkRegex("<([^>]*)>; rel=\"immutable\"", std::regex::extended | std::regex::icase);
-                        if (std::smatch match; std::regex_match(value, match, linkRegex))
+                        if (std::smatch match; std::regex_match(value, match, linkRegex)) {
+                            if (result.immutableUrl && result.immutableUrl != match.str(1)) {
+                                throwChangedTarget("immutable url", *result.immutableUrl, match.str(1));
+                            }
                             result.immutableUrl = match.str(1);
-                        else
+                        } else
                             debug("got invalid link header '%s'", value);
                     }
                 }
             }
             return realSize;
+        } catch (...) {
+            callbackException = std::current_exception();
+            return CURL_WRITEFUNC_ERROR;
         }
 
         static size_t headerCallbackWrapper(void * contents, size_t size, size_t nmemb, void * userp)
@@ -262,7 +323,9 @@ struct curlFileTransfer : public FileTransfer
 
         void init()
         {
-            if (!req) req = curl_easy_init();
+            if (phase > initialSetup) {
+                phase = retrySetup;
+            }
 
             curl_easy_reset(req);
 
@@ -271,7 +334,11 @@ struct curlFileTransfer : public FileTransfer
                 curl_easy_setopt(req, CURLOPT_DEBUGFUNCTION, TransferItem::debugCallback);
             }
 
-            curl_easy_setopt(req, CURLOPT_URL, request.uri.c_str());
+            // use the effective URI of the previous transfer for retries. this avoids
+            // some silent corruption if a redirect changes between starting and retry.
+            const auto & uri = result.effectiveUri.empty() ? this->uri : result.effectiveUri;
+
+            curl_easy_setopt(req, CURLOPT_URL, uri.c_str());
             curl_easy_setopt(req, CURLOPT_FOLLOWLOCATION, 1L);
             curl_easy_setopt(req, CURLOPT_MAXREDIRS, 10);
             curl_easy_setopt(req, CURLOPT_NOSIGNAL, 1);
@@ -299,7 +366,7 @@ struct curlFileTransfer : public FileTransfer
             if (settings.downloadSpeed.get() > 0)
                 curl_easy_setopt(req, CURLOPT_MAX_RECV_SPEED_LARGE, (curl_off_t) (settings.downloadSpeed.get() * 1024));
 
-            if (request.head)
+            if (noBody)
                 curl_easy_setopt(req, CURLOPT_NOBODY, 1);
 
             if (uploadData) {
@@ -309,13 +376,8 @@ struct curlFileTransfer : public FileTransfer
                 curl_easy_setopt(req, CURLOPT_INFILESIZE_LARGE, (curl_off_t) uploadData->length());
             }
 
-            if (request.verifyTLS) {
-                if (settings.caFile != "")
-                    curl_easy_setopt(req, CURLOPT_CAINFO, settings.caFile.get().c_str());
-            } else {
-                curl_easy_setopt(req, CURLOPT_SSL_VERIFYPEER, 0);
-                curl_easy_setopt(req, CURLOPT_SSL_VERIFYHOST, 0);
-            }
+            if (settings.caFile != "")
+                curl_easy_setopt(req, CURLOPT_CAINFO, settings.caFile.get().c_str());
 
             curl_easy_setopt(req, CURLOPT_CONNECTTIMEOUT, fileTransferSettings.connectTimeout.get());
 
@@ -330,38 +392,34 @@ struct curlFileTransfer : public FileTransfer
             if (writtenToSink)
                 curl_easy_setopt(req, CURLOPT_RESUME_FROM_LARGE, writtenToSink);
 
-            result.data.clear();
-            result.bodySize = 0;
+            downloadData.clear();
+            bodySize = 0;
         }
 
         void finish(CURLcode code)
         {
             auto httpStatus = getHTTPStatus();
 
-            char * effectiveUriCStr = nullptr;
-            curl_easy_getinfo(req, CURLINFO_EFFECTIVE_URL, &effectiveUriCStr);
-            if (effectiveUriCStr)
-                result.effectiveUri = effectiveUriCStr;
+            maybeFinishSetup();
 
             debug("finished %s of '%s'; curl status = %d, HTTP status = %d, body = %d bytes",
-                verb(), request.uri, code, httpStatus, result.bodySize);
+                verb(), uri, code, httpStatus, bodySize);
 
             // this has to happen here until we can return an actual future.
             // wrapping user `callback`s instead is not possible because the
             // Callback api expects std::functions, and copying Callbacks is
             // not possible due the promises they hold.
-            if (code == CURLE_OK && !dataCallback && result.data.length() > 0) {
-                result.data = decompress(encoding, result.data);
+            if (code == CURLE_OK && !dataCallback && downloadData.length() > 0) {
+                downloadData = decompress(encoding, downloadData);
             }
 
-            if (writeException)
-                failEx(writeException);
+            if (callbackException)
+                failEx(callbackException);
 
             else if (code == CURLE_OK && successfulStatuses.count(httpStatus))
             {
-                result.cached = httpStatus == 304;
-                act.progress(result.bodySize, result.bodySize);
-                done = true;
+                act.progress(bodySize, bodySize);
+                phase = transferComplete;
                 callback(nullptr, std::move(result));
             }
 
@@ -419,20 +477,20 @@ struct curlFileTransfer : public FileTransfer
 
                 std::optional<std::string> response;
                 if (!successfulStatuses.count(httpStatus))
-                    response = std::move(result.data);
+                    response = std::move(downloadData);
                 auto exc =
                     code == CURLE_ABORTED_BY_CALLBACK && _isInterrupted
-                    ? FileTransferError(Interrupted, std::move(response), "%s of '%s' was interrupted", verb(), request.uri)
+                    ? FileTransferError(Interrupted, std::move(response), "%s of '%s' was interrupted", verb(), uri)
                     : httpStatus != 0
                     ? FileTransferError(err,
                         std::move(response),
                         "unable to %s '%s': HTTP error %d (%s)%s",
-                        verb(), request.uri, httpStatus, statusMsg,
+                        verb(), uri, httpStatus, statusMsg,
                         code == CURLE_OK ? "" : fmt(" (curl error: %s)", curl_easy_strerror(code)))
                     : FileTransferError(err,
                         std::move(response),
                         "unable to %s '%s': %s (%d)",
-                        verb(), request.uri, curl_easy_strerror(code), code);
+                        verb(), uri, curl_easy_strerror(code), code);
 
                 /* If this is a transient error, then maybe retry the
                    download after a while. If we're writing to a
@@ -556,7 +614,6 @@ struct curlFileTransfer : public FileTransfer
                     assert(i != items.end());
                     i->second->finish(msg->data.result);
                     curl_multi_remove_handle(curlm, i->second->req);
-                    i->second->active = false;
                     items.erase(i);
                 }
             }
@@ -599,10 +656,9 @@ struct curlFileTransfer : public FileTransfer
             }
 
             for (auto & item : incoming) {
-                debug("starting %s of %s", item->verb(), item->request.uri);
+                debug("starting %s of %s", item->verb(), item->uri);
                 item->init();
                 curl_multi_add_handle(curlm, item->req);
-                item->active = true;
                 items[item->req] = item;
             }
         }
@@ -629,9 +685,9 @@ struct curlFileTransfer : public FileTransfer
     std::shared_ptr<TransferItem> enqueueItem(std::shared_ptr<TransferItem> item)
     {
         if (item->uploadData
-            && !item->request.uri.starts_with("http://")
-            && !item->request.uri.starts_with("https://"))
-            throw nix::Error("uploading to '%s' is not supported", item->request.uri);
+            && !item->uri.starts_with("http://")
+            && !item->uri.starts_with("https://"))
+            throw nix::Error("uploading to '%s' is not supported", item->uri);
 
         {
             auto state(state_.lock());
@@ -659,77 +715,106 @@ struct curlFileTransfer : public FileTransfer
     }
 #endif
 
-    std::future<FileTransferResult> enqueueDownload(const FileTransferRequest & request) override
+    std::future<std::pair<FileTransferResult, std::string>>
+    enqueueDownload(const std::string & uri, const Headers & headers = {}) override
     {
-        return enqueueFileTransfer(request, std::nullopt);
+        return enqueueFileTransfer(uri, headers, std::nullopt, false);
     }
 
-    std::future<FileTransferResult>
-    enqueueUpload(const FileTransferRequest & request, std::string data) override
+    void upload(const std::string & uri, std::string data, const Headers & headers) override
     {
-        return enqueueFileTransfer(request, std::move(data));
+        enqueueFileTransfer(uri, headers, std::move(data), false).get();
     }
 
-    std::future<FileTransferResult>
-    enqueueFileTransfer(const FileTransferRequest & request, std::optional<std::string> data)
+    std::future<std::pair<FileTransferResult, std::string>> enqueueFileTransfer(
+        const std::string & uri,
+        const Headers & headers,
+        std::optional<std::string> data,
+        bool noBody
+    )
     {
         return enqueueFileTransfer(
-            request,
+            uri,
+            headers,
             [](std::exception_ptr ex) {
                 if (ex) {
                     std::rethrow_exception(ex);
                 }
             },
             {},
-            std::move(data)
+            std::move(data),
+            noBody
         );
     }
 
-    std::future<FileTransferResult> enqueueFileTransfer(const FileTransferRequest & request,
+    std::future<std::pair<FileTransferResult, std::string>> enqueueFileTransfer(
+        const std::string & uri,
+        const Headers & headers,
         std::invocable<std::exception_ptr> auto callback,
         std::function<void(TransferItem &, std::string_view data)> dataCallback,
-        std::optional<std::string> data
+        std::optional<std::string> data,
+        bool noBody
     )
     {
         /* Ugly hack to support s3:// URIs. */
-        if (request.uri.starts_with("s3://")) {
+        if (uri.starts_with("s3://")) {
             // FIXME: do this on a worker thread
-            return std::async(std::launch::deferred, [uri{request.uri}]() -> FileTransferResult {
+            return std::async(
+                std::launch::deferred,
+                [uri]() -> std::pair<FileTransferResult, std::string> {
 #if ENABLE_S3
-                auto [bucketName, key, params] = parseS3Uri(uri);
+                    auto [bucketName, key, params] = parseS3Uri(uri);
 
-                std::string profile = getOr(params, "profile", "");
-                std::string region = getOr(params, "region", Aws::Region::US_EAST_1);
-                std::string scheme = getOr(params, "scheme", "");
-                std::string endpoint = getOr(params, "endpoint", "");
+                    std::string profile = getOr(params, "profile", "");
+                    std::string region = getOr(params, "region", Aws::Region::US_EAST_1);
+                    std::string scheme = getOr(params, "scheme", "");
+                    std::string endpoint = getOr(params, "endpoint", "");
 
-                S3Helper s3Helper(profile, region, scheme, endpoint);
+                    S3Helper s3Helper(profile, region, scheme, endpoint);
 
-                // FIXME: implement ETag
-                auto s3Res = s3Helper.getObject(bucketName, key);
-                FileTransferResult res;
-                if (!s3Res.data)
-                    throw FileTransferError(NotFound, "S3 object '%s' does not exist", uri);
-                res.data = std::move(*s3Res.data);
-                return res;
+                    // FIXME: implement ETag
+                    auto s3Res = s3Helper.getObject(bucketName, key);
+                    FileTransferResult res;
+                    if (!s3Res.data)
+                        throw FileTransferError(NotFound, "S3 object '%s' does not exist", uri);
+                    return {res, std::move(*s3Res.data)};
 #else
-                throw nix::Error("cannot download '%s' because Lix is not built with S3 support", uri);
+                    throw nix::Error(
+                        "cannot download '%s' because Lix is not built with S3 support", uri
+                    );
 #endif
-            });
+                }
+            );
         }
 
         return enqueueItem(std::make_shared<TransferItem>(
                                *this,
-                               request,
+                               uri,
+                               headers,
                                getCurActivity(),
                                std::move(callback),
                                std::move(dataCallback),
-                               std::move(data)
+                               std::move(data),
+                               noBody
                            ))
             ->callback.get_future();
     }
 
-    box_ptr<Source> download(FileTransferRequest && request) override
+    bool exists(const std::string & uri, const Headers & headers) override
+    {
+        try {
+            enqueueFileTransfer(uri, headers, std::nullopt, true).get();
+            return true;
+        } catch (FileTransferError & e) {
+            /* S3 buckets return 403 if a file doesn't exist and the
+                bucket is unlistable, so treat 403 as 404. */
+            if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
+                return false;
+            throw;
+        }
+    }
+
+    box_ptr<Source> download(const std::string & uri, const Headers & headers) override
     {
         struct State {
             bool done = false, failed = false;
@@ -741,7 +826,8 @@ struct curlFileTransfer : public FileTransfer
         auto _state = std::make_shared<Sync<State>>();
 
         enqueueFileTransfer(
-            request,
+            uri,
+            headers,
             [_state](std::exception_ptr ex) {
                 auto state(_state->lock());
                 state->done = true;
@@ -776,7 +862,8 @@ struct curlFileTransfer : public FileTransfer
                 state->data.append(data);
                 state->avail.notify_one();
             },
-            std::nullopt
+            std::nullopt,
+            false
         );
 
         struct InnerSource : Source

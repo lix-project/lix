@@ -52,25 +52,11 @@ struct FileTransferSettings : Config
 
 extern FileTransferSettings fileTransferSettings;
 
-struct FileTransferRequest
-{
-    std::string uri;
-    Headers headers;
-    std::string expectedETag;
-    bool verifyTLS = true;
-    bool head = false;
-
-    FileTransferRequest(std::string_view uri)
-        : uri(uri) { }
-};
-
 struct FileTransferResult
 {
     bool cached = false;
     std::string etag;
     std::string effectiveUri;
-    std::string data;
-    uint64_t bodySize = 0;
     /* An "immutable" URL for this resource (i.e. one whose contents
        will never change), as returned by the `Link: <url>;
        rel="immutable"` header. */
@@ -87,14 +73,26 @@ struct FileTransfer
      * Enqueues a download request, returning a future for the result of
      * the download. The future may throw a FileTransferError exception.
      */
-    virtual std::future<FileTransferResult> enqueueDownload(const FileTransferRequest & request) = 0;
+    virtual std::future<std::pair<FileTransferResult, std::string>>
+    enqueueDownload(const std::string & uri, const Headers & headers = {}) = 0;
 
     /**
-     * Enqueue an upload request, returning a future for the result of
-     * the upload. The future may throw a FileTransferError exception.
+     * Upload some data. May throw a FileTransferError exception.
      */
-    virtual std::future<FileTransferResult>
-    enqueueUpload(const FileTransferRequest & request, std::string data) = 0;
+    virtual void
+    upload(const std::string & uri, std::string data, const Headers & headers = {}) = 0;
+
+    /**
+     * Checks whether the given URI exists. For historical reasons this function
+     * treats HTTP 403 responses like HTTP 404 responses and returns `false` for
+     * both. This was originally done to handle unlistable S3 buckets, which may
+     * return 403 (not 404) if the reuqested object doesn't exist in the bucket.
+     *
+     * ## Bugs
+     *
+     * S3 objects are downloaded completely to answer this request.
+     */
+    virtual bool exists(const std::string & uri, const Headers & headers = {}) = 0;
 
     /**
      * Download a file, returning its contents through a source. Will not return
@@ -103,7 +101,7 @@ struct FileTransfer
      * thrown by the returned source. The source will only throw errors detected
      * during the transfer itself (decompression errors, connection drops, etc).
      */
-    virtual box_ptr<Source> download(FileTransferRequest && request) = 0;
+    virtual box_ptr<Source> download(const std::string & uri, const Headers & headers = {}) = 0;
 
     enum Error { NotFound, Forbidden, Misc, Transient, Interrupted };
 };
