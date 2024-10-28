@@ -45,7 +45,9 @@ DownloadFileResult downloadFile(
     FileTransferResult res;
     std::string data;
     try {
-        std::tie(res, data) = getFileTransfer()->enqueueDownload(url, headers).get();
+        auto [meta, content] = getFileTransfer()->download(url, headers);
+        res = std::move(meta);
+        data = content->drain();
     } catch (FileTransferError & e) {
         if (cached) {
             warn("%s; using cached version", e.msg());

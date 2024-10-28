@@ -70,13 +70,6 @@ struct FileTransfer
     virtual ~FileTransfer() { }
 
     /**
-     * Enqueues a download request, returning a future for the result of
-     * the download. The future may throw a FileTransferError exception.
-     */
-    virtual std::future<std::pair<FileTransferResult, std::string>>
-    enqueueDownload(const std::string & uri, const Headers & headers = {}) = 0;
-
-    /**
      * Upload some data. May throw a FileTransferError exception.
      */
     virtual void

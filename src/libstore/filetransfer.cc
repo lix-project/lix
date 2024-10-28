@@ -700,12 +700,6 @@ struct curlFileTransfer : public FileTransfer
     }
 #endif
 
-    std::future<std::pair<FileTransferResult, std::string>>
-    enqueueDownload(const std::string & uri, const Headers & headers = {}) override
-    {
-        return enqueueFileTransfer(uri, headers, std::nullopt, false);
-    }
-
     void upload(const std::string & uri, std::string data, const Headers & headers) override
     {
         enqueueFileTransfer(uri, headers, std::move(data), false).get();
