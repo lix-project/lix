@@ -98,7 +98,7 @@ std::tuple<StorePath, Hash> prefetchFile(
 
             FdSink sink(fd.get());
 
-            getFileTransfer()->download(url)->drainInto(sink);
+            getFileTransfer()->download(url).second->drainInto(sink);
         }
 
         /* Optionally unpack the file. */

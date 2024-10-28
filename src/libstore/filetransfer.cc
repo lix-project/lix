@@ -821,7 +821,8 @@ struct curlFileTransfer : public FileTransfer
         }
     }
 
-    box_ptr<Source> download(const std::string & uri, const Headers & headers) override
+    std::pair<FileTransferResult, box_ptr<Source>>
+    download(const std::string & uri, const Headers & headers) override
     {
         struct State {
             bool done = false, failed = false;
@@ -832,7 +833,7 @@ struct curlFileTransfer : public FileTransfer
 
         auto _state = std::make_shared<Sync<State>>();
 
-        auto transfer = enqueueFileTransfer(
+        auto [metadataFuture, _done] = enqueueFileTransfer(
             uri,
             headers,
             [_state](std::exception_ptr ex) {
@@ -939,10 +940,11 @@ struct curlFileTransfer : public FileTransfer
             }
         };
 
+        auto metadata = metadataFuture.get();
         auto source = make_box_ptr<DownloadSource>(_state);
         auto lock(_state->lock());
         source->awaitData(lock);
-        return source;
+        return {std::move(metadata), std::move(source)};
     }
 };
 

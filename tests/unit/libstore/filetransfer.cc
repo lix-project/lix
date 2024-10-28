@@ -136,7 +136,7 @@ TEST(FileTransfer, exceptionAbortsDownload)
 
     LambdaSink broken([](auto block) { throw Done(); });
 
-    ASSERT_THROW(ft->download("file:///dev/zero")->drainInto(broken), Done);
+    ASSERT_THROW(ft->download("file:///dev/zero").second->drainInto(broken), Done);
 
     // makeFileTransfer returns a ref<>, which cannot be cleared. since we also
     // can't default-construct it we'll have to overwrite it instead, but we'll
@@ -155,7 +155,7 @@ TEST(FileTransfer, exceptionAbortsRead)
     auto [port, srv] = serveHTTP("200 ok", "content-length: 0\r\n", [] { return ""; });
     auto ft = makeFileTransfer();
     char buf[10] = "";
-    ASSERT_THROW(ft->download(fmt("http://[::1]:%d/index", port))->read(buf, 10), EndOfFile);
+    ASSERT_THROW(ft->download(fmt("http://[::1]:%d/index", port)).second->read(buf, 10), EndOfFile);
 }
 
 TEST(FileTransfer, NOT_ON_DARWIN(reportsSetupErrors))
@@ -179,7 +179,7 @@ TEST(FileTransfer, NOT_ON_DARWIN(defersFailures))
         return std::string(1024 * 1024, ' ');
     });
     auto ft = makeFileTransfer(0);
-    auto src = ft->download(fmt("http://[::1]:%d/index", port));
+    auto src = ft->download(fmt("http://[::1]:%d/index", port)).second;
     ASSERT_THROW(src->drain(), FileTransferError);
 }
 
@@ -192,7 +192,7 @@ TEST(FileTransfer, NOT_ON_DARWIN(handlesContentEncoding))
     auto ft = makeFileTransfer();
 
     StringSink sink;
-    ft->download(fmt("http://[::1]:%d/index", port))->drainInto(sink);
+    ft->download(fmt("http://[::1]:%d/index", port)).second->drainInto(sink);
     EXPECT_EQ(sink.s, original);
 }
 

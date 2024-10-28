@@ -101,7 +101,8 @@ struct FileTransfer
      * thrown by the returned source. The source will only throw errors detected
      * during the transfer itself (decompression errors, connection drops, etc).
      */
-    virtual box_ptr<Source> download(const std::string & uri, const Headers & headers = {}) = 0;
+    virtual std::pair<FileTransferResult, box_ptr<Source>>
+    download(const std::string & uri, const Headers & headers = {}) = 0;
 
     enum Error { NotFound, Forbidden, Misc, Transient, Interrupted };
 };

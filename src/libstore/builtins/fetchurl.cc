@@ -36,7 +36,7 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData,
 
     auto fetch = [&](const std::string & url) {
 
-        auto raw = fileTransfer->download(url);
+        auto raw = fileTransfer->download(url).second;
         auto decompressor = makeDecompressionSource(
             unpack && mainUrl.ends_with(".xz") ? "xz" : "none", *raw);
 

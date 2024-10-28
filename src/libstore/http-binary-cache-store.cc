@@ -147,7 +147,7 @@ protected:
     {
         checkEnabled();
         try {
-            return getFileTransfer()->download(makeURI(path));
+            return getFileTransfer()->download(makeURI(path)).second;
         } catch (FileTransferError & e) {
             if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
                 throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache '%s'", path, getUri());
