@@ -4,7 +4,6 @@
 #include "store-api.hh"
 #include "s3.hh"
 #include "signals.hh"
-#include "compression.hh"
 #include "strings.hh"
 #include <cstddef>
 
@@ -78,8 +77,6 @@ struct curlFileTransfer : public FileTransfer
 
         struct curl_slist * requestHeaders = 0;
 
-        std::string encoding;
-
         bool acceptRanges = false;
 
         curl_off_t writtenToSink = 0;
@@ -127,7 +124,6 @@ struct curlFileTransfer : public FileTransfer
             if (req == nullptr) {
                 throw FileTransferError(Misc, {}, "could not allocate curl handle");
             }
-            requestHeaders = curl_slist_append(requestHeaders, "Accept-Encoding: zstd, br, gzip, deflate, bzip2, xz");
             for (auto it = headers.begin(); it != headers.end(); ++it){
                 requestHeaders = curl_slist_append(requestHeaders, fmt("%s: %s", it->first, it->second).c_str());
             }
@@ -244,14 +240,6 @@ struct curlFileTransfer : public FileTransfer
                         result.etag = std::move(etag);
                     }
 
-                    else if (name == "content-encoding") {
-                        auto encoding = trim(line.substr(i + 1));
-                        if (!this->encoding.empty() && this->encoding != encoding) {
-                            throwChangedTarget("encoding", this->encoding, encoding);
-                        }
-                        this->encoding = std::move(encoding);
-                    }
-
                     else if (name == "accept-ranges" && toLower(trim(line.substr(i + 1))) == "bytes")
                         acceptRanges = true;
 
@@ -340,6 +328,7 @@ struct curlFileTransfer : public FileTransfer
 
             curl_easy_setopt(req, CURLOPT_URL, uri.c_str());
             curl_easy_setopt(req, CURLOPT_FOLLOWLOCATION, 1L);
+            curl_easy_setopt(req, CURLOPT_ACCEPT_ENCODING, ""); // all of them!
             curl_easy_setopt(req, CURLOPT_MAXREDIRS, 10);
             curl_easy_setopt(req, CURLOPT_NOSIGNAL, 1);
             curl_easy_setopt(req, CURLOPT_USERAGENT,
@@ -404,14 +393,6 @@ struct curlFileTransfer : public FileTransfer
 
             debug("finished %s of '%s'; curl status = %d, HTTP status = %d, body = %d bytes",
                 verb(), uri, code, httpStatus, bodySize);
-
-            // this has to happen here until we can return an actual future.
-            // wrapping user `callback`s instead is not possible because the
-            // Callback api expects std::functions, and copying Callbacks is
-            // not possible due the promises they hold.
-            if (code == CURLE_OK && !dataCallback && downloadData.length() > 0) {
-                downloadData = decompress(encoding, downloadData);
-            }
 
             if (callbackException)
                 failEx(callbackException);
@@ -500,7 +481,7 @@ struct curlFileTransfer : public FileTransfer
                     && attempt < tries
                     && (!this->dataCallback
                         || writtenToSink == 0
-                        || (acceptRanges && encoding.empty())))
+                        || acceptRanges))
                 {
                     int ms = fileTransfer.baseRetryTimeMs * std::pow(2.0f, attempt - 1 + std::uniform_real_distribution<>(0.0, 0.5)(fileTransfer.mt19937));
                     if (writtenToSink)
@@ -819,7 +800,7 @@ struct curlFileTransfer : public FileTransfer
         struct State {
             bool done = false, failed = false;
             std::exception_ptr exc;
-            std::string data, encoding;
+            std::string data;
             std::condition_variable avail, request;
         };
 
@@ -853,10 +834,6 @@ struct curlFileTransfer : public FileTransfer
                     state.wait_for(state->request, std::chrono::seconds(10));
                 }
 
-                if (state->encoding.empty()) {
-                    state->encoding = transfer.encoding;
-                }
-
                 /* Append data to the buffer and wake up the calling
                 thread. */
                 state->data.append(data);
@@ -866,15 +843,15 @@ struct curlFileTransfer : public FileTransfer
             false
         );
 
-        struct InnerSource : Source
+        struct DownloadSource : Source
         {
             const std::shared_ptr<Sync<State>> _state;
             std::string chunk;
             std::string_view buffered;
 
-            explicit InnerSource(const std::shared_ptr<Sync<State>> & state) : _state(state) {}
+            explicit DownloadSource(const std::shared_ptr<Sync<State>> & state) : _state(state) {}
 
-            ~InnerSource()
+            ~DownloadSource()
             {
                 // wake up the download thread if it's still going and have it abort
                 auto state(_state->lock());
@@ -936,30 +913,9 @@ struct curlFileTransfer : public FileTransfer
             }
         };
 
-        struct DownloadSource : Source
-        {
-            InnerSource inner;
-            std::unique_ptr<Source> decompressor;
-
-            explicit DownloadSource(const std::shared_ptr<Sync<State>> & state) : inner(state) {}
-
-            size_t read(char * data, size_t len) override
-            {
-                checkInterrupt();
-
-                if (!decompressor) {
-                    auto state(inner._state->lock());
-                    inner.awaitData(state);
-                    decompressor = makeDecompressionSource(state->encoding, inner);
-                }
-
-                return decompressor->read(data, len);
-            }
-        };
-
         auto source = make_box_ptr<DownloadSource>(_state);
         auto lock(_state->lock());
-        source->inner.awaitData(lock);
+        source->awaitData(lock);
         return source;
     }
 };
