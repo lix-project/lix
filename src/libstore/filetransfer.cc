@@ -63,7 +63,7 @@ struct curlFileTransfer : public FileTransfer
         std::packaged_task<
             std::pair<FileTransferResult, std::string>(std::exception_ptr, FileTransferResult)>
             callback;
-        std::function<void(TransferItem &, std::string_view data)> dataCallback;
+        std::function<void(std::string_view data)> dataCallback;
         CURL * req; // must never be nullptr
         std::string statusMsg;
 
@@ -103,7 +103,7 @@ struct curlFileTransfer : public FileTransfer
             const Headers & headers,
             ActivityId parentAct,
             std::invocable<std::exception_ptr> auto callback,
-            std::function<void(TransferItem &, std::string_view data)> dataCallback,
+            std::function<void(std::string_view data)> dataCallback,
             std::optional<std::string> uploadData,
             bool noBody
         )
@@ -196,7 +196,7 @@ struct curlFileTransfer : public FileTransfer
 
                 if (successfulStatuses.count(getHTTPStatus()) && this->dataCallback) {
                     writtenToSink += realSize;
-                    dataCallback(*this, {static_cast<const char *>(contents), realSize});
+                    dataCallback({static_cast<const char *>(contents), realSize});
                 } else {
                     this->downloadData.append(static_cast<const char *>(contents), realSize);
                 }
@@ -732,7 +732,7 @@ struct curlFileTransfer : public FileTransfer
         const std::string & uri,
         const Headers & headers,
         std::invocable<std::exception_ptr> auto callback,
-        std::function<void(TransferItem &, std::string_view data)> dataCallback,
+        std::function<void(std::string_view data)> dataCallback,
         std::optional<std::string> data,
         bool noBody
     )
@@ -816,7 +816,7 @@ struct curlFileTransfer : public FileTransfer
                 state->avail.notify_one();
                 state->request.notify_one();
             },
-            [_state](TransferItem & transfer, std::string_view data) {
+            [_state](std::string_view data) {
                 auto state(_state->lock());
 
                 if (state->failed) {
