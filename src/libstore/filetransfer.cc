@@ -60,9 +60,7 @@ struct curlFileTransfer : public FileTransfer
             /// transfer complete, result or failure reported
             transferComplete,
         } phase = initialSetup;
-        std::packaged_task<
-            std::pair<FileTransferResult, std::string>(std::exception_ptr, FileTransferResult)>
-            callback;
+        std::packaged_task<FileTransferResult(std::exception_ptr, FileTransferResult)> callback;
         std::function<void(std::string_view data)> dataCallback;
         CURL * req; // must never be nullptr
         std::string statusMsg;
@@ -114,9 +112,9 @@ struct curlFileTransfer : public FileTransfer
                 {uri}, parentAct)
             , uploadData(std::move(uploadData))
             , noBody(noBody)
-            , callback([this, cb{std::move(callback)}] (std::exception_ptr ex, FileTransferResult r) {
+            , callback([cb{std::move(callback)}] (std::exception_ptr ex, FileTransferResult r) {
                 cb(ex);
-                return std::pair{std::move(r), std::move(downloadData)};
+                return r;
             })
             , dataCallback(std::move(dataCallback))
             , req(curl_easy_init())
@@ -714,7 +712,13 @@ struct curlFileTransfer : public FileTransfer
         bool noBody
     )
     {
-        return enqueueFileTransfer(
+        struct State {
+            std::string data;
+        };
+
+        auto _state = std::make_shared<Sync<State>>();
+
+        auto transfer = enqueueFileTransfer(
             uri,
             headers,
             [](std::exception_ptr ex) {
@@ -722,13 +726,21 @@ struct curlFileTransfer : public FileTransfer
                     std::rethrow_exception(ex);
                 }
             },
-            {},
+            [_state](std::string_view data) {
+                _state->lock()->data.append(data);
+            },
             std::move(data),
             noBody
         );
+
+        return std::async(std::launch::deferred, [_state, transfer{std::move(transfer)}]() mutable {
+            auto result = transfer.get();
+            auto state(_state->lock());
+            return std::pair(std::move(result), std::move(state->data));
+        });
     }
 
-    std::future<std::pair<FileTransferResult, std::string>> enqueueFileTransfer(
+    std::future<FileTransferResult> enqueueFileTransfer(
         const std::string & uri,
         const Headers & headers,
         std::invocable<std::exception_ptr> auto callback,
@@ -742,7 +754,7 @@ struct curlFileTransfer : public FileTransfer
             // FIXME: do this on a worker thread
             return std::async(
                 std::launch::deferred,
-                [uri]() -> std::pair<FileTransferResult, std::string> {
+                [uri, dataCallback] {
 #if ENABLE_S3
                     auto [bucketName, key, params] = parseS3Uri(uri);
 
@@ -758,7 +770,8 @@ struct curlFileTransfer : public FileTransfer
                     FileTransferResult res;
                     if (!s3Res.data)
                         throw FileTransferError(NotFound, "S3 object '%s' does not exist", uri);
-                    return {res, std::move(*s3Res.data)};
+                    dataCallback(*s3Res.data);
+                    return res;
 #else
                     throw nix::Error(
                         "cannot download '%s' because Lix is not built with S3 support", uri
