@@ -591,7 +591,9 @@ struct curlFileTransfer : public FileTransfer
 
         bool quit = false;
 
-        std::chrono::steady_clock::time_point nextWakeup;
+        // NOTE: we will need to use CURLMOPT_TIMERFUNCTION to integrate this
+        // loop with kj. until then curl will handle its timeouts internally.
+        int64_t timeoutMs = INT64_MAX;
 
         while (!quit) {
             checkInterrupt();
@@ -616,17 +618,9 @@ struct curlFileTransfer : public FileTransfer
             }
 
             /* Wait for activity, including wakeup events. */
-            long maxSleepTimeMs = items.empty() ? 10000 : 100;
-            auto sleepTimeMs =
-                nextWakeup != std::chrono::steady_clock::time_point()
-                ? std::max(0, (int) std::chrono::duration_cast<std::chrono::milliseconds>(nextWakeup - std::chrono::steady_clock::now()).count())
-                : maxSleepTimeMs;
-            vomit("download thread waiting for %d ms", sleepTimeMs);
-            mc = curl_multi_poll(curlm, nullptr, 0, sleepTimeMs, nullptr);
+            mc = curl_multi_poll(curlm, nullptr, 0, std::min<int64_t>(timeoutMs, INT_MAX), nullptr);
             if (mc != CURLM_OK)
                 throw nix::Error("unexpected error from curl_multi_poll(): %s", curl_multi_strerror(mc));
-
-            nextWakeup = std::chrono::steady_clock::time_point();
 
             /* Add new curl requests from the incoming requests queue,
                except for requests that are embargoed (waiting for a
@@ -634,6 +628,8 @@ struct curlFileTransfer : public FileTransfer
 
             std::vector<std::shared_ptr<TransferItem>> incoming;
             auto now = std::chrono::steady_clock::now();
+
+            timeoutMs = INT64_MAX;
 
             {
                 auto state(state_.lock());
@@ -647,9 +643,9 @@ struct curlFileTransfer : public FileTransfer
                         incoming.push_back(item);
                         state->incoming.pop();
                     } else {
-                        if (nextWakeup == std::chrono::steady_clock::time_point()
-                            || item->embargo < nextWakeup)
-                            nextWakeup = item->embargo;
+                        using namespace std::chrono;
+                        auto wait = duration_cast<milliseconds>(item->embargo - now);
+                        timeoutMs = std::min<int64_t>(timeoutMs, wait.count());
                         break;
                     }
                 }
