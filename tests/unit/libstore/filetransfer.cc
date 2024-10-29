@@ -27,9 +27,28 @@ namespace {
 
 struct Reply {
     std::string status, headers;
-    std::function<std::string()> content;
-};
+    std::function<std::optional<std::string>(int)> content;
 
+    Reply(
+        std::string_view status, std::string_view headers, std::function<std::string()> content
+    )
+        : Reply(status, headers, [content](int round) {
+            return round == 0 ? std::optional(content()) : std::nullopt;
+        })
+    {
+    }
+
+    Reply(
+        std::string_view status,
+        std::string_view headers,
+        std::function<std::optional<std::string>(int)> content
+    )
+        : status(status)
+        , headers(headers)
+        , content(content)
+    {
+    }
+};
 }
 
 namespace nix {
@@ -89,25 +108,44 @@ serveHTTP(std::vector<Reply> replies)
                     throw SysError(errno, "accept() failed");
                 }
 
-                auto send = [&](std::string_view bit) {
-                    while (!bit.empty()) {
-                        auto written = ::write(conn.get(), bit.data(), bit.size());
-                        if (written < 0) {
-                            throw SysError(errno, "write() failed");
-                        }
-                        bit.remove_prefix(written);
-                    }
-                };
-
                 const auto & reply = replies[at++ % replies.size()];
 
-                send("HTTP/1.1 ");
-                send(reply.status);
-                send("\r\n");
-                send(reply.headers);
-                send("\r\n");
-                send(reply.content());
-                ::shutdown(conn.get(), SHUT_RDWR);
+                std::thread([=, conn{std::move(conn)}] {
+                    auto send = [&](std::string_view bit) {
+                        while (!bit.empty()) {
+                            auto written = ::write(conn.get(), bit.data(), bit.size());
+                            if (written < 0) {
+                                throw SysError(errno, "write() failed");
+                            }
+                            bit.remove_prefix(written);
+                        }
+                    };
+
+                    send("HTTP/1.1 ");
+                    send(reply.status);
+                    send("\r\n");
+                    send(reply.headers);
+                    send("\r\n");
+                    for (int round = 0; ; round++) {
+                        if (auto content = reply.content(round); content.has_value()) {
+                            send(*content);
+                        } else {
+                            break;
+                        }
+                    }
+                    ::shutdown(conn.get(), SHUT_WR);
+                    for (;;) {
+                        char buf[1];
+                        switch (read(conn.get(), buf, 1)) {
+                        case 0:
+                            return; // remote closed
+                        case 1:
+                            continue; // connection still held open by remote
+                        default:
+                            throw SysError(errno, "read() failed");
+                        }
+                    }
+                }).detach();
             }
         },
         std::move(listener),
@@ -217,6 +255,37 @@ TEST(FileTransfer, usesIntermediateLinkHeaders)
     auto ft = makeFileTransfer(0);
     auto [result, _data] = ft->download(fmt("http://[::1]:%d/first", port));
     ASSERT_EQ(result.immutableUrl, "http://foo");
+}
+
+TEST(FileTransfer, stalledReaderDoesntBlockOthers)
+{
+    auto [port, srv] = serveHTTP({
+        {"200 ok",
+         "content-length: 100000000\r\n",
+         [](int round) mutable {
+             return round < 100 ? std::optional(std::string(1'000'000, ' ')) : std::nullopt;
+         }},
+    });
+    auto ft = makeFileTransfer(0);
+    auto [_result1, data1] = ft->download(fmt("http://[::1]:%d", port));
+    auto [_result2, data2] = ft->download(fmt("http://[::1]:%d", port));
+    auto drop = [](Source & source, size_t size) {
+        char buf[1000];
+        while (size > 0) {
+            auto round = std::min(size, sizeof(buf));
+            source(buf, round);
+            size -= round;
+        }
+    };
+    // read 10M of each of the 100M, then the rest. neither reader should
+    // block the other, nor should it take that long to copy 200MB total.
+    drop(*data1, 10'000'000);
+    drop(*data2, 10'000'000);
+    drop(*data1, 90'000'000);
+    drop(*data2, 90'000'000);
+
+    ASSERT_THROW(drop(*data1, 1), EndOfFile);
+    ASSERT_THROW(drop(*data2, 1), EndOfFile);
 }
 
 }

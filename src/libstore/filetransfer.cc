@@ -64,7 +64,8 @@ struct curlFileTransfer : public FileTransfer
         } phase = initialSetup;
         std::promise<FileTransferResult> metadataPromise;
         std::packaged_task<void(std::exception_ptr)> doneCallback;
-        std::function<void(std::string_view data)> dataCallback;
+        // return false from dataCallback to pause the transfer without consuming data
+        std::function<bool(std::string_view data)> dataCallback;
         CURL * req; // must never be nullptr
         std::string statusMsg;
 
@@ -104,7 +105,7 @@ struct curlFileTransfer : public FileTransfer
             const Headers & headers,
             ActivityId parentAct,
             std::invocable<std::exception_ptr> auto doneCallback,
-            std::function<void(std::string_view data)> dataCallback,
+            std::function<bool(std::string_view data)> dataCallback,
             std::optional<std::string> uploadData,
             bool noBody
         )
@@ -198,15 +199,16 @@ struct curlFileTransfer : public FileTransfer
             try {
                 maybeFinishSetup();
 
-                bodySize += realSize;
-
                 if (successfulStatuses.count(getHTTPStatus()) && this->dataCallback) {
+                    if (!dataCallback({static_cast<const char *>(contents), realSize})) {
+                        return CURL_WRITEFUNC_PAUSE;
+                    }
                     writtenToSink += realSize;
-                    dataCallback({static_cast<const char *>(contents), realSize});
                 } else {
                     this->downloadData.append(static_cast<const char *>(contents), realSize);
                 }
 
+                bodySize += realSize;
                 return realSize;
             } catch (...) {
                 callbackException = std::current_exception();
@@ -501,6 +503,13 @@ struct curlFileTransfer : public FileTransfer
                     fail(std::move(exc));
             }
         }
+
+        void unpause()
+        {
+            auto lock = fileTransfer.state_.lock();
+            lock->unpause.push_back(shared_from_this());
+            fileTransfer.wakeup();
+        }
     };
 
     struct State
@@ -512,6 +521,7 @@ struct curlFileTransfer : public FileTransfer
         };
         bool quit = false;
         std::priority_queue<std::shared_ptr<TransferItem>, std::vector<std::shared_ptr<TransferItem>>, EmbargoComparator> incoming;
+        std::vector<std::shared_ptr<TransferItem>> unpause;
     };
 
     Sync<State> state_;
@@ -627,6 +637,10 @@ struct curlFileTransfer : public FileTransfer
 
             {
                 auto state(state_.lock());
+                for (auto & item : state->unpause) {
+                    curl_easy_pause(item->req, CURLPAUSE_CONT);
+                }
+                state->unpause.clear();
                 while (!state->incoming.empty()) {
                     auto item = state->incoming.top();
                     if (item->embargo <= now) {
@@ -826,14 +840,14 @@ struct curlFileTransfer : public FileTransfer
                 download thread. (Hopefully sleeping will throttle the
                 sender.) */
                 if (state->data.size() > 1024 * 1024) {
-                    debug("download buffer is full; going to sleep");
-                    state.wait_for(state->request, std::chrono::seconds(10));
+                    return false;
                 }
 
                 /* Append data to the buffer and wake up the calling
                 thread. */
                 state->data.append(data);
                 state->avail.notify_one();
+                return true;
             },
             std::move(data),
             noBody
@@ -842,10 +856,17 @@ struct curlFileTransfer : public FileTransfer
         struct TransferSource : Source
         {
             const std::shared_ptr<Sync<State>> _state;
+            std::shared_ptr<TransferItem> transfer;
             std::string chunk;
             std::string_view buffered;
 
-            explicit TransferSource(const std::shared_ptr<Sync<State>> & state) : _state(state) {}
+            explicit TransferSource(
+                const std::shared_ptr<Sync<State>> & state, std::shared_ptr<TransferItem> transfer
+            )
+                : _state(state)
+                , transfer(std::move(transfer))
+            {
+            }
 
             ~TransferSource()
             {
@@ -868,6 +889,7 @@ struct curlFileTransfer : public FileTransfer
                             return;
                         }
 
+                        transfer->unpause();
                         state.wait(state->avail);
                     }
 
@@ -910,7 +932,7 @@ struct curlFileTransfer : public FileTransfer
         };
 
         auto metadata = item->metadataPromise.get_future().get();
-        auto source = make_box_ptr<TransferSource>(_state);
+        auto source = make_box_ptr<TransferSource>(_state, item);
         auto lock(_state->lock());
         source->awaitData(lock);
         return {std::move(metadata), std::move(source)};
