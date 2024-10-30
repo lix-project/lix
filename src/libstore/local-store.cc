@@ -691,12 +691,19 @@ static void canonicalisePathMetaData_(
         if ((eaSize = llistxattr(path.c_str(), eaBuf.data(), eaBuf.size())) < 0)
             throw SysError("querying extended attributes of '%s'", path);
 
-        if (S_ISREG(st.st_mode) || S_ISDIR(st.st_mode))
+        bool resetMode = false;
+        if ((S_ISREG(st.st_mode) || S_ISDIR(st.st_mode)) && !(st.st_mode & S_IWUSR)) {
+            resetMode = true;
             chmod(path.c_str(), st.st_mode | S_IWUSR);
+        }
         for (auto & eaName: tokenizeString<Strings>(std::string(eaBuf.data(), eaSize), std::string("\000", 1))) {
             if (settings.ignoredAcls.get().count(eaName)) continue;
             if (lremovexattr(path.c_str(), eaName.c_str()) == -1)
                 throw SysError("removing extended attribute '%s' from '%s'", eaName, path);
+        }
+        if (resetMode) {
+            chmod(path.c_str(), st.st_mode);
+            resetMode = false;
         }
      }
 #endif
