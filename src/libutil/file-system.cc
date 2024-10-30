@@ -214,6 +214,19 @@ struct stat lstat(const Path & path)
     return st;
 }
 
+std::optional<struct stat> maybeStat(const Path & path)
+{
+    std::optional<struct stat> st{std::in_place};
+    if (stat(path.c_str(), &*st))
+    {
+        if (errno == ENOENT || errno == ENOTDIR)
+            st.reset();
+        else
+            throw SysError("getting status of '%s'", path);
+    }
+    return st;
+}
+
 std::optional<struct stat> maybeLstat(const Path & path)
 {
     std::optional<struct stat> st{std::in_place};
@@ -232,14 +245,23 @@ bool pathExists(const Path & path)
     return maybeLstat(path).has_value();
 }
 
-bool pathAccessible(const Path & path)
+bool pathAccessible(const Path & path, bool resolveSymlinks)
 {
     try {
-        return pathExists(path);
+        return resolveSymlinks ? maybeStat(path).has_value() : pathExists(path);
     } catch (SysError & e) {
-        // swallow EPERM
-        if (e.errNo == EPERM) return false;
-        throw;
+        switch (e.errNo) {
+        case EPERM:
+            // operation not permitted error, can occur in darwin sandbox
+        case EACCES:
+            // permission error
+        case ELOOP:
+            // path component is a looping symlink
+            // this seems like a reasonable condition to handle as well
+            return false;
+        default:
+            throw;
+        }
     }
 }
 

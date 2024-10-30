@@ -263,7 +263,7 @@ bool Settings::isWSL1()
 Path Settings::getDefaultSSLCertFile()
 {
     for (auto & fn : {"/etc/ssl/certs/ca-certificates.crt", "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"})
-        if (pathAccessible(fn)) return fn;
+        if (pathAccessible(fn, true)) return fn;
     return "";
 }
 

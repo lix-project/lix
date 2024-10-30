@@ -124,6 +124,12 @@ struct stat stat(const Path & path);
 struct stat lstat(const Path & path);
 
 /**
+ * `stat` the given path if it exists.
+ * @return std::nullopt if the path doesn't exist, or an optional containing the result of `stat` otherwise
+ */
+std::optional<struct stat> maybeStat(const Path & path);
+
+/**
  * `lstat` the given path if it exists.
  * @return std::nullopt if the path doesn't exist, or an optional containing the result of `lstat` otherwise
  */
@@ -137,10 +143,11 @@ bool pathExists(const Path & path);
 /**
  * A version of pathExists that returns false on a permission error.
  * Useful for inferring default paths across directories that might not
- * be readable.
+ * be readable. Optionally resolves symlinks to determine if the real
+ * path exists.
  * @return true iff the given path can be accessed and exists
  */
-bool pathAccessible(const Path & path);
+bool pathAccessible(const Path & path, bool resolveSymlinks = false);
 
 /**
  * Read the contents (target) of a symbolic link.  The result is not
