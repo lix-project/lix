@@ -65,6 +65,8 @@ checkBuildTempDirRemoved $TEST_ROOT/log
 nix-build check.nix -A nondeterministic --argstr checkBuildId $checkBuildId \
     --no-out-link --check 2> $TEST_ROOT/log || status=$?
 grep 'may not be deterministic' $TEST_ROOT/log
+# the differences in both outputs should be reported
+[[ $(grep -c 'differs' $TEST_ROOT/log) = 2 ]]
 [ "$status" = "104" ]
 checkBuildTempDirRemoved $TEST_ROOT/log
 
