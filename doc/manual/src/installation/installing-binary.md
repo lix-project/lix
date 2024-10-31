@@ -1,6 +1,6 @@
 # Installing a Binary Distribution
 
-See https://lix.systems/install/ for more details.
+See [https://lix.systems/install/](https://lix.systems/install/) for more details.
 
 <!--
 
