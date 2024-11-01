@@ -47,6 +47,7 @@ libcmd = library(
     liblixfetchers,
     liblixmain,
     boehm,
+    ncurses,
     editline,
     lowdown,
     nlohmann_json,

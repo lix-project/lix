@@ -97,10 +97,10 @@
         # Enable ANSI arrow keys.
         (lib.enableFeature true "arrow-keys")
         # Use termcap library to query terminal size.
-        (lib.enableFeature (ncurses != null) "termcap")
+        (lib.enableFeature true "termcap")
       ];
 
-      buildInputs = (prev.buildInputs or [ ]) ++ [ ncurses ];
+      propagatedBuildInputs = (prev.propagatedBuildInputs or [ ]) ++ [ ncurses ];
     });
 
     build-release-notes = callPackage ./maintainers/build-release-notes.nix { };
@@ -245,9 +245,10 @@ stdenv.mkDerivation (finalAttrs: {
 
   nativeBuildInputs =
     [
-      python3
-      python3.pkgs.pytest
-      python3.pkgs.pytest-xdist
+      (python3.pythonOnBuildForHost.withPackages (p: [
+        p.pytest
+        p.pytest-xdist
+      ]))
       meson
       ninja
       cmake
