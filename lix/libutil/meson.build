@@ -153,7 +153,6 @@ experimental_feature_definitions = files(
   'experimental-features/read-only-local-store.md',
   'experimental-features/recursive-nix.md',
   'experimental-features/repl-automation.md',
-  'experimental-features/repl-flake.md',
 )
 
 deprecated_feature_definitions = files(

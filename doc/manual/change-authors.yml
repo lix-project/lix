@@ -66,6 +66,10 @@ delan:
   forgejo: delan
   github: delan
 
+detroyejr:
+  display_name: Jonathan De Troye
+  github: detroyejr
+
 edolstra:
   display_name: Eelco Dolstra
   github: edolstra
@@ -101,6 +105,11 @@ jade:
 
 just1602:
   forgejo: just1602
+
+kfears:
+  display_name: KFears
+  forgejo: kfearsoff
+  github: kfearsoff
 
 kiara:
   github: KiaraGrouwstra
