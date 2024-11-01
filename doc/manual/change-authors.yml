@@ -129,11 +129,6 @@ roberth:
   display_name: Robert Hensing
   github: roberth
 
-tcmal:
-  display_name: Aria
-  forgejo: tcmal
-  github: tcmal
-
 thufschmitt:
   display_name: Théophane Hufschmitt
   github: thufschmitt
