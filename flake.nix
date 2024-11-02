@@ -138,14 +138,7 @@
               localSystem = {
                 inherit system;
               };
-              crossSystem =
-                if crossSystem == null then
-                  null
-                else
-                  {
-                    system = crossSystem;
-                  }
-                  // lib.optionalAttrs (crossSystem == "x86_64-freebsd") { useLLVM = true; };
+              crossSystem = if crossSystem == null then null else { system = crossSystem; };
               overlays = [ (overlayFor (p: p.${stdenv})) ];
             };
           stdenvs = forAllStdenvs (make-pkgs null);
@@ -154,7 +147,7 @@
         {
           inherit stdenvs native;
           static = native.pkgsStatic;
-          cross = forAllCrossSystems (crossSystem: make-pkgs crossSystem "stdenv");
+          cross = forAllCrossSystems (crossSystem: make-pkgs crossSystem "clangStdenv");
         }
       );
 
