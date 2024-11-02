@@ -456,6 +456,8 @@ stdenv.mkDerivation (finalAttrs: {
     # it's easier to parameterize the devShell off an already called package.nix.
     mkDevShell =
       {
+        pkgsBuildHost,
+
         mkShell,
 
         bashInteractive,
@@ -472,6 +474,13 @@ stdenv.mkDerivation (finalAttrs: {
         contribNotice,
         check-syscalls,
 
+        # Rust development tools
+        rust-analyzer,
+        cargo,
+        rustc,
+        rustfmt,
+        rustPlatform,
+
         # debuggers
         gdb,
         rr,
@@ -479,7 +488,7 @@ stdenv.mkDerivation (finalAttrs: {
       let
         glibcFix = lib.optionalAttrs (buildPlatform.isLinux && glibcLocales != null) {
           # Required to make non-NixOS Linux not complain about missing locale files during configure in a dev shell
-          LOCALE_ARCHIVE = "${lib.getLib pkgs.glibcLocales}/lib/locale/locale-archive";
+          LOCALE_ARCHIVE = "${lib.getLib pkgsBuildHost.glibcLocales}/lib/locale/locale-archive";
         };
 
         pythonPackages = (
@@ -494,10 +503,10 @@ stdenv.mkDerivation (finalAttrs: {
             p.requests
             p.xdg-base-dirs
             p.packaging
-            (p.toPythonModule xonsh.passthru.unwrapped)
+            (p.toPythonModule pkgsBuildHost.xonsh.passthru.unwrapped)
           ]
         );
-        pythonEnv = python3.withPackages pythonPackages;
+        pythonEnv = python3.pythonOnBuildForHost.withPackages pythonPackages;
 
         # pkgs.mkShell uses pkgs.stdenv by default, regardless of inputsFrom.
         actualMkShell = mkShell.override { inherit stdenv; };
@@ -545,12 +554,12 @@ stdenv.mkDerivation (finalAttrs: {
               stdenv.cc
             ]
             ++ [
-              pkgs.rust-analyzer
-              pkgs.cargo
-              pkgs.rustc
-              pkgs.rustfmt
-              pkgs.rustPlatform.rustLibSrc
-              pkgs.rustPlatform.rustcSrc
+              rust-analyzer
+              cargo
+              rustc
+              rustfmt
+              rustPlatform.rustLibSrc
+              rustPlatform.rustcSrc
             ]
             ++ lib.optionals stdenv.cc.isClang [
               # Required for clang-tidy checks.
@@ -560,7 +569,7 @@ stdenv.mkDerivation (finalAttrs: {
             ++ lib.optional (pre-commit-checks ? enabledPackages) pre-commit-checks.enabledPackages
             ++ lib.optional (lib.meta.availableOn buildPlatform clangbuildanalyzer) clangbuildanalyzer
             ++ lib.optional (!stdenv.isDarwin) gdb
-            ++ lib.optional (lib.meta.availableOn buildPlatform rr) rr
+            ++ lib.optional (lib.meta.availableOn buildPlatform rr && hostPlatform == buildPlatform) rr
             ++ finalAttrs.checkInputs;
 
           shellHook = ''

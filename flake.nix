@@ -486,7 +486,7 @@
             let
               pkgs = nixpkgsFor.${system}.cross.${crossSystem};
             in
-            makeShell pkgs pkgs.stdenv
+            makeShell pkgs pkgs.clangStdenv
           ))
           // {
             default = self.devShells.${system}.native-clangStdenvPackages;
