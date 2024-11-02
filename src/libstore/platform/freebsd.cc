@@ -1,5 +1,6 @@
 #include "platform/freebsd.hh"
 #include "regex.hh"
+#include "strings.hh"
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/socket.h>
@@ -139,4 +140,10 @@ void FreeBSDLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
         }
     }
 }
+
+void registerLocalStore()
+{
+    StoreImplementations::add<FreeBSDLocalStore, LocalStoreConfig>();
+}
+
 }
