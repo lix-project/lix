@@ -1,2 +1,2 @@
 warning: __overrides found at «stdin»:3:16. This feature is deprecated and will be removed in the future. Use --extra-deprecated-features rec-set-overrides to silence this warning.
-warning: __overrides found at «stdin»:4:2. This feature is deprecated and will be removed in the future. Use --extra-deprecated-features rec-set-overrides to silence this warning.
+warning: __overrides found at «stdin»:4:8. This feature is deprecated and will be removed in the future. Use --extra-deprecated-features rec-set-overrides to silence this warning.

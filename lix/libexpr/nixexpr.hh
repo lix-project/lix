@@ -196,10 +196,16 @@ struct ExprOpHasAttr : Expr
     COMMON_METHODS
 };
 
-struct ExprAttrs : Expr
+/* Helper struct to contain the data shared across lets and sets */
+struct ExprAttrs
 {
-    bool recursive;
-    PosIdx pos;
+    ExprAttrs() = default;
+    ExprAttrs(const ExprAttrs &) = delete;
+    ExprAttrs & operator=(const ExprAttrs &) = delete;
+    ExprAttrs(ExprAttrs &&) = default;
+    ExprAttrs & operator=(ExprAttrs &&) = default;
+    virtual ~ExprAttrs() = default;
+
     struct AttrDef {
         enum class Kind {
             /** `attr = expr;` */
@@ -243,15 +249,21 @@ struct ExprAttrs : Expr
     };
     typedef std::vector<DynamicAttrDef> DynamicAttrDefs;
     DynamicAttrDefs dynamicAttrs;
-    ExprAttrs(const PosIdx &pos) : recursive(false), pos(pos) { };
-    ExprAttrs() : recursive(false) { };
-    PosIdx getPos() const override { return pos; }
-    COMMON_METHODS
 
     std::shared_ptr<const StaticEnv> bindInheritSources(
         Evaluator & es, const std::shared_ptr<const StaticEnv> & env);
     Env * buildInheritFromEnv(EvalState & state, Env & up);
     void showBindings(const SymbolTable & symbols, std::ostream & str) const;
+};
+
+struct ExprSet : Expr, ExprAttrs {
+    PosIdx pos;
+    bool recursive = false;
+
+    ExprSet(const PosIdx &pos, bool recursive = false) : pos(pos), recursive(recursive) { };
+    ExprSet() { };
+    PosIdx getPos() const override { return pos; }
+    COMMON_METHODS
 };
 
 struct ExprList : Expr
@@ -368,11 +380,9 @@ struct ExprCall : Expr
     COMMON_METHODS
 };
 
-struct ExprLet : Expr
+struct ExprLet : Expr, ExprAttrs
 {
-    std::unique_ptr<ExprAttrs> attrs;
     std::unique_ptr<Expr> body;
-    ExprLet(std::unique_ptr<ExprAttrs> attrs, std::unique_ptr<Expr> body) : attrs(std::move(attrs)), body(std::move(body)) { };
     COMMON_METHODS
 };
 

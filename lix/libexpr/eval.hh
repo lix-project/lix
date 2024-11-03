@@ -748,7 +748,7 @@ private:
     inline Value * lookupVar(Env * env, const ExprVar & var, bool noEval);
 
     friend struct ExprVar;
-    friend struct ExprAttrs;
+    friend struct ExprSet;
     friend struct ExprLet;
 
     /**

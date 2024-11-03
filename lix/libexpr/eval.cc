@@ -1071,12 +1071,13 @@ Env * ExprAttrs::buildInheritFromEnv(EvalState & state, Env & up)
     return &inheritEnv;
 }
 
-void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
+void ExprSet::eval(EvalState & state, Env & env, Value & v)
 {
     v.mkAttrs(state.ctx.buildBindings(attrs.size() + dynamicAttrs.size()).finish());
     auto dynamicEnv = &env;
 
     if (recursive) {
+
         /* Create a new environment that contains the attributes in
            this `rec'. */
         Env & env2(state.ctx.mem.allocEnv(attrs.size()));
@@ -1084,7 +1085,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
         dynamicEnv = &env2;
         Env * inheritEnv = inheritFromExprs ? buildInheritFromEnv(state, env2) : nullptr;
 
-        AttrDefs::iterator overrides = attrs.find(state.ctx.s.overrides);
+        ExprAttrs::AttrDefs::iterator overrides = attrs.find(state.ctx.s.overrides);
         bool hasOverrides = overrides != attrs.end();
 
         /* The recursive attributes are evaluated in the new
@@ -1093,7 +1094,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
         Displacement displ = 0;
         for (auto & i : attrs) {
             Value * vAttr;
-            if (hasOverrides && i.second.kind != AttrDef::Kind::Inherited) {
+            if (hasOverrides && i.second.kind != ExprAttrs::AttrDef::Kind::Inherited) {
                 vAttr = state.ctx.mem.allocValue();
                 vAttr->mkThunk(i.second.chooseByKind(&env2, &env, inheritEnv), *i.second.e);
                 state.ctx.stats.nrThunks++;
@@ -1118,7 +1119,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
             for (auto & i : *v.attrs)
                 newBnds->push_back(i);
             for (auto & i : *vOverrides->attrs) {
-                AttrDefs::iterator j = attrs.find(i.name);
+                ExprAttrs::AttrDefs::iterator j = attrs.find(i.name);
                 if (j != attrs.end()) {
                     (*newBnds)[j->second.displ] = i;
                     env2.values[j->second.displ] = i.value;
@@ -1167,16 +1168,16 @@ void ExprLet::eval(EvalState & state, Env & env, Value & v)
 {
     /* Create a new environment that contains the attributes in this
        `let'. */
-    Env & env2(state.ctx.mem.allocEnv(attrs->attrs.size()));
+    Env & env2(state.ctx.mem.allocEnv(attrs.size()));
     env2.up = &env;
 
-    Env * inheritEnv = attrs->inheritFromExprs ? attrs->buildInheritFromEnv(state, env2) : nullptr;
+    Env * inheritEnv = inheritFromExprs ? buildInheritFromEnv(state, env2) : nullptr;
 
     /* The recursive attributes are evaluated in the new environment,
        while the inherited attributes are evaluated in the original
        environment. */
     Displacement displ = 0;
-    for (auto & i : attrs->attrs) {
+    for (auto & i : attrs) {
         env2.values[displ++] = i.second.e->maybeThunk(
             state,
             *i.second.chooseByKind(&env2, &env, inheritEnv));
