@@ -632,11 +632,14 @@ struct curlFileTransfer : public FileTransfer
             timeoutMs = INT64_MAX;
 
             {
-                auto state(state_.lock());
-                for (auto & item : state->unpause) {
+                auto unpause = [&] { return std::move(state_.lock()->unpause); }();
+                for (auto & item : unpause) {
                     curl_easy_pause(item->req, CURLPAUSE_CONT);
                 }
-                state->unpause.clear();
+            }
+
+            {
+                auto state(state_.lock());
                 while (!state->incoming.empty()) {
                     auto item = state->incoming.top();
                     if (item->embargo <= now) {
