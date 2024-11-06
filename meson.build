@@ -265,6 +265,7 @@ brotli = [
 ]
 
 openssl = dependency('libcrypto', 'openssl', required : true, include_type : 'system')
+ncurses = dependency('ncurses', required : true, include_type : 'system')
 
 # FIXME: confirm we actually support such old versions of aws-sdk-cpp
 aws_sdk = dependency('aws-cpp-sdk-core', required : false, version : '>=1.8', include_type : 'system')
