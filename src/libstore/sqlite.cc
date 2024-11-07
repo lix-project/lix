@@ -5,6 +5,7 @@
 #include "signals.hh"
 #include "url.hh"
 
+#include <random>
 #include <sqlite3.h>
 
 
@@ -265,9 +266,11 @@ void handleSQLiteBusy(const SQLiteBusy & e, time_t & nextWarning)
     /* Sleep for a while since retrying the transaction right away
        is likely to fail again. */
     checkInterrupt();
+    static thread_local std::default_random_engine generator(clock());
+    std::uniform_int_distribution<long> uniform_dist(0, 100);
     struct timespec t;
     t.tv_sec = 0;
-    t.tv_nsec = (random() % 100) * 1000 * 1000; /* <= 0.1s */
+    t.tv_nsec = uniform_dist(generator) * 1000 * 1000; /* <= 0.1s */
     nanosleep(&t, 0);
 }
 
