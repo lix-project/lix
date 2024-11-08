@@ -30,9 +30,43 @@ static void writeTrustedList(const TrustedList & trustedList)
     writeFile(path, nlohmann::json(trustedList).dump());
 }
 
+static bool askForSetting(
+    bool & negativeTrustOverride,
+    TrustedList & trustedList,
+    const std::string & name,
+    const std::string & valueS)
+{
+    bool trusted = false;
+
+    // FIXME: filter ANSI escapes, newlines, \r, etc.
+    auto reply = logger->ask(fmt("Do you want to allow configuration setting '%s' to be set to '" ANSI_RED "%s" ANSI_NORMAL "'?\nThis may allow the flake to gain root, see the nix.conf manual page (" ANSI_BOLD "y" ANSI_NORMAL "es/" ANSI_BOLD "n" ANSI_NORMAL "o/" ANSI_BOLD "N" ANSI_NORMAL "o to all) ", name, valueS)).value_or('n');
+
+    if (reply == 'N') {
+        warn("Rejecting all untrusted nix.conf entries");
+        warn("you can set '%s' to '%b' to automatically reject configuration options supplied by flakes", "accept-flake-config", false);
+        negativeTrustOverride = true;
+    } else {
+        if (std::tolower(reply) == 'y') {
+            trusted = true;
+        } else {
+            warn("you can set '%s' to '%b' to automatically reject configuration options supplied by flakes", "accept-flake-config", false);
+        }
+
+        if (std::tolower(logger->ask(fmt("do you want to permanently (in %s) mark this value as %s? (y/N) ", trustedListPath(), trusted ? "trusted": "untrusted" )).value_or('n')) == 'y') {
+            trustedList[name][valueS] = trusted;
+            writeTrustedList(trustedList);
+        }
+    }
+
+    return trusted;
+}
+
 void ConfigFile::apply()
 {
     std::set<std::string> whitelist{"bash-prompt", "bash-prompt-prefix", "bash-prompt-suffix", "flake-registry", "commit-lockfile-summary"};
+
+    // Allows to ignore all subsequent settings from this file.
+    bool negativeTrustOverride = false;
 
     for (auto & [name, value] : settings) {
 
@@ -65,15 +99,10 @@ void ConfigFile::apply()
                     trusted = *saved;
                     printInfo("Using saved setting for '%s = %s' from ~/.local/share/nix/trusted-settings.json.", name, valueS);
                 } else {
-                    // FIXME: filter ANSI escapes, newlines, \r, etc.
-                    if (std::tolower(logger->ask(fmt("Do you want to allow configuration setting '%s' to be set to '" ANSI_RED "%s" ANSI_NORMAL "' (y/N)? This may allow the flake to gain root, see the nix.conf manual page.", name, valueS)).value_or('n')) == 'y') {
-                        trusted = true;
+                    if (negativeTrustOverride) {
+                        trusted = false;
                     } else {
-                        warn("you can set '%s' to '%b' to automatically reject configuration options supplied by flakes", "accept-flake-config", false);
-                    }
-                    if (std::tolower(logger->ask(fmt("do you want to permanently mark this value as %s (y/N)?",  trusted ? "trusted": "untrusted" )).value_or('n')) == 'y') {
-                        trustedList[name][valueS] = trusted;
-                        writeTrustedList(trustedList);
+                        trusted = askForSetting(negativeTrustOverride, trustedList, name, valueS);
                     }
                 }
                 break;
