@@ -64,8 +64,6 @@ void BaseSetting<T>::appendOrSet(T newValue, bool append, const ApplyConfigOptio
         !trait::appendable,
         "using default `appendOrSet` implementation with an appendable type");
     assert(!append);
-
-    overridden = true;
     value = std::move(newValue);
 }
 
@@ -77,6 +75,7 @@ void BaseSetting<T>::set(const std::string & str, bool append, const ApplyConfig
         if (deprecated && (append || parsed != value)) {
             warn("deprecated setting '%s' found (set to '%s')", name, str);
         }
+        overridden = true;
         appendOrSet(std::move(parsed), append, options);
     } else {
         assert(experimentalFeature);
