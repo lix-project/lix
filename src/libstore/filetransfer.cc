@@ -130,7 +130,6 @@ struct curlFileTransfer : public FileTransfer
 
         ~TransferItem()
         {
-            curl_multi_remove_handle(fileTransfer.curlm, req);
             curl_easy_cleanup(req);
             if (requestHeaders) curl_slist_free_all(requestHeaders);
             try {
@@ -517,6 +516,21 @@ struct curlFileTransfer : public FileTransfer
             lock->unpause.push_back(shared_from_this());
             fileTransfer.wakeup();
         }
+
+        void cancel()
+        {
+            std::promise<void> promise;
+            auto wait = promise.get_future();
+            {
+                auto lock = fileTransfer.state_.lock();
+                if (lock->quit) {
+                    return;
+                }
+                lock->cancel[shared_from_this()] = std::move(promise);
+            }
+            fileTransfer.wakeup();
+            wait.get();
+        }
     };
 
     struct State
@@ -529,6 +543,7 @@ struct curlFileTransfer : public FileTransfer
         bool quit = false;
         std::priority_queue<std::shared_ptr<TransferItem>, std::vector<std::shared_ptr<TransferItem>>, EmbargoComparator> incoming;
         std::vector<std::shared_ptr<TransferItem>> unpause;
+        std::map<std::shared_ptr<TransferItem>, std::promise<void>> cancel;
     };
 
     Sync<State> state_;
@@ -604,6 +619,14 @@ struct curlFileTransfer : public FileTransfer
 
         while (!quit) {
             checkInterrupt();
+
+            {
+                auto cancel = [&] { return std::move(state_.lock()->cancel); }();
+                for (auto & [item, promise] : cancel) {
+                    curl_multi_remove_handle(curlm, item->req);
+                    promise.set_value();
+                }
+            }
 
             /* Let curl do its thing. */
             int running;
@@ -826,7 +849,7 @@ struct curlFileTransfer : public FileTransfer
         }
 
         struct State {
-            bool done = false, failed = false;
+            bool done = false;
             std::exception_ptr exc;
             std::string data;
             std::condition_variable avail;
@@ -847,11 +870,6 @@ struct curlFileTransfer : public FileTransfer
             },
             [_state](std::string_view data) {
                 auto state(_state->lock());
-
-                if (state->failed) {
-                    // actual exception doesn't matter, the other end is already dead
-                    throw std::exception{};
-                }
 
                 /* If the buffer is full, then go to sleep until the calling
                 thread wakes us up (i.e. when it has removed data from the
@@ -890,10 +908,8 @@ struct curlFileTransfer : public FileTransfer
             ~TransferSource()
             {
                 // wake up the download thread if it's still going and have it abort
-                auto state(_state->lock());
-                state->failed |= !state->done;
                 try {
-                    transfer->unpause();
+                    transfer->cancel();
                 } catch (...) {
                     ignoreExceptionInDestructor();
                 }
