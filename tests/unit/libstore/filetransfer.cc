@@ -28,24 +28,33 @@ namespace {
 struct Reply {
     std::string status, headers;
     std::function<std::optional<std::string>(int)> content;
+    std::list<std::string> expectedHeaders;
 
     Reply(
-        std::string_view status, std::string_view headers, std::function<std::string()> content
+        std::string_view status,
+        std::string_view headers,
+        std::function<std::string()> content,
+        std::list<std::string> expectedHeaders = {}
     )
-        : Reply(status, headers, [content](int round) {
-            return round == 0 ? std::optional(content()) : std::nullopt;
-        })
+        : Reply(
+            status,
+            headers,
+            [content](int round) { return round == 0 ? std::optional(content()) : std::nullopt; },
+            std::move(expectedHeaders)
+        )
     {
     }
 
     Reply(
         std::string_view status,
         std::string_view headers,
-        std::function<std::optional<std::string>(int)> content
+        std::function<std::optional<std::string>(int)> content,
+        std::list<std::string> expectedHeaders = {}
     )
         : status(status)
         , headers(headers)
         , content(content)
+        , expectedHeaders(std::move(expectedHeaders))
     {
     }
 };
@@ -124,6 +133,25 @@ serveHTTP(std::vector<Reply> replies)
                     send("HTTP/1.1 ");
                     send(reply.status);
                     send("\r\n");
+
+                    std::string requestWithHeaders;
+                    while (true) {
+                        char c;
+                        if (recv(conn.get(), &c, 1, MSG_NOSIGNAL) != 1) {
+                            debug("recv() failed for headers: %s", strerror(errno));
+                            return;
+                        }
+                        requestWithHeaders += c;
+                        if (requestWithHeaders.ends_with("\r\n\r\n")) {
+                            requestWithHeaders.resize(requestWithHeaders.size() - 2);
+                            break;
+                        }
+                    }
+                    debug("got request:\n%s", requestWithHeaders);
+                    for (auto & expected : reply.expectedHeaders) {
+                        ASSERT_TRUE(requestWithHeaders.contains(fmt("%s\r\n", expected)));
+                    }
+
                     send(reply.headers);
                     send("\r\n");
                     for (int round = 0; ; round++) {
@@ -286,6 +314,59 @@ TEST(FileTransfer, stalledReaderDoesntBlockOthers)
 
     ASSERT_THROW(drop(*data1, 1), EndOfFile);
     ASSERT_THROW(drop(*data2, 1), EndOfFile);
+}
+
+TEST(FileTransfer, retries)
+{
+    auto [port, srv] = serveHTTP({
+        // transient setup failure
+        {"429 try again later", "content-length: 0\r\n", [] { return ""; }},
+        // transient transfer failure (simulates a connection break)
+        {"200 ok",
+         "content-length: 2\r\n"
+         "accept-ranges: bytes\r\n",
+         [] { return "a"; }},
+        // wrapper should ask for remaining data now
+        {"200 ok",
+         "content-length: 1\r\n"
+         "content-range: bytes 1-1/2\r\n",
+         [] { return "b"; },
+         {"Range: bytes=1-"}},
+    });
+    auto ft = makeFileTransfer(0);
+    auto [result, data] = ft->download(fmt("http://[::1]:%d", port));
+    ASSERT_EQ(data->drain(), "ab");
+}
+
+TEST(FileTransfer, doesntRetrySetupForever)
+{
+    auto [port, srv] = serveHTTP({
+        {"429 try again later", "content-length: 0\r\n", [] { return ""; }},
+    });
+    auto ft = makeFileTransfer(0);
+    ASSERT_THROW(ft->download(fmt("http://[::1]:%d", port)), FileTransferError);
+}
+
+TEST(FileTransfer, doesntRetryTransferForever)
+{
+    constexpr size_t LIMIT = 20;
+    ASSERT_LT(fileTransferSettings.tries, LIMIT); // just to keep test runtime low
+    std::vector<Reply> replies;
+    for (size_t i = 0; i < LIMIT; i++) {
+        replies.emplace_back(
+            "200 ok",
+            fmt("content-length: %1%\r\n"
+                "accept-ranges: bytes\r\n"
+                "content-range: bytes %2%-%3%/%3%\r\n",
+                LIMIT - i,
+                i,
+                LIMIT),
+            [] { return "a"; }
+        );
+    }
+    auto [port, srv] = serveHTTP(replies);
+    auto ft = makeFileTransfer(0);
+    ASSERT_THROW(ft->download(fmt("http://[::1]:%d", port)).second->drain(), FileTransferError);
 }
 
 }
