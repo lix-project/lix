@@ -808,7 +808,7 @@ struct curlFileTransfer : public FileTransfer
             bool done = false, failed = false;
             std::exception_ptr exc;
             std::string data;
-            std::condition_variable avail, request;
+            std::condition_variable avail;
         };
 
         auto _state = std::make_shared<Sync<State>>();
@@ -823,7 +823,6 @@ struct curlFileTransfer : public FileTransfer
                 state->done = true;
                 state->exc = ex;
                 state->avail.notify_one();
-                state->request.notify_one();
             },
             [_state](std::string_view data) {
                 auto state(_state->lock());
@@ -872,7 +871,11 @@ struct curlFileTransfer : public FileTransfer
                 // wake up the download thread if it's still going and have it abort
                 auto state(_state->lock());
                 state->failed |= !state->done;
-                state->request.notify_one();
+                try {
+                    transfer->unpause();
+                } catch (...) {
+                    ignoreExceptionInDestructor();
+                }
             }
 
             void awaitData(Sync<State>::Lock & state)
@@ -894,7 +897,7 @@ struct curlFileTransfer : public FileTransfer
 
                     chunk = std::move(state->data);
                     buffered = chunk;
-                    state->request.notify_one();
+                    transfer->unpause();
                 }
             }
 
