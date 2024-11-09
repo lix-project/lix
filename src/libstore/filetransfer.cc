@@ -712,7 +712,7 @@ struct curlFileTransfer : public FileTransfer
         }
     }
 
-    std::shared_ptr<TransferItem> enqueueItem(std::shared_ptr<TransferItem> item)
+    void enqueueItem(std::shared_ptr<TransferItem> item)
     {
         if (item->uploadData
             && !item->uri.starts_with("http://")
@@ -726,7 +726,6 @@ struct curlFileTransfer : public FileTransfer
             state->incoming.push(item);
         }
         wakeup();
-        return item;
     }
 
 #if ENABLE_S3
@@ -857,7 +856,7 @@ struct curlFileTransfer : public FileTransfer
 
         auto _state = std::make_shared<Sync<State>>();
 
-        auto item = enqueueItem(std::make_shared<TransferItem>(
+        auto item = std::make_shared<TransferItem>(
             *this,
             uri,
             headers,
@@ -888,7 +887,8 @@ struct curlFileTransfer : public FileTransfer
             },
             std::move(data),
             noBody
-        ));
+        );
+        enqueueItem(item);
 
         struct TransferSource : Source
         {
