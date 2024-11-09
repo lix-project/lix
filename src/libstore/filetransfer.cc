@@ -79,8 +79,6 @@ struct curlFileTransfer : public FileTransfer
 
         struct curl_slist * requestHeaders = 0;
 
-        bool acceptRanges = false;
-
         curl_off_t writtenToSink = 0;
 
         inline static const std::set<long> successfulStatuses {200, 201, 204, 206, 304, 0 /* other protocol */};
@@ -141,6 +139,18 @@ struct curlFileTransfer : public FileTransfer
             } catch (...) {
                 ignoreExceptionInDestructor();
             }
+        }
+
+        bool acceptsRanges()
+        {
+            curl_header * h;
+            if (curl_easy_header(req, "accept-ranges", 0, CURLH_HEADER, -1, &h)) {
+                // treat any error as the remote not accepting range requests. the only
+                // interesting local error is out-of-memory, which we can't even handle
+                return false;
+            }
+
+            return toLower(trim(h->value)) == "bytes";
         }
 
         void failEx(std::exception_ptr ex)
@@ -232,7 +242,6 @@ struct curlFileTransfer : public FileTransfer
                 downloadData.clear();
                 bodySize = 0;
                 statusMsg = trim(match.str(1));
-                acceptRanges = false;
             } else {
                 auto i = line.find(':');
                 if (i != std::string::npos) {
@@ -247,9 +256,6 @@ struct curlFileTransfer : public FileTransfer
                         }
                         result.etag = std::move(etag);
                     }
-
-                    else if (name == "accept-ranges" && toLower(trim(line.substr(i + 1))) == "bytes")
-                        acceptRanges = true;
 
                     else if (name == "link" || name == "x-amz-meta-link") {
                         auto value = trim(line.substr(i + 1));
@@ -490,7 +496,7 @@ struct curlFileTransfer : public FileTransfer
                     && attempt < tries
                     && (!this->dataCallback
                         || writtenToSink == 0
-                        || acceptRanges))
+                        || acceptsRanges()))
                 {
                     int ms = fileTransfer.baseRetryTimeMs * std::pow(2.0f, attempt - 1 + std::uniform_real_distribution<>(0.0, 0.5)(fileTransfer.mt19937));
                     if (writtenToSink)
