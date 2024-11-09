@@ -720,10 +720,10 @@ struct curlFileTransfer : public FileTransfer
         enqueueFileTransfer(uri, headers, std::move(data), false);
     }
 
-    std::pair<FileTransferResult, box_ptr<Source>> enqueueFileTransfer(
+    std::optional<std::pair<FileTransferResult, box_ptr<Source>>> tryEagerTransfers(
         const std::string & uri,
         const Headers & headers,
-        std::optional<std::string> data,
+        const std::optional<std::string> & data,
         bool noBody
     )
     {
@@ -767,14 +767,14 @@ struct curlFileTransfer : public FileTransfer
                     );
                 }
                 if (S_ISDIR(st.st_mode)) {
-                    return {std::move(metadata), make_box_ptr<StringSource>("")};
+                    return {{std::move(metadata), make_box_ptr<StringSource>("")}};
                 }
                 struct OwningFdSource : FdSource
                 {
                     AutoCloseFD fd;
                     OwningFdSource(AutoCloseFD fd) : FdSource(fd.get()), fd(std::move(fd)) {}
                 };
-                return {std::move(metadata), make_box_ptr<OwningFdSource>(std::move(fd))};
+                return {{std::move(metadata), make_box_ptr<OwningFdSource>(std::move(fd))}};
             }
         }
 
@@ -796,12 +796,26 @@ struct curlFileTransfer : public FileTransfer
             FileTransferResult res;
             if (!s3Res.data)
                 throw FileTransferError(NotFound, "S3 object '%s' does not exist", uri);
-            return {res, make_box_ptr<StringSource>(std::move(*s3Res.data))};
+            return {{res, make_box_ptr<StringSource>(std::move(*s3Res.data))}};
 #else
             throw nix::Error(
                 "cannot download '%s' because Lix is not built with S3 support", uri
             );
 #endif
+        }
+
+        return std::nullopt;
+    }
+
+    std::pair<FileTransferResult, box_ptr<Source>> enqueueFileTransfer(
+        const std::string & uri,
+        const Headers & headers,
+        std::optional<std::string> data,
+        bool noBody
+    )
+    {
+        if (auto eager = tryEagerTransfers(uri, headers, data, noBody)) {
+            return std::move(*eager);
         }
 
         struct State {
