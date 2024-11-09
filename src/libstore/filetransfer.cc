@@ -47,7 +47,6 @@ struct curlFileTransfer : public FileTransfer
         Activity act;
         std::optional<std::string_view> uploadData;
         std::string downloadData;
-        bool noBody = false; // \equiv HTTP HEAD, don't download data
         enum {
             /// nothing has been transferred yet
             initialSetup,
@@ -101,8 +100,7 @@ struct curlFileTransfer : public FileTransfer
             , act(*logger, lvlTalkative, actFileTransfer,
                 fmt(uploadData ? "uploading '%s'" : "downloading '%s'", uri),
                 {uri}, parentAct)
-            , uploadData(std::move(uploadData))
-            , noBody(noBody)
+            , uploadData(uploadData)
             , doneCallback([cb{std::move(doneCallback)}] (std::exception_ptr ex) {
                 cb(ex);
             })
@@ -116,6 +114,66 @@ struct curlFileTransfer : public FileTransfer
             for (auto it = headers.begin(); it != headers.end(); ++it){
                 requestHeaders = curl_slist_append(requestHeaders, fmt("%s: %s", it->first, it->second).c_str());
             }
+
+            if (verbosity >= lvlVomit) {
+                curl_easy_setopt(req, CURLOPT_VERBOSE, 1);
+                curl_easy_setopt(req, CURLOPT_DEBUGFUNCTION, TransferItem::debugCallback);
+            }
+
+            curl_easy_setopt(req, CURLOPT_URL, uri.c_str());
+            curl_easy_setopt(req, CURLOPT_FOLLOWLOCATION, 1L);
+            curl_easy_setopt(req, CURLOPT_ACCEPT_ENCODING, ""); // all of them!
+            curl_easy_setopt(req, CURLOPT_MAXREDIRS, 10);
+            curl_easy_setopt(req, CURLOPT_NOSIGNAL, 1);
+            curl_easy_setopt(req, CURLOPT_USERAGENT,
+                ("curl/" LIBCURL_VERSION " Lix/" + nixVersion +
+                    (fileTransferSettings.userAgentSuffix != "" ? " " + fileTransferSettings.userAgentSuffix.get() : "")).c_str());
+            curl_easy_setopt(req, CURLOPT_PIPEWAIT, 1);
+            if (fileTransferSettings.enableHttp2)
+                curl_easy_setopt(req, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
+            else
+                curl_easy_setopt(req, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+            curl_easy_setopt(req, CURLOPT_WRITEFUNCTION, TransferItem::writeCallbackWrapper);
+            curl_easy_setopt(req, CURLOPT_WRITEDATA, this);
+            curl_easy_setopt(req, CURLOPT_HEADERFUNCTION, TransferItem::headerCallbackWrapper);
+            curl_easy_setopt(req, CURLOPT_HEADERDATA, this);
+
+            curl_easy_setopt(req, CURLOPT_PROGRESSFUNCTION, progressCallbackWrapper);
+            curl_easy_setopt(req, CURLOPT_PROGRESSDATA, this);
+            curl_easy_setopt(req, CURLOPT_NOPROGRESS, 0);
+
+            curl_easy_setopt(req, CURLOPT_PROTOCOLS_STR, "http,https,ftp,ftps");
+
+            curl_easy_setopt(req, CURLOPT_HTTPHEADER, requestHeaders);
+
+            if (settings.downloadSpeed.get() > 0)
+                curl_easy_setopt(req, CURLOPT_MAX_RECV_SPEED_LARGE, (curl_off_t) (settings.downloadSpeed.get() * 1024));
+
+            if (noBody)
+                curl_easy_setopt(req, CURLOPT_NOBODY, 1);
+
+            if (uploadData) {
+                curl_easy_setopt(req, CURLOPT_UPLOAD, 1L);
+                curl_easy_setopt(req, CURLOPT_READFUNCTION, readCallbackWrapper);
+                curl_easy_setopt(req, CURLOPT_READDATA, this);
+                curl_easy_setopt(req, CURLOPT_INFILESIZE_LARGE, (curl_off_t) uploadData->length());
+            }
+
+            if (settings.caFile != "")
+                curl_easy_setopt(req, CURLOPT_CAINFO, settings.caFile.get().c_str());
+
+            curl_easy_setopt(req, CURLOPT_CONNECTTIMEOUT, fileTransferSettings.connectTimeout.get());
+
+            curl_easy_setopt(req, CURLOPT_LOW_SPEED_LIMIT, 1L);
+            curl_easy_setopt(req, CURLOPT_LOW_SPEED_TIME, fileTransferSettings.stalledDownloadTimeout.get());
+
+            /* If no file exist in the specified path, curl continues to work
+               anyway as if netrc support was disabled. */
+            curl_easy_setopt(req, CURLOPT_NETRC_FILE, settings.netrcFile.get().c_str());
+            curl_easy_setopt(req, CURLOPT_NETRC, CURL_NETRC_OPTIONAL);
+
+            if (writtenToSink)
+                curl_easy_setopt(req, CURLOPT_RESUME_FROM_LARGE, writtenToSink);
         }
 
         ~TransferItem()
@@ -293,74 +351,6 @@ struct curlFileTransfer : public FileTransfer
         static size_t readCallbackWrapper(char *buffer, size_t size, size_t nitems, void * userp)
         {
             return static_cast<TransferItem *>(userp)->readCallback(buffer, size, nitems);
-        }
-
-        void init()
-        {
-            curl_easy_reset(req);
-
-            if (verbosity >= lvlVomit) {
-                curl_easy_setopt(req, CURLOPT_VERBOSE, 1);
-                curl_easy_setopt(req, CURLOPT_DEBUGFUNCTION, TransferItem::debugCallback);
-            }
-
-            curl_easy_setopt(req, CURLOPT_URL, uri.c_str());
-            curl_easy_setopt(req, CURLOPT_FOLLOWLOCATION, 1L);
-            curl_easy_setopt(req, CURLOPT_ACCEPT_ENCODING, ""); // all of them!
-            curl_easy_setopt(req, CURLOPT_MAXREDIRS, 10);
-            curl_easy_setopt(req, CURLOPT_NOSIGNAL, 1);
-            curl_easy_setopt(req, CURLOPT_USERAGENT,
-                ("curl/" LIBCURL_VERSION " Lix/" + nixVersion +
-                    (fileTransferSettings.userAgentSuffix != "" ? " " + fileTransferSettings.userAgentSuffix.get() : "")).c_str());
-            curl_easy_setopt(req, CURLOPT_PIPEWAIT, 1);
-            if (fileTransferSettings.enableHttp2)
-                curl_easy_setopt(req, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
-            else
-                curl_easy_setopt(req, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-            curl_easy_setopt(req, CURLOPT_WRITEFUNCTION, TransferItem::writeCallbackWrapper);
-            curl_easy_setopt(req, CURLOPT_WRITEDATA, this);
-            curl_easy_setopt(req, CURLOPT_HEADERFUNCTION, TransferItem::headerCallbackWrapper);
-            curl_easy_setopt(req, CURLOPT_HEADERDATA, this);
-
-            curl_easy_setopt(req, CURLOPT_PROGRESSFUNCTION, progressCallbackWrapper);
-            curl_easy_setopt(req, CURLOPT_PROGRESSDATA, this);
-            curl_easy_setopt(req, CURLOPT_NOPROGRESS, 0);
-
-            curl_easy_setopt(req, CURLOPT_PROTOCOLS_STR, "http,https,ftp,ftps");
-
-            curl_easy_setopt(req, CURLOPT_HTTPHEADER, requestHeaders);
-
-            if (settings.downloadSpeed.get() > 0)
-                curl_easy_setopt(req, CURLOPT_MAX_RECV_SPEED_LARGE, (curl_off_t) (settings.downloadSpeed.get() * 1024));
-
-            if (noBody)
-                curl_easy_setopt(req, CURLOPT_NOBODY, 1);
-
-            if (uploadData) {
-                curl_easy_setopt(req, CURLOPT_UPLOAD, 1L);
-                curl_easy_setopt(req, CURLOPT_READFUNCTION, readCallbackWrapper);
-                curl_easy_setopt(req, CURLOPT_READDATA, this);
-                curl_easy_setopt(req, CURLOPT_INFILESIZE_LARGE, (curl_off_t) uploadData->length());
-            }
-
-            if (settings.caFile != "")
-                curl_easy_setopt(req, CURLOPT_CAINFO, settings.caFile.get().c_str());
-
-            curl_easy_setopt(req, CURLOPT_CONNECTTIMEOUT, fileTransferSettings.connectTimeout.get());
-
-            curl_easy_setopt(req, CURLOPT_LOW_SPEED_LIMIT, 1L);
-            curl_easy_setopt(req, CURLOPT_LOW_SPEED_TIME, fileTransferSettings.stalledDownloadTimeout.get());
-
-            /* If no file exist in the specified path, curl continues to work
-               anyway as if netrc support was disabled. */
-            curl_easy_setopt(req, CURLOPT_NETRC_FILE, settings.netrcFile.get().c_str());
-            curl_easy_setopt(req, CURLOPT_NETRC, CURL_NETRC_OPTIONAL);
-
-            if (writtenToSink)
-                curl_easy_setopt(req, CURLOPT_RESUME_FROM_LARGE, writtenToSink);
-
-            downloadData.clear();
-            bodySize = 0;
         }
 
         void finish(CURLcode code)
@@ -612,7 +602,6 @@ struct curlFileTransfer : public FileTransfer
 
             for (auto & item : incoming) {
                 debug("starting %s of %s", item->verb(), item->uri);
-                item->init();
                 curl_multi_add_handle(curlm, item->req);
                 items[item->req] = item;
             }
