@@ -122,9 +122,10 @@ serveHTTP(std::vector<Reply> replies)
                 std::thread([=, conn{std::move(conn)}] {
                     auto send = [&](std::string_view bit) {
                         while (!bit.empty()) {
-                            auto written = ::write(conn.get(), bit.data(), bit.size());
+                            auto written = ::send(conn.get(), bit.data(), bit.size(), MSG_NOSIGNAL);
                             if (written < 0) {
-                                throw SysError(errno, "write() failed");
+                                debug("send() failed: %s", strerror(errno));
+                                return;
                             }
                             bit.remove_prefix(written);
                         }
@@ -164,13 +165,14 @@ serveHTTP(std::vector<Reply> replies)
                     ::shutdown(conn.get(), SHUT_WR);
                     for (;;) {
                         char buf[1];
-                        switch (read(conn.get(), buf, 1)) {
+                        switch (recv(conn.get(), buf, 1, MSG_NOSIGNAL)) {
                         case 0:
                             return; // remote closed
                         case 1:
                             continue; // connection still held open by remote
                         default:
-                            throw SysError(errno, "read() failed");
+                            debug("recv() failed: %s", strerror(errno));
+                            return;
                         }
                     }
                 }).detach();
@@ -367,6 +369,26 @@ TEST(FileTransfer, doesntRetryTransferForever)
     auto [port, srv] = serveHTTP(replies);
     auto ft = makeFileTransfer(0);
     ASSERT_THROW(ft->download(fmt("http://[::1]:%d", port)).second->drain(), FileTransferError);
+}
+
+TEST(FileTransfer, doesntRetryUploads)
+{
+    auto ft = makeFileTransfer(0);
+
+    {
+        auto [port, srv] = serveHTTP({
+            {"429 try again later", "", [] { return ""; }},
+            {"200 ok", "", [] { return ""; }},
+        });
+        ASSERT_THROW(ft->upload(fmt("http://[::1]:%d", port), ""), FileTransferError);
+    }
+    {
+        auto [port, srv] = serveHTTP({
+            {"429 try again later", "", [] { return ""; }},
+            {"200 ok", "", [] { return ""; }},
+        });
+        ASSERT_THROW(ft->upload(fmt("http://[::1]:%d", port), "foo"), FileTransferError);
+    }
 }
 
 }

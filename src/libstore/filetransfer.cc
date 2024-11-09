@@ -486,6 +486,7 @@ struct curlFileTransfer : public FileTransfer
                    sink, we can only retry if the server supports
                    ranged requests. */
                 if (err == Transient
+                    && !uploadData.has_value()
                     && attempt < tries
                     && (!this->dataCallback
                         || writtenToSink == 0
