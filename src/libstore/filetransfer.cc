@@ -893,11 +893,13 @@ struct curlFileTransfer : public FileTransfer
                 }
             }
 
-            void awaitData(Sync<State>::Lock & state)
+            void awaitData()
             {
                 /* Grab data if available, otherwise wait for the download
                    thread to wake us up. */
                 while (buffered.empty()) {
+                    auto state(_state->lock());
+
                     if (state->data.empty()) {
                         if (state->done) {
                             if (state->exc) {
@@ -929,10 +931,7 @@ struct curlFileTransfer : public FileTransfer
                 size_t total = readPartial(data, len);
 
                 while (total < len) {
-                    {
-                        auto state(_state->lock());
-                        awaitData(state);
-                    }
+                    awaitData();
                     const auto current = readPartial(data + total, len - total);
                     total += current;
                     if (total == 0 || current == 0) {
@@ -950,8 +949,7 @@ struct curlFileTransfer : public FileTransfer
 
         auto metadata = item->metadataPromise.get_future().get();
         auto source = make_box_ptr<TransferSource>(_state, item);
-        auto lock(_state->lock());
-        source->awaitData(lock);
+        source->awaitData();
         return {std::move(metadata), std::move(source)};
     }
 
