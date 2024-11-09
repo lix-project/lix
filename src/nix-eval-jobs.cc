@@ -348,20 +348,12 @@ int main(int argc, char **argv) {
 
         myArgs.parseArgs(argv, argc);
 
-        /* FIXME: The build hook in conjunction with import-from-derivation is
-         * causing "unexpected EOF" during eval */
-        settings.builders = "";
-
-        /* Prevent access to paths outside of the Nix search path and
-           to the environment. */
-        evalSettings.restrictEval = false;
-
         /* When building a flake, use pure evaluation (no access to
            'getEnv', 'currentSystem' etc. */
         if (myArgs.impure) {
-            evalSettings.pureEval = false;
+            evalSettings.pureEval.override(false);
         } else if (myArgs.flake) {
-            evalSettings.pureEval = true;
+            evalSettings.pureEval.override(true);
         }
 
         if (myArgs.releaseExpr == "")
@@ -374,7 +366,7 @@ int main(int argc, char **argv) {
         }
 
         if (myArgs.showTrace) {
-            loggerSettings.showTrace.assign(true);
+            loggerSettings.showTrace.override(true);
         }
 
         Sync<State> state_;
