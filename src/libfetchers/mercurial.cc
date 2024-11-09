@@ -2,6 +2,7 @@
 #include "cache.hh"
 #include "processes.hh"
 #include "store-api.hh"
+#include "temporary-dir.hh"
 #include "url-parts.hh"
 #include "users.hh"
 

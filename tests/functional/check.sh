@@ -49,6 +49,50 @@ test_custom_build_dir() {
 }
 test_custom_build_dir
 
+test_custom_temp_dir() {
+  # like test_custom_build_dir(), but uses the temp-dir setting instead
+  # build-dir inherits from temp-dir when build-dir is unset
+  local customTempDir="$TEST_ROOT/custom-temp-dir"
+
+  mkdir "$customTempDir"
+  nix-build check.nix -A failed --argstr checkBuildId $checkBuildId \
+      --no-out-link --keep-failed --option temp-dir "$customTempDir" 2> $TEST_ROOT/log || status=$?
+  [ "$status" = "100" ]
+  [[ 1 == "$(count "$customTempDir/nix-build-"*)" ]]
+  local buildDir="$customTempDir/nix-build-"*
+  grep $checkBuildId $buildDir/checkBuildId
+
+  # also check a separate code path that doesn't involve build-dir
+  # nix-shell uses temp-dir for its rcfile path
+  rcpath=$(NIX_BUILD_SHELL=$SHELL nix-shell check.nix -A deterministic --option temp-dir "$customTempDir" --run 'echo $0' 2> $TEST_ROOT/log)
+  # rcpath is <temp-dir>/nix-shell-*/rc
+  [[ $rcpath = "$customTempDir"/* ]]
+}
+test_custom_temp_dir
+
+test_shell_preserves_tmpdir() {
+  # ensure commands that spawn interactive shells don't overwrite TMPDIR with temp-dir
+  local envTempDir=$TEST_ROOT/shell-temp-dir-env
+  mkdir $envTempDir
+  local settingTempDir=$TEST_ROOT/shell-temp-dir-setting
+  mkdir $settingTempDir
+
+  # FIXME: switch to check.nix's deterministic once `nix develop` doesn't need `outputs`
+  # https://git.lix.systems/lix-project/lix/issues/556
+  local expr='with import ./config.nix; mkDerivation { name = "foo"; buildCommand = "echo foo > $out"; outputs = [ "out" ]; }'
+
+  local output
+  output=$(TMPDIR=$envTempDir NIX_BUILD_SHELL=$SHELL nix-shell -E "$expr" --option temp-dir "$settingTempDir" --command 'echo $TMPDIR' 2> $TEST_ROOT/log)
+  [[ $output = "$envTempDir" ]]
+
+  output=$(TMPDIR=$envTempDir nix develop --impure -E "$expr" --option temp-dir "$settingTempDir" --command bash -c 'echo $TMPDIR' 2> $TEST_ROOT/log)
+  [[ $output = "$envTempDir"/nix-shell.* ]]
+
+  output=$(TMPDIR=$envTempDir nix shell --impure -E "$expr" --option temp-dir "$settingTempDir" --command bash -c 'echo $TMPDIR' 2> $TEST_ROOT/log)
+  [[ $output = "$envTempDir" ]]
+}
+test_shell_preserves_tmpdir
+
 nix-build check.nix -A deterministic --argstr checkBuildId $checkBuildId \
     --no-out-link 2> $TEST_ROOT/log
 checkBuildTempDirRemoved $TEST_ROOT/log

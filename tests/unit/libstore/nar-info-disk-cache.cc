@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include <rapidcheck/gtest.h>
 #include "sqlite.hh"
+#include "temporary-dir.hh"
 #include <sqlite3.h>
 
 

@@ -8,6 +8,7 @@
 #include "remote-fs-accessor.hh"
 #include "nar-info-disk-cache.hh" // IWYU pragma: keep
 #include "nar-accessor.hh"
+#include "temporary-dir.hh"
 #include "thread-pool.hh"
 #include "signals.hh"
 #include "strings.hh"

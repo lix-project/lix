@@ -615,16 +615,28 @@ public:
         )"};
 #endif
 
-    Setting<std::optional<Path>> buildDir{this, std::nullopt, "build-dir",
+    PathsSetting<std::optional<Path>> buildDir{this, std::nullopt, "build-dir",
         R"(
             The directory on the host, in which derivations' temporary build directories are created.
 
-            If not set, Nix will use the system temporary directory indicated by the `TMPDIR` environment variable.
+            If not set, Nix will use the [`temp-dir`](#conf-temp-dir) setting if set, otherwise the system temporary directory indicated by the `TMPDIR` environment variable.
             Note that builds are often performed by the Nix daemon, so its `TMPDIR` is used, and not that of the Nix command line interface.
 
             This is also the location where [`--keep-failed`](@docroot@/command-ref/opt-common.md#opt-keep-failed) leaves its files.
 
             If Nix runs without sandbox, or if the platform does not support sandboxing with bind mounts (e.g. macOS), then the [`builder`](@docroot@/language/derivations.md#attr-builder)'s environment will contain this directory, instead of the virtual location [`sandbox-build-dir`](#conf-sandbox-build-dir).
+        )"};
+
+    PathsSetting<std::optional<Path>> tempDir{this, std::nullopt, "temp-dir",
+        R"(
+            The directory on the host used as the default temporary directory.
+
+            If not set, Nix will use the system temporary directory indicated by the `TMPDIR` environment variable.
+
+            This will be used for anything that would otherwise fall back to `TMPDIR`, and the inherited `TMPDIR` value will be preserved for child processes to use.
+            If [`build-dir`](#conf-build-dir) is set, that takes precedence over this where it applies.
+
+            If set, the value must be a path that exists and is accessible to all users.
         )"};
 
     Setting<PathSet> allowedImpureHostPrefixes{this, {}, "allowed-impure-host-deps",

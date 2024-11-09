@@ -25,6 +25,7 @@
 #include "legacy.hh"
 #include "shlex.hh"
 #include "nix-build.hh"
+#include "temporary-dir.hh"
 
 extern char * * environ __attribute__((weak)); // Man what even is this
 
@@ -54,8 +55,6 @@ static void main_nix_build(int argc, char * * argv)
     auto inShebang = false;
     std::string script;
     std::vector<std::string> savedArgs;
-
-    AutoDelete tmpDir(createTempDir("", myName));
 
     std::string outLink = "./result";
 
@@ -102,7 +101,6 @@ static void main_nix_build(int argc, char * * argv)
 
     MyArgs myArgs(myName, [&](Strings::iterator & arg, const Strings::iterator & end) {
         if (*arg == "--help") {
-            deletePath(tmpDir);
             showManPage(myName);
         }
 
@@ -113,7 +111,7 @@ static void main_nix_build(int argc, char * * argv)
             ; // obsolete
 
         else if (*arg == "--no-out-link" || *arg == "--no-link")
-            outLink = (Path) tmpDir + "/result";
+            outLink = "";
 
         else if (*arg == "--attr" || *arg == "-A")
             attrPaths.push_back(getArg(*arg, arg, end));
@@ -197,6 +195,10 @@ static void main_nix_build(int argc, char * * argv)
 
     if (packages && fromArgs)
         throw UsageError("'-p' and '-E' are mutually exclusive");
+
+    AutoDelete tmpDir(createTempDir("", myName));
+    if (outLink.empty())
+        outLink = (Path) tmpDir + "/result";
 
     auto store = openStore();
     auto evalStore = myArgs.evalStoreUrl ? openStore(*myArgs.evalStoreUrl) : store;
@@ -416,8 +418,6 @@ static void main_nix_build(int argc, char * * argv)
         // Set the environment.
         auto env = getEnv();
 
-        auto tmp = defaultTempDir();
-
         if (pure) {
             decltype(env) newEnv;
             for (auto & i : env)
@@ -428,7 +428,8 @@ static void main_nix_build(int argc, char * * argv)
             env["__ETC_PROFILE_SOURCED"] = "1";
         }
 
-        env["NIX_BUILD_TOP"] = env["TMPDIR"] = env["TEMPDIR"] = env["TMP"] = env["TEMP"] = tmp;
+        // Don't use defaultTempDir() here! We want to preserve the user's TMPDIR for the shell
+        env["NIX_BUILD_TOP"] = env["TMPDIR"] = env["TEMPDIR"] = env["TMP"] = env["TEMP"] = getEnvNonEmpty("TMPDIR").value_or("/tmp");
         env["NIX_STORE"] = store->storeDir;
         env["NIX_BUILD_CORES"] = std::to_string(settings.buildCores);
 

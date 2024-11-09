@@ -7,6 +7,7 @@
 #include "outputs-spec.hh"
 #include "derivations.hh"
 #include "run.hh"
+#include "temporary-dir.hh"
 
 #include <iterator>
 #include <memory>

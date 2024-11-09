@@ -468,11 +468,6 @@ void initLibStore() {
        [1] https://github.com/apple-oss-distributions/objc4/blob/01edf1705fbc3ff78a423cd21e03dfc21eb4d780/runtime/objc-initialize.mm#L614-L636
     */
     curl_global_init(CURL_GLOBAL_ALL);
-    /* On macOS, don't use the per-session TMPDIR (as set e.g. by
-       sshd). This breaks build users because they don't have access
-       to the TMPDIR, in particular in ‘nix-store --serve’. */
-    if (defaultTempDir().starts_with("/var/folders/"))
-        unsetenv("TMPDIR");
 #endif
 
     registerStoreImplementations();
