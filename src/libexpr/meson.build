@@ -41,7 +41,7 @@ libexpr_settings_header = custom_target(
   input : libexpr_setting_definitions,
   output : 'libexpr-settings.gen.inc',
   install : true,
-  install_dir : includedir / 'lib/libexpr',
+  install_dir : includedir / 'lix/libexpr',
 )
 
 builtin_definitions = files(
