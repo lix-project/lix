@@ -98,7 +98,7 @@ void LocalStore::createTempRootsFile()
 
     /* Create the temporary roots file for this process. */
     while (true) {
-        auto tmp = makeTempPath(fnTempRoots, ".tmp");
+        auto tmp = makeTempPath(fnTempRoots);
         AutoCloseFD fd{sys::open(tmp, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600)};
         if (!fd && errno != EEXIST) {
             throw SysError("opening lock file '%1%'", tmp);

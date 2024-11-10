@@ -227,8 +227,7 @@ std::optional<struct ::stat> LocalStore::optimisePath_(
        its timestamp back to 0. */
     MakeReadOnly makeReadOnly(mustToggle ? dirOfPath : "");
 
-    Path tempLink = makeTempPath(config().realStoreDir, "/.tmp-link");
-    (void) sys::unlink(tempLink); // just in case; ignore errors
+    Path tempLink = makeTempPath(config().realStoreDir + "/");
 
     if (sys::link(linkPath, tempLink) == -1) {
         if (errno == EMLINK) {
