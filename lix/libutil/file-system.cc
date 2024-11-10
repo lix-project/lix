@@ -686,11 +686,16 @@ Path createTempSubdir(const Path & parent, const Path & prefix,
     }
 }
 
-Path makeTempPath(const Path & root, const Path & suffix)
+Path makeTempPath(const Path & root, const Path & prefix)
 {
-    // start the counter at a random value to minimize issues with preexisting temp paths
-    static std::atomic_uint_fast32_t counter(std::random_device{}());
-    return fmt("%1%%2%-%3%-%4%", root, suffix, getpid(), counter.fetch_add(1, std::memory_order_relaxed));
+    static thread_local std::random_device generator{};
+    std::uniform_int_distribution<uint64_t> uniform_dist{};
+    const uint64_t entropy[2] = {uniform_dist(generator), uniform_dist(generator)};
+    const std::string unique = base32Encode(std::string_view(
+        reinterpret_cast<const char *>(entropy),
+        sizeof(entropy)
+    ));
+    return fmt("%s%s-%s", root, prefix, unique);
 }
 
 Path makeTempSiblingPath(const Path & path)
