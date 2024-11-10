@@ -42,7 +42,6 @@ static void makeSymlink(const Path & link, const Path & target)
 
     /* Create the new symlink. */
     Path tempLink = makeTempPath(link);
-    unlink(tempLink.c_str()); // just in case; ignore errors
     createSymlink(target, tempLink);
 
     /* Atomically replace the old one. */
@@ -97,7 +96,7 @@ void LocalStore::createTempRootsFile()
 
     /* Create the temporary roots file for this process. */
     while (true) {
-        auto tmp = makeTempPath(fnTempRoots, ".tmp");
+        auto tmp = makeTempPath(fnTempRoots);
         AutoCloseFD fd{open(tmp.c_str(), O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600)};
         if (!fd && errno != EEXIST) {
             throw SysError("opening lock file '%1%'", tmp);

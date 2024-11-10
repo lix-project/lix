@@ -218,8 +218,7 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
        its timestamp back to 0. */
     MakeReadOnly makeReadOnly(mustToggle ? dirOfPath : "");
 
-    Path tempLink = makeTempPath(config().realStoreDir, "/.tmp-link");
-    unlink(tempLink.c_str()); // just in case; ignore errors
+    Path tempLink = makeTempPath(config().realStoreDir + "/");
 
     if (link(linkPath.c_str(), tempLink.c_str()) == -1) {
         if (errno == EMLINK) {
