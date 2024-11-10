@@ -28,6 +28,120 @@ if enable_embedded_sandbox_shell
   libstore_generated_headers += embedded_sandbox_shell_gen
 endif
 
+libstore_settings_headers = []
+
+file_transfer_setting_definitions = files(
+  'file-transfer-settings/connect-timeout.md',
+  'file-transfer-settings/download-attempts.md',
+  'file-transfer-settings/http-connections.md',
+  'file-transfer-settings/http2.md',
+  'file-transfer-settings/stalled-download-timeout.md',
+  'file-transfer-settings/user-agent-suffix.md',
+)
+libstore_settings_headers += custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '--kernel', host_machine.system(),
+    '--header', '@OUTPUT@',
+    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '@INPUT@',
+  ],
+  input : file_transfer_setting_definitions,
+  output : 'file-transfer-settings.gen.inc',
+  install : true,
+  install_dir : includedir / 'lix/libstore',
+)
+
+libstore_setting_definitions = files(
+  'settings/allow-symlinked-store.md',
+  'settings/allowed-impure-host-deps.md',
+  'settings/always-allow-substitutes.md',
+  'settings/auto-allocate-uids.md',
+  'settings/auto-optimise-store.md',
+  'settings/build-dir.md',
+  'settings/build-hook.md',
+  'settings/build-poll-interval.md',
+  'settings/build-users-group.md',
+  'settings/builders-use-substitutes.md',
+  'settings/builders.md',
+  'settings/compress-build-log.md',
+  'settings/cores.md',
+  'settings/darwin-log-sandbox-violations.md',
+  'settings/diff-hook.md',
+  'settings/download-speed.md',
+  'settings/enable-core-dumps.md',
+  'settings/extra-platforms.md',
+  'settings/fallback.md',
+  'settings/fsync-metadata.md',
+  'settings/gc-reserved-space.md',
+  'settings/hashed-mirrors.md',
+  'settings/id-count.md',
+  'settings/ignored-acls.md',
+  'settings/impersonate-linux-26.md',
+  'settings/keep-build-log.md',
+  'settings/keep-derivations.md',
+  'settings/keep-env-derivations.md',
+  'settings/keep-failed.md',
+  'settings/keep-going.md',
+  'settings/keep-outputs.md',
+  'settings/log-lines.md',
+  'settings/max-build-log-size.md',
+  'settings/max-free.md',
+  'settings/max-jobs.md',
+  'settings/max-silent-time.md',
+  'settings/max-substitution-jobs.md',
+  'settings/min-free-check-interval.md',
+  'settings/min-free.md',
+  'settings/nar-buffer-size.md',
+  'settings/narinfo-cache-negative-ttl.md',
+  'settings/narinfo-cache-positive-ttl.md',
+  'settings/netrc-file.md',
+  'settings/plugin-files.md',
+  'settings/post-build-hook.md',
+  'settings/pre-build-hook.md',
+  'settings/print-missing.md',
+  'settings/require-drop-supplementary-groups.md',
+  'settings/require-sigs.md',
+  'settings/run-diff-hook.md',
+  'settings/sandbox-build-dir.md',
+  'settings/sandbox-dev-shm-size.md',
+  'settings/sandbox-fallback.md',
+  'settings/sandbox-paths.md',
+  'settings/sandbox.md',
+  'settings/secret-key-files.md',
+  'settings/ssl-cert-file.md',
+  'settings/start-id.md',
+  'settings/store.md',
+  'settings/substitute.md',
+  'settings/substituters.md',
+  'settings/sync-before-registering.md',
+  'settings/system-features.md',
+  'settings/system.md',
+  'settings/tarball-ttl.md',
+  'settings/temp-dir.md',
+  'settings/timeout.md',
+  'settings/trusted-public-keys.md',
+  'settings/trusted-substituters.md',
+  'settings/use-cgroups.md',
+  'settings/use-sqlite-wal.md',
+  'settings/use-xdg-base-directories.md',
+)
+libstore_settings_headers += custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '--kernel', host_machine.system(),
+    '--header', '@OUTPUT@',
+    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '@INPUT@',
+  ],
+  input : libstore_setting_definitions,
+  output : 'libstore-settings.gen.inc',
+  install : true,
+  install_dir : includedir / 'lix/libstore',
+)
+
 libstore_sources = files(
   'binary-cache-store.cc',
   'build-result.cc',
@@ -232,8 +346,9 @@ endif
 
 libstore = library(
   'lixstore',
-  libstore_generated_headers,
   libstore_sources,
+  libstore_settings_headers,
+  libstore_generated_headers,
   dependencies : dependencies,
   cpp_args : cpp_args,
   cpp_pch : cpp_pch,
@@ -247,6 +362,7 @@ install_headers(libstore_headers, subdir : 'lix/libstore', preserve_path : true)
 # Used by libfetchers.
 liblixstore = declare_dependency(
   include_directories : include_directories('.'),
+  sources : libstore_settings_headers,
   link_with : libstore,
 )
 
@@ -254,6 +370,7 @@ liblixstore = declare_dependency(
 if is_static
   liblixstore_mstatic = declare_dependency(
     include_directories : include_directories('.'),
+    sources : libstore_settings_headers,
     link_whole : libstore,
   )
 else

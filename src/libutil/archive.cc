@@ -24,16 +24,7 @@ namespace nix {
 
 struct ArchiveSettings : Config
 {
-    Setting<bool> useCaseHack{this,
-        #if __APPLE__
-            true,
-        #else
-            false,
-        #endif
-        "use-case-hack",
-        "Whether to enable a Darwin-specific hack for dealing with file name collisions."};
-    Setting<bool> preallocateContents{this, false, "preallocate-contents",
-        "Whether to preallocate files when writing objects with known size."};
+    #include "archive-settings.gen.inc"
 };
 
 static ArchiveSettings archiveSettings;

@@ -99,4 +99,4 @@ This means that experimental features and RFCs are orthogonal mechanisms, and ca
 
 # Currently available experimental features
 
-{{#include @generated@/contributing/experimental-feature-descriptions.md}}
+{{#include @generated@/../../../src/libutil/experimental-feature-descriptions.md}}

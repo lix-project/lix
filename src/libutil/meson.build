@@ -130,9 +130,156 @@ libutil_headers = files(
   'xml-writer.hh',
 )
 
+experimental_feature_definitions = files(
+  'experimental-features/auto-allocate-uids.md',
+  'experimental-features/ca-derivations.md',
+  'experimental-features/cgroups.md',
+  'experimental-features/daemon-trust-override.md',
+  'experimental-features/dynamic-derivations.md',
+  'experimental-features/fetch-closure.md',
+  'experimental-features/flakes.md',
+  'experimental-features/impure-derivations.md',
+  'experimental-features/nix-command.md',
+  'experimental-features/no-url-literals.md',
+  'experimental-features/parse-toml-timestamps.md',
+  'experimental-features/pipe-operator.md',
+  'experimental-features/read-only-local-store.md',
+  'experimental-features/recursive-nix.md',
+  'experimental-features/repl-automation.md',
+  'experimental-features/repl-flake.md',
+)
+
+deprecated_feature_definitions = files(
+  'deprecated-features/ancient-let.md',
+  'deprecated-features/rec-set-overrides.md',
+  'deprecated-features/url-literals.md',
+)
+
+experimental_features_gen = custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_experimental_features.py',
+    '--header', '@OUTPUT0@',
+    '--impl-header', '@OUTPUT1@',
+    '--shortlist', '@OUTPUT2@',
+    '--descriptions', '@OUTPUT3@',
+    '@INPUT@',
+  ],
+  input : experimental_feature_definitions,
+  output : [
+    'experimental-features.gen.inc',
+    'experimental-features-impl.gen.inc',
+    'experimental-features-shortlist.md',
+    'experimental-feature-descriptions.md',
+  ],
+  install : true,
+  install_dir: [
+    includedir / 'lix/libutil',
+    false,
+    false,
+    false,
+  ],
+)
+experimental_features_header = experimental_features_gen[0]
+experimental_features_impl_header = experimental_features_gen[1]
+experimental_features_shortlist_md = experimental_features_gen[2]
+experimental_feature_descriptions_md = experimental_features_gen[3]
+
+deprecated_features_gen = custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_experimental_features.py',
+    '--deprecated',
+    '--header', '@OUTPUT0@',
+    '--impl-header', '@OUTPUT1@',
+    '--shortlist', '@OUTPUT2@',
+    '--descriptions', '@OUTPUT3@',
+    '@INPUT@',
+  ],
+  input : deprecated_feature_definitions,
+  output : [
+    'deprecated-features.gen.inc',
+    'deprecated-features-impl.gen.inc',
+    'deprecated-features-shortlist.md',
+    'deprecated-feature-descriptions.md',
+  ],
+  install : true,
+  install_dir: [
+    includedir / 'lix/libutil',
+    false,
+    false,
+    false
+  ],
+)
+deprecated_features_header = deprecated_features_gen[0]
+deprecated_features_impl_header = deprecated_features_gen[1]
+deprecated_features_shortlist_md = deprecated_features_gen[2]
+deprecated_feature_descriptions_md = deprecated_features_gen[3]
+
+libutil_settings_headers = []
+
+archive_setting_definitions = files(
+  'archive-settings/preallocate-contents.md',
+  'archive-settings/use-case-hack.md',
+)
+libutil_settings_headers += custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '--kernel', host_machine.system(),
+    '--header', '@OUTPUT@',
+    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '@INPUT@',
+  ],
+  input : archive_setting_definitions,
+  output : 'archive-settings.gen.inc',
+)
+
+feature_setting_definitions = files(
+  'feature-settings/deprecated-features.md',
+  'feature-settings/experimental-features.md',
+)
+libutil_settings_headers += custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '--kernel', host_machine.system(),
+    '--header', '@OUTPUT@',
+    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '@INPUT@',
+  ],
+  input : feature_setting_definitions,
+  output : 'feature-settings.gen.inc',
+  install : true,
+  install_dir : includedir / 'lix/libutil',
+)
+
+logging_setting_definitions = files(
+  'logging-settings/show-trace.md',
+)
+libutil_settings_headers += custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '--kernel', host_machine.system(),
+    '--header', '@OUTPUT@',
+    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '@INPUT@',
+  ],
+  input : logging_setting_definitions,
+  output : 'logging-settings.gen.inc',
+  install : true,
+  install_dir : includedir / 'lix/libutil',
+)
+
 libutil = library(
   'lixutil',
   libutil_sources,
+  experimental_features_header,
+  experimental_features_impl_header,
+  deprecated_features_header,
+  deprecated_features_impl_header,
+  libutil_settings_headers,
   dependencies : [
     aws_sdk,
     aws_s3,
@@ -169,6 +316,11 @@ configure_file(
 # Used by libstore and libfetchers.
 liblixutil = declare_dependency(
   include_directories : include_directories('.'),
+  sources : [
+    experimental_features_header,
+    deprecated_features_header,
+    libutil_settings_headers,
+  ],
   link_with : libutil
 )
 
@@ -176,6 +328,11 @@ liblixutil = declare_dependency(
 if is_static
   liblixutil_mstatic = declare_dependency(
     include_directories : include_directories('.'),
+    sources : [
+      experimental_features_header,
+      deprecated_features_header,
+      libutil_settings_headers,
+    ],
     link_whole : libutil,
   )
 else

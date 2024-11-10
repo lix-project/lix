@@ -22,8 +22,33 @@ libfetchers_headers = files(
   'registry.hh',
 )
 
+libfetchers_setting_definitions = files(
+  'settings/accept-flake-config.md',
+  'settings/access-tokens.md',
+  'settings/allow-dirty.md',
+  'settings/commit-lockfile-summary.md',
+  'settings/flake-registry.md',
+  'settings/use-registries.md',
+  'settings/warn-dirty.md',
+)
+libfetchers_settings_header = custom_target(
+  command : [
+    python.full_path(),
+    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '--kernel', host_machine.system(),
+    '--header', '@OUTPUT@',
+    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '@INPUT@',
+  ],
+  input : libfetchers_setting_definitions,
+  output : 'libfetchers-settings.gen.inc',
+  install : true,
+  install_dir : includedir / 'lix/libfetchers',
+)
+
 libfetchers = library(
   'lixfetchers',
+  libfetchers_settings_header,
   libfetchers_sources,
   dependencies : [
     liblixstore,
@@ -54,6 +79,7 @@ configure_file(
 
 liblixfetchers = declare_dependency(
   include_directories : include_directories('.'),
+  sources : libfetchers_settings_header,
   link_with : libfetchers,
 )
 
@@ -61,6 +87,7 @@ liblixfetchers = declare_dependency(
 if is_static
   liblixfetchers_mstatic = declare_dependency(
     include_directories : include_directories('.'),
+    sources : libfetchers_settings_header,
     link_whole : libfetchers,
   )
 else

@@ -15,56 +15,6 @@ nix_eval_for_docs_common = nix_for_docs + [
 ]
 nix_eval_for_docs = nix_eval_for_docs_common + '--raw'
 
-conf_file_json = custom_target(
-  command : nix_for_docs + [ 'show-config', '--json' ],
-  capture : true,
-  output : 'conf-file.json',
-  env : nix_env_for_docs,
-  # FIXME: put the actual lib targets in here? meson have introspection challenge 2024 though.
-  build_always_stale : true,
-)
-
-nix_conf_file_md_body = custom_target(
-  command : nix_eval_for_docs + [
-    '--expr',
-    '(import @INPUT0@).showSettings { inlineHTML = true; } (builtins.fromJSON (builtins.readFile @INPUT1@))',
-  ],
-  capture : true,
-  input : [
-    'utils.nix',
-    conf_file_json,
-  ],
-  output : 'conf-file.md.body',
-  env : nix_env_for_docs,
-)
-
-nix_conf_file_md = custom_target(
-  command : [ 'cat', '@INPUT@' ],
-  capture : true,
-  input : [
-    'src/command-ref/conf-file.md',
-    nix_conf_file_md_body,
-  ],
-  output : 'conf-file.md',
-)
-
-nix_exp_features_json = custom_target(
-  command : [ nix, '__dump-xp-features' ],
-  capture : true,
-  output : 'xp-features.json',
-  # FIXME: put the actual lib targets in here? meson have introspection challenge 2024 though.
-  build_always_stale : true,
-)
-
-language_json = custom_target(
-  command: [nix, '__dump-language'],
-  output : 'language.json',
-  capture : true,
-  env : nix_env_for_docs,
-  # FIXME: put the actual lib targets in here? meson have introspection challenge 2024 though.
-  build_always_stale : true,
-)
-
 nix3_cli_json = custom_target(
   command : [ nix, '__dump-cli' ],
   capture : true,
@@ -78,12 +28,8 @@ generate_manual_deps = files(
   'generate-deps.py',
 )
 
-# Generates builtins.md and builtin-constants.md.
-subdir('src/language')
-# Generates new-cli pages, {experimental,deprecated}-features-shortlist.md, and conf-file.md.
+# Generates new-cli pages  and conf-file.md.
 subdir('src/command-ref')
-# Generates {experimental,deprecated}-feature-descriptions.md.
-subdir('src/contributing')
 # Generates rl-next-generated.md.
 subdir('src/release-notes')
 

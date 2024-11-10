@@ -34,4 +34,4 @@ However, we do not live in such an ideal world, and currently this goal is so fa
 
 # Currently available deprecated features
 
-{{#include @generated@/contributing/deprecated-feature-descriptions.md}}
+{{#include @generated@/../../../src/libutil/deprecated-feature-descriptions.md}}

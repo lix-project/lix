@@ -399,3 +399,76 @@ The following properties are supported:
 
 Releases have a precomputed `rl-MAJOR.MINOR.md`, and no `rl-next.md`.
 Set `buildUnreleasedNotes = true;` in `flake.nix` to build the release notes on the fly.
+
+## Adding experimental or deprecated features, global settings, or builtins
+
+Experimental and deprecated features, global settings, and builtins are generally referenced both in the code and in the documentation.
+To prevent duplication or divergence, they are defined in data files, and a script generates the necessary glue.
+The data file format is similar to the release notes: it consists of a YAML metadata header, followed by the documentation in Markdown format.
+
+### Experimental or deprecated features
+
+Experimental and deprecated features support the following metadata properties:
+* `name` (required): user-facing name of the feature, to be used in `nix.conf` options and on the command line.
+  This should also be the stem of the file name (with extension `md`).
+* `internalName` (required): identifier used to refer to the feature inside the C++ code.
+
+Experimental feature data files should live in `src/libutil/experimental-features`, and deprecated features in `src/libutil/deprecated-features`.
+They must be listed in the `experimental_feature_definitions` or `deprecated_feature_definitions` lists in `src/libutil/meson.build` respectively to be considered by the build system.
+
+### Global settings
+
+Global settings support the following metadata properties:
+* `name` (required): user-facing name of the setting, to be used as key in `nix.conf` and in the `--option` command line argument.
+* `internalName` (required): identifier used to refer to the setting inside the C++ code.
+* `platforms` (optional): a list specifying the platforms on which this setting is available.
+  If not specified, it is available on all platforms.
+  Valid platform names are `darwin`, `linux`.
+* `type` (optional): C++ type of the setting value.
+  This specifies the setting object type as `Setting<T>`; if more control is required, use `settingType` instead.
+* `settingType` (required if `type` is not specified): C++ type of the setting object.
+* `default` (optional): default value of the setting.
+  `null`, truth values, integers, strings and lists are supported as long as the correct YAML type is used, `type` is not taken into account).
+  Other types, machine-dependent values or non-standard representations must be handled using `defaultExpr` and `defaultText` instead.
+* `defaultExpr` (required if `default` is not specified): a string containing the C++ expression representing the default value.
+* `defaultText` (required if `default` is not specified): a string containing the Markdown expression representing the default value in the documentation.
+  Literal values are conventionally surrounded by backticks, and a system-dependent value is signaled by `*machine-specific*`.
+* `aliases` (optional): a list of secondary user-facing names under which the setting is available.
+  Defaults to empty if not specified.
+* `experimentalFeature` (optional): the user-facing name of the experimental feature which needs to be enabled to change the setting.
+  If not specified, no experimental feature is required.
+* `deprecated` (optional): whether the setting is deprecated and shown as such in the documentation for `nix.conf`.
+  Defaults to false if not specified.
+
+Settings are not collected in a single place in the source tree, so an appropriate place needs to be found for the setting to live.
+Look for related setting definition files under second-level subdirectories of `src` whose name includes `settings`.
+Then add the new file there, and don't forget to register it in the appropriate `meson.build` file.
+
+### Builtin functions
+
+The following metadata properties are supported for builtin functions:
+* `name` (required): the language-facing name (as a member of the `builtins` attribute set) of the function.
+* `implementation` (optional): a C++ expression specifying the implementation of the builtin.
+  It must be a function of signature `void(EvalState &, PosIdx, Value * *, Value &)`.
+  If not specified, defaults to `prim_${name}`.
+* `renameInGlobalScope` (optional): whether the definiton should be "hidden" in the global scope by prefixing its name with two underscores.
+  If not specified, defaults to `true`.
+* `args` (required): list containing the names of the arguments, as shown in the documentation.
+  All arguments must be listed here since the function arity is derived as the length of this list.
+* `experimental_feature` (optional): the user-facing name of the experimental feature which needs to be enabled for the bultin function to be available.
+  If not specified, no experimental feature is required.
+
+New builtin function definition files must be added to `src/libexpr/builtins` and registered in the `builtin_definitions` list in `src/libexpr/meson.build`.
+
+### Builtin constants
+The following metadata properties are supported for builtin constants:
+* `name` (required): the language-facing name (as a member of the `builtins` attribute set) of the constant.
+* `type` (required): the Nix language type of the constant; the C++ type is automatically derived.
+* `constructorArgs` (optional): list of strings containing C++ expressions passed as arguments to the appropriate `Value` constructor.
+  If the value computation is more complex, `implementation` can be used instead.
+* `implementation` (required if `constructorArgs` is not specified): string containing a C++ expressing computing the value of the constant.
+* `impure` (optional): whether the constant is considered impure.
+  Impure constants are not available when pure evaluation mode is activated.
+  Defaults to `false` when not specified.
+
+New builtin constant definition files must be added to `src/libexpr/builtin-constants` and registered in the `builtin_constant_definitions` list in `src/libexpr/meson.build`.

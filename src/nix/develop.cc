@@ -19,17 +19,7 @@ using namespace nix;
 
 struct DevelopSettings : Config
 {
-    Setting<std::string> bashPrompt{this, "", "bash-prompt",
-        "The bash prompt (`PS1`) in `nix develop` shells.",
-        {}, true, Xp::NixCommand};
-
-    Setting<std::string> bashPromptPrefix{this, "", "bash-prompt-prefix",
-        "Prefix prepended to the `PS1` environment variable in `nix develop` shells.",
-        {}, true, Xp::NixCommand};
-
-    Setting<std::string> bashPromptSuffix{this, "", "bash-prompt-suffix",
-        "Suffix appended to the `PS1` environment variable in `nix develop` shells.",
-        {}, true, Xp::NixCommand};
+    #include "develop-settings.gen.inc"
 };
 
 static DevelopSettings developSettings;

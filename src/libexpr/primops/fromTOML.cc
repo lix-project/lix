@@ -1,12 +1,13 @@
 #include "primops.hh"
 #include "eval-inline.hh"
+#include "extra-primops.hh"
 
 #include <sstream>
 #include <toml.hpp>
 
 namespace nix {
 
-static void prim_fromTOML(EvalState & state, const PosIdx pos, Value * * args, Value & val)
+void prim_fromTOML(EvalState & state, const PosIdx pos, Value * * args, Value & val)
 {
     auto toml = state.forceStringNoCtx(*args[0], pos, "while evaluating the argument passed to builtins.fromTOML");
 
@@ -85,25 +86,5 @@ static void prim_fromTOML(EvalState & state, const PosIdx pos, Value * * args, V
         state.error<EvalError>("while parsing TOML: %s", e.what()).atPos(pos).debugThrow();
     }
 }
-
-static RegisterPrimOp primop_fromTOML({
-    .name = "fromTOML",
-    .args = {"e"},
-    .doc = R"(
-      Convert a TOML string to a Nix value. For example,
-
-      ```nix
-      builtins.fromTOML ''
-        x=1
-        s="a"
-        [table]
-        y=2
-      ''
-      ```
-
-      returns the value `{ s = "a"; table = { y = 2; }; x = 1; }`.
-    )",
-    .fun = prim_fromTOML
-});
 
 }

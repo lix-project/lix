@@ -8,29 +8,11 @@ namespace nix {
 
 /**
  * The list of available experimental features.
- *
- * If you update this, don’t forget to also change the map defining
- * their string representation and documentation in the corresponding
- * `.cc` file as well.
  */
 enum struct ExperimentalFeature
 {
-    CaDerivations,
-    ImpureDerivations,
-    Flakes,
-    NixCommand,
-    RecursiveNix,
-    NoUrlLiterals,
-    PipeOperator,
-    FetchClosure,
-    ReplFlake,
-    AutoAllocateUids,
-    Cgroups,
-    DaemonTrustOverride,
-    DynamicDerivations,
-    ParseTomlTimestamps,
-    ReadOnlyLocalStore,
-    ReplAutomation,
+    #include "experimental-features.gen.inc"
+    NumXpFeatures, // number of available experimental features, do not use
 };
 
 enum struct ExperimentalFeatures {};

@@ -86,12 +86,7 @@ typedef uint64_t ActivityId;
 
 struct LoggerSettings : Config
 {
-    Setting<bool> showTrace{
-        this, false, "show-trace",
-        R"(
-          Whether Lix should print out a stack trace in case of Nix
-          expression evaluation errors.
-        )"};
+    #include "logging-settings.gen.inc"
 };
 
 extern LoggerSettings loggerSettings;
