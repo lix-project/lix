@@ -382,6 +382,7 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
                         delay - (now - i->startTime)
                         )
                     );
+                continue;
             }
 
             activity_line = i->s;
