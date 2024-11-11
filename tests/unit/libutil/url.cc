@@ -303,7 +303,6 @@ namespace nix {
         ASSERT_EQ(d, s);
     }
 
-
     /* ----------------------------------------------------------------------------
      * percentEncode
      * --------------------------------------------------------------------------*/
@@ -336,4 +335,10 @@ namespace nix {
         ASSERT_EQ(d, s);
     }
 
+    TEST(percentEncode, utf8Input) {
+        std::string s = percentEncode("ä");
+        std::string d = "%C3%A4";
+
+        ASSERT_EQ(d, s);
+    }
 }

@@ -104,7 +104,7 @@ std::string percentEncode(std::string_view s, std::string_view keep)
             || keep.find(c) != std::string::npos)
             res += c;
         else
-            res += fmt("%%%02X", (unsigned int) c);
+            res += fmt("%%%02X", 0xff & (unsigned int) c);
     return res;
 }
 
