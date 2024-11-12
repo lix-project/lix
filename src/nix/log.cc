@@ -1,8 +1,8 @@
-#include "command.hh"
-#include "common-args.hh"
-#include "shared.hh"
-#include "store-api.hh"
-#include "log-store.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/common-args.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/log-store.hh"
 
 using namespace nix;
 

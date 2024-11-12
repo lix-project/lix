@@ -9,7 +9,7 @@
 #include "test-session.hh"
 #include "tests/characterization.hh"
 #include "tests/cli-literate-parser.hh"
-#include "strings.hh"
+#include "lix/libutil/strings.hh"
 
 using namespace std::string_literals;
 

@@ -3,8 +3,8 @@
 
 #include <chrono>
 
-#include "logging.hh"
-#include "sync.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/sync.hh"
 
 namespace nix {
 

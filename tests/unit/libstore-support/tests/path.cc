@@ -3,8 +3,8 @@
 
 #include <rapidcheck.h>
 
-#include "path-regex.hh"
-#include "store-api.hh"
+#include "lix/libstore/path-regex.hh"
+#include "lix/libstore/store-api.hh"
 
 #include "tests/hash.hh"
 #include "tests/path.hh"

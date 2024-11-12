@@ -1,7 +1,7 @@
-#include "command.hh"
-#include "store-api.hh"
-#include "fs-accessor.hh"
-#include "nar-accessor.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/fs-accessor.hh"
+#include "lix/libstore/nar-accessor.hh"
 
 using namespace nix;
 

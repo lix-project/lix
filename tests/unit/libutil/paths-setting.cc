@@ -1,4 +1,4 @@
-#include "config.hh"
+#include "lix/libutil/config.hh"
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>

@@ -1,12 +1,12 @@
-#include "command.hh"
-#include "common-args.hh"
-#include "shared.hh"
-#include "eval.hh"
-#include "flake/flake.hh"
-#include "store-api.hh"
-#include "fetchers.hh"
-#include "url-parts.hh"
-#include "registry.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/common-args.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libexpr/flake/flake.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libfetchers/fetchers.hh"
+#include "lix/libutil/url-parts.hh"
+#include "lix/libfetchers/registry.hh"
 
 using namespace nix;
 using namespace nix::flake;

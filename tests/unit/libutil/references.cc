@@ -1,5 +1,5 @@
-#include "references.hh"
-#include "strings.hh"
+#include "lix/libutil/references.hh"
+#include "lix/libutil/strings.hh"
 #include <gtest/gtest.h>
 
 namespace nix {

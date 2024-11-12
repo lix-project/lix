@@ -1,8 +1,8 @@
-#include "config.hh"
-#include "args.hh"
-#include "file-system.hh"
-#include "environment-variables.hh"
-#include "logging.hh"
+#include "lix/libutil/config.hh"
+#include "lix/libutil/args.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/environment-variables.hh"
+#include "lix/libutil/logging.hh"
 #include "tests/test-data.hh"
 
 #include <sstream>

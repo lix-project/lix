@@ -1,4 +1,4 @@
-#include "references.hh"
+#include "lix/libutil/references.hh"
 
 #include <gtest/gtest.h>
 

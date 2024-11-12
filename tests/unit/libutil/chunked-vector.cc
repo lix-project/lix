@@ -1,4 +1,4 @@
-#include "chunked-vector.hh"
+#include "lix/libutil/chunked-vector.hh"
 
 #include <gtest/gtest.h>
 

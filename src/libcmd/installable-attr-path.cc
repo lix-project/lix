@@ -1,11 +1,11 @@
-#include "installable-attr-path.hh"
-#include "outputs-spec.hh"
-#include "command.hh"
-#include "attr-path.hh"
-#include "common-eval-args.hh"
-#include "eval.hh"
-#include "get-drvs.hh"
-#include "flake/flake.hh"
+#include "lix/libcmd/installable-attr-path.hh"
+#include "lix/libstore/outputs-spec.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libexpr/attr-path.hh"
+#include "lix/libcmd/common-eval-args.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libexpr/get-drvs.hh"
+#include "lix/libexpr/flake/flake.hh"
 
 #include <nlohmann/json.hpp>
 

@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "args.hh"
-#include "repair-flag.hh"
+#include "lix/libutil/args.hh"
+#include "lix/libutil/repair-flag.hh"
 
 namespace nix {
 

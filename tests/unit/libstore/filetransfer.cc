@@ -1,5 +1,5 @@
-#include "filetransfer.hh"
-#include "compression.hh"
+#include "lix/libstore/filetransfer.hh"
+#include "lix/libutil/compression.hh"
 
 #include <cstdint>
 #include <exception>

@@ -3,9 +3,9 @@
 #include <nlohmann/json.hpp>
 #include <gtest/gtest.h>
 
-#include "serve-protocol.hh"
-#include "serve-protocol-impl.hh"
-#include "build-result.hh"
+#include "lix/libstore/serve-protocol.hh"
+#include "lix/libstore/serve-protocol-impl.hh"
+#include "lix/libstore/build-result.hh"
 #include "protocol.hh"
 #include "tests/characterization.hh"
 

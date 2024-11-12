@@ -1,13 +1,13 @@
-#include "eval-settings.hh"
-#include "common-eval-args.hh"
-#include "shared.hh"
-#include "filetransfer.hh"
-#include "eval.hh"
-#include "fetchers.hh"
-#include "registry.hh"
-#include "flake/flakeref.hh"
-#include "store-api.hh"
-#include "command.hh"
+#include "lix/libexpr/eval-settings.hh"
+#include "lix/libcmd/common-eval-args.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/filetransfer.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libfetchers/fetchers.hh"
+#include "lix/libfetchers/registry.hh"
+#include "lix/libexpr/flake/flakeref.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libcmd/command.hh"
 
 #include <regex>
 

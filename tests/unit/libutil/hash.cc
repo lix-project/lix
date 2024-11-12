@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include "hash.hh"
+#include "lix/libutil/hash.hh"
 
 namespace nix {
 

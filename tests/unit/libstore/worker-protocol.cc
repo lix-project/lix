@@ -3,10 +3,10 @@
 #include <nlohmann/json.hpp>
 #include <gtest/gtest.h>
 
-#include "worker-protocol.hh"
-#include "worker-protocol-impl.hh"
-#include "derived-path.hh"
-#include "build-result.hh"
+#include "lix/libstore/worker-protocol.hh"
+#include "lix/libstore/worker-protocol-impl.hh"
+#include "lix/libstore/derived-path.hh"
+#include "lix/libstore/build-result.hh"
 #include "protocol.hh"
 #include "tests/characterization.hh"
 

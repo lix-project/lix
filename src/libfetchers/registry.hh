@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "types.hh"
-#include "fetchers.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libfetchers/fetchers.hh"
 
 namespace nix { class Store; }
 

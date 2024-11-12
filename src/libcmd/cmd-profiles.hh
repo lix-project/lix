@@ -1,13 +1,13 @@
 #pragma once
 ///@file
 
-#include "built-path.hh"
-#include "eval.hh"
-#include "flake/flakeref.hh"
-#include "get-drvs.hh"
-#include "types.hh"
-#include "url.hh"
-#include "url-name.hh"
+#include "lix/libcmd/built-path.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libexpr/flake/flakeref.hh"
+#include "lix/libexpr/get-drvs.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/url.hh"
+#include "lix/libutil/url-name.hh"
 
 #include <string>
 #include <set>

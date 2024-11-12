@@ -1,9 +1,9 @@
-#include "common-args.hh"
-#include "args/root.hh"
-#include "error.hh"
-#include "globals.hh"
-#include "loggers.hh"
-#include "logging.hh"
+#include "lix/libmain/common-args.hh"
+#include "lix/libutil/args/root.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libmain/loggers.hh"
+#include "lix/libutil/logging.hh"
 
 namespace nix {
 

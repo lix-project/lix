@@ -3,9 +3,9 @@
 #include <unistd.h>
 
 #include "test-session.hh"
-#include "escape-char.hh"
-#include "processes.hh"
-#include "strings.hh"
+#include "lix/libutil/escape-char.hh"
+#include "lix/libutil/processes.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

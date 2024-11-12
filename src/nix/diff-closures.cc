@@ -1,9 +1,9 @@
-#include "command.hh"
-#include "cmd-profiles.hh"
-#include "shared.hh"
-#include "store-api.hh"
-#include "common-args.hh"
-#include "names.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libcmd/cmd-profiles.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libmain/common-args.hh"
+#include "lix/libstore/names.hh"
 
 #include <regex>
 

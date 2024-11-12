@@ -1,7 +1,7 @@
-#include "command.hh"
-#include "shared.hh"
-#include "signals.hh"
-#include "store-api.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libstore/store-api.hh"
 
 #include <atomic>
 

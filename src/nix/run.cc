@@ -1,19 +1,19 @@
 #include "run.hh"
-#include "command.hh"
-#include "common-args.hh"
-#include "installables.hh"
-#include "shared.hh"
-#include "store-api.hh"
-#include "derivations.hh"
-#include "local-store.hh"
-#include "finally.hh"
-#include "fs-accessor.hh"
-#include "eval.hh"
-#include "build/personality.hh"
-#include "current-process.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/common-args.hh"
+#include "lix/libcmd/installables.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libstore/local-store.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libstore/fs-accessor.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libstore/build/personality.hh"
+#include "lix/libutil/current-process.hh"
 
 #if __linux__
-#include "temporary-dir.hh"
+#include "lix/libstore/temporary-dir.hh"
 #include <sys/mount.h>
 #endif
 

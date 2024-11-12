@@ -5,8 +5,8 @@
 
 #include "tests/libexpr.hh"
 
-#include "nixexpr.hh"
-#include "ref.hh"
+#include "lix/libexpr/nixexpr.hh"
+#include "lix/libutil/ref.hh"
 
 namespace nix
 {

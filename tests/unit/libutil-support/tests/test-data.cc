@@ -1,5 +1,5 @@
 #include "test-data.hh"
-#include "strings.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

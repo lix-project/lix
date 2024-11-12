@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "types.hh"
-#include "config.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/config.hh"
 
 #include <map>
 #include <limits>

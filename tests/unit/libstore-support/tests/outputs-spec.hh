@@ -3,7 +3,7 @@
 
 #include <rapidcheck/gen/Arbitrary.h>
 
-#include <outputs-spec.hh>
+#include "lix/libstore/outputs-spec.hh"
 
 #include "tests/path.hh"
 

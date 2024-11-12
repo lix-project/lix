@@ -1,7 +1,7 @@
-#include "fetchers.hh"
-#include "builtin-fetchers.hh"
-#include "store-api.hh"
-#include "archive.hh"
+#include "lix/libfetchers/fetchers.hh"
+#include "lix/libfetchers/builtin-fetchers.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/archive.hh"
 
 namespace nix::fetchers {
 

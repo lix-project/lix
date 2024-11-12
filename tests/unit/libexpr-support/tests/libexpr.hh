@@ -4,11 +4,11 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "value.hh"
-#include "nixexpr.hh"
-#include "eval.hh"
-#include "eval-inline.hh"
-#include "store-api.hh"
+#include "lix/libexpr/value.hh"
+#include "lix/libexpr/nixexpr.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libexpr/eval-inline.hh"
+#include "lix/libstore/store-api.hh"
 
 #include "tests/libstore.hh"
 

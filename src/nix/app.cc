@@ -1,13 +1,13 @@
-#include "installables.hh"
-#include "installable-derived-path.hh"
-#include "installable-value.hh"
-#include "store-api.hh"
-#include "eval-inline.hh"
-#include "eval-cache.hh"
-#include "names.hh"
-#include "command.hh"
-#include "derivations.hh"
-#include "downstream-placeholder.hh"
+#include "lix/libcmd/installables.hh"
+#include "lix/libcmd/installable-derived-path.hh"
+#include "lix/libcmd/installable-value.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libexpr/eval-inline.hh"
+#include "lix/libexpr/eval-cache.hh"
+#include "lix/libstore/names.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libstore/downstream-placeholder.hh"
 
 namespace nix {
 

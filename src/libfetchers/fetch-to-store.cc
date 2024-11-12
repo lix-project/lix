@@ -1,6 +1,6 @@
-#include "fetch-to-store.hh"
-#include "fetchers.hh"
-#include "cache.hh"
+#include "lix/libfetchers/fetch-to-store.hh"
+#include "lix/libfetchers/fetchers.hh"
+#include "lix/libfetchers/cache.hh"
 
 namespace nix {
 

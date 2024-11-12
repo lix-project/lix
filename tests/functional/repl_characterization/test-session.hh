@@ -6,8 +6,8 @@
 #include <span>
 #include <string>
 
-#include "file-descriptor.hh"
-#include "processes.hh"
+#include "lix/libutil/file-descriptor.hh"
+#include "lix/libutil/processes.hh"
 #include "tests/terminal-code-eater.hh"
 
 namespace nix {

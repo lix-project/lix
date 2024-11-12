@@ -1,4 +1,4 @@
-#include "git.hh"
+#include "lix/libutil/git.hh"
 #include <gtest/gtest.h>
 
 namespace nix {

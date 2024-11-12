@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "crash-handler.hh"
+#include "lix/libmain/crash-handler.hh"
 
 namespace nix {
 

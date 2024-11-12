@@ -3,7 +3,7 @@
 
 #include <rapidcheck/gen/Arbitrary.h>
 
-#include <path.hh>
+#include "lix/libstore/path.hh"
 
 namespace nix {
 

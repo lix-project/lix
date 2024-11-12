@@ -1,4 +1,4 @@
-#include "pool.hh"
+#include "lix/libutil/pool.hh"
 #include <gtest/gtest.h>
 
 namespace nix {

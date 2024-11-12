@@ -1,18 +1,18 @@
 #include <algorithm>
 
-#include "cmd-profiles.hh"
-#include "command.hh"
-#include "common-args.hh"
-#include "local-fs-store.hh"
-#include "logging.hh"
-#include "processes.hh"
-#include "profiles.hh"
-#include "store-api.hh"
-#include "filetransfer.hh"
-#include "eval.hh"
-#include "eval-settings.hh"
-#include "attr-path.hh"
-#include "names.hh"
+#include "lix/libcmd/cmd-profiles.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/common-args.hh"
+#include "lix/libstore/local-fs-store.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/processes.hh"
+#include "lix/libstore/profiles.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/filetransfer.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libexpr/eval-settings.hh"
+#include "lix/libexpr/attr-path.hh"
+#include "lix/libstore/names.hh"
 
 using namespace nix;
 

@@ -1,6 +1,6 @@
-#include "command.hh"
-#include "shared.hh"
-#include "store-api.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/store-api.hh"
 
 using namespace nix;
 

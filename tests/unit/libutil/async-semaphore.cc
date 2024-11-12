@@ -1,4 +1,4 @@
-#include "async-semaphore.hh"
+#include "lix/libutil/async-semaphore.hh"
 
 #include <gtest/gtest.h>
 #include <kj/async.h>

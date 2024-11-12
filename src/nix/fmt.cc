@@ -1,5 +1,5 @@
-#include "command.hh"
-#include "installable-value.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libcmd/installable-value.hh"
 #include "run.hh"
 
 using namespace nix;

@@ -1,4 +1,4 @@
-#include "compression.hh"
+#include "lix/libutil/compression.hh"
 #include <cstddef>
 #include <gtest/gtest.h>
 

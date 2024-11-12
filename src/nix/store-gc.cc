@@ -1,9 +1,9 @@
-#include "command.hh"
-#include "common-args.hh"
-#include "shared.hh"
-#include "store-api.hh"
-#include "store-cast.hh"
-#include "gc-store.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/common-args.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/store-cast.hh"
+#include "lix/libstore/gc-store.hh"
 
 using namespace nix;
 

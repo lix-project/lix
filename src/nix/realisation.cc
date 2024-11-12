@@ -1,5 +1,5 @@
-#include "command.hh"
-#include "common-args.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/common-args.hh"
 
 #include <nlohmann/json.hpp>
 

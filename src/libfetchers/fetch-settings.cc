@@ -1,7 +1,7 @@
-#include "abstract-setting-to-json.hh"
-#include "args.hh"
-#include "config-impl.hh"
-#include "fetch-settings.hh"
+#include "lix/libutil/abstract-setting-to-json.hh"
+#include "lix/libutil/args.hh"
+#include "lix/libutil/config-impl.hh"
+#include "lix/libfetchers/fetch-settings.hh"
 
 #include <nlohmann/json.hpp>
 

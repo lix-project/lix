@@ -1,9 +1,9 @@
-#include "nar-info-disk-cache.hh"
+#include "lix/libstore/nar-info-disk-cache.hh"
 
 #include <gtest/gtest.h>
 #include <rapidcheck/gtest.h>
-#include "sqlite.hh"
-#include "temporary-dir.hh"
+#include "lix/libstore/sqlite.hh"
+#include "lix/libstore/temporary-dir.hh"
 #include <sqlite3.h>
 
 

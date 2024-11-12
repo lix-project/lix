@@ -1,10 +1,10 @@
-#include "command.hh"
-#include "shared.hh"
-#include "store-api.hh"
-#include "store-cast.hh"
-#include "log-store.hh"
-#include "sync.hh"
-#include "thread-pool.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/store-cast.hh"
+#include "lix/libstore/log-store.hh"
+#include "lix/libutil/sync.hh"
+#include "lix/libutil/thread-pool.hh"
 
 #include <atomic>
 

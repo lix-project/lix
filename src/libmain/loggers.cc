@@ -1,6 +1,6 @@
-#include "environment-variables.hh"
-#include "loggers.hh"
-#include "progress-bar.hh"
+#include "lix/libutil/environment-variables.hh"
+#include "lix/libmain/loggers.hh"
+#include "lix/libmain/progress-bar.hh"
 
 namespace nix {
 

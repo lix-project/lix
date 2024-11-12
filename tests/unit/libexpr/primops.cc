@@ -1,7 +1,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "eval-settings.hh"
+#include "lix/libexpr/eval-settings.hh"
 
 #include "tests/libexpr.hh"
 

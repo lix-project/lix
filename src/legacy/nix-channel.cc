@@ -1,13 +1,13 @@
-#include "profiles.hh"
-#include "shared.hh"
-#include "globals.hh"
-#include "filetransfer.hh"
-#include "store-api.hh"
-#include "legacy.hh"
-#include "fetchers.hh"
-#include "eval-settings.hh" // for defexpr
-#include "temporary-dir.hh"
-#include "users.hh"
+#include "lix/libstore/profiles.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/filetransfer.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libcmd/legacy.hh"
+#include "lix/libfetchers/fetchers.hh"
+#include "lix/libexpr/eval-settings.hh" // for defexpr
+#include "lix/libstore/temporary-dir.hh"
+#include "lix/libutil/users.hh"
 #include "nix-channel.hh"
 
 #include <fcntl.h>

@@ -1,6 +1,6 @@
-#include "error.hh"
-#include "file-system.hh"
-#include "logging.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/logging.hh"
 #include <csignal>
 #include <cstdio>
 #include <iostream>
@@ -17,8 +17,8 @@ extern "C" {
 #include <editline.h>
 }
 
-#include "finally.hh"
-#include "repl-interacter.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libcmd/repl-interacter.hh"
 
 namespace nix {
 

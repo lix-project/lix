@@ -1,8 +1,8 @@
-#include "file-system.hh"
-#include "processes.hh"
-#include "strings.hh"
-#include "types.hh"
-#include "terminal.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/processes.hh"
+#include "lix/libutil/strings.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/terminal.hh"
 
 #include <gtest/gtest.h>
 

@@ -1,7 +1,7 @@
 #pragma once
 ///@file internal header for fetcher declarations
 
-#include "fetchers.hh"
+#include "lix/libfetchers/fetchers.hh"
 
 namespace nix::fetchers {
 

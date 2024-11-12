@@ -3,7 +3,7 @@
 
 #include <gtest/gtest.h>
 
-#include "json-utils.hh"
+#include "lix/libutil/json-utils.hh"
 
 namespace nix {
 

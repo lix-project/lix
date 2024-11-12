@@ -1,14 +1,14 @@
 #pragma once
 ///@file
 
-#include "types.hh"
-#include "hash.hh"
-#include "canon-path.hh"
-#include "path.hh"
-#include "attrs.hh"
-#include "url.hh"
-#include "ref.hh"
-#include "strings.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libutil/canon-path.hh"
+#include "lix/libstore/path.hh"
+#include "lix/libfetchers/attrs.hh"
+#include "lix/libutil/url.hh"
+#include "lix/libutil/ref.hh"
+#include "lix/libutil/strings.hh"
 
 #include <memory>
 

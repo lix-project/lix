@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "fetchers.hh"
-#include "path.hh"
+#include "lix/libfetchers/fetchers.hh"
+#include "lix/libstore/path.hh"
 
 namespace nix::fetchers {
 

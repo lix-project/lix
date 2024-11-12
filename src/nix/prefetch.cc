@@ -1,15 +1,15 @@
-#include "command.hh"
-#include "common-args.hh"
-#include "loggers.hh"
-#include "shared.hh"
-#include "store-api.hh"
-#include "filetransfer.hh"
-#include "tarfile.hh"
-#include "attr-path.hh"
-#include "eval-inline.hh" // IWYU pragma: keep
-#include "legacy.hh"
-#include "temporary-dir.hh"
-#include "terminal.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/common-args.hh"
+#include "lix/libmain/loggers.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/filetransfer.hh"
+#include "lix/libutil/tarfile.hh"
+#include "lix/libexpr/attr-path.hh"
+#include "lix/libexpr/eval-inline.hh" // IWYU pragma: keep
+#include "lix/libcmd/legacy.hh"
+#include "lix/libstore/temporary-dir.hh"
+#include "lix/libutil/terminal.hh"
 #include "prefetch-command.hh"
 
 #include <nlohmann/json.hpp>

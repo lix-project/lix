@@ -6,19 +6,19 @@
 #include <sys/time.h>
 #endif
 
-#include "machines.hh"
-#include "shared.hh"
-#include "pathlocks.hh"
-#include "globals.hh"
-#include "serialise.hh"
-#include "build-result.hh"
-#include "store-api.hh"
-#include "derivations.hh"
-#include "strings.hh"
-#include "local-store.hh"
-#include "legacy.hh"
-#include "experimental-features.hh"
-#include "hash.hh"
+#include "lix/libstore/machines.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/pathlocks.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libutil/serialise.hh"
+#include "lix/libstore/build-result.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libutil/strings.hh"
+#include "lix/libstore/local-store.hh"
+#include "lix/libcmd/legacy.hh"
+#include "lix/libutil/experimental-features.hh"
+#include "lix/libutil/hash.hh"
 #include "build-remote.hh"
 
 namespace nix {

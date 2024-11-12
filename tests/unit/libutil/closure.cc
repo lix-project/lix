@@ -1,4 +1,4 @@
-#include "closure.hh"
+#include "lix/libutil/closure.hh"
 #include <gtest/gtest.h>
 
 namespace nix {

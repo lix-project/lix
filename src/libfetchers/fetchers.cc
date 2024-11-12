@@ -1,8 +1,8 @@
-#include "fetchers.hh"
-#include "builtin-fetchers.hh"
-#include "store-api.hh"
-#include "source-path.hh"
-#include "fetch-to-store.hh"
+#include "lix/libfetchers/fetchers.hh"
+#include "lix/libfetchers/builtin-fetchers.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/source-path.hh"
+#include "lix/libfetchers/fetch-to-store.hh"
 
 #include <nlohmann/json.hpp>
 

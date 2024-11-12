@@ -3,7 +3,7 @@
 
 #include <rapidcheck/gen/Arbitrary.h>
 
-#include <hash.hh>
+#include "lix/libutil/hash.hh"
 
 namespace rc {
 using namespace nix;

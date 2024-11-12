@@ -1,10 +1,10 @@
-#include "command.hh"
-#include "store-api.hh"
-#include "local-fs-store.hh"
-#include "derivations.hh"
-#include "nixexpr.hh"
-#include "profiles.hh"
-#include "repl.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/local-fs-store.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libexpr/nixexpr.hh"
+#include "lix/libstore/profiles.hh"
+#include "lix/libcmd/repl.hh"
 
 #include <nlohmann/json.hpp>
 

@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "types.hh"
-#include "source-path.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/source-path.hh"
 
 namespace nix {
 

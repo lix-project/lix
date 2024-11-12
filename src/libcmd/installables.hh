@@ -1,12 +1,12 @@
 #pragma once
 ///@file
 
-#include "path.hh"
-#include "outputs-spec.hh"
-#include "derived-path.hh"
-#include "built-path.hh"
-#include "store-api.hh"
-#include "build-result.hh"
+#include "lix/libstore/path.hh"
+#include "lix/libstore/outputs-spec.hh"
+#include "lix/libstore/derived-path.hh"
+#include "lix/libcmd/built-path.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-result.hh"
 
 #include <optional>
 

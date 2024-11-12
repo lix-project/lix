@@ -1,13 +1,13 @@
-#include "eval.hh"
-#include "installable-flake.hh"
-#include "command.hh"
-#include "common-args.hh"
-#include "shared.hh"
-#include "store-api.hh"
-#include "outputs-spec.hh"
-#include "derivations.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libcmd/installable-flake.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/common-args.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/outputs-spec.hh"
+#include "lix/libstore/derivations.hh"
 #include "run.hh"
-#include "temporary-dir.hh"
+#include "lix/libstore/temporary-dir.hh"
 
 #include <iterator>
 #include <memory>

@@ -1,5 +1,5 @@
 #include "terminal-code-eater.hh"
-#include "escape-char.hh"
+#include "lix/libutil/escape-char.hh"
 #include <assert.h>
 #include <cstdint>
 #include <iostream>

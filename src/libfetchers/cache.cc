@@ -1,8 +1,8 @@
-#include "cache.hh"
-#include "sqlite.hh"
-#include "sync.hh"
-#include "store-api.hh"
-#include "users.hh"
+#include "lix/libfetchers/cache.hh"
+#include "lix/libstore/sqlite.hh"
+#include "lix/libutil/sync.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/users.hh"
 
 #include <nlohmann/json.hpp>
 

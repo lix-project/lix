@@ -1,11 +1,11 @@
 #pragma once
 ///@file
 
-#include "installable-value.hh"
-#include "outputs-spec.hh"
-#include "command.hh"
-#include "common-eval-args.hh"
-#include "eval.hh"
+#include "lix/libcmd/installable-value.hh"
+#include "lix/libstore/outputs-spec.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libcmd/common-eval-args.hh"
+#include "lix/libexpr/eval.hh"
 
 #include <nlohmann/json.hpp>
 

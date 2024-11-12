@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "store-api.hh"
+#include "lix/libstore/store-api.hh"
 
 namespace nix {
 

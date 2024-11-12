@@ -1,7 +1,7 @@
-#include "command.hh"
-#include "shared.hh"
-#include "store-api.hh"
-#include "finally.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/finally.hh"
 
 #include <nlohmann/json.hpp>
 

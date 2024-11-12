@@ -1,5 +1,5 @@
-#include "config.hh"
-#include "primops.hh"
+#include "lix/libutil/config.hh"
+#include "lix/libexpr/primops.hh"
 #include <stdlib.h>
 
 using namespace nix;

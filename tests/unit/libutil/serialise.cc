@@ -1,10 +1,10 @@
-#include "serialise.hh"
-#include "error.hh"
-#include "fmt.hh"
-#include "pos-table.hh"
-#include "generator.hh"
-#include "ref.hh"
-#include "types.hh"
+#include "lix/libutil/serialise.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/fmt.hh"
+#include "lix/libexpr/pos-table.hh"
+#include "lix/libutil/generator.hh"
+#include "lix/libutil/ref.hh"
+#include "lix/libutil/types.hh"
 
 #include <concepts>
 #include <cstdint>

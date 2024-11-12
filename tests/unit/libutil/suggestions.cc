@@ -1,4 +1,4 @@
-#include "suggestions.hh"
+#include "lix/libutil/suggestions.hh"
 #include <gtest/gtest.h>
 
 namespace nix {

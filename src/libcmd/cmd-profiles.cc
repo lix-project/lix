@@ -1,13 +1,13 @@
 #include <set>
 
-#include "cmd-profiles.hh"
-#include "built-path.hh"
-#include "builtins/buildenv.hh"
-#include "logging.hh"
-#include "names.hh"
-#include "store-api.hh"
-#include "temporary-dir.hh"
-#include "url-name.hh"
+#include "lix/libcmd/cmd-profiles.hh"
+#include "lix/libcmd/built-path.hh"
+#include "lix/libstore/builtins/buildenv.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libstore/names.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/temporary-dir.hh"
+#include "lix/libutil/url-name.hh"
 
 namespace nix
 {

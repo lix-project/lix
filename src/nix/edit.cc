@@ -1,9 +1,9 @@
-#include "command.hh"
-#include "shared.hh"
-#include "eval.hh"
-#include "attr-path.hh"
-#include "editor-for.hh"
-#include "current-process.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libexpr/attr-path.hh"
+#include "lix/libcmd/editor-for.hh"
+#include "lix/libutil/current-process.hh"
 
 #include <unistd.h>
 

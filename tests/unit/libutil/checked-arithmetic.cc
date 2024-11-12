@@ -5,7 +5,7 @@
 #include <rapidcheck/gtest.h>
 #include <rapidcheck/gen/Arbitrary.hpp>
 
-#include <checked-arithmetic.hh>
+#include "lix/libutil/checked-arithmetic.hh"
 
 #include "tests/gtest-with-params.hh"
 

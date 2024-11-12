@@ -1,11 +1,11 @@
-#include "registry.hh"
-#include "fetchers.hh"
-#include "users.hh"
-#include "globals.hh"
-#include "store-api.hh"
-#include "local-fs-store.hh"
+#include "lix/libfetchers/registry.hh"
+#include "lix/libfetchers/fetchers.hh"
+#include "lix/libutil/users.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/local-fs-store.hh"
 
-#include "fetch-settings.hh"
+#include "lix/libfetchers/fetch-settings.hh"
 
 #include <nlohmann/json.hpp>
 

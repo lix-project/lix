@@ -1,5 +1,5 @@
-#include "escape-string.hh"
-#include "ansicolor.hh"
+#include "lix/libutil/escape-string.hh"
+#include "lix/libutil/ansicolor.hh"
 #include <gtest/gtest.h>
 
 namespace nix {

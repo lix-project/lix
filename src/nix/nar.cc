@@ -1,4 +1,4 @@
-#include "command.hh"
+#include "lix/libcmd/command.hh"
 
 using namespace nix;
 

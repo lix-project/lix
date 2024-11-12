@@ -1,7 +1,7 @@
 #include "tests/libexpr.hh"
 
-#include "value.hh"
-#include "print.hh"
+#include "lix/libexpr/value.hh"
+#include "lix/libexpr/print.hh"
 
 namespace nix {
 

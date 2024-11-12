@@ -1,10 +1,10 @@
 #pragma once
 ///@file
 
-#include "source-path.hh"
-#include "store-api.hh"
-#include "repair-flag.hh"
-#include "content-address.hh"
+#include "lix/libutil/source-path.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/repair-flag.hh"
+#include "lix/libstore/content-address.hh"
 
 namespace nix {
 

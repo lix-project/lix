@@ -1,4 +1,4 @@
-#include "canon-path.hh"
+#include "lix/libutil/canon-path.hh"
 
 #include <gtest/gtest.h>
 

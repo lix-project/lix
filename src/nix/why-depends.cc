@@ -1,7 +1,7 @@
-#include "command.hh"
-#include "store-api.hh"
-#include "fs-accessor.hh"
-#include "shared.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/fs-accessor.hh"
+#include "lix/libmain/shared.hh"
 
 #include <queue>
 

@@ -1,11 +1,11 @@
 #pragma once
 ///@file
 
-#include "installable-value.hh"
-#include "args.hh"
-#include "common-eval-args.hh"
-#include "path.hh"
-#include "flake/lockfile.hh"
+#include "lix/libcmd/installable-value.hh"
+#include "lix/libutil/args.hh"
+#include "lix/libcmd/common-eval-args.hh"
+#include "lix/libstore/path.hh"
+#include "lix/libexpr/flake/lockfile.hh"
 
 #include <optional>
 

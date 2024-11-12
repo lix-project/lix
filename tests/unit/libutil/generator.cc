@@ -1,4 +1,4 @@
-#include "generator.hh"
+#include "lix/libutil/generator.hh"
 
 #include <concepts>
 #include <cstdint>

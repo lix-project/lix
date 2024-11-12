@@ -1,11 +1,11 @@
-#include "command.hh"
-#include "common-args.hh"
-#include "print-options.hh"
-#include "shared.hh"
-#include "store-api.hh"
-#include "eval.hh"
-#include "eval-inline.hh"
-#include "value-to-json.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/common-args.hh"
+#include "lix/libexpr/print-options.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libexpr/eval-inline.hh"
+#include "lix/libexpr/value-to-json.hh"
 
 #include <nlohmann/json.hpp>
 

@@ -1,13 +1,13 @@
 #include <sstream>
 
-#include "command.hh"
-#include "logging.hh"
-#include "serve-protocol.hh"
-#include "shared.hh"
-#include "store-api.hh"
-#include "local-fs-store.hh"
-#include "worker-protocol.hh"
-#include "exit.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libstore/serve-protocol.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/local-fs-store.hh"
+#include "lix/libstore/worker-protocol.hh"
+#include "lix/libutil/exit.hh"
 
 using namespace nix;
 

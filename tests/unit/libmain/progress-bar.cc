@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
-#include "eval.hh"
-#include "progress-bar.hh"
-#include "loggers.hh"
-#include "logging.hh"
-#include "shared.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libmain/progress-bar.hh"
+#include "lix/libmain/loggers.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libmain/shared.hh"
 
 constexpr std::string_view TEST_URL = "https://github.com/NixOS/nixpkgs/archive/master.tar.gz";
 // Arbitrary number. We picked the size of a Nixpkgs tarball that we downloaded.

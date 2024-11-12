@@ -1,6 +1,6 @@
 #include "graphml.hh"
-#include "store-api.hh"
-#include "derivations.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/derivations.hh"
 
 #include <iostream>
 

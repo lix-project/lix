@@ -1,8 +1,8 @@
 #pragma once
 
-#include "types.hh"
-#include "environment-variables.hh"
-#include "file-system.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/environment-variables.hh"
+#include "lix/libutil/file-system.hh"
 
 namespace nix {
 

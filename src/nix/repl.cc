@@ -1,9 +1,9 @@
-#include "eval.hh"
-#include "eval-settings.hh"
-#include "globals.hh"
-#include "command.hh"
-#include "installable-value.hh"
-#include "repl.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libexpr/eval-settings.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libcmd/installable-value.hh"
+#include "lix/libcmd/repl.hh"
 
 namespace nix {
 

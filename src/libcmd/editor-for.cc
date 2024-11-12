@@ -1,7 +1,7 @@
-#include "editor-for.hh"
-#include "environment-variables.hh"
-#include "source-path.hh"
-#include "strings.hh"
+#include "lix/libcmd/editor-for.hh"
+#include "lix/libutil/environment-variables.hh"
+#include "lix/libutil/source-path.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

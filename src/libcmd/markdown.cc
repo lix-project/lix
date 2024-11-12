@@ -1,7 +1,7 @@
-#include "markdown.hh"
-#include "error.hh"
-#include "finally.hh"
-#include "terminal.hh"
+#include "lix/libcmd/markdown.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libutil/terminal.hh"
 
 #include <sys/queue.h>
 #include <lowdown.h>

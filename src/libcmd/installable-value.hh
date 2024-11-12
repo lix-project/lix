@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "installables.hh"
-#include "flake/flake.hh"
+#include "lix/libcmd/installables.hh"
+#include "lix/libexpr/flake/flake.hh"
 
 namespace nix {
 

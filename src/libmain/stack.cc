@@ -1,5 +1,5 @@
-#include "error.hh"
-#include "shared.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libmain/shared.hh"
 
 #include <cstring>
 

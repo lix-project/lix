@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "types.hh"
-#include "hash.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/hash.hh"
 
 #include <variant>
 

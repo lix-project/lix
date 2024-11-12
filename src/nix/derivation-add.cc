@@ -1,10 +1,10 @@
 // FIXME: rename to 'nix plan add' or 'nix derivation add'?
 
-#include "command.hh"
-#include "common-args.hh"
-#include "store-api.hh"
-#include "archive.hh"
-#include "derivations.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libmain/common-args.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/archive.hh"
+#include "lix/libstore/derivations.hh"
 #include <nlohmann/json.hpp>
 
 using namespace nix;

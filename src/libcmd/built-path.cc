@@ -1,6 +1,6 @@
-#include "built-path.hh"
-#include "derivations.hh"
-#include "store-api.hh"
+#include "lix/libcmd/built-path.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libstore/store-api.hh"
 
 #include <nlohmann/json.hpp>
 

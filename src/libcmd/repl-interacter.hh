@@ -1,8 +1,8 @@
 #pragma once
 /// @file
 
-#include "finally.hh"
-#include "types.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libutil/types.hh"
 #include <functional>
 #include <string>
 

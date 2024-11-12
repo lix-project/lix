@@ -1,6 +1,6 @@
-#include "globals.hh"
-#include "store-api.hh"
-#include "build-result.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-result.hh"
 #include <iostream>
 
 using namespace nix;

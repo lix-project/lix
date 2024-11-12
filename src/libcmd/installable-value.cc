@@ -1,6 +1,6 @@
-#include "installable-value.hh"
-#include "eval-cache.hh"
-#include "fetch-to-store.hh"
+#include "lix/libcmd/installable-value.hh"
+#include "lix/libexpr/eval-cache.hh"
+#include "lix/libfetchers/fetch-to-store.hh"
 
 namespace nix {
 

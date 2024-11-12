@@ -1,14 +1,14 @@
 #pragma once
 ///@file
 
-#include "environment-variables.hh"
-#include "file-system.hh"
+#include "lix/libutil/environment-variables.hh"
+#include "lix/libutil/file-system.hh"
 
 #include <gtest/gtest.h>
 
 #include <filesystem>
 
-#include "types.hh"
+#include "lix/libutil/types.hh"
 #include "test-data.hh"
 
 namespace nix {

@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "installables.hh"
+#include "lix/libcmd/installables.hh"
 
 namespace nix {
 

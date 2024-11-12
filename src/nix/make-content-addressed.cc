@@ -1,7 +1,7 @@
-#include "command.hh"
-#include "store-api.hh"
-#include "make-content-addressed.hh"
-#include "common-args.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/make-content-addressed.hh"
+#include "lix/libmain/common-args.hh"
 
 #include <nlohmann/json.hpp>
 

@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "args.hh"
-#include "common-args.hh"
-#include "search-path.hh"
+#include "lix/libutil/args.hh"
+#include "lix/libmain/common-args.hh"
+#include "lix/libexpr/search-path.hh"
 
 namespace nix {
 

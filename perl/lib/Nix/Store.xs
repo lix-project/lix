@@ -8,10 +8,10 @@
 #undef do_open
 #undef do_close
 
-#include "derivations.hh"
-#include "globals.hh"
-#include "store-api.hh"
-#include "crypto.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/crypto.hh"
 
 #include <sodium.h>
 #include <nlohmann/json.hpp>

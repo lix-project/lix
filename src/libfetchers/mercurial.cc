@@ -1,13 +1,13 @@
-#include "fetchers.hh"
-#include "cache.hh"
-#include "builtin-fetchers.hh"
-#include "processes.hh"
-#include "store-api.hh"
-#include "temporary-dir.hh"
-#include "url-parts.hh"
-#include "users.hh"
+#include "lix/libfetchers/fetchers.hh"
+#include "lix/libfetchers/cache.hh"
+#include "lix/libfetchers/builtin-fetchers.hh"
+#include "lix/libutil/processes.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/temporary-dir.hh"
+#include "lix/libutil/url-parts.hh"
+#include "lix/libutil/users.hh"
 
-#include "fetch-settings.hh"
+#include "lix/libfetchers/fetch-settings.hh"
 
 #include <sys/time.h>
 

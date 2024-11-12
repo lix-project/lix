@@ -1,6 +1,6 @@
-#include "shared.hh"
-#include "store-api.hh"
-#include "legacy.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libcmd/legacy.hh"
 #include "nix-copy-closure.hh"
 
 namespace nix {

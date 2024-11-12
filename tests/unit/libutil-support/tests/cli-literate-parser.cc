@@ -1,6 +1,6 @@
 #include "cli-literate-parser.hh"
-#include "escape-string.hh"
-#include "types.hh"
+#include "lix/libutil/escape-string.hh"
+#include "lix/libutil/types.hh"
 #include <ranges>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/trim.hpp>
@@ -9,11 +9,11 @@
 #include <variant>
 
 #include "cli-literate-parser.hh"
-#include "escape-string.hh"
-#include "fmt.hh"
-#include "shlex.hh"
-#include "types.hh"
-#include "strings.hh"
+#include "lix/libutil/escape-string.hh"
+#include "lix/libutil/fmt.hh"
+#include "lix/libutil/shlex.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/strings.hh"
 
 static constexpr const bool DEBUG_PARSER = false;
 

@@ -1,10 +1,10 @@
-#include "command.hh"
-#include "hash.hh"
-#include "content-address.hh"
-#include "legacy.hh"
-#include "shared.hh"
-#include "references.hh"
-#include "archive.hh"
+#include "lix/libcmd/command.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libstore/content-address.hh"
+#include "lix/libcmd/legacy.hh"
+#include "lix/libmain/shared.hh"
+#include "lix/libutil/references.hh"
+#include "lix/libutil/archive.hh"
 #include "hash-command.hh"
 
 namespace nix {

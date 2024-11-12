@@ -1,5 +1,5 @@
-#include "installable-derived-path.hh"
-#include "derivations.hh"
+#include "lix/libcmd/installable-derived-path.hh"
+#include "lix/libstore/derivations.hh"
 
 namespace nix {
 

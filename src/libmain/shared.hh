@@ -1,13 +1,13 @@
 #pragma once
 ///@file
 
-#include "args.hh"
-#include "args/root.hh"
-#include "common-args.hh"
-#include "path.hh"
-#include "derived-path.hh"
-#include "processes.hh"
-#include "strings.hh"
+#include "lix/libutil/args.hh"
+#include "lix/libutil/args/root.hh"
+#include "lix/libmain/common-args.hh"
+#include "lix/libstore/path.hh"
+#include "lix/libstore/derived-path.hh"
+#include "lix/libutil/processes.hh"
+#include "lix/libutil/strings.hh"
 
 #include <signal.h>
 

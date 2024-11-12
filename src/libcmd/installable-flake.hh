@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "installable-value.hh"
+#include "lix/libcmd/installable-value.hh"
 
 namespace nix {
 

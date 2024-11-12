@@ -1,7 +1,7 @@
-#include "file-system.hh"
-#include "machines.hh"
-#include "globals.hh"
-#include "strings.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libstore/machines.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libutil/strings.hh"
 #include "tests/test-data.hh"
 
 #include <gmock/gmock-matchers.h>

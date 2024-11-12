@@ -1,5 +1,5 @@
 #include "dotgraph.hh"
-#include "store-api.hh"
+#include "lix/libstore/store-api.hh"
 
 #include <iostream>
 

@@ -1,9 +1,9 @@
-#include "progress-bar.hh"
-#include "file-system.hh"
-#include "sync.hh"
-#include "names.hh"
-#include "terminal.hh"
-#include "strings.hh"
+#include "lix/libmain/progress-bar.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/sync.hh"
+#include "lix/libstore/names.hh"
+#include "lix/libutil/terminal.hh"
+#include "lix/libutil/strings.hh"
 
 #include <map>
 #include <thread>

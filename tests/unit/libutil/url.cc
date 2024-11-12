@@ -1,5 +1,5 @@
-#include "url.hh"
-#include "types.hh"
+#include "lix/libutil/url.hh"
+#include "lix/libutil/types.hh"
 #include <gtest/gtest.h>
 
 namespace nix {
