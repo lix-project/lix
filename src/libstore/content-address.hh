@@ -2,10 +2,10 @@
 ///@file
 
 #include <variant>
-#include "hash.hh"
-#include "path.hh"
-#include "comparator.hh"
-#include "variant-wrapper.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libstore/path.hh"
+#include "lix/libutil/comparator.hh"
+#include "lix/libutil/variant-wrapper.hh"
 
 namespace nix {
 

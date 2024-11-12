@@ -1,8 +1,8 @@
-#include "worker.hh"
-#include "substitution-goal.hh"
-#include "nar-info.hh"
-#include "signals.hh"
-#include "finally.hh"
+#include "lix/libstore/build/worker.hh"
+#include "lix/libstore/build/substitution-goal.hh"
+#include "lix/libstore/nar-info.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libutil/finally.hh"
 #include <boost/outcome/try.hpp>
 #include <kj/array.h>
 #include <kj/vector.h>

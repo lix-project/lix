@@ -1,7 +1,7 @@
-#include "args.hh"
-#include "content-address.hh"
-#include "split.hh"
-#include "strings.hh"
+#include "lix/libutil/args.hh"
+#include "lix/libstore/content-address.hh"
+#include "lix/libutil/split.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "serialise.hh"
-#include "store-api.hh"
+#include "lix/libutil/serialise.hh"
+#include "lix/libstore/store-api.hh"
 
 namespace nix::daemon {
 

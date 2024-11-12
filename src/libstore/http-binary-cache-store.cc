@@ -1,8 +1,8 @@
-#include "http-binary-cache-store.hh"
-#include "binary-cache-store.hh"
-#include "filetransfer.hh"
-#include "globals.hh"
-#include "nar-info-disk-cache.hh"
+#include "lix/libstore/http-binary-cache-store.hh"
+#include "lix/libstore/binary-cache-store.hh"
+#include "lix/libstore/filetransfer.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/nar-info-disk-cache.hh"
 
 namespace nix {
 

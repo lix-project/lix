@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "store-api.hh"
-#include "gc-store.hh"
-#include "log-store.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/gc-store.hh"
+#include "lix/libstore/log-store.hh"
 
 namespace nix {
 

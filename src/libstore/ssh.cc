@@ -1,10 +1,10 @@
-#include "current-process.hh"
-#include "environment-variables.hh"
-#include "ssh.hh"
-#include "finally.hh"
-#include "logging.hh"
-#include "strings.hh"
-#include "temporary-dir.hh"
+#include "lix/libutil/current-process.hh"
+#include "lix/libutil/environment-variables.hh"
+#include "lix/libstore/ssh.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/strings.hh"
+#include "lix/libstore/temporary-dir.hh"
 
 namespace nix {
 

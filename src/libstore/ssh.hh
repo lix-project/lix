@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "file-system.hh"
-#include "processes.hh"
-#include "sync.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/processes.hh"
+#include "lix/libutil/sync.hh"
 
 namespace nix {
 

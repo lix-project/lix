@@ -1,11 +1,11 @@
 #pragma once
 ///@file
 
-#include "config.hh"
-#include "path.hh"
-#include "outputs-spec.hh"
-#include "comparator.hh"
-#include "ref.hh"
+#include "lix/libutil/config.hh"
+#include "lix/libstore/path.hh"
+#include "lix/libstore/outputs-spec.hh"
+#include "lix/libutil/comparator.hh"
+#include "lix/libutil/ref.hh"
 
 #include <variant>
 

@@ -1,8 +1,8 @@
-#include "worker.hh"
-#include "substitution-goal.hh"
-#include "derivation-goal.hh"
-#include "local-store.hh"
-#include "strings.hh"
+#include "lix/libstore/build/worker.hh"
+#include "lix/libstore/build/substitution-goal.hh"
+#include "lix/libstore/build/derivation-goal.hh"
+#include "lix/libstore/local-store.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

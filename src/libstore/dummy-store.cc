@@ -1,5 +1,5 @@
-#include "dummy-store.hh"
-#include "store-api.hh"
+#include "lix/libstore/dummy-store.hh"
+#include "lix/libstore/store-api.hh"
 
 namespace nix {
 

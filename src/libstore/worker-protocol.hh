@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "common-protocol.hh"
+#include "lix/libstore/common-protocol.hh"
 
 namespace nix {
 

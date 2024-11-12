@@ -1,11 +1,11 @@
 #pragma once
 ///@file
 
-#include "crypto.hh"
-#include "store-api.hh"
-#include "log-store.hh"
+#include "lix/libstore/crypto.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/log-store.hh"
 
-#include "pool.hh"
+#include "lix/libutil/pool.hh"
 
 #include <atomic>
 

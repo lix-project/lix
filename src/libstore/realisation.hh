@@ -3,12 +3,12 @@
 
 #include <variant>
 
-#include "hash.hh"
-#include "path.hh"
-#include "derived-path.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libstore/path.hh"
+#include "lix/libstore/derived-path.hh"
 #include <nlohmann/json_fwd.hpp>
-#include "comparator.hh"
-#include "crypto.hh"
+#include "lix/libutil/comparator.hh"
+#include "lix/libstore/crypto.hh"
 
 namespace nix {
 

@@ -1,6 +1,6 @@
-#include "path-references.hh"
-#include "hash.hh"
-#include "archive.hh"
+#include "lix/libstore/path-references.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libutil/archive.hh"
 
 #include <map>
 

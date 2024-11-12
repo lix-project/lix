@@ -4,7 +4,7 @@
 #include <string_view>
 #include <string>
 
-#include "types.hh" // IWYU pragma: keep
+#include "lix/libutil/types.hh" // IWYU pragma: keep
 
 namespace nix {
 

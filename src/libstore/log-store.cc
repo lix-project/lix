@@ -1,4 +1,4 @@
-#include "log-store.hh"
+#include "lix/libstore/log-store.hh"
 
 namespace nix {
 

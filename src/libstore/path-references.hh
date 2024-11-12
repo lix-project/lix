@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "references.hh"
-#include "path.hh"
+#include "lix/libutil/references.hh"
+#include "lix/libstore/path.hh"
 
 namespace nix {
 

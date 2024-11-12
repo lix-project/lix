@@ -1,21 +1,21 @@
 #pragma once
 ///@file
 
-#include "logging.hh"
-#include "nar-info.hh"
-#include "realisation.hh"
-#include "path.hh"
-#include "derived-path.hh"
-#include "hash.hh"
-#include "content-address.hh"
-#include "serialise.hh"
-#include "lru-cache.hh"
-#include "sync.hh"
-#include "globals.hh"
-#include "config.hh"
-#include "path-info.hh"
-#include "repair-flag.hh"
-#include "source-path.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libstore/nar-info.hh"
+#include "lix/libstore/realisation.hh"
+#include "lix/libstore/path.hh"
+#include "lix/libstore/derived-path.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libstore/content-address.hh"
+#include "lix/libutil/serialise.hh"
+#include "lix/libutil/lru-cache.hh"
+#include "lix/libutil/sync.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libutil/config.hh"
+#include "lix/libstore/path-info.hh"
+#include "lix/libutil/repair-flag.hh"
+#include "lix/libutil/source-path.hh"
 
 #include <nlohmann/json_fwd.hpp>
 #include <atomic>

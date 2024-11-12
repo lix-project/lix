@@ -1,7 +1,7 @@
-#include "temporary-dir.hh"
+#include "lix/libstore/temporary-dir.hh"
 
-#include "file-system.hh"
-#include "globals.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libstore/globals.hh"
 
 namespace nix {
 

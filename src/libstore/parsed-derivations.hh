@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "derivations.hh"
-#include "store-api.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libstore/store-api.hh"
 
 #include <nlohmann/json_fwd.hpp>
 

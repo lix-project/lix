@@ -1,18 +1,18 @@
-#include "fs-accessor.hh"
-#include "globals.hh"
-#include "derivations.hh"
-#include "store-api.hh"
-#include "nar-info-disk-cache.hh"
-#include "thread-pool.hh"
-#include "url.hh"
-#include "archive.hh"
-#include "uds-remote-store.hh"
-#include "signals.hh"
-#include "strings.hh"
+#include "lix/libstore/fs-accessor.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/nar-info-disk-cache.hh"
+#include "lix/libutil/thread-pool.hh"
+#include "lix/libutil/url.hh"
+#include "lix/libutil/archive.hh"
+#include "lix/libstore/uds-remote-store.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libutil/strings.hh"
 // FIXME this should not be here, see TODO below on
 // `addMultipleToStore`.
-#include "worker-protocol.hh"
-#include "users.hh"
+#include "lix/libstore/worker-protocol.hh"
+#include "lix/libutil/users.hh"
 
 #include <nlohmann/json.hpp>
 #include <regex>
@@ -1395,8 +1395,8 @@ Derivation Store::readInvalidDerivation(const StorePath & drvPath)
 }
 
 
-#include "local-store.hh"
-#include "uds-remote-store.hh"
+#include "lix/libstore/local-store.hh"
+#include "lix/libstore/uds-remote-store.hh"
 
 
 namespace nix {

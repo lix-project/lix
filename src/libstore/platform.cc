@@ -1,8 +1,8 @@
-#include "local-store.hh"
-#include "build/local-derivation-goal.hh"
+#include "lix/libstore/local-store.hh"
+#include "lix/libstore/build/local-derivation-goal.hh"
 
 #if __linux__
-#include "platform/linux.hh"
+#include "lix/libstore/platform/linux.hh"
 #elif __APPLE__
 #include "platform/darwin.hh"
 #elif __FreeBSD__

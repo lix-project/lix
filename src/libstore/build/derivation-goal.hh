@@ -1,13 +1,13 @@
 #pragma once
 ///@file
 
-#include "notifying-counter.hh"
-#include "parsed-derivations.hh"
-#include "lock.hh"
-#include "outputs-spec.hh"
-#include "store-api.hh"
-#include "pathlocks.hh"
-#include "goal.hh"
+#include "lix/libutil/notifying-counter.hh"
+#include "lix/libstore/parsed-derivations.hh"
+#include "lix/libstore/lock.hh"
+#include "lix/libstore/outputs-spec.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/pathlocks.hh"
+#include "lix/libstore/build/goal.hh"
 #include <kj/time.h>
 
 namespace nix {

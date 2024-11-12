@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "remote-store.hh"
-#include "remote-store-connection.hh"
-#include "indirect-root-store.hh"
+#include "lix/libstore/remote-store.hh"
+#include "lix/libstore/remote-store-connection.hh"
+#include "lix/libstore/indirect-root-store.hh"
 
 namespace nix {
 

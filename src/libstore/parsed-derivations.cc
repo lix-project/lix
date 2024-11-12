@@ -1,5 +1,5 @@
-#include "parsed-derivations.hh"
-#include "strings.hh"
+#include "lix/libstore/parsed-derivations.hh"
+#include "lix/libutil/strings.hh"
 
 #include <nlohmann/json.hpp>
 #include <regex>

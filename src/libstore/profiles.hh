@@ -5,8 +5,8 @@
  * See the manual for additional information.
  */
 
-#include "types.hh"
-#include "pathlocks.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libstore/pathlocks.hh"
 
 #include <time.h>
 

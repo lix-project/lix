@@ -1,6 +1,6 @@
-#include "pathlocks.hh"
-#include "logging.hh"
-#include "signals.hh"
+#include "lix/libstore/pathlocks.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/signals.hh"
 
 #include <cerrno>
 

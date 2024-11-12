@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "realisation.hh"
-#include "derived-path.hh"
-#include "comparator.hh"
+#include "lix/libstore/realisation.hh"
+#include "lix/libstore/derived-path.hh"
+#include "lix/libutil/comparator.hh"
 
 #include <string>
 #include <chrono>

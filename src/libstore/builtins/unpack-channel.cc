@@ -1,5 +1,5 @@
-#include "builtins.hh"
-#include "tarfile.hh"
+#include "lix/libstore/builtins.hh"
+#include "lix/libutil/tarfile.hh"
 
 namespace nix {
 

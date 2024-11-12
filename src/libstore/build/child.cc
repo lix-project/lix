@@ -1,5 +1,5 @@
-#include "current-process.hh"
-#include "logging.hh"
+#include "lix/libutil/current-process.hh"
+#include "lix/libutil/logging.hh"
 
 namespace nix {
 

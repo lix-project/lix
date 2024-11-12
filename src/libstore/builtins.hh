@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "derivations.hh"
+#include "lix/libstore/derivations.hh"
 
 namespace nix {
 

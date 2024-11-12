@@ -1,8 +1,8 @@
-#include "charptr-cast.hh"
-#include "crypto.hh"
-#include "file-system.hh"
-#include "globals.hh"
-#include "strings.hh"
+#include "lix/libutil/charptr-cast.hh"
+#include "lix/libstore/crypto.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libutil/strings.hh"
 
 #include <sodium.h>
 

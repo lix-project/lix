@@ -1,6 +1,6 @@
-#include "make-content-addressed.hh"
-#include "references.hh"
-#include "strings.hh"
+#include "lix/libstore/make-content-addressed.hh"
+#include "lix/libutil/references.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

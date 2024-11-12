@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "binary-cache-store.hh"
+#include "lix/libstore/binary-cache-store.hh"
 
 #include <atomic>
 

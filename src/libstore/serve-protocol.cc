@@ -1,10 +1,10 @@
-#include "serialise.hh"
-#include "path-with-outputs.hh"
-#include "store-api.hh"
-#include "build-result.hh"
-#include "serve-protocol.hh"
-#include "serve-protocol-impl.hh"
-#include "path-info.hh"
+#include "lix/libutil/serialise.hh"
+#include "lix/libstore/path-with-outputs.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-result.hh"
+#include "lix/libstore/serve-protocol.hh"
+#include "lix/libstore/serve-protocol-impl.hh"
+#include "lix/libstore/path-info.hh"
 
 #include <nlohmann/json.hpp>
 

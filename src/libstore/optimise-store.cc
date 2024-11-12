@@ -1,7 +1,7 @@
-#include "local-store.hh"
-#include "globals.hh"
-#include "signals.hh"
-#include "strings.hh"
+#include "lix/libstore/local-store.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libutil/strings.hh"
 
 #include <cstring>
 #include <sys/types.h>

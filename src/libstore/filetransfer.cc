@@ -1,10 +1,10 @@
-#include "filetransfer.hh"
-#include "namespaces.hh"
-#include "globals.hh"
-#include "store-api.hh"
-#include "s3.hh"
-#include "signals.hh"
-#include "strings.hh"
+#include "lix/libstore/filetransfer.hh"
+#include "lix/libutil/namespaces.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/s3.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libutil/strings.hh"
 #include <cstddef>
 
 #include <cstdio>

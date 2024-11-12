@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "ref.hh"
-#include "nar-info.hh"
-#include "realisation.hh"
+#include "lix/libutil/ref.hh"
+#include "lix/libstore/nar-info.hh"
+#include "lix/libstore/realisation.hh"
 
 namespace nix {
 

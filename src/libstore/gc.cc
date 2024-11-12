@@ -1,11 +1,11 @@
-#include "globals.hh"
-#include "local-store.hh"
-#include "pathlocks.hh"
-#include "processes.hh"
-#include "signals.hh"
-#include "finally.hh"
-#include "unix-domain-socket.hh"
-#include "strings.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/local-store.hh"
+#include "lix/libstore/pathlocks.hh"
+#include "lix/libutil/processes.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libutil/unix-domain-socket.hh"
+#include "lix/libutil/strings.hh"
 
 #include <queue>
 #include <regex>

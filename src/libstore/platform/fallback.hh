@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "build/local-derivation-goal.hh"
-#include "local-store.hh"
+#include "lix/libstore/build/local-derivation-goal.hh"
+#include "lix/libstore/local-store.hh"
 
 namespace nix {
 

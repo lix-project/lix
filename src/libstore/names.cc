@@ -1,5 +1,5 @@
-#include "names.hh"
-#include "strings.hh"
+#include "lix/libstore/names.hh"
+#include "lix/libutil/strings.hh"
 
 #include <regex>
 

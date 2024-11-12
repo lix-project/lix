@@ -1,13 +1,13 @@
 #if ENABLE_S3
 
-#include "s3.hh"
-#include "s3-binary-cache-store.hh"
-#include "nar-info.hh"
-#include "nar-info-disk-cache.hh"
-#include "globals.hh"
-#include "compression.hh"
-#include "filetransfer.hh"
-#include "strings.hh"
+#include "lix/libstore/s3.hh"
+#include "lix/libstore/s3-binary-cache-store.hh"
+#include "lix/libstore/nar-info.hh"
+#include "lix/libstore/nar-info-disk-cache.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libutil/compression.hh"
+#include "lix/libstore/filetransfer.hh"
+#include "lix/libutil/strings.hh"
 
 #include <aws/core/Aws.h>
 #include <aws/core/VersionConfig.h>

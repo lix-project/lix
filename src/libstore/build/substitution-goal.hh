@@ -1,10 +1,10 @@
 #pragma once
 ///@file
 
-#include "lock.hh"
-#include "notifying-counter.hh"
-#include "store-api.hh"
-#include "goal.hh"
+#include "lix/libstore/lock.hh"
+#include "lix/libutil/notifying-counter.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/build/goal.hh"
 
 namespace nix {
 

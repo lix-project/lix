@@ -1,6 +1,6 @@
-#include "path-with-outputs.hh"
-#include "store-api.hh"
-#include "strings.hh"
+#include "lix/libstore/path-with-outputs.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

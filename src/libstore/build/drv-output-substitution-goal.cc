@@ -1,9 +1,9 @@
-#include "drv-output-substitution-goal.hh"
-#include "build-result.hh"
-#include "finally.hh"
-#include "worker.hh"
-#include "substitution-goal.hh"
-#include "signals.hh"
+#include "lix/libstore/build/drv-output-substitution-goal.hh"
+#include "lix/libstore/build-result.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libstore/build/worker.hh"
+#include "lix/libstore/build/substitution-goal.hh"
+#include "lix/libutil/signals.hh"
 #include <kj/array.h>
 #include <kj/async.h>
 #include <kj/vector.h>

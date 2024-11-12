@@ -1,8 +1,8 @@
-#include "gc-store.hh"
-#include "signals.hh"
-#include "platform/darwin.hh"
-#include "regex.hh"
-#include "strings.hh"
+#include "lix/libstore/gc-store.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libstore/platform/darwin.hh"
+#include "lix/libutil/regex.hh"
+#include "lix/libutil/strings.hh"
 
 #include <sys/proc_info.h>
 #include <sys/sysctl.h>

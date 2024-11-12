@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "types.hh"
+#include "lix/libutil/types.hh"
 
 namespace nix {
 

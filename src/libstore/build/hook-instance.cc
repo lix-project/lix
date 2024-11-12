@@ -1,9 +1,9 @@
-#include "child.hh"
-#include "error.hh"
-#include "file-system.hh"
-#include "globals.hh"
-#include "hook-instance.hh"
-#include "strings.hh"
+#include "lix/libstore/build/child.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/build/hook-instance.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

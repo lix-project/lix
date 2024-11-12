@@ -3,8 +3,8 @@
 
 #include <string>
 
-#include "types.hh"
-#include "error.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/error.hh"
 
 struct sqlite3;
 struct sqlite3_stmt;

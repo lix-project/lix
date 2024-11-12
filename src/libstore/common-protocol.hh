@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "serialise.hh"
+#include "lix/libutil/serialise.hh"
 
 namespace nix {
 

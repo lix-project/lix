@@ -1,4 +1,4 @@
-#include "build-result.hh"
+#include "lix/libstore/build-result.hh"
 
 namespace nix {
 

@@ -1,6 +1,6 @@
-#include "strings.hh"
-#include "nar-info.hh"
-#include "store-api.hh"
+#include "lix/libutil/strings.hh"
+#include "lix/libstore/nar-info.hh"
+#include "lix/libstore/store-api.hh"
 
 namespace nix {
 

@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "fs-accessor.hh"
-#include "ref.hh"
+#include "lix/libstore/fs-accessor.hh"
+#include "lix/libutil/ref.hh"
 
 #include <functional>
 

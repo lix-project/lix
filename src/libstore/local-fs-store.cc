@@ -1,10 +1,10 @@
-#include "archive.hh"
-#include "fs-accessor.hh"
-#include "store-api.hh"
-#include "local-fs-store.hh"
-#include "globals.hh"
-#include "compression.hh"
-#include "derivations.hh"
+#include "lix/libutil/archive.hh"
+#include "lix/libstore/fs-accessor.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/local-fs-store.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libutil/compression.hh"
+#include "lix/libstore/derivations.hh"
 
 namespace nix {
 

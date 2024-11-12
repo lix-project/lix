@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "remote-store.hh"
-#include "worker-protocol.hh"
-#include "pool.hh"
+#include "lix/libstore/remote-store.hh"
+#include "lix/libstore/worker-protocol.hh"
+#include "lix/libutil/pool.hh"
 
 namespace nix {
 

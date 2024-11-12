@@ -1,7 +1,7 @@
-#include "local-binary-cache-store.hh"
-#include "binary-cache-store.hh"
-#include "globals.hh"
-#include "nar-info-disk-cache.hh"
+#include "lix/libstore/local-binary-cache-store.hh"
+#include "lix/libstore/binary-cache-store.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/nar-info-disk-cache.hh"
 
 #include <atomic>
 

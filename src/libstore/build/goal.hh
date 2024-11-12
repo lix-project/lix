@@ -1,11 +1,11 @@
 #pragma once
 ///@file
 
-#include "async-semaphore.hh"
-#include "result.hh"
-#include "types.hh"
-#include "store-api.hh"
-#include "build-result.hh"
+#include "lix/libutil/async-semaphore.hh"
+#include "lix/libutil/result.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-result.hh"
 #include <concepts> // IWYU pragma: keep
 #include <kj/async.h>
 

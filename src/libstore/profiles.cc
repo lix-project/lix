@@ -1,7 +1,7 @@
-#include "profiles.hh"
-#include "local-fs-store.hh"
-#include "users.hh"
-#include "strings.hh"
+#include "lix/libstore/profiles.hh"
+#include "lix/libstore/local-fs-store.hh"
+#include "lix/libutil/users.hh"
+#include "lix/libutil/strings.hh"
 
 #include <sys/types.h>
 #include <sys/stat.h>

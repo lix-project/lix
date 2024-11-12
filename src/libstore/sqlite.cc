@@ -1,9 +1,9 @@
-#include "charptr-cast.hh"
-#include "sqlite.hh"
-#include "globals.hh"
-#include "logging.hh"
-#include "signals.hh"
-#include "url.hh"
+#include "lix/libutil/charptr-cast.hh"
+#include "lix/libstore/sqlite.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libutil/url.hh"
 
 #include <random>
 #include <sqlite3.h>

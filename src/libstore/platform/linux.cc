@@ -1,11 +1,11 @@
-#include "build/worker.hh"
-#include "cgroup.hh"
-#include "finally.hh"
-#include "gc-store.hh"
-#include "signals.hh"
-#include "platform/linux.hh"
-#include "regex.hh"
-#include "strings.hh"
+#include "lix/libstore/build/worker.hh"
+#include "lix/libutil/cgroup.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libstore/gc-store.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libstore/platform/linux.hh"
+#include "lix/libutil/regex.hh"
+#include "lix/libutil/strings.hh"
 
 #include <grp.h>
 #include <regex>

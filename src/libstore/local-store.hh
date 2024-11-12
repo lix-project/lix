@@ -1,11 +1,11 @@
 #pragma once
 ///@file
 
-#include "sqlite.hh"
+#include "lix/libstore/sqlite.hh"
 
-#include "store-api.hh"
-#include "indirect-root-store.hh"
-#include "sync.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/indirect-root-store.hh"
+#include "lix/libutil/sync.hh"
 
 #include <chrono>
 #include <future>

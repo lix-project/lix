@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "derivation-goal.hh"
-#include "local-store.hh"
-#include "processes.hh"
+#include "lix/libstore/build/derivation-goal.hh"
+#include "lix/libstore/local-store.hh"
+#include "lix/libutil/processes.hh"
 
 namespace nix {
 

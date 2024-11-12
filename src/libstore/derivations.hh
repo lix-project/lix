@@ -1,15 +1,15 @@
 #pragma once
 ///@file
 
-#include "path.hh"
-#include "types.hh"
-#include "hash.hh"
-#include "content-address.hh"
-#include "repair-flag.hh"
-#include "derived-path-map.hh"
-#include "sync.hh"
-#include "comparator.hh"
-#include "variant-wrapper.hh"
+#include "lix/libstore/path.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libstore/content-address.hh"
+#include "lix/libutil/repair-flag.hh"
+#include "lix/libstore/derived-path-map.hh"
+#include "lix/libutil/sync.hh"
+#include "lix/libutil/comparator.hh"
+#include "lix/libutil/variant-wrapper.hh"
 
 #include <map>
 #include <variant>

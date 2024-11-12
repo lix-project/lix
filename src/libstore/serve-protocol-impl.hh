@@ -8,8 +8,8 @@
  * contributing guide.
  */
 
-#include "serve-protocol.hh"
-#include "length-prefixed-protocol-helper.hh"
+#include "lix/libstore/serve-protocol.hh"
+#include "lix/libstore/length-prefixed-protocol-helper.hh"
 
 namespace nix {
 

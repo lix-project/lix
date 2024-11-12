@@ -1,5 +1,5 @@
-#include "downstream-placeholder.hh"
-#include "derivations.hh"
+#include "lix/libstore/downstream-placeholder.hh"
+#include "lix/libstore/derivations.hh"
 
 namespace nix {
 

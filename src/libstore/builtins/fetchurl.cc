@@ -1,9 +1,9 @@
-#include "builtins.hh"
-#include "filetransfer.hh"
-#include "store-api.hh"
-#include "archive.hh"
-#include "compression.hh"
-#include "strings.hh"
+#include "lix/libstore/builtins.hh"
+#include "lix/libstore/filetransfer.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/archive.hh"
+#include "lix/libutil/compression.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

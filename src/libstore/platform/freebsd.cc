@@ -1,6 +1,6 @@
-#include "platform/freebsd.hh"
-#include "regex.hh"
-#include "strings.hh"
+#include "lix/libstore/platform/freebsd.hh"
+#include "lix/libutil/regex.hh"
+#include "lix/libutil/strings.hh"
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/socket.h>

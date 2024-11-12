@@ -1,8 +1,8 @@
-#include "serialise.hh"
-#include "store-api.hh"
-#include "archive.hh"
-#include "common-protocol.hh"
-#include "common-protocol-impl.hh"
+#include "lix/libutil/serialise.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/archive.hh"
+#include "lix/libstore/common-protocol.hh"
+#include "lix/libstore/common-protocol-impl.hh"
 
 #include <algorithm>
 

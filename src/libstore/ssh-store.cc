@@ -1,11 +1,11 @@
-#include "ssh-store.hh"
-#include "store-api.hh"
-#include "remote-store.hh"
-#include "remote-store-connection.hh"
-#include "worker-protocol.hh"
-#include "pool.hh"
-#include "ssh.hh"
-#include "strings.hh"
+#include "lix/libstore/ssh-store.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/remote-store.hh"
+#include "lix/libstore/remote-store-connection.hh"
+#include "lix/libstore/worker-protocol.hh"
+#include "lix/libutil/pool.hh"
+#include "lix/libstore/ssh.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

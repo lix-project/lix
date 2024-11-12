@@ -1,13 +1,13 @@
-#include "environment-variables.hh"
-#include "globals.hh"
-#include "file-system.hh"
-#include "logging.hh"
-#include "strings.hh"
-#include "users.hh"
-#include "args.hh"
-#include "abstract-setting-to-json.hh"
-#include "compute-levels.hh"
-#include "current-process.hh"
+#include "lix/libutil/environment-variables.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/strings.hh"
+#include "lix/libutil/users.hh"
+#include "lix/libutil/args.hh"
+#include "lix/libutil/abstract-setting-to-json.hh"
+#include "lix/libutil/compute-levels.hh"
+#include "lix/libutil/current-process.hh"
 
 #include <algorithm>
 #include <mutex>
@@ -25,23 +25,23 @@
 #include <dlfcn.h>
 #endif
 
-#include "config-impl.hh"
+#include "lix/libutil/config-impl.hh"
 
 #ifdef __APPLE__
-#include "processes.hh"
+#include "lix/libutil/processes.hh"
 #include <curl/curl.h>
 #include <sys/sysctl.h>
 #endif
 
 // All built-in store implementations.
-#include "dummy-store.hh"
-#include "http-binary-cache-store.hh"
-#include "legacy-ssh-store.hh"
-#include "local-binary-cache-store.hh"
-#include "local-store.hh"
-#include "s3-binary-cache-store.hh"
-#include "ssh-store.hh"
-#include "uds-remote-store.hh"
+#include "lix/libstore/dummy-store.hh"
+#include "lix/libstore/http-binary-cache-store.hh"
+#include "lix/libstore/legacy-ssh-store.hh"
+#include "lix/libstore/local-binary-cache-store.hh"
+#include "lix/libstore/local-store.hh"
+#include "lix/libstore/s3-binary-cache-store.hh"
+#include "lix/libstore/ssh-store.hh"
+#include "lix/libstore/uds-remote-store.hh"
 
 namespace nix {
 

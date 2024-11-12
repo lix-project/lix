@@ -1,10 +1,10 @@
-#include "nar-info-disk-cache.hh"
-#include "logging.hh"
-#include "sync.hh"
-#include "sqlite.hh"
-#include "globals.hh"
-#include "users.hh"
-#include "strings.hh"
+#include "lix/libstore/nar-info-disk-cache.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/sync.hh"
+#include "lix/libstore/sqlite.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libutil/users.hh"
+#include "lix/libutil/strings.hh"
 
 #include <sqlite3.h>
 #include <nlohmann/json.hpp>

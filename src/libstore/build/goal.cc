@@ -1,6 +1,6 @@
-#include "goal.hh"
-#include "async-collect.hh"
-#include "worker.hh"
+#include "lix/libstore/build/goal.hh"
+#include "lix/libutil/async-collect.hh"
+#include "lix/libstore/build/worker.hh"
 #include <boost/outcome/try.hpp>
 #include <kj/time.h>
 

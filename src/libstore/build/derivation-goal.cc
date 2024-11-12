@@ -1,16 +1,16 @@
-#include "derivation-goal.hh"
-#include "file-system.hh"
-#include "hook-instance.hh"
-#include "worker.hh"
-#include "finally.hh"
-#include "compression.hh"
-#include "common-protocol.hh"
-#include "common-protocol-impl.hh" // IWYU pragma: keep
-#include "local-store.hh" // TODO remove, along with remaining downcasts
-#include "logging-json.hh"
-#include "substitution-goal.hh"
-#include "drv-output-substitution-goal.hh"
-#include "strings.hh"
+#include "lix/libstore/build/derivation-goal.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libstore/build/hook-instance.hh"
+#include "lix/libstore/build/worker.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libutil/compression.hh"
+#include "lix/libstore/common-protocol.hh"
+#include "lix/libstore/common-protocol-impl.hh" // IWYU pragma: keep
+#include "lix/libstore/local-store.hh" // TODO remove, along with remaining downcasts
+#include "lix/libutil/logging-json.hh"
+#include "lix/libstore/build/substitution-goal.hh"
+#include "lix/libstore/build/drv-output-substitution-goal.hh"
+#include "lix/libutil/strings.hh"
 
 #include <boost/outcome/try.hpp>
 #include <fstream>

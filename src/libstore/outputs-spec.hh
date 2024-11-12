@@ -6,10 +6,10 @@
 #include <set>
 #include <variant>
 
-#include "comparator.hh"
-#include "json-impls.hh"
-#include "comparator.hh"
-#include "variant-wrapper.hh"
+#include "lix/libutil/comparator.hh"
+#include "lix/libutil/json-impls.hh"
+#include "lix/libutil/comparator.hh"
+#include "lix/libutil/variant-wrapper.hh"
 
 namespace nix {
 

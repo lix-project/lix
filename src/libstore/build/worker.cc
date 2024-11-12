@@ -1,12 +1,12 @@
-#include "async-collect.hh"
-#include "charptr-cast.hh"
-#include "worker.hh"
-#include "finally.hh"
-#include "substitution-goal.hh"
-#include "drv-output-substitution-goal.hh"
-#include "local-derivation-goal.hh"
-#include "signals.hh"
-#include "hook-instance.hh" // IWYU pragma: keep
+#include "lix/libutil/async-collect.hh"
+#include "lix/libutil/charptr-cast.hh"
+#include "lix/libstore/build/worker.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libstore/build/substitution-goal.hh"
+#include "lix/libstore/build/drv-output-substitution-goal.hh"
+#include "lix/libstore/build/local-derivation-goal.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libstore/build/hook-instance.hh" // IWYU pragma: keep
 #include <boost/outcome/try.hpp>
 #include <kj/vector.h>
 

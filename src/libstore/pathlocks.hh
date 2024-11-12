@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "error.hh"
-#include "file-descriptor.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/file-descriptor.hh"
 
 namespace nix {
 

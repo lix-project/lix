@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "local-fs-store.hh"
+#include "lix/libstore/local-fs-store.hh"
 
 namespace nix {
 

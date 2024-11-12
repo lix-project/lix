@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "logging.hh"
-#include "processes.hh"
-#include "serialise.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/processes.hh"
+#include "lix/libutil/serialise.hh"
 
 namespace nix {
 

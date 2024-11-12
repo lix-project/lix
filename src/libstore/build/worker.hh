@@ -1,14 +1,14 @@
 #pragma once
 ///@file
 
-#include "async-semaphore.hh"
-#include "concepts.hh"
-#include "notifying-counter.hh"
-#include "types.hh"
-#include "lock.hh"
-#include "store-api.hh"
-#include "goal.hh"
-#include "realisation.hh"
+#include "lix/libutil/async-semaphore.hh"
+#include "lix/libutil/concepts.hh"
+#include "lix/libutil/notifying-counter.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libstore/lock.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/build/goal.hh"
+#include "lix/libstore/realisation.hh"
 
 #include <future>
 #include <kj/async-io.h>

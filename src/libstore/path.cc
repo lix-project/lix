@@ -1,4 +1,4 @@
-#include "store-api.hh"
+#include "lix/libstore/store-api.hh"
 
 #include <sodium.h>
 

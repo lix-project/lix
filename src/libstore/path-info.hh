@@ -1,10 +1,10 @@
 #pragma once
 ///@file
 
-#include "crypto.hh"
-#include "path.hh"
-#include "hash.hh"
-#include "content-address.hh"
+#include "lix/libstore/crypto.hh"
+#include "lix/libstore/path.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libstore/content-address.hh"
 
 #include <string>
 #include <optional>

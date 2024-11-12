@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "hash.hh"
-#include "path.hh"
-#include "derived-path.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libstore/path.hh"
+#include "lix/libstore/derived-path.hh"
 
 namespace nix {
 

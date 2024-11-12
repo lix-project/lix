@@ -8,8 +8,8 @@
  * contributing guide.
  */
 
-#include "worker-protocol.hh"
-#include "length-prefixed-protocol-helper.hh"
+#include "lix/libstore/worker-protocol.hh"
+#include "lix/libstore/length-prefixed-protocol-helper.hh"
 
 namespace nix {
 

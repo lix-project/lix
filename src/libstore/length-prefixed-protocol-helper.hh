@@ -6,8 +6,8 @@
  * Used by both the Worker and Serve protocols.
  */
 
-#include "types.hh"
-#include "serialise.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/serialise.hh"
 
 namespace nix {
 

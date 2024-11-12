@@ -1,6 +1,6 @@
-#include "realisation.hh"
-#include "store-api.hh"
-#include "closure.hh"
+#include "lix/libstore/realisation.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/closure.hh"
 #include <nlohmann/json.hpp>
 
 namespace nix {

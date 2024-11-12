@@ -3,7 +3,7 @@
 
 #if ENABLE_S3
 
-#include "ref.hh"
+#include "lix/libutil/ref.hh"
 
 #include <optional>
 #include <string>

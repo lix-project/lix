@@ -1,5 +1,5 @@
-#include "nar-accessor.hh"
-#include "archive.hh"
+#include "lix/libstore/nar-accessor.hh"
+#include "lix/libutil/archive.hh"
 
 #include <map>
 #include <memory>

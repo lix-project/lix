@@ -1,13 +1,13 @@
-#include "derivations.hh"
-#include "downstream-placeholder.hh"
-#include "store-api.hh"
-#include "globals.hh"
-#include "types.hh"
-#include "common-protocol.hh"
-#include "common-protocol-impl.hh"
-#include "json-utils.hh"
-#include "strings.hh"
-#include "backed-string-view.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libstore/downstream-placeholder.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libstore/common-protocol.hh"
+#include "lix/libstore/common-protocol-impl.hh"
+#include "lix/libutil/json-utils.hh"
+#include "lix/libutil/strings.hh"
+#include "lix/libutil/backed-string-view.hh"
 
 #include <boost/container/small_vector.hpp>
 #include <nlohmann/json.hpp>

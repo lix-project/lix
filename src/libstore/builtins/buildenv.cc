@@ -1,5 +1,5 @@
-#include "buildenv.hh"
-#include "strings.hh"
+#include "lix/libstore/builtins/buildenv.hh"
+#include "lix/libutil/strings.hh"
 
 #include <sys/stat.h>
 #include <sys/types.h>

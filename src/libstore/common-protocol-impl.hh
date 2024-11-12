@@ -8,8 +8,8 @@
  * contributing guide.
  */
 
-#include "common-protocol.hh"
-#include "length-prefixed-protocol-helper.hh"
+#include "lix/libstore/common-protocol.hh"
+#include "lix/libstore/length-prefixed-protocol-helper.hh"
 
 namespace nix {
 

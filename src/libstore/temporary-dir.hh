@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "file-system.hh"
+#include "lix/libutil/file-system.hh"
 
 namespace nix {
 

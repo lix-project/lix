@@ -1,12 +1,12 @@
-#include "derivations.hh"
-#include "parsed-derivations.hh"
-#include "globals.hh"
-#include "store-api.hh"
-#include "thread-pool.hh"
-#include "topo-sort.hh"
-#include "closure.hh"
-#include "filetransfer.hh"
-#include "strings.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libstore/parsed-derivations.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/thread-pool.hh"
+#include "lix/libutil/topo-sort.hh"
+#include "lix/libutil/closure.hh"
+#include "lix/libstore/filetransfer.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

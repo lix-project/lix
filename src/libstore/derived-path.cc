@@ -1,5 +1,5 @@
-#include "derived-path.hh"
-#include "store-api.hh"
+#include "lix/libstore/derived-path.hh"
+#include "lix/libstore/store-api.hh"
 
 #include <nlohmann/json.hpp>
 

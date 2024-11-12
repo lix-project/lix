@@ -1,4 +1,4 @@
-#include "derived-path-map.hh"
+#include "lix/libstore/derived-path-map.hh"
 
 namespace nix {
 

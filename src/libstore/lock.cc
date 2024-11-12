@@ -1,8 +1,8 @@
-#include "lock.hh"
-#include "logging.hh"
-#include "file-system.hh"
-#include "globals.hh"
-#include "pathlocks.hh"
+#include "lix/libstore/lock.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/pathlocks.hh"
 
 #include <pwd.h>
 #include <grp.h>

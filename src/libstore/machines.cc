@@ -1,7 +1,7 @@
-#include "machines.hh"
-#include "globals.hh"
-#include "store-api.hh"
-#include "strings.hh"
+#include "lix/libstore/machines.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/strings.hh"
 
 #include <algorithm>
 

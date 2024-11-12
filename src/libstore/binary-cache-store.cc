@@ -1,17 +1,17 @@
-#include "archive.hh"
-#include "binary-cache-store.hh"
-#include "compression.hh"
-#include "derivations.hh"
-#include "fs-accessor.hh"
-#include "nar-info.hh"
-#include "sync.hh"
-#include "remote-fs-accessor.hh"
-#include "nar-info-disk-cache.hh" // IWYU pragma: keep
-#include "nar-accessor.hh"
-#include "temporary-dir.hh"
-#include "thread-pool.hh"
-#include "signals.hh"
-#include "strings.hh"
+#include "lix/libutil/archive.hh"
+#include "lix/libstore/binary-cache-store.hh"
+#include "lix/libutil/compression.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libstore/fs-accessor.hh"
+#include "lix/libstore/nar-info.hh"
+#include "lix/libutil/sync.hh"
+#include "lix/libstore/remote-fs-accessor.hh"
+#include "lix/libstore/nar-info-disk-cache.hh" // IWYU pragma: keep
+#include "lix/libstore/nar-accessor.hh"
+#include "lix/libstore/temporary-dir.hh"
+#include "lix/libutil/thread-pool.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libutil/strings.hh"
 
 #include <chrono>
 #include <regex>

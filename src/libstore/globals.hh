@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "environment-variables.hh"
-#include "types.hh"
-#include "config.hh"
+#include "lix/libutil/environment-variables.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/config.hh"
 
 #include <map>
 #include <limits>
