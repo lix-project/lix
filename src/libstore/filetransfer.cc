@@ -66,8 +66,6 @@ struct curlFileTransfer : public FileTransfer
 
         struct curl_slist * requestHeaders = 0;
 
-        curl_off_t writtenToSink = 0;
-
         inline static const std::set<long> successfulStatuses {200, 201, 204, 206, 304, 0 /* other protocol */};
         /* Get the HTTP status code, or 0 for other protocols. */
         long getHTTPStatus()
@@ -106,7 +104,6 @@ struct curlFileTransfer : public FileTransfer
             })
             , dataCallback(std::move(dataCallback))
             , req(curl_easy_init())
-            , writtenToSink(writtenToSink)
         {
             if (req == nullptr) {
                 throw FileTransferError(Misc, {}, "could not allocate curl handle");
@@ -249,7 +246,6 @@ struct curlFileTransfer : public FileTransfer
                     if (!dataCallback({static_cast<const char *>(contents), realSize})) {
                         return CURL_WRITEFUNC_PAUSE;
                     }
-                    writtenToSink += realSize;
                 } else {
                     this->downloadData.append(static_cast<const char *>(contents), realSize);
                 }
@@ -275,8 +271,6 @@ struct curlFileTransfer : public FileTransfer
 
             static std::regex statusLine("HTTP/[^ ]+ +[0-9]+(.*)", std::regex::extended | std::regex::icase);
             if (std::smatch match; std::regex_match(line, match, statusLine)) {
-                downloadData.clear();
-                bodySize = 0;
                 statusMsg = trim(match.str(1));
             } else {
                 auto i = line.find(':');
@@ -790,6 +784,7 @@ struct curlFileTransfer : public FileTransfer
 
         unsigned int attempt = 0;
         const size_t tries = fileTransferSettings.tries;
+        curl_off_t totalReceived = 0;
 
         TransferSource(
             curlFileTransfer & parent,
@@ -821,13 +816,23 @@ struct curlFileTransfer : public FileTransfer
 
         auto withRetries(auto fn) -> decltype(fn())
         {
+            std::optional<std::string> retryContext;
             while (true) {
                 try {
+                    if (retryContext) {
+                        attemptRetry(*retryContext);
+                    }
                     return fn();
                 } catch (FileTransferError & e) {
-                    if (!attemptRetry(e)) {
+                    // If this is a transient error, then maybe retry after a while. after any
+                    // bytes have been received we require range support to proceed, otherwise
+                    // we'd need to start from scratch and discard everything we already have.
+                    if (e.error != Transient || data.has_value() || attempt >= tries
+                        || (totalReceived > 0 && !transfer->acceptsRanges()))
+                    {
                         throw;
                     }
+                    retryContext = e.what();
                 }
             }
         }
@@ -881,33 +886,22 @@ struct curlFileTransfer : public FileTransfer
             }
         }
 
-        bool attemptRetry(FileTransferError & context)
+        bool attemptRetry(const std::string & context)
         {
             auto state(_state->lock());
 
             assert(state->data.empty());
 
-            // If this is a transient error, then maybe retry after a while. after any
-            // bytes have been received we require range support to proceed, otherwise
-            // we'd need to start from scratch and discard everything we already have.
-            if (context.error != Transient || data.has_value() || attempt >= tries
-                || (transfer->writtenToSink > 0 && !transfer->acceptsRanges()))
-            {
-                return false;
-            }
-
             thread_local std::minstd_rand random{std::random_device{}()};
             std::uniform_real_distribution<> dist(0.0, 0.5);
             int ms = parent.baseRetryTimeMs * std::pow(2.0f, attempt - 1 + dist(random));
-            if (transfer->writtenToSink) {
-                warn("%s; retrying from offset %d in %d ms", context.what(), transfer->writtenToSink, ms);
+            if (totalReceived) {
+                warn("%s; retrying from offset %d in %d ms", context, totalReceived, ms);
             } else {
-                warn("%s; retrying in %d ms", context.what(), ms);
+                warn("%s; retrying in %d ms", context, ms);
             }
 
-            timespec sleep = {.tv_sec = ms / 1000, .tv_nsec = (ms % 1000) * 1000000};
-            while (nanosleep(&sleep, &sleep) < 0 && errno == EINTR) {
-            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 
             state->exc = nullptr;
 
@@ -915,7 +909,7 @@ struct curlFileTransfer : public FileTransfer
             // some silent corruption if a redirect changes between starting and retry
             const auto & uri = metadata.effectiveUri.empty() ? this->uri : metadata.effectiveUri;
 
-            auto newMeta = startTransfer(uri, transfer->writtenToSink);
+            auto newMeta = startTransfer(uri, totalReceived);
             throwChangedTarget("final destination", metadata.effectiveUri, newMeta.effectiveUri);
             throwChangedTarget("ETag", metadata.etag, newMeta.etag);
             throwChangedTarget(
@@ -948,6 +942,7 @@ struct curlFileTransfer : public FileTransfer
 
                     chunk = std::move(state->data);
                     buffered = chunk;
+                    totalReceived += chunk.size();
                     transfer->unpause();
                 }
             });
