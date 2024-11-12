@@ -42,12 +42,20 @@ struct curlFileTransfer : public FileTransfer
 
     struct TransferItem : public std::enable_shared_from_this<TransferItem>
     {
+        struct DownloadState
+        {
+            bool done = false;
+            std::exception_ptr exc;
+            std::string data;
+        };
+
         curlFileTransfer & fileTransfer;
         std::string uri;
         FileTransferResult result;
         Activity act;
         std::unique_ptr<FILE, decltype([](FILE * f) { fclose(f); })> uploadData;
-        std::string downloadData;
+        Sync<DownloadState> downloadState;
+        std::condition_variable downloadEvent;
         enum {
             /// nothing has been transferred yet
             initialSetup,
@@ -57,9 +65,6 @@ struct curlFileTransfer : public FileTransfer
             transferComplete,
         } phase = initialSetup;
         std::promise<FileTransferResult> metadataPromise;
-        std::packaged_task<void(std::exception_ptr)> doneCallback;
-        // return false from dataCallback to pause the transfer without consuming data
-        std::function<bool(std::string_view data)> dataCallback;
         CURL * req; // must never be nullptr
         std::string statusMsg;
 
@@ -88,8 +93,6 @@ struct curlFileTransfer : public FileTransfer
             const std::string & uri,
             const Headers & headers,
             ActivityId parentAct,
-            std::invocable<std::exception_ptr> auto doneCallback,
-            std::function<bool(std::string_view data)> dataCallback,
             std::optional<std::string_view> uploadData,
             bool noBody,
             curl_off_t writtenToSink
@@ -99,10 +102,6 @@ struct curlFileTransfer : public FileTransfer
             , act(*logger, lvlTalkative, actFileTransfer,
                 fmt(uploadData ? "uploading '%s'" : "downloading '%s'", uri),
                 {uri}, parentAct)
-            , doneCallback([cb{std::move(doneCallback)}] (std::exception_ptr ex) {
-                cb(ex);
-            })
-            , dataCallback(std::move(dataCallback))
             , req(curl_easy_init())
         {
             if (req == nullptr) {
@@ -204,7 +203,8 @@ struct curlFileTransfer : public FileTransfer
                 metadataPromise.set_exception(ex);
             }
             phase = transferComplete;
-            doneCallback(ex);
+            downloadState.lock()->exc = ex;
+            downloadEvent.notify_all();
         }
 
         template<class T>
@@ -242,14 +242,16 @@ struct curlFileTransfer : public FileTransfer
             try {
                 maybeFinishSetup();
 
-                if (successfulStatuses.count(getHTTPStatus()) && this->dataCallback) {
-                    if (!dataCallback({static_cast<const char *>(contents), realSize})) {
-                        return CURL_WRITEFUNC_PAUSE;
-                    }
-                } else {
-                    this->downloadData.append(static_cast<const char *>(contents), realSize);
+                auto state = downloadState.lock();
+
+                // when the buffer is full (as determined by a historical magic value) we
+                // pause the transfer and wait for the receiver to unpause it when ready.
+                if (successfulStatuses.count(getHTTPStatus()) && state->data.size() > 1024 * 1024) {
+                    return CURL_WRITEFUNC_PAUSE;
                 }
 
+                state->data.append(static_cast<const char *>(contents), realSize);
+                downloadEvent.notify_all();
                 bodySize += realSize;
                 return realSize;
             } catch (...) {
@@ -343,7 +345,8 @@ struct curlFileTransfer : public FileTransfer
             {
                 act.progress(bodySize, bodySize);
                 phase = transferComplete;
-                doneCallback(nullptr);
+                downloadState.lock()->done = true;
+                downloadEvent.notify_all();
             }
 
             else {
@@ -398,7 +401,7 @@ struct curlFileTransfer : public FileTransfer
 
                 std::optional<std::string> response;
                 if (!successfulStatuses.count(httpStatus))
-                    response = std::move(downloadData);
+                    response = std::move(downloadState.lock()->data);
                 auto exc =
                     code == CURLE_ABORTED_BY_CALLBACK && _isInterrupted
                     ? FileTransferError(Interrupted, std::move(response), "%s of '%s' was interrupted", verb(), uri)
@@ -742,13 +745,6 @@ struct curlFileTransfer : public FileTransfer
 
     struct TransferSource : Source
     {
-        struct State {
-            bool done = false;
-            std::exception_ptr exc;
-            std::string data;
-            std::condition_variable avail;
-        };
-
         curlFileTransfer & parent;
         std::string uri;
         Headers headers;
@@ -756,7 +752,6 @@ struct curlFileTransfer : public FileTransfer
         bool noBody;
         ActivityId parentAct = getCurActivity();
 
-        const std::shared_ptr<Sync<State>> _state = std::make_shared<Sync<State>>();
         std::shared_ptr<TransferItem> transfer;
         FileTransferResult metadata;
         std::string chunk;
@@ -820,38 +815,9 @@ struct curlFileTransfer : public FileTransfer
         FileTransferResult startTransfer(const std::string & uri, curl_off_t offset = 0)
         {
             attempt += 1;
+            auto uploadData = data ? std::optional(std::string_view(*data)) : std::nullopt;
             transfer = std::make_shared<TransferItem>(
-                parent,
-                uri,
-                headers,
-                parentAct,
-                [_state{_state}](std::exception_ptr ex) {
-                    auto state(_state->lock());
-                    state->done = ex == nullptr;
-                    state->exc = ex;
-                    state->avail.notify_one();
-                },
-                [_state{_state}](std::string_view data) {
-                    auto state(_state->lock());
-
-                    /* If the buffer is full, then go to sleep until the calling
-                    thread wakes us up (i.e. when it has removed data from the
-                    buffer). We don't wait forever to prevent stalling the
-                    download thread. (Hopefully sleeping will throttle the
-                    sender.) */
-                    if (state->data.size() > 1024 * 1024) {
-                        return false;
-                    }
-
-                    /* Append data to the buffer and wake up the calling
-                    thread. */
-                    state->data.append(data);
-                    state->avail.notify_one();
-                    return true;
-                },
-                data ? std::optional(std::string_view(*data)) : std::nullopt,
-                noBody,
-                offset
+                parent, uri, headers, parentAct, uploadData, noBody, offset
             );
             parent.enqueueItem(transfer);
             return transfer->metadataPromise.get_future().get();
@@ -868,7 +834,7 @@ struct curlFileTransfer : public FileTransfer
 
         bool attemptRetry(const std::string & context)
         {
-            auto state(_state->lock());
+            auto state(transfer->downloadState.lock());
 
             assert(state->data.empty());
 
@@ -907,7 +873,7 @@ struct curlFileTransfer : public FileTransfer
                 /* Grab data if available, otherwise wait for the download
                    thread to wake us up. */
                 while (buffered.empty()) {
-                    auto state(_state->lock());
+                    auto state(transfer->downloadState.lock());
 
                     if (state->data.empty()) {
                         if (state->exc) {
@@ -917,7 +883,7 @@ struct curlFileTransfer : public FileTransfer
                         }
 
                         transfer->unpause();
-                        state.wait(state->avail);
+                        state.wait(transfer->downloadEvent);
                     }
 
                     chunk = std::move(state->data);
