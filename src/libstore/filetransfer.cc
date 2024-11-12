@@ -7,6 +7,7 @@
 #include "strings.hh"
 #include <cstddef>
 
+#include <cstdio>
 #include <kj/encoding.h>
 
 #if ENABLE_S3
@@ -45,7 +46,7 @@ struct curlFileTransfer : public FileTransfer
         std::string uri;
         FileTransferResult result;
         Activity act;
-        std::optional<std::string_view> uploadData;
+        std::unique_ptr<FILE, decltype([](FILE * f) { fclose(f); })> uploadData;
         std::string downloadData;
         enum {
             /// nothing has been transferred yet
@@ -98,7 +99,6 @@ struct curlFileTransfer : public FileTransfer
             , act(*logger, lvlTalkative, actFileTransfer,
                 fmt(uploadData ? "uploading '%s'" : "downloading '%s'", uri),
                 {uri}, parentAct)
-            , uploadData(uploadData)
             , doneCallback([cb{std::move(doneCallback)}] (std::exception_ptr ex) {
                 cb(ex);
             })
@@ -150,9 +150,9 @@ struct curlFileTransfer : public FileTransfer
                 curl_easy_setopt(req, CURLOPT_NOBODY, 1);
 
             if (uploadData) {
+                this->uploadData.reset(fmemopen(const_cast<char *>(uploadData->data()), uploadData->size(), "r"));
                 curl_easy_setopt(req, CURLOPT_UPLOAD, 1L);
-                curl_easy_setopt(req, CURLOPT_READFUNCTION, readCallbackWrapper);
-                curl_easy_setopt(req, CURLOPT_READDATA, this);
+                curl_easy_setopt(req, CURLOPT_READDATA, this->uploadData.get());
                 curl_easy_setopt(req, CURLOPT_INFILESIZE_LARGE, (curl_off_t) uploadData->length());
             }
 
@@ -325,26 +325,6 @@ struct curlFileTransfer : public FileTransfer
             if (type == CURLINFO_TEXT)
                 vomit("curl: %s", chomp(std::string(data, size)));
             return 0;
-        }
-
-        size_t readOffset = 0;
-        size_t readCallback(char *buffer, size_t size, size_t nitems)
-        {
-            if (readOffset == uploadData->length())
-                return 0;
-            auto count = std::min(size * nitems, uploadData->length() - readOffset);
-            assert(count);
-            // Lint: this is turning a string into a byte array to hand to
-            // curl, which is fine.
-            // NOLINTNEXTLINE(bugprone-not-null-terminated-result)
-            memcpy(buffer, uploadData->data() + readOffset, count);
-            readOffset += count;
-            return count;
-        }
-
-        static size_t readCallbackWrapper(char *buffer, size_t size, size_t nitems, void * userp)
-        {
-            return static_cast<TransferItem *>(userp)->readCallback(buffer, size, nitems);
         }
 
         void finish(CURLcode code)
