@@ -79,7 +79,7 @@ configure_file(
 )
 
 liblixfetchers = declare_dependency(
-  include_directories : include_directories('.', '../include'),
+  include_directories : include_directories('../include'),
   sources : libfetchers_settings_header,
   link_with : libfetchers,
 )
@@ -87,7 +87,7 @@ liblixfetchers = declare_dependency(
 # FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
 if is_static
   liblixfetchers_mstatic = declare_dependency(
-    include_directories : include_directories('.', '../include'),
+    include_directories : include_directories('../include'),
     sources : libfetchers_settings_header,
     link_whole : libfetchers,
   )

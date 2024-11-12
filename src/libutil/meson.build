@@ -316,8 +316,7 @@ configure_file(
 
 # Used by libstore and libfetchers.
 liblixutil = declare_dependency(
-  # FIXME(jade): remove old "." include-dir
-  include_directories : include_directories('.', '../include'),
+  include_directories : include_directories('../include'),
   sources : [
     experimental_features_header,
     deprecated_features_header,
@@ -329,7 +328,7 @@ liblixutil = declare_dependency(
 # FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
 if is_static
   liblixutil_mstatic = declare_dependency(
-    include_directories : include_directories('.', '../include'),
+    include_directories : include_directories('../include'),
     sources : [
       experimental_features_header,
       deprecated_features_header,

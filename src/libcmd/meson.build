@@ -71,8 +71,7 @@ custom_target(
 )
 
 liblixcmd = declare_dependency(
-  # FIXME(jade): remove old '.' include directory
-  include_directories : include_directories('.', '../include'),
+  include_directories : include_directories('../include'),
   link_with : libcmd,
 )
 
