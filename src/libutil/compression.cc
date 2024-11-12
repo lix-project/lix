@@ -1,8 +1,8 @@
-#include "charptr-cast.hh"
-#include "compression.hh"
-#include "tarfile.hh"
-#include "signals.hh"
-#include "logging.hh"
+#include "lix/libutil/charptr-cast.hh"
+#include "lix/libutil/compression.hh"
+#include "lix/libutil/tarfile.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libutil/logging.hh"
 
 #include <archive.h>
 #include <archive_entry.h>

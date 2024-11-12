@@ -1,6 +1,6 @@
-#include "terminal.hh"
-#include "environment-variables.hh"
-#include "sync.hh"
+#include "lix/libutil/terminal.hh"
+#include "lix/libutil/environment-variables.hh"
+#include "lix/libutil/sync.hh"
 
 #include <sys/ioctl.h>
 #include <unistd.h>

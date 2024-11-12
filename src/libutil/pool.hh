@@ -7,8 +7,8 @@
 #include <memory>
 #include <cassert>
 
-#include "sync.hh"
-#include "ref.hh"
+#include "lix/libutil/sync.hh"
+#include "lix/libutil/ref.hh"
 
 namespace nix {
 

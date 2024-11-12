@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "types.hh"
+#include "lix/libutil/types.hh"
 
 #if __linux__
 namespace nix {

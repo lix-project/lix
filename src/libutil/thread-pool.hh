@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "error.hh"
-#include "sync.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/sync.hh"
 
 #include <map>
 #include <queue>

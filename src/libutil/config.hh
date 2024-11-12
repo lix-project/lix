@@ -7,10 +7,10 @@
 
 #include <nlohmann/json_fwd.hpp>
 
-#include "types.hh"
-#include "experimental-features.hh"
-#include "deprecated-features.hh"
-#include "apply-config-options.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/experimental-features.hh"
+#include "lix/libutil/deprecated-features.hh"
+#include "lix/libutil/apply-config-options.hh"
 
 namespace nix {
 

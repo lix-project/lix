@@ -1,6 +1,6 @@
-#include "suggestions.hh"
-#include "ansicolor.hh"
-#include "terminal.hh"
+#include "lix/libutil/suggestions.hh"
+#include "lix/libutil/ansicolor.hh"
+#include "lix/libutil/terminal.hh"
 
 #include <algorithm>
 #include <ostream>

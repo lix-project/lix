@@ -1,10 +1,10 @@
-#include "environment-variables.hh"
-#include "error.hh"
-#include "logging.hh"
-#include "position.hh"
-#include "terminal.hh"
-#include "strings.hh"
-#include "signals.hh"
+#include "lix/libutil/environment-variables.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/position.hh"
+#include "lix/libutil/terminal.hh"
+#include "lix/libutil/strings.hh"
+#include "lix/libutil/signals.hh"
 
 #include <iostream>
 #include <optional>

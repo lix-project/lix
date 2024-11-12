@@ -1,4 +1,4 @@
-#include "fmt.hh" // IWYU pragma: keep
+#include "lix/libutil/fmt.hh" // IWYU pragma: keep
 // Darwin and FreeBSD stdenv do not define _GNU_SOURCE but do have _Unwind_Backtrace.
 #if __APPLE__ || __FreeBSD__
 #define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED

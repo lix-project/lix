@@ -1,5 +1,5 @@
-#include "canon-path.hh"
-#include "file-system.hh"
+#include "lix/libutil/canon-path.hh"
+#include "lix/libutil/file-system.hh"
 
 namespace nix {
 

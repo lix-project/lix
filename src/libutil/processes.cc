@@ -1,11 +1,11 @@
-#include "current-process.hh"
-#include "environment-variables.hh"
-#include "finally.hh"
-#include "logging.hh"
-#include "processes.hh"
-#include "strings.hh"
-#include "serialise.hh"
-#include "signals.hh"
+#include "lix/libutil/current-process.hh"
+#include "lix/libutil/environment-variables.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/processes.hh"
+#include "lix/libutil/strings.hh"
+#include "lix/libutil/serialise.hh"
+#include "lix/libutil/signals.hh"
 
 #include <cerrno>
 #include <cstdlib>

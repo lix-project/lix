@@ -1,4 +1,4 @@
-#include "hilite.hh"
+#include "lix/libutil/hilite.hh"
 
 namespace nix {
 

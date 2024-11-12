@@ -1,6 +1,6 @@
 #include <regex>
 
-#include "url-name.hh"
+#include "lix/libutil/url-name.hh"
 
 namespace nix {
 

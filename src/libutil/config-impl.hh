@@ -12,9 +12,9 @@
  * instantiation.
  */
 
-#include "args.hh"
-#include "config.hh"
-#include "logging.hh"
+#include "lix/libutil/args.hh"
+#include "lix/libutil/config.hh"
+#include "lix/libutil/logging.hh"
 
 namespace nix {
 

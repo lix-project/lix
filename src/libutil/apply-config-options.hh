@@ -4,7 +4,7 @@
  * @brief Options for applying `Config` settings.
  */
 
-#include <types.hh>
+#include "lix/libutil/types.hh"
 
 namespace nix {
 

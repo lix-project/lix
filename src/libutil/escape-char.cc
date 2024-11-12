@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <iostream>
 
-#include "escape-char.hh"
+#include "lix/libutil/escape-char.hh"
 
 namespace nix {
 

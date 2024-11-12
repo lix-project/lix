@@ -15,8 +15,8 @@
  * See libutil/tests/logging.cc for usage examples.
  */
 
-#include "suggestions.hh"
-#include "fmt.hh"
+#include "lix/libutil/suggestions.hh"
+#include "lix/libutil/fmt.hh"
 
 #include <cstring>
 #include <list>

@@ -5,12 +5,12 @@
  * @brief SourcePath
  */
 
-#include "ref.hh"
-#include "archive.hh"
-#include "canon-path.hh"
-#include "file-system.hh"
-#include "repair-flag.hh"
-#include "input-accessor.hh"
+#include "lix/libutil/ref.hh"
+#include "lix/libutil/archive.hh"
+#include "lix/libutil/canon-path.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/repair-flag.hh"
+#include "lix/libutil/input-accessor.hh"
 
 namespace nix {
 

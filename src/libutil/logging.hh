@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "types.hh"
-#include "error.hh"
-#include "config.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/config.hh"
 
 namespace nix {
 

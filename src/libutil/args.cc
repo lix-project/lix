@@ -1,12 +1,12 @@
-#include "args.hh"
-#include "args/root.hh"
-#include "hash.hh"
-#include "strings.hh"
-#include "json-utils.hh" // IWYU pragma: keep (instances)
-#include "environment-variables.hh"
+#include "lix/libutil/args.hh"
+#include "lix/libutil/args/root.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libutil/strings.hh"
+#include "lix/libutil/json-utils.hh" // IWYU pragma: keep (instances)
+#include "lix/libutil/environment-variables.hh"
 
-#include "experimental-features-json.hh" // IWYU pragma: keep (instances)
-#include "logging.hh"
+#include "lix/libutil/experimental-features-json.hh" // IWYU pragma: keep (instances)
+#include "lix/libutil/logging.hh"
 
 #include <glob.h>
 

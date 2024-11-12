@@ -1,14 +1,14 @@
-#include "config.hh"
-#include "apply-config-options.hh"
-#include "args.hh"
-#include "abstract-setting-to-json.hh"
-#include "experimental-features.hh"
-#include "deprecated-features.hh"
-#include "file-system.hh"
-#include "logging.hh"
-#include "strings.hh"
+#include "lix/libutil/config.hh"
+#include "lix/libutil/apply-config-options.hh"
+#include "lix/libutil/args.hh"
+#include "lix/libutil/abstract-setting-to-json.hh"
+#include "lix/libutil/experimental-features.hh"
+#include "lix/libutil/deprecated-features.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/strings.hh"
 
-#include "config-impl.hh"
+#include "lix/libutil/config-impl.hh"
 
 #include <nlohmann/json.hpp>
 

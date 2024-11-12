@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "types.hh"
-#include "error.hh"
-#include "file-descriptor.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/file-descriptor.hh"
 
 #include <sys/types.h>
 #include <sys/stat.h>

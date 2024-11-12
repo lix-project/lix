@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "strings.hh"
+#include "lix/libutil/strings.hh"
 
 #include <string_view>
 

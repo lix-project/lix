@@ -5,9 +5,9 @@
  * Utiltities for working with the file sytem and file paths.
  */
 
-#include "box_ptr.hh"
-#include "types.hh"
-#include "file-descriptor.hh"
+#include "lix/libutil/box_ptr.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/file-descriptor.hh"
 
 #include <sys/types.h>
 #include <sys/stat.h>

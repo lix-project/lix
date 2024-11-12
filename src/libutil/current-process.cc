@@ -1,10 +1,11 @@
-#include "current-process.hh"
-#include "error.hh"
-#include "file-system.hh"
-#include "logging.hh"
-#include "namespaces.hh"
-#include "signals.hh"
-#include "strings.hh"
+#include "lix/libutil/current-process.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/namespaces.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libutil/strings.hh"
+#include "lix/libutil/cgroup.hh"
 #include <math.h>
 
 #ifdef __APPLE__
@@ -21,7 +22,6 @@
 #endif
 
 #include <sys/mount.h>
-#include <cgroup.hh>
 
 namespace nix {
 

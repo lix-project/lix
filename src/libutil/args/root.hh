@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "args.hh"
+#include "lix/libutil/args.hh"
 
 namespace nix {
 

@@ -19,7 +19,7 @@
  */
 
 
-#include "error.hh"
+#include "lix/libutil/error.hh"
 
 #include <sys/types.h>
 #include <sys/stat.h>

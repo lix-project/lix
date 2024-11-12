@@ -1,7 +1,7 @@
-#include "file-system.hh"
-#include "processes.hh"
-#include "unix-domain-socket.hh"
-#include "strings.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/processes.hh"
+#include "lix/libutil/unix-domain-socket.hh"
+#include "lix/libutil/strings.hh"
 
 #include <sys/socket.h>
 #include <sys/un.h>

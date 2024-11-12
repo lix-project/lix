@@ -4,7 +4,7 @@
 #include <optional>
 #include <sys/resource.h>
 
-#include "types.hh"
+#include "lix/libutil/types.hh"
 
 namespace nix {
 

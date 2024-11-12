@@ -1,7 +1,7 @@
-#include "url.hh"
-#include "url-parts.hh"
-#include "split.hh"
-#include "strings.hh"
+#include "lix/libutil/url.hh"
+#include "lix/libutil/url-parts.hh"
+#include "lix/libutil/split.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

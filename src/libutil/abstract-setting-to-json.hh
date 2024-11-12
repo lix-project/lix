@@ -2,10 +2,10 @@
 ///@file
 
 #include <nlohmann/json.hpp>
-#include "config.hh"
-#include "json-utils.hh"
+#include "lix/libutil/config.hh"
+#include "lix/libutil/json-utils.hh"
 // Required for instances of to_json and from_json for ExperimentalFeature
-#include "experimental-features-json.hh"
+#include "lix/libutil/experimental-features-json.hh"
 
 namespace nix {
 template<typename T>

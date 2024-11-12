@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "comparator.hh"
+#include "lix/libutil/comparator.hh"
 
 #include <set>
 #include <string_view>

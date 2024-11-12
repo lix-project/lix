@@ -12,13 +12,13 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-#include "archive.hh"
-#include "file-system.hh"
-#include "finally.hh"
-#include "serialise.hh"
-#include "config.hh"
-#include "logging.hh"
-#include "signals.hh"
+#include "lix/libutil/archive.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libutil/serialise.hh"
+#include "lix/libutil/config.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/signals.hh"
 
 namespace nix {
 

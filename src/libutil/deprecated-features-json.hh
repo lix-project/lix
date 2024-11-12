@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "deprecated-features.hh"
-#include "json-utils.hh"
+#include "lix/libutil/deprecated-features.hh"
+#include "lix/libutil/json-utils.hh"
 
 namespace nix {
 

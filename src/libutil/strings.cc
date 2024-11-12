@@ -1,5 +1,5 @@
-#include "strings.hh"
-#include "references.hh"
+#include "lix/libutil/strings.hh"
+#include "lix/libutil/references.hh"
 #include <boost/lexical_cast.hpp>
 #include <stdint.h>
 

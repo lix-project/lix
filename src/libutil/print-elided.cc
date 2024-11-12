@@ -1,6 +1,6 @@
-#include "print-elided.hh"
-#include "ansicolor.hh"
-#include "english.hh"
+#include "lix/libutil/print-elided.hh"
+#include "lix/libutil/ansicolor.hh"
+#include "lix/libutil/english.hh"
 
 namespace nix {
 

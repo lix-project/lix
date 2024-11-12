@@ -10,9 +10,9 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include "error.hh"
-#include "file-descriptor.hh"
-#include "signals.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/file-descriptor.hh"
+#include "lix/libutil/signals.hh"
 
 namespace nix {
 

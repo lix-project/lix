@@ -3,10 +3,10 @@
 
 #include <memory>
 
-#include "charptr-cast.hh"
-#include "generator.hh"
-#include "types.hh"
-#include "file-descriptor.hh"
+#include "lix/libutil/charptr-cast.hh"
+#include "lix/libutil/generator.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/file-descriptor.hh"
 
 namespace nix {
 

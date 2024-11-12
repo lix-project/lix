@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <string>
 
-#include "source-path.hh"
+#include "lix/libutil/source-path.hh"
 
 namespace nix {
 

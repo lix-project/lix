@@ -6,7 +6,7 @@
 #include <chrono>
 #include <optional>
 
-#include "types.hh"
+#include "lix/libutil/types.hh"
 
 namespace nix {
 

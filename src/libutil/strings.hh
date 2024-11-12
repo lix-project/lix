@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "error.hh"
-#include "types.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/types.hh"
 
 #include <vector>
 

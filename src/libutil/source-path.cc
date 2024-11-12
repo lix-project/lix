@@ -1,5 +1,5 @@
-#include "source-path.hh"
-#include "strings.hh"
+#include "lix/libutil/source-path.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

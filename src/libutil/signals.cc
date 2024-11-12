@@ -1,7 +1,7 @@
-#include "signals.hh"
-#include "error.hh"
-#include "sync.hh"
-#include "terminal.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/sync.hh"
+#include "lix/libutil/terminal.hh"
 
 #include <map>
 #include <thread>

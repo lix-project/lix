@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "experimental-features.hh"
-#include "json-utils.hh"
+#include "lix/libutil/experimental-features.hh"
+#include "lix/libutil/json-utils.hh"
 
 namespace nix {
 

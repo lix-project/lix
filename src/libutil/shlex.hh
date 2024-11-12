@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "error.hh"
+#include "lix/libutil/error.hh"
 
 namespace nix {
 

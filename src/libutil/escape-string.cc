@@ -2,11 +2,11 @@
 #include <ostream>
 #include <sstream>
 
-#include "ansicolor.hh"
-#include "escape-char.hh"
-#include "english.hh"
-#include "escape-string.hh"
-#include "print-elided.hh"
+#include "lix/libutil/ansicolor.hh"
+#include "lix/libutil/escape-char.hh"
+#include "lix/libutil/english.hh"
+#include "lix/libutil/escape-string.hh"
+#include "lix/libutil/print-elided.hh"
 
 namespace nix {
 

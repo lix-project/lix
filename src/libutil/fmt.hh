@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 #include <boost/format.hpp>
-#include "ansicolor.hh"
+#include "lix/libutil/ansicolor.hh"
 
 // Explicit instantiation in fmt.cc
 extern template class boost::basic_format<char>;

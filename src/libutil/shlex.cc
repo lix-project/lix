@@ -1,5 +1,5 @@
-#include "shlex.hh"
-#include "strings.hh"
+#include "lix/libutil/shlex.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

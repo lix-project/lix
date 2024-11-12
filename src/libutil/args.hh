@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "experimental-features.hh"
-#include "types.hh"
-#include "ref.hh"
+#include "lix/libutil/experimental-features.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/ref.hh"
 
 #include <functional>
 #include <map>

@@ -1,11 +1,11 @@
 #include <archive.h>
 #include <archive_entry.h>
 
-#include "charptr-cast.hh"
-#include "file-system.hh"
-#include "logging.hh"
-#include "serialise.hh"
-#include "tarfile.hh"
+#include "lix/libutil/charptr-cast.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/serialise.hh"
+#include "lix/libutil/tarfile.hh"
 
 namespace nix {
 

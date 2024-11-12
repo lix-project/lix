@@ -4,16 +4,16 @@
 #include <atomic>
 #include <random>
 
-#include "environment-variables.hh"
-#include "file-descriptor.hh"
-#include "file-system.hh"
-#include "finally.hh"
-#include "logging.hh"
-#include "serialise.hh"
-#include "signals.hh"
-#include "strings.hh"
-#include "types.hh"
-#include "users.hh"
+#include "lix/libutil/environment-variables.hh"
+#include "lix/libutil/file-descriptor.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/serialise.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libutil/strings.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/users.hh"
 
 namespace fs = std::filesystem;
 

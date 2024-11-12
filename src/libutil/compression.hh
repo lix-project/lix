@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "ref.hh"
-#include "types.hh"
-#include "serialise.hh"
+#include "lix/libutil/ref.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/serialise.hh"
 
 #include <string>
 

@@ -1,4 +1,4 @@
-#include "types.hh"
+#include "lix/libutil/types.hh"
 
 #if HAVE_LIBCPUID
 #include <libcpuid/libcpuid.h>

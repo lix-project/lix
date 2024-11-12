@@ -1,10 +1,10 @@
 #pragma once
 ///@file
 
-#include "generator.hh"
-#include "types.hh"
-#include "serialise.hh"
-#include "file-system.hh"
+#include "lix/libutil/generator.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/serialise.hh"
+#include "lix/libutil/file-system.hh"
 
 
 namespace nix {

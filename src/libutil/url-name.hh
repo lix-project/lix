@@ -4,7 +4,7 @@
 #include <string>
 #include <optional>
 
-#include "url.hh"
+#include "lix/libutil/url.hh"
 
 namespace nix {
 

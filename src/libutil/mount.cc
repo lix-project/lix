@@ -1,7 +1,7 @@
-#include "mount.hh"
-#include "error.hh"
-#include "file-system.hh"
-#include "logging.hh"
+#include "lix/libutil/mount.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/logging.hh"
 #if __linux__
 #include <sys/mount.h>
 

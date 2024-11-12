@@ -1,4 +1,4 @@
-#include "exit.hh"
+#include "lix/libutil/exit.hh"
 
 namespace nix {
 

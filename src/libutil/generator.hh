@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "types.hh"
+#include "lix/libutil/types.hh"
 
 #include <coroutine>
 #include <exception>

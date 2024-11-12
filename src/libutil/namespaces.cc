@@ -1,9 +1,9 @@
-#include "file-descriptor.hh"
-#include "file-system.hh"
-#include "logging.hh"
-#include "namespaces.hh"
-#include "processes.hh"
-#include "strings.hh"
+#include "lix/libutil/file-descriptor.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/namespaces.hh"
+#include "lix/libutil/processes.hh"
+#include "lix/libutil/strings.hh"
 
 #include <sys/mount.h>
 

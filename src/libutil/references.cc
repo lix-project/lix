@@ -1,6 +1,6 @@
-#include "references.hh"
-#include "hash.hh"
-#include "logging.hh"
+#include "lix/libutil/references.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libutil/logging.hh"
 
 #include <cstdlib>
 #include <mutex>

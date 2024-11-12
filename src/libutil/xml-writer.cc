@@ -1,6 +1,6 @@
 #include <cassert>
 
-#include "xml-writer.hh"
+#include "lix/libutil/xml-writer.hh"
 
 
 namespace nix {

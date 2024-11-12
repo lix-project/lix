@@ -1,9 +1,9 @@
-#include "environment-variables.hh"
-#include "file-descriptor.hh"
-#include "logging.hh"
-#include "config.hh"
-#include "position.hh"
-#include "terminal.hh"
+#include "lix/libutil/environment-variables.hh"
+#include "lix/libutil/file-descriptor.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/config.hh"
+#include "lix/libutil/position.hh"
+#include "lix/libutil/terminal.hh"
 
 #include <algorithm>
 #include <atomic>

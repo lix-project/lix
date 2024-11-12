@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "hash.hh"
+#include "lix/libutil/hash.hh"
 
 namespace nix {
 

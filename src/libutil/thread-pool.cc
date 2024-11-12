@@ -1,6 +1,6 @@
-#include "thread-pool.hh"
-#include "logging.hh"
-#include "signals.hh"
+#include "lix/libutil/thread-pool.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/signals.hh"
 
 namespace nix {
 

@@ -1,6 +1,6 @@
-#include "serialise.hh"
-#include "charptr-cast.hh"
-#include "signals.hh"
+#include "lix/libutil/serialise.hh"
+#include "lix/libutil/charptr-cast.hh"
+#include "lix/libutil/signals.hh"
 
 #include <cstring>
 #include <cerrno>

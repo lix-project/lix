@@ -4,13 +4,13 @@
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 
-#include "args.hh"
-#include "hash.hh"
-#include "archive.hh"
-#include "charptr-cast.hh"
-#include "logging.hh"
-#include "split.hh"
-#include "strings.hh"
+#include "lix/libutil/args.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libutil/archive.hh"
+#include "lix/libutil/charptr-cast.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/split.hh"
+#include "lix/libutil/strings.hh"
 
 #include <sys/types.h>
 #include <sys/stat.h>
