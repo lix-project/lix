@@ -1,18 +1,18 @@
 #pragma once
 ///@file
 
-#include "attr-set.hh"
-#include "eval-error.hh"
-#include "gc-alloc.hh"
-#include "types.hh"
-#include "value.hh"
-#include "nixexpr.hh"
-#include "symbol-table.hh"
-#include "config.hh"
-#include "experimental-features.hh"
-#include "search-path.hh"
-#include "repl-exit-status.hh"
-#include "backed-string-view.hh"
+#include "lix/libexpr/attr-set.hh"
+#include "lix/libexpr/eval-error.hh"
+#include "lix/libexpr/gc-alloc.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libexpr/value.hh"
+#include "lix/libexpr/nixexpr.hh"
+#include "lix/libexpr/symbol-table.hh"
+#include "lix/libutil/config.hh"
+#include "lix/libutil/experimental-features.hh"
+#include "lix/libexpr/search-path.hh"
+#include "lix/libexpr/repl-exit-status.hh"
+#include "lix/libutil/backed-string-view.hh"
 
 #include <map>
 #include <optional>
@@ -792,4 +792,4 @@ static constexpr std::string_view corepkgsPrefix{"/__corepkgs__/"};
 
 }
 
-#include "eval-inline.hh" // IWYU pragma: keep
+#include "lix/libexpr/eval-inline.hh" // IWYU pragma: keep

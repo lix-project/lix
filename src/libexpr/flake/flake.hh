@@ -1,10 +1,10 @@
 #pragma once
 ///@file
 
-#include "types.hh"
-#include "flakeref.hh"
-#include "lockfile.hh"
-#include "value.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libexpr/flake/flakeref.hh"
+#include "lix/libexpr/flake/lockfile.hh"
+#include "lix/libexpr/value.hh"
 
 namespace nix {
 

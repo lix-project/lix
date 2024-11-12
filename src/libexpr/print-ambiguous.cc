@@ -1,9 +1,9 @@
-#include "print-ambiguous.hh"
-#include "attr-set.hh"
-#include "logging.hh"
-#include "print.hh"
-#include "signals.hh"
-#include "escape-string.hh"
+#include "lix/libexpr/print-ambiguous.hh"
+#include "lix/libexpr/attr-set.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libexpr/print.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libutil/escape-string.hh"
 
 namespace nix {
 

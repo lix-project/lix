@@ -1,6 +1,6 @@
 #pragma once
 ///@file
-#include "config.hh"
+#include "lix/libutil/config.hh"
 
 namespace nix {
 

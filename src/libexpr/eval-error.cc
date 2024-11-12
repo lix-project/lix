@@ -1,6 +1,6 @@
-#include "eval-error.hh"
-#include "eval.hh"
-#include "value.hh"
+#include "lix/libexpr/eval-error.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libexpr/value.hh"
 
 namespace nix {
 

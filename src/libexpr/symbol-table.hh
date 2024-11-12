@@ -5,8 +5,8 @@
 #include <map>
 #include <unordered_map>
 
-#include "types.hh"
-#include "chunked-vector.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/chunked-vector.hh"
 
 namespace nix {
 

@@ -5,10 +5,10 @@
 #include <numeric>
 #include <vector>
 
-#include "chunked-vector.hh"
-#include "pos-idx.hh"
-#include "position.hh"
-#include "sync.hh"
+#include "lix/libutil/chunked-vector.hh"
+#include "lix/libexpr/pos-idx.hh"
+#include "lix/libutil/position.hh"
+#include "lix/libutil/sync.hh"
 
 namespace nix {
 

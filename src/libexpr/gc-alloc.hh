@@ -10,7 +10,7 @@
 #include <string_view>
 #include <vector>
 
-#include "checked-arithmetic.hh"
+#include "lix/libutil/checked-arithmetic.hh"
 
 #if HAVE_BOEHMGC
 #include <functional> // std::less

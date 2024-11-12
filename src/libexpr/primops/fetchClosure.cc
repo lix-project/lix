@@ -1,8 +1,8 @@
-#include "primops.hh"
-#include "extra-primops.hh"
-#include "store-api.hh"
-#include "make-content-addressed.hh"
-#include "url.hh"
+#include "lix/libexpr/primops.hh"
+#include "lix/libexpr/extra-primops.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/make-content-addressed.hh"
+#include "lix/libutil/url.hh"
 
 namespace nix {
 

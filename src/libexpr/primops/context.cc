@@ -1,8 +1,8 @@
-#include "primops.hh"
-#include "eval-inline.hh"
-#include "extra-primops.hh"
-#include "derivations.hh"
-#include "store-api.hh"
+#include "lix/libexpr/primops.hh"
+#include "lix/libexpr/eval-inline.hh"
+#include "lix/libexpr/extra-primops.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libstore/store-api.hh"
 
 namespace nix {
 

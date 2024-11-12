@@ -1,6 +1,6 @@
-#include "value-to-xml.hh"
-#include "xml-writer.hh"
-#include "signals.hh"
+#include "lix/libexpr/value-to-xml.hh"
+#include "lix/libutil/xml-writer.hh"
+#include "lix/libutil/signals.hh"
 
 
 namespace nix {

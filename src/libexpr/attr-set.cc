@@ -1,6 +1,6 @@
-#include "attr-set.hh"
-#include "eval.hh"
-#include "gc-alloc.hh"
+#include "lix/libexpr/attr-set.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libexpr/gc-alloc.hh"
 
 #include <algorithm>
 

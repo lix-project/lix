@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "comparator.hh"
-#include "derived-path.hh"
-#include "variant-wrapper.hh"
+#include "lix/libutil/comparator.hh"
+#include "lix/libstore/derived-path.hh"
+#include "lix/libutil/variant-wrapper.hh"
 
 #include <nlohmann/json_fwd.hpp>
 

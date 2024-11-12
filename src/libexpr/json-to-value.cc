@@ -1,6 +1,6 @@
-#include "json-to-value.hh"
-#include "value.hh"
-#include "eval.hh"
+#include "lix/libexpr/json-to-value.hh"
+#include "lix/libexpr/value.hh"
+#include "lix/libexpr/eval.hh"
 
 #include <limits>
 #include <variant>

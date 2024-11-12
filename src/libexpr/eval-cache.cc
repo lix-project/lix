@@ -1,8 +1,8 @@
-#include "eval-cache.hh"
-#include "sqlite.hh"
-#include "eval.hh"
-#include "store-api.hh"
-#include "users.hh"
+#include "lix/libexpr/eval-cache.hh"
+#include "lix/libstore/sqlite.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/users.hh"
 
 namespace nix::eval_cache {
 

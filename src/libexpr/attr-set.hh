@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "nixexpr.hh"
-#include "symbol-table.hh"
+#include "lix/libexpr/nixexpr.hh"
+#include "lix/libexpr/symbol-table.hh"
 
 #include <algorithm>
 #include <optional>

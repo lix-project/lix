@@ -1,12 +1,12 @@
-#include "primops.hh"
-#include "eval-inline.hh"
-#include "eval-settings.hh"
-#include "extra-primops.hh"
-#include "store-api.hh"
-#include "fetchers.hh"
-#include "filetransfer.hh"
-#include "registry.hh"
-#include "url.hh"
+#include "lix/libexpr/primops.hh"
+#include "lix/libexpr/eval-inline.hh"
+#include "lix/libexpr/eval-settings.hh"
+#include "lix/libexpr/extra-primops.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libfetchers/fetchers.hh"
+#include "lix/libstore/filetransfer.hh"
+#include "lix/libfetchers/registry.hh"
+#include "lix/libutil/url.hh"
 
 #include <ctime>
 #include <iomanip>

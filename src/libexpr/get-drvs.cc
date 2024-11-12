@@ -1,9 +1,9 @@
-#include "get-drvs.hh"
-#include "eval-inline.hh"
-#include "derivations.hh"
-#include "eval.hh"
-#include "store-api.hh"
-#include "path-with-outputs.hh"
+#include "lix/libexpr/get-drvs.hh"
+#include "lix/libexpr/eval-inline.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libstore/path-with-outputs.hh"
 
 #include <cstring>
 #include <regex>

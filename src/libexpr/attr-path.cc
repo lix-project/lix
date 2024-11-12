@@ -1,5 +1,5 @@
-#include "attr-path.hh"
-#include "eval-inline.hh"
+#include "lix/libexpr/attr-path.hh"
+#include "lix/libexpr/eval-inline.hh"
 
 
 namespace nix {

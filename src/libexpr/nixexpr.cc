@@ -1,9 +1,9 @@
-#include "nixexpr.hh"
-#include "derivations.hh"
-#include "eval.hh"
-#include "symbol-table.hh"
-#include "print.hh"
-#include "escape-string.hh"
+#include "lix/libexpr/nixexpr.hh"
+#include "lix/libstore/derivations.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libexpr/symbol-table.hh"
+#include "lix/libexpr/print.hh"
+#include "lix/libutil/escape-string.hh"
 
 #include <cstdlib>
 #include <sstream>

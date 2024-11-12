@@ -1,6 +1,6 @@
-#include "lockfile.hh"
-#include "store-api.hh"
-#include "url-parts.hh"
+#include "lix/libexpr/flake/lockfile.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/url-parts.hh"
 
 #include <iomanip>
 

@@ -1,8 +1,8 @@
-#include "file-system.hh"
-#include "globals.hh"
-#include "profiles.hh"
-#include "users.hh"
-#include "eval-settings.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libstore/globals.hh"
+#include "lix/libstore/profiles.hh"
+#include "lix/libutil/users.hh"
+#include "lix/libexpr/eval-settings.hh"
 
 namespace nix {
 

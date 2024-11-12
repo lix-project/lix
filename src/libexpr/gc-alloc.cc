@@ -1,4 +1,4 @@
-#include "gc-alloc.hh"
+#include "lix/libexpr/gc-alloc.hh"
 
 #include <cstring>
 #include <string_view>

@@ -1,5 +1,5 @@
-#include "function-trace.hh"
-#include "logging.hh"
+#include "lix/libexpr/function-trace.hh"
+#include "lix/libutil/logging.hh"
 
 namespace nix {
 

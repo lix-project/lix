@@ -1,4 +1,4 @@
-#include "search-path.hh"
+#include "lix/libexpr/search-path.hh"
 
 namespace nix {
 

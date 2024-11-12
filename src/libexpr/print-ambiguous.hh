@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "value.hh"
+#include "lix/libexpr/value.hh"
 
 namespace nix {
 

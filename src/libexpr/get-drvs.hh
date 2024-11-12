@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "eval.hh"
-#include "path.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libstore/path.hh"
 
 #include <string>
 #include <map>

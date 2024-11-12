@@ -1,10 +1,10 @@
 #pragma once
 ///@file
 
-#include "print.hh"
-#include "eval.hh"
-#include "eval-error.hh"
-#include "gc-alloc.hh"
+#include "lix/libexpr/print.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libexpr/eval-error.hh"
+#include "lix/libexpr/gc-alloc.hh"
 
 namespace nix {
 

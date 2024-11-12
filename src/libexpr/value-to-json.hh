@@ -1,8 +1,8 @@
 #pragma once
 ///@file
 
-#include "nixexpr.hh"
-#include "eval.hh"
+#include "lix/libexpr/nixexpr.hh"
+#include "lix/libexpr/eval.hh"
 
 #include <string>
 #include <map>

@@ -3,14 +3,14 @@
 #include <unordered_set>
 #include <sstream>
 
-#include "escape-string.hh"
-#include "print.hh"
-#include "ansicolor.hh"
-#include "store-api.hh"
-#include "english.hh"
-#include "signals.hh"
-#include "eval.hh"
-#include "terminal.hh"
+#include "lix/libutil/escape-string.hh"
+#include "lix/libexpr/print.hh"
+#include "lix/libutil/ansicolor.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/english.hh"
+#include "lix/libutil/signals.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libutil/terminal.hh"
 
 namespace nix {
 

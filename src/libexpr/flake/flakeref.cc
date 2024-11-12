@@ -1,9 +1,9 @@
-#include "flakeref.hh"
-#include "store-api.hh"
-#include "url.hh"
-#include "url-parts.hh"
-#include "fetchers.hh"
-#include "registry.hh"
+#include "lix/libexpr/flake/flakeref.hh"
+#include "lix/libstore/store-api.hh"
+#include "lix/libutil/url.hh"
+#include "lix/libutil/url-parts.hh"
+#include "lix/libfetchers/fetchers.hh"
+#include "lix/libfetchers/registry.hh"
 
 namespace nix {
 

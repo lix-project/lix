@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "sync.hh"
-#include "hash.hh"
-#include "eval.hh"
+#include "lix/libutil/sync.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libexpr/eval.hh"
 
 #include <functional>
 #include <variant>

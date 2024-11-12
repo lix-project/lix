@@ -1,15 +1,15 @@
-#include "attr-set.hh"
-#include "error.hh"
-#include "eval-settings.hh"
-#include "eval.hh"
-#include "finally.hh"
-#include "nixexpr.hh"
-#include "symbol-table.hh"
-#include "users.hh"
+#include "lix/libexpr/attr-set.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libexpr/eval-settings.hh"
+#include "lix/libexpr/eval.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libexpr/nixexpr.hh"
+#include "lix/libexpr/symbol-table.hh"
+#include "lix/libutil/users.hh"
 
-#include "change_head.hh"
-#include "grammar.hh"
-#include "state.hh"
+#include "lix/libexpr/parser/change_head.hh"
+#include "lix/libexpr/parser/grammar.hh"
+#include "lix/libexpr/parser/state.hh"
 
 #include <charconv>
 #include <memory>
@@ -18,7 +18,7 @@
 // While that is correct and generally not great, it is one of the less bad options to pick
 // in terms of diff noise.
 // NOLINTNEXTLINE(bugprone-suspicious-include)
-#include "parser-impl1.inc.cc"
+#include "lix/libexpr/parser/parser-impl1.inc.cc"
 
 namespace nix {
 

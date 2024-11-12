@@ -1,7 +1,7 @@
-#include "flake.hh"
-#include "logging.hh"
-#include "users.hh"
-#include "fetch-settings.hh"
+#include "lix/libexpr/flake/flake.hh"
+#include "lix/libutil/logging.hh"
+#include "lix/libutil/users.hh"
+#include "lix/libfetchers/fetch-settings.hh"
 
 #include <nlohmann/json.hpp>
 

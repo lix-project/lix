@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "flakeref.hh"
+#include "lix/libexpr/flake/flakeref.hh"
 
 #include <nlohmann/json_fwd.hpp>
 

@@ -4,14 +4,14 @@
 #include <map>
 #include <vector>
 
-#include "value.hh"
-#include "symbol-table.hh"
-#include "error.hh"
-#include "position.hh"
-#include "eval-error.hh"
-#include "pos-idx.hh"
-#include "pos-table.hh"
-#include "strings.hh"
+#include "lix/libexpr/value.hh"
+#include "lix/libexpr/symbol-table.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/position.hh"
+#include "lix/libexpr/eval-error.hh"
+#include "lix/libexpr/pos-idx.hh"
+#include "lix/libexpr/pos-table.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 

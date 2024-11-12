@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "eval.hh"
+#include "lix/libexpr/eval.hh"
 
 #include <string>
 #include <map>

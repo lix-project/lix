@@ -9,9 +9,9 @@
 
 #include <iostream>
 
-#include "fmt.hh"
-#include "print-options.hh"
-#include "print-elided.hh"
+#include "lix/libutil/fmt.hh"
+#include "lix/libexpr/print-options.hh"
+#include "lix/libutil/print-elided.hh"
 
 namespace nix {
 

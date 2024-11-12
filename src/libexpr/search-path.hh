@@ -3,8 +3,8 @@
 
 #include <optional>
 
-#include "types.hh"
-#include "comparator.hh"
+#include "lix/libutil/types.hh"
+#include "lix/libutil/comparator.hh"
 
 namespace nix {
 
