@@ -58,7 +58,9 @@ void FixIncludesCallbacks::InclusionDirective(
   };
 
   for (const auto &SourceDir : SourceDirs) {
-    const bool IsAlreadyFixed = FileName.starts_with("lix/lib");
+    // Ignore generated files, since they are often only used internally within
+    // a library anyhow and they are not in the normal source dir.
+    const bool IsAlreadyFixed = FileName.starts_with("lix/lib") || FileName.contains(".gen.") || FileName.ends_with(".md");
     if (File && File->getNameAsRequested().contains(SourceDir) &&
         !IsAlreadyFixed) {
       StringRef Name = File->getNameAsRequested();

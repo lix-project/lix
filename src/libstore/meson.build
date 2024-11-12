@@ -349,6 +349,7 @@ libstore = library(
   libstore_sources,
   libstore_settings_headers,
   libstore_generated_headers,
+  include_directories : [ '../include' ],
   dependencies : dependencies,
   cpp_args : cpp_args,
   cpp_pch : cpp_pch,
@@ -361,7 +362,8 @@ install_headers(libstore_headers, subdir : 'lix/libstore', preserve_path : true)
 
 # Used by libfetchers.
 liblixstore = declare_dependency(
-  include_directories : include_directories('.'),
+  # FIXME(jade): remove old '.' include directory
+  include_directories : include_directories('.', '../include'),
   sources : libstore_settings_headers,
   link_with : libstore,
 )
@@ -369,7 +371,7 @@ liblixstore = declare_dependency(
 # FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
 if is_static
   liblixstore_mstatic = declare_dependency(
-    include_directories : include_directories('.'),
+    include_directories : include_directories('.', '../include'),
     sources : libstore_settings_headers,
     link_whole : libstore,
   )

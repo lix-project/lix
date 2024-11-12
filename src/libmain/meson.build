@@ -22,6 +22,7 @@ libmain = library(
     liblixutil,
     liblixstore,
   ],
+  include_directories : [ '../include' ],
   cpp_pch : cpp_pch,
   install : true,
   # FIXME(Qyriad): is this right?
@@ -31,7 +32,7 @@ libmain = library(
 install_headers(libmain_headers, subdir : 'lix/libmain', preserve_path : true)
 
 liblixmain = declare_dependency(
-  include_directories : include_directories('.'),
+  include_directories : include_directories('.', '../include'),
   link_with : libmain,
 )
 

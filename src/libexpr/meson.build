@@ -278,6 +278,7 @@ libexpr = library(
   ],
   # for shared.hh
   include_directories : [
+    '../',
     '../libmain',
   ],
   cpp_pch : cpp_pch,
@@ -293,7 +294,8 @@ install_headers(
 )
 
 liblixexpr = declare_dependency(
-  include_directories : include_directories('.'),
+  # FIXME(jade): remove old '.' include directory
+  include_directories : include_directories('.', '../include'),
   sources : libexpr_settings_header,
   link_with : libexpr,
 )
@@ -301,7 +303,7 @@ liblixexpr = declare_dependency(
 # FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
 if is_static
   liblixexpr_mstatic = declare_dependency(
-    include_directories : include_directories('.'),
+    include_directories : include_directories('.', '../include'),
     sources : libexpr_settings_header,
     link_whole : libexpr,
   )
