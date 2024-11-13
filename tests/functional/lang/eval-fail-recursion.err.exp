@@ -1,5 +1,5 @@
 error:
-       … while evaluating 'a' to select 'foo' on it
+       … while evaluating an expression to select 'foo' on it
          at /pwd/lang/eval-fail-recursion.nix:1:21:
             1| let a = {} // a; in a.foo
              |                     ^

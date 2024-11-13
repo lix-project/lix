@@ -6,11 +6,11 @@ error:
              |   ^
             3| in somepkg.src.meta
 
-       … while evaluating 'somepkg.src' to select 'meta' on it
-         at /pwd/lang/eval-fail-select-err.nix:3:4:
+       … while evaluating an expression to select 'meta' on it
+         at /pwd/lang/eval-fail-select-err.nix:3:16:
             2|   somepkg.src = throw "invalid foo bar";
             3| in somepkg.src.meta
-             |    ^
+             |                ^
             4|
 
        … caused by explicit throw

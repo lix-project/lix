@@ -1235,9 +1235,7 @@ static std::string showAttrPath(EvalState & state, Env & env, const AttrPath & a
             out << state.ctx.symbols[getName(i, state, env)];
         } catch (Error & e) {
             assert(!i.symbol);
-            out << "\"${";
-            i.expr->show(state.ctx.symbols, out);
-            out << "}\"";
+            out << "\"${...}\"";
         }
     }
     return out.str();
@@ -1252,6 +1250,8 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
     Value * vCurrent = &vFirst;
     // Position for the current attrset Value in this select chain.
     PosIdx posCurrent;
+    // Position for the current selector in this select chain.
+    PosIdx posCurrentSyntax;
 
     try {
         e->eval(state, env, vFirst);
@@ -1259,8 +1259,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
         assert(this->e != nullptr);
         e.addTrace(
             state.ctx.positions[getPos()],
-            "while evaluating '%s' to select '%s' on it",
-            ExprPrinter(state, *this->e),
+            "while evaluating an expression to select '%s' on it",
             showAttrPath(state.ctx.symbols, this->attrPath)
         );
         throw;
@@ -1282,36 +1281,12 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
 
             Symbol const name = getName(currentAttrName, state, env);
 
-            // For formatting errors, which should be done only when needed.
-            auto partsSoFar = [&]() -> std::string {
-                std::stringstream ss;
-                // We start with the base thing this ExprSelect is selecting on.
-                assert(this->e != nullptr);
-                this->e->show(state.ctx.symbols, ss);
-
-                // Then grab each part of the attr path up to this one.
-                assert(partIdx < attrPath.size());
-                std::span<AttrName> const parts(
-                    attrPath.begin(),
-                    attrPath.begin() + partIdx
-                );
-
-                // And convert them to strings and join them.
-                for (auto const & part : parts) {
-                    auto const partName = getName(part, state, env);
-                    ss << "." << state.ctx.symbols[partName];
-                }
-
-                return ss.str();
-            };
-
             try {
                 state.forceValue(*vCurrent, pos);
             } catch (Error & e) {
                 e.addTrace(
-                    state.ctx.positions[getPos()],
-                    "while evaluating '%s' to select '%s' on it",
-                    partsSoFar(),
+                    state.ctx.positions[currentAttrName.pos],
+                    "while evaluating an expression to select '%s' on it",
                     state.ctx.symbols[name]
                 );
                 throw;
@@ -1332,8 +1307,8 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                     showType(*vCurrent),
                     ValuePrinter(state, *vCurrent, errorPrintOptions)
                 ).addTrace(
-                    pos,
-                    HintFmt("while selecting '%s' on '%s'", state.ctx.symbols[name], partsSoFar())
+                    currentAttrName.pos,
+                    HintFmt("while selecting '%s'", state.ctx.symbols[name])
                 ).debugThrow();
             }
 
@@ -1355,7 +1330,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                 }
                 auto suggestions = Suggestions::bestMatches(allAttrNames, state.ctx.symbols[name]);
                 state.ctx.errors.make<EvalError>("attribute '%s' missing", state.ctx.symbols[name])
-                    .atPos(pos)
+                    .atPos(currentAttrName.pos)
                     .withSuggestions(suggestions)
                     .withFrame(env, *this)
                     .debugThrow();
@@ -1365,10 +1340,11 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
             // Set our currently operated-on attrset to this one, and keep going.
             vCurrent = attrIt->value;
             posCurrent = attrIt->pos;
+            posCurrentSyntax = currentAttrName.pos;
             if (state.ctx.stats.countCalls) state.ctx.stats.attrSelects[posCurrent]++;
         }
 
-        state.forceValue(*vCurrent, (posCurrent ? posCurrent : this->pos));
+        state.forceValue(*vCurrent, (posCurrent ? posCurrent : posCurrentSyntax));
 
     } catch (Error & e) {
         auto pos2r = state.ctx.positions[posCurrent];

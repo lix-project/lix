@@ -1,7 +1,7 @@
 error: attribute 'x' missing
-       at /pwd/lang/eval-fail-remove.nix:4:3:
+       at /pwd/lang/eval-fail-remove.nix:4:29:
             3| in
             4|   (removeAttrs attrs ["x"]).x
-             |   ^
+             |                             ^
             5|
        Did you mean y?

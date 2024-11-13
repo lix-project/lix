@@ -1,5 +1,5 @@
 error:
-       … while evaluating the attribute 'puppy."${key}"'
+       … while evaluating the attribute 'puppy."${...}"'
          at /pwd/lang/eval-fail-attr-name-type.nix:3:5:
             2|   attrs = {
             3|     puppy.doggy = {};

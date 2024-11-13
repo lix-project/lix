@@ -581,10 +581,4 @@ fmt_internal::HintFmt & fmt_internal::HintFmt::operator%(const ValuePrinter & va
         return *this;
 }
 
-std::ostream & operator<<(std::ostream & output, ExprPrinter const & printer)
-{
-    printer.expr.show(printer.state.ctx.symbols, output);
-    return output;
-}
-
 }
