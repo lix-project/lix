@@ -13,7 +13,7 @@ error:
              |       ^
             3| in
 
-       error: assertion '(arg == "y")' failed
+       error: assertion failed
        at /pwd/lang/eval-fail-assert.nix:2:12:
             1| let
             2|   x = arg: assert arg == "y"; 123;

@@ -1827,9 +1827,10 @@ void ExprIf::eval(EvalState & state, Env & env, Value & v)
 void ExprAssert::eval(EvalState & state, Env & env, Value & v)
 {
     if (!state.evalBool(env, *cond, pos, "in the condition of the assert statement")) {
-        std::ostringstream out;
-        cond->show(state.ctx.symbols, out);
-        state.ctx.errors.make<AssertionError>("assertion '%1%' failed", out.str()).atPos(pos).withFrame(env, *this).debugThrow();
+        state.ctx.errors.make<AssertionError>("assertion failed")
+            .atPos(pos)
+            .withFrame(env, *this)
+            .debugThrow();
     }
     body->eval(state, env, v);
 }

@@ -514,7 +514,7 @@ TEST_F(ValuePrintingTests, ansiColorsAssert)
 
     ASSERT_EQ(v.type(), nAttrs);
     test(*v.attrs->begin()->value,
-         ANSI_RED "«error: assertion 'false' failed»" ANSI_NORMAL,
+         ANSI_RED "«error: assertion failed»" ANSI_NORMAL,
          PrintOptions {
              .ansiColors = true,
              .force = true
