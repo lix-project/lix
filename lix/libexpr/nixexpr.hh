@@ -28,10 +28,11 @@ struct StaticEnv;
  */
 struct AttrName
 {
+    PosIdx pos;
     Symbol symbol;
     std::unique_ptr<Expr> expr;
-    AttrName(Symbol s);
-    AttrName(std::unique_ptr<Expr> e);
+    AttrName(PosIdx pos, Symbol s);
+    AttrName(PosIdx pos, std::unique_ptr<Expr> e);
 };
 
 typedef std::vector<AttrName> AttrPath;
@@ -182,7 +183,7 @@ struct ExprSelect : Expr
     AttrPath attrPath;
 
     ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, AttrPath attrPath, std::unique_ptr<Expr> def) : pos(pos), e(std::move(e)), def(std::move(def)), attrPath(std::move(attrPath)) { };
-    ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, Symbol name) : pos(pos), e(std::move(e)) { attrPath.push_back(AttrName(name)); };
+    ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, const PosIdx namePos, Symbol name) : pos(pos), e(std::move(e)) { attrPath.push_back(AttrName(namePos, name)); };
     PosIdx getPos() const override { return pos; }
     COMMON_METHODS
 };

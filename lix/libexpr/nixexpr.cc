@@ -21,11 +21,11 @@ std::ostream & operator <<(std::ostream & str, const SymbolStr & symbol)
     return printIdentifier(str, s);
 }
 
-AttrName::AttrName(Symbol s) : symbol(s)
+AttrName::AttrName(PosIdx pos, Symbol s) : pos(pos), symbol(s)
 {
 }
 
-AttrName::AttrName(std::unique_ptr<Expr> e) : expr(std::move(e))
+AttrName::AttrName(PosIdx pos, std::unique_ptr<Expr> e) : pos(pos), expr(std::move(e))
 {
 }
 
