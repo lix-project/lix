@@ -53,6 +53,7 @@
   util-linuxMinimal ? utillinuxMinimal,
   utillinuxMinimal ? null,
   xz,
+  yq,
 
   busybox-sandbox-shell,
 
@@ -270,6 +271,7 @@ stdenv.mkDerivation (finalAttrs: {
       git
       mercurial
       jq
+      yq
       lsof
     ]
     ++ lib.optional hostPlatform.isLinux util-linuxMinimal

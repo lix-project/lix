@@ -1,1 +1,38 @@
-[ ({ a = rec { __overrides = { }; }; }) (rec { __overrides = { }; }) ({ __overrides = { }; }) (rec { "${("__overrides" + "")}" = { }; }) ]
+_type: ExprList
+elems:
+  - _type: ExprSet
+    attrs:
+      a:
+        _type: ExprSet
+        attrs:
+          __overrides:
+            _type: ExprSet
+            recursive: false
+        recursive: true
+    recursive: false
+  - _type: ExprSet
+    attrs:
+      __overrides:
+        _type: ExprSet
+        recursive: false
+    recursive: true
+  - _type: ExprSet
+    attrs:
+      __overrides:
+        _type: ExprSet
+        recursive: false
+    recursive: false
+  - _type: ExprSet
+    dynamicAttrs:
+      - name:
+          _type: ExprConcatStrings
+          es:
+            - _type: ExprString
+              value: __overrides
+            - _type: ExprString
+              value: ''
+          forceString: false
+        value:
+          _type: ExprSet
+          recursive: false
+    recursive: true

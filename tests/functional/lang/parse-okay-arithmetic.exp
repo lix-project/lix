@@ -1,1 +1,35 @@
-(__sub (7 + (__div (__mul (__sub 0 5) 12) 3)) 1)
+_type: ExprCall
+args:
+  - _type: ExprConcatStrings
+    es:
+      - _type: ExprInt
+        value: 7
+      - _type: ExprCall
+        args:
+          - _type: ExprCall
+            args:
+              - _type: ExprCall
+                args:
+                  - _type: ExprInt
+                    value: 0
+                  - _type: ExprInt
+                    value: 5
+                fun:
+                  _type: ExprVar
+                  value: __sub
+              - _type: ExprInt
+                value: 12
+            fun:
+              _type: ExprVar
+              value: __mul
+          - _type: ExprInt
+            value: 3
+        fun:
+          _type: ExprVar
+          value: __div
+    forceString: false
+  - _type: ExprInt
+    value: 1
+fun:
+  _type: ExprVar
+  value: __sub

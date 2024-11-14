@@ -31,7 +31,7 @@ void processExpr(EvalState & state, const Strings & attrPaths,
     bool evalOnly, OutputKind output, bool location, Expr & e)
 {
     if (parseOnly) {
-        e.show(state.ctx.symbols, std::cout);
+        std::cout << e.toJSON(state.ctx.symbols).dump(2);
         std::cout << "\n";
         return;
     }

@@ -1,1 +1,16 @@
-{ x = { q = 3; y = 3; z = 3; }; }
+_type: ExprSet
+attrs:
+  x:
+    _type: ExprSet
+    attrs:
+      q:
+        _type: ExprInt
+        value: 3
+      y:
+        _type: ExprInt
+        value: 3
+      z:
+        _type: ExprInt
+        value: 3
+    recursive: false
+recursive: false

@@ -1,1 +1,375 @@
-(let s1 = "This is an indented multi-line string\nliteral.  An amount of whitespace at\nthe start of each line matching the minimum\nindentation of all lines in the string\nliteral together will be removed.  Thus,\nin this case four spaces will be\nstripped from each line, even though\n  THIS LINE is indented six spaces.\n\nAlso, empty lines don't count in the\ndetermination of the indentation level (the\nprevious empty line has indentation 0, but\nit doesn't matter).\n"; s10 = ""; s11 = ""; s12 = ""; s13 = ("start on network-interfaces\n\nstart script\n\n  rm -f /var/run/opengl-driver\n  " + "${(if true then "ln -sf 123 /var/run/opengl-driver" else (if true then "ln -sf 456 /var/run/opengl-driver" else ""))}" + "\n\n  rm -f /var/log/slim.log\n   \nend script\n\nenv SLIM_CFGFILE=" + "abc" + "\nenv SLIM_THEMESDIR=" + "def" + "\nenv FONTCONFIG_FILE=/etc/fonts/fonts.conf  \t\t\t\t# !!! cleanup\nenv XKB_BINDIR=" + "foo" + "/bin         \t\t\t\t# Needed for the Xkb extension.\nenv LD_LIBRARY_PATH=" + "libX11" + "/lib:" + "libXext" + "/lib:/usr/lib/          # related to xorg-sys-opengl - needed to load libglx for (AI)GLX support (for compiz)\n\n" + "${(if true then ("env XORG_DRI_DRIVER_PATH=" + "nvidiaDrivers" + "/X11R6/lib/modules/drivers/") else (if true then ("env XORG_DRI_DRIVER_PATH=" + "mesa" + "/lib/modules/dri") else ""))}" + " \n\nexec " + "slim" + "/bin/slim\n"); s14 = "Escaping of ' followed by ': ''\nEscaping of $ followed by {: \${\nAnd finally to interpret \\n etc. as in a string: \n, \r, \t.\n"; s15 = (let x = "bla"; in ("foo\n'" + "${x}" + "'\nbar\n")); s16 = "cut -d $'\\t' -f 1\n"; s17 = (("ending dollar $" + "$") + "\n"); s18 = "    Lines without any indentation effectively disable the indentation\n    stripping for the entire string:\n\n        cat >$out/foo/data <<EOF\n        lasjdöaxnasd\nasdom 12398\nä\"§Æẞ¢«»”alsd\nEOF\n"; s19 = "Empty lines with a bit of whitespace don't affect the indentation calculation:\n\nAnd empty lines with more whitespace will have whitespace in the string:\n          \nUnless it's the last line:\n"; s2 = "If the string starts with whitespace\n  followed by a newline, it's stripped, but\n  that's not the case here. Two spaces are\n  stripped because of the \"  \" at the start. \n"; s20 = "  Indentation stripping\n  must not be impressed by\nthe last line not being empty"; s21 = "\t  Nor by people\n    weirdly mixing tabs\n\tand spaces\n\t"; s3 = "This line is indented\na bit further.\n"; s4 = ("Anti-quotations, like " + "${(if true then "so" else "not so")}" + ", are\nalso allowed.\n"); s5 = ("  The \\ is not special here.\n' can be followed by any character except another ', e.g. 'x'.\nLikewise for $, e.g. $$ or $varName.\nBut ' followed by ' is special, as is $ followed by {.\nIf you want them, use anti-quotations: " + "''" + ", " + "\${" + ".\n"); s6 = "   Tabs are not interpreted as whitespace (since we can't guess\n   what tab settings are intended), so don't use them.\n\tThis line starts with a space and a tab, so only one\n   space will be stripped from each line.\n"; s7 = "Also note that if the last line (just before the closing ' ')\nconsists only of whitespace, it's ignored.  But here there is\nsome non-whitespace stuff, so the line isn't removed. "; s8 = ("" + "\nThis shows a hacky way to preserve an empty line after the start.\nBut there's no reason to do so: you could just repeat the empty\nline.\n"); s9 = ("" + "  Similarly you can force an indentation level,\n  in this case to 2 spaces.  This works because the anti-quote\n  is significant (not whitespace).\n"); in ((((((((((((((((((((s1 + s2) + s3) + s4) + s5) + s6) + s7) + s8) + s9) + s10) + s11) + s12) + s13) + s14) + s15) + s16) + s17) + s18) + s19) + s20) + s21))
+_type: ExprLet
+attrs:
+  s1:
+    _type: ExprString
+    value: "This is an indented multi-line string\nliteral.  An amount of whitespace\
+      \ at\nthe start of each line matching the minimum\nindentation of all lines\
+      \ in the string\nliteral together will be removed.  Thus,\nin this case four\
+      \ spaces will be\nstripped from each line, even though\n  THIS LINE is indented\
+      \ six spaces.\n\nAlso, empty lines don't count in the\ndetermination of the\
+      \ indentation level (the\nprevious empty line has indentation 0, but\nit doesn't\
+      \ matter).\n"
+  s10:
+    _type: ExprString
+    value: ''
+  s11:
+    _type: ExprString
+    value: ''
+  s12:
+    _type: ExprString
+    value: ''
+  s13:
+    _type: ExprConcatStrings
+    es:
+      - _type: ExprString
+        value: "start on network-interfaces\n\nstart script\n\n  rm -f /var/run/opengl-driver\n\
+          \  "
+      - _type: ExprIf
+        cond:
+          _type: ExprVar
+          value: 'true'
+        else:
+          _type: ExprIf
+          cond:
+            _type: ExprVar
+            value: 'true'
+          else:
+            _type: ExprString
+            value: ''
+          then:
+            _type: ExprString
+            value: ln -sf 456 /var/run/opengl-driver
+        then:
+          _type: ExprString
+          value: ln -sf 123 /var/run/opengl-driver
+      - _type: ExprString
+        value: "\n\n  rm -f /var/log/slim.log\n   \nend script\n\nenv SLIM_CFGFILE="
+      - _type: ExprString
+        value: abc
+      - _type: ExprString
+        value: '
+
+          env SLIM_THEMESDIR='
+      - _type: ExprString
+        value: def
+      - _type: ExprString
+        value: "\nenv FONTCONFIG_FILE=/etc/fonts/fonts.conf  \t\t\t\t# !!! cleanup\n\
+          env XKB_BINDIR="
+      - _type: ExprString
+        value: foo
+      - _type: ExprString
+        value: "/bin         \t\t\t\t# Needed for the Xkb extension.\nenv LD_LIBRARY_PATH="
+      - _type: ExprString
+        value: libX11
+      - _type: ExprString
+        value: '/lib:'
+      - _type: ExprString
+        value: libXext
+      - _type: ExprString
+        value: '/lib:/usr/lib/          # related to xorg-sys-opengl - needed to load
+          libglx for (AI)GLX support (for compiz)
+
+
+          '
+      - _type: ExprIf
+        cond:
+          _type: ExprVar
+          value: 'true'
+        else:
+          _type: ExprIf
+          cond:
+            _type: ExprVar
+            value: 'true'
+          else:
+            _type: ExprString
+            value: ''
+          then:
+            _type: ExprConcatStrings
+            es:
+              - _type: ExprString
+                value: env XORG_DRI_DRIVER_PATH=
+              - _type: ExprString
+                value: mesa
+              - _type: ExprString
+                value: /lib/modules/dri
+            forceString: true
+        then:
+          _type: ExprConcatStrings
+          es:
+            - _type: ExprString
+              value: env XORG_DRI_DRIVER_PATH=
+            - _type: ExprString
+              value: nvidiaDrivers
+            - _type: ExprString
+              value: /X11R6/lib/modules/drivers/
+          forceString: true
+      - _type: ExprString
+        value: " \n\nexec "
+      - _type: ExprString
+        value: slim
+      - _type: ExprString
+        value: '/bin/slim
+
+          '
+    forceString: true
+  s14:
+    _type: ExprString
+    value: "Escaping of ' followed by ': ''\nEscaping of $ followed by {: ${\nAnd\
+      \ finally to interpret \\n etc. as in a string: \n, \r, \t.\n"
+  s15:
+    _type: ExprLet
+    attrs:
+      x:
+        _type: ExprString
+        value: bla
+    body:
+      _type: ExprConcatStrings
+      es:
+        - _type: ExprString
+          value: 'foo
+
+            '''
+        - _type: ExprVar
+          value: x
+        - _type: ExprString
+          value: '''
+
+            bar
+
+            '
+      forceString: true
+  s16:
+    _type: ExprString
+    value: 'cut -d $''\t'' -f 1
+
+      '
+  s17:
+    _type: ExprConcatStrings
+    es:
+      - _type: ExprConcatStrings
+        es:
+          - _type: ExprString
+            value: ending dollar $
+          - _type: ExprString
+            value: $
+        forceString: false
+      - _type: ExprString
+        value: '
+
+          '
+    forceString: false
+  s18:
+    _type: ExprString
+    value: "    Lines without any indentation effectively disable the indentation\n\
+      \    stripping for the entire string:\n\n        cat >$out/foo/data <<EOF\n\
+      \        lasjdöaxnasd\nasdom 12398\nä\"§Æẞ¢«»”alsd\nEOF\n"
+  s19:
+    _type: ExprString
+    value: "Empty lines with a bit of whitespace don't affect the indentation calculation:\n\
+      \nAnd empty lines with more whitespace will have whitespace in the string:\n\
+      \          \nUnless it's the last line:\n"
+  s2:
+    _type: ExprString
+    value: "If the string starts with whitespace\n  followed by a newline, it's stripped,\
+      \ but\n  that's not the case here. Two spaces are\n  stripped because of the\
+      \ \"  \" at the start. \n"
+  s20:
+    _type: ExprString
+    value: "  Indentation stripping\n  must not be impressed by\nthe last line not\
+      \ being empty"
+  s21:
+    _type: ExprString
+    value: "\t  Nor by people\n    weirdly mixing tabs\n\tand spaces\n\t"
+  s3:
+    _type: ExprString
+    value: 'This line is indented
+
+      a bit further.
+
+      '
+  s4:
+    _type: ExprConcatStrings
+    es:
+      - _type: ExprString
+        value: 'Anti-quotations, like '
+      - _type: ExprIf
+        cond:
+          _type: ExprVar
+          value: 'true'
+        else:
+          _type: ExprString
+          value: not so
+        then:
+          _type: ExprString
+          value: so
+      - _type: ExprString
+        value: ', are
+
+          also allowed.
+
+          '
+    forceString: true
+  s5:
+    _type: ExprConcatStrings
+    es:
+      - _type: ExprString
+        value: '  The \ is not special here.
+
+          '' can be followed by any character except another '', e.g. ''x''.
+
+          Likewise for $, e.g. $$ or $varName.
+
+          But '' followed by '' is special, as is $ followed by {.
+
+          If you want them, use anti-quotations: '
+      - _type: ExprString
+        value: ''''''
+      - _type: ExprString
+        value: ', '
+      - _type: ExprString
+        value: ${
+      - _type: ExprString
+        value: '.
+
+          '
+    forceString: true
+  s6:
+    _type: ExprString
+    value: "   Tabs are not interpreted as whitespace (since we can't guess\n   what\
+      \ tab settings are intended), so don't use them.\n\tThis line starts with a\
+      \ space and a tab, so only one\n   space will be stripped from each line.\n"
+  s7:
+    _type: ExprString
+    value: 'Also note that if the last line (just before the closing '' '')
+
+      consists only of whitespace, it''s ignored.  But here there is
+
+      some non-whitespace stuff, so the line isn''t removed. '
+  s8:
+    _type: ExprConcatStrings
+    es:
+      - _type: ExprString
+        value: ''
+      - _type: ExprString
+        value: '
+
+          This shows a hacky way to preserve an empty line after the start.
+
+          But there''s no reason to do so: you could just repeat the empty
+
+          line.
+
+          '
+    forceString: true
+  s9:
+    _type: ExprConcatStrings
+    es:
+      - _type: ExprString
+        value: ''
+      - _type: ExprString
+        value: "  Similarly you can force an indentation level,\n  in this case to\
+          \ 2 spaces.  This works because the anti-quote\n  is significant (not whitespace).\n"
+    forceString: true
+body:
+  _type: ExprConcatStrings
+  es:
+    - _type: ExprConcatStrings
+      es:
+        - _type: ExprConcatStrings
+          es:
+            - _type: ExprConcatStrings
+              es:
+                - _type: ExprConcatStrings
+                  es:
+                    - _type: ExprConcatStrings
+                      es:
+                        - _type: ExprConcatStrings
+                          es:
+                            - _type: ExprConcatStrings
+                              es:
+                                - _type: ExprConcatStrings
+                                  es:
+                                    - _type: ExprConcatStrings
+                                      es:
+                                        - _type: ExprConcatStrings
+                                          es:
+                                            - _type: ExprConcatStrings
+                                              es:
+                                                - _type: ExprConcatStrings
+                                                  es:
+                                                    - _type: ExprConcatStrings
+                                                      es:
+                                                        - _type: ExprConcatStrings
+                                                          es:
+                                                            - _type: ExprConcatStrings
+                                                              es:
+                                                                - _type: ExprConcatStrings
+                                                                  es:
+                                                                    - _type: ExprConcatStrings
+                                                                      es:
+                                                                        - _type: ExprConcatStrings
+                                                                          es:
+                                                                            - _type: ExprConcatStrings
+                                                                              es:
+                                                                                - _type: ExprVar
+                                                                                  value: s1
+                                                                                - _type: ExprVar
+                                                                                  value: s2
+                                                                              forceString: false
+                                                                            - _type: ExprVar
+                                                                              value: s3
+                                                                          forceString: false
+                                                                        - _type: ExprVar
+                                                                          value: s4
+                                                                      forceString: false
+                                                                    - _type: ExprVar
+                                                                      value: s5
+                                                                  forceString: false
+                                                                - _type: ExprVar
+                                                                  value: s6
+                                                              forceString: false
+                                                            - _type: ExprVar
+                                                              value: s7
+                                                          forceString: false
+                                                        - _type: ExprVar
+                                                          value: s8
+                                                      forceString: false
+                                                    - _type: ExprVar
+                                                      value: s9
+                                                  forceString: false
+                                                - _type: ExprVar
+                                                  value: s10
+                                              forceString: false
+                                            - _type: ExprVar
+                                              value: s11
+                                          forceString: false
+                                        - _type: ExprVar
+                                          value: s12
+                                      forceString: false
+                                    - _type: ExprVar
+                                      value: s13
+                                  forceString: false
+                                - _type: ExprVar
+                                  value: s14
+                              forceString: false
+                            - _type: ExprVar
+                              value: s15
+                          forceString: false
+                        - _type: ExprVar
+                          value: s16
+                      forceString: false
+                    - _type: ExprVar
+                      value: s17
+                  forceString: false
+                - _type: ExprVar
+                  value: s18
+              forceString: false
+            - _type: ExprVar
+              value: s19
+          forceString: false
+        - _type: ExprVar
+          value: s20
+      forceString: false
+    - _type: ExprVar
+      value: s21
+  forceString: false

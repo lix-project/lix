@@ -13,8 +13,9 @@
 #include "lix/libexpr/pos-table.hh"
 #include "lix/libutil/strings.hh"
 
-namespace nix {
+#include <nlohmann/json.hpp>
 
+namespace nix {
 
 struct Env;
 struct Value;
@@ -38,6 +39,7 @@ struct AttrName
 typedef std::vector<AttrName> AttrPath;
 
 std::string showAttrPath(const SymbolTable & symbols, const AttrPath & attrPath);
+nlohmann::json printAttrPathToJson(const SymbolTable & symbols, const AttrPath & attrPath);
 
 
 /* Abstract syntax of Nix expressions. */
@@ -59,7 +61,7 @@ public:
     Expr & operator=(const Expr &) = delete;
     virtual ~Expr() { };
 
-    virtual void show(const SymbolTable & symbols, std::ostream & str) const;
+    virtual nlohmann::json toJSON(const SymbolTable & symbols) const;
     virtual void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env);
     virtual void eval(EvalState & state, Env & env, Value & v);
     virtual Value * maybeThunk(EvalState & state, Env & env);
@@ -68,7 +70,7 @@ public:
 };
 
 #define COMMON_METHODS \
-    void show(const SymbolTable & symbols, std::ostream & str) const override; \
+    nlohmann::json toJSON(const SymbolTable & symbols) const override; \
     void eval(EvalState & state, Env & env, Value & v) override; \
     void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
 
@@ -163,7 +165,7 @@ struct ExprInheritFrom : ExprVar
         this->fromWith = nullptr;
     }
 
-    void show(SymbolTable const & symbols, std::ostream & str) const override;
+    nlohmann::json toJSON(SymbolTable const & symbols) const override;
     void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
 };
 
@@ -254,7 +256,7 @@ struct ExprAttrs
     std::shared_ptr<const StaticEnv> bindInheritSources(
         Evaluator & es, const std::shared_ptr<const StaticEnv> & env);
     Env * buildInheritFromEnv(EvalState & state, Env & up);
-    void showBindings(const SymbolTable & symbols, std::ostream & str) const;
+    void addBindingsToJSON(nlohmann::json & out, const SymbolTable & symbols) const;
 };
 
 struct ExprSet : Expr, ExprAttrs {
@@ -431,9 +433,13 @@ struct ExprOpNot : Expr
         std::unique_ptr<Expr> e1, e2; \
         name(std::unique_ptr<Expr> e1, std::unique_ptr<Expr> e2) : e1(std::move(e1)), e2(std::move(e2)) { }; \
         name(const PosIdx & pos, std::unique_ptr<Expr> e1, std::unique_ptr<Expr> e2) : pos(pos), e1(std::move(e1)), e2(std::move(e2)) { }; \
-        void show(const SymbolTable & symbols, std::ostream & str) const override \
+        nlohmann::json toJSON(const SymbolTable & symbols) const override \
         { \
-            str << "("; e1->show(symbols, str); str << " " s " "; e2->show(symbols, str); str << ")"; \
+            return { \
+                {"_type", #name}, \
+                {"e1", e1->toJSON(symbols)}, \
+                {"e2", e2->toJSON(symbols)} \
+            };\
         } \
         void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override \
         { \
@@ -473,7 +479,6 @@ struct ExprPos : Expr
 /* only used to mark thunks as black holes. */
 struct ExprBlackHole : Expr
 {
-    void show(const SymbolTable & symbols, std::ostream & str) const override {}
     void eval(EvalState & state, Env & env, Value & v) override;
     void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override {}
 };

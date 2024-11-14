@@ -1,1 +1,346 @@
-({ db4 ? null, expat, fetchurl, httpServer ? false, httpd ? null, j2sdk ? null, javaSwigBindings ? false, javahlBindings ? false, localServer ? false, openssl ? null, pythonBindings ? false, sslSupport ? false, stdenv, swig ? null }: assert (expat != null); assert (localServer -> (db4 != null)); assert (httpServer -> ((httpd != null) && ((httpd).expat == expat))); assert (sslSupport -> ((openssl != null) && (httpServer -> ((httpd).openssl == openssl)))); assert (pythonBindings -> ((swig != null) && (swig).pythonSupport)); assert (javaSwigBindings -> ((swig != null) && (swig).javaSupport)); assert (javahlBindings -> (j2sdk != null)); ((stdenv).mkDerivation { inherit expat httpServer javaSwigBindings javahlBindings localServer pythonBindings sslSupport; builder = /foo/bar; db4 = (if localServer then db4 else null); httpd = (if httpServer then httpd else null); j2sdk = (if javaSwigBindings then (swig).j2sdk else (if javahlBindings then j2sdk else null)); name = "subversion-1.1.1"; openssl = (if sslSupport then openssl else null); patches = (if javahlBindings then [ (/javahl.patch) ] else [ ]); python = (if pythonBindings then (swig).python else null); src = (fetchurl { md5 = "a180c3fe91680389c210c99def54d9e0"; url = "http://subversion.tigris.org/tarballs/subversion-1.1.1.tar.bz2"; }); swig = (if (pythonBindings || javaSwigBindings) then swig else null); }))
+_type: ExprLambda
+body:
+  _type: ExprAssert
+  body:
+    _type: ExprAssert
+    body:
+      _type: ExprAssert
+      body:
+        _type: ExprAssert
+        body:
+          _type: ExprAssert
+          body:
+            _type: ExprAssert
+            body:
+              _type: ExprAssert
+              body:
+                _type: ExprCall
+                args:
+                  - _type: ExprSet
+                    attrs:
+                      builder:
+                        _type: ExprPath
+                        value: /foo/bar
+                      db4:
+                        _type: ExprIf
+                        cond:
+                          _type: ExprVar
+                          value: localServer
+                        else:
+                          _type: ExprVar
+                          value: 'null'
+                        then:
+                          _type: ExprVar
+                          value: db4
+                      httpd:
+                        _type: ExprIf
+                        cond:
+                          _type: ExprVar
+                          value: httpServer
+                        else:
+                          _type: ExprVar
+                          value: 'null'
+                        then:
+                          _type: ExprVar
+                          value: httpd
+                      j2sdk:
+                        _type: ExprIf
+                        cond:
+                          _type: ExprVar
+                          value: javaSwigBindings
+                        else:
+                          _type: ExprIf
+                          cond:
+                            _type: ExprVar
+                            value: javahlBindings
+                          else:
+                            _type: ExprVar
+                            value: 'null'
+                          then:
+                            _type: ExprVar
+                            value: j2sdk
+                        then:
+                          _type: ExprSelect
+                          attrs:
+                            - j2sdk
+                          e:
+                            _type: ExprVar
+                            value: swig
+                      name:
+                        _type: ExprString
+                        value: subversion-1.1.1
+                      openssl:
+                        _type: ExprIf
+                        cond:
+                          _type: ExprVar
+                          value: sslSupport
+                        else:
+                          _type: ExprVar
+                          value: 'null'
+                        then:
+                          _type: ExprVar
+                          value: openssl
+                      patches:
+                        _type: ExprIf
+                        cond:
+                          _type: ExprVar
+                          value: javahlBindings
+                        else:
+                          _type: ExprList
+                          elems: []
+                        then:
+                          _type: ExprList
+                          elems:
+                            - _type: ExprPath
+                              value: /javahl.patch
+                      python:
+                        _type: ExprIf
+                        cond:
+                          _type: ExprVar
+                          value: pythonBindings
+                        else:
+                          _type: ExprVar
+                          value: 'null'
+                        then:
+                          _type: ExprSelect
+                          attrs:
+                            - python
+                          e:
+                            _type: ExprVar
+                            value: swig
+                      src:
+                        _type: ExprCall
+                        args:
+                          - _type: ExprSet
+                            attrs:
+                              md5:
+                                _type: ExprString
+                                value: a180c3fe91680389c210c99def54d9e0
+                              url:
+                                _type: ExprString
+                                value: http://subversion.tigris.org/tarballs/subversion-1.1.1.tar.bz2
+                            recursive: false
+                        fun:
+                          _type: ExprVar
+                          value: fetchurl
+                      swig:
+                        _type: ExprIf
+                        cond:
+                          _type: ExprOpOr
+                          e1:
+                            _type: ExprVar
+                            value: pythonBindings
+                          e2:
+                            _type: ExprVar
+                            value: javaSwigBindings
+                        else:
+                          _type: ExprVar
+                          value: 'null'
+                        then:
+                          _type: ExprVar
+                          value: swig
+                    inherit:
+                      expat:
+                        _type: ExprVar
+                        value: expat
+                      httpServer:
+                        _type: ExprVar
+                        value: httpServer
+                      javaSwigBindings:
+                        _type: ExprVar
+                        value: javaSwigBindings
+                      javahlBindings:
+                        _type: ExprVar
+                        value: javahlBindings
+                      localServer:
+                        _type: ExprVar
+                        value: localServer
+                      pythonBindings:
+                        _type: ExprVar
+                        value: pythonBindings
+                      sslSupport:
+                        _type: ExprVar
+                        value: sslSupport
+                    recursive: false
+                fun:
+                  _type: ExprSelect
+                  attrs:
+                    - mkDerivation
+                  e:
+                    _type: ExprVar
+                    value: stdenv
+              cond:
+                _type: ExprOpImpl
+                e1:
+                  _type: ExprVar
+                  value: javahlBindings
+                e2:
+                  _type: ExprOpNEq
+                  e1:
+                    _type: ExprVar
+                    value: j2sdk
+                  e2:
+                    _type: ExprVar
+                    value: 'null'
+            cond:
+              _type: ExprOpImpl
+              e1:
+                _type: ExprVar
+                value: javaSwigBindings
+              e2:
+                _type: ExprOpAnd
+                e1:
+                  _type: ExprOpNEq
+                  e1:
+                    _type: ExprVar
+                    value: swig
+                  e2:
+                    _type: ExprVar
+                    value: 'null'
+                e2:
+                  _type: ExprSelect
+                  attrs:
+                    - javaSupport
+                  e:
+                    _type: ExprVar
+                    value: swig
+          cond:
+            _type: ExprOpImpl
+            e1:
+              _type: ExprVar
+              value: pythonBindings
+            e2:
+              _type: ExprOpAnd
+              e1:
+                _type: ExprOpNEq
+                e1:
+                  _type: ExprVar
+                  value: swig
+                e2:
+                  _type: ExprVar
+                  value: 'null'
+              e2:
+                _type: ExprSelect
+                attrs:
+                  - pythonSupport
+                e:
+                  _type: ExprVar
+                  value: swig
+        cond:
+          _type: ExprOpImpl
+          e1:
+            _type: ExprVar
+            value: sslSupport
+          e2:
+            _type: ExprOpAnd
+            e1:
+              _type: ExprOpNEq
+              e1:
+                _type: ExprVar
+                value: openssl
+              e2:
+                _type: ExprVar
+                value: 'null'
+            e2:
+              _type: ExprOpImpl
+              e1:
+                _type: ExprVar
+                value: httpServer
+              e2:
+                _type: ExprOpEq
+                e1:
+                  _type: ExprSelect
+                  attrs:
+                    - openssl
+                  e:
+                    _type: ExprVar
+                    value: httpd
+                e2:
+                  _type: ExprVar
+                  value: openssl
+      cond:
+        _type: ExprOpImpl
+        e1:
+          _type: ExprVar
+          value: httpServer
+        e2:
+          _type: ExprOpAnd
+          e1:
+            _type: ExprOpNEq
+            e1:
+              _type: ExprVar
+              value: httpd
+            e2:
+              _type: ExprVar
+              value: 'null'
+          e2:
+            _type: ExprOpEq
+            e1:
+              _type: ExprSelect
+              attrs:
+                - expat
+              e:
+                _type: ExprVar
+                value: httpd
+            e2:
+              _type: ExprVar
+              value: expat
+    cond:
+      _type: ExprOpImpl
+      e1:
+        _type: ExprVar
+        value: localServer
+      e2:
+        _type: ExprOpNEq
+        e1:
+          _type: ExprVar
+          value: db4
+        e2:
+          _type: ExprVar
+          value: 'null'
+  cond:
+    _type: ExprOpNEq
+    e1:
+      _type: ExprVar
+      value: expat
+    e2:
+      _type: ExprVar
+      value: 'null'
+formals:
+  db4:
+    _type: ExprVar
+    value: 'null'
+  expat: null
+  fetchurl: null
+  httpServer:
+    _type: ExprVar
+    value: 'false'
+  httpd:
+    _type: ExprVar
+    value: 'null'
+  j2sdk:
+    _type: ExprVar
+    value: 'null'
+  javaSwigBindings:
+    _type: ExprVar
+    value: 'false'
+  javahlBindings:
+    _type: ExprVar
+    value: 'false'
+  localServer:
+    _type: ExprVar
+    value: 'false'
+  openssl:
+    _type: ExprVar
+    value: 'null'
+  pythonBindings:
+    _type: ExprVar
+    value: 'false'
+  sslSupport:
+    _type: ExprVar
+    value: 'false'
+  stdenv: null
+  swig:
+    _type: ExprVar
+    value: 'null'
+formalsEllipsis: false

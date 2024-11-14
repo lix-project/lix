@@ -1,1 +1,15 @@
-rec { foo = "multi\nline\n  string\n  test\r"; x = y; y = 123; z = 456; }
+_type: ExprSet
+attrs:
+  foo:
+    _type: ExprString
+    value: "multi\nline\n  string\n  test\r"
+  x:
+    _type: ExprVar
+    value: y
+  y:
+    _type: ExprInt
+    value: 123
+  z:
+    _type: ExprInt
+    value: 456
+recursive: true

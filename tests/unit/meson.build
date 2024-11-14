@@ -201,7 +201,6 @@ libexpr_tests_sources = files(
   'libexpr/primops.cc',
   'libexpr/search-path.cc',
   'libexpr/trivial.cc',
-  'libexpr/expr-print.cc',
   'libexpr/value/context.cc',
   'libexpr/value/print.cc',
 )
