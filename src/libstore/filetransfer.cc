@@ -55,14 +55,7 @@ struct curlFileTransfer : public FileTransfer
         std::unique_ptr<FILE, decltype([](FILE * f) { fclose(f); })> uploadData;
         Sync<DownloadState> downloadState;
         std::condition_variable downloadEvent;
-        enum {
-            /// nothing has been transferred yet
-            initialSetup,
-            /// data transfer in progress
-            transferring,
-            /// transfer complete, result or failure reported
-            transferComplete,
-        } phase = initialSetup;
+        bool headersDone = false;
         std::promise<FileTransferResult> metadataPromise;
         std::string statusMsg;
 
@@ -192,12 +185,12 @@ struct curlFileTransfer : public FileTransfer
 
         void failEx(std::exception_ptr ex)
         {
-            assert(phase != transferComplete);
-            if (phase == initialSetup) {
+            auto state = downloadState.lock();
+            assert(!state->done && !state->exc);
+            if (!headersDone) {
                 metadataPromise.set_exception(ex);
             }
-            phase = transferComplete;
-            downloadState.lock()->exc = ex;
+            state->exc = ex;
             downloadEvent.notify_all();
         }
 
@@ -209,7 +202,7 @@ struct curlFileTransfer : public FileTransfer
 
         void maybeFinishSetup()
         {
-            if (phase > initialSetup) {
+            if (headersDone) {
                 return;
             }
 
@@ -221,10 +214,8 @@ struct curlFileTransfer : public FileTransfer
 
             result.cached = getHTTPStatus() == 304;
 
-            if (phase == initialSetup) {
-                metadataPromise.set_value(result);
-            }
-            phase = transferring;
+            metadataPromise.set_value(result);
+            headersDone = true;
         }
 
         std::exception_ptr callbackException;
@@ -338,7 +329,6 @@ struct curlFileTransfer : public FileTransfer
             else if (code == CURLE_OK && successfulStatuses.count(httpStatus))
             {
                 act.progress(bodySize, bodySize);
-                phase = transferComplete;
                 downloadState.lock()->done = true;
                 downloadEvent.notify_all();
             }
