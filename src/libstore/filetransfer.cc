@@ -861,52 +861,41 @@ struct curlFileTransfer : public FileTransfer
             return true;
         }
 
-        void awaitData()
+        bool awaitData()
         {
-            withRetries([&] {
+            return withRetries([&] {
                 /* Grab data if available, otherwise wait for the download
                    thread to wake us up. */
                 while (buffered.empty()) {
                     auto state(transfer->downloadState.lock());
 
-                    if (state->data.empty()) {
-                        if (state->exc) {
-                            std::rethrow_exception(state->exc);
-                        } else if (state->done) {
-                            return;
-                        }
-
+                    if (!state->data.empty()) {
+                        chunk = std::move(state->data);
+                        buffered = chunk;
+                        totalReceived += chunk.size();
+                        parent.unpause(transfer);
+                    } else if (state->exc) {
+                        std::rethrow_exception(state->exc);
+                    } else if (state->done) {
+                        return false;
+                    } else {
                         parent.unpause(transfer);
                         state.wait(transfer->downloadEvent);
                     }
-
-                    chunk = std::move(state->data);
-                    buffered = chunk;
-                    totalReceived += chunk.size();
-                    parent.unpause(transfer);
                 }
+
+                return true;
             });
         }
 
         size_t read(char * data, size_t len) override
         {
-            auto readPartial = [this](char * data, size_t len) -> size_t {
-                const auto available = std::min(len, buffered.size());
-                if (available == 0u) return 0u;
-
-                memcpy(data, buffered.data(), available);
+            size_t total = 0;
+            while (total < len && awaitData()) {
+                const auto available = std::min(len - total, buffered.size());
+                memcpy(data + total, buffered.data(), available);
                 buffered.remove_prefix(available);
-                return available;
-            };
-            size_t total = readPartial(data, len);
-
-            while (total < len) {
-                awaitData();
-                const auto current = readPartial(data + total, len - total);
-                total += current;
-                if (total == 0 || current == 0) {
-                    break;
-                }
+                total += available;
             }
 
             if (total == 0) {
