@@ -2,6 +2,7 @@
 #include "fetchers.hh"
 #include "cache.hh"
 #include "globals.hh"
+#include "builtin-fetchers.hh"
 #include "processes.hh"
 #include "tarfile.hh"
 #include "store-api.hh"
@@ -795,6 +796,9 @@ struct GitInputScheme : InputScheme
     }
 };
 
-static auto rGitInputScheme = OnStartup([] { registerInputScheme(std::make_unique<GitInputScheme>()); });
+std::unique_ptr<InputScheme> makeGitInputScheme()
+{
+    return std::make_unique<GitInputScheme>();
+}
 
 }

@@ -2,6 +2,7 @@
 #include "filetransfer.hh"
 #include "cache.hh"
 #include "globals.hh"
+#include "builtin-fetchers.hh"
 #include "store-api.hh"
 #include "types.hh"
 #include "url-parts.hh"
@@ -477,8 +478,18 @@ struct SourceHutInputScheme : GitArchiveInputScheme
     }
 };
 
-static auto rGitHubInputScheme = OnStartup([] { registerInputScheme(std::make_unique<GitHubInputScheme>()); });
-static auto rGitLabInputScheme = OnStartup([] { registerInputScheme(std::make_unique<GitLabInputScheme>()); });
-static auto rSourceHutInputScheme = OnStartup([] { registerInputScheme(std::make_unique<SourceHutInputScheme>()); });
+std::unique_ptr<InputScheme> makeGitHubInputScheme()
+{
+    return std::make_unique<GitHubInputScheme>();
+}
 
+std::unique_ptr<InputScheme> makeGitLabInputScheme()
+{
+    return std::make_unique<GitLabInputScheme>();
+}
+
+std::unique_ptr<InputScheme> makeSourceHutInputScheme()
+{
+    return std::make_unique<SourceHutInputScheme>();
+}
 }

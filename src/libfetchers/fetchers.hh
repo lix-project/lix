@@ -196,6 +196,8 @@ protected:
 
 void registerInputScheme(std::shared_ptr<InputScheme> && fetcher);
 
+void initLibFetchers();
+
 struct DownloadFileResult
 {
     StorePath storePath;

@@ -1,4 +1,5 @@
 #include "fetchers.hh"
+#include "builtin-fetchers.hh"
 #include "url-parts.hh"
 #include "path.hh"
 
@@ -107,6 +108,9 @@ struct IndirectInputScheme : InputScheme
     }
 };
 
-static auto rIndirectInputScheme = OnStartup([] { registerInputScheme(std::make_unique<IndirectInputScheme>()); });
+std::unique_ptr<InputScheme> makeIndirectInputScheme()
+{
+    return std::make_unique<IndirectInputScheme>();
+}
 
 }

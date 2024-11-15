@@ -2,6 +2,7 @@
 #include "cache.hh"
 #include "filetransfer.hh"
 #include "globals.hh"
+#include "builtin-fetchers.hh"
 #include "store-api.hh"
 #include "archive.hh"
 #include "tarfile.hh"
@@ -307,7 +308,14 @@ struct TarballInputScheme : CurlInputScheme
     }
 };
 
-static auto rTarballInputScheme = OnStartup([] { registerInputScheme(std::make_unique<TarballInputScheme>()); });
-static auto rFileInputScheme = OnStartup([] { registerInputScheme(std::make_unique<FileInputScheme>()); });
+std::unique_ptr<InputScheme> makeFileInputScheme()
+{
+    return std::make_unique<TarballInputScheme>();
+}
+
+std::unique_ptr<InputScheme> makeTarballInputScheme()
+{
+    return std::make_unique<FileInputScheme>();
+}
 
 }

@@ -1,4 +1,5 @@
 #include "fetchers.hh"
+#include "builtin-fetchers.hh"
 #include "store-api.hh"
 #include "source-path.hh"
 #include "fetch-to-store.hh"
@@ -7,12 +8,24 @@
 
 namespace nix::fetchers {
 
-std::unique_ptr<std::vector<std::shared_ptr<InputScheme>>> inputSchemes = nullptr;
+static std::vector<std::shared_ptr<InputScheme>> inputSchemes;
 
 void registerInputScheme(std::shared_ptr<InputScheme> && inputScheme)
 {
-    if (!inputSchemes) inputSchemes = std::make_unique<std::vector<std::shared_ptr<InputScheme>>>();
-    inputSchemes->push_back(std::move(inputScheme));
+    inputSchemes.push_back(std::move(inputScheme));
+}
+
+void initLibFetchers()
+{
+    registerInputScheme(makeIndirectInputScheme());
+    registerInputScheme(makePathInputScheme());
+    registerInputScheme(makeFileInputScheme());
+    registerInputScheme(makeTarballInputScheme());
+    registerInputScheme(makeGitInputScheme());
+    registerInputScheme(makeMercurialInputScheme());
+    registerInputScheme(makeGitHubInputScheme());
+    registerInputScheme(makeGitLabInputScheme());
+    registerInputScheme(makeSourceHutInputScheme());
 }
 
 Input Input::fromURL(const std::string & url, bool requireTree)
@@ -35,7 +48,7 @@ static void fixupInput(Input & input)
 
 Input Input::fromURL(const ParsedURL & url, bool requireTree)
 {
-    for (auto & inputScheme : *inputSchemes) {
+    for (auto & inputScheme : inputSchemes) {
         auto res = inputScheme->inputFromURL(url, requireTree);
         if (res) {
             res->scheme = inputScheme;
@@ -49,7 +62,7 @@ Input Input::fromURL(const ParsedURL & url, bool requireTree)
 
 Input Input::fromAttrs(Attrs && attrs)
 {
-    for (auto & inputScheme : *inputSchemes) {
+    for (auto & inputScheme : inputSchemes) {
         auto res = inputScheme->inputFromAttrs(attrs);
         if (res) {
             res->scheme = inputScheme;

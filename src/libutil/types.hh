@@ -33,15 +33,6 @@ typedef std::set<Path> PathSet;
 typedef std::vector<std::pair<std::string, std::string>> Headers;
 
 /**
- * Helper class to run code at startup.
- */
-template<typename T>
-struct OnStartup
-{
-    OnStartup(T && t) { t(); }
-};
-
-/**
  * Wrap bools to prevent string literals (i.e. 'char *') from being
  * cast to a bool in Attr.
  */

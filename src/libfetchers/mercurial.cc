@@ -1,5 +1,6 @@
 #include "fetchers.hh"
 #include "cache.hh"
+#include "builtin-fetchers.hh"
 #include "processes.hh"
 #include "store-api.hh"
 #include "temporary-dir.hh"
@@ -330,6 +331,9 @@ struct MercurialInputScheme : InputScheme
     }
 };
 
-static auto rMercurialInputScheme = OnStartup([] { registerInputScheme(std::make_unique<MercurialInputScheme>()); });
+std::unique_ptr<InputScheme> makeMercurialInputScheme()
+{
+    return std::make_unique<MercurialInputScheme>();
+}
 
 }

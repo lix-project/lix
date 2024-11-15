@@ -191,6 +191,8 @@ void initLibExpr()
 
 #endif
 
+    fetchers::initLibFetchers();
+
     libexprInitialised = true;
 }
 

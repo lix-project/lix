@@ -1,4 +1,5 @@
 #include "fetchers.hh"
+#include "builtin-fetchers.hh"
 #include "store-api.hh"
 #include "archive.hh"
 
@@ -139,6 +140,9 @@ struct PathInputScheme : InputScheme
     }
 };
 
-static auto rPathInputScheme = OnStartup([] { registerInputScheme(std::make_unique<PathInputScheme>()); });
+std::unique_ptr<InputScheme> makePathInputScheme()
+{
+    return std::make_unique<PathInputScheme>();
+}
 
 }
