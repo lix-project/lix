@@ -135,9 +135,9 @@ std::ostream & operator << (std::ostream & os, const ValueType t);
 
 
 /**
- * Initialise the Boehm GC, if applicable.
+ * Initialise the evaluator (including Boehm GC, if applicable).
  */
-void initGC();
+void initLibExpr();
 
 
 struct RegexCache;

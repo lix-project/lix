@@ -144,11 +144,11 @@ static Symbol getName(const AttrName & name, EvalState & state, Env & env)
     }
 }
 
-static bool gcInitialised = false;
+static bool libexprInitialised = false;
 
-void initGC()
+void initLibExpr()
 {
-    if (gcInitialised) return;
+    if (libexprInitialised) return;
 
 #if HAVE_BOEHMGC
     /* Initialise the Boehm garbage collector. */
@@ -191,7 +191,7 @@ void initGC()
 
 #endif
 
-    gcInitialised = true;
+    libexprInitialised = true;
 }
 
 EvalState::EvalState(
@@ -270,7 +270,7 @@ EvalState::EvalState(
 {
     countCalls = getEnv("NIX_COUNT_CALLS").value_or("0") != "0";
 
-    assert(gcInitialised);
+    assert(libexprInitialised);
 
     static_assert(sizeof(Env) <= 16, "environment must be <= 16 bytes");
 

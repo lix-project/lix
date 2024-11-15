@@ -19,7 +19,7 @@ namespace nix
 
 TEST(Arguments, lookupFileArg) {
     initNix();
-    initGC();
+    initLibExpr();
 
     std::string const unitDataPath = getEnv("_NIX_TEST_UNIT_DATA").value();
     // Meson should be allowed to pass us a relative path here tbh.

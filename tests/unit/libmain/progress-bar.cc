@@ -22,7 +22,7 @@ namespace nix
 {
     TEST(ProgressBar, basicStatusRender) {
         initNix();
-        initGC();
+        initLibExpr();
 
         setLogFormat(LogFormat::bar);
         ASSERT_NE(dynamic_cast<ProgressBar *>(logger), nullptr);

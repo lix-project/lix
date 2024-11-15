@@ -17,7 +17,7 @@ namespace nix {
         public:
             static void SetUpTestSuite() {
                 LibStoreTest::SetUpTestSuite();
-                initGC();
+                initLibExpr();
             }
 
         protected:

@@ -359,7 +359,7 @@ void mainWrapped(int argc, char * * argv)
     }
 
     initNix();
-    initGC();
+    initLibExpr();
 
     #if __linux__
     if (getuid() == 0) {
