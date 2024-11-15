@@ -204,7 +204,8 @@ TEST(FileTransfer, exceptionAbortsDownload)
 
     LambdaSink broken([](auto block) { throw Done(); });
 
-    ASSERT_THROW(ft->download("file:///dev/zero").second->drainInto(broken), Done);
+    auto [port, srv] = serveHTTP({{"200 ok", "", [](int) { return "foo"; }}});
+    ASSERT_THROW(ft->download(fmt("http://[::1]:%d/index", port)).second->drainInto(broken), Done);
 
     // makeFileTransfer returns a ref<>, which cannot be cleared. since we also
     // can't default-construct it we'll have to overwrite it instead, but we'll
