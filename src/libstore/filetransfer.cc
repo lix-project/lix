@@ -40,7 +40,7 @@ struct curlFileTransfer : public FileTransfer
 
     const unsigned int baseRetryTimeMs;
 
-    struct TransferItem : public std::enable_shared_from_this<TransferItem>
+    struct TransferItem
     {
         struct DownloadState
         {
@@ -49,7 +49,6 @@ struct curlFileTransfer : public FileTransfer
             std::string data;
         };
 
-        curlFileTransfer & fileTransfer;
         std::string uri;
         FileTransferResult result;
         Activity act;
@@ -89,16 +88,14 @@ struct curlFileTransfer : public FileTransfer
             return uploadData ? "upload" : "download";
         }
 
-        TransferItem(curlFileTransfer & fileTransfer,
-            const std::string & uri,
+        TransferItem(const std::string & uri,
             const Headers & headers,
             ActivityId parentAct,
             std::optional<std::string_view> uploadData,
             bool noBody,
             curl_off_t writtenToSink
         )
-            : fileTransfer(fileTransfer)
-            , uri(uri)
+            : uri(uri)
             , act(*logger, lvlTalkative, actFileTransfer,
                 fmt(uploadData ? "uploading '%s'" : "downloading '%s'", uri),
                 {uri}, parentAct)
@@ -416,29 +413,29 @@ struct curlFileTransfer : public FileTransfer
                 fail(std::move(exc));
             }
         }
-
-        void unpause()
-        {
-            auto lock = fileTransfer.state_.lock();
-            lock->unpause.push_back(shared_from_this());
-            fileTransfer.wakeup();
-        }
-
-        void cancel()
-        {
-            std::promise<void> promise;
-            auto wait = promise.get_future();
-            {
-                auto lock = fileTransfer.state_.lock();
-                if (lock->quit) {
-                    return;
-                }
-                lock->cancel[shared_from_this()] = std::move(promise);
-            }
-            fileTransfer.wakeup();
-            wait.get();
-        }
     };
+
+    void unpause(const std::shared_ptr<TransferItem> & transfer)
+    {
+        auto lock = state_.lock();
+        lock->unpause.push_back(transfer);
+        wakeup();
+    }
+
+    void cancel(const std::shared_ptr<TransferItem> & transfer)
+    {
+        std::promise<void> promise;
+        auto wait = promise.get_future();
+        {
+            auto lock = state_.lock();
+            if (lock->quit) {
+                return;
+            }
+            lock->cancel[transfer] = std::move(promise);
+        }
+        wakeup();
+        wait.get();
+    }
 
     struct State
     {
@@ -780,7 +777,7 @@ struct curlFileTransfer : public FileTransfer
             // wake up the download thread if it's still going and have it abort
             try {
                 if (transfer) {
-                    transfer->cancel();
+                    parent.cancel(transfer);
                 }
             } catch (...) {
                 ignoreExceptionInDestructor();
@@ -814,9 +811,8 @@ struct curlFileTransfer : public FileTransfer
         {
             attempt += 1;
             auto uploadData = data ? std::optional(std::string_view(*data)) : std::nullopt;
-            transfer = std::make_shared<TransferItem>(
-                parent, uri, headers, parentAct, uploadData, noBody, offset
-            );
+            transfer =
+                std::make_shared<TransferItem>(uri, headers, parentAct, uploadData, noBody, offset);
             parent.enqueueItem(transfer);
             return transfer->metadataPromise.get_future().get();
         }
@@ -880,14 +876,14 @@ struct curlFileTransfer : public FileTransfer
                             return;
                         }
 
-                        transfer->unpause();
+                        parent.unpause(transfer);
                         state.wait(transfer->downloadEvent);
                     }
 
                     chunk = std::move(state->data);
                     buffered = chunk;
                     totalReceived += chunk.size();
-                    transfer->unpause();
+                    parent.unpause(transfer);
                 }
             });
         }
