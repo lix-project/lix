@@ -5,7 +5,7 @@
 
 using namespace nix;
 
-struct CmdRealisation : virtual NixMultiCommand
+struct CmdRealisation : virtual MultiCommand
 {
     CmdRealisation() : MultiCommand(RegisterCommand::getCommandsFor({"realisation"}))
     { }

@@ -2,7 +2,7 @@
 
 using namespace nix;
 
-struct CmdStore : virtual NixMultiCommand
+struct CmdStore : virtual MultiCommand
 {
     CmdStore() : MultiCommand(RegisterCommand::getCommandsFor({"store"}))
     { }

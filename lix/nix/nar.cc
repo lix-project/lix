@@ -2,7 +2,7 @@
 
 using namespace nix;
 
-struct CmdNar : NixMultiCommand
+struct CmdNar : MultiCommand
 {
     CmdNar() : MultiCommand(RegisterCommand::getCommandsFor({"nar"}))
     { }

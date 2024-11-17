@@ -214,6 +214,11 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
           ;
     }
 
+    void run() override
+    {
+        command->second->run();
+    }
+
     // Plugins may add new subcommands.
     void pluginsInited() override
     {
@@ -528,7 +533,7 @@ void mainWrapped(int argc, char * * argv)
     if (args.command->second->forceImpureByDefault()) {
         evalSettings.pureEval.setDefault(false);
     }
-    args.command->second->run();
+    args.run();
 }
 
 }

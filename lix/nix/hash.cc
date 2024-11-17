@@ -124,7 +124,7 @@ struct CmdToBase : Command
     }
 };
 
-struct CmdHash : NixMultiCommand
+struct CmdHash : MultiCommand
 {
     CmdHash()
         : MultiCommand({

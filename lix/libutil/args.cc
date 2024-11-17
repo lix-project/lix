@@ -440,6 +440,8 @@ bool MultiCommand::processArgs(const Strings & args, bool finish)
 
 nlohmann::json MultiCommand::toJSON()
 {
+    // FIXME: use Command::toJSON() as well.
+
     auto cmds = nlohmann::json::object();
 
     for (auto & [name, commandFun] : commands) {

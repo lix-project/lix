@@ -601,7 +601,7 @@ struct CmdProfileWipeHistory : virtual StoreCommand, MixDefaultProfile, MixDryRu
     }
 };
 
-struct CmdProfile : NixMultiCommand
+struct CmdProfile : MultiCommand
 {
     CmdProfile()
         : MultiCommand({

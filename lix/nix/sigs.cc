@@ -199,7 +199,7 @@ struct CmdKeyConvertSecretToPublic : Command
     }
 };
 
-struct CmdKey : NixMultiCommand
+struct CmdKey : MultiCommand
 {
     CmdKey()
         : MultiCommand({

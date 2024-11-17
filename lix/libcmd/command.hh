@@ -26,11 +26,6 @@ static constexpr Command::Category catNixInstallation = 102;
 
 static constexpr auto installablesCategory = "Options that change the interpretation of [installables](@docroot@/command-ref/new-cli/nix.md#installables)";
 
-struct NixMultiCommand : virtual MultiCommand, virtual Command
-{
-    nlohmann::json toJSON() override;
-};
-
 // For the overloaded run methods
 #pragma GCC diagnostic ignored "-Woverloaded-virtual"
 

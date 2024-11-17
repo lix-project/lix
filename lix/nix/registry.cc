@@ -204,7 +204,7 @@ struct CmdRegistryPin : RegistryCommand, EvalCommand
     }
 };
 
-struct CmdRegistry : virtual NixMultiCommand
+struct CmdRegistry : virtual MultiCommand
 {
     CmdRegistry()
         : MultiCommand({

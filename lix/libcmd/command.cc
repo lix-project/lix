@@ -28,12 +28,6 @@ nix::Commands RegisterCommand::getCommandsFor(const std::vector<std::string> & p
     return res;
 }
 
-nlohmann::json NixMultiCommand::toJSON()
-{
-    // FIXME: use Command::toJSON() as well.
-    return MultiCommand::toJSON();
-}
-
 StoreCommand::StoreCommand()
 {
 }

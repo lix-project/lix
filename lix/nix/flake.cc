@@ -1464,7 +1464,7 @@ struct CmdFlakePrefetch : FlakeCommand, MixJSON
     }
 };
 
-struct CmdFlake : NixMultiCommand
+struct CmdFlake : MultiCommand
 {
     CmdFlake()
         : MultiCommand({
