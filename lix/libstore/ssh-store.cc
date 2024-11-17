@@ -27,7 +27,7 @@ struct SSHStoreConfig : virtual RemoteStoreConfig, virtual CommonSSHStoreConfig
     }
 };
 
-class SSHStore : public virtual RemoteStore
+class SSHStore final : public RemoteStore
 {
     SSHStoreConfig config_;
 

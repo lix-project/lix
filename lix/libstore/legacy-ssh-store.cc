@@ -44,7 +44,7 @@ struct LegacySSHStoreConfigWithLog : LegacySSHStoreConfig
     const Setting<int> logFD{this, -1, "log-fd", "file descriptor to which SSH's stderr is connected"};
 };
 
-struct LegacySSHStore : public virtual Store
+struct LegacySSHStore final : public Store
 {
     LegacySSHStoreConfigWithLog config_;
 

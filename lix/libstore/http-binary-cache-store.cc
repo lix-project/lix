@@ -8,7 +8,7 @@ namespace nix {
 
 MakeError(UploadToHTTP, Error);
 
-struct HttpBinaryCacheStoreConfig : virtual BinaryCacheStoreConfig
+struct HttpBinaryCacheStoreConfig final : BinaryCacheStoreConfig
 {
     using BinaryCacheStoreConfig::BinaryCacheStoreConfig;
 
@@ -22,7 +22,7 @@ struct HttpBinaryCacheStoreConfig : virtual BinaryCacheStoreConfig
     }
 };
 
-class HttpBinaryCacheStore : public virtual BinaryCacheStore
+class HttpBinaryCacheStore final : public BinaryCacheStore
 {
 private:
 

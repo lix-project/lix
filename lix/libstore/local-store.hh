@@ -37,7 +37,7 @@ struct OptimiseStats
     uint64_t blocksFreed = 0;
 };
 
-struct LocalStoreConfig : virtual LocalFSStoreConfig
+struct LocalStoreConfig final : LocalFSStoreConfig
 {
     using LocalFSStoreConfig::LocalFSStoreConfig;
 

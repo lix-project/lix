@@ -7,7 +7,7 @@
 
 namespace nix {
 
-struct LocalBinaryCacheStoreConfig : virtual BinaryCacheStoreConfig
+struct LocalBinaryCacheStoreConfig final : BinaryCacheStoreConfig
 {
     using BinaryCacheStoreConfig::BinaryCacheStoreConfig;
 
@@ -21,7 +21,7 @@ struct LocalBinaryCacheStoreConfig : virtual BinaryCacheStoreConfig
     }
 };
 
-class LocalBinaryCacheStore : public virtual BinaryCacheStore
+class LocalBinaryCacheStore final : public BinaryCacheStore
 {
 private:
 

@@ -3,7 +3,7 @@
 
 namespace nix {
 
-struct DummyStoreConfig : virtual StoreConfig {
+struct DummyStoreConfig final : StoreConfig {
     using StoreConfig::StoreConfig;
 
     const std::string name() override { return "Dummy Store"; }
@@ -16,7 +16,7 @@ struct DummyStoreConfig : virtual StoreConfig {
     }
 };
 
-struct DummyStore : public virtual Store
+struct DummyStore final : public Store
 {
     DummyStoreConfig config_;
 

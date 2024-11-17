@@ -7,7 +7,7 @@
 
 using namespace nix;
 
-struct CmdConfig : virtual MultiCommand
+struct CmdConfig final : MultiCommand
 {
     CmdConfig() : MultiCommand(RegisterCommand::getCommandsFor({"config"}))
     { }

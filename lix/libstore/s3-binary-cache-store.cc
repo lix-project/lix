@@ -184,7 +184,7 @@ S3Helper::FileTransferResult S3Helper::getObject(
     return res;
 }
 
-struct S3BinaryCacheStoreConfig : virtual BinaryCacheStoreConfig
+struct S3BinaryCacheStoreConfig final : BinaryCacheStoreConfig
 {
     using BinaryCacheStoreConfig::BinaryCacheStoreConfig;
 

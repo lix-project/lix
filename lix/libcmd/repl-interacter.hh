@@ -32,7 +32,7 @@ public:
     virtual ~ReplInteracter(){};
 };
 
-class ReadlineLikeInteracter : public virtual ReplInteracter
+class ReadlineLikeInteracter final : public ReplInteracter
 {
     std::string historyFile;
 public:
@@ -50,7 +50,7 @@ public:
     virtual ~ReadlineLikeInteracter() override;
 };
 
-class AutomationInteracter : public virtual ReplInteracter
+class AutomationInteracter final : public ReplInteracter
 {
 public:
     AutomationInteracter() = default;
