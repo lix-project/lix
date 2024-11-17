@@ -227,7 +227,7 @@ protected:
 
 public:
 
-    BuiltPathsCommand(bool recursive = false);
+    BuiltPathsCommand(bool recursive);
 
     virtual void run(ref<Store> store, BuiltPaths && paths) = 0;
 

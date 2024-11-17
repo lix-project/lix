@@ -4,7 +4,7 @@
 
 using namespace nix;
 
-struct CmdCopy : virtual CopyCommand, virtual BuiltPathsCommand
+struct CmdCopy : virtual CopyCommand, BuiltPathsCommand
 {
     CheckSigsFlag checkSigs = CheckSigs;
 

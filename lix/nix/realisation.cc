@@ -29,6 +29,8 @@ static auto rCmdRealisation = registerCommand<CmdRealisation>("realisation");
 
 struct CmdRealisationInfo : BuiltPathsCommand, MixJSON
 {
+    CmdRealisationInfo() : BuiltPathsCommand(false) {}
+
     std::string description() override
     {
         return "query information about one or several realisations";
