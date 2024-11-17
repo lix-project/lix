@@ -182,105 +182,112 @@ struct QueryMissingContext
             if (!state->done.insert(req.to_string(store)).second) return;
         }
 
-        std::visit(overloaded {
-          [&](const DerivedPath::Built & bfd) {
-            auto drvPathP = std::get_if<DerivedPath::Opaque>(&*bfd.drvPath);
-            if (!drvPathP) {
-                // TODO make work in this case.
-                warn("Ignoring dynamic derivation %s while querying missing paths; not yet implemented", bfd.drvPath->to_string(store));
-                return;
-            }
-            auto & drvPath = drvPathP->path;
+        std::visit(
+            overloaded{
+                [&](const DerivedPath::Built & bfd) { doPathBuilt(bfd); },
+                [&](const DerivedPath::Opaque & bo) { doPathOpaque(bo); },
+            },
+            req.raw()
+        );
+    }
 
-            if (!store.isValidPath(drvPath)) {
-                // FIXME: we could try to substitute the derivation.
-                auto state(state_.lock());
-                state->unknown.insert(drvPath);
-                return;
-            }
+    void doPathBuilt(const DerivedPath::Built & bfd)
+    {
+        auto drvPathP = std::get_if<DerivedPath::Opaque>(&*bfd.drvPath);
+        if (!drvPathP) {
+            // TODO make work in this case.
+            warn("Ignoring dynamic derivation %s while querying missing paths; not yet implemented", bfd.drvPath->to_string(store));
+            return;
+        }
+        auto & drvPath = drvPathP->path;
 
-            StorePathSet invalid;
-            /* true for regular derivations, and CA derivations for which we
-               have a trust mapping for all wanted outputs. */
-            auto knownOutputPaths = true;
-            for (auto & [outputName, pathOpt] : store.queryPartialDerivationOutputMap(drvPath)) {
-                if (!pathOpt) {
+        if (!store.isValidPath(drvPath)) {
+            // FIXME: we could try to substitute the derivation.
+            auto state(state_.lock());
+            state->unknown.insert(drvPath);
+            return;
+        }
+
+        StorePathSet invalid;
+        /* true for regular derivations, and CA derivations for which we
+            have a trust mapping for all wanted outputs. */
+        auto knownOutputPaths = true;
+        for (auto & [outputName, pathOpt] : store.queryPartialDerivationOutputMap(drvPath)) {
+            if (!pathOpt) {
+                knownOutputPaths = false;
+                break;
+            }
+            if (bfd.outputs.contains(outputName) && !store.isValidPath(*pathOpt))
+                invalid.insert(*pathOpt);
+        }
+        if (knownOutputPaths && invalid.empty()) return;
+
+        auto drv = make_ref<Derivation>(store.derivationFromPath(drvPath));
+        ParsedDerivation parsedDrv(StorePath(drvPath), *drv);
+
+        if (!knownOutputPaths && settings.useSubstitutes && parsedDrv.substitutesAllowed()) {
+            experimentalFeatureSettings.require(Xp::CaDerivations);
+
+            // If there are unknown output paths, attempt to find if the
+            // paths are known to substituters through a realisation.
+            auto outputHashes = staticOutputHashes(store, *drv);
+            knownOutputPaths = true;
+
+            for (auto [outputName, hash] : outputHashes) {
+                if (!bfd.outputs.contains(outputName))
+                    continue;
+
+                bool found = false;
+                for (auto &sub : getDefaultSubstituters()) {
+                    auto realisation = sub->queryRealisation({hash, outputName});
+                    if (!realisation)
+                        continue;
+                    found = true;
+                    if (!store.isValidPath(realisation->outPath))
+                        invalid.insert(realisation->outPath);
+                    break;
+                }
+                if (!found) {
+                    // Some paths did not have a realisation, this must be built.
                     knownOutputPaths = false;
                     break;
                 }
-                if (bfd.outputs.contains(outputName) && !store.isValidPath(*pathOpt))
-                    invalid.insert(*pathOpt);
             }
-            if (knownOutputPaths && invalid.empty()) return;
+        }
 
-            auto drv = make_ref<Derivation>(store.derivationFromPath(drvPath));
-            ParsedDerivation parsedDrv(StorePath(drvPath), *drv);
+        if (knownOutputPaths && settings.useSubstitutes && parsedDrv.substitutesAllowed()) {
+            auto drvState = make_ref<Sync<DrvState>>(DrvState(invalid.size()));
+            for (auto & output : invalid)
+                pool.enqueue([=, this] { checkOutput(drvPath, drv, output, drvState); });
+        } else
+            mustBuildDrv(drvPath, *drv);
+    }
 
-            if (!knownOutputPaths && settings.useSubstitutes && parsedDrv.substitutesAllowed()) {
-                experimentalFeatureSettings.require(Xp::CaDerivations);
+    void doPathOpaque(const DerivedPath::Opaque & bo)
+    {
+        if (store.isValidPath(bo.path)) return;
 
-                // If there are unknown output paths, attempt to find if the
-                // paths are known to substituters through a realisation.
-                auto outputHashes = staticOutputHashes(store, *drv);
-                knownOutputPaths = true;
+        SubstitutablePathInfos infos;
+        store.querySubstitutablePathInfos({{bo.path, std::nullopt}}, infos);
 
-                for (auto [outputName, hash] : outputHashes) {
-                    if (!bfd.outputs.contains(outputName))
-                        continue;
+        if (infos.empty()) {
+            auto state(state_.lock());
+            state->unknown.insert(bo.path);
+            return;
+        }
 
-                    bool found = false;
-                    for (auto &sub : getDefaultSubstituters()) {
-                        auto realisation = sub->queryRealisation({hash, outputName});
-                        if (!realisation)
-                            continue;
-                        found = true;
-                        if (!store.isValidPath(realisation->outPath))
-                            invalid.insert(realisation->outPath);
-                        break;
-                    }
-                    if (!found) {
-                        // Some paths did not have a realisation, this must be built.
-                        knownOutputPaths = false;
-                        break;
-                    }
-                }
-            }
+        auto info = infos.find(bo.path);
+        assert(info != infos.end());
 
-            if (knownOutputPaths && settings.useSubstitutes && parsedDrv.substitutesAllowed()) {
-                auto drvState = make_ref<Sync<DrvState>>(DrvState(invalid.size()));
-                for (auto & output : invalid)
-                    pool.enqueue([=, this] { checkOutput(drvPath, drv, output, drvState); });
-            } else
-                mustBuildDrv(drvPath, *drv);
+        {
+            auto state(state_.lock());
+            state->willSubstitute.insert(bo.path);
+            state->downloadSize += info->second.downloadSize;
+            state->narSize += info->second.narSize;
+        }
 
-          },
-          [&](const DerivedPath::Opaque & bo) {
-
-            if (store.isValidPath(bo.path)) return;
-
-            SubstitutablePathInfos infos;
-            store.querySubstitutablePathInfos({{bo.path, std::nullopt}}, infos);
-
-            if (infos.empty()) {
-                auto state(state_.lock());
-                state->unknown.insert(bo.path);
-                return;
-            }
-
-            auto info = infos.find(bo.path);
-            assert(info != infos.end());
-
-            {
-                auto state(state_.lock());
-                state->willSubstitute.insert(bo.path);
-                state->downloadSize += info->second.downloadSize;
-                state->narSize += info->second.narSize;
-            }
-
-            for (auto & ref : info->second.references)
-                pool.enqueue([this, path{DerivedPath::Opaque { ref }}] { doPath(path); });
-          },
-        }, req.raw());
+        for (auto & ref : info->second.references)
+            pool.enqueue([this, path{DerivedPath::Opaque { ref }}] { doPath(path); });
     }
 };
 }
