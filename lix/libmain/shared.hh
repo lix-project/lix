@@ -21,12 +21,6 @@ int handleExceptions(const std::string & programName, std::function<void()> fun)
  */
 void initNix();
 
-void parseCmdLine(int argc, char * * argv,
-    std::function<bool(Strings::iterator & arg, const Strings::iterator & end)> parseArg);
-
-void parseCmdLine(const std::string & programName, const Strings & args,
-    std::function<bool(Strings::iterator & arg, const Strings::iterator & end)> parseArg);
-
 void printVersion(const std::string & programName);
 
 /**

@@ -89,7 +89,7 @@ void processExpr(EvalState & state, const Strings & attrPaths,
 }
 
 
-static int main_nix_instantiate(int argc, char * * argv)
+static int main_nix_instantiate(std::string programName, Strings argv)
 {
     {
         Strings files;
@@ -109,7 +109,7 @@ static int main_nix_instantiate(int argc, char * * argv)
             using LegacyArgs::LegacyArgs;
         };
 
-        MyArgs myArgs(std::string(baseNameOf(argv[0])), [&](Strings::iterator & arg, const Strings::iterator & end) {
+        MyArgs myArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--help")
                 showManPage("nix-instantiate");
             else if (*arg == "--version")
@@ -149,7 +149,7 @@ static int main_nix_instantiate(int argc, char * * argv)
             return true;
         });
 
-        myArgs.parseCmdline(argvToStrings(argc, argv));
+        myArgs.parseCmdline(argv);
 
         if (evalOnly && !wantsReadWrite)
             settings.readOnlyMode = true;

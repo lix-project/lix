@@ -162,7 +162,7 @@ static void update(const StringSet & channelNames)
     replaceSymlink(profile, channelLink);
 }
 
-static int main_nix_channel(int argc, char ** argv)
+static int main_nix_channel(std::string programName, Strings argv)
 {
     {
         // Figure out the name of the `.nix-channels' file to use
@@ -184,7 +184,7 @@ static int main_nix_channel(int argc, char ** argv)
             cRollback
         } cmd = cNone;
         std::vector<std::string> args;
-        parseCmdLine(argc, argv, [&](Strings::iterator & arg, const Strings::iterator & end) {
+        LegacyArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--help") {
                 showManPage("nix-channel");
             } else if (*arg == "--version") {
@@ -207,7 +207,7 @@ static int main_nix_channel(int argc, char ** argv)
                 args.push_back(std::move(*arg));
             }
             return true;
-        });
+        }).parseCmdline(argv);
 
         switch (cmd) {
             case cNone:

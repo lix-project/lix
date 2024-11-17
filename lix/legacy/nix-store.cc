@@ -1031,7 +1031,7 @@ static void opVersion(Strings opFlags, Strings opArgs)
 /* Scan the arguments; find the operation, set global flags, put all
    other flags in a list, and put all other arguments in another
    list. */
-static int main_nix_store(int argc, char * * argv)
+static int main_nix_store(std::string programName, Strings argv)
 {
     {
         Strings opFlags, opArgs;
@@ -1040,7 +1040,7 @@ static int main_nix_store(int argc, char * * argv)
         std::string opName;
         bool showHelp = false;
 
-        parseCmdLine(argc, argv, [&](Strings::iterator & arg, const Strings::iterator & end) {
+        LegacyArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             Operation oldOp = op;
 
             if (*arg == "--help")
@@ -1162,7 +1162,7 @@ static int main_nix_store(int argc, char * * argv)
                 throw UsageError("only one operation may be specified");
 
             return true;
-        });
+        }).parseCmdline(argv);
 
         if (showHelp) showManPage("nix-store" + opName);
         if (!op) throw UsageError("no operation specified");

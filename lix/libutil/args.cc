@@ -381,14 +381,6 @@ void Args::completeDir(AddCompletions & completions, size_t, std::string_view pr
     _completePath(completions, prefix, true);
 }
 
-Strings argvToStrings(int argc, char * * argv)
-{
-    Strings args;
-    argc--; argv++;
-    while (argc--) args.push_back(*argv++);
-    return args;
-}
-
 std::optional<ExperimentalFeature> Command::experimentalFeature ()
 {
     return { Xp::NixCommand };

@@ -55,7 +55,7 @@ static bool allSupportedLocally(Store & store, const std::set<std::string>& requ
     return true;
 }
 
-static int main_build_remote(int argc, char * * argv)
+static int main_build_remote(std::string programName, Strings argv)
 {
     {
         logger = makeJSONLogger(*logger);
@@ -67,10 +67,10 @@ static int main_build_remote(int argc, char * * argv)
         /* If we ever use the common args framework, make sure to
            remove initPlugins below and initialize settings first.
         */
-        if (argc != 2)
+        if (argv.size() != 1)
             throw UsageError("called without required arguments");
 
-        verbosity = (Verbosity) std::stoll(argv[1]);
+        verbosity = (Verbosity) std::stoll(argv.front());
 
         FdSource source(STDIN_FILENO);
 

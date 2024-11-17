@@ -391,7 +391,7 @@ void mainWrapped(int argc, char * * argv)
     {
         registerLegacyCommands();
         auto legacy = (*LegacyCommands::commands)[programName];
-        if (legacy) return legacy(argc, argv);
+        if (legacy) return legacy(std::string(baseNameOf(argv[0])), Strings(argv + 1, argv + argc));
     }
 
     evalSettings.pureEval.setDefault(true);
@@ -479,7 +479,7 @@ void mainWrapped(int argc, char * * argv)
     });
 
     try {
-        args.parseCmdline(argvToStrings(argc, argv));
+        args.parseCmdline({argv + 1, argv + argc});
     } catch (UsageError &) {
         if (!args.helpRequested && !args.completions) throw;
     }

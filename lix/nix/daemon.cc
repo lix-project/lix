@@ -436,13 +436,13 @@ static void runDaemon(bool stdio, std::optional<TrustedFlag> forceTrustClientOpt
         daemonLoop(forceTrustClientOpt);
 }
 
-static int main_nix_daemon(int argc, char * * argv)
+static int main_nix_daemon(std::string programName, Strings argv)
 {
     {
         auto stdio = false;
         std::optional<TrustedFlag> isTrustedOpt = std::nullopt;
 
-        parseCmdLine(argc, argv, [&](Strings::iterator & arg, const Strings::iterator & end) {
+        LegacyArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--daemon")
                 ; //  ignored for backwards compatibility
             else if (*arg == "--help")
@@ -462,7 +462,7 @@ static int main_nix_daemon(int argc, char * * argv)
                 isTrustedOpt = std::nullopt;
             } else return false;
             return true;
-        });
+        }).parseCmdline(argv);
 
         runDaemon(stdio, isTrustedOpt);
 

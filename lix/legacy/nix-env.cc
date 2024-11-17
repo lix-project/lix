@@ -1395,7 +1395,7 @@ static void opVersion(Globals & globals, Strings opFlags, Strings opArgs)
 }
 
 
-static int main_nix_env(int argc, char * * argv)
+static int main_nix_env(std::string programName, Strings argv)
 {
     {
         Strings opFlags, opArgs;
@@ -1434,7 +1434,7 @@ static int main_nix_env(int argc, char * * argv)
             using LegacyArgs::LegacyArgs;
         };
 
-        MyArgs myArgs(std::string(baseNameOf(argv[0])), [&](Strings::iterator & arg, const Strings::iterator & end) {
+        MyArgs myArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             Operation oldOp = op;
 
             if (*arg == "--help")
@@ -1515,7 +1515,7 @@ static int main_nix_env(int argc, char * * argv)
             return true;
         });
 
-        myArgs.parseCmdline(argvToStrings(argc, argv));
+        myArgs.parseCmdline(argv);
 
         if (showHelp) showManPage("nix-env" + opName);
         if (!op) throw UsageError("no operation specified");

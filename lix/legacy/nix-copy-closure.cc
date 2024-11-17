@@ -5,7 +5,7 @@
 
 namespace nix {
 
-static int main_nix_copy_closure(int argc, char ** argv)
+static int main_nix_copy_closure(std::string programName, Strings argv)
 {
     {
         auto gzip = false;
@@ -16,7 +16,7 @@ static int main_nix_copy_closure(int argc, char ** argv)
         std::string sshHost;
         PathSet storePaths;
 
-        parseCmdLine(argc, argv, [&](Strings::iterator & arg, const Strings::iterator & end) {
+        LegacyArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--help")
                 showManPage("nix-copy-closure");
             else if (*arg == "--version")
@@ -42,7 +42,7 @@ static int main_nix_copy_closure(int argc, char ** argv)
             else
                 storePaths.insert(*arg);
             return true;
-        });
+        }).parseCmdline(argv);
 
         if (sshHost.empty())
             throw UsageError("no host name specified");

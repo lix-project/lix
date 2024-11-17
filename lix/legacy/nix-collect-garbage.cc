@@ -56,14 +56,14 @@ void removeOldGenerations(std::string dir)
     }
 }
 
-static int main_nix_collect_garbage(int argc, char * * argv)
+static int main_nix_collect_garbage(std::string programName, Strings argv)
 {
     {
         bool removeOld = false;
 
         GCOptions options;
 
-        parseCmdLine(argc, argv, [&](Strings::iterator & arg, const Strings::iterator & end) {
+        LegacyArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--help")
                 showManPage("nix-collect-garbage");
             else if (*arg == "--version")
@@ -79,7 +79,7 @@ static int main_nix_collect_garbage(int argc, char * * argv)
             else
                 return false;
             return true;
-        });
+        }).parseCmdline(argv);
 
         if (removeOld) {
             std::set<Path> dirsToClean = {

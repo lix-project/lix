@@ -131,7 +131,7 @@ std::tuple<StorePath, Hash> prefetchFile(
     return {storePath.value(), hash.value()};
 }
 
-static int main_nix_prefetch_url(int argc, char * * argv)
+static int main_nix_prefetch_url(std::string programName, Strings argv)
 {
     {
         HashType ht = HashType::SHA256;
@@ -148,7 +148,7 @@ static int main_nix_prefetch_url(int argc, char * * argv)
             using LegacyArgs::LegacyArgs;
         };
 
-        MyArgs myArgs(std::string(baseNameOf(argv[0])), [&](Strings::iterator & arg, const Strings::iterator & end) {
+        MyArgs myArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--help")
                 showManPage("nix-prefetch-url");
             else if (*arg == "--version")
@@ -176,7 +176,7 @@ static int main_nix_prefetch_url(int argc, char * * argv)
             return true;
         });
 
-        myArgs.parseCmdline(argvToStrings(argc, argv));
+        myArgs.parseCmdline(argv);
 
         if (args.size() > 2)
             throw UsageError("too many arguments");

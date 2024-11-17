@@ -267,20 +267,6 @@ bool LegacyArgs::processArgs(const Strings & args, bool finish)
 }
 
 
-void parseCmdLine(int argc, char * * argv,
-    std::function<bool(Strings::iterator & arg, const Strings::iterator & end)> parseArg)
-{
-    parseCmdLine(std::string(baseNameOf(argv[0])), argvToStrings(argc, argv), parseArg);
-}
-
-
-void parseCmdLine(const std::string & programName, const Strings & args,
-    std::function<bool(Strings::iterator & arg, const Strings::iterator & end)> parseArg)
-{
-    LegacyArgs(programName, parseArg).parseCmdline(args);
-}
-
-
 void printVersion(const std::string & programName)
 {
     std::cout << fmt("%1% (Lix, like Nix) %2%", programName, nixVersion) << std::endl;

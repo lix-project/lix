@@ -364,8 +364,6 @@ public:
     nlohmann::json toJSON() override;
 };
 
-Strings argvToStrings(int argc, char * * argv);
-
 struct Completion {
     std::string completion;
     std::string description;

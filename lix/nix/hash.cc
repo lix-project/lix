@@ -155,7 +155,7 @@ struct CmdHash : MultiCommand
 static auto rCmdHash = registerCommand<CmdHash>("hash");
 
 /* Legacy nix-hash command. */
-static int compatNixHash(int argc, char * * argv)
+static int compatNixHash(std::string programName, Strings argv)
 {
     std::optional<HashType> ht;
     bool flat = false;
@@ -164,7 +164,7 @@ static int compatNixHash(int argc, char * * argv)
     enum { opHash, opTo } op = opHash;
     std::vector<std::string> ss;
 
-    parseCmdLine(argc, argv, [&](Strings::iterator & arg, const Strings::iterator & end) {
+    LegacyArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
         if (*arg == "--help")
             showManPage("nix-hash");
         else if (*arg == "--version")
@@ -200,7 +200,7 @@ static int compatNixHash(int argc, char * * argv)
         else
             ss.push_back(*arg);
         return true;
-    });
+    }).parseCmdline(argv);
 
     if (op == opHash) {
         CmdHashBase cmd(flat ? FileIngestionMethod::Flat : FileIngestionMethod::Recursive);

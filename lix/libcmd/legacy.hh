@@ -2,12 +2,13 @@
 ///@file
 
 #include <functional>
+#include <list>
 #include <map>
 #include <string>
 
 namespace nix {
 
-typedef std::function<void(int, char * *)> MainFunction;
+typedef std::function<void(std::string, std::list<std::string>)> MainFunction;
 
 struct LegacyCommands
 {

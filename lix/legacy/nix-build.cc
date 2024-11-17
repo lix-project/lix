@@ -33,10 +33,10 @@ namespace nix {
 
 using namespace std::string_literals;
 
-static void main_nix_build(int argc, char * * argv)
+static void main_nix_build(std::string programName, Strings argv)
 {
     auto dryRun = false;
-    auto runEnv = std::regex_search(argv[0], std::regex("nix-shell$"));
+    auto runEnv = std::regex_search(programName, std::regex("nix-shell$"));
     auto pure = false;
     auto fromArgs = false;
     auto packages = false;
@@ -66,29 +66,24 @@ static void main_nix_build(int argc, char * * argv)
         "http_proxy", "https_proxy", "ftp_proxy", "all_proxy", "no_proxy"
     };
 
-    Strings args;
-    for (int i = 1; i < argc; ++i)
-        args.push_back(argv[i]);
-
     // Heuristic to see if we're invoked as a shebang script, namely,
     // if we have at least one argument, it's the name of an
     // executable file, and it starts with "#!".
-    if (runEnv && argc > 1) {
-        script = argv[1];
+    if (runEnv && !argv.empty()) {
+        script = argv.front();
         try {
             auto lines = tokenizeString<Strings>(readFile(script), "\n");
             if (std::regex_search(lines.front(), std::regex("^#!"))) {
                 lines.pop_front();
                 inShebang = true;
-                for (int i = 2; i < argc; ++i)
-                    savedArgs.push_back(argv[i]);
-                args.clear();
+                savedArgs = {std::next(argv.begin()), argv.end()};
+                argv.clear();
                 for (auto line : lines) {
                     line = chomp(line);
                     std::smatch match;
                     if (std::regex_match(line, match, std::regex("^#!\\s*nix-shell\\s+(.*)$")))
                         for (const auto & word : shell_split(match[1].str()))
-                            args.push_back(word);
+                            argv.push_back(word);
                 }
             }
         } catch (SysError &) { }
@@ -191,7 +186,7 @@ static void main_nix_build(int argc, char * * argv)
         return true;
     });
 
-    myArgs.parseCmdline(args);
+    myArgs.parseCmdline(argv);
 
     if (packages && fromArgs)
         throw UsageError("'-p' and '-E' are mutually exclusive");
