@@ -13,17 +13,9 @@ namespace nix {
 class LinuxLocalStore : public LocalStore
 {
 public:
-    LinuxLocalStore(const Params & params)
-        : StoreConfig(params)
-        , LocalFSStoreConfig(params)
-        , LocalStoreConfig(params)
-        , Store(params)
-        , LocalFSStore(params)
-        , LocalStore(params)
-    {
-    }
-    LinuxLocalStore(const std::string scheme, std::string path, const Params & params)
-        : LinuxLocalStore(params)
+    LinuxLocalStore(LocalStoreConfig config) : Store(config), LocalStore(config) {}
+    LinuxLocalStore(const std::string scheme, std::string path, LocalStoreConfig config)
+        : LinuxLocalStore(config)
     {
         throw UnimplementedError("LinuxLocalStore");
     }

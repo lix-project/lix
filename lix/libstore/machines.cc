@@ -66,7 +66,7 @@ bool Machine::mandatoryMet(const std::set<std::string> & features) const
 
 ref<Store> Machine::openStore() const
 {
-    Store::Params storeParams;
+    StoreConfig::Params storeParams;
     if (storeUri.starts_with("ssh://")) {
         storeParams["log-fd"] = "4";
         storeParams["max-connections"] = "1";

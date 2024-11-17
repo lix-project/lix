@@ -68,7 +68,7 @@ StorePath StorePath::random(std::string_view name)
 StorePath Store::parseStorePath(std::string_view path) const
 {
     auto p = canonPath(std::string(path));
-    if (dirOf(p) != storeDir)
+    if (dirOf(p) != config().storeDir)
         throw BadStorePath("path '%s' is not in the Nix store", p);
     return StorePath(baseNameOf(p));
 }
@@ -77,7 +77,7 @@ std::optional<StorePath> Store::maybeParseStorePath(std::string_view path) const
 {
     // If it's not an absolute path, or if the dirname of the path isn't /nix/store
     // (or whatever our storeDir is), then it can't be a store path.
-    if ((path.size() > 0 && path[0] != '/') || dirOf(canonPath(path)) != this->storeDir) {
+    if ((path.size() > 0 && path[0] != '/') || dirOf(canonPath(path)) != config().storeDir) {
         return std::nullopt;
     }
     try {
@@ -101,7 +101,7 @@ StorePathSet Store::parseStorePathSet(const PathSet & paths) const
 
 std::string Store::printStorePath(const StorePath & path) const
 {
-    return (storeDir + "/").append(path.to_string());
+    return (config().storeDir + "/").append(path.to_string());
 }
 
 PathSet Store::printStorePathSet(const StorePathSet & paths) const

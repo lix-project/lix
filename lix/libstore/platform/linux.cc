@@ -67,7 +67,7 @@ void LinuxLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
         struct dirent * ent;
         auto digitsRegex = std::regex(R"(^\d+$)");
         auto mapRegex = std::regex(R"(^\s*\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+(/\S+)\s*$)");
-        auto storePathRegex = regex::storePathRegex(storeDir);
+        auto storePathRegex = regex::storePathRegex(config().storeDir);
         while (errno = 0, ent = readdir(procDir.get())) {
             checkInterrupt();
             if (std::regex_match(ent->d_name, digitsRegex)) {
@@ -797,7 +797,7 @@ void LinuxLocalDerivationGoal::prepareSandbox()
        can be bind-mounted).  !!! As an extra security
        precaution, make the fake Nix store only writable by the
        build user. */
-    Path chrootStoreDir = chrootRootDir + worker.store.storeDir;
+    Path chrootStoreDir = chrootRootDir + worker.store.config().storeDir;
     createDirs(chrootStoreDir);
     chmodPath(chrootStoreDir, 01775);
 

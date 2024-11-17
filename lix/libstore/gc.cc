@@ -46,7 +46,7 @@ static void makeSymlink(const Path & link, const Path & target)
 void LocalStore::addIndirectRoot(const Path & path)
 {
     std::string hash = hashString(HashType::SHA1, path).to_string(Base::Base32, false);
-    Path realRoot = canonPath(fmt("%1%/%2%/auto/%3%", stateDir, gcRootsDir, hash));
+    Path realRoot = canonPath(fmt("%1%/%2%/auto/%3%", config().stateDir, gcRootsDir, hash));
     makeSymlink(realRoot, path);
 }
 
@@ -111,7 +111,7 @@ void LocalStore::createTempRootsFile()
 
 void LocalStore::addTempRoot(const StorePath & path)
 {
-    if (readOnly) {
+    if (config().readOnly) {
       debug("Read-only store doesn't support creating lock files for temp roots, but nothing can be deleted anyways.");
       return;
     }
@@ -138,7 +138,7 @@ void LocalStore::addTempRoot(const StorePath & path)
         auto fdRootsSocket(_fdRootsSocket.lock());
 
         if (!*fdRootsSocket) {
-            auto socketPath = stateDir.get() + gcSocketPath;
+            auto socketPath = config().stateDir.get() + gcSocketPath;
             debug("connecting to '%s'", socketPath);
             *fdRootsSocket = createUnixDomainSocket();
             try {
@@ -268,7 +268,7 @@ void LocalStore::findRoots(const Path & path, unsigned char type, Roots & roots)
             else {
                 target = absPath(target, dirOf(path));
                 if (!pathExists(target)) {
-                    if (isInDir(path, stateDir + "/" + gcRootsDir + "/auto")) {
+                    if (isInDir(path, config().stateDir + "/" + gcRootsDir + "/auto")) {
                         printInfo("removing stale link from '%1%' to '%2%'", path, target);
                         unlink(path.c_str());
                     }
@@ -282,7 +282,8 @@ void LocalStore::findRoots(const Path & path, unsigned char type, Roots & roots)
         }
 
         else if (type == DT_REG) {
-            auto storePath = maybeParseStorePath(storeDir + "/" + std::string(baseNameOf(path)));
+            auto storePath =
+                maybeParseStorePath(config().storeDir + "/" + std::string(baseNameOf(path)));
             if (storePath && isValidPath(*storePath))
                 roots[std::move(*storePath)].emplace(path);
         }
@@ -302,8 +303,8 @@ void LocalStore::findRoots(const Path & path, unsigned char type, Roots & roots)
 void LocalStore::findRootsNoTemp(Roots & roots, bool censor)
 {
     /* Process direct roots in {gcroots,profiles}. */
-    findRoots(stateDir + "/" + gcRootsDir, DT_UNKNOWN, roots);
-    findRoots(stateDir + "/profiles", DT_UNKNOWN, roots);
+    findRoots(config().stateDir + "/" + gcRootsDir, DT_UNKNOWN, roots);
+    findRoots(config().stateDir + "/profiles", DT_UNKNOWN, roots);
 
     /* Add additional roots returned by different platforms-specific
        heuristics.  This is typically used to add running programs to
@@ -589,7 +590,7 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
     if (auto p = getEnv("_NIX_TEST_GC_SYNC_1"))
         readFile(*p);
 
-    GCOperation gcServer {*this, stateDir.get()};
+    GCOperation gcServer {*this, config().stateDir.get()};
 
     /* Find the roots.  Since we've grabbed the GC lock, the set of
        permanent roots cannot increase now. */
@@ -617,8 +618,8 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
        GCLimitReached if we've deleted enough garbage. */
     auto deleteFromStore = [&](std::string_view baseName)
     {
-        Path path = storeDir + "/" + std::string(baseName);
-        Path realPath = realStoreDir + "/" + std::string(baseName);
+        Path path = config().storeDir + "/" + std::string(baseName);
+        Path realPath = config().realStoreDir + "/" + std::string(baseName);
 
         /* There may be temp directories in the store that are still in use
            by another process. We need to be sure that we can acquire an
@@ -774,8 +775,8 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
             printInfo("determining live/dead paths...");
 
         try {
-            AutoCloseDir dir(opendir(realStoreDir.get().c_str()));
-            if (!dir) throw SysError("opening directory '%1%'", realStoreDir);
+            AutoCloseDir dir(opendir(config().realStoreDir.get().c_str()));
+            if (!dir) throw SysError("opening directory '%1%'", config().realStoreDir);
 
             /* Read the store and delete all paths that are invalid or
                unreachable. We don't use readDirectory() here so that
@@ -788,7 +789,7 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
                 std::string name = dirent->d_name;
                 if (name == "." || name == ".." || name == linksName) continue;
 
-                if (auto storePath = maybeParseStorePath(storeDir + "/" + name))
+                if (auto storePath = maybeParseStorePath(config().storeDir + "/" + name))
                     deleteReferrersClosure(*storePath);
                 else
                     deleteFromStore(name);
@@ -870,8 +871,8 @@ void LocalStore::autoGC(bool sync)
             return std::stoll(readFile(*fakeFreeSpaceFile));
 
         struct statvfs st;
-        if (statvfs(realStoreDir.get().c_str(), &st))
-            throw SysError("getting filesystem info about '%s'", realStoreDir);
+        if (statvfs(config().realStoreDir.get().c_str(), &st))
+            throw SysError("getting filesystem info about '%s'", config().realStoreDir);
 
         return (uint64_t) st.f_bavail * st.f_frsize;
     };

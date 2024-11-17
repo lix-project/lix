@@ -16,7 +16,7 @@ namespace nix {
 
 void DarwinLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
 {
-    auto storePathRegex = regex::storePathRegex(storeDir);
+    auto storePathRegex = regex::storePathRegex(config().storeDir);
 
     std::vector<int> pids;
     std::size_t pidBufSize = 1;

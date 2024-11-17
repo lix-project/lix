@@ -62,7 +62,7 @@ void FreeBSDLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
 {
     readSysctlRoots("kern.module_path", unchecked);
 
-    auto storePathRegex = regex::storePathRegex(storeDir);
+    auto storePathRegex = regex::storePathRegex(config().storeDir);
 
     auto ps = std::unique_ptr<struct procstat, ProcstatDeleter>(procstat_open_sysctl());
     if (!ps) {

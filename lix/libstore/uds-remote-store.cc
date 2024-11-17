@@ -22,15 +22,10 @@ std::string UDSRemoteStoreConfig::doc()
         ;
 }
 
-
-UDSRemoteStore::UDSRemoteStore(const Params & params)
-    : StoreConfig(params)
-    , LocalFSStoreConfig(params)
-    , RemoteStoreConfig(params)
-    , UDSRemoteStoreConfig(params)
-    , Store(params)
-    , LocalFSStore(params)
-    , RemoteStore(params)
+UDSRemoteStore::UDSRemoteStore(UDSRemoteStoreConfig config)
+    : Store(config)
+    , RemoteStore(config)
+    , config_(std::move(config))
 {
 }
 
@@ -38,8 +33,8 @@ UDSRemoteStore::UDSRemoteStore(const Params & params)
 UDSRemoteStore::UDSRemoteStore(
     const std::string scheme,
     std::string socket_path,
-    const Params & params)
-    : UDSRemoteStore(params)
+    UDSRemoteStoreConfig config)
+    : UDSRemoteStore(std::move(config))
 {
     path.emplace(socket_path);
 }

@@ -200,7 +200,7 @@ retry:
     }
 
     auto & localStore = getLocalStore();
-    if (localStore.storeDir != localStore.realStoreDir.get()) {
+    if (localStore.config().storeDir != localStore.config().realStoreDir.get()) {
         #if __linux__
             useChroot = true;
         #else
@@ -355,7 +355,7 @@ bool LocalDerivationGoal::cleanupDecideWhetherDiskFull()
         auto & localStore = getLocalStore();
         uint64_t required = 8ULL * 1024 * 1024; // FIXME: make configurable
         struct statvfs st;
-        if (statvfs(localStore.realStoreDir.get().c_str(), &st) == 0 &&
+        if (statvfs(localStore.config().realStoreDir.get().c_str(), &st) == 0 &&
             (uint64_t) st.f_bavail * st.f_bsize < required)
             diskFull = true;
         if (statvfs(tmpDir.c_str(), &st) == 0 &&
@@ -475,7 +475,7 @@ kj::Promise<Outcome<void, Goal::WorkResult>> LocalDerivationGoal::startBuilder()
                 concatStringsSep(", ", parsedDrv->getRequiredSystemFeatures()),
                 worker.store.printStorePath(drvPath),
                 settings.thisSystem,
-                concatStringsSep<StringSet>(", ", worker.store.systemFeatures),
+                concatStringsSep<StringSet>(", ", worker.store.config().systemFeatures),
                 Uncolored(addendum))
         });
     }
@@ -596,7 +596,7 @@ kj::Promise<Outcome<void, Goal::WorkResult>> LocalDerivationGoal::startBuilder()
             else
                 pathsInChroot[i.substr(0, p)] = {i.substr(p + 1), optional};
         }
-        if (worker.store.storeDir.starts_with(tmpDirInSandbox))
+        if (worker.store.config().storeDir.starts_with(tmpDirInSandbox))
         {
             throw Error("`sandbox-build-dir` must not contain the storeDir");
         }
@@ -872,7 +872,7 @@ void LocalDerivationGoal::initEnv()
        shouldn't care, but this is useful for purity checking (e.g.,
        the compiler or linker might only want to accept paths to files
        in the store or in the build directory). */
-    env["NIX_STORE"] = worker.store.storeDir;
+    env["NIX_STORE"] = worker.store.config().storeDir;
 
     /* The maximum number of cores to utilize for parallel building. */
     env["NIX_BUILD_CORES"] = fmt("%d", settings.buildCores);
@@ -975,23 +975,25 @@ struct RestrictedStoreConfig : virtual LocalFSStoreConfig
 /* A wrapper around LocalStore that only allows building/querying of
    paths that are in the input closures of the build or were added via
    recursive Nix calls. */
-struct RestrictedStore : public virtual RestrictedStoreConfig, public virtual IndirectRootStore, public virtual GcStore
+struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStore
 {
+    RestrictedStoreConfig config_;
+
+    RestrictedStoreConfig & config() override { return config_; }
+    const RestrictedStoreConfig & config() const override { return config_; }
+
     ref<LocalStore> next;
 
     LocalDerivationGoal & goal;
 
-    RestrictedStore(const Params & params, ref<LocalStore> next, LocalDerivationGoal & goal)
-        : StoreConfig(params)
-        , LocalFSStoreConfig(params)
-        , RestrictedStoreConfig(params)
-        , Store(params)
-        , LocalFSStore(params)
+    RestrictedStore(RestrictedStoreConfig config, ref<LocalStore> next, LocalDerivationGoal & goal)
+        : Store(config)
+        , config_(std::move(config))
         , next(next), goal(goal)
     { }
 
     Path getRealStoreDir() override
-    { return next->realStoreDir; }
+    { return next->config().realStoreDir; }
 
     std::string getUri() override
     { return next->getUri(); }
@@ -1203,10 +1205,10 @@ void LocalDerivationGoal::startDaemon()
 {
     experimentalFeatureSettings.require(Xp::RecursiveNix);
 
-    Store::Params params;
+    StoreConfig::Params params;
     params["path-info-cache-size"] = "0";
-    params["store"] = worker.store.storeDir;
-    if (auto & optRoot = getLocalStore().rootDir.get())
+    params["store"] = worker.store.config().storeDir;
+    if (auto & optRoot = getLocalStore().config().rootDir.get())
         params["root"] = *optRoot;
     params["state"] = "/no-such-path";
     params["log"] = "/no-such-path";
@@ -1444,7 +1446,7 @@ void LocalDerivationGoal::runChild()
 
                Marking chrootRootDir as MS_SHARED causes pivot_root()
                to fail with EINVAL. Don't know why. */
-            Path chrootStoreDir = chrootRootDir + worker.store.storeDir;
+            Path chrootStoreDir = chrootRootDir + worker.store.config().storeDir;
 
             if (mount(chrootStoreDir.c_str(), chrootStoreDir.c_str(), 0, MS_BIND, 0) == -1)
                 throw SysError("unable to bind mount the Nix store", chrootStoreDir);
@@ -1459,8 +1461,11 @@ void LocalDerivationGoal::runChild()
                 createDirs(chrootRootDir + "/dev/shm");
                 createDirs(chrootRootDir + "/dev/pts");
                 ss.push_back("/dev/full");
-                if (worker.store.systemFeatures.get().count("kvm") && pathExists("/dev/kvm"))
+                if (worker.store.config().systemFeatures.get().count("kvm")
+                    && pathExists("/dev/kvm"))
+                {
                     ss.push_back("/dev/kvm");
+                }
                 ss.push_back("/dev/null");
                 ss.push_back("/dev/random");
                 ss.push_back("/dev/tty");
@@ -1702,7 +1707,7 @@ void LocalDerivationGoal::runChild()
 
             /* And we want the store in there regardless of how empty pathsInChroot. We include the innermost
                path component this time, since it's typically /nix/store and we care about that. */
-            Path cur = worker.store.storeDir;
+            Path cur = worker.store.config().storeDir;
             while (cur.compare("/") != 0) {
                 ancestry.insert(cur);
                 cur = dirOf(cur);

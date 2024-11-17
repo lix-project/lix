@@ -16,17 +16,18 @@ struct DummyStoreConfig : virtual StoreConfig {
     }
 };
 
-struct DummyStore : public virtual DummyStoreConfig, public virtual Store
+struct DummyStore : public virtual Store
 {
-    DummyStore(const std::string scheme, const std::string uri, const Params & params)
-        : DummyStore(params)
+    DummyStoreConfig config_;
+
+    DummyStoreConfig & config() override { return config_; }
+    const DummyStoreConfig & config() const override { return config_; }
+
+    DummyStore(const std::string scheme, const std::string uri, DummyStoreConfig config)
+        : DummyStore(std::move(config))
     { }
 
-    DummyStore(const Params & params)
-        : StoreConfig(params)
-        , DummyStoreConfig(params)
-        , Store(params)
-    { }
+    DummyStore(DummyStoreConfig config) : Store(config), config_(std::move(config)) {}
 
     std::string getUri() override
     {

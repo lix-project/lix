@@ -21,23 +21,25 @@ struct LocalBinaryCacheStoreConfig : virtual BinaryCacheStoreConfig
     }
 };
 
-class LocalBinaryCacheStore : public virtual LocalBinaryCacheStoreConfig, public virtual BinaryCacheStore
+class LocalBinaryCacheStore : public virtual BinaryCacheStore
 {
 private:
 
+    LocalBinaryCacheStoreConfig config_;
     Path binaryCacheDir;
 
 public:
 
+    LocalBinaryCacheStoreConfig & config() override { return config_; }
+    const LocalBinaryCacheStoreConfig & config() const override { return config_; }
+
     LocalBinaryCacheStore(
         const std::string scheme,
         const Path & binaryCacheDir,
-        const Params & params)
-        : StoreConfig(params)
-        , BinaryCacheStoreConfig(params)
-        , LocalBinaryCacheStoreConfig(params)
-        , Store(params)
-        , BinaryCacheStore(params)
+        LocalBinaryCacheStoreConfig config)
+        : Store(config)
+        , BinaryCacheStore(config)
+        , config_(std::move(config))
         , binaryCacheDir(binaryCacheDir)
     {
     }
@@ -89,7 +91,7 @@ protected:
                 !entry.name.ends_with(".narinfo"))
                 continue;
             paths.insert(parseStorePath(
-                    storeDir + "/" + entry.name.substr(0, entry.name.size() - 8)
+                    config_.storeDir + "/" + entry.name.substr(0, entry.name.size() - 8)
                     + "-" + MissingName));
         }
 
@@ -106,7 +108,7 @@ void LocalBinaryCacheStore::init()
 {
     createDirs(binaryCacheDir + "/nar");
     createDirs(binaryCacheDir + "/" + realisationsPrefix);
-    if (writeDebugInfo)
+    if (config_.writeDebugInfo)
         createDirs(binaryCacheDir + "/debuginfo");
     createDirs(binaryCacheDir + "/log");
     BinaryCacheStore::init();

@@ -184,11 +184,6 @@ S3Helper::FileTransferResult S3Helper::getObject(
     return res;
 }
 
-S3BinaryCacheStore::S3BinaryCacheStore(const Params & params)
-    : BinaryCacheStoreConfig(params)
-    , BinaryCacheStore(params)
-{ }
-
 struct S3BinaryCacheStoreConfig : virtual BinaryCacheStoreConfig
 {
     using BinaryCacheStoreConfig::BinaryCacheStoreConfig;
@@ -260,8 +255,13 @@ struct S3BinaryCacheStoreConfig : virtual BinaryCacheStoreConfig
     }
 };
 
-struct S3BinaryCacheStoreImpl : virtual S3BinaryCacheStoreConfig, public virtual S3BinaryCacheStore
+struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
 {
+    S3BinaryCacheStoreConfig config_;
+
+    S3BinaryCacheStoreConfig & config() override { return config_; }
+    const S3BinaryCacheStoreConfig & config() const override { return config_; }
+
     std::string bucketName;
 
     Stats stats;
@@ -271,15 +271,13 @@ struct S3BinaryCacheStoreImpl : virtual S3BinaryCacheStoreConfig, public virtual
     S3BinaryCacheStoreImpl(
         const std::string & uriScheme,
         const std::string & bucketName,
-        const Params & params)
-        : StoreConfig(params)
-        , BinaryCacheStoreConfig(params)
-        , S3BinaryCacheStoreConfig(params)
-        , Store(params)
-        , BinaryCacheStore(params)
-        , S3BinaryCacheStore(params)
+        S3BinaryCacheStoreConfig config)
+        : Store(config)
+        , BinaryCacheStore(config)
+        , S3BinaryCacheStore(config)
+        , config_(std::move(config))
         , bucketName(bucketName)
-        , s3Helper(profile, region, scheme, endpoint)
+        , s3Helper(config_.profile, config_.region, config_.scheme, config_.endpoint)
     {
         diskCache = getNarInfoDiskCache();
     }
@@ -292,11 +290,13 @@ struct S3BinaryCacheStoreImpl : virtual S3BinaryCacheStoreConfig, public virtual
     void init() override
     {
         if (auto cacheInfo = diskCache->upToDateCacheExists(getUri())) {
-            wantMassQuery.setDefault(cacheInfo->wantMassQuery);
-            priority.setDefault(cacheInfo->priority);
+            config().wantMassQuery.setDefault(cacheInfo->wantMassQuery);
+            config().priority.setDefault(cacheInfo->priority);
         } else {
             BinaryCacheStore::init();
-            diskCache->createCache(getUri(), storeDir, wantMassQuery, priority);
+            diskCache->createCache(
+                getUri(), config().storeDir, config().wantMassQuery, config().priority
+            );
         }
     }
 
@@ -360,11 +360,11 @@ struct S3BinaryCacheStoreImpl : virtual S3BinaryCacheStoreConfig, public virtual
 
         std::call_once(transferManagerCreated, [&]()
         {
-            if (multipartUpload) {
+            if (config().multipartUpload) {
                 TransferManagerConfiguration transferConfig(executor.get());
 
                 transferConfig.s3Client = s3Helper.client;
-                transferConfig.bufferSize = bufferSize;
+                transferConfig.bufferSize = config().bufferSize;
 
                 transferConfig.uploadProgressCallback =
                     [](const TransferManager *transferManager,
@@ -448,12 +448,14 @@ struct S3BinaryCacheStoreImpl : virtual S3BinaryCacheStoreConfig, public virtual
             return std::make_shared<std::stringstream>(std::move(compressed));
         };
 
-        if (narinfoCompression != "" && path.ends_with(".narinfo"))
-            uploadFile(path, compress(narinfoCompression), mimeType, narinfoCompression);
-        else if (lsCompression != "" && path.ends_with(".ls"))
-            uploadFile(path, compress(lsCompression), mimeType, lsCompression);
-        else if (logCompression != "" && path.starts_with("log/"))
-            uploadFile(path, compress(logCompression), mimeType, logCompression);
+        if (config().narinfoCompression != "" && path.ends_with(".narinfo")) {
+            uploadFile(
+                path, compress(config().narinfoCompression), mimeType, config().narinfoCompression
+            );
+        } else if (config().lsCompression != "" && path.ends_with(".ls")) {
+            uploadFile(path, compress(config().lsCompression), mimeType, config().lsCompression);
+        } else if (config().logCompression != "" && path.starts_with("log/"))
+            uploadFile(path, compress(config().logCompression), mimeType, config().logCompression);
         else
             uploadFile(path, istream, mimeType, "");
     }
@@ -504,7 +506,9 @@ struct S3BinaryCacheStoreImpl : virtual S3BinaryCacheStoreConfig, public virtual
             for (auto object : contents) {
                 auto & key = object.GetKey();
                 if (key.size() != 40 || !key.ends_with(".narinfo")) continue;
-                paths.insert(parseStorePath(storeDir + "/" + key.substr(0, key.size() - 8) + "-" + MissingName));
+                paths.insert(parseStorePath(
+                    config().storeDir + "/" + key.substr(0, key.size() - 8) + "-" + MissingName
+                ));
             }
 
             marker = res.GetNextMarker();

@@ -100,9 +100,9 @@ try {
         subPath = sub->makeFixedOutputPathFromCA(
             std::string { storePath.name() },
             ContentAddressWithReferences::withoutRefs(*ca));
-        if (sub->storeDir == worker.store.storeDir)
+        if (sub->config().storeDir == worker.store.config().storeDir)
             assert(subPath == storePath);
-    } else if (sub->storeDir != worker.store.storeDir) {
+    } else if (sub->config().storeDir != worker.store.config().storeDir) {
         co_return co_await tryNext();
     }
 
@@ -151,7 +151,7 @@ try {
     /* Bail out early if this substituter lacks a valid
        signature. LocalStore::addToStore() also checks for this, but
        only after we've downloaded the path. */
-    if (!sub->isTrusted && worker.store.pathInfoIsUntrusted(*info))
+    if (!sub->config().isTrusted && worker.store.pathInfoIsUntrusted(*info))
     {
         warn("ignoring substitute for '%s' from '%s', as it's not signed by any of the keys in 'trusted-public-keys'",
             worker.store.printStorePath(storePath), sub->getUri());
@@ -220,7 +220,11 @@ try {
             PushActivity pact(act.id);
 
             copyStorePath(
-                *sub, worker.store, fetchPath, repair, sub->isTrusted ? NoCheckSigs : CheckSigs
+                *sub,
+                worker.store,
+                fetchPath,
+                repair,
+                sub->config().isTrusted ? NoCheckSigs : CheckSigs
             );
         } catch (const EndOfFile &) {
             throw EndOfFile(

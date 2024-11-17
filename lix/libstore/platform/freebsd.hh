@@ -13,17 +13,9 @@ namespace nix {
 class FreeBSDLocalStore : public LocalStore
 {
 public:
-    FreeBSDLocalStore(const Params & params)
-        : StoreConfig(params)
-        , LocalFSStoreConfig(params)
-        , LocalStoreConfig(params)
-        , Store(params)
-        , LocalFSStore(params)
-        , LocalStore(params)
-    {
-    }
-    FreeBSDLocalStore(const std::string scheme, std::string path, const Params & params)
-        : FreeBSDLocalStore(params)
+    FreeBSDLocalStore(LocalStoreConfig config) : Store(config), LocalStore(config) {}
+    FreeBSDLocalStore(const std::string scheme, std::string path, LocalStoreConfig config)
+        : FreeBSDLocalStore(config)
     {
         throw UnimplementedError("FreeBSDLocalStore");
     }

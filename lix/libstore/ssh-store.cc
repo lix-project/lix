@@ -27,26 +27,28 @@ struct SSHStoreConfig : virtual RemoteStoreConfig, virtual CommonSSHStoreConfig
     }
 };
 
-class SSHStore : public virtual SSHStoreConfig, public virtual RemoteStore
+class SSHStore : public virtual RemoteStore
 {
+    SSHStoreConfig config_;
+
 public:
-    SSHStore(const std::string & scheme, const std::string & host, const Params & params)
-        : StoreConfig(params)
-        , RemoteStoreConfig(params)
-        , CommonSSHStoreConfig(params)
-        , SSHStoreConfig(params)
-        , Store(params)
-        , RemoteStore(params)
+    SSHStore(const std::string & scheme, const std::string & host, SSHStoreConfig config)
+        : Store(config)
+        , RemoteStore(config)
+        , config_(std::move(config))
         , host(host)
         , master(
             host,
-            sshKey,
-            sshPublicHostKey,
+            config_.sshKey,
+            config_.sshPublicHostKey,
             // Use SSH master only if using more than 1 connection.
             connections->capacity() > 1,
-            compress)
+            config_.compress)
     {
     }
+
+    SSHStoreConfig & config() override { return config_; }
+    const SSHStoreConfig & config() const override { return config_; }
 
     static std::set<std::string> uriSchemes() { return {"ssh-ng"}; }
 
@@ -92,9 +94,9 @@ ref<RemoteStore::Connection> SSHStore::openConnection()
 {
     auto conn = make_ref<Connection>();
 
-    std::string command = remoteProgram + " --stdio";
-    if (remoteStore.get() != "")
-        command += " --store " + shellEscape(remoteStore.get());
+    std::string command = config_.remoteProgram + " --stdio";
+    if (config_.remoteStore.get() != "")
+        command += " --store " + shellEscape(config_.remoteStore.get());
 
     conn->sshConn = master.startCommand(command);
     conn->to = FdSink(conn->sshConn->in.get());

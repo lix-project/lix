@@ -12,7 +12,7 @@
 #endif
 
 namespace nix {
-std::shared_ptr<LocalStore> LocalStore::makeLocalStore(const Params & params)
+std::shared_ptr<LocalStore> LocalStore::makeLocalStore(const StoreConfig::Params & params)
 {
 #if __linux__
     return std::shared_ptr<LocalStore>(new LinuxLocalStore(params));

@@ -11,7 +11,7 @@ class S3BinaryCacheStore : public virtual BinaryCacheStore
 {
 protected:
 
-    S3BinaryCacheStore(const Params & params);
+    using BinaryCacheStore::BinaryCacheStore;
 
 public:
 

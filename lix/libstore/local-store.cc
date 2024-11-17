@@ -174,17 +174,14 @@ void migrateCASchema(SQLite& db, Path schemaPath, AutoCloseFD& lockFd)
     }
 }
 
-LocalStore::LocalStore(const Params & params)
-    : StoreConfig(params)
-    , LocalFSStoreConfig(params)
-    , LocalStoreConfig(params)
-    , Store(params)
-    , LocalFSStore(params)
-    , dbDir(stateDir + "/db")
-    , linksDir(realStoreDir + "/.links")
+LocalStore::LocalStore(LocalStoreConfig config)
+    : Store(config)
+    , config_(std::move(config))
+    , dbDir(config_.stateDir + "/db")
+    , linksDir(config_.realStoreDir + "/.links")
     , reservedSpacePath(dbDir + "/reserved")
     , schemaPath(dbDir + "/schema")
-    , tempRootsDir(stateDir + "/temproots")
+    , tempRootsDir(config_.stateDir + "/temproots")
     , fnTempRoots(fmt("%s/%d", tempRootsDir, getpid()))
     , locksHeld(tokenizeString<PathSet>(getEnv("NIX_HELD_LOCKS").value_or("")))
 {
@@ -192,18 +189,18 @@ LocalStore::LocalStore(const Params & params)
     state->stmts = std::make_unique<State::Stmts>();
 
     /* Create missing state directories if they don't already exist. */
-    createDirs(realStoreDir);
-    if (readOnly) {
+    createDirs(config_.realStoreDir);
+    if (config_.readOnly) {
         experimentalFeatureSettings.require(Xp::ReadOnlyLocalStore);
     } else {
         makeStoreWritable();
     }
     createDirs(linksDir);
-    Path profilesDir = stateDir + "/profiles";
+    Path profilesDir = config_.stateDir + "/profiles";
     createDirs(profilesDir);
     createDirs(tempRootsDir);
     createDirs(dbDir);
-    Path gcRootsDir = stateDir + "/gcroots";
+    Path gcRootsDir = config_.stateDir + "/gcroots";
     if (!pathExists(gcRootsDir)) {
         createDirs(gcRootsDir);
         createSymlink(profilesDir, gcRootsDir + "/profiles");
@@ -211,7 +208,7 @@ LocalStore::LocalStore(const Params & params)
 
     for (auto & perUserDir : {profilesDir + "/per-user", gcRootsDir + "/per-user"}) {
         createDirs(perUserDir);
-        if (!readOnly) {
+        if (!config_.readOnly) {
             if (chmod(perUserDir.c_str(), 0755) == -1)
                 throw SysError("could not set permissions on '%s' to 755", perUserDir);
         }
@@ -227,21 +224,21 @@ LocalStore::LocalStore(const Params & params)
             printError("warning: the group '%1%' specified in 'build-users-group' does not exist", settings.buildUsersGroup);
         else {
             struct stat st;
-            if (stat(realStoreDir.get().c_str(), &st))
-                throw SysError("getting attributes of path '%1%'", realStoreDir);
+            if (stat(config_.realStoreDir.get().c_str(), &st))
+                throw SysError("getting attributes of path '%1%'", config_.realStoreDir);
 
             if (st.st_uid != 0 || st.st_gid != gr->gr_gid || (st.st_mode & ~S_IFMT) != perm) {
-                if (chown(realStoreDir.get().c_str(), 0, gr->gr_gid) == -1)
-                    throw SysError("changing ownership of path '%1%'", realStoreDir);
-                if (chmod(realStoreDir.get().c_str(), perm) == -1)
-                    throw SysError("changing permissions on path '%1%'", realStoreDir);
+                if (chown(config_.realStoreDir.get().c_str(), 0, gr->gr_gid) == -1)
+                    throw SysError("changing ownership of path '%1%'", config_.realStoreDir);
+                if (chmod(config_.realStoreDir.get().c_str(), perm) == -1)
+                    throw SysError("changing permissions on path '%1%'", config_.realStoreDir);
             }
         }
     }
 
     /* Ensure that the store and its parents are not symlinks. */
     if (!settings.allowSymlinkedStore) {
-        Path path = realStoreDir;
+        Path path = config_.realStoreDir;
         struct stat st;
         while (path != "/") {
             st = lstat(path);
@@ -278,12 +275,12 @@ LocalStore::LocalStore(const Params & params)
 
     /* Acquire the big fat lock in shared mode to make sure that no
        schema upgrade is in progress. */
-    if (!readOnly) {
+    if (!config_.readOnly) {
         Path globalLockPath = dbDir + "/big-lock";
         globalLock = openLockFile(globalLockPath.c_str(), true);
     }
 
-    if (!readOnly && !lockFile(globalLock.get(), ltRead, false)) {
+    if (!config_.readOnly && !lockFile(globalLock.get(), ltRead, false)) {
         printInfo("waiting for the big Nix store lock...");
         lockFile(globalLock.get(), ltRead, true);
     }
@@ -291,7 +288,7 @@ LocalStore::LocalStore(const Params & params)
     /* Check the current database schema and if necessary do an
        upgrade.  */
     int curSchema = getSchema();
-    if (readOnly && curSchema < nixSchemaVersion) {
+    if (config_.readOnly && curSchema < nixSchemaVersion) {
         debug("current schema version: %d", curSchema);
         debug("supported schema version: %d", nixSchemaVersion);
         throw Error(curSchema == 0 ?
@@ -363,7 +360,7 @@ LocalStore::LocalStore(const Params & params)
     else openDB(*state, false);
 
     if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-        if (!readOnly) {
+        if (!config_.readOnly) {
             migrateCASchema(state->db, dbDir + "/ca-schema", globalLock);
         } else {
             throw Error("need to migrate to content-addressed schema, but this cannot be done in read-only mode");
@@ -443,8 +440,8 @@ LocalStore::LocalStore(const Params & params)
 }
 
 
-LocalStore::LocalStore(std::string scheme, std::string path, const Params & params)
-    : LocalStore(params)
+LocalStore::LocalStore(std::string scheme, std::string path, LocalStoreConfig config)
+    : LocalStore(std::move(config))
 {
     throw UnimplementedError("LocalStore");
 }
@@ -452,7 +449,7 @@ LocalStore::LocalStore(std::string scheme, std::string path, const Params & para
 
 AutoCloseFD LocalStore::openGCLock()
 {
-    Path fnGCLock = stateDir + "/gc.lock";
+    Path fnGCLock = config_.stateDir + "/gc.lock";
     AutoCloseFD fdGCLock{open(fnGCLock.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600)};
     if (!fdGCLock)
         throw SysError("opening global GC lock '%1%'", fnGCLock);
@@ -498,17 +495,17 @@ int LocalStore::getSchema()
 
 void LocalStore::openDB(State & state, bool create)
 {
-    if (create && readOnly) {
+    if (create && config_.readOnly) {
         throw Error("cannot create database while in read-only mode");
     }
 
-    if (access(dbDir.c_str(), R_OK | (readOnly ? 0 : W_OK)))
+    if (access(dbDir.c_str(), R_OK | (config_.readOnly ? 0 : W_OK)))
         throw SysError("Nix database directory '%1%' is not writable", dbDir);
 
     /* Open the Nix database. */
     std::string dbPath = dbDir + "/db.sqlite";
     auto & db(state.db);
-    auto openMode = readOnly ? SQLiteOpenMode::Immutable
+    auto openMode = config_.readOnly ? SQLiteOpenMode::Immutable
                   : create ? SQLiteOpenMode::Normal
                   : SQLiteOpenMode::NoCreate;
     state.db = SQLite(dbPath, openMode);
@@ -587,12 +584,12 @@ void LocalStore::makeStoreWritable()
     if (getuid() != 0) return;
     /* Check if /nix/store is on a read-only mount. */
     struct statvfs stat;
-    if (statvfs(realStoreDir.get().c_str(), &stat) != 0)
+    if (statvfs(config_.realStoreDir.get().c_str(), &stat) != 0)
         throw SysError("getting info about the Nix store mount point");
 
     if (stat.f_flag & ST_RDONLY) {
-        if (mount(0, realStoreDir.get().c_str(), "none", MS_REMOUNT | MS_BIND, 0) == -1)
-            throw SysError("remounting %1% writable", realStoreDir);
+        if (mount(0, config_.realStoreDir.get().c_str(), "none", MS_REMOUNT | MS_BIND, 0) == -1)
+            throw SysError("remounting %1% writable", config_.realStoreDir);
     }
 #endif
 }
@@ -1068,7 +1065,7 @@ std::optional<StorePath> LocalStore::queryPathFromHashPart(const std::string & h
 {
     if (hashPart.size() != StorePath::HashLen) throw Error("invalid hash part");
 
-    Path prefix = storeDir + "/" + hashPart;
+    Path prefix = config_.storeDir + "/" + hashPart;
 
     return retrySQLite<std::optional<StorePath>>([&]() -> std::optional<StorePath> {
         auto state(_state.lock());
@@ -1097,8 +1094,8 @@ StorePathSet LocalStore::querySubstitutablePaths(const StorePathSet & paths)
 
     for (auto & sub : getDefaultSubstituters()) {
         if (remaining.empty()) break;
-        if (sub->storeDir != storeDir) continue;
-        if (!sub->wantMassQuery) continue;
+        if (sub->config().storeDir != config_.storeDir) continue;
+        if (!sub->config().wantMassQuery) continue;
 
         auto valid = sub->queryValidPaths(remaining);
 
@@ -1208,12 +1205,12 @@ const PublicKeys & LocalStore::getPublicKeys()
 
 bool LocalStore::pathInfoIsUntrusted(const ValidPathInfo & info)
 {
-    return requireSigs && !info.checkSignatures(*this, getPublicKeys());
+    return config_.requireSigs && !info.checkSignatures(*this, getPublicKeys());
 }
 
 bool LocalStore::realisationIsUntrusted(const Realisation & realisation)
 {
-    return requireSigs && !realisation.checkSignatures(getPublicKeys());
+    return config_.requireSigs && !realisation.checkSignatures(getPublicKeys());
 }
 
 void LocalStore::addToStore(const ValidPathInfo & info, Source & source,
@@ -1508,7 +1505,7 @@ std::pair<Path, AutoCloseFD> LocalStore::createTempDirInStore()
         /* There is a slight possibility that `tmpDir' gets deleted by
            the GC between createTempDir() and when we acquire a lock on it.
            We'll repeat until 'tmpDir' exists and we've locked it. */
-        tmpDirFn = createTempDir(realStoreDir, "tmp");
+        tmpDirFn = createTempDir(config_.realStoreDir, "tmp");
         tmpDirFd = AutoCloseFD{open(tmpDirFn.c_str(), O_RDONLY | O_DIRECTORY)};
         if (tmpDirFd.get() < 0) {
             continue;
@@ -1564,7 +1561,7 @@ bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
            database and the filesystem) in the loop below, in order to catch
            invalid states.
          */
-        for (auto & i : readDirectory(realStoreDir)) {
+        for (auto & i : readDirectory(config_.realStoreDir)) {
             try {
                 storePathsInStoreDir.insert({i.name});
             } catch (BadStorePath &) { }
@@ -1758,7 +1755,7 @@ void LocalStore::upgradeStore7()
 {
     if (getuid() != 0) return;
     printInfo("removing immutable bits from the Nix store (this may take a while)...");
-    makeMutable(realStoreDir);
+    makeMutable(config_.realStoreDir);
 }
 
 #else
@@ -1927,7 +1924,9 @@ void LocalStore::addBuildLog(const StorePath & drvPath, std::string_view log)
 
     auto baseName = drvPath.to_string();
 
-    auto logPath = fmt("%s/%s/%s/%s.bz2", logDir, drvsLogDir, baseName.substr(0, 2), baseName.substr(2));
+    auto logPath =
+        fmt("%s/%s/%s/%s.bz2", config_.logDir, drvsLogDir, baseName.substr(0, 2), baseName.substr(2)
+        );
 
     if (pathExists(logPath)) return;
 

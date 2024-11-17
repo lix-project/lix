@@ -43,11 +43,11 @@ namespace nix {
  *   of it) and inherit the constructors of `StoreConfig`
  *   (`using StoreConfig::StoreConfig`).
  *
- * 2. A class `Foo : virtual Store, virtual FooConfig` that contains the
+ * 2. A class `Foo : virtual Store` that contains the
  *   implementation of the store.
  *
- *   This class is expected to have a constructor `Foo(const Params & params)`
- *   that calls `StoreConfig(params)` (otherwise you're gonna encounter an
+ *   This class is expected to have a constructor `Foo(FooConfig config)`
+ *   that calls `StoreConfig(config)` (otherwise you're gonna encounter an
  *   `assertion failure` when trying to instantiate it).
  *
  * You can then register the new store by defining a registration function
@@ -181,7 +181,7 @@ struct StoreConfig : public Config
         false};
 };
 
-class Store : public std::enable_shared_from_this<Store>, public virtual StoreConfig
+class Store : public std::enable_shared_from_this<Store>
 {
 protected:
 
@@ -221,7 +221,7 @@ protected:
 
     std::shared_ptr<NarInfoDiskCache> diskCache;
 
-    Store(const Params & params);
+    Store(const StoreConfig & config);
 
 public:
     /**
@@ -229,6 +229,9 @@ public:
      * running
      */
     virtual void init() {};
+
+    virtual StoreConfig & config() = 0;
+    virtual const StoreConfig & config() const = 0;
 
     virtual ~Store() noexcept(false) { }
 
@@ -986,7 +989,7 @@ OutputPathMap resolveDerivedPath(Store &, const DerivedPath::Built &, Store * ev
  * ‘?key=value&key=value&...’ to the URI.
  */
 ref<Store> openStore(const std::string & uri = settings.storeUri.get(),
-    const Store::Params & extraParams = Store::Params());
+    const StoreConfig::Params & extraParams = {});
 
 
 /**
@@ -998,7 +1001,13 @@ std::list<ref<Store>> getDefaultSubstituters();
 struct StoreFactory
 {
     std::set<std::string> uriSchemes;
-    std::function<std::shared_ptr<Store> (const std::string & scheme, const std::string & uri, const Store::Params & params)> create;
+    std::function<
+        std::shared_ptr<Store> (
+            const std::string & scheme,
+            const std::string & uri,
+            const StoreConfig::Params & params
+        )
+    > create;
     std::function<std::shared_ptr<StoreConfig> ()> getConfig;
 };
 
@@ -1013,7 +1022,7 @@ struct StoreImplementations
         StoreFactory factory{
             .uriSchemes = T::uriSchemes(),
             .create =
-                ([](const std::string & scheme, const std::string & uri, const Store::Params & params)
+                ([](const std::string & scheme, const std::string & uri, const StoreConfig::Params & params)
                  -> std::shared_ptr<Store>
                  { return std::make_shared<T>(scheme, uri, params); }),
             .getConfig =
@@ -1041,7 +1050,7 @@ std::optional<ValidPathInfo> decodeValidPathInfo(
 /**
  * Split URI into protocol+hierarchy part and its parameter set.
  */
-std::pair<std::string, Store::Params> splitUriAndParams(const std::string & uri);
+std::pair<std::string, StoreConfig::Params> splitUriAndParams(const std::string & uri);
 
 const ContentAddress * getDerivationCA(const BasicDerivation & drv);
 

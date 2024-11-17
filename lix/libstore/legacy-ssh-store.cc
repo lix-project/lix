@@ -14,7 +14,7 @@
 
 namespace nix {
 
-struct LegacySSHStoreConfig : virtual CommonSSHStoreConfig
+struct LegacySSHStoreConfig : CommonSSHStoreConfig
 {
     using CommonSSHStoreConfig::CommonSSHStoreConfig;
 
@@ -34,12 +34,22 @@ struct LegacySSHStoreConfig : virtual CommonSSHStoreConfig
     }
 };
 
-struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Store
+struct LegacySSHStoreConfigWithLog : LegacySSHStoreConfig
 {
+    using LegacySSHStoreConfig::LegacySSHStoreConfig;
+
     // Hack for getting remote build log output.
     // Intentionally not in `LegacySSHStoreConfig` so that it doesn't appear in
     // the documentation
     const Setting<int> logFD{this, -1, "log-fd", "file descriptor to which SSH's stderr is connected"};
+};
+
+struct LegacySSHStore : public virtual Store
+{
+    LegacySSHStoreConfigWithLog config_;
+
+    LegacySSHStoreConfigWithLog & config() override { return config_; }
+    const LegacySSHStoreConfigWithLog & config() const override { return config_; }
 
     struct Connection
     {
@@ -89,25 +99,25 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
 
     static std::set<std::string> uriSchemes() { return {"ssh"}; }
 
-    LegacySSHStore(const std::string & scheme, const std::string & host, const Params & params)
-        : StoreConfig(params)
-        , CommonSSHStoreConfig(params)
-        , LegacySSHStoreConfig(params)
-        , Store(params)
+    LegacySSHStore(
+        const std::string & scheme, const std::string & host, LegacySSHStoreConfigWithLog config
+    )
+        : Store(config)
+        , config_(std::move(config))
         , host(host)
         , connections(make_ref<Pool<Connection>>(
-            std::max(1, (int) maxConnections),
+            std::max(1, (int) config_.maxConnections),
             [this]() { return openConnection(); },
             [](const ref<Connection> & r) { return r->good; }
             ))
         , master(
             host,
-            sshKey,
-            sshPublicHostKey,
+            config_.sshKey,
+            config_.sshPublicHostKey,
             // Use SSH master only if using more than 1 connection.
             connections->capacity() > 1,
-            compress,
-            logFD)
+            config_.compress,
+            config_.logFD)
     {
     }
 
@@ -115,8 +125,11 @@ struct LegacySSHStore : public virtual LegacySSHStoreConfig, public virtual Stor
     {
         auto conn = make_ref<Connection>();
         conn->sshConn = master.startCommand(
-            fmt("%s --serve --write", remoteProgram)
-            + (remoteStore.get() == "" ? "" : " --store " + shellEscape(remoteStore.get())));
+            fmt("%s --serve --write", config_.remoteProgram)
+            + (config_.remoteStore.get() == ""
+                   ? ""
+                   : " --store " + shellEscape(config_.remoteStore.get()))
+        );
         conn->to = FdSink(conn->sshConn->in.get());
         conn->from = FdSource(conn->sshConn->out.get());
 

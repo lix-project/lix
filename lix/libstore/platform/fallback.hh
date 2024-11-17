@@ -13,17 +13,9 @@ namespace nix {
 class FallbackLocalStore : public LocalStore
 {
 public:
-    FallbackLocalStore(const Params & params)
-        : StoreConfig(params)
-        , LocalFSStoreConfig(params)
-        , LocalStoreConfig(params)
-        , Store(params)
-        , LocalFSStore(params)
-        , LocalStore(params)
-    {
-    }
-    FallbackLocalStore(const std::string scheme, std::string path, const Params & params)
-        : FallbackLocalStore(params)
+    FallbackLocalStore(LocalStoreConfig config) : Store(config), LocalStore(config) {}
+    FallbackLocalStore(const std::string scheme, std::string path, LocalStoreConfig config)
+        : FallbackLocalStore(config)
     {
         throw UnimplementedError("FallbackLocalStore");
     }

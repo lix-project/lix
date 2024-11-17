@@ -21,14 +21,18 @@ struct UDSRemoteStoreConfig : virtual LocalFSStoreConfig, virtual RemoteStoreCon
     std::string doc() override;
 };
 
-class UDSRemoteStore : public virtual UDSRemoteStoreConfig
-    , public virtual IndirectRootStore
+class UDSRemoteStore : public virtual IndirectRootStore
     , public virtual RemoteStore
 {
+    UDSRemoteStoreConfig config_;
+
 public:
 
-    UDSRemoteStore(const Params & params);
-    UDSRemoteStore(const std::string scheme, std::string path, const Params & params);
+    UDSRemoteStore(UDSRemoteStoreConfig config);
+    UDSRemoteStore(const std::string scheme, std::string path, UDSRemoteStoreConfig config);
+
+    UDSRemoteStoreConfig & config() override { return config_; }
+    const UDSRemoteStoreConfig & config() const override { return config_; }
 
     std::string getUri() override;
 

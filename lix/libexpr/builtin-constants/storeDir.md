@@ -1,7 +1,7 @@
 ---
 name: storeDir
 type: string
-constructorArgs: [store->storeDir]
+constructorArgs: [store->config().storeDir]
 ---
 Logical file system location of the [Nix store](@docroot@/glossary.md#gloss-store) currently in use.
 

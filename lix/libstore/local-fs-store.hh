@@ -30,8 +30,7 @@ struct LocalFSStoreConfig : virtual StoreConfig
         "Physical path of the Nix store."};
 };
 
-class LocalFSStore : public virtual LocalFSStoreConfig,
-    public virtual Store,
+class LocalFSStore : public virtual Store,
     public virtual GcStore,
     public virtual LogStore
 {
@@ -40,7 +39,8 @@ public:
 
     const static std::string drvsLogDir;
 
-    LocalFSStore(const Params & params);
+    LocalFSStoreConfig & config() override = 0;
+    const LocalFSStoreConfig & config() const override = 0;
 
     WireFormatGenerator narFromPath(const StorePath & path) override;
     ref<FSAccessor> getFSAccessor() override;
@@ -61,12 +61,12 @@ public:
      */
     virtual Path addPermRoot(const StorePath & storePath, const Path & gcRoot) = 0;
 
-    virtual Path getRealStoreDir() { return realStoreDir; }
+    virtual Path getRealStoreDir() { return config().realStoreDir; }
 
     Path toRealPath(const Path & storePath) override
     {
         assert(isInStore(storePath));
-        return getRealStoreDir() + "/" + std::string(storePath, storeDir.size() + 1);
+        return getRealStoreDir() + "/" + std::string(storePath, config().storeDir.size() + 1);
     }
 
     std::optional<std::string> getBuildLogExact(const StorePath & path) override;

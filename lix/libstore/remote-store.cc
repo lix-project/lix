@@ -24,11 +24,10 @@
 namespace nix {
 
 /* TODO: Separate these store impls into different files, give them better names */
-RemoteStore::RemoteStore(const Params & params)
-    : RemoteStoreConfig(params)
-    , Store(params)
+RemoteStore::RemoteStore(const RemoteStoreConfig & config)
+    : Store(config)
     , connections(make_ref<Pool<Connection>>(
-            std::max(1, (int) maxConnections),
+            std::max(1, (int) config.maxConnections),
             [this]() {
                 auto conn = openConnectionWrapper();
                 try {
@@ -44,7 +43,7 @@ RemoteStore::RemoteStore(const Params & params)
                     r->to.good()
                     && r->from.good()
                     && std::chrono::duration_cast<std::chrono::seconds>(
-                        std::chrono::steady_clock::now() - r->startTime).count() < maxConnectionAge;
+                        std::chrono::steady_clock::now() - r->startTime).count() < this->config().maxConnectionAge;
             }
             ))
 {

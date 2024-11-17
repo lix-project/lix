@@ -8,11 +8,6 @@
 
 namespace nix {
 
-LocalFSStore::LocalFSStore(const Params & params)
-    : Store(params)
-{
-}
-
 struct LocalStoreAccessor : public FSAccessor
 {
     ref<LocalFSStore> store;
@@ -24,7 +19,7 @@ struct LocalStoreAccessor : public FSAccessor
         auto storePath = store->toStorePath(path).first;
         if (requireValidPath && !store->isValidPath(storePath))
             throw InvalidPath("path '%1%' does not exist in the store", store->printStorePath(storePath));
-        return store->getRealStoreDir() + std::string(path, store->storeDir.size());
+        return store->getRealStoreDir() + std::string(path, store->config().storeDir.size());
     }
 
     FSAccessor::Stat stat(const Path & path) override
@@ -82,7 +77,7 @@ WireFormatGenerator LocalFSStore::narFromPath(const StorePath & path)
 {
     if (!isValidPath(path))
         throw Error("path '%s' does not exist in store", printStorePath(path));
-    return dumpPath(getRealStoreDir() + std::string(printStorePath(path), storeDir.size()));
+    return dumpPath(getRealStoreDir() + std::string(printStorePath(path), config().storeDir.size()));
 }
 
 const std::string LocalFSStore::drvsLogDir = "drvs";
@@ -95,8 +90,8 @@ std::optional<std::string> LocalFSStore::getBuildLogExact(const StorePath & path
 
         Path logPath =
             j == 0
-            ? fmt("%s/%s/%s/%s", logDir, drvsLogDir, baseName.substr(0, 2), baseName.substr(2))
-            : fmt("%s/%s/%s", logDir, drvsLogDir, baseName);
+            ? fmt("%s/%s/%s/%s", config().logDir, drvsLogDir, baseName.substr(0, 2), baseName.substr(2))
+            : fmt("%s/%s/%s", config().logDir, drvsLogDir, baseName);
         Path logBz2Path = logPath + ".bz2";
 
         if (pathExists(logPath))

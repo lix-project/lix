@@ -51,8 +51,7 @@ struct BinaryCacheStoreConfig : virtual StoreConfig
  * @note subclasses must implement at least one of the two
  * virtual getFile() methods.
  */
-class BinaryCacheStore : public virtual BinaryCacheStoreConfig,
-    public virtual Store,
+class BinaryCacheStore : public virtual Store,
     public virtual LogStore
 {
 
@@ -65,9 +64,12 @@ protected:
     // The prefix under which realisation infos will be stored
     const std::string realisationsPrefix = "realisations";
 
-    BinaryCacheStore(const Params & params);
+    BinaryCacheStore(const BinaryCacheStoreConfig & config);
 
 public:
+
+    BinaryCacheStoreConfig & config() override = 0;
+    const BinaryCacheStoreConfig & config() const override = 0;
 
     virtual bool fileExists(const std::string & path) = 0;
 

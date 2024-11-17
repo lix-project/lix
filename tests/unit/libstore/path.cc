@@ -142,7 +142,7 @@ RC_GTEST_FIXTURE_PROP(
 
     auto name = *nameFuzzer;
 
-    std::string path = store->storeDir + "/575s52sh487i0ylmbs9pvi606ljdszr0-" + name;
+    std::string path = store->config().storeDir + "/575s52sh487i0ylmbs9pvi606ljdszr0-" + name;
     bool parsed = false;
     try {
         store->parseStorePath(path);

@@ -208,14 +208,14 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
        the store itself (we don't want or need to mess with its
        permissions). */
     const Path dirOfPath(dirOf(path));
-    bool mustToggle = dirOfPath != realStoreDir.get();
+    bool mustToggle = dirOfPath != config().realStoreDir.get();
     if (mustToggle) makeWritable(dirOfPath);
 
     /* When we're done, make the directory read-only again and reset
        its timestamp back to 0. */
     MakeReadOnly makeReadOnly(mustToggle ? dirOfPath : "");
 
-    Path tempLink = makeTempPath(realStoreDir, "/.tmp-link");
+    Path tempLink = makeTempPath(config().realStoreDir, "/.tmp-link");
     unlink(tempLink.c_str()); // just in case; ignore errors
 
     if (link(linkPath.c_str(), tempLink.c_str()) == -1) {
@@ -272,7 +272,13 @@ void LocalStore::optimiseStore(OptimiseStats & stats)
         if (!isValidPath(i)) continue; /* path was GC'ed, probably */
         {
             Activity act(*logger, lvlTalkative, actUnknown, fmt("optimising path '%s'", printStorePath(i)));
-            optimisePath_(&act, stats, realStoreDir + "/" + std::string(i.to_string()), inodeHash, NoRepair);
+            optimisePath_(
+                &act,
+                stats,
+                config().realStoreDir + "/" + std::string(i.to_string()),
+                inodeHash,
+                NoRepair
+            );
         }
         done++;
         act.progress(done, paths.size());

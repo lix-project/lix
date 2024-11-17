@@ -22,10 +22,11 @@ struct HttpBinaryCacheStoreConfig : virtual BinaryCacheStoreConfig
     }
 };
 
-class HttpBinaryCacheStore : public virtual HttpBinaryCacheStoreConfig, public virtual BinaryCacheStore
+class HttpBinaryCacheStore : public virtual BinaryCacheStore
 {
 private:
 
+    HttpBinaryCacheStoreConfig config_;
     Path cacheUri;
 
     struct State
@@ -41,12 +42,10 @@ public:
     HttpBinaryCacheStore(
         const std::string & scheme,
         const Path & _cacheUri,
-        const Params & params)
-        : StoreConfig(params)
-        , BinaryCacheStoreConfig(params)
-        , HttpBinaryCacheStoreConfig(params)
-        , Store(params)
-        , BinaryCacheStore(params)
+        HttpBinaryCacheStoreConfig config)
+        : Store(config)
+        , BinaryCacheStore(config)
+        , config_(std::move(config))
         , cacheUri(scheme + "://" + _cacheUri)
     {
         if (cacheUri.back() == '/')
@@ -54,6 +53,9 @@ public:
 
         diskCache = getNarInfoDiskCache();
     }
+
+    HttpBinaryCacheStoreConfig & config() override { return config_; }
+    const HttpBinaryCacheStoreConfig & config() const override { return config_; }
 
     std::string getUri() override
     {
@@ -64,15 +66,17 @@ public:
     {
         // FIXME: do this lazily?
         if (auto cacheInfo = diskCache->upToDateCacheExists(cacheUri)) {
-            wantMassQuery.setDefault(cacheInfo->wantMassQuery);
-            priority.setDefault(cacheInfo->priority);
+            config_.wantMassQuery.setDefault(cacheInfo->wantMassQuery);
+            config_.priority.setDefault(cacheInfo->priority);
         } else {
             try {
                 BinaryCacheStore::init();
             } catch (UploadToHTTP &) {
                 throw Error("'%s' does not appear to be a binary cache", cacheUri);
             }
-            diskCache->createCache(cacheUri, storeDir, wantMassQuery, priority);
+            diskCache->createCache(
+                cacheUri, config_.storeDir, config_.wantMassQuery, config_.priority
+            );
         }
     }
 

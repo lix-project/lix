@@ -68,11 +68,12 @@ struct LocalStoreConfig : virtual LocalFSStoreConfig
     std::string doc() override;
 };
 
-class LocalStore : public virtual LocalStoreConfig
-    , public virtual IndirectRootStore
+class LocalStore : public virtual IndirectRootStore
     , public virtual GcStore
 {
 private:
+
+    LocalStoreConfig config_;
 
     /**
      * Lock file used for upgrading.
@@ -125,6 +126,9 @@ public:
     const Path tempRootsDir;
     const Path fnTempRoots;
 
+    LocalStoreConfig & config() override { return config_; }
+    const LocalStoreConfig & config() const override { return config_; }
+
 private:
 
     const PublicKeys & getPublicKeys();
@@ -137,8 +141,8 @@ protected:
      * Protected so that users don't accidentally create a LocalStore
      * instead of a platform's subclass.
      */
-    LocalStore(const Params & params);
-    LocalStore(std::string scheme, std::string path, const Params & params);
+    LocalStore(LocalStoreConfig config);
+    LocalStore(std::string scheme, std::string path, LocalStoreConfig config);
 
 public:
 
@@ -155,7 +159,7 @@ public:
     /**
      * Create a LocalStore, possibly a platform-specific subclass
      */
-    static std::shared_ptr<LocalStore> makeLocalStore(const Params & params);
+    static std::shared_ptr<LocalStore> makeLocalStore(const StoreConfig::Params & params);
 
     /**
      * Implementations of abstract store API methods.

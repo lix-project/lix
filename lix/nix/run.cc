@@ -48,8 +48,14 @@ void runProgramInStore(ref<Store> store,
     if (!store2)
         throw Error("store '%s' is not a local store so it does not support command execution", store->getUri());
 
-    if (store->storeDir != store2->getRealStoreDir()) {
-        Strings helperArgs = { chrootHelperName, store->storeDir, store2->getRealStoreDir(), std::string(system.value_or("")), program };
+    if (store->config().storeDir != store2->getRealStoreDir()) {
+        Strings helperArgs = {
+            chrootHelperName,
+            store->config().storeDir,
+            store2->getRealStoreDir(),
+            std::string(system.value_or("")),
+            program
+        };
         for (auto & arg : args) helperArgs.push_back(arg);
 
         execv(getSelfExe().value_or("nix").c_str(), stringsToCharPtrs(helperArgs).data());

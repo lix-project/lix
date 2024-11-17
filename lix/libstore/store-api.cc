@@ -32,7 +32,7 @@ BuildMode buildModeFromInteger(int raw) {
 
 bool Store::isInStore(PathView path) const
 {
-    return isInDir(path, storeDir);
+    return isInDir(path, config().storeDir);
 }
 
 
@@ -40,7 +40,7 @@ std::pair<StorePath, Path> Store::toStorePath(PathView path) const
 {
     if (!isInStore(path))
         throw Error("path '%1%' is not in the Nix store", path);
-    auto slash = path.find('/', storeDir.size() + 1);
+    auto slash = path.find('/', config().storeDir.size() + 1);
     if (slash == Path::npos)
         return {parseStorePath(path), ""};
     else
@@ -155,7 +155,7 @@ StorePath Store::makeStorePath(std::string_view type,
 {
     /* e.g., "source:sha256:1abc...:/nix/store:foo.tar.gz" */
     auto s = std::string(type) + ":" + std::string(hash)
-        + ":" + storeDir + ":" + std::string(name);
+        + ":" + config().storeDir + ":" + std::string(name);
     auto h = compressHash(hashString(HashType::SHA256, s), 20);
     return StorePath(h, name);
 }
@@ -524,9 +524,7 @@ StringSet StoreConfig::getDefaultSystemFeatures()
     return res;
 }
 
-Store::Store(const Params & params)
-    : StoreConfig(params)
-    , state({(size_t) pathInfoCacheSize})
+Store::Store(const StoreConfig & config) : state({(size_t) config.pathInfoCacheSize})
 {
     assertLibStoreInitialized();
 }
@@ -622,18 +620,21 @@ void Store::querySubstitutablePathInfos(const StorePathCAMap & paths, Substituta
                 subPath = makeFixedOutputPathFromCA(
                     path.first.name(),
                     ContentAddressWithReferences::withoutRefs(*path.second));
-                if (sub->storeDir == storeDir)
+                if (sub->config().storeDir == config().storeDir)
                     assert(subPath == path.first);
                 if (subPath != path.first)
                     debug("replaced path '%s' with '%s' for substituter '%s'", printStorePath(path.first), sub->printStorePath(subPath), sub->getUri());
-            } else if (sub->storeDir != storeDir) continue;
+            } else if (sub->config().storeDir != config().storeDir) continue;
 
             debug("checking substituter '%s' for path '%s'", sub->getUri(), sub->printStorePath(subPath));
             try {
                 auto info = sub->queryPathInfo(subPath);
 
-                if (sub->storeDir != storeDir && !(info->isContentAddressed(*sub) && info->references.empty()))
+                if (sub->config().storeDir != config().storeDir
+                    && !(info->isContentAddressed(*sub) && info->references.empty()))
+                {
                     continue;
+                }
 
                 auto narInfo = std::dynamic_pointer_cast<const NarInfo>(
                     std::shared_ptr<const ValidPathInfo>(info));
@@ -1090,7 +1091,7 @@ void copyStorePath(
         info2->path = dstStore.makeFixedOutputPathFromCA(
             info->path.name(),
             info->contentAddressWithReferences().value());
-        if (dstStore.storeDir == srcStore.storeDir)
+        if (dstStore.config().storeDir == srcStore.config().storeDir)
             assert(info->path == info2->path);
         info = info2;
     }
@@ -1205,7 +1206,7 @@ std::map<StorePath, StorePath> copyPaths(
             storePathForDst = dstStore.makeFixedOutputPathFromCA(
                 currentPathInfo.path.name(),
                 currentPathInfo.contentAddressWithReferences().value());
-            if (dstStore.storeDir == srcStore.storeDir)
+            if (dstStore.config().storeDir == srcStore.config().storeDir)
                 assert(storePathForDst == storePathForSrc);
             if (storePathForDst != storePathForSrc)
                 debug("replaced path '%s' to '%s' for substituter '%s'",
@@ -1402,10 +1403,10 @@ Derivation Store::readInvalidDerivation(const StorePath & drvPath)
 namespace nix {
 
 /* Split URI into protocol+hierarchy part and its parameter set. */
-std::pair<std::string, Store::Params> splitUriAndParams(const std::string & uri_)
+std::pair<std::string, StoreConfig::Params> splitUriAndParams(const std::string & uri_)
 {
     auto uri(uri_);
-    Store::Params params;
+    StoreConfig::Params params;
     auto q = uri.find('?');
     if (q != std::string::npos) {
         params = decodeQuery(uri.substr(q + 1));
@@ -1424,7 +1425,7 @@ static bool isNonUriPath(const std::string & spec)
         && spec.find("/") != std::string::npos;
 }
 
-std::shared_ptr<Store> openFromNonUri(const std::string & uri, const Store::Params & params)
+std::shared_ptr<Store> openFromNonUri(const std::string & uri, const StoreConfig::Params & params)
 {
     if (uri == "" || uri == "auto") {
         auto stateDir = getOr(params, "state", settings.nixStateDir);
@@ -1452,7 +1453,7 @@ std::shared_ptr<Store> openFromNonUri(const std::string & uri, const Store::Para
                 warn("'%s' does not exist, so Lix will use '%s' as a chroot store", stateDir, chrootStore);
             } else
                 debug("'%s' does not exist, so Lix will use '%s' as a chroot store", stateDir, chrootStore);
-            Store::Params chrootStoreParams;
+            StoreConfig::Params chrootStoreParams;
             chrootStoreParams["root"] = chrootStore;
             // FIXME? this ignores *all* store parameters passed to this function?
             return LocalStore::makeLocalStore(chrootStoreParams);
@@ -1465,7 +1466,7 @@ std::shared_ptr<Store> openFromNonUri(const std::string & uri, const Store::Para
     } else if (uri == "local") {
         return LocalStore::makeLocalStore(params);
     } else if (isNonUriPath(uri)) {
-        Store::Params params2 = params;
+        StoreConfig::Params params2 = params;
         params2["root"] = absPath(uri);
         return LocalStore::makeLocalStore(params2);
     } else {
@@ -1502,7 +1503,7 @@ static std::string extractConnStr(const std::string &proto, const std::string &c
 }
 
 ref<Store> openStore(const std::string & uri_,
-    const Store::Params & extraParams)
+    const StoreConfig::Params & extraParams)
 {
     auto params = extraParams;
     try {
@@ -1518,9 +1519,9 @@ ref<Store> openStore(const std::string & uri_,
             if (implem.uriSchemes.count(parsedUri.scheme)) {
                 auto store = implem.create(parsedUri.scheme, baseURI, params);
                 if (store) {
-                    experimentalFeatureSettings.require(store->experimentalFeature());
+                    experimentalFeatureSettings.require(store->config().experimentalFeature());
                     store->init();
-                    store->warnUnknownSettings();
+                    store->config().warnUnknownSettings();
                     return ref<Store>(store);
                 }
             }
@@ -1531,7 +1532,7 @@ ref<Store> openStore(const std::string & uri_,
         params.insert(uriParams.begin(), uriParams.end());
 
         if (auto store = openFromNonUri(uri, params)) {
-            store->warnUnknownSettings();
+            store->config().warnUnknownSettings();
             return ref<Store>(store);
         }
     }
@@ -1559,7 +1560,7 @@ std::list<ref<Store>> getDefaultSubstituters()
             addStore(uri);
 
         stores.sort([](ref<Store> & a, ref<Store> & b) {
-            return a->priority < b->priority;
+            return a->config().priority < b->config().priority;
         });
 
         return stores;
