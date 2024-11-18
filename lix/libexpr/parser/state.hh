@@ -39,6 +39,12 @@ struct State
     std::unique_ptr<Formals> validateFormals(std::unique_ptr<Formals> formals, PosIdx pos = noPos, Symbol arg = {});
     std::unique_ptr<Expr> stripIndentation(const PosIdx pos, std::vector<IndStringLine> && line);
 
+    /* Creates an ExprVar or an ExprVarRoot depending on the feature settings.
+     * The symbol is synthetic, but for the purpose of error handling the pos is required
+     * and should point to the expression where the var is used
+     */
+    inline std::unique_ptr<ExprVar> mkInternalVar(PosIdx pos, Symbol name);
+
     // lazy positioning means we don't get byte offsets directly, in.position() would work
     // but also requires line and column (which is expensive)
     PosIdx at(const auto & in)
@@ -51,6 +57,10 @@ struct State
         return positions.add(origin, in.end() - in.input().begin());
     }
 };
+
+std::unique_ptr<ExprVar> State::mkInternalVar(PosIdx pos, Symbol name) {
+    return std::make_unique<ExprVar>(pos, name, !featureSettings.isEnabled(Dep::ShadowInternalSymbols));
+}
 
 inline void State::dupAttr(const AttrPath & attrPath, const PosIdx pos, const PosIdx prevPos)
 {

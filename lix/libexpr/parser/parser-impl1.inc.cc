@@ -89,12 +89,12 @@ struct ExprState
         return std::make_unique<Op>(pos, std::move(left), std::move(right));
     }
 
-    std::unique_ptr<Expr> call(PosIdx pos, Symbol fn, bool flip = false)
+    std::unique_ptr<Expr> call(PosIdx pos, State & state, Symbol fn, bool flip = false)
     {
         std::vector<std::unique_ptr<Expr>> args(2);
         args[flip ? 0 : 1] = popExprOnly();
         args[flip ? 1 : 0] = popExprOnly();
-        return std::make_unique<ExprCall>(pos, std::make_unique<ExprVar>(fn), std::move(args));
+        return std::make_unique<ExprCall>(pos, state.mkInternalVar(pos, fn), std::move(args));
     }
 
     std::unique_ptr<Expr> pipe(PosIdx pos, State & state, bool flip = false)
@@ -122,7 +122,7 @@ struct ExprState
 
     std::unique_ptr<Expr> order(PosIdx pos, bool less, State & state)
     {
-        return call(pos, state.s.lessThan, !less);
+        return call(pos, state, state.s.lessThan, !less);
     }
 
     std::unique_ptr<Expr> concatStrings(PosIdx pos)
@@ -138,7 +138,7 @@ struct ExprState
         std::vector<std::unique_ptr<Expr>> args(2);
         args[0] = std::make_unique<ExprInt>(0);
         args[1] = popExprOnly();
-        return std::make_unique<ExprCall>(pos, std::make_unique<ExprVar>(state.s.sub), std::move(args));
+        return std::make_unique<ExprCall>(pos, state.mkInternalVar(pos, state.s.sub), std::move(args));
     }
 
     std::pair<PosIdx, std::unique_ptr<Expr>> applyOp(PosIdx pos, auto & op, State & state) {
@@ -163,9 +163,9 @@ struct ExprState
                 [&] (Op::update)      { return applyBinary<ExprOpUpdate>(pos); },
                 [&] (Op::not_)        { return applyUnary<ExprOpNot>(); },
                 [&] (Op::plus)        { return concatStrings(pos); },
-                [&] (Op::minus)       { return call(pos, state.s.sub); },
-                [&] (Op::mul)         { return call(pos, state.s.mul); },
-                [&] (Op::div)         { return call(pos, state.s.div); },
+                [&] (Op::minus)       { return call(pos, state, state.s.sub); },
+                [&] (Op::mul)         { return call(pos, state, state.s.mul); },
+                [&] (Op::div)         { return call(pos, state, state.s.div); },
                 [&] (Op::concat)      { return applyBinary<ExprOpConcatLists>(pos); },
                 [&] (has_attr & a)    { return applyUnary<ExprOpHasAttr>(std::move(a.path)); },
                 [&] (Op::unary_minus) { return negate(pos, state); },
@@ -608,14 +608,15 @@ template<> struct BuildAST<grammar::v1::path::home_anchor> {
 
 template<> struct BuildAST<grammar::v1::path::searched_path> {
     static void apply(const auto & in, StringState & s, State & ps) {
+        auto pos = ps.at(in);
         std::vector<std::unique_ptr<Expr>> args{2};
-        args[0] = std::make_unique<ExprVar>(ps.s.nixPath);
+        args[0] = ps.mkInternalVar(pos, ps.s.nixPath);
         args[1] = std::make_unique<ExprString>(in.string());
         s.parts.emplace_back(
-            ps.at(in),
+            pos,
             std::make_unique<ExprCall>(
-                ps.at(in),
-                std::make_unique<ExprVar>(ps.s.findFile),
+                pos,
+                ps.mkInternalVar(pos, ps.s.findFile),
                 std::move(args)));
     }
 };

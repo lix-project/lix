@@ -246,4 +246,38 @@ namespace nix {
         v = eval("let add = l: r: l + r; in ''a'' |> add <| ''c''", true, mockFeatureSettings);
         ASSERT_THAT(v, IsStringEq("ac"));
     }
+
+    TEST_F(TrivialExpressionTest, shadowInternalSymbols) {
+        FeatureSettings mockFeatureSettings;
+        mockFeatureSettings.set("deprecated-features", "shadow-internal-symbols");
+
+        auto v = eval("let __sub = _: _: ''subtracted''; in -3", true, mockFeatureSettings);
+        ASSERT_THAT(v, IsStringEq("subtracted"));
+        ASSERT_THROW(eval("let __sub = _: _: ''subtracted''; in -3"), Error);
+
+        v = eval("let __sub = _: _: ''subtracted''; in 12 - 3", true, mockFeatureSettings);
+        ASSERT_THAT(v, IsStringEq("subtracted"));
+        ASSERT_THROW(eval("let __sub = _: _: ''subtracted''; in 12 - 3"), Error);
+
+        v = eval("let __mul = _: _: ''multiplied''; in 4 * 4", true, mockFeatureSettings);
+        ASSERT_THAT(v, IsStringEq("multiplied"));
+        ASSERT_THROW(eval("let __mul = _: _: ''multiplied''; in 4 * 4"), Error);
+
+        v = eval("let __div = _: _: ''divided''; in 0 / 1", true, mockFeatureSettings);
+        ASSERT_THAT(v, IsStringEq("divided"));
+        ASSERT_THROW(eval("let __div = _: _: ''divided''; in 0 / 1"), Error);
+
+        v = eval("let __lessThan = _: _: ''compared''; in 42 < 16", true, mockFeatureSettings);
+        ASSERT_THAT(v, IsStringEq("compared"));
+        ASSERT_THROW(eval("let __lessThan = _: _: ''compared''; in 42 < 16"), Error);
+
+        v = eval(
+            "let __findFile = path: entry: assert path == ''foo''; entry; __nixPath = ''foo''; in <bar>",
+            true,
+            mockFeatureSettings
+        );
+        ASSERT_THAT(v, IsStringEq("bar"));
+        ASSERT_THROW(eval("let __findFile = _: _: ''found''; in import <foo>"), Error);
+        ASSERT_THROW(eval("let __nixPath = null; in import <foo>"), Error);
+    }
 } /* namespace nix */
