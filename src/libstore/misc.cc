@@ -86,7 +86,7 @@ void Store::queryMissing(const std::vector<DerivedPath> & targets,
     downloadSize_ = narSize_ = 0;
 
     // FIXME: make async.
-    ThreadPool pool(fileTransferSettings.httpConnections);
+    ThreadPool pool("queryMissing pool", fileTransferSettings.httpConnections);
 
     struct State
     {

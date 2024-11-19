@@ -4,6 +4,7 @@
 #include "lix/libstore/names.hh"
 #include "lix/libutil/terminal.hh"
 #include "lix/libutil/strings.hh"
+#include "lix/libutil/thread-name.hh"
 
 #include <map>
 #include <thread>
@@ -84,6 +85,7 @@ void ProgressBar::resume()
     if (state->paused > 0) return; // recursive pause, wait for the parents to resume too
     state->haveUpdate = true;
     updateThread = std::thread([&]() {
+        setCurrentThreadName("progress bar");
         auto state(state_.lock());
         auto nextWakeup = A_LONG_TIME;
         while (state->paused == 0) {

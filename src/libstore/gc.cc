@@ -6,6 +6,7 @@
 #include "lix/libutil/finally.hh"
 #include "lix/libutil/unix-domain-socket.hh"
 #include "lix/libutil/strings.hh"
+#include "lix/libutil/thread-name.hh"
 
 #include <queue>
 #include <regex>
@@ -420,7 +421,10 @@ class GCOperation {
             throw SysError("making socket '%1%' non-blocking", socketPath);
         }
 
-        serverThread = std::thread([this]() { runServerThread(); });
+        serverThread = std::thread([this]() {
+            setCurrentThreadName("gc server");
+            runServerThread();
+        });
     }
 
     void addTempRoot(std::string rootHashPart)
@@ -491,6 +495,7 @@ void GCOperation::runServerThread()
             /* Process the connection in a separate thread. */
             auto fdClient_ = fdClient.get();
             std::thread clientThread([&, fdClient = std::move(fdClient)]() {
+                setCurrentThreadName("gc server connection");
                 Finally cleanup([&]() {
                     auto conn(connections.lock());
                     auto i = conn->find(fdClient.get());
@@ -900,6 +905,7 @@ void LocalStore::autoGC(bool sync)
         future = state->gcFuture = promise.get_future().share();
 
         std::thread([promise{std::move(promise)}, this, avail, getAvail]() mutable {
+            setCurrentThreadName("auto gc");
 
             try {
 

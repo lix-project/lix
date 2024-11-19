@@ -17,6 +17,7 @@
 #include "lix/libutil/logging.hh"
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libutil/strings.hh"
+#include "lix/libutil/thread-name.hh"
 
 #include <nlohmann/json.hpp>
 
@@ -971,6 +972,7 @@ void RemoteStore::ConnectionHandle::withFramedSink(std::function<void(Sink & sin
        thread. */
     std::thread stderrThread([&]()
     {
+        setCurrentThreadName("remote stderr thread");
         try {
             ReceiveInterrupts receiveInterrupts;
             processStderr(nullptr, nullptr, false);

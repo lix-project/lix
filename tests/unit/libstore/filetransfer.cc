@@ -1,5 +1,6 @@
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libutil/compression.hh"
+#include "lix/libutil/thread-name.hh"
 
 #include <cstdint>
 #include <exception>
@@ -90,6 +91,7 @@ serveHTTP(std::vector<Reply> replies)
 
     std::thread(
         [replies, at{0}](AutoCloseFD socket, AutoCloseFD trigger) mutable {
+            setCurrentThreadName("test httpd server");
             while (true) {
                 pollfd pfds[2] = {
                     {
@@ -120,6 +122,7 @@ serveHTTP(std::vector<Reply> replies)
                 const auto & reply = replies[at++ % replies.size()];
 
                 std::thread([=, conn{std::move(conn)}] {
+                    setCurrentThreadName("test httpd connection");
                     auto send = [&](std::string_view bit) {
                         while (!bit.empty()) {
                             auto written = ::send(conn.get(), bit.data(), bit.size(), MSG_NOSIGNAL);

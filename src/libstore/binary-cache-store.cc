@@ -196,7 +196,7 @@ ref<const ValidPathInfo> BinaryCacheStore::addToStoreCommon(
 
         if (narAccessor->stat(buildIdDir).type == FSAccessor::tDirectory) {
 
-            ThreadPool threadPool(25);
+            ThreadPool threadPool("write debuginfo pool", 25);
 
             auto doFile = [&](std::string member, std::string key, std::string target) {
                 checkInterrupt();

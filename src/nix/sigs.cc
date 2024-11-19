@@ -38,7 +38,7 @@ struct CmdCopySigs : StorePathsCommand
         for (auto & s : substituterUris)
             substituters.push_back(openStore(s));
 
-        ThreadPool pool;
+        ThreadPool pool{"CopySigs pool"};
 
         std::string doneLabel = "done";
         std::atomic<size_t> added{0};

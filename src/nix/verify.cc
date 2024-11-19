@@ -79,7 +79,7 @@ struct CmdVerify : StorePathsCommand
             act.progress(done, storePaths.size(), active, failed);
         };
 
-        ThreadPool pool;
+        ThreadPool pool{"Verify pool"};
 
         auto doPath = [&](const StorePath & storePath) {
             try {
