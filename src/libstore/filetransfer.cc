@@ -63,6 +63,8 @@ struct curlFileTransfer : public FileTransfer
 
         std::unique_ptr<curl_slist, decltype([](auto * s) { curl_slist_free_all(s); })> requestHeaders;
         std::unique_ptr<CURL, decltype([](auto * c) { curl_easy_cleanup(c); })> req;
+        // buffer to accompany the `req` above
+        char errbuf[CURL_ERROR_SIZE];
 
         inline static const std::set<long> successfulStatuses {200, 201, 204, 206, 304, 0 /* other protocol */};
         /* Get the HTTP status code, or 0 for other protocols. */
@@ -136,6 +138,9 @@ struct curlFileTransfer : public FileTransfer
             curl_easy_setopt(req.get(), CURLOPT_PROGRESSFUNCTION, progressCallbackWrapper);
             curl_easy_setopt(req.get(), CURLOPT_PROGRESSDATA, this);
             curl_easy_setopt(req.get(), CURLOPT_NOPROGRESS, 0);
+
+            curl_easy_setopt(req.get(), CURLOPT_ERRORBUFFER, errbuf);
+            errbuf[0] = 0;
 
             curl_easy_setopt(req.get(), CURLOPT_PROTOCOLS_STR, "http,https,ftp,ftps");
 
@@ -397,8 +402,8 @@ struct curlFileTransfer : public FileTransfer
                         code == CURLE_OK ? "" : fmt(" (curl error: %s)", curl_easy_strerror(code)))
                     : FileTransferError(err,
                         std::move(response),
-                        "unable to %s '%s': %s (%d)",
-                        verb(), uri, curl_easy_strerror(code), code);
+                        "unable to %s '%s': %s (%d) %s",
+                        verb(), uri, curl_easy_strerror(code), code, errbuf);
 
                 fail(std::move(exc));
             }
