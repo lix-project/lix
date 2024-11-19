@@ -506,13 +506,12 @@ struct curlFileTransfer : public FileTransfer
         // loop with kj. until then curl will handle its timeouts internally.
         int64_t timeoutMs = INT64_MAX;
 
-        while (!quit) {
-            checkInterrupt();
-
+        while (true) {
             {
                 auto cancel = [&] { return std::move(state_.lock()->cancel); }();
                 for (auto & [item, promise] : cancel) {
                     curl_multi_remove_handle(curlm.get(), item->req.get());
+                    items.erase(item->req.get());
                     promise.set_value();
                 }
             }
@@ -534,6 +533,12 @@ struct curlFileTransfer : public FileTransfer
                     curl_multi_remove_handle(curlm.get(), i->second->req.get());
                     items.erase(i);
                 }
+            }
+
+            // only exit when all transfers are done (which will happen through the
+            // progress callback issuing an abort in the case of user interruption)
+            if (items.empty() && quit) {
+                break;
             }
 
             /* Wait for activity, including wakeup events. */
