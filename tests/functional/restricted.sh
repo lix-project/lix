@@ -11,8 +11,8 @@ nix-instantiate --restrict-eval ./simple.nix -I src1=simple.nix -I src2=config.n
 (! nix-instantiate --restrict-eval --eval -E 'builtins.readFile ./simple.nix')
 nix-instantiate --restrict-eval --eval -E 'builtins.readFile ./simple.nix' -I src=../..
 
-(! nix-instantiate --restrict-eval --eval -E 'builtins.readDir ../../src/legacy')
-nix-instantiate --restrict-eval --eval -E 'builtins.readDir ../../src/legacy' -I src=../../src
+(! nix-instantiate --restrict-eval --eval -E 'builtins.readDir ../../lix/legacy')
+nix-instantiate --restrict-eval --eval -E 'builtins.readDir ../../lix/legacy' -I src=../../lix
 
 (! nix-instantiate --restrict-eval --eval -E 'let __nixPath = [ { prefix = "foo"; path = ./.; } ]; in <foo>')
 nix-instantiate --restrict-eval --eval -E 'let __nixPath = [ { prefix = "foo"; path = ./.; } ]; in <foo>' -I src=.

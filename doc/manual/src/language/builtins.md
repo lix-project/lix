@@ -15,6 +15,6 @@ For convenience, some built-ins can be accessed directly:
   <dd><p><var>derivation</var> is described in
          <a href="derivations.md">its own section</a>.</p></dd>
 
-{{#include @generated@/../../../src/libexpr/builtins.md}}
+{{#include @generated@/../../../lix/libexpr/builtins.md}}
 
 </dl>

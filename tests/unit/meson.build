@@ -35,7 +35,7 @@ libutil_test_support = library(
     rapidcheck,
     boehm,
   ],
-  include_directories : include_directories('libutil-support', '../../src'),
+  include_directories : include_directories('libutil-support'),
 )
 liblixutil_test_support = declare_dependency(
   include_directories : include_directories('libutil-support'),
@@ -259,7 +259,7 @@ test(
   env : default_test_env + {
     # No special meaning here, it's just a file laying around that is unlikely to go anywhere
     # any time soon.
-    '_NIX_TEST_UNIT_DATA': meson.project_source_root() / 'src/legacy/buildenv.nix',
+    '_NIX_TEST_UNIT_DATA': meson.project_source_root() / 'lix/legacy/buildenv.nix',
     # Use a temporary home directory for the unit tests.
     # Otherwise, /homeless-shelter is created in the single-user sandbox, and functional tests will fail.
     # TODO(alois31): handle TMPDIR properly (meson can't, and setting HOME in the test is too late)…

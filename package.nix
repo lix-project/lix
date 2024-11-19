@@ -192,8 +192,8 @@ stdenv.mkDerivation (finalAttrs: {
         ]
         ++ lib.optionals (!finalAttrs.dontBuild || internalApiDocs || lintInsteadOfBuild) [
           ./doc
+          ./lix
           ./misc
-          ./src
           ./COPYING
         ]
         ++ lib.optionals lintInsteadOfBuild [ ./.clang-tidy ]

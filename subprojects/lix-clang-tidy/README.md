@@ -10,13 +10,13 @@ goal and is there as an example), `HasPrefixSuffixCheck`.
 One file:
 
 ```
-ninja -C build && clang-tidy --checks='-*,lix-*' --load=build/liblix-clang-tidy.so -p ../compile_commands.json -header-filter '\.\./src/.*\.h' --fix ../src/libcmd/installables.cc
+ninja -C build && clang-tidy --checks='-*,lix-*' --load=build/liblix-clang-tidy.so -p ../../build -header-filter '\.\./lix/.*\.h' --fix ../../lix/libcmd/installables.cc
 ```
 
 Several files, in parallel:
 
 ```
-ninja -C build && run-clang-tidy -checks='-*,lix-*' -load=build/liblix-clang-tidy.so -p .. -header-filter '\.\./src/.*\.h' -fix ../src | tee -a clang-tidy-result
+ninja -C build && run-clang-tidy -checks='-*,lix-*' -load=build/liblix-clang-tidy.so -p ../../build -header-filter '\.\./lix/.*\.h' -fix ../../lix | tee -a clang-tidy-result
 ```
 
 ## Resources
@@ -40,7 +40,7 @@ enable output     dump
 match callExpr(callee(functionDecl(hasName("hasPrefix"))), optionally(hasArgument( 0, cxxConstructExpr(hasDeclaration(functionDecl(hasParameter(0, parmVarDecl(hasType(asString("const char *"))).bind("meow2"))))))))
 ```
 
-Then run, e.g. `clang-query --preload hasprefix.query -p compile_commands.json src/libcmd/installables.cc`.
+Then run, e.g. `clang-query --preload hasprefix.query -p compile_commands.json lix/libcmd/installables.cc`.
 
 With this you can iterate a query before writing it in C++ and suffering from
 C++.

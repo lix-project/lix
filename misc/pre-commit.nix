@@ -81,14 +81,14 @@ pre-commit-run {
     check-headers = {
       enable = true;
       package = pkgs.check-headers;
-      files = "^src/";
+      files = "^lix/";
       types = [
         "c++"
         "file"
         "header"
       ];
       excludes = [
-        ''^src/pch/.*$''
+        ''^lix/pch/.*$''
         # generated files; these will never actually be seen by this
         # check, and are left here as documentation
         ''(parser|lexer)-tab\.hh$''

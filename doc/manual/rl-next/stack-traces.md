@@ -17,10 +17,10 @@ Lix crashed. This is a bug. We would appreciate if you report it along with what
 
 Exception: std::runtime_error: test exception
 Stack trace:
- 0# nix::printStackTrace() in /home/jade/lix/lix3/build/src/nix/../libutil/liblixutil.so
- 1# 0x000073C9862331F2 in /home/jade/lix/lix3/build/src/nix/../libmain/liblixmain.so
+ 0# nix::printStackTrace() in /home/jade/lix/lix3/build/lix/nix/../libutil/liblixutil.so
+ 1# 0x000073C9862331F2 in /home/jade/lix/lix3/build/lix/nix/../libmain/liblixmain.so
  2# 0x000073C985F2E21A in /nix/store/p44qan69linp3ii0xrviypsw2j4qdcp2-gcc-13.2.0-lib/lib/libstdc++.so.6
  3# 0x000073C985F2E285 in /nix/store/p44qan69linp3ii0xrviypsw2j4qdcp2-gcc-13.2.0-lib/lib/libstdc++.so.6
- 4# nix::handleExceptions(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::function<void ()>) in /home/jade/lix/lix3/build/src/nix/../libmain/liblixmain.so
+ 4# nix::handleExceptions(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::function<void ()>) in /home/jade/lix/lix3/build/lix/nix/../libmain/liblixmain.so
  ...
 ```

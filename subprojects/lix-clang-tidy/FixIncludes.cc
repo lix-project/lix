@@ -51,7 +51,7 @@ void FixIncludesCallbacks::InclusionDirective(
     return;
 
   // FIXME: this is kinda evil, but this is a one-time fixup
-  const std::vector<std::string> SourceDirs = {"src/", "include/lix/"};
+  const std::vector<std::string> SourceDirs = {"lix/", "include/lix/"};
 
   const auto Bracketize = [IsAngled](StringRef s) {
     return IsAngled ? ("<" + s + ">").str() : ("\"" + s + "\"").str();

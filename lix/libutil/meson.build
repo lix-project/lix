@@ -160,7 +160,7 @@ deprecated_feature_definitions = files(
 experimental_features_gen = custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_experimental_features.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_experimental_features.py',
     '--header', '@OUTPUT0@',
     '--impl-header', '@OUTPUT1@',
     '--shortlist', '@OUTPUT2@',
@@ -190,7 +190,7 @@ experimental_feature_descriptions_md = experimental_features_gen[3]
 deprecated_features_gen = custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_experimental_features.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_experimental_features.py',
     '--deprecated',
     '--header', '@OUTPUT0@',
     '--impl-header', '@OUTPUT1@',
@@ -227,10 +227,10 @@ archive_setting_definitions = files(
 libutil_settings_headers += custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
     '--kernel', host_machine.system(),
     '--header', '@OUTPUT@',
-    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '--experimental-features', '@SOURCE_ROOT@/lix/libutil/experimental-features',
     '@INPUT@',
   ],
   input : archive_setting_definitions,
@@ -244,10 +244,10 @@ feature_setting_definitions = files(
 libutil_settings_headers += custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
     '--kernel', host_machine.system(),
     '--header', '@OUTPUT@',
-    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '--experimental-features', '@SOURCE_ROOT@/lix/libutil/experimental-features',
     '@INPUT@',
   ],
   input : feature_setting_definitions,
@@ -262,10 +262,10 @@ logging_setting_definitions = files(
 libutil_settings_headers += custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
     '--kernel', host_machine.system(),
     '--header', '@OUTPUT@',
-    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '--experimental-features', '@SOURCE_ROOT@/lix/libutil/experimental-features',
     '@INPUT@',
   ],
   input : logging_setting_definitions,
@@ -294,7 +294,7 @@ libutil = library(
     openssl,
     nlohmann_json,
   ],
-  include_directories : [ '../include' ],
+  include_directories : [ '../..' ],
   cpp_pch : cpp_pch,
   implicit_include_directories : true,
   install : true,
@@ -318,7 +318,7 @@ configure_file(
 
 # Used by libstore and libfetchers.
 liblixutil = declare_dependency(
-  include_directories : include_directories('../include'),
+  include_directories : include_directories('../..'),
   sources : [
     experimental_features_header,
     deprecated_features_header,
@@ -330,7 +330,7 @@ liblixutil = declare_dependency(
 # FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
 if is_static
   liblixutil_mstatic = declare_dependency(
-    include_directories : include_directories('../include'),
+    include_directories : include_directories('../..'),
     sources : [
       experimental_features_header,
       deprecated_features_header,

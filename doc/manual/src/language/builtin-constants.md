@@ -4,7 +4,7 @@ These constants are built into the Nix language evaluator:
 
 <dl>
 
-{{#include @generated@/../../../src/libexpr/builtin-constants.md}}
+{{#include @generated@/../../../lix/libexpr/builtin-constants.md}}
 
 </dl>
 

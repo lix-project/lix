@@ -6,16 +6,16 @@
 # like the previous, autoconf-based build system did), the mechanism for header
 # generation, and the few global C++ compiler arguments that are added to all targets in Lix.
 #
-# src/meson.build coordinates each of Lix's subcomponents (the lib dirs in ./src),
+# lix/meson.build coordinates each of Lix's subcomponents (the lib dirs in ./lix),
 # which each have their own meson.build. Lix's components depend on each other,
-# so each of `src/lib{util,store,fetchers,expr,main,cmd}/meson.build` rely on variables
+# so each of `lix/lib{util,store,fetchers,expr,main,cmd}/meson.build` rely on variables
 # set in earlier `meson.build` files. Each of these also defines the install targets for
 # their headers.
 #
-# src/meson.build also collects the miscellaneous source files that are in further subdirectories
-# that become part of the final Nix command (things like `src/nix-build/*.cc`).
+# lix/meson.build also collects the miscellaneous source files that are in further subdirectories
+# that become part of the final Nix command (things like `lix/nix-build/*.cc`).
 #
-# Finally, src/nix/meson.build defines the Nix command itself, relying on all prior meson files.
+# Finally, lix/nix/meson.build defines the Nix command itself, relying on all prior meson files.
 #
 # libstore, libexpr, and libfetchers have some special handling to make static builds work.
 # Their use static constructors for dynamic registration of primops, store backends, etc
@@ -31,7 +31,7 @@
 # is fixed.
 #
 # lix-doc is built with Meson in lix-doc/meson.build, and linked into libcmd in
-# src/libcmd/meson.build. When building outside the Nix sandbox, Meson will use the .wrap
+# lix/libcmd/meson.build. When building outside the Nix sandbox, Meson will use the .wrap
 # files in subprojects/ to download and extract the dependency crates into subprojects/.
 # When building inside the Nix sandbox, Lix's derivation in package.nix uses a
 # fixed-output derivation to fetch those crates in advance instead, and then symlinks
@@ -146,7 +146,7 @@ summary('PCH C++ stdlib', should_pch, bool_yn : true)
 if should_pch
   # Unlike basically everything else that takes a file, Meson requires the arguments to
   # cpp_pch : to be strings and doesn't accept files(). So absolute path it is.
-  cpp_pch = [meson.project_source_root() / 'src/pch/precompiled-headers.hh']
+  cpp_pch = [meson.project_source_root() / 'lix/pch/precompiled-headers.hh']
 
   # Saves about 400s (30% at time of writing) from compile time on-cpu, mostly
   # by removing instantiations of nlohmann from every single damned compilation
@@ -367,7 +367,7 @@ if enable_docs
   mdbook = find_program('mdbook', native : true)
 endif
 
-# Used to workaround https://github.com/mesonbuild/meson/issues/2320 in src/nix/meson.build.
+# Used to workaround https://github.com/mesonbuild/meson/issues/2320 in lix/nix/meson.build.
 installcmd = find_program('install', native : true)
 
 enable_embedded_sandbox_shell = get_option('enable-embedded-sandbox-shell')
@@ -469,7 +469,7 @@ install_headers(config_h, subdir : 'lix')
 # FIXME: not using the pkg-config module because it creates way too many deps
 # while meson migration is in progress, and we want to not include boost here
 configure_file(
-  input : 'src/lix-base.pc.in',
+  input : 'lix/lix-base.pc.in',
   output : 'lix-base.pc',
   install_dir : libdir / 'pkgconfig',
   configuration : {
@@ -550,11 +550,11 @@ if cxx.get_id() in ['clang', 'gcc']
       # Meson uses out of source builds, conventionally usually in a subdirectory
       # of the source tree (e.g. meson setup ./build). This means that unlike in
       # the previous Make buildsystem, all compilation sources are passed as a relative
-      # parent, e.g. `cc -o src/libexpr/nixexpr.cc.o ../src/libexpr/nixexpr.cc`.
+      # parent, e.g. `cc -o lix/libexpr/nixexpr.cc.o ../lix/libexpr/nixexpr.cc`.
       # These paths show up when debugging, and in asserts, which look both look strange
       # and confuse debuggers.
-      # So let's just tell GCC and Clang that ../src really means src.
-      '-ffile-prefix-map=../src=src',
+      # So let's just tell GCC and Clang that ../lix really means lix.
+      '-ffile-prefix-map=../lix=lix',
     ],
     language : 'cpp',
   )
@@ -596,7 +596,7 @@ if is_darwin
   )
 endif
 
-subdir('src')
+subdir('lix')
 subdir('scripts')
 subdir('misc')
 

@@ -53,8 +53,8 @@ libcmd = library(
     nlohmann_json,
     liblix_doc,
   ],
-  # '../include' for self references like "lix/libcmd/*.hh"
-  include_directories : [ '../include' ],
+  # '../..' for self references like "lix/libcmd/*.hh"
+  include_directories : [ '../..' ],
   cpp_pch : cpp_pch,
   install : true,
   # FIXME(Qyriad): is this right?
@@ -71,7 +71,7 @@ custom_target(
 )
 
 liblixcmd = declare_dependency(
-  include_directories : include_directories('../include'),
+  include_directories : include_directories('../..'),
   link_with : libcmd,
 )
 

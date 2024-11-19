@@ -39,7 +39,7 @@ def go(exe: str, plugin_path: Path, compile_commands_json_dir: Path, jobs: int,
         '-j',
         str(jobs),
         '-header-filter',
-        r'src/[^/]+/.*\.hh'
+        r'lix/[^/]+/.*\.hh'
     ]
     if werror:
         args += ['-warnings-as-errors', '*']

@@ -32,10 +32,10 @@ libexpr_setting_definitions = files(
 libexpr_settings_header = custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
     '--kernel', host_machine.system(),
     '--header', '@OUTPUT@',
-    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '--experimental-features', '@SOURCE_ROOT@/lix/libutil/experimental-features',
     '@INPUT@',
   ],
   input : libexpr_setting_definitions,
@@ -148,10 +148,10 @@ builtin_definitions = files(
 builtins_gen = custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_builtins.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_builtins.py',
     '--header', '@OUTPUT0@',
     '--docs', '@OUTPUT1@',
-    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '--experimental-features', '@SOURCE_ROOT@/lix/libutil/experimental-features',
     '@INPUT@'
   ],
   input : builtin_definitions,
@@ -178,7 +178,7 @@ builtin_constant_definitions = files(
 builtin_constants_gen = custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_builtin_constants.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_builtin_constants.py',
     '--header', '@OUTPUT0@',
     '--docs', '@OUTPUT1@',
     '@INPUT@',
@@ -293,7 +293,7 @@ install_headers(
 )
 
 liblixexpr = declare_dependency(
-  include_directories : include_directories('../include'),
+  include_directories : include_directories('../..'),
   sources : libexpr_settings_header,
   link_with : libexpr,
 )
@@ -301,7 +301,7 @@ liblixexpr = declare_dependency(
 # FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
 if is_static
   liblixexpr_mstatic = declare_dependency(
-    include_directories : include_directories('../include'),
+    include_directories : include_directories('../..'),
     sources : libexpr_settings_header,
     link_whole : libexpr,
   )

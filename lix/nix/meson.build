@@ -4,7 +4,7 @@ nix_generated_headers = [
   gen_header.process('get-env.sh'),
 ]
 
-# src/nix/profile.cc includes src/nix/profile.md, which includes "doc/files/profiles.md.gen.hh".
+# lix/nix/profile.cc includes lix/nix/profile.md, which includes "doc/files/profiles.md.gen.hh".
 # Unfortunately, https://github.com/mesonbuild/meson/issues/2320.
 # "docs/files" isn't a directory hierarchy that already exists somewhere in this source tree,
 # and Meson refuses to create targets with specific directory paths.
@@ -32,10 +32,10 @@ daemon_setting_definitions = files(
 nix_settings_headers += custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
     '--kernel', host_machine.system(),
     '--header', '@OUTPUT@',
-    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '--experimental-features', '@SOURCE_ROOT@/lix/libutil/experimental-features',
     '@INPUT@',
   ],
   input : daemon_setting_definitions,
@@ -50,10 +50,10 @@ develop_settings_definitions = files(
 nix_settings_headers += custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
     '--kernel', host_machine.system(),
     '--header', '@OUTPUT@',
-    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '--experimental-features', '@SOURCE_ROOT@/lix/libutil/experimental-features',
     '@INPUT@',
   ],
   input : develop_settings_definitions,

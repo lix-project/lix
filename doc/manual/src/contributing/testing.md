@@ -13,7 +13,7 @@ The unit tests are defined using the [googletest] and [rapidcheck] frameworks.
 >
 > ```
 > …
-> ├── src
+> ├── lix
 > │   ├── libexpr
 > │   │   ├── …
 > │   │   ├── value
@@ -46,10 +46,10 @@ The unit tests are defined using the [googletest] and [rapidcheck] frameworks.
 > …       …   …   …   …   …
 > ```
 
-The unit tests for each Lix library (`liblixexpr`, `liblixstore`, etc..) live inside a directory `src/${library_shortname}/tests` within the directory for the library (`src/${library_shortname}`).
+The unit tests for each Lix library (`liblixexpr`, `liblixstore`, etc..) live inside a directory `lix/${library_shortname}/tests` within the directory for the library (`lix/${library_shortname}`).
 
 The data is in `tests/unit/LIBNAME/data/LIBNAME`, with one subdir per library, with the same name as where the code goes.
-For example, `liblixstore` code is in `src/libstore`, and its test data is in `tests/unit/libstore/data/libstore`.
+For example, `liblixstore` code is in `lix/libstore`, and its test data is in `tests/unit/libstore/data/libstore`.
 The path to the unit test data directory is passed to the unit test executable with the environment variable `_NIX_TEST_UNIT_DATA`.
 
 ### Running tests
@@ -345,7 +345,7 @@ rg '(?:[^A-Za-z]|^)(_[A-Z][^-\[ }/:");$(]+)' -r '$1' --no-filename --only-matchi
 rg '\$\{?([A-Z][^-\[ }/:");]+)' -r '$1' --no-filename --only-matching tests | sort -u > vars.txt
 ```
 
-I grepped `src/` for `get[eE]nv\("` to find the mentions in Lix code.
+I grepped `lix/` for `get[eE]nv\("` to find the mentions in Lix code.
 
 ### Used by Lix testing support code
 
@@ -361,8 +361,8 @@ I grepped `src/` for `get[eE]nv\("` to find the mentions in Lix code.
 
 - `_NIX_FORCE_HTTP` - Forces file URIs to be treated as remote ones.
 
-  Used by `src/libfetchers/git.cc`, `src/libstore/http-binary-cache-store.cc`,
-  `src/libstore/local-binary-cache-store.cc`. Seems to be for forcing Git
+  Used by `lix/libfetchers/git.cc`, `lix/libstore/http-binary-cache-store.cc`,
+  `lix/libstore/local-binary-cache-store.cc`. Seems to be for forcing Git
   clones of `git+file://` URLs, making the HTTP binary
   cache store accept `file://` URLs (presumably passing them to curl?), and
   unknown reasons for the local binary cache.
@@ -374,7 +374,7 @@ I grepped `src/` for `get[eE]nv\("` to find the mentions in Lix code.
   `structuredAttrs` documentation.
 - `NIX_BIN_DIR`, `NIX_STORE_DIR` (or its inconsistently-used old alias `NIX_STORE`), `NIX_DATA_DIR`,
   `NIX_LOG_DIR`, `NIX_LOG_DIR`, `NIX_STATE_DIR`, `NIX_CONF_DIR` -
-  Overrides compile-time configuration of various locations used by Lix. See `src/libstore/globals.cc`.
+  Overrides compile-time configuration of various locations used by Lix. See `lix/libstore/globals.cc`.
 
   **Expected value**: a directory
 - `NIX_DAEMON_SOCKET_PATH` (optional) - Overrides the daemon socket path from `$NIX_STATE_DIR/daemon-socket/socket`.

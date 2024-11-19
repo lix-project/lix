@@ -326,7 +326,7 @@ void LocalStore::findPlatformRoots(UncheckedRoots & unchecked)
 {
     // N.B. This is (read: undertested!) fallback code only used for
     // non-Darwin, non-Linux platforms. Both major platforms have
-    // platform-specific code in src/libstore/platform/
+    // platform-specific code in lix/libstore/platform/
     try {
         std::regex lsofRegex(R"(^n(/.*)$)");
         auto lsofLines =

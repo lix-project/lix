@@ -34,10 +34,10 @@ libfetchers_setting_definitions = files(
 libfetchers_settings_header = custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
     '--kernel', host_machine.system(),
     '--header', '@OUTPUT@',
-    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '--experimental-features', '@SOURCE_ROOT@/lix/libutil/experimental-features',
     '@INPUT@',
   ],
   input : libfetchers_setting_definitions,
@@ -55,7 +55,7 @@ libfetchers = library(
     liblixutil,
     nlohmann_json,
   ],
-  include_directories : [ '../include' ],
+  include_directories : [ '../..' ],
   cpp_pch : cpp_pch,
   install : true,
   # FIXME(Qyriad): is this right?
@@ -79,7 +79,7 @@ configure_file(
 )
 
 liblixfetchers = declare_dependency(
-  include_directories : include_directories('../include'),
+  include_directories : include_directories('../..'),
   sources : libfetchers_settings_header,
   link_with : libfetchers,
 )
@@ -87,7 +87,7 @@ liblixfetchers = declare_dependency(
 # FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
 if is_static
   liblixfetchers_mstatic = declare_dependency(
-    include_directories : include_directories('../include'),
+    include_directories : include_directories('../..'),
     sources : libfetchers_settings_header,
     link_whole : libfetchers,
   )

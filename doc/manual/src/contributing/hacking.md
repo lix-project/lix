@@ -102,14 +102,14 @@ $ meson compile -C build nixexpr
 All targets may be addressed as their output, relative to the build directory, e.g.:
 
 ```bash
-$ meson compile -C build src/libexpr/liblixexpr.so
+$ meson compile -C build lix/libexpr/liblixexpr.so
 ```
 
 But Meson does not consider intermediate files like object files targets.
 To build a specific object file, use Ninja directly and specify the output file relative to the build directory:
 
 ```bash
-$ ninja -C build src/libexpr/liblixexpr.so.p/nixexpr.cc.o
+$ ninja -C build lix/libexpr/liblixexpr.so.p/nixexpr.cc.o
 ```
 
 To inspect the canonical source of truth on what the state of the buildsystem configuration is, use:
@@ -137,7 +137,7 @@ You can also build Lix for one of the [supported platforms](#platforms).
 
 Lix can be built for various platforms, as specified in [`flake.nix`]:
 
-[`flake.nix`]: https://git.lix.systems/lix-project/lix/src/branch/main/flake.nix
+[`flake.nix`]: https://git.lix.systems/lix-project/lix/lix/branch/main/flake.nix
 
 - `x86_64-linux`
 - `x86_64-darwin`
@@ -413,8 +413,8 @@ Experimental and deprecated features support the following metadata properties:
   This should also be the stem of the file name (with extension `md`).
 * `internalName` (required): identifier used to refer to the feature inside the C++ code.
 
-Experimental feature data files should live in `src/libutil/experimental-features`, and deprecated features in `src/libutil/deprecated-features`.
-They must be listed in the `experimental_feature_definitions` or `deprecated_feature_definitions` lists in `src/libutil/meson.build` respectively to be considered by the build system.
+Experimental feature data files should live in `lix/libutil/experimental-features`, and deprecated features in `lix/libutil/deprecated-features`.
+They must be listed in the `experimental_feature_definitions` or `deprecated_feature_definitions` lists in `lix/libutil/meson.build` respectively to be considered by the build system.
 
 ### Global settings
 
@@ -441,7 +441,7 @@ Global settings support the following metadata properties:
   Defaults to false if not specified.
 
 Settings are not collected in a single place in the source tree, so an appropriate place needs to be found for the setting to live.
-Look for related setting definition files under second-level subdirectories of `src` whose name includes `settings`.
+Look for related setting definition files under second-level subdirectories of `lix` whose name includes `settings`.
 Then add the new file there, and don't forget to register it in the appropriate `meson.build` file.
 
 ### Builtin functions
@@ -458,7 +458,7 @@ The following metadata properties are supported for builtin functions:
 * `experimental_feature` (optional): the user-facing name of the experimental feature which needs to be enabled for the bultin function to be available.
   If not specified, no experimental feature is required.
 
-New builtin function definition files must be added to `src/libexpr/builtins` and registered in the `builtin_definitions` list in `src/libexpr/meson.build`.
+New builtin function definition files must be added to `lix/libexpr/builtins` and registered in the `builtin_definitions` list in `lix/libexpr/meson.build`.
 
 ### Builtin constants
 The following metadata properties are supported for builtin constants:
@@ -471,4 +471,4 @@ The following metadata properties are supported for builtin constants:
   Impure constants are not available when pure evaluation mode is activated.
   Defaults to `false` when not specified.
 
-New builtin constant definition files must be added to `src/libexpr/builtin-constants` and registered in the `builtin_constant_definitions` list in `src/libexpr/meson.build`.
+New builtin constant definition files must be added to `lix/libexpr/builtin-constants` and registered in the `builtin_constant_definitions` list in `lix/libexpr/meson.build`.

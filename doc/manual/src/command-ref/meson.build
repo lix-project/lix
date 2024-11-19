@@ -32,10 +32,10 @@ nix3_cli_files = custom_target(
 conf_file_md = custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
     '--kernel', host_machine.system(),
     '--docs', '@OUTPUT@',
-    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '--experimental-features', '@SOURCE_ROOT@/lix/libutil/experimental-features',
     '@INPUT@',
   ],
   input : [

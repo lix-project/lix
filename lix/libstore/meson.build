@@ -41,10 +41,10 @@ file_transfer_setting_definitions = files(
 libstore_settings_headers += custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
     '--kernel', host_machine.system(),
     '--header', '@OUTPUT@',
-    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '--experimental-features', '@SOURCE_ROOT@/lix/libutil/experimental-features',
     '@INPUT@',
   ],
   input : file_transfer_setting_definitions,
@@ -130,10 +130,10 @@ libstore_setting_definitions = files(
 libstore_settings_headers += custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/src/code-generation/build_settings.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
     '--kernel', host_machine.system(),
     '--header', '@OUTPUT@',
-    '--experimental-features', '@SOURCE_ROOT@/src/libutil/experimental-features',
+    '--experimental-features', '@SOURCE_ROOT@/lix/libutil/experimental-features',
     '@INPUT@',
   ],
   input : libstore_setting_definitions,
@@ -349,7 +349,7 @@ libstore = library(
   libstore_sources,
   libstore_settings_headers,
   libstore_generated_headers,
-  include_directories : [ '../include' ],
+  include_directories : [ '../..' ],
   dependencies : dependencies,
   cpp_args : cpp_args,
   cpp_pch : cpp_pch,
@@ -362,7 +362,7 @@ install_headers(libstore_headers, subdir : 'lix/libstore', preserve_path : true)
 
 # Used by libfetchers.
 liblixstore = declare_dependency(
-  include_directories : include_directories('../include'),
+  include_directories : include_directories('../..'),
   sources : libstore_settings_headers,
   link_with : libstore,
 )
@@ -370,7 +370,7 @@ liblixstore = declare_dependency(
 # FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
 if is_static
   liblixstore_mstatic = declare_dependency(
-    include_directories : include_directories('../include'),
+    include_directories : include_directories('../..'),
     sources : libstore_settings_headers,
     link_whole : libstore,
   )
