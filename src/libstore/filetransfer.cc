@@ -5,6 +5,7 @@
 #include "lix/libstore/s3.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/strings.hh"
+#include "lix/libutil/thread-name.hh"
 #include <cstddef>
 
 #include <cstdio>
@@ -459,7 +460,10 @@ struct curlFileTransfer : public FileTransfer
         curl_multi_setopt(curlm.get(), CURLMOPT_MAX_TOTAL_CONNECTIONS,
             fileTransferSettings.httpConnections.get());
 
-        workerThread = std::thread([&]() { workerThreadEntry(); });
+        workerThread = std::thread([&]() {
+            setCurrentThreadName("curlFileTransfer worker");
+            workerThreadEntry();
+        });
     }
 
     ~curlFileTransfer()

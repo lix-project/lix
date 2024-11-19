@@ -19,6 +19,7 @@
 #include "lix/libutil/unix-domain-socket.hh"
 #include "lix/libutil/mount.hh"
 #include "lix/libutil/strings.hh"
+#include "lix/libutil/thread-name.hh"
 
 #include <regex>
 #include <queue>
@@ -1224,6 +1225,7 @@ void LocalDerivationGoal::startDaemon()
     chownToBuilder(socketPath);
 
     daemonThread = std::thread([this, store]() {
+        setCurrentThreadName("recursive nix daemon");
 
         while (true) {
 
@@ -1244,6 +1246,7 @@ void LocalDerivationGoal::startDaemon()
             debug("received daemon connection");
 
             auto workerThread = std::thread([store, remote{std::move(remote)}]() {
+                setCurrentThreadName("recursive nix worker");
                 FdSource from(remote.get());
                 FdSink to(remote.get());
                 try {

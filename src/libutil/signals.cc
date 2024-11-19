@@ -2,6 +2,7 @@
 #include "lix/libutil/error.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libutil/terminal.hh"
+#include "lix/libutil/thread-name.hh"
 
 #include <map>
 #include <thread>
@@ -49,6 +50,7 @@ static Sync<InterruptCallbacks> _interruptCallbacks;
 
 static void signalHandlerThread(sigset_t set)
 {
+    setCurrentThreadName("signal handler");
     while (true) {
         int signal = 0;
         sigwait(&set, &signal);

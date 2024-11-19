@@ -22,7 +22,7 @@ class ThreadPool
 {
 public:
 
-    ThreadPool(size_t maxThreads = 0);
+    ThreadPool(const char * name, size_t maxThreads = 0);
 
     ~ThreadPool();
 
@@ -55,6 +55,8 @@ public:
 private:
 
     size_t maxThreads;
+
+    const char * name;
 
     struct State
     {

@@ -306,7 +306,7 @@ void Store::addMultipleToStore(
         act.progress(nrDone, pathsToCopy.size(), nrRunning, nrFailed);
     };
 
-    ThreadPool pool;
+    ThreadPool pool{"addMultipleToStore pool"};
 
     processGraph<StorePath>(pool,
         storePathsToAdd,
@@ -835,7 +835,7 @@ StorePathSet Store::queryValidPaths(const StorePathSet & paths, SubstituteFlag m
     Sync<State> state_(State{paths.size(), StorePathSet()});
 
     std::condition_variable wakeup;
-    ThreadPool pool;
+    ThreadPool pool{"queryValidPaths pool"};
 
     auto doQuery = [&](const StorePath & path) {
         checkInterrupt();
@@ -1136,7 +1136,7 @@ std::map<StorePath, StorePath> copyPaths(
     }
     auto pathsMap = copyPaths(srcStore, dstStore, storePaths, repair, checkSigs, substitute);
 
-    ThreadPool pool;
+    ThreadPool pool{"copyPaths pool"};
 
     try {
         // Copy the realisation closure

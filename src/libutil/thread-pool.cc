@@ -1,11 +1,12 @@
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/signals.hh"
+#include "lix/libutil/thread-name.hh"
 
 namespace nix {
 
-ThreadPool::ThreadPool(size_t _maxThreads)
-    : maxThreads(_maxThreads)
+ThreadPool::ThreadPool(const char * name, size_t _maxThreads)
+    : maxThreads(_maxThreads), name(name)
 {
     if (!maxThreads) {
         maxThreads = std::thread::hardware_concurrency();
@@ -81,8 +82,10 @@ void ThreadPool::doWork(bool mainThread)
 {
     ReceiveInterrupts receiveInterrupts;
 
-    if (!mainThread)
+    if (!mainThread) {
+        setCurrentThreadName(this->name);
         interruptCheck = [&]() { return (bool) quit; };
+    }
 
     bool didWork = false;
     std::exception_ptr exc;

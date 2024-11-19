@@ -4,15 +4,14 @@
 #include <thread>
 #include <atomic>
 
-#include <cstdlib>
 #include <poll.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <signal.h>
 
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/signals.hh"
+#include "lix/libutil/thread-name.hh"
 
 namespace nix {
 
@@ -34,6 +33,7 @@ public:
         auto &quit_ = this->quit;
         int terminateFd = terminatePipe.readSide.get();
         thread = std::thread([fd, terminateFd, &quit_]() {
+            setCurrentThreadName("MonitorFdHup");
             while (!quit_) {
                 /* Wait indefinitely until a POLLHUP occurs. */
                 struct pollfd fds[2];
