@@ -193,6 +193,7 @@ liblixexpr_test_support = declare_dependency(
 )
 
 libexpr_tests_sources = files(
+  'libexpr/attr-path.cc',
   'libexpr/derived-path.cc',
   'libexpr/error_traces.cc',
   'libexpr/flakeref.cc',

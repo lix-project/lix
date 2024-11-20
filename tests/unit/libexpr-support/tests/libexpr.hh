@@ -8,7 +8,6 @@
 #include "lix/libexpr/nixexpr.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/eval-inline.hh"
-#include "lix/libstore/store-api.hh"
 
 #include "tests/libstore.hh"
 
@@ -18,6 +17,10 @@ namespace nix {
             static void SetUpTestSuite() {
                 LibStoreTest::SetUpTestSuite();
                 initLibExpr();
+            }
+
+            EvalState & evalState() {
+                return state;
             }
 
         protected:

@@ -128,7 +128,7 @@ public:
      * Get an attribute along a chain of attrsets. Note that this does
      * not auto-call functors or functions.
      */
-    OrSuggestions<ref<AttrCursor>> findAlongAttrPath(EvalState & state, const Strings & attrPath);
+    OrSuggestions<ref<AttrCursor>> findAlongAttrPath(EvalState & state, const std::vector<std::string> & attrPath);
 
     std::string getString(EvalState & state);
 
