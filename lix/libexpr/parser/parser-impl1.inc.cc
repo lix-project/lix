@@ -141,38 +141,36 @@ struct ExprState
         return std::make_unique<ExprCall>(pos, state.mkInternalVar(pos, state.s.sub), std::move(args));
     }
 
-    std::pair<PosIdx, std::unique_ptr<Expr>> applyOp(PosIdx pos, auto & op, State & state) {
+    void applyOp(PosIdx pos, auto & op, State & state) {
         using Op = grammar::v1::op;
 
         auto not_ = [] (auto e) {
             return std::make_unique<ExprOpNot>(std::move(e));
         };
 
-        return {
-            pos,
-            (overloaded {
-                [&] (Op::implies)     { return applyBinary<ExprOpImpl>(pos); },
-                [&] (Op::or_)         { return applyBinary<ExprOpOr>(pos); },
-                [&] (Op::and_)        { return applyBinary<ExprOpAnd>(pos); },
-                [&] (Op::equals)      { return applyBinary<ExprOpEq>(pos); },
-                [&] (Op::not_equals)  { return applyBinary<ExprOpNEq>(pos); },
-                [&] (Op::less)        { return order(pos, true, state); },
-                [&] (Op::greater_eq)  { return not_(order(pos, true, state)); },
-                [&] (Op::greater)     { return order(pos, false, state); },
-                [&] (Op::less_eq)     { return not_(order(pos, false, state)); },
-                [&] (Op::update)      { return applyBinary<ExprOpUpdate>(pos); },
-                [&] (Op::not_)        { return applyUnary<ExprOpNot>(); },
-                [&] (Op::plus)        { return concatStrings(pos); },
-                [&] (Op::minus)       { return call(pos, state, state.s.sub); },
-                [&] (Op::mul)         { return call(pos, state, state.s.mul); },
-                [&] (Op::div)         { return call(pos, state, state.s.div); },
-                [&] (Op::concat)      { return applyBinary<ExprOpConcatLists>(pos); },
-                [&] (has_attr & a)    { return applyUnary<ExprOpHasAttr>(std::move(a.path)); },
-                [&] (Op::unary_minus) { return negate(pos, state); },
-                [&] (Op::pipe_right)  { return pipe(pos, state, true); },
-                [&] (Op::pipe_left)   { return pipe(pos, state); },
-            })(op)
-        };
+        auto expr = (overloaded {
+            [&] (Op::implies)     { return applyBinary<ExprOpImpl>(pos); },
+            [&] (Op::or_)         { return applyBinary<ExprOpOr>(pos); },
+            [&] (Op::and_)        { return applyBinary<ExprOpAnd>(pos); },
+            [&] (Op::equals)      { return applyBinary<ExprOpEq>(pos); },
+            [&] (Op::not_equals)  { return applyBinary<ExprOpNEq>(pos); },
+            [&] (Op::less)        { return order(pos, true, state); },
+            [&] (Op::greater_eq)  { return not_(order(pos, true, state)); },
+            [&] (Op::greater)     { return order(pos, false, state); },
+            [&] (Op::less_eq)     { return not_(order(pos, false, state)); },
+            [&] (Op::update)      { return applyBinary<ExprOpUpdate>(pos); },
+            [&] (Op::not_)        { return applyUnary<ExprOpNot>(); },
+            [&] (Op::plus)        { return concatStrings(pos); },
+            [&] (Op::minus)       { return call(pos, state, state.s.sub); },
+            [&] (Op::mul)         { return call(pos, state, state.s.mul); },
+            [&] (Op::div)         { return call(pos, state, state.s.div); },
+            [&] (Op::concat)      { return applyBinary<ExprOpConcatLists>(pos); },
+            [&] (has_attr & a)    { return applyUnary<ExprOpHasAttr>(std::move(a.path)); },
+            [&] (Op::unary_minus) { return negate(pos, state); },
+            [&] (Op::pipe_right)  { return pipe(pos, state, true); },
+            [&] (Op::pipe_left)   { return pipe(pos, state); },
+        })(op);
+        pushExpr(pos, std::move(expr));
     }
 
     // always_inline is needed, otherwise pushOp slows down considerably
@@ -185,12 +183,19 @@ struct ExprState
         });
     }
 
-    template<typename Expr, typename... Args>
-    Expr & pushExpr(PosIdx pos, Args && ... args)
+    template<typename ExprT, typename... Args>
+    inline ExprT & emplaceExpr(PosIdx pos, Args && ... args)
     {
-        auto p = std::make_unique<Expr>(std::forward<Args>(args)...);
+        auto p = std::make_unique<ExprT>(std::forward<Args>(args)...);
         auto & result = *p;
-        exprs.emplace_back(pos, std::move(p));
+        pushExpr(pos, std::move(p));
+        return result;
+    }
+
+    inline Expr & pushExpr(PosIdx pos, std::unique_ptr<Expr> expr)
+    {
+        auto & result = *expr;
+        exprs.emplace_back(pos, std::move(expr));
         return result;
     }
 };
@@ -398,9 +403,9 @@ template<> struct BuildAST<grammar::v1::binding> {
 template<> struct BuildAST<grammar::v1::expr::id> {
     static void apply(const auto & in, ExprState & s, State & ps) {
         if (in.string_view() == "__curPos")
-            s.pushExpr<ExprPos>(ps.at(in), ps.at(in));
+            s.emplaceExpr<ExprPos>(ps.at(in), ps.at(in));
         else
-            s.pushExpr<ExprVar>(ps.at(in), ps.at(in), ps.symbols.create(in.string_view()));
+            s.emplaceExpr<ExprVar>(ps.at(in), ps.at(in), ps.symbols.create(in.string_view()));
     }
 };
 
@@ -413,7 +418,7 @@ template<> struct BuildAST<grammar::v1::expr::int_> {
                 .pos = ps.positions[ps.at(in)],
             });
         }
-        s.pushExpr<ExprInt>(noPos, v);
+        s.emplaceExpr<ExprInt>(noPos, v);
     }
 };
 
@@ -448,7 +453,7 @@ template<> struct BuildAST<grammar::v1::expr::float_> {
                 });
             }
         }();
-        s.pushExpr<ExprFloat>(noPos, v);
+        s.emplaceExpr<ExprFloat>(noPos, v);
     }
 };
 
@@ -542,7 +547,7 @@ template<> struct BuildAST<grammar::v1::string::escape> {
 
 template<> struct BuildAST<grammar::v1::string> : change_head<StringState> {
     static void success0(StringState & s, ExprState & e, State &) {
-        e.exprs.emplace_back(noPos, s.finish());
+        e.pushExpr(noPos, s.finish());
     }
 };
 
@@ -590,7 +595,7 @@ template<> struct BuildAST<grammar::v1::ind_string::has_content> {
 
 template<> struct BuildAST<grammar::v1::ind_string> : change_head<IndStringState> {
     static void success(const auto & in, IndStringState & s, ExprState & e, State & ps) {
-        e.exprs.emplace_back(noPos, ps.stripIndentation(ps.at(in), std::move(s.lines)));
+        e.pushExpr(noPos, ps.stripIndentation(ps.at(in), std::move(s.lines)));
     }
 };
 
@@ -663,9 +668,9 @@ template<> struct BuildAST<grammar::v1::path> : change_head<StringState> {
         check_slash<ExprPath>(ps.atEnd(in), s, ps);
         check_slash<ExprString>(ps.atEnd(in), s, ps);
         if (s.parts.size() == 1) {
-            e.exprs.emplace_back(noPos, std::move(s.parts.back().second));
+            e.pushExpr(noPos, std::move(s.parts.back().second));
         } else {
-            e.pushExpr<ExprConcatStrings>(ps.at(in), ps.at(in), false, std::move(s.parts));
+            e.emplaceExpr<ExprConcatStrings>(ps.at(in), ps.at(in), false, std::move(s.parts));
         }
     }
 };
@@ -683,7 +688,7 @@ template<> struct BuildAST<grammar::v1::expr::uri> {
                .msg = HintFmt("URL literals are deprecated, allow using them with %s", "--extra-deprecated-features url-literals"),
                .pos = ps.positions[ps.at(in)]
            });
-       s.pushExpr<ExprString>(ps.at(in), in.string());
+       s.emplaceExpr<ExprString>(ps.at(in), in.string());
     }
 };
 
@@ -701,21 +706,21 @@ template<> struct BuildAST<grammar::v1::expr::ancient_let> : change_head<Binding
 
         auto pos = ps.at(in);
         b.set.pos = pos;
-        s.pushExpr<ExprSelect>(pos, pos, std::make_unique<ExprSet>(std::move(b.set)), pos, ps.s.body);
+        s.emplaceExpr<ExprSelect>(pos, pos, std::make_unique<ExprSet>(std::move(b.set)), pos, ps.s.body);
     }
 };
 
 template<> struct BuildAST<grammar::v1::expr::rec_set> : change_head<BindingsStateRecSet> {
     static void success(const auto & in, BindingsStateRecSet & b, ExprState & s, State & ps) {
         b.set.pos = ps.at(in);
-        s.pushExpr<ExprSet>(ps.at(in), std::move(b.set));
+        s.emplaceExpr<ExprSet>(ps.at(in), std::move(b.set));
     }
 };
 
 template<> struct BuildAST<grammar::v1::expr::set> : change_head<BindingsStateSet> {
     static void success(const auto & in, BindingsStateSet & b, ExprState & s, State & ps) {
         b.set.pos = ps.at(in);
-        s.pushExpr<ExprSet>(ps.at(in), std::move(b.set));
+        s.emplaceExpr<ExprSet>(ps.at(in), std::move(b.set));
     }
 };
 
@@ -725,7 +730,7 @@ template<> struct BuildAST<grammar::v1::expr::list> : change_head<ListState> {
     static void success(const auto & in, ListState & ls, ExprState & s, State & ps) {
         auto e = std::make_unique<ExprList>();
         e->elems = std::move(ls);
-        s.exprs.emplace_back(ps.at(in), std::move(e));
+        s.pushExpr(ps.at(in), std::move(e));
     }
 };
 
@@ -750,7 +755,7 @@ template<> struct BuildAST<grammar::v1::expr::select::head> {
 
 template<> struct BuildAST<grammar::v1::expr::select::attr> : change_head<AttrState> {
     static void success0(AttrState & a, SelectState & s, State &) {
-        s.e = &s->pushExpr<ExprSelect>(s.pos, s.pos, s->popExprOnly(), std::move(a.attrs), nullptr);
+        s.e = &s->emplaceExpr<ExprSelect>(s.pos, s.pos, s->popExprOnly(), std::move(a.attrs), nullptr);
     }
 };
 
@@ -764,7 +769,7 @@ template<> struct BuildAST<grammar::v1::expr::select::as_app_or> {
     static void apply(const auto & in, SelectState & s, State & ps) {
         std::vector<std::unique_ptr<Expr>> args(1);
         args[0] = std::make_unique<ExprVar>(ps.at(in), ps.s.or_);
-        s->pushExpr<ExprCall>(s.pos, s.pos, s->popExprOnly(), std::move(args));
+        s->emplaceExpr<ExprCall>(s.pos, s.pos, s->popExprOnly(), std::move(args));
     }
 };
 
@@ -794,11 +799,11 @@ template<> struct BuildAST<grammar::v1::expr::app::first_arg> {
             // this can happen on occasions such as `<p> <p>` or `a or b or`,
             // neither of which are super worth optimizing.
             s.e->args.push_back(std::move(arg));
-            s->exprs.emplace_back(noPos, std::move(fn));
+            s->pushExpr(noPos, std::move(fn));
         } else {
             std::vector<std::unique_ptr<Expr>> args{1};
             args[0] = std::move(arg);
-            s.e = &s->pushExpr<ExprCall>(s.pos, s.pos, std::move(fn), std::move(args));
+            s.e = &s->emplaceExpr<ExprCall>(s.pos, s.pos, std::move(fn), std::move(args));
         }
     }
 };
@@ -834,21 +839,21 @@ template<> struct BuildAST<grammar::v1::expr::lambda> : change_head<LambdaState>
     static void success(const auto & in, LambdaState & l, ExprState & s, State & ps) {
         if (l.formals)
             l.formals = ps.validateFormals(std::move(l.formals), ps.at(in), l.arg);
-        s.pushExpr<ExprLambda>(ps.at(in), ps.at(in), l.arg, std::move(l.formals), l->popExprOnly());
+        s.emplaceExpr<ExprLambda>(ps.at(in), ps.at(in), l.arg, std::move(l.formals), l->popExprOnly());
     }
 };
 
 template<> struct BuildAST<grammar::v1::expr::assert_> {
     static void apply(const auto & in, ExprState & s, State & ps) {
         auto body = s.popExprOnly(), cond = s.popExprOnly();
-        s.pushExpr<ExprAssert>(ps.at(in), ps.at(in), std::move(cond), std::move(body));
+        s.emplaceExpr<ExprAssert>(ps.at(in), ps.at(in), std::move(cond), std::move(body));
     }
 };
 
 template<> struct BuildAST<grammar::v1::expr::with> {
     static void apply(const auto & in, ExprState & s, State & ps) {
         auto body = s.popExprOnly(), scope = s.popExprOnly();
-        s.pushExpr<ExprWith>(ps.at(in), ps.at(in), std::move(scope), std::move(body));
+        s.emplaceExpr<ExprWith>(ps.at(in), ps.at(in), std::move(scope), std::move(body));
     }
 };
 
@@ -860,20 +865,21 @@ template<> struct BuildAST<grammar::v1::expr::let> : change_head<BindingsStateLe
                 .pos = ps.positions[ps.at(in)]
             });
         b.let.body = b->popExprOnly();
-        s.pushExpr<ExprLet>(ps.at(in), std::move(b.let));
+        s.emplaceExpr<ExprLet>(ps.at(in), std::move(b.let));
     }
 };
 
 template<> struct BuildAST<grammar::v1::expr::if_> {
     static void apply(const auto & in, ExprState & s, State & ps) {
         auto else_ = s.popExprOnly(), then = s.popExprOnly(), cond = s.popExprOnly();
-        s.pushExpr<ExprIf>(ps.at(in), ps.at(in), std::move(cond), std::move(then), std::move(else_));
+        s.emplaceExpr<ExprIf>(ps.at(in), ps.at(in), std::move(cond), std::move(then), std::move(else_));
     }
 };
 
 template<> struct BuildAST<grammar::v1::expr> : change_head<ExprState> {
     static void success0(ExprState & inner, ExprState & outer, State & ps) {
-        outer.exprs.push_back(inner.finish(ps));
+        auto [pos, expr] = inner.finish(ps);
+        outer.pushExpr(pos, std::move(expr));
     }
 };
 
