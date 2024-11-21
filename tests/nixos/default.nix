@@ -12,6 +12,8 @@ let
       defaults = {
         nixpkgs.pkgs = nixpkgsFor.${system}.native;
         nix.checkAllErrors = false;
+        # nixos-option fails to build with lix and no tests use any of the tools
+        system.disableInstallerTools = true;
       };
       _module.args.nixpkgs = nixpkgs;
       _module.args.system = system;

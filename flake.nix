@@ -2,7 +2,7 @@
   description = "Lix: A modern, delicious implementation of the Nix package manager";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05-small";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11-small";
     nixpkgs-regression.url = "github:NixOS/nixpkgs/215d4d0fd80ca5163643b03a33fde804a29cc1e2";
     pre-commit-hooks = {
       url = "github:cachix/git-hooks.nix";
@@ -349,10 +349,10 @@
                 name = "nixpkgs-lib-tests";
                 paths =
                   [ testWithNix ]
-                  # FIXME: This is disabled on darwin due to a nixpkgs bug https://github.com/NixOS/nixpkgs/issues/319147
-                  # After that is fixed, it should be restored to use lib/tests/release.nix as before, rather than this reimplementation.
+                  # NOTE: nixpkgs 24.11 is being ... *creative*, and requires this dance to override
+                  # the evaluator used for the test. it will break again in the future, don't worry.
                   ++ lib.optionals pkgs.stdenv.isLinux [
-                    (import (nixpkgs + "/pkgs/test/release") { inherit pkgs lib nix; })
+                   (pkgs.callPackage "${nixpkgs}/ci/eval" { nixVersions.nix_2_24 = nix; }).attrpathsSuperset
                   ];
               }
             );

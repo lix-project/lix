@@ -480,6 +480,7 @@ add_project_arguments(
   # It would be nice for our headers to be idempotent instead.
   '-include', 'config.h',
   '-Wno-deprecated-declarations',
+  '-Wno-missing-field-initializers',
   '-Wimplicit-fallthrough',
   '-Werror=switch',
   '-Werror=switch-enum',
