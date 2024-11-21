@@ -486,6 +486,7 @@ add_project_arguments(
   '-include', 'config.h',
   '-Wno-unused-parameter',
   '-Wno-deprecated-declarations',
+  '-Wno-missing-field-initializers',
   '-Wimplicit-fallthrough',
   '-Werror=switch',
   '-Werror=switch-enum',

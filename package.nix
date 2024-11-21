@@ -470,7 +470,6 @@ stdenv.mkDerivation (finalAttrs: {
         just,
         nixfmt-rfc-style,
         skopeo,
-        xonsh,
 
         # Lix specific packages
         pre-commit-checks,
@@ -506,7 +505,7 @@ stdenv.mkDerivation (finalAttrs: {
             p.requests
             p.xdg-base-dirs
             p.packaging
-            (p.toPythonModule pkgsBuildHost.xonsh.passthru.unwrapped)
+            p.xonsh
           ]
         );
         pythonEnv = python3.pythonOnBuildForHost.withPackages pythonPackages;
