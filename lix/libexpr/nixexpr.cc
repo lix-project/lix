@@ -302,32 +302,32 @@ void Expr::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env
 
 void ExprInt::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 }
 
 void ExprFloat::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 }
 
 void ExprString::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 }
 
 void ExprPath::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 }
 
 void ExprVar::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 
     fromWith = nullptr;
 
@@ -364,14 +364,14 @@ void ExprVar::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & 
 
 void ExprInheritFrom::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 }
 
 void ExprSelect::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 
     e->bindVars(es, env);
     if (def) def->bindVars(es, env);
@@ -382,8 +382,8 @@ void ExprSelect::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv>
 
 void ExprOpHasAttr::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 
     e->bindVars(es, env);
     for (auto & i : attrPath)
@@ -414,8 +414,8 @@ std::shared_ptr<const StaticEnv> ExprAttrs::bindInheritSources(
 
 void ExprAttrs::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 
     if (recursive) {
         auto newEnv = [&] () -> std::shared_ptr<const StaticEnv> {
@@ -453,8 +453,8 @@ void ExprAttrs::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> 
 
 void ExprList::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 
     for (auto & i : elems)
         i->bindVars(es, env);
@@ -462,8 +462,8 @@ void ExprList::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> &
 
 void ExprLambda::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 
     auto newEnv = std::make_shared<StaticEnv>(
         nullptr, env.get(),
@@ -489,8 +489,8 @@ void ExprLambda::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv>
 
 void ExprCall::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 
     fun->bindVars(es, env);
     for (auto & e : args)
@@ -514,16 +514,16 @@ void ExprLet::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & 
     for (auto & i : attrs->attrs)
         i.second.e->bindVars(es, i.second.chooseByKind(newEnv, env, inheritFromEnv));
 
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 
     body->bindVars(es, newEnv);
 }
 
 void ExprWith::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 
     parentWith = nullptr;
     for (auto * e = env.get(); e && !parentWith; e = e->up)
@@ -548,8 +548,8 @@ void ExprWith::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> &
 
 void ExprIf::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 
     cond->bindVars(es, env);
     then->bindVars(es, env);
@@ -558,8 +558,8 @@ void ExprIf::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & e
 
 void ExprAssert::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 
     cond->bindVars(es, env);
     body->bindVars(es, env);
@@ -567,16 +567,16 @@ void ExprAssert::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv>
 
 void ExprOpNot::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 
     e->bindVars(es, env);
 }
 
 void ExprConcatStrings::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 
     for (auto & i : this->es)
         i.second->bindVars(es, env);
@@ -584,8 +584,8 @@ void ExprConcatStrings::bindVars(EvalState & es, const std::shared_ptr<const Sta
 
 void ExprPos::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    if (es.debug.repl)
-        es.debug.exprEnvs.insert(std::make_pair(this, env));
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(this, env));
 }
 
 

@@ -45,12 +45,15 @@ EvalErrorBuilder<T> & EvalErrorBuilder<T>::withFrame(const Env & env, const Expr
     // NOTE: This is abusing side-effects.
     // TODO: check compatibility with nested debugger calls.
     // TODO: What side-effects??
-    error.state.debug.traces.push_front(DebugTrace{
-        .pos = error.state.positions[expr.getPos()],
-        .expr = expr,
-        .env = env,
-        .hint = HintFmt("Fake frame for debugging purposes"),
-        .isError = true});
+    if (error.state.debug) {
+        error.state.debug->traces.push_front(DebugTrace{
+            .pos = error.state.positions[expr.getPos()],
+            .expr = expr,
+            .env = env,
+            .hint = HintFmt("Fake frame for debugging purposes"),
+            .isError = true
+        });
+    }
     return *this;
 }
 
@@ -74,11 +77,11 @@ EvalErrorBuilder<T>::addTrace(PosIdx pos, std::string_view formatString, const A
 template<class T>
 void EvalErrorBuilder<T>::debugThrow()
 {
-    if (error.state.debug.repl && !error.state.debug.traces.empty()) {
-        const DebugTrace & last = error.state.debug.traces.front();
+    if (error.state.debug && !error.state.debug->traces.empty()) {
+        const DebugTrace & last = error.state.debug->traces.front();
         const Env * env = &last.env;
         const Expr * expr = &last.expr;
-        error.state.debug.runDebugRepl(error.state, &error, *env, *expr);
+        error.state.debug->runDebugRepl(error.state, &error, *env, *expr);
     }
 
     // `EvalState` is the only class that can construct an `EvalErrorBuilder`,

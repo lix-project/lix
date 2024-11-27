@@ -118,7 +118,7 @@ ref<EvalState> EvalCommand::getEvalState()
         evalState->repair = repair;
 
         if (startReplOnEvalErrors) {
-            evalState->debug.repl = &AbstractNixRepl::runSimple;
+            evalState->debug = std::make_unique<DebugState>(&AbstractNixRepl::runSimple);
         };
     }
     return ref<EvalState>(evalState);

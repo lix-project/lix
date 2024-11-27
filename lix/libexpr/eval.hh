@@ -161,6 +161,12 @@ struct DebugState
     std::map<const Expr *, const std::shared_ptr<const StaticEnv>> exprEnvs;
     int trylevel = 0;
 
+    explicit DebugState(std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> repl)
+        : repl(repl)
+    {
+        assert(repl);
+    }
+
     void runDebugRepl(
         EvalState & evalState, const EvalError * error, const Env & env, const Expr & expr
     );
@@ -224,7 +230,7 @@ public:
     RootValue vCallFlake = nullptr;
     RootValue vImportedDrvToDerivation = nullptr;
 
-    DebugState debug;
+    std::unique_ptr<DebugState> debug;
 
     template<class T, typename... Args>
     [[nodiscard, gnu::noinline]]
@@ -759,7 +765,7 @@ struct DebugTraceStacker {
     DebugTraceStacker(EvalState & evalState, DebugTrace t);
     ~DebugTraceStacker()
     {
-        evalState.debug.traces.pop_front();
+        evalState.debug->traces.pop_front();
     }
     EvalState & evalState;
     DebugTrace trace;

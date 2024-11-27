@@ -566,15 +566,15 @@ static void prim_genericClosure(EvalState & state, const PosIdx pos, Value * * a
 
 static void prim_break(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
-    if (state.debug.repl && !state.debug.traces.empty()) {
+    if (state.debug && !state.debug->traces.empty()) {
         auto error = EvalError(state, ErrorInfo {
             .level = lvlInfo,
             .msg = HintFmt("breakpoint reached"),
             .pos = state.positions[pos],
         });
 
-        auto & dt = state.debug.traces.front();
-        state.debug.runDebugRepl(state, &error, dt.env, dt.expr);
+        auto & dt = state.debug->traces.front();
+        state.debug->runDebugRepl(state, &error, dt.env, dt.expr);
     }
 
     // Return the value we were passed.
@@ -637,15 +637,14 @@ static void prim_tryEval(EvalState & state, const PosIdx pos, Value * * args, Va
 {
     auto attrs = state.buildBindings(2);
 
-    /* increment state.trylevel, and decrement it when this function returns. */
-    MaintainCount trylevel(state.debug.trylevel);
-
-    std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> savedDebugRepl;
-    if (state.debug.repl && evalSettings.ignoreExceptionsDuringTry)
-    {
-        /* to prevent starting the repl from exceptions withing a tryEval, null it. */
-        savedDebugRepl = state.debug.repl;
-        state.debug.repl = nullptr;
+    std::optional<MaintainCount<int>> trylevel;
+    std::unique_ptr<DebugState> savedDebug;
+    if (state.debug) {
+        trylevel.emplace(state.debug->trylevel);
+        if (evalSettings.ignoreExceptionsDuringTry) {
+            /* to prevent starting the repl from exceptions withing a tryEval, null it. */
+            savedDebug = std::move(state.debug);
+        }
     }
 
     try {
@@ -658,8 +657,8 @@ static void prim_tryEval(EvalState & state, const PosIdx pos, Value * * args, Va
     }
 
     // restore the debugRepl pointer if we saved it earlier.
-    if (savedDebugRepl)
-        state.debug.repl = savedDebugRepl;
+    if (savedDebug)
+        state.debug = std::move(savedDebug);
 
     v.mkAttrs(attrs);
 }
@@ -697,9 +696,9 @@ static void prim_trace(EvalState & state, const PosIdx pos, Value * * args, Valu
         printError("trace: %1%", args[0]->string.s);
     else
         printError("trace: %1%", ValuePrinter(state, *args[0]));
-    if (evalSettings.builtinsTraceDebugger && state.debug.repl && !state.debug.traces.empty()) {
-        const DebugTrace & last = state.debug.traces.front();
-        state.debug.runDebugRepl(state, nullptr, last.env, last.expr);
+    if (evalSettings.builtinsTraceDebugger && state.debug && !state.debug->traces.empty()) {
+        const DebugTrace & last = state.debug->traces.front();
+        state.debug->runDebugRepl(state, nullptr, last.env, last.expr);
     }
     state.forceValue(*args[1], pos);
     v = *args[1];

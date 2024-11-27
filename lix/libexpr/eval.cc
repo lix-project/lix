@@ -587,7 +587,7 @@ void printEnvBindings(const SymbolTable & st, const StaticEnv & se, const Env & 
 void printEnvBindings(const EvalState &es, const Expr & expr, const Env & env)
 {
     // just print the names for now
-    auto se = es.debug.staticEnvFor(expr);
+    auto se = es.debug->staticEnvFor(expr);
     if (se)
         printEnvBindings(es.symbols, *se, env, 0);
 }
@@ -641,7 +641,7 @@ void DebugState::runDebugRepl(
 )
 {
     // Make sure we have a debugger to run and we're not already in a debugger.
-    if (!repl || inDebugger)
+    if (inDebugger)
         return;
 
     auto dts =
@@ -717,9 +717,9 @@ DebugTraceStacker::DebugTraceStacker(EvalState & evalState, DebugTrace t)
     : evalState(evalState)
     , trace(std::move(t))
 {
-    evalState.debug.traces.push_front(trace);
-    if (evalState.debug.stop && evalState.debug.repl)
-        evalState.debug.runDebugRepl(evalState, nullptr, trace.env, trace.expr);
+    evalState.debug->traces.push_front(trace);
+    if (evalState.debug->stop && evalState.debug->repl)
+        evalState.debug->runDebugRepl(evalState, nullptr, trace.env, trace.expr);
 }
 
 inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
@@ -954,7 +954,7 @@ void EvalState::cacheFile(
     fileParseCache[resolvedPath] = e;
 
     try {
-        auto dts = debug.repl
+        auto dts = debug
             ? makeDebugTraceStacker(
                 *this,
                 *e,
@@ -1172,7 +1172,7 @@ void ExprLet::eval(EvalState & state, Env & env, Value & v)
             *i.second.chooseByKind(&env2, &env, inheritEnv));
     }
 
-    auto dts = state.debug.repl
+    auto dts = state.debug
         ? makeDebugTraceStacker(
             state,
             *this,
@@ -1257,7 +1257,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
     }
 
     try {
-        auto dts = state.debug.repl
+        auto dts = state.debug
             ? makeDebugTraceStacker(
                 state,
                 *this,
@@ -1575,7 +1575,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
 
             /* Evaluate the body. */
             try {
-                auto dts = debug.repl
+                auto dts = debug
                     ? makeDebugTraceStacker(
                         *this, *lambda.body, env2, positions[lambda.pos],
                         "while calling %s",
@@ -1714,7 +1714,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
 
 void ExprCall::eval(EvalState & state, Env & env, Value & v)
 {
-    auto dts = state.debug.repl
+    auto dts = state.debug
         ? makeDebugTraceStacker(
             state,
             *this,
@@ -2087,7 +2087,7 @@ void EvalState::forceValueDeep(Value & v)
             for (auto & i : *v.attrs)
                 try {
                     // If the value is a thunk, we're evaling. Otherwise no trace necessary.
-                    auto dts = debug.repl && i.value->isThunk()
+                    auto dts = debug && i.value->isThunk()
                         ? makeDebugTraceStacker(*this, *i.value->thunk.expr, *i.value->thunk.env, positions[i.pos],
                             "while evaluating the attribute '%1%'", symbols[i.name])
                         : nullptr;
