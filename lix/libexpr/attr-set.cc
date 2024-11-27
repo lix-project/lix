@@ -7,6 +7,7 @@
 
 namespace nix {
 
+Bindings Bindings::EMPTY{0};
 
 
 /* Allocate a new array of attributes for an attribute set with a specific
@@ -15,7 +16,7 @@ namespace nix {
 Bindings * EvalState::allocBindings(size_t capacity)
 {
     if (capacity == 0)
-        return &emptyBindings;
+        return &Bindings::EMPTY;
     if (capacity > std::numeric_limits<Bindings::size_t>::max())
         throw Error("attribute set of size %d is too big", capacity);
     nrAttrsets++;

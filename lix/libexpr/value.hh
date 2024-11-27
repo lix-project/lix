@@ -197,6 +197,11 @@ private:
 
 public:
 
+    /**
+     * Empty list constant.
+     */
+    static Value EMPTY_LIST;
+
     // Discount `using NewValueAs::*;`
 // NOLINTNEXTLINE(bugprone-macro-parentheses)
 #define USING_VALUETYPE(name) using name = NewValueAs::name

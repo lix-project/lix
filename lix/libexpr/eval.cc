@@ -255,7 +255,6 @@ EvalState::EvalState(
         .overrides = symbols.create("__overrides"),
     }
     , repair(NoRepair)
-    , emptyBindings(0)
     , derivationInternal(rootPath(CanonPath("/builtin/derivation.nix")))
     , store(store)
     , buildStore(buildStore ? buildStore : store)
@@ -275,8 +274,6 @@ EvalState::EvalState(
     assert(libexprInitialised);
 
     static_assert(sizeof(Env) <= 16, "environment must be <= 16 bytes");
-
-    vEmptyList.mkList(0);
 
     /* Initialise the Nix expression search path. */
     if (!evalSettings.pureEval) {
@@ -1200,7 +1197,7 @@ void ExprList::eval(EvalState & state, Env & env, Value & v)
 Value * ExprList::maybeThunk(EvalState & state, Env & env)
 {
     if (elems.empty()) {
-        return &state.vEmptyList;
+        return &Value::EMPTY_LIST;
     }
     return Expr::maybeThunk(state, env);
 }

@@ -187,13 +187,6 @@ public:
      */
     std::optional<PathSet> allowedPaths;
 
-    Bindings emptyBindings;
-
-    /**
-     * Empty list constant.
-     */
-    Value vEmptyList;
-
     const SourcePath derivationInternal;
 
     /**

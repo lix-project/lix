@@ -9,6 +9,8 @@
 namespace nix
 {
 
+Value Value::EMPTY_LIST{Value::list_t{}, {}};
+
 static void copyContextToValue(Value & v, const NixStringContext & context)
 {
     if (!context.empty()) {

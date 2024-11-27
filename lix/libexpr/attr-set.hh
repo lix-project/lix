@@ -51,6 +51,8 @@ public:
     typedef uint32_t size_t;
     PosIdx pos;
 
+    static Bindings EMPTY;
+
 private:
     size_t size_, capacity_;
     Attr attrs[0];
