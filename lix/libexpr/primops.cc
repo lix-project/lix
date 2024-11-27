@@ -2851,9 +2851,7 @@ void EvalState::createBaseEnv()
        building baseEnv/staticBaseEnv because it uses 'builtins'. */
     char code[] =
         #include "primops/derivation.nix.gen.hh"
-        // the parser needs two NUL bytes as terminators; one of them
-        // is implied by being a C string.
-        "\0";
+        ;
     eval(*parse(code, sizeof(code), derivationInternal, {CanonPath::root}, staticBaseEnv), *vDerivation);
 }
 

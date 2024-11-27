@@ -39,11 +39,6 @@ Expr * EvalState::parse(
         featureSettings,
     };
 
-    assert(length >= 2);
-    assert(text[length - 1] == 0);
-    assert(text[length - 2] == 0);
-    length -= 2;
-
     p::string_input<p::tracking_mode::lazy> inp{std::string_view{text, length}, "input"};
     try {
         parser::v1::ExprState x;
