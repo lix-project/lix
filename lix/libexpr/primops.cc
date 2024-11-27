@@ -2830,13 +2830,28 @@ void EvalState::createBaseEnv()
                 addPrimOp(std::move(primOpAdjusted));
             }
 
+    static PrimOp prim_initializeDerivation{
+        .arity = 1,
+        .fun =
+            [](EvalState & state, PosIdx pos, Value ** args, Value & v) {
+                char code[] =
+                    #include "primops/derivation.nix.gen.hh"
+                    ;
+                auto & expr = *state.parse(
+                    code, sizeof(code), Pos::Hidden{}, {CanonPath::root}, state.staticBaseEnv
+                );
+                state.eval(expr, v);
+            },
+    };
+    static Value initializeDerivation{NewValueAs::primop, prim_initializeDerivation};
+
     /* Add a wrapper around the derivation primop that computes the
        `drvPath' and `outPath' attributes lazily.
 
        Null docs because it is documented separately.
+       App instead of PrimopApp to have eval immediately force it when accessed.
        */
-    auto vDerivation = mem.allocValue();
-    addConstant("derivation", vDerivation, {
+    addConstant("derivation", {NewValueAs::app, initializeDerivation, initializeDerivation}, {
         .type = nFunction,
     });
 
@@ -2847,12 +2862,6 @@ void EvalState::createBaseEnv()
     staticBaseEnv->sort();
     staticBaseEnv->isRoot = true;
 
-    /* Note: we have to initialize the 'derivation' constant *after*
-       building baseEnv/staticBaseEnv because it uses 'builtins'. */
-    char code[] =
-        #include "primops/derivation.nix.gen.hh"
-        ;
-    eval(*parse(code, sizeof(code), Pos::Hidden{}, {CanonPath::root}, staticBaseEnv), *vDerivation);
 }
 
 
