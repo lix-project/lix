@@ -5,6 +5,7 @@
 
 #include <coroutine>
 #include <exception>
+#include <memory>
 #include <optional>
 #include <utility>
 #include <variant>
@@ -279,6 +280,71 @@ struct Generator
     {
         return std::move(*this).decay();
     }
+
+    class iterator
+    {
+        // operator== must be const, but we need to call parent->next() to
+        // be able to check whether the sequence has ended. boldface sigh.
+        mutable Generator * parent = nullptr;
+        mutable std::shared_ptr<T> item = nullptr;
+
+        void step() const
+        {
+            auto next = parent->next();
+            if (!next) {
+                parent = nullptr;
+                item = nullptr;
+            } else if (!item) {
+                item = std::make_shared<T>(std::move(*next));
+            } else {
+                *item = std::move(*next);
+            }
+        }
+
+        void initializeIfNecessary() const
+        {
+            if (parent && !item) {
+                step();
+            }
+        }
+
+    public:
+        using iterator_category = std::input_iterator_tag;
+        using difference_type = void;
+        using value_type = T;
+        using reference = T &;
+        using pointer = T *;
+
+        iterator() = default;
+        explicit iterator(Generator & parent) : parent(&parent) {}
+
+        T * operator->() { return &**this; }
+        T & operator*()
+        {
+            initializeIfNecessary();
+            return *item;
+        }
+
+        iterator & operator++()
+        {
+            initializeIfNecessary();
+            if (parent) {
+                step();
+            }
+            return *this;
+        }
+
+        void operator++(int) { ++*this; }
+
+        bool operator==(const iterator & b) const
+        {
+            initializeIfNecessary();
+            return parent == nullptr && b.parent == nullptr;
+        }
+    };
+
+    iterator begin() { return iterator{*this}; }
+    iterator end() { return iterator{}; }
 
 private:
     _generator::GeneratorBase<T> impl;

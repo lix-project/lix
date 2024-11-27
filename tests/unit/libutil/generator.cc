@@ -216,4 +216,48 @@ TEST(Generator, transformThrows)
     }
 }
 
+TEST(Generator, iterators)
+{
+    auto g = []() -> Generator<int> {
+        for (auto i : {1, 2, 3, 4, 5, 6, 7, 8}) {
+            co_yield i;
+        }
+    }();
+
+    // begin() does not consume an item
+    {
+        auto it = g.begin();
+        ASSERT_EQ(g.next(), 1);
+    }
+
+    // operator* consumes only one item per advancement
+    {
+        auto it = g.begin();
+        ASSERT_EQ(*it, 2);
+        ASSERT_EQ(*it, 2);
+        ++it;
+        ASSERT_EQ(*it, 3);
+        ASSERT_EQ(*it, 3);
+    }
+
+    // not advancing an iterator consumes no items
+    ASSERT_EQ(g.next(), 4);
+
+    // operator++ on a fresh iterator consumes *two* items
+    {
+        auto it = g.begin();
+        ++it;
+        ASSERT_EQ(g.next(), 7);
+    }
+
+    // operator++ on last item reverts to end()
+    {
+        auto it = g.begin();
+        ASSERT_EQ(*it, 8);
+        ASSERT_NE(it, g.end());
+        ++it;
+        ASSERT_EQ(it, g.end());
+    }
+}
+
 }
