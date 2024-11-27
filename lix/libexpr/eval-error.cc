@@ -14,7 +14,7 @@ EvalErrorBuilder<T> & EvalErrorBuilder<T>::withExitStatus(unsigned int exitStatu
 template<class T>
 EvalErrorBuilder<T> & EvalErrorBuilder<T>::atPos(PosIdx pos)
 {
-    error.err.pos = error.state.positions[pos];
+    error.err.pos = state.positions[pos];
     return *this;
 }
 
@@ -28,7 +28,7 @@ template<class T>
 EvalErrorBuilder<T> & EvalErrorBuilder<T>::withTrace(PosIdx pos, const std::string_view text)
 {
     error.err.traces.push_front(
-        Trace{.pos = error.state.positions[pos], .hint = HintFmt(std::string(text))});
+        Trace{.pos = state.positions[pos], .hint = HintFmt(std::string(text))});
     return *this;
 }
 
@@ -42,9 +42,9 @@ EvalErrorBuilder<T> & EvalErrorBuilder<T>::withSuggestions(Suggestions & s)
 template<class T>
 EvalErrorBuilder<T> & EvalErrorBuilder<T>::withFrame(const Env & env, const Expr & expr)
 {
-    if (error.state.debug) {
-        error.frame = error.state.debug->addTrace(DebugTrace{
-            .pos = error.state.positions[expr.getPos()],
+    if (state.debug) {
+        error.frame = state.debug->addTrace(DebugTrace{
+            .pos = state.positions[expr.getPos()],
             .expr = expr,
             .env = env,
             .hint = HintFmt("Fake frame for debugging purposes"),
@@ -57,7 +57,7 @@ EvalErrorBuilder<T> & EvalErrorBuilder<T>::withFrame(const Env & env, const Expr
 template<class T>
 EvalErrorBuilder<T> & EvalErrorBuilder<T>::addTrace(PosIdx pos, HintFmt hint)
 {
-    error.addTrace(error.state.positions[pos], hint);
+    error.addTrace(state.positions[pos], hint);
     return *this;
 }
 
@@ -67,18 +67,18 @@ EvalErrorBuilder<T> &
 EvalErrorBuilder<T>::addTrace(PosIdx pos, std::string_view formatString, const Args &... formatArgs)
 {
 
-    addTrace(error.state.positions[pos], HintFmt(std::string(formatString), formatArgs...));
+    addTrace(state.positions[pos], HintFmt(std::string(formatString), formatArgs...));
     return *this;
 }
 
 template<class T>
 void EvalErrorBuilder<T>::debugThrow()
 {
-    if (error.state.debug) {
-        if (auto last = error.state.debug->traces().next()) {
+    if (state.debug) {
+        if (auto last = state.debug->traces().next()) {
             const Env * env = &(*last)->env;
             const Expr * expr = &(*last)->expr;
-            error.state.debug->runDebugRepl(error.state, &error, *env, *expr);
+            state.debug->runDebugRepl(state, &error, *env, *expr);
         }
     }
 

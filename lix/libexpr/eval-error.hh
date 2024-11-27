@@ -24,20 +24,7 @@ class EvalError : public Error
     std::shared_ptr<const DebugTrace> frame;
 
 public:
-    EvalState & state;
-
-    EvalError(EvalState & state, ErrorInfo && errorInfo)
-        : Error(errorInfo)
-        , state(state)
-    {
-    }
-
-    template<typename... Args>
-    explicit EvalError(EvalState & state, const std::string & formatString, const Args &... formatArgs)
-        : Error(formatString, formatArgs...)
-        , state(state)
-    {
-    }
+    using Error::Error;
 };
 
 MakeError(ParseError, Error);
@@ -58,8 +45,8 @@ struct InvalidPathError : public EvalError
 {
 public:
     Path path;
-    InvalidPathError(EvalState & state, const Path & path)
-        : EvalError(state, "path '%s' did not exist in the store during evaluation", path)
+    InvalidPathError(const Path & path)
+        : EvalError("path '%s' did not exist in the store during evaluation", path)
     {
     }
 };
@@ -74,9 +61,11 @@ class EvalErrorBuilder final
 {
     friend class EvalState;
 
+    EvalState & state;
+
     template<typename... Args>
     explicit EvalErrorBuilder(EvalState & state, const Args &... args)
-        : error(T(state, args...))
+        : state(state), error(T(args...))
     {
     }
 
