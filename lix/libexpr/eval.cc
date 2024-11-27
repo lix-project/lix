@@ -669,7 +669,7 @@ void EvalState::runDebugRepl(const Error * error, const Env & env, const Expr & 
     if (se) {
         auto vm = mapStaticEnvBindings(symbols, *se.get(), env);
         DebuggerGuard _guard(inDebugger);
-        auto exitStatus = (debugRepl)(ref<EvalState>(shared_from_this()), *vm);
+        auto exitStatus = (debugRepl)(*this, *vm);
         switch (exitStatus) {
             case ReplExitStatus::QuitAll:
                 if (error)

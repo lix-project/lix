@@ -153,7 +153,7 @@ struct DebugTrace {
 };
 
 
-class EvalState : public std::enable_shared_from_this<EvalState>
+class EvalState
 {
 public:
     SymbolTable symbols;
@@ -212,7 +212,7 @@ public:
     /**
      * Debugger
      */
-    std::function<ReplExitStatus(ref<EvalState> es, ValMap const & extraEnv)> debugRepl;
+    std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl;
     bool debugStop;
     bool inDebugger = false;
     int trylevel;

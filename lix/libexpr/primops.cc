@@ -640,7 +640,7 @@ static void prim_tryEval(EvalState & state, const PosIdx pos, Value * * args, Va
     /* increment state.trylevel, and decrement it when this function returns. */
     MaintainCount trylevel(state.trylevel);
 
-    std::function<ReplExitStatus(ref<EvalState> es, ValMap const & extraEnv)> savedDebugRepl;
+    std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> savedDebugRepl;
     if (state.debugRepl && evalSettings.ignoreExceptionsDuringTry)
     {
         /* to prevent starting the repl from exceptions withing a tryEval, null it. */
