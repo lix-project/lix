@@ -1,6 +1,5 @@
 nix_generated_headers = [
   gen_header.process(meson.project_source_root() / 'doc/manual/generate-manpage.nix'),
-  gen_header.process(meson.project_source_root() / 'doc/manual/utils.nix'),
   gen_header.process('get-env.sh'),
 ]
 

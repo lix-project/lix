@@ -261,14 +261,6 @@ static void showHelp(std::vector<std::string> subcommand, NixArgs & toplevel)
         #include "generate-manpage.nix.gen.hh"
         , CanonPath::root), *vGenerateManpage);
 
-    auto vUtils = state.mem.allocValue();
-    state.cacheFile(
-        CanonPath("/utils.nix"), CanonPath("/utils.nix"),
-        &state.parseExprFromString(
-            #include "utils.nix.gen.hh"
-            , CanonPath::root),
-        *vUtils);
-
     auto vDump = state.mem.allocValue();
     vDump->mkString(toplevel.dumpCli());
 
