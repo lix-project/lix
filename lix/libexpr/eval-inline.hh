@@ -89,15 +89,6 @@ void EvalState::forceValue(Value & v, const PosIdx pos)
 [[gnu::always_inline]]
 inline void EvalState::forceAttrs(Value & v, const PosIdx pos, std::string_view errorCtx)
 {
-    forceAttrs(v, [&]() { return pos; }, errorCtx);
-}
-
-
-template <typename Callable>
-[[gnu::always_inline]]
-inline void EvalState::forceAttrs(Value & v, Callable getPos, std::string_view errorCtx)
-{
-    PosIdx pos = getPos();
     forceValue(v, pos);
     if (v.type() != nAttrs) {
         error<TypeError>(

@@ -1036,7 +1036,7 @@ Value * NixRepl::replInitInfo()
 
 void NixRepl::addAttrsToScope(Value & attrs)
 {
-    state.forceAttrs(attrs, [&]() { return attrs.determinePos(noPos); }, "while evaluating an attribute set to be merged in the global scope");
+    state.forceAttrs(attrs, attrs.determinePos(noPos), "while evaluating an attribute set to be merged in the global scope");
     if (displ + attrs.attrs->size() >= envSize)
         throw Error("environment full; cannot add more variables");
 

@@ -476,10 +476,6 @@ public:
     bool forceBool(Value & v, const PosIdx pos, std::string_view errorCtx);
 
     void forceAttrs(Value & v, const PosIdx pos, std::string_view errorCtx);
-
-    template <typename Callable>
-    inline void forceAttrs(Value & v, Callable getPos, std::string_view errorCtx);
-
     inline void forceList(Value & v, const PosIdx pos, std::string_view errorCtx);
     /**
      * @param v either lambda or primop
