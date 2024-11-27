@@ -181,11 +181,7 @@ struct NixRepl
      * Note: This is `shared_ptr` to avoid garbage collection.
      */
     std::shared_ptr<Value *> replOverlaysEvalFunction =
-    #if HAVE_BOEHMGC
-        std::allocate_shared<Value *>(traceable_allocator<Value *>(), nullptr);
-    #else
-        std::make_shared<Value *>(nullptr);
-    #endif
+        std::allocate_shared<Value *>(TraceableAllocator<Value *>(), nullptr);
 
     /**
      * Get the `info` AttrSet that's passed as the first argument to each

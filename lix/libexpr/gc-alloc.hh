@@ -13,8 +13,6 @@
 #include "lix/libutil/checked-arithmetic.hh"
 
 #if HAVE_BOEHMGC
-#include <functional> // std::less
-#include <utility> // std::pair
 #define GC_INCLUDE_NEW
 #include <gc/gc.h>
 #include <gc/gc_allocator.h>
@@ -32,25 +30,8 @@
 namespace nix
 {
 
-/// Alias for std::map which uses BoehmGC's allocator conditional on this Lix
-/// build having GC enabled.
-template<typename KeyT, typename ValueT>
-using GcMap = std::map<
-    KeyT,
-    ValueT,
-    std::less<KeyT>,
-    traceable_allocator<std::pair<KeyT const, ValueT>>
->;
-
-/// Alias for std::vector which uses BoehmGC's allocator conditional on this Lix
-/// build having GC enabled.
-template<typename ItemT>
-using GcVector = std::vector<ItemT, traceable_allocator<ItemT>>;
-
-/// Alias for std::list which uses BoehmGC's allocator conditional on this Lix
-/// build having GC enabled.
-template<typename ItemT>
-using GcList = std::list<ItemT, traceable_allocator<ItemT>>;
+template<typename T>
+using TraceableAllocator = traceable_allocator<T>;
 
 }
 
@@ -71,20 +52,8 @@ using GcList = std::list<ItemT, traceable_allocator<ItemT>>;
 namespace nix
 {
 
-/// Alias for std::map which uses BoehmGC's allocator conditional on this Lix
-/// build having GC enabled.
-template<typename KeyT, typename ValueT>
-using GcMap = std::map<KeyT, ValueT>;
-
-/// Alias for std::vector which uses BoehmGC's allocator conditional on this Lix
-/// build having GC enabled.
-template<typename ItemT>
-using GcVector = std::vector<ItemT>;
-
-/// Alias for std::list which uses BoehmGC's allocator conditional on this Lix
-/// build having GC enabled.
-template<typename ItemT>
-using GcList = std::list<ItemT>;
+template<typename T>
+using TraceableAllocator = std::allocator<T>;
 
 }
 
@@ -92,6 +61,26 @@ using GcList = std::list<ItemT>;
 
 namespace nix
 {
+
+/// Alias for std::map which uses BoehmGC's allocator conditional on this Lix
+/// build having GC enabled.
+template<typename KeyT, typename ValueT>
+using GcMap = std::map<
+    KeyT,
+    ValueT,
+    std::less<KeyT>,
+    TraceableAllocator<std::pair<KeyT const, ValueT>>
+>;
+
+/// Alias for std::vector which uses BoehmGC's allocator conditional on this Lix
+/// build having GC enabled.
+template<typename ItemT>
+using GcVector = std::vector<ItemT, TraceableAllocator<ItemT>>;
+
+/// Alias for std::list which uses BoehmGC's allocator conditional on this Lix
+/// build having GC enabled.
+template<typename ItemT>
+using GcList = std::list<ItemT, TraceableAllocator<ItemT>>;
 
 [[gnu::always_inline]]
 inline void * gcAllocBytes(size_t n)

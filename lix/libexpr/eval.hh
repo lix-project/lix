@@ -216,7 +216,6 @@ struct StaticSymbols
 
 class EvalMemory
 {
-#if HAVE_BOEHMGC
     /**
      * Allocation cache for GC'd Value objects.
      */
@@ -226,7 +225,6 @@ class EvalMemory
      * Allocation cache for size-1 Env objects.
      */
     std::shared_ptr<void *> env1AllocCache;
-#endif
 
 public:
     struct Statistics

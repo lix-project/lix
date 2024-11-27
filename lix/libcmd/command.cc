@@ -105,15 +105,9 @@ ref<Store> EvalCommand::getEvalStore()
 ref<eval_cache::CachingEvalState> EvalCommand::getEvalState()
 {
     if (!evalState) {
-        evalState =
-            #if HAVE_BOEHMGC
-            std::allocate_shared<eval_cache::CachingEvalState>(traceable_allocator<EvalState>(),
-                searchPath, getEvalStore(), getStore())
-            #else
-            std::make_shared<eval_cache::CachingEvalState>(
-                searchPath, getEvalStore(), getStore())
-            #endif
-            ;
+        evalState = std::allocate_shared<eval_cache::CachingEvalState>(
+            TraceableAllocator<EvalState>(), searchPath, getEvalStore(), getStore()
+        );
 
         evalState->repair = repair;
 

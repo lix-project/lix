@@ -51,11 +51,7 @@ namespace nix {
 
 RootValue allocRootValue(Value * v)
 {
-#if HAVE_BOEHMGC
-    return std::allocate_shared<Value *>(traceable_allocator<Value *>(), v);
-#else
-    return std::make_shared<Value *>(v);
-#endif
+    return std::allocate_shared<Value *>(TraceableAllocator<Value *>(), v);
 }
 
 // Pretty print types for assertion errors
@@ -254,10 +250,8 @@ StaticSymbols::StaticSymbols(SymbolTable & symbols)
 }
 
 EvalMemory::EvalMemory()
-#if HAVE_BOEHMGC
-    : valueAllocCache(std::allocate_shared<void *>(traceable_allocator<void *>(), nullptr))
-    , env1AllocCache(std::allocate_shared<void *>(traceable_allocator<void *>(), nullptr))
-#endif
+    : valueAllocCache(std::allocate_shared<void *>(TraceableAllocator<void *>(), nullptr))
+    , env1AllocCache(std::allocate_shared<void *>(TraceableAllocator<void *>(), nullptr))
 {
     assert(libexprInitialised);
 }
