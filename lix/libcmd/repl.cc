@@ -1092,43 +1092,30 @@ Value * NixRepl::evalFile(SourcePath & path)
     return result;
 }
 
-
-std::unique_ptr<AbstractNixRepl> AbstractNixRepl::create(
-   const SearchPath & searchPath, nix::ref<Store> store, ref<EvalState> state,
-   std::function<AnnotatedValues()> getValues)
+ReplExitStatus AbstractNixRepl::run(
+    const SearchPath & searchPath,
+    nix::ref<Store> store,
+    ref<EvalState> state,
+    std::function<AnnotatedValues()> getValues,
+    const ValMap & extraEnv,
+    Bindings * autoArgs
+)
 {
-    return std::make_unique<NixRepl>(
-        searchPath,
-        openStore(),
-        state,
-        getValues
-    );
+    NixRepl repl(searchPath, store, state, getValues);
+
+    repl.autoArgs = autoArgs;
+    repl.initEnv();
+    for (auto & [name, value] : extraEnv) {
+        repl.addVarToScope(repl.state->symbols.create(name), *value);
+    }
+    return repl.mainLoop();
 }
 
-
-ReplExitStatus AbstractNixRepl::runSimple(
-    ref<EvalState> evalState,
-    const ValMap & extraEnv)
+ReplExitStatus AbstractNixRepl::runSimple(ref<EvalState> evalState, const ValMap & extraEnv)
 {
-    auto getValues = [&]()->NixRepl::AnnotatedValues{
-        NixRepl::AnnotatedValues values;
-        return values;
-    };
-    SearchPath searchPath = {};
-    auto repl = std::make_unique<NixRepl>(
-            searchPath,
-            openStore(),
-            evalState,
-            getValues
-        );
-
-    repl->initEnv();
-
-    // add 'extra' vars.
-    for (auto & [name, value] : extraEnv)
-        repl->addVarToScope(repl->state->symbols.create(name), *value);
-
-    return repl->mainLoop();
+    return run(
+        {}, openStore(), evalState, [] {  return AnnotatedValues{}; }, extraEnv, nullptr
+    );
 }
 
 }

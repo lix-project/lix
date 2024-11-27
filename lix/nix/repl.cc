@@ -86,15 +86,7 @@ struct CmdRepl : RawInstallablesCommand
             }
             return values;
         };
-        auto repl = AbstractNixRepl::create(
-            searchPath,
-            openStore(),
-            state,
-            getValues
-        );
-        repl->autoArgs = getAutoArgs(*repl->state);
-        repl->initEnv();
-        repl->mainLoop();
+        AbstractNixRepl::run(searchPath, openStore(), state, getValues, {}, getAutoArgs(*state));
     }
 };
 
