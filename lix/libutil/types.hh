@@ -135,7 +135,7 @@ constexpr auto enumerate(T && iterable)
         TIter iter;
         constexpr bool operator != (const iterator & other) const { return iter != other.iter; }
         constexpr void operator ++ () { ++i; ++iter; }
-        constexpr auto operator * () const { return std::tie(i, *iter); }
+        constexpr auto operator * () { return std::tie(i, *iter); }
     };
 
     struct iterable_wrapper
