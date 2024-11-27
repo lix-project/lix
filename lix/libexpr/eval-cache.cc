@@ -334,6 +334,16 @@ static std::shared_ptr<AttrDb> makeAttrDb(
     }
 }
 
+ref<EvalCache> CachingEvalState::getCacheFor(Hash hash, RootLoader rootLoader)
+{
+    if (auto it = caches.find(hash); it != caches.end()) {
+        return it->second;
+    }
+    auto cache = make_ref<EvalCache>(hash, *this, rootLoader);
+    caches.emplace(hash, cache);
+    return cache;
+}
+
 EvalCache::EvalCache(
     std::optional<std::reference_wrapper<const Hash>> useCache,
     EvalState & state,

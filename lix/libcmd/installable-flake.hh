@@ -40,7 +40,7 @@ struct InstallableFlake : InstallableValue
 
     InstallableFlake(
         SourceExprCommand * cmd,
-        ref<EvalState> state,
+        ref<eval_cache::CachingEvalState> state,
         FlakeRef && flakeRef,
         std::string_view fragment,
         ExtendedOutputsSpec extendedOutputsSpec,
@@ -83,7 +83,7 @@ static inline FlakeRef defaultNixpkgsFlakeRef()
 }
 
 ref<eval_cache::EvalCache> openEvalCache(
-    EvalState & state,
+    eval_cache::CachingEvalState & state,
     std::shared_ptr<flake::LockedFlake> lockedFlake);
 
 }

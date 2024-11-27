@@ -13,13 +13,34 @@ namespace nix::eval_cache {
 struct AttrDb;
 class AttrCursor;
 
+typedef std::function<Value *()> RootLoader;
+
+/**
+ * EvalState with caching support. Historically this was part of EvalState,
+ * but it was split out to make maintenance easier. This could've been just
+ * a pair of EvalState and the cache map, but doing so would currently hide
+ * the rather strong connection between EvalState and these caches. At some
+ * future time the cache interface should be changed to hide its EvalState.
+ */
+class CachingEvalState : public EvalState
+{
+    /**
+     * A cache for evaluation caches, so as to reuse the same root value if possible
+     */
+    std::map<Hash, ref<EvalCache>> caches;
+
+public:
+    using EvalState::EvalState;
+
+    ref<EvalCache> getCacheFor(Hash hash, RootLoader rootLoader);
+};
+
 class EvalCache : public std::enable_shared_from_this<EvalCache>
 {
     friend class AttrCursor;
 
     std::shared_ptr<AttrDb> db;
     EvalState & state;
-    typedef std::function<Value *()> RootLoader;
     RootLoader rootLoader;
     RootValue value;
 

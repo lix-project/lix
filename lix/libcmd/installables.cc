@@ -267,7 +267,7 @@ void SourceExprCommand::completeInstallable(AddCompletions & completions, std::s
 
 void completeFlakeRefWithFragment(
     AddCompletions & completions,
-    ref<EvalState> evalState,
+    ref<eval_cache::CachingEvalState> evalState,
     flake::LockFlags lockFlags,
     Strings attrPathPrefixes,
     const Strings & defaultFlakeAttrPaths,
@@ -390,7 +390,7 @@ static StorePath getDeriver(
 }
 
 ref<eval_cache::EvalCache> openEvalCache(
-    EvalState & state,
+    eval_cache::CachingEvalState & state,
     std::shared_ptr<flake::LockedFlake> lockedFlake)
 {
     auto fingerprint = evalSettings.useEvalCache && evalSettings.pureEval
@@ -415,11 +415,7 @@ ref<eval_cache::EvalCache> openEvalCache(
         };
 
     if (fingerprint) {
-        auto search = state.evalCaches.find(fingerprint.value());
-        if (search == state.evalCaches.end()) {
-            search = state.evalCaches.emplace(fingerprint.value(), make_ref<nix::eval_cache::EvalCache>(fingerprint, state, rootLoader)).first;
-        }
-        return search->second;
+        return state.getCacheFor(fingerprint.value(), rootLoader);
     } else {
         return make_ref<nix::eval_cache::EvalCache>(std::nullopt, state, rootLoader);
     }

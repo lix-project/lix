@@ -12,7 +12,7 @@
 namespace nix {
 
 InstallableAttrPath::InstallableAttrPath(
-    ref<EvalState> state,
+    ref<eval_cache::CachingEvalState> state,
     SourceExprCommand & cmd,
     Value * v,
     const std::string & attrPath,
@@ -93,7 +93,7 @@ DerivedPathsWithInfo InstallableAttrPath::toDerivedPaths()
 }
 
 InstallableAttrPath InstallableAttrPath::parse(
-    ref<EvalState> state,
+    ref<eval_cache::CachingEvalState> state,
     SourceExprCommand & cmd,
     Value * v,
     std::string_view prefix,

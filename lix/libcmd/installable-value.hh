@@ -2,14 +2,13 @@
 ///@file
 
 #include "lix/libcmd/installables.hh"
+#include "lix/libexpr/eval-cache.hh"
 #include "lix/libexpr/flake/flake.hh"
 
 namespace nix {
 
 struct DrvInfo;
 struct SourceExprCommand;
-
-namespace eval_cache { class EvalCache; class AttrCursor; }
 
 struct App
 {
@@ -71,9 +70,9 @@ struct ExtraPathInfoValue : ExtraPathInfo
  */
 struct InstallableValue : Installable
 {
-    ref<EvalState> state;
+    ref<eval_cache::CachingEvalState> state;
 
-    InstallableValue(ref<EvalState> state) : state(state) {}
+    InstallableValue(ref<eval_cache::CachingEvalState> state) : state(state) {}
 
     virtual ~InstallableValue() { }
 

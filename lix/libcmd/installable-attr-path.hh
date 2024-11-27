@@ -2,6 +2,7 @@
 ///@file
 
 #include "lix/libcmd/installable-value.hh"
+#include "lix/libexpr/eval-cache.hh"
 #include "lix/libstore/outputs-spec.hh"
 #include "lix/libcmd/command.hh"
 #include "lix/libcmd/common-eval-args.hh"
@@ -19,7 +20,7 @@ class InstallableAttrPath : public InstallableValue
     ExtendedOutputsSpec extendedOutputsSpec;
 
     InstallableAttrPath(
-        ref<EvalState> state,
+        ref<eval_cache::CachingEvalState> state,
         SourceExprCommand & cmd,
         Value * v,
         const std::string & attrPath,
@@ -34,7 +35,7 @@ class InstallableAttrPath : public InstallableValue
 public:
 
     static InstallableAttrPath parse(
-        ref<EvalState> state,
+        ref<eval_cache::CachingEvalState> state,
         SourceExprCommand & cmd,
         Value * v,
         std::string_view prefix,

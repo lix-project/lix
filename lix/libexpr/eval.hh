@@ -321,11 +321,6 @@ public:
         return *new EvalErrorBuilder<T>(*this, args...);
     }
 
-    /**
-     * A cache for evaluation caches, so as to reuse the same root value if possible
-     */
-    std::map<const Hash, ref<eval_cache::EvalCache>> evalCaches;
-
 private:
 
     /* Cache for calls to addToStore(); maps source paths to the store

@@ -102,15 +102,15 @@ ref<Store> EvalCommand::getEvalStore()
     return ref<Store>(evalStore);
 }
 
-ref<EvalState> EvalCommand::getEvalState()
+ref<eval_cache::CachingEvalState> EvalCommand::getEvalState()
 {
     if (!evalState) {
         evalState =
             #if HAVE_BOEHMGC
-            std::allocate_shared<EvalState>(traceable_allocator<EvalState>(),
+            std::allocate_shared<eval_cache::CachingEvalState>(traceable_allocator<EvalState>(),
                 searchPath, getEvalStore(), getStore())
             #else
-            std::make_shared<EvalState>(
+            std::make_shared<eval_cache::CachingEvalState>(
                 searchPath, getEvalStore(), getStore())
             #endif
             ;
@@ -121,7 +121,7 @@ ref<EvalState> EvalCommand::getEvalState()
             evalState->debug = std::make_unique<DebugState>(&AbstractNixRepl::runSimple);
         };
     }
-    return ref<EvalState>(evalState);
+    return ref<eval_cache::CachingEvalState>(evalState);
 }
 
 MixOperateOnOptions::MixOperateOnOptions()

@@ -2,6 +2,7 @@
 ///@file
 
 #include "lix/libcmd/installable-value.hh"
+#include "lix/libexpr/eval-cache.hh"
 #include "lix/libutil/args.hh"
 #include "lix/libcmd/common-eval-args.hh"
 #include "lix/libstore/path.hh"
@@ -76,12 +77,12 @@ struct EvalCommand : virtual StoreCommand, MixEvalArgs
 
     ref<Store> getEvalStore();
 
-    ref<EvalState> getEvalState();
+    ref<eval_cache::CachingEvalState> getEvalState();
 
 private:
     std::shared_ptr<Store> evalStore;
 
-    std::shared_ptr<EvalState> evalState;
+    std::shared_ptr<eval_cache::CachingEvalState> evalState;
 };
 
 /**
@@ -331,7 +332,7 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
 
 void completeFlakeRefWithFragment(
     AddCompletions & completions,
-    ref<EvalState> evalState,
+    ref<eval_cache::CachingEvalState> evalState,
     flake::LockFlags lockFlags,
     Strings attrPathPrefixes,
     const Strings & defaultFlakeAttrPaths,
