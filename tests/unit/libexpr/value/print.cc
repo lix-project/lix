@@ -458,13 +458,11 @@ TEST_F(ValuePrintingTests, ansiColorsDerivation)
 
 TEST_F(ValuePrintingTests, ansiColorsError)
 {
-    Value throw_ = state.getBuiltin("throw");
-    Value message;
-    message.mkString("uh oh!");
     Value vError;
-    vError.mkApp(&throw_, &message);
+    auto & e = state.parseExprFromString("{ a = throw \"uh oh!\"; }", {CanonPath::root});
+    state.eval(e, vError);
 
-    test(vError,
+    test(*vError.attrs->begin()->value,
          ANSI_RED
          "«error: uh oh!»"
          ANSI_NORMAL,
@@ -476,21 +474,11 @@ TEST_F(ValuePrintingTests, ansiColorsError)
 
 TEST_F(ValuePrintingTests, ansiColorsDerivationError)
 {
-    Value throw_ = state.getBuiltin("throw");
-    Value message;
-    message.mkString("uh oh!");
-    Value vError;
-    vError.mkApp(&throw_, &message);
-
-    Value vDerivation;
-    vDerivation.mkString("derivation");
-
-    BindingsBuilder builder = state.buildBindings(10);
-    builder.insert(state.s.type, &vDerivation);
-    builder.insert(state.s.drvPath, &vError);
-
     Value vAttrs;
-    vAttrs.mkAttrs(builder.finish());
+    auto & e = state.parseExprFromString(
+        "{ type = \"derivation\"; drvPath = throw \"uh oh!\"; }", {CanonPath::root}
+    );
+    state.eval(e, vAttrs);
 
     test(vAttrs,
          "{ drvPath = "
@@ -520,15 +508,12 @@ TEST_F(ValuePrintingTests, ansiColorsDerivationError)
 
 TEST_F(ValuePrintingTests, ansiColorsAssert)
 {
-    ExprAssert expr(noPos,
-        std::make_unique<ExprVar>(state.symbols.create("false")),
-        std::make_unique<ExprInt>(1));
-    expr.bindVars(state, state.staticBaseEnv);
-
+    auto & e = state.parseExprFromString("{ a = assert false; 1; }", {CanonPath::root});
     Value v;
-    state.mkThunk_(v, expr);
+    state.eval(e, v);
 
-    test(v,
+    ASSERT_EQ(v.type(), nAttrs);
+    test(*v.attrs->begin()->value,
          ANSI_RED "«error: assertion 'false' failed»" ANSI_NORMAL,
          PrintOptions {
              .ansiColors = true,
