@@ -237,7 +237,7 @@ NixRepl::NixRepl(const SearchPath & searchPath, nix::ref<Store> store, EvalState
     : AbstractNixRepl(state)
     , debugTraceIndex(0)
     , getValues(getValues)
-    , staticEnv(new StaticEnv(nullptr, state.staticBaseEnv.get()))
+    , staticEnv(new StaticEnv(nullptr, state.builtins.staticEnv.get()))
     , interacter(makeInteracter())
 {
 }
@@ -784,7 +784,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
     else if (command == ":doc") {
         Value v;
         evalString(arg, v);
-        if (auto doc = state.getDoc(v)) {
+        if (auto doc = state.builtins.getDoc(v)) {
             std::string markdown;
 
             if (!doc->args.empty() && doc->name) {
@@ -894,12 +894,12 @@ void NixRepl::loadFlake(const std::string & flakeRefS)
 void NixRepl::initEnv()
 {
     env = &state.mem.allocEnv(envSize);
-    env->up = &state.baseEnv;
+    env->up = &state.builtins.env;
     displ = 0;
     staticEnv->vars.clear();
 
     varNames.clear();
-    for (auto & i : state.staticBaseEnv->vars)
+    for (auto & i : state.builtins.staticEnv->vars)
         varNames.emplace(state.symbols[i.first]);
 }
 
@@ -971,7 +971,7 @@ Value * NixRepl::getReplOverlaysEvalFunction()
     auto & expr = state.parseExprFromString(
         code,
         SourcePath(evalReplInitFilesPath),
-        state.staticBaseEnv
+        state.builtins.staticEnv
     );
 
     state.eval(expr, **replOverlaysEvalFunction);

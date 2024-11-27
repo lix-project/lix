@@ -265,7 +265,7 @@ static void showHelp(std::vector<std::string> subcommand, NixArgs & toplevel)
     vDump->mkString(toplevel.dumpCli());
 
     auto vRes = state.mem.allocValue();
-    state.callFunction(*vGenerateManpage, state.getBuiltin("false"), *vRes, noPos);
+    state.callFunction(*vGenerateManpage, state.builtins.get("false"), *vRes, noPos);
     state.callFunction(*vRes, *vDump, *vRes, noPos);
 
     auto attr = vRes->attrs->get(state.symbols.create(mdName + ".md"));
@@ -414,7 +414,7 @@ void mainWrapped(int argc, char * * argv)
         auto res = nlohmann::json::object();
         res["builtins"] = ({
             auto builtinsJson = nlohmann::json::object();
-            auto builtins = state.baseEnv.values[0]->attrs;
+            auto builtins = state.builtins.env.values[0]->attrs;
             for (auto & builtin : *builtins) {
                 auto b = nlohmann::json::object();
                 if (!builtin.value->isPrimOp()) continue;
@@ -430,7 +430,7 @@ void mainWrapped(int argc, char * * argv)
         });
         res["constants"] = ({
             auto constantsJson = nlohmann::json::object();
-            for (auto & [name, info] : state.constantInfos) {
+            for (auto & [name, info] : state.builtins.constantInfos) {
                 auto c = nlohmann::json::object();
                 if (!info.doc) continue;
                 c["doc"] = trim(stripIndentation(info.doc));

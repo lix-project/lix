@@ -262,29 +262,45 @@ EvalMemory::EvalMemory()
     assert(libexprInitialised);
 }
 
+EvalBuiltins::EvalBuiltins(
+    EvalMemory & mem,
+    SymbolTable & symbols,
+    const SearchPath & searchPath,
+    const Path & storeDir,
+    size_t size
+)
+    : mem(mem)
+    , symbols(symbols)
+    , env(mem.allocEnv(size))
+    , staticEnv{std::make_shared<StaticEnv>(nullptr, nullptr)}
+{
+    createBaseEnv(searchPath, storeDir);
+}
+
 EvalState::EvalState(
     const SearchPath & _searchPath,
     ref<Store> store,
     std::shared_ptr<Store> buildStore)
     : s(symbols)
+    , searchPath([&] {
+        SearchPath searchPath;
+        if (!evalSettings.pureEval) {
+            for (auto & i : _searchPath.elements)
+                searchPath.elements.emplace_back(SearchPath::Elem {i});
+            for (auto & i : evalSettings.nixPath.get())
+                searchPath.elements.emplace_back(SearchPath::Elem::parse(i));
+        }
+        return searchPath;
+    }())
+    , builtins(mem, symbols, searchPath, store->config().storeDir)
     , repair(NoRepair)
     , store(store)
     , buildStore(buildStore ? buildStore : store)
     , regexCache(makeRegexCache())
-    , baseEnv(mem.allocEnv(128))
-    , staticBaseEnv{std::make_shared<StaticEnv>(nullptr, nullptr)}
 {
     countCalls = getEnv("NIX_COUNT_CALLS").value_or("0") != "0";
 
     static_assert(sizeof(Env) <= 16, "environment must be <= 16 bytes");
-
-    /* Initialise the Nix expression search path. */
-    if (!evalSettings.pureEval) {
-        for (auto & i : _searchPath.elements)
-            searchPath.elements.emplace_back(SearchPath::Elem {i});
-        for (auto & i : evalSettings.nixPath.get())
-            searchPath.elements.emplace_back(SearchPath::Elem::parse(i));
-    }
 
     if (evalSettings.restrictEval || evalSettings.pureEval) {
         allowedPaths = std::optional(PathSet());
@@ -308,8 +324,6 @@ EvalState::EvalState(
                 allowPath(path);
         }
     }
-
-    createBaseEnv();
 }
 
 
@@ -426,7 +440,7 @@ Path EvalState::toRealPath(const Path & path, const NixStringContext & context)
 }
 
 
-Value * EvalState::addConstant(const std::string & name, const Value & v, Constant info)
+Value * EvalBuiltins::addConstant(const std::string & name, const Value & v, Constant info)
 {
     Value * v2 = mem.allocValue();
     *v2 = v;
@@ -435,7 +449,7 @@ Value * EvalState::addConstant(const std::string & name, const Value & v, Consta
 }
 
 
-void EvalState::addConstant(const std::string & name, Value * v, Constant info)
+void EvalBuiltins::addConstant(const std::string & name, Value * v, Constant info)
 {
     auto name2 = name.substr(0, 2) == "__" ? name.substr(2) : name;
 
@@ -450,9 +464,9 @@ void EvalState::addConstant(const std::string & name, Value * v, Constant info)
             assert(info.type == gotType);
 
         /* Install value the base environment. */
-        staticBaseEnv->vars.emplace_back(symbols.create(name), baseEnvDispl);
-        baseEnv.values[baseEnvDispl++] = v;
-        baseEnv.values[0]->attrs->push_back(Attr(symbols.create(name2), v));
+        staticEnv->vars.emplace_back(symbols.create(name), baseEnvDispl);
+        env.values[baseEnvDispl++] = v;
+        env.values[0]->attrs->push_back(Attr(symbols.create(name2), v));
     }
 }
 
@@ -463,7 +477,7 @@ std::ostream & operator<<(std::ostream & output, PrimOp & primOp)
     return output;
 }
 
-Value * EvalState::addPrimOp(PrimOp && primOp)
+Value * EvalBuiltins::addPrimOp(PrimOp && primOp)
 {
     /* Hack to make constants lazy: turn them into a application of
        the primop to a dummy value. */
@@ -485,20 +499,20 @@ Value * EvalState::addPrimOp(PrimOp && primOp)
 
     Value * v = mem.allocValue();
     v->mkPrimOp(new PrimOp(primOp));
-    staticBaseEnv->vars.emplace_back(envName, baseEnvDispl);
-    baseEnv.values[baseEnvDispl++] = v;
-    baseEnv.values[0]->attrs->push_back(Attr(symbols.create(primOp.name), v));
+    staticEnv->vars.emplace_back(envName, baseEnvDispl);
+    env.values[baseEnvDispl++] = v;
+    env.values[0]->attrs->push_back(Attr(symbols.create(primOp.name), v));
     return v;
 }
 
 
-Value & EvalState::getBuiltin(const std::string & name)
+Value & EvalBuiltins::get(const std::string & name)
 {
-    return *baseEnv.values[0]->attrs->find(symbols.create(name))->value;
+    return *env.values[0]->attrs->find(symbols.create(name))->value;
 }
 
 
-std::optional<EvalState::Doc> EvalState::getDoc(Value & v)
+std::optional<EvalBuiltins::Doc> EvalBuiltins::getDoc(Value & v)
 {
     if (v.isPrimOp()) {
         auto v2 = &v;
@@ -764,7 +778,7 @@ static inline void mkThunk(Value & v, Env & env, Expr & expr)
 
 void EvalState::mkThunk_(Value & v, Expr & expr)
 {
-    mkThunk(v, baseEnv, expr);
+    mkThunk(v, builtins.env, expr);
 }
 
 
@@ -927,7 +941,7 @@ void EvalState::evalFile(const SourcePath & path_, Value & v)
             ? makeDebugTraceStacker(
                 *this,
                 e,
-                this->baseEnv,
+                this->builtins.env,
                 e.getPos() ? std::make_shared<Pos>(positions[e.getPos()]) : nullptr,
                 "while evaluating the file '%1%':", resolvedPath.to_string())
             : nullptr;
@@ -951,7 +965,7 @@ void EvalState::resetFileCache()
 
 void EvalState::eval(Expr & e, Value & v)
 {
-    e.eval(*this, baseEnv, v);
+    e.eval(*this, builtins.env, v);
 }
 
 
@@ -2667,7 +2681,7 @@ SourcePath resolveExprPath(SourcePath path)
 
 Expr & EvalState::parseExprFromFile(const SourcePath & path)
 {
-    return parseExprFromFile(path, staticBaseEnv);
+    return parseExprFromFile(path, builtins.staticEnv);
 }
 
 
@@ -2696,7 +2710,7 @@ Expr & EvalState::parseExprFromString(
     const FeatureSettings & featureSettings
 )
 {
-    return parseExprFromString(std::move(s), basePath, staticBaseEnv, featureSettings);
+    return parseExprFromString(std::move(s), basePath, builtins.staticEnv, featureSettings);
 }
 
 
@@ -2704,7 +2718,9 @@ Expr & EvalState::parseStdin()
 {
     //Activity act(*logger, lvlTalkative, "parsing standard input");
     auto s = make_ref<std::string>(drainFD(0));
-    return *parse(s->data(), s->size(), Pos::Stdin{.source = s}, CanonPath::fromCwd(), staticBaseEnv);
+    return *parse(
+        s->data(), s->size(), Pos::Stdin{.source = s}, CanonPath::fromCwd(), builtins.staticEnv
+    );
 }
 
 

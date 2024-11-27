@@ -263,14 +263,87 @@ private:
     Statistics stats;
 };
 
+class EvalBuiltins
+{
+    EvalMemory & mem;
+    SymbolTable & symbols;
+
+public:
+    explicit EvalBuiltins(
+        EvalMemory & mem,
+        SymbolTable & symbols,
+        const SearchPath & searchPath,
+        const Path & storeDir,
+        size_t size = 128
+    );
+
+    /**
+     * The base environment, containing the builtin functions and
+     * values.
+     */
+    Env & env;
+
+    /**
+     * The same, but used during parsing to resolve variables.
+     */
+    std::shared_ptr<StaticEnv> staticEnv; // !!! should be private
+
+    /**
+     * Name and documentation about every constant.
+     *
+     * Constants from primops are hard to crawl, and their docs will go
+     * here too.
+     */
+    std::vector<std::pair<std::string, Constant>> constantInfos;
+
+private:
+    unsigned int baseEnvDispl = 0;
+
+    void createBaseEnv(const SearchPath & searchPath, const Path & storeDir);
+
+    Value * addConstant(const std::string & name, const Value & v, Constant info);
+
+    void addConstant(const std::string & name, Value * v, Constant info);
+
+    Value * addPrimOp(PrimOp && primOp);
+
+    Value prepareNixPath(const SearchPath & searchPath);
+
+public:
+    Value & get(const std::string & name);
+
+    struct Doc
+    {
+        Pos pos;
+        std::optional<std::string> name;
+        size_t arity;
+        std::vector<std::string> args;
+        /**
+         * Unlike the other `doc` fields in this file, this one should never be
+         * `null`.
+         */
+        const char * doc;
+    };
+
+    std::optional<Doc> getDoc(Value & v);
+};
+
 
 class EvalState
 {
+    friend class EvalBuiltins;
+
 public:
     SymbolTable symbols;
     PosTable positions;
     const StaticSymbols s;
     EvalMemory mem;
+
+private:
+    SearchPath searchPath;
+
+public:
+    EvalBuiltins builtins;
 
     /**
      * If set, force copying files to the Nix store even if they
@@ -317,8 +390,6 @@ private:
      */
     using FileEvalCache = GcMap<SourcePath, Value>;
     FileEvalCache fileEvalCache;
-
-    SearchPath searchPath;
 
     std::map<std::string, std::optional<std::string>> searchPathResolved;
 
@@ -528,58 +599,6 @@ public:
      * we ensure the string corresponds to it.
      */
     SingleDerivedPath coerceToSingleDerivedPath(const PosIdx pos, Value & v, std::string_view errorCtx);
-
-public:
-
-    /**
-     * The base environment, containing the builtin functions and
-     * values.
-     */
-    Env & baseEnv;
-
-    /**
-     * The same, but used during parsing to resolve variables.
-     */
-    std::shared_ptr<StaticEnv> staticBaseEnv; // !!! should be private
-
-    /**
-     * Name and documentation about every constant.
-     *
-     * Constants from primops are hard to crawl, and their docs will go
-     * here too.
-     */
-    std::vector<std::pair<std::string, Constant>> constantInfos;
-
-private:
-
-    unsigned int baseEnvDispl = 0;
-
-    void createBaseEnv();
-
-    Value * addConstant(const std::string & name, const Value & v, Constant info);
-
-    void addConstant(const std::string & name, Value * v, Constant info);
-
-    Value * addPrimOp(PrimOp && primOp);
-
-public:
-
-    Value & getBuiltin(const std::string & name);
-
-    struct Doc
-    {
-        Pos pos;
-        std::optional<std::string> name;
-        size_t arity;
-        std::vector<std::string> args;
-        /**
-         * Unlike the other `doc` fields in this file, this one should never be
-         * `null`.
-         */
-        const char * doc;
-    };
-
-    std::optional<Doc> getDoc(Value & v);
 
 private:
 

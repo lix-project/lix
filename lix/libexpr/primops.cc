@@ -231,9 +231,11 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
             state.forceAttrs(*vScope, pos, "while evaluating the first argument passed to builtins.scopedImport");
 
             Env * env = &state.mem.allocEnv(vScope->attrs->size());
-            env->up = &state.baseEnv;
+            env->up = &state.builtins.env;
 
-            auto staticEnv = std::make_shared<StaticEnv>(nullptr, state.staticBaseEnv.get(), vScope->attrs->size());
+            auto staticEnv = std::make_shared<StaticEnv>(
+                nullptr, state.builtins.staticEnv.get(), vScope->attrs->size()
+            );
 
             unsigned int displ = 0;
             for (auto & attr : *vScope->attrs) {
@@ -1375,7 +1377,7 @@ static void prim_readDir(EvalState & state, const PosIdx pos, Value * * args, Va
             auto epath = state.mem.allocValue();
             epath->mkPath(path + name);
             if (!readFileType)
-                readFileType = &state.getBuiltin("readFileType");
+                readFileType = &state.builtins.get("readFileType");
             attr.mkApp(readFileType, epath);
         } else {
             // This branch of the conditional is much more likely.
@@ -2785,23 +2787,23 @@ RegisterPrimOp::RegisterPrimOp(PrimOp && primOp)
 }
 
 
-static Value getNixPath(EvalState & state, SearchPath & searchPath)
+Value EvalBuiltins::prepareNixPath(const SearchPath & searchPath)
 {
     Value v;
-    v = state.mem.newList(searchPath.elements.size());
+    v = mem.newList(searchPath.elements.size());
     int n = 0;
     for (auto & i : searchPath.elements) {
-        auto attrs = state.buildBindings(2);
+        auto attrs = mem.buildBindings(symbols, 2);
         attrs.alloc("path").mkString(i.path.s);
         attrs.alloc("prefix").mkString(i.prefix.s);
-        (v.listElems()[n++] = state.mem.allocValue())->mkAttrs(attrs);
+        (v.listElems()[n++] = mem.allocValue())->mkAttrs(attrs);
     }
     return v;
 }
 
-void EvalState::createBaseEnv()
+void EvalBuiltins::createBaseEnv(const SearchPath & searchPath, const Path & storeDir)
 {
-    baseEnv.up = 0;
+    env.up = 0;
 
     // constants include the magic `builtins` which must come first
     #include "register-builtin-constants.gen.inc"
@@ -2838,7 +2840,7 @@ void EvalState::createBaseEnv()
                     #include "primops/derivation.nix.gen.hh"
                     ;
                 auto & expr = *state.parse(
-                    code, sizeof(code), Pos::Hidden{}, {CanonPath::root}, state.staticBaseEnv
+                    code, sizeof(code), Pos::Hidden{}, {CanonPath::root}, state.builtins.staticEnv
                 );
                 state.eval(expr, v);
             },
@@ -2857,11 +2859,10 @@ void EvalState::createBaseEnv()
 
     /* Now that we've added all primops, sort the `builtins' set,
        because attribute lookups expect it to be sorted. */
-    baseEnv.values[0]->attrs->sort();
+    env.values[0]->attrs->sort();
 
-    staticBaseEnv->sort();
-    staticBaseEnv->isRoot = true;
-
+    staticEnv->sort();
+    staticEnv->isRoot = true;
 }
 
 

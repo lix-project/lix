@@ -1,7 +1,7 @@
 ---
 name: nixPath
 type: list
-implementation: getNixPath(*this, searchPath)
+implementation: prepareNixPath(searchPath)
 ---
 The search path used to resolve angle bracket path lookups.
 

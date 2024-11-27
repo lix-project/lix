@@ -1,7 +1,7 @@
 ---
 name: builtins
 type: attrs
-constructorArgs: [buildBindings(128).finish()]
+constructorArgs: [mem.buildBindings(symbols, 128).finish()]
 renameInGlobalScope: false
 ---
 Contains all the [built-in functions](@docroot@/language/builtins.md) and values.
