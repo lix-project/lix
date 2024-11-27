@@ -205,7 +205,6 @@ libexpr_sources = files(
   'json-to-value.cc',
   'nixexpr.cc',
   'parser/parser.cc',
-  'paths.cc',
   'primops.cc',
   'print-ambiguous.cc',
   'print.cc',

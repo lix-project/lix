@@ -240,7 +240,7 @@ static void main_nix_build(std::string programName, Strings argv)
     else
         for (auto i : left) {
             if (fromArgs)
-                exprs.push_back(state->parseExprFromString(std::move(i), state->rootPath(CanonPath::fromCwd())));
+                exprs.push_back(state->parseExprFromString(std::move(i), CanonPath::fromCwd()));
             else {
                 auto absolute = i;
                 try {
@@ -338,7 +338,7 @@ static void main_nix_build(std::string programName, Strings argv)
             try {
                 auto & expr = state->parseExprFromString(
                     "(import <nixpkgs> {}).bashInteractive",
-                    state->rootPath(CanonPath::fromCwd()));
+                    CanonPath::fromCwd());
 
                 Value v;
                 state->eval(expr, v);

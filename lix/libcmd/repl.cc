@@ -1078,7 +1078,7 @@ Value * NixRepl::bindingsToAttrs()
 
 Expr & NixRepl::parseString(std::string s)
 {
-    return state.parseExprFromString(std::move(s), state.rootPath(CanonPath::fromCwd()), staticEnv);
+    return state.parseExprFromString(std::move(s), CanonPath::fromCwd(), staticEnv);
 }
 
 

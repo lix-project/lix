@@ -259,7 +259,7 @@ EvalState::EvalState(
     std::shared_ptr<Store> buildStore)
     : s(symbols)
     , repair(NoRepair)
-    , derivationInternal(rootPath(CanonPath("/builtin/derivation.nix")))
+    , derivationInternal(CanonPath("/builtin/derivation.nix"))
     , store(store)
     , buildStore(buildStore ? buildStore : store)
     , regexCache(makeRegexCache())
@@ -2762,7 +2762,7 @@ Expr & EvalState::parseStdin()
     // drainFD should have left some extra space for terminators
     auto s = make_ref<std::string>(buffer);
     buffer.append("\0\0", 2);
-    return *parse(buffer.data(), buffer.size(), Pos::Stdin{.source = s}, rootPath(CanonPath::fromCwd()), staticBaseEnv);
+    return *parse(buffer.data(), buffer.size(), Pos::Stdin{.source = s}, CanonPath::fromCwd(), staticBaseEnv);
 }
 
 

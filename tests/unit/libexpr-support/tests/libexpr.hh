@@ -28,7 +28,7 @@ namespace nix {
             }
             Value eval(std::string input, bool forceValue = true, const FeatureSettings & fSettings = featureSettings) {
                 Value v;
-                Expr & e = state.parseExprFromString(input, state.rootPath(CanonPath::root), fSettings);
+                Expr & e = state.parseExprFromString(input, CanonPath::root, fSettings);
                 state.eval(e, v);
                 if (forceValue)
                     state.forceValue(v, noPos);

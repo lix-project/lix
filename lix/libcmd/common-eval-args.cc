@@ -177,7 +177,7 @@ Bindings * MixEvalArgs::getAutoArgs(EvalState & state)
     for (auto & i : autoArgs) {
         auto v = state.allocValue();
         if (i.second[0] == 'E')
-            state.mkThunk_(*v, state.parseExprFromString(i.second.substr(1), state.rootPath(CanonPath::fromCwd())));
+            state.mkThunk_(*v, state.parseExprFromString(i.second.substr(1), CanonPath::fromCwd()));
         else
             v->mkString(((std::string_view) i.second).substr(1));
         res.insert(state.symbols.create(i.first), v);
@@ -196,18 +196,18 @@ SourcePath lookupFileArg(EvalState & state, std::string_view fileArg)
             /* locked */ false
         );
         StorePath const storePath = downloaded.tree.storePath;
-        return state.rootPath(CanonPath(state.store->toRealPath(storePath)));
+        return CanonPath(state.store->toRealPath(storePath));
     } else if (fileArg.starts_with("flake:")) {
         experimentalFeatureSettings.require(Xp::Flakes);
         static constexpr size_t FLAKE_LEN = std::string_view("flake:").size();
         auto flakeRef = parseFlakeRef(std::string(fileArg.substr(FLAKE_LEN)), {}, true, false);
         auto storePath = flakeRef.resolve(state.store).fetchTree(state.store).first.storePath;
-        return state.rootPath(CanonPath(state.store->toRealPath(storePath)));
+        return CanonPath(state.store->toRealPath(storePath));
     } else if (fileArg.size() > 2 && fileArg.at(0) == '<' && fileArg.at(fileArg.size() - 1) == '>') {
         Path p(fileArg.substr(1, fileArg.size() - 2));
         return state.findFile(p);
     } else {
-        return state.rootPath(CanonPath::fromCwd(fileArg));
+        return CanonPath::fromCwd(fileArg);
     }
 }
 

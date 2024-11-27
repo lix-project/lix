@@ -329,12 +329,6 @@ public:
     ~EvalState();
 
     /**
-     * Return a `SourcePath` that refers to `path` in the root
-     * filesystem.
-     */
-    SourcePath rootPath(CanonPath path);
-
-    /**
      * Allow access to a path.
      */
     void allowPath(const Path & path);

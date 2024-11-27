@@ -415,7 +415,7 @@ static void queryInstSources(EvalState & state,
             loadSourceExpr(state, *instSource.nixExprPath, vArg);
 
             for (auto & i : args) {
-                Expr & eFun = state.parseExprFromString(i, state.rootPath(CanonPath::fromCwd()));
+                Expr & eFun = state.parseExprFromString(i, CanonPath::fromCwd());
                 Value vFun, vTmp;
                 state.eval(eFun, vFun);
                 vTmp.mkApp(&vFun, &vArg);
@@ -1528,7 +1528,7 @@ static int main_nix_env(std::string programName, Strings argv)
         globals.instSource.nixExprPath = std::make_shared<SourcePath>(
             file != ""
             ? lookupFileArg(*globals.state, file)
-            : globals.state->rootPath(CanonPath(nixExprPath)));
+            : CanonPath(nixExprPath));
 
         globals.instSource.autoArgs = myArgs.getAutoArgs(*globals.state);
 

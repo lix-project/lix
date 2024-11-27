@@ -290,7 +290,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
 
         auto state = std::make_unique<EvalState>(SearchPath{}, store);
         auto v = state->allocValue();
-        state->eval(state->parseExprFromString(data, state->rootPath(CanonPath("/no-such-path"))), *v);
+        state->eval(state->parseExprFromString(data, CanonPath("/no-such-path")), *v);
         Bindings & bindings(*state->allocBindings(0));
         auto v2 = findAlongAttrPath(*state, settings.thisSystem, bindings, *v).first;
 
