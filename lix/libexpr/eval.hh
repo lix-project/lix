@@ -152,6 +152,28 @@ struct DebugTrace {
     bool isError;
 };
 
+struct DebugState
+{
+    std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> repl;
+    bool stop = false;
+    bool inDebugger = false;
+    std::list<DebugTrace> traces;
+    std::map<const Expr *, const std::shared_ptr<const StaticEnv>> exprEnvs;
+    int trylevel = 0;
+
+    void runDebugRepl(
+        EvalState & evalState, const EvalError * error, const Env & env, const Expr & expr
+    );
+
+    const std::shared_ptr<const StaticEnv> staticEnvFor(const Expr & expr) const
+    {
+        if (auto i = exprEnvs.find(&expr); i != exprEnvs.end()) {
+            return i->second;
+        }
+        return nullptr;
+    }
+};
+
 
 struct StaticSymbols
 {
@@ -202,25 +224,7 @@ public:
     RootValue vCallFlake = nullptr;
     RootValue vImportedDrvToDerivation = nullptr;
 
-    /**
-     * Debugger
-     */
-    std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl;
-    bool debugStop;
-    bool inDebugger = false;
-    int trylevel;
-    std::list<DebugTrace> debugTraces;
-    std::map<const Expr*, const std::shared_ptr<const StaticEnv>> exprEnvs;
-    const std::shared_ptr<const StaticEnv> getStaticEnv(const Expr & expr) const
-    {
-        auto i = exprEnvs.find(&expr);
-        if (i != exprEnvs.end())
-            return i->second;
-        else
-            return std::shared_ptr<const StaticEnv>();;
-    }
-
-    void runDebugRepl(const EvalError * error, const Env & env, const Expr & expr);
+    DebugState debug;
 
     template<class T, typename... Args>
     [[nodiscard, gnu::noinline]]
@@ -760,7 +764,7 @@ struct DebugTraceStacker {
     DebugTraceStacker(EvalState & evalState, DebugTrace t);
     ~DebugTraceStacker()
     {
-        evalState.debugTraces.pop_front();
+        evalState.debug.traces.pop_front();
     }
     EvalState & evalState;
     DebugTrace trace;

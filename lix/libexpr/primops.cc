@@ -566,15 +566,15 @@ static void prim_genericClosure(EvalState & state, const PosIdx pos, Value * * a
 
 static void prim_break(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
-    if (state.debugRepl && !state.debugTraces.empty()) {
+    if (state.debug.repl && !state.debug.traces.empty()) {
         auto error = EvalError(state, ErrorInfo {
             .level = lvlInfo,
             .msg = HintFmt("breakpoint reached"),
             .pos = state.positions[pos],
         });
 
-        auto & dt = state.debugTraces.front();
-        state.runDebugRepl(&error, dt.env, dt.expr);
+        auto & dt = state.debug.traces.front();
+        state.debug.runDebugRepl(state, &error, dt.env, dt.expr);
     }
 
     // Return the value we were passed.
@@ -638,14 +638,14 @@ static void prim_tryEval(EvalState & state, const PosIdx pos, Value * * args, Va
     auto attrs = state.buildBindings(2);
 
     /* increment state.trylevel, and decrement it when this function returns. */
-    MaintainCount trylevel(state.trylevel);
+    MaintainCount trylevel(state.debug.trylevel);
 
     std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> savedDebugRepl;
-    if (state.debugRepl && evalSettings.ignoreExceptionsDuringTry)
+    if (state.debug.repl && evalSettings.ignoreExceptionsDuringTry)
     {
         /* to prevent starting the repl from exceptions withing a tryEval, null it. */
-        savedDebugRepl = state.debugRepl;
-        state.debugRepl = nullptr;
+        savedDebugRepl = state.debug.repl;
+        state.debug.repl = nullptr;
     }
 
     try {
@@ -659,7 +659,7 @@ static void prim_tryEval(EvalState & state, const PosIdx pos, Value * * args, Va
 
     // restore the debugRepl pointer if we saved it earlier.
     if (savedDebugRepl)
-        state.debugRepl = savedDebugRepl;
+        state.debug.repl = savedDebugRepl;
 
     v.mkAttrs(attrs);
 }
@@ -697,9 +697,9 @@ static void prim_trace(EvalState & state, const PosIdx pos, Value * * args, Valu
         printError("trace: %1%", args[0]->string.s);
     else
         printError("trace: %1%", ValuePrinter(state, *args[0]));
-    if (evalSettings.builtinsTraceDebugger && state.debugRepl && !state.debugTraces.empty()) {
-        const DebugTrace & last = state.debugTraces.front();
-        state.runDebugRepl(nullptr, last.env, last.expr);
+    if (evalSettings.builtinsTraceDebugger && state.debug.repl && !state.debug.traces.empty()) {
+        const DebugTrace & last = state.debug.traces.front();
+        state.debug.runDebugRepl(state, nullptr, last.env, last.expr);
     }
     state.forceValue(*args[1], pos);
     v = *args[1];

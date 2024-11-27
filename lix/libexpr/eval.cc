@@ -262,9 +262,6 @@ EvalState::EvalState(
     , derivationInternal(rootPath(CanonPath("/builtin/derivation.nix")))
     , store(store)
     , buildStore(buildStore ? buildStore : store)
-    , debugRepl(nullptr)
-    , debugStop(false)
-    , trylevel(0)
     , regexCache(makeRegexCache())
 #if HAVE_BOEHMGC
     , valueAllocCache(std::allocate_shared<void *>(traceable_allocator<void *>(), nullptr))
@@ -590,7 +587,7 @@ void printEnvBindings(const SymbolTable & st, const StaticEnv & se, const Env & 
 void printEnvBindings(const EvalState &es, const Expr & expr, const Env & env)
 {
     // just print the names for now
-    auto se = es.getStaticEnv(expr);
+    auto se = es.debug.staticEnvFor(expr);
     if (se)
         printEnvBindings(es.symbols, *se, env, 0);
 }
@@ -639,18 +636,20 @@ public:
     }
 };
 
-void EvalState::runDebugRepl(const EvalError * error, const Env & env, const Expr & expr)
+void DebugState::runDebugRepl(
+    EvalState & evalState, const EvalError * error, const Env & env, const Expr & expr
+)
 {
     // Make sure we have a debugger to run and we're not already in a debugger.
-    if (!debugRepl || inDebugger)
+    if (!repl || inDebugger)
         return;
 
     auto dts =
         error && expr.getPos()
         ? std::make_unique<DebugTraceStacker>(
-            *this,
+            evalState,
             DebugTrace {
-                .pos = error->info().pos ? error->info().pos : positions[expr.getPos()],
+                .pos = error->info().pos ? error->info().pos : evalState.positions[expr.getPos()],
                 .expr = expr,
                 .env = env,
                 .hint = error->info().msg,
@@ -666,11 +665,11 @@ void EvalState::runDebugRepl(const EvalError * error, const Env & env, const Exp
             printError("This exception occurred in a 'tryEval' call. Use " ANSI_GREEN "--ignore-try" ANSI_NORMAL " to skip these.\n");
     }
 
-    auto se = getStaticEnv(expr);
+    auto se = staticEnvFor(expr);
     if (se) {
-        auto vm = mapStaticEnvBindings(symbols, *se.get(), env);
+        auto vm = mapStaticEnvBindings(evalState.symbols, *se.get(), env);
         DebuggerGuard _guard(inDebugger);
-        auto exitStatus = (debugRepl)(*this, *vm);
+        auto exitStatus = repl(evalState, *vm);
         switch (exitStatus) {
             case ReplExitStatus::QuitAll:
                 if (error)
@@ -718,9 +717,9 @@ DebugTraceStacker::DebugTraceStacker(EvalState & evalState, DebugTrace t)
     : evalState(evalState)
     , trace(std::move(t))
 {
-    evalState.debugTraces.push_front(trace);
-    if (evalState.debugStop && evalState.debugRepl)
-        evalState.runDebugRepl(nullptr, trace.env, trace.expr);
+    evalState.debug.traces.push_front(trace);
+    if (evalState.debug.stop && evalState.debug.repl)
+        evalState.debug.runDebugRepl(evalState, nullptr, trace.env, trace.expr);
 }
 
 inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
@@ -955,7 +954,7 @@ void EvalState::cacheFile(
     fileParseCache[resolvedPath] = e;
 
     try {
-        auto dts = debugRepl
+        auto dts = debug.repl
             ? makeDebugTraceStacker(
                 *this,
                 *e,
@@ -1173,7 +1172,7 @@ void ExprLet::eval(EvalState & state, Env & env, Value & v)
             *i.second.chooseByKind(&env2, &env, inheritEnv));
     }
 
-    auto dts = state.debugRepl
+    auto dts = state.debug.repl
         ? makeDebugTraceStacker(
             state,
             *this,
@@ -1258,7 +1257,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
     }
 
     try {
-        auto dts = state.debugRepl
+        auto dts = state.debug.repl
             ? makeDebugTraceStacker(
                 state,
                 *this,
@@ -1576,7 +1575,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
 
             /* Evaluate the body. */
             try {
-                auto dts = debugRepl
+                auto dts = debug.repl
                     ? makeDebugTraceStacker(
                         *this, *lambda.body, env2, positions[lambda.pos],
                         "while calling %s",
@@ -1715,7 +1714,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
 
 void ExprCall::eval(EvalState & state, Env & env, Value & v)
 {
-    auto dts = state.debugRepl
+    auto dts = state.debug.repl
         ? makeDebugTraceStacker(
             state,
             *this,
@@ -2088,7 +2087,7 @@ void EvalState::forceValueDeep(Value & v)
             for (auto & i : *v.attrs)
                 try {
                     // If the value is a thunk, we're evaling. Otherwise no trace necessary.
-                    auto dts = debugRepl && i.value->isThunk()
+                    auto dts = debug.repl && i.value->isThunk()
                         ? makeDebugTraceStacker(*this, *i.value->thunk.expr, *i.value->thunk.env, positions[i.pos],
                             "while evaluating the attribute '%1%'", symbols[i.name])
                         : nullptr;
