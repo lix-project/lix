@@ -268,7 +268,6 @@ EvalState::EvalState(
     std::shared_ptr<Store> buildStore)
     : s(symbols)
     , repair(NoRepair)
-    , derivationInternal(CanonPath("/builtin/derivation.nix"))
     , store(store)
     , buildStore(buildStore ? buildStore : store)
     , regexCache(makeRegexCache())
@@ -1331,13 +1330,10 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
         state.forceValue(*vCurrent, (posCurrent ? posCurrent : this->pos));
 
     } catch (Error & e) {
-        if (posCurrent) {
-            auto pos2r = state.positions[posCurrent];
-            auto origin = std::get_if<SourcePath>(&pos2r.origin);
-            if (!(origin && *origin == state.derivationInternal))
-                e.addTrace(state.positions[posCurrent], "while evaluating the attribute '%1%'",
-                    showAttrPath(state, env, attrPath));
-        }
+        auto pos2r = state.positions[posCurrent];
+        if (pos2r && !std::get_if<Pos::Hidden>(&pos2r.origin))
+            e.addTrace(pos2r, "while evaluating the attribute '%1%'",
+                showAttrPath(state, env, attrPath));
         throw;
     }
 

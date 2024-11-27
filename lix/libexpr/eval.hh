@@ -284,8 +284,6 @@ public:
      */
     std::optional<PathSet> allowedPaths;
 
-    const SourcePath derivationInternal;
-
     /**
      * Store used to materialise .drv files.
      */

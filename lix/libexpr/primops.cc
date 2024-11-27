@@ -2852,7 +2852,7 @@ void EvalState::createBaseEnv()
     char code[] =
         #include "primops/derivation.nix.gen.hh"
         ;
-    eval(*parse(code, sizeof(code), derivationInternal, {CanonPath::root}, staticBaseEnv), *vDerivation);
+    eval(*parse(code, sizeof(code), Pos::Hidden{}, {CanonPath::root}, staticBaseEnv), *vDerivation);
 }
 
 

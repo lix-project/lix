@@ -68,6 +68,9 @@ std::optional<std::string> Pos::getSource() const
             } catch (Error &) {
                 return std::nullopt;
             }
+        },
+        [](Hidden) -> std::optional<std::string> {
+            return std::nullopt;
         }
     }, origin);
 }
@@ -79,7 +82,8 @@ void Pos::print(std::ostream & out, bool showOrigin) const
             [&](const std::monostate &) { out << "«none»"; },
             [&](const Pos::Stdin &) { out << "«stdin»"; },
             [&](const Pos::String & s) { out << "«string»"; },
-            [&](const SourcePath & path) { out << path; }
+            [&](const SourcePath & path) { out << path; },
+            [&](Hidden) { out << "«internal»"; },
         }, origin);
         out << ":";
     }

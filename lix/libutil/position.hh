@@ -38,8 +38,11 @@ struct Pos
         bool operator<(const String & rhs) const
         { return *source < *rhs.source; }
     };
+    struct Hidden {
+        auto operator<=>(const Hidden &) const = default;
+    };
 
-    typedef std::variant<std::monostate, Stdin, String, SourcePath> Origin;
+    typedef std::variant<std::monostate, Stdin, String, SourcePath, Hidden> Origin;
 
     Origin origin = std::monostate();
 
