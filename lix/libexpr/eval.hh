@@ -401,11 +401,9 @@ public:
     Expr & parseStdin();
 
     /**
-     * Evaluate an expression read from the given file to normal
-     * form. Optionally enforce that the top-level expression is
-     * trivial (i.e. doesn't require arbitrary computation).
+     * Evaluate an expression read from the given file to normal form.
      */
-    void evalFile(const SourcePath & path, Value & v, bool mustBeTrivial = false);
+    void evalFile(const SourcePath & path, Value & v);
 
     void resetFileCache();
 

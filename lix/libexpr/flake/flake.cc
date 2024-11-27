@@ -241,9 +241,17 @@ static Flake getFlake(
         .sourceInfo = std::make_shared<fetchers::Tree>(std::move(sourceInfo))
     };
 
-    // NOTE evalFile forces vInfo to be an attrset because mustBeTrivial is true.
+    // FIXME: symlink attack
+    auto resolvedFlakeFile = resolveExprPath(state.checkSourcePath(CanonPath(flakeFile)));
+    Expr & flakeExpr = state.parseExprFromFile(state.checkSourcePath(resolvedFlakeFile));
+
+    // Enforce that 'flake.nix' is a direct attrset, not a computation.
+    if (!(dynamic_cast<ExprAttrs *>(&flakeExpr))) {
+        state.error<EvalError>("file '%s' must be an attribute set", resolvedFlakeFile).debugThrow();
+    }
+
     Value vInfo;
-    state.evalFile(CanonPath(flakeFile), vInfo, true); // FIXME: symlink attack
+    state.eval(flakeExpr, vInfo);
 
     if (auto description = vInfo.attrs->get(state.s.description)) {
         expectType(state, nString, *description->value, description->pos);

@@ -904,7 +904,7 @@ Value * ExprPath::maybeThunk(EvalState & state, Env & env)
 }
 
 
-void EvalState::evalFile(const SourcePath & path_, Value & v, bool mustBeTrivial)
+void EvalState::evalFile(const SourcePath & path_, Value & v)
 {
     auto path = checkSourcePath(path_);
 
@@ -933,11 +933,6 @@ void EvalState::evalFile(const SourcePath & path_, Value & v, bool mustBeTrivial
                 "while evaluating the file '%1%':", resolvedPath.to_string())
             : nullptr;
 
-        // Enforce that 'flake.nix' is a direct attrset, not a
-        // computation.
-        if (mustBeTrivial &&
-            !(dynamic_cast<ExprAttrs *>(&e)))
-            error<EvalError>("file '%s' must be an attribute set", path).debugThrow();
         eval(e, v);
     } catch (Error & e) {
         e.addTrace(nullptr, "while evaluating the file '%1%':", resolvedPath.to_string());
