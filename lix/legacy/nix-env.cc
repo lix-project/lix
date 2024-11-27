@@ -144,7 +144,7 @@ static void getAllExprs(EvalState & state,
                 continue;
             }
             /* Load the expression on demand. */
-            auto vArg = state.allocValue();
+            auto vArg = state.mem.allocValue();
             vArg->mkString(path2.path.abs());
             if (seen.size() == maxAttrs)
                 throw Error("too many Nix expressions in directory '%1%'", path);
@@ -695,7 +695,7 @@ static void opUpgrade(Globals & globals, Strings opFlags, Strings opArgs)
 static void setMetaFlag(EvalState & state, DrvInfo & drv,
     const std::string & name, const std::string & value)
 {
-    auto v = state.allocValue();
+    auto v = state.mem.allocValue();
     v->mkString(value);
     drv.setMeta(name, v);
 }

@@ -175,7 +175,7 @@ Bindings * MixEvalArgs::getAutoArgs(EvalState & state)
 {
     auto res = state.buildBindings(autoArgs.size());
     for (auto & i : autoArgs) {
-        auto v = state.allocValue();
+        auto v = state.mem.allocValue();
         if (i.second[0] == 'E')
             state.mkThunk_(*v, state.parseExprFromString(i.second.substr(1), CanonPath::fromCwd()));
         else

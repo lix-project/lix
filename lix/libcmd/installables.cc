@@ -403,7 +403,7 @@ ref<eval_cache::EvalCache> openEvalCache(
             if (getEnv("NIX_ALLOW_EVAL").value_or("1") == "0")
                 throw Error("not everything is cached, but evaluation is not allowed");
 
-            auto vFlake = state.allocValue();
+            auto vFlake = state.mem.allocValue();
             flake::callFlake(state, *lockedFlake, *vFlake);
 
             state.forceAttrs(*vFlake, noPos, "while parsing cached flake data");
@@ -438,7 +438,7 @@ Installables SourceExprCommand::parseInstallables(
         if (file) evalSettings.pureEval.override(false);
 
         auto state = getEvalState();
-        auto vFile = state->allocValue();
+        auto vFile = state->mem.allocValue();
 
         if (file == "-") {
             auto & e = state->parseStdin();

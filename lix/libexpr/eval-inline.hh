@@ -9,7 +9,7 @@
 namespace nix {
 
 [[gnu::always_inline]]
-Value * EvalState::allocValue()
+Value * EvalMemory::allocValue()
 {
 #if HAVE_BOEHMGC
     /* We use the boehm batch allocator to speed up allocations of Values (of which there are many).
@@ -30,16 +30,16 @@ Value * EvalState::allocValue()
     void * p = gcAllocBytes(sizeof(Value));
 #endif
 
-    nrValues++;
+    stats.nrValues++;
     return static_cast<Value *>(p);
 }
 
 
 [[gnu::always_inline]]
-Env & EvalState::allocEnv(size_t size)
+Env & EvalMemory::allocEnv(size_t size)
 {
-    nrEnvs++;
-    nrValuesInEnvs += size;
+    stats.nrEnvs++;
+    stats.nrValuesInEnvs += size;
 
     Env * env;
 

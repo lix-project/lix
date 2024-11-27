@@ -43,7 +43,7 @@ std::vector<std::string> InstallableFlake::getActualAttrPaths()
 
 Value * InstallableFlake::getFlakeOutputs(EvalState & state, const flake::LockedFlake & lockedFlake)
 {
-    auto vFlake = state.allocValue();
+    auto vFlake = state.mem.allocValue();
 
     callFlake(state, lockedFlake, *vFlake);
 

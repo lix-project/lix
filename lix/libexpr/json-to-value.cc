@@ -28,7 +28,7 @@ class JSONSax : nlohmann::json_sax<json> {
         Value & value(EvalState & state)
         {
             if (!v)
-                v = allocRootValue(state.allocValue());
+                v = allocRootValue(state.mem.allocValue());
             return **v;
         }
         virtual ~JSONState() {}
@@ -59,7 +59,7 @@ class JSONSax : nlohmann::json_sax<json> {
         std::unique_ptr<JSONState> resolve(EvalState & state) override
         {
             Value & v = parent->value(state);
-            state.mkList(v, values.size());
+            v = state.mem.newList(values.size());
             for (size_t n = 0; n < values.size(); ++n) {
                 v.listElems()[n] = values[n];
             }

@@ -256,12 +256,12 @@ static void showHelp(std::vector<std::string> subcommand, NixArgs & toplevel)
     evalSettings.pureEval.override(false);
     EvalState state({}, openStore("dummy://"));
 
-    auto vGenerateManpage = state.allocValue();
+    auto vGenerateManpage = state.mem.allocValue();
     state.eval(state.parseExprFromString(
         #include "generate-manpage.nix.gen.hh"
         , CanonPath::root), *vGenerateManpage);
 
-    auto vUtils = state.allocValue();
+    auto vUtils = state.mem.allocValue();
     state.cacheFile(
         CanonPath("/utils.nix"), CanonPath("/utils.nix"),
         &state.parseExprFromString(
@@ -269,10 +269,10 @@ static void showHelp(std::vector<std::string> subcommand, NixArgs & toplevel)
             , CanonPath::root),
         *vUtils);
 
-    auto vDump = state.allocValue();
+    auto vDump = state.mem.allocValue();
     vDump->mkString(toplevel.dumpCli());
 
-    auto vRes = state.allocValue();
+    auto vRes = state.mem.allocValue();
     state.callFunction(*vGenerateManpage, state.getBuiltin("false"), *vRes, noPos);
     state.callFunction(*vRes, *vDump, *vRes, noPos);
 

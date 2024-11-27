@@ -21,7 +21,7 @@ DrvInfos queryInstalled(EvalState & state, const Path & userEnv)
     if (pathExists(manifestFile)) {
         Value v;
         state.evalFile(CanonPath(manifestFile), v);
-        Bindings & bindings(*state.allocBindings(0));
+        Bindings & bindings(*state.mem.allocBindings(0));
         getDerivations(state, v, "", bindings, elems, false);
     }
     return elems;

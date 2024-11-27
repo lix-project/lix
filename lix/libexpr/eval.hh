@@ -227,6 +227,55 @@ struct StaticSymbols
     explicit StaticSymbols(SymbolTable & symbols);
 };
 
+class EvalMemory
+{
+#if HAVE_BOEHMGC
+    /**
+     * Allocation cache for GC'd Value objects.
+     */
+    std::shared_ptr<void *> valueAllocCache;
+
+    /**
+     * Allocation cache for size-1 Env objects.
+     */
+    std::shared_ptr<void *> env1AllocCache;
+#endif
+
+public:
+    struct Statistics
+    {
+        unsigned long nrEnvs = 0;
+        unsigned long nrValuesInEnvs = 0;
+        unsigned long nrValues = 0;
+        unsigned long nrAttrsets = 0;
+        unsigned long nrAttrsInAttrsets = 0;
+        unsigned long nrListElems = 0;
+    };
+
+    EvalMemory();
+
+    EvalMemory(const EvalMemory &) = delete;
+    EvalMemory(EvalMemory &&) = delete;
+    EvalMemory & operator=(const EvalMemory &) = delete;
+    EvalMemory & operator=(EvalMemory &&) = delete;
+
+    inline Value * allocValue();
+    inline Env & allocEnv(size_t size);
+
+    Bindings * allocBindings(size_t capacity);
+    Value newList(size_t length);
+
+    BindingsBuilder buildBindings(SymbolTable & symbols, size_t capacity)
+    {
+        return BindingsBuilder(*this, symbols, allocBindings(capacity));
+    }
+
+    const Statistics getStats() const { return stats; }
+
+private:
+    Statistics stats;
+};
+
 
 class EvalState
 {
@@ -234,6 +283,7 @@ public:
     SymbolTable symbols;
     PosTable positions;
     const StaticSymbols s;
+    EvalMemory mem;
 
     /**
      * If set, force copying files to the Nix store even if they
@@ -307,18 +357,6 @@ private:
      * Cache used by prim_match().
      */
     std::shared_ptr<RegexCache> regexCache;
-
-#if HAVE_BOEHMGC
-    /**
-     * Allocation cache for GC'd Value objects.
-     */
-    std::shared_ptr<void *> valueAllocCache;
-
-    /**
-     * Allocation cache for size-1 Env objects.
-     */
-    std::shared_ptr<void *> env1AllocCache;
-#endif
 
 public:
 
@@ -638,20 +676,11 @@ public:
      */
     void autoCallFunction(Bindings & args, Value & fun, Value & res);
 
-    /**
-     * Allocation primitives.
-     */
-    inline Value * allocValue();
-    inline Env & allocEnv(size_t size);
-
-    Bindings * allocBindings(size_t capacity);
-
     BindingsBuilder buildBindings(size_t capacity)
     {
-        return BindingsBuilder(*this, allocBindings(capacity));
+        return mem.buildBindings(symbols, capacity);
     }
 
-    void mkList(Value & v, size_t length);
     void mkThunk_(Value & v, Expr & expr);
     void mkPos(Value & v, PosIdx pos);
 
@@ -745,13 +774,7 @@ private:
     std::string mkSingleDerivedPathStringRaw(
         const SingleDerivedPath & p);
 
-    unsigned long nrEnvs = 0;
-    unsigned long nrValuesInEnvs = 0;
-    unsigned long nrValues = 0;
-    unsigned long nrListElems = 0;
     unsigned long nrLookups = 0;
-    unsigned long nrAttrsets = 0;
-    unsigned long nrAttrsInAttrsets = 0;
     unsigned long nrAvoided = 0;
     unsigned long nrOpUpdates = 0;
     unsigned long nrOpUpdateValuesCopied = 0;

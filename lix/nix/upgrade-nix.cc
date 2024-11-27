@@ -289,9 +289,9 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         auto data = content->drain();
 
         auto state = std::make_unique<EvalState>(SearchPath{}, store);
-        auto v = state->allocValue();
+        auto v = state->mem.allocValue();
         state->eval(state->parseExprFromString(data, CanonPath("/no-such-path")), *v);
-        Bindings & bindings(*state->allocBindings(0));
+        Bindings & bindings(*state->mem.allocBindings(0));
         auto v2 = findAlongAttrPath(*state, settings.thisSystem, bindings, *v).first;
 
         return store->parseStorePath(state->forceString(*v2, noPos, "while evaluating the path tho latest nix version"));

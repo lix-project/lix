@@ -844,7 +844,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
             isVarName(name = removeWhitespace(line.substr(0, p))))
         {
             Expr & e = parseString(line.substr(p + 1));
-            Value & v(*state.allocValue());
+            Value & v(*state.mem.allocValue());
             v.mkThunk(env, e);
             addVarToScope(state.symbols.create(name), v);
         } else {
@@ -893,7 +893,7 @@ void NixRepl::loadFlake(const std::string & flakeRefS)
 
 void NixRepl::initEnv()
 {
-    env = &state.allocEnv(envSize);
+    env = &state.mem.allocEnv(envSize);
     env->up = &state.baseEnv;
     displ = 0;
     staticEnv->vars.clear();
@@ -939,7 +939,7 @@ void NixRepl::loadReplOverlays()
     notice("Loading '%1%'...", Magenta("repl-overlays"));
     auto replInitFilesFunction = getReplOverlaysEvalFunction();
 
-    Value &newAttrs(*state.allocValue());
+    Value &newAttrs(*state.mem.allocValue());
     SmallValueVector<3> args = {replInitInfo(), bindingsToAttrs(), replOverlays()};
     state.callFunction(
         *replInitFilesFunction,
@@ -964,7 +964,7 @@ Value * NixRepl::getReplOverlaysEvalFunction()
     }
 
     auto evalReplInitFilesPath = CanonPath::root + "repl-overlays.nix";
-    *replOverlaysEvalFunction = state.allocValue();
+    *replOverlaysEvalFunction = state.mem.allocValue();
     auto code =
         #include "repl-overlays.nix.gen.hh"
         ;
@@ -981,8 +981,8 @@ Value * NixRepl::getReplOverlaysEvalFunction()
 
 Value * NixRepl::replOverlays()
 {
-    Value * replInits(state.allocValue());
-    state.mkList(*replInits, evalSettings.replOverlays.get().size());
+    Value * replInits(state.mem.allocValue());
+    *replInits = state.mem.newList(evalSettings.replOverlays.get().size());
     Value ** replInitElems = replInits->listElems();
 
     size_t i = 0;
@@ -1024,11 +1024,11 @@ Value * NixRepl::replInitInfo()
 {
     auto builder = state.buildBindings(2);
 
-    Value * currentSystem(state.allocValue());
+    Value * currentSystem(state.mem.allocValue());
     currentSystem->mkString(evalSettings.getCurrentSystem());
     builder.insert(state.symbols.create("currentSystem"), currentSystem);
 
-    Value * info(state.allocValue());
+    Value * info(state.mem.allocValue());
     info->mkAttrs(builder.finish());
     return info;
 }
@@ -1070,7 +1070,7 @@ Value * NixRepl::bindingsToAttrs()
         builder.insert(symbol, env->values[displacement]);
     }
 
-    Value * attrs(state.allocValue());
+    Value * attrs(state.mem.allocValue());
     attrs->mkAttrs(builder.finish());
     return attrs;
 }
@@ -1092,7 +1092,7 @@ void NixRepl::evalString(std::string s, Value & v)
 Value * NixRepl::evalFile(SourcePath & path)
 {
     auto & expr = state.parseExprFromFile(path, staticEnv);
-    Value * result(state.allocValue());
+    Value * result(state.mem.allocValue());
     expr.eval(state, *env, *result);
     state.forceValue(*result, result->determinePos(noPos));
     return result;

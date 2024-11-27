@@ -10,7 +10,7 @@
 namespace nix {
 
 
-class EvalState;
+class EvalMemory;
 struct Value;
 
 /**
@@ -117,7 +117,7 @@ public:
         return res;
     }
 
-    friend class EvalState;
+    friend class EvalMemory;
 };
 
 /**
@@ -128,15 +128,17 @@ public:
 class BindingsBuilder
 {
     Bindings * bindings;
+    EvalMemory & mem;
+    SymbolTable & symbols;
 
 public:
     // needed by std::back_inserter
     using value_type = Attr;
 
-    EvalState & state;
-
-    BindingsBuilder(EvalState & state, Bindings * bindings)
-        : bindings(bindings), state(state)
+    BindingsBuilder(EvalMemory & mem, SymbolTable & symbols, Bindings * bindings)
+        : bindings(bindings)
+        , mem(mem)
+        , symbols(symbols)
     { }
 
     void insert(Symbol name, Value * value, PosIdx pos = noPos)

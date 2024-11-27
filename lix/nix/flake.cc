@@ -520,7 +520,7 @@ struct CmdFlakeCheck : FlakeCommand
             try {
                 Activity act(*logger, lvlInfo, actUnknown,
                     fmt("checking NixOS configuration '%s'", attrPath));
-                Bindings & bindings(*state->allocBindings(0));
+                Bindings & bindings(*state->mem.allocBindings(0));
                 auto vToplevel = findAlongAttrPath(*state, "config.system.build.toplevel", bindings, v).first;
                 state->forceValue(*vToplevel, pos);
                 if (!state->isDerivation(*vToplevel))
@@ -582,7 +582,7 @@ struct CmdFlakeCheck : FlakeCommand
         {
             Activity act(*logger, lvlInfo, actUnknown, "evaluating flake");
 
-            auto vFlake = state->allocValue();
+            auto vFlake = state->mem.allocValue();
             flake::callFlake(*state, flake, *vFlake);
 
             enumerateOutputs(*state,

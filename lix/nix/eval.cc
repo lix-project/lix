@@ -67,9 +67,9 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
         NixStringContext context;
 
         if (apply) {
-            auto vApply = state->allocValue();
+            auto vApply = state->mem.allocValue();
             state->eval(state->parseExprFromString(*apply, CanonPath::fromCwd()), *vApply);
-            auto vRes = state->allocValue();
+            auto vRes = state->mem.allocValue();
             state->callFunction(*vApply, *v, *vRes, noPos);
             v = vRes;
         }

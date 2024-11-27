@@ -90,7 +90,7 @@ struct CmdBundle : InstallableCommand
             lockFlags
         };
 
-        auto vRes = evalState->allocValue();
+        auto vRes = evalState->mem.allocValue();
         evalState->callFunction(*bundler.toValue(*evalState).first, *val, *vRes, noPos);
 
         if (!evalState->isDerivation(*vRes))

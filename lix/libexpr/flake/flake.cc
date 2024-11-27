@@ -765,11 +765,11 @@ void callFlake(EvalState & state,
     const LockedFlake & lockedFlake,
     Value & vRes)
 {
-    auto vLocks = state.allocValue();
-    auto vRootSrc = state.allocValue();
-    auto vRootSubdir = state.allocValue();
-    auto vTmp1 = state.allocValue();
-    auto vTmp2 = state.allocValue();
+    auto vLocks = state.mem.allocValue();
+    auto vRootSrc = state.mem.allocValue();
+    auto vRootSubdir = state.mem.allocValue();
+    auto vTmp1 = state.mem.allocValue();
+    auto vTmp2 = state.mem.allocValue();
 
     vLocks->mkString(lockedFlake.lockFile.to_string());
 
@@ -784,7 +784,7 @@ void callFlake(EvalState & state,
     vRootSubdir->mkString(lockedFlake.flake.lockedRef.subdir);
 
     if (!state.vCallFlake) {
-        state.vCallFlake = allocRootValue(state.allocValue());
+        state.vCallFlake = allocRootValue(state.mem.allocValue());
         state.eval(state.parseExprFromString(
             #include "call-flake.nix.gen.hh"
             , CanonPath::root), **state.vCallFlake);
