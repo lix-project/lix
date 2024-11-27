@@ -290,8 +290,6 @@ public:
         std::shared_ptr<Store> buildStore = nullptr);
     ~EvalState();
 
-    SearchPath getSearchPath() { return searchPath; }
-
     /**
      * Return a `SourcePath` that refers to `path` in the root
      * filesystem.
@@ -613,9 +611,6 @@ public:
      */
     inline Value * allocValue();
     inline Env & allocEnv(size_t size);
-
-    Value * allocAttr(Value & vAttrs, Symbol name);
-    Value * allocAttr(Value & vAttrs, std::string_view name);
 
     Bindings * allocBindings(size_t capacity);
 
