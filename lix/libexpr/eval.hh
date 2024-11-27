@@ -220,7 +220,7 @@ public:
             return std::shared_ptr<const StaticEnv>();;
     }
 
-    void runDebugRepl(const Error * error, const Env & env, const Expr & expr);
+    void runDebugRepl(const EvalError * error, const Env & env, const Expr & expr);
 
     template<class T, typename... Args>
     [[nodiscard, gnu::noinline]]

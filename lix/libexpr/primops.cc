@@ -567,7 +567,7 @@ static void prim_genericClosure(EvalState & state, const PosIdx pos, Value * * a
 static void prim_break(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
     if (state.debugRepl && !state.debugTraces.empty()) {
-        auto error = Error(ErrorInfo {
+        auto error = EvalError(state, ErrorInfo {
             .level = lvlInfo,
             .msg = HintFmt("breakpoint reached"),
             .pos = state.positions[pos],
