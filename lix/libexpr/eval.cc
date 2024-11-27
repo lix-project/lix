@@ -941,51 +941,24 @@ void EvalState::evalFile(const SourcePath & path_, Value & v, bool mustBeTrivial
     }
 
     debug("evaluating file '%1%'", resolvedPath);
-    Expr * e = nullptr;
-
-    auto j = fileParseCache.find(resolvedPath);
-    if (j != fileParseCache.end())
-        e = j->second;
-
-    if (!e)
-        e = &parseExprFromFile(checkSourcePath(resolvedPath));
-
-    cacheFile(path, resolvedPath, e, v, mustBeTrivial);
-}
-
-
-void EvalState::resetFileCache()
-{
-    fileEvalCache.clear();
-    fileParseCache.clear();
-}
-
-
-void EvalState::cacheFile(
-    const SourcePath & path,
-    const SourcePath & resolvedPath,
-    Expr * e,
-    Value & v,
-    bool mustBeTrivial)
-{
-    fileParseCache[resolvedPath] = e;
+    Expr & e = parseExprFromFile(checkSourcePath(resolvedPath));
 
     try {
         auto dts = debug
             ? makeDebugTraceStacker(
                 *this,
-                *e,
+                e,
                 this->baseEnv,
-                e->getPos() ? std::make_shared<Pos>(positions[e->getPos()]) : nullptr,
+                e.getPos() ? std::make_shared<Pos>(positions[e.getPos()]) : nullptr,
                 "while evaluating the file '%1%':", resolvedPath.to_string())
             : nullptr;
 
         // Enforce that 'flake.nix' is a direct attrset, not a
         // computation.
         if (mustBeTrivial &&
-            !(dynamic_cast<ExprAttrs *>(e)))
+            !(dynamic_cast<ExprAttrs *>(&e)))
             error<EvalError>("file '%s' must be an attribute set", path).debugThrow();
-        eval(*e, v);
+        eval(e, v);
     } catch (Error & e) {
         addErrorTrace(e, "while evaluating the file '%1%':", resolvedPath.to_string());
         throw;
@@ -993,6 +966,12 @@ void EvalState::cacheFile(
 
     fileEvalCache[resolvedPath] = v;
     if (path != resolvedPath) fileEvalCache[path] = v;
+}
+
+
+void EvalState::resetFileCache()
+{
+    fileEvalCache.clear();
 }
 
 

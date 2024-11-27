@@ -328,12 +328,6 @@ private:
     std::map<SourcePath, StorePath> srcToStore;
 
     /**
-     * A cache from path names to parse trees.
-     */
-    using FileParseCache = GcMap<SourcePath, Expr *>;
-    FileParseCache fileParseCache;
-
-    /**
      * A cache from path names to values.
      */
     using FileEvalCache = GcMap<SourcePath, Value>;
@@ -425,16 +419,6 @@ public:
      * trivial (i.e. doesn't require arbitrary computation).
      */
     void evalFile(const SourcePath & path, Value & v, bool mustBeTrivial = false);
-
-    /**
-     * Like `evalFile`, but with an already parsed expression.
-     */
-    void cacheFile(
-        const SourcePath & path,
-        const SourcePath & resolvedPath,
-        Expr * e,
-        Value & v,
-        bool mustBeTrivial = false);
 
     void resetFileCache();
 
