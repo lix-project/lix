@@ -684,18 +684,6 @@ void DebugState::runDebugRepl(
     }
 }
 
-template<typename... Args>
-void EvalState::addErrorTrace(Error & e, const Args & ... formatArgs) const
-{
-    e.addTrace(nullptr, HintFmt(formatArgs...));
-}
-
-template<typename... Args>
-void EvalState::addErrorTrace(Error & e, const PosIdx pos, const Args & ... formatArgs) const
-{
-    e.addTrace(positions[pos], HintFmt(formatArgs...));
-}
-
 DebugState::TraceFrame DebugState::addTrace(DebugTrace t)
 {
     struct UnlinkDebugTrace
@@ -960,7 +948,7 @@ void EvalState::evalFile(const SourcePath & path_, Value & v, bool mustBeTrivial
             error<EvalError>("file '%s' must be an attribute set", path).debugThrow();
         eval(e, v);
     } catch (Error & e) {
-        addErrorTrace(e, "while evaluating the file '%1%':", resolvedPath.to_string());
+        e.addTrace(nullptr, "while evaluating the file '%1%':", resolvedPath.to_string());
         throw;
     }
 
@@ -1242,9 +1230,8 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
         e->eval(state, env, vFirst);
     } catch (Error & e) {
         assert(this->e != nullptr);
-        state.addErrorTrace(
-            e,
-            getPos(),
+        e.addTrace(
+            state.positions[getPos()],
             "while evaluating '%s' to select '%s' on it",
             ExprPrinter(state, *this->e),
             showAttrPath(state.symbols, this->attrPath)
@@ -1294,9 +1281,8 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
             try {
                 state.forceValue(*vCurrent, pos);
             } catch (Error & e) {
-                state.addErrorTrace(
-                    e,
-                    getPos(),
+                e.addTrace(
+                    state.positions[getPos()],
                     "while evaluating '%s' to select '%s' on it",
                     partsSoFar(),
                     state.symbols[name]
@@ -1362,7 +1348,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
             auto pos2r = state.positions[posCurrent];
             auto origin = std::get_if<SourcePath>(&pos2r.origin);
             if (!(origin && *origin == state.derivationInternal))
-                state.addErrorTrace(e, posCurrent, "while evaluating the attribute '%1%'",
+                e.addTrace(state.positions[posCurrent], "while evaluating the attribute '%1%'",
                     showAttrPath(state, env, attrPath));
         }
         throw;
@@ -1581,12 +1567,11 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 lambda.body->eval(*this, env2, vCur);
             } catch (Error & e) {
                 if (loggerSettings.showTrace.get()) {
-                    addErrorTrace(
-                        e,
-                        lambda.pos,
+                    e.addTrace(
+                        positions[lambda.pos],
                         "while calling %s",
                         lambda.getQuotedName(symbols));
-                    if (pos) addErrorTrace(e, pos, "from call site");
+                    if (pos) e.addTrace(positions[pos], "from call site");
                 }
                 throw;
             }
@@ -1616,13 +1601,13 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     // Distinguish between an error that simply happened while "throw"
                     // was being evaluated and an explicit thrown error.
                     if (fn->name == "throw") {
-                        addErrorTrace(e, pos, "caused by explicit %s", "throw");
+                        e.addTrace(positions[pos], "caused by explicit %s", "throw");
                     } else {
-                        addErrorTrace(e, pos, "while calling the '%s' builtin", fn->name);
+                        e.addTrace(positions[pos], "while calling the '%s' builtin", fn->name);
                     }
                     throw;
                 } catch (Error & e) {
-                    addErrorTrace(e, pos, "while calling the '%1%' builtin", fn->name);
+                    e.addTrace(positions[pos], "while calling the '%1%' builtin", fn->name);
                     throw;
                 }
 
@@ -1670,7 +1655,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     //    so the debugger allows to inspect the wrong parameters passed to the builtin.
                     fn->fun(*this, vCur.determinePos(noPos), vArgs, vCur);
                 } catch (Error & e) {
-                    addErrorTrace(e, pos, "while calling the '%1%' builtin", fn->name);
+                    e.addTrace(positions[pos], "while calling the '%1%' builtin", fn->name);
                     throw;
                 }
 
@@ -2090,7 +2075,7 @@ void EvalState::forceValueDeep(Value & v)
 
                     recurse(*i.value);
                 } catch (Error & e) {
-                    addErrorTrace(e, i.pos, "while evaluating the attribute '%1%'", symbols[i.name]);
+                    e.addTrace(positions[i.pos], "while evaluating the attribute '%1%'", symbols[i.name]);
                     throw;
                 }
         }

@@ -485,13 +485,6 @@ public:
     std::string_view forceString(Value & v, NixStringContext & context, const PosIdx pos, std::string_view errorCtx);
     std::string_view forceStringNoCtx(Value & v, const PosIdx pos, std::string_view errorCtx);
 
-    template<typename... Args>
-    [[gnu::noinline]]
-    void addErrorTrace(Error & e, const Args & ... formatArgs) const;
-    template<typename... Args>
-    [[gnu::noinline]]
-    void addErrorTrace(Error & e, const PosIdx pos, const Args & ... formatArgs) const;
-
 public:
     /**
      * @return true iff the value `v` denotes a derivation (i.e. a
