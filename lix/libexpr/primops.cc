@@ -566,15 +566,14 @@ static void prim_genericClosure(EvalState & state, const PosIdx pos, Value * * a
 
 static void prim_break(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
-    if (state.debug && !state.debug->traces.empty()) {
+    if (auto trace = state.debug ? state.debug->traces().next() : std::nullopt) {
         auto error = EvalError(state, ErrorInfo {
             .level = lvlInfo,
             .msg = HintFmt("breakpoint reached"),
             .pos = state.positions[pos],
         });
 
-        auto & dt = state.debug->traces.front();
-        state.debug->runDebugRepl(state, &error, dt.env, dt.expr);
+        state.debug->runDebugRepl(state, &error, (*trace)->env, (*trace)->expr);
     }
 
     // Return the value we were passed.
@@ -696,9 +695,11 @@ static void prim_trace(EvalState & state, const PosIdx pos, Value * * args, Valu
         printError("trace: %1%", args[0]->string.s);
     else
         printError("trace: %1%", ValuePrinter(state, *args[0]));
-    if (evalSettings.builtinsTraceDebugger && state.debug && !state.debug->traces.empty()) {
-        const DebugTrace & last = state.debug->traces.front();
-        state.debug->runDebugRepl(state, nullptr, last.env, last.expr);
+    if (auto last = evalSettings.builtinsTraceDebugger && state.debug
+            ? state.debug->traces().next()
+            : std::nullopt)
+    {
+        state.debug->runDebugRepl(state, nullptr, (*last)->env, (*last)->expr);
     }
     state.forceValue(*args[1], pos);
     v = *args[1];

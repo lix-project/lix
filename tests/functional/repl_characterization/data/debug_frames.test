@@ -71,3 +71,43 @@ and resume execution
 the debugger is once again disabled
   nix-repl> :c
   error: unknown command ':c'
+
+leaving the debugger from a toplevel error and entering it again doesn't leave old frames visible
+  nix-repl> with {}; a
+  error: undefined variable 'a'
+         at «string»:1:10:
+              1| with {}; a
+               |          ^
+
+  nix-repl> :s
+  error: undefined variable 'a'
+         at «string»:1:10:
+              1| with {}; a
+               |          ^
+
+  nix-repl> with {}; b
+  error: undefined variable 'b'
+         at «string»:1:10:
+              1| with {}; b
+               |          ^
+
+  nix-repl> :bt
+
+  0: error: undefined variable 'b'
+  «string»:1:10
+
+       1| with {}; b
+        |          ^
+
+  1: error: Fake frame for debugging purposes
+  «string»:1:10
+
+       1| with {}; b
+        |          ^
+
+exiting from here prints the error
+  nix-repl> :q
+  error: undefined variable 'b'
+         at «string»:1:10:
+              1| with {}; b
+               |          ^

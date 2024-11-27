@@ -7,6 +7,7 @@
 
 namespace nix {
 
+struct DebugTrace;
 struct Env;
 struct Expr;
 struct Value;
@@ -19,6 +20,9 @@ class EvalError : public Error
 {
     template<class T>
     friend class EvalErrorBuilder;
+
+    std::shared_ptr<const DebugTrace> frame;
+
 public:
     EvalState & state;
 

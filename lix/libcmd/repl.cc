@@ -157,7 +157,7 @@ struct NixRepl
     void addVarToScope(const Symbol name, Value & v);
     Expr & parseString(std::string s);
     void evalString(std::string s, Value & v);
-    void loadDebugTraceEnv(DebugTrace & dt);
+    void loadDebugTraceEnv(const DebugTrace & dt);
 
     /**
      * Load the `repl-overlays` and add the resulting AttrSet to the top-level
@@ -482,7 +482,7 @@ StorePath NixRepl::getDerivationPath(Value & v) {
     return *drvPath;
 }
 
-void NixRepl::loadDebugTraceEnv(DebugTrace & dt)
+void NixRepl::loadDebugTraceEnv(const DebugTrace & dt)
 {
     initEnv();
 
@@ -558,16 +558,18 @@ ProcessLineResult NixRepl::processLine(std::string line)
     }
 
     else if (state.debug && state.debug->inDebugger && (command == ":bt" || command == ":backtrace")) {
-        for (const auto & [idx, i] : enumerate(state.debug->traces)) {
+        auto traces = state.debug->traces();
+        for (const auto & [idx, i] : enumerate(traces)) {
             std::cout << "\n" << ANSI_BLUE << idx << ANSI_NORMAL << ": ";
-            showDebugTrace(std::cout, state.positions, i);
+            showDebugTrace(std::cout, state.positions, *i);
         }
     }
 
     else if (state.debug && state.debug->inDebugger && (command == ":env")) {
-        for (const auto & [idx, i] : enumerate(state.debug->traces)) {
+        auto traces = state.debug->traces();
+        for (const auto & [idx, i] : enumerate(traces)) {
             if (idx == debugTraceIndex) {
-                printEnvBindings(state, i.expr, i.env);
+                printEnvBindings(state, i->expr, i->env);
                 break;
             }
         }
@@ -579,13 +581,14 @@ ProcessLineResult NixRepl::processLine(std::string line)
             debugTraceIndex = stoi(arg);
         } catch (...) { }
 
-        for (const auto & [idx, i] : enumerate(state.debug->traces)) {
+        auto traces = state.debug->traces();
+        for (const auto & [idx, i] : enumerate(traces)) {
              if (idx == debugTraceIndex) {
                  std::cout << "\n" << ANSI_BLUE << idx << ANSI_NORMAL << ": ";
-                 showDebugTrace(std::cout, state.positions, i);
+                 showDebugTrace(std::cout, state.positions, *i);
                  std::cout << std::endl;
-                 printEnvBindings(state, i.expr, i.env);
-                 loadDebugTraceEnv(i);
+                 printEnvBindings(state, i->expr, i->env);
+                 loadDebugTraceEnv(*i);
                  break;
              }
         }

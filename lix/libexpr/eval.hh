@@ -4,6 +4,7 @@
 #include "lix/libexpr/attr-set.hh"
 #include "lix/libexpr/eval-error.hh"
 #include "lix/libexpr/gc-alloc.hh"
+#include "lix/libutil/generator.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libexpr/value.hh"
 #include "lix/libexpr/nixexpr.hh"
@@ -150,14 +151,18 @@ struct DebugTrace {
     const Env & env;
     HintFmt hint;
     bool isError;
+    std::shared_ptr<const DebugTrace> parent;
 };
 
 struct DebugState
 {
+private:
+    std::weak_ptr<const DebugTrace> latestTrace;
+
+public:
     std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> repl;
     bool stop = false;
     bool inDebugger = false;
-    std::list<DebugTrace> traces;
     std::map<const Expr *, const std::shared_ptr<const StaticEnv>> exprEnvs;
     int trylevel = 0;
 
@@ -178,8 +183,35 @@ struct DebugState
         }
         return nullptr;
     }
-};
 
+    class TraceFrame
+    {
+        friend struct DebugState;
+        template<class T>
+        friend class EvalErrorBuilder;
+
+        // holds both the data for this frame *and* a deleter that pulls this frame
+        // off the trace stack. EvalErrorBuilder uses this for withFrame fake trace
+        // frames, and to avoid needing to see this class definition in its header.
+        const std::shared_ptr<const DebugTrace> entry = nullptr;
+
+        explicit TraceFrame(std::shared_ptr<const DebugTrace> entry): entry(std::move(entry)) {}
+
+    public:
+        TraceFrame(std::nullptr_t) {}
+    };
+
+    TraceFrame addTrace(DebugTrace t);
+
+    /// Enumerates the debug frame stack, from the current frame to the root frame.
+    /// All values are guaranteed to not be null, but must be pointers because C++.
+    Generator<const DebugTrace *> traces()
+    {
+        for (auto current = latestTrace.lock(); current; current = current->parent) {
+            co_yield current.get();
+        }
+    }
+};
 
 struct StaticSymbols
 {
@@ -759,16 +791,6 @@ private:
     friend void prim_split(EvalState & state, const PosIdx pos, Value * * args, Value & v);
 
     friend struct Value;
-};
-
-struct DebugTraceStacker {
-    DebugTraceStacker(EvalState & evalState, DebugTrace t);
-    ~DebugTraceStacker()
-    {
-        evalState.debug->traces.pop_front();
-    }
-    EvalState & evalState;
-    DebugTrace trace;
 };
 
 /**

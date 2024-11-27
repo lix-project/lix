@@ -646,15 +646,13 @@ void DebugState::runDebugRepl(
 
     auto dts =
         error && expr.getPos()
-        ? std::make_unique<DebugTraceStacker>(
-            evalState,
-            DebugTrace {
-                .pos = error->info().pos ? error->info().pos : evalState.positions[expr.getPos()],
-                .expr = expr,
-                .env = env,
-                .hint = error->info().msg,
-                .isError = true
-            })
+        ? addTrace(DebugTrace {
+            .pos = error->info().pos ? error->info().pos : evalState.positions[expr.getPos()],
+            .expr = expr,
+            .env = env,
+            .hint = error->info().msg,
+            .isError = true
+        })
         : nullptr;
 
     if (error)
@@ -695,31 +693,45 @@ void EvalState::addErrorTrace(Error & e, const PosIdx pos, const Args & ... form
     e.addTrace(positions[pos], HintFmt(formatArgs...));
 }
 
+DebugState::TraceFrame DebugState::addTrace(DebugTrace t)
+{
+    struct UnlinkDebugTrace
+    {
+        DebugState * state;
+        void operator()(DebugTrace * trace)
+        {
+            state->latestTrace = trace->parent;
+            delete trace;
+        }
+    };
+
+    t.parent = latestTrace.lock();
+    std::unique_ptr<DebugTrace, UnlinkDebugTrace> trace(
+        new auto(std::move(t)), UnlinkDebugTrace{.state = this}
+    );
+    std::shared_ptr<DebugTrace> entry(std::move(trace));
+    latestTrace = entry;
+    return TraceFrame{entry};
+}
+
 template<typename... Args>
-static std::unique_ptr<DebugTraceStacker> makeDebugTraceStacker(
+static DebugState::TraceFrame makeDebugTraceStacker(
     EvalState & state,
     Expr & expr,
     Env & env,
     std::shared_ptr<Pos> && pos,
     const Args & ... formatArgs)
 {
-    return std::make_unique<DebugTraceStacker>(state,
-        DebugTrace {
-            .pos = std::move(pos),
-            .expr = expr,
-            .env = env,
-            .hint = HintFmt(formatArgs...),
-            .isError = false
-        });
-}
-
-DebugTraceStacker::DebugTraceStacker(EvalState & evalState, DebugTrace t)
-    : evalState(evalState)
-    , trace(std::move(t))
-{
-    evalState.debug->traces.push_front(trace);
-    if (evalState.debug->stop && evalState.debug->repl)
-        evalState.debug->runDebugRepl(evalState, nullptr, trace.env, trace.expr);
+    auto trace = state.debug->addTrace(DebugTrace{
+        .pos = std::move(pos),
+        .expr = expr,
+        .env = env,
+        .hint = HintFmt(formatArgs...),
+        .isError = false,
+    });
+    if (state.debug->stop && state.debug->repl)
+        state.debug->runDebugRepl(state, nullptr, env, expr);
+    return trace;
 }
 
 inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
