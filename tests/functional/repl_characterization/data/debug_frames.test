@@ -1,0 +1,73 @@
+@args --debugger
+
+:c at the root repl is not allowed since no debugger is running yet
+  nix-repl> :c
+  error: unknown command ':c'
+
+:c and other commands become available once a debugger starts
+  nix-repl> with {}; a
+  error: undefined variable 'a'
+         at «string»:1:10:
+              1| with {}; a
+               |          ^
+
+  nix-repl> :?
+  The following commands are available:
+
+    <expr>                       Evaluate and print expression
+    <x> = <expr>                 Bind expression to variable
+    :a, :add <expr>              Add attributes from resulting set to scope
+    :b <expr>                    Build a derivation
+    :bl <expr>                   Build a derivation, creating GC roots in the
+                                 working directory
+    :e, :edit <expr>             Open package or function in $EDITOR
+    :i <expr>                    Build derivation, then install result into
+                                 current profile
+    :l, :load <path>             Load Nix expression and add it to scope
+    :lf, :load-flake <ref>       Load Nix flake and add it to scope
+    :p, :print <expr>            Evaluate and print expression recursively
+                                 Strings are printed directly, without escaping.
+    :q, :quit                    Exit nix-repl
+    :r, :reload                  Reload all files
+    :sh <expr>                   Build dependencies of derivation, then start
+                                 nix-shell
+    :t <expr>                    Describe result of evaluation
+    :u <expr>                    Build derivation, then start nix-shell
+    :doc <expr>                  Show documentation for the provided function (experimental lambda support)
+    :log <expr | .drv path>      Show logs for a derivation
+    :te, :trace-enable [bool]    Enable, disable or toggle showing traces for
+                                 errors
+    :?, :help                    Brings up this help menu
+
+          Debug mode commands
+    :env             Show env stack
+    :bt, :backtrace  Show trace stack
+    :st              Show current trace
+    :st <idx>        Change to another trace in the stack
+    :c, :continue    Go until end of program, exception, or builtins.break
+    :s, :step        Go one step
+
+we can now inspect state
+  nix-repl> :bt
+  0: error: undefined variable 'a'
+  «string»:1:10
+
+       1| with {}; a
+        |          ^
+
+  1: error: Fake frame for debugging purposes
+  «string»:1:10
+
+       1| with {}; a
+        |          ^
+
+and resume execution
+  nix-repl> :c
+  error: undefined variable 'a'
+         at «string»:1:10:
+              1| with {}; a
+               |          ^
+
+the debugger is once again disabled
+  nix-repl> :c
+  error: unknown command ':c'

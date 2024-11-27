@@ -285,7 +285,7 @@ ReplExitStatus NixRepl::mainLoop()
 {
     if (isFirstRepl) {
         std::string_view debuggerNotice = "";
-        if (state.debug.repl) {
+        if (state.debug.inDebugger) {
             debuggerNotice = " debugger";
         }
         notice("Lix %1%%2%\nType :? for help.", nixVersion, debuggerNotice);
@@ -366,7 +366,7 @@ StringSet NixRepl::completePrefix(const std::string & prefix)
             }
         }
 
-        if (state.debug.repl) {
+        if (state.debug.inDebugger) {
             for (auto const & colonCmd : this->DEBUG_COMMANDS) {
                 if (colonCmd.starts_with(prefix)) {
                     completions.insert(std::string(colonCmd));
@@ -541,7 +541,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
              << "                               errors\n"
              << "  :?, :help                    Brings up this help menu\n"
              ;
-        if (state.debug.repl) {
+        if (state.debug.inDebugger) {
              std::cout
              << "\n"
              << "        Debug mode commands\n"
@@ -556,14 +556,14 @@ ProcessLineResult NixRepl::processLine(std::string line)
 
     }
 
-    else if (state.debug.repl && (command == ":bt" || command == ":backtrace")) {
+    else if (state.debug.inDebugger && (command == ":bt" || command == ":backtrace")) {
         for (const auto & [idx, i] : enumerate(state.debug.traces)) {
             std::cout << "\n" << ANSI_BLUE << idx << ANSI_NORMAL << ": ";
             showDebugTrace(std::cout, state.positions, i);
         }
     }
 
-    else if (state.debug.repl && (command == ":env")) {
+    else if (state.debug.inDebugger && (command == ":env")) {
         for (const auto & [idx, i] : enumerate(state.debug.traces)) {
             if (idx == debugTraceIndex) {
                 printEnvBindings(state, i.expr, i.env);
@@ -572,7 +572,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
         }
     }
 
-    else if (state.debug.repl && (command == ":st")) {
+    else if (state.debug.inDebugger && (command == ":st")) {
         try {
             // change the DebugTrace index.
             debugTraceIndex = stoi(arg);
@@ -590,13 +590,13 @@ ProcessLineResult NixRepl::processLine(std::string line)
         }
     }
 
-    else if (state.debug.repl && (command == ":s" || command == ":step")) {
+    else if (state.debug.inDebugger && (command == ":s" || command == ":step")) {
         // set flag to stop at next DebugTrace; exit repl.
         state.debug.stop = true;
         return ProcessLineResult::Continue;
     }
 
-    else if (state.debug.repl && (command == ":c" || command == ":continue")) {
+    else if (state.debug.inDebugger && (command == ":c" || command == ":continue")) {
         // set flag to run to next breakpoint or end of program; exit repl.
         state.debug.stop = false;
         return ProcessLineResult::Continue;
