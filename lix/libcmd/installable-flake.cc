@@ -41,16 +41,16 @@ std::vector<std::string> InstallableFlake::getActualAttrPaths()
     return res;
 }
 
-Value * InstallableFlake::getFlakeOutputs(EvalState & state, const flake::LockedFlake & lockedFlake)
+Value * InstallableFlake::getFlakeOutputs(const flake::LockedFlake & lockedFlake)
 {
-    auto vFlake = state.mem.allocValue();
+    auto vFlake = state->mem.allocValue();
 
-    callFlake(state, lockedFlake, *vFlake);
+    callFlake(*state, lockedFlake, *vFlake);
 
-    auto aOutputs = vFlake->attrs->get(state.symbols.create("outputs"));
+    auto aOutputs = vFlake->attrs->get(state->symbols.create("outputs"));
     assert(aOutputs);
 
-    state.forceValue(*aOutputs->value, aOutputs->value->determinePos(noPos));
+    state->forceValue(*aOutputs->value, aOutputs->value->determinePos(noPos));
 
     return aOutputs->value;
 }
@@ -89,7 +89,7 @@ DerivedPathsWithInfo InstallableFlake::toDerivedPaths()
 {
     Activity act(*logger, lvlTalkative, actUnknown, fmt("evaluating derivation '%s'", what()));
 
-    auto attr = getCursor(*state);
+    auto attr = getCursor();
 
     auto attrPath = attr->getAttrPathStr();
 
@@ -164,15 +164,15 @@ DerivedPathsWithInfo InstallableFlake::toDerivedPaths()
     }};
 }
 
-std::pair<Value *, PosIdx> InstallableFlake::toValue(EvalState & state)
+std::pair<Value *, PosIdx> InstallableFlake::toValue()
 {
-    return {&getCursor(state)->forceValue(), noPos};
+    return {&getCursor()->forceValue(), noPos};
 }
 
 std::vector<ref<eval_cache::AttrCursor>>
-InstallableFlake::getCursors(EvalState & state)
+InstallableFlake::getCursors()
 {
-    auto evalCache = openEvalCache(state, getLockedFlake());
+    auto evalCache = openEvalCache(*state, getLockedFlake());
 
     auto root = evalCache->getRoot();
 
@@ -184,7 +184,7 @@ InstallableFlake::getCursors(EvalState & state)
     for (auto & attrPath : attrPaths) {
         debug("trying flake output attribute '%s'", attrPath);
 
-        auto attr = root->findAlongAttrPath(parseAttrPath(state, attrPath));
+        auto attr = root->findAlongAttrPath(parseAttrPath(*state, attrPath));
         if (attr) {
             res.push_back(ref(*attr));
         } else {

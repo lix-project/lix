@@ -77,7 +77,7 @@ struct CmdBundle : InstallableCommand
 
         auto const installableValue = InstallableValue::require(installable);
 
-        auto val = installableValue->toValue(*evalState).first;
+        auto val = installableValue->toValue().first;
 
         auto [bundlerFlakeRef, bundlerName, extendedOutputsSpec] = parseFlakeRefWithFragmentAndExtendedOutputsSpec(bundler, absPath("."));
         const flake::LockFlags lockFlags{ .writeLockFile = false };
@@ -91,7 +91,7 @@ struct CmdBundle : InstallableCommand
         };
 
         auto vRes = evalState->mem.allocValue();
-        evalState->callFunction(*bundler.toValue(*evalState).first, *val, *vRes, noPos);
+        evalState->callFunction(*bundler.toValue().first, *val, *vRes, noPos);
 
         if (!evalState->isDerivation(*vRes))
             throw Error("the bundler '%s' does not produce a derivation", bundler.what());

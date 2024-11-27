@@ -34,7 +34,7 @@ struct CmdFmt : SourceExprCommand {
 
         auto installable_ = parseInstallable(store, ".");
         auto & installable = InstallableValue::require(*installable_);
-        auto app = installable.toApp(*evalState).resolve(evalStore, store);
+        auto app = installable.toApp().resolve(evalStore, store);
 
         Strings programArgs{app.program};
 

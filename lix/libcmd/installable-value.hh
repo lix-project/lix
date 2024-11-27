@@ -77,24 +77,22 @@ struct InstallableValue : Installable
 
     virtual ~InstallableValue() { }
 
-    virtual std::pair<Value *, PosIdx> toValue(EvalState & state) = 0;
+    virtual std::pair<Value *, PosIdx> toValue() = 0;
 
     /**
      * Get a cursor to each value this Installable could refer to.
      * However if none exists, throw exception instead of returning
      * empty vector.
      */
-    virtual std::vector<ref<eval_cache::AttrCursor>>
-    getCursors(EvalState & state);
+    virtual std::vector<ref<eval_cache::AttrCursor>> getCursors();
 
     /**
      * Get the first and most preferred cursor this Installable could
      * refer to, or throw an exception if none exists.
      */
-    virtual ref<eval_cache::AttrCursor>
-    getCursor(EvalState & state);
+    virtual ref<eval_cache::AttrCursor> getCursor();
 
-    UnresolvedApp toApp(EvalState & state);
+    UnresolvedApp toApp();
 
     static InstallableValue & require(Installable & installable);
     static ref<InstallableValue> require(ref<Installable> installable);

@@ -32,7 +32,7 @@ struct CmdEdit : InstallableCommand
         auto const installableValue = InstallableValue::require(installable);
 
         const auto [file, line] = [&] {
-            auto [v, pos] = installableValue->toValue(*state);
+            auto [v, pos] = installableValue->toValue();
 
             try {
                 return findPackageFilename(*state, *v, installable->what());

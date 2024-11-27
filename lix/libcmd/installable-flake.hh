@@ -52,18 +52,17 @@ struct InstallableFlake : InstallableValue
 
     std::vector<std::string> getActualAttrPaths();
 
-    Value * getFlakeOutputs(EvalState & state, const flake::LockedFlake & lockedFlake);
+    Value * getFlakeOutputs(const flake::LockedFlake & lockedFlake);
 
     DerivedPathsWithInfo toDerivedPaths() override;
 
-    std::pair<Value *, PosIdx> toValue(EvalState & state) override;
+    std::pair<Value *, PosIdx> toValue() override;
 
     /**
      * Get a cursor to every attrpath in getActualAttrPaths() that
      * exists. However if none exists, throw an exception.
      */
-    std::vector<ref<eval_cache::AttrCursor>>
-    getCursors(EvalState & state) override;
+    std::vector<ref<eval_cache::AttrCursor>> getCursors() override;
 
     std::shared_ptr<flake::LockedFlake> getLockedFlake() const;
 

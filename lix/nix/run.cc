@@ -205,7 +205,7 @@ struct CmdRun : InstallableCommand
         auto installableValue = InstallableValue::require(installable);
 
         lockFlags.applyNixConfig = true;
-        auto app = installableValue->toApp(*state).resolve(getEvalStore(), store);
+        auto app = installableValue->toApp().resolve(getEvalStore(), store);
 
         Strings allArgs{app.program};
         for (auto & i : args) allArgs.push_back(i);

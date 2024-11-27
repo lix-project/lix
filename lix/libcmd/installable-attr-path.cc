@@ -24,16 +24,16 @@ InstallableAttrPath::InstallableAttrPath(
     , extendedOutputsSpec(std::move(extendedOutputsSpec))
 { }
 
-std::pair<Value *, PosIdx> InstallableAttrPath::toValue(EvalState & state)
+std::pair<Value *, PosIdx> InstallableAttrPath::toValue()
 {
-    auto [vRes, pos] = findAlongAttrPath(state, attrPath, *cmd.getAutoArgs(state), **v);
-    state.forceValue(*vRes, pos);
+    auto [vRes, pos] = findAlongAttrPath(*state, attrPath, *cmd.getAutoArgs(*state), **v);
+    state->forceValue(*vRes, pos);
     return {vRes, pos};
 }
 
 DerivedPathsWithInfo InstallableAttrPath::toDerivedPaths()
 {
-    auto [v, pos] = toValue(*state);
+    auto [v, pos] = toValue();
 
     if (std::optional derivedPathWithInfo = trySinglePathToDerivedPaths(
         *v,
