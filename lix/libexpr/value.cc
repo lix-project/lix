@@ -27,7 +27,6 @@ Value::Value(primop_t, PrimOp & primop)
     , primOp(&primop)
     , _primop_pad(0)
 {
-    primop.check();
 }
 
 
@@ -76,7 +75,6 @@ PrimOp * Value::primOpAppPrimOp() const
 
 void Value::mkPrimOp(PrimOp * p)
 {
-    p->check();
     clearValue();
     internalType = tPrimOp;
     primOp = p;

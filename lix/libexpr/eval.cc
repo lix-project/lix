@@ -458,14 +458,6 @@ void EvalState::addConstant(const std::string & name, Value * v, Constant info)
 }
 
 
-void PrimOp::check()
-{
-    if (arity > maxPrimOpArity) {
-        throw Error("primop arity must not exceed %1%", maxPrimOpArity);
-    }
-}
-
-
 std::ostream & operator<<(std::ostream & output, PrimOp & primOp)
 {
     output << "primop " << primOp.name;
@@ -1636,7 +1628,8 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 /* We have all the arguments, so call the primop with
                    the previous and new arguments. */
 
-                Value * vArgs[maxPrimOpArity];
+                // max arity as of writing is 3. even 4 seems excessive though.
+                SmallVector<Value *, 4> vArgs(arity);
                 auto n = argsDone;
                 for (Value * arg = &vCur; arg->isPrimOpApp(); arg = arg->primOpApp.left)
                     vArgs[--n] = arg->primOpApp.right;
@@ -1653,7 +1646,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     // 1. Unify this and above code. Heavily redundant.
                     // 2. Create a fake env (arg1, arg2, etc.) and a fake expr (arg1: arg2: etc: builtins.name arg1 arg2 etc)
                     //    so the debugger allows to inspect the wrong parameters passed to the builtin.
-                    fn->fun(*this, vCur.determinePos(noPos), vArgs, vCur);
+                    fn->fun(*this, vCur.determinePos(noPos), vArgs.data(), vCur);
                 } catch (Error & e) {
                     e.addTrace(positions[pos], "while calling the '%1%' builtin", fn->name);
                     throw;
