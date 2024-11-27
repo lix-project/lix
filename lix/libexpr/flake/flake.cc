@@ -245,7 +245,7 @@ static Flake getFlake(
     Value vInfo;
     state.evalFile(CanonPath(flakeFile), vInfo, true); // FIXME: symlink attack
 
-    if (auto description = vInfo.attrs->get(state.sDescription)) {
+    if (auto description = vInfo.attrs->get(state.s.description)) {
         expectType(state, nString, *description->value, description->pos);
         flake.description = description->value->string.s;
     }
@@ -255,14 +255,12 @@ static Flake getFlake(
     if (auto inputs = vInfo.attrs->get(sInputs))
         flake.inputs = parseFlakeInputs(state, inputs->value, inputs->pos, flakeDir, lockRootPath, 0);
 
-    auto sOutputs = state.symbols.create("outputs");
-
-    if (auto outputs = vInfo.attrs->get(sOutputs)) {
+    if (auto outputs = vInfo.attrs->get(state.s.outputs)) {
         expectType(state, nFunction, *outputs->value, outputs->pos);
 
         if (outputs->value->isLambda() && outputs->value->lambda.fun->hasFormals()) {
             for (auto & formal : outputs->value->lambda.fun->formals->formals) {
-                if (formal.name != state.sSelf)
+                if (formal.name != state.s.self)
                     flake.inputs.emplace(state.symbols[formal.name], FlakeInput {
                         .ref = parseFlakeRef(state.symbols[formal.name])
                     });
@@ -314,9 +312,9 @@ static Flake getFlake(
     }
 
     for (auto & attr : *vInfo.attrs) {
-        if (attr.name != state.sDescription &&
+        if (attr.name != state.s.description &&
             attr.name != sInputs &&
-            attr.name != sOutputs &&
+            attr.name != state.s.outputs &&
             attr.name != sNixConfig)
             throw Error("flake '%s' has an unsupported attribute '%s', at %s",
                 lockedRef, state.symbols[attr.name], state.positions[attr.pos]);

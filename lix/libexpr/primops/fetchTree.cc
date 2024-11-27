@@ -27,7 +27,7 @@ void emitTreeAttrs(
     auto attrs = state.buildBindings(10);
 
 
-    state.mkStorePathString(tree.storePath, attrs.alloc(state.sOutPath));
+    state.mkStorePathString(tree.storePath, attrs.alloc(state.s.outPath));
 
     // FIXME: support arbitrary input attributes.
 
@@ -122,7 +122,7 @@ static void fetchTree(
 
         fetchers::Attrs attrs;
 
-        if (auto aType = args[0]->attrs->get(state.sType)) {
+        if (auto aType = args[0]->attrs->get(state.s.type)) {
             if (type)
                 state.error<EvalError>(
                     "unexpected attribute 'type'"
@@ -136,7 +136,7 @@ static void fetchTree(
         attrs.emplace("type", type.value());
 
         for (auto & attr : *args[0]->attrs) {
-            if (attr.name == state.sType) continue;
+            if (attr.name == state.s.type) continue;
             state.forceValue(*attr.value, attr.pos);
             if (attr.value->type() == nPath || attr.value->type() == nString) {
                 auto s = state.coerceToString(attr.pos, *attr.value, context, "", false, false).toOwned();

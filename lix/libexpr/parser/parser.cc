@@ -35,7 +35,7 @@ Expr * EvalState::parse(
         positions,
         basePath,
         positions.addOrigin(origin, length),
-        exprSymbols,
+        this->s.exprSymbols,
         featureSettings,
     };
 

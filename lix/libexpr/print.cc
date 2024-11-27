@@ -231,7 +231,7 @@ private:
 
     void printDerivation(Value & v)
     {
-        Bindings::iterator i = v.attrs->find(state.sDrvPath);
+        Bindings::iterator i = v.attrs->find(state.s.drvPath);
         NixStringContext context;
         std::string storePath;
         if (i != v.attrs->end())

@@ -89,14 +89,14 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
                 Bindings::iterator a = v.attrs->find(state.symbols.create("derivation"));
 
                 Path drvPath;
-                a = v.attrs->find(state.sDrvPath);
+                a = v.attrs->find(state.s.drvPath);
                 if (a != v.attrs->end()) {
                     if (strict) state.forceValue(*a->value, a->pos);
                     if (a->value->type() == nString)
                         xmlAttrs["drvPath"] = drvPath = a->value->string.s;
                 }
 
-                a = v.attrs->find(state.sOutPath);
+                a = v.attrs->find(state.s.outPath);
                 if (a != v.attrs->end()) {
                     if (strict) state.forceValue(*a->value, a->pos);
                     if (a->value->type() == nString)

@@ -153,27 +153,27 @@ struct DebugTrace {
 };
 
 
+struct StaticSymbols
+{
+    const Symbol outPath, drvPath, type, meta, name, value, system, overrides, outputs, outputName,
+        ignoreNulls, file, line, column, functor, toString, right, wrong, structuredAttrs,
+        allowedReferences, allowedRequisites, disallowedReferences, disallowedRequisites, maxSize,
+        maxClosureSize, builder, args, contentAddressed, impure, outputHash, outputHashAlgo,
+        outputHashMode, recurseForDerivations, description, self, epsilon, startSet, operator_, key,
+        path, prefix, outputSpecified;
+
+    const Expr::AstSymbols exprSymbols;
+
+    explicit StaticSymbols(SymbolTable & symbols);
+};
+
+
 class EvalState
 {
 public:
     SymbolTable symbols;
     PosTable positions;
-
-    const Symbol sWith, sOutPath, sDrvPath, sType, sMeta, sName, sValue,
-        sSystem, sOverrides, sOutputs, sOutputName, sIgnoreNulls,
-        sFile, sLine, sColumn, sFunctor, sToString,
-        sRight, sWrong, sStructuredAttrs,
-        sAllowedReferences, sAllowedRequisites, sDisallowedReferences, sDisallowedRequisites,
-        sMaxSize, sMaxClosureSize,
-        sBuilder, sArgs,
-        sContentAddressed, sImpure,
-        sOutputHash, sOutputHashAlgo, sOutputHashMode,
-        sRecurseForDerivations,
-        sDescription, sSelf, sEpsilon, sStartSet, sOperator, sKey, sPath,
-        sPrefix,
-        sOutputSpecified;
-
-    const Expr::AstSymbols exprSymbols;
+    const StaticSymbols s;
 
     /**
      * If set, force copying files to the Nix store even if they

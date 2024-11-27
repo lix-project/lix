@@ -49,7 +49,7 @@ DrvInfo::DrvInfo(EvalState & state, ref<Store> store, const std::string & drvPat
 std::string DrvInfo::queryName()
 {
     if (name == "" && attrs) {
-        auto i = attrs->find(state->sName);
+        auto i = attrs->find(state->s.name);
         if (i == attrs->end()) state->error<TypeError>("derivation name missing").debugThrow();
         name = state->forceStringNoCtx(*i->value, noPos, "while evaluating the 'name' attribute of a derivation");
     }
@@ -60,7 +60,7 @@ std::string DrvInfo::queryName()
 std::string DrvInfo::querySystem()
 {
     if (system == "" && attrs) {
-        auto i = attrs->find(state->sSystem);
+        auto i = attrs->find(state->s.system);
         system = i == attrs->end() ? "unknown" : state->forceStringNoCtx(*i->value, i->pos, "while evaluating the 'system' attribute of a derivation");
     }
     return system;
@@ -70,7 +70,7 @@ std::string DrvInfo::querySystem()
 std::optional<StorePath> DrvInfo::queryDrvPath()
 {
     if (!drvPath && attrs) {
-        Bindings::iterator i = attrs->find(state->sDrvPath);
+        Bindings::iterator i = attrs->find(state->s.drvPath);
         NixStringContext context;
         if (i == attrs->end())
             drvPath = {std::nullopt};
@@ -92,7 +92,7 @@ StorePath DrvInfo::requireDrvPath()
 StorePath DrvInfo::queryOutPath()
 {
     if (!outPath && attrs) {
-        Bindings::iterator i = attrs->find(state->sOutPath);
+        Bindings::iterator i = attrs->find(state->s.outPath);
         NixStringContext context;
         if (i != attrs->end())
             outPath = state->coerceToStorePath(i->pos, *i->value, context, "while evaluating the output path of a derivation");
@@ -118,7 +118,7 @@ void DrvInfo::fillOutputs(bool withPaths)
         return;
     }
 
-    Attr * outputs = this->attrs->get(this->state->sOutputs);
+    Attr * outputs = this->attrs->get(this->state->s.outputs);
     if (outputs == nullptr) {
         fillDefault();
         return;
@@ -157,7 +157,7 @@ void DrvInfo::fillOutputs(bool withPaths)
             state->forceAttrs(*out->value, outputs->pos, errMsg);
 
             // ...and evaluate its `outPath` attribute.
-            Attr * outPath = out->value->attrs->get(this->state->sOutPath);
+            Attr * outPath = out->value->attrs->get(this->state->s.outPath);
             if (outPath == nullptr) {
                 continue;
                 // FIXME: throw error?
@@ -201,7 +201,7 @@ DrvInfo::Outputs DrvInfo::queryOutputs(bool withPaths, bool onlyOutputsToInstall
     // output by its attribute, e.g. `pkgs.lix.dev`, which (lol?) sets the magic
     // attribute `outputSpecified = true`, and changes the `outputName` attr to the
     // explicitly selected-into output.
-    if (Attr * outSpecAttr = attrs->get(state->sOutputSpecified)) {
+    if (Attr * outSpecAttr = attrs->get(state->s.outputSpecified)) {
         bool outputSpecified = this->state->forceBool(
             *outSpecAttr->value,
             outSpecAttr->pos,
@@ -236,7 +236,7 @@ DrvInfo::Outputs DrvInfo::queryOutputs(bool withPaths, bool onlyOutputsToInstall
 std::string DrvInfo::queryOutputName()
 {
     if (outputName == "" && attrs) {
-        Bindings::iterator i = attrs->find(state->sOutputName);
+        Bindings::iterator i = attrs->find(state->s.outputName);
         outputName = i != attrs->end() ? state->forceStringNoCtx(*i->value, noPos, "while evaluating the output name of a derivation") : "";
     }
     return outputName;
@@ -247,7 +247,7 @@ Bindings * DrvInfo::getMeta()
 {
     if (meta) return meta;
     if (!attrs) return 0;
-    Bindings::iterator a = attrs->find(state->sMeta);
+    Bindings::iterator a = attrs->find(state->s.meta);
     if (a == attrs->end()) return 0;
     state->forceAttrs(*a->value, a->pos, "while evaluating the 'meta' attribute of a derivation");
     meta = a->value->attrs;
@@ -274,7 +274,7 @@ bool DrvInfo::checkMeta(Value & v)
         return true;
     }
     else if (v.type() == nAttrs) {
-        Bindings::iterator i = v.attrs->find(state->sOutPath);
+        Bindings::iterator i = v.attrs->find(state->s.outPath);
         if (i != v.attrs->end()) return false;
         for (auto & i : *v.attrs)
             if (!checkMeta(*i.value)) return false;
@@ -483,7 +483,7 @@ static void getDerivations(EvalState & state, Value & vIn,
                should we recurse into it?  => Only if it has a
                `recurseForDerivations = true' attribute. */
             if (attr->value->type() == nAttrs) {
-                Attr * recurseForDrvs = attr->value->attrs->get(state.sRecurseForDerivations);
+                Attr * recurseForDrvs = attr->value->attrs->get(state.s.recurseForDerivations);
                 if (recurseForDrvs == nullptr) {
                     continue;
                 }

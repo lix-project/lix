@@ -52,7 +52,7 @@ json printValueAsJSON(EvalState & state, bool strict,
                 out = *maybeString;
                 break;
             }
-            auto i = v.attrs->find(state.sOutPath);
+            auto i = v.attrs->find(state.s.outPath);
             if (i == v.attrs->end()) {
                 out = json::object();
                 StringSet names;

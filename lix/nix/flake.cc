@@ -1242,10 +1242,10 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
 
                 auto showDerivation = [&]()
                 {
-                    auto name = visitor.getAttr(state->sName)->getString();
+                    auto name = visitor.getAttr(state->s.name)->getString();
                     std::optional<std::string> description;
-                    if (auto aMeta = visitor.maybeGetAttr(state->sMeta)) {
-                        if (auto aDescription = aMeta->maybeGetAttr(state->sDescription))
+                    if (auto aMeta = visitor.maybeGetAttr(state->s.meta)) {
+                        if (auto aDescription = aMeta->maybeGetAttr(state->s.description))
                             description = aDescription->getString();
                     }
 

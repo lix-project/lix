@@ -196,53 +196,49 @@ void initLibExpr()
     libexprInitialised = true;
 }
 
-EvalState::EvalState(
-    const SearchPath & _searchPath,
-    ref<Store> store,
-    std::shared_ptr<Store> buildStore)
-    : sWith(symbols.create("<with>"))
-    , sOutPath(symbols.create("outPath"))
-    , sDrvPath(symbols.create("drvPath"))
-    , sType(symbols.create("type"))
-    , sMeta(symbols.create("meta"))
-    , sName(symbols.create("name"))
-    , sValue(symbols.create("value"))
-    , sSystem(symbols.create("system"))
-    , sOverrides(symbols.create("__overrides"))
-    , sOutputs(symbols.create("outputs"))
-    , sOutputName(symbols.create("outputName"))
-    , sIgnoreNulls(symbols.create("__ignoreNulls"))
-    , sFile(symbols.create("file"))
-    , sLine(symbols.create("line"))
-    , sColumn(symbols.create("column"))
-    , sFunctor(symbols.create("__functor"))
-    , sToString(symbols.create("__toString"))
-    , sRight(symbols.create("right"))
-    , sWrong(symbols.create("wrong"))
-    , sStructuredAttrs(symbols.create("__structuredAttrs"))
-    , sAllowedReferences(symbols.create("allowedReferences"))
-    , sAllowedRequisites(symbols.create("allowedRequisites"))
-    , sDisallowedReferences(symbols.create("disallowedReferences"))
-    , sDisallowedRequisites(symbols.create("disallowedRequisites"))
-    , sMaxSize(symbols.create("maxSize"))
-    , sMaxClosureSize(symbols.create("maxClosureSize"))
-    , sBuilder(symbols.create("builder"))
-    , sArgs(symbols.create("args"))
-    , sContentAddressed(symbols.create("__contentAddressed"))
-    , sImpure(symbols.create("__impure"))
-    , sOutputHash(symbols.create("outputHash"))
-    , sOutputHashAlgo(symbols.create("outputHashAlgo"))
-    , sOutputHashMode(symbols.create("outputHashMode"))
-    , sRecurseForDerivations(symbols.create("recurseForDerivations"))
-    , sDescription(symbols.create("description"))
-    , sSelf(symbols.create("self"))
-    , sEpsilon(symbols.create(""))
-    , sStartSet(symbols.create("startSet"))
-    , sOperator(symbols.create("operator"))
-    , sKey(symbols.create("key"))
-    , sPath(symbols.create("path"))
-    , sPrefix(symbols.create("prefix"))
-    , sOutputSpecified(symbols.create("outputSpecified"))
+StaticSymbols::StaticSymbols(SymbolTable & symbols)
+    : outPath(symbols.create("outPath"))
+    , drvPath(symbols.create("drvPath"))
+    , type(symbols.create("type"))
+    , meta(symbols.create("meta"))
+    , name(symbols.create("name"))
+    , value(symbols.create("value"))
+    , system(symbols.create("system"))
+    , overrides(symbols.create("__overrides"))
+    , outputs(symbols.create("outputs"))
+    , outputName(symbols.create("outputName"))
+    , ignoreNulls(symbols.create("__ignoreNulls"))
+    , file(symbols.create("file"))
+    , line(symbols.create("line"))
+    , column(symbols.create("column"))
+    , functor(symbols.create("__functor"))
+    , toString(symbols.create("__toString"))
+    , right(symbols.create("right"))
+    , wrong(symbols.create("wrong"))
+    , structuredAttrs(symbols.create("__structuredAttrs"))
+    , allowedReferences(symbols.create("allowedReferences"))
+    , allowedRequisites(symbols.create("allowedRequisites"))
+    , disallowedReferences(symbols.create("disallowedReferences"))
+    , disallowedRequisites(symbols.create("disallowedRequisites"))
+    , maxSize(symbols.create("maxSize"))
+    , maxClosureSize(symbols.create("maxClosureSize"))
+    , builder(symbols.create("builder"))
+    , args(symbols.create("args"))
+    , contentAddressed(symbols.create("__contentAddressed"))
+    , impure(symbols.create("__impure"))
+    , outputHash(symbols.create("outputHash"))
+    , outputHashAlgo(symbols.create("outputHashAlgo"))
+    , outputHashMode(symbols.create("outputHashMode"))
+    , recurseForDerivations(symbols.create("recurseForDerivations"))
+    , description(symbols.create("description"))
+    , self(symbols.create("self"))
+    , epsilon(symbols.create(""))
+    , startSet(symbols.create("startSet"))
+    , operator_(symbols.create("operator"))
+    , key(symbols.create("key"))
+    , path(symbols.create("path"))
+    , prefix(symbols.create("prefix"))
+    , outputSpecified(symbols.create("outputSpecified"))
     , exprSymbols{
         .sub = symbols.create("__sub"),
         .lessThan = symbols.create("__lessThan"),
@@ -254,6 +250,14 @@ EvalState::EvalState(
         .body = symbols.create("body"),
         .overrides = symbols.create("__overrides"),
     }
+{
+}
+
+EvalState::EvalState(
+    const SearchPath & _searchPath,
+    ref<Store> store,
+    std::shared_ptr<Store> buildStore)
+    : s(symbols)
     , repair(NoRepair)
     , derivationInternal(rootPath(CanonPath("/builtin/derivation.nix")))
     , store(store)
@@ -774,8 +778,8 @@ void EvalState::mkPos(Value & v, PosIdx p)
     auto origin = positions.originOf(p);
     if (auto path = std::get_if<SourcePath>(&origin)) {
         auto attrs = buildBindings(3);
-        attrs.alloc(sFile).mkString(path->path.abs());
-        makePositionThunks(*this, p, attrs.alloc(sLine), attrs.alloc(sColumn));
+        attrs.alloc(s.file).mkString(path->path.abs());
+        makePositionThunks(*this, p, attrs.alloc(s.line), attrs.alloc(s.column));
         v.mkAttrs(attrs);
     } else
         v.mkNull();
@@ -1072,7 +1076,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
         dynamicEnv = &env2;
         Env * inheritEnv = inheritFromExprs ? buildInheritFromEnv(state, env2) : nullptr;
 
-        AttrDefs::iterator overrides = attrs.find(state.sOverrides);
+        AttrDefs::iterator overrides = attrs.find(state.s.overrides);
         bool hasOverrides = overrides != attrs.end();
 
         /* The recursive attributes are evaluated in the new
@@ -1680,7 +1684,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
             }
         }
 
-        else if (vCur.type() == nAttrs && (functor = vCur.attrs->get(sFunctor))) {
+        else if (vCur.type() == nAttrs && (functor = vCur.attrs->get(s.functor))) {
             /* 'vCur' may be allocated on the stack of the calling
                function, but for functors we may keep a reference, so
                heap-allocate a copy and use that instead. */
@@ -1755,7 +1759,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res)
     forceValue(fun, pos);
 
     if (fun.type() == nAttrs) {
-        auto found = fun.attrs->find(sFunctor);
+        auto found = fun.attrs->find(s.functor);
         if (found != fun.attrs->end()) {
             Value * v = allocValue();
             callFunction(*found->value, fun, *v, pos);
@@ -2168,7 +2172,7 @@ bool EvalState::forceBool(Value & v, const PosIdx pos, std::string_view errorCtx
 
 bool EvalState::isFunctor(Value & fun)
 {
-    return fun.type() == nAttrs && fun.attrs->find(sFunctor) != fun.attrs->end();
+    return fun.type() == nAttrs && fun.attrs->find(s.functor) != fun.attrs->end();
 }
 
 
@@ -2236,7 +2240,7 @@ std::string_view EvalState::forceStringNoCtx(Value & v, const PosIdx pos, std::s
 bool EvalState::isDerivation(Value & v)
 {
     if (v.type() != nAttrs) return false;
-    Bindings::iterator i = v.attrs->find(sType);
+    Bindings::iterator i = v.attrs->find(s.type);
     if (i == v.attrs->end()) return false;
     forceValue(*i->value, i->pos);
     if (i->value->type() != nString) return false;
@@ -2247,7 +2251,7 @@ bool EvalState::isDerivation(Value & v)
 std::optional<std::string> EvalState::tryAttrsToString(const PosIdx pos, Value & v,
     NixStringContext & context, bool coerceMore, bool copyToStore)
 {
-    auto i = v.attrs->find(sToString);
+    auto i = v.attrs->find(s.toString);
     if (i != v.attrs->end()) {
         Value v1;
         callFunction(*i->value, v, v1, pos);
@@ -2290,7 +2294,7 @@ BackedStringView EvalState::coerceToString(
         auto maybeString = tryAttrsToString(pos, v, context, coerceMore, copyToStore);
         if (maybeString)
             return std::move(*maybeString);
-        auto i = v.attrs->find(sOutPath);
+        auto i = v.attrs->find(s.outPath);
         if (i == v.attrs->end()) {
             error<TypeError>(
                 "cannot coerce %1% to a string: %2%",
@@ -2495,8 +2499,8 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             /* If both sets denote a derivation (type = "derivation"),
                then compare their outPaths. */
             if (isDerivation(v1) && isDerivation(v2)) {
-                Bindings::iterator i = v1.attrs->find(sOutPath);
-                Bindings::iterator j = v2.attrs->find(sOutPath);
+                Bindings::iterator i = v1.attrs->find(s.outPath);
+                Bindings::iterator j = v2.attrs->find(s.outPath);
                 if (i != v1.attrs->end() && j != v2.attrs->end())
                     return eqValues(*i->value, *j->value, pos, errorCtx);
             }
