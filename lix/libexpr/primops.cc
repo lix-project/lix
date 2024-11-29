@@ -2845,6 +2845,7 @@ void EvalState::createBaseEnv()
     baseEnv.values[0]->attrs->sort();
 
     staticBaseEnv->sort();
+    staticBaseEnv->isRoot = true;
 
     /* Note: we have to initialize the 'derivation' constant *after*
        building baseEnv/staticBaseEnv because it uses 'builtins'. */

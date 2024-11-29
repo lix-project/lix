@@ -342,6 +342,17 @@ void ExprVar::bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & 
         } else {
             auto i = curEnv->find(name);
             if (i != curEnv->vars.end()) {
+                if (this->needsRoot && !curEnv->isRoot) {
+                    throw ParseError({
+                        .msg = HintFmt(
+                            "Shadowing symbol '%s' used in internal expressions is not allowed. Use %s to disable this error.",
+                            es.symbols[name],
+                            "--extra-deprecated-features shadow-internal-symbols"
+                        ),
+                        .pos = es.positions[pos]
+                    });
+                }
+
                 this->level = level;
                 displ = i->second;
                 return;

@@ -155,6 +155,7 @@ deprecated_feature_definitions = files(
   'deprecated-features/ancient-let.md',
   'deprecated-features/rec-set-overrides.md',
   'deprecated-features/url-literals.md',
+  'deprecated-features/shadow-internal-symbols.md',
 )
 
 experimental_features_gen = custom_target(

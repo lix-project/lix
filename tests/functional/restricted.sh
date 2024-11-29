@@ -14,8 +14,8 @@ nix-instantiate --restrict-eval --eval -E 'builtins.readFile ./simple.nix' -I sr
 (! nix-instantiate --restrict-eval --eval -E 'builtins.readDir ../../lix/legacy')
 nix-instantiate --restrict-eval --eval -E 'builtins.readDir ../../lix/legacy' -I src=../../lix
 
-(! nix-instantiate --restrict-eval --eval -E 'let __nixPath = [ { prefix = "foo"; path = ./.; } ]; in <foo>')
-nix-instantiate --restrict-eval --eval -E 'let __nixPath = [ { prefix = "foo"; path = ./.; } ]; in <foo>' -I src=.
+(! nix-instantiate --extra-deprecated-features shadow-internal-symbols --restrict-eval --eval -E 'let __nixPath = [ { prefix = "foo"; path = ./.; } ]; in <foo>')
+nix-instantiate --extra-deprecated-features shadow-internal-symbols --restrict-eval --eval -E 'let __nixPath = [ { prefix = "foo"; path = ./.; } ]; in <foo>' -I src=.
 
 p=$(nix eval --raw --expr "builtins.fetchurl \"file://$(pwd)/restricted.sh\"" --impure --restrict-eval --allowed-uris "file://$(pwd)")
 cmp $p restricted.sh

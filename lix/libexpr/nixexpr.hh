@@ -132,8 +132,14 @@ struct ExprVar : Expr
     Level level;
     Displacement displ;
 
-    ExprVar(Symbol name) : name(name) { };
-    ExprVar(const PosIdx & pos, Symbol name) : pos(pos), name(name) { };
+    /* Variables like `__sub` as generated from expressions like `5 - 3` shouldn't be overridden.
+     * This is implemented by having a blessed "root" env that contains the definitions (usually `builtins`)
+     * and checking that this var only binds against that env.
+     */
+    bool needsRoot;
+
+    ExprVar(Symbol name) : name(name), needsRoot(false) { };
+    ExprVar(const PosIdx & pos, Symbol name, bool needsRoot = false) : pos(pos), name(name), needsRoot(needsRoot) { };
     Value * maybeThunk(EvalState & state, Env & env) override;
     PosIdx getPos() const override { return pos; }
     COMMON_METHODS
@@ -475,6 +481,9 @@ struct StaticEnv
     // Note: these must be in sorted order.
     typedef std::vector<std::pair<Symbol, Displacement>> Vars;
     Vars vars;
+
+    /* See ExprVar::needsRoot */
+    bool isRoot = false;
 
     StaticEnv(ExprWith * isWith, const StaticEnv * up, size_t expectedSize = 0) : isWith(isWith), up(up) {
         vars.reserve(expectedSize);
