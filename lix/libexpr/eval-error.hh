@@ -5,9 +5,11 @@
 #include "lix/libutil/error.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libexpr/pos-idx.hh"
+#include "lix/libexpr/pos-table.hh"
 
 namespace nix {
 
+struct DebugState;
 struct DebugTrace;
 struct Env;
 struct Expr;
@@ -55,18 +57,18 @@ public:
 template<class T>
 class [[nodiscard]] EvalErrorBuilder final
 {
-    friend class EvalState;
-
-    EvalState & state;
-
-    template<typename... Args>
-    explicit EvalErrorBuilder(EvalState & state, const Args &... args)
-        : state(state), error(make_box_ptr<T>(args...))
-    {
-    }
+    const PosTable & positions;
+    DebugState * debug;
+    box_ptr<T> error;
 
 public:
-    box_ptr<T> error;
+    template<typename... Args>
+    explicit EvalErrorBuilder(const PosTable & positions, DebugState * debug, const Args &... args)
+        : positions(positions)
+        , debug{debug}
+        , error(make_box_ptr<T>(args...))
+    {
+    }
 
     [[gnu::noinline]] EvalErrorBuilder<T> withExitStatus(unsigned int exitStatus) &&;
 

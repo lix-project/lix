@@ -988,7 +988,7 @@ Value * NixRepl::replOverlays()
         auto replInit = evalFile(sourcePath);
 
         if (!replInit->isLambda()) {
-            state.error<TypeError>(
+            state.errors.make<TypeError>(
                 "Expected `repl-overlays` to be a lambda but found %1%: %2%",
                 showType(*replInit),
                 ValuePrinter(state, *replInit, errorPrintOptions)
@@ -999,7 +999,7 @@ Value * NixRepl::replOverlays()
 
         if (replInit->lambda.fun->hasFormals()
             && !replInit->lambda.fun->formals->ellipsis) {
-            state.error<TypeError>(
+            state.errors.make<TypeError>(
                 "Expected first argument of %1% to have %2% to allow future versions of Lix to add additional attributes to the argument",
                 "repl-overlays",
                 "..."

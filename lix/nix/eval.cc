@@ -106,7 +106,7 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
                     }
                 }
                 else
-                    state->error<TypeError>("value at '%s' is not a string or an attribute set", state->positions[pos]).debugThrow();
+                    state->errors.make<TypeError>("value at '%s' is not a string or an attribute set", state->positions[pos]).debugThrow();
             };
 
             recurse(*v, pos, *writeTo);

@@ -506,7 +506,7 @@ std::shared_ptr<AttrCursor> AttrCursor::maybeGetAttr(Symbol name)
                 // evaluate to see whether 'name' exists
             } else
                 return nullptr;
-                //error<TypeError>("'%s' is not an attribute set", getAttrPathStr()).debugThrow();
+                //errors.make<TypeError>("'%s' is not an attribute set", getAttrPathStr()).debugThrow();
         }
     }
 
@@ -514,7 +514,7 @@ std::shared_ptr<AttrCursor> AttrCursor::maybeGetAttr(Symbol name)
 
     if (v.type() != nAttrs)
         return nullptr;
-        //error<TypeError>("'%s' is not an attribute set", getAttrPathStr()).debugThrow();
+        //errors.make<TypeError>("'%s' is not an attribute set", getAttrPathStr()).debugThrow();
 
     auto attr = v.attrs->get(name);
 
@@ -580,14 +580,14 @@ std::string AttrCursor::getString()
                 debug("using cached string attribute '%s'", getAttrPathStr());
                 return s->first;
             } else
-                root->state.error<TypeError>("'%s' is not a string", getAttrPathStr()).debugThrow();
+                root->state.errors.make<TypeError>("'%s' is not a string", getAttrPathStr()).debugThrow();
         }
     }
 
     auto & v = forceValue();
 
     if (v.type() != nString && v.type() != nPath) {
-        root->state.error<TypeError>("'%s' is not a string but %s", getAttrPathStr(), v.type()).debugThrow();
+        root->state.errors.make<TypeError>("'%s' is not a string but %s", getAttrPathStr(), v.type()).debugThrow();
     }
 
     return v.type() == nString ? v.string.s : v.path().to_string();
@@ -623,7 +623,7 @@ string_t AttrCursor::getStringWithContext()
                     return *s;
                 }
             } else
-                root->state.error<TypeError>("'%s' is not a string", getAttrPathStr()).debugThrow();
+                root->state.errors.make<TypeError>("'%s' is not a string", getAttrPathStr()).debugThrow();
         }
     }
 
@@ -636,7 +636,7 @@ string_t AttrCursor::getStringWithContext()
     } else if (v.type() == nPath) {
         return {v.path().to_string(), {}};
     } else {
-        root->state.error<TypeError>("'%s' is not a string but %s", getAttrPathStr(), v.type()).debugThrow();
+        root->state.errors.make<TypeError>("'%s' is not a string but %s", getAttrPathStr(), v.type()).debugThrow();
     }
 }
 
@@ -650,14 +650,14 @@ bool AttrCursor::getBool()
                 debug("using cached Boolean attribute '%s'", getAttrPathStr());
                 return *b;
             } else
-                root->state.error<TypeError>("'%s' is not a Boolean", getAttrPathStr()).debugThrow();
+                root->state.errors.make<TypeError>("'%s' is not a Boolean", getAttrPathStr()).debugThrow();
         }
     }
 
     auto & v = forceValue();
 
     if (v.type() != nBool)
-        root->state.error<TypeError>("'%s' is not a Boolean", getAttrPathStr()).debugThrow();
+        root->state.errors.make<TypeError>("'%s' is not a Boolean", getAttrPathStr()).debugThrow();
 
     return v.boolean;
 }
@@ -672,14 +672,14 @@ NixInt AttrCursor::getInt()
                 debug("using cached integer attribute '%s'", getAttrPathStr());
                 return i->x;
             } else
-                root->state.error<TypeError>("'%s' is not an integer", getAttrPathStr()).debugThrow();
+                root->state.errors.make<TypeError>("'%s' is not an integer", getAttrPathStr()).debugThrow();
         }
     }
 
     auto & v = forceValue();
 
     if (v.type() != nInt)
-        root->state.error<TypeError>("'%s' is not an integer", getAttrPathStr()).debugThrow();
+        root->state.errors.make<TypeError>("'%s' is not an integer", getAttrPathStr()).debugThrow();
 
     return v.integer;
 }
@@ -694,7 +694,7 @@ std::vector<std::string> AttrCursor::getListOfStrings()
                 debug("using cached list of strings attribute '%s'", getAttrPathStr());
                 return *l;
             } else
-                root->state.error<TypeError>("'%s' is not a list of strings", getAttrPathStr()).debugThrow();
+                root->state.errors.make<TypeError>("'%s' is not a list of strings", getAttrPathStr()).debugThrow();
         }
     }
 
@@ -704,7 +704,7 @@ std::vector<std::string> AttrCursor::getListOfStrings()
     root->state.forceValue(v, noPos);
 
     if (v.type() != nList)
-        root->state.error<TypeError>("'%s' is not a list", getAttrPathStr()).debugThrow();
+        root->state.errors.make<TypeError>("'%s' is not a list", getAttrPathStr()).debugThrow();
 
     std::vector<std::string> res;
 
@@ -727,14 +727,14 @@ std::vector<Symbol> AttrCursor::getAttrs()
                 debug("using cached attrset attribute '%s'", getAttrPathStr());
                 return *attrs;
             } else
-                root->state.error<TypeError>("'%s' is not an attribute set", getAttrPathStr()).debugThrow();
+                root->state.errors.make<TypeError>("'%s' is not an attribute set", getAttrPathStr()).debugThrow();
         }
     }
 
     auto & v = forceValue();
 
     if (v.type() != nAttrs)
-        root->state.error<TypeError>("'%s' is not an attribute set", getAttrPathStr()).debugThrow();
+        root->state.errors.make<TypeError>("'%s' is not an attribute set", getAttrPathStr()).debugThrow();
 
     std::vector<Symbol> attrs;
     for (auto & attr : *getValue().attrs)

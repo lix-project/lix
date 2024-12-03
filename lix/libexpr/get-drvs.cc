@@ -50,7 +50,7 @@ std::string DrvInfo::queryName()
 {
     if (name == "" && attrs) {
         auto i = attrs->find(state->s.name);
-        if (i == attrs->end()) state->error<TypeError>("derivation name missing").debugThrow();
+        if (i == attrs->end()) state->errors.make<TypeError>("derivation name missing").debugThrow();
         name = state->forceStringNoCtx(*i->value, noPos, "while evaluating the 'name' attribute of a derivation");
     }
     return name;
@@ -446,7 +446,7 @@ static void getDerivations(EvalState & state, Value & vIn,
 
         return;
     } else if (v.type() != nAttrs) {
-        state.error<TypeError>(
+        state.errors.make<TypeError>(
             "expression was expected to be a derivation or collection of derivations, but instead was %s",
             showType(v.type(), true)
         ).debugThrow();

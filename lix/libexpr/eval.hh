@@ -348,6 +348,18 @@ struct EvalRuntimeCaches
     std::map<SourcePath, std::shared_ptr<CachedEvalFile>> fileEval;
 };
 
+struct EvalErrorContext
+{
+    const PosTable & positions;
+    DebugState * debug;
+
+    template<class T, typename... Args>
+    [[gnu::noinline]]
+    EvalErrorBuilder<T> make(const Args & ... args) {
+        return EvalErrorBuilder<T>(positions, debug, args...);
+    }
+};
+
 
 class EvalState
 {
@@ -389,12 +401,7 @@ public:
     const ref<Store> buildStore;
 
     std::unique_ptr<DebugState> debug;
-
-    template<class T, typename... Args>
-    [[gnu::noinline]]
-    EvalErrorBuilder<T> error(const Args & ... args) {
-        return EvalErrorBuilder<T>(*this, args...);
-    }
+    EvalErrorContext errors;
 
 private:
 

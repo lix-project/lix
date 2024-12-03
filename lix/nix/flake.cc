@@ -868,7 +868,7 @@ struct CmdFlakeInitCommon : virtual Args, EvalCommand
         auto templateDir = templateDirAttr->getString();
 
         if (!store->isInStore(templateDir))
-            evalState->error<TypeError>(
+            evalState->errors.make<TypeError>(
                 "'%s' was not found in the Nix store\n"
                 "If you've set '%s' to a string, try using a path instead.",
                 templateDir, templateDirAttr->getAttrPathStr()).debugThrow();
@@ -1374,7 +1374,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                 {
                     auto aType = visitor.maybeGetAttr("type");
                     if (!aType || aType->getString() != "app")
-                        state->error<EvalError>("not an app definition").debugThrow();
+                        state->errors.make<EvalError>("not an app definition").debugThrow();
                     if (json) {
                         j.emplace("type", "app");
                     } else {
