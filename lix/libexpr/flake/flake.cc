@@ -88,7 +88,7 @@ static void expectType(EvalState & state, ValueType type,
     forceTrivialValue(state, value, pos);
     if (value.type() != type)
         throw Error("expected %s but got %s at %s",
-            showType(type), showType(value.type()), state.positions[pos]);
+            showType(type), showType(value.type()), state.ctx.positions[pos]);
 }
 
 static std::map<FlakeId, FlakeInput> parseFlakeInputs(
@@ -156,7 +156,7 @@ static FlakeInput parseFlakeInput(EvalState & state,
             }
         } catch (Error & e) {
             e.addTrace(
-                state.positions[attr.pos],
+                state.ctx.positions[attr.pos],
                 HintFmt("while evaluating flake attribute '%s'", state.ctx.symbols[attr.name]));
             throw;
         }
@@ -166,13 +166,13 @@ static FlakeInput parseFlakeInput(EvalState & state,
         try {
             input.ref = FlakeRef::fromAttrs(attrs);
         } catch (Error & e) {
-            e.addTrace(state.positions[pos], HintFmt("while evaluating flake input"));
+            e.addTrace(state.ctx.positions[pos], HintFmt("while evaluating flake input"));
             throw;
         }
     else {
         attrs.erase("url");
         if (!attrs.empty())
-            throw Error("unexpected flake input attribute '%s', at %s", attrs.begin()->first, state.positions[pos]);
+            throw Error("unexpected flake input attribute '%s', at %s", attrs.begin()->first, state.ctx.positions[pos]);
         if (url)
             input.ref = parseFlakeRef(*url, baseDir, true, input.isFlake);
     }
@@ -325,7 +325,7 @@ static Flake getFlake(
             attr.name != state.ctx.s.outputs &&
             attr.name != sNixConfig)
             throw Error("flake '%s' has an unsupported attribute '%s', at %s",
-                lockedRef, state.ctx.symbols[attr.name], state.positions[attr.pos]);
+                lockedRef, state.ctx.symbols[attr.name], state.ctx.positions[attr.pos]);
     }
 
     return flake;
@@ -808,7 +808,7 @@ void prim_getFlake(EvalState & state, const PosIdx pos, Value * * args, Value & 
     std::string flakeRefS(state.forceStringNoCtx(*args[0], pos, "while evaluating the argument passed to builtins.getFlake"));
     auto flakeRef = parseFlakeRef(flakeRefS, {}, true);
     if (evalSettings.pureEval && !flakeRef.input.isLocked())
-        throw Error("cannot call 'getFlake' on unlocked flake reference '%s', at %s (use --impure to override)", flakeRefS, state.positions[pos]);
+        throw Error("cannot call 'getFlake' on unlocked flake reference '%s', at %s (use --impure to override)", flakeRefS, state.ctx.positions[pos]);
 
     callFlake(state,
         lockFlake(state, flakeRef,

@@ -41,7 +41,7 @@ static void showAttrs(EvalState & state, bool strict, bool location,
 
         XMLAttrs xmlAttrs;
         xmlAttrs["name"] = i;
-        if (location && a.pos) posToXML(state, xmlAttrs, state.positions[a.pos]);
+        if (location && a.pos) posToXML(state, xmlAttrs, state.ctx.positions[a.pos]);
 
         XMLOpenElement _(doc, "attr", xmlAttrs);
         printValueAsXML(state, strict, location,
@@ -132,7 +132,7 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
                 break;
             }
             XMLAttrs xmlAttrs;
-            if (location) posToXML(state, xmlAttrs, state.positions[v.lambda.fun->pos]);
+            if (location) posToXML(state, xmlAttrs, state.ctx.positions[v.lambda.fun->pos]);
             XMLOpenElement _(doc, "function", xmlAttrs);
 
             if (v.lambda.fun->hasFormals()) {

@@ -137,7 +137,7 @@ static SourcePath realisePath(EvalState & state, const PosIdx pos, Value & v, co
             ? state.paths.checkSourcePath(realPath)
             : realPath;
     } catch (Error & e) {
-        e.addTrace(state.positions[pos], "while realising the context of path '%s'", path);
+        e.addTrace(state.ctx.positions[pos], "while realising the context of path '%s'", path);
         throw;
     }
 }
@@ -325,7 +325,7 @@ void prim_exec(EvalState & state, const PosIdx pos, Value * * args, Value & v)
     try {
         auto _ = state.paths.realiseContext(context); // FIXME: Handle CA derivations
     } catch (InvalidPathError & e) {
-        e.addTrace(state.positions[pos], "while realising the context for builtins.exec");
+        e.addTrace(state.ctx.positions[pos], "while realising the context for builtins.exec");
         throw;
     }
 
@@ -334,13 +334,13 @@ void prim_exec(EvalState & state, const PosIdx pos, Value * * args, Value & v)
     try {
         parsed = &state.parseExprFromString(std::move(output), CanonPath::root);
     } catch (Error & e) {
-        e.addTrace(state.positions[pos], "while parsing the output from '%1%'", program);
+        e.addTrace(state.ctx.positions[pos], "while parsing the output from '%1%'", program);
         throw;
     }
     try {
         state.eval(*parsed, v);
     } catch (Error & e) {
-        e.addTrace(state.positions[pos], "while evaluating the output from '%1%'", program);
+        e.addTrace(state.ctx.positions[pos], "while evaluating the output from '%1%'", program);
         throw;
     }
 }
@@ -576,7 +576,7 @@ static void prim_break(EvalState & state, const PosIdx pos, Value * * args, Valu
         auto error = EvalError(ErrorInfo {
             .level = lvlInfo,
             .msg = HintFmt("breakpoint reached"),
-            .pos = state.positions[pos],
+            .pos = state.ctx.positions[pos],
         });
 
         state.debug->onEvalError(&error, (*trace)->env, (*trace)->expr);
@@ -747,14 +747,14 @@ static void prim_derivationStrict(EvalState & state, const PosIdx pos, Value * *
     try {
         drvName = state.forceStringNoCtx(*nameAttr->value, pos, "while evaluating the `name` attribute passed to builtins.derivationStrict");
     } catch (Error & e) {
-        e.addTrace(state.positions[nameAttr->pos], "while evaluating the derivation attribute 'name'");
+        e.addTrace(state.ctx.positions[nameAttr->pos], "while evaluating the derivation attribute 'name'");
         throw;
     }
 
     try {
         derivationStrictInternal(state, drvName, attrs, v);
     } catch (Error & e) {
-        Pos pos = state.positions[nameAttr->pos];
+        Pos pos = state.ctx.positions[nameAttr->pos];
         /*
          * Here we make two abuses of the error system
          *
@@ -946,7 +946,7 @@ drvName, Bindings * attrs, Value & v)
             }
 
         } catch (Error & e) {
-            e.addTrace(state.positions[i->pos],
+            e.addTrace(state.ctx.positions[i->pos],
                 HintFmt("while evaluating attribute '%1%' of derivation '%2%'", key, drvName));
             throw;
         }
@@ -1443,7 +1443,7 @@ static void prim_fromJSON(EvalState & state, const PosIdx pos, Value * * args, V
     try {
         parseJSON(state, s, v);
     } catch (JSONParseError &e) {
-        e.addTrace(state.positions[pos], "while decoding a JSON string");
+        e.addTrace(state.ctx.positions[pos], "while decoding a JSON string");
         throw;
     }
 }
@@ -1557,7 +1557,7 @@ static void addPath(
         } else
             state.paths.allowAndSetStorePathString(*expectedStorePath, v);
     } catch (Error & e) {
-        e.addTrace(state.positions[pos], "while adding path '%s'", path);
+        e.addTrace(state.ctx.positions[pos], "while adding path '%s'", path);
         throw;
     }
 }
@@ -1710,13 +1710,13 @@ static struct LazyPosAcessors {
     PrimOp primop_lineOfPos{
         .arity = 1,
         .fun = [] (EvalState & state, PosIdx pos, Value * * args, Value & v) {
-            v.mkInt(state.positions[PosIdx(args[0]->integer.value)].line);
+            v.mkInt(state.ctx.positions[PosIdx(args[0]->integer.value)].line);
         }
     };
     PrimOp primop_columnOfPos{
         .arity = 1,
         .fun = [] (EvalState & state, PosIdx pos, Value * * args, Value & v) {
-            v.mkInt(state.positions[PosIdx(args[0]->integer.value)].column);
+            v.mkInt(state.ctx.positions[PosIdx(args[0]->integer.value)].column);
         }
     };
 

@@ -797,7 +797,7 @@ void EvalState::evalLazily(Expr & e, Value & v)
 
 void EvalState::mkPos(Value & v, PosIdx p)
 {
-    auto origin = positions.originOf(p);
+    auto origin = ctx.positions.originOf(p);
     if (auto path = std::get_if<SourcePath>(&origin)) {
         auto attrs = buildBindings(3);
         attrs.alloc(ctx.s.file).mkString(path->path.abs());
@@ -961,7 +961,7 @@ void EvalState::evalFile(const SourcePath & path_, Value & v)
                 *this,
                 e,
                 this->builtins.env,
-                e.getPos() ? std::make_shared<Pos>(positions[e.getPos()]) : nullptr,
+                e.getPos() ? std::make_shared<Pos>(ctx.positions[e.getPos()]) : nullptr,
                 "while evaluating the file '%1%':", resolvedPath.to_string())
             : nullptr;
 
@@ -1002,7 +1002,7 @@ inline bool EvalState::evalBool(Env & env, Expr & e, const PosIdx pos, std::stri
              ).atPos(pos).withFrame(env, e).debugThrow();
         return v.boolean;
     } catch (Error & e) {
-        e.addTrace(positions[pos], errorCtx);
+        e.addTrace(ctx.positions[pos], errorCtx);
         throw;
     }
 }
@@ -1019,7 +1019,7 @@ inline void EvalState::evalAttrs(Env & env, Expr & e, Value & v, const PosIdx po
                 ValuePrinter(*this, v, errorPrintOptions)
             ).withFrame(env, e).debugThrow();
     } catch (Error & e) {
-        e.addTrace(positions[pos], errorCtx);
+        e.addTrace(ctx.positions[pos], errorCtx);
         throw;
     }
 }
@@ -1146,7 +1146,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
         auto nameSym = state.ctx.symbols.create(nameVal.string.s);
         Bindings::iterator j = v.attrs->find(nameSym);
         if (j != v.attrs->end())
-            state.errors.make<EvalError>("dynamic attribute '%1%' already defined at %2%", state.ctx.symbols[nameSym], state.positions[j->pos]).atPos(i.pos).withFrame(env, *this).debugThrow();
+            state.errors.make<EvalError>("dynamic attribute '%1%' already defined at %2%", state.ctx.symbols[nameSym], state.ctx.positions[j->pos]).atPos(i.pos).withFrame(env, *this).debugThrow();
 
         i.valueExpr->setName(nameSym);
         /* Keep sorted order so find can catch duplicates */
@@ -1183,7 +1183,7 @@ void ExprLet::eval(EvalState & state, Env & env, Value & v)
             *this,
             env2,
             getPos()
-                ? std::make_shared<Pos>(state.positions[getPos()])
+                ? std::make_shared<Pos>(state.ctx.positions[getPos()])
                 : nullptr,
             "while evaluating a '%1%' expression",
             "let"
@@ -1252,7 +1252,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
     } catch (Error & e) {
         assert(this->e != nullptr);
         e.addTrace(
-            state.positions[getPos()],
+            state.ctx.positions[getPos()],
             "while evaluating '%s' to select '%s' on it",
             ExprPrinter(state, *this->e),
             showAttrPath(state.ctx.symbols, this->attrPath)
@@ -1266,7 +1266,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                 state,
                 *this,
                 env,
-                state.positions[getPos()],
+                state.ctx.positions[getPos()],
                 "while evaluating the attribute '%1%'",
                 showAttrPath(state, env, attrPath))
             : nullptr;
@@ -1303,7 +1303,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                 state.forceValue(*vCurrent, pos);
             } catch (Error & e) {
                 e.addTrace(
-                    state.positions[getPos()],
+                    state.ctx.positions[getPos()],
                     "while evaluating '%s' to select '%s' on it",
                     partsSoFar(),
                     state.ctx.symbols[name]
@@ -1365,7 +1365,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
         state.forceValue(*vCurrent, (posCurrent ? posCurrent : this->pos));
 
     } catch (Error & e) {
-        auto pos2r = state.positions[posCurrent];
+        auto pos2r = state.ctx.positions[posCurrent];
         if (pos2r && !std::get_if<Pos::Hidden>(&pos2r.origin))
             e.addTrace(pos2r, "while evaluating the attribute '%1%'",
                 showAttrPath(state, env, attrPath));
@@ -1488,7 +1488,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
     CallDepth _level(callDepth);
 
     auto trace = evalSettings.traceFunctionCalls
-        ? std::make_unique<FunctionCallTrace>(positions[pos])
+        ? std::make_unique<FunctionCallTrace>(ctx.positions[pos])
         : nullptr;
 
     forceValue(fun, pos);
@@ -1527,7 +1527,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 try {
                     forceAttrs(*args[0], lambda.pos, "while evaluating the value passed for the lambda argument");
                 } catch (Error & e) {
-                    if (pos) e.addTrace(positions[pos], "from call site");
+                    if (pos) e.addTrace(ctx.positions[pos], "from call site");
                     throw;
                 }
 
@@ -1577,7 +1577,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
             try {
                 auto dts = debug
                     ? makeDebugTraceStacker(
-                        *this, *lambda.body, env2, positions[lambda.pos],
+                        *this, *lambda.body, env2, ctx.positions[lambda.pos],
                         "while calling %s",
                         lambda.getQuotedName(ctx.symbols))
                     : nullptr;
@@ -1586,10 +1586,10 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
             } catch (Error & e) {
                 if (loggerSettings.showTrace.get()) {
                     e.addTrace(
-                        positions[lambda.pos],
+                        ctx.positions[lambda.pos],
                         "while calling %s",
                         lambda.getQuotedName(ctx.symbols));
-                    if (pos) e.addTrace(positions[pos], "from call site");
+                    if (pos) e.addTrace(ctx.positions[pos], "from call site");
                 }
                 throw;
             }
@@ -1619,13 +1619,13 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     // Distinguish between an error that simply happened while "throw"
                     // was being evaluated and an explicit thrown error.
                     if (fn->name == "throw") {
-                        e.addTrace(positions[pos], "caused by explicit %s", "throw");
+                        e.addTrace(ctx.positions[pos], "caused by explicit %s", "throw");
                     } else {
-                        e.addTrace(positions[pos], "while calling the '%s' builtin", fn->name);
+                        e.addTrace(ctx.positions[pos], "while calling the '%s' builtin", fn->name);
                     }
                     throw;
                 } catch (Error & e) {
-                    e.addTrace(positions[pos], "while calling the '%1%' builtin", fn->name);
+                    e.addTrace(ctx.positions[pos], "while calling the '%1%' builtin", fn->name);
                     throw;
                 }
 
@@ -1674,7 +1674,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     //    so the debugger allows to inspect the wrong parameters passed to the builtin.
                     fn->fun(*this, vCur.determinePos(noPos), vArgs.data(), vCur);
                 } catch (Error & e) {
-                    e.addTrace(positions[pos], "while calling the '%1%' builtin", fn->name);
+                    e.addTrace(ctx.positions[pos], "while calling the '%1%' builtin", fn->name);
                     throw;
                 }
 
@@ -1692,7 +1692,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
             try {
                 callFunction(*functor->value, 2, args2, vCur, functor->pos);
             } catch (Error & e) {
-                e.addTrace(positions[pos], "while calling a functor (an attribute set with a '__functor' attribute)");
+                e.addTrace(ctx.positions[pos], "while calling a functor (an attribute set with a '__functor' attribute)");
                 throw;
             }
             nrArgs--;
@@ -1720,7 +1720,7 @@ void ExprCall::eval(EvalState & state, Env & env, Value & v)
             *this,
             env,
             getPos()
-                ? std::make_shared<Pos>(state.positions[getPos()])
+                ? std::make_shared<Pos>(state.ctx.positions[getPos()])
                 : nullptr,
             "while calling a function"
         )
@@ -2066,7 +2066,7 @@ void EvalState::tryFixupBlackHolePos(Value & v, PosIdx pos)
     try {
         std::rethrow_exception(e);
     } catch (InfiniteRecursionError & e) {
-        e.atPos(positions[pos]);
+        e.atPos(ctx.positions[pos]);
     } catch (...) {
     }
 }
@@ -2088,13 +2088,13 @@ void EvalState::forceValueDeep(Value & v)
                 try {
                     // If the value is a thunk, we're evaling. Otherwise no trace necessary.
                     auto dts = debug && i.value->isThunk()
-                        ? makeDebugTraceStacker(*this, *i.value->thunk.expr, *i.value->thunk.env, positions[i.pos],
+                        ? makeDebugTraceStacker(*this, *i.value->thunk.expr, *i.value->thunk.env, ctx.positions[i.pos],
                             "while evaluating the attribute '%1%'", ctx.symbols[i.name])
                         : nullptr;
 
                     recurse(*i.value);
                 } catch (Error & e) {
-                    e.addTrace(positions[i.pos], "while evaluating the attribute '%1%'", ctx.symbols[i.name]);
+                    e.addTrace(ctx.positions[i.pos], "while evaluating the attribute '%1%'", ctx.symbols[i.name]);
                     throw;
                 }
         }
@@ -2121,7 +2121,7 @@ NixInt EvalState::forceInt(Value & v, const PosIdx pos, std::string_view errorCt
             ).atPos(pos).debugThrow();
         return v.integer;
     } catch (Error & e) {
-        e.addTrace(positions[pos], errorCtx);
+        e.addTrace(ctx.positions[pos], errorCtx);
         throw;
     }
 
@@ -2143,7 +2143,7 @@ NixFloat EvalState::forceFloat(Value & v, const PosIdx pos, std::string_view err
             ).atPos(pos).debugThrow();
         return v.fpoint;
     } catch (Error & e) {
-        e.addTrace(positions[pos], errorCtx);
+        e.addTrace(ctx.positions[pos], errorCtx);
         throw;
     }
 }
@@ -2161,7 +2161,7 @@ bool EvalState::forceBool(Value & v, const PosIdx pos, std::string_view errorCtx
             ).atPos(pos).debugThrow();
         return v.boolean;
     } catch (Error & e) {
-        e.addTrace(positions[pos], errorCtx);
+        e.addTrace(ctx.positions[pos], errorCtx);
         throw;
     }
 
@@ -2186,7 +2186,7 @@ void EvalState::forceFunction(Value & v, const PosIdx pos, std::string_view erro
                 ValuePrinter(*this, v, errorPrintOptions)
             ).atPos(pos).debugThrow();
     } catch (Error & e) {
-        e.addTrace(positions[pos], errorCtx);
+        e.addTrace(ctx.positions[pos], errorCtx);
         throw;
     }
 }
@@ -2204,7 +2204,7 @@ std::string_view EvalState::forceString(Value & v, const PosIdx pos, std::string
             ).atPos(pos).debugThrow();
         return v.string.s;
     } catch (Error & e) {
-        e.addTrace(positions[pos], errorCtx);
+        e.addTrace(ctx.positions[pos], errorCtx);
         throw;
     }
 }
@@ -2333,7 +2333,7 @@ BackedStringView EvalState::coerceToString(
                             "while evaluating one element of the list",
                             coerceMore, copyToStore, canonicalizePath);
                 } catch (Error & e) {
-                    e.addTrace(positions[pos], errorCtx);
+                    e.addTrace(ctx.positions[pos], errorCtx);
                     throw;
                 }
                 if (n < v.listSize() - 1

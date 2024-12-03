@@ -619,7 +619,7 @@ std::string ExprLambda::showNamePos(const EvalState & state) const
     std::string id(name
         ? concatStrings("'", state.ctx.symbols[name], "'")
         : "anonymous function");
-    return fmt("%1% at %2%", id, state.positions[pos]);
+    return fmt("%1% at %2%", id, state.ctx.positions[pos]);
 }
 
 

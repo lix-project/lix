@@ -400,7 +400,7 @@ private:
                 }
 
                 std::ostringstream s;
-                s << state.positions[v.lambda.fun->pos];
+                s << state.ctx.positions[v.lambda.fun->pos];
                 output << " @ " << filterANSIEscapes(s.str());
             }
         } else if (v.isPrimOp()) {
