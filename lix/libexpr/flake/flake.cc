@@ -242,8 +242,8 @@ static Flake getFlake(
     };
 
     // FIXME: symlink attack
-    auto resolvedFlakeFile = resolveExprPath(state.paths.checkSourcePath(CanonPath(flakeFile)));
-    Expr & flakeExpr = state.parseExprFromFile(state.paths.checkSourcePath(resolvedFlakeFile));
+    auto resolvedFlakeFile = resolveExprPath(state.ctx.paths.checkSourcePath(CanonPath(flakeFile)));
+    Expr & flakeExpr = state.parseExprFromFile(state.ctx.paths.checkSourcePath(resolvedFlakeFile));
 
     // Enforce that 'flake.nix' is a direct attrset, not a computation.
     if (!(dynamic_cast<ExprAttrs *>(&flakeExpr))) {

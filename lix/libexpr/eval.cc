@@ -939,7 +939,7 @@ struct CachedEvalFile
 
 void EvalState::evalFile(const SourcePath & path_, Value & v)
 {
-    auto path = paths.checkSourcePath(path_);
+    auto path = ctx.paths.checkSourcePath(path_);
 
     if (auto i = caches.fileEval.find(path); i != caches.fileEval.end()) {
         v = i->second->result;
@@ -953,7 +953,7 @@ void EvalState::evalFile(const SourcePath & path_, Value & v)
     }
 
     debug("evaluating file '%1%'", resolvedPath);
-    Expr & e = parseExprFromFile(paths.checkSourcePath(resolvedPath));
+    Expr & e = parseExprFromFile(ctx.paths.checkSourcePath(resolvedPath));
 
     try {
         auto dts = ctx.debug
@@ -2285,7 +2285,7 @@ BackedStringView EvalState::coerceToString(
               // slash, as in /foo/${x}.
               v._path
             : copyToStore
-            ? ctx.store->printStorePath(paths.copyPathToStore(context, v.path(), ctx.repair))
+            ? ctx.store->printStorePath(ctx.paths.copyPathToStore(context, v.path(), ctx.repair))
             : std::string(v.path().path.abs());
     }
 
