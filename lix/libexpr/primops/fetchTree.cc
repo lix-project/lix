@@ -27,7 +27,7 @@ void emitTreeAttrs(
     auto attrs = state.buildBindings(10);
 
 
-    state.mkStorePathString(tree.storePath, attrs.alloc(state.s.outPath));
+    state.paths.mkStorePathString(tree.storePath, attrs.alloc(state.s.outPath));
 
     // FIXME: support arbitrary input attributes.
 
@@ -74,7 +74,7 @@ void emitTreeAttrs(
 
 std::string fixURI(std::string uri, EvalState & state, const std::string & defaultScheme = "file")
 {
-    state.checkURI(uri);
+    state.paths.checkURI(uri);
     if (uri.find("://") == std::string::npos) {
         const auto p = ParsedURL {
             .scheme = defaultScheme,
@@ -194,7 +194,7 @@ static void fetchTree(
 
     auto [tree, input2] = input.fetch(state.store);
 
-    state.allowPath(tree.storePath);
+    state.paths.allowPath(tree.storePath);
 
     emitTreeAttrs(state, tree, input2, v, params.emptyRevFallback, false);
 }
@@ -244,7 +244,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
     if (who == "fetchTarball")
         url = evalSettings.resolvePseudoUrl(*url);
 
-    state.checkURI(*url);
+    state.paths.checkURI(*url);
 
     if (name == "")
         name = baseNameOf(*url);
@@ -263,7 +263,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
             });
 
         if (state.store->isValidPath(expectedPath)) {
-            state.allowAndSetStorePathString(expectedPath, v);
+            state.paths.allowAndSetStorePathString(expectedPath, v);
             return;
         }
     }
@@ -290,7 +290,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
         }
     }
 
-    state.allowAndSetStorePathString(storePath, v);
+    state.paths.allowAndSetStorePathString(storePath, v);
 }
 
 void prim_fetchurl(EvalState & state, const PosIdx pos, Value * * args, Value & v)

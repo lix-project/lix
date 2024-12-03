@@ -162,8 +162,8 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
         }
     } else if (pathExists(profile + "/manifest.nix")) {
         // FIXME: needed because of pure mode; ugly.
-        state.allowPath(state.store->followLinksToStore(profile));
-        state.allowPath(state.store->followLinksToStore(profile + "/manifest.nix"));
+        state.paths.allowPath(state.store->followLinksToStore(profile));
+        state.paths.allowPath(state.store->followLinksToStore(profile + "/manifest.nix"));
 
         auto drvInfos = queryInstalled(state, state.store->followLinksToStore(profile));
 

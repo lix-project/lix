@@ -51,7 +51,7 @@ static void prim_fetchMercurial(EvalState & state, const PosIdx pos, Value * * a
 
     // FIXME: git externals probably can be used to bypass the URI
     // whitelist. Ah well.
-    state.checkURI(url);
+    state.paths.checkURI(url);
 
     if (evalSettings.pureEval && !rev)
         throw Error("in pure evaluation mode, 'fetchMercurial' requires a Mercurial revision");
@@ -68,7 +68,7 @@ static void prim_fetchMercurial(EvalState & state, const PosIdx pos, Value * * a
     auto [tree, input2] = input.fetch(state.store);
 
     auto attrs2 = state.buildBindings(8);
-    state.mkStorePathString(tree.storePath, attrs2.alloc(state.s.outPath));
+    state.paths.mkStorePathString(tree.storePath, attrs2.alloc(state.s.outPath));
     if (input2.getRef())
         attrs2.alloc("branch").mkString(*input2.getRef());
     // Backward compatibility: set 'rev' to
@@ -80,7 +80,7 @@ static void prim_fetchMercurial(EvalState & state, const PosIdx pos, Value * * a
         attrs2.alloc("revCount").mkInt(*revCount);
     v.mkAttrs(attrs2);
 
-    state.allowPath(tree.storePath);
+    state.paths.allowPath(tree.storePath);
 }
 
 static RegisterPrimOp r_fetchMercurial({

@@ -360,48 +360,26 @@ struct EvalErrorContext
     }
 };
 
-
-class EvalState
+class EvalPaths
 {
-    friend class EvalBuiltins;
-
-public:
-    SymbolTable symbols;
-    PosTable positions;
-    const StaticSymbols s;
-    EvalMemory mem;
-    EvalRuntimeCaches caches;
-
-private:
-    SearchPath searchPath;
-
-public:
-    EvalBuiltins builtins;
-
+    ref<Store> store;
     /**
-     * If set, force copying files to the Nix store even if they
-     * already exist there.
+     * Store used to build stuff.
      */
-    RepairFlag repair;
+    ref<Store> buildStore;
+    SearchPath searchPath_;
+    EvalErrorContext & errors;
+
+public:
+    EvalPaths(const ref<Store> & store, const ref<Store> buildStore, SearchPath searchPath, EvalErrorContext & errors);
+
+    const SearchPath & searchPath() const { return searchPath_; }
 
     /**
      * The allowed filesystem paths in restricted or pure evaluation
      * mode.
      */
     std::optional<PathSet> allowedPaths;
-
-    /**
-     * Store used to materialise .drv files.
-     */
-    const ref<Store> store;
-
-    /**
-     * Store used to build stuff.
-     */
-    const ref<Store> buildStore;
-
-    std::unique_ptr<DebugState> debug;
-    EvalErrorContext errors;
 
 private:
 
@@ -417,15 +395,6 @@ private:
     std::unordered_map<Path, SourcePath> resolvedPaths;
 
 public:
-
-    EvalState(
-        const SearchPath & _searchPath,
-        ref<Store> store,
-        std::shared_ptr<Store> buildStore = nullptr,
-        std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl = nullptr
-    );
-    ~EvalState();
-
     /**
      * Allow access to a path.
      */
@@ -462,6 +431,78 @@ public:
     Path toRealPath(const Path & path, const NixStringContext & context);
 
     /**
+     * Look up a file in the search path.
+     */
+    SourcePath findFile(const std::string_view path);
+    SourcePath findFile(const SearchPath & searchPath, const std::string_view path, const PosIdx pos = noPos);
+
+    /**
+     * Try to resolve a search path value (not the optinal key part)
+     *
+     * If the specified search path element is a URI, download it.
+     *
+     * If it is not found, return `std::nullopt`
+     */
+    std::optional<std::string> resolveSearchPathPath(const SearchPath::Path & path);
+
+    StorePath copyPathToStore(
+        NixStringContext & context, const SourcePath & path, RepairFlag repair = NoRepair
+    );
+
+    /**
+     * Create a string representing a store path.
+     *
+     * The string is the printed store path with a context containing a
+     * single `NixStringContextElem::Opaque` element of that store path.
+     */
+    void mkStorePathString(const StorePath & storePath, Value & v);
+
+    /**
+     * Realise the given context, and return a mapping from the placeholders
+     * used to construct the associated value to their final store path
+     */
+    [[nodiscard]] StringMap realiseContext(const NixStringContext & context);
+};
+
+
+class EvalState
+{
+    friend class EvalBuiltins;
+
+public:
+    SymbolTable symbols;
+    PosTable positions;
+    const StaticSymbols s;
+    EvalMemory mem;
+    EvalRuntimeCaches caches;
+    EvalPaths paths;
+    EvalBuiltins builtins;
+
+    /**
+     * If set, force copying files to the Nix store even if they
+     * already exist there.
+     */
+    RepairFlag repair;
+
+    /**
+     * Store used to materialise .drv files.
+     */
+    const ref<Store> store;
+
+    std::unique_ptr<DebugState> debug;
+    EvalErrorContext errors;
+
+public:
+
+    EvalState(
+        const SearchPath & _searchPath,
+        ref<Store> store,
+        std::shared_ptr<Store> buildStore = nullptr,
+        std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl = nullptr
+    );
+    ~EvalState();
+
+    /**
      * Parse a Nix expression from the specified file.
      */
     Expr & parseExprFromFile(const SourcePath & path);
@@ -490,21 +531,6 @@ public:
     void evalFile(const SourcePath & path, Value & v);
 
     void resetFileCache();
-
-    /**
-     * Look up a file in the search path.
-     */
-    SourcePath findFile(const std::string_view path);
-    SourcePath findFile(const SearchPath & searchPath, const std::string_view path, const PosIdx pos = noPos);
-
-    /**
-     * Try to resolve a search path value (not the optinal key part)
-     *
-     * If the specified search path element is a URI, download it.
-     *
-     * If it is not found, return `std::nullopt`
-     */
-    std::optional<std::string> resolveSearchPathPath(const SearchPath::Path & path);
 
     /**
      * Evaluate an expression to normal form
@@ -576,8 +602,6 @@ public:
         std::string_view errorCtx,
         bool coerceMore = false, bool copyToStore = true,
         bool canonicalizePath = true);
-
-    StorePath copyPathToStore(NixStringContext & context, const SourcePath & path);
 
     /**
      * Path coercion.
@@ -670,14 +694,6 @@ public:
     void mkPos(Value & v, PosIdx pos);
 
     /**
-     * Create a string representing a store path.
-     *
-     * The string is the printed store path with a context containing a
-     * single `NixStringContextElem::Opaque` element of that store path.
-     */
-    void mkStorePathString(const StorePath & storePath, Value & v);
-
-    /**
      * Create a string representing a `SingleDerivedPath::Built`.
      *
      * The string is the printed store path with a context containing a
@@ -734,12 +750,6 @@ public:
      *              The return value is currently not thread safe - just the return value.
      */
     bool fullGC();
-
-    /**
-     * Realise the given context, and return a mapping from the placeholders
-     * used to construct the associated value to their final store path
-     */
-    [[nodiscard]] StringMap realiseContext(const NixStringContext & context);
 
 private:
 

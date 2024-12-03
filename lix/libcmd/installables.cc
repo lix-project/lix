@@ -215,7 +215,7 @@ void SourceExprCommand::completeInstallable(AddCompletions & completions, std::s
             evalSettings.pureEval.override(false);
             auto state = getEvalState();
             Expr & e = state->parseExprFromFile(
-                resolveExprPath(state->checkSourcePath(lookupFileArg(*state, *file)))
+                resolveExprPath(state->paths.checkSourcePath(lookupFileArg(*state, *file)))
                 );
 
             Value root;

@@ -271,44 +271,21 @@ EvalBuiltins::EvalBuiltins(
     createBaseEnv(searchPath, storeDir);
 }
 
-EvalState::EvalState(
-    const SearchPath & _searchPath,
-    ref<Store> store,
-    std::shared_ptr<Store> buildStore,
-    std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl)
-    : s(symbols)
-    , searchPath([&] {
-        SearchPath searchPath;
-        if (!evalSettings.pureEval) {
-            for (auto & i : _searchPath.elements)
-                searchPath.elements.emplace_back(SearchPath::Elem {i});
-            for (auto & i : evalSettings.nixPath.get())
-                searchPath.elements.emplace_back(SearchPath::Elem::parse(i));
-        }
-        return searchPath;
-    }())
-    , builtins(mem, symbols, searchPath, store->config().storeDir)
-    , repair(NoRepair)
-    , store(store)
-    , buildStore(buildStore ? buildStore : store)
-    , debug{
-          debugRepl ? std::make_unique<DebugState>(
-              positions,
-              symbols,
-              [this, debugRepl](const ValMap & extraEnv) { return debugRepl(*this, extraEnv); }
-          )
-                    : nullptr
-      }
-    , errors{positions, debug.get()}
+EvalPaths::EvalPaths(
+    const ref<Store> & store,
+    const ref<Store> buildStore,
+    SearchPath searchPath,
+    EvalErrorContext & errors
+)
+    : store(store)
+    , buildStore(buildStore)
+    , searchPath_(std::move(searchPath))
+    , errors(errors)
 {
-    countCalls = getEnv("NIX_COUNT_CALLS").value_or("0") != "0";
-
-    static_assert(sizeof(Env) <= 16, "environment must be <= 16 bytes");
-
     if (evalSettings.restrictEval || evalSettings.pureEval) {
         allowedPaths = std::optional(PathSet());
 
-        for (auto & i : searchPath.elements) {
+        for (auto & i : searchPath_.elements) {
             auto r = resolveSearchPathPath(i.path);
             if (!r) continue;
 
@@ -329,32 +306,66 @@ EvalState::EvalState(
     }
 }
 
+EvalState::EvalState(
+    const SearchPath & _searchPath,
+    ref<Store> store,
+    std::shared_ptr<Store> buildStore,
+    std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl)
+    : s(symbols)
+    , paths(store, buildStore ? ref(buildStore) : store, [&] {
+        SearchPath searchPath;
+        if (!evalSettings.pureEval) {
+            for (auto & i : _searchPath.elements)
+                searchPath.elements.emplace_back(SearchPath::Elem {i});
+            for (auto & i : evalSettings.nixPath.get())
+                searchPath.elements.emplace_back(SearchPath::Elem::parse(i));
+        }
+        return searchPath;
+    }(), errors)
+    , builtins(mem, symbols, paths.searchPath(), store->config().storeDir)
+    , repair(NoRepair)
+    , store(store)
+    , debug{
+          debugRepl ? std::make_unique<DebugState>(
+              positions,
+              symbols,
+              [this, debugRepl](const ValMap & extraEnv) { return debugRepl(*this, extraEnv); }
+          )
+                    : nullptr
+      }
+    , errors{positions, debug.get()}
+{
+    countCalls = getEnv("NIX_COUNT_CALLS").value_or("0") != "0";
+
+    static_assert(sizeof(Env) <= 16, "environment must be <= 16 bytes");
+}
+
 
 EvalState::~EvalState()
 {
 }
 
 
-void EvalState::allowPath(const Path & path)
+void EvalPaths::allowPath(const Path & path)
 {
     if (allowedPaths)
         allowedPaths->insert(path);
 }
 
-void EvalState::allowPath(const StorePath & storePath)
+void EvalPaths::allowPath(const StorePath & storePath)
 {
     if (allowedPaths)
         allowedPaths->insert(store->toRealPath(storePath));
 }
 
-void EvalState::allowAndSetStorePathString(const StorePath & storePath, Value & v)
+void EvalPaths::allowAndSetStorePathString(const StorePath & storePath, Value & v)
 {
     allowPath(storePath);
 
     mkStorePathString(storePath, v);
 }
 
-SourcePath EvalState::checkSourcePath(const SourcePath & path_)
+SourcePath EvalPaths::checkSourcePath(const SourcePath & path_)
 {
     if (!allowedPaths) return path_;
 
@@ -401,7 +412,7 @@ SourcePath EvalState::checkSourcePath(const SourcePath & path_)
 }
 
 
-void EvalState::checkURI(const std::string & uri)
+void EvalPaths::checkURI(const std::string & uri)
 {
     if (!evalSettings.restrictEval) return;
 
@@ -433,7 +444,7 @@ void EvalState::checkURI(const std::string & uri)
 }
 
 
-Path EvalState::toRealPath(const Path & path, const NixStringContext & context)
+Path EvalPaths::toRealPath(const Path & path, const NixStringContext & context)
 {
     // FIXME: check whether 'path' is in 'context'.
     return
@@ -796,7 +807,7 @@ void EvalState::mkPos(Value & v, PosIdx p)
 }
 
 
-void EvalState::mkStorePathString(const StorePath & p, Value & v)
+void EvalPaths::mkStorePathString(const StorePath & p, Value & v)
 {
     v.mkString(
         store->printStorePath(p),
@@ -926,7 +937,7 @@ struct CachedEvalFile
 
 void EvalState::evalFile(const SourcePath & path_, Value & v)
 {
-    auto path = checkSourcePath(path_);
+    auto path = paths.checkSourcePath(path_);
 
     if (auto i = caches.fileEval.find(path); i != caches.fileEval.end()) {
         v = i->second->result;
@@ -940,7 +951,7 @@ void EvalState::evalFile(const SourcePath & path_, Value & v)
     }
 
     debug("evaluating file '%1%'", resolvedPath);
-    Expr & e = parseExprFromFile(checkSourcePath(resolvedPath));
+    Expr & e = parseExprFromFile(paths.checkSourcePath(resolvedPath));
 
     try {
         auto dts = debug
@@ -2271,7 +2282,7 @@ BackedStringView EvalState::coerceToString(
               // slash, as in /foo/${x}.
               v._path
             : copyToStore
-            ? store->printStorePath(copyPathToStore(context, v.path()))
+            ? store->printStorePath(paths.copyPathToStore(context, v.path(), repair))
             : std::string(v.path().path.abs());
     }
 
@@ -2340,7 +2351,7 @@ BackedStringView EvalState::coerceToString(
 }
 
 
-StorePath EvalState::copyPathToStore(NixStringContext & context, const SourcePath & path)
+StorePath EvalPaths::copyPathToStore(NixStringContext & context, const SourcePath & path, RepairFlag repair)
 {
     if (nix::isDerivation(path.path.abs()))
         errors.make<EvalError>("file names are not allowed to end in '%1%'", drvExtension).debugThrow();
@@ -2731,13 +2742,13 @@ Expr & EvalState::parseStdin()
 }
 
 
-SourcePath EvalState::findFile(const std::string_view path)
+SourcePath EvalPaths::findFile(const std::string_view path)
 {
-    return findFile(searchPath, path);
+    return findFile(searchPath_, path);
 }
 
 
-SourcePath EvalState::findFile(const SearchPath & searchPath, const std::string_view path, const PosIdx pos)
+SourcePath EvalPaths::findFile(const SearchPath & searchPath, const std::string_view path, const PosIdx pos)
 {
     for (auto & i : searchPath.elements) {
         auto suffixOpt = i.prefix.suffixIfPotentialMatch(path);
@@ -2765,7 +2776,7 @@ SourcePath EvalState::findFile(const SearchPath & searchPath, const std::string_
 }
 
 
-std::optional<std::string> EvalState::resolveSearchPathPath(const SearchPath::Path & value0)
+std::optional<std::string> EvalPaths::resolveSearchPathPath(const SearchPath::Path & value0)
 {
     auto & value = value0.s;
     auto i = searchPathResolved.find(value);

@@ -39,7 +39,7 @@ namespace nix {
  * Miscellaneous
  *************************************************************/
 
-StringMap EvalState::realiseContext(const NixStringContext & context)
+StringMap EvalPaths::realiseContext(const NixStringContext & context)
 {
     std::vector<DerivedPath::Built> drvs;
     StringMap res;
@@ -129,12 +129,12 @@ static SourcePath realisePath(EvalState & state, const PosIdx pos, Value & v, co
     auto path = state.coerceToPath(noPos, v, context, "while realising the context of a path");
 
     try {
-        StringMap rewrites = state.realiseContext(context);
+        StringMap rewrites = state.paths.realiseContext(context);
 
-        auto realPath = CanonPath(state.toRealPath(rewriteStrings(path.path.abs(), rewrites), context));
+        auto realPath = CanonPath(state.paths.toRealPath(rewriteStrings(path.path.abs(), rewrites), context));
 
         return flags.checkForPureEval
-            ? state.checkSourcePath(realPath)
+            ? state.paths.checkSourcePath(realPath)
             : realPath;
     } catch (Error & e) {
         e.addTrace(state.positions[pos], "while realising the context of path '%s'", path);
@@ -323,7 +323,7 @@ void prim_exec(EvalState & state, const PosIdx pos, Value * * args, Value & v)
                         false, false).toOwned());
     }
     try {
-        auto _ = state.realiseContext(context); // FIXME: Handle CA derivations
+        auto _ = state.paths.realiseContext(context); // FIXME: Handle CA derivations
     } catch (InvalidPathError & e) {
         e.addTrace(state.positions[pos], "while realising the context for builtins.exec");
         throw;
@@ -1173,7 +1173,7 @@ static void prim_storePath(EvalState & state, const PosIdx pos, Value * * args, 
         ).atPos(pos).debugThrow();
 
     NixStringContext context;
-    auto path = state.checkSourcePath(state.coerceToPath(pos, *args[0], context, "while evaluating the first argument passed to builtins.storePath")).path;
+    auto path = state.paths.checkSourcePath(state.coerceToPath(pos, *args[0], context, "while evaluating the first argument passed to builtins.storePath")).path;
     /* Resolve symlinks in ‘path’, unless ‘path’ itself is a symlink
        directly in the store.  The latter condition is necessary so
        e.g. nix-push does the right thing. */
@@ -1207,6 +1207,7 @@ static void prim_pathExists(EvalState & state, const PosIdx pos, Value * * args,
 
     try {
         auto checked = state
+            .paths
             .checkSourcePath(path)
             .resolveSymlinks(mustBeDir ? SymlinkResolution::Full : SymlinkResolution::Ancestors);
 
@@ -1305,7 +1306,7 @@ static void prim_findFile(EvalState & state, const PosIdx pos, Value * * args, V
                 false, false).toOwned();
 
         try {
-            auto rewrites = state.realiseContext(context);
+            auto rewrites = state.paths.realiseContext(context);
             path = rewriteStrings(path, rewrites);
         } catch (InvalidPathError & e) {
             state.errors.make<EvalError>(
@@ -1323,7 +1324,7 @@ static void prim_findFile(EvalState & state, const PosIdx pos, Value * * args, V
 
     auto path = state.forceStringNoCtx(*args[1], pos, "while evaluating the second argument passed to builtins.findFile");
 
-    v.mkPath(state.checkSourcePath(state.findFile(searchPath, path, pos)));
+    v.mkPath(state.paths.checkSourcePath(state.paths.findFile(searchPath, path, pos)));
 }
 
 /* Return the cryptographic hash of a file in base-16. */
@@ -1478,7 +1479,7 @@ static void prim_toFile(EvalState & state, const PosIdx pos, Value * * args, Val
        used in args[1]. */
 
     /* Add the output of this to the allowed paths. */
-    state.allowAndSetStorePathString(storePath, v);
+    state.paths.allowAndSetStorePathString(storePath, v);
 }
 
 static void addPath(
@@ -1495,8 +1496,8 @@ static void addPath(
     try {
         // FIXME: handle CA derivation outputs (where path needs to
         // be rewritten to the actual output).
-        auto rewrites = state.realiseContext(context);
-        path = state.toRealPath(rewriteStrings(path, rewrites), context);
+        auto rewrites = state.paths.realiseContext(context);
+        path = state.paths.toRealPath(rewriteStrings(path, rewrites), context);
 
         StorePathSet refs;
 
@@ -1512,7 +1513,7 @@ static void addPath(
 
         path = evalSettings.pureEval && expectedHash
             ? path
-            : state.checkSourcePath(CanonPath(path)).path.abs();
+            : state.paths.checkSourcePath(CanonPath(path)).path.abs();
 
         PathFilter filter = filterFun ? ([&](const Path & path) {
             auto st = lstat(path);
@@ -1552,9 +1553,9 @@ static void addPath(
                     "store path mismatch in (possibly filtered) path added from '%s'",
                     path
                 ).atPos(pos).debugThrow();
-            state.allowAndSetStorePathString(dstPath, v);
+            state.paths.allowAndSetStorePathString(dstPath, v);
         } else
-            state.allowAndSetStorePathString(*expectedStorePath, v);
+            state.paths.allowAndSetStorePathString(*expectedStorePath, v);
     } catch (Error & e) {
         e.addTrace(state.positions[pos], "while adding path '%s'", path);
         throw;

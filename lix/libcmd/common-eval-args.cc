@@ -205,7 +205,7 @@ SourcePath lookupFileArg(EvalState & state, std::string_view fileArg)
         return CanonPath(state.store->toRealPath(storePath));
     } else if (fileArg.size() > 2 && fileArg.at(0) == '<' && fileArg.at(fileArg.size() - 1) == '>') {
         Path p(fileArg.substr(1, fileArg.size() - 2));
-        return state.findFile(p);
+        return state.paths.findFile(p);
     } else {
         return CanonPath::fromCwd(fileArg);
     }

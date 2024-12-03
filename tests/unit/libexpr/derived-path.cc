@@ -26,7 +26,7 @@ RC_GTEST_FIXTURE_PROP(
     (const SingleDerivedPath::Opaque & o))
 {
     auto * v = state.mem.allocValue();
-    state.mkStorePathString(o.path, *v);
+    state.paths.mkStorePathString(o.path, *v);
     auto d = state.coerceToSingleDerivedPath(noPos, *v, "");
     RC_ASSERT(SingleDerivedPath { o } == d);
 }

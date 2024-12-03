@@ -252,7 +252,7 @@ static void main_nix_build(std::string programName, Strings argv)
                 else
                     /* If we're in a #! script, interpret filenames
                        relative to the script. */
-                    exprs.push_back(state->parseExprFromFile(resolveExprPath(state->checkSourcePath(lookupFileArg(*state,
+                    exprs.push_back(state->parseExprFromFile(resolveExprPath(state->paths.checkSourcePath(lookupFileArg(*state,
                                         inShebang && !packages ? absPath(i, absPath(dirOf(script))) : i)))));
             }
         }

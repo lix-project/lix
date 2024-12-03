@@ -68,7 +68,7 @@ static std::tuple<fetchers::Tree, FlakeRef, FlakeRef> fetchOrSubstituteTree(
     debug("got tree '%s' from '%s'",
         state.store->printStorePath(tree.storePath), lockedRef);
 
-    state.allowPath(tree.storePath);
+    state.paths.allowPath(tree.storePath);
 
     assert(!originalRef.input.getNarHash() || tree.storePath == originalRef.input.computeStorePath(*state.store));
 
@@ -242,8 +242,8 @@ static Flake getFlake(
     };
 
     // FIXME: symlink attack
-    auto resolvedFlakeFile = resolveExprPath(state.checkSourcePath(CanonPath(flakeFile)));
-    Expr & flakeExpr = state.parseExprFromFile(state.checkSourcePath(resolvedFlakeFile));
+    auto resolvedFlakeFile = resolveExprPath(state.paths.checkSourcePath(CanonPath(flakeFile)));
+    Expr & flakeExpr = state.parseExprFromFile(state.paths.checkSourcePath(resolvedFlakeFile));
 
     // Enforce that 'flake.nix' is a direct attrset, not a computation.
     if (!(dynamic_cast<ExprAttrs *>(&flakeExpr))) {
