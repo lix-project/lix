@@ -31,7 +31,7 @@ void processExpr(EvalState & state, const Strings & attrPaths,
     bool evalOnly, OutputKind output, bool location, Expr & e)
 {
     if (parseOnly) {
-        e.show(state.symbols, std::cout);
+        e.show(state.ctx.symbols, std::cout);
         std::cout << "\n";
         return;
     }
@@ -58,7 +58,7 @@ void processExpr(EvalState & state, const Strings & attrPaths,
             } else {
                 if (strict) state.forceValueDeep(vRes);
                 std::set<const void *> seen;
-                printAmbiguous(vRes, state.symbols, std::cout, &seen, std::numeric_limits<int>::max());
+                printAmbiguous(vRes, state.ctx.symbols, std::cout, &seen, std::numeric_limits<int>::max());
                 std::cout << std::endl;
             }
         } else {

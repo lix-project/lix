@@ -231,7 +231,7 @@ private:
 
     void printDerivation(Value & v)
     {
-        Bindings::iterator i = v.attrs->find(state.s.drvPath);
+        Bindings::iterator i = v.attrs->find(state.ctx.s.drvPath);
         NixStringContext context;
         std::string storePath;
         if (i != v.attrs->end())
@@ -287,7 +287,7 @@ private:
 
             AttrVec sorted;
             for (auto & i : *v.attrs)
-                sorted.emplace_back(std::pair(state.symbols[i.name], i.value));
+                sorted.emplace_back(std::pair(state.ctx.symbols[i.name], i.value));
 
             if (options.maxAttrs == std::numeric_limits<size_t>::max())
                 std::sort(sorted.begin(), sorted.end());
@@ -396,7 +396,7 @@ private:
             output << "lambda";
             if (v.lambda.fun) {
                 if (v.lambda.fun->name) {
-                    output << " " << state.symbols[v.lambda.fun->name];
+                    output << " " << state.ctx.symbols[v.lambda.fun->name];
                 }
 
                 std::ostringstream s;
@@ -583,7 +583,7 @@ fmt_internal::HintFmt & fmt_internal::HintFmt::operator%(const ValuePrinter & va
 
 std::ostream & operator<<(std::ostream & output, ExprPrinter const & printer)
 {
-    printer.expr.show(printer.state.symbols, output);
+    printer.expr.show(printer.state.ctx.symbols, output);
     return output;
 }
 

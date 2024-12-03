@@ -382,7 +382,7 @@ Value & AttrCursor::getValue(EvalState & state)
         if (parent) {
             auto & vParent = parent->first->getValue(state);
             state.forceAttrs(vParent, noPos, "while searching for an attribute");
-            auto attr = vParent.attrs->get(state.symbols.create(parent->second));
+            auto attr = vParent.attrs->get(state.ctx.symbols.create(parent->second));
             if (!attr)
                 throw Error("attribute '%s' is unexpectedly missing", getAttrPathStr(state));
             _value = allocRootValue(attr->value);
@@ -498,7 +498,7 @@ std::shared_ptr<AttrCursor> AttrCursor::maybeGetAttr(EvalState & state, const st
         return nullptr;
         //errors.make<TypeError>("'%s' is not an attribute set", getAttrPathStr()).debugThrow();
 
-    auto attr = v.attrs->get(state.symbols.create(name));
+    auto attr = v.attrs->get(state.ctx.symbols.create(name));
 
     if (!attr) {
         if (root->db) {
@@ -710,7 +710,7 @@ std::vector<std::string> AttrCursor::getAttrs(EvalState & state)
 
     fullattr_t attrs;
     for (auto & attr : *getValue(state).attrs)
-        attrs.p.push_back(state.symbols[attr.name]);
+        attrs.p.push_back(state.ctx.symbols[attr.name]);
     std::sort(attrs.p.begin(), attrs.p.end());
 
     if (root->db)

@@ -49,7 +49,7 @@ DrvInfo::DrvInfo(ref<Store> store, const std::string & drvPathWithOutputs)
 std::string DrvInfo::queryName(EvalState & state)
 {
     if (name == "" && attrs) {
-        auto i = attrs->find(state.s.name);
+        auto i = attrs->find(state.ctx.s.name);
         if (i == attrs->end()) state.errors.make<TypeError>("derivation name missing").debugThrow();
         name = state.forceStringNoCtx(*i->value, noPos, "while evaluating the 'name' attribute of a derivation");
     }
@@ -60,7 +60,7 @@ std::string DrvInfo::queryName(EvalState & state)
 std::string DrvInfo::querySystem(EvalState & state)
 {
     if (system == "" && attrs) {
-        auto i = attrs->find(state.s.system);
+        auto i = attrs->find(state.ctx.s.system);
         system = i == attrs->end() ? "unknown" : state.forceStringNoCtx(*i->value, i->pos, "while evaluating the 'system' attribute of a derivation");
     }
     return system;
@@ -70,7 +70,7 @@ std::string DrvInfo::querySystem(EvalState & state)
 std::optional<StorePath> DrvInfo::queryDrvPath(EvalState & state)
 {
     if (!drvPath && attrs) {
-        Bindings::iterator i = attrs->find(state.s.drvPath);
+        Bindings::iterator i = attrs->find(state.ctx.s.drvPath);
         NixStringContext context;
         if (i == attrs->end())
             drvPath = {std::nullopt};
@@ -92,7 +92,7 @@ StorePath DrvInfo::requireDrvPath(EvalState & state)
 StorePath DrvInfo::queryOutPath(EvalState & state)
 {
     if (!outPath && attrs) {
-        Bindings::iterator i = attrs->find(state.s.outPath);
+        Bindings::iterator i = attrs->find(state.ctx.s.outPath);
         NixStringContext context;
         if (i != attrs->end())
             outPath = state.coerceToStorePath(i->pos, *i->value, context, "while evaluating the output path of a derivation");
@@ -118,7 +118,7 @@ void DrvInfo::fillOutputs(EvalState & state, bool withPaths)
         return;
     }
 
-    Attr * outputs = this->attrs->get(state.s.outputs);
+    Attr * outputs = this->attrs->get(state.ctx.s.outputs);
     if (outputs == nullptr) {
         fillDefault();
         return;
@@ -146,7 +146,7 @@ void DrvInfo::fillOutputs(EvalState & state, bool withPaths)
 
         if (withPaths) {
             // Find the attr with this output's name...
-            Attr * out = this->attrs->get(state.symbols.create(outputName));
+            Attr * out = this->attrs->get(state.ctx.symbols.create(outputName));
             if (out == nullptr) {
                 // FIXME: throw error?
                 continue;
@@ -157,7 +157,7 @@ void DrvInfo::fillOutputs(EvalState & state, bool withPaths)
             state.forceAttrs(*out->value, outputs->pos, errMsg);
 
             // ...and evaluate its `outPath` attribute.
-            Attr * outPath = out->value->attrs->get(state.s.outPath);
+            Attr * outPath = out->value->attrs->get(state.ctx.s.outPath);
             if (outPath == nullptr) {
                 continue;
                 // FIXME: throw error?
@@ -201,7 +201,7 @@ DrvInfo::Outputs DrvInfo::queryOutputs(EvalState & state, bool withPaths, bool o
     // output by its attribute, e.g. `pkgs.lix.dev`, which (lol?) sets the magic
     // attribute `outputSpecified = true`, and changes the `outputName` attr to the
     // explicitly selected-into output.
-    if (Attr * outSpecAttr = attrs->get(state.s.outputSpecified)) {
+    if (Attr * outSpecAttr = attrs->get(state.ctx.s.outputSpecified)) {
         bool outputSpecified = state.forceBool(
             *outSpecAttr->value,
             outSpecAttr->pos,
@@ -236,7 +236,7 @@ DrvInfo::Outputs DrvInfo::queryOutputs(EvalState & state, bool withPaths, bool o
 std::string DrvInfo::queryOutputName(EvalState & state)
 {
     if (outputName == "" && attrs) {
-        Bindings::iterator i = attrs->find(state.s.outputName);
+        Bindings::iterator i = attrs->find(state.ctx.s.outputName);
         outputName = i != attrs->end() ? state.forceStringNoCtx(*i->value, noPos, "while evaluating the output name of a derivation") : "";
     }
     return outputName;
@@ -247,7 +247,7 @@ Bindings * DrvInfo::getMeta(EvalState & state)
 {
     if (meta) return meta;
     if (!attrs) return 0;
-    Bindings::iterator a = attrs->find(state.s.meta);
+    Bindings::iterator a = attrs->find(state.ctx.s.meta);
     if (a == attrs->end()) return 0;
     state.forceAttrs(*a->value, a->pos, "while evaluating the 'meta' attribute of a derivation");
     meta = a->value->attrs;
@@ -260,7 +260,7 @@ StringSet DrvInfo::queryMetaNames(EvalState & state)
     StringSet res;
     if (!getMeta(state)) return res;
     for (auto & i : *meta)
-        res.emplace(state.symbols[i.name]);
+        res.emplace(state.ctx.symbols[i.name]);
     return res;
 }
 
@@ -274,7 +274,7 @@ bool DrvInfo::checkMeta(EvalState & state, Value & v)
         return true;
     }
     else if (v.type() == nAttrs) {
-        Bindings::iterator i = v.attrs->find(state.s.outPath);
+        Bindings::iterator i = v.attrs->find(state.ctx.s.outPath);
         if (i != v.attrs->end()) return false;
         for (auto & i : *v.attrs)
             if (!checkMeta(state, *i.value)) return false;
@@ -288,7 +288,7 @@ bool DrvInfo::checkMeta(EvalState & state, Value & v)
 Value * DrvInfo::queryMeta(EvalState & state, const std::string & name)
 {
     if (!getMeta(state)) return 0;
-    Bindings::iterator a = meta->find(state.symbols.create(name));
+    Bindings::iterator a = meta->find(state.ctx.symbols.create(name));
     if (a == meta->end() || !checkMeta(state, *a->value)) return 0;
     return a->value;
 }
@@ -335,7 +335,7 @@ void DrvInfo::setMeta(EvalState & state, const std::string & name, Value * v)
 {
     getMeta(state);
     auto attrs = state.buildBindings(1 + (meta ? meta->size() : 0));
-    auto sym = state.symbols.create(name);
+    auto sym = state.ctx.symbols.create(name);
     if (meta)
         for (auto i : *meta)
             if (i.name != sym)
@@ -447,20 +447,20 @@ static void getDerivations(EvalState & state, Value & vIn,
     // FIXME: what the fuck???
     /* !!! undocumented hackery to support combining channels in
        nix-env.cc. */
-    bool combineChannels = v.attrs->find(state.symbols.create("_combineChannels")) != v.attrs->end();
+    bool combineChannels = v.attrs->find(state.ctx.symbols.create("_combineChannels")) != v.attrs->end();
 
     /* Consider the attributes in sorted order to get more
        deterministic behaviour in nix-env operations (e.g. when
        there are names clashes between derivations, the derivation
        bound to the attribute with the "lower" name should take
        precedence). */
-    for (auto & attr : v.attrs->lexicographicOrder(state.symbols)) {
-        debug("evaluating attribute '%1%'", state.symbols[attr->name]);
+    for (auto & attr : v.attrs->lexicographicOrder(state.ctx.symbols)) {
+        debug("evaluating attribute '%1%'", state.ctx.symbols[attr->name]);
         // FIXME: only consider attrs with identifier-like names?? Why???
-        if (!std::regex_match(std::string(state.symbols[attr->name]), attrRegex)) {
+        if (!std::regex_match(std::string(state.ctx.symbols[attr->name]), attrRegex)) {
             continue;
         }
-        std::string joinedAttrPath = addToPath(pathPrefix, state.symbols[attr->name]);
+        std::string joinedAttrPath = addToPath(pathPrefix, state.ctx.symbols[attr->name]);
         if (combineChannels) {
             getDerivations(state, *attr->value, joinedAttrPath, autoArgs, drvs, done, ignoreAssertionFailures);
         } else if (getDerivation(state, *attr->value, joinedAttrPath, drvs, ignoreAssertionFailures)) {
@@ -468,7 +468,7 @@ static void getDerivations(EvalState & state, Value & vIn,
                should we recurse into it?  => Only if it has a
                `recurseForDerivations = true' attribute. */
             if (attr->value->type() == nAttrs) {
-                Attr * recurseForDrvs = attr->value->attrs->get(state.s.recurseForDerivations);
+                Attr * recurseForDrvs = attr->value->attrs->get(state.ctx.s.recurseForDerivations);
                 if (recurseForDrvs == nullptr) {
                     continue;
                 }

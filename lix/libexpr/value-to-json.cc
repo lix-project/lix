@@ -52,14 +52,14 @@ json printValueAsJSON(EvalState & state, bool strict,
                 out = *maybeString;
                 break;
             }
-            auto i = v.attrs->find(state.s.outPath);
+            auto i = v.attrs->find(state.ctx.s.outPath);
             if (i == v.attrs->end()) {
                 out = json::object();
                 StringSet names;
                 for (auto & j : *v.attrs)
-                    names.emplace(state.symbols[j.name]);
+                    names.emplace(state.ctx.symbols[j.name]);
                 for (auto & j : names) {
-                    Attr & a(*v.attrs->find(state.symbols.create(j)));
+                    Attr & a(*v.attrs->find(state.ctx.symbols.create(j)));
                     try {
                         out[j] = printValueAsJSON(state, strict, *a.value, a.pos, context, copyToStore);
                     } catch (Error & e) {

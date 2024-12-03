@@ -730,7 +730,7 @@ public:
 
     BindingsBuilder buildBindings(size_t capacity)
     {
-        return mem.buildBindings(symbols, capacity);
+        return mem.buildBindings(ctx.symbols, capacity);
     }
 
     void mkPos(Value & v, PosIdx pos);

@@ -46,22 +46,22 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
         auto attrs = state.buildBindings(7 + outputs.size());
 
-        attrs.alloc(state.s.type).mkString("derivation");
-        attrs.alloc(state.s.name).mkString(i.queryName(state));
+        attrs.alloc(state.ctx.s.type).mkString("derivation");
+        attrs.alloc(state.ctx.s.name).mkString(i.queryName(state));
         auto system = i.querySystem(state);
         if (!system.empty())
-            attrs.alloc(state.s.system).mkString(system);
-        attrs.alloc(state.s.outPath).mkString(state.store->printStorePath(i.queryOutPath(state)));
+            attrs.alloc(state.ctx.s.system).mkString(system);
+        attrs.alloc(state.ctx.s.outPath).mkString(state.store->printStorePath(i.queryOutPath(state)));
         if (drvPath)
-            attrs.alloc(state.s.drvPath).mkString(state.store->printStorePath(*drvPath));
+            attrs.alloc(state.ctx.s.drvPath).mkString(state.store->printStorePath(*drvPath));
 
         // Copy each output meant for installation.
-        auto & vOutputs = attrs.alloc(state.s.outputs);
+        auto & vOutputs = attrs.alloc(state.ctx.s.outputs);
         vOutputs = state.mem.newList(outputs.size());
         for (const auto & [m, j] : enumerate(outputs)) {
             (vOutputs.listElems()[m] = state.mem.allocValue())->mkString(j.first);
             auto outputAttrs = state.buildBindings(2);
-            outputAttrs.alloc(state.s.outPath).mkString(state.store->printStorePath(*j.second));
+            outputAttrs.alloc(state.ctx.s.outPath).mkString(state.store->printStorePath(*j.second));
             attrs.alloc(j.first).mkAttrs(outputAttrs);
 
             /* This is only necessary when installing store paths, e.g.,
@@ -77,10 +77,10 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
         for (auto & j : metaNames) {
             Value * v = i.queryMeta(state, j);
             if (!v) continue;
-            meta.insert(state.symbols.create(j), v);
+            meta.insert(state.ctx.symbols.create(j), v);
         }
 
-        attrs.alloc(state.s.meta).mkAttrs(meta);
+        attrs.alloc(state.ctx.s.meta).mkAttrs(meta);
 
         (manifest.listElems()[n++] = state.mem.allocValue())->mkAttrs(attrs);
 
@@ -91,7 +91,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
        the store; we need it for future modifications of the
        environment. */
     std::ostringstream str;
-    printAmbiguous(manifest, state.symbols, str, nullptr, std::numeric_limits<int>::max());
+    printAmbiguous(manifest, state.ctx.symbols, str, nullptr, std::numeric_limits<int>::max());
     auto manifestFile = state.store->addTextToStore("env-manifest.nix",
         str.str(), references);
 
@@ -105,7 +105,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
        builder with the manifest as argument. */
     auto attrs = state.buildBindings(3);
     state.paths.mkStorePathString(manifestFile, attrs.alloc("manifest"));
-    attrs.insert(state.symbols.create("derivations"), &manifest);
+    attrs.insert(state.ctx.symbols.create("derivations"), &manifest);
     Value args;
     args.mkAttrs(attrs);
 
@@ -116,9 +116,9 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
     debug("evaluating user environment builder");
     state.forceValue(topLevel, topLevel.determinePos(noPos));
     NixStringContext context;
-    Attr & aDrvPath(*topLevel.attrs->find(state.s.drvPath));
+    Attr & aDrvPath(*topLevel.attrs->find(state.ctx.s.drvPath));
     auto topLevelDrv = state.coerceToStorePath(aDrvPath.pos, *aDrvPath.value, context, "");
-    Attr & aOutPath(*topLevel.attrs->find(state.s.outPath));
+    Attr & aOutPath(*topLevel.attrs->find(state.ctx.s.outPath));
     auto topLevelOut = state.coerceToStorePath(aOutPath.pos, *aOutPath.value, context, "");
 
     /* Realise the resulting store expression. */

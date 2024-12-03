@@ -136,7 +136,7 @@ static Symbol getName(const AttrName & name, EvalState & state, Env & env)
         Value nameValue;
         name.expr->eval(state, env, nameValue);
         state.forceStringNoCtx(nameValue, name.expr->getPos(), "while evaluating an attribute name");
-        return state.symbols.create(nameValue.string.s);
+        return state.ctx.symbols.create(nameValue.string.s);
     }
 }
 
@@ -620,7 +620,7 @@ void printEnvBindings(const EvalState &es, const Expr & expr, const Env & env)
     // just print the names for now
     auto se = es.debug->staticEnvFor(expr);
     if (se)
-        printEnvBindings(es.symbols, *se, env, 0);
+        printEnvBindings(es.ctx.symbols, *se, env, 0);
 }
 
 void mapStaticEnvBindings(const SymbolTable & st, const StaticEnv & se, const Env & env, ValMap & vm)
@@ -771,7 +771,7 @@ inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
             return j->value;
         }
         if (!fromWith->parentWith)
-            errors.make<UndefinedVarError>("undefined variable '%1%'", symbols[var.name]).atPos(var.pos).withFrame(*env, var).debugThrow();
+            errors.make<UndefinedVarError>("undefined variable '%1%'", ctx.symbols[var.name]).atPos(var.pos).withFrame(*env, var).debugThrow();
         for (size_t l = fromWith->prevWith; l; --l, env = env->up) ;
         fromWith = fromWith->parentWith;
     }
@@ -800,8 +800,8 @@ void EvalState::mkPos(Value & v, PosIdx p)
     auto origin = positions.originOf(p);
     if (auto path = std::get_if<SourcePath>(&origin)) {
         auto attrs = buildBindings(3);
-        attrs.alloc(s.file).mkString(path->path.abs());
-        makePositionThunks(*this, p, attrs.alloc(s.line), attrs.alloc(s.column));
+        attrs.alloc(ctx.s.file).mkString(path->path.abs());
+        makePositionThunks(*this, p, attrs.alloc(ctx.s.line), attrs.alloc(ctx.s.column));
         v.mkAttrs(attrs);
     } else
         v.mkNull();
@@ -1079,7 +1079,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
         dynamicEnv = &env2;
         Env * inheritEnv = inheritFromExprs ? buildInheritFromEnv(state, env2) : nullptr;
 
-        AttrDefs::iterator overrides = attrs.find(state.s.overrides);
+        AttrDefs::iterator overrides = attrs.find(state.ctx.s.overrides);
         bool hasOverrides = overrides != attrs.end();
 
         /* The recursive attributes are evaluated in the new
@@ -1143,10 +1143,10 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
         if (nameVal.type() == nNull)
             continue;
         state.forceStringNoCtx(nameVal, i.pos, "while evaluating the name of a dynamic attribute");
-        auto nameSym = state.symbols.create(nameVal.string.s);
+        auto nameSym = state.ctx.symbols.create(nameVal.string.s);
         Bindings::iterator j = v.attrs->find(nameSym);
         if (j != v.attrs->end())
-            state.errors.make<EvalError>("dynamic attribute '%1%' already defined at %2%", state.symbols[nameSym], state.positions[j->pos]).atPos(i.pos).withFrame(env, *this).debugThrow();
+            state.errors.make<EvalError>("dynamic attribute '%1%' already defined at %2%", state.ctx.symbols[nameSym], state.positions[j->pos]).atPos(i.pos).withFrame(env, *this).debugThrow();
 
         i.valueExpr->setName(nameSym);
         /* Keep sorted order so find can catch duplicates */
@@ -1226,11 +1226,11 @@ static std::string showAttrPath(EvalState & state, Env & env, const AttrPath & a
     for (auto & i : attrPath) {
         if (!first) out << '.'; else first = false;
         try {
-            out << state.symbols[getName(i, state, env)];
+            out << state.ctx.symbols[getName(i, state, env)];
         } catch (Error & e) {
             assert(!i.symbol);
             out << "\"${";
-            i.expr->show(state.symbols, out);
+            i.expr->show(state.ctx.symbols, out);
             out << "}\"";
         }
     }
@@ -1255,7 +1255,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
             state.positions[getPos()],
             "while evaluating '%s' to select '%s' on it",
             ExprPrinter(state, *this->e),
-            showAttrPath(state.symbols, this->attrPath)
+            showAttrPath(state.ctx.symbols, this->attrPath)
         );
         throw;
     }
@@ -1281,7 +1281,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                 std::stringstream ss;
                 // We start with the base thing this ExprSelect is selecting on.
                 assert(this->e != nullptr);
-                this->e->show(state.symbols, ss);
+                this->e->show(state.ctx.symbols, ss);
 
                 // Then grab each part of the attr path up to this one.
                 assert(partIdx < attrPath.size());
@@ -1293,7 +1293,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                 // And convert them to strings and join them.
                 for (auto const & part : parts) {
                     auto const partName = getName(part, state, env);
-                    ss << "." << state.symbols[partName];
+                    ss << "." << state.ctx.symbols[partName];
                 }
 
                 return ss.str();
@@ -1306,7 +1306,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                     state.positions[getPos()],
                     "while evaluating '%s' to select '%s' on it",
                     partsSoFar(),
-                    state.symbols[name]
+                    state.ctx.symbols[name]
                 );
                 throw;
             }
@@ -1327,7 +1327,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                     ValuePrinter(state, *vCurrent, errorPrintOptions)
                 ).addTrace(
                     pos,
-                    HintFmt("while selecting '%s' on '%s'", state.symbols[name], partsSoFar())
+                    HintFmt("while selecting '%s' on '%s'", state.ctx.symbols[name], partsSoFar())
                 ).debugThrow();
             }
 
@@ -1345,10 +1345,10 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                 // Otherwise, missing attr error.
                 std::set<std::string> allAttrNames;
                 for (auto const & attr : *vCurrent->attrs) {
-                    allAttrNames.insert(state.symbols[attr.name]);
+                    allAttrNames.insert(state.ctx.symbols[attr.name]);
                 }
-                auto suggestions = Suggestions::bestMatches(allAttrNames, state.symbols[name]);
-                state.errors.make<EvalError>("attribute '%s' missing", state.symbols[name])
+                auto suggestions = Suggestions::bestMatches(allAttrNames, state.ctx.symbols[name]);
+                state.errors.make<EvalError>("attribute '%s' missing", state.ctx.symbols[name])
                     .atPos(pos)
                     .withSuggestions(suggestions)
                     .withFrame(env, *this)
@@ -1545,21 +1545,21 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     *args[0]->attrs
                 );
                 for (auto const & missingArg : formalsMatch.missing) {
-                    auto const missing = symbols[missingArg];
-                    errors.make<TypeError>("function '%s' called without required argument '%s'", lambda.getName(symbols), missing)
+                    auto const missing = ctx.symbols[missingArg];
+                    errors.make<TypeError>("function '%s' called without required argument '%s'", lambda.getName(ctx.symbols), missing)
                         .atPos(lambda.pos)
                         .withTrace(pos, "from call site")
                         .withFrame(*fun.lambda.env, lambda)
                         .debugThrow();
                 }
                 for (auto const & unexpectedArg : formalsMatch.unexpected) {
-                    auto const unex = symbols[unexpectedArg];
+                    auto const unex = ctx.symbols[unexpectedArg];
                     std::set<std::string> formalNames;
                     for (auto const & formal : lambda.formals->formals) {
-                        formalNames.insert(symbols[formal.name]);
+                        formalNames.insert(ctx.symbols[formal.name]);
                     }
                     auto sug = Suggestions::bestMatches(formalNames, unex);
-                    errors.make<TypeError>("function '%s' called with unexpected argument '%s'", lambda.getName(symbols), unex)
+                    errors.make<TypeError>("function '%s' called with unexpected argument '%s'", lambda.getName(ctx.symbols), unex)
                         .atPos(lambda.pos)
                         .withTrace(pos, "from call site")
                         .withSuggestions(sug)
@@ -1579,7 +1579,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     ? makeDebugTraceStacker(
                         *this, *lambda.body, env2, positions[lambda.pos],
                         "while calling %s",
-                        lambda.getQuotedName(symbols))
+                        lambda.getQuotedName(ctx.symbols))
                     : nullptr;
 
                 lambda.body->eval(*this, env2, vCur);
@@ -1588,7 +1588,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     e.addTrace(
                         positions[lambda.pos],
                         "while calling %s",
-                        lambda.getQuotedName(symbols));
+                        lambda.getQuotedName(ctx.symbols));
                     if (pos) e.addTrace(positions[pos], "from call site");
                 }
                 throw;
@@ -1683,7 +1683,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
             }
         }
 
-        else if (vCur.type() == nAttrs && (functor = vCur.attrs->get(s.functor))) {
+        else if (vCur.type() == nAttrs && (functor = vCur.attrs->get(ctx.s.functor))) {
             /* 'vCur' may be allocated on the stack of the calling
                function, but for functors we may keep a reference, so
                heap-allocate a copy and use that instead. */
@@ -1758,7 +1758,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res)
     forceValue(fun, pos);
 
     if (fun.type() == nAttrs) {
-        auto found = fun.attrs->find(s.functor);
+        auto found = fun.attrs->find(ctx.s.functor);
         if (found != fun.attrs->end()) {
             Value * v = mem.allocValue();
             callFunction(*found->value, fun, *v, pos);
@@ -1791,7 +1791,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res)
 Nix attempted to evaluate a function as a top level expression; in
 this case it must have its arguments supplied either by default
 values, or passed explicitly with '--arg' or '--argstr'. See
-https://docs.lix.systems/manual/lix/stable/language/constructs.html#functions)", symbols[i.name])
+https://docs.lix.systems/manual/lix/stable/language/constructs.html#functions)", ctx.symbols[i.name])
                     .atPos(i.pos).withFrame(*fun.lambda.env, *fun.lambda.fun).debugThrow();
             }
         }
@@ -1822,7 +1822,7 @@ void ExprAssert::eval(EvalState & state, Env & env, Value & v)
 {
     if (!state.evalBool(env, *cond, pos, "in the condition of the assert statement")) {
         std::ostringstream out;
-        cond->show(state.symbols, out);
+        cond->show(state.ctx.symbols, out);
         state.errors.make<AssertionError>("assertion '%1%' failed", out.str()).atPos(pos).withFrame(env, *this).debugThrow();
     }
     body->eval(state, env, v);
@@ -2089,12 +2089,12 @@ void EvalState::forceValueDeep(Value & v)
                     // If the value is a thunk, we're evaling. Otherwise no trace necessary.
                     auto dts = debug && i.value->isThunk()
                         ? makeDebugTraceStacker(*this, *i.value->thunk.expr, *i.value->thunk.env, positions[i.pos],
-                            "while evaluating the attribute '%1%'", symbols[i.name])
+                            "while evaluating the attribute '%1%'", ctx.symbols[i.name])
                         : nullptr;
 
                     recurse(*i.value);
                 } catch (Error & e) {
-                    e.addTrace(positions[i.pos], "while evaluating the attribute '%1%'", symbols[i.name]);
+                    e.addTrace(positions[i.pos], "while evaluating the attribute '%1%'", ctx.symbols[i.name]);
                     throw;
                 }
         }
@@ -2171,7 +2171,7 @@ bool EvalState::forceBool(Value & v, const PosIdx pos, std::string_view errorCtx
 
 bool EvalState::isFunctor(Value & fun)
 {
-    return fun.type() == nAttrs && fun.attrs->find(s.functor) != fun.attrs->end();
+    return fun.type() == nAttrs && fun.attrs->find(ctx.s.functor) != fun.attrs->end();
 }
 
 
@@ -2239,7 +2239,7 @@ std::string_view EvalState::forceStringNoCtx(Value & v, const PosIdx pos, std::s
 bool EvalState::isDerivation(Value & v)
 {
     if (v.type() != nAttrs) return false;
-    Bindings::iterator i = v.attrs->find(s.type);
+    Bindings::iterator i = v.attrs->find(ctx.s.type);
     if (i == v.attrs->end()) return false;
     forceValue(*i->value, i->pos);
     if (i->value->type() != nString) return false;
@@ -2250,7 +2250,7 @@ bool EvalState::isDerivation(Value & v)
 std::optional<std::string> EvalState::tryAttrsToString(const PosIdx pos, Value & v,
     NixStringContext & context, bool coerceMore, bool copyToStore)
 {
-    auto i = v.attrs->find(s.toString);
+    auto i = v.attrs->find(ctx.s.toString);
     if (i != v.attrs->end()) {
         Value v1;
         callFunction(*i->value, v, v1, pos);
@@ -2293,7 +2293,7 @@ BackedStringView EvalState::coerceToString(
         auto maybeString = tryAttrsToString(pos, v, context, coerceMore, copyToStore);
         if (maybeString)
             return std::move(*maybeString);
-        auto i = v.attrs->find(s.outPath);
+        auto i = v.attrs->find(ctx.s.outPath);
         if (i == v.attrs->end()) {
             errors.make<TypeError>(
                 "cannot coerce %1% to a string: %2%",
@@ -2498,8 +2498,8 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             /* If both sets denote a derivation (type = "derivation"),
                then compare their outPaths. */
             if (isDerivation(v1) && isDerivation(v2)) {
-                Bindings::iterator i = v1.attrs->find(s.outPath);
-                Bindings::iterator j = v2.attrs->find(s.outPath);
+                Bindings::iterator i = v1.attrs->find(ctx.s.outPath);
+                Bindings::iterator j = v2.attrs->find(ctx.s.outPath);
                 if (i != v1.attrs->end() && j != v2.attrs->end())
                     return eqValues(*i->value, *j->value, pos, errorCtx);
             }

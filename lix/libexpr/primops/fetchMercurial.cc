@@ -21,7 +21,7 @@ static void prim_fetchMercurial(EvalState & state, const PosIdx pos, Value * * a
     if (args[0]->type() == nAttrs) {
 
         for (auto & attr : *args[0]->attrs) {
-            std::string_view n(state.symbols[attr.name]);
+            std::string_view n(state.ctx.symbols[attr.name]);
             if (n == "url")
                 url = state.coerceToString(attr.pos, *attr.value, context,
                         "while evaluating the `url` attribute passed to builtins.fetchMercurial",
@@ -38,7 +38,7 @@ static void prim_fetchMercurial(EvalState & state, const PosIdx pos, Value * * a
             else if (n == "name")
                 name = state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the `name` attribute passed to builtins.fetchMercurial");
             else
-                state.errors.make<EvalError>("unsupported argument '%s' to 'fetchMercurial'", state.symbols[attr.name]).atPos(attr.pos).debugThrow();
+                state.errors.make<EvalError>("unsupported argument '%s' to 'fetchMercurial'", state.ctx.symbols[attr.name]).atPos(attr.pos).debugThrow();
         }
 
         if (url.empty())
@@ -68,7 +68,7 @@ static void prim_fetchMercurial(EvalState & state, const PosIdx pos, Value * * a
     auto [tree, input2] = input.fetch(state.store);
 
     auto attrs2 = state.buildBindings(8);
-    state.paths.mkStorePathString(tree.storePath, attrs2.alloc(state.s.outPath));
+    state.paths.mkStorePathString(tree.storePath, attrs2.alloc(state.ctx.s.outPath));
     if (input2.getRef())
         attrs2.alloc("branch").mkString(*input2.getRef());
     // Backward compatibility: set 'rev' to

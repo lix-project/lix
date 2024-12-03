@@ -140,15 +140,15 @@ void prim_getContext(EvalState & state, const PosIdx pos, Value * * args, Value 
 
     auto attrs = state.buildBindings(contextInfos.size());
 
-    auto sAllOutputs = state.symbols.create("allOutputs");
+    auto sAllOutputs = state.ctx.symbols.create("allOutputs");
     for (const auto & info : contextInfos) {
         auto infoAttrs = state.buildBindings(3);
         if (info.second.path)
-            infoAttrs.alloc(state.s.path).mkBool(true);
+            infoAttrs.alloc(state.ctx.s.path).mkBool(true);
         if (info.second.allOutputs)
             infoAttrs.alloc(sAllOutputs).mkBool(true);
         if (!info.second.outputs.empty()) {
-            auto & outputsVal = infoAttrs.alloc(state.s.outputs);
+            auto & outputsVal = infoAttrs.alloc(state.ctx.s.outputs);
             outputsVal = state.mem.newList(info.second.outputs.size());
             for (const auto & [i, output] : enumerate(info.second.outputs))
                 (outputsVal.listElems()[i] = state.mem.allocValue())->mkString(output);
@@ -172,9 +172,9 @@ static void prim_appendContext(EvalState & state, const PosIdx pos, Value * * ar
 
     state.forceAttrs(*args[1], pos, "while evaluating the second argument passed to builtins.appendContext");
 
-    auto sAllOutputs = state.symbols.create("allOutputs");
+    auto sAllOutputs = state.ctx.symbols.create("allOutputs");
     for (auto & i : *args[1]->attrs) {
-        const auto & name = state.symbols[i.name];
+        const auto & name = state.ctx.symbols[i.name];
         if (!state.store->isStorePath(name))
             state.errors.make<EvalError>(
                 "context key '%s' is not a store path",
@@ -184,7 +184,7 @@ static void prim_appendContext(EvalState & state, const PosIdx pos, Value * * ar
         if (!settings.readOnlyMode)
             state.store->ensurePath(namePath);
         state.forceAttrs(*i.value, i.pos, "while evaluating the value of a string context");
-        auto iter = i.value->attrs->find(state.s.path);
+        auto iter = i.value->attrs->find(state.ctx.s.path);
         if (iter != i.value->attrs->end()) {
             if (state.forceBool(*iter->value, iter->pos, "while evaluating the `path` attribute of a string context"))
                 context.emplace(NixStringContextElem::Opaque {
@@ -207,7 +207,7 @@ static void prim_appendContext(EvalState & state, const PosIdx pos, Value * * ar
             }
         }
 
-        iter = i.value->attrs->find(state.s.outputs);
+        iter = i.value->attrs->find(state.ctx.s.outputs);
         if (iter != i.value->attrs->end()) {
             state.forceList(*iter->value, iter->pos, "while evaluating the `outputs` attribute of a string context");
             if (iter->value->listSize() && !isDerivation(name)) {

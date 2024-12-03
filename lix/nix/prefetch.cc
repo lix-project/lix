@@ -35,7 +35,7 @@ std::string resolveMirrorUrl(EvalState & state, const std::string & url)
         vMirrors);
     state.forceAttrs(vMirrors, noPos, "while evaluating the set of all mirrors");
 
-    auto mirrorList = vMirrors.attrs->find(state.symbols.create(mirrorName));
+    auto mirrorList = vMirrors.attrs->find(state.ctx.symbols.create(mirrorName));
     if (mirrorList == vMirrors.attrs->end())
         throw Error("unknown mirror name '%s'", mirrorName);
     state.forceList(*mirrorList->value, noPos, "while evaluating one mirror configuration");

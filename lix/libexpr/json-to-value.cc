@@ -50,7 +50,7 @@ class JSONSax : nlohmann::json_sax<json> {
     public:
         void key(string_t & name, EvalState & state)
         {
-            attrs.insert_or_assign(state.symbols.create(name), &value(state));
+            attrs.insert_or_assign(state.ctx.symbols.create(name), &value(state));
         }
     };
 

@@ -173,22 +173,22 @@ static void enumerateOutputs(EvalState & state, Value & vFlake,
     auto pos = vFlake.determinePos(noPos);
     state.forceAttrs(vFlake, pos, "while evaluating a flake to get its outputs");
 
-    auto aOutputs = vFlake.attrs->get(state.symbols.create("outputs"));
+    auto aOutputs = vFlake.attrs->get(state.ctx.symbols.create("outputs"));
     assert(aOutputs);
 
     state.forceAttrs(*aOutputs->value, pos, "while evaluating the outputs of a flake");
 
-    auto sHydraJobs = state.symbols.create("hydraJobs");
+    auto sHydraJobs = state.ctx.symbols.create("hydraJobs");
 
     /* Hack: ensure that hydraJobs is evaluated before anything
        else. This way we can disable IFD for hydraJobs and then enable
        it for other outputs. */
     if (auto attr = aOutputs->value->attrs->get(sHydraJobs))
-        callback(state.symbols[attr->name], *attr->value, attr->pos);
+        callback(state.ctx.symbols[attr->name], *attr->value, attr->pos);
 
     for (auto & attr : *aOutputs->value->attrs) {
         if (attr.name != sHydraJobs)
-            callback(state.symbols[attr.name], *attr.value, attr.pos);
+            callback(state.ctx.symbols[attr.name], *attr.value, attr.pos);
     }
 }
 

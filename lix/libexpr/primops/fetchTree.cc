@@ -122,7 +122,7 @@ static void fetchTree(
 
         fetchers::Attrs attrs;
 
-        if (auto aType = args[0]->attrs->get(state.s.type)) {
+        if (auto aType = args[0]->attrs->get(state.ctx.s.type)) {
             if (type)
                 state.errors.make<EvalError>(
                     "unexpected attribute 'type'"
@@ -136,31 +136,31 @@ static void fetchTree(
         attrs.emplace("type", type.value());
 
         for (auto & attr : *args[0]->attrs) {
-            if (attr.name == state.s.type) continue;
+            if (attr.name == state.ctx.s.type) continue;
             state.forceValue(*attr.value, attr.pos);
             if (attr.value->type() == nPath || attr.value->type() == nString) {
                 auto s = state.coerceToString(attr.pos, *attr.value, context, "", false, false).toOwned();
-                attrs.emplace(state.symbols[attr.name],
-                    state.symbols[attr.name] == "url"
+                attrs.emplace(state.ctx.symbols[attr.name],
+                    state.ctx.symbols[attr.name] == "url"
                     ? type == "git"
                       ? fixURIForGit(s, state)
                       : fixURI(s, state)
                     : s);
             }
             else if (attr.value->type() == nBool)
-                attrs.emplace(state.symbols[attr.name], Explicit<bool>{attr.value->boolean});
+                attrs.emplace(state.ctx.symbols[attr.name], Explicit<bool>{attr.value->boolean});
             else if (attr.value->type() == nInt) {
                 auto intValue = attr.value->integer.value;
 
                 if (intValue < 0) {
-                    state.errors.make<EvalError>("negative value given for fetchTree attr %1%: %2%", state.symbols[attr.name], intValue).atPos(pos).debugThrow();
+                    state.errors.make<EvalError>("negative value given for fetchTree attr %1%: %2%", state.ctx.symbols[attr.name], intValue).atPos(pos).debugThrow();
                 }
                 unsigned long asUnsigned = intValue;
 
-                attrs.emplace(state.symbols[attr.name], asUnsigned);
+                attrs.emplace(state.ctx.symbols[attr.name], asUnsigned);
             } else
                 state.errors.make<TypeError>("fetchTree argument '%s' is %s while a string, Boolean or integer is expected",
-                    state.symbols[attr.name], showType(*attr.value)).debugThrow();
+                    state.ctx.symbols[attr.name], showType(*attr.value)).debugThrow();
         }
 
         if (!params.allowNameArgument)
@@ -223,7 +223,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
     if (args[0]->type() == nAttrs) {
 
         for (auto & attr : *args[0]->attrs) {
-            std::string_view n(state.symbols[attr.name]);
+            std::string_view n(state.ctx.symbols[attr.name]);
             if (n == "url")
                 url = state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the url we should fetch");
             else if (n == "sha256")

@@ -410,7 +410,7 @@ ref<eval_cache::EvalCache> openEvalCache(
 
             state.forceAttrs(*vFlake, noPos, "while parsing cached flake data");
 
-            auto aOutputs = vFlake->attrs->get(state.symbols.create("outputs"));
+            auto aOutputs = vFlake->attrs->get(state.ctx.symbols.create("outputs"));
             assert(aOutputs);
 
             return aOutputs->value;
