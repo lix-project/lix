@@ -40,7 +40,6 @@ class EvalCache : public std::enable_shared_from_this<EvalCache>
     friend class AttrCursor;
 
     std::shared_ptr<AttrDb> db;
-    EvalState & state;
     RootLoader rootLoader;
     RootValue value;
 
@@ -102,7 +101,7 @@ class AttrCursor : public std::enable_shared_from_this<AttrCursor>
 
     AttrKey getKey();
 
-    Value & getValue();
+    Value & getValue(EvalState & state);
 
 public:
 
@@ -112,46 +111,46 @@ public:
         Value * value = nullptr,
         std::optional<std::pair<AttrId, AttrValue>> && cachedValue = {});
 
-    std::vector<std::string> getAttrPath() const;
+    std::vector<std::string> getAttrPath(EvalState & state) const;
 
-    std::vector<std::string> getAttrPath(std::string_view name) const;
+    std::vector<std::string> getAttrPath(EvalState & state, std::string_view name) const;
 
-    std::string getAttrPathStr() const;
+    std::string getAttrPathStr(EvalState & state) const;
 
-    std::string getAttrPathStr(std::string_view name) const;
+    std::string getAttrPathStr(EvalState & state, std::string_view name) const;
 
-    Suggestions getSuggestionsForAttr(const std::string & name);
+    Suggestions getSuggestionsForAttr(EvalState & state, const std::string & name);
 
-    std::shared_ptr<AttrCursor> maybeGetAttr(const std::string & name);
+    std::shared_ptr<AttrCursor> maybeGetAttr(EvalState & state, const std::string & name);
 
-    ref<AttrCursor> getAttr(const std::string & name);
+    ref<AttrCursor> getAttr(EvalState & state, const std::string & name);
 
     /**
      * Get an attribute along a chain of attrsets. Note that this does
      * not auto-call functors or functions.
      */
-    OrSuggestions<ref<AttrCursor>> findAlongAttrPath(const Strings & attrPath);
+    OrSuggestions<ref<AttrCursor>> findAlongAttrPath(EvalState & state, const Strings & attrPath);
 
-    std::string getString();
+    std::string getString(EvalState & state);
 
-    string_t getStringWithContext();
+    string_t getStringWithContext(EvalState & state);
 
-    bool getBool();
+    bool getBool(EvalState & state);
 
-    NixInt getInt();
+    NixInt getInt(EvalState & state);
 
-    std::vector<std::string> getListOfStrings();
+    std::vector<std::string> getListOfStrings(EvalState & state);
 
-    std::vector<std::string> getAttrs();
+    std::vector<std::string> getAttrs(EvalState & state);
 
-    bool isDerivation();
+    bool isDerivation(EvalState & state);
 
-    Value & forceValue();
+    Value & forceValue(EvalState & state);
 
     /**
      * Force creation of the .drv file in the Nix store.
      */
-    StorePath forceDerivation();
+    StorePath forceDerivation(EvalState & state);
 };
 
 }

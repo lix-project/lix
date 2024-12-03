@@ -77,12 +77,12 @@ DerivedPathsWithInfo InstallableFlake::toDerivedPaths()
 
     auto attr = getCursor();
 
-    auto attrPath = attr->getAttrPathStr();
+    auto attrPath = attr->getAttrPathStr(*state);
 
-    if (!attr->isDerivation()) {
+    if (!attr->isDerivation(*state)) {
 
         // FIXME: use eval cache?
-        auto v = attr->forceValue();
+        auto v = attr->forceValue(*state);
 
         if (std::optional derivedPathWithInfo = trySinglePathToDerivedPaths(
             v,
@@ -100,14 +100,14 @@ DerivedPathsWithInfo InstallableFlake::toDerivedPaths()
         }
     }
 
-    auto drvPath = attr->forceDerivation();
+    auto drvPath = attr->forceDerivation(*state);
 
     std::optional<NixInt::Inner> priority;
 
-    if (attr->maybeGetAttr("outputSpecified")) {
-    } else if (auto aMeta = attr->maybeGetAttr("meta")) {
-        if (auto aPriority = aMeta->maybeGetAttr("priority"))
-            priority = aPriority->getInt().value;
+    if (attr->maybeGetAttr(*state, "outputSpecified")) {
+    } else if (auto aMeta = attr->maybeGetAttr(*state, "meta")) {
+        if (auto aPriority = aMeta->maybeGetAttr(*state, "priority"))
+            priority = aPriority->getInt(*state).value;
     }
 
     return {{
@@ -116,14 +116,14 @@ DerivedPathsWithInfo InstallableFlake::toDerivedPaths()
             .outputs = std::visit(overloaded {
                 [&](const ExtendedOutputsSpec::Default & d) -> OutputsSpec {
                     std::set<std::string> outputsToInstall;
-                    if (auto aOutputSpecified = attr->maybeGetAttr("outputSpecified")) {
-                        if (aOutputSpecified->getBool()) {
-                            if (auto aOutputName = attr->maybeGetAttr("outputName"))
-                                outputsToInstall = { aOutputName->getString() };
+                    if (auto aOutputSpecified = attr->maybeGetAttr(*state, "outputSpecified")) {
+                        if (aOutputSpecified->getBool(*state)) {
+                            if (auto aOutputName = attr->maybeGetAttr(*state, "outputName"))
+                                outputsToInstall = { aOutputName->getString(*state) };
                         }
-                    } else if (auto aMeta = attr->maybeGetAttr("meta")) {
-                        if (auto aOutputsToInstall = aMeta->maybeGetAttr("outputsToInstall"))
-                            for (auto & s : aOutputsToInstall->getListOfStrings())
+                    } else if (auto aMeta = attr->maybeGetAttr(*state, "meta")) {
+                        if (auto aOutputsToInstall = aMeta->maybeGetAttr(*state, "outputsToInstall"))
+                            for (auto & s : aOutputsToInstall->getListOfStrings(*state))
                                 outputsToInstall.insert(s);
                     }
 
@@ -152,7 +152,7 @@ DerivedPathsWithInfo InstallableFlake::toDerivedPaths()
 
 std::pair<Value *, PosIdx> InstallableFlake::toValue()
 {
-    return {&getCursor()->forceValue(), noPos};
+    return {&getCursor()->forceValue(*state), noPos};
 }
 
 std::vector<ref<eval_cache::AttrCursor>>
@@ -170,7 +170,7 @@ InstallableFlake::getCursors()
     for (auto & attrPath : attrPaths) {
         debug("trying flake output attribute '%s'", attrPath);
 
-        auto attr = root->findAlongAttrPath(parseAttrPath(attrPath));
+        auto attr = root->findAlongAttrPath(*state, parseAttrPath(attrPath));
         if (attr) {
             res.push_back(ref(*attr));
         } else {

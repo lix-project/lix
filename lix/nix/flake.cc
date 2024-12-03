@@ -864,14 +864,14 @@ struct CmdFlakeInitCommon : virtual Args, EvalCommand
 
         auto cursor = installable.getCursor();
 
-        auto templateDirAttr = cursor->getAttr("path");
-        auto templateDir = templateDirAttr->getString();
+        auto templateDirAttr = cursor->getAttr(*evalState, "path");
+        auto templateDir = templateDirAttr->getString(*evalState);
 
         if (!store->isInStore(templateDir))
             evalState->errors.make<TypeError>(
                 "'%s' was not found in the Nix store\n"
                 "If you've set '%s' to a string, try using a path instead.",
-                templateDir, templateDirAttr->getAttrPathStr()).debugThrow();
+                templateDir, templateDirAttr->getAttrPathStr(*evalState)).debugThrow();
 
         std::vector<Path> changedFiles;
         std::vector<Path> conflictedFiles;
@@ -928,10 +928,10 @@ struct CmdFlakeInitCommon : virtual Args, EvalCommand
             for (auto & s : changedFiles) args.push_back(s);
             runProgram("git", true, args);
         }
-        auto welcomeText = cursor->maybeGetAttr("welcomeText");
+        auto welcomeText = cursor->maybeGetAttr(*evalState, "welcomeText");
         if (welcomeText) {
             notice("\n");
-            notice(renderMarkdownToTerminal(welcomeText->getString()));
+            notice(renderMarkdownToTerminal(welcomeText->getString(*evalState)));
         }
 
         if (!conflictedFiles.empty())
@@ -1152,7 +1152,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
         {
             attrPath.push_back(attr);
 
-            auto visitor2 = visitor.getAttr(attr);
+            auto visitor2 = visitor.getAttr(*state, attr);
 
             try {
                 if ((attrPath[0] == "apps"
@@ -1161,7 +1161,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                         || attrPath[0] == "legacyPackages"
                         || attrPath[0] == "packages")
                     && (attrPath.size() == 1 || attrPath.size() == 2)) {
-                    for (const auto &subAttr : visitor2->getAttrs()) {
+                    for (const auto &subAttr : visitor2->getAttrs(*state)) {
                         if (hasContent(*visitor2, attrPath, subAttr)) {
                             return true;
                         }
@@ -1175,7 +1175,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                         || attrPath[0] == "nixosModules"
                         || attrPath[0] == "overlays"
                         )) {
-                    for (const auto &subAttr : visitor2->getAttrs()) {
+                    for (const auto &subAttr : visitor2->getAttrs(*state)) {
                         if (hasContent(*visitor2, attrPath, subAttr)) {
                             return true;
                         }
@@ -1217,14 +1217,14 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                     if (!json)
                         logger->cout("%s", headerPrefix);
                     std::vector<std::string> attrs;
-                    for (const auto &attr : visitor.getAttrs()) {
+                    for (const auto &attr : visitor.getAttrs(*state)) {
                         if (hasContent(visitor, attrPath, attr))
                             attrs.push_back(attr);
                     }
 
                     for (const auto & [i, attr] : enumerate(attrs)) {
                         bool last = i + 1 == attrs.size();
-                        auto visitor2 = visitor.getAttr(attr);
+                        auto visitor2 = visitor.getAttr(*state, attr);
                         auto attrPath2(attrPath);
                         attrPath2.push_back(attr);
                         auto j2 = visit(*visitor2, attrPath2,
@@ -1236,11 +1236,11 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
 
                 auto showDerivation = [&]()
                 {
-                    auto name = visitor.getAttr("name")->getString();
+                    auto name = visitor.getAttr(*state, "name")->getString(*state);
                     std::optional<std::string> description;
-                    if (auto aMeta = visitor.maybeGetAttr("meta")) {
-                        if (auto aDescription = aMeta->maybeGetAttr("description"))
-                            description = aDescription->getString();
+                    if (auto aMeta = visitor.maybeGetAttr(*state, "meta")) {
+                        if (auto aDescription = aMeta->maybeGetAttr(*state, "description"))
+                            description = aDescription->getString(*state);
                     }
 
                     if (json) {
@@ -1324,7 +1324,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                             logger->warn(fmt("%s omitted (use '--all-systems' to show)", concatStringsSep(".", attrPath)));
                         }
                     } else {
-                        if (visitor.isDerivation())
+                        if (visitor.isDerivation(*state))
                             showDerivation();
                         else
                             throw Error("expected a derivation");
@@ -1332,7 +1332,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                 }
 
                 else if (attrPath.size() > 0 && attrPath[0] == "hydraJobs") {
-                    if (visitor.isDerivation())
+                    if (visitor.isDerivation(*state))
                         showDerivation();
                     else
                         recurse();
@@ -1354,7 +1354,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                             logger->warn(fmt("%s omitted (use '--all-systems' to show)", concatStringsSep(".", attrPath)));
                         }
                     } else {
-                        if (visitor.isDerivation())
+                        if (visitor.isDerivation(*state))
                             showDerivation();
                         else if (attrPath.size() <= 2)
                             // FIXME: handle recurseIntoAttrs
@@ -1366,8 +1366,8 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                     (attrPath.size() == 2 && attrPath[0] == "defaultApp") ||
                     (attrPath.size() == 3 && attrPath[0] == "apps"))
                 {
-                    auto aType = visitor.maybeGetAttr("type");
-                    if (!aType || aType->getString() != "app")
+                    auto aType = visitor.maybeGetAttr(*state, "type");
+                    if (!aType || aType->getString(*state) != "app")
                         state->errors.make<EvalError>("not an app definition").debugThrow();
                     if (json) {
                         j.emplace("type", "app");
@@ -1380,7 +1380,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                     (attrPath.size() == 1 && attrPath[0] == "defaultTemplate") ||
                     (attrPath.size() == 2 && attrPath[0] == "templates"))
                 {
-                    auto description = visitor.getAttr("description")->getString();
+                    auto description = visitor.getAttr(*state, "description")->getString(*state);
                     if (json) {
                         j.emplace("type", "template");
                         j.emplace("description", description);

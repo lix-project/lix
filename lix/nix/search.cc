@@ -100,20 +100,20 @@ struct CmdSearch : InstallableCommand, MixJSON
             try {
                 auto recurse = [&]()
                 {
-                    for (const auto & attr : cursor.getAttrs()) {
-                        auto cursor2 = cursor.getAttr(attr);
+                    for (const auto & attr : cursor.getAttrs(*state)) {
+                        auto cursor2 = cursor.getAttr(*state, attr);
                         auto attrPath2(attrPath);
                         attrPath2.emplace_back(attr);
                         visit(*cursor2, attrPath2, false);
                     }
                 };
 
-                if (cursor.isDerivation()) {
-                    DrvName name(cursor.getAttr("name")->getString());
+                if (cursor.isDerivation(*state)) {
+                    DrvName name(cursor.getAttr(*state, "name")->getString(*state));
 
-                    auto aMeta = cursor.maybeGetAttr("meta");
-                    auto aDescription = aMeta ? aMeta->maybeGetAttr("description") : nullptr;
-                    auto description = aDescription ? aDescription->getString() : "";
+                    auto aMeta = cursor.maybeGetAttr(*state, "meta");
+                    auto aDescription = aMeta ? aMeta->maybeGetAttr(*state, "description") : nullptr;
+                    auto description = aDescription ? aDescription->getString(*state) : "";
                     std::replace(description.begin(), description.end(), '\n', ' ');
                     auto attrPath2 = concatStringsSep(".", attrPath);
 
@@ -181,8 +181,8 @@ struct CmdSearch : InstallableCommand, MixJSON
                     recurse();
 
                 else if (attrPath[0] == "legacyPackages" && attrPath.size() > 2) {
-                    auto attr = cursor.maybeGetAttr("recurseForDerivations");
-                    if (attr && attr->getBool())
+                    auto attr = cursor.maybeGetAttr(*state, "recurseForDerivations");
+                    if (attr && attr->getBool(*state))
                         recurse();
                 }
 
@@ -193,7 +193,7 @@ struct CmdSearch : InstallableCommand, MixJSON
         };
 
         for (auto & cursor : installableValue->getCursors())
-            visit(*cursor, cursor->getAttrPath(), true);
+            visit(*cursor, cursor->getAttrPath(*state), true);
 
         if (json)
             logger->cout("%s", *jsonOut);

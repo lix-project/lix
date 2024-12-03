@@ -317,12 +317,12 @@ void completeFlakeRefWithFragment(
                     attrPath.pop_back();
                 }
 
-                auto attr = root->findAlongAttrPath(attrPath);
+                auto attr = root->findAlongAttrPath(*evalState, attrPath);
                 if (!attr) continue;
 
-                for (auto & attr2 : (*attr)->getAttrs()) {
+                for (auto & attr2 : (*attr)->getAttrs(*evalState)) {
                     if (std::string_view attr2s = attr2; attr2s.starts_with(lastAttr)) {
-                        auto attrPath2 = (*attr)->getAttrPath(attr2s);
+                        auto attrPath2 = (*attr)->getAttrPath(*evalState, attr2s);
                         /* Strip the attrpath prefix. */
                         attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
                         completions.add(flakeRefS + "#" + prefixRoot + concatStringsSep(".", attrPath2));
@@ -334,7 +334,7 @@ void completeFlakeRefWithFragment(
                attrpaths. */
             if (fragment.empty()) {
                 for (auto & attrPath : defaultFlakeAttrPaths) {
-                    auto attr = root->findAlongAttrPath(parseAttrPath(attrPath));
+                    auto attr = root->findAlongAttrPath(*evalState, parseAttrPath(attrPath));
                     if (!attr) continue;
                     completions.add(flakeRefS + "#" + prefixRoot);
                 }
