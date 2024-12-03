@@ -28,7 +28,7 @@ class JSONSax : nlohmann::json_sax<json> {
         Value & value(EvalState & state)
         {
             if (!v)
-                v = allocRootValue(state.mem.allocValue());
+                v = allocRootValue(state.ctx.mem.allocValue());
             return **v;
         }
         virtual ~JSONState() {}
@@ -40,7 +40,7 @@ class JSONSax : nlohmann::json_sax<json> {
         ValueMap attrs;
         std::unique_ptr<JSONState> resolve(EvalState & state) override
         {
-            auto attrs2 = state.buildBindings(attrs.size());
+            auto attrs2 = state.ctx.buildBindings(attrs.size());
             for (auto & i : attrs)
                 attrs2.insert(i.first, i.second);
             parent->value(state).mkAttrs(attrs2.alreadySorted());
@@ -59,7 +59,7 @@ class JSONSax : nlohmann::json_sax<json> {
         std::unique_ptr<JSONState> resolve(EvalState & state) override
         {
             Value & v = parent->value(state);
-            v = state.mem.newList(values.size());
+            v = state.ctx.mem.newList(values.size());
             for (size_t n = 0; n < values.size(); ++n) {
                 v.listElems()[n] = values[n];
             }

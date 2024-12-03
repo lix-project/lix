@@ -799,7 +799,7 @@ void EvalState::mkPos(Value & v, PosIdx p)
 {
     auto origin = ctx.positions.originOf(p);
     if (auto path = std::get_if<SourcePath>(&origin)) {
-        auto attrs = buildBindings(3);
+        auto attrs = ctx.buildBindings(3);
         attrs.alloc(ctx.s.file).mkString(path->path.abs());
         makePositionThunks(*this, p, attrs.alloc(ctx.s.line), attrs.alloc(ctx.s.column));
         v.mkAttrs(attrs);
@@ -889,7 +889,7 @@ void EvalState::mkSingleDerivedPathString(
    of thunks allocated. */
 Value * Expr::maybeThunk(EvalState & state, Env & env)
 {
-    Value * v = state.mem.allocValue();
+    Value * v = state.ctx.mem.allocValue();
     v->mkThunk(&env, *this);
     state.stats.nrThunks++;
     return v;
@@ -1056,7 +1056,7 @@ void ExprPath::eval(EvalState & state, Env & env, Value & v)
 
 Env * ExprAttrs::buildInheritFromEnv(EvalState & state, Env & up)
 {
-    Env & inheritEnv = state.mem.allocEnv(inheritFromExprs->size());
+    Env & inheritEnv = state.ctx.mem.allocEnv(inheritFromExprs->size());
     inheritEnv.up = &up;
 
     Displacement displ = 0;
@@ -1068,13 +1068,13 @@ Env * ExprAttrs::buildInheritFromEnv(EvalState & state, Env & up)
 
 void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
 {
-    v.mkAttrs(state.buildBindings(attrs.size() + dynamicAttrs.size()).finish());
+    v.mkAttrs(state.ctx.buildBindings(attrs.size() + dynamicAttrs.size()).finish());
     auto dynamicEnv = &env;
 
     if (recursive) {
         /* Create a new environment that contains the attributes in
            this `rec'. */
-        Env & env2(state.mem.allocEnv(attrs.size()));
+        Env & env2(state.ctx.mem.allocEnv(attrs.size()));
         env2.up = &env;
         dynamicEnv = &env2;
         Env * inheritEnv = inheritFromExprs ? buildInheritFromEnv(state, env2) : nullptr;
@@ -1089,7 +1089,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
         for (auto & i : attrs) {
             Value * vAttr;
             if (hasOverrides && i.second.kind != AttrDef::Kind::Inherited) {
-                vAttr = state.mem.allocValue();
+                vAttr = state.ctx.mem.allocValue();
                 vAttr->mkThunk(i.second.chooseByKind(&env2, &env, inheritEnv), *i.second.e);
                 state.stats.nrThunks++;
             } else
@@ -1109,7 +1109,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
         if (hasOverrides) {
             Value * vOverrides = (*v.attrs)[overrides->second.displ].value;
             state.forceAttrs(*vOverrides, vOverrides->determinePos(noPos), "while evaluating the `__overrides` attribute");
-            Bindings * newBnds = state.mem.allocBindings(v.attrs->capacity() + vOverrides->attrs->size());
+            Bindings * newBnds = state.ctx.mem.allocBindings(v.attrs->capacity() + vOverrides->attrs->size());
             for (auto & i : *v.attrs)
                 newBnds->push_back(i);
             for (auto & i : *vOverrides->attrs) {
@@ -1162,7 +1162,7 @@ void ExprLet::eval(EvalState & state, Env & env, Value & v)
 {
     /* Create a new environment that contains the attributes in this
        `let'. */
-    Env & env2(state.mem.allocEnv(attrs->attrs.size()));
+    Env & env2(state.ctx.mem.allocEnv(attrs->attrs.size()));
     env2.up = &env;
 
     Env * inheritEnv = attrs->inheritFromExprs ? attrs->buildInheritFromEnv(state, env2) : nullptr;
@@ -1196,7 +1196,7 @@ void ExprLet::eval(EvalState & state, Env & env, Value & v)
 
 void ExprList::eval(EvalState & state, Env & env, Value & v)
 {
-    v = state.mem.newList(elems.size());
+    v = state.ctx.mem.newList(elems.size());
     for (auto [n, v2] : enumerate(v.listItems()))
         const_cast<Value * &>(v2) = elems[n]->maybeThunk(state, env);
 }
@@ -1499,7 +1499,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
     {
         vRes = vCur;
         for (size_t i = 0; i < nrArgs; ++i) {
-            auto fun2 = mem.allocValue();
+            auto fun2 = ctx.mem.allocValue();
             *fun2 = vRes;
             vRes.mkPrimOpApp(fun2, args[i]);
         }
@@ -1516,7 +1516,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
             auto size =
                 (!lambda.arg ? 0 : 1) +
                 (lambda.hasFormals() ? lambda.formals->formals.size() : 0);
-            Env & env2(mem.allocEnv(size));
+            Env & env2(ctx.mem.allocEnv(size));
             env2.up = vCur.lambda.env;
 
             Displacement displ = 0;
@@ -1687,7 +1687,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
             /* 'vCur' may be allocated on the stack of the calling
                function, but for functors we may keep a reference, so
                heap-allocate a copy and use that instead. */
-            Value * args2[] = {mem.allocValue(), args[0]};
+            Value * args2[] = {ctx.mem.allocValue(), args[0]};
             *args2[0] = vCur;
             try {
                 callFunction(*functor->value, 2, args2, vCur, functor->pos);
@@ -1760,7 +1760,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res)
     if (fun.type() == nAttrs) {
         auto found = fun.attrs->find(ctx.s.functor);
         if (found != fun.attrs->end()) {
-            Value * v = mem.allocValue();
+            Value * v = ctx.mem.allocValue();
             callFunction(*found->value, fun, *v, pos);
             forceValue(*v, pos);
             return autoCallFunction(args, *v, res);
@@ -1772,7 +1772,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res)
         return;
     }
 
-    auto attrs = buildBindings(std::max(static_cast<uint32_t>(fun.lambda.fun->formals->formals.size()), args.size()));
+    auto attrs = ctx.buildBindings(std::max(static_cast<uint32_t>(fun.lambda.fun->formals->formals.size()), args.size()));
 
     if (fun.lambda.fun->formals->ellipsis) {
         // If the formals have an ellipsis (eg the function accepts extra args) pass
@@ -1797,13 +1797,13 @@ https://docs.lix.systems/manual/lix/stable/language/constructs.html#functions)",
         }
     }
 
-    callFunction(fun, mem.allocValue()->mkAttrs(attrs), res, pos);
+    callFunction(fun, ctx.mem.allocValue()->mkAttrs(attrs), res, pos);
 }
 
 
 void ExprWith::eval(EvalState & state, Env & env, Value & v)
 {
-    Env & env2(state.mem.allocEnv(1));
+    Env & env2(state.ctx.mem.allocEnv(1));
     env2.up = &env;
     env2.values[0] = attrs->maybeThunk(state, env);
 
@@ -1880,7 +1880,7 @@ void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
     if (v1.attrs->size() == 0) { v = v2; return; }
     if (v2.attrs->size() == 0) { v = v1; return; }
 
-    auto attrs = state.buildBindings(v1.attrs->size() + v2.attrs->size());
+    auto attrs = state.ctx.buildBindings(v1.attrs->size() + v2.attrs->size());
 
     /* Merge the sets, preferring values from the second set.  Make
        sure to keep the resulting vector in sorted order. */
@@ -1934,7 +1934,7 @@ void EvalState::concatLists(Value & v, size_t nrLists, Value * * lists, const Po
         return;
     }
 
-    v = mem.newList(len);
+    v = ctx.mem.newList(len);
     auto out = v.listElems();
     for (size_t n = 0, pos = 0; n < nrLists; ++n) {
         auto l = lists[n]->listSize();

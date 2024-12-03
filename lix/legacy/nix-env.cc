@@ -174,7 +174,7 @@ static void loadSourceExpr(EvalState & state, const SourcePath & path, Value & v
        ~/.nix-defexpr directory that includes some system-wide
        directory). */
     else if (st.type == InputAccessor::tDirectory) {
-        auto attrs = state.buildBindings(maxAttrs);
+        auto attrs = state.ctx.buildBindings(maxAttrs);
         attrs.alloc("_combineChannels").mkList(0);
         StringSet seen;
         getAllExprs(state, path, seen, attrs);
@@ -700,7 +700,7 @@ static void opUpgrade(Globals & globals, Strings opFlags, Strings opArgs)
 static void setMetaFlag(EvalState & state, DrvInfo & drv,
     const std::string & name, const std::string & value)
 {
-    auto v = state.mem.allocValue();
+    auto v = state.ctx.mem.allocValue();
     v->mkString(value);
     drv.setMeta(state, name, v);
 }

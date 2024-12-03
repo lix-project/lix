@@ -138,20 +138,20 @@ void prim_getContext(EvalState & state, const PosIdx pos, Value * * args, Value 
         }, ((NixStringContextElem &&) i).raw);
     }
 
-    auto attrs = state.buildBindings(contextInfos.size());
+    auto attrs = state.ctx.buildBindings(contextInfos.size());
 
     auto sAllOutputs = state.ctx.symbols.create("allOutputs");
     for (const auto & info : contextInfos) {
-        auto infoAttrs = state.buildBindings(3);
+        auto infoAttrs = state.ctx.buildBindings(3);
         if (info.second.path)
             infoAttrs.alloc(state.ctx.s.path).mkBool(true);
         if (info.second.allOutputs)
             infoAttrs.alloc(sAllOutputs).mkBool(true);
         if (!info.second.outputs.empty()) {
             auto & outputsVal = infoAttrs.alloc(state.ctx.s.outputs);
-            outputsVal = state.mem.newList(info.second.outputs.size());
+            outputsVal = state.ctx.mem.newList(info.second.outputs.size());
             for (const auto & [i, output] : enumerate(info.second.outputs))
-                (outputsVal.listElems()[i] = state.mem.allocValue())->mkString(output);
+                (outputsVal.listElems()[i] = state.ctx.mem.allocValue())->mkString(output);
         }
         attrs.alloc(state.ctx.store->printStorePath(info.first)).mkAttrs(infoAttrs);
     }

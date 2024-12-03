@@ -773,11 +773,11 @@ void callFlake(EvalState & state,
     const LockedFlake & lockedFlake,
     Value & vRes)
 {
-    auto vLocks = state.mem.allocValue();
-    auto vRootSrc = state.mem.allocValue();
-    auto vRootSubdir = state.mem.allocValue();
-    auto vTmp1 = state.mem.allocValue();
-    auto vTmp2 = state.mem.allocValue();
+    auto vLocks = state.ctx.mem.allocValue();
+    auto vRootSrc = state.ctx.mem.allocValue();
+    auto vRootSubdir = state.ctx.mem.allocValue();
+    auto vTmp1 = state.ctx.mem.allocValue();
+    auto vTmp2 = state.ctx.mem.allocValue();
 
     vLocks->mkString(lockedFlake.lockFile.to_string());
 
@@ -792,7 +792,7 @@ void callFlake(EvalState & state,
     vRootSubdir->mkString(lockedFlake.flake.lockedRef.subdir);
 
     if (!state.caches.vCallFlake) {
-        state.caches.vCallFlake = allocRootValue(state.mem.allocValue());
+        state.caches.vCallFlake = allocRootValue(state.ctx.mem.allocValue());
         state.eval(state.parseExprFromString(
             #include "call-flake.nix.gen.hh"
             , CanonPath::root), **state.caches.vCallFlake);
@@ -830,7 +830,7 @@ void prim_parseFlakeRef(
     std::string flakeRefS(state.forceStringNoCtx(*args[0], pos,
         "while evaluating the argument passed to builtins.parseFlakeRef"));
     auto attrs = parseFlakeRef(flakeRefS, {}, true).toAttrs();
-    auto binds = state.buildBindings(attrs.size());
+    auto binds = state.ctx.buildBindings(attrs.size());
     for (const auto & [key, value] : attrs) {
         auto s = state.ctx.symbols.create(key);
         auto & vv = binds.alloc(s);

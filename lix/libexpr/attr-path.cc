@@ -45,7 +45,7 @@ std::pair<Value *, PosIdx> findAlongAttrPath(EvalState & state, const std::strin
         auto attrIndex = string2Int<unsigned int>(attr);
 
         /* Evaluate the expression. */
-        Value * vNew = state.mem.allocValue();
+        Value * vNew = state.ctx.mem.allocValue();
         state.autoCallFunction(autoArgs, *v, *vNew);
         v = vNew;
         state.forceValue(*v, noPos);
@@ -100,7 +100,7 @@ std::pair<SourcePath, uint32_t> findPackageFilename(EvalState & state, Value & v
 {
     Value * v2;
     try {
-        auto dummyArgs = state.mem.allocBindings(0);
+        auto dummyArgs = state.ctx.mem.allocBindings(0);
         v2 = findAlongAttrPath(state, "meta.position", *dummyArgs, v).first;
     } catch (Error &) {
         throw NoPositionInfo("package '%s' has no source location information", what);

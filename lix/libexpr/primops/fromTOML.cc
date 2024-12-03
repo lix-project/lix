@@ -26,7 +26,7 @@ void prim_fromTOML(EvalState & state, const PosIdx pos, Value * * args, Value & 
                     size_t size = 0;
                     for (auto & i : table) { (void) i; size++; }
 
-                    auto attrs = state.buildBindings(size);
+                    auto attrs = state.ctx.buildBindings(size);
 
                     for(auto & elem : table)
                         visit(attrs.alloc(elem.first), elem.second);
@@ -39,9 +39,9 @@ void prim_fromTOML(EvalState & state, const PosIdx pos, Value * * args, Value & 
                     auto array = toml::get<std::vector<toml::value>>(t);
 
                     size_t size = array.size();
-                    v = state.mem.newList(size);
+                    v = state.ctx.mem.newList(size);
                     for (size_t i = 0; i < size; ++i)
-                        visit(*(v.listElems()[i] = state.mem.allocValue()), array[i]);
+                        visit(*(v.listElems()[i] = state.ctx.mem.allocValue()), array[i]);
                 }
                 break;;
             case toml::value_t::boolean:
@@ -62,7 +62,7 @@ void prim_fromTOML(EvalState & state, const PosIdx pos, Value * * args, Value & 
             case toml::value_t::local_time:
                 {
                     if (experimentalFeatureSettings.isEnabled(Xp::ParseTomlTimestamps)) {
-                        auto attrs = state.buildBindings(2);
+                        auto attrs = state.ctx.buildBindings(2);
                         attrs.alloc("_type").mkString("timestamp");
                         std::ostringstream s;
                         s << t;

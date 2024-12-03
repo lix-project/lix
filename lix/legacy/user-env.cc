@@ -34,7 +34,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
     /* Construct the whole top level derivation. */
     StorePathSet references;
-    Value manifest = state.mem.newList(elems.size());
+    Value manifest = state.ctx.mem.newList(elems.size());
     size_t n = 0;
     for (auto & i : elems) {
         /* Create a pseudo-derivation containing the name, system,
@@ -44,7 +44,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
         DrvInfo::Outputs outputs = i.queryOutputs(state, true, true);
         StringSet metaNames = i.queryMetaNames(state);
 
-        auto attrs = state.buildBindings(7 + outputs.size());
+        auto attrs = state.ctx.buildBindings(7 + outputs.size());
 
         attrs.alloc(state.ctx.s.type).mkString("derivation");
         attrs.alloc(state.ctx.s.name).mkString(i.queryName(state));
@@ -57,10 +57,10 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
         // Copy each output meant for installation.
         auto & vOutputs = attrs.alloc(state.ctx.s.outputs);
-        vOutputs = state.mem.newList(outputs.size());
+        vOutputs = state.ctx.mem.newList(outputs.size());
         for (const auto & [m, j] : enumerate(outputs)) {
-            (vOutputs.listElems()[m] = state.mem.allocValue())->mkString(j.first);
-            auto outputAttrs = state.buildBindings(2);
+            (vOutputs.listElems()[m] = state.ctx.mem.allocValue())->mkString(j.first);
+            auto outputAttrs = state.ctx.buildBindings(2);
             outputAttrs.alloc(state.ctx.s.outPath).mkString(state.ctx.store->printStorePath(*j.second));
             attrs.alloc(j.first).mkAttrs(outputAttrs);
 
@@ -73,7 +73,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
         }
 
         // Copy the meta attributes.
-        auto meta = state.buildBindings(metaNames.size());
+        auto meta = state.ctx.buildBindings(metaNames.size());
         for (auto & j : metaNames) {
             Value * v = i.queryMeta(state, j);
             if (!v) continue;
@@ -82,7 +82,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
         attrs.alloc(state.ctx.s.meta).mkAttrs(meta);
 
-        (manifest.listElems()[n++] = state.mem.allocValue())->mkAttrs(attrs);
+        (manifest.listElems()[n++] = state.ctx.mem.allocValue())->mkAttrs(attrs);
 
         if (drvPath) references.insert(*drvPath);
     }
@@ -103,7 +103,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
     /* Construct a Nix expression that calls the user environment
        builder with the manifest as argument. */
-    auto attrs = state.buildBindings(3);
+    auto attrs = state.ctx.buildBindings(3);
     state.paths.mkStorePathString(manifestFile, attrs.alloc("manifest"));
     attrs.insert(state.ctx.symbols.create("derivations"), &manifest);
     Value args;

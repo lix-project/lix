@@ -190,24 +190,24 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
 
     if (auto storePath = isValidDerivationInStore()) {
         Derivation drv = state.ctx.store->readDerivation(*storePath);
-        auto attrs = state.buildBindings(3 + drv.outputs.size());
+        auto attrs = state.ctx.buildBindings(3 + drv.outputs.size());
         attrs.alloc(state.ctx.s.drvPath).mkString(path2, {
             NixStringContextElem::DrvDeep { .drvPath = *storePath },
         });
         attrs.alloc(state.ctx.s.name).mkString(drv.env["name"]);
         auto & outputsVal = attrs.alloc(state.ctx.s.outputs);
-        outputsVal = state.mem.newList(drv.outputs.size());
+        outputsVal = state.ctx.mem.newList(drv.outputs.size());
 
         for (const auto & [i, o] : enumerate(drv.outputs)) {
             mkOutputString(state, attrs, *storePath, o);
-            (outputsVal.listElems()[i] = state.mem.allocValue())->mkString(o.first);
+            (outputsVal.listElems()[i] = state.ctx.mem.allocValue())->mkString(o.first);
         }
 
-        auto w = state.mem.allocValue();
+        auto w = state.ctx.mem.allocValue();
         w->mkAttrs(attrs);
 
         if (!state.caches.vImportedDrvToDerivation) {
-            state.caches.vImportedDrvToDerivation = allocRootValue(state.mem.allocValue());
+            state.caches.vImportedDrvToDerivation = allocRootValue(state.ctx.mem.allocValue());
             state.eval(state.parseExprFromString(
                 #include "imported-drv-to-derivation.nix.gen.hh"
                 , CanonPath::root), **state.caches.vImportedDrvToDerivation);
@@ -234,7 +234,7 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
         else {
             state.forceAttrs(*vScope, pos, "while evaluating the first argument passed to builtins.scopedImport");
 
-            Env * env = &state.mem.allocEnv(vScope->attrs->size());
+            Env * env = &state.ctx.mem.allocEnv(vScope->attrs->size());
             env->up = &state.builtins.env;
 
             auto staticEnv = std::make_shared<StaticEnv>(
@@ -563,7 +563,7 @@ static void prim_genericClosure(EvalState & state, const PosIdx pos, Value * * a
     }
 
     /* Create the result list. */
-    v = state.mem.newList(res.size());
+    v = state.ctx.mem.newList(res.size());
     unsigned int n = 0;
     for (auto & i : res)
         v.listElems()[n++] = i;
@@ -640,7 +640,7 @@ static void prim_floor(EvalState & state, const PosIdx pos, Value * * args, Valu
  * else => {success=false; value=false;} */
 static void prim_tryEval(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
-    auto attrs = state.buildBindings(2);
+    auto attrs = state.ctx.buildBindings(2);
 
     std::optional<MaintainCount<int>> trylevel;
     std::unique_ptr<DebugState> savedDebug;
@@ -1114,7 +1114,7 @@ drvName, Bindings * attrs, Value & v)
         drvHashes.lock()->insert_or_assign(drvPath, h);
     }
 
-    auto result = state.buildBindings(1 + drv.outputs.size());
+    auto result = state.ctx.buildBindings(1 + drv.outputs.size());
     result.alloc(state.ctx.s.drvPath).mkString(drvPathS, {
         NixStringContextElem::DrvDeep { .drvPath = drvPath },
     });
@@ -1365,7 +1365,7 @@ static void prim_readDir(EvalState & state, const PosIdx pos, Value * * args, Va
     // This is similar to `getFileType` but is optimized to reduce system calls
     // on many systems.
     auto entries = path.readDirectory();
-    auto attrs = state.buildBindings(entries.size());
+    auto attrs = state.ctx.buildBindings(entries.size());
 
     // If we hit unknown directory entry types we may need to fallback to
     // using `getFileType` on some systems.
@@ -1379,7 +1379,7 @@ static void prim_readDir(EvalState & state, const PosIdx pos, Value * * args, Va
             // Some filesystems or operating systems may not be able to return
             // detailed node info quickly in this case we produce a thunk to
             // query the file type lazily.
-            auto epath = state.mem.allocValue();
+            auto epath = state.ctx.mem.allocValue();
             epath->mkPath(path + name);
             if (!readFileType)
                 readFileType = &state.builtins.get("readFileType");
@@ -1623,11 +1623,11 @@ static void prim_attrNames(EvalState & state, const PosIdx pos, Value * * args, 
 {
     state.forceAttrs(*args[0], pos, "while evaluating the argument passed to builtins.attrNames");
 
-    v = state.mem.newList(args[0]->attrs->size());
+    v = state.ctx.mem.newList(args[0]->attrs->size());
 
     size_t n = 0;
     for (auto & i : *args[0]->attrs)
-        (v.listElems()[n++] = state.mem.allocValue())->mkString(state.ctx.symbols[i.name]);
+        (v.listElems()[n++] = state.ctx.mem.allocValue())->mkString(state.ctx.symbols[i.name]);
 
     std::sort(v.listElems(), v.listElems() + n,
               [](Value * v1, Value * v2) { return strcmp(v1->string.s, v2->string.s) < 0; });
@@ -1639,7 +1639,7 @@ static void prim_attrValues(EvalState & state, const PosIdx pos, Value * * args,
 {
     state.forceAttrs(*args[0], pos, "while evaluating the argument passed to builtins.attrValues");
 
-    v = state.mem.newList(args[0]->attrs->size());
+    v = state.ctx.mem.newList(args[0]->attrs->size());
 
     // FIXME: this is incredibly evil, *why*
     // NOLINTBEGIN(cppcoreguidelines-pro-type-cstyle-cast)
@@ -1730,7 +1730,7 @@ static struct LazyPosAcessors {
 
     void operator()(EvalState & state, const PosIdx pos, Value & line, Value & column)
     {
-        Value * posV = state.mem.allocValue();
+        Value * posV = state.ctx.mem.allocValue();
         posV->mkInt(pos.id);
         line.mkApp(&lineOfPos, posV);
         column.mkApp(&columnOfPos, posV);
@@ -1777,7 +1777,7 @@ static void prim_removeAttrs(EvalState & state, const PosIdx pos, Value * * args
     /* Copy all attributes not in that set.  Note that we don't need
        to sort v.attrs because it's a subset of an already sorted
        vector. */
-    auto attrs = state.buildBindings(args[0]->attrs->size());
+    auto attrs = state.ctx.buildBindings(args[0]->attrs->size());
     std::set_difference(
         args[0]->attrs->begin(), args[0]->attrs->end(),
         names.begin(), names.end(),
@@ -1794,7 +1794,7 @@ static void prim_listToAttrs(EvalState & state, const PosIdx pos, Value * * args
 {
     state.forceList(*args[0], pos, "while evaluating the argument passed to builtins.listToAttrs");
 
-    auto attrs = state.buildBindings(args[0]->listSize());
+    auto attrs = state.ctx.buildBindings(args[0]->listSize());
 
     std::set<Symbol> seen;
 
@@ -1823,7 +1823,7 @@ static void prim_intersectAttrs(EvalState & state, const PosIdx pos, Value * * a
     Bindings &left = *args[0]->attrs;
     Bindings &right = *args[1]->attrs;
 
-    auto attrs = state.buildBindings(std::min(left.size(), right.size()));
+    auto attrs = state.ctx.buildBindings(std::min(left.size(), right.size()));
 
     // The current implementation has good asymptotic complexity and is reasonably
     // simple. Further optimization may be possible, but does not seem productive,
@@ -1896,7 +1896,7 @@ static void prim_catAttrs(EvalState & state, const PosIdx pos, Value * * args, V
             res[found++] = i->value;
     }
 
-    v = state.mem.newList(found);
+    v = state.ctx.mem.newList(found);
     for (unsigned int n = 0; n < found; ++n)
         v.listElems()[n] = res[n];
 }
@@ -1916,7 +1916,7 @@ static void prim_functionArgs(EvalState & state, const PosIdx pos, Value * * arg
         return;
     }
 
-    auto attrs = state.buildBindings(args[0]->lambda.fun->formals->formals.size());
+    auto attrs = state.ctx.buildBindings(args[0]->lambda.fun->formals->formals.size());
     for (auto & i : args[0]->lambda.fun->formals->formals)
         // !!! should optimise booleans (allocate only once)
         attrs.alloc(i.name, i.pos).mkBool(i.def != nullptr);
@@ -1928,11 +1928,11 @@ static void prim_mapAttrs(EvalState & state, const PosIdx pos, Value * * args, V
 {
     state.forceAttrs(*args[1], pos, "while evaluating the second argument passed to builtins.mapAttrs");
 
-    auto attrs = state.buildBindings(args[1]->attrs->size());
+    auto attrs = state.ctx.buildBindings(args[1]->attrs->size());
 
     for (auto & i : *args[1]->attrs) {
-        Value * vName = state.mem.allocValue();
-        Value * vFun2 = state.mem.allocValue();
+        Value * vName = state.ctx.mem.allocValue();
+        Value * vFun2 = state.ctx.mem.allocValue();
         vName->mkString(state.ctx.symbols[i.name]);
         vFun2->mkApp(args[0], vName);
         attrs.alloc(i.name).mkApp(vFun2, i.value);
@@ -1964,10 +1964,10 @@ static void prim_zipAttrsWith(EvalState & state, const PosIdx pos, Value * * arg
             attrsSeen[attr.name].first++;
     }
 
-    auto attrs = state.buildBindings(attrsSeen.size());
+    auto attrs = state.ctx.buildBindings(attrsSeen.size());
     for (auto & [sym, elem] : attrsSeen) {
         auto & list = attrs.alloc(sym);
-        list = state.mem.newList(elem.first);
+        list = state.ctx.mem.newList(elem.first);
         elem.second = list.listElems();
     }
     v.mkAttrs(attrs.alreadySorted());
@@ -1979,11 +1979,11 @@ static void prim_zipAttrsWith(EvalState & state, const PosIdx pos, Value * * arg
     }
 
     for (auto & attr : *v.attrs) {
-        auto name = state.mem.allocValue();
+        auto name = state.ctx.mem.allocValue();
         name->mkString(state.ctx.symbols[attr.name]);
-        auto call1 = state.mem.allocValue();
+        auto call1 = state.ctx.mem.allocValue();
         call1->mkApp(args[0], name);
-        auto call2 = state.mem.allocValue();
+        auto call2 = state.ctx.mem.allocValue();
         call2->mkApp(call1, attr.value);
         attr.value = call2;
     }
@@ -2036,7 +2036,7 @@ static void prim_tail(EvalState & state, const PosIdx pos, Value * * args, Value
     if (args[0]->listSize() == 0)
         state.ctx.errors.make<EvalError>("'tail' called on an empty list").atPos(pos).debugThrow();
 
-    v = state.mem.newList(args[0]->listSize() - 1);
+    v = state.ctx.mem.newList(args[0]->listSize() - 1);
     for (unsigned int n = 0; n < v.listSize(); ++n)
         v.listElems()[n] = args[0]->listElems()[n + 1];
 }
@@ -2053,9 +2053,9 @@ static void prim_map(EvalState & state, const PosIdx pos, Value * * args, Value 
 
     state.forceFunction(*args[0], pos, "while evaluating the first argument passed to builtins.map");
 
-    v = state.mem.newList(args[1]->listSize());
+    v = state.ctx.mem.newList(args[1]->listSize());
     for (unsigned int n = 0; n < v.listSize(); ++n)
-        (v.listElems()[n] = state.mem.allocValue())->mkApp(
+        (v.listElems()[n] = state.ctx.mem.allocValue())->mkApp(
             args[0], args[1]->listElems()[n]);
 }
 
@@ -2089,7 +2089,7 @@ static void prim_filter(EvalState & state, const PosIdx pos, Value * * args, Val
     if (same)
         v = *args[1];
     else {
-        v = state.mem.newList(k);
+        v = state.ctx.mem.newList(k);
         for (unsigned int n = 0; n < k; ++n) v.listElems()[n] = vs[n];
     }
 }
@@ -2133,7 +2133,7 @@ static void prim_foldlStrict(EvalState & state, const PosIdx pos, Value * * args
 
         for (auto [n, elem] : enumerate(args[2]->listItems())) {
             Value * vs []{vCur, elem};
-            vCur = n == args[2]->listSize() - 1 ? &v : state.mem.allocValue();
+            vCur = n == args[2]->listSize() - 1 ? &v : state.ctx.mem.allocValue();
             state.callFunction(*args[0], 2, vs, *vCur, pos);
         }
         state.forceValue(v, pos);
@@ -2189,11 +2189,11 @@ static void prim_genList(EvalState & state, const PosIdx pos, Value * * args, Va
     // as evaluating map without accessing any values makes little sense.
     state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.genList");
 
-    v = state.mem.newList(len);
+    v = state.ctx.mem.newList(len);
     for (size_t n = 0; n < len; ++n) {
-        auto arg = state.mem.allocValue();
+        auto arg = state.ctx.mem.allocValue();
         arg->mkInt(n);
-        (v.listElems()[n] = state.mem.allocValue())->mkApp(args[0], arg);
+        (v.listElems()[n] = state.ctx.mem.allocValue())->mkApp(args[0], arg);
     }
 }
 
@@ -2212,7 +2212,7 @@ static void prim_sort(EvalState & state, const PosIdx pos, Value * * args, Value
 
     state.forceFunction(*args[0], pos, "while evaluating the first argument passed to builtins.sort");
 
-    v = state.mem.newList(len);
+    v = state.ctx.mem.newList(len);
     for (unsigned int n = 0; n < len; ++n) {
         state.forceValue(*args[1]->listElems()[n], pos);
         v.listElems()[n] = args[1]->listElems()[n];
@@ -2261,17 +2261,17 @@ static void prim_partition(EvalState & state, const PosIdx pos, Value * * args, 
             wrong.push_back(vElem);
     }
 
-    auto attrs = state.buildBindings(2);
+    auto attrs = state.ctx.buildBindings(2);
 
     auto & vRight = attrs.alloc(state.ctx.s.right);
     auto rsize = right.size();
-    vRight = state.mem.newList(rsize);
+    vRight = state.ctx.mem.newList(rsize);
     if (rsize)
         memcpy(vRight.listElems(), right.data(), sizeof(Value *) * rsize);
 
     auto & vWrong = attrs.alloc(state.ctx.s.wrong);
     auto wsize = wrong.size();
-    vWrong = state.mem.newList(wsize);
+    vWrong = state.ctx.mem.newList(wsize);
     if (wsize)
         memcpy(vWrong.listElems(), wrong.data(), sizeof(Value *) * wsize);
 
@@ -2294,12 +2294,12 @@ static void prim_groupBy(EvalState & state, const PosIdx pos, Value * * args, Va
         vector->second.push_back(vElem);
     }
 
-    auto attrs2 = state.buildBindings(attrs.size());
+    auto attrs2 = state.ctx.buildBindings(attrs.size());
 
     for (auto & i : attrs) {
         auto & list = attrs2.alloc(i.first);
         auto size = i.second.size();
-        list = state.mem.newList(size);
+        list = state.ctx.mem.newList(size);
         memcpy(list.listElems(), i.second.data(), sizeof(Value *) * size);
     }
 
@@ -2323,7 +2323,7 @@ static void prim_concatMap(EvalState & state, const PosIdx pos, Value * * args, 
         len += lists[n].listSize();
     }
 
-    v = state.mem.newList(len);
+    v = state.ctx.mem.newList(len);
     auto out = v.listElems();
     for (unsigned int n = 0, pos = 0; n < nrLists; ++n) {
         auto l = lists[n].listSize();
@@ -2575,12 +2575,12 @@ void prim_match(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 
         // the first match is the whole string
         const size_t len = match.size() - 1;
-        v = state.mem.newList(len);
+        v = state.ctx.mem.newList(len);
         for (size_t i = 0; i < len; ++i) {
             if (!match[i+1].matched)
-                (v.listElems()[i] = state.mem.allocValue())->mkNull();
+                (v.listElems()[i] = state.ctx.mem.allocValue())->mkNull();
             else
-                (v.listElems()[i] = state.mem.allocValue())->mkString(match[i + 1].str());
+                (v.listElems()[i] = state.ctx.mem.allocValue())->mkString(match[i + 1].str());
         }
 
     } catch (std::regex_error & e) {
@@ -2614,7 +2614,7 @@ void prim_split(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 
         // Any matches results are surrounded by non-matching results.
         const size_t len = std::distance(begin, end);
-        v = state.mem.newList(2 * len + 1);
+        v = state.ctx.mem.newList(2 * len + 1);
         size_t idx = 0;
 
         if (len == 0) {
@@ -2627,24 +2627,24 @@ void prim_split(EvalState & state, const PosIdx pos, Value * * args, Value & v)
             auto match = *i;
 
             // Add a string for non-matched characters.
-            (v.listElems()[idx++] = state.mem.allocValue())->mkString(match.prefix().str());
+            (v.listElems()[idx++] = state.ctx.mem.allocValue())->mkString(match.prefix().str());
 
             // Add a list for matched substrings.
             const size_t slen = match.size() - 1;
-            auto elem = v.listElems()[idx++] = state.mem.allocValue();
+            auto elem = v.listElems()[idx++] = state.ctx.mem.allocValue();
 
             // Start at 1, beacause the first match is the whole string.
-            *elem = state.mem.newList(slen);
+            *elem = state.ctx.mem.newList(slen);
             for (size_t si = 0; si < slen; ++si) {
                 if (!match[si + 1].matched)
-                    (elem->listElems()[si] = state.mem.allocValue())->mkNull();
+                    (elem->listElems()[si] = state.ctx.mem.allocValue())->mkNull();
                 else
-                    (elem->listElems()[si] = state.mem.allocValue())->mkString(match[si + 1].str());
+                    (elem->listElems()[si] = state.ctx.mem.allocValue())->mkString(match[si + 1].str());
             }
 
             // Add a string for non-matched suffix characters.
             if (idx == 2 * len)
-                (v.listElems()[idx++] = state.mem.allocValue())->mkString(match.suffix().str());
+                (v.listElems()[idx++] = state.ctx.mem.allocValue())->mkString(match.suffix().str());
         }
 
         assert(idx == 2 * len + 1);
@@ -2749,7 +2749,7 @@ static void prim_parseDrvName(EvalState & state, const PosIdx pos, Value * * arg
 {
     auto name = state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.parseDrvName");
     DrvName parsed(name);
-    auto attrs = state.buildBindings(2);
+    auto attrs = state.ctx.buildBindings(2);
     attrs.alloc(state.ctx.s.name).mkString(parsed.name);
     attrs.alloc("version").mkString(parsed.version);
     v.mkAttrs(attrs);
@@ -2774,9 +2774,9 @@ static void prim_splitVersion(EvalState & state, const PosIdx pos, Value * * arg
             break;
         components.emplace_back(component);
     }
-    v = state.mem.newList(components.size());
+    v = state.ctx.mem.newList(components.size());
     for (const auto & [n, component] : enumerate(components))
-        (v.listElems()[n] = state.mem.allocValue())->mkString(std::move(component));
+        (v.listElems()[n] = state.ctx.mem.allocValue())->mkString(std::move(component));
 }
 
 

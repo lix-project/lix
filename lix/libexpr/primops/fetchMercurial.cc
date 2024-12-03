@@ -67,7 +67,7 @@ static void prim_fetchMercurial(EvalState & state, const PosIdx pos, Value * * a
     // FIXME: use name
     auto [tree, input2] = input.fetch(state.ctx.store);
 
-    auto attrs2 = state.buildBindings(8);
+    auto attrs2 = state.ctx.buildBindings(8);
     state.paths.mkStorePathString(tree.storePath, attrs2.alloc(state.ctx.s.outPath));
     if (input2.getRef())
         attrs2.alloc("branch").mkString(*input2.getRef());
