@@ -780,6 +780,7 @@ private:
     unsigned long nrListConcats = 0;
     unsigned long nrPrimOpCalls = 0;
     unsigned long nrFunctionCalls = 0;
+    unsigned long nrThunks = 0;
 
     bool countCalls;
 
@@ -794,6 +795,7 @@ private:
     using AttrSelects = std::map<PosIdx, size_t>;
     AttrSelects attrSelects;
 
+    friend struct Expr;
     friend struct ExprOpUpdate;
     friend struct ExprOpConcatLists;
     friend struct ExprVar;

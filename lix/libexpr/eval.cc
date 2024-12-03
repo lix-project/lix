@@ -779,18 +779,10 @@ Value EvalMemory::newList(size_t size)
 }
 
 
-unsigned long nrThunks = 0;
-
-static inline void mkThunk(Value & v, Env & env, Expr & expr)
-{
-    v.mkThunk(&env, expr);
-    nrThunks++;
-}
-
-
 void EvalState::evalLazily(Expr & e, Value & v)
 {
-    mkThunk(v, builtins.env, e);
+    v.mkThunk(&builtins.env, e);
+    nrThunks++;
 }
 
 
@@ -889,7 +881,8 @@ void EvalState::mkSingleDerivedPathString(
 Value * Expr::maybeThunk(EvalState & state, Env & env)
 {
     Value * v = state.mem.allocValue();
-    mkThunk(*v, env, *this);
+    v->mkThunk(&env, *this);
+    state.nrThunks++;
     return v;
 }
 
@@ -1088,7 +1081,8 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
             Value * vAttr;
             if (hasOverrides && i.second.kind != AttrDef::Kind::Inherited) {
                 vAttr = state.mem.allocValue();
-                mkThunk(*vAttr, *i.second.chooseByKind(&env2, &env, inheritEnv), *i.second.e);
+                vAttr->mkThunk(i.second.chooseByKind(&env2, &env, inheritEnv), *i.second.e);
+                state.nrThunks++;
             } else
                 vAttr = i.second.e->maybeThunk(state, *i.second.chooseByKind(&env2, &env, inheritEnv));
             env2.values[displ++] = vAttr;
