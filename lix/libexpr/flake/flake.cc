@@ -791,14 +791,14 @@ void callFlake(EvalState & state,
 
     vRootSubdir->mkString(lockedFlake.flake.lockedRef.subdir);
 
-    if (!state.caches.vCallFlake) {
-        state.caches.vCallFlake = allocRootValue(state.ctx.mem.allocValue());
+    if (!state.ctx.caches.vCallFlake) {
+        state.ctx.caches.vCallFlake = allocRootValue(state.ctx.mem.allocValue());
         state.eval(state.ctx.parseExprFromString(
             #include "call-flake.nix.gen.hh"
-            , CanonPath::root), **state.caches.vCallFlake);
+            , CanonPath::root), **state.ctx.caches.vCallFlake);
     }
 
-    state.callFunction(**state.caches.vCallFlake, *vLocks, *vTmp1, noPos);
+    state.callFunction(**state.ctx.caches.vCallFlake, *vLocks, *vTmp1, noPos);
     state.callFunction(*vTmp1, *vRootSrc, *vTmp2, noPos);
     state.callFunction(*vTmp2, *vRootSubdir, vRes, noPos);
 }

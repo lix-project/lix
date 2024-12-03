@@ -767,7 +767,7 @@ inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
         forceAttrs(*env->values[0], fromWith->pos, "while evaluating the first subexpression of a with expression");
         Bindings::iterator j = env->values[0]->attrs->find(var.name);
         if (j != env->values[0]->attrs->end()) {
-            if (stats.countCalls) stats.attrSelects[j->pos]++;
+            if (ctx.stats.countCalls) ctx.stats.attrSelects[j->pos]++;
             return j->value;
         }
         if (!fromWith->parentWith)
@@ -891,7 +891,7 @@ Value * Expr::maybeThunk(EvalState & state, Env & env)
 {
     Value * v = state.ctx.mem.allocValue();
     v->mkThunk(&env, *this);
-    state.stats.nrThunks++;
+    state.ctx.stats.nrThunks++;
     return v;
 }
 
@@ -901,32 +901,32 @@ Value * ExprVar::maybeThunk(EvalState & state, Env & env)
     Value * v = state.lookupVar(&env, *this, true);
     /* The value might not be initialised in the environment yet.
        In that case, ignore it. */
-    if (v) { state.stats.nrAvoided++; return v; }
+    if (v) { state.ctx.stats.nrAvoided++; return v; }
     return Expr::maybeThunk(state, env);
 }
 
 
 Value * ExprString::maybeThunk(EvalState & state, Env & env)
 {
-    state.stats.nrAvoided++;
+    state.ctx.stats.nrAvoided++;
     return &v;
 }
 
 Value * ExprInt::maybeThunk(EvalState & state, Env & env)
 {
-    state.stats.nrAvoided++;
+    state.ctx.stats.nrAvoided++;
     return &v;
 }
 
 Value * ExprFloat::maybeThunk(EvalState & state, Env & env)
 {
-    state.stats.nrAvoided++;
+    state.ctx.stats.nrAvoided++;
     return &v;
 }
 
 Value * ExprPath::maybeThunk(EvalState & state, Env & env)
 {
-    state.stats.nrAvoided++;
+    state.ctx.stats.nrAvoided++;
     return &v;
 }
 
@@ -941,13 +941,13 @@ void EvalState::evalFile(const SourcePath & path_, Value & v)
 {
     auto path = ctx.paths.checkSourcePath(path_);
 
-    if (auto i = caches.fileEval.find(path); i != caches.fileEval.end()) {
+    if (auto i = ctx.caches.fileEval.find(path); i != ctx.caches.fileEval.end()) {
         v = i->second->result;
         return;
     }
 
     auto resolvedPath = resolveExprPath(path);
-    if (auto i = caches.fileEval.find(resolvedPath); i != caches.fileEval.end()) {
+    if (auto i = ctx.caches.fileEval.find(resolvedPath); i != ctx.caches.fileEval.end()) {
         v = i->second->result;
         return;
     }
@@ -972,14 +972,14 @@ void EvalState::evalFile(const SourcePath & path_, Value & v)
     }
 
     auto cache = std::allocate_shared<CachedEvalFile>(TraceableAllocator<CachedEvalFile>(), v);
-    caches.fileEval[resolvedPath] = cache;
-    if (path != resolvedPath) caches.fileEval[path] = cache;
+    ctx.caches.fileEval[resolvedPath] = cache;
+    if (path != resolvedPath) ctx.caches.fileEval[path] = cache;
 }
 
 
 void EvalState::resetFileCache()
 {
-    caches.fileEval.clear();
+    ctx.caches.fileEval.clear();
 }
 
 
@@ -1091,7 +1091,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
             if (hasOverrides && i.second.kind != AttrDef::Kind::Inherited) {
                 vAttr = state.ctx.mem.allocValue();
                 vAttr->mkThunk(i.second.chooseByKind(&env2, &env, inheritEnv), *i.second.e);
-                state.stats.nrThunks++;
+                state.ctx.stats.nrThunks++;
             } else
                 vAttr = i.second.e->maybeThunk(state, *i.second.chooseByKind(&env2, &env, inheritEnv));
             env2.values[displ++] = vAttr;
@@ -1272,7 +1272,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
             : nullptr;
 
         for (auto const & [partIdx, currentAttrName] : enumerate(attrPath)) {
-            state.stats.nrLookups++;
+            state.ctx.stats.nrLookups++;
 
             Symbol const name = getName(currentAttrName, state, env);
 
@@ -1359,7 +1359,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
             // Set our currently operated-on attrset to this one, and keep going.
             vCurrent = attrIt->value;
             posCurrent = attrIt->pos;
-            if (state.stats.countCalls) state.stats.attrSelects[posCurrent]++;
+            if (state.ctx.stats.countCalls) state.ctx.stats.attrSelects[posCurrent]++;
         }
 
         state.forceValue(*vCurrent, (posCurrent ? posCurrent : this->pos));
@@ -1570,8 +1570,8 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
             }
 
 
-            stats.nrFunctionCalls++;
-            if (stats.countCalls) stats.addCall(lambda);
+            ctx.stats.nrFunctionCalls++;
+            if (ctx.stats.countCalls) ctx.stats.addCall(lambda);
 
             /* Evaluate the body. */
             try {
@@ -1610,8 +1610,8 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 /* We have all the arguments, so call the primop. */
                 auto * fn = vCur.primOp;
 
-                stats.nrPrimOpCalls++;
-                if (stats.countCalls) stats.primOpCalls[fn->name]++;
+                ctx.stats.nrPrimOpCalls++;
+                if (ctx.stats.countCalls) ctx.stats.primOpCalls[fn->name]++;
 
                 try {
                     fn->fun(*this, vCur.determinePos(noPos), args, vCur);
@@ -1664,8 +1664,8 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     vArgs[argsDone + i] = args[i];
 
                 auto fn = primOp->primOp;
-                stats.nrPrimOpCalls++;
-                if (stats.countCalls) stats.primOpCalls[fn->name]++;
+                ctx.stats.nrPrimOpCalls++;
+                if (ctx.stats.countCalls) ctx.stats.primOpCalls[fn->name]++;
 
                 try {
                     // TODO:
@@ -1875,7 +1875,7 @@ void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
     state.evalAttrs(env, *e1, v1, pos, "in the left operand of the update (//) operator");
     state.evalAttrs(env, *e2, v2, pos, "in the right operand of the update (//) operator");
 
-    state.stats.nrOpUpdates++;
+    state.ctx.stats.nrOpUpdates++;
 
     if (v1.attrs->size() == 0) { v = v2; return; }
     if (v2.attrs->size() == 0) { v = v1; return; }
@@ -1903,7 +1903,7 @@ void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
 
     v.mkAttrs(attrs.alreadySorted());
 
-    state.stats.nrOpUpdateValuesCopied += v.attrs->size();
+    state.ctx.stats.nrOpUpdateValuesCopied += v.attrs->size();
 }
 
 
@@ -1918,7 +1918,7 @@ void ExprOpConcatLists::eval(EvalState & state, Env & env, Value & v)
 
 void EvalState::concatLists(Value & v, size_t nrLists, Value * * lists, const PosIdx pos, std::string_view errorCtx)
 {
-    stats.nrListConcats++;
+    ctx.stats.nrListConcats++;
 
     Value * nonEmpty = 0;
     size_t len = 0;

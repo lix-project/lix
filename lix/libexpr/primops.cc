@@ -206,19 +206,19 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
         auto w = state.ctx.mem.allocValue();
         w->mkAttrs(attrs);
 
-        if (!state.caches.vImportedDrvToDerivation) {
-            state.caches.vImportedDrvToDerivation = allocRootValue(state.ctx.mem.allocValue());
+        if (!state.ctx.caches.vImportedDrvToDerivation) {
+            state.ctx.caches.vImportedDrvToDerivation = allocRootValue(state.ctx.mem.allocValue());
             state.eval(state.ctx.parseExprFromString(
                 #include "imported-drv-to-derivation.nix.gen.hh"
-                , CanonPath::root), **state.caches.vImportedDrvToDerivation);
+                , CanonPath::root), **state.ctx.caches.vImportedDrvToDerivation);
         }
 
         state.forceFunction(
-            **state.caches.vImportedDrvToDerivation,
+            **state.ctx.caches.vImportedDrvToDerivation,
             pos,
             "while evaluating imported-drv-to-derivation.nix.gen.hh"
         );
-        v.mkApp(*state.caches.vImportedDrvToDerivation, w);
+        v.mkApp(*state.ctx.caches.vImportedDrvToDerivation, w);
         state.forceAttrs(v, pos, "while calling imported-drv-to-derivation.nix.gen.hh");
     }
 
@@ -1671,7 +1671,7 @@ void prim_getAttr(EvalState & state, const PosIdx pos, Value * * args, Value & v
         "in the attribute set under consideration"
     );
     // !!! add to stack trace?
-    if (state.stats.countCalls && i->pos) state.stats.attrSelects[i->pos]++;
+    if (state.ctx.stats.countCalls && i->pos) state.ctx.stats.attrSelects[i->pos]++;
     state.forceValue(*i->value, pos);
     v = *i->value;
 }
@@ -2550,10 +2550,10 @@ struct RegexCache
 
 static RegexCache & regexCacheOf(EvalState & state)
 {
-    if (!state.caches.regexes) {
-        state.caches.regexes = std::make_shared<RegexCache>();
+    if (!state.ctx.caches.regexes) {
+        state.ctx.caches.regexes = std::make_shared<RegexCache>();
     }
-    return *state.caches.regexes;
+    return *state.ctx.caches.regexes;
 }
 
 void prim_match(EvalState & state, const PosIdx pos, Value * * args, Value & v)
