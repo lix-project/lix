@@ -142,14 +142,14 @@ static FlakeInput parseFlakeInput(EvalState & state,
                         auto intValue = attr.value->integer.value;
 
                         if (intValue < 0) {
-                            state.errors.make<EvalError>("negative value given for flake input attribute %1%: %2%", state.ctx.symbols[attr.name], intValue).debugThrow();
+                            state.ctx.errors.make<EvalError>("negative value given for flake input attribute %1%: %2%", state.ctx.symbols[attr.name], intValue).debugThrow();
                         }
                         uint64_t asUnsigned = intValue;
                         attrs.emplace(state.ctx.symbols[attr.name], asUnsigned);
                         break;
                     }
                     default:
-                        state.errors.make<TypeError>("flake input attribute '%s' is %s while a string, Boolean, or integer is expected",
+                        state.ctx.errors.make<TypeError>("flake input attribute '%s' is %s while a string, Boolean, or integer is expected",
                             state.ctx.symbols[attr.name], showType(*attr.value)).debugThrow();
                 }
                 #pragma GCC diagnostic pop
@@ -247,7 +247,7 @@ static Flake getFlake(
 
     // Enforce that 'flake.nix' is a direct attrset, not a computation.
     if (!(dynamic_cast<ExprAttrs *>(&flakeExpr))) {
-        state.errors.make<EvalError>("file '%s' must be an attribute set", resolvedFlakeFile).debugThrow();
+        state.ctx.errors.make<EvalError>("file '%s' must be an attribute set", resolvedFlakeFile).debugThrow();
     }
 
     Value vInfo;
@@ -307,14 +307,14 @@ static Flake getFlake(
                 std::vector<std::string> ss;
                 for (auto elem : setting.value->listItems()) {
                     if (elem->type() != nString)
-                        state.errors.make<TypeError>("list element in flake configuration setting '%s' is %s while a string is expected",
+                        state.ctx.errors.make<TypeError>("list element in flake configuration setting '%s' is %s while a string is expected",
                             state.ctx.symbols[setting.name], showType(*setting.value)).debugThrow();
                     ss.emplace_back(state.forceStringNoCtx(*elem, setting.pos, ""));
                 }
                 flake.config.settings.emplace(state.ctx.symbols[setting.name], ss);
             }
             else
-                state.errors.make<TypeError>("flake configuration setting '%s' is %s",
+                state.ctx.errors.make<TypeError>("flake configuration setting '%s' is %s",
                     state.ctx.symbols[setting.name], showType(*setting.value)).debugThrow();
         }
     }
@@ -858,7 +858,7 @@ void prim_flakeRefToString(
             auto intValue = attr.value->integer.value;
 
             if (intValue < 0) {
-                state.errors.make<EvalError>("negative value given for flake ref attr %1%: %2%", state.ctx.symbols[attr.name], intValue).atPos(pos).debugThrow();
+                state.ctx.errors.make<EvalError>("negative value given for flake ref attr %1%: %2%", state.ctx.symbols[attr.name], intValue).atPos(pos).debugThrow();
             }
             uint64_t asUnsigned = intValue;
 
@@ -870,7 +870,7 @@ void prim_flakeRefToString(
             attrs.emplace(state.ctx.symbols[attr.name],
                           std::string(attr.value->str()));
         } else {
-            state.errors.make<EvalError>(
+            state.ctx.errors.make<EvalError>(
                 "flake reference attribute sets may only contain integers, Booleans, "
                 "and strings, but attribute '%s' is %s",
                 state.ctx.symbols[attr.name],

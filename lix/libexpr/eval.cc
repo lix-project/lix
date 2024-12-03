@@ -618,7 +618,7 @@ void printEnvBindings(const SymbolTable & st, const StaticEnv & se, const Env & 
 void printEnvBindings(const EvalState &es, const Expr & expr, const Env & env)
 {
     // just print the names for now
-    auto se = es.debug->staticEnvFor(expr);
+    auto se = es.ctx.debug->staticEnvFor(expr);
     if (se)
         printEnvBindings(es.ctx.symbols, *se, env, 0);
 }
@@ -739,15 +739,15 @@ static DebugState::TraceFrame makeDebugTraceStacker(
     std::shared_ptr<Pos> && pos,
     const Args & ... formatArgs)
 {
-    auto trace = state.debug->addTrace(DebugTrace{
+    auto trace = state.ctx.debug->addTrace(DebugTrace{
         .pos = std::move(pos),
         .expr = expr,
         .env = env,
         .hint = HintFmt(formatArgs...),
         .isError = false,
     });
-    if (state.debug->stop && state.debug->errorCallback)
-        state.debug->onEvalError(nullptr, env, expr);
+    if (state.ctx.debug->stop && state.ctx.debug->errorCallback)
+        state.ctx.debug->onEvalError(nullptr, env, expr);
     return trace;
 }
 
@@ -771,7 +771,7 @@ inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
             return j->value;
         }
         if (!fromWith->parentWith)
-            errors.make<UndefinedVarError>("undefined variable '%1%'", ctx.symbols[var.name]).atPos(var.pos).withFrame(*env, var).debugThrow();
+            ctx.errors.make<UndefinedVarError>("undefined variable '%1%'", ctx.symbols[var.name]).atPos(var.pos).withFrame(*env, var).debugThrow();
         for (size_t l = fromWith->prevWith; l; --l, env = env->up) ;
         fromWith = fromWith->parentWith;
     }
@@ -956,7 +956,7 @@ void EvalState::evalFile(const SourcePath & path_, Value & v)
     Expr & e = parseExprFromFile(paths.checkSourcePath(resolvedPath));
 
     try {
-        auto dts = debug
+        auto dts = ctx.debug
             ? makeDebugTraceStacker(
                 *this,
                 e,
@@ -995,7 +995,7 @@ inline bool EvalState::evalBool(Env & env, Expr & e, const PosIdx pos, std::stri
         Value v;
         e.eval(*this, env, v);
         if (v.type() != nBool)
-            errors.make<TypeError>(
+            ctx.errors.make<TypeError>(
                  "expected a Boolean but found %1%: %2%",
                  showType(v),
                  ValuePrinter(*this, v, errorPrintOptions)
@@ -1013,7 +1013,7 @@ inline void EvalState::evalAttrs(Env & env, Expr & e, Value & v, const PosIdx po
     try {
         e.eval(*this, env, v);
         if (v.type() != nAttrs)
-            errors.make<TypeError>(
+            ctx.errors.make<TypeError>(
                 "expected a set but found %1%: %2%",
                 showType(v),
                 ValuePrinter(*this, v, errorPrintOptions)
@@ -1146,7 +1146,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
         auto nameSym = state.ctx.symbols.create(nameVal.string.s);
         Bindings::iterator j = v.attrs->find(nameSym);
         if (j != v.attrs->end())
-            state.errors.make<EvalError>("dynamic attribute '%1%' already defined at %2%", state.ctx.symbols[nameSym], state.ctx.positions[j->pos]).atPos(i.pos).withFrame(env, *this).debugThrow();
+            state.ctx.errors.make<EvalError>("dynamic attribute '%1%' already defined at %2%", state.ctx.symbols[nameSym], state.ctx.positions[j->pos]).atPos(i.pos).withFrame(env, *this).debugThrow();
 
         i.valueExpr->setName(nameSym);
         /* Keep sorted order so find can catch duplicates */
@@ -1177,7 +1177,7 @@ void ExprLet::eval(EvalState & state, Env & env, Value & v)
             *i.second.chooseByKind(&env2, &env, inheritEnv));
     }
 
-    auto dts = state.debug
+    auto dts = state.ctx.debug
         ? makeDebugTraceStacker(
             state,
             *this,
@@ -1261,7 +1261,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
     }
 
     try {
-        auto dts = state.debug
+        auto dts = state.ctx.debug
             ? makeDebugTraceStacker(
                 state,
                 *this,
@@ -1321,7 +1321,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                 }
 
                 // Otherwise, we must type error.
-                state.errors.make<TypeError>(
+                state.ctx.errors.make<TypeError>(
                     "expected a set but found %s: %s",
                     showType(*vCurrent),
                     ValuePrinter(state, *vCurrent, errorPrintOptions)
@@ -1348,7 +1348,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                     allAttrNames.insert(state.ctx.symbols[attr.name]);
                 }
                 auto suggestions = Suggestions::bestMatches(allAttrNames, state.ctx.symbols[name]);
-                state.errors.make<EvalError>("attribute '%s' missing", state.ctx.symbols[name])
+                state.ctx.errors.make<EvalError>("attribute '%s' missing", state.ctx.symbols[name])
                     .atPos(pos)
                     .withSuggestions(suggestions)
                     .withFrame(env, *this)
@@ -1484,7 +1484,7 @@ FormalsMatch matchupFormals(EvalState & state, Env & env, Displacement & displ, 
 void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value & vRes, const PosIdx pos)
 {
     if (callDepth > evalSettings.maxCallDepth)
-        errors.make<EvalError>("stack overflow; max-call-depth exceeded").atPos(pos).debugThrow();
+        ctx.errors.make<EvalError>("stack overflow; max-call-depth exceeded").atPos(pos).debugThrow();
     CallDepth _level(callDepth);
 
     auto trace = evalSettings.traceFunctionCalls
@@ -1546,7 +1546,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 );
                 for (auto const & missingArg : formalsMatch.missing) {
                     auto const missing = ctx.symbols[missingArg];
-                    errors.make<TypeError>("function '%s' called without required argument '%s'", lambda.getName(ctx.symbols), missing)
+                    ctx.errors.make<TypeError>("function '%s' called without required argument '%s'", lambda.getName(ctx.symbols), missing)
                         .atPos(lambda.pos)
                         .withTrace(pos, "from call site")
                         .withFrame(*fun.lambda.env, lambda)
@@ -1559,7 +1559,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                         formalNames.insert(ctx.symbols[formal.name]);
                     }
                     auto sug = Suggestions::bestMatches(formalNames, unex);
-                    errors.make<TypeError>("function '%s' called with unexpected argument '%s'", lambda.getName(ctx.symbols), unex)
+                    ctx.errors.make<TypeError>("function '%s' called with unexpected argument '%s'", lambda.getName(ctx.symbols), unex)
                         .atPos(lambda.pos)
                         .withTrace(pos, "from call site")
                         .withSuggestions(sug)
@@ -1575,7 +1575,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
 
             /* Evaluate the body. */
             try {
-                auto dts = debug
+                auto dts = ctx.debug
                     ? makeDebugTraceStacker(
                         *this, *lambda.body, env2, ctx.positions[lambda.pos],
                         "while calling %s",
@@ -1700,7 +1700,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
         }
 
         else
-            errors.make<TypeError>(
+            ctx.errors.make<TypeError>(
                     "attempt to call something which is not a function but %1%: %2%",
                     showType(vCur),
                     ValuePrinter(*this, vCur, errorPrintOptions))
@@ -1714,7 +1714,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
 
 void ExprCall::eval(EvalState & state, Env & env, Value & v)
 {
-    auto dts = state.debug
+    auto dts = state.ctx.debug
         ? makeDebugTraceStacker(
             state,
             *this,
@@ -1787,7 +1787,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res)
             if (j != args.end()) {
                 attrs.insert(*j);
             } else if (!i.def) {
-                errors.make<MissingArgumentError>(R"(cannot evaluate a function that has an argument without a value ('%1%')
+                ctx.errors.make<MissingArgumentError>(R"(cannot evaluate a function that has an argument without a value ('%1%')
 Nix attempted to evaluate a function as a top level expression; in
 this case it must have its arguments supplied either by default
 values, or passed explicitly with '--arg' or '--argstr'. See
@@ -1823,7 +1823,7 @@ void ExprAssert::eval(EvalState & state, Env & env, Value & v)
     if (!state.evalBool(env, *cond, pos, "in the condition of the assert statement")) {
         std::ostringstream out;
         cond->show(state.ctx.symbols, out);
-        state.errors.make<AssertionError>("assertion '%1%' failed", out.str()).atPos(pos).withFrame(env, *this).debugThrow();
+        state.ctx.errors.make<AssertionError>("assertion '%1%' failed", out.str()).atPos(pos).withFrame(env, *this).debugThrow();
     }
     body->eval(state, env, v);
 }
@@ -1998,7 +1998,7 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
                 if (auto checked = newN.valueChecked(); checked.has_value()) {
                     n = NixInt(*checked);
                 } else {
-                    state.errors.make<EvalError>("integer overflow in adding %1% + %2%", n, vTmp.integer).atPos(i_pos).debugThrow();
+                    state.ctx.errors.make<EvalError>("integer overflow in adding %1% + %2%", n, vTmp.integer).atPos(i_pos).debugThrow();
                 }
             } else if (vTmp.type() == nFloat) {
                 // Upgrade the type from int to float;
@@ -2006,14 +2006,14 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
                 nf = n.value;
                 nf += vTmp.fpoint;
             } else
-                state.errors.make<EvalError>("cannot add %1% to an integer", showType(vTmp)).atPos(i_pos).withFrame(env, *this).debugThrow();
+                state.ctx.errors.make<EvalError>("cannot add %1% to an integer", showType(vTmp)).atPos(i_pos).withFrame(env, *this).debugThrow();
         } else if (firstType == nFloat) {
             if (vTmp.type() == nInt) {
                 nf += vTmp.integer.value;
             } else if (vTmp.type() == nFloat) {
                 nf += vTmp.fpoint;
             } else
-                state.errors.make<EvalError>("cannot add %1% to a float", showType(vTmp)).atPos(i_pos).withFrame(env, *this).debugThrow();
+                state.ctx.errors.make<EvalError>("cannot add %1% to a float", showType(vTmp)).atPos(i_pos).withFrame(env, *this).debugThrow();
         } else {
             if (s.empty()) s.reserve(es.size());
             /* skip canonization of first path, which would only be not
@@ -2035,7 +2035,7 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
         v.mkFloat(nf);
     else if (firstType == nPath) {
         if (!context.empty())
-            state.errors.make<EvalError>("a string that refers to a store path cannot be appended to a path").atPos(pos).withFrame(env, *this).debugThrow();
+            state.ctx.errors.make<EvalError>("a string that refers to a store path cannot be appended to a path").atPos(pos).withFrame(env, *this).debugThrow();
         v.mkPath(CanonPath(canonPath(str())));
     } else
         v.mkStringMove(c_str(), context);
@@ -2050,7 +2050,7 @@ void ExprPos::eval(EvalState & state, Env & env, Value & v)
 
 void ExprBlackHole::eval(EvalState & state, Env & env, Value & v)
 {
-    state.errors.make<InfiniteRecursionError>("infinite recursion encountered")
+    state.ctx.errors.make<InfiniteRecursionError>("infinite recursion encountered")
         .atPos(v.determinePos(noPos))
         .debugThrow();
 }
@@ -2087,7 +2087,7 @@ void EvalState::forceValueDeep(Value & v)
             for (auto & i : *v.attrs)
                 try {
                     // If the value is a thunk, we're evaling. Otherwise no trace necessary.
-                    auto dts = debug && i.value->isThunk()
+                    auto dts = ctx.debug && i.value->isThunk()
                         ? makeDebugTraceStacker(*this, *i.value->thunk.expr, *i.value->thunk.env, ctx.positions[i.pos],
                             "while evaluating the attribute '%1%'", ctx.symbols[i.name])
                         : nullptr;
@@ -2114,7 +2114,7 @@ NixInt EvalState::forceInt(Value & v, const PosIdx pos, std::string_view errorCt
     try {
         forceValue(v, pos);
         if (v.type() != nInt)
-            errors.make<TypeError>(
+            ctx.errors.make<TypeError>(
                 "expected an integer but found %1%: %2%",
                 showType(v),
                 ValuePrinter(*this, v, errorPrintOptions)
@@ -2136,7 +2136,7 @@ NixFloat EvalState::forceFloat(Value & v, const PosIdx pos, std::string_view err
         if (v.type() == nInt)
             return v.integer.value;
         else if (v.type() != nFloat)
-            errors.make<TypeError>(
+            ctx.errors.make<TypeError>(
                 "expected a float but found %1%: %2%",
                 showType(v),
                 ValuePrinter(*this, v, errorPrintOptions)
@@ -2154,7 +2154,7 @@ bool EvalState::forceBool(Value & v, const PosIdx pos, std::string_view errorCtx
     try {
         forceValue(v, pos);
         if (v.type() != nBool)
-            errors.make<TypeError>(
+            ctx.errors.make<TypeError>(
                 "expected a Boolean but found %1%: %2%",
                 showType(v),
                 ValuePrinter(*this, v, errorPrintOptions)
@@ -2180,7 +2180,7 @@ void EvalState::forceFunction(Value & v, const PosIdx pos, std::string_view erro
     try {
         forceValue(v, pos);
         if (v.type() != nFunction && !isFunctor(v))
-            errors.make<TypeError>(
+            ctx.errors.make<TypeError>(
                 "expected a function but found %1%: %2%",
                 showType(v),
                 ValuePrinter(*this, v, errorPrintOptions)
@@ -2197,7 +2197,7 @@ std::string_view EvalState::forceString(Value & v, const PosIdx pos, std::string
     try {
         forceValue(v, pos);
         if (v.type() != nString)
-            errors.make<TypeError>(
+            ctx.errors.make<TypeError>(
                 "expected a string but found %1%: %2%",
                 showType(v),
                 ValuePrinter(*this, v, errorPrintOptions)
@@ -2230,7 +2230,7 @@ std::string_view EvalState::forceStringNoCtx(Value & v, const PosIdx pos, std::s
 {
     auto s = forceString(v, pos, errorCtx);
     if (v.string.context) {
-        errors.make<EvalError>("the string '%1%' is not allowed to refer to a store path (such as '%2%')", v.string.s, v.string.context[0]).withTrace(pos, errorCtx).debugThrow();
+        ctx.errors.make<EvalError>("the string '%1%' is not allowed to refer to a store path (such as '%2%')", v.string.s, v.string.context[0]).withTrace(pos, errorCtx).debugThrow();
     }
     return s;
 }
@@ -2295,7 +2295,7 @@ BackedStringView EvalState::coerceToString(
             return std::move(*maybeString);
         auto i = v.attrs->find(ctx.s.outPath);
         if (i == v.attrs->end()) {
-            errors.make<TypeError>(
+            ctx.errors.make<TypeError>(
                 "cannot coerce %1% to a string: %2%",
                 showType(v),
                 ValuePrinter(*this, v, errorPrintOptions)
@@ -2345,7 +2345,7 @@ BackedStringView EvalState::coerceToString(
         }
     }
 
-    errors.make<TypeError>("cannot coerce %1% to a string: %2%",
+    ctx.errors.make<TypeError>("cannot coerce %1% to a string: %2%",
         showType(v),
         ValuePrinter(*this, v, errorPrintOptions)
     )
@@ -2382,7 +2382,7 @@ SourcePath EvalState::coerceToPath(const PosIdx pos, Value & v, NixStringContext
 {
     auto path = coerceToString(pos, v, context, errorCtx, false, false, true).toOwned();
     if (path == "" || path[0] != '/')
-        errors.make<EvalError>("string '%1%' doesn't represent an absolute path", path).withTrace(pos, errorCtx).debugThrow();
+        ctx.errors.make<EvalError>("string '%1%' doesn't represent an absolute path", path).withTrace(pos, errorCtx).debugThrow();
     return CanonPath(path);
 }
 
@@ -2392,7 +2392,7 @@ StorePath EvalState::coerceToStorePath(const PosIdx pos, Value & v, NixStringCon
     auto path = coerceToString(pos, v, context, errorCtx, false, false, true).toOwned();
     if (auto storePath = store->maybeParseStorePath(path))
         return *storePath;
-    errors.make<EvalError>("path '%1%' is not in the Nix store", path).withTrace(pos, errorCtx).debugThrow();
+    ctx.errors.make<EvalError>("path '%1%' is not in the Nix store", path).withTrace(pos, errorCtx).debugThrow();
 }
 
 
@@ -2402,7 +2402,7 @@ std::pair<SingleDerivedPath, std::string_view> EvalState::coerceToSingleDerivedP
     auto s = forceString(v, context, pos, errorCtx);
     auto csize = context.size();
     if (csize != 1)
-        errors.make<EvalError>(
+        ctx.errors.make<EvalError>(
             "string '%s' has %d entries in its context. It should only have exactly one entry",
             s, csize)
             .withTrace(pos, errorCtx).debugThrow();
@@ -2411,7 +2411,7 @@ std::pair<SingleDerivedPath, std::string_view> EvalState::coerceToSingleDerivedP
             return std::move(o);
         },
         [&](NixStringContextElem::DrvDeep &&) -> SingleDerivedPath {
-            errors.make<EvalError>(
+            ctx.errors.make<EvalError>(
                 "string '%s' has a context which refers to a complete source and binary closure. This is not supported at this time",
                 s).withTrace(pos, errorCtx).debugThrow();
         },
@@ -2436,13 +2436,13 @@ SingleDerivedPath EvalState::coerceToSingleDerivedPath(const PosIdx pos, Value &
            error message. */
         std::visit(overloaded {
             [&](const SingleDerivedPath::Opaque & o) {
-                errors.make<EvalError>(
+                ctx.errors.make<EvalError>(
                     "path string '%s' has context with the different path '%s'",
                     s, sExpected)
                     .withTrace(pos, errorCtx).debugThrow();
             },
             [&](const SingleDerivedPath::Built & b) {
-                errors.make<EvalError>(
+                ctx.errors.make<EvalError>(
                     "string '%s' has context with the output '%s' from derivation '%s', but the string is not the right placeholder for this derivation output. It should be '%s'",
                     s, b.output, b.drvPath->to_string(*store), sExpected)
                     .withTrace(pos, errorCtx).debugThrow();
@@ -2527,7 +2527,7 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
 
         case nThunk: // Must not be left by forceValue
         default:
-            errors.make<EvalError>("cannot compare %1% with %2%", showType(v1), showType(v2)).withTrace(pos, errorCtx).debugThrow();
+            ctx.errors.make<EvalError>("cannot compare %1% with %2%", showType(v1), showType(v2)).withTrace(pos, errorCtx).debugThrow();
     }
 }
 
@@ -2832,7 +2832,7 @@ std::optional<std::string> EvalPaths::resolveSearchPathPath(const SearchPath::Pa
 
 std::string ExternalValueBase::coerceToString(EvalState & state, const PosIdx & pos, NixStringContext & context, bool copyMore, bool copyToStore) const
 {
-    state.errors.make<TypeError>(
+    state.ctx.errors.make<TypeError>(
         "cannot coerce %1% to a string: %2%", showType(), *this
     ).atPos(pos).debugThrow();
 }

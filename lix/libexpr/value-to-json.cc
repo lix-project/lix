@@ -99,7 +99,7 @@ json printValueAsJSON(EvalState & state, bool strict,
 
         case nThunk:
         case nFunction:
-            state.errors.make<TypeError>(
+            state.ctx.errors.make<TypeError>(
                 "cannot convert %1% to JSON",
                 showType(v)
             )
@@ -118,7 +118,7 @@ void printValueAsJSON(EvalState & state, bool strict,
 json ExternalValueBase::printValueAsJSON(EvalState & state, bool strict,
     NixStringContext & context, bool copyToStore) const
 {
-    state.errors.make<TypeError>("cannot convert %1% to JSON", showType())
+    state.ctx.errors.make<TypeError>("cannot convert %1% to JSON", showType())
     .debugThrow();
 }
 

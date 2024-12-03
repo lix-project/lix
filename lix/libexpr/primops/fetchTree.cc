@@ -124,12 +124,12 @@ static void fetchTree(
 
         if (auto aType = args[0]->attrs->get(state.ctx.s.type)) {
             if (type)
-                state.errors.make<EvalError>(
+                state.ctx.errors.make<EvalError>(
                     "unexpected attribute 'type'"
                 ).atPos(pos).debugThrow();
             type = state.forceStringNoCtx(*aType->value, aType->pos, "while evaluating the `type` attribute passed to builtins.fetchTree");
         } else if (!type)
-            state.errors.make<EvalError>(
+            state.ctx.errors.make<EvalError>(
                 "attribute 'type' is missing in call to 'fetchTree'"
             ).atPos(pos).debugThrow();
 
@@ -153,19 +153,19 @@ static void fetchTree(
                 auto intValue = attr.value->integer.value;
 
                 if (intValue < 0) {
-                    state.errors.make<EvalError>("negative value given for fetchTree attr %1%: %2%", state.ctx.symbols[attr.name], intValue).atPos(pos).debugThrow();
+                    state.ctx.errors.make<EvalError>("negative value given for fetchTree attr %1%: %2%", state.ctx.symbols[attr.name], intValue).atPos(pos).debugThrow();
                 }
                 unsigned long asUnsigned = intValue;
 
                 attrs.emplace(state.ctx.symbols[attr.name], asUnsigned);
             } else
-                state.errors.make<TypeError>("fetchTree argument '%s' is %s while a string, Boolean or integer is expected",
+                state.ctx.errors.make<TypeError>("fetchTree argument '%s' is %s while a string, Boolean or integer is expected",
                     state.ctx.symbols[attr.name], showType(*attr.value)).debugThrow();
         }
 
         if (!params.allowNameArgument)
             if (auto nameIter = attrs.find("name"); nameIter != attrs.end())
-                state.errors.make<EvalError>(
+                state.ctx.errors.make<EvalError>(
                     "attribute 'name' isn’t supported in call to 'fetchTree'"
                 ).atPos(pos).debugThrow();
 
@@ -189,7 +189,7 @@ static void fetchTree(
         input = lookupInRegistries(state.store, input).first;
 
     if (evalSettings.pureEval && !input.isLocked()) {
-        state.errors.make<EvalError>("in pure evaluation mode, 'fetchTree' requires a locked input").atPos(pos).debugThrow();
+        state.ctx.errors.make<EvalError>("in pure evaluation mode, 'fetchTree' requires a locked input").atPos(pos).debugThrow();
     }
 
     auto [tree, input2] = input.fetch(state.store);
@@ -231,12 +231,12 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
             else if (n == "name")
                 name = state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the name of the content we should fetch");
             else
-                state.errors.make<EvalError>("unsupported argument '%s' to '%s'", n, who)
+                state.ctx.errors.make<EvalError>("unsupported argument '%s' to '%s'", n, who)
                 .atPos(pos).debugThrow();
         }
 
         if (!url)
-            state.errors.make<EvalError>(
+            state.ctx.errors.make<EvalError>(
                 "'url' argument required").atPos(pos).debugThrow();
     } else
         url = state.forceStringNoCtx(*args[0], pos, "while evaluating the url we should fetch");
@@ -250,7 +250,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
         name = baseNameOf(*url);
 
     if (evalSettings.pureEval && !expectedHash)
-        state.errors.make<EvalError>("in pure evaluation mode, '%s' requires a 'sha256' argument", who).atPos(pos).debugThrow();
+        state.ctx.errors.make<EvalError>("in pure evaluation mode, '%s' requires a 'sha256' argument", who).atPos(pos).debugThrow();
 
     // early exit if pinned and already in the store
     if (expectedHash && expectedHash->type == HashType::SHA256) {
@@ -280,7 +280,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
             ? state.store->queryPathInfo(storePath)->narHash
             : hashFile(HashType::SHA256, state.store->toRealPath(storePath));
         if (hash != *expectedHash) {
-            state.errors.make<EvalError>(
+            state.ctx.errors.make<EvalError>(
                 "hash mismatch in file downloaded from '%s':\n  specified: %s\n  got:       %s",
                 *url,
                 expectedHash->to_string(Base::Base32, true),

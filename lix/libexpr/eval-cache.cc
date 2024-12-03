@@ -552,14 +552,14 @@ std::string AttrCursor::getString(EvalState & state)
                 debug("using cached string attribute '%s'", getAttrPathStr(state));
                 return s->first;
             } else
-                state.errors.make<TypeError>("'%s' is not a string", getAttrPathStr(state)).debugThrow();
+                state.ctx.errors.make<TypeError>("'%s' is not a string", getAttrPathStr(state)).debugThrow();
         }
     }
 
     auto & v = forceValue(state);
 
     if (v.type() != nString && v.type() != nPath) {
-        state.errors.make<TypeError>("'%s' is not a string but %s", getAttrPathStr(state), v.type()).debugThrow();
+        state.ctx.errors.make<TypeError>("'%s' is not a string but %s", getAttrPathStr(state), v.type()).debugThrow();
     }
 
     return v.type() == nString ? v.string.s : v.path().to_string();
@@ -595,7 +595,7 @@ string_t AttrCursor::getStringWithContext(EvalState & state)
                     return *s;
                 }
             } else
-                state.errors.make<TypeError>("'%s' is not a string", getAttrPathStr(state)).debugThrow();
+                state.ctx.errors.make<TypeError>("'%s' is not a string", getAttrPathStr(state)).debugThrow();
         }
     }
 
@@ -608,7 +608,7 @@ string_t AttrCursor::getStringWithContext(EvalState & state)
     } else if (v.type() == nPath) {
         return {v.path().to_string(), {}};
     } else {
-        state.errors.make<TypeError>("'%s' is not a string but %s", getAttrPathStr(state), v.type()).debugThrow();
+        state.ctx.errors.make<TypeError>("'%s' is not a string but %s", getAttrPathStr(state), v.type()).debugThrow();
     }
 }
 
@@ -622,14 +622,14 @@ bool AttrCursor::getBool(EvalState & state)
                 debug("using cached Boolean attribute '%s'", getAttrPathStr(state));
                 return *b;
             } else
-                state.errors.make<TypeError>("'%s' is not a Boolean", getAttrPathStr(state)).debugThrow();
+                state.ctx.errors.make<TypeError>("'%s' is not a Boolean", getAttrPathStr(state)).debugThrow();
         }
     }
 
     auto & v = forceValue(state);
 
     if (v.type() != nBool)
-        state.errors.make<TypeError>("'%s' is not a Boolean", getAttrPathStr(state)).debugThrow();
+        state.ctx.errors.make<TypeError>("'%s' is not a Boolean", getAttrPathStr(state)).debugThrow();
 
     return v.boolean;
 }
@@ -644,14 +644,14 @@ NixInt AttrCursor::getInt(EvalState & state)
                 debug("using cached integer attribute '%s'", getAttrPathStr(state));
                 return i->x;
             } else
-                state.errors.make<TypeError>("'%s' is not an integer", getAttrPathStr(state)).debugThrow();
+                state.ctx.errors.make<TypeError>("'%s' is not an integer", getAttrPathStr(state)).debugThrow();
         }
     }
 
     auto & v = forceValue(state);
 
     if (v.type() != nInt)
-        state.errors.make<TypeError>("'%s' is not an integer", getAttrPathStr(state)).debugThrow();
+        state.ctx.errors.make<TypeError>("'%s' is not an integer", getAttrPathStr(state)).debugThrow();
 
     return v.integer;
 }
@@ -666,7 +666,7 @@ std::vector<std::string> AttrCursor::getListOfStrings(EvalState & state)
                 debug("using cached list of strings attribute '%s'", getAttrPathStr(state));
                 return *l;
             } else
-                state.errors.make<TypeError>("'%s' is not a list of strings", getAttrPathStr(state)).debugThrow();
+                state.ctx.errors.make<TypeError>("'%s' is not a list of strings", getAttrPathStr(state)).debugThrow();
         }
     }
 
@@ -676,7 +676,7 @@ std::vector<std::string> AttrCursor::getListOfStrings(EvalState & state)
     state.forceValue(v, noPos);
 
     if (v.type() != nList)
-        state.errors.make<TypeError>("'%s' is not a list", getAttrPathStr(state)).debugThrow();
+        state.ctx.errors.make<TypeError>("'%s' is not a list", getAttrPathStr(state)).debugThrow();
 
     std::vector<std::string> res;
 
@@ -699,14 +699,14 @@ std::vector<std::string> AttrCursor::getAttrs(EvalState & state)
                 debug("using cached attrset attribute '%s'", getAttrPathStr(state));
                 return attrs->p;
             } else
-                state.errors.make<TypeError>("'%s' is not an attribute set", getAttrPathStr(state)).debugThrow();
+                state.ctx.errors.make<TypeError>("'%s' is not an attribute set", getAttrPathStr(state)).debugThrow();
         }
     }
 
     auto & v = forceValue(state);
 
     if (v.type() != nAttrs)
-        state.errors.make<TypeError>("'%s' is not an attribute set", getAttrPathStr(state)).debugThrow();
+        state.ctx.errors.make<TypeError>("'%s' is not an attribute set", getAttrPathStr(state)).debugThrow();
 
     fullattr_t attrs;
     for (auto & attr : *getValue(state).attrs)

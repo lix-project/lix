@@ -56,7 +56,7 @@ void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, Value * 
 
 	auto contextSize = context.size();
     if (contextSize != 1) {
-        state.errors.make<EvalError>(
+        state.ctx.errors.make<EvalError>(
             "context of string '%s' must have exactly one element, but has %d",
             *s,
             contextSize
@@ -66,7 +66,7 @@ void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, Value * 
         (NixStringContextElem { std::visit(overloaded {
             [&](const NixStringContextElem::Opaque & c) -> NixStringContextElem::DrvDeep {
                 if (!c.path.isDerivation()) {
-                    state.errors.make<EvalError>(
+                    state.ctx.errors.make<EvalError>(
                         "path '%s' is not a derivation",
                         state.store->printStorePath(c.path)
                     ).atPos(pos).debugThrow();
@@ -76,7 +76,7 @@ void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, Value * 
                 };
             },
             [&](const NixStringContextElem::Built & c) -> NixStringContextElem::DrvDeep {
-                state.errors.make<EvalError>(
+                state.ctx.errors.make<EvalError>(
                     "`addDrvOutputDependencies` can only act on derivations, not on a derivation output such as '%1%'",
                     c.output
                 ).atPos(pos).debugThrow();
@@ -176,7 +176,7 @@ static void prim_appendContext(EvalState & state, const PosIdx pos, Value * * ar
     for (auto & i : *args[1]->attrs) {
         const auto & name = state.ctx.symbols[i.name];
         if (!state.store->isStorePath(name))
-            state.errors.make<EvalError>(
+            state.ctx.errors.make<EvalError>(
                 "context key '%s' is not a store path",
                 name
             ).atPos(i.pos).debugThrow();
@@ -196,7 +196,7 @@ static void prim_appendContext(EvalState & state, const PosIdx pos, Value * * ar
         if (iter != i.value->attrs->end()) {
             if (state.forceBool(*iter->value, iter->pos, "while evaluating the `allOutputs` attribute of a string context")) {
                 if (!isDerivation(name)) {
-                    state.errors.make<EvalError>(
+                    state.ctx.errors.make<EvalError>(
                         "tried to add all-outputs context of %s, which is not a derivation, to a string",
                         name
                     ).atPos(i.pos).debugThrow();
@@ -211,7 +211,7 @@ static void prim_appendContext(EvalState & state, const PosIdx pos, Value * * ar
         if (iter != i.value->attrs->end()) {
             state.forceList(*iter->value, iter->pos, "while evaluating the `outputs` attribute of a string context");
             if (iter->value->listSize() && !isDerivation(name)) {
-                state.errors.make<EvalError>(
+                state.ctx.errors.make<EvalError>(
                     "tried to add derivation output context of %s, which is not a derivation, to a string",
                     name
                 ).atPos(i.pos).debugThrow();

@@ -91,7 +91,7 @@ inline void EvalState::forceAttrs(Value & v, const PosIdx pos, std::string_view 
 {
     forceValue(v, pos);
     if (v.type() != nAttrs) {
-        errors.make<TypeError>(
+        ctx.errors.make<TypeError>(
             "expected a set but found %1%: %2%",
             showType(v),
             ValuePrinter(*this, v, errorPrintOptions)
@@ -105,7 +105,7 @@ inline void EvalState::forceList(Value & v, const PosIdx pos, std::string_view e
 {
     forceValue(v, pos);
     if (!v.isList()) {
-        errors.make<TypeError>(
+        ctx.errors.make<TypeError>(
             "expected a list but found %1%: %2%",
             showType(v),
             ValuePrinter(*this, v, errorPrintOptions)
