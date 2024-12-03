@@ -788,9 +788,9 @@ static inline void mkThunk(Value & v, Env & env, Expr & expr)
 }
 
 
-void EvalState::mkThunk_(Value & v, Expr & expr)
+void EvalState::evalLazily(Expr & e, Value & v)
 {
-    mkThunk(v, builtins.env, expr);
+    mkThunk(v, builtins.env, e);
 }
 
 

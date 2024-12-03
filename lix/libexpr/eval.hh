@@ -540,6 +540,11 @@ public:
     void eval(Expr & e, Value & v);
 
     /**
+     * Creates a thunk that will evaluate the given expression when forced.
+     */
+    void evalLazily(Expr & e, Value & v);
+
+    /**
      * Evaluation the expression, then verify that it has the expected
      * type.
      */
@@ -690,7 +695,6 @@ public:
         return mem.buildBindings(symbols, capacity);
     }
 
-    void mkThunk_(Value & v, Expr & expr);
     void mkPos(Value & v, PosIdx pos);
 
     /**

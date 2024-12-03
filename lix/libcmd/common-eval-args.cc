@@ -177,7 +177,9 @@ Bindings * MixEvalArgs::getAutoArgs(EvalState & state)
     for (auto & i : autoArgs) {
         auto v = state.mem.allocValue();
         if (i.second[0] == 'E')
-            state.mkThunk_(*v, state.parseExprFromString(i.second.substr(1), CanonPath::fromCwd()));
+            state.evalLazily(
+                state.parseExprFromString(i.second.substr(1), CanonPath::fromCwd()), *v
+            );
         else
             v->mkString(((std::string_view) i.second).substr(1));
         res.insert(state.symbols.create(i.first), v);
