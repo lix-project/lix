@@ -305,11 +305,13 @@ EvalPaths::EvalPaths(
     }
 }
 
-EvalState::EvalState(
+EvalContext::EvalContext(
+    EvalState & parent,
     const SearchPath & _searchPath,
     ref<Store> store,
     std::shared_ptr<Store> buildStore,
-    std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl)
+    std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl
+)
     : s(symbols)
     , paths(store, buildStore ? ref(buildStore) : store, [&] {
         SearchPath searchPath;
@@ -328,7 +330,7 @@ EvalState::EvalState(
           debugRepl ? std::make_unique<DebugState>(
               positions,
               symbols,
-              [this, debugRepl](const ValMap & extraEnv) { return debugRepl(*this, extraEnv); }
+              [&parent, debugRepl](const ValMap & extraEnv) { return debugRepl(parent, extraEnv); }
           )
                     : nullptr
       }
@@ -339,6 +341,14 @@ EvalState::EvalState(
     static_assert(sizeof(Env) <= 16, "environment must be <= 16 bytes");
 }
 
+EvalState::EvalState(
+    const SearchPath & _searchPath,
+    ref<Store> store,
+    std::shared_ptr<Store> buildStore,
+    std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl)
+    : EvalContext(*this, _searchPath, store, buildStore, debugRepl)
+{
+}
 
 EvalState::~EvalState()
 {

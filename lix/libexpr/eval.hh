@@ -484,11 +484,8 @@ struct EvalStatistics
     void addCall(ExprLambda & fun);
 };
 
-
-class EvalState
+class EvalContext
 {
-    friend class EvalBuiltins;
-
 public:
     SymbolTable symbols;
     PosTable positions;
@@ -513,7 +510,27 @@ public:
     std::unique_ptr<DebugState> debug;
     EvalErrorContext errors;
 
+    EvalContext(
+        EvalState & parent,
+        const SearchPath & _searchPath,
+        ref<Store> store,
+        std::shared_ptr<Store> buildStore = nullptr,
+        std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl = nullptr
+    );
+
+    EvalContext(const EvalContext &) = delete;
+    EvalContext(EvalContext &&) = delete;
+    EvalContext & operator=(const EvalContext &) = delete;
+    EvalContext & operator=(EvalContext &&) = delete;
+};
+
+
+class EvalState : public EvalContext
+{
+    friend class EvalBuiltins;
+
 public:
+    EvalState & ctx{*this};
 
     EvalState(
         const SearchPath & _searchPath,
