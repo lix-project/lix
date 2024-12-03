@@ -274,7 +274,8 @@ EvalBuiltins::EvalBuiltins(
 EvalState::EvalState(
     const SearchPath & _searchPath,
     ref<Store> store,
-    std::shared_ptr<Store> buildStore)
+    std::shared_ptr<Store> buildStore,
+    std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl)
     : s(symbols)
     , searchPath([&] {
         SearchPath searchPath;
@@ -290,6 +291,14 @@ EvalState::EvalState(
     , repair(NoRepair)
     , store(store)
     , buildStore(buildStore ? buildStore : store)
+    , debug{
+          debugRepl ? std::make_unique<DebugState>(
+              positions,
+              symbols,
+              [this, debugRepl](const ValMap & extraEnv) { return debugRepl(*this, extraEnv); }
+          )
+                    : nullptr
+      }
 {
     countCalls = getEnv("NIX_COUNT_CALLS").value_or("0") != "0";
 
@@ -637,9 +646,7 @@ public:
     }
 };
 
-void DebugState::runDebugRepl(
-    EvalState & evalState, const EvalError * error, const Env & env, const Expr & expr
-)
+void DebugState::onEvalError(const EvalError * error, const Env & env, const Expr & expr)
 {
     // Make sure we have a debugger to run and we're not already in a debugger.
     if (inDebugger)
@@ -648,7 +655,7 @@ void DebugState::runDebugRepl(
     auto dts =
         error && expr.getPos()
         ? addTrace(DebugTrace {
-            .pos = error->info().pos ? error->info().pos : evalState.positions[expr.getPos()],
+            .pos = error->info().pos ? error->info().pos : positions[expr.getPos()],
             .expr = expr,
             .env = env,
             .hint = error->info().msg,
@@ -666,9 +673,9 @@ void DebugState::runDebugRepl(
 
     auto se = staticEnvFor(expr);
     if (se) {
-        auto vm = mapStaticEnvBindings(evalState.symbols, *se.get(), env);
+        auto vm = mapStaticEnvBindings(symbols, *se.get(), env);
         DebuggerGuard _guard(inDebugger);
-        auto exitStatus = repl(evalState, *vm);
+        auto exitStatus = errorCallback(*vm);
         switch (exitStatus) {
             case ReplExitStatus::QuitAll:
                 if (error)
@@ -718,8 +725,8 @@ static DebugState::TraceFrame makeDebugTraceStacker(
         .hint = HintFmt(formatArgs...),
         .isError = false,
     });
-    if (state.debug->stop && state.debug->repl)
-        state.debug->runDebugRepl(state, nullptr, env, expr);
+    if (state.debug->stop && state.debug->errorCallback)
+        state.debug->onEvalError(nullptr, env, expr);
     return trace;
 }
 

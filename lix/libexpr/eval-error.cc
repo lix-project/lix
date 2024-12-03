@@ -78,7 +78,7 @@ void EvalErrorBuilder<T>::debugThrow()
         if (auto last = state.debug->traces().next()) {
             const Env * env = &(*last)->env;
             const Expr * expr = &(*last)->expr;
-            state.debug->runDebugRepl(state, &error, *env, *expr);
+            state.debug->onEvalError(&error, *env, *expr);
         }
     }
 

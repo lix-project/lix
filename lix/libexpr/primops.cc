@@ -579,7 +579,7 @@ static void prim_break(EvalState & state, const PosIdx pos, Value * * args, Valu
             .pos = state.positions[pos],
         });
 
-        state.debug->runDebugRepl(state, &error, (*trace)->env, (*trace)->expr);
+        state.debug->onEvalError(&error, (*trace)->env, (*trace)->expr);
     }
 
     // Return the value we were passed.
@@ -705,7 +705,7 @@ static void prim_trace(EvalState & state, const PosIdx pos, Value * * args, Valu
             ? state.debug->traces().next()
             : std::nullopt)
     {
-        state.debug->runDebugRepl(state, nullptr, (*last)->env, (*last)->expr);
+        state.debug->onEvalError(nullptr, (*last)->env, (*last)->expr);
     }
     state.forceValue(*args[1], pos);
     v = *args[1];

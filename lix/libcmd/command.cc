@@ -106,14 +106,11 @@ ref<eval_cache::CachingEvalState> EvalCommand::getEvalState()
 {
     if (!evalState) {
         evalState = std::allocate_shared<eval_cache::CachingEvalState>(
-            TraceableAllocator<EvalState>(), searchPath, getEvalStore(), getStore()
+            TraceableAllocator<EvalState>(), searchPath, getEvalStore(), getStore(),
+            startReplOnEvalErrors ? AbstractNixRepl::runSimple : nullptr
         );
 
         evalState->repair = repair;
-
-        if (startReplOnEvalErrors) {
-            evalState->debug = std::make_unique<DebugState>(&AbstractNixRepl::runSimple);
-        };
     }
     return ref<eval_cache::CachingEvalState>(evalState);
 }

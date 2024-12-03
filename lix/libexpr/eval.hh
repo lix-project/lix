@@ -143,23 +143,29 @@ struct DebugState
 {
 private:
     std::weak_ptr<const DebugTrace> latestTrace;
+    const PosTable & positions;
+    const SymbolTable & symbols;
 
 public:
-    std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> repl;
+    std::function<ReplExitStatus(ValMap const & extraEnv)> errorCallback;
     bool stop = false;
     bool inDebugger = false;
     std::map<const Expr *, const std::shared_ptr<const StaticEnv>> exprEnvs;
     int trylevel = 0;
 
-    explicit DebugState(std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> repl)
-        : repl(repl)
+    explicit DebugState(
+        const PosTable & positions,
+        const SymbolTable & symbols,
+        std::function<ReplExitStatus(ValMap const & extraEnv)> errorCallback
+    )
+        : positions(positions)
+        , symbols(symbols)
+        , errorCallback(errorCallback)
     {
-        assert(repl);
+        assert(errorCallback);
     }
 
-    void runDebugRepl(
-        EvalState & evalState, const EvalError * error, const Env & env, const Expr & expr
-    );
+    void onEvalError(const EvalError * error, const Env & env, const Expr & expr);
 
     const std::shared_ptr<const StaticEnv> staticEnvFor(const Expr & expr) const
     {
@@ -409,7 +415,9 @@ public:
     EvalState(
         const SearchPath & _searchPath,
         ref<Store> store,
-        std::shared_ptr<Store> buildStore = nullptr);
+        std::shared_ptr<Store> buildStore = nullptr,
+        std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl = nullptr
+    );
     ~EvalState();
 
     /**
