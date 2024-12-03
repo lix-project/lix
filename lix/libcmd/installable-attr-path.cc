@@ -53,14 +53,14 @@ DerivedPathsWithInfo InstallableAttrPath::toDerivedPaths()
     std::map<StorePath, OutputsSpec> byDrvPath;
 
     for (auto & drvInfo : drvInfos) {
-        auto drvPath = drvInfo.queryDrvPath();
+        auto drvPath = drvInfo.queryDrvPath(*state);
         if (!drvPath)
             throw Error("'%s' is not a derivation", what());
 
         auto newOutputs = std::visit(overloaded {
             [&](const ExtendedOutputsSpec::Default & d) -> OutputsSpec {
                 std::set<std::string> outputsToInstall;
-                for (auto & output : drvInfo.queryOutputs(false, true))
+                for (auto & output : drvInfo.queryOutputs(*state, false, true))
                     outputsToInstall.insert(output.first);
                 return OutputsSpec::Names { std::move(outputsToInstall) };
             },

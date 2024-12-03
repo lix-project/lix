@@ -420,7 +420,7 @@ struct CmdFlakeCheck : FlakeCommand
                     throw Error("flake attribute '%s' is not a derivation", attrPath);
                 else {
                     // FIXME: check meta attributes
-                    auto storePath = drvInfo->queryDrvPath();
+                    auto storePath = drvInfo->queryDrvPath(*state);
                     if (storePath) {
                         logger->log(lvlInfo,
                             fmt("derivation evaluated to %s",

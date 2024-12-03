@@ -200,7 +200,7 @@ static void loadDerivations(EvalState & state, const SourcePath & nixExprPath,
        system. */
     for (DrvInfos::iterator i = elems.begin(), j; i != elems.end(); i = j) {
         j = i; j++;
-        if (systemFilter != "*" && i->querySystem() != systemFilter)
+        if (systemFilter != "*" && i->querySystem(state) != systemFilter)
             elems.erase(i);
     }
 }
@@ -208,7 +208,7 @@ static void loadDerivations(EvalState & state, const SourcePath & nixExprPath,
 
 static NixInt getPriority(EvalState & state, DrvInfo & drv)
 {
-    return drv.queryMetaInt("priority", NixInt(0));
+    return drv.queryMetaInt(state, "priority", NixInt(0));
 }
 
 
@@ -222,7 +222,7 @@ static std::strong_ordering comparePriorities(EvalState & state, DrvInfo & drv1,
 // at a time.
 static bool isPrebuilt(EvalState & state, DrvInfo & elem)
 {
-    auto path = elem.queryOutPath();
+    auto path = elem.queryOutPath(state);
     if (state.store->isValidPath(path)) return true;
     return state.store->querySubstitutablePaths({path}).count(path);
 }
@@ -239,11 +239,11 @@ static void checkSelectorUse(DrvNames & selectors)
 
 namespace {
 
-std::set<std::string> searchByPrefix(DrvInfos & allElems, std::string_view prefix) {
+std::set<std::string> searchByPrefix(EvalState & state, DrvInfos & allElems, std::string_view prefix) {
     constexpr std::size_t maxResults = 3;
     std::set<std::string> result;
     for (auto & drvInfo : allElems) {
-        const auto drvName = DrvName { drvInfo.queryName() };
+        const auto drvName = DrvName { drvInfo.queryName(state) };
         if (drvName.name.starts_with(prefix)) {
             result.emplace(drvName.name);
 
@@ -281,7 +281,7 @@ std::vector<Match> pickNewestOnly(EvalState & state, std::vector<Match> matches)
     for (auto & match : matches) {
         auto & oneDrv = match.drvInfo;
 
-        const auto drvName = DrvName { oneDrv.queryName() };
+        const auto drvName = DrvName { oneDrv.queryName(state) };
         std::strong_ordering comparison = std::strong_ordering::greater;
 
         const auto itOther = newest.find(drvName.name);
@@ -290,13 +290,13 @@ std::vector<Match> pickNewestOnly(EvalState & state, std::vector<Match> matches)
             auto & newestDrv = itOther->second.drvInfo;
 
             comparison =
-                oneDrv.querySystem() == newestDrv.querySystem() ? std::strong_ordering::equal :
-                oneDrv.querySystem() == settings.thisSystem ? std::strong_ordering::greater :
-                newestDrv.querySystem() == settings.thisSystem ? std::strong_ordering::less : std::strong_ordering::equal;
+                oneDrv.querySystem(state) == newestDrv.querySystem(state) ? std::strong_ordering::equal :
+                oneDrv.querySystem(state) == settings.thisSystem ? std::strong_ordering::greater :
+                newestDrv.querySystem(state) == settings.thisSystem ? std::strong_ordering::less : std::strong_ordering::equal;
             if (comparison == 0)
                 comparison = comparePriorities(state, oneDrv, newestDrv);
             if (comparison == 0)
-                comparison = compareVersions(drvName.version, DrvName { newestDrv.queryName() }.version);
+                comparison = compareVersions(drvName.version, DrvName{newestDrv.queryName(state)}.version);
         }
 
         if (comparison > 0) {
@@ -335,7 +335,7 @@ static DrvInfos filterBySelector(EvalState & state, DrvInfos & allElems,
     for (auto & selector : selectors) {
         std::vector<Match> matches;
         for (auto && [index, drvInfo] : enumerate(allElems)) {
-            const auto drvName = DrvName { drvInfo.queryName() };
+            const auto drvName = DrvName { drvInfo.queryName(state) };
             if (selector.matches(drvName)) {
                 ++selector.hits;
                 matches.emplace_back(drvInfo, index);
@@ -353,7 +353,7 @@ static DrvInfos filterBySelector(EvalState & state, DrvInfos & allElems,
                 elems.push_back(match.drvInfo);
 
         if (selector.hits == 0 && selector.fullName != "*") {
-            const auto prefixHits = searchByPrefix(allElems, selector.name);
+            const auto prefixHits = searchByPrefix(state, allElems, selector.name);
 
             if (prefixHits.empty()) {
                 throw Error("selector '%1%' matches no derivations", selector.fullName);
@@ -436,7 +436,7 @@ static void queryInstSources(EvalState & state,
 
                 std::string name(path.name());
 
-                DrvInfo elem(state, "", nullptr);
+                DrvInfo elem("", nullptr);
                 elem.setName(name);
 
                 if (path.isDerivation()) {
@@ -486,23 +486,23 @@ static void printMissing(EvalState & state, DrvInfos & elems)
 {
     std::vector<DerivedPath> targets;
     for (auto & i : elems)
-        if (auto drvPath = i.queryDrvPath())
+        if (auto drvPath = i.queryDrvPath(state))
             targets.emplace_back(DerivedPath::Built{
                 .drvPath = makeConstantStorePathRef(*drvPath),
                 .outputs = OutputsSpec::All { },
             });
         else
             targets.emplace_back(DerivedPath::Opaque{
-                .path = i.queryOutPath(),
+                .path = i.queryOutPath(state),
             });
 
     printMissing(state.store, targets);
 }
 
 
-static bool keep(DrvInfo & drv)
+static bool keep(EvalState & state, DrvInfo & drv)
 {
-    return drv.queryMetaBool("keep", false);
+    return drv.queryMetaBool(state, "keep", false);
 }
 
 
@@ -528,7 +528,7 @@ static void installDerivations(Globals & globals,
            `java-front-0.9pre15899'). */
         if (globals.forceName != "")
             i.setName(globals.forceName);
-        newNames.insert(DrvName(i.queryName()).name);
+        newNames.insert(DrvName(i.queryName(*globals.state)).name);
     }
 
 
@@ -543,17 +543,17 @@ static void installDerivations(Globals & globals,
             DrvInfos installedElems = queryInstalled(*globals.state, profile);
 
             for (auto & i : installedElems) {
-                DrvName drvName(i.queryName());
+                DrvName drvName(i.queryName(*globals.state));
                 if (!globals.preserveInstalled &&
                     newNames.find(drvName.name) != newNames.end() &&
-                    !keep(i))
-                    printInfo("replacing old '%s'", i.queryName());
+                    !keep(*globals.state, i))
+                    printInfo("replacing old '%s'", i.queryName(*globals.state));
                 else
                     allElems.push_back(i);
             }
 
             for (auto & i : newElems)
-                printInfo("installing '%s'", i.queryName());
+                printInfo("installing '%s'", i.queryName(*globals.state));
         }
 
         printMissing(*globals.state, newElems);
@@ -607,11 +607,11 @@ static void upgradeDerivations(Globals & globals,
         /* Go through all installed derivations. */
         DrvInfos newElems;
         for (auto & i : installedElems) {
-            DrvName drvName(i.queryName());
+            DrvName drvName(i.queryName(*globals.state));
 
             try {
 
-                if (keep(i)) {
+                if (keep(*globals.state, i)) {
                     newElems.push_back(i);
                     continue;
                 }
@@ -628,7 +628,7 @@ static void upgradeDerivations(Globals & globals,
                 for (auto j = availElems.begin(); j != availElems.end(); ++j) {
                     if (comparePriorities(*globals.state, i, *j) > 0)
                         continue;
-                    DrvName newName(j->queryName());
+                    DrvName newName(j->queryName(*globals.state));
                     if (newName.name == drvName.name) {
                         std::strong_ordering d = compareVersions(drvName.version, newName.version);
                         if ((upgradeType == utLt && d < 0) ||
@@ -650,18 +650,18 @@ static void upgradeDerivations(Globals & globals,
                 }
 
                 if (bestElem != availElems.end() &&
-                    i.queryOutPath() !=
-                    bestElem->queryOutPath())
+                    i.queryOutPath(*globals.state) !=
+                    bestElem->queryOutPath(*globals.state))
                 {
                     const char * action = compareVersions(drvName.version, bestVersion) <= 0
                         ? "upgrading" : "downgrading";
                     printInfo("%1% '%2%' to '%3%'",
-                        action, i.queryName(), bestElem->queryName());
+                        action, i.queryName(*globals.state), bestElem->queryName(*globals.state));
                     newElems.push_back(*bestElem);
                 } else newElems.push_back(i);
 
             } catch (Error & e) {
-                e.addTrace(nullptr, "while trying to find an upgrade for '%s'", i.queryName());
+                e.addTrace(nullptr, "while trying to find an upgrade for '%s'", i.queryName(*globals.state));
                 throw;
             }
         }
@@ -698,7 +698,7 @@ static void setMetaFlag(EvalState & state, DrvInfo & drv,
 {
     auto v = state.mem.allocValue();
     v->mkString(value);
-    drv.setMeta(name, v);
+    drv.setMeta(state, name, v);
 }
 
 
@@ -721,10 +721,10 @@ static void opSetFlag(Globals & globals, Strings opFlags, Strings opArgs)
 
         /* Update all matching derivations. */
         for (auto & i : installedElems) {
-            DrvName drvName(i.queryName());
+            DrvName drvName(i.queryName(*globals.state));
             for (auto & j : selectors)
                 if (j.matches(drvName)) {
-                    printInfo("setting flag on '%1%'", i.queryName());
+                    printInfo("setting flag on '%1%'", i.queryName(*globals.state));
                     j.hits++;
                     setMetaFlag(*globals.state, i, flagName, flagValue);
                     break;
@@ -762,7 +762,7 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
     if (globals.forceName != "")
         drv.setName(globals.forceName);
 
-    auto drvPath = drv.queryDrvPath();
+    auto drvPath = drv.queryDrvPath(*globals.state);
     std::vector<DerivedPath> paths {
         drvPath
         ? (DerivedPath) (DerivedPath::Built {
@@ -770,7 +770,7 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
             .outputs = OutputsSpec::All { },
         })
         : (DerivedPath) (DerivedPath::Opaque {
-            .path = drv.queryOutPath(),
+            .path = drv.queryOutPath(*globals.state),
         }),
     };
     printMissing(globals.state->store, paths);
@@ -781,7 +781,7 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
     Path generation = createGeneration(
         *store2,
         globals.profile,
-        drv.queryOutPath());
+        drv.queryOutPath(*globals.state));
     switchLink(globals.profile, generation);
 }
 
@@ -801,15 +801,15 @@ static void uninstallDerivations(Globals & globals, Strings & selectors,
                 split = std::partition(
                     workingElems.begin(), workingElems.end(),
                     [&selectorStorePath, globals](auto &elem) {
-                        return selectorStorePath != elem.queryOutPath();
+                        return selectorStorePath != elem.queryOutPath(*globals.state);
                     }
                 );
             } else {
                 DrvName selectorName(selector);
                 split = std::partition(
                     workingElems.begin(), workingElems.end(),
-                    [&selectorName](auto &elem){
-                        DrvName elemName(elem.queryName());
+                    [&selectorName, &globals](auto &elem){
+                        DrvName elemName(elem.queryName(*globals.state));
                         return !selectorName.matches(elemName);
                     }
                 );
@@ -817,7 +817,7 @@ static void uninstallDerivations(Globals & globals, Strings & selectors,
             if (split == workingElems.end())
                 warn("selector '%s' matched no installed derivations", selector);
             for (auto removedElem = split; removedElem != workingElems.end(); removedElem++) {
-                printInfo("uninstalling '%s'", removedElem->queryName());
+                printInfo("uninstalling '%s'", removedElem->queryName(*globals.state));
             }
             workingElems.erase(split, workingElems.end());
         }
@@ -844,10 +844,10 @@ static bool cmpChars(char a, char b)
 }
 
 
-static bool cmpElemByName(DrvInfo & a, DrvInfo & b)
+static bool cmpElemByName(EvalState & state, DrvInfo & a, DrvInfo & b)
 {
-    auto a_name = a.queryName();
-    auto b_name = b.queryName();
+    auto a_name = a.queryName(state);
+    auto b_name = b.queryName(state);
     return lexicographical_compare(
         a_name.begin(), a_name.end(),
         b_name.begin(), b_name.end(), cmpChars);
@@ -897,15 +897,15 @@ void printTable(Table & table)
 typedef enum { cvLess, cvEqual, cvGreater, cvUnavail } VersionDiff;
 
 static VersionDiff compareVersionAgainstSet(
-    DrvInfo & elem, DrvInfos & elems, std::string & version)
+    EvalState & state, DrvInfo & elem, DrvInfos & elems, std::string & version)
 {
-    DrvName name(elem.queryName());
+    DrvName name(elem.queryName(state));
 
     VersionDiff diff = cvUnavail;
     version = "?";
 
     for (auto & i : elems) {
-        DrvName name2(i.queryName());
+        DrvName name2(i.queryName(state));
         if (name.name == name2.name) {
             std::strong_ordering d = compareVersions(name.version, name2.version);
             if (d < 0) {
@@ -937,18 +937,18 @@ static void queryJSON(Globals & globals, std::vector<DrvInfo> & elems, bool prin
             if (i.hasFailed()) continue;
 
 
-            auto drvName = DrvName(i.queryName());
+            auto drvName = DrvName(i.queryName(*globals.state));
             json &pkgObj = topObj[i.attrPath];
             pkgObj = {
                 {"name", drvName.fullName},
                 {"pname", drvName.name},
                 {"version", drvName.version},
-                {"system", i.querySystem()},
-                {"outputName", i.queryOutputName()},
+                {"system", i.querySystem(*globals.state)},
+                {"outputName", i.queryOutputName(*globals.state)},
             };
 
             {
-                DrvInfo::Outputs outputs = i.queryOutputs(printOutPath);
+                DrvInfo::Outputs outputs = i.queryOutputs(*globals.state, printOutPath);
                 json &outputObj = pkgObj["outputs"];
                 outputObj = json::object();
                 for (auto & j : outputs) {
@@ -960,18 +960,22 @@ static void queryJSON(Globals & globals, std::vector<DrvInfo> & elems, bool prin
             }
 
             if (printDrvPath) {
-                auto drvPath = i.queryDrvPath();
+                auto drvPath = i.queryDrvPath(*globals.state);
                 if (drvPath) pkgObj["drvPath"] = globals.state->store->printStorePath(*drvPath);
             }
 
             if (printMeta) {
                 json &metaObj = pkgObj["meta"];
                 metaObj = json::object();
-                StringSet metaNames = i.queryMetaNames();
+                StringSet metaNames = i.queryMetaNames(*globals.state);
                 for (auto & j : metaNames) {
-                    Value * v = i.queryMeta(j);
+                    Value * v = i.queryMeta(*globals.state, j);
                     if (!v) {
-                        printError("derivation '%s' has invalid meta attribute '%s'", i.queryName(), j);
+                        printError(
+                            "derivation '%s' has invalid meta attribute '%s'",
+                            i.queryName(*globals.state),
+                            j
+                        );
                         metaObj[j] = nullptr;
                     } else {
                         NixStringContext context;
@@ -980,9 +984,13 @@ static void queryJSON(Globals & globals, std::vector<DrvInfo> & elems, bool prin
                 }
             }
         } catch (AssertionError & e) {
-            printMsg(lvlTalkative, "skipping derivation named '%1%' which gives an assertion failure", i.queryName());
+            printMsg(
+                lvlTalkative,
+                "skipping derivation named '%1%' which gives an assertion failure",
+                i.queryName(*globals.state)
+            );
         } catch (Error & e) {
-            e.addTrace(nullptr, "while querying the derivation named '%1%'", i.queryName());
+            e.addTrace(nullptr, "while querying the derivation named '%1%'", i.queryName(*globals.state));
             throw;
         }
     }
@@ -1059,8 +1067,9 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
     /* !!! */
     std::vector<DrvInfo> elems;
     for (auto & i : elems_) elems.push_back(i);
-    sort(elems.begin(), elems.end(), cmpElemByName);
-
+    sort(elems.begin(), elems.end(), [&](auto & a, auto & b) {
+        return cmpElemByName(*globals.state, a, b);
+    });
 
     /* We only need to know the installed paths when we are querying
        the status of the derivation. */
@@ -1068,7 +1077,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
 
     if (printStatus)
         for (auto & i : installedElems)
-            installed.insert(i.queryOutPath());
+            installed.insert(i.queryOutPath(*globals.state));
 
 
     /* Query which paths have substitutes. */
@@ -1078,9 +1087,13 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
         StorePathSet paths;
         for (auto & i : elems)
             try {
-                paths.insert(i.queryOutPath());
+                paths.insert(i.queryOutPath(*globals.state));
             } catch (AssertionError & e) {
-                printMsg(lvlTalkative, "skipping derivation named '%s' which gives an assertion failure", i.queryName());
+                printMsg(
+                    lvlTalkative,
+                    "skipping derivation named '%s' which gives an assertion failure",
+                    i.queryName(*globals.state)
+                );
                 i.setFailed();
             }
         validPaths = store.queryValidPaths(paths);
@@ -1109,8 +1122,8 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
             //Activity act(*logger, lvlDebug, "outputting query result '%1%'", i.attrPath);
 
             if (globals.prebuiltOnly &&
-                !validPaths.count(i.queryOutPath()) &&
-                !substitutablePaths.count(i.queryOutPath()))
+                !validPaths.count(i.queryOutPath(*globals.state)) &&
+                !substitutablePaths.count(i.queryOutPath(*globals.state)))
                 continue;
 
             /* For table output. */
@@ -1120,7 +1133,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
             XMLAttrs attrs;
 
             if (printStatus) {
-                auto outPath = i.queryOutPath();
+                auto outPath = i.queryOutPath(*globals.state);
                 bool hasSubs = substitutablePaths.count(outPath);
                 bool isInstalled = installed.count(outPath);
                 bool isValid = validPaths.count(outPath);
@@ -1141,12 +1154,12 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                 columns.push_back(i.attrPath);
 
             if (xmlOutput) {
-                auto drvName = DrvName(i.queryName());
+                auto drvName = DrvName(i.queryName(*globals.state));
                 attrs["name"] = drvName.fullName;
                 attrs["pname"] = drvName.name;
                 attrs["version"] = drvName.version;
             } else if (printName) {
-                columns.push_back(i.queryName());
+                columns.push_back(i.queryName(*globals.state));
             }
 
             if (compareVersions) {
@@ -1155,7 +1168,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                    elements, or the set of installed elements.  !!!
                    This is O(N * M), should be O(N * lg M). */
                 std::string version;
-                VersionDiff diff = compareVersionAgainstSet(i, otherElems, version);
+                VersionDiff diff = compareVersionAgainstSet(*globals.state, i, otherElems, version);
 
                 char ch;
                 switch (diff) {
@@ -1180,13 +1193,13 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
             }
 
             if (xmlOutput) {
-                if (i.querySystem() != "") attrs["system"] = i.querySystem();
+                if (i.querySystem(*globals.state) != "") attrs["system"] = i.querySystem(*globals.state);
             }
             else if (printSystem)
-                columns.push_back(i.querySystem());
+                columns.push_back(i.querySystem(*globals.state));
 
             if (printDrvPath) {
-                auto drvPath = i.queryDrvPath();
+                auto drvPath = i.queryDrvPath(*globals.state);
                 if (xmlOutput) {
                     if (drvPath) attrs["drvPath"] = store.printStorePath(*drvPath);
                 } else
@@ -1194,10 +1207,10 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
             }
 
             if (xmlOutput)
-                attrs["outputName"] = i.queryOutputName();
+                attrs["outputName"] = i.queryOutputName(*globals.state);
 
             if (printOutPath && !xmlOutput) {
-                DrvInfo::Outputs outputs = i.queryOutputs();
+                DrvInfo::Outputs outputs = i.queryOutputs(*globals.state);
                 std::string s;
                 for (auto & j : outputs) {
                     if (!s.empty()) s += ';';
@@ -1208,7 +1221,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
             }
 
             if (printDescription) {
-                auto descr = i.queryMetaString("description");
+                auto descr = i.queryMetaString(*globals.state, "description");
                 if (xmlOutput) {
                     if (descr != "") attrs["description"] = descr;
                 } else
@@ -1217,7 +1230,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
 
             if (xmlOutput) {
                 XMLOpenElement item(xml, "item", attrs);
-                DrvInfo::Outputs outputs = i.queryOutputs(printOutPath);
+                DrvInfo::Outputs outputs = i.queryOutputs(*globals.state, printOutPath);
                 for (auto & j : outputs) {
                     XMLAttrs attrs2;
                     attrs2["name"] = j.first;
@@ -1226,15 +1239,15 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                     xml.writeEmptyElement("output", attrs2);
                 }
                 if (printMeta) {
-                    StringSet metaNames = i.queryMetaNames();
+                    StringSet metaNames = i.queryMetaNames(*globals.state);
                     for (auto & j : metaNames) {
                         XMLAttrs attrs2;
                         attrs2["name"] = j;
-                        Value * v = i.queryMeta(j);
+                        Value * v = i.queryMeta(*globals.state, j);
                         if (!v)
                             printError(
                                 "derivation '%s' has invalid meta attribute '%s'",
-                                i.queryName(), j);
+                                i.queryName(*globals.state), j);
                         else {
                             if (v->type() == nString) {
                                 attrs2["type"] = "string";
@@ -1283,9 +1296,13 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
             cout.flush();
 
         } catch (AssertionError & e) {
-            printMsg(lvlTalkative, "skipping derivation named '%1%' which gives an assertion failure", i.queryName());
+            printMsg(
+                lvlTalkative,
+                "skipping derivation named '%1%' which gives an assertion failure",
+                i.queryName(*globals.state)
+            );
         } catch (Error & e) {
-            e.addTrace(nullptr, "while querying the derivation named '%1%'", i.queryName());
+            e.addTrace(nullptr, "while querying the derivation named '%1%'", i.queryName(*globals.state));
             throw;
         }
     }

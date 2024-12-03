@@ -169,7 +169,7 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
 
         for (auto & drvInfo : drvInfos) {
             ProfileElement element;
-            element.storePaths = {drvInfo.queryOutPath()};
+            element.storePaths = {drvInfo.queryOutPath(state)};
             addElement(std::move(element));
         }
     }

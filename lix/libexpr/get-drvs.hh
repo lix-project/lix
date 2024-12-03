@@ -17,8 +17,6 @@ public:
     typedef std::map<std::string, std::optional<StorePath>> Outputs;
 
 private:
-    EvalState * state;
-
     std::string name;
     std::string system;
     std::optional<std::optional<StorePath>> drvPath;
@@ -33,11 +31,11 @@ private:
 
     Bindings * attrs = nullptr, * meta = nullptr;
 
-    Bindings * getMeta();
+    Bindings * getMeta(EvalState & state);
 
-    bool checkMeta(Value & v);
+    bool checkMeta(EvalState & state, Value & v);
 
-    void fillOutputs(bool withPaths = true);
+    void fillOutputs(EvalState & state, bool withPaths = true);
 
 public:
     /**
@@ -45,27 +43,27 @@ public:
      */
     std::string attrPath;
 
-    DrvInfo(EvalState & state, std::string attrPath, Bindings * attrs);
-    DrvInfo(EvalState & state, ref<Store> store, const std::string & drvPathWithOutputs);
+    DrvInfo(std::string attrPath, Bindings * attrs);
+    DrvInfo(ref<Store> store, const std::string & drvPathWithOutputs);
 
-    std::string queryName();
-    std::string querySystem();
-    std::optional<StorePath> queryDrvPath();
-    StorePath requireDrvPath();
-    StorePath queryOutPath();
-    std::string queryOutputName();
+    std::string queryName(EvalState & state);
+    std::string querySystem(EvalState & state);
+    std::optional<StorePath> queryDrvPath(EvalState & state);
+    StorePath requireDrvPath(EvalState & state);
+    StorePath queryOutPath(EvalState & state);
+    std::string queryOutputName(EvalState & state);
     /**
      * Return the unordered map of output names to (optional) output paths.
      * The "outputs to install" are determined by `meta.outputsToInstall`.
      */
-    Outputs queryOutputs(bool withPaths = true, bool onlyOutputsToInstall = false);
+    Outputs queryOutputs(EvalState & state, bool withPaths = true, bool onlyOutputsToInstall = false);
 
-    StringSet queryMetaNames();
-    Value * queryMeta(const std::string & name);
-    std::string queryMetaString(const std::string & name);
-    NixInt queryMetaInt(const std::string & name, NixInt def);
-    bool queryMetaBool(const std::string & name, bool def);
-    void setMeta(const std::string & name, Value * v);
+    StringSet queryMetaNames(EvalState & state);
+    Value * queryMeta(EvalState & state, const std::string & name);
+    std::string queryMetaString(EvalState & state, const std::string & name);
+    NixInt queryMetaInt(EvalState & state, const std::string & name, NixInt def);
+    bool queryMetaBool(EvalState & state, const std::string & name, bool def);
+    void setMeta(EvalState & state, const std::string & name, Value * v);
 
     /*
     MetaInfo queryMetaInfo(EvalState & state) const;

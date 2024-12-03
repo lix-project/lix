@@ -65,11 +65,11 @@ void processExpr(EvalState & state, const Strings & attrPaths,
             DrvInfos drvs;
             getDerivations(state, v, "", autoArgs, drvs, false);
             for (auto & i : drvs) {
-                auto drvPath = i.requireDrvPath();
+                auto drvPath = i.requireDrvPath(state);
                 auto drvPathS = state.store->printStorePath(drvPath);
 
                 /* What output do we want? */
-                std::string outputName = i.queryOutputName();
+                std::string outputName = i.queryOutputName(state);
                 if (outputName == "")
                     throw Error("derivation '%1%' lacks an 'outputName' attribute", drvPathS);
 

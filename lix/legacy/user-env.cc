@@ -24,7 +24,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
        exist already. */
     std::vector<StorePathWithOutputs> drvsToBuild;
     for (auto & i : elems)
-        if (auto drvPath = i.queryDrvPath())
+        if (auto drvPath = i.queryDrvPath(state))
             drvsToBuild.push_back({*drvPath});
 
     debug("building user environment dependencies");
@@ -40,18 +40,18 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
         /* Create a pseudo-derivation containing the name, system,
            output paths, and optionally the derivation path, as well
            as the meta attributes. */
-        std::optional<StorePath> drvPath = keepDerivations ? i.queryDrvPath() : std::nullopt;
-        DrvInfo::Outputs outputs = i.queryOutputs(true, true);
-        StringSet metaNames = i.queryMetaNames();
+        std::optional<StorePath> drvPath = keepDerivations ? i.queryDrvPath(state) : std::nullopt;
+        DrvInfo::Outputs outputs = i.queryOutputs(state, true, true);
+        StringSet metaNames = i.queryMetaNames(state);
 
         auto attrs = state.buildBindings(7 + outputs.size());
 
         attrs.alloc(state.s.type).mkString("derivation");
-        attrs.alloc(state.s.name).mkString(i.queryName());
-        auto system = i.querySystem();
+        attrs.alloc(state.s.name).mkString(i.queryName(state));
+        auto system = i.querySystem(state);
         if (!system.empty())
             attrs.alloc(state.s.system).mkString(system);
-        attrs.alloc(state.s.outPath).mkString(state.store->printStorePath(i.queryOutPath()));
+        attrs.alloc(state.s.outPath).mkString(state.store->printStorePath(i.queryOutPath(state)));
         if (drvPath)
             attrs.alloc(state.s.drvPath).mkString(state.store->printStorePath(*drvPath));
 
@@ -75,7 +75,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
         // Copy the meta attributes.
         auto meta = state.buildBindings(metaNames.size());
         for (auto & j : metaNames) {
-            Value * v = i.queryMeta(j);
+            Value * v = i.queryMeta(state, j);
             if (!v) continue;
             meta.insert(state.symbols.create(j), v);
         }

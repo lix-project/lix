@@ -248,7 +248,7 @@ static void main_nix_build(std::string programName, Strings argv)
                 } catch (Error & e) {};
                 auto [path, outputNames] = parsePathWithOutputs(absolute);
                 if (evalStore->isStorePath(path) && path.ends_with(".drv"))
-                    drvs.push_back(DrvInfo(*state, evalStore, absolute));
+                    drvs.push_back(DrvInfo(evalStore, absolute));
                 else
                     /* If we're in a #! script, interpret filenames
                        relative to the script. */
@@ -322,7 +322,7 @@ static void main_nix_build(std::string programName, Strings argv)
             throw UsageError("nix-shell requires a single derivation");
 
         auto & drvInfo = drvs.front();
-        auto drv = evalStore->derivationFromPath(drvInfo.requireDrvPath());
+        auto drv = evalStore->derivationFromPath(drvInfo.requireDrvPath(*state));
 
         std::vector<DerivedPath> pathsToBuild;
         RealisedPath::Set pathsToCopy;
@@ -347,7 +347,7 @@ static void main_nix_build(std::string programName, Strings argv)
                 if (!drv)
                     throw Error("the 'bashInteractive' attribute in <nixpkgs> did not evaluate to a derivation");
 
-                auto bashDrv = drv->requireDrvPath();
+                auto bashDrv = drv->requireDrvPath(*state);
                 pathsToBuild.push_back(DerivedPath::Built {
                     .drvPath = makeConstantStorePathRef(bashDrv),
                     .outputs = OutputsSpec::Names {"out"},
@@ -463,7 +463,7 @@ static void main_nix_build(std::string programName, Strings argv)
             for (const auto & [inputDrv, inputNode] : drv.inputDrvs.map)
                 accumInputClosure(inputDrv, inputNode);
 
-            ParsedDerivation parsedDrv(drvInfo.requireDrvPath(), drv);
+            ParsedDerivation parsedDrv(drvInfo.requireDrvPath(*state), drv);
 
             if (auto structAttrs = parsedDrv.prepareStructuredAttrs(*store, inputs)) {
                 auto json = structAttrs.value();
@@ -566,9 +566,9 @@ static void main_nix_build(std::string programName, Strings argv)
         std::map<StorePath, std::pair<size_t, StringSet>> drvMap;
 
         for (auto & drvInfo : drvs) {
-            auto drvPath = drvInfo.requireDrvPath();
+            auto drvPath = drvInfo.requireDrvPath(*state);
 
-            auto outputName = drvInfo.queryOutputName();
+            auto outputName = drvInfo.queryOutputName(*state);
             if (outputName == "")
                 throw Error("derivation '%s' lacks an 'outputName' attribute", store->printStorePath(drvPath));
 
