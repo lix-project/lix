@@ -290,7 +290,6 @@ EvalState::EvalState(
     , repair(NoRepair)
     , store(store)
     , buildStore(buildStore ? buildStore : store)
-    , regexCache(makeRegexCache())
 {
     countCalls = getEnv("NIX_COUNT_CALLS").value_or("0") != "0";
 
@@ -911,19 +910,24 @@ Value * ExprPath::maybeThunk(EvalState & state, Env & env)
 }
 
 
+struct CachedEvalFile
+{
+    Value result;
+    explicit CachedEvalFile(Value result): result(result) {}
+};
+
 void EvalState::evalFile(const SourcePath & path_, Value & v)
 {
     auto path = checkSourcePath(path_);
 
-    FileEvalCache::iterator i;
-    if ((i = fileEvalCache.find(path)) != fileEvalCache.end()) {
-        v = i->second;
+    if (auto i = caches.fileEval.find(path); i != caches.fileEval.end()) {
+        v = i->second->result;
         return;
     }
 
     auto resolvedPath = resolveExprPath(path);
-    if ((i = fileEvalCache.find(resolvedPath)) != fileEvalCache.end()) {
-        v = i->second;
+    if (auto i = caches.fileEval.find(resolvedPath); i != caches.fileEval.end()) {
+        v = i->second->result;
         return;
     }
 
@@ -946,14 +950,15 @@ void EvalState::evalFile(const SourcePath & path_, Value & v)
         throw;
     }
 
-    fileEvalCache[resolvedPath] = v;
-    if (path != resolvedPath) fileEvalCache[path] = v;
+    auto cache = std::allocate_shared<CachedEvalFile>(TraceableAllocator<CachedEvalFile>(), v);
+    caches.fileEval[resolvedPath] = cache;
+    if (path != resolvedPath) caches.fileEval[path] = cache;
 }
 
 
 void EvalState::resetFileCache()
 {
-    fileEvalCache.clear();
+    caches.fileEval.clear();
 }
 
 

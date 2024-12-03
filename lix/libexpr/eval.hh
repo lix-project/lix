@@ -130,8 +130,6 @@ void initLibExpr();
 
 struct RegexCache;
 
-std::shared_ptr<RegexCache> makeRegexCache();
-
 struct DebugTrace {
     std::shared_ptr<Pos> pos;
     const Expr & expr;
@@ -326,6 +324,24 @@ public:
     std::optional<Doc> getDoc(Value & v);
 };
 
+struct CachedEvalFile;
+
+struct EvalRuntimeCaches
+{
+    RootValue vCallFlake;
+    RootValue vImportedDrvToDerivation;
+
+    /**
+     * Cache used by prim_match() and other regex functions.
+     */
+    std::shared_ptr<RegexCache> regexes;
+
+    /**
+     * A cache from path names to values for evalFile().
+     */
+    std::map<SourcePath, std::shared_ptr<CachedEvalFile>> fileEval;
+};
+
 
 class EvalState
 {
@@ -336,6 +352,7 @@ public:
     PosTable positions;
     const StaticSymbols s;
     EvalMemory mem;
+    EvalRuntimeCaches caches;
 
 private:
     SearchPath searchPath;
@@ -365,9 +382,6 @@ public:
      */
     const ref<Store> buildStore;
 
-    RootValue vCallFlake = nullptr;
-    RootValue vImportedDrvToDerivation = nullptr;
-
     std::unique_ptr<DebugState> debug;
 
     template<class T, typename... Args>
@@ -383,23 +397,12 @@ private:
        paths. */
     std::map<SourcePath, StorePath> srcToStore;
 
-    /**
-     * A cache from path names to values.
-     */
-    using FileEvalCache = GcMap<SourcePath, Value>;
-    FileEvalCache fileEvalCache;
-
     std::map<std::string, std::optional<std::string>> searchPathResolved;
 
     /**
      * Cache used by checkSourcePath().
      */
     std::unordered_map<Path, SourcePath> resolvedPaths;
-
-    /**
-     * Cache used by prim_match().
-     */
-    std::shared_ptr<RegexCache> regexCache;
 
 public:
 

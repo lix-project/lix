@@ -206,15 +206,19 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
         auto w = state.mem.allocValue();
         w->mkAttrs(attrs);
 
-        if (!state.vImportedDrvToDerivation) {
-            state.vImportedDrvToDerivation = allocRootValue(state.mem.allocValue());
+        if (!state.caches.vImportedDrvToDerivation) {
+            state.caches.vImportedDrvToDerivation = allocRootValue(state.mem.allocValue());
             state.eval(state.parseExprFromString(
                 #include "imported-drv-to-derivation.nix.gen.hh"
-                , CanonPath::root), **state.vImportedDrvToDerivation);
+                , CanonPath::root), **state.caches.vImportedDrvToDerivation);
         }
 
-        state.forceFunction(**state.vImportedDrvToDerivation, pos, "while evaluating imported-drv-to-derivation.nix.gen.hh");
-        v.mkApp(*state.vImportedDrvToDerivation, w);
+        state.forceFunction(
+            **state.caches.vImportedDrvToDerivation,
+            pos,
+            "while evaluating imported-drv-to-derivation.nix.gen.hh"
+        );
+        v.mkApp(*state.caches.vImportedDrvToDerivation, w);
         state.forceAttrs(v, pos, "while calling imported-drv-to-derivation.nix.gen.hh");
     }
 
@@ -2543,9 +2547,12 @@ struct RegexCache
     }
 };
 
-std::shared_ptr<RegexCache> makeRegexCache()
+static RegexCache & regexCacheOf(EvalState & state)
 {
-    return std::make_shared<RegexCache>();
+    if (!state.caches.regexes) {
+        state.caches.regexes = std::make_shared<RegexCache>();
+    }
+    return *state.caches.regexes;
 }
 
 void prim_match(EvalState & state, const PosIdx pos, Value * * args, Value & v)
@@ -2554,7 +2561,7 @@ void prim_match(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 
     try {
 
-        auto regex = state.regexCache->get(re);
+        auto regex = regexCacheOf(state).get(re);
 
         NixStringContext context;
         const auto str = state.forceString(*args[1], context, pos, "while evaluating the second argument passed to builtins.match");
@@ -2596,7 +2603,7 @@ void prim_split(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 
     try {
 
-        auto regex = state.regexCache->get(re);
+        auto regex = regexCacheOf(state).get(re);
 
         NixStringContext context;
         const auto str = state.forceString(*args[1], context, pos, "while evaluating the second argument passed to builtins.split");
