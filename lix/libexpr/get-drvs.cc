@@ -316,21 +316,6 @@ NixInt DrvInfo::queryMetaInt(const std::string & name, NixInt def)
     return def;
 }
 
-NixFloat DrvInfo::queryMetaFloat(const std::string & name, NixFloat def)
-{
-    Value * v = queryMeta(name);
-    if (!v) return def;
-    if (v->type() == nFloat) return v->fpoint;
-    if (v->type() == nString) {
-        /* Backwards compatibility with before we had support for
-           float meta fields. */
-        if (auto n = string2Float<NixFloat>(v->string.s))
-            return *n;
-    }
-    return def;
-}
-
-
 bool DrvInfo::queryMetaBool(const std::string & name, bool def)
 {
     Value * v = queryMeta(name);

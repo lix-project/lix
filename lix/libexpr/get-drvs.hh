@@ -64,7 +64,6 @@ public:
     Value * queryMeta(const std::string & name);
     std::string queryMetaString(const std::string & name);
     NixInt queryMetaInt(const std::string & name, NixInt def);
-    NixFloat queryMetaFloat(const std::string & name, NixFloat def);
     bool queryMetaBool(const std::string & name, bool def);
     void setMeta(const std::string & name, Value * v);
 
