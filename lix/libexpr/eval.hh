@@ -391,10 +391,9 @@ public:
     std::unique_ptr<DebugState> debug;
 
     template<class T, typename... Args>
-    [[nodiscard, gnu::noinline]]
-    EvalErrorBuilder<T> & error(const Args & ... args) {
-        // `EvalErrorBuilder::debugThrow` performs the corresponding `delete`.
-        return *new EvalErrorBuilder<T>(*this, args...);
+    [[gnu::noinline]]
+    EvalErrorBuilder<T> error(const Args & ... args) {
+        return EvalErrorBuilder<T>(*this, args...);
     }
 
 private:

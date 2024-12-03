@@ -5,45 +5,45 @@
 namespace nix {
 
 template<class T>
-EvalErrorBuilder<T> & EvalErrorBuilder<T>::withExitStatus(unsigned int exitStatus)
+EvalErrorBuilder<T> EvalErrorBuilder<T>::withExitStatus(unsigned int exitStatus) &&
 {
-    error.withExitStatus(exitStatus);
-    return *this;
+    error->withExitStatus(exitStatus);
+    return std::move(*this);
 }
 
 template<class T>
-EvalErrorBuilder<T> & EvalErrorBuilder<T>::atPos(PosIdx pos)
+EvalErrorBuilder<T> EvalErrorBuilder<T>::atPos(PosIdx pos) &&
 {
-    error.err.pos = state.positions[pos];
-    return *this;
+    error->err.pos = state.positions[pos];
+    return std::move(*this);
 }
 
 template<class T>
-EvalErrorBuilder<T> & EvalErrorBuilder<T>::atPos(Value & value, PosIdx fallback)
+EvalErrorBuilder<T> EvalErrorBuilder<T>::atPos(Value & value, PosIdx fallback) &&
 {
-    return atPos(value.determinePos(fallback));
+    return std::move(*this).atPos(value.determinePos(fallback));
 }
 
 template<class T>
-EvalErrorBuilder<T> & EvalErrorBuilder<T>::withTrace(PosIdx pos, const std::string_view text)
+EvalErrorBuilder<T> EvalErrorBuilder<T>::withTrace(PosIdx pos, const std::string_view text) &&
 {
-    error.err.traces.push_front(
+    error->err.traces.push_front(
         Trace{.pos = state.positions[pos], .hint = HintFmt(std::string(text))});
-    return *this;
+    return std::move(*this);
 }
 
 template<class T>
-EvalErrorBuilder<T> & EvalErrorBuilder<T>::withSuggestions(Suggestions & s)
+EvalErrorBuilder<T> EvalErrorBuilder<T>::withSuggestions(Suggestions & s) &&
 {
-    error.err.suggestions = s;
-    return *this;
+    error->err.suggestions = s;
+    return std::move(*this);
 }
 
 template<class T>
-EvalErrorBuilder<T> & EvalErrorBuilder<T>::withFrame(const Env & env, const Expr & expr)
+EvalErrorBuilder<T> EvalErrorBuilder<T>::withFrame(const Env & env, const Expr & expr) &&
 {
     if (state.debug) {
-        error.frame = state.debug->addTrace(DebugTrace{
+        error->frame = state.debug->addTrace(DebugTrace{
             .pos = state.positions[expr.getPos()],
             .expr = expr,
             .env = env,
@@ -51,45 +51,38 @@ EvalErrorBuilder<T> & EvalErrorBuilder<T>::withFrame(const Env & env, const Expr
             .isError = true
         }).entry;
     }
-    return *this;
+    return std::move(*this);
 }
 
 template<class T>
-EvalErrorBuilder<T> & EvalErrorBuilder<T>::addTrace(PosIdx pos, HintFmt hint)
+EvalErrorBuilder<T> EvalErrorBuilder<T>::addTrace(PosIdx pos, HintFmt hint) &&
 {
-    error.addTrace(state.positions[pos], hint);
-    return *this;
+    error->addTrace(state.positions[pos], hint);
+    return std::move(*this);
 }
 
 template<class T>
 template<typename... Args>
-EvalErrorBuilder<T> &
-EvalErrorBuilder<T>::addTrace(PosIdx pos, std::string_view formatString, const Args &... formatArgs)
+EvalErrorBuilder<T>
+EvalErrorBuilder<T>::addTrace(PosIdx pos, std::string_view formatString, const Args &... formatArgs) &&
 {
 
     addTrace(state.positions[pos], HintFmt(std::string(formatString), formatArgs...));
-    return *this;
+    return std::move(*this);
 }
 
 template<class T>
-void EvalErrorBuilder<T>::debugThrow()
+void EvalErrorBuilder<T>::debugThrow() &&
 {
     if (state.debug) {
         if (auto last = state.debug->traces().next()) {
             const Env * env = &(*last)->env;
             const Expr * expr = &(*last)->expr;
-            state.debug->onEvalError(&error, *env, *expr);
+            state.debug->onEvalError(error.get(), *env, *expr);
         }
     }
 
-    // `EvalState` is the only class that can construct an `EvalErrorBuilder`,
-    // and it does so in dynamic storage. This is the final method called on
-    // any such instance and must delete itself before throwing the underlying
-    // error.
-    auto error = std::move(this->error);
-    delete this;
-
-    throw error;
+    throw *error;
 }
 
 template class EvalErrorBuilder<EvalError>;
