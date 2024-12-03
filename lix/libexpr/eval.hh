@@ -210,7 +210,7 @@ struct StaticSymbols
         ignoreNulls, file, line, column, functor, toString, right, wrong, structuredAttrs,
         allowedReferences, allowedRequisites, disallowedReferences, disallowedRequisites, maxSize,
         maxClosureSize, builder, args, contentAddressed, impure, outputHash, outputHashAlgo,
-        outputHashMode, recurseForDerivations, description, self, epsilon, startSet, operator_, key,
+        outputHashMode, recurseForDerivations, description, self, startSet, operator_, key,
         path, prefix, outputSpecified;
 
     const Expr::AstSymbols exprSymbols;

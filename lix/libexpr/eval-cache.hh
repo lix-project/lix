@@ -69,16 +69,17 @@ enum AttrType {
 };
 
 struct placeholder_t {};
+struct fullattr_t { std::vector<std::string> p; };
 struct missing_t {};
 struct misc_t {};
 struct failed_t {};
 struct int_t { NixInt x; };
 typedef uint64_t AttrId;
-typedef std::pair<AttrId, Symbol> AttrKey;
+typedef std::pair<AttrId, std::string> AttrKey;
 typedef std::pair<std::string, NixStringContext> string_t;
 
 typedef std::variant<
-    std::vector<Symbol>,
+    fullattr_t,
     string_t,
     placeholder_t,
     missing_t,
@@ -94,7 +95,7 @@ class AttrCursor : public std::enable_shared_from_this<AttrCursor>
     friend class EvalCache;
 
     ref<EvalCache> root;
-    typedef std::optional<std::pair<std::shared_ptr<AttrCursor>, Symbol>> Parent;
+    typedef std::optional<std::pair<std::shared_ptr<AttrCursor>, std::string>> Parent;
     Parent parent;
     RootValue _value;
     std::optional<std::pair<AttrId, AttrValue>> cachedValue;
@@ -111,29 +112,25 @@ public:
         Value * value = nullptr,
         std::optional<std::pair<AttrId, AttrValue>> && cachedValue = {});
 
-    std::vector<Symbol> getAttrPath() const;
+    std::vector<std::string> getAttrPath() const;
 
-    std::vector<Symbol> getAttrPath(Symbol name) const;
+    std::vector<std::string> getAttrPath(std::string_view name) const;
 
     std::string getAttrPathStr() const;
 
-    std::string getAttrPathStr(Symbol name) const;
+    std::string getAttrPathStr(std::string_view name) const;
 
-    Suggestions getSuggestionsForAttr(Symbol name);
+    Suggestions getSuggestionsForAttr(const std::string & name);
 
-    std::shared_ptr<AttrCursor> maybeGetAttr(Symbol name);
+    std::shared_ptr<AttrCursor> maybeGetAttr(const std::string & name);
 
-    std::shared_ptr<AttrCursor> maybeGetAttr(std::string_view name);
-
-    ref<AttrCursor> getAttr(Symbol name);
-
-    ref<AttrCursor> getAttr(std::string_view name);
+    ref<AttrCursor> getAttr(const std::string & name);
 
     /**
      * Get an attribute along a chain of attrsets. Note that this does
      * not auto-call functors or functions.
      */
-    OrSuggestions<ref<AttrCursor>> findAlongAttrPath(const std::vector<Symbol> & attrPath);
+    OrSuggestions<ref<AttrCursor>> findAlongAttrPath(const Strings & attrPath);
 
     std::string getString();
 
@@ -145,7 +142,7 @@ public:
 
     std::vector<std::string> getListOfStrings();
 
-    std::vector<Symbol> getAttrs();
+    std::vector<std::string> getAttrs();
 
     bool isDerivation();
 

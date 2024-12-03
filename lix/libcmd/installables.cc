@@ -305,13 +305,13 @@ void completeFlakeRefWithFragment(
             attrPathPrefixes.push_back("");
 
             for (auto & attrPathPrefixS : attrPathPrefixes) {
-                auto attrPathPrefix = parseAttrPath(*evalState, attrPathPrefixS);
+                auto attrPathPrefix = parseAttrPath(attrPathPrefixS);
                 auto attrPathS = attrPathPrefixS + std::string(fragment);
-                auto attrPath = parseAttrPath(*evalState, attrPathS);
+                auto attrPath = parseAttrPath(attrPathS);
 
                 std::string lastAttr;
                 if (!attrPath.empty() && !attrPathS.ends_with(".")) {
-                    lastAttr = evalState->symbols[attrPath.back()];
+                    lastAttr = attrPath.back();
                     attrPath.pop_back();
                 }
 
@@ -319,11 +319,11 @@ void completeFlakeRefWithFragment(
                 if (!attr) continue;
 
                 for (auto & attr2 : (*attr)->getAttrs()) {
-                    if (std::string_view(evalState->symbols[attr2]).starts_with(lastAttr)) {
-                        auto attrPath2 = (*attr)->getAttrPath(attr2);
+                    if (std::string_view attr2s = attr2; attr2s.starts_with(lastAttr)) {
+                        auto attrPath2 = (*attr)->getAttrPath(attr2s);
                         /* Strip the attrpath prefix. */
                         attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
-                        completions.add(flakeRefS + "#" + prefixRoot + concatStringsSep(".", evalState->symbols.resolve(attrPath2)));
+                        completions.add(flakeRefS + "#" + prefixRoot + concatStringsSep(".", attrPath2));
                     }
                 }
             }
@@ -332,7 +332,7 @@ void completeFlakeRefWithFragment(
                attrpaths. */
             if (fragment.empty()) {
                 for (auto & attrPath : defaultFlakeAttrPaths) {
-                    auto attr = root->findAlongAttrPath(parseAttrPath(*evalState, attrPath));
+                    auto attr = root->findAlongAttrPath(parseAttrPath(attrPath));
                     if (!attr) continue;
                     completions.add(flakeRefS + "#" + prefixRoot);
                 }

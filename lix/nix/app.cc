@@ -59,7 +59,7 @@ UnresolvedApp InstallableValue::toApp()
     auto type = cursor->getAttr("type")->getString();
 
     std::string expected = !attrPath.empty() &&
-        (state->symbols[attrPath[0]] == "apps" || state->symbols[attrPath[0]] == "defaultApp")
+        (attrPath[0] == "apps" || attrPath[0] == "defaultApp")
         ? "app" : "derivation";
     if (type != expected)
         throw Error("attribute '%s' should have type '%s'", cursor->getAttrPathStr(), expected);
@@ -99,11 +99,11 @@ UnresolvedApp InstallableValue::toApp()
 
     else if (type == "derivation") {
         auto drvPath = cursor->forceDerivation();
-        auto outPath = cursor->getAttr(state->s.outPath)->getString();
-        auto outputName = cursor->getAttr(state->s.outputName)->getString();
-        auto name = cursor->getAttr(state->s.name)->getString();
+        auto outPath = cursor->getAttr("outPath")->getString();
+        auto outputName = cursor->getAttr("outputName")->getString();
+        auto name = cursor->getAttr("name")->getString();
         auto aPname = cursor->maybeGetAttr("pname");
-        auto aMeta = cursor->maybeGetAttr(state->s.meta);
+        auto aMeta = cursor->maybeGetAttr("meta");
         auto aMainProgram = aMeta ? aMeta->maybeGetAttr("mainProgram") : nullptr;
         auto mainProgram =
             aMainProgram

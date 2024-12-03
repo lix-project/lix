@@ -22,6 +22,6 @@ std::pair<Value *, PosIdx> findAlongAttrPath(
  */
 std::pair<SourcePath, uint32_t> findPackageFilename(EvalState & state, Value & v, std::string what);
 
-std::vector<Symbol> parseAttrPath(EvalState & state, std::string_view s);
+Strings parseAttrPath(std::string_view s);
 
 }

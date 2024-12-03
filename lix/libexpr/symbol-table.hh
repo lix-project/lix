@@ -97,15 +97,6 @@ public:
         return Symbol(idx + 1);
     }
 
-    std::vector<SymbolStr> resolve(const std::vector<Symbol> & symbols) const
-    {
-        std::vector<SymbolStr> result;
-        result.reserve(symbols.size());
-        for (auto sym : symbols)
-            result.push_back((*this)[sym]);
-        return result;
-    }
-
     SymbolStr operator[](Symbol s) const
     {
         if (s.id == 0 || s.id > store.size())
