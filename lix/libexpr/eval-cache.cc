@@ -340,11 +340,11 @@ EvalCache::EvalCache(
 {
 }
 
-Value * EvalCache::getRootValue()
+Value * EvalCache::getRootValue(EvalState & state)
 {
     if (!value) {
         debug("getting root value");
-        value = allocRootValue(rootLoader());
+        value = allocRootValue(rootLoader(state));
     }
     return *value;
 }
@@ -387,7 +387,7 @@ Value & AttrCursor::getValue(EvalState & state)
                 throw Error("attribute '%s' is unexpectedly missing", getAttrPathStr(state));
             _value = allocRootValue(attr->value);
         } else
-            _value = allocRootValue(root->getRootValue());
+            _value = allocRootValue(root->getRootValue(state));
     }
     return **_value;
 }

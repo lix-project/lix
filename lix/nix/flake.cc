@@ -864,7 +864,7 @@ struct CmdFlakeInitCommon : virtual Args, EvalCommand
             defaultTemplateAttrPathsPrefixes,
             lockFlags);
 
-        auto cursor = installable.getCursor();
+        auto cursor = installable.getCursor(*evalState);
 
         auto templateDirAttr = cursor->getAttr(*evalState, "path");
         auto templateDir = templateDirAttr->getString(*evalState);

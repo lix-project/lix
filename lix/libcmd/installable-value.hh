@@ -20,7 +20,7 @@ struct App
 struct UnresolvedApp
 {
     App unresolved;
-    App resolve(ref<Store> evalStore, ref<Store> store);
+    App resolve(EvalState & state, ref<Store> evalStore, ref<Store> store);
 };
 
 /**
@@ -81,22 +81,22 @@ struct InstallableValue : Installable
 
     virtual ~InstallableValue() { }
 
-    virtual std::pair<Value *, PosIdx> toValue() = 0;
+    virtual std::pair<Value *, PosIdx> toValue(EvalState & state) = 0;
 
     /**
      * Get a cursor to each value this Installable could refer to.
      * However if none exists, throw exception instead of returning
      * empty vector.
      */
-    virtual std::vector<ref<eval_cache::AttrCursor>> getCursors();
+    virtual std::vector<ref<eval_cache::AttrCursor>> getCursors(EvalState & state);
 
     /**
      * Get the first and most preferred cursor this Installable could
      * refer to, or throw an exception if none exists.
      */
-    virtual ref<eval_cache::AttrCursor> getCursor();
+    virtual ref<eval_cache::AttrCursor> getCursor(EvalState & state);
 
-    UnresolvedApp toApp();
+    UnresolvedApp toApp(EvalState & state);
 
     static InstallableValue & require(Installable & installable);
     static ref<InstallableValue> require(ref<Installable> installable);
@@ -117,7 +117,9 @@ protected:
      * @result A derived path (with empty info, for now) if the value
      * matched the above criteria.
      */
-    std::optional<DerivedPathWithInfo> trySinglePathToDerivedPaths(Value & v, const PosIdx pos, std::string_view errorCtx);
+    std::optional<DerivedPathWithInfo> trySinglePathToDerivedPaths(
+        EvalState & state, Value & v, const PosIdx pos, std::string_view errorCtx
+    );
 };
 
 }

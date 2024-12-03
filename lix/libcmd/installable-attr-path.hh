@@ -28,9 +28,9 @@ class InstallableAttrPath : public InstallableValue
 
     std::string what() const override { return attrPath; };
 
-    std::pair<Value *, PosIdx> toValue() override;
+    std::pair<Value *, PosIdx> toValue(EvalState & state) override;
 
-    DerivedPathsWithInfo toDerivedPaths() override;
+    DerivedPathsWithInfo toDerivedPaths(EvalState & state) override;
 
 public:
 

@@ -162,7 +162,7 @@ void BuiltPathsCommand::run(ref<Store> store, Installables && installables)
         for (auto & p : store->queryAllValidPaths())
             paths.emplace_back(BuiltPath::Opaque{p});
     } else {
-        paths = Installable::toBuiltPaths(getEvalStore(), store, realiseMode, operateOn, installables);
+        paths = Installable::toBuiltPaths(*getEvalState(), getEvalStore(), store, realiseMode, operateOn, installables);
         if (recursive) {
             // XXX: This only computes the store path closure, ignoring
             // intermediate realisations

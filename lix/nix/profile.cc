@@ -73,7 +73,7 @@ struct CmdProfileInstall : InstallablesCommand, MixDefaultProfile
 
         auto builtPaths = builtPathsPerInstallable(
             Installable::build2(
-                getEvalStore(), store, Realise::Outputs, installables, bmNormal));
+                *getEvalState(), getEvalStore(), store, Realise::Outputs, installables, bmNormal));
 
         for (auto & installable : installables) {
             ProfileElement element;
@@ -343,7 +343,7 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
                 lockFlags
             );
 
-            auto derivedPaths = installable->toDerivedPaths();
+            auto derivedPaths = installable->toDerivedPaths(*getEvalState());
             if (derivedPaths.empty()) {
                 continue;
             }
@@ -393,7 +393,7 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
 
         auto builtPaths = builtPathsPerInstallable(
             Installable::build2(
-                getEvalStore(), store, Realise::Outputs, installables, bmNormal));
+                *getEvalState(), getEvalStore(), store, Realise::Outputs, installables, bmNormal));
 
         for (size_t i = 0; i < installables.size(); ++i) {
             auto & installable = installables.at(i);

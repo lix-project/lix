@@ -16,7 +16,7 @@ struct InstallableDerivedPath : Installable
 
     std::string what() const override;
 
-    DerivedPathsWithInfo toDerivedPaths() override;
+    DerivedPathsWithInfo toDerivedPaths(EvalState & state) override;
 
     std::optional<StorePath> getStorePath() override;
 

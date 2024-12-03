@@ -124,10 +124,11 @@ struct CmdDiffClosures : SourceExprCommand, MixOperateOnOptions
 
     void run(ref<Store> store) override
     {
-        auto before = parseInstallable(store, _before);
-        auto beforePath = Installable::toStorePath(getEvalStore(), store, Realise::Outputs, operateOn, before);
-        auto after = parseInstallable(store, _after);
-        auto afterPath = Installable::toStorePath(getEvalStore(), store, Realise::Outputs, operateOn, after);
+        auto state = getEvalState();
+        auto before = parseInstallable(*state, store, _before);
+        auto beforePath = Installable::toStorePath(*state, getEvalStore(), store, Realise::Outputs, operateOn, before);
+        auto after = parseInstallable(*state, store, _after);
+        auto afterPath = Installable::toStorePath(*state, getEvalStore(), store, Realise::Outputs, operateOn, after);
         printClosureDiff(store, beforePath, afterPath, "");
     }
 };

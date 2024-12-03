@@ -114,11 +114,13 @@ struct CmdBuild : InstallablesCommand, MixDryRun, MixJSON, MixProfile
 
     void run(ref<Store> store, Installables && installables) override
     {
+        auto state = getEvalState();
+
         if (dryRun) {
             std::vector<DerivedPath> pathsToBuild;
 
             for (auto & i : installables)
-                for (auto & b : i->toDerivedPaths())
+                for (auto & b : i->toDerivedPaths(*state))
                     pathsToBuild.push_back(b.path);
 
             printMissing(store, pathsToBuild, lvlError);
@@ -130,7 +132,7 @@ struct CmdBuild : InstallablesCommand, MixDryRun, MixJSON, MixProfile
         }
 
         auto buildables = Installable::build(
-            getEvalStore(), store,
+            *state, getEvalStore(), store,
             Realise::Outputs,
             installables,
             repair ? bmRepair : buildMode);

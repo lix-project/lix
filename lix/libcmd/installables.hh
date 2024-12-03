@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libexpr/eval.hh"
 #include "lix/libstore/path.hh"
 #include "lix/libstore/outputs-spec.hh"
 #include "lix/libstore/derived-path.hh"
@@ -127,7 +128,7 @@ struct Installable
      *
      * This is the main method of this class
      */
-    virtual DerivedPathsWithInfo toDerivedPaths() = 0;
+    virtual DerivedPathsWithInfo toDerivedPaths(EvalState & state) = 0;
 
     /**
      * A convenience wrapper of the above for when we expect an
@@ -137,7 +138,7 @@ struct Installable
      * If no or multiple \ref DerivedPath "derived paths" are produced,
      * and error is raised.
      */
-    DerivedPathWithInfo toDerivedPath();
+    DerivedPathWithInfo toDerivedPath(EvalState & state);
 
     /**
      * Return a value only if this installable is a store path or a
@@ -152,6 +153,7 @@ struct Installable
     }
 
     static std::vector<BuiltPathWithResult> build(
+        EvalState & state,
         ref<Store> evalStore,
         ref<Store> store,
         Realise mode,
@@ -159,6 +161,7 @@ struct Installable
         BuildMode bMode = bmNormal);
 
     static std::vector<std::pair<ref<Installable>, BuiltPathWithResult>> build2(
+        EvalState & state,
         ref<Store> evalStore,
         ref<Store> store,
         Realise mode,
@@ -166,6 +169,7 @@ struct Installable
         BuildMode bMode = bmNormal);
 
     static std::set<StorePath> toStorePathSet(
+        EvalState & state,
         ref<Store> evalStore,
         ref<Store> store,
         Realise mode,
@@ -173,6 +177,7 @@ struct Installable
         const Installables & installables);
 
     static std::vector<StorePath> toStorePaths(
+        EvalState & state,
         ref<Store> evalStore,
         ref<Store> store,
         Realise mode,
@@ -180,6 +185,7 @@ struct Installable
         const Installables & installables);
 
     static StorePath toStorePath(
+        EvalState & state,
         ref<Store> evalStore,
         ref<Store> store,
         Realise mode,
@@ -187,11 +193,13 @@ struct Installable
         ref<Installable> installable);
 
     static std::set<StorePath> toDerivations(
+        EvalState & state,
         ref<Store> store,
         const Installables & installables,
         bool useDeriver = false);
 
     static BuiltPaths toBuiltPaths(
+        EvalState & state,
         ref<Store> evalStore,
         ref<Store> store,
         Realise mode,

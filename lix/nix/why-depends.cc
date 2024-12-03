@@ -76,8 +76,9 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
 
     void run(ref<Store> store) override
     {
-        auto package = parseInstallable(store, _package);
-        auto packagePath = Installable::toStorePath(getEvalStore(), store, Realise::Outputs, operateOn, package);
+        auto state = getEvalState();
+        auto package = parseInstallable(*state, store, _package);
+        auto packagePath = Installable::toStorePath(*state, getEvalStore(), store, Realise::Outputs, operateOn, package);
 
         /* We don't need to build `dependency`. We try to get the store
          * path if it's already known, and if not, then it's not a dependency.
@@ -89,10 +90,10 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
          * derivation which hasn't been built), then `package` did not need it
          * to build.
          */
-        auto dependency = parseInstallable(store, _dependency);
+        auto dependency = parseInstallable(*state, store, _dependency);
         auto optDependencyPath = [&]() -> std::optional<StorePath> {
             try {
-                return {Installable::toStorePath(getEvalStore(), store, Realise::Derivation, operateOn, dependency)};
+                return {Installable::toStorePath(*state, getEvalStore(), store, Realise::Derivation, operateOn, dependency)};
             } catch (MissingRealisation &) {
                 return std::nullopt;
             }

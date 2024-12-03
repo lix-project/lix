@@ -66,13 +66,13 @@ struct CmdRepl : RawInstallablesCommand
         auto evaluator = getEvalState();
         auto state = evaluator;
         auto getValues = [&]()->AbstractNixRepl::AnnotatedValues{
-            auto installables = parseInstallables(store, rawInstallables);
+            auto installables = parseInstallables(*state, store, rawInstallables);
             AbstractNixRepl::AnnotatedValues values;
             for (auto & installable_: installables){
                 auto & installable = InstallableValue::require(*installable_);
                 auto what = installable.what();
                 if (file){
-                    auto [val, pos] = installable.toValue();
+                    auto [val, pos] = installable.toValue(*state);
                     auto what = installable.what();
                     state->forceValue(*val, pos);
                     auto autoArgs = getAutoArgs(*evaluator);
@@ -81,7 +81,7 @@ struct CmdRepl : RawInstallablesCommand
                     state->forceValue(*valPost, pos);
                     values.push_back( {valPost, what });
                 } else {
-                    auto [val, pos] = installable.toValue();
+                    auto [val, pos] = installable.toValue(*state);
                     values.push_back( {val, what} );
                 }
             }

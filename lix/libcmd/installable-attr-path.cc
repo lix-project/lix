@@ -24,21 +24,20 @@ InstallableAttrPath::InstallableAttrPath(
     , extendedOutputsSpec(std::move(extendedOutputsSpec))
 { }
 
-std::pair<Value *, PosIdx> InstallableAttrPath::toValue()
+std::pair<Value *, PosIdx> InstallableAttrPath::toValue(EvalState & state)
 {
-    auto [vRes, pos] = findAlongAttrPath(*state, attrPath, *cmd.getAutoArgs(*evaluator), **v);
-    state->forceValue(*vRes, pos);
+    auto [vRes, pos] = findAlongAttrPath(state, attrPath, *cmd.getAutoArgs(*evaluator), **v);
+    state.forceValue(*vRes, pos);
     return {vRes, pos};
 }
 
-DerivedPathsWithInfo InstallableAttrPath::toDerivedPaths()
+DerivedPathsWithInfo InstallableAttrPath::toDerivedPaths(EvalState & state)
 {
-    auto [v, pos] = toValue();
+    auto [v, pos] = toValue(state);
 
     if (std::optional derivedPathWithInfo = trySinglePathToDerivedPaths(
-        *v,
-        pos,
-        fmt("while evaluating the attribute '%s'", attrPath)))
+            state, *v, pos, fmt("while evaluating the attribute '%s'", attrPath)
+        ))
     {
         return { *derivedPathWithInfo };
     }
@@ -46,21 +45,21 @@ DerivedPathsWithInfo InstallableAttrPath::toDerivedPaths()
     Bindings & autoArgs = *cmd.getAutoArgs(*evaluator);
 
     DrvInfos drvInfos;
-    getDerivations(*state, *v, "", autoArgs, drvInfos, false);
+    getDerivations(state, *v, "", autoArgs, drvInfos, false);
 
     // Backward compatibility hack: group results by drvPath. This
     // helps keep .all output together.
     std::map<StorePath, OutputsSpec> byDrvPath;
 
     for (auto & drvInfo : drvInfos) {
-        auto drvPath = drvInfo.queryDrvPath(*state);
+        auto drvPath = drvInfo.queryDrvPath(state);
         if (!drvPath)
             throw Error("'%s' is not a derivation", what());
 
         auto newOutputs = std::visit(overloaded {
             [&](const ExtendedOutputsSpec::Default & d) -> OutputsSpec {
                 std::set<std::string> outputsToInstall;
-                for (auto & output : drvInfo.queryOutputs(*state, false, true))
+                for (auto & output : drvInfo.queryOutputs(state, false, true))
                     outputsToInstall.insert(output.first);
                 return OutputsSpec::Names { std::move(outputsToInstall) };
             },

@@ -8,7 +8,7 @@ std::string InstallableDerivedPath::what() const
     return derivedPath.to_string(*store);
 }
 
-DerivedPathsWithInfo InstallableDerivedPath::toDerivedPaths()
+DerivedPathsWithInfo InstallableDerivedPath::toDerivedPaths(EvalState & state)
 {
     return {{
         .path = derivedPath,

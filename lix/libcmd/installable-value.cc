@@ -5,20 +5,20 @@
 namespace nix {
 
 std::vector<ref<eval_cache::AttrCursor>>
-InstallableValue::getCursors()
+InstallableValue::getCursors(EvalState & state)
 {
     auto evalCache =
         std::make_shared<nix::eval_cache::EvalCache>(std::nullopt,
-            [&]() { return toValue().first; });
+            [&](EvalState & state) { return toValue(state).first; });
     return {evalCache->getRoot()};
 }
 
 ref<eval_cache::AttrCursor>
-InstallableValue::getCursor()
+InstallableValue::getCursor(EvalState & state)
 {
     /* Although getCursors should return at least one element, in case it doesn't,
        bound check to avoid an undefined behavior for vector[0] */
-    return getCursors().at(0);
+    return getCursors(state).at(0);
 }
 
 static UsageError nonValueInstallable(Installable & installable)
@@ -42,10 +42,12 @@ ref<InstallableValue> InstallableValue::require(ref<Installable> installable)
     return ref { castedInstallable };
 }
 
-std::optional<DerivedPathWithInfo> InstallableValue::trySinglePathToDerivedPaths(Value & v, const PosIdx pos, std::string_view errorCtx)
+std::optional<DerivedPathWithInfo> InstallableValue::trySinglePathToDerivedPaths(
+    EvalState & state, Value & v, const PosIdx pos, std::string_view errorCtx
+)
 {
     if (v.type() == nPath) {
-        auto storePath = fetchToStore(*state->store, v.path());
+        auto storePath = fetchToStore(*evaluator->store, v.path());
         return {{
             .path = DerivedPath::Opaque {
                 .path = std::move(storePath),
@@ -57,7 +59,7 @@ std::optional<DerivedPathWithInfo> InstallableValue::trySinglePathToDerivedPaths
     else if (v.type() == nString) {
         return {{
             .path = DerivedPath::fromSingle(
-                state->coerceToSingleDerivedPath(pos, v, errorCtx)),
+                state.coerceToSingleDerivedPath(pos, v, errorCtx)),
             .info = make_ref<ExtraPathInfo>(),
         }};
     }

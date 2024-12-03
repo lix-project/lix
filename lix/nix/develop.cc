@@ -364,9 +364,9 @@ struct Common : InstallableCommand, MixProfile
         /* Substitute redirects. */
         for (auto & [installable_, dir_] : redirects) {
             auto dir = absPath(dir_);
-            auto installable = parseInstallable(store, installable_);
+            auto installable = parseInstallable(*getEvalState(), store, installable_);
             auto builtPaths = Installable::toStorePathSet(
-                getEvalStore(), store, Realise::Nothing, OperateOn::Output, {installable});
+                *getEvalState(), getEvalStore(), store, Realise::Nothing, OperateOn::Output, {installable});
             for (auto & path: builtPaths) {
                 auto from = store->printStorePath(path);
                 if (script.find(from) == std::string::npos)
@@ -444,7 +444,7 @@ struct Common : InstallableCommand, MixProfile
         if (path && path->to_string().ends_with("-env"))
             return *path;
         else {
-            auto drvs = Installable::toDerivations(store, {installable});
+            auto drvs = Installable::toDerivations(*getEvalState(), store, {installable});
 
             if (drvs.size() != 1)
                 throw Error("'%s' needs to evaluate to a single derivation, but it evaluated to %d derivations",
@@ -607,7 +607,7 @@ struct CmdDevelop : Common, MixEnvironment
 
             auto nixpkgs = defaultNixpkgsFlakeRef();
             if (auto * i = dynamic_cast<const InstallableFlake *>(&*installable))
-                nixpkgs = i->nixpkgsFlakeRef();
+                nixpkgs = i->nixpkgsFlakeRef(*state);
 
             auto bashInstallable = make_ref<InstallableFlake>(
                 this,
@@ -621,7 +621,7 @@ struct CmdDevelop : Common, MixEnvironment
 
             bool found = false;
 
-            for (auto & path : Installable::toStorePathSet(getEvalStore(), store, Realise::Outputs, OperateOn::Output, {bashInstallable})) {
+            for (auto & path : Installable::toStorePathSet(*state, getEvalStore(), store, Realise::Outputs, OperateOn::Output, {bashInstallable})) {
                 auto s = store->printStorePath(path) + "/bin/bash";
                 if (pathExists(s)) {
                     shell = s;
@@ -651,7 +651,7 @@ struct CmdDevelop : Common, MixEnvironment
             // chdir if installable is a flake of type git+file or path
             auto installableFlake = installable.dynamic_pointer_cast<InstallableFlake>();
             if (installableFlake) {
-                auto sourcePath = installableFlake->getLockedFlake()->flake.resolvedRef.input.getSourcePath();
+                auto sourcePath = installableFlake->getLockedFlake(*getEvalState())->flake.resolvedRef.input.getSourcePath();
                 if (sourcePath) {
                     if (chdir(sourcePath->c_str()) == -1) {
                         throw SysError("chdir to '%s' failed", *sourcePath);

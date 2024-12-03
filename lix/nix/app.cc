@@ -51,21 +51,21 @@ std::string resolveString(
     return rewriteStrings(toResolve, rewrites);
 }
 
-UnresolvedApp InstallableValue::toApp()
+UnresolvedApp InstallableValue::toApp(EvalState & state)
 {
-    auto cursor = getCursor();
-    auto attrPath = cursor->getAttrPath(*state);
+    auto cursor = getCursor(state);
+    auto attrPath = cursor->getAttrPath(state);
 
-    auto type = cursor->getAttr(*state, "type")->getString(*state);
+    auto type = cursor->getAttr(state, "type")->getString(state);
 
     std::string expected = !attrPath.empty() &&
         (attrPath[0] == "apps" || attrPath[0] == "defaultApp")
         ? "app" : "derivation";
     if (type != expected)
-        throw Error("attribute '%s' should have type '%s'", cursor->getAttrPathStr(*state), expected);
+        throw Error("attribute '%s' should have type '%s'", cursor->getAttrPathStr(state), expected);
 
     if (type == "app") {
-        auto [program, context] = cursor->getAttr(*state, "program")->getStringWithContext(*state);
+        auto [program, context] = cursor->getAttr(state, "program")->getStringWithContext(state);
 
         std::vector<DerivedPath> context2;
         for (auto & c : context) {
@@ -98,18 +98,18 @@ UnresolvedApp InstallableValue::toApp()
     }
 
     else if (type == "derivation") {
-        auto drvPath = cursor->forceDerivation(*state);
-        auto outPath = cursor->getAttr(*state, "outPath")->getString(*state);
-        auto outputName = cursor->getAttr(*state, "outputName")->getString(*state);
-        auto name = cursor->getAttr(*state, "name")->getString(*state);
-        auto aPname = cursor->maybeGetAttr(*state, "pname");
-        auto aMeta = cursor->maybeGetAttr(*state, "meta");
-        auto aMainProgram = aMeta ? aMeta->maybeGetAttr(*state, "mainProgram") : nullptr;
+        auto drvPath = cursor->forceDerivation(state);
+        auto outPath = cursor->getAttr(state, "outPath")->getString(state);
+        auto outputName = cursor->getAttr(state, "outputName")->getString(state);
+        auto name = cursor->getAttr(state, "name")->getString(state);
+        auto aPname = cursor->maybeGetAttr(state, "pname");
+        auto aMeta = cursor->maybeGetAttr(state, "meta");
+        auto aMainProgram = aMeta ? aMeta->maybeGetAttr(state, "mainProgram") : nullptr;
         auto mainProgram =
             aMainProgram
-            ? aMainProgram->getString(*state)
+            ? aMainProgram->getString(state)
             : aPname
-            ? aPname->getString(*state)
+            ? aPname->getString(state)
             : DrvName(name).name;
         auto program = outPath + "/bin/" + mainProgram;
         return UnresolvedApp { App {
@@ -122,11 +122,11 @@ UnresolvedApp InstallableValue::toApp()
     }
 
     else
-        throw Error("attribute '%s' has unsupported type '%s'", cursor->getAttrPathStr(*state), type);
+        throw Error("attribute '%s' has unsupported type '%s'", cursor->getAttrPathStr(state), type);
 }
 
 // FIXME: move to libcmd
-App UnresolvedApp::resolve(ref<Store> evalStore, ref<Store> store)
+App UnresolvedApp::resolve(EvalState & state, ref<Store> evalStore, ref<Store> store)
 {
     auto res = unresolved;
 
@@ -136,7 +136,7 @@ App UnresolvedApp::resolve(ref<Store> evalStore, ref<Store> store)
         installableContext.push_back(
             make_ref<InstallableDerivedPath>(store, DerivedPath { ctxElt }));
 
-    auto builtContext = Installable::build(evalStore, store, Realise::Outputs, installableContext);
+    auto builtContext = Installable::build(state, evalStore, store, Realise::Outputs, installableContext);
     res.program = resolveString(*store, unresolved.program, builtContext);
     if (!store->isInStore(res.program))
         throw Error("app program '%s' is not in the Nix store", res.program);

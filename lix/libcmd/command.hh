@@ -115,10 +115,10 @@ struct SourceExprCommand : virtual Args, MixFlakeOptions
     SourceExprCommand();
 
     Installables parseInstallables(
-        ref<Store> store, std::vector<std::string> ss);
+        EvalState & state, ref<Store> store, std::vector<std::string> ss);
 
     ref<Installable> parseInstallable(
-        ref<Store> store, const std::string & installable);
+        EvalState & state, ref<Store> store, const std::string & installable);
 
     virtual Strings getDefaultFlakeAttrPaths();
 

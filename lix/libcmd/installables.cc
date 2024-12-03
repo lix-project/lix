@@ -371,9 +371,9 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
     }
 }
 
-DerivedPathWithInfo Installable::toDerivedPath()
+DerivedPathWithInfo Installable::toDerivedPath(EvalState & state)
 {
-    auto buildables = toDerivedPaths();
+    auto buildables = toDerivedPaths(state);
     if (buildables.size() != 1)
         throw Error("installable '%s' evaluates to %d derivations, where only one is expected", what(), buildables.size());
     return std::move(buildables[0]);
@@ -398,7 +398,7 @@ ref<eval_cache::EvalCache> openEvalCache(
     auto fingerprint = evalSettings.useEvalCache && evalSettings.pureEval
         ? std::make_optional(lockedFlake->getFingerprint())
         : std::nullopt;
-    auto rootLoader = [&state, lockedFlake]()
+    auto rootLoader = [lockedFlake](EvalState & state)
         {
             /* For testing whether the evaluation cache is
                complete. */
@@ -424,7 +424,7 @@ ref<eval_cache::EvalCache> openEvalCache(
 }
 
 Installables SourceExprCommand::parseInstallables(
-    ref<Store> store, std::vector<std::string> ss)
+    EvalState & state, ref<Store> store, std::vector<std::string> ss)
 {
     Installables result;
 
@@ -438,18 +438,18 @@ Installables SourceExprCommand::parseInstallables(
             getEvalState()->paths.allowedPaths.reset();
         }
 
-        auto state = getEvalState();
-        auto vFile = state->mem.allocValue();
+        auto evaluator = getEvalState();
+        auto vFile = evaluator->mem.allocValue();
 
         if (file == "-") {
-            auto & e = state->parseStdin();
-            state->eval(e, *vFile);
+            auto & e = evaluator->parseStdin();
+            state.eval(e, *vFile);
         }
         else if (file)
-            state->evalFile(lookupFileArg(*state, *file), *vFile);
+            state.evalFile(lookupFileArg(state, *file), *vFile);
         else {
-            auto & e = state->parseExprFromString(*expr, CanonPath::fromCwd());
-            state->eval(e, *vFile);
+            auto & e = state.parseExprFromString(*expr, CanonPath::fromCwd());
+            state.eval(e, *vFile);
         }
 
         for (auto & s : ss) {
@@ -457,7 +457,7 @@ Installables SourceExprCommand::parseInstallables(
             result.push_back(
                 make_ref<InstallableAttrPath>(
                     InstallableAttrPath::parse(
-                        state, *this, vFile, std::move(prefix), std::move(extendedOutputsSpec))));
+                        evaluator, *this, vFile, std::move(prefix), std::move(extendedOutputsSpec))));
         }
 
     } else {
@@ -506,9 +506,9 @@ Installables SourceExprCommand::parseInstallables(
 }
 
 ref<Installable> SourceExprCommand::parseInstallable(
-    ref<Store> store, const std::string & installable)
+    EvalState & state, ref<Store> store, const std::string & installable)
 {
-    auto installables = parseInstallables(store, {installable});
+    auto installables = parseInstallables(state, store, {installable});
     assert(installables.size() == 1);
     return installables.front();
 }
@@ -538,6 +538,7 @@ static SingleBuiltPath getBuiltPath(ref<Store> evalStore, ref<Store> store, cons
 }
 
 std::vector<BuiltPathWithResult> Installable::build(
+    EvalState & state,
     ref<Store> evalStore,
     ref<Store> store,
     Realise mode,
@@ -545,7 +546,7 @@ std::vector<BuiltPathWithResult> Installable::build(
     BuildMode bMode)
 {
     std::vector<BuiltPathWithResult> res;
-    for (auto & [_, builtPathWithResult] : build2(evalStore, store, mode, installables, bMode))
+    for (auto & [_, builtPathWithResult] : build2(state, evalStore, store, mode, installables, bMode))
         res.push_back(builtPathWithResult);
     return res;
 }
@@ -582,6 +583,7 @@ static void throwBuildErrors(
 }
 
 std::vector<std::pair<ref<Installable>, BuiltPathWithResult>> Installable::build2(
+    EvalState & state,
     ref<Store> evalStore,
     ref<Store> store,
     Realise mode,
@@ -601,7 +603,7 @@ std::vector<std::pair<ref<Installable>, BuiltPathWithResult>> Installable::build
     std::map<DerivedPath, std::vector<Aux>> backmap;
 
     for (auto & i : installables) {
-        for (auto b : i->toDerivedPaths()) {
+        for (auto b : i->toDerivedPaths(state)) {
             pathsToBuild.push_back(b.path);
             backmap[b.path].push_back({.info = b.info, .installable = i});
         }
@@ -680,6 +682,7 @@ std::vector<std::pair<ref<Installable>, BuiltPathWithResult>> Installable::build
 }
 
 BuiltPaths Installable::toBuiltPaths(
+    EvalState & state,
     ref<Store> evalStore,
     ref<Store> store,
     Realise mode,
@@ -688,7 +691,7 @@ BuiltPaths Installable::toBuiltPaths(
 {
     if (operateOn == OperateOn::Output) {
         BuiltPaths res;
-        for (auto & p : Installable::build(evalStore, store, mode, installables))
+        for (auto & p : Installable::build(state, evalStore, store, mode, installables))
             res.push_back(p.path);
         return res;
     } else {
@@ -696,20 +699,21 @@ BuiltPaths Installable::toBuiltPaths(
             settings.readOnlyMode = true;
 
         BuiltPaths res;
-        for (auto & drvPath : Installable::toDerivations(store, installables, true))
+        for (auto & drvPath : Installable::toDerivations(state, store, installables, true))
             res.emplace_back(BuiltPath::Opaque{drvPath});
         return res;
     }
 }
 
 StorePathSet Installable::toStorePathSet(
+    EvalState & state,
     ref<Store> evalStore,
     ref<Store> store,
     Realise mode, OperateOn operateOn,
     const Installables & installables)
 {
     StorePathSet outPaths;
-    for (auto & path : toBuiltPaths(evalStore, store, mode, operateOn, installables)) {
+    for (auto & path : toBuiltPaths(state, evalStore, store, mode, operateOn, installables)) {
         auto thisOutPaths = path.outPaths();
         outPaths.insert(thisOutPaths.begin(), thisOutPaths.end());
     }
@@ -717,13 +721,14 @@ StorePathSet Installable::toStorePathSet(
 }
 
 StorePaths Installable::toStorePaths(
+    EvalState & state,
     ref<Store> evalStore,
     ref<Store> store,
     Realise mode, OperateOn operateOn,
     const Installables & installables)
 {
     StorePaths outPaths;
-    for (auto & path : toBuiltPaths(evalStore, store, mode, operateOn, installables)) {
+    for (auto & path : toBuiltPaths(state, evalStore, store, mode, operateOn, installables)) {
         auto thisOutPaths = path.outPaths();
         outPaths.insert(outPaths.end(), thisOutPaths.begin(), thisOutPaths.end());
     }
@@ -731,12 +736,13 @@ StorePaths Installable::toStorePaths(
 }
 
 StorePath Installable::toStorePath(
+    EvalState & state,
     ref<Store> evalStore,
     ref<Store> store,
     Realise mode, OperateOn operateOn,
     ref<Installable> installable)
 {
-    auto paths = toStorePathSet(evalStore, store, mode, operateOn, {installable});
+    auto paths = toStorePathSet(state, evalStore, store, mode, operateOn, {installable});
 
     if (paths.size() != 1)
         throw Error("argument '%s' should evaluate to one store path", installable->what());
@@ -745,6 +751,7 @@ StorePath Installable::toStorePath(
 }
 
 StorePathSet Installable::toDerivations(
+    EvalState & state,
     ref<Store> store,
     const Installables & installables,
     bool useDeriver)
@@ -752,7 +759,7 @@ StorePathSet Installable::toDerivations(
     StorePathSet drvPaths;
 
     for (const auto & i : installables)
-        for (const auto & b : i->toDerivedPaths())
+        for (const auto & b : i->toDerivedPaths(state))
             std::visit(overloaded {
                 [&](const DerivedPath::Opaque & bo) {
                     drvPaths.insert(
@@ -829,7 +836,7 @@ std::vector<FlakeRef> InstallableCommand::getFlakeRefsForCompletion()
 
 void InstallablesCommand::run(ref<Store> store, std::vector<std::string> && rawInstallables)
 {
-    auto installables = parseInstallables(store, rawInstallables);
+    auto installables = parseInstallables(*getEvalState(), store, rawInstallables);
     run(store, std::move(installables));
 }
 
@@ -846,7 +853,7 @@ InstallableCommand::InstallableCommand()
 
 void InstallableCommand::run(ref<Store> store)
 {
-    auto installable = parseInstallable(store, _installable);
+    auto installable = parseInstallable(*getEvalState(), store, _installable);
     run(store, std::move(installable));
 }
 
