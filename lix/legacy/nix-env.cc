@@ -1,3 +1,4 @@
+#include "lix/libcmd/cmd-profiles.hh"
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libcmd/common-eval-args.hh"
 #include "lix/libstore/derivations.hh"
