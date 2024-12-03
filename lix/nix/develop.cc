@@ -313,6 +313,7 @@ struct Common : InstallableCommand, MixProfile
     }
 
     std::string makeRcScript(
+        EvalState & state,
         ref<Store> store,
         const BuildEnvironment & buildEnvironment,
         const Path & tmpDir,
@@ -364,9 +365,9 @@ struct Common : InstallableCommand, MixProfile
         /* Substitute redirects. */
         for (auto & [installable_, dir_] : redirects) {
             auto dir = absPath(dir_);
-            auto installable = parseInstallable(*getEvalState(), store, installable_);
+            auto installable = parseInstallable(state, store, installable_);
             auto builtPaths = Installable::toStorePathSet(
-                *getEvalState(), getEvalStore(), store, Realise::Nothing, OperateOn::Output, {installable});
+                state, getEvalStore(), store, Realise::Nothing, OperateOn::Output, {installable});
             for (auto & path: builtPaths) {
                 auto from = store->printStorePath(path);
                 if (script.find(from) == std::string::npos)
@@ -438,13 +439,13 @@ struct Common : InstallableCommand, MixProfile
         return res;
     }
 
-    StorePath getShellOutPath(ref<Store> store, ref<Installable> installable)
+    StorePath getShellOutPath(EvalState & state, ref<Store> store, ref<Installable> installable)
     {
         auto path = installable->getStorePath();
         if (path && path->to_string().ends_with("-env"))
             return *path;
         else {
-            auto drvs = Installable::toDerivations(*getEvalState(), store, {installable});
+            auto drvs = Installable::toDerivations(state, store, {installable});
 
             if (drvs.size() != 1)
                 throw Error("'%s' needs to evaluate to a single derivation, but it evaluated to %d derivations",
@@ -457,9 +458,9 @@ struct Common : InstallableCommand, MixProfile
     }
 
     std::pair<BuildEnvironment, std::string>
-    getBuildEnvironment(ref<Store> store, ref<Installable> installable)
+    getBuildEnvironment(EvalState & state, ref<Store> store, ref<Installable> installable)
     {
-        auto shellOutPath = getShellOutPath(store, installable);
+        auto shellOutPath = getShellOutPath(state, store, installable);
 
         auto strPath = store->printStorePath(shellOutPath);
 
@@ -547,16 +548,16 @@ struct CmdDevelop : Common, MixEnvironment
 
     void run(ref<Store> store, ref<Installable> installable) override
     {
-        auto evaluator = getEvalState();
-        auto state = evaluator;
+        auto evaluator = getEvaluator();
+        auto state = evaluator->begin();
 
-        auto [buildEnvironment, gcroot] = getBuildEnvironment(store, installable);
+        auto [buildEnvironment, gcroot] = getBuildEnvironment(*state, store, installable);
 
         auto [rcFileFd, rcFilePath] = createTempFile("nix-shell");
 
         AutoDelete tmpDir(createTempDir("", "nix-develop"), true);
 
-        auto script = makeRcScript(store, buildEnvironment, (Path) tmpDir);
+        auto script = makeRcScript(*state, store, buildEnvironment, (Path) tmpDir);
 
         if (verbosity >= lvlDebug)
             script += "set -x\n";
@@ -611,7 +612,7 @@ struct CmdDevelop : Common, MixEnvironment
 
             auto bashInstallable = make_ref<InstallableFlake>(
                 this,
-                state,
+                evaluator,
                 std::move(nixpkgs),
                 "bashInteractive",
                 ExtendedOutputsSpec::Default(),
@@ -651,7 +652,7 @@ struct CmdDevelop : Common, MixEnvironment
             // chdir if installable is a flake of type git+file or path
             auto installableFlake = installable.dynamic_pointer_cast<InstallableFlake>();
             if (installableFlake) {
-                auto sourcePath = installableFlake->getLockedFlake(*getEvalState())->flake.resolvedRef.input.getSourcePath();
+                auto sourcePath = installableFlake->getLockedFlake(*state)->flake.resolvedRef.input.getSourcePath();
                 if (sourcePath) {
                     if (chdir(sourcePath->c_str()) == -1) {
                         throw SysError("chdir to '%s' failed", *sourcePath);
@@ -682,7 +683,8 @@ struct CmdPrintDevEnv : Common, MixJSON
 
     void run(ref<Store> store, ref<Installable> installable) override
     {
-        auto buildEnvironment = getBuildEnvironment(store, installable).first;
+        auto state = getEvaluator()->begin();
+        auto buildEnvironment = getBuildEnvironment(*state, store, installable).first;
 
         logger->pause();
 
@@ -690,7 +692,7 @@ struct CmdPrintDevEnv : Common, MixJSON
             logger->writeToStdout(buildEnvironment.toJSON());
         } else {
             AutoDelete tmpDir(createTempDir("", "nix-dev-env"), true);
-            logger->writeToStdout(makeRcScript(store, buildEnvironment, tmpDir));
+            logger->writeToStdout(makeRcScript(*state, store, buildEnvironment, tmpDir));
         }
     }
 };

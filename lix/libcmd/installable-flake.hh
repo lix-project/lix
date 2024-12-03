@@ -2,6 +2,7 @@
 ///@file
 
 #include "lix/libcmd/installable-value.hh"
+#include "lix/libexpr/eval.hh"
 
 namespace nix {
 
@@ -40,7 +41,7 @@ struct InstallableFlake : InstallableValue
 
     InstallableFlake(
         SourceExprCommand * cmd,
-        ref<eval_cache::CachingEvalState> state,
+        ref<eval_cache::CachingEvaluator> state,
         FlakeRef && flakeRef,
         std::string_view fragment,
         ExtendedOutputsSpec extendedOutputsSpec,
@@ -81,7 +82,7 @@ static inline FlakeRef defaultNixpkgsFlakeRef()
 }
 
 ref<eval_cache::EvalCache> openEvalCache(
-    eval_cache::CachingEvalState & state,
+    eval_cache::CachingEvaluator & state,
     std::shared_ptr<flake::LockedFlake> lockedFlake);
 
 }

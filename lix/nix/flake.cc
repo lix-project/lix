@@ -51,9 +51,9 @@ public:
         return parseFlakeRef(flakeUrl, absPath(".")); //FIXME
     }
 
-    LockedFlake lockFlake()
+    LockedFlake lockFlake(EvalState & state)
     {
-        return flake::lockFlake(*getEvalState(), getFlakeRef(), lockFlags);
+        return flake::lockFlake(state, getFlakeRef(), lockFlags);
     }
 
     std::vector<FlakeRef> getFlakeRefsForCompletion() override
@@ -98,7 +98,7 @@ public:
                 }
             }},
             .completer = {[&](AddCompletions & completions, size_t, std::string_view prefix) {
-                completeFlakeInputPath(completions, getEvalState(), getFlakeRefsForCompletion(), prefix);
+                completeFlakeInputPath(completions, *getEvaluator()->begin(), getFlakeRefsForCompletion(), prefix);
             }}
         });
 
@@ -123,7 +123,7 @@ public:
         lockFlags.writeLockFile = true;
         lockFlags.applyNixConfig = true;
 
-        lockFlake();
+        lockFlake(*getEvaluator()->begin());
     }
 };
 
@@ -163,7 +163,7 @@ struct CmdFlakeLock : FlakeCommand
         lockFlags.writeLockFile = true;
         lockFlags.applyNixConfig = true;
 
-        lockFlake();
+        lockFlake(*getEvaluator()->begin());
     }
 };
 
@@ -208,7 +208,7 @@ struct CmdFlakeMetadata : FlakeCommand, MixJSON
 
     void run(nix::ref<nix::Store> store) override
     {
-        auto lockedFlake = lockFlake();
+        auto lockedFlake = lockFlake(*getEvaluator()->begin());
         auto & flake = lockedFlake.flake;
         auto formatTime = [](time_t time) -> std::string {
             std::ostringstream os{};
@@ -358,11 +358,11 @@ struct CmdFlakeCheck : FlakeCommand
             evalSettings.enableImportFromDerivation.setDefault(false);
         }
 
-        auto evaluator = getEvalState();
-        auto state = evaluator;
+        auto evaluator = getEvaluator();
+        auto state = evaluator->begin();
 
         lockFlags.applyNixConfig = true;
-        auto flake = lockFlake();
+        auto flake = lockFlake(*state);
         auto localSystem = std::string(settings.thisSystem.get());
 
         bool hasErrors = false;
@@ -840,7 +840,8 @@ struct CmdFlakeInitCommon : virtual Args, EvalCommand
             .completer = {[&](AddCompletions & completions, size_t, std::string_view prefix) {
                 completeFlakeRefWithFragment(
                     completions,
-                    getEvalState(),
+                    *getEvaluator()->begin(),
+                    getEvaluator(),
                     lockFlags,
                     defaultTemplateAttrPathsPrefixes,
                     defaultTemplateAttrPaths,
@@ -853,8 +854,8 @@ struct CmdFlakeInitCommon : virtual Args, EvalCommand
     {
         auto flakeDir = absPath(destDir);
 
-        auto evaluator = getEvalState();
-        auto evalState = evaluator;
+        auto evaluator = getEvaluator();
+        auto evalState = evaluator->begin();
 
         auto [templateFlakeRef, templateName] = parseFlakeRefWithFragment(templateUrl, absPath("."));
 
@@ -1049,7 +1050,7 @@ struct CmdFlakeArchive : FlakeCommand, MixJSON, MixDryRun
 
     void run(nix::ref<nix::Store> store) override
     {
-        auto flake = lockFlake();
+        auto flake = lockFlake(*getEvaluator()->begin());
 
         StorePathSet sources;
 
@@ -1132,9 +1133,9 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
     {
         evalSettings.enableImportFromDerivation.setDefault(false);
 
-        auto evaluator = getEvalState();
-        auto state = evaluator;
-        auto flake = std::make_shared<LockedFlake>(lockFlake());
+        auto evaluator = getEvaluator();
+        auto state = evaluator->begin();
+        auto flake = std::make_shared<LockedFlake>(lockFlake(*state));
         auto localSystem = std::string(settings.thisSystem.get());
 
         std::function<bool(

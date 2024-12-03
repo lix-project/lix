@@ -53,7 +53,7 @@ static std::string showAttrPaths(const std::vector<std::string> & paths)
 
 InstallableFlake::InstallableFlake(
     SourceExprCommand * cmd,
-    ref<eval_cache::CachingEvalState> state,
+    ref<eval_cache::CachingEvaluator> state,
     FlakeRef && flakeRef,
     std::string_view fragment,
     ExtendedOutputsSpec extendedOutputsSpec,

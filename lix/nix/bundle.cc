@@ -73,8 +73,8 @@ struct CmdBundle : InstallableCommand
 
     void run(ref<Store> store, ref<Installable> installable) override
     {
-        auto evaluator = getEvalState();
-        auto evalState = evaluator;
+        auto evaluator = getEvaluator();
+        auto evalState = evaluator->begin();
 
         auto const installableValue = InstallableValue::require(installable);
 

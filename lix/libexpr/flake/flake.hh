@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libexpr/eval.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libexpr/flake/flakeref.hh"
 #include "lix/libexpr/flake/lockfile.hh"
@@ -192,7 +193,7 @@ void callFlake(
 }
 
 void emitTreeAttrs(
-    EvalState & state,
+    Evaluator & state,
     const fetchers::Tree & tree,
     const fetchers::Input & input,
     Value & v,

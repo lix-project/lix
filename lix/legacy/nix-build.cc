@@ -198,9 +198,9 @@ static void main_nix_build(std::string programName, Strings argv)
     auto store = openStore();
     auto evalStore = myArgs.evalStoreUrl ? openStore(*myArgs.evalStoreUrl) : store;
 
-    auto evaluator = std::make_unique<EvalState>(myArgs.searchPath, evalStore, store);
+    auto evaluator = std::make_unique<Evaluator>(myArgs.searchPath, evalStore, store);
     evaluator->repair = myArgs.repair;
-    auto & state = evaluator;
+    auto state = evaluator->begin();
     if (myArgs.repair) buildMode = bmRepair;
 
     auto autoArgs = myArgs.getAutoArgs(*evaluator);

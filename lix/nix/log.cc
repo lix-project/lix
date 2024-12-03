@@ -30,7 +30,7 @@ struct CmdLog : InstallableCommand
 
         subs.push_front(store);
 
-        auto b = installable->toDerivedPath(*getEvalState());
+        auto b = installable->toDerivedPath(*getEvaluator()->begin());
 
         // For compat with CLI today, TODO revisit
         auto oneUp = std::visit(overloaded {

@@ -322,7 +322,7 @@ static std::shared_ptr<AttrDb> makeAttrDb(const Hash & fingerprint)
     }
 }
 
-ref<EvalCache> CachingEvalState::getCacheFor(Hash hash, RootLoader rootLoader)
+ref<EvalCache> CachingEvaluator::getCacheFor(Hash hash, RootLoader rootLoader)
 {
     if (auto it = caches.find(hash); it != caches.end()) {
         return it->second;

@@ -37,7 +37,7 @@ static std::optional<FetchedFlake> lookupInFlakeCache(
 }
 
 static std::tuple<fetchers::Tree, FlakeRef, FlakeRef> fetchOrSubstituteTree(
-    EvalState & state,
+    Evaluator & state,
     const FlakeRef & originalRef,
     bool allowLookup,
     FlakeCache & flakeCache)
@@ -217,7 +217,7 @@ static Flake getFlake(
     InputPath lockRootPath)
 {
     auto [sourceInfo, resolvedRef, lockedRef] = fetchOrSubstituteTree(
-        state, originalRef, allowLookup, flakeCache);
+        state.ctx, originalRef, allowLookup, flakeCache);
 
     // We need to guard against symlink attacks, but before we start doing
     // filesystem operations we should make sure there's a flake.nix in the
@@ -634,7 +634,7 @@ LockedFlake lockFlake(
 
                         else {
                             auto [sourceInfo, resolvedRef, lockedRef] = fetchOrSubstituteTree(
-                                state, *input.ref, useRegistries, flakeCache);
+                                state.ctx, *input.ref, useRegistries, flakeCache);
 
                             auto childNode = make_ref<LockedNode>(lockedRef, ref, false);
 
@@ -782,7 +782,7 @@ void callFlake(EvalState & state,
     vLocks->mkString(lockedFlake.lockFile.to_string());
 
     emitTreeAttrs(
-        state,
+        state.ctx,
         *lockedFlake.flake.sourceInfo,
         lockedFlake.flake.lockedRef.input,
         *vRootSrc,

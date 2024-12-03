@@ -218,9 +218,9 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         // nb: nothing actually gets evaluated here.
         // The ProfileManifest constructor only evaluates anything for manifest.nix
         // profiles, which this is not.
-        auto evalState = this->getEvalState();
+        auto evalState = this->getEvaluator();
 
-        ProfileManifest manifest(*evalState, profileDir);
+        ProfileManifest manifest(*evalState->begin(), profileDir);
 
         // Find which profile element has Nix in it.
         // It should be impossible to *not* have Nix, since we grabbed this
@@ -288,8 +288,8 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         auto [res, content] = getFileTransfer()->download(storePathsUrl);
         auto data = content->drain();
 
-        auto evaluator = std::make_unique<EvalState>(SearchPath{}, store);
-        auto & state = evaluator;
+        auto evaluator = std::make_unique<Evaluator>(SearchPath{}, store);
+        auto state = evaluator->begin();
         auto v = evaluator->mem.allocValue();
         state->eval(evaluator->parseExprFromString(data, CanonPath("/no-such-path")), *v);
         Bindings & bindings(*evaluator->mem.allocBindings(0));

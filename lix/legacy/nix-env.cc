@@ -59,7 +59,7 @@ struct Globals
 {
     InstallSourceInfo instSource;
     Path profile;
-    std::shared_ptr<EvalState> state;
+    std::shared_ptr<Evaluator> state;
     bool dryRun;
     bool preserveInstalled;
     bool removeAll;
@@ -107,7 +107,7 @@ static bool isNixExpr(const SourcePath & path, struct InputAccessor::Stat & st)
 static constexpr size_t maxAttrs = 1024;
 
 
-static void getAllExprs(EvalState & state,
+static void getAllExprs(Evaluator & state,
     const SourcePath & path, StringSet & seen, BindingsBuilder & attrs)
 {
     StringSet namesSorted;
@@ -177,7 +177,7 @@ static void loadSourceExpr(EvalState & state, const SourcePath & path, Value & v
         auto attrs = state.ctx.buildBindings(maxAttrs);
         attrs.alloc("_combineChannels").mkList(0);
         StringSet seen;
-        getAllExprs(state, path, seen, attrs);
+        getAllExprs(state.ctx, path, seen, attrs);
         v.mkAttrs(attrs);
     }
 
@@ -511,7 +511,7 @@ static void installDerivations(Globals & globals,
 {
     debug("installing derivations");
 
-    auto state = globals.state;
+    auto state = globals.state->begin();
 
     /* Get the set of user environment elements to be installed. */
     DrvInfos newElems, newElemsTmp;
@@ -592,7 +592,7 @@ static void upgradeDerivations(Globals & globals,
 {
     debug("upgrading derivations");
 
-    auto state = globals.state;
+    auto state = globals.state->begin();
 
     /* Upgrade works as follows: we take all currently installed
        derivations, and for any derivation matching any selector, look
@@ -718,7 +718,7 @@ static void opSetFlag(Globals & globals, Strings opFlags, Strings opArgs)
     std::string flagValue = *arg++;
     DrvNames selectors = drvNamesFromArgs(Strings(arg, opArgs.end()));
 
-    auto state = globals.state;
+    auto state = globals.state->begin();
 
     while (true) {
         std::string lockToken = optimisticLockProfile(globals.profile);
@@ -748,7 +748,7 @@ static void opSetFlag(Globals & globals, Strings opFlags, Strings opArgs)
 
 static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
 {
-    auto state = globals.state;
+    auto state = globals.state->begin();
 
     auto store2 = globals.state->store.dynamic_pointer_cast<LocalFSStore>();
     if (!store2) throw Error("--set is not supported for this Nix store");
@@ -797,7 +797,7 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
 static void uninstallDerivations(Globals & globals, Strings & selectors,
     Path & profile)
 {
-    auto state = globals.state;
+    auto state = globals.state->begin();
 
     while (true) {
         auto lockToken = optimisticLockProfile(profile);
@@ -1003,7 +1003,7 @@ static void queryJSON(EvalState & state, Globals & globals, std::vector<DrvInfo>
 static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
 {
     auto & store { *globals.state->store };
-    auto state = globals.state;
+    auto state = globals.state->begin();
 
     Strings remaining;
     std::string attrPath;
@@ -1533,7 +1533,7 @@ static int main_nix_env(std::string programName, Strings argv)
 
         auto store = openStore();
 
-        globals.state = std::shared_ptr<EvalState>(new EvalState(myArgs.searchPath, store));
+        globals.state = std::make_shared<Evaluator>(myArgs.searchPath, store);
         globals.state->repair = myArgs.repair;
 
         globals.instSource.nixExprPath = std::make_shared<SourcePath>(

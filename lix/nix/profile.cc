@@ -69,11 +69,12 @@ struct CmdProfileInstall : InstallablesCommand, MixDefaultProfile
 
     void run(ref<Store> store, Installables && installables) override
     {
-        ProfileManifest manifest(*getEvalState(), *profile);
+        auto state = getEvaluator()->begin();
+        ProfileManifest manifest(*state, *profile);
 
         auto builtPaths = builtPathsPerInstallable(
             Installable::build2(
-                *getEvalState(), getEvalStore(), store, Realise::Outputs, installables, bmNormal));
+                *state, getEvalStore(), store, Realise::Outputs, installables, bmNormal));
 
         for (auto & installable : installables) {
             ProfileElement element;
@@ -240,7 +241,7 @@ struct CmdProfileRemove : virtual EvalCommand, MixDefaultProfile, MixProfileElem
 
     void run(ref<Store> store) override
     {
-        ProfileManifest oldManifest(*getEvalState(), *profile);
+        ProfileManifest oldManifest(*getEvaluator()->begin(), *profile);
 
         auto matchers = getMatchers(store);
 
@@ -289,7 +290,8 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
 
     void run(ref<Store> store) override
     {
-        ProfileManifest manifest(*getEvalState(), *profile);
+        auto state = getEvaluator()->begin();
+        ProfileManifest manifest(*state, *profile);
 
         auto matchers = getMatchers(store);
 
@@ -334,7 +336,7 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
 
             auto installable = make_ref<InstallableFlake>(
                 this,
-                getEvalState(),
+                getEvaluator(),
                 FlakeRef(element.source->originalRef),
                 "",
                 element.source->outputs,
@@ -343,7 +345,7 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
                 lockFlags
             );
 
-            auto derivedPaths = installable->toDerivedPaths(*getEvalState());
+            auto derivedPaths = installable->toDerivedPaths(*state);
             if (derivedPaths.empty()) {
                 continue;
             }
@@ -393,7 +395,7 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
 
         auto builtPaths = builtPathsPerInstallable(
             Installable::build2(
-                *getEvalState(), getEvalStore(), store, Realise::Outputs, installables, bmNormal));
+                *state, getEvalStore(), store, Realise::Outputs, installables, bmNormal));
 
         for (size_t i = 0; i < installables.size(); ++i) {
             auto & installable = installables.at(i);
@@ -424,7 +426,7 @@ struct CmdProfileList : virtual EvalCommand, virtual StoreCommand, MixDefaultPro
 
     void run(ref<Store> store) override
     {
-        ProfileManifest manifest(*getEvalState(), *profile);
+        ProfileManifest manifest(*getEvaluator()->begin(), *profile);
 
         if (json) {
             std::cout << manifest.toJSON(*store).dump() << "\n";
@@ -509,7 +511,7 @@ struct CmdProfileHistory : virtual StoreCommand, EvalCommand, MixDefaultProfile
         bool first = true;
 
         for (auto & gen : gens) {
-            ProfileManifest manifest(*getEvalState(), gen.path);
+            ProfileManifest manifest(*getEvaluator()->begin(), gen.path);
 
             if (!first) logger->cout("");
             first = false;

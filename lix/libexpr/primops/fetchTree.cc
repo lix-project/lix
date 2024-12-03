@@ -15,7 +15,7 @@
 namespace nix {
 
 void emitTreeAttrs(
-    EvalState & state,
+    Evaluator & state,
     const fetchers::Tree & tree,
     const fetchers::Input & input,
     Value & v,
@@ -196,7 +196,7 @@ static void fetchTree(
 
     state.ctx.paths.allowPath(tree.storePath);
 
-    emitTreeAttrs(state, tree, input2, v, params.emptyRevFallback, false);
+    emitTreeAttrs(state.ctx, tree, input2, v, params.emptyRevFallback, false);
 }
 
 static void prim_fetchTree(EvalState & state, const PosIdx pos, Value * * args, Value & v)

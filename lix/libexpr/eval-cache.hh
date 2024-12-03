@@ -22,7 +22,7 @@ typedef std::function<Value *(EvalState &)> RootLoader;
  * the rather strong connection between EvalState and these caches. At some
  * future time the cache interface should be changed to hide its EvalState.
  */
-class CachingEvalState : public EvalState
+class CachingEvaluator : public Evaluator
 {
     /**
      * A cache for evaluation caches, so as to reuse the same root value if possible
@@ -30,7 +30,7 @@ class CachingEvalState : public EvalState
     std::map<Hash, ref<EvalCache>> caches;
 
 public:
-    using EvalState::EvalState;
+    using Evaluator::Evaluator;
 
     ref<EvalCache> getCacheFor(Hash hash, RootLoader rootLoader);
 };

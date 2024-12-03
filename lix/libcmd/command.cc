@@ -102,17 +102,17 @@ ref<Store> EvalCommand::getEvalStore()
     return ref<Store>(evalStore);
 }
 
-ref<eval_cache::CachingEvalState> EvalCommand::getEvalState()
+ref<eval_cache::CachingEvaluator> EvalCommand::getEvaluator()
 {
     if (!evalState) {
-        evalState = std::allocate_shared<eval_cache::CachingEvalState>(
+        evalState = std::allocate_shared<eval_cache::CachingEvaluator>(
             TraceableAllocator<EvalState>(), searchPath, getEvalStore(), getStore(),
             startReplOnEvalErrors ? AbstractNixRepl::runSimple : nullptr
         );
 
         evalState->repair = repair;
     }
-    return ref<eval_cache::CachingEvalState>(evalState);
+    return ref<eval_cache::CachingEvaluator>(evalState);
 }
 
 MixOperateOnOptions::MixOperateOnOptions()
@@ -162,7 +162,7 @@ void BuiltPathsCommand::run(ref<Store> store, Installables && installables)
         for (auto & p : store->queryAllValidPaths())
             paths.emplace_back(BuiltPath::Opaque{p});
     } else {
-        paths = Installable::toBuiltPaths(*getEvalState(), getEvalStore(), store, realiseMode, operateOn, installables);
+        paths = Installable::toBuiltPaths(*getEvaluator()->begin(), getEvalStore(), store, realiseMode, operateOn, installables);
         if (recursive) {
             // XXX: This only computes the store path closure, ignoring
             // intermediate realisations

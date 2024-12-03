@@ -77,12 +77,12 @@ struct EvalCommand : virtual StoreCommand, MixEvalArgs
 
     ref<Store> getEvalStore();
 
-    ref<eval_cache::CachingEvalState> getEvalState();
+    ref<eval_cache::CachingEvaluator> getEvaluator();
 
 private:
     std::shared_ptr<Store> evalStore;
 
-    std::shared_ptr<eval_cache::CachingEvalState> evalState;
+    std::shared_ptr<eval_cache::CachingEvaluator> evalState;
 };
 
 /**
@@ -127,7 +127,7 @@ struct SourceExprCommand : virtual Args, MixFlakeOptions
     /**
      * Complete an installable from the given prefix.
      */
-    void completeInstallable(AddCompletions & completions, std::string_view prefix);
+    void completeInstallable(EvalState & state, AddCompletions & completions, std::string_view prefix);
 
     /**
      * Convenience wrapper around the underlying function to make setting the
@@ -324,7 +324,7 @@ struct MixEnvironment : virtual Args {
 
 void completeFlakeInputPath(
     AddCompletions & completions,
-    ref<EvalState> evalState,
+    EvalState & evalState,
     const std::vector<FlakeRef> & flakeRefs,
     std::string_view prefix);
 
@@ -332,7 +332,8 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
 
 void completeFlakeRefWithFragment(
     AddCompletions & completions,
-    ref<eval_cache::CachingEvalState> evalState,
+    EvalState & evalState,
+    ref<eval_cache::CachingEvaluator> evaluator,
     flake::LockFlags lockFlags,
     Strings attrPathPrefixes,
     const Strings & defaultFlakeAttrPaths,

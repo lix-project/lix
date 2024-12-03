@@ -254,8 +254,8 @@ static void showHelp(std::vector<std::string> subcommand, NixArgs & toplevel)
 
     evalSettings.restrictEval.override(false);
     evalSettings.pureEval.override(false);
-    EvalState evaluator({}, openStore("dummy://"));
-    auto * state = &evaluator;
+    Evaluator evaluator({}, openStore("dummy://"));
+    auto state = evaluator.begin();
 
     auto vGenerateManpage = evaluator.mem.allocValue();
     state->eval(evaluator.parseExprFromString(
@@ -411,7 +411,7 @@ void mainWrapped(int argc, char * * argv)
             | Xp::FetchClosure
             | Xp::DynamicDerivations);
         evalSettings.pureEval.override(false);
-        EvalState state({}, openStore("dummy://"));
+        Evaluator state({}, openStore("dummy://"));
         auto res = nlohmann::json::object();
         res["builtins"] = ({
             auto builtinsJson = nlohmann::json::object();

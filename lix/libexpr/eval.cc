@@ -305,8 +305,7 @@ EvalPaths::EvalPaths(
     }
 }
 
-EvalContext::EvalContext(
-    EvalState & parent,
+Evaluator::Evaluator(
     const SearchPath & _searchPath,
     ref<Store> store,
     std::shared_ptr<Store> buildStore,
@@ -330,8 +329,11 @@ EvalContext::EvalContext(
           debugRepl ? std::make_unique<DebugState>(
               positions,
               symbols,
-              [&parent, debugRepl](const ValMap & extraEnv) { return debugRepl(parent, extraEnv); }
-          )
+              [this, debugRepl](const ValMap & extraEnv) {
+                  return activeEval
+                      ? debugRepl(*activeEval, extraEnv)
+                      : ReplExitStatus::Continue;
+              })
                     : nullptr
       }
     , errors{positions, debug.get()}
@@ -341,17 +343,20 @@ EvalContext::EvalContext(
     static_assert(sizeof(Env) <= 16, "environment must be <= 16 bytes");
 }
 
-EvalState::EvalState(
-    const SearchPath & _searchPath,
-    ref<Store> store,
-    std::shared_ptr<Store> buildStore,
-    std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl)
-    : EvalContext(*this, _searchPath, store, buildStore, debugRepl)
+box_ptr<EvalState> Evaluator::begin()
 {
+    assert(!activeEval);
+    return box_ptr<EvalState>::unsafeFromNonnull(std::unique_ptr<EvalState>(new EvalState(*this)));
+}
+
+EvalState::EvalState(Evaluator & ctx) : ctx(ctx)
+{
+    ctx.activeEval = this;
 }
 
 EvalState::~EvalState()
 {
+    ctx.activeEval = nullptr;
 }
 
 
@@ -788,7 +793,7 @@ Value EvalMemory::newList(size_t size)
 }
 
 
-void EvalState::evalLazily(Expr & e, Value & v)
+void Evaluator::evalLazily(Expr & e, Value & v)
 {
     v.mkThunk(&builtins.env, e);
     stats.nrThunks++;
@@ -2531,7 +2536,7 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
     }
 }
 
-bool EvalState::fullGC() {
+bool Evaluator::fullGC() {
 #if HAVE_BOEHMGC
     GC_gcollect();
     // Check that it ran. We might replace this with a version that uses more
@@ -2545,7 +2550,7 @@ bool EvalState::fullGC() {
 #endif
 }
 
-void EvalState::maybePrintStats()
+void Evaluator::maybePrintStats()
 {
     bool showStats = getEnv("NIX_SHOW_STATS").value_or("0") != "0";
 
@@ -2560,7 +2565,7 @@ void EvalState::maybePrintStats()
     }
 }
 
-void EvalState::printStatistics()
+void Evaluator::printStatistics()
 {
     struct rusage buf;
     getrusage(RUSAGE_SELF, &buf);
@@ -2700,20 +2705,20 @@ SourcePath resolveExprPath(SourcePath path)
 }
 
 
-Expr & EvalState::parseExprFromFile(const SourcePath & path)
+Expr & Evaluator::parseExprFromFile(const SourcePath & path)
 {
     return parseExprFromFile(path, builtins.staticEnv);
 }
 
 
-Expr & EvalState::parseExprFromFile(const SourcePath & path, std::shared_ptr<StaticEnv> & staticEnv)
+Expr & Evaluator::parseExprFromFile(const SourcePath & path, std::shared_ptr<StaticEnv> & staticEnv)
 {
     auto buffer = path.readFile();
     return *parse(buffer.data(), buffer.size(), Pos::Origin(path), path.parent(), staticEnv);
 }
 
 
-Expr & EvalState::parseExprFromString(
+Expr & Evaluator::parseExprFromString(
     std::string s_,
     const SourcePath & basePath,
     std::shared_ptr<StaticEnv> & staticEnv,
@@ -2725,7 +2730,7 @@ Expr & EvalState::parseExprFromString(
 }
 
 
-Expr & EvalState::parseExprFromString(
+Expr & Evaluator::parseExprFromString(
     std::string s,
     const SourcePath & basePath,
     const FeatureSettings & featureSettings
@@ -2735,7 +2740,7 @@ Expr & EvalState::parseExprFromString(
 }
 
 
-Expr & EvalState::parseStdin()
+Expr & Evaluator::parseStdin()
 {
     //Activity act(*logger, lvlTalkative, "parsing standard input");
     auto s = make_ref<std::string>(drainFD(0));

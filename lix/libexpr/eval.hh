@@ -4,6 +4,7 @@
 #include "lix/libexpr/attr-set.hh"
 #include "lix/libexpr/eval-error.hh"
 #include "lix/libexpr/gc-alloc.hh"
+#include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/generator.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libexpr/value.hh"
@@ -484,8 +485,13 @@ struct EvalStatistics
     void addCall(ExprLambda & fun);
 };
 
-class EvalContext
+class Evaluator
 {
+    friend class EvalBuiltins;
+    friend class EvalState;
+
+    EvalState * activeEval = nullptr;
+
 public:
     SymbolTable symbols;
     PosTable positions;
@@ -510,35 +516,17 @@ public:
     std::unique_ptr<DebugState> debug;
     EvalErrorContext errors;
 
-    EvalContext(
-        EvalState & parent,
+    Evaluator(
         const SearchPath & _searchPath,
         ref<Store> store,
         std::shared_ptr<Store> buildStore = nullptr,
         std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl = nullptr
     );
 
-    EvalContext(const EvalContext &) = delete;
-    EvalContext(EvalContext &&) = delete;
-    EvalContext & operator=(const EvalContext &) = delete;
-    EvalContext & operator=(EvalContext &&) = delete;
-};
-
-
-class EvalState : public EvalContext
-{
-    friend class EvalBuiltins;
-
-public:
-    EvalState & ctx{*this};
-
-    EvalState(
-        const SearchPath & _searchPath,
-        ref<Store> store,
-        std::shared_ptr<Store> buildStore = nullptr,
-        std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl = nullptr
-    );
-    ~EvalState();
+    Evaluator(const Evaluator &) = delete;
+    Evaluator(Evaluator &&) = delete;
+    Evaluator & operator=(const Evaluator &) = delete;
+    Evaluator & operator=(Evaluator &&) = delete;
 
     /**
      * Parse a Nix expression from the specified file.
@@ -564,6 +552,84 @@ public:
     Expr & parseStdin();
 
     /**
+     * Creates a thunk that will evaluate the given expression when forced.
+     */
+    void evalLazily(Expr & e, Value & v);
+
+private:
+    Expr * parse(
+        char * text,
+        size_t length,
+        Pos::Origin origin,
+        const SourcePath & basePath,
+        std::shared_ptr<StaticEnv> & staticEnv,
+        const FeatureSettings & xpSettings = featureSettings);
+
+public:
+    BindingsBuilder buildBindings(size_t capacity)
+    {
+        return mem.buildBindings(symbols, capacity);
+    }
+
+    /**
+     * Print statistics, if enabled.
+     *
+     * Performs a full memory GC before printing the statistics, so that the
+     * GC statistics are more accurate.
+     */
+    void maybePrintStats();
+
+    /**
+     * Print statistics, unconditionally, cheaply, without performing a GC first.
+     */
+    void printStatistics();
+
+    /**
+     * Perform a full memory garbage collection - not incremental.
+     *
+     * @return true if Nix was built with GC and a GC was performed, false if not.
+     *              The return value is currently not thread safe - just the return value.
+     */
+    bool fullGC();
+
+    /**
+     * Create an `EvalState` in prepation to evaluate some amount of Nix code.
+     *
+     * While preparation of evaluation can be done with Evaluator itself only,
+     * actually evaluating things requires an EvalState. This function creates
+     * an EvalState and returns it. At most one EvalState per Evaluator may be
+     * live at any given point, and references to this EvalState must not live
+     * anywhere except in the returned box, local variables, or arguments. Any
+     * reference held in an object type is illegal, be it in a lambda capture,
+     * a pointer member of an object, a hidden member such as arguments passed
+     * to functions by `std::thread` or `std::async`—all references held where
+     * they could be copied are moved from are disallowed. EvalState is thus a
+     * witness type that a given thread may evaluate nix code and must *never*
+     * be run inside `kj::Promise` context. This is due to a kj limitation, in
+     * which it is not possible to block on a promise while already running in
+     * a promise without doing this blocking on a different event loop/thread.
+     */
+    box_ptr<EvalState> begin();
+};
+
+
+class EvalState
+{
+    friend class Evaluator;
+
+    explicit EvalState(Evaluator & ctx);
+
+public:
+    Evaluator & ctx;
+
+    EvalState(const EvalState &) = delete;
+    EvalState(EvalState &&) = delete;
+    EvalState & operator=(const EvalState &) = delete;
+    EvalState & operator=(EvalState &&) = delete;
+
+    ~EvalState();
+
+    /**
      * Evaluate an expression read from the given file to normal form.
      */
     void evalFile(const SourcePath & path, Value & v);
@@ -576,11 +642,6 @@ public:
      * @param [out] v The resulting is stored here.
      */
     void eval(Expr & e, Value & v);
-
-    /**
-     * Creates a thunk that will evaluate the given expression when forced.
-     */
-    void evalLazily(Expr & e, Value & v);
 
     /**
      * Evaluation the expression, then verify that it has the expected
@@ -690,14 +751,6 @@ private:
     friend struct ExprAttrs;
     friend struct ExprLet;
 
-    Expr * parse(
-        char * text,
-        size_t length,
-        Pos::Origin origin,
-        const SourcePath & basePath,
-        std::shared_ptr<StaticEnv> & staticEnv,
-        const FeatureSettings & xpSettings = featureSettings);
-
     /**
      * Current Nix call stack depth, used with `max-call-depth` setting to throw stack overflow hopefully before we run out of system stack.
      */
@@ -727,11 +780,6 @@ public:
      * default value or has a binding in the `args` map.
      */
     void autoCallFunction(Bindings & args, Value & fun, Value & res);
-
-    BindingsBuilder buildBindings(size_t capacity)
-    {
-        return ctx.mem.buildBindings(ctx.symbols, capacity);
-    }
 
     void mkPos(Value & v, PosIdx pos);
 
@@ -771,27 +819,6 @@ public:
         Value & v);
 
     void concatLists(Value & v, size_t nrLists, Value * * lists, const PosIdx pos, std::string_view errorCtx);
-
-    /**
-     * Print statistics, if enabled.
-     *
-     * Performs a full memory GC before printing the statistics, so that the
-     * GC statistics are more accurate.
-     */
-    void maybePrintStats();
-
-    /**
-     * Print statistics, unconditionally, cheaply, without performing a GC first.
-     */
-    void printStatistics();
-
-    /**
-     * Perform a full memory garbage collection - not incremental.
-     *
-     * @return true if Nix was built with GC and a GC was performed, false if not.
-     *              The return value is currently not thread safe - just the return value.
-     */
-    bool fullGC();
 
 private:
 

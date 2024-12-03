@@ -29,12 +29,13 @@ struct CmdFmt : SourceExprCommand {
 
     void run(ref<Store> store) override
     {
-        auto evalState = getEvalState();
+        auto evaluator = getEvaluator();
         auto evalStore = getEvalStore();
+        auto state = evaluator->begin();
 
-        auto installable_ = parseInstallable(*evalState, store, ".");
+        auto installable_ = parseInstallable(*state, store, ".");
         auto & installable = InstallableValue::require(*installable_);
-        auto app = installable.toApp(*evalState).resolve(*evalState, evalStore, store);
+        auto app = installable.toApp(*state).resolve(*state, evalStore, store);
 
         Strings programArgs{app.program};
 

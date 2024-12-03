@@ -18,7 +18,7 @@ namespace nix {
 
 struct Env;
 struct Value;
-class EvalState;
+class Evaluator;
 struct ExprWith;
 struct StaticEnv;
 
@@ -59,7 +59,7 @@ public:
     virtual ~Expr() { };
 
     virtual void show(const SymbolTable & symbols, std::ostream & str) const;
-    virtual void bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env);
+    virtual void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env);
     virtual void eval(EvalState & state, Env & env, Value & v);
     virtual Value * maybeThunk(EvalState & state, Env & env);
     virtual void setName(Symbol name);
@@ -69,7 +69,7 @@ public:
 #define COMMON_METHODS \
     void show(const SymbolTable & symbols, std::ostream & str) const override; \
     void eval(EvalState & state, Env & env, Value & v) override; \
-    void bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env) override;
+    void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
 
 struct ExprInt : Expr
 {
@@ -163,7 +163,7 @@ struct ExprInheritFrom : ExprVar
     }
 
     void show(SymbolTable const & symbols, std::ostream & str) const override;
-    void bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env) override;
+    void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
 };
 
 struct ExprSelect : Expr
@@ -249,7 +249,7 @@ struct ExprAttrs : Expr
     COMMON_METHODS
 
     std::shared_ptr<const StaticEnv> bindInheritSources(
-        EvalState & es, const std::shared_ptr<const StaticEnv> & env);
+        Evaluator & es, const std::shared_ptr<const StaticEnv> & env);
     Env * buildInheritFromEnv(EvalState & state, Env & up);
     void showBindings(const SymbolTable & symbols, std::ostream & str) const;
 };
@@ -424,7 +424,7 @@ struct ExprOpNot : Expr
         { \
             str << "("; e1->show(symbols, str); str << " " s " "; e2->show(symbols, str); str << ")"; \
         } \
-        void bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env) override \
+        void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override \
         { \
             e1->bindVars(es, env); e2->bindVars(es, env);    \
         } \
@@ -464,7 +464,7 @@ struct ExprBlackHole : Expr
 {
     void show(const SymbolTable & symbols, std::ostream & str) const override {}
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(EvalState & es, const std::shared_ptr<const StaticEnv> & env) override {}
+    void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override {}
 };
 
 extern ExprBlackHole eBlackHole;

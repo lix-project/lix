@@ -171,7 +171,7 @@ MixEvalArgs::MixEvalArgs()
     });
 }
 
-Bindings * MixEvalArgs::getAutoArgs(EvalState & state)
+Bindings * MixEvalArgs::getAutoArgs(Evaluator & state)
 {
     auto res = state.buildBindings(autoArgs.size());
     for (auto & i : autoArgs) {
@@ -187,7 +187,7 @@ Bindings * MixEvalArgs::getAutoArgs(EvalState & state)
     return res.finish();
 }
 
-SourcePath lookupFileArg(EvalState & state, std::string_view fileArg)
+SourcePath lookupFileArg(Evaluator & state, std::string_view fileArg)
 {
     if (EvalSettings::isPseudoUrl(fileArg)) {
         auto const url = EvalSettings::resolvePseudoUrl(fileArg);

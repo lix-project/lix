@@ -3,6 +3,7 @@
 
 #include "lix/libcmd/installables.hh"
 #include "lix/libexpr/eval-cache.hh"
+#include "lix/libexpr/eval.hh"
 #include "lix/libexpr/flake/flake.hh"
 
 namespace nix {
@@ -70,14 +71,9 @@ struct ExtraPathInfoValue : ExtraPathInfo
  */
 struct InstallableValue : Installable
 {
-    ref<eval_cache::CachingEvalState> evaluator;
-    ref<eval_cache::CachingEvalState> state;
+    ref<eval_cache::CachingEvaluator> evaluator;
 
-    InstallableValue(ref<eval_cache::CachingEvalState> evaluator)
-        : evaluator(evaluator)
-        , state(evaluator)
-    {
-    }
+    InstallableValue(ref<eval_cache::CachingEvaluator> evaluator) : evaluator(evaluator) {}
 
     virtual ~InstallableValue() { }
 

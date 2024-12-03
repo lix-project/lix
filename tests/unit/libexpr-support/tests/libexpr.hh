@@ -24,7 +24,8 @@ namespace nix {
             LibExprTest()
                 : LibStoreTest()
                 , evaluator({}, store)
-                , state(evaluator)
+                , statePtr(evaluator.begin())
+                , state(*statePtr)
             {
             }
             Value eval(std::string input, bool forceValue = true, const FeatureSettings & fSettings = featureSettings) {
@@ -40,7 +41,8 @@ namespace nix {
                 return evaluator.symbols.create(value);
             }
 
-            EvalState evaluator;
+            Evaluator evaluator;
+            box_ptr<EvalState> statePtr;
             EvalState & state;
     };
 

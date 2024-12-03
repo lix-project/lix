@@ -124,7 +124,7 @@ struct CmdDiffClosures : SourceExprCommand, MixOperateOnOptions
 
     void run(ref<Store> store) override
     {
-        auto state = getEvalState();
+        auto state = getEvaluator()->begin();
         auto before = parseInstallable(*state, store, _before);
         auto beforePath = Installable::toStorePath(*state, getEvalStore(), store, Realise::Outputs, operateOn, before);
         auto after = parseInstallable(*state, store, _after);

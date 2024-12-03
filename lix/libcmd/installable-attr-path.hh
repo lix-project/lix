@@ -20,7 +20,7 @@ class InstallableAttrPath : public InstallableValue
     ExtendedOutputsSpec extendedOutputsSpec;
 
     InstallableAttrPath(
-        ref<eval_cache::CachingEvalState> state,
+        ref<eval_cache::CachingEvaluator> state,
         SourceExprCommand & cmd,
         Value * v,
         const std::string & attrPath,
@@ -35,7 +35,7 @@ class InstallableAttrPath : public InstallableValue
 public:
 
     static InstallableAttrPath parse(
-        ref<eval_cache::CachingEvalState> state,
+        ref<eval_cache::CachingEvaluator> state,
         SourceExprCommand & cmd,
         Value * v,
         std::string_view prefix,

@@ -1,4 +1,5 @@
 #include "lix/libcmd/command.hh"
+#include "lix/libexpr/eval.hh"
 #include "lix/libmain/common-args.hh"
 #include "lix/libmain/loggers.hh"
 #include "lix/libmain/shared.hh"
@@ -185,8 +186,8 @@ static int main_nix_prefetch_url(std::string programName, Strings argv)
             setLogFormat(LogFormat::bar);
 
         auto store = openStore();
-        auto evaluator = std::make_unique<EvalState>(myArgs.searchPath, store);
-        auto & state = evaluator;
+        auto evaluator = std::make_unique<Evaluator>(myArgs.searchPath, store);
+        auto state = evaluator->begin();
 
         Bindings & autoArgs = *myArgs.getAutoArgs(*evaluator);
 

@@ -22,7 +22,7 @@
 
 namespace nix {
 
-Expr * EvalState::parse(
+Expr * Evaluator::parse(
     char * text,
     size_t length,
     Pos::Origin origin,

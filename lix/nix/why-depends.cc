@@ -76,7 +76,7 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
 
     void run(ref<Store> store) override
     {
-        auto state = getEvalState();
+        auto state = getEvaluator()->begin();
         auto package = parseInstallable(*state, store, _package);
         auto packagePath = Installable::toStorePath(*state, getEvalStore(), store, Realise::Outputs, operateOn, package);
 

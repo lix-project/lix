@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libexpr/eval.hh"
 #include "lix/libutil/args.hh"
 #include "lix/libmain/common-args.hh"
 #include "lix/libexpr/search-path.hh"
@@ -18,7 +19,7 @@ struct MixEvalArgs : virtual Args, virtual MixRepair
 
     MixEvalArgs();
 
-    Bindings * getAutoArgs(EvalState & state);
+    Bindings * getAutoArgs(Evaluator & state);
 
     SearchPath searchPath;
 
@@ -48,6 +49,6 @@ private:
  *
  * @exception nix::ThrownError for failed search path lookup. Probably others.
  */
-SourcePath lookupFileArg(EvalState & state, std::string_view fileArg);
+SourcePath lookupFileArg(Evaluator & state, std::string_view fileArg);
 
 }

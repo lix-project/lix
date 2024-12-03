@@ -84,8 +84,8 @@ struct CmdSearch : InstallableCommand, MixJSON
         for (auto & re : excludeRes)
             excludeRegexes.emplace_back(re, std::regex::extended | std::regex::icase);
 
-        auto evaluator = getEvalState();
-        auto state = evaluator;
+        auto evaluator = getEvaluator();
+        auto state = evaluator->begin();
 
         std::optional<nlohmann::json> jsonOut;
         if (json) jsonOut = json::object();

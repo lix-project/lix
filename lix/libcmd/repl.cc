@@ -119,7 +119,7 @@ struct NixRepl
     };
     /* clang-format: on */
 
-    EvalState & evaluator;
+    Evaluator & evaluator;
     size_t debugTraceIndex;
 
     Strings loadedFiles;
@@ -232,7 +232,7 @@ static box_ptr<ReplInteracter> makeInteracter() {
 NixRepl::NixRepl(const SearchPath & searchPath, nix::ref<Store> store, EvalState & state,
             std::function<NixRepl::AnnotatedValues()> getValues)
     : AbstractNixRepl(state)
-    , evaluator(state)
+    , evaluator(state.ctx)
     , debugTraceIndex(0)
     , getValues(getValues)
     , staticEnv(new StaticEnv(nullptr, evaluator.builtins.staticEnv.get()))
