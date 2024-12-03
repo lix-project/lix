@@ -28,9 +28,9 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
             drvsToBuild.push_back({*drvPath});
 
     debug("building user environment dependencies");
-    state.store->buildPaths(
+    state.ctx.store->buildPaths(
         toDerivedPaths(drvsToBuild),
-        state.repair ? bmRepair : bmNormal);
+        state.ctx.repair ? bmRepair : bmNormal);
 
     /* Construct the whole top level derivation. */
     StorePathSet references;
@@ -51,9 +51,9 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
         auto system = i.querySystem(state);
         if (!system.empty())
             attrs.alloc(state.ctx.s.system).mkString(system);
-        attrs.alloc(state.ctx.s.outPath).mkString(state.store->printStorePath(i.queryOutPath(state)));
+        attrs.alloc(state.ctx.s.outPath).mkString(state.ctx.store->printStorePath(i.queryOutPath(state)));
         if (drvPath)
-            attrs.alloc(state.ctx.s.drvPath).mkString(state.store->printStorePath(*drvPath));
+            attrs.alloc(state.ctx.s.drvPath).mkString(state.ctx.store->printStorePath(*drvPath));
 
         // Copy each output meant for installation.
         auto & vOutputs = attrs.alloc(state.ctx.s.outputs);
@@ -61,13 +61,13 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
         for (const auto & [m, j] : enumerate(outputs)) {
             (vOutputs.listElems()[m] = state.mem.allocValue())->mkString(j.first);
             auto outputAttrs = state.buildBindings(2);
-            outputAttrs.alloc(state.ctx.s.outPath).mkString(state.store->printStorePath(*j.second));
+            outputAttrs.alloc(state.ctx.s.outPath).mkString(state.ctx.store->printStorePath(*j.second));
             attrs.alloc(j.first).mkAttrs(outputAttrs);
 
             /* This is only necessary when installing store paths, e.g.,
                `nix-env -i /nix/store/abcd...-foo'. */
-            state.store->addTempRoot(*j.second);
-            state.store->ensurePath(*j.second);
+            state.ctx.store->addTempRoot(*j.second);
+            state.ctx.store->ensurePath(*j.second);
 
             references.insert(*j.second);
         }
@@ -92,7 +92,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
        environment. */
     std::ostringstream str;
     printAmbiguous(manifest, state.ctx.symbols, str, nullptr, std::numeric_limits<int>::max());
-    auto manifestFile = state.store->addTextToStore("env-manifest.nix",
+    auto manifestFile = state.ctx.store->addTextToStore("env-manifest.nix",
         str.str(), references);
 
     /* Get the environment builder expression. */
@@ -125,12 +125,12 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
     debug("building user environment");
     std::vector<StorePathWithOutputs> topLevelDrvs;
     topLevelDrvs.push_back({topLevelDrv});
-    state.store->buildPaths(
+    state.ctx.store->buildPaths(
         toDerivedPaths(topLevelDrvs),
-        state.repair ? bmRepair : bmNormal);
+        state.ctx.repair ? bmRepair : bmNormal);
 
     /* Switch the current user environment to the output path. */
-    auto store2 = state.store.dynamic_pointer_cast<LocalFSStore>();
+    auto store2 = state.ctx.store.dynamic_pointer_cast<LocalFSStore>();
 
     if (store2) {
         PathLocks lock;

@@ -235,7 +235,7 @@ private:
         NixStringContext context;
         std::string storePath;
         if (i != v.attrs->end())
-            storePath = state.store->printStorePath(state.coerceToStorePath(i->pos, *i->value, context, "while evaluating the drvPath of a derivation"));
+            storePath = state.ctx.store->printStorePath(state.coerceToStorePath(i->pos, *i->value, context, "while evaluating the drvPath of a derivation"));
 
         if (options.ansiColors)
             output << ANSI_GREEN;

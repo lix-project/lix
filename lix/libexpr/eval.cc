@@ -826,7 +826,7 @@ std::string EvalState::mkOutputStringRaw(
     /* In practice, this is testing for the case of CA derivations, or
        dynamic derivations. */
     return optStaticOutputPath
-        ? store->printStorePath(std::move(*optStaticOutputPath))
+        ? ctx.store->printStorePath(std::move(*optStaticOutputPath))
         /* Downstream we would substitute this for an actual path once
            we build the floating CA derivation */
         : DownstreamPlaceholder::fromSingleDerivedPathBuilt(b, xpSettings).render();
@@ -850,16 +850,16 @@ std::string EvalState::mkSingleDerivedPathStringRaw(
 {
     return std::visit(overloaded {
         [&](const SingleDerivedPath::Opaque & o) {
-            return store->printStorePath(o.path);
+            return ctx.store->printStorePath(o.path);
         },
         [&](const SingleDerivedPath::Built & b) {
             auto optStaticOutputPath = std::visit(overloaded {
                 [&](const SingleDerivedPath::Opaque & o) {
-                    auto drv = store->readDerivation(o.path);
+                    auto drv = ctx.store->readDerivation(o.path);
                     auto i = drv.outputs.find(b.output);
                     if (i == drv.outputs.end())
-                        throw Error("derivation '%s' does not have output '%s'", b.drvPath->to_string(*store), b.output);
-                    return i->second.path(*store, drv.name, b.output);
+                        throw Error("derivation '%s' does not have output '%s'", b.drvPath->to_string(*ctx.store), b.output);
+                    return i->second.path(*ctx.store, drv.name, b.output);
                 },
                 [&](const SingleDerivedPath::Built & o) -> std::optional<StorePath> {
                     return std::nullopt;
@@ -2285,7 +2285,7 @@ BackedStringView EvalState::coerceToString(
               // slash, as in /foo/${x}.
               v._path
             : copyToStore
-            ? store->printStorePath(paths.copyPathToStore(context, v.path(), repair))
+            ? ctx.store->printStorePath(paths.copyPathToStore(context, v.path(), ctx.repair))
             : std::string(v.path().path.abs());
     }
 
@@ -2390,7 +2390,7 @@ SourcePath EvalState::coerceToPath(const PosIdx pos, Value & v, NixStringContext
 StorePath EvalState::coerceToStorePath(const PosIdx pos, Value & v, NixStringContext & context, std::string_view errorCtx)
 {
     auto path = coerceToString(pos, v, context, errorCtx, false, false, true).toOwned();
-    if (auto storePath = store->maybeParseStorePath(path))
+    if (auto storePath = ctx.store->maybeParseStorePath(path))
         return *storePath;
     ctx.errors.make<EvalError>("path '%1%' is not in the Nix store", path).withTrace(pos, errorCtx).debugThrow();
 }
@@ -2444,7 +2444,7 @@ SingleDerivedPath EvalState::coerceToSingleDerivedPath(const PosIdx pos, Value &
             [&](const SingleDerivedPath::Built & b) {
                 ctx.errors.make<EvalError>(
                     "string '%s' has context with the output '%s' from derivation '%s', but the string is not the right placeholder for this derivation output. It should be '%s'",
-                    s, b.output, b.drvPath->to_string(*store), sExpected)
+                    s, b.output, b.drvPath->to_string(*ctx.store), sExpected)
                     .withTrace(pos, errorCtx).debugThrow();
             }
         }, derivedPath.raw());

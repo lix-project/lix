@@ -223,8 +223,8 @@ static std::strong_ordering comparePriorities(EvalState & state, DrvInfo & drv1,
 static bool isPrebuilt(EvalState & state, DrvInfo & elem)
 {
     auto path = elem.queryOutPath(state);
-    if (state.store->isValidPath(path)) return true;
-    return state.store->querySubstitutablePaths({path}).count(path);
+    if (state.ctx.store->isValidPath(path)) return true;
+    return state.ctx.store->querySubstitutablePaths({path}).count(path);
 }
 
 
@@ -432,7 +432,7 @@ static void queryInstSources(EvalState & state,
         case srcStorePaths: {
 
             for (auto & i : args) {
-                auto path = state.store->followLinksToStorePath(i);
+                auto path = state.ctx.store->followLinksToStorePath(i);
 
                 std::string name(path.name());
 
@@ -441,7 +441,7 @@ static void queryInstSources(EvalState & state,
 
                 if (path.isDerivation()) {
                     elem.setDrvPath(path);
-                    auto outputs = state.store->queryDerivationOutputMap(path);
+                    auto outputs = state.ctx.store->queryDerivationOutputMap(path);
                     elem.setOutPath(outputs.at("out"));
                     if (name.size() >= drvExtension.size() &&
                         std::string(name, name.size() - drvExtension.size()) == drvExtension)
@@ -496,7 +496,7 @@ static void printMissing(EvalState & state, DrvInfos & elems)
                 .path = i.queryOutPath(state),
             });
 
-    printMissing(state.store, targets);
+    printMissing(state.ctx.store, targets);
 }
 
 

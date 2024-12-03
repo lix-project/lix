@@ -186,13 +186,13 @@ static void fetchTree(
     }
 
     if (!evalSettings.pureEval && !input.isDirect())
-        input = lookupInRegistries(state.store, input).first;
+        input = lookupInRegistries(state.ctx.store, input).first;
 
     if (evalSettings.pureEval && !input.isLocked()) {
         state.ctx.errors.make<EvalError>("in pure evaluation mode, 'fetchTree' requires a locked input").atPos(pos).debugThrow();
     }
 
-    auto [tree, input2] = input.fetch(state.store);
+    auto [tree, input2] = input.fetch(state.ctx.store);
 
     state.paths.allowPath(tree.storePath);
 
@@ -254,7 +254,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
 
     // early exit if pinned and already in the store
     if (expectedHash && expectedHash->type == HashType::SHA256) {
-        auto expectedPath = state.store->makeFixedOutputPath(
+        auto expectedPath = state.ctx.store->makeFixedOutputPath(
             name,
             FixedOutputInfo {
                 .method = unpack ? FileIngestionMethod::Recursive : FileIngestionMethod::Flat,
@@ -262,7 +262,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
                 .references = {}
             });
 
-        if (state.store->isValidPath(expectedPath)) {
+        if (state.ctx.store->isValidPath(expectedPath)) {
             state.paths.allowAndSetStorePathString(expectedPath, v);
             return;
         }
@@ -272,13 +272,13 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
     //       https://github.com/NixOS/nix/issues/4313
     auto storePath =
         unpack
-        ? fetchers::downloadTarball(state.store, *url, name, (bool) expectedHash).tree.storePath
-        : fetchers::downloadFile(state.store, *url, name, (bool) expectedHash).storePath;
+        ? fetchers::downloadTarball(state.ctx.store, *url, name, (bool) expectedHash).tree.storePath
+        : fetchers::downloadFile(state.ctx.store, *url, name, (bool) expectedHash).storePath;
 
     if (expectedHash) {
         auto hash = unpack
-            ? state.store->queryPathInfo(storePath)->narHash
-            : hashFile(HashType::SHA256, state.store->toRealPath(storePath));
+            ? state.ctx.store->queryPathInfo(storePath)->narHash
+            : hashFile(HashType::SHA256, state.ctx.store->toRealPath(storePath));
         if (hash != *expectedHash) {
             state.ctx.errors.make<EvalError>(
                 "hash mismatch in file downloaded from '%s':\n  specified: %s\n  got:       %s",

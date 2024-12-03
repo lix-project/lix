@@ -19,14 +19,14 @@ static void runFetchClosureWithRewrite(EvalState & state, const PosIdx pos, Stor
 
     // establish toPath or throw
 
-    if (!toPathMaybe || !state.store->isValidPath(*toPathMaybe)) {
-        auto rewrittenPath = makeContentAddressed(fromStore, *state.store, fromPath);
+    if (!toPathMaybe || !state.ctx.store->isValidPath(*toPathMaybe)) {
+        auto rewrittenPath = makeContentAddressed(fromStore, *state.ctx.store, fromPath);
         if (toPathMaybe && *toPathMaybe != rewrittenPath)
             throw Error({
                 .msg = HintFmt("rewriting '%s' to content-addressed form yielded '%s', while '%s' was expected",
-                    state.store->printStorePath(fromPath),
-                    state.store->printStorePath(rewrittenPath),
-                    state.store->printStorePath(*toPathMaybe)),
+                    state.ctx.store->printStorePath(fromPath),
+                    state.ctx.store->printStorePath(rewrittenPath),
+                    state.ctx.store->printStorePath(*toPathMaybe)),
                 .pos = state.ctx.positions[pos]
             });
         if (!toPathMaybe)
@@ -34,8 +34,8 @@ static void runFetchClosureWithRewrite(EvalState & state, const PosIdx pos, Stor
                 .msg = HintFmt(
                     "rewriting '%s' to content-addressed form yielded '%s'\n"
                     "Use this value for the 'toPath' attribute passed to 'fetchClosure'",
-                    state.store->printStorePath(fromPath),
-                    state.store->printStorePath(rewrittenPath)),
+                    state.ctx.store->printStorePath(fromPath),
+                    state.ctx.store->printStorePath(rewrittenPath)),
                 .pos = state.ctx.positions[pos]
             });
     }
@@ -44,16 +44,16 @@ static void runFetchClosureWithRewrite(EvalState & state, const PosIdx pos, Stor
 
     // check and return
 
-    auto resultInfo = state.store->queryPathInfo(toPath);
+    auto resultInfo = state.ctx.store->queryPathInfo(toPath);
 
-    if (!resultInfo->isContentAddressed(*state.store)) {
+    if (!resultInfo->isContentAddressed(*state.ctx.store)) {
         // We don't perform the rewriting when outPath already exists, as an optimisation.
         // However, we can quickly detect a mistake if the toPath is input addressed.
         throw Error({
             .msg = HintFmt(
                 "The 'toPath' value '%s' is input-addressed, so it can't possibly be the result of rewriting to a content-addressed path.\n\n"
                 "Set 'toPath' to an empty string to make Lix report the correct content-addressed path.",
-                state.store->printStorePath(toPath)),
+                state.ctx.store->printStorePath(toPath)),
             .pos = state.ctx.positions[pos]
         });
     }
@@ -66,12 +66,12 @@ static void runFetchClosureWithRewrite(EvalState & state, const PosIdx pos, Stor
  */
 static void runFetchClosureWithContentAddressedPath(EvalState & state, const PosIdx pos, Store & fromStore, const StorePath & fromPath, Value & v) {
 
-    if (!state.store->isValidPath(fromPath))
-        copyClosure(fromStore, *state.store, RealisedPath::Set { fromPath });
+    if (!state.ctx.store->isValidPath(fromPath))
+        copyClosure(fromStore, *state.ctx.store, RealisedPath::Set { fromPath });
 
-    auto info = state.store->queryPathInfo(fromPath);
+    auto info = state.ctx.store->queryPathInfo(fromPath);
 
-    if (!info->isContentAddressed(*state.store)) {
+    if (!info->isContentAddressed(*state.ctx.store)) {
         throw Error({
             .msg = HintFmt(
                 "The 'fromPath' value '%s' is input-addressed, but 'inputAddressed' is set to 'false' (default).\n\n"
@@ -79,7 +79,7 @@ static void runFetchClosureWithContentAddressedPath(EvalState & state, const Pos
                 "    inputAddressed = true;\n\n"
                 "to the 'fetchClosure' arguments.\n\n"
                 "Note that to ensure authenticity input-addressed store paths, users must configure a trusted binary cache public key on their systems. This is not needed for content-addressed paths.",
-                state.store->printStorePath(fromPath)),
+                state.ctx.store->printStorePath(fromPath)),
             .pos = state.ctx.positions[pos]
         });
     }
@@ -92,17 +92,17 @@ static void runFetchClosureWithContentAddressedPath(EvalState & state, const Pos
  */
 static void runFetchClosureWithInputAddressedPath(EvalState & state, const PosIdx pos, Store & fromStore, const StorePath & fromPath, Value & v) {
 
-    if (!state.store->isValidPath(fromPath))
-        copyClosure(fromStore, *state.store, RealisedPath::Set { fromPath });
+    if (!state.ctx.store->isValidPath(fromPath))
+        copyClosure(fromStore, *state.ctx.store, RealisedPath::Set { fromPath });
 
-    auto info = state.store->queryPathInfo(fromPath);
+    auto info = state.ctx.store->queryPathInfo(fromPath);
 
-    if (info->isContentAddressed(*state.store)) {
+    if (info->isContentAddressed(*state.ctx.store)) {
         throw Error({
             .msg = HintFmt(
                 "The store object referred to by 'fromPath' at '%s' is not input-addressed, but 'inputAddressed' is set to 'true'.\n\n"
                 "Remove the 'inputAddressed' attribute (it defaults to 'false') to expect 'fromPath' to be content-addressed",
-                state.store->printStorePath(fromPath)),
+                state.ctx.store->printStorePath(fromPath)),
             .pos = state.ctx.positions[pos]
         });
     }

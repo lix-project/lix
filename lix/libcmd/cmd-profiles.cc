@@ -136,7 +136,7 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
             auto & e = elem.value();
             ProfileElement element;
             for (auto & p : e["storePaths"]) {
-                element.storePaths.insert(state.store->parseStorePath((std::string) p));
+                element.storePaths.insert(state.ctx.store->parseStorePath((std::string) p));
             }
             element.active = e["active"];
             if (e.contains("priority")) {
@@ -162,10 +162,10 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
         }
     } else if (pathExists(profile + "/manifest.nix")) {
         // FIXME: needed because of pure mode; ugly.
-        state.paths.allowPath(state.store->followLinksToStore(profile));
-        state.paths.allowPath(state.store->followLinksToStore(profile + "/manifest.nix"));
+        state.paths.allowPath(state.ctx.store->followLinksToStore(profile));
+        state.paths.allowPath(state.ctx.store->followLinksToStore(profile + "/manifest.nix"));
 
-        auto drvInfos = queryInstalled(state, state.store->followLinksToStore(profile));
+        auto drvInfos = queryInstalled(state, state.ctx.store->followLinksToStore(profile));
 
         for (auto & drvInfo : drvInfos) {
             ProfileElement element;

@@ -232,7 +232,7 @@ static Flake getFlake(
     auto flakeFile = canonPath(flakeDir + "/flake.nix", true);
     if (!isInDir(flakeFile, sourceInfo.actualPath))
         throw Error("'flake.nix' file of flake '%s' escapes from '%s'",
-            lockedRef, state.store->printStorePath(sourceInfo.storePath));
+            lockedRef, state.ctx.store->printStorePath(sourceInfo.storePath));
 
     Flake flake {
         .originalRef = originalRef,
@@ -385,7 +385,7 @@ LockedFlake lockFlake(
 
     if (lockFlags.applyNixConfig) {
         flake.config.apply();
-        state.store->setOptions();
+        state.ctx.store->setOptions();
     }
 
     try {

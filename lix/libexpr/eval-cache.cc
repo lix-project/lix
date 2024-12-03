@@ -585,7 +585,7 @@ string_t AttrCursor::getStringWithContext(EvalState & state)
                             return o.path;
                         },
                     }, c.raw);
-                    if (!state.store->isValidPath(path)) {
+                    if (!state.ctx.store->isValidPath(path)) {
                         valid = false;
                         break;
                     }
@@ -728,14 +728,14 @@ bool AttrCursor::isDerivation(EvalState & state)
 StorePath AttrCursor::forceDerivation(EvalState & state)
 {
     auto aDrvPath = getAttr(state, "drvPath");
-    auto drvPath = state.store->parseStorePath(aDrvPath->getString(state));
-    if (!state.store->isValidPath(drvPath) && !settings.readOnlyMode) {
+    auto drvPath = state.ctx.store->parseStorePath(aDrvPath->getString(state));
+    if (!state.ctx.store->isValidPath(drvPath) && !settings.readOnlyMode) {
         /* The eval cache contains 'drvPath', but the actual path has
            been garbage-collected. So force it to be regenerated. */
         aDrvPath->forceValue(state);
-        if (!state.store->isValidPath(drvPath))
+        if (!state.ctx.store->isValidPath(drvPath))
             throw Error("don't know how to recreate store derivation '%s'!",
-                state.store->printStorePath(drvPath));
+                state.ctx.store->printStorePath(drvPath));
     }
     return drvPath;
 }

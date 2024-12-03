@@ -68,7 +68,7 @@ void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, Value * 
                 if (!c.path.isDerivation()) {
                     state.ctx.errors.make<EvalError>(
                         "path '%s' is not a derivation",
-                        state.store->printStorePath(c.path)
+                        state.ctx.store->printStorePath(c.path)
                     ).atPos(pos).debugThrow();
                 }
                 return NixStringContextElem::DrvDeep {
@@ -129,7 +129,7 @@ void prim_getContext(EvalState & state, const PosIdx pos, Value * * args, Value 
             [&](NixStringContextElem::Built && b) {
                 // FIXME should eventually show string context as is, no
                 // resolving here.
-                auto drvPath = resolveDerivedPath(*state.store, *b.drvPath);
+                auto drvPath = resolveDerivedPath(*state.ctx.store, *b.drvPath);
                 contextInfos[std::move(drvPath)].outputs.emplace_back(std::move(b.output));
             },
             [&](NixStringContextElem::Opaque && o) {
@@ -153,7 +153,7 @@ void prim_getContext(EvalState & state, const PosIdx pos, Value * * args, Value 
             for (const auto & [i, output] : enumerate(info.second.outputs))
                 (outputsVal.listElems()[i] = state.mem.allocValue())->mkString(output);
         }
-        attrs.alloc(state.store->printStorePath(info.first)).mkAttrs(infoAttrs);
+        attrs.alloc(state.ctx.store->printStorePath(info.first)).mkAttrs(infoAttrs);
     }
 
     v.mkAttrs(attrs);
@@ -175,14 +175,14 @@ static void prim_appendContext(EvalState & state, const PosIdx pos, Value * * ar
     auto sAllOutputs = state.ctx.symbols.create("allOutputs");
     for (auto & i : *args[1]->attrs) {
         const auto & name = state.ctx.symbols[i.name];
-        if (!state.store->isStorePath(name))
+        if (!state.ctx.store->isStorePath(name))
             state.ctx.errors.make<EvalError>(
                 "context key '%s' is not a store path",
                 name
             ).atPos(i.pos).debugThrow();
-        auto namePath = state.store->parseStorePath(name);
+        auto namePath = state.ctx.store->parseStorePath(name);
         if (!settings.readOnlyMode)
-            state.store->ensurePath(namePath);
+            state.ctx.store->ensurePath(namePath);
         state.forceAttrs(*i.value, i.pos, "while evaluating the value of a string context");
         auto iter = i.value->attrs->find(state.ctx.s.path);
         if (iter != i.value->attrs->end()) {

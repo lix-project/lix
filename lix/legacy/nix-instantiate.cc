@@ -66,7 +66,7 @@ void processExpr(EvalState & state, const Strings & attrPaths,
             getDerivations(state, v, "", autoArgs, drvs, false);
             for (auto & i : drvs) {
                 auto drvPath = i.requireDrvPath(state);
-                auto drvPathS = state.store->printStorePath(drvPath);
+                auto drvPathS = state.ctx.store->printStorePath(drvPath);
 
                 /* What output do we want? */
                 std::string outputName = i.queryOutputName(state);
@@ -78,7 +78,7 @@ void processExpr(EvalState & state, const Strings & attrPaths,
                 else {
                     Path rootName = absPath(gcRoot);
                     if (++rootNr > 1) rootName += "-" + std::to_string(rootNr);
-                    auto store2 = state.store.dynamic_pointer_cast<LocalFSStore>();
+                    auto store2 = state.ctx.store.dynamic_pointer_cast<LocalFSStore>();
                     if (store2)
                         drvPathS = store2->addPermRoot(drvPath, rootName);
                 }

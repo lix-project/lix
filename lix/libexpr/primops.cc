@@ -168,7 +168,7 @@ static void mkOutputString(
             .drvPath = makeConstantStorePathRef(drvPath),
             .output = o.first,
         },
-        o.second.path(*state.store, Derivation::nameFromPath(drvPath), o.first));
+        o.second.path(*state.ctx.store, Derivation::nameFromPath(drvPath), o.first));
 }
 
 /* Load and evaluate an expression from path specified by the
@@ -180,16 +180,16 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
 
     // FIXME
     auto isValidDerivationInStore = [&]() -> std::optional<StorePath> {
-        if (!state.store->isStorePath(path2))
+        if (!state.ctx.store->isStorePath(path2))
             return std::nullopt;
-        auto storePath = state.store->parseStorePath(path2);
-        if (!(state.store->isValidPath(storePath) && isDerivation(path2)))
+        auto storePath = state.ctx.store->parseStorePath(path2);
+        if (!(state.ctx.store->isValidPath(storePath) && isDerivation(path2)))
             return std::nullopt;
         return storePath;
     };
 
     if (auto storePath = isValidDerivationInStore()) {
-        Derivation drv = state.store->readDerivation(*storePath);
+        Derivation drv = state.ctx.store->readDerivation(*storePath);
         auto attrs = state.buildBindings(3 + drv.outputs.size());
         attrs.alloc(state.ctx.s.drvPath).mkString(path2, {
             NixStringContextElem::DrvDeep { .drvPath = *storePath },
@@ -970,11 +970,11 @@ drvName, Bindings * attrs, Value & v)
             [&](const NixStringContextElem::DrvDeep & d) {
                 /* !!! This doesn't work if readOnlyMode is set. */
                 StorePathSet refs;
-                state.store->computeFSClosure(d.drvPath, refs);
+                state.ctx.store->computeFSClosure(d.drvPath, refs);
                 for (auto & j : refs) {
                     drv.inputSrcs.insert(j);
                     if (j.isDerivation()) {
-                        drv.inputDrvs.map[j].value = state.store->readDerivation(j).outputNames();
+                        drv.inputDrvs.map[j].value = state.ctx.store->readDerivation(j).outputNames();
                     }
                 }
             },
@@ -1031,7 +1031,7 @@ drvName, Bindings * attrs, Value & v)
             },
         };
 
-        drv.env["out"] = state.store->printStorePath(dof.path(*state.store, drvName, "out"));
+        drv.env["out"] = state.ctx.store->printStorePath(dof.path(*state.ctx.store, drvName, "out"));
         drv.outputs.insert_or_assign("out", std::move(dof));
     }
 
@@ -1073,7 +1073,7 @@ drvName, Bindings * attrs, Value & v)
                 DerivationOutput::Deferred { });
         }
 
-        auto hashModulo = hashDerivationModulo(*state.store, Derivation(drv), true);
+        auto hashModulo = hashDerivationModulo(*state.ctx.store, Derivation(drv), true);
         switch (hashModulo.kind) {
         case DrvHash::Kind::Regular:
             for (auto & i : outputs) {
@@ -1083,8 +1083,8 @@ drvName, Bindings * attrs, Value & v)
                         "derivation produced no hash for output '%s'",
                         i
                     ).atPos(v).debugThrow();
-                auto outPath = state.store->makeOutputPath(i, *h, drvName);
-                drv.env[i] = state.store->printStorePath(outPath);
+                auto outPath = state.ctx.store->makeOutputPath(i, *h, drvName);
+                drv.env[i] = state.ctx.store->printStorePath(outPath);
                 drv.outputs.insert_or_assign(
                     i,
                     DerivationOutput::InputAddressed {
@@ -1101,8 +1101,8 @@ drvName, Bindings * attrs, Value & v)
     }
 
     /* Write the resulting term into the Nix store directory. */
-    auto drvPath = writeDerivation(*state.store, drv, state.repair);
-    auto drvPathS = state.store->printStorePath(drvPath);
+    auto drvPath = writeDerivation(*state.ctx.store, drv, state.ctx.repair);
+    auto drvPathS = state.ctx.store->printStorePath(drvPath);
 
     printMsg(lvlChatty, "instantiated '%1%' -> '%2%'", drvName, drvPathS);
 
@@ -1110,7 +1110,7 @@ drvName, Bindings * attrs, Value & v)
        case we don't actually write store derivations, so we can't
        read them later. */
     {
-        auto h = hashDerivationModulo(*state.store, drv, false);
+        auto h = hashDerivationModulo(*state.ctx.store, drv, false);
         drvHashes.lock()->insert_or_assign(drvPath, h);
     }
 
@@ -1177,14 +1177,14 @@ static void prim_storePath(EvalState & state, const PosIdx pos, Value * * args, 
     /* Resolve symlinks in ‘path’, unless ‘path’ itself is a symlink
        directly in the store.  The latter condition is necessary so
        e.g. nix-push does the right thing. */
-    if (!state.store->isStorePath(path.abs()))
+    if (!state.ctx.store->isStorePath(path.abs()))
         path = CanonPath(canonPath(path.abs(), true));
-    if (!state.store->isInStore(path.abs()))
+    if (!state.ctx.store->isInStore(path.abs()))
         state.ctx.errors.make<EvalError>("path '%1%' is not in the Nix store", path)
             .atPos(pos).debugThrow();
-    auto path2 = state.store->toStorePath(path.abs()).first;
+    auto path2 = state.ctx.store->toStorePath(path.abs()).first;
     if (!settings.readOnlyMode)
-        state.store->ensurePath(path2);
+        state.ctx.store->ensurePath(path2);
     context.insert(NixStringContextElem::Opaque { .path = path2 });
     v.mkString(path.abs(), context);
 }
@@ -1263,9 +1263,9 @@ static void prim_readFile(EvalState & state, const PosIdx pos, Value * * args, V
             path
         ).atPos(pos).debugThrow();
     StorePathSet refs;
-    if (state.store->isInStore(path.path.abs())) {
+    if (state.ctx.store->isInStore(path.path.abs())) {
         try {
-            refs = state.store->queryPathInfo(state.store->toStorePath(path.path.abs()).first)->references;
+            refs = state.ctx.store->queryPathInfo(state.ctx.store->toStorePath(path.path.abs()).first)->references;
         } catch (Error &) { // FIXME: should be InvalidPathError
         }
         // Re-scan references to filter down to just the ones that actually occur in the file.
@@ -1471,8 +1471,8 @@ static void prim_toFile(EvalState & state, const PosIdx pos, Value * * args, Val
     }
 
     auto storePath = settings.readOnlyMode
-        ? state.store->computeStorePathForText(name, contents, refs)
-        : state.store->addTextToStore(name, contents, refs, state.repair);
+        ? state.ctx.store->computeStorePathForText(name, contents, refs)
+        : state.ctx.store->addTextToStore(name, contents, refs, state.ctx.repair);
 
     /* Note: we don't need to add `context' to the context of the
        result, since `storePath' itself has references to the paths
@@ -1501,12 +1501,12 @@ static void addPath(
 
         StorePathSet refs;
 
-        if (state.store->isInStore(path)) {
+        if (state.ctx.store->isInStore(path)) {
             try {
-                auto [storePath, subPath] = state.store->toStorePath(path);
+                auto [storePath, subPath] = state.ctx.store->toStorePath(path);
                 // FIXME: we should scanForReferences on the path before adding it
-                refs = state.store->queryPathInfo(storePath)->references;
-                path = state.store->toRealPath(storePath) + subPath;
+                refs = state.ctx.store->queryPathInfo(storePath)->references;
+                path = state.ctx.store->toRealPath(storePath) + subPath;
             } catch (Error &) { // FIXME: should be InvalidPathError
             }
         }
@@ -1539,15 +1539,15 @@ static void addPath(
 
         std::optional<StorePath> expectedStorePath;
         if (expectedHash)
-            expectedStorePath = state.store->makeFixedOutputPath(name, FixedOutputInfo {
+            expectedStorePath = state.ctx.store->makeFixedOutputPath(name, FixedOutputInfo {
                 .method = method,
                 .hash = *expectedHash,
                 .references = {},
             });
 
-        if (!expectedHash || !state.store->isValidPath(*expectedStorePath)) {
+        if (!expectedHash || !state.ctx.store->isValidPath(*expectedStorePath)) {
             auto dstPath = fetchToStore(
-                *state.store, CanonPath(path), name, method, &filter, state.repair);
+                *state.ctx.store, CanonPath(path), name, method, &filter, state.ctx.repair);
             if (expectedHash && expectedStorePath != dstPath)
                 state.ctx.errors.make<EvalError>(
                     "store path mismatch in (possibly filtered) path added from '%s'",
