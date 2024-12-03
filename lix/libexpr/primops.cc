@@ -1671,7 +1671,7 @@ void prim_getAttr(EvalState & state, const PosIdx pos, Value * * args, Value & v
         "in the attribute set under consideration"
     );
     // !!! add to stack trace?
-    if (state.countCalls && i->pos) state.attrSelects[i->pos]++;
+    if (state.stats.countCalls && i->pos) state.stats.attrSelects[i->pos]++;
     state.forceValue(*i->value, pos);
     v = *i->value;
 }

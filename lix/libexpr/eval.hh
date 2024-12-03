@@ -464,6 +464,26 @@ public:
     [[nodiscard]] StringMap realiseContext(const NixStringContext & context);
 };
 
+struct EvalStatistics
+{
+    unsigned long nrLookups = 0;
+    unsigned long nrAvoided = 0;
+    unsigned long nrOpUpdates = 0;
+    unsigned long nrOpUpdateValuesCopied = 0;
+    unsigned long nrListConcats = 0;
+    unsigned long nrPrimOpCalls = 0;
+    unsigned long nrFunctionCalls = 0;
+    unsigned long nrThunks = 0;
+
+    bool countCalls = false;
+
+    std::map<std::string, size_t> primOpCalls;
+    std::map<ExprLambda *, size_t> functionCalls;
+    std::map<PosIdx, size_t> attrSelects;
+
+    void addCall(ExprLambda & fun);
+};
+
 
 class EvalState
 {
@@ -477,6 +497,7 @@ public:
     EvalRuntimeCaches caches;
     EvalPaths paths;
     EvalBuiltins builtins;
+    EvalStatistics stats;
 
     /**
      * If set, force copying files to the Nix store even if they
@@ -772,43 +793,6 @@ private:
      */
     std::string mkSingleDerivedPathStringRaw(
         const SingleDerivedPath & p);
-
-    unsigned long nrLookups = 0;
-    unsigned long nrAvoided = 0;
-    unsigned long nrOpUpdates = 0;
-    unsigned long nrOpUpdateValuesCopied = 0;
-    unsigned long nrListConcats = 0;
-    unsigned long nrPrimOpCalls = 0;
-    unsigned long nrFunctionCalls = 0;
-    unsigned long nrThunks = 0;
-
-    bool countCalls;
-
-    using PrimOpCalls = std::map<std::string, size_t>;
-    PrimOpCalls primOpCalls;
-
-    using FunctionCalls = std::map<ExprLambda *, size_t>;
-    FunctionCalls functionCalls;
-
-    void incrFunctionCall(ExprLambda * fun);
-
-    using AttrSelects = std::map<PosIdx, size_t>;
-    AttrSelects attrSelects;
-
-    friend struct Expr;
-    friend struct ExprOpUpdate;
-    friend struct ExprOpConcatLists;
-    friend struct ExprVar;
-    friend struct ExprString;
-    friend struct ExprInt;
-    friend struct ExprFloat;
-    friend struct ExprPath;
-    friend struct ExprSelect;
-    friend void prim_getAttr(EvalState & state, const PosIdx pos, Value * * args, Value & v);
-    friend void prim_match(EvalState & state, const PosIdx pos, Value * * args, Value & v);
-    friend void prim_split(EvalState & state, const PosIdx pos, Value * * args, Value & v);
-
-    friend struct Value;
 };
 
 /**

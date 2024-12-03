@@ -335,7 +335,7 @@ EvalState::EvalState(
       }
     , errors{positions, debug.get()}
 {
-    countCalls = getEnv("NIX_COUNT_CALLS").value_or("0") != "0";
+    stats.countCalls = getEnv("NIX_COUNT_CALLS").value_or("0") != "0";
 
     static_assert(sizeof(Env) <= 16, "environment must be <= 16 bytes");
 }
@@ -758,7 +758,7 @@ inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
         forceAttrs(*env->values[0], fromWith->pos, "while evaluating the first subexpression of a with expression");
         Bindings::iterator j = env->values[0]->attrs->find(var.name);
         if (j != env->values[0]->attrs->end()) {
-            if (countCalls) attrSelects[j->pos]++;
+            if (stats.countCalls) stats.attrSelects[j->pos]++;
             return j->value;
         }
         if (!fromWith->parentWith)
@@ -782,7 +782,7 @@ Value EvalMemory::newList(size_t size)
 void EvalState::evalLazily(Expr & e, Value & v)
 {
     v.mkThunk(&builtins.env, e);
-    nrThunks++;
+    stats.nrThunks++;
 }
 
 
@@ -882,7 +882,7 @@ Value * Expr::maybeThunk(EvalState & state, Env & env)
 {
     Value * v = state.mem.allocValue();
     v->mkThunk(&env, *this);
-    state.nrThunks++;
+    state.stats.nrThunks++;
     return v;
 }
 
@@ -892,32 +892,32 @@ Value * ExprVar::maybeThunk(EvalState & state, Env & env)
     Value * v = state.lookupVar(&env, *this, true);
     /* The value might not be initialised in the environment yet.
        In that case, ignore it. */
-    if (v) { state.nrAvoided++; return v; }
+    if (v) { state.stats.nrAvoided++; return v; }
     return Expr::maybeThunk(state, env);
 }
 
 
 Value * ExprString::maybeThunk(EvalState & state, Env & env)
 {
-    state.nrAvoided++;
+    state.stats.nrAvoided++;
     return &v;
 }
 
 Value * ExprInt::maybeThunk(EvalState & state, Env & env)
 {
-    state.nrAvoided++;
+    state.stats.nrAvoided++;
     return &v;
 }
 
 Value * ExprFloat::maybeThunk(EvalState & state, Env & env)
 {
-    state.nrAvoided++;
+    state.stats.nrAvoided++;
     return &v;
 }
 
 Value * ExprPath::maybeThunk(EvalState & state, Env & env)
 {
-    state.nrAvoided++;
+    state.stats.nrAvoided++;
     return &v;
 }
 
@@ -1082,7 +1082,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
             if (hasOverrides && i.second.kind != AttrDef::Kind::Inherited) {
                 vAttr = state.mem.allocValue();
                 vAttr->mkThunk(i.second.chooseByKind(&env2, &env, inheritEnv), *i.second.e);
-                state.nrThunks++;
+                state.stats.nrThunks++;
             } else
                 vAttr = i.second.e->maybeThunk(state, *i.second.chooseByKind(&env2, &env, inheritEnv));
             env2.values[displ++] = vAttr;
@@ -1263,7 +1263,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
             : nullptr;
 
         for (auto const & [partIdx, currentAttrName] : enumerate(attrPath)) {
-            state.nrLookups++;
+            state.stats.nrLookups++;
 
             Symbol const name = getName(currentAttrName, state, env);
 
@@ -1350,7 +1350,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
             // Set our currently operated-on attrset to this one, and keep going.
             vCurrent = attrIt->value;
             posCurrent = attrIt->pos;
-            if (state.countCalls) state.attrSelects[posCurrent]++;
+            if (state.stats.countCalls) state.stats.attrSelects[posCurrent]++;
         }
 
         state.forceValue(*vCurrent, (posCurrent ? posCurrent : this->pos));
@@ -1561,8 +1561,8 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
             }
 
 
-            nrFunctionCalls++;
-            if (countCalls) incrFunctionCall(&lambda);
+            stats.nrFunctionCalls++;
+            if (stats.countCalls) stats.addCall(lambda);
 
             /* Evaluate the body. */
             try {
@@ -1601,8 +1601,8 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 /* We have all the arguments, so call the primop. */
                 auto * fn = vCur.primOp;
 
-                nrPrimOpCalls++;
-                if (countCalls) primOpCalls[fn->name]++;
+                stats.nrPrimOpCalls++;
+                if (stats.countCalls) stats.primOpCalls[fn->name]++;
 
                 try {
                     fn->fun(*this, vCur.determinePos(noPos), args, vCur);
@@ -1655,8 +1655,8 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     vArgs[argsDone + i] = args[i];
 
                 auto fn = primOp->primOp;
-                nrPrimOpCalls++;
-                if (countCalls) primOpCalls[fn->name]++;
+                stats.nrPrimOpCalls++;
+                if (stats.countCalls) stats.primOpCalls[fn->name]++;
 
                 try {
                     // TODO:
@@ -1736,9 +1736,9 @@ void ExprCall::eval(EvalState & state, Env & env, Value & v)
 
 // Lifted out of callFunction() because it creates a temporary that
 // prevents tail-call optimisation.
-void EvalState::incrFunctionCall(ExprLambda * fun)
+void EvalStatistics::addCall(ExprLambda & fun)
 {
-    functionCalls[fun]++;
+    functionCalls[&fun]++;
 }
 
 
@@ -1866,7 +1866,7 @@ void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
     state.evalAttrs(env, *e1, v1, pos, "in the left operand of the update (//) operator");
     state.evalAttrs(env, *e2, v2, pos, "in the right operand of the update (//) operator");
 
-    state.nrOpUpdates++;
+    state.stats.nrOpUpdates++;
 
     if (v1.attrs->size() == 0) { v = v2; return; }
     if (v2.attrs->size() == 0) { v = v1; return; }
@@ -1894,7 +1894,7 @@ void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
 
     v.mkAttrs(attrs.alreadySorted());
 
-    state.nrOpUpdateValuesCopied += v.attrs->size();
+    state.stats.nrOpUpdateValuesCopied += v.attrs->size();
 }
 
 
@@ -1909,7 +1909,7 @@ void ExprOpConcatLists::eval(EvalState & state, Env & env, Value & v)
 
 void EvalState::concatLists(Value & v, size_t nrLists, Value * * lists, const PosIdx pos, std::string_view errorCtx)
 {
-    nrListConcats++;
+    stats.nrListConcats++;
 
     Value * nonEmpty = 0;
     size_t len = 0;
@@ -2582,7 +2582,7 @@ void EvalState::printStatistics()
     topObj["list"] = {
         {"elements", mem.nrListElems},
         {"bytes", bLists},
-        {"concats", nrListConcats},
+        {"concats", stats.nrListConcats},
     };
     topObj["values"] = {
         {"number", mem.nrValues},
@@ -2603,13 +2603,13 @@ void EvalState::printStatistics()
         {"Bindings", sizeof(Bindings)},
         {"Attr", sizeof(Attr)},
     };
-    topObj["nrOpUpdates"] = nrOpUpdates;
-    topObj["nrOpUpdateValuesCopied"] = nrOpUpdateValuesCopied;
-    topObj["nrThunks"] = nrThunks;
-    topObj["nrAvoided"] = nrAvoided;
-    topObj["nrLookups"] = nrLookups;
-    topObj["nrPrimOpCalls"] = nrPrimOpCalls;
-    topObj["nrFunctionCalls"] = nrFunctionCalls;
+    topObj["nrOpUpdates"] = stats.nrOpUpdates;
+    topObj["nrOpUpdateValuesCopied"] = stats.nrOpUpdateValuesCopied;
+    topObj["nrThunks"] = stats.nrThunks;
+    topObj["nrAvoided"] = stats.nrAvoided;
+    topObj["nrLookups"] = stats.nrLookups;
+    topObj["nrPrimOpCalls"] = stats.nrPrimOpCalls;
+    topObj["nrFunctionCalls"] = stats.nrFunctionCalls;
 #if HAVE_BOEHMGC
     topObj["gc"] = {
         {"heapSize", heapSize},
@@ -2617,12 +2617,12 @@ void EvalState::printStatistics()
     };
 #endif
 
-    if (countCalls) {
-        topObj["primops"] = primOpCalls;
+    if (stats.countCalls) {
+        topObj["primops"] = stats.primOpCalls;
         {
             auto& list = topObj["functions"];
             list = json::array();
-            for (auto & [fun, count] : functionCalls) {
+            for (auto & [fun, count] : stats.functionCalls) {
                 json obj = json::object();
                 if (fun->name)
                     obj["name"] = (std::string_view) symbols[fun->name];
@@ -2641,7 +2641,7 @@ void EvalState::printStatistics()
         {
             auto list = topObj["attributes"];
             list = json::array();
-            for (auto & i : attrSelects) {
+            for (auto & i : stats.attrSelects) {
                 json obj = json::object();
                 if (auto pos = positions[i.first]) {
                     if (auto path = std::get_if<SourcePath>(&pos.origin))
