@@ -243,7 +243,7 @@ static Flake getFlake(
 
     // FIXME: symlink attack
     auto resolvedFlakeFile = resolveExprPath(state.ctx.paths.checkSourcePath(CanonPath(flakeFile)));
-    Expr & flakeExpr = state.parseExprFromFile(state.ctx.paths.checkSourcePath(resolvedFlakeFile));
+    Expr & flakeExpr = state.ctx.parseExprFromFile(state.ctx.paths.checkSourcePath(resolvedFlakeFile));
 
     // Enforce that 'flake.nix' is a direct attrset, not a computation.
     if (!(dynamic_cast<ExprAttrs *>(&flakeExpr))) {
@@ -793,7 +793,7 @@ void callFlake(EvalState & state,
 
     if (!state.caches.vCallFlake) {
         state.caches.vCallFlake = allocRootValue(state.ctx.mem.allocValue());
-        state.eval(state.parseExprFromString(
+        state.eval(state.ctx.parseExprFromString(
             #include "call-flake.nix.gen.hh"
             , CanonPath::root), **state.caches.vCallFlake);
     }

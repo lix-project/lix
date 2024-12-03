@@ -208,7 +208,7 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
 
         if (!state.caches.vImportedDrvToDerivation) {
             state.caches.vImportedDrvToDerivation = allocRootValue(state.ctx.mem.allocValue());
-            state.eval(state.parseExprFromString(
+            state.eval(state.ctx.parseExprFromString(
                 #include "imported-drv-to-derivation.nix.gen.hh"
                 , CanonPath::root), **state.caches.vImportedDrvToDerivation);
         }
@@ -223,7 +223,7 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
     }
 
     else if (path2 == corepkgsPrefix + "fetchurl.nix") {
-        state.eval(state.parseExprFromString(
+        state.eval(state.ctx.parseExprFromString(
             #include "fetchurl.nix.gen.hh"
             , CanonPath::root), v);
     }
@@ -235,10 +235,10 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
             state.forceAttrs(*vScope, pos, "while evaluating the first argument passed to builtins.scopedImport");
 
             Env * env = &state.ctx.mem.allocEnv(vScope->attrs->size());
-            env->up = &state.builtins.env;
+            env->up = &state.ctx.builtins.env;
 
             auto staticEnv = std::make_shared<StaticEnv>(
-                nullptr, state.builtins.staticEnv.get(), vScope->attrs->size()
+                nullptr, state.ctx.builtins.staticEnv.get(), vScope->attrs->size()
             );
 
             unsigned int displ = 0;
@@ -251,7 +251,7 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
             // args[0]->attrs is already sorted.
 
             debug("evaluating file '%1%'", path);
-            Expr & e = state.parseExprFromFile(resolveExprPath(path), staticEnv);
+            Expr & e = state.ctx.parseExprFromFile(resolveExprPath(path), staticEnv);
 
             e.eval(state, *env, v);
         }
@@ -332,7 +332,7 @@ void prim_exec(EvalState & state, const PosIdx pos, Value * * args, Value & v)
     auto output = runProgram(program, true, commandArgs);
     Expr * parsed;
     try {
-        parsed = &state.parseExprFromString(std::move(output), CanonPath::root);
+        parsed = &state.ctx.parseExprFromString(std::move(output), CanonPath::root);
     } catch (Error & e) {
         e.addTrace(state.ctx.positions[pos], "while parsing the output from '%1%'", program);
         throw;
@@ -1382,7 +1382,7 @@ static void prim_readDir(EvalState & state, const PosIdx pos, Value * * args, Va
             auto epath = state.ctx.mem.allocValue();
             epath->mkPath(path + name);
             if (!readFileType)
-                readFileType = &state.builtins.get("readFileType");
+                readFileType = &state.ctx.builtins.get("readFileType");
             attr.mkApp(readFileType, epath);
         } else {
             // This branch of the conditional is much more likely.
@@ -2847,8 +2847,8 @@ void EvalBuiltins::createBaseEnv(const SearchPath & searchPath, const Path & sto
                 char code[] =
                     #include "primops/derivation.nix.gen.hh"
                     ;
-                auto & expr = *state.parse(
-                    code, sizeof(code), Pos::Hidden{}, {CanonPath::root}, state.builtins.staticEnv
+                auto & expr = *state.ctx.parse(
+                    code, sizeof(code), Pos::Hidden{}, {CanonPath::root}, state.ctx.builtins.staticEnv
                 );
                 state.eval(expr, v);
             },

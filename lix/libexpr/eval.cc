@@ -953,14 +953,14 @@ void EvalState::evalFile(const SourcePath & path_, Value & v)
     }
 
     debug("evaluating file '%1%'", resolvedPath);
-    Expr & e = parseExprFromFile(ctx.paths.checkSourcePath(resolvedPath));
+    Expr & e = ctx.parseExprFromFile(ctx.paths.checkSourcePath(resolvedPath));
 
     try {
         auto dts = ctx.debug
             ? makeDebugTraceStacker(
                 *this,
                 e,
-                this->builtins.env,
+                ctx.builtins.env,
                 e.getPos() ? std::make_shared<Pos>(ctx.positions[e.getPos()]) : nullptr,
                 "while evaluating the file '%1%':", resolvedPath.to_string())
             : nullptr;
@@ -985,7 +985,7 @@ void EvalState::resetFileCache()
 
 void EvalState::eval(Expr & e, Value & v)
 {
-    e.eval(*this, builtins.env, v);
+    e.eval(*this, ctx.builtins.env, v);
 }
 
 

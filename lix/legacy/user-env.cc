@@ -97,7 +97,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
     /* Get the environment builder expression. */
     Value envBuilder;
-    state.eval(state.parseExprFromString(
+    state.eval(state.ctx.parseExprFromString(
         #include "buildenv.nix.gen.hh"
             , CanonPath::root), envBuilder);
 
