@@ -8,7 +8,7 @@ std::vector<ref<eval_cache::AttrCursor>>
 InstallableValue::getCursors()
 {
     auto evalCache =
-        std::make_shared<nix::eval_cache::EvalCache>(std::nullopt, *state,
+        std::make_shared<nix::eval_cache::EvalCache>(std::nullopt,
             [&]() { return toValue().first; });
     return {evalCache->getRoot()};
 }

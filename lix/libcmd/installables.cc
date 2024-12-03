@@ -419,7 +419,7 @@ ref<eval_cache::EvalCache> openEvalCache(
     if (fingerprint) {
         return state.getCacheFor(fingerprint.value(), rootLoader);
     } else {
-        return make_ref<nix::eval_cache::EvalCache>(std::nullopt, state, rootLoader);
+        return make_ref<nix::eval_cache::EvalCache>(std::nullopt, rootLoader);
     }
 }
 

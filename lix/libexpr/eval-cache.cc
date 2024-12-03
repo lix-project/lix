@@ -21,8 +21,6 @@ struct AttrDb
 {
     std::atomic_bool failed{false};
 
-    const Store & cfg;
-
     struct State
     {
         SQLite db;
@@ -35,11 +33,8 @@ struct AttrDb
 
     std::unique_ptr<Sync<State>> _state;
 
-    AttrDb(
-        const Store & cfg,
-        const Hash & fingerprint)
-        : cfg(cfg)
-        , _state(std::make_unique<Sync<State>>())
+    AttrDb(const Hash & fingerprint)
+        : _state(std::make_unique<Sync<State>>())
     {
         auto state(_state->lock());
 
@@ -317,12 +312,10 @@ struct AttrDb
     }
 };
 
-static std::shared_ptr<AttrDb> makeAttrDb(
-    const Store & cfg,
-    const Hash & fingerprint)
+static std::shared_ptr<AttrDb> makeAttrDb(const Hash & fingerprint)
 {
     try {
-        return std::make_shared<AttrDb>(cfg, fingerprint);
+        return std::make_shared<AttrDb>(fingerprint);
     } catch (SQLiteError &) {
         ignoreExceptionExceptInterrupt();
         return nullptr;
@@ -334,16 +327,15 @@ ref<EvalCache> CachingEvalState::getCacheFor(Hash hash, RootLoader rootLoader)
     if (auto it = caches.find(hash); it != caches.end()) {
         return it->second;
     }
-    auto cache = make_ref<EvalCache>(hash, *this, rootLoader);
+    auto cache = make_ref<EvalCache>(hash, rootLoader);
     caches.emplace(hash, cache);
     return cache;
 }
 
 EvalCache::EvalCache(
     std::optional<std::reference_wrapper<const Hash>> useCache,
-    EvalState & state,
     RootLoader rootLoader)
-    : db(useCache ? makeAttrDb(*state.store, *useCache) : nullptr)
+    : db(useCache ? makeAttrDb(*useCache) : nullptr)
     , rootLoader(rootLoader)
 {
 }
