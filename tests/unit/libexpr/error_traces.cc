@@ -12,21 +12,21 @@ namespace nix {
 
     TEST_F(ErrorTraceTest, TraceBuilder) {
         ASSERT_THROW(
-            state.errors.make<EvalError>("puppy").debugThrow(),
+            evaluator.errors.make<EvalError>("puppy").debugThrow(),
             EvalError
         );
 
         ASSERT_THROW(
-            state.errors.make<EvalError>("puppy").withTrace(noPos, "doggy").debugThrow(),
+            evaluator.errors.make<EvalError>("puppy").withTrace(noPos, "doggy").debugThrow(),
             EvalError
         );
 
         ASSERT_THROW(
             try {
                 try {
-                    state.errors.make<EvalError>("puppy").withTrace(noPos, "doggy").debugThrow();
+                    evaluator.errors.make<EvalError>("puppy").withTrace(noPos, "doggy").debugThrow();
                 } catch (Error & e) {
-                    e.addTrace(state.positions[noPos], "beans");
+                    e.addTrace(evaluator.positions[noPos], "beans");
                     throw;
                 }
             } catch (BaseError & e) {
@@ -47,12 +47,12 @@ namespace nix {
 
     TEST_F(ErrorTraceTest, NestedThrows) {
         try {
-            state.errors.make<EvalError>("puppy").withTrace(noPos, "doggy").debugThrow();
+            evaluator.errors.make<EvalError>("puppy").withTrace(noPos, "doggy").debugThrow();
         } catch (BaseError & e) {
             try {
-                state.errors.make<EvalError>("beans").debugThrow();
+                evaluator.errors.make<EvalError>("beans").debugThrow();
             } catch (Error & e2) {
-                e.addTrace(state.positions[noPos], "beans2");
+                e.addTrace(evaluator.positions[noPos], "beans2");
                 //e2.addTrace(state.positions[noPos], "Something", "");
                 ASSERT_TRUE(e.info().traces.size() == 2);
                 ASSERT_TRUE(e2.info().traces.size() == 0);

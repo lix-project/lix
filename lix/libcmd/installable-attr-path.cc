@@ -26,7 +26,7 @@ InstallableAttrPath::InstallableAttrPath(
 
 std::pair<Value *, PosIdx> InstallableAttrPath::toValue()
 {
-    auto [vRes, pos] = findAlongAttrPath(*state, attrPath, *cmd.getAutoArgs(*state), **v);
+    auto [vRes, pos] = findAlongAttrPath(*state, attrPath, *cmd.getAutoArgs(*evaluator), **v);
     state->forceValue(*vRes, pos);
     return {vRes, pos};
 }
@@ -43,7 +43,7 @@ DerivedPathsWithInfo InstallableAttrPath::toDerivedPaths()
         return { *derivedPathWithInfo };
     }
 
-    Bindings & autoArgs = *cmd.getAutoArgs(*state);
+    Bindings & autoArgs = *cmd.getAutoArgs(*evaluator);
 
     DrvInfos drvInfos;
     getDerivations(*state, *v, "", autoArgs, drvInfos, false);

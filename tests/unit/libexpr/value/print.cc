@@ -61,9 +61,9 @@ TEST_F(ValuePrintingTests, tAttrs)
     Value vTwo;
     vTwo.mkInt(2);
 
-    BindingsBuilder builder = state.buildBindings(10);
-    builder.insert(state.symbols.create("one"), &vOne);
-    builder.insert(state.symbols.create("two"), &vTwo);
+    BindingsBuilder builder = evaluator.buildBindings(10);
+    builder.insert(evaluator.symbols.create("one"), &vOne);
+    builder.insert(evaluator.symbols.create("two"), &vTwo);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -79,7 +79,7 @@ TEST_F(ValuePrintingTests, tList)
     Value vTwo;
     vTwo.mkInt(2);
 
-    Value vList = state.mem.newList(5);
+    Value vList = evaluator.mem.newList(5);
     vList.bigList.elems[0] = &vOne;
     vList.bigList.elems[1] = &vTwo;
     vList.bigList.size = 3;
@@ -110,8 +110,8 @@ TEST_F(ValuePrintingTests, vLambda)
         .up = nullptr,
         .values = { }
     };
-    PosTable::Origin origin = state.positions.addOrigin(std::monostate(), 1);
-    auto posIdx = state.positions.add(origin, 0);
+    PosTable::Origin origin = evaluator.positions.addOrigin(std::monostate(), 1);
+    auto posIdx = evaluator.positions.add(origin, 0);
 
     ExprLambda eLambda(posIdx, createSymbol("a"), std::make_unique<Formals>(), std::make_unique<ExprInt>(0));
 
@@ -201,28 +201,28 @@ TEST_F(ValuePrintingTests, depthAttrs)
     Value vTwo;
     vTwo.mkInt(2);
 
-    BindingsBuilder builderEmpty = state.buildBindings(0);
+    BindingsBuilder builderEmpty = evaluator.buildBindings(0);
     Value vAttrsEmpty;
     vAttrsEmpty.mkAttrs(builderEmpty.finish());
 
-    BindingsBuilder builderNested = state.buildBindings(1);
-    builderNested.insert(state.symbols.create("zero"), &vZero);
+    BindingsBuilder builderNested = evaluator.buildBindings(1);
+    builderNested.insert(evaluator.symbols.create("zero"), &vZero);
     Value vAttrsNested;
     vAttrsNested.mkAttrs(builderNested.finish());
 
-    BindingsBuilder builder = state.buildBindings(10);
-    builder.insert(state.symbols.create("one"), &vOne);
-    builder.insert(state.symbols.create("two"), &vTwo);
-    builder.insert(state.symbols.create("empty"), &vAttrsEmpty);
-    builder.insert(state.symbols.create("nested"), &vAttrsNested);
+    BindingsBuilder builder = evaluator.buildBindings(10);
+    builder.insert(evaluator.symbols.create("one"), &vOne);
+    builder.insert(evaluator.symbols.create("two"), &vTwo);
+    builder.insert(evaluator.symbols.create("empty"), &vAttrsEmpty);
+    builder.insert(evaluator.symbols.create("nested"), &vAttrsNested);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
 
-    BindingsBuilder builder2 = state.buildBindings(10);
-    builder2.insert(state.symbols.create("one"), &vOne);
-    builder2.insert(state.symbols.create("two"), &vTwo);
-    builder2.insert(state.symbols.create("nested"), &vAttrs);
+    BindingsBuilder builder2 = evaluator.buildBindings(10);
+    builder2.insert(evaluator.symbols.create("one"), &vOne);
+    builder2.insert(evaluator.symbols.create("two"), &vTwo);
+    builder2.insert(evaluator.symbols.create("nested"), &vAttrs);
 
     Value vNested;
     vNested.mkAttrs(builder2.finish());
@@ -241,22 +241,22 @@ TEST_F(ValuePrintingTests, depthList)
     Value vTwo;
     vTwo.mkInt(2);
 
-    BindingsBuilder builder = state.buildBindings(10);
-    builder.insert(state.symbols.create("one"), &vOne);
-    builder.insert(state.symbols.create("two"), &vTwo);
+    BindingsBuilder builder = evaluator.buildBindings(10);
+    builder.insert(evaluator.symbols.create("one"), &vOne);
+    builder.insert(evaluator.symbols.create("two"), &vTwo);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
 
-    BindingsBuilder builder2 = state.buildBindings(10);
-    builder2.insert(state.symbols.create("one"), &vOne);
-    builder2.insert(state.symbols.create("two"), &vTwo);
-    builder2.insert(state.symbols.create("nested"), &vAttrs);
+    BindingsBuilder builder2 = evaluator.buildBindings(10);
+    builder2.insert(evaluator.symbols.create("one"), &vOne);
+    builder2.insert(evaluator.symbols.create("two"), &vTwo);
+    builder2.insert(evaluator.symbols.create("nested"), &vAttrs);
 
     Value vNested;
     vNested.mkAttrs(builder2.finish());
 
-    Value vList = state.mem.newList(5);
+    Value vList = evaluator.mem.newList(5);
     vList.bigList.elems[0] = &vOne;
     vList.bigList.elems[1] = &vTwo;
     vList.bigList.elems[2] = &vNested;
@@ -304,9 +304,9 @@ TEST_F(ValuePrintingTests, attrsTypeFirst)
     Value vApple;
     vApple.mkString("apple");
 
-    BindingsBuilder builder = state.buildBindings(10);
-    builder.insert(state.symbols.create("type"), &vType);
-    builder.insert(state.symbols.create("apple"), &vApple);
+    BindingsBuilder builder = evaluator.buildBindings(10);
+    builder.insert(evaluator.symbols.create("type"), &vType);
+    builder.insert(evaluator.symbols.create("apple"), &vApple);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -415,9 +415,9 @@ TEST_F(ValuePrintingTests, ansiColorsAttrs)
     Value vTwo;
     vTwo.mkInt(2);
 
-    BindingsBuilder builder = state.buildBindings(10);
-    builder.insert(state.symbols.create("one"), &vOne);
-    builder.insert(state.symbols.create("two"), &vTwo);
+    BindingsBuilder builder = evaluator.buildBindings(10);
+    builder.insert(evaluator.symbols.create("one"), &vOne);
+    builder.insert(evaluator.symbols.create("two"), &vTwo);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -434,8 +434,8 @@ TEST_F(ValuePrintingTests, ansiColorsDerivation)
     Value vDerivation;
     vDerivation.mkString("derivation");
 
-    BindingsBuilder builder = state.buildBindings(10);
-    builder.insert(state.s.type, &vDerivation);
+    BindingsBuilder builder = evaluator.buildBindings(10);
+    builder.insert(evaluator.s.type, &vDerivation);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -459,7 +459,7 @@ TEST_F(ValuePrintingTests, ansiColorsDerivation)
 TEST_F(ValuePrintingTests, ansiColorsError)
 {
     Value vError;
-    auto & e = state.parseExprFromString("{ a = throw \"uh oh!\"; }", {CanonPath::root});
+    auto & e = evaluator.parseExprFromString("{ a = throw \"uh oh!\"; }", {CanonPath::root});
     state.eval(e, vError);
 
     test(*vError.attrs->begin()->value,
@@ -475,7 +475,7 @@ TEST_F(ValuePrintingTests, ansiColorsError)
 TEST_F(ValuePrintingTests, ansiColorsDerivationError)
 {
     Value vAttrs;
-    auto & e = state.parseExprFromString(
+    auto & e = evaluator.parseExprFromString(
         "{ type = \"derivation\"; drvPath = throw \"uh oh!\"; }", {CanonPath::root}
     );
     state.eval(e, vAttrs);
@@ -508,7 +508,7 @@ TEST_F(ValuePrintingTests, ansiColorsDerivationError)
 
 TEST_F(ValuePrintingTests, ansiColorsAssert)
 {
-    auto & e = state.parseExprFromString("{ a = assert false; 1; }", {CanonPath::root});
+    auto & e = evaluator.parseExprFromString("{ a = assert false; 1; }", {CanonPath::root});
     Value v;
     state.eval(e, v);
 
@@ -529,7 +529,7 @@ TEST_F(ValuePrintingTests, ansiColorsList)
     Value vTwo;
     vTwo.mkInt(2);
 
-    Value vList = state.mem.newList(5);
+    Value vList = evaluator.mem.newList(5);
     vList.bigList.elems[0] = &vOne;
     vList.bigList.elems[1] = &vTwo;
     vList.bigList.size = 3;
@@ -547,8 +547,8 @@ TEST_F(ValuePrintingTests, ansiColorsLambda)
         .up = nullptr,
         .values = { }
     };
-    PosTable::Origin origin = state.positions.addOrigin(std::monostate(), 1);
-    auto posIdx = state.positions.add(origin, 0);
+    PosTable::Origin origin = evaluator.positions.addOrigin(std::monostate(), 1);
+    auto posIdx = evaluator.positions.add(origin, 0);
 
     ExprLambda eLambda(posIdx, createSymbol("a"), std::make_unique<Formals>(), std::make_unique<ExprInt>(0));
 
@@ -635,15 +635,15 @@ TEST_F(ValuePrintingTests, ansiColorsAttrsRepeated)
     Value vZero;
     vZero.mkInt(0);
 
-    BindingsBuilder innerBuilder = state.buildBindings(1);
-    innerBuilder.insert(state.symbols.create("x"), &vZero);
+    BindingsBuilder innerBuilder = evaluator.buildBindings(1);
+    innerBuilder.insert(evaluator.symbols.create("x"), &vZero);
 
     Value vInner;
     vInner.mkAttrs(innerBuilder.finish());
 
-    BindingsBuilder builder = state.buildBindings(10);
-    builder.insert(state.symbols.create("a"), &vInner);
-    builder.insert(state.symbols.create("b"), &vInner);
+    BindingsBuilder builder = evaluator.buildBindings(10);
+    builder.insert(evaluator.symbols.create("a"), &vInner);
+    builder.insert(evaluator.symbols.create("b"), &vInner);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -660,13 +660,13 @@ TEST_F(ValuePrintingTests, ansiColorsListRepeated)
     Value vZero;
     vZero.mkInt(0);
 
-    BindingsBuilder innerBuilder = state.buildBindings(1);
-    innerBuilder.insert(state.symbols.create("x"), &vZero);
+    BindingsBuilder innerBuilder = evaluator.buildBindings(1);
+    innerBuilder.insert(evaluator.symbols.create("x"), &vZero);
 
     Value vInner;
     vInner.mkAttrs(innerBuilder.finish());
 
-    Value vList = state.mem.newList(3);
+    Value vList = evaluator.mem.newList(3);
     vList.bigList.elems[0] = &vInner;
     vList.bigList.elems[1] = &vInner;
     vList.bigList.size = 2;
@@ -683,13 +683,13 @@ TEST_F(ValuePrintingTests, listRepeated)
     Value vZero;
     vZero.mkInt(0);
 
-    BindingsBuilder innerBuilder = state.buildBindings(1);
-    innerBuilder.insert(state.symbols.create("x"), &vZero);
+    BindingsBuilder innerBuilder = evaluator.buildBindings(1);
+    innerBuilder.insert(evaluator.symbols.create("x"), &vZero);
 
     Value vInner;
     vInner.mkAttrs(innerBuilder.finish());
 
-    Value vList = state.mem.newList(3);
+    Value vList = evaluator.mem.newList(3);
     vList.bigList.elems[0] = &vInner;
     vList.bigList.elems[1] = &vInner;
     vList.bigList.size = 2;
@@ -710,9 +710,9 @@ TEST_F(ValuePrintingTests, ansiColorsAttrsElided)
     Value vTwo;
     vTwo.mkInt(2);
 
-    BindingsBuilder builder = state.buildBindings(10);
-    builder.insert(state.symbols.create("one"), &vOne);
-    builder.insert(state.symbols.create("two"), &vTwo);
+    BindingsBuilder builder = evaluator.buildBindings(10);
+    builder.insert(evaluator.symbols.create("one"), &vOne);
+    builder.insert(evaluator.symbols.create("two"), &vTwo);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -727,7 +727,7 @@ TEST_F(ValuePrintingTests, ansiColorsAttrsElided)
     Value vThree;
     vThree.mkInt(3);
 
-    builder.insert(state.symbols.create("three"), &vThree);
+    builder.insert(evaluator.symbols.create("three"), &vThree);
     vAttrs.mkAttrs(builder.finish());
 
     test(vAttrs,
@@ -746,7 +746,7 @@ TEST_F(ValuePrintingTests, ansiColorsListElided)
     Value vTwo;
     vTwo.mkInt(2);
 
-    Value vList = state.mem.newList(4);
+    Value vList = evaluator.mem.newList(4);
     vList.bigList.elems[0] = &vOne;
     vList.bigList.elems[1] = &vTwo;
     vList.bigList.size = 2;

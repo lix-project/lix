@@ -547,6 +547,9 @@ struct CmdDevelop : Common, MixEnvironment
 
     void run(ref<Store> store, ref<Installable> installable) override
     {
+        auto evaluator = getEvalState();
+        auto state = evaluator;
+
         auto [buildEnvironment, gcroot] = getBuildEnvironment(store, installable);
 
         auto [rcFileFd, rcFilePath] = createTempFile("nix-shell");
@@ -598,8 +601,6 @@ struct CmdDevelop : Common, MixEnvironment
         Path shell = "bash";
 
         try {
-            auto state = getEvalState();
-
             auto nixpkgsLockFlags = lockFlags;
             nixpkgsLockFlags.inputOverrides = {};
             nixpkgsLockFlags.inputUpdates = {};

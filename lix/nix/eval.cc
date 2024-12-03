@@ -61,15 +61,16 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
 
         auto const installableValue = InstallableValue::require(installable);
 
-        auto state = getEvalState();
+        auto evaluator = getEvalState();
+        auto state = evaluator;
 
         auto [v, pos] = installableValue->toValue();
         NixStringContext context;
 
         if (apply) {
-            auto vApply = state->mem.allocValue();
-            state->eval(state->parseExprFromString(*apply, CanonPath::fromCwd()), *vApply);
-            auto vRes = state->mem.allocValue();
+            auto vApply = evaluator->mem.allocValue();
+            state->eval(evaluator->parseExprFromString(*apply, CanonPath::fromCwd()), *vApply);
+            auto vRes = evaluator->mem.allocValue();
             state->callFunction(*vApply, *v, *vRes, noPos);
             v = vRes;
         }
@@ -92,21 +93,21 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
                     if (mkdir(path.c_str(), 0777) == -1)
                         throw SysError("creating directory '%s'", path);
                     for (auto & attr : *v.attrs) {
-                        std::string_view name = state->symbols[attr.name];
+                        std::string_view name = evaluator->symbols[attr.name];
                         try {
                             if (name == "." || name == "..")
                                 throw Error("invalid file name '%s'", name);
                             recurse(*attr.value, attr.pos, concatStrings(path, "/", name));
                         } catch (Error & e) {
                             e.addTrace(
-                                state->positions[attr.pos],
+                                evaluator->positions[attr.pos],
                                 HintFmt("while evaluating the attribute '%s'", name));
                             throw;
                         }
                     }
                 }
                 else
-                    state->errors.make<TypeError>("value at '%s' is not a string or an attribute set", state->positions[pos]).debugThrow();
+                    evaluator->errors.make<TypeError>("value at '%s' is not a string or an attribute set", evaluator->positions[pos]).debugThrow();
             };
 
             recurse(*v, pos, *writeTo);

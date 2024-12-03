@@ -511,13 +511,15 @@ static void installDerivations(Globals & globals,
 {
     debug("installing derivations");
 
+    auto state = globals.state;
+
     /* Get the set of user environment elements to be installed. */
     DrvInfos newElems, newElemsTmp;
-    queryInstSources(*globals.state, globals.instSource, args, newElemsTmp, true);
+    queryInstSources(*state, globals.instSource, args, newElemsTmp, true);
 
     /* If --prebuilt-only is given, filter out source-only packages. */
     for (auto & i : newElemsTmp)
-        if (!globals.prebuiltOnly || isPrebuilt(*globals.state, i))
+        if (!globals.prebuiltOnly || isPrebuilt(*state, i))
             newElems.push_back(i);
 
     StringSet newNames;
@@ -528,7 +530,7 @@ static void installDerivations(Globals & globals,
            `java-front-0.9pre15899'). */
         if (globals.forceName != "")
             i.setName(globals.forceName);
-        newNames.insert(DrvName(i.queryName(*globals.state)).name);
+        newNames.insert(DrvName(i.queryName(*state)).name);
     }
 
 
@@ -540,27 +542,27 @@ static void installDerivations(Globals & globals,
         /* Add in the already installed derivations, unless they have
            the same name as a to-be-installed element. */
         if (!globals.removeAll) {
-            DrvInfos installedElems = queryInstalled(*globals.state, profile);
+            DrvInfos installedElems = queryInstalled(*state, profile);
 
             for (auto & i : installedElems) {
-                DrvName drvName(i.queryName(*globals.state));
+                DrvName drvName(i.queryName(*state));
                 if (!globals.preserveInstalled &&
                     newNames.find(drvName.name) != newNames.end() &&
-                    !keep(*globals.state, i))
-                    printInfo("replacing old '%s'", i.queryName(*globals.state));
+                    !keep(*state, i))
+                    printInfo("replacing old '%s'", i.queryName(*state));
                 else
                     allElems.push_back(i);
             }
 
             for (auto & i : newElems)
-                printInfo("installing '%s'", i.queryName(*globals.state));
+                printInfo("installing '%s'", i.queryName(*state));
         }
 
-        printMissing(*globals.state, newElems);
+        printMissing(*state, newElems);
 
         if (globals.dryRun) return;
 
-        if (createUserEnv(*globals.state, allElems,
+        if (createUserEnv(*state, allElems,
                 profile, settings.envKeepDerivations, lockToken)) break;
     }
 }
@@ -590,6 +592,8 @@ static void upgradeDerivations(Globals & globals,
 {
     debug("upgrading derivations");
 
+    auto state = globals.state;
+
     /* Upgrade works as follows: we take all currently installed
        derivations, and for any derivation matching any selector, look
        for a derivation in the input Nix expression that has the same
@@ -598,20 +602,20 @@ static void upgradeDerivations(Globals & globals,
     while (true) {
         auto lockToken = optimisticLockProfile(globals.profile);
 
-        DrvInfos installedElems = queryInstalled(*globals.state, globals.profile);
+        DrvInfos installedElems = queryInstalled(*state, globals.profile);
 
         /* Fetch all derivations from the input file. */
         DrvInfos availElems;
-        queryInstSources(*globals.state, globals.instSource, args, availElems, false);
+        queryInstSources(*state, globals.instSource, args, availElems, false);
 
         /* Go through all installed derivations. */
         DrvInfos newElems;
         for (auto & i : installedElems) {
-            DrvName drvName(i.queryName(*globals.state));
+            DrvName drvName(i.queryName(*state));
 
             try {
 
-                if (keep(*globals.state, i)) {
+                if (keep(*state, i)) {
                     newElems.push_back(i);
                     continue;
                 }
@@ -626,9 +630,9 @@ static void upgradeDerivations(Globals & globals,
                 DrvInfos::iterator bestElem = availElems.end();
                 std::string bestVersion;
                 for (auto j = availElems.begin(); j != availElems.end(); ++j) {
-                    if (comparePriorities(*globals.state, i, *j) > 0)
+                    if (comparePriorities(*state, i, *j) > 0)
                         continue;
-                    DrvName newName(j->queryName(*globals.state));
+                    DrvName newName(j->queryName(*state));
                     if (newName.name == drvName.name) {
                         std::strong_ordering d = compareVersions(drvName.version, newName.version);
                         if ((upgradeType == utLt && d < 0) ||
@@ -638,10 +642,10 @@ static void upgradeDerivations(Globals & globals,
                         {
                             std::strong_ordering d2 = std::strong_ordering::less;
                             if (bestElem != availElems.end()) {
-                                d2 = comparePriorities(*globals.state, *bestElem, *j);
+                                d2 = comparePriorities(*state, *bestElem, *j);
                                 if (d2 == 0) d2 = compareVersions(bestVersion, newName.version);
                             }
-                            if (d2 < 0 && (!globals.prebuiltOnly || isPrebuilt(*globals.state, *j))) {
+                            if (d2 < 0 && (!globals.prebuiltOnly || isPrebuilt(*state, *j))) {
                                 bestElem = j;
                                 bestVersion = newName.version;
                             }
@@ -650,27 +654,27 @@ static void upgradeDerivations(Globals & globals,
                 }
 
                 if (bestElem != availElems.end() &&
-                    i.queryOutPath(*globals.state) !=
-                    bestElem->queryOutPath(*globals.state))
+                    i.queryOutPath(*state) !=
+                    bestElem->queryOutPath(*state))
                 {
                     const char * action = compareVersions(drvName.version, bestVersion) <= 0
                         ? "upgrading" : "downgrading";
                     printInfo("%1% '%2%' to '%3%'",
-                        action, i.queryName(*globals.state), bestElem->queryName(*globals.state));
+                        action, i.queryName(*state), bestElem->queryName(*state));
                     newElems.push_back(*bestElem);
                 } else newElems.push_back(i);
 
             } catch (Error & e) {
-                e.addTrace(nullptr, "while trying to find an upgrade for '%s'", i.queryName(*globals.state));
+                e.addTrace(nullptr, "while trying to find an upgrade for '%s'", i.queryName(*state));
                 throw;
             }
         }
 
-        printMissing(*globals.state, newElems);
+        printMissing(*state, newElems);
 
         if (globals.dryRun) return;
 
-        if (createUserEnv(*globals.state, newElems,
+        if (createUserEnv(*state, newElems,
                 globals.profile, settings.envKeepDerivations, lockToken)) break;
     }
 }
@@ -714,19 +718,21 @@ static void opSetFlag(Globals & globals, Strings opFlags, Strings opArgs)
     std::string flagValue = *arg++;
     DrvNames selectors = drvNamesFromArgs(Strings(arg, opArgs.end()));
 
+    auto state = globals.state;
+
     while (true) {
         std::string lockToken = optimisticLockProfile(globals.profile);
 
-        DrvInfos installedElems = queryInstalled(*globals.state, globals.profile);
+        DrvInfos installedElems = queryInstalled(*state, globals.profile);
 
         /* Update all matching derivations. */
         for (auto & i : installedElems) {
-            DrvName drvName(i.queryName(*globals.state));
+            DrvName drvName(i.queryName(*state));
             for (auto & j : selectors)
                 if (j.matches(drvName)) {
-                    printInfo("setting flag on '%1%'", i.queryName(*globals.state));
+                    printInfo("setting flag on '%1%'", i.queryName(*state));
                     j.hits++;
-                    setMetaFlag(*globals.state, i, flagName, flagValue);
+                    setMetaFlag(*state, i, flagName, flagValue);
                     break;
                 }
         }
@@ -734,7 +740,7 @@ static void opSetFlag(Globals & globals, Strings opFlags, Strings opArgs)
         checkSelectorUse(selectors);
 
         /* Write the new user environment. */
-        if (createUserEnv(*globals.state, installedElems,
+        if (createUserEnv(*state, installedElems,
                 globals.profile, settings.envKeepDerivations, lockToken)) break;
     }
 }
@@ -742,6 +748,8 @@ static void opSetFlag(Globals & globals, Strings opFlags, Strings opArgs)
 
 static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
 {
+    auto state = globals.state;
+
     auto store2 = globals.state->store.dynamic_pointer_cast<LocalFSStore>();
     if (!store2) throw Error("--set is not supported for this Nix store");
 
@@ -752,7 +760,7 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
     }
 
     DrvInfos elems;
-    queryInstSources(*globals.state, globals.instSource, opArgs, elems, true);
+    queryInstSources(*state, globals.instSource, opArgs, elems, true);
 
     if (elems.size() != 1)
         throw Error("--set requires exactly one derivation");
@@ -762,7 +770,7 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
     if (globals.forceName != "")
         drv.setName(globals.forceName);
 
-    auto drvPath = drv.queryDrvPath(*globals.state);
+    auto drvPath = drv.queryDrvPath(*state);
     std::vector<DerivedPath> paths {
         drvPath
         ? (DerivedPath) (DerivedPath::Built {
@@ -770,7 +778,7 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
             .outputs = OutputsSpec::All { },
         })
         : (DerivedPath) (DerivedPath::Opaque {
-            .path = drv.queryOutPath(*globals.state),
+            .path = drv.queryOutPath(*state),
         }),
     };
     printMissing(globals.state->store, paths);
@@ -781,7 +789,7 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
     Path generation = createGeneration(
         *store2,
         globals.profile,
-        drv.queryOutPath(*globals.state));
+        drv.queryOutPath(*state));
     switchLink(globals.profile, generation);
 }
 
@@ -789,10 +797,12 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
 static void uninstallDerivations(Globals & globals, Strings & selectors,
     Path & profile)
 {
+    auto state = globals.state;
+
     while (true) {
         auto lockToken = optimisticLockProfile(profile);
 
-        DrvInfos workingElems = queryInstalled(*globals.state, profile);
+        DrvInfos workingElems = queryInstalled(*state, profile);
 
         for (auto & selector : selectors) {
             DrvInfos::iterator split = workingElems.begin();
@@ -800,16 +810,16 @@ static void uninstallDerivations(Globals & globals, Strings & selectors,
                 StorePath selectorStorePath = globals.state->store->followLinksToStorePath(selector);
                 split = std::partition(
                     workingElems.begin(), workingElems.end(),
-                    [&selectorStorePath, globals](auto &elem) {
-                        return selectorStorePath != elem.queryOutPath(*globals.state);
+                    [&selectorStorePath, &state](auto &elem) {
+                        return selectorStorePath != elem.queryOutPath(*state);
                     }
                 );
             } else {
                 DrvName selectorName(selector);
                 split = std::partition(
                     workingElems.begin(), workingElems.end(),
-                    [&selectorName, &globals](auto &elem){
-                        DrvName elemName(elem.queryName(*globals.state));
+                    [&selectorName, &state](auto &elem){
+                        DrvName elemName(elem.queryName(*state));
                         return !selectorName.matches(elemName);
                     }
                 );
@@ -817,14 +827,14 @@ static void uninstallDerivations(Globals & globals, Strings & selectors,
             if (split == workingElems.end())
                 warn("selector '%s' matched no installed derivations", selector);
             for (auto removedElem = split; removedElem != workingElems.end(); removedElem++) {
-                printInfo("uninstalling '%s'", removedElem->queryName(*globals.state));
+                printInfo("uninstalling '%s'", removedElem->queryName(*state));
             }
             workingElems.erase(split, workingElems.end());
         }
 
         if (globals.dryRun) return;
 
-        if (createUserEnv(*globals.state, workingElems,
+        if (createUserEnv(*state, workingElems,
                 profile, settings.envKeepDerivations, lockToken)) break;
     }
 }
@@ -928,7 +938,7 @@ static VersionDiff compareVersionAgainstSet(
 }
 
 
-static void queryJSON(Globals & globals, std::vector<DrvInfo> & elems, bool printOutPath, bool printDrvPath, bool printMeta)
+static void queryJSON(EvalState & state, Globals & globals, std::vector<DrvInfo> & elems, bool printOutPath, bool printDrvPath, bool printMeta)
 {
     using nlohmann::json;
     json topObj = json::object();
@@ -937,18 +947,18 @@ static void queryJSON(Globals & globals, std::vector<DrvInfo> & elems, bool prin
             if (i.hasFailed()) continue;
 
 
-            auto drvName = DrvName(i.queryName(*globals.state));
+            auto drvName = DrvName(i.queryName(state));
             json &pkgObj = topObj[i.attrPath];
             pkgObj = {
                 {"name", drvName.fullName},
                 {"pname", drvName.name},
                 {"version", drvName.version},
-                {"system", i.querySystem(*globals.state)},
-                {"outputName", i.queryOutputName(*globals.state)},
+                {"system", i.querySystem(state)},
+                {"outputName", i.queryOutputName(state)},
             };
 
             {
-                DrvInfo::Outputs outputs = i.queryOutputs(*globals.state, printOutPath);
+                DrvInfo::Outputs outputs = i.queryOutputs(state, printOutPath);
                 json &outputObj = pkgObj["outputs"];
                 outputObj = json::object();
                 for (auto & j : outputs) {
@@ -960,37 +970,29 @@ static void queryJSON(Globals & globals, std::vector<DrvInfo> & elems, bool prin
             }
 
             if (printDrvPath) {
-                auto drvPath = i.queryDrvPath(*globals.state);
+                auto drvPath = i.queryDrvPath(state);
                 if (drvPath) pkgObj["drvPath"] = globals.state->store->printStorePath(*drvPath);
             }
 
             if (printMeta) {
                 json &metaObj = pkgObj["meta"];
                 metaObj = json::object();
-                StringSet metaNames = i.queryMetaNames(*globals.state);
+                StringSet metaNames = i.queryMetaNames(state);
                 for (auto & j : metaNames) {
-                    Value * v = i.queryMeta(*globals.state, j);
+                    Value * v = i.queryMeta(state, j);
                     if (!v) {
-                        printError(
-                            "derivation '%s' has invalid meta attribute '%s'",
-                            i.queryName(*globals.state),
-                            j
-                        );
+                        printError("derivation '%s' has invalid meta attribute '%s'", i.queryName(state), j);
                         metaObj[j] = nullptr;
                     } else {
                         NixStringContext context;
-                        metaObj[j] = printValueAsJSON(*globals.state, true, *v, noPos, context);
+                        metaObj[j] = printValueAsJSON(state, true, *v, noPos, context);
                     }
                 }
             }
         } catch (AssertionError & e) {
-            printMsg(
-                lvlTalkative,
-                "skipping derivation named '%1%' which gives an assertion failure",
-                i.queryName(*globals.state)
-            );
+            printMsg(lvlTalkative, "skipping derivation named '%1%' which gives an assertion failure", i.queryName(state));
         } catch (Error & e) {
-            e.addTrace(nullptr, "while querying the derivation named '%1%'", i.queryName(*globals.state));
+            e.addTrace(nullptr, "while querying the derivation named '%1%'", i.queryName(state));
             throw;
         }
     }
@@ -1001,6 +1003,7 @@ static void queryJSON(Globals & globals, std::vector<DrvInfo> & elems, bool prin
 static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
 {
     auto & store { *globals.state->store };
+    auto state = globals.state;
 
     Strings remaining;
     std::string attrPath;
@@ -1049,14 +1052,14 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
     DrvInfos availElems, installedElems;
 
     if (source == sInstalled || compareVersions || printStatus)
-        installedElems = queryInstalled(*globals.state, globals.profile);
+        installedElems = queryInstalled(*state, globals.profile);
 
     if (source == sAvailable || compareVersions)
-        loadDerivations(*globals.state, *globals.instSource.nixExprPath,
+        loadDerivations(*state, *globals.instSource.nixExprPath,
             globals.instSource.systemFilter, *globals.instSource.autoArgs,
             attrPath, availElems);
 
-    DrvInfos elems_ = filterBySelector(*globals.state,
+    DrvInfos elems_ = filterBySelector(*state,
         source == sInstalled ? installedElems : availElems,
         opArgs, false);
 
@@ -1067,9 +1070,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
     /* !!! */
     std::vector<DrvInfo> elems;
     for (auto & i : elems_) elems.push_back(i);
-    sort(elems.begin(), elems.end(), [&](auto & a, auto & b) {
-        return cmpElemByName(*globals.state, a, b);
-    });
+    sort(elems.begin(), elems.end(), [&] (auto& a, auto& b) { return cmpElemByName(*state, a, b); });
 
     /* We only need to know the installed paths when we are querying
        the status of the derivation. */
@@ -1077,7 +1078,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
 
     if (printStatus)
         for (auto & i : installedElems)
-            installed.insert(i.queryOutPath(*globals.state));
+            installed.insert(i.queryOutPath(*state));
 
 
     /* Query which paths have substitutes. */
@@ -1087,13 +1088,9 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
         StorePathSet paths;
         for (auto & i : elems)
             try {
-                paths.insert(i.queryOutPath(*globals.state));
+                paths.insert(i.queryOutPath(*state));
             } catch (AssertionError & e) {
-                printMsg(
-                    lvlTalkative,
-                    "skipping derivation named '%s' which gives an assertion failure",
-                    i.queryName(*globals.state)
-                );
+                printMsg(lvlTalkative, "skipping derivation named '%s' which gives an assertion failure", i.queryName(*state));
                 i.setFailed();
             }
         validPaths = store.queryValidPaths(paths);
@@ -1103,7 +1100,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
 
     /* Print the desired columns, or XML output. */
     if (jsonOutput) {
-        queryJSON(globals, elems, printOutPath, printDrvPath, printMeta);
+        queryJSON(*state, globals, elems, printOutPath, printDrvPath, printMeta);
         cout << '\n';
         return;
     }
@@ -1122,8 +1119,8 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
             //Activity act(*logger, lvlDebug, "outputting query result '%1%'", i.attrPath);
 
             if (globals.prebuiltOnly &&
-                !validPaths.count(i.queryOutPath(*globals.state)) &&
-                !substitutablePaths.count(i.queryOutPath(*globals.state)))
+                !validPaths.count(i.queryOutPath(*state)) &&
+                !substitutablePaths.count(i.queryOutPath(*state)))
                 continue;
 
             /* For table output. */
@@ -1133,7 +1130,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
             XMLAttrs attrs;
 
             if (printStatus) {
-                auto outPath = i.queryOutPath(*globals.state);
+                auto outPath = i.queryOutPath(*state);
                 bool hasSubs = substitutablePaths.count(outPath);
                 bool isInstalled = installed.count(outPath);
                 bool isValid = validPaths.count(outPath);
@@ -1154,12 +1151,12 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                 columns.push_back(i.attrPath);
 
             if (xmlOutput) {
-                auto drvName = DrvName(i.queryName(*globals.state));
+                auto drvName = DrvName(i.queryName(*state));
                 attrs["name"] = drvName.fullName;
                 attrs["pname"] = drvName.name;
                 attrs["version"] = drvName.version;
             } else if (printName) {
-                columns.push_back(i.queryName(*globals.state));
+                columns.push_back(i.queryName(*state));
             }
 
             if (compareVersions) {
@@ -1168,7 +1165,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                    elements, or the set of installed elements.  !!!
                    This is O(N * M), should be O(N * lg M). */
                 std::string version;
-                VersionDiff diff = compareVersionAgainstSet(*globals.state, i, otherElems, version);
+                VersionDiff diff = compareVersionAgainstSet(*state, i, otherElems, version);
 
                 char ch;
                 switch (diff) {
@@ -1193,13 +1190,13 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
             }
 
             if (xmlOutput) {
-                if (i.querySystem(*globals.state) != "") attrs["system"] = i.querySystem(*globals.state);
+                if (i.querySystem(*state) != "") attrs["system"] = i.querySystem(*state);
             }
             else if (printSystem)
-                columns.push_back(i.querySystem(*globals.state));
+                columns.push_back(i.querySystem(*state));
 
             if (printDrvPath) {
-                auto drvPath = i.queryDrvPath(*globals.state);
+                auto drvPath = i.queryDrvPath(*state);
                 if (xmlOutput) {
                     if (drvPath) attrs["drvPath"] = store.printStorePath(*drvPath);
                 } else
@@ -1207,10 +1204,10 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
             }
 
             if (xmlOutput)
-                attrs["outputName"] = i.queryOutputName(*globals.state);
+                attrs["outputName"] = i.queryOutputName(*state);
 
             if (printOutPath && !xmlOutput) {
-                DrvInfo::Outputs outputs = i.queryOutputs(*globals.state);
+                DrvInfo::Outputs outputs = i.queryOutputs(*state);
                 std::string s;
                 for (auto & j : outputs) {
                     if (!s.empty()) s += ';';
@@ -1221,7 +1218,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
             }
 
             if (printDescription) {
-                auto descr = i.queryMetaString(*globals.state, "description");
+                auto descr = i.queryMetaString(*state, "description");
                 if (xmlOutput) {
                     if (descr != "") attrs["description"] = descr;
                 } else
@@ -1230,7 +1227,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
 
             if (xmlOutput) {
                 XMLOpenElement item(xml, "item", attrs);
-                DrvInfo::Outputs outputs = i.queryOutputs(*globals.state, printOutPath);
+                DrvInfo::Outputs outputs = i.queryOutputs(*state, printOutPath);
                 for (auto & j : outputs) {
                     XMLAttrs attrs2;
                     attrs2["name"] = j.first;
@@ -1239,15 +1236,15 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                     xml.writeEmptyElement("output", attrs2);
                 }
                 if (printMeta) {
-                    StringSet metaNames = i.queryMetaNames(*globals.state);
+                    StringSet metaNames = i.queryMetaNames(*state);
                     for (auto & j : metaNames) {
                         XMLAttrs attrs2;
                         attrs2["name"] = j;
-                        Value * v = i.queryMeta(*globals.state, j);
+                        Value * v = i.queryMeta(*state, j);
                         if (!v)
                             printError(
                                 "derivation '%s' has invalid meta attribute '%s'",
-                                i.queryName(*globals.state), j);
+                                i.queryName(*state), j);
                         else {
                             if (v->type() == nString) {
                                 attrs2["type"] = "string";
@@ -1296,13 +1293,9 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
             cout.flush();
 
         } catch (AssertionError & e) {
-            printMsg(
-                lvlTalkative,
-                "skipping derivation named '%1%' which gives an assertion failure",
-                i.queryName(*globals.state)
-            );
+            printMsg(lvlTalkative, "skipping derivation named '%1%' which gives an assertion failure", i.queryName(*state));
         } catch (Error & e) {
-            e.addTrace(nullptr, "while querying the derivation named '%1%'", i.queryName(*globals.state));
+            e.addTrace(nullptr, "while querying the derivation named '%1%'", i.queryName(*state));
             throw;
         }
     }

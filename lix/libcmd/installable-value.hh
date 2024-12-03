@@ -70,9 +70,14 @@ struct ExtraPathInfoValue : ExtraPathInfo
  */
 struct InstallableValue : Installable
 {
+    ref<eval_cache::CachingEvalState> evaluator;
     ref<eval_cache::CachingEvalState> state;
 
-    InstallableValue(ref<eval_cache::CachingEvalState> state) : state(state) {}
+    InstallableValue(ref<eval_cache::CachingEvalState> evaluator)
+        : evaluator(evaluator)
+        , state(evaluator)
+    {
+    }
 
     virtual ~InstallableValue() { }
 

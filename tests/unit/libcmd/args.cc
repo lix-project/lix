@@ -31,25 +31,24 @@ TEST(Arguments, lookupFileArg) {
     searchPath.elements.push_back(SearchPath::Elem::parse(searchPathElem));
 
     auto store = openStore("dummy://");
-    auto statePtr = std::make_shared<EvalState>(searchPath, store, store);
-    auto & state = *statePtr;
+    auto state = std::make_shared<EvalState>(searchPath, store, store);
 
-    SourcePath const foundUnitData = lookupFileArg(state, "<example>");
+    SourcePath const foundUnitData = lookupFileArg(*state, "<example>");
     EXPECT_EQ(foundUnitData.path, canonDataPath);
 
     // lookupFileArg should not resolve <search paths> if anything else is before or after it.
-    SourcePath const yepEvenSpaces = lookupFileArg(state, " <example>");
+    SourcePath const yepEvenSpaces = lookupFileArg(*state, " <example>");
     EXPECT_EQ(yepEvenSpaces.path, CanonPath::fromCwd(" <example>"));
-    EXPECT_EQ(lookupFileArg(state, "<example>/nixos").path, CanonPath::fromCwd("<example>/nixos"));
+    EXPECT_EQ(lookupFileArg(*state, "<example>/nixos").path, CanonPath::fromCwd("<example>/nixos"));
 
     try {
-        lookupFileArg(state, INVALID_CHANNEL);
+        lookupFileArg(*state, INVALID_CHANNEL);
     } catch (FileTransferError const & ex) {
         std::string_view const msg(ex.what());
         EXPECT_NE(msg.find(CHANNEL_URL), msg.npos);
     }
 
-    SourcePath const normalFile = lookupFileArg(state, unitDataPath);
+    SourcePath const normalFile = lookupFileArg(*state, unitDataPath);
     EXPECT_EQ(normalFile.path, canonDataPath);
 }
 

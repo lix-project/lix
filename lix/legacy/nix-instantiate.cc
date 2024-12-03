@@ -157,16 +157,17 @@ static int main_nix_instantiate(std::string programName, Strings argv)
         auto store = openStore();
         auto evalStore = myArgs.evalStoreUrl ? openStore(*myArgs.evalStoreUrl) : store;
 
-        auto state = std::make_unique<EvalState>(myArgs.searchPath, evalStore, store);
-        state->repair = myArgs.repair;
+        auto evaluator = std::make_unique<EvalState>(myArgs.searchPath, evalStore, store);
+        auto & state = evaluator;
+        evaluator->repair = myArgs.repair;
 
-        Bindings & autoArgs = *myArgs.getAutoArgs(*state);
+        Bindings & autoArgs = *myArgs.getAutoArgs(*evaluator);
 
         if (attrPaths.empty()) attrPaths = {""};
 
         if (findFile) {
             for (auto & i : files) {
-                auto p = state->paths.findFile(i);
+                auto p = evaluator->paths.findFile(i);
                 if (auto fn = p.getPhysicalPath())
                     std::cout << fn->abs() << std::endl;
                 else
@@ -176,7 +177,7 @@ static int main_nix_instantiate(std::string programName, Strings argv)
         }
 
         if (readStdin) {
-            Expr & e = state->parseStdin();
+            Expr & e = evaluator->parseStdin();
             processExpr(*state, attrPaths, parseOnly, strict, autoArgs,
                 evalOnly, outputKind, xmlOutputSourceLocation, e);
         } else if (files.empty() && !fromArgs)
@@ -184,13 +185,13 @@ static int main_nix_instantiate(std::string programName, Strings argv)
 
         for (auto & i : files) {
             Expr & e = fromArgs
-                ? state->parseExprFromString(i, CanonPath::fromCwd())
-                : state->parseExprFromFile(resolveExprPath(state->paths.checkSourcePath(lookupFileArg(*state, i))));
+                ? evaluator->parseExprFromString(i, CanonPath::fromCwd())
+                : evaluator->parseExprFromFile(resolveExprPath(evaluator->paths.checkSourcePath(lookupFileArg(*evaluator, i))));
             processExpr(*state, attrPaths, parseOnly, strict, autoArgs,
                 evalOnly, outputKind, xmlOutputSourceLocation, e);
         }
 
-        state->maybePrintStats();
+        evaluator->maybePrintStats();
 
         return 0;
     }

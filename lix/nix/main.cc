@@ -254,25 +254,26 @@ static void showHelp(std::vector<std::string> subcommand, NixArgs & toplevel)
 
     evalSettings.restrictEval.override(false);
     evalSettings.pureEval.override(false);
-    EvalState state({}, openStore("dummy://"));
+    EvalState evaluator({}, openStore("dummy://"));
+    auto * state = &evaluator;
 
-    auto vGenerateManpage = state.mem.allocValue();
-    state.eval(state.parseExprFromString(
+    auto vGenerateManpage = evaluator.mem.allocValue();
+    state->eval(evaluator.parseExprFromString(
         #include "generate-manpage.nix.gen.hh"
         , CanonPath::root), *vGenerateManpage);
 
-    auto vDump = state.mem.allocValue();
+    auto vDump = evaluator.mem.allocValue();
     vDump->mkString(toplevel.dumpCli());
 
-    auto vRes = state.mem.allocValue();
-    state.callFunction(*vGenerateManpage, state.builtins.get("false"), *vRes, noPos);
-    state.callFunction(*vRes, *vDump, *vRes, noPos);
+    auto vRes = evaluator.mem.allocValue();
+    state->callFunction(*vGenerateManpage, evaluator.builtins.get("false"), *vRes, noPos);
+    state->callFunction(*vRes, *vDump, *vRes, noPos);
 
-    auto attr = vRes->attrs->get(state.symbols.create(mdName + ".md"));
+    auto attr = vRes->attrs->get(evaluator.symbols.create(mdName + ".md"));
     if (!attr)
         throw UsageError("`nix` has no subcommand '%s'", concatStringsSep("", subcommand));
 
-    auto markdown = state.forceString(*attr->value, noPos, "while evaluating the lowdown help text");
+    auto markdown = state->forceString(*attr->value, noPos, "while evaluating the lowdown help text");
 
     RunPager pager;
     std::cout << renderMarkdownToTerminal(markdown) << "\n";

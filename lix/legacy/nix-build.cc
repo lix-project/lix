@@ -198,15 +198,16 @@ static void main_nix_build(std::string programName, Strings argv)
     auto store = openStore();
     auto evalStore = myArgs.evalStoreUrl ? openStore(*myArgs.evalStoreUrl) : store;
 
-    auto state = std::make_unique<EvalState>(myArgs.searchPath, evalStore, store);
-    state->repair = myArgs.repair;
+    auto evaluator = std::make_unique<EvalState>(myArgs.searchPath, evalStore, store);
+    evaluator->repair = myArgs.repair;
+    auto & state = evaluator;
     if (myArgs.repair) buildMode = bmRepair;
 
-    auto autoArgs = myArgs.getAutoArgs(*state);
+    auto autoArgs = myArgs.getAutoArgs(*evaluator);
 
     auto autoArgsWithInNixShell = autoArgs;
     if (runEnv) {
-        auto newArgs = state->buildBindings(autoArgsWithInNixShell->size() + 1);
+        auto newArgs = evaluator->buildBindings(autoArgsWithInNixShell->size() + 1);
         newArgs.alloc("inNixShell").mkBool(true);
         for (auto & i : *autoArgs) newArgs.insert(i);
         autoArgsWithInNixShell = newArgs.finish();
@@ -236,11 +237,11 @@ static void main_nix_build(std::string programName, Strings argv)
     std::vector<std::reference_wrapper<Expr>> exprs;
 
     if (readStdin)
-        exprs = {state->parseStdin()};
+        exprs = {evaluator->parseStdin()};
     else
         for (auto i : left) {
             if (fromArgs)
-                exprs.push_back(state->parseExprFromString(std::move(i), CanonPath::fromCwd()));
+                exprs.push_back(evaluator->parseExprFromString(std::move(i), CanonPath::fromCwd()));
             else {
                 auto absolute = i;
                 try {
@@ -252,7 +253,7 @@ static void main_nix_build(std::string programName, Strings argv)
                 else
                     /* If we're in a #! script, interpret filenames
                        relative to the script. */
-                    exprs.push_back(state->parseExprFromFile(resolveExprPath(state->paths.checkSourcePath(lookupFileArg(*state,
+                    exprs.push_back(evaluator->parseExprFromFile(resolveExprPath(evaluator->paths.checkSourcePath(lookupFileArg(*evaluator,
                                         inShebang && !packages ? absPath(i, absPath(dirOf(script))) : i)))));
             }
         }
@@ -272,7 +273,7 @@ static void main_nix_build(std::string programName, Strings argv)
             bool add = false;
             if (v.type() == nFunction && v.lambda.fun->hasFormals()) {
                 for (auto & i : v.lambda.fun->formals->formals) {
-                    if (state->symbols[i.name] == "inNixShell") {
+                    if (evaluator->symbols[i.name] == "inNixShell") {
                         add = true;
                         break;
                     }
@@ -300,7 +301,7 @@ static void main_nix_build(std::string programName, Strings argv)
         }
     }
 
-    state->maybePrintStats();
+    evaluator->maybePrintStats();
 
     auto buildPaths = [&](const std::vector<DerivedPath> & paths) {
         /* Note: we do this even when !printMissing to efficiently
@@ -336,7 +337,7 @@ static void main_nix_build(std::string programName, Strings argv)
         if (!shell) {
 
             try {
-                auto & expr = state->parseExprFromString(
+                auto & expr = evaluator->parseExprFromString(
                     "(import <nixpkgs> {}).bashInteractive",
                     CanonPath::fromCwd());
 

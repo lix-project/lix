@@ -158,7 +158,7 @@ std::pair<Value *, PosIdx> InstallableFlake::toValue()
 std::vector<ref<eval_cache::AttrCursor>>
 InstallableFlake::getCursors()
 {
-    auto evalCache = openEvalCache(*state, getLockedFlake());
+    auto evalCache = openEvalCache(*evaluator, getLockedFlake());
 
     auto root = evalCache->getRoot();
 

@@ -288,10 +288,11 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         auto [res, content] = getFileTransfer()->download(storePathsUrl);
         auto data = content->drain();
 
-        auto state = std::make_unique<EvalState>(SearchPath{}, store);
-        auto v = state->mem.allocValue();
-        state->eval(state->parseExprFromString(data, CanonPath("/no-such-path")), *v);
-        Bindings & bindings(*state->mem.allocBindings(0));
+        auto evaluator = std::make_unique<EvalState>(SearchPath{}, store);
+        auto & state = evaluator;
+        auto v = evaluator->mem.allocValue();
+        state->eval(evaluator->parseExprFromString(data, CanonPath("/no-such-path")), *v);
+        Bindings & bindings(*evaluator->mem.allocBindings(0));
         auto v2 = findAlongAttrPath(*state, settings.thisSystem, bindings, *v).first;
 
         return store->parseStorePath(state->forceString(*v2, noPos, "while evaluating the path tho latest nix version"));

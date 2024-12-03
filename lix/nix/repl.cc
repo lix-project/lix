@@ -63,7 +63,8 @@ struct CmdRepl : RawInstallablesCommand
 
     void run(ref<Store> store, std::vector<std::string> && rawInstallables) override
     {
-        auto state = getEvalState();
+        auto evaluator = getEvalState();
+        auto state = evaluator;
         auto getValues = [&]()->AbstractNixRepl::AnnotatedValues{
             auto installables = parseInstallables(store, rawInstallables);
             AbstractNixRepl::AnnotatedValues values;
@@ -74,8 +75,8 @@ struct CmdRepl : RawInstallablesCommand
                     auto [val, pos] = installable.toValue();
                     auto what = installable.what();
                     state->forceValue(*val, pos);
-                    auto autoArgs = getAutoArgs(*state);
-                    auto valPost = state->mem.allocValue();
+                    auto autoArgs = getAutoArgs(*evaluator);
+                    auto valPost = evaluator->mem.allocValue();
                     state->autoCallFunction(*autoArgs, *val, *valPost);
                     state->forceValue(*valPost, pos);
                     values.push_back( {valPost, what });
@@ -86,7 +87,7 @@ struct CmdRepl : RawInstallablesCommand
             }
             return values;
         };
-        AbstractNixRepl::run(searchPath, openStore(), *state, getValues, {}, getAutoArgs(*state));
+        AbstractNixRepl::run(searchPath, openStore(), *state, getValues, {}, getAutoArgs(*evaluator));
     }
 };
 

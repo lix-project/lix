@@ -23,12 +23,13 @@ namespace nix {
         protected:
             LibExprTest()
                 : LibStoreTest()
-                , state({}, store)
+                , evaluator({}, store)
+                , state(evaluator)
             {
             }
             Value eval(std::string input, bool forceValue = true, const FeatureSettings & fSettings = featureSettings) {
                 Value v;
-                Expr & e = state.parseExprFromString(input, CanonPath::root, fSettings);
+                Expr & e = evaluator.parseExprFromString(input, CanonPath::root, fSettings);
                 state.eval(e, v);
                 if (forceValue)
                     state.forceValue(v, noPos);
@@ -36,10 +37,11 @@ namespace nix {
             }
 
             Symbol createSymbol(const char * value) {
-                return state.symbols.create(value);
+                return evaluator.symbols.create(value);
             }
 
-            EvalState state;
+            EvalState evaluator;
+            EvalState & state;
     };
 
     MATCHER(IsListType, "") {

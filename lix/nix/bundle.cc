@@ -73,7 +73,8 @@ struct CmdBundle : InstallableCommand
 
     void run(ref<Store> store, ref<Installable> installable) override
     {
-        auto evalState = getEvalState();
+        auto evaluator = getEvalState();
+        auto evalState = evaluator;
 
         auto const installableValue = InstallableValue::require(installable);
 
@@ -82,7 +83,7 @@ struct CmdBundle : InstallableCommand
         auto [bundlerFlakeRef, bundlerName, extendedOutputsSpec] = parseFlakeRefWithFragmentAndExtendedOutputsSpec(bundler, absPath("."));
         const flake::LockFlags lockFlags{ .writeLockFile = false };
         InstallableFlake bundler{this,
-            evalState, std::move(bundlerFlakeRef), bundlerName, std::move(extendedOutputsSpec),
+            evaluator, std::move(bundlerFlakeRef), bundlerName, std::move(extendedOutputsSpec),
             {"bundlers." + settings.thisSystem.get() + ".default",
              "defaultBundler." + settings.thisSystem.get()
             },
@@ -90,20 +91,20 @@ struct CmdBundle : InstallableCommand
             lockFlags
         };
 
-        auto vRes = evalState->mem.allocValue();
+        auto vRes = evaluator->mem.allocValue();
         evalState->callFunction(*bundler.toValue().first, *val, *vRes, noPos);
 
         if (!evalState->isDerivation(*vRes))
             throw Error("the bundler '%s' does not produce a derivation", bundler.what());
 
-        auto attr1 = vRes->attrs->get(evalState->s.drvPath);
+        auto attr1 = vRes->attrs->get(evaluator->s.drvPath);
         if (!attr1)
             throw Error("the bundler '%s' does not produce a derivation", bundler.what());
 
         NixStringContext context2;
         auto drvPath = evalState->coerceToStorePath(attr1->pos, *attr1->value, context2, "");
 
-        auto attr2 = vRes->attrs->get(evalState->s.outPath);
+        auto attr2 = vRes->attrs->get(evaluator->s.outPath);
         if (!attr2)
             throw Error("the bundler '%s' does not produce a derivation", bundler.what());
 
@@ -119,7 +120,7 @@ struct CmdBundle : InstallableCommand
         auto outPathS = store->printStorePath(outPath);
 
         if (!outLink) {
-            auto * attr = vRes->attrs->get(evalState->s.name);
+            auto * attr = vRes->attrs->get(evaluator->s.name);
             if (!attr)
                 throw Error("attribute 'name' missing");
             outLink = evalState->forceStringNoCtx(*attr->value, attr->pos, "");

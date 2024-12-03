@@ -27,7 +27,8 @@ struct CmdEdit : InstallableCommand
 
     void run(ref<Store> store, ref<Installable> installable) override
     {
-        auto state = getEvalState();
+        auto evaluator = getEvalState();
+        auto state = evaluator;
 
         auto const installableValue = InstallableValue::require(installable);
 
