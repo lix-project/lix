@@ -48,20 +48,20 @@ static_assert(sizeof(Attr) == 2 * sizeof(uint32_t) + sizeof(Value *),
 class Bindings
 {
 public:
-    typedef uint32_t size_t;
+    using Size = uint32_t;
     PosIdx pos;
 
     static Bindings EMPTY;
 
 private:
-    size_t size_, capacity_;
+    Size size_, capacity_;
     Attr attrs[0];
 
-    Bindings(size_t capacity) : size_(0), capacity_(capacity) { }
+    Bindings(Size capacity) : size_(0), capacity_(capacity) { }
     Bindings(const Bindings & bindings) = delete;
 
 public:
-    size_t size() const { return size_; }
+    Size size() const { return size_; }
 
     bool empty() const { return !size_; }
 
@@ -92,14 +92,14 @@ public:
     iterator begin() { return &attrs[0]; }
     iterator end() { return &attrs[size_]; }
 
-    Attr & operator[](size_t pos)
+    Attr & operator[](Size pos)
     {
         return attrs[pos];
     }
 
     void sort();
 
-    size_t capacity() { return capacity_; }
+    Size capacity() { return capacity_; }
 
     /**
      * Returns the attributes in lexicographically sorted order.
@@ -108,7 +108,7 @@ public:
     {
         std::vector<const Attr *> res;
         res.reserve(size_);
-        for (size_t n = 0; n < size_; n++)
+        for (Size n = 0; n < size_; n++)
             res.emplace_back(&attrs[n]);
         std::sort(res.begin(), res.end(), [&](const Attr * a, const Attr * b) {
             std::string_view sa = symbols[a->name], sb = symbols[b->name];

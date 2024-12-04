@@ -17,11 +17,11 @@ Bindings * EvalMemory::allocBindings(size_t capacity)
 {
     if (capacity == 0)
         return &Bindings::EMPTY;
-    if (capacity > std::numeric_limits<Bindings::size_t>::max())
+    if (capacity > std::numeric_limits<Bindings::Size>::max())
         throw Error("attribute set of size %d is too big", capacity);
     stats.nrAttrsets++;
     stats.nrAttrsInAttrsets += capacity;
-    return new (gcAllocBytes(sizeof(Bindings) + sizeof(Attr) * capacity)) Bindings((Bindings::size_t) capacity);
+    return new (gcAllocBytes(sizeof(Bindings) + sizeof(Attr) * capacity)) Bindings((Bindings::Size) capacity);
 }
 
 
