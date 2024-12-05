@@ -2,6 +2,7 @@
   pkgs,
   lib,
   stdenv,
+  apple-sdk_11,
   aws-sdk-cpp,
   # If the patched version of Boehm isn't passed, then patch it based off of
   # pkgs.boehmgc. This allows `callPackage`ing this file without needing to
@@ -306,6 +307,9 @@ stdenv.mkDerivation (finalAttrs: {
       libseccomp
       busybox-sandbox-shell
     ]
+    ++ lib.optionals (
+      stdenv.hostPlatform.isDarwin && lib.versionOlder stdenv.hostPlatform.darwinSdkVersion "11.0"
+    ) [ apple-sdk_11 ]
     ++ lib.optional internalApiDocs rapidcheck
     ++ lib.optional hostPlatform.isx86_64 libcpuid
     # There have been issues building these dependencies
