@@ -212,9 +212,7 @@ void SourceExprCommand::completeInstallable(EvalState & state, AddCompletions & 
         if (file) {
             completions.setType(AddCompletions::Type::Attrs);
 
-            evalSettings.pureEval.override(false);
             auto evaluator = getEvaluator();
-            evaluator->paths.allowedPaths.reset();
 
             Expr & e = evaluator->parseExprFromFile(
                 resolveExprPath(evaluator->paths.checkSourcePath(lookupFileArg(*evaluator, *file)))
@@ -427,6 +425,16 @@ ref<eval_cache::EvalCache> openEvalCache(
     }
 }
 
+ref<eval_cache::CachingEvaluator> SourceExprCommand::getEvaluator()
+{
+    // FIXME: backward compatibility hack
+    if (file) {
+        evalSettings.pureEval.override(false);
+    }
+
+    return EvalCommand::getEvaluator();
+}
+
 Installables SourceExprCommand::parseInstallables(
     EvalState & state, ref<Store> store, std::vector<std::string> ss)
 {
@@ -435,12 +443,6 @@ Installables SourceExprCommand::parseInstallables(
     if (file || expr) {
         if (file && expr)
             throw UsageError("'--file' and '--expr' are exclusive");
-
-        // FIXME: backward compatibility hack
-        if (file) {
-            evalSettings.pureEval.override(false);
-            getEvaluator()->paths.allowedPaths.reset();
-        }
 
         auto evaluator = getEvaluator();
         auto vFile = evaluator->mem.allocValue();
