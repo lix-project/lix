@@ -4,6 +4,7 @@ import subprocess
 from typing import Any
 from pathlib import Path
 from functools import partial, partialmethod
+from functional2.testlib.terminal_code_eater import eat_terminal_codes
 import dataclasses
 
 
@@ -32,6 +33,26 @@ class CommandResult:
                                                 stderr=self.stderr,
                                                 output=self.stdout)
         return self
+
+    @property
+    def stdout_s(self) -> str:
+        """Command stdout as str"""
+        return self.stdout.decode('utf-8', errors='replace')
+
+    @property
+    def stderr_s(self) -> str:
+        """Command stderr as str"""
+        return self.stderr.decode('utf-8', errors='replace')
+
+    @property
+    def stdout_plain(self) -> str:
+        """Command stderr as str with terminal escape sequences eaten and whitespace stripped"""
+        return eat_terminal_codes(self.stdout).decode('utf-8', errors='replace').strip()
+
+    @property
+    def stderr_plain(self) -> str:
+        """Command stderr as str with terminal escape sequences eaten and whitespace stripped"""
+        return eat_terminal_codes(self.stderr).decode('utf-8', errors='replace').strip()
 
     def json(self) -> Any:
         self.ok()

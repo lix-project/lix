@@ -1,3 +1,4 @@
+// this file has a hissing snake twin in functional2/testlib/terminal_code_eater.py
 #include "terminal-code-eater.hh"
 #include "lix/libutil/escape-char.hh"
 #include <assert.h>
@@ -39,6 +40,8 @@ void TerminalCodeEater::feed(char c, std::function<void(char)> on_char)
         case '[':
             transition(State::InCSIParams);
             return;
+        // FIXME(jade): whatever this was, we do not know how to delimit it, so
+        // we just eat the next character and keep going
         default:
             transition(State::ExpectESC);
             return;
