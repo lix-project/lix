@@ -1,5 +1,6 @@
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libexpr/eval-inline.hh"
+#include "print-options.hh"
 #include <algorithm>
 #include <sstream>
 
@@ -96,12 +97,18 @@ std::pair<Value *, PosIdx> findAlongAttrPath(EvalState & state, const std::strin
                 throw Error("empty attribute name in selection path '%1%'", attrPath);
 
             if (v->type() != nAttrs) {
-                auto pathPart = std::vector<std::string>(tokens.begin(), tokens.begin() + attrPathIdx);
-                state.ctx.errors.make<TypeError>(
-                    "the value being indexed in the selection path '%1%' at '%2%' should be a set but is %3%",
-                    attrPath,
-                    unparseAttrPath(pathPart),
-                    showType(*v)).debugThrow();
+                auto pathPart =
+                    std::vector<std::string>(tokens.begin(), tokens.begin() + attrPathIdx);
+                state.ctx.errors
+                    .make<TypeError>(
+                        "the value being indexed in the selection path '%1%' at '%2%' should be a "
+                        "set but is %3%: %4%",
+                        attrPath,
+                        unparseAttrPath(pathPart),
+                        showType(*v),
+                        ValuePrinter(state, *v, errorPrintOptions)
+                    )
+                    .debugThrow();
             }
 
             Bindings::iterator a = v->attrs->find(state.ctx.symbols.create(attr));
@@ -111,21 +118,40 @@ std::pair<Value *, PosIdx> findAlongAttrPath(EvalState & state, const std::strin
                     attrNames.insert(state.ctx.symbols[attr.name]);
 
                 auto suggestions = Suggestions::bestMatches(attrNames, attr);
-                throw AttrPathNotFound(suggestions, "attribute '%1%' in selection path '%2%' not found", attr, attrPath);
+                auto pathPart =
+                    std::vector<std::string>(tokens.begin(), tokens.begin() + attrPathIdx);
+                throw AttrPathNotFound(
+                    suggestions,
+                    "attribute '%1%' in selection path '%2%' not found inside path '%3%', whose "
+                    "contents are: %4%",
+                    attr,
+                    attrPath,
+                    unparseAttrPath(pathPart),
+                    ValuePrinter(state, *v, errorPrintOptions)
+                );
             }
             v = &*a->value;
             pos = a->pos;
-        }
-
-        else {
-
-            if (!v->isList())
-                state.ctx.errors.make<TypeError>(
-                    "the expression selected by the selection path '%1%' should be a list but is %2%",
+        } else {
+            if (!v->isList()) {
+                state.ctx.errors
+                    .make<TypeError>(
+                        "the expression selected by the selection path '%1%' should be a list but "
+                        "is %2%: %3%",
+                        attrPath,
+                        showType(*v),
+                        ValuePrinter(state, *v, errorPrintOptions)
+                    )
+                    .debugThrow();
+            }
+            if (*attrIndex >= v->listSize()) {
+                throw AttrPathNotFound(
+                    "list index %1% in selection path '%2%' is out of range for list %3%",
+                    *attrIndex,
                     attrPath,
-                    showType(*v)).debugThrow();
-            if (*attrIndex >= v->listSize())
-                throw AttrPathNotFound("list index %1% in selection path '%2%' is out of range", *attrIndex, attrPath);
+                    ValuePrinter(state, *v, errorPrintOptions)
+                );
+            }
 
             v = v->listElems()[*attrIndex];
             pos = noPos;
