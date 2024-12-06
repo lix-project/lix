@@ -13,6 +13,7 @@
 
 #if HAVE_SECCOMP
 #include <linux/filter.h>
+#include <sys/syscall.h>
 #include <seccomp.h>
 #endif
 
