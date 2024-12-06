@@ -24,7 +24,6 @@
 #include <nlohmann/json_fwd.hpp>
 #include <lix/libutil/ref.hh>
 #include <lix/libstore/store-api.hh>
-#include <map>
 #include <condition_variable>
 #include <filesystem>
 #include <exception>
@@ -47,9 +46,8 @@ using namespace nlohmann;
 
 static MyArgs myArgs;
 
-typedef std::function<void(ref<EvalState> state, Bindings &autoArgs,
-                           AutoCloseFD &to, AutoCloseFD &from, MyArgs &args)>
-    Processor;
+using Processor = std::function<void(ref<nix::eval_cache::CachingEvaluator> state, Bindings &autoArgs,
+                           AutoCloseFD &to, AutoCloseFD &from, MyArgs &args)>;
 
 /* Auto-cleanup of fork's process and fds. */
 struct Proc {
@@ -70,10 +68,10 @@ struct Proc {
                     auto evalStore = myArgs.evalStoreUrl
                                          ? openStore(*myArgs.evalStoreUrl)
                                          : openStore();
-                    auto state = std::make_shared<EvalState>(myArgs.searchPath,
+                    auto evaluator = nix::make_ref<nix::eval_cache::CachingEvaluator>(myArgs.searchPath,
                                                              evalStore);
-                    Bindings &autoArgs = *myArgs.getAutoArgs(*state);
-                    proc(ref<EvalState>(state), autoArgs, *to, *from, myArgs);
+                    Bindings &autoArgs = *myArgs.getAutoArgs(*evaluator);
+                    proc(evaluator, autoArgs, *to, *from, myArgs);
                 } catch (Error &e) {
                     nlohmann::json err;
                     auto msg = e.msg();

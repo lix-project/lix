@@ -45,13 +45,13 @@ queryIsCached(nix::Store &store,
 Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
          MyArgs &args) {
 
-    auto localStore = state.store.dynamic_pointer_cast<nix::LocalFSStore>();
+    auto localStore = state.ctx.store.dynamic_pointer_cast<nix::LocalFSStore>();
 
     try {
         // CA derivations do not have static output paths, so we have to
         // defensively not query output paths in case we encounter one.
         for (auto &[outputName, optOutputPath] :
-             drvInfo.queryOutputs(!nix::experimentalFeatureSettings.isEnabled(
+             drvInfo.queryOutputs(state, !nix::experimentalFeatureSettings.isEnabled(
                  nix::Xp::CaDerivations))) {
             if (optOutputPath) {
                 outputs[outputName] =
@@ -63,18 +63,19 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
             }
         }
     } catch (const std::exception &e) {
-        throw nix::EvalError(state,
+        state.ctx.errors.make<nix::EvalError>(
             "derivation '%s' does not have valid outputs: %s",
-            attrPath, e.what());
+            attrPath, e.what()
+        ).debugThrow();
     }
 
     if (args.meta) {
         nlohmann::json meta_;
-        for (auto &metaName : drvInfo.queryMetaNames()) {
+        for (auto &metaName : drvInfo.queryMetaNames(state)) {
             nix::NixStringContext context;
             std::stringstream ss;
 
-            auto metaValue = drvInfo.queryMeta(metaName);
+            auto metaValue = drvInfo.queryMeta(state, metaName);
             // Skip non-serialisable types
             // TODO: Fix serialisation of derivations to store paths
             if (metaValue == 0) {
@@ -96,9 +97,9 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
         cacheStatus = Drv::CacheStatus::Unknown;
     }
 
-    drvPath = localStore->printStorePath(drvInfo.requireDrvPath());
+    drvPath = localStore->printStorePath(drvInfo.requireDrvPath(state));
 
-    auto drv = localStore->readDerivation(drvInfo.requireDrvPath());
+    auto drv = localStore->readDerivation(drvInfo.requireDrvPath(state));
     for (const auto &[inputDrvPath, inputNode] : drv.inputDrvs.map) {
         std::set<std::string> inputDrvOutputs;
         for (auto &outputName : inputNode.value) {
@@ -106,7 +107,7 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
         }
         inputDrvs[localStore->printStorePath(inputDrvPath)] = inputDrvOutputs;
     }
-    name = drvInfo.queryName();
+    name = drvInfo.queryName(state);
     system = drv.platform;
 }
 
