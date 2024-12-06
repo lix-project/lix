@@ -75,7 +75,6 @@ void Source::operator () (char * data, size_t len)
 
 void Source::drainInto(Sink & sink)
 {
-    std::string s;
     std::array<char, 8192> buf;
     while (true) {
         size_t n;
@@ -251,7 +250,7 @@ Error readError(Source & source)
     auto type = readString(source);
     assert(type == "Error");
     auto level = (Verbosity) readInt(source);
-    auto name = readString(source); // removed
+    readString(source); // removed (name)
     auto msg = readString(source);
     ErrorInfo info {
         .level = level,

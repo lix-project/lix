@@ -25,7 +25,7 @@ std::string hiliteMatches(
         out.append(s.substr(last_end, m.position() - last_end));
         // Merge continous matches
         ssize_t end = start + m.length();
-        while (++it != matches.end() && (*it).position() <= end) {
+        for (++it; it != matches.end() && (*it).position() <= end; ++it) {
             auto n = *it;
             ssize_t nend = start + (n.position() - start + n.length());
             if (nend > end)

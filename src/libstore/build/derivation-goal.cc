@@ -1212,7 +1212,7 @@ HookReply DerivationGoal::tryBuildHook()
     hook->toHook.writeSide.reset();
 
     /* Create the log file and pipe. */
-    Path logFile = openLogFile();
+    openLogFile();
 
     std::set<int> fds;
     fds.insert(hook->fromHook.readSide.get());

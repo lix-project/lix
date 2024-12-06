@@ -130,7 +130,7 @@ std::optional<std::string> readHeadCached(const std::string & actualUrl)
         // This function must behave the same way, so we return the expired
         // cached ref here.
         warn("could not get HEAD ref for repository '%s'; using expired cached ref '%s'", actualUrl, *cachedRef);
-        return *cachedRef;
+        return cachedRef;
     }
 
     return std::nullopt;

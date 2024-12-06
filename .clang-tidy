@@ -16,6 +16,8 @@ Checks:
   - -bugprone-unchecked-optional-access
     # many warnings, seems like a questionable lint
   - -bugprone-branch-clone
+    # extremely noisy before clang 19: https://github.com/llvm/llvm-project/issues/93959
+  - -bugprone-multi-level-implicit-pointer-conversion
     # all thrown exceptions must derive from std::exception
   - hicpp-exception-baseclass
     # capturing async lambdas are dangerous
@@ -33,3 +35,4 @@ Checks:
 
 CheckOptions:
   bugprone-reserved-identifier.AllowedIdentifiers: '__asan_default_options'
+  bugprone-unused-return-value.AllowCastToVoid: true
