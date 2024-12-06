@@ -26,8 +26,8 @@
 | Logical conjunction (`AND`)            | *bool* `&&` *bool*                         | left          | 12         |
 | Logical disjunction (`OR`)             | *bool* <code>\|\|</code> *bool*            | left          | 13         |
 | [Logical implication]                  | *bool* `->` *bool*                         | none          | 14         |
-| \[Experimental\] [Function piping]     | *expr* |> *func*                           | left          | 15         |
-| \[Experimental\] [Function piping]     | *expr* <| *func*                           | right         | 16         |
+| \[Experimental\] [Function piping]     | *expr* `\|>` *func*                        | left          | 15         |
+| \[Experimental\] [Function piping]     | *expr* `<\|` *func*                        | right         | 16         |
 
 [string]: ./values.md#type-string
 [path]: ./values.md#type-path
