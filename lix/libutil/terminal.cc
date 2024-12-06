@@ -34,7 +34,7 @@ bool shouldANSI(StandardOutputStream fileno)
 // FIXME(jade): replace with TerminalCodeEater. wowie this is evil code.
 std::string filterANSIEscapes(std::string_view s, bool filterAll, unsigned int width, bool eatTabs)
 {
-    std::string t, e;
+    std::string t;
     size_t w = 0;
     auto i = s.begin();
 

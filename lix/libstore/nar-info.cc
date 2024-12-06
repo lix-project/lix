@@ -120,7 +120,7 @@ std::string NarInfo::to_string(const Store & store) const
         res += "Sig: " + sig + "\n";
 
     if (ca)
-        res += "CA: " + renderContentAddress(*ca) + "\n";
+        res += "CA: " + renderContentAddress(ca) + "\n";
 
     return res;
 }
