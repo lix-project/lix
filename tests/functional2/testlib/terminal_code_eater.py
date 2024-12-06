@@ -9,6 +9,8 @@ class State(enum.Enum):
     ExpectESCSeq = 2
     InCSIParams = 3
     InCSIIntermediates = 4
+    InOSCParams = 5
+    InOSCST = 6
 
 
 @dataclasses.dataclass
@@ -33,9 +35,13 @@ class TerminalCodeEater:
                     ret.append(c)
                 case State.ExpectESCSeq:
                     match c:
-                        # CSI ('[')
                         case 0x5b:
+                            # CSI ('[')
                             self._transition(State.InCSIParams)
+                            continue
+                        case 0x5d:
+                            # OSC (']')
+                            self._transition(State.InOSCParams)
                             continue
                         # FIXME(jade): whatever this was, we do not know how to
                         # delimit it, so we just eat the next character and
@@ -64,7 +70,34 @@ class TerminalCodeEater:
                     elif is_intermediate_char(c):
                         continue
                     else:
-                        raise ValueError(f'Corrupt escape sequence in intermediates, at {c:x}')
+                        raise ValueError(
+                            f'Corrupt escape sequence in intermediates, at {c:x}'
+                        )
+                # An OSC is OSC [\x20-\x7e]* ST per ECMA-48
+                # where OSC is \x1b ] and ST is \x1b \.
+                case State.InOSCParams:
+                    # first part of ST
+                    if c == 0x1b:
+                        self._transition(State.InOSCST)
+                        continue
+                    # OSC sequences can be ended by BEL on old xterms
+                    elif c == 0x07:
+                        self._transition(State.ExpectESC)
+                        continue
+                    elif c < 0x20 or c == 0x7f:
+                        raise ValueError(f'Corrupt OSC sequence, at {c:x}')
+                    # either way, eat it
+                    continue
+                case State.InOSCST:
+                    # ST ends by \
+                    if c == 0x5c:  # \
+                        self._transition(State.ExpectESC)
+                    elif c < 0x20 or c > 0x7e:
+                        raise ValueError(
+                            f'Corrupt OSC sequence in ST, at {c:x}')
+                    else:
+                        self._transition(State.InOSCParams)
+                    continue
 
         return bytes(ret)
 

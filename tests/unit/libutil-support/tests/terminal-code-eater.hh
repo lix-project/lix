@@ -20,6 +20,8 @@ private:
         ExpectESCSeq,
         InCSIParams,
         InCSIIntermediates,
+        InOSCParams,
+        InOSCST,
     };
 
     State state = State::ExpectESC;
