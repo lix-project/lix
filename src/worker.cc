@@ -14,6 +14,7 @@
 #include <lix/libutil/canon-path.hh>
 #include <lix/libcmd/common-eval-args.hh>
 #include <lix/libutil/error.hh>
+#include <lix/libexpr/eval-cache.hh>
 #include <lix/libexpr/eval-inline.hh>
 #include <lix/libexpr/eval.hh>
 #include <lix/libexpr/flake/flakeref.hh>
@@ -48,14 +49,14 @@ static nix::Value *releaseExprTopLevelValue(nix::EvalState &state,
     nix::Value vTop;
 
     if (args.fromArgs) {
-        nix::Expr &e = state.parseExprFromString(
-            args.releaseExpr, state.rootPath(nix::CanonPath::fromCwd()));
+        nix::Expr &e = state.ctx.parseExprFromString(
+            args.releaseExpr, nix::CanonPath::fromCwd());
         state.eval(e, vTop);
     } else {
-        state.evalFile(lookupFileArg(state, args.releaseExpr), vTop);
+        state.evalFile(nix::lookupFileArg(state.ctx, args.releaseExpr), vTop);
     }
 
-    auto vRoot = state.allocValue();
+    auto vRoot = state.ctx.mem.allocValue();
 
     state.autoCallFunction(autoArgs, vTop, *vRoot);
 
@@ -73,16 +74,17 @@ static std::string attrPathJoin(nlohmann::json input) {
                            });
 }
 
-void worker(nix::ref<nix::EvalState> state, nix::Bindings &autoArgs,
+void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator, nix::Bindings &autoArgs,
             nix::AutoCloseFD &to, nix::AutoCloseFD &from, MyArgs &args) {
 
     nix::Value *vRoot = [&]() {
+        auto state = evaluator->begin();
         if (args.flake) {
             auto [flakeRef, fragment, outputSpec] =
                 nix::parseFlakeRefWithFragmentAndExtendedOutputsSpec(
                     args.releaseExpr, nix::absPath("."));
             nix::InstallableFlake flake{
-                {}, state, std::move(flakeRef), fragment, outputSpec,
+                {}, evaluator, std::move(flakeRef), fragment, outputSpec,
                 {}, {},    args.lockFlags};
 
             return flake.toValue(*state).first;
@@ -92,6 +94,7 @@ void worker(nix::ref<nix::EvalState> state, nix::Bindings &autoArgs,
     }();
 
     LineReader fromReader(from.release());
+    auto state = evaluator->begin();
 
     while (true) {
         /* Wait for the collector to send us a job name. */
@@ -119,7 +122,7 @@ void worker(nix::ref<nix::EvalState> state, nix::Bindings &autoArgs,
                 nix::findAlongAttrPath(*state, attrPathS, autoArgs, *vRoot)
                     .first;
 
-            auto v = state->allocValue();
+            auto v = evaluator->mem.allocValue();
             state->autoCallFunction(autoArgs, *vTmp, *v);
 
             if (v->type() == nix::nAttrs) {
@@ -136,7 +139,7 @@ void worker(nix::ref<nix::EvalState> state, nix::Bindings &autoArgs,
                             std::string(nix::baseNameOf(drv.drvPath));
                         if (!nix::pathExists(root)) {
                             auto localStore =
-                                state->store
+                                evaluator->store
                                     .dynamic_pointer_cast<nix::LocalFSStore>();
                             auto storePath =
                                 localStore->parseStorePath(drv.drvPath);
@@ -151,14 +154,14 @@ void worker(nix::ref<nix::EvalState> state, nix::Bindings &autoArgs,
                                           // = true;` for top-level attrset
 
                     for (auto &i :
-                         v->attrs->lexicographicOrder(state->symbols)) {
-                        const std::string &name = state->symbols[i->name];
+                         v->attrs->lexicographicOrder(evaluator->symbols)) {
+                        const std::string &name = evaluator->symbols[i->name];
                         attrs.push_back(name);
 
                         if (name == "recurseForDerivations" &&
                             !args.forceRecurse) {
                             auto attrv =
-                                v->attrs->get(state->sRecurseForDerivations);
+                                v->attrs->get(evaluator->s.recurseForDerivations);
                             recurse = state->forceBool(
                                 *attrv->value, attrv->pos,
                                 "while evaluating recurseForDerivations");
