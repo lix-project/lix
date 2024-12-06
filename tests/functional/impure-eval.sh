@@ -33,3 +33,6 @@ simpleTest 'builtins.currentSystem' 'bar' --eval-system 'bar'
 ## `eval-system` overrides `system`
 simpleTest 'builtins.currentSystem' 'bar' --system 'foo' --eval-system 'bar'
 simpleTest 'builtins.currentSystem' 'baz' --system 'foo' --eval-system 'baz'
+
+## `-f` honors nix-path
+[ "$(nix eval --option nix-path "foo=$PWD" -f '<foo/eval.nix>' attr.foo)" = '"bar"' ]

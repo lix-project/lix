@@ -77,7 +77,7 @@ struct EvalCommand : virtual StoreCommand, MixEvalArgs
 
     ref<Store> getEvalStore();
 
-    ref<eval_cache::CachingEvaluator> getEvaluator();
+    virtual ref<eval_cache::CachingEvaluator> getEvaluator();
 
 private:
     std::shared_ptr<Store> evalStore;
@@ -113,6 +113,8 @@ struct SourceExprCommand : virtual Args, MixFlakeOptions
     std::optional<std::string> expr;
 
     SourceExprCommand();
+
+    ref<eval_cache::CachingEvaluator> getEvaluator() override;
 
     Installables parseInstallables(
         EvalState & state, ref<Store> store, std::vector<std::string> ss);
