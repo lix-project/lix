@@ -1,0 +1,3 @@
+- detached head?
+  - probably: make a branch?
+  - skip pre-commit no-commit-to-branch checks?

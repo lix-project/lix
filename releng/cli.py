@@ -1,11 +1,9 @@
-import logging
 import argparse
+import logging
 import sys
 
-from . import create_release
-from . import docker
+from . import create_release, docker, environment
 from .environment import RelengEnvironment
-from . import environment
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +57,8 @@ def main():
 
     prepare = sps.add_parser(
         'prepare',
-        help='Prepares for a release by moving the release notes over.')
+        help='Prepare release notes',
+        description='Prepares for a release by moving the release notes from `doc/manual/rl-next to doc/manual/src/release-notes/rl-MAJOR.md`.')
     prepare.set_defaults(cmd=do_prepare)
 
     tag = sps.add_parser(
@@ -85,6 +84,7 @@ def main():
         help="Don't check git state before building. For testing.")
     build.add_argument('--target',
                        choices=['manual', 'all'],
+                       default='all',
                        help='Whether to build everything or just the manual')
     build.add_argument('--profile',
                        default='all',

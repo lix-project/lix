@@ -22,37 +22,48 @@ For staging, the buckets are `staging-releases`, `staging-cache`, etc.
 
 FIXME: obtainment of signing key for signing cache paths?
 
-First, we prepare the release. `python -m releng prepare` is used for this.
+* Switch to the release branch you'd like to base your release off of
 
-* Gather everything in `doc/manual/rl-next` and put it in
-  `doc/manual/src/release-notes/rl-MAJOR.md`.
+```
+git switch -c releng/2.91.1 origin/release-2.91
+```
 
-Then we tag the release with `python -m releng tag`:
+* Set the version and release name you are going to release in `version.json`.
 
-* Git HEAD is detached.
-* `"official_release": true` is set in `version.json`, this is committed, and a
-  release is tagged.
-* The tag is merged back into the last branch (either `main` for new releases
-  or `release-MAJOR` for maintenance releases) with `git merge -s ours VERSION`
-  creating a history link but ignoring the tree of the release tag.
-* Git HEAD is once again detached onto the release tag.
+  Note: Release names are only for major releases (one of the first two
+  components changes).
 
-Then, we build the release artifacts with `python -m releng build`:
+  See: <https://wiki.lix.systems/books/lix-contributors/page/release-names>
 
-* Source tarball is generated with `git archive`, then checksummed.
-* Manifest for `nix upgrade-nix` is produced and put in `s3://releases` at
-  `/manifest.nix` and `/lix/lix-VERSION`.
-* Release is built: `hydraJobs.binaryTarball` jobs are built, and joined into a
-  derivation that depends on all of them and adds checksum files. This and the
-  sources go into `s3://releases/lix/lix-VERSION`.
+* Commit the new `version.json`.
 
-At this point we have a `release/artifacts` and `release/manual` directory
-which are ready to publish, and tags ready for publication. No keys are
-required to do this part.
+* Next, prepare the release. `python -m releng prepare` is used for this.
 
-Next, we do the publication with `python -m releng upload`:
+* Then we tag the release with `python -m releng tag`, which does:
 
-* Artifacts for this release are uploaded:
+  * Git HEAD is detached.
+  * `"official_release": true` is set in `version.json`, this is committed, and a
+    release is tagged.
+  * The tag is merged back into the last branch (either `main` for new releases
+    or `release-MAJOR` for maintenance releases) with `git merge -s ours VERSION`
+    creating a history link but ignoring the tree of the release tag.
+  * Git HEAD is once again detached onto the release tag.
+
+* Then, we build the release artifacts with `python -m releng build`:
+
+  * Source tarball is generated with `git archive`, then checksummed.
+  * Manifest for `nix upgrade-nix` is produced and put in `s3://releases` at
+    `/manifest.nix` and `/lix/lix-VERSION`.
+  * Release is built: `hydraJobs.binaryTarball` jobs are built, and joined into a
+    derivation that depends on all of them and adds checksum files. This and the
+    sources go into `s3://releases/lix/lix-VERSION`.
+
+* At this point we have a `release/artifacts` and `release/manual` directory
+  which are ready to publish, and tags ready for publication. No keys are
+  required to do this part.
+
+* Next, we do the publication with `python -m releng upload`:
+
   * s3://releases/manifest.nix, changing the default version of Lix for
     `nix upgrade-nix`.
   * s3://releases/lix/lix-VERSION/ gets the following contents
@@ -63,12 +74,13 @@ Next, we do the publication with `python -m releng upload`:
     * Docker image
   * s3://docs/manual/lix/MAJOR
   * s3://docs/manual/lix/stable
+  * The tag is uploaded to the remote repo.
 
-* The tag is uploaded to the remote repo.
 * **Manually** build the installer using the scripts in the installer repo and upload.
 
   FIXME: This currently requires a local Apple Macintosh® aarch64 computer, but
   we could possibly automate doing it from the aarch64-darwin builder.
+
 * **Manually** Push the main/release branch directly to gerrit.
 * If this is a new major release, branch-off to `release-MAJOR` and push *that* branch
   directly to gerrit as well (FIXME: special creds for doing this as a service
