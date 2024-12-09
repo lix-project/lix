@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <system_error>
 
 namespace nix {
 
@@ -192,6 +193,15 @@ public:
         errNo = errNo_;
         auto hf = HintFmt(args...);
         err.msg = HintFmt("%1%: %2%", Uncolored(hf.str()), strerror(errNo));
+    }
+
+    template<typename... Args>
+    SysError(std::error_code ec, const Args & ... args)
+        : Error("")
+    {
+        errNo = ec.value();
+        auto hf = HintFmt(args...);
+        err.msg = HintFmt("%1%: %2%", Uncolored(hf.str()), ec.message());
     }
 
     template<typename... Args>
