@@ -102,7 +102,7 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
             ExprAttrs::AttrDefs::iterator j = attrs->attrs.find(i->symbol);
             if (j != attrs->attrs.end()) {
                 if (j->second.kind != ExprAttrs::AttrDef::Kind::Inherited) {
-                    ExprAttrs * attrs2 = dynamic_cast<ExprAttrs *>(j->second.e.get());
+                    ExprSet * attrs2 = dynamic_cast<ExprSet *>(j->second.e.get());
                     if (!attrs2) {
                         attrPath.erase(i + 1, attrPath.end());
                         dupAttr(attrPath, pos, j->second.pos);
@@ -115,12 +115,12 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
             } else {
                 auto next = attrs->attrs.emplace(std::piecewise_construct,
                     std::tuple(i->symbol),
-                    std::tuple(std::make_unique<ExprAttrs>(), pos));
-                attrs = static_cast<ExprAttrs *>(next.first->second.e.get());
+                    std::tuple(std::make_unique<ExprSet>(), pos));
+                attrs = static_cast<ExprSet *>(next.first->second.e.get());
             }
         } else {
-            auto & next = attrs->dynamicAttrs.emplace_back(std::move(i->expr), std::make_unique<ExprAttrs>(), pos);
-            attrs = static_cast<ExprAttrs *>(next.valueExpr.get());
+            auto & next = attrs->dynamicAttrs.emplace_back(std::move(i->expr), std::make_unique<ExprSet>(), pos);
+            attrs = static_cast<ExprSet *>(next.valueExpr.get());
         }
     }
     // Expr insertion.
@@ -132,8 +132,8 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
             // e and the expr pointed by the attr path are two attribute sets,
             // we want to merge them.
             // Otherwise, throw an error.
-            auto * ae = dynamic_cast<ExprAttrs *>(e.get());
-            auto * jAttrs = dynamic_cast<ExprAttrs *>(j->second.e.get());
+            auto * ae = dynamic_cast<ExprSet *>(e.get());
+            auto * jAttrs = dynamic_cast<ExprSet *>(j->second.e.get());
             if (jAttrs && ae) {
                 if (ae->inheritFromExprs && !jAttrs->inheritFromExprs)
                     jAttrs->inheritFromExprs = std::make_unique<std::vector<ref<Expr>>>();
@@ -157,8 +157,9 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
         } else {
             // Before inserting new attrs, check for __override and throw an error
             // (the error will initially be a warning to ease migration)
-            if (attrs->recursive && !featureSettings.isEnabled(Dep::RecSetOverrides) && i->symbol == s.overrides) {
-                overridesFound(pos);
+            if (!featureSettings.isEnabled(Dep::RecSetOverrides) && i->symbol == s.overrides) {
+                if (auto set = dynamic_cast<ExprSet *>(attrs); set && set->recursive)
+                    overridesFound(pos);
             }
 
             // This attr path is not defined. Let's create it.

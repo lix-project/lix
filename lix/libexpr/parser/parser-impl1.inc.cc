@@ -260,10 +260,10 @@ template<> struct BuildAST<grammar::v1::formals> : change_head<FormalsState> {
 struct AttrState : SubexprState {
     using SubexprState::SubexprState;
 
-    std::vector<AttrName> attrs;
+    AttrPath attrs;
 
     template <typename T>
-    void pushAttr(T && attr, PosIdx) { attrs.emplace_back(std::forward<T>(attr)); }
+    void pushAttr(T && attr, PosIdx pos) { attrs.emplace_back(pos, std::forward<T>(attr)); }
 };
 
 template<> struct BuildAST<grammar::v1::attr::simple> {
@@ -285,22 +285,38 @@ template<> struct BuildAST<grammar::v1::attr::string> {
 template<> struct BuildAST<grammar::v1::attr::expr> : BuildAST<grammar::v1::attr::string> {};
 
 struct BindingsState : SubexprState {
-    using SubexprState::SubexprState;
+    explicit BindingsState(ExprState & up, ExprAttrs & attrs) : SubexprState(up), attrs(attrs) {}
 
-    ExprAttrs attrs;
+    ExprAttrs & attrs;
+    PosIdx pos;
     AttrPath path;
     std::unique_ptr<Expr> value;
+};
+
+struct BindingsStateSet : BindingsState {
+    ExprSet set = {};
+    BindingsStateSet(ExprState & up, State & ps, auto &...) : BindingsState(up, set) { }
+};
+
+struct BindingsStateRecSet : BindingsState {
+    ExprSet set = { PosIdx{}, true };
+    BindingsStateRecSet(ExprState & up, State & ps, auto &...) : BindingsState(up, set) { }
+};
+
+struct BindingsStateLet : BindingsState {
+    ExprLet let = {};
+    BindingsStateLet(ExprState & up, State & ps, auto &...) : BindingsState(up, let) { }
 };
 
 struct InheritState : SubexprState {
     using SubexprState::SubexprState;
 
-    std::vector<std::pair<AttrName, PosIdx>> attrs;
+    std::vector<AttrName> attrs;
     std::unique_ptr<Expr> from;
     PosIdx fromPos;
 
     template <typename T>
-    void pushAttr(T && attr, PosIdx pos) { attrs.emplace_back(std::forward<T>(attr), pos); }
+    void pushAttr(T && attr, PosIdx pos) { attrs.emplace_back(pos, std::forward<T>(attr)); }
 };
 
 template<> struct BuildAST<grammar::v1::inherit::from> {
@@ -314,15 +330,15 @@ template<> struct BuildAST<grammar::v1::inherit> : change_head<InheritState> {
     static void success0(InheritState & s, BindingsState & b, State & ps) {
         auto & attrs = b.attrs.attrs;
         // TODO this should not reuse generic attrpath rules.
-        for (auto & [i, iPos] : s.attrs) {
+        for (auto & i : s.attrs) {
             if (i.symbol)
                 continue;
             if (auto str = dynamic_cast<ExprString *>(i.expr.get()))
-                i = AttrName(ps.symbols.create(str->s));
+                i = AttrName(i.pos, ps.symbols.create(str->s));
             else {
                 throw ParseError({
                     .msg = HintFmt("dynamic attributes not allowed in inherit"),
-                    .pos = ps.positions[iPos]
+                    .pos = ps.positions[i.pos]
                 });
             }
         }
@@ -331,9 +347,9 @@ template<> struct BuildAST<grammar::v1::inherit> : change_head<InheritState> {
                 b.attrs.inheritFromExprs = std::make_unique<std::vector<ref<Expr>>>();
             auto fromExpr = ref<Expr>(std::move(s.from));
             b.attrs.inheritFromExprs->push_back(fromExpr);
-            for (auto & [i, iPos] : s.attrs) {
+            for (auto & i : s.attrs) {
                 if (attrs.find(i.symbol) != attrs.end())
-                    ps.dupAttr(i.symbol, iPos, attrs[i.symbol].pos);
+                    ps.dupAttr(i.symbol, i.pos, attrs[i.symbol].pos);
                 auto inheritFrom = std::make_unique<ExprInheritFrom>(
                     s.fromPos,
                     b.attrs.inheritFromExprs->size() - 1,
@@ -342,19 +358,19 @@ template<> struct BuildAST<grammar::v1::inherit> : change_head<InheritState> {
                 attrs.emplace(
                     i.symbol,
                     ExprAttrs::AttrDef(
-                        std::make_unique<ExprSelect>(iPos, std::move(inheritFrom), i.symbol),
-                        iPos,
+                        std::make_unique<ExprSelect>(i.pos, std::move(inheritFrom), i.pos, i.symbol),
+                        i.pos,
                         ExprAttrs::AttrDef::Kind::InheritedFrom));
             }
         } else {
-            for (auto & [i, iPos] : s.attrs) {
+            for (auto & i : s.attrs) {
                 if (attrs.find(i.symbol) != attrs.end())
-                    ps.dupAttr(i.symbol, iPos, attrs[i.symbol].pos);
+                    ps.dupAttr(i.symbol, i.pos, attrs[i.symbol].pos);
                 attrs.emplace(
                     i.symbol,
                     ExprAttrs::AttrDef(
-                        std::make_unique<ExprVar>(iPos, i.symbol),
-                        iPos,
+                        std::make_unique<ExprVar>(i.pos, i.symbol),
+                        i.pos,
                         ExprAttrs::AttrDef::Kind::Inherited));
             }
         }
@@ -663,8 +679,8 @@ template<> struct BuildAST<grammar::v1::expr::uri> {
     }
 };
 
-template<> struct BuildAST<grammar::v1::expr::ancient_let> : change_head<BindingsState> {
-    static void success(const auto & in, BindingsState & b, ExprState & s, State & ps) {
+template<> struct BuildAST<grammar::v1::expr::ancient_let> : change_head<BindingsStateRecSet> {
+    static void success(const auto & in, BindingsStateRecSet & b, ExprState & s, State & ps) {
         // Added 2024-09-18. Turn into an error at some point in the future.
         // See the documentation on deprecated features for more details.
         if (!ps.featureSettings.isEnabled(Dep::AncientLet))
@@ -675,30 +691,23 @@ template<> struct BuildAST<grammar::v1::expr::ancient_let> : change_head<Binding
                 "--extra-deprecated-features ancient-let"
             );
 
-        b.attrs.pos = ps.at(in);
-        b.attrs.recursive = true;
-        s.pushExpr<ExprSelect>(b.attrs.pos, b.attrs.pos, std::make_unique<ExprAttrs>(std::move(b.attrs)), ps.s.body);
+        auto pos = ps.at(in);
+        b.set.pos = pos;
+        s.pushExpr<ExprSelect>(pos, pos, std::make_unique<ExprSet>(std::move(b.set)), pos, ps.s.body);
     }
 };
 
-template<> struct BuildAST<grammar::v1::expr::rec_set> : change_head<BindingsState> {
-    static void success(const auto & in, BindingsState & b, ExprState & s, State & ps) {
-        // Before inserting new attrs, check for __override and throw an error
-        // (the error will initially be a warning to ease migration)
-        if (!featureSettings.isEnabled(Dep::RecSetOverrides) && b.attrs.attrs.contains(ps.s.overrides)) {
-            ps.overridesFound(ps.at(in));
-        }
-
-        b.attrs.pos = ps.at(in);
-        b.attrs.recursive = true;
-        s.pushExpr<ExprAttrs>(b.attrs.pos, std::move(b.attrs));
+template<> struct BuildAST<grammar::v1::expr::rec_set> : change_head<BindingsStateRecSet> {
+    static void success(const auto & in, BindingsStateRecSet & b, ExprState & s, State & ps) {
+        b.set.pos = ps.at(in);
+        s.pushExpr<ExprSet>(ps.at(in), std::move(b.set));
     }
 };
 
-template<> struct BuildAST<grammar::v1::expr::set> : change_head<BindingsState> {
-    static void success(const auto & in, BindingsState & b, ExprState & s, State & ps) {
-        b.attrs.pos = ps.at(in);
-        s.pushExpr<ExprAttrs>(b.attrs.pos, std::move(b.attrs));
+template<> struct BuildAST<grammar::v1::expr::set> : change_head<BindingsStateSet> {
+    static void success(const auto & in, BindingsStateSet & b, ExprState & s, State & ps) {
+        b.set.pos = ps.at(in);
+        s.pushExpr<ExprSet>(ps.at(in), std::move(b.set));
     }
 };
 
@@ -835,15 +844,15 @@ template<> struct BuildAST<grammar::v1::expr::with> {
     }
 };
 
-template<> struct BuildAST<grammar::v1::expr::let> : change_head<BindingsState> {
-    static void success(const auto & in, BindingsState & b, ExprState & s, State & ps) {
-        if (!b.attrs.dynamicAttrs.empty())
+template<> struct BuildAST<grammar::v1::expr::let> : change_head<BindingsStateLet> {
+    static void success(const auto & in, BindingsStateLet & b, ExprState & s, State & ps) {
+        if (!b.let.dynamicAttrs.empty())
             throw ParseError({
                 .msg = HintFmt("dynamic attributes not allowed in let"),
                 .pos = ps.positions[ps.at(in)]
             });
-
-        s.pushExpr<ExprLet>(ps.at(in), std::make_unique<ExprAttrs>(std::move(b.attrs)), b->popExprOnly());
+        b.let.body = b->popExprOnly();
+        s.pushExpr<ExprLet>(ps.at(in), std::move(b.let));
     }
 };
 

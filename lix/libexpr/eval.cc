@@ -1071,12 +1071,13 @@ Env * ExprAttrs::buildInheritFromEnv(EvalState & state, Env & up)
     return &inheritEnv;
 }
 
-void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
+void ExprSet::eval(EvalState & state, Env & env, Value & v)
 {
     v.mkAttrs(state.ctx.buildBindings(attrs.size() + dynamicAttrs.size()).finish());
     auto dynamicEnv = &env;
 
     if (recursive) {
+
         /* Create a new environment that contains the attributes in
            this `rec'. */
         Env & env2(state.ctx.mem.allocEnv(attrs.size()));
@@ -1084,7 +1085,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
         dynamicEnv = &env2;
         Env * inheritEnv = inheritFromExprs ? buildInheritFromEnv(state, env2) : nullptr;
 
-        AttrDefs::iterator overrides = attrs.find(state.ctx.s.overrides);
+        ExprAttrs::AttrDefs::iterator overrides = attrs.find(state.ctx.s.overrides);
         bool hasOverrides = overrides != attrs.end();
 
         /* The recursive attributes are evaluated in the new
@@ -1093,7 +1094,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
         Displacement displ = 0;
         for (auto & i : attrs) {
             Value * vAttr;
-            if (hasOverrides && i.second.kind != AttrDef::Kind::Inherited) {
+            if (hasOverrides && i.second.kind != ExprAttrs::AttrDef::Kind::Inherited) {
                 vAttr = state.ctx.mem.allocValue();
                 vAttr->mkThunk(i.second.chooseByKind(&env2, &env, inheritEnv), *i.second.e);
                 state.ctx.stats.nrThunks++;
@@ -1118,7 +1119,7 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
             for (auto & i : *v.attrs)
                 newBnds->push_back(i);
             for (auto & i : *vOverrides->attrs) {
-                AttrDefs::iterator j = attrs.find(i.name);
+                ExprAttrs::AttrDefs::iterator j = attrs.find(i.name);
                 if (j != attrs.end()) {
                     (*newBnds)[j->second.displ] = i;
                     env2.values[j->second.displ] = i.value;
@@ -1167,16 +1168,16 @@ void ExprLet::eval(EvalState & state, Env & env, Value & v)
 {
     /* Create a new environment that contains the attributes in this
        `let'. */
-    Env & env2(state.ctx.mem.allocEnv(attrs->attrs.size()));
+    Env & env2(state.ctx.mem.allocEnv(attrs.size()));
     env2.up = &env;
 
-    Env * inheritEnv = attrs->inheritFromExprs ? attrs->buildInheritFromEnv(state, env2) : nullptr;
+    Env * inheritEnv = inheritFromExprs ? buildInheritFromEnv(state, env2) : nullptr;
 
     /* The recursive attributes are evaluated in the new environment,
        while the inherited attributes are evaluated in the original
        environment. */
     Displacement displ = 0;
-    for (auto & i : attrs->attrs) {
+    for (auto & i : attrs) {
         env2.values[displ++] = i.second.e->maybeThunk(
             state,
             *i.second.chooseByKind(&env2, &env, inheritEnv));
@@ -1234,9 +1235,7 @@ static std::string showAttrPath(EvalState & state, Env & env, const AttrPath & a
             out << state.ctx.symbols[getName(i, state, env)];
         } catch (Error & e) {
             assert(!i.symbol);
-            out << "\"${";
-            i.expr->show(state.ctx.symbols, out);
-            out << "}\"";
+            out << "\"${...}\"";
         }
     }
     return out.str();
@@ -1251,6 +1250,8 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
     Value * vCurrent = &vFirst;
     // Position for the current attrset Value in this select chain.
     PosIdx posCurrent;
+    // Position for the current selector in this select chain.
+    PosIdx posCurrentSyntax;
 
     try {
         e->eval(state, env, vFirst);
@@ -1258,8 +1259,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
         assert(this->e != nullptr);
         e.addTrace(
             state.ctx.positions[getPos()],
-            "while evaluating '%s' to select '%s' on it",
-            ExprPrinter(state, *this->e),
+            "while evaluating an expression to select '%s' on it",
             showAttrPath(state.ctx.symbols, this->attrPath)
         );
         throw;
@@ -1281,36 +1281,12 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
 
             Symbol const name = getName(currentAttrName, state, env);
 
-            // For formatting errors, which should be done only when needed.
-            auto partsSoFar = [&]() -> std::string {
-                std::stringstream ss;
-                // We start with the base thing this ExprSelect is selecting on.
-                assert(this->e != nullptr);
-                this->e->show(state.ctx.symbols, ss);
-
-                // Then grab each part of the attr path up to this one.
-                assert(partIdx < attrPath.size());
-                std::span<AttrName> const parts(
-                    attrPath.begin(),
-                    attrPath.begin() + partIdx
-                );
-
-                // And convert them to strings and join them.
-                for (auto const & part : parts) {
-                    auto const partName = getName(part, state, env);
-                    ss << "." << state.ctx.symbols[partName];
-                }
-
-                return ss.str();
-            };
-
             try {
                 state.forceValue(*vCurrent, pos);
             } catch (Error & e) {
                 e.addTrace(
-                    state.ctx.positions[getPos()],
-                    "while evaluating '%s' to select '%s' on it",
-                    partsSoFar(),
+                    state.ctx.positions[currentAttrName.pos],
+                    "while evaluating an expression to select '%s' on it",
                     state.ctx.symbols[name]
                 );
                 throw;
@@ -1331,8 +1307,8 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                     showType(*vCurrent),
                     ValuePrinter(state, *vCurrent, errorPrintOptions)
                 ).addTrace(
-                    pos,
-                    HintFmt("while selecting '%s' on '%s'", state.ctx.symbols[name], partsSoFar())
+                    currentAttrName.pos,
+                    HintFmt("while selecting '%s'", state.ctx.symbols[name])
                 ).debugThrow();
             }
 
@@ -1354,7 +1330,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                 }
                 auto suggestions = Suggestions::bestMatches(allAttrNames, state.ctx.symbols[name]);
                 state.ctx.errors.make<EvalError>("attribute '%s' missing", state.ctx.symbols[name])
-                    .atPos(pos)
+                    .atPos(currentAttrName.pos)
                     .withSuggestions(suggestions)
                     .withFrame(env, *this)
                     .debugThrow();
@@ -1364,10 +1340,11 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
             // Set our currently operated-on attrset to this one, and keep going.
             vCurrent = attrIt->value;
             posCurrent = attrIt->pos;
+            posCurrentSyntax = currentAttrName.pos;
             if (state.ctx.stats.countCalls) state.ctx.stats.attrSelects[posCurrent]++;
         }
 
-        state.forceValue(*vCurrent, (posCurrent ? posCurrent : this->pos));
+        state.forceValue(*vCurrent, (posCurrent ? posCurrent : posCurrentSyntax));
 
     } catch (Error & e) {
         auto pos2r = state.ctx.positions[posCurrent];
@@ -1826,9 +1803,10 @@ void ExprIf::eval(EvalState & state, Env & env, Value & v)
 void ExprAssert::eval(EvalState & state, Env & env, Value & v)
 {
     if (!state.evalBool(env, *cond, pos, "in the condition of the assert statement")) {
-        std::ostringstream out;
-        cond->show(state.ctx.symbols, out);
-        state.ctx.errors.make<AssertionError>("assertion '%1%' failed", out.str()).atPos(pos).withFrame(env, *this).debugThrow();
+        state.ctx.errors.make<AssertionError>("assertion failed")
+            .atPos(pos)
+            .withFrame(env, *this)
+            .debugThrow();
     }
     body->eval(state, env, v);
 }

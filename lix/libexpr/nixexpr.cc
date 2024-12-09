@@ -21,11 +21,11 @@ std::ostream & operator <<(std::ostream & str, const SymbolStr & symbol)
     return printIdentifier(str, s);
 }
 
-AttrName::AttrName(Symbol s) : symbol(s)
+AttrName::AttrName(PosIdx pos, Symbol s) : pos(pos), symbol(s)
 {
 }
 
-AttrName::AttrName(std::unique_ptr<Expr> e) : expr(std::move(e))
+AttrName::AttrName(PosIdx pos, std::unique_ptr<Expr> e) : pos(pos), expr(std::move(e))
 {
 }
 
@@ -139,7 +139,7 @@ void ExprAttrs::showBindings(const SymbolTable & symbols, std::ostream & str) co
     }
 }
 
-void ExprAttrs::show(const SymbolTable & symbols, std::ostream & str) const
+void ExprSet::show(const SymbolTable & symbols, std::ostream & str) const
 {
     if (recursive) str << "rec ";
     str << "{ ";
@@ -202,7 +202,7 @@ void ExprCall::show(const SymbolTable & symbols, std::ostream & str) const
 void ExprLet::show(const SymbolTable & symbols, std::ostream & str) const
 {
     str << "(let ";
-    attrs->showBindings(symbols, str);
+    showBindings(symbols, str);
     str << "in ";
     body->show(symbols, str);
     str << ")";
@@ -423,7 +423,7 @@ std::shared_ptr<const StaticEnv> ExprAttrs::bindInheritSources(
     return inner;
 }
 
-void ExprAttrs::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void ExprSet::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
 {
     if (es.debug)
         es.debug->exprEnvs.insert(std::make_pair(this, env));
@@ -511,18 +511,18 @@ void ExprCall::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> &
 void ExprLet::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
 {
     auto newEnv = [&] () -> std::shared_ptr<const StaticEnv> {
-        auto newEnv = std::make_shared<StaticEnv>(nullptr, env.get(), attrs->attrs.size());
+        auto newEnv = std::make_shared<StaticEnv>(nullptr, env.get(), attrs.size());
 
         Displacement displ = 0;
-        for (auto & i : attrs->attrs)
+        for (auto & i : attrs)
             newEnv->vars.emplace_back(i.first, i.second.displ = displ++);
         return newEnv;
     }();
 
-    // No need to sort newEnv since attrs->attrs is in sorted order.
+    // No need to sort newEnv since attrs is in sorted order.
 
-    auto inheritFromEnv = attrs->bindInheritSources(es, newEnv);
-    for (auto & i : attrs->attrs)
+    auto inheritFromEnv = bindInheritSources(es, newEnv);
+    for (auto & i : attrs)
         i.second.e->bindVars(es, i.second.chooseByKind(newEnv, env, inheritFromEnv));
 
     if (es.debug)
