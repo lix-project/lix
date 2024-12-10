@@ -707,7 +707,7 @@ kj::Promise<Outcome<void, Goal::WorkResult>> LocalDerivationGoal::startBuilder()
         printMsg(lvlVomit, "setting builder env variable '%1%'='%2%'", i.first, i.second);
 
     /* Create the log file. */
-    Path logFile = openLogFile();
+    openLogFile();
 
     /* Create a pseudoterminal to get the output of the builder. */
     builderOutPTY = AutoCloseFD{posix_openpt(O_RDWR | O_NOCTTY)};

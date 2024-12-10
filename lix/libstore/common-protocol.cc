@@ -93,7 +93,7 @@ WireFormatGenerator CommonProto::Serialise<std::optional<ContentAddress>>::write
 {
     return [](std::string s) -> WireFormatGenerator {
         co_yield s;
-    }(caOpt ? renderContentAddress(*caOpt) : "");
+    }(caOpt ? renderContentAddress(caOpt) : "");
 }
 
 }

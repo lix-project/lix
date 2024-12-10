@@ -1286,7 +1286,7 @@ HookReply DerivationGoal::tryBuildHook()
     hook->toHook.reset();
 
     /* Create the log file and pipe. */
-    Path logFile = openLogFile();
+    openLogFile();
 
     builderOutFD = &hook->builderOut;
     return HookReply::Accept{handleChildOutput()};

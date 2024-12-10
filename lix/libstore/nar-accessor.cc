@@ -145,7 +145,6 @@ struct NarAccessor : public FSAccessor
 
     NarMember * find(const Path & path)
     {
-        Path canon = path == "" ? "" : canonPath(path);
         NarMember * current = &root;
         auto end = path.end();
         for (auto it = path.begin(); it != end; ) {
