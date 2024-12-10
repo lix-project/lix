@@ -278,6 +278,5 @@ namespace nix {
         );
         ASSERT_THAT(v, IsStringEq("bar"));
         ASSERT_THROW(eval("let __findFile = _: _: ''found''; in import <foo>"), Error);
-        ASSERT_THROW(eval("let __nixPath = null; in import <foo>"), Error);
     }
 } /* namespace nix */

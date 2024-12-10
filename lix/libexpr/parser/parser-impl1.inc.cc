@@ -626,7 +626,11 @@ template<> struct BuildAST<grammar::v1::path::searched_path> {
     static void apply(const auto & in, StringState & s, State & ps) {
         auto pos = ps.at(in);
         std::vector<std::unique_ptr<Expr>> args{2};
-        args[0] = ps.mkInternalVar(pos, ps.s.nixPath);
+        /* Overriding __nixPath, while being barely documented, is intended and supported:
+         * https://github.com/NixOS/nix/commit/62a6eeb1f3da0a5954ad2da54c454eb7fc1c6e5d
+         * (TODO: Provide a better and officially supported and documented mechanism for doing this)
+         */
+        args[0] = std::make_unique<ExprVar>(pos, ps.s.nixPath);
         args[1] = std::make_unique<ExprString>(in.string());
         s.parts.emplace_back(
             pos,
