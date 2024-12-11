@@ -528,7 +528,7 @@ ref<AttrCursor> AttrCursor::getAttr(EvalState & state, const std::string & name)
     return ref(p);
 }
 
-OrSuggestions<ref<AttrCursor>> AttrCursor::findAlongAttrPath(EvalState & state, const Strings & attrPath)
+OrSuggestions<ref<AttrCursor>> AttrCursor::findAlongAttrPath(EvalState & state, const std::vector<std::string> & attrPath)
 {
     auto res = shared_from_this();
     for (auto & attr : attrPath) {

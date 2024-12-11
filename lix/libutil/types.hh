@@ -123,6 +123,9 @@ struct MaintainCount
  * A Rust/Python-like enumerate() iterator adapter.
  *
  * Borrowed from http://reedbeta.com/blog/python-like-enumerate-in-cpp17.
+ *
+ * FIXME(jade): remove once P2164R9 is implemented in libc++ and replace with
+ * std::views::enumerate: https://libcxx.llvm.org/Status/Cxx23.html
  */
 template <typename T,
           typename TIter = decltype(std::begin(std::declval<T>())),

@@ -1,3 +1,4 @@
+// this file has a hissing snake twin in functional2/testlib/terminal_code_eater.py
 #include "terminal-code-eater.hh"
 #include "lix/libutil/escape-char.hh"
 #include <assert.h>
@@ -26,7 +27,8 @@ void TerminalCodeEater::feed(char c, std::function<void(char)> on_char)
         // Just eat \r, since it is part of clearing a line
         case '\r':
             return;
-        default: break;
+        default:
+            break;
         }
         if constexpr (DEBUG_EATER) {
             std::cerr << "eater uneat" << MaybeHexEscapedChar{c} << "\n";
@@ -39,6 +41,11 @@ void TerminalCodeEater::feed(char c, std::function<void(char)> on_char)
         case '[':
             transition(State::InCSIParams);
             return;
+        case ']':
+            transition(State::InOSCParams);
+            return;
+        // FIXME(jade): whatever this was, we do not know how to delimit it, so
+        // we just eat the next character and keep going
         default:
             transition(State::ExpectESC);
             return;
@@ -76,6 +83,30 @@ void TerminalCodeEater::feed(char c, std::function<void(char)> on_char)
             return;
         }
         break;
+    // An OSC is OSC [\x20-\x7e]* ST
+    // where OSC is \x1b ] and ST is \x1b \.
+    case State::InOSCParams:
+        if (c == '\e') {
+            // first part of ST
+            transition(State::InOSCST);
+        } else if (c == '\a') {
+            // OSC sequences can be ended by BEL on old xterms
+            transition(State::ExpectESC);
+        } else if (c < 0x20 or c > 0x7e) {
+            assert(false && "Corrupt OSC sequence");
+        }
+        // either way, eat it
+        return;
+    case State::InOSCST:
+        // ST ends by \.
+        if (c == '\\') {
+            transition(State::ExpectESC);
+        } else if (c < 0x20 || c == 0x7f) {
+            assert(false && "Corrupt OSC sequence, in ST");
+        } else {
+            transition(State::InOSCParams);
+        }
+        return;
     }
 }
 
