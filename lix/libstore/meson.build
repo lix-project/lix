@@ -10,24 +10,6 @@ foreach header : [ 'schema.sql', 'ca-specific-schema.sql' ]
   )
 endforeach
 
-if enable_embedded_sandbox_shell
-  hexdump = find_program('hexdump', required : true, native : true)
-  embedded_sandbox_shell_gen = custom_target(
-    'embedded-sandbox-shell.gen.hh',
-    command : [
-      hexdump,
-      '-v',
-      '-e',
-      '1/1 "0x%x," "\n"'
-    ],
-    input : busybox.full_path(),
-    output : 'embedded-sandbox-shell.gen.hh',
-    capture : true,
-    feed : true,
-  )
-  libstore_generated_headers += embedded_sandbox_shell_gen
-endif
-
 libstore_settings_headers = []
 
 file_transfer_setting_definitions = files(
@@ -311,7 +293,26 @@ cpp_str_defines = {
   'NIX_MAN_DIR':   mandir,
 }
 
-if busybox.found()
+if enable_embedded_sandbox_shell
+  hexdump = find_program('hexdump', required : true, native : true)
+  embedded_sandbox_shell_gen = custom_target(
+    'embedded-sandbox-shell.gen.hh',
+    command : [
+      hexdump,
+      '-v',
+      '-e',
+      '1/1 "0x%x," "\n"'
+    ],
+    input : busybox.full_path(),
+    output : 'embedded-sandbox-shell.gen.hh',
+    capture : true,
+    feed : true,
+  )
+  libstore_generated_headers += embedded_sandbox_shell_gen
+  cpp_str_defines += {
+    'SANDBOX_SHELL': '__embedded_sandbox_shell__'
+  }
+elif busybox.found()
   cpp_str_defines += {
     'SANDBOX_SHELL': busybox.full_path()
   }
