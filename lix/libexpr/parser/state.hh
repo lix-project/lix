@@ -38,6 +38,7 @@ struct State
     void badLineEndingFound(const PosIdx pos, bool warnOnly);
     void badFirstLineIndStringFound(const PosIdx pos);
     void badSingleLineIndStringFound(const PosIdx pos);
+    void badEscapeFound(const PosIdx pos, char found, std::string escape);
     void nulFound(const PosIdx pos);
     void addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos);
     void mergeAttrs(AttrPath & attrPath, ExprSet * source, ExprSet * target);
@@ -118,6 +119,21 @@ inline void State::badFirstLineIndStringFound(const PosIdx pos)
         .msg = HintFmt(
             "Whitespace calculations for indentation stripping in a multiline ''-string include the first line, so putting text on it will effectively disable all indentation stripping. To fix this, simply break the line right after the string starts. Use %s to silence this warning.",
             "--extra-deprecated-features broken-string-indentation"
+        ),
+        .pos = positions[pos],
+    });
+}
+// Added 2024-12-12, equally used in the wild.
+inline void State::badEscapeFound(const PosIdx pos, char found, std::string escape)
+{
+    logWarning({
+        .msg = HintFmt(
+            "%s is an ill-defined escape. You can drop the %s and simply write %s instead. Use %s "
+            "to silence this warning.",
+            escape + found,
+            escape,
+            found,
+            "--extra-deprecated-features broken-string-escape"
         ),
         .pos = positions[pos],
     });

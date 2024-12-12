@@ -175,6 +175,7 @@ experimental_feature_definitions = files(
 deprecated_feature_definitions = files(
   # keep-sorted start
   'deprecated-features/ancient-let.md',
+  'deprecated-features/broken-string-escape.md',
   'deprecated-features/broken-string-indentation.md',
   'deprecated-features/cr-line-endings.md',
   'deprecated-features/nix-path-shadow.md',

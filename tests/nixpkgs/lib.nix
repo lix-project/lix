@@ -21,6 +21,7 @@ let
   # FIXME: All of these are fixed in Nixpkgs already, so clear the list on the next `nixpkgs` bump
   deprecatedFeatures = [
     "broken-string-indentation"
+    "broken-string-escape"
   ];
 
   env.NIX_CONFIG = "extra-deprecated-features = ${concatStringsSep " " deprecatedFeatures}";

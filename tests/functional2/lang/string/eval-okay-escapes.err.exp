@@ -1,0 +1,26 @@
+warning: \a is an ill-defined escape. You can drop the \ and simply write a instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:1:3:
+              1| "\a\n\{\$\"\'\r\v\\\t
+               |   ^
+              2| \f"
+warning: \{ is an ill-defined escape. You can drop the \ and simply write { instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:1:7:
+              1| "\a\n\{\$\"\'\r\v\\\t
+               |       ^
+              2| \f"
+warning: \' is an ill-defined escape. You can drop the \ and simply write ' instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:1:13:
+              1| "\a\n\{\$\"\'\r\v\\\t
+               |             ^
+              2| \f"
+warning: \v is an ill-defined escape. You can drop the \ and simply write v instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:1:17:
+              1| "\a\n\{\$\"\'\r\v\\\t
+               |                 ^
+              2| \f"
+warning: \f is an ill-defined escape. You can drop the \ and simply write f instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:2:2:
+              1| "\a\n\{\$\"\'\r\v\\\t
+              2| \f"
+               |  ^
+              3|

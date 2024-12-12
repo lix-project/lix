@@ -1,0 +1,42 @@
+warning: ''\a is an ill-defined escape. You can drop the ''\ and simply write a instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:2:4:
+              1| ''
+              2| ''\a''\n
+               |    ^
+              3| ''\f''\{''\$''\"''\'''\r''\v''\\''\t
+warning: ''\f is an ill-defined escape. You can drop the ''\ and simply write f instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:3:4:
+              2| ''\a''\n
+              3| ''\f''\{''\$''\"''\'''\r''\v''\\''\t
+               |    ^
+              4| ''\'''${"x"}
+warning: ''\{ is an ill-defined escape. You can drop the ''\ and simply write { instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:3:8:
+              2| ''\a''\n
+              3| ''\f''\{''\$''\"''\'''\r''\v''\\''\t
+               |        ^
+              4| ''\'''${"x"}
+warning: ''\$ is an ill-defined escape. You can drop the ''\ and simply write $ instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:3:12:
+              2| ''\a''\n
+              3| ''\f''\{''\$''\"''\'''\r''\v''\\''\t
+               |            ^
+              4| ''\'''${"x"}
+warning: ''\" is an ill-defined escape. You can drop the ''\ and simply write " instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:3:16:
+              2| ''\a''\n
+              3| ''\f''\{''\$''\"''\'''\r''\v''\\''\t
+               |                ^
+              4| ''\'''${"x"}
+warning: ''\v is an ill-defined escape. You can drop the ''\ and simply write v instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:3:28:
+              2| ''\a''\n
+              3| ''\f''\{''\$''\"''\'''\r''\v''\\''\t
+               |                            ^
+              4| ''\'''${"x"}
+warning: ''\\ is an ill-defined escape. You can drop the ''\ and simply write \ instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:3:32:
+              2| ''\a''\n
+              3| ''\f''\{''\$''\"''\'''\r''\v''\\''\t
+               |                                ^
+              4| ''\'''${"x"}

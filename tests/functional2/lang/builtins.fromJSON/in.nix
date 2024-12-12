@@ -33,7 +33,7 @@ builtins.fromJSON
         };
       Animated = false;
       IDs = [ 116 943 234 38793 true false null (0-100) ];
-      Escapes = "\"\\\/\t\n\r\t";  # supported in JSON but not Nix: \b\f
+      Escapes = "\"\\/\t\n\r\t";  # supported in JSON but not Nix: \b\f
       Subtitle = false;
       Latitude = 37.7668;
       Longitude = -122.3959;

@@ -12,6 +12,7 @@ let
   # FIXME: All of these are fixed in Nixpkgs already, so clear the list on the next `nixpkgs-regression` bump
   deprecatedFeatures = [
     "broken-string-indentation"
+    "broken-string-escape"
   ];
 in
 

@@ -1,12 +1,13 @@
 [[test]]
 runner = "eval-okay"
 matrix = true
-flags = ["--extra-deprecated-features", "broken-string-indentation"]
+flags = ["--extra-deprecated-features", "broken-string-indentation broken-string-escape"]
 
 [[test]]
 name = "depr-warning"
 runner = "eval-okay"
-in = "in.nix"
+matrix = true
+in = ["in.nix", "in-escapes.nix"]
 
 [[test]]
 runner = "parse-okay"

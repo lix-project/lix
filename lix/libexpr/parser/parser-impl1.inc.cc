@@ -580,14 +580,17 @@ struct StringState : SubexprState {
                 if (c == 'n') *t = '\n';
                 else if (c == 'r') *t = '\r';
                 else if (c == 't') *t = '\t';
-                else *t = c;
+                else {
+                    *t = c;
+                }
             }
             else if (c == '\r') {
                 /* Normalise CR and CR/LF into LF. */
                 *t = '\n';
                 if (*s == '\n') s++; /* cr/lf */
+            } else {
+                *t = c;
             }
-            else *t = c;
             t++;
         }
         if (!ps.featureSettings.isEnabled(Dep::NulBytes) && size_t(s - str.data() - 1) != str.size())
@@ -640,8 +643,15 @@ template<> struct BuildAST<grammar::v1::string::interpolation> {
 
 template<> struct BuildAST<grammar::v1::string::escape> {
     static void apply(const auto & in, StringState & s, State & ps) {
-        if (!ps.featureSettings.isEnabled(Dep::NulBytes) && *in.begin() == '\0')
+        char c = *in.begin();
+        if (!ps.featureSettings.isEnabled(Dep::NulBytes) && c == '\0') {
             ps.nulFound(ps.at(in));
+        }
+        if (!ps.featureSettings.isEnabled(Dep::BrokenStringEscape) && c != '\\' && c != '$'
+            && c != '"' && c != 'r' && c != 'n' && c != 't')
+        {
+            ps.badEscapeFound(ps.at(in), c, "\\");
+        }
         s.append(ps.at(in), "\\"); // FIXME compat with old parser
         s.append(ps.at(in), in.string_view());
     }
@@ -691,17 +701,31 @@ template<> struct BuildAST<grammar::v1::ind_string::interpolation> {
 
 template<> struct BuildAST<grammar::v1::ind_string::escape> {
     static void apply(const auto & in, IndStringState & s, State & ps) {
-        switch (*in.begin()) {
+        auto c = *in.begin();
+        switch (c) {
         case 'n': s.lines.back().parts.emplace_back(ps.at(in), "\n"); break;
         case 'r': s.lines.back().parts.emplace_back(ps.at(in), "\r"); break;
         case 't': s.lines.back().parts.emplace_back(ps.at(in), "\t"); break;
+        // TODO merge with below
+        // `''\'` must escape to itself even though one can just write `'` instead, because of
+        // shit like
+        // `''\'''${` to express the string `'${` (remember that `'''` escapes to `''`)
+        case '\'':
+            s.lines.back().parts.emplace_back(ps.at(in), "'");
+            break;
         case 0:
             if (!ps.featureSettings.isEnabled(Dep::NulBytes)) {
                 ps.nulFound(ps.at(in));
                 break;
             }
             KJ_FALLTHROUGH;
-        default:  s.lines.back().parts.emplace_back(ps.at(in), in.string_view()); break;
+        default:
+            if (!ps.featureSettings.isEnabled(Dep::BrokenStringEscape)) {
+                ps.badEscapeFound(ps.at(in), c, "''\\");
+            }
+
+            s.lines.back().parts.emplace_back(ps.at(in), in.string_view());
+            break;
         }
     }
 };
