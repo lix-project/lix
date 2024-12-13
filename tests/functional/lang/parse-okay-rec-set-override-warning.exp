@@ -27,10 +27,12 @@ elems:
       - name:
           _type: ExprConcatStrings
           es:
-            - _type: ExprString
+            - _type: ExprLiteral
               value: __overrides
-            - _type: ExprString
+              valueType: String
+            - _type: ExprLiteral
               value: ''
+              valueType: String
           forceString: false
         value:
           _type: ExprSet

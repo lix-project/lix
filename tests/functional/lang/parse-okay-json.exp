@@ -5,20 +5,26 @@ attrs:
 body:
   _type: ExprList
   elems:
-    - _type: ExprInt
+    - _type: ExprLiteral
       value: 0
-    - _type: ExprFloat
+      valueType: Int
+    - _type: ExprLiteral
       value: 0.0
-    - _type: ExprString
+      valueType: Float
+    - _type: ExprLiteral
       value: ''
-    - _type: ExprString
+      valueType: String
+    - _type: ExprLiteral
       value: foo
-    - _type: ExprString
+      valueType: String
+    - _type: ExprLiteral
       value: 'foo
 
         bar'
-    - _type: ExprPath
+      valueType: String
+    - _type: ExprLiteral
       value: /root
+      valueType: Path
     - _type: ExprVar
       value: var1
     - _type: ExprSelect
@@ -56,19 +62,23 @@ body:
               _type: ExprSet
               attrs:
                 merged:
-                  _type: ExprInt
+                  _type: ExprLiteral
                   value: 1
+                  valueType: Int
                 more:
-                  _type: ExprInt
+                  _type: ExprLiteral
                   value: 0
+                  valueType: Int
               recursive: false
           recursive: false
         fake dynamic attr:
-          _type: ExprInt
+          _type: ExprLiteral
           value: 42
+          valueType: Int
         string attr:
-          _type: ExprString
+          _type: ExprLiteral
           value: string value
+          valueType: String
       dynamicAttrs:
         - name:
             _type: ExprVar
@@ -79,10 +89,12 @@ body:
               - name:
                   _type: ExprConcatStrings
                   es:
-                    - _type: ExprString
+                    - _type: ExprLiteral
                       value: anotherOne
-                    - _type: ExprString
+                      valueType: String
+                    - _type: ExprLiteral
                       value: ''
+                      valueType: String
                   forceString: false
                 value:
                   _type: ExprVar
@@ -126,19 +138,23 @@ body:
               _type: ExprSet
               attrs:
                 merged:
-                  _type: ExprInt
+                  _type: ExprLiteral
                   value: 1
+                  valueType: Int
                 more:
-                  _type: ExprInt
+                  _type: ExprLiteral
                   value: 0
+                  valueType: Int
               recursive: false
           recursive: false
         fake dynamic attr:
-          _type: ExprInt
+          _type: ExprLiteral
           value: 42
+          valueType: Int
         string attr:
-          _type: ExprString
+          _type: ExprLiteral
           value: string value
+          valueType: String
       dynamicAttrs:
         - name:
             _type: ExprVar
@@ -149,10 +165,12 @@ body:
               - name:
                   _type: ExprConcatStrings
                   es:
-                    - _type: ExprString
+                    - _type: ExprLiteral
                       value: anotherOne
-                    - _type: ExprString
+                      valueType: String
+                    - _type: ExprLiteral
                       value: ''
+                      valueType: String
                   forceString: false
                 value:
                   _type: ExprVar
@@ -198,19 +216,23 @@ body:
                 _type: ExprSet
                 attrs:
                   merged:
-                    _type: ExprInt
+                    _type: ExprLiteral
                     value: 1
+                    valueType: Int
                   more:
-                    _type: ExprInt
+                    _type: ExprLiteral
                     value: 0
+                    valueType: Int
                 recursive: false
             recursive: false
           fake dynamic attr:
-            _type: ExprInt
+            _type: ExprLiteral
             value: 42
+            valueType: Int
           string attr:
-            _type: ExprString
+            _type: ExprLiteral
             value: string value
+            valueType: String
         body:
           _type: ExprAssert
           body:
@@ -237,8 +259,9 @@ body:
                       _type: ExprVar
                       value: myFunction
                   e2:
-                    _type: ExprFloat
+                    _type: ExprLiteral
                     value: 4.2
+                    valueType: Float
             cond:
               _type: ExprVar
               value: 'true'
@@ -333,11 +356,13 @@ body:
         _type: ExprVar
         value: 'null'
       else:
-        _type: ExprInt
+        _type: ExprLiteral
         value: 1
+        valueType: Int
       then:
-        _type: ExprInt
+        _type: ExprLiteral
         value: 0
+        valueType: Int
     - _type: ExprOpNot
       e:
         _type: ExprVar
@@ -346,34 +371,40 @@ body:
       args:
         - _type: ExprConcatStrings
           es:
-            - _type: ExprInt
+            - _type: ExprLiteral
               value: 7
+              valueType: Int
             - _type: ExprCall
               args:
                 - _type: ExprCall
                   args:
                     - _type: ExprCall
                       args:
-                        - _type: ExprInt
+                        - _type: ExprLiteral
                           value: 0
-                        - _type: ExprInt
+                          valueType: Int
+                        - _type: ExprLiteral
                           value: 5
+                          valueType: Int
                       fun:
                         _type: ExprVar
                         value: __sub
-                    - _type: ExprInt
+                    - _type: ExprLiteral
                       value: 12
+                      valueType: Int
                   fun:
                     _type: ExprVar
                     value: __mul
-                - _type: ExprInt
+                - _type: ExprLiteral
                   value: 3
+                  valueType: Int
               fun:
                 _type: ExprVar
                 value: __div
           forceString: false
-        - _type: ExprInt
+        - _type: ExprLiteral
           value: 1
+          valueType: Int
       fun:
         _type: ExprVar
         value: __sub
@@ -383,28 +414,34 @@ body:
           es:
             - _type: ExprConcatStrings
               es:
-                - _type: ExprInt
+                - _type: ExprLiteral
                   value: 0
+                  valueType: Int
                 - _type: ExprCall
                   args:
-                    - _type: ExprInt
+                    - _type: ExprLiteral
                       value: 0
-                    - _type: ExprInt
+                      valueType: Int
+                    - _type: ExprLiteral
                       value: 10
+                      valueType: Int
                   fun:
                     _type: ExprVar
                     value: __sub
               forceString: false
             - _type: ExprCall
               args:
-                - _type: ExprInt
+                - _type: ExprLiteral
                   value: 0
+                  valueType: Int
                 - _type: ExprCall
                   args:
-                    - _type: ExprInt
+                    - _type: ExprLiteral
                       value: 0
-                    - _type: ExprInt
+                      valueType: Int
+                    - _type: ExprLiteral
                       value: 11
+                      valueType: Int
                   fun:
                     _type: ExprVar
                     value: __sub
@@ -414,8 +451,9 @@ body:
           forceString: false
         - _type: ExprCall
           args:
-            - _type: ExprInt
+            - _type: ExprLiteral
               value: 0
+              valueType: Int
             - _type: ExprVar
               value: x
           fun:
@@ -430,20 +468,24 @@ body:
           e1:
             _type: ExprCall
             args:
-              - _type: ExprInt
+              - _type: ExprLiteral
                 value: 1
-              - _type: ExprInt
+                valueType: Int
+              - _type: ExprLiteral
                 value: 2
+                valueType: Int
             fun:
               _type: ExprVar
               value: __lessThan
           e2:
             _type: ExprCall
             args:
-              - _type: ExprInt
+              - _type: ExprLiteral
                 value: 1
-              - _type: ExprInt
+                valueType: Int
+              - _type: ExprLiteral
                 value: 2
+                valueType: Int
             fun:
               _type: ExprVar
               value: __lessThan
@@ -458,10 +500,12 @@ body:
                 e:
                   _type: ExprCall
                   args:
-                    - _type: ExprInt
+                    - _type: ExprLiteral
                       value: 2
-                    - _type: ExprInt
+                      valueType: Int
+                    - _type: ExprLiteral
                       value: 1
+                      valueType: Int
                   fun:
                     _type: ExprVar
                     value: __lessThan
@@ -470,10 +514,12 @@ body:
                 e:
                   _type: ExprCall
                   args:
-                    - _type: ExprInt
+                    - _type: ExprLiteral
                       value: 2
-                    - _type: ExprInt
+                      valueType: Int
+                    - _type: ExprLiteral
                       value: 1
+                      valueType: Int
                   fun:
                     _type: ExprVar
                     value: __lessThan
@@ -487,8 +533,9 @@ body:
         _type: ExprVar
         value: err
       then:
-        _type: ExprInt
+        _type: ExprLiteral
         value: 1
+        valueType: Int
     - _type: ExprOpUpdate
       e1:
         _type: ExprVar
@@ -528,29 +575,36 @@ body:
       es:
         - _type: ExprConcatStrings
           es:
-            - _type: ExprInt
+            - _type: ExprLiteral
               value: 1
-            - _type: ExprInt
+              valueType: Int
+            - _type: ExprLiteral
               value: 2
+              valueType: Int
           forceString: false
-        - _type: ExprInt
+        - _type: ExprLiteral
           value: 3
+          valueType: Int
       forceString: false
     - _type: ExprConcatStrings
       es:
-        - _type: ExprString
+        - _type: ExprLiteral
           value: ''
+          valueType: String
       forceString: true
     - _type: ExprConcatStrings
       es:
-        - _type: ExprString
+        - _type: ExprLiteral
           value: 'Foo '
+          valueType: String
         - _type: ExprConcatStrings
           es:
-            - _type: ExprInt
+            - _type: ExprLiteral
               value: 3
-            - _type: ExprString
+              valueType: Int
+            - _type: ExprLiteral
               value: '2'
+              valueType: String
           forceString: false
       forceString: true
     - _type: ExprPos

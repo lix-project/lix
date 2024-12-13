@@ -1,8 +1,9 @@
 _type: ExprLet
 attrs:
   b:
-    _type: ExprInt
+    _type: ExprLiteral
     value: 2
+    valueType: Int
   c:
     _type: ExprSet
     recursive: false
@@ -10,11 +11,13 @@ body:
   _type: ExprSet
   attrs:
     a:
-      _type: ExprInt
+      _type: ExprLiteral
       value: 1
+      valueType: Int
     f:
-      _type: ExprInt
+      _type: ExprLiteral
       value: 3
+      valueType: Int
   inherit:
     b:
       _type: ExprVar

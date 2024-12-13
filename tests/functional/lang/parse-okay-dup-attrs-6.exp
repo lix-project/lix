@@ -10,8 +10,9 @@ attrs:
             _type: ExprVar
             value: 'true'
           port:
-            _type: ExprInt
+            _type: ExprLiteral
             value: 23
+            valueType: Int
         recursive: false
     recursive: false
 recursive: false

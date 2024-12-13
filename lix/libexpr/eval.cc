@@ -960,25 +960,7 @@ Value * ExprVar::maybeThunk(EvalState & state, Env & env)
 }
 
 
-Value * ExprString::maybeThunk(EvalState & state, Env & env)
-{
-    state.ctx.stats.nrAvoided++;
-    return &v;
-}
-
-Value * ExprInt::maybeThunk(EvalState & state, Env & env)
-{
-    state.ctx.stats.nrAvoided++;
-    return &v;
-}
-
-Value * ExprFloat::maybeThunk(EvalState & state, Env & env)
-{
-    state.ctx.stats.nrAvoided++;
-    return &v;
-}
-
-Value * ExprPath::maybeThunk(EvalState & state, Env & env)
+Value * ExprLiteral::maybeThunk(EvalState & state, Env & env)
 {
     state.ctx.stats.nrAvoided++;
     return &v;
@@ -1085,28 +1067,10 @@ void Expr::eval(EvalState & state, Env & env, Value & v)
 }
 
 
-void ExprInt::eval(EvalState & state, Env & env, Value & v)
+void ExprLiteral::eval(EvalState & state, Env & env, Value & v)
 {
     v = this->v;
 }
-
-
-void ExprFloat::eval(EvalState & state, Env & env, Value & v)
-{
-    v = this->v;
-}
-
-void ExprString::eval(EvalState & state, Env & env, Value & v)
-{
-    v = this->v;
-}
-
-
-void ExprPath::eval(EvalState & state, Env & env, Value & v)
-{
-    v = this->v;
-}
-
 
 Env * ExprAttrs::buildInheritFromEnv(EvalState & state, Env & up)
 {

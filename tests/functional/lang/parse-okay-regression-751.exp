@@ -4,8 +4,9 @@ attrs:
     _type: ExprLambda
     arg: a
     body:
-      _type: ExprString
+      _type: ExprLiteral
       value: const
+      valueType: String
 body:
   _type: ExprConcatStrings
   es:
@@ -14,8 +15,9 @@ body:
         - _type: ExprSet
           attrs:
             x:
-              _type: ExprString
+              _type: ExprLiteral
               value: q
+              valueType: String
           recursive: false
       fun:
         _type: ExprVar

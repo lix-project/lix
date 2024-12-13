@@ -19,8 +19,9 @@ body:
                   - _type: ExprSet
                     attrs:
                       builder:
-                        _type: ExprPath
+                        _type: ExprLiteral
                         value: /foo/bar
+                        valueType: Path
                       db4:
                         _type: ExprIf
                         cond:
@@ -67,8 +68,9 @@ body:
                             _type: ExprVar
                             value: swig
                       name:
-                        _type: ExprString
+                        _type: ExprLiteral
                         value: subversion-1.1.1
+                        valueType: String
                       openssl:
                         _type: ExprIf
                         cond:
@@ -91,8 +93,9 @@ body:
                         then:
                           _type: ExprList
                           elems:
-                            - _type: ExprPath
+                            - _type: ExprLiteral
                               value: /javahl.patch
+                              valueType: Path
                       python:
                         _type: ExprIf
                         cond:
@@ -114,11 +117,13 @@ body:
                           - _type: ExprSet
                             attrs:
                               md5:
-                                _type: ExprString
+                                _type: ExprLiteral
                                 value: a180c3fe91680389c210c99def54d9e0
+                                valueType: String
                               url:
-                                _type: ExprString
+                                _type: ExprLiteral
                                 value: http://subversion.tigris.org/tarballs/subversion-1.1.1.tar.bz2
+                                valueType: String
                             recursive: false
                         fun:
                           _type: ExprVar

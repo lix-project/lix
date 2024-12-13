@@ -1,15 +1,18 @@
 _type: ExprSet
 attrs:
   foo:
-    _type: ExprString
+    _type: ExprLiteral
     value: "multi\nline\n  string\n  test\r"
+    valueType: String
   x:
     _type: ExprVar
     value: y
   y:
-    _type: ExprInt
+    _type: ExprLiteral
     value: 123
+    valueType: Int
   z:
-    _type: ExprInt
+    _type: ExprLiteral
     value: 456
+    valueType: Int
 recursive: true

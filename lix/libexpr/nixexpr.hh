@@ -74,41 +74,29 @@ public:
     void eval(EvalState & state, Env & env, Value & v) override; \
     void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
 
-struct ExprInt : Expr
+struct ExprLiteral : Expr
 {
-    NixInt n;
+protected:
     Value v;
-    ExprInt(NixInt n) : n(n) { v.mkInt(n); };
-    ExprInt(NixInt::Inner n) : n(n) { v.mkInt(n); };
+    ExprLiteral() = default;
+public:
+    ExprLiteral(NewValueAs::integer_t, NixInt n) { v.mkInt(n); };
+    ExprLiteral(NewValueAs::integer_t, NixInt::Inner n) { v.mkInt(n); };
+    ExprLiteral(NewValueAs::floating_t, NixFloat nf) { v.mkFloat(nf); };
     Value * maybeThunk(EvalState & state, Env & env) override;
     COMMON_METHODS
 };
 
-struct ExprFloat : Expr
-{
-    NixFloat nf;
-    Value v;
-    ExprFloat(NixFloat nf) : nf(nf) { v.mkFloat(nf); };
-    Value * maybeThunk(EvalState & state, Env & env) override;
-    COMMON_METHODS
-};
-
-struct ExprString : Expr
+struct ExprString : ExprLiteral
 {
     std::string s;
-    Value v;
     ExprString(std::string &&s) : s(std::move(s)) { v.mkString(this->s.data()); };
-    Value * maybeThunk(EvalState & state, Env & env) override;
-    COMMON_METHODS
 };
 
-struct ExprPath : Expr
+struct ExprPath : ExprLiteral
 {
     std::string s;
-    Value v;
     ExprPath(std::string s) : s(std::move(s)) { v.mkPath(this->s.c_str()); };
-    Value * maybeThunk(EvalState & state, Env & env) override;
-    COMMON_METHODS
 };
 
 typedef uint32_t Level;

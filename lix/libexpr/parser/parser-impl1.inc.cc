@@ -136,7 +136,7 @@ struct ExprState
     std::unique_ptr<Expr> negate(PosIdx pos, State & state)
     {
         std::vector<std::unique_ptr<Expr>> args(2);
-        args[0] = std::make_unique<ExprInt>(0);
+        args[0] = std::make_unique<ExprLiteral>(NewValueAs::integer, 0);
         args[1] = popExprOnly();
         return std::make_unique<ExprCall>(pos, state.mkInternalVar(pos, state.s.sub), std::move(args));
     }
@@ -418,7 +418,7 @@ template<> struct BuildAST<grammar::v1::expr::int_> {
                 .pos = ps.positions[ps.at(in)],
             });
         }
-        s.emplaceExpr<ExprInt>(noPos, v);
+        s.emplaceExpr<ExprLiteral>(noPos, NewValueAs::integer, v);
     }
 };
 
@@ -453,7 +453,7 @@ template<> struct BuildAST<grammar::v1::expr::float_> {
                 });
             }
         }();
-        s.emplaceExpr<ExprFloat>(noPos, v);
+        s.emplaceExpr<ExprLiteral>(noPos, NewValueAs::floating, v);
     }
 };
 

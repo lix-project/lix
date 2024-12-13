@@ -1,7 +1,7 @@
 _type: ExprLet
 attrs:
   s1:
-    _type: ExprString
+    _type: ExprLiteral
     value: "This is an indented multi-line string\nliteral.  An amount of whitespace\
       \ at\nthe start of each line matching the minimum\nindentation of all lines\
       \ in the string\nliteral together will be removed.  Thus,\nin this case four\
@@ -9,21 +9,26 @@ attrs:
       \ six spaces.\n\nAlso, empty lines don't count in the\ndetermination of the\
       \ indentation level (the\nprevious empty line has indentation 0, but\nit doesn't\
       \ matter).\n"
+    valueType: String
   s10:
-    _type: ExprString
+    _type: ExprLiteral
     value: ''
+    valueType: String
   s11:
-    _type: ExprString
+    _type: ExprLiteral
     value: ''
+    valueType: String
   s12:
-    _type: ExprString
+    _type: ExprLiteral
     value: ''
+    valueType: String
   s13:
     _type: ExprConcatStrings
     es:
-      - _type: ExprString
+      - _type: ExprLiteral
         value: "start on network-interfaces\n\nstart script\n\n  rm -f /var/run/opengl-driver\n\
           \  "
+        valueType: String
       - _type: ExprIf
         cond:
           _type: ExprVar
@@ -34,43 +39,57 @@ attrs:
             _type: ExprVar
             value: 'true'
           else:
-            _type: ExprString
+            _type: ExprLiteral
             value: ''
+            valueType: String
           then:
-            _type: ExprString
+            _type: ExprLiteral
             value: ln -sf 456 /var/run/opengl-driver
+            valueType: String
         then:
-          _type: ExprString
+          _type: ExprLiteral
           value: ln -sf 123 /var/run/opengl-driver
-      - _type: ExprString
+          valueType: String
+      - _type: ExprLiteral
         value: "\n\n  rm -f /var/log/slim.log\n   \nend script\n\nenv SLIM_CFGFILE="
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: abc
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: '
 
           env SLIM_THEMESDIR='
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: def
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: "\nenv FONTCONFIG_FILE=/etc/fonts/fonts.conf  \t\t\t\t# !!! cleanup\n\
           env XKB_BINDIR="
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: foo
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: "/bin         \t\t\t\t# Needed for the Xkb extension.\nenv LD_LIBRARY_PATH="
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: libX11
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: '/lib:'
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: libXext
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: '/lib:/usr/lib/          # related to xorg-sys-opengl - needed to load
           libglx for (AI)GLX support (for compiz)
 
 
           '
+        valueType: String
       - _type: ExprIf
         cond:
           _type: ExprVar
@@ -81,138 +100,166 @@ attrs:
             _type: ExprVar
             value: 'true'
           else:
-            _type: ExprString
+            _type: ExprLiteral
             value: ''
+            valueType: String
           then:
             _type: ExprConcatStrings
             es:
-              - _type: ExprString
+              - _type: ExprLiteral
                 value: env XORG_DRI_DRIVER_PATH=
-              - _type: ExprString
+                valueType: String
+              - _type: ExprLiteral
                 value: mesa
-              - _type: ExprString
+                valueType: String
+              - _type: ExprLiteral
                 value: /lib/modules/dri
+                valueType: String
             forceString: true
         then:
           _type: ExprConcatStrings
           es:
-            - _type: ExprString
+            - _type: ExprLiteral
               value: env XORG_DRI_DRIVER_PATH=
-            - _type: ExprString
+              valueType: String
+            - _type: ExprLiteral
               value: nvidiaDrivers
-            - _type: ExprString
+              valueType: String
+            - _type: ExprLiteral
               value: /X11R6/lib/modules/drivers/
+              valueType: String
           forceString: true
-      - _type: ExprString
+      - _type: ExprLiteral
         value: " \n\nexec "
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: slim
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: '/bin/slim
 
           '
+        valueType: String
     forceString: true
   s14:
-    _type: ExprString
+    _type: ExprLiteral
     value: "Escaping of ' followed by ': ''\nEscaping of $ followed by {: ${\nAnd\
       \ finally to interpret \\n etc. as in a string: \n, \r, \t.\n"
+    valueType: String
   s15:
     _type: ExprLet
     attrs:
       x:
-        _type: ExprString
+        _type: ExprLiteral
         value: bla
+        valueType: String
     body:
       _type: ExprConcatStrings
       es:
-        - _type: ExprString
+        - _type: ExprLiteral
           value: 'foo
 
             '''
+          valueType: String
         - _type: ExprVar
           value: x
-        - _type: ExprString
+        - _type: ExprLiteral
           value: '''
 
             bar
 
             '
+          valueType: String
       forceString: true
   s16:
-    _type: ExprString
+    _type: ExprLiteral
     value: 'cut -d $''\t'' -f 1
 
       '
+    valueType: String
   s17:
     _type: ExprConcatStrings
     es:
       - _type: ExprConcatStrings
         es:
-          - _type: ExprString
+          - _type: ExprLiteral
             value: ending dollar $
-          - _type: ExprString
+            valueType: String
+          - _type: ExprLiteral
             value: $
+            valueType: String
         forceString: false
-      - _type: ExprString
+      - _type: ExprLiteral
         value: '
 
           '
+        valueType: String
     forceString: false
   s18:
-    _type: ExprString
+    _type: ExprLiteral
     value: "    Lines without any indentation effectively disable the indentation\n\
       \    stripping for the entire string:\n\n        cat >$out/foo/data <<EOF\n\
       \        lasjdöaxnasd\nasdom 12398\nä\"§Æẞ¢«»”alsd\nEOF\n"
+    valueType: String
   s19:
-    _type: ExprString
+    _type: ExprLiteral
     value: "Empty lines with a bit of whitespace don't affect the indentation calculation:\n\
       \nAnd empty lines with more whitespace will have whitespace in the string:\n\
       \          \nUnless it's the last line:\n"
+    valueType: String
   s2:
-    _type: ExprString
+    _type: ExprLiteral
     value: "If the string starts with whitespace\n  followed by a newline, it's stripped,\
       \ but\n  that's not the case here. Two spaces are\n  stripped because of the\
       \ \"  \" at the start. \n"
+    valueType: String
   s20:
-    _type: ExprString
+    _type: ExprLiteral
     value: "  Indentation stripping\n  must not be impressed by\nthe last line not\
       \ being empty"
+    valueType: String
   s21:
-    _type: ExprString
+    _type: ExprLiteral
     value: "\t  Nor by people\n    weirdly mixing tabs\n\tand spaces\n\t"
+    valueType: String
   s3:
-    _type: ExprString
+    _type: ExprLiteral
     value: 'This line is indented
 
       a bit further.
 
       '
+    valueType: String
   s4:
     _type: ExprConcatStrings
     es:
-      - _type: ExprString
+      - _type: ExprLiteral
         value: 'Anti-quotations, like '
+        valueType: String
       - _type: ExprIf
         cond:
           _type: ExprVar
           value: 'true'
         else:
-          _type: ExprString
+          _type: ExprLiteral
           value: not so
+          valueType: String
         then:
-          _type: ExprString
+          _type: ExprLiteral
           value: so
-      - _type: ExprString
+          valueType: String
+      - _type: ExprLiteral
         value: ', are
 
           also allowed.
 
           '
+        valueType: String
     forceString: true
   s5:
     _type: ExprConcatStrings
     es:
-      - _type: ExprString
+      - _type: ExprLiteral
         value: '  The \ is not special here.
 
           '' can be followed by any character except another '', e.g. ''x''.
@@ -222,35 +269,43 @@ attrs:
           But '' followed by '' is special, as is $ followed by {.
 
           If you want them, use anti-quotations: '
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: ''''''
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: ', '
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: ${
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: '.
 
           '
+        valueType: String
     forceString: true
   s6:
-    _type: ExprString
+    _type: ExprLiteral
     value: "   Tabs are not interpreted as whitespace (since we can't guess\n   what\
       \ tab settings are intended), so don't use them.\n\tThis line starts with a\
       \ space and a tab, so only one\n   space will be stripped from each line.\n"
+    valueType: String
   s7:
-    _type: ExprString
+    _type: ExprLiteral
     value: 'Also note that if the last line (just before the closing '' '')
 
       consists only of whitespace, it''s ignored.  But here there is
 
       some non-whitespace stuff, so the line isn''t removed. '
+    valueType: String
   s8:
     _type: ExprConcatStrings
     es:
-      - _type: ExprString
+      - _type: ExprLiteral
         value: ''
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: '
 
           This shows a hacky way to preserve an empty line after the start.
@@ -260,15 +315,18 @@ attrs:
           line.
 
           '
+        valueType: String
     forceString: true
   s9:
     _type: ExprConcatStrings
     es:
-      - _type: ExprString
+      - _type: ExprLiteral
         value: ''
-      - _type: ExprString
+        valueType: String
+      - _type: ExprLiteral
         value: "  Similarly you can force an indentation level,\n  in this case to\
           \ 2 spaces.  This works because the anti-quote\n  is significant (not whitespace).\n"
+        valueType: String
     forceString: true
 body:
   _type: ExprConcatStrings

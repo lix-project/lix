@@ -90,7 +90,7 @@ TEST_F(ValuePrintingTests, tList)
 TEST_F(ValuePrintingTests, vThunk)
 {
     Value vThunk;
-    ExprInt e(0);
+    ExprLiteral e(NewValueAs::integer, 0);
     vThunk.mkThunk(nullptr, e);
 
     test(vThunk, "«thunk»");
@@ -113,7 +113,7 @@ TEST_F(ValuePrintingTests, vLambda)
     PosTable::Origin origin = evaluator.positions.addOrigin(std::monostate(), 1);
     auto posIdx = evaluator.positions.add(origin, 0);
 
-    ExprLambda eLambda(posIdx, createSymbol("a"), std::make_unique<Formals>(), std::make_unique<ExprInt>(0));
+    ExprLambda eLambda(posIdx, createSymbol("a"), std::make_unique<Formals>(), std::make_unique<ExprLiteral>(NewValueAs::integer, 0));
 
     Value vLambda;
     vLambda.mkLambda(&env, &eLambda);
@@ -550,7 +550,7 @@ TEST_F(ValuePrintingTests, ansiColorsLambda)
     PosTable::Origin origin = evaluator.positions.addOrigin(std::monostate(), 1);
     auto posIdx = evaluator.positions.add(origin, 0);
 
-    ExprLambda eLambda(posIdx, createSymbol("a"), std::make_unique<Formals>(), std::make_unique<ExprInt>(0));
+    ExprLambda eLambda(posIdx, createSymbol("a"), std::make_unique<Formals>(), std::make_unique<ExprLiteral>(NewValueAs::integer, 0));
 
     Value vLambda;
     vLambda.mkLambda(&env, &eLambda);
@@ -608,7 +608,7 @@ TEST_F(ValuePrintingTests, ansiColorsPrimOpApp)
 TEST_F(ValuePrintingTests, ansiColorsThunk)
 {
     Value v;
-    ExprInt e(0);
+    ExprLiteral e(NewValueAs::integer, 0);
     v.mkThunk(nullptr, e);
 
     test(v,

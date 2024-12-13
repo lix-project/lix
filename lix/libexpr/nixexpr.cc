@@ -36,35 +36,38 @@ json Expr::toJSON(const SymbolTable & symbols) const
     abort();
 }
 
-json ExprInt::toJSON(const SymbolTable & symbols) const
+json ExprLiteral::toJSON(const SymbolTable & symbols) const
 {
-    return {
-        {"_type", "ExprInt"},
-        {"value", n.value}
+    json valueType;
+    json value;
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wswitch-enum"
+    switch (v.type()) {
+        case nInt:
+            valueType = "Int";
+            value = v.integer.value;
+            break;
+        case nFloat:
+            valueType = "Float";
+            value = v.fpoint;
+            break;
+        case nString:
+            valueType = "String";
+            value = v.string.s;
+            break;
+        case nPath:
+            valueType = "Path";
+            value = v.path().to_string();
+            break;
+        default:
+            assert(false);
     };
-}
+    #pragma GCC diagnostic pop
 
-json ExprFloat::toJSON(const SymbolTable & symbols) const
-{
     return {
-        {"_type", "ExprFloat"},
-        {"value", nf}
-    };
-}
-
-json ExprString::toJSON(const SymbolTable & symbols) const
-{
-    return {
-        {"_type", "ExprString"},
-        {"value", s}
-    };
-}
-
-json ExprPath::toJSON(const SymbolTable & symbols) const
-{
-    return {
-        {"_type", "ExprPath"},
-        {"value", s}
+        {"_type", "ExprLiteral"},
+        {"valueType", valueType},
+        {"value", value}
     };
 }
 
@@ -303,25 +306,7 @@ void Expr::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env
     abort();
 }
 
-void ExprInt::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
-{
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
-}
-
-void ExprFloat::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
-{
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
-}
-
-void ExprString::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
-{
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
-}
-
-void ExprPath::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void ExprLiteral::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
 {
     if (es.debug)
         es.debug->exprEnvs.insert(std::make_pair(this, env));

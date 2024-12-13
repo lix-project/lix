@@ -5,19 +5,22 @@ body:
     - _type: ExprSet
       attrs:
         name:
-          _type: ExprString
+          _type: ExprLiteral
           value: libXi-6.0.1
+          valueType: String
         src:
           _type: ExprCall
           args:
             - _type: ExprSet
               attrs:
                 md5:
-                  _type: ExprString
+                  _type: ExprLiteral
                   value: 7e935a42428d63a387b3c048be0f2756
+                  valueType: String
                 url:
-                  _type: ExprString
+                  _type: ExprLiteral
                   value: http://freedesktop.org/~xlibs/release/libXi-6.0.1.tar.bz2
+                  valueType: String
               recursive: false
           fun:
             _type: ExprVar

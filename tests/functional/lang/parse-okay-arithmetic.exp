@@ -2,34 +2,40 @@ _type: ExprCall
 args:
   - _type: ExprConcatStrings
     es:
-      - _type: ExprInt
+      - _type: ExprLiteral
         value: 7
+        valueType: Int
       - _type: ExprCall
         args:
           - _type: ExprCall
             args:
               - _type: ExprCall
                 args:
-                  - _type: ExprInt
+                  - _type: ExprLiteral
                     value: 0
-                  - _type: ExprInt
+                    valueType: Int
+                  - _type: ExprLiteral
                     value: 5
+                    valueType: Int
                 fun:
                   _type: ExprVar
                   value: __sub
-              - _type: ExprInt
+              - _type: ExprLiteral
                 value: 12
+                valueType: Int
             fun:
               _type: ExprVar
               value: __mul
-          - _type: ExprInt
+          - _type: ExprLiteral
             value: 3
+            valueType: Int
         fun:
           _type: ExprVar
           value: __div
     forceString: false
-  - _type: ExprInt
+  - _type: ExprLiteral
     value: 1
+    valueType: Int
 fun:
   _type: ExprVar
   value: __sub
