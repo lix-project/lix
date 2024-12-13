@@ -210,7 +210,7 @@ inline std::unique_ptr<Expr> State::stripIndentation(
      * The rest of the code relies on the final string not being empty.
      */
     if (lines.size() == 1 && lines.front().parts.empty()) {
-        return std::make_unique<ExprString>("");
+        return std::make_unique<ExprString>(pos, "");
     }
 
     /* If the last line only contains whitespace, trim it to not cause excessive whitespace.
@@ -251,7 +251,7 @@ inline std::unique_ptr<Expr> State::stripIndentation(
 
     auto flush_merged = [&] () {
         if (!merged.empty()) {
-            parts.emplace_back(merged_pos, std::make_unique<ExprString>(std::string(merged)));
+            parts.emplace_back(merged_pos, std::make_unique<ExprString>(pos, std::string(merged)));
             merged.clear();
         }
     };

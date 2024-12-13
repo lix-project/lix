@@ -49,12 +49,14 @@ struct Expr
 protected:
     Expr(Expr &&) = default;
     Expr & operator=(Expr &&) = default;
+    Expr(const PosIdx pos) : pos(pos) {};
 
 public:
     struct AstSymbols {
         Symbol sub, lessThan, mul, div, or_, findFile, nixPath, body, overrides;
     };
 
+    PosIdx pos;
 
     Expr() = default;
     Expr(const Expr &) = delete;
@@ -66,7 +68,7 @@ public:
     virtual void eval(EvalState & state, Env & env, Value & v);
     virtual Value * maybeThunk(EvalState & state, Env & env);
     virtual void setName(Symbol name);
-    virtual PosIdx getPos() const { return noPos; }
+    PosIdx getPos() const { return pos; }
 };
 
 #define COMMON_METHODS \
@@ -78,11 +80,12 @@ struct ExprLiteral : Expr
 {
 protected:
     Value v;
-    ExprLiteral() = default;
+    ExprLiteral(const PosIdx pos) : Expr(pos) {};
 public:
-    ExprLiteral(NewValueAs::integer_t, NixInt n) { v.mkInt(n); };
-    ExprLiteral(NewValueAs::integer_t, NixInt::Inner n) { v.mkInt(n); };
-    ExprLiteral(NewValueAs::floating_t, NixFloat nf) { v.mkFloat(nf); };
+
+    ExprLiteral(const PosIdx pos, NewValueAs::integer_t, NixInt n) : Expr(pos) { v.mkInt(n); };
+    ExprLiteral(const PosIdx pos, NewValueAs::integer_t, NixInt::Inner n) : Expr(pos) { v.mkInt(n); };
+    ExprLiteral(const PosIdx pos, NewValueAs::floating_t, NixFloat nf) : Expr(pos) { v.mkFloat(nf); };
     Value * maybeThunk(EvalState & state, Env & env) override;
     COMMON_METHODS
 };
@@ -90,13 +93,13 @@ public:
 struct ExprString : ExprLiteral
 {
     std::string s;
-    ExprString(std::string &&s) : s(std::move(s)) { v.mkString(this->s.data()); };
+    ExprString(const PosIdx pos, std::string &&s) : ExprLiteral(pos), s(std::move(s)) { v.mkString(this->s.data()); };
 };
 
 struct ExprPath : ExprLiteral
 {
     std::string s;
-    ExprPath(std::string s) : s(std::move(s)) { v.mkPath(this->s.c_str()); };
+    ExprPath(const PosIdx pos, std::string s) : ExprLiteral(pos), s(std::move(s)) { v.mkPath(this->s.c_str()); };
 };
 
 typedef uint32_t Level;
@@ -104,7 +107,6 @@ typedef uint32_t Displacement;
 
 struct ExprVar : Expr
 {
-    PosIdx pos;
     Symbol name;
 
     /* Whether the variable comes from an environment (e.g. a rec, let
@@ -130,9 +132,8 @@ struct ExprVar : Expr
     bool needsRoot;
 
     ExprVar(Symbol name) : name(name), needsRoot(false) { };
-    ExprVar(const PosIdx & pos, Symbol name, bool needsRoot = false) : pos(pos), name(name), needsRoot(needsRoot) { };
+    ExprVar(const PosIdx & pos, Symbol name, bool needsRoot = false) : Expr(pos), name(name), needsRoot(needsRoot) { };
     Value * maybeThunk(EvalState & state, Env & env) override;
-    PosIdx getPos() const override { return pos; }
     COMMON_METHODS
 };
 
@@ -159,8 +160,6 @@ struct ExprInheritFrom : ExprVar
 
 struct ExprSelect : Expr
 {
-    PosIdx pos;
-
     /** The expression attributes are being selected on. e.g. `foo` in `foo.bar.baz`. */
     std::unique_ptr<Expr> e;
 
@@ -172,9 +171,8 @@ struct ExprSelect : Expr
     /** The path of attributes being selected. e.g. `bar.baz` in `foo.bar.baz.` */
     AttrPath attrPath;
 
-    ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, AttrPath attrPath, std::unique_ptr<Expr> def) : pos(pos), e(std::move(e)), def(std::move(def)), attrPath(std::move(attrPath)) { };
-    ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, const PosIdx namePos, Symbol name) : pos(pos), e(std::move(e)) { attrPath.push_back(AttrName(namePos, name)); };
-    PosIdx getPos() const override { return pos; }
+    ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, AttrPath attrPath, std::unique_ptr<Expr> def) : Expr(pos), e(std::move(e)), def(std::move(def)), attrPath(std::move(attrPath)) { };
+    ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, const PosIdx namePos, Symbol name) : Expr(pos), e(std::move(e)) { attrPath.push_back(AttrName(namePos, name)); };
     COMMON_METHODS
 };
 
@@ -182,8 +180,7 @@ struct ExprOpHasAttr : Expr
 {
     std::unique_ptr<Expr> e;
     AttrPath attrPath;
-    ExprOpHasAttr(std::unique_ptr<Expr> e, AttrPath attrPath) : e(std::move(e)), attrPath(std::move(attrPath)) { };
-    PosIdx getPos() const override { return e->getPos(); }
+    ExprOpHasAttr(const PosIdx & pos, std::unique_ptr<Expr> e, AttrPath attrPath) : Expr(pos), e(std::move(e)), attrPath(std::move(attrPath)) { };
     COMMON_METHODS
 };
 
@@ -248,26 +245,19 @@ struct ExprAttrs
 };
 
 struct ExprSet : Expr, ExprAttrs {
-    PosIdx pos;
     bool recursive = false;
 
-    ExprSet(const PosIdx &pos, bool recursive = false) : pos(pos), recursive(recursive) { };
+    ExprSet(const PosIdx &pos, bool recursive = false) : Expr(pos), recursive(recursive) { };
     ExprSet() { };
-    PosIdx getPos() const override { return pos; }
     COMMON_METHODS
 };
 
 struct ExprList : Expr
 {
     std::vector<std::unique_ptr<Expr>> elems;
-    ExprList() { };
+    ExprList(PosIdx pos) : Expr(pos) { };
     COMMON_METHODS
     Value * maybeThunk(EvalState & state, Env & env) override;
-
-    PosIdx getPos() const override
-    {
-        return elems.empty() ? noPos : elems.front()->getPos();
-    }
 };
 
 struct Formal
@@ -305,9 +295,6 @@ struct Formals
 
 struct ExprLambda : Expr
 {
-    /** Where the lambda is defined in Nix code. May be falsey if the
-     * position is not known. */
-    PosIdx pos;
     /** Name of the lambda. This is set if the lambda is defined in a
      * let-expression or an attribute set, such that there is a name.
      * Lambdas may have a falsey symbol as the name if they are anonymous */
@@ -320,17 +307,16 @@ struct ExprLambda : Expr
     std::unique_ptr<Formals> formals;
     std::unique_ptr<Expr> body;
     ExprLambda(PosIdx pos, Symbol arg, std::unique_ptr<Formals> formals, std::unique_ptr<Expr> body)
-        : pos(pos), arg(arg), formals(std::move(formals)), body(std::move(body))
+        : Expr(pos), arg(arg), formals(std::move(formals)), body(std::move(body))
     {
     };
     ExprLambda(PosIdx pos, std::unique_ptr<Formals> formals, std::unique_ptr<Expr> body)
-        : pos(pos), formals(std::move(formals)), body(std::move(body))
+        : Expr(pos), formals(std::move(formals)), body(std::move(body))
     {
     }
     void setName(Symbol name) override;
     std::string showNamePos(const EvalState & state) const;
     inline bool hasFormals() const { return formals != nullptr; }
-    PosIdx getPos() const override { return pos; }
 
     /** Returns the name of the lambda,
      * or "anonymous lambda" if it doesn't have one.
@@ -363,11 +349,9 @@ struct ExprCall : Expr
 {
     std::unique_ptr<Expr> fun;
     std::vector<std::unique_ptr<Expr>> args;
-    PosIdx pos;
     ExprCall(const PosIdx & pos, std::unique_ptr<Expr> fun, std::vector<std::unique_ptr<Expr>> && args)
-        : fun(std::move(fun)), args(std::move(args)), pos(pos)
+        : Expr(pos), fun(std::move(fun)), args(std::move(args))
     { }
-    PosIdx getPos() const override { return pos; }
     COMMON_METHODS
 };
 
@@ -379,48 +363,40 @@ struct ExprLet : Expr, ExprAttrs
 
 struct ExprWith : Expr
 {
-    PosIdx pos;
     std::unique_ptr<Expr> attrs, body;
     size_t prevWith;
     ExprWith * parentWith;
-    ExprWith(const PosIdx & pos, std::unique_ptr<Expr> attrs, std::unique_ptr<Expr> body) : pos(pos), attrs(std::move(attrs)), body(std::move(body)) { };
-    PosIdx getPos() const override { return pos; }
+    ExprWith(const PosIdx & pos, std::unique_ptr<Expr> attrs, std::unique_ptr<Expr> body) : Expr(pos), attrs(std::move(attrs)), body(std::move(body)) { };
     COMMON_METHODS
 };
 
 struct ExprIf : Expr
 {
-    PosIdx pos;
     std::unique_ptr<Expr> cond, then, else_;
-    ExprIf(const PosIdx & pos, std::unique_ptr<Expr> cond, std::unique_ptr<Expr> then, std::unique_ptr<Expr> else_) : pos(pos), cond(std::move(cond)), then(std::move(then)), else_(std::move(else_)) { };
-    PosIdx getPos() const override { return pos; }
+    ExprIf(const PosIdx & pos, std::unique_ptr<Expr> cond, std::unique_ptr<Expr> then, std::unique_ptr<Expr> else_) : Expr(pos), cond(std::move(cond)), then(std::move(then)), else_(std::move(else_)) { };
     COMMON_METHODS
 };
 
 struct ExprAssert : Expr
 {
-    PosIdx pos;
     std::unique_ptr<Expr> cond, body;
-    ExprAssert(const PosIdx & pos, std::unique_ptr<Expr> cond, std::unique_ptr<Expr> body) : pos(pos), cond(std::move(cond)), body(std::move(body)) { };
-    PosIdx getPos() const override { return pos; }
+    ExprAssert(const PosIdx & pos, std::unique_ptr<Expr> cond, std::unique_ptr<Expr> body) : Expr(pos), cond(std::move(cond)), body(std::move(body)) { };
     COMMON_METHODS
 };
 
 struct ExprOpNot : Expr
 {
     std::unique_ptr<Expr> e;
-    ExprOpNot(std::unique_ptr<Expr> e) : e(std::move(e)) { };
-    PosIdx getPos() const override { return e->getPos(); }
+    ExprOpNot(const PosIdx & pos, std::unique_ptr<Expr> e) : Expr(pos), e(std::move(e)) { };
     COMMON_METHODS
 };
 
 #define MakeBinOp(name, s) \
     struct name : Expr \
     { \
-        PosIdx pos; \
         std::unique_ptr<Expr> e1, e2; \
         name(std::unique_ptr<Expr> e1, std::unique_ptr<Expr> e2) : e1(std::move(e1)), e2(std::move(e2)) { }; \
-        name(const PosIdx & pos, std::unique_ptr<Expr> e1, std::unique_ptr<Expr> e2) : pos(pos), e1(std::move(e1)), e2(std::move(e2)) { }; \
+        name(const PosIdx & pos, std::unique_ptr<Expr> e1, std::unique_ptr<Expr> e2) : Expr(pos), e1(std::move(e1)), e2(std::move(e2)) { }; \
         nlohmann::json toJSON(const SymbolTable & symbols) const override \
         { \
             return { \
@@ -434,7 +410,6 @@ struct ExprOpNot : Expr
             e1->bindVars(es, env); e2->bindVars(es, env);    \
         } \
         void eval(EvalState & state, Env & env, Value & v) override; \
-        PosIdx getPos() const override { return pos; } \
     };
 
 MakeBinOp(ExprOpEq, "==")
@@ -447,20 +422,16 @@ MakeBinOp(ExprOpConcatLists, "++")
 
 struct ExprConcatStrings : Expr
 {
-    PosIdx pos;
     bool forceString;
     std::vector<std::pair<PosIdx, std::unique_ptr<Expr>>> es;
     ExprConcatStrings(const PosIdx & pos, bool forceString, std::vector<std::pair<PosIdx, std::unique_ptr<Expr>>> es)
-        : pos(pos), forceString(forceString), es(std::move(es)) { };
-    PosIdx getPos() const override { return pos; }
+        : Expr(pos), forceString(forceString), es(std::move(es)) { };
     COMMON_METHODS
 };
 
 struct ExprPos : Expr
 {
-    PosIdx pos;
-    ExprPos(const PosIdx & pos) : pos(pos) { };
-    PosIdx getPos() const override { return pos; }
+    ExprPos(const PosIdx & pos) : Expr(pos) { };
     COMMON_METHODS
 };
 

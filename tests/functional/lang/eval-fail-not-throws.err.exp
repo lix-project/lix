@@ -1,8 +1,8 @@
 error:
        … in the argument of the not operator
-         at /pwd/lang/eval-fail-not-throws.nix:1:4:
+         at /pwd/lang/eval-fail-not-throws.nix:1:1:
             1| ! (throw "uh oh!")
-             |    ^
+             | ^
             2|
 
        … caused by explicit throw
