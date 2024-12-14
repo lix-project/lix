@@ -163,10 +163,14 @@ struct integer : seq<
     not_at<_extend_as_path>
 > {};
 
-struct floating : seq<
+struct _floating {
+    struct no_leading_zero : seq<one<'.'>, plus<digit>> {};
+};
+struct floating : _floating, seq<
     sor<
         seq<range<'1', '9'>, star<digit>, one<'.'>, star<digit>>,
-        seq<opt<one<'0'>>, one<'.'>, plus<digit>>
+        seq<one<'0'>, one<'.'>, plus<digit>>,
+        _floating::no_leading_zero
     >,
     opt<one<'E', 'e'>, opt<one<'+', '-'>>, plus<digit>>,
     not_at<_extend_as_path>

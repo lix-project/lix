@@ -517,6 +517,21 @@ template<> struct BuildAST<grammar::v1::expr::int_> {
     }
 };
 
+template<> struct BuildAST<grammar::v1::t::floating::no_leading_zero> {
+    static void apply(const auto & in, ExprState & s, State & ps) {
+        if (!ps.featureSettings.isEnabled(Dep::FloatingWithoutZero)) {
+            logWarning(
+                {.msg = HintFmt(
+                     "Found floating point literal without leading zero. To fix this "
+                     "warning, add a zero before the dot. Use %s to silence this warning",
+                     "--extra-deprecated-feature floating-without-zero"
+                 ),
+                 .pos = ps.positions[ps.at(in)]}
+            );
+        }
+    }
+};
+
 template<> struct BuildAST<grammar::v1::expr::float_> {
     static void apply(const auto & in, ExprState & s, State & ps) {
         // copy the input into a temporary string so we can call stod.

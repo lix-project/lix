@@ -1,0 +1,14 @@
+[[test]]
+runner = "eval-okay"
+in = "in.nix"
+
+[[test]]
+name = "warn"
+runner = "eval-okay"
+in = "in-depr-syntax.nix"
+
+[[test]]
+name = "allowed"
+runner = "eval-okay"
+in = "in-depr-syntax.nix"
+flags = ["--extra-deprecated-features", "floating-without-zero"]
