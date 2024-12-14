@@ -3,19 +3,19 @@
 @args ${PWD}/extra_data/repl-overlay-fail.nix
 @should-start false
   error:
-         … while calling the 'foldl'' builtin
-           at «string»:5:13:
-              4| functions:
-              5| let final = builtins.foldl'
-               |             ^
-              6|               (prev: function: prev // (function info final prev))
+         … while evaluating variable final
+           at «string»:6:1:
+              5| in
+              6| final
+               | ^
+              7|
 
-         … in the right operand of the update (//) operator
-           at «string»:6:37:
-              5| let final = builtins.foldl'
-              6|               (prev: function: prev // (function info final prev))
-               |                                     ^
-              7|               initial
+         … while calling the 'foldl'' builtin
+           at «string»:4:11:
+              3| let
+              4|   final = builtins.foldl' (prev: function: prev // (function info final prev)) initial functions;
+               |           ^
+              5| in
 
          (stack trace truncated; use '--show-trace' to show the full trace)
 
