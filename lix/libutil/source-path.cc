@@ -34,12 +34,12 @@ static InputAccessor::Stat convertStat(const struct stat & st)
     };
 }
 
-InputAccessor::Stat SourcePath::lstat() const
+InputAccessor::Stat CheckedSourcePath::lstat() const
 {
     return convertStat(nix::lstat(path.abs()));
 }
 
-std::optional<InputAccessor::Stat> SourcePath::maybeLstat() const
+std::optional<InputAccessor::Stat> CheckedSourcePath::maybeLstat() const
 {
     if (auto st = nix::maybeLstat(path.abs())) {
         return convertStat(*st);
@@ -48,12 +48,12 @@ std::optional<InputAccessor::Stat> SourcePath::maybeLstat() const
     }
 }
 
-InputAccessor::Stat SourcePath::stat() const
+InputAccessor::Stat CheckedSourcePath::stat() const
 {
     return convertStat(nix::stat(path.abs()));
 }
 
-std::optional<InputAccessor::Stat> SourcePath::maybeStat() const
+std::optional<InputAccessor::Stat> CheckedSourcePath::maybeStat() const
 {
     if (auto st = nix::maybeStat(path.abs())) {
         return convertStat(*st);
@@ -62,7 +62,7 @@ std::optional<InputAccessor::Stat> SourcePath::maybeStat() const
     }
 }
 
-InputAccessor::DirEntries SourcePath::readDirectory() const
+InputAccessor::DirEntries CheckedSourcePath::readDirectory() const
 {
     InputAccessor::DirEntries res;
     for (auto & entry : nix::readDirectory(path.abs())) {

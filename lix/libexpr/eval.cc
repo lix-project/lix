@@ -379,9 +379,9 @@ void EvalPaths::allowAndSetStorePathString(const StorePath & storePath, Value & 
     mkStorePathString(storePath, v);
 }
 
-SourcePath EvalPaths::checkSourcePath(const SourcePath & path_)
+CheckedSourcePath EvalPaths::checkSourcePath(const SourcePath & path_)
 {
-    if (!allowedPaths) return path_;
+    if (!allowedPaths) return auto(path_).unsafeIntoChecked();
 
     auto i = resolvedPaths.find(path_.canonical().abs());
     if (i != resolvedPaths.end())
@@ -395,7 +395,9 @@ SourcePath EvalPaths::checkSourcePath(const SourcePath & path_)
      */
     Path abspath = canonPath(path_.canonical().abs());
 
-    if (abspath.starts_with(corepkgsPrefix)) return CanonPath(abspath);
+    if (abspath.starts_with(corepkgsPrefix)) {
+        return SourcePath(CanonPath(abspath)).unsafeIntoChecked();
+    }
 
     for (auto & i : *allowedPaths) {
         if (isDirOrInDir(abspath, i)) {
@@ -417,8 +419,9 @@ SourcePath EvalPaths::checkSourcePath(const SourcePath & path_)
 
     for (auto & i : *allowedPaths) {
         if (isDirOrInDir(path.canonical().abs(), i)) {
-            resolvedPaths.insert_or_assign(path_.canonical().abs(), path);
-            return path;
+            auto checked = path.unsafeIntoChecked();
+            resolvedPaths.insert_or_assign(path_.canonical().abs(), checked);
+            return checked;
         }
     }
 
@@ -803,7 +806,7 @@ void Evaluator::evalLazily(Expr & e, Value & v)
 void EvalState::mkPos(Value & v, PosIdx p)
 {
     auto origin = ctx.positions.originOf(p);
-    if (auto path = std::get_if<SourcePath>(&origin)) {
+    if (auto path = std::get_if<CheckedSourcePath>(&origin)) {
         auto attrs = ctx.buildBindings(3);
         attrs.alloc(ctx.s.file).mkString(path->to_string());
         makePositionThunks(*this, p, attrs.alloc(ctx.s.line), attrs.alloc(ctx.s.column));
@@ -2621,7 +2624,7 @@ void Evaluator::printStatistics()
                 else
                     obj["name"] = nullptr;
                 if (auto pos = positions[fun->pos]) {
-                    if (auto path = std::get_if<SourcePath>(&pos.origin))
+                    if (auto path = std::get_if<CheckedSourcePath>(&pos.origin))
                         obj["file"] = path->to_string();
                     obj["line"] = pos.line;
                     obj["column"] = pos.column;
@@ -2636,7 +2639,7 @@ void Evaluator::printStatistics()
             for (auto & i : stats.attrSelects) {
                 json obj = json::object();
                 if (auto pos = positions[i.first]) {
-                    if (auto path = std::get_if<SourcePath>(&pos.origin))
+                    if (auto path = std::get_if<CheckedSourcePath>(&pos.origin))
                         obj["file"] = path->to_string();
                     obj["line"] = pos.line;
                     obj["column"] = pos.column;
@@ -2661,7 +2664,7 @@ void Evaluator::printStatistics()
 }
 
 
-SourcePath EvalPaths::resolveExprPath(SourcePath path_)
+CheckedSourcePath EvalPaths::resolveExprPath(SourcePath path_)
 {
     auto path = checkSourcePath(path_);
     unsigned int followCount = 0, maxFollow = 1024;
@@ -2686,13 +2689,13 @@ SourcePath EvalPaths::resolveExprPath(SourcePath path_)
 }
 
 
-Expr & Evaluator::parseExprFromFile(const SourcePath & path)
+Expr & Evaluator::parseExprFromFile(const CheckedSourcePath & path)
 {
     return parseExprFromFile(path, builtins.staticEnv);
 }
 
 
-Expr & Evaluator::parseExprFromFile(const SourcePath & path, std::shared_ptr<StaticEnv> & staticEnv)
+Expr & Evaluator::parseExprFromFile(const CheckedSourcePath & path, std::shared_ptr<StaticEnv> & staticEnv)
 {
     auto buffer = path.readFile();
     return *parse(buffer.data(), buffer.size(), Pos::Origin(path), path.parent(), staticEnv);

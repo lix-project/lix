@@ -96,7 +96,7 @@ static bool parseInstallSourceOptions(Globals & globals,
 }
 
 
-static bool isNixExpr(EvalPaths & paths, const SourcePath & path, struct InputAccessor::Stat & st)
+static bool isNixExpr(EvalPaths & paths, const CheckedSourcePath & path, struct InputAccessor::Stat & st)
 {
     if (st.type == InputAccessor::tRegular) {
         return true;
@@ -113,7 +113,7 @@ static constexpr size_t maxAttrs = 1024;
 
 
 static void getAllExprs(Evaluator & state,
-    const SourcePath & path, StringSet & seen, BindingsBuilder & attrs)
+    const CheckedSourcePath & path, StringSet & seen, BindingsBuilder & attrs)
 {
     StringSet namesSorted;
     for (auto & [name, _] : path.readDirectory()) namesSorted.insert(name);
@@ -124,7 +124,7 @@ static void getAllExprs(Evaluator & state,
            are implemented using profiles). */
         if (i == "manifest.nix") continue;
 
-        SourcePath path2 = state.paths.checkSourcePath(path + i);
+        auto path2 = state.paths.checkSourcePath(path + i);
 
         InputAccessor::Stat st;
         try {

@@ -117,12 +117,7 @@ StringMap EvalPaths::realiseContext(const NixStringContext & context)
     return res;
 }
 
-struct RealisePathFlags {
-    // Whether to check that the path is allowed in pure eval mode
-    bool checkForPureEval = true;
-};
-
-static SourcePath realisePath(EvalState & state, const PosIdx pos, Value & v, const RealisePathFlags flags = {})
+static auto realisePath(EvalState & state, const PosIdx pos, Value & v, auto checkFn)
 {
     NixStringContext context;
 
@@ -131,15 +126,18 @@ static SourcePath realisePath(EvalState & state, const PosIdx pos, Value & v, co
     try {
         StringMap rewrites = state.ctx.paths.realiseContext(context);
 
-        auto realPath = CanonPath(state.ctx.paths.toRealPath(rewriteStrings(path.canonical().abs(), rewrites), context));
-
-        return flags.checkForPureEval
-            ? state.ctx.paths.checkSourcePath(realPath)
-            : realPath;
+        return checkFn(SourcePath(CanonPath(
+            state.ctx.paths.toRealPath(rewriteStrings(path.canonical().abs(), rewrites), context)
+        )));
     } catch (Error & e) {
         e.addTrace(state.ctx.positions[pos], "while realising the context of path '%s'", path);
         throw;
     }
+}
+
+static CheckedSourcePath realisePath(EvalState & state, const PosIdx pos, Value & v)
+{
+    return realisePath(state, pos, v, [&](auto p) { return state.ctx.paths.checkSourcePath(p); });
 }
 
 /**
@@ -1198,7 +1196,7 @@ static void prim_pathExists(EvalState & state, const PosIdx pos, Value * * args,
        can’t just catch the exception here because we still want to
        throw if something in the evaluation of `arg` tries to
        access an unauthorized path). */
-    auto path = realisePath(state, pos, arg, { .checkForPureEval = false });
+    auto path = realisePath(state, pos, arg, std::identity{});
 
     /* SourcePath doesn't know about trailing slash. */
     auto mustBeDir = arg.type() == nString

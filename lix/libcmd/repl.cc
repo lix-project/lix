@@ -655,7 +655,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
                 return {path, 0};
             } else if (v.isLambda()) {
                 auto pos = evaluator.positions[v.lambda.fun->pos];
-                if (auto path = std::get_if<SourcePath>(&pos.origin))
+                if (auto path = std::get_if<CheckedSourcePath>(&pos.origin))
                     return {*path, pos.line};
                 else
                     throw Error("'%s' cannot be shown in an editor", pos);
@@ -820,7 +820,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
             logger->cout(trim(renderMarkdownToTerminal(markdown)));
         } else if (v.isLambda()) {
             auto pos = evaluator.positions[v.lambda.fun->pos];
-            if (auto path = std::get_if<SourcePath>(&pos.origin)) {
+            if (auto path = std::get_if<CheckedSourcePath>(&pos.origin)) {
                 // Path and position have now been obtained, feed to nix-doc library to get data.
                 auto docComment = lambdaDocsForPos(*path, pos);
                 if (!docComment) {

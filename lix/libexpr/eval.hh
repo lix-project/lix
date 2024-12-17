@@ -393,7 +393,7 @@ private:
     /**
      * Cache used by checkSourcePath().
      */
-    std::unordered_map<Path, SourcePath> resolvedPaths;
+    std::unordered_map<Path, CheckedSourcePath> resolvedPaths;
 
 public:
     /**
@@ -416,12 +416,12 @@ public:
      * Check whether access to a path is allowed and throw an error if
      * not. Otherwise return the canonicalised path.
      */
-    SourcePath checkSourcePath(const SourcePath & path);
+    CheckedSourcePath checkSourcePath(const SourcePath & path);
 
     /**
      * If `path` refers to a directory, then append "/default.nix".
      */
-    SourcePath resolveExprPath(SourcePath path);
+    CheckedSourcePath resolveExprPath(SourcePath path);
 
     void checkURI(const std::string & uri);
 
@@ -536,8 +536,8 @@ public:
     /**
      * Parse a Nix expression from the specified file.
      */
-    Expr & parseExprFromFile(const SourcePath & path);
-    Expr & parseExprFromFile(const SourcePath & path, std::shared_ptr<StaticEnv> & staticEnv);
+    Expr & parseExprFromFile(const CheckedSourcePath & path);
+    Expr & parseExprFromFile(const CheckedSourcePath & path, std::shared_ptr<StaticEnv> & staticEnv);
 
     /**
      * Parse a Nix expression from the specified string.

@@ -14,15 +14,14 @@
 
 namespace nix {
 
+class CheckedSourcePath;
+
 /**
- * An abstraction for accessing source files during
- * evaluation. Currently, it's just a wrapper around `CanonPath` that
- * accesses files in the regular filesystem, but in the future it will
- * support fetching files in other ways.
+ * An abstraction for manipulating path names during evaluation.
  */
 struct SourcePath
 {
-private:
+protected:
     CanonPath path;
 
 public:
@@ -38,6 +37,61 @@ public:
      */
     SourcePath parent() const;
 
+    const CanonPath & canonical() const { return path; }
+
+    std::string to_string() const
+    { return path.abs(); }
+
+    /**
+     * Converts this `SourcePath` into a checked `SourcePath`, consuming it.
+     */
+    CheckedSourcePath unsafeIntoChecked();
+
+    /**
+     * Append a `CanonPath` to this path.
+     */
+    SourcePath operator + (const CanonPath & x) const
+    { return {path + x}; }
+
+    /**
+     * Append a single component `c` to this path. `c` must not
+     * contain a slash. A slash is implicitly added between this path
+     * and `c`.
+     */
+    SourcePath operator + (std::string_view c) const
+    {  return {path + c}; }
+
+    bool operator == (const SourcePath & x) const
+    {
+        return path == x.path;
+    }
+
+    bool operator != (const SourcePath & x) const
+    {
+        return path != x.path;
+    }
+
+    bool operator < (const SourcePath & x) const
+    {
+        return path < x.path;
+    }
+};
+
+std::ostream & operator << (std::ostream & str, const SourcePath & path);
+
+/**
+ * An abstraction for accessing source files during
+ * evaluation. Currently, it's just a wrapper around `CanonPath` that
+ * accesses files in the regular filesystem, but in the future it will
+ * support fetching files in other ways.
+ */
+class CheckedSourcePath : public SourcePath
+{
+    friend struct SourcePath;
+
+    CheckedSourcePath(CanonPath path): SourcePath(std::move(path)) {}
+
+public:
     /**
      * If this `SourcePath` denotes a regular file (not a symlink),
      * return its contents; otherwise throw an error.
@@ -96,42 +150,11 @@ public:
         Sink & sink,
         PathFilter & filter = defaultPathFilter) const
     { sink << nix::dumpPath(path.abs(), filter); }
-
-    const CanonPath & canonical() const { return path; }
-
-    std::string to_string() const
-    { return path.abs(); }
-
-    /**
-     * Append a `CanonPath` to this path.
-     */
-    SourcePath operator + (const CanonPath & x) const
-    { return {path + x}; }
-
-    /**
-     * Append a single component `c` to this path. `c` must not
-     * contain a slash. A slash is implicitly added between this path
-     * and `c`.
-     */
-    SourcePath operator + (std::string_view c) const
-    {  return {path + c}; }
-
-    bool operator == (const SourcePath & x) const
-    {
-        return path == x.path;
-    }
-
-    bool operator != (const SourcePath & x) const
-    {
-        return path != x.path;
-    }
-
-    bool operator < (const SourcePath & x) const
-    {
-        return path < x.path;
-    }
 };
 
-std::ostream & operator << (std::ostream & str, const SourcePath & path);
+inline CheckedSourcePath SourcePath::unsafeIntoChecked()
+{
+    return CheckedSourcePath(std::move(path));
+}
 
 }

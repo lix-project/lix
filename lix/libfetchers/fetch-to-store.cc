@@ -6,7 +6,7 @@ namespace nix {
 
 StorePath fetchToStore(
     Store & store,
-    const SourcePath & path,
+    const CheckedSourcePath & path,
     std::string_view name,
     FileIngestionMethod method,
     PathFilter * filter,
