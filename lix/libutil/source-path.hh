@@ -103,13 +103,6 @@ struct SourcePath
         PathFilter & filter = defaultPathFilter) const
     { sink << nix::dumpPath(path.abs(), filter); }
 
-    /**
-     * Return the location of this path in the "real" filesystem, if
-     * it has a physical location.
-     */
-    std::optional<CanonPath> getPhysicalPath() const
-    { return path; }
-
     std::string to_string() const
     { return path.abs(); }
 

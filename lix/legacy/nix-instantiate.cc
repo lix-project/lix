@@ -168,10 +168,7 @@ static int main_nix_instantiate(std::string programName, Strings argv)
         if (findFile) {
             for (auto & i : files) {
                 auto p = evaluator->paths.findFile(i);
-                if (auto fn = p.getPhysicalPath())
-                    std::cout << fn->abs() << std::endl;
-                else
-                    throw Error("'%s' has no physical path", p);
+                std::cout << p.path.abs() << std::endl;
             }
             return 0;
         }
