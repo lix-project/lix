@@ -1153,7 +1153,7 @@ static void prim_toPath(EvalState & state, const PosIdx pos, Value * * args, Val
 {
     NixStringContext context;
     auto path = state.coerceToPath(pos, *args[0], context, "while evaluating the first argument passed to builtins.toPath");
-    v.mkString(path.path.abs(), context);
+    v.mkString(path.to_string(), context);
 }
 
 /* Allow a valid store path to be used in an expression.  This is

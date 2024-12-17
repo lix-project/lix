@@ -805,7 +805,7 @@ void EvalState::mkPos(Value & v, PosIdx p)
     auto origin = ctx.positions.originOf(p);
     if (auto path = std::get_if<SourcePath>(&origin)) {
         auto attrs = ctx.buildBindings(3);
-        attrs.alloc(ctx.s.file).mkString(path->path.abs());
+        attrs.alloc(ctx.s.file).mkString(path->to_string());
         makePositionThunks(*this, p, attrs.alloc(ctx.s.line), attrs.alloc(ctx.s.column));
         v.mkAttrs(attrs);
     } else
@@ -2269,7 +2269,7 @@ BackedStringView EvalState::coerceToString(
               v._path
             : copyToStore
             ? ctx.store->printStorePath(ctx.paths.copyPathToStore(context, v.path(), ctx.repair))
-            : std::string(v.path().path.abs());
+            : v.path().to_string();
     }
 
     if (v.type() == nAttrs) {
