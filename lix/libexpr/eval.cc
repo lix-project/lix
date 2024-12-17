@@ -2661,8 +2661,9 @@ void Evaluator::printStatistics()
 }
 
 
-SourcePath EvalPaths::resolveExprPath(SourcePath path)
+SourcePath EvalPaths::resolveExprPath(SourcePath path_)
 {
+    auto path = checkSourcePath(path_);
     unsigned int followCount = 0, maxFollow = 1024;
 
     /* If `path' is a symlink, follow it.  This is so that relative
@@ -2672,7 +2673,9 @@ SourcePath EvalPaths::resolveExprPath(SourcePath path)
         if (++followCount >= maxFollow)
             throw Error("too many symbolic links encountered while traversing the path '%s'", path);
         if (path.lstat().type != InputAccessor::tSymlink) break;
-        path = {CanonPath(path.readLink(), path.canonical().parent().value_or(CanonPath::root))};
+        path = checkSourcePath(
+            CanonPath(path.readLink(), path.canonical().parent().value_or(CanonPath::root))
+        );
     }
 
     /* If `path' refers to a directory, append `/default.nix'. */

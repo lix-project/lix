@@ -214,9 +214,9 @@ void SourceExprCommand::completeInstallable(EvalState & state, AddCompletions & 
 
             auto evaluator = getEvaluator();
 
-            Expr & e = evaluator->parseExprFromFile(evaluator->paths.resolveExprPath(
-                evaluator->paths.checkSourcePath(lookupFileArg(*evaluator, *file))
-            ));
+            Expr & e = evaluator->parseExprFromFile(
+                state.ctx.paths.resolveExprPath(lookupFileArg(*evaluator, *file))
+            );
 
             Value root;
             state.eval(e, root);
