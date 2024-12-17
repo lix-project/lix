@@ -60,6 +60,7 @@ libutil_tests_sources = files(
   'libutil/hash.cc',
   'libutil/hilite.cc',
   'libutil/json-utils.cc',
+  'libutil/linear-map.cc',
   'libutil/logging.cc',
   'libutil/lru-cache.cc',
   'libutil/monitor-fd.cc',
