@@ -951,7 +951,7 @@ void EvalState::evalFile(const SourcePath & path_, Value & v)
         return;
     }
 
-    auto resolvedPath = resolveExprPath(path);
+    auto resolvedPath = ctx.paths.resolveExprPath(path);
     if (auto i = ctx.caches.fileEval.find(resolvedPath); i != ctx.caches.fileEval.end()) {
         v = i->second->result;
         return;
@@ -2661,7 +2661,7 @@ void Evaluator::printStatistics()
 }
 
 
-SourcePath resolveExprPath(SourcePath path)
+SourcePath EvalPaths::resolveExprPath(SourcePath path)
 {
     unsigned int followCount = 0, maxFollow = 1024;
 

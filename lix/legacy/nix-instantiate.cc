@@ -183,7 +183,7 @@ static int main_nix_instantiate(std::string programName, Strings argv)
         for (auto & i : files) {
             Expr & e = fromArgs
                 ? evaluator->parseExprFromString(i, CanonPath::fromCwd())
-                : evaluator->parseExprFromFile(resolveExprPath(evaluator->paths.checkSourcePath(lookupFileArg(*evaluator, i))));
+                : evaluator->parseExprFromFile(evaluator->paths.resolveExprPath(evaluator->paths.checkSourcePath(lookupFileArg(*evaluator, i))));
             processExpr(*state, attrPaths, parseOnly, strict, autoArgs,
                 evalOnly, outputKind, xmlOutputSourceLocation, e);
         }

@@ -418,6 +418,11 @@ public:
      */
     SourcePath checkSourcePath(const SourcePath & path);
 
+    /**
+     * If `path` refers to a directory, then append "/default.nix".
+     */
+    SourcePath resolveExprPath(SourcePath path);
+
     void checkURI(const std::string & uri);
 
     /**
@@ -847,11 +852,6 @@ private:
  */
 std::string_view showType(ValueType type, bool withArticle = true);
 std::string showType(const Value & v);
-
-/**
- * If `path` refers to a directory, then append "/default.nix".
- */
-SourcePath resolveExprPath(SourcePath path);
 
 static constexpr std::string_view corepkgsPrefix{"/__corepkgs__/"};
 

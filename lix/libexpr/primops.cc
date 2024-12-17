@@ -251,7 +251,7 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
             // args[0]->attrs is already sorted.
 
             debug("evaluating file '%1%'", path);
-            Expr & e = state.ctx.parseExprFromFile(resolveExprPath(path), staticEnv);
+            Expr & e = state.ctx.parseExprFromFile(state.ctx.paths.resolveExprPath(path), staticEnv);
 
             e.eval(state, *env, v);
         }
