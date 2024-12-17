@@ -100,7 +100,7 @@ void Value::mkStringMove(const char * s, const NixStringContext & context)
 
 void Value::mkPath(const SourcePath & path)
 {
-    mkPath(gcCopyStringIfNeeded(path.path.abs()));
+    *this = Value(NewValueAs::path, path);
 }
 
 }

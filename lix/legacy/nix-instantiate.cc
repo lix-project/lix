@@ -168,7 +168,7 @@ static int main_nix_instantiate(std::string programName, Strings argv)
         if (findFile) {
             for (auto & i : files) {
                 auto p = evaluator->paths.findFile(i);
-                std::cout << p.path.abs() << std::endl;
+                std::cout << p.canonical().abs() << std::endl;
             }
             return 0;
         }

@@ -42,8 +42,10 @@ enum class SymlinkResolution {
  */
 struct SourcePath
 {
+private:
     CanonPath path;
 
+public:
     SourcePath(CanonPath path)
         : path(std::move(path))
     { }
@@ -102,6 +104,8 @@ struct SourcePath
         Sink & sink,
         PathFilter & filter = defaultPathFilter) const
     { sink << nix::dumpPath(path.abs(), filter); }
+
+    const CanonPath & canonical() const { return path; }
 
     std::string to_string() const
     { return path.abs(); }

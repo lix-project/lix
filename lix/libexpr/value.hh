@@ -347,7 +347,7 @@ public:
     /// dynamic (GC) allocation to do so.
     Value(path_t, SourcePath const & path)
         : internalType(tPath)
-        , _path(gcCopyStringIfNeeded(path.path.abs()))
+        , _path(gcCopyStringIfNeeded(path.canonical().abs()))
         , _path_pad(0)
     { }
 

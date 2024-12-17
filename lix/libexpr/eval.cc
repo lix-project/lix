@@ -383,7 +383,7 @@ SourcePath EvalPaths::checkSourcePath(const SourcePath & path_)
 {
     if (!allowedPaths) return path_;
 
-    auto i = resolvedPaths.find(path_.path.abs());
+    auto i = resolvedPaths.find(path_.canonical().abs());
     if (i != resolvedPaths.end())
         return i->second;
 
@@ -393,7 +393,7 @@ SourcePath EvalPaths::checkSourcePath(const SourcePath & path_)
      * attacker can't append ../../... to a path that would be in allowedPaths
      * and thus leak symlink targets.
      */
-    Path abspath = canonPath(path_.path.abs());
+    Path abspath = canonPath(path_.canonical().abs());
 
     if (abspath.starts_with(corepkgsPrefix)) return CanonPath(abspath);
 
@@ -416,8 +416,8 @@ SourcePath EvalPaths::checkSourcePath(const SourcePath & path_)
     SourcePath path = CanonPath(canonPath(abspath, true));
 
     for (auto & i : *allowedPaths) {
-        if (isDirOrInDir(path.path.abs(), i)) {
-            resolvedPaths.insert_or_assign(path_.path.abs(), path);
+        if (isDirOrInDir(path.canonical().abs(), i)) {
+            resolvedPaths.insert_or_assign(path_.canonical().abs(), path);
             return path;
         }
     }
@@ -2339,7 +2339,7 @@ BackedStringView EvalState::coerceToString(
 
 StorePath EvalPaths::copyPathToStore(NixStringContext & context, const SourcePath & path, RepairFlag repair)
 {
-    if (nix::isDerivation(path.path.abs()))
+    if (nix::isDerivation(path.canonical().abs()))
         errors.make<EvalError>("file names are not allowed to end in '%1%'", drvExtension).debugThrow();
 
     auto i = srcToStore.find(path);
@@ -2672,7 +2672,7 @@ SourcePath resolveExprPath(SourcePath path)
         if (++followCount >= maxFollow)
             throw Error("too many symbolic links encountered while traversing the path '%s'", path);
         if (path.lstat().type != InputAccessor::tSymlink) break;
-        path = {CanonPath(path.readLink(), path.path.parent().value_or(CanonPath::root))};
+        path = {CanonPath(path.readLink(), path.canonical().parent().value_or(CanonPath::root))};
     }
 
     /* If `path' refers to a directory, append `/default.nix'. */

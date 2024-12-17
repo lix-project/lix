@@ -18,8 +18,8 @@ StorePath fetchToStore(
 
     return
         settings.readOnlyMode
-        ? store.computeStorePathForPath(name, path.path.abs(), method, HashType::SHA256, filter2).first
-        : store.addToStore(name, path.path.abs(), method, HashType::SHA256, filter2, repair);
+        ? store.computeStorePathForPath(name, path.canonical().abs(), method, HashType::SHA256, filter2).first
+        : store.addToStore(name, path.canonical().abs(), method, HashType::SHA256, filter2, repair);
 }
 
 

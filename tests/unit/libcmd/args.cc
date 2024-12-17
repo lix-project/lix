@@ -34,12 +34,12 @@ TEST(Arguments, lookupFileArg) {
     auto state = std::make_shared<Evaluator>(searchPath, store, store);
 
     SourcePath const foundUnitData = lookupFileArg(*state, "<example>");
-    EXPECT_EQ(foundUnitData.path, canonDataPath);
+    EXPECT_EQ(foundUnitData.canonical(), canonDataPath);
 
     // lookupFileArg should not resolve <search paths> if anything else is before or after it.
     SourcePath const yepEvenSpaces = lookupFileArg(*state, " <example>");
-    EXPECT_EQ(yepEvenSpaces.path, CanonPath::fromCwd(" <example>"));
-    EXPECT_EQ(lookupFileArg(*state, "<example>/nixos").path, CanonPath::fromCwd("<example>/nixos"));
+    EXPECT_EQ(yepEvenSpaces.canonical(), CanonPath::fromCwd(" <example>"));
+    EXPECT_EQ(lookupFileArg(*state, "<example>/nixos").canonical(), CanonPath::fromCwd("<example>/nixos"));
 
     try {
         lookupFileArg(*state, INVALID_CHANNEL);
@@ -49,7 +49,7 @@ TEST(Arguments, lookupFileArg) {
     }
 
     SourcePath const normalFile = lookupFileArg(*state, unitDataPath);
-    EXPECT_EQ(normalFile.path, canonDataPath);
+    EXPECT_EQ(normalFile.canonical(), canonDataPath);
 }
 
 }
