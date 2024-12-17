@@ -1548,7 +1548,13 @@ static void addPath(
 
         if (!expectedHash || !state.ctx.store->isValidPath(*expectedStorePath)) {
             auto dstPath = fetchToStore(
-                *state.ctx.store, CanonPath(path), name, method, &filter, state.ctx.repair);
+                *state.ctx.store,
+                state.ctx.paths.checkSourcePath(CanonPath(path)),
+                name,
+                method,
+                &filter,
+                state.ctx.repair
+            );
             if (expectedHash && expectedStorePath != dstPath)
                 state.ctx.errors.make<EvalError>(
                     "store path mismatch in (possibly filtered) path added from '%s'",

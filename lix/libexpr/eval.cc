@@ -2347,7 +2347,7 @@ StorePath EvalPaths::copyPathToStore(NixStringContext & context, const SourcePat
     auto dstPath = i != srcToStore.end()
         ? i->second
         : [&]() {
-            auto dstPath = fetchToStore(*store, path, path.baseName(), FileIngestionMethod::Recursive, nullptr, repair);
+            auto dstPath = fetchToStore(*store, checkSourcePath(path), path.baseName(), FileIngestionMethod::Recursive, nullptr, repair);
             allowPath(dstPath);
             srcToStore.insert_or_assign(path, dstPath);
             printMsg(lvlChatty, "copied source '%1%' -> '%2%'", path, store->printStorePath(dstPath));
@@ -2680,7 +2680,7 @@ SourcePath EvalPaths::resolveExprPath(SourcePath path_)
 
     /* If `path' refers to a directory, append `/default.nix'. */
     if (path.lstat().type == InputAccessor::tDirectory)
-        return path + "default.nix";
+        return checkSourcePath(path + "default.nix");
 
     return path;
 }

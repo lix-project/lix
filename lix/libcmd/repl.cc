@@ -1109,7 +1109,7 @@ void NixRepl::evalString(std::string s, Value & v)
 
 Value * NixRepl::evalFile(SourcePath & path)
 {
-    auto & expr = evaluator.parseExprFromFile(path, staticEnv);
+    auto & expr = evaluator.parseExprFromFile(evaluator.paths.checkSourcePath(path), staticEnv);
     Value * result(evaluator.mem.allocValue());
     expr.eval(state, *env, *result);
     state.forceValue(*result, result->determinePos(noPos));

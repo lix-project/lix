@@ -96,11 +96,16 @@ static bool parseInstallSourceOptions(Globals & globals,
 }
 
 
-static bool isNixExpr(const SourcePath & path, struct InputAccessor::Stat & st)
+static bool isNixExpr(EvalPaths & paths, const SourcePath & path, struct InputAccessor::Stat & st)
 {
-    return
-        st.type == InputAccessor::tRegular
-        || (st.type == InputAccessor::tDirectory && (path + "default.nix").pathExists());
+    if (st.type == InputAccessor::tRegular) {
+        return true;
+    } else if (st.type != InputAccessor::tDirectory) {
+        return false;
+    } else {
+        auto defaultNix = paths.checkSourcePath(path + "default.nix");
+        return defaultNix.pathExists();
+    }
 }
 
 
@@ -119,7 +124,7 @@ static void getAllExprs(Evaluator & state,
            are implemented using profiles). */
         if (i == "manifest.nix") continue;
 
-        SourcePath path2 = path + i;
+        SourcePath path2 = state.paths.checkSourcePath(path + i);
 
         InputAccessor::Stat st;
         try {
@@ -128,7 +133,7 @@ static void getAllExprs(Evaluator & state,
             continue; // ignore dangling symlinks in ~/.nix-defexpr
         }
 
-        if (isNixExpr(path2, st) && (st.type != InputAccessor::tRegular || path2.baseName().ends_with(".nix"))) {
+        if (isNixExpr(state.paths, path2, st) && (st.type != InputAccessor::tRegular || path2.baseName().ends_with(".nix"))) {
             /* Strip off the `.nix' filename suffix (if applicable),
                otherwise the attribute cannot be selected with the
                `-A' option.  Useful if you want to stick a Nix
@@ -160,11 +165,12 @@ static void getAllExprs(Evaluator & state,
 
 
 
-static void loadSourceExpr(EvalState & state, const SourcePath & path, Value & v)
+static void loadSourceExpr(EvalState & state, const SourcePath & path_, Value & v)
 {
+    auto path = state.ctx.paths.checkSourcePath(path_);
     auto st = path.stat();
 
-    if (isNixExpr(path, st))
+    if (isNixExpr(state.ctx.paths, path, st))
         state.evalFile(path, v);
 
     /* The path is a directory.  Put the Nix expressions in the
