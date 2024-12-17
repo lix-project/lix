@@ -549,7 +549,7 @@ void EvalBuiltins::addConstant(const std::string & name, Value * v, Constant inf
             assert(info.type == gotType);
 
         /* Install value the base environment. */
-        staticEnv->vars.emplace_back(symbols.create(name), baseEnvDispl);
+        staticEnv->vars.insert_or_assign(symbols.create(name), baseEnvDispl);
         env.values[baseEnvDispl++] = v;
         env.values[0]->attrs->push_back(Attr(symbols.create(name2), v));
     }
@@ -584,7 +584,7 @@ Value * EvalBuiltins::addPrimOp(PrimOp && primOp)
 
     Value * v = mem.allocValue();
     v->mkPrimOp(new PrimOp(primOp));
-    staticEnv->vars.emplace_back(envName, baseEnvDispl);
+    staticEnv->vars.insert_or_assign(auto(envName), baseEnvDispl);
     env.values[baseEnvDispl++] = v;
     env.values[0]->attrs->push_back(Attr(symbols.create(primOp.name), v));
     return v;

@@ -242,14 +242,14 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
                 nullptr, state.ctx.builtins.staticEnv.get(), vScope->attrs->size()
             );
 
-            unsigned int displ = 0;
-            for (auto & attr : *vScope->attrs) {
-                staticEnv->vars.emplace_back(attr.name, displ);
-                env->values[displ++] = attr.value;
-            }
-
-            // No need to call staticEnv.sort(), because
-            // args[0]->attrs is already sorted.
+            staticEnv->vars.unsafe_insert_bulk([&] (auto & map) {
+                unsigned int displ = 0;
+                for (auto & attr : *vScope->attrs) {
+                    // safety: args[0]->attrs is already sorted.
+                    map.emplace_back(attr.name, displ);
+                    env->values[displ++] = attr.value;
+                }
+            });
 
             debug("evaluating file '%1%'", path);
             Expr & e = state.ctx.parseExprFromFile(state.ctx.paths.resolveExprPath(path), staticEnv);
@@ -2835,7 +2835,6 @@ void EvalBuiltins::createBaseEnv(const SearchPath & searchPath, const Path & sto
        because attribute lookups expect it to be sorted. */
     env.values[0]->attrs->sort();
 
-    staticEnv->sort();
     staticEnv->isRoot = true;
 }
 

@@ -11,6 +11,7 @@
 #include "lix/libexpr/eval-error.hh"
 #include "lix/libexpr/pos-idx.hh"
 #include "lix/libutil/strings.hh"
+#include "lix/libutil/linear-map.hh"
 
 namespace nix {
 
@@ -607,9 +608,7 @@ struct StaticEnv
     ExprWith * isWith;
     const StaticEnv * up;
 
-    // Note: these must be in sorted order.
-    typedef std::vector<std::pair<Symbol, Displacement>> Vars;
-    Vars vars;
+    LinearMap<Symbol, Displacement> vars;
 
     /* See ExprVar::needsRoot */
     bool isRoot = false;
@@ -617,31 +616,6 @@ struct StaticEnv
     StaticEnv(ExprWith * isWith, const StaticEnv * up, size_t expectedSize = 0) : isWith(isWith), up(up) {
         vars.reserve(expectedSize);
     };
-
-    void sort()
-    {
-        std::stable_sort(vars.begin(), vars.end(),
-            [](const Vars::value_type & a, const Vars::value_type & b) { return a.first < b.first; });
-    }
-
-    void deduplicate()
-    {
-        auto it = vars.begin(), jt = it, end = vars.end();
-        while (jt != end) {
-            *it = *jt++;
-            while (jt != end && it->first == jt->first) *it = *jt++;
-            it++;
-        }
-        vars.erase(it, end);
-    }
-
-    Vars::const_iterator find(Symbol name) const
-    {
-        Vars::value_type key(name, 0);
-        auto i = std::lower_bound(vars.begin(), vars.end(), key);
-        if (i != vars.end() && i->first == name) return i;
-        return vars.end();
-    }
 };
 
 

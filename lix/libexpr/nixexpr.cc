@@ -465,7 +465,7 @@ void VarBinder::visit(ExprVar & e, std::unique_ptr<Expr> & ptr)
         if (curEnv->isWith) {
             if (withLevel == -1) withLevel = level;
         } else {
-            auto i = curEnv->find(e.name);
+            auto i = curEnv->vars.find(e.name);
             if (i != curEnv->vars.end()) {
                 if (e.needsRoot && !curEnv->isRoot) {
                     throw ParseError({
@@ -523,9 +523,12 @@ std::shared_ptr<const StaticEnv> ExprAttrs::buildRecursiveEnv(const std::shared_
 {
     auto newEnv = std::make_shared<StaticEnv>(nullptr, env.get(), attrs.size());
 
-    Displacement displ = 0;
-    for (auto & i : attrs)
-        newEnv->vars.emplace_back(i.first, i.second.displ = displ++);
+    // safety: the attrs is already sorted
+    newEnv->vars.unsafe_insert_bulk([&] (auto & map) {
+        Displacement displ = 0;
+        for (auto & i : attrs)
+            map.emplace_back(i.first, i.second.displ = displ++);
+    });
     return newEnv;
 }
 
@@ -662,7 +665,7 @@ void VarBinder::visit(ExprPos & e, std::unique_ptr<Expr> & ptr)
 std::shared_ptr<const StaticEnv> SimplePattern::buildEnv(const StaticEnv * up)
 {
     auto newEnv = std::make_shared<StaticEnv>(nullptr, up, 1);
-    newEnv->vars.emplace_back(name, 0);
+    newEnv->vars.insert_or_assign(name, 0);
     return newEnv;
 }
 
@@ -677,12 +680,14 @@ std::shared_ptr<const StaticEnv> AttrsPattern::buildEnv(const StaticEnv * up)
 
     Displacement displ = 0;
 
-    if (name) newEnv->vars.emplace_back(name, displ++);
+    if (name) newEnv->vars.insert_or_assign(name, displ++);
 
-    for (auto & i : formals)
-        newEnv->vars.emplace_back(i.name, displ++);
+    // safety: The formals are already sorted
+    newEnv->vars.unsafe_insert_bulk([&] (auto & map) {
+        for (auto & i : formals)
+            map.emplace_back(i.name, displ++);
+    });
 
-    newEnv->sort();
     return newEnv;
 }
 

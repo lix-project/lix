@@ -1056,19 +1056,24 @@ template<typename T, typename NameFn, typename ValueFn>
 void NixRepl::addToScope(T && things, NameFn nameFn, ValueFn valueFn)
 {
     size_t added = 0;
-    for (auto && thing : things) {
-        if (displ + 1 >= envSize)
-            throw Error("environment full; cannot add more variables");
 
-        const auto name = nameFn(thing);
-        staticEnv->vars.emplace_back(name, displ);
-        env->values[displ++] = valueFn(thing);
-        varNames.emplace(evaluator.symbols[name]);
-        added++;
-    }
+    staticEnv->vars.unsafe_insert_bulk([&] (auto & map) {
+        auto oldSize = map.size();
+        for (auto && thing : things) {
+            if (displ + 1 >= envSize)
+                throw Error("environment full; cannot add more variables");
 
-    staticEnv->sort();
-    staticEnv->deduplicate();
+            const auto name = nameFn(thing);
+            map.emplace_back(name, displ);
+            env->values[displ++] = valueFn(thing);
+            varNames.emplace(evaluator.symbols[name]);
+            added++;
+        }
+        // safety: we sort the range that we inserted so that we don't have to push that
+        // invariant up to the caller
+        std::sort(map.begin() + oldSize, map.end());
+    });
+
     if (added > 0) {
         notice("Added %1% variables.", added);
     }
@@ -1093,14 +1098,11 @@ void NixRepl::addVarToScope(const Symbol name, Value & v)
 {
     if (displ >= envSize)
         throw Error("environment full; cannot add more variables");
-    if (auto oldVar = staticEnv->find(name); oldVar != staticEnv->vars.end()) {
-        staticEnv->vars.erase(oldVar);
+    if (staticEnv->vars.insert_or_assign(name, displ).second) {
         notice("Updated %s.", evaluator.symbols[name]);
     } else {
         notice("Added %s.", evaluator.symbols[name]);
     }
-    staticEnv->vars.emplace_back(name, displ);
-    staticEnv->sort();
     env->values[displ++] = &v;
     varNames.emplace(evaluator.symbols[name]);
 }
