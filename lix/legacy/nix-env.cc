@@ -123,7 +123,7 @@ static void getAllExprs(Evaluator & state,
 
         InputAccessor::Stat st;
         try {
-            st = path2.resolveSymlinks().lstat();
+            st = path2.stat();
         } catch (Error &) {
             continue; // ignore dangling symlinks in ~/.nix-defexpr
         }
@@ -162,7 +162,7 @@ static void getAllExprs(Evaluator & state,
 
 static void loadSourceExpr(EvalState & state, const SourcePath & path, Value & v)
 {
-    auto st = path.resolveSymlinks().lstat();
+    auto st = path.stat();
 
     if (isNixExpr(path, st))
         state.evalFile(path, v);

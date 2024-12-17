@@ -1206,12 +1206,13 @@ static void prim_pathExists(EvalState & state, const PosIdx pos, Value * * args,
             || arg.str().ends_with("/."));
 
     try {
-        auto checked = state
-            .ctx.paths
-            .checkSourcePath(path)
-            .resolveSymlinks(mustBeDir ? SymlinkResolution::Full : SymlinkResolution::Ancestors);
+        auto checked = state.ctx.paths.checkSourcePath(path);
 
-        auto st = checked.maybeLstat();
+        // previously we fully resolved symlinks in the mustBeDir case or in pure eval
+        // mode (by accident, since checkSourcePath does this in that case), and up to
+        // the last component otherwise. this is equivalent to calling stat and lstat,
+        // respectively. (in neither case do intermediate symlinks affect the result.)
+        auto st = mustBeDir ? checked.maybeStat() : checked.maybeLstat();
         auto exists = st && (!mustBeDir || st->type == InputAccessor::tDirectory);
         v.mkBool(exists);
     } catch (SysError & e) {

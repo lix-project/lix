@@ -676,7 +676,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
 
         // Reload right after exiting the editor if path is not in store
         // Store is immutable, so there could be no changes, so there's no need to reload
-        if (!evaluator.store->isInStore(path.resolveSymlinks().canonical().abs())) {
+        if (!evaluator.store->isInStore(canonPath(path.canonical().abs(), true))) {
             state.resetFileCache();
             reloadFiles();
         }

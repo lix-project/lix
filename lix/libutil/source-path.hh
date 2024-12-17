@@ -15,26 +15,6 @@
 namespace nix {
 
 /**
- * Note there is a decent chance this type soon goes away because the problem is solved another way.
- * See the discussion in https://github.com/NixOS/nix/pull/9985.
- */
-enum class SymlinkResolution {
-    /**
-     * Resolve symlinks in the ancestors only.
-     *
-     * Only the last component of the result is possibly a symlink.
-     */
-    Ancestors,
-
-    /**
-     * Resolve symlinks fully, realpath(3)-style.
-     *
-     * No component of the result will be a symlink.
-     */
-    Full,
-};
-
-/**
  * An abstraction for accessing source files during
  * evaluation. Currently, it's just a wrapper around `CanonPath` that
  * accesses files in the regular filesystem, but in the future it will
@@ -83,6 +63,18 @@ public:
      * doesn't exist.
      */
     std::optional<InputAccessor::Stat> maybeLstat() const;
+
+    /**
+     * Return stats about this `SourcePath`, or throw an exception if
+     * it doesn't exist. Symlinks are resolved by this function.
+     */
+    InputAccessor::Stat stat() const;
+
+    /**
+     * Return stats about this `SourcePath`, or std::nullopt if it
+     * doesn't exist. Symlinks are resolved by this function.
+     */
+    std::optional<InputAccessor::Stat> maybeStat() const;
 
     /**
      * If this `SourcePath` denotes a directory (not a symlink),
@@ -138,16 +130,6 @@ public:
     {
         return path < x.path;
     }
-
-    /**
-     * Resolve any symlinks in this `SourcePath` according to the
-     * given resolution mode.
-     *
-     * @param mode might only be a temporary solution for this.
-     * See the discussion in https://github.com/NixOS/nix/pull/9985.
-     */
-    SourcePath resolveSymlinks(
-        SymlinkResolution mode = SymlinkResolution::Full) const;
 };
 
 std::ostream & operator << (std::ostream & str, const SourcePath & path);
