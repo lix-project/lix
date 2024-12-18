@@ -530,6 +530,8 @@ ProcessLineResult NixRepl::processLine(std::string line)
         arg = line;
     }
 
+    bool inDebugger = evaluator.debug && evaluator.debug->inDebugger;
+
     if (command == ":?" || command == ":help") {
         // FIXME: convert to Markdown, include in the 'nix repl' manpage.
         std::cout
@@ -560,7 +562,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
              << "                               errors\n"
              << "  :?, :help                    Brings up this help menu\n"
              ;
-        if (evaluator.debug && evaluator.debug->inDebugger) {
+        if (inDebugger) {
              std::cout
              << "\n"
              << "        Debug mode commands\n"
@@ -575,7 +577,9 @@ ProcessLineResult NixRepl::processLine(std::string line)
 
     }
 
-    else if (evaluator.debug && evaluator.debug->inDebugger && (command == ":bt" || command == ":backtrace")) {
+    else if (command == ":bt" || command == ":backtrace") {
+        if (!inDebugger)
+            throw Error("backtrace command is only available in debug mode (see %s)", "--debugger");
         auto traces = evaluator.debug->traces();
         for (const auto & [idx, i] : enumerate(traces)) {
             std::cout << "\n" << ANSI_BLUE << idx << ANSI_NORMAL << ": ";
@@ -583,7 +587,9 @@ ProcessLineResult NixRepl::processLine(std::string line)
         }
     }
 
-    else if (evaluator.debug && evaluator.debug->inDebugger && (command == ":env")) {
+    else if (command == ":env") {
+        if (!inDebugger)
+            throw Error("env command is only available in debug mode (see %s)", "--debugger");
         auto traces = evaluator.debug->traces();
         for (const auto & [idx, i] : enumerate(traces)) {
             if (idx == debugTraceIndex) {
@@ -593,7 +599,9 @@ ProcessLineResult NixRepl::processLine(std::string line)
         }
     }
 
-    else if (evaluator.debug && evaluator.debug->inDebugger && (command == ":st")) {
+    else if (command == ":st") {
+        if (!inDebugger)
+            throw Error("trace command is only available in debug mode (see %s)", "--debugger");
         try {
             // change the DebugTrace index.
             debugTraceIndex = stoi(arg);
@@ -612,13 +620,17 @@ ProcessLineResult NixRepl::processLine(std::string line)
         }
     }
 
-    else if (evaluator.debug && evaluator.debug->inDebugger && (command == ":s" || command == ":step")) {
+    else if (command == ":s" || command == ":step") {
+        if (!inDebugger)
+            throw Error("step command is only available in debug mode (see %s)", "--debugger");
         // set flag to stop at next DebugTrace; exit repl.
         evaluator.debug->stop = true;
         return ProcessLineResult::Continue;
     }
 
-    else if (evaluator.debug && evaluator.debug->inDebugger && (command == ":c" || command == ":continue")) {
+    else if (command == ":c" || command == ":continue") {
+        if (!inDebugger)
+            throw Error("continue command is only available in debug mode (see %s)", "--debugger");
         // set flag to run to next breakpoint or end of program; exit repl.
         evaluator.debug->stop = false;
         return ProcessLineResult::Continue;
