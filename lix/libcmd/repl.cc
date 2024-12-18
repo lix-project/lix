@@ -544,6 +544,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
              << "  :bl <expr>                   Build a derivation, creating GC roots in the\n"
              << "                               working directory\n"
              << "  :e, :edit <expr>             Open package or function in $EDITOR\n"
+             << "  :env                         Show env stack\n"
              << "  :i <expr>                    Build derivation, then install result into\n"
              << "                               current profile\n"
              << "  :l, :load <path>             Load Nix expression and add it to scope\n"
@@ -566,7 +567,6 @@ ProcessLineResult NixRepl::processLine(std::string line)
              std::cout
              << "\n"
              << "        Debug mode commands\n"
-             << "  :env             Show env stack\n"
              << "  :bt, :backtrace  Show trace stack\n"
              << "  :st              Show current trace\n"
              << "  :st <idx>        Change to another trace in the stack\n"
@@ -588,14 +588,16 @@ ProcessLineResult NixRepl::processLine(std::string line)
     }
 
     else if (command == ":env") {
-        if (!inDebugger)
-            throw Error("env command is only available in debug mode (see %s)", "--debugger");
-        auto traces = evaluator.debug->traces();
-        for (const auto & [idx, i] : enumerate(traces)) {
-            if (idx == debugTraceIndex) {
-                printEnvBindings(state, i->expr, i->env);
-                break;
+        if (inDebugger) {
+            auto traces = evaluator.debug->traces();
+            for (const auto & [idx, i] : enumerate(traces)) {
+                if (idx == debugTraceIndex) {
+                    printEnvBindings(state, i->expr, i->env);
+                    break;
+                }
             }
+        } else {
+            printEnvBindings(state.ctx.symbols, *staticEnv, *env, 0);
         }
     }
 

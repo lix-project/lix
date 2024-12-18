@@ -90,3 +90,13 @@ they aren't the top level item being printed.
       };
     };
   }
+
+Printing an environment with :env after adding a variable to the scope
+
+  nix-repl> foo = "bar"
+  nix-repl> :env
+  Env level 0
+  static: foo
+
+  Env level 1
+  abort baseNameOf break builtins derivation derivationStrict dirOf false fetchGit fetchMercurial fetchTarball fetchTree fromTOML import isNull map null placeholder removeAttrs scopedImport throw toString true
