@@ -599,6 +599,14 @@ public:
         const FeatureSettings & xpSettings = featureSettings
     );
 
+    std::variant<std::unique_ptr<Expr>, ExprReplBindings>
+    parseReplInput(
+        std::string s,
+        const SourcePath & basePath,
+        std::shared_ptr<StaticEnv> & staticEnv,
+        const FeatureSettings & xpSettings = featureSettings
+    );
+
     Expr & parseStdin();
 
     /**
@@ -614,6 +622,16 @@ private:
         const SourcePath & basePath,
         std::shared_ptr<StaticEnv> & staticEnv,
         const FeatureSettings & xpSettings = featureSettings);
+
+    std::variant<std::unique_ptr<Expr>, ExprReplBindings>
+    parse_repl(
+        char * text,
+        size_t length,
+        Pos::Origin origin,
+        const SourcePath & basePath,
+        std::shared_ptr<StaticEnv> & staticEnv,
+        const FeatureSettings & xpSettings = featureSettings
+    );
 
 public:
     BindingsBuilder buildBindings(size_t capacity)

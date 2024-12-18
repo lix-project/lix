@@ -90,8 +90,12 @@ public:
         }
         session.close();
 
+        // Remove references to the checkout path
         auto replacedOutLog =
             boost::algorithm::replace_all_copy(session.outLog, unitTestData, "$TEST_DATA");
+        // Remove references to the current version
+        replacedOutLog =
+            boost::algorithm::replace_all_copy(replacedOutLog, PACKAGE_VERSION, "$VERSION");
         auto cleanedOutLog = trimOutLog(replacedOutLog);
 
         auto parsedOutLog = cli_literate_parser::parse(
@@ -178,6 +182,7 @@ REPL_TEST(regression_9917);
 REPL_TEST(regression_9918);
 REPL_TEST(regression_l145);
 REPL_TEST(regression_l592);
+REPL_TEST(repl_input);
 REPL_TEST(repl_overlays);
 REPL_TEST(repl_overlays_compose);
 REPL_TEST(repl_overlays_destructure_without_dotdotdot_errors);

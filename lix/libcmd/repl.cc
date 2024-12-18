@@ -156,6 +156,7 @@ struct NixRepl
     void addAttrsToScope(Value & attrs);
     void addVarToScope(const Symbol name, Value & v);
     Expr & parseString(std::string s);
+    std::variant<std::unique_ptr<Expr>, ExprReplBindings> parseReplString(std::string s);
     void evalString(std::string s, Value & v);
     void loadDebugTraceEnv(const DebugTrace & dt);
 
@@ -468,23 +469,6 @@ StringSet NixRepl::completePrefix(const std::string &prefix)
 
     return completions;
 }
-
-
-// FIXME: DRY and match or use the parser
-static bool isVarName(std::string_view s)
-{
-    if (s.size() == 0) return false;
-    char c = s[0];
-    if ((c >= '0' && c <= '9') || c == '-' || c == '\'') return false;
-    for (auto & i : s)
-        if (!((i >= 'a' && i <= 'z') ||
-              (i >= 'A' && i <= 'Z') ||
-              (i >= '0' && i <= '9') ||
-              i == '_' || i == '-' || i == '\''))
-            return false;
-    return true;
-}
-
 
 StorePath NixRepl::getDerivationPath(Value & v) {
     auto drvInfo = getDerivation(state, v, false);
@@ -870,23 +854,26 @@ ProcessLineResult NixRepl::processLine(std::string line)
         throw Error("unknown command '%1%'", command);
 
     else {
-        size_t p = line.find('=');
-        std::string name;
-        if (p != std::string::npos &&
-            p < line.size() &&
-            line[p + 1] != '=' &&
-            isVarName(name = removeWhitespace(line.substr(0, p))))
-        {
-            Expr & e = parseString(line.substr(p + 1));
-            Value & v(*evaluator.mem.allocValue());
-            v.mkThunk(env, e);
-            addVarToScope(evaluator.symbols.create(name), v);
-        } else {
-            Value v;
-            evalString(line, v);
-            printValue(std::cout, v, 1);
-            std::cout << std::endl;
-        }
+        /* A line is either a regular expression or a `var = expr` assignment */
+        std::variant<std::unique_ptr<Expr>, ExprReplBindings> result = parseReplString(line);
+        std::visit(overloaded {
+            [&](ExprReplBindings & b) {
+                for (auto & [name, e] : b.symbols) {
+                    Value * v = state.ctx.mem.allocValue();
+                    e->eval(state, *env, *v);
+                    (void) e.release(); // NOLINT(bugprone-unused-return-value): leak because of thunk references
+                    addVarToScope(name, *v);
+                }
+            },
+            [&](std::unique_ptr<Expr> & e) {
+                Value v;
+                e->eval(state, *env, v);
+                (void) e.release(); // NOLINT(bugprone-unused-return-value): leak because of thunk references
+                state.forceValue(v, v.determinePos(noPos));
+                printValue(std::cout, v, 1);
+                std::cout << std::endl;
+            }
+        }, result);
     }
 
     return ProcessLineResult::PromptAgain;
@@ -1115,7 +1102,12 @@ Value * NixRepl::bindingsToAttrs()
 
 Expr & NixRepl::parseString(std::string s)
 {
-    return evaluator.parseExprFromString(std::move(s), CanonPath::fromCwd(), staticEnv);
+    return evaluator.parseExprFromString(std::move(s), CanonPath::fromCwd(), staticEnv, featureSettings);
+}
+
+std::variant<std::unique_ptr<Expr>, ExprReplBindings> NixRepl::parseReplString(std::string s)
+{
+    return evaluator.parseReplInput(std::move(s), CanonPath::fromCwd(), staticEnv, featureSettings);
 }
 
 

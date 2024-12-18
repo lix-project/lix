@@ -2782,6 +2782,17 @@ Expr & Evaluator::parseExprFromString(
     return parseExprFromString(std::move(s), basePath, builtins.staticEnv, featureSettings);
 }
 
+std::variant<std::unique_ptr<Expr>, ExprReplBindings>
+Evaluator::parseReplInput(
+    std::string s_,
+    const SourcePath & basePath,
+    std::shared_ptr<StaticEnv> & staticEnv,
+    const FeatureSettings & featureSettings
+)
+{
+    auto s = make_ref<std::string>(std::move(s_));
+    return parse_repl(s->data(), s->size(), Pos::String{.source = s}, basePath, staticEnv, featureSettings);
+}
 
 Expr & Evaluator::parseStdin()
 {

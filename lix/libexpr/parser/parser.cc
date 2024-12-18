@@ -49,4 +49,41 @@ Expr * Evaluator::parse(
     }
 }
 
+std::variant<std::unique_ptr<Expr>, ExprReplBindings>
+Evaluator::parse_repl(
+    char * text,
+    size_t length,
+    Pos::Origin origin,
+    const SourcePath & basePath,
+    std::shared_ptr<StaticEnv> & staticEnv,
+    const FeatureSettings & featureSettings)
+{
+    parser::State s = {
+        symbols,
+        positions,
+        basePath,
+        positions.addOrigin(origin, length),
+        this->s.exprSymbols,
+        featureSettings,
+    };
+
+    p::string_input<p::tracking_mode::lazy> inp{std::string_view{text, length}, "input"};
+    try {
+        parser::v1::ReplRootState x;
+        p::parse<parser::grammar::v1::repl_root, parser::v1::BuildAST, parser::v1::Control>(inp, x, s);
+
+        std::visit(overloaded {
+            [&] (ExprReplBindings & result) { result.bindVars(*this, staticEnv); },
+            [&] (auto & result) { result->bindVars(*this, staticEnv); }
+        }, x);
+        return x;
+    } catch (p::parse_error & e) { // NOLINT(lix-foreign-exceptions)
+        auto pos = e.positions().back();
+        throw ParseError({
+            .msg = HintFmt("syntax error, %s", e.message()),
+            .pos = positions[s.positions.add(s.origin, pos.byte)]
+        });
+    }
+}
+
 }

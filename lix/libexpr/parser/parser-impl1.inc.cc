@@ -46,6 +46,7 @@ error_message_for(grammar::v1::seps) = "expecting separators";
 error_message_for(grammar::v1::path::forbid_prefix_triple_slash) = "too many slashes in path";
 error_message_for(grammar::v1::path::forbid_prefix_double_slash_no_interp) = "path has a trailing slash";
 error_message_for(grammar::v1::expr) = "expecting expression";
+error_message_for(grammar::v1::repl_root::expr_or_binding) = "expecting expression or a binding";
 error_message_for(grammar::v1::expr::unary) = "expecting expression";
 error_message_for(grammar::v1::binding::equal) = "expecting '='";
 error_message_for(grammar::v1::expr::lambda::arg) = "expecting identifier";
@@ -430,7 +431,7 @@ template<> struct BuildAST<grammar::v1::inherit> : change_head<InheritState> {
     }
 };
 
-template<> struct BuildAST<grammar::v1::_binding::value> {
+template<> struct BuildAST<grammar::v1::binding::value> {
     static void apply0(BindingState & s, State & ps) {
         s.value = s->popExprOnly();
     }
@@ -439,6 +440,52 @@ template<> struct BuildAST<grammar::v1::_binding::value> {
 template<> struct BuildAST<grammar::v1::binding> : change_head<BindingState> {
     static void success(const auto & in, BindingState & b, BindingsState & s, State & ps) {
         ps.addAttr(&s.attrs, std::move(b.attrs), std::move(b.value), ps.at(in));
+    }
+};
+
+struct BindingsStateRepl : ExprState {
+    std::map<Symbol, std::unique_ptr<Expr>> symbols;
+};
+
+template<> struct BuildAST<grammar::v1::repl_binding> : change_head<BindingState> {
+    static void success(const auto & in, BindingState & b, BindingsStateRepl & s, State & ps) {
+        auto path = std::move(b.attrs);
+        AttrName name = std::move(path.front());
+        path.erase(path.begin());
+        if (name.expr)
+            throw ParseError({
+                .msg = HintFmt("dynamic attributes not allowed in REPL"),
+                .pos = ps.positions[ps.at(in)]
+            });
+        Symbol symbol = name.symbol;
+
+        if (auto iter = s.symbols.find(symbol); iter != s.symbols.end())
+            ps.dupAttr({symbol}, iter->second->getPos(), ps.at(in));
+
+        if (path.empty()) {
+            // key = value
+            s.symbols.emplace(symbol, std::move(b.value));
+        } else {
+            // key.stuff = value
+            auto attrs = std::make_unique<ExprSet>(b.value->getPos());
+            ps.addAttr(&*attrs, std::move(path), std::move(b.value), ps.at(in));
+            s.symbols.emplace(symbol, std::move(attrs));
+        }
+    }
+};
+
+using ReplRootState = std::variant<std::unique_ptr<Expr>, ExprReplBindings>;
+
+template<> struct BuildAST<grammar::v1::repl_bindings> : change_head<BindingsStateRepl> {
+    static void success0(BindingsStateRepl & b, ReplRootState & r, State &) {
+        r = ExprReplBindings { std::move(b.symbols) };
+    }
+};
+
+template<> struct BuildAST<grammar::v1::repl_root::expression> : change_head<ExprState> {
+    static void success0(ExprState & inner, ReplRootState & outer, State & ps) {
+        auto [_pos, expr] = inner.finish(ps);
+        outer = std::move(expr);
     }
 };
 

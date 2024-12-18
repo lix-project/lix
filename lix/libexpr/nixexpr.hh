@@ -248,6 +248,15 @@ struct ExprSet : Expr, ExprAttrs {
     COMMON_METHODS
 };
 
+struct ExprReplBindings {
+    std::map<Symbol, std::unique_ptr<Expr>> symbols;
+
+    void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) {
+        for (auto & [_, e] : symbols)
+            e->bindVars(es, env);
+    }
+};
+
 struct ExprList : Expr
 {
     std::vector<std::unique_ptr<Expr>> elems;

@@ -422,11 +422,27 @@ struct _binding {
 struct binding : _binding, seq<
     _binding::path, seps,
     must<_binding::equal>, seps,
-    _binding::value, seps,
-    must<one<';'>>
+    _binding::value
+    // A binding usually must end with a `;`, except when in REPL
 > {};
 
-struct bindings : opt<list<sor<inherit, binding>, seps>> {};
+struct bindings : opt<
+    list<
+        sor<
+            inherit,
+            seq<binding, seps, must<one<';'>>>
+        >,
+        seps
+    >
+> {};
+
+struct repl_binding : binding {};
+
+struct repl_bindings : seq<
+    list<repl_binding, one<';'>, t::sep>,
+    /* Optional semicolon at the end for convenience */
+    opt<seps, one<';'>>
+> {};
 
 struct op {
     enum class kind {
@@ -652,6 +668,16 @@ struct expr : semantic, _expr, sor<
 struct eof : sor<p::eof, one<0>> {};
 
 struct root : must<seps, expr, seps, eof> {};
+
+struct _repl_root {
+    struct expression : expr {};
+    /* Just a thin wrapper to make the must<> error message declaration less bulky */
+    struct expr_or_binding : sor<
+        seq<expression, seps, eof>,
+        seq<repl_bindings, seps, eof>
+    > {};
+};
+struct repl_root : _repl_root, must<seps, _repl_root::expr_or_binding> {};
 
 
 
