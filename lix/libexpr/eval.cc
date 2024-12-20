@@ -282,7 +282,7 @@ EvalPaths::EvalPaths(
     , errors(errors)
 {
     if (evalSettings.restrictEval || evalSettings.pureEval) {
-        allowedPaths = std::optional(PathSet());
+        allowedPaths = AllowedPath{.allowAllChildren = false};
 
         for (auto & i : searchPath_.elements) {
             auto r = resolveSearchPathPath(i.path);
@@ -362,14 +362,23 @@ EvalState::~EvalState()
 
 void EvalPaths::allowPath(const Path & path)
 {
-    if (allowedPaths)
-        allowedPaths->insert(path);
+    if (!allowedPaths) {
+        return;
+    }
+
+    CanonPath p(path);
+    auto * level = &*allowedPaths;
+    for (const auto & entry : p) {
+        level = &level->children.emplace(std::piecewise_construct, std::tuple(entry), std::tuple())
+                     .first->second;
+    }
+    level->allowAllChildren = true;
 }
 
 void EvalPaths::allowPath(const StorePath & storePath)
 {
     if (allowedPaths)
-        allowedPaths->insert(store->toRealPath(storePath));
+        allowPath(store->toRealPath(storePath));
 }
 
 void EvalPaths::allowAndSetStorePathString(const StorePath & storePath, Value & v)
@@ -387,45 +396,78 @@ CheckedSourcePath EvalPaths::checkSourcePath(const SourcePath & path_)
     if (i != resolvedPaths.end())
         return i->second;
 
-    bool found = false;
-
     /* First canonicalize the path without symlinks, so we make sure an
      * attacker can't append ../../... to a path that would be in allowedPaths
      * and thus leak symlink targets.
      */
-    Path abspath = canonPath(path_.canonical().abs());
+    const CanonPath abspath{path_.canonical().abs()};
 
-    if (abspath.starts_with(corepkgsPrefix)) {
-        return SourcePath(CanonPath(abspath)).unsafeIntoChecked();
+    if (abspath.abs().starts_with(corepkgsPrefix)) {
+        return SourcePath(std::move(abspath)).unsafeIntoChecked();
     }
 
-    for (auto & i : *allowedPaths) {
-        if (isDirOrInDir(abspath, i)) {
-            found = true;
-            break;
-        }
-    }
-
-    if (!found) {
-        auto modeInformation = evalSettings.pureEval
-            ? "in pure eval mode (use '--impure' to override)"
-            : "in restricted mode";
-        throw RestrictedPathError("access to absolute path '%1%' is forbidden %2%", abspath, modeInformation);
-    }
-
-    /* Resolve symlinks. */
+    /* Resolve symlinks. This is mostly restricted copy of canonPath with
+       resolveSymlinks=true, because we need access to intermediat paths. */
     debug("checking access to '%s'", abspath);
-    SourcePath path = CanonPath(canonPath(abspath, true));
 
-    for (auto & i : *allowedPaths) {
-        if (isDirOrInDir(path.canonical().abs(), i)) {
-            auto checked = path.unsafeIntoChecked();
-            resolvedPaths.insert_or_assign(path_.canonical().abs(), checked);
-            return checked;
-        }
+    /* Count the number of times we follow a symlink and stop at some
+       arbitrary (but high) limit to prevent infinite loops. */
+    unsigned int followCount = 0, maxFollow = 1024;
+
+    std::optional<CanonPath> componentsBacking;
+    std::vector<std::string_view> components(abspath.begin(), abspath.end());
+
+retry:
+
+    if (++followCount >= maxFollow) {
+        throw Error("infinite symlink recursion in path '%1%'", path_);
     }
 
-    throw RestrictedPathError("access to canonical path '%1%' is forbidden in restricted mode", path);
+    // TODO: tests for this stuff
+    const auto * level = &*allowedPaths;
+    CheckedSourcePath current = SourcePath(CanonPath::root).unsafeIntoChecked();
+    for (auto ct = components.begin(); ct != components.end(); ct++) {
+        auto & p = *ct;
+        // an empty level means all subpaths are allowed, propagate this forwards
+        // by setting level=nullptr for the subsequent checks. a symlink will set
+        // level to the "VFS" root and restart the check with a the resolved path
+        if (level) {
+            if (level->allowAllChildren) {
+                level = nullptr;
+            } else if (auto it = level->children.find(p); it != level->children.end()) {
+                level = &it->second;
+            } else {
+                goto failed;
+            }
+        }
+        auto next = (current + p).unsafeIntoChecked();
+        auto st = next.maybeLstat();
+        // resolve symlinks, treating nonexistant components like regular directories.
+        // this mirrors canonPath behavior and is necessary for `builtins.pathExists`.
+        if (st && st->type == InputAccessor::tSymlink) {
+            auto target = next.readLink();
+            auto levelResolved = target.starts_with("/")
+                ? CanonPath(target)
+                : CanonPath(current.canonical().abs() + "/" + target);
+            for (ct++; ct != components.end(); ct++) {
+                levelResolved.push(*ct);
+            }
+            components = {levelResolved.begin(), levelResolved.end()};
+            componentsBacking = std::move(levelResolved);
+            followCount += 1;
+            goto retry;
+        }
+        current = std::move(next);
+    }
+
+    resolvedPaths.insert_or_assign(path_.canonical().abs(), current);
+    return current;
+
+failed:
+    auto modeInformation = evalSettings.pureEval
+        ? "in pure eval mode (use '--impure' to override)"
+        : "in restricted mode";
+    throw RestrictedPathError("access to absolute path '%1%' is forbidden %2%", abspath, modeInformation);
 }
 
 

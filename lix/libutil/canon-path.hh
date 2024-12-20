@@ -84,6 +84,11 @@ public:
 
     struct Iterator
     {
+        using difference_type = void;
+        using value_type = std::string_view;
+        using reference = std::string_view;
+        using iterator_category = std::input_iterator_tag;
+
         std::string_view remaining;
         size_t slash;
 
@@ -101,7 +106,7 @@ public:
         const std::string_view operator * () const
         { return remaining.substr(0, slash); }
 
-        void operator ++ ()
+        Iterator & operator ++ ()
         {
             if (slash == remaining.npos)
                 remaining = remaining.substr(remaining.size());
@@ -109,6 +114,14 @@ public:
                 remaining = remaining.substr(slash + 1);
                 slash = remaining.find('/');
             }
+            return *this;
+        }
+
+        Iterator operator++(int)
+        {
+            auto result = *this;
+            ++*this;
+            return result;
         }
     };
 

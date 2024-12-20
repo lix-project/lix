@@ -376,13 +376,26 @@ public:
 
     const SearchPath & searchPath() const { return searchPath_; }
 
+private:
+    struct AllowedPath
+    {
+        struct ComponentLess : std::less<>
+        {
+            // we'll only use this for string-likes, it's fine. trust me sis.
+            using is_transparent = void;
+        };
+
+        std::map<std::string, AllowedPath, ComponentLess> children;
+
+        bool allowAllChildren = false;
+    };
+
     /**
      * The allowed filesystem paths in restricted or pure evaluation
      * mode.
      */
-    std::optional<PathSet> allowedPaths;
+    std::optional<AllowedPath> allowedPaths;
 
-private:
 
     /* Cache for calls to addToStore(); maps source paths to the store
        paths. */
