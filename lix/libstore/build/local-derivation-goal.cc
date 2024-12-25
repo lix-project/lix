@@ -2516,8 +2516,24 @@ void LocalDerivationGoal::checkOutputs(const std::map<std::string, ValidPathInfo
                         spec.insert(output->path);
                     else if (auto storePath = get(alreadyRegisteredOutputs, i))
                         spec.insert(*storePath);
-                    else
-                        throw BuildError("derivation contains an illegal reference specifier '%s'", i);
+                    else {
+                        std::string outputsListing = concatMapStringsSep(
+                            ", ",
+                            newlyBuiltOutputs,
+                            [](auto & o) { return o.first; }
+                        );
+                        if (!alreadyRegisteredOutputs.empty()) {
+                            outputsListing.append(outputsListing.empty() ? "" : ", ");
+                            outputsListing.append(concatMapStringsSep(
+                                ", ",
+                                alreadyRegisteredOutputs,
+                                [](auto & o) { return o.first; })
+                            );
+                        }
+                        throw BuildError("derivation '%s' output check for '%s' contains an illegal reference specifier '%s',"
+                            " expected store path or output name (one of [%s])",
+                            worker.store.printStorePath(drvPath), outputName, i, outputsListing);
+                    }
                 }
 
                 auto used = recursive
