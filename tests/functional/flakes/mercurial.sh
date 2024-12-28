@@ -37,7 +37,7 @@ hg commit --config ui.username=foobar@example.org $flake2Dir -m 'Add lock file'
 
 nix flake metadata --json hg+file://$flake2Dir --refresh | jq -e -r .revision
 nix flake metadata --json hg+file://$flake2Dir
-[[ $(nix flake metadata --json hg+file://$flake2Dir | jq -e -r .revCount) = 1 ]]
+[[ $(nix flake metadata --json hg+file://$flake2Dir | jq -e -r .revCount) = 2 ]]
 
 nix build -o $TEST_ROOT/result hg+file://$flake2Dir --no-registries --no-allow-dirty
 nix build -o $TEST_ROOT/result hg+file://$flake2Dir --no-use-registries --no-allow-dirty

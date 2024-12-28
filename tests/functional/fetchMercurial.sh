@@ -54,7 +54,7 @@ path2=$(nix eval --impure --raw --expr "(builtins.fetchMercurial \"file://$repo\
 [[ $path = $path2 ]]
 
 [[ $(nix eval --impure --raw --expr "(builtins.fetchMercurial \"file://$repo\").branch") = default ]]
-[[ $(nix eval --impure --expr "(builtins.fetchMercurial \"file://$repo\").revCount") = 1 ]]
+[[ $(nix eval --impure --expr "(builtins.fetchMercurial \"file://$repo\").revCount") = 2 ]]
 [[ $(nix eval --impure --raw --expr "(builtins.fetchMercurial \"file://$repo\").rev") = $rev2 ]]
 
 # But with TTL 0, it should fail.

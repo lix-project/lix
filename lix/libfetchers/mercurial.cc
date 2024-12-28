@@ -288,7 +288,7 @@ struct MercurialInputScheme : InputScheme
         }
 
         auto tokens = tokenizeString<std::vector<std::string>>(
-            runHg({ "log", "-R", cacheDir, "-r", revOrRef, "--template", "{node} {rev} {branch}" }));
+            runHg({ "log", "-R", cacheDir, "-r", revOrRef, "--template", "{node} {count(revset('::{rev}'))} {branch}" }));
         assert(tokens.size() == 3);
 
         input.attrs.insert_or_assign("rev", Hash::parseAny(tokens[0], HashType::SHA1).gitRev());
