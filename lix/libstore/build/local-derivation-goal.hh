@@ -270,7 +270,7 @@ struct LocalDerivationGoal : public DerivationGoal
      * 'outputChecks' attribute (or the legacy
      * '{allowed,disallowed}{References,Requisites}' attributes).
      */
-    void checkOutputs(const std::map<std::string, ValidPathInfo> & outputs);
+    void checkOutputs(const std::map<std::string, ValidPathInfo> & outputs, const std::map<std::string, StorePath> & alreadyRegisteredOutputs);
 
     /**
      * Close the read side of the logger pipe.

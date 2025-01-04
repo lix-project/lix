@@ -2031,6 +2031,7 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
     OutputPathMap finalOutputs;
 
     std::vector<std::pair<Path, std::optional<Path>>> nondeterministic;
+    std::map<std::string, StorePath> alreadyRegisteredOutputs;
 
     for (auto & outputName : sortedOutputNames) {
         auto output = get(drv->outputs, outputName);
@@ -2054,6 +2055,7 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
         std::optional<StorePathSet> referencesOpt = std::visit(overloaded {
             [&](const AlreadyRegistered & skippedFinalPath) -> std::optional<StorePathSet> {
                 finish(skippedFinalPath.path);
+                alreadyRegisteredOutputs.insert_or_assign(outputName, skippedFinalPath.path);
                 return std::nullopt;
             },
             [&](const PerhapsNeedToRegister & r) -> std::optional<StorePathSet> {
@@ -2383,7 +2385,7 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
     }
 
     /* Apply output checks. */
-    checkOutputs(infos);
+    checkOutputs(infos, alreadyRegisteredOutputs);
 
     /* Register each output path as valid, and register the sets of
        paths referenced by each of them.  If there are cycles in the
@@ -2438,13 +2440,13 @@ void LocalDerivationGoal::signRealisation(Realisation & realisation)
 }
 
 
-void LocalDerivationGoal::checkOutputs(const std::map<std::string, ValidPathInfo> & outputs)
+void LocalDerivationGoal::checkOutputs(const std::map<std::string, ValidPathInfo> & newlyBuiltOutputs, const std::map<std::string, StorePath> & alreadyRegisteredOutputs)
 {
     std::map<Path, const ValidPathInfo &> outputsByPath;
-    for (auto & output : outputs)
+    for (auto & output : newlyBuiltOutputs)
         outputsByPath.emplace(worker.store.printStorePath(output.second.path), output.second);
 
-    for (auto & output : outputs) {
+    for (auto & output : newlyBuiltOutputs) {
         auto & outputName = output.first;
         auto & info = output.second;
 
@@ -2510,8 +2512,10 @@ void LocalDerivationGoal::checkOutputs(const std::map<std::string, ValidPathInfo
                 for (auto & i : *value) {
                     if (worker.store.isStorePath(i))
                         spec.insert(worker.store.parseStorePath(i));
-                    else if (auto output = get(outputs, i))
+                    else if (auto output = get(newlyBuiltOutputs, i))
                         spec.insert(output->path);
+                    else if (auto storePath = get(alreadyRegisteredOutputs, i))
+                        spec.insert(*storePath);
                     else
                         throw BuildError("derivation contains an illegal reference specifier '%s'", i);
                 }
