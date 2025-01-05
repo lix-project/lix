@@ -415,7 +415,7 @@ struct inherit : _inherit, seq<
 > {};
 
 struct _binding {
-    struct path : semantic, attrpath {};
+    struct path : attrpath {};
     struct equal : one<'='> {};
     struct value : semantic, must<expr> {};
 };

@@ -323,13 +323,16 @@ template<> struct BuildAST<grammar::v1::attr::string> {
 
 template<> struct BuildAST<grammar::v1::attr::expr> : BuildAST<grammar::v1::attr::string> {};
 
+struct BindingState : AttrState {
+    using AttrState::AttrState;
+
+    std::unique_ptr<Expr> value;
+};
+
 struct BindingsState : SubexprState {
     explicit BindingsState(ExprState & up, ExprAttrs & attrs) : SubexprState(up), attrs(attrs) {}
 
     ExprAttrs & attrs;
-    PosIdx pos;
-    AttrPath path;
-    std::unique_ptr<Expr> value;
 };
 
 struct BindingsStateSet : BindingsState {
@@ -416,21 +419,15 @@ template<> struct BuildAST<grammar::v1::inherit> : change_head<InheritState> {
     }
 };
 
-template<> struct BuildAST<grammar::v1::binding::path> : change_head<AttrState> {
-    static void success0(AttrState & a, BindingsState & s, State & ps) {
-        s.path = std::move(a.attrs);
-    }
-};
-
-template<> struct BuildAST<grammar::v1::binding::value> {
-    static void apply0(BindingsState & s, State & ps) {
+template<> struct BuildAST<grammar::v1::_binding::value> {
+    static void apply0(BindingState & s, State & ps) {
         s.value = s->popExprOnly();
     }
 };
 
-template<> struct BuildAST<grammar::v1::binding> {
-    static void apply(const auto & in, BindingsState & s, State & ps) {
-        ps.addAttr(&s.attrs, std::move(s.path), std::move(s.value), ps.at(in));
+template<> struct BuildAST<grammar::v1::binding> : change_head<BindingState> {
+    static void success(const auto & in, BindingState & b, BindingsState & s, State & ps) {
+        ps.addAttr(&s.attrs, std::move(b.attrs), std::move(b.value), ps.at(in));
     }
 };
 
