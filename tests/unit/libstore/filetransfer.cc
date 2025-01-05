@@ -1,11 +1,13 @@
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libutil/compression.hh"
+#include "lix/libutil/signals.hh"
 #include "lix/libutil/thread-name.hh"
 
 #include <cstdint>
 #include <exception>
 #include <future>
 #include <gtest/gtest.h>
+#include <kj/common.h>
 #include <netinet/in.h>
 #include <string>
 #include <string_view>
@@ -393,6 +395,35 @@ TEST(FileTransfer, doesntRetryUploads)
         });
         ASSERT_THROW(ft->upload(fmt("http://[::1]:%d", port), "foo"), FileTransferError);
     }
+}
+
+// this test does not work unless run alone. we can't fork because that breaks
+// the file transfer thread, restoring state is insufficient and very fragile.
+TEST(FileTransfer, DISABLED_interrupt)
+{
+    struct InterruptingLogger : Logger
+    {
+        void log(Verbosity lvl, std::string_view s) override
+        {
+            if (s.starts_with("finished") && s.ends_with("body = 10 bytes")) {
+                triggerInterrupt();
+                checkInterrupt();
+            }
+        }
+        void logEI(const ErrorInfo & ei) override
+        {
+        }
+    };
+
+    verbosity = lvlDebug;
+    logger = new InterruptingLogger;
+
+    auto ft = makeFileTransfer(0);
+    auto [port, srv] = serveHTTP({
+        {"200 ok", "content-length: 10\r\n", [] { return "0123456789"; }},
+    });
+
+    ASSERT_THROW(ft->download(fmt("http://[::1]:%d/index", port)).second->drain(), FileTransferError);
 }
 
 }

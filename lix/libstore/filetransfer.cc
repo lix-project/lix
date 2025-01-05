@@ -509,6 +509,14 @@ struct curlFileTransfer : public FileTransfer
 
         std::map<CURL *, std::shared_ptr<TransferItem>> items;
 
+        // clear all current transfers in case of an early exit, as can happen
+        // via Interrupted if the interruption occured right before a log call
+        KJ_DEFER({
+            for (auto & [_, item] : items) {
+                item->finish(CURLE_ABORTED_BY_CALLBACK);
+            }
+        });
+
         bool quit = false;
 
         // NOTE: we will need to use CURLMOPT_TIMERFUNCTION to integrate this
@@ -593,10 +601,15 @@ struct curlFileTransfer : public FileTransfer
         } catch (nix::Interrupted & e) {
         } catch (std::exception & e) {
             printError("unexpected error in download thread: %s", e.what());
+        } catch (...) {
+            printError("unexpected error in download thread");
         }
 
         {
             auto state(state_.lock());
+            for (auto & item : state->incoming) {
+                item->finish(CURLE_ABORTED_BY_CALLBACK);
+            }
             state->incoming.clear();
             state->quit = true;
         }
