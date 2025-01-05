@@ -32,8 +32,8 @@
   hardware = {
     enableRedistributableFirmware = true;
     cpu.intel.updateMicrocode = true;
-    opengl.driSupport32Bit = true;
-    opengl.extraPackages = with pkgs; [
+    graphics.enable32Bit = true;
+    graphics.extraPackages = with pkgs; [
       vaapiIntel
       intel-media-driver
       intel-compute-runtime
@@ -93,16 +93,17 @@
 
   i18n = {
     defaultLocale = "en_US.UTF-8";
-    inputMethod.enabled = "ibus";
+    inputMethod.enable = true;
+    inputMethod.type = "ibus";
   };
 
   services = {
+    libinput.enable = true;
     xserver = {
       enable = true;
-      layout = "us";
-      xkbVariant = "altgr-intl";
-      xkbOptions = "ctrl:nocaps";
-      libinput.enable = true;
+      xkb.layout = "us";
+      xkb.variant = "altgr-intl";
+      xkb.options = "ctrl:nocaps";
       wacom.enable = true;
       videoDrivers = [ "modesetting" ];
       modules = [ pkgs.xf86_input_wacom ];
@@ -121,17 +122,6 @@
     '';
   };
 
-  sound.enable = true;
-  hardware.pulseaudio = {
-    enable = true;
-    package = pkgs.pulseaudioFull;
-    daemon.config = {
-      lock-memory = "yes";
-      realtime-scheduling = "yes";
-      rlimit-rtprio = "-1";
-    };
-  };
-
   programs = {
     light.enable = true;
     wireshark = {
@@ -146,7 +136,7 @@
   fonts.packages = with pkgs; [
     font-awesome
     noto-fonts
-    noto-fonts-cjk
+    noto-fonts-cjk-sans
     noto-fonts-emoji
     noto-fonts-extra
     dejavu_fonts
@@ -239,7 +229,7 @@
     file
     firefox
     fluidsynth
-    gnome3.adwaita-icon-theme
+    adwaita-icon-theme
     gnuplot
     graphviz
     helm
@@ -252,7 +242,6 @@
     libqalculate
     libreoffice
     man-pages
-    nheko
     nix-diff
     nix-index
     nix-output-monitor
