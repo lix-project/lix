@@ -350,10 +350,10 @@
               name = "nixpkgs-lib-tests";
               paths =
                 [ testWithNix ]
-                # FIXME: This is disabled on darwin due to a nixpkgs bug https://github.com/NixOS/nixpkgs/issues/319147
-                # After that is fixed, it should be restored to use lib/tests/release.nix as before, rather than this reimplementation.
+                # NOTE: nixpkgs 24.11 is being ... *creative*, and requires this dance to override
+                # the evaluator used for the test. it will break again in the future, don't worry.
                 ++ lib.optionals pkgs.stdenv.isLinux [
-                  (import (nixpkgs + "/pkgs/test/release") { inherit pkgs lib nix; })
+                  (pkgs.callPackage "${nixpkgs}/ci/eval" { nixVersions.nix_2_24 = nix; }).attrpathsSuperset
                 ];
             }
           );
