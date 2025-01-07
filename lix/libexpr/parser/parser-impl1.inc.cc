@@ -636,7 +636,11 @@ template<> struct BuildAST<grammar::v1::path::searched_path> {
             pos,
             std::make_unique<ExprCall>(
                 pos,
-                ps.mkInternalVar(pos, ps.s.findFile),
+                /* The option for overriding this should be deprecated eventually, but for now it has to stay
+                 * until we can figure out how to design a better replacement.
+                 * https://git.lix.systems/lix-project/lix/issues/599
+                 */
+                std::make_unique<ExprVar>(pos, ps.s.findFile),
                 std::move(args)));
     }
 };
