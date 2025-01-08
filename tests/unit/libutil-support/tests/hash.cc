@@ -1,5 +1,6 @@
-#include <regex>
-
+// required due to rapidcheck generating an incomplete-return-type error due to
+// missing include on libc++ on macOS
+#include <exception> // IWYU pragma: keep
 #include <rapidcheck.h>
 
 #include "hash.hh"
