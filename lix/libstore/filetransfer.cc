@@ -845,10 +845,6 @@ struct curlFileTransfer : public FileTransfer
 
         bool attemptRetry(const std::string & context)
         {
-            auto state(transfer->downloadState.lock());
-
-            assert(state->data.empty());
-
             thread_local std::minstd_rand random{std::random_device{}()};
             std::uniform_real_distribution<> dist(0.0, 0.5);
             int ms = parent.baseRetryTimeMs * std::pow(2.0f, attempt - 1 + dist(random));
@@ -859,8 +855,6 @@ struct curlFileTransfer : public FileTransfer
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-
-            state->exc = nullptr;
 
             // use the effective URI of the previous transfer for retries. this avoids
             // some silent corruption if a redirect changes between starting and retry
