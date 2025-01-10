@@ -481,6 +481,7 @@ struct CmdProfileDiffClosures : virtual StoreCommand, MixDefaultProfile
                 aio().blockOn(printClosureDiff(store,
                     store->followLinksToStorePath(prevGen->path),
                     store->followLinksToStorePath(gen.path),
+                    false,
                     "  "));
             }
 

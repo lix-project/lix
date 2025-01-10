@@ -139,6 +139,10 @@ midnightveil:
 ncfavier:
   github: ncfavier
 
+pamplemousse:
+  display_name: Xavier Maso
+  github: pamplemousse
+
 piegames:
   display_name: piegames
   forgejo: piegames
