@@ -605,7 +605,7 @@ template<> struct BuildAST<grammar::v1::path::interpolation> : BuildAST<grammar:
 
 template<> struct BuildAST<grammar::v1::path::anchor> {
     static void apply(const auto & in, StringState & s, State & ps) {
-        Path path(absPath(in.string(), ps.basePath.path.abs()));
+        Path path(absPath(in.string(), ps.basePath.canonical().abs()));
         /* add back in the trailing '/' to the first segment */
         if (in.string_view().ends_with('/') && in.size() > 1)
             path += "/";

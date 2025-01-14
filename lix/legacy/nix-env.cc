@@ -96,11 +96,16 @@ static bool parseInstallSourceOptions(Globals & globals,
 }
 
 
-static bool isNixExpr(const SourcePath & path, struct InputAccessor::Stat & st)
+static bool isNixExpr(EvalPaths & paths, const CheckedSourcePath & path, struct InputAccessor::Stat & st)
 {
-    return
-        st.type == InputAccessor::tRegular
-        || (st.type == InputAccessor::tDirectory && (path + "default.nix").pathExists());
+    if (st.type == InputAccessor::tRegular) {
+        return true;
+    } else if (st.type != InputAccessor::tDirectory) {
+        return false;
+    } else {
+        auto defaultNix = paths.checkSourcePath(path + "default.nix");
+        return defaultNix.pathExists();
+    }
 }
 
 
@@ -108,7 +113,7 @@ static constexpr size_t maxAttrs = 1024;
 
 
 static void getAllExprs(Evaluator & state,
-    const SourcePath & path, StringSet & seen, BindingsBuilder & attrs)
+    const CheckedSourcePath & path, StringSet & seen, BindingsBuilder & attrs)
 {
     StringSet namesSorted;
     for (auto & [name, _] : path.readDirectory()) namesSorted.insert(name);
@@ -119,16 +124,16 @@ static void getAllExprs(Evaluator & state,
            are implemented using profiles). */
         if (i == "manifest.nix") continue;
 
-        SourcePath path2 = path + i;
+        auto path2 = state.paths.checkSourcePath(path + i);
 
         InputAccessor::Stat st;
         try {
-            st = path2.resolveSymlinks().lstat();
+            st = path2.stat();
         } catch (Error &) {
             continue; // ignore dangling symlinks in ~/.nix-defexpr
         }
 
-        if (isNixExpr(path2, st) && (st.type != InputAccessor::tRegular || path2.baseName().ends_with(".nix"))) {
+        if (isNixExpr(state.paths, path2, st) && (st.type != InputAccessor::tRegular || path2.baseName().ends_with(".nix"))) {
             /* Strip off the `.nix' filename suffix (if applicable),
                otherwise the attribute cannot be selected with the
                `-A' option.  Useful if you want to stick a Nix
@@ -138,7 +143,7 @@ static void getAllExprs(Evaluator & state,
                 attrName = std::string(attrName, 0, attrName.size() - 4);
             if (!seen.insert(attrName).second) {
                 std::string suggestionMessage = "";
-                if (path2.path.abs().find("channels") != std::string::npos && path.path.abs().find("channels") != std::string::npos)
+                if (path2.to_string().find("channels") != std::string::npos && path.to_string().find("channels") != std::string::npos)
                     suggestionMessage = fmt("\nsuggestion: remove '%s' from either the root channels or the user channels", attrName);
                 printError("warning: name collision in input Nix expressions, skipping '%1%'"
                             "%2%", path2, suggestionMessage);
@@ -146,7 +151,7 @@ static void getAllExprs(Evaluator & state,
             }
             /* Load the expression on demand. */
             auto vArg = state.mem.allocValue();
-            vArg->mkString(path2.path.abs());
+            vArg->mkString(path2.canonical().abs());
             if (seen.size() == maxAttrs)
                 throw Error("too many Nix expressions in directory '%1%'", path);
             attrs.alloc(attrName).mkApp(&state.builtins.get("import"), vArg);
@@ -160,11 +165,12 @@ static void getAllExprs(Evaluator & state,
 
 
 
-static void loadSourceExpr(EvalState & state, const SourcePath & path, Value & v)
+static void loadSourceExpr(EvalState & state, const SourcePath & path_, Value & v)
 {
-    auto st = path.resolveSymlinks().lstat();
+    auto path = state.ctx.paths.checkSourcePath(path_);
+    auto st = path.stat();
 
-    if (isNixExpr(path, st))
+    if (isNixExpr(state.ctx.paths, path, st))
         state.evalFile(path, v);
 
     /* The path is a directory.  Put the Nix expressions in the

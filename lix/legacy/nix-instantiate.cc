@@ -168,10 +168,7 @@ static int main_nix_instantiate(std::string programName, Strings argv)
         if (findFile) {
             for (auto & i : files) {
                 auto p = evaluator->paths.findFile(i);
-                if (auto fn = p.getPhysicalPath())
-                    std::cout << fn->abs() << std::endl;
-                else
-                    throw Error("'%s' has no physical path", p);
+                std::cout << p.canonical().abs() << std::endl;
             }
             return 0;
         }
@@ -186,7 +183,7 @@ static int main_nix_instantiate(std::string programName, Strings argv)
         for (auto & i : files) {
             Expr & e = fromArgs
                 ? evaluator->parseExprFromString(i, CanonPath::fromCwd())
-                : evaluator->parseExprFromFile(resolveExprPath(evaluator->paths.checkSourcePath(lookupFileArg(*evaluator, i))));
+                : evaluator->parseExprFromFile(evaluator->paths.resolveExprPath(lookupFileArg(*evaluator, i)));
             processExpr(*state, attrPaths, parseOnly, strict, autoArgs,
                 evalOnly, outputKind, xmlOutputSourceLocation, e);
         }

@@ -13,7 +13,7 @@ namespace nix {
  */
 StorePath fetchToStore(
     Store & store,
-    const SourcePath & path,
+    const CheckedSourcePath & path,
     std::string_view name = "source",
     FileIngestionMethod method = FileIngestionMethod::Recursive,
     PathFilter * filter = nullptr,

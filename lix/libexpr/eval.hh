@@ -376,13 +376,26 @@ public:
 
     const SearchPath & searchPath() const { return searchPath_; }
 
+private:
+    struct AllowedPath
+    {
+        struct ComponentLess : std::less<>
+        {
+            // we'll only use this for string-likes, it's fine. trust me sis.
+            using is_transparent = void;
+        };
+
+        std::map<std::string, AllowedPath, ComponentLess> children;
+
+        bool allowAllChildren = false;
+    };
+
     /**
      * The allowed filesystem paths in restricted or pure evaluation
      * mode.
      */
-    std::optional<PathSet> allowedPaths;
+    std::optional<AllowedPath> allowedPaths;
 
-private:
 
     /* Cache for calls to addToStore(); maps source paths to the store
        paths. */
@@ -393,7 +406,7 @@ private:
     /**
      * Cache used by checkSourcePath().
      */
-    std::unordered_map<Path, SourcePath> resolvedPaths;
+    std::unordered_map<Path, CheckedSourcePath> resolvedPaths;
 
 public:
     /**
@@ -416,7 +429,12 @@ public:
      * Check whether access to a path is allowed and throw an error if
      * not. Otherwise return the canonicalised path.
      */
-    SourcePath checkSourcePath(const SourcePath & path);
+    CheckedSourcePath checkSourcePath(const SourcePath & path);
+
+    /**
+     * If `path` refers to a directory, then append "/default.nix".
+     */
+    CheckedSourcePath resolveExprPath(SourcePath path);
 
     void checkURI(const std::string & uri);
 
@@ -531,8 +549,8 @@ public:
     /**
      * Parse a Nix expression from the specified file.
      */
-    Expr & parseExprFromFile(const SourcePath & path);
-    Expr & parseExprFromFile(const SourcePath & path, std::shared_ptr<StaticEnv> & staticEnv);
+    Expr & parseExprFromFile(const CheckedSourcePath & path);
+    Expr & parseExprFromFile(const CheckedSourcePath & path, std::shared_ptr<StaticEnv> & staticEnv);
 
     /**
      * Parse a Nix expression from the specified string.
@@ -847,11 +865,6 @@ private:
  */
 std::string_view showType(ValueType type, bool withArticle = true);
 std::string showType(const Value & v);
-
-/**
- * If `path` refers to a directory, then append "/default.nix".
- */
-SourcePath resolveExprPath(SourcePath path);
 
 static constexpr std::string_view corepkgsPrefix{"/__corepkgs__/"};
 

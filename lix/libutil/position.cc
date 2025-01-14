@@ -62,7 +62,7 @@ std::optional<std::string> Pos::getSource() const
             // Get rid of the null terminators added by the parser.
             return std::string(s.source->c_str());
         },
-        [](const SourcePath & path) -> std::optional<std::string> {
+        [](const CheckedSourcePath & path) -> std::optional<std::string> {
             try {
                 return path.readFile();
             } catch (Error &) {

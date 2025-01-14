@@ -439,8 +439,8 @@ Value & AttrCursor::forceValue(EvalState & state)
             cachedValue = {root->db->setString(getKey(), v.string.s, v.string.context),
                            string_t{v.string.s, {}}};
         else if (v.type() == nPath) {
-            auto path = v.path().path;
-            cachedValue = {root->db->setString(getKey(), path.abs()), string_t{path.abs(), {}}};
+            auto path = v.path().canonical().abs();
+            cachedValue = {root->db->setString(getKey(), path), string_t{path, {}}};
         }
         else if (v.type() == nBool)
             cachedValue = {root->db->setBool(getKey(), v.boolean), v.boolean};

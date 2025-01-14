@@ -282,7 +282,7 @@ EvalPaths::EvalPaths(
     , errors(errors)
 {
     if (evalSettings.restrictEval || evalSettings.pureEval) {
-        allowedPaths = std::optional(PathSet());
+        allowedPaths = AllowedPath{.allowAllChildren = false};
 
         for (auto & i : searchPath_.elements) {
             auto r = resolveSearchPathPath(i.path);
@@ -362,14 +362,23 @@ EvalState::~EvalState()
 
 void EvalPaths::allowPath(const Path & path)
 {
-    if (allowedPaths)
-        allowedPaths->insert(path);
+    if (!allowedPaths) {
+        return;
+    }
+
+    CanonPath p(path);
+    auto * level = &*allowedPaths;
+    for (const auto & entry : p) {
+        level = &level->children.emplace(std::piecewise_construct, std::tuple(entry), std::tuple())
+                     .first->second;
+    }
+    level->allowAllChildren = true;
 }
 
 void EvalPaths::allowPath(const StorePath & storePath)
 {
     if (allowedPaths)
-        allowedPaths->insert(store->toRealPath(storePath));
+        allowPath(store->toRealPath(storePath));
 }
 
 void EvalPaths::allowAndSetStorePathString(const StorePath & storePath, Value & v)
@@ -379,50 +388,86 @@ void EvalPaths::allowAndSetStorePathString(const StorePath & storePath, Value & 
     mkStorePathString(storePath, v);
 }
 
-SourcePath EvalPaths::checkSourcePath(const SourcePath & path_)
+CheckedSourcePath EvalPaths::checkSourcePath(const SourcePath & path_)
 {
-    if (!allowedPaths) return path_;
+    if (!allowedPaths) return auto(path_).unsafeIntoChecked();
 
-    auto i = resolvedPaths.find(path_.path.abs());
+    auto i = resolvedPaths.find(path_.canonical().abs());
     if (i != resolvedPaths.end())
         return i->second;
-
-    bool found = false;
 
     /* First canonicalize the path without symlinks, so we make sure an
      * attacker can't append ../../... to a path that would be in allowedPaths
      * and thus leak symlink targets.
      */
-    Path abspath = canonPath(path_.path.abs());
+    const CanonPath abspath{path_.canonical().abs()};
 
-    if (abspath.starts_with(corepkgsPrefix)) return CanonPath(abspath);
-
-    for (auto & i : *allowedPaths) {
-        if (isDirOrInDir(abspath, i)) {
-            found = true;
-            break;
-        }
+    if (abspath.abs().starts_with(corepkgsPrefix)) {
+        return SourcePath(std::move(abspath)).unsafeIntoChecked();
     }
 
-    if (!found) {
-        auto modeInformation = evalSettings.pureEval
-            ? "in pure eval mode (use '--impure' to override)"
-            : "in restricted mode";
-        throw RestrictedPathError("access to absolute path '%1%' is forbidden %2%", abspath, modeInformation);
-    }
-
-    /* Resolve symlinks. */
+    /* Resolve symlinks. This is mostly restricted copy of canonPath with
+       resolveSymlinks=true, because we need access to intermediat paths. */
     debug("checking access to '%s'", abspath);
-    SourcePath path = CanonPath(canonPath(abspath, true));
 
-    for (auto & i : *allowedPaths) {
-        if (isDirOrInDir(path.path.abs(), i)) {
-            resolvedPaths.insert_or_assign(path_.path.abs(), path);
-            return path;
-        }
+    /* Count the number of times we follow a symlink and stop at some
+       arbitrary (but high) limit to prevent infinite loops. */
+    unsigned int followCount = 0, maxFollow = 1024;
+
+    std::optional<CanonPath> componentsBacking;
+    std::vector<std::string_view> components(abspath.begin(), abspath.end());
+
+retry:
+
+    if (++followCount >= maxFollow) {
+        throw Error("infinite symlink recursion in path '%1%'", path_);
     }
 
-    throw RestrictedPathError("access to canonical path '%1%' is forbidden in restricted mode", path);
+    // TODO: tests for this stuff
+    const auto * level = &*allowedPaths;
+    CheckedSourcePath current = SourcePath(CanonPath::root).unsafeIntoChecked();
+    for (auto ct = components.begin(); ct != components.end(); ct++) {
+        auto & p = *ct;
+        // an empty level means all subpaths are allowed, propagate this forwards
+        // by setting level=nullptr for the subsequent checks. a symlink will set
+        // level to the "VFS" root and restart the check with a the resolved path
+        if (level) {
+            if (level->allowAllChildren) {
+                level = nullptr;
+            } else if (auto it = level->children.find(p); it != level->children.end()) {
+                level = &it->second;
+            } else {
+                goto failed;
+            }
+        }
+        auto next = (current + p).unsafeIntoChecked();
+        auto st = next.maybeLstat();
+        // resolve symlinks, treating nonexistant components like regular directories.
+        // this mirrors canonPath behavior and is necessary for `builtins.pathExists`.
+        if (st && st->type == InputAccessor::tSymlink) {
+            auto target = next.readLink();
+            auto levelResolved = target.starts_with("/")
+                ? CanonPath(target)
+                : CanonPath(current.canonical().abs() + "/" + target);
+            for (ct++; ct != components.end(); ct++) {
+                levelResolved.push(*ct);
+            }
+            components = {levelResolved.begin(), levelResolved.end()};
+            componentsBacking = std::move(levelResolved);
+            followCount += 1;
+            goto retry;
+        }
+        current = std::move(next);
+    }
+
+    resolvedPaths.insert_or_assign(path_.canonical().abs(), current);
+    return current;
+
+failed:
+    auto modeInformation = evalSettings.pureEval
+        ? "in pure eval mode (use '--impure' to override)"
+        : "in restricted mode";
+    throw RestrictedPathError("access to absolute path '%1%' is forbidden %2%", abspath, modeInformation);
 }
 
 
@@ -803,9 +848,9 @@ void Evaluator::evalLazily(Expr & e, Value & v)
 void EvalState::mkPos(Value & v, PosIdx p)
 {
     auto origin = ctx.positions.originOf(p);
-    if (auto path = std::get_if<SourcePath>(&origin)) {
+    if (auto path = std::get_if<CheckedSourcePath>(&origin)) {
         auto attrs = ctx.buildBindings(3);
-        attrs.alloc(ctx.s.file).mkString(path->path.abs());
+        attrs.alloc(ctx.s.file).mkString(path->to_string());
         makePositionThunks(*this, p, attrs.alloc(ctx.s.line), attrs.alloc(ctx.s.column));
         v.mkAttrs(attrs);
     } else
@@ -951,7 +996,7 @@ void EvalState::evalFile(const SourcePath & path_, Value & v)
         return;
     }
 
-    auto resolvedPath = resolveExprPath(path);
+    auto resolvedPath = ctx.paths.resolveExprPath(path);
     if (auto i = ctx.caches.fileEval.find(resolvedPath); i != ctx.caches.fileEval.end()) {
         v = i->second->result;
         return;
@@ -2269,7 +2314,7 @@ BackedStringView EvalState::coerceToString(
               v._path
             : copyToStore
             ? ctx.store->printStorePath(ctx.paths.copyPathToStore(context, v.path(), ctx.repair))
-            : std::string(v.path().path.abs());
+            : v.path().to_string();
     }
 
     if (v.type() == nAttrs) {
@@ -2339,7 +2384,7 @@ BackedStringView EvalState::coerceToString(
 
 StorePath EvalPaths::copyPathToStore(NixStringContext & context, const SourcePath & path, RepairFlag repair)
 {
-    if (nix::isDerivation(path.path.abs()))
+    if (nix::isDerivation(path.canonical().abs()))
         errors.make<EvalError>("file names are not allowed to end in '%1%'", drvExtension).debugThrow();
 
     auto i = srcToStore.find(path);
@@ -2347,7 +2392,7 @@ StorePath EvalPaths::copyPathToStore(NixStringContext & context, const SourcePat
     auto dstPath = i != srcToStore.end()
         ? i->second
         : [&]() {
-            auto dstPath = fetchToStore(*store, path, path.baseName(), FileIngestionMethod::Recursive, nullptr, repair);
+            auto dstPath = fetchToStore(*store, checkSourcePath(path), path.baseName(), FileIngestionMethod::Recursive, nullptr, repair);
             allowPath(dstPath);
             srcToStore.insert_or_assign(path, dstPath);
             printMsg(lvlChatty, "copied source '%1%' -> '%2%'", path, store->printStorePath(dstPath));
@@ -2621,7 +2666,7 @@ void Evaluator::printStatistics()
                 else
                     obj["name"] = nullptr;
                 if (auto pos = positions[fun->pos]) {
-                    if (auto path = std::get_if<SourcePath>(&pos.origin))
+                    if (auto path = std::get_if<CheckedSourcePath>(&pos.origin))
                         obj["file"] = path->to_string();
                     obj["line"] = pos.line;
                     obj["column"] = pos.column;
@@ -2636,7 +2681,7 @@ void Evaluator::printStatistics()
             for (auto & i : stats.attrSelects) {
                 json obj = json::object();
                 if (auto pos = positions[i.first]) {
-                    if (auto path = std::get_if<SourcePath>(&pos.origin))
+                    if (auto path = std::get_if<CheckedSourcePath>(&pos.origin))
                         obj["file"] = path->to_string();
                     obj["line"] = pos.line;
                     obj["column"] = pos.column;
@@ -2661,8 +2706,9 @@ void Evaluator::printStatistics()
 }
 
 
-SourcePath resolveExprPath(SourcePath path)
+CheckedSourcePath EvalPaths::resolveExprPath(SourcePath path_)
 {
+    auto path = checkSourcePath(path_);
     unsigned int followCount = 0, maxFollow = 1024;
 
     /* If `path' is a symlink, follow it.  This is so that relative
@@ -2672,24 +2718,26 @@ SourcePath resolveExprPath(SourcePath path)
         if (++followCount >= maxFollow)
             throw Error("too many symbolic links encountered while traversing the path '%s'", path);
         if (path.lstat().type != InputAccessor::tSymlink) break;
-        path = {CanonPath(path.readLink(), path.path.parent().value_or(CanonPath::root))};
+        path = checkSourcePath(
+            CanonPath(path.readLink(), path.canonical().parent().value_or(CanonPath::root))
+        );
     }
 
     /* If `path' refers to a directory, append `/default.nix'. */
     if (path.lstat().type == InputAccessor::tDirectory)
-        return path + "default.nix";
+        return checkSourcePath(path + "default.nix");
 
     return path;
 }
 
 
-Expr & Evaluator::parseExprFromFile(const SourcePath & path)
+Expr & Evaluator::parseExprFromFile(const CheckedSourcePath & path)
 {
     return parseExprFromFile(path, builtins.staticEnv);
 }
 
 
-Expr & Evaluator::parseExprFromFile(const SourcePath & path, std::shared_ptr<StaticEnv> & staticEnv)
+Expr & Evaluator::parseExprFromFile(const CheckedSourcePath & path, std::shared_ptr<StaticEnv> & staticEnv)
 {
     auto buffer = path.readFile();
     return *parse(buffer.data(), buffer.size(), Pos::Origin(path), path.parent(), staticEnv);

@@ -201,7 +201,7 @@ static int main_nix_prefetch_url(std::string programName, Strings argv)
         } else {
             Value vRoot;
             state->evalFile(
-                resolveExprPath(
+                evaluator->paths.resolveExprPath(
                     lookupFileArg(*evaluator, args.empty() ? "." : args[0])),
                 vRoot);
             Value & v(*findAlongAttrPath(*state, attrPath, autoArgs, vRoot).first);

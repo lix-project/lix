@@ -3,7 +3,7 @@ import json
 import subprocess
 from typing import Any
 from pathlib import Path
-from functools import partial, partialmethod
+from functools import partialmethod
 from functional2.testlib.terminal_code_eater import eat_terminal_codes
 import dataclasses
 
@@ -198,17 +198,21 @@ class Nix:
             settings.store = str(store_path)
         return settings
 
-    def nix_cmd(self, argv: list[str], allow_builds: bool = False):
+    def nix_cmd(self, argv: list[str], flake: bool = False):
         """
         Constructs a NixCommand with the appropriate settings.
         """
+        settings = self.settings()
+        if flake:
+            settings.feature('nix-command', 'flakes')
+
         return NixCommand(argv=argv,
                           cwd=self.test_root,
                           env=self.make_env(),
-                          settings=self.settings())
+                          settings=settings)
 
-    def nix(self, cmd: list[str], nix_exe: str = 'nix') -> NixCommand:
-        return self.nix_cmd([nix_exe, *cmd])
+    def nix(self, cmd: list[str], nix_exe: str = 'nix', flake: bool = False) -> NixCommand:
+        return self.nix_cmd([nix_exe, *cmd], flake=flake)
 
     nix_build = partialmethod(nix, nix_exe='nix-build')
     nix_shell = partialmethod(nix, nix_exe='nix-shell')

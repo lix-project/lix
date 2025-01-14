@@ -1,4 +1,5 @@
 #include "lix/libutil/source-path.hh"
+#include "file-system.hh"
 #include "lix/libutil/strings.hh"
 
 namespace nix {
@@ -21,9 +22,8 @@ SourcePath SourcePath::parent() const
     return std::move(*p);
 }
 
-InputAccessor::Stat SourcePath::lstat() const
+static InputAccessor::Stat convertStat(const struct stat & st)
 {
-    auto st = nix::lstat(path.abs());
     return InputAccessor::Stat {
         .type =
             S_ISREG(st.st_mode) ? InputAccessor::tRegular :
@@ -34,15 +34,35 @@ InputAccessor::Stat SourcePath::lstat() const
     };
 }
 
-std::optional<InputAccessor::Stat> SourcePath::maybeLstat() const
+InputAccessor::Stat CheckedSourcePath::lstat() const
 {
-    // FIXME: merge these into one operation.
-    if (!pathExists())
-        return {};
-    return lstat();
+    return convertStat(nix::lstat(path.abs()));
 }
 
-InputAccessor::DirEntries SourcePath::readDirectory() const
+std::optional<InputAccessor::Stat> CheckedSourcePath::maybeLstat() const
+{
+    if (auto st = nix::maybeLstat(path.abs())) {
+        return convertStat(*st);
+    } else {
+        return std::nullopt;
+    }
+}
+
+InputAccessor::Stat CheckedSourcePath::stat() const
+{
+    return convertStat(nix::stat(path.abs()));
+}
+
+std::optional<InputAccessor::Stat> CheckedSourcePath::maybeStat() const
+{
+    if (auto st = nix::maybeStat(path.abs())) {
+        return convertStat(*st);
+    } else {
+        return std::nullopt;
+    }
+}
+
+InputAccessor::DirEntries CheckedSourcePath::readDirectory() const
 {
     InputAccessor::DirEntries res;
     for (auto & entry : nix::readDirectory(path.abs())) {
@@ -55,44 +75,6 @@ InputAccessor::DirEntries SourcePath::readDirectory() const
         }
         res.emplace(entry.name, type);
     }
-    return res;
-}
-
-SourcePath SourcePath::resolveSymlinks(SymlinkResolution mode) const
-{
-    SourcePath res(CanonPath::root);
-
-    int linksAllowed = 1024;
-
-    std::list<std::string> todo;
-    for (auto & c : path)
-        todo.push_back(std::string(c));
-
-    bool resolve_last = mode == SymlinkResolution::Full;
-
-    while (!todo.empty()) {
-        auto c = *todo.begin();
-        todo.pop_front();
-        if (c == "" || c == ".")
-            ;
-        else if (c == "..")
-            res.path.pop();
-        else {
-            res.path.push(c);
-            if (resolve_last || !todo.empty()) {
-                if (auto st = res.maybeLstat(); st && st->type == InputAccessor::tSymlink) {
-                    if (!linksAllowed--)
-                        throw Error("infinite symlink recursion in path '%s'", path);
-                    auto target = res.readLink();
-                    res.path.pop();
-                    if (target.starts_with("/"))
-                        res.path = CanonPath::root;
-                    todo.splice(todo.begin(), tokenizeString<std::list<std::string>>(target, "/"));
-                }
-            }
-        }
-    }
-
     return res;
 }
 

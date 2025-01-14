@@ -655,7 +655,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
                 return {path, 0};
             } else if (v.isLambda()) {
                 auto pos = evaluator.positions[v.lambda.fun->pos];
-                if (auto path = std::get_if<SourcePath>(&pos.origin))
+                if (auto path = std::get_if<CheckedSourcePath>(&pos.origin))
                     return {*path, pos.line};
                 else
                     throw Error("'%s' cannot be shown in an editor", pos);
@@ -676,7 +676,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
 
         // Reload right after exiting the editor if path is not in store
         // Store is immutable, so there could be no changes, so there's no need to reload
-        if (!evaluator.store->isInStore(path.resolveSymlinks().path.abs())) {
+        if (!evaluator.store->isInStore(canonPath(path.canonical().abs(), true))) {
             state.resetFileCache();
             reloadFiles();
         }
@@ -820,7 +820,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
             logger->cout(trim(renderMarkdownToTerminal(markdown)));
         } else if (v.isLambda()) {
             auto pos = evaluator.positions[v.lambda.fun->pos];
-            if (auto path = std::get_if<SourcePath>(&pos.origin)) {
+            if (auto path = std::get_if<CheckedSourcePath>(&pos.origin)) {
                 // Path and position have now been obtained, feed to nix-doc library to get data.
                 auto docComment = lambdaDocsForPos(*path, pos);
                 if (!docComment) {
@@ -1109,7 +1109,7 @@ void NixRepl::evalString(std::string s, Value & v)
 
 Value * NixRepl::evalFile(SourcePath & path)
 {
-    auto & expr = evaluator.parseExprFromFile(path, staticEnv);
+    auto & expr = evaluator.parseExprFromFile(evaluator.paths.checkSourcePath(path), staticEnv);
     Value * result(evaluator.mem.allocValue());
     expr.eval(state, *env, *result);
     state.forceValue(*result, result->determinePos(noPos));

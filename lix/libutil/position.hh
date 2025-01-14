@@ -42,7 +42,7 @@ struct Pos
         auto operator<=>(const Hidden &) const = default;
     };
 
-    typedef std::variant<std::monostate, Stdin, String, SourcePath, Hidden> Origin;
+    typedef std::variant<std::monostate, Stdin, String, CheckedSourcePath, Hidden> Origin;
 
     Origin origin = std::monostate();
 
