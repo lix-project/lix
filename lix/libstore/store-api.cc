@@ -306,9 +306,7 @@ void Store::addMultipleToStore(
         act.progress(nrDone, pathsToCopy.size(), nrRunning, nrFailed);
     };
 
-    ThreadPool pool{"addMultipleToStore pool"};
-
-    processGraph<StorePath>(pool,
+    processGraph<StorePath>("addMultipleToStore pool",
         storePathsToAdd,
 
         [&](const StorePath & path) {
@@ -1137,12 +1135,10 @@ std::map<StorePath, StorePath> copyPaths(
     }
     auto pathsMap = copyPaths(srcStore, dstStore, storePaths, repair, checkSigs, substitute);
 
-    ThreadPool pool{"copyPaths pool"};
-
     try {
         // Copy the realisation closure
         processGraph<Realisation>(
-            pool, Realisation::closure(srcStore, toplevelRealisations),
+            "copyPaths pool", Realisation::closure(srcStore, toplevelRealisations),
             [&](const Realisation & current) -> std::set<Realisation> {
                 std::set<Realisation> children;
                 for (const auto & [drvOutput, _] : current.dependentRealisations) {
