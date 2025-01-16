@@ -513,9 +513,16 @@ static bool keep(EvalState & state, DrvInfo & drv)
     return drv.queryMetaBool(state, "keep", false);
 }
 
+static void setMetaFlag(EvalState & state, DrvInfo & drv,
+    const std::string & name, const std::string & value)
+{
+    auto v = state.ctx.mem.allocValue();
+    v->mkString(value);
+    drv.setMeta(state, name, v);
+}
 
 static void installDerivations(Globals & globals,
-    const Strings & args, const Path & profile)
+    const Strings & args, const Path & profile, std::optional<int> priority)
 {
     debug("installing derivations");
 
@@ -541,6 +548,11 @@ static void installDerivations(Globals & globals,
         newNames.insert(DrvName(i.queryName(*state)).name);
     }
 
+    if (priority) {
+        for (auto & drv : newElems) {
+            setMetaFlag(*state, drv, "priority", std::to_string((priority.value())));
+        }
+    }
 
     while (true) {
         auto lockToken = optimisticLockProfile(profile);
@@ -578,6 +590,7 @@ static void installDerivations(Globals & globals,
 
 static void opInstall(Globals & globals, Strings opFlags, Strings opArgs)
 {
+    std::optional<int> priority;
     for (Strings::iterator i = opFlags.begin(); i != opFlags.end(); ) {
         auto arg = *i++;
         if (parseInstallSourceOptions(globals, i, opFlags, arg)) ;
@@ -585,10 +598,17 @@ static void opInstall(Globals & globals, Strings opFlags, Strings opArgs)
             globals.preserveInstalled = true;
         else if (arg == "--remove-all" || arg == "-r")
             globals.removeAll = true;
+        else if (arg == "--priority") {
+            if (i == opFlags.end())
+                throw UsageError("'%1%' requires an argument", arg);
+            priority = string2Int<int>(*i++);
+            if (!priority)
+                throw UsageError("'--priority' requires an integer argument");
+        }
         else throw UsageError("unknown flag '%1%'", arg);
     }
 
-    installDerivations(globals, opArgs, globals.profile);
+    installDerivations(globals, opArgs, globals.profile, priority);
 }
 
 
@@ -702,15 +722,6 @@ static void opUpgrade(Globals & globals, Strings opFlags, Strings opArgs)
     }
 
     upgradeDerivations(globals, opArgs, upgradeType);
-}
-
-
-static void setMetaFlag(EvalState & state, DrvInfo & drv,
-    const std::string & name, const std::string & value)
-{
-    auto v = state.ctx.mem.allocValue();
-    v->mkString(value);
-    drv.setMeta(state, name, v);
 }
 
 
@@ -1523,7 +1534,8 @@ static int main_nix_env(AsyncIoRoot & aio, std::string programName, Strings argv
                 opFlags.push_back(*arg);
                 /* FIXME: hacky */
                 if (*arg == "--from-profile" ||
-                    (op == opQuery && (*arg == "--attr" || *arg == "-A")))
+                    (op == opQuery && (*arg == "--attr" || *arg == "-A")) ||
+                    (op == opInstall && (*arg == "--priority")))
                     opFlags.push_back(getArg(*arg, arg, end));
             }
             else
