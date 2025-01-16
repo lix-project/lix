@@ -7,4 +7,3 @@ Description: Lix Package Manager (libexpr)
 Version: @PACKAGE_VERSION@
 Requires: lix-base lix-util lix-fetchers lix-store bdw-gc
 Libs: -L${libdir} -llixexpr
-Cflags: -I${includedir}/lix/libexpr

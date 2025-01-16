@@ -1,4 +1,4 @@
-#include "config.h"
+#include "lix/config.h"
 
 #include "EXTERN.h"
 #include "perl.h"

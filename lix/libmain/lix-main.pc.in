@@ -7,4 +7,3 @@ Description: Lix Package Manager (libmain)
 Version: @PACKAGE_VERSION@
 Requires: lix-base lix-util
 Libs: -L${libdir} -llixmain
-Cflags: -I${includedir}/lix/libmain

@@ -7,4 +7,3 @@ Description: Lix Package Manager (libfetchers)
 Version: @PACKAGE_VERSION@
 Requires: lix-base lix-util
 Libs: -L${libdir} -llixfetchers
-Cflags: -I${includedir}/lix/libfetchers
