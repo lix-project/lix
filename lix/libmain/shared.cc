@@ -270,23 +270,21 @@ bool LegacyArgs::processArgs(const Strings & args, bool finish)
 void printVersion(const std::string & programName)
 {
     std::cout << fmt("%1% (Lix, like Nix) %2%", programName, nixVersion) << std::endl;
-    if (verbosity > lvlNotice) {
-        Strings cfg;
+    Strings cfg;
 #if HAVE_BOEHMGC
-        cfg.push_back("gc");
+    cfg.push_back("gc");
 #endif
-        cfg.push_back("signed-caches");
-        std::cout << "System type: " << settings.thisSystem << "\n";
-        std::cout << "Additional system types: " << concatStringsSep(", ", settings.extraPlatforms.get()) << "\n";
-        std::cout << "Features: " << concatStringsSep(", ", cfg) << "\n";
-        std::cout << "System configuration file: " << settings.nixConfDir + "/nix.conf" << "\n";
-        std::cout << "User configuration files: " <<
-            concatStringsSep(":", settings.nixUserConfFiles)
-            << "\n";
-        std::cout << "Store directory: " << settings.nixStore << "\n";
-        std::cout << "State directory: " << settings.nixStateDir << "\n";
-        std::cout << "Data directory: " << settings.nixDataDir << "\n";
-    }
+    cfg.push_back("signed-caches");
+    std::cout << "System type: " << settings.thisSystem << "\n";
+    std::cout << "Additional system types: " << concatStringsSep(", ", settings.extraPlatforms.get()) << "\n";
+    std::cout << "Features: " << concatStringsSep(", ", cfg) << "\n";
+    std::cout << "System configuration file: " << settings.nixConfDir + "/nix.conf" << "\n";
+    std::cout << "User configuration files: " <<
+        concatStringsSep(":", settings.nixUserConfFiles)
+        << "\n";
+    std::cout << "Store directory: " << settings.nixStore << "\n";
+    std::cout << "State directory: " << settings.nixStateDir << "\n";
+    std::cout << "Data directory: " << settings.nixDataDir << "\n";
     throw Exit();
 }
 
