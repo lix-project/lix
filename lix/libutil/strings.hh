@@ -5,6 +5,7 @@
 #include "lix/libutil/types.hh"
 
 #include <vector>
+#include <boost/container/small_vector.hpp>
 
 namespace nix {
 
@@ -34,7 +35,6 @@ MakeError(FormatError, Error);
  */
 template<class C> C tokenizeString(std::string_view s, std::string_view separators = " \t\n\r");
 
-
 /**
  * Concatenate the given strings with a separator between the
  * elements.
@@ -61,6 +61,22 @@ auto concatStrings(Parts && ... parts)
     std::string_view views[sizeof...(parts)] = { parts... };
     return concatStringsSep({}, views);
 }
+
+
+/**
+ * Apply a function to the `iterable`'s items and concat them with `separator`.
+ */
+template<class C, class F>
+std::string concatMapStringsSep(std::string_view separator, const C & iterable, F fn)
+{
+    boost::container::small_vector<std::string, 64> strings;
+    strings.reserve(iterable.size());
+    for (const auto & elem : iterable) {
+        strings.push_back(fn(elem));
+    }
+    return concatStringsSep(separator, strings);
+}
+
 
 
 /**
