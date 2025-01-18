@@ -82,6 +82,9 @@ jade:
   forgejo: jade
   github: lf-
 
+just1602:
+  forgejo: just1602
+
 kiara:
   github: KiaraGrouwstra
 
