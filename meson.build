@@ -1,5 +1,5 @@
 project('nix-eval-jobs', 'cpp',
-  version : '0.1.6',
+  version : '2.93.0-dev',
   license : 'GPL-3.0',
   default_options : [
     'debug=true',
