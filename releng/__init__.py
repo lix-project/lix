@@ -6,7 +6,7 @@ del setup
 import logging
 import sys
 
-import xonsh.base_shell
+import xonsh.shells.base_shell
 
 from . import environment
 from . import create_release
@@ -56,7 +56,7 @@ def setup_logging():
         # the real stderr because this survives across multiple command runs.
         #
         # This only applies when running xonsh in interactive mode and importing releng.
-        if isinstance(sys.stderr, xonsh.base_shell._TeeStd):
+        if isinstance(sys.stderr, xonsh.shells.base_shell._TeeStd):
             stderr = stderr.std  # type: ignore
 
         hand = logging.StreamHandler(stream=stderr)
