@@ -199,18 +199,10 @@ static void fetchTree(
     emitTreeAttrs(state.ctx, tree, input2, v, params.emptyRevFallback, false);
 }
 
-static void prim_fetchTree(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_fetchTree(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
-    experimentalFeatureSettings.require(Xp::Flakes);
     fetchTree(state, pos, args, v, std::nullopt, FetchTreeParams { .allowNameArgument = false });
 }
-
-// FIXME: document
-static RegisterPrimOp primop_fetchTree({
-    .name = "fetchTree",
-    .arity = 1,
-    .fun = prim_fetchTree
-});
 
 static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v,
     const std::string & who, bool unpack, std::string name)
