@@ -41,8 +41,6 @@ struct NarAccessor : public FSAccessor
 
         std::stack<NarMember *> parents;
 
-        bool isExec = false;
-
         uint64_t pos = 0;
 
     public:

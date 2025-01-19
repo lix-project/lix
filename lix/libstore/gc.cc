@@ -856,9 +856,6 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
         printInfo("note: currently hard linking saves %.2f MiB",
             ((unsharedSize - actualSize - overhead) / (1024.0 * 1024.0)));
     }
-
-    /* While we're at it, vacuum the database. */
-    //if (options.action == GCOptions::gcDeleteDead) vacuumDB();
 }
 
 

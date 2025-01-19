@@ -1753,13 +1753,6 @@ void LocalStore::upgradeStore7()
 #endif
 
 
-void LocalStore::vacuumDB()
-{
-    auto state(_state.lock());
-    state->db.exec("vacuum");
-}
-
-
 void LocalStore::addSignatures(const StorePath & storePath, const StringSet & sigs)
 {
     retrySQLite<void>([&]() {

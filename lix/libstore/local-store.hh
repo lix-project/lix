@@ -276,8 +276,6 @@ public:
 
     std::optional<TrustedFlag> isTrustedClient() override;
 
-    void vacuumDB();
-
     void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 
     /**

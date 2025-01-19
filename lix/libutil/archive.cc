@@ -157,17 +157,6 @@ static SerialisationError badArchive(const std::string & s)
 }
 
 
-#if 0
-static void skipGeneric(Source & source)
-{
-    if (readString(source) == "(") {
-        while (readString(source) != ")")
-            skipGeneric(source);
-    }
-}
-#endif
-
-
 struct CaseInsensitiveCompare
 {
     bool operator() (const std::string & a, const std::string & b) const
