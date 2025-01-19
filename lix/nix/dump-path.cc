@@ -22,7 +22,7 @@ struct CmdDumpPath : StorePathCommand
     {
         logger->pause();
         FdSink sink(STDOUT_FILENO);
-        sink << store->narFromPath(storePath);
+        store->narFromPath(storePath)->drainInto(sink);
         sink.flush();
     }
 };

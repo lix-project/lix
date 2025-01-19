@@ -1061,6 +1061,10 @@ static std::string makeCopyPathMessage(
 }
 
 
+// buffer size for path copy progress reporting. should be large enough to not cause excessive
+// overhead during copies, but small enough to provide reasonably quick copy progress updates.
+static constexpr unsigned PATH_COPY_BUFSIZE = 65536;
+
 void copyStorePath(
     Store & srcStore,
     Store & dstStore,
@@ -1103,11 +1107,17 @@ void copyStorePath(
     GeneratorSource source{
         [](auto & act, auto & info, auto & srcStore, auto & storePath) -> WireFormatGenerator {
             auto nar = srcStore.narFromPath(storePath);
+            auto buf = std::make_unique<char[]>(PATH_COPY_BUFSIZE);
             uint64_t total = 0;
-            while (auto data = nar.next()) {
-                total += data->size();
-                act.progress(total, info->narSize);
-                co_yield *data;
+            while (true) {
+                try {
+                    auto got = nar->read(buf.get(), PATH_COPY_BUFSIZE);
+                    total += got;
+                    act.progress(total, info->narSize);
+                    co_yield std::span{buf.get(), got};
+                } catch (EndOfFile &) {
+                    break;
+                }
             }
         }(act, info, srcStore, storePath)
     };
@@ -1239,11 +1249,17 @@ std::map<StorePath, StorePath> copyPaths(
             PushActivity pact(act.id);
 
             auto nar = srcStore.narFromPath(missingPath);
+            auto buf = std::make_unique<char[]>(PATH_COPY_BUFSIZE);
             uint64_t total = 0;
-            while (auto data = nar.next()) {
-                total += data->size();
-                act.progress(total, info->narSize);
-                co_yield *data;
+            while (true) {
+                try {
+                    auto got = nar->read(buf.get(), PATH_COPY_BUFSIZE);
+                    total += got;
+                    act.progress(total, info->narSize);
+                    co_yield std::span{buf.get(), got};
+                } catch (EndOfFile &) {
+                    break;
+                }
             }
         };
         pathsToCopy.push_back(std::pair{

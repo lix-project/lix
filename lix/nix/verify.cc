@@ -99,7 +99,7 @@ struct CmdVerify : StorePathsCommand
 
                     auto hashSink = HashSink(info->narHash.type);
 
-                    hashSink << store->narFromPath(info->path);
+                    store->narFromPath(info->path)->drainInto(hashSink);
 
                     auto hash = hashSink.finish();
 

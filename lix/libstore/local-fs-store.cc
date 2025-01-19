@@ -73,11 +73,11 @@ ref<FSAccessor> LocalFSStore::getFSAccessor()
             std::dynamic_pointer_cast<LocalFSStore>(shared_from_this())));
 }
 
-WireFormatGenerator LocalFSStore::narFromPath(const StorePath & path)
+box_ptr<Source> LocalFSStore::narFromPath(const StorePath & path)
 {
     if (!isValidPath(path))
         throw Error("path '%s' does not exist in store", printStorePath(path));
-    return dumpPath(getRealStoreDir() + std::string(printStorePath(path), config().storeDir.size()));
+    return make_box_ptr<GeneratorSource>(dumpPath(getRealStoreDir() + std::string(printStorePath(path), config().storeDir.size())));
 }
 
 const std::string LocalFSStore::drvsLogDir = "drvs";

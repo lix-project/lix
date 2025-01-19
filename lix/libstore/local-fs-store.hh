@@ -42,7 +42,7 @@ public:
     LocalFSStoreConfig & config() override = 0;
     const LocalFSStoreConfig & config() const override = 0;
 
-    WireFormatGenerator narFromPath(const StorePath & path) override;
+    box_ptr<Source> narFromPath(const StorePath & path) override;
     ref<FSAccessor> getFSAccessor() override;
 
     /**

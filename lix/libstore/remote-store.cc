@@ -861,14 +861,14 @@ RemoteStore::Connection::~Connection()
     }
 }
 
-WireFormatGenerator RemoteStore::narFromPath(const StorePath & path)
+box_ptr<Source> RemoteStore::narFromPath(const StorePath & path)
 {
     auto conn(connections->get());
     conn->to << WorkerProto::Op::NarFromPath << printStorePath(path);
     conn->processStderr();
-    return [](auto conn) -> WireFormatGenerator {
+    return make_box_ptr<GeneratorSource>([](auto conn) -> WireFormatGenerator {
         co_yield copyNAR(conn->from);
-    }(std::move(conn));
+    }(std::move(conn)));
 }
 
 ref<FSAccessor> RemoteStore::getFSAccessor()

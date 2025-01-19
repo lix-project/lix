@@ -97,7 +97,7 @@ std::pair<ref<FSAccessor>, Path> RemoteFSAccessor::fetch(const Path & path_, boo
     }
 
     StringSink sink;
-    sink << store->narFromPath(storePath);
+    store->narFromPath(storePath)->drainInto(sink);
     return {addToCache(storePath.hashPart(), std::move(sink.s)), restPath};
 }
 

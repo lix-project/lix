@@ -1076,7 +1076,7 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         return path;
     }
 
-    WireFormatGenerator narFromPath(const StorePath & path) override
+    box_ptr<Source> narFromPath(const StorePath & path) override
     {
         if (!goal.isAllowed(path))
             throw InvalidPath("cannot dump unknown path '%s' in recursive Nix", printStorePath(path));

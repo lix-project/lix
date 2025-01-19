@@ -28,7 +28,7 @@ void Store::exportPath(const StorePath & path, Sink & sink)
     HashSink hashSink(HashType::SHA256);
     TeeSink teeSink(sink, hashSink);
 
-    teeSink << narFromPath(path);
+    narFromPath(path)->drainInto(teeSink);
 
     /* Refuse to export paths that have changed.  This prevents
        filesystem corruption from spreading to other machines.

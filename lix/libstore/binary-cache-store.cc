@@ -317,13 +317,13 @@ std::optional<StorePath> BinaryCacheStore::queryPathFromHashPart(const std::stri
     }
 }
 
-WireFormatGenerator BinaryCacheStore::narFromPath(const StorePath & storePath)
+box_ptr<Source> BinaryCacheStore::narFromPath(const StorePath & storePath)
 {
     auto info = queryPathInfo(storePath).cast<const NarInfo>();
 
     try {
         auto file = getFile(info->url);
-        return [](auto info, auto file, auto & stats) -> WireFormatGenerator {
+        return make_box_ptr<GeneratorSource>([](auto info, auto file, auto & stats) -> WireFormatGenerator {
             constexpr size_t buflen = 65536;
             auto buf = std::make_unique<char []>(buflen);
             size_t total = 0;
@@ -340,7 +340,7 @@ WireFormatGenerator BinaryCacheStore::narFromPath(const StorePath & storePath)
             stats.narRead++;
             //stats.narReadCompressedBytes += nar->size(); // FIXME
             stats.narReadBytes += total;
-        }(std::move(info), std::move(file), stats);
+        }(std::move(info), std::move(file), stats));
     } catch (NoSuchBinaryCacheFile & e) {
         throw SubstituteGone(std::move(e.info()));
     }
