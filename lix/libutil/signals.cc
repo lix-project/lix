@@ -5,6 +5,7 @@
 #include "lix/libutil/thread-name.hh"
 
 #include <map>
+#include <memory>
 #include <thread>
 
 namespace nix {
@@ -46,7 +47,7 @@ struct InterruptCallbacks {
     std::map<Token, std::function<void()>> callbacks;
 };
 
-static Sync<InterruptCallbacks> _interruptCallbacks;
+static Sync<std::shared_ptr<Sync<InterruptCallbacks>>> _interruptCallbacks;
 
 static void signalHandlerThread(sigset_t set)
 {
@@ -68,12 +69,13 @@ void triggerInterrupt()
 {
     _isInterrupted = true;
 
-    {
+    auto callbacks = *_interruptCallbacks.lock();
+    if (callbacks) {
         InterruptCallbacks::Token i = 0;
         while (true) {
             std::function<void()> callback;
             {
-                auto interruptCallbacks(_interruptCallbacks.lock());
+                auto interruptCallbacks(callbacks->lock());
                 auto lb = interruptCallbacks->callbacks.lower_bound(i);
                 if (lb == interruptCallbacks->callbacks.end())
                     break;
@@ -167,24 +169,38 @@ void restoreSignals()
 /* RAII helper to automatically deregister a callback. */
 struct InterruptCallbackImpl : InterruptCallback
 {
+    std::shared_ptr<Sync<InterruptCallbacks>> parent;
     InterruptCallbacks::Token token;
+    InterruptCallbackImpl(
+        std::shared_ptr<Sync<InterruptCallbacks>> parent, InterruptCallbacks::Token token
+    )
+        : parent(parent)
+        , token(token)
+    {
+    }
     ~InterruptCallbackImpl() override
     {
-        auto interruptCallbacks(_interruptCallbacks.lock());
+        auto interruptCallbacks(parent->lock());
         interruptCallbacks->callbacks.erase(token);
     }
 };
 
 std::unique_ptr<InterruptCallback> createInterruptCallback(std::function<void()> callback)
 {
-    auto interruptCallbacks(_interruptCallbacks.lock());
+    auto callbacks = *_interruptCallbacks.lock();
+    if (!callbacks) {
+        auto lock = _interruptCallbacks.lock();
+        if (!*lock) {
+            *lock = std::make_shared<Sync<InterruptCallbacks>>();
+        }
+        callbacks = *lock;
+    }
+
+    auto interruptCallbacks(callbacks->lock());
     auto token = interruptCallbacks->nextToken++;
     interruptCallbacks->callbacks.emplace(token, callback);
 
-    auto res = std::make_unique<InterruptCallbackImpl>();
-    res->token = token;
-
-    return std::unique_ptr<InterruptCallback>(res.release());
+    return std::make_unique<InterruptCallbackImpl>(callbacks, token);
 }
 
 };
