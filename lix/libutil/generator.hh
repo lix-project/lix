@@ -39,9 +39,9 @@ struct failure
 template<typename T>
 struct promise_state
 {
-    // result of the most recent coroutine resumption: a value,
-    // a nested coroutine to drain, an error, or our completion
-    std::variant<T, link<T>, failure, finished> value{};
+    // result of the most recent coroutine resumption: a nested
+    // coroutine to drain, a value, an error, or our completion
+    std::variant<link<T>, T, failure, finished> value{};
     // coroutine to resume when this one has finished. set when
     // one generator yields another, such that the entire chain
     // of parents always linearly points to the root generator.
@@ -86,7 +86,7 @@ struct promise : promise_state<T>
         }
     std::suspend_always yield_value(From && from)
     {
-        this->value.template emplace<0>(convert(std::forward<From>(from)));
+        this->value.template emplace<1>(convert(std::forward<From>(from)));
         return {};
     }
 

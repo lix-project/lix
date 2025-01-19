@@ -260,4 +260,20 @@ TEST(Generator, iterators)
     }
 }
 
+TEST(Generator, nonDefaultCtor)
+{
+    auto g = []() -> Generator<std::reference_wrapper<int>> {
+        int i = 0;
+        co_yield i;
+        i += 1;
+        co_yield i;
+    }();
+
+    auto i = g.next();
+    ASSERT_EQ(*i, 0);
+    i->get() = 10;
+    i = g.next();
+    ASSERT_EQ(*i, 11);
+}
+
 }
