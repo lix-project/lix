@@ -204,6 +204,12 @@ struct MercurialInputScheme : InputScheme
 
                 return {std::move(storePath), input};
             }
+
+            auto tokens = tokenizeString<std::vector<std::string>>(
+                runHg({ "identify", "-R", actualUrl, "-r", ".", "--template", "{branch} {node}" }));
+            assert(tokens.size() == 2);
+            input.attrs.insert_or_assign("ref", tokens[0]);
+            input.attrs.insert_or_assign("rev", tokens[1]);
         }
 
         if (!input.getRef()) input.attrs.insert_or_assign("ref", "default");
@@ -288,7 +294,7 @@ struct MercurialInputScheme : InputScheme
         }
 
         auto tokens = tokenizeString<std::vector<std::string>>(
-            runHg({ "log", "-R", cacheDir, "-r", revOrRef, "--template", "{node} {rev} {branch}" }));
+            runHg({ "log", "-R", cacheDir, "-r", revOrRef, "--template", "{node} {count(revset('::{rev}'))} {branch}" }));
         assert(tokens.size() == 3);
 
         input.attrs.insert_or_assign("rev", Hash::parseAny(tokens[0], HashType::SHA1).gitRev());

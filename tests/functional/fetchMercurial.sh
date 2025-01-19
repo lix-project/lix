@@ -33,11 +33,11 @@ path=$(nix eval --impure --raw --expr "(builtins.fetchMercurial \"file://$repo\"
 [[ $(cat $path/hello) = unclean ]]
 hg revert --cwd $repo --all
 
-# Fetch the default branch.
+# Fetch the currently checked out revision.
 path=$(nix eval --impure --raw --expr "(builtins.fetchMercurial \"file://$repo\").outPath")
 [[ $(cat $path/hello) = world ]]
 
-# In pure eval mode, fetchGit without a revision should fail.
+# In pure eval mode, fetchMercurial without a revision should fail.
 [[ $(nix eval --impure --raw --expr "(builtins.readFile (fetchMercurial \"file://$repo\" + \"/hello\"))") = world ]]
 (! nix eval --raw --expr "builtins.readFile (fetchMercurial \"file://$repo\" + \"/hello\")")
 
@@ -45,7 +45,7 @@ path=$(nix eval --impure --raw --expr "(builtins.fetchMercurial \"file://$repo\"
 path2=$(nix eval --impure --raw --expr "(builtins.fetchMercurial { url = \"file://$repo\"; rev = \"$rev2\"; }).outPath")
 [[ $path = $path2 ]]
 
-# In pure eval mode, fetchGit with a revision should succeed.
+# In pure eval mode, fetchMercurial with a revision should succeed.
 [[ $(nix eval --raw --expr "builtins.readFile (fetchMercurial { url = \"file://$repo\"; rev = \"$rev2\"; } + \"/hello\")") = world ]]
 
 # Fetch again. This should be cached.
@@ -54,7 +54,7 @@ path2=$(nix eval --impure --raw --expr "(builtins.fetchMercurial \"file://$repo\
 [[ $path = $path2 ]]
 
 [[ $(nix eval --impure --raw --expr "(builtins.fetchMercurial \"file://$repo\").branch") = default ]]
-[[ $(nix eval --impure --expr "(builtins.fetchMercurial \"file://$repo\").revCount") = 1 ]]
+[[ $(nix eval --impure --expr "(builtins.fetchMercurial \"file://$repo\").revCount") = 2 ]]
 [[ $(nix eval --impure --raw --expr "(builtins.fetchMercurial \"file://$repo\").rev") = $rev2 ]]
 
 # But with TTL 0, it should fail.
@@ -104,3 +104,14 @@ echo paris > $repo/hello
 # Passing a `name` argument should be reflected in the output path
 path5=$(nix eval -vvvvv --impure --refresh --raw --expr "(builtins.fetchMercurial { url = \"file://$repo\"; name = \"foo\"; } ).outPath")
 [[ $path5 =~ -foo$ ]]
+
+# Fetch the currently checked out revision on a non-default branch.
+hg branch --cwd $repo meow
+hg commit --cwd $repo -m 'Bla4'
+[[ $(nix eval --impure --raw --expr "(builtins.fetchMercurial \"file://$repo\").branch") = meow ]]
+[[ $(nix eval --impure --expr "(builtins.fetchMercurial \"file://$repo\").revCount") = 4 ]]
+
+# Fetch an older revision currently checked out.
+hg update --cwd $repo 2
+[[ $(nix eval --impure --raw --expr "(builtins.fetchMercurial \"file://$repo\").branch") = default ]]
+[[ $(nix eval --impure --expr "(builtins.fetchMercurial \"file://$repo\").revCount") = 3 ]]
