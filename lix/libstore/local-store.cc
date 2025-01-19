@@ -38,10 +38,6 @@
 #include <sys/xattr.h>
 #endif
 
-#ifdef __CYGWIN__
-#include <windows.h>
-#endif
-
 #include <sqlite3.h>
 
 
@@ -509,16 +505,6 @@ void LocalStore::openDB(State & state, bool create)
                   : create ? SQLiteOpenMode::Normal
                   : SQLiteOpenMode::NoCreate;
     state.db = SQLite(dbPath, openMode);
-
-#ifdef __CYGWIN__
-    /* The cygwin version of sqlite3 has a patch which calls
-       SetDllDirectory("/usr/bin") on init. It was intended to fix extension
-       loading, which we don't use, and the effect of SetDllDirectory is
-       inherited by child processes, and causes libraries to be loaded from
-       /usr/bin instead of $PATH. This breaks quite a few things (e.g.
-       checkPhase on openssh), so we set it back to default behaviour. */
-    SetDllDirectoryW(L"");
-#endif
 
     /* !!! check whether sqlite has been built with foreign key
        support */
