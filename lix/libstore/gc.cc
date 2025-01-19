@@ -877,7 +877,7 @@ void LocalStore::autoGC(bool sync)
     std::shared_future<void> future;
 
     {
-        auto state(_state.lock());
+        auto state(_gcState.lock());
 
         if (state->gcRunning) {
             future = state->gcFuture;
@@ -909,7 +909,7 @@ void LocalStore::autoGC(bool sync)
 
                 /* Wake up any threads waiting for the auto-GC to finish. */
                 Finally wakeup([&]() {
-                    auto state(_state.lock());
+                    auto state(_gcState.lock());
                     state->gcRunning = false;
                     state->lastGCCheck = std::chrono::steady_clock::now();
                     promise.set_value();
@@ -924,7 +924,7 @@ void LocalStore::autoGC(bool sync)
 
                 collectGarbage(options, results);
 
-                _state.lock()->availAfterGC = getAvail();
+                _gcState.lock()->availAfterGC = getAvail();
 
             } catch (...) {
                 // FIXME: we could propagate the exception to the

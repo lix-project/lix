@@ -82,7 +82,7 @@ private:
 
     const PublicKeys publicKeys;
 
-    struct State
+    struct DBState
     {
         /**
          * The SQLite database object.
@@ -91,7 +91,12 @@ private:
 
         struct Stmts;
         std::unique_ptr<Stmts> stmts;
+    };
 
+    Sync<DBState> _dbState;
+
+    struct GCState
+    {
         /**
          * The last time we checked whether to do an auto-GC, or an
          * auto-GC finished.
@@ -114,7 +119,7 @@ private:
         uint64_t availAfterGC = std::numeric_limits<uint64_t>::max();
     };
 
-    Sync<State> _state;
+    Sync<GCState> _gcState;
 
 public:
 
@@ -287,13 +292,13 @@ public:
     void registerDrvOutput(const Realisation & info) override;
     void registerDrvOutput(const Realisation & info, CheckSigsFlag checkSigs) override;
     void cacheDrvOutputMapping(
-        State & state,
+        DBState & state,
         const uint64_t deriver,
         const std::string & outputName,
         const StorePath & output);
 
-    std::optional<const Realisation> queryRealisation_(State & state, const DrvOutput & id);
-    std::optional<std::pair<int64_t, Realisation>> queryRealisationCore_(State & state, const DrvOutput & id);
+    std::optional<const Realisation> queryRealisation_(DBState & state, const DrvOutput & id);
+    std::optional<std::pair<int64_t, Realisation>> queryRealisationCore_(DBState & state, const DrvOutput & id);
     std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput&) override;
 
     std::optional<std::string> getVersion() override;
@@ -306,15 +311,15 @@ private:
      */
     int getSchema();
 
-    void openDB(State & state, bool create);
+    void openDB(DBState & state, bool create);
 
     void makeStoreWritable();
 
-    uint64_t queryValidPathId(State & state, const StorePath & path);
+    uint64_t queryValidPathId(DBState & state, const StorePath & path);
 
-    uint64_t addValidPath(State & state, const ValidPathInfo & info, bool checkOutputs = true);
+    uint64_t addValidPath(DBState & state, const ValidPathInfo & info, bool checkOutputs = true);
 
-    void invalidatePath(State & state, const StorePath & path);
+    void invalidatePath(DBState & state, const StorePath & path);
 
     /**
      * Delete a path from the Nix store.
@@ -324,9 +329,9 @@ private:
     void verifyPath(const StorePath & path, const StorePathSet & store,
         StorePathSet & done, StorePathSet & validPaths, RepairFlag repair, bool & errors);
 
-    std::shared_ptr<const ValidPathInfo> queryPathInfoInternal(State & state, const StorePath & path);
+    std::shared_ptr<const ValidPathInfo> queryPathInfoInternal(DBState & state, const StorePath & path);
 
-    void updatePathInfo(State & state, const ValidPathInfo & info);
+    void updatePathInfo(DBState & state, const ValidPathInfo & info);
 
     void upgradeStore6();
     void upgradeStore7();
@@ -354,8 +359,8 @@ private:
     void optimisePath_(Activity * act, OptimiseStats & stats, const Path & path, InodeHash & inodeHash, RepairFlag repair);
 
     // Internal versions that are not wrapped in retry_sqlite.
-    bool isValidPath_(State & state, const StorePath & path);
-    void queryReferrers(State & state, const StorePath & path, StorePathSet & referrers);
+    bool isValidPath_(DBState & state, const StorePath & path);
+    void queryReferrers(DBState & state, const StorePath & path, StorePathSet & referrers);
 
     /**
      * Add signatures to a ValidPathInfo or Realisation using the secret keys
