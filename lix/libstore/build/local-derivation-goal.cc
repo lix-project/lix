@@ -247,10 +247,10 @@ retry:
     try {
 
         /* Okay, we have to build. */
-        auto promise = startBuilder();
+        startBuilder();
 
         started();
-        auto r = co_await promise;
+        auto r = co_await handleChildOutput();
         if (r.has_value()) {
             // all good so far
         } else if (r.has_error()) {
@@ -399,9 +399,7 @@ void LocalDerivationGoal::cleanupPostOutputsRegisteredModeNonCheck()
     cleanupPostOutputsRegisteredModeCheck();
 }
 
-// NOTE this one isn't noexcept because it's called from places that expect
-// exceptions to signal failure to launch. we should change this some time.
-kj::Promise<Outcome<void, Goal::WorkResult>> LocalDerivationGoal::startBuilder()
+void LocalDerivationGoal::startBuilder()
 {
     if ((buildUser && buildUser->getUIDCount() != 1)
         #if __linux__
@@ -789,8 +787,6 @@ kj::Promise<Outcome<void, Goal::WorkResult>> LocalDerivationGoal::startBuilder()
         debug("sandbox setup: " + msg);
         msgs.push_back(std::move(msg));
     }
-
-    return handleChildOutput();
 }
 
 
