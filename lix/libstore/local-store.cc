@@ -760,7 +760,7 @@ void LocalStore::registerDrvOutput(const Realisation & info, CheckSigsFlag check
 void LocalStore::registerDrvOutput(const Realisation & info)
 {
     experimentalFeatureSettings.require(Xp::CaDerivations);
-    retrySQLite<void>([&]() {
+    retrySQLite([&]() {
         auto state(_state.lock());
         if (auto oldR = queryRealisation_(*state, info.id)) {
             if (info.isCompatibleWith(*oldR)) {
@@ -817,7 +817,7 @@ void LocalStore::cacheDrvOutputMapping(
     const std::string & outputName,
     const StorePath & output)
 {
-    retrySQLite<void>([&]() {
+    retrySQLite([&]() {
         state.stmts->AddDerivationOutput.use()
             (deriver)
             (outputName)
@@ -880,7 +880,7 @@ uint64_t LocalStore::addValidPath(State & state,
 
 std::shared_ptr<const ValidPathInfo> LocalStore::queryPathInfoUncached(const StorePath & path)
 {
-    return retrySQLite<std::shared_ptr<const ValidPathInfo>>([&]() {
+    return retrySQLite([&]() {
         auto state(_state.lock());
         return queryPathInfoInternal(*state, path);
     });
@@ -968,7 +968,7 @@ bool LocalStore::isValidPath_(State & state, const StorePath & path)
 
 bool LocalStore::isValidPathUncached(const StorePath & path)
 {
-    return retrySQLite<bool>([&]() {
+    return retrySQLite([&]() {
         auto state(_state.lock());
         return isValidPath_(*state, path);
     });
@@ -986,7 +986,7 @@ StorePathSet LocalStore::queryValidPaths(const StorePathSet & paths, SubstituteF
 
 StorePathSet LocalStore::queryAllValidPaths()
 {
-    return retrySQLite<StorePathSet>([&]() {
+    return retrySQLite([&]() {
         auto state(_state.lock());
         auto use(state->stmts->QueryValidPaths.use());
         StorePathSet res;
@@ -1007,7 +1007,7 @@ void LocalStore::queryReferrers(State & state, const StorePath & path, StorePath
 
 void LocalStore::queryReferrers(const StorePath & path, StorePathSet & referrers)
 {
-    return retrySQLite<void>([&]() {
+    return retrySQLite([&]() {
         auto state(_state.lock());
         queryReferrers(*state, path, referrers);
     });
@@ -1016,7 +1016,7 @@ void LocalStore::queryReferrers(const StorePath & path, StorePathSet & referrers
 
 StorePathSet LocalStore::queryValidDerivers(const StorePath & path)
 {
-    return retrySQLite<StorePathSet>([&]() {
+    return retrySQLite([&]() {
         auto state(_state.lock());
 
         auto useQueryValidDerivers(state->stmts->QueryValidDerivers.use()(printStorePath(path)));
@@ -1033,7 +1033,7 @@ StorePathSet LocalStore::queryValidDerivers(const StorePath & path)
 std::map<std::string, std::optional<StorePath>>
 LocalStore::queryStaticPartialDerivationOutputMap(const StorePath & path)
 {
-    return retrySQLite<std::map<std::string, std::optional<StorePath>>>([&]() {
+    return retrySQLite([&]() {
         auto state(_state.lock());
         std::map<std::string, std::optional<StorePath>> outputs;
         uint64_t drvId;
@@ -1053,7 +1053,7 @@ std::optional<StorePath> LocalStore::queryPathFromHashPart(const std::string & h
 
     Path prefix = config_.storeDir + "/" + hashPart;
 
-    return retrySQLite<std::optional<StorePath>>([&]() -> std::optional<StorePath> {
+    return retrySQLite([&]() -> std::optional<StorePath> {
         auto state(_state.lock());
 
         auto useQueryPathFromHashPart(state->stmts->QueryPathFromHashPart.use()(prefix));
@@ -1113,7 +1113,7 @@ void LocalStore::registerValidPaths(const ValidPathInfos & infos)
        registering operation. */
     if (settings.syncBeforeRegistering) sync();
 
-    return retrySQLite<void>([&]() {
+    return retrySQLite([&]() {
         auto state(_state.lock());
 
         SQLiteTxn txn(state->db);
@@ -1504,7 +1504,7 @@ std::pair<Path, AutoCloseFD> LocalStore::createTempDirInStore()
 
 void LocalStore::invalidatePathChecked(const StorePath & path)
 {
-    retrySQLite<void>([&]() {
+    retrySQLite([&]() {
         auto state(_state.lock());
 
         SQLiteTxn txn(state->db);
@@ -1755,7 +1755,7 @@ void LocalStore::upgradeStore7()
 
 void LocalStore::addSignatures(const StorePath & storePath, const StringSet & sigs)
 {
-    retrySQLite<void>([&]() {
+    retrySQLite([&]() {
         auto state(_state.lock());
 
         SQLiteTxn txn(state->db);
@@ -1852,11 +1852,10 @@ std::optional<const Realisation> LocalStore::queryRealisation_(
 
 std::shared_ptr<const Realisation> LocalStore::queryRealisationUncached(const DrvOutput & id)
 {
-    auto maybeRealisation
-        = retrySQLite<std::optional<const Realisation>>([&]() {
-                auto state(_state.lock());
-                return queryRealisation_(*state, id);
-            });
+    auto maybeRealisation = retrySQLite([&]() {
+        auto state(_state.lock());
+        return queryRealisation_(*state, id);
+    });
     if (maybeRealisation)
         return std::make_shared<const Realisation>(maybeRealisation.value());
     else

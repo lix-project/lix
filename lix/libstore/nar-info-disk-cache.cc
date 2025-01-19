@@ -136,7 +136,7 @@ public:
             )");
 
         /* Periodically purge expired entries from the database. */
-        retrySQLite<void>([&]() {
+        retrySQLite([&]() {
             auto now = time(0);
 
             SQLiteStmt queryLastPurge(state->db, "select value from LastPurge");
@@ -191,7 +191,7 @@ private:
 public:
     int createCache(const std::string & uri, const Path & storeDir, bool wantMassQuery, int priority) override
     {
-        return retrySQLite<int>([&]() {
+        return retrySQLite([&]() {
             auto state(_state.lock());
             SQLiteTxn txn(state->db);
 
@@ -224,7 +224,7 @@ public:
 
     std::optional<CacheInfo> upToDateCacheExists(const std::string & uri) override
     {
-        return retrySQLite<std::optional<CacheInfo>>([&]() -> std::optional<CacheInfo> {
+        return retrySQLite([&]() -> std::optional<CacheInfo> {
             auto state(_state.lock());
             auto cache(queryCacheRaw(*state, uri));
             if (!cache)
@@ -240,8 +240,7 @@ public:
     std::pair<Outcome, std::shared_ptr<NarInfo>> lookupNarInfo(
         const std::string & uri, const std::string & hashPart) override
     {
-        return retrySQLite<std::pair<Outcome, std::shared_ptr<NarInfo>>>(
-            [&]() -> std::pair<Outcome, std::shared_ptr<NarInfo>> {
+        return retrySQLite([&]() -> std::pair<Outcome, std::shared_ptr<NarInfo>> {
             auto state(_state.lock());
 
             auto & cache(getCache(*state, uri));
@@ -285,8 +284,7 @@ public:
     std::pair<Outcome, std::shared_ptr<Realisation>> lookupRealisation(
         const std::string & uri, const DrvOutput & id) override
     {
-        return retrySQLite<std::pair<Outcome, std::shared_ptr<Realisation>>>(
-            [&]() -> std::pair<Outcome, std::shared_ptr<Realisation>> {
+        return retrySQLite([&]() -> std::pair<Outcome, std::shared_ptr<Realisation>> {
             auto state(_state.lock());
 
             auto & cache(getCache(*state, uri));
@@ -318,7 +316,7 @@ public:
         const std::string & uri, const std::string & hashPart,
         std::shared_ptr<const ValidPathInfo> info) override
     {
-        retrySQLite<void>([&]() {
+        retrySQLite([&]() {
             auto state(_state.lock());
 
             auto & cache(getCache(*state, uri));
@@ -358,7 +356,7 @@ public:
         const std::string & uri,
         const Realisation & realisation) override
     {
-        retrySQLite<void>([&]() {
+        retrySQLite([&]() {
             auto state(_state.lock());
 
             auto & cache(getCache(*state, uri));
@@ -376,7 +374,7 @@ public:
         const std::string & uri,
         const DrvOutput & id) override
     {
-        retrySQLite<void>([&]() {
+        retrySQLite([&]() {
             auto state(_state.lock());
 
             auto & cache(getCache(*state, uri));

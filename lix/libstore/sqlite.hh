@@ -167,8 +167,8 @@ void handleSQLiteBusy(const SQLiteBusy & e, time_t & nextWarning);
  * Convenience function for retrying a SQLite transaction when the
  * database is busy.
  */
-template<typename T, typename F>
-T retrySQLite(F && fun)
+template<typename F>
+auto retrySQLite(F && fun)
 {
     time_t nextWarning = time(0) + 1;
 
