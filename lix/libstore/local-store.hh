@@ -80,6 +80,8 @@ private:
      */
     AutoCloseFD globalLock;
 
+    const PublicKeys publicKeys;
+
     struct State
     {
         /**
@@ -110,8 +112,6 @@ private:
          * point in starting a new GC.
          */
         uint64_t availAfterGC = std::numeric_limits<uint64_t>::max();
-
-        std::unique_ptr<PublicKeys> publicKeys;
     };
 
     Sync<State> _state;
@@ -128,10 +128,6 @@ public:
 
     LocalStoreConfig & config() override { return config_; }
     const LocalStoreConfig & config() const override { return config_; }
-
-private:
-
-    const PublicKeys & getPublicKeys();
 
 protected:
 
