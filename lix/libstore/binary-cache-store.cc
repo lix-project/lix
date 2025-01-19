@@ -65,13 +65,6 @@ void BinaryCacheStore::upsertFile(const std::string & path,
     upsertFile(path, std::make_shared<std::stringstream>(std::move(data)), mimeType);
 }
 
-box_ptr<Source> BinaryCacheStore::getFile(const std::string & path)
-{
-    return make_box_ptr<GeneratorSource>([](std::string data) -> Generator<Bytes> {
-        co_yield std::span{data.data(), data.size()};
-    }(std::move(*getFileContents(path))));
-}
-
 std::optional<std::string> BinaryCacheStore::getFileContents(const std::string & path)
 {
     StringSink sink;
