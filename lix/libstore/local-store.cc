@@ -818,13 +818,11 @@ void LocalStore::cacheDrvOutputMapping(
     const std::string & outputName,
     const StorePath & output)
 {
-    retrySQLite([&]() {
-        state.stmts->AddDerivationOutput.use()
-            (deriver)
-            (outputName)
-            (printStorePath(output))
-            .exec();
-    });
+    state.stmts->AddDerivationOutput.use()
+        (deriver)
+        (outputName)
+        (printStorePath(output))
+        .exec();
 }
 
 
