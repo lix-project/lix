@@ -524,8 +524,7 @@ void LocalStore::openDB(DBState & state, bool create)
     {
         SQLiteStmt stmt = db.create("pragma main.journal_mode;");
         auto use = stmt.use();
-        if (use.step() != SQLITE_ROW)
-            SQLiteError::throw_(db, "querying journal mode");
+        assert(use.next());
         prevMode = use.getStr(0);
     }
     if (prevMode != mode)

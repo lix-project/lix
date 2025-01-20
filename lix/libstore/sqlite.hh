@@ -74,6 +74,8 @@ public:
  */
 class SQLiteStmt
 {
+    friend SQLite;
+
     struct Finalize {
         SQLiteStmt * parent;
         void operator()(sqlite3_stmt * stmt);
@@ -83,9 +85,10 @@ class SQLiteStmt
     std::unique_ptr<sqlite3_stmt, Finalize> stmt;
     std::string sql;
 
+    SQLiteStmt(sqlite3 * db, const std::string & sql);
+
 public:
     SQLiteStmt() = default;
-    SQLiteStmt(sqlite3 * db, const std::string & sql);
 
     /**
      * Helper for binding / executing statements.
@@ -109,8 +112,6 @@ public:
         Use & operator () (const unsigned char * data, size_t len, bool notNull = true);
         Use & operator () (int64_t value, bool notNull = true);
         Use & bind(); // null
-
-        int step();
 
         /**
          * Execute a statement that does not return rows.
@@ -141,33 +142,29 @@ public:
  */
 class SQLiteTxn
 {
+    friend SQLite;
+
     struct Rollback {
         void operator()(sqlite3 * db);
     };
     std::unique_ptr<sqlite3, Rollback> db;
 
-public:
     explicit SQLiteTxn(sqlite3 * db);
 
+public:
     void commit();
 };
 
 
 struct SQLiteError : Error
 {
+    friend SQLite;
+    friend SQLiteStmt;
+    friend SQLiteTxn;
+
     std::string path;
     std::string errMsg;
     int errNo, extendedErrNo, offset;
-
-    template<typename... Args>
-    [[noreturn]] static void throw_(SQLite & db, const std::string & fs, const Args & ... args) {
-        throw_(db.db.get(), HintFmt(fs, args...));
-    }
-
-    template<typename... Args>
-    [[noreturn]] static void throw_(sqlite3 * db, const std::string & fs, const Args & ... args) {
-        throw_(db, HintFmt(fs, args...));
-    }
 
     SQLiteError(const char *path, const char *errMsg, int errNo, int extendedErrNo, int offset, HintFmt && hf);
 
@@ -177,6 +174,11 @@ protected:
     SQLiteError(const char *path, const char *errMsg, int errNo, int extendedErrNo, int offset, const std::string & fs, const Args & ... args)
       : SQLiteError(path, errMsg, errNo, extendedErrNo, offset, HintFmt(fs, args...))
     { }
+
+    template<typename... Args>
+    [[noreturn]] static void throw_(sqlite3 * db, const std::string & fs, const Args & ... args) {
+        throw_(db, HintFmt(fs, args...));
+    }
 
     [[noreturn]] static void throw_(sqlite3 * db, HintFmt && hf);
 

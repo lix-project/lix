@@ -206,22 +206,15 @@ SQLiteStmt::Use & SQLiteStmt::Use::bind()
     return *this;
 }
 
-int SQLiteStmt::Use::step()
-{
-    return sqlite3_step(stmt.stmt.get());
-}
-
 void SQLiteStmt::Use::exec()
 {
-    int r = step();
-    assert(r != SQLITE_ROW);
-    if (r != SQLITE_DONE)
-        SQLiteError::throw_(stmt.db, fmt("executing SQLite statement '%s'", sqlite3_expanded_sql(stmt.stmt.get())));
+    bool r = next();
+    assert(!r);
 }
 
 bool SQLiteStmt::Use::next()
 {
-    int r = step();
+    int r = sqlite3_step(stmt.stmt.get());
     if (r != SQLITE_DONE && r != SQLITE_ROW)
         SQLiteError::throw_(stmt.db, fmt("executing SQLite query '%s'", sqlite3_expanded_sql(stmt.stmt.get())));
     return r == SQLITE_ROW;
