@@ -152,7 +152,7 @@ public:
                     (now - std::max(settings.ttlPositiveNarInfoCache.get(), 30 * 24 * 3600U))
                     .exec();
 
-                debug("deleted %d entries from the NAR info disk cache", sqlite3_changes(state->db));
+                debug("deleted %d entries from the NAR info disk cache", state->db.getRowsChanged());
 
                 SQLiteStmt(state->db,
                     "insert or replace into LastPurge(dummy, value) values ('', ?)")

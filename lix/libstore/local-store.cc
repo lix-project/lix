@@ -529,9 +529,8 @@ void LocalStore::openDB(DBState & state, bool create)
             SQLiteError::throw_(db, "querying journal mode");
         prevMode = use.getStr(0);
     }
-    if (prevMode != mode &&
-        sqlite3_exec(db, ("pragma main.journal_mode = " + mode + ";").c_str(), 0, 0, 0) != SQLITE_OK)
-        SQLiteError::throw_(db, "setting journal mode");
+    if (prevMode != mode)
+        db.exec("pragma main.journal_mode = " + mode + ";");
 
     if (mode == "wal" ) {
          /* persist the WAL files when the DB connection is closed.
@@ -540,18 +539,14 @@ void LocalStore::openDB(DBState & state, bool create)
          * journal_size_limit to 2^40 bytes results in the WAL files getting
          * truncated to 0 on exit and limits the on disk size of the WAL files
          * to 2^40 bytes following a checkpoint */
-        if (sqlite3_exec(db, "pragma main.journal_size_limit = 1099511627776;", 0, 0, 0) != SQLITE_OK)
-            SQLiteError::throw_(db, "setting journal_size_limit");
-        int enable = 1;
-        if (sqlite3_file_control(db, nullptr, SQLITE_FCNTL_PERSIST_WAL, &enable) != SQLITE_OK)
-            SQLiteError::throw_(db, "setting persistent WAL mode");
-    }
+        db.exec("pragma main.journal_size_limit = 1099511627776;");
+        db.setPersistWAL(true);
 
-    /* Increase the auto-checkpoint interval to 40000 pages.  This
-       seems enough to ensure that instantiating the NixOS system
-       derivation is done in a single fsync(). */
-    if (mode == "wal" && sqlite3_exec(db, "pragma wal_autocheckpoint = 40000;", 0, 0, 0) != SQLITE_OK)
-        SQLiteError::throw_(db, "setting autocheckpoint interval");
+        /* Increase the auto-checkpoint interval to 40000 pages.  This
+           seems enough to ensure that instantiating the NixOS system
+           derivation is done in a single fsync(). */
+        db.exec("pragma wal_autocheckpoint = 40000;");
+    }
 
     /* Initialise the database schema, if necessary. */
     if (create) {

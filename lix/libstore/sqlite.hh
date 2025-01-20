@@ -57,7 +57,10 @@ struct SQLite
 
     SQLiteTxn beginTransaction();
 
+    void setPersistWAL(bool persist);
+
     uint64_t getLastInsertedRowId();
+    uint64_t getRowsChanged();
 };
 
 /**

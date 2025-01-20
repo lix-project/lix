@@ -109,9 +109,22 @@ SQLiteTxn SQLite::beginTransaction()
     return SQLiteTxn(db);
 }
 
+void SQLite::setPersistWAL(bool persist)
+{
+    int enable = persist ? 1 : 0;
+    if (sqlite3_file_control(db, nullptr, SQLITE_FCNTL_PERSIST_WAL, &enable) != SQLITE_OK) {
+        SQLiteError::throw_(db, "setting persistent WAL mode");
+    }
+}
+
 uint64_t SQLite::getLastInsertedRowId()
 {
     return sqlite3_last_insert_rowid(db);
+}
+
+uint64_t SQLite::getRowsChanged()
+{
+    return sqlite3_changes64(db);
 }
 
 void SQLiteStmt::create(sqlite3 * db, const std::string & sql)
