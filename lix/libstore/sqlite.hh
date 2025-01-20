@@ -32,22 +32,25 @@ enum class SQLiteOpenMode {
     Immutable,
 };
 
+struct SQLiteError;
 class SQLiteStmt;
 class SQLiteTxn;
 
 /**
  * RAII wrapper to close a SQLite database automatically.
  */
-struct SQLite
+class SQLite
 {
-    sqlite3 * db = 0;
-    SQLite() { }
+    friend SQLiteError;
+
+    struct Close {
+        void operator()(sqlite3 * db);
+    };
+    std::unique_ptr<sqlite3, Close> db;
+
+public:
+    SQLite() = default;
     SQLite(const Path & path, SQLiteOpenMode mode = SQLiteOpenMode::Normal);
-    SQLite(const SQLite & from) = delete;
-    SQLite& operator = (const SQLite & from) = delete;
-    SQLite& operator = (SQLite && from) { db = from.db; from.db = 0; return *this; }
-    ~SQLite();
-    operator sqlite3 * () { return db; }
 
     /**
      * Disable synchronous mode, set truncate journal mode.
@@ -155,6 +158,11 @@ struct SQLiteError : Error
     std::string path;
     std::string errMsg;
     int errNo, extendedErrNo, offset;
+
+    template<typename... Args>
+    [[noreturn]] static void throw_(SQLite & db, const std::string & fs, const Args & ... args) {
+        throw_(db.db.get(), HintFmt(fs, args...));
+    }
 
     template<typename... Args>
     [[noreturn]] static void throw_(sqlite3 * db, const std::string & fs, const Args & ... args) {

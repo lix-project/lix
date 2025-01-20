@@ -63,11 +63,13 @@ SQLite::SQLite(const Path & path, SQLiteOpenMode mode)
     int flags = immutable ? SQLITE_OPEN_READONLY : SQLITE_OPEN_READWRITE;
     if (mode == SQLiteOpenMode::Normal) flags |= SQLITE_OPEN_CREATE;
     auto uri = "file:" + percentEncode(path) + "?immutable=" + (immutable ? "1" : "0");
+    sqlite3 * db;
     int ret = sqlite3_open_v2(uri.c_str(), &db, SQLITE_OPEN_URI | flags, vfs);
     if (ret != SQLITE_OK) {
         const char * err = sqlite3_errstr(ret);
         throw Error("cannot open SQLite database '%s': %s", path, err);
     }
+    this->db.reset(db);
 
     if (sqlite3_busy_timeout(db, 60 * 60 * 1000) != SQLITE_OK)
         SQLiteError::throw_(db, "setting timeout");
@@ -80,10 +82,10 @@ SQLite::SQLite(const Path & path, SQLiteOpenMode mode)
     exec("pragma foreign_keys = 1");
 }
 
-SQLite::~SQLite()
+void SQLite::Close::operator()(sqlite3 * db)
 {
     try {
-        if (db && sqlite3_close(db) != SQLITE_OK)
+        if (sqlite3_close(db) != SQLITE_OK)
             SQLiteError::throw_(db, "closing database");
     } catch (...) {
         ignoreExceptionInDestructor();
@@ -99,37 +101,37 @@ void SQLite::isCache()
 void SQLite::exec(const std::string & stmt)
 {
     retrySQLite([&]() {
-        if (sqlite3_exec(db, stmt.c_str(), 0, 0, 0) != SQLITE_OK)
-            SQLiteError::throw_(db, "executing SQLite statement '%s'", stmt);
+        if (sqlite3_exec(db.get(), stmt.c_str(), 0, 0, 0) != SQLITE_OK)
+            SQLiteError::throw_(db.get(), "executing SQLite statement '%s'", stmt);
     });
 }
 
 SQLiteStmt SQLite::create(const std::string & stmt)
 {
-    return SQLiteStmt(db, stmt);
+    return SQLiteStmt(db.get(), stmt);
 }
 
 SQLiteTxn SQLite::beginTransaction()
 {
-    return SQLiteTxn(db);
+    return SQLiteTxn(db.get());
 }
 
 void SQLite::setPersistWAL(bool persist)
 {
     int enable = persist ? 1 : 0;
-    if (sqlite3_file_control(db, nullptr, SQLITE_FCNTL_PERSIST_WAL, &enable) != SQLITE_OK) {
-        SQLiteError::throw_(db, "setting persistent WAL mode");
+    if (sqlite3_file_control(db.get(), nullptr, SQLITE_FCNTL_PERSIST_WAL, &enable) != SQLITE_OK) {
+        SQLiteError::throw_(db.get(), "setting persistent WAL mode");
     }
 }
 
 uint64_t SQLite::getLastInsertedRowId()
 {
-    return sqlite3_last_insert_rowid(db);
+    return sqlite3_last_insert_rowid(db.get());
 }
 
 uint64_t SQLite::getRowsChanged()
 {
-    return sqlite3_changes64(db);
+    return sqlite3_changes64(db.get());
 }
 
 SQLiteStmt::SQLiteStmt(sqlite3 * db, const std::string & sql)
