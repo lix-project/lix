@@ -130,18 +130,19 @@ uint64_t SQLite::getRowsChanged()
 void SQLiteStmt::create(sqlite3 * db, const std::string & sql)
 {
     checkInterrupt();
-    assert(!stmt);
+    sqlite3_stmt * stmt;
     if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
         SQLiteError::throw_(db, "creating statement '%s'", sql);
+    this->stmt = {stmt, {this}};
     this->db = db;
     this->sql = sql;
 }
 
-SQLiteStmt::~SQLiteStmt()
+void SQLiteStmt::Finalize::operator()(sqlite3_stmt * stmt)
 {
     try {
-        if (stmt && sqlite3_finalize(stmt) != SQLITE_OK)
-            SQLiteError::throw_(db, "finalizing statement '%s'", sql);
+        if (sqlite3_finalize(stmt) != SQLITE_OK)
+            SQLiteError::throw_(parent->db, "finalizing statement '%s'", parent->sql);
     } catch (...) {
         ignoreExceptionInDestructor();
     }
@@ -153,18 +154,18 @@ SQLiteStmt::Use::Use(SQLiteStmt & stmt)
     assert(stmt.stmt);
     /* Note: sqlite3_reset() returns the error code for the most
        recent call to sqlite3_step().  So ignore it. */
-    sqlite3_reset(stmt);
+    sqlite3_reset(stmt.stmt.get());
 }
 
 SQLiteStmt::Use::~Use()
 {
-    sqlite3_reset(stmt);
+    sqlite3_reset(stmt.stmt.get());
 }
 
 SQLiteStmt::Use & SQLiteStmt::Use::operator () (std::string_view value, bool notNull)
 {
     if (notNull) {
-        if (sqlite3_bind_text(stmt, curArg++, value.data(), -1, SQLITE_TRANSIENT) != SQLITE_OK)
+        if (sqlite3_bind_text(stmt.stmt.get(), curArg++, value.data(), -1, SQLITE_TRANSIENT) != SQLITE_OK)
             SQLiteError::throw_(stmt.db, "binding argument");
     } else
         bind();
@@ -174,7 +175,7 @@ SQLiteStmt::Use & SQLiteStmt::Use::operator () (std::string_view value, bool not
 SQLiteStmt::Use & SQLiteStmt::Use::operator () (const unsigned char * data, size_t len, bool notNull)
 {
     if (notNull) {
-        if (sqlite3_bind_blob(stmt, curArg++, data, len, SQLITE_TRANSIENT) != SQLITE_OK)
+        if (sqlite3_bind_blob(stmt.stmt.get(), curArg++, data, len, SQLITE_TRANSIENT) != SQLITE_OK)
             SQLiteError::throw_(stmt.db, "binding argument");
     } else
         bind();
@@ -184,7 +185,7 @@ SQLiteStmt::Use & SQLiteStmt::Use::operator () (const unsigned char * data, size
 SQLiteStmt::Use & SQLiteStmt::Use::operator () (int64_t value, bool notNull)
 {
     if (notNull) {
-        if (sqlite3_bind_int64(stmt, curArg++, value) != SQLITE_OK)
+        if (sqlite3_bind_int64(stmt.stmt.get(), curArg++, value) != SQLITE_OK)
             SQLiteError::throw_(stmt.db, "binding argument");
     } else
         bind();
@@ -193,14 +194,14 @@ SQLiteStmt::Use & SQLiteStmt::Use::operator () (int64_t value, bool notNull)
 
 SQLiteStmt::Use & SQLiteStmt::Use::bind()
 {
-    if (sqlite3_bind_null(stmt, curArg++) != SQLITE_OK)
+    if (sqlite3_bind_null(stmt.stmt.get(), curArg++) != SQLITE_OK)
         SQLiteError::throw_(stmt.db, "binding argument");
     return *this;
 }
 
 int SQLiteStmt::Use::step()
 {
-    return sqlite3_step(stmt);
+    return sqlite3_step(stmt.stmt.get());
 }
 
 void SQLiteStmt::Use::exec()
@@ -208,20 +209,20 @@ void SQLiteStmt::Use::exec()
     int r = step();
     assert(r != SQLITE_ROW);
     if (r != SQLITE_DONE)
-        SQLiteError::throw_(stmt.db, fmt("executing SQLite statement '%s'", sqlite3_expanded_sql(stmt.stmt)));
+        SQLiteError::throw_(stmt.db, fmt("executing SQLite statement '%s'", sqlite3_expanded_sql(stmt.stmt.get())));
 }
 
 bool SQLiteStmt::Use::next()
 {
     int r = step();
     if (r != SQLITE_DONE && r != SQLITE_ROW)
-        SQLiteError::throw_(stmt.db, fmt("executing SQLite query '%s'", sqlite3_expanded_sql(stmt.stmt)));
+        SQLiteError::throw_(stmt.db, fmt("executing SQLite query '%s'", sqlite3_expanded_sql(stmt.stmt.get())));
     return r == SQLITE_ROW;
 }
 
 std::optional<std::string> SQLiteStmt::Use::getStrNullable(int col)
 {
-    auto s = charptr_cast<const char *>(sqlite3_column_text(stmt, col));
+    auto s = charptr_cast<const char *>(sqlite3_column_text(stmt.stmt.get(), col));
     return s != nullptr ? std::make_optional<std::string>((s)) : std::nullopt;
 }
 
@@ -238,12 +239,12 @@ std::string SQLiteStmt::Use::getStr(int col)
 int64_t SQLiteStmt::Use::getInt(int col)
 {
     // FIXME: detect nulls?
-    return sqlite3_column_int64(stmt, col);
+    return sqlite3_column_int64(stmt.stmt.get(), col);
 }
 
 bool SQLiteStmt::Use::isNull(int col)
 {
-    return sqlite3_column_type(stmt, col) == SQLITE_NULL;
+    return sqlite3_column_type(stmt.stmt.get(), col) == SQLITE_NULL;
 }
 
 SQLiteTxn::SQLiteTxn(sqlite3 * db)

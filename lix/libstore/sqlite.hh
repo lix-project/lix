@@ -32,6 +32,7 @@ enum class SQLiteOpenMode {
     Immutable,
 };
 
+class SQLiteStmt;
 class SQLiteTxn;
 
 /**
@@ -66,23 +67,28 @@ struct SQLite
 /**
  * RAII wrapper to create and destroy SQLite prepared statements.
  */
-struct SQLiteStmt
+class SQLiteStmt
 {
+    struct Finalize {
+        SQLiteStmt * parent;
+        void operator()(sqlite3_stmt * stmt);
+    };
+
     sqlite3 * db = 0;
-    sqlite3_stmt * stmt = 0;
+    std::unique_ptr<sqlite3_stmt, Finalize> stmt;
     std::string sql;
-    SQLiteStmt() { }
+
+public:
+    SQLiteStmt() = default;
     SQLiteStmt(sqlite3 * db, const std::string & sql) { create(db, sql); }
     void create(sqlite3 * db, const std::string & s);
-    ~SQLiteStmt();
-    operator sqlite3_stmt * () { return stmt; }
 
     /**
      * Helper for binding / executing statements.
      */
     class Use
     {
-        friend struct SQLiteStmt;
+        friend class SQLiteStmt;
     private:
         SQLiteStmt & stmt;
         unsigned int curArg = 1;
