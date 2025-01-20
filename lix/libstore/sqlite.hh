@@ -56,6 +56,8 @@ struct SQLite
 
     void exec(const std::string & stmt);
 
+    SQLiteStmt create(const std::string & stmt);
+
     SQLiteTxn beginTransaction();
 
     void setPersistWAL(bool persist);
@@ -80,8 +82,7 @@ class SQLiteStmt
 
 public:
     SQLiteStmt() = default;
-    SQLiteStmt(sqlite3 * db, const std::string & sql) { create(db, sql); }
-    void create(sqlite3 * db, const std::string & s);
+    SQLiteStmt(sqlite3 * db, const std::string & sql);
 
     /**
      * Helper for binding / executing statements.

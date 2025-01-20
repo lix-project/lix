@@ -104,6 +104,11 @@ void SQLite::exec(const std::string & stmt)
     });
 }
 
+SQLiteStmt SQLite::create(const std::string & stmt)
+{
+    return SQLiteStmt(db, stmt);
+}
+
 SQLiteTxn SQLite::beginTransaction()
 {
     return SQLiteTxn(db);
@@ -127,7 +132,7 @@ uint64_t SQLite::getRowsChanged()
     return sqlite3_changes64(db);
 }
 
-void SQLiteStmt::create(sqlite3 * db, const std::string & sql)
+SQLiteStmt::SQLiteStmt(sqlite3 * db, const std::string & sql)
 {
     checkInterrupt();
     sqlite3_stmt * stmt;

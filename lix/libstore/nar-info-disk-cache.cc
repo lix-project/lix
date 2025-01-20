@@ -99,35 +99,35 @@ public:
 
         state->db.exec(schema);
 
-        state->insertCache.create(state->db,
+        state->insertCache = state->db.create(
             "insert into BinaryCaches(url, timestamp, storeDir, wantMassQuery, priority) values (?1, ?2, ?3, ?4, ?5) on conflict (url) do update set timestamp = ?2, storeDir = ?3, wantMassQuery = ?4, priority = ?5 returning id;");
 
-        state->queryCache.create(state->db,
+        state->queryCache = state->db.create(
             "select id, storeDir, wantMassQuery, priority from BinaryCaches where url = ? and timestamp > ?");
 
-        state->insertNAR.create(state->db,
+        state->insertNAR = state->db.create(
             "insert or replace into NARs(cache, hashPart, namePart, url, compression, fileHash, fileSize, narHash, "
             "narSize, refs, deriver, sigs, ca, timestamp, present) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
 
-        state->insertMissingNAR.create(state->db,
+        state->insertMissingNAR = state->db.create(
             "insert or replace into NARs(cache, hashPart, timestamp, present) values (?, ?, ?, 0)");
 
-        state->queryNAR.create(state->db,
+        state->queryNAR = state->db.create(
             "select present, namePart, url, compression, fileHash, fileSize, narHash, narSize, refs, deriver, sigs, ca from NARs where cache = ? and hashPart = ? and ((present = 0 and timestamp > ?) or (present = 1 and timestamp > ?))");
 
-        state->insertRealisation.create(state->db,
+        state->insertRealisation = state->db.create(
             R"(
                 insert or replace into Realisations(cache, outputId, content, timestamp)
                     values (?, ?, ?, ?)
             )");
 
-        state->insertMissingRealisation.create(state->db,
+        state->insertMissingRealisation = state->db.create(
             R"(
                 insert or replace into Realisations(cache, outputId, timestamp)
                     values (?, ?, ?)
             )");
 
-        state->queryRealisation.create(state->db,
+        state->queryRealisation = state->db.create(
             R"(
                 select content from Realisations
                     where cache = ? and outputId = ?  and
@@ -139,11 +139,11 @@ public:
         retrySQLite([&]() {
             auto now = time(0);
 
-            SQLiteStmt queryLastPurge(state->db, "select value from LastPurge");
+            SQLiteStmt queryLastPurge = state->db.create("select value from LastPurge");
             auto queryLastPurge_(queryLastPurge.use());
 
             if (!queryLastPurge_.next() || queryLastPurge_.getInt(0) < now - purgeInterval) {
-                SQLiteStmt(state->db,
+                state->db.create(
                     "delete from NARs where ((present = 0 and timestamp < ?) or (present = 1 and timestamp < ?))")
                     .use()
                     // Use a minimum TTL to prevent --refresh from
@@ -154,7 +154,7 @@ public:
 
                 debug("deleted %d entries from the NAR info disk cache", state->db.getRowsChanged());
 
-                SQLiteStmt(state->db,
+                state->db.create(
                     "insert or replace into LastPurge(dummy, value) values ('', ?)")
                     .use()(now).exec();
             }

@@ -47,16 +47,16 @@ struct AttrDb
         state->db.isCache();
         state->db.exec(schema);
 
-        state->insertAttribute.create(state->db,
+        state->insertAttribute = state->db.create(
             "insert or replace into Attributes(parent, name, type, value) values (?, ?, ?, ?)");
 
-        state->insertAttributeWithContext.create(state->db,
+        state->insertAttributeWithContext = state->db.create(
             "insert or replace into Attributes(parent, name, type, value, context) values (?, ?, ?, ?, ?)");
 
-        state->queryAttribute.create(state->db,
+        state->queryAttribute = state->db.create(
             "select rowid, type, value, context from Attributes where parent = ? and name = ?");
 
-        state->queryAttributes.create(state->db,
+        state->queryAttributes = state->db.create(
             "select name from Attributes where parent = ?");
 
         state->txn = std::make_unique<SQLiteTxn>(state->db.beginTransaction());

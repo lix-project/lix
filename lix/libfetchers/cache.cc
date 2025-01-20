@@ -50,10 +50,10 @@ struct CacheImpl : Cache
         state->db.isCache();
         state->db.exec(schema);
 
-        state->add.create(state->db,
+        state->add = state->db.create(
             "insert or replace into Cache(input, info, path, immutable, timestamp) values (?, ?, ?, ?, ?)");
 
-        state->lookup.create(state->db,
+        state->lookup = state->db.create(
             "select info, path, immutable, timestamp from Cache where input = ?");
     }
 

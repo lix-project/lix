@@ -365,39 +365,39 @@ LocalStore::LocalStore(LocalStoreConfig config)
     }
 
     /* Prepare SQL statements. */
-    state->stmts->RegisterValidPath.create(state->db,
+    state->stmts->RegisterValidPath = state->db.create(
         "insert into ValidPaths (path, hash, registrationTime, deriver, narSize, ultimate, sigs, ca) values (?, ?, ?, ?, ?, ?, ?, ?);");
-    state->stmts->UpdatePathInfo.create(state->db,
+    state->stmts->UpdatePathInfo = state->db.create(
         "update ValidPaths set narSize = ?, hash = ?, ultimate = ?, sigs = ?, ca = ? where path = ?;");
-    state->stmts->AddReference.create(state->db,
+    state->stmts->AddReference = state->db.create(
         "insert or replace into Refs (referrer, reference) values (?, ?);");
-    state->stmts->QueryPathInfo.create(state->db,
+    state->stmts->QueryPathInfo = state->db.create(
         "select id, hash, registrationTime, deriver, narSize, ultimate, sigs, ca from ValidPaths where path = ?;");
-    state->stmts->QueryReferences.create(state->db,
+    state->stmts->QueryReferences = state->db.create(
         "select path from Refs join ValidPaths on reference = id where referrer = ?;");
-    state->stmts->QueryReferrers.create(state->db,
+    state->stmts->QueryReferrers = state->db.create(
         "select path from Refs join ValidPaths on referrer = id where reference = (select id from ValidPaths where path = ?);");
-    state->stmts->InvalidatePath.create(state->db,
+    state->stmts->InvalidatePath = state->db.create(
         "delete from ValidPaths where path = ?;");
-    state->stmts->AddDerivationOutput.create(state->db,
+    state->stmts->AddDerivationOutput = state->db.create(
         "insert or replace into DerivationOutputs (drv, id, path) values (?, ?, ?);");
-    state->stmts->QueryValidDerivers.create(state->db,
+    state->stmts->QueryValidDerivers = state->db.create(
         "select v.id, v.path from DerivationOutputs d join ValidPaths v on d.drv = v.id where d.path = ?;");
-    state->stmts->QueryDerivationOutputs.create(state->db,
+    state->stmts->QueryDerivationOutputs = state->db.create(
         "select id, path from DerivationOutputs where drv = ?;");
     // Use "path >= ?" with limit 1 rather than "path like '?%'" to
     // ensure efficient lookup.
-    state->stmts->QueryPathFromHashPart.create(state->db,
+    state->stmts->QueryPathFromHashPart = state->db.create(
         "select path from ValidPaths where path >= ? limit 1;");
-    state->stmts->QueryValidPaths.create(state->db, "select path from ValidPaths");
+    state->stmts->QueryValidPaths = state->db.create("select path from ValidPaths");
     if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-        state->stmts->RegisterRealisedOutput.create(state->db,
+        state->stmts->RegisterRealisedOutput = state->db.create(
             R"(
                 insert into Realisations (drvPath, outputName, outputPath, signatures)
                 values (?, ?, (select id from ValidPaths where path = ?), ?)
                 ;
             )");
-        state->stmts->UpdateRealisedOutput.create(state->db,
+        state->stmts->UpdateRealisedOutput = state->db.create(
             R"(
                 update Realisations
                     set signatures = ?
@@ -406,27 +406,27 @@ LocalStore::LocalStore(LocalStoreConfig config)
                     outputName = ?
                 ;
             )");
-        state->stmts->QueryRealisedOutput.create(state->db,
+        state->stmts->QueryRealisedOutput = state->db.create(
             R"(
                 select Realisations.id, Output.path, Realisations.signatures from Realisations
                     inner join ValidPaths as Output on Output.id = Realisations.outputPath
                     where drvPath = ? and outputName = ?
                     ;
             )");
-        state->stmts->QueryAllRealisedOutputs.create(state->db,
+        state->stmts->QueryAllRealisedOutputs = state->db.create(
             R"(
                 select outputName, Output.path from Realisations
                     inner join ValidPaths as Output on Output.id = Realisations.outputPath
                     where drvPath = ?
                     ;
             )");
-        state->stmts->QueryRealisationReferences.create(state->db,
+        state->stmts->QueryRealisationReferences = state->db.create(
             R"(
                 select drvPath, outputName from Realisations
                     join RealisationsRefs on realisationReference = Realisations.id
                     where referrer = ?;
             )");
-        state->stmts->AddRealisationReference.create(state->db,
+        state->stmts->AddRealisationReference = state->db.create(
             R"(
                 insert or replace into RealisationsRefs (referrer, realisationReference)
                 values (
@@ -522,8 +522,7 @@ void LocalStore::openDB(DBState & state, bool create)
     std::string mode = settings.useSQLiteWAL ? "wal" : "truncate";
     std::string prevMode;
     {
-        SQLiteStmt stmt;
-        stmt.create(db, "pragma main.journal_mode;");
+        SQLiteStmt stmt = db.create("pragma main.journal_mode;");
         auto use = stmt.use();
         if (use.step() != SQLITE_ROW)
             SQLiteError::throw_(db, "querying journal mode");
