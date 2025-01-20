@@ -32,6 +32,8 @@ enum class SQLiteOpenMode {
     Immutable,
 };
 
+class SQLiteTxn;
+
 /**
  * RAII wrapper to close a SQLite database automatically.
  */
@@ -52,6 +54,8 @@ struct SQLite
     void isCache();
 
     void exec(const std::string & stmt);
+
+    SQLiteTxn beginTransaction();
 
     uint64_t getLastInsertedRowId();
 };
@@ -122,16 +126,17 @@ struct SQLiteStmt
  * RAII helper that ensures transactions are aborted unless explicitly
  * committed.
  */
-struct SQLiteTxn
+class SQLiteTxn
 {
-    bool active = false;
-    sqlite3 * db;
+    struct Rollback {
+        void operator()(sqlite3 * db);
+    };
+    std::unique_ptr<sqlite3, Rollback> db;
 
-    SQLiteTxn(sqlite3 * db);
+public:
+    explicit SQLiteTxn(sqlite3 * db);
 
     void commit();
-
-    ~SQLiteTxn();
 };
 
 

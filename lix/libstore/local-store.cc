@@ -110,7 +110,7 @@ void migrateCASchema(SQLite& db, Path schemaPath, AutoCloseFD& lockFd)
         }
 
         if (curCASchema < 2) {
-            SQLiteTxn txn(db);
+            SQLiteTxn txn = db.beginTransaction();
             // Ugly little sql dance to add a new `id` column and make it the primary key
             db.exec(R"(
                 create table Realisations2 (
@@ -140,7 +140,7 @@ void migrateCASchema(SQLite& db, Path schemaPath, AutoCloseFD& lockFd)
         }
 
         if (curCASchema < 3) {
-            SQLiteTxn txn(db);
+            SQLiteTxn txn = db.beginTransaction();
             // Apply new indices added in this schema update.
             db.exec(R"(
                 -- used by QueryRealisationReferences
@@ -151,7 +151,7 @@ void migrateCASchema(SQLite& db, Path schemaPath, AutoCloseFD& lockFd)
             txn.commit();
         }
         if (curCASchema < 4) {
-            SQLiteTxn txn(db);
+            SQLiteTxn txn = db.beginTransaction();
             db.exec(R"(
                 create trigger if not exists DeleteSelfRefsViaRealisations before delete on ValidPaths
                 begin
@@ -331,20 +331,20 @@ LocalStore::LocalStore(LocalStoreConfig config)
         openDB(*state, false);
 
         if (curSchema < 8) {
-            SQLiteTxn txn(state->db);
+            SQLiteTxn txn = state->db.beginTransaction();
             state->db.exec("alter table ValidPaths add column ultimate integer");
             state->db.exec("alter table ValidPaths add column sigs text");
             txn.commit();
         }
 
         if (curSchema < 9) {
-            SQLiteTxn txn(state->db);
+            SQLiteTxn txn = state->db.beginTransaction();
             state->db.exec("drop table FailedPaths");
             txn.commit();
         }
 
         if (curSchema < 10) {
-            SQLiteTxn txn(state->db);
+            SQLiteTxn txn = state->db.beginTransaction();
             state->db.exec("alter table ValidPaths add column ca text");
             txn.commit();
         }
@@ -1115,7 +1115,7 @@ void LocalStore::registerValidPaths(const ValidPathInfos & infos)
     return retrySQLite([&]() {
         auto state(_dbState.lock());
 
-        SQLiteTxn txn(state->db);
+        SQLiteTxn txn = state->db.beginTransaction();
         StorePathSet paths;
 
         for (auto & [_, i] : infos) {
@@ -1498,7 +1498,7 @@ void LocalStore::invalidatePathChecked(const StorePath & path)
     retrySQLite([&]() {
         auto state(_dbState.lock());
 
-        SQLiteTxn txn(state->db);
+        SQLiteTxn txn = state->db.beginTransaction();
 
         if (isValidPath_(*state, path)) {
             StorePathSet referrers; queryReferrers(*state, path, referrers);
@@ -1749,7 +1749,7 @@ void LocalStore::addSignatures(const StorePath & storePath, const StringSet & si
     retrySQLite([&]() {
         auto state(_dbState.lock());
 
-        SQLiteTxn txn(state->db);
+        SQLiteTxn txn = state->db.beginTransaction();
 
         auto info = std::const_pointer_cast<ValidPathInfo>(queryPathInfoInternal(*state, storePath));
 

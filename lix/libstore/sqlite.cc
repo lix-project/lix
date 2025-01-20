@@ -104,6 +104,11 @@ void SQLite::exec(const std::string & stmt)
     });
 }
 
+SQLiteTxn SQLite::beginTransaction()
+{
+    return SQLiteTxn(db);
+}
+
 uint64_t SQLite::getLastInsertedRowId()
 {
     return sqlite3_last_insert_rowid(db);
@@ -230,23 +235,22 @@ bool SQLiteStmt::Use::isNull(int col)
 
 SQLiteTxn::SQLiteTxn(sqlite3 * db)
 {
-    this->db = db;
     if (sqlite3_exec(db, "begin;", 0, 0, 0) != SQLITE_OK)
         SQLiteError::throw_(db, "starting transaction");
-    active = true;
+    this->db.reset(db);
 }
 
 void SQLiteTxn::commit()
 {
-    if (sqlite3_exec(db, "commit;", 0, 0, 0) != SQLITE_OK)
-        SQLiteError::throw_(db, "committing transaction");
-    active = false;
+    if (sqlite3_exec(db.get(), "commit;", 0, 0, 0) != SQLITE_OK)
+        SQLiteError::throw_(db.get(), "committing transaction");
+    (void) db.release(); // not a leak, the deleter only runs `rollback;`
 }
 
-SQLiteTxn::~SQLiteTxn()
+void SQLiteTxn::Rollback::operator()(sqlite3 * db)
 {
     try {
-        if (active && sqlite3_exec(db, "rollback;", 0, 0, 0) != SQLITE_OK)
+        if (sqlite3_exec(db, "rollback;", 0, 0, 0) != SQLITE_OK)
             SQLiteError::throw_(db, "aborting transaction");
     } catch (...) {
         ignoreExceptionInDestructor();

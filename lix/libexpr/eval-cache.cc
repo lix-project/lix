@@ -59,7 +59,7 @@ struct AttrDb
         state->queryAttributes.create(state->db,
             "select name from Attributes where parent = ?");
 
-        state->txn = std::make_unique<SQLiteTxn>(state->db);
+        state->txn = std::make_unique<SQLiteTxn>(state->db.beginTransaction());
     }
 
     ~AttrDb()

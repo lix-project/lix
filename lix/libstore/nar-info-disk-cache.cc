@@ -193,7 +193,7 @@ public:
     {
         return retrySQLite([&]() {
             auto state(_state.lock());
-            SQLiteTxn txn(state->db);
+            SQLiteTxn txn = state->db.beginTransaction();
 
             // To avoid the race, we have to check if maybe someone hasn't yet created
             // the cache for this URI in the meantime.
