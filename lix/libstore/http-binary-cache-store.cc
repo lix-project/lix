@@ -160,20 +160,6 @@ protected:
         }
     }
 
-    std::optional<std::string> getFileContents(const std::string & path) override
-    {
-        checkEnabled();
-
-        try {
-            return getFileTransfer()->download(makeURI(path)).second->drain();
-        } catch (FileTransferError & e) {
-            if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
-                return {};
-            maybeDisable();
-            throw;
-        }
-    }
-
     /**
      * This isn't actually necessary read only. We support "upsert" now, so we
      * have a notion of authentication via HTTP POST/PUT.
