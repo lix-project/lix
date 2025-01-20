@@ -310,12 +310,12 @@ struct TarballInputScheme : CurlInputScheme
 
 std::unique_ptr<InputScheme> makeFileInputScheme()
 {
-    return std::make_unique<TarballInputScheme>();
+    return std::make_unique<FileInputScheme>();
 }
 
 std::unique_ptr<InputScheme> makeTarballInputScheme()
 {
-    return std::make_unique<FileInputScheme>();
+    return std::make_unique<TarballInputScheme>();
 }
 
 }
