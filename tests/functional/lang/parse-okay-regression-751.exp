@@ -1,1 +1,23 @@
-(let const = (a: "const"); in ("${(const { x = "q"; })}"))
+_type: ExprLet
+attrs:
+  const:
+    _type: ExprLambda
+    arg: a
+    body:
+      _type: ExprString
+      value: const
+body:
+  _type: ExprConcatStrings
+  es:
+    - _type: ExprCall
+      args:
+        - _type: ExprSet
+          attrs:
+            x:
+              _type: ExprString
+              value: q
+          recursive: false
+      fun:
+        _type: ExprVar
+        value: const
+  forceString: true

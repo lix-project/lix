@@ -1,1 +1,36 @@
-({ fetchurl, stdenv }: ((stdenv).mkDerivation { name = "libXi-6.0.1"; src = (fetchurl { md5 = "7e935a42428d63a387b3c048be0f2756"; url = "http://freedesktop.org/~xlibs/release/libXi-6.0.1.tar.bz2"; }); }))
+_type: ExprLambda
+body:
+  _type: ExprCall
+  args:
+    - _type: ExprSet
+      attrs:
+        name:
+          _type: ExprString
+          value: libXi-6.0.1
+        src:
+          _type: ExprCall
+          args:
+            - _type: ExprSet
+              attrs:
+                md5:
+                  _type: ExprString
+                  value: 7e935a42428d63a387b3c048be0f2756
+                url:
+                  _type: ExprString
+                  value: http://freedesktop.org/~xlibs/release/libXi-6.0.1.tar.bz2
+              recursive: false
+          fun:
+            _type: ExprVar
+            value: fetchurl
+      recursive: false
+  fun:
+    _type: ExprSelect
+    attrs:
+      - mkDerivation
+    e:
+      _type: ExprVar
+      value: stdenv
+formals:
+  fetchurl: null
+  stdenv: null
+formalsEllipsis: false

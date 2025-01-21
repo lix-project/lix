@@ -648,10 +648,12 @@ struct nothing : p::nothing<Rule> {
 
 template<typename Self, typename OpCtx, typename AttrPathT, typename ExprT>
 struct operator_semantics {
+public:
     struct has_attr : grammar::v1::op::has_attr {
         AttrPathT path;
     };
 
+protected:
     struct OpEntry {
         OpCtx ctx;
         uint8_t prec;
@@ -688,7 +690,7 @@ struct operator_semantics {
 
     // derived class is expected to define members:
     //
-    // ExprT applyOp(OpCtx & pos, auto & op, auto &... args);
+    // void applyOp(OpCtx & pos, auto & op, auto &... args);
     // [[noreturn]] static void badOperator(OpCtx & pos, auto &... args);
 
     void reduce(uint8_t toPrecedence, auto &... args) {
@@ -699,12 +701,13 @@ struct operator_semantics {
                 || (kind != grammar::v1::op::kind::leftAssoc && precedence == toPrecedence))
                 break;
             std::visit([&, ctx=std::move(ctx)] (auto & op) {
-                exprs.push_back(static_cast<Self &>(*this).applyOp(ctx, op, args...));
+                static_cast<Self &>(*this).applyOp(ctx, op, args...);
             }, op);
             ops.pop_back();
         }
     }
 
+public:
     ExprT popExpr()
     {
         auto r = std::move(exprs.back());

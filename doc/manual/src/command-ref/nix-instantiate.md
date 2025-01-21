@@ -35,7 +35,14 @@ standard input.
 
   - `--parse`\
     Just parse the input files, and print their abstract syntax trees on
-    standard output as a Nix expression.
+    standard output. The output format of the AST depends on the current
+    internal representation and may change in the future.
+
+    Tooling can use the stderr and exit code of `--parse` to check any
+    Nix code for correctness, but should not rely on stdout without careful
+    versioning. Note that `--parse` also checks for unbound variables.
+    In cases where this is undesired, `with {};` can be prepended
+    to the program to transform all such parse errors into eval errors.
 
   - `--eval`\
     Just parse and evaluate the input files, and print the resulting

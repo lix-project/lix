@@ -1,1 +1,17 @@
-{ services = { ssh = { enable = true; port = 23; }; }; }
+_type: ExprSet
+attrs:
+  services:
+    _type: ExprSet
+    attrs:
+      ssh:
+        _type: ExprSet
+        attrs:
+          enable:
+            _type: ExprVar
+            value: 'true'
+          port:
+            _type: ExprInt
+            value: 23
+        recursive: false
+    recursive: false
+recursive: false

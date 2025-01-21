@@ -1,1 +1,29 @@
-(let b = 2; c = { }; in { inherit b; inherit (c) d e; a = 1; f = 3; })
+_type: ExprLet
+attrs:
+  b:
+    _type: ExprInt
+    value: 2
+  c:
+    _type: ExprSet
+    recursive: false
+body:
+  _type: ExprSet
+  attrs:
+    a:
+      _type: ExprInt
+      value: 1
+    f:
+      _type: ExprInt
+      value: 3
+  inherit:
+    b:
+      _type: ExprVar
+      value: b
+  inheritFrom:
+    - attrs:
+        - d
+        - e
+      from:
+        _type: ExprVar
+        value: c
+  recursive: false

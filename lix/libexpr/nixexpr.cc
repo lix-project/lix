@@ -8,6 +8,8 @@
 #include <cstdlib>
 #include <sstream>
 
+using json = nlohmann::json;
+
 namespace nix {
 
 ExprBlackHole eBlackHole;
@@ -29,63 +31,80 @@ AttrName::AttrName(PosIdx pos, std::unique_ptr<Expr> e) : pos(pos), expr(std::mo
 {
 }
 
-void Expr::show(const SymbolTable & symbols, std::ostream & str) const
+json Expr::toJSON(const SymbolTable & symbols) const
 {
     abort();
 }
 
-void ExprInt::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprInt::toJSON(const SymbolTable & symbols) const
 {
-    str << n;
+    return {
+        {"_type", "ExprInt"},
+        {"value", n.value}
+    };
 }
 
-void ExprFloat::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprFloat::toJSON(const SymbolTable & symbols) const
 {
-    str << nf;
+    return {
+        {"_type", "ExprFloat"},
+        {"value", nf}
+    };
 }
 
-void ExprString::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprString::toJSON(const SymbolTable & symbols) const
 {
-    escapeString(str, s);
+    return {
+        {"_type", "ExprString"},
+        {"value", s}
+    };
 }
 
-void ExprPath::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprPath::toJSON(const SymbolTable & symbols) const
 {
-    str << s;
+    return {
+        {"_type", "ExprPath"},
+        {"value", s}
+    };
 }
 
-void ExprVar::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprVar::toJSON(const SymbolTable & symbols) const
 {
-    str << symbols[name];
+    return {
+        {"_type", "ExprVar"},
+        {"value", symbols[name]}
+    };
 }
 
-void ExprInheritFrom::show(SymbolTable const & symbols, std::ostream & str) const
+json ExprInheritFrom::toJSON(SymbolTable const & symbols) const
 {
-    str << "(/* expanded inherit (expr) */ ";
-    fromExpr->show(symbols, str);
-    str << ")";
+    return {
+        {"_type", "ExprInheritFrom"}
+    };
 }
 
-void ExprSelect::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprSelect::toJSON(const SymbolTable & symbols) const
 {
-    str << "(";
-    e->show(symbols, str);
-    str << ")." << showAttrPath(symbols, attrPath);
-    if (def) {
-        str << " or (";
-        def->show(symbols, str);
-        str << ")";
-    }
+    json out = {
+        {"_type", "ExprSelect"},
+        {"e", e->toJSON(symbols)},
+        {"attrs", printAttrPathToJson(symbols, attrPath)}
+    };
+    if (def)
+        out["default"] = def->toJSON(symbols);
+    return out;
 }
 
-void ExprOpHasAttr::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprOpHasAttr::toJSON(const SymbolTable & symbols) const
 {
-    str << "((";
-    e->show(symbols, str);
-    str << ") ? " << showAttrPath(symbols, attrPath) << ")";
+    return {
+        {"_type", "ExprOpHasAttr"},
+        {"e", e->toJSON(symbols)},
+        {"attrs", printAttrPathToJson(symbols, attrPath)}
+    };
 }
 
-void ExprAttrs::showBindings(const SymbolTable & symbols, std::ostream & str) const
+void ExprAttrs::addBindingsToJSON(json & out, const SymbolTable & symbols) const
 {
     typedef const decltype(attrs)::value_type * Attr;
     std::vector<Attr> sorted;
@@ -94,14 +113,14 @@ void ExprAttrs::showBindings(const SymbolTable & symbols, std::ostream & str) co
         std::string_view sa = symbols[a->first], sb = symbols[b->first];
         return sa < sb;
     });
-    std::vector<Symbol> inherits;
     std::map<Displacement, std::vector<Symbol>> inheritsFrom;
     for (auto & i : sorted) {
         switch (i->second.kind) {
         case AttrDef::Kind::Plain:
+            out["attrs"][symbols[i->first]] = i->second.e->toJSON(symbols);
             break;
         case AttrDef::Kind::Inherited:
-            inherits.push_back(i->first);
+            out["inherit"][symbols[i->first]] = i->second.e->toJSON(symbols);
             break;
         case AttrDef::Kind::InheritedFrom: {
             auto & select = dynamic_cast<ExprSelect &>(*i->second.e);
@@ -111,167 +130,142 @@ void ExprAttrs::showBindings(const SymbolTable & symbols, std::ostream & str) co
         }
         }
     }
-    if (!inherits.empty()) {
-        str << "inherit";
-        for (auto sym : inherits) str << " " << symbols[sym];
-        str << "; ";
-    }
+
     for (const auto & [from, syms] : inheritsFrom) {
-        str << "inherit (";
-        (*inheritFromExprs)[from]->show(symbols, str);
-        str << ")";
-        for (auto sym : syms) str << " " << symbols[sym];
-        str << "; ";
+        json attrs = json::array();
+        for (auto sym : syms)
+            attrs.push_back(symbols[sym]);
+        out["inheritFrom"].push_back({
+            {"from", (*inheritFromExprs)[from]->toJSON(symbols)},
+            {"attrs", attrs}
+        });
     }
-    for (auto & i : sorted) {
-        if (i->second.kind == AttrDef::Kind::Plain) {
-            str << symbols[i->first] << " = ";
-            i->second.e->show(symbols, str);
-            str << "; ";
-        }
-    }
+
     for (auto & i : dynamicAttrs) {
-        str << "\"${";
-        i.nameExpr->show(symbols, str);
-        str << "}\" = ";
-        i.valueExpr->show(symbols, str);
-        str << "; ";
+        out["dynamicAttrs"].push_back({
+            {"name", i.nameExpr->toJSON(symbols) },
+            {"value", i.valueExpr->toJSON(symbols)}
+        });
     }
 }
 
-void ExprSet::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprSet::toJSON(const SymbolTable & symbols) const
 {
-    if (recursive) str << "rec ";
-    str << "{ ";
-    showBindings(symbols, str);
-    str << "}";
+    json out = {
+        {"_type", "ExprSet"},
+        {"recursive", recursive},
+    };
+    addBindingsToJSON(out, symbols);
+    return out;
 }
 
-void ExprList::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprList::toJSON(const SymbolTable & symbols) const
 {
-    str << "[ ";
-    for (auto & i : elems) {
-        str << "(";
-        i->show(symbols, str);
-        str << ") ";
-    }
-    str << "]";
+    json list = json::array();
+    for (auto & i : elems)
+        list.push_back(i->toJSON(symbols));
+    return {
+        { "_type", "ExprList" },
+        { "elems", list },
+    };
 }
 
-void ExprLambda::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprLambda::toJSON(const SymbolTable & symbols) const
 {
-    str << "(";
+    json out = {
+        { "_type", "ExprLambda" },
+        { "body", body->toJSON(symbols) }
+    };
     if (hasFormals()) {
-        str << "{ ";
-        bool first = true;
         // the natural Symbol ordering is by creation time, which can lead to the
         // same expression being printed in two different ways depending on its
         // context. always use lexicographic ordering to avoid this.
         for (const Formal & i : formals->lexicographicOrder(symbols)) {
-            if (first) first = false; else str << ", ";
-            str << symbols[i.name];
-            if (i.def) {
-                str << " ? ";
-                i.def->show(symbols, str);
-            }
+            if (i.def)
+                out["formals"][symbols[i.name]] = i.def->toJSON(symbols);
+            else
+                out["formals"][symbols[i.name]] = nullptr;
         }
-        if (formals->ellipsis) {
-            if (!first) str << ", ";
-            str << "...";
-        }
-        str << " }";
-        if (arg) str << " @ ";
+        out["formalsEllipsis"] = formals->ellipsis;
     }
-    if (arg) str << symbols[arg];
-    str << ": ";
-    body->show(symbols, str);
-    str << ")";
+    if (arg)
+        out["arg"] = symbols[arg];
+    return out;
 }
 
-void ExprCall::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprCall::toJSON(const SymbolTable & symbols) const
 {
-    str << '(';
-    fun->show(symbols, str);
-    for (auto & e : args) {
-        str <<  ' ';
-        e->show(symbols, str);
-    }
-    str << ')';
+    json outArgs = json::array();
+    for (auto & e : args)
+        outArgs.push_back(e->toJSON(symbols));
+    return {
+        {"_type", "ExprCall"},
+        {"fun", fun->toJSON(symbols)},
+        {"args", outArgs}
+    };
 }
 
-void ExprLet::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprLet::toJSON(const SymbolTable & symbols) const
 {
-    str << "(let ";
-    showBindings(symbols, str);
-    str << "in ";
-    body->show(symbols, str);
-    str << ")";
+    json out = {
+        { "_type", "ExprLet" },
+        { "body", body->toJSON(symbols) }
+    };
+    addBindingsToJSON(out, symbols);
+    return out;
 }
 
-void ExprWith::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprWith::toJSON(const SymbolTable & symbols) const
 {
-    str << "(with ";
-    attrs->show(symbols, str);
-    str << "; ";
-    body->show(symbols, str);
-    str << ")";
+    return {
+        {"_type", "ExprWith"},
+        {"attrs", attrs->toJSON(symbols)},
+        {"body", body->toJSON(symbols)}
+    };
 }
 
-void ExprIf::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprIf::toJSON(const SymbolTable & symbols) const
 {
-    str << "(if ";
-    cond->show(symbols, str);
-    str << " then ";
-    then->show(symbols, str);
-    str << " else ";
-    else_->show(symbols, str);
-    str << ")";
+    return {
+        {"_type", "ExprIf"},
+        {"cond", cond->toJSON(symbols)},
+        {"then", then->toJSON(symbols)},
+        {"else", else_->toJSON(symbols)}
+    };
 }
 
-void ExprAssert::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprAssert::toJSON(const SymbolTable & symbols) const
 {
-    str << "assert ";
-    cond->show(symbols, str);
-    str << "; ";
-    body->show(symbols, str);
+    return {
+        {"_type", "ExprAssert"},
+        {"cond", cond->toJSON(symbols)},
+        {"body", body->toJSON(symbols)}
+    };
 }
 
-void ExprOpNot::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprOpNot::toJSON(const SymbolTable & symbols) const
 {
-    str << "(! ";
-    e->show(symbols, str);
-    str << ")";
+    return {
+        {"_type", "ExprOpNot"},
+        {"e", e->toJSON(symbols)}
+    };
 }
 
-void ExprConcatStrings::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprConcatStrings::toJSON(const SymbolTable & symbols) const
 {
-    bool first = true;
-    str << "(";
-    for (auto & [_pos, part] : es) {
-        if (first)
-            first = false;
-        else
-            str << " + ";
-
-        if (forceString && !dynamic_cast<ExprString *>(part.get())) {
-            /* Print as a string with an interpolation, to preserve the
-             * semantics of the value having to be a string.
-             * Interpolations are weird and someone should eventually
-             * move them out into their own AST node please.
-             */
-            str << "\"${";
-            part->show(symbols, str);
-            str << "}\"";
-        } else {
-            part->show(symbols, str);
-        }
-    }
-    str << ")";
+    json parts = json::array();
+    for (auto & [_pos, part] : es)
+        parts.push_back(part->toJSON(symbols));
+    return {
+        {"_type", "ExprConcatStrings"},
+        {"forceString", forceString},
+        {"es", parts}
+    };
 }
 
-void ExprPos::show(const SymbolTable & symbols, std::ostream & str) const
+json ExprPos::toJSON(const SymbolTable & symbols) const
 {
-    str << "__curPos";
+    return {{ "_type", "ExprPos" }};
 }
 
 
@@ -283,13 +277,22 @@ std::string showAttrPath(const SymbolTable & symbols, const AttrPath & attrPath)
         if (!first) out << '.'; else first = false;
         if (i.symbol)
             out << symbols[i.symbol];
-        else {
-            out << "\"${";
-            i.expr->show(symbols, out);
-            out << "}\"";
-        }
+        else
+            out << "\"${...}\"";
     }
     return out.str();
+}
+
+json printAttrPathToJson(const SymbolTable & symbols, const AttrPath & attrPath)
+{
+    json out = json::array();
+    for (auto & i : attrPath) {
+        if (i.symbol)
+            out.push_back(symbols[i.symbol]);
+        else
+            out.push_back(i.expr->toJSON(symbols));
+    }
+    return out;
 }
 
 

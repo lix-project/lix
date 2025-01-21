@@ -69,6 +69,7 @@ for i in lang/parse-okay-*.nix; do
             2> "lang/$i.err"
     then
         sed "s!$(pwd)!/pwd!g" "lang/$i.out" "lang/$i.err"
+        yq --in-place --yaml-output '.' "lang/$i.out"
         diffAndAccept "$i" out exp
         diffAndAccept "$i" err err.exp
     else
