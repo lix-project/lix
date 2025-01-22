@@ -138,6 +138,15 @@ endif
 
 cxx = meson.get_compiler('cpp')
 
+# tag define to tell us we are compiling lix itself and can thus make
+# non-namespaced aliases of a utility defines visible. this spares us
+# writing LIX_TRY_AWAIT, LIX_RUN_ASYNC_IN, and others in our own code
+# without being forced to hide the headers we take these defines from
+add_project_arguments(
+  '-DLIX_UR_COMPILER_UWU',
+  language : 'cpp',
+)
+
 
 # clangd breaks when GCC is using precompiled headers lmao
 # https://git.lix.systems/lix-project/lix/issues/374

@@ -1,6 +1,7 @@
 #include "lix/libstore/build/worker.hh"
 #include "lix/libstore/build/substitution-goal.hh"
 #include "lix/libstore/nar-info.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/finally.hh"
 #include <boost/outcome/try.hpp>
@@ -166,7 +167,7 @@ try {
             dependencies.add(worker.goalFactory().makePathSubstitutionGoal(i));
 
     if (!dependencies.empty()) {/* to prevent hang (no wake-up event) */
-        (co_await waitForGoals(dependencies.releaseAsArray())).value();
+        TRY_AWAIT(waitForGoals(dependencies.releaseAsArray()));
     }
     co_return co_await referencesValid();
 } catch (...) {

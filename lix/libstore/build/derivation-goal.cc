@@ -1,4 +1,5 @@
 #include "lix/libstore/build/derivation-goal.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libstore/build/hook-instance.hh"
 #include "lix/libstore/build/worker.hh"
@@ -176,7 +177,7 @@ try {
         co_return co_await loadDerivation();
     }
 
-    (co_await waitForGoals(worker.goalFactory().makePathSubstitutionGoal(drvPath))).value();
+    TRY_AWAIT(waitForGoals(worker.goalFactory().makePathSubstitutionGoal(drvPath)));
     co_return co_await loadDerivation();
 } catch (...) {
     co_return result::current_exception();
@@ -302,7 +303,7 @@ try {
     }
 
     if (!dependencies.empty()) { /* to prevent hang (no wake-up event) */
-        (co_await waitForGoals(dependencies.releaseAsArray())).value();
+        TRY_AWAIT(waitForGoals(dependencies.releaseAsArray()));
     }
     co_return co_await outputsSubstitutionTried();
 } catch (...) {
@@ -447,7 +448,7 @@ try {
     }
 
     if (!dependencies.empty()) {/* to prevent hang (no wake-up event) */
-        (co_await waitForGoals(dependencies.releaseAsArray())).value();
+        TRY_AWAIT(waitForGoals(dependencies.releaseAsArray()));
     }
     co_return co_await inputsRealised();
 } catch (...) {
@@ -513,7 +514,7 @@ try {
         co_return done(BuildResult::AlreadyValid, assertPathValidity());
     }
 
-    (co_await waitForGoals(dependencies.releaseAsArray())).value();
+    TRY_AWAIT(waitForGoals(dependencies.releaseAsArray()));
     co_return co_await closureRepaired();
 } catch (...) {
     co_return result::current_exception();
@@ -618,7 +619,7 @@ try {
                 pathResolved, wantedOutputs, buildMode);
             resolvedDrvGoal = dependency.first;
 
-            (co_await waitForGoals(std::move(dependency))).value();
+            TRY_AWAIT(waitForGoals(std::move(dependency)));
             co_return co_await resolvedFinished();
         }
 

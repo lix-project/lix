@@ -1,5 +1,6 @@
 #include "lix/libstore/build/drv-output-substitution-goal.hh"
 #include "lix/libstore/build-result.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/finally.hh"
 #include "lix/libstore/build/worker.hh"
 #include "lix/libstore/build/substitution-goal.hh"
@@ -126,7 +127,7 @@ try {
     dependencies.add(worker.goalFactory().makePathSubstitutionGoal(outputInfo->outPath));
 
     if (!dependencies.empty()) {
-        (co_await waitForGoals(dependencies.releaseAsArray())).value();
+        TRY_AWAIT(waitForGoals(dependencies.releaseAsArray()));
     }
     co_return co_await outPathValid();
 } catch (...) {

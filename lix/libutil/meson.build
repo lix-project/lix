@@ -55,6 +55,7 @@ libutil_headers = files(
   'args/root.hh',
   'args.hh',
   'async-collect.hh',
+  'async.hh',
   'async-semaphore.hh',
   'backed-string-view.hh',
   'box_ptr.hh',
