@@ -56,7 +56,7 @@ struct curlFileTransfer : public FileTransfer
         std::unique_ptr<FILE, decltype([](FILE * f) { fclose(f); })> uploadData;
         Sync<DownloadState> downloadState;
         std::condition_variable downloadEvent;
-        bool headersDone = false;
+        bool headersDone = false, metadataReturned = false;
         std::promise<FileTransferResult> metadataPromise;
         std::string statusMsg;
 
@@ -193,7 +193,7 @@ struct curlFileTransfer : public FileTransfer
         {
             auto state = downloadState.lock();
             assert(!state->done && !state->exc);
-            if (!headersDone) {
+            if (!metadataReturned) {
                 metadataPromise.set_exception(ex);
             }
             state->exc = ex;
@@ -212,15 +212,20 @@ struct curlFileTransfer : public FileTransfer
                 return;
             }
 
+            auto status = getHTTPStatus();
+
             char * effectiveUriCStr = nullptr;
             curl_easy_getinfo(req.get(), CURLINFO_EFFECTIVE_URL, &effectiveUriCStr);
             if (effectiveUriCStr) {
                 result.effectiveUri = effectiveUriCStr;
             }
 
-            result.cached = getHTTPStatus() == 304;
+            result.cached = status == 304;
+            if (successfulStatuses.contains(status)) {
+                metadataPromise.set_value(result);
+                metadataReturned = true;
+            }
 
-            metadataPromise.set_value(result);
             headersDone = true;
         }
 
@@ -786,7 +791,8 @@ struct curlFileTransfer : public FileTransfer
             , data(std::move(data))
             , noBody(noBody)
         {
-            metadata = withRetries([&] { return startTransfer(uri); });
+            auto setup = [&] { return startTransfer(uri); };
+            metadata = withRetries(setup, setup);
         }
 
         ~TransferSource()
@@ -801,15 +807,17 @@ struct curlFileTransfer : public FileTransfer
             }
         }
 
-        auto withRetries(auto fn) -> decltype(fn())
+        auto withRetries(auto && initial, auto && retry) -> decltype(initial())
         {
             std::optional<std::string> retryContext;
             while (true) {
                 try {
                     if (retryContext) {
-                        attemptRetry(*retryContext);
+                        prepareRetry(*retryContext);
+                        return retry();
+                    } else {
+                        return initial();
                     }
-                    return fn();
                 } catch (FileTransferError & e) {
                     // If this is a transient error, then maybe retry after a while. after any
                     // bytes have been received we require range support to proceed, otherwise
@@ -843,7 +851,7 @@ struct curlFileTransfer : public FileTransfer
             }
         }
 
-        bool attemptRetry(const std::string & context)
+        void prepareRetry(const std::string & context)
         {
             thread_local std::minstd_rand random{std::random_device{}()};
             std::uniform_real_distribution<> dist(0.0, 0.5);
@@ -855,7 +863,10 @@ struct curlFileTransfer : public FileTransfer
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+        }
 
+        void restartTransfer()
+        {
             // use the effective URI of the previous transfer for retries. this avoids
             // some silent corruption if a redirect changes between starting and retry
             const auto & uri = metadata.effectiveUri.empty() ? this->uri : metadata.effectiveUri;
@@ -868,13 +879,11 @@ struct curlFileTransfer : public FileTransfer
                 metadata.immutableUrl.value_or(""),
                 newMeta.immutableUrl.value_or("")
             );
-
-            return true;
         }
 
         bool awaitData()
         {
-            return withRetries([&] {
+            auto waitForData = [&] {
                 /* Grab data if available, otherwise wait for the download
                    thread to wake us up. */
                 while (buffered.empty()) {
@@ -896,6 +905,10 @@ struct curlFileTransfer : public FileTransfer
                 }
 
                 return true;
+            };
+            return withRetries(waitForData, [&] {
+                restartTransfer();
+                return waitForData();
             });
         }
 
