@@ -67,7 +67,7 @@ try {
     result.storePath = storePath;
     co_return result;
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 
@@ -170,7 +170,7 @@ try {
     }
     co_return co_await referencesValid();
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 
@@ -191,7 +191,7 @@ try {
 
     return tryToRun();
 } catch (...) {
-    return {std::current_exception()};
+    return {result::current_exception()};
 }
 
 
@@ -238,7 +238,7 @@ try {
     co_await pipe.promise;
     co_return co_await finished();
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 
@@ -286,7 +286,7 @@ try {
 
     co_return done(ecSuccess, BuildResult::Substituted);
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 

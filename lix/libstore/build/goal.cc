@@ -36,7 +36,7 @@ try {
 
     co_return std::move(result);
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<void>>
@@ -73,7 +73,7 @@ try {
 
     co_return result::success();
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 }

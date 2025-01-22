@@ -269,7 +269,7 @@ retry:
 
     co_return co_await buildDone();
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 

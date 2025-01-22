@@ -19,6 +19,11 @@ namespace result {
 using boost::outcome_v2::success;
 using boost::outcome_v2::failure;
 
+inline auto current_exception()
+{
+    return failure(std::current_exception());
+}
+
 }
 
 }

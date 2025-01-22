@@ -226,7 +226,7 @@ try {
         co_await aio.provider->getTimer().afterDelay(20 * kj::MILLISECONDS);
     }
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<Worker::Results>> Worker::run(std::function<Targets (GoalFactory &)> req)
@@ -254,7 +254,7 @@ try {
 
     co_return co_await promise;
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<Worker::Results>> Worker::runImpl(Targets topGoals)
@@ -308,7 +308,7 @@ try {
 
     co_return std::move(results);
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<Worker::Results>> Worker::boopGC(LocalStore & localStore)
@@ -318,7 +318,7 @@ try {
         localStore.autoGC(false);
     }
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 

@@ -301,6 +301,6 @@ kj::Promise<Result<Worker::Results>> processGoals(
 try {
     co_return co_await Worker(store, evalStore, aio).run(std::forward<MkGoals>(mkGoals));
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 }

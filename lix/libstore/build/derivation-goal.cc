@@ -179,7 +179,7 @@ try {
     (co_await waitForGoals(worker.goalFactory().makePathSubstitutionGoal(drvPath))).value();
     co_return co_await loadDerivation();
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 
@@ -216,7 +216,7 @@ try {
 
     return haveDerivation();
 } catch (...) {
-    return {std::current_exception()};
+    return {result::current_exception()};
 }
 
 
@@ -306,7 +306,7 @@ try {
     }
     co_return co_await outputsSubstitutionTried();
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::outputsSubstitutionTried() noexcept
@@ -377,7 +377,7 @@ try {
     /* Nothing to wait for; tail call */
     return gaveUpOnSubstitution();
 } catch (...) {
-    return {std::current_exception()};
+    return {result::current_exception()};
 }
 
 
@@ -451,7 +451,7 @@ try {
     }
     co_return co_await inputsRealised();
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 
@@ -516,7 +516,7 @@ try {
     (co_await waitForGoals(dependencies.releaseAsArray())).value();
     co_return co_await closureRepaired();
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 
@@ -528,7 +528,7 @@ try {
             worker.store.printStorePath(drvPath));
     return {done(BuildResult::AlreadyValid, assertPathValidity())};
 } catch (...) {
-    return {std::current_exception()};
+    return {result::current_exception()};
 }
 
 
@@ -685,7 +685,7 @@ try {
        build hook. */
     co_return co_await tryToBuild();
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 void DerivationGoal::started()
@@ -822,7 +822,7 @@ retry:
 
     co_return co_await tryLocalBuild();
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::tryLocalBuild() noexcept
@@ -832,7 +832,7 @@ try {
         "either pass a different '--store' or enable remote builds."
         "\nhttps://docs.lix.systems/manual/lix/stable/advanced-topics/distributed-builds.html");
 } catch (...) {
-    return {std::current_exception()};
+    return {result::current_exception()};
 }
 
 
@@ -1113,7 +1113,7 @@ try {
         return {done(st, {}, std::move(e))};
     }
 } catch (...) {
-    return {std::current_exception()};
+    return {result::current_exception()};
 }
 
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::resolvedFinished() noexcept
@@ -1186,7 +1186,7 @@ try {
 
     return {done(status, std::move(builtOutputs))};
 } catch (...) {
-    return {std::current_exception()};
+    return {result::current_exception()};
 }
 
 HookReply DerivationGoal::tryBuildHook()
@@ -1428,7 +1428,7 @@ try {
         if (logSink) (*logSink)(data);
     }
 } catch (...) {
-    co_return std::current_exception();
+    co_return result::current_exception();
 }
 
 kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::handleHookOutput(InputStream & in) noexcept
@@ -1482,7 +1482,7 @@ try {
                 currentHookLine += c;
     }
 } catch (...) {
-    co_return std::current_exception();
+    co_return result::current_exception();
 }
 
 kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::handleChildOutput() noexcept
@@ -1514,7 +1514,7 @@ try {
         return r;
     });
 } catch (...) {
-    return {std::current_exception()};
+    return {result::current_exception()};
 }
 
 kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::monitorForSilence() noexcept

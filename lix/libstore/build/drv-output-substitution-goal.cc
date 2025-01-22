@@ -36,7 +36,7 @@ try {
     subs = settings.useSubstitutes ? getDefaultSubstituters() : std::list<ref<Store>>();
     co_return co_await tryNext();
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::tryNext() noexcept
@@ -84,7 +84,7 @@ try {
     co_await pipe.promise;
     co_return co_await realisationFetched();
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::realisationFetched() noexcept
@@ -130,7 +130,7 @@ try {
     }
     co_return co_await outPathValid();
 } catch (...) {
-    co_return result::failure(std::current_exception());
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::outPathValid() noexcept
@@ -148,7 +148,7 @@ try {
     worker.store.registerDrvOutput(*outputInfo);
     return finished();
 } catch (...) {
-    return {std::current_exception()};
+    return {result::current_exception()};
 }
 
 kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::finished() noexcept
@@ -156,7 +156,7 @@ try {
     trace("finished");
     return {WorkResult{ecSuccess}};
 } catch (...) {
-    return {std::current_exception()};
+    return {result::current_exception()};
 }
 
 }
