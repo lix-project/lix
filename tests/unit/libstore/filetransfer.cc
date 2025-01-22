@@ -426,4 +426,13 @@ TEST(FileTransfer, DISABLED_interrupt)
     ASSERT_THROW(ft->download(fmt("http://[::1]:%d/index", port)).second->drain(), FileTransferError);
 }
 
+TEST(FileTransfer, setupErrorsAreMetadata)
+{
+    auto [port, srv] = serveHTTP({
+        {"404 try again later", "content-length: 1\r\n", [] { return "X"; }},
+    });
+    auto ft = makeFileTransfer(0);
+    ASSERT_THROW(ft->upload(fmt("http://[::1]:%d", port), ""), FileTransferError);
+}
+
 }
