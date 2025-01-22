@@ -289,7 +289,7 @@ struct DerivationGoal : public Goal
      * Check that the derivation outputs all exist and register them
      * as valid.
      */
-    virtual SingleDrvOutputs registerOutputs();
+    virtual kj::Promise<Result<SingleDrvOutputs>> registerOutputs();
 
     /**
      * Open a log file and a pipe to it.
@@ -339,8 +339,8 @@ public:
      * derivation.  This is currently needed because when there is no drv file
      * there also is no DB entry.
      */
-    std::map<std::string, std::optional<StorePath>> queryPartialDerivationOutputMap();
-    OutputPathMap queryDerivationOutputMap();
+    kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>> queryPartialDerivationOutputMap();
+    kj::Promise<Result<OutputPathMap>> queryDerivationOutputMap();
 
     /**
      * Update 'initialOutputs' to determine the current status of the
@@ -348,13 +348,13 @@ public:
      * whether all outputs are valid and non-corrupt, and a
      * 'SingleDrvOutputs' structure containing the valid outputs.
      */
-    std::pair<bool, SingleDrvOutputs> checkPathValidity();
+    kj::Promise<Result<std::pair<bool, SingleDrvOutputs>>> checkPathValidity();
 
     /**
      * Aborts if any output is not valid or corrupt, and otherwise
      * returns a 'SingleDrvOutputs' structure containing all outputs.
      */
-    SingleDrvOutputs assertPathValidity();
+    kj::Promise<Result<SingleDrvOutputs>> assertPathValidity();
 
     /**
      * Forcibly kill the child process, if any.

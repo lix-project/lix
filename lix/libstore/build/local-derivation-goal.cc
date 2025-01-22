@@ -1,4 +1,5 @@
 #include "lix/libstore/build/local-derivation-goal.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libstore/indirect-root-store.hh"
 #include "lix/libstore/machines.hh"
@@ -10,6 +11,7 @@
 #include "lix/libstore/path-references.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/daemon.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/topo-sort.hh"
 #include "lix/libutil/json-utils.hh"
 #include "lix/libutil/cgroup.hh"
@@ -247,7 +249,7 @@ retry:
     try {
 
         /* Okay, we have to build. */
-        startBuilder();
+        TRY_AWAIT(startBuilder());
 
         started();
         auto r = co_await handleChildOutput();
@@ -399,8 +401,8 @@ void LocalDerivationGoal::cleanupPostOutputsRegisteredModeNonCheck()
     cleanupPostOutputsRegisteredModeCheck();
 }
 
-void LocalDerivationGoal::startBuilder()
-{
+kj::Promise<Result<void>> LocalDerivationGoal::startBuilder()
+try {
     if ((buildUser && buildUser->getUIDCount() != 1)
         #if __linux__
         || settings.useCgroups
@@ -542,7 +544,7 @@ void LocalDerivationGoal::startBuilder()
     /* Construct the environment passed to the builder. */
     initEnv();
 
-    writeStructuredAttrs();
+    TRY_AWAIT(writeStructuredAttrs());
 
     /* Handle exportReferencesGraph(), if set. */
     if (!parsedDrv->getStructuredAttrs()) {
@@ -787,6 +789,10 @@ void LocalDerivationGoal::startBuilder()
         debug("sandbox setup: " + msg);
         msgs.push_back(std::move(msg));
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -905,8 +911,8 @@ void LocalDerivationGoal::initEnv()
 }
 
 
-void LocalDerivationGoal::writeStructuredAttrs()
-{
+kj::Promise<Result<void>> LocalDerivationGoal::writeStructuredAttrs()
+try {
     if (auto structAttrsJson = parsedDrv->prepareStructuredAttrs(worker.store, inputPaths)) {
         auto json = structAttrsJson.value();
         nlohmann::json rewritten;
@@ -927,6 +933,9 @@ void LocalDerivationGoal::writeStructuredAttrs()
         chownToBuilder(tmpDir + "/.attrs.json");
         env["NIX_ATTRS_JSON_FILE"] = tmpDirInSandbox + "/.attrs.json";
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -1860,8 +1869,8 @@ void LocalDerivationGoal::execBuilder(std::string builder, Strings args, Strings
 }
 
 
-SingleDrvOutputs LocalDerivationGoal::registerOutputs()
-{
+kj::Promise<Result<SingleDrvOutputs>> LocalDerivationGoal::registerOutputs()
+try {
     /* When using a build hook, the build hook can register the output
        as valid (by doing `nix-store --import').  If so we don't have
        to do anything here.
@@ -1870,7 +1879,7 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
        floating content-addressed derivations this isn't the case.
      */
     if (hook)
-        return DerivationGoal::registerOutputs();
+        co_return TRY_AWAIT(DerivationGoal::registerOutputs());
 
     std::map<std::string, ValidPathInfo> infos;
 
@@ -2377,11 +2386,11 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
            also a source for non-determinism. */
         if (delayedException)
             std::rethrow_exception(delayedException);
-        return assertPathValidity();
+        co_return TRY_AWAIT(assertPathValidity());
     }
 
     /* Apply output checks. */
-    checkOutputs(infos, alreadyRegisteredOutputs);
+    TRY_AWAIT(checkOutputs(infos, alreadyRegisteredOutputs));
 
     /* Register each output path as valid, and register the sets of
        paths referenced by each of them.  If there are cycles in the
@@ -2427,7 +2436,9 @@ SingleDrvOutputs LocalDerivationGoal::registerOutputs()
         builtOutputs.emplace(outputName, thisRealisation);
     }
 
-    return builtOutputs;
+    co_return builtOutputs;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 void LocalDerivationGoal::signRealisation(Realisation & realisation)
@@ -2436,8 +2447,8 @@ void LocalDerivationGoal::signRealisation(Realisation & realisation)
 }
 
 
-void LocalDerivationGoal::checkOutputs(const std::map<std::string, ValidPathInfo> & newlyBuiltOutputs, const std::map<std::string, StorePath> & alreadyRegisteredOutputs)
-{
+kj::Promise<Result<void>> LocalDerivationGoal::checkOutputs(const std::map<std::string, ValidPathInfo> & newlyBuiltOutputs, const std::map<std::string, StorePath> & alreadyRegisteredOutputs)
+try {
     std::map<Path, const ValidPathInfo &> outputsByPath;
     for (auto & output : newlyBuiltOutputs)
         outputsByPath.emplace(worker.store.printStorePath(output.second.path), output.second);
@@ -2629,6 +2640,10 @@ void LocalDerivationGoal::checkOutputs(const std::map<std::string, ValidPathInfo
             applyChecks(checks);
         }
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

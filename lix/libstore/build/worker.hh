@@ -284,7 +284,7 @@ public:
      * Check whether the given valid path exists and has the right
      * contents.
      */
-    bool pathContentsGood(const StorePath & path);
+    kj::Promise<Result<bool>> pathContentsGood(const StorePath & path);
 
     void markContentsGood(const StorePath & path);
 

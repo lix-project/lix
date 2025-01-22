@@ -218,7 +218,7 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * Start building a derivation.
      */
-    void startBuilder();
+    kj::Promise<Result<void>> startBuilder();
 
     /**
      * Fill in the environment for the builder.
@@ -233,7 +233,7 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * Write a JSON file containing the derivation attributes.
      */
-    void writeStructuredAttrs();
+    kj::Promise<Result<void>> writeStructuredAttrs();
 
     void startDaemon();
 
@@ -261,7 +261,7 @@ struct LocalDerivationGoal : public DerivationGoal
      * Check that the derivation outputs all exist and register them
      * as valid.
      */
-    SingleDrvOutputs registerOutputs() override;
+    kj::Promise<Result<SingleDrvOutputs>> registerOutputs() override;
 
     void signRealisation(Realisation &) override;
 
@@ -270,7 +270,7 @@ struct LocalDerivationGoal : public DerivationGoal
      * 'outputChecks' attribute (or the legacy
      * '{allowed,disallowed}{References,Requisites}' attributes).
      */
-    void checkOutputs(const std::map<std::string, ValidPathInfo> & outputs, const std::map<std::string, StorePath> & alreadyRegisteredOutputs);
+    kj::Promise<Result<void>> checkOutputs(const std::map<std::string, ValidPathInfo> & outputs, const std::map<std::string, StorePath> & alreadyRegisteredOutputs);
 
     /**
      * Close the read side of the logger pipe.

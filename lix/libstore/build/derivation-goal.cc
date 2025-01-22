@@ -267,7 +267,7 @@ try {
         });
 
     /* Check what outputs paths are not already valid. */
-    auto [allValid, validOutputs] = checkPathValidity();
+    auto [allValid, validOutputs] = TRY_AWAIT(checkPathValidity());
 
     /* If they are all valid, then we're done. */
     if (allValid && buildMode == bmNormal) {
@@ -318,7 +318,7 @@ try {
 
     if (nrFailed > 0 && nrFailed > nrNoSubstituters + nrIncompleteClosure && !settings.tryFallback)
     {
-        return {done(
+        co_return done(
             BuildResult::TransientFailure,
             {},
             Error(
@@ -326,7 +326,7 @@ try {
                 "to networking issues); try '--fallback' to build derivation from source ",
                 worker.store.printStorePath(drvPath)
             )
-        )};
+        );
     }
 
     /*  If the substitutes form an incomplete closure, then we should
@@ -360,25 +360,25 @@ try {
 
     if (needRestart == NeedRestartForMoreOutputs::OutputsAddedDoNeed) {
         needRestart = NeedRestartForMoreOutputs::OutputsUnmodifedDontNeed;
-        return haveDerivation();
+        co_return TRY_AWAIT(haveDerivation());
     }
 
-    auto [allValid, validOutputs] = checkPathValidity();
+    auto [allValid, validOutputs] = TRY_AWAIT(checkPathValidity());
 
     if (buildMode == bmNormal && allValid) {
-        return {done(BuildResult::Substituted, std::move(validOutputs))};
+        co_return done(BuildResult::Substituted, std::move(validOutputs));
     }
     if (buildMode == bmRepair && allValid) {
-        return repairClosure();
+        co_return TRY_AWAIT(repairClosure());
     }
     if (buildMode == bmCheck && !allValid)
         throw Error("some outputs of '%s' are not valid, so checking is not possible",
             worker.store.printStorePath(drvPath));
 
     /* Nothing to wait for; tail call */
-    return gaveUpOnSubstitution();
+    co_return TRY_AWAIT(gaveUpOnSubstitution());
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 
@@ -466,7 +466,7 @@ try {
        that produced those outputs. */
 
     /* Get the output closure. */
-    auto outputs = queryDerivationOutputMap();
+    auto outputs = TRY_AWAIT(queryDerivationOutputMap());
     StorePathSet outputClosure;
     for (auto & i : outputs) {
         if (!wantedOutputs.contains(i.first)) continue;
@@ -494,7 +494,7 @@ try {
     /* Check each path (slow!). */
     kj::Vector<std::pair<GoalPtr, kj::Promise<Result<WorkResult>>>> dependencies;
     for (auto & i : outputClosure) {
-        if (worker.pathContentsGood(i)) continue;
+        if (TRY_AWAIT(worker.pathContentsGood(i))) continue;
         printError(
             "found corrupted or missing path '%s' in the output closure of '%s'",
             worker.store.printStorePath(i), worker.store.printStorePath(drvPath));
@@ -511,7 +511,7 @@ try {
     }
 
     if (dependencies.empty()) {
-        co_return done(BuildResult::AlreadyValid, assertPathValidity());
+        co_return done(BuildResult::AlreadyValid, TRY_AWAIT(assertPathValidity()));
     }
 
     TRY_AWAIT(waitForGoals(dependencies.releaseAsArray()));
@@ -527,9 +527,9 @@ try {
     if (nrFailed > 0)
         throw Error("some paths in the output closure of derivation '%s' could not be repaired",
             worker.store.printStorePath(drvPath));
-    return {done(BuildResult::AlreadyValid, assertPathValidity())};
+    co_return done(BuildResult::AlreadyValid, TRY_AWAIT(assertPathValidity()));
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 
@@ -752,7 +752,7 @@ retry:
        omitted, but that would be less efficient.)  Note that since we
        now hold the locks on the output paths, no other process can
        build this derivation, so no further checks are necessary. */
-    auto [allValid, validOutputs] = checkPathValidity();
+    auto [allValid, validOutputs] = TRY_AWAIT(checkPathValidity());
 
     if (buildMode != bmCheck && allValid) {
         debug("skipping build of derivation '%s', someone beat us to it", worker.store.printStorePath(drvPath));
@@ -1069,7 +1069,7 @@ try {
 
         /* Compute the FS closure of the outputs and register them as
            being valid. */
-        auto builtOutputs = registerOutputs();
+        auto builtOutputs = TRY_AWAIT(registerOutputs());
 
         StorePathSet outputPaths;
         for (auto & [_, output] : builtOutputs)
@@ -1090,7 +1090,7 @@ try {
         outputLocks.setDeletion(true);
         outputLocks.unlock();
 
-        return {done(BuildResult::Built, std::move(builtOutputs))};
+        co_return done(BuildResult::Built, std::move(builtOutputs));
     } catch (BuildError & e) {
         outputLocks.unlock();
 
@@ -1111,10 +1111,10 @@ try {
                 BuildResult::PermanentFailure;
         }
 
-        return {done(st, {}, std::move(e))};
+        co_return done(st, {}, std::move(e));
     }
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::resolvedFinished() noexcept
@@ -1294,7 +1294,7 @@ HookReply DerivationGoal::tryBuildHook()
 }
 
 
-SingleDrvOutputs DerivationGoal::registerOutputs()
+kj::Promise<Result<SingleDrvOutputs>> DerivationGoal::registerOutputs()
 {
     /* When using a build hook, the build hook can register the output
        as valid (by doing `nix-store --import').  If so we don't have
@@ -1577,42 +1577,46 @@ void DerivationGoal::flushLine()
 }
 
 
-std::map<std::string, std::optional<StorePath>> DerivationGoal::queryPartialDerivationOutputMap()
-{
+kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>> DerivationGoal::queryPartialDerivationOutputMap()
+try {
     assert(drv->type().isPure());
     if (!useDerivation || drv->type().hasKnownOutputPaths()) {
         std::map<std::string, std::optional<StorePath>> res;
         for (auto & [name, output] : drv->outputs)
             res.insert_or_assign(name, output.path(worker.store, drv->name, name));
-        return res;
+        co_return res;
     } else {
         for (auto * drvStore : { &worker.evalStore, &worker.store })
             if (drvStore->isValidPath(drvPath))
-                return worker.store.queryPartialDerivationOutputMap(drvPath, drvStore);
+                co_return worker.store.queryPartialDerivationOutputMap(drvPath, drvStore);
         assert(false);
     }
+} catch (...) {
+    co_return result::current_exception();
 }
 
-OutputPathMap DerivationGoal::queryDerivationOutputMap()
-{
+kj::Promise<Result<OutputPathMap>> DerivationGoal::queryDerivationOutputMap()
+try {
     assert(drv->type().isPure());
     if (!useDerivation || drv->type().hasKnownOutputPaths()) {
         OutputPathMap res;
         for (auto & [name, output] : drv->outputsAndOptPaths(worker.store))
             res.insert_or_assign(name, *output.second);
-        return res;
+        co_return res;
     } else {
         for (auto * drvStore : { &worker.evalStore, &worker.store })
             if (drvStore->isValidPath(drvPath))
-                return worker.store.queryDerivationOutputMap(drvPath, drvStore);
+                co_return worker.store.queryDerivationOutputMap(drvPath, drvStore);
         assert(false);
     }
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
-std::pair<bool, SingleDrvOutputs> DerivationGoal::checkPathValidity()
-{
-    if (!drv->type().isPure()) return { false, {} };
+kj::Promise<Result<std::pair<bool, SingleDrvOutputs>>> DerivationGoal::checkPathValidity()
+try {
+    if (!drv->type().isPure()) co_return { false, SingleDrvOutputs{} };
 
     bool checkHash = buildMode == bmRepair;
     auto wantedOutputsLeft = std::visit(overloaded {
@@ -1625,7 +1629,7 @@ std::pair<bool, SingleDrvOutputs> DerivationGoal::checkPathValidity()
     }, wantedOutputs.raw);
     SingleDrvOutputs validOutputs;
 
-    for (auto & i : queryPartialDerivationOutputMap()) {
+    for (auto & i : TRY_AWAIT(queryPartialDerivationOutputMap())) {
         auto initialOutput = get(initialOutputs, i.first);
         if (!initialOutput)
             // this is an invalid output, gets catched with (!wantedOutputsLeft.empty())
@@ -1640,7 +1644,7 @@ std::pair<bool, SingleDrvOutputs> DerivationGoal::checkPathValidity()
                 .path = outputPath,
                 .status = !worker.store.isValidPath(outputPath)
                     ? PathStatus::Absent
-                    : !checkHash || worker.pathContentsGood(outputPath)
+                    : !checkHash || TRY_AWAIT(worker.pathContentsGood(outputPath))
                     ? PathStatus::Valid
                     : PathStatus::Corrupt,
             };
@@ -1686,16 +1690,20 @@ std::pair<bool, SingleDrvOutputs> DerivationGoal::checkPathValidity()
         }
     }
 
-    return { allValid, validOutputs };
+    co_return { allValid, validOutputs };
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
-SingleDrvOutputs DerivationGoal::assertPathValidity()
-{
-    auto [allValid, validOutputs] = checkPathValidity();
+kj::Promise<Result<SingleDrvOutputs>> DerivationGoal::assertPathValidity()
+try {
+    auto [allValid, validOutputs] = TRY_AWAIT(checkPathValidity());
     if (!allValid)
         throw Error("some outputs are unexpectedly invalid");
-    return validOutputs;
+    co_return validOutputs;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
