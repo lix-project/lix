@@ -261,7 +261,7 @@ struct ClientSettings
     }
 };
 
-static void performOp(TunnelLogger * logger, ref<Store> store,
+static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store,
     TrustedFlag trusted, RecursiveFlag recursive, WorkerProto::Version clientVersion,
     Source & from, BufferedSink & to, WorkerProto::Op op)
 {
@@ -995,6 +995,7 @@ static void performOp(TunnelLogger * logger, ref<Store> store,
 }
 
 void processConnection(
+    AsyncIoRoot & aio,
     ref<Store> store,
     FdSource & from,
     FdSink & to,
@@ -1073,7 +1074,7 @@ void processConnection(
             debug("performing daemon worker op: %d", op);
 
             try {
-                performOp(tunnelLogger, store, trusted, recursive, clientVersion, from, to, op);
+                performOp(aio, tunnelLogger, store, trusted, recursive, clientVersion, from, to, op);
             } catch (Error & e) {
                 /* If we're not in a state where we can send replies, then
                    something went wrong processing the input of the

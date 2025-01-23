@@ -197,9 +197,11 @@ struct CmdKey : MultiCommand
 {
     CmdKey()
         : MultiCommand({
-                {"generate-secret", []() { return make_ref<CmdKeyGenerateSecret>(); }},
-                {"convert-secret-to-public", []() { return make_ref<CmdKeyConvertSecretToPublic>(); }},
-            })
+            {"generate-secret",
+             [](auto & aio) { return make_ref<MixAio<CmdKeyGenerateSecret>>(aio); }},
+            {"convert-secret-to-public",
+             [](auto & aio) { return make_ref<MixAio<CmdKeyConvertSecretToPublic>>(aio); }},
+        })
     {
     }
 

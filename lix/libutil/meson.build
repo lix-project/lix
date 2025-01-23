@@ -295,6 +295,7 @@ libutil = library(
     brotli,
     openssl,
     nlohmann_json,
+    kj,
   ],
   include_directories : [ '../..' ],
   cpp_pch : cpp_pch,

@@ -607,14 +607,14 @@ struct CmdProfile : MultiCommand
 {
     CmdProfile()
         : MultiCommand({
-              {"install", []() { return make_ref<CmdProfileInstall>(); }},
-              {"remove", []() { return make_ref<CmdProfileRemove>(); }},
-              {"upgrade", []() { return make_ref<CmdProfileUpgrade>(); }},
-              {"list", []() { return make_ref<CmdProfileList>(); }},
-              {"diff-closures", []() { return make_ref<CmdProfileDiffClosures>(); }},
-              {"history", []() { return make_ref<CmdProfileHistory>(); }},
-              {"rollback", []() { return make_ref<CmdProfileRollback>(); }},
-              {"wipe-history", []() { return make_ref<CmdProfileWipeHistory>(); }},
+              {"install", [](auto & aio) { return make_ref<MixAio<CmdProfileInstall>>(aio); }},
+              {"remove", [](auto & aio) { return make_ref<MixAio<CmdProfileRemove>>(aio); }},
+              {"upgrade", [](auto & aio) { return make_ref<MixAio<CmdProfileUpgrade>>(aio); }},
+              {"list", [](auto & aio) { return make_ref<MixAio<CmdProfileList>>(aio); }},
+              {"diff-closures", [](auto & aio) { return make_ref<MixAio<CmdProfileDiffClosures>>(aio); }},
+              {"history", [](auto & aio) { return make_ref<MixAio<CmdProfileHistory>>(aio); }},
+              {"rollback", [](auto & aio) { return make_ref<MixAio<CmdProfileRollback>>(aio); }},
+              {"wipe-history", [](auto & aio) { return make_ref<MixAio<CmdProfileWipeHistory>>(aio); }},
           })
     { }
 

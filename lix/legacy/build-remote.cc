@@ -55,7 +55,7 @@ static bool allSupportedLocally(Store & store, const std::set<std::string>& requ
     return true;
 }
 
-static int main_build_remote(std::string programName, Strings argv)
+static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     {
         logger = makeJSONLogger(*logger);

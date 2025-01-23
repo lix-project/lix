@@ -2,7 +2,7 @@
 
 using namespace nix;
 
-struct CmdStore final : MultiCommand
+struct CmdStore : MultiCommand
 {
     CmdStore() : MultiCommand(RegisterCommand::getCommandsFor({"store"}))
     { }

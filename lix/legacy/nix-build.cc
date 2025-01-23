@@ -33,7 +33,7 @@ namespace nix {
 
 using namespace std::string_literals;
 
-static void main_nix_build(std::string programName, Strings argv)
+static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     auto dryRun = false;
     auto runEnv = std::regex_search(programName, std::regex("nix-shell$"));
@@ -94,7 +94,7 @@ static void main_nix_build(std::string programName, Strings argv)
         using LegacyArgs::LegacyArgs;
     };
 
-    MyArgs myArgs(myName, [&](Strings::iterator & arg, const Strings::iterator & end) {
+    MyArgs myArgs(aio, myName, [&](Strings::iterator & arg, const Strings::iterator & end) {
         if (*arg == "--help") {
             showManPage(myName);
         }

@@ -1257,7 +1257,8 @@ void LocalDerivationGoal::startDaemon()
                 FdSource from(remote.get());
                 FdSink to(remote.get());
                 try {
-                    daemon::processConnection(store, from, to,
+                    AsyncIoRoot aio;
+                    daemon::processConnection(aio, store, from, to,
                         NotTrusted, daemon::Recursive);
                     debug("terminated daemon connection");
                 } catch (SysError &) {

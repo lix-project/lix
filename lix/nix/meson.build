@@ -133,6 +133,7 @@ nix = executable(
     liblixmain,
     boehm,
     nlohmann_json,
+    kj,
   ],
   cpp_pch : cpp_pch,
   install : true,

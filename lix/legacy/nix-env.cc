@@ -57,6 +57,7 @@ struct InstallSourceInfo
 
 struct Globals
 {
+    AsyncIoRoot & aio;
     InstallSourceInfo instSource;
     Path profile;
     std::shared_ptr<Evaluator> state;
@@ -1412,7 +1413,7 @@ static void opVersion(Globals & globals, Strings opFlags, Strings opArgs)
 }
 
 
-static int main_nix_env(std::string programName, Strings argv)
+static int main_nix_env(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     {
         Strings opFlags, opArgs;
@@ -1421,7 +1422,7 @@ static int main_nix_env(std::string programName, Strings argv)
         bool showHelp = false;
         std::string file;
 
-        Globals globals;
+        Globals globals{aio, {}, {}, {}, {}, {}, {}, {}, {}};
 
         globals.instSource.type = srcUnknown;
         globals.instSource.systemFilter = "*";
@@ -1451,7 +1452,7 @@ static int main_nix_env(std::string programName, Strings argv)
             using LegacyArgs::LegacyArgs;
         };
 
-        MyArgs myArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
+        MyArgs myArgs(aio, programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             Operation oldOp = op;
 
             if (*arg == "--help")

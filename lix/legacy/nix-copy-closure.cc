@@ -5,7 +5,7 @@
 
 namespace nix {
 
-static int main_nix_copy_closure(std::string programName, Strings argv)
+static int main_nix_copy_closure(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     {
         auto gzip = false;
@@ -16,7 +16,7 @@ static int main_nix_copy_closure(std::string programName, Strings argv)
         std::string sshHost;
         PathSet storePaths;
 
-        LegacyArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
+        LegacyArgs(aio, programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--help")
                 showManPage("nix-copy-closure");
             else if (*arg == "--version")

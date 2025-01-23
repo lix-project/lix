@@ -128,14 +128,25 @@ struct CmdHash : MultiCommand
 {
     CmdHash()
         : MultiCommand({
-                {"file", []() { return make_ref<CmdHashBase>(FileIngestionMethod::Flat);; }},
-                {"path", []() { return make_ref<CmdHashBase>(FileIngestionMethod::Recursive); }},
-                {"to-base16", []() { return make_ref<CmdToBase>(Base::Base16); }},
-                {"to-base32", []() { return make_ref<CmdToBase>(Base::Base32); }},
-                {"to-base64", []() { return make_ref<CmdToBase>(Base::Base64); }},
-                {"to-sri", []() { return make_ref<CmdToBase>(Base::SRI); }},
-          })
-    { }
+            {"file",
+             [](auto & aio) {
+                 return make_ref<MixAio<CmdHashBase>>(aio, FileIngestionMethod::Flat);
+                 ;
+             }},
+            {"path",
+             [](auto & aio) {
+                 return make_ref<MixAio<CmdHashBase>>(aio, FileIngestionMethod::Recursive);
+             }},
+            {"to-base16",
+             [](auto & aio) { return make_ref<MixAio<CmdToBase>>(aio, Base::Base16); }},
+            {"to-base32",
+             [](auto & aio) { return make_ref<MixAio<CmdToBase>>(aio, Base::Base32); }},
+            {"to-base64",
+             [](auto & aio) { return make_ref<MixAio<CmdToBase>>(aio, Base::Base64); }},
+            {"to-sri", [](auto & aio) { return make_ref<MixAio<CmdToBase>>(aio, Base::SRI); }},
+        })
+    {
+    }
 
     std::string description() override
     {
@@ -155,7 +166,7 @@ struct CmdHash : MultiCommand
 static auto rCmdHash = registerCommand<CmdHash>("hash");
 
 /* Legacy nix-hash command. */
-static int compatNixHash(std::string programName, Strings argv)
+static int compatNixHash(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     std::optional<HashType> ht;
     bool flat = false;
@@ -164,7 +175,7 @@ static int compatNixHash(std::string programName, Strings argv)
     enum { opHash, opTo } op = opHash;
     std::vector<std::string> ss;
 
-    LegacyArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
+    LegacyArgs(aio, programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
         if (*arg == "--help")
             showManPage("nix-hash");
         else if (*arg == "--version")
@@ -203,7 +214,7 @@ static int compatNixHash(std::string programName, Strings argv)
     }).parseCmdline(argv);
 
     if (op == opHash) {
-        CmdHashBase cmd(flat ? FileIngestionMethod::Flat : FileIngestionMethod::Recursive);
+        MixAio<CmdHashBase> cmd(aio, flat ? FileIngestionMethod::Flat : FileIngestionMethod::Recursive);
         if (!ht.has_value()) ht = HashType::MD5;
         cmd.ht = ht.value();
         cmd.base = base;
@@ -213,7 +224,7 @@ static int compatNixHash(std::string programName, Strings argv)
     }
 
     else {
-        CmdToBase cmd(base);
+        MixAio<CmdToBase> cmd(aio, base);
         cmd.args = ss;
         if (ht.has_value()) cmd.ht = ht;
         cmd.run();

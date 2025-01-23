@@ -27,7 +27,7 @@ using namespace nix::flake;
 using json = nlohmann::json;
 
 struct CmdFlakeUpdate;
-class FlakeCommand : virtual Args, public MixFlakeOptions
+class FlakeCommand : public virtual Args, public MixFlakeOptions
 {
 protected:
     std::string flakeUrl = ".";
@@ -1468,17 +1468,17 @@ struct CmdFlake : MultiCommand
 {
     CmdFlake()
         : MultiCommand({
-                {"update", []() { return make_ref<CmdFlakeUpdate>(); }},
-                {"lock", []() { return make_ref<CmdFlakeLock>(); }},
-                {"metadata", []() { return make_ref<CmdFlakeMetadata>(); }},
-                {"info", []() { return make_ref<CmdFlakeInfo>(); }},
-                {"check", []() { return make_ref<CmdFlakeCheck>(); }},
-                {"init", []() { return make_ref<CmdFlakeInit>(); }},
-                {"new", []() { return make_ref<CmdFlakeNew>(); }},
-                {"clone", []() { return make_ref<CmdFlakeClone>(); }},
-                {"archive", []() { return make_ref<CmdFlakeArchive>(); }},
-                {"show", []() { return make_ref<CmdFlakeShow>(); }},
-                {"prefetch", []() { return make_ref<CmdFlakePrefetch>(); }},
+                {"update", [](auto & aio) { return make_ref<MixAio<CmdFlakeUpdate>>(aio); }},
+                {"lock", [](auto & aio) { return make_ref<MixAio<CmdFlakeLock>>(aio); }},
+                {"metadata", [](auto & aio) { return make_ref<MixAio<CmdFlakeMetadata>>(aio); }},
+                {"info", [](auto & aio) { return make_ref<MixAio<CmdFlakeInfo>>(aio); }},
+                {"check", [](auto & aio) { return make_ref<MixAio<CmdFlakeCheck>>(aio); }},
+                {"init", [](auto & aio) { return make_ref<MixAio<CmdFlakeInit>>(aio); }},
+                {"new", [](auto & aio) { return make_ref<MixAio<CmdFlakeNew>>(aio); }},
+                {"clone", [](auto & aio) { return make_ref<MixAio<CmdFlakeClone>>(aio); }},
+                {"archive", [](auto & aio) { return make_ref<MixAio<CmdFlakeArchive>>(aio); }},
+                {"show", [](auto & aio) { return make_ref<MixAio<CmdFlakeShow>>(aio); }},
+                {"prefetch", [](auto & aio) { return make_ref<MixAio<CmdFlakePrefetch>>(aio); }},
             })
     {
     }

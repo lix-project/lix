@@ -56,14 +56,14 @@ void removeOldGenerations(std::string dir)
     }
 }
 
-static int main_nix_collect_garbage(std::string programName, Strings argv)
+static int main_nix_collect_garbage(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     {
         bool removeOld = false;
 
         GCOptions options;
 
-        LegacyArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
+        LegacyArgs(aio, programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--help")
                 showManPage("nix-collect-garbage");
             else if (*arg == "--version")

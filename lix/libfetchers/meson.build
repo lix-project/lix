@@ -54,6 +54,7 @@ libfetchers = library(
     liblixstore,
     liblixutil,
     nlohmann_json,
+    kj,
   ],
   include_directories : [ '../..' ],
   cpp_pch : cpp_pch,

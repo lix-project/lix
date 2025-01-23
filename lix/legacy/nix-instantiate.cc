@@ -89,7 +89,7 @@ void processExpr(EvalState & state, const Strings & attrPaths,
 }
 
 
-static int main_nix_instantiate(std::string programName, Strings argv)
+static int main_nix_instantiate(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     {
         Strings files;
@@ -109,7 +109,7 @@ static int main_nix_instantiate(std::string programName, Strings argv)
             using LegacyArgs::LegacyArgs;
         };
 
-        MyArgs myArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
+        MyArgs myArgs(aio, programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--help")
                 showManPage("nix-instantiate");
             else if (*arg == "--version")

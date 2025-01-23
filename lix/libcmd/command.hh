@@ -263,11 +263,14 @@ struct StorePathCommand : public StorePathsCommand
  */
 struct RegisterCommand
 {
-    typedef std::map<std::vector<std::string>, std::function<ref<Command>()>> Commands;
+    typedef std::map<
+        std::vector<std::string>,
+        std::function<ref<Command>(AsyncIoRoot & aio)>
+    > Commands;
     static Commands * commands;
 
     RegisterCommand(std::vector<std::string> && name,
-        std::function<ref<Command>()> command)
+        std::function<ref<Command>(AsyncIoRoot & aio)> command)
     {
         if (!commands) commands = new Commands;
         commands->emplace(name, command);
@@ -276,16 +279,40 @@ struct RegisterCommand
     static nix::Commands getCommandsFor(const std::vector<std::string> & prefix);
 };
 
+template<typename Base>
+class MixAio : public Base
+{
+private:
+    AsyncIoRoot & aio_;
+
+public:
+    template<typename... Args>
+    MixAio(AsyncIoRoot & aio, Args &&... args)
+        : Base(std::forward<Args>(args)...)
+        , aio_(aio)
+    {
+    }
+
+    AsyncIoRoot & aio() override
+    {
+        return aio_;
+    }
+};
+
 template<class T>
 static RegisterCommand registerCommand(const std::string & name)
 {
-    return RegisterCommand({name}, [](){ return make_ref<T>(); });
+    return RegisterCommand({name}, [](AsyncIoRoot & aio) {
+        return make_ref<MixAio<T>>(aio);
+    });
 }
 
 template<class T>
 static RegisterCommand registerCommand2(std::vector<std::string> && name)
 {
-    return RegisterCommand(std::move(name), [](){ return make_ref<T>(); });
+    return RegisterCommand(std::move(name), [](AsyncIoRoot & aio) {
+        return make_ref<MixAio<T>>(aio);
+    });
 }
 
 struct MixProfile : virtual StoreCommand

@@ -114,6 +114,7 @@ libstore_test_support = library(
     liblixstore,
     rapidcheck,
     boehm,
+    kj,
   ],
   include_directories : include_directories(
     'libstore-support',
@@ -152,6 +153,7 @@ libstore_tester = executable(
     rapidcheck,
     gtest,
     nlohmann_json,
+    kj,
   ],
   cpp_pch : cpp_pch,
 )
@@ -220,6 +222,7 @@ libexpr_tester = executable(
     boehm,
     gtest,
     nlohmann_json,
+    kj,
   ],
   cpp_pch : cpp_pch,
 )
@@ -248,6 +251,7 @@ libcmd_tester = executable(
     liblixstore_mstatic,
     gtest,
     boost,
+    kj,
   ],
   cpp_pch : cpp_pch,
 )
@@ -284,6 +288,7 @@ libmain_tester = executable(
     liblixstore,
     gtest,
     boost,
+    kj,
   ],
   cpp_pch : cpp_pch,
 )

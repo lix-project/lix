@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/async.hh"
 #include <functional>
 #include <list>
 #include <map>
@@ -8,7 +9,7 @@
 
 namespace nix {
 
-typedef std::function<void(std::string, std::list<std::string>)> MainFunction;
+typedef std::function<void(AsyncIoRoot &, std::string, std::list<std::string>)> MainFunction;
 
 struct LegacyCommands
 {

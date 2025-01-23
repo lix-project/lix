@@ -402,7 +402,7 @@ MultiCommand::MultiCommand(const Commands & commands_)
                 auto suggestions = Suggestions::bestMatches(commandNames, s);
                 throw UsageError(suggestions, "'%s' is not a recognised command", s);
             }
-            command = {s, i->second()};
+            command = {s, i->second(aio())};
             command->second->parent = this;
         }},
         .completer = {[&](AddCompletions & completions, size_t, std::string_view prefix) {
@@ -437,7 +437,7 @@ nlohmann::json MultiCommand::toJSON()
     auto cmds = nlohmann::json::object();
 
     for (auto & [name, commandFun] : commands) {
-        auto command = commandFun();
+        auto command = commandFun(aio());
         auto j = command->toJSON();
         auto cat = nlohmann::json::object();
         cat["id"] = command->category();

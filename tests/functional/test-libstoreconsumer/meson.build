@@ -9,6 +9,7 @@ libstoreconsumer_tester = executable(
     editline,
     boost,
     lowdown,
+    kj,
   ],
   build_by_default : false,
 )

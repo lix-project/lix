@@ -175,9 +175,9 @@ void initNix()
 }
 
 
-LegacyArgs::LegacyArgs(const std::string & programName,
+LegacyArgs::LegacyArgs(AsyncIoRoot & aio, const std::string & programName,
     std::function<bool(Strings::iterator & arg, const Strings::iterator & end)> parseArg)
-    : MixCommonArgs(programName), parseArg(parseArg)
+    : MixCommonArgs(programName), aio_(aio), parseArg(parseArg)
 {
     addFlag({
         .longName = "no-build-output",

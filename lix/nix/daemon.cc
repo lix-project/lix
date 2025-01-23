@@ -252,7 +252,7 @@ static std::pair<TrustedFlag, std::string> authPeer(const PeerInfo & peer)
  * the client. Otherwise, decide based on the authentication settings
  * and user credentials (from the unix domain socket).
  */
-static void daemonLoop(std::optional<TrustedFlag> forceTrustClientOpt)
+static void daemonLoop(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt)
 {
     if (chdir("/") == -1)
         throw SysError("cannot change current directory");
@@ -340,7 +340,7 @@ static void daemonLoop(std::optional<TrustedFlag> forceTrustClientOpt)
                 //  Handle the connection.
                 FdSource from(remote.get());
                 FdSink to(remote.get());
-                processConnection(openUncachedStore(), from, to, trusted, NotRecursive);
+                processConnection(aio, openUncachedStore(), from, to, trusted, NotRecursive);
 
                 exit(0);
             }, options).release();
@@ -403,11 +403,12 @@ static void forwardStdioConnection(RemoteStore & store) {
  * @param trustClient Whether to trust the client. Forwarded directly to
  * `processConnection()`.
  */
-static void processStdioConnection(ref<Store> store, TrustedFlag trustClient)
+static void
+processStdioConnection(AsyncIoRoot & aio, ref<Store> store, TrustedFlag trustClient)
 {
     FdSource from(STDIN_FILENO);
     FdSink to(STDOUT_FILENO);
-    processConnection(store, from, to, trustClient, NotRecursive);
+    processConnection(aio, store, from, to, trustClient, NotRecursive);
 }
 
 /**
@@ -417,7 +418,8 @@ static void processStdioConnection(ref<Store> store, TrustedFlag trustClient)
  * @param forceTrustClientOpt See `daemonLoop()` and the parameter with
  * the same name over there for details.
  */
-static void runDaemon(bool stdio, std::optional<TrustedFlag> forceTrustClientOpt)
+static void
+runDaemon(AsyncIoRoot & aio, bool stdio, std::optional<TrustedFlag> forceTrustClientOpt)
 {
     if (stdio) {
         auto store = openUncachedStore();
@@ -431,18 +433,18 @@ static void runDaemon(bool stdio, std::optional<TrustedFlag> forceTrustClientOpt
             // `Trusted` is passed in the auto (no override case) because we
             // cannot see who is on the other side of a plain pipe. Limiting
             // access to those is explicitly not `nix-daemon`'s responsibility.
-            processStdioConnection(store, forceTrustClientOpt.value_or(Trusted));
+            processStdioConnection(aio, store, forceTrustClientOpt.value_or(Trusted));
     } else
-        daemonLoop(forceTrustClientOpt);
+        daemonLoop(aio, forceTrustClientOpt);
 }
 
-static int main_nix_daemon(std::string programName, Strings argv)
+static int main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     {
         auto stdio = false;
         std::optional<TrustedFlag> isTrustedOpt = std::nullopt;
 
-        LegacyArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
+        LegacyArgs(aio, programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--daemon")
                 ; //  ignored for backwards compatibility
             else if (*arg == "--help")
@@ -464,7 +466,7 @@ static int main_nix_daemon(std::string programName, Strings argv)
             return true;
         }).parseCmdline(argv);
 
-        runDaemon(stdio, isTrustedOpt);
+        runDaemon(aio, stdio, isTrustedOpt);
 
         return 0;
     }
@@ -531,7 +533,7 @@ struct CmdDaemon : StoreCommand
 
     void run(ref<Store> store) override
     {
-        runDaemon(stdio, isTrustedOpt);
+        runDaemon(aio(), stdio, isTrustedOpt);
     }
 };
 

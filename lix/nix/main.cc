@@ -111,7 +111,13 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
     bool helpRequested = false;
     bool showVersion = false;
 
-    NixArgs() : MultiCommand(RegisterCommand::getCommandsFor({})), MixCommonArgs("nix")
+    AsyncIoRoot & aio_;
+    AsyncIoRoot & aio() override { return aio_; }
+
+    NixArgs(AsyncIoRoot & aio)
+        : MultiCommand(RegisterCommand::getCommandsFor({}))
+        , MixCommonArgs("nix")
+        , aio_(aio)
     {
         categories.clear();
         categories[catHelp] = "Help commands";
@@ -345,7 +351,7 @@ struct CmdHelpStores : Command
 
 static auto rCmdHelpStores = registerCommand<CmdHelpStores>("help-stores");
 
-void mainWrapped(int argc, char * * argv)
+void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
 {
     savedArgv = argv;
 
@@ -384,7 +390,9 @@ void mainWrapped(int argc, char * * argv)
     {
         registerLegacyCommands();
         auto legacy = (*LegacyCommands::commands)[programName];
-        if (legacy) return legacy(std::string(baseNameOf(argv[0])), Strings(argv + 1, argv + argc));
+        if (legacy) {
+            return legacy(aio, std::string(baseNameOf(argv[0])), Strings(argv + 1, argv + argc));
+        }
     }
 
     evalSettings.pureEval.setDefault(true);
@@ -398,7 +406,7 @@ void mainWrapped(int argc, char * * argv)
         verbosity = lvlInfo;
     }
 
-    NixArgs args;
+    NixArgs args(aio);
 
     if (argc == 2 && std::string(argv[1]) == "__dump-cli") {
         logger->cout(args.dumpCli());
@@ -543,6 +551,7 @@ int main(int argc, char * * argv)
     nix::setStackSize(64 * 1024 * 1024);
 
     return nix::handleExceptions(argv[0], [&]() {
-        nix::mainWrapped(argc, argv);
+        nix::AsyncIoRoot aio;
+        nix::mainWrapped(aio, argc, argv);
     });
 }

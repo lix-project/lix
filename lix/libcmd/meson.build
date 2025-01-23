@@ -52,6 +52,7 @@ libcmd = library(
     lowdown,
     nlohmann_json,
     liblix_doc,
+    kj,
   ],
   # '../..' for self references like "lix/libcmd/*.hh"
   include_directories : [ '../..' ],

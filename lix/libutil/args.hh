@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/async.hh"
 #include "lix/libutil/experimental-features.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/ref.hh"
@@ -40,6 +41,8 @@ public:
      * Return documentation about this command, in Markdown format.
      */
     virtual std::string doc() { return ""; }
+
+    virtual AsyncIoRoot & aio() = 0;
 
 protected:
 
@@ -337,7 +340,7 @@ struct Command : virtual public Args
     virtual Category category() { return catDefault; }
 };
 
-typedef std::map<std::string, std::function<ref<Command>()>> Commands;
+typedef std::map<std::string, std::function<ref<Command>(AsyncIoRoot &)>> Commands;
 
 /**
  * An argument parser that supports multiple subcommands,

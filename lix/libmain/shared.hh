@@ -53,9 +53,12 @@ template<class N> N getIntArg(const std::string & opt,
 
 struct LegacyArgs : public MixCommonArgs, public RootArgs
 {
+    AsyncIoRoot & aio_;
+    AsyncIoRoot & aio() override { return aio_; }
+
     std::function<bool(Strings::iterator & arg, const Strings::iterator & end)> parseArg;
 
-    LegacyArgs(const std::string & programName,
+    LegacyArgs(AsyncIoRoot & aio, const std::string & programName,
         std::function<bool(Strings::iterator & arg, const Strings::iterator & end)> parseArg);
 
     bool processFlag(Strings::iterator & pos, Strings::iterator end) override;

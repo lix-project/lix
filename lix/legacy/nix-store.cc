@@ -32,7 +32,7 @@ using std::cin;
 using std::cout;
 
 
-typedef void (* Operation) (Strings opFlags, Strings opArgs);
+typedef void (* Operation) (AsyncIoRoot & aio, Strings opFlags, Strings opArgs);
 
 
 static Path gcRoot;
@@ -119,7 +119,7 @@ static PathSet realisePath(StorePathWithOutputs path, bool build = true)
 
 
 /* Realise the given paths. */
-static void opRealise(Strings opFlags, Strings opArgs)
+static void opRealise(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     bool dryRun = false;
     BuildMode buildMode = bmNormal;
@@ -170,7 +170,7 @@ static void opRealise(Strings opFlags, Strings opArgs)
 
 
 /* Add files to the Nix store and print the resulting paths. */
-static void opAdd(Strings opFlags, Strings opArgs)
+static void opAdd(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
 
@@ -181,7 +181,7 @@ static void opAdd(Strings opFlags, Strings opArgs)
 
 /* Preload the output of a fixed-output derivation into the Nix
    store. */
-static void opAddFixed(Strings opFlags, Strings opArgs)
+static void opAddFixed(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     auto method = FileIngestionMethod::Flat;
 
@@ -201,7 +201,7 @@ static void opAddFixed(Strings opFlags, Strings opArgs)
 
 
 /* Hack to support caching in `nix-prefetch-url'. */
-static void opPrintFixedPath(Strings opFlags, Strings opArgs)
+static void opPrintFixedPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     auto method = FileIngestionMethod::Flat;
 
@@ -277,7 +277,7 @@ static void printTree(const StorePath & path,
 
 
 /* Perform various sorts of queries. */
-static void opQuery(Strings opFlags, Strings opArgs)
+static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     enum QueryType
         { qOutputs, qRequisites, qReferences, qReferrers
@@ -468,7 +468,7 @@ static void opQuery(Strings opFlags, Strings opArgs)
 }
 
 
-static void opPrintEnv(Strings opFlags, Strings opArgs)
+static void opPrintEnv(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (opArgs.size() != 1) throw UsageError("'--print-env' requires one derivation store path");
@@ -494,7 +494,7 @@ static void opPrintEnv(Strings opFlags, Strings opArgs)
 }
 
 
-static void opReadLog(Strings opFlags, Strings opArgs)
+static void opReadLog(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
 
@@ -512,7 +512,7 @@ static void opReadLog(Strings opFlags, Strings opArgs)
 }
 
 
-static void opDumpDB(Strings opFlags, Strings opArgs)
+static void opDumpDB(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (!opArgs.empty()) {
@@ -552,7 +552,7 @@ static void registerValidity(bool reregister, bool hashGiven, bool canonicalise)
 }
 
 
-static void opLoadDB(Strings opFlags, Strings opArgs)
+static void opLoadDB(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (!opArgs.empty())
@@ -561,7 +561,7 @@ static void opLoadDB(Strings opFlags, Strings opArgs)
 }
 
 
-static void opRegisterValidity(Strings opFlags, Strings opArgs)
+static void opRegisterValidity(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     bool reregister = false; // !!! maybe this should be the default
     bool hashGiven = false;
@@ -577,7 +577,7 @@ static void opRegisterValidity(Strings opFlags, Strings opArgs)
 }
 
 
-static void opCheckValidity(Strings opFlags, Strings opArgs)
+static void opCheckValidity(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     bool printInvalid = false;
 
@@ -597,7 +597,7 @@ static void opCheckValidity(Strings opFlags, Strings opArgs)
 }
 
 
-static void opGC(Strings opFlags, Strings opArgs)
+static void opGC(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     bool printRoots = false;
     GCOptions options;
@@ -643,7 +643,7 @@ static void opGC(Strings opFlags, Strings opArgs)
 /* Remove paths from the Nix store if possible (i.e., if they do not
    have any remaining referrers and are not reachable from any GC
    roots). */
-static void opDelete(Strings opFlags, Strings opArgs)
+static void opDelete(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     GCOptions options;
     options.action = GCOptions::gcDeleteSpecific;
@@ -664,7 +664,7 @@ static void opDelete(Strings opFlags, Strings opArgs)
 
 
 /* Dump a path as a Nix archive.  The archive is written to stdout */
-static void opDump(Strings opFlags, Strings opArgs)
+static void opDump(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (opArgs.size() != 1) throw UsageError("only one argument allowed");
@@ -677,7 +677,7 @@ static void opDump(Strings opFlags, Strings opArgs)
 
 
 /* Restore a value from a Nix archive.  The archive is read from stdin. */
-static void opRestore(Strings opFlags, Strings opArgs)
+static void opRestore(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (opArgs.size() != 1) throw UsageError("only one argument allowed");
@@ -687,7 +687,7 @@ static void opRestore(Strings opFlags, Strings opArgs)
 }
 
 
-static void opExport(Strings opFlags, Strings opArgs)
+static void opExport(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     for (auto & i : opFlags)
         throw UsageError("unknown flag '%1%'", i);
@@ -703,7 +703,7 @@ static void opExport(Strings opFlags, Strings opArgs)
 }
 
 
-static void opImport(Strings opFlags, Strings opArgs)
+static void opImport(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     for (auto & i : opFlags)
         throw UsageError("unknown flag '%1%'", i);
@@ -719,7 +719,7 @@ static void opImport(Strings opFlags, Strings opArgs)
 
 
 /* Initialise the Nix databases. */
-static void opInit(Strings opFlags, Strings opArgs)
+static void opInit(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (!opArgs.empty())
@@ -730,7 +730,7 @@ static void opInit(Strings opFlags, Strings opArgs)
 
 
 /* Verify the consistency of the Nix environment. */
-static void opVerify(Strings opFlags, Strings opArgs)
+static void opVerify(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opArgs.empty())
         throw UsageError("no arguments expected");
@@ -751,7 +751,7 @@ static void opVerify(Strings opFlags, Strings opArgs)
 
 
 /* Verify whether the contents of the given store path have not changed. */
-static void opVerifyPath(Strings opFlags, Strings opArgs)
+static void opVerifyPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty())
         throw UsageError("no flags expected");
@@ -780,7 +780,7 @@ static void opVerifyPath(Strings opFlags, Strings opArgs)
 
 /* Repair the contents of the given path by redownloading it using a
    substituter (if available). */
-static void opRepairPath(Strings opFlags, Strings opArgs)
+static void opRepairPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty())
         throw UsageError("no flags expected");
@@ -791,7 +791,7 @@ static void opRepairPath(Strings opFlags, Strings opArgs)
 
 /* Optimise the disk space usage of the Nix store by hard-linking
    files with the same contents. */
-static void opOptimise(Strings opFlags, Strings opArgs)
+static void opOptimise(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opArgs.empty() || !opFlags.empty())
         throw UsageError("no arguments expected");
@@ -800,7 +800,7 @@ static void opOptimise(Strings opFlags, Strings opArgs)
 }
 
 /* Serve the nix store in a way usable by a restricted ssh user. */
-static void opServe(Strings opFlags, Strings opArgs)
+static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     bool writeAllowed = false;
     for (auto & i : opFlags)
@@ -1003,7 +1003,7 @@ static void opServe(Strings opFlags, Strings opArgs)
 }
 
 
-static void opGenerateBinaryCacheKey(Strings opFlags, Strings opArgs)
+static void opGenerateBinaryCacheKey(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     for (auto & i : opFlags)
         throw UsageError("unknown flag '%1%'", i);
@@ -1022,7 +1022,7 @@ static void opGenerateBinaryCacheKey(Strings opFlags, Strings opArgs)
 }
 
 
-static void opVersion(Strings opFlags, Strings opArgs)
+static void opVersion(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     printVersion("nix-store");
 }
@@ -1031,7 +1031,7 @@ static void opVersion(Strings opFlags, Strings opArgs)
 /* Scan the arguments; find the operation, set global flags, put all
    other flags in a list, and put all other arguments in another
    list. */
-static int main_nix_store(std::string programName, Strings argv)
+static int main_nix_store(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     {
         Strings opFlags, opArgs;
@@ -1040,7 +1040,7 @@ static int main_nix_store(std::string programName, Strings argv)
         std::string opName;
         bool showHelp = false;
 
-        LegacyArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
+        LegacyArgs(aio, programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             Operation oldOp = op;
 
             if (*arg == "--help")
@@ -1170,7 +1170,7 @@ static int main_nix_store(std::string programName, Strings argv)
         if (op != opDump && op != opRestore) /* !!! hack */
             store = openStore();
 
-        op(std::move(opFlags), std::move(opArgs));
+        op(aio, std::move(opFlags), std::move(opArgs));
 
         return 0;
     }

@@ -5,7 +5,7 @@
 
 using namespace nix;
 
-struct CmdRealisation final : MultiCommand
+struct CmdRealisation : MultiCommand
 {
     CmdRealisation() : MultiCommand(RegisterCommand::getCommandsFor({"realisation"}))
     { }

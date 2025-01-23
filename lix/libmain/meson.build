@@ -21,6 +21,7 @@ libmain = library(
   dependencies : [
     liblixutil,
     liblixstore,
+    kj,
   ],
   include_directories : [ '../..' ],
   cpp_pch : cpp_pch,

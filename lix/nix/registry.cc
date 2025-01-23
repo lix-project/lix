@@ -12,7 +12,7 @@ using namespace nix;
 using namespace nix::flake;
 
 
-class RegistryCommand : virtual Args
+class RegistryCommand : public virtual Args
 {
     std::string registry_path;
 
@@ -204,14 +204,14 @@ struct CmdRegistryPin : RegistryCommand, EvalCommand
     }
 };
 
-struct CmdRegistry final : MultiCommand
+struct CmdRegistry : MultiCommand
 {
     CmdRegistry()
         : MultiCommand({
-                {"list", []() { return make_ref<CmdRegistryList>(); }},
-                {"add", []() { return make_ref<CmdRegistryAdd>(); }},
-                {"remove", []() { return make_ref<CmdRegistryRemove>(); }},
-                {"pin", []() { return make_ref<CmdRegistryPin>(); }},
+                {"list", [](auto & aio) { return make_ref<MixAio<CmdRegistryList>>(aio); }},
+                {"add", [](auto & aio) { return make_ref<MixAio<CmdRegistryAdd>>(aio); }},
+                {"remove", [](auto & aio) { return make_ref<MixAio<CmdRegistryRemove>>(aio); }},
+                {"pin", [](auto & aio) { return make_ref<MixAio<CmdRegistryPin>>(aio); }},
             })
     {
     }

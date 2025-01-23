@@ -49,6 +49,7 @@ std::string resolveMirrorUrl(EvalState & state, const std::string & url)
 }
 
 std::tuple<StorePath, Hash> prefetchFile(
+    AsyncIoRoot & aio,
     ref<Store> store,
     const std::string & url,
     std::optional<std::string> name,
@@ -132,7 +133,7 @@ std::tuple<StorePath, Hash> prefetchFile(
     return {storePath.value(), hash.value()};
 }
 
-static int main_nix_prefetch_url(std::string programName, Strings argv)
+static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     {
         HashType ht = HashType::SHA256;
@@ -149,7 +150,7 @@ static int main_nix_prefetch_url(std::string programName, Strings argv)
             using LegacyArgs::LegacyArgs;
         };
 
-        MyArgs myArgs(programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
+        MyArgs myArgs(aio, programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--help")
                 showManPage("nix-prefetch-url");
             else if (*arg == "--version")
@@ -236,7 +237,8 @@ static int main_nix_prefetch_url(std::string programName, Strings argv)
             expectedHash = Hash::parseAny(args[1], ht);
 
         auto [storePath, hash] = prefetchFile(
-            store, resolveMirrorUrl(*state, url), name, ht, expectedHash, unpack, executable);
+            aio, store, resolveMirrorUrl(*state, url), name, ht, expectedHash, unpack, executable
+        );
 
         logger->pause();
 
@@ -316,7 +318,8 @@ struct CmdStorePrefetchFile : StoreCommand, MixJSON
     }
     void run(ref<Store> store) override
     {
-        auto [storePath, hash] = prefetchFile(store, url, name, hashType, expectedHash, unpack, executable);
+        auto [storePath, hash] =
+            prefetchFile(aio(), store, url, name, hashType, expectedHash, unpack, executable);
 
         if (json) {
             auto res = nlohmann::json::object();
