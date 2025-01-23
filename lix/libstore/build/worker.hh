@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/async.hh"
 #include "lix/libutil/async-semaphore.hh"
 #include "lix/libutil/concepts.hh"
 #include "lix/libutil/notifying-counter.hh"
@@ -191,7 +192,6 @@ public:
 
     Store & store;
     Store & evalStore;
-    kj::AsyncIoContext & aio;
     AsyncSemaphore substitutions, localBuilds;
 
 private:
@@ -225,7 +225,7 @@ public:
     NotifyingCounter<uint64_t> doneNarSize{[this] { updateStatisticsLater(); }};
 
 private:
-    Worker(Store & store, Store & evalStore, kj::AsyncIoContext & aio);
+    Worker(Store & store, Store & evalStore);
     ~Worker();
 
     /**
@@ -289,17 +289,15 @@ public:
     void markContentsGood(const StorePath & path);
 
     template<typename MkGoals>
-    friend kj::Promise<Result<Results>> processGoals(
-        Store & store, Store & evalStore, kj::AsyncIoContext & aio, MkGoals && mkGoals
-    ) noexcept;
+    friend kj::Promise<Result<Results>>
+    processGoals(Store & store, Store & evalStore, MkGoals && mkGoals) noexcept;
 };
 
 template<typename MkGoals>
-kj::Promise<Result<Worker::Results>> processGoals(
-    Store & store, Store & evalStore, kj::AsyncIoContext & aio, MkGoals && mkGoals
-) noexcept
+kj::Promise<Result<Worker::Results>>
+processGoals(Store & store, Store & evalStore, MkGoals && mkGoals) noexcept
 try {
-    co_return co_await Worker(store, evalStore, aio).run(std::forward<MkGoals>(mkGoals));
+    co_return co_await Worker(store, evalStore).run(std::forward<MkGoals>(mkGoals));
 } catch (...) {
     co_return result::current_exception();
 }

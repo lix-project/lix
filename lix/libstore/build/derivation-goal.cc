@@ -1404,7 +1404,7 @@ try {
     auto buf = kj::heapArray<char>(4096);
     while (true) {
         auto data = co_await in.read(buf);
-        lastChildActivity = worker.aio.provider->getTimer().now();
+        lastChildActivity = AIO().provider.getTimer().now();
 
         if (data.empty()) {
             co_return result::success();
@@ -1437,7 +1437,7 @@ try {
     auto buf = kj::heapArray<char>(4096);
     while (true) {
         auto data = co_await in.read(buf);
-        lastChildActivity = worker.aio.provider->getTimer().now();
+        lastChildActivity = AIO().provider.getTimer().now();
 
         if (data.empty()) {
             co_return result::success();
@@ -1490,17 +1490,17 @@ kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::handleChildOutput()
 try {
     assert(builderOutFD);
 
-    auto builderIn = kj::heap<InputStream>(worker.aio.unixEventPort, builderOutFD->get());
+    auto builderIn = kj::heap<InputStream>(AIO().unixEventPort, builderOutFD->get());
     kj::Own<InputStream> hookIn;
     if (hook) {
-        hookIn = kj::heap<InputStream>(worker.aio.unixEventPort, hook->fromHook.get());
+        hookIn = kj::heap<InputStream>(AIO().unixEventPort, hook->fromHook.get());
     }
 
     auto handlers = handleChildStreams(*builderIn, hookIn.get()).attach(std::move(builderIn), std::move(hookIn));
 
     if (respectsTimeouts() && settings.buildTimeout != 0) {
         handlers = handlers.exclusiveJoin(
-            worker.aio.provider->getTimer()
+            AIO().provider.getTimer()
                 .afterDelay(settings.buildTimeout.get() * kj::SECONDS)
                 .then([this]() -> Outcome<void, WorkResult> {
                     return timedOut(
@@ -1523,7 +1523,7 @@ kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::monitorForSilence()
     while (true) {
         const auto stash = lastChildActivity;
         auto waitUntil = lastChildActivity + settings.maxSilentTime.get() * kj::SECONDS;
-        co_await worker.aio.provider->getTimer().atTime(waitUntil);
+        co_await AIO().provider.getTimer().atTime(waitUntil);
         if (lastChildActivity == stash) {
             co_return timedOut(
                 Error("%1% timed out after %2% seconds of silence", name, settings.maxSilentTime)
@@ -1535,7 +1535,7 @@ kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::monitorForSilence()
 kj::Promise<Outcome<void, Goal::WorkResult>>
 DerivationGoal::handleChildStreams(InputStream & builderIn, InputStream * hookIn) noexcept
 {
-    lastChildActivity = worker.aio.provider->getTimer().now();
+    lastChildActivity = AIO().provider.getTimer().now();
 
     auto handlers = kj::joinPromisesFailFast([&] {
         kj::Vector<kj::Promise<Outcome<void, WorkResult>>> parts{2};

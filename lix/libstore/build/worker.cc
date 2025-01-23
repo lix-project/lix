@@ -23,13 +23,12 @@ struct ErrorHandler : kj::TaskSet::ErrorHandler
 } errorHandler;
 }
 
-Worker::Worker(Store & store, Store & evalStore, kj::AsyncIoContext & aio)
+Worker::Worker(Store & store, Store & evalStore)
     : act(*logger, actRealise)
     , actDerivations(*logger, actBuilds)
     , actSubstitutions(*logger, actCopyPaths)
     , store(store)
     , evalStore(evalStore)
-    , aio(aio)
       /* Make sure that we are always allowed to run at least one substitution.
          This prevents infinite waiting. */
     , substitutions(std::max<unsigned>(1, settings.maxSubstitutionJobs))
@@ -223,7 +222,7 @@ try {
         act.setExpected(actCopyPath, expectedNarSize + doneNarSize);
 
         // limit to 50fps. that should be more than good enough for anything we do
-        co_await aio.provider->getTimer().afterDelay(20 * kj::MILLISECONDS);
+        co_await AIO().provider.getTimer().afterDelay(20 * kj::MILLISECONDS);
     }
 } catch (...) {
     co_return result::current_exception();
@@ -314,7 +313,7 @@ try {
 kj::Promise<Result<Worker::Results>> Worker::boopGC(LocalStore & localStore)
 try {
     while (true) {
-        co_await aio.provider->getTimer().afterDelay(10 * kj::SECONDS);
+        co_await AIO().provider.getTimer().afterDelay(10 * kj::SECONDS);
         localStore.autoGC(false);
     }
 } catch (...) {

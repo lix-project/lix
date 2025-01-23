@@ -2,8 +2,49 @@
 ///@file
 
 #include "lix/libutil/result.hh"
+#include <kj/async-io.h>
+#include <kj/async.h>
 
 namespace nix {
+
+struct AsyncContext
+{
+    static inline thread_local AsyncContext * current = nullptr;
+
+    kj::AsyncIoProvider & provider;
+    kj::UnixEventPort & unixEventPort;
+
+    explicit AsyncContext(kj::AsyncIoContext & aio)
+        : provider(*aio.provider)
+        , unixEventPort(aio.unixEventPort)
+    {
+        assert(current == nullptr);
+        current = this;
+    }
+
+    ~AsyncContext()
+    {
+        current = nullptr;
+    }
+
+    KJ_DISALLOW_COPY_AND_MOVE(AsyncContext);
+};
+
+struct AsyncIoRoot
+{
+    kj::AsyncIoContext kj;
+    AsyncContext context;
+
+    AsyncIoRoot() : kj(kj::setupAsyncIo()), context(kj) {}
+    KJ_DISALLOW_COPY_AND_MOVE(AsyncIoRoot);
+};
+
+inline AsyncContext & AIO()
+{
+    assert(AsyncContext::current != nullptr);
+    return *AsyncContext::current;
+}
+
 namespace detail {
 inline void materializeResult(Result<void> r)
 {

@@ -8,14 +8,15 @@ namespace nix {
 
 void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMode, std::shared_ptr<Store> evalStore)
 {
-    auto aio = kj::setupAsyncIo();
+    auto kjaio = kj::setupAsyncIo();
+    AsyncContext aio(kjaio);
 
-    auto results = processGoals(*this, evalStore ? *evalStore : *this, aio, [&](GoalFactory & gf) {
+    auto results = processGoals(*this, evalStore ? *evalStore : *this, [&](GoalFactory & gf) {
         Worker::Targets goals;
         for (auto & br : reqs)
             goals.emplace_back(gf.makeGoal(br, buildMode));
         return goals;
-    }).wait(aio.waitScope).value();
+    }).wait(kjaio.waitScope).value();
 
     StringSet failed;
     std::shared_ptr<Error> ex;
@@ -46,15 +47,16 @@ std::vector<KeyedBuildResult> Store::buildPathsWithResults(
     BuildMode buildMode,
     std::shared_ptr<Store> evalStore)
 {
-    auto aio = kj::setupAsyncIo();
+    auto kjaio = kj::setupAsyncIo();
+    AsyncContext aio(kjaio);
 
-    auto goals = processGoals(*this, evalStore ? *evalStore : *this, aio, [&](GoalFactory & gf) {
+    auto goals = processGoals(*this, evalStore ? *evalStore : *this, [&](GoalFactory & gf) {
         Worker::Targets goals;
         for (const auto & req : reqs) {
             goals.emplace_back(gf.makeGoal(req, buildMode));
         }
         return goals;
-    }).wait(aio.waitScope).value().goals;
+    }).wait(kjaio.waitScope).value().goals;
 
     std::vector<KeyedBuildResult> results;
 
@@ -67,14 +69,15 @@ std::vector<KeyedBuildResult> Store::buildPathsWithResults(
 BuildResult Store::buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
     BuildMode buildMode)
 {
-    auto aio = kj::setupAsyncIo();
+    auto kjaio = kj::setupAsyncIo();
+    AsyncContext aio(kjaio);
 
     try {
-        auto results = processGoals(*this, *this, aio, [&](GoalFactory & gf) {
+        auto results = processGoals(*this, *this, [&](GoalFactory & gf) {
             Worker::Targets goals;
             goals.emplace_back(gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode));
             return goals;
-        }).wait(aio.waitScope).value();
+        }).wait(kjaio.waitScope).value();
         auto & result = results.goals.begin()->second;
         return result.result.restrictTo(DerivedPath::Built {
             .drvPath = makeConstantStorePathRef(drvPath),
@@ -94,13 +97,14 @@ void Store::ensurePath(const StorePath & path)
     /* If the path is already valid, we're done. */
     if (isValidPath(path)) return;
 
-    auto aio = kj::setupAsyncIo();
+    auto kjaio = kj::setupAsyncIo();
+    AsyncContext aio(kjaio);
 
-    auto results = processGoals(*this, *this, aio, [&](GoalFactory & gf) {
+    auto results = processGoals(*this, *this, [&](GoalFactory & gf) {
         Worker::Targets goals;
         goals.emplace_back(gf.makePathSubstitutionGoal(path));
         return goals;
-    }).wait(aio.waitScope).value();
+    }).wait(kjaio.waitScope).value();
     auto & result = results.goals.begin()->second;
 
     if (result.exitCode != Goal::ecSuccess) {
@@ -115,13 +119,14 @@ void Store::ensurePath(const StorePath & path)
 
 void Store::repairPath(const StorePath & path)
 {
-    auto aio = kj::setupAsyncIo();
+    auto kjaio = kj::setupAsyncIo();
+    AsyncContext aio(kjaio);
 
-    auto results = processGoals(*this, *this, aio, [&](GoalFactory & gf) {
+    auto results = processGoals(*this, *this, [&](GoalFactory & gf) {
         Worker::Targets goals;
         goals.emplace_back(gf.makePathSubstitutionGoal(path, Repair));
         return goals;
-    }).wait(aio.waitScope).value();
+    }).wait(kjaio.waitScope).value();
     auto & result = results.goals.begin()->second;
 
     if (result.exitCode != Goal::ecSuccess) {
@@ -129,7 +134,7 @@ void Store::repairPath(const StorePath & path)
            deriver, then rebuild the deriver. */
         auto info = queryPathInfo(path);
         if (info->deriver && isValidPath(*info->deriver)) {
-            processGoals(*this, *this, aio, [&](GoalFactory & gf) {
+            processGoals(*this, *this, [&](GoalFactory & gf) {
                 Worker::Targets goals;
                 goals.emplace_back(gf.makeGoal(
                     DerivedPath::Built{
@@ -140,7 +145,7 @@ void Store::repairPath(const StorePath & path)
                     bmRepair
                 ));
                 return goals;
-            }).wait(aio.waitScope).value();
+            }).wait(kjaio.waitScope).value();
         } else
             throw Error(results.failingExitStatus, "cannot repair path '%s'", printStorePath(path));
     }
