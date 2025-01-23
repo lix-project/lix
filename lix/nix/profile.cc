@@ -69,7 +69,7 @@ struct CmdProfileInstall : InstallablesCommand, MixDefaultProfile
 
     void run(ref<Store> store, Installables && installables) override
     {
-        auto state = getEvaluator()->begin();
+        auto state = getEvaluator()->begin(aio());
         ProfileManifest manifest(*state, *profile);
 
         auto builtPaths = builtPathsPerInstallable(
@@ -241,7 +241,7 @@ struct CmdProfileRemove : virtual EvalCommand, MixDefaultProfile, MixProfileElem
 
     void run(ref<Store> store) override
     {
-        ProfileManifest oldManifest(*getEvaluator()->begin(), *profile);
+        ProfileManifest oldManifest(*getEvaluator()->begin(aio()), *profile);
 
         auto matchers = getMatchers(store);
 
@@ -290,7 +290,7 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
 
     void run(ref<Store> store) override
     {
-        auto state = getEvaluator()->begin();
+        auto state = getEvaluator()->begin(aio());
         ProfileManifest manifest(*state, *profile);
 
         auto matchers = getMatchers(store);
@@ -426,7 +426,7 @@ struct CmdProfileList : virtual EvalCommand, virtual StoreCommand, MixDefaultPro
 
     void run(ref<Store> store) override
     {
-        ProfileManifest manifest(*getEvaluator()->begin(), *profile);
+        ProfileManifest manifest(*getEvaluator()->begin(aio()), *profile);
 
         if (json) {
             std::cout << manifest.toJSON(*store).dump() << "\n";
@@ -511,7 +511,7 @@ struct CmdProfileHistory : virtual StoreCommand, EvalCommand, MixDefaultProfile
         bool first = true;
 
         for (auto & gen : gens) {
-            ProfileManifest manifest(*getEvaluator()->begin(), gen.path);
+            ProfileManifest manifest(*getEvaluator()->begin(aio()), gen.path);
 
             if (!first) logger->cout("");
             first = false;

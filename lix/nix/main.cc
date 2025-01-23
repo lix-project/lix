@@ -254,14 +254,14 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
 
 /* Render the help for the specified subcommand to stdout using
    lowdown. */
-static void showHelp(std::vector<std::string> subcommand, NixArgs & toplevel)
+static void showHelp(AsyncIoRoot & aio, std::vector<std::string> subcommand, NixArgs & toplevel)
 {
     auto mdName = subcommand.empty() ? "nix" : fmt("nix3-%s", concatStringsSep("-", subcommand));
 
     evalSettings.restrictEval.override(false);
     evalSettings.pureEval.override(false);
-    Evaluator evaluator({}, openStore("dummy://"));
-    auto state = evaluator.begin();
+    Evaluator evaluator(aio, {}, openStore("dummy://"));
+    auto state = evaluator.begin(aio);
 
     auto vGenerateManpage = evaluator.mem.allocValue();
     state->eval(evaluator.parseExprFromString(
@@ -321,7 +321,7 @@ struct CmdHelp : Command
         assert(parent);
         MultiCommand * toplevel = parent;
         while (toplevel->parent) toplevel = toplevel->parent;
-        showHelp(subcommand, getNixArgs(*this));
+        showHelp(aio(), subcommand, getNixArgs(*this));
     }
 };
 
@@ -345,7 +345,7 @@ struct CmdHelpStores : Command
 
     void run() override
     {
-        showHelp({"help-stores"}, getNixArgs(*this));
+        showHelp(aio(), {"help-stores"}, getNixArgs(*this));
     }
 };
 
@@ -419,7 +419,7 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
             | Xp::FetchClosure
             | Xp::DynamicDerivations);
         evalSettings.pureEval.override(false);
-        Evaluator state({}, openStore("dummy://"));
+        Evaluator state(aio, {}, openStore("dummy://"));
         auto res = nlohmann::json::object();
         res["builtins"] = ({
             auto builtinsJson = nlohmann::json::object();
@@ -495,7 +495,7 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
             } else
                 break;
         }
-        showHelp(subcommand, args);
+        showHelp(aio, subcommand, args);
         return;
     }
 

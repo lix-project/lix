@@ -106,7 +106,7 @@ ref<eval_cache::CachingEvaluator> EvalCommand::getEvaluator()
 {
     if (!evalState) {
         evalState = std::allocate_shared<eval_cache::CachingEvaluator>(
-            TraceableAllocator<EvalState>(), searchPath, getEvalStore(), getStore(),
+            TraceableAllocator<EvalState>(), aio(), searchPath, getEvalStore(), getStore(),
             startReplOnEvalErrors ? AbstractNixRepl::runSimple : nullptr
         );
 
@@ -162,7 +162,14 @@ void BuiltPathsCommand::run(ref<Store> store, Installables && installables)
         for (auto & p : store->queryAllValidPaths())
             paths.emplace_back(BuiltPath::Opaque{p});
     } else {
-        paths = Installable::toBuiltPaths(*getEvaluator()->begin(), getEvalStore(), store, realiseMode, operateOn, installables);
+        paths = Installable::toBuiltPaths(
+            *getEvaluator()->begin(aio()),
+            getEvalStore(),
+            store,
+            realiseMode,
+            operateOn,
+            installables
+        );
         if (recursive) {
             // XXX: This only computes the store path closure, ignoring
             // intermediate realisations

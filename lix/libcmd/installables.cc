@@ -86,7 +86,9 @@ MixFlakeOptions::MixFlakeOptions()
         }},
         .completer = {[&](AddCompletions & completions, size_t n, std::string_view prefix) {
             if (n == 0) {
-                completeFlakeInputPath(completions, *getEvaluator()->begin(), getFlakeRefsForCompletion(), prefix);
+                completeFlakeInputPath(
+                    completions, *getEvaluator()->begin(aio()), getFlakeRefsForCompletion(), prefix
+                );
             } else if (n == 1) {
                 completeFlakeRef(completions, getEvaluator()->store, prefix);
             }
@@ -121,7 +123,7 @@ MixFlakeOptions::MixFlakeOptions()
         .category = category,
         .labels = {"flake-url"},
         .handler = {[&](std::string flakeRef) {
-            auto evalState = getEvaluator()->begin();
+            auto evalState = getEvaluator()->begin(aio());
             auto flake = flake::lockFlake(
                 *evalState,
                 parseFlakeRef(flakeRef, absPath(".")),
@@ -202,7 +204,7 @@ Strings SourceExprCommand::getDefaultFlakeAttrPathPrefixes()
 Args::CompleterClosure SourceExprCommand::getCompleteInstallable()
 {
     return [this](AddCompletions & completions, size_t, std::string_view prefix) {
-        completeInstallable(*getEvaluator()->begin(), completions, prefix);
+        completeInstallable(*getEvaluator()->begin(aio()), completions, prefix);
     };
 }
 
@@ -842,7 +844,7 @@ std::vector<FlakeRef> InstallableCommand::getFlakeRefsForCompletion()
 
 void InstallablesCommand::run(ref<Store> store, std::vector<std::string> && rawInstallables)
 {
-    auto installables = parseInstallables(*getEvaluator()->begin(), store, rawInstallables);
+    auto installables = parseInstallables(*getEvaluator()->begin(aio()), store, rawInstallables);
     run(store, std::move(installables));
 }
 
@@ -859,7 +861,7 @@ InstallableCommand::InstallableCommand()
 
 void InstallableCommand::run(ref<Store> store)
 {
-    auto installable = parseInstallable(*getEvaluator()->begin(), store, _installable);
+    auto installable = parseInstallable(*getEvaluator()->begin(aio()), store, _installable);
     run(store, std::move(installable));
 }
 

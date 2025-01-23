@@ -549,7 +549,7 @@ struct CmdDevelop : Common, MixEnvironment
     void run(ref<Store> store, ref<Installable> installable) override
     {
         auto evaluator = getEvaluator();
-        auto state = evaluator->begin();
+        auto state = evaluator->begin(aio());
 
         auto [buildEnvironment, gcroot] = getBuildEnvironment(*state, store, installable);
 
@@ -683,7 +683,7 @@ struct CmdPrintDevEnv : Common, MixJSON
 
     void run(ref<Store> store, ref<Installable> installable) override
     {
-        auto state = getEvaluator()->begin();
+        auto state = getEvaluator()->begin(aio());
         auto buildEnvironment = getBuildEnvironment(*state, store, installable).first;
 
         logger->pause();

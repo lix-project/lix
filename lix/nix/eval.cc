@@ -62,7 +62,7 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
         auto const installableValue = InstallableValue::require(installable);
 
         auto evaluator = getEvaluator();
-        auto state = evaluator->begin();
+        auto state = evaluator->begin(aio());
 
         auto [v, pos] = installableValue->toValue(*state);
         NixStringContext context;

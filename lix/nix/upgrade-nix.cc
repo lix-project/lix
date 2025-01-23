@@ -220,7 +220,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         // profiles, which this is not.
         auto evalState = this->getEvaluator();
 
-        ProfileManifest manifest(*evalState->begin(), profileDir);
+        ProfileManifest manifest(*evalState->begin(aio()), profileDir);
 
         // Find which profile element has Nix in it.
         // It should be impossible to *not* have Nix, since we grabbed this
@@ -288,8 +288,8 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         auto [res, content] = getFileTransfer()->download(storePathsUrl);
         auto data = content->drain();
 
-        auto evaluator = std::make_unique<Evaluator>(SearchPath{}, store);
-        auto state = evaluator->begin();
+        auto evaluator = std::make_unique<Evaluator>(aio(), SearchPath{}, store);
+        auto state = evaluator->begin(aio());
         auto v = evaluator->mem.allocValue();
         state->eval(evaluator->parseExprFromString(data, CanonPath("/no-such-path")), *v);
         Bindings & bindings(*evaluator->mem.allocBindings(0));

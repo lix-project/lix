@@ -198,9 +198,9 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
     auto store = openStore();
     auto evalStore = myArgs.evalStoreUrl ? openStore(*myArgs.evalStoreUrl) : store;
 
-    auto evaluator = std::make_unique<Evaluator>(myArgs.searchPath, evalStore, store);
+    auto evaluator = std::make_unique<Evaluator>(aio, myArgs.searchPath, evalStore, store);
     evaluator->repair = myArgs.repair;
-    auto state = evaluator->begin();
+    auto state = evaluator->begin(aio);
     if (myArgs.repair) buildMode = bmRepair;
 
     auto autoArgs = myArgs.getAutoArgs(*evaluator);

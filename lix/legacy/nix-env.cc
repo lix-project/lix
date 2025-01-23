@@ -518,7 +518,7 @@ static void installDerivations(Globals & globals,
 {
     debug("installing derivations");
 
-    auto state = globals.state->begin();
+    auto state = globals.state->begin(globals.aio);
 
     /* Get the set of user environment elements to be installed. */
     DrvInfos newElems, newElemsTmp;
@@ -599,7 +599,7 @@ static void upgradeDerivations(Globals & globals,
 {
     debug("upgrading derivations");
 
-    auto state = globals.state->begin();
+    auto state = globals.state->begin(globals.aio);
 
     /* Upgrade works as follows: we take all currently installed
        derivations, and for any derivation matching any selector, look
@@ -725,7 +725,7 @@ static void opSetFlag(Globals & globals, Strings opFlags, Strings opArgs)
     std::string flagValue = *arg++;
     DrvNames selectors = drvNamesFromArgs(Strings(arg, opArgs.end()));
 
-    auto state = globals.state->begin();
+    auto state = globals.state->begin(globals.aio);
 
     while (true) {
         std::string lockToken = optimisticLockProfile(globals.profile);
@@ -755,7 +755,7 @@ static void opSetFlag(Globals & globals, Strings opFlags, Strings opArgs)
 
 static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
 {
-    auto state = globals.state->begin();
+    auto state = globals.state->begin(globals.aio);
 
     auto store2 = globals.state->store.dynamic_pointer_cast<LocalFSStore>();
     if (!store2) throw Error("--set is not supported for this Nix store");
@@ -804,7 +804,7 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
 static void uninstallDerivations(Globals & globals, Strings & selectors,
     Path & profile)
 {
-    auto state = globals.state->begin();
+    auto state = globals.state->begin(globals.aio);
 
     while (true) {
         auto lockToken = optimisticLockProfile(profile);
@@ -1010,7 +1010,7 @@ static void queryJSON(EvalState & state, Globals & globals, std::vector<DrvInfo>
 static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
 {
     auto & store { *globals.state->store };
-    auto state = globals.state->begin();
+    auto state = globals.state->begin(globals.aio);
 
     Strings remaining;
     std::string attrPath;
@@ -1540,7 +1540,7 @@ static int main_nix_env(AsyncIoRoot & aio, std::string programName, Strings argv
 
         auto store = openStore();
 
-        globals.state = std::make_shared<Evaluator>(myArgs.searchPath, store);
+        globals.state = std::make_shared<Evaluator>(aio, myArgs.searchPath, store);
         globals.state->repair = myArgs.repair;
 
         globals.instSource.nixExprPath = std::make_shared<SourcePath>(

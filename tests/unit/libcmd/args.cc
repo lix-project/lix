@@ -18,6 +18,8 @@ namespace nix
 {
 
 TEST(Arguments, lookupFileArg) {
+    AsyncIoRoot aio;
+
     initNix();
     initLibExpr();
 
@@ -31,7 +33,7 @@ TEST(Arguments, lookupFileArg) {
     searchPath.elements.push_back(SearchPath::Elem::parse(searchPathElem));
 
     auto store = openStore("dummy://");
-    auto state = std::make_shared<Evaluator>(searchPath, store, store);
+    auto state = std::make_shared<Evaluator>(aio, searchPath, store, store);
 
     SourcePath const foundUnitData = lookupFileArg(*state, "<example>");
     EXPECT_EQ(foundUnitData.canonical(), canonDataPath);

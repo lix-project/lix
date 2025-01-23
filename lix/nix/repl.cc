@@ -64,7 +64,7 @@ struct CmdRepl : RawInstallablesCommand
     void run(ref<Store> store, std::vector<std::string> && rawInstallables) override
     {
         auto evaluator = getEvaluator();
-        auto state = evaluator->begin();
+        auto state = evaluator->begin(aio());
         auto getValues = [&]()->AbstractNixRepl::AnnotatedValues{
             auto installables = parseInstallables(*state, store, rawInstallables);
             AbstractNixRepl::AnnotatedValues values;

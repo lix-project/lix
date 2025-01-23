@@ -157,8 +157,8 @@ static int main_nix_instantiate(AsyncIoRoot & aio, std::string programName, Stri
         auto store = openStore();
         auto evalStore = myArgs.evalStoreUrl ? openStore(*myArgs.evalStoreUrl) : store;
 
-        auto evaluator = std::make_unique<Evaluator>(myArgs.searchPath, evalStore, store);
-        auto state = evaluator->begin();
+        auto evaluator = std::make_unique<Evaluator>(aio, myArgs.searchPath, evalStore, store);
+        auto state = evaluator->begin(aio);
         evaluator->repair = myArgs.repair;
 
         Bindings & autoArgs = *myArgs.getAutoArgs(*evaluator);

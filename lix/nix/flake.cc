@@ -98,7 +98,9 @@ public:
                 }
             }},
             .completer = {[&](AddCompletions & completions, size_t, std::string_view prefix) {
-                completeFlakeInputPath(completions, *getEvaluator()->begin(), getFlakeRefsForCompletion(), prefix);
+                completeFlakeInputPath(
+                    completions, *getEvaluator()->begin(aio()), getFlakeRefsForCompletion(), prefix
+                );
             }}
         });
 
@@ -123,7 +125,7 @@ public:
         lockFlags.writeLockFile = true;
         lockFlags.applyNixConfig = true;
 
-        lockFlake(*getEvaluator()->begin());
+        lockFlake(*getEvaluator()->begin(aio()));
     }
 };
 
@@ -163,7 +165,7 @@ struct CmdFlakeLock : FlakeCommand
         lockFlags.writeLockFile = true;
         lockFlags.applyNixConfig = true;
 
-        lockFlake(*getEvaluator()->begin());
+        lockFlake(*getEvaluator()->begin(aio()));
     }
 };
 
@@ -208,7 +210,7 @@ struct CmdFlakeMetadata : FlakeCommand, MixJSON
 
     void run(nix::ref<nix::Store> store) override
     {
-        auto lockedFlake = lockFlake(*getEvaluator()->begin());
+        auto lockedFlake = lockFlake(*getEvaluator()->begin(aio()));
         auto & flake = lockedFlake.flake;
         auto formatTime = [](time_t time) -> std::string {
             std::ostringstream os{};
@@ -359,7 +361,7 @@ struct CmdFlakeCheck : FlakeCommand
         }
 
         auto evaluator = getEvaluator();
-        auto state = evaluator->begin();
+        auto state = evaluator->begin(aio());
 
         lockFlags.applyNixConfig = true;
         auto flake = lockFlake(*state);
@@ -842,7 +844,7 @@ struct CmdFlakeInitCommon : virtual Args, EvalCommand
             .completer = {[&](AddCompletions & completions, size_t, std::string_view prefix) {
                 completeFlakeRefWithFragment(
                     completions,
-                    *getEvaluator()->begin(),
+                    *getEvaluator()->begin(aio()),
                     getEvaluator(),
                     lockFlags,
                     defaultTemplateAttrPathsPrefixes,
@@ -857,7 +859,7 @@ struct CmdFlakeInitCommon : virtual Args, EvalCommand
         auto flakeDir = absPath(destDir);
 
         auto evaluator = getEvaluator();
-        auto evalState = evaluator->begin();
+        auto evalState = evaluator->begin(aio());
 
         auto [templateFlakeRef, templateName] = parseFlakeRefWithFragment(templateUrl, absPath("."));
 
@@ -1052,7 +1054,7 @@ struct CmdFlakeArchive : FlakeCommand, MixJSON, MixDryRun
 
     void run(nix::ref<nix::Store> store) override
     {
-        auto flake = lockFlake(*getEvaluator()->begin());
+        auto flake = lockFlake(*getEvaluator()->begin(aio()));
 
         StorePathSet sources;
 
@@ -1136,7 +1138,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
         evalSettings.enableImportFromDerivation.setDefault(false);
 
         auto evaluator = getEvaluator();
-        auto state = evaluator->begin();
+        auto state = evaluator->begin(aio());
         auto flake = std::make_shared<LockedFlake>(lockFlake(*state));
         auto localSystem = std::string(settings.thisSystem.get());
 

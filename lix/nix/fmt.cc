@@ -31,7 +31,7 @@ struct CmdFmt : SourceExprCommand {
     {
         auto evaluator = getEvaluator();
         auto evalStore = getEvalStore();
-        auto state = evaluator->begin();
+        auto state = evaluator->begin(aio());
 
         auto installable_ = parseInstallable(*state, store, ".");
         auto & installable = InstallableValue::require(*installable_);

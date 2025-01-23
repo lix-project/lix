@@ -271,6 +271,7 @@ EvalBuiltins::EvalBuiltins(
 }
 
 EvalPaths::EvalPaths(
+    AsyncIoRoot & aio,
     const ref<Store> & store,
     const ref<Store> buildStore,
     SearchPath searchPath,
@@ -306,13 +307,14 @@ EvalPaths::EvalPaths(
 }
 
 Evaluator::Evaluator(
+    AsyncIoRoot & aio,
     const SearchPath & _searchPath,
     ref<Store> store,
     std::shared_ptr<Store> buildStore,
     std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl
 )
     : s(symbols)
-    , paths(store, buildStore ? ref(buildStore) : store, [&] {
+    , paths(aio, store, buildStore ? ref(buildStore) : store, [&] {
         SearchPath searchPath;
         if (!evalSettings.pureEval) {
             for (auto & i : _searchPath.elements)
@@ -343,13 +345,15 @@ Evaluator::Evaluator(
     static_assert(sizeof(Env) <= 16, "environment must be <= 16 bytes");
 }
 
-box_ptr<EvalState> Evaluator::begin()
+box_ptr<EvalState> Evaluator::begin(AsyncIoRoot & aio)
 {
     assert(!activeEval);
-    return box_ptr<EvalState>::unsafeFromNonnull(std::unique_ptr<EvalState>(new EvalState(*this)));
+    return box_ptr<EvalState>::unsafeFromNonnull(
+        std::unique_ptr<EvalState>(new EvalState(aio, *this))
+    );
 }
 
-EvalState::EvalState(Evaluator & ctx) : ctx(ctx)
+EvalState::EvalState(AsyncIoRoot & aio, Evaluator & ctx) : ctx(ctx), aio(aio)
 {
     ctx.activeEval = this;
 }

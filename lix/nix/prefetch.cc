@@ -187,8 +187,8 @@ static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Str
             setLogFormat(LogFormat::bar);
 
         auto store = openStore();
-        auto evaluator = std::make_unique<Evaluator>(myArgs.searchPath, store);
-        auto state = evaluator->begin();
+        auto evaluator = std::make_unique<Evaluator>(aio, myArgs.searchPath, store);
+        auto state = evaluator->begin(aio);
 
         Bindings & autoArgs = *myArgs.getAutoArgs(*evaluator);
 

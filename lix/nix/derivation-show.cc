@@ -41,7 +41,8 @@ struct CmdShowDerivation : InstallablesCommand
 
     void run(ref<Store> store, Installables && installables) override
     {
-        auto drvPaths = Installable::toDerivations(*getEvaluator()->begin(), store, installables, true);
+        auto drvPaths =
+            Installable::toDerivations(*getEvaluator()->begin(aio()), store, installables, true);
 
         if (recursive) {
             StorePathSet closure;

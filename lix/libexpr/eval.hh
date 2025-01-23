@@ -6,6 +6,7 @@
 #include "lix/libexpr/gc-alloc.hh"
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/generator.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libexpr/value.hh"
 #include "lix/libexpr/nixexpr.hh"
@@ -372,7 +373,13 @@ class EvalPaths
     EvalErrorContext & errors;
 
 public:
-    EvalPaths(const ref<Store> & store, const ref<Store> buildStore, SearchPath searchPath, EvalErrorContext & errors);
+    EvalPaths(
+        AsyncIoRoot & aio,
+        const ref<Store> & store,
+        const ref<Store> buildStore,
+        SearchPath searchPath,
+        EvalErrorContext & errors
+    );
 
     const SearchPath & searchPath() const { return searchPath_; }
 
@@ -535,6 +542,7 @@ public:
     EvalErrorContext errors;
 
     Evaluator(
+        AsyncIoRoot & aio,
         const SearchPath & _searchPath,
         ref<Store> store,
         std::shared_ptr<Store> buildStore = nullptr,
@@ -627,7 +635,7 @@ public:
      * which it is not possible to block on a promise while already running in
      * a promise without doing this blocking on a different event loop/thread.
      */
-    box_ptr<EvalState> begin();
+    box_ptr<EvalState> begin(AsyncIoRoot & aio);
 };
 
 
@@ -635,10 +643,11 @@ class EvalState
 {
     friend class Evaluator;
 
-    explicit EvalState(Evaluator & ctx);
+    explicit EvalState(AsyncIoRoot & aio, Evaluator & ctx);
 
 public:
     Evaluator & ctx;
+    AsyncIoRoot & aio;
 
     EvalState(const EvalState &) = delete;
     EvalState(EvalState &&) = delete;
