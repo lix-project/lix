@@ -746,9 +746,16 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
         for (auto & path : topoSortPaths(visited)) {
             if (!dead.insert(path).second) continue;
             if (shouldDelete) {
-                invalidatePathChecked(path);
-                deleteFromStore(path.to_string());
-                referrersCache.erase(path);
+                try {
+                    invalidatePathChecked(path);
+                    deleteFromStore(path.to_string());
+                    referrersCache.erase(path);
+                } catch (PathInUse &) {
+                    // References to upstream "bugs":
+                    // https://github.com/NixOS/nix/issues/11923
+                    // https://git.lix.systems/lix-project/lix/issues/621
+                    printInfo("Skipping deletion of path '%1%' because it is now in use, preventing its removal.", printStorePath(path));
+                }
             }
         }
     };
