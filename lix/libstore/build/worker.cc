@@ -236,14 +236,7 @@ try {
     running = true;
     Finally const _stop([&] { running = false; });
 
-    auto onInterrupt = kj::newPromiseAndCrossThreadFulfiller<Result<Results>>();
-    auto interruptCallback = createInterruptCallback([&] {
-        onInterrupt.fulfiller->fulfill(result::failure(std::make_exception_ptr(makeInterrupted())));
-    });
-
-    auto promise = runImpl(std::move(topGoals))
-                       .exclusiveJoin(updateStatistics())
-                       .exclusiveJoin(std::move(onInterrupt.promise));
+    auto promise = makeInterruptible(runImpl(std::move(topGoals))).exclusiveJoin(updateStatistics());
 
     // TODO GC interface?
     if (auto localStore = dynamic_cast<LocalStore *>(&store); localStore && settings.minFree != 0u) {

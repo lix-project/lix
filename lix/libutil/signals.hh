@@ -20,7 +20,10 @@
 
 
 #include "lix/libutil/error.hh"
+#include "lix/libutil/result.hh"
 
+#include <kj/async.h>
+#include <memory>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -106,6 +109,17 @@ struct InterruptCallback
  */
 std::unique_ptr<InterruptCallback> createInterruptCallback(
     std::function<void()> callback);
+
+template<typename T>
+kj::Promise<Result<T>> makeInterruptible(kj::Promise<Result<T>> p)
+{
+    auto onInterrupt = kj::newPromiseAndCrossThreadFulfiller<Result<T>>();
+    auto interruptCallback = createInterruptCallback([fulfiller{onInterrupt.fulfiller.get()}] {
+        fulfiller->fulfill(result::failure(std::make_exception_ptr(makeInterrupted())));
+    });
+    return p.attach(std::move(onInterrupt.fulfiller), std::move(interruptCallback))
+        .exclusiveJoin(std::move(onInterrupt.promise));
+}
 
 void triggerInterrupt();
 
