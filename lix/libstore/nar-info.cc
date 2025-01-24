@@ -4,7 +4,7 @@
 
 namespace nix {
 
-NarInfo::NarInfo(const Store & store, const std::string & s, const std::string & whence)
+NarInfo::NarInfo(const Store & store, const std::string_view & s, const std::string_view & whence)
     : ValidPathInfo(StorePath(StorePath::dummy), Hash(Hash::dummy)) // FIXME: hack
 {
     unsigned line = 1;

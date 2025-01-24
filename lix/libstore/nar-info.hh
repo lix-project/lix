@@ -22,7 +22,7 @@ struct NarInfo : ValidPathInfo
     { }
     NarInfo(StorePath && path, Hash narHash) : ValidPathInfo(std::move(path), narHash) { }
     NarInfo(const ValidPathInfo & info) : ValidPathInfo(info) { }
-    NarInfo(const Store & store, const std::string & s, const std::string & whence);
+    NarInfo(const Store & store, const std::string_view & s, const std::string_view & whence);
 
     std::string to_string(const Store & store) const;
 };
