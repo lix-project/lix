@@ -209,8 +209,8 @@ const static std::string getEnvSh =
    modified derivation with the same dependencies and nearly the same
    initial environment variables, that just writes the resulting
    environment to a file and exits. */
-static StorePath getDerivationEnvironment(ref<Store> store, ref<Store> evalStore, const StorePath & drvPath)
-{
+static kj::Promise<Result<StorePath>> getDerivationEnvironment(ref<Store> store, ref<Store> evalStore, const StorePath & drvPath)
+try {
     auto drv = evalStore->derivationFromPath(drvPath);
 
     auto builder = baseNameOf(drv.builder);
@@ -271,10 +271,12 @@ static StorePath getDerivationEnvironment(ref<Store> store, ref<Store> evalStore
         assert(store->isValidPath(outPath));
         auto outPathS = store->toRealPath(outPath);
         if (lstat(outPathS).st_size)
-            return outPath;
+            co_return outPath;
     }
 
     throw Error("get-env.sh failed to produce an environment");
+} catch (...) {
+    co_return result::current_exception();
 }
 
 struct Common : InstallableCommand, MixProfile
@@ -453,7 +455,7 @@ struct Common : InstallableCommand, MixProfile
 
             auto & drvPath = *drvs.begin();
 
-            return getDerivationEnvironment(store, getEvalStore(), drvPath);
+            return state.aio.blockOn(getDerivationEnvironment(store, getEvalStore(), drvPath));
         }
     }
 

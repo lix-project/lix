@@ -61,8 +61,8 @@ static StorePath useDeriver(const StorePath & path)
 
 /* Realise the given path.  For a derivation that means build it; for
    other paths it means ensure their validity. */
-static PathSet realisePath(StorePathWithOutputs path, bool build = true)
-{
+static kj::Promise<Result<PathSet>> realisePath(StorePathWithOutputs path, bool build = true)
+try {
     auto store2 = std::dynamic_pointer_cast<LocalFSStore>(store);
 
     if (path.path.isDerivation()) {
@@ -96,7 +96,7 @@ static PathSet realisePath(StorePathWithOutputs path, bool build = true)
             }
             outputs.insert(retPath);
         }
-        return outputs;
+        co_return outputs;
     }
 
     else {
@@ -110,11 +110,13 @@ static PathSet realisePath(StorePathWithOutputs path, bool build = true)
                 Path rootName = gcRoot;
                 rootNr++;
                 if (rootNr > 1) rootName += "-" + std::to_string(rootNr);
-                return {store2->addPermRoot(path.path, rootName)};
+                co_return PathSet{store2->addPermRoot(path.path, rootName)};
             }
         }
-        return {store->printStorePath(path.path)};
+        co_return PathSet{store->printStorePath(path.path)};
     }
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -161,7 +163,7 @@ static void opRealise(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
     if (!ignoreUnknown)
         for (auto & i : paths) {
-            auto paths2 = realisePath(i, false);
+            auto paths2 = aio.blockOn(realisePath(i, false));
             if (!noOutput)
                 for (auto & j : paths2)
                     cout << fmt("%1%\n", j);
@@ -225,22 +227,24 @@ static void opPrintFixedPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 }
 
 
-static StorePathSet maybeUseOutputs(const StorePath & storePath, bool useOutput, bool forceRealise)
-{
-    if (forceRealise) realisePath({storePath});
+static kj::Promise<Result<StorePathSet>> maybeUseOutputs(const StorePath & storePath, bool useOutput, bool forceRealise)
+try {
+    if (forceRealise) TRY_AWAIT(realisePath({storePath}));
     if (useOutput && storePath.isDerivation()) {
         auto drv = store->derivationFromPath(storePath);
         StorePathSet outputs;
         if (forceRealise)
-            return store->queryDerivationOutputs(storePath);
+            co_return store->queryDerivationOutputs(storePath);
         for (auto & i : drv.outputsAndOptPaths(*store)) {
             if (!i.second.second)
                 throw UsageError("Cannot use output path of floating content-addressed derivation until we know what it is (e.g. by building it)");
             outputs.insert(*i.second.second);
         }
-        return outputs;
+        co_return outputs;
     }
-    else return {storePath};
+    else co_return StorePathSet{storePath};
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -328,7 +332,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
         case qOutputs: {
             for (auto & i : opArgs) {
-                auto outputs = maybeUseOutputs(store->followLinksToStorePath(i), true, forceRealise);
+                auto outputs = aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), true, forceRealise));
                 for (auto & outputPath : outputs)
                     cout << fmt("%1%\n", store->printStorePath(outputPath));
             }
@@ -341,7 +345,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qReferrersClosure: {
             StorePathSet paths;
             for (auto & i : opArgs) {
-                auto ps = maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise);
+                auto ps = aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise));
                 for (auto & j : ps) {
                     if (query == qRequisites) store->computeFSClosure(j, paths, false, includeOutputs);
                     else if (query == qReferences) {
@@ -401,7 +405,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qHash:
         case qSize:
             for (auto & i : opArgs) {
-                for (auto & j : maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise)) {
+                for (auto & j : aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise))) {
                     auto info = store->queryPathInfo(j);
                     if (query == qHash) {
                         assert(info->narHash.type == HashType::SHA256);
@@ -422,7 +426,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qGraph: {
             StorePathSet roots;
             for (auto & i : opArgs)
-                for (auto & j : maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise))
+                for (auto & j : aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise)))
                     roots.insert(j);
             printDotGraph(ref<Store>(store), std::move(roots));
             break;
@@ -431,7 +435,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qGraphML: {
             StorePathSet roots;
             for (auto & i : opArgs)
-                for (auto & j : maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise))
+                for (auto & j : aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise)))
                     roots.insert(j);
             printGraphML(ref<Store>(store), std::move(roots));
             break;
@@ -446,7 +450,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qRoots: {
             StorePathSet args;
             for (auto & i : opArgs)
-                for (auto & p : maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise))
+                for (auto & p : aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise)))
                     args.insert(p);
 
             StorePathSet referrers;
