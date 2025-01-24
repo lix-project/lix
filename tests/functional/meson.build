@@ -92,6 +92,7 @@ functional_tests_scripts = [
   'user-envs.sh',
   'user-envs-migration.sh',
   'binary-cache.sh',
+  'binary-cache-regression-fj647.sh',
   'multiple-outputs.sh',
   'nix-build.sh',
   'gc-concurrent.sh',

@@ -10,6 +10,8 @@
 #include <chrono>
 #include <future>
 #include <string>
+#include <mutex>
+#include <memory>
 #include <unordered_set>
 
 
@@ -80,7 +82,15 @@ private:
      */
     AutoCloseFD globalLock;
 
-    const PublicKeys publicKeys;
+    /**
+     * Trusted public keys by this store. Initialized lazily by getPublicKeys().
+     *
+     * Note that this lazy initialization is load-bearing: on the daemon, the
+     * store is initialized very early, before settings including
+     * trusted-public-keys are received from the client.
+     */
+    std::unique_ptr<const PublicKeys> publicKeys = nullptr;
+    std::once_flag publicKeysFlag;
 
     struct DBState
     {
@@ -133,6 +143,10 @@ public:
 
     LocalStoreConfig & config() override { return config_; }
     const LocalStoreConfig & config() const override { return config_; }
+
+private:
+
+    const PublicKeys & getPublicKeys();
 
 protected:
 
