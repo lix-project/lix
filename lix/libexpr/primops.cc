@@ -39,8 +39,8 @@ namespace nix {
  * Miscellaneous
  *************************************************************/
 
-StringMap EvalPaths::realiseContext(const NixStringContext & context)
-{
+kj::Promise<Result<StringMap>> EvalPaths::realiseContext(const NixStringContext & context)
+try {
     std::vector<DerivedPath::Built> drvs;
     StringMap res;
 
@@ -71,7 +71,7 @@ StringMap EvalPaths::realiseContext(const NixStringContext & context)
         }, c.raw);
     }
 
-    if (drvs.empty()) return {};
+    if (drvs.empty()) co_return StringMap{};
 
     if (!evalSettings.enableImportFromDerivation)
         errors.make<EvalError>(
@@ -114,7 +114,9 @@ StringMap EvalPaths::realiseContext(const NixStringContext & context)
         }
     }
 
-    return res;
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 static auto realisePath(EvalState & state, const PosIdx pos, Value & v, auto checkFn)
@@ -124,7 +126,7 @@ static auto realisePath(EvalState & state, const PosIdx pos, Value & v, auto che
     auto path = state.coerceToPath(noPos, v, context, "while realising the context of a path");
 
     try {
-        StringMap rewrites = state.ctx.paths.realiseContext(context);
+        StringMap rewrites = state.aio.blockOn(state.ctx.paths.realiseContext(context));
 
         return checkFn(SourcePath(CanonPath(
             state.ctx.paths.toRealPath(rewriteStrings(path.canonical().abs(), rewrites), context)
@@ -321,7 +323,7 @@ void prim_exec(EvalState & state, const PosIdx pos, Value * * args, Value & v)
                         false, false).toOwned());
     }
     try {
-        auto _ = state.ctx.paths.realiseContext(context); // FIXME: Handle CA derivations
+        auto _ = state.aio.blockOn(state.ctx.paths.realiseContext(context)); // FIXME: Handle CA derivations
     } catch (InvalidPathError & e) {
         e.addTrace(state.ctx.positions[pos], "while realising the context for builtins.exec");
         throw;
@@ -1305,7 +1307,7 @@ static void prim_findFile(EvalState & state, const PosIdx pos, Value * * args, V
                 false, false).toOwned();
 
         try {
-            auto rewrites = state.ctx.paths.realiseContext(context);
+            auto rewrites = state.aio.blockOn(state.ctx.paths.realiseContext(context));
             path = rewriteStrings(path, rewrites);
         } catch (InvalidPathError & e) {
             state.ctx.errors.make<EvalError>(
@@ -1495,7 +1497,7 @@ static void addPath(
     try {
         // FIXME: handle CA derivation outputs (where path needs to
         // be rewritten to the actual output).
-        auto rewrites = state.ctx.paths.realiseContext(context);
+        auto rewrites = state.aio.blockOn(state.ctx.paths.realiseContext(context));
         path = state.ctx.paths.toRealPath(rewriteStrings(path, rewrites), context);
 
         StorePathSet refs;

@@ -487,7 +487,7 @@ public:
      * Realise the given context, and return a mapping from the placeholders
      * used to construct the associated value to their final store path
      */
-    [[nodiscard]] StringMap realiseContext(const NixStringContext & context);
+    [[nodiscard]] kj::Promise<Result<StringMap>> realiseContext(const NixStringContext & context);
 };
 
 struct EvalStatistics
