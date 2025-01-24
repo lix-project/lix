@@ -17,6 +17,7 @@
 #include <cstring>
 
 #include <memory>
+#include <mutex>
 #include <new>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -173,7 +174,6 @@ void migrateCASchema(SQLite& db, Path schemaPath, AutoCloseFD& lockFd)
 LocalStore::LocalStore(LocalStoreConfig config)
     : Store(config)
     , config_(std::move(config))
-    , publicKeys(getDefaultPublicKeys())
     , dbDir(config_.stateDir + "/db")
     , linksDir(config_.realStoreDir + "/.links")
     , reservedSpacePath(dbDir + "/reserved")
@@ -1173,14 +1173,22 @@ void LocalStore::invalidatePath(DBState & state, const StorePath & path)
     }
 }
 
+const PublicKeys & LocalStore::getPublicKeys()
+{
+    std::call_once(publicKeysFlag, [](std::unique_ptr<const PublicKeys> &pks) -> void {
+        pks = std::make_unique<const PublicKeys>(getDefaultPublicKeys());
+    }, publicKeys);
+    return *publicKeys;
+}
+
 bool LocalStore::pathInfoIsUntrusted(const ValidPathInfo & info)
 {
-    return config_.requireSigs && !info.checkSignatures(*this, publicKeys);
+    return config_.requireSigs && !info.checkSignatures(*this, getPublicKeys());
 }
 
 bool LocalStore::realisationIsUntrusted(const Realisation & realisation)
 {
-    return config_.requireSigs && !realisation.checkSignatures(publicKeys);
+    return config_.requireSigs && !realisation.checkSignatures(getPublicKeys());
 }
 
 void LocalStore::addToStore(const ValidPathInfo & info, Source & source,
