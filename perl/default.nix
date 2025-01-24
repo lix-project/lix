@@ -45,6 +45,8 @@ perl.pkgs.toPerlModule (
         boost
         perlPackages.DBI
         perlPackages.DBDSQLite
+        # for kj-async
+        nix.passthru.capnproto-nix
       ]
       ++ lib.optional (stdenv.isLinux || stdenv.isDarwin) libsodium
       ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security;
