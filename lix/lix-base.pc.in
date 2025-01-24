@@ -3,6 +3,7 @@ libdir=@libdir@
 includedir=@includedir@
 
 Name: Lix base
-Description: Lix Package Manager (config.hh fixup)
+Description: Lix Package Manager (base include dir)
 Version: @PACKAGE_VERSION@
+Requires: kj-async
 Cflags: -I${includedir}
