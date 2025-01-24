@@ -652,7 +652,8 @@ std::vector<std::pair<ref<Installable>, BuiltPathWithResult>> Installable::build
         if (settings.printMissing)
             printMissing(store, pathsToBuild, lvlInfo);
 
-        auto buildResults = store->buildPathsWithResults(pathsToBuild, bMode, evalStore);
+        auto buildResults =
+            state.aio.blockOn(store->buildPathsWithResults(pathsToBuild, bMode, evalStore));
         throwBuildErrors(buildResults, *store);
         for (auto & buildResult : buildResults) {
             for (auto & aux : backmap[buildResult.path]) {

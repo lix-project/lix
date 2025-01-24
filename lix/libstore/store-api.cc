@@ -3,6 +3,7 @@
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/nar-info-disk-cache.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/url.hh"
 #include "lix/libutil/archive.hh"
@@ -815,7 +816,7 @@ void Store::substitutePaths(const StorePathSet & paths)
         try {
             std::vector<DerivedPath> subs;
             for (auto & p : willSubstitute) subs.emplace_back(DerivedPath::Opaque{p});
-            buildPaths(subs);
+            RUN_ASYNC_IN_NEW_THREAD(buildPaths(subs));
         } catch (Error & e) {
             logWarning(e.info());
         }
@@ -1355,7 +1356,7 @@ std::string showPaths(const PathSet & paths)
 
 Derivation Store::derivationFromPath(const StorePath & drvPath)
 {
-    ensurePath(drvPath);
+    RUN_ASYNC_IN_NEW_THREAD(ensurePath(drvPath));
     return readDerivation(drvPath);
 }
 

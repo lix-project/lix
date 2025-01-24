@@ -3,18 +3,21 @@
 #include "lix/libstore/build/derivation-goal.hh"
 #include "lix/libstore/local-store.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/strings.hh"
 
 namespace nix {
 
-void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMode, std::shared_ptr<Store> evalStore)
-{
-    auto results = RUN_ASYNC_IN_NEW_THREAD(processGoals(*this, evalStore ? *evalStore : *this, [&](GoalFactory & gf) {
-        Worker::Targets goals;
-        for (auto & br : reqs)
-            goals.emplace_back(gf.makeGoal(br, buildMode));
-        return goals;
-    }));
+kj::Promise<Result<void>> Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMode, std::shared_ptr<Store> evalStore)
+try {
+    auto results =
+        TRY_AWAIT(processGoals(*this, evalStore ? *evalStore : *this, [&](GoalFactory & gf) {
+            Worker::Targets goals;
+            for (auto & br : reqs) {
+                goals.emplace_back(gf.makeGoal(br, buildMode));
+            }
+            return goals;
+        }));
 
     StringSet failed;
     std::shared_ptr<Error> ex;
@@ -38,58 +41,69 @@ void Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMod
         if (ex) logError(ex->info());
         throw Error(results.failingExitStatus, "build of %s failed", concatStringsSep(", ", quoteStrings(failed)));
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
-std::vector<KeyedBuildResult> Store::buildPathsWithResults(
+kj::Promise<Result<std::vector<KeyedBuildResult>>> Store::buildPathsWithResults(
     const std::vector<DerivedPath> & reqs,
     BuildMode buildMode,
     std::shared_ptr<Store> evalStore)
-{
-    auto goals = RUN_ASYNC_IN_NEW_THREAD(processGoals(*this, evalStore ? *evalStore : *this, [&](GoalFactory & gf) {
-        Worker::Targets goals;
-        for (const auto & req : reqs) {
-            goals.emplace_back(gf.makeGoal(req, buildMode));
-        }
-        return goals;
-    })).goals;
+try {
+    auto goals =
+        TRY_AWAIT(processGoals(*this, evalStore ? *evalStore : *this, [&](GoalFactory & gf) {
+            Worker::Targets goals;
+            for (const auto & req : reqs) {
+                goals.emplace_back(gf.makeGoal(req, buildMode));
+            }
+            return goals;
+        })).goals;
 
     std::vector<KeyedBuildResult> results;
 
     for (auto && [goalIdx, req] : enumerate(reqs))
         results.emplace_back(goals[goalIdx].result.restrictTo(req));
 
-    return results;
+    co_return results;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-BuildResult Store::buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
+kj::Promise<Result<BuildResult>> Store::buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
     BuildMode buildMode)
-{
+try {
     try {
-        auto results = RUN_ASYNC_IN_NEW_THREAD(processGoals(*this, *this, [&](GoalFactory & gf) {
+        auto results = TRY_AWAIT(processGoals(*this, *this, [&](GoalFactory & gf) {
             Worker::Targets goals;
-            goals.emplace_back(gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode));
+            goals.emplace_back(
+                gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode)
+            );
             return goals;
         }));
         auto & result = results.goals.begin()->second;
-        return result.result.restrictTo(DerivedPath::Built {
+        co_return result.result.restrictTo(DerivedPath::Built {
             .drvPath = makeConstantStorePathRef(drvPath),
             .outputs = OutputsSpec::All {},
         });
     } catch (Error & e) {
-        return BuildResult {
+        co_return BuildResult {
             .status = BuildResult::MiscFailure,
             .errorMsg = e.msg(),
         };
     };
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
-void Store::ensurePath(const StorePath & path)
-{
+kj::Promise<Result<void>> Store::ensurePath(const StorePath & path)
+try {
     /* If the path is already valid, we're done. */
-    if (isValidPath(path)) return;
+    if (isValidPath(path)) co_return result::success();
 
-    auto results = RUN_ASYNC_IN_NEW_THREAD(processGoals(*this, *this, [&](GoalFactory & gf) {
+    auto results = TRY_AWAIT(processGoals(*this, *this, [&](GoalFactory & gf) {
         Worker::Targets goals;
         goals.emplace_back(gf.makePathSubstitutionGoal(path));
         return goals;
@@ -103,12 +117,16 @@ void Store::ensurePath(const StorePath & path)
         } else
             throw Error(results.failingExitStatus, "path '%s' does not exist and cannot be created", printStorePath(path));
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
-void Store::repairPath(const StorePath & path)
-{
-    auto results = RUN_ASYNC_IN_NEW_THREAD(processGoals(*this, *this, [&](GoalFactory & gf) {
+kj::Promise<Result<void>> Store::repairPath(const StorePath & path)
+try {
+    auto results = TRY_AWAIT(processGoals(*this, *this, [&](GoalFactory & gf) {
         Worker::Targets goals;
         goals.emplace_back(gf.makePathSubstitutionGoal(path, Repair));
         return goals;
@@ -120,7 +138,7 @@ void Store::repairPath(const StorePath & path)
            deriver, then rebuild the deriver. */
         auto info = queryPathInfo(path);
         if (info->deriver && isValidPath(*info->deriver)) {
-            RUN_ASYNC_IN_NEW_THREAD(processGoals(*this, *this, [&](GoalFactory & gf) {
+            TRY_AWAIT(processGoals(*this, *this, [&](GoalFactory & gf) {
                 Worker::Targets goals;
                 goals.emplace_back(gf.makeGoal(
                     DerivedPath::Built{
@@ -135,6 +153,10 @@ void Store::repairPath(const StorePath & path)
         } else
             throw Error(results.failingExitStatus, "cannot repair path '%s'", printStorePath(path));
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }

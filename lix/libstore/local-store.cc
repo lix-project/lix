@@ -6,6 +6,7 @@
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/nar-info.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/references.hh"
 #include "lix/libutil/topo-sort.hh"
 #include "lix/libutil/signals.hh"
@@ -1596,7 +1597,7 @@ bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
                 if (info->narHash != nullHash && info->narHash != current.first) {
                     printError("path '%s' was modified! expected hash '%s', got '%s'",
                         printStorePath(i), info->narHash.to_string(Base::Base32, true), current.first.to_string(Base::Base32, true));
-                    if (repair) repairPath(i); else errors = true;
+                    if (repair) RUN_ASYNC_IN_NEW_THREAD(repairPath(i)); else errors = true;
                 } else {
 
                     bool update = false;
@@ -1667,7 +1668,7 @@ void LocalStore::verifyPath(const StorePath & path, const StorePathSet & storePa
             printError("path '%s' disappeared, but it still has valid referrers!", pathS);
             if (repair)
                 try {
-                    repairPath(path);
+                    RUN_ASYNC_IN_NEW_THREAD(repairPath(path));
                 } catch (Error & e) {
                     logWarning(e.info());
                     errors = true;

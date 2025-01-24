@@ -325,18 +325,18 @@ connected:
             //    output ids, which break CA derivations
             if (!drv.inputDrvs.map.empty())
                 drv.inputSrcs = store->parseStorePathSet(inputs);
-            optResult = sshStore->buildDerivation(*drvPath, (const BasicDerivation &) drv);
+            optResult = aio.blockOn(sshStore->buildDerivation(*drvPath, (const BasicDerivation &) drv));
             auto & result = *optResult;
             if (!result.success())
                 throw Error("build of '%s' on '%s' failed: %s", store->printStorePath(*drvPath), storeUri, result.errorMsg);
         } else {
             copyClosure(*store, *sshStore, StorePathSet {*drvPath}, NoRepair, NoCheckSigs, substitute);
-            auto res = sshStore->buildPathsWithResults({
+            auto res = aio.blockOn(sshStore->buildPathsWithResults({
                 DerivedPath::Built {
                     .drvPath = makeConstantStorePathRef(*drvPath),
                     .outputs = OutputsSpec::All {},
                 }
-            });
+            }));
             // One path to build should produce exactly one build result
             assert(res.size() == 1);
             optResult = std::move(res[0]);

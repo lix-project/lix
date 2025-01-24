@@ -1,6 +1,7 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/build-result.hh"
+#include "lix/libutil/async.hh"
 #include <iostream>
 
 using namespace nix;
@@ -13,6 +14,7 @@ int main (int argc, char **argv)
             return 1;
         }
 
+        AsyncIoRoot aio;
         std::string drvPath = argv[1];
 
         initLibStore();
@@ -28,7 +30,7 @@ int main (int argc, char **argv)
             }
         };
 
-        const auto results = store->buildPathsWithResults(paths, bmNormal, store);
+        const auto results = aio.blockOn(store->buildPathsWithResults(paths, bmNormal, store));
 
         for (const auto & result : results) {
             for (const auto & [outputName, realisation] : result.builtOutputs) {

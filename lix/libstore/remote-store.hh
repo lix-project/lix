@@ -112,17 +112,22 @@ public:
 
     std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput &) override;
 
-    void buildPaths(const std::vector<DerivedPath> & paths, BuildMode buildMode, std::shared_ptr<Store> evalStore) override;
+    kj ::Promise<Result<void>> buildPaths(
+        const std::vector<DerivedPath> & paths,
+        BuildMode buildMode,
+        std::shared_ptr<Store> evalStore
+    ) override;
 
-    std::vector<KeyedBuildResult> buildPathsWithResults(
+    kj::Promise<Result<std::vector<KeyedBuildResult>>> buildPathsWithResults(
         const std::vector<DerivedPath> & paths,
         BuildMode buildMode,
         std::shared_ptr<Store> evalStore) override;
 
-    BuildResult buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
-        BuildMode buildMode) override;
+    kj ::Promise<Result<BuildResult>> buildDerivation(
+        const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode
+    ) override;
 
-    void ensurePath(const StorePath & path) override;
+    kj::Promise<Result<void>> ensurePath(const StorePath & path) override;
 
     void addTempRoot(const StorePath & path) override;
 
@@ -142,8 +147,8 @@ public:
      * We make this fail for now so we can add implement this properly later
      * without it being a breaking change.
      */
-    void repairPath(const StorePath & path) override
-    { unsupported("repairPath"); }
+    kj::Promise<Result<void>> repairPath(const StorePath & path) override
+    try { unsupported("repairPath"); } catch (...) { return {result::current_exception()}; }
 
     void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 

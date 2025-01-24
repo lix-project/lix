@@ -550,7 +550,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         if (mode == bmRepair && !trusted)
             throw Error("repairing is not allowed because you are not in 'trusted-users'");
         logger->startWork();
-        store->buildPaths(drvs, mode);
+        aio.blockOn(store->buildPaths(drvs, mode));
         logger->stopWork();
         to << 1;
         break;
@@ -569,7 +569,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             throw Error("repairing is not allowed because you are not in 'trusted-users'");
 
         logger->startWork();
-        auto results = store->buildPathsWithResults(drvs, mode);
+        auto results = aio.blockOn(store->buildPathsWithResults(drvs, mode));
         logger->stopWork();
 
         to << WorkerProto::write(*store, wconn, results);
@@ -648,7 +648,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             drvPath = writeDerivation(*store, Derivation { drv2 });
         }
 
-        auto res = store->buildDerivation(drvPath, drv, buildMode);
+        auto res = aio.blockOn(store->buildDerivation(drvPath, drv, buildMode));
         logger->stopWork();
         to << WorkerProto::write(*store, wconn, res);
         break;
@@ -657,7 +657,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::EnsurePath: {
         auto path = store->parseStorePath(readString(from));
         logger->startWork();
-        store->ensurePath(path);
+        aio.blockOn(store->ensurePath(path));
         logger->stopWork();
         to << 1;
         break;

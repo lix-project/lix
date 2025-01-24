@@ -110,12 +110,12 @@ struct CmdBundle : InstallableCommand
 
         auto outPath = evalState->coerceToStorePath(attr2->pos, *attr2->value, context2, "");
 
-        store->buildPaths({
+        aio().blockOn(store->buildPaths({
             DerivedPath::Built {
                 .drvPath = makeConstantStorePathRef(drvPath),
                 .outputs = OutputsSpec::All { },
             },
-        });
+        }));
 
         if (!outLink) {
             auto * attr = vRes->attrs->get(evaluator->s.name);

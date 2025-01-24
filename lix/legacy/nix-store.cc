@@ -1,6 +1,7 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/derivations.hh"
 #include "dotgraph.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/exit.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/build-result.hh"
@@ -66,7 +67,7 @@ try {
     auto store2 = std::dynamic_pointer_cast<LocalFSStore>(store);
 
     if (path.path.isDerivation()) {
-        if (build) store->buildPaths({path.toDerivedPath()});
+        if (build) TRY_AWAIT(store->buildPaths({path.toDerivedPath()}));
         auto outputPaths = store->queryDerivationOutputMap(path.path);
         Derivation drv = store->derivationFromPath(path.path);
         rootNr++;
@@ -100,7 +101,7 @@ try {
     }
 
     else {
-        if (build) store->ensurePath(path.path);
+        if (build) TRY_AWAIT(store->ensurePath(path.path));
         else if (!store->isValidPath(path.path))
             throw Error("path '%s' does not exist and cannot be created", store->printStorePath(path.path));
         if (store2) {
@@ -159,7 +160,7 @@ static void opRealise(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     if (dryRun) return;
 
     /* Build all paths at the same time to exploit parallelism. */
-    store->buildPaths(toDerivedPaths(paths), buildMode);
+    aio.blockOn(store->buildPaths(toDerivedPaths(paths), buildMode));
 
     if (!ignoreUnknown)
         for (auto & i : paths) {
@@ -790,7 +791,7 @@ static void opRepairPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         throw UsageError("no flags expected");
 
     for (auto & i : opArgs)
-        store->repairPath(store->followLinksToStorePath(i));
+        aio.blockOn(store->repairPath(store->followLinksToStorePath(i)));
 }
 
 /* Optimise the disk space usage of the Nix store by hard-linking
@@ -932,7 +933,7 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
                 try {
                     MonitorFdHup monitor(in.fd);
-                    store->buildPaths(toDerivedPaths(paths));
+                    aio.blockOn(store->buildPaths(toDerivedPaths(paths)));
                     out << 0;
                 } catch (Error & e) {
                     assert(e.info().status);
@@ -952,7 +953,7 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                 getBuildSettings();
 
                 MonitorFdHup monitor(in.fd);
-                auto status = store->buildDerivation(drvPath, drv);
+                auto status = aio.blockOn(store->buildDerivation(drvPath, drv));
 
                 out << ServeProto::write(*store, wconn, status);
                 break;

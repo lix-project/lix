@@ -252,7 +252,8 @@ static std::pair<TrustedFlag, std::string> authPeer(const PeerInfo & peer)
  * the client. Otherwise, decide based on the authentication settings
  * and user credentials (from the unix domain socket).
  */
-static void daemonLoop(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt)
+static void daemonLoop(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt);
+static void daemonLoopImpl(std::optional<TrustedFlag> forceTrustClientOpt)
 {
     if (chdir("/") == -1)
         throw SysError("cannot change current directory");
@@ -324,6 +325,8 @@ static void daemonLoop(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustC
                 if (setsid() == -1)
                     throw SysError("creating a new session");
 
+                AsyncIoRoot aio;
+
                 // Restart the signal handler thread since it met its untimely
                 // demise at fork time.
                 startSignalHandlerThread(DoSignalSave::DontSaveBecauseAdvancedProcess);
@@ -354,6 +357,20 @@ static void daemonLoop(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustC
             logError(ei);
         }
     }
+}
+static void daemonLoop(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt)
+{
+    // we can't reuse the external async io root since it'd be shared with the
+    // children we will create, potentially trashing state, but the *previous*
+    // root is still alive as far as kj is concerned. we cannot recreate it in
+    // the child easily because darwin closes kqueues after fork, and since kj
+    // asserts after the kqueue close returns EBADF we'll die. the least awful
+    // way around this is to run the daemon loop in its own thread, without an
+    // async io root, and thus not have any shared state after we have forked.
+    std::async(std::launch::async, [&] {
+        ReceiveInterrupts ri;
+        return daemonLoopImpl(forceTrustClientOpt);
+    }).get();
 }
 
 /**

@@ -790,7 +790,9 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
     };
     printMissing(globals.state->store, paths);
     if (globals.dryRun) return;
-    globals.state->store->buildPaths(paths, globals.state->repair ? bmRepair : bmNormal);
+    globals.aio.blockOn(
+        globals.state->store->buildPaths(paths, globals.state->repair ? bmRepair : bmNormal)
+    );
 
     debug("switching to new user environment");
     Path generation = createGeneration(

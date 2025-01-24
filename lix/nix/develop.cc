@@ -6,6 +6,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/outputs-spec.hh"
 #include "lix/libstore/derivations.hh"
+#include "lix/libutil/async.hh"
 #include "run.hh"
 #include "lix/libstore/temporary-dir.hh"
 
@@ -258,12 +259,12 @@ try {
     auto shellDrvPath = writeDerivation(*evalStore, drv);
 
     /* Build the derivation. */
-    store->buildPaths(
+    TRY_AWAIT(store->buildPaths(
         { DerivedPath::Built {
             .drvPath = makeConstantStorePathRef(shellDrvPath),
             .outputs = OutputsSpec::All { },
         }},
-        bmNormal, evalStore);
+        bmNormal, evalStore));
 
     for (auto & [_0, optPath] : evalStore->queryPartialDerivationOutputMap(shellDrvPath)) {
         assert(optPath);

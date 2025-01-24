@@ -8,6 +8,7 @@
 #include "lix/libstore/derived-path.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libstore/content-address.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/lru-cache.hh"
 #include "lix/libutil/sync.hh"
@@ -17,6 +18,7 @@
 #include "lix/libutil/repair-flag.hh"
 #include "lix/libutil/source-path.hh"
 
+#include <kj/async.h>
 #include <nlohmann/json_fwd.hpp>
 #include <atomic>
 #include <limits>
@@ -592,7 +594,7 @@ public:
      * recursively building any sub-derivations. For inputs that are
      * not derivations, substitute them.
      */
-    virtual void buildPaths(
+    virtual kj::Promise<Result<void>> buildPaths(
         const std::vector<DerivedPath> & paths,
         BuildMode buildMode = bmNormal,
         std::shared_ptr<Store> evalStore = nullptr);
@@ -603,7 +605,7 @@ public:
      * case of a build/substitution error, this function won't throw an
      * exception, but return a BuildResult containing an error message.
      */
-    virtual std::vector<KeyedBuildResult> buildPathsWithResults(
+    virtual kj::Promise<Result<std::vector<KeyedBuildResult>>> buildPathsWithResults(
         const std::vector<DerivedPath> & paths,
         BuildMode buildMode = bmNormal,
         std::shared_ptr<Store> evalStore = nullptr);
@@ -643,15 +645,18 @@ public:
      *     up with multiple different versions of dependencies without
      *     explicitly choosing to allow it).
      */
-    virtual BuildResult buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
-        BuildMode buildMode = bmNormal);
+    virtual kj::Promise<Result<BuildResult>> buildDerivation(
+        const StorePath & drvPath,
+        const BasicDerivation & drv,
+        BuildMode buildMode = bmNormal
+    );
 
     /**
      * Ensure that a path is valid.  If it is not currently valid, it
      * may be made valid by running a substitute (if defined for the
      * path).
      */
-    virtual void ensurePath(const StorePath & path);
+    virtual kj::Promise<Result<void>> ensurePath(const StorePath & path);
 
     /**
      * Add a store path as a temporary root of the garbage collector.
@@ -712,7 +717,7 @@ public:
      * Repair the contents of the given path by redownloading it using
      * a substituter (if available).
      */
-    virtual void repairPath(const StorePath & path);
+    virtual kj::Promise<Result<void>> repairPath(const StorePath & path);
 
     /**
      * Add signatures to the specified store path. The signatures are

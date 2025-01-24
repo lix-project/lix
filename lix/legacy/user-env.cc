@@ -28,9 +28,9 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
             drvsToBuild.push_back({*drvPath});
 
     debug("building user environment dependencies");
-    state.ctx.store->buildPaths(
+    state.aio.blockOn(state.ctx.store->buildPaths(
         toDerivedPaths(drvsToBuild),
-        state.ctx.repair ? bmRepair : bmNormal);
+        state.ctx.repair ? bmRepair : bmNormal));
 
     /* Construct the whole top level derivation. */
     StorePathSet references;
@@ -67,7 +67,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
             /* This is only necessary when installing store paths, e.g.,
                `nix-env -i /nix/store/abcd...-foo'. */
             state.ctx.store->addTempRoot(*j.second);
-            state.ctx.store->ensurePath(*j.second);
+            state.aio.blockOn(state.ctx.store->ensurePath(*j.second));
 
             references.insert(*j.second);
         }
@@ -125,9 +125,9 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
     debug("building user environment");
     std::vector<StorePathWithOutputs> topLevelDrvs;
     topLevelDrvs.push_back({topLevelDrv});
-    state.ctx.store->buildPaths(
+    state.aio.blockOn(state.ctx.store->buildPaths(
         toDerivedPaths(topLevelDrvs),
-        state.ctx.repair ? bmRepair : bmNormal);
+        state.ctx.repair ? bmRepair : bmNormal));
 
     /* Switch the current user environment to the output path. */
     auto store2 = state.ctx.store.dynamic_pointer_cast<LocalFSStore>();

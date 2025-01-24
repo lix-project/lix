@@ -1,6 +1,7 @@
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libfetchers/builtin-fetchers.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/source-path.hh"
 #include "lix/libfetchers/fetch-to-store.hh"
 
@@ -134,7 +135,7 @@ std::pair<Tree, Input> Input::fetch(ref<Store> store) const
         try {
             auto storePath = computeStorePath(*store);
 
-            store->ensurePath(storePath);
+            RUN_ASYNC_IN_NEW_THREAD(store->ensurePath(storePath));
 
             debug("using substituted/cached input '%s' in '%s'",
                 to_string(), store->printStorePath(storePath));

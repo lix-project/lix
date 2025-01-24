@@ -10,6 +10,7 @@
 #include "lix/libexpr/json-to-value.hh"
 #include "lix/libstore/names.hh"
 #include "lix/libstore/path-references.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libexpr/value-to-json.hh"
@@ -82,7 +83,7 @@ try {
     /* Build/substitute the context. */
     std::vector<DerivedPath> buildReqs;
     for (auto & d : drvs) buildReqs.emplace_back(DerivedPath { d });
-    buildStore->buildPaths(buildReqs, bmNormal, store);
+    TRY_AWAIT(buildStore->buildPaths(buildReqs, bmNormal, store));
 
     StorePathSet outputsToCopyAndAllow;
 
@@ -1184,7 +1185,7 @@ static void prim_storePath(EvalState & state, const PosIdx pos, Value * * args, 
             .atPos(pos).debugThrow();
     auto path2 = state.ctx.store->toStorePath(path.abs()).first;
     if (!settings.readOnlyMode)
-        state.ctx.store->ensurePath(path2);
+        state.aio.blockOn(state.ctx.store->ensurePath(path2));
     context.insert(NixStringContextElem::Opaque { .path = path2 });
     v.mkString(path.abs(), context);
 }

@@ -1,5 +1,10 @@
 #include "lix/config.h"
 
+// perl defines _ as a function-like macro for some reason.
+// boost outcome uses _ as a name an internal storage type.
+// can i make it any more obvious?
+#include "lix/libutil/result.hh"
+
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"

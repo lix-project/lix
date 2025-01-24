@@ -94,7 +94,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
 
         {
             Activity act(*logger, lvlInfo, actUnknown, fmt("downloading '%s'...", store->printStorePath(storePath)));
-            store->ensurePath(storePath);
+            aio().blockOn(store->ensurePath(storePath));
         }
 
         // {profileDir}/bin/nix-env is a symlink to {profileDir}/bin/nix, which *then*

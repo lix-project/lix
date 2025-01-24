@@ -20,7 +20,7 @@ struct CmdStoreRepair : StorePathsCommand
     void run(ref<Store> store, StorePaths && storePaths) override
     {
         for (auto & path : storePaths)
-            store->repairPath(path);
+            aio().blockOn(store->repairPath(path));
     }
 };
 

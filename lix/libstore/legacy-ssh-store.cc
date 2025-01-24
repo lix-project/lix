@@ -294,9 +294,10 @@ private:
 
 public:
 
-    BuildResult buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
-        BuildMode buildMode) override
-    {
+    kj::Promise<Result<BuildResult>> buildDerivation(
+        const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode
+    ) override
+    try {
         auto conn(connections->get());
 
         conn->to
@@ -308,11 +309,17 @@ public:
 
         conn->to.flush();
 
-        return ServeProto::Serialise<BuildResult>::read(*this, *conn);
+        return {ServeProto::Serialise<BuildResult>::read(*this, *conn)};
+    } catch (...) {
+        return {result::current_exception()};
     }
 
-    void buildPaths(const std::vector<DerivedPath> & drvPaths, BuildMode buildMode, std::shared_ptr<Store> evalStore) override
-    {
+    kj ::Promise<Result<void>> buildPaths(
+        const std::vector<DerivedPath> & drvPaths,
+        BuildMode buildMode,
+        std::shared_ptr<Store> evalStore
+    ) override
+    try {
         if (evalStore && evalStore.get() != this)
             throw Error("building on an SSH store is incompatible with '--eval-store'");
 
@@ -347,10 +354,14 @@ public:
             conn->from >> result.errorMsg;
             throw Error(result.status, result.errorMsg);
         }
+
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    void ensurePath(const StorePath & path) override
-    { unsupported("ensurePath"); }
+    kj::Promise<Result<void>> ensurePath(const StorePath & path) override
+    try { unsupported("ensurePath"); } catch (...) { return {result::current_exception()}; }
 
     virtual ref<FSAccessor> getFSAccessor() override
     { unsupported("getFSAccessor"); }
@@ -363,8 +374,8 @@ public:
      * We make this fail for now so we can add implement this properly later
      * without it being a breaking change.
      */
-    void repairPath(const StorePath & path) override
-    { unsupported("repairPath"); }
+    kj::Promise<Result<void>> repairPath(const StorePath & path) override
+    try { unsupported("repairPath"); } catch (...) { return {result::current_exception()}; }
 
     void computeFSClosure(const StorePathSet & paths,
         StorePathSet & out, bool flipDirection = false,

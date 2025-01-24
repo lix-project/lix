@@ -1,4 +1,6 @@
+#include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libstore/path-with-outputs.hh"
@@ -604,8 +606,10 @@ void RemoteStore::copyDrvsFromEvalStore(
     }
 }
 
-void RemoteStore::buildPaths(const std::vector<DerivedPath> & drvPaths, BuildMode buildMode, std::shared_ptr<Store> evalStore)
-{
+kj ::Promise<Result<void>> RemoteStore::buildPaths(
+    const std::vector<DerivedPath> & drvPaths, BuildMode buildMode, std::shared_ptr<Store> evalStore
+)
+try {
     copyDrvsFromEvalStore(drvPaths, evalStore);
 
     auto conn(getConnection());
@@ -614,13 +618,16 @@ void RemoteStore::buildPaths(const std::vector<DerivedPath> & drvPaths, BuildMod
     conn->to << buildMode;
     conn.processStderr();
     readInt(conn->from);
+    return {result::success()};
+} catch (...) {
+    return {result::current_exception()};
 }
 
-std::vector<KeyedBuildResult> RemoteStore::buildPathsWithResults(
+kj::Promise<Result<std::vector<KeyedBuildResult>>> RemoteStore::buildPathsWithResults(
     const std::vector<DerivedPath> & paths,
     BuildMode buildMode,
     std::shared_ptr<Store> evalStore)
-{
+try {
     copyDrvsFromEvalStore(paths, evalStore);
 
     std::optional<ConnectionHandle> conn_(getConnection());
@@ -631,7 +638,7 @@ std::vector<KeyedBuildResult> RemoteStore::buildPathsWithResults(
         conn->to << WorkerProto::write(*this, *conn, paths);
         conn->to << buildMode;
         conn.processStderr();
-        return WorkerProto::Serialise<std::vector<KeyedBuildResult>>::read(*this, *conn);
+        co_return WorkerProto::Serialise<std::vector<KeyedBuildResult>>::read(*this, *conn);
     } else {
         REMOVE_AFTER_DROPPING_PROTO_MINOR(33);
         // Avoid deadlock.
@@ -639,7 +646,7 @@ std::vector<KeyedBuildResult> RemoteStore::buildPathsWithResults(
 
         // Note: this throws an exception if a build/substitution
         // fails, but meh.
-        buildPaths(paths, buildMode, evalStore);
+        TRY_AWAIT(buildPaths(paths, buildMode, evalStore));
 
         std::vector<KeyedBuildResult> results;
 
@@ -696,29 +703,36 @@ std::vector<KeyedBuildResult> RemoteStore::buildPathsWithResults(
                 path.raw());
         }
 
-        return results;
+        co_return results;
     }
+} catch (...) {
+    co_return result::current_exception();
 }
 
-
-BuildResult RemoteStore::buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
-    BuildMode buildMode)
-{
+kj ::Promise<Result<BuildResult>> RemoteStore::buildDerivation(
+    const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode
+)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::BuildDerivation << printStorePath(drvPath);
     writeDerivation(conn->to, *this, drv);
     conn->to << buildMode;
     conn.processStderr();
-    return WorkerProto::Serialise<BuildResult>::read(*this, *conn);
+    return {WorkerProto::Serialise<BuildResult>::read(*this, *conn)};
+} catch (...) {
+    return {result::current_exception()};
 }
 
 
-void RemoteStore::ensurePath(const StorePath & path)
-{
+kj::Promise<Result<void>> RemoteStore::ensurePath(const StorePath & path)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::EnsurePath << printStorePath(path);
     conn.processStderr();
     readInt(conn->from);
+    return {result::success()};
+} catch (...) {
+    return {result::current_exception()};
 }
 
 

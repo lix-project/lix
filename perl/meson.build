@@ -66,5 +66,6 @@ endif
 
 libstore = dependency('lixstore', 'lix-store', required : true)
 libutil = dependency('lixutil', 'lix-util', required : true)
+kj = dependency('kj-async', required : true, include_type : 'system')
 
 subdir('lib/Nix')

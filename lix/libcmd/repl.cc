@@ -756,12 +756,12 @@ ProcessLineResult NixRepl::processLine(std::string line)
                 logger->pause();
             });
 
-            evaluator.store->buildPaths({
+            state.aio.blockOn(evaluator.store->buildPaths({
                 DerivedPath::Built {
                     .drvPath = makeConstantStorePathRef(drvPath),
                     .outputs = OutputsSpec::All { },
                 },
-            });
+            }));
             auto drv = evaluator.store->readDerivation(drvPath);
             logger->cout("\nThis derivation produced the following outputs:");
             for (auto & [outputName, outputPath] : evaluator.store->queryDerivationOutputMap(drvPath)) {

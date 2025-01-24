@@ -1092,11 +1092,14 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         return LocalFSStore::narFromPath(path);
     }
 
-    void ensurePath(const StorePath & path) override
-    {
+    kj::Promise<Result<void>> ensurePath(const StorePath & path) override
+    try {
         if (!goal.isAllowed(path))
             throw InvalidPath("cannot substitute unknown path '%s' in recursive Nix", printStorePath(path));
         /* Nothing to be done; 'path' must already be valid. */
+        return {result::success()};
+    } catch (...) {
+        return {result::current_exception()};
     }
 
     void registerDrvOutput(const Realisation & info) override
@@ -1113,18 +1116,25 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         return next->queryRealisation(id);
     }
 
-    void buildPaths(const std::vector<DerivedPath> & paths, BuildMode buildMode, std::shared_ptr<Store> evalStore) override
-    {
-        for (auto & result : buildPathsWithResults(paths, buildMode, evalStore))
+    kj::Promise<Result<void>> buildPaths(
+        const std::vector<DerivedPath> & paths,
+        BuildMode buildMode,
+        std::shared_ptr<Store> evalStore
+    ) override
+    try {
+        for (auto & result : TRY_AWAIT(buildPathsWithResults(paths, buildMode, evalStore)))
             if (!result.success())
                 result.rethrow();
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    std::vector<KeyedBuildResult> buildPathsWithResults(
+    kj::Promise<Result<std::vector<KeyedBuildResult>>> buildPathsWithResults(
         const std::vector<DerivedPath> & paths,
         BuildMode buildMode = bmNormal,
         std::shared_ptr<Store> evalStore = nullptr) override
-    {
+    try {
         assert(!evalStore);
 
         if (buildMode != bmNormal) throw Error("unsupported build mode");
@@ -1137,7 +1147,7 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
                 throw InvalidPath("cannot build '%s' in recursive Nix because path is unknown", req.to_string(*next));
         }
 
-        auto results = next->buildPathsWithResults(paths, buildMode);
+        auto results = TRY_AWAIT(next->buildPathsWithResults(paths, buildMode));
 
         for (auto & result : results) {
             for (auto & [outputName, output] : result.builtOutputs) {
@@ -1153,12 +1163,15 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         for (auto & real : Realisation::closure(*next, newRealisations))
             goal.addedDrvOutputs.insert(real.id);
 
-        return results;
+        co_return results;
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    BuildResult buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
-        BuildMode buildMode = bmNormal) override
-    { unsupported("buildDerivation"); }
+    kj::Promise<Result<BuildResult>> buildDerivation(
+        const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode = bmNormal
+    ) override
+    try { unsupported("buildDerivation"); } catch (...) { return {result::current_exception()}; }
 
     void addTempRoot(const StorePath & path) override
     { }
