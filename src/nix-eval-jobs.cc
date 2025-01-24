@@ -2,6 +2,7 @@
 
 #include <lix/libexpr/eval-settings.hh>
 #include <lix/libmain/shared.hh>
+#include <lix/libutil/async.hh>
 #include <lix/libutil/sync.hh>
 #include <lix/libexpr/eval.hh>
 #include <lix/libutil/signals.hh>
@@ -44,17 +45,16 @@
 using namespace nix;
 using namespace nlohmann;
 
-static MyArgs myArgs;
-
-using Processor = std::function<void(ref<nix::eval_cache::CachingEvaluator> state, Bindings &autoArgs,
-                           AutoCloseFD &to, AutoCloseFD &from, MyArgs &args)>;
+using Processor = std::function<void(
+    ref<nix::eval_cache::CachingEvaluator> state, Bindings &autoArgs,
+    AutoCloseFD &to, AutoCloseFD &from, MyArgs &args, AsyncIoRoot &aio)>;
 
 /* Auto-cleanup of fork's process and fds. */
 struct Proc {
     AutoCloseFD to, from;
     Pid pid;
 
-    Proc(const Processor &proc) {
+    Proc(MyArgs &myArgs, const Processor &proc) {
         Pipe toPipe, fromPipe;
         toPipe.create();
         fromPipe.create();
@@ -65,13 +65,15 @@ struct Proc {
                  std::make_shared<AutoCloseFD>(std::move(toPipe.readSide))}]() {
                 debug("created worker process %d", getpid());
                 try {
+                    AsyncIoRoot aio;
                     auto evalStore = myArgs.evalStoreUrl
                                          ? openStore(*myArgs.evalStoreUrl)
                                          : openStore();
-                    auto evaluator = nix::make_ref<nix::eval_cache::CachingEvaluator>(myArgs.searchPath,
-                                                             evalStore);
+                    auto evaluator =
+                        nix::make_ref<nix::eval_cache::CachingEvaluator>(
+                            aio, myArgs.searchPath, evalStore);
                     Bindings &autoArgs = *myArgs.getAutoArgs(*evaluator);
-                    proc(evaluator, autoArgs, *to, *from, myArgs);
+                    proc(evaluator, autoArgs, *to, *from, myArgs, aio);
                 } catch (Error &e) {
                     nlohmann::json err;
                     auto msg = e.msg();
@@ -120,7 +122,8 @@ struct Thread {
         if ((s = pthread_attr_setstacksize(&attr, 64 * 1024 * 1024)) != 0) {
             throw SysError(s, "calling pthread_attr_setstacksize");
         }
-        if ((s = pthread_create(&thread, &attr, Thread::init, func.release())) != 0) {
+        if ((s = pthread_create(&thread, &attr, Thread::init,
+                                func.release())) != 0) {
             throw SysError(s, "calling pthread_launch");
         }
         if ((s = pthread_attr_destroy(&attr)) != 0) {
@@ -135,7 +138,8 @@ struct Thread {
             throw SysError(s, "calling pthread_join");
         }
     }
-private:
+
+  private:
     static void *init(void *ptr) {
         std::unique_ptr<std::function<void(void)>> func;
         func.reset(static_cast<std::function<void(void)> *>(ptr));
@@ -221,14 +225,15 @@ std::string joinAttrPath(json &attrPath) {
     return joined;
 }
 
-void collector(Sync<State> &state_, std::condition_variable &wakeup) {
+void collector(MyArgs &myArgs, Sync<State> &state_,
+               std::condition_variable &wakeup) {
     try {
         std::optional<std::unique_ptr<Proc>> proc_;
         std::optional<std::unique_ptr<LineReader>> fromReader_;
 
         while (true) {
             if (!proc_.has_value()) {
-                proc_ = std::make_unique<Proc>(worker);
+                proc_ = std::make_unique<Proc>(myArgs, worker);
                 fromReader_ =
                     std::make_unique<LineReader>(proc_.value()->from.release());
             }
@@ -344,6 +349,9 @@ int main(int argc, char **argv) {
         initNix();
         initLibExpr();
 
+        nix::AsyncIoRoot aio;
+        MyArgs myArgs(aio);
+
         myArgs.parseArgs(argv, argc);
 
         /* When building a flake, use pure evaluation (no access to
@@ -373,7 +381,8 @@ int main(int argc, char **argv) {
         std::vector<Thread> threads;
         std::condition_variable wakeup;
         for (size_t i = 0; i < myArgs.nrWorkers; i++) {
-            threads.emplace_back(std::bind(collector, std::ref(state_), std::ref(wakeup)));
+            threads.emplace_back(std::bind(collector, std::ref(myArgs),
+                                           std::ref(state_), std::ref(wakeup)));
         }
 
         for (auto &thread : threads)

@@ -15,5 +15,6 @@ nix_cmd_dep = dependency('lix-cmd', required: true)
 threads_dep = dependency('threads', required: true)
 nlohmann_json_dep = dependency('nlohmann_json', required: true)
 boost_dep = dependency('boost', required: true)
+kj_async_dep = dependency('kj-async', required: true)
 
 subdir('src')
