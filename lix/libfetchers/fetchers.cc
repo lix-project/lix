@@ -19,8 +19,8 @@ void initLibFetchers()
 {
     registerInputScheme(makeIndirectInputScheme());
     registerInputScheme(makePathInputScheme());
-    registerInputScheme(makeFileInputScheme());
     registerInputScheme(makeTarballInputScheme());
+    registerInputScheme(makeFileInputScheme());
     registerInputScheme(makeGitInputScheme());
     registerInputScheme(makeMercurialInputScheme());
     registerInputScheme(makeGitHubInputScheme());
