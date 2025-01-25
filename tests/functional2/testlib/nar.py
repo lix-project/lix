@@ -7,14 +7,14 @@ See "The Purely Functional Software Deployment Model", fig. 5.2 [1].
 from abc import ABCMeta, abstractmethod
 import dataclasses
 import struct
-from pathlib import Path
 from typing import Protocol
-import unicodedata
 
 
 class Writable(Protocol):
     """Realistically could just be IOBase but this is more constrained"""
-    def write(self, data: bytes, /) -> int: ...
+
+    def write(self, data: bytes, /) -> int:
+        ...
 
 
 @dataclasses.dataclass
@@ -68,7 +68,7 @@ class Regular(NarItem):
 
 
 @dataclasses.dataclass
-class Directory(NarItem):
+class DirectoryUnordered(NarItem):
     entries: list[tuple[bytes, NarItem]]
     """Entries in the directory, not required to be in order because this nar is evil"""
     type_ = b'directory'
@@ -89,6 +89,15 @@ class Directory(NarItem):
     def serialize_type(self, out: NarListener):
         for (name, entry) in self.entries:
             self.entry(out, name, entry)
+
+
+@dataclasses.dataclass
+class Directory(NarItem):
+    entries: dict[bytes, NarItem]
+
+    def serialize_type(self, out: NarListener):
+        for name, item in sorted(self.entries.items(), key=lambda v: v[0]):
+            DirectoryUnordered.entry(out, name, item)
 
 
 @dataclasses.dataclass

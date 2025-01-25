@@ -20,6 +20,8 @@ class CommandResult:
 
     def ok(self):
         if self.rc != 0:
+            print('stdout:', self.stdout_s)
+            print('stderr:', self.stderr_s)
             raise subprocess.CalledProcessError(returncode=self.rc,
                                                 cmd=self.cmd,
                                                 stderr=self.stderr,
@@ -28,6 +30,8 @@ class CommandResult:
 
     def expect(self, rc: int):
         if self.rc != rc:
+            print('stdout:', self.stdout_s)
+            print('stderr:', self.stderr_s)
             raise subprocess.CalledProcessError(returncode=self.rc,
                                                 cmd=self.cmd,
                                                 stderr=self.stderr,

@@ -1,5 +1,7 @@
 import pytest
 import os
+import unicodedata
+from pathlib import Path
 from ..testlib.nar import *
 from ..testlib.fixtures import Nix
 from io import BytesIO
@@ -12,59 +14,59 @@ meow_nfd = meow_nfd_.encode('utf-8')
 assert meow_nfc != meow_nfd
 
 EVIL_NARS: list[tuple[str, NarItem]] = [
-    ('valid-dir-1', Directory([
-        (b'a-nested', Directory([
+    ('valid-dir-1', DirectoryUnordered([
+        (b'a-nested', DirectoryUnordered([
             (b'loopy', Symlink(b'../abc-nested'))
         ])),
         (b'b-file', Regular(False, b'meow kbity')),
         (b'c-exe', Regular(True, b'#!/usr/bin/env cat\nmeow kbity')),
     ])),
-    ('invalid-slashes-1', Directory([
+    ('invalid-slashes-1', DirectoryUnordered([
         (b'meow', Symlink(b'meowmeow')),
         (b'meow/nya', Regular(False, b'eepy')),
     ])),
-    ('invalid-dot-1', Directory([
+    ('invalid-dot-1', DirectoryUnordered([
         (b'.', Symlink(b'meowmeow')),
     ])),
-    ('invalid-dot-2', Directory([
+    ('invalid-dot-2', DirectoryUnordered([
         (b'..', Symlink(b'meowmeow')),
     ])),
-    ('invalid-nul-1', Directory([
+    ('invalid-nul-1', DirectoryUnordered([
         (b'meow\0nya', Symlink(b'meowmeow')),
     ])),
-    ('invalid-misorder-1', Directory([
+    ('invalid-misorder-1', DirectoryUnordered([
         (b'zzz', Regular(False, b'eepy')),
         (b'kbity', Regular(False, b'meow')),
     ])),
-    ('invalid-dupe-1', Directory([
+    ('invalid-dupe-1', DirectoryUnordered([
         (b'zzz', Regular(False, b'eepy')),
         (b'zzz', Regular(False, b'meow')),
     ])),
-    ('invalid-dupe-2', Directory([
-        (b'zzz', Directory([
+    ('invalid-dupe-2', DirectoryUnordered([
+        (b'zzz', DirectoryUnordered([
             (b'meow', Regular(False, b'kbity'))
         ])),
         (b'zzz', Regular(False, b'meow')),
     ])),
-    ('invalid-dupe-3', Directory([
-        (b'zzz', Directory([
+    ('invalid-dupe-3', DirectoryUnordered([
+        (b'zzz', DirectoryUnordered([
             (b'meow', Regular(False, b'kbity'))
         ])),
-        (b'zzz', Directory([
+        (b'zzz', DirectoryUnordered([
             (b'meow', Regular(False, b'kbityy'))
         ])),
     ])),
-    ('invalid-dupe-4', Directory([
+    ('invalid-dupe-4', DirectoryUnordered([
         (b'zzz', Symlink(b'../kbity')),
-        (b'zzz', Directory([
+        (b'zzz', DirectoryUnordered([
             (b'meow', Regular(False, b'kbityy'))
         ])),
     ])),
-    ('invalid-casehack-1', Directory([
+    ('invalid-casehack-1', DirectoryUnordered([
         (b'ZZZ~nix~case~hack~2', Regular(False, b'meow')),
         (b'zzz~nix~case~hack~1', Regular(False, b'eepy')),
     ])),
-    ('invalid-casehack-2', Directory([
+    ('invalid-casehack-2', DirectoryUnordered([
         (b'ZZZ~nix~case~hack~1', Regular(False, b'meow')),
         (b'zzz~nix~case~hack~1', Regular(False, b'eepy')),
     ])),
@@ -106,12 +108,12 @@ def test_unicode_evil_nar(nix: Nix, tmp_path: Path):
         # normalization is not applied to this system
         pytest.skip('filesystem does not use unicode normalization')
 
-    test_evil_nar(nix, 'invalid-unicode-normalization-1', Directory([
+    test_evil_nar(nix, 'invalid-unicode-normalization-1', DirectoryUnordered([
         # méow
         (meow_nfd, Regular(False, b'eepy')),
         (meow_nfc, Symlink(b'meowmeow')),
     ]))
-    test_evil_nar(nix, 'invalid-unicode-normalization-2', Directory([
+    test_evil_nar(nix, 'invalid-unicode-normalization-2', DirectoryUnordered([
         # méow
         (meow_nfd, Symlink(b'meowmeow')),
         (meow_nfc, Regular(False, b'eepy')),
