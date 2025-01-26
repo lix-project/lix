@@ -998,13 +998,6 @@ void RemoteStore::ConnectionHandle::withFramedSink(std::function<void(Sink & sin
     {
         if (stderrThread.joinable()) {
             stderrThread.join();
-            if (ex) {
-                try {
-                    std::rethrow_exception(ex);
-                } catch (...) {
-                    ignoreExceptionExceptInterrupt();
-                }
-            }
         }
     });
 
