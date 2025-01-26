@@ -26,6 +26,7 @@ rev1=$(hg log --cwd $repo -r tip --template '{node}')
 echo world > $repo/hello
 hg commit --cwd $repo -m 'Bla2'
 rev2=$(hg log --cwd $repo -r tip --template '{node}')
+hg --cwd $repo bookmark aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 # Fetch an unclean branch.
 echo unclean > $repo/hello
@@ -44,6 +45,10 @@ path=$(nix eval --impure --raw --expr "(builtins.fetchMercurial \"file://$repo\"
 # Fetch using an explicit revision hash.
 path2=$(nix eval --impure --raw --expr "(builtins.fetchMercurial { url = \"file://$repo\"; rev = \"$rev2\"; }).outPath")
 [[ $path = $path2 ]]
+
+out=$(nix eval --impure --raw --expr "builtins.fetchMercurial { url = \"file://$repo\"; rev = \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"; }" 2>&1) || status=$?
+[[ $status == 1 ]]
+[[ $out =~ 'hg failed with exit code' ]]
 
 # In pure eval mode, fetchMercurial with a revision should succeed.
 [[ $(nix eval --raw --expr "builtins.readFile (fetchMercurial { url = \"file://$repo\"; rev = \"$rev2\"; } + \"/hello\")") = world ]]
