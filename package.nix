@@ -10,6 +10,7 @@
   # anyway, but also allows easily overriding the patch logic.
   boehmgc-nix ? __forDefaults.boehmgc-nix,
   boehmgc,
+  buildPackages,
   nlohmann_json,
   build-release-notes ? __forDefaults.build-release-notes,
   boost,
@@ -178,6 +179,14 @@ let
     ./tests/unit
     (fileset.fileFilter (f: lib.strings.hasPrefix "nix-profile" f.name) ./scripts)
   ];
+
+  # python3.withPackages does not splice properly, see https://github.com/NixOS/nixpkgs/issues/305858
+  lixPythonForBuild = python3.pythonOnBuildForHost.withPackages (p: [
+    p.pytest
+    p.pytest-xdist
+    p.python-frontmatter
+    p.aiohttp
+  ]);
 in
 assert (lintInsteadOfBuild -> lix-clang-tidy != null);
 stdenv.mkDerivation (finalAttrs: {
@@ -247,12 +256,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   nativeBuildInputs =
     [
-      # python3.withPackages does not splice properly, see https://github.com/NixOS/nixpkgs/issues/305858
-      (python3.pythonOnBuildForHost.withPackages (p: [
-        p.pytest
-        p.pytest-xdist
-        p.python-frontmatter
-      ]))
+      lixPythonForBuild
       meson
       ninja
       cmake
@@ -328,7 +332,11 @@ stdenv.mkDerivation (finalAttrs: {
 
   propagatedBuildInputs = lib.optionals (!finalAttrs.dontBuild) maybePropagatedInputs;
 
-  disallowedReferences = [ boost ];
+  disallowedReferences = [
+    boost
+    buildPackages.python3
+    lixPythonForBuild
+  ];
 
   # Needed for Meson to find Boost.
   # https://github.com/NixOS/nixpkgs/issues/86131.
@@ -505,9 +513,10 @@ stdenv.mkDerivation (finalAttrs: {
             # wrapped python instead of build inputs for its python inputs
             p.pytest
             p.pytest-xdist
+            p.aiohttp
+            p.python-frontmatter
 
             p.yapf
-            p.python-frontmatter
             p.requests
             p.xdg-base-dirs
             p.packaging
