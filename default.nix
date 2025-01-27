@@ -24,6 +24,8 @@ stdenv.mkDerivation {
     ninja
     # nlohmann_json can be only discovered via cmake files
     cmake
+    # XXX: ew
+    nix.passthru.capnproto-lix
   ] ++ (lib.optional stdenv.cc.isClang [ pkgs.clang-tools ]);
 
   meta = {

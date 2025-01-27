@@ -49,8 +49,8 @@ static nix::Value *releaseExprTopLevelValue(nix::EvalState &state,
     nix::Value vTop;
 
     if (args.fromArgs) {
-        nix::Expr &e = state.ctx.parseExprFromString(
-            args.releaseExpr, nix::CanonPath::fromCwd());
+        nix::Expr &e = state.ctx.parseExprFromString(args.releaseExpr,
+                                                     nix::CanonPath::fromCwd());
         state.eval(e, vTop);
     } else {
         state.evalFile(nix::lookupFileArg(state.ctx, args.releaseExpr), vTop);
@@ -74,18 +74,19 @@ static std::string attrPathJoin(nlohmann::json input) {
                            });
 }
 
-void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator, nix::Bindings &autoArgs,
-            nix::AutoCloseFD &to, nix::AutoCloseFD &from, MyArgs &args) {
+void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
+            nix::Bindings &autoArgs, nix::AutoCloseFD &to,
+            nix::AutoCloseFD &from, MyArgs &args, nix::AsyncIoRoot &aio) {
 
     nix::Value *vRoot = [&]() {
-        auto state = evaluator->begin();
+        auto state = evaluator->begin(aio);
         if (args.flake) {
             auto [flakeRef, fragment, outputSpec] =
                 nix::parseFlakeRefWithFragmentAndExtendedOutputsSpec(
                     args.releaseExpr, nix::absPath("."));
             nix::InstallableFlake flake{
                 {}, evaluator, std::move(flakeRef), fragment, outputSpec,
-                {}, {},    args.lockFlags};
+                {}, {},        args.lockFlags};
 
             return flake.toValue(*state).first;
         } else {
@@ -94,7 +95,7 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator, nix::Bindings
     }();
 
     LineReader fromReader(from.release());
-    auto state = evaluator->begin();
+    auto state = evaluator->begin(aio);
 
     while (true) {
         /* Wait for the collector to send us a job name. */
@@ -160,8 +161,8 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator, nix::Bindings
 
                         if (name == "recurseForDerivations" &&
                             !args.forceRecurse) {
-                            auto attrv =
-                                v->attrs->get(evaluator->s.recurseForDerivations);
+                            auto attrv = v->attrs->get(
+                                evaluator->s.recurseForDerivations);
                             recurse = state->forceBool(
                                 *attrv->value, attrv->pos,
                                 "while evaluating recurseForDerivations");

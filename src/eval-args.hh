@@ -3,6 +3,7 @@
 #include <lix/libexpr/flake/flake.hh>
 #include <lix/libutil/args/root.hh>
 #include <lix/libcmd/common-eval-args.hh>
+#include <lix/libutil/async.hh>
 #include <stddef.h>
 #include <lix/libmain/common-args.hh>
 #include <lix/libexpr/flake/flakeref.hh>
@@ -13,6 +14,10 @@
 class MyArgs : virtual public nix::MixEvalArgs,
                virtual public nix::MixCommonArgs,
                virtual public nix::RootArgs {
+    // intentionally hidden in this subclass because it's mondo dangerous
+    // in n-e-j due to all the forking we do for worker process creation.
+    nix::AsyncIoRoot & aio_;
+    nix::AsyncIoRoot & aio() override { return aio_; }
   public:
     std::string releaseExpr;
     nix::Path gcRootsDir;
@@ -31,7 +36,8 @@ class MyArgs : virtual public nix::MixEvalArgs,
                                        .writeLockFile = false,
                                        .useRegistries = false,
                                        .allowUnlocked = false};
-    MyArgs();
+
+    MyArgs(nix::AsyncIoRoot & aio);
     MyArgs(const MyArgs&) = delete;
 
     void parseArgs(char** argv, int argc);

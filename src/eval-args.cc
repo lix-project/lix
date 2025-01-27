@@ -1,3 +1,4 @@
+#include <lix/libutil/async.hh>
 #include <stdio.h>
 #include <stdlib.h>
 #include <lix/libutil/args.hh>
@@ -11,7 +12,7 @@
 
 #include "eval-args.hh"
 
-MyArgs::MyArgs() : MixCommonArgs("nix-eval-jobs") {
+MyArgs::MyArgs(nix::AsyncIoRoot & aio) : MixCommonArgs("nix-eval-jobs"), aio_(aio) {
     addFlag({
         .longName = "help",
         .description = "show usage information",
