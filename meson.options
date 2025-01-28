@@ -60,6 +60,10 @@ option('internal-api-docs', type : 'feature', value : 'auto',
   description : 'whether to build internal API documentation (requires doxygen)',
 )
 
+option('nix-eval-jobs', type : 'feature', value : 'disabled',
+  description : 'whether to build nix-eval-jobs as part of the Lix build. For development purposes only: do not do packaging with this.',
+)
+
 # A relative path means it gets appended to prefix.
 option('profile-dir', type : 'string', value : 'etc/profile.d',
   description : 'the path to install shell profile files',

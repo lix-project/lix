@@ -122,6 +122,7 @@ if not get_option('enable-build')
   subdir_done()
 endif
 
+enable_nix_eval_jobs = get_option('nix-eval-jobs')
 enable_tests = get_option('enable-tests')
 
 tests_args = []
@@ -609,3 +610,11 @@ if enable_tests
 endif
 
 subdir('meson/clang-tidy')
+
+if enable_nix_eval_jobs.enabled()
+  subproject(
+    'nix-eval-jobs',
+    # Well, it was enabled! Surely it's wanted.
+    required : true,
+  )
+endif
