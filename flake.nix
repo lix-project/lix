@@ -197,6 +197,10 @@
 
           lix-clang-tidy = final.callPackage ./subprojects/lix-clang-tidy { };
 
+          nix-eval-jobs = final.callPackage ./subprojects/nix-eval-jobs {
+            srcDir = ./subprojects/nix-eval-jobs;
+          };
+
           # Export the patched version of boehmgc that Lix uses into the overlay
           # for consumers of this flake.
           boehmgc-nix = final.nix.passthru.boehmgc-nix;
@@ -245,6 +249,9 @@
 
         # Perl bindings for various platforms.
         perlBindings = forAllSystems (system: nixpkgsFor.${system}.native.nix.passthru.perl-bindings);
+
+        # nix-eval-jobs can be built against this Lix.
+        nix-eval-jobs = forAllSystems (system: nixpkgsFor.${system}.native.nix-eval-jobs);
 
         # Binary tarball for various platforms, containing a Nix store
         # with the closure of 'nix' package.
@@ -405,6 +412,7 @@
 
           binaryTarball = self.hydraJobs.binaryTarball.${system};
           perlBindings = self.hydraJobs.perlBindings.${system};
+          nix-eval-jobs = self.hydraJobs.nix-eval-jobs.${system};
           nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
           rl-next = self.hydraJobs.rl-next.${system}.user;
           # Will be empty attr set on i686-linux, and filtered out by forAvailableSystems.
@@ -422,7 +430,7 @@
           inherit (nixpkgsFor.${system}.native) nix;
           default = nix;
 
-          inherit (nixpkgsFor.${system}.native) lix-clang-tidy;
+          inherit (nixpkgsFor.${system}.native) lix-clang-tidy nix-eval-jobs;
         }
         // (
           lib.optionalAttrs (builtins.elem system linux64BitSystems) {

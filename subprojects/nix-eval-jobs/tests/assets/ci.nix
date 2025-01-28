@@ -1,5 +1,6 @@
-{ pkgs ? import (builtins.getFlake (toString ./.)).inputs.nixpkgs { }
-, system ? pkgs.system
+{
+  pkgs ? import (builtins.getFlake (toString ./.)).inputs.nixpkgs { },
+  system ? pkgs.system,
 }:
 
 {
