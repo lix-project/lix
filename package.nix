@@ -168,7 +168,8 @@ let
     ./meson.options
     ./meson
     ./scripts/meson.build
-    ./subprojects
+    (fileset.fileFilter (f: lib.strings.hasSuffix ".wrap" f.name) ./subprojects)
+    ./subprojects/aws_sdk
     # Required for meson to generate Cargo wraps
     ./Cargo.lock
   ]);
