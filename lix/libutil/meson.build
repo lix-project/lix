@@ -344,3 +344,4 @@ if is_static
 else
   liblixutil_mstatic = liblixutil
 endif
+meson.override_dependency('lix-util', liblixutil_mstatic)

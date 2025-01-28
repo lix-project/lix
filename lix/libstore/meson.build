@@ -378,6 +378,7 @@ if is_static
 else
   liblixstore_mstatic = liblixstore
 endif
+meson.override_dependency('lix-store', liblixstore_mstatic)
 
 # FIXME: not using the pkg-config module because it creates way too many deps
 # while meson migration is in progress, and we want to not include boost here

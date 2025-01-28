@@ -75,6 +75,7 @@ liblixcmd = declare_dependency(
   include_directories : include_directories('../..'),
   link_with : libcmd,
 )
+meson.override_dependency('lix-cmd', liblixcmd)
 
 # FIXME: not using the pkg-config module because it creates way too many deps
 # while meson migration is in progress, and we want to not include boost here

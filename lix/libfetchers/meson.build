@@ -95,3 +95,4 @@ if is_static
 else
   liblixfetchers_mstatic = liblixfetchers
 endif
+meson.override_dependency('lix-fetchers', liblixfetchers_mstatic)
