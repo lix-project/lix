@@ -327,6 +327,11 @@ liblixutil = declare_dependency(
     deprecated_features_header,
     libutil_settings_headers,
   ],
+  dependencies: [
+    # Everything has to link to kj if it uses libutil internally (ensured by
+    # lix-base pkg-config externally)
+    kj,
+  ],
   link_with : libutil
 )
 
@@ -338,6 +343,11 @@ if is_static
       experimental_features_header,
       deprecated_features_header,
       libutil_settings_headers,
+    ],
+    dependencies: [
+      # Everything has to link to kj if it uses libutil internally (ensured by
+      # lix-base pkg-config externally)
+      kj,
     ],
     link_whole : libutil,
   )

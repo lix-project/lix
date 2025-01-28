@@ -295,6 +295,8 @@ install_headers(
 liblixexpr = declare_dependency(
   include_directories : include_directories('../..'),
   sources : libexpr_settings_header,
+  # Parallels the requirement to link with boehm of the pkg-config but for internal targets.
+  dependencies : [boehm],
   link_with : libexpr,
 )
 
@@ -303,6 +305,7 @@ if is_static
   liblixexpr_mstatic = declare_dependency(
     include_directories : include_directories('../..'),
     sources : libexpr_settings_header,
+    dependencies : [boehm],
     link_whole : libexpr,
   )
 else

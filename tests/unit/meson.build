@@ -33,7 +33,6 @@ libutil_test_support = library(
     # TODO(Qyriad): libutil tests really should not depend on libexpr...
     liblixexpr,
     rapidcheck,
-    boehm,
   ],
   include_directories : include_directories('libutil-support'),
 )
@@ -77,7 +76,6 @@ libutil_tester = executable(
     libasanoptions,
     rapidcheck,
     gtest,
-    boehm,
     liblixutil,
     liblixexpr_mstatic,
     liblixutil_test_support,
@@ -113,7 +111,6 @@ libstore_test_support = library(
     liblixutil,
     liblixstore,
     rapidcheck,
-    boehm,
     kj,
   ],
   include_directories : include_directories(
@@ -219,7 +216,6 @@ libexpr_tester = executable(
     liblixexpr_mstatic,
     liblixfetchers_mstatic,
     rapidcheck,
-    boehm,
     gtest,
     nlohmann_json,
     kj,
