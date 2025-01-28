@@ -1,3 +1,17 @@
+config_h = configure_file(
+  configuration : {
+    'PACKAGE_NAME': '"' + meson.project_name() + '"',
+    'PACKAGE_VERSION': '"' + meson.project_version() + '"',
+    'PACKAGE_TARNAME': '"' + meson.project_name() + '"',
+    'PACKAGE_STRING': '"' + meson.project_name() + ' ' + meson.project_version() + '"',
+    'HAVE_STRUCT_DIRENT_D_TYPE': 1, # FIXME: actually check this for solaris
+    'SYSTEM': '"' + host_system + '"',
+  } + configdata,
+  output : 'config.h',
+)
+
+install_headers(config_h, subdir : 'lix')
+
 # Subcomponents: these link into artifacts themselves, and have interdependencies.
 subdir('lix-doc')
 

@@ -2,9 +2,8 @@
 # OUTLINE:
 #
 # The top-level meson.build file (this file) handles general logic for build options,
-# generation of config.h (which is put in the build directory, not the source root
-# like the previous, autoconf-based build system did), the mechanism for header
-# generation, and the few global C++ compiler arguments that are added to all targets in Lix.
+# the mechanism for header generation, and the few global C++ compiler
+# arguments that are added to all targets in Lix.
 #
 # lix/meson.build coordinates each of Lix's subcomponents (the lib dirs in ./lix),
 # which each have their own meson.build. Lix's components depend on each other,
@@ -461,20 +460,6 @@ foreach funcspec : check_funcs
   }
 endforeach
 
-config_h = configure_file(
-  configuration : {
-    'PACKAGE_NAME': '"' + meson.project_name() + '"',
-    'PACKAGE_VERSION': '"' + meson.project_version() + '"',
-    'PACKAGE_TARNAME': '"' + meson.project_name() + '"',
-    'PACKAGE_STRING': '"' + meson.project_name() + ' ' + meson.project_version() + '"',
-    'HAVE_STRUCT_DIRENT_D_TYPE': 1, # FIXME: actually check this for solaris
-    'SYSTEM': '"' + host_system + '"',
-  } + configdata,
-  output : 'config.h',
-)
-
-install_headers(config_h, subdir : 'lix')
-
 # FIXME: not using the pkg-config module because it creates way too many deps
 # while meson migration is in progress, and we want to not include boost here
 configure_file(
@@ -492,7 +477,10 @@ configure_file(
 add_project_arguments(
   # TODO(Qyriad): Yes this is how the autoconf+Make system did it.
   # It would be nice for our headers to be idempotent instead.
-  '-include', 'config.h',
+  #
+  # n.b. config.h is generated inside lix/meson.build so it goes in build/lix
+  # for consistency with the installed header being lix/config.h
+  '-include', 'lix/config.h',
   '-Wno-unused-parameter',
   '-Wno-deprecated-declarations',
   '-Wno-missing-field-initializers',
