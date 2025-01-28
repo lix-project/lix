@@ -22,13 +22,12 @@ perl_libstore = shared_module(
   name_prefix : '',
   dependencies : [
     libstore,
+    libutil,
     sodium,
     perl_include,
     kj,
   ],
   link_args : [
-    # Nix doesn't provide a pkg-config file for libutil.
-    '-llixutil',
     soname_args,
   ],
   install : true,
