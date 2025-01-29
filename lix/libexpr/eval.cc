@@ -742,8 +742,13 @@ void DebugState::onEvalError(const EvalError * error, const Env & env, const Exp
     {
         printError("%s\n", error->what());
 
-        if (trylevel > 0 && error->info().level != lvlInfo)
-            printError("This exception occurred in a 'tryEval' call. Use " ANSI_GREEN "--ignore-try" ANSI_NORMAL " to skip these.\n");
+        if (trylevel > 0 && error->info().level != lvlInfo) {
+            if (evalSettings.ignoreExceptionsDuringTry) {
+                printError("This exception occurred in a 'tryEval' call, " ANSI_RED "despite the use of " ANSI_GREEN "--ignore-try" ANSI_RED " to attempt to skip these" ANSI_NORMAL ". This is probably a bug. We would appreciate if you report it along with what caused it at https://git.lix.systems/lix-project/lix/issues.\n");
+            } else {
+                printError("This exception occurred in a 'tryEval' call. Use " ANSI_GREEN "--ignore-try" ANSI_NORMAL " to skip these.\n");
+            }
+        }
     }
 
     auto se = staticEnvFor(expr);
