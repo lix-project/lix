@@ -10,6 +10,7 @@
 #include "lix/libexpr/json-to-value.hh"
 #include "lix/libstore/names.hh"
 #include "lix/libstore/path-references.hh"
+#include "lix/libutil/finally.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libexpr/value-to-json.hh"
@@ -640,28 +641,32 @@ static void prim_tryEval(EvalState & state, const PosIdx pos, Value * * args, Va
 {
     auto attrs = state.ctx.buildBindings(2);
 
-    std::optional<MaintainCount<int>> trylevel;
-    std::unique_ptr<DebugState> savedDebug;
-    if (state.ctx.debug) {
-        trylevel.emplace(state.ctx.debug->trylevel);
-        if (evalSettings.ignoreExceptionsDuringTry) {
-            /* to prevent starting the repl from exceptions withing a tryEval, null it. */
-            savedDebug = std::move(state.ctx.debug);
+    {
+        std::optional<MaintainCount<int>> trylevel;
+        DebugState * savedDebug = nullptr;
+        Finally resetDebug([&] {
+            if (savedDebug) {
+                state.ctx.errors.debug = savedDebug;
+            }
+        });
+        if (state.ctx.errors.debug != nullptr) {
+            trylevel.emplace(state.ctx.errors.debug->trylevel);
+            if (evalSettings.ignoreExceptionsDuringTry) {
+                /* to prevent starting the repl from exceptions within a tryEval, null it. */
+                savedDebug = state.ctx.errors.debug;
+                state.ctx.errors.debug = nullptr;
+            }
+        }
+
+        try {
+            state.forceValue(*args[0], pos);
+            attrs.insert(state.ctx.s.value, args[0]);
+            attrs.alloc("success").mkBool(true);
+        } catch (AssertionError & e) {
+            attrs.alloc(state.ctx.s.value).mkBool(false);
+            attrs.alloc("success").mkBool(false);
         }
     }
-
-    try {
-        state.forceValue(*args[0], pos);
-        attrs.insert(state.ctx.s.value, args[0]);
-        attrs.alloc("success").mkBool(true);
-    } catch (AssertionError & e) {
-        attrs.alloc(state.ctx.s.value).mkBool(false);
-        attrs.alloc("success").mkBool(false);
-    }
-
-    // restore the debugRepl pointer if we saved it earlier.
-    if (savedDebug)
-        state.ctx.debug = std::move(savedDebug);
 
     v.mkAttrs(attrs);
 }
