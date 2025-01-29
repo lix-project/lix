@@ -40,6 +40,11 @@ artemist:
   display_name: Artemis Tosini
   forgejo: artemist
 
+bb010g:
+  display_name: Dusk Banks
+  forgejo: bb010g
+  github: bb010g
+
 cole-h:
   display_name: Cole Helbling
   github: cole-h
