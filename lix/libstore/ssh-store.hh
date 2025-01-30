@@ -2,12 +2,16 @@
 ///@file
 
 #include "lix/libstore/store-api.hh"
+#include <cstdint>
 
 namespace nix {
 
 struct CommonSSHStoreConfig : virtual StoreConfig
 {
     using StoreConfig::StoreConfig;
+
+    const Setting<std::optional<uint16_t>> port{this, std::nullopt, "port",
+        "Port that should be used instead of the default on the remote machine."};
 
     const Setting<Path> sshKey{this, "", "ssh-key",
         "Path to the SSH private key used to authenticate to the remote machine."};

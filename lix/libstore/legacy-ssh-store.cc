@@ -12,6 +12,8 @@
 #include "lix/libutil/result.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libstore/derivations.hh"
+#include "lix/libutil/config-impl.hh"
+#include "lix/libutil/abstract-setting-to-json.hh"
 
 namespace nix {
 
@@ -113,6 +115,7 @@ struct LegacySSHStore final : public Store
             ))
         , master(
             host,
+            config_.port,
             config_.sshKey,
             config_.sshPublicHostKey,
             // Use SSH master only if using more than 1 connection.

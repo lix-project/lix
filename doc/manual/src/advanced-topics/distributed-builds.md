@@ -75,7 +75,9 @@ by spaces. Only the first element is required. To leave a field at its
 default, set it to `-`.
 
 1.  The URI of the remote store in the format
-    `ssh://[username@]hostname`, e.g. `ssh://nix@mac` or `ssh://mac`.
+    `ssh://[username@]hostname[?port=<port>]`, e.g. `ssh://nix@mac` or `ssh://mac`.
+    If the ssh server is not listening on port 22 (e.g. port 1337 in this case)
+    the URI would be `ssh://nix@mac?port=1337`
     For backward compatibility, `ssh://` may be omitted. The hostname
     may be an alias defined in your `~/.ssh/config`.
 

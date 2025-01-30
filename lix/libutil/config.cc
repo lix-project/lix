@@ -270,6 +270,21 @@ template<> std::string BaseSetting<std::optional<std::string>>::to_string() cons
     return value ? *value : "";
 }
 
+template<> std::optional<uint16_t> BaseSetting<std::optional<uint16_t>>::parse(const std::string & str, const ApplyConfigOptions & options) const
+{
+    if (str == "")
+        return std::nullopt;
+    else if (auto n = string2Int<uint16_t>(str))
+        return n;
+    else
+        throw UsageError("setting '%s' has invalid value '%s'", name, str);
+}
+
+template<> std::string BaseSetting<std::optional<uint16_t>>::to_string() const
+{
+    return value ? std::to_string(*value) : "";
+}
+
 template<> bool BaseSetting<bool>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
     if (str == "true" || str == "yes" || str == "1")

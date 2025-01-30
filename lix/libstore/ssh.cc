@@ -8,8 +8,9 @@
 
 namespace nix {
 
-SSHMaster::SSHMaster(const std::string & host, const std::string & keyFile, const std::string & sshPublicHostKey, bool useMaster, bool compress, int logFD)
+SSHMaster::SSHMaster(const std::string & host, const std::optional<uint16_t> port, const std::string & keyFile, const std::string & sshPublicHostKey, bool useMaster, bool compress, int logFD)
     : host(host)
+    , port(port)
     , fakeSSH(host == "localhost")
     , keyFile(keyFile)
     , sshPublicHostKey(sshPublicHostKey)
@@ -28,6 +29,8 @@ void SSHMaster::addCommonSSHOpts(Strings & args)
 {
     auto state(state_.lock());
 
+    if (port.has_value())
+        args.insert(args.end(), {"-p", std::to_string(*port)});
     for (auto & i : tokenizeString<Strings>(getEnv("NIX_SSHOPTS").value_or("")))
         args.push_back(i);
     if (!keyFile.empty())

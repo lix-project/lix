@@ -15,6 +15,7 @@
 #include "lix/libutil/args.hh"
 #include "lix/libutil/config.hh"
 #include "lix/libutil/logging.hh"
+#include "lix/libutil/strings.hh"
 
 namespace nix {
 
@@ -123,6 +124,7 @@ void BaseSetting<T>::convertToArg(Args & args, const std::string & category)
 
 DECLARE_CONFIG_SERIALISER(std::string)
 DECLARE_CONFIG_SERIALISER(std::optional<std::string>)
+DECLARE_CONFIG_SERIALISER(std::optional<uint16_t>)
 DECLARE_CONFIG_SERIALISER(bool)
 DECLARE_CONFIG_SERIALISER(Strings)
 DECLARE_CONFIG_SERIALISER(StringSet)

@@ -39,6 +39,7 @@ public:
         , host(host)
         , master(
             host,
+            config_.port,
             config_.sshKey,
             config_.sshPublicHostKey,
             // Use SSH master only if using more than 1 connection.
