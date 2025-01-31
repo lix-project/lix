@@ -2808,8 +2808,9 @@ std::optional<std::string> EvalPaths::resolveSearchPathPath(const SearchPath::Pa
         experimentalFeatureSettings.require(Xp::Flakes);
         auto flakeRef = parseFlakeRef(value.substr(6), {}, true, false);
         debug("fetching flake search path element '%s''", value);
-        auto storePath = flakeRef.resolve(store).fetchTree(store).first.storePath;
-        res = { store->toRealPath(storePath) };
+        auto storePath =
+            RUN_ASYNC_IN_NEW_THREAD(flakeRef.resolve(store).fetchTree(store)).first.storePath;
+        res = {store->toRealPath(storePath)};
     }
 
     else {

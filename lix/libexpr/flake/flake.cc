@@ -7,6 +7,7 @@
 #include "lix/libexpr/eval-inline.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libfetchers/fetchers.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/finally.hh"
 #include "lix/libfetchers/fetch-settings.hh"
 #include "lix/libutil/terminal.hh"
@@ -36,23 +37,25 @@ static std::optional<FetchedFlake> lookupInFlakeCache(
     return std::nullopt;
 }
 
-static std::tuple<fetchers::Tree, FlakeRef, FlakeRef> fetchOrSubstituteTree(
+static kj::Promise<Result<std::tuple<fetchers::Tree, FlakeRef, FlakeRef>>> fetchOrSubstituteTree(
     Evaluator & state,
     const FlakeRef & originalRef,
     bool allowLookup,
     FlakeCache & flakeCache)
-{
+try {
     auto fetched = lookupInFlakeCache(flakeCache, originalRef);
     FlakeRef resolvedRef = originalRef;
 
     if (!fetched) {
         if (originalRef.input.isDirect()) {
-            fetched.emplace(originalRef.fetchTree(state.store));
+            fetched.emplace(TRY_AWAIT(originalRef.fetchTree(state.store)));
         } else {
             if (allowLookup) {
                 resolvedRef = originalRef.resolve(state.store);
                 auto fetchedResolved = lookupInFlakeCache(flakeCache, originalRef);
-                if (!fetchedResolved) fetchedResolved.emplace(resolvedRef.fetchTree(state.store));
+                if (!fetchedResolved) {
+                    fetchedResolved.emplace(TRY_AWAIT(resolvedRef.fetchTree(state.store)));
+                }
                 flakeCache.push_back({resolvedRef, *fetchedResolved});
                 fetched.emplace(*fetchedResolved);
             }
@@ -72,7 +75,9 @@ static std::tuple<fetchers::Tree, FlakeRef, FlakeRef> fetchOrSubstituteTree(
 
     assert(!originalRef.input.getNarHash() || tree.storePath == originalRef.input.computeStorePath(*state.store));
 
-    return {std::move(tree), resolvedRef, lockedRef};
+    co_return {std::move(tree), resolvedRef, lockedRef};
+} catch (...) {
+    co_return result::current_exception();
 }
 
 static void forceTrivialValue(EvalState & state, Value & value, const PosIdx pos)
@@ -216,8 +221,8 @@ static Flake getFlake(
     FlakeCache & flakeCache,
     InputPath lockRootPath)
 {
-    auto [sourceInfo, resolvedRef, lockedRef] = fetchOrSubstituteTree(
-        state.ctx, originalRef, allowLookup, flakeCache);
+    auto [sourceInfo, resolvedRef, lockedRef] =
+        state.aio.blockOn(fetchOrSubstituteTree(state.ctx, originalRef, allowLookup, flakeCache));
 
     // We need to guard against symlink attacks, but before we start doing
     // filesystem operations we should make sure there's a flake.nix in the
@@ -633,8 +638,10 @@ LockedFlake lockFlake(
                         }
 
                         else {
-                            auto [sourceInfo, resolvedRef, lockedRef] = fetchOrSubstituteTree(
-                                state.ctx, *input.ref, useRegistries, flakeCache);
+                            auto [sourceInfo, resolvedRef, lockedRef] =
+                                state.aio.blockOn(fetchOrSubstituteTree(
+                                    state.ctx, *input.ref, useRegistries, flakeCache
+                                ));
 
                             auto childNode = make_ref<LockedNode>(lockedRef, ref, false);
 

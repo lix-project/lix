@@ -1449,7 +1449,7 @@ struct CmdFlakePrefetch : FlakeCommand, MixJSON
     {
         auto originalRef = getFlakeRef();
         auto resolvedRef = originalRef.resolve(store);
-        auto [tree, lockedRef] = resolvedRef.fetchTree(store);
+        auto [tree, lockedRef] = aio().blockOn(resolvedRef.fetchTree(store));
         auto hash = store->queryPathInfo(tree.storePath)->narHash;
 
         if (json) {
