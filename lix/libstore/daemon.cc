@@ -289,7 +289,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
         logger->startWork();
         if (substitute) {
-            store->substitutePaths(paths);
+            aio.blockOn(store->substitutePaths(paths));
         }
         auto res = store->queryValidPaths(paths, substitute);
         logger->stopWork();

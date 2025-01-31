@@ -881,7 +881,7 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                         store->addTempRoot(path);
 
                 if (substitute && writeAllowed) {
-                    store->substitutePaths(paths);
+                    aio.blockOn(store->substitutePaths(paths));
                 }
 
                 auto valid = store->queryValidPaths(paths);

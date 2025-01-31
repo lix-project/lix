@@ -354,7 +354,7 @@ public:
      * implements nix-copy-closure's --use-substitutes
      * flag.
      */
-    void substitutePaths(const StorePathSet & paths);
+    kj::Promise<Result<void>> substitutePaths(const StorePathSet & paths);
 
     /**
      * Query which of the given paths is valid. Optionally, try to

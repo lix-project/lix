@@ -4,6 +4,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/nar-info-disk-cache.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/url.hh"
 #include "lix/libutil/archive.hh"
@@ -801,8 +802,8 @@ std::shared_ptr<const Realisation> Store::queryRealisation(const DrvOutput & id)
     return info;
 }
 
-void Store::substitutePaths(const StorePathSet & paths)
-{
+kj::Promise<Result<void>> Store::substitutePaths(const StorePathSet & paths)
+try {
     std::vector<DerivedPath> paths2;
     for (auto & path : paths)
         if (!path.isDerivation())
@@ -816,10 +817,14 @@ void Store::substitutePaths(const StorePathSet & paths)
         try {
             std::vector<DerivedPath> subs;
             for (auto & p : willSubstitute) subs.emplace_back(DerivedPath::Opaque{p});
-            RUN_ASYNC_IN_NEW_THREAD(buildPaths(subs));
+            TRY_AWAIT(buildPaths(subs));
         } catch (Error & e) {
             logWarning(e.info());
         }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
