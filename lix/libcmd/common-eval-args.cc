@@ -209,7 +209,7 @@ SourcePath lookupFileArg(Evaluator & state, std::string_view fileArg)
         return CanonPath(state.store->toRealPath(storePath));
     } else if (fileArg.size() > 2 && fileArg.at(0) == '<' && fileArg.at(fileArg.size() - 1) == '>') {
         Path p(fileArg.substr(1, fileArg.size() - 2));
-        return state.paths.findFile(p);
+        return RUN_ASYNC_IN_NEW_THREAD(state.paths.findFile(p));
     } else {
         return CanonPath::fromCwd(fileArg);
     }

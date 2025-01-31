@@ -1333,7 +1333,9 @@ static void prim_findFile(EvalState & state, const PosIdx pos, Value * * args, V
 
     auto path = state.forceStringNoCtx(*args[1], pos, "while evaluating the second argument passed to builtins.findFile");
 
-    v.mkPath(state.ctx.paths.checkSourcePath(state.ctx.paths.findFile(searchPath, path, pos)));
+    v.mkPath(state.ctx.paths.checkSourcePath(
+        state.aio.blockOn(state.ctx.paths.findFile(searchPath, path, pos))
+    ));
 }
 
 /* Return the cryptographic hash of a file in base-16. */

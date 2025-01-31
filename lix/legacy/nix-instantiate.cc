@@ -167,7 +167,7 @@ static int main_nix_instantiate(AsyncIoRoot & aio, std::string programName, Stri
 
         if (findFile) {
             for (auto & i : files) {
-                auto p = evaluator->paths.findFile(i);
+                auto p = aio.blockOn(evaluator->paths.findFile(i));
                 std::cout << p.canonical().abs() << std::endl;
             }
             return 0;

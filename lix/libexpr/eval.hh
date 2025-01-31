@@ -459,8 +459,9 @@ public:
     /**
      * Look up a file in the search path.
      */
-    SourcePath findFile(const std::string_view path);
-    SourcePath findFile(const SearchPath & searchPath, const std::string_view path, const PosIdx pos = noPos);
+    kj::Promise<Result<SourcePath>> findFile(const std::string_view path);
+    kj::Promise<Result<SourcePath>>
+    findFile(const SearchPath & searchPath, const std::string_view path, const PosIdx pos = noPos);
 
     /**
      * Try to resolve a search path value (not the optinal key part)
@@ -469,7 +470,8 @@ public:
      *
      * If it is not found, return `std::nullopt`
      */
-    std::optional<std::string> resolveSearchPathPath(const SearchPath::Path & path);
+    kj::Promise<Result<std::optional<std::string>>>
+    resolveSearchPathPath(const SearchPath::Path & path);
 
     StorePath copyPathToStore(
         NixStringContext & context, const SourcePath & path, RepairFlag repair = NoRepair

@@ -1,5 +1,6 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/eval-settings.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libexpr/primops.hh"
 #include "lix/libexpr/print-options.hh"
@@ -286,7 +287,7 @@ EvalPaths::EvalPaths(
         allowedPaths = AllowedPath{.allowAllChildren = false};
 
         for (auto & i : searchPath_.elements) {
-            auto r = resolveSearchPathPath(i.path);
+            auto r = aio.blockOn(resolveSearchPathPath(i.path));
             if (!r) continue;
 
             auto path = std::move(*r);
@@ -2749,30 +2750,31 @@ Expr & Evaluator::parseStdin()
 }
 
 
-SourcePath EvalPaths::findFile(const std::string_view path)
+kj::Promise<Result<SourcePath>> EvalPaths::findFile(const std::string_view path)
 {
     return findFile(searchPath_, path);
 }
 
 
-SourcePath EvalPaths::findFile(const SearchPath & searchPath, const std::string_view path, const PosIdx pos)
-{
+kj::Promise<Result<SourcePath>>
+EvalPaths::findFile(const SearchPath & searchPath, const std::string_view path, const PosIdx pos)
+try {
     for (auto & i : searchPath.elements) {
         auto suffixOpt = i.prefix.suffixIfPotentialMatch(path);
 
         if (!suffixOpt) continue;
         auto suffix = *suffixOpt;
 
-        auto rOpt = resolveSearchPathPath(i.path);
+        auto rOpt = TRY_AWAIT(resolveSearchPathPath(i.path));
         if (!rOpt) continue;
         auto r = *rOpt;
 
         Path res = suffix == "" ? r : concatStrings(r, "/", suffix);
-        if (pathExists(res)) return CanonPath(canonPath(res));
+        if (pathExists(res)) co_return CanonPath(canonPath(res));
     }
 
     if (path.starts_with("nix/"))
-        return CanonPath(concatStrings(corepkgsPrefix, path.substr(4)));
+        co_return CanonPath(concatStrings(corepkgsPrefix, path.substr(4)));
 
     errors.make<ThrownError>(
         evalSettings.pureEval
@@ -2780,14 +2782,17 @@ SourcePath EvalPaths::findFile(const SearchPath & searchPath, const std::string_
             : "file '%s' was not found in the Nix search path (add it using $NIX_PATH or -I)",
         path
     ).atPos(pos).debugThrow();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
-std::optional<std::string> EvalPaths::resolveSearchPathPath(const SearchPath::Path & value0)
-{
+kj::Promise<Result<std::optional<std::string>>>
+EvalPaths::resolveSearchPathPath(const SearchPath::Path & value0)
+try {
     auto & value = value0.s;
     auto i = searchPathResolved.find(value);
-    if (i != searchPathResolved.end()) return i->second;
+    if (i != searchPathResolved.end()) co_return i->second;
 
     std::optional<std::string> res;
 
@@ -2808,8 +2813,7 @@ std::optional<std::string> EvalPaths::resolveSearchPathPath(const SearchPath::Pa
         experimentalFeatureSettings.require(Xp::Flakes);
         auto flakeRef = parseFlakeRef(value.substr(6), {}, true, false);
         debug("fetching flake search path element '%s''", value);
-        auto storePath =
-            RUN_ASYNC_IN_NEW_THREAD(flakeRef.resolve(store).fetchTree(store)).first.storePath;
+        auto storePath = TRY_AWAIT(flakeRef.resolve(store).fetchTree(store)).first.storePath;
         res = {store->toRealPath(storePath)};
     }
 
@@ -2831,7 +2835,9 @@ std::optional<std::string> EvalPaths::resolveSearchPathPath(const SearchPath::Pa
         debug("failed to resolve search path element '%s'", value);
 
     searchPathResolved[value] = res;
-    return res;
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
