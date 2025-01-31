@@ -643,7 +643,7 @@ static void prim_tryEval(EvalState & state, const PosIdx pos, Value * * args, Va
 {
     auto attrs = state.ctx.buildBindings(2);
 
-    {
+    const bool success = [&] {
         std::optional<MaintainCount<int>> trylevel;
         DebugState * savedDebug = nullptr;
         KJ_DEFER({
@@ -662,13 +662,16 @@ static void prim_tryEval(EvalState & state, const PosIdx pos, Value * * args, Va
 
         try {
             state.forceValue(*args[0], pos);
-            attrs.insert(state.ctx.s.value, args[0]);
-            attrs.alloc("success").mkBool(true);
         } catch (AssertionError & e) {
-            attrs.alloc(state.ctx.s.value).mkBool(false);
-            attrs.alloc("success").mkBool(false);
+            return false;
         }
-    }
+        return true;
+    }();
+    if (success)
+        attrs.insert(state.ctx.s.value, args[0]);
+    else
+        attrs.alloc(state.ctx.s.value).mkBool(false);
+    attrs.alloc("success").mkBool(success);
 
     v.mkAttrs(attrs);
 }
