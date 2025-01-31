@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libutil/canon-path.hh"
@@ -10,6 +11,7 @@
 #include "lix/libutil/ref.hh"
 #include "lix/libutil/strings.hh"
 
+#include <kj/async.h>
 #include <memory>
 
 namespace nix { class Store; }
@@ -90,7 +92,7 @@ public:
      * Fetch the input into the Nix store, returning the location in
      * the Nix store and the locked input.
      */
-    std::pair<Tree, Input> fetch(ref<Store> store) const;
+    kj::Promise<Result<std::pair<Tree, Input>>> fetch(ref<Store> store) const;
 
     Input applyOverrides(
         std::optional<std::string> ref,

@@ -192,7 +192,7 @@ static void fetchTree(
         state.ctx.errors.make<EvalError>("in pure evaluation mode, 'fetchTree' requires a locked input").atPos(pos).debugThrow();
     }
 
-    auto [tree, input2] = input.fetch(state.ctx.store);
+    auto [tree, input2] = state.aio.blockOn(input.fetch(state.ctx.store));
 
     state.ctx.paths.allowPath(tree.storePath);
 

@@ -123,8 +123,8 @@ bool Input::contains(const Input & other) const
     return false;
 }
 
-std::pair<Tree, Input> Input::fetch(ref<Store> store) const
-{
+kj::Promise<Result<std::pair<Tree, Input>>> Input::fetch(ref<Store> store) const
+try {
     if (!scheme)
         throw Error("cannot fetch unsupported input '%s'", attrsToJSON(toAttrs()));
 
@@ -135,12 +135,15 @@ std::pair<Tree, Input> Input::fetch(ref<Store> store) const
         try {
             auto storePath = computeStorePath(*store);
 
-            RUN_ASYNC_IN_NEW_THREAD(store->ensurePath(storePath));
+            TRY_AWAIT(store->ensurePath(storePath));
 
             debug("using substituted/cached input '%s' in '%s'",
                 to_string(), store->printStorePath(storePath));
 
-            return {Tree { .actualPath = store->toRealPath(storePath), .storePath = std::move(storePath) }, *this};
+            co_return {
+                Tree{.actualPath = store->toRealPath(storePath), .storePath = std::move(storePath)},
+                *this
+            };
         } catch (Error & e) {
             debug("substitution of input '%s' failed: %s", to_string(), e.what());
         }
@@ -197,7 +200,9 @@ std::pair<Tree, Input> Input::fetch(ref<Store> store) const
 
     assert(input.hasAllInfo());
 
-    return {std::move(tree), input};
+    co_return {std::move(tree), input};
+} catch (...) {
+    co_return result::current_exception();
 }
 
 Input Input::applyOverrides(

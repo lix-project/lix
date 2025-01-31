@@ -1,5 +1,6 @@
 #include "lix/libexpr/flake/flakeref.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/url.hh"
 #include "lix/libutil/url-parts.hh"
 #include "lix/libfetchers/fetchers.hh"
@@ -239,7 +240,7 @@ FlakeRef FlakeRef::fromAttrs(const fetchers::Attrs & attrs)
 
 std::pair<fetchers::Tree, FlakeRef> FlakeRef::fetchTree(ref<Store> store) const
 {
-    auto [tree, lockedInput] = input.fetch(store);
+    auto [tree, lockedInput] = RUN_ASYNC_IN_NEW_THREAD(input.fetch(store));
     return {std::move(tree), FlakeRef(std::move(lockedInput), subdir)};
 }
 
