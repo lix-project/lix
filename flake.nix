@@ -201,6 +201,15 @@
             srcDir = ./subprojects/nix-eval-jobs;
           };
 
+          # HACK: We need nix-prefetch-git for fetchCargoVendor for Rust stuff,
+          # so it can't use Lix, or we infrec:
+          #   lix -> Rust stuff -> fetchCargoVendor -> nix-prefetch-git -> nix (lix)
+          # This will eventually become a problem upstream, but until then,
+          # apply some duct tape and pray.
+          nix-prefetch-git = prev.nix-prefetch-git.override {
+            nix = prev.nix;
+          };
+
           # Export the patched version of boehmgc that Lix uses into the overlay
           # for consumers of this flake.
           boehmgc-nix = final.nix.passthru.boehmgc-nix;
