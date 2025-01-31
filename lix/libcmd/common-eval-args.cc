@@ -8,6 +8,7 @@
 #include "lix/libexpr/flake/flakeref.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libcmd/command.hh"
+#include "lix/libutil/async.hh"
 
 #include <regex>
 
@@ -187,8 +188,8 @@ Bindings * MixEvalArgs::getAutoArgs(Evaluator & state)
     return res.finish();
 }
 
-SourcePath lookupFileArg(Evaluator & state, std::string_view fileArg)
-{
+kj::Promise<Result<SourcePath>> lookupFileArg(Evaluator & state, std::string_view fileArg)
+try {
     if (EvalSettings::isPseudoUrl(fileArg)) {
         auto const url = EvalSettings::resolvePseudoUrl(fileArg);
         auto const downloaded = fetchers::downloadTarball(
@@ -198,21 +199,22 @@ SourcePath lookupFileArg(Evaluator & state, std::string_view fileArg)
             /* locked */ false
         );
         StorePath const storePath = downloaded.tree.storePath;
-        return CanonPath(state.store->toRealPath(storePath));
+        co_return CanonPath(state.store->toRealPath(storePath));
     } else if (fileArg.starts_with("flake:")) {
         experimentalFeatureSettings.require(Xp::Flakes);
         static constexpr size_t FLAKE_LEN = std::string_view("flake:").size();
         auto flakeRef = parseFlakeRef(std::string(fileArg.substr(FLAKE_LEN)), {}, true, false);
         auto storePath =
-            RUN_ASYNC_IN_NEW_THREAD(flakeRef.resolve(state.store).fetchTree(state.store))
-                .first.storePath;
-        return CanonPath(state.store->toRealPath(storePath));
+            TRY_AWAIT(flakeRef.resolve(state.store).fetchTree(state.store)).first.storePath;
+        co_return CanonPath(state.store->toRealPath(storePath));
     } else if (fileArg.size() > 2 && fileArg.at(0) == '<' && fileArg.at(fileArg.size() - 1) == '>') {
         Path p(fileArg.substr(1, fileArg.size() - 2));
-        return RUN_ASYNC_IN_NEW_THREAD(state.paths.findFile(p));
+        co_return TRY_AWAIT(state.paths.findFile(p));
     } else {
-        return CanonPath::fromCwd(fileArg);
+        co_return CanonPath::fromCwd(fileArg);
     }
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }

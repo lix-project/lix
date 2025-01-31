@@ -1547,7 +1547,7 @@ static int main_nix_env(AsyncIoRoot & aio, std::string programName, Strings argv
 
         globals.instSource.nixExprPath = std::make_shared<SourcePath>(
             file != ""
-            ? lookupFileArg(*globals.state, file)
+            ? aio.blockOn(lookupFileArg(*globals.state, file))
             : CanonPath(nixExprPath));
 
         globals.instSource.autoArgs = myArgs.getAutoArgs(*globals.state);

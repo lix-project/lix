@@ -35,22 +35,25 @@ TEST(Arguments, lookupFileArg) {
     auto store = openStore("dummy://");
     auto state = std::make_shared<Evaluator>(aio, searchPath, store, store);
 
-    SourcePath const foundUnitData = lookupFileArg(*state, "<example>");
+    SourcePath const foundUnitData = aio.blockOn(lookupFileArg(*state, "<example>"));
     EXPECT_EQ(foundUnitData.canonical(), canonDataPath);
 
     // lookupFileArg should not resolve <search paths> if anything else is before or after it.
-    SourcePath const yepEvenSpaces = lookupFileArg(*state, " <example>");
+    SourcePath const yepEvenSpaces = aio.blockOn(lookupFileArg(*state, " <example>"));
     EXPECT_EQ(yepEvenSpaces.canonical(), CanonPath::fromCwd(" <example>"));
-    EXPECT_EQ(lookupFileArg(*state, "<example>/nixos").canonical(), CanonPath::fromCwd("<example>/nixos"));
+    EXPECT_EQ(
+        aio.blockOn(lookupFileArg(*state, "<example>/nixos")).canonical(),
+        CanonPath::fromCwd("<example>/nixos")
+    );
 
     try {
-        lookupFileArg(*state, INVALID_CHANNEL);
+        aio.blockOn(lookupFileArg(*state, INVALID_CHANNEL));
     } catch (FileTransferError const & ex) {
         std::string_view const msg(ex.what());
         EXPECT_NE(msg.find(CHANNEL_URL), msg.npos);
     }
 
-    SourcePath const normalFile = lookupFileArg(*state, unitDataPath);
+    SourcePath const normalFile = aio.blockOn(lookupFileArg(*state, unitDataPath));
     EXPECT_EQ(normalFile.canonical(), canonDataPath);
 }
 

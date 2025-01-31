@@ -49,6 +49,6 @@ private:
  *
  * @exception nix::ThrownError for failed search path lookup. Probably others.
  */
-SourcePath lookupFileArg(Evaluator & state, std::string_view fileArg);
+kj::Promise<Result<SourcePath>> lookupFileArg(Evaluator & state, std::string_view fileArg);
 
 }

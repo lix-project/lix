@@ -183,7 +183,9 @@ static int main_nix_instantiate(AsyncIoRoot & aio, std::string programName, Stri
         for (auto & i : files) {
             Expr & e = fromArgs
                 ? evaluator->parseExprFromString(i, CanonPath::fromCwd())
-                : evaluator->parseExprFromFile(evaluator->paths.resolveExprPath(lookupFileArg(*evaluator, i)));
+                : evaluator->parseExprFromFile(
+                      evaluator->paths.resolveExprPath(aio.blockOn(lookupFileArg(*evaluator, i)))
+                  );
             processExpr(*state, attrPaths, parseOnly, strict, autoArgs,
                 evalOnly, outputKind, xmlOutputSourceLocation, e);
         }

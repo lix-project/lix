@@ -254,10 +254,10 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
                     /* If we're in a #! script, interpret filenames
                        relative to the script. */
                     exprs.push_back(evaluator->parseExprFromFile(
-                        evaluator->paths.resolveExprPath(lookupFileArg(
+                        evaluator->paths.resolveExprPath(aio.blockOn(lookupFileArg(
                             *evaluator,
                             inShebang && !packages ? absPath(i, absPath(dirOf(script))) : i
-                        ))
+                        )))
                     ));
             }
         }

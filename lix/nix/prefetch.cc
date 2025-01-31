@@ -203,7 +203,7 @@ static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Str
             Value vRoot;
             state->evalFile(
                 evaluator->paths.resolveExprPath(
-                    lookupFileArg(*evaluator, args.empty() ? "." : args[0])),
+                    aio.blockOn(lookupFileArg(*evaluator, args.empty() ? "." : args[0]))),
                 vRoot);
             Value & v(*findAlongAttrPath(*state, attrPath, autoArgs, vRoot).first);
             state->forceAttrs(v, noPos, "while evaluating the source attribute to prefetch");

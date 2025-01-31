@@ -217,7 +217,7 @@ void SourceExprCommand::completeInstallable(EvalState & state, AddCompletions & 
             auto evaluator = getEvaluator();
 
             Expr & e = evaluator->parseExprFromFile(
-                state.ctx.paths.resolveExprPath(lookupFileArg(*evaluator, *file))
+                state.ctx.paths.resolveExprPath(state.aio.blockOn(lookupFileArg(*evaluator, *file)))
             );
 
             Value root;
@@ -454,7 +454,7 @@ Installables SourceExprCommand::parseInstallables(
             state.eval(e, *vFile);
         }
         else if (file)
-            state.evalFile(lookupFileArg(*evaluator, *file), *vFile);
+            state.evalFile(state.aio.blockOn(lookupFileArg(*evaluator, *file)), *vFile);
         else {
             auto & e = evaluator->parseExprFromString(*expr, CanonPath::fromCwd());
             state.eval(e, *vFile);
