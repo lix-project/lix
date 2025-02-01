@@ -854,7 +854,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         logger->startWork();
         if (repair && !trusted)
             throw Error("you are not privileged to repair paths");
-        bool errors = store->verifyStore(checkContents, (RepairFlag) repair);
+        bool errors = aio.blockOn(store->verifyStore(checkContents, (RepairFlag) repair));
         logger->stopWork();
         to << errors;
         break;

@@ -8,6 +8,7 @@
 #include "lix/libstore/nar-info.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/references.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/topo-sort.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/finally.hh"
@@ -1517,8 +1518,8 @@ void LocalStore::invalidatePathChecked(const StorePath & path)
 }
 
 
-bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
-{
+kj::Promise<Result<bool>> LocalStore::verifyStore(bool checkContents, RepairFlag repair)
+try {
     printInfo("reading the Nix store...");
 
     bool errors = false;
@@ -1553,7 +1554,7 @@ bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
         StorePathSet done;
 
         for (auto & i : queryAllValidPaths())
-            verifyPath(i, storePathsInStoreDir, done, validPaths, repair, errors);
+            TRY_AWAIT(verifyPath(i, storePathsInStoreDir, done, validPaths, repair, errors));
     }
 
     /* Optionally, check the content hashes (slow). */
@@ -1598,7 +1599,7 @@ bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
                 if (info->narHash != nullHash && info->narHash != current.first) {
                     printError("path '%s' was modified! expected hash '%s', got '%s'",
                         printStorePath(i), info->narHash.to_string(Base::Base32, true), current.first.to_string(Base::Base32, true));
-                    if (repair) RUN_ASYNC_IN_NEW_THREAD(repairPath(i)); else errors = true;
+                    if (repair) TRY_AWAIT(repairPath(i)); else errors = true;
                 } else {
 
                     bool update = false;
@@ -1636,16 +1637,24 @@ bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
         }
     }
 
-    return errors;
+    co_return errors;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
-void LocalStore::verifyPath(const StorePath & path, const StorePathSet & storePathsInStoreDir,
-    StorePathSet & done, StorePathSet & validPaths, RepairFlag repair, bool & errors)
-{
+kj::Promise<Result<void>> LocalStore::verifyPath(
+    const StorePath & path,
+    const StorePathSet & storePathsInStoreDir,
+    StorePathSet & done,
+    StorePathSet & validPaths,
+    RepairFlag repair,
+    bool & errors
+)
+try {
     checkInterrupt();
 
-    if (!done.insert(path).second) return;
+    if (!done.insert(path).second) co_return result::success();
 
     if (!storePathsInStoreDir.count(path)) {
         /* Check any referrers first.  If we can invalidate them
@@ -1669,7 +1678,7 @@ void LocalStore::verifyPath(const StorePath & path, const StorePathSet & storePa
             printError("path '%s' disappeared, but it still has valid referrers!", pathS);
             if (repair)
                 try {
-                    RUN_ASYNC_IN_NEW_THREAD(repairPath(path));
+                    TRY_AWAIT(repairPath(path));
                 } catch (Error & e) {
                     logWarning(e.info());
                     errors = true;
@@ -1677,10 +1686,13 @@ void LocalStore::verifyPath(const StorePath & path, const StorePathSet & storePa
             else errors = true;
         }
 
-        return;
+        co_return result::success();
     }
 
     validPaths.insert(std::move(path));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

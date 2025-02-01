@@ -273,7 +273,7 @@ public:
      */
     void optimisePath(const Path & path, RepairFlag repair);
 
-    bool verifyStore(bool checkContents, RepairFlag repair) override;
+    kj::Promise<Result<bool>> verifyStore(bool checkContents, RepairFlag repair) override;
 
     /**
      * Register the validity of a path, i.e., that `path` exists, that
@@ -340,7 +340,7 @@ private:
      */
     void invalidatePathChecked(const StorePath & path);
 
-    void verifyPath(const StorePath & path, const StorePathSet & store,
+    kj::Promise<Result<void>> verifyPath(const StorePath & path, const StorePathSet & store,
         StorePathSet & done, StorePathSet & validPaths, RepairFlag repair, bool & errors);
 
     std::shared_ptr<const ValidPathInfo> queryPathInfoInternal(DBState & state, const StorePath & path);

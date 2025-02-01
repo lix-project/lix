@@ -137,7 +137,7 @@ public:
 
     void optimiseStore() override;
 
-    bool verifyStore(bool checkContents, RepairFlag repair) override;
+    kj::Promise<Result<bool>> verifyStore(bool checkContents, RepairFlag repair) override;
 
     /**
      * The default instance would schedule the work on the client side, but

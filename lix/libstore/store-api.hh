@@ -706,7 +706,10 @@ public:
      *
      * @return true if errors remain.
      */
-    virtual bool verifyStore(bool checkContents, RepairFlag repair = NoRepair) { return false; };
+    virtual kj::Promise<Result<bool>> verifyStore(bool checkContents, RepairFlag repair = NoRepair)
+    {
+        return {false};
+    }
 
     /**
      * @return An object to access files in the Nix store.

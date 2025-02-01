@@ -748,7 +748,7 @@ static void opVerify(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         else if (i == "--repair") repair = Repair;
         else throw UsageError("unknown flag '%1%'", i);
 
-    if (store->verifyStore(checkContents, repair)) {
+    if (aio.blockOn(store->verifyStore(checkContents, repair))) {
         warn("not all store errors were fixed");
         throw Exit(1);
     }

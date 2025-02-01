@@ -795,12 +795,14 @@ void RemoteStore::optimiseStore()
 }
 
 
-bool RemoteStore::verifyStore(bool checkContents, RepairFlag repair)
-{
+kj::Promise<Result<bool>> RemoteStore::verifyStore(bool checkContents, RepairFlag repair)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::VerifyStore << checkContents << repair;
     conn.processStderr();
-    return readInt(conn->from);
+    return {readInt(conn->from)};
+} catch (...) {
+    return {result::current_exception()};
 }
 
 
