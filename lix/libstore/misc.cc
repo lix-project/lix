@@ -2,6 +2,7 @@
 #include "lix/libstore/parsed-derivations.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/topo-sort.hh"
 #include "lix/libutil/closure.hh"
@@ -123,8 +124,11 @@ struct QueryMissingContext
 
     void enqueueDerivedPaths(ref<SingleDerivedPath> inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode)
     {
-        if (!inputNode.value.empty())
-            pool.enqueue([this, path{DerivedPath::Built { inputDrv, inputNode.value }}] { doPath(path); });
+        if (!inputNode.value.empty()) {
+            pool.enqueueWithAio([this, path{DerivedPath::Built{inputDrv, inputNode.value}}](
+                                    AsyncIoRoot & aio
+                                ) { doPath(aio, path); });
+        }
         for (const auto & [outputName, childNode] : inputNode.childMap)
             enqueueDerivedPaths(
                 make_ref<SingleDerivedPath>(SingleDerivedPath::Built { inputDrv, outputName }),
@@ -144,7 +148,12 @@ struct QueryMissingContext
     }
 
     void checkOutput(
-        const StorePath & drvPath, ref<Derivation> drv, const StorePath & outPath, ref<Sync<DrvState>> drvState_)
+        AsyncIoRoot & aio,
+        const StorePath & drvPath,
+        ref<Derivation> drv,
+        const StorePath & outPath,
+        ref<Sync<DrvState>> drvState_
+    )
     {
         if (drvState_->lock()->done) return;
 
@@ -168,14 +177,18 @@ struct QueryMissingContext
                 drvState->left--;
                 drvState->outPaths.insert(outPath);
                 if (!drvState->left) {
-                    for (auto & path : drvState->outPaths)
-                        pool.enqueue([this, path{DerivedPath::Opaque { path }}] { doPath(path); });
+                    for (auto & path : drvState->outPaths) {
+                        pool.enqueueWithAio([this,
+                                             path{DerivedPath::Opaque{path}}](AsyncIoRoot & aio) {
+                            doPath(aio, path);
+                        });
+                    }
                 }
             }
         }
     }
 
-    void doPath(const DerivedPath & req)
+    void doPath(AsyncIoRoot & aio, const DerivedPath & req)
     {
         {
             auto state(state_.lock());
@@ -184,14 +197,14 @@ struct QueryMissingContext
 
         std::visit(
             overloaded{
-                [&](const DerivedPath::Built & bfd) { doPathBuilt(bfd); },
+                [&](const DerivedPath::Built & bfd) { doPathBuilt(aio, bfd); },
                 [&](const DerivedPath::Opaque & bo) { doPathOpaque(bo); },
             },
             req.raw()
         );
     }
 
-    void doPathBuilt(const DerivedPath::Built & bfd)
+    void doPathBuilt(AsyncIoRoot & aio, const DerivedPath::Built & bfd)
     {
         auto drvPathP = std::get_if<DerivedPath::Opaque>(&*bfd.drvPath);
         if (!drvPathP) {
@@ -257,10 +270,14 @@ struct QueryMissingContext
 
         if (knownOutputPaths && settings.useSubstitutes && parsedDrv.substitutesAllowed()) {
             auto drvState = make_ref<Sync<DrvState>>(DrvState(invalid.size()));
-            for (auto & output : invalid)
-                pool.enqueue([=, this] { checkOutput(drvPath, drv, output, drvState); });
-        } else
+            for (auto & output : invalid) {
+                pool.enqueueWithAio([=, this](AsyncIoRoot & aio) {
+                    checkOutput(aio, drvPath, drv, output, drvState);
+                });
+            }
+        } else {
             mustBuildDrv(drvPath, *drv);
+        }
     }
 
     void doPathOpaque(const DerivedPath::Opaque & bo)
@@ -286,16 +303,20 @@ struct QueryMissingContext
             state->narSize += info->second.narSize;
         }
 
-        for (auto & ref : info->second.references)
-            pool.enqueue([this, path{DerivedPath::Opaque { ref }}] { doPath(path); });
+        for (auto & ref : info->second.references) {
+            pool.enqueueWithAio([this, path{DerivedPath::Opaque{ref}}](AsyncIoRoot & aio) {
+                doPath(aio, path);
+            });
+        }
     }
 };
 }
 
 void QueryMissingContext::queryMissing(const std::vector<DerivedPath> & targets)
 {
-    for (auto & path : targets)
-        pool.enqueue([=, this] { doPath(path); });
+    for (auto & path : targets) {
+        pool.enqueueWithAio([=, this](AsyncIoRoot & aio) { doPath(aio, path); });
+    }
 
     pool.process();
 }
