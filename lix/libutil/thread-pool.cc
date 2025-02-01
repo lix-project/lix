@@ -41,7 +41,7 @@ void ThreadPool::shutdown()
         thr.join();
 }
 
-void ThreadPool::enqueue(const work_t & t)
+void ThreadPool::enqueueWithAio(const work_t & t)
 {
     auto state(state_.lock());
     if (quit)
@@ -94,6 +94,8 @@ void ThreadPool::doWork()
 
     bool didWork = false;
     std::exception_ptr exc;
+
+    AsyncIoRoot aio;
 
     while (true) {
         work_t w;
@@ -157,7 +159,7 @@ void ThreadPool::doWork()
         }
 
         try {
-            w();
+            w(aio);
         } catch (...) {
             exc = std::current_exception();
         }

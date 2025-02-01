@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/sync.hh"
 
@@ -31,12 +32,17 @@ public:
      *
      * \todo use std::packaged_task?
      */
-    typedef std::function<void()> work_t;
+    typedef std::function<void(AsyncIoRoot &)> work_t;
 
     /**
      * Enqueue a function to be executed by the thread pool.
      */
-    void enqueue(const work_t & t);
+    void enqueueWithAio(const work_t & t);
+
+    void enqueue(std::function<void()> t)
+    {
+        enqueueWithAio([t{std::move(t)}](AsyncIoRoot &) { t(); });
+    }
 
     /**
      * Execute work items until the queue is empty.
