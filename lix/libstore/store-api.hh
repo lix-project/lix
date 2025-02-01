@@ -732,7 +732,7 @@ public:
      * Read a derivation, after ensuring its existence through
      * ensurePath().
      */
-    Derivation derivationFromPath(const StorePath & drvPath);
+    kj::Promise<Result<Derivation>> derivationFromPath(const StorePath & drvPath);
 
     /**
      * Read a derivation (which must already be valid).

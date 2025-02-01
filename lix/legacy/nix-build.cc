@@ -327,7 +327,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
             throw UsageError("nix-shell requires a single derivation");
 
         auto & drvInfo = drvs.front();
-        auto drv = evalStore->derivationFromPath(drvInfo.requireDrvPath(*state));
+        auto drv = aio.blockOn(evalStore->derivationFromPath(drvInfo.requireDrvPath(*state)));
 
         std::vector<DerivedPath> pathsToBuild;
         RealisedPath::Set pathsToCopy;

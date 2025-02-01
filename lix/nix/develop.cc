@@ -212,7 +212,7 @@ const static std::string getEnvSh =
    environment to a file and exits. */
 static kj::Promise<Result<StorePath>> getDerivationEnvironment(ref<Store> store, ref<Store> evalStore, const StorePath & drvPath)
 try {
-    auto drv = evalStore->derivationFromPath(drvPath);
+    auto drv = TRY_AWAIT(evalStore->derivationFromPath(drvPath));
 
     auto builder = baseNameOf(drv.builder);
     if (builder != "bash")

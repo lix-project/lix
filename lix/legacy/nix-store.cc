@@ -69,7 +69,7 @@ try {
     if (path.path.isDerivation()) {
         if (build) TRY_AWAIT(store->buildPaths({path.toDerivedPath()}));
         auto outputPaths = store->queryDerivationOutputMap(path.path);
-        Derivation drv = store->derivationFromPath(path.path);
+        Derivation drv = TRY_AWAIT(store->derivationFromPath(path.path));
         rootNr++;
 
         /* FIXME: Encode this empty special case explicitly in the type. */
@@ -232,7 +232,7 @@ static kj::Promise<Result<StorePathSet>> maybeUseOutputs(const StorePath & store
 try {
     if (forceRealise) TRY_AWAIT(realisePath({storePath}));
     if (useOutput && storePath.isDerivation()) {
-        auto drv = store->derivationFromPath(storePath);
+        auto drv = TRY_AWAIT(store->derivationFromPath(storePath));
         StorePathSet outputs;
         if (forceRealise)
             co_return store->queryDerivationOutputs(storePath);
@@ -394,7 +394,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qBinding:
             for (auto & i : opArgs) {
                 auto path = useDeriver(store->followLinksToStorePath(i));
-                Derivation drv = store->derivationFromPath(path);
+                Derivation drv = aio.blockOn(store->derivationFromPath(path));
                 StringPairs::iterator j = drv.env.find(bindingName);
                 if (j == drv.env.end())
                     throw Error("derivation '%s' has no environment binding named '%s'",
@@ -479,7 +479,7 @@ static void opPrintEnv(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     if (opArgs.size() != 1) throw UsageError("'--print-env' requires one derivation store path");
 
     Path drvPath = opArgs.front();
-    Derivation drv = store->derivationFromPath(store->parseStorePath(drvPath));
+    Derivation drv = aio.blockOn(store->derivationFromPath(store->parseStorePath(drvPath)));
 
     /* Print each environment variable in the derivation in a format
      * that can be sourced by the shell. */

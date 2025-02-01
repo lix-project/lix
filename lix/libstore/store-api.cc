@@ -937,7 +937,7 @@ StorePathSet Store::exportReferences(const StorePathSet & storePaths, const Stor
 
     for (auto & j : paths2) {
         if (j.isDerivation()) {
-            Derivation drv = derivationFromPath(j);
+            Derivation drv = RUN_ASYNC_IN_NEW_THREAD(derivationFromPath(j));
             for (auto & k : drv.outputsAndOptPaths(*this)) {
                 if (!k.second.second)
                     /* FIXME: I am confused why we are calling
@@ -1359,10 +1359,12 @@ std::string showPaths(const PathSet & paths)
 }
 
 
-Derivation Store::derivationFromPath(const StorePath & drvPath)
-{
-    RUN_ASYNC_IN_NEW_THREAD(ensurePath(drvPath));
-    return readDerivation(drvPath);
+kj::Promise<Result<Derivation>> Store::derivationFromPath(const StorePath & drvPath)
+try {
+    TRY_AWAIT(ensurePath(drvPath));
+    co_return readDerivation(drvPath);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 Derivation readDerivationCommon(Store& store, const StorePath& drvPath, bool requireValidPath)

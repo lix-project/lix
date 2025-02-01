@@ -235,7 +235,7 @@ struct QueryMissingContext
         }
         if (knownOutputPaths && invalid.empty()) return;
 
-        auto drv = make_ref<Derivation>(store.derivationFromPath(drvPath));
+        auto drv = make_ref<Derivation>(aio.blockOn(store.derivationFromPath(drvPath)));
         ParsedDerivation parsedDrv(StorePath(drvPath), *drv);
 
         if (!knownOutputPaths && settings.useSubstitutes && parsedDrv.substitutesAllowed()) {

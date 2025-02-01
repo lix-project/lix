@@ -25,7 +25,7 @@ DrvInfo::DrvInfo(ref<Store> store, const std::string & drvPathWithOutputs)
 
     this->drvPath = drvPath;
 
-    auto drv = store->derivationFromPath(drvPath);
+    auto drv = RUN_ASYNC_IN_NEW_THREAD(store->derivationFromPath(drvPath));
 
     name = drvPath.name();
 

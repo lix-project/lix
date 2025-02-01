@@ -17,6 +17,7 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/crypto.hh"
+#include "lix/libutil/async.hh"
 
 #include <sodium.h>
 #include <nlohmann/json.hpp>
@@ -37,6 +38,12 @@ static ref<Store> store()
         }
     }
     return ref<Store>(_store);
+}
+
+static AsyncIoRoot & aio()
+{
+    static thread_local AsyncIoRoot root;
+    return root;
 }
 
 
@@ -313,7 +320,7 @@ SV * derivationFromPath(char * drvPath)
         HV *hash;
     CODE:
         try {
-            Derivation drv = store()->derivationFromPath(store()->parseStorePath(drvPath));
+            Derivation drv = aio().blockOn(store()->derivationFromPath(store()->parseStorePath(drvPath)));
             hash = newHV();
 
             HV * outputs = newHV();
