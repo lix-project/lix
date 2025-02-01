@@ -2,6 +2,7 @@
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/thread-name.hh"
+#include <kj/common.h>
 
 namespace nix {
 
@@ -13,7 +14,7 @@ ThreadPool::ThreadPool(const char * name, size_t _maxThreads)
         if (!maxThreads) maxThreads = 1;
     }
 
-    debug("starting pool of %d threads", maxThreads - 1);
+    debug("starting pool of %d threads", maxThreads);
 }
 
 ThreadPool::~ThreadPool()
@@ -46,9 +47,8 @@ void ThreadPool::enqueue(const work_t & t)
     if (quit)
         throw ThreadPoolShutDown("cannot enqueue a work item while the thread pool is shutting down");
     state->pending.push(t);
-    /* Note: process() also executes items, so count it as a worker. */
-    if (state->pending.size() > state->workers.size() + 1 && state->workers.size() + 1 < maxThreads)
-        state->workers.emplace_back(&ThreadPool::doWork, this, false);
+    if (state->pending.size() > state->workers.size() && state->workers.size() < maxThreads)
+        state->workers.emplace_back(&ThreadPool::doWork, this);
     work.notify_one();
 }
 
@@ -56,14 +56,15 @@ void ThreadPool::process()
 {
     state_.lock()->draining = true;
 
-    /* Do work until no more work is pending or active. */
+    /* Wait until no more work is pending or active. */
     try {
-        doWork(true);
+        if (auto state(state_.lock()); state->active == 0 && state->pending.empty()) {
+            return;
+        }
+
+        quit.wait(false);
 
         auto state(state_.lock());
-
-        assert(quit);
-
         if (state->exception)
             std::rethrow_exception(state->exception);
 
@@ -78,14 +79,18 @@ void ThreadPool::process()
     }
 }
 
-void ThreadPool::doWork(bool mainThread)
+void ThreadPool::doWork()
 {
+    // Tell the other workers to quit; we only return on errors or completion
+    KJ_DEFER({
+        quit = true;
+        quit.notify_all();
+        work.notify_all();
+    });
     ReceiveInterrupts receiveInterrupts;
 
-    if (!mainThread) {
-        setCurrentThreadName(this->name);
-        interruptCheck = [&]() { return (bool) quit; };
-    }
+    setCurrentThreadName(this->name);
+    interruptCheck = [&]() { return (bool) quit; };
 
     bool didWork = false;
     std::exception_ptr exc;
@@ -103,9 +108,7 @@ void ThreadPool::doWork(bool mainThread)
 
                     if (!state->exception) {
                         state->exception = exc;
-                        // Tell the other workers to quit.
-                        quit = true;
-                        work.notify_all();
+                        return;
                     } else {
                         /* Print the exception, since we can't
                            propagate it. */
@@ -136,16 +139,12 @@ void ThreadPool::doWork(bool mainThread)
             /* Wait until a work item is available or we're asked to
                quit. */
             while (true) {
-                if (quit) return;
-
                 if (!state->pending.empty()) break;
 
                 /* If there are no active or pending items, and the
                    main thread is running process(), then no new items
                    can be added. So exit. */
                 if (!state->active && state->draining) {
-                    quit = true;
-                    work.notify_all();
                     return;
                 }
 

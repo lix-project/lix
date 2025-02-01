@@ -73,7 +73,7 @@ private:
 
     std::condition_variable work;
 
-    void doWork(bool mainThread);
+    void doWork();
 
     void shutdown();
 };
