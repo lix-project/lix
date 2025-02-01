@@ -249,7 +249,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
                 } catch (Error & e) {};
                 auto [path, outputNames] = parsePathWithOutputs(absolute);
                 if (evalStore->isStorePath(path) && path.ends_with(".drv"))
-                    drvs.push_back(DrvInfo(evalStore, absolute));
+                    drvs.push_back(aio.blockOn(DrvInfo::create(evalStore, absolute)));
                 else
                     /* If we're in a #! script, interpret filenames
                        relative to the script. */

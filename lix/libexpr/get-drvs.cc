@@ -2,6 +2,7 @@
 #include "lix/libexpr/eval-inline.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libexpr/eval.hh"
+#include "lix/libstore/path.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/path-with-outputs.hh"
 
@@ -18,14 +19,17 @@ DrvInfo::DrvInfo(std::string attrPath, Bindings * attrs)
 }
 
 
-DrvInfo::DrvInfo(ref<Store> store, const std::string & drvPathWithOutputs)
-    : attrs(nullptr), attrPath("")
+DrvInfo::DrvInfo(
+    ref<Store> store,
+    const std::string & drvPathWithOutputs,
+    Derivation drv,
+    const StorePath & drvPath,
+    const std::set<std::string> & selectedOutputs
+)
+    : attrs(nullptr)
+    , attrPath("")
 {
-    auto [drvPath, selectedOutputs] = parsePathWithOutputs(*store, drvPathWithOutputs);
-
     this->drvPath = drvPath;
-
-    auto drv = RUN_ASYNC_IN_NEW_THREAD(store->derivationFromPath(drvPath));
 
     name = drvPath.name();
 
@@ -43,6 +47,17 @@ DrvInfo::DrvInfo(ref<Store> store, const std::string & drvPathWithOutputs)
     auto & [outputName, output] = *i;
 
     outPath = {output.path(*store, drv.name, outputName)};
+}
+
+kj::Promise<Result<DrvInfo>>
+DrvInfo::create(ref<Store> store, const std::string & drvPathWithOutputs)
+try {
+    auto [drvPath, selectedOutputs] = parsePathWithOutputs(*store, drvPathWithOutputs);
+    auto drv = TRY_AWAIT(store->derivationFromPath(drvPath));
+
+    co_return DrvInfo(store, drvPathWithOutputs, drv, drvPath, selectedOutputs);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
