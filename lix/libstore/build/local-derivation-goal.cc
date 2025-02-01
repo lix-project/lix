@@ -916,7 +916,9 @@ void LocalDerivationGoal::initEnv()
 
 kj::Promise<Result<void>> LocalDerivationGoal::writeStructuredAttrs()
 try {
-    if (auto structAttrsJson = parsedDrv->prepareStructuredAttrs(worker.store, inputPaths)) {
+    if (auto structAttrsJson =
+            TRY_AWAIT(parsedDrv->prepareStructuredAttrs(worker.store, inputPaths)))
+    {
         auto json = structAttrsJson.value();
         nlohmann::json rewritten;
         for (auto & [i, v] : json["outputs"].get<nlohmann::json::object_t>()) {

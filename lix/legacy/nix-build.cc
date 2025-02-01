@@ -470,7 +470,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
 
             ParsedDerivation parsedDrv(drvInfo.requireDrvPath(*state), drv);
 
-            if (auto structAttrs = parsedDrv.prepareStructuredAttrs(*store, inputs)) {
+            if (auto structAttrs = aio.blockOn(parsedDrv.prepareStructuredAttrs(*store, inputs))) {
                 auto json = structAttrs.value();
                 structuredAttrsRC = writeStructuredAttrsShell(json);
 

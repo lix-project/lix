@@ -134,10 +134,11 @@ bool ParsedDerivation::useUidRange() const
 
 static std::regex shVarName("[A-Za-z_][A-Za-z0-9_]*");
 
-std::optional<nlohmann::json> ParsedDerivation::prepareStructuredAttrs(Store & store, const StorePathSet & inputPaths)
-{
+kj::Promise<Result<std::optional<nlohmann::json>>>
+ParsedDerivation::prepareStructuredAttrs(Store & store, const StorePathSet & inputPaths)
+try {
     auto structuredAttrs = getStructuredAttrs();
-    if (!structuredAttrs) return std::nullopt;
+    if (!structuredAttrs) co_return std::nullopt;
 
     auto json = *structuredAttrs;
 
@@ -155,12 +156,14 @@ std::optional<nlohmann::json> ParsedDerivation::prepareStructuredAttrs(Store & s
             for (auto & p : *i)
                 storePaths.insert(store.toStorePath(p.get<std::string>()).first);
             json[i.key()] = store.pathInfoToJSON(
-                RUN_ASYNC_IN_NEW_THREAD(store.exportReferences(storePaths, inputPaths)), false, true
+                TRY_AWAIT(store.exportReferences(storePaths, inputPaths)), false, true
             );
         }
     }
 
-    return json;
+    co_return json;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 /* As a convenience to bash scripts, write a shell file that

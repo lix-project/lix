@@ -41,7 +41,8 @@ public:
 
     bool useUidRange() const;
 
-    std::optional<nlohmann::json> prepareStructuredAttrs(Store & store, const StorePathSet & inputPaths);
+    kj::Promise<Result<std::optional<nlohmann::json>>>
+    prepareStructuredAttrs(Store & store, const StorePathSet & inputPaths);
 };
 
 std::string writeStructuredAttrsShell(const nlohmann::json & json);
