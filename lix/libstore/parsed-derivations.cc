@@ -1,4 +1,5 @@
 #include "lix/libstore/parsed-derivations.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/strings.hh"
 
 #include <nlohmann/json.hpp>
@@ -154,7 +155,8 @@ std::optional<nlohmann::json> ParsedDerivation::prepareStructuredAttrs(Store & s
             for (auto & p : *i)
                 storePaths.insert(store.toStorePath(p.get<std::string>()).first);
             json[i.key()] = store.pathInfoToJSON(
-                store.exportReferences(storePaths, inputPaths), false, true);
+                RUN_ASYNC_IN_NEW_THREAD(store.exportReferences(storePaths, inputPaths)), false, true
+            );
         }
     }
 

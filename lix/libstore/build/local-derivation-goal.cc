@@ -571,9 +571,12 @@ try {
             auto storePath = worker.store.toStorePath(storePathS).first;
 
             /* Write closure info to <fileName>. */
-            writeFile(tmpDir + "/" + fileName,
+            writeFile(
+                tmpDir + "/" + fileName,
                 worker.store.makeValidityRegistration(
-                    worker.store.exportReferences({storePath}, inputPaths), false, false));
+                    TRY_AWAIT(worker.store.exportReferences({storePath}, inputPaths)), false, false
+                )
+            );
         }
     }
 

@@ -918,8 +918,9 @@ std::string Store::makeValidityRegistration(const StorePathSet & paths,
 }
 
 
-StorePathSet Store::exportReferences(const StorePathSet & storePaths, const StorePathSet & inputPaths)
-{
+kj::Promise<Result<StorePathSet>>
+Store::exportReferences(const StorePathSet & storePaths, const StorePathSet & inputPaths)
+try {
     StorePathSet paths;
 
     for (auto & storePath : storePaths) {
@@ -937,7 +938,7 @@ StorePathSet Store::exportReferences(const StorePathSet & storePaths, const Stor
 
     for (auto & j : paths2) {
         if (j.isDerivation()) {
-            Derivation drv = RUN_ASYNC_IN_NEW_THREAD(derivationFromPath(j));
+            Derivation drv = TRY_AWAIT(derivationFromPath(j));
             for (auto & k : drv.outputsAndOptPaths(*this)) {
                 if (!k.second.second)
                     /* FIXME: I am confused why we are calling
@@ -950,7 +951,9 @@ StorePathSet Store::exportReferences(const StorePathSet & storePaths, const Stor
         }
     }
 
-    return paths;
+    co_return paths;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 json Store::pathInfoToJSON(const StorePathSet & storePaths,

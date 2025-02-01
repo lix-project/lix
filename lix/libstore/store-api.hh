@@ -818,7 +818,8 @@ public:
      * Computes the full closure of of a set of store-paths for e.g.
      * derivations that need this information for `exportReferencesGraph`.
      */
-    StorePathSet exportReferences(const StorePathSet & storePaths, const StorePathSet & inputPaths);
+    kj::Promise<Result<StorePathSet>>
+    exportReferences(const StorePathSet & storePaths, const StorePathSet & inputPaths);
 
     /**
      * Given a store path, return the realisation actually used in the realisation of this path:
