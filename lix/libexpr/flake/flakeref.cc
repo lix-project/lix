@@ -44,7 +44,7 @@ bool FlakeRef::operator ==(const FlakeRef & other) const
 
 kj::Promise<Result<FlakeRef>> FlakeRef::resolve(ref<Store> store) const
 try {
-    auto [input2, extraAttrs] = lookupInRegistries(store, input);
+    auto [input2, extraAttrs] = TRY_AWAIT(lookupInRegistries(store, input));
     co_return FlakeRef(
         std::move(input2), fetchers::maybeGetStrAttr(extraAttrs, "dir").value_or(subdir)
     );

@@ -1,5 +1,7 @@
 #include "lix/libfetchers/registry.hh"
 #include "lix/libfetchers/fetchers.hh"
+#include "lix/libutil/async.hh"
+#include "lix/libutil/types.hh"
 #include "lix/libutil/users.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
@@ -7,7 +9,10 @@
 
 #include "lix/libfetchers/fetch-settings.hh"
 
+#include <memory>
+#include <mutex>
 #include <nlohmann/json.hpp>
+#include <shared_mutex>
 
 namespace nix::fetchers {
 
@@ -153,45 +158,62 @@ void overrideRegistry(
     flagRegistry->add(from, to, extraAttrs);
 }
 
-static std::shared_ptr<Registry> getGlobalRegistry(ref<Store> store)
-{
-    static auto reg = [&]() {
+static kj::Promise<Result<std::shared_ptr<Registry>>> getGlobalRegistry(ref<Store> store)
+try {
+    static std::shared_mutex mtx;
+    static std::shared_ptr<Registry> reg;
+
+    if (std::shared_lock l(mtx); reg) {
+        co_return reg;
+    }
+
+    std::scoped_lock l(mtx);
+
+    if (!reg) {
         auto path = fetchSettings.flakeRegistry.get();
         if (path == "") {
-            return std::make_shared<Registry>(Registry::Global); // empty registry
+            reg = std::make_shared<Registry>(Registry::Global); // empty registry
         } else if (path == "vendored") {
-            return Registry::read(settings.nixDataDir + "/flake-registry.json", Registry::Global);
+            reg = Registry::read(settings.nixDataDir + "/flake-registry.json", Registry::Global);
+        } else {
+            if (!path.starts_with("/")) {
+                warn(
+                    "config option flake-registry referring to a URL is deprecated and will be "
+                    "removed in Lix 3.0; yours is: `%s'",
+                    path
+                );
+
+                auto storePath = downloadFile(store, path, "flake-registry.json", false).storePath;
+                if (auto store2 = store.dynamic_pointer_cast<LocalFSStore>())
+                    store2->addPermRoot(storePath, getCacheDir() + "/nix/flake-registry.json");
+                path = store->toRealPath(storePath);
+            }
+
+            reg = Registry::read(path, Registry::Global);
         }
+    };
 
-        if (!path.starts_with("/")) {
-            warn("config option flake-registry referring to a URL is deprecated and will be removed in Lix 3.0; yours is: `%s'", path);
-
-            auto storePath = downloadFile(store, path, "flake-registry.json", false).storePath;
-            if (auto store2 = store.dynamic_pointer_cast<LocalFSStore>())
-                store2->addPermRoot(storePath, getCacheDir() + "/nix/flake-registry.json");
-            path = store->toRealPath(storePath);
-        }
-
-        return Registry::read(path, Registry::Global);
-    }();
-
-    return reg;
+    co_return reg;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-Registries getRegistries(ref<Store> store)
-{
+kj::Promise<Result<Registries>> getRegistries(ref<Store> store)
+try {
     Registries registries;
     registries.push_back(getFlagRegistry());
     registries.push_back(getUserRegistry());
     registries.push_back(getSystemRegistry());
-    registries.push_back(getGlobalRegistry(store));
-    return registries;
+    registries.push_back(TRY_AWAIT(getGlobalRegistry(store)));
+    co_return registries;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-std::pair<Input, Attrs> lookupInRegistries(
+kj::Promise<Result<std::pair<Input, Attrs>>> lookupInRegistries(
     ref<Store> store,
     const Input & _input)
-{
+try {
     Attrs extraAttrs;
     int n = 0;
     Input input(_input);
@@ -201,7 +223,7 @@ std::pair<Input, Attrs> lookupInRegistries(
     n++;
     if (n > 100) throw Error("cycle detected in flake registry for '%s'", input.to_string());
 
-    for (auto & registry : getRegistries(store)) {
+    for (auto & registry : TRY_AWAIT(getRegistries(store))) {
         // FIXME: O(n)
         for (auto & entry : registry->entries) {
             if (entry.exact) {
@@ -227,7 +249,9 @@ std::pair<Input, Attrs> lookupInRegistries(
 
     debug("looked up '%s' -> '%s'", _input.to_string(), input.to_string());
 
-    return {input, extraAttrs};
+    co_return {input, extraAttrs};
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }

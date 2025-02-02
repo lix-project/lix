@@ -363,7 +363,7 @@ void completeFlakeRef(
     Args::completeDir(completions, 0, prefix);
 
     /* Look for registry entries that match the prefix. */
-    for (auto & registry : fetchers::getRegistries(store)) {
+    for (auto & registry : aio.blockOn(fetchers::getRegistries(store))) {
         for (auto & entry : registry->entries) {
             auto from = entry.from.to_string();
             if (!prefix.starts_with("flake:") && from.starts_with("flake:")) {

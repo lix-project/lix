@@ -186,7 +186,7 @@ static void fetchTree(
     }
 
     if (!evalSettings.pureEval && !input.isDirect())
-        input = lookupInRegistries(state.ctx.store, input).first;
+        input = state.aio.blockOn(lookupInRegistries(state.ctx.store, input)).first;
 
     if (evalSettings.pureEval && !input.isLocked()) {
         state.ctx.errors.make<EvalError>("in pure evaluation mode, 'fetchTree' requires a locked input").atPos(pos).debugThrow();

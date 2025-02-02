@@ -69,7 +69,7 @@ struct CmdRegistryList : StoreCommand
     {
         using namespace fetchers;
 
-        auto registries = getRegistries(store);
+        auto registries = aio().blockOn(getRegistries(store));
 
         for (auto & registry : registries) {
             for (auto & entry : registry->entries) {

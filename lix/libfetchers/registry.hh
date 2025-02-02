@@ -54,14 +54,14 @@ std::shared_ptr<Registry> getCustomRegistry(const Path & p);
 
 Path getUserRegistryPath();
 
-Registries getRegistries(ref<Store> store);
+kj::Promise<Result<Registries>> getRegistries(ref<Store> store);
 
 void overrideRegistry(
     const Input & from,
     const Input & to,
     const Attrs & extraAttrs);
 
-std::pair<Input, Attrs> lookupInRegistries(
+kj::Promise<Result<std::pair<Input, Attrs>>> lookupInRegistries(
     ref<Store> store,
     const Input & input);
 
