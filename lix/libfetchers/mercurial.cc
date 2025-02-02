@@ -150,8 +150,9 @@ struct MercurialInputScheme : InputScheme
         return {isLocal, isLocal ? url.path : url.base};
     }
 
-    std::pair<StorePath, Input> fetch(ref<Store> store, const Input & _input) override
-    {
+    kj::Promise<Result<std::pair<StorePath, Input>>>
+    fetch(ref<Store> store, const Input & _input) override
+    try {
         Input input(_input);
 
         auto name = input.getName();
@@ -202,7 +203,7 @@ struct MercurialInputScheme : InputScheme
 
                 auto storePath = store->addToStore(input.getName(), actualPath, FileIngestionMethod::Recursive, HashType::SHA256, filter);
 
-                return {std::move(storePath), input};
+                co_return {std::move(storePath), input};
             }
 
             auto tokens = tokenizeString<std::vector<std::string>>(
@@ -243,7 +244,7 @@ struct MercurialInputScheme : InputScheme
 
         if (input.getRev()) {
             if (auto res = getCache()->lookup(store, getLockedAttrs()))
-                return makeResult(res->first, std::move(res->second));
+                co_return makeResult(res->first, std::move(res->second));
         }
 
         auto revOrRef = input.getRev() ? fmt("id(%s)", input.getRev()->gitRev()) : *input.getRef();
@@ -259,7 +260,7 @@ struct MercurialInputScheme : InputScheme
             auto rev2 = Hash::parseAny(getStrAttr(res->first, "rev"), HashType::SHA1);
             if (!input.getRev() || input.getRev() == rev2) {
                 input.attrs.insert_or_assign("rev", rev2.gitRev());
-                return makeResult(res->first, std::move(res->second));
+                co_return makeResult(res->first, std::move(res->second));
             }
         }
 
@@ -302,7 +303,7 @@ struct MercurialInputScheme : InputScheme
         input.attrs.insert_or_assign("ref", tokens[2]);
 
         if (auto res = getCache()->lookup(store, getLockedAttrs()))
-            return makeResult(res->first, std::move(res->second));
+            co_return makeResult(res->first, std::move(res->second));
 
         Path tmpDir = createTempDir();
         AutoDelete delTmpDir(tmpDir, true);
@@ -333,7 +334,9 @@ struct MercurialInputScheme : InputScheme
             storePath,
             true);
 
-        return makeResult(infoAttrs, std::move(storePath));
+        co_return makeResult(infoAttrs, std::move(storePath));
+    } catch (...) {
+        co_return result::current_exception();
     }
 };
 

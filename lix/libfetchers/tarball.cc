@@ -265,10 +265,13 @@ struct FileInputScheme : CurlInputScheme
                 : (!requireTree && !hasTarballExtension(url.path)));
     }
 
-    std::pair<StorePath, Input> fetch(ref<Store> store, const Input & input) override
-    {
+    kj::Promise<Result<std::pair<StorePath, Input>>>
+    fetch(ref<Store> store, const Input & input) override
+    try {
         auto file = downloadFile(store, getStrAttr(input.attrs, "url"), input.getName(), false);
-        return {std::move(file.storePath), input};
+        co_return {std::move(file.storePath), input};
+    } catch (...) {
+        co_return result::current_exception();
     }
 };
 
@@ -286,8 +289,9 @@ struct TarballInputScheme : CurlInputScheme
                 : (requireTree || hasTarballExtension(url.path)));
     }
 
-    std::pair<StorePath, Input> fetch(ref<Store> store, const Input & _input) override
-    {
+    kj::Promise<Result<std::pair<StorePath, Input>>>
+    fetch(ref<Store> store, const Input & _input) override
+    try {
         Input input(_input);
         auto url = getStrAttr(input.attrs, "url");
         auto result = downloadTarball(store, url, input.getName(), false);
@@ -304,7 +308,9 @@ struct TarballInputScheme : CurlInputScheme
         if (result.lastModified && !input.attrs.contains("lastModified"))
             input.attrs.insert_or_assign("lastModified", uint64_t(result.lastModified));
 
-        return {result.tree.storePath, std::move(input)};
+        co_return {result.tree.storePath, std::move(input)};
+    } catch (...) {
+        co_return result::current_exception();
     }
 };
 

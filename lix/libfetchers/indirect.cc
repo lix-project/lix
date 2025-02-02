@@ -102,9 +102,12 @@ struct IndirectInputScheme : InputScheme
         return input;
     }
 
-    std::pair<StorePath, Input> fetch(ref<Store> store, const Input & input) override
-    {
+    kj::Promise<Result<std::pair<StorePath, Input>>>
+    fetch(ref<Store> store, const Input & input) override
+    try {
         throw Error("indirect input '%s' cannot be fetched directly", input.to_string());
+    } catch (...) {
+        return {result::current_exception()};
     }
 };
 

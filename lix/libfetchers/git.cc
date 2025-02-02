@@ -1,3 +1,4 @@
+#include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libfetchers/cache.hh"
@@ -444,8 +445,9 @@ struct GitInputScheme : InputScheme
         return {isLocal, isLocal ? url.path : url.base};
     }
 
-    std::pair<StorePath, Input> fetch(ref<Store> store, const Input & _input) override
-    {
+    kj::Promise<Result<std::pair<StorePath, Input>>>
+    fetch(ref<Store> store, const Input & _input) override
+    try {
         Input input(_input);
         auto gitDir = ".git";
 
@@ -490,7 +492,7 @@ struct GitInputScheme : InputScheme
 
         if (input.getRev()) {
             if (auto res = getCache()->lookup(store, getLockedAttrs()))
-                return makeResult(res->first, std::move(res->second));
+                co_return makeResult(res->first, std::move(res->second));
         }
 
         auto [isLocal, actualUrl_] = getActualUrl(input);
@@ -501,7 +503,7 @@ struct GitInputScheme : InputScheme
         if (!input.getRef() && !input.getRev() && isLocal) {
             auto workdirInfo = getWorkdirInfo(input, actualUrl);
             if (!workdirInfo.clean) {
-                return fetchFromWorkdir(store, input, actualUrl, workdirInfo);
+                co_return fetchFromWorkdir(store, input, actualUrl, workdirInfo);
             }
         }
 
@@ -549,7 +551,7 @@ struct GitInputScheme : InputScheme
                 auto rev2 = Hash::parseAny(getStrAttr(res->first, "rev"), HashType::SHA1);
                 if (!input.getRev() || input.getRev() == rev2) {
                     input.attrs.insert_or_assign("rev", rev2.gitRev());
-                    return makeResult(res->first, std::move(res->second));
+                    co_return makeResult(res->first, std::move(res->second));
                 }
             }
 
@@ -558,7 +560,7 @@ struct GitInputScheme : InputScheme
             gitDir = ".";
 
             createDirs(dirOf(cacheDir));
-            PathLock cacheDirLock = lockPath(cacheDir + ".lock");
+            PathLock cacheDirLock = TRY_AWAIT(lockPathAsync(cacheDir + ".lock"));
 
             if (!pathExists(cacheDir)) {
                 runProgram("git", true, { "-c", "init.defaultBranch=" + gitInitialBranch, "init", "--bare", repoDir });
@@ -685,7 +687,7 @@ struct GitInputScheme : InputScheme
         /* Now that we know the ref, check again whether we have it in
            the store. */
         if (auto res = getCache()->lookup(store, getLockedAttrs()))
-            return makeResult(res->first, std::move(res->second));
+            co_return makeResult(res->first, std::move(res->second));
 
         Path tmpDir = createTempDir();
         AutoDelete delTmpDir(tmpDir, true);
@@ -792,7 +794,9 @@ struct GitInputScheme : InputScheme
             storePath,
             true);
 
-        return makeResult(infoAttrs, std::move(storePath));
+        co_return makeResult(infoAttrs, std::move(storePath));
+    } catch (...) {
+        co_return result::current_exception();
     }
 };
 

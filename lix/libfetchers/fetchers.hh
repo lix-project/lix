@@ -162,7 +162,8 @@ struct InputScheme
         std::string_view contents,
         std::optional<std::string> commitMsg) const;
 
-    virtual std::pair<StorePath, Input> fetch(ref<Store> store, const Input & input) = 0;
+    virtual kj::Promise<Result<std::pair<StorePath, Input>>>
+    fetch(ref<Store> store, const Input & input) = 0;
 
 protected:
     void emplaceURLQueryIntoAttrs(

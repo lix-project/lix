@@ -208,8 +208,9 @@ struct GitArchiveInputScheme : InputScheme
 
     virtual DownloadUrl getDownloadUrl(const Input & input) const = 0;
 
-    std::pair<StorePath, Input> fetch(ref<Store> store, const Input & _input) override
-    {
+    kj::Promise<Result<std::pair<StorePath, Input>>>
+    fetch(ref<Store> store, const Input & _input) override
+    try {
         Input input(_input);
 
         if (!maybeGetStrAttr(input.attrs, "ref")) input.attrs.insert_or_assign("ref", "HEAD");
@@ -226,7 +227,9 @@ struct GitArchiveInputScheme : InputScheme
 
         input.attrs.insert_or_assign("lastModified", uint64_t(result.lastModified));
 
-        return {result.tree.storePath, input};
+        co_return {result.tree.storePath, input};
+    } catch (...) {
+        co_return result::current_exception();
     }
 };
 

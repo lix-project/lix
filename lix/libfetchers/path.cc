@@ -96,8 +96,9 @@ struct PathInputScheme : InputScheme
         throw Error("cannot fetch input '%s' because it uses a relative path", input.to_string());
     }
 
-    std::pair<StorePath, Input> fetch(ref<Store> store, const Input & _input) override
-    {
+    kj::Promise<Result<std::pair<StorePath, Input>>>
+    fetch(ref<Store> store, const Input & _input) override
+    try {
         Input input(_input);
         std::string absPath;
         auto path = getStrAttr(input.attrs, "path");
@@ -136,7 +137,9 @@ struct PathInputScheme : InputScheme
         }
         input.attrs.insert_or_assign("lastModified", uint64_t(mtime));
 
-        return {std::move(*storePath), input};
+        co_return {std::move(*storePath), input};
+    } catch (...) {
+        co_return result::current_exception();
     }
 };
 

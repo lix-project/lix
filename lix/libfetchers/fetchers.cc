@@ -149,20 +149,27 @@ try {
         }
     }
 
-    auto [storePath, input] = [&]() -> std::pair<StorePath, Input> {
-        // *sighs*, we print the URL without query params, rather than the full URL
-        // because the Nixpkgs fileset lib tests assume that fetching shallow and
-        // non-shallow prints exactly the same stderr...
-        ParsedURL withoutParams = this->toURL();
-        withoutParams.query.clear();
-        printInfo("fetching %s input '%s'", this->getType(), withoutParams.to_string());
-        try {
-            return scheme->fetch(store, *this);
-        } catch (Error & e) {
-            e.addTrace({}, "while fetching the input '%s'", to_string());
-            throw;
-        }
-    }();
+    auto [storePath, input] = TRY_AWAIT(
+        [](const Input & self,
+           ref<Store> store) -> kj::Promise<Result<std::pair<StorePath, Input>>> {
+            try {
+                // *sighs*, we print the URL without query params, rather than the full URL
+                // because the Nixpkgs fileset lib tests assume that fetching shallow and
+                // non-shallow prints exactly the same stderr...
+                ParsedURL withoutParams = self.toURL();
+                withoutParams.query.clear();
+                printInfo("fetching %s input '%s'", self.getType(), withoutParams.to_string());
+                try {
+                    co_return TRY_AWAIT(self.scheme->fetch(store, self));
+                } catch (Error & e) {
+                    e.addTrace({}, "while fetching the input '%s'", self.to_string());
+                    throw;
+                }
+            } catch (...) {
+                co_return result::current_exception();
+            }
+        }(*this, store)
+    );
 
     Tree tree {
         .actualPath = store->toRealPath(storePath),
