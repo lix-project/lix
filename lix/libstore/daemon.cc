@@ -300,7 +300,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::QuerySubstitutablePaths: {
         auto paths = WorkerProto::Serialise<StorePathSet>::read(*store, rconn);
         logger->startWork();
-        auto res = store->querySubstitutablePaths(paths);
+        auto res = aio.blockOn(store->querySubstitutablePaths(paths));
         logger->stopWork();
         to << WorkerProto::write(*store, wconn, res);
         break;

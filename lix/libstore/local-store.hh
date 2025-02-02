@@ -199,7 +199,7 @@ public:
 
     std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override;
 
-    StorePathSet querySubstitutablePaths(const StorePathSet & paths) override;
+    kj::Promise<Result<StorePathSet>> querySubstitutablePaths(const StorePathSet & paths) override;
 
     bool pathInfoIsUntrusted(const ValidPathInfo &) override;
     bool realisationIsUntrusted(const Realisation & ) override;

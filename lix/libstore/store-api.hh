@@ -477,7 +477,10 @@ public:
     /**
      * Query which of the given paths have substitutes.
      */
-    virtual StorePathSet querySubstitutablePaths(const StorePathSet & paths) { return {}; };
+    virtual kj::Promise<Result<StorePathSet>> querySubstitutablePaths(const StorePathSet & paths)
+    {
+        return {StorePathSet{}};
+    }
 
     /**
      * Query substitute info (i.e. references, derivers and download

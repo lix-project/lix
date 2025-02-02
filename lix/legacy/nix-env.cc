@@ -231,7 +231,7 @@ static bool isPrebuilt(EvalState & state, DrvInfo & elem)
 {
     auto path = elem.queryOutPath(state);
     if (state.ctx.store->isValidPath(path)) return true;
-    return state.ctx.store->querySubstitutablePaths({path}).count(path);
+    return state.aio.blockOn(state.ctx.store->querySubstitutablePaths({path})).count(path);
 }
 
 
@@ -1103,7 +1103,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                 i.setFailed();
             }
         validPaths = store.queryValidPaths(paths);
-        substitutablePaths = store.querySubstitutablePaths(paths);
+        substitutablePaths = globals.aio.blockOn(store.querySubstitutablePaths(paths));
     }
 
 

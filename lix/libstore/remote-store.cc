@@ -227,13 +227,15 @@ StorePathSet RemoteStore::queryAllValidPaths()
 }
 
 
-StorePathSet RemoteStore::querySubstitutablePaths(const StorePathSet & paths)
-{
+kj::Promise<Result<StorePathSet>> RemoteStore::querySubstitutablePaths(const StorePathSet & paths)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::QuerySubstitutablePaths;
     conn->to << WorkerProto::write(*this, *conn, paths);
     conn.processStderr();
-    return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    return {WorkerProto::Serialise<StorePathSet>::read(*this, *conn)};
+} catch (...) {
+    return {result::current_exception()};
 }
 
 

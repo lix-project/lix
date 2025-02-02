@@ -1062,9 +1062,9 @@ std::optional<StorePath> LocalStore::queryPathFromHashPart(const std::string & h
 }
 
 
-StorePathSet LocalStore::querySubstitutablePaths(const StorePathSet & paths)
-{
-    if (!settings.useSubstitutes) return StorePathSet();
+kj::Promise<Result<StorePathSet>> LocalStore::querySubstitutablePaths(const StorePathSet & paths)
+try {
+    if (!settings.useSubstitutes) co_return StorePathSet();
 
     StorePathSet remaining;
     for (auto & i : paths)
@@ -1089,7 +1089,9 @@ StorePathSet LocalStore::querySubstitutablePaths(const StorePathSet & paths)
         std::swap(remaining, remaining2);
     }
 
-    return res;
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
