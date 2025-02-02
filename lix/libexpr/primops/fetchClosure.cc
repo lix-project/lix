@@ -67,7 +67,7 @@ static void runFetchClosureWithRewrite(EvalState & state, const PosIdx pos, Stor
 static void runFetchClosureWithContentAddressedPath(EvalState & state, const PosIdx pos, Store & fromStore, const StorePath & fromPath, Value & v) {
 
     if (!state.ctx.store->isValidPath(fromPath))
-        copyClosure(fromStore, *state.ctx.store, RealisedPath::Set { fromPath });
+        state.aio.blockOn(copyClosure(fromStore, *state.ctx.store, RealisedPath::Set { fromPath }));
 
     auto info = state.ctx.store->queryPathInfo(fromPath);
 
@@ -93,7 +93,7 @@ static void runFetchClosureWithContentAddressedPath(EvalState & state, const Pos
 static void runFetchClosureWithInputAddressedPath(EvalState & state, const PosIdx pos, Store & fromStore, const StorePath & fromPath, Value & v) {
 
     if (!state.ctx.store->isValidPath(fromPath))
-        copyClosure(fromStore, *state.ctx.store, RealisedPath::Set { fromPath });
+        state.aio.blockOn(copyClosure(fromStore, *state.ctx.store, RealisedPath::Set { fromPath }));
 
     auto info = state.ctx.store->queryPathInfo(fromPath);
 

@@ -196,7 +196,7 @@ private:
 
     std::atomic_bool failed{false};
 
-    void copyDrvsFromEvalStore(
+    kj::Promise<Result<void>> copyDrvsFromEvalStore(
         const std::vector<DerivedPath> & paths,
         std::shared_ptr<Store> evalStore);
 };

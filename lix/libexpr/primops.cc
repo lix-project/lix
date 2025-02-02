@@ -106,7 +106,7 @@ try {
         }
     }
 
-    if (store != buildStore) copyClosure(*buildStore, *store, outputsToCopyAndAllow);
+    if (store != buildStore) TRY_AWAIT(copyClosure(*buildStore, *store, outputsToCopyAndAllow));
     if (allowedPaths) {
         for (auto & outputPath : outputsToCopyAndAllow) {
             /* Add the output of this derivations to the allowed

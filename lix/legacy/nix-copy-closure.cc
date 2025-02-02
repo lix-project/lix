@@ -55,7 +55,7 @@ static int main_nix_copy_closure(AsyncIoRoot & aio, std::string programName, Str
         for (auto & path : storePaths)
             storePaths2.insert(from->followLinksToStorePath(path));
 
-        copyClosure(*from, *to, storePaths2, NoRepair, NoCheckSigs, useSubstitutes);
+        aio.blockOn(copyClosure(*from, *to, storePaths2, NoRepair, NoCheckSigs, useSubstitutes));
 
         return 0;
     }

@@ -324,7 +324,9 @@ connected:
             if (!result.success())
                 throw Error("build of '%s' on '%s' failed: %s", store->printStorePath(*drvPath), storeUri, result.errorMsg);
         } else {
-            copyClosure(*store, *sshStore, StorePathSet {*drvPath}, NoRepair, NoCheckSigs, substitute);
+            aio.blockOn(copyClosure(
+                *store, *sshStore, StorePathSet{*drvPath}, NoRepair, NoCheckSigs, substitute
+            ));
             auto res = aio.blockOn(sshStore->buildPathsWithResults({
                 DerivedPath::Built {
                     .drvPath = makeConstantStorePathRef(*drvPath),

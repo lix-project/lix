@@ -938,14 +938,14 @@ std::map<StorePath, StorePath> copyPaths(
 /**
  * Copy the closure of `paths` from `srcStore` to `dstStore`.
  */
-void copyClosure(
+kj::Promise<Result<void>> copyClosure(
     Store & srcStore, Store & dstStore,
     const RealisedPath::Set & paths,
     RepairFlag repair = NoRepair,
     CheckSigsFlag checkSigs = CheckSigs,
     SubstituteFlag substitute = NoSubstitute);
 
-void copyClosure(
+kj::Promise<Result<void>> copyClosure(
     Store & srcStore, Store & dstStore,
     const StorePathSet & paths,
     RepairFlag repair = NoRepair,

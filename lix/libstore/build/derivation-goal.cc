@@ -436,7 +436,7 @@ try {
         for (auto & i : drv->inputSrcs)
             if (worker.evalStore.isValidPath(i))
                 inputSrcs.insert(i);
-        copyClosure(worker.evalStore, worker.store, inputSrcs);
+        TRY_AWAIT(copyClosure(worker.evalStore, worker.store, inputSrcs));
     }
 
     for (auto & i : drv->inputSrcs) {

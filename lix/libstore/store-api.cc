@@ -1288,35 +1288,41 @@ std::map<StorePath, StorePath> copyPaths(
     return pathsMap;
 }
 
-void copyClosure(
+kj::Promise<Result<void>> copyClosure(
     Store & srcStore,
     Store & dstStore,
     const RealisedPath::Set & paths,
     RepairFlag repair,
     CheckSigsFlag checkSigs,
     SubstituteFlag substitute)
-{
-    if (&srcStore == &dstStore) return;
+try {
+    if (&srcStore == &dstStore) return {result::success()};
 
     RealisedPath::Set closure;
     RealisedPath::closure(srcStore, paths, closure);
 
     copyPaths(srcStore, dstStore, closure, repair, checkSigs, substitute);
+    return {result::success()};
+} catch (...) {
+    return {result::current_exception()};
 }
 
-void copyClosure(
+kj::Promise<Result<void>> copyClosure(
     Store & srcStore,
     Store & dstStore,
     const StorePathSet & storePaths,
     RepairFlag repair,
     CheckSigsFlag checkSigs,
     SubstituteFlag substitute)
-{
-    if (&srcStore == &dstStore) return;
+try {
+    if (&srcStore == &dstStore) return {result::success()};
 
     StorePathSet closure;
     srcStore.computeFSClosure(storePaths, closure);
     copyPaths(srcStore, dstStore, closure, repair, checkSigs, substitute);
+    return {result::success()};
+} catch (...) {
+    return {result::current_exception()};
 }
 
 std::optional<ValidPathInfo> decodeValidPathInfo(const Store & store, std::istream & str, std::optional<HashResult> hashGiven)

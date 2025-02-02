@@ -590,10 +590,10 @@ std::shared_ptr<const Realisation> RemoteStore::queryRealisationUncached(const D
     }
 }
 
-void RemoteStore::copyDrvsFromEvalStore(
+kj::Promise<Result<void>> RemoteStore::copyDrvsFromEvalStore(
     const std::vector<DerivedPath> & paths,
     std::shared_ptr<Store> evalStore)
-{
+try {
     if (evalStore && evalStore.get() != this) {
         /* The remote doesn't have a way to access evalStore, so copy
            the .drvs. */
@@ -608,15 +608,18 @@ void RemoteStore::copyDrvsFromEvalStore(
                 },
             }, i.raw());
         }
-        copyClosure(*evalStore, *this, drvPaths2);
+        TRY_AWAIT(copyClosure(*evalStore, *this, drvPaths2));
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj ::Promise<Result<void>> RemoteStore::buildPaths(
     const std::vector<DerivedPath> & drvPaths, BuildMode buildMode, std::shared_ptr<Store> evalStore
 )
 try {
-    copyDrvsFromEvalStore(drvPaths, evalStore);
+    TRY_AWAIT(copyDrvsFromEvalStore(drvPaths, evalStore));
 
     auto conn(getConnection());
     conn->to << WorkerProto::Op::BuildPaths;
@@ -624,9 +627,9 @@ try {
     conn->to << buildMode;
     conn.processStderr();
     readInt(conn->from);
-    return {result::success()};
+    co_return result::success();
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<std::vector<KeyedBuildResult>>> RemoteStore::buildPathsWithResults(
@@ -634,7 +637,7 @@ kj::Promise<Result<std::vector<KeyedBuildResult>>> RemoteStore::buildPathsWithRe
     BuildMode buildMode,
     std::shared_ptr<Store> evalStore)
 try {
-    copyDrvsFromEvalStore(paths, evalStore);
+    TRY_AWAIT(copyDrvsFromEvalStore(paths, evalStore));
 
     std::optional<ConnectionHandle> conn_(getConnection());
     auto & conn = *conn_;
