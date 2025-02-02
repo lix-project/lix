@@ -962,11 +962,11 @@ try {
     co_return result::current_exception();
 }
 
-json Store::pathInfoToJSON(const StorePathSet & storePaths,
+kj::Promise<Result<json>> Store::pathInfoToJSON(const StorePathSet & storePaths,
     bool includeImpureInfo, bool showClosureSize,
     Base hashBase,
     AllowInvalidFlag allowInvalid)
-{
+try {
     json::array_t jsonList = json::array();
 
     for (auto & storePath : storePaths) {
@@ -1032,7 +1032,9 @@ json Store::pathInfoToJSON(const StorePathSet & storePaths,
             jsonPath["valid"] = false;
         }
     }
-    return jsonList;
+    co_return jsonList;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

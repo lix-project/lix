@@ -91,10 +91,10 @@ struct CmdPathInfo : StorePathsCommand, MixJSON
             pathLen = std::max(pathLen, store->printStorePath(storePath).size());
 
         if (json) {
-            std::cout << store->pathInfoToJSON(
+            std::cout << aio().blockOn(store->pathInfoToJSON(
                 // FIXME: preserve order?
                 StorePathSet(storePaths.begin(), storePaths.end()),
-                true, showClosureSize, Base::SRI, AllowInvalid).dump();
+                true, showClosureSize, Base::SRI, AllowInvalid)).dump();
         }
 
         else {
