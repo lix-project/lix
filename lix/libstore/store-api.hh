@@ -489,7 +489,7 @@ public:
      * If a path does not have substitute info, it's omitted from the
      * resulting ‘infos’ map.
      */
-    virtual void querySubstitutablePathInfos(const StorePathCAMap & paths,
+    virtual kj::Promise<Result<void>> querySubstitutablePathInfos(const StorePathCAMap & paths,
         SubstitutablePathInfos & infos);
 
     /**

@@ -604,9 +604,9 @@ StorePathSet Store::queryDerivationOutputs(const StorePath & path)
 }
 
 
-void Store::querySubstitutablePathInfos(const StorePathCAMap & paths, SubstitutablePathInfos & infos)
-{
-    if (!settings.useSubstitutes) return;
+kj::Promise<Result<void>> Store::querySubstitutablePathInfos(const StorePathCAMap & paths, SubstitutablePathInfos & infos)
+try {
+    if (!settings.useSubstitutes) co_return result::success();
     for (auto & sub : getDefaultSubstituters()) {
         for (auto & path : paths) {
             if (infos.count(path.first))
@@ -654,6 +654,10 @@ void Store::querySubstitutablePathInfos(const StorePathCAMap & paths, Substituta
             }
         }
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

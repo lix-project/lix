@@ -239,9 +239,9 @@ try {
 }
 
 
-void RemoteStore::querySubstitutablePathInfos(const StorePathCAMap & pathsMap, SubstitutablePathInfos & infos)
-{
-    if (pathsMap.empty()) return;
+kj::Promise<Result<void>> RemoteStore::querySubstitutablePathInfos(const StorePathCAMap & pathsMap, SubstitutablePathInfos & infos)
+try {
+    if (pathsMap.empty()) return {result::success()};
 
     auto conn(getConnection());
 
@@ -265,6 +265,10 @@ void RemoteStore::querySubstitutablePathInfos(const StorePathCAMap & pathsMap, S
         info.downloadSize = readLongLong(conn->from);
         info.narSize = readLongLong(conn->from);
     }
+
+    return {result::success()};
+} catch (...) {
+    return {result::current_exception()};
 }
 
 

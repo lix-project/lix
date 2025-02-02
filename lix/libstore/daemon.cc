@@ -776,7 +776,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         auto path = store->parseStorePath(readString(from));
         logger->startWork();
         SubstitutablePathInfos infos;
-        store->querySubstitutablePathInfos({{path, std::nullopt}}, infos);
+        aio.blockOn(store->querySubstitutablePathInfos({{path, std::nullopt}}, infos));
         logger->stopWork();
         auto i = infos.find(path);
         if (i == infos.end())
@@ -801,7 +801,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         } else
             pathsMap = WorkerProto::Serialise<StorePathCAMap>::read(*store, rconn);
         logger->startWork();
-        store->querySubstitutablePathInfos(pathsMap, infos);
+        aio.blockOn(store->querySubstitutablePathInfos(pathsMap, infos));
         logger->stopWork();
         to << infos.size();
         for (auto & i : infos) {

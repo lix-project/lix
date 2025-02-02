@@ -159,12 +159,12 @@ struct QueryMissingContext
 
         SubstitutablePathInfos infos;
         auto * cap = getDerivationCA(*drv);
-        store.querySubstitutablePathInfos({
+        aio.blockOn(store.querySubstitutablePathInfos({
             {
                 outPath,
                 cap ? std::optional { *cap } : std::nullopt,
             },
-        }, infos);
+        }, infos));
 
         if (infos.empty()) {
             drvState_->lock()->done = true;
@@ -198,7 +198,7 @@ struct QueryMissingContext
         std::visit(
             overloaded{
                 [&](const DerivedPath::Built & bfd) { doPathBuilt(aio, bfd); },
-                [&](const DerivedPath::Opaque & bo) { doPathOpaque(bo); },
+                [&](const DerivedPath::Opaque & bo) { doPathOpaque(aio, bo); },
             },
             req.raw()
         );
@@ -280,12 +280,12 @@ struct QueryMissingContext
         }
     }
 
-    void doPathOpaque(const DerivedPath::Opaque & bo)
+    void doPathOpaque(AsyncIoRoot & aio, const DerivedPath::Opaque & bo)
     {
         if (store.isValidPath(bo.path)) return;
 
         SubstitutablePathInfos infos;
-        store.querySubstitutablePathInfos({{bo.path, std::nullopt}}, infos);
+        aio.blockOn(store.querySubstitutablePathInfos({{bo.path, std::nullopt}}, infos));
 
         if (infos.empty()) {
             auto state(state_.lock());
