@@ -921,14 +921,14 @@ void copyStorePath(
  *
  * @return a map of what each path was copied to the dstStore as.
  */
-std::map<StorePath, StorePath> copyPaths(
+kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
     Store & srcStore, Store & dstStore,
     const RealisedPath::Set &,
     RepairFlag repair = NoRepair,
     CheckSigsFlag checkSigs = CheckSigs,
     SubstituteFlag substitute = NoSubstitute);
 
-std::map<StorePath, StorePath> copyPaths(
+kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
     Store & srcStore, Store & dstStore,
     const StorePathSet & paths,
     RepairFlag repair = NoRepair,

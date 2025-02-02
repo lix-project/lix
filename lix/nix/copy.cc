@@ -54,8 +54,8 @@ struct CmdCopy : virtual CopyCommand, BuiltPathsCommand
             stuffToCopy.insert(theseRealisations.begin(), theseRealisations.end());
         }
 
-        copyPaths(
-            *srcStore, *dstStore, stuffToCopy, NoRepair, checkSigs, substitute);
+        aio().blockOn(copyPaths(
+            *srcStore, *dstStore, stuffToCopy, NoRepair, checkSigs, substitute));
     }
 };
 

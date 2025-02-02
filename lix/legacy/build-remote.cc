@@ -285,7 +285,14 @@ connected:
 
         {
             Activity act(*logger, lvlTalkative, actUnknown, fmt("copying dependencies to '%s'", storeUri));
-            copyPaths(*store, *sshStore, store->parseStorePathSet(inputs), NoRepair, NoCheckSigs, substitute);
+            aio.blockOn(copyPaths(
+                *store,
+                *sshStore,
+                store->parseStorePathSet(inputs),
+                NoRepair,
+                NoCheckSigs,
+                substitute
+            ));
         }
 
         uploadLock.reset();
@@ -371,7 +378,9 @@ connected:
             if (auto localStore = store.dynamic_pointer_cast<LocalStore>())
                 for (auto & path : missingPaths)
                     localStore->locksHeld.insert(store->printStorePath(path)); /* FIXME: ugly */
-            copyPaths(*sshStore, *store, missingPaths, NoRepair, NoCheckSigs, NoSubstitute);
+            aio.blockOn(
+                copyPaths(*sshStore, *store, missingPaths, NoRepair, NoCheckSigs, NoSubstitute)
+            );
         }
         // XXX: Should be done as part of `copyPaths`
         for (auto & realisation : missingRealisations) {

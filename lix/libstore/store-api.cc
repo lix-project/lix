@@ -1141,14 +1141,14 @@ void copyStorePath(
 }
 
 
-std::map<StorePath, StorePath> copyPaths(
+kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
     Store & srcStore,
     Store & dstStore,
     const RealisedPath::Set & paths,
     RepairFlag repair,
     CheckSigsFlag checkSigs,
     SubstituteFlag substitute)
-{
+try {
     StorePathSet storePaths;
     std::set<Realisation> toplevelRealisations;
     for (auto & path : paths) {
@@ -1158,7 +1158,8 @@ std::map<StorePath, StorePath> copyPaths(
             toplevelRealisations.insert(*realisation);
         }
     }
-    auto pathsMap = copyPaths(srcStore, dstStore, storePaths, repair, checkSigs, substitute);
+    auto pathsMap =
+        TRY_AWAIT(copyPaths(srcStore, dstStore, storePaths, repair, checkSigs, substitute));
 
     try {
         // Copy the realisation closure
@@ -1190,17 +1191,19 @@ std::map<StorePath, StorePath> copyPaths(
             throw;
     }
 
-    return pathsMap;
+    co_return pathsMap;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-std::map<StorePath, StorePath> copyPaths(
+kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
     Store & srcStore,
     Store & dstStore,
     const StorePathSet & storePaths,
     RepairFlag repair,
     CheckSigsFlag checkSigs,
     SubstituteFlag substitute)
-{
+try {
     auto valid = dstStore.queryValidPaths(storePaths, substitute);
 
     StorePathSet missing;
@@ -1285,7 +1288,9 @@ std::map<StorePath, StorePath> copyPaths(
 
     dstStore.addMultipleToStore(pathsToCopy, act, repair, checkSigs);
 
-    return pathsMap;
+    co_return pathsMap;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<void>> copyClosure(
@@ -1296,15 +1301,15 @@ kj::Promise<Result<void>> copyClosure(
     CheckSigsFlag checkSigs,
     SubstituteFlag substitute)
 try {
-    if (&srcStore == &dstStore) return {result::success()};
+    if (&srcStore == &dstStore) co_return result::success();
 
     RealisedPath::Set closure;
     RealisedPath::closure(srcStore, paths, closure);
 
-    copyPaths(srcStore, dstStore, closure, repair, checkSigs, substitute);
-    return {result::success()};
+    TRY_AWAIT(copyPaths(srcStore, dstStore, closure, repair, checkSigs, substitute));
+    co_return result::success();
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<void>> copyClosure(
@@ -1315,14 +1320,14 @@ kj::Promise<Result<void>> copyClosure(
     CheckSigsFlag checkSigs,
     SubstituteFlag substitute)
 try {
-    if (&srcStore == &dstStore) return {result::success()};
+    if (&srcStore == &dstStore) co_return result::success();
 
     StorePathSet closure;
     srcStore.computeFSClosure(storePaths, closure);
-    copyPaths(srcStore, dstStore, closure, repair, checkSigs, substitute);
-    return {result::success()};
+    TRY_AWAIT(copyPaths(srcStore, dstStore, closure, repair, checkSigs, substitute));
+    co_return result::success();
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 std::optional<ValidPathInfo> decodeValidPathInfo(const Store & store, std::istream & str, std::optional<HashResult> hashGiven)
