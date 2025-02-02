@@ -58,7 +58,7 @@ struct FlakeRef
 
     fetchers::Attrs toAttrs() const;
 
-    FlakeRef resolve(ref<Store> store) const;
+    kj::Promise<Result<FlakeRef>> resolve(ref<Store> store) const;
 
     static FlakeRef fromAttrs(const fetchers::Attrs & attrs);
 

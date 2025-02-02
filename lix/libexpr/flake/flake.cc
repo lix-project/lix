@@ -51,7 +51,7 @@ try {
             fetched.emplace(TRY_AWAIT(originalRef.fetchTree(state.store)));
         } else {
             if (allowLookup) {
-                resolvedRef = originalRef.resolve(state.store);
+                resolvedRef = TRY_AWAIT(originalRef.resolve(state.store));
                 auto fetchedResolved = lookupInFlakeCache(flakeCache, originalRef);
                 if (!fetchedResolved) {
                     fetchedResolved.emplace(TRY_AWAIT(resolvedRef.fetchTree(state.store)));

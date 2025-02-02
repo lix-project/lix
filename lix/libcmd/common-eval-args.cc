@@ -204,8 +204,8 @@ try {
         experimentalFeatureSettings.require(Xp::Flakes);
         static constexpr size_t FLAKE_LEN = std::string_view("flake:").size();
         auto flakeRef = parseFlakeRef(std::string(fileArg.substr(FLAKE_LEN)), {}, true, false);
-        auto storePath =
-            TRY_AWAIT(flakeRef.resolve(state.store).fetchTree(state.store)).first.storePath;
+        auto storePath = TRY_AWAIT(TRY_AWAIT(flakeRef.resolve(state.store)).fetchTree(state.store))
+                             .first.storePath;
         co_return CanonPath(state.store->toRealPath(storePath));
     } else if (fileArg.size() > 2 && fileArg.at(0) == '<' && fileArg.at(fileArg.size() - 1) == '>') {
         Path p(fileArg.substr(1, fileArg.size() - 2));

@@ -2813,7 +2813,8 @@ try {
         experimentalFeatureSettings.require(Xp::Flakes);
         auto flakeRef = parseFlakeRef(value.substr(6), {}, true, false);
         debug("fetching flake search path element '%s''", value);
-        auto storePath = TRY_AWAIT(flakeRef.resolve(store).fetchTree(store)).first.storePath;
+        auto storePath =
+            TRY_AWAIT(TRY_AWAIT(flakeRef.resolve(store)).fetchTree(store)).first.storePath;
         res = {store->toRealPath(storePath)};
     }
 

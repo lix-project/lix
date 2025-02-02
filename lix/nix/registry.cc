@@ -196,7 +196,8 @@ struct CmdRegistryPin : RegistryCommand, EvalCommand
         auto ref = parseFlakeRef(url);
         auto lockedRef = parseFlakeRef(locked);
         registry->remove(ref.input);
-        auto [tree, resolved] = aio().blockOn(lockedRef.resolve(store).input.fetch(store));
+        auto [tree, resolved] =
+            aio().blockOn(aio().blockOn(lockedRef.resolve(store)).input.fetch(store));
         fetchers::Attrs extraAttrs;
         if (ref.subdir != "") extraAttrs["dir"] = ref.subdir;
         registry->add(ref.input, resolved, extraAttrs);

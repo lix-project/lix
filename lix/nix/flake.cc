@@ -1022,7 +1022,7 @@ struct CmdFlakeClone : FlakeCommand
         if (destDir.empty())
             throw Error("missing flag '--dest'");
 
-        getFlakeRef().resolve(store).input.clone(destDir);
+        aio().blockOn(getFlakeRef().resolve(store)).input.clone(destDir);
     }
 };
 
@@ -1448,7 +1448,7 @@ struct CmdFlakePrefetch : FlakeCommand, MixJSON
     void run(ref<Store> store) override
     {
         auto originalRef = getFlakeRef();
-        auto resolvedRef = originalRef.resolve(store);
+        auto resolvedRef = aio().blockOn(originalRef.resolve(store));
         auto [tree, lockedRef] = aio().blockOn(resolvedRef.fetchTree(store));
         auto hash = store->queryPathInfo(tree.storePath)->narHash;
 

@@ -42,10 +42,14 @@ bool FlakeRef::operator ==(const FlakeRef & other) const
     return input == other.input && subdir == other.subdir;
 }
 
-FlakeRef FlakeRef::resolve(ref<Store> store) const
-{
+kj::Promise<Result<FlakeRef>> FlakeRef::resolve(ref<Store> store) const
+try {
     auto [input2, extraAttrs] = lookupInRegistries(store, input);
-    return FlakeRef(std::move(input2), fetchers::maybeGetStrAttr(extraAttrs, "dir").value_or(subdir));
+    co_return FlakeRef(
+        std::move(input2), fetchers::maybeGetStrAttr(extraAttrs, "dir").value_or(subdir)
+    );
+} catch (...) {
+    co_return result::current_exception();
 }
 
 FlakeRef parseFlakeRef(
