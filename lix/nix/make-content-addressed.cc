@@ -32,8 +32,8 @@ struct CmdMakeContentAddressed : virtual CopyCommand, virtual StorePathsCommand,
     {
         auto dstStore = aio().blockOn(dstUri.empty() ? openStore() : openStore(dstUri));
 
-        auto remappings = makeContentAddressed(*srcStore, *dstStore,
-            StorePathSet(storePaths.begin(), storePaths.end()));
+        auto remappings = aio().blockOn(makeContentAddressed(*srcStore, *dstStore,
+            StorePathSet(storePaths.begin(), storePaths.end())));
 
         if (json) {
             auto jsonRewrites = json::object();

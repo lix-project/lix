@@ -7,7 +7,7 @@ namespace nix {
 
 /** Rewrite a closure of store paths to be completely content addressed.
  */
-std::map<StorePath, StorePath> makeContentAddressed(
+kj::Promise<Result<std::map<StorePath, StorePath>>> makeContentAddressed(
     Store & srcStore,
     Store & dstStore,
     const StorePathSet & rootPaths);
@@ -16,7 +16,7 @@ std::map<StorePath, StorePath> makeContentAddressed(
  *
  * This is a convenience function for the case where you only have one root path.
  */
-StorePath makeContentAddressed(
+kj::Promise<Result<StorePath>> makeContentAddressed(
     Store & srcStore,
     Store & dstStore,
     const StorePath & rootPath);

@@ -20,7 +20,8 @@ static void runFetchClosureWithRewrite(EvalState & state, const PosIdx pos, Stor
     // establish toPath or throw
 
     if (!toPathMaybe || !state.ctx.store->isValidPath(*toPathMaybe)) {
-        auto rewrittenPath = makeContentAddressed(fromStore, *state.ctx.store, fromPath);
+        auto rewrittenPath =
+            state.aio.blockOn(makeContentAddressed(fromStore, *state.ctx.store, fromPath));
         if (toPathMaybe && *toPathMaybe != rewrittenPath)
             throw Error({
                 .msg = HintFmt("rewriting '%s' to content-addressed form yielded '%s', while '%s' was expected",

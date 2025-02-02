@@ -1,14 +1,15 @@
 #include "lix/libstore/make-content-addressed.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/references.hh"
 #include "lix/libutil/strings.hh"
 
 namespace nix {
 
-std::map<StorePath, StorePath> makeContentAddressed(
+kj::Promise<Result<std::map<StorePath, StorePath>>> makeContentAddressed(
     Store & srcStore,
     Store & dstStore,
     const StorePathSet & storePaths)
-{
+try {
     StorePathSet closure;
     srcStore.computeFSClosure(storePaths, closure);
 
@@ -73,18 +74,22 @@ std::map<StorePath, StorePath> makeContentAddressed(
         remappings.insert_or_assign(std::move(path), std::move(info.path));
     }
 
-    return remappings;
+    co_return remappings;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-StorePath makeContentAddressed(
+kj::Promise<Result<StorePath>> makeContentAddressed(
     Store & srcStore,
     Store & dstStore,
     const StorePath & fromPath)
-{
-    auto remappings = makeContentAddressed(srcStore, dstStore, StorePathSet { fromPath });
+try {
+    auto remappings = TRY_AWAIT(makeContentAddressed(srcStore, dstStore, StorePathSet{fromPath}));
     auto i = remappings.find(fromPath);
     assert(i != remappings.end());
-    return i->second;
+    co_return i->second;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }
