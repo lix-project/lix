@@ -3,6 +3,7 @@
 #include "lix/libcmd/installable-derived-path.hh"
 #include "lix/libcmd/installable-attr-path.hh"
 #include "lix/libcmd/installable-flake.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libstore/outputs-spec.hh"
 #include "lix/libcmd/command.hh"
@@ -90,7 +91,7 @@ MixFlakeOptions::MixFlakeOptions()
                     completions, *getEvaluator()->begin(aio()), getFlakeRefsForCompletion(), prefix
                 );
             } else if (n == 1) {
-                completeFlakeRef(completions, getEvaluator()->store, prefix);
+                completeFlakeRef(aio(), completions, getEvaluator()->store, prefix);
             }
         }}
     });
@@ -139,7 +140,7 @@ MixFlakeOptions::MixFlakeOptions()
             }
         }},
         .completer = {[&](AddCompletions & completions, size_t, std::string_view prefix) {
-            completeFlakeRef(completions, getEvaluator()->store, prefix);
+            completeFlakeRef(aio(), completions, getEvaluator()->store, prefix);
         }}
     });
 }
@@ -282,7 +283,7 @@ void completeFlakeRefWithFragment(
     try {
         auto hash = prefix.find('#');
         if (hash == std::string::npos) {
-            completeFlakeRef(completions, evaluator->store, prefix);
+            completeFlakeRef(evalState.aio, completions, evaluator->store, prefix);
         } else {
             completions.setType(AddCompletions::Type::Attrs);
 
@@ -349,7 +350,9 @@ void completeFlakeRefWithFragment(
     }
 }
 
-void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::string_view prefix)
+void completeFlakeRef(
+    AsyncIoRoot & aio, AddCompletions & completions, ref<Store> store, std::string_view prefix
+)
 {
     if (!experimentalFeatureSettings.isEnabled(Xp::Flakes))
         return;

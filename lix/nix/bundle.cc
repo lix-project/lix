@@ -22,7 +22,7 @@ struct CmdBundle : InstallableCommand
             .labels = {"flake-url"},
             .handler = {&bundler},
             .completer = {[&](AddCompletions & completions, size_t, std::string_view prefix) {
-                completeFlakeRef(completions, getStore(), prefix);
+                completeFlakeRef(aio(), completions, getStore(), prefix);
             }}
         });
 

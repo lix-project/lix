@@ -7,6 +7,7 @@
 #include "lix/libcmd/common-eval-args.hh"
 #include "lix/libstore/path.hh"
 #include "lix/libexpr/flake/lockfile.hh"
+#include "lix/libutil/async.hh"
 
 #include <optional>
 
@@ -357,7 +358,9 @@ void completeFlakeInputPath(
     const std::vector<FlakeRef> & flakeRefs,
     std::string_view prefix);
 
-void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::string_view prefix);
+void completeFlakeRef(
+    AsyncIoRoot & aio, AddCompletions & completions, ref<Store> store, std::string_view prefix
+);
 
 void completeFlakeRefWithFragment(
     AddCompletions & completions,

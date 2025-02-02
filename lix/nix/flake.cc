@@ -41,7 +41,7 @@ public:
             .optional = true,
             .handler = {&flakeUrl},
             .completer = {[&](AddCompletions & completions, size_t, std::string_view prefix) {
-                completeFlakeRef(completions, getStore(), prefix);
+                completeFlakeRef(aio(), completions, getStore(), prefix);
             }}
         });
     }
@@ -83,7 +83,7 @@ public:
             .labels={"flake-url"},
             .handler={&flakeUrl},
             .completer = {[&](AddCompletions & completions, size_t, std::string_view prefix) {
-                completeFlakeRef(completions, getStore(), prefix);
+                completeFlakeRef(aio(), completions, getStore(), prefix);
             }}
         });
         expectArgs({
