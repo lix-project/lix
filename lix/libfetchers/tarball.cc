@@ -28,7 +28,7 @@ try {
         {"name", name},
     });
 
-    auto cached = getCache()->lookupExpired(store, inAttrs);
+    auto cached = TRY_AWAIT(getCache()->lookupExpired(store, inAttrs));
 
     auto useCached = [&]() -> DownloadFileResult
     {
@@ -135,7 +135,7 @@ try {
         {"name", name},
     });
 
-    auto cached = getCache()->lookupExpired(store, inAttrs);
+    auto cached = TRY_AWAIT(getCache()->lookupExpired(store, inAttrs));
 
     if (cached && !cached->expired)
         co_return DownloadTarballResult{

@@ -1,6 +1,7 @@
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libfetchers/cache.hh"
 #include "lix/libfetchers/builtin-fetchers.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/temporary-dir.hh"
@@ -243,7 +244,7 @@ struct MercurialInputScheme : InputScheme
         };
 
         if (input.getRev()) {
-            if (auto res = getCache()->lookup(store, getLockedAttrs()))
+            if (auto res = TRY_AWAIT(getCache()->lookup(store, getLockedAttrs())))
                 co_return makeResult(res->first, std::move(res->second));
         }
 
@@ -256,7 +257,7 @@ struct MercurialInputScheme : InputScheme
             {"ref", *input.getRef()},
         });
 
-        if (auto res = getCache()->lookup(store, unlockedAttrs)) {
+        if (auto res = TRY_AWAIT(getCache()->lookup(store, unlockedAttrs))) {
             auto rev2 = Hash::parseAny(getStrAttr(res->first, "rev"), HashType::SHA1);
             if (!input.getRev() || input.getRev() == rev2) {
                 input.attrs.insert_or_assign("rev", rev2.gitRev());
@@ -302,7 +303,7 @@ struct MercurialInputScheme : InputScheme
         auto revCount = std::stoull(tokens[1]);
         input.attrs.insert_or_assign("ref", tokens[2]);
 
-        if (auto res = getCache()->lookup(store, getLockedAttrs()))
+        if (auto res = TRY_AWAIT(getCache()->lookup(store, getLockedAttrs())))
             co_return makeResult(res->first, std::move(res->second));
 
         Path tmpDir = createTempDir();

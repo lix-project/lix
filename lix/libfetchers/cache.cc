@@ -1,10 +1,12 @@
 #include "lix/libfetchers/cache.hh"
 #include "lix/libstore/sqlite.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/users.hh"
 
 #include <nlohmann/json.hpp>
+#include <optional>
 
 namespace nix::fetchers {
 
@@ -72,23 +74,25 @@ struct CacheImpl : Cache
             (time(0)).exec();
     }
 
-    std::optional<std::pair<Attrs, StorePath>> lookup(
+    kj::Promise<Result<std::optional<std::pair<Attrs, StorePath>>>> lookup(
         ref<Store> store,
         const Attrs & inAttrs) override
-    {
-        if (auto res = lookupExpired(store, inAttrs)) {
+    try {
+        if (auto res = TRY_AWAIT(lookupExpired(store, inAttrs))) {
             if (!res->expired)
-                return std::make_pair(std::move(res->infoAttrs), std::move(res->storePath));
+                co_return std::make_pair(std::move(res->infoAttrs), std::move(res->storePath));
             debug("ignoring expired cache entry '%s'",
                 attrsToJSON(inAttrs).dump());
         }
-        return {};
+        co_return std::nullopt;
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    std::optional<Result> lookupExpired(
+    kj::Promise<Result<std::optional<LookupResult>>> lookupExpired(
         ref<Store> store,
         const Attrs & inAttrs) override
-    {
+    try {
         auto state(_state.lock());
 
         auto inAttrsJSON = attrsToJSON(inAttrs).dump();
@@ -96,7 +100,7 @@ struct CacheImpl : Cache
         auto stmt(state->lookup.use()(inAttrsJSON));
         if (!stmt.next()) {
             debug("did not find cache entry for '%s'", inAttrsJSON);
-            return {};
+            co_return std::nullopt;
         }
 
         auto infoJSON = stmt.getStr(0);
@@ -108,17 +112,19 @@ struct CacheImpl : Cache
         if (!store->isValidPath(storePath)) {
             // FIXME: we could try to substitute 'storePath'.
             debug("ignoring disappeared cache entry '%s'", inAttrsJSON);
-            return {};
+            co_return std::nullopt;
         }
 
         debug("using cache entry '%s' -> '%s', '%s'",
             inAttrsJSON, infoJSON, store->printStorePath(storePath));
 
-        return Result {
+        co_return LookupResult {
             .expired = !locked && (settings.tarballTtl.get() == 0 || timestamp + settings.tarballTtl < time(0)),
             .infoAttrs = jsonToAttrs(nlohmann::json::parse(infoJSON)),
             .storePath = std::move(storePath)
         };
+    } catch (...) {
+        co_return result::current_exception();
     }
 };
 

@@ -17,18 +17,18 @@ struct Cache
         const StorePath & storePath,
         bool locked) = 0;
 
-    virtual std::optional<std::pair<Attrs, StorePath>> lookup(
+    virtual kj::Promise<Result<std::optional<std::pair<Attrs, StorePath>>>> lookup(
         ref<Store> store,
         const Attrs & inAttrs) = 0;
 
-    struct Result
+    struct LookupResult
     {
         bool expired = false;
         Attrs infoAttrs;
         StorePath storePath;
     };
 
-    virtual std::optional<Result> lookupExpired(
+    virtual kj::Promise<Result<std::optional<LookupResult>>> lookupExpired(
         ref<Store> store,
         const Attrs & inAttrs) = 0;
 };
