@@ -4,6 +4,7 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libfetchers/builtin-fetchers.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/url-parts.hh"
 #include "lix/libutil/git.hh"
@@ -204,7 +205,8 @@ struct GitArchiveInputScheme : InputScheme
         return headers;
     }
 
-    virtual Hash getRevFromRef(nix::ref<Store> store, const Input & input) const = 0;
+    virtual kj::Promise<Result<Hash>>
+    getRevFromRef(nix::ref<Store> store, const Input & input) const = 0;
 
     virtual DownloadUrl getDownloadUrl(const Input & input) const = 0;
 
@@ -216,7 +218,7 @@ struct GitArchiveInputScheme : InputScheme
         if (!maybeGetStrAttr(input.attrs, "ref")) input.attrs.insert_or_assign("ref", "HEAD");
 
         auto rev = input.getRev();
-        if (!rev) rev = getRevFromRef(store, input);
+        if (!rev) rev = TRY_AWAIT(getRevFromRef(store, input));
 
         input.attrs.erase("ref");
         input.attrs.insert_or_assign("rev", rev->gitRev());
@@ -263,8 +265,9 @@ struct GitHubInputScheme : GitArchiveInputScheme
         return getStrAttr(input.attrs, "repo");
     }
 
-    Hash getRevFromRef(nix::ref<Store> store, const Input & input) const override
-    {
+    kj::Promise<Result<Hash>>
+    getRevFromRef(nix::ref<Store> store, const Input & input) const override
+    try {
         auto host = getHost(input);
         auto url = fmt(
             host == "github.com"
@@ -280,7 +283,9 @@ struct GitHubInputScheme : GitArchiveInputScheme
                     downloadFile(store, url, "source", false, headers).storePath)));
         auto rev = Hash::parseAny(std::string { json["sha"] }, HashType::SHA1);
         debug("HEAD revision for '%s' is %s", url, rev.gitRev());
-        return rev;
+        co_return rev;
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     DownloadUrl getDownloadUrl(const Input & input) const override
@@ -344,8 +349,9 @@ struct GitLabInputScheme : GitArchiveInputScheme
         return std::make_pair(token.substr(0,fldsplit), token.substr(fldsplit+1));
     }
 
-    Hash getRevFromRef(nix::ref<Store> store, const Input & input) const override
-    {
+    kj::Promise<Result<Hash>>
+    getRevFromRef(nix::ref<Store> store, const Input & input) const override
+    try {
         auto host = maybeGetStrAttr(input.attrs, "host").value_or("gitlab.com");
         // See rate limiting note below
         auto url = fmt("https://%s/api/v4/projects/%s%%2F%s/repository/commits?ref_name=%s",
@@ -360,12 +366,14 @@ struct GitLabInputScheme : GitArchiveInputScheme
         if (json.is_array() && json.size() >= 1 && json[0]["id"] != nullptr) {
             auto rev = Hash::parseAny(std::string(json[0]["id"]), HashType::SHA1);
             debug("HEAD revision for '%s' is %s", url, rev.gitRev());
-            return rev;
+            co_return rev;
         } else if (json.is_array() && json.size() == 0) {
             throw Error("No commits returned by GitLab API -- does the ref really exist?");
         } else {
             throw Error("Didn't know what to do with response from GitLab: %s", json);
         }
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     DownloadUrl getDownloadUrl(const Input & input) const override
@@ -409,8 +417,9 @@ struct SourceHutInputScheme : GitArchiveInputScheme
         // Once it is implemented, however, should work as expected.
     }
 
-    Hash getRevFromRef(nix::ref<Store> store, const Input & input) const override
-    {
+    kj::Promise<Result<Hash>>
+    getRevFromRef(nix::ref<Store> store, const Input & input) const override
+    try {
         // TODO: In the future, when the sourcehut graphql API is implemented for mercurial
         // and with anonymous access, this method should use it instead.
 
@@ -457,7 +466,9 @@ struct SourceHutInputScheme : GitArchiveInputScheme
 
         auto rev = Hash::parseAny(*id, HashType::SHA1);
         debug("HEAD revision for '%s' is %s", fmt("%s/%s", base_url, ref), rev.gitRev());
-        return rev;
+        co_return rev;
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     DownloadUrl getDownloadUrl(const Input & input) const override
