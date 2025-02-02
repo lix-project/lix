@@ -607,7 +607,7 @@ StorePathSet Store::queryDerivationOutputs(const StorePath & path)
 kj::Promise<Result<void>> Store::querySubstitutablePathInfos(const StorePathCAMap & paths, SubstitutablePathInfos & infos)
 try {
     if (!settings.useSubstitutes) co_return result::success();
-    for (auto & sub : getDefaultSubstituters()) {
+    for (auto & sub : TRY_AWAIT(getDefaultSubstituters())) {
         for (auto & path : paths) {
             if (infos.count(path.first))
                 // Choose first succeeding substituter.
@@ -1566,8 +1566,8 @@ ref<Store> openStore(const std::string & uri_,
     throw Error("don't know how to open Nix store '%s'", uri_);
 }
 
-std::list<ref<Store>> getDefaultSubstituters()
-{
+kj::Promise<Result<std::list<ref<Store>>>> getDefaultSubstituters()
+try {
     static auto stores([]() {
         std::list<ref<Store>> stores;
 
@@ -1592,7 +1592,9 @@ std::list<ref<Store>> getDefaultSubstituters()
         return stores;
     } ());
 
-    return stores;
+    co_return stores;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 std::vector<StoreFactory> * StoreImplementations::registered = 0;

@@ -34,7 +34,7 @@ try {
         co_return WorkResult{ecSuccess};
     }
 
-    subs = settings.useSubstitutes ? getDefaultSubstituters() : std::list<ref<Store>>();
+    subs = settings.useSubstitutes ? TRY_AWAIT(getDefaultSubstituters()) : std::list<ref<Store>>();
     co_return co_await tryNext();
 } catch (...) {
     co_return result::current_exception();

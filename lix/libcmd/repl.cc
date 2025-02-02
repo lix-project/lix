@@ -729,7 +729,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
         Finally roModeReset([&]() {
             settings.readOnlyMode = false;
         });
-        auto subs = getDefaultSubstituters();
+        auto subs = state.aio.blockOn(getDefaultSubstituters());
 
         subs.push_front(evaluator.store);
 

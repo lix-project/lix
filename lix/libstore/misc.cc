@@ -251,7 +251,7 @@ struct QueryMissingContext
                     continue;
 
                 bool found = false;
-                for (auto &sub : getDefaultSubstituters()) {
+                for (auto &sub : aio.blockOn(getDefaultSubstituters())) {
                     auto realisation = sub->queryRealisation({hash, outputName});
                     if (!realisation)
                         continue;

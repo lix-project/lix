@@ -26,7 +26,7 @@ struct CmdLog : InstallableCommand
     {
         settings.readOnlyMode = true;
 
-        auto subs = getDefaultSubstituters();
+        auto subs = aio().blockOn(getDefaultSubstituters());
 
         subs.push_front(store);
 

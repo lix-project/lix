@@ -62,7 +62,7 @@ try {
     if (settings.readOnlyMode)
         throw Error("cannot substitute path '%s' - no write access to the Nix store", worker.store.printStorePath(storePath));
 
-    subs = settings.useSubstitutes ? getDefaultSubstituters() : std::list<ref<Store>>();
+    subs = settings.useSubstitutes ? TRY_AWAIT(getDefaultSubstituters()) : std::list<ref<Store>>();
 
     BOOST_OUTCOME_CO_TRY(auto result, co_await tryNext());
     result.storePath = storePath;

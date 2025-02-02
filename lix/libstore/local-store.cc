@@ -1072,7 +1072,7 @@ try {
 
     StorePathSet res;
 
-    for (auto & sub : getDefaultSubstituters()) {
+    for (auto & sub : TRY_AWAIT(getDefaultSubstituters())) {
         if (remaining.empty()) break;
         if (sub->config().storeDir != config_.storeDir) continue;
         if (!sub->config().wantMassQuery) continue;

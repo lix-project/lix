@@ -1008,7 +1008,7 @@ ref<Store> openStore(const std::string & uri = settings.storeUri.get(),
  * @return the default substituter stores, defined by the
  * ‘substituters’ option and various legacy options.
  */
-std::list<ref<Store>> getDefaultSubstituters();
+kj::Promise<Result<std::list<ref<Store>>>> getDefaultSubstituters();
 
 struct StoreFactory
 {
