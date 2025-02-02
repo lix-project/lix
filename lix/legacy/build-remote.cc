@@ -84,7 +84,7 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
 
         initPlugins();
 
-        auto store = openStore();
+        auto store = aio.blockOn(openStore());
 
         /* It would be more appropriate to use $XDG_RUNTIME_DIR, since
            that gets cleared on reboot, but it wouldn't work on macOS. */
@@ -243,7 +243,7 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
 
                     Activity act(*logger, lvlTalkative, actUnknown, fmt("connecting to '%s'", bestMachine->storeUri));
 
-                    sshStore = bestMachine->openStore();
+                    sshStore = aio.blockOn(bestMachine->openStore());
                     sshStore->connect();
                     storeUri = bestMachine->storeUri;
 

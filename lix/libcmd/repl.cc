@@ -1152,7 +1152,12 @@ ReplExitStatus AbstractNixRepl::run(
 ReplExitStatus AbstractNixRepl::runSimple(EvalState & evalState, const ValMap & extraEnv)
 {
     return run(
-        {}, openStore(), evalState, [] {  return AnnotatedValues{}; }, extraEnv, nullptr
+        {},
+        evalState.aio.blockOn(openStore()),
+        evalState,
+        [] { return AnnotatedValues{}; },
+        extraEnv,
+        nullptr
     );
 }
 

@@ -41,7 +41,7 @@ ref<Store> StoreCommand::getStore()
 
 ref<Store> StoreCommand::createStore()
 {
-    return openStore();
+    return aio().blockOn(openStore());
 }
 
 void StoreCommand::run()
@@ -68,7 +68,7 @@ CopyCommand::CopyCommand()
 
 ref<Store> CopyCommand::createStore()
 {
-    return srcUri.empty() ? StoreCommand::createStore() : openStore(srcUri);
+    return srcUri.empty() ? StoreCommand::createStore() : aio().blockOn(openStore(srcUri));
 }
 
 ref<Store> CopyCommand::getDstStore()
@@ -76,7 +76,7 @@ ref<Store> CopyCommand::getDstStore()
     if (srcUri.empty() && dstUri.empty())
         throw UsageError("you must pass '--from' and/or '--to'");
 
-    return dstUri.empty() ? openStore() : openStore(dstUri);
+    return aio().blockOn(dstUri.empty() ? openStore() : openStore(dstUri));
 }
 
 EvalCommand::EvalCommand()
@@ -98,7 +98,7 @@ EvalCommand::~EvalCommand()
 ref<Store> EvalCommand::getEvalStore()
 {
     if (!evalStore)
-        evalStore = evalStoreUrl ? openStore(*evalStoreUrl) : getStore();
+        evalStore = evalStoreUrl ? aio().blockOn(openStore(*evalStoreUrl)) : getStore();
     return ref<Store>(evalStore);
 }
 

@@ -1000,7 +1000,7 @@ OutputPathMap resolveDerivedPath(Store &, const DerivedPath::Built &, Store * ev
  * You can pass parameters to the store implementation by appending
  * ‘?key=value&key=value&...’ to the URI.
  */
-ref<Store> openStore(const std::string & uri = settings.storeUri.get(),
+kj::Promise<Result<ref<Store>>> openStore(const std::string & uri = settings.storeUri.get(),
     const StoreConfig::Params & extraParams = {});
 
 

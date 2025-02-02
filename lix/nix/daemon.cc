@@ -208,12 +208,14 @@ static PeerInfo getPeerInfo(int remote)
 /**
  * Open a store without a path info cache.
  */
-static ref<Store> openUncachedStore()
-{
+static kj::Promise<Result<ref<Store>>> openUncachedStore()
+try {
     StoreConfig::Params params; // FIXME: get params from somewhere
     // Disable caching since the client already does that.
     params["path-info-cache-size"] = "0";
-    return openStore(settings.storeUri, params);
+    co_return TRY_AWAIT(openStore(settings.storeUri, params));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 /**
@@ -349,7 +351,9 @@ static void daemonLoopImpl(std::optional<TrustedFlag> forceTrustClientOpt)
                 //  Handle the connection.
                 FdSource from(remote.get());
                 FdSink to(remote.get());
-                processConnection(aio, openUncachedStore(), from, to, trusted, NotRecursive);
+                processConnection(
+                    aio, aio.blockOn(openUncachedStore()), from, to, trusted, NotRecursive
+                );
 
                 exit(0);
             }, options).release();
@@ -445,7 +449,7 @@ static void
 runDaemon(AsyncIoRoot & aio, bool stdio, std::optional<TrustedFlag> forceTrustClientOpt)
 {
     if (stdio) {
-        auto store = openUncachedStore();
+        auto store = aio.blockOn(openUncachedStore());
 
         // If --force-untrusted is passed, we cannot forward the connection and
         // must process it ourselves (before delegating to the next store) to

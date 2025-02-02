@@ -260,7 +260,7 @@ static void showHelp(AsyncIoRoot & aio, std::vector<std::string> subcommand, Nix
 
     evalSettings.restrictEval.override(false);
     evalSettings.pureEval.override(false);
-    Evaluator evaluator(aio, {}, openStore("dummy://"));
+    Evaluator evaluator(aio, {}, aio.blockOn(openStore("dummy://")));
     auto state = evaluator.begin(aio);
 
     auto vGenerateManpage = evaluator.mem.allocValue();
@@ -419,7 +419,7 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
             | Xp::FetchClosure
             | Xp::DynamicDerivations);
         evalSettings.pureEval.override(false);
-        Evaluator state(aio, {}, openStore("dummy://"));
+        Evaluator state(aio, {}, aio.blockOn(openStore("dummy://")));
         auto res = nlohmann::json::object();
         res["builtins"] = ({
             auto builtinsJson = nlohmann::json::object();

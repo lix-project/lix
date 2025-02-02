@@ -7,6 +7,7 @@
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libexpr/eval-settings.hh" // for defexpr
 #include "lix/libstore/temporary-dir.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/users.hh"
 #include "nix-channel.hh"
 
@@ -75,11 +76,11 @@ static void removeChannel(const std::string & name)
 static Path nixDefExpr;
 
 // Fetch Nix expressions and binary cache URLs from the subscribed channels.
-static void update(const StringSet & channelNames)
+static void update(AsyncIoRoot & aio, const StringSet & channelNames)
 {
     readChannels();
 
-    auto store = openStore();
+    auto store = aio.blockOn(openStore());
 
     auto [fd, unpackChannelPath] = createTempFile();
     writeFull(fd.get(),
@@ -241,7 +242,7 @@ static int main_nix_channel(AsyncIoRoot & aio, std::string programName, Strings 
                     std::cout << channel.first << ' ' << channel.second << '\n';
                 break;
             case cUpdate:
-                update(StringSet(args.begin(), args.end()));
+                update(aio, StringSet(args.begin(), args.end()));
                 break;
             case cListGenerations:
                 if (!args.empty())

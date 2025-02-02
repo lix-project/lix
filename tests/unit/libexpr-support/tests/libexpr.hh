@@ -31,7 +31,6 @@ namespace nix {
                 , state(*statePtr)
             {
             }
-            ~LibExprTest() noexcept = default;
             Value eval(std::string input, bool forceValue = true, const FeatureSettings & fSettings = featureSettings) {
                 Value v;
                 Expr & e = evaluator.parseExprFromString(input, CanonPath::root, fSettings);
@@ -45,7 +44,6 @@ namespace nix {
                 return evaluator.symbols.create(value);
             }
 
-            AsyncIoRoot aio;
             Evaluator evaluator;
             box_ptr<EvalState> statePtr;
             EvalState & state;

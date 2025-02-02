@@ -48,8 +48,8 @@ static int main_nix_copy_closure(AsyncIoRoot & aio, std::string programName, Str
             throw UsageError("no host name specified");
 
         auto remoteUri = "ssh://" + sshHost + (gzip ? "?compress=true" : "");
-        auto to = toMode ? openStore(remoteUri) : openStore();
-        auto from = toMode ? openStore() : openStore(remoteUri);
+        auto to = aio.blockOn(toMode ? openStore(remoteUri) : openStore());
+        auto from = aio.blockOn(toMode ? openStore() : openStore(remoteUri));
 
         RealisedPath::Set storePaths2;
         for (auto & path : storePaths)

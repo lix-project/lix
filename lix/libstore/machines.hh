@@ -2,6 +2,8 @@
 ///@file
 
 #include "lix/libutil/ref.hh"
+#include "lix/libutil/result.hh"
+#include <kj/async.h>
 #include <set>
 #include <vector>
 
@@ -47,7 +49,7 @@ struct Machine {
         decltype(mandatoryFeatures) mandatoryFeatures,
         decltype(sshPublicHostKey) sshPublicHostKey);
 
-    ref<Store> openStore() const;
+    kj::Promise<Result<ref<Store>>> openStore() const;
 };
 
 typedef std::vector<Machine> Machines;

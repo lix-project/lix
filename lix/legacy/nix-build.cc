@@ -195,8 +195,8 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
     if (outLink.empty())
         outLink = (Path) tmpDir + "/result";
 
-    auto store = openStore();
-    auto evalStore = myArgs.evalStoreUrl ? openStore(*myArgs.evalStoreUrl) : store;
+    auto store = aio.blockOn(openStore());
+    auto evalStore = myArgs.evalStoreUrl ? aio.blockOn(openStore(*myArgs.evalStoreUrl)) : store;
 
     auto evaluator = std::make_unique<Evaluator>(aio, myArgs.searchPath, evalStore, store);
     evaluator->repair = myArgs.repair;

@@ -155,7 +155,7 @@ MixEvalArgs::MixEvalArgs()
             fetchers::overrideRegistry(from.input, to.input, extraAttrs);
         }},
         .completer = {[&](AddCompletions & completions, size_t, std::string_view prefix) {
-            completeFlakeRef(completions, openStore(), prefix);
+            completeFlakeRef(completions, aio().blockOn(openStore()), prefix);
         }}
     });
 

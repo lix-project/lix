@@ -87,7 +87,9 @@ struct CmdRepl : RawInstallablesCommand
             }
             return values;
         };
-        AbstractNixRepl::run(searchPath, openStore(), *state, getValues, {}, getAutoArgs(*evaluator));
+        AbstractNixRepl::run(
+            searchPath, aio().blockOn(openStore()), *state, getValues, {}, getAutoArgs(*evaluator)
+        );
     }
 };
 

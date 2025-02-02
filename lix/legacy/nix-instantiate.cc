@@ -154,8 +154,8 @@ static int main_nix_instantiate(AsyncIoRoot & aio, std::string programName, Stri
         if (evalOnly && !wantsReadWrite)
             settings.readOnlyMode = true;
 
-        auto store = openStore();
-        auto evalStore = myArgs.evalStoreUrl ? openStore(*myArgs.evalStoreUrl) : store;
+        auto store = aio.blockOn(openStore());
+        auto evalStore = myArgs.evalStoreUrl ? aio.blockOn(openStore(*myArgs.evalStoreUrl)) : store;
 
         auto evaluator = std::make_unique<Evaluator>(aio, myArgs.searchPath, evalStore, store);
         auto state = evaluator->begin(aio);

@@ -1173,7 +1173,7 @@ static int main_nix_store(AsyncIoRoot & aio, std::string programName, Strings ar
         if (!op) throw UsageError("no operation specified");
 
         if (op != opDump && op != opRestore) /* !!! hack */
-            store = openStore();
+            store = aio.blockOn(openStore());
 
         op(aio, std::move(opFlags), std::move(opArgs));
 

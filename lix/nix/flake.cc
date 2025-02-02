@@ -1096,7 +1096,7 @@ struct CmdFlakeArchive : FlakeCommand, MixJSON, MixDryRun
         }
 
         if (!dryRun && !dstUri.empty()) {
-            ref<Store> dstStore = dstUri.empty() ? openStore() : openStore(dstUri);
+            ref<Store> dstStore = aio().blockOn(dstUri.empty() ? openStore() : openStore(dstUri));
             copyPaths(*store, *dstStore, sources);
         }
     }

@@ -26,24 +26,24 @@
 using namespace nix;
 
 
+static AsyncIoRoot & aio()
+{
+    static thread_local AsyncIoRoot root;
+    return root;
+}
+
 static ref<Store> store()
 {
     static std::shared_ptr<Store> _store;
     if (!_store) {
         try {
             initLibStore();
-            _store = openStore();
+            _store = aio().blockOn(openStore());
         } catch (Error & e) {
             croak("%s", e.what());
         }
     }
     return ref<Store>(_store);
-}
-
-static AsyncIoRoot & aio()
-{
-    static thread_local AsyncIoRoot root;
-    return root;
 }
 
 

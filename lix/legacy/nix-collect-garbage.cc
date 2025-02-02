@@ -94,7 +94,7 @@ static int main_nix_collect_garbage(AsyncIoRoot & aio, std::string programName, 
         } else {
             options.action = GCOptions::gcReturnDead;
         }
-        auto store = openStore();
+        auto store = aio.blockOn(openStore());
         auto & gcStore = require<GcStore>(*store);
         GCResults results;
         PrintFreed freed(true, results);

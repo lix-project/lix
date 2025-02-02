@@ -198,7 +198,7 @@ void prim_fetchClosure(EvalState & state, const PosIdx pos, Value * * args, Valu
             .pos = state.ctx.positions[pos]
         });
 
-    auto fromStore = openStore(parsedURL.to_string());
+    auto fromStore = state.aio.blockOn(openStore(parsedURL.to_string()));
 
     if (toPath)
         runFetchClosureWithRewrite(state, pos, *fromStore, *fromPath, *toPath, v);

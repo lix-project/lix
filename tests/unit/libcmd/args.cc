@@ -32,7 +32,7 @@ TEST(Arguments, lookupFileArg) {
     SearchPath searchPath;
     searchPath.elements.push_back(SearchPath::Elem::parse(searchPathElem));
 
-    auto store = openStore("dummy://");
+    auto store = aio.blockOn(openStore("dummy://"));
     auto state = std::make_shared<Evaluator>(aio, searchPath, store, store);
 
     SourcePath const foundUnitData = aio.blockOn(lookupFileArg(*state, "<example>"));

@@ -16,8 +16,10 @@
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libutil/users.hh"
 
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <regex>
+#include <shared_mutex>
 
 using json = nlohmann::json;
 
@@ -1528,9 +1530,9 @@ static std::string extractConnStr(const std::string &proto, const std::string &c
     return connStr;
 }
 
-ref<Store> openStore(const std::string & uri_,
+kj::Promise<Result<ref<Store>>> openStore(const std::string & uri_,
     const StoreConfig::Params & extraParams)
-{
+try {
     auto params = extraParams;
     try {
         auto parsedUri = parseURL(uri_);
@@ -1548,7 +1550,7 @@ ref<Store> openStore(const std::string & uri_,
                     experimentalFeatureSettings.require(store->config().experimentalFeature());
                     store->init();
                     store->config().warnUnknownSettings();
-                    return ref<Store>(store);
+                    co_return ref<Store>(store);
                 }
             }
         }
@@ -1559,40 +1561,45 @@ ref<Store> openStore(const std::string & uri_,
 
         if (auto store = openFromNonUri(uri, params)) {
             store->config().warnUnknownSettings();
-            return ref<Store>(store);
+            co_return ref<Store>(store);
         }
     }
 
     throw Error("don't know how to open Nix store '%s'", uri_);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<std::list<ref<Store>>>> getDefaultSubstituters()
 try {
-    static auto stores([]() {
-        std::list<ref<Store>> stores;
+    static std::shared_mutex mtx;
+    static std::optional<std::list<ref<Store>>> stores;
 
+    if (std::shared_lock l(mtx); stores.has_value()) {
+        co_return *stores;
+    }
+
+    std::lock_guard l(mtx);
+
+    if (!stores.has_value()) {
         StringSet done;
 
-        auto addStore = [&](const std::string & uri) {
-            if (!done.insert(uri).second) return;
+        stores.emplace();
+        for (auto uri : settings.substituters.get()) {
+            if (!done.insert(uri).second) continue;
             try {
-                stores.push_back(openStore(uri));
+                stores->push_back(TRY_AWAIT(openStore(uri)));
             } catch (Error & e) {
                 logWarning(e.info());
             }
-        };
+        }
 
-        for (auto uri : settings.substituters.get())
-            addStore(uri);
-
-        stores.sort([](ref<Store> & a, ref<Store> & b) {
+        stores->sort([](ref<Store> & a, ref<Store> & b) {
             return a->config().priority < b->config().priority;
         });
+    }
 
-        return stores;
-    } ());
-
-    co_return stores;
+    co_return *stores;
 } catch (...) {
     co_return result::current_exception();
 }

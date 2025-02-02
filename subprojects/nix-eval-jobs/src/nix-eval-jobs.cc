@@ -66,9 +66,9 @@ struct Proc {
                 debug("created worker process %d", getpid());
                 try {
                     AsyncIoRoot aio;
-                    auto evalStore = myArgs.evalStoreUrl
+                    auto evalStore = aio.blockOn(myArgs.evalStoreUrl
                                          ? openStore(*myArgs.evalStoreUrl)
-                                         : openStore();
+                                         : openStore());
                     auto evaluator =
                         nix::make_ref<nix::eval_cache::CachingEvaluator>(
                             aio, myArgs.searchPath, evalStore);

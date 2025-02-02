@@ -1539,7 +1539,7 @@ static int main_nix_env(AsyncIoRoot & aio, std::string programName, Strings argv
         if (showHelp) showManPage("nix-env" + opName);
         if (!op) throw UsageError("no operation specified");
 
-        auto store = openStore();
+        auto store = aio.blockOn(openStore());
 
         globals.state = std::make_shared<Evaluator>(aio, myArgs.searchPath, store);
         globals.state->repair = myArgs.repair;

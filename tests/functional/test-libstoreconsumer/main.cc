@@ -19,7 +19,7 @@ int main (int argc, char **argv)
 
         initLibStore();
 
-        auto store = nix::openStore();
+        auto store = aio.blockOn(nix::openStore());
 
         // build the derivation
 

@@ -1,6 +1,7 @@
 #include "lix/libstore/machines.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/strings.hh"
 
 #include <algorithm>
@@ -64,8 +65,8 @@ bool Machine::mandatoryMet(const std::set<std::string> & features) const
         });
 }
 
-ref<Store> Machine::openStore() const
-{
+kj::Promise<Result<ref<Store>>> Machine::openStore() const
+try {
     StoreConfig::Params storeParams;
     if (storeUri.starts_with("ssh://")) {
         storeParams["log-fd"] = "4";
@@ -91,7 +92,9 @@ ref<Store> Machine::openStore() const
         append(mandatoryFeatures);
     }
 
-    return nix::openStore(storeUri, storeParams);
+    co_return TRY_AWAIT(nix::openStore(storeUri, storeParams));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 static std::vector<std::string> expandBuilderLines(const std::string & builders)
