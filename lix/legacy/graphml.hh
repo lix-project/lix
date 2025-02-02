@@ -5,6 +5,6 @@
 
 namespace nix {
 
-void printGraphML(ref<Store> store, StorePathSet && roots);
+kj::Promise<Result<void>> printGraphML(ref<Store> store, StorePathSet && roots);
 
 }

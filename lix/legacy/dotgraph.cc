@@ -1,5 +1,6 @@
 #include "dotgraph.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/result.hh"
 
 #include <iostream>
 
@@ -41,8 +42,8 @@ static std::string makeNode(std::string_view id, std::string_view label,
 }
 
 
-void printDotGraph(ref<Store> store, StorePathSet && roots)
-{
+kj::Promise<Result<void>> printDotGraph(ref<Store> store, StorePathSet && roots)
+try {
     StorePathSet workList(std::move(roots));
     StorePathSet doneSet;
 
@@ -64,6 +65,9 @@ void printDotGraph(ref<Store> store, StorePathSet && roots)
     }
 
     cout << "}\n";
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

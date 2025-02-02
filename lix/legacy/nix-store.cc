@@ -429,7 +429,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
             for (auto & i : opArgs)
                 for (auto & j : aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise)))
                     roots.insert(j);
-            printDotGraph(ref<Store>(store), std::move(roots));
+            aio.blockOn(printDotGraph(ref<Store>(store), std::move(roots)));
             break;
         }
 
@@ -438,7 +438,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
             for (auto & i : opArgs)
                 for (auto & j : aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise)))
                     roots.insert(j);
-            printGraphML(ref<Store>(store), std::move(roots));
+            aio.blockOn(printGraphML(ref<Store>(store), std::move(roots)));
             break;
         }
 

@@ -1,6 +1,7 @@
 #include "graphml.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/derivations.hh"
+#include "lix/libutil/result.hh"
 
 #include <iostream>
 
@@ -46,8 +47,8 @@ static std::string makeNode(const ValidPathInfo & info)
 }
 
 
-void printGraphML(ref<Store> store, StorePathSet && roots)
-{
+kj::Promise<Result<void>> printGraphML(ref<Store> store, StorePathSet && roots)
+try {
     StorePathSet workList(std::move(roots));
     StorePathSet doneSet;
     std::pair<StorePathSet::iterator, bool> ret;
@@ -81,6 +82,9 @@ void printGraphML(ref<Store> store, StorePathSet && roots)
 
     cout << "</graph>\n";
     cout << "</graphml>\n";
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
