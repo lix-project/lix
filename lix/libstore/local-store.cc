@@ -1510,7 +1510,8 @@ std::pair<Path, AutoCloseFD> LocalStore::createTempDirInStore()
         if (tmpDirFd.get() < 0) {
             continue;
         }
-        lockedByUs = lockFile(tmpDirFd.get(), ltWrite);
+        lockFile(tmpDirFd.get(), ltWrite);
+        lockedByUs = true;
     } while (!pathExists(tmpDirFn) || !lockedByUs);
     return {tmpDirFn, std::move(tmpDirFd)};
 }
@@ -1546,7 +1547,7 @@ bool LocalStore::verifyStore(bool checkContents, RepairFlag repair)
     /* Acquire the global GC lock to get a consistent snapshot of
        existing and valid paths. */
     auto fdGCLock = openGCLock();
-    FdLock gcLock(fdGCLock.get(), ltRead, true, "waiting for the big garbage collector lock...");
+    FdLock gcLock(fdGCLock.get(), ltRead, "waiting for the big garbage collector lock...");
 
     StorePathSet validPaths;
 

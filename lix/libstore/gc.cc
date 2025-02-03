@@ -129,7 +129,7 @@ void LocalStore::addTempRoot(const StorePath & path)
     /* Try to acquire a shared global GC lock (non-blocking). This
        only succeeds if the garbage collector is not currently
        running. */
-    FdLock gcLock(_fdGCLock.lock()->get(), ltRead, false, "");
+    FdLock gcLock(_fdGCLock.lock()->get(), ltRead);
 
     if (!gcLock.acquired) {
         /* We couldn't get a shared global GC lock, so the garbage
@@ -583,7 +583,7 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
        here because then in auto-gc mode, another thread could
        downgrade our exclusive lock. */
     auto fdGCLock = openGCLock();
-    FdLock gcLock(fdGCLock.get(), ltWrite, true, "waiting for the big garbage collector lock...");
+    FdLock gcLock(fdGCLock.get(), ltWrite, "waiting for the big garbage collector lock...");
 
     /* Synchronisation point to test ENOENT handling in
        addTempRoot(), see tests/gc-non-blocking.sh. */
