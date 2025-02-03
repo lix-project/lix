@@ -41,14 +41,13 @@ bool lockFile(int fd, LockType lockType, bool wait)
     int type;
     if (lockType == ltRead) type = LOCK_SH;
     else if (lockType == ltWrite) type = LOCK_EX;
-    else if (lockType == ltNone) type = LOCK_UN;
     else abort();
 
     if (wait) {
         while (flock(fd, type) != 0) {
             checkInterrupt();
             if (errno != EINTR)
-                throw SysError("acquiring/releasing lock");
+                throw SysError("acquiring lock");
             else
                 return false;
         }
@@ -57,11 +56,20 @@ bool lockFile(int fd, LockType lockType, bool wait)
             checkInterrupt();
             if (errno == EWOULDBLOCK) return false;
             if (errno != EINTR)
-                throw SysError("acquiring/releasing lock");
+                throw SysError("acquiring lock");
         }
     }
 
     return true;
+}
+
+void unlockFile(int fd)
+{
+    while (flock(fd, LOCK_UN) != 0) {
+        if (errno != EINTR) {
+            throw SysError("releasing lock");
+        }
+    }
 }
 
 
