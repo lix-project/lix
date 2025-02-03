@@ -177,6 +177,7 @@ REPL_TEST(no_nested_debuggers);
 REPL_TEST(regression_9917);
 REPL_TEST(regression_9918);
 REPL_TEST(regression_l145);
+REPL_TEST(regression_l592);
 REPL_TEST(repl_overlays);
 REPL_TEST(repl_overlays_compose);
 REPL_TEST(repl_overlays_destructure_without_dotdotdot_errors);
