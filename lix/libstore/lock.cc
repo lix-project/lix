@@ -90,7 +90,7 @@ struct SimpleUserLock : UserLock
             if (!fd)
                 throw SysError("opening user lock '%s'", fnUserLock);
 
-            if (lockFile(fd.get(), ltWrite, false)) {
+            if (tryLockFile(fd.get(), ltWrite)) {
                 auto lock = std::make_unique<SimpleUserLock>();
 
                 lock->fdUserLock = std::move(fd);
@@ -162,7 +162,7 @@ struct AutoUserLock : UserLock
             if (!fd)
                 throw SysError("opening user lock '%s'", fnUserLock);
 
-            if (lockFile(fd.get(), ltWrite, false)) {
+            if (tryLockFile(fd.get(), ltWrite)) {
 
                 auto firstUid = settings.startId + i * maxIdsPerBuild;
 
