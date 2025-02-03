@@ -137,7 +137,7 @@ static int main_build_remote(std::string programName, Strings argv)
             while (true) {
                 bestSlotLock.reset();
                 AutoCloseFD lock = openLockFile(currentLoad + "/main-lock", true);
-                lockFile(lock.get(), ltWrite, true);
+                lockFile(lock.get(), ltWrite);
 
                 bool rightType = false;
 
@@ -156,7 +156,7 @@ static int main_build_remote(std::string programName, Strings argv)
                         uint64_t load = 0;
                         for (uint64_t slot = 0; slot < m.maxJobs; ++slot) {
                             auto slotLock = openSlotLock(m, slot);
-                            if (lockFile(slotLock.get(), ltWrite, false)) {
+                            if (tryLockFile(slotLock.get(), ltWrite)) {
                                 if (!free) {
                                     free = std::move(slotLock);
                                 }
@@ -281,7 +281,7 @@ connected:
 
             auto old = signal(SIGALRM, handleAlarm);
             alarm(15 * 60);
-            if (!lockFile(uploadLock.get(), ltWrite, true))
+            if (!lockFile(uploadLock.get(), ltWrite))
                 printError("somebody is hogging the upload lock for '%s', continuing...");
             alarm(0);
             signal(SIGALRM, old);

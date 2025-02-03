@@ -20,7 +20,8 @@ void deleteLockFile(const Path & path, int fd);
 
 enum LockType { ltRead, ltWrite };
 
-bool lockFile(int fd, LockType lockType, bool wait);
+bool lockFile(int fd, LockType lockType);
+bool tryLockFile(int fd, LockType lockType);
 void unlockFile(int fd);
 
 class PathLocks

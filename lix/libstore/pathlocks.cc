@@ -35,29 +35,37 @@ void deleteLockFile(const Path & path, int fd)
        file is an optimisation, not a necessity. */
 }
 
-
-bool lockFile(int fd, LockType lockType, bool wait)
+static int convertLockType(LockType lockType)
 {
-    int type;
-    if (lockType == ltRead) type = LOCK_SH;
-    else if (lockType == ltWrite) type = LOCK_EX;
+    if (lockType == ltRead) return LOCK_SH;
+    else if (lockType == ltWrite) return LOCK_EX;
     else abort();
+}
 
-    if (wait) {
-        while (flock(fd, type) != 0) {
-            checkInterrupt();
-            if (errno != EINTR)
-                throw SysError("acquiring lock");
-            else
-                return false;
-        }
-    } else {
-        while (flock(fd, type | LOCK_NB) != 0) {
-            checkInterrupt();
-            if (errno == EWOULDBLOCK) return false;
-            if (errno != EINTR)
-                throw SysError("acquiring lock");
-        }
+bool lockFile(int fd, LockType lockType)
+{
+    int type = convertLockType(lockType);
+
+    while (flock(fd, type) != 0) {
+        checkInterrupt();
+        if (errno != EINTR)
+            throw SysError("acquiring lock");
+        else
+            return false;
+    }
+
+    return true;
+}
+
+bool tryLockFile(int fd, LockType lockType)
+{
+    int type = convertLockType(lockType);
+
+    while (flock(fd, type | LOCK_NB) != 0) {
+        checkInterrupt();
+        if (errno == EWOULDBLOCK) return false;
+        if (errno != EINTR)
+            throw SysError("acquiring lock");
     }
 
     return true;
@@ -111,10 +119,10 @@ bool PathLocks::lockPaths(const PathSet & paths,
             fd = openLockFile(lockPath, true);
 
             /* Acquire an exclusive lock. */
-            if (!lockFile(fd.get(), ltWrite, false)) {
+            if (!tryLockFile(fd.get(), ltWrite)) {
                 if (wait) {
                     if (waitMsg != "") printError(waitMsg);
-                    lockFile(fd.get(), ltWrite, true);
+                    lockFile(fd.get(), ltWrite);
                 } else {
                     /* Failed to lock this path; release all other
                        locks. */
@@ -185,12 +193,12 @@ FdLock::FdLock(int fd, LockType lockType, bool wait, std::string_view waitMsg)
     : fd(fd)
 {
     if (wait) {
-        if (!lockFile(fd, lockType, false)) {
+        if (!tryLockFile(fd, lockType)) {
             printInfo("%s", waitMsg);
-            acquired = lockFile(fd, lockType, true);
+            acquired = lockFile(fd, lockType);
         }
     } else
-        acquired = lockFile(fd, lockType, false);
+        acquired = tryLockFile(fd, lockType);
 }
 
 

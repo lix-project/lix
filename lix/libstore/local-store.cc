@@ -99,10 +99,10 @@ void migrateCASchema(SQLite& db, Path schemaPath, AutoCloseFD& lockFd)
                  curCASchema, nixCASchemaVersion);
         }
 
-        if (!lockFile(lockFd.get(), ltWrite, false)) {
+        if (!tryLockFile(lockFd.get(), ltWrite)) {
             printInfo("waiting for exclusive access to the Nix store for ca drvs...");
             unlockFile(lockFd.get()); // We have acquired a shared lock; release it to prevent deadlocks
-            lockFile(lockFd.get(), ltWrite, true);
+            lockFile(lockFd.get(), ltWrite);
         }
 
         if (curCASchema == 0) {
@@ -170,7 +170,7 @@ void migrateCASchema(SQLite& db, Path schemaPath, AutoCloseFD& lockFd)
         }
 
         writeFile(schemaPath, fmt("%d", nixCASchemaVersion), 0666, true);
-        lockFile(lockFd.get(), ltRead, true);
+        lockFile(lockFd.get(), ltRead);
     }
 }
 
@@ -280,9 +280,9 @@ LocalStore::LocalStore(LocalStoreConfig config)
         globalLock = openLockFile(globalLockPath.c_str(), true);
     }
 
-    if (!config_.readOnly && !lockFile(globalLock.get(), ltRead, false)) {
+    if (!config_.readOnly && !tryLockFile(globalLock.get(), ltRead)) {
         printInfo("waiting for the big Nix store lock...");
-        lockFile(globalLock.get(), ltRead, true);
+        lockFile(globalLock.get(), ltRead);
     }
 
     /* Check the current database schema and if necessary do an
@@ -319,10 +319,10 @@ LocalStore::LocalStore(LocalStoreConfig config)
                 "which is no longer supported. To convert to the new format,\n"
                 "please use the original Nix version 1.11 first.");
 
-        if (!lockFile(globalLock.get(), ltWrite, false)) {
+        if (!tryLockFile(globalLock.get(), ltWrite)) {
             printInfo("waiting for exclusive access to the Nix store...");
             unlockFile(globalLock.get()); // We have acquired a shared lock; release it to prevent deadlocks
-            lockFile(globalLock.get(), ltWrite, true);
+            lockFile(globalLock.get(), ltWrite);
         }
 
         /* Get the schema version again, because another process may
@@ -354,7 +354,7 @@ LocalStore::LocalStore(LocalStoreConfig config)
 
         writeFile(schemaPath, fmt("%1%", nixSchemaVersion), 0666, true);
 
-        lockFile(globalLock.get(), ltRead, true);
+        lockFile(globalLock.get(), ltRead);
     }
 
     else openDB(*state, false);
@@ -1510,7 +1510,7 @@ std::pair<Path, AutoCloseFD> LocalStore::createTempDirInStore()
         if (tmpDirFd.get() < 0) {
             continue;
         }
-        lockedByUs = lockFile(tmpDirFd.get(), ltWrite, true);
+        lockedByUs = lockFile(tmpDirFd.get(), ltWrite);
     } while (!pathExists(tmpDirFn) || !lockedByUs);
     return {tmpDirFn, std::move(tmpDirFd)};
 }

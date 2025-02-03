@@ -93,7 +93,7 @@ void LocalStore::createTempRootsFile()
         *fdTempRoots = openLockFile(fnTempRoots, true);
 
         debug("acquiring write lock on '%s'", fnTempRoots);
-        lockFile(fdTempRoots->get(), ltWrite, true);
+        lockFile(fdTempRoots->get(), ltWrite);
 
         /* Check whether the garbage collector didn't get in our
            way. */
@@ -214,7 +214,7 @@ void LocalStore::findTempRoots(Roots & tempRoots, bool censor)
         /* Try to acquire a write lock without blocking.  This can
            only succeed if the owning process has died.  In that case
            we don't care about its temporary roots. */
-        if (lockFile(fd.get(), ltWrite, false)) {
+        if (tryLockFile(fd.get(), ltWrite)) {
             printInfo("removing stale temporary roots file '%1%'", path);
             unlink(path.c_str());
             writeFull(fd.get(), "d");
@@ -626,7 +626,7 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
            exclusive lock before deleting them. */
         if (baseName.find("tmp-", 0) == 0) {
             AutoCloseFD tmpDirFd{open(realPath.c_str(), O_RDONLY | O_DIRECTORY)};
-            if (tmpDirFd.get() == -1 || !lockFile(tmpDirFd.get(), ltWrite, false)) {
+            if (tmpDirFd.get() == -1 || !tryLockFile(tmpDirFd.get(), ltWrite)) {
                 debug("skipping locked tempdir '%s'", realPath);
                 return;
             }
