@@ -5,6 +5,7 @@
 #include <cerrno>
 
 #include <fcntl.h>
+#include <kj/common.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
@@ -42,9 +43,27 @@ static int convertLockType(LockType lockType)
     else abort();
 }
 
-bool lockFile(int fd, LockType lockType)
+void lockFile(int fd, LockType lockType)
 {
     int type = convertLockType(lockType);
+
+    while (flock(fd, type) != 0) {
+        checkInterrupt();
+        if (errno != EINTR)
+            throw SysError("acquiring lock");
+    }
+}
+
+bool unsafeLockFileSingleThreaded(int fd, LockType lockType, std::chrono::seconds timeout)
+{
+    int type = convertLockType(lockType);
+
+    auto old = signal(SIGALRM, [](int) {});
+    alarm(timeout.count());
+    KJ_DEFER({
+        alarm(0);
+        signal(SIGALRM, old);
+    });
 
     while (flock(fd, type) != 0) {
         checkInterrupt();
@@ -189,16 +208,20 @@ void PathLocks::setDeletion(bool deletePaths)
 }
 
 
-FdLock::FdLock(int fd, LockType lockType, bool wait, std::string_view waitMsg)
+FdLock::FdLock(int fd, LockType lockType)
     : fd(fd)
 {
-    if (wait) {
-        if (!tryLockFile(fd, lockType)) {
-            printInfo("%s", waitMsg);
-            acquired = lockFile(fd, lockType);
-        }
-    } else
-        acquired = tryLockFile(fd, lockType);
+    acquired = tryLockFile(fd, lockType);
+}
+
+FdLock::FdLock(int fd, LockType lockType, std::string_view waitMsg)
+    : fd(fd)
+{
+    if (!tryLockFile(fd, lockType)) {
+        printInfo("%s", waitMsg);
+        lockFile(fd, lockType);
+        acquired = true;
+    }
 }
 
 

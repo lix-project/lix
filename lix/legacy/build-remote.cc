@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <set>
 #include <memory>
 #include <tuple>
@@ -22,9 +23,6 @@
 #include "build-remote.hh"
 
 namespace nix {
-
-static void handleAlarm(int sig) {
-}
 
 std::string escapeUri(std::string uri)
 {
@@ -279,12 +277,8 @@ connected:
         {
             Activity act(*logger, lvlTalkative, actUnknown, fmt("waiting for the upload lock to '%s'", storeUri));
 
-            auto old = signal(SIGALRM, handleAlarm);
-            alarm(15 * 60);
-            if (!lockFile(uploadLock.get(), ltWrite))
+            if (!unsafeLockFileSingleThreaded(uploadLock.get(), ltWrite, std::chrono::minutes(15)))
                 printError("somebody is hogging the upload lock for '%s', continuing...");
-            alarm(0);
-            signal(SIGALRM, old);
         }
 
         auto substitute = settings.buildersUseSubstitutes ? Substitute : NoSubstitute;

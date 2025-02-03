@@ -3,6 +3,7 @@
 
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
+#include <chrono>
 
 namespace nix {
 
@@ -20,7 +21,14 @@ void deleteLockFile(const Path & path, int fd);
 
 enum LockType { ltRead, ltWrite };
 
-bool lockFile(int fd, LockType lockType);
+void lockFile(int fd, LockType lockType);
+/**
+ * Same as `lockFile`, but with a timeout. This timeout uses the POSIX `alarm`
+ * facility and a `SIGALRM` handler. Using this function from multiple threads
+ * in the same process is not safe: all `SIGALRM` handlers set previously will
+ * be overwritten while this function is executing and are restored on return.
+ */
+bool unsafeLockFileSingleThreaded(int fd, LockType lockType, std::chrono::seconds timeout);
 bool tryLockFile(int fd, LockType lockType);
 void unlockFile(int fd);
 
@@ -48,7 +56,8 @@ struct FdLock
     int fd;
     bool acquired = false;
 
-    FdLock(int fd, LockType lockType, bool wait, std::string_view waitMsg);
+    FdLock(int fd, LockType lockType);
+    FdLock(int fd, LockType lockType, std::string_view waitMsg);
 
     ~FdLock()
     {
