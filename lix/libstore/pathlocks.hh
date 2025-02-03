@@ -18,9 +18,10 @@ AutoCloseFD openLockFile(const Path & path, bool create);
  */
 void deleteLockFile(const Path & path, int fd);
 
-enum LockType { ltRead, ltWrite, ltNone };
+enum LockType { ltRead, ltWrite };
 
 bool lockFile(int fd, LockType lockType, bool wait);
+void unlockFile(int fd);
 
 class PathLocks
 {
@@ -52,7 +53,7 @@ struct FdLock
     {
         try {
             if (acquired)
-                lockFile(fd, ltNone, false);
+                unlockFile(fd);
         } catch (SysError &) {
             ignoreExceptionInDestructor();
         }

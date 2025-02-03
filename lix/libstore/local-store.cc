@@ -99,7 +99,7 @@ void migrateCASchema(SQLite& db, Path schemaPath, AutoCloseFD& lockFd)
 
         if (!lockFile(lockFd.get(), ltWrite, false)) {
             printInfo("waiting for exclusive access to the Nix store for ca drvs...");
-            lockFile(lockFd.get(), ltNone, false); // We have acquired a shared lock; release it to prevent deadlocks
+            unlockFile(lockFd.get()); // We have acquired a shared lock; release it to prevent deadlocks
             lockFile(lockFd.get(), ltWrite, true);
         }
 
@@ -319,7 +319,7 @@ LocalStore::LocalStore(LocalStoreConfig config)
 
         if (!lockFile(globalLock.get(), ltWrite, false)) {
             printInfo("waiting for exclusive access to the Nix store...");
-            lockFile(globalLock.get(), ltNone, false); // We have acquired a shared lock; release it to prevent deadlocks
+            unlockFile(globalLock.get()); // We have acquired a shared lock; release it to prevent deadlocks
             lockFile(globalLock.get(), ltWrite, true);
         }
 
