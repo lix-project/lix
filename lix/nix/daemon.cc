@@ -36,6 +36,9 @@
 #if __APPLE__ || __FreeBSD__
 #include <sys/ucred.h>
 #endif
+#if __APPLE__
+#include <membership.h>
+#endif
 
 namespace nix {
 
@@ -110,10 +113,23 @@ static void setSigChldAction(bool autoReap)
  *
  * @param group Group the user might be a member of.
  */
-static bool matchUser(std::string_view user, const struct group & gr)
+static bool matchUser(const std::string & user, const struct group & gr)
 {
     for (char * * mem = gr.gr_mem; *mem; mem++)
-        if (user == std::string_view(*mem)) return true;
+        if (user == *mem) return true;
+#if __APPLE__
+    // FIXME: we should probably pipe the uid through these functions
+    // instead of converting the username back into the uid
+    if (auto pw = getpwnam(user.c_str())) {
+        uuid_t uuid, gruuid;
+        if (!mbr_uid_to_uuid(pw->pw_uid, uuid) && !mbr_gid_to_uuid(gr.gr_gid, gruuid)) {
+            int ismember = 0;
+            if (!mbr_check_membership(uuid, gruuid, &ismember)) {
+                return !!ismember;
+            }
+        }
+    }
+#endif
     return false;
 }
 
