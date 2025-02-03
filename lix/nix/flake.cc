@@ -391,14 +391,6 @@ struct CmdFlakeCheck : FlakeCommand
             return evaluator->positions[p];
         };
 
-        auto argHasName = [&] (Symbol arg, std::string_view expected) {
-            std::string_view name = evaluator->symbols[arg];
-            return
-                name == expected
-                || name == "_"
-                || (name.starts_with("_") && name.substr(1) == expected);
-        };
-
         auto checkSystemName = [&](const std::string & system, const PosIdx pos) {
             // FIXME: what's the format of "system"?
             if (system.find('-') == std::string::npos)
@@ -464,14 +456,11 @@ struct CmdFlakeCheck : FlakeCommand
                 if (!v.isLambda()) {
                     throw Error("overlay is not a function, but %s instead", showType(v));
                 }
-                if (v.lambda.fun->hasFormals()
-                    || !argHasName(v.lambda.fun->arg, "final"))
-                    throw Error("overlay does not take an argument named 'final'");
                 auto body = dynamic_cast<ExprLambda *>(v.lambda.fun->body.get());
-                if (!body
-                    || body->hasFormals()
-                    || !argHasName(body->arg, "prev"))
-                    throw Error("overlay does not take an argument named 'prev'");
+                if (!body)
+                    throw Error("overlay is not a function with two arguments, but only takes one");
+                if (dynamic_cast<ExprLambda *>(body->body.get()))
+                    throw Error("overlay is not a function with two arguments, but takes more than two");
                 // FIXME: if we have a 'nixpkgs' input, use it to
                 // evaluate the overlay.
             } catch (Error & e) {

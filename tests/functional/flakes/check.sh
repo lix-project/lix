@@ -23,6 +23,28 @@ cat > $flakeDir/flake.nix <<EOF
 }
 EOF
 
+(nix flake check $flakeDir)
+
+cat > $flakeDir/flake.nix <<EOF
+{
+  outputs = { self }: {
+    overlay = one: two: three: {
+    };
+  };
+}
+EOF
+
+(! nix flake check $flakeDir)
+
+cat > $flakeDir/flake.nix <<EOF
+{
+  outputs = { self }: {
+    overlay = one: {
+    };
+  };
+}
+EOF
+
 (! nix flake check $flakeDir)
 
 cat > $flakeDir/flake.nix <<EOF
