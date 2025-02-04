@@ -246,7 +246,7 @@ struct MercurialInputScheme : InputScheme
                 return makeResult(res->first, std::move(res->second));
         }
 
-        auto revOrRef = input.getRev() ? input.getRev()->gitRev() : *input.getRef();
+        auto revOrRef = input.getRev() ? fmt("id(%s)", input.getRev()->gitRev()) : *input.getRef();
 
         Attrs unlockedAttrs({
             {"type", "hg"},
@@ -269,7 +269,7 @@ struct MercurialInputScheme : InputScheme
            have to pull again. */
         if (!(input.getRev()
                 && pathExists(cacheDir)
-                && runProgram(hgOptions({ "log", "-R", cacheDir, "-r", input.getRev()->gitRev(), "--template", "1" })).second == "1"))
+                && runProgram(hgOptions({ "identify", "-R", cacheDir, "-r", revOrRef, "--template", "1" })).second == "1"))
         {
             Activity act(*logger, lvlTalkative, actUnknown, fmt("fetching Mercurial repository '%s'", actualUrl));
 
@@ -294,7 +294,7 @@ struct MercurialInputScheme : InputScheme
         }
 
         auto tokens = tokenizeString<std::vector<std::string>>(
-            runHg({ "log", "-R", cacheDir, "-r", revOrRef, "--template", "{node} {count(revset('::{rev}'))} {branch}" }));
+            runHg({ "identify", "-R", cacheDir, "-r", revOrRef, "--template", "{node} {count(revset('::{rev}'))} {branch}" }));
         assert(tokens.size() == 3);
 
         input.attrs.insert_or_assign("rev", Hash::parseAny(tokens[0], HashType::SHA1).gitRev());
@@ -307,7 +307,7 @@ struct MercurialInputScheme : InputScheme
         Path tmpDir = createTempDir();
         AutoDelete delTmpDir(tmpDir, true);
 
-        runHg({ "archive", "-R", cacheDir, "-r", input.getRev()->gitRev(), tmpDir });
+        runHg({ "archive", "-R", cacheDir, "-r", fmt("id(%s)", input.getRev()->gitRev()), tmpDir });
 
         deletePath(tmpDir + "/.hg_archival.txt");
 
