@@ -1,0 +1,21 @@
+@args --debugger
+
+  breakpoint reached
+
+  nix-repl> :quit
+  error:
+         … while evaluating the file '$TEST_DATA/regression_l592.nix':
+
+         … while calling the 'seq' builtin
+           at $TEST_DATA/regression_l592.nix:1:15:
+              1| let x = 4; in __seq x (with x; (x: builtins.break x) 1)
+               |               ^
+              2|
+
+         … while calling the 'break' builtin
+           at $TEST_DATA/regression_l592.nix:1:36:
+              1| let x = 4; in __seq x (with x; (x: builtins.break x) 1)
+               |                                    ^
+              2|
+
+         error: breakpoint reached
