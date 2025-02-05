@@ -135,15 +135,15 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
             if (location) posToXML(state, xmlAttrs, state.ctx.positions[v.lambda.fun->pos]);
             XMLOpenElement _(doc, "function", xmlAttrs);
 
-            if (v.lambda.fun->hasFormals()) {
+            if (auto formals = dynamic_cast<AttrsPattern *>(v.lambda.fun->pattern.get()); formals) {
                 XMLAttrs attrs;
-                if (v.lambda.fun->arg) attrs["name"] = state.ctx.symbols[v.lambda.fun->arg];
-                if (v.lambda.fun->formals->ellipsis) attrs["ellipsis"] = "1";
+                if (formals->name) attrs["name"] = state.ctx.symbols[formals->name];
+                if (formals->ellipsis) attrs["ellipsis"] = "1";
                 XMLOpenElement _(doc, "attrspat", attrs);
-                for (const Formal & i : v.lambda.fun->formals->lexicographicOrder(state.ctx.symbols))
+                for (const AttrsPattern::Formal & i : formals->lexicographicOrder(state.ctx.symbols))
                     doc.writeEmptyElement("attr", singletonAttrs("name", state.ctx.symbols[i.name]));
             } else
-                doc.writeEmptyElement("varpat", singletonAttrs("name", state.ctx.symbols[v.lambda.fun->arg]));
+                doc.writeEmptyElement("varpat", singletonAttrs("name", state.ctx.symbols[v.lambda.fun->pattern->name]));
 
             break;
         }

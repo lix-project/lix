@@ -215,18 +215,25 @@ public:
 template<typename Rule>
 struct BuildAST : grammar::v1::nothing<Rule> {};
 
-struct LambdaState : SubexprState {
+struct SimpleLambdaState : SubexprState {
     using SubexprState::SubexprState;
 
-    Symbol arg;
-    std::unique_ptr<Formals> formals;
+    SimplePattern pattern;
+};
+
+struct AttrsLambdaState : SubexprState {
+    using SubexprState::SubexprState;
+
+    AttrsPattern pattern;
 };
 
 struct FormalsState : SubexprState {
     using SubexprState::SubexprState;
 
-    Formals formals{};
-    Formal formal{};
+    std::vector<AttrsPattern::Formal> formals;
+    bool ellipsis = false;
+
+    AttrsPattern::Formal formal {};
 };
 
 template<> struct BuildAST<grammar::v1::formal::name> {
@@ -240,7 +247,7 @@ template<> struct BuildAST<grammar::v1::formal::name> {
 
 template<> struct BuildAST<grammar::v1::formal> {
     static void apply0(FormalsState & s, State &) {
-        s.formals.formals.emplace_back(std::move(s.formal));
+        s.formals.emplace_back(std::move(s.formal));
     }
 };
 
@@ -252,13 +259,33 @@ template<> struct BuildAST<grammar::v1::formal::default_value> {
 
 template<> struct BuildAST<grammar::v1::formals::ellipsis> {
     static void apply0(FormalsState & s, State &) {
-        s.formals.ellipsis = true;
+        s.ellipsis = true;
     }
 };
 
 template<> struct BuildAST<grammar::v1::formals> : change_head<FormalsState> {
-    static void success0(FormalsState & f, LambdaState & s, State &) {
-        s.formals = std::make_unique<Formals>(std::move(f.formals));
+    static void success0(FormalsState & f, AttrsLambdaState & s, State &) {
+        s.pattern.formals = std::move(f.formals);
+        s.pattern.ellipsis = f.ellipsis;
+    }
+};
+
+template<> struct BuildAST<grammar::v1::expr::lambda::arg> {
+    static void apply(const auto & in, auto & s, State & ps) {
+        s.pattern.name = ps.symbols.create(in.string_view());
+    }
+};
+
+template<> struct BuildAST<grammar::v1::expr::lambda::pattern_simple> : change_head<SimpleLambdaState> {
+    static void success(const auto & in, SimpleLambdaState & l, ExprState & s, State & ps) {
+        s.emplaceExpr<ExprLambda>(ps.at(in), std::make_unique<SimplePattern>(std::move(l.pattern)), l->popExprOnly());
+    }
+};
+
+template<> struct BuildAST<grammar::v1::expr::lambda::pattern_attrs> : change_head<AttrsLambdaState> {
+    static void success(const auto & in, AttrsLambdaState & l, ExprState & s, State & ps) {
+        ps.validateLambdaAttrs(l.pattern, ps.at(in));
+        s.emplaceExpr<ExprLambda>(ps.at(in), std::make_unique<AttrsPattern>(std::move(l.pattern)), l->popExprOnly());
     }
 };
 
@@ -826,20 +853,6 @@ template<typename Op> struct BuildAST<grammar::v1::expr::operator_<Op>> {
 template<> struct BuildAST<grammar::v1::expr::operator_<grammar::v1::op::has_attr>> : change_head<AttrState> {
     static void success(const auto & in, AttrState & a, ExprState & s, State & ps) {
         s.pushOp(ps.at(in), ExprState::has_attr{{}, std::move(a.attrs)}, ps);
-    }
-};
-
-template<> struct BuildAST<grammar::v1::expr::lambda::arg> {
-    static void apply(const auto & in, LambdaState & s, State & ps) {
-        s.arg = ps.symbols.create(in.string_view());
-    }
-};
-
-template<> struct BuildAST<grammar::v1::expr::lambda> : change_head<LambdaState> {
-    static void success(const auto & in, LambdaState & l, ExprState & s, State & ps) {
-        if (l.formals)
-            l.formals = ps.validateFormals(std::move(l.formals), ps.at(in), l.arg);
-        s.emplaceExpr<ExprLambda>(ps.at(in), l.arg, std::move(l.formals), l->popExprOnly());
     }
 };
 

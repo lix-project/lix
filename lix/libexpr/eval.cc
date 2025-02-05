@@ -1435,11 +1435,11 @@ struct FormalsMatch
  * or return what arguments were required but not given, or given but not allowed.
  * (currently returns only one, for each).
  */
-FormalsMatch matchupFormals(EvalState & state, Env & env, Displacement & displ, ExprLambda const & lambda, Bindings & attrs)
+FormalsMatch matchupLambdaAttrs(EvalState & state, Env & env, Displacement & displ, AttrsPattern const & pattern, Bindings & attrs)
 {
     size_t attrsUsed = 0;
 
-    for (auto const & formal : lambda.formals->formals) {
+    for (auto const & formal : pattern.formals) {
 
         // The attribute whose name matches the name of the formal we're matching up, if it exists.
         Attr const * matchingArg = attrs.get(formal.name);
@@ -1466,10 +1466,10 @@ FormalsMatch matchupFormals(EvalState & state, Env & env, Displacement & displ, 
     }
 
     // Check for unexpected extra arguments.
-    if (!lambda.formals->ellipsis && attrsUsed != attrs.size()) {
+    if (!pattern.ellipsis && attrsUsed != attrs.size()) {
         // Return the first unexpected argument.
         for (Attr const & attr : attrs) {
-            if (!lambda.formals->has(attr.name)) {
+            if (!pattern.has(attr.name)) {
                 return FormalsMatch{
                     .unexpected = {attr.name},
                 };
@@ -1480,6 +1480,68 @@ FormalsMatch matchupFormals(EvalState & state, Env & env, Displacement & displ, 
     }
 
     return FormalsMatch{};
+}
+
+Env & SimplePattern::match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos)
+{
+    Env & env2(state.ctx.mem.allocEnv(1));
+    env2.up = &up;
+    env2.values[0] = arg;
+    return env2;
+}
+
+Env & AttrsPattern::match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos)
+{
+    auto & ctx = state.ctx;
+
+    Env & env2(ctx.mem.allocEnv(formals.size() + (name ? 1 : 0)));
+    env2.up = &up;
+    Displacement displ = 0;
+
+    try {
+        state.forceAttrs(*arg, lambda.pos, "while evaluating the value passed for the lambda argument");
+    } catch (Error & e) {
+        if (pos) e.addTrace(ctx.positions[pos], "from call site");
+        throw;
+    }
+
+    if (name)
+        env2.values[displ++] = arg;
+
+    ///* For each formal argument, get the actual argument.  If
+    //   there is no matching actual argument but the formal
+    //   argument has a default, use the default. */
+    auto const formalsMatch = matchupLambdaAttrs(
+        state,
+        env2,
+        displ,
+        *this,
+        *arg->attrs
+    );
+    for (auto const & missingArg : formalsMatch.missing) {
+        auto const missing = ctx.symbols[missingArg];
+        ctx.errors.make<TypeError>("function '%s' called without required argument '%s'", lambda.getName(ctx.symbols), missing)
+            .atPos(lambda.pos)
+            .withTrace(pos, "from call site")
+            .withFrame(up, lambda)
+            .debugThrow();
+    }
+    for (auto const & unexpectedArg : formalsMatch.unexpected) {
+        auto const unex = ctx.symbols[unexpectedArg];
+        std::set<std::string> formalNames;
+        for (auto const & formal : formals) {
+            formalNames.insert(ctx.symbols[formal.name]);
+        }
+        auto sug = Suggestions::bestMatches(formalNames, unex);
+        ctx.errors.make<TypeError>("function '%s' called with unexpected argument '%s'", lambda.getName(ctx.symbols), unex)
+            .atPos(lambda.pos)
+            .withTrace(pos, "from call site")
+            .withSuggestions(sug)
+            .withFrame(up, lambda)
+            .debugThrow();
+    }
+
+    return env2;
 }
 
 void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value & vRes, const PosIdx pos)
@@ -1514,62 +1576,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
 
             ExprLambda & lambda(*vCur.lambda.fun);
 
-            auto size =
-                (!lambda.arg ? 0 : 1) +
-                (lambda.hasFormals() ? lambda.formals->formals.size() : 0);
-            Env & env2(ctx.mem.allocEnv(size));
-            env2.up = vCur.lambda.env;
-
-            Displacement displ = 0;
-
-            if (!lambda.hasFormals())
-                env2.values[displ++] = args[0];
-            else {
-                try {
-                    forceAttrs(*args[0], lambda.pos, "while evaluating the value passed for the lambda argument");
-                } catch (Error & e) {
-                    if (pos) e.addTrace(ctx.positions[pos], "from call site");
-                    throw;
-                }
-
-                if (lambda.arg)
-                    env2.values[displ++] = args[0];
-
-                ///* For each formal argument, get the actual argument.  If
-                //   there is no matching actual argument but the formal
-                //   argument has a default, use the default. */
-                auto const formalsMatch = matchupFormals(
-                    *this,
-                    env2,
-                    displ,
-                    lambda,
-                    *args[0]->attrs
-                );
-                for (auto const & missingArg : formalsMatch.missing) {
-                    auto const missing = ctx.symbols[missingArg];
-                    ctx.errors.make<TypeError>("function '%s' called without required argument '%s'", lambda.getName(ctx.symbols), missing)
-                        .atPos(lambda.pos)
-                        .withTrace(pos, "from call site")
-                        .withFrame(*fun.lambda.env, lambda)
-                        .debugThrow();
-                }
-                for (auto const & unexpectedArg : formalsMatch.unexpected) {
-                    auto const unex = ctx.symbols[unexpectedArg];
-                    std::set<std::string> formalNames;
-                    for (auto const & formal : lambda.formals->formals) {
-                        formalNames.insert(ctx.symbols[formal.name]);
-                    }
-                    auto sug = Suggestions::bestMatches(formalNames, unex);
-                    ctx.errors.make<TypeError>("function '%s' called with unexpected argument '%s'", lambda.getName(ctx.symbols), unex)
-                        .atPos(lambda.pos)
-                        .withTrace(pos, "from call site")
-                        .withSuggestions(sug)
-                        .withFrame(*fun.lambda.env, lambda)
-                        .debugThrow();
-                }
-
-            }
-
+            Env & env2 = lambda.pattern->match(lambda, *this, *vCur.lambda.env, args[0], pos);
 
             ctx.stats.nrFunctionCalls++;
             if (ctx.stats.countCalls) ctx.stats.addCall(lambda);
@@ -1768,14 +1775,19 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res)
         }
     }
 
-    if (!fun.isLambda() || !fun.lambda.fun->hasFormals()) {
+    if (!fun.isLambda()) {
+        res = fun;
+        return;
+    }
+    auto pattern = dynamic_cast<AttrsPattern *>(fun.lambda.fun->pattern.get());
+    if (!pattern) {
         res = fun;
         return;
     }
 
-    auto attrs = ctx.buildBindings(std::max(static_cast<uint32_t>(fun.lambda.fun->formals->formals.size()), args.size()));
+    auto attrs = ctx.buildBindings(std::max(static_cast<uint32_t>(pattern->formals.size()), args.size()));
 
-    if (fun.lambda.fun->formals->ellipsis) {
+    if (pattern->ellipsis) {
         // If the formals have an ellipsis (eg the function accepts extra args) pass
         // all available automatic arguments (which includes arguments specified on
         // the command line via --arg/--argstr)
@@ -1783,7 +1795,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res)
             attrs.insert(v);
     } else {
         // Otherwise, only pass the arguments that the function accepts
-        for (auto & i : fun.lambda.fun->formals->formals) {
+        for (auto & i : pattern->formals) {
             Bindings::iterator j = args.find(i.name);
             if (j != args.end()) {
                 attrs.insert(*j);
