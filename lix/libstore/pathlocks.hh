@@ -33,6 +33,7 @@ void unlockFile(int fd);
 
 class PathLock
 {
+    friend kj::Promise<Result<PathLock>> lockPathAsync(const Path & path, std::string_view waitMsg);
     friend PathLock lockPath(const Path & path, std::string_view waitMsg);
     friend std::optional<PathLock> tryLockPath(const Path & path);
 
@@ -52,6 +53,7 @@ public:
     void unlock();
 };
 
+kj::Promise<Result<PathLock>> lockPathAsync(const Path & path, std::string_view waitMsg = "");
 PathLock lockPath(const Path & path, std::string_view waitMsg = "");
 std::optional<PathLock> tryLockPath(const Path & path);
 

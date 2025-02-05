@@ -132,6 +132,25 @@ void unlockFile(int fd)
 }
 
 
+static bool isPathLockValid(AutoCloseFD & fd, const Path & lockPath)
+{
+    /* Check that the lock file hasn't become stale (i.e.,
+       hasn't been unlinked). */
+    struct stat st;
+    if (fstat(fd.get(), &st) == -1)
+        throw SysError("statting lock file '%1%'", lockPath);
+    if (st.st_nlink == 0) {
+        /* This lock file has been unlinked, so we're holding
+           a lock on a deleted file.  This means that other
+           processes may create and acquire a lock on
+           `lockPath', and proceed.  So we must retry. */
+        debug("open lock file '%1%' has become stale", lockPath);
+        return false;
+    } else {
+        return true;
+    }
+}
+
 std::optional<PathLock>
 PathLock::lockImpl(const Path & path, std::string_view waitMsg, bool wait)
 {
@@ -155,21 +174,25 @@ PathLock::lockImpl(const Path & path, std::string_view waitMsg, bool wait)
         }
 
         debug("lock acquired on '%1%'", lockPath);
-
-        /* Check that the lock file hasn't become stale (i.e.,
-           hasn't been unlinked). */
-        struct stat st;
-        if (fstat(fd.get(), &st) == -1)
-            throw SysError("statting lock file '%1%'", lockPath);
-        if (st.st_nlink == 0)
-            /* This lock file has been unlinked, so we're holding
-               a lock on a deleted file.  This means that other
-               processes may create and acquire a lock on
-               `lockPath', and proceed.  So we must retry. */
-            debug("open lock file '%1%' has become stale", lockPath);
-        else
+        if (isPathLockValid(fd, lockPath))
             return PathLock{std::move(fd), lockPath};
     }
+}
+
+kj::Promise<Result<PathLock>> lockPathAsync(const Path & path, std::string_view waitMsg)
+try {
+    Path lockPath = path + ".lock";
+    debug("locking path '%1%'", path);
+
+    while (1) {
+        auto fd = openLockFile(lockPath, true);
+        TRY_AWAIT(lockFileAsync(fd.get(), ltWrite));
+        debug("lock acquired on '%1%'", lockPath);
+        if (isPathLockValid(fd, lockPath))
+            co_return PathLock{std::move(fd), lockPath};
+    }
+} catch (...) {
+    co_return result::current_exception();
 }
 
 PathLock lockPath(const Path & path, std::string_view waitMsg)

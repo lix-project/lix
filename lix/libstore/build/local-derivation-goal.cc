@@ -2301,7 +2301,7 @@ try {
             worker.store.printStorePath(*optFixedPath) != finalDestPath)
         {
             assert(newInfo.ca);
-            dynamicOutputLock = lockPath(worker.store.toRealPath(finalDestPath));
+            dynamicOutputLock = TRY_AWAIT(lockPathAsync(worker.store.toRealPath(finalDestPath)));
         }
 
         /* Move files, if needed */
