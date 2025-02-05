@@ -1,4 +1,5 @@
 #include "lix/libstore/pathlocks.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/signals.hh"
@@ -53,6 +54,47 @@ void lockFile(int fd, LockType lockType)
         if (errno != EINTR)
             throw SysError("acquiring lock");
     }
+}
+
+static kj::Promise<Result<void>> lockFileAsyncInner(int fd, LockType lockType)
+try {
+    // start a thread to lock the file synchronously, waiting for SIGUSR1 to signal
+    // that the call was canceled. SIGUSR1 is already set aside for such signaling.
+
+    int type = convertLockType(lockType);
+    auto pfp = kj::newPromiseAndCrossThreadFulfiller<Result<void>>();
+
+    std::thread locker([&] {
+        while (flock(fd, type) != 0 && pfp.fulfiller->isWaiting()) {
+            if (errno != EINTR) {
+                pfp.fulfiller->fulfill(std::make_exception_ptr(SysError("acquiring lock")));
+                return;
+            }
+        }
+        pfp.fulfiller->fulfill(result::success());
+    });
+    auto cancel = kj::defer([&] {
+        pthread_kill(locker.native_handle(), SIGUSR1);
+        locker.join();
+    });
+
+    TRY_AWAIT(makeInterruptible(std::move(pfp.promise)));
+    locker.join();
+    cancel.cancel();
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<void>> lockFileAsync(int fd, LockType lockType)
+try {
+    if (tryLockFile(fd, lockType)) {
+        return {result::success()};
+    }
+
+    return lockFileAsyncInner(fd, lockType);
+} catch (...) {
+    return {result::current_exception()};
 }
 
 bool unsafeLockFileSingleThreaded(int fd, LockType lockType, std::chrono::seconds timeout)
@@ -225,5 +267,16 @@ FdLock::FdLock(AutoCloseFD & fd, LockType lockType, std::string_view waitMsg)
     }
 }
 
+kj::Promise<Result<FdLock>>
+FdLock::lockAsync(AutoCloseFD & fd, LockType lockType, std::string_view waitMsg)
+try {
+    if (!tryLockFile(fd.get(), lockType)) {
+        printInfo("%s", waitMsg);
+        TRY_AWAIT(lockFileAsyncInner(fd.get(), lockType));
+    }
+    co_return FdLock{fd};
+} catch (...) {
+    co_return result::current_exception();
+}
 
 }

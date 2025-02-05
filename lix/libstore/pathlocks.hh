@@ -3,7 +3,10 @@
 
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
+#include "lix/libutil/result.hh"
 #include <chrono>
+#include <kj/async.h>
+#include <kj/common.h>
 
 namespace nix {
 
@@ -22,6 +25,7 @@ void deleteLockFile(const Path & path, int fd);
 enum LockType { ltRead, ltWrite };
 
 void lockFile(int fd, LockType lockType);
+kj::Promise<Result<void>> lockFileAsync(int fd, LockType lockType);
 /**
  * Same as `lockFile`, but with a timeout. This timeout uses the POSIX `alarm`
  * facility and a `SIGALRM` handler. Using this function from multiple threads
@@ -73,11 +77,16 @@ class FdLock
 
     std::unique_ptr<AutoCloseFD, Unlocker> fd;
 
+    explicit FdLock(AutoCloseFD & fd): fd(&fd) {}
+
 public:
     static constexpr struct DontWait { explicit DontWait() = default; } dont_wait;
 
     FdLock(AutoCloseFD & fd, LockType lockType, DontWait);
     FdLock(AutoCloseFD & fd, LockType lockType, std::string_view waitMsg);
+
+    static kj::Promise<Result<FdLock>>
+    lockAsync(AutoCloseFD & fd, LockType lockType, std::string_view waitMsg);
 
     bool valid() const { return bool(fd); }
 };
