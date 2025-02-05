@@ -294,7 +294,6 @@ void switchGeneration(
 void lockProfile(PathLocks & lock, const Path & profile)
 {
     lock.lockPaths({profile}, fmt("waiting for lock on profile '%1%'", profile));
-    lock.setDeletion(true);
 }
 
 

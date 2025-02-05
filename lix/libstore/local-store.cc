@@ -1272,8 +1272,6 @@ void LocalStore::addToStore(const ValidPathInfo & info, Source & source,
 
             registerValidPath(info);
         }
-
-        outputLock.setDeletion(true);
     }
 }
 
@@ -1414,8 +1412,6 @@ StorePath LocalStore::addToStoreFromDump(Source & source0, std::string_view name
             info.narSize = narHash.second;
             registerValidPath(info);
         }
-
-        outputLock.setDeletion(true);
     }
 
     return dstPath;
@@ -1466,8 +1462,6 @@ StorePath LocalStore::addTextToStore(
             };
             registerValidPath(info);
         }
-
-        outputLock.setDeletion(true);
     }
 
     return dstPath;

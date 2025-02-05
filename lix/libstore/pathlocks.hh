@@ -17,11 +17,6 @@ namespace nix {
  */
 AutoCloseFD openLockFile(const Path & path, bool create);
 
-/**
- * Delete an open lock file.
- */
-void deleteLockFile(const Path & path, int fd);
-
 enum LockType { ltRead, ltWrite };
 
 void lockFile(int fd, LockType lockType);
@@ -41,7 +36,6 @@ class PathLocks
 private:
     typedef std::pair<int, Path> FDPair;
     std::list<FDPair> fds;
-    bool deletePaths;
 
     bool lockPathsImpl(const PathSet & _paths, const std::string & waitMsg, bool wait);
 
@@ -58,7 +52,6 @@ public:
     }
     ~PathLocks();
     void unlock();
-    void setDeletion(bool deletePaths);
 };
 
 class FdLock

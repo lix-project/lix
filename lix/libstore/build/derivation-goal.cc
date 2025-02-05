@@ -756,7 +756,6 @@ retry:
 
     if (buildMode != bmCheck && allValid) {
         debug("skipping build of derivation '%s', someone beat us to it", worker.store.printStorePath(drvPath));
-        outputLocks.setDeletion(true);
         co_return done(BuildResult::AlreadyValid, std::move(validOutputs));
     }
 
@@ -1087,7 +1086,6 @@ try {
            lockers will see that the output paths are valid; they will
            not create new lock files with the same names as the old
            (unlinked) lock files. */
-        outputLocks.setDeletion(true);
         outputLocks.unlock();
 
         co_return done(BuildResult::Built, std::move(builtOutputs));

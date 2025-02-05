@@ -26,18 +26,6 @@ AutoCloseFD openLockFile(const Path & path, bool create)
 }
 
 
-void deleteLockFile(const Path & path, int fd)
-{
-    /* Get rid of the lock file.  Have to be careful not to introduce
-       races.  Write a (meaningless) token to the file to indicate to
-       other processes waiting on this lock that the lock is stale
-       (deleted). */
-    unlink(path.c_str());
-    writeFull(fd, "d");
-    /* Note that the result of unlink() is ignored; removing the lock
-       file is an optimisation, not a necessity. */
-}
-
 static int convertLockType(LockType lockType)
 {
     if (lockType == ltRead) return LOCK_SH;
@@ -144,13 +132,11 @@ void unlockFile(int fd)
 
 
 PathLocks::PathLocks()
-    : deletePaths(false)
 {
 }
 
 
 PathLocks::PathLocks(const PathSet & paths, const std::string & waitMsg)
-    : deletePaths(false)
 {
     lockPaths(paths, waitMsg);
 }
@@ -200,7 +186,7 @@ bool PathLocks::lockPathsImpl(const PathSet & paths,
             struct stat st;
             if (fstat(fd.get(), &st) == -1)
                 throw SysError("statting lock file '%1%'", lockPath);
-            if (st.st_size != 0)
+            if (st.st_nlink == 0)
                 /* This lock file has been unlinked, so we're holding
                    a lock on a deleted file.  This means that other
                    processes may create and acquire a lock on
@@ -231,23 +217,22 @@ PathLocks::~PathLocks()
 void PathLocks::unlock()
 {
     for (auto & i : fds) {
-        if (deletePaths) deleteLockFile(i.second, i.first);
+        // delete the file. if another file descriptor is used to acquire a lock on
+        // this file it will figure out that the file is stale once it calls stat()
+        // and inspects the link count. if unlink fails we merely leave around some
+        // stale lock file paths that can be reused or cleaned up by other threads.
+        unlink(i.second.c_str());
+        // clobber file contents for compatibility wither other nix implementations
+        writeFull(i.first, "d");
 
-        if (close(i.first) == -1)
-            printError(
-                "error (ignored): cannot close lock file on '%1%'",
-                i.second);
+        if (close(i.first) == -1) {
+            printError("error (ignored): cannot close lock file on '%1%'", i.second);
+        }
 
         debug("lock released on '%1%'", i.second);
     }
 
     fds.clear();
-}
-
-
-void PathLocks::setDeletion(bool deletePaths)
-{
-    this->deletePaths = deletePaths;
 }
 
 
