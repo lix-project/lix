@@ -249,6 +249,7 @@ struct _ind_string {
     /* Marker for non-empty lines */
     struct has_content : semantic, seq<> {};
     struct cr : semantic, one<'\r'> {};
+    struct nul : semantic, one<'\0'> {};
 };
 struct ind_string : _ind_string, seq<
     TAO_PEGTL_STRING("''"),
@@ -266,13 +267,14 @@ struct ind_string : _ind_string, seq<
                         _ind_string::literal<
                             plus<
                                 sor<
-                                    not_one<'$', '\'', '\n', '\r'>,
+                                    not_one<'$', '\'', '\n', '\r', '\0'>,
                                     // TODO probably factor this out like the others for performance
-                                    seq<one<'$'>, not_one<'{', '\'', '\n', '\r'>>,
+                                    seq<one<'$'>, not_one<'{', '\'', '\n', '\r', '\0'>>,
                                     seq<one<'$'>, at<one<'\n'>>>,
-                                    seq<one<'\''>, not_one<'\'', '$', '\n', '\r'>>,
+                                    seq<one<'\''>, not_one<'\'', '$', '\n', '\r', '\0'>>,
                                     seq<one<'\''>, at<one<'\n'>>>,
-                                    _ind_string::cr
+                                    _ind_string::cr,
+                                    _ind_string::nul
                                 >
                             >
                         >,

@@ -37,6 +37,7 @@ struct State
     void dupAttr(Symbol attr, const PosIdx pos, const PosIdx prevPos);
     void overridesFound(const PosIdx pos);
     void badLineEndingFound(const PosIdx pos, bool warnOnly);
+    void nulFound(const PosIdx pos);
     void addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos);
     void validateLambdaAttrs(AttrsPattern & pattern, PosIdx pos = noPos);
     std::unique_ptr<Expr> stripIndentation(const PosIdx pos, std::vector<IndStringLine> && line);
@@ -113,6 +114,17 @@ inline void State::badLineEndingFound(const PosIdx pos, bool warnOnly)
             ),
             .pos = positions[pos],
         });
+}
+// Added 2025-02-05.
+inline void State::nulFound(const PosIdx pos)
+{
+    throw ParseError({
+        .msg = HintFmt(
+            "NUL bytes (`\\0`) are currently not well supported, because internally strings are NUL-terminated, which may lead to unexpected truncation. Use %s to disable this error.",
+            "--extra-deprecated-features nul-bytes"
+        ),
+        .pos = positions[pos],
+    });
 }
 
 inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos)

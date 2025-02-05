@@ -1,0 +1,4 @@
+error: NUL bytes (`\0`) are currently not well supported, because internally strings are NUL-terminated, which may lead to unexpected truncation. Use --extra-deprecated-features nul-bytes to disable this error.
+       at «stdin»:1:2:
+            1| "foo
+             |  ^

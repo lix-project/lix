@@ -508,7 +508,7 @@ struct StringState : SubexprState {
     // FIXME this truncates strings on NUL for compat with the old parser. ideally
     // we should use the decomposition the g gives us instead of iterating over
     // the entire string again.
-    static void unescapeStr(std::string & str)
+    void unescapeStr(std::string & str, State & ps)
     {
         char * s = str.data();
         char * t = s;
@@ -529,24 +529,26 @@ struct StringState : SubexprState {
             else *t = c;
             t++;
         }
+        if (!ps.featureSettings.isEnabled(Dep::NulBytes) && size_t(s - str.data() - 1) != str.size())
+            ps.nulFound(currentPos);
         str.resize(t - str.data());
     }
 
-    void endLiteral()
+    void endLiteral(State & ps)
     {
         if (!currentLiteral.empty()) {
-            unescapeStr(currentLiteral);
+            unescapeStr(currentLiteral, ps);
             parts.emplace_back(currentPos, std::make_unique<ExprString>(currentPos, std::move(currentLiteral)));
         }
     }
 
-    std::unique_ptr<Expr> finish()
+    std::unique_ptr<Expr> finish(State & ps)
     {
         if (parts.empty()) {
-            unescapeStr(currentLiteral);
+            unescapeStr(currentLiteral, ps);
             return std::make_unique<ExprString>(currentPos, std::move(currentLiteral));
         } else {
-            endLiteral();
+            endLiteral(ps);
             auto pos = parts[0].first;
             return std::make_unique<ExprConcatStrings>(pos, true, std::move(parts));
         }
@@ -570,21 +572,23 @@ template<> struct BuildAST<grammar::v1::string::cr_crlf> {
 
 template<> struct BuildAST<grammar::v1::string::interpolation> {
     static void apply(const auto & in, StringState & s, State & ps) {
-        s.endLiteral();
+        s.endLiteral(ps);
         s.parts.emplace_back(ps.at(in), s->popExprOnly());
     }
 };
 
 template<> struct BuildAST<grammar::v1::string::escape> {
     static void apply(const auto & in, StringState & s, State & ps) {
+        if (!ps.featureSettings.isEnabled(Dep::NulBytes) && *in.begin() == '\0')
+            ps.nulFound(ps.at(in));
         s.append(ps.at(in), "\\"); // FIXME compat with old parser
         s.append(ps.at(in), in.string_view());
     }
 };
 
 template<> struct BuildAST<grammar::v1::string> : change_head<StringState> {
-    static void success0(StringState & s, ExprState & e, State &) {
-        e.pushExpr(noPos, s.finish());
+    static void success0(StringState & s, ExprState & e, State & ps) {
+        e.pushExpr(noPos, s.finish(ps));
     }
 };
 
@@ -619,6 +623,12 @@ template<> struct BuildAST<grammar::v1::ind_string::escape> {
         case 'n': s.lines.back().parts.emplace_back(ps.at(in), "\n"); break;
         case 'r': s.lines.back().parts.emplace_back(ps.at(in), "\r"); break;
         case 't': s.lines.back().parts.emplace_back(ps.at(in), "\t"); break;
+        case 0:
+            if (!ps.featureSettings.isEnabled(Dep::NulBytes)) {
+                ps.nulFound(ps.at(in));
+                break;
+            }
+            KJ_FALLTHROUGH;
         default:  s.lines.back().parts.emplace_back(ps.at(in), in.string_view()); break;
         }
     }
@@ -637,6 +647,13 @@ template<> struct BuildAST<grammar::v1::ind_string::cr> {
     }
 };
 
+template<> struct BuildAST<grammar::v1::ind_string::nul> {
+    static void apply(const auto & in, IndStringState & s, State & ps) {
+        if (!ps.featureSettings.isEnabled(Dep::NulBytes))
+            ps.nulFound(ps.at(in));
+    }
+};
+
 template<> struct BuildAST<grammar::v1::ind_string> : change_head<IndStringState> {
     static void success(const auto & in, IndStringState & s, ExprState & e, State & ps) {
         e.pushExpr(noPos, ps.stripIndentation(ps.at(in), std::move(s.lines)));
@@ -646,7 +663,7 @@ template<> struct BuildAST<grammar::v1::ind_string> : change_head<IndStringState
 template<typename... Content> struct BuildAST<grammar::v1::path::literal<Content...>> {
     static void apply(const auto & in, StringState & s, State & ps) {
         s.append(ps.at(in), in.string_view());
-        s.endLiteral();
+        s.endLiteral(ps);
     }
 };
 
@@ -708,7 +725,7 @@ template<> struct BuildAST<grammar::v1::path> : change_head<StringState> {
     }
 
     static void success(const auto & in, StringState & s, ExprState & e, State & ps) {
-        s.endLiteral();
+        s.endLiteral(ps);
         check_slash<ExprPath>(ps.atEnd(in), s, ps);
         check_slash<ExprString>(ps.atEnd(in), s, ps);
         if (s.parts.size() == 1) {
