@@ -160,7 +160,7 @@ retry:
 #endif
 
     if (!slotToken.valid()) {
-        outputLocks.unlock();
+        outputLocks.reset();
         if (worker.localBuilds.capacity() > 0) {
             slotToken = co_await worker.localBuilds.acquire();
             co_return co_await tryToBuild();
@@ -262,7 +262,7 @@ retry:
         }
 
     } catch (BuildError & e) {
-        outputLocks.unlock();
+        outputLocks.reset();
         buildUser.reset();
         auto report = done(BuildResult::InputRejected, {}, std::move(e));
         report.permanentFailure = true;
@@ -2295,13 +2295,13 @@ try {
         /* Lock final output path, if not already locked. This happens with
            floating CA derivations and hash-mismatching fixed-output
            derivations. */
-        PathLocks dynamicOutputLock;
+        std::optional<PathLock> dynamicOutputLock;
         auto optFixedPath = output->path(worker.store, drv->name, outputName);
         if (!optFixedPath ||
             worker.store.printStorePath(*optFixedPath) != finalDestPath)
         {
             assert(newInfo.ca);
-            dynamicOutputLock.lockPaths({worker.store.toRealPath(finalDestPath)});
+            dynamicOutputLock = lockPath(worker.store.toRealPath(finalDestPath));
         }
 
         /* Move files, if needed */

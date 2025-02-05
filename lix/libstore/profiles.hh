@@ -191,7 +191,7 @@ void switchGeneration(
  * Ensure exclusive access to a profile.  Any command that modifies
  * the profile first acquires this lock.
  */
-void lockProfile(PathLocks & lock, const Path & profile);
+PathLock lockProfile(const Path & profile);
 
 /**
  * Optimistic locking is used by long-running operations like `nix-env

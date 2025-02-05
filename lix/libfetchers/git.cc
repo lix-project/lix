@@ -558,7 +558,7 @@ struct GitInputScheme : InputScheme
             gitDir = ".";
 
             createDirs(dirOf(cacheDir));
-            PathLocks cacheDirLock({cacheDir + ".lock"});
+            PathLock cacheDirLock = lockPath(cacheDir + ".lock");
 
             if (!pathExists(cacheDir)) {
                 runProgram("git", true, { "-c", "init.defaultBranch=" + gitInitialBranch, "init", "--bare", repoDir });

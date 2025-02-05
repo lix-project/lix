@@ -734,7 +734,8 @@ retry:
         }
     }
 
-    if (!outputLocks.tryLockPaths(lockFiles)) {
+    outputLocks = tryLockPaths(lockFiles);
+    if (!outputLocks) {
         if (!actLock)
             actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
                 fmt("waiting for lock on %s", Magenta(showPaths(lockFiles))));
@@ -807,7 +808,7 @@ retry:
             if (!actLock)
                 actLock = std::make_unique<Activity>(*logger, lvlTalkative, actBuildWaiting,
                     fmt("waiting for a machine to build '%s'", Magenta(worker.store.printStorePath(drvPath))));
-            outputLocks.unlock();
+            outputLocks.reset();
             co_await waitForAWhile();
             goto retry;
         }
@@ -1086,11 +1087,11 @@ try {
            lockers will see that the output paths are valid; they will
            not create new lock files with the same names as the old
            (unlinked) lock files. */
-        outputLocks.unlock();
+        outputLocks.reset();
 
         co_return done(BuildResult::Built, std::move(builtOutputs));
     } catch (BuildError & e) {
-        outputLocks.unlock();
+        outputLocks.reset();
 
         BuildResult::Status st = BuildResult::MiscFailure;
 
@@ -1712,7 +1713,7 @@ Goal::WorkResult DerivationGoal::done(
 {
     isDone = true;
 
-    outputLocks.unlock();
+    outputLocks.reset();
     buildResult.status = status;
     if (ex)
         buildResult.errorMsg = fmt("%s", Uncolored(ex->info().msg));

@@ -174,7 +174,7 @@ struct DerivationGoal : public Goal
     /**
      * Locks on (fixed) output paths.
      */
-    PathLocks outputLocks;
+    std::optional<PathLocks> outputLocks;
 
     /**
      * All input paths (that is, the union of FS closures of the

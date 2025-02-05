@@ -1359,8 +1359,7 @@ static void opListGenerations(Globals & globals, Strings opFlags, Strings opArgs
     if (opArgs.size() != 0)
         throw UsageError("no arguments expected");
 
-    PathLocks lock;
-    lockProfile(lock, globals.profile);
+    PathLock lock = lockProfile(globals.profile);
 
     auto [gens, curGen] = findGenerations(globals.profile);
 

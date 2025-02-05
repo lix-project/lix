@@ -31,28 +31,34 @@ bool unsafeLockFileSingleThreaded(int fd, LockType lockType, std::chrono::second
 bool tryLockFile(int fd, LockType lockType);
 void unlockFile(int fd);
 
-class PathLocks
+class PathLock
 {
-private:
-    typedef std::pair<int, Path> FDPair;
-    std::list<FDPair> fds;
+    friend PathLock lockPath(const Path & path, std::string_view waitMsg);
+    friend std::optional<PathLock> tryLockPath(const Path & path);
 
-    bool lockPathsImpl(const PathSet & _paths, const std::string & waitMsg, bool wait);
+    AutoCloseFD fd;
+    Path path;
+
+    PathLock(AutoCloseFD fd, const Path & path): fd(std::move(fd)), path(path) {}
+
+    static std::optional<PathLock>
+    lockImpl(const Path & path, std::string_view waitMsg, bool wait);
 
 public:
-    PathLocks();
-    PathLocks(const PathSet & paths, const std::string & waitMsg = "");
-    void lockPaths(const PathSet & _paths, const std::string & waitMsg = "")
-    {
-        lockPathsImpl(_paths, waitMsg, true);
-    }
-    bool tryLockPaths(const PathSet & _paths)
-    {
-        return lockPathsImpl(_paths, "", false);
-    }
-    ~PathLocks();
+    PathLock(PathLock &&) = default;
+    PathLock & operator=(PathLock &&) = default;
+    ~PathLock();
+
     void unlock();
 };
+
+PathLock lockPath(const Path & path, std::string_view waitMsg = "");
+std::optional<PathLock> tryLockPath(const Path & path);
+
+using PathLocks = std::list<PathLock>;
+
+PathLocks lockPaths(const PathSet & paths, std::string_view waitMsg = "");
+std::optional<PathLocks> tryLockPaths(const PathSet & paths);
 
 class FdLock
 {

@@ -133,8 +133,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
     auto store2 = state.ctx.store.dynamic_pointer_cast<LocalFSStore>();
 
     if (store2) {
-        PathLocks lock;
-        lockProfile(lock, profile);
+        PathLock lock = lockProfile(profile);
 
         Path lockTokenCur = optimisticLockProfile(profile);
         if (lockToken != lockTokenCur) {
