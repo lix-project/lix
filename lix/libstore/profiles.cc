@@ -70,8 +70,8 @@ static Path makeName(const Path & profile, GenerationNumber num)
 }
 
 
-Path createGeneration(LocalFSStore & store, Path profile, StorePath outPath)
-{
+kj::Promise<Result<Path>> createGeneration(LocalFSStore & store, Path profile, StorePath outPath)
+try {
     /* The new generation number should be higher than old the
        previous ones. */
     auto [gens, dummy] = findGenerations(profile);
@@ -87,7 +87,7 @@ Path createGeneration(LocalFSStore & store, Path profile, StorePath outPath)
                This helps keeping gratuitous installs/rebuilds from piling
                up uncontrolled numbers of generations, cluttering up the
                UI like grub. */
-            return last.path;
+            co_return last.path;
         }
 
         num = last.number;
@@ -104,7 +104,9 @@ Path createGeneration(LocalFSStore & store, Path profile, StorePath outPath)
     Path generation = makeName(profile, num + 1);
     store.addPermRoot(outPath, generation);
 
-    return generation;
+    co_return generation;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

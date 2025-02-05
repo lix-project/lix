@@ -795,10 +795,10 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
     );
 
     debug("switching to new user environment");
-    Path generation = createGeneration(
+    Path generation = globals.aio.blockOn(createGeneration(
         *store2,
         globals.profile,
-        drv.queryOutPath(*state));
+        drv.queryOutPath(*state)));
     switchLink(globals.profile, generation);
 }
 

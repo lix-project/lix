@@ -96,7 +96,7 @@ class LocalFSStore;
  * The behavior of reusing existing generations like this makes this
  * procedure idempotent. It also avoids clutter.
  */
-Path createGeneration(LocalFSStore & store, Path profile, StorePath outPath);
+kj::Promise<Result<Path>> createGeneration(LocalFSStore & store, Path profile, StorePath outPath);
 
 /**
  * Unconditionally delete a generation

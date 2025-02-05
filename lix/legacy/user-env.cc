@@ -142,7 +142,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
         }
 
         debug("switching to new user environment");
-        Path generation = createGeneration(*store2, profile, topLevelOut);
+        Path generation = state.aio.blockOn(createGeneration(*store2, profile, topLevelOut));
         switchLink(profile, generation);
     }
 

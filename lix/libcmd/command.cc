@@ -231,7 +231,7 @@ void MixProfile::updateProfile(const StorePath & storePath)
     if (!store) throw Error("'--profile' is not supported for this Nix store");
     auto profile2 = absPath(*profile);
     switchLink(profile2,
-        createGeneration(*store, profile2, storePath));
+        aio().blockOn(createGeneration(*store, profile2, storePath)));
 }
 
 void MixProfile::updateProfile(const BuiltPaths & buildables)
