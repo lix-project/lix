@@ -31,10 +31,12 @@ struct State
     PosTable::Origin origin;
     const Expr::AstSymbols & s;
     const FeatureSettings & featureSettings;
+    bool hasWarnedAboutBadLineEndings = false; // State to only warn on first occurrence
 
     void dupAttr(const AttrPath & attrPath, const PosIdx pos, const PosIdx prevPos);
     void dupAttr(Symbol attr, const PosIdx pos, const PosIdx prevPos);
     void overridesFound(const PosIdx pos);
+    void badLineEndingFound(const PosIdx pos, bool warnOnly);
     void addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos);
     void validateLambdaAttrs(AttrsPattern & pattern, PosIdx pos = noPos);
     std::unique_ptr<Expr> stripIndentation(const PosIdx pos, std::vector<IndStringLine> && line);
@@ -88,6 +90,29 @@ inline void State::overridesFound(const PosIdx pos) {
         positions[pos],
         "--extra-deprecated-features rec-set-overrides"
     );
+}
+
+// Added 2025-02-05. This is unlikely to ever occur in the wild, given how broken it is
+inline void State::badLineEndingFound(const PosIdx pos, bool warnOnly)
+{
+    // Within strings we should throw because it is a correctness issue, outside of
+    // strings it only harmlessly fucks up line numbers in error messages so warning is sufficient.
+    if (warnOnly) {
+        if (!hasWarnedAboutBadLineEndings)
+            warn(
+                "CR (`\\r`) and CRLF (`\\r\\n`) line endings found at %s. Please inspect the file and normalize it to use LF (`\\n`) line endings instead. Use %s to silence this warning.",
+                positions[pos],
+                "--extra-deprecated-features cr-line-endings"
+            );
+        hasWarnedAboutBadLineEndings = true;
+    } else
+        throw ParseError({
+            .msg = HintFmt(
+                "CR (`\\r`) and CRLF (`\\r\\n`) line endings are not supported. Please inspect the file and normalize it to use LF (`\\n`) line endings instead. Use %s to silence this warning.",
+                "--extra-deprecated-features cr-line-endings"
+            ),
+            .pos = positions[pos],
+        });
 }
 
 inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos)

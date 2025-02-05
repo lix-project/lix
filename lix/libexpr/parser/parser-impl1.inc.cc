@@ -215,6 +215,13 @@ public:
 template<typename Rule>
 struct BuildAST : grammar::v1::nothing<Rule> {};
 
+template<> struct BuildAST<grammar::v1::t::eol::deprecated_cr_crlf> {
+    static void apply(const auto & in, auto &, State & ps) {
+        if (!ps.featureSettings.isEnabled(Dep::CRLineEndings))
+            ps.badLineEndingFound(ps.at(in), true);
+    }
+};
+
 struct SimpleLambdaState : SubexprState {
     using SubexprState::SubexprState;
 
@@ -552,9 +559,12 @@ template<typename... Content> struct BuildAST<grammar::v1::string::literal<Conte
     }
 };
 
-template<> struct BuildAST<grammar::v1::string::cr_lf> {
+template<> struct BuildAST<grammar::v1::string::cr_crlf> {
     static void apply(const auto & in, StringState & s, State & ps) {
-        s.append(ps.at(in), in.string_view()); // FIXME compat with old parser
+        if (!ps.featureSettings.isEnabled(Dep::CRLineEndings))
+            ps.badLineEndingFound(ps.at(in), false);
+        else
+            s.append(ps.at(in), in.string_view()); // FIXME compat with old parser
     }
 };
 
@@ -617,6 +627,13 @@ template<> struct BuildAST<grammar::v1::ind_string::escape> {
 template<> struct BuildAST<grammar::v1::ind_string::has_content> {
     static void apply(const auto & in, IndStringState & s, State & ps) {
         s.lines.back().hasContent = true;
+    }
+};
+
+template<> struct BuildAST<grammar::v1::ind_string::cr> {
+    static void apply(const auto & in, IndStringState & s, State & ps) {
+        if (!ps.featureSettings.isEnabled(Dep::CRLineEndings))
+            ps.badLineEndingFound(ps.at(in), false);
     }
 };
 

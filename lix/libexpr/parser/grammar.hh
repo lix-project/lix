@@ -8,7 +8,7 @@
 #include <boost/container/small_vector.hpp>
 
 // NOTE
-// nix line endings are \n, \r\n, \r. the grammar does not use eol or
+// nix line endings are \n, \r\n (deprecated), \r (deprecated). the grammar does not use eol or
 // eolf rules in favor of reproducing the old flex lexer as faithfully as
 // possible, and deferring calculation of positions to downstream users.
 
@@ -179,8 +179,20 @@ struct uri : seq<
     plus<c::uri_rest>
 > {};
 
+struct _eol {
+    struct deprecated_cr_crlf : seq<one<'\r'>, opt<one<'\n'>>> {};
+};
+
+// LF, CRLF, CR. All but \n throw a deprecation error by default.
+struct eol : _eol, sor<
+    one<'\n'>,
+    _eol::deprecated_cr_crlf
+> {};
+
+// Spacing including comments
 struct sep : sor<
-    plus<one<' ', '\t', '\r', '\n'>>,
+    plus<one<' ', '\t'>>,
+    eol,
     seq<one<'#'>, star<not_one<'\r', '\n'>>>,
     seq<string<'/', '*'>, until<string<'*', '/'>>>
 > {};
@@ -202,7 +214,7 @@ struct expr;
 struct _string {
     template<typename... Inner>
     struct literal : semantic, seq<Inner...> {};
-    struct cr_lf : semantic, seq<one<'\r'>, opt<one<'\n'>>> {};
+    struct cr_crlf : semantic, seq<one<'\r'>, opt<one<'\n'>>> {};
     struct interpolation : semantic, seq<
         p::string<'$', '{'>, seps,
         must<expr>, seps,
@@ -215,7 +227,7 @@ struct string : _string, seq<
     star<
         sor<
             _string::literal<plus<not_one<'$', '"', '\\', '\r'>>>,
-            _string::cr_lf,
+            _string::cr_crlf,
             _string::interpolation,
             _string::literal<one<'$'>, opt<one<'$'>>>,
             seq<one<'\\'>, _string::escape>
@@ -236,6 +248,7 @@ struct _ind_string {
     struct escape : semantic, must<any> {};
     /* Marker for non-empty lines */
     struct has_content : semantic, seq<> {};
+    struct cr : semantic, one<'\r'> {};
 };
 struct ind_string : _ind_string, seq<
     TAO_PEGTL_STRING("''"),
@@ -253,12 +266,13 @@ struct ind_string : _ind_string, seq<
                         _ind_string::literal<
                             plus<
                                 sor<
-                                    not_one<'$', '\'', '\n'>,
+                                    not_one<'$', '\'', '\n', '\r'>,
                                     // TODO probably factor this out like the others for performance
-                                    seq<one<'$'>, not_one<'{', '\'', '\n'>>,
+                                    seq<one<'$'>, not_one<'{', '\'', '\n', '\r'>>,
                                     seq<one<'$'>, at<one<'\n'>>>,
-                                    seq<one<'\''>, not_one<'\'', '$', '\n'>>,
-                                    seq<one<'\''>, at<one<'\n'>>>
+                                    seq<one<'\''>, not_one<'\'', '$', '\n', '\r'>>,
+                                    seq<one<'\''>, at<one<'\n'>>>,
+                                    _ind_string::cr
                                 >
                             >
                         >,

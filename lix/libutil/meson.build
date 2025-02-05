@@ -155,6 +155,7 @@ experimental_feature_definitions = files(
 
 deprecated_feature_definitions = files(
   'deprecated-features/ancient-let.md',
+  'deprecated-features/cr-line-endings.md',
   'deprecated-features/rec-set-overrides.md',
   'deprecated-features/url-literals.md',
   'deprecated-features/shadow-internal-symbols.md',
