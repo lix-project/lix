@@ -39,13 +39,19 @@ private:
     std::list<FDPair> fds;
     bool deletePaths;
 
+    bool lockPathsImpl(const PathSet & _paths, const std::string & waitMsg, bool wait);
+
 public:
     PathLocks();
-    PathLocks(const PathSet & paths,
-        const std::string & waitMsg = "");
-    bool lockPaths(const PathSet & _paths,
-        const std::string & waitMsg = "",
-        bool wait = true);
+    PathLocks(const PathSet & paths, const std::string & waitMsg = "");
+    void lockPaths(const PathSet & _paths, const std::string & waitMsg = "")
+    {
+        lockPathsImpl(_paths, waitMsg, true);
+    }
+    bool tryLockPaths(const PathSet & _paths)
+    {
+        return lockPathsImpl(_paths, "", false);
+    }
     ~PathLocks();
     void unlock();
     void setDeletion(bool deletePaths);

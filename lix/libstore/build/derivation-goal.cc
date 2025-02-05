@@ -734,7 +734,7 @@ retry:
         }
     }
 
-    if (!outputLocks.lockPaths(lockFiles, "", false)) {
+    if (!outputLocks.tryLockPaths(lockFiles)) {
         if (!actLock)
             actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
                 fmt("waiting for lock on %s", Magenta(showPaths(lockFiles))));
