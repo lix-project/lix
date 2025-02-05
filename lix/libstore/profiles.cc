@@ -1,5 +1,6 @@
 #include "lix/libstore/profiles.hh"
 #include "lix/libstore/local-fs-store.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/users.hh"
 #include "lix/libutil/strings.hh"
 
@@ -102,7 +103,7 @@ try {
        view).  If we didn't do it this way, the GC might remove the
        user environment etc. we've just built. */
     Path generation = makeName(profile, num + 1);
-    store.addPermRoot(outPath, generation);
+    TRY_AWAIT(store.addPermRoot(outPath, generation));
 
     co_return generation;
 } catch (...) {

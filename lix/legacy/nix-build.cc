@@ -612,7 +612,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
             if (auto store2 = store.dynamic_pointer_cast<LocalFSStore>()) {
                 std::string symlink = drvPrefix;
                 if (outputName != "out") symlink += "-" + outputName;
-                store2->addPermRoot(outputPath, absPath(symlink));
+                aio.blockOn(store2->addPermRoot(outputPath, absPath(symlink)));
             }
 
             outPaths.push_back(outputPath);

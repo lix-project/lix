@@ -125,7 +125,9 @@ struct CmdBundle : InstallableCommand
         }
 
         // TODO: will crash if not a localFSStore?
-        store.dynamic_pointer_cast<LocalFSStore>()->addPermRoot(outPath, absPath(*outLink));
+        aio().blockOn(
+            store.dynamic_pointer_cast<LocalFSStore>()->addPermRoot(outPath, absPath(*outLink))
+        );
     }
 };
 

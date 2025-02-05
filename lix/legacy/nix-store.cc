@@ -92,7 +92,7 @@ try {
                     Path rootName = gcRoot;
                     if (rootNr > 1) rootName += "-" + std::to_string(rootNr);
                     if (i->first != "out") rootName += "-" + i->first;
-                    retPath = store2->addPermRoot(outPath, rootName);
+                    retPath = TRY_AWAIT(store2->addPermRoot(outPath, rootName));
                 }
             }
             outputs.insert(retPath);
@@ -111,7 +111,7 @@ try {
                 Path rootName = gcRoot;
                 rootNr++;
                 if (rootNr > 1) rootName += "-" + std::to_string(rootNr);
-                co_return PathSet{store2->addPermRoot(path.path, rootName)};
+                co_return PathSet{TRY_AWAIT(store2->addPermRoot(path.path, rootName))};
             }
         }
         co_return PathSet{store->printStorePath(path.path)};

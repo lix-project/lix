@@ -31,7 +31,8 @@ struct IndirectRootStore : public virtual LocalFSStore
      * The implementation of this method is concrete, but it delegates
      * to `addIndirectRoot()` which is abstract.
      */
-    Path addPermRoot(const StorePath & storePath, const Path & gcRoot) override final;
+    kj::Promise<Result<Path>>
+    addPermRoot(const StorePath & storePath, const Path & gcRoot) override final;
 
     /**
      * Add an indirect root, which is a weak reference to the

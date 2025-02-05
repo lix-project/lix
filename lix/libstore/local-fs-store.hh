@@ -59,7 +59,8 @@ public:
      * How the permanent GC root corresponding to this symlink is
      * managed is implementation-specific.
      */
-    virtual Path addPermRoot(const StorePath & storePath, const Path & gcRoot) = 0;
+    virtual kj::Promise<Result<Path>>
+    addPermRoot(const StorePath & storePath, const Path & gcRoot) = 0;
 
     virtual Path getRealStoreDir() { return config().realStoreDir; }
 

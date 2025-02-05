@@ -80,7 +80,7 @@ void processExpr(EvalState & state, const Strings & attrPaths,
                     if (++rootNr > 1) rootName += "-" + std::to_string(rootNr);
                     auto store2 = state.ctx.store.dynamic_pointer_cast<LocalFSStore>();
                     if (store2)
-                        drvPathS = store2->addPermRoot(drvPath, rootName);
+                        drvPathS = state.aio.blockOn(store2->addPermRoot(drvPath, rootName));
                 }
                 std::cout << fmt("%s%s\n", drvPathS, (outputName != "out" ? "!" + outputName : ""));
             }

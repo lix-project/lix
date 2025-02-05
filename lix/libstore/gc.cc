@@ -51,8 +51,8 @@ void LocalStore::addIndirectRoot(const Path & path)
 }
 
 
-Path IndirectRootStore::addPermRoot(const StorePath & storePath, const Path & _gcRoot)
-{
+kj::Promise<Result<Path>> IndirectRootStore::addPermRoot(const StorePath & storePath, const Path & _gcRoot)
+try {
     Path gcRoot(canonPath(_gcRoot));
 
     if (isInStore(gcRoot))
@@ -73,7 +73,9 @@ Path IndirectRootStore::addPermRoot(const StorePath & storePath, const Path & _g
     makeSymlink(gcRoot, printStorePath(storePath));
     addIndirectRoot(gcRoot);
 
-    return gcRoot;
+    co_return gcRoot;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
