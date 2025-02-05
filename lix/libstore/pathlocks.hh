@@ -57,23 +57,29 @@ public:
     void setDeletion(bool deletePaths);
 };
 
-struct FdLock
+class FdLock
 {
-    int fd;
-    bool acquired = false;
-
-    FdLock(int fd, LockType lockType);
-    FdLock(int fd, LockType lockType, std::string_view waitMsg);
-
-    ~FdLock()
+    struct Unlocker
     {
-        try {
-            if (acquired)
-                unlockFile(fd);
-        } catch (SysError &) {
-            ignoreExceptionInDestructor();
+        void operator()(AutoCloseFD * fd)
+        {
+            try {
+                unlockFile(fd->get());
+            } catch (SysError &) {
+                ignoreExceptionInDestructor();
+            }
         }
-    }
+    };
+
+    std::unique_ptr<AutoCloseFD, Unlocker> fd;
+
+public:
+    static constexpr struct DontWait { explicit DontWait() = default; } dont_wait;
+
+    FdLock(AutoCloseFD & fd, LockType lockType, DontWait);
+    FdLock(AutoCloseFD & fd, LockType lockType, std::string_view waitMsg);
+
+    bool valid() const { return bool(fd); }
 };
 
 }

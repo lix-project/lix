@@ -1,4 +1,5 @@
 #include "lix/libstore/pathlocks.hh"
+#include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/signals.hh"
 
@@ -208,19 +209,19 @@ void PathLocks::setDeletion(bool deletePaths)
 }
 
 
-FdLock::FdLock(int fd, LockType lockType)
-    : fd(fd)
+FdLock::FdLock(AutoCloseFD & fd, LockType lockType, DontWait)
 {
-    acquired = tryLockFile(fd, lockType);
+    if (tryLockFile(fd.get(), lockType)) {
+        this->fd.reset(&fd);
+    }
 }
 
-FdLock::FdLock(int fd, LockType lockType, std::string_view waitMsg)
-    : fd(fd)
+FdLock::FdLock(AutoCloseFD & fd, LockType lockType, std::string_view waitMsg)
 {
-    if (!tryLockFile(fd, lockType)) {
+    if (!tryLockFile(fd.get(), lockType)) {
         printInfo("%s", waitMsg);
-        lockFile(fd, lockType);
-        acquired = true;
+        lockFile(fd.get(), lockType);
+        this->fd.reset(&fd);
     }
 }
 

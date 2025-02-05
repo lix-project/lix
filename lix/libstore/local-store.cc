@@ -1527,7 +1527,7 @@ try {
     /* Acquire the global GC lock to get a consistent snapshot of
        existing and valid paths. */
     auto fdGCLock = openGCLock();
-    FdLock gcLock(fdGCLock.get(), ltRead, "waiting for the big garbage collector lock...");
+    FdLock gcLock(fdGCLock, ltRead, "waiting for the big garbage collector lock...");
 
     StorePathSet validPaths;
 
