@@ -473,7 +473,7 @@ public:
     kj::Promise<Result<std::optional<std::string>>>
     resolveSearchPathPath(const SearchPath::Path & path);
 
-    StorePath copyPathToStore(
+    kj::Promise<Result<StorePath>> copyPathToStore(
         NixStringContext & context, const SourcePath & path, RepairFlag repair = NoRepair
     );
 

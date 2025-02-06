@@ -2287,7 +2287,8 @@ BackedStringView EvalState::coerceToString(
               // slash, as in /foo/${x}.
               v._path
             : copyToStore
-            ? ctx.store->printStorePath(ctx.paths.copyPathToStore(context, v.path(), ctx.repair))
+            ? ctx.store->printStorePath(
+                aio.blockOn(ctx.paths.copyPathToStore(context, v.path(), ctx.repair)))
             : v.path().to_string();
     }
 
@@ -2356,8 +2357,8 @@ BackedStringView EvalState::coerceToString(
 }
 
 
-StorePath EvalPaths::copyPathToStore(NixStringContext & context, const SourcePath & path, RepairFlag repair)
-{
+kj::Promise<Result<StorePath>> EvalPaths::copyPathToStore(NixStringContext & context, const SourcePath & path, RepairFlag repair)
+try {
     if (nix::isDerivation(path.canonical().abs()))
         errors.make<EvalError>("file names are not allowed to end in '%1%'", drvExtension).debugThrow();
 
@@ -2376,7 +2377,9 @@ StorePath EvalPaths::copyPathToStore(NixStringContext & context, const SourcePat
     context.insert(NixStringContextElem::Opaque {
         .path = dstPath
     });
-    return dstPath;
+    co_return dstPath;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

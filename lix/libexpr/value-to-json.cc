@@ -36,10 +36,12 @@ json printValueAsJSON(EvalState & state, bool strict,
 
         case nPath:
             if (copyToStore)
-                out = state.ctx.store->printStorePath(
-                    state.ctx.paths.copyPathToStore(context, v.path(), state.ctx.repair));
-            else
+                out = state.ctx.store->printStorePath(state.aio.blockOn(
+                    state.ctx.paths.copyPathToStore(context, v.path(), state.ctx.repair)
+                ));
+            else {
                 out = v.path().to_string();
+            }
             break;
 
         case nNull:
