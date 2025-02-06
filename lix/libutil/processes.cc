@@ -346,6 +346,7 @@ RunningProgram runProgram2(const RunOptions & options)
 
     out.writeSide.close();
 
+    debug("Running %s %s", shellEscape(options.program), concatMapStringsSep(" ", options.args, shellEscape));
     return RunningProgram{
         options.program,
         std::move(pid),
