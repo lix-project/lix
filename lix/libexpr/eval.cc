@@ -2798,8 +2798,8 @@ try {
 
     if (EvalSettings::isPseudoUrl(value)) {
         try {
-            auto storePath = fetchers::downloadTarball(
-                store, EvalSettings::resolvePseudoUrl(value), "source", false).tree.storePath;
+            auto storePath = TRY_AWAIT(fetchers::downloadTarball(
+                store, EvalSettings::resolvePseudoUrl(value), "source", false)).tree.storePath;
             res = { store->toRealPath(storePath) };
         } catch (FileTransferError & e) {
             logWarning({

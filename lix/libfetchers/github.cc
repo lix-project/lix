@@ -225,7 +225,8 @@ struct GitArchiveInputScheme : InputScheme
 
         auto url = getDownloadUrl(input);
 
-        auto result = downloadTarball(store, url.url, input.getName(), true, url.headers);
+        auto result =
+            TRY_AWAIT(downloadTarball(store, url.url, input.getName(), true, url.headers));
 
         input.attrs.insert_or_assign("lastModified", uint64_t(result.lastModified));
 
@@ -277,10 +278,9 @@ struct GitHubInputScheme : GitArchiveInputScheme
 
         Headers headers = makeHeadersWithAuthTokens(host);
 
-        auto json = nlohmann::json::parse(
-            readFile(
-                store->toRealPath(
-                    downloadFile(store, url, "source", false, headers).storePath)));
+        auto json = nlohmann::json::parse(readFile(store->toRealPath(
+            TRY_AWAIT(downloadFile(store, url, "source", false, headers)).storePath
+        )));
         auto rev = Hash::parseAny(std::string { json["sha"] }, HashType::SHA1);
         debug("HEAD revision for '%s' is %s", url, rev.gitRev());
         co_return rev;
@@ -359,10 +359,9 @@ struct GitLabInputScheme : GitArchiveInputScheme
 
         Headers headers = makeHeadersWithAuthTokens(host);
 
-        auto json = nlohmann::json::parse(
-            readFile(
-                store->toRealPath(
-                    downloadFile(store, url, "source", false, headers).storePath)));
+        auto json = nlohmann::json::parse(readFile(store->toRealPath(
+            TRY_AWAIT(downloadFile(store, url, "source", false, headers)).storePath
+        )));
         if (json.is_array() && json.size() >= 1 && json[0]["id"] != nullptr) {
             auto rev = Hash::parseAny(std::string(json[0]["id"]), HashType::SHA1);
             debug("HEAD revision for '%s' is %s", url, rev.gitRev());
@@ -434,7 +433,9 @@ struct SourceHutInputScheme : GitArchiveInputScheme
         std::string refUri;
         if (ref == "HEAD") {
             auto file = store->toRealPath(
-                downloadFile(store, fmt("%s/HEAD", base_url), "source", false, headers).storePath);
+                TRY_AWAIT(downloadFile(store, fmt("%s/HEAD", base_url), "source", false, headers))
+                    .storePath
+            );
             std::ifstream is(file);
             std::string line;
             getline(is, line);
@@ -450,7 +451,9 @@ struct SourceHutInputScheme : GitArchiveInputScheme
         std::regex refRegex(refUri);
 
         auto file = store->toRealPath(
-            downloadFile(store, fmt("%s/info/refs", base_url), "source", false, headers).storePath);
+            TRY_AWAIT(downloadFile(store, fmt("%s/info/refs", base_url), "source", false, headers))
+                .storePath
+        );
         std::ifstream is(file);
 
         std::string line;

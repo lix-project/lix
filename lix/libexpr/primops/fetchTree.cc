@@ -270,10 +270,13 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
 
     // TODO: fetching may fail, yet the path may be substitutable.
     //       https://github.com/NixOS/nix/issues/4313
-    auto storePath =
-        unpack
-        ? fetchers::downloadTarball(state.ctx.store, *url, name, (bool) expectedHash).tree.storePath
-        : fetchers::downloadFile(state.ctx.store, *url, name, (bool) expectedHash).storePath;
+    auto storePath = unpack
+        ? state.aio
+              .blockOn(fetchers::downloadTarball(state.ctx.store, *url, name, (bool) expectedHash))
+              .tree.storePath
+        : state.aio
+              .blockOn(fetchers::downloadFile(state.ctx.store, *url, name, (bool) expectedHash))
+              .storePath;
 
     if (expectedHash) {
         auto hash = unpack

@@ -209,7 +209,7 @@ struct DownloadFileResult
     std::optional<std::string> immutableUrl;
 };
 
-DownloadFileResult downloadFile(
+kj::Promise<Result<DownloadFileResult>> downloadFile(
     ref<Store> store,
     const std::string & url,
     const std::string & name,
@@ -223,7 +223,7 @@ struct DownloadTarballResult
     std::optional<std::string> immutableUrl;
 };
 
-DownloadTarballResult downloadTarball(
+kj::Promise<Result<DownloadTarballResult>> downloadTarball(
     ref<Store> store,
     const std::string & url,
     const std::string & name,

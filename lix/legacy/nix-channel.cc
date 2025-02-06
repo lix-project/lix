@@ -115,7 +115,12 @@ static void update(AsyncIoRoot & aio, const StringSet & channelNames)
             // We want to download the url to a file to see if it's a tarball while also checking if we
             // got redirected in the process, so that we can grab the various parts of a nix channel
             // definition from a consistent location if the redirect changes mid-download.
-            auto result = fetchers::downloadFile(store, url, std::string(baseNameOf(url)), false);
+            auto result = aio.blockOn(fetchers::downloadFile(
+                store,
+                url,
+                std::string(baseNameOf(url)),
+                false
+            ));
             auto filename = store->toRealPath(result.storePath);
             url = result.effectiveUrl;
 
@@ -128,11 +133,17 @@ static void update(AsyncIoRoot & aio, const StringSet & channelNames)
 
             if (!unpacked) {
                 // Download the channel tarball.
+                std::optional<fetchers::DownloadFileResult> exprs;
                 try {
-                    filename = store->toRealPath(fetchers::downloadFile(store, url + "/nixexprs.tar.xz", "nixexprs.tar.xz", false).storePath);
+                    exprs = aio.blockOn(fetchers::downloadFile(
+                        store, url + "/nixexprs.tar.xz", "nixexprs.tar.xz", false
+                    ));
                 } catch (FileTransferError & e) {
-                    filename = store->toRealPath(fetchers::downloadFile(store, url + "/nixexprs.tar.bz2", "nixexprs.tar.bz2", false).storePath);
+                    exprs = aio.blockOn(fetchers::downloadFile(
+                        store, url + "/nixexprs.tar.bz2", "nixexprs.tar.bz2", false
+                    ));
                 }
+                filename = store->toRealPath(exprs->storePath);
             }
             // Regardless of where it came from, add the expression representing this channel to accumulated expression
             exprs.push_back("f: f { name = \"" + cname + "\"; channelName = \"" + name + "\"; src = builtins.storePath \"" + filename + "\"; " + extraAttrs + " }");

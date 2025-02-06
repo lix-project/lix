@@ -5,6 +5,7 @@
 #include "lix/libfetchers/builtin-fetchers.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/tarfile.hh"
 #include "lix/libstore/temporary-dir.hh"
 #include "lix/libutil/types.hh"
@@ -12,13 +13,13 @@
 
 namespace nix::fetchers {
 
-DownloadFileResult downloadFile(
+kj::Promise<Result<DownloadFileResult>> downloadFile(
     ref<Store> store,
     const std::string & url,
     const std::string & name,
     bool locked,
     Headers headers)
-{
+try {
     // FIXME: check store
 
     Attrs inAttrs({
@@ -40,7 +41,7 @@ DownloadFileResult downloadFile(
     };
 
     if (cached && !cached->expired)
-        return useCached();
+        co_return useCached();
 
     if (cached)
         headers.emplace_back("If-None-Match", getStrAttr(cached->infoAttrs, "etag"));
@@ -53,7 +54,7 @@ DownloadFileResult downloadFile(
     } catch (FileTransferError & e) {
         if (cached) {
             warn("%s; using cached version", e.msg());
-            return useCached();
+            co_return useCached();
         } else
             throw;
     }
@@ -111,21 +112,23 @@ DownloadFileResult downloadFile(
             *storePath,
             locked);
 
-    return {
+    co_return DownloadFileResult{
         .storePath = std::move(*storePath),
         .etag = res.etag,
         .effectiveUrl = res.effectiveUri,
         .immutableUrl = res.immutableUrl,
     };
+} catch (...) {
+    co_return result::current_exception();
 }
 
-DownloadTarballResult downloadTarball(
+kj::Promise<Result<DownloadTarballResult>> downloadTarball(
     ref<Store> store,
     const std::string & url,
     const std::string & name,
     bool locked,
     const Headers & headers)
-{
+try {
     Attrs inAttrs({
         {"type", "tarball"},
         {"url", url},
@@ -135,13 +138,13 @@ DownloadTarballResult downloadTarball(
     auto cached = getCache()->lookupExpired(store, inAttrs);
 
     if (cached && !cached->expired)
-        return {
+        co_return DownloadTarballResult{
             .tree = Tree { .actualPath = store->toRealPath(cached->storePath), .storePath = std::move(cached->storePath) },
             .lastModified = (time_t) getIntAttr(cached->infoAttrs, "lastModified"),
             .immutableUrl = maybeGetStrAttr(cached->infoAttrs, "immutableUrl"),
         };
 
-    auto res = downloadFile(store, url, name, locked, headers);
+    auto res = TRY_AWAIT(downloadFile(store, url, name, locked, headers));
 
     std::optional<StorePath> unpackedStorePath;
     time_t lastModified;
@@ -176,11 +179,13 @@ DownloadTarballResult downloadTarball(
         *unpackedStorePath,
         locked);
 
-    return {
+    co_return DownloadTarballResult{
         .tree = Tree { .actualPath = store->toRealPath(*unpackedStorePath), .storePath = std::move(*unpackedStorePath) },
         .lastModified = lastModified,
         .immutableUrl = res.immutableUrl,
     };
+} catch (...) {
+    co_return result::current_exception();
 }
 
 // An input scheme corresponding to a curl-downloadable resource.
@@ -268,7 +273,8 @@ struct FileInputScheme : CurlInputScheme
     kj::Promise<Result<std::pair<StorePath, Input>>>
     fetch(ref<Store> store, const Input & input) override
     try {
-        auto file = downloadFile(store, getStrAttr(input.attrs, "url"), input.getName(), false);
+        auto file =
+            TRY_AWAIT(downloadFile(store, getStrAttr(input.attrs, "url"), input.getName(), false));
         co_return {std::move(file.storePath), input};
     } catch (...) {
         co_return result::current_exception();
@@ -294,7 +300,7 @@ struct TarballInputScheme : CurlInputScheme
     try {
         Input input(_input);
         auto url = getStrAttr(input.attrs, "url");
-        auto result = downloadTarball(store, url, input.getName(), false);
+        auto result = TRY_AWAIT(downloadTarball(store, url, input.getName(), false));
 
         if (result.immutableUrl) {
             auto immutableInput = Input::fromURL(*result.immutableUrl);

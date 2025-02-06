@@ -192,12 +192,12 @@ kj::Promise<Result<SourcePath>> lookupFileArg(Evaluator & state, std::string_vie
 try {
     if (EvalSettings::isPseudoUrl(fileArg)) {
         auto const url = EvalSettings::resolvePseudoUrl(fileArg);
-        auto const downloaded = fetchers::downloadTarball(
+        auto const downloaded = TRY_AWAIT(fetchers::downloadTarball(
             state.store,
             url,
             /* name */ "source",
             /* locked */ false
-        );
+        ));
         StorePath const storePath = downloaded.tree.storePath;
         co_return CanonPath(state.store->toRealPath(storePath));
     } else if (fileArg.starts_with("flake:")) {
