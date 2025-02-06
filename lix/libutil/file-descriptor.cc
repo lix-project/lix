@@ -6,6 +6,7 @@
 #include "lix/libutil/signals.hh"
 
 #include <fcntl.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 namespace nix {
