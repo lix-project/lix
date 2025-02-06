@@ -716,7 +716,7 @@ static void opImport(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     if (!opArgs.empty()) throw UsageError("no arguments expected");
 
     FdSource source(STDIN_FILENO);
-    auto paths = store->importPaths(source, NoCheckSigs);
+    auto paths = aio.blockOn(store->importPaths(source, NoCheckSigs));
 
     for (auto & i : paths)
         cout << fmt("%s\n", store->printStorePath(i)) << std::flush;
@@ -910,7 +910,7 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
             case ServeProto::Command::ImportPaths: {
                 if (!writeAllowed) throw Error("importing paths is not allowed");
-                store->importPaths(in, NoCheckSigs); // FIXME: should we skip sig checking?
+                aio.blockOn(store->importPaths(in, NoCheckSigs)); // FIXME: should we skip sig checking?
                 out << 1; // indicate success
                 break;
             }

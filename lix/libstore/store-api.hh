@@ -796,7 +796,8 @@ public:
      * Nix store. Optionally, the contents of the NARs are preloaded
      * into the specified FS accessor to speed up subsequent access.
      */
-    StorePaths importPaths(Source & source, CheckSigsFlag checkSigs = CheckSigs);
+    kj::Promise<Result<StorePaths>>
+    importPaths(Source & source, CheckSigsFlag checkSigs = CheckSigs);
 
     struct Stats
     {

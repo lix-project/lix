@@ -49,8 +49,8 @@ void Store::exportPath(const StorePath & path, Sink & sink)
         << 0;
 }
 
-StorePaths Store::importPaths(Source & source, CheckSigsFlag checkSigs)
-{
+kj::Promise<Result<StorePaths>> Store::importPaths(Source & source, CheckSigsFlag checkSigs)
+try {
     StorePaths res;
     while (true) {
         auto n = readNum<uint64_t>(source);
@@ -91,7 +91,9 @@ StorePaths Store::importPaths(Source & source, CheckSigsFlag checkSigs)
         res.push_back(info.path);
     }
 
-    return res;
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }

@@ -207,7 +207,7 @@ void importPaths(int fd, int dontCheckSigs)
     PPCODE:
         try {
             FdSource source(fd);
-            store()->importPaths(source, dontCheckSigs ? NoCheckSigs : CheckSigs);
+            aio().blockOn(store()->importPaths(source, dontCheckSigs ? NoCheckSigs : CheckSigs));
         } catch (Error & e) {
             croak("%s", e.what());
         }
