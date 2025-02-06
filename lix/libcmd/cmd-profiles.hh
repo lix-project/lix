@@ -64,7 +64,7 @@ struct ProfileManifest
 
     nlohmann::json toJSON(Store & store) const;
 
-    StorePath build(ref<Store> store);
+    kj::Promise<Result<StorePath>> build(ref<Store> store);
 
     void addElement(std::string_view nameCandidate, ProfileElement element);
     void addElement(ProfileElement element);

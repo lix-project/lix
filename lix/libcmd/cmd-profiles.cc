@@ -223,8 +223,8 @@ nlohmann::json ProfileManifest::toJSON(Store & store) const
     return json;
 }
 
-StorePath ProfileManifest::build(ref<Store> store)
-{
+kj::Promise<Result<StorePath>> ProfileManifest::build(ref<Store> store)
+try {
     auto tempDir = createTempDir();
 
     StorePathSet references;
@@ -269,7 +269,9 @@ StorePath ProfileManifest::build(ref<Store> store)
     StringSource source(sink.s);
     store->addToStore(info, source);
 
-    return std::move(info.path);
+    co_return std::move(info.path);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 void ProfileManifest::printDiff(

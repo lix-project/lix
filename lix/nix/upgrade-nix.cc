@@ -255,7 +255,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         manifest.elements.at(nixElemName) = elemForNewNix;
 
         // Build the new profile, and switch to it.
-        StorePath const newProfile = manifest.build(store);
+        StorePath const newProfile = aio().blockOn(manifest.build(store));
         printTalkative("built new profile '%s'", store->printStorePath(newProfile));
         auto const newGeneration =
             aio().blockOn(createGeneration(*fsStore, this->profileDir, newProfile));
