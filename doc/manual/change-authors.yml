@@ -149,6 +149,10 @@ puck:
   forgejo: puck
   github: puckipedia
 
+quantenzitrone:
+  display_name: Zitrone
+  forgejo: quantenzitrone
+
 quantumjump:
   display_name: Quantum Jump
   github: QuantumBJump

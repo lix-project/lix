@@ -1,0 +1,13 @@
+error:
+       … from call site
+         at /pwd/lang/eval-fail-missing-and-unexpected-args.nix:1:1:
+            1| ({a, b, c}: a + b + c) {c = 1; d = 1; e = 1; f = 1;}
+             | ^
+            2|
+
+       error: function 'anonymous lambda' called without required arguments 'a' and 'b' and with unexpected arguments 'd', 'e' and 'f'
+       at /pwd/lang/eval-fail-missing-and-unexpected-args.nix:1:2:
+            1| ({a, b, c}: a + b + c) {c = 1; d = 1; e = 1; f = 1;}
+             |  ^
+            2|
+       Did you mean one of a or b?

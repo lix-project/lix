@@ -40,5 +40,9 @@ NIX_EVAL_STDERR_WITH_SUGGESTIONS=$(! nix build --impure --expr '(builtins.getFla
     fail "The evaluator should suggest the three closest possiblities"
 
 NIX_EVAL_STDERR_WITH_SUGGESTIONS=$(! nix build --impure --expr '({ foo }: foo) { foo = 1; fob = 2; }' 2>&1 1>/dev/null)
+[[ ! "$NIX_EVAL_STDERR_WITH_SUGGESTIONS" =~ "Did you mean" ]] || \
+    fail "The evaluator shouldn't suggest anything if all arguments are already provided."
+
+NIX_EVAL_STDERR_WITH_SUGGESTIONS=$(! nix build --impure --expr '({ foo ? 1 }: foo) { fob = 2; }' 2>&1 1>/dev/null)
 [[ "$NIX_EVAL_STDERR_WITH_SUGGESTIONS" =~ "Did you mean foo?" ]] || \
     fail "The evaluator should suggest the three closest possiblities"
