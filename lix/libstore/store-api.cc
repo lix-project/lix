@@ -286,12 +286,12 @@ StorePath Store::addToStore(
     return addToStoreFromDump(source, name, method, hashAlgo, repair, references);
 }
 
-void Store::addMultipleToStore(
+kj::Promise<Result<void>> Store::addMultipleToStore(
     PathsSource & pathsToCopy,
     Activity & act,
     RepairFlag repair,
     CheckSigsFlag checkSigs)
-{
+try {
     std::atomic<size_t> nrDone{0};
     std::atomic<size_t> nrFailed{0};
     std::atomic<uint64_t> bytesExpected{0};
@@ -361,13 +361,16 @@ void Store::addMultipleToStore(
             nrDone++;
             showProgress();
         });
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
-void Store::addMultipleToStore(
+kj::Promise<Result<void>> Store::addMultipleToStore(
     Source & source,
     RepairFlag repair,
     CheckSigsFlag checkSigs)
-{
+try {
     auto remoteVersion = getProtocol();
 
     auto expected = readNum<uint64_t>(source);
@@ -379,6 +382,9 @@ void Store::addMultipleToStore(
         info.ultimate = false;
         addToStore(info, source, repair, checkSigs);
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 namespace {
@@ -1288,7 +1294,7 @@ try {
         });
     }
 
-    dstStore.addMultipleToStore(pathsToCopy, act, repair, checkSigs);
+    TRY_AWAIT(dstStore.addMultipleToStore(pathsToCopy, act, repair, checkSigs));
 
     co_return pathsMap;
 } catch (...) {

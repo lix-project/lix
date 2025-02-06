@@ -91,12 +91,12 @@ public:
     void addToStore(const ValidPathInfo & info, Source & nar,
         RepairFlag repair, CheckSigsFlag checkSigs) override;
 
-    void addMultipleToStore(
+    kj::Promise<Result<void>> addMultipleToStore(
         Source & source,
         RepairFlag repair,
         CheckSigsFlag checkSigs) override;
 
-    void addMultipleToStore(
+    kj::Promise<Result<void>> addMultipleToStore(
         PathsSource & pathsToCopy,
         Activity & act,
         RepairFlag repair,

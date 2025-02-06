@@ -515,9 +515,9 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         logger->startWork();
         {
             FramedSource source(from);
-            store->addMultipleToStore(source,
+            aio.blockOn(store->addMultipleToStore(source,
                 RepairFlag{repair},
-                dontCheckSigs ? NoCheckSigs : CheckSigs);
+                dontCheckSigs ? NoCheckSigs : CheckSigs));
         }
         logger->stopWork();
         break;

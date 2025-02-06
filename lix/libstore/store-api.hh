@@ -507,12 +507,12 @@ public:
     /**
      * Import multiple paths into the store.
      */
-    virtual void addMultipleToStore(
+    virtual kj::Promise<Result<void>> addMultipleToStore(
         Source & source,
         RepairFlag repair = NoRepair,
         CheckSigsFlag checkSigs = CheckSigs);
 
-    virtual void addMultipleToStore(
+    virtual kj::Promise<Result<void>> addMultipleToStore(
         PathsSource & pathsToCopy,
         Activity & act,
         RepairFlag repair = NoRepair,

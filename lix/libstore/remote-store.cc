@@ -489,12 +489,12 @@ void RemoteStore::addToStore(const ValidPathInfo & info, Source & source,
 }
 
 
-void RemoteStore::addMultipleToStore(
+kj::Promise<Result<void>> RemoteStore::addMultipleToStore(
     PathsSource & pathsToCopy,
     Activity & act,
     RepairFlag repair,
     CheckSigsFlag checkSigs)
-{
+try {
     auto remoteVersion = getProtocol();
 
     GeneratorSource source{
@@ -516,14 +516,17 @@ void RemoteStore::addMultipleToStore(
         }(this, pathsToCopy, remoteVersion)
     };
 
-    addMultipleToStore(source, repair, checkSigs);
+    TRY_AWAIT(addMultipleToStore(source, repair, checkSigs));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
-void RemoteStore::addMultipleToStore(
+kj::Promise<Result<void>> RemoteStore::addMultipleToStore(
     Source & source,
     RepairFlag repair,
     CheckSigsFlag checkSigs)
-{
+try {
     if (GET_PROTOCOL_MINOR(getConnection()->daemonVersion) >= 32) {
         auto conn(getConnection());
         conn->to
@@ -534,7 +537,10 @@ void RemoteStore::addMultipleToStore(
             source.drainInto(sink);
         });
     } else
-        Store::addMultipleToStore(source, repair, checkSigs);
+        TRY_AWAIT(Store::addMultipleToStore(source, repair, checkSigs));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
