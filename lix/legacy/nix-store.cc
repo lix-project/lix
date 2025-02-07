@@ -198,8 +198,14 @@ static void opAddFixed(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     HashType hashAlgo = parseHashType(opArgs.front());
     opArgs.pop_front();
 
-    for (auto & i : opArgs)
-        std::cout << fmt("%s\n", store->printStorePath(store->addToStoreSlow(baseNameOf(i), i, method, hashAlgo).path));
+    for (auto & i : opArgs) {
+        std::cout << fmt(
+            "%s\n",
+            store->printStorePath(
+                aio.blockOn(store->addToStoreSlow(baseNameOf(i), i, method, hashAlgo)).path
+            )
+        );
+    }
 }
 
 

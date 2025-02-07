@@ -540,7 +540,7 @@ public:
      * validity the resulting path, using a constant amount of
      * memory.
      */
-    ValidPathInfo addToStoreSlow(std::string_view name, const Path & srcPath,
+    kj::Promise<Result<ValidPathInfo>> addToStoreSlow(std::string_view name, const Path & srcPath,
         FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = HashType::SHA256,
         std::optional<Hash> expectedCAHash = {});
 

@@ -124,7 +124,9 @@ std::tuple<StorePath, Hash> prefetchFile(
         Activity act(*logger, lvlChatty, actUnknown,
             fmt("adding '%s' to the store", url));
 
-        auto info = store->addToStoreSlow(*name, tmpFile, ingestionMethod, hashType, expectedHash);
+        auto info = aio.blockOn(
+            store->addToStoreSlow(*name, tmpFile, ingestionMethod, hashType, expectedHash)
+        );
         storePath = info.path;
         assert(info.ca);
         hash = info.ca->hash;

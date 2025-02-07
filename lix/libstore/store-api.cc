@@ -453,10 +453,10 @@ digraph graphname {
     fileSink -> caHashSink
 }
 */
-ValidPathInfo Store::addToStoreSlow(std::string_view name, const Path & srcPath,
+kj::Promise<Result<ValidPathInfo>> Store::addToStoreSlow(std::string_view name, const Path & srcPath,
     FileIngestionMethod method, HashType hashAlgo,
     std::optional<Hash> expectedCAHash)
-{
+try {
     HashSink narHashSink { HashType::SHA256 };
     HashSink caHashSink { hashAlgo };
 
@@ -516,7 +516,9 @@ ValidPathInfo Store::addToStoreSlow(std::string_view name, const Path & srcPath,
         addToStore(info, source);
     }
 
-    return info;
+    co_return info;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 StringSet StoreConfig::getDefaultSystemFeatures()
