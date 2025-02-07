@@ -11,7 +11,7 @@ namespace nix {
 /**
  * Copy the `path` to the Nix store.
  */
-StorePath fetchToStore(
+kj::Promise<Result<StorePath>> fetchToStore(
     Store & store,
     const CheckedSourcePath & path,
     std::string_view name = "source",

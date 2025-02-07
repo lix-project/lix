@@ -2366,13 +2366,20 @@ try {
 
     auto dstPath = i != srcToStore.end()
         ? i->second
-        : [&]() {
-            auto dstPath = fetchToStore(*store, checkSourcePath(path), path.baseName(), FileIngestionMethod::Recursive, nullptr, repair);
+        : ({
+            auto dstPath = TRY_AWAIT(fetchToStore(
+                *store,
+                checkSourcePath(path),
+                path.baseName(),
+                FileIngestionMethod::Recursive,
+                nullptr,
+                repair
+            ));
             allowPath(dstPath);
             srcToStore.insert_or_assign(path, dstPath);
             printMsg(lvlChatty, "copied source '%1%' -> '%2%'", path, store->printStorePath(dstPath));
-            return dstPath;
-        }();
+            std::move(dstPath);
+        });
 
     context.insert(NixStringContextElem::Opaque {
         .path = dstPath
