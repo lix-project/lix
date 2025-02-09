@@ -93,8 +93,8 @@ template<typename T>
 void processGraph(
     const char *poolName,
     const std::set<T> & nodes,
-    std::function<std::set<T>(const T &)> getEdges,
-    std::function<void(const T &)> processNode)
+    std::function<std::set<T>(AsyncIoRoot &, const T &)> getEdges,
+    std::function<void(AsyncIoRoot &, const T &)> processNode)
 {
     struct Graph {
         std::set<T> left;
@@ -103,14 +103,14 @@ void processGraph(
 
     Sync<Graph> graph_(Graph{nodes, {}, {}});
 
-    std::function<void(const T &)> worker;
+    std::function<void(AsyncIoRoot &, const T &)> worker;
 
     /* Create pool last to ensure threads are stopped before other destructors
      * run */
     ThreadPool pool{poolName};
 
 
-    worker = [&](const T & node) {
+    worker = [&](AsyncIoRoot & aio, const T & node) {
 
         {
             auto graph(graph_.lock());
@@ -122,7 +122,7 @@ void processGraph(
 
     getRefs:
         {
-            auto refs = getEdges(node);
+            auto refs = getEdges(aio, node);
             refs.erase(node);
 
             {
@@ -140,7 +140,7 @@ void processGraph(
         return;
 
     doWork:
-        processNode(node);
+        processNode(aio, node);
 
         /* Enqueue work for all nodes that were waiting on this one
            and have no unprocessed dependencies. */
@@ -152,7 +152,7 @@ void processGraph(
                 assert(i != refs.end());
                 refs.erase(i);
                 if (refs.empty())
-                    pool.enqueue(std::bind(worker, rref));
+                    pool.enqueueWithAio(std::bind(worker, std::placeholders::_1, rref));
             }
             graph->left.erase(node);
             graph->refs.erase(node);
@@ -161,12 +161,27 @@ void processGraph(
     };
 
     for (auto & node : nodes)
-        pool.enqueue(std::bind(worker, std::ref(node)));
+        pool.enqueueWithAio(std::bind(worker, std::placeholders::_1, std::ref(node)));
 
     pool.process();
 
     if (!graph_.lock()->left.empty())
         throw Error("graph processing incomplete (cyclic reference?)");
+}
+
+template<typename T>
+void processGraph(
+    const char *poolName,
+    const std::set<T> & nodes,
+    std::function<std::set<T>(const T &)> getEdges,
+    std::function<void(const T &)> processNode)
+{
+    processGraph<T>(
+        poolName,
+        nodes,
+        [&](AsyncIoRoot &, const T & node) { return getEdges(node); },
+        [&](AsyncIoRoot &, const T & node) { processNode(node); }
+    );
 }
 
 }
