@@ -52,7 +52,7 @@ struct CmdLog : InstallableCommand
             }
             auto & logSub = *logSubP;
 
-            auto log = logSub.getBuildLog(path);
+            auto log = aio().blockOn(logSub.getBuildLog(path));
             if (!log) continue;
             logger->pause();
             printInfo("got build log for '%s' from '%s'", installable->what(), logSub.getUri());

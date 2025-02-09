@@ -2,11 +2,14 @@
 
 namespace nix {
 
-std::optional<std::string> LogStore::getBuildLog(const StorePath & path) {
+kj::Promise<Result<std::optional<std::string>>> LogStore::getBuildLog(const StorePath & path)
+try {
     auto maybePath = getBuildDerivationPath(path);
     if (!maybePath)
-        return std::nullopt;
-    return getBuildLogExact(maybePath.value());
+        co_return std::nullopt;
+    co_return getBuildLogExact(maybePath.value());
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }

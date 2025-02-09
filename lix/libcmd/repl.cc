@@ -743,7 +743,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
             }
             auto & logSub = *logSubP;
 
-            auto log = logSub.getBuildLog(drvPath);
+            auto log = state.aio.blockOn(logSub.getBuildLog(drvPath));
             if (log) {
                 printInfo("got build log for '%s' from '%s'", drvPathRaw, logSub.getUri());
                 logger->writeToStdout(*log);

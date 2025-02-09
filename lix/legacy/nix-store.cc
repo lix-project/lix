@@ -519,7 +519,7 @@ static void opReadLog(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
     for (auto & i : opArgs) {
         auto path = logStore.followLinksToStorePath(i);
-        auto log = logStore.getBuildLog(path);
+        auto log = aio.blockOn(logStore.getBuildLog(path));
         if (!log)
             throw Error("build log of derivation '%s' is not available", logStore.printStorePath(path));
         std::cout << *log;

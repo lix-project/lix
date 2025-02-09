@@ -35,7 +35,7 @@ struct CmdCopyLog : virtual CopyCommand, virtual InstallablesCommand
                  *getEvaluator()->begin(aio()), getEvalStore(), installables, true
              ))
         {
-            if (auto log = srcLogStore.getBuildLog(drvPath))
+            if (auto log = aio().blockOn(srcLogStore.getBuildLog(drvPath)))
                 dstLogStore.addBuildLog(drvPath, *log);
             else
                 throw Error("build log for '%s' is not available", srcStore->printStorePath(drvPath));
