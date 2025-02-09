@@ -32,11 +32,11 @@ struct CmdAddDerivation : MixDryRun, StoreCommand
 
         auto drv = Derivation::fromJSON(*store, json);
 
-        auto drvPath = writeDerivation(*store, drv, NoRepair, /* read only */ dryRun);
+        auto drvPath = aio().blockOn(writeDerivation(*store, drv, NoRepair, /* read only */ dryRun));
 
         drv.checkInvariants(*store, drvPath);
 
-        writeDerivation(*store, drv, NoRepair, dryRun);
+        aio().blockOn(writeDerivation(*store, drv, NoRepair, dryRun));
 
         logger->cout("%s", store->printStorePath(drvPath));
     }

@@ -1433,7 +1433,7 @@ try {
         // resolved derivation, so we need to get it first
         auto resolvedDrv = drv.tryResolve(*this);
         if (resolvedDrv)
-            co_return writeDerivation(*this, *resolvedDrv, NoRepair, true);
+            co_return TRY_AWAIT(writeDerivation(*this, *resolvedDrv, NoRepair, true));
     }
 
     co_return path;

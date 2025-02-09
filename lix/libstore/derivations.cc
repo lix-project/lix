@@ -134,9 +134,9 @@ bool BasicDerivation::isBuiltin() const
 }
 
 
-StorePath writeDerivation(Store & store,
+kj::Promise<Result<StorePath>> writeDerivation(Store & store,
     const Derivation & drv, RepairFlag repair, bool readOnly)
-{
+try {
     auto references = drv.inputSrcs;
     for (auto & i : drv.inputDrvs.map)
         references.insert(i.first);
@@ -145,9 +145,11 @@ StorePath writeDerivation(Store & store,
        held during a garbage collection). */
     auto suffix = std::string(drv.name) + drvExtension;
     auto contents = drv.unparse(store, false);
-    return readOnly || settings.readOnlyMode
+    co_return readOnly || settings.readOnlyMode
         ? store.computeStorePathForText(suffix, contents, references)
         : store.addTextToStore(suffix, contents, references, repair);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

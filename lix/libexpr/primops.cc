@@ -1109,7 +1109,7 @@ drvName, Bindings * attrs, Value & v)
     }
 
     /* Write the resulting term into the Nix store directory. */
-    auto drvPath = writeDerivation(*state.ctx.store, drv, state.ctx.repair);
+    auto drvPath = state.aio.blockOn(writeDerivation(*state.ctx.store, drv, state.ctx.repair));
     auto drvPathS = state.ctx.store->printStorePath(drvPath);
 
     printMsg(lvlChatty, "instantiated '%1%' -> '%2%'", drvName, drvPathS);

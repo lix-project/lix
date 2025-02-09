@@ -2,6 +2,7 @@
 ///@file
 
 #include "lix/libstore/path.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libstore/content-address.hh"
@@ -11,6 +12,7 @@
 #include "lix/libutil/comparator.hh"
 #include "lix/libutil/variant-wrapper.hh"
 
+#include <kj/async.h>
 #include <map>
 #include <variant>
 
@@ -382,7 +384,7 @@ class Store;
 /**
  * Write a derivation to the Nix store, and return its path.
  */
-StorePath writeDerivation(Store & store,
+kj::Promise<Result<StorePath>> writeDerivation(Store & store,
     const Derivation & drv,
     RepairFlag repair = NoRepair,
     bool readOnly = false);

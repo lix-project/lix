@@ -604,7 +604,7 @@ try {
             assert(attempt);
             Derivation drvResolved { std::move(*attempt) };
 
-            auto pathResolved = writeDerivation(worker.store, drvResolved);
+            auto pathResolved = TRY_AWAIT(writeDerivation(worker.store, drvResolved));
 
             auto msg = fmt("resolved derivation: '%s' -> '%s'",
                 worker.store.printStorePath(drvPath),

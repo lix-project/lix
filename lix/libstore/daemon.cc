@@ -645,7 +645,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
             Derivation drv2;
             static_cast<BasicDerivation &>(drv2) = drv;
-            drvPath = writeDerivation(*store, Derivation { drv2 });
+            drvPath = aio.blockOn(writeDerivation(*store, Derivation { drv2 }));
         }
 
         auto res = aio.blockOn(store->buildDerivation(drvPath, drv, buildMode));

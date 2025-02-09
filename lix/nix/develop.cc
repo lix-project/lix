@@ -256,7 +256,7 @@ try {
         }
     }
 
-    auto shellDrvPath = writeDerivation(*evalStore, drv);
+    auto shellDrvPath = TRY_AWAIT(writeDerivation(*evalStore, drv));
 
     /* Build the derivation. */
     TRY_AWAIT(store->buildPaths(
