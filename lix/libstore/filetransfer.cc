@@ -397,6 +397,14 @@ struct curlFileTransfer : public FileTransfer
                 std::optional<std::string> response;
                 if (!successfulStatuses.count(httpStatus))
                     response = std::move(downloadState.lock()->data);
+
+                auto textualError = [](const char * errbuf, CURLcode code) -> const char * {
+                    if (errbuf && errbuf[0]) {
+                        return errbuf;
+                    } else {
+                        return curl_easy_strerror(code);
+                    }
+                };
                 auto exc =
                     code == CURLE_ABORTED_BY_CALLBACK && _isInterrupted
                     ? FileTransferError(Interrupted, std::move(response), "%s of '%s' was interrupted", verb(), uri)
@@ -405,11 +413,11 @@ struct curlFileTransfer : public FileTransfer
                         std::move(response),
                         "unable to %s '%s': HTTP error %d (%s)%s",
                         verb(), uri, httpStatus, statusMsg,
-                        code == CURLE_OK ? "" : fmt(" (curl error: %s)", curl_easy_strerror(code)))
+                        code == CURLE_OK ? "" : fmt(" (curl error code=%d: %s)", code, textualError(errbuf, code)))
                     : FileTransferError(err,
                         std::move(response),
-                        "unable to %s '%s': %s (%d) %s",
-                        verb(), uri, curl_easy_strerror(code), code, errbuf);
+                        "unable to %s '%s': %s (curl error code=%d)",
+                        verb(), uri, textualError(errbuf, code), code);
 
                 fail(std::move(exc));
             }
