@@ -843,7 +843,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
     case WorkerProto::Op::OptimiseStore:
         logger->startWork();
-        store->optimiseStore();
+        aio.blockOn(store->optimiseStore());
         logger->stopWork();
         to << 1;
         break;

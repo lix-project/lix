@@ -23,7 +23,7 @@ struct CmdOptimiseStore : StoreCommand
 
     void run(ref<Store> store) override
     {
-        store->optimiseStore();
+        aio().blockOn(store->optimiseStore());
     }
 };
 

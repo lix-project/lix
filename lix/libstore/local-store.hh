@@ -263,9 +263,9 @@ public:
      * Optimise the disk space usage of the Nix store by hard-linking
      * files with the same contents.
      */
-    void optimiseStore(OptimiseStats & stats);
+    kj::Promise<Result<void>> optimiseStore(OptimiseStats & stats);
 
-    void optimiseStore() override;
+    kj::Promise<Result<void>> optimiseStore() override;
 
     /**
      * Optimise a single store path. Optionally, test the encountered

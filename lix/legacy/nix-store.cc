@@ -811,7 +811,7 @@ static void opOptimise(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     if (!opArgs.empty() || !opFlags.empty())
         throw UsageError("no arguments expected");
 
-    store->optimiseStore();
+    aio.blockOn(store->optimiseStore());
 }
 
 /* Serve the nix store in a way usable by a restricted ssh user. */

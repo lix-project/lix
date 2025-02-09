@@ -135,7 +135,7 @@ public:
 
     void collectGarbage(const GCOptions & options, GCResults & results) override;
 
-    void optimiseStore() override;
+    kj::Promise<Result<void>> optimiseStore() override;
 
     kj::Promise<Result<bool>> verifyStore(bool checkContents, RepairFlag repair) override;
 

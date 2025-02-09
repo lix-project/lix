@@ -808,12 +808,15 @@ void RemoteStore::collectGarbage(const GCOptions & options, GCResults & results)
 }
 
 
-void RemoteStore::optimiseStore()
-{
+kj::Promise<Result<void>> RemoteStore::optimiseStore()
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::OptimiseStore;
     conn.processStderr();
     readInt(conn->from);
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

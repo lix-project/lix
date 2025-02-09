@@ -1,5 +1,6 @@
 #include "lix/libstore/local-store.hh"
 #include "lix/libstore/globals.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/strings.hh"
 
@@ -256,8 +257,8 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
 }
 
 
-void LocalStore::optimiseStore(OptimiseStats & stats)
-{
+kj::Promise<Result<void>> LocalStore::optimiseStore(OptimiseStats & stats)
+try {
     Activity act(*logger, actOptimiseStore);
 
     auto paths = queryAllValidPaths();
@@ -283,17 +284,23 @@ void LocalStore::optimiseStore(OptimiseStats & stats)
         done++;
         act.progress(done, paths.size());
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
-void LocalStore::optimiseStore()
-{
+kj::Promise<Result<void>> LocalStore::optimiseStore()
+try {
     OptimiseStats stats;
 
-    optimiseStore(stats);
+    TRY_AWAIT(optimiseStore(stats));
 
     printInfo("%s freed by hard-linking %d files",
         showBytes(stats.bytesFreed),
         stats.filesLinked);
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 void LocalStore::optimisePath(const Path & path, RepairFlag repair)

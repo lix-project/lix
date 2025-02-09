@@ -703,7 +703,7 @@ public:
      * Optimise the disk space usage of the Nix store by hard-linking files
      * with the same contents.
      */
-    virtual void optimiseStore() { };
+    virtual kj::Promise<Result<void>> optimiseStore() { return {result::success()}; }
 
     /**
      * Check the integrity of the Nix store.
