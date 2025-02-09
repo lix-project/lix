@@ -563,7 +563,7 @@ public:
      * Like addToStore, but the contents written to the output path is a
      * regular file containing the given string.
      */
-    virtual StorePath addTextToStore(
+    virtual kj::Promise<Result<StorePath>> addTextToStore(
         std::string_view name,
         std::string_view s,
         const StorePathSet & references,

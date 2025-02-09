@@ -1483,7 +1483,7 @@ static void prim_toFile(EvalState & state, const PosIdx pos, Value * * args, Val
 
     auto storePath = settings.readOnlyMode
         ? state.ctx.store->computeStorePathForText(name, contents, refs)
-        : state.ctx.store->addTextToStore(name, contents, refs, state.ctx.repair);
+        : state.aio.blockOn(state.ctx.store->addTextToStore(name, contents, refs, state.ctx.repair));
 
     /* Note: we don't need to add `context' to the context of the
        result, since `storePath' itself has references to the paths

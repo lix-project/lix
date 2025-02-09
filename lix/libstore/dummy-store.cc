@@ -58,12 +58,12 @@ struct DummyStore final : public Store
         RepairFlag repair, CheckSigsFlag checkSigs) override
     try { unsupported("addToStore"); } catch (...) { return {result::current_exception()}; }
 
-    StorePath addTextToStore(
+    kj::Promise<Result<StorePath>> addTextToStore(
         std::string_view name,
         std::string_view s,
         const StorePathSet & references,
         RepairFlag repair) override
-    { unsupported("addTextToStore"); }
+    try { unsupported("addTextToStore"); } catch (...) { return {result::current_exception()}; }
 
     box_ptr<Source> narFromPath(const StorePath & path) override
     { unsupported("narFromPath"); }

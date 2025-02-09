@@ -218,7 +218,7 @@ try {
     if (builder != "bash")
         throw Error("'nix develop' only works on derivations that use 'bash' as their builder");
 
-    auto getEnvShPath = evalStore->addTextToStore("get-env.sh", getEnvSh, {});
+    auto getEnvShPath = TRY_AWAIT(evalStore->addTextToStore("get-env.sh", getEnvSh, {}));
 
     drv.args = {store->printStorePath(getEnvShPath)};
 

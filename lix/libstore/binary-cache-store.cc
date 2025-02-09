@@ -415,22 +415,22 @@ try {
     co_return result::current_exception();
 }
 
-StorePath BinaryCacheStore::addTextToStore(
+kj::Promise<Result<StorePath>> BinaryCacheStore::addTextToStore(
     std::string_view name,
     std::string_view s,
     const StorePathSet & references,
     RepairFlag repair)
-{
+try {
     auto textHash = hashString(HashType::SHA256, s);
     auto path = makeTextPath(name, TextInfo { { textHash }, references });
 
     if (!repair && isValidPath(path))
-        return path;
+        co_return path;
 
     StringSink sink;
     sink << dumpString(s);
     StringSource source(sink.s);
-    return addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
+    co_return addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
         ValidPathInfo info {
             *this,
             std::string { name },
@@ -443,6 +443,8 @@ StorePath BinaryCacheStore::addTextToStore(
         info.narSize = nar.second;
         return info;
     })->path;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 std::shared_ptr<const Realisation> BinaryCacheStore::queryRealisationUncached(const DrvOutput & id)

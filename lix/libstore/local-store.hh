@@ -210,7 +210,7 @@ public:
     kj::Promise<Result<StorePath>> addToStoreFromDump(Source & dump, std::string_view name,
         FileIngestionMethod method, HashType hashAlgo, RepairFlag repair, const StorePathSet & references) override;
 
-    StorePath addTextToStore(
+    kj::Promise<Result<StorePath>> addTextToStore(
         std::string_view name,
         std::string_view s,
         const StorePathSet & references,

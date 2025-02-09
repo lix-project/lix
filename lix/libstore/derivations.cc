@@ -147,7 +147,7 @@ try {
     auto contents = drv.unparse(store, false);
     co_return readOnly || settings.readOnlyMode
         ? store.computeStorePathForText(suffix, contents, references)
-        : store.addTextToStore(suffix, contents, references, repair);
+        : TRY_AWAIT(store.addTextToStore(suffix, contents, references, repair));
 } catch (...) {
     co_return result::current_exception();
 }

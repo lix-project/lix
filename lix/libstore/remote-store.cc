@@ -549,14 +549,16 @@ try {
 }
 
 
-StorePath RemoteStore::addTextToStore(
+kj::Promise<Result<StorePath>> RemoteStore::addTextToStore(
     std::string_view name,
     std::string_view s,
     const StorePathSet & references,
     RepairFlag repair)
-{
+try {
     StringSource source(s);
-    return addCAToStore(source, name, TextIngestionMethod {}, HashType::SHA256, references, repair)->path;
+    co_return addCAToStore(source, name, TextIngestionMethod {}, HashType::SHA256, references, repair)->path;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 void RemoteStore::registerDrvOutput(const Realisation & info)

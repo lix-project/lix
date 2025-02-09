@@ -269,12 +269,12 @@ struct LegacySSHStore final : public Store
         const StorePathSet & references) override
     try { unsupported("addToStore"); } catch (...) { return {result::current_exception()}; }
 
-    StorePath addTextToStore(
+    kj::Promise<Result<StorePath>> addTextToStore(
         std::string_view name,
         std::string_view s,
         const StorePathSet & references,
         RepairFlag repair) override
-    { unsupported("addTextToStore"); }
+    try { unsupported("addTextToStore"); } catch (...) { return {result::current_exception()}; }
 
 private:
 

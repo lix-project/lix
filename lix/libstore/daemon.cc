@@ -423,7 +423,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
                                 name, printHashType(hashType));
                         // We could stream this by changing Store
                         std::string contents = source.drain();
-                        auto path = store->addTextToStore(name, contents, refs, repair);
+                        auto path = aio.blockOn(store->addTextToStore(name, contents, refs, repair));
                         return store->queryPathInfo(path);
                     },
                     [&](const FileIngestionMethod & fim) {
@@ -528,7 +528,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         std::string s = readString(from);
         auto refs = WorkerProto::Serialise<StorePathSet>::read(*store, rconn);
         logger->startWork();
-        auto path = store->addTextToStore(suffix, s, refs, NoRepair);
+        auto path = aio.blockOn(store->addTextToStore(suffix, s, refs, NoRepair));
         logger->stopWork();
         to << store->printStorePath(path);
         break;

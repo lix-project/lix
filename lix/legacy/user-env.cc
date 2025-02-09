@@ -92,8 +92,8 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
        environment. */
     std::ostringstream str;
     printAmbiguous(manifest, state.ctx.symbols, str, nullptr, std::numeric_limits<int>::max());
-    auto manifestFile = state.ctx.store->addTextToStore("env-manifest.nix",
-        str.str(), references);
+    auto manifestFile = state.aio.blockOn(state.ctx.store->addTextToStore("env-manifest.nix",
+        str.str(), references));
 
     /* Get the environment builder expression. */
     Value envBuilder;

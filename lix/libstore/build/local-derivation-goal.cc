@@ -1069,15 +1069,17 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         co_return result::current_exception();
     }
 
-    StorePath addTextToStore(
+    kj::Promise<Result<StorePath>> addTextToStore(
         std::string_view name,
         std::string_view s,
         const StorePathSet & references,
         RepairFlag repair = NoRepair) override
-    {
-        auto path = next->addTextToStore(name, s, references, repair);
+    try {
+        auto path = TRY_AWAIT(next->addTextToStore(name, s, references, repair));
         goal.addDependency(path);
-        return path;
+        co_return path;
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     kj::Promise<Result<StorePath>> addToStoreFromDump(

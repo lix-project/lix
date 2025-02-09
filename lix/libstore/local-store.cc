@@ -1425,11 +1425,11 @@ try {
 }
 
 
-StorePath LocalStore::addTextToStore(
+kj::Promise<Result<StorePath>> LocalStore::addTextToStore(
     std::string_view name,
     std::string_view s,
     const StorePathSet & references, RepairFlag repair)
-{
+try {
     auto hash = hashString(HashType::SHA256, s);
     auto dstPath = makeTextPath(name, TextInfo {
         .hash = hash,
@@ -1471,7 +1471,9 @@ StorePath LocalStore::addTextToStore(
         }
     }
 
-    return dstPath;
+    co_return dstPath;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
