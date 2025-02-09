@@ -1412,20 +1412,20 @@ Derivation readDerivationCommon(Store& store, const StorePath& drvPath, bool req
     }
 }
 
-std::optional<StorePath> Store::getBuildDerivationPath(const StorePath & path)
-{
+kj::Promise<Result<std::optional<StorePath>>> Store::getBuildDerivationPath(const StorePath & path)
+try {
 
     if (!path.isDerivation()) {
         try {
             auto info = queryPathInfo(path);
-            return info->deriver;
+            co_return info->deriver;
         } catch (InvalidPath &) {
-            return std::nullopt;
+            co_return std::nullopt;
         }
     }
 
     if (!experimentalFeatureSettings.isEnabled(Xp::CaDerivations) || !isValidPath(path))
-        return path;
+        co_return path;
 
     auto drv = readDerivation(path);
     if (!drv.type().hasKnownOutputPaths()) {
@@ -1433,10 +1433,12 @@ std::optional<StorePath> Store::getBuildDerivationPath(const StorePath & path)
         // resolved derivation, so we need to get it first
         auto resolvedDrv = drv.tryResolve(*this);
         if (resolvedDrv)
-            return writeDerivation(*this, *resolvedDrv, NoRepair, true);
+            co_return writeDerivation(*this, *resolvedDrv, NoRepair, true);
     }
 
-    return path;
+    co_return path;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 Derivation Store::readDerivation(const StorePath & drvPath)

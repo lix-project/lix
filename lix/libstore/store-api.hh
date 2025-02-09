@@ -831,7 +831,7 @@ public:
      * - If the path is a content-addressed derivation, try to resolve it
      * - Otherwise, find one of its derivers
      */
-    std::optional<StorePath> getBuildDerivationPath(const StorePath &);
+    kj::Promise<Result<std::optional<StorePath>>> getBuildDerivationPath(const StorePath &);
 
     /**
      * Hack to allow long-running processes like hydra-queue-runner to

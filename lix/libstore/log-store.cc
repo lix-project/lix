@@ -4,7 +4,7 @@ namespace nix {
 
 kj::Promise<Result<std::optional<std::string>>> LogStore::getBuildLog(const StorePath & path)
 try {
-    auto maybePath = getBuildDerivationPath(path);
+    auto maybePath = TRY_AWAIT(getBuildDerivationPath(path));
     if (!maybePath)
         co_return std::nullopt;
     co_return getBuildLogExact(maybePath.value());
