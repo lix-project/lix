@@ -85,7 +85,7 @@ public:
     /**
      * Add a content-addressable store path. Does not support references. `dump` will be drained.
      */
-    StorePath addToStoreFromDump(Source & dump, std::string_view name,
+    kj::Promise<Result<StorePath>> addToStoreFromDump(Source & dump, std::string_view name,
         FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = HashType::SHA256, RepairFlag repair = NoRepair, const StorePathSet & references = StorePathSet()) override;
 
     kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & nar,

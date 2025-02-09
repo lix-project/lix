@@ -283,7 +283,7 @@ try {
         method == FileIngestionMethod::Recursive ? dumpPath(srcPath, filter).decay()
                                                  : readFileSource(srcPath)
     };
-    co_return addToStoreFromDump(source, name, method, hashAlgo, repair, references);
+    co_return TRY_AWAIT(addToStoreFromDump(source, name, method, hashAlgo, repair, references));
 } catch (...) {
     co_return result::current_exception();
 }

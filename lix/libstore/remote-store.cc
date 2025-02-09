@@ -458,10 +458,12 @@ ref<const ValidPathInfo> RemoteStore::addCAToStore(
 }
 
 
-StorePath RemoteStore::addToStoreFromDump(Source & dump, std::string_view name,
+kj::Promise<Result<StorePath>> RemoteStore::addToStoreFromDump(Source & dump, std::string_view name,
       FileIngestionMethod method, HashType hashType, RepairFlag repair, const StorePathSet & references)
-{
-    return addCAToStore(dump, name, method, hashType, references, repair)->path;
+try {
+    co_return addCAToStore(dump, name, method, hashType, references, repair)->path;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

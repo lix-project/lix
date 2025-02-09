@@ -427,7 +427,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
                         return store->queryPathInfo(path);
                     },
                     [&](const FileIngestionMethod & fim) {
-                        auto path = store->addToStoreFromDump(source, name, fim, hashType, repair, refs);
+                        auto path = aio.blockOn(store->addToStoreFromDump(source, name, fim, hashType, repair, refs));
                         return store->queryPathInfo(path);
                     },
                 }, contentAddressMethod.raw);
@@ -498,7 +498,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             };
             GeneratorSource dumpSource{g()};
             logger->startWork();
-            auto path = store->addToStoreFromDump(dumpSource, baseName, method, hashAlgo);
+            auto path = aio.blockOn(store->addToStoreFromDump(dumpSource, baseName, method, hashAlgo));
             logger->stopWork();
 
             to << store->printStorePath(path);

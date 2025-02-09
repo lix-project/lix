@@ -1080,17 +1080,19 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         return path;
     }
 
-    StorePath addToStoreFromDump(
+    kj::Promise<Result<StorePath>> addToStoreFromDump(
         Source & dump,
         std::string_view name,
         FileIngestionMethod method,
         HashType hashAlgo,
         RepairFlag repair,
         const StorePathSet & references) override
-    {
-        auto path = next->addToStoreFromDump(dump, name, method, hashAlgo, repair, references);
+    try {
+        auto path = TRY_AWAIT(next->addToStoreFromDump(dump, name, method, hashAlgo, repair, references));
         goal.addDependency(path);
-        return path;
+        co_return path;
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     box_ptr<Source> narFromPath(const StorePath & path) override

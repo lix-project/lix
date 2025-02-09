@@ -277,12 +277,12 @@ try {
     co_return result::current_exception();
 }
 
-StorePath BinaryCacheStore::addToStoreFromDump(Source & dump, std::string_view name,
+kj::Promise<Result<StorePath>> BinaryCacheStore::addToStoreFromDump(Source & dump, std::string_view name,
     FileIngestionMethod method, HashType hashAlgo, RepairFlag repair, const StorePathSet & references)
-{
+try {
     if (method != FileIngestionMethod::Recursive || hashAlgo != HashType::SHA256)
         unsupported("addToStoreFromDump");
-    return addToStoreCommon(dump, repair, CheckSigs, [&](HashResult nar) {
+    co_return addToStoreCommon(dump, repair, CheckSigs, [&](HashResult nar) {
         ValidPathInfo info {
             *this,
             name,
@@ -300,6 +300,8 @@ StorePath BinaryCacheStore::addToStoreFromDump(Source & dump, std::string_view n
         info.narSize = nar.second;
         return info;
     })->path;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 bool BinaryCacheStore::isValidPathUncached(const StorePath & storePath)

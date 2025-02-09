@@ -554,10 +554,10 @@ public:
      *
      * \todo remove?
      */
-    virtual StorePath addToStoreFromDump(Source & dump, std::string_view name,
+    virtual kj::Promise<Result<StorePath>> addToStoreFromDump(Source & dump, std::string_view name,
         FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = HashType::SHA256, RepairFlag repair = NoRepair,
         const StorePathSet & references = StorePathSet())
-    { unsupported("addToStoreFromDump"); }
+    try { unsupported("addToStoreFromDump"); } catch (...) { return {result::current_exception()}; }
 
     /**
      * Like addToStore, but the contents written to the output path is a

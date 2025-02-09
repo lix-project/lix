@@ -116,7 +116,7 @@ public:
     kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & narSource,
         RepairFlag repair, CheckSigsFlag checkSigs) override;
 
-    StorePath addToStoreFromDump(Source & dump, std::string_view name,
+    kj::Promise<Result<StorePath>> addToStoreFromDump(Source & dump, std::string_view name,
         FileIngestionMethod method, HashType hashAlgo, RepairFlag repair, const StorePathSet & references) override;
 
     kj::Promise<Result<StorePath>> addToStore(

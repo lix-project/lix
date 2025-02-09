@@ -1281,9 +1281,9 @@ try {
 }
 
 
-StorePath LocalStore::addToStoreFromDump(Source & source0, std::string_view name,
+kj::Promise<Result<StorePath>> LocalStore::addToStoreFromDump(Source & source0, std::string_view name,
     FileIngestionMethod method, HashType hashAlgo, RepairFlag repair, const StorePathSet & references)
-{
+try {
     /* For computing the store path. */
     auto hashSink = std::make_unique<HashSink>(hashAlgo);
     TeeSource source { source0, *hashSink };
@@ -1419,7 +1419,9 @@ StorePath LocalStore::addToStoreFromDump(Source & source0, std::string_view name
         }
     }
 
-    return dstPath;
+    co_return dstPath;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
