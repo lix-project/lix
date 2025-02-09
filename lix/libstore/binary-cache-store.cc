@@ -4,6 +4,7 @@
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libstore/nar-info.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libstore/remote-fs-accessor.hh"
 #include "lix/libstore/nar-info-disk-cache.hh" // IWYU pragma: keep
@@ -255,13 +256,13 @@ ref<const ValidPathInfo> BinaryCacheStore::addToStoreCommon(
     return narInfo;
 }
 
-void BinaryCacheStore::addToStore(const ValidPathInfo & info, Source & narSource,
+kj::Promise<Result<void>> BinaryCacheStore::addToStore(const ValidPathInfo & info, Source & narSource,
     RepairFlag repair, CheckSigsFlag checkSigs)
-{
+try {
     if (!repair && isValidPath(info.path)) {
         // FIXME: copyNAR -> null sink
         narSource.drain();
-        return;
+        co_return result::success();
     }
 
     addToStoreCommon(narSource, repair, checkSigs, {[&](HashResult nar) {
@@ -271,6 +272,9 @@ void BinaryCacheStore::addToStore(const ValidPathInfo & info, Source & narSource
         // assert(info.narSize == nar.second);
         return info;
     }});
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 StorePath BinaryCacheStore::addToStoreFromDump(Source & dump, std::string_view name,
@@ -365,7 +369,7 @@ std::shared_ptr<const ValidPathInfo> BinaryCacheStore::queryPathInfoUncached(con
     return std::make_shared<NarInfo>(*this, *data, narInfoFile);
 }
 
-StorePath BinaryCacheStore::addToStore(
+kj::Promise<Result<StorePath>> BinaryCacheStore::addToStore(
     std::string_view name,
     const Path & srcPath,
     FileIngestionMethod method,
@@ -373,7 +377,7 @@ StorePath BinaryCacheStore::addToStore(
     PathFilter & filter,
     RepairFlag repair,
     const StorePathSet & references)
-{
+try {
     /* FIXME: Make BinaryCacheStore::addToStoreCommon support
        non-recursive+sha256 so we can just use the default
        implementation of this method in terms of addToStoreFromDump. */
@@ -387,7 +391,7 @@ StorePath BinaryCacheStore::addToStore(
     auto h = sink.finish().first;
 
     auto source = GeneratorSource{dumpPath(srcPath, filter)};
-    return addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
+    co_return addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
         ValidPathInfo info {
             *this,
             name,
@@ -405,6 +409,8 @@ StorePath BinaryCacheStore::addToStore(
         info.narSize = nar.second;
         return info;
     })->path;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 StorePath BinaryCacheStore::addTextToStore(

@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/async.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libstore/nar-info.hh"
 #include "lix/libstore/realisation.hh"
@@ -495,7 +496,7 @@ public:
     /**
      * Import a path into the store.
      */
-    virtual void addToStore(const ValidPathInfo & info, Source & narSource,
+    virtual kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & narSource,
         RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs) = 0;
 
     /**
@@ -526,7 +527,7 @@ public:
      * @param filter This function can be used to exclude files (see
      * libutil/archive.hh).
      */
-    virtual StorePath addToStore(
+    virtual kj::Promise<Result<StorePath>> addToStore(
         std::string_view name,
         const Path & srcPath,
         FileIngestionMethod method = FileIngestionMethod::Recursive,
@@ -907,6 +908,7 @@ protected:
  * Copy a path from one store to another.
  */
 void copyStorePath(
+    AsyncIoRoot & aio,
     Store & srcStore,
     Store & dstStore,
     const StorePath & storePath,

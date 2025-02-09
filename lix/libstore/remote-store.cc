@@ -465,9 +465,9 @@ StorePath RemoteStore::addToStoreFromDump(Source & dump, std::string_view name,
 }
 
 
-void RemoteStore::addToStore(const ValidPathInfo & info, Source & source,
+kj::Promise<Result<void>> RemoteStore::addToStore(const ValidPathInfo & info, Source & source,
     RepairFlag repair, CheckSigsFlag checkSigs)
-{
+try {
     auto conn(getConnection());
 
     conn->to << WorkerProto::Op::AddToStoreNar
@@ -486,6 +486,9 @@ void RemoteStore::addToStore(const ValidPathInfo & info, Source & source,
     } else {
         conn.processStderr(0, &source);
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

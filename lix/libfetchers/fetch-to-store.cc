@@ -19,7 +19,7 @@ try {
     co_return
         settings.readOnlyMode
         ? store.computeStorePathForPath(name, path.canonical().abs(), method, HashType::SHA256, filter2).first
-        : store.addToStore(name, path.canonical().abs(), method, HashType::SHA256, filter2, repair);
+        : TRY_AWAIT(store.addToStore(name, path.canonical().abs(), method, HashType::SHA256, filter2, repair));
 } catch (...) {
     co_return result::current_exception();
 }

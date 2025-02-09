@@ -177,8 +177,12 @@ static void opAdd(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
 
-    for (auto & i : opArgs)
-        cout << fmt("%s\n", store->printStorePath(store->addToStore(std::string(baseNameOf(i)), i)));
+    for (auto & i : opArgs) {
+        cout << fmt(
+            "%s\n",
+            store->printStorePath(aio.blockOn(store->addToStore(std::string(baseNameOf(i)), i)))
+        );
+    }
 }
 
 
@@ -995,7 +999,7 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
                 SizedSource sizedSource(in, info.narSize);
 
-                store->addToStore(info, sizedSource, NoRepair, NoCheckSigs);
+                aio.blockOn(store->addToStore(info, sizedSource, NoRepair, NoCheckSigs));
 
                 // consume all the data that has been sent before continuing.
                 sizedSource.drainAll();

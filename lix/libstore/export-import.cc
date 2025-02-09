@@ -86,7 +86,7 @@ try {
 
         // Can't use underlying source, which would have been exhausted
         auto source = StringSource(saved.s);
-        addToStore(info, source, NoRepair, checkSigs);
+        TRY_AWAIT(addToStore(info, source, NoRepair, checkSigs));
 
         res.push_back(info.path);
     }

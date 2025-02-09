@@ -204,7 +204,7 @@ public:
     bool pathInfoIsUntrusted(const ValidPathInfo &) override;
     bool realisationIsUntrusted(const Realisation & ) override;
 
-    void addToStore(const ValidPathInfo & info, Source & source,
+    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & source,
         RepairFlag repair, CheckSigsFlag checkSigs) override;
 
     StorePath addToStoreFromDump(Source & dump, std::string_view name,

@@ -55,7 +55,7 @@ struct CmdAddToStore : MixDryRun, StoreCommand
 
         if (!dryRun) {
             auto source = StringSource(sink.s);
-            store->addToStore(info, source);
+            aio().blockOn(store->addToStore(info, source));
         }
 
         logger->cout("%s", store->printStorePath(info.path));

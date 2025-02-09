@@ -900,8 +900,8 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             logger->startWork();
             {
                 FramedSource source(from);
-                store->addToStore(info, source, (RepairFlag) repair,
-                    dontCheckSigs ? NoCheckSigs : CheckSigs);
+                aio.blockOn(store->addToStore(info, source, (RepairFlag) repair,
+                    dontCheckSigs ? NoCheckSigs : CheckSigs));
             }
             logger->stopWork();
         }
@@ -913,8 +913,8 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             logger->startWork();
 
             // FIXME: race if addToStore doesn't read source?
-            store->addToStore(info, *source, (RepairFlag) repair,
-                dontCheckSigs ? NoCheckSigs : CheckSigs);
+            aio.blockOn(store->addToStore(info, *source, (RepairFlag) repair,
+                dontCheckSigs ? NoCheckSigs : CheckSigs));
 
             logger->stopWork();
         }

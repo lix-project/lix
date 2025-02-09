@@ -89,7 +89,7 @@ try {
         };
         info.narSize = sink.s.size();
         auto source = StringSource { sink.s };
-        store->addToStore(info, source, NoRepair, NoCheckSigs);
+        TRY_AWAIT(store->addToStore(info, source, NoRepair, NoCheckSigs));
         storePath = std::move(info.path);
     }
 
@@ -161,7 +161,14 @@ try {
             throw nix::Error("tarball '%s' contains an unexpected number of top-level files", url);
         auto topDir = tmpDir + "/" + members.begin()->name;
         lastModified = lstat(topDir).st_mtime;
-        unpackedStorePath = store->addToStore(name, topDir, FileIngestionMethod::Recursive, HashType::SHA256, defaultPathFilter, NoRepair);
+        unpackedStorePath = TRY_AWAIT(store->addToStore(
+            name,
+            topDir,
+            FileIngestionMethod::Recursive,
+            HashType::SHA256,
+            defaultPathFilter,
+            NoRepair
+        ));
     }
 
     Attrs infoAttrs({

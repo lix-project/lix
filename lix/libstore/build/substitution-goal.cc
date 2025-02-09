@@ -210,6 +210,7 @@ try {
     outPipe = kj::mv(pipe.fulfiller);
 
     thr = std::async(std::launch::async, [this]() {
+        AsyncIoRoot aio;
         /* Wake up the worker loop when we're done. */
         Finally updateStats([this]() { outPipe->fulfill(); });
 
@@ -221,6 +222,7 @@ try {
             PushActivity pact(act.id);
 
             copyStorePath(
+                aio,
                 *sub,
                 worker.store,
                 fetchPath,

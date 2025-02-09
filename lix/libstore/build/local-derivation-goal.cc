@@ -1049,7 +1049,7 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
     std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override
     { throw Error("queryPathFromHashPart"); }
 
-    StorePath addToStore(
+    kj::Promise<Result<StorePath>> addToStore(
         std::string_view name,
         const Path & srcPath,
         FileIngestionMethod method,
@@ -1057,13 +1057,16 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         PathFilter & filter,
         RepairFlag repair,
         const StorePathSet & references) override
-    { throw Error("addToStore"); }
+    try { throw Error("addToStore"); } catch (...) { return {result::current_exception()}; }
 
-    void addToStore(const ValidPathInfo & info, Source & narSource,
+    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & narSource,
         RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs) override
-    {
-        next->addToStore(info, narSource, repair, checkSigs);
+    try {
+        TRY_AWAIT(next->addToStore(info, narSource, repair, checkSigs));
         goal.addDependency(info.path);
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     StorePath addTextToStore(

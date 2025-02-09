@@ -202,7 +202,13 @@ struct MercurialInputScheme : InputScheme
                     return files.count(file);
                 };
 
-                auto storePath = store->addToStore(input.getName(), actualPath, FileIngestionMethod::Recursive, HashType::SHA256, filter);
+                auto storePath = TRY_AWAIT(store->addToStore(
+                    input.getName(),
+                    actualPath,
+                    FileIngestionMethod::Recursive,
+                    HashType::SHA256,
+                    filter
+                ));
 
                 co_return {std::move(storePath), input};
             }
@@ -313,7 +319,7 @@ struct MercurialInputScheme : InputScheme
 
         deletePath(tmpDir + "/.hg_archival.txt");
 
-        auto storePath = store->addToStore(name, tmpDir);
+        auto storePath = TRY_AWAIT(store->addToStore(name, tmpDir));
 
         Attrs infoAttrs({
             {"rev", input.getRev()->gitRev()},

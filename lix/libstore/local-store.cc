@@ -1195,9 +1195,9 @@ bool LocalStore::realisationIsUntrusted(const Realisation & realisation)
     return config_.requireSigs && !realisation.checkSignatures(getPublicKeys());
 }
 
-void LocalStore::addToStore(const ValidPathInfo & info, Source & source,
+kj::Promise<Result<void>> LocalStore::addToStore(const ValidPathInfo & info, Source & source,
     RepairFlag repair, CheckSigsFlag checkSigs)
-{
+try {
     if (checkSigs && pathInfoIsUntrusted(info))
         throw Error("cannot add path '%s' because it lacks a signature by a trusted key", printStorePath(info.path));
 
@@ -1275,6 +1275,9 @@ void LocalStore::addToStore(const ValidPathInfo & info, Source & source,
             registerValidPath(info);
         }
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

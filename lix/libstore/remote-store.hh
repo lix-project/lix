@@ -88,7 +88,7 @@ public:
     StorePath addToStoreFromDump(Source & dump, std::string_view name,
         FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = HashType::SHA256, RepairFlag repair = NoRepair, const StorePathSet & references = StorePathSet()) override;
 
-    void addToStore(const ValidPathInfo & info, Source & nar,
+    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & nar,
         RepairFlag repair, CheckSigsFlag checkSigs) override;
 
     kj::Promise<Result<void>> addMultipleToStore(

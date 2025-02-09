@@ -9,6 +9,7 @@
 #include "lix/libstore/path-with-outputs.hh"
 #include "lix/libstore/ssh.hh"
 #include "lix/libstore/ssh-store.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libstore/derivations.hh"
 
@@ -185,9 +186,9 @@ struct LegacySSHStore final : public Store
         return info;
     }
 
-    void addToStore(const ValidPathInfo & info, Source & source,
+    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & source,
         RepairFlag repair, CheckSigsFlag checkSigs) override
-    {
+    try {
         debug("adding path '%s' to remote host '%s'", printStorePath(info.path), host);
 
         auto conn(connections->get());
@@ -239,6 +240,9 @@ struct LegacySSHStore final : public Store
 
         if (readInt(conn->from) != 1)
             throw Error("failed to add path '%s' to remote host '%s'", printStorePath(info.path), host);
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     box_ptr<Source> narFromPath(const StorePath & path) override
@@ -255,7 +259,7 @@ struct LegacySSHStore final : public Store
     std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override
     { unsupported("queryPathFromHashPart"); }
 
-    StorePath addToStore(
+    kj::Promise<Result<StorePath>> addToStore(
         std::string_view name,
         const Path & srcPath,
         FileIngestionMethod method,
@@ -263,7 +267,7 @@ struct LegacySSHStore final : public Store
         PathFilter & filter,
         RepairFlag repair,
         const StorePathSet & references) override
-    { unsupported("addToStore"); }
+    try { unsupported("addToStore"); } catch (...) { return {result::current_exception()}; }
 
     StorePath addTextToStore(
         std::string_view name,

@@ -54,9 +54,9 @@ struct DummyStore final : public Store
     std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override
     { unsupported("queryPathFromHashPart"); }
 
-    void addToStore(const ValidPathInfo & info, Source & source,
+    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & source,
         RepairFlag repair, CheckSigsFlag checkSigs) override
-    { unsupported("addToStore"); }
+    try { unsupported("addToStore"); } catch (...) { return {result::current_exception()}; }
 
     StorePath addTextToStore(
         std::string_view name,

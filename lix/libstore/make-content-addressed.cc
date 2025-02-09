@@ -69,7 +69,7 @@ try {
         info.narSize = sink.s.size();
 
         StringSource source(rewritten);
-        dstStore.addToStore(info, source);
+        TRY_AWAIT(dstStore.addToStore(info, source));
 
         remappings.insert_or_assign(std::move(path), std::move(info.path));
     }

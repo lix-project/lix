@@ -267,7 +267,7 @@ try {
     info.narSize = sink.s.size();
 
     StringSource source(sink.s);
-    store->addToStore(info, source);
+    TRY_AWAIT(store->addToStore(info, source));
 
     co_return std::move(info.path);
 } catch (...) {

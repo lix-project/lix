@@ -269,7 +269,7 @@ StorePath Store::computeStorePathForText(
 }
 
 
-StorePath Store::addToStore(
+kj::Promise<Result<StorePath>> Store::addToStore(
     std::string_view name,
     const Path & _srcPath,
     FileIngestionMethod method,
@@ -277,13 +277,15 @@ StorePath Store::addToStore(
     PathFilter & filter,
     RepairFlag repair,
     const StorePathSet & references)
-{
+try {
     Path srcPath(absPath(_srcPath));
     auto source = GeneratorSource{
         method == FileIngestionMethod::Recursive ? dumpPath(srcPath, filter).decay()
                                                  : readFileSource(srcPath)
     };
-    return addToStoreFromDump(source, name, method, hashAlgo, repair, references);
+    co_return addToStoreFromDump(source, name, method, hashAlgo, repair, references);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<void>> Store::addMultipleToStore(
@@ -313,7 +315,7 @@ try {
     processGraph<StorePath>("addMultipleToStore pool",
         storePathsToAdd,
 
-        [&](const StorePath & path) {
+        [&](AsyncIoRoot & aio, const StorePath & path) {
 
             auto & [info, _] = *infosMap.at(path);
 
@@ -329,7 +331,7 @@ try {
             return info.references;
         },
 
-        [&](const StorePath & path) {
+        [&](AsyncIoRoot & aio, const StorePath & path) {
             checkInterrupt();
 
             auto & [info_, source_] = *infosMap.at(path);
@@ -347,7 +349,7 @@ try {
                 MaintainCount<decltype(nrRunning)> mc(nrRunning);
                 showProgress();
                 try {
-                    addToStore(info, *source, repair, checkSigs);
+                    aio.blockOn(addToStore(info, *source, repair, checkSigs));
                 } catch (Error & e) {
                     nrFailed++;
                     if (!settings.keepGoing)
@@ -380,7 +382,7 @@ try {
             WorkerProto::ReadConn {source, remoteVersion}
         );
         info.ultimate = false;
-        addToStore(info, source, repair, checkSigs);
+        TRY_AWAIT(addToStore(info, source, repair, checkSigs));
     }
     co_return result::success();
 } catch (...) {
@@ -513,7 +515,7 @@ try {
 
     if (!isValidPath(info.path)) {
         auto source = GeneratorSource{dumpPath(srcPath)};
-        addToStore(info, source);
+        TRY_AWAIT(addToStore(info, source));
     }
 
     co_return info;
@@ -1091,6 +1093,7 @@ static std::string makeCopyPathMessage(
 static constexpr unsigned PATH_COPY_BUFSIZE = 65536;
 
 void copyStorePath(
+    AsyncIoRoot & aio,
     Store & srcStore,
     Store & dstStore,
     const StorePath & storePath,
@@ -1147,7 +1150,7 @@ void copyStorePath(
         }(act, info, srcStore, storePath)
     };
 
-    dstStore.addToStore(*info, source, repair, checkSigs);
+    aio.blockOn(dstStore.addToStore(*info, source, repair, checkSigs));
 }
 
 

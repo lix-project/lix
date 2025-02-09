@@ -207,8 +207,8 @@ WorkdirInfo getWorkdirInfo(const Input & input, const Path & workdir)
     return WorkdirInfo { .clean = clean, .hasHead = hasHead };
 }
 
-std::pair<StorePath, Input> fetchFromWorkdir(ref<Store> store, Input & input, const Path & workdir, const WorkdirInfo & workdirInfo)
-{
+static kj::Promise<Result<std::pair<StorePath, Input>>> fetchFromWorkdir(ref<Store> store, Input & input, const Path & workdir, const WorkdirInfo & workdirInfo)
+try {
     const bool submodules = maybeGetBoolAttr(input.attrs, "submodules").value_or(false);
     auto gitDir = ".git";
 
@@ -242,7 +242,9 @@ std::pair<StorePath, Input> fetchFromWorkdir(ref<Store> store, Input & input, co
         return files.count(file);
     };
 
-    auto storePath = store->addToStore(input.getName(), actualPath, FileIngestionMethod::Recursive, HashType::SHA256, filter);
+    auto storePath = TRY_AWAIT(store->addToStore(
+        input.getName(), actualPath, FileIngestionMethod::Recursive, HashType::SHA256, filter
+    ));
 
     // FIXME: maybe we should use the timestamp of the last
     // modified dirty file?
@@ -257,7 +259,9 @@ std::pair<StorePath, Input> fetchFromWorkdir(ref<Store> store, Input & input, co
             runProgram("git", true, { "-C", actualPath, "--git-dir", gitDir, "rev-parse", "--verify", "--short", "HEAD" })) + "-dirty");
     }
 
-    return {std::move(storePath), input};
+    co_return {std::move(storePath), input};
+} catch (...) {
+    co_return result::current_exception();
 }
 }  // end namespace
 
@@ -503,7 +507,7 @@ struct GitInputScheme : InputScheme
         if (!input.getRef() && !input.getRev() && isLocal) {
             auto workdirInfo = getWorkdirInfo(input, actualUrl);
             if (!workdirInfo.clean) {
-                co_return fetchFromWorkdir(store, input, actualUrl, workdirInfo);
+                co_return TRY_AWAIT(fetchFromWorkdir(store, input, actualUrl, workdirInfo));
             }
         }
 
@@ -766,7 +770,9 @@ struct GitInputScheme : InputScheme
             unpackTarfile(*proc.getStdout(), tmpDir);
         }
 
-        auto storePath = store->addToStore(name, tmpDir, FileIngestionMethod::Recursive, HashType::SHA256, filter);
+        auto storePath = TRY_AWAIT(store->addToStore(
+            name, tmpDir, FileIngestionMethod::Recursive, HashType::SHA256, filter
+        ));
 
         auto lastModified = std::stoull(runProgram("git", true, { "-C", repoDir, "--git-dir", gitDir, "log", "-1", "--format=%ct", "--no-show-signature", input.getRev()->gitRev() }));
 
