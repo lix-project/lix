@@ -188,7 +188,7 @@ LocalStore::LocalStore(LocalStoreConfig config)
     , fnTempRoots(fmt("%s/%d", tempRootsDir, getpid()))
     , locksHeld(tokenizeString<PathSet>(getEnv("NIX_HELD_LOCKS").value_or("")))
 {
-    auto state(_dbState.lock());
+    auto state(_dbState.lockSync(always_progresses));
     state->stmts = std::make_unique<DBState::Stmts>();
 
     /* Create missing state directories if they don't already exist. */
@@ -761,7 +761,7 @@ void LocalStore::registerDrvOutput(const Realisation & info)
 {
     experimentalFeatureSettings.require(Xp::CaDerivations);
     retrySQLite([&]() {
-        auto state(_dbState.lock());
+        auto state(_dbState.lockSync(always_progresses));
         if (auto oldR = queryRealisation_(*state, info.id)) {
             if (info.isCompatibleWith(*oldR)) {
                 auto combinedSignatures = oldR->signatures;
@@ -879,7 +879,7 @@ uint64_t LocalStore::addValidPath(DBState & state,
 std::shared_ptr<const ValidPathInfo> LocalStore::queryPathInfoUncached(const StorePath & path)
 {
     return retrySQLite([&]() {
-        auto state(_dbState.lock());
+        auto state(_dbState.lockSync(always_progresses));
         return queryPathInfoInternal(*state, path);
     });
 }
@@ -967,7 +967,7 @@ bool LocalStore::isValidPath_(DBState & state, const StorePath & path)
 bool LocalStore::isValidPathUncached(const StorePath & path)
 {
     return retrySQLite([&]() {
-        auto state(_dbState.lock());
+        auto state(_dbState.lockSync(always_progresses));
         return isValidPath_(*state, path);
     });
 }
@@ -985,7 +985,7 @@ StorePathSet LocalStore::queryValidPaths(const StorePathSet & paths, SubstituteF
 StorePathSet LocalStore::queryAllValidPaths()
 {
     return retrySQLite([&]() {
-        auto state(_dbState.lock());
+        auto state(_dbState.lockSync(always_progresses));
         auto use(state->stmts->QueryValidPaths.use());
         StorePathSet res;
         while (use.next()) res.insert(parseStorePath(use.getStr(0)));
@@ -1006,7 +1006,7 @@ void LocalStore::queryReferrers(DBState & state, const StorePath & path, StorePa
 void LocalStore::queryReferrers(const StorePath & path, StorePathSet & referrers)
 {
     return retrySQLite([&]() {
-        auto state(_dbState.lock());
+        auto state(_dbState.lockSync(always_progresses));
         queryReferrers(*state, path, referrers);
     });
 }
@@ -1015,7 +1015,7 @@ void LocalStore::queryReferrers(const StorePath & path, StorePathSet & referrers
 StorePathSet LocalStore::queryValidDerivers(const StorePath & path)
 {
     return retrySQLite([&]() {
-        auto state(_dbState.lock());
+        auto state(_dbState.lockSync(always_progresses));
 
         auto useQueryValidDerivers(state->stmts->QueryValidDerivers.use()(printStorePath(path)));
 
@@ -1032,7 +1032,7 @@ std::map<std::string, std::optional<StorePath>>
 LocalStore::queryStaticPartialDerivationOutputMap(const StorePath & path)
 {
     return retrySQLite([&]() {
-        auto state(_dbState.lock());
+        auto state(_dbState.lockSync(always_progresses));
         std::map<std::string, std::optional<StorePath>> outputs;
         uint64_t drvId;
         drvId = queryValidPathId(*state, path);
@@ -1052,7 +1052,7 @@ std::optional<StorePath> LocalStore::queryPathFromHashPart(const std::string & h
     Path prefix = config_.storeDir + "/" + hashPart;
 
     return retrySQLite([&]() -> std::optional<StorePath> {
-        auto state(_dbState.lock());
+        auto state(_dbState.lockSync(always_progresses));
 
         auto useQueryPathFromHashPart(state->stmts->QueryPathFromHashPart.use()(prefix));
 
@@ -1114,7 +1114,7 @@ void LocalStore::registerValidPaths(const ValidPathInfos & infos)
     if (settings.syncBeforeRegistering) sync();
 
     return retrySQLite([&]() {
-        auto state(_dbState.lock());
+        auto state(_dbState.lockSync(always_progresses));
 
         SQLiteTxn txn = state->db.beginTransaction();
         StorePathSet paths;
@@ -1506,7 +1506,7 @@ std::pair<Path, AutoCloseFD> LocalStore::createTempDirInStore()
 void LocalStore::invalidatePathChecked(const StorePath & path)
 {
     retrySQLite([&]() {
-        auto state(_dbState.lock());
+        auto state(_dbState.lockSync(always_progresses));
 
         SQLiteTxn txn = state->db.beginTransaction();
 
@@ -1627,7 +1627,7 @@ try {
                     }
 
                     if (update) {
-                        auto state(_dbState.lock());
+                        auto state(co_await _dbState.lock());
                         updatePathInfo(*state, *info);
                     }
 
@@ -1680,7 +1680,7 @@ try {
 
         if (canInvalidate) {
             printInfo("path '%s' disappeared, removing from database...", pathS);
-            auto state(_dbState.lock());
+            auto state(co_await _dbState.lock());
             invalidatePath(*state, path);
         } else {
             printError("path '%s' disappeared, but it still has valid referrers!", pathS);
@@ -1770,7 +1770,7 @@ void LocalStore::upgradeStore7()
 void LocalStore::addSignatures(const StorePath & storePath, const StringSet & sigs)
 {
     retrySQLite([&]() {
-        auto state(_dbState.lock());
+        auto state(_dbState.lockSync(always_progresses));
 
         SQLiteTxn txn = state->db.beginTransaction();
 
@@ -1867,7 +1867,7 @@ std::optional<const Realisation> LocalStore::queryRealisation_(
 std::shared_ptr<const Realisation> LocalStore::queryRealisationUncached(const DrvOutput & id)
 {
     auto maybeRealisation = retrySQLite([&]() {
-        auto state(_dbState.lock());
+        auto state(_dbState.lockSync(always_progresses));
         return queryRealisation_(*state, id);
     });
     if (maybeRealisation)

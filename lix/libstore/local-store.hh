@@ -105,7 +105,7 @@ private:
         std::unique_ptr<Stmts> stmts;
     };
 
-    Sync<DBState> _dbState;
+    Sync<DBState, AsyncMutex> _dbState;
 
     struct GCState
     {
