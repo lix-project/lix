@@ -45,6 +45,7 @@ std::unique_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoa
 }
 
 std::unique_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoal(
+    DrvHasRoot drvRoot,
     const StorePath & drvPath,
     const BasicDerivation & drv,
     const OutputsSpec & wantedOutputs,
@@ -55,19 +56,19 @@ std::unique_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoa
 {
 #if __linux__
     return std::make_unique<LinuxLocalDerivationGoal>(
-        drvPath, drv, wantedOutputs, worker, isDependency, buildMode
+        drvRoot, drvPath, drv, wantedOutputs, worker, isDependency, buildMode
     );
 #elif __APPLE__
     return std::make_unique<DarwinLocalDerivationGoal>(
-        drvPath, drv, wantedOutputs, worker, isDependency, buildMode
+        drvRoot, drvPath, drv, wantedOutputs, worker, isDependency, buildMode
     );
 #elif __FreeBSD__
     return std::make_unique<FreeBSDLocalDerivationGoal>(
-        drvPath, drv, wantedOutputs, worker, isDependency, buildMode
+        drvRoot, drvPath, drv, wantedOutputs, worker, isDependency, buildMode
     );
 #else
     return std::make_unique<FallbackLocalDerivationGoal>(
-        drvPath, drv, wantedOutputs, worker, isDependency, buildMode
+        drvRoot, drvPath, drv, wantedOutputs, worker, isDependency, buildMode
     );
 #endif
 }

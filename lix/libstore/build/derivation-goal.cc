@@ -82,7 +82,7 @@ DerivationGoal::DerivationGoal(const StorePath & drvPath,
 }
 
 
-DerivationGoal::DerivationGoal(const StorePath & drvPath, const BasicDerivation & drv,
+DerivationGoal::DerivationGoal(DrvHasRoot, const StorePath & drvPath, const BasicDerivation & drv,
     const OutputsSpec & wantedOutputs, Worker & worker, bool isDependency, BuildMode buildMode)
     : Goal(worker, isDependency)
     , useDerivation(false)
@@ -98,10 +98,6 @@ DerivationGoal::DerivationGoal(const StorePath & drvPath, const BasicDerivation 
     trace("created");
 
     mcExpectedBuilds = worker.expectedBuilds.addTemporarily(1);
-
-    /* Prevent the .chroot directory from being
-       garbage-collected. (See isActiveTempFile() in gc.cc.) */
-    worker.store.addTempRoot(this->drvPath);
 }
 
 

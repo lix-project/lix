@@ -142,16 +142,20 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<Result<Goal::WorkResult>>
     BuildMode buildMode
 )
 {
+    /* Prevent the .chroot directory from being
+       garbage-collected. (See isActiveTempFile() in gc.cc.) */
+    store.addTempRoot(drvPath);
+
     return makeGoalCommon(
         derivationGoals,
         drvPath,
         [&]() -> std::unique_ptr<DerivationGoal> {
             return !dynamic_cast<LocalStore *>(&store)
                 ? std::make_unique<DerivationGoal>(
-                    drvPath, drv, wantedOutputs, *this, running, buildMode
+                    DerivationGoal::DrvHasRoot{}, drvPath, drv, wantedOutputs, *this, running, buildMode
                 )
                 : LocalDerivationGoal::makeLocalDerivationGoal(
-                    drvPath, drv, wantedOutputs, *this, running, buildMode
+                    DerivationGoal::DrvHasRoot{}, drvPath, drv, wantedOutputs, *this, running, buildMode
                 );
         },
         [&](DerivationGoal & g) { return g.addWantedOutputs(wantedOutputs); }

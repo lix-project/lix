@@ -195,6 +195,7 @@ struct LocalDerivationGoal : public DerivationGoal
      * possibly a platform-specific subclass
      */
     static std::unique_ptr<LocalDerivationGoal> makeLocalDerivationGoal(
+        DrvHasRoot drvRoot,
         const StorePath & drvPath,
         const BasicDerivation & drv,
         const OutputsSpec & wantedOutputs,

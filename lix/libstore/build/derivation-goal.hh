@@ -245,10 +245,13 @@ struct DerivationGoal : public Goal
      */
     std::string machineName;
 
+    /** Witness type to say that the drvPath has already been added as a temp root */
+    struct DrvHasRoot { explicit DrvHasRoot() = default; };
+
     DerivationGoal(const StorePath & drvPath,
         const OutputsSpec & wantedOutputs, Worker & worker, bool isDependency,
         BuildMode buildMode = bmNormal);
-    DerivationGoal(const StorePath & drvPath, const BasicDerivation & drv,
+    DerivationGoal(DrvHasRoot, const StorePath & drvPath, const BasicDerivation & drv,
         const OutputsSpec & wantedOutputs, Worker & worker, bool isDependency,
         BuildMode buildMode = bmNormal);
     virtual ~DerivationGoal() noexcept(false);
