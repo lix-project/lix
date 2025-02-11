@@ -1159,7 +1159,9 @@ try {
                     auto & drvStore = worker.evalStore.isValidPath(drvPath)
                         ? worker.evalStore
                         : worker.store;
-                    newRealisation.dependentRealisations = drvOutputReferences(worker.store, *drv, realisation.outPath, &drvStore);
+                    newRealisation.dependentRealisations = TRY_AWAIT(
+                        drvOutputReferences(worker.store, *drv, realisation.outPath, &drvStore)
+                    );
                 }
                 signRealisation(newRealisation);
                 worker.store.registerDrvOutput(newRealisation);
@@ -1180,9 +1182,9 @@ try {
     if (status == BuildResult::AlreadyValid)
         status = BuildResult::ResolvesToAlreadyValid;
 
-    return {done(status, std::move(builtOutputs))};
+    co_return done(status, std::move(builtOutputs));
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 HookReply DerivationGoal::tryBuildHook()

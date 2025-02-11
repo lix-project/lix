@@ -352,10 +352,10 @@ StorePaths Store::topoSortPaths(const StorePathSet & paths)
         }});
 }
 
-std::map<DrvOutput, StorePath> drvOutputReferences(
+static kj::Promise<Result<std::map<DrvOutput, StorePath>>> drvOutputReferences(
     const std::set<Realisation> & inputRealisations,
     const StorePathSet & pathReferences)
-{
+try {
     std::map<DrvOutput, StorePath> res;
 
     for (const auto & input : inputRealisations) {
@@ -364,15 +364,17 @@ std::map<DrvOutput, StorePath> drvOutputReferences(
         }
     }
 
-    return res;
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-std::map<DrvOutput, StorePath> drvOutputReferences(
+kj::Promise<Result<std::map<DrvOutput, StorePath>>> drvOutputReferences(
     Store & store,
     const Derivation & drv,
     const StorePath & outputPath,
     Store * evalStore_)
-{
+try {
     auto & evalStore = evalStore_ ? *evalStore_ : store;
 
     std::set<Realisation> inputRealisations;
@@ -415,7 +417,11 @@ std::map<DrvOutput, StorePath> drvOutputReferences(
 
     auto info = store.queryPathInfo(outputPath);
 
-    return drvOutputReferences(Realisation::closure(store, inputRealisations), info->references);
+    co_return TRY_AWAIT(
+        drvOutputReferences(Realisation::closure(store, inputRealisations), info->references)
+    );
+} catch (...) {
+    co_return result::current_exception();
 }
 
 OutputPathMap resolveDerivedPath(Store & store, const DerivedPath::Built & bfd, Store * evalStore_)
