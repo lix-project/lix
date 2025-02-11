@@ -20,6 +20,7 @@
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
+#include "lix/libutil/types.hh"
 
 #include <nlohmann/json.hpp>
 
@@ -786,7 +787,7 @@ Roots RemoteStore::findRoots(bool censor)
 }
 
 
-void RemoteStore::collectGarbage(const GCOptions & options, GCResults & results)
+void RemoteStore::collectGarbage(const GCOptions & options, GCResults & results, NeverAsync)
 {
     auto conn(getConnection());
 

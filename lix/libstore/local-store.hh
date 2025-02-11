@@ -6,6 +6,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/indirect-root-store.hh"
 #include "lix/libutil/sync.hh"
+#include "lix/libutil/types.hh"
 
 #include <chrono>
 #include <future>
@@ -259,7 +260,7 @@ public:
 
     Roots findRoots(bool censor) override;
 
-    void collectGarbage(const GCOptions & options, GCResults & results) override;
+    void collectGarbage(const GCOptions & options, GCResults & results, NeverAsync = {}) override;
 
     /**
      * Optimise the disk space usage of the Nix store by hard-linking

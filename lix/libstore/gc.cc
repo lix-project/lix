@@ -5,6 +5,7 @@
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/finally.hh"
+#include "lix/libutil/types.hh"
 #include "lix/libutil/unix-domain-socket.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
@@ -571,7 +572,7 @@ GCOperation::~GCOperation()
 }
 
 
-void LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
+void LocalStore::collectGarbage(const GCOptions & options, GCResults & results, NeverAsync)
 {
     bool shouldDelete = options.action == GCOptions::gcDeleteDead || options.action == GCOptions::gcDeleteSpecific;
     bool gcKeepOutputs = settings.gcKeepOutputs;
@@ -947,7 +948,8 @@ try {
 
                 GCResults results;
 
-                collectGarbage(options, results);
+                // SAFETY: this thread will not block an async executor
+                collectGarbage(options, results, always_progresses);
 
                 _gcState.lock()->availAfterGC = getAvail();
 

@@ -7,6 +7,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/gc-store.hh"
 #include "lix/libstore/log-store.hh"
+#include "lix/libutil/types.hh"
 
 
 namespace nix {
@@ -133,7 +134,7 @@ public:
 
     Roots findRoots(bool censor) override;
 
-    void collectGarbage(const GCOptions & options, GCResults & results) override;
+    void collectGarbage(const GCOptions & options, GCResults & results, NeverAsync = {}) override;
 
     kj::Promise<Result<void>> optimiseStore() override;
 

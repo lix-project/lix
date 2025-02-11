@@ -14,6 +14,7 @@
 #include "lix/libutil/finally.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libutil/strings.hh"
+#include "lix/libutil/types.hh"
 
 #include <algorithm>
 #include <cstring>
@@ -88,7 +89,7 @@ int getSchema(Path schemaPath)
     return curSchema;
 }
 
-void migrateCASchema(SQLite& db, Path schemaPath, AutoCloseFD& lockFd)
+static void migrateCASchema(SQLite& db, Path schemaPath, AutoCloseFD& lockFd, NeverAsync = {})
 {
     const int nixCASchemaVersion = 4;
     int curCASchema = getSchema(schemaPath);
@@ -173,6 +174,9 @@ void migrateCASchema(SQLite& db, Path schemaPath, AutoCloseFD& lockFd)
     }
 }
 
+// NOTE this constructor uses NeverAsync functions, but they are limited to schema migrations.
+// since these migrations run reasonably quickly *and* approximately never we are not going to
+// bother asyncifying this constructor (especially since it'll propagate to all other stores).
 LocalStore::LocalStore(LocalStoreConfig config)
     : Store(config)
     , config_(std::move(config))
@@ -281,7 +285,7 @@ LocalStore::LocalStore(LocalStoreConfig config)
 
     if (!config_.readOnly && !tryLockFile(globalLock.get(), ltRead)) {
         printInfo("waiting for the big Nix store lock...");
-        lockFile(globalLock.get(), ltRead);
+        lockFile(globalLock.get(), ltRead, always_progresses);
     }
 
     /* Check the current database schema and if necessary do an
@@ -321,7 +325,7 @@ LocalStore::LocalStore(LocalStoreConfig config)
         if (!tryLockFile(globalLock.get(), ltWrite)) {
             printInfo("waiting for exclusive access to the Nix store...");
             unlockFile(globalLock.get()); // We have acquired a shared lock; release it to prevent deadlocks
-            lockFile(globalLock.get(), ltWrite);
+            lockFile(globalLock.get(), ltWrite, always_progresses);
         }
 
         /* Get the schema version again, because another process may
@@ -353,14 +357,14 @@ LocalStore::LocalStore(LocalStoreConfig config)
 
         writeFile(schemaPath, fmt("%1%", nixSchemaVersion), 0666, true);
 
-        lockFile(globalLock.get(), ltRead);
+        lockFile(globalLock.get(), ltRead, always_progresses);
     }
 
     else openDB(*state, false);
 
     if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
         if (!config_.readOnly) {
-            migrateCASchema(state->db, dbDir + "/ca-schema", globalLock);
+            migrateCASchema(state->db, dbDir + "/ca-schema", globalLock, always_progresses);
         } else {
             throw Error("need to migrate to content-addressed schema, but this cannot be done in read-only mode");
         }

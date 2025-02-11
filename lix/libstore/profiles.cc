@@ -1,6 +1,7 @@
 #include "lix/libstore/profiles.hh"
 #include "lix/libstore/local-fs-store.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/types.hh"
 #include "lix/libutil/users.hh"
 #include "lix/libutil/strings.hh"
 
@@ -144,7 +145,9 @@ static void deleteGeneration2(const Path & profile, GenerationNumber gen, bool d
 }
 
 
-void deleteGenerations(const Path & profile, const std::set<GenerationNumber> & gensToDelete, bool dryRun)
+void deleteGenerations(
+    const Path & profile, const std::set<GenerationNumber> & gensToDelete, bool dryRun, NeverAsync
+)
 {
     PathLock lock = lockProfile(profile);
 
@@ -167,10 +170,14 @@ static inline void iterDropUntil(Generations & gens, auto && i, auto && cond)
     for (; i != gens.rend() && !cond(*i); ++i);
 }
 
-void deleteGenerationsGreaterThan(const Path & profile, GenerationNumber max, bool dryRun)
+void deleteGenerationsGreaterThan(
+    const Path & profile, GenerationNumber max, bool dryRun, NeverAsync
+)
 {
-    if (max == 0)
-        throw Error("Must keep at least one generation, otherwise the current one would be deleted");
+    if (max == 0) {
+        throw Error("Must keep at least one generation, otherwise the current one would be deleted"
+        );
+    }
 
     PathLock lock = lockProfile(profile);
 
@@ -190,7 +197,7 @@ void deleteGenerationsGreaterThan(const Path & profile, GenerationNumber max, bo
         deleteGeneration2(profile, i->number, dryRun);
 }
 
-void deleteOldGenerations(const Path & profile, bool dryRun)
+void deleteOldGenerations(const Path & profile, bool dryRun, NeverAsync)
 {
     PathLock lock = lockProfile(profile);
 
@@ -202,7 +209,7 @@ void deleteOldGenerations(const Path & profile, bool dryRun)
 }
 
 
-void deleteGenerationsOlderThan(const Path & profile, time_t t, bool dryRun)
+void deleteGenerationsOlderThan(const Path & profile, time_t t, bool dryRun, NeverAsync)
 {
     PathLock lock = lockProfile(profile);
 
@@ -262,7 +269,8 @@ void switchLink(Path link, Path target)
 void switchGeneration(
     const Path & profile,
     std::optional<GenerationNumber> dstGen,
-    bool dryRun)
+    bool dryRun,
+    NeverAsync)
 {
     PathLock lock = lockProfile(profile);
 
@@ -289,7 +297,7 @@ void switchGeneration(
 }
 
 
-PathLock lockProfile(const Path & profile)
+PathLock lockProfile(const Path & profile, NeverAsync)
 {
     return lockPath(profile, fmt("waiting for lock on profile '%1%'", profile));
 }

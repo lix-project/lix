@@ -3,6 +3,7 @@
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/signals.hh"
+#include "lix/libutil/types.hh"
 
 #include <cerrno>
 
@@ -34,7 +35,7 @@ static int convertLockType(LockType lockType)
     else abort();
 }
 
-void lockFile(int fd, LockType lockType)
+void lockFile(int fd, LockType lockType, NeverAsync)
 {
     int type = convertLockType(lockType);
 
@@ -152,7 +153,7 @@ static bool isPathLockValid(AutoCloseFD & fd, const Path & lockPath)
 }
 
 std::optional<PathLock>
-PathLock::lockImpl(const Path & path, std::string_view waitMsg, bool wait)
+PathLock::lockImpl(const Path & path, std::string_view waitMsg, bool wait, NeverAsync)
 {
     Path lockPath = path + ".lock";
 
@@ -195,18 +196,18 @@ try {
     co_return result::current_exception();
 }
 
-PathLock lockPath(const Path & path, std::string_view waitMsg)
+PathLock lockPath(const Path & path, std::string_view waitMsg, NeverAsync)
 {
     return std::move(*PathLock::lockImpl(path, waitMsg, true));
 }
 
 std::optional<PathLock> tryLockPath(const Path & path)
 {
-    return PathLock::lockImpl(path, "", false);
+    return PathLock::lockImpl(path, "", false, always_progresses);
 }
 
 static std::optional<PathLocks>
-lockPathsImpl(const PathSet & paths, std::string_view waitMsg, bool wait)
+lockPathsImpl(const PathSet & paths, std::string_view waitMsg, bool wait, NeverAsync = {})
 {
     PathLocks result;
 
@@ -226,14 +227,14 @@ lockPathsImpl(const PathSet & paths, std::string_view waitMsg, bool wait)
     return result;
 }
 
-PathLocks lockPaths(const PathSet & paths, std::string_view waitMsg)
+PathLocks lockPaths(const PathSet & paths, std::string_view waitMsg, NeverAsync)
 {
     return std::move(*lockPathsImpl(paths, waitMsg, true));
 }
 
 std::optional<PathLocks> tryLockPaths(const PathSet & paths)
 {
-    return lockPathsImpl(paths, "", false);
+    return lockPathsImpl(paths, "", false, always_progresses);
 }
 
 
@@ -274,7 +275,7 @@ FdLock::FdLock(AutoCloseFD & fd, LockType lockType, DontWait)
     }
 }
 
-FdLock::FdLock(AutoCloseFD & fd, LockType lockType, std::string_view waitMsg)
+FdLock::FdLock(AutoCloseFD & fd, LockType lockType, std::string_view waitMsg, NeverAsync)
 {
     if (!tryLockFile(fd.get(), lockType)) {
         printInfo("%s", waitMsg);

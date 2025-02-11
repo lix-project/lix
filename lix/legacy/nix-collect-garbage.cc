@@ -7,6 +7,7 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libcmd/legacy.hh"
 #include "lix/libutil/signals.hh"
+#include "lix/libutil/types.hh"
 #include "nix-collect-garbage.hh"
 
 #include <iostream>
@@ -22,7 +23,7 @@ bool dryRun = false;
  * Of course, this makes rollbacks to before this point in time
  * impossible. */
 
-void removeOldGenerations(std::string dir)
+static void removeOldGenerations(std::string dir, NeverAsync = {})
 {
     if (access(dir.c_str(), R_OK) != 0) return;
 

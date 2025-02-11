@@ -18,6 +18,7 @@
 #include "lix/libstore/build/personality.hh"
 #include "lix/libutil/namespaces.hh"
 #include "lix/libstore/build/child.hh"
+#include "lix/libutil/types.hh"
 #include "lix/libutil/unix-domain-socket.hh"
 #include "lix/libutil/mount.hh"
 #include "lix/libutil/strings.hh"
@@ -1194,7 +1195,7 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
     Roots findRoots(bool censor) override
     { return Roots(); }
 
-    void collectGarbage(const GCOptions & options, GCResults & results) override
+    void collectGarbage(const GCOptions & options, GCResults & results, NeverAsync = {}) override
     { }
 
     void addSignatures(const StorePath & storePath, const StringSet & sigs) override

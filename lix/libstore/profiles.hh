@@ -127,7 +127,12 @@ void deleteGeneration(const Path & profile, GenerationNumber gen);
  * Trying to delete the currently active generation will fail, and cause
  * no generations to be deleted.
  */
-void deleteGenerations(const Path & profile, const std::set<GenerationNumber> & gensToDelete, bool dryRun);
+void deleteGenerations(
+    const Path & profile,
+    const std::set<GenerationNumber> & gensToDelete,
+    bool dryRun,
+    NeverAsync = {}
+);
 
 /**
  * Delete generations older than `max` passed the current generation.
@@ -140,7 +145,9 @@ void deleteGenerations(const Path & profile, const std::set<GenerationNumber> & 
  * @param dryRun Log what would be deleted instead of actually doing
  * so.
  */
-void deleteGenerationsGreaterThan(const Path & profile, GenerationNumber max, bool dryRun);
+void deleteGenerationsGreaterThan(
+    const Path & profile, GenerationNumber max, bool dryRun, NeverAsync = {}
+);
 
 /**
  * Delete all generations other than the current one
@@ -150,7 +157,7 @@ void deleteGenerationsGreaterThan(const Path & profile, GenerationNumber max, bo
  * @param dryRun Log what would be deleted instead of actually doing
  * so.
  */
-void deleteOldGenerations(const Path & profile, bool dryRun);
+void deleteOldGenerations(const Path & profile, bool dryRun, NeverAsync = {});
 
 /**
  * Delete generations older than `t`, except for the most recent one
@@ -161,7 +168,7 @@ void deleteOldGenerations(const Path & profile, bool dryRun);
  * @param dryRun Log what would be deleted instead of actually doing
  * so.
  */
-void deleteGenerationsOlderThan(const Path & profile, time_t t, bool dryRun);
+void deleteGenerationsOlderThan(const Path & profile, time_t t, bool dryRun, NeverAsync = {});
 
 /**
  * Parse a temp spec intended for `deleteGenerationsOlderThan()`.
@@ -185,13 +192,14 @@ void switchLink(Path link, Path target);
 void switchGeneration(
     const Path & profile,
     std::optional<GenerationNumber> dstGen,
-    bool dryRun);
+    bool dryRun,
+    NeverAsync = {});
 
 /**
  * Ensure exclusive access to a profile.  Any command that modifies
  * the profile first acquires this lock.
  */
-PathLock lockProfile(const Path & profile);
+PathLock lockProfile(const Path & profile, NeverAsync = {});
 
 /**
  * Optimistic locking is used by long-running operations like `nix-env

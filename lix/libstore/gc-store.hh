@@ -2,6 +2,7 @@
 ///@file
 
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/types.hh"
 
 
 namespace nix {
@@ -120,7 +121,8 @@ struct GcStore : public virtual Store
     /**
      * Perform a garbage collection.
      */
-    virtual void collectGarbage(const GCOptions & options, GCResults & results) = 0;
+    virtual void
+    collectGarbage(const GCOptions & options, GCResults & results, NeverAsync = {}) = 0;
 };
 
 }
