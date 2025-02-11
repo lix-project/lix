@@ -1,12 +1,19 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/types.hh"
 #include <cstdlib>
+#include <kj/async.h>
+#include <kj/common.h>
+#include <list>
 #include <mutex>
 #include <condition_variable>
 #include <cassert>
+#include <optional>
 
 namespace nix {
+
+struct AsyncMutex;
 
 /**
  * This template class ensures synchronized access to a value of type
@@ -39,7 +46,7 @@ public:
 
     class Lock
     {
-    private:
+    protected:
         // Non-owning pointer. This would be an
         // optional<reference_wrapper<Sync>> if it didn't break gdb accessing
         // Lock values (as of 2024-06-15, gdb 14.2)
@@ -47,6 +54,7 @@ public:
         std::unique_lock<M> lk;
         friend Sync;
         Lock(Sync &s) : s(&s), lk(s.mutex) { }
+        Lock(Sync &s, std::unique_lock<M> lk) : s(&s), lk(std::move(lk)) { }
 
         inline void checkLockingInvariants()
         {
@@ -140,6 +148,90 @@ public:
      * Lock this Sync and return a RAII guard object.
      */
     Lock lock() { return Lock(*this); }
+
+    std::optional<Lock> tryLock()
+    {
+        if (std::unique_lock lk(mutex, std::try_to_lock_t{}); lk.owns_lock()) {
+            return Lock{*this, std::move(lk)};
+        } else {
+            return std::nullopt;
+        }
+    }
+};
+
+template<class T>
+class Sync<T, AsyncMutex> : private Sync<T, std::mutex>
+{
+private:
+    using base_type = Sync<T, std::mutex>;
+
+    std::mutex waitMutex;
+    std::list<kj::Own<kj::CrossThreadPromiseFulfiller<void>>> waiters;
+
+public:
+    Sync() = default;
+    Sync(T && data) : base_type(std::move(data)) {}
+
+    class Lock : private base_type::Lock
+    {
+        friend Sync;
+
+        Lock(base_type::Lock lk) : base_type::Lock(std::move(lk)) {}
+
+    public:
+        Lock(Lock &&) = default;
+        Lock & operator=(Lock &&) = default;
+
+        ~Lock()
+        {
+            if (this->lk.owns_lock()) {
+                this->lk.unlock();
+                auto * s = static_cast<Sync *>(this->s);
+                std::lock_guard wlk(s->waitMutex);
+                // wake them all. it's too hard to ensure liveness with promises
+                // that can be cancelled, and contention isn't usually that big.
+                for (auto & f : s->waiters) {
+                    f->fulfill();
+                }
+                s->waiters.clear();
+            }
+        }
+
+        using base_type::Lock::operator->, base_type::Lock::operator*;
+    };
+
+    auto lockSync(NeverAsync = {})
+    {
+        return base_type::lock();
+    }
+
+    kj::Promise<Lock> lock()
+    {
+        if (auto lk = tryLock()) {
+            co_return std::move(*lk);
+        }
+
+        while (true) {
+            auto pfp = kj::newPromiseAndCrossThreadFulfiller<void>();
+            {
+                std::lock_guard wlk(waitMutex);
+                waiters.push_back(std::move(pfp.fulfiller));
+            }
+            if (auto lk = tryLock()) {
+                co_return std::move(*lk);
+            }
+            co_await pfp.promise;
+        }
+    }
+
+    std::optional<Lock> tryLock()
+    {
+        if (auto lk = base_type::tryLock()) {
+            return Lock(std::move(*lk));
+        } else {
+            return std::nullopt;
+        }
+    }
 };
 
 }
