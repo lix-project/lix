@@ -1493,8 +1493,7 @@ std::pair<Path, AutoCloseFD> LocalStore::createTempDirInStore()
         if (tmpDirFd.get() < 0) {
             continue;
         }
-        lockFile(tmpDirFd.get(), ltWrite);
-        lockedByUs = true;
+        lockedByUs = tryLockFile(tmpDirFd.get(), ltWrite);
     } while (!pathExists(tmpDirFn) || !lockedByUs);
     return {tmpDirFn, std::move(tmpDirFd)};
 }
