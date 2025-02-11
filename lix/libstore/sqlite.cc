@@ -1,10 +1,15 @@
+#include "lix/libutil/async.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libstore/sqlite.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libutil/logging.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/url.hh"
 
+#include <chrono>
+#include <kj/time.h>
+#include <random>
 #include <sqlite3.h>
 
 #include <random>
@@ -272,7 +277,8 @@ void SQLiteTxn::Rollback::operator()(sqlite3 * db)
     }
 }
 
-void handleSQLiteBusy(const SQLiteBusy & e, time_t & nextWarning)
+[[nodiscard]]
+static std::chrono::milliseconds handleSQLiteBusyCommon(const SQLiteBusy & e, time_t & nextWarning)
 {
     time_t now = time(0);
     if (now > nextWarning) {
@@ -288,7 +294,21 @@ void handleSQLiteBusy(const SQLiteBusy & e, time_t & nextWarning)
     static thread_local std::default_random_engine generator(std::random_device{}());
     std::uniform_int_distribution<long> uniform_dist(0, 100);
     /* <= 0.1s */
-    std::this_thread::sleep_for(std::chrono::milliseconds { uniform_dist(generator) });
+    return std::chrono::milliseconds { uniform_dist(generator) };
+}
+
+void handleSQLiteBusy(const SQLiteBusy & e, time_t & nextWarning)
+{
+    std::this_thread::sleep_for(handleSQLiteBusyCommon(e, nextWarning));
+}
+
+kj::Promise<Result<void>> handleSQLiteBusyAsync(const SQLiteBusy & e, time_t & nextWarning)
+try {
+    std::chrono::milliseconds delay_ms = handleSQLiteBusyCommon(e, nextWarning);
+    co_await AIO().provider.getTimer().afterDelay(delay_ms.count() * kj::MILLISECONDS);
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }

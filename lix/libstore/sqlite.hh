@@ -1,8 +1,12 @@
 #pragma once
 ///@file
 
+#include <kj/async.h>
 #include <string>
+#include <type_traits>
 
+#include "lix/libutil/async.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/error.hh"
 
@@ -187,21 +191,43 @@ protected:
 MakeError(SQLiteBusy, SQLiteError);
 
 void handleSQLiteBusy(const SQLiteBusy & e, time_t & nextWarning);
+kj::Promise<Result<void>> handleSQLiteBusyAsync(const SQLiteBusy & e, time_t & nextWarning);
 
 /**
  * Convenience function for retrying a SQLite transaction when the
  * database is busy.
  */
 template<typename F>
-auto retrySQLite(F && fun)
+auto retrySQLite(F fun)
 {
     time_t nextWarning = time(0) + 1;
 
-    while (true) {
-        try {
-            return fun();
-        } catch (SQLiteBusy & e) {
-            handleSQLiteBusy(e, nextWarning);
+    if constexpr (requires (F f) { []<typename T>(kj::Promise<Result<T>>){}(f()); }) {
+        return [](time_t nextWarning, F fun) -> decltype(fun()) {
+            while (true) {
+                kj::Promise<Result<void>> handleBusy{nullptr};
+                try {
+                    if constexpr (std::is_same_v<decltype(fun()), kj::Promise<Result<void>>>) {
+                        LIX_TRY_AWAIT(fun());
+                        co_return result::success();
+                    } else {
+                        co_return LIX_TRY_AWAIT(fun());
+                    }
+                } catch (SQLiteBusy & e) {
+                    handleBusy = handleSQLiteBusyAsync(e, nextWarning);
+                } catch (...) {
+                    co_return result::current_exception();
+                }
+                LIX_TRY_AWAIT(handleBusy);
+            }
+        }(nextWarning, std::move(fun));
+    } else {
+        while (true) {
+            try {
+                return fun();
+            } catch (SQLiteBusy & e) {
+                handleSQLiteBusy(e, nextWarning);
+            }
         }
     }
 }
