@@ -5,6 +5,7 @@
 #include "lix/libstore/nar-info-disk-cache.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/sync.hh"
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/url.hh"
 #include "lix/libutil/archive.hh"
@@ -19,7 +20,6 @@
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <regex>
-#include <shared_mutex>
 
 using json = nlohmann::json;
 
@@ -1598,34 +1598,29 @@ try {
 
 kj::Promise<Result<std::list<ref<Store>>>> getDefaultSubstituters()
 try {
-    static std::shared_mutex mtx;
-    static std::optional<std::list<ref<Store>>> stores;
+    static Sync<std::optional<std::list<ref<Store>>>, AsyncMutex> stores;
 
-    if (std::shared_lock l(mtx); stores.has_value()) {
-        co_return *stores;
-    }
+    auto lk = co_await stores.lock();
 
-    std::lock_guard l(mtx);
-
-    if (!stores.has_value()) {
+    if (!lk->has_value()) {
         StringSet done;
 
-        stores.emplace();
+        lk->emplace();
         for (auto uri : settings.substituters.get()) {
             if (!done.insert(uri).second) continue;
             try {
-                stores->push_back(TRY_AWAIT(openStore(uri)));
+                (*lk)->push_back(TRY_AWAIT(openStore(uri)));
             } catch (Error & e) {
                 logWarning(e.info());
             }
         }
 
-        stores->sort([](ref<Store> & a, ref<Store> & b) {
+        (*lk)->sort([](ref<Store> & a, ref<Store> & b) {
             return a->config().priority < b->config().priority;
         });
     }
 
-    co_return *stores;
+    co_return **lk;
 } catch (...) {
     co_return result::current_exception();
 }

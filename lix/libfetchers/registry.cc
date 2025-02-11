@@ -1,6 +1,7 @@
 #include "lix/libfetchers/registry.hh"
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/sync.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/users.hh"
 #include "lix/libstore/globals.hh"
@@ -12,7 +13,6 @@
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
-#include <shared_mutex>
 
 namespace nix::fetchers {
 
@@ -160,21 +160,16 @@ void overrideRegistry(
 
 static kj::Promise<Result<std::shared_ptr<Registry>>> getGlobalRegistry(ref<Store> store)
 try {
-    static std::shared_mutex mtx;
-    static std::shared_ptr<Registry> reg;
+    static Sync<std::shared_ptr<Registry>, AsyncMutex> reg;
 
-    if (std::shared_lock l(mtx); reg) {
-        co_return reg;
-    }
+    auto lk = co_await reg.lock();
 
-    std::scoped_lock l(mtx);
-
-    if (!reg) {
+    if (!*lk) {
         auto path = fetchSettings.flakeRegistry.get();
         if (path == "") {
-            reg = std::make_shared<Registry>(Registry::Global); // empty registry
+            *lk = std::make_shared<Registry>(Registry::Global); // empty registry
         } else if (path == "vendored") {
-            reg = Registry::read(settings.nixDataDir + "/flake-registry.json", Registry::Global);
+            *lk = Registry::read(settings.nixDataDir + "/flake-registry.json", Registry::Global);
         } else {
             if (!path.starts_with("/")) {
                 warn(
@@ -193,11 +188,11 @@ try {
                 path = store->toRealPath(storePath);
             }
 
-            reg = Registry::read(path, Registry::Global);
+            *lk = Registry::read(path, Registry::Global);
         }
     };
 
-    co_return reg;
+    co_return *lk;
 } catch (...) {
     co_return result::current_exception();
 }
