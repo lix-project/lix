@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <future>
+#include <kj/async.h>
 #include <string>
 #include <mutex>
 #include <memory>
@@ -118,7 +119,8 @@ private:
          * the GC to finish.
          */
         bool gcRunning = false;
-        std::shared_future<void> gcFuture;
+        std::future<void> gcFuture;
+        std::list<kj::Own<kj::CrossThreadPromiseFulfiller<void>>> gcWaiters;
 
         /**
          * How much disk space was available after the previous
@@ -297,7 +299,7 @@ public:
      * If free disk space in /nix/store if below minFree, delete
      * garbage until it exceeds maxFree.
      */
-    void autoGC(bool sync = true);
+    kj::Promise<Result<void>> autoGC(bool sync = true);
 
     /**
      * Register the store path 'output' as the output named 'outputName' of

@@ -8,6 +8,7 @@
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
 
+#include <kj/async.h>
 #include <queue>
 #include <regex>
 
@@ -868,8 +869,8 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
 }
 
 
-void LocalStore::autoGC(bool sync)
-{
+kj::Promise<Result<void>> LocalStore::autoGC(bool sync)
+try {
     static auto fakeFreeSpaceFile = getEnv("_NIX_TEST_FREE_SPACE_FILE");
 
     auto getAvail = [this]() -> uint64_t {
@@ -883,33 +884,35 @@ void LocalStore::autoGC(bool sync)
         return (uint64_t) st.f_bavail * st.f_frsize;
     };
 
-    std::shared_future<void> future;
+    auto pfp = kj::newPromiseAndCrossThreadFulfiller<void>();
 
     {
         auto state(_gcState.lock());
 
         if (state->gcRunning) {
-            future = state->gcFuture;
+            state->gcWaiters.push_back(std::move(pfp.fulfiller));
             debug("waiting for auto-GC to finish");
             goto sync;
         }
 
         auto now = std::chrono::steady_clock::now();
 
-        if (now < state->lastGCCheck + std::chrono::seconds(settings.minFreeCheckInterval)) return;
+        if (now < state->lastGCCheck + std::chrono::seconds(settings.minFreeCheckInterval)) {
+            co_return result::success();
+        }
 
         auto avail = getAvail();
 
         state->lastGCCheck = now;
 
-        if (avail >= settings.minFree || avail >= settings.maxFree) return;
+        if (avail >= settings.minFree || avail >= settings.maxFree) co_return result::success();
 
-        if (avail > state->availAfterGC * 0.97) return;
+        if (avail > state->availAfterGC * 0.97) co_return result::success();
 
         state->gcRunning = true;
 
         std::promise<void> promise;
-        future = state->gcFuture = promise.get_future().share();
+        state->gcFuture = promise.get_future();
 
         std::thread([promise{std::move(promise)}, this, avail, getAvail]() mutable {
             setCurrentThreadName("auto gc");
@@ -922,6 +925,10 @@ void LocalStore::autoGC(bool sync)
                     state->gcRunning = false;
                     state->lastGCCheck = std::chrono::steady_clock::now();
                     promise.set_value();
+                    for (auto & waiter : state->gcWaiters) {
+                        waiter->fulfill();
+                    }
+                    state->gcWaiters.clear();
                 });
 
                 GCOptions options;
@@ -946,7 +953,11 @@ void LocalStore::autoGC(bool sync)
 
  sync:
     // Wait for the future outside of the state lock.
-    if (sync) future.get();
+    if (sync) co_await pfp.promise;
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

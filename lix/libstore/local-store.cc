@@ -458,12 +458,12 @@ AutoCloseFD LocalStore::openGCLock()
 
 LocalStore::~LocalStore()
 {
-    std::shared_future<void> future;
+    std::future<void> future;
 
     {
         auto state(_gcState.lock());
         if (state->gcRunning)
-            future = state->gcFuture;
+            future = std::move(state->gcFuture);
     }
 
     if (future.valid()) {
@@ -1266,7 +1266,7 @@ try {
                 }
             }
 
-            autoGC();
+            TRY_AWAIT(autoGC());
 
             canonicalisePathMetaData(realPath, {});
 
@@ -1381,7 +1381,7 @@ try {
 
             deletePath(realPath);
 
-            autoGC();
+            TRY_AWAIT(autoGC());
 
             if (inMemory) {
                 StringSource dumpSource { dump };
@@ -1448,7 +1448,7 @@ try {
 
             deletePath(realPath);
 
-            autoGC();
+            TRY_AWAIT(autoGC());
 
             writeFile(realPath, s);
 

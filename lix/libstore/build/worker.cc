@@ -313,7 +313,7 @@ kj::Promise<Result<Worker::Results>> Worker::boopGC(LocalStore & localStore)
 try {
     while (true) {
         co_await AIO().provider.getTimer().afterDelay(10 * kj::SECONDS);
-        localStore.autoGC(false);
+        TRY_AWAIT(localStore.autoGC(false));
     }
 } catch (...) {
     co_return result::current_exception();
