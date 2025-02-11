@@ -1185,8 +1185,8 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
     ) override
     try { unsupported("buildDerivation"); } catch (...) { return {result::current_exception()}; }
 
-    void addTempRoot(const StorePath & path) override
-    { }
+    kj::Promise<Result<void>> addTempRoot(const StorePath & path) override
+    { return {result::success()}; }
 
     void addIndirectRoot(const Path & path) override
     { }

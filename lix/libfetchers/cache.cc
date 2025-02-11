@@ -108,7 +108,7 @@ struct CacheImpl : Cache
         auto locked = stmt.getInt(2) != 0;
         auto timestamp = stmt.getInt(3);
 
-        store->addTempRoot(storePath);
+        TRY_AWAIT(store->addTempRoot(storePath));
         if (!store->isValidPath(storePath)) {
             // FIXME: we could try to substitute 'storePath'.
             debug("ignoring disappeared cache entry '%s'", inAttrsJSON);

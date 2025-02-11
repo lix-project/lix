@@ -888,7 +888,7 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                 auto paths = ServeProto::Serialise<StorePathSet>::read(*store, rconn);
                 if (lock && writeAllowed)
                     for (auto & path : paths)
-                        store->addTempRoot(path);
+                        aio.blockOn(store->addTempRoot(path));
 
                 if (substitute && writeAllowed) {
                     aio.blockOn(store->substitutePaths(paths));

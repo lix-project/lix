@@ -758,12 +758,15 @@ try {
 }
 
 
-void RemoteStore::addTempRoot(const StorePath & path)
-{
+kj::Promise<Result<void>> RemoteStore::addTempRoot(const StorePath & path)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::AddTempRoot << printStorePath(path);
     conn.processStderr();
     readInt(conn->from);
+    return {result::success()};
+} catch (...) {
+    return {result::current_exception()};
 }
 
 

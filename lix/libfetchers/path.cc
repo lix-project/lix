@@ -127,7 +127,7 @@ struct PathInputScheme : InputScheme
         auto storePath = store->maybeParseStorePath(absPath);
 
         if (storePath)
-            store->addTempRoot(*storePath);
+            TRY_AWAIT(store->addTempRoot(*storePath));
 
         time_t mtime = 0;
         if (!storePath || storePath->name() != "source" || !store->isValidPath(*storePath)) {

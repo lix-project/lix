@@ -666,7 +666,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::AddTempRoot: {
         auto path = store->parseStorePath(readString(from));
         logger->startWork();
-        store->addTempRoot(path);
+        aio.blockOn(store->addTempRoot(path));
         logger->stopWork();
         to << 1;
         break;

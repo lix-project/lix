@@ -368,7 +368,7 @@ SV * derivationFromPath(char * drvPath)
 void addTempRoot(char * storePath)
     PPCODE:
         try {
-            store()->addTempRoot(store()->parseStorePath(storePath));
+            aio().blockOn(store()->addTempRoot(store()->parseStorePath(storePath)));
         } catch (Error & e) {
             croak("%s", e.what());
         }

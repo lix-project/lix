@@ -1,3 +1,4 @@
+#include "build/derivation-goal.hh"
 #include "lix/libutil/async-collect.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libstore/build/worker.hh"
@@ -146,7 +147,7 @@ Worker::makeBasicDerivationGoal(
 try {
     /* Prevent the .chroot directory from being
        garbage-collected. (See isActiveTempFile() in gc.cc.) */
-    store.addTempRoot(drvPath);
+    TRY_AWAIT(store.addTempRoot(drvPath));
 
     co_return makeGoalCommon(
         derivationGoals,

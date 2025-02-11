@@ -52,7 +52,7 @@ kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::workImpl() noexcept
 try {
     trace("init");
 
-    worker.store.addTempRoot(storePath);
+    TRY_AWAIT(worker.store.addTempRoot(storePath));
 
     /* If the path already exists we're done. */
     if (!repair && worker.store.isValidPath(storePath)) {

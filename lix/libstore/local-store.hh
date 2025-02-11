@@ -218,7 +218,7 @@ public:
         const StorePathSet & references,
         RepairFlag repair) override;
 
-    void addTempRoot(const StorePath & path) override;
+    kj::Promise<Result<void>> addTempRoot(const StorePath & path) override;
 
 private:
 

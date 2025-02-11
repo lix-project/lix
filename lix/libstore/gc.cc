@@ -2,6 +2,7 @@
 #include "lix/libstore/local-store.hh"
 #include "lix/libstore/pathlocks.hh"
 #include "lix/libutil/processes.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/finally.hh"
 #include "lix/libutil/unix-domain-socket.hh"
@@ -65,7 +66,7 @@ try {
        running. This should be superfluous since the caller should
        have registered this root yet, but let's be on the safe
        side. */
-    addTempRoot(storePath);
+    TRY_AWAIT(addTempRoot(storePath));
 
     /* Don't clobber the link if it already exists and doesn't
        point to the Nix store. */
@@ -116,27 +117,28 @@ void LocalStore::createTempRootsFile()
 }
 
 
-void LocalStore::addTempRoot(const StorePath & path)
-{
+kj::Promise<Result<void>> LocalStore::addTempRoot(const StorePath & path)
+try {
     if (config().readOnly) {
       debug("Read-only store doesn't support creating lock files for temp roots, but nothing can be deleted anyways.");
-      return;
+      co_return result::success();
     }
 
     createTempRootsFile();
 
     /* Open/create the global GC lock file. */
-    {
+    auto & fdGCLock = [&]() -> auto & {
         auto fdGCLock(_fdGCLock.lock());
         if (!*fdGCLock)
             *fdGCLock = openGCLock();
-    }
+        return *fdGCLock;
+    }();
 
  restart:
     /* Try to acquire a shared global GC lock (non-blocking). This
        only succeeds if the garbage collector is not currently
        running. */
-    FdLock gcLock(*_fdGCLock.lock(), ltRead, FdLock::dont_wait);
+    FdLock gcLock(fdGCLock, ltRead, FdLock::dont_wait);
 
     if (!gcLock.valid()) {
         /* We couldn't get a shared global GC lock, so the garbage
@@ -190,6 +192,9 @@ void LocalStore::addTempRoot(const StorePath & path)
        seen by a future run of the garbage collector. */
     auto s = printStorePath(path) + '\0';
     writeFull(_fdTempRoots.lock()->get(), s);
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

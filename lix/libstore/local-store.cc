@@ -1214,7 +1214,7 @@ try {
         }
     };
 
-    addTempRoot(info.path);
+    TRY_AWAIT(addTempRoot(info.path));
 
     if (repair || !isValidPath(info.path)) {
 
@@ -1366,7 +1366,7 @@ try {
 
     auto dstPath = makeFixedOutputPathFromCA(name, desc);
 
-    addTempRoot(dstPath);
+    TRY_AWAIT(addTempRoot(dstPath));
 
     if (repair || !isValidPath(dstPath)) {
 
@@ -1436,7 +1436,7 @@ try {
         .references = references,
     });
 
-    addTempRoot(dstPath);
+    TRY_AWAIT(addTempRoot(dstPath));
 
     if (repair || !isValidPath(dstPath)) {
 

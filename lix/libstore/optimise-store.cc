@@ -269,7 +269,7 @@ try {
     uint64_t done = 0;
 
     for (auto & i : paths) {
-        addTempRoot(i);
+        TRY_AWAIT(addTempRoot(i));
         if (!isValidPath(i)) continue; /* path was GC'ed, probably */
         {
             Activity act(*logger, lvlTalkative, actUnknown, fmt("optimising path '%s'", printStorePath(i)));

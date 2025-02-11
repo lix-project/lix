@@ -129,7 +129,7 @@ public:
 
     kj::Promise<Result<void>> ensurePath(const StorePath & path) override;
 
-    void addTempRoot(const StorePath & path) override;
+    kj::Promise<Result<void>> addTempRoot(const StorePath & path) override;
 
     Roots findRoots(bool censor) override;
 

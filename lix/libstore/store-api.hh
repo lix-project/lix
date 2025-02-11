@@ -666,8 +666,13 @@ public:
      * Add a store path as a temporary root of the garbage collector.
      * The root disappears as soon as we exit.
      */
-    virtual void addTempRoot(const StorePath & path)
-    { debug("not creating temporary root, store doesn't support GC"); }
+    virtual kj::Promise<Result<void>> addTempRoot(const StorePath & path)
+    try {
+        debug("not creating temporary root, store doesn't support GC");
+        return {result::success()};
+    } catch (...) {
+        return {result::current_exception()};
+    }
 
     /**
      * @return a string representing information about the path that

@@ -185,17 +185,17 @@ try {
     trace("loading derivation");
 
     if (nrFailed != 0) {
-        return {done(
+        co_return done(
             BuildResult::MiscFailure,
             {},
             Error("cannot build missing derivation '%s'", worker.store.printStorePath(drvPath))
-        )};
+        );
     }
 
     /* `drvPath' should already be a root, but let's be on the safe
        side: if the user forgot to make it a root, we wouldn't want
        things being garbage collected while we're busy. */
-    worker.evalStore.addTempRoot(drvPath);
+    TRY_AWAIT(worker.evalStore.addTempRoot(drvPath));
 
     /* Get the derivation. It is probably in the eval store, but it might be inthe main store:
 
@@ -211,9 +211,9 @@ try {
     }
     assert(drv);
 
-    return haveDerivation();
+    co_return TRY_AWAIT(haveDerivation());
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 
@@ -250,7 +250,7 @@ try {
 
     for (auto & i : drv->outputsAndOptPaths(worker.store))
         if (i.second.second)
-            worker.store.addTempRoot(*i.second.second);
+            TRY_AWAIT(worker.store.addTempRoot(*i.second.second));
 
     auto outputHashes = staticOutputHashes(worker.evalStore, *drv);
     for (auto & [outputName, outputHash] : outputHashes)
