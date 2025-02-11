@@ -76,11 +76,20 @@ kj::Promise<Result<BuildResult>> Store::buildDerivation(const StorePath & drvPat
 try {
     try {
         auto results = TRY_AWAIT(processGoals(*this, *this, [&](GoalFactory & gf) {
-            Worker::Targets goals;
-            goals.emplace_back(
-                gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode)
-            );
-            return goals;
+            // sometimes clang lints are really annoying. this would be safe without
+            // the explicit coroutine param captures, but clang-tidy does not see it
+            return [](auto && gf, auto && drvPath, auto && drv, auto buildMode
+                   ) -> kj::Promise<Result<Worker::Targets>> {
+                try {
+                    Worker::Targets goals;
+                    goals.emplace_back(TRY_AWAIT(
+                        gf.makeBasicDerivationGoal(drvPath, drv, OutputsSpec::All{}, buildMode)
+                    ));
+                    co_return goals;
+                } catch (...) {
+                    co_return result::current_exception();
+                }
+            }(gf, drvPath, drv, buildMode);
         }));
         auto & result = results.goals.begin()->second;
         co_return result.result.restrictTo(DerivedPath::Built {

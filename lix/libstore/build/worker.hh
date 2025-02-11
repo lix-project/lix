@@ -5,6 +5,7 @@
 #include "lix/libutil/async-semaphore.hh"
 #include "lix/libutil/concepts.hh"
 #include "lix/libutil/notifying-counter.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libstore/lock.hh"
 #include "lix/libstore/store-api.hh"
@@ -35,7 +36,8 @@ public:
     makeDerivationGoal(
         const StorePath & drvPath, const OutputsSpec & wantedOutputs, BuildMode buildMode = bmNormal
     ) = 0;
-    virtual std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<Result<Goal::WorkResult>>>
+    virtual kj::Promise<
+        Result<std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<Result<Goal::WorkResult>>>>>
     makeBasicDerivationGoal(
         const StorePath & drvPath,
         const BasicDerivation & drv,
@@ -245,9 +247,14 @@ private:
     std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<Result<Goal::WorkResult>>> makeDerivationGoal(
         const StorePath & drvPath,
         const OutputsSpec & wantedOutputs, BuildMode buildMode = bmNormal) override;
-    std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<Result<Goal::WorkResult>>> makeBasicDerivationGoal(
-        const StorePath & drvPath, const BasicDerivation & drv,
-        const OutputsSpec & wantedOutputs, BuildMode buildMode = bmNormal) override;
+    kj::Promise<
+        Result<std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<Result<Goal::WorkResult>>>>>
+    makeBasicDerivationGoal(
+        const StorePath & drvPath,
+        const BasicDerivation & drv,
+        const OutputsSpec & wantedOutputs,
+        BuildMode buildMode = bmNormal
+    ) override;
 
     /**
      * @ref SubstitutionGoal "substitution goal"
@@ -274,11 +281,25 @@ private:
     std::pair<GoalPtr, kj::Promise<Result<Goal::WorkResult>>>
     makeGoal(const DerivedPath & req, BuildMode buildMode = bmNormal) override;
 
+    kj::Promise<Result<Results>> run(Targets topGoals);
+
 public:
     /**
      * Loop until the specified top-level goals have finished.
      */
-    kj::Promise<Result<Results>> run(std::function<Targets (GoalFactory &)> req);
+    kj::Promise<Result<Results>> run(std::function<kj::Promise<Result<Targets>>(GoalFactory &)> req)
+    try {
+        co_return co_await run(TRY_AWAIT(req(goalFactory())));
+    } catch (...) {
+        co_return result::current_exception();
+    }
+
+    kj::Promise<Result<Results>> run(std::function<Targets(GoalFactory &)> req)
+    try {
+        return run(req(goalFactory()));
+    } catch (...) {
+        return {result::current_exception()};
+    }
 
     /**
      * Check whether the given valid path exists and has the right

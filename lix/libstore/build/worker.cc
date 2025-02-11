@@ -135,18 +135,20 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<Result<Goal::WorkResult>>
 }
 
 
-std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<Result<Goal::WorkResult>>> Worker::makeBasicDerivationGoal(
+kj::Promise<
+    Result<std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<Result<Goal::WorkResult>>>>>
+Worker::makeBasicDerivationGoal(
     const StorePath & drvPath,
     const BasicDerivation & drv,
     const OutputsSpec & wantedOutputs,
     BuildMode buildMode
 )
-{
+try {
     /* Prevent the .chroot directory from being
        garbage-collected. (See isActiveTempFile() in gc.cc.) */
     store.addTempRoot(drvPath);
 
-    return makeGoalCommon(
+    co_return makeGoalCommon(
         derivationGoals,
         drvPath,
         [&]() -> std::unique_ptr<DerivationGoal> {
@@ -160,6 +162,8 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<Result<Goal::WorkResult>>
         },
         [&](DerivationGoal & g) { return g.addWantedOutputs(wantedOutputs); }
     );
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -232,10 +236,8 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<Worker::Results>> Worker::run(std::function<Targets (GoalFactory &)> req)
+kj::Promise<Result<Worker::Results>> Worker::run(Targets topGoals)
 try {
-    auto topGoals = req(goalFactory());
-
     assert(!running);
     running = true;
     Finally const _stop([&] { running = false; });
