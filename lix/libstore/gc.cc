@@ -82,32 +82,36 @@ try {
 
 void LocalStore::createTempRootsFile()
 {
-    auto fdTempRoots(_fdTempRoots.lock());
+    if (auto fdTempRoots(_fdTempRoots.lock()); *fdTempRoots) {
+        return;
+    }
 
     /* Create the temporary roots file for this process. */
-    if (*fdTempRoots) return;
-
-    while (1) {
-        if (pathExists(fnTempRoots))
-            /* It *must* be stale, since there can be no two
-               processes with the same pid. */
-            unlink(fnTempRoots.c_str());
-
-        *fdTempRoots = openLockFile(fnTempRoots, true);
-
-        debug("acquiring write lock on '%s'", fnTempRoots);
-        lockFile(fdTempRoots->get(), ltWrite);
-
-        /* Check whether the garbage collector didn't get in our
-           way. */
-        struct stat st;
-        if (fstat(fdTempRoots->get(), &st) == -1)
-            throw SysError("statting '%1%'", fnTempRoots);
-        if (st.st_size == 0) break;
-
-        /* The garbage collector deleted this file before we could get
-           a lock.  (It won't delete the file after we get a lock.)
-           Try again. */
+    while (true) {
+        auto tmp = makeTempPath(fnTempRoots, ".tmp");
+        AutoCloseFD fd{open(tmp.c_str(), O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600)};
+        if (!fd && errno != EEXIST) {
+            throw SysError("opening lock file '%1%'", tmp);
+        }
+        // if we can't lock it then GC must've found and deleted it, so we try again.
+        // if we *can* lock it GC may have still deleted it, and rename will tell us.
+        if (!tryLockFile(fd.get(), ltWrite)) {
+            unlink(tmp.c_str()); // just to be sure it's gone
+            continue;
+        } else if (auto fdTempRoots(_fdTempRoots.lock()); *fdTempRoots) {
+            if (unlink(tmp.c_str()) == -1) {
+                throw SysError("deleting lock file '%1%'", tmp);
+            }
+            break;
+        } else if (rename(tmp.c_str(), fnTempRoots.c_str()) == -1) {
+            if (errno != ENOENT) {
+                throw SysError("moving lock file '%1%'", tmp);
+            }
+        } else {
+            debug("acquired write lock on '%s'", fnTempRoots);
+            *fdTempRoots = std::move(fd);
+            break;
+        }
     }
 }
 
