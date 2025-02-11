@@ -1226,7 +1226,7 @@ try {
            from a build hook (whose parent process already acquired a
            lock on this path). */
         if (!locksHeld.count(printStorePath(info.path)))
-            outputLock = lockPath(realPath);
+            outputLock = TRY_AWAIT(lockPathAsync(realPath));
 
         if (repair || !isValidPath(info.path)) {
 
@@ -1375,7 +1375,7 @@ try {
 
         auto realPath = Store::toRealPath(dstPath);
 
-        PathLock outputLock = lockPath(realPath);
+        PathLock outputLock = TRY_AWAIT(lockPathAsync(realPath));
 
         if (repair || !isValidPath(dstPath)) {
 
@@ -1442,7 +1442,7 @@ try {
 
         auto realPath = Store::toRealPath(dstPath);
 
-        PathLock outputLock = lockPath(realPath);
+        PathLock outputLock = TRY_AWAIT(lockPathAsync(realPath));
 
         if (repair || !isValidPath(dstPath)) {
 
