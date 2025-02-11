@@ -50,7 +50,7 @@ struct CmdCopy : virtual CopyCommand, BuiltPathsCommand
         RealisedPath::Set stuffToCopy;
 
         for (auto & builtPath : paths) {
-            auto theseRealisations = builtPath.toRealisedPaths(*srcStore);
+            auto theseRealisations = aio().blockOn(builtPath.toRealisedPaths(*srcStore));
             stuffToCopy.insert(theseRealisations.begin(), theseRealisations.end());
         }
 

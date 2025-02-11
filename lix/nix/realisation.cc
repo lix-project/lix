@@ -51,7 +51,7 @@ struct CmdRealisationInfo : BuiltPathsCommand, MixJSON
         RealisedPath::Set realisations;
 
         for (auto & builtPath : paths) {
-            auto theseRealisations = builtPath.toRealisedPaths(*store);
+            auto theseRealisations = aio().blockOn(builtPath.toRealisedPaths(*store));
             realisations.insert(theseRealisations.begin(), theseRealisations.end());
         }
 

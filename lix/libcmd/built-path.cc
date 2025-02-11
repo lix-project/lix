@@ -114,8 +114,8 @@ nlohmann::json BuiltPath::toJSON(const Store & store) const
     }, raw());
 }
 
-RealisedPath::Set BuiltPath::toRealisedPaths(Store & store) const
-{
+kj::Promise<Result<RealisedPath::Set>> BuiltPath::toRealisedPaths(Store & store) const
+try {
     RealisedPath::Set res;
     std::visit(
         overloaded{
@@ -143,7 +143,9 @@ RealisedPath::Set BuiltPath::toRealisedPaths(Store & store) const
             },
         },
         raw());
-    return res;
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }

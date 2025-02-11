@@ -2,6 +2,8 @@
 ///@file
 #include "lix/libstore/derived-path.hh"
 #include "lix/libstore/realisation.hh"
+#include "lix/libutil/result.hh"
+#include <kj/async.h>
 
 namespace nix {
 
@@ -90,7 +92,7 @@ struct BuiltPath : built_path::detail::BuiltPathRaw {
     }
 
     StorePathSet outPaths() const;
-    RealisedPath::Set toRealisedPaths(Store & store) const;
+    kj::Promise<Result<RealisedPath::Set>> toRealisedPaths(Store & store) const;
 
     nlohmann::json toJSON(const Store & store) const;
 };
