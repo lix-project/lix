@@ -158,4 +158,20 @@ constexpr auto enumerate(T && iterable)
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
+/**
+ * marker type for things that should never be called from async code.
+ * add a defaulted argument of this type to a method or constructor to
+ * have our linter check that marked code is never called by accident.
+ */
+struct NeverAsync {};
+
+/**
+ * Escape hatch to allow calling NeverAsync-marked code from functions
+ * that aren't themselves NeverAsync. this should only be used when no
+ * typelevel proof can be given for a call that's dynamically known to
+ * not block. using this is still forbidden in promises since blocking
+ * an executor, even on something known to complete, impedes progress.
+ */
+constexpr inline NeverAsync always_progresses;
+
 }

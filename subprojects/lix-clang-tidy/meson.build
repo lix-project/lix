@@ -8,6 +8,7 @@ sources = files(
   'CharPtrCast.cc',
   'HasPrefixSuffix.cc',
   'LixClangTidyChecks.cc',
+  'NeverAsync.cc',
 )
 
 lix_clang_tidy = shared_module('lix-clang-tidy', sources,

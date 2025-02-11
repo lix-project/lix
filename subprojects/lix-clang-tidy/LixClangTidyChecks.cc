@@ -2,6 +2,7 @@
 #include <clang-tidy/ClangTidyModuleRegistry.h>
 #include "HasPrefixSuffix.hh"
 #include "CharPtrCast.hh"
+#include "NeverAsync.hh"
 
 namespace nix::clang_tidy {
 using namespace clang;
@@ -12,6 +13,7 @@ class NixClangTidyChecks : public ClangTidyModule {
         void addCheckFactories(ClangTidyCheckFactories &CheckFactories) override {
             CheckFactories.registerCheck<HasPrefixSuffixCheck>("lix-hasprefixsuffix");
             CheckFactories.registerCheck<CharPtrCastCheck>("lix-charptrcast");
+            CheckFactories.registerCheck<NeverAsync>("lix-never-async");
         }
 };
 
