@@ -49,6 +49,14 @@ $ just install
 $ just test --suite=installcheck
 ```
 
+It's possible to pass additional `meson` flags to `just setup`. This is
+useful when e.g. working on both Lix and nix-eval-jobs which can be done
+with
+
+```
+$ just setup -Dnix-eval-jobs=enabled
+```
+
 (Check and installcheck may both be done after install, allowing you to omit the --suite argument entirely, but this is the order package.nix runs them in.)
 
 You can also build Lix manually:
