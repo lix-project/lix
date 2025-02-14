@@ -1088,8 +1088,12 @@ void NixRepl::addVarToScope(const Symbol name, Value & v)
 {
     if (displ >= envSize)
         throw Error("environment full; cannot add more variables");
-    if (auto oldVar = staticEnv->find(name); oldVar != staticEnv->vars.end())
+    if (auto oldVar = staticEnv->find(name); oldVar != staticEnv->vars.end()) {
         staticEnv->vars.erase(oldVar);
+        notice("Updated %s.", evaluator.symbols[name]);
+    } else {
+        notice("Added %s.", evaluator.symbols[name]);
+    }
     staticEnv->vars.emplace_back(name, displ);
     staticEnv->sort();
     env->values[displ++] = &v;

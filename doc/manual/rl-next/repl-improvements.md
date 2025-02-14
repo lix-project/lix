@@ -10,3 +10,4 @@ The REPL has seen various minor improvements:
 
 - Better error messages overall
 - The `:env` command to print currently available variables now also works outside of debug mode
+- Adding variables to the REPL now prints a small message on success
