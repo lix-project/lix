@@ -1508,31 +1508,38 @@ static void addPath(
         // FIXME: handle CA derivation outputs (where path needs to
         // be rewritten to the actual output).
         auto rewrites = state.aio.blockOn(state.ctx.paths.realiseContext(context));
-        path = state.ctx.paths.toRealPath(rewriteStrings(path, rewrites), context);
+        path = rewriteStrings(path, rewrites);
+
+        Path realPath = path;
 
         StorePathSet refs;
 
+        // If the path is in the store, it can mean either a physical path or a logical path in a
+        // chroot store. Query the chroot store for its presence to find out which is the case.
         if (state.ctx.store->isInStore(path)) {
             try {
                 auto [storePath, subPath] = state.ctx.store->toStorePath(path);
                 // FIXME: we should scanForReferences on the path before adding it
                 refs = state.ctx.store->queryPathInfo(storePath)->references;
-                path = state.ctx.store->toRealPath(storePath) + subPath;
+                realPath = state.ctx.store->toRealPath(path);
             } catch (Error &) { // FIXME: should be InvalidPathError
             }
         }
 
-        path = evalSettings.pureEval && expectedHash
-            ? path
-            : state.ctx.paths.checkSourcePath(CanonPath(path)).canonical().abs();
+        realPath = evalSettings.pureEval && expectedHash
+            ? realPath
+            : state.ctx.paths.checkSourcePath(CanonPath(realPath)).canonical().abs();
 
-        PathFilter filter = filterFun ? ([&](const Path & path) {
-            auto st = lstat(path);
+        PathFilter filter = filterFun ? ([&](const Path & p) {
+            auto st = lstat(p);
 
             /* Call the filter function.  The first argument is the path,
                the second is a string indicating the type of the file. */
             Value arg1;
-            arg1.mkString(path);
+            if (isInDir(p, realPath))
+                arg1.mkString(path + "/" + std::string(p, realPath.size() + 1));
+            else
+                arg1.mkString(p);
 
             Value arg2;
             arg2.mkString(
@@ -1559,7 +1566,7 @@ static void addPath(
         if (!expectedHash || !state.ctx.store->isValidPath(*expectedStorePath)) {
             auto dstPath = state.aio.blockOn(fetchToStore(
                 *state.ctx.store,
-                state.ctx.paths.checkSourcePath(CanonPath(path)),
+                state.ctx.paths.checkSourcePath(CanonPath(realPath)),
                 name,
                 method,
                 &filter,

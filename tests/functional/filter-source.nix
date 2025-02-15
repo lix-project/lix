@@ -1,3 +1,5 @@
+{ filterin }:
+
 with import ./config.nix;
 
 mkDerivation {
@@ -6,7 +8,8 @@ mkDerivation {
   input =
     let filter = path: type:
       type != "symlink"
+      && (builtins.substring 0 (builtins.stringLength filterin) (builtins.toString path) == filterin)
       && baseNameOf path != "foo"
       && !((import ./lang/lib.nix).hasSuffix ".bak" (baseNameOf path));
-    in builtins.filterSource filter ((builtins.getEnv "TEST_ROOT") + "/filterin");
+    in builtins.filterSource filter filterin;
 }

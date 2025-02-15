@@ -18,8 +18,18 @@ checkFilter() {
     test ! -L $1/link
 }
 
-nix-build ./filter-source.nix -o $TEST_ROOT/filterout1
+nix-build ./filter-source.nix --argstr filterin $TEST_ROOT/filterin -o $TEST_ROOT/filterout1
 checkFilter $TEST_ROOT/filterout1
 
-nix-build ./path.nix -o $TEST_ROOT/filterout2
+nix-build ./path.nix --argstr filterin $TEST_ROOT/filterin -o $TEST_ROOT/filterout2
 checkFilter $TEST_ROOT/filterout2
+
+if canUseSandbox; then
+    filterinStorePath=$(nix-store --add-fixed --recursive sha256 $TEST_ROOT/filterin --store $TEST_HOME/.local/share/nix/root)
+
+    nix-build ./filter-source.nix --argstr filterin $filterinStorePath -o $TEST_ROOT/filterout3 --store $TEST_HOME/.local/share/nix/root --builders 'auto - - 1 1'
+    checkFilter $TEST_ROOT/filterout3
+
+    nix-build ./path.nix --argstr filterin $filterinStorePath -o $TEST_ROOT/filterout4 --store $TEST_HOME/.local/share/nix/root --builders 'auto - - 1 1'
+    checkFilter $TEST_ROOT/filterout4
+fi
