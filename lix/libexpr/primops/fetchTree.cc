@@ -286,8 +286,8 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
             state.ctx.errors.make<EvalError>(
                 "hash mismatch in file downloaded from '%s':\n  specified: %s\n  got:       %s",
                 *url,
-                expectedHash->to_string(Base::Base32, true),
-                hash.to_string(Base::Base32, true)
+                expectedHash->to_string(Base::SRI, true),
+                hash.to_string(Base::SRI, true)
             ).withExitStatus(102)
             .debugThrow();
         }

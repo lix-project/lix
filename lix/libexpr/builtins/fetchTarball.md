@@ -33,10 +33,20 @@ the attribute `url` and the attribute `sha256`, e.g.
 ```nix
 with import (fetchTarball {
   url = "https://github.com/NixOS/nixpkgs/archive/nixos-14.12.tar.gz";
-  sha256 = "1jppksrfvbk5ypiqdz4cddxdl8z6zyzdb2srq8fcffr327ld5jj2";
+  sha256 = "sha256-QsrS6BEjO8ccwlmL1b7/5iPaemuM/Ibj9WWu7bKe98o=";
 }) {};
 
 stdenv.mkDerivation { … }
 ```
+
+The `sha256` attribute accepts Nix-style base32 sha256 hashes (e.g.
+`1jppksrfvbk5ypiqdz4cddxdl8z6zyzdb2srq8fcffr327ld5jj2`), hashes
+in SRI format (as shown above), and some other less common hash
+algorithms and formats.
+
+<!--
+  TODO: Document all the accepted hash algorithms and formats
+  somewhere in the manual and link to it from here.
+-->
 
 Not available in [restricted evaluation mode](@docroot@/command-ref/conf-file.md#conf-restrict-eval).
