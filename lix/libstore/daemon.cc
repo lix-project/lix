@@ -15,6 +15,7 @@
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/args.hh"
 
+#include <boost/core/demangle.hpp>
 #include <sstream>
 
 namespace nix::daemon {
@@ -1100,9 +1101,15 @@ void processConnection(
         to.flush();
         return;
     } catch (std::exception & e) {
-        auto ex = Error(e.what());
+        auto ex = Error(
+            "Unexpected exception on the Lix daemon; this is a bug in Lix.\nWe would appreciate a report of the circumstances it happened in at https://git.lix.systems/lix-project/lix.\n%s: %s",
+            Uncolored(boost::core::demangle(typeid(e).name())),
+            e.what()
+        );
         tunnelLogger->stopWork(&ex);
         to.flush();
+        // Crash for good measure, so something winds up in system logs and a core dump is generated as well.
+        std::terminate();
         return;
     }
 }
