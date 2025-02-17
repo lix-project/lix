@@ -1003,7 +1003,10 @@ void LinuxLocalDerivationGoal::killSandbox(bool getStats)
             buildResult.cpuUser = stats.cpuUser;
             buildResult.cpuSystem = stats.cpuSystem;
         }
-    } else {
+    } else if (!useChroot) {
+        /* Linux sandboxes use PID namespaces, which ensure that processes cannot escape from a build.
+           Therefore, we don't need to kill all processes belonging to the build user.
+           This avoids processes unrelated to the build being killed, thus avoiding: https://git.lix.systems/lix-project/lix/issues/667 */
         LocalDerivationGoal::killSandbox(getStats);
     }
 }
