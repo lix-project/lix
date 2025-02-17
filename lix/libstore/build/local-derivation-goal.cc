@@ -665,14 +665,25 @@ try {
 
     if (useChroot && settings.preBuildHook != "" && dynamic_cast<Derivation *>(drv.get())) {
         printMsg(lvlChatty, "executing pre-build hook '%1%'", settings.preBuildHook);
-        auto args = useChroot ? Strings({worker.store.printStorePath(drvPath), chrootRootDir}) :
-            Strings({ worker.store.printStorePath(drvPath) });
+        auto drvPathPretty = worker.store.printStorePath(drvPath);
+        auto args = useChroot ? Strings({ drvPathPretty, chrootRootDir}) :
+            Strings({ drvPathPretty });
         enum BuildHookState {
             stBegin,
             stExtraChrootDirs
         };
         auto state = stBegin;
-        auto lines = runProgram(settings.preBuildHook, false, args);
+        std::string lines;
+        try {
+            runProgram(settings.preBuildHook, false, args);
+        } catch (nix::Error & e) {
+            e.addTrace(nullptr,
+                "while running pre-build-hook %s for derivation %s",
+                settings.preBuildHook,
+                drvPathPretty
+            );
+            throw;
+        }
         auto lastPos = std::string::size_type{0};
         for (auto nlPos = lines.find('\n'); nlPos != std::string::npos;
                 nlPos = lines.find('\n', lastPos))
