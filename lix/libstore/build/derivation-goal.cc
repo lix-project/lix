@@ -1217,7 +1217,7 @@ HookReply DerivationGoal::tryBuildHook()
                     throw;
                 }
             }();
-            if (handleJSONLogMessage(s, worker.act, worker.hook.instance->activities, true))
+            if (handleJSONLogMessage(s, worker.act, worker.hook.instance->activities, "the build hook", true))
                 ;
             else if (s.substr(0, 2) == "# ") {
                 reply = s.substr(2);
@@ -1442,9 +1442,9 @@ try {
 
         for (auto c : data)
             if (c == '\n') {
-                auto json = parseJSONMessage(currentHookLine);
+                auto json = parseJSONMessage(currentHookLine, "the derivation builder");
                 if (json) {
-                    auto s = handleJSONLogMessage(*json, worker.act, hook->activities, true);
+                    auto s = handleJSONLogMessage(*json, worker.act, hook->activities, "the derivation builder", true);
                     // ensure that logs from a builder using `ssh-ng://` as protocol
                     // are also available to `nix log`.
                     if (s && logSink) {
@@ -1559,7 +1559,7 @@ DerivationGoal::handleChildStreams(InputStream & builderIn, InputStream * hookIn
 
 void DerivationGoal::flushLine()
 {
-    if (handleJSONLogMessage(currentLogLine, *act, builderActivities, false))
+    if (handleJSONLogMessage(currentLogLine, *act, builderActivities, "the derivation builder", false))
         ;
 
     else {
