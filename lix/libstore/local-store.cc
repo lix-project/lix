@@ -1116,7 +1116,7 @@ void LocalStore::registerValidPaths(const ValidPathInfos & infos)
     return retrySQLite([&]() {
         auto state(_dbState.lockSync(always_progresses));
 
-        SQLiteTxn txn = state->db.beginTransaction();
+        SQLiteTxn txn = state->db.beginTransaction(SQLiteTxnType::Immediate);
         StorePathSet paths;
 
         for (auto & [_, i] : infos) {
@@ -1508,7 +1508,7 @@ void LocalStore::invalidatePathChecked(const StorePath & path)
     retrySQLite([&]() {
         auto state(_dbState.lockSync(always_progresses));
 
-        SQLiteTxn txn = state->db.beginTransaction();
+        SQLiteTxn txn = state->db.beginTransaction(SQLiteTxnType::Immediate);
 
         if (isValidPath_(*state, path)) {
             StorePathSet referrers; queryReferrers(*state, path, referrers);
@@ -1772,7 +1772,7 @@ void LocalStore::addSignatures(const StorePath & storePath, const StringSet & si
     retrySQLite([&]() {
         auto state(_dbState.lockSync(always_progresses));
 
-        SQLiteTxn txn = state->db.beginTransaction();
+        SQLiteTxn txn = state->db.beginTransaction(SQLiteTxnType::Immediate);
 
         auto info = std::const_pointer_cast<ValidPathInfo>(queryPathInfoInternal(*state, storePath));
 
