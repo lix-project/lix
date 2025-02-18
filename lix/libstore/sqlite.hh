@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include <chrono>
 #include <kj/async.h>
 #include <string>
 #include <type_traits>
@@ -190,8 +191,8 @@ protected:
 
 MakeError(SQLiteBusy, SQLiteError);
 
-void handleSQLiteBusy(const SQLiteBusy & e, time_t & nextWarning);
-kj::Promise<Result<void>> handleSQLiteBusyAsync(const SQLiteBusy & e, time_t & nextWarning);
+void handleSQLiteBusy(const SQLiteBusy & e, std::chrono::time_point<std::chrono::steady_clock> & nextWarning);
+kj::Promise<Result<void>> handleSQLiteBusyAsync(const SQLiteBusy & e, std::chrono::time_point<std::chrono::steady_clock> & nextWarning);
 
 /**
  * Convenience function for retrying a SQLite transaction when the
@@ -200,10 +201,10 @@ kj::Promise<Result<void>> handleSQLiteBusyAsync(const SQLiteBusy & e, time_t & n
 template<typename F>
 auto retrySQLite(F fun)
 {
-    time_t nextWarning = time(0) + 1;
+    auto nextWarning = std::chrono::steady_clock::now() + std::chrono::seconds(1);
 
     if constexpr (requires (F f) { []<typename T>(kj::Promise<Result<T>>){}(f()); }) {
-        return [](time_t nextWarning, F fun) -> decltype(fun()) {
+        return [](std::chrono::time_point<std::chrono::steady_clock> nextWarning, F fun) -> decltype(fun()) {
             while (true) {
                 kj::Promise<Result<void>> handleBusy{nullptr};
                 try {

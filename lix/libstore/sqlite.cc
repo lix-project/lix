@@ -278,11 +278,11 @@ void SQLiteTxn::Rollback::operator()(sqlite3 * db)
 }
 
 [[nodiscard]]
-static std::chrono::milliseconds handleSQLiteBusyCommon(const SQLiteBusy & e, time_t & nextWarning)
+static std::chrono::milliseconds handleSQLiteBusyCommon(const SQLiteBusy & e, std::chrono::time_point<std::chrono::steady_clock> & nextWarning)
 {
-    time_t now = time(0);
+    auto now = std::chrono::steady_clock::now();
     if (now > nextWarning) {
-        nextWarning = now + 10;
+        nextWarning = now + std::chrono::seconds(10);
         logWarning({
             .msg = HintFmt(e.what())
         });
@@ -297,12 +297,12 @@ static std::chrono::milliseconds handleSQLiteBusyCommon(const SQLiteBusy & e, ti
     return std::chrono::milliseconds { uniform_dist(generator) };
 }
 
-void handleSQLiteBusy(const SQLiteBusy & e, time_t & nextWarning)
+void handleSQLiteBusy(const SQLiteBusy & e, std::chrono::time_point<std::chrono::steady_clock> & nextWarning)
 {
     std::this_thread::sleep_for(handleSQLiteBusyCommon(e, nextWarning));
 }
 
-kj::Promise<Result<void>> handleSQLiteBusyAsync(const SQLiteBusy & e, time_t & nextWarning)
+kj::Promise<Result<void>> handleSQLiteBusyAsync(const SQLiteBusy & e, std::chrono::time_point<std::chrono::steady_clock> & nextWarning)
 try {
     std::chrono::milliseconds delay_ms = handleSQLiteBusyCommon(e, nextWarning);
     co_await AIO().provider.getTimer().afterDelay(delay_ms.count() * kj::MILLISECONDS);
