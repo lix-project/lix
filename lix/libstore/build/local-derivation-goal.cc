@@ -663,16 +663,37 @@ try {
     if (needsHashRewrite() && pathExists(homeDir))
         throw Error("home directory '%1%' exists; please remove it to assure purity of builds without sandboxing", homeDir);
 
-    if (useChroot && settings.preBuildHook != "" && dynamic_cast<Derivation *>(drv.get())) {
+    // Note that the derivation may or may not exist when running the
+    // pre-build-hook. In the past this was *supposed* to not run the
+    // hook in such cases, but at some intermediate point (since this->drv
+    // became always an instance of Derivation rather than BasicDerivation), it
+    // started being run in all cases on systems using the sandbox.
+    // https://git.lix.systems/lix-project/lix/commit/7f5b750b401e98e9e2a346552aba5bd2e0a9203f
+    //
+    // As such, we just run it every time. It might be reasonable (and more
+    // helpful behaviour for users) in the future to write out the derivation
+    // to disk if pre-build-hook is in use.
+    if (settings.preBuildHook != "") {
         printMsg(lvlChatty, "executing pre-build hook '%1%'", settings.preBuildHook);
-        auto args = useChroot ? Strings({worker.store.printStorePath(drvPath), chrootRootDir}) :
-            Strings({ worker.store.printStorePath(drvPath) });
+        auto drvPathPretty = worker.store.printStorePath(drvPath);
+        auto args = useChroot ? Strings({ drvPathPretty, chrootRootDir}) :
+            Strings({ drvPathPretty });
         enum BuildHookState {
             stBegin,
             stExtraChrootDirs
         };
         auto state = stBegin;
-        auto lines = runProgram(settings.preBuildHook, false, args);
+        std::string lines;
+        try {
+            runProgram(settings.preBuildHook, false, args);
+        } catch (nix::Error & e) {
+            e.addTrace(nullptr,
+                "while running pre-build-hook %s for derivation %s",
+                settings.preBuildHook,
+                drvPathPretty
+            );
+            throw;
+        }
         auto lastPos = std::string::size_type{0};
         for (auto nlPos = lines.find('\n'); nlPos != std::string::npos;
                 nlPos = lines.find('\n', lastPos))

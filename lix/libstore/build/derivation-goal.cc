@@ -947,7 +947,8 @@ void runPostBuildHook(
     PushActivity pact(act.id);
     std::map<std::string, std::string> hookEnvironment = getEnv();
 
-    hookEnvironment.emplace("DRV_PATH", store.printStorePath(drvPath));
+    auto drvPathPretty = store.printStorePath(drvPath);
+    hookEnvironment.emplace("DRV_PATH", drvPathPretty);
     hookEnvironment.emplace("OUT_PATHS", chomp(concatStringsSep(" ", store.printStorePathSet(outputPaths))));
     hookEnvironment.emplace("NIX_CONFIG", globalConfig.toKeyValue());
 
@@ -987,7 +988,18 @@ void runPostBuildHook(
         .captureStdout = true,
         .mergeStderrToStdout = true,
     });
-    Finally const _wait([&] { proc.wait(); });
+    Finally const _wait([&] {
+        try {
+            proc.wait();
+        } catch (nix::Error & e) {
+            e.addTrace(nullptr,
+                "while running the post-build-hook %s for derivation %s",
+                settings.postBuildHook,
+                drvPathPretty
+            );
+            throw;
+        }
+    });
 
     // FIXME just process the data, without a wrapper sink class
     proc.getStdout()->drainInto(sink);

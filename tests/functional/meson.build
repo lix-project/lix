@@ -163,6 +163,7 @@ functional_tests_scripts = [
   'compression-levels.sh',
   'nix-copy-ssh.sh',
   'nix-copy-ssh-ng.sh',
+  'pre-hook.sh',
   'post-hook.sh',
   'function-trace.sh',
   'flakes/config.sh',

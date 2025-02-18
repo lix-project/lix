@@ -9,6 +9,8 @@ settings for this system. This is used for settings that can't be
 captured by the derivation model itself and are too variable between
 different versions of the same system to be hard-coded into nix.
 
+At the time of running the hook, the derivation may or may not exist on disk (and, e.g. won't exist in the case of many remote builds).
+
 The hook is passed the derivation path and, if sandboxes are
 enabled, the sandbox directory. It can then modify the sandbox and
 send a series of commands to modify various settings to stdout. The
