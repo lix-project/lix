@@ -2,6 +2,7 @@ src = files(
   'nix-eval-jobs.cc',
   'eval-args.cc',
   'drv.cc',
+  'constituents.cc',
   'buffered-io.cc',
   'worker.cc',
 )

@@ -140,3 +140,133 @@ def test_recursion_error() -> None:
         print(stderr)
         assert "packageWithInfiniteRecursion" in stderr
         assert "possible infinite recursion" in stderr
+
+
+def test_constituents() -> None:
+    with TemporaryDirectory() as tempdir:
+        results, _ = evaluate(
+            tempdir,
+            0,
+            [
+                "--workers",
+                "1",
+                "--flake",
+                ".#legacyPackages.x86_64-linux.constituents.success",
+                "--constituents",
+            ],
+        )
+        assert len(results) == 4
+
+        child = results[0]
+        assert child["attr"] == "anotherone"
+        assert "constituents" not in child
+        assert "namedConstituents" not in child
+
+        direct = results[1]
+        assert direct["attr"] == "direct_aggregate"
+        assert "constituents" in direct
+        assert "namedConstituents" not in direct
+
+        indirect = results[2]
+        assert indirect["attr"] == "indirect_aggregate"
+        assert "constituents" in indirect
+        assert "namedConstituents" not in indirect
+
+        mixed = results[3]
+        assert mixed["attr"] == "mixed_aggregate"
+
+        def absent_or_empty(f: str, d: dict) -> bool:
+            return f not in d or len(d[f]) == 0
+
+        assert absent_or_empty("namedConstituents", direct)
+        assert absent_or_empty("namedConstituents", indirect)
+        assert absent_or_empty("namedConstituents", mixed)
+
+        assert direct["constituents"][0].endswith("-job1.drv")
+
+        assert indirect["constituents"][0] == child["drvPath"]
+
+        assert mixed["constituents"][0].endswith("-job1.drv")
+        assert mixed["constituents"][1] == child["drvPath"]
+
+        assert "error" not in direct
+        assert "error" not in indirect
+        assert "error" not in mixed
+
+        check_gc_root(tempdir, direct["drvPath"])
+        check_gc_root(tempdir, indirect["drvPath"])
+        check_gc_root(tempdir, mixed["drvPath"])
+
+
+def test_constituents_cycle() -> None:
+    with TemporaryDirectory() as tempdir:
+        results, _ = evaluate(
+            tempdir,
+            0,
+            [
+                "--workers",
+                "1",
+                "--flake",
+                ".#legacyPackages.x86_64-linux.constituents.cycle",
+                "--constituents",
+            ],
+        )
+        assert len(results) == 2
+
+        assert list(map(lambda x: x["name"], results)) == ["aggregate0", "aggregate1"]
+        for i in results:
+            assert i["error"] == "Dependency cycle: aggregate0 <-> aggregate1"
+
+
+def test_constituents_error() -> None:
+    with TemporaryDirectory() as tempdir:
+        results, _ = evaluate(
+            tempdir,
+            0,
+            [
+                "--workers",
+                "1",
+                "--flake",
+                ".#legacyPackages.x86_64-linux.constituents.failures",
+                "--constituents",
+            ],
+        )
+        assert len(results) == 2
+
+        child = results[0]
+        assert child["attr"] == "doesnteval"
+        assert "error" in child
+
+        aggregate = results[1]
+        assert aggregate["attr"] == "aggregate"
+        assert "namedConstituents" not in aggregate
+        assert "doesntexist: does not exist\n" in aggregate["error"]
+        assert "constituents" in aggregate
+
+
+def test_transitivity() -> None:
+    with TemporaryDirectory() as tempdir:
+        results, _ = evaluate(
+            tempdir,
+            0,
+            [
+                "--workers",
+                "1",
+                "--flake",
+                ".#legacyPackages.x86_64-linux.constituents.transitive",
+                "--constituents",
+            ],
+        )
+        assert len(results) == 3
+
+        job = results[0]
+        assert job["attr"] == "constituent"
+        assert "constituents" not in job
+
+        aggregate1 = results[1]
+        assert aggregate1["attr"] == "aggregate1"
+
+        aggregate0 = results[2]
+        assert aggregate0["attr"] == "aggregate0"
+
+        assert aggregate1["drvPath"] == aggregate0["constituents"][0]

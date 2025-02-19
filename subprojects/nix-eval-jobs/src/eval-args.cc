@@ -37,6 +37,12 @@ MyArgs::MyArgs(nix::AsyncIoRoot & aio) : MixCommonArgs("nix-eval-jobs"), aio_(ai
              .description = "force recursion (don't respect recurseIntoAttrs)",
              .handler = {&forceRecurse, true}});
 
+    addFlag(
+        {.longName = "constituents",
+         .description =
+             "whether to evaluate constituents for Hydra's aggregate feature",
+         .handler = {&constituents, true}});
+
     addFlag({.longName = "gc-roots-dir",
              .description = "garbage collector roots directory",
              .labels = {"path"},

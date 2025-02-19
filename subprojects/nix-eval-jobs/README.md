@@ -90,6 +90,57 @@ single large log file. In the
 [wiki](https://github.com/nix-community/nix-eval-jobs/wiki#ci-example-configurations)
 we collect example ci configuration for various CIs.
 
+## Aggregate jobs
+
+`nix-eval-jobs` supports the [Hydra's aggregate job feature](https://determinate.systems/posts/hydra-deployment-source-of-truth/#aggregate-jobs). The behavior is turned off by default and must be activated by passing `--constituents`.
+
+When evaluating
+```nix
+stdenv.mkDerivation {
+  pname = "aggregate-job";
+
+  _hydraAggregate = true;
+  constituents = [
+    /* drvs */
+  ];
+}
+```
+
+a JSON object is returned with a field `constituents` containing
+the drv paths of each constituent.
+
+It's generally recommended to pass strings into `constituents` given
+it makes the evaluation way cheaper at the expense of `nix-eval-jobs`
+producing a different derivation in contrast to other Nix tools. In that
+case, the strings must correspond to the `attr` key of other jobs from
+the same evaluation. The aggregate job will be rewritten such that
+it has its constituents as input derivations.
+
+For example,
+
+```nix
+{
+  jobs.constituent = mkDerivation {
+    name = "foo";
+  };
+  aggregate = mkDerivation {
+    name = "aggregate";
+    _hydraAggregate = true;
+    constituents = [ "jobs.constituent" ];
+  };
+}
+```
+
+results in two JSON objects returned from `nix-eval-jobs` where
+
+* `jobs.constituent` isn't changed.
+* `aggregate` is a modified variant of the derivation in the expression
+  above which also depends on the derivation of `jobs.constituent`.
+  The `constituents` field doesn't contain the string `jobs.constituent`,
+  but the corresponding drv path.
+
+Cycles in aggregate jobs are not allowed and cause an error.
+
 ## Organisation of this repository
 
 `main` follows Lix HEAD, and is updated alongside the Lix NixOS module. When we
