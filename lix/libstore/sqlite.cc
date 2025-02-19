@@ -117,9 +117,9 @@ SQLiteStmt SQLite::create(const std::string & stmt)
     return SQLiteStmt(db.get(), stmt);
 }
 
-SQLiteTxn SQLite::beginTransaction()
+SQLiteTxn SQLite::beginTransaction(SQLiteTxnType type)
 {
-    return SQLiteTxn(db.get());
+    return SQLiteTxn(db.get(), type);
 }
 
 void SQLite::setPersistWAL(bool persist)
@@ -253,9 +253,20 @@ bool SQLiteStmt::Use::isNull(int col)
     return sqlite3_column_type(stmt.stmt.get(), col) == SQLITE_NULL;
 }
 
-SQLiteTxn::SQLiteTxn(sqlite3 * db)
+SQLiteTxn::SQLiteTxn(sqlite3 * db, SQLiteTxnType type)
 {
-    if (sqlite3_exec(db, "begin;", 0, 0, 0) != SQLITE_OK)
+    const char * sql = "begin;";
+    switch (type) {
+    case SQLiteTxnType::Deferred:
+        break;
+    case SQLiteTxnType::Immediate:
+        sql = "begin immediate;";
+        break;
+    case SQLiteTxnType::Exclusive:
+        sql = "begin exclusive;";
+        break;
+    }
+    if (sqlite3_exec(db, sql, 0, 0, 0) != SQLITE_OK)
         SQLiteError::throw_(db, "starting transaction");
     this->db.reset(db);
 }

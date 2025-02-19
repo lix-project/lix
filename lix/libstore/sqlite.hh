@@ -37,6 +37,30 @@ enum class SQLiteOpenMode {
     Immutable,
 };
 
+enum class SQLiteTxnType {
+    /**
+     * A deferred transaction does not actually begin until the database is first accessed.
+     * If the first statement in the transaction is a SELECT then a read transaction is started.
+     * Subsequent write statements will upgrade the transaction to a write transaction if possible,
+     * or return SQLITE_BUSY if another write transaction started on another database connection.
+     * If the first statement in the transaction is a write statement then a write transaction
+     * is started.
+     */
+    Deferred,
+    /**
+     * An immediate transaction causes the database to start a write transaction immediately,
+     * without waiting for a write statement. The transaction might fail wth SQLITE_BUSY if another
+     * write transaction is already active on another database connection.
+     */
+    Immediate,
+    /**
+     * An exclusive transaction causes the database to start a write transaction immediately.
+     * In WAL mode this is the same as Immediate, but in other journaling modes this prevents
+     * other database connections from reading the database while a transction is underway.
+     */
+    Exclusive,
+};
+
 struct SQLiteError;
 class SQLiteStmt;
 class SQLiteTxn;
@@ -66,7 +90,7 @@ public:
 
     SQLiteStmt create(const std::string & stmt);
 
-    SQLiteTxn beginTransaction();
+    SQLiteTxn beginTransaction(SQLiteTxnType type = SQLiteTxnType::Deferred);
 
     void setPersistWAL(bool persist);
 
@@ -154,7 +178,7 @@ class SQLiteTxn
     };
     std::unique_ptr<sqlite3, Rollback> db;
 
-    explicit SQLiteTxn(sqlite3 * db);
+    explicit SQLiteTxn(sqlite3 * db, SQLiteTxnType type);
 
 public:
     void commit();
