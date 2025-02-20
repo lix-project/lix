@@ -214,11 +214,34 @@ struct Activity
     friend class Logger;
 };
 
-struct PushActivity
+class PushActivity
 {
-    const ActivityId prevAct;
-    PushActivity(ActivityId act) : prevAct(getCurActivity()) { setCurActivity(act); }
-    ~PushActivity() { setCurActivity(prevAct); }
+    std::optional<ActivityId> prevAct;
+
+public:
+    PushActivity(ActivityId act) : prevAct(getCurActivity())
+    {
+        setCurActivity(act);
+    }
+
+    PushActivity(PushActivity && other)
+    {
+        std::swap(prevAct, other.prevAct);
+    }
+
+    PushActivity & operator=(PushActivity && other)
+    {
+        auto tmp(std::move(other));
+        std::swap(prevAct, tmp.prevAct);
+        return *this;
+    }
+
+    ~PushActivity()
+    {
+        if (prevAct) {
+            setCurActivity(*prevAct);
+        }
+    }
 };
 
 extern Logger * logger;
