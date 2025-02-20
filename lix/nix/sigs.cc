@@ -115,9 +115,16 @@ struct CmdSign : StorePathsCommand
 
         SecretKey secretKey(readFile(secretKeyFile));
 
-        size_t added{0};
+        ThreadPool pool{"Sign pool"};
 
-        for (auto & storePath : storePaths) {
+        std::atomic<size_t> added{0};
+
+        auto doPath = [&](const Path & storePathS) {
+
+            checkInterrupt();
+
+            auto storePath = store->parseStorePath(storePathS);
+
             auto info = store->queryPathInfo(storePath);
 
             auto info2(*info);
@@ -129,7 +136,12 @@ struct CmdSign : StorePathsCommand
                 store->addSignatures(storePath, info2.sigs);
                 added++;
             }
-        }
+        };
+
+        for (auto & storePath : storePaths)
+            pool.enqueue(std::bind(doPath, store->printStorePath(storePath)));
+
+        pool.process();
 
         printInfo("added %d signatures", added);
     }
