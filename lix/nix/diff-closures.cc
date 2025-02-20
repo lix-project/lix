@@ -4,6 +4,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libmain/common-args.hh"
 #include "lix/libstore/names.hh"
+#include "lix/libutil/result.hh"
 
 #include <regex>
 
@@ -17,8 +18,9 @@ struct Info
 // name -> version -> store paths
 typedef std::map<std::string, std::map<std::string, std::map<StorePath, Info>>> GroupedPaths;
 
-GroupedPaths getClosureInfo(ref<Store> store, const StorePath & toplevel)
-{
+static kj::Promise<Result<GroupedPaths>>
+getClosureInfo(ref<Store> store, const StorePath & toplevel)
+try {
     StorePathSet closure;
     store->computeFSClosure({toplevel}, closure);
 
@@ -43,17 +45,19 @@ GroupedPaths getClosureInfo(ref<Store> store, const StorePath & toplevel)
         groupedPaths[drvName.name][drvName.version].emplace(path, Info { .outputName = outputName });
     }
 
-    return groupedPaths;
+    co_return groupedPaths;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-void printClosureDiff(
+kj::Promise<Result<void>> printClosureDiff(
     ref<Store> store,
     const StorePath & beforePath,
     const StorePath & afterPath,
     std::string_view indent)
-{
-    auto beforeClosure = getClosureInfo(store, beforePath);
-    auto afterClosure = getClosureInfo(store, afterPath);
+try {
+    auto beforeClosure = TRY_AWAIT(getClosureInfo(store, beforePath));
+    auto afterClosure = TRY_AWAIT(getClosureInfo(store, afterPath));
 
     std::set<std::string> allNames;
     for (auto & [name, _] : beforeClosure) allNames.insert(name);
@@ -94,6 +98,9 @@ void printClosureDiff(
             logger->cout("%s%s: %s", indent, name, concatStringsSep(", ", items));
         }
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }
@@ -129,7 +136,7 @@ struct CmdDiffClosures : SourceExprCommand, MixOperateOnOptions
         auto beforePath = Installable::toStorePath(*state, getEvalStore(), store, Realise::Outputs, operateOn, before);
         auto after = parseInstallable(*state, store, _after);
         auto afterPath = Installable::toStorePath(*state, getEvalStore(), store, Realise::Outputs, operateOn, after);
-        printClosureDiff(store, beforePath, afterPath, "");
+        aio().blockOn(printClosureDiff(store, beforePath, afterPath, ""));
     }
 };
 

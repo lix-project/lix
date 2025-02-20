@@ -371,7 +371,7 @@ void completeFlakeRefWithFragment(
     const Strings & defaultFlakeAttrPaths,
     std::string_view prefix);
 
-void printClosureDiff(
+kj::Promise<Result<void>> printClosureDiff(
     ref<Store> store,
     const StorePath & beforePath,
     const StorePath & afterPath,
