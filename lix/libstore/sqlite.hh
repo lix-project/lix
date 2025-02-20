@@ -86,7 +86,7 @@ public:
      */
     void isCache();
 
-    void exec(const std::string & stmt);
+    void exec(const std::string & stmt, NeverAsync = {});
 
     SQLiteStmt create(const std::string & stmt);
 
@@ -223,38 +223,43 @@ kj::Promise<Result<void>> handleSQLiteBusyAsync(const SQLiteBusy & e, std::chron
  * database is busy.
  */
 template<typename F>
-auto retrySQLite(F fun)
+    requires(!requires(F f) { []<typename T>(kj::Promise<T>) {}(f()); })
+auto retrySQLite(F fun, NeverAsync = {})
 {
     auto nextWarning = std::chrono::steady_clock::now() + std::chrono::seconds(1);
 
-    if constexpr (requires (F f) { []<typename T>(kj::Promise<Result<T>>){}(f()); }) {
-        return [](std::chrono::time_point<std::chrono::steady_clock> nextWarning, F fun) -> decltype(fun()) {
-            while (true) {
-                kj::Promise<Result<void>> handleBusy{nullptr};
-                try {
-                    if constexpr (std::is_same_v<decltype(fun()), kj::Promise<Result<void>>>) {
-                        LIX_TRY_AWAIT(fun());
-                        co_return result::success();
-                    } else {
-                        co_return LIX_TRY_AWAIT(fun());
-                    }
-                } catch (SQLiteBusy & e) {
-                    handleBusy = handleSQLiteBusyAsync(e, nextWarning);
-                } catch (...) {
-                    co_return result::current_exception();
-                }
-                LIX_TRY_AWAIT(handleBusy);
-            }
-        }(nextWarning, std::move(fun));
-    } else {
-        while (true) {
-            try {
-                return fun();
-            } catch (SQLiteBusy & e) {
-                handleSQLiteBusy(e, nextWarning);
-            }
+    while (true) {
+        try {
+            return fun();
+        } catch (SQLiteBusy & e) {
+            handleSQLiteBusy(e, nextWarning);
         }
     }
 }
 
+template<typename F>
+    requires requires(F f) { []<typename T>(kj::Promise<Result<T>>) {}(f()); }
+auto retrySQLite(F fun)
+{
+    return [](F fun) -> decltype(fun()) {
+        auto nextWarning = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+
+        while (true) {
+            kj::Promise<Result<void>> handleBusy{nullptr};
+            try {
+                if constexpr (std::is_same_v<decltype(fun()), kj::Promise<Result<void>>>) {
+                    LIX_TRY_AWAIT(fun());
+                    co_return result::success();
+                } else {
+                    co_return LIX_TRY_AWAIT(fun());
+                }
+            } catch (SQLiteBusy & e) {
+                handleBusy = handleSQLiteBusyAsync(e, nextWarning);
+            } catch (...) {
+                co_return result::current_exception();
+            }
+            LIX_TRY_AWAIT(handleBusy);
+        }
+    }(std::move(fun));
+}
 }

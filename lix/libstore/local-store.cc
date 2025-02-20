@@ -342,20 +342,20 @@ LocalStore::LocalStore(LocalStoreConfig config)
 
         if (curSchema < 8) {
             SQLiteTxn txn = state->db.beginTransaction();
-            state->db.exec("alter table ValidPaths add column ultimate integer");
-            state->db.exec("alter table ValidPaths add column sigs text");
+            state->db.exec("alter table ValidPaths add column ultimate integer", always_progresses);
+            state->db.exec("alter table ValidPaths add column sigs text", always_progresses);
             txn.commit();
         }
 
         if (curSchema < 9) {
             SQLiteTxn txn = state->db.beginTransaction();
-            state->db.exec("drop table FailedPaths");
+            state->db.exec("drop table FailedPaths", always_progresses);
             txn.commit();
         }
 
         if (curSchema < 10) {
             SQLiteTxn txn = state->db.beginTransaction();
-            state->db.exec("alter table ValidPaths add column ca text");
+            state->db.exec("alter table ValidPaths add column ca text", always_progresses);
             txn.commit();
         }
 
@@ -525,7 +525,7 @@ void LocalStore::openDB(DBState & state, bool create)
        all.  This can cause database corruption if the system
        crashes. */
     std::string syncMode = settings.fsyncMetadata ? "normal" : "off";
-    db.exec("pragma synchronous = " + syncMode);
+    db.exec("pragma synchronous = " + syncMode, always_progresses);
 
     /* Set the SQLite journal mode.  WAL mode is fastest, so it's the
        default. */
@@ -538,7 +538,7 @@ void LocalStore::openDB(DBState & state, bool create)
         prevMode = use.getStr(0);
     }
     if (prevMode != mode)
-        db.exec("pragma main.journal_mode = " + mode + ";");
+        db.exec("pragma main.journal_mode = " + mode + ";", always_progresses);
 
     if (mode == "wal" ) {
          /* persist the WAL files when the DB connection is closed.
@@ -547,13 +547,13 @@ void LocalStore::openDB(DBState & state, bool create)
          * journal_size_limit to 2^40 bytes results in the WAL files getting
          * truncated to 0 on exit and limits the on disk size of the WAL files
          * to 2^40 bytes following a checkpoint */
-        db.exec("pragma main.journal_size_limit = 1099511627776;");
+        db.exec("pragma main.journal_size_limit = 1099511627776;", always_progresses);
         db.setPersistWAL(true);
 
         /* Increase the auto-checkpoint interval to 40000 pages.  This
            seems enough to ensure that instantiating the NixOS system
            derivation is done in a single fsync(). */
-        db.exec("pragma wal_autocheckpoint = 40000;");
+        db.exec("pragma wal_autocheckpoint = 40000;", always_progresses);
     }
 
     /* Initialise the database schema, if necessary. */
@@ -561,7 +561,7 @@ void LocalStore::openDB(DBState & state, bool create)
         static const char schema[] =
 #include "schema.sql.gen.hh"
             ;
-        db.exec(schema);
+        db.exec(schema, always_progresses);
     }
 }
 
@@ -812,7 +812,7 @@ void LocalStore::registerDrvOutput(const Realisation & info)
                 (outputId.outputName)
                 .exec();
         }
-    });
+    }, always_progresses);
 }
 
 void LocalStore::cacheDrvOutputMapping(
@@ -885,7 +885,7 @@ std::shared_ptr<const ValidPathInfo> LocalStore::queryPathInfoUncached(const Sto
     return retrySQLite([&]() {
         auto state(_dbState.lockSync(always_progresses));
         return queryPathInfoInternal(*state, path);
-    });
+    }, always_progresses);
 }
 
 
@@ -973,7 +973,7 @@ bool LocalStore::isValidPathUncached(const StorePath & path)
     return retrySQLite([&]() {
         auto state(_dbState.lockSync(always_progresses));
         return isValidPath_(*state, path);
-    });
+    }, always_progresses);
 }
 
 
@@ -994,7 +994,7 @@ StorePathSet LocalStore::queryAllValidPaths()
         StorePathSet res;
         while (use.next()) res.insert(parseStorePath(use.getStr(0)));
         return res;
-    });
+    }, always_progresses);
 }
 
 
@@ -1012,7 +1012,7 @@ void LocalStore::queryReferrers(const StorePath & path, StorePathSet & referrers
     return retrySQLite([&]() {
         auto state(_dbState.lockSync(always_progresses));
         queryReferrers(*state, path, referrers);
-    });
+    }, always_progresses);
 }
 
 
@@ -1028,7 +1028,7 @@ StorePathSet LocalStore::queryValidDerivers(const StorePath & path)
             derivers.insert(parseStorePath(useQueryValidDerivers.getStr(1)));
 
         return derivers;
-    });
+    }, always_progresses);
 }
 
 
@@ -1046,7 +1046,7 @@ LocalStore::queryStaticPartialDerivationOutputMap(const StorePath & path)
                 use.getStr(0), parseStorePath(use.getStr(1)));
 
         return outputs;
-    });
+    }, always_progresses);
 }
 
 std::optional<StorePath> LocalStore::queryPathFromHashPart(const std::string & hashPart)
@@ -1066,7 +1066,7 @@ std::optional<StorePath> LocalStore::queryPathFromHashPart(const std::string & h
         if (s.has_value() && s->starts_with(prefix))
             return parseStorePath(*s);
         return {};
-    });
+    }, always_progresses);
 }
 
 
@@ -1164,7 +1164,7 @@ void LocalStore::registerValidPaths(const ValidPathInfos & infos)
             }});
 
         txn.commit();
-    });
+    }, always_progresses);
 }
 
 
@@ -1524,7 +1524,7 @@ void LocalStore::invalidatePathChecked(const StorePath & path)
         }
 
         txn.commit();
-    });
+    }, always_progresses);
 }
 
 
@@ -1733,7 +1733,7 @@ void LocalStore::addSignatures(const StorePath & storePath, const StringSet & si
         updatePathInfo(*state, *info);
 
         txn.commit();
-    });
+    }, always_progresses);
 }
 
 
@@ -1821,7 +1821,7 @@ std::shared_ptr<const Realisation> LocalStore::queryRealisationUncached(const Dr
     auto maybeRealisation = retrySQLite([&]() {
         auto state(_dbState.lockSync(always_progresses));
         return queryRealisation_(*state, id);
-    });
+    }, always_progresses);
     if (maybeRealisation)
         return std::make_shared<const Realisation>(maybeRealisation.value());
     else

@@ -3,6 +3,7 @@
 #include "lix/libutil/async.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/types.hh"
 #include "lix/libutil/users.hh"
 
 #include <nlohmann/json.hpp>
@@ -50,7 +51,7 @@ struct CacheImpl : Cache
 
         state->db = SQLite(dbPath);
         state->db.isCache();
-        state->db.exec(schema);
+        state->db.exec(schema, always_progresses);
 
         state->add = state->db.create(
             "insert or replace into Cache(input, info, path, immutable, timestamp) values (?, ?, ?, ?, ?)");

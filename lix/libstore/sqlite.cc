@@ -5,6 +5,7 @@
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
+#include "lix/libutil/types.hh"
 #include "lix/libutil/url.hh"
 
 #include <chrono>
@@ -85,7 +86,7 @@ SQLite::SQLite(const Path & path, SQLiteOpenMode mode)
         sqlite3_trace(db, &traceSQL, nullptr);
     }
 
-    exec("pragma foreign_keys = 1");
+    exec("pragma foreign_keys = 1", always_progresses);
 }
 
 void SQLite::Close::operator()(sqlite3 * db)
@@ -100,11 +101,11 @@ void SQLite::Close::operator()(sqlite3 * db)
 
 void SQLite::isCache()
 {
-    exec("pragma synchronous = off");
-    exec("pragma main.journal_mode = truncate");
+    exec("pragma synchronous = off", always_progresses);
+    exec("pragma main.journal_mode = truncate", always_progresses);
 }
 
-void SQLite::exec(const std::string & stmt)
+void SQLite::exec(const std::string & stmt, NeverAsync)
 {
     retrySQLite([&]() {
         if (sqlite3_exec(db.get(), stmt.c_str(), 0, 0, 0) != SQLITE_OK)

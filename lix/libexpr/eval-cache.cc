@@ -45,7 +45,7 @@ struct AttrDb
 
         state->db = SQLite(dbPath);
         state->db.isCache();
-        state->db.exec(schema);
+        state->db.exec(schema, always_progresses);
 
         state->insertAttribute = state->db.create(
             "insert or replace into Attributes(parent, name, type, value) values (?, ?, ?, ?)");

@@ -3,6 +3,7 @@
 #include "lix/libutil/sync.hh"
 #include "lix/libstore/sqlite.hh"
 #include "lix/libstore/globals.hh"
+#include "lix/libutil/types.hh"
 #include "lix/libutil/users.hh"
 #include "lix/libutil/strings.hh"
 
@@ -97,7 +98,7 @@ public:
 
         state->db.isCache();
 
-        state->db.exec(schema);
+        state->db.exec(schema, always_progresses);
 
         state->insertCache = state->db.create(
             "insert into BinaryCaches(url, timestamp, storeDir, wantMassQuery, priority) values (?1, ?2, ?3, ?4, ?5) on conflict (url) do update set timestamp = ?2, storeDir = ?3, wantMassQuery = ?4, priority = ?5 returning id;");
@@ -158,7 +159,7 @@ public:
                     "insert or replace into LastPurge(dummy, value) values ('', ?)")
                     .use()(now).exec();
             }
-        });
+        }, always_progresses);
     }
 
     Cache & getCache(State & state, const std::string & uri)
@@ -219,7 +220,7 @@ public:
 
             txn.commit();
             return ret.id;
-        });
+        }, always_progresses);
     }
 
     std::optional<CacheInfo> upToDateCacheExists(const std::string & uri) override
@@ -234,7 +235,7 @@ public:
                 .wantMassQuery = cache->wantMassQuery,
                 .priority = cache->priority
             };
-        });
+        }, always_progresses);
     }
 
     std::pair<Outcome, std::shared_ptr<NarInfo>> lookupNarInfo(
@@ -278,7 +279,7 @@ public:
             narInfo->ca = ContentAddress::parseOpt(queryNAR.getStr(11));
 
             return {oValid, narInfo};
-        });
+        }, always_progresses);
     }
 
     std::pair<Outcome, std::shared_ptr<Realisation>> lookupRealisation(
@@ -309,7 +310,7 @@ public:
                     "Local disk cache"));
 
             return {oValid, realisation};
-        });
+        }, always_progresses);
     }
 
     void upsertNarInfo(
@@ -349,7 +350,7 @@ public:
                     (hashPart)
                     (time(0)).exec();
             }
-        });
+        }, always_progresses);
     }
 
     void upsertRealisation(
@@ -366,7 +367,7 @@ public:
                 (realisation.id.to_string())
                 (realisation.toJSON().dump())
                 (time(0)).exec();
-        });
+        }, always_progresses);
 
     }
 
@@ -382,7 +383,7 @@ public:
                 (cache.id)
                 (id.to_string())
                 (time(0)).exec();
-        });
+        }, always_progresses);
     }
 };
 

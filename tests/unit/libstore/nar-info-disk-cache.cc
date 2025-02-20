@@ -4,6 +4,7 @@
 #include <rapidcheck/gtest.h>
 #include "lix/libstore/sqlite.hh"
 #include "lix/libstore/temporary-dir.hh"
+#include "lix/libutil/types.hh"
 #include <sqlite3.h>
 
 
@@ -59,7 +60,7 @@ TEST(NarInfoDiskCacheImpl, create_and_read) {
         }
 
         // Pretend that the caches are older, but keep one up to date, as "background noise"
-        db.exec("update BinaryCaches set timestamp = timestamp - 1 - 7 * 24 * 3600 where url <> 'https://xyz';");
+        db.exec("update BinaryCaches set timestamp = timestamp - 1 - 7 * 24 * 3600 where url <> 'https://xyz';", always_progresses);
 
         // This shows that the in-memory cache works
         {
