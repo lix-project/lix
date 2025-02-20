@@ -1671,7 +1671,7 @@ try {
         StorePathSet referrers; queryReferrers(path, referrers);
         for (auto & i : referrers)
             if (i != path) {
-                verifyPath(i, storePathsInStoreDir, done, validPaths, repair, errors);
+                TRY_AWAIT(verifyPath(i, storePathsInStoreDir, done, validPaths, repair, errors));
                 if (validPaths.count(i))
                     canInvalidate = false;
             }
