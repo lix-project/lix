@@ -5,6 +5,7 @@
 #include "lix/libutil/error.hh"
 #include "lix/libutil/sync.hh"
 
+#include <kj/async.h>
 #include <map>
 #include <queue>
 #include <functional>
@@ -58,6 +59,9 @@ public:
      */
     void process();
 
+    /** Like `process`, but async. */
+    kj::Promise<Result<void>> processAsync();
+
 private:
 
     size_t maxThreads;
@@ -71,6 +75,7 @@ private:
         std::exception_ptr exception;
         std::vector<std::thread> workers;
         bool draining = false;
+        std::optional<kj::Own<kj::CrossThreadPromiseFulfiller<void>>> anyWorkerExited;
     };
 
     std::atomic_bool quit{false};

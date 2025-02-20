@@ -81,12 +81,52 @@ void ThreadPool::process()
     }
 }
 
+kj::Promise<Result<void>> ThreadPool::processAsync()
+try {
+    auto [shouldWait, signal] = [&] {
+        auto state = state_.lock();
+        state->draining = true;
+        auto pfp = kj::newPromiseAndCrossThreadFulfiller<void>();
+        state->anyWorkerExited = std::move(pfp.fulfiller);
+        return std::pair(state->active > 0 || !state->pending.empty(), std::move(pfp.promise));
+    }();
+
+    KJ_DEFER({
+        if (std::uncaught_exceptions()) {
+            /* In the exceptional case, some workers may still be
+               active. They may be referencing the stack frame of the
+               caller. So wait for them to finish. (~ThreadPool also does
+               this, but it might be destroyed after objects referenced by
+               the work item lambdas.) */
+            shutdown();
+        }
+    });
+
+    /* Wait until no more work is pending or active. */
+    if (shouldWait && !quit) {
+        co_await signal;
+    }
+
+    auto state(state_.lock());
+    if (state->exception) {
+        std::rethrow_exception(state->exception);
+    }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
 void ThreadPool::doWork()
 {
     // Tell the other workers to quit; we only return on errors or completion
     KJ_DEFER({
         quit = true;
         quit.notify_all();
+        if (auto state = state_.lock(); state->anyWorkerExited) {
+            (*state->anyWorkerExited)->fulfill();
+            state->anyWorkerExited.reset();
+        }
         work.notify_all();
     });
     ReceiveInterrupts receiveInterrupts;
