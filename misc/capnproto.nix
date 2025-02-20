@@ -35,6 +35,11 @@ stdenv.mkDerivation rec {
     sha256 = "sha256-LVdkqVBTeh8JZ1McdVNtRcnFVwEJRNjt0JV2l7RkuO8=";
   };
 
+  patches = [
+    # backport of https://github.com/capnproto/capnproto/pull/1810
+    ./capnproto-promise-nodiscard.patch
+  ];
+
   nativeBuildInputs = [ cmake ];
   propagatedBuildInputs = [
     openssl
