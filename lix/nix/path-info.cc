@@ -112,7 +112,7 @@ struct CmdPathInfo : StorePathsCommand, MixJSON
                     printSize(info->narSize);
 
                 if (showClosureSize)
-                    printSize(store->getClosureSize(info->path).first);
+                    printSize(aio().blockOn(store->getClosureSize(info->path)).first);
 
                 if (showSigs) {
                     std::cout << '\t';

@@ -702,7 +702,7 @@ public:
      * the sum of the size of the NAR serialisation of each path in the
      * closure.
      */
-    std::pair<uint64_t, uint64_t> getClosureSize(const StorePath & storePath);
+    kj::Promise<Result<std::pair<uint64_t, uint64_t>>> getClosureSize(const StorePath & storePath);
 
     /**
      * Optimise the disk space usage of the Nix store by hard-linking files

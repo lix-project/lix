@@ -1002,7 +1002,7 @@ try {
             std::pair<uint64_t, uint64_t> closureSizes;
 
             if (showClosureSize) {
-                closureSizes = getClosureSize(info->path);
+                closureSizes = TRY_AWAIT(getClosureSize(info->path));
                 jsonPath["closureSize"] = closureSizes.first;
             }
 
@@ -1048,8 +1048,9 @@ try {
 }
 
 
-std::pair<uint64_t, uint64_t> Store::getClosureSize(const StorePath & storePath)
-{
+kj::Promise<Result<std::pair<uint64_t, uint64_t>>>
+Store::getClosureSize(const StorePath & storePath)
+try {
     uint64_t totalNarSize = 0, totalDownloadSize = 0;
     StorePathSet closure;
     computeFSClosure(storePath, closure, false, false);
@@ -1061,7 +1062,9 @@ std::pair<uint64_t, uint64_t> Store::getClosureSize(const StorePath & storePath)
         if (narInfo)
             totalDownloadSize += narInfo->fileSize;
     }
-    return {totalNarSize, totalDownloadSize};
+    co_return {totalNarSize, totalDownloadSize};
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
