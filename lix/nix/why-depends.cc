@@ -100,7 +100,7 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
         }();
 
         StorePathSet closure;
-        store->computeFSClosure({packagePath}, closure, false, false);
+        aio().blockOn(store->computeFSClosure({packagePath}, closure, false, false));
 
         if (!optDependencyPath.has_value() || !closure.count(*optDependencyPath)) {
             printError("'%s' does not depend on '%s'", package->what(), dependency->what());

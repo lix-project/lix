@@ -358,7 +358,9 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
             for (auto & i : opArgs) {
                 auto ps = aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise));
                 for (auto & j : ps) {
-                    if (query == qRequisites) store->computeFSClosure(j, paths, false, includeOutputs);
+                    if (query == qRequisites) {
+                        aio.blockOn(store->computeFSClosure(j, paths, false, includeOutputs));
+                    }
                     else if (query == qReferences) {
                         for (auto & p : store->queryPathInfo(j)->references)
                             paths.insert(p);
@@ -369,7 +371,8 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                         for (auto & i : tmp)
                             paths.insert(i);
                     }
-                    else if (query == qReferrersClosure) store->computeFSClosure(j, paths, true);
+                    else if (query == qReferrersClosure)
+                        aio.blockOn(store->computeFSClosure(j, paths, true));
                 }
             }
             auto sorted = store->topoSortPaths(paths);
@@ -465,8 +468,8 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                     args.insert(p);
 
             StorePathSet referrers;
-            store->computeFSClosure(
-                args, referrers, true, settings.gcKeepOutputs, settings.gcKeepDerivations);
+            aio.blockOn(store->computeFSClosure(
+                args, referrers, true, settings.gcKeepOutputs, settings.gcKeepDerivations));
 
             auto & gcStore = require<GcStore>(*store);
             Roots roots = aio.blockOn(gcStore.findRoots(false));
@@ -974,8 +977,12 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
             case ServeProto::Command::QueryClosure: {
                 bool includeOutputs = readInt(in);
                 StorePathSet closure;
-                store->computeFSClosure(ServeProto::Serialise<StorePathSet>::read(*store, rconn),
-                    closure, false, includeOutputs);
+                aio.blockOn(store->computeFSClosure(
+                    ServeProto::Serialise<StorePathSet>::read(*store, rconn),
+                    closure,
+                    false,
+                    includeOutputs
+                ));
                 out << ServeProto::write(*store, wconn, closure);
                 break;
             }

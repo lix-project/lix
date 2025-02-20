@@ -459,7 +459,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
                 auto outputs = store->queryPartialDerivationOutputMap(inputDrv, &*evalStore);
                 for (auto & i : inputNode.value) {
                     auto o = outputs.at(i);
-                    store->computeFSClosure(*o, inputs);
+                    aio.blockOn(store->computeFSClosure(*o, inputs));
                 }
                 for (const auto & [outputName, childNode] : inputNode.childMap)
                     accumInputClosure(*outputs.at(outputName), childNode);

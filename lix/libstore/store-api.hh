@@ -766,11 +766,11 @@ public:
      * `referrers` relation instead of the `references` relation is
      * returned.
      */
-    virtual void computeFSClosure(const StorePathSet & paths,
+    virtual kj::Promise<Result<void>> computeFSClosure(const StorePathSet & paths,
         StorePathSet & out, bool flipDirection = false,
         bool includeOutputs = false, bool includeDerivers = false);
 
-    void computeFSClosure(const StorePath & path,
+    kj::Promise<Result<void>> computeFSClosure(const StorePath & path,
         StorePathSet & out, bool flipDirection = false,
         bool includeOutputs = false, bool includeDerivers = false);
 

@@ -943,7 +943,7 @@ try {
         if (!inputPaths.count(storePath))
             throw BuildError("cannot export references of path '%s' because it is not in the input closure of the derivation", printStorePath(storePath));
 
-        computeFSClosure({storePath}, paths);
+        TRY_AWAIT(computeFSClosure({storePath}, paths));
     }
 
     /* If there are derivations in the graph, then include their
@@ -962,7 +962,7 @@ try {
                        derivation itself. That doesn't seem right to me, so I
                        won't try to implemented this for CA derivations. */
                     throw UnimplementedError("exportReferences on CA derivations is not yet implemented");
-                computeFSClosure(*k.second.second, paths);
+                TRY_AWAIT(computeFSClosure(*k.second.second, paths));
             }
         }
     }
@@ -1053,7 +1053,7 @@ Store::getClosureSize(const StorePath & storePath)
 try {
     uint64_t totalNarSize = 0, totalDownloadSize = 0;
     StorePathSet closure;
-    computeFSClosure(storePath, closure, false, false);
+    TRY_AWAIT(computeFSClosure(storePath, closure, false, false));
     for (auto & p : closure) {
         auto info = queryPathInfo(p);
         totalNarSize += info->narSize;
@@ -1339,7 +1339,7 @@ try {
     if (&srcStore == &dstStore) co_return result::success();
 
     StorePathSet closure;
-    srcStore.computeFSClosure(storePaths, closure);
+    TRY_AWAIT(srcStore.computeFSClosure(storePaths, closure));
     TRY_AWAIT(copyPaths(srcStore, dstStore, closure, repair, checkSigs, substitute));
     co_return result::success();
 } catch (...) {

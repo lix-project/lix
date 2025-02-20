@@ -610,8 +610,11 @@ try {
         StorePathSet closure;
         for (auto & i : pathsInChroot)
             try {
-                if (worker.store.isInStore(i.second.source))
-                    worker.store.computeFSClosure(worker.store.toStorePath(i.second.source).first, closure);
+                if (worker.store.isInStore(i.second.source)) {
+                    TRY_AWAIT(worker.store.computeFSClosure(
+                        worker.store.toStorePath(i.second.source).first, closure
+                    ));
+                }
             } catch (InvalidPath & e) {
             } catch (Error & e) {
                 e.addTrace({}, "while processing 'sandbox-paths'");
@@ -1191,7 +1194,7 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         }
 
         StorePathSet closure;
-        next->computeFSClosure(newPaths, closure);
+        TRY_AWAIT(next->computeFSClosure(newPaths, closure));
         for (auto & path : closure)
             goal.addDependency(path);
         for (auto & real : Realisation::closure(*next, newRealisations))

@@ -12,59 +12,80 @@
 
 namespace nix {
 
-void Store::computeFSClosure(const StorePathSet & startPaths,
+kj::Promise<Result<void>> Store::computeFSClosure(const StorePathSet & startPaths,
     StorePathSet & paths_, bool flipDirection, bool includeOutputs, bool includeDerivers)
-{
-    std::function<std::set<StorePath>(const StorePath & path, ref<const ValidPathInfo>)> queryDeps;
-    if (flipDirection)
-        queryDeps = [&](const StorePath& path, ref<const ValidPathInfo>) {
-            StorePathSet res;
-            StorePathSet referrers;
-            queryReferrers(path, referrers);
-            for (auto& ref : referrers)
-                if (ref != path)
-                    res.insert(ref);
+try {
+    std::function<
+        kj::Promise<Result<std::set<StorePath>>>(const StorePath & path, ref<const ValidPathInfo>)>
+        queryDeps;
+    if (flipDirection) {
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        queryDeps = [&](const StorePath & path,
+                        ref<const ValidPathInfo>) -> kj::Promise<Result<std::set<StorePath>>> {
+            try {
+                StorePathSet res;
+                StorePathSet referrers;
+                queryReferrers(path, referrers);
+                for (auto& ref : referrers)
+                    if (ref != path)
+                        res.insert(ref);
 
-            if (includeOutputs)
-                for (auto& i : queryValidDerivers(path))
-                    res.insert(i);
+                if (includeOutputs)
+                    for (auto& i : queryValidDerivers(path))
+                        res.insert(i);
 
-            if (includeDerivers && path.isDerivation())
-                for (auto& [_, maybeOutPath] : queryPartialDerivationOutputMap(path))
-                    if (maybeOutPath && isValidPath(*maybeOutPath))
-                        res.insert(*maybeOutPath);
-            return res;
+                if (includeDerivers && path.isDerivation())
+                    for (auto& [_, maybeOutPath] : queryPartialDerivationOutputMap(path))
+                        if (maybeOutPath && isValidPath(*maybeOutPath))
+                            res.insert(*maybeOutPath);
+                co_return res;
+            } catch (...) {
+                co_return result::current_exception();
+            }
         };
-    else
-        queryDeps = [&](const StorePath& path, ref<const ValidPathInfo> info) {
-            StorePathSet res;
-            for (auto& ref : info->references)
-                if (ref != path)
-                    res.insert(ref);
+    } else {
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        queryDeps = [&](const StorePath & path,
+                        ref<const ValidPathInfo> info) -> kj::Promise<Result<std::set<StorePath>>> {
+            try {
+                StorePathSet res;
+                for (auto& ref : info->references)
+                    if (ref != path)
+                        res.insert(ref);
 
-            if (includeOutputs && path.isDerivation())
-                for (auto& [_, maybeOutPath] : queryPartialDerivationOutputMap(path))
-                    if (maybeOutPath && isValidPath(*maybeOutPath))
-                        res.insert(*maybeOutPath);
+                if (includeOutputs && path.isDerivation())
+                    for (auto& [_, maybeOutPath] : queryPartialDerivationOutputMap(path))
+                        if (maybeOutPath && isValidPath(*maybeOutPath))
+                            res.insert(*maybeOutPath);
 
-            if (includeDerivers && info->deriver && isValidPath(*info->deriver))
-                res.insert(*info->deriver);
-            return res;
+                if (includeDerivers && info->deriver && isValidPath(*info->deriver))
+                    res.insert(*info->deriver);
+                co_return res;
+            } catch (...) {
+                co_return result::current_exception();
+            }
         };
+    }
 
-    paths_.merge(computeClosure<StorePath>(
+    paths_.merge(TRY_AWAIT(computeClosureAsync<StorePath>(
         startPaths,
-        [&](const StorePath& path) -> std::set<StorePath> {
+        [&](const StorePath& path) -> kj::Promise<Result<std::set<StorePath>>> {
             return queryDeps(path, queryPathInfo(path));
-        }));
+        })));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
-void Store::computeFSClosure(const StorePath & startPath,
+kj::Promise<Result<void>> Store::computeFSClosure(const StorePath & startPath,
     StorePathSet & paths_, bool flipDirection, bool includeOutputs, bool includeDerivers)
-{
+try {
     StorePathSet paths;
     paths.insert(startPath);
-    computeFSClosure(paths, paths_, flipDirection, includeOutputs, includeDerivers);
+    TRY_AWAIT(computeFSClosure(paths, paths_, flipDirection, includeOutputs, includeDerivers));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

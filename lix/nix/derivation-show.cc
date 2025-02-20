@@ -46,7 +46,7 @@ struct CmdShowDerivation : InstallablesCommand
 
         if (recursive) {
             StorePathSet closure;
-            store->computeFSClosure(drvPaths, closure);
+            aio().blockOn(store->computeFSClosure(drvPaths, closure));
             drvPaths = std::move(closure);
         }
 

@@ -11,6 +11,7 @@
 #include "lix/libutil/logging-json.hh"
 #include "lix/libstore/build/substitution-goal.hh"
 #include "lix/libstore/build/drv-output-substitution-goal.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/strings.hh"
 
 #include <boost/outcome/try.hpp>
@@ -466,7 +467,7 @@ try {
     StorePathSet outputClosure;
     for (auto & i : outputs) {
         if (!wantedOutputs.contains(i.first)) continue;
-        worker.store.computeFSClosure(i.second, outputClosure);
+        TRY_AWAIT(worker.store.computeFSClosure(i.second, outputClosure));
     }
 
     /* Filter out our own outputs (which we have already checked). */
@@ -477,7 +478,7 @@ try {
        derivation is responsible for which path in the output
        closure. */
     StorePathSet inputClosure;
-    if (useDerivation) worker.store.computeFSClosure(drvPath, inputClosure);
+    if (useDerivation) TRY_AWAIT(worker.store.computeFSClosure(drvPath, inputClosure));
     std::map<StorePath, StorePath> outputsToDrv;
     for (auto & i : inputClosure)
         if (i.isDerivation()) {
@@ -619,58 +620,64 @@ try {
             co_return co_await resolvedFinished();
         }
 
-        std::function<void(const StorePath &, const DerivedPathMap<StringSet>::ChildNode &)> accumInputPaths;
+        std::function<kj::Promise<Result<void>>(const StorePath &, const DerivedPathMap<StringSet>::ChildNode &)> accumInputPaths;
 
-        accumInputPaths = [&](const StorePath & depDrvPath, const DerivedPathMap<StringSet>::ChildNode & inputNode) {
-            /* Add the relevant output closures of the input derivation
-               `i' as input paths.  Only add the closures of output paths
-               that are specified as inputs. */
-            auto getOutput = [&](const std::string & outputName) {
-                /* TODO (impure derivations-induced tech debt):
-                   Tracking input derivation outputs statefully through the
-                   goals is error prone and has led to bugs.
-                   For a robust nix, we need to move towards the `else` branch,
-                   which does not rely on goal state to match up with the
-                   reality of the store, which is our real source of truth.
-                   However, the impure derivations feature still relies on this
-                   fragile way of doing things, because its builds do not have
-                   a representation in the store, which is a usability problem
-                   in itself. When implementing this logic entirely with lookups
-                   make sure that they're cached. */
-                if (auto outPath = get(inputDrvOutputs, { depDrvPath, outputName })) {
-                    return *outPath;
-                }
-                else {
-                    auto outMap = [&]{
-                        for (auto * drvStore : { &worker.evalStore, &worker.store })
-                            if (drvStore->isValidPath(depDrvPath))
-                                return worker.store.queryDerivationOutputMap(depDrvPath, drvStore);
-                        assert(false);
-                    }();
-
-                    auto outMapPath = outMap.find(outputName);
-                    if (outMapPath == outMap.end()) {
-                        throw Error(
-                            "derivation '%s' requires non-existent output '%s' from input derivation '%s'",
-                            worker.store.printStorePath(drvPath), outputName, worker.store.printStorePath(depDrvPath));
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        accumInputPaths = [&](const StorePath & depDrvPath, const DerivedPathMap<StringSet>::ChildNode & inputNode) -> kj::Promise<Result<void>> {
+            try {
+                /* Add the relevant output closures of the input derivation
+                   `i' as input paths.  Only add the closures of output paths
+                   that are specified as inputs. */
+                auto getOutput = [&](const std::string & outputName) {
+                    /* TODO (impure derivations-induced tech debt):
+                       Tracking input derivation outputs statefully through the
+                       goals is error prone and has led to bugs.
+                       For a robust nix, we need to move towards the `else` branch,
+                       which does not rely on goal state to match up with the
+                       reality of the store, which is our real source of truth.
+                       However, the impure derivations feature still relies on this
+                       fragile way of doing things, because its builds do not have
+                       a representation in the store, which is a usability problem
+                       in itself. When implementing this logic entirely with lookups
+                       make sure that they're cached. */
+                    if (auto outPath = get(inputDrvOutputs, { depDrvPath, outputName })) {
+                        return *outPath;
                     }
-                    return outMapPath->second;
-                }
-            };
+                    else {
+                        auto outMap = [&]{
+                            for (auto * drvStore : { &worker.evalStore, &worker.store })
+                                if (drvStore->isValidPath(depDrvPath))
+                                    return worker.store.queryDerivationOutputMap(depDrvPath, drvStore);
+                            assert(false);
+                        }();
 
-            for (auto & outputName : inputNode.value)
-                worker.store.computeFSClosure(getOutput(outputName), inputPaths);
+                        auto outMapPath = outMap.find(outputName);
+                        if (outMapPath == outMap.end()) {
+                            throw Error(
+                                "derivation '%s' requires non-existent output '%s' from input derivation '%s'",
+                                worker.store.printStorePath(drvPath), outputName, worker.store.printStorePath(depDrvPath));
+                        }
+                        return outMapPath->second;
+                    }
+                };
 
-            for (auto & [outputName, childNode] : inputNode.childMap)
-                accumInputPaths(getOutput(outputName), childNode);
+                for (auto & outputName : inputNode.value)
+                    TRY_AWAIT(worker.store.computeFSClosure(getOutput(outputName), inputPaths));
+
+                for (auto & [outputName, childNode] : inputNode.childMap)
+                    TRY_AWAIT(accumInputPaths(getOutput(outputName), childNode));
+                co_return result::success();
+            } catch (...) {
+                co_return result::current_exception();
+            }
         };
 
         for (auto & [depDrvPath, depNode] : fullDrv.inputDrvs.map)
-            accumInputPaths(depDrvPath, depNode);
+            TRY_AWAIT(accumInputPaths(depDrvPath, depNode));
     }
 
     /* Second, the input sources. */
-    worker.store.computeFSClosure(drv->inputSrcs, inputPaths);
+    TRY_AWAIT(worker.store.computeFSClosure(drv->inputSrcs, inputPaths));
 
     debug("added input paths %s", worker.store.showPaths(inputPaths));
 

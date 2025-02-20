@@ -178,7 +178,7 @@ void BuiltPathsCommand::run(ref<Store> store, Installables && installables)
                 auto rootFromThis = root.outPaths();
                 pathsRoots.insert(rootFromThis.begin(), rootFromThis.end());
             }
-            store->computeFSClosure(pathsRoots, pathsClosure);
+            aio().blockOn(store->computeFSClosure(pathsRoots, pathsClosure));
             for (auto & path : pathsClosure)
                 paths.emplace_back(BuiltPath::Opaque{path});
         }

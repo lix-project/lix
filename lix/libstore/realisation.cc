@@ -169,7 +169,7 @@ try {
     StorePathSet initialStorePaths, pathsClosure;
     for (auto& path : startPaths)
         initialStorePaths.insert(path.path());
-    store.computeFSClosure(initialStorePaths, pathsClosure);
+    TRY_AWAIT(store.computeFSClosure(initialStorePaths, pathsClosure));
     ret.insert(startPaths.begin(), startPaths.end());
     ret.insert(pathsClosure.begin(), pathsClosure.end());
     co_return result::success();

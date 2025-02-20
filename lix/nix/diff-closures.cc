@@ -22,7 +22,7 @@ static kj::Promise<Result<GroupedPaths>>
 getClosureInfo(ref<Store> store, const StorePath & toplevel)
 try {
     StorePathSet closure;
-    store->computeFSClosure({toplevel}, closure);
+    TRY_AWAIT(store->computeFSClosure({toplevel}, closure));
 
     GroupedPaths groupedPaths;
 

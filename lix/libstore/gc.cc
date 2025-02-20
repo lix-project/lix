@@ -682,111 +682,125 @@ try {
        via the referrers edges and optionally derivers and derivation
        output edges. If none of those paths are roots, then all
        visited paths are garbage and are deleted. */
-    auto deleteReferrersClosure = [&](const StorePath & start) {
-        StorePathSet visited;
-        std::queue<StorePath> todo;
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    auto deleteReferrersClosure = [&](const StorePath & start) -> kj::Promise<Result<void>> {
+        try {
+            StorePathSet visited;
+            std::queue<StorePath> todo;
 
-        /* Wake up any GC client waiting for deletion of the paths in
-           'visited' to finish. */
-        Finally releasePending([&]() {
-            gcServer.releasePending();
-        });
+            /* Wake up any GC client waiting for deletion of the paths in
+               'visited' to finish. */
+            Finally releasePending([&]() {
+                gcServer.releasePending();
+            });
 
-        auto enqueue = [&](const StorePath & path) {
-            if (visited.insert(path).second)
-                todo.push(path);
-        };
-
-        enqueue(start);
-
-        while (auto path = pop(todo)) {
-            checkInterrupt();
-
-            /* Bail out if we've previously discovered that this path
-               is alive. */
-            if (alive.count(*path)) {
-                alive.insert(start);
-                return;
-            }
-
-            /* If we've previously deleted this path, we don't have to
-               handle it again. */
-            if (dead.count(*path)) continue;
-
-            auto markAlive = [&]()
-            {
-                alive.insert(*path);
-                alive.insert(start);
-                try {
-                    StorePathSet closure;
-                    computeFSClosure(*path, closure,
-                        /* flipDirection */ false, gcKeepOutputs, gcKeepDerivations);
-                    for (auto & p : closure)
-                        alive.insert(p);
-                } catch (InvalidPath &) { }
+            auto enqueue = [&](const StorePath & path) {
+                if (visited.insert(path).second)
+                    todo.push(path);
             };
 
-            /* If this is a root, bail out. */
-            if (roots.count(*path)) {
-                debug("cannot delete '%s' because it's a root", printStorePath(*path));
-                return markAlive();
-            }
+            enqueue(start);
 
-            if (options.action == GCOptions::gcDeleteSpecific
-                && !options.pathsToDelete.count(*path))
-                return;
+            while (auto path = pop(todo)) {
+                checkInterrupt();
 
-            if (!gcServer.markPendingIfPresent(std::string(path->hashPart()))) {
-                debug("cannot delete '%s' because it's a temporary root", printStorePath(*path));
-                return markAlive();
-            }
-
-            if (isValidPath(*path)) {
-
-                /* Visit the referrers of this path. */
-                auto i = referrersCache.find(*path);
-                if (i == referrersCache.end()) {
-                    StorePathSet referrers;
-                    queryReferrers(*path, referrers);
-                    referrersCache.emplace(*path, std::move(referrers));
-                    i = referrersCache.find(*path);
-                }
-                for (auto & p : i->second)
-                    enqueue(p);
-
-                /* If keep-derivations is set and this is a
-                   derivation, then visit the derivation outputs. */
-                if (gcKeepDerivations && path->isDerivation()) {
-                    for (auto & [name, maybeOutPath] : queryPartialDerivationOutputMap(*path))
-                        if (maybeOutPath &&
-                            isValidPath(*maybeOutPath) &&
-                            queryPathInfo(*maybeOutPath)->deriver == *path)
-                            enqueue(*maybeOutPath);
+                /* Bail out if we've previously discovered that this path
+                   is alive. */
+                if (alive.count(*path)) {
+                    alive.insert(start);
+                    co_return result::success();
                 }
 
-                /* If keep-outputs is set, then visit the derivers. */
-                if (gcKeepOutputs) {
-                    auto derivers = queryValidDerivers(*path);
-                    for (auto & i : derivers)
-                        enqueue(i);
-                }
-            }
-        }
+                /* If we've previously deleted this path, we don't have to
+                   handle it again. */
+                if (dead.count(*path)) continue;
 
-        for (auto & path : topoSortPaths(visited)) {
-            if (!dead.insert(path).second) continue;
-            if (shouldDelete) {
-                try {
-                    invalidatePathChecked(path);
-                    deleteFromStore(path.to_string());
-                    referrersCache.erase(path);
-                } catch (PathInUse &) {
-                    // References to upstream "bugs":
-                    // https://github.com/NixOS/nix/issues/11923
-                    // https://git.lix.systems/lix-project/lix/issues/621
-                    printInfo("Skipping deletion of path '%1%' because it is now in use, preventing its removal.", printStorePath(path));
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+                auto markAlive = [&]() -> kj::Promise<Result<void>>
+                {
+                    try {
+                        alive.insert(*path);
+                        alive.insert(start);
+                        try {
+                            StorePathSet closure;
+                            TRY_AWAIT(computeFSClosure(*path, closure,
+                                /* flipDirection */ false, gcKeepOutputs, gcKeepDerivations));
+                            for (auto & p : closure)
+                                alive.insert(p);
+                        } catch (InvalidPath &) { }
+                        co_return result::success();
+                    } catch (...) {
+                        co_return result::current_exception();
+                    }
+                };
+
+                /* If this is a root, bail out. */
+                if (roots.count(*path)) {
+                    debug("cannot delete '%s' because it's a root", printStorePath(*path));
+                    TRY_AWAIT(markAlive());
+                    co_return result::success();
+                }
+
+                if (options.action == GCOptions::gcDeleteSpecific
+                    && !options.pathsToDelete.count(*path))
+                    co_return result::success();
+
+                if (!gcServer.markPendingIfPresent(std::string(path->hashPart()))) {
+                    debug("cannot delete '%s' because it's a temporary root", printStorePath(*path));
+                    TRY_AWAIT(markAlive());
+                    co_return result::success();
+                }
+
+                if (isValidPath(*path)) {
+
+                    /* Visit the referrers of this path. */
+                    auto i = referrersCache.find(*path);
+                    if (i == referrersCache.end()) {
+                        StorePathSet referrers;
+                        queryReferrers(*path, referrers);
+                        referrersCache.emplace(*path, std::move(referrers));
+                        i = referrersCache.find(*path);
+                    }
+                    for (auto & p : i->second)
+                        enqueue(p);
+
+                    /* If keep-derivations is set and this is a
+                       derivation, then visit the derivation outputs. */
+                    if (gcKeepDerivations && path->isDerivation()) {
+                        for (auto & [name, maybeOutPath] : queryPartialDerivationOutputMap(*path))
+                            if (maybeOutPath &&
+                                isValidPath(*maybeOutPath) &&
+                                queryPathInfo(*maybeOutPath)->deriver == *path)
+                                enqueue(*maybeOutPath);
+                    }
+
+                    /* If keep-outputs is set, then visit the derivers. */
+                    if (gcKeepOutputs) {
+                        auto derivers = queryValidDerivers(*path);
+                        for (auto & i : derivers)
+                            enqueue(i);
+                    }
                 }
             }
+
+            for (auto & path : topoSortPaths(visited)) {
+                if (!dead.insert(path).second) continue;
+                if (shouldDelete) {
+                    try {
+                        invalidatePathChecked(path);
+                        deleteFromStore(path.to_string());
+                        referrersCache.erase(path);
+                    } catch (PathInUse &) {
+                        // References to upstream "bugs":
+                        // https://github.com/NixOS/nix/issues/11923
+                        // https://git.lix.systems/lix-project/lix/issues/621
+                        printInfo("Skipping deletion of path '%1%' because it is now in use, preventing its removal.", printStorePath(path));
+                    }
+                }
+            }
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
         }
     };
 
@@ -795,7 +809,7 @@ try {
     if (options.action == GCOptions::gcDeleteSpecific) {
 
         for (auto & i : options.pathsToDelete) {
-            deleteReferrersClosure(i);
+            TRY_AWAIT(deleteReferrersClosure(i));
             if (!dead.count(i))
                 throw Error(
                     "Cannot delete path '%1%' since it is still alive. "
@@ -827,7 +841,7 @@ try {
                 if (name == "." || name == ".." || name == linksName) continue;
 
                 if (auto storePath = maybeParseStorePath(config().storeDir + "/" + name))
-                    deleteReferrersClosure(*storePath);
+                    TRY_AWAIT(deleteReferrersClosure(*storePath));
                 else
                     deleteFromStore(name);
 

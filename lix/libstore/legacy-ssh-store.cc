@@ -384,13 +384,15 @@ public:
     kj::Promise<Result<void>> repairPath(const StorePath & path) override
     try { unsupported("repairPath"); } catch (...) { return {result::current_exception()}; }
 
-    void computeFSClosure(const StorePathSet & paths,
+    kj::Promise<Result<void>> computeFSClosure(const StorePathSet & paths,
         StorePathSet & out, bool flipDirection = false,
         bool includeOutputs = false, bool includeDerivers = false) override
-    {
+    try {
         if (flipDirection || includeDerivers) {
-            Store::computeFSClosure(paths, out, flipDirection, includeOutputs, includeDerivers);
-            return;
+            TRY_AWAIT(
+                Store::computeFSClosure(paths, out, flipDirection, includeOutputs, includeDerivers)
+            );
+            co_return result::success();
         }
 
         auto conn(connections->get());
@@ -403,6 +405,9 @@ public:
 
         for (auto & i : ServeProto::Serialise<StorePathSet>::read(*this, *conn))
             out.insert(i);
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     StorePathSet queryValidPaths(const StorePathSet & paths,
