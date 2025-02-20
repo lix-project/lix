@@ -47,22 +47,24 @@ void ThreadPool::enqueueWithAio(const work_t & t)
     if (quit)
         throw ThreadPoolShutDown("cannot enqueue a work item while the thread pool is shutting down");
     state->pending.push(t);
-    if (state->pending.size() > state->workers.size() && state->workers.size() < maxThreads)
+    if (state->active == state->workers.size() && state->workers.size() < maxThreads)
         state->workers.emplace_back(&ThreadPool::doWork, this);
     work.notify_one();
 }
 
 void ThreadPool::process()
 {
-    state_.lock()->draining = true;
+    const auto shouldWait = [&] {
+        auto state(state_.lock());
+        state->draining = true;
+        return state->active > 0 || !state->pending.empty();
+    }();
 
     /* Wait until no more work is pending or active. */
     try {
-        if (auto state(state_.lock()); state->active == 0 && state->pending.empty()) {
-            return;
+        if (shouldWait) {
+            quit.wait(false);
         }
-
-        quit.wait(false);
 
         auto state(state_.lock());
         if (state->exception)
@@ -141,6 +143,8 @@ void ThreadPool::doWork()
             /* Wait until a work item is available or we're asked to
                quit. */
             while (true) {
+                if (quit) return;
+
                 if (!state->pending.empty()) break;
 
                 /* If there are no active or pending items, and the
