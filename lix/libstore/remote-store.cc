@@ -787,8 +787,9 @@ Roots RemoteStore::findRoots(bool censor)
 }
 
 
-void RemoteStore::collectGarbage(const GCOptions & options, GCResults & results, NeverAsync)
-{
+kj::Promise<Result<void>>
+RemoteStore::collectGarbage(const GCOptions & options, GCResults & results)
+try {
     auto conn(getConnection());
 
     conn->to
@@ -809,6 +810,9 @@ void RemoteStore::collectGarbage(const GCOptions & options, GCResults & results,
         auto state_(Store::state.lock());
         state_->pathInfoCache.clear();
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

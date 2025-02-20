@@ -260,7 +260,8 @@ public:
 
     Roots findRoots(bool censor) override;
 
-    void collectGarbage(const GCOptions & options, GCResults & results, NeverAsync = {}) override;
+    kj::Promise<Result<void>>
+    collectGarbage(const GCOptions & options, GCResults & results) override;
 
     /**
      * Optimise the disk space usage of the Nix store by hard-linking

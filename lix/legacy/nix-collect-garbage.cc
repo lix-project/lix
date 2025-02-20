@@ -99,7 +99,7 @@ static int main_nix_collect_garbage(AsyncIoRoot & aio, std::string programName, 
         auto & gcStore = require<GcStore>(*store);
         GCResults results;
         PrintFreed freed(true, results);
-        gcStore.collectGarbage(options, results);
+        aio.blockOn(gcStore.collectGarbage(options, results));
 
         if (dryRun) {
             // Only print results for dry run; when !dryRun, paths will be printed as they're deleted.

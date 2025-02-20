@@ -730,7 +730,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         if (options.ignoreLiveness)
             throw Error("you are not allowed to ignore liveness");
         auto & gcStore = require<GcStore>(*store);
-        gcStore.collectGarbage(options, results);
+        aio.blockOn(gcStore.collectGarbage(options, results));
         logger->stopWork();
 
         to << results.paths << results.bytesFreed << 0 /* obsolete */;

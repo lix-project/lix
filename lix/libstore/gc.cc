@@ -1,6 +1,7 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/local-store.hh"
 #include "lix/libstore/pathlocks.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
@@ -572,8 +573,8 @@ GCOperation::~GCOperation()
 }
 
 
-void LocalStore::collectGarbage(const GCOptions & options, GCResults & results, NeverAsync)
-{
+kj::Promise<Result<void>> LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
+try {
     bool shouldDelete = options.action == GCOptions::gcDeleteDead || options.action == GCOptions::gcDeleteSpecific;
     bool gcKeepOutputs = settings.gcKeepOutputs;
     bool gcKeepDerivations = settings.gcKeepDerivations;
@@ -596,7 +597,9 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results, 
        here because then in auto-gc mode, another thread could
        downgrade our exclusive lock. */
     auto fdGCLock = openGCLock();
-    FdLock gcLock(fdGCLock, ltWrite, "waiting for the big garbage collector lock...");
+    FdLock gcLock = TRY_AWAIT(
+        FdLock::lockAsync(fdGCLock, ltWrite, "waiting for the big garbage collector lock...")
+    );
 
     /* Synchronisation point to test ENOENT handling in
        addTempRoot(), see tests/gc-non-blocking.sh. */
@@ -822,13 +825,13 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results, 
     if (options.action == GCOptions::gcReturnLive) {
         for (auto & i : alive)
             results.paths.insert(printStorePath(i));
-        return;
+        co_return result::success();
     }
 
     if (options.action == GCOptions::gcReturnDead) {
         for (auto & i : dead)
             results.paths.insert(printStorePath(i));
-        return;
+        co_return result::success();
     }
 
     /* Unlink all files in /nix/store/.links that have a link count of 1,
@@ -876,6 +879,9 @@ void LocalStore::collectGarbage(const GCOptions & options, GCResults & results, 
         printInfo("note: currently hard linking saves %.2f MiB",
             ((unsharedSize - actualSize - overhead) / (1024.0 * 1024.0)));
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -941,6 +947,8 @@ try {
                     state->gcWaiters.clear();
                 });
 
+                AsyncIoRoot aio;
+
                 GCOptions options;
                 options.maxFreed = settings.maxFree - avail;
 
@@ -948,8 +956,7 @@ try {
 
                 GCResults results;
 
-                // SAFETY: this thread will not block an async executor
-                collectGarbage(options, results, always_progresses);
+                aio.blockOn(collectGarbage(options, results));
 
                 _gcState.lock()->availAfterGC = getAvail();
 

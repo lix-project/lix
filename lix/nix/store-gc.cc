@@ -40,7 +40,7 @@ struct CmdStoreGC : StoreCommand, MixDryRun
         options.action = dryRun ? GCOptions::gcReturnDead : GCOptions::gcDeleteDead;
         GCResults results;
         PrintFreed freed(options.action == GCOptions::gcDeleteDead, results);
-        gcStore.collectGarbage(options, results);
+        aio().blockOn(gcStore.collectGarbage(options, results));
     }
 };
 

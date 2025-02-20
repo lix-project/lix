@@ -134,7 +134,8 @@ public:
 
     Roots findRoots(bool censor) override;
 
-    void collectGarbage(const GCOptions & options, GCResults & results, NeverAsync = {}) override;
+    kj::Promise<Result<void>>
+    collectGarbage(const GCOptions & options, GCResults & results) override;
 
     kj::Promise<Result<void>> optimiseStore() override;
 

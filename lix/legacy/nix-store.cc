@@ -646,7 +646,7 @@ static void opGC(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
     else {
         PrintFreed freed(options.action == GCOptions::gcDeleteDead, results);
-        gcStore.collectGarbage(options, results);
+        aio.blockOn(gcStore.collectGarbage(options, results));
 
         if (options.action != GCOptions::gcDeleteDead)
             for (auto & i : results.paths)
@@ -674,7 +674,7 @@ static void opDelete(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
     GCResults results;
     PrintFreed freed(true, results);
-    gcStore.collectGarbage(options, results);
+    aio.blockOn(gcStore.collectGarbage(options, results));
 }
 
 

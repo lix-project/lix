@@ -41,7 +41,7 @@ struct CmdStoreDelete : StorePathsCommand
 
         GCResults results;
         PrintFreed freed(true, results);
-        gcStore.collectGarbage(options, results);
+        aio().blockOn(gcStore.collectGarbage(options, results));
     }
 };
 

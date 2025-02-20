@@ -1216,8 +1216,11 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
     Roots findRoots(bool censor) override
     { return Roots(); }
 
-    void collectGarbage(const GCOptions & options, GCResults & results, NeverAsync = {}) override
-    { }
+    kj::Promise<Result<void>>
+    collectGarbage(const GCOptions & options, GCResults & results) override
+    {
+        return {result::success()};
+    }
 
     void addSignatures(const StorePath & storePath, const StringSet & sigs) override
     { unsupported("addSignatures"); }
