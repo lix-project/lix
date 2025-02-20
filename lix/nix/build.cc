@@ -9,23 +9,25 @@
 
 using namespace nix;
 
-static nlohmann::json derivedPathsToJSON(const DerivedPaths & paths, Store & store)
+static nlohmann::json derivedPathsToJSON(AsyncIoRoot & aio, const DerivedPaths & paths, Store & store)
 {
     auto res = nlohmann::json::array();
     for (auto & t : paths) {
         std::visit([&](const auto & t) {
-            res.push_back(t.toJSON(store));
+            res.push_back(aio.blockOn(t.toJSON(store)));
         }, t.raw());
     }
     return res;
 }
 
-static nlohmann::json builtPathsWithResultToJSON(const std::vector<BuiltPathWithResult> & buildables, const Store & store)
+static nlohmann::json builtPathsWithResultToJSON(
+    AsyncIoRoot & aio, const std::vector<BuiltPathWithResult> & buildables, const Store & store
+)
 {
     auto res = nlohmann::json::array();
     for (auto & b : buildables) {
         std::visit([&](const auto & t) {
-            auto j = t.toJSON(store);
+            auto j = aio.blockOn(t.toJSON(store));
             if (b.result) {
                 if (b.result->startTime)
                     j["startTime"] = b.result->startTime;
@@ -132,7 +134,7 @@ struct CmdBuild : InstallablesCommand, MixDryRun, MixJSON, MixProfile
             printMissing(store, pathsToBuild, lvlError);
 
             if (json)
-                logger->cout("%s", derivedPathsToJSON(pathsToBuild, *store).dump());
+                logger->cout("%s", derivedPathsToJSON(aio(), pathsToBuild, *store).dump());
 
             return;
         }
@@ -143,7 +145,7 @@ struct CmdBuild : InstallablesCommand, MixDryRun, MixJSON, MixProfile
             installables,
             repair ? bmRepair : buildMode);
 
-        if (json) logger->cout("%s", builtPathsWithResultToJSON(buildables, *store).dump());
+        if (json) logger->cout("%s", builtPathsWithResultToJSON(aio(), buildables, *store).dump());
 
         if (outLink != "")
             if (auto store2 = store.dynamic_pointer_cast<LocalFSStore>())

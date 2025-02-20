@@ -80,38 +80,47 @@ SingleDerivedPath SingleBuiltPath::discardOutputPath() const
     );
 }
 
-nlohmann::json BuiltPath::Built::toJSON(const Store & store) const
-{
+kj::Promise<Result<nlohmann::json>> BuiltPath::Built::toJSON(const Store & store) const
+try {
     nlohmann::json res;
-    res["drvPath"] = drvPath->toJSON(store);
+    res["drvPath"] = TRY_AWAIT(drvPath->toJSON(store));
     for (const auto & [outputName, outputPath] : outputs) {
         res["outputs"][outputName] = store.printStorePath(outputPath);
     }
-    return res;
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-nlohmann::json SingleBuiltPath::Built::toJSON(const Store & store) const
-{
+kj::Promise<Result<nlohmann::json>> SingleBuiltPath::Built::toJSON(const Store & store) const
+try {
     nlohmann::json res;
-    res["drvPath"] = drvPath->toJSON(store);
+    res["drvPath"] = TRY_AWAIT(drvPath->toJSON(store));
     auto & [outputName, outputPath] = output;
     res["output"] = outputName;
     res["outputPath"] = store.printStorePath(outputPath);
-    return res;
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-nlohmann::json SingleBuiltPath::toJSON(const Store & store) const
-{
-    return std::visit([&](const auto & buildable) {
+kj::Promise<Result<nlohmann::json>> SingleBuiltPath::toJSON(const Store & store) const
+try {
+    co_return TRY_AWAIT(std::visit([&](const auto & buildable) {
         return buildable.toJSON(store);
-    }, raw());
+    }, raw()));
+} catch (...) {
+    co_return result::current_exception();
 }
 
-nlohmann::json BuiltPath::toJSON(const Store & store) const
-{
-    return std::visit([&](const auto & buildable) {
+
+kj::Promise<Result<nlohmann::json>> BuiltPath::toJSON(const Store & store) const
+try {
+    co_return TRY_AWAIT(std::visit([&](const auto & buildable) {
         return buildable.toJSON(store);
-    }, raw());
+    }, raw()));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<RealisedPath::Set>> BuiltPath::toRealisedPaths(Store & store) const

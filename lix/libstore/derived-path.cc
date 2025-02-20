@@ -28,14 +28,17 @@ CMP(SingleDerivedPath, DerivedPathBuilt, outputs)
 #undef CMP
 #undef CMP_ONE
 
-nlohmann::json DerivedPath::Opaque::toJSON(const Store & store) const
-{
-    return store.printStorePath(path);
+kj::Promise<Result<nlohmann::json>> DerivedPath::Opaque::toJSON(const Store & store) const
+try {
+    return {store.printStorePath(path)};
+} catch (...) {
+    return {result::current_exception()};
 }
 
-nlohmann::json SingleDerivedPath::Built::toJSON(Store & store) const {
+kj::Promise<Result<nlohmann::json>> SingleDerivedPath::Built::toJSON(Store & store) const
+try {
     nlohmann::json res;
-    res["drvPath"] = drvPath->toJSON(store);
+    res["drvPath"] = TRY_AWAIT(drvPath->toJSON(store));
     // Fallback for the input-addressed derivation case: We expect to always be
     // able to print the output paths, so let’s do it
     // FIXME try-resolve on drvPath
@@ -48,12 +51,15 @@ nlohmann::json SingleDerivedPath::Built::toJSON(Store & store) const {
         res["outputPath"] = store.printStorePath(*p);
     else
         res["outputPath"] = nullptr;
-    return res;
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-nlohmann::json DerivedPath::Built::toJSON(Store & store) const {
+kj::Promise<Result<nlohmann::json>> DerivedPath::Built::toJSON(Store & store) const
+try {
     nlohmann::json res;
-    res["drvPath"] = drvPath->toJSON(store);
+    res["drvPath"] = TRY_AWAIT(drvPath->toJSON(store));
     // Fallback for the input-addressed derivation case: We expect to always be
     // able to print the output paths, so let’s do it
     // FIXME try-resolve on drvPath
@@ -65,21 +71,27 @@ nlohmann::json DerivedPath::Built::toJSON(Store & store) const {
         else
             res["outputs"][output] = nullptr;
     }
-    return res;
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-nlohmann::json SingleDerivedPath::toJSON(Store & store) const
-{
-    return std::visit([&](const auto & buildable) {
+kj::Promise<Result<nlohmann::json>> SingleDerivedPath::toJSON(Store & store) const
+try {
+    co_return TRY_AWAIT(std::visit([&](const auto & buildable) {
         return buildable.toJSON(store);
-    }, raw());
+    }, raw()));
+} catch (...) {
+    co_return result::current_exception();
 }
 
-nlohmann::json DerivedPath::toJSON(Store & store) const
-{
-    return std::visit([&](const auto & buildable) {
+kj::Promise<Result<nlohmann::json>> DerivedPath::toJSON(Store & store) const
+try {
+    co_return TRY_AWAIT(std::visit([&](const auto & buildable) {
         return buildable.toJSON(store);
-    }, raw());
+    }, raw()));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 std::string DerivedPath::Opaque::to_string(const Store & store) const

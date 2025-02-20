@@ -6,7 +6,9 @@
 #include "lix/libstore/outputs-spec.hh"
 #include "lix/libutil/comparator.hh"
 #include "lix/libutil/ref.hh"
+#include "lix/libutil/result.hh"
 
+#include <kj/async.h>
 #include <variant>
 
 #include <nlohmann/json_fwd.hpp>
@@ -27,7 +29,7 @@ struct DerivedPathOpaque {
 
     std::string to_string(const Store & store) const;
     static DerivedPathOpaque parse(const Store & store, std::string_view);
-    nlohmann::json toJSON(const Store & store) const;
+    kj::Promise<Result<nlohmann::json>> toJSON(const Store & store) const;
 
     GENERATE_CMP(DerivedPathOpaque, me->path);
 };
@@ -74,7 +76,7 @@ struct SingleDerivedPathBuilt {
         const Store & store, ref<SingleDerivedPath> drvPath,
         OutputNameView outputs,
         const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
-    nlohmann::json toJSON(Store & store) const;
+    kj::Promise<Result<nlohmann::json>> toJSON(Store & store) const;
 
     DECLARE_CMP(SingleDerivedPathBuilt);
 };
@@ -146,7 +148,7 @@ struct SingleDerivedPath : derived_path::detail::SingleDerivedPathRaw {
         const Store & store,
         std::string_view,
         const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
-    nlohmann::json toJSON(Store & store) const;
+    kj::Promise<Result<nlohmann::json>> toJSON(Store & store) const;
 };
 
 static inline ref<SingleDerivedPath> makeConstantStorePathRef(StorePath drvPath)
@@ -199,7 +201,7 @@ struct DerivedPathBuilt {
         const Store & store, ref<SingleDerivedPath>,
         std::string_view,
         const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
-    nlohmann::json toJSON(Store & store) const;
+    kj::Promise<Result<nlohmann::json>> toJSON(Store & store) const;
 
     DECLARE_CMP(DerivedPathBuilt);
 };
@@ -276,7 +278,7 @@ struct DerivedPath : derived_path::detail::DerivedPathRaw {
      */
     static DerivedPath fromSingle(const SingleDerivedPath &);
 
-    nlohmann::json toJSON(Store & store) const;
+    kj::Promise<Result<nlohmann::json>> toJSON(Store & store) const;
 };
 
 typedef std::vector<DerivedPath> DerivedPaths;
