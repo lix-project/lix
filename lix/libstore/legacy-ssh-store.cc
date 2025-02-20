@@ -410,9 +410,9 @@ public:
         co_return result::current_exception();
     }
 
-    StorePathSet queryValidPaths(const StorePathSet & paths,
+    kj::Promise<Result<StorePathSet>> queryValidPaths(const StorePathSet & paths,
         SubstituteFlag maybeSubstitute = NoSubstitute) override
-    {
+    try {
         auto conn(connections->get());
 
         conn->to
@@ -422,7 +422,9 @@ public:
         conn->to << ServeProto::write(*this, *conn, paths);
         conn->to.flush();
 
-        return ServeProto::Serialise<StorePathSet>::read(*this, *conn);
+        co_return ServeProto::Serialise<StorePathSet>::read(*this, *conn);
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     void connect() override

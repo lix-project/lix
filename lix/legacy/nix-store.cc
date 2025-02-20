@@ -897,7 +897,7 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                     aio.blockOn(store->substitutePaths(paths));
                 }
 
-                auto valid = store->queryValidPaths(paths);
+                auto valid = aio.blockOn(store->queryValidPaths(paths));
                 out << ServeProto::write(*store, wconn, valid);
                 break;
             }

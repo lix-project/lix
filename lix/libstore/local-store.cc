@@ -977,12 +977,15 @@ bool LocalStore::isValidPathUncached(const StorePath & path)
 }
 
 
-StorePathSet LocalStore::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
-{
+kj::Promise<Result<StorePathSet>>
+LocalStore::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
+try {
     StorePathSet res;
     for (auto & i : paths)
         if (isValidPath(i)) res.insert(i);
-    return res;
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -1085,7 +1088,7 @@ try {
         if (sub->config().storeDir != config_.storeDir) continue;
         if (!sub->config().wantMassQuery) continue;
 
-        auto valid = sub->queryValidPaths(remaining);
+        auto valid = TRY_AWAIT(sub->queryValidPaths(remaining));
 
         StorePathSet remaining2;
         for (auto & path : remaining)

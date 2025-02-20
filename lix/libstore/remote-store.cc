@@ -207,8 +207,9 @@ bool RemoteStore::isValidPathUncached(const StorePath & path)
 }
 
 
-StorePathSet RemoteStore::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
-{
+kj ::Promise<Result<StorePathSet>>
+RemoteStore::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::QueryValidPaths;
     conn->to << WorkerProto::write(*this, *conn, paths);
@@ -216,7 +217,9 @@ StorePathSet RemoteStore::queryValidPaths(const StorePathSet & paths, Substitute
         conn->to << maybeSubstitute;
     }
     conn.processStderr();
-    return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

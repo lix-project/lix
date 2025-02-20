@@ -1102,7 +1102,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                 printMsg(lvlTalkative, "skipping derivation named '%s' which gives an assertion failure", i.queryName(*state));
                 i.setFailed();
             }
-        validPaths = store.queryValidPaths(paths);
+        validPaths = globals.aio.blockOn(store.queryValidPaths(paths));
         substitutablePaths = globals.aio.blockOn(store.querySubstitutablePaths(paths));
     }
 

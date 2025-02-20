@@ -361,7 +361,7 @@ public:
      * Query which of the given paths is valid. Optionally, try to
      * substitute missing paths.
      */
-    virtual StorePathSet queryValidPaths(const StorePathSet & paths,
+    virtual kj::Promise<Result<StorePathSet>> queryValidPaths(const StorePathSet & paths,
         SubstituteFlag maybeSubstitute = NoSubstitute);
 
     /**

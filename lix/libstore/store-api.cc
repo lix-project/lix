@@ -844,8 +844,9 @@ try {
 }
 
 
-StorePathSet Store::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
-{
+kj::Promise<Result<StorePathSet>>
+Store::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
+try {
     struct State
     {
         size_t left;
@@ -890,16 +891,18 @@ StorePathSet Store::queryValidPaths(const StorePathSet & paths, SubstituteFlag m
     for (auto & path : paths)
         pool.enqueue(std::bind(doQuery, path));
 
-    pool.process();
+    TRY_AWAIT(pool.processAsync());
 
     while (true) {
         auto state(state_.lock());
         if (!state->left) {
             if (state->exc) std::rethrow_exception(state->exc);
-            return std::move(state->valid);
+            co_return std::move(state->valid);
         }
         state.wait(wakeup);
     }
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -1220,7 +1223,7 @@ kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
     CheckSigsFlag checkSigs,
     SubstituteFlag substitute)
 try {
-    auto valid = dstStore.queryValidPaths(storePaths, substitute);
+    auto valid = TRY_AWAIT(dstStore.queryValidPaths(storePaths, substitute));
 
     StorePathSet missing;
     for (auto & path : storePaths)

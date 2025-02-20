@@ -292,7 +292,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         if (substitute) {
             aio.blockOn(store->substitutePaths(paths));
         }
-        auto res = store->queryValidPaths(paths, substitute);
+        auto res = aio.blockOn(store->queryValidPaths(paths, substitute));
         logger->stopWork();
         to << WorkerProto::write(*store, wconn, res);
         break;
