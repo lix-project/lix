@@ -258,7 +258,7 @@ private:
 
 public:
 
-    Roots findRoots(bool censor) override;
+    kj::Promise<Result<Roots>> findRoots(bool censor) override;
 
     kj::Promise<Result<void>>
     collectGarbage(const GCOptions & options, GCResults & results) override;
@@ -354,9 +354,9 @@ private:
     PathSet queryValidPathsOld();
     ValidPathInfo queryPathInfoOld(const Path & path);
 
-    void findRoots(const Path & path, unsigned char type, Roots & roots);
+    kj::Promise<Result<void>> findRoots(const Path & path, unsigned char type, Roots & roots);
 
-    void findRootsNoTemp(Roots & roots, bool censor);
+    kj::Promise<Result<void>> findRootsNoTemp(Roots & roots, bool censor);
 
     /**
      * Find possible garbage collector roots in a platform-specific manner,
@@ -364,7 +364,7 @@ private:
      */
     virtual void findPlatformRoots(UncheckedRoots & unchecked);
 
-    void findRuntimeRoots(Roots & roots, bool censor);
+    kj::Promise<Result<void>> findRuntimeRoots(Roots & roots, bool censor);
 
     std::pair<Path, AutoCloseFD> createTempDirInStore();
 

@@ -132,7 +132,7 @@ public:
 
     kj::Promise<Result<void>> addTempRoot(const StorePath & path) override;
 
-    Roots findRoots(bool censor) override;
+    kj::Promise<Result<Roots>> findRoots(bool censor) override;
 
     kj::Promise<Result<void>>
     collectGarbage(const GCOptions & options, GCResults & results) override;

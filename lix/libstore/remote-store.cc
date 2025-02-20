@@ -771,8 +771,8 @@ try {
 }
 
 
-Roots RemoteStore::findRoots(bool censor)
-{
+kj::Promise<Result<Roots>> RemoteStore::findRoots(bool censor)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::FindRoots;
     conn.processStderr();
@@ -783,7 +783,9 @@ Roots RemoteStore::findRoots(bool censor)
         auto target = parseStorePath(readString(conn->from));
         result[std::move(target)].emplace(link);
     }
-    return result;
+    co_return result;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

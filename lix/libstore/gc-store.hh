@@ -116,7 +116,7 @@ struct GcStore : public virtual Store
      * `censor` is true, privacy-sensitive information about roots
      * found in `/proc` is censored.
      */
-    virtual Roots findRoots(bool censor) = 0;
+    virtual kj::Promise<Result<Roots>> findRoots(bool censor) = 0;
 
     /**
      * Perform a garbage collection.

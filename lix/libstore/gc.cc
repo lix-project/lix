@@ -251,8 +251,9 @@ void LocalStore::findTempRoots(Roots & tempRoots, bool censor)
 }
 
 
-void LocalStore::findRoots(const Path & path, unsigned char type, Roots & roots)
-{
+kj::Promise<Result<void>>
+LocalStore::findRoots(const Path & path, unsigned char type, Roots & roots)
+try {
     auto foundRoot = [&](const Path & path, const Path & target) {
         try {
             auto storePath = toStorePath(target).first;
@@ -270,7 +271,7 @@ void LocalStore::findRoots(const Path & path, unsigned char type, Roots & roots)
 
         if (type == DT_DIR) {
             for (auto & i : readDirectory(path))
-                findRoots(path + "/" + i.name, i.type, roots);
+                TRY_AWAIT(findRoots(path + "/" + i.name, i.type, roots));
         }
 
         else if (type == DT_LNK) {
@@ -288,7 +289,7 @@ void LocalStore::findRoots(const Path & path, unsigned char type, Roots & roots)
                     }
                 } else {
                     struct stat st2 = lstat(target);
-                    if (!S_ISLNK(st2.st_mode)) return;
+                    if (!S_ISLNK(st2.st_mode)) co_return result::success();
                     Path target2 = readLink(target);
                     if (isInStore(target2)) foundRoot(target, target2);
                 }
@@ -311,30 +312,40 @@ void LocalStore::findRoots(const Path & path, unsigned char type, Roots & roots)
         else
             throw;
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
-void LocalStore::findRootsNoTemp(Roots & roots, bool censor)
-{
+kj::Promise<Result<void>> LocalStore::findRootsNoTemp(Roots & roots, bool censor)
+try {
     /* Process direct roots in {gcroots,profiles}. */
-    findRoots(config().stateDir + "/" + gcRootsDir, DT_UNKNOWN, roots);
-    findRoots(config().stateDir + "/profiles", DT_UNKNOWN, roots);
+    TRY_AWAIT(findRoots(config().stateDir + "/" + gcRootsDir, DT_UNKNOWN, roots));
+    TRY_AWAIT(findRoots(config().stateDir + "/profiles", DT_UNKNOWN, roots));
 
     /* Add additional roots returned by different platforms-specific
        heuristics.  This is typically used to add running programs to
        the set of roots (to prevent them from being garbage collected). */
-    findRuntimeRoots(roots, censor);
+    TRY_AWAIT(findRuntimeRoots(roots, censor));
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
-Roots LocalStore::findRoots(bool censor)
-{
+kj::Promise<Result<Roots>> LocalStore::findRoots(bool censor)
+try {
     Roots roots;
-    findRootsNoTemp(roots, censor);
+    TRY_AWAIT(findRootsNoTemp(roots, censor));
 
     findTempRoots(roots, censor);
 
-    return roots;
+    co_return roots;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 void LocalStore::findPlatformRoots(UncheckedRoots & unchecked)
@@ -356,8 +367,8 @@ void LocalStore::findPlatformRoots(UncheckedRoots & unchecked)
     }
 }
 
-void LocalStore::findRuntimeRoots(Roots & roots, bool censor)
-{
+kj::Promise<Result<void>> LocalStore::findRuntimeRoots(Roots & roots, bool censor)
+try {
     UncheckedRoots unchecked;
 
     findPlatformRoots(unchecked);
@@ -374,6 +385,9 @@ void LocalStore::findRuntimeRoots(Roots & roots, bool censor)
                 roots[path].insert(links.begin(), links.end());
         } catch (BadStorePath &) { }
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -613,7 +627,7 @@ try {
     printInfo("finding garbage collector roots...");
     Roots rootMap;
     if (!options.ignoreLiveness)
-        findRootsNoTemp(rootMap, true);
+        TRY_AWAIT(findRootsNoTemp(rootMap, true));
 
     for (auto & i : rootMap) roots.insert(i.first);
 

@@ -698,7 +698,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::FindRoots: {
         logger->startWork();
         auto & gcStore = require<GcStore>(*store);
-        Roots roots = gcStore.findRoots(!trusted);
+        Roots roots = aio.blockOn(gcStore.findRoots(!trusted));
         logger->stopWork();
 
         size_t size = 0;

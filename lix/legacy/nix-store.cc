@@ -469,7 +469,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                 args, referrers, true, settings.gcKeepOutputs, settings.gcKeepDerivations);
 
             auto & gcStore = require<GcStore>(*store);
-            Roots roots = gcStore.findRoots(false);
+            Roots roots = aio.blockOn(gcStore.findRoots(false));
             for (auto & [target, links] : roots)
                 if (referrers.find(target) != referrers.end())
                     for (auto & link : links)
@@ -634,7 +634,7 @@ static void opGC(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     auto & gcStore = require<GcStore>(*store);
 
     if (printRoots) {
-        Roots roots = gcStore.findRoots(false);
+        Roots roots = aio.blockOn(gcStore.findRoots(false));
         std::set<std::pair<Path, StorePath>> roots2;
         // Transpose and sort the roots.
         for (auto & [target, links] : roots)

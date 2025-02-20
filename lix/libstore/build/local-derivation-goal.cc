@@ -1213,8 +1213,8 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
     void addIndirectRoot(const Path & path) override
     { }
 
-    Roots findRoots(bool censor) override
-    { return Roots(); }
+    kj::Promise<Result<Roots>> findRoots(bool censor) override
+    { return {Roots()}; }
 
     kj::Promise<Result<void>>
     collectGarbage(const GCOptions & options, GCResults & results) override
