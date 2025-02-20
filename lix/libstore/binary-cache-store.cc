@@ -99,10 +99,10 @@ void BinaryCacheStore::writeNarInfo(ref<NarInfo> narInfo)
         diskCache->upsertNarInfo(getUri(), std::string(narInfo->path.hashPart()), std::shared_ptr<NarInfo>(narInfo));
 }
 
-ref<const ValidPathInfo> BinaryCacheStore::addToStoreCommon(
+kj::Promise<Result<ref<const ValidPathInfo>>> BinaryCacheStore::addToStoreCommon(
     Source & narSource, RepairFlag repair, CheckSigsFlag checkSigs,
     std::function<ValidPathInfo(HashResult)> mkInfo)
-{
+try {
     auto [fdTemp, fnTemp] = createTempFile();
 
     AutoDelete autoDelete(fnTemp);
@@ -253,7 +253,9 @@ ref<const ValidPathInfo> BinaryCacheStore::addToStoreCommon(
 
     stats.narInfoWrite++;
 
-    return narInfo;
+    co_return narInfo;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<void>> BinaryCacheStore::addToStore(const ValidPathInfo & info, Source & narSource,
@@ -265,13 +267,13 @@ try {
         co_return result::success();
     }
 
-    addToStoreCommon(narSource, repair, checkSigs, {[&](HashResult nar) {
+    TRY_AWAIT(addToStoreCommon(narSource, repair, checkSigs, {[&](HashResult nar) {
         /* FIXME reinstate these, once we can correctly do hash modulo sink as
            needed. We need to throw here in case we uploaded a corrupted store path. */
         // assert(info.narHash == nar.first);
         // assert(info.narSize == nar.second);
         return info;
-    }});
+    }}));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -282,7 +284,7 @@ kj::Promise<Result<StorePath>> BinaryCacheStore::addToStoreFromDump(Source & dum
 try {
     if (method != FileIngestionMethod::Recursive || hashAlgo != HashType::SHA256)
         unsupported("addToStoreFromDump");
-    co_return addToStoreCommon(dump, repair, CheckSigs, [&](HashResult nar) {
+    co_return TRY_AWAIT(addToStoreCommon(dump, repair, CheckSigs, [&](HashResult nar) {
         ValidPathInfo info {
             *this,
             name,
@@ -299,7 +301,7 @@ try {
         };
         info.narSize = nar.second;
         return info;
-    })->path;
+    }))->path;
 } catch (...) {
     co_return result::current_exception();
 }
@@ -393,7 +395,7 @@ try {
     auto h = sink.finish().first;
 
     auto source = GeneratorSource{dumpPath(srcPath, filter)};
-    co_return addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
+    co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
         ValidPathInfo info {
             *this,
             name,
@@ -410,7 +412,7 @@ try {
         };
         info.narSize = nar.second;
         return info;
-    })->path;
+    }))->path;
 } catch (...) {
     co_return result::current_exception();
 }
@@ -430,7 +432,7 @@ try {
     StringSink sink;
     sink << dumpString(s);
     StringSource source(sink.s);
-    co_return addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
+    co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
         ValidPathInfo info {
             *this,
             std::string { name },
@@ -442,7 +444,7 @@ try {
         };
         info.narSize = nar.second;
         return info;
-    })->path;
+    }))->path;
 } catch (...) {
     co_return result::current_exception();
 }

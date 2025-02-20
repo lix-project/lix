@@ -101,7 +101,7 @@ private:
 
     void writeNarInfo(ref<NarInfo> narInfo);
 
-    ref<const ValidPathInfo> addToStoreCommon(
+    kj::Promise<Result<ref<const ValidPathInfo>>> addToStoreCommon(
         Source & narSource, RepairFlag repair, CheckSigsFlag checkSigs,
         std::function<ValidPathInfo(HashResult)> mkInfo);
 
