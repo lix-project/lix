@@ -1317,7 +1317,7 @@ try {
     if (&srcStore == &dstStore) co_return result::success();
 
     RealisedPath::Set closure;
-    RealisedPath::closure(srcStore, paths, closure);
+    TRY_AWAIT(RealisedPath::closure(srcStore, paths, closure));
 
     TRY_AWAIT(copyPaths(srcStore, dstStore, closure, repair, checkSigs, substitute));
     co_return result::success();

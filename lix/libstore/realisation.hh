@@ -133,9 +133,9 @@ struct RealisedPath {
      */
     StorePath path() const;
 
-    void closure(Store& store, Set& ret) const;
-    static void closure(Store& store, const Set& startPaths, Set& ret);
-    Set closure(Store& store) const;
+    kj::Promise<Result<void>> closure(Store & store, Set & ret) const;
+    static kj::Promise<Result<void>> closure(Store & store, const Set & startPaths, Set & ret);
+    kj::Promise<Result<Set>> closure(Store & store) const;
 
     GENERATE_CMP(RealisedPath, me->raw);
 };

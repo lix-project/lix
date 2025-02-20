@@ -1,6 +1,7 @@
 #include "lix/libstore/realisation.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/closure.hh"
+#include "lix/libutil/result.hh"
 #include <nlohmann/json.hpp>
 
 namespace nix {
@@ -158,11 +159,11 @@ bool Realisation::isCompatibleWith(const Realisation & other) const
     return false;
 }
 
-void RealisedPath::closure(
+kj::Promise<Result<void>> RealisedPath::closure(
     Store& store,
     const RealisedPath::Set& startPaths,
     RealisedPath::Set& ret)
-{
+try {
     // FIXME: This only builds the store-path closure, not the real realisation
     // closure
     StorePathSet initialStorePaths, pathsClosure;
@@ -171,18 +172,26 @@ void RealisedPath::closure(
     store.computeFSClosure(initialStorePaths, pathsClosure);
     ret.insert(startPaths.begin(), startPaths.end());
     ret.insert(pathsClosure.begin(), pathsClosure.end());
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
-void RealisedPath::closure(Store& store, RealisedPath::Set & ret) const
-{
-    RealisedPath::closure(store, {*this}, ret);
+kj::Promise<Result<void>> RealisedPath::closure(Store& store, RealisedPath::Set & ret) const
+try {
+    TRY_AWAIT(RealisedPath::closure(store, {*this}, ret));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
-RealisedPath::Set RealisedPath::closure(Store& store) const
-{
+kj::Promise<Result<RealisedPath::Set>> RealisedPath::closure(Store& store) const
+try {
     RealisedPath::Set ret;
-    closure(store, ret);
-    return ret;
+    TRY_AWAIT(closure(store, ret));
+    co_return ret;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 } // namespace nix
