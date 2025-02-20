@@ -713,7 +713,7 @@ static void opExport(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         paths.insert(store->followLinksToStorePath(i));
 
     FdSink sink(STDOUT_FILENO);
-    store->exportPaths(paths, sink);
+    aio.blockOn(store->exportPaths(paths, sink));
     sink.flush();
 }
 
@@ -927,7 +927,9 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
             case ServeProto::Command::ExportPaths: {
                 readInt(in); // obsolete
-                store->exportPaths(ServeProto::Serialise<StorePathSet>::read(*store, rconn), out);
+                aio.blockOn(store->exportPaths(
+                    ServeProto::Serialise<StorePathSet>::read(*store, rconn), out
+                ));
                 break;
             }
 

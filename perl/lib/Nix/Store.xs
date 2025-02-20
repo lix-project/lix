@@ -197,7 +197,7 @@ void exportPaths(int fd, ...)
             StorePathSet paths;
             for (int n = 1; n < items; ++n) paths.insert(store()->parseStorePath(SvPV_nolen(ST(n))));
             FdSink sink(fd);
-            store()->exportPaths(paths, sink);
+            aio().blockOn(store()->exportPaths(paths, sink));
         } catch (Error & e) {
             croak("%s", e.what());
         }

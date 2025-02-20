@@ -793,9 +793,9 @@ public:
      * Export multiple paths in the format expected by ‘nix-store
      * --import’.
      */
-    void exportPaths(const StorePathSet & paths, Sink & sink);
+    kj::Promise<Result<void>> exportPaths(const StorePathSet & paths, Sink & sink);
 
-    void exportPath(const StorePath & path, Sink & sink);
+    kj::Promise<Result<void>> exportPath(const StorePath & path, Sink & sink);
 
     /**
      * Import a sequence of NAR dumps created by exportPaths() into the

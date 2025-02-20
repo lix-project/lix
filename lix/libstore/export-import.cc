@@ -1,3 +1,4 @@
+#include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/archive.hh"
@@ -8,21 +9,24 @@
 
 namespace nix {
 
-void Store::exportPaths(const StorePathSet & paths, Sink & sink)
-{
+kj::Promise<Result<void>> Store::exportPaths(const StorePathSet & paths, Sink & sink)
+try {
     auto sorted = topoSortPaths(paths);
     std::reverse(sorted.begin(), sorted.end());
 
     for (auto & path : sorted) {
         sink << 1;
-        exportPath(path, sink);
+        TRY_AWAIT(exportPath(path, sink));
     }
 
     sink << 0;
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
-void Store::exportPath(const StorePath & path, Sink & sink)
-{
+kj::Promise<Result<void>> Store::exportPath(const StorePath & path, Sink & sink)
+try {
     auto info = queryPathInfo(path);
 
     HashSink hashSink(HashType::SHA256);
@@ -47,6 +51,9 @@ void Store::exportPath(const StorePath & path, Sink & sink)
     teeSink
         << (info->deriver ? printStorePath(*info->deriver) : "")
         << 0;
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<StorePaths>> Store::importPaths(Source & source, CheckSigsFlag checkSigs)
