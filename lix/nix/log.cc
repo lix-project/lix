@@ -41,7 +41,7 @@ struct CmdLog : InstallableCommand
                 return bfd.drvPath;
             },
         }, b.path.raw());
-        auto path = resolveDerivedPath(*store, *oneUp);
+        auto path = aio().blockOn(resolveDerivedPath(*store, *oneUp));
 
         RunPager pager;
         for (auto & sub : subs) {

@@ -129,7 +129,7 @@ void prim_getContext(EvalState & state, const PosIdx pos, Value * * args, Value 
             [&](NixStringContextElem::Built && b) {
                 // FIXME should eventually show string context as is, no
                 // resolving here.
-                auto drvPath = resolveDerivedPath(*state.ctx.store, *b.drvPath);
+                auto drvPath = state.aio.blockOn(resolveDerivedPath(*state.ctx.store, *b.drvPath));
                 contextInfos[std::move(drvPath)].outputs.emplace_back(std::move(b.output));
             },
             [&](NixStringContextElem::Opaque && o) {

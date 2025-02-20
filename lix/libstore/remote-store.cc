@@ -22,6 +22,7 @@
 #include "lix/libutil/thread-name.hh"
 #include "lix/libutil/types.hh"
 
+#include <kj/async.h>
 #include <nlohmann/json.hpp>
 
 namespace nix {
@@ -674,17 +675,23 @@ try {
         std::vector<KeyedBuildResult> results;
 
         for (auto & path : paths) {
-            std::visit(
-                overloaded {
-                    [&](const DerivedPath::Opaque & bo) {
+            auto handlers = overloaded {
+                [&](const DerivedPath::Opaque & bo) -> kj::Promise<Result<void>> {
+                    try {
                         results.push_back(KeyedBuildResult {
                             {
                                 .status = BuildResult::Substituted,
                             },
                             /* .path = */ bo,
                         });
-                    },
-                    [&](const DerivedPath::Built & bfd) {
+                        return {result::success()};
+                    } catch (...) {
+                        return {result::current_exception()};
+                    }
+                },
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+                [&](const DerivedPath::Built & bfd) -> kj::Promise<Result<void>> {
+                    try {
                         KeyedBuildResult res {
                             {
                                 .status = BuildResult::Built
@@ -693,10 +700,10 @@ try {
                         };
 
                         OutputPathMap outputs;
-                        auto drvPath = resolveDerivedPath(*evalStore, *bfd.drvPath);
+                        auto drvPath = TRY_AWAIT(resolveDerivedPath(*evalStore, *bfd.drvPath));
                         auto drv = evalStore->readDerivation(drvPath);
                         const auto outputHashes = staticOutputHashes(*evalStore, drv); // FIXME: expensive
-                        auto built = resolveDerivedPath(*this, bfd, &*evalStore);
+                        auto built = TRY_AWAIT(resolveDerivedPath(*this, bfd, &*evalStore));
                         for (auto & [output, outputPath] : built) {
                             auto outputHash = get(outputHashes, output);
                             if (!outputHash)
@@ -721,9 +728,13 @@ try {
                         }
 
                         results.push_back(res);
+                        co_return result::success();
+                    } catch (...) {
+                        co_return result::current_exception();
                     }
-                },
-                path.raw());
+                }
+            };
+            TRY_AWAIT(std::visit(handlers , path.raw()));
         }
 
         co_return results;

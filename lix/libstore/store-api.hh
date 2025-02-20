@@ -972,9 +972,10 @@ void removeTempRoots();
  * Resolve the derived path completely, failing if any derivation output
  * is unknown.
  */
-StorePath resolveDerivedPath(Store &, const SingleDerivedPath &, Store * evalStore = nullptr);
-OutputPathMap resolveDerivedPath(Store &, const DerivedPath::Built &, Store * evalStore = nullptr);
-
+kj::Promise<Result<StorePath>>
+resolveDerivedPath(Store &, const SingleDerivedPath &, Store * evalStore = nullptr);
+kj::Promise<Result<OutputPathMap>>
+resolveDerivedPath(Store &, const DerivedPath::Built &, Store * evalStore = nullptr);
 
 /**
  * @return a Store object to access the Nix store denoted by

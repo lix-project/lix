@@ -88,7 +88,7 @@ try {
     StorePathSet outputsToCopyAndAllow;
 
     for (auto & drv : drvs) {
-        auto outputs = resolveDerivedPath(*buildStore, drv, &*store);
+        auto outputs = TRY_AWAIT(resolveDerivedPath(*buildStore, drv, &*store));
         for (auto & [outputName, outputPath] : outputs) {
             outputsToCopyAndAllow.insert(outputPath);
 

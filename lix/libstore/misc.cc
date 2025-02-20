@@ -3,6 +3,7 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/topo-sort.hh"
 #include "lix/libutil/closure.hh"
@@ -400,41 +401,51 @@ try {
 
     std::set<Realisation> inputRealisations;
 
-    std::function<void(const StorePath &, const DerivedPathMap<StringSet>::ChildNode &)> accumRealisations;
+    std::function<
+        kj::Promise<Result<void>>(const StorePath &, const DerivedPathMap<StringSet>::ChildNode &)>
+        accumRealisations;
 
-    accumRealisations = [&](const StorePath & inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode) {
-        if (!inputNode.value.empty()) {
-            auto outputHashes =
-                staticOutputHashes(evalStore, evalStore.readDerivation(inputDrv));
-            for (const auto & outputName : inputNode.value) {
-                auto outputHash = get(outputHashes, outputName);
-                if (!outputHash)
-                    throw Error(
-                        "output '%s' of derivation '%s' isn't realised", outputName,
-                        store.printStorePath(inputDrv));
-                auto thisRealisation = store.queryRealisation(
-                    DrvOutput{*outputHash, outputName});
-                if (!thisRealisation)
-                    throw Error(
-                        "output '%s' of derivation '%s' isn’t built", outputName,
-                        store.printStorePath(inputDrv));
-                inputRealisations.insert(*thisRealisation);
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    accumRealisations = [&](const StorePath & inputDrv,
+                            const DerivedPathMap<StringSet>::ChildNode & inputNode
+                        ) -> kj::Promise<Result<void>> {
+        try {
+            if (!inputNode.value.empty()) {
+                auto outputHashes =
+                    staticOutputHashes(evalStore, evalStore.readDerivation(inputDrv));
+                for (const auto & outputName : inputNode.value) {
+                    auto outputHash = get(outputHashes, outputName);
+                    if (!outputHash)
+                        throw Error(
+                            "output '%s' of derivation '%s' isn't realised", outputName,
+                            store.printStorePath(inputDrv));
+                    auto thisRealisation = store.queryRealisation(
+                        DrvOutput{*outputHash, outputName});
+                    if (!thisRealisation)
+                        throw Error(
+                            "output '%s' of derivation '%s' isn’t built", outputName,
+                            store.printStorePath(inputDrv));
+                    inputRealisations.insert(*thisRealisation);
+                }
             }
-        }
-        if (!inputNode.value.empty()) {
-            auto d = makeConstantStorePathRef(inputDrv);
-            for (const auto & [outputName, childNode] : inputNode.childMap) {
-                SingleDerivedPath next = SingleDerivedPath::Built { d, outputName };
-                accumRealisations(
-                    // TODO deep resolutions for dynamic derivations, issue #8947, would go here.
-                    resolveDerivedPath(store, next, evalStore_),
-                    childNode);
+            if (!inputNode.value.empty()) {
+                auto d = makeConstantStorePathRef(inputDrv);
+                for (const auto & [outputName, childNode] : inputNode.childMap) {
+                    SingleDerivedPath next = SingleDerivedPath::Built { d, outputName };
+                    TRY_AWAIT(accumRealisations(
+                        // TODO deep resolutions for dynamic derivations, issue #8947, would go here.
+                        TRY_AWAIT(resolveDerivedPath(store, next, evalStore_)),
+                        childNode));
+                }
             }
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
         }
     };
 
     for (const auto & [inputDrv, inputNode] : drv.inputDrvs.map)
-        accumRealisations(inputDrv, inputNode);
+        TRY_AWAIT(accumRealisations(inputDrv, inputNode));
 
     auto info = store.queryPathInfo(outputPath);
 
@@ -445,9 +456,10 @@ try {
     co_return result::current_exception();
 }
 
-OutputPathMap resolveDerivedPath(Store & store, const DerivedPath::Built & bfd, Store * evalStore_)
-{
-    auto drvPath = resolveDerivedPath(store, *bfd.drvPath, evalStore_);
+kj::Promise<Result<OutputPathMap>>
+resolveDerivedPath(Store & store, const DerivedPath::Built & bfd, Store * evalStore_)
+try {
+    auto drvPath = TRY_AWAIT(resolveDerivedPath(store, *bfd.drvPath, evalStore_));
 
     auto outputsOpt_ = store.queryPartialDerivationOutputMap(drvPath, evalStore_);
 
@@ -478,36 +490,48 @@ OutputPathMap resolveDerivedPath(Store & store, const DerivedPath::Built & bfd, 
         auto & outputPath = *outputPathOpt;
         outputs.insert_or_assign(outputName, outputPath);
     }
-    return outputs;
+    co_return outputs;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
-StorePath resolveDerivedPath(Store & store, const SingleDerivedPath & req, Store * evalStore_)
-{
+kj ::Promise<Result<StorePath>>
+resolveDerivedPath(Store & store, const SingleDerivedPath & req, Store * evalStore_)
+try {
     auto & evalStore = evalStore_ ? *evalStore_ : store;
 
-    return std::visit(overloaded {
-        [&](const SingleDerivedPath::Opaque & bo) {
-            return bo.path;
+    auto handlers = overloaded {
+        [&](const SingleDerivedPath::Opaque & bo) -> kj::Promise<Result<StorePath>> {
+            return {bo.path};
         },
-        [&](const SingleDerivedPath::Built & bfd) {
-            auto drvPath = resolveDerivedPath(store, *bfd.drvPath, evalStore_);
-            auto outputPaths = evalStore.queryPartialDerivationOutputMap(drvPath, evalStore_);
-            if (outputPaths.count(bfd.output) == 0)
-                throw Error("derivation '%s' does not have an output named '%s'",
-                    store.printStorePath(drvPath), bfd.output);
-            auto & optPath = outputPaths.at(bfd.output);
-            if (!optPath)
-                throw MissingRealisation(bfd.drvPath->to_string(store), bfd.output);
-            return *optPath;
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        [&](const SingleDerivedPath::Built & bfd) -> kj::Promise<Result<StorePath>> {
+            try {
+                auto drvPath = TRY_AWAIT(resolveDerivedPath(store, *bfd.drvPath, evalStore_));
+                auto outputPaths = evalStore.queryPartialDerivationOutputMap(drvPath, evalStore_);
+                if (outputPaths.count(bfd.output) == 0)
+                    throw Error("derivation '%s' does not have an output named '%s'",
+                        store.printStorePath(drvPath), bfd.output);
+                auto & optPath = outputPaths.at(bfd.output);
+                if (!optPath)
+                    throw MissingRealisation(bfd.drvPath->to_string(store), bfd.output);
+                co_return *optPath;
+            } catch (...) {
+                co_return result::current_exception();
+            }
         },
-    }, req.raw());
+    };
+    co_return TRY_AWAIT(std::visit(handlers, req.raw()));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
-OutputPathMap resolveDerivedPath(Store & store, const DerivedPath::Built & bfd)
-{
-    auto drvPath = resolveDerivedPath(store, *bfd.drvPath);
+kj::Promise<Result<OutputPathMap>>
+resolveDerivedPath(Store & store, const DerivedPath::Built & bfd)
+try {
+    auto drvPath = TRY_AWAIT(resolveDerivedPath(store, *bfd.drvPath));
     auto outputMap = store.queryDerivationOutputMap(drvPath);
     auto outputsLeft = std::visit(overloaded {
         [&](const OutputsSpec::All &) {
@@ -530,7 +554,9 @@ OutputPathMap resolveDerivedPath(Store & store, const DerivedPath::Built & bfd)
         throw Error("derivation '%s' does not have an outputs %s",
             store.printStorePath(drvPath),
             concatStringsSep(", ", quoteStrings(std::get<OutputsSpec::Names>(bfd.outputs.raw))));
-    return outputMap;
+    co_return outputMap;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }

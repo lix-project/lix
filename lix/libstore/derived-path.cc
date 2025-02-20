@@ -42,7 +42,8 @@ try {
     // Fallback for the input-addressed derivation case: We expect to always be
     // able to print the output paths, so let’s do it
     // FIXME try-resolve on drvPath
-    const auto outputMap = store.queryPartialDerivationOutputMap(resolveDerivedPath(store, *drvPath));
+    const auto outputMap =
+        store.queryPartialDerivationOutputMap(TRY_AWAIT(resolveDerivedPath(store, *drvPath)));
     res["output"] = output;
     auto outputPathIter = outputMap.find(output);
     if (outputPathIter == outputMap.end())
@@ -63,7 +64,8 @@ try {
     // Fallback for the input-addressed derivation case: We expect to always be
     // able to print the output paths, so let’s do it
     // FIXME try-resolve on drvPath
-    const auto outputMap = store.queryPartialDerivationOutputMap(resolveDerivedPath(store, *drvPath));
+    const auto outputMap =
+        store.queryPartialDerivationOutputMap(TRY_AWAIT(resolveDerivedPath(store, *drvPath)));
     for (const auto & [output, outputPathOpt] : outputMap) {
         if (!outputs.contains(output)) continue;
         if (outputPathOpt)

@@ -539,7 +539,7 @@ try {
                     .drvPath = makeConstantStorePathRef(drvPath.outPath()),
                     .output = bfd.output,
                 };
-                auto outputPath = resolveDerivedPath(*store, truncatedBfd, &*evalStore);
+                auto outputPath = TRY_AWAIT(resolveDerivedPath(*store, truncatedBfd, &*evalStore));
                 co_return SingleBuiltPath::Built {
                     .drvPath = make_ref<SingleBuiltPath>(std::move(drvPath)),
                     .output = { bfd.output, outputPath },
@@ -638,7 +638,8 @@ std::vector<std::pair<ref<Installable>, BuiltPathWithResult>> Installable::build
             for (auto & aux : backmap[path]) {
                 std::visit(overloaded {
                     [&](const DerivedPath::Built & bfd) {
-                        auto outputs = resolveDerivedPath(*store, bfd, &*evalStore);
+                        auto outputs =
+                            state.aio.blockOn(resolveDerivedPath(*store, bfd, &*evalStore));
                         res.push_back({aux.installable, {
                             .path = BuiltPath::Built {
                                 .drvPath = make_ref<SingleBuiltPath>(state.aio.blockOn(getBuiltPath(evalStore, store, *bfd.drvPath))),
@@ -788,7 +789,7 @@ StorePathSet Installable::toDerivations(
                         : throw Error("argument '%s' did not evaluate to a derivation", i->what()));
                 },
                 [&](const DerivedPath::Built & bfd) {
-                    drvPaths.insert(resolveDerivedPath(*store, *bfd.drvPath));
+                    drvPaths.insert(state.aio.blockOn(resolveDerivedPath(*store, *bfd.drvPath)));
                 },
             }, b.path.raw());
 
