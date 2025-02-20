@@ -410,7 +410,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
         }
 
         if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-            auto resolvedDrv = drv.tryResolve(*store);
+            auto resolvedDrv = aio.blockOn(drv.tryResolve(*store));
             assert(resolvedDrv && "Successfully resolved the derivation");
             drv = *resolvedDrv;
         }

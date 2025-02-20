@@ -342,14 +342,15 @@ struct Derivation : BasicDerivation
      * 2. Input placeholders are replaced with realized input store
      *    paths.
      */
-    std::optional<BasicDerivation> tryResolve(Store & store, Store * evalStore = nullptr) const;
+    kj::Promise<Result<std::optional<BasicDerivation>>>
+    tryResolve(Store & store, Store * evalStore = nullptr) const;
 
     /**
      * Like the above, but instead of querying the Nix database for
      * realisations, uses a given mapping from input derivation paths +
      * output names to actual output store paths.
      */
-    std::optional<BasicDerivation> tryResolve(
+    kj::Promise<Result<std::optional<BasicDerivation>>> tryResolve(
         Store & store,
         const std::map<std::pair<StorePath, std::string>, StorePath> & inputDrvOutputs) const;
 

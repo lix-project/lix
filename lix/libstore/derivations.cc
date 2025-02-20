@@ -1054,8 +1054,9 @@ static void rewriteDerivation(Store & store, BasicDerivation & drv, const String
 
 }
 
-std::optional<BasicDerivation> Derivation::tryResolve(Store & store, Store * evalStore) const
-{
+kj::Promise<Result<std::optional<BasicDerivation>>>
+Derivation::tryResolve(Store & store, Store * evalStore) const
+try {
     std::map<std::pair<StorePath, std::string>, StorePath> inputDrvOutputs;
 
     std::function<void(const StorePath &, const DerivedPathMap<StringSet>::ChildNode &)> accum;
@@ -1072,7 +1073,9 @@ std::optional<BasicDerivation> Derivation::tryResolve(Store & store, Store * eva
     for (auto & [inputDrv, node] : inputDrvs.map)
         accum(inputDrv, node);
 
-    return tryResolve(store, inputDrvOutputs);
+    co_return TRY_AWAIT(tryResolve(store, inputDrvOutputs));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 static bool tryResolveInput(
@@ -1122,10 +1125,10 @@ static bool tryResolveInput(
     return true;
 }
 
-std::optional<BasicDerivation> Derivation::tryResolve(
+kj::Promise<Result<std::optional<BasicDerivation>>> Derivation::tryResolve(
     Store & store,
     const std::map<std::pair<StorePath, std::string>, StorePath> & inputDrvOutputs) const
-{
+try {
     BasicDerivation resolved { *this };
 
     // Input paths that we'll want to rewrite in the derivation
@@ -1134,11 +1137,13 @@ std::optional<BasicDerivation> Derivation::tryResolve(
     for (auto & [inputDrv, inputNode] : inputDrvs.map)
         if (!tryResolveInput(store, resolved.inputSrcs, inputRewrites,
             nullptr, inputDrv, inputNode, inputDrvOutputs))
-            return std::nullopt;
+            co_return std::nullopt;
 
     rewriteDerivation(store, resolved, inputRewrites);
 
-    return resolved;
+    co_return resolved;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
