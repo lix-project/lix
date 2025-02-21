@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import json
+import os
 import subprocess
 import pytest
 from pathlib import Path
@@ -8,22 +9,48 @@ from tempfile import TemporaryDirectory
 from typing import Any, Dict, List
 
 TEST_ROOT = Path(__file__).parent.resolve()
-PROJECT_ROOT = TEST_ROOT.parent
-BIN = PROJECT_ROOT.joinpath("build", "src", "nix-eval-jobs")
+# subprojects/nix-eval-jobs/tests
+# PROJECT_ROOT = TEST_ROOT.parent.parent.parent
+# BIN = PROJECT_ROOT.joinpath("outputs", "out", "bin", "nix-eval-jobs")
+BIN = "nix-eval-jobs"
+
+
+def evaluate(
+    tempdir: TemporaryDirectory,
+    expected_statuscode: int = 0,
+    extra_args: List[str] = [],
+) -> tuple[Dict[str, Dict[str, Any]], str]:
+    if nixpkgs_path := os.getenv("NEJ_NIXPKGS_PATH"):
+        if "--flake" in extra_args:
+            extra_args.extend(["--override-input", "nixpkgs", f"path:{nixpkgs_path}"])
+        else:
+            extra_args.extend(["--arg", "pkgs", f"import {nixpkgs_path} {{}}"])
+
+    cmd = [
+        str(BIN),
+        "--gc-roots-dir",
+        tempdir,
+        "--meta",
+        "--extra-experimental-features",
+        "flakes",
+    ] + extra_args
+    res = subprocess.run(
+        cmd,
+        cwd=TEST_ROOT.joinpath("assets"),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert res.returncode == expected_statuscode
+    print(res.stdout)
+    print(res.stderr)
+    return [json.loads(r) for r in res.stdout.split("\n") if r], res.stderr
 
 
 def common_test(extra_args: List[str]) -> List[Dict[str, Any]]:
     with TemporaryDirectory() as tempdir:
-        cmd = [str(BIN), "--gc-roots-dir", tempdir, "--meta"] + extra_args
-        res = subprocess.run(
-            cmd,
-            cwd=TEST_ROOT.joinpath("assets"),
-            text=True,
-            check=True,
-            stdout=subprocess.PIPE,
-        )
-
-        results = [json.loads(r) for r in res.stdout.split("\n") if r]
+        results, _ = evaluate(tempdir, 0, extra_args)
         assert len(results) == 4
 
         built_job = results[0]
@@ -73,48 +100,31 @@ def test_expression() -> None:
 
 def test_eval_error() -> None:
     with TemporaryDirectory() as tempdir:
-        cmd = [
-            str(BIN),
-            "--gc-roots-dir",
+        results, _ = evaluate(
             tempdir,
-            "--meta",
-            "--workers",
-            "1",
-            "--flake",
-            ".#legacyPackages.x86_64-linux.brokenPkgs",
-        ]
-        res = subprocess.run(
-            cmd,
-            cwd=TEST_ROOT.joinpath("assets"),
-            text=True,
-            stdout=subprocess.PIPE,
+            0,
+            ["--workers", "1", "--flake", ".#legacyPackages.x86_64-linux.brokenPkgs"],
         )
-        print(res.stdout)
-        attrs = json.loads(res.stdout)
-        assert attrs["attr"] == "brokenPackage"
-        assert "this is an evaluation error" in attrs["error"]
+        assert len(results) == 1
+
+        attr = results[0]
+        assert attr["attr"] == "brokenPackage"
+        assert "this is an evaluation error" in attr["error"]
 
 
 @pytest.mark.infiniterecursion
 def test_recursion_error() -> None:
     with TemporaryDirectory() as tempdir:
-        cmd = [
-            str(BIN),
-            "--gc-roots-dir",
+        results, stderr = evaluate(
             tempdir,
-            "--meta",
-            "--workers",
-            "1",
-            "--flake",
-            ".#legacyPackages.x86_64-linux.infiniteRecursionPkgs",
-        ]
-        res = subprocess.run(
-            cmd,
-            cwd=TEST_ROOT.joinpath("assets"),
-            text=True,
-            stderr=subprocess.PIPE,
+            1,
+            [
+                "--workers",
+                "1",
+                "--flake",
+                ".#legacyPackages.x86_64-linux.infiniteRecursionPkgs",
+            ],
         )
-        assert res.returncode == 1
-        print(res.stderr)
-        assert "packageWithInfiniteRecursion" in res.stderr
-        assert "possible infinite recursion" in res.stderr
+        print(stderr)
+        assert "packageWithInfiniteRecursion" in stderr
+        assert "possible infinite recursion" in stderr
