@@ -1,4 +1,13 @@
 from xonsh.main import setup
+import signal
+
+# This is a workaround for https://github.com/xonsh/xonsh/issues/5244
+# Matching https://github.com/xonsh/xonsh/blob/71d4920ac5c16f2ef37da88b3f563c25c585fb82/xonsh/main.py#L519-L525
+def func_sig_ttin_ttou(n, f):
+    pass
+
+signal.signal(signal.SIGTTIN, func_sig_ttin_ttou)
+signal.signal(signal.SIGTTOU, func_sig_ttin_ttou)
 
 setup()
 del setup
