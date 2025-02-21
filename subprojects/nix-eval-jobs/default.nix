@@ -8,11 +8,12 @@
 }:
 
 let
+  sourceBase = if srcDir == null then ./. else srcDir;
   package = stdenv.mkDerivation (finalAttrs: {
     pname = "nix-eval-jobs";
     version = "2.93.0-dev";
     src = lib.fileset.toSource {
-      root = if srcDir == null then ./. else srcDir;
+      root = sourceBase;
       fileset = lib.fileset.unions [
         ./meson.build
         ./src
@@ -50,7 +51,13 @@ let
         stdenv.mkDerivation (finalAttrs: {
           pname = "nix-eval-jobs-tests";
           inherit (nejAttrs) version;
-          src = ./tests;
+          src = lib.fileset.toSource {
+            root = sourceBase;
+            fileset = lib.fileset.unions [
+              ./pyproject.toml
+              ./tests
+            ];
+          };
 
           nativeBuildInputs = [
             python3Packages.pytest

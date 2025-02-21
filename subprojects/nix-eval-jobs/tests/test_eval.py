@@ -15,6 +15,15 @@ TEST_ROOT = Path(__file__).parent.resolve()
 BIN = "nix-eval-jobs"
 
 
+def check_gc_root(gcRootDir: str, drvPath: str):
+    """
+    Make sure the expected GC root exists in the given dir
+    """
+    link_name = os.path.basename(drvPath)
+    symlink_path = os.path.join(gcRootDir, link_name)
+    assert os.path.islink(symlink_path) and drvPath == os.readlink(symlink_path)
+
+
 def evaluate(
     tempdir: TemporaryDirectory,
     expected_statuscode: int = 0,
@@ -59,14 +68,17 @@ def common_test(extra_args: List[str]) -> List[Dict[str, Any]]:
         assert built_job["outputs"]["out"].startswith("/nix/store")
         assert built_job["drvPath"].endswith(".drv")
         assert built_job["meta"]["broken"] is False
+        check_gc_root(tempdir, built_job['drvPath'])
 
         dotted_job = results[1]
         assert dotted_job["attr"] == '"dotted.attr"'
         assert dotted_job["attrPath"] == ["dotted.attr"]
+        check_gc_root(tempdir, dotted_job['drvPath'])
 
         recurse_drv = results[2]
         assert recurse_drv["attr"] == "recurse.drvB"
         assert recurse_drv["name"] == "drvB"
+        check_gc_root(tempdir, recurse_drv['drvPath'])
 
         substituted_job = results[3]
         assert substituted_job["attr"] == "substitutedJob"
