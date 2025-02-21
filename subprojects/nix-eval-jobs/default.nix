@@ -33,6 +33,11 @@ stdenv.mkDerivation {
     ]
     ++ (lib.optional stdenv.cc.isClang [ pkgs.clang-tools ]);
 
+  # nix-fast-build wants the nix attr on nix-eval-jobs
+  passthru = {
+    inherit nix;
+  };
+
   meta = {
     description = "Hydra's builtin hydra-eval-jobs as a standalone";
     homepage = "https://github.com/nix-community/nix-eval-jobs";
