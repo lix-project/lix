@@ -104,9 +104,9 @@ LocalDerivationGoal::~LocalDerivationGoal() noexcept(false)
 {
     /* Careful: we should never ever throw an exception from a
        destructor. */
-    try { deleteTmpDir(false); } catch (...) { ignoreExceptionInDestructor(); }
     try { killChild(); } catch (...) { ignoreExceptionInDestructor(); }
     try { stopDaemon(); } catch (...) { ignoreExceptionInDestructor(); }
+    try { deleteTmpDir(false); } catch (...) { ignoreExceptionInDestructor(); }
 }
 
 
