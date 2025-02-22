@@ -93,9 +93,12 @@ symlink.
     [deriver]: ../../glossary.md#gloss-deriver
 
   - `--valid-derivers`\
-    Prints a set of derivation files (`.drv`) which are supposed produce
-    said paths when realized. Might print nothing, for example for source paths
-    or paths subsituted from a binary cache.
+    Prints the set of all [derivers](../../glossary.md#gloss-deriver) that can be
+    used to build the store paths *paths*.
+    This differs from `--deriver`, which prints the deriver that actually
+    produced *paths*.
+    No deriver may be returned if is not present in the store,
+    eg, if *paths* were substituted from a binary cache.
 
   - `--graph`\
     Prints the references graph of the store paths *paths* in the format
