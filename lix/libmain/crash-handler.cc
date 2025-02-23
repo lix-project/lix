@@ -1,5 +1,6 @@
 #include "lix/libmain/crash-handler.hh"
 #include "lix/libutil/fmt.hh"
+#include "lix/libutil/logging.hh"
 
 #include <boost/core/demangle.hpp>
 #include <exception>
@@ -7,24 +8,25 @@
 namespace nix {
 
 namespace {
+
 void onTerminate()
 {
-    std::cerr << "Lix crashed. This is a bug. We would appreciate if you report it along with what caused it at https://git.lix.systems/lix-project/lix/issues with the following information included:\n\n";
+    logFatal("Lix crashed. This is a bug. We would appreciate if you report it along with what caused it at https://git.lix.systems/lix-project/lix/issues with the following information included:\n");
     try {
         std::exception_ptr eptr = std::current_exception();
         if (eptr) {
             std::rethrow_exception(eptr);
         } else {
-            std::cerr << "std::terminate() called without exception\n";
+            logFatal("std::terminate() called without exception");
         }
     } catch (const std::exception & ex) {
-        std::cerr << "Exception: " << boost::core::demangle(typeid(ex).name()) << ": " << ex.what() << "\n";
+        logFatal(fmt("Exception: %s: %s", boost::core::demangle(typeid(ex).name()), ex.what()));
     } catch (...) {
-        std::cerr << "Unknown exception! Spooky.\n";
+        logFatal("Unknown exception! Spooky.");
     }
 
-    std::cerr << "Stack trace:\n";
-    nix::printStackTrace();
+    logFatal("Stack trace:");
+    logFatal(getStackTrace());
 
     std::abort();
 }

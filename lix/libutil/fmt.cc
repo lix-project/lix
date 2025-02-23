@@ -1,4 +1,5 @@
 #include "lix/libutil/fmt.hh" // IWYU pragma: keep
+#include <sstream>
 // Darwin and FreeBSD stdenv do not define _GNU_SOURCE but do have _Unwind_Backtrace.
 #if __APPLE__ || __FreeBSD__
 #define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
@@ -16,9 +17,11 @@ template HintFmt::HintFmt(const std::string &, const uint64_t &, const char * co
 
 HintFmt::HintFmt(const std::string & literal) : HintFmt("%s", Uncolored(literal)) {}
 
-void printStackTrace()
+std::string getStackTrace()
 {
-    std::cerr << boost::stacktrace::stacktrace() << std::endl;
+    std::stringstream ss;
+    ss << boost::stacktrace::stacktrace();
+    return ss.str();
 }
 
 }
