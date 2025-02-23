@@ -1,6 +1,6 @@
 ---
 synopsis: "Paralellise `nix store sign` using a thread pool"
-issues: [399]
+issues: [fj#399]
 cls: [2606]
 category: Fixes
 credits: [Lunaphied]
