@@ -10,6 +10,7 @@
 #include <mutex>
 #include <sstream>
 #include <nlohmann/json.hpp>
+#include <syslog.h>
 
 namespace nix {
 
@@ -124,27 +125,6 @@ Verbosity verbosityFromIntClamped(int val)
 {
     int clamped = std::clamp(val, int(lvlError), int(lvlVomit));
     return static_cast<Verbosity>(clamped);
-}
-
-void writeLogsToStderr(std::string_view s)
-{
-    static std::mutex lock;
-
-    // make sure only one thread uses this function at any given time.
-    // multiple concurrent threads can have deleterious effects on log
-    // output, especially when layering structured formats (like JSON)
-    // on top of a SimpleLogger which is itself not thread-safe. every
-    // Logger instance should be thread-safe in an ideal world, but we
-    // cannot really enforce that on a per-logger level at this point.
-    std::unique_lock _lock(lock);
-    try {
-        writeFull(STDERR_FILENO, s, false);
-    } catch (SysError & e) {
-        /* Ignore failing writes to stderr.  We need to ignore write
-           errors to ensure that cleanup code that logs to stderr runs
-           to completion if the other side of stderr has been closed
-           unexpectedly. */
-    }
 }
 
 Logger * makeSimpleLogger(bool printBuildLogs)
@@ -365,6 +345,34 @@ Activity::~Activity()
     } catch (...) {
         ignoreExceptionInDestructor();
     }
+}
+
+void writeLogsToStderr(std::string_view s)
+{
+    static std::mutex lock;
+
+    // make sure only one thread uses this function at any given time.
+    // multiple concurrent threads can have deleterious effects on log
+    // output, especially when layering structured formats (like JSON)
+    // on top of a SimpleLogger which is itself not thread-safe. every
+    // Logger instance should be thread-safe in an ideal world, but we
+    // cannot really enforce that on a per-logger level at this point.
+    std::unique_lock _lock(lock);
+    try {
+        writeFull(STDERR_FILENO, s, false);
+    } catch (SysError & e) {
+        /* Ignore failing writes to stderr.  We need to ignore write
+           errors to ensure that cleanup code that logs to stderr runs
+           to completion if the other side of stderr has been closed
+           unexpectedly. */
+    }
+}
+
+void logFatal(std::string const & s)
+{
+    writeLogsToStderr(s + "\n");
+    // std::string for guaranteed null termination
+    syslog(LOG_CRIT, "%s", s.c_str());
 }
 
 }

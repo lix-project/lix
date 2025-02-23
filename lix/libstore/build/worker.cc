@@ -18,8 +18,8 @@ struct ErrorHandler : kj::TaskSet::ErrorHandler
 {
     void taskFailed(kj::Exception && e) override
     {
-        printError("unexpected async failure in Worker: %s", kj::str(e).cStr());
-        abort();
+        logFatal(fmt("unexpected async failure in Worker: %s", kj::str(e).cStr()));
+        std::terminate();
     }
 } errorHandler;
 }

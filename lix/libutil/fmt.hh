@@ -11,8 +11,8 @@ extern template class boost::basic_format<char>;
 
 namespace nix {
 
-/** Prints a C++ stack trace to stderr using boost stacktrace */
-void printStackTrace();
+/** Gets a C++ stack trace using boost stacktrace */
+std::string getStackTrace();
 
 /**
  * Values wrapped in this struct are printed in magenta.

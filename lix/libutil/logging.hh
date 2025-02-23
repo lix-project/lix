@@ -280,4 +280,8 @@ inline void warn(const std::string & fs, const Args & ... args)
 
 void writeLogsToStderr(std::string_view s);
 
+/** Logs a fatal message as loudly as possible. This will go into syslog as well as stderr.
+ * The purpose of this function is making failures with redirected stderr louder. */
+void logFatal(std::string const & s);
+
 }
