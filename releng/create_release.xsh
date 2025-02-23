@@ -284,9 +284,9 @@ def upload_manual(env: RelengEnvironment):
         version = 'nightly'
 
     print('[+] aws s3 sync manual')
-    aws s3 sync @(MANUAL)/ @(env.docs_bucket)/manual/lix/@(version)/
+    aws s3 sync --delete @(MANUAL)/ @(env.docs_bucket)/manual/lix/@(version)/
     if OFFICIAL_RELEASE:
-        aws s3 sync @(MANUAL)/ @(env.docs_bucket)/manual/lix/stable/
+        aws s3 sync --delete @(MANUAL)/ @(env.docs_bucket)/manual/lix/stable/
 
 
 def build_artifacts(build_profile, no_check_git=False):
