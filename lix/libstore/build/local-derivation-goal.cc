@@ -1248,8 +1248,10 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
             unknown, downloadSize, narSize);
     }
 
-    virtual std::optional<std::string> getBuildLogExact(const StorePath & path) override
-    { return std::nullopt; }
+    virtual kj::Promise<Result<std::optional<std::string>>> getBuildLogExact(const StorePath & path) override
+    {
+        return {std::nullopt};
+    }
 
     virtual void addBuildLog(const StorePath & path, std::string_view log) override
     { unsupported("addBuildLog"); }

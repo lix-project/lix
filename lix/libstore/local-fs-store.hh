@@ -70,7 +70,7 @@ public:
         return getRealStoreDir() + "/" + std::string(storePath, config().storeDir.size() + 1);
     }
 
-    std::optional<std::string> getBuildLogExact(const StorePath & path) override;
+    kj::Promise<Result<std::optional<std::string>>> getBuildLogExact(const StorePath & path) override;
 
 };
 

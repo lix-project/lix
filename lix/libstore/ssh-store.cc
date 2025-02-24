@@ -59,8 +59,12 @@ public:
     }
 
     // FIXME extend daemon protocol, move implementation to RemoteStore
-    std::optional<std::string> getBuildLogExact(const StorePath & path) override
-    { unsupported("getBuildLogExact"); }
+    kj::Promise<Result<std::optional<std::string>>> getBuildLogExact(const StorePath & path) override
+    try {
+        unsupported("getBuildLogExact");
+    } catch (...) {
+        return {result::current_exception()};
+    }
 
 protected:
 

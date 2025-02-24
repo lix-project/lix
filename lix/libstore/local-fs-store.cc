@@ -82,8 +82,9 @@ box_ptr<Source> LocalFSStore::narFromPath(const StorePath & path)
 
 const std::string LocalFSStore::drvsLogDir = "drvs";
 
-std::optional<std::string> LocalFSStore::getBuildLogExact(const StorePath & path)
-{
+kj::Promise<Result<std::optional<std::string>>>
+LocalFSStore::getBuildLogExact(const StorePath & path)
+try {
     auto baseName = path.to_string();
 
     for (int j = 0; j < 2; j++) {
@@ -95,17 +96,19 @@ std::optional<std::string> LocalFSStore::getBuildLogExact(const StorePath & path
         Path logBz2Path = logPath + ".bz2";
 
         if (pathExists(logPath))
-            return readFile(logPath);
+            co_return readFile(logPath);
 
         else if (pathExists(logBz2Path)) {
             try {
-                return decompress("bzip2", readFile(logBz2Path));
+                co_return decompress("bzip2", readFile(logBz2Path));
             } catch (Error &) { }
         }
 
     }
 
-    return std::nullopt;
+    co_return std::nullopt;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }

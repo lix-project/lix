@@ -7,7 +7,7 @@ try {
     auto maybePath = TRY_AWAIT(getBuildDerivationPath(path));
     if (!maybePath)
         co_return std::nullopt;
-    co_return getBuildLogExact(maybePath.value());
+    co_return TRY_AWAIT(getBuildLogExact(maybePath.value()));
 } catch (...) {
     co_return result::current_exception();
 }

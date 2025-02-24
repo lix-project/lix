@@ -144,7 +144,7 @@ public:
 
     void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 
-    std::optional<std::string> getBuildLogExact(const StorePath & path) override;
+    kj::Promise<Result<std::optional<std::string>>> getBuildLogExact(const StorePath & path) override;
 
     void addBuildLog(const StorePath & drvPath, std::string_view log) override;
 

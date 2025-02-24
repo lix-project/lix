@@ -491,13 +491,16 @@ void BinaryCacheStore::addSignatures(const StorePath & storePath, const StringSe
     writeNarInfo(narInfo);
 }
 
-std::optional<std::string> BinaryCacheStore::getBuildLogExact(const StorePath & path)
-{
+kj::Promise<Result<std::optional<std::string>>>
+BinaryCacheStore::getBuildLogExact(const StorePath & path)
+try {
     auto logPath = "log/" + std::string(baseNameOf(printStorePath(path)));
 
     debug("fetching build log from binary cache '%s/%s'", getUri(), logPath);
 
-    return getFileContents(logPath);
+    co_return getFileContents(logPath);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 void BinaryCacheStore::addBuildLog(const StorePath & drvPath, std::string_view log)
