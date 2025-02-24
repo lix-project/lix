@@ -154,8 +154,11 @@ static void opRealise(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         unknown = StorePathSet();
     }
 
-    if (settings.printMissing)
-        printMissing(ref<Store>(store), willBuild, willSubstitute, unknown, downloadSize, narSize);
+    if (settings.printMissing) {
+        aio.blockOn(printMissing(
+            ref<Store>(store), willBuild, willSubstitute, unknown, downloadSize, narSize
+        ));
+    }
 
     if (dryRun) return;
 

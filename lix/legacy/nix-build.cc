@@ -315,8 +315,11 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
         store->queryMissing(paths,
             willBuild, willSubstitute, unknown, downloadSize, narSize);
 
-        if (settings.printMissing)
-            printMissing(ref<Store>(store), willBuild, willSubstitute, unknown, downloadSize, narSize);
+        if (settings.printMissing) {
+            aio.blockOn(printMissing(
+                ref<Store>(store), willBuild, willSubstitute, unknown, downloadSize, narSize
+            ));
+        }
 
         if (!dryRun)
             aio.blockOn(store->buildPaths(paths, buildMode, evalStore));

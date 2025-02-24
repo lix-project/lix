@@ -3,6 +3,7 @@
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/gc-store.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libmain/loggers.hh"
 #include "lix/libutil/current-process.hh"
@@ -46,19 +47,23 @@ void printGCWarning()
 }
 
 
-void printMissing(ref<Store> store, const std::vector<DerivedPath> & paths, Verbosity lvl)
-{
+kj::Promise<Result<void>>
+printMissing(ref<Store> store, const std::vector<DerivedPath> & paths, Verbosity lvl)
+try {
     uint64_t downloadSize, narSize;
     StorePathSet willBuild, willSubstitute, unknown;
     store->queryMissing(paths, willBuild, willSubstitute, unknown, downloadSize, narSize);
-    printMissing(store, willBuild, willSubstitute, unknown, downloadSize, narSize, lvl);
+    TRY_AWAIT(printMissing(store, willBuild, willSubstitute, unknown, downloadSize, narSize, lvl));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
-void printMissing(ref<Store> store, const StorePathSet & willBuild,
+kj::Promise<Result<void>> printMissing(ref<Store> store, const StorePathSet & willBuild,
     const StorePathSet & willSubstitute, const StorePathSet & unknown,
     uint64_t downloadSize, uint64_t narSize, Verbosity lvl)
-{
+try {
     if (!willBuild.empty()) {
         if (willBuild.size() == 1)
             printMsg(lvl, "this derivation will be built:");
@@ -103,6 +108,10 @@ void printMissing(ref<Store> store, const StorePathSet & willBuild,
         for (auto & i : unknown)
             printMsg(lvl, "  %s", store->printStorePath(i));
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

@@ -131,7 +131,7 @@ struct CmdBuild : InstallablesCommand, MixDryRun, MixJSON, MixProfile
                 for (auto & b : i->toDerivedPaths(*state))
                     pathsToBuild.push_back(b.path);
 
-            printMissing(store, pathsToBuild, lvlError);
+            aio().blockOn(printMissing(store, pathsToBuild, lvlError));
 
             if (json)
                 logger->cout("%s", derivedPathsToJSON(aio(), pathsToBuild, *store).dump());

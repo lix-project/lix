@@ -30,12 +30,12 @@ void printGCWarning();
 
 class Store;
 
-void printMissing(
+kj::Promise<Result<void>> printMissing(
     ref<Store> store,
     const std::vector<DerivedPath> & paths,
     Verbosity lvl = lvlInfo);
 
-void printMissing(ref<Store> store, const StorePathSet & willBuild,
+kj::Promise<Result<void>> printMissing(ref<Store> store, const StorePathSet & willBuild,
     const StorePathSet & willSubstitute, const StorePathSet & unknown,
     uint64_t downloadSize, uint64_t narSize, Verbosity lvl = lvlInfo);
 
