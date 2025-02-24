@@ -790,7 +790,7 @@ public:
      * Sort a set of paths topologically under the references
      * relation.  If p refers to q, then p precedes q in this list.
      */
-    StorePaths topoSortPaths(const StorePathSet & paths);
+    kj::Promise<Result<StorePaths>> topoSortPaths(const StorePathSet & paths);
 
     /**
      * Export multiple paths in the format expected by ‘nix-store

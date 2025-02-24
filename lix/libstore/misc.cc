@@ -356,9 +356,9 @@ void Store::queryMissing(const std::vector<DerivedPath> & targets,
 }
 
 
-StorePaths Store::topoSortPaths(const StorePathSet & paths)
-{
-    return topoSort(paths,
+kj::Promise<Result<StorePaths>> Store::topoSortPaths(const StorePathSet & paths)
+try {
+    co_return topoSort(paths,
         {[&](const StorePath & path) {
             try {
                 return queryPathInfo(path)->references;
@@ -372,6 +372,8 @@ StorePaths Store::topoSortPaths(const StorePathSet & paths)
                 printStorePath(path),
                 printStorePath(parent));
         }});
+} catch (...) {
+    co_return result::current_exception();
 }
 
 static kj::Promise<Result<std::map<DrvOutput, StorePath>>> drvOutputReferences(

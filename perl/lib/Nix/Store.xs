@@ -174,7 +174,7 @@ SV * topoSortPaths(...)
         try {
             StorePathSet paths;
             for (int n = 0; n < items; ++n) paths.insert(store()->parseStorePath(SvPV_nolen(ST(n))));
-            auto sorted = store()->topoSortPaths(paths);
+            auto sorted = aio().blockOn(store()->topoSortPaths(paths));
             for (auto & i : sorted)
                 XPUSHs(sv_2mortal(newSVpv(store()->printStorePath(i).c_str(), 0)));
         } catch (Error & e) {

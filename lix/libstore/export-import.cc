@@ -11,7 +11,7 @@ namespace nix {
 
 kj::Promise<Result<void>> Store::exportPaths(const StorePathSet & paths, Sink & sink)
 try {
-    auto sorted = topoSortPaths(paths);
+    auto sorted = TRY_AWAIT(topoSortPaths(paths));
     std::reverse(sorted.begin(), sorted.end());
 
     for (auto & path : sorted) {

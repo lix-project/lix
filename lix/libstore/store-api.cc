@@ -1237,7 +1237,7 @@ try {
 
     // In the general case, `addMultipleToStore` requires a sorted list of
     // store paths to add, so sort them right now
-    auto sortedMissing = srcStore.topoSortPaths(missing);
+    auto sortedMissing = TRY_AWAIT(srcStore.topoSortPaths(missing));
     std::reverse(sortedMissing.begin(), sortedMissing.end());
 
     std::map<StorePath, StorePath> pathsMap;

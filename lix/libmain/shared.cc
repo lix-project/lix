@@ -69,7 +69,7 @@ try {
             printMsg(lvl, "this derivation will be built:");
         else
             printMsg(lvl, "these %d derivations will be built:", willBuild.size());
-        auto sorted = store->topoSortPaths(willBuild);
+        auto sorted = TRY_AWAIT(store->topoSortPaths(willBuild));
         reverse(sorted.begin(), sorted.end());
         for (auto & i : sorted)
             printMsg(lvl, "  %s", store->printStorePath(i));

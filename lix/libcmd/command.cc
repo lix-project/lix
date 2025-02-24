@@ -199,7 +199,7 @@ void StorePathsCommand::run(ref<Store> store, BuiltPaths && paths)
         for (auto & p : builtPath.outPaths())
             storePaths.insert(p);
 
-    auto sorted = store->topoSortPaths(storePaths);
+    auto sorted = aio().blockOn(store->topoSortPaths(storePaths));
     std::reverse(sorted.begin(), sorted.end());
 
     run(store, std::move(sorted));

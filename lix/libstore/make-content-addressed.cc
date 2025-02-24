@@ -13,7 +13,7 @@ try {
     StorePathSet closure;
     TRY_AWAIT(srcStore.computeFSClosure(storePaths, closure));
 
-    auto paths = srcStore.topoSortPaths(closure);
+    auto paths = TRY_AWAIT(srcStore.topoSortPaths(closure));
 
     std::reverse(paths.begin(), paths.end());
 

@@ -783,7 +783,7 @@ try {
                 }
             }
 
-            for (auto & path : topoSortPaths(visited)) {
+            for (auto & path : TRY_AWAIT(topoSortPaths(visited))) {
                 if (!dead.insert(path).second) continue;
                 if (shouldDelete) {
                     try {

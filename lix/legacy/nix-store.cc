@@ -265,7 +265,7 @@ try {
 /* Some code to print a tree representation of a derivation dependency
    graph.  Topological sorting is used to keep the tree relatively
    flat. */
-static void printTree(const StorePath & path,
+static void printTree(AsyncIoRoot & aio, const StorePath & path,
     const std::string & firstPad, const std::string & tailPad, StorePathSet & done)
 {
     if (!done.insert(path).second) {
@@ -281,12 +281,12 @@ static void printTree(const StorePath & path,
        closure(B).  That is, if derivation A is an (possibly indirect)
        input of B, then A is printed first.  This has the effect of
        flattening the tree, preventing deeply nested structures.  */
-    auto sorted = store->topoSortPaths(info->references);
+    auto sorted = aio.blockOn(store->topoSortPaths(info->references));
     reverse(sorted.begin(), sorted.end());
 
     for (const auto &[n, i] : enumerate(sorted)) {
         bool last = n + 1 == sorted.size();
-        printTree(i,
+        printTree(aio, i,
             tailPad + (last ? treeLast : treeConn),
             tailPad + (last ? treeNull : treeLine),
             done);
@@ -378,7 +378,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                         aio.blockOn(store->computeFSClosure(j, paths, true));
                 }
             }
-            auto sorted = store->topoSortPaths(paths);
+            auto sorted = aio.blockOn(store->topoSortPaths(paths));
             for (StorePaths::reverse_iterator i = sorted.rbegin();
                  i != sorted.rend(); ++i)
                 cout << fmt("%s\n", store->printStorePath(*i));
@@ -400,7 +400,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                     result.insert(i);
                 }
             }
-            auto sorted = store->topoSortPaths(result);
+            auto sorted = aio.blockOn(store->topoSortPaths(result));
             for (StorePaths::reverse_iterator i = sorted.rbegin();
                  i != sorted.rend(); ++i)
                 cout << fmt("%s\n", store->printStorePath(*i));
@@ -436,7 +436,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qTree: {
             StorePathSet done;
             for (auto & i : opArgs)
-                printTree(store->followLinksToStorePath(i), "", "", done);
+                printTree(aio, store->followLinksToStorePath(i), "", "", done);
             break;
         }
 
