@@ -1194,7 +1194,8 @@ try {
     try {
         // Copy the realisation closure
         processGraph<Realisation>(
-            "copyPaths pool", Realisation::closure(srcStore, toplevelRealisations),
+            "copyPaths pool",
+            TRY_AWAIT(Realisation::closure(srcStore, toplevelRealisations)),
             [&](const Realisation & current) -> std::set<Realisation> {
                 std::set<Realisation> children;
                 for (const auto & [drvOutput, _] : current.dependentRealisations) {

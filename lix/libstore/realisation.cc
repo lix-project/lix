@@ -23,15 +23,20 @@ std::string DrvOutput::to_string() const {
     return strHash() + "!" + outputName;
 }
 
-std::set<Realisation> Realisation::closure(Store & store, const std::set<Realisation> & startOutputs)
-{
+kj::Promise<Result<std::set<Realisation>>>
+Realisation::closure(Store & store, const std::set<Realisation> & startOutputs)
+try {
     std::set<Realisation> res;
-    Realisation::closure(store, startOutputs, res);
-    return res;
+    TRY_AWAIT(Realisation::closure(store, startOutputs, res));
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-void Realisation::closure(Store & store, const std::set<Realisation> & startOutputs, std::set<Realisation> & res)
-{
+kj::Promise<Result<void>> Realisation::closure(
+    Store & store, const std::set<Realisation> & startOutputs, std::set<Realisation> & res
+)
+try {
     auto getDeps = [&](const Realisation& current) -> std::set<Realisation> {
         std::set<Realisation> res;
         for (auto& [currentDep, _] : current.dependentRealisations) {
@@ -45,6 +50,9 @@ void Realisation::closure(Store & store, const std::set<Realisation> & startOutp
     };
 
     res.merge(computeClosure<Realisation>(startOutputs, getDeps));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 nlohmann::json Realisation::toJSON() const {

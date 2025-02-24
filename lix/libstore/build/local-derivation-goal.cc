@@ -1204,7 +1204,7 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         TRY_AWAIT(next->computeFSClosure(newPaths, closure));
         for (auto & path : closure)
             goal.addDependency(path);
-        for (auto & real : Realisation::closure(*next, newRealisations))
+        for (auto & real : TRY_AWAIT(Realisation::closure(*next, newRealisations)))
             goal.addedDrvOutputs.insert(real.id);
 
         co_return results;

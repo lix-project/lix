@@ -453,9 +453,9 @@ try {
 
     auto info = store.queryPathInfo(outputPath);
 
-    co_return TRY_AWAIT(
-        drvOutputReferences(Realisation::closure(store, inputRealisations), info->references)
-    );
+    co_return TRY_AWAIT(drvOutputReferences(
+        TRY_AWAIT(Realisation::closure(store, inputRealisations)), info->references
+    ));
 } catch (...) {
     co_return result::current_exception();
 }
