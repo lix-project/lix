@@ -915,8 +915,7 @@ protected:
 /**
  * Copy a path from one store to another.
  */
-void copyStorePath(
-    AsyncIoRoot & aio,
+kj::Promise<Result<void>> copyStorePath(
     Store & srcStore,
     Store & dstStore,
     const StorePath & storePath,

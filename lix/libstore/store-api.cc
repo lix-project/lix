@@ -1100,18 +1100,17 @@ static std::string makeCopyPathMessage(
 // overhead during copies, but small enough to provide reasonably quick copy progress updates.
 static constexpr unsigned PATH_COPY_BUFSIZE = 65536;
 
-void copyStorePath(
-    AsyncIoRoot & aio,
+kj::Promise<Result<void>> copyStorePath(
     Store & srcStore,
     Store & dstStore,
     const StorePath & storePath,
     RepairFlag repair,
     CheckSigsFlag checkSigs)
-{
+try {
     /* Bail out early (before starting a download from srcStore) if
        dstStore already has this path. */
     if (!repair && dstStore.isValidPath(storePath))
-        return;
+        co_return result::success();
 
     auto srcUri = srcStore.getUri();
     auto dstUri = dstStore.getUri();
@@ -1158,7 +1157,10 @@ void copyStorePath(
         }(act, info, srcStore, storePath)
     };
 
-    aio.blockOn(dstStore.addToStore(*info, source, repair, checkSigs));
+    TRY_AWAIT(dstStore.addToStore(*info, source, repair, checkSigs));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

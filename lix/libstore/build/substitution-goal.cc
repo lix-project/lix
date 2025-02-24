@@ -221,14 +221,13 @@ try {
             Activity act(*logger, actSubstitute, Logger::Fields{worker.store.printStorePath(storePath), sub->getUri()});
             PushActivity pact(act.id);
 
-            copyStorePath(
-                aio,
+            aio.blockOn(copyStorePath(
                 *sub,
                 worker.store,
                 fetchPath,
                 repair,
                 sub->config().isTrusted ? NoCheckSigs : CheckSigs
-            );
+            ));
         } catch (const EndOfFile &) {
             throw EndOfFile(
                 "NAR for '%s' fetched from '%s' is incomplete",
