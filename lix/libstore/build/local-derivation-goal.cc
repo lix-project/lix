@@ -574,9 +574,9 @@ try {
             /* Write closure info to <fileName>. */
             writeFile(
                 tmpDir + "/" + fileName,
-                worker.store.makeValidityRegistration(
+                TRY_AWAIT(worker.store.makeValidityRegistration(
                     TRY_AWAIT(worker.store.exportReferences({storePath}, inputPaths)), false, false
-                )
+                ))
             );
         }
     }

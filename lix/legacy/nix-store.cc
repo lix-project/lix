@@ -534,11 +534,14 @@ static void opDumpDB(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (!opArgs.empty()) {
-        for (auto & i : opArgs)
-            cout << store->makeValidityRegistration({store->followLinksToStorePath(i)}, true, true);
+        for (auto & i : opArgs) {
+            cout << aio.blockOn(
+                store->makeValidityRegistration({store->followLinksToStorePath(i)}, true, true)
+            );
+        }
     } else {
         for (auto & i : store->queryAllValidPaths())
-            cout << store->makeValidityRegistration({i}, true, true);
+            cout << aio.blockOn(store->makeValidityRegistration({i}, true, true));
     }
 }
 

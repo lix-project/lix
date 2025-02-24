@@ -682,7 +682,7 @@ public:
      * can be loaded into the database using `nix-store --load-db` or
      * `nix-store --register-validity`.
      */
-    std::string makeValidityRegistration(const StorePathSet & paths,
+    kj::Promise<Result<std::string>> makeValidityRegistration(const StorePathSet & paths,
         bool showDerivers, bool showHash);
 
     /**

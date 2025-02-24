@@ -909,9 +909,9 @@ try {
 /* Return a string accepted by decodeValidPathInfo() that
    registers the specified paths as valid.  Note: it's the
    responsibility of the caller to provide a closure. */
-std::string Store::makeValidityRegistration(const StorePathSet & paths,
+kj::Promise<Result<std::string>> Store::makeValidityRegistration(const StorePathSet & paths,
     bool showDerivers, bool showHash)
-{
+try {
     std::string s = "";
 
     for (auto & i : paths) {
@@ -933,7 +933,9 @@ std::string Store::makeValidityRegistration(const StorePathSet & paths,
             s += printStorePath(j) + "\n";
     }
 
-    return s;
+    co_return s;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
