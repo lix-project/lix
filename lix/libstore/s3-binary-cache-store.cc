@@ -7,6 +7,7 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libstore/filetransfer.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/strings.hh"
 
 #include <aws/core/Aws.h>
@@ -287,17 +288,20 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         return "s3://" + bucketName;
     }
 
-    void init() override
-    {
+    kj::Promise<Result<void>> init() override
+    try {
         if (auto cacheInfo = diskCache->upToDateCacheExists(getUri())) {
             config().wantMassQuery.setDefault(cacheInfo->wantMassQuery);
             config().priority.setDefault(cacheInfo->priority);
         } else {
-            BinaryCacheStore::init();
+            TRY_AWAIT(BinaryCacheStore::init());
             diskCache->createCache(
                 getUri(), config().storeDir, config().wantMassQuery, config().priority
             );
         }
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     const Stats & getS3Stats() override

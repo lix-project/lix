@@ -33,8 +33,8 @@ BinaryCacheStore::BinaryCacheStore(const BinaryCacheStoreConfig & config)
     narMagic = sink.s;
 }
 
-void BinaryCacheStore::init()
-{
+kj::Promise<Result<void>> BinaryCacheStore::init()
+try {
     std::string cacheInfoFile = "nix-cache-info";
 
     auto cacheInfo = getFileContents(cacheInfoFile);
@@ -57,6 +57,9 @@ void BinaryCacheStore::init()
             }
         }
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 void BinaryCacheStore::upsertFile(const std::string & path,

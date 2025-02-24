@@ -231,7 +231,10 @@ public:
      * Perform any necessary effectful operation to make the store up and
      * running
      */
-    virtual void init() {};
+    virtual kj::Promise<Result<void>> init()
+    {
+        return {result::success()};
+    }
 
     virtual StoreConfig & config() = 0;
     virtual const StoreConfig & config() const = 0;

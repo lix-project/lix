@@ -2,6 +2,7 @@
 #include "lix/libstore/binary-cache-store.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/nar-info-disk-cache.hh"
+#include "lix/libutil/result.hh"
 
 #include <atomic>
 
@@ -44,7 +45,7 @@ public:
     {
     }
 
-    void init() override;
+    kj::Promise<Result<void>> init() override;
 
     std::string getUri() override
     {
@@ -104,14 +105,17 @@ protected:
     }
 };
 
-void LocalBinaryCacheStore::init()
-{
+kj::Promise<Result<void>> LocalBinaryCacheStore::init()
+try {
     createDirs(binaryCacheDir + "/nar");
     createDirs(binaryCacheDir + "/" + realisationsPrefix);
     if (config_.writeDebugInfo)
         createDirs(binaryCacheDir + "/debuginfo");
     createDirs(binaryCacheDir + "/log");
-    BinaryCacheStore::init();
+    TRY_AWAIT(BinaryCacheStore::init());
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 bool LocalBinaryCacheStore::fileExists(const std::string & path)

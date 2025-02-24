@@ -1580,7 +1580,7 @@ try {
                 auto store = implem.create(parsedUri.scheme, baseURI, params);
                 if (store) {
                     experimentalFeatureSettings.require(store->config().experimentalFeature());
-                    store->init();
+                    TRY_AWAIT(store->init());
                     store->config().warnUnknownSettings();
                     co_return ref<Store>(store);
                 }

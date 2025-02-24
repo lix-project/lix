@@ -3,6 +3,7 @@
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/nar-info-disk-cache.hh"
+#include "lix/libutil/result.hh"
 
 namespace nix {
 
@@ -62,15 +63,15 @@ public:
         return cacheUri;
     }
 
-    void init() override
-    {
+    kj::Promise<Result<void>> init() override
+    try {
         // FIXME: do this lazily?
         if (auto cacheInfo = diskCache->upToDateCacheExists(cacheUri)) {
             config_.wantMassQuery.setDefault(cacheInfo->wantMassQuery);
             config_.priority.setDefault(cacheInfo->priority);
         } else {
             try {
-                BinaryCacheStore::init();
+                TRY_AWAIT(BinaryCacheStore::init());
             } catch (UploadToHTTP &) {
                 throw Error("'%s' does not appear to be a binary cache", cacheUri);
             }
@@ -78,6 +79,9 @@ public:
                 cacheUri, config_.storeDir, config_.wantMassQuery, config_.priority
             );
         }
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     static std::set<std::string> uriSchemes()

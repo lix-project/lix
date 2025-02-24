@@ -91,7 +91,7 @@ public:
 
 public:
 
-    virtual void init() override;
+    virtual kj::Promise<Result<void>> init() override;
 
 private:
 
