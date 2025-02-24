@@ -1865,8 +1865,8 @@ ContentAddress LocalStore::hashCAPath(
     };
 }
 
-void LocalStore::addBuildLog(const StorePath & drvPath, std::string_view log)
-{
+kj::Promise<Result<void>> LocalStore::addBuildLog(const StorePath & drvPath, std::string_view log)
+try {
     assert(drvPath.isDerivation());
 
     auto baseName = drvPath.to_string();
@@ -1875,7 +1875,7 @@ void LocalStore::addBuildLog(const StorePath & drvPath, std::string_view log)
         fmt("%s/%s/%s/%s.bz2", config_.logDir, drvsLogDir, baseName.substr(0, 2), baseName.substr(2)
         );
 
-    if (pathExists(logPath)) return;
+    if (pathExists(logPath)) co_return result::success();
 
     createDirs(dirOf(logPath));
 
@@ -1884,7 +1884,10 @@ void LocalStore::addBuildLog(const StorePath & drvPath, std::string_view log)
     writeFile(tmpFile, compress("bzip2", log));
 
     renameFile(tmpFile, logPath);
-}
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();}
+
 
 std::optional<std::string> LocalStore::getVersion()
 {

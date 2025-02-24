@@ -146,7 +146,7 @@ public:
 
     kj::Promise<Result<std::optional<std::string>>> getBuildLogExact(const StorePath & path) override;
 
-    void addBuildLog(const StorePath & drvPath, std::string_view log) override;
+    kj::Promise<Result<void>> addBuildLog(const StorePath & drvPath, std::string_view log) override;
 
 };
 

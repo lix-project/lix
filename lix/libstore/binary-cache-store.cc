@@ -503,14 +503,18 @@ try {
     co_return result::current_exception();
 }
 
-void BinaryCacheStore::addBuildLog(const StorePath & drvPath, std::string_view log)
-{
+kj::Promise<Result<void>>
+BinaryCacheStore::addBuildLog(const StorePath & drvPath, std::string_view log)
+try {
     assert(drvPath.isDerivation());
 
     upsertFile(
         "log/" + std::string(drvPath.to_string()),
         (std::string) log, // FIXME: don't copy
         "text/plain; charset=utf-8");
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }

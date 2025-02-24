@@ -979,7 +979,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             FramedSource source(from);
             StringSink sink;
             source.drainInto(sink);
-            logStore.addBuildLog(path, sink.s);
+            aio.blockOn(logStore.addBuildLog(path, sink.s));
         }
         logger->stopWork();
         to << 1;

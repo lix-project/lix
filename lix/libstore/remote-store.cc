@@ -879,8 +879,8 @@ void RemoteStore::queryMissing(const std::vector<DerivedPath> & targets,
 }
 
 
-void RemoteStore::addBuildLog(const StorePath & drvPath, std::string_view log)
-{
+kj::Promise<Result<void>> RemoteStore::addBuildLog(const StorePath & drvPath, std::string_view log)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::AddBuildLog << drvPath.to_string();
     StringSource source(log);
@@ -888,6 +888,9 @@ void RemoteStore::addBuildLog(const StorePath & drvPath, std::string_view log)
         source.drainInto(sink);
     });
     readInt(conn->from);
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

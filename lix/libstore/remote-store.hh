@@ -158,7 +158,7 @@ public:
         StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
         uint64_t & downloadSize, uint64_t & narSize) override;
 
-    void addBuildLog(const StorePath & drvPath, std::string_view log) override;
+    kj::Promise<Result<void>> addBuildLog(const StorePath & drvPath, std::string_view log) override;
 
     std::optional<std::string> getVersion() override;
 

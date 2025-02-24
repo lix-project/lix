@@ -1253,8 +1253,13 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         return {std::nullopt};
     }
 
-    virtual void addBuildLog(const StorePath & path, std::string_view log) override
-    { unsupported("addBuildLog"); }
+    virtual kj::Promise<Result<void>>
+    addBuildLog(const StorePath & path, std::string_view log) override
+    try {
+        unsupported("addBuildLog");
+    } catch (...) {
+        return {result::current_exception()};
+    }
 
     std::optional<TrustedFlag> isTrustedClient() override
     { return NotTrusted; }
