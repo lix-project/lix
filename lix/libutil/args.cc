@@ -381,28 +381,139 @@ void Args::completeDir(AddCompletions & completions, size_t, std::string_view pr
     _completePath(completions, prefix, true);
 }
 
+static bool isAcceptableLixSubcommandExe(const std::filesystem::path & exe_path)
+{
+    namespace fs = std::filesystem;
+
+    return fs::is_regular_file(exe_path) &&
+        (fs::status(exe_path).permissions() & (fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec)) != fs::perms::none;
+}
+
+std::shared_ptr<Command> searchForCustomSubcommand(AsyncIoRoot & aio, const std::string_view & command, const std::string_view & prefix, const Strings & searchPaths)
+{
+    namespace fs = std::filesystem;
+    for (auto searchPath : searchPaths) {
+        if (searchPath.empty()) continue;
+
+        auto path = fs::path(searchPath) / fs::path(prefix).concat(command);
+
+        try {
+            if (isAcceptableLixSubcommandExe(path)) {
+                debug("Found requested external subcommand '%s' in '%s'", command, path);
+                return std::make_shared<ExternalCommand>(aio, path);
+            }
+        } catch (fs::filesystem_error & fs_exc) {
+            if (fs_exc.code() != std::errc::no_such_file_or_directory && fs_exc.code() != std::errc::not_a_directory && fs_exc.code() != std::errc::permission_denied) {
+                throw SysError("while searching for the subcommand '%1%' in search path '%2%': '%3%'", command, searchPath, fs_exc.what());
+            }
+        }
+    }
+
+    return nullptr;
+}
+
+Strings searchForAllAvailableCustomSubcommands(const std::string_view & prefix, const Strings & searchPaths)
+{
+    namespace fs = std::filesystem;
+    Strings commandNames;
+
+    for (auto searchPath : searchPaths) {
+        if (searchPath.empty()) continue;
+
+        if (!fs::exists(searchPath) || !fs::is_directory(searchPath)) {
+            // TODO(Raito): this will break all the time our functional tests
+            // for people with garbage in their $PATH which is my personal case.
+
+            // warn("The search path '%s' for custom subcommands does not exist or is not a directory, ignoring...", searchPath);
+            continue;
+        }
+
+        // Browse per prefix.
+        for (const auto& entry : fs::directory_iterator(searchPath)) {
+            try {
+                if (isAcceptableLixSubcommandExe(entry.path())) {
+                    auto filename = entry.path().filename().string();
+
+                    if (filename.starts_with(prefix)) {
+                        auto suffix = filename.substr(prefix.size());
+
+                        debug("Found custom subcommand ('%s') '%s'", filename, suffix);
+
+                        commandNames.push_back(suffix);
+                    }
+                }
+            } catch (fs::filesystem_error & fs_exc) {
+                if (fs_exc.code() != std::errc::no_such_file_or_directory && fs_exc.code() != std::errc::not_a_directory && fs_exc.code() != std::errc::permission_denied) {
+                    throw SysError("while searching for all available commands in search path '%1%', while analyzing '%2%': %3%'", searchPath, entry.path(), fs_exc.what());
+                }
+            }
+        }
+    }
+
+    return commandNames;
+}
+
 std::optional<ExperimentalFeature> Command::experimentalFeature ()
 {
     return { Xp::NixCommand };
 }
 
-MultiCommand::MultiCommand(const Commands & commands_)
-    : commands(commands_)
+MultiCommand::MultiCommand(const Commands & commands_, bool allowExternal)
+    : commands(commands_),
+      customCommandSearchPaths(
+          allowExternal ? tokenizeString<Strings>(
+              getEnv("PATH").value_or(""),
+              ":"
+          ) : Strings()
+      ),
+      isExternalSubcommand(false)
 {
     expectArgs({
         .label = "subcommand",
         .optional = true,
         .handler = {[=,this](std::string s) {
             assert(!command);
-            auto i = commands.find(s);
-            if (i == commands.end()) {
+            auto it = commands.find(s);
+
+            // NOTE: this logic does not rely
+            // on `allowExternal`, indeed:
+            // if external subcommands are not allowed, the search paths should be empty which will short-circuit any search and will never ever return external subcommands.
+
+            // If `i` is not found, look into custom subcommands.
+            if (it == commands.end()) {
+                debug("looking for %s", s);
+                auto possibleNewSubcommand = searchForCustomSubcommand(aio(), s, ExternalCommand::lixExternalPrefix, customCommandSearchPaths);
+
+                if (possibleNewSubcommand) {
+                    command = {s, ref(possibleNewSubcommand)};
+                    isExternalSubcommand = true;
+                }
+            } else {
+                command = {s, it->second(aio())};
+            }
+
+            // By this point, we tried everything:
+            // (a) built-in commands
+            // (b) filesystem view of external subcommands
+            //
+            // We are going to do the expensive thing of looking for all external subcommands now
+            // for error reporting purpose.
+            if (!command) {
                 std::set<std::string> commandNames;
+                auto customCommands = searchForAllAvailableCustomSubcommands("lix-", customCommandSearchPaths);
+                // As we are going to throw an error, there's no need to fill the hot cache of subcommands.
+                for (auto & name : customCommands)
+                    commandNames.insert(name);
                 for (auto & [name, _] : commands)
                     commandNames.insert(name);
                 auto suggestions = Suggestions::bestMatches(commandNames, s);
                 throw UsageError(suggestions, "'%s' is not a recognised command", s);
             }
-            command = {s, i->second(aio())};
+
+            if (isExternalSubcommand) {
+                debug("Found external subcommand for %s", s);
+            }
+
             command->second->parent = this;
         }},
         .completer = {[&](AddCompletions & completions, size_t, std::string_view prefix) {
@@ -413,11 +524,14 @@ MultiCommand::MultiCommand(const Commands & commands_)
     });
 
     categories[Command::catDefault] = "Available commands";
+    if (allowExternal) {
+        categories[Command::catCustom] = "External custom commands";
+    }
 }
 
 bool MultiCommand::processFlag(Strings::iterator & pos, Strings::iterator end)
 {
-    if (Args::processFlag(pos, end)) return true;
+    if (!isExternalSubcommand && Args::processFlag(pos, end)) return true;
     if (command && command->second->processFlag(pos, end)) return true;
     return false;
 }
@@ -450,6 +564,36 @@ nlohmann::json MultiCommand::toJSON()
     auto res = Args::toJSON();
     res["commands"] = std::move(cmds);
     return res;
+}
+
+ExternalCommand::ExternalCommand(AsyncIoRoot & aio, std::filesystem::path absoluteBinaryPath) : aio_(aio), absoluteBinaryPath(absoluteBinaryPath) {
+    // NOTE: on shell invocation, argv[0] is the basename of the binary invoked.
+    // We just reproduce this behavior.
+    externalArgv.push_back(this->absoluteBinaryPath.filename());
+}
+
+bool ExternalCommand::processFlag(Strings::iterator & pos, Strings::iterator end)
+{
+    externalArgv.push_back(*pos++);
+
+    // All flags are recognised as we leave
+    // parsing to the external commands.
+    return true;
+}
+
+bool ExternalCommand::processArgs(const Strings & args, bool finish)
+{
+    for (const auto & arg : args) {
+        externalArgv.push_back(arg);
+    }
+
+    return true;
+}
+
+void ExternalCommand::run() {
+    execv(absoluteBinaryPath.c_str(), stringsToCharPtrs(externalArgv).data());
+
+    throw SysError(errno, "failed to execute external command '%1%'", absoluteBinaryPath);
 }
 
 }

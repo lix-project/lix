@@ -1,5 +1,32 @@
 R""(
 
+# Custom commands
+
+> **Warning** \
+> Custom commands are part of the unstable
+> [lix-custom-sub-commands experimental feature](@docroot@/contributing/experimental-features.md#xp-feature-lix-custom-sub-commands),
+> and subject to change without notice.
+
+Lix allows users to define custom subcommands by placing executables in the system's `PATH` that follow the naming convention `lix-<command>`. When a user runs `lix <command>`, Lix will attempt to locate and execute `lix-<command>` as a separate process.
+
+Auto-completion of custom commands is not supported yet.
+
+## Usage
+
+A custom Lix command must be an executable script or binary named `lix-<command>` and be accessible from the `PATH`. When the user invokes `lix <command>`, Lix will execute `lix-<command>` with the given arguments.
+
+For example, if an executable named `lix-example` exists in the `PATH`, running:
+
+```console
+$ lix example arg1 arg2
+```
+
+will be equivalent to running:
+
+```console
+$ lix-example arg1 arg2
+```
+
 # Examples
 
 * Create a new flake:

@@ -14,6 +14,7 @@
 #include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <set>
+#include <filesystem>
 
 
 namespace nix {
@@ -189,6 +190,8 @@ protected:
     /**
      * Process a single flag and its arguments, pulling from an iterator
      * of raw CLI args as needed.
+     *
+     * @return false if the flag is not recognised.
      */
     virtual bool processFlag(Strings::iterator & pos, Strings::iterator end);
 
@@ -229,17 +232,23 @@ protected:
     */
    std::list<ExpectedArg> processedArgs;
 
-    /**
-     * Process some positional arugments
-     *
-     * @param finish: We have parsed everything else, and these are the only
-     * arguments left. Used because we accumulate some "pending args" we might
-     * have left over.
-     */
-    virtual bool processArgs(const Strings & args, bool finish);
+   /**
+    * Process some positional arugments
+    *
+    * @param finish: We have parsed everything else, and these are the only
+    * arguments left. Used because we accumulate some "pending args" we might
+    * have left over.
+    *
+    * @return true if the passed arguments were fully consumed and no further processing is
+    * required, false if the passed arguments should be processed with more context.
+    *
+    */
+   virtual bool processArgs(const Strings & args, bool finish);
 
-    virtual Strings::iterator rewriteArgs(Strings & args, Strings::iterator pos)
-    { return pos; }
+   virtual Strings::iterator rewriteArgs(Strings & args, Strings::iterator pos)
+   {
+       return pos;
+   }
 
     std::set<std::string> hiddenCategories;
 
@@ -334,6 +343,7 @@ struct Command : virtual public Args
     typedef int Category;
 
     static constexpr Category catDefault = 0;
+    static constexpr Category catCustom = 1000;
 
     virtual std::optional<ExperimentalFeature> experimentalFeature ();
 
@@ -350,6 +360,8 @@ class MultiCommand : public Command
 {
 public:
     Commands commands;
+    Strings customCommandSearchPaths;
+    bool isExternalSubcommand;
 
     std::map<Command::Category, std::string> categories;
 
@@ -358,7 +370,7 @@ public:
      */
     std::optional<std::pair<std::string, ref<Command>>> command;
 
-    MultiCommand(const Commands & commands);
+    MultiCommand(const Commands & commands, bool allowExternal = false);
 
     bool processFlag(Strings::iterator & pos, Strings::iterator end) override;
 
@@ -366,6 +378,46 @@ public:
 
     nlohmann::json toJSON() override;
 };
+
+/**
+ * An external command wrapper which is represented by a external binary.
+ * i.e. `lix-flakes`.
+ */
+class ExternalCommand : virtual public Command
+{
+    Strings externalArgv;
+    AsyncIoRoot & aio_;
+public:
+    std::filesystem::path absoluteBinaryPath;
+    static constexpr std::string_view lixExternalPrefix = "lix-";
+
+    ExternalCommand(AsyncIoRoot & aio, std::filesystem::path absoluteBinaryPath);
+
+    virtual bool processFlag(Strings::iterator & pos, Strings::iterator end) override;
+    virtual bool processArgs(const Strings & args, bool finish) override;
+    virtual void run() override;
+    virtual std::optional<ExperimentalFeature> experimentalFeature () override {
+        return Xp::LixCustomSubCommands;
+    }
+
+    // Create a custom category section.
+    virtual Category category() override { return catCustom; }
+
+    virtual AsyncIoRoot & aio() override { return aio_; }
+};
+
+/* This returns a Command handle
+ * if the command name exist in one of the search paths and points to an executable regular file.
+ *
+ * i.e. if $searchpath/$command exist for any $searchpath in `searchPaths` and $searchpath/$command links to an executable regular file.
+ */
+std::shared_ptr<Command> searchForCustomSubcommand(const std::string_view & command, const Strings & searchPaths);
+/* This will read all directories in searchPaths one by one and look for all executable regular files which starts with `$prefix-`.
+ * Finally, it will return the list of commands stripped of their `$prefix` prefix.
+ *
+ * If you need to know about a specific command, prefer `searchForCustomSubcommand`.
+ */
+Strings searchForAllAvailableCustomSubcommands(const std::string_view & prefix, const Strings & searchPaths);
 
 struct Completion {
     std::string completion;
