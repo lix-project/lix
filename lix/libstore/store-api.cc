@@ -605,14 +605,16 @@ OutputPathMap Store::queryDerivationOutputMap(const StorePath & path, Store * ev
     return result;
 }
 
-StorePathSet Store::queryDerivationOutputs(const StorePath & path)
-{
+kj::Promise<Result<StorePathSet>> Store::queryDerivationOutputs(const StorePath & path)
+try {
     auto outputMap = this->queryDerivationOutputMap(path);
     StorePathSet outputPaths;
     for (auto & i: outputMap) {
         outputPaths.emplace(std::move(i.second));
     }
-    return outputPaths;
+    co_return outputPaths;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

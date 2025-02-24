@@ -319,16 +319,18 @@ StorePathSet RemoteStore::queryValidDerivers(const StorePath & path)
 }
 
 
-StorePathSet RemoteStore::queryDerivationOutputs(const StorePath & path)
-{
+kj::Promise<Result<StorePathSet>> RemoteStore::queryDerivationOutputs(const StorePath & path)
+try {
     if (GET_PROTOCOL_MINOR(getProtocol()) >= 22) {
-        return Store::queryDerivationOutputs(path);
+        co_return TRY_AWAIT(Store::queryDerivationOutputs(path));
     }
     REMOVE_AFTER_DROPPING_PROTO_MINOR(21);
     auto conn(getConnection());
     conn->to << WorkerProto::Op::QueryDerivationOutputs << printStorePath(path);
     conn.processStderr();
-    return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

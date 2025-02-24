@@ -358,7 +358,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             case WorkerProto::Op::QueryDerivationOutputs: {
                 // Only sent if server presents proto version <= 1.21
                 REMOVE_AFTER_DROPPING_PROTO_MINOR(21);
-                paths = store->queryDerivationOutputs(path);
+                paths = aio.blockOn(store->queryDerivationOutputs(path));
                 break;
             }
             default:

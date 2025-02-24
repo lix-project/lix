@@ -248,7 +248,7 @@ try {
         auto drv = TRY_AWAIT(store->derivationFromPath(storePath));
         StorePathSet outputs;
         if (forceRealise)
-            co_return store->queryDerivationOutputs(storePath);
+            co_return TRY_AWAIT(store->queryDerivationOutputs(storePath));
         for (auto & i : drv.outputsAndOptPaths(*store)) {
             if (!i.second.second)
                 throw UsageError("Cannot use output path of floating content-addressed derivation until we know what it is (e.g. by building it)");

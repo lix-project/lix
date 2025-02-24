@@ -444,7 +444,7 @@ public:
     /**
      * Query the outputs of the derivation denoted by `path`.
      */
-    virtual StorePathSet queryDerivationOutputs(const StorePath & path);
+    virtual kj::Promise<Result<StorePathSet>> queryDerivationOutputs(const StorePath & path);
 
     /**
      * Query the mapping outputName => outputPath for the given
