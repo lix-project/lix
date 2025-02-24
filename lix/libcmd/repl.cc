@@ -1033,8 +1033,7 @@ Value * NixRepl::replOverlays()
             .debugThrow();
         }
 
-        if (replInit->lambda.fun->hasFormals()
-            && !replInit->lambda.fun->formals->ellipsis) {
+        if (auto attrs = dynamic_cast<AttrsPattern *>(replInit->lambda.fun->pattern.get()); attrs && !attrs->ellipsis) {
             evaluator.errors.make<TypeError>(
                 "Expected first argument of %1% to have %2% to allow future versions of Lix to add additional attributes to the argument",
                 "repl-overlays",

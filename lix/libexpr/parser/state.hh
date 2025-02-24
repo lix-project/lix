@@ -36,7 +36,7 @@ struct State
     void dupAttr(Symbol attr, const PosIdx pos, const PosIdx prevPos);
     void overridesFound(const PosIdx pos);
     void addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos);
-    std::unique_ptr<Formals> validateFormals(std::unique_ptr<Formals> formals, PosIdx pos = noPos, Symbol arg = {});
+    void validateLambdaAttrs(AttrsPattern & pattern, PosIdx pos = noPos);
     std::unique_ptr<Expr> stripIndentation(const PosIdx pos, std::vector<IndStringLine> && line);
 
     /* Creates an ExprVar or an ExprVarRoot depending on the feature settings.
@@ -173,18 +173,18 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
     }
 }
 
-inline std::unique_ptr<Formals> State::validateFormals(std::unique_ptr<Formals> formals, PosIdx pos, Symbol arg)
+inline void State::validateLambdaAttrs(AttrsPattern & formals, PosIdx pos)
 {
-    std::sort(formals->formals.begin(), formals->formals.end(),
+    std::sort(formals.formals.begin(), formals.formals.end(),
         [] (const auto & a, const auto & b) {
             return std::tie(a.name, a.pos) < std::tie(b.name, b.pos);
         });
 
     std::optional<std::pair<Symbol, PosIdx>> duplicate;
-    for (size_t i = 0; i + 1 < formals->formals.size(); i++) {
-        if (formals->formals[i].name != formals->formals[i + 1].name)
+    for (size_t i = 0; i + 1 < formals.formals.size(); i++) {
+        if (formals.formals[i].name != formals.formals[i + 1].name)
             continue;
-        std::pair thisDup{formals->formals[i].name, formals->formals[i + 1].pos};
+        std::pair thisDup{formals.formals[i].name, formals.formals[i + 1].pos};
         duplicate = std::min(thisDup, duplicate.value_or(thisDup));
     }
     if (duplicate)
@@ -193,13 +193,11 @@ inline std::unique_ptr<Formals> State::validateFormals(std::unique_ptr<Formals> 
             .pos = positions[duplicate->second]
         });
 
-    if (arg && formals->has(arg))
+    if (formals.name && formals.has(formals.name))
         throw ParseError({
-            .msg = HintFmt("duplicate formal function argument '%1%'", symbols[arg]),
+            .msg = HintFmt("duplicate formal function argument '%1%'", symbols[formals.name]),
             .pos = positions[pos]
         });
-
-    return formals;
 }
 
 inline std::unique_ptr<Expr> State::stripIndentation(

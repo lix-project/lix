@@ -271,12 +271,14 @@ static Flake getFlake(
     if (auto outputs = vInfo.attrs->get(state.ctx.s.outputs)) {
         expectType(state, nFunction, *outputs->value, outputs->pos);
 
-        if (outputs->value->isLambda() && outputs->value->lambda.fun->hasFormals()) {
-            for (auto & formal : outputs->value->lambda.fun->formals->formals) {
-                if (formal.name != state.ctx.s.self)
-                    flake.inputs.emplace(state.ctx.symbols[formal.name], FlakeInput {
-                        .ref = parseFlakeRef(state.ctx.symbols[formal.name])
-                    });
+        if (outputs->value->isLambda()) {
+            if (auto pattern = dynamic_cast<AttrsPattern *>(outputs->value->lambda.fun->pattern.get()); pattern) {
+                for (auto & formal : pattern->formals) {
+                    if (formal.name != state.ctx.s.self)
+                        flake.inputs.emplace(state.ctx.symbols[formal.name], FlakeInput {
+                            .ref = parseFlakeRef(state.ctx.symbols[formal.name])
+                        });
+                }
             }
         }
 

@@ -113,7 +113,8 @@ TEST_F(ValuePrintingTests, vLambda)
     PosTable::Origin origin = evaluator.positions.addOrigin(std::monostate(), 1);
     auto posIdx = evaluator.positions.add(origin, 0);
 
-    ExprLambda eLambda(posIdx, createSymbol("a"), std::make_unique<Formals>(), std::make_unique<ExprLiteral>(noPos, NewValueAs::integer, 0));
+    ExprLambda eLambda(posIdx, std::make_unique<AttrsPattern>(), std::make_unique<ExprLiteral>(noPos, NewValueAs::integer, 0));
+    eLambda.pattern->name = createSymbol("a");
 
     Value vLambda;
     vLambda.mkLambda(&env, &eLambda);
@@ -550,7 +551,8 @@ TEST_F(ValuePrintingTests, ansiColorsLambda)
     PosTable::Origin origin = evaluator.positions.addOrigin(std::monostate(), 1);
     auto posIdx = evaluator.positions.add(origin, 0);
 
-    ExprLambda eLambda(posIdx, createSymbol("a"), std::make_unique<Formals>(), std::make_unique<ExprLiteral>(noPos, NewValueAs::integer, 0));
+    ExprLambda eLambda(posIdx, std::make_unique<AttrsPattern>(), std::make_unique<ExprLiteral>(noPos, NewValueAs::integer, 0));
+    eLambda.pattern->name = createSymbol("a");
 
     Value vLambda;
     vLambda.mkLambda(&env, &eLambda);

@@ -577,23 +577,23 @@ struct _expr {
 
     struct _lambda {
         struct arg : semantic, t::identifier {};
+        struct body : seq<one<':'>, seps, must<expr>> {};
+        struct must_body : must<one<':'>, seps, expr> {};
+
+        struct pattern_simple : semantic, seq<_lambda::arg, seps, body> {};
+        struct pattern_attrs : semantic, sor<
+            seq<_lambda::arg, seps, one<'@'>, seps, must<formals>, seps, must_body>,
+            seq<
+                formals,
+                seps,
+                sor<
+                    seq<one<'@'>, seps, must<_lambda::arg>, seps, must_body>,
+                    body
+                >
+            >
+        > {};
     };
-    struct lambda : semantic, _lambda, sor<
-        seq<
-            _lambda::arg, seps,
-            sor<
-                seq<one<':'>, seps, must<expr>>,
-                seq<one<'@'>, seps, must<formals, seps, one<':'>, seps, expr>>
-            >
-        >,
-        seq<
-            formals, seps,
-            sor<
-                seq<one<':'>, seps, must<expr>>,
-                seq<one<'@'>, seps, must<_lambda::arg, seps, one<':'>, seps, expr>>
-            >
-        >
-    > {};
+    struct lambda : _lambda, sor<_lambda::pattern_simple, _lambda::pattern_attrs> {};
 
     struct assert_ : semantic, seq<
         t::kw_assert, seps,

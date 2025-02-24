@@ -260,19 +260,56 @@ struct ExprList : Expr
     Value * maybeThunk(EvalState & state, Env & env) override;
 };
 
-struct Formal
-{
-    PosIdx pos;
+struct Pattern {
+    /** The argument name of this particular lambda. Is a falsey symbol if there
+     * is no such argument. */
     Symbol name;
-    std::unique_ptr<Expr> def;
+
+    Pattern() = default;
+    explicit Pattern(Symbol name) : name(name) { }
+    virtual ~Pattern() = default;
+
+    virtual std::shared_ptr<const StaticEnv> buildEnv(const StaticEnv * up) = 0;
+    virtual void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) = 0;
+    virtual Env & match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos) = 0;
+
+    virtual void addBindingsToJSON(nlohmann::json & out, const SymbolTable & symbols) const = 0;
+};
+
+/** A plain old lambda */
+struct SimplePattern : Pattern
+{
+    SimplePattern() = default;
+    SimplePattern(Symbol name) : Pattern(name) {
+        assert(name);
+    }
+
+    virtual std::shared_ptr<const StaticEnv> buildEnv(const StaticEnv * up) override;
+    virtual void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
+    virtual Env & match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos) override;
+
+    virtual void addBindingsToJSON(nlohmann::json & out, const SymbolTable & symbols) const override;
 };
 
 /** Attribute set destructuring in arguments of a lambda, if present */
-struct Formals
+struct AttrsPattern : Pattern
 {
+    struct Formal
+    {
+        PosIdx pos;
+        Symbol name;
+        std::unique_ptr<Expr> def;
+    };
+
     typedef std::vector<Formal> Formals_;
     Formals_ formals;
     bool ellipsis;
+
+    virtual std::shared_ptr<const StaticEnv> buildEnv(const StaticEnv * up) override;
+    virtual void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
+    virtual Env & match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos) override;
+
+    virtual void addBindingsToJSON(nlohmann::json & out, const SymbolTable & symbols) const override;
 
     bool has(Symbol arg) const
     {
@@ -299,24 +336,14 @@ struct ExprLambda : Expr
      * let-expression or an attribute set, such that there is a name.
      * Lambdas may have a falsey symbol as the name if they are anonymous */
     Symbol name;
-    /** The argument name of this particular lambda. Is a falsey symbol if there
-     * is no such argument. */
-    Symbol arg;
-    /** Formals are present when the lambda destructures an attr set as
-     * argument, with or without ellipsis */
-    std::unique_ptr<Formals> formals;
+    std::unique_ptr<Pattern> pattern;
     std::unique_ptr<Expr> body;
-    ExprLambda(PosIdx pos, Symbol arg, std::unique_ptr<Formals> formals, std::unique_ptr<Expr> body)
-        : Expr(pos), arg(arg), formals(std::move(formals)), body(std::move(body))
-    {
-    };
-    ExprLambda(PosIdx pos, std::unique_ptr<Formals> formals, std::unique_ptr<Expr> body)
-        : Expr(pos), formals(std::move(formals)), body(std::move(body))
+    ExprLambda(PosIdx pos, std::unique_ptr<Pattern> pattern, std::unique_ptr<Expr> body)
+        : Expr(pos), pattern(std::move(pattern)), body(std::move(body))
     {
     }
     void setName(Symbol name) override;
     std::string showNamePos(const EvalState & state) const;
-    inline bool hasFormals() const { return formals != nullptr; }
 
     /** Returns the name of the lambda,
      * or "anonymous lambda" if it doesn't have one.

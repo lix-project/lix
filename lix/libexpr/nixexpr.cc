@@ -173,26 +173,35 @@ json ExprList::toJSON(const SymbolTable & symbols) const
     };
 }
 
+void SimplePattern::addBindingsToJSON(nlohmann::json & out, const SymbolTable & symbols) const
+{
+    out["arg"] = symbols[name];
+}
+
+void AttrsPattern::addBindingsToJSON(nlohmann::json & out, const SymbolTable & symbols) const
+{
+    if (name)
+        out["arg"] = symbols[name];
+
+    // the natural Symbol ordering is by creation time, which can lead to the
+    // same expression being printed in two different ways depending on its
+    // context. always use lexicographic ordering to avoid this.
+    for (const Formal & i : lexicographicOrder(symbols)) {
+        if (i.def)
+            out["formals"][symbols[i.name]] = i.def->toJSON(symbols);
+        else
+            out["formals"][symbols[i.name]] = nullptr;
+    }
+    out["formalsEllipsis"] = ellipsis;
+}
+
 json ExprLambda::toJSON(const SymbolTable & symbols) const
 {
     json out = {
         { "_type", "ExprLambda" },
         { "body", body->toJSON(symbols) }
     };
-    if (hasFormals()) {
-        // the natural Symbol ordering is by creation time, which can lead to the
-        // same expression being printed in two different ways depending on its
-        // context. always use lexicographic ordering to avoid this.
-        for (const Formal & i : formals->lexicographicOrder(symbols)) {
-            if (i.def)
-                out["formals"][symbols[i.name]] = i.def->toJSON(symbols);
-            else
-                out["formals"][symbols[i.name]] = nullptr;
-        }
-        out["formalsEllipsis"] = formals->ellipsis;
-    }
-    if (arg)
-        out["arg"] = symbols[arg];
+    pattern->addBindingsToJSON(out, symbols);
     return out;
 }
 
@@ -464,25 +473,8 @@ void ExprLambda::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv>
     if (es.debug)
         es.debug->exprEnvs.insert(std::make_pair(this, env));
 
-    auto newEnv = std::make_shared<StaticEnv>(
-        nullptr, env.get(),
-        (hasFormals() ? formals->formals.size() : 0) +
-        (!arg ? 0 : 1));
-
-    Displacement displ = 0;
-
-    if (arg) newEnv->vars.emplace_back(arg, displ++);
-
-    if (hasFormals()) {
-        for (auto & i : formals->formals)
-            newEnv->vars.emplace_back(i.name, displ++);
-
-        newEnv->sort();
-
-        for (auto & i : formals->formals)
-            if (i.def) i.def->bindVars(es, newEnv);
-    }
-
+    auto newEnv = pattern->buildEnv(env.get());
+    pattern->bindVars(es, newEnv);
     body->bindVars(es, newEnv);
 }
 
@@ -587,6 +579,40 @@ void ExprPos::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & 
         es.debug->exprEnvs.insert(std::make_pair(this, env));
 }
 
+/* Function argument destructuring */
+
+std::shared_ptr<const StaticEnv> SimplePattern::buildEnv(const StaticEnv * up)
+{
+    auto newEnv = std::make_shared<StaticEnv>(nullptr, up, 1);
+    newEnv->vars.emplace_back(name, 0);
+    return newEnv;
+}
+
+void SimplePattern::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) { }
+
+std::shared_ptr<const StaticEnv> AttrsPattern::buildEnv(const StaticEnv * up)
+{
+    auto newEnv = std::make_shared<StaticEnv>(
+        nullptr, up,
+        formals.size() + (name ? 1 : 0)
+    );
+
+    Displacement displ = 0;
+
+    if (name) newEnv->vars.emplace_back(name, displ++);
+
+    for (auto & i : formals)
+        newEnv->vars.emplace_back(i.name, displ++);
+
+    newEnv->sort();
+    return newEnv;
+}
+
+void AttrsPattern::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+{
+    for (auto & i : formals)
+        if (i.def) i.def->bindVars(es, env);
+}
 
 /* Storing function names. */
 

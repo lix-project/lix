@@ -1928,13 +1928,14 @@ static void prim_functionArgs(EvalState & state, const PosIdx pos, Value * * arg
     if (!args[0]->isLambda())
         state.ctx.errors.make<TypeError>("'functionArgs' requires a function").atPos(pos).debugThrow();
 
-    if (!args[0]->lambda.fun->hasFormals()) {
+    AttrsPattern * formals = dynamic_cast<AttrsPattern *>(args[0]->lambda.fun->pattern.get());
+    if (!formals) {
         v.mkAttrs(&Bindings::EMPTY);
         return;
     }
 
-    auto attrs = state.ctx.buildBindings(args[0]->lambda.fun->formals->formals.size());
-    for (auto & i : args[0]->lambda.fun->formals->formals)
+    auto attrs = state.ctx.buildBindings(formals->formals.size());
+    for (auto & i : formals->formals)
         // !!! should optimise booleans (allocate only once)
         attrs.alloc(i.name, i.pos).mkBool(i.def != nullptr);
     v.mkAttrs(attrs);
