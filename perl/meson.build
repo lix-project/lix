@@ -9,6 +9,11 @@ project('lix-perl', 'cpp',
   ],
 )
 
+add_project_arguments(
+  '-Werror=unused-result',
+  language : 'cpp',
+)
+
 fs = import('fs')
 
 prefix = get_option('prefix')
