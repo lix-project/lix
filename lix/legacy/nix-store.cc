@@ -68,7 +68,7 @@ try {
 
     if (path.path.isDerivation()) {
         if (build) TRY_AWAIT(store->buildPaths({path.toDerivedPath()}));
-        auto outputPaths = store->queryDerivationOutputMap(path.path);
+        auto outputPaths = TRY_AWAIT(store->queryDerivationOutputMap(path.path));
         Derivation drv = TRY_AWAIT(store->derivationFromPath(path.path));
         rootNr++;
 

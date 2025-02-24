@@ -36,7 +36,7 @@ try {
                         res.insert(i);
 
                 if (includeDerivers && path.isDerivation())
-                    for (auto& [_, maybeOutPath] : queryPartialDerivationOutputMap(path))
+                    for (auto& [_, maybeOutPath] : TRY_AWAIT(queryPartialDerivationOutputMap(path)))
                         if (maybeOutPath && isValidPath(*maybeOutPath))
                             res.insert(*maybeOutPath);
                 co_return res;
@@ -55,7 +55,7 @@ try {
                         res.insert(ref);
 
                 if (includeOutputs && path.isDerivation())
-                    for (auto& [_, maybeOutPath] : queryPartialDerivationOutputMap(path))
+                    for (auto& [_, maybeOutPath] : TRY_AWAIT(queryPartialDerivationOutputMap(path)))
                         if (maybeOutPath && isValidPath(*maybeOutPath))
                             res.insert(*maybeOutPath);
 
@@ -247,7 +247,9 @@ struct QueryMissingContext
         /* true for regular derivations, and CA derivations for which we
             have a trust mapping for all wanted outputs. */
         auto knownOutputPaths = true;
-        for (auto & [outputName, pathOpt] : store.queryPartialDerivationOutputMap(drvPath)) {
+        for (auto & [outputName, pathOpt] :
+             aio.blockOn(store.queryPartialDerivationOutputMap(drvPath)))
+        {
             if (!pathOpt) {
                 knownOutputPaths = false;
                 break;
@@ -463,7 +465,7 @@ resolveDerivedPath(Store & store, const DerivedPath::Built & bfd, Store * evalSt
 try {
     auto drvPath = TRY_AWAIT(resolveDerivedPath(store, *bfd.drvPath, evalStore_));
 
-    auto outputsOpt_ = store.queryPartialDerivationOutputMap(drvPath, evalStore_);
+    auto outputsOpt_ = TRY_AWAIT(store.queryPartialDerivationOutputMap(drvPath, evalStore_));
 
     auto outputsOpt = std::visit(overloaded {
         [&](const OutputsSpec::All &) {
@@ -511,7 +513,8 @@ try {
         [&](const SingleDerivedPath::Built & bfd) -> kj::Promise<Result<StorePath>> {
             try {
                 auto drvPath = TRY_AWAIT(resolveDerivedPath(store, *bfd.drvPath, evalStore_));
-                auto outputPaths = evalStore.queryPartialDerivationOutputMap(drvPath, evalStore_);
+                auto outputPaths =
+                    TRY_AWAIT(evalStore.queryPartialDerivationOutputMap(drvPath, evalStore_));
                 if (outputPaths.count(bfd.output) == 0)
                     throw Error("derivation '%s' does not have an output named '%s'",
                         store.printStorePath(drvPath), bfd.output);
@@ -534,7 +537,7 @@ kj::Promise<Result<OutputPathMap>>
 resolveDerivedPath(Store & store, const DerivedPath::Built & bfd)
 try {
     auto drvPath = TRY_AWAIT(resolveDerivedPath(store, *bfd.drvPath));
-    auto outputMap = store.queryDerivationOutputMap(drvPath);
+    auto outputMap = TRY_AWAIT(store.queryDerivationOutputMap(drvPath));
     auto outputsLeft = std::visit(overloaded {
         [&](const OutputsSpec::All &) {
             return StringSet {};

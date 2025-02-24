@@ -448,7 +448,8 @@ static void queryInstSources(EvalState & state,
 
                 if (path.isDerivation()) {
                     elem.setDrvPath(path);
-                    auto outputs = state.ctx.store->queryDerivationOutputMap(path);
+                    auto outputs =
+                        state.aio.blockOn(state.ctx.store->queryDerivationOutputMap(path));
                     elem.setOutPath(outputs.at("out"));
                     if (name.size() >= drvExtension.size() &&
                         std::string(name, name.size() - drvExtension.size()) == drvExtension)

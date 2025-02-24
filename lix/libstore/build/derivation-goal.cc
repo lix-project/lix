@@ -482,7 +482,8 @@ try {
     std::map<StorePath, StorePath> outputsToDrv;
     for (auto & i : inputClosure)
         if (i.isDerivation()) {
-            auto depOutputs = worker.store.queryPartialDerivationOutputMap(i, &worker.evalStore);
+            auto depOutputs =
+                TRY_AWAIT(worker.store.queryPartialDerivationOutputMap(i, &worker.evalStore));
             for (auto & j : depOutputs)
                 if (j.second)
                     outputsToDrv.insert_or_assign(*j.second, i);
@@ -628,7 +629,9 @@ try {
                 /* Add the relevant output closures of the input derivation
                    `i' as input paths.  Only add the closures of output paths
                    that are specified as inputs. */
-                auto getOutput = [&](const std::string & outputName) {
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+                auto getOutput = [&](const std::string & outputName
+                                 ) -> kj::Promise<Result<StorePath>> {
                     /* TODO (impure derivations-induced tech debt):
                        Tracking input derivation outputs statefully through the
                        goals is error prone and has led to bugs.
@@ -640,32 +643,38 @@ try {
                        a representation in the store, which is a usability problem
                        in itself. When implementing this logic entirely with lookups
                        make sure that they're cached. */
-                    if (auto outPath = get(inputDrvOutputs, { depDrvPath, outputName })) {
-                        return *outPath;
-                    }
-                    else {
-                        auto outMap = [&]{
-                            for (auto * drvStore : { &worker.evalStore, &worker.store })
-                                if (drvStore->isValidPath(depDrvPath))
-                                    return worker.store.queryDerivationOutputMap(depDrvPath, drvStore);
-                            assert(false);
-                        }();
-
-                        auto outMapPath = outMap.find(outputName);
-                        if (outMapPath == outMap.end()) {
-                            throw Error(
-                                "derivation '%s' requires non-existent output '%s' from input derivation '%s'",
-                                worker.store.printStorePath(drvPath), outputName, worker.store.printStorePath(depDrvPath));
+                    try {
+                        if (auto outPath = get(inputDrvOutputs, { depDrvPath, outputName })) {
+                            co_return *outPath;
                         }
-                        return outMapPath->second;
+                        else {
+                            auto outMap = worker.evalStore.isValidPath(depDrvPath)
+                                ? TRY_AWAIT(worker.store.queryDerivationOutputMap(depDrvPath, &worker.evalStore))
+                                : worker.store.isValidPath(depDrvPath)
+                                ? TRY_AWAIT(worker.store.queryDerivationOutputMap(depDrvPath, &worker.store))
+                                : (assert(false), OutputPathMap{});
+
+                            auto outMapPath = outMap.find(outputName);
+                            if (outMapPath == outMap.end()) {
+                                throw Error(
+                                    "derivation '%s' requires non-existent output '%s' from input derivation '%s'",
+                                    worker.store.printStorePath(drvPath), outputName, worker.store.printStorePath(depDrvPath));
+                            }
+                            co_return outMapPath->second;
+                        }
+                    } catch (...) {
+                        co_return result::current_exception();
                     }
                 };
 
-                for (auto & outputName : inputNode.value)
-                    TRY_AWAIT(worker.store.computeFSClosure(getOutput(outputName), inputPaths));
+                for (auto & outputName : inputNode.value) {
+                    TRY_AWAIT(
+                        worker.store.computeFSClosure(TRY_AWAIT(getOutput(outputName)), inputPaths)
+                    );
+                }
 
                 for (auto & [outputName, childNode] : inputNode.childMap)
-                    TRY_AWAIT(accumInputPaths(getOutput(outputName), childNode));
+                    TRY_AWAIT(accumInputPaths(TRY_AWAIT(getOutput(outputName)), childNode));
                 co_return result::success();
             } catch (...) {
                 co_return result::current_exception();
@@ -1602,9 +1611,12 @@ try {
             res.insert_or_assign(name, output.path(worker.store, drv->name, name));
         co_return res;
     } else {
-        for (auto * drvStore : { &worker.evalStore, &worker.store })
-            if (drvStore->isValidPath(drvPath))
-                co_return worker.store.queryPartialDerivationOutputMap(drvPath, drvStore);
+        for (auto * drvStore : {&worker.evalStore, &worker.store}) {
+            if (drvStore->isValidPath(drvPath)) {
+                co_return TRY_AWAIT(worker.store.queryPartialDerivationOutputMap(drvPath, drvStore)
+                );
+            }
+        }
         assert(false);
     }
 } catch (...) {
@@ -1620,9 +1632,11 @@ try {
             res.insert_or_assign(name, *output.second);
         co_return res;
     } else {
-        for (auto * drvStore : { &worker.evalStore, &worker.store })
-            if (drvStore->isValidPath(drvPath))
-                co_return worker.store.queryDerivationOutputMap(drvPath, drvStore);
+        for (auto * drvStore : {&worker.evalStore, &worker.store}) {
+            if (drvStore->isValidPath(drvPath)) {
+                co_return TRY_AWAIT(worker.store.queryDerivationOutputMap(drvPath, drvStore));
+            }
+        }
         assert(false);
     }
 } catch (...) {

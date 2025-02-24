@@ -266,7 +266,8 @@ try {
         }},
         bmNormal, evalStore));
 
-    for (auto & [_0, optPath] : evalStore->queryPartialDerivationOutputMap(shellDrvPath)) {
+    for (auto & [_0, optPath] : TRY_AWAIT(evalStore->queryPartialDerivationOutputMap(shellDrvPath)))
+    {
         assert(optPath);
         auto & outPath = *optPath;
         assert(store->isValidPath(outPath));

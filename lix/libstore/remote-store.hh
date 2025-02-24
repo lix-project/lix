@@ -64,7 +64,8 @@ public:
 
     kj::Promise<Result<StorePathSet>> queryDerivationOutputs(const StorePath & path) override;
 
-    std::map<std::string, std::optional<StorePath>> queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore = nullptr) override;
+    kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
+    queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore = nullptr) override;
     std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override;
 
     kj::Promise<Result<StorePathSet>> querySubstitutablePaths(const StorePathSet & paths) override;

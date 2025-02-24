@@ -778,7 +778,9 @@ ProcessLineResult NixRepl::processLine(std::string line)
             }));
             auto drv = evaluator.store->readDerivation(drvPath);
             logger->cout("\nThis derivation produced the following outputs:");
-            for (auto & [outputName, outputPath] : evaluator.store->queryDerivationOutputMap(drvPath)) {
+            for (auto & [outputName, outputPath] :
+                 state.aio.blockOn(evaluator.store->queryDerivationOutputMap(drvPath)))
+            {
                 auto localStore = evaluator.store.dynamic_pointer_cast<LocalFSStore>();
                 if (localStore && command == ":bl") {
                     std::string symlink = "repl-result-" + outputName;

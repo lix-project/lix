@@ -2,6 +2,7 @@
 #include "lix/libstore/downstream-placeholder.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/globals.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libstore/common-protocol.hh"
 #include "lix/libstore/common-protocol-impl.hh"
@@ -1059,19 +1060,29 @@ Derivation::tryResolve(Store & store, Store * evalStore) const
 try {
     std::map<std::pair<StorePath, std::string>, StorePath> inputDrvOutputs;
 
-    std::function<void(const StorePath &, const DerivedPathMap<StringSet>::ChildNode &)> accum;
-    accum = [&](auto & inputDrv, auto & node) {
-        for (auto & [outputName, outputPath] : store.queryPartialDerivationOutputMap(inputDrv, evalStore)) {
-            if (outputPath) {
-                inputDrvOutputs.insert_or_assign({inputDrv, outputName}, *outputPath);
-                if (auto p = get(node.childMap, outputName))
-                    accum(*outputPath, *p);
+    std::function<
+        kj::Promise<Result<void>>(const StorePath &, const DerivedPathMap<StringSet>::ChildNode &)>
+        accum;
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    accum = [&](auto & inputDrv, auto & node) -> kj::Promise<Result<void>> {
+        try {
+            for (auto & [outputName, outputPath] :
+                 TRY_AWAIT(store.queryPartialDerivationOutputMap(inputDrv, evalStore)))
+            {
+                if (outputPath) {
+                    inputDrvOutputs.insert_or_assign({inputDrv, outputName}, *outputPath);
+                    if (auto p = get(node.childMap, outputName))
+                        TRY_AWAIT(accum(*outputPath, *p));
+                }
             }
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
         }
     };
 
     for (auto & [inputDrv, node] : inputDrvs.map)
-        accum(inputDrv, node);
+        TRY_AWAIT(accum(inputDrv, node));
 
     co_return TRY_AWAIT(tryResolve(store, inputDrvOutputs));
 } catch (...) {

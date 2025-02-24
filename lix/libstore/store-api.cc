@@ -566,16 +566,15 @@ std::map<std::string, std::optional<StorePath>> Store::queryStaticPartialDerivat
     return outputs;
 }
 
-std::map<std::string, std::optional<StorePath>> Store::queryPartialDerivationOutputMap(
-    const StorePath & path,
-    Store * evalStore_)
-{
+kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
+Store::queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore_)
+try {
     auto & evalStore = evalStore_ ? *evalStore_ : *this;
 
     auto outputs = evalStore.queryStaticPartialDerivationOutputMap(path);
 
     if (!experimentalFeatureSettings.isEnabled(Xp::CaDerivations))
-        return outputs;
+        co_return outputs;
 
     auto drv = evalStore.readInvalidDerivation(path);
     auto drvHashes = staticOutputHashes(*this, drv);
@@ -591,23 +590,29 @@ std::map<std::string, std::optional<StorePath>> Store::queryPartialDerivationOut
         }
     }
 
-    return outputs;
+    co_return outputs;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-OutputPathMap Store::queryDerivationOutputMap(const StorePath & path, Store * evalStore) {
-    auto resp = queryPartialDerivationOutputMap(path, evalStore);
+kj::Promise<Result<OutputPathMap>>
+Store::queryDerivationOutputMap(const StorePath & path, Store * evalStore)
+try {
+    auto resp = TRY_AWAIT(queryPartialDerivationOutputMap(path, evalStore));
     OutputPathMap result;
     for (auto & [outName, optOutPath] : resp) {
         if (!optOutPath)
             throw MissingRealisation(printStorePath(path), outName);
         result.insert_or_assign(outName, *optOutPath);
     }
-    return result;
+    co_return result;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<StorePathSet>> Store::queryDerivationOutputs(const StorePath & path)
 try {
-    auto outputMap = this->queryDerivationOutputMap(path);
+    auto outputMap = TRY_AWAIT(this->queryDerivationOutputMap(path));
     StorePathSet outputPaths;
     for (auto & i: outputMap) {
         outputPaths.emplace(std::move(i.second));

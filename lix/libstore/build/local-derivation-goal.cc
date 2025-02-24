@@ -483,7 +483,13 @@ try {
 
     /* Create a temporary directory where the build will take
        place. */
-    tmpDir = createTempDir(settings.buildDir.get().value_or(""), "nix-build-" + std::string(drvPath.name()), false, false, 0700);
+    tmpDir = createTempDir(
+        settings.buildDir.get().value_or(""),
+        "nix-build-" + std::string(drvPath.name()),
+        false,
+        false,
+        0700
+    );
 
     chownToBuilder(tmpDir);
 
@@ -1062,13 +1068,14 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
     void queryReferrers(const StorePath & path, StorePathSet & referrers) override
     { }
 
-    std::map<std::string, std::optional<StorePath>> queryPartialDerivationOutputMap(
-        const StorePath & path,
-        Store * evalStore = nullptr) override
-    {
+    kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
+    queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore = nullptr) override
+    try {
         if (!goal.isAllowed(path))
             throw InvalidPath("cannot query output map for unknown path '%s' in recursive Nix", printStorePath(path));
-        return next->queryPartialDerivationOutputMap(path, evalStore);
+        co_return TRY_AWAIT(next->queryPartialDerivationOutputMap(path, evalStore));
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override

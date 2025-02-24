@@ -386,7 +386,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::QueryDerivationOutputMap: {
         auto path = store->parseStorePath(readString(from));
         logger->startWork();
-        auto outputs = store->queryPartialDerivationOutputMap(path);
+        auto outputs = aio.blockOn(store->queryPartialDerivationOutputMap(path));
         logger->stopWork();
         to << WorkerProto::write(*store, wconn, outputs);
         break;
