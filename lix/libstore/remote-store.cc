@@ -530,13 +530,13 @@ try {
                 sink << WorkerProto::Serialise<ValidPathInfo>::write(*this,
                     WorkerProto::WriteConn {remoteVersion},
                     pathInfo);
-                pathSource->drainInto(sink);
+                pathSource()->drainInto(sink);
             }
         });
     } else {
         for (auto & [pathInfo, pathSource] : pathsToCopy) {
             pathInfo.ultimate = false; // duplicated in daemon.cc AddMultipleToStore
-            TRY_AWAIT(addToStore(pathInfo, *pathSource, repair, checkSigs));
+            TRY_AWAIT(addToStore(pathInfo, *pathSource(), repair, checkSigs));
         }
     }
     co_return result::success();

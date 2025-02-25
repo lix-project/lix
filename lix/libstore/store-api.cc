@@ -4,7 +4,9 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/nar-info-disk-cache.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/serialise.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/url.hh"
@@ -299,9 +301,7 @@ try {
     std::atomic<uint64_t> bytesExpected{0};
     std::atomic<uint64_t> nrRunning{0};
 
-    using PathWithInfo = std::pair<ValidPathInfo, std::unique_ptr<Source>>;
-
-    std::map<StorePath, PathWithInfo *> infosMap;
+    std::map<StorePath, PathsSource::value_type *> infosMap;
     StorePathSet storePathsToAdd;
     for (auto & thingToAdd : pathsToCopy) {
         infosMap.insert_or_assign(thingToAdd.first.path, &thingToAdd);
@@ -349,7 +349,7 @@ try {
                 MaintainCount<decltype(nrRunning)> mc(nrRunning);
                 showProgress();
                 try {
-                    aio.blockOn(addToStore(info, *source, repair, checkSigs));
+                    aio.blockOn(addToStore(info, *source(), repair, checkSigs));
                 } catch (Error & e) {
                     nrFailed++;
                     if (!settings.keepGoing)
@@ -1260,40 +1260,40 @@ try {
         ValidPathInfo infoForDst = *info;
         infoForDst.path = storePathForDst;
 
-        auto source = [](auto & srcStore, auto & dstStore, auto missingPath, auto info
-                      ) -> WireFormatGenerator {
-            // We can reasonably assume that the copy will happen whenever we
-            // read the path, so log something about that at that point
-            auto srcUri = srcStore.getUri();
-            auto dstUri = dstStore.getUri();
-            auto storePathS = srcStore.printStorePath(missingPath);
-            Activity act(
-                *logger,
-                lvlInfo,
-                actCopyPath,
-                makeCopyPathMessage(srcUri, dstUri, storePathS),
-                {storePathS, srcUri, dstUri}
-            );
-            PushActivity pact(act.id);
+        auto source = [&srcStore, &dstStore, missingPath, info] {
+            auto content = [](auto & srcStore, auto & dstStore, auto missingPath, auto info
+                           ) -> WireFormatGenerator {
+                // We can reasonably assume that the copy will happen whenever we
+                // read the path, so log something about that at that point
+                auto srcUri = srcStore.getUri();
+                auto dstUri = dstStore.getUri();
+                auto storePathS = srcStore.printStorePath(missingPath);
+                Activity act(
+                    *logger,
+                    lvlInfo,
+                    actCopyPath,
+                    makeCopyPathMessage(srcUri, dstUri, storePathS),
+                    {storePathS, srcUri, dstUri}
+                );
+                PushActivity pact(act.id);
 
-            auto nar = srcStore.narFromPath(missingPath);
-            auto buf = std::make_unique<char[]>(PATH_COPY_BUFSIZE);
-            uint64_t total = 0;
-            while (true) {
-                try {
-                    auto got = nar->read(buf.get(), PATH_COPY_BUFSIZE);
-                    total += got;
-                    act.progress(total, info->narSize);
-                    co_yield std::span{buf.get(), got};
-                } catch (EndOfFile &) {
-                    break;
+                auto nar = srcStore.narFromPath(missingPath);
+                auto buf = std::make_unique<char[]>(PATH_COPY_BUFSIZE);
+                uint64_t total = 0;
+                while (true) {
+                    try {
+                        auto got = nar->read(buf.get(), PATH_COPY_BUFSIZE);
+                        total += got;
+                        act.progress(total, info->narSize);
+                        co_yield std::span{buf.get(), got};
+                    } catch (EndOfFile &) {
+                        break;
+                    }
                 }
-            }
+            };
+            return make_box_ptr<GeneratorSource>(content(srcStore, dstStore, missingPath, info));
         };
-        pathsToCopy.push_back(std::pair{
-            infoForDst,
-            std::make_unique<GeneratorSource>(source(srcStore, dstStore, missingPath, info))
-        });
+        pathsToCopy.push_back(std::pair{infoForDst, std::move(source)});
     }
 
     TRY_AWAIT(dstStore.addMultipleToStore(pathsToCopy, act, repair, checkSigs));

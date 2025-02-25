@@ -506,7 +506,7 @@ public:
      * A list of paths infos along with a source providing the content
      * of the associated store path
      */
-    using PathsSource = std::vector<std::pair<ValidPathInfo, std::unique_ptr<Source>>>;
+    using PathsSource = std::vector<std::pair<ValidPathInfo, std::function<box_ptr<Source>()>>>;
 
     /**
      * Import multiple paths into the store.
