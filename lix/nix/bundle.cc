@@ -1,5 +1,6 @@
 #include "lix/libcmd/installable-flake.hh"
 #include "lix/libcmd/command.hh"
+#include "lix/libexpr/eval-settings.hh"
 #include "lix/libmain/common-args.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
@@ -54,9 +55,10 @@ struct CmdBundle : InstallableCommand
     // FIXME: cut&paste from CmdRun.
     Strings getDefaultFlakeAttrPaths() override
     {
+        // eval-system, since the app could be remote built and then bundled locally
         Strings res{
-            "apps." + settings.thisSystem.get() + ".default",
-            "defaultApp." + settings.thisSystem.get()
+            "apps." + evalSettings.getCurrentSystem() + ".default",
+            "defaultApp." + evalSettings.getCurrentSystem()
         };
         for (auto & s : SourceExprCommand::getDefaultFlakeAttrPaths())
             res.push_back(s);
@@ -65,7 +67,8 @@ struct CmdBundle : InstallableCommand
 
     Strings getDefaultFlakeAttrPathPrefixes() override
     {
-        Strings res{"apps." + settings.thisSystem.get() + "."};
+        // eval-system, since the app could be remote built and then bundled locally
+        Strings res{"apps." + evalSettings.getCurrentSystem() + "."};
         for (auto & s : SourceExprCommand::getDefaultFlakeAttrPathPrefixes())
             res.push_back(s);
         return res;
@@ -82,6 +85,7 @@ struct CmdBundle : InstallableCommand
 
         auto [bundlerFlakeRef, bundlerName, extendedOutputsSpec] = parseFlakeRefWithFragmentAndExtendedOutputsSpec(bundler, absPath("."));
         const flake::LockFlags lockFlags{ .writeLockFile = false };
+        // Current system, since it needs to run locally
         InstallableFlake bundler{this,
             evaluator, std::move(bundlerFlakeRef), bundlerName, std::move(extendedOutputsSpec),
             {"bundlers." + settings.thisSystem.get() + ".default",

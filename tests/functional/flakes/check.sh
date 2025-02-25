@@ -107,6 +107,11 @@ cat > $flakeDir/flake.nix <<EOF
 EOF
 
 nix flake check $flakeDir
+# --eval-system should be considered for which the local system is for flake
+# purposes, and thus it should fail checking that attr
+(! nix flake check --eval-system system-1 $flakeDir)
+# likewise with --system
+(! nix flake check --system system-1 $flakeDir)
 
 checkRes=$(nix flake check --all-systems --keep-going $flakeDir 2>&1 && fail "nix flake check --all-systems should have failed" || true)
 echo "$checkRes" | grepQuiet "packages.system-1.default"

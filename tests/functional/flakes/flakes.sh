@@ -126,6 +126,11 @@ nix build -o $TEST_ROOT/result git+file://$flake1Dir
 nix build -o $flake1Dir/result git+file://$flake1Dir
 nix path-info $flake1Dir/result
 
+# Ensure that eval-system affects the chosen attribute
+cp -r "$flake1Dir" "$flake1Dir.kittified"
+sed -i "s#$system#kitty-kitty#" "$flake1Dir.kittified/flake.nix"
+nix build --eval-system kitty-kitty "$flake1Dir.kittified"
+
 # 'getFlake' on an unlocked flakeref should fail in pure mode, but
 # succeed in impure mode.
 (! nix build -o $TEST_ROOT/result --expr "(builtins.getFlake \"$flake1Dir\").packages.$system.default")

@@ -57,8 +57,8 @@ struct CmdSearch : InstallableCommand, MixJSON
     Strings getDefaultFlakeAttrPaths() override
     {
         return {
-            "packages." + settings.thisSystem.get(),
-            "legacyPackages." + settings.thisSystem.get()
+            "packages." + evalSettings.getCurrentSystem(),
+            "legacyPackages." + evalSettings.getCurrentSystem()
         };
     }
 

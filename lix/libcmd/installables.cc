@@ -185,8 +185,8 @@ MixReadOnlyOption::MixReadOnlyOption()
 Strings SourceExprCommand::getDefaultFlakeAttrPaths()
 {
     return {
-        "packages." + settings.thisSystem.get() + ".default",
-        "defaultPackage." + settings.thisSystem.get()
+        "packages." + evalSettings.getCurrentSystem() + ".default",
+        "defaultPackage." + evalSettings.getCurrentSystem()
     };
 }
 
@@ -195,10 +195,10 @@ Strings SourceExprCommand::getDefaultFlakeAttrPathPrefixes()
     return {
         // As a convenience, look for the attribute in
         // 'outputs.packages'.
-        "packages." + settings.thisSystem.get() + ".",
+        "packages." + evalSettings.getCurrentSystem() + ".",
         // As a temporary hack until Nixpkgs is properly converted
         // to provide a clean 'packages' set, look in 'legacyPackages'.
-        "legacyPackages." + settings.thisSystem.get() + "."
+        "legacyPackages." + evalSettings.getCurrentSystem() + "."
     };
 }
 
