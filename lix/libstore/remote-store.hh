@@ -76,7 +76,7 @@ public:
     /**
      * Add a content-addressable store path. `dump` will be drained.
      */
-    ref<const ValidPathInfo> addCAToStore(
+    kj::Promise<Result<ref<const ValidPathInfo>>> addCAToStore(
         Source & dump,
         std::string_view name,
         ContentAddressMethod caMethod,

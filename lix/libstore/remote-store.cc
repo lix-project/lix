@@ -386,14 +386,14 @@ std::optional<StorePath> RemoteStore::queryPathFromHashPart(const std::string & 
 }
 
 
-ref<const ValidPathInfo> RemoteStore::addCAToStore(
+kj::Promise<Result<ref<const ValidPathInfo>>> RemoteStore::addCAToStore(
     Source & dump,
     std::string_view name,
     ContentAddressMethod caMethod,
     HashType hashType,
     const StorePathSet & references,
     RepairFlag repair)
-{
+try {
     std::optional<ConnectionHandle> conn_(getConnection());
     auto & conn = *conn_;
 
@@ -415,7 +415,7 @@ ref<const ValidPathInfo> RemoteStore::addCAToStore(
             });
         }
 
-        return make_ref<ValidPathInfo>(
+        co_return make_ref<ValidPathInfo>(
             WorkerProto::Serialise<ValidPathInfo>::read(*this, *conn));
     }
     else {
@@ -467,15 +467,17 @@ ref<const ValidPathInfo> RemoteStore::addCAToStore(
         auto path = parseStorePath(readString(conn->from));
         // Release our connection to prevent a deadlock in queryPathInfo().
         conn_.reset();
-        return queryPathInfo(path);
+        co_return queryPathInfo(path);
     }
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
 kj::Promise<Result<StorePath>> RemoteStore::addToStoreFromDump(Source & dump, std::string_view name,
       FileIngestionMethod method, HashType hashType, RepairFlag repair, const StorePathSet & references)
 try {
-    co_return addCAToStore(dump, name, method, hashType, references, repair)->path;
+    co_return TRY_AWAIT(addCAToStore(dump, name, method, hashType, references, repair))->path;
 } catch (...) {
     co_return result::current_exception();
 }
@@ -570,7 +572,7 @@ kj::Promise<Result<StorePath>> RemoteStore::addTextToStore(
     RepairFlag repair)
 try {
     StringSource source(s);
-    co_return addCAToStore(source, name, TextIngestionMethod {}, HashType::SHA256, references, repair)->path;
+    co_return TRY_AWAIT(addCAToStore(source, name, TextIngestionMethod {}, HashType::SHA256, references, repair))->path;
 } catch (...) {
     co_return result::current_exception();
 }
