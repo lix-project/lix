@@ -1020,41 +1020,53 @@ std::exception_ptr RemoteStore::Connection::processStderr(Sink * sink, Source * 
     return nullptr;
 }
 
-void RemoteStore::ConnectionHandle::withFramedSink(std::function<void(Sink & sink)> fun)
+RemoteStore::ConnectionHandle::FramedSinkHandler::FramedSinkHandler(ConnectionHandle & conn)
 {
-    (*this)->to.flush();
+    conn.handle->to.flush();
 
-    std::exception_ptr ex;
-
-    /* Handle log messages / exceptions from the remote on a separate
-       thread. */
-    std::thread stderrThread([&]()
+    stderrThread = std::thread([&]()
     {
         setCurrentThreadName("remote stderr thread");
         try {
             ReceiveInterrupts receiveInterrupts;
-            processStderr(nullptr, nullptr, false);
+            conn.processStderr(nullptr, nullptr, false);
         } catch (...) {
             ex = std::current_exception();
         }
     });
+}
 
-    Finally joinStderrThread([&]()
-    {
-        if (stderrThread.joinable()) {
-            stderrThread.join();
-        }
-    });
+RemoteStore::ConnectionHandle::FramedSinkHandler::~FramedSinkHandler() noexcept(false)
+{
+    if (stderrThread.joinable()) {
+        stderrThread.join();
+    }
+    if (ex) {
+        std::rethrow_exception(ex);
+    }
+}
 
+void RemoteStore::ConnectionHandle::withFramedSink(std::function<void(Sink & sink)> fun)
+{
+    FramedSinkHandler handler{*this};
+    FramedSink sink((*this)->to, handler.ex);
+    fun(sink);
+    sink.flush();
+}
+
+kj::Promise<Result<void>> RemoteStore::ConnectionHandle::withFramedSinkAsync(
+    std::function<kj::Promise<Result<void>>(Sink & sink)> fun
+)
+try {
     {
-        FramedSink sink((*this)->to, ex);
-        fun(sink);
+        FramedSinkHandler handler{*this};
+        FramedSink sink((*this)->to, handler.ex);
+        TRY_AWAIT(fun(sink));
         sink.flush();
     }
-
-    stderrThread.join();
-    if (ex)
-        std::rethrow_exception(ex);
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }
