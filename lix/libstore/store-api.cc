@@ -1082,9 +1082,29 @@ static std::string makeCopyPathMessage(
 }
 
 
-// buffer size for path copy progress reporting. should be large enough to not cause excessive
-// overhead during copies, but small enough to provide reasonably quick copy progress updates.
-static constexpr unsigned PATH_COPY_BUFSIZE = 65536;
+namespace {
+struct CopyPathSource : Source
+{
+    Activity & act;
+    size_t copied = 0, expected;
+    box_ptr<Source> inner;
+
+    CopyPathSource(Activity & act, size_t expected, box_ptr<Source> inner)
+        : act(act)
+        , expected(expected)
+        , inner(std::move(inner))
+    {
+    }
+
+    size_t read(char * data, size_t len) override
+    {
+        auto result = inner->read(data, len);
+        copied += result;
+        act.progress(copied, expected);
+        return result;
+    }
+};
+}
 
 kj::Promise<Result<void>> copyStorePath(
     Store & srcStore,
@@ -1125,24 +1145,7 @@ try {
         info = info2;
     }
 
-    GeneratorSource source{
-        [](auto & act, auto & info, auto & srcStore, auto & storePath) -> WireFormatGenerator {
-            auto nar = srcStore.narFromPath(storePath);
-            auto buf = std::make_unique<char[]>(PATH_COPY_BUFSIZE);
-            uint64_t total = 0;
-            while (true) {
-                try {
-                    auto got = nar->read(buf.get(), PATH_COPY_BUFSIZE);
-                    total += got;
-                    act.progress(total, info->narSize);
-                    co_yield std::span{buf.get(), got};
-                } catch (EndOfFile &) {
-                    break;
-                }
-            }
-        }(act, info, srcStore, storePath)
-    };
-
+    CopyPathSource source{act, info->narSize, srcStore.narFromPath(storePath)};
     TRY_AWAIT(dstStore.addToStore(*info, source, repair, checkSigs));
     co_return result::success();
 } catch (...) {
@@ -1260,38 +1263,33 @@ try {
         ValidPathInfo infoForDst = *info;
         infoForDst.path = storePathForDst;
 
-        auto source = [&srcStore, &dstStore, missingPath, info] {
-            auto content = [](auto & srcStore, auto & dstStore, auto missingPath, auto info
-                           ) -> WireFormatGenerator {
-                // We can reasonably assume that the copy will happen whenever we
-                // read the path, so log something about that at that point
-                auto srcUri = srcStore.getUri();
-                auto dstUri = dstStore.getUri();
-                auto storePathS = srcStore.printStorePath(missingPath);
-                Activity act(
-                    *logger,
-                    lvlInfo,
-                    actCopyPath,
-                    makeCopyPathMessage(srcUri, dstUri, storePathS),
-                    {storePathS, srcUri, dstUri}
-                );
-                PushActivity pact(act.id);
+        struct SinglePathSource : CopyPathSource
+        {
+            Activity act;
+            PushActivity pact{act.id};
 
-                auto nar = srcStore.narFromPath(missingPath);
-                auto buf = std::make_unique<char[]>(PATH_COPY_BUFSIZE);
-                uint64_t total = 0;
-                while (true) {
-                    try {
-                        auto got = nar->read(buf.get(), PATH_COPY_BUFSIZE);
-                        total += got;
-                        act.progress(total, info->narSize);
-                        co_yield std::span{buf.get(), got};
-                    } catch (EndOfFile &) {
-                        break;
-                    }
-                }
-            };
-            return make_box_ptr<GeneratorSource>(content(srcStore, dstStore, missingPath, info));
+            SinglePathSource(
+                std::string message, Logger::Fields fields, size_t expected, box_ptr<Source> inner
+            )
+                : CopyPathSource(act, expected, std::move(inner))
+                , act(*logger, lvlInfo, actCopyPath, message, fields)
+            {
+            }
+        };
+
+        auto source = [&srcStore, &dstStore, missingPath, info] {
+            // We can reasonably assume that the copy will happen whenever we
+            // read the path, so log something about that at that point
+            auto srcUri = srcStore.getUri();
+            auto dstUri = dstStore.getUri();
+            auto storePathS = srcStore.printStorePath(missingPath);
+
+            return make_box_ptr<SinglePathSource>(
+                makeCopyPathMessage(srcUri, dstUri, storePathS),
+                Logger::Fields{storePathS, srcUri, dstUri},
+                info->narSize,
+                srcStore.narFromPath(missingPath)
+            );
         };
         pathsToCopy.push_back(std::pair{infoForDst, std::move(source)});
     }
