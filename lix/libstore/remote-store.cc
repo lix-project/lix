@@ -519,32 +519,19 @@ try {
     if (GET_PROTOCOL_MINOR(getConnection()->daemonVersion) >= 32) {
         auto remoteVersion = getProtocol();
 
-        GeneratorSource source{
-            [](auto self, auto & pathsToCopy, auto remoteVersion) -> WireFormatGenerator {
-                co_yield pathsToCopy.size();
-                for (auto & [pathInfo, pathSource] : pathsToCopy) {
-                    co_yield WorkerProto::Serialise<ValidPathInfo>::write(*self,
-                        WorkerProto::WriteConn {remoteVersion},
-                        pathInfo);
-                    try {
-                        char buf[65536];
-                        while (true) {
-                            const auto read = pathSource->read(buf, sizeof(buf));
-                            co_yield std::span{buf, read};
-                        }
-                    } catch (EndOfFile &) {
-                    }
-                }
-            }(this, pathsToCopy, remoteVersion)
-        };
-
         auto conn(getConnection());
         conn->to
             << WorkerProto::Op::AddMultipleToStore
             << repair
             << !checkSigs;
         conn.withFramedSink([&](Sink & sink) {
-            source.drainInto(sink);
+            sink << pathsToCopy.size();
+            for (auto & [pathInfo, pathSource] : pathsToCopy) {
+                sink << WorkerProto::Serialise<ValidPathInfo>::write(*this,
+                    WorkerProto::WriteConn {remoteVersion},
+                    pathInfo);
+                pathSource->drainInto(sink);
+            }
         });
     } else {
         for (auto & [pathInfo, pathSource] : pathsToCopy) {
