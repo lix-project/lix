@@ -524,19 +524,25 @@ try {
             << WorkerProto::Op::AddMultipleToStore
             << repair
             << !checkSigs;
-        conn.withFramedSink([&](Sink & sink) {
-            sink << pathsToCopy.size();
-            for (auto & [pathInfo, pathSource] : pathsToCopy) {
-                sink << WorkerProto::Serialise<ValidPathInfo>::write(*this,
-                    WorkerProto::WriteConn {remoteVersion},
-                    pathInfo);
-                pathSource()->drainInto(sink);
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) -> kj::Promise<Result<void>> {
+            try {
+                sink << pathsToCopy.size();
+                for (auto & [pathInfo, pathSource] : pathsToCopy) {
+                    sink << WorkerProto::Serialise<ValidPathInfo>::write(*this,
+                        WorkerProto::WriteConn {remoteVersion},
+                        pathInfo);
+                    TRY_AWAIT(pathSource())->drainInto(sink);
+                }
+                co_return result::success();
+            } catch (...) {
+                co_return result::current_exception();
             }
-        });
+        }));
     } else {
         for (auto & [pathInfo, pathSource] : pathsToCopy) {
             pathInfo.ultimate = false; // duplicated in daemon.cc AddMultipleToStore
-            TRY_AWAIT(addToStore(pathInfo, *pathSource(), repair, checkSigs));
+            TRY_AWAIT(addToStore(pathInfo, *TRY_AWAIT(pathSource()), repair, checkSigs));
         }
     }
     co_return result::success();

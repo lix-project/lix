@@ -19,6 +19,7 @@
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libutil/users.hh"
 
+#include <kj/async.h>
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <regex>
@@ -349,7 +350,7 @@ try {
                 MaintainCount<decltype(nrRunning)> mc(nrRunning);
                 showProgress();
                 try {
-                    aio.blockOn(addToStore(info, *source(), repair, checkSigs));
+                    aio.blockOn(addToStore(info, *aio.blockOn(source()), repair, checkSigs));
                 } catch (Error & e) {
                     nrFailed++;
                     if (!settings.keepGoing)
@@ -1277,21 +1278,28 @@ try {
             }
         };
 
-        auto source = [&srcStore, &dstStore, missingPath, info] {
-            // We can reasonably assume that the copy will happen whenever we
-            // read the path, so log something about that at that point
-            auto srcUri = srcStore.getUri();
-            auto dstUri = dstStore.getUri();
-            auto storePathS = srcStore.printStorePath(missingPath);
+        auto source = [](auto & srcStore, auto & dstStore, auto missingPath, auto info
+                      ) -> kj::Promise<Result<box_ptr<Source>>> {
+            try {
+                // We can reasonably assume that the copy will happen whenever we
+                // read the path, so log something about that at that point
+                auto srcUri = srcStore.getUri();
+                auto dstUri = dstStore.getUri();
+                auto storePathS = srcStore.printStorePath(missingPath);
 
-            return make_box_ptr<SinglePathSource>(
-                makeCopyPathMessage(srcUri, dstUri, storePathS),
-                Logger::Fields{storePathS, srcUri, dstUri},
-                info->narSize,
-                srcStore.narFromPath(missingPath)
-            );
+                co_return make_box_ptr<SinglePathSource>(
+                    makeCopyPathMessage(srcUri, dstUri, storePathS),
+                    Logger::Fields{storePathS, srcUri, dstUri},
+                    info->narSize,
+                    srcStore.narFromPath(missingPath)
+                );
+            } catch (...) {
+                co_return result::current_exception();
+            }
         };
-        pathsToCopy.push_back(std::pair{infoForDst, std::move(source)});
+        pathsToCopy.push_back(std::pair{
+            infoForDst, std::bind(source, std::ref(srcStore), std::ref(dstStore), missingPath, info)
+        });
     }
 
     TRY_AWAIT(dstStore.addMultipleToStore(pathsToCopy, act, repair, checkSigs));
