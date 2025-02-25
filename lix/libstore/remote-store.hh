@@ -94,11 +94,6 @@ public:
         RepairFlag repair, CheckSigsFlag checkSigs) override;
 
     kj::Promise<Result<void>> addMultipleToStore(
-        Source & source,
-        RepairFlag repair,
-        CheckSigsFlag checkSigs) override;
-
-    kj::Promise<Result<void>> addMultipleToStore(
         PathsSource & pathsToCopy,
         Activity & act,
         RepairFlag repair,

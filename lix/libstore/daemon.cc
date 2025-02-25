@@ -516,9 +516,16 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         logger->startWork();
         {
             FramedSource source(from);
-            aio.blockOn(store->addMultipleToStore(source,
-                RepairFlag{repair},
-                dontCheckSigs ? NoCheckSigs : CheckSigs));
+            auto expected = readNum<uint64_t>(source);
+            for (uint64_t i = 0; i < expected; ++i) {
+                auto info = WorkerProto::Serialise<ValidPathInfo>::read(
+                    *store, WorkerProto::ReadConn{source, clientVersion}
+                );
+                info.ultimate = false; // duplicated in RemoteStore::addMultipleToStore
+                aio.blockOn(store->addToStore(
+                    info, source, RepairFlag{repair}, dontCheckSigs ? NoCheckSigs : CheckSigs
+                ));
+            }
         }
         logger->stopWork();
         break;

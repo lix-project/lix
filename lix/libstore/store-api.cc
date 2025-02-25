@@ -368,27 +368,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> Store::addMultipleToStore(
-    Source & source,
-    RepairFlag repair,
-    CheckSigsFlag checkSigs)
-try {
-    auto remoteVersion = getProtocol();
-
-    auto expected = readNum<uint64_t>(source);
-    for (uint64_t i = 0; i < expected; ++i) {
-        // FIXME we should not be using the worker protocol here at all!
-        auto info = WorkerProto::Serialise<ValidPathInfo>::read(*this,
-            WorkerProto::ReadConn {source, remoteVersion}
-        );
-        info.ultimate = false;
-        TRY_AWAIT(addToStore(info, source, repair, checkSigs));
-    }
-    co_return result::success();
-} catch (...) {
-    co_return result::current_exception();
-}
-
 namespace {
 /**
  * If the NAR archive contains a single file at top-level, then save
