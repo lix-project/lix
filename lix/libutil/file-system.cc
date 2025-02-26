@@ -292,14 +292,16 @@ bool isLink(const Path & path)
 }
 
 
-DirEntries readDirectory(DIR *dir, const Path & path)
+static DirEntries readDirectory(DIR *dir, const Path & path, bool interruptible)
 {
     DirEntries entries;
     entries.reserve(64);
 
     struct dirent * dirent;
     while (errno = 0, dirent = readdir(dir)) { /* sic */
-        checkInterrupt();
+        if (interruptible) {
+            checkInterrupt();
+        }
         std::string name = dirent->d_name;
         if (name == "." || name == "..") continue;
         entries.emplace_back(name, dirent->d_ino,
@@ -315,12 +317,17 @@ DirEntries readDirectory(DIR *dir, const Path & path)
     return entries;
 }
 
-DirEntries readDirectory(const Path & path)
+static DirEntries readDirectory(const Path & path, bool interruptible)
 {
     AutoCloseDir dir(opendir(path.c_str()));
     if (!dir) throw SysError("opening directory '%1%'", path);
 
-    return readDirectory(dir.get(), path);
+    return readDirectory(dir.get(), path, interruptible);
+}
+
+DirEntries readDirectory(const Path & path)
+{
+    return readDirectory(path, true);
 }
 
 
@@ -409,9 +416,11 @@ void syncParent(const Path & path)
     fd.fsync();
 }
 
-static void _deletePath(int parentfd, const Path & path, uint64_t & bytesFreed)
+static void _deletePath(int parentfd, const Path & path, uint64_t & bytesFreed, bool interruptible)
 {
-    checkInterrupt();
+    if (interruptible) {
+        checkInterrupt();
+    }
 
     std::string name(baseNameOf(path));
 
@@ -459,8 +468,8 @@ static void _deletePath(int parentfd, const Path & path, uint64_t & bytesFreed)
         AutoCloseDir dir(fdopendir(fd));
         if (!dir)
             throw SysError("opening directory '%1%'", path);
-        for (auto & i : readDirectory(dir.get(), path))
-            _deletePath(dirfd(dir.get()), path + "/" + i.name, bytesFreed);
+        for (auto & i : readDirectory(dir.get(), path, interruptible))
+            _deletePath(dirfd(dir.get()), path + "/" + i.name, bytesFreed, interruptible);
     }
 
     int flags = S_ISDIR(st.st_mode) ? AT_REMOVEDIR : 0;
@@ -470,7 +479,7 @@ static void _deletePath(int parentfd, const Path & path, uint64_t & bytesFreed)
     }
 }
 
-static void _deletePath(const Path & path, uint64_t & bytesFreed)
+static void _deletePath(const Path & path, uint64_t & bytesFreed, bool interruptible)
 {
     Path dir = dirOf(path);
     if (dir == "")
@@ -482,7 +491,7 @@ static void _deletePath(const Path & path, uint64_t & bytesFreed)
         throw SysError("opening directory '%1%'", path);
     }
 
-    _deletePath(dirfd.get(), path, bytesFreed);
+    _deletePath(dirfd.get(), path, bytesFreed, interruptible);
 }
 
 
@@ -492,12 +501,18 @@ void deletePath(const Path & path)
     deletePath(path, dummy);
 }
 
+void deletePathUninterruptible(const Path & path)
+{
+    uint64_t dummy;
+    _deletePath(path, dummy, false);
+}
+
 
 void deletePath(const Path & path, uint64_t & bytesFreed)
 {
     //Activity act(*logger, lvlDebug, "recursively deleting path '%1%'", path);
     bytesFreed = 0;
-    _deletePath(path, bytesFreed);
+    _deletePath(path, bytesFreed, true);
 }
 
 Paths createDirs(const Path & path)

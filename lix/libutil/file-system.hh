@@ -203,6 +203,7 @@ void syncParent(const Path & path);
  * second variant returns the number of bytes and blocks freed.
  */
 void deletePath(const Path & path);
+void deletePathUninterruptible(const Path & path);
 
 void deletePath(const Path & path, uint64_t & bytesFreed);
 

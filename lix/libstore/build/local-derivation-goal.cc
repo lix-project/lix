@@ -106,7 +106,7 @@ LocalDerivationGoal::~LocalDerivationGoal() noexcept(false)
        destructor. */
     try { killChild(); } catch (...) { ignoreExceptionInDestructor(); }
     try { stopDaemon(); } catch (...) { ignoreExceptionInDestructor(); }
-    try { deleteTmpDir(false); } catch (...) { ignoreExceptionInDestructor(); }
+    try { deleteTmpDir(false, true); } catch (...) { ignoreExceptionInDestructor(); }
 }
 
 
@@ -2716,7 +2716,7 @@ try {
 }
 
 
-void LocalDerivationGoal::deleteTmpDir(bool force)
+void LocalDerivationGoal::deleteTmpDir(bool force, bool duringDestruction)
 {
     if (tmpDir != "") {
         /* Don't keep temporary directories for builtins because they
@@ -2725,6 +2725,8 @@ void LocalDerivationGoal::deleteTmpDir(bool force)
             printError("note: keeping build directory '%s'", tmpDir);
             chmod(tmpDir.c_str(), 0755);
         }
+        else if (duringDestruction)
+            deletePathUninterruptible(tmpDir);
         else
             deletePath(tmpDir);
         tmpDir = "";

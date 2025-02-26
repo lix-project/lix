@@ -291,7 +291,7 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * Delete the temporary directory, if we have one.
      */
-    void deleteTmpDir(bool force);
+    void deleteTmpDir(bool force, bool duringDestruction = false);
 
     /**
      * Forcibly kill the child process, if any.
