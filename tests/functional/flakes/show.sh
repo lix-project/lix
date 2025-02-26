@@ -7,6 +7,8 @@ writeSimpleFlake "$flakeDir"
 cd "$flakeDir"
 
 
+# FIXME(jade): the following is rather absurd. we have jq!
+
 # By default: Only show the packages content for the current system and no
 # legacyPackages at all
 nix flake show --json > show-output.json
@@ -18,6 +20,11 @@ assert show_output.packages.${builtins.currentSystem}.default.name == "simple";
 assert show_output.legacyPackages.${builtins.currentSystem} == {};
 true
 '
+
+# Follow --eval-system for determining the system for flakes
+nix flake show --eval-system someOtherSystem --json > show-output.json
+drvTitle=$(jq -r '.packages.someOtherSystem.default.name' show-output.json)
+[[ $drvTitle == 'simple' ]]
 
 # With `--all-systems`, show the packages for all systems
 nix flake show --json --all-systems > show-output.json

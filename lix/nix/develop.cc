@@ -427,6 +427,7 @@ struct Common : InstallableCommand, MixProfile
 
     Strings getDefaultFlakeAttrPaths() override
     {
+        // These are current system since they have to run locally from inside the shell
         Strings paths{
             "devShells." + settings.thisSystem.get() + ".default",
             "devShell." + settings.thisSystem.get(),
@@ -621,6 +622,7 @@ struct CmdDevelop : Common, MixEnvironment
                 "bashInteractive",
                 ExtendedOutputsSpec::Default(),
                 Strings{},
+                // `system` not `eval-system` since we are actually executing it on the local machine
                 Strings{"legacyPackages." + settings.thisSystem.get() + "."},
                 nixpkgsLockFlags);
 

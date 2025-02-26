@@ -365,7 +365,7 @@ struct CmdFlakeCheck : FlakeCommand
 
         lockFlags.applyNixConfig = true;
         auto flake = lockFlake(*state);
-        auto localSystem = std::string(settings.thisSystem.get());
+        auto localSystem = std::string(evalSettings.getCurrentSystem());
 
         bool hasErrors = false;
         auto reportError = [&](const Error & e) {
@@ -613,7 +613,7 @@ struct CmdFlakeCheck : FlakeCommand
                                         auto drvPath = checkDerivation(
                                             fmt("%s.%s.%s", name, attr_name, evaluator->symbols[attr2.name]),
                                             *attr2.value, attr2.pos);
-                                        if (drvPath && attr_name == settings.thisSystem.get()) {
+                                        if (drvPath && attr_name == evalSettings.getCurrentSystem()) {
                                             drvPaths.push_back(DerivedPath::Built {
                                                 .drvPath = makeConstantStorePathRef(*drvPath),
                                                 .outputs = OutputsSpec::All { },
@@ -1129,7 +1129,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
         auto evaluator = getEvaluator();
         auto state = evaluator->begin(aio());
         auto flake = std::make_shared<LockedFlake>(lockFlake(*state));
-        auto localSystem = std::string(settings.thisSystem.get());
+        auto localSystem = std::string(evalSettings.getCurrentSystem());
 
         std::function<bool(
             eval_cache::AttrCursor & visitor,
