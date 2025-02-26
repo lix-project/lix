@@ -328,13 +328,19 @@ int handleExceptions(const std::string & programName, std::function<void()> fun)
     } catch (const std::bad_alloc & e) {
         printError(error + "out of memory");
         return 1;
-    } catch (const std::exception & e) {
-        // Random exceptions bubbling into main are cause for bug reports, crash
-        std::terminate();
-    } catch (...) {
-        // Explicitly do not tolerate non-std exceptions escaping.
-        std::terminate();
     }
+    // Deliberately do not catch random std exceptions! We have a nice
+    // std::terminate handler for those, and if we allow it to crash hard, it
+    // will produce better backtraces and more useful core dumps.
+    //
+    // We want to crash on those regardless, but omitting the handling is
+    // better than including it for that.
+    //
+    // If we catch them, we will land in terminate in phase 2 of unwind with
+    // all the frames between the throw and the catch already cleaned up,
+    // whereas if there is no handler (or it falls into a noexcept) it will
+    // terminate immediately at the end of phase 1 unwind while still having a
+    // stack and with no stack variables destroyed.
 
     return 0;
 }
