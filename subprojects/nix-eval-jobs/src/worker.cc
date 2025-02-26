@@ -144,7 +144,7 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
                                     .dynamic_pointer_cast<nix::LocalFSStore>();
                             auto storePath =
                                 localStore->parseStorePath(drv.drvPath);
-                            localStore->addPermRoot(storePath, root);
+                            aio.blockOn(localStore->addPermRoot(storePath, root));
                         }
                     }
                 } else {

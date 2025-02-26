@@ -19,7 +19,7 @@
               recursion = [ recursion ];
             in
             derivation {
-              inherit (pkgs) system;
+              inherit (pkgs.stdenv.hostPlatform) system;
               name = "drvB";
               recursiveAttr = recursion;
               builder = ":";

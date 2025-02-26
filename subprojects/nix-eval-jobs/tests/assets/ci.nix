@@ -1,6 +1,6 @@
 {
   pkgs ? import (builtins.getFlake (toString ./.)).inputs.nixpkgs { },
-  system ? pkgs.system,
+  system ? pkgs.stdenv.hostPlatform.system,
 }:
 
 {
