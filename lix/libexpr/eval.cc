@@ -1801,7 +1801,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res)
                 attrs.insert(*j);
             } else if (!i.def) {
                 ctx.errors.make<MissingArgumentError>(R"(cannot evaluate a function that has an argument without a value ('%1%')
-Nix attempted to evaluate a function as a top level expression; in
+Lix attempted to evaluate a function as a top level expression; in
 this case it must have its arguments supplied either by default
 values, or passed explicitly with '--arg' or '--argstr'. See
 https://docs.lix.systems/manual/lix/stable/language/constructs.html#functions)", ctx.symbols[i.name])
