@@ -461,14 +461,14 @@ try {
        information to narSink. */
     TeeSource tapped { fileSource, narSink };
 
-    NARParseVisitor blank;
-    auto & parseSink = method == FileIngestionMethod::Flat
-        ? fileSink
-        : blank;
-
-    /* The information that flows from tapped (besides being replicated in
-       narSink), is now put in parseSink. */
-    parseDump(parseSink, tapped);
+    // the information flows from tapped into narSink. we only check that the
+    // nar is correct, and during flat ingestion contains only a single file.
+    if (method == FileIngestionMethod::Flat) {
+        parseDump(fileSink, tapped);
+    } else {
+        auto copy = copyNAR(tapped);
+        while (copy.next()) {}
+    }
 
     /* We extract the result of the computation from the sink by calling
        finish. */
