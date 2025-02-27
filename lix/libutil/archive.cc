@@ -551,30 +551,18 @@ WireFormatGenerator copyNAR(Source & source)
     // FIXME: if 'source' is the output of dumpPath() followed by EOF,
     // we should just forward all data directly without parsing.
 
-    struct DiscardVisitor : NARParseVisitor
-    {
-        struct MyFileHandle : FileHandle
-        {
-            void close() override {}
-            void receiveContents(std::string_view data) override {}
-        };
-
-        box_ptr<NARParseVisitor> createDirectory(const Path & path) override
-        {
-            return make_box_ptr<DiscardVisitor>();
-        }
-
-        box_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
-        {
-            return make_box_ptr<MyFileHandle>();
-        }
-
-        void createSymlink(const Path & path, const std::string & target) override {}
-    };
-
-    static DiscardVisitor parseSink; /* null sink; just parse the NAR */
-
-    return parseAndCopyDump(parseSink, source);
+    auto items = nar::parse(source);
+    co_yield narVersionMagic1;
+    while (auto e = items.next()) {
+        co_yield std::visit(
+            overloaded{
+                [](nar::MetadataString &) -> WireFormatGenerator { co_return; },
+                [](nar::MetadataRaw &) -> WireFormatGenerator { co_return; },
+                [](auto & i) { return dump(std::move(i)); },
+            },
+            *e
+        );
+    }
 }
 
 }
