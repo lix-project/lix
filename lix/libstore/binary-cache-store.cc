@@ -72,13 +72,11 @@ void BinaryCacheStore::upsertFile(const std::string & path,
 
 std::optional<std::string> BinaryCacheStore::getFileContents(const std::string & path)
 {
-    StringSink sink;
     try {
         return getFile(path)->drain();
     } catch (NoSuchBinaryCacheFile &) {
         return std::nullopt;
     }
-    return std::move(sink.s);
 }
 
 std::string BinaryCacheStore::narInfoFileFor(const StorePath & storePath)
