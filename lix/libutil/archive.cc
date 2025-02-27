@@ -36,9 +36,6 @@ PathFilter defaultPathFilter = [](const Path &) { return true; };
 
 static WireFormatGenerator dumpContents(const Path & path, off_t size)
 {
-    co_yield "contents";
-    co_yield size;
-
     AutoCloseFD fd{open(path.c_str(), O_RDONLY | O_CLOEXEC)};
     if (!fd) throw SysError("opening file '%1%'", path);
 
@@ -51,78 +48,122 @@ static WireFormatGenerator dumpContents(const Path & path, off_t size)
         left -= n;
         co_yield std::span{buf.data(), n};
     }
-
-    co_yield SerializingTransform::padding(size);
 }
 
+static WireFormatGenerator dump(nar::File && f)
+{
+    co_yield "(";
+    co_yield "type";
+    co_yield "regular";
+    if (f.executable) {
+        co_yield "executable";
+        co_yield "";
+    }
+    co_yield "contents";
+    co_yield f.size;
+    co_yield std::move(f.contents);
+    co_yield SerializingTransform::padding(f.size);
+    co_yield ")";
+}
 
-static WireFormatGenerator dump(const Path & path, time_t & mtime, PathFilter & filter)
+static WireFormatGenerator dump(nar::Symlink && s)
+{
+    co_yield "(";
+    co_yield "type";
+    co_yield "symlink";
+    co_yield "target";
+    co_yield s.target;
+    co_yield ")";
+}
+
+static WireFormatGenerator dump(nar::Directory && d)
+{
+    co_yield "(";
+    co_yield "type";
+    co_yield "directory";
+    while (auto e = d.contents.next()) {
+        co_yield std::visit(
+            [&](auto & i) {
+                return [](auto & name, auto & i) -> WireFormatGenerator {
+                    if constexpr (requires { dump(std::move(i)); }) {
+                        co_yield "entry";
+                        co_yield "(";
+                        co_yield "name";
+                        co_yield name;
+                        co_yield "node";
+                        co_yield dump(std::move(i));
+                        co_yield ")";
+                    }
+                }(e->first, i);
+            },
+            e->second
+        );
+    }
+    co_yield ")";
+}
+
+static nar::Entry list(const Path & path, time_t & mtime, PathFilter & filter)
 {
     checkInterrupt();
 
     auto st = lstat(path);
     mtime = st.st_mtime;
 
-    co_yield "(";
-
     if (S_ISREG(st.st_mode)) {
-        co_yield "type";
-        co_yield "regular";
-        if (st.st_mode & S_IXUSR) {
-            co_yield "executable";
-            co_yield "";
-        }
-        co_yield dumpContents(path, st.st_size);
-    }
+        return nar::File{
+            (st.st_mode & S_IXUSR) != 0, size_t(st.st_size), dumpContents(path, st.st_size)
+        };
+    } else if (S_ISDIR(st.st_mode)) {
+        auto contents = [](const Path & path, time_t & mtime, PathFilter & filter
+                        ) -> Generator<std::pair<const std::string &, nar::Entry>> {
+            /* If we're on a case-insensitive system like macOS, undo
+               the case hack applied by restorePath(). */
+            std::map<std::string, std::string> unhacked;
+            for (auto & i : readDirectory(path))
+                if (archiveSettings.useCaseHack) {
+                    std::string name(i.name);
+                    size_t pos = i.name.find(caseHackSuffix);
+                    if (pos != std::string::npos) {
+                        debug("removing case hack suffix from '%1%'", path + "/" + i.name);
+                        name.erase(pos);
+                    }
+                    if (!unhacked.emplace(name, i.name).second)
+                        throw Error("file name collision in between '%1%' and '%2%'",
+                            (path + "/" + unhacked[name]),
+                            (path + "/" + i.name));
+                } else
+                    unhacked.emplace(i.name, i.name);
 
-    else if (S_ISDIR(st.st_mode)) {
-        co_yield "type";
-        co_yield "directory";
-
-        /* If we're on a case-insensitive system like macOS, undo
-           the case hack applied by restorePath(). */
-        std::map<std::string, std::string> unhacked;
-        for (auto & i : readDirectory(path))
-            if (archiveSettings.useCaseHack) {
-                std::string name(i.name);
-                size_t pos = i.name.find(caseHackSuffix);
-                if (pos != std::string::npos) {
-                    debug("removing case hack suffix from '%1%'", path + "/" + i.name);
-                    name.erase(pos);
+            for (auto & i : unhacked) {
+                if (filter(path + "/" + i.first)) {
+                    time_t tmp_mtime;
+                    auto diskPath = path + "/" + i.second;
+                    co_yield std::pair(std::cref(i.first), list(diskPath, tmp_mtime, filter));
+                    if (tmp_mtime > mtime) {
+                        mtime = tmp_mtime;
+                    }
                 }
-                if (!unhacked.emplace(name, i.name).second)
-                    throw Error("file name collision in between '%1%' and '%2%'",
-                       (path + "/" + unhacked[name]),
-                       (path + "/" + i.name));
-            } else
-                unhacked.emplace(i.name, i.name);
-
-        for (auto & i : unhacked)
-            if (filter(path + "/" + i.first)) {
-                co_yield "entry";
-                co_yield "(";
-                co_yield "name";
-                co_yield i.first;
-                co_yield "node";
-                time_t tmp_mtime;
-                co_yield dump(path + "/" + i.second, tmp_mtime, filter);
-                if (tmp_mtime > mtime) {
-                    mtime = tmp_mtime;
-                }
-                co_yield ")";
             }
+        };
+
+        return nar::Directory(contents(path, mtime, filter));
+    } else if (S_ISLNK(st.st_mode)) {
+        return nar::Symlink{readLink(path)};
+    } else {
+        throw Error("file '%1%' has an unsupported type", path);
     }
+}
 
-    else if (S_ISLNK(st.st_mode)) {
-        co_yield "type";
-        co_yield "symlink";
-        co_yield "target";
-        co_yield readLink(path);
-    }
-
-    else throw Error("file '%1%' has an unsupported type", path);
-
-    co_yield ")";
+static WireFormatGenerator dump(const Path & path, time_t & mtime, PathFilter & filter)
+{
+    co_yield std::visit(
+        [](auto i) -> WireFormatGenerator {
+            if constexpr (requires { dump(std::move(i)); }) {
+                co_yield dump(std::move(i));
+            }
+        },
+        list(path, mtime, filter)
+    );
 }
 
 

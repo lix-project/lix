@@ -145,7 +145,7 @@ struct File
 
 struct Symlink
 {
-    const Path & target;
+    Path target;
 };
 
 struct Directory
