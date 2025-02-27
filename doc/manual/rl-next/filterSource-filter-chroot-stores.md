@@ -1,6 +1,6 @@
 ---
 synopsis: fix usage of `builtins.filterSource` and `builtins.path` with the filter argument when using chroot stores
-issues: [11503]
+issues: [nix#11503]
 credits: [lily, alois31, horrors]
 category: Fixes
 ---

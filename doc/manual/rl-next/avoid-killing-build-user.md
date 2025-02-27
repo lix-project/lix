@@ -1,6 +1,6 @@
 ---
 synopsis: Avoid unnecessarily killing processes for the build user's UID
-issues: [9142, fj#667]
+issues: [nix#9142, fj#667]
 cls: []
 category: Fixes
 credits: [teofilc]

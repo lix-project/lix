@@ -1,6 +1,6 @@
 ---
 synopsis: '`nix-instantiate --parse` outputs json'
-issues: [fj#487, 11124, 4726, 3077]
+issues: [fj#487, nix#11124, nix#4726, nix#3077]
 cls: [2190]
 category: Breaking Changes
 credits: [piegames, horrors]
