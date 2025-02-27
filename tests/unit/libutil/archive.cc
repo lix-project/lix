@@ -38,14 +38,7 @@ Fragment metaString(std::string s)
     return {
         char(s.size()) + "\0\0\0\0\0\0\0"s + s
             + "\0\0\0\0\0\0\0\0"s.substr(0, (8 - s.size() % 8) % 8),
-        [s] { return [](auto ms) -> Entries { co_yield ms; }(MetadataString{s}); },
-    };
-}
-
-auto metaRaw(std::string_view s)
-{
-    return [s{std::string(s)}] {
-        return [](auto mr) -> Entries { co_yield mr; }(MetadataRaw{Bytes{s.data(), s.size()}});
+        []() -> Entries { co_return; },
     };
 }
 
@@ -68,7 +61,6 @@ Fragment make_file(bool executable, std::string contents)
              + "\0\0\0\0\0\0\0\0"s.substr(0, (8 - contents.size() % 8) % 8),
          [executable, contents] {
              return [](auto executable, auto contents) -> Entries {
-                 co_yield metaRaw(char(contents.size()) + "\0\0\0\0\0\0\0"s)();
                  co_yield File{
                      executable,
                      contents.size(),
@@ -76,7 +68,6 @@ Fragment make_file(bool executable, std::string contents)
                          co_yield Bytes{contents.data(), contents.size()};
                      }(contents)
                  };
-                 co_yield metaRaw("\0\0\0\0\0\0\0\0"sv.substr(0, (8 - contents.size() % 8) % 8))();
              }(executable, contents);
          }},
         rparen,
@@ -138,10 +129,6 @@ Fragment make_directory(std::vector<std::pair<std::string, Fragment>> entries)
                                 co_yield std::pair(std::cref(name), std::move(*si));
                             }
                         }
-                        // this should be a separate item, but the parser emits it
-                        // from within the directory. but as long as it's there...
-                        std::string empty;
-                        co_yield std::pair{empty, *rparen.second().next()};
                     }(inodes),
                 });
             },
@@ -151,14 +138,6 @@ Fragment make_directory(std::vector<std::pair<std::string, Fragment>> entries)
 
 void assert_eq(Entry & a, Entry & b);
 
-void assert_eq(const MetadataString & a, const MetadataString & b)
-{
-    ASSERT_EQ(a.data, b.data);
-}
-void assert_eq(const MetadataRaw & a, const MetadataRaw & b)
-{
-    ASSERT_PRED2(std::ranges::equal, a.raw, b.raw);
-}
 void assert_eq(File & a, File & b)
 {
     ASSERT_EQ(a.executable, b.executable);

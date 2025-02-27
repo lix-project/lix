@@ -480,8 +480,6 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
                     while (auto entry = parser.next()) {
                         file = std::visit(
                             overloaded{
-                                [](nar::MetadataString) -> nar::File * { return nullptr; },
-                                [](nar::MetadataRaw) -> nar::File * { return nullptr; },
                                 [](nar::File & f) -> nar::File * { return &f; },
                                 [](auto &) -> nar::File * { throw Error("regular file expected"); },
                             },

@@ -119,22 +119,10 @@ struct NARParseVisitor
 
 namespace nar {
 
-struct MetadataString;
-struct MetadataRaw;
 struct File;
 struct Symlink;
 struct Directory;
-using Entry = std::variant<MetadataString, MetadataRaw, File, Symlink, Directory>;
-
-struct MetadataString
-{
-    std::string_view data;
-};
-
-struct MetadataRaw
-{
-    Bytes raw;
-};
+using Entry = std::variant<File, Symlink, Directory>;
 
 struct File
 {

@@ -85,15 +85,13 @@ static WireFormatGenerator dump(nar::Directory && d)
         co_yield std::visit(
             [&](auto & i) {
                 return [](auto & name, auto & i) -> WireFormatGenerator {
-                    if constexpr (requires { dump(std::move(i)); }) {
-                        co_yield "entry";
-                        co_yield "(";
-                        co_yield "name";
-                        co_yield name;
-                        co_yield "node";
-                        co_yield dump(std::move(i));
-                        co_yield ")";
-                    }
+                    co_yield "entry";
+                    co_yield "(";
+                    co_yield "name";
+                    co_yield name;
+                    co_yield "node";
+                    co_yield dump(std::move(i));
+                    co_yield ")";
                 }(e->first, i);
             },
             e->second
@@ -216,7 +214,6 @@ static Generator<Entry> parseObject(Source & source)
         if (s != (raw)) {                              \
             throw badArchive("expected " kind " tag"); \
         }                                              \
-        co_yield MetadataString{s};                    \
     } while (0)
 
     EXPECT("(", "open");
@@ -225,24 +222,19 @@ static Generator<Entry> parseObject(Source & source)
     checkInterrupt();
 
     const auto t = readString(source);
-    co_yield MetadataString{t};
 
     if (t == "regular") {
         auto contentsOrFlag = readString(source);
-        co_yield MetadataString{contentsOrFlag};
         const bool executable = contentsOrFlag == "executable";
         if (executable) {
             auto s = readString(source);
-            co_yield MetadataString{s};
             if (s != "") {
                 throw badArchive("executable marker has non-empty value");
             }
             contentsOrFlag = readString(source);
-            co_yield MetadataString{contentsOrFlag};
         }
         if (contentsOrFlag == "contents") {
             const uint64_t size = readLongLong(source);
-            co_yield MetadataRaw{SerializingTransform()(size)};
             auto makeReader = [](Source & source, uint64_t & left) -> Generator<Bytes> {
                 std::array<char, 65536> buf;
 
@@ -261,20 +253,12 @@ static Generator<Entry> parseObject(Source & source)
             // consistent with directories is more important than handling the simple case.
             assert(left == 0);
             readPadding(size, source);
-            co_yield MetadataRaw{SerializingTransform::padding(size)};
         } else {
             throw badArchive("file without contents found");
         }
     } else if (t == "directory") {
-        struct Map {
-            auto operator()(std::pair<const std::string &, Entry> e) const { return e; }
-            std::pair<const std::string &, Entry> operator()(Entry e) const {
-                static std::string empty;
-                return {empty, std::move(e)};
-            }
-        };
-        auto makeReader = [](Source & source, bool & completed
-                          ) -> Generator<std::pair<const std::string &, Entry>, Map> {
+        auto makeReader = [](Source & source,
+                             bool & completed) -> Generator<std::pair<const std::string &, Entry>> {
             std::map<Path, int, CaseInsensitiveCompare> names;
             std::string prevName;
 
@@ -283,7 +267,6 @@ static Generator<Entry> parseObject(Source & source)
 
                 {
                     const auto s = readString(source);
-                    co_yield MetadataString{s};
                     if (s == ")") {
                         completed = true;
                         co_return;
@@ -295,7 +278,6 @@ static Generator<Entry> parseObject(Source & source)
 
                 EXPECT("name", "name");
                 auto name = readString(source);
-                co_yield MetadataString{name};
                 if (name.empty() || name == "." || name == ".."
                     || name.find('/') != std::string::npos
                     || name.find((char) 0) != std::string::npos
@@ -342,7 +324,6 @@ static Generator<Entry> parseObject(Source & source)
     } else if (t == "symlink") {
         EXPECT("target", "target");
         std::string target = readString(source);
-        co_yield MetadataString{target};
         co_yield Symlink{target};
     } else {
         throw badArchive("unknown file type " + t);
@@ -358,7 +339,6 @@ Generator<Entry> parse(Source & source)
     std::string version;
     try {
         version = readString(source, narVersionMagic1.size());
-        co_yield MetadataString{version};
     } catch (SerialisationError & e) {
         /* This generally means the integer at the start couldn't be
            decoded.  Ignore and throw the exception below. */
@@ -374,8 +354,6 @@ static void restore(NARParseVisitor & sink, nar::Entry entry, const Path & path)
 {
     return std::visit(
         overloaded{
-            [](nar::MetadataString m) {},
-            [](nar::MetadataRaw r) {},
             [&](nar::File f) {
                 auto handle = sink.createRegularFile(path, f.size, f.executable);
                 while (auto block = f.contents.next()) {
@@ -534,14 +512,7 @@ WireFormatGenerator copyNAR(Source & source)
     auto items = nar::parse(source);
     co_yield narVersionMagic1;
     while (auto e = items.next()) {
-        co_yield std::visit(
-            overloaded{
-                [](nar::MetadataString &) -> WireFormatGenerator { co_return; },
-                [](nar::MetadataRaw &) -> WireFormatGenerator { co_return; },
-                [](auto & i) { return dump(std::move(i)); },
-            },
-            *e
-        );
+        co_yield std::visit([](auto & i) { return dump(std::move(i)); }, *e);
     }
 }
 
