@@ -1216,9 +1216,9 @@ try {
     bool narRead = false;
     Finally cleanup = [&]() {
         if (!narRead) {
-            NARParseVisitor sink;
             try {
-                parseDump(sink, source);
+                auto copy = copyNAR(source);
+                while (copy.next()) {}
             } catch (...) {
                 ignoreExceptionExceptInterrupt();
             }

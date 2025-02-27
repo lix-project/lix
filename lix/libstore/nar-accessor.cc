@@ -34,17 +34,30 @@ struct NarAccessor : public FSAccessor
 
     NarMember root;
 
-    struct NarIndexer : NARParseVisitor, Source
+    struct NarSource : Source
+    {
+        Source & source;
+        uint64_t pos = 0;
+
+        NarSource(Source & source) : source(source) {}
+
+        size_t read(char * data, size_t len) override
+        {
+            auto n = source.read(data, len);
+            pos += n;
+            return n;
+        }
+    };
+
+    struct NarIndexer : NARParseVisitor
     {
         NarAccessor & acc;
-        Source & source;
+        NarSource & source;
 
         std::stack<NarMember *> parents;
 
-        uint64_t pos = 0;
-
     public:
-        NarIndexer(NarAccessor & acc, Source & source)
+        NarIndexer(NarAccessor & acc, NarSource & source)
             : acc(acc), source(source)
         { }
 
@@ -77,7 +90,7 @@ struct NarAccessor : public FSAccessor
 
             assert(size <= std::numeric_limits<uint64_t>::max());
             memb.size = (uint64_t) size;
-            memb.start = pos;
+            memb.start = source.pos;
             memb.isExecutable = executable;
 
             return std::make_unique<FileHandle>();
@@ -88,26 +101,21 @@ struct NarAccessor : public FSAccessor
             createMember(path,
                 NarMember{FSAccessor::Type::tSymlink, false, 0, 0, target});
         }
-
-        size_t read(char * data, size_t len) override
-        {
-            auto n = source.read(data, len);
-            pos += n;
-            return n;
-        }
     };
 
     NarAccessor(std::string && _nar) : nar(_nar)
     {
         StringSource source(*nar);
-        NarIndexer indexer(*this, source);
-        parseDump(indexer, indexer);
+        NarSource posSource(source);
+        NarIndexer indexer(*this, posSource);
+        parseDump(indexer, posSource);
     }
 
     NarAccessor(Source & source)
     {
-        NarIndexer indexer(*this, source);
-        parseDump(indexer, indexer);
+        NarSource posSource(source);
+        NarIndexer indexer(*this, posSource);
+        parseDump(indexer, posSource);
     }
 
     NarAccessor(const std::string & listing, GetNarBytes getNarBytes)
