@@ -11,6 +11,7 @@
   [`--from-profile` *path*]
   [`--preserve-installed` | `-P`]
   [`--remove-all` | `-r`]
+  [`--priority` *priority*]
 
 # Description
 
@@ -58,6 +59,11 @@ a number of possible ways:
     installed. This allows derivations to be specified in an
     unambiguous way, which is necessary if there are multiple
     derivations with the same name.
+
+  - If `--priority` *priority* is given, the priority of the derivations being
+    installed is set to *priority*. This can be used to override the priority of
+    the derivations being installed. This is useful if *args* are store paths,
+    which don't have any priority information.
 
   - If *args* are [store derivations](@docroot@/glossary.md#gloss-store-derivation), then these are
     [realised](@docroot@/command-ref/nix-store/realise.md), and the resulting output paths
