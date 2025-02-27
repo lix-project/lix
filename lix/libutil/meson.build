@@ -96,6 +96,7 @@ libutil_headers = files(
   'logging.hh',
   'logging-json.hh',
   'lru-cache.hh',
+  'manually-drop.hh',
   'monitor-fd.hh',
   'mount.hh',
   'namespaces.hh',

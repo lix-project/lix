@@ -4,6 +4,7 @@
 #include "lix/libutil/config.hh"
 #include "lix/libutil/position.hh"
 #include "lix/libutil/terminal.hh"
+#include "manually-drop.hh"
 
 #include <algorithm>
 #include <atomic>
@@ -349,7 +350,18 @@ Activity::~Activity()
 
 void writeLogsToStderr(std::string_view s)
 {
-    static std::mutex lock;
+    // NOTE: If this lock is a regular static item (and not something
+    // indestructible), then it will be destructed when Nix shuts down. When
+    // other threads are running, it becomes possible for a static to be
+    // destructed before Nix ends, leading to errors.
+    //
+    // Therefore, we use a wrapper type to block it ever getting destroyed.
+    //
+    // TODO: Audit other statics for this issue?
+    //
+    // See: https://git.lix.systems/lix-project/lix/issues/702
+    // See: https://stackoverflow.com/a/27671727/5719760
+    static ManuallyDrop<std::mutex> lock {std::in_place_t{}};
 
     // make sure only one thread uses this function at any given time.
     // multiple concurrent threads can have deleterious effects on log
@@ -357,7 +369,7 @@ void writeLogsToStderr(std::string_view s)
     // on top of a SimpleLogger which is itself not thread-safe. every
     // Logger instance should be thread-safe in an ideal world, but we
     // cannot really enforce that on a per-logger level at this point.
-    std::unique_lock _lock(lock);
+    std::unique_lock _lock(*lock);
     try {
         writeFull(STDERR_FILENO, s, false);
     } catch (SysError & e) {
