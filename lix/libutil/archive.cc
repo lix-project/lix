@@ -206,132 +206,252 @@ struct CaseInsensitiveCompare
 
 namespace nar {
 
-static Generator<Entry> parseObject(Source & source)
+namespace {
+struct Parser
 {
+    struct FileHeader
+    {
+        bool executable;
+        uint64_t size;
+    };
+    struct Symlink
+    {
+        Path target;
+    };
+    struct Directory;
+    struct WantBytes
+    {
+        size_t n;
+    };
+
+    using Response = std::variant<FileHeader, Symlink, Directory, WantBytes>;
+
+    struct Directory
+    {
+        using Entry = std::pair<const Path &, Generator<Response>>;
+        using Stream = Generator<std::variant<WantBytes, Entry>>;
+        Stream content;
+    };
+
+    std::vector<char> & buffer;
+
+    Generator<Response> parse()
+    {
+        // these macros purposely duplicate parts of the wire protocol,
+        // but in such a way that doing it *wrong* will definitely make
+        // tests fail. we could also duplicate them completely, but not
+        // doing so ensures that we're the inverse of dump at all times
+#define FETCH_U64()                                                       \
+    ({                                                                    \
+        co_yield WantBytes{8};                                            \
+        StringSource src(std::string_view(buffer.data(), buffer.size())); \
+        readNum<uint64_t>(src);                                           \
+    })
+#define READ_U64()            \
+    ({                        \
+        auto u = FETCH_U64(); \
+        buffer.clear();       \
+        u;                    \
+    })
+#define READ_STRING()                                                     \
+    ({                                                                    \
+        uint64_t len = FETCH_U64();                                       \
+        co_yield WantBytes{len + (8 - len % 8) % 8};                      \
+        StringSource src(std::string_view(buffer.data(), buffer.size())); \
+        auto str = readString(src);                                       \
+        buffer.clear();                                                   \
+        std::move(str);                                                   \
+    })
+#define READ_PADDING(size)                                                    \
+    do {                                                                      \
+        if ((size) % 8) {                                                     \
+            co_yield WantBytes{8 - (size) % 8};                               \
+            StringSource src(std::string_view(buffer.data(), buffer.size())); \
+            readPadding((size), src);                                         \
+            buffer.clear();                                                   \
+        }                                                                     \
+    } while (0)
 #define EXPECT(raw, kind)                              \
     do {                                               \
-        const auto s = readString(source);             \
+        auto s = READ_STRING();                        \
         if (s != (raw)) {                              \
             throw badArchive("expected " kind " tag"); \
         }                                              \
     } while (0)
 
-    EXPECT("(", "open");
-    EXPECT("type", "type");
+        EXPECT("(", "open");
+        EXPECT("type", "type");
 
-    checkInterrupt();
+        const auto t = READ_STRING();
 
-    const auto t = readString(source);
-
-    if (t == "regular") {
-        auto contentsOrFlag = readString(source);
-        const bool executable = contentsOrFlag == "executable";
-        if (executable) {
-            auto s = readString(source);
-            if (s != "") {
-                throw badArchive("executable marker has non-empty value");
-            }
-            contentsOrFlag = readString(source);
-        }
-        if (contentsOrFlag == "contents") {
-            const uint64_t size = readLongLong(source);
-            auto makeReader = [](Source & source, uint64_t & left) -> Generator<Bytes> {
-                std::array<char, 65536> buf;
-
-                while (left) {
-                    checkInterrupt();
-                    auto n = size_t(std::min<uint64_t>(buf.size(), left));
-                    source(buf.data(), n);
-                    co_yield std::span{buf.data(), n};
-                    left -= n;
+        if (t == "regular") {
+            auto contentsOrFlag = READ_STRING();
+            const bool executable = contentsOrFlag == "executable";
+            if (executable) {
+                auto s = READ_STRING();
+                if (s != "") {
+                    throw badArchive("executable marker has non-empty value");
                 }
+                contentsOrFlag = READ_STRING();
+            }
+            if (contentsOrFlag == "contents") {
+                const uint64_t size = READ_U64();
+                co_yield FileHeader{executable, size};
+                READ_PADDING(size);
+            } else {
+                throw badArchive("file without contents found");
+            }
+        } else if (t == "directory") {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+            auto makeReader = [this](bool & completed) -> Directory::Stream {
+                std::map<Path, int, CaseInsensitiveCompare> names;
+                std::string prevName;
+
+                while (1) {
+                    {
+                        const auto s = READ_STRING();
+                        if (s == ")") {
+                            break;
+                        } else if (s != "entry") {
+                            throw badArchive("expected entry tag");
+                        }
+                        EXPECT("(", "open");
+                    }
+
+                    EXPECT("name", "name");
+                    auto name = READ_STRING();
+                    if (name.empty() || name == "." || name == ".."
+                        || name.find('/') != std::string::npos
+                        || name.find((char) 0) != std::string::npos
+                        // The case hack is a thing that only exists on the
+                        // filesystem.
+                        // Unpacking one appearing in a NAR is super
+                        // sketchy because it will at minimum cause corruption at
+                        // the time of repacking the NAR.
+                        || name.find(caseHackSuffix) != std::string::npos)
+                    {
+                        throw Error("NAR contains invalid file name '%1%'", name);
+                    }
+                    if (name <= prevName) {
+                        throw Error("NAR directory is not sorted");
+                    }
+                    prevName = name;
+                    if (archiveSettings.useCaseHack) {
+                        auto i = names.find(name);
+                        if (i != names.end()) {
+                            debug("case collision between '%1%' and '%2%'", i->first, name);
+                            name += caseHackSuffix;
+                            name += std::to_string(++i->second);
+                        } else {
+                            names[name] = 0;
+                        }
+                    }
+
+                    EXPECT("node", "node");
+                    co_yield Directory::Entry{name, parse()};
+                    EXPECT(")", "close");
+                }
+
+                completed = true;
             };
-            auto left = size;
-            co_yield File{executable, size, makeReader(source, left)};
-            // we could drain the remainder of the file, but coroutines being interruptible
-            // at any time makes this difficult. for files this is not that hard, but being
-            // consistent with directories is more important than handling the simple case.
-            assert(left == 0);
-            readPadding(size, source);
+
+            bool completed = false;
+            co_yield Directory{makeReader(completed)};
+            // directories may nest, so to drain a directory properly we'd have to add a Finally
+            // argument to the generator to ensure that the draining code is always run. this is
+            // usually not necessary, hard to follow, and rather error-prone on top of all that.
+            assert(completed);
+            // directories are terminated already, don't try to read another ")"
+            co_return;
+        } else if (t == "symlink") {
+            EXPECT("target", "target");
+            std::string target = READ_STRING();
+            co_yield Symlink{target};
         } else {
-            throw badArchive("file without contents found");
+            throw badArchive("unknown file type " + t);
         }
-    } else if (t == "directory") {
-        auto makeReader = [](Source & source,
-                             bool & completed) -> Generator<std::pair<const std::string &, Entry>> {
-            std::map<Path, int, CaseInsensitiveCompare> names;
-            std::string prevName;
 
-            while (1) {
-                checkInterrupt();
+        EXPECT(")", "close");
 
-                {
-                    const auto s = readString(source);
-                    if (s == ")") {
-                        completed = true;
-                        co_return;
-                    } else if (s != "entry") {
-                        throw badArchive("expected entry tag");
-                    }
-                    EXPECT("(", "open");
-                }
+#undef FETCH_U64
+#undef READ_U64
+#undef READ_STRING
+#undef READ_PADDING
+#undef EXPECT
+    }
+};
 
-                EXPECT("name", "name");
-                auto name = readString(source);
-                if (name.empty() || name == "." || name == ".."
-                    || name.find('/') != std::string::npos
-                    || name.find((char) 0) != std::string::npos
-                    // The case hack is a thing that only exists on the
-                    // filesystem.
-                    // Unpacking one appearing in a NAR is super
-                    // sketchy because it will at minimum cause corruption at
-                    // the time of repacking the NAR.
-                    || name.find(caseHackSuffix) != std::string::npos)
-                {
-                    throw Error("NAR contains invalid file name '%1%'", name);
-                }
-                if (name <= prevName) {
-                    throw Error("NAR directory is not sorted");
-                }
-                prevName = name;
-                if (archiveSettings.useCaseHack) {
-                    auto i = names.find(name);
-                    if (i != names.end()) {
-                        debug("case collision between '%1%' and '%2%'", i->first, name);
-                        name += caseHackSuffix;
-                        name += std::to_string(++i->second);
-                    } else {
-                        names[name] = 0;
-                    }
-                }
+struct SyncParser
+{
+    Source & source;
+    std::vector<char> buffer;
 
-                EXPECT("node", "node");
-                auto inner = parseObject(source);
-                while (auto i = inner.next()) {
-                    co_yield std::pair(std::cref(name), std::move(*i));
-                }
-                EXPECT(")", "close");
-            }
-        };
-        bool completed = false;
-        co_yield Directory{makeReader(source, completed)};
-        // directories may nest, so to drain a directory properly we'd have to add a Finally
-        // argument to the generator to ensure that the draining code is always run. this is
-        // usually not necessary, hard to follow, and rather error-prone on top of all that.
-        assert(completed);
-        // directories are terminated already, don't try to read another ")"
-        co_return;
-    } else if (t == "symlink") {
-        EXPECT("target", "target");
-        std::string target = readString(source);
-        co_yield Symlink{target};
-    } else {
-        throw badArchive("unknown file type " + t);
+    Generator<Entry> parse()
+    {
+        Parser parser{buffer};
+        auto stream = parser.parse();
+        co_yield parse(stream);
     }
 
-    EXPECT(")", "close");
+    void feed(size_t n)
+    {
+        checkInterrupt();
 
-#undef EXPECT
+        auto end = buffer.size();
+        buffer.resize(end + n);
+        source(buffer.data() + end, n);
+    }
+
+    Generator<std::pair<const std::string &, Entry>>
+    readDir(Parser::Directory::Stream stream)
+    {
+        while (auto e = stream.next()) {
+            if (auto want = std::get_if<Parser::WantBytes>(&*e)) {
+                feed(want->n);
+            } else if (auto entry = std::get_if<Parser::Directory::Entry>(&*e)) {
+                auto parsed = parse(entry->second);
+                while (auto e = parsed.next()) {
+                    co_yield std::pair(std::cref(entry->first), std::move(*e));
+                }
+            } else {
+                assert(false && "expected parser response in dir");
+            }
+        }
+    }
+
+    Generator<Entry> parse(Generator<Parser::Response> & stream)
+    {
+        while (auto i = stream.next()) {
+            if (auto want = std::get_if<Parser::WantBytes>(&*i)) {
+                feed(want->n);
+            } else if (auto f = std::get_if<Parser::FileHeader>(&*i)) {
+                auto makeReader = [](Source & source, uint64_t & left) -> Generator<Bytes> {
+                    std::array<char, 65536> buf;
+
+                    while (left) {
+                        checkInterrupt();
+                        auto n = size_t(std::min<uint64_t>(buf.size(), left));
+                        source(buf.data(), n);
+                        co_yield std::span{buf.data(), n};
+                        left -= n;
+                    }
+                };
+                auto left = f->size;
+                co_yield File{f->executable, f->size, makeReader(source, left)};
+                // we could drain the remainder of the file, but coroutines being interruptible
+                // at any time makes this difficult. for files this is not that hard, but being
+                // consistent with directories is more important than handling the simple case.
+                assert(left == 0);
+            } else if (auto sl = std::get_if<Parser::Symlink>(&*i)) {
+                co_yield Symlink{std::move(sl->target)};
+            } else if (auto dir = std::get_if<Parser::Directory>(&*i)) {
+                co_yield Directory{readDir(std::move(dir->content))};
+            } else {
+                assert(false && "unhandled parser response");
+            }
+        }
+    }
+};
 }
 
 Generator<Entry> parse(Source & source)
@@ -345,7 +465,8 @@ Generator<Entry> parse(Source & source)
     }
     if (version != narVersionMagic1)
         throw badArchive("input doesn't look like a Nix archive");
-    co_yield parseObject(source);
+    SyncParser p{source};
+    co_yield p.parse();
 }
 
 }
