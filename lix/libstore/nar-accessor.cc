@@ -54,37 +54,30 @@ struct NarAccessor : public FSAccessor
         NarAccessor & acc;
         NarSource & source;
 
-        std::stack<NarMember *> parents;
+        NarMember * parent;
 
     public:
-        NarIndexer(NarAccessor & acc, NarSource & source)
-            : acc(acc), source(source)
+        NarIndexer(NarAccessor & acc, NarSource & source, NarMember & parent)
+            : acc(acc), source(source), parent(&parent)
         { }
 
         NarMember & createMember(const Path & path, NarMember member)
         {
-            size_t level = std::count(path.begin(), path.end(), '/');
-            while (parents.size() > level) parents.pop();
-
-            if (parents.empty()) {
-                acc.root = std::move(member);
-                parents.push(&acc.root);
+            if (parent->type == FSAccessor::Type::tMissing) {
+                *parent = std::move(member);
+                return *parent;
             } else {
-                if (parents.top()->type != FSAccessor::Type::tDirectory)
-                    throw Error("NAR file missing parent directory of path '%s'", path);
-                auto result = parents.top()->children.emplace(baseNameOf(path), std::move(member));
-                parents.push(&result.first->second);
+                return parent->children.emplace(baseNameOf(path), std::move(member)).first->second;
             }
-
-            return *parents.top();
         }
 
-        void createDirectory(const Path & path) override
+        box_ptr<NARParseVisitor> createDirectory(const Path & path) override
         {
-            createMember(path, {FSAccessor::Type::tDirectory, false, 0, 0});
+            auto & dir = createMember(path, {FSAccessor::Type::tDirectory, false, 0, 0});
+            return make_box_ptr<NarIndexer>(acc, source, dir);
         }
 
-        std::unique_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
+        box_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
         {
             auto & memb = createMember(path, {FSAccessor::Type::tRegular, false, 0, 0});
 
@@ -93,7 +86,13 @@ struct NarAccessor : public FSAccessor
             memb.start = source.pos;
             memb.isExecutable = executable;
 
-            return std::make_unique<FileHandle>();
+            struct IgnoringFileHandle : FileHandle
+            {
+                void close() override {}
+                void receiveContents(std::string_view data) override {}
+            };
+
+            return make_box_ptr<IgnoringFileHandle>();
         }
 
         void createSymlink(const Path & path, const std::string & target) override
@@ -107,14 +106,14 @@ struct NarAccessor : public FSAccessor
     {
         StringSource source(*nar);
         NarSource posSource(source);
-        NarIndexer indexer(*this, posSource);
+        NarIndexer indexer(*this, posSource, root);
         parseDump(indexer, posSource);
     }
 
     NarAccessor(Source & source)
     {
         NarSource posSource(source);
-        NarIndexer indexer(*this, posSource);
+        NarIndexer indexer(*this, posSource, root);
         parseDump(indexer, posSource);
     }
 

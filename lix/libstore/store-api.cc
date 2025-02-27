@@ -385,22 +385,21 @@ struct RetrieveRegularNARVisitor : NARParseVisitor
             sink(data);
         }
 
-    private:
-        MyFileHandle(Sink & sink) : sink(sink) {}
+        void close() override {}
 
-        friend struct RetrieveRegularNARVisitor;
+        MyFileHandle(Sink & sink) : sink(sink) {}
     };
 
     Sink & sink;
 
     RetrieveRegularNARVisitor(Sink & sink) : sink(sink) { }
 
-    std::unique_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
+    box_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
     {
-        return std::unique_ptr<MyFileHandle>(new MyFileHandle{sink});
+        return make_box_ptr<MyFileHandle>(sink);
     }
 
-    void createDirectory(const Path & path) override
+    box_ptr<NARParseVisitor> createDirectory(const Path & path) override
     {
         assert(false && "RetrieveRegularNARVisitor::createDirectory must not be called");
     }

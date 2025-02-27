@@ -93,30 +93,28 @@ struct NARParseVisitor
         FileHandle & operator=(FileHandle &) = delete;
 
         /** Puts one block of data into the file */
-        virtual void receiveContents(std::string_view data) { }
+        virtual void receiveContents(std::string_view data) = 0;
 
         /**
          * Explicitly closes the file. Further operations may throw an assert.
          * This exists so that closing can fail and throw an exception without doing so in a destructor.
          */
-        virtual void close() { }
+        virtual void close() = 0;
 
         virtual ~FileHandle() = default;
     };
 
-    virtual void createDirectory(const Path & path) { }
+    virtual ~NARParseVisitor() = default;
+
+    virtual box_ptr<NARParseVisitor> createDirectory(const Path & path) = 0;
 
     /**
      * Creates a regular file in the extraction output with the given size and executable flag.
      * The size is guaranteed to be the true size of the file.
      */
-    [[nodiscard]]
-    virtual std::unique_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable)
-    {
-        return std::make_unique<FileHandle>();
-    }
+    virtual box_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) = 0;
 
-    virtual void createSymlink(const Path & path, const std::string & target) { }
+    virtual void createSymlink(const Path & path, const std::string & target) = 0;
 };
 
 namespace nar {

@@ -350,8 +350,8 @@ static WireFormatGenerator restore(NARParseVisitor & sink, Generator<nar::Entry>
                 },
                 [&](nar::Directory d) {
                     return [](auto d, auto & sink) -> WireFormatGenerator {
-                        sink.createDirectory(d.path);
-                        return restore(sink, std::move(d.contents));
+                        auto dir = sink.createDirectory(d.path);
+                        co_yield restore(*dir, std::move(d.contents));
                     }(std::move(d), sink);
                 },
             },
@@ -407,7 +407,7 @@ struct NARRestoreVisitor : NARParseVisitor
     Path dstPath;
 
 private:
-    class MyFileHandle : public FileHandle
+    struct MyFileHandle : public FileHandle
     {
         AutoCloseFD fd;
 
@@ -447,8 +447,6 @@ private:
 #endif
         }
 
-    public:
-
         ~MyFileHandle() = default;
 
         virtual void close() override
@@ -461,25 +459,26 @@ private:
         {
             writeFull(fd.get(), data);
         }
-
-        friend struct NARRestoreVisitor;
     };
 
 public:
-    void createDirectory(const Path & path) override
+    NARRestoreVisitor(Path dstPath): dstPath(std::move(dstPath)) {}
+
+    box_ptr<NARParseVisitor> createDirectory(const Path & path) override
     {
         Path p = dstPath + path;
         if (mkdir(p.c_str(), 0777) == -1)
             throw SysError("creating directory '%1%'", p);
+        return make_box_ptr<NARRestoreVisitor>(dstPath);
     };
 
-    std::unique_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
+    box_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
     {
         Path p = dstPath + path;
         AutoCloseFD fd = AutoCloseFD{open(p.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0666)};
         if (!fd) throw SysError("creating file '%1%'", p);
 
-        return std::unique_ptr<MyFileHandle>(new MyFileHandle(std::move(fd), size, executable));
+        return make_box_ptr<MyFileHandle>(std::move(fd), size, executable);
     }
 
     void createSymlink(const Path & path, const std::string & target) override
@@ -492,8 +491,7 @@ public:
 
 void restorePath(const Path & path, Source & source)
 {
-    NARRestoreVisitor sink;
-    sink.dstPath = path;
+    NARRestoreVisitor sink(path);
     parseDump(sink, source);
 }
 
@@ -503,7 +501,28 @@ WireFormatGenerator copyNAR(Source & source)
     // FIXME: if 'source' is the output of dumpPath() followed by EOF,
     // we should just forward all data directly without parsing.
 
-    static NARParseVisitor parseSink; /* null sink; just parse the NAR */
+    struct DiscardVisitor : NARParseVisitor
+    {
+        struct MyFileHandle : FileHandle
+        {
+            void close() override {}
+            void receiveContents(std::string_view data) override {}
+        };
+
+        box_ptr<NARParseVisitor> createDirectory(const Path & path) override
+        {
+            return make_box_ptr<DiscardVisitor>();
+        }
+
+        box_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
+        {
+            return make_box_ptr<MyFileHandle>();
+        }
+
+        void createSymlink(const Path & path, const std::string & target) override {}
+    };
+
+    static DiscardVisitor parseSink; /* null sink; just parse the NAR */
 
     return parseAndCopyDump(parseSink, source);
 }
