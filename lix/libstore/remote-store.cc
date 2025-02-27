@@ -1047,7 +1047,15 @@ RemoteStore::ConnectionHandle::FramedSinkHandler::~FramedSinkHandler() noexcept(
     if (stderrThread.joinable()) {
         stderrThread.join();
     }
-    if (ex) {
+    // if we're handling an Interrupted exception we must be careful: it's
+    // possible that the exception was thrown by the withFramedSink framed
+    // function, but not by the FramedSink itself. in this case our stderr
+    // handler thread may race with FramedSink::writeUnbuffered, catch the
+    // Interrupted exception independently, store it into ex, and have our
+    // own destructor rethrow a second copy of Interrupted. since we can't
+    // handle multiple exceptions anyway the safest path is to simply drop
+    // the remote (possibly Interrupted) exception when called for unwind.
+    if (ex && std::uncaught_exceptions() == 0) {
         std::rethrow_exception(ex);
     }
 }
