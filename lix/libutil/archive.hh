@@ -157,7 +157,6 @@ Generator<Entry> parse(Source & source);
 
 }
 
-WireFormatGenerator parseAndCopyDump(NARParseVisitor & sink, Source & source);
 void parseDump(NARParseVisitor & sink, Source & source);
 
 void restorePath(const Path & path, Source & source);

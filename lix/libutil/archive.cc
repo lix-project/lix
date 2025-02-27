@@ -370,56 +370,36 @@ Generator<Entry> parse(Source & source)
 
 }
 
-static WireFormatGenerator restore(NARParseVisitor & sink, nar::Entry entry, const Path & path)
+static void restore(NARParseVisitor & sink, nar::Entry entry, const Path & path)
 {
     return std::visit(
         overloaded{
-            [](nar::MetadataString m) -> WireFormatGenerator {
-                co_yield m.data;
-            },
-            [](nar::MetadataRaw r) -> WireFormatGenerator {
-                co_yield r.raw;
-            },
+            [](nar::MetadataString m) {},
+            [](nar::MetadataRaw r) {},
             [&](nar::File f) {
                 auto handle = sink.createRegularFile(path, f.size, f.executable);
-                return [](auto handle, auto f) -> WireFormatGenerator {
-                    while (auto block = f.contents.next()) {
-                        handle->receiveContents(std::string_view{block->data(), block->size()});
-                        co_yield *block;
-                    }
-                    handle->close();
-                }(std::move(handle), std::move(f));
+                while (auto block = f.contents.next()) {
+                    handle->receiveContents(std::string_view{block->data(), block->size()});
+                }
+                handle->close();
             },
-            [&](nar::Symlink sl) {
-                sink.createSymlink(path, sl.target);
-                return []() -> WireFormatGenerator { co_return; }();
-            },
+            [&](nar::Symlink sl) { sink.createSymlink(path, sl.target); },
             [&](nar::Directory d) {
                 auto dir = sink.createDirectory(path);
-                return [](auto dir, auto d) -> WireFormatGenerator {
-                    while (auto entry = d.contents.next()) {
-                        co_yield restore(*dir, std::move(entry->second), entry->first);
-                    }
-                }(std::move(dir), std::move(d));
+                while (auto entry = d.contents.next()) {
+                    restore(*dir, std::move(entry->second), entry->first);
+                }
             },
         },
         std::move(entry)
     );
 }
 
-WireFormatGenerator parseAndCopyDump(NARParseVisitor & sink, Source & source)
+void parseDump(NARParseVisitor & sink, Source & source)
 {
     auto nar = nar::parse(source);
     while (auto entry = nar.next()) {
-        co_yield restore(sink, std::move(*entry), "");
-    }
-}
-
-void parseDump(NARParseVisitor & sink, Source & source)
-{
-    auto parser = parseAndCopyDump(sink, source);
-    while (parser.next()) {
-        // ignore the actual item
+        restore(sink, std::move(*entry), "");
     }
 }
 
