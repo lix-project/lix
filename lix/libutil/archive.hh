@@ -138,7 +138,6 @@ struct MetadataRaw
 
 struct File
 {
-    const Path & path;
     bool executable;
     uint64_t size;
     Generator<Bytes> contents;
@@ -146,14 +145,12 @@ struct File
 
 struct Symlink
 {
-    const Path & path;
     const Path & target;
 };
 
 struct Directory
 {
-    const Path & path;
-    Generator<Entry> contents;
+    Generator<std::pair<const std::string &, Entry>> contents;
 };
 
 Generator<Entry> parse(Source & source);

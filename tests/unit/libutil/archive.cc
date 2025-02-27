@@ -54,7 +54,7 @@ Fragment lparen = metaString("(");
 Fragment rparen = metaString(")");
 Fragment type = metaString("type");
 
-Fragment make_file(bool executable, Path path, std::string contents)
+Fragment make_file(bool executable, std::string contents)
 {
     assert(contents.size() <= 255);
     return concat({
@@ -66,11 +66,10 @@ Fragment make_file(bool executable, Path path, std::string contents)
         metaString("contents"),
         {char(contents.size()) + "\0\0\0\0\0\0\0"s + contents
              + "\0\0\0\0\0\0\0\0"s.substr(0, (8 - contents.size() % 8) % 8),
-         [executable, path, contents] {
-             return [](auto executable, auto path, auto contents) -> Entries {
+         [executable, contents] {
+             return [](auto executable, auto contents) -> Entries {
                  co_yield metaRaw(char(contents.size()) + "\0\0\0\0\0\0\0"s)();
                  co_yield File{
-                     path,
                      executable,
                      contents.size(),
                      [](auto contents) -> Generator<Bytes> {
@@ -78,13 +77,13 @@ Fragment make_file(bool executable, Path path, std::string contents)
                      }(contents)
                  };
                  co_yield metaRaw("\0\0\0\0\0\0\0\0"sv.substr(0, (8 - contents.size() % 8) % 8))();
-             }(executable, path, contents);
+             }(executable, contents);
          }},
         rparen,
     });
 }
 
-Fragment make_symlink(Path path, std::string linkTarget)
+Fragment make_symlink(std::string linkTarget)
 {
     assert(linkTarget.size() <= 255);
     return concat({
@@ -95,45 +94,55 @@ Fragment make_symlink(Path path, std::string linkTarget)
         metaString(linkTarget),
         {
             "",
-            [path, linkTarget] {
-                return [](auto link) -> Entries { co_yield link; }(Symlink{path, linkTarget});
+            [linkTarget] {
+                return [](auto link) -> Entries { co_yield link; }(Symlink{linkTarget});
             },
         },
         rparen,
     });
 }
 
-Fragment make_directory(Path path, std::vector<std::pair<std::string, Fragment>> entries)
+Fragment make_directory(std::vector<std::pair<std::string, Fragment>> entries)
 {
-    std::vector<Fragment> parts;
+    std::string raw;
+    std::vector<std::pair<std::string, std::function<Entries()>>> inodes;
+
+    auto append = [&](std::string_view name, Fragment f) {
+        raw += f.first;
+        inodes.emplace_back(name, f.second);
+    };
+
     for (auto & [dentryName, dentry] : entries) {
         assert(dentryName.size() <= 255);
-        parts.push_back(metaString("entry"));
-        parts.push_back(lparen);
-        parts.push_back(metaString("name"));
-        parts.emplace_back(metaString(dentryName));
-        parts.push_back(metaString("node"));
-        parts.push_back(dentry);
-        parts.push_back(rparen);
+        append("", metaString("entry"));
+        append("", lparen);
+        append("", metaString("name"));
+        append("", metaString(dentryName));
+        append("", metaString("node"));
+        append(dentryName, dentry);
+        append("", rparen);
     }
-
-    auto inner = concat(parts);
 
     return concat({
         lparen,
         type,
         metaString("directory"),
         {
-            inner.first + rparen.first,
-            [path, inner] {
+            raw + rparen.first,
+            [inodes] {
                 return ([](auto dir) -> Entries { co_yield std::move(dir); })(Directory{
-                    path,
-                    [](auto inner) -> Entries {
-                        co_yield std::move(inner);
+                    [](auto inodes) -> Generator<std::pair<const std::string &, Entry>> {
+                        for (auto & [name, dentry] : inodes) {
+                            auto subs = dentry();
+                            while (auto si = subs.next()) {
+                                co_yield std::pair(std::cref(name), std::move(*si));
+                            }
+                        }
                         // this should be a separate item, but the parser emits it
                         // from within the directory. but as long as it's there...
-                        co_yield rparen.second();
-                    }(inner.second()),
+                        std::string empty;
+                        co_yield std::pair{empty, *rparen.second().next()};
+                    }(inodes),
                 });
             },
         },
@@ -152,7 +161,6 @@ void assert_eq(const MetadataRaw & a, const MetadataRaw & b)
 }
 void assert_eq(File & a, File & b)
 {
-    ASSERT_EQ(a.path, b.path);
     ASSERT_EQ(a.executable, b.executable);
     ASSERT_EQ(a.size, b.size);
     auto acontents = GeneratorSource(std::move(a.contents)).drain();
@@ -161,12 +169,10 @@ void assert_eq(File & a, File & b)
 }
 void assert_eq(const Symlink & a, const Symlink & b)
 {
-    ASSERT_EQ(a.path, b.path);
     ASSERT_EQ(a.target, b.target);
 }
 void assert_eq(Directory & a, Directory & b)
 {
-    ASSERT_EQ(a.path, b.path);
     while (true) {
         auto ae = a.contents.next();
         auto be = b.contents.next();
@@ -174,7 +180,8 @@ void assert_eq(Directory & a, Directory & b)
         if (!ae.has_value()) {
             break;
         }
-        assert_eq(*ae, *be);
+        ASSERT_EQ(ae->first, be->first);
+        assert_eq(ae->second, be->second);
     }
 }
 
@@ -217,44 +224,44 @@ INSTANTIATE_TEST_SUITE_P(
     ,
     NarTest,
     testing::Values(
-        concat({header, make_file(false, "", "")}),
-        concat({header, make_file(false, "", "short")}),
-        concat({header, make_file(false, "", "block000")}),
-        concat({header, make_file(false, "", "block0001")}),
-        concat({header, make_file(true, "", "")}),
-        concat({header, make_file(true, "", "short")}),
-        concat({header, make_file(true, "", "block000")}),
-        concat({header, make_file(true, "", "block0001")}),
-        concat({header, make_symlink("", "")}),
-        concat({header, make_symlink("", "short")}),
-        concat({header, make_symlink("", "block000")}),
-        concat({header, make_symlink("", "block0001")}),
+        concat({header, make_file(false, "")}),
+        concat({header, make_file(false, "short")}),
+        concat({header, make_file(false, "block000")}),
+        concat({header, make_file(false, "block0001")}),
+        concat({header, make_file(true, "")}),
+        concat({header, make_file(true, "short")}),
+        concat({header, make_file(true, "block000")}),
+        concat({header, make_file(true, "block0001")}),
+        concat({header, make_symlink("")}),
+        concat({header, make_symlink("short")}),
+        concat({header, make_symlink("block000")}),
+        concat({header, make_symlink("block0001")}),
 
-        concat({header, make_directory("", {{"a", make_file(false, "/a", "")}})}),
-        concat({header, make_directory("", {{"a", make_file(false, "/a", "short")}})}),
-        concat({header, make_directory("", {{"a", make_file(false, "/a", "block000")}})}),
-        concat({header, make_directory("", {{"a", make_file(false, "/a", "block0001")}})}),
-        concat({header, make_directory("", {{"a", make_file(true, "/a", "")}})}),
-        concat({header, make_directory("", {{"a", make_file(true, "/a", "short")}})}),
-        concat({header, make_directory("", {{"a", make_file(true, "/a", "block000")}})}),
-        concat({header, make_directory("", {{"a", make_file(true, "/a", "block0001")}})}),
-        concat({header, make_directory("", {{"a", make_symlink("/a", "")}})}),
-        concat({header, make_directory("", {{"a", make_symlink("/a", "short")}})}),
-        concat({header, make_directory("", {{"a", make_symlink("/a", "block000")}})}),
-        concat({header, make_directory("", {{"a", make_symlink("/a", "block0001")}})}),
+        concat({header, make_directory({{"a", make_file(false, "")}})}),
+        concat({header, make_directory({{"a", make_file(false, "short")}})}),
+        concat({header, make_directory({{"a", make_file(false, "block000")}})}),
+        concat({header, make_directory({{"a", make_file(false, "block0001")}})}),
+        concat({header, make_directory({{"a", make_file(true, "")}})}),
+        concat({header, make_directory({{"a", make_file(true, "short")}})}),
+        concat({header, make_directory({{"a", make_file(true, "block000")}})}),
+        concat({header, make_directory({{"a", make_file(true, "block0001")}})}),
+        concat({header, make_directory({{"a", make_symlink("")}})}),
+        concat({header, make_directory({{"a", make_symlink("short")}})}),
+        concat({header, make_directory({{"a", make_symlink("block000")}})}),
+        concat({header, make_directory({{"a", make_symlink("block0001")}})}),
 
-        concat({header, make_directory("", {{"d", make_directory("/d", {{"a", make_file(false, "/d/a", "")}})}})}),
-        concat({header, make_directory("", {{"d", make_directory("/d", {{"a", make_file(false, "/d/a", "short")}})}})}),
-        concat({header, make_directory("", {{"d", make_directory("/d", {{"a", make_file(false, "/d/a", "block000")}})}})}),
-        concat({header, make_directory("", {{"d", make_directory("/d", {{"a", make_file(false, "/d/a", "block0001")}})}})}),
-        concat({header, make_directory("", {{"d", make_directory("/d", {{"a", make_file(true, "/d/a", "")}})}})}),
-        concat({header, make_directory("", {{"d", make_directory("/d", {{"a", make_file(true, "/d/a", "short")}})}})}),
-        concat({header, make_directory("", {{"d", make_directory("/d", {{"a", make_file(true, "/d/a", "block000")}})}})}),
-        concat({header, make_directory("", {{"d", make_directory("/d", {{"a", make_file(true, "/d/a", "block0001")}})}})}),
-        concat({header, make_directory("", {{"d", make_directory("/d", {{"a", make_symlink("/d/a", "")}})}})}),
-        concat({header, make_directory("", {{"d", make_directory("/d", {{"a", make_symlink("/d/a", "short")}})}})}),
-        concat({header, make_directory("", {{"d", make_directory("/d", {{"a", make_symlink("/d/a", "block000")}})}})}),
-        concat({header, make_directory("", {{"d", make_directory("/d", {{"a", make_symlink("/d/a", "block0001")}})}})})
+        concat({header, make_directory({{"d", make_directory({{"a", make_file(false, "")}})}})}),
+        concat({header, make_directory({{"d", make_directory({{"a", make_file(false, "short")}})}})}),
+        concat({header, make_directory({{"d", make_directory({{"a", make_file(false, "block000")}})}})}),
+        concat({header, make_directory({{"d", make_directory({{"a", make_file(false, "block0001")}})}})}),
+        concat({header, make_directory({{"d", make_directory({{"a", make_file(true, "")}})}})}),
+        concat({header, make_directory({{"d", make_directory({{"a", make_file(true, "short")}})}})}),
+        concat({header, make_directory({{"d", make_directory({{"a", make_file(true, "block000")}})}})}),
+        concat({header, make_directory({{"d", make_directory({{"a", make_file(true, "block0001")}})}})}),
+        concat({header, make_directory({{"d", make_directory({{"a", make_symlink("")}})}})}),
+        concat({header, make_directory({{"d", make_directory({{"a", make_symlink("short")}})}})}),
+        concat({header, make_directory({{"d", make_directory({{"a", make_symlink("block000")}})}})}),
+        concat({header, make_directory({{"d", make_directory({{"a", make_symlink("block0001")}})}})})
     )
 );
 }

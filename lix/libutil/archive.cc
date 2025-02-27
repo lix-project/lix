@@ -167,12 +167,12 @@ struct CaseInsensitiveCompare
 
 namespace nar {
 
-static Generator<Entry> parseObject(Source & source, const Path & path)
+static Generator<Entry> parseObject(Source & source)
 {
 #define EXPECT(raw, kind)                              \
     do {                                               \
         const auto s = readString(source);             \
-        if (s != (raw)) {                                \
+        if (s != (raw)) {                              \
             throw badArchive("expected " kind " tag"); \
         }                                              \
         co_yield MetadataString{s};                    \
@@ -214,7 +214,7 @@ static Generator<Entry> parseObject(Source & source, const Path & path)
                 }
             };
             auto left = size;
-            co_yield File{path, executable, size, makeReader(source, left)};
+            co_yield File{executable, size, makeReader(source, left)};
             // we could drain the remainder of the file, but coroutines being interruptible
             // at any time makes this difficult. for files this is not that hard, but being
             // consistent with directories is more important than handling the simple case.
@@ -222,11 +222,18 @@ static Generator<Entry> parseObject(Source & source, const Path & path)
             readPadding(size, source);
             co_yield MetadataRaw{SerializingTransform::padding(size)};
         } else {
-            throw badArchive("file without contents found: " + path);
+            throw badArchive("file without contents found");
         }
     } else if (t == "directory") {
-        auto makeReader = [](Source & source, const Path & path, bool & completed
-                          ) -> Generator<Entry> {
+        struct Map {
+            auto operator()(std::pair<const std::string &, Entry> e) const { return e; }
+            std::pair<const std::string &, Entry> operator()(Entry e) const {
+                static std::string empty;
+                return {empty, std::move(e)};
+            }
+        };
+        auto makeReader = [](Source & source, bool & completed
+                          ) -> Generator<std::pair<const std::string &, Entry>, Map> {
             std::map<Path, int, CaseInsensitiveCompare> names;
             std::string prevName;
 
@@ -276,12 +283,15 @@ static Generator<Entry> parseObject(Source & source, const Path & path)
                 }
 
                 EXPECT("node", "node");
-                co_yield parseObject(source, path + "/" + name);
+                auto inner = parseObject(source);
+                while (auto i = inner.next()) {
+                    co_yield std::pair(std::cref(name), std::move(*i));
+                }
                 EXPECT(")", "close");
             }
         };
         bool completed = false;
-        co_yield Directory{path, makeReader(source, path, completed)};
+        co_yield Directory{makeReader(source, completed)};
         // directories may nest, so to drain a directory properly we'd have to add a Finally
         // argument to the generator to ensure that the draining code is always run. this is
         // usually not necessary, hard to follow, and rather error-prone on top of all that.
@@ -292,7 +302,7 @@ static Generator<Entry> parseObject(Source & source, const Path & path)
         EXPECT("target", "target");
         std::string target = readString(source);
         co_yield MetadataString{target};
-        co_yield Symlink{path, target};
+        co_yield Symlink{target};
     } else {
         throw badArchive("unknown file type " + t);
     }
@@ -314,55 +324,54 @@ Generator<Entry> parse(Source & source)
     }
     if (version != narVersionMagic1)
         throw badArchive("input doesn't look like a Nix archive");
-    co_yield parseObject(source, "");
+    co_yield parseObject(source);
 }
 
 }
 
-
-static WireFormatGenerator restore(NARParseVisitor & sink, Generator<nar::Entry> nar)
+static WireFormatGenerator restore(NARParseVisitor & sink, nar::Entry entry, const Path & path)
 {
-    while (auto entry = nar.next()) {
-        co_yield std::visit(
-            overloaded{
-                [](nar::MetadataString m) -> WireFormatGenerator {
-                    co_yield m.data;
-                },
-                [](nar::MetadataRaw r) -> WireFormatGenerator {
-                    co_yield r.raw;
-                },
-                [&](nar::File f) {
-                    return [](auto f, auto & sink) -> WireFormatGenerator {
-                        auto handle = sink.createRegularFile(f.path, f.size, f.executable);
-
-                        while (auto block = f.contents.next()) {
-                            handle->receiveContents(std::string_view{block->data(), block->size()});
-                            co_yield *block;
-                        }
-                        handle->close();
-                    }(std::move(f), sink);
-                },
-                [&](nar::Symlink sl) {
-                    return [](auto sl, auto & sink) -> WireFormatGenerator {
-                        sink.createSymlink(sl.path, sl.target);
-                        co_return;
-                    }(std::move(sl), sink);
-                },
-                [&](nar::Directory d) {
-                    return [](auto d, auto & sink) -> WireFormatGenerator {
-                        auto dir = sink.createDirectory(d.path);
-                        co_yield restore(*dir, std::move(d.contents));
-                    }(std::move(d), sink);
-                },
+    return std::visit(
+        overloaded{
+            [](nar::MetadataString m) -> WireFormatGenerator {
+                co_yield m.data;
             },
-            std::move(*entry)
-        );
-    }
+            [](nar::MetadataRaw r) -> WireFormatGenerator {
+                co_yield r.raw;
+            },
+            [&](nar::File f) {
+                auto handle = sink.createRegularFile(path, f.size, f.executable);
+                return [](auto handle, auto f) -> WireFormatGenerator {
+                    while (auto block = f.contents.next()) {
+                        handle->receiveContents(std::string_view{block->data(), block->size()});
+                        co_yield *block;
+                    }
+                    handle->close();
+                }(std::move(handle), std::move(f));
+            },
+            [&](nar::Symlink sl) {
+                sink.createSymlink(path, sl.target);
+                return []() -> WireFormatGenerator { co_return; }();
+            },
+            [&](nar::Directory d) {
+                auto dir = sink.createDirectory(path);
+                return [](auto path, auto dir, auto d) -> WireFormatGenerator {
+                    while (auto entry = d.contents.next()) {
+                        co_yield restore(*dir, std::move(entry->second), path + "/" + entry->first);
+                    }
+                }(path, std::move(dir), std::move(d));
+            },
+        },
+        std::move(entry)
+    );
 }
 
 WireFormatGenerator parseAndCopyDump(NARParseVisitor & sink, Source & source)
 {
-    return restore(sink, nar::parse(source));
+    auto nar = nar::parse(source);
+    while (auto entry = nar.next()) {
+        co_yield restore(sink, std::move(*entry), "");
+    }
 }
 
 void parseDump(NARParseVisitor & sink, Source & source)
