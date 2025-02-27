@@ -61,25 +61,25 @@ struct NarAccessor : public FSAccessor
             : acc(acc), source(source), parent(&parent)
         { }
 
-        NarMember & createMember(const Path & path, NarMember member)
+        NarMember & createMember(const std::string & name, NarMember member)
         {
             if (parent->type == FSAccessor::Type::tMissing) {
                 *parent = std::move(member);
                 return *parent;
             } else {
-                return parent->children.emplace(baseNameOf(path), std::move(member)).first->second;
+                return parent->children.emplace(name, std::move(member)).first->second;
             }
         }
 
-        box_ptr<NARParseVisitor> createDirectory(const Path & path) override
+        box_ptr<NARParseVisitor> createDirectory(const std::string & name) override
         {
-            auto & dir = createMember(path, {FSAccessor::Type::tDirectory, false, 0, 0});
+            auto & dir = createMember(name, {FSAccessor::Type::tDirectory, false, 0, 0});
             return make_box_ptr<NarIndexer>(acc, source, dir);
         }
 
-        box_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
+        box_ptr<FileHandle> createRegularFile(const std::string & name, uint64_t size, bool executable) override
         {
-            auto & memb = createMember(path, {FSAccessor::Type::tRegular, false, 0, 0});
+            auto & memb = createMember(name, {FSAccessor::Type::tRegular, false, 0, 0});
 
             assert(size <= std::numeric_limits<uint64_t>::max());
             memb.size = (uint64_t) size;
@@ -95,9 +95,9 @@ struct NarAccessor : public FSAccessor
             return make_box_ptr<IgnoringFileHandle>();
         }
 
-        void createSymlink(const Path & path, const std::string & target) override
+        void createSymlink(const std::string & name, const std::string & target) override
         {
-            createMember(path,
+            createMember(name,
                 NarMember{FSAccessor::Type::tSymlink, false, 0, 0, target});
         }
     };

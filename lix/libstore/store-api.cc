@@ -394,17 +394,17 @@ struct RetrieveRegularNARVisitor : NARParseVisitor
 
     RetrieveRegularNARVisitor(Sink & sink) : sink(sink) { }
 
-    box_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
+    box_ptr<FileHandle> createRegularFile(const std::string & name, uint64_t size, bool executable) override
     {
         return make_box_ptr<MyFileHandle>(sink);
     }
 
-    box_ptr<NARParseVisitor> createDirectory(const Path & path) override
+    box_ptr<NARParseVisitor> createDirectory(const std::string & name) override
     {
         assert(false && "RetrieveRegularNARVisitor::createDirectory must not be called");
     }
 
-    void createSymlink(const Path & path, const std::string & target) override
+    void createSymlink(const std::string & name, const std::string & target) override
     {
         assert(false && "RetrieveRegularNARVisitor::createSymlink must not be called");
     }

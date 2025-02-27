@@ -355,11 +355,11 @@ static WireFormatGenerator restore(NARParseVisitor & sink, nar::Entry entry, con
             },
             [&](nar::Directory d) {
                 auto dir = sink.createDirectory(path);
-                return [](auto path, auto dir, auto d) -> WireFormatGenerator {
+                return [](auto dir, auto d) -> WireFormatGenerator {
                     while (auto entry = d.contents.next()) {
-                        co_yield restore(*dir, std::move(entry->second), path + "/" + entry->first);
+                        co_yield restore(*dir, std::move(entry->second), entry->first);
                     }
-                }(path, std::move(dir), std::move(d));
+                }(std::move(dir), std::move(d));
             },
         },
         std::move(entry)
@@ -473,26 +473,26 @@ private:
 public:
     NARRestoreVisitor(Path dstPath): dstPath(std::move(dstPath)) {}
 
-    box_ptr<NARParseVisitor> createDirectory(const Path & path) override
+    box_ptr<NARParseVisitor> createDirectory(const std::string & name) override
     {
-        Path p = dstPath + path;
+        Path p = dstPath + name;
         if (mkdir(p.c_str(), 0777) == -1)
             throw SysError("creating directory '%1%'", p);
-        return make_box_ptr<NARRestoreVisitor>(dstPath);
+        return make_box_ptr<NARRestoreVisitor>(p + "/");
     };
 
-    box_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) override
+    box_ptr<FileHandle> createRegularFile(const std::string & name, uint64_t size, bool executable) override
     {
-        Path p = dstPath + path;
+        Path p = dstPath + name;
         AutoCloseFD fd = AutoCloseFD{open(p.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0666)};
         if (!fd) throw SysError("creating file '%1%'", p);
 
         return make_box_ptr<MyFileHandle>(std::move(fd), size, executable);
     }
 
-    void createSymlink(const Path & path, const std::string & target) override
+    void createSymlink(const std::string & name, const std::string & target) override
     {
-        Path p = dstPath + path;
+        Path p = dstPath + name;
         nix::createSymlink(target, p);
     }
 };

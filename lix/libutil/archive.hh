@@ -106,15 +106,15 @@ struct NARParseVisitor
 
     virtual ~NARParseVisitor() = default;
 
-    virtual box_ptr<NARParseVisitor> createDirectory(const Path & path) = 0;
+    virtual box_ptr<NARParseVisitor> createDirectory(const std::string & name) = 0;
 
     /**
      * Creates a regular file in the extraction output with the given size and executable flag.
      * The size is guaranteed to be the true size of the file.
      */
-    virtual box_ptr<FileHandle> createRegularFile(const Path & path, uint64_t size, bool executable) = 0;
+    virtual box_ptr<FileHandle> createRegularFile(const std::string & name, uint64_t size, bool executable) = 0;
 
-    virtual void createSymlink(const Path & path, const std::string & target) = 0;
+    virtual void createSymlink(const std::string & name, const std::string & target) = 0;
 };
 
 namespace nar {
