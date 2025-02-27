@@ -47,6 +47,7 @@
   pkg-config,
   python3,
   rapidcheck,
+  removeReferencesTo,
   rustPlatform,
   rustc,
   sqlite,
@@ -263,6 +264,8 @@ stdenv.mkDerivation (finalAttrs: {
       cmake
       rustc
       capnproto-lix
+      # Required for libstd++ assertions that leaks inside of the final binary.
+      removeReferencesTo
     ]
     ++ [
       (lib.getBin lowdown-unsandboxed)
@@ -431,6 +434,10 @@ stdenv.mkDerivation (finalAttrs: {
     + lib.optionalString internalApiDocs ''
       mkdir -p $out/nix-support
       echo "doc internal-api-docs $out/share/doc/nix/internal-api/html" >> "$out/nix-support/hydra-build-products"
+    ''
+    + ''
+      # Drop all references to libstd++ include files due to `__FILE__` leaking in libstd++ assertions.
+      find "$out" -type f -exec remove-references-to -t ${stdenv.cc.cc.stdenv.cc.cc} '{}' +
     '';
 
   doInstallCheck = finalAttrs.doCheck;
