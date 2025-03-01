@@ -1346,6 +1346,27 @@ try {
     AutoCloseFD tempDirFd;
 
     if (!inMemory) {
+        struct ChainSource : Source
+        {
+            Source & source1, & source2;
+            bool useSecond = false;
+            ChainSource(Source & s1, Source & s2) : source1(s1), source2(s2) {}
+
+            size_t read(char * data, size_t len) override
+            {
+                if (useSecond) {
+                    return source2.read(data, len);
+                } else {
+                    try {
+                        return source1.read(data, len);
+                    } catch (EndOfFile &) {
+                        useSecond = true;
+                        return this->read(data, len);
+                    }
+                }
+            }
+        };
+
         /* Drain what we pulled so far, and then keep on pulling */
         StringSource dumpSource { dump };
         ChainSource bothSource { dumpSource, source };

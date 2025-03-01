@@ -321,18 +321,4 @@ void StringSink::operator () (std::string_view data)
     s.append(data);
 }
 
-size_t ChainSource::read(char * data, size_t len)
-{
-    if (useSecond) {
-        return source2.read(data, len);
-    } else {
-        try {
-            return source1.read(data, len);
-        } catch (EndOfFile &) {
-            useSecond = true;
-            return this->read(data, len);
-        }
-    }
-}
-
 }
