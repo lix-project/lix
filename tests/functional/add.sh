@@ -1,5 +1,11 @@
 source common.sh
 
+expectStderr 1 nix-store --add-fixed sha256 . | grep "cannot import directory using flat ingestion"
+expectStderr 1 nix-store --add-fixed sha256 ./symlink | grep "cannot import symlink using flat ingestion"
+
+expectStderr 1 nix-store --add-fixed sha1 . | grep "cannot import directory using flat ingestion"
+expectStderr 1 nix-store --add-fixed sha1 ./symlink | grep "cannot import symlink using flat ingestion"
+
 path1=$(nix-store --add ./dummy)
 echo $path1
 

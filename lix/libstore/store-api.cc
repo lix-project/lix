@@ -401,12 +401,12 @@ struct RetrieveRegularNARVisitor : NARParseVisitor
 
     box_ptr<NARParseVisitor> createDirectory(const std::string & name) override
     {
-        assert(false && "RetrieveRegularNARVisitor::createDirectory must not be called");
+        throw Error("cannot import directory using flat ingestion");
     }
 
     void createSymlink(const std::string & name, const std::string & target) override
     {
-        assert(false && "RetrieveRegularNARVisitor::createSymlink must not be called");
+        throw Error("cannot import symlink using flat ingestion");
     }
 };
 }
