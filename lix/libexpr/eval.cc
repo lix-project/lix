@@ -2383,11 +2383,10 @@ try {
     auto dstPath = i != srcToStore.end()
         ? i->second
         : ({
-            auto dstPath = TRY_AWAIT(fetchToStore(
+            auto dstPath = TRY_AWAIT(fetchToStoreRecursive(
                 *store,
                 checkSourcePath(path),
                 path.baseName(),
-                FileIngestionMethod::Recursive,
                 nullptr,
                 repair
             ));

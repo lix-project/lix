@@ -48,7 +48,7 @@ std::optional<DerivedPathWithInfo> InstallableValue::trySinglePathToDerivedPaths
 {
     if (v.type() == nPath) {
         auto storePath = state.aio.blockOn(
-            fetchToStore(*evaluator->store, state.ctx.paths.checkSourcePath(v.path()))
+            fetchToStoreRecursive(*evaluator->store, state.ctx.paths.checkSourcePath(v.path()))
         );
         return {{
             .path = DerivedPath::Opaque {

@@ -11,11 +11,15 @@ namespace nix {
 /**
  * Copy the `path` to the Nix store.
  */
-kj::Promise<Result<StorePath>> fetchToStore(
+kj::Promise<Result<StorePath>> fetchToStoreFlat(
     Store & store,
     const CheckedSourcePath & path,
     std::string_view name = "source",
-    FileIngestionMethod method = FileIngestionMethod::Recursive,
+    RepairFlag repair = NoRepair);
+kj::Promise<Result<StorePath>> fetchToStoreRecursive(
+    Store & store,
+    const CheckedSourcePath & path,
+    std::string_view name = "source",
     PathFilter * filter = nullptr,
     RepairFlag repair = NoRepair);
 

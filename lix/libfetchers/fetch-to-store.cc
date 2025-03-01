@@ -4,11 +4,26 @@
 
 namespace nix {
 
-kj::Promise<Result<StorePath>> fetchToStore(
+kj::Promise<Result<StorePath>> fetchToStoreFlat(
     Store & store,
     const CheckedSourcePath & path,
     std::string_view name,
-    FileIngestionMethod method,
+    RepairFlag repair)
+try {
+    Activity act(*logger, lvlChatty, actUnknown, fmt("copying '%s' to the store", path));
+    auto physicalPath = path.canonical().abs();
+
+    co_return settings.readOnlyMode
+        ? store.computeStorePathForPathFlat(name, physicalPath)
+        : TRY_AWAIT(store.addToStoreFlat(name, physicalPath, HashType::SHA256, repair));
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<StorePath>> fetchToStoreRecursive(
+    Store & store,
+    const CheckedSourcePath & path,
+    std::string_view name,
     PathFilter * filter,
     RepairFlag repair)
 try {
@@ -17,23 +32,9 @@ try {
     auto filter2 = filter ? *filter : defaultPathFilter;
     auto physicalPath = path.canonical().abs();
 
-    if (settings.readOnlyMode) {
-        switch (method) {
-        case FileIngestionMethod::Recursive:
-            co_return store.computeStorePathForPathRecursive(name, physicalPath, filter2);
-        case FileIngestionMethod::Flat:
-            co_return store.computeStorePathForPathFlat(name, physicalPath);
-        }
-    } else {
-        switch (method) {
-        case FileIngestionMethod::Recursive:
-            co_return TRY_AWAIT(
-                store.addToStoreRecursive(name, physicalPath, HashType::SHA256, filter2, repair)
-            );
-        case FileIngestionMethod::Flat:
-            co_return TRY_AWAIT(store.addToStoreFlat(name, physicalPath, HashType::SHA256, repair));
-        }
-    }
+    co_return settings.readOnlyMode
+        ? store.computeStorePathForPathRecursive(name, physicalPath, filter2)
+        : TRY_AWAIT(store.addToStoreRecursive(name, physicalPath, HashType::SHA256, filter2, repair));
 } catch (...) {
     co_return result::current_exception();
 }

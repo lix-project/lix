@@ -1564,14 +1564,14 @@ static void addPath(
             });
 
         if (!expectedHash || !state.ctx.store->isValidPath(*expectedStorePath)) {
-            auto dstPath = state.aio.blockOn(fetchToStore(
-                *state.ctx.store,
-                state.ctx.paths.checkSourcePath(CanonPath(realPath)),
-                name,
-                method,
-                &filter,
-                state.ctx.repair
-            ));
+            auto checkedPath = state.ctx.paths.checkSourcePath(CanonPath(realPath));
+            auto dstPath = state.aio.blockOn(
+                method == FileIngestionMethod::Flat
+                    ? fetchToStoreFlat(*state.ctx.store, checkedPath, name, state.ctx.repair)
+                    : fetchToStoreRecursive(
+                          *state.ctx.store, checkedPath, name, &filter, state.ctx.repair
+                      )
+            );
             if (expectedHash && expectedStorePath != dstPath)
                 state.ctx.errors.make<EvalError>(
                     "store path mismatch in (possibly filtered) path added from '%s'",
