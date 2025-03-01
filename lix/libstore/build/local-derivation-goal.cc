@@ -1083,9 +1083,8 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
 
     kj::Promise<Result<StorePath>> addToStoreRecursive(
         std::string_view name,
-        const Path & srcPath,
+        const PreparedDump & source,
         HashType hashAlgo,
-        PathFilter & filter,
         RepairFlag repair) override
     try { throw Error("addToStoreRecursive"); } catch (...) { return {result::current_exception()}; }
 

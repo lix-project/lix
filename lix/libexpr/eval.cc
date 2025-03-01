@@ -1,5 +1,6 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/eval-settings.hh"
+#include "lix/libutil/archive.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libexpr/primops.hh"
@@ -2385,9 +2386,8 @@ try {
         : ({
             auto dstPath = TRY_AWAIT(fetchToStoreRecursive(
                 *store,
-                checkSourcePath(path),
+                *prepareDump(checkSourcePath(path).canonical().abs()),
                 path.baseName(),
-                nullptr,
                 repair
             ));
             allowPath(dstPath);

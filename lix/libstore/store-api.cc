@@ -247,11 +247,11 @@ StorePath Store::makeFixedOutputPathFromCA(std::string_view name, const ContentA
 
 
 StorePath Store::computeStorePathForPathRecursive(std::string_view name,
-    const Path & srcPath, PathFilter & filter) const
+    const PreparedDump & source) const
 {
     FixedOutputInfo caInfo {
         .method = FileIngestionMethod::Recursive,
-        .hash = hashPath(HashType::SHA256, srcPath, filter).first,
+        .hash = hashPath(HashType::SHA256, source).first,
         .references = {},
     };
     return makeFixedOutputPath(name, caInfo);
@@ -282,13 +282,11 @@ StorePath Store::computeStorePathForText(
 
 kj::Promise<Result<StorePath>> Store::addToStoreRecursive(
     std::string_view name,
-    const Path & _srcPath,
+    const PreparedDump & _source,
     HashType hashAlgo,
-    PathFilter & filter,
     RepairFlag repair)
 try {
-    Path srcPath(absPath(_srcPath));
-    auto source = GeneratorSource{dumpPath(srcPath, filter)};
+    auto source = GeneratorSource{_source.dump()};
     co_return TRY_AWAIT(
         addToStoreFromDump(source, name, FileIngestionMethod::Recursive, hashAlgo, repair, {})
     );

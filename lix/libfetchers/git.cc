@@ -1,3 +1,4 @@
+#include "lix/libutil/archive.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libfetchers/fetchers.hh"
@@ -243,7 +244,7 @@ try {
     };
 
     auto storePath = TRY_AWAIT(store->addToStoreRecursive(
-        input.getName(), actualPath, HashType::SHA256, filter
+        input.getName(), *prepareDump(actualPath, filter), HashType::SHA256
     ));
 
     // FIXME: maybe we should use the timestamp of the last
@@ -770,8 +771,9 @@ struct GitInputScheme : InputScheme
             unpackTarfile(*proc.getStdout(), tmpDir);
         }
 
-        auto storePath =
-            TRY_AWAIT(store->addToStoreRecursive(name, tmpDir, HashType::SHA256, filter));
+        auto storePath = TRY_AWAIT(
+            store->addToStoreRecursive(name, *prepareDump(tmpDir, filter), HashType::SHA256)
+        );
 
         auto lastModified = std::stoull(runProgram("git", true, { "-C", repoDir, "--git-dir", gitDir, "log", "-1", "--format=%ct", "--no-show-signature", input.getRev()->gitRev() }));
 

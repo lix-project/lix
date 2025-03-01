@@ -295,7 +295,7 @@ SV * addToStore(char * srcPath, int recursive, char * algo)
         try {
             auto hash = parseHashType(algo);
             auto path = aio().blockOn(recursive
-                ? store()->addToStoreRecursive(std::string(baseNameOf(srcPath)), srcPath, hash)
+                ? store()->addToStoreRecursive(std::string(baseNameOf(srcPath)), *prepareDump(srcPath), hash)
                 : store()->addToStoreFlat(std::string(baseNameOf(srcPath)), srcPath, hash));
             XPUSHs(sv_2mortal(newSVpv(store()->printStorePath(path).c_str(), 0)));
         } catch (Error & e) {

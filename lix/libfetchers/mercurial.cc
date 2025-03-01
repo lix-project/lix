@@ -1,6 +1,7 @@
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libfetchers/cache.hh"
 #include "lix/libfetchers/builtin-fetchers.hh"
+#include "lix/libutil/archive.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libstore/store-api.hh"
@@ -203,7 +204,7 @@ struct MercurialInputScheme : InputScheme
                 };
 
                 auto storePath = TRY_AWAIT(store->addToStoreRecursive(
-                    input.getName(), actualPath, HashType::SHA256, filter
+                    input.getName(), *prepareDump(actualPath, filter), HashType::SHA256
                 ));
 
                 co_return {std::move(storePath), input};
@@ -315,7 +316,7 @@ struct MercurialInputScheme : InputScheme
 
         deletePath(tmpDir + "/.hg_archival.txt");
 
-        auto storePath = TRY_AWAIT(store->addToStoreRecursive(name, tmpDir));
+        auto storePath = TRY_AWAIT(store->addToStoreRecursive(name, *prepareDump(tmpDir)));
 
         Attrs infoAttrs({
             {"rev", input.getRev()->gitRev()},

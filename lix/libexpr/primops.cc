@@ -1569,7 +1569,10 @@ static void addPath(
                 method == FileIngestionMethod::Flat
                     ? fetchToStoreFlat(*state.ctx.store, checkedPath, name, state.ctx.repair)
                     : fetchToStoreRecursive(
-                          *state.ctx.store, checkedPath, name, &filter, state.ctx.repair
+                          *state.ctx.store,
+                          *prepareDump(checkedPath.canonical().abs(), filter),
+                          name,
+                          state.ctx.repair
                       )
             );
             if (expectedHash && expectedStorePath != dstPath)

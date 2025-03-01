@@ -367,11 +367,10 @@ HashResult HashSink::currentHash()
 }
 
 
-HashResult hashPath(
-    HashType ht, const Path & path, PathFilter & filter)
+HashResult hashPath(HashType ht, const PreparedDump & path)
 {
     HashSink sink(ht);
-    sink << dumpPath(path, filter);
+    sink << path.dump();
     return sink.finish();
 }
 

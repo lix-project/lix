@@ -5,6 +5,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/log-store.hh"
 
+#include "lix/libutil/archive.hh"
 #include "lix/libutil/pool.hh"
 
 #include <atomic>
@@ -121,9 +122,8 @@ public:
 
     kj::Promise<Result<StorePath>> addToStoreRecursive(
         std::string_view name,
-        const Path & srcPath,
+        const PreparedDump & source,
         HashType hashAlgo,
-        PathFilter & filter,
         RepairFlag repair) override;
     kj::Promise<Result<StorePath>> addToStoreFlat(
         std::string_view name,

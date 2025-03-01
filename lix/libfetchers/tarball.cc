@@ -162,7 +162,7 @@ try {
         auto topDir = tmpDir + "/" + members.begin()->name;
         lastModified = lstat(topDir).st_mtime;
         unpackedStorePath = TRY_AWAIT(
-            store->addToStoreRecursive(name, topDir, HashType::SHA256, defaultPathFilter, NoRepair)
+            store->addToStoreRecursive(name, *prepareDump(topDir), HashType::SHA256, NoRepair)
         );
     }
 

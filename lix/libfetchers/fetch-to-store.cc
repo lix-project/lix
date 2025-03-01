@@ -22,19 +22,17 @@ try {
 
 kj::Promise<Result<StorePath>> fetchToStoreRecursive(
     Store & store,
-    const CheckedSourcePath & path,
+    const PreparedDump & contents,
     std::string_view name,
-    PathFilter * filter,
     RepairFlag repair)
 try {
-    Activity act(*logger, lvlChatty, actUnknown, fmt("copying '%s' to the store", path));
-
-    auto filter2 = filter ? *filter : defaultPathFilter;
-    auto physicalPath = path.canonical().abs();
+    Activity act(
+        *logger, lvlChatty, actUnknown, fmt("copying '%s' to the store", contents.rootPath)
+    );
 
     co_return settings.readOnlyMode
-        ? store.computeStorePathForPathRecursive(name, physicalPath, filter2)
-        : TRY_AWAIT(store.addToStoreRecursive(name, physicalPath, HashType::SHA256, filter2, repair));
+        ? store.computeStorePathForPathRecursive(name, contents)
+        : TRY_AWAIT(store.addToStoreRecursive(name, contents, HashType::SHA256, repair));
 } catch (...) {
     co_return result::current_exception();
 }

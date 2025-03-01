@@ -400,9 +400,8 @@ static ValidPathInfo makeAddToStoreInfo(
 
 kj::Promise<Result<StorePath>> BinaryCacheStore::addToStoreRecursive(
     std::string_view name,
-    const Path & srcPath,
+    const PreparedDump & _source,
     HashType hashAlgo,
-    PathFilter & filter,
     RepairFlag repair)
 try {
     /* FIXME: Make BinaryCacheStore::addToStoreCommon support
@@ -410,10 +409,10 @@ try {
        implementation of this method in terms of addToStoreFromDump. */
 
     HashSink sink { hashAlgo };
-    sink << dumpPath(srcPath, filter);
+    sink << _source.dump();
     auto h = sink.finish().first;
 
-    auto source = GeneratorSource{dumpPath(srcPath, filter)};
+    auto source = GeneratorSource{_source.dump()};
     co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
         return makeAddToStoreInfo(nar, *this, FileIngestionMethod::Recursive, name, h);
     }))->path;

@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/archive.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libstore/nar-info.hh"
@@ -315,9 +316,8 @@ public:
      *
      * @return the store path to which srcPath is to be copied.
      */
-    StorePath computeStorePathForPathRecursive(
-        std::string_view name, const Path & srcPath, PathFilter & filter = defaultPathFilter
-    ) const;
+    StorePath
+    computeStorePathForPathRecursive(std::string_view name, const PreparedDump & source) const;
     StorePath computeStorePathForPathFlat(std::string_view name, const Path & srcPath) const;
 
     /**
@@ -528,9 +528,8 @@ public:
      */
     virtual kj::Promise<Result<StorePath>> addToStoreRecursive(
         std::string_view name,
-        const Path & srcPath,
+        const PreparedDump & source,
         HashType hashAlgo = HashType::SHA256,
-        PathFilter & filter = defaultPathFilter,
         RepairFlag repair = NoRepair);
     virtual kj::Promise<Result<StorePath>> addToStoreFlat(
         std::string_view name,

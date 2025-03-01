@@ -1,6 +1,7 @@
 #include "lix/libcmd/installable-value.hh"
 #include "lix/libexpr/eval-cache.hh"
 #include "lix/libfetchers/fetch-to-store.hh"
+#include "lix/libutil/archive.hh"
 
 namespace nix {
 
@@ -47,9 +48,10 @@ std::optional<DerivedPathWithInfo> InstallableValue::trySinglePathToDerivedPaths
 )
 {
     if (v.type() == nPath) {
-        auto storePath = state.aio.blockOn(
-            fetchToStoreRecursive(*evaluator->store, state.ctx.paths.checkSourcePath(v.path()))
-        );
+        auto storePath = state.aio.blockOn(fetchToStoreRecursive(
+            *evaluator->store,
+            *prepareDump(state.ctx.paths.checkSourcePath(v.path()).canonical().abs())
+        ));
         return {{
             .path = DerivedPath::Opaque {
                 .path = std::move(storePath),

@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/archive.hh"
 #include "lix/libutil/source-path.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/repair-flag.hh"
@@ -18,9 +19,8 @@ kj::Promise<Result<StorePath>> fetchToStoreFlat(
     RepairFlag repair = NoRepair);
 kj::Promise<Result<StorePath>> fetchToStoreRecursive(
     Store & store,
-    const CheckedSourcePath & path,
+    const PreparedDump & contents,
     std::string_view name = "source",
-    PathFilter * filter = nullptr,
     RepairFlag repair = NoRepair);
 
 }

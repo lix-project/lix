@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/archive.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/file-system.hh"
@@ -155,8 +156,11 @@ Hash hashFile(HashType ht, const Path & path);
  * (essentially) hashString(ht, dumpPath(path)).
  */
 typedef std::pair<Hash, uint64_t> HashResult;
-HashResult hashPath(HashType ht, const Path & path,
-    PathFilter & filter = defaultPathFilter);
+HashResult hashPath(HashType ht, const PreparedDump & path);
+inline HashResult hashPath(HashType ht, Path path)
+{
+    return hashPath(ht, *prepareDump(std::move(path)));
+}
 
 /**
  * Compress a hash to the specified number of bytes by cyclically
