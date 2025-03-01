@@ -58,14 +58,37 @@ namespace nix {
  *   `+` denotes string concatenation.
  * ```
  */
-WireFormatGenerator dumpPath(Path path,
-    PathFilter & filter = defaultPathFilter);
+WireFormatGenerator dumpPath(Path path, PathFilter & filter);
+WireFormatGenerator dumpPath(Path path);
 
 /**
  * Same as dumpPath(), but returns the last modified date of the path.
  */
-WireFormatGenerator dumpPathAndGetMtime(Path path, time_t & mtime,
-    PathFilter & filter = defaultPathFilter);
+WireFormatGenerator dumpPathAndGetMtime(Path path, time_t & mtime);
+
+/**
+ * Reusable intermediate state of `dumpPath` with path filters applied.
+ * Represents a snapshot of a file system hierarchy. ready for dumping.
+ */
+struct PreparedDump
+{
+    const Path rootPath;
+
+    explicit PreparedDump(Path rootPath) : rootPath(std::move(rootPath)) {}
+
+    virtual ~PreparedDump() = default;
+
+    /**
+     * Produce a NAR of all paths that matched the filter passed to `prepareDump`.
+     * If no filter was passed, dump rootPath fully. Calling `dump` multiple times
+     * on the same object to produce multiple NARs of the same hierarchy is legal,
+     * though every call may produce a different output when disk contents change.
+     */
+    virtual WireFormatGenerator dump() const = 0;
+};
+
+box_ptr<PreparedDump> prepareDump(Path path);
+box_ptr<PreparedDump> prepareDump(Path path, PathFilter & filter);
 
 /**
  * Dump an archive with a single file with these contents.

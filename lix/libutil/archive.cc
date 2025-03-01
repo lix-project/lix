@@ -34,7 +34,7 @@ static GlobalConfig::Register rArchiveSettings(&archiveSettings);
 PathFilter defaultPathFilter = [](const Path &) { return true; };
 
 
-static WireFormatGenerator dumpContents(const Path & path, off_t size)
+static WireFormatGenerator dumpContents(Path path, off_t size)
 {
     AutoCloseFD fd{open(path.c_str(), O_RDONLY | O_CLOEXEC)};
     if (!fd) throw SysError("opening file '%1%'", path);
@@ -50,7 +50,7 @@ static WireFormatGenerator dumpContents(const Path & path, off_t size)
     }
 }
 
-static WireFormatGenerator dump(nar::File && f)
+static WireFormatGenerator dump(nar::File f)
 {
     co_yield "(";
     co_yield "type";
@@ -66,7 +66,7 @@ static WireFormatGenerator dump(nar::File && f)
     co_yield ")";
 }
 
-static WireFormatGenerator dump(nar::Symlink && s)
+static WireFormatGenerator dump(nar::Symlink s)
 {
     co_yield "(";
     co_yield "type";
@@ -76,7 +76,7 @@ static WireFormatGenerator dump(nar::Symlink && s)
     co_yield ")";
 }
 
-static WireFormatGenerator dump(nar::Directory && d)
+static WireFormatGenerator dump(nar::Directory d)
 {
     co_yield "(";
     co_yield "type";
@@ -100,7 +100,13 @@ static WireFormatGenerator dump(nar::Directory && d)
     co_yield ")";
 }
 
-static nar::Entry list(const Path & path, time_t & mtime, PathFilter & filter)
+// list the given path under the given filter and return the oldest mtime.
+// if returnUnhacked is true directory entries that appear to have had the
+// nix case hack applied will be returned without the case hack suffix, if
+// returnUnhacked is false directory entries will be returned as they have
+// been read from disk. to produce a correct NAR from the results the case
+// hack must be undone if configured unless returnUnhacked is set to true.
+static nar::Entry list(Path path, time_t & mtime, PathFilter & filter, bool returnUnhacked)
 {
     checkInterrupt();
 
@@ -109,10 +115,12 @@ static nar::Entry list(const Path & path, time_t & mtime, PathFilter & filter)
 
     if (S_ISREG(st.st_mode)) {
         return nar::File{
-            (st.st_mode & S_IXUSR) != 0, size_t(st.st_size), dumpContents(path, st.st_size)
+            (st.st_mode & S_IXUSR) != 0,
+            size_t(st.st_size),
+            dumpContents(std::move(path), st.st_size)
         };
     } else if (S_ISDIR(st.st_mode)) {
-        auto contents = [](const Path & path, time_t & mtime, PathFilter & filter
+        auto contents = [](Path path, time_t & mtime, PathFilter & filter, bool returnUnhacked
                         ) -> Generator<std::pair<const std::string &, nar::Entry>> {
             /* If we're on a case-insensitive system like macOS, undo
                the case hack applied by restorePath(). */
@@ -136,7 +144,10 @@ static nar::Entry list(const Path & path, time_t & mtime, PathFilter & filter)
                 if (filter(path + "/" + i.first)) {
                     time_t tmp_mtime;
                     auto diskPath = path + "/" + i.second;
-                    co_yield std::pair(std::cref(i.first), list(diskPath, tmp_mtime, filter));
+                    co_yield std::pair(
+                        std::cref(returnUnhacked ? i.first : i.second),
+                        list(diskPath, tmp_mtime, filter, returnUnhacked)
+                    );
                     if (tmp_mtime > mtime) {
                         mtime = tmp_mtime;
                     }
@@ -144,7 +155,7 @@ static nar::Entry list(const Path & path, time_t & mtime, PathFilter & filter)
             }
         };
 
-        return nar::Directory(contents(path, mtime, filter));
+        return nar::Directory(contents(std::move(path), mtime, filter, returnUnhacked));
     } else if (S_ISLNK(st.st_mode)) {
         return nar::Symlink{readLink(path)};
     } else {
@@ -152,29 +163,25 @@ static nar::Entry list(const Path & path, time_t & mtime, PathFilter & filter)
     }
 }
 
-static WireFormatGenerator dump(const Path & path, time_t & mtime, PathFilter & filter)
-{
-    co_yield std::visit(
-        [](auto i) -> WireFormatGenerator {
-            if constexpr (requires { dump(std::move(i)); }) {
-                co_yield dump(std::move(i));
-            }
-        },
-        list(path, mtime, filter)
-    );
-}
-
-
-WireFormatGenerator dumpPathAndGetMtime(Path path, time_t & mtime, PathFilter & filter)
+WireFormatGenerator dumpPathAndGetMtime(Path path, time_t & mtime)
 {
     co_yield narVersionMagic1;
-    co_yield dump(path, mtime, filter);
+    co_yield std::visit(
+        [](auto i) -> WireFormatGenerator { co_yield dump(std::move(i)); },
+        list(path, mtime, defaultPathFilter, true)
+    );
 }
 
 WireFormatGenerator dumpPath(Path path, PathFilter & filter)
 {
-    time_t ignored;
-    co_yield dumpPathAndGetMtime(path, ignored, filter);
+    auto filtered = prepareDump(std::move(path), filter);
+    co_yield filtered->dump();
+}
+
+WireFormatGenerator dumpPath(Path path)
+{
+    auto prepared = prepareDump(std::move(path));
+    co_yield prepared->dump();
 }
 
 
@@ -189,6 +196,112 @@ WireFormatGenerator dumpString(std::string_view s)
     co_yield ")";
 }
 
+struct UnfilteredDump : PreparedDump
+{
+    using PreparedDump::PreparedDump;
+
+    WireFormatGenerator dump() const override
+    {
+        time_t ignored;
+        auto all = list(rootPath, ignored, defaultPathFilter, true);
+        co_yield narVersionMagic1;
+        co_yield std::visit([](auto & i) { return nix::dump(std::move(i)); }, all);
+    }
+};
+
+struct PrefilteredDump : PreparedDump
+{
+    struct File
+    {
+        bool executable;
+        uint64_t size;
+    };
+
+    struct Symlink
+    {
+        Path target;
+    };
+
+    struct Directory;
+
+    using Entry = std::variant<File, Symlink, Directory>;
+
+    struct Directory
+    {
+        std::vector<std::pair<std::string, Entry>> contents;
+    };
+
+    Entry root;
+
+    PrefilteredDump(Path path, PathFilter & filter) : PreparedDump(std::move(path))
+    {
+        time_t ignored;
+        fillFrom(root, list(rootPath, ignored, filter, false));
+    }
+
+    static void fillFrom(Entry & target, nar::Entry e)
+    {
+        overloaded handlers{
+            [&](nar::File & f) { target = File{f.executable, f.size}; },
+            [&](nar::Symlink & s) { target = Symlink{std::move(s.target)}; },
+            [&](nar::Directory & d) {
+                Directory self;
+                while (auto entry = d.contents.next()) {
+                    fillFrom(
+                        self.contents.emplace_back(std::move(entry->first), Entry{}).second,
+                        std::move(entry->second)
+                    );
+                }
+                target = std::move(self);
+            },
+        };
+        std::visit(handlers, e);
+    }
+
+    static nar::Entry convert(Path path, const Entry & e)
+    {
+        overloaded handlers{
+            [&](const File & f) -> nar::Entry {
+                return nar::File{f.executable, f.size, dumpContents(std::move(path), f.size)};
+            },
+            [&](const Symlink & s) -> nar::Entry { return nar::Symlink{s.target}; },
+            [&](const Directory & d) -> nar::Entry {
+                return nar::Directory{
+                    [](Path path, const Directory & d
+                    ) -> Generator<std::pair<const std::string &, nar::Entry>> {
+                        for (auto & [name, entry] : d.contents) {
+                            std::string narName = archiveSettings.useCaseHack
+                                ? name.substr(0, name.find(caseHackSuffix))
+                                : name;
+                            co_yield std::pair{
+                                std::cref(narName), convert(path + "/" + name, entry)
+                            };
+                        }
+                    }(std::move(path), d)
+                };
+            },
+        };
+        return std::visit(handlers, std::move(e));
+    }
+
+    WireFormatGenerator dump() const override
+    {
+        co_yield narVersionMagic1;
+        co_yield std::visit(
+            [](auto i) { return nix::dump(std::move(i)); }, convert(rootPath, root)
+        );
+    }
+};
+
+box_ptr<PreparedDump> prepareDump(Path path)
+{
+    return make_box_ptr<UnfilteredDump>(std::move(path));
+}
+
+box_ptr<PreparedDump> prepareDump(Path path, PathFilter & filter)
+{
+    return make_box_ptr<PrefilteredDump>(std::move(path), filter);
+}
 
 static SerialisationError badArchive(const std::string & s)
 {
