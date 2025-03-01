@@ -164,8 +164,14 @@ struct Directory
     Generator<std::pair<const std::string &, Entry>> contents;
 };
 
-Generator<Entry> parse(Source & source);
+WireFormatGenerator dump(Entry nar);
 
+/**
+ * Parse a NAR from a source. The returned generator is guaranteed to produce only a single Entry
+ * but must be explicity read to exhaustion regardless to consume the entire nar from the source.
+ * Stopping before `Generator::next()` returns `std::nullopt` will not reading trailing metadata.
+ */
+Generator<Entry> parse(Source & source);
 }
 
 void parseDump(NARParseVisitor & sink, Source & source);

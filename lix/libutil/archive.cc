@@ -50,7 +50,7 @@ static WireFormatGenerator dumpContents(Path path, off_t size)
     }
 }
 
-static WireFormatGenerator dump(nar::File f)
+static WireFormatGenerator dumpSingle(nar::File f)
 {
     co_yield "(";
     co_yield "type";
@@ -66,7 +66,7 @@ static WireFormatGenerator dump(nar::File f)
     co_yield ")";
 }
 
-static WireFormatGenerator dump(nar::Symlink s)
+static WireFormatGenerator dumpSingle(nar::Symlink s)
 {
     co_yield "(";
     co_yield "type";
@@ -76,7 +76,7 @@ static WireFormatGenerator dump(nar::Symlink s)
     co_yield ")";
 }
 
-static WireFormatGenerator dump(nar::Directory d)
+static WireFormatGenerator dumpSingle(nar::Directory d)
 {
     co_yield "(";
     co_yield "type";
@@ -90,7 +90,7 @@ static WireFormatGenerator dump(nar::Directory d)
                     co_yield "name";
                     co_yield name;
                     co_yield "node";
-                    co_yield dump(std::move(i));
+                    co_yield dumpSingle(std::move(i));
                     co_yield ")";
                 }(e->first, i);
             },
@@ -98,6 +98,14 @@ static WireFormatGenerator dump(nar::Directory d)
         );
     }
     co_yield ")";
+}
+
+WireFormatGenerator nar::dump(nar::Entry nar)
+{
+    co_yield narVersionMagic1;
+    co_yield std::visit(
+        [](auto i) -> WireFormatGenerator { return dumpSingle(std::move(i)); }, std::move(nar)
+    );
 }
 
 // list the given path under the given filter and return the oldest mtime.
@@ -165,11 +173,7 @@ static nar::Entry list(Path path, time_t & mtime, PathFilter & filter, bool retu
 
 WireFormatGenerator dumpPathAndGetMtime(Path path, time_t & mtime)
 {
-    co_yield narVersionMagic1;
-    co_yield std::visit(
-        [](auto i) -> WireFormatGenerator { co_yield dump(std::move(i)); },
-        list(path, mtime, defaultPathFilter, true)
-    );
+    co_yield dump(list(path, mtime, defaultPathFilter, true));
 }
 
 WireFormatGenerator dumpPath(Path path, PathFilter & filter)
@@ -203,9 +207,7 @@ struct UnfilteredDump : PreparedDump
     WireFormatGenerator dump() const override
     {
         time_t ignored;
-        auto all = list(rootPath, ignored, defaultPathFilter, true);
-        co_yield narVersionMagic1;
-        co_yield std::visit([](auto & i) { return nix::dump(std::move(i)); }, all);
+        co_yield nar::dump(list(rootPath, ignored, defaultPathFilter, true));
     }
 };
 
@@ -286,10 +288,7 @@ struct PrefilteredDump : PreparedDump
 
     WireFormatGenerator dump() const override
     {
-        co_yield narVersionMagic1;
-        co_yield std::visit(
-            [](auto i) { return nix::dump(std::move(i)); }, convert(rootPath, root)
-        );
+        return nar::dump(convert(rootPath, root));
     }
 };
 
@@ -744,10 +743,8 @@ WireFormatGenerator copyNAR(Source & source)
     // we should just forward all data directly without parsing.
 
     auto items = nar::parse(source);
-    co_yield narVersionMagic1;
-    while (auto e = items.next()) {
-        co_yield std::visit([](auto & i) { return dump(std::move(i)); }, *e);
-    }
+    co_yield dump(*items.next());
+    assert(!items.next().has_value());
 }
 
 }
