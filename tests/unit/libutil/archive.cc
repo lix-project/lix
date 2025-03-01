@@ -199,6 +199,15 @@ TEST_P(NarTest, parse)
     }
 }
 
+TEST_P(NarTest, copy)
+{
+    auto & [raw, _] = GetParam();
+    StringSource source(raw);
+
+    auto copied = GeneratorSource(copyNAR(source)).drain();
+    ASSERT_EQ(raw, copied);
+}
+
 INSTANTIATE_TEST_SUITE_P(
     ,
     NarTest,
