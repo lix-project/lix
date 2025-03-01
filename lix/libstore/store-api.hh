@@ -315,9 +315,10 @@ public:
      *
      * @return the store path to which srcPath is to be copied.
      */
-    StorePath computeStorePathForPath(std::string_view name,
-        const Path & srcPath, FileIngestionMethod method = FileIngestionMethod::Recursive,
-        PathFilter & filter = defaultPathFilter) const;
+    StorePath computeStorePathForPathRecursive(
+        std::string_view name, const Path & srcPath, PathFilter & filter = defaultPathFilter
+    ) const;
+    StorePath computeStorePathForPathFlat(std::string_view name, const Path & srcPath) const;
 
     /**
      * Preparatory part of addTextToStore().

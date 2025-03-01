@@ -246,15 +246,22 @@ StorePath Store::makeFixedOutputPathFromCA(std::string_view name, const ContentA
 }
 
 
-StorePath Store::computeStorePathForPath(std::string_view name,
-    const Path & srcPath, FileIngestionMethod method, PathFilter & filter) const
+StorePath Store::computeStorePathForPathRecursive(std::string_view name,
+    const Path & srcPath, PathFilter & filter) const
 {
-    Hash h = method == FileIngestionMethod::Recursive
-        ? hashPath(HashType::SHA256, srcPath, filter).first
-        : hashFile(HashType::SHA256, srcPath);
     FixedOutputInfo caInfo {
-        .method = method,
-        .hash = h,
+        .method = FileIngestionMethod::Recursive,
+        .hash = hashPath(HashType::SHA256, srcPath, filter).first,
+        .references = {},
+    };
+    return makeFixedOutputPath(name, caInfo);
+}
+
+StorePath Store::computeStorePathForPathFlat(std::string_view name, const Path & srcPath) const
+{
+    FixedOutputInfo caInfo {
+        .method = FileIngestionMethod::Flat,
+        .hash = hashFile(HashType::SHA256, srcPath),
         .references = {},
     };
     return makeFixedOutputPath(name, caInfo);

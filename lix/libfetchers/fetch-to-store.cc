@@ -15,11 +15,20 @@ try {
     Activity act(*logger, lvlChatty, actUnknown, fmt("copying '%s' to the store", path));
 
     auto filter2 = filter ? *filter : defaultPathFilter;
+    auto physicalPath = path.canonical().abs();
 
-    co_return
-        settings.readOnlyMode
-        ? store.computeStorePathForPath(name, path.canonical().abs(), method, filter2)
-        : TRY_AWAIT(store.addToStore(name, path.canonical().abs(), method, HashType::SHA256, filter2, repair));
+    if (settings.readOnlyMode) {
+        switch (method) {
+        case FileIngestionMethod::Recursive:
+            co_return store.computeStorePathForPathRecursive(name, physicalPath, filter2);
+        case FileIngestionMethod::Flat:
+            co_return store.computeStorePathForPathFlat(name, physicalPath);
+        }
+    } else {
+        co_return TRY_AWAIT(
+            store.addToStore(name, physicalPath, method, HashType::SHA256, filter2, repair)
+        );
+    }
 } catch (...) {
     co_return result::current_exception();
 }
