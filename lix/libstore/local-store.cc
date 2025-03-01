@@ -1214,16 +1214,6 @@ try {
 
     /* In case we are not interested in reading the NAR: discard it. */
     bool narRead = false;
-    Finally cleanup = [&]() {
-        if (!narRead) {
-            try {
-                auto copy = copyNAR(source);
-                while (copy.next()) {}
-            } catch (...) {
-                ignoreExceptionExceptInterrupt();
-            }
-        }
-    };
 
     TRY_AWAIT(addTempRoot(info.path));
 
@@ -1285,6 +1275,11 @@ try {
 
             registerValidPath(info);
         }
+    }
+
+    if (!narRead) {
+        auto copy = copyNAR(source);
+        while (copy.next()) {}
     }
     co_return result::success();
 } catch (...) {
