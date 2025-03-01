@@ -5,6 +5,7 @@
 #include "lix/libstore/nar-info-disk-cache.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/box_ptr.hh"
+#include "lix/libutil/hash.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/sync.hh"
@@ -245,18 +246,18 @@ StorePath Store::makeFixedOutputPathFromCA(std::string_view name, const ContentA
 }
 
 
-std::pair<StorePath, Hash> Store::computeStorePathForPath(std::string_view name,
-    const Path & srcPath, FileIngestionMethod method, HashType hashAlgo, PathFilter & filter) const
+StorePath Store::computeStorePathForPath(std::string_view name,
+    const Path & srcPath, FileIngestionMethod method, PathFilter & filter) const
 {
     Hash h = method == FileIngestionMethod::Recursive
-        ? hashPath(hashAlgo, srcPath, filter).first
-        : hashFile(hashAlgo, srcPath);
+        ? hashPath(HashType::SHA256, srcPath, filter).first
+        : hashFile(HashType::SHA256, srcPath);
     FixedOutputInfo caInfo {
         .method = method,
         .hash = h,
         .references = {},
     };
-    return std::make_pair(makeFixedOutputPath(name, caInfo), h);
+    return makeFixedOutputPath(name, caInfo);
 }
 
 

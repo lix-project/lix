@@ -313,12 +313,11 @@ public:
     /**
      * Preparatory part of addToStore().
      *
-     * @return the store path to which srcPath is to be copied
-     * and the cryptographic hash of the contents of srcPath.
+     * @return the store path to which srcPath is to be copied.
      */
-    std::pair<StorePath, Hash> computeStorePathForPath(std::string_view name,
+    StorePath computeStorePathForPath(std::string_view name,
         const Path & srcPath, FileIngestionMethod method = FileIngestionMethod::Recursive,
-        HashType hashAlgo = HashType::SHA256, PathFilter & filter = defaultPathFilter) const;
+        PathFilter & filter = defaultPathFilter) const;
 
     /**
      * Preparatory part of addTextToStore().
