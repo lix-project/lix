@@ -242,8 +242,8 @@ try {
         return files.count(file);
     };
 
-    auto storePath = TRY_AWAIT(store->addToStore(
-        input.getName(), actualPath, FileIngestionMethod::Recursive, HashType::SHA256, filter
+    auto storePath = TRY_AWAIT(store->addToStoreRecursive(
+        input.getName(), actualPath, HashType::SHA256, filter
     ));
 
     // FIXME: maybe we should use the timestamp of the last
@@ -770,9 +770,8 @@ struct GitInputScheme : InputScheme
             unpackTarfile(*proc.getStdout(), tmpDir);
         }
 
-        auto storePath = TRY_AWAIT(store->addToStore(
-            name, tmpDir, FileIngestionMethod::Recursive, HashType::SHA256, filter
-        ));
+        auto storePath =
+            TRY_AWAIT(store->addToStoreRecursive(name, tmpDir, HashType::SHA256, filter));
 
         auto lastModified = std::stoull(runProgram("git", true, { "-C", repoDir, "--git-dir", gitDir, "log", "-1", "--format=%ct", "--no-show-signature", input.getRev()->gitRev() }));
 

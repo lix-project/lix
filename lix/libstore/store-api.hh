@@ -526,12 +526,16 @@ public:
      * @param filter This function can be used to exclude files (see
      * libutil/archive.hh).
      */
-    virtual kj::Promise<Result<StorePath>> addToStore(
+    virtual kj::Promise<Result<StorePath>> addToStoreRecursive(
         std::string_view name,
         const Path & srcPath,
-        FileIngestionMethod method = FileIngestionMethod::Recursive,
         HashType hashAlgo = HashType::SHA256,
         PathFilter & filter = defaultPathFilter,
+        RepairFlag repair = NoRepair);
+    virtual kj::Promise<Result<StorePath>> addToStoreFlat(
+        std::string_view name,
+        const Path & srcPath,
+        HashType hashAlgo = HashType::SHA256,
         RepairFlag repair = NoRepair);
 
     /**

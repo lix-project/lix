@@ -376,10 +376,31 @@ std::shared_ptr<const ValidPathInfo> BinaryCacheStore::queryPathInfoUncached(con
     return std::make_shared<NarInfo>(*this, *data, narInfoFile);
 }
 
-kj::Promise<Result<StorePath>> BinaryCacheStore::addToStore(
+static ValidPathInfo makeAddToStoreInfo(
+    HashResult nar, Store & store, FileIngestionMethod method, std::string_view name, Hash h
+)
+{
+    ValidPathInfo info{
+        store,
+        name,
+        FixedOutputInfo {
+            .method = method,
+            .hash = h,
+            .references = {
+                .others = {},
+                // caller is not capable of creating a self-reference, because this is content-addressed without modulus
+                .self = false,
+            },
+        },
+        nar.first,
+    };
+    info.narSize = nar.second;
+    return info;
+}
+
+kj::Promise<Result<StorePath>> BinaryCacheStore::addToStoreRecursive(
     std::string_view name,
     const Path & srcPath,
-    FileIngestionMethod method,
     HashType hashAlgo,
     PathFilter & filter,
     RepairFlag repair)
@@ -389,31 +410,34 @@ try {
        implementation of this method in terms of addToStoreFromDump. */
 
     HashSink sink { hashAlgo };
-    if (method == FileIngestionMethod::Recursive) {
-        sink << dumpPath(srcPath, filter);
-    } else {
-        sink << readFileSource(srcPath);
-    }
+    sink << dumpPath(srcPath, filter);
     auto h = sink.finish().first;
 
     auto source = GeneratorSource{dumpPath(srcPath, filter)};
     co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
-        ValidPathInfo info {
-            *this,
-            name,
-            FixedOutputInfo {
-                .method = method,
-                .hash = h,
-                .references = {
-                    .others = {},
-                    // caller is not capable of creating a self-reference, because this is content-addressed without modulus
-                    .self = false,
-                },
-            },
-            nar.first,
-        };
-        info.narSize = nar.second;
-        return info;
+        return makeAddToStoreInfo(nar, *this, FileIngestionMethod::Recursive, name, h);
+    }))->path;
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<StorePath>> BinaryCacheStore::addToStoreFlat(
+    std::string_view name,
+    const Path & srcPath,
+    HashType hashAlgo,
+    RepairFlag repair)
+try {
+    /* FIXME: Make BinaryCacheStore::addToStoreCommon support
+       non-recursive+sha256 so we can just use the default
+       implementation of this method in terms of addToStoreFromDump. */
+
+    HashSink sink { hashAlgo };
+    sink << readFileSource(srcPath);
+    auto h = sink.finish().first;
+
+    auto source = GeneratorSource{dumpPath(srcPath)};
+    co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
+        return makeAddToStoreInfo(nar, *this, FileIngestionMethod::Flat, name, h);
     }))->path;
 } catch (...) {
     co_return result::current_exception();

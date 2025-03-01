@@ -293,8 +293,10 @@ int checkSignature(SV * publicKey_, SV * sig_, char * msg)
 SV * addToStore(char * srcPath, int recursive, char * algo)
     PPCODE:
         try {
-            auto method = recursive ? FileIngestionMethod::Recursive : FileIngestionMethod::Flat;
-            auto path = aio().blockOn(store()->addToStore(std::string(baseNameOf(srcPath)), srcPath, method, parseHashType(algo)));
+            auto hash = parseHashType(algo);
+            auto path = aio().blockOn(recursive
+                ? store()->addToStoreRecursive(std::string(baseNameOf(srcPath)), srcPath, hash)
+                : store()->addToStoreFlat(std::string(baseNameOf(srcPath)), srcPath, hash));
             XPUSHs(sv_2mortal(newSVpv(store()->printStorePath(path).c_str(), 0)));
         } catch (Error & e) {
             croak("%s", e.what());

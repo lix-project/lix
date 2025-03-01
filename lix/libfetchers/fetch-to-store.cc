@@ -25,9 +25,14 @@ try {
             co_return store.computeStorePathForPathFlat(name, physicalPath);
         }
     } else {
-        co_return TRY_AWAIT(
-            store.addToStore(name, physicalPath, method, HashType::SHA256, filter2, repair)
-        );
+        switch (method) {
+        case FileIngestionMethod::Recursive:
+            co_return TRY_AWAIT(
+                store.addToStoreRecursive(name, physicalPath, HashType::SHA256, filter2, repair)
+            );
+        case FileIngestionMethod::Flat:
+            co_return TRY_AWAIT(store.addToStoreFlat(name, physicalPath, HashType::SHA256, repair));
+        }
     }
 } catch (...) {
     co_return result::current_exception();

@@ -161,14 +161,9 @@ try {
             throw nix::Error("tarball '%s' contains an unexpected number of top-level files", url);
         auto topDir = tmpDir + "/" + members.begin()->name;
         lastModified = lstat(topDir).st_mtime;
-        unpackedStorePath = TRY_AWAIT(store->addToStore(
-            name,
-            topDir,
-            FileIngestionMethod::Recursive,
-            HashType::SHA256,
-            defaultPathFilter,
-            NoRepair
-        ));
+        unpackedStorePath = TRY_AWAIT(
+            store->addToStoreRecursive(name, topDir, HashType::SHA256, defaultPathFilter, NoRepair)
+        );
     }
 
     Attrs infoAttrs({

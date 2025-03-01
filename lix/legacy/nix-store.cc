@@ -183,7 +183,9 @@ static void opAdd(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     for (auto & i : opArgs) {
         cout << fmt(
             "%s\n",
-            store->printStorePath(aio.blockOn(store->addToStore(std::string(baseNameOf(i)), i)))
+            store->printStorePath(
+                aio.blockOn(store->addToStoreRecursive(std::string(baseNameOf(i)), i))
+            )
         );
     }
 }

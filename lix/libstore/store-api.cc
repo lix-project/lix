@@ -280,20 +280,33 @@ StorePath Store::computeStorePathForText(
 }
 
 
-kj::Promise<Result<StorePath>> Store::addToStore(
+kj::Promise<Result<StorePath>> Store::addToStoreRecursive(
     std::string_view name,
     const Path & _srcPath,
-    FileIngestionMethod method,
     HashType hashAlgo,
     PathFilter & filter,
     RepairFlag repair)
 try {
     Path srcPath(absPath(_srcPath));
-    auto source = GeneratorSource{
-        method == FileIngestionMethod::Recursive ? dumpPath(srcPath, filter).decay()
-                                                 : readFileSource(srcPath)
-    };
-    co_return TRY_AWAIT(addToStoreFromDump(source, name, method, hashAlgo, repair, {}));
+    auto source = GeneratorSource{dumpPath(srcPath, filter)};
+    co_return TRY_AWAIT(
+        addToStoreFromDump(source, name, FileIngestionMethod::Recursive, hashAlgo, repair, {})
+    );
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<StorePath>> Store::addToStoreFlat(
+    std::string_view name,
+    const Path & _srcPath,
+    HashType hashAlgo,
+    RepairFlag repair)
+try {
+    Path srcPath(absPath(_srcPath));
+    auto source = GeneratorSource{readFileSource(srcPath)};
+    co_return TRY_AWAIT(
+        addToStoreFromDump(source, name, FileIngestionMethod::Flat, hashAlgo, repair, {})
+    );
 } catch (...) {
     co_return result::current_exception();
 }

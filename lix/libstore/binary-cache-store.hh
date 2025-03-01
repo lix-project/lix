@@ -119,12 +119,16 @@ public:
     kj::Promise<Result<StorePath>> addToStoreFromDump(Source & dump, std::string_view name,
         FileIngestionMethod method, HashType hashAlgo, RepairFlag repair, const StorePathSet & references) override;
 
-    kj::Promise<Result<StorePath>> addToStore(
+    kj::Promise<Result<StorePath>> addToStoreRecursive(
         std::string_view name,
         const Path & srcPath,
-        FileIngestionMethod method,
         HashType hashAlgo,
         PathFilter & filter,
+        RepairFlag repair) override;
+    kj::Promise<Result<StorePath>> addToStoreFlat(
+        std::string_view name,
+        const Path & srcPath,
+        HashType hashAlgo,
         RepairFlag repair) override;
 
     kj::Promise<Result<StorePath>> addTextToStore(

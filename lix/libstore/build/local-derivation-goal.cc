@@ -1081,14 +1081,20 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
     std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override
     { throw Error("queryPathFromHashPart"); }
 
-    kj::Promise<Result<StorePath>> addToStore(
+    kj::Promise<Result<StorePath>> addToStoreRecursive(
         std::string_view name,
         const Path & srcPath,
-        FileIngestionMethod method,
         HashType hashAlgo,
         PathFilter & filter,
         RepairFlag repair) override
-    try { throw Error("addToStore"); } catch (...) { return {result::current_exception()}; }
+    try { throw Error("addToStoreRecursive"); } catch (...) { return {result::current_exception()}; }
+
+    kj::Promise<Result<StorePath>> addToStoreFlat(
+        std::string_view name,
+        const Path & srcPath,
+        HashType hashAlgo,
+        RepairFlag repair) override
+    try { throw Error("addToStoreFlat"); } catch (...) { return {result::current_exception()}; }
 
     kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & narSource,
         RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs) override
