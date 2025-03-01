@@ -387,70 +387,13 @@ try {
     co_return result::current_exception();
 }
 
-namespace {
-/**
- * If the NAR archive contains a single file at top-level, then save
- * the contents of the file to `s`.  Otherwise assert.
- */
-struct RetrieveRegularNARVisitor : NARParseVisitor
-{
-    struct MyFileHandle : public FileHandle
-    {
-        Sink & sink;
-
-        void receiveContents(std::string_view data) override
-        {
-            sink(data);
-        }
-
-        void close() override {}
-
-        MyFileHandle(Sink & sink) : sink(sink) {}
-    };
-
-    Sink & sink;
-
-    RetrieveRegularNARVisitor(Sink & sink) : sink(sink) { }
-
-    box_ptr<FileHandle> createRegularFile(const std::string & name, uint64_t size, bool executable) override
-    {
-        return make_box_ptr<MyFileHandle>(sink);
-    }
-
-    box_ptr<NARParseVisitor> createDirectory(const std::string & name) override
-    {
-        throw Error("cannot import directory using flat ingestion");
-    }
-
-    void createSymlink(const std::string & name, const std::string & target) override
-    {
-        throw Error("cannot import symlink using flat ingestion");
-    }
-};
-}
-
 /*
 The aim of this function is to compute in one pass the correct ValidPathInfo for
 the files that we are trying to add to the store. To accomplish that in one
 pass, given the different kind of inputs that we can take (normal nar archives,
-nar archives with non SHA-256 hashes, and flat files), we set up a net of sinks
-and aliases. Also, since the dataflow is obfuscated by this, we include here a
-graphviz diagram:
-
-digraph graphname {
-    node [shape=box]
-    fileSource -> narSink
-    narSink [style=dashed]
-    narSink -> unsualHashTee [style = dashed, label = "Recursive && !SHA-256"]
-    narSink -> narHashSink [style = dashed, label = "else"]
-    unsualHashTee -> narHashSink
-    unsualHashTee -> caHashSink
-    fileSource -> parseSink
-    parseSink [style=dashed]
-    parseSink-> fileSink [style = dashed, label = "Flat"]
-    parseSink -> blank [style = dashed, label = "Recursive"]
-    fileSink -> caHashSink
-}
+nar archives with non SHA-256 hashes, and flat files), we use a passthru generator
+to always pass data to narHashSink (to compute the NAR hash) and have our handlers
+for various ingestion types and hash algorithms pass data to hash sinks as needed.
 */
 kj::Promise<Result<ValidPathInfo>> Store::addToStoreSlow(std::string_view name, const Path & srcPath,
     FileIngestionMethod method, HashType hashAlgo,
@@ -459,32 +402,41 @@ try {
     HashSink narHashSink { HashType::SHA256 };
     HashSink caHashSink { hashAlgo };
 
-    /* Note that fileSink and unusualHashTee must be mutually exclusive, since
-       they both write to caHashSink. Note that that requisite is currently true
-       because the former is only used in the flat case. */
-    RetrieveRegularNARVisitor fileSink { caHashSink };
-    TeeSink unusualHashTee { narHashSink, caHashSink };
+    GeneratorSource nar{[](auto nar, auto & narHashSink) -> WireFormatGenerator {
+        while (auto block = nar.next()) {
+            narHashSink({block->data(), block->size()});
+            co_yield *block;
+        }
+    }(dumpPath(srcPath), narHashSink)};
 
-    auto & narSink = method == FileIngestionMethod::Recursive && hashAlgo != HashType::SHA256
-        ? static_cast<Sink &>(unusualHashTee)
-        : narHashSink;
-
-    /* Functionally, this means that fileSource will yield the content of
-       srcPath. The fact that we use scratchpadSink as a temporary buffer here
-       is an implementation detail. */
-    auto fileSource = GeneratorSource{dumpPath(srcPath)};
-
-    /* tapped provides the same data as fileSource, but we also write all the
-       information to narSink. */
-    TeeSource tapped { fileSource, narSink };
-
-    // the information flows from tapped into narSink. we only check that the
+    // information always flows from nar to hashSinks. we only check that the
     // nar is correct, and during flat ingestion contains only a single file.
     if (method == FileIngestionMethod::Flat) {
-        parseDump(fileSink, tapped);
+        auto parsed = nar::parse(nar);
+        auto entry = parsed.next();
+        // if the path was inaccessible we'd get an error from dumpPath
+        assert(entry.has_value());
+        std::visit(
+            overloaded{
+                [&](nar::File & f) {
+                    while (auto block = f.contents.next()) {
+                        caHashSink({block->data(), block->size()});
+                    }
+                },
+                [](nar::Symlink &) { throw Error("cannot import symlink using flat ingestion"); },
+                [](nar::Directory &) {
+                    throw Error("cannot import directory using flat ingestion");
+                },
+            },
+            *entry
+        );
+        // drain internal state through the tee as well
+        while (parsed.next()) {}
+    } else if (hashAlgo != HashType::SHA256) {
+        nar.drainInto(caHashSink);
     } else {
-        auto copy = copyNAR(tapped);
-        while (copy.next()) {}
+        NullSink null;
+        nar.drainInto(null);
     }
 
     /* We extract the result of the computation from the sink by calling
