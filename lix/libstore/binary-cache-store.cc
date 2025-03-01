@@ -382,8 +382,7 @@ kj::Promise<Result<StorePath>> BinaryCacheStore::addToStore(
     FileIngestionMethod method,
     HashType hashAlgo,
     PathFilter & filter,
-    RepairFlag repair,
-    const StorePathSet & references)
+    RepairFlag repair)
 try {
     /* FIXME: Make BinaryCacheStore::addToStoreCommon support
        non-recursive+sha256 so we can just use the default
@@ -406,7 +405,7 @@ try {
                 .method = method,
                 .hash = h,
                 .references = {
-                    .others = references,
+                    .others = {},
                     // caller is not capable of creating a self-reference, because this is content-addressed without modulus
                     .self = false,
                 },

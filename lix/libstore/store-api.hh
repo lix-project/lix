@@ -531,8 +531,7 @@ public:
         FileIngestionMethod method = FileIngestionMethod::Recursive,
         HashType hashAlgo = HashType::SHA256,
         PathFilter & filter = defaultPathFilter,
-        RepairFlag repair = NoRepair,
-        const StorePathSet & references = StorePathSet());
+        RepairFlag repair = NoRepair);
 
     /**
      * Copy the contents of a path to the store and register the

@@ -1087,8 +1087,7 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         FileIngestionMethod method,
         HashType hashAlgo,
         PathFilter & filter,
-        RepairFlag repair,
-        const StorePathSet & references) override
+        RepairFlag repair) override
     try { throw Error("addToStore"); } catch (...) { return {result::current_exception()}; }
 
     kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & narSource,

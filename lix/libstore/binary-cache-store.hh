@@ -125,8 +125,7 @@ public:
         FileIngestionMethod method,
         HashType hashAlgo,
         PathFilter & filter,
-        RepairFlag repair,
-        const StorePathSet & references) override;
+        RepairFlag repair) override;
 
     kj::Promise<Result<StorePath>> addTextToStore(
         std::string_view name,

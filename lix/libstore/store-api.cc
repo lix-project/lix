@@ -279,15 +279,14 @@ kj::Promise<Result<StorePath>> Store::addToStore(
     FileIngestionMethod method,
     HashType hashAlgo,
     PathFilter & filter,
-    RepairFlag repair,
-    const StorePathSet & references)
+    RepairFlag repair)
 try {
     Path srcPath(absPath(_srcPath));
     auto source = GeneratorSource{
         method == FileIngestionMethod::Recursive ? dumpPath(srcPath, filter).decay()
                                                  : readFileSource(srcPath)
     };
-    co_return TRY_AWAIT(addToStoreFromDump(source, name, method, hashAlgo, repair, references));
+    co_return TRY_AWAIT(addToStoreFromDump(source, name, method, hashAlgo, repair, {}));
 } catch (...) {
     co_return result::current_exception();
 }

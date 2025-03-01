@@ -268,8 +268,7 @@ struct LegacySSHStore final : public Store
         FileIngestionMethod method,
         HashType hashAlgo,
         PathFilter & filter,
-        RepairFlag repair,
-        const StorePathSet & references) override
+        RepairFlag repair) override
     try { unsupported("addToStore"); } catch (...) { return {result::current_exception()}; }
 
     kj::Promise<Result<StorePath>> addTextToStore(
