@@ -43,7 +43,8 @@ queryIsCached(nix::Store &store,
 
 /* The fields of a derivation that are printed in json form */
 Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
-         MyArgs &args) {
+         MyArgs &args, std::optional<Constituents> constituents)
+    : constituents(constituents) {
 
     auto localStore = state.ctx.store.dynamic_pointer_cast<nix::LocalFSStore>();
 
@@ -128,7 +129,29 @@ void to_json(nlohmann::json &json, const Drv &drv) {
         json["meta"] = drv.meta.value();
     }
 
+    if (auto constituents = drv.constituents) {
+        json["constituents"] = constituents->constituents;
+        json["namedConstituents"] = constituents->namedConstituents;
+    }
+
     if (drv.cacheStatus != Drv::CacheStatus::Unknown) {
         json["isCached"] = drv.cacheStatus == Drv::CacheStatus::Cached;
+    }
+}
+
+void register_gc_root(nix::Path &gcRootsDir, std::string &drvPath, const nix::ref<nix::Store> &store,
+                      nix::AsyncIoRoot &aio) {
+    if (!gcRootsDir.empty()) {
+        nix::Path root =
+            gcRootsDir + "/" +
+            std::string(nix::baseNameOf(drvPath));
+        if (!nix::pathExists(root)) {
+            auto localStore =
+                store
+                    .dynamic_pointer_cast<nix::LocalFSStore>();
+            auto storePath =
+                localStore->parseStorePath(drvPath);
+            aio.blockOn(localStore->addPermRoot(storePath, root));
+        }
     }
 }

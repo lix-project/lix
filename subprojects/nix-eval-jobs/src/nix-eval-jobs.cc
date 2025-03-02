@@ -38,6 +38,7 @@
 #include <utility>
 #include <vector>
 
+#include "constituents.hh"
 #include "eval-args.hh"
 #include "buffered-io.hh"
 #include "worker.hh"
@@ -153,6 +154,7 @@ struct State {
     std::set<json> todo = json::array({json::array()});
     std::set<json> active;
     std::exception_ptr exc;
+    std::map<std::string, nlohmann::json> jobs;
 };
 
 void handleBrokenWorkerPipe(Proc &proc, std::string_view msg) {
@@ -313,7 +315,12 @@ void collector(MyArgs &myArgs, Sync<State> &state_,
                 }
             } else {
                 auto state(state_.lock());
-                std::cout << respString << "\n" << std::flush;
+                state->jobs.insert_or_assign(response["attr"], response);
+                auto named = response.find("namedConstituents");
+                if (named == response.end() || named->empty()) {
+                    response.erase("namedConstituents");
+                    std::cout << response.dump() << "\n" << std::flush;
+                }
             }
 
             proc_ = std::move(proc);
@@ -392,5 +399,37 @@ int main(int argc, char **argv) {
 
         if (state->exc)
             std::rethrow_exception(state->exc);
+
+        if (myArgs.constituents) {
+            auto store = aio.blockOn(myArgs.evalStoreUrl
+                                         ? nix::openStore(*myArgs.evalStoreUrl)
+                                         : nix::openStore());
+            std::visit(
+                nix::overloaded{
+                    [&](const std::vector<AggregateJob> &namedConstituents) {
+                        rewriteAggregates(state->jobs, namedConstituents, store,
+                                          myArgs.gcRootsDir, aio);
+                    },
+                    [&](const DependencyCycle &e) {
+                        nix::logger->log(nix::lvlError,
+                                         nix::fmt("Found dependency cycle "
+                                                  "between jobs '%s' and '%s'",
+                                                  e.a, e.b));
+                        state->jobs[e.a]["error"] = e.message();
+                        state->jobs[e.b]["error"] = e.message();
+
+                        std::cout << state->jobs[e.a].dump() << "\n"
+                                  << state->jobs[e.b].dump() << "\n";
+
+                        for (const auto &jobName : e.remainingAggregates) {
+                            state->jobs[jobName]["error"] =
+                                "Skipping aggregate because of a dependency "
+                                "cycle";
+                            std::cout << state->jobs[jobName].dump() << "\n";
+                        }
+                    },
+                },
+                resolveNamedConstituents(state->jobs));
+        }
     });
 }

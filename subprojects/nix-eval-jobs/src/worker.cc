@@ -74,6 +74,53 @@ static std::string attrPathJoin(nlohmann::json input) {
                            });
 }
 
+static std::optional<Constituents>
+readConstituents(const nix::Value *v, nix::box_ptr<nix::EvalState> &state,
+                 nix::ref<nix::eval_cache::CachingEvaluator> &evaluator) {
+    auto a = v->attrs->get(state->ctx.symbols.create("_hydraAggregate"));
+    if (a && state->forceBool(*a->value, a->pos,
+                              "while evaluating the "
+                              "`_hydraAggregate` attribute")) {
+        std::vector<std::string> constituents;
+        std::vector<std::string> namedConstituents;
+        auto a = v->attrs->get(state->ctx.symbols.create("constituents"));
+        if (!a)
+            state->ctx.errors
+                .make<nix::EvalError>("derivation must have a ‘constituents’ "
+                                      "attribute")
+                .debugThrow();
+
+        nix::NixStringContext context;
+        state->coerceToString(a->pos, *a->value, context,
+                              "while evaluating the `constituents` attribute",
+                              true, false);
+        for (auto &c : context)
+            std::visit(nix::overloaded{
+                           [&](const nix::NixStringContextElem::Built &b) {
+                               constituents.push_back(
+                                   b.drvPath->to_string(*evaluator->store));
+                           },
+                           [&](const nix::NixStringContextElem::Opaque &) {},
+                           [&](const nix::NixStringContextElem::DrvDeep &) {},
+                       },
+                       c.raw);
+
+        state->forceList(*a->value, a->pos,
+                         "while evaluating the "
+                         "`constituents` attribute");
+        for (unsigned int n = 0; n < a->value->listSize(); ++n) {
+            auto v = a->value->listElems()[n];
+            state->forceValue(*v, nix::noPos);
+            if (v->type() == nix::nString)
+                namedConstituents.push_back(v->string.s);
+        }
+
+        return Constituents(constituents, namedConstituents);
+    }
+
+    return std::nullopt;
+}
+
 void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
             nix::Bindings &autoArgs, nix::AutoCloseFD &to,
             nix::AutoCloseFD &from, MyArgs &args, nix::AsyncIoRoot &aio) {
@@ -128,25 +175,19 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
 
             if (v->type() == nix::nAttrs) {
                 if (auto drvInfo = nix::getDerivation(*state, *v, false)) {
-                    auto drv = Drv(attrPathS, *state, *drvInfo, args);
+                    std::optional<Constituents> maybeConstituents;
+                    if (args.constituents) {
+                        maybeConstituents =
+                            readConstituents(v, state, evaluator);
+                    }
+                    auto drv = Drv(attrPathS, *state, *drvInfo, args,
+                                   maybeConstituents);
                     reply.update(drv);
 
                     /* Register the derivation as a GC root.  !!! This
                        registers roots for jobs that we may have already
                        done. */
-                    if (args.gcRootsDir != "") {
-                        nix::Path root =
-                            args.gcRootsDir + "/" +
-                            std::string(nix::baseNameOf(drv.drvPath));
-                        if (!nix::pathExists(root)) {
-                            auto localStore =
-                                evaluator->store
-                                    .dynamic_pointer_cast<nix::LocalFSStore>();
-                            auto storePath =
-                                localStore->parseStorePath(drv.drvPath);
-                            aio.blockOn(localStore->addPermRoot(storePath, root));
-                        }
-                    }
+                    register_gc_root(args.gcRootsDir, drv.drvPath, evaluator->store, aio);
                 } else {
                     auto attrs = nlohmann::json::array();
                     bool recurse =
