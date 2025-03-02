@@ -18,6 +18,7 @@ echo "$missingImpureErrorMsg" | grepQuiet -- --impure || \
 (! nix eval --expr builtins.currentSystem)
 
 (! nix-instantiate --pure-eval ./simple.nix)
+(! nix eval --expr 'builtins.readDir "/"')
 
 [[ $(nix eval --impure --expr "(import (builtins.fetchurl { url = \"file://$(pwd)/pure-eval.nix\"; })).x") == 123 ]]
 (! nix eval --expr "(import (builtins.fetchurl { url = \"file://$(pwd)/pure-eval.nix\"; })).x")
