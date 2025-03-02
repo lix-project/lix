@@ -16,9 +16,9 @@
 }:
 let
   layerContents = with pkgs; [
-    # pulls in glibc and openssl, about 60MB
+    # Pulls in glibc and openssl, about 60MB
     { contents = [ coreutils-full ]; }
-    # some stuff that is low in the closure graph and small ish, mostly to make
+    # Some stuff that is low in the closure graph and small ish, mostly to make
     # incremental lix updates cheaper
     {
       contents = [
