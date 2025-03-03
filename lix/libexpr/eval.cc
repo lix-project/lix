@@ -2,6 +2,7 @@
 #include "lix/libexpr/eval-settings.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/error.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libexpr/primops.hh"
 #include "lix/libexpr/print-options.hh"
@@ -2827,9 +2828,8 @@ try {
                 store, EvalSettings::resolvePseudoUrl(value), "source", false)).tree.storePath;
             res = { store->toRealPath(storePath) };
         } catch (FileTransferError & e) {
-            logWarning({
-                .msg = HintFmt("Nix search path entry '%1%' cannot be downloaded, ignoring", value)
-            });
+            e.addTrace(nullptr, "while downloading %s to satisfy NIX_PATH lookup, ignoring search path entry", value);
+            logWarning(e.info());
             res = std::nullopt;
         }
     }
