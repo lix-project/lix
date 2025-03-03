@@ -72,6 +72,11 @@ public:
     }
 
     box_ptr(box_ptr<T> & other) = delete;
+
+    std::unique_ptr<T> take() &&
+    {
+        return std::move(inner);
+    }
 };
 
 template<typename T>
