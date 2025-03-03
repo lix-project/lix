@@ -1005,6 +1005,15 @@ void restorePath(const Path & path, Source & source)
     parseDump(sink, source);
 }
 
+kj::Promise<Result<void>> restorePath(const Path & path, AsyncInputStream & source)
+try {
+    NARRestoreVisitor sink(path);
+    TRY_AWAIT(parseDump(sink, source));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
 
 WireFormatGenerator copyNAR(Source & source)
 {
