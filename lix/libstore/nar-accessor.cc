@@ -196,4 +196,40 @@ json listNar(ref<FSAccessor> accessor, const Path & path, bool recurse)
     return obj;
 }
 
+static nlohmann::json listNar(const nar_index::Entry & e, Path path)
+{
+    json obj = json::object();
+
+    auto handlers = overloaded{
+        [&](const nar_index::File & f) {
+            obj["type"] = "regular";
+            obj["size"] = f.size;
+            if (f.executable)
+                obj["executable"] = true;
+            if (f.offset)
+                obj["narOffset"] = f.offset;
+        },
+        [&](const nar_index::Symlink & s) {
+            obj["type"] = "symlink";
+            obj["target"] = s.target;
+        },
+        [&](const nar_index::Directory & d) {
+            obj["type"] = "directory";
+            obj["entries"] = json::object();
+            json & res2 = obj["entries"];
+            for (auto & [name, entry] : d.contents) {
+                res2[name] = listNar(entry, path + "/" + name);
+            }
+        },
+    };
+    std::visit(handlers, e);
+
+    return obj;
+}
+
+nlohmann::json listNar(const nar_index::Entry & nar)
+{
+    return listNar(nar, "");
+}
+
 }

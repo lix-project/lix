@@ -2,6 +2,7 @@
 ///@file
 
 #include "lix/libstore/fs-accessor.hh"
+#include "lix/libutil/archive.hh"
 #include "lix/libutil/ref.hh"
 
 #include <functional>
@@ -37,5 +38,6 @@ ref<FSAccessor> makeLazyNarAccessor(
  * contents).
  */
 nlohmann::json listNar(ref<FSAccessor> accessor, const Path & path, bool recurse);
+nlohmann::json listNar(const nar_index::Entry & nar);
 
 }
