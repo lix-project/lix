@@ -7,140 +7,46 @@
 #include <algorithm>
 
 #include <nlohmann/json.hpp>
+#include <variant>
 
 namespace nix {
-
-struct NarMember
-{
-    FSAccessor::Type type = FSAccessor::Type::tMissing;
-
-    bool isExecutable = false;
-
-    /* If this is a regular file, position of the contents of this
-       file in the NAR. */
-    uint64_t start = 0, size = 0;
-
-    std::string target = {};
-
-    /* If this is a directory, all the children of the directory. */
-    std::map<std::string, NarMember> children = {};
-};
 
 struct NarAccessor : public FSAccessor
 {
     std::optional<const std::string> nar;
-
+    nar_index::Entry root;
     GetNarBytes getNarBytes;
-
-    NarMember root;
-
-    struct NarSource : Source
-    {
-        Source & source;
-        uint64_t pos = 0;
-
-        NarSource(Source & source) : source(source) {}
-
-        size_t read(char * data, size_t len) override
-        {
-            auto n = source.read(data, len);
-            pos += n;
-            return n;
-        }
-    };
-
-    struct NarIndexer : NARParseVisitor
-    {
-        NarAccessor & acc;
-        NarSource & source;
-
-        NarMember * parent;
-
-    public:
-        NarIndexer(NarAccessor & acc, NarSource & source, NarMember & parent)
-            : acc(acc), source(source), parent(&parent)
-        { }
-
-        NarMember & createMember(const std::string & name, NarMember member)
-        {
-            if (parent->type == FSAccessor::Type::tMissing) {
-                *parent = std::move(member);
-                return *parent;
-            } else {
-                return parent->children.emplace(name, std::move(member)).first->second;
-            }
-        }
-
-        box_ptr<NARParseVisitor> createDirectory(const std::string & name) override
-        {
-            auto & dir = createMember(name, {FSAccessor::Type::tDirectory, false, 0, 0});
-            return make_box_ptr<NarIndexer>(acc, source, dir);
-        }
-
-        box_ptr<FileHandle> createRegularFile(const std::string & name, uint64_t size, bool executable) override
-        {
-            auto & memb = createMember(name, {FSAccessor::Type::tRegular, false, 0, 0});
-
-            assert(size <= std::numeric_limits<uint64_t>::max());
-            memb.size = (uint64_t) size;
-            memb.start = source.pos;
-            memb.isExecutable = executable;
-
-            struct IgnoringFileHandle : FileHandle
-            {
-                void close() override {}
-                void receiveContents(std::string_view data) override {}
-            };
-
-            return make_box_ptr<IgnoringFileHandle>();
-        }
-
-        void createSymlink(const std::string & name, const std::string & target) override
-        {
-            createMember(name,
-                NarMember{FSAccessor::Type::tSymlink, false, 0, 0, target});
-        }
-    };
 
     NarAccessor(std::string && _nar) : nar(_nar)
     {
         StringSource source(*nar);
-        NarSource posSource(source);
-        NarIndexer indexer(*this, posSource, root);
-        parseDump(indexer, posSource);
+        root = nar_index::create(source);
     }
 
-    NarAccessor(Source & source)
-    {
-        NarSource posSource(source);
-        NarIndexer indexer(*this, posSource, root);
-        parseDump(indexer, posSource);
-    }
+    NarAccessor(Source & source) : root(nar_index::create(source)) {}
 
     NarAccessor(const std::string & listing, GetNarBytes getNarBytes)
         : getNarBytes(getNarBytes)
     {
+        using namespace nar_index;
         using json = nlohmann::json;
 
-        std::function<void(NarMember &, json &)> recurse;
+        std::function<void(Entry &, json &)> recurse;
 
-        recurse = [&](NarMember & member, json & v) {
+        recurse = [&](Entry & member, json & v) {
             std::string type = v["type"];
 
             if (type == "directory") {
-                member.type = FSAccessor::Type::tDirectory;
+                Directory dir;
                 for (auto i = v["entries"].begin(); i != v["entries"].end(); ++i) {
                     std::string name = i.key();
-                    recurse(member.children[name], i.value());
+                    recurse(dir.contents[name], i.value());
                 }
+                member = std::move(dir);
             } else if (type == "regular") {
-                member.type = FSAccessor::Type::tRegular;
-                member.size = v["size"];
-                member.isExecutable = v.value("executable", false);
-                member.start = v["narOffset"];
+                member = File{v.value("executable", false), v["narOffset"], v["size"]};
             } else if (type == "symlink") {
-                member.type = FSAccessor::Type::tSymlink;
-                member.target = v.value("target", "");
+                member = Symlink{v.value("target", "")};
             } else return;
         };
 
@@ -148,14 +54,15 @@ struct NarAccessor : public FSAccessor
         recurse(root, v);
     }
 
-    NarMember * find(const Path & path)
+    nar_index::Entry * find(const Path & path)
     {
-        NarMember * current = &root;
+        nar_index::Entry * current = &root;
         auto end = path.end();
         for (auto it = path.begin(); it != end; ) {
             // because it != end, the remaining component is non-empty so we need
             // a directory
-            if (current->type != FSAccessor::Type::tDirectory) return nullptr;
+            auto dir = std::get_if<nar_index::Directory>(current);
+            if (!dir) return nullptr;
 
             // skip slash (canonPath above ensures that this is always a slash)
             assert(*it == '/');
@@ -163,8 +70,8 @@ struct NarAccessor : public FSAccessor
 
             // lookup current component
             auto next = std::find(it, end, '/');
-            auto child = current->children.find(std::string(it, next));
-            if (child == current->children.end()) return nullptr;
+            auto child = dir->contents.find(std::string(it, next));
+            if (child == dir->contents.end()) return nullptr;
             current = &child->second;
 
             it = next;
@@ -173,7 +80,7 @@ struct NarAccessor : public FSAccessor
         return current;
     }
 
-    NarMember & get(const Path & path) {
+    nar_index::Entry & get(const Path & path) {
         auto result = find(path);
         if (result == nullptr)
             throw Error("NAR file does not contain path '%1%'", path);
@@ -185,18 +92,26 @@ struct NarAccessor : public FSAccessor
         auto i = find(path);
         if (i == nullptr)
             return {FSAccessor::Type::tMissing, 0, false};
-        return {i->type, i->size, i->isExecutable, i->start};
+        auto handlers = overloaded{
+            [](const nar_index::File & f) {
+                return Stat{tRegular, f.size, f.executable, f.offset};
+            },
+            [](const nar_index::Symlink &) { return Stat{tSymlink}; },
+            [](const nar_index::Directory &) { return Stat{tDirectory}; },
+        };
+        return std::visit(handlers, *i);
     }
 
     StringSet readDirectory(const Path & path) override
     {
-        auto i = get(path);
+        auto & i = get(path);
+        auto dir = std::get_if<nar_index::Directory>(&i);
 
-        if (i.type != FSAccessor::Type::tDirectory)
+        if (!dir)
             throw Error("path '%1%' inside NAR file is not a directory", path);
 
         StringSet res;
-        for (auto & child : i.children)
+        for (auto & child : dir->contents)
             res.insert(child.first);
 
         return res;
@@ -204,22 +119,24 @@ struct NarAccessor : public FSAccessor
 
     std::string readFile(const Path & path, bool requireValidPath = true) override
     {
-        auto i = get(path);
-        if (i.type != FSAccessor::Type::tRegular)
+        auto & i = get(path);
+        auto file = std::get_if<nar_index::File>(&i);
+        if (!file)
             throw Error("path '%1%' inside NAR file is not a regular file", path);
 
-        if (getNarBytes) return getNarBytes(i.start, i.size);
+        if (getNarBytes) return getNarBytes(file->offset, file->size);
 
         assert(nar);
-        return std::string(*nar, i.start, i.size);
+        return std::string(*nar, file->offset, file->size);
     }
 
     std::string readLink(const Path & path) override
     {
-        auto i = get(path);
-        if (i.type != FSAccessor::Type::tSymlink)
+        auto & i = get(path);
+        auto link = std::get_if<nar_index::Symlink>(&i);
+        if (!link)
             throw Error("path '%1%' inside NAR file is not a symlink", path);
-        return i.target;
+        return link->target;
     }
 };
 
