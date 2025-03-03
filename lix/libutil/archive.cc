@@ -347,12 +347,10 @@ struct Parser
 
     std::vector<char> & buffer;
 
-    Generator<Response> parse()
-    {
-        // these macros purposely duplicate parts of the wire protocol,
-        // but in such a way that doing it *wrong* will definitely make
-        // tests fail. we could also duplicate them completely, but not
-        // doing so ensures that we're the inverse of dump at all times
+    // these macros purposely duplicate parts of the wire protocol,
+    // but in such a way that doing it *wrong* will definitely make
+    // tests fail. we could also duplicate them completely, but not
+    // doing so ensures that we're the inverse of dump at all times
 #define FETCH_U64()                                                       \
     ({                                                                    \
         co_yield WantBytes{8};                                            \
@@ -365,15 +363,16 @@ struct Parser
         buffer.clear();       \
         u;                    \
     })
-#define READ_STRING()                                                     \
+#define READ_STRING_LIMITED(limit)                                        \
     ({                                                                    \
         uint64_t len = FETCH_U64();                                       \
         co_yield WantBytes{len + (8 - len % 8) % 8};                      \
         StringSource src(std::string_view(buffer.data(), buffer.size())); \
-        auto str = readString(src);                                       \
+        auto str = readString(src, (limit));                              \
         buffer.clear();                                                   \
         std::move(str);                                                   \
     })
+#define READ_STRING() READ_STRING_LIMITED(std::numeric_limits<size_t>::max())
 #define READ_PADDING(size)                                                    \
     do {                                                                      \
         if ((size) % 8) {                                                     \
@@ -391,6 +390,8 @@ struct Parser
         }                                              \
     } while (0)
 
+    Generator<Response> parse()
+    {
         EXPECT("(", "open");
         EXPECT("type", "type");
 
@@ -484,13 +485,29 @@ struct Parser
         }
 
         EXPECT(")", "close");
+    }
+
+    Generator<Response> parseRoot()
+    {
+        std::string version;
+        try {
+            version = READ_STRING_LIMITED(narVersionMagic1.size());
+        } catch (SerialisationError & e) {
+            /* This generally means the integer at the start couldn't be
+               decoded.  Ignore and throw the exception below. */
+        }
+        if (version != narVersionMagic1) {
+            throw badArchive("input doesn't look like a Nix archive");
+        }
+        co_yield parse();
+    }
 
 #undef FETCH_U64
 #undef READ_U64
 #undef READ_STRING
+#undef READ_STRING_LIMITED
 #undef READ_PADDING
 #undef EXPECT
-    }
 };
 
 struct SyncParser
@@ -501,7 +518,7 @@ struct SyncParser
     Generator<Entry> parse()
     {
         Parser parser{buffer};
-        auto stream = parser.parse();
+        auto stream = parser.parseRoot();
         co_yield parse(stream);
     }
 
@@ -568,15 +585,6 @@ struct SyncParser
 
 Generator<Entry> parse(Source & source)
 {
-    std::string version;
-    try {
-        version = readString(source, narVersionMagic1.size());
-    } catch (SerialisationError & e) {
-        /* This generally means the integer at the start couldn't be
-           decoded.  Ignore and throw the exception below. */
-    }
-    if (version != narVersionMagic1)
-        throw badArchive("input doesn't look like a Nix archive");
     SyncParser p{source};
     co_yield p.parse();
 }
