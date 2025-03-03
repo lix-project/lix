@@ -1,5 +1,6 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/binary-cache-store.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/fs-accessor.hh"
@@ -103,7 +104,7 @@ void BinaryCacheStore::writeNarInfo(ref<NarInfo> narInfo)
 }
 
 kj::Promise<Result<ref<const ValidPathInfo>>> BinaryCacheStore::addToStoreCommon(
-    Source & narSource, RepairFlag repair, CheckSigsFlag checkSigs,
+    AsyncInputStream & narSource, RepairFlag repair, CheckSigsFlag checkSigs,
     std::function<ValidPathInfo(HashResult)> mkInfo)
 try {
     auto [fdTemp, fnTemp] = createTempFile();
@@ -128,8 +129,8 @@ try {
             config().compressionLevel
         );
         TeeSink teeSinkUncompressed { *compressionSink, narHashSink };
-        TeeSource teeSource { narSource, teeSinkUncompressed };
-        narIndex = nar_index::create(teeSource);
+        AsyncTeeInputStream teeSource { narSource, teeSinkUncompressed };
+        narIndex = TRY_AWAIT(nar_index::create(teeSource));
         compressionSink->finish();
         fileSink.flush();
     }
@@ -275,7 +276,8 @@ try {
         co_return result::success();
     }
 
-    TRY_AWAIT(addToStoreCommon(narSource, repair, checkSigs, {[&](HashResult nar) {
+    AsyncSourceInputStream stream{narSource};
+    TRY_AWAIT(addToStoreCommon(stream, repair, checkSigs, {[&](HashResult nar) {
         /* FIXME reinstate these, once we can correctly do hash modulo sink as
            needed. We need to throw here in case we uploaded a corrupted store path. */
         // assert(info.narHash == nar.first);
@@ -292,7 +294,8 @@ kj::Promise<Result<StorePath>> BinaryCacheStore::addToStoreFromDump(Source & dum
 try {
     if (method != FileIngestionMethod::Recursive || hashAlgo != HashType::SHA256)
         unsupported("addToStoreFromDump");
-    co_return TRY_AWAIT(addToStoreCommon(dump, repair, CheckSigs, [&](HashResult nar) {
+    AsyncSourceInputStream stream{dump};
+    co_return TRY_AWAIT(addToStoreCommon(stream, repair, CheckSigs, [&](HashResult nar) {
         ValidPathInfo info {
             *this,
             name,
@@ -417,7 +420,7 @@ try {
     sink << _source.dump();
     auto h = sink.finish().first;
 
-    auto source = GeneratorSource{_source.dump()};
+    auto source = AsyncGeneratorInputStream{_source.dump()};
     co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
         return makeAddToStoreInfo(nar, *this, FileIngestionMethod::Recursive, name, h);
     }))->path;
@@ -439,7 +442,7 @@ try {
     sink << readFileSource(srcPath);
     auto h = sink.finish().first;
 
-    auto source = GeneratorSource{dumpPath(srcPath)};
+    auto source = AsyncGeneratorInputStream{dumpPath(srcPath)};
     co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
         return makeAddToStoreInfo(nar, *this, FileIngestionMethod::Flat, name, h);
     }))->path;
@@ -461,7 +464,7 @@ try {
 
     StringSink sink;
     sink << dumpString(s);
-    StringSource source(sink.s);
+    AsyncStringInputStream source(sink.s);
     co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
         ValidPathInfo info {
             *this,

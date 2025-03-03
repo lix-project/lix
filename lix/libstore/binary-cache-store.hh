@@ -6,6 +6,7 @@
 #include "lix/libstore/log-store.hh"
 
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/pool.hh"
 
 #include <atomic>
@@ -103,7 +104,7 @@ private:
     void writeNarInfo(ref<NarInfo> narInfo);
 
     kj::Promise<Result<ref<const ValidPathInfo>>> addToStoreCommon(
-        Source & narSource, RepairFlag repair, CheckSigsFlag checkSigs,
+        AsyncInputStream & narSource, RepairFlag repair, CheckSigsFlag checkSigs,
         std::function<ValidPathInfo(HashResult)> mkInfo);
 
 public:
