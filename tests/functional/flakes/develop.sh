@@ -64,4 +64,8 @@ echo "\$SHELL"
 EOF
 )" -ef "$BASH_INTERACTIVE_EXECUTABLE" ]]
 
+# Test whether `nix develop` sets `IN_NIX_SHELL`
+[[ "$(nix develop --no-write-lock-file .#hello -c sh -c 'echo $IN_NIX_SHELL')" = "impure" ]]
+[[ "$(nix develop --no-write-lock-file --ignore-environment .#hello -c /bin/sh -c 'echo $IN_NIX_SHELL')" = "impure" ]]
+
 clearStore
