@@ -1,6 +1,7 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/derivations.hh"
 #include "dotgraph.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/exit.hh"
 #include "lix/libstore/globals.hh"
@@ -1015,8 +1016,9 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                     throw Error("narInfo is too old and missing the narSize field");
 
                 SizedSource sizedSource(in, info.narSize);
+                AsyncSourceInputStream stream{sizedSource};
 
-                aio.blockOn(store->addToStore(info, sizedSource, NoRepair, NoCheckSigs));
+                aio.blockOn(store->addToStore(info, stream, NoRepair, NoCheckSigs));
 
                 // consume all the data that has been sent before continuing.
                 sizedSource.drainAll();

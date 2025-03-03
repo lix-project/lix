@@ -267,17 +267,20 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> BinaryCacheStore::addToStore(const ValidPathInfo & info, Source & narSource,
-    RepairFlag repair, CheckSigsFlag checkSigs)
+kj::Promise<Result<void>> BinaryCacheStore::addToStore(
+    const ValidPathInfo & info,
+    AsyncInputStream & narSource,
+    RepairFlag repair,
+    CheckSigsFlag checkSigs
+)
 try {
     if (!repair && isValidPath(info.path)) {
         // FIXME: copyNAR -> null sink
-        narSource.drain();
+        TRY_AWAIT(narSource.drain());
         co_return result::success();
     }
 
-    AsyncSourceInputStream stream{narSource};
-    TRY_AWAIT(addToStoreCommon(stream, repair, checkSigs, {[&](HashResult nar) {
+    TRY_AWAIT(addToStoreCommon(narSource, repair, checkSigs, {[&](HashResult nar) {
         /* FIXME reinstate these, once we can correctly do hash modulo sink as
            needed. We need to throw here in case we uploaded a corrupted store path. */
         // assert(info.narHash == nar.first);

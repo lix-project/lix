@@ -97,7 +97,7 @@ public:
         const StorePathSet & references = StorePathSet()
     ) override;
 
-    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & nar,
+    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, AsyncInputStream & nar,
         RepairFlag repair, CheckSigsFlag checkSigs) override;
 
     kj::Promise<Result<void>> addMultipleToStore(

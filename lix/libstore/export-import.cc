@@ -92,7 +92,7 @@ try {
             readString(source);
 
         // Can't use underlying source, which would have been exhausted
-        auto source = StringSource(saved.s);
+        auto source = AsyncStringInputStream(saved.s);
         TRY_AWAIT(addToStore(info, source, NoRepair, checkSigs));
 
         res.push_back(info.path);

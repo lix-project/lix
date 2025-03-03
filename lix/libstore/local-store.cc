@@ -10,6 +10,7 @@
 #include "lix/libutil/async.hh"
 #include "lix/libutil/references.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/serialise.hh"
 #include "lix/libutil/topo-sort.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/finally.hh"
@@ -1207,8 +1208,12 @@ bool LocalStore::realisationIsUntrusted(const Realisation & realisation)
     return config_.requireSigs && !realisation.checkSignatures(getPublicKeys());
 }
 
-kj::Promise<Result<void>> LocalStore::addToStore(const ValidPathInfo & info, Source & source,
-    RepairFlag repair, CheckSigsFlag checkSigs)
+kj::Promise<Result<void>> LocalStore::addToStore(
+    const ValidPathInfo & info,
+    AsyncInputStream & source,
+    RepairFlag repair,
+    CheckSigsFlag checkSigs
+)
 try {
     if (checkSigs && pathInfoIsUntrusted(info))
         throw Error("cannot add path '%s' because it lacks a signature by a trusted key", printStorePath(info.path));
@@ -1238,10 +1243,10 @@ try {
                of the NAR. */
             HashSink hashSink(HashType::SHA256);
 
-            TeeSource wrapperSource { source, hashSink };
+            AsyncTeeInputStream wrapperSource { source, hashSink };
 
             narRead = true;
-            restorePath(realPath, wrapperSource);
+            TRY_AWAIT(restorePath(realPath, wrapperSource));
 
             auto hashResult = hashSink.finish();
 
@@ -1279,8 +1284,8 @@ try {
     }
 
     if (!narRead) {
-        auto copy = copyNAR(source);
-        while (copy.next()) {}
+        NullSink null;
+        TRY_AWAIT(copyNAR(source)->drainInto(null));
     }
     co_return result::success();
 } catch (...) {

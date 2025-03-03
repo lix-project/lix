@@ -1096,7 +1096,7 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         RepairFlag repair) override
     try { throw Error("addToStoreFlat"); } catch (...) { return {result::current_exception()}; }
 
-    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & narSource,
+    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, AsyncInputStream & narSource,
         RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs) override
     try {
         TRY_AWAIT(next->addToStore(info, narSource, repair, checkSigs));

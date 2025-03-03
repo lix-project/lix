@@ -503,8 +503,12 @@ try {
 }
 
 
-kj::Promise<Result<void>> RemoteStore::addToStore(const ValidPathInfo & info, Source & source,
-    RepairFlag repair, CheckSigsFlag checkSigs)
+kj::Promise<Result<void>> RemoteStore::addToStore(
+    const ValidPathInfo & info,
+    AsyncInputStream & source,
+    RepairFlag repair,
+    CheckSigsFlag checkSigs
+)
 try {
     auto conn(getConnection());
 
@@ -518,11 +522,21 @@ try {
              << repair << !checkSigs;
 
     if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 23) {
-        conn.withFramedSink([&](Sink & sink) {
-            sink << copyNAR(source);
-        });
+        auto copier = copyNAR(source);
+        TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) {
+            return copier->drainInto(sink);
+        }));
     } else {
-        conn.processStderr(0, &source);
+        IndirectAsyncInputStreamToSource is(source);
+        auto pfp = kj::newPromiseAndCrossThreadFulfiller<void>();
+        auto thread = std::async(std::launch::async, [&] {
+            KJ_DEFER(pfp.fulfiller->fulfill());
+            conn.processStderr(0, &is);
+        });
+        co_await pfp.promise.exclusiveJoin(is.feed());
+        // if the thread stops we're always clear. if the feeder stops early (or
+        // fails) it'll have thrown an exception, and the thread will stop soon.
+        thread.get();
     }
     co_return result::success();
 } catch (...) {
@@ -552,7 +566,7 @@ try {
                     sink << WorkerProto::Serialise<ValidPathInfo>::write(*this,
                         WorkerProto::WriteConn {remoteVersion},
                         pathInfo);
-                    TRY_AWAIT(pathSource())->drainInto(sink);
+                    TRY_AWAIT(TRY_AWAIT(pathSource())->drainInto(sink));
                 }
                 co_return result::success();
             } catch (...) {

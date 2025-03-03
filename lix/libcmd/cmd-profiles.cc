@@ -3,6 +3,7 @@
 #include "lix/libcmd/cmd-profiles.hh"
 #include "lix/libcmd/built-path.hh"
 #include "lix/libstore/builtins/buildenv.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libstore/names.hh"
 #include "lix/libstore/store-api.hh"
@@ -266,7 +267,7 @@ try {
     };
     info.narSize = sink.s.size();
 
-    StringSource source(sink.s);
+    AsyncStringInputStream source(sink.s);
     TRY_AWAIT(store->addToStore(info, source));
 
     co_return std::move(info.path);

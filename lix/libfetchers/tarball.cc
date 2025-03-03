@@ -5,6 +5,7 @@
 #include "lix/libfetchers/builtin-fetchers.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/tarfile.hh"
 #include "lix/libstore/temporary-dir.hh"
@@ -88,7 +89,7 @@ try {
             hashString(HashType::SHA256, sink.s),
         };
         info.narSize = sink.s.size();
-        auto source = StringSource { sink.s };
+        auto source = AsyncStringInputStream { sink.s };
         TRY_AWAIT(store->addToStore(info, source, NoRepair, NoCheckSigs));
         storePath = std::move(info.path);
     }

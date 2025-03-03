@@ -115,7 +115,7 @@ public:
 
     std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override;
 
-    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & narSource,
+    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, AsyncInputStream & narSource,
         RepairFlag repair, CheckSigsFlag checkSigs) override;
 
     kj::Promise<Result<StorePath>> addToStoreFromDump(

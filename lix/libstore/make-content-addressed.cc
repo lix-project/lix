@@ -1,4 +1,5 @@
 #include "lix/libstore/make-content-addressed.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/references.hh"
 #include "lix/libutil/strings.hh"
@@ -68,7 +69,7 @@ try {
         info.narHash = hashString(HashType::SHA256, rewritten);
         info.narSize = sink.s.size();
 
-        StringSource source(rewritten);
+        AsyncStringInputStream source(rewritten);
         TRY_AWAIT(dstStore.addToStore(info, source));
 
         remappings.insert_or_assign(std::move(path), std::move(info.path));

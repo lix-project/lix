@@ -189,7 +189,7 @@ struct LegacySSHStore final : public Store
         return info;
     }
 
-    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & source,
+    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, AsyncInputStream & source,
         RepairFlag repair, CheckSigsFlag checkSigs) override
     try {
         debug("adding path '%s' to remote host '%s'", printStorePath(info.path), host);
@@ -211,7 +211,7 @@ struct LegacySSHStore final : public Store
                 << info.sigs
                 << renderContentAddress(info.ca);
             try {
-                conn->to << copyNAR(source);
+                TRY_AWAIT(copyNAR(source)->drainInto(conn->to));
             } catch (...) {
                 conn->good = false;
                 throw;
@@ -224,7 +224,7 @@ struct LegacySSHStore final : public Store
                 << ServeProto::Command::ImportPaths
                 << 1;
             try {
-                conn->to << copyNAR(source);
+                TRY_AWAIT(copyNAR(source)->drainInto(conn->to));
             } catch (...) {
                 conn->good = false;
                 throw;

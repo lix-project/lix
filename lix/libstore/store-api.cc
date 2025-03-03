@@ -464,7 +464,7 @@ try {
     info.narSize = narSize;
 
     if (!isValidPath(info.path)) {
-        auto source = GeneratorSource{dumpPath(srcPath)};
+        auto source = AsyncGeneratorInputStream{dumpPath(srcPath)};
         TRY_AWAIT(addToStore(info, source));
     }
 
@@ -1054,25 +1054,27 @@ static std::string makeCopyPathMessage(
 
 
 namespace {
-struct CopyPathSource : Source
+struct CopyPathStream : AsyncInputStream
 {
     Activity & act;
     size_t copied = 0, expected;
-    box_ptr<Source> inner;
+    box_ptr<AsyncInputStream> inner;
 
-    CopyPathSource(Activity & act, size_t expected, box_ptr<Source> inner)
+    CopyPathStream(Activity & act, size_t expected, box_ptr<AsyncInputStream> inner)
         : act(act)
         , expected(expected)
         , inner(std::move(inner))
     {
     }
 
-    size_t read(char * data, size_t len) override
-    {
-        auto result = inner->read(data, len);
+    kj::Promise<Result<size_t>> read(void * data, size_t len) override
+    try {
+        auto result = TRY_AWAIT(inner->read(data, len));
         copied += result;
         act.progress(copied, expected);
-        return result;
+        co_return result;
+    } catch (...) {
+        co_return result::current_exception();
     }
 };
 }
@@ -1116,7 +1118,11 @@ try {
         info = info2;
     }
 
-    CopyPathSource source{act, info->narSize, srcStore.narFromPath(storePath)};
+    CopyPathStream source{
+        act,
+        info->narSize,
+        make_box_ptr<AsyncSourceInputStream>(srcStore.narFromPath(storePath))
+    };
     TRY_AWAIT(dstStore.addToStore(*info, source, repair, checkSigs));
     co_return result::success();
 } catch (...) {
@@ -1234,22 +1240,25 @@ try {
         ValidPathInfo infoForDst = *info;
         infoForDst.path = storePathForDst;
 
-        struct SinglePathSource : CopyPathSource
+        struct SinglePathStream : CopyPathStream
         {
             Activity act;
             PushActivity pact{act.id};
 
-            SinglePathSource(
-                std::string message, Logger::Fields fields, size_t expected, box_ptr<Source> inner
+            SinglePathStream(
+                std::string message,
+                Logger::Fields fields,
+                size_t expected,
+                box_ptr<AsyncInputStream> inner
             )
-                : CopyPathSource(act, expected, std::move(inner))
+                : CopyPathStream(act, expected, std::move(inner))
                 , act(*logger, lvlInfo, actCopyPath, message, fields)
             {
             }
         };
 
         auto source = [](auto & srcStore, auto & dstStore, auto missingPath, auto info
-                      ) -> kj::Promise<Result<box_ptr<Source>>> {
+                      ) -> kj::Promise<Result<box_ptr<AsyncInputStream>>> {
             try {
                 // We can reasonably assume that the copy will happen whenever we
                 // read the path, so log something about that at that point
@@ -1257,11 +1266,11 @@ try {
                 auto dstUri = dstStore.getUri();
                 auto storePathS = srcStore.printStorePath(missingPath);
 
-                co_return make_box_ptr<SinglePathSource>(
+                co_return make_box_ptr<SinglePathStream>(
                     makeCopyPathMessage(srcUri, dstUri, storePathS),
                     Logger::Fields{storePathS, srcUri, dstUri},
                     info->narSize,
-                    srcStore.narFromPath(missingPath)
+                    make_box_ptr<AsyncSourceInputStream>(srcStore.narFromPath(missingPath))
                 );
             } catch (...) {
                 co_return result::current_exception();

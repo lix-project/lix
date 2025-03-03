@@ -2,6 +2,7 @@
 #include "lix/libmain/common-args.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/async-io.hh"
 
 using namespace nix;
 
@@ -54,7 +55,7 @@ struct CmdAddToStore : MixDryRun, StoreCommand
         info.narSize = sink.s.size();
 
         if (!dryRun) {
-            auto source = StringSource(sink.s);
+            auto source = AsyncStringInputStream(sink.s);
             aio().blockOn(store->addToStore(info, source));
         }
 

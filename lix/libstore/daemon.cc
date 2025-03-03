@@ -524,8 +524,9 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
                     *store, WorkerProto::ReadConn{source, clientVersion}
                 );
                 info.ultimate = false; // duplicated in RemoteStore::addMultipleToStore
+                AsyncSourceInputStream stream{source};
                 aio.blockOn(store->addToStore(
-                    info, source, RepairFlag{repair}, dontCheckSigs ? NoCheckSigs : CheckSigs
+                    info, stream, RepairFlag{repair}, dontCheckSigs ? NoCheckSigs : CheckSigs
                 ));
             }
         }
@@ -910,7 +911,8 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             logger->startWork();
             {
                 FramedSource source(from);
-                aio.blockOn(store->addToStore(info, source, (RepairFlag) repair,
+                AsyncSourceInputStream stream{source};
+                aio.blockOn(store->addToStore(info, stream, (RepairFlag) repair,
                     dontCheckSigs ? NoCheckSigs : CheckSigs));
             }
             logger->stopWork();
@@ -923,7 +925,8 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             logger->startWork();
 
             // FIXME: race if addToStore doesn't read source?
-            aio.blockOn(store->addToStore(info, *source, (RepairFlag) repair,
+            AsyncSourceInputStream stream{*source};
+            aio.blockOn(store->addToStore(info, stream, (RepairFlag) repair,
                 dontCheckSigs ? NoCheckSigs : CheckSigs));
 
             logger->stopWork();

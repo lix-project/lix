@@ -500,15 +500,19 @@ public:
     /**
      * Import a path into the store.
      */
-    virtual kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & narSource,
-        RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs) = 0;
+    virtual kj::Promise<Result<void>> addToStore(
+        const ValidPathInfo & info,
+        AsyncInputStream & narSource,
+        RepairFlag repair = NoRepair,
+        CheckSigsFlag checkSigs = CheckSigs
+    ) = 0;
 
     /**
      * A list of paths infos along with a source providing the content
      * of the associated store path
      */
     using PathsSource = std::vector<
-        std::pair<ValidPathInfo, std::function<kj::Promise<Result<box_ptr<Source>>>()>>>;
+        std::pair<ValidPathInfo, std::function<kj::Promise<Result<box_ptr<AsyncInputStream>>>()>>>;
 
     /**
      * Import multiple paths into the store.
