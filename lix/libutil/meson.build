@@ -1,6 +1,7 @@
 libutil_sources = files(
   'archive.cc',
   'args.cc',
+  'async-io.cc',
   'canon-path.cc',
   'cgroup.cc',
   'compression.cc',
@@ -55,6 +56,7 @@ libutil_headers = files(
   'args/root.hh',
   'args.hh',
   'async-collect.hh',
+  'async-io.hh',
   'async.hh',
   'async-semaphore.hh',
   'backed-string-view.hh',
