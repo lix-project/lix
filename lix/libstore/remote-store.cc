@@ -488,11 +488,16 @@ try {
 }
 
 
-kj::Promise<Result<StorePath>> RemoteStore::addToStoreFromDump(Source & dump, std::string_view name,
-      FileIngestionMethod method, HashType hashType, RepairFlag repair, const StorePathSet & references)
+kj::Promise<Result<StorePath>> RemoteStore::addToStoreFromDump(
+    AsyncInputStream & dump,
+    std::string_view name,
+    FileIngestionMethod method,
+    HashType hashType,
+    RepairFlag repair,
+    const StorePathSet & references
+)
 try {
-    AsyncSourceInputStream stream{dump};
-    co_return TRY_AWAIT(addCAToStore(stream, name, method, hashType, references, repair))->path;
+    co_return TRY_AWAIT(addCAToStore(dump, name, method, hashType, references, repair))->path;
 } catch (...) {
     co_return result::current_exception();
 }

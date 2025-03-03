@@ -5,6 +5,7 @@
 
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/indirect-root-store.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libutil/types.hh"
 
@@ -210,8 +211,14 @@ public:
     kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, Source & source,
         RepairFlag repair, CheckSigsFlag checkSigs) override;
 
-    kj::Promise<Result<StorePath>> addToStoreFromDump(Source & dump, std::string_view name,
-        FileIngestionMethod method, HashType hashAlgo, RepairFlag repair, const StorePathSet & references) override;
+    kj::Promise<Result<StorePath>> addToStoreFromDump(
+        AsyncInputStream & dump,
+        std::string_view name,
+        FileIngestionMethod method,
+        HashType hashAlgo,
+        RepairFlag repair,
+        const StorePathSet & references
+    ) override;
 
     kj::Promise<Result<StorePath>> addTextToStore(
         std::string_view name,

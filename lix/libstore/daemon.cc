@@ -1,4 +1,5 @@
 #include "lix/libstore/daemon.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/monitor-fd.hh"
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libstore/worker-protocol-impl.hh"
@@ -428,7 +429,10 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
                         return store->queryPathInfo(path);
                     },
                     [&](const FileIngestionMethod & fim) {
-                        auto path = aio.blockOn(store->addToStoreFromDump(source, name, fim, hashType, repair, refs));
+                        AsyncSourceInputStream stream{source};
+                        auto path = aio.blockOn(
+                            store->addToStoreFromDump(stream, name, fim, hashType, repair, refs)
+                        );
                         return store->queryPathInfo(path);
                     },
                 }, contentAddressMethod.raw);
@@ -495,7 +499,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
                     co_yield std::move(file->contents);
                 }
             };
-            GeneratorSource dumpSource{g()};
+            AsyncGeneratorInputStream dumpSource{g()};
             logger->startWork();
             auto path = aio.blockOn(store->addToStoreFromDump(dumpSource, baseName, method, hashAlgo));
             logger->stopWork();

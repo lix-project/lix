@@ -2,6 +2,7 @@
 #include "lix/libfetchers/builtin-fetchers.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/async-io.hh"
 
 namespace nix::fetchers {
 
@@ -132,7 +133,7 @@ struct PathInputScheme : InputScheme
         time_t mtime = 0;
         if (!storePath || storePath->name() != "source" || !store->isValidPath(*storePath)) {
             // FIXME: try to substitute storePath.
-            auto src = GeneratorSource{dumpPathAndGetMtime(absPath, mtime)};
+            auto src = AsyncGeneratorInputStream{dumpPathAndGetMtime(absPath, mtime)};
             storePath = TRY_AWAIT(store->addToStoreFromDump(src, "source"));
         }
         input.attrs.insert_or_assign("lastModified", uint64_t(mtime));

@@ -3,6 +3,7 @@
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/nar-info-disk-cache.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/hash.hh"
@@ -286,7 +287,7 @@ kj::Promise<Result<StorePath>> Store::addToStoreRecursive(
     HashType hashAlgo,
     RepairFlag repair)
 try {
-    auto source = GeneratorSource{_source.dump()};
+    auto source = AsyncGeneratorInputStream{_source.dump()};
     co_return TRY_AWAIT(
         addToStoreFromDump(source, name, FileIngestionMethod::Recursive, hashAlgo, repair, {})
     );
@@ -301,7 +302,7 @@ kj::Promise<Result<StorePath>> Store::addToStoreFlat(
     RepairFlag repair)
 try {
     Path srcPath(absPath(_srcPath));
-    auto source = GeneratorSource{readFileSource(srcPath)};
+    auto source = AsyncGeneratorInputStream{readFileSource(srcPath)};
     co_return TRY_AWAIT(
         addToStoreFromDump(source, name, FileIngestionMethod::Flat, hashAlgo, repair, {})
     );

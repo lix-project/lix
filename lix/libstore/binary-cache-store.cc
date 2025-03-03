@@ -289,13 +289,18 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<StorePath>> BinaryCacheStore::addToStoreFromDump(Source & dump, std::string_view name,
-    FileIngestionMethod method, HashType hashAlgo, RepairFlag repair, const StorePathSet & references)
+kj::Promise<Result<StorePath>> BinaryCacheStore::addToStoreFromDump(
+    AsyncInputStream & dump,
+    std::string_view name,
+    FileIngestionMethod method,
+    HashType hashAlgo,
+    RepairFlag repair,
+    const StorePathSet & references
+)
 try {
     if (method != FileIngestionMethod::Recursive || hashAlgo != HashType::SHA256)
         unsupported("addToStoreFromDump");
-    AsyncSourceInputStream stream{dump};
-    co_return TRY_AWAIT(addToStoreCommon(stream, repair, CheckSigs, [&](HashResult nar) {
+    co_return TRY_AWAIT(addToStoreCommon(dump, repair, CheckSigs, [&](HashResult nar) {
         ValidPathInfo info {
             *this,
             name,

@@ -1,4 +1,5 @@
 #include "lix/libstore/build/local-derivation-goal.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libstore/indirect-root-store.hh"
@@ -1119,7 +1120,7 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
     }
 
     kj::Promise<Result<StorePath>> addToStoreFromDump(
-        Source & dump,
+        AsyncInputStream & dump,
         std::string_view name,
         FileIngestionMethod method,
         HashType hashAlgo,

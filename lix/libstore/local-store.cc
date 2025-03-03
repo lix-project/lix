@@ -6,6 +6,7 @@
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/nar-info.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/references.hh"
 #include "lix/libutil/result.hh"
@@ -1287,12 +1288,18 @@ try {
 }
 
 
-kj::Promise<Result<StorePath>> LocalStore::addToStoreFromDump(Source & source0, std::string_view name,
-    FileIngestionMethod method, HashType hashAlgo, RepairFlag repair, const StorePathSet & references)
+kj::Promise<Result<StorePath>> LocalStore::addToStoreFromDump(
+    AsyncInputStream & source0,
+    std::string_view name,
+    FileIngestionMethod method,
+    HashType hashAlgo,
+    RepairFlag repair,
+    const StorePathSet & references
+)
 try {
     /* For computing the store path. */
     auto hashSink = std::make_unique<HashSink>(hashAlgo);
-    TeeSource source { source0, *hashSink };
+    AsyncTeeInputStream source { source0, *hashSink };
 
     /* Read the source path into memory, but only if it's up to
        narBufferSize bytes. If it's larger, write it to a temporary
@@ -1327,9 +1334,8 @@ try {
         Finally cleanup([&]() {
             dump = {dumpBuffer.get(), dump.size() + got};
         });
-        try {
-            got = source.read(dumpBuffer.get() + oldSize, want);
-        } catch (EndOfFile &) {
+        got = TRY_AWAIT(source.read(dumpBuffer.get() + oldSize, want));
+        if (got == 0) {
             inMemory = true;
             break;
         }
@@ -1341,29 +1347,31 @@ try {
     AutoCloseFD tempDirFd;
 
     if (!inMemory) {
-        struct ChainSource : Source
+        struct ChainSource : AsyncInputStream
         {
-            Source & source1, & source2;
+            AsyncInputStream & source1, & source2;
             bool useSecond = false;
-            ChainSource(Source & s1, Source & s2) : source1(s1), source2(s2) {}
+            ChainSource(AsyncInputStream & s1, AsyncInputStream & s2) : source1(s1), source2(s2) {}
 
-            size_t read(char * data, size_t len) override
-            {
+            kj::Promise<Result<size_t>> read(void * data, size_t len) override
+            try {
                 if (useSecond) {
-                    return source2.read(data, len);
+                    co_return TRY_AWAIT(source2.read(data, len));
                 } else {
-                    try {
-                        return source1.read(data, len);
-                    } catch (EndOfFile &) {
+                    if (auto got = TRY_AWAIT(source1.read(data, len))) {
+                        co_return got;
+                    } else {
                         useSecond = true;
-                        return this->read(data, len);
+                        co_return TRY_AWAIT(read(data, len));
                     }
                 }
+            } catch (...) {
+                co_return result::current_exception();
             }
         };
 
         /* Drain what we pulled so far, and then keep on pulling */
-        StringSource dumpSource { dump };
+        AsyncStringInputStream dumpSource { dump };
         ChainSource bothSource { dumpSource, source };
 
         std::tie(tempDir, tempDirFd) = createTempDirInStore();
@@ -1371,9 +1379,9 @@ try {
         tempPath = tempDir + "/x";
 
         if (method == FileIngestionMethod::Recursive)
-            restorePath(tempPath, bothSource);
+            TRY_AWAIT(restorePath(tempPath, bothSource));
         else
-            writeFile(tempPath, bothSource);
+            TRY_AWAIT(writeFile(tempPath, bothSource));
 
         dumpBuffer.reset();
         dump = {};

@@ -2,6 +2,7 @@
 ///@file
 
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libstore/nar-info.hh"
@@ -555,9 +556,14 @@ public:
      *
      * \todo remove?
      */
-    virtual kj::Promise<Result<StorePath>> addToStoreFromDump(Source & dump, std::string_view name,
-        FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = HashType::SHA256, RepairFlag repair = NoRepair,
-        const StorePathSet & references = StorePathSet())
+    virtual kj::Promise<Result<StorePath>> addToStoreFromDump(
+        AsyncInputStream & dump,
+        std::string_view name,
+        FileIngestionMethod method = FileIngestionMethod::Recursive,
+        HashType hashAlgo = HashType::SHA256,
+        RepairFlag repair = NoRepair,
+        const StorePathSet & references = StorePathSet()
+    )
     try { unsupported("addToStoreFromDump"); } catch (...) { return {result::current_exception()}; }
 
     /**
