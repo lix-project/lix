@@ -116,22 +116,22 @@ try {
        write the compressed NAR to disk), into a HashSink (to get the
        NAR hash), and into a NarAccessor (to get the NAR listing). */
     HashSink fileHashSink { HashType::SHA256 };
-    std::shared_ptr<FSAccessor> narAccessor;
+    nar_index::Entry narIndex;
     HashSink narHashSink { HashType::SHA256 };
     {
-    FdSink fileSink(fdTemp.get());
-    TeeSink teeSinkCompressed { fileSink, fileHashSink };
-    auto compressionSink = makeCompressionSink(
-        config().compression,
-        teeSinkCompressed,
-        config().parallelCompression,
-        config().compressionLevel
-    );
-    TeeSink teeSinkUncompressed { *compressionSink, narHashSink };
-    TeeSource teeSource { narSource, teeSinkUncompressed };
-    narAccessor = makeNarAccessor(teeSource);
-    compressionSink->finish();
-    fileSink.flush();
+        FdSink fileSink(fdTemp.get());
+        TeeSink teeSinkCompressed { fileSink, fileHashSink };
+        auto compressionSink = makeCompressionSink(
+            config().compression,
+            teeSinkCompressed,
+            config().parallelCompression,
+            config().compressionLevel
+        );
+        TeeSink teeSinkUncompressed { *compressionSink, narHashSink };
+        TeeSource teeSource { narSource, teeSinkUncompressed };
+        narIndex = nar_index::create(teeSource);
+        compressionSink->finish();
+        fileSink.flush();
     }
 
     auto now2 = std::chrono::steady_clock::now();
@@ -173,7 +173,7 @@ try {
     if (config().writeNARListing) {
         nlohmann::json j = {
             {"version", 1},
-            {"root", listNar(ref<FSAccessor>(narAccessor), "", true)},
+            {"root", listNar(narIndex)},
         };
 
         upsertFile(std::string(info.path.hashPart()) + ".ls", j.dump(), "application/json");
@@ -184,9 +184,15 @@ try {
        specify the NAR file and member containing the debug info. */
     if (config().writeDebugInfo) {
 
-        std::string buildIdDir = "/lib/debug/.build-id";
+        const std::string buildIdPath = "/lib/debug/.build-id";
 
-        if (narAccessor->stat(buildIdDir).type == FSAccessor::tDirectory) {
+        auto * buildIdDir = std::get_if<nar_index::Directory>(&narIndex);
+        for (auto subdir : { "lib", "debug", ".build-id" }) {
+            // get returns nullptr subdir does not exist, and std::get_if propagates it.
+            buildIdDir = std::get_if<nar_index::Directory>(get(buildIdDir->contents, subdir));
+        }
+
+        if (buildIdDir) {
 
             ThreadPool threadPool("write debuginfo pool", 25);
 
@@ -209,18 +215,17 @@ try {
             std::regex regex1("^[0-9a-f]{2}$");
             std::regex regex2("^[0-9a-f]{38}\\.debug$");
 
-            for (auto & s1 : narAccessor->readDirectory(buildIdDir)) {
-                auto dir = buildIdDir + "/" + s1;
+            for (auto & [s1, s1Inode] : buildIdDir->contents) {
+                auto dir = std::get_if<nar_index::Directory>(&s1Inode);
 
-                if (narAccessor->stat(dir).type != FSAccessor::tDirectory
-                    || !std::regex_match(s1, regex1))
+                if (!dir || !std::regex_match(s1, regex1))
                     continue;
 
-                for (auto & s2 : narAccessor->readDirectory(dir)) {
-                    auto debugPath = dir + "/" + s2;
+                for (auto & [s2, s2Inode] : dir->contents) {
+                    auto debugPath = fmt("%s/%s/%s", buildIdPath, s1, s2);
 
-                    if (narAccessor->stat(debugPath).type != FSAccessor::tRegular
-                        || !std::regex_match(s2, regex2))
+                    auto file = std::get_if<nar_index::File>(&s2Inode);
+                    if (!file || !std::regex_match(s2, regex2))
                         continue;
 
                     auto buildId = s1 + s2;
