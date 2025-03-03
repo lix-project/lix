@@ -1,6 +1,8 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/async-io.hh"
+#include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/generator.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/serialise.hh"
@@ -209,6 +211,7 @@ void restorePath(const Path & path, Source & source);
  * Read a NAR from 'source' and return it as a generator.
  */
 WireFormatGenerator copyNAR(Source & source);
+box_ptr<AsyncInputStream> copyNAR(AsyncInputStream & source);
 
 
 inline constexpr std::string_view narVersionMagic1 = "nix-archive-1";

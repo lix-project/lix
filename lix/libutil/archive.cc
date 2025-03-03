@@ -13,8 +13,11 @@
 #include <fcntl.h>
 
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/async-io.hh"
+#include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/finally.hh"
+#include "lix/libutil/generator.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/config.hh"
 #include "lix/libutil/logging.hh"
@@ -581,6 +584,80 @@ struct SyncParser
         }
     }
 };
+
+struct AsyncCopier : AsyncInputStream
+{
+    AsyncInputStream & source;
+    std::vector<char> buffer;
+    Parser parser{buffer};
+
+    struct Fragment
+    {
+        // how many bytes the parser requested but we haven't read from source yet
+        size_t pending = 0;
+        // whether the requested bytes are nar metadata (false) or contents (true)
+        bool pendingFileContents = false;
+    };
+
+    Generator<Fragment> stream{ignoreContents(parser.parseRoot())};
+    Fragment current;
+
+    explicit AsyncCopier(AsyncInputStream & source) : source(source) {}
+
+    kj::Promise<Result<size_t>> read(void * buffer, size_t size) override
+    try {
+        while (current.pending == 0) {
+            if (auto want = stream.next()) {
+                current = *want;
+            } else {
+                co_return 0;
+            }
+        }
+
+        size = std::min(current.pending, size);
+        if (size == 0) {
+            co_return 0;
+        }
+
+        auto got = TRY_AWAIT(source.read(buffer, size));
+        current.pending -= got;
+        if (got == 0) {
+            throw badArchive("truncated NAR encountered");
+        } else if (!current.pendingFileContents) {
+            auto end = this->buffer.size();
+            this->buffer.resize(end + size);
+            memcpy(this->buffer.data() + end, buffer, got);
+        }
+        co_return got;
+    } catch (...) {
+        co_return result::current_exception();
+    }
+
+    Generator<Fragment> ignoreContents(Generator<Parser::Response> stream)
+    {
+        while (auto i = stream.next()) {
+            if (auto want = std::get_if<Parser::WantBytes>(&*i)) {
+                co_yield Fragment{want->n, false};
+            } else if (auto f = std::get_if<Parser::FileHeader>(&*i)) {
+                co_yield Fragment{f->size, true};
+            } else if (auto sl = std::get_if<Parser::Symlink>(&*i)) {
+                // nothing to do
+            } else if (auto dir = std::get_if<Parser::Directory>(&*i)) {
+                while (auto e = dir->content.next()) {
+                    if (auto want = std::get_if<Parser::WantBytes>(&*e)) {
+                        co_yield Fragment{want->n, false};
+                    } else if (auto entry = std::get_if<Parser::Directory::Entry>(&*e)) {
+                        co_yield ignoreContents(std::move(entry->second));
+                    } else {
+                        assert(false && "expected parser response in dir");
+                    }
+                }
+            } else {
+                assert(false && "unhandled parser response");
+            }
+        }
+    }
+};
 }
 
 Generator<Entry> parse(Source & source)
@@ -816,6 +893,11 @@ WireFormatGenerator copyNAR(Source & source)
     auto items = nar::parse(source);
     co_yield dump(*items.next());
     assert(!items.next().has_value());
+}
+
+box_ptr<AsyncInputStream> copyNAR(AsyncInputStream & source)
+{
+    return make_box_ptr<nar::AsyncCopier>(source);
 }
 
 }

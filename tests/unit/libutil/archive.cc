@@ -1,7 +1,9 @@
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/serialise.hh"
 #include <algorithm>
 #include <gtest/gtest.h>
+#include <kj/async.h>
 
 using namespace std::literals;
 
@@ -232,6 +234,17 @@ TEST_P(NarTest, copy)
     StringSource source(raw);
 
     auto copied = GeneratorSource(copyNAR(source)).drain();
+    ASSERT_EQ(raw, copied);
+}
+
+TEST_P(NarTest, copyAsync)
+{
+    auto & [raw, _] = GetParam();
+    AsyncStringInputStream source(raw);
+
+    kj::EventLoop el;
+    kj::WaitScope ws{el};
+    auto copied = copyNAR(source)->drain().wait(ws).value();
     ASSERT_EQ(raw, copied);
 }
 
