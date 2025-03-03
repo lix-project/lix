@@ -381,11 +381,27 @@ void writeFile(const Path & path, std::string_view s, mode_t mode, bool sync)
 }
 
 
-void writeFile(const Path & path, Source & source, mode_t mode, bool sync)
+static AutoCloseFD openForWrite(const Path & path, mode_t mode)
 {
     AutoCloseFD fd{open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
     if (!fd)
         throw SysError("opening file '%1%'", path);
+    return fd;
+}
+
+static void closeForWrite(const Path & path, AutoCloseFD & fd, bool sync)
+{
+    if (sync)
+        fd.fsync();
+    // Explicitly close to make sure exceptions are propagated.
+    fd.close();
+    if (sync)
+        syncParent(path);
+}
+
+void writeFile(const Path & path, Source & source, mode_t mode, bool sync)
+{
+    AutoCloseFD fd = openForWrite(path, mode);
 
     std::vector<char> buf(64 * 1024);
 
@@ -400,12 +416,32 @@ void writeFile(const Path & path, Source & source, mode_t mode, bool sync)
         e.addTrace({}, "writing file '%1%'", path);
         throw;
     }
-    if (sync)
-        fd.fsync();
-    // Explicitly close to make sure exceptions are propagated.
-    fd.close();
-    if (sync)
-        syncParent(path);
+    closeForWrite(path, fd, sync);
+}
+
+kj::Promise<Result<void>>
+writeFile(const Path & path, AsyncInputStream & source, mode_t mode, bool sync)
+try {
+    AutoCloseFD fd = openForWrite(path, mode);
+
+    std::vector<char> buf(64 * 1024);
+
+    try {
+        while (true) {
+            if (auto n = TRY_AWAIT(source.read(buf.data(), buf.size()))) {
+                writeFull(fd.get(), {buf.data(), n});
+            } else {
+                break;
+            }
+        }
+    } catch (Error & e) {
+        e.addTrace({}, "writing file '%1%'", path);
+        throw;
+    }
+    closeForWrite(path, fd, sync);
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 void syncParent(const Path & path)

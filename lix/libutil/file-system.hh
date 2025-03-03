@@ -5,6 +5,7 @@
  * Utiltities for working with the file sytem and file paths.
  */
 
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/file-descriptor.hh"
@@ -191,6 +192,8 @@ Generator<Bytes> readFileSource(const Path & path);
 void writeFile(const Path & path, std::string_view s, mode_t mode = 0666, bool sync = false);
 
 void writeFile(const Path & path, Source & source, mode_t mode = 0666, bool sync = false);
+kj::Promise<Result<void>>
+writeFile(const Path & path, AsyncInputStream & source, mode_t mode = 0666, bool sync = false);
 
 /**
  * Flush a file's parent directory to disk
