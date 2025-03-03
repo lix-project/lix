@@ -15,12 +15,13 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/box_ptr.hh"
+#include "lix/libutil/config.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/finally.hh"
 #include "lix/libutil/generator.hh"
-#include "lix/libutil/serialise.hh"
-#include "lix/libutil/config.hh"
 #include "lix/libutil/logging.hh"
+#include "lix/libutil/result.hh"
+#include "lix/libutil/serialise.hh"
 #include "lix/libutil/signals.hh"
 
 namespace nix {
@@ -658,6 +659,86 @@ struct AsyncCopier : AsyncInputStream
         }
     }
 };
+
+// sadly async parsers can't be written to produce a tree of generators
+// the way sync parsers can. once we have async generators that may not
+// be as hard, but async generators in kj might have too much overhead.
+struct AsyncParser
+{
+    AsyncInputStream & source;
+    std::vector<char> buffer;
+
+    kj::Promise<Result<void>> parse(NARParseVisitor & target)
+    try {
+        Parser parser{buffer};
+        auto stream = parser.parseRoot();
+        TRY_AWAIT(parse(stream, target, ""));
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
+    }
+
+    kj::Promise<Result<void>> read(char * buffer, size_t n)
+    try {
+        while (n > 0) {
+            auto got = TRY_AWAIT(source.read(buffer, n));
+            if (got == 0) {
+                throw badArchive("unexpected end of nar encountered");
+            }
+            buffer += got;
+            n -= got;
+        }
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
+    }
+
+    kj::Promise<Result<void>> feed(size_t n)
+    {
+        auto end = buffer.size();
+        buffer.resize(end + n);
+        return read(buffer.data() + end, n);
+    }
+
+    kj::Promise<Result<void>>
+    parse(Generator<Parser::Response> & stream, NARParseVisitor & target, const std::string & name)
+    try {
+        while (auto i = stream.next()) {
+            if (auto want = std::get_if<Parser::WantBytes>(&*i)) {
+                TRY_AWAIT(feed(want->n));
+            } else if (auto f = std::get_if<Parser::FileHeader>(&*i)) {
+                auto file = target.createRegularFile(name, f->size, f->executable);
+                auto left = f->size;
+                std::array<char, 65536> buf;
+
+                while (left) {
+                    auto n = size_t(std::min<uint64_t>(buf.size(), left));
+                    TRY_AWAIT(read(buf.data(), n));
+                    file->receiveContents({buf.data(), n});
+                    left -= n;
+                }
+            } else if (auto sl = std::get_if<Parser::Symlink>(&*i)) {
+                target.createSymlink(name, sl->target);
+            } else if (auto d = std::get_if<Parser::Directory>(&*i)) {
+                auto dir = target.createDirectory(name);
+                while (auto e = d->content.next()) {
+                    if (auto want = std::get_if<Parser::WantBytes>(&*e)) {
+                        TRY_AWAIT(feed(want->n));
+                    } else if (auto entry = std::get_if<Parser::Directory::Entry>(&*e)) {
+                        TRY_AWAIT(parse(entry->second, *dir, entry->first));
+                    } else {
+                        assert(false && "expected parser response in dir");
+                    }
+                }
+            } else {
+                assert(false && "unhandled parser response");
+            }
+        }
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
+    }
+};
 }
 
 Generator<Entry> parse(Source & source)
@@ -760,6 +841,15 @@ void parseDump(NARParseVisitor & sink, Source & source)
     while (auto entry = nar.next()) {
         restore(sink, std::move(*entry), "");
     }
+}
+
+kj::Promise<Result<void>> parseDump(NARParseVisitor & sink, AsyncInputStream & source)
+try {
+    nar::AsyncParser parser{source};
+    TRY_AWAIT(parser.parse(sink));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 /*

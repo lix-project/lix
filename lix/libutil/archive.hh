@@ -204,6 +204,7 @@ Entry create(Source & source);
 }
 
 void parseDump(NARParseVisitor & sink, Source & source);
+kj::Promise<Result<void>> parseDump(NARParseVisitor & sink, AsyncInputStream & source);
 
 void restorePath(const Path & path, Source & source);
 

@@ -1,5 +1,6 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async-io.hh"
+#include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/serialise.hh"
 #include <algorithm>
 #include <gtest/gtest.h>
@@ -217,6 +218,103 @@ TEST_P(NarTest, parse)
 
     auto entries = entriesF();
     auto parsed = parse(source);
+    while (true) {
+        auto e = entries.next();
+        auto p = parsed.next();
+        ASSERT_EQ(e.has_value(), p.has_value());
+        if (!e) {
+            break;
+        }
+        assert_eq(*e, *p);
+    }
+}
+
+TEST_P(NarTest, parseAsync)
+{
+    struct File
+    {
+        bool executable;
+        uint64_t size;
+        std::string contents;
+        operator nar::Entry() const
+        {
+            auto stream = [](auto contents) -> Generator<Bytes> { co_yield contents; };
+            return nar::File{executable, size, stream(std::span{contents})};
+        }
+    };
+    struct Directory;
+    using Entry = std::variant<File, Symlink, Directory>;
+
+    struct Directory : std::map<std::string, Entry>
+    {
+        operator nar::Entry() const
+        {
+            return nar::Directory{
+                [](const Directory & d) -> Generator<std::pair<const std::string &, nar::Entry>> {
+                    for (auto & [name, entry] : d) {
+                        co_yield std::pair{std::cref(name), *toNar(entry).next()};
+                    }
+                }(*this),
+            };
+        }
+
+        static Entries toNar(const Entry & e)
+        {
+            co_yield std::visit([](const auto & e) -> Entries { co_yield e; }, e);
+        }
+    };
+
+    struct ReconstructVisitor : NARParseVisitor
+    {
+        std::map<std::string, Entry> & parent;
+
+        struct FileReader : NARParseVisitor::FileHandle
+        {
+            File & file;
+
+            FileReader(File & file) : file(file) {}
+
+            void receiveContents(std::string_view data) override
+            {
+                file.contents += data;
+            }
+
+            void close() override {}
+        };
+
+        explicit ReconstructVisitor(std::map<std::string, Entry> & parent) : parent(parent) {}
+
+        box_ptr<NARParseVisitor> createDirectory(const std::string & name) override
+        {
+            auto & dir = std::get<Directory>(parent.emplace(name, Directory{}).first->second);
+            return make_box_ptr<ReconstructVisitor>(dir);
+        }
+
+        box_ptr<FileHandle>
+        createRegularFile(const std::string & name, uint64_t size, bool executable) override
+        {
+            auto & file = std::get<File>(parent.emplace(name, File{executable, size}).first->second);
+            return make_box_ptr<FileReader>(file);
+        }
+
+        void createSymlink(const std::string & name, const std::string & target) override
+        {
+            parent.emplace(name, Symlink{target});
+        }
+    };
+
+    auto & [raw, entriesF] = GetParam();
+    AsyncStringInputStream source(raw);
+
+    std::map<std::string, Entry> contents;
+    ReconstructVisitor rv{contents};
+
+    kj::EventLoop el;
+    kj::WaitScope ws{el};
+
+    auto entries = entriesF();
+    parseDump(rv, source).wait(ws).value();
+    auto parsed = Directory::toNar(contents.at(""));
     while (true) {
         auto e = entries.next();
         auto p = parsed.next();
