@@ -7,6 +7,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/gc-store.hh"
 #include "lix/libstore/log-store.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/types.hh"
 
 
@@ -77,7 +78,7 @@ public:
      * Add a content-addressable store path. `dump` will be drained.
      */
     kj::Promise<Result<ref<const ValidPathInfo>>> addCAToStore(
-        Source & dump,
+        AsyncInputStream & dump,
         std::string_view name,
         ContentAddressMethod caMethod,
         HashType hashType,

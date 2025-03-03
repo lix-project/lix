@@ -1,3 +1,4 @@
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/result.hh"
@@ -387,7 +388,7 @@ std::optional<StorePath> RemoteStore::queryPathFromHashPart(const std::string & 
 
 
 kj::Promise<Result<ref<const ValidPathInfo>>> RemoteStore::addCAToStore(
-    Source & dump,
+    AsyncInputStream & dump,
     std::string_view name,
     ContentAddressMethod caMethod,
     HashType hashType,
@@ -410,9 +411,9 @@ try {
         connections->incCapacity();
         {
             Finally cleanup([&]() { connections->decCapacity(); });
-            conn.withFramedSink([&](Sink & sink) {
-                dump.drainInto(sink);
-            });
+            TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) {
+                return dump.drainInto(sink);
+            }));
         }
 
         co_return make_ref<ValidPathInfo>(
@@ -421,49 +422,62 @@ try {
     else {
         if (repair) throw Error("repairing is not supported when building through the Nix daemon protocol < 1.25");
 
-        std::visit(overloaded {
-            [&](const TextIngestionMethod & thm) -> void {
-                if (hashType != HashType::SHA256)
-                    throw UnimplementedError("When adding text-hashed data called '%s', only SHA-256 is supported but '%s' was given",
-                        name, printHashType(hashType));
-                std::string s = dump.drain();
-                conn->to << WorkerProto::Op::AddTextToStore << name << s;
-                conn->to << WorkerProto::write(*this, *conn, references);
-                conn.processStderr();
+        auto handlers = overloaded{
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+            [&](const TextIngestionMethod & thm) -> kj::Promise<Result<void>> {
+                try {
+                    if (hashType != HashType::SHA256)
+                        throw UnimplementedError("When adding text-hashed data called '%s', only SHA-256 is supported but '%s' was given",
+                            name, printHashType(hashType));
+                    std::string s = TRY_AWAIT(dump.drain());
+                    conn->to << WorkerProto::Op::AddTextToStore << name << s;
+                    conn->to << WorkerProto::write(*this, *conn, references);
+                    conn.processStderr();
+                    co_return result::success();
+                } catch (...) {
+                    co_return result::current_exception();
+                }
             },
-            [&](const FileIngestionMethod & fim) -> void {
-                conn->to
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+            [&](const FileIngestionMethod & fim) -> kj::Promise<Result<void>> {
+                try {
+                    conn->to
                     << WorkerProto::Op::AddToStore
                     << name
                     << ((hashType == HashType::SHA256 && fim == FileIngestionMethod::Recursive) ? 0 : 1) /* backwards compatibility hack */
                     << (fim == FileIngestionMethod::Recursive ? 1 : 0)
                     << printHashType(hashType);
 
-                try {
-                    conn->to.written = 0;
-                    connections->incCapacity();
-                    {
-                        Finally cleanup([&]() { connections->decCapacity(); });
-                        if (fim == FileIngestionMethod::Recursive) {
-                            dump.drainInto(conn->to);
-                        } else {
-                            std::string contents = dump.drain();
-                            conn->to << dumpString(contents);
+                    try {
+                        conn->to.written = 0;
+                        connections->incCapacity();
+                        {
+                            Finally cleanup([&]() { connections->decCapacity(); });
+                            if (fim == FileIngestionMethod::Recursive) {
+                                TRY_AWAIT(dump.drainInto(conn->to));
+                            } else {
+                                std::string contents = TRY_AWAIT(dump.drain());
+                                conn->to << dumpString(contents);
+                            }
                         }
+                        conn.processStderr();
+                    } catch (SysError & e) {
+                        /* Daemon closed while we were sending the path. Probably OOM
+                           or I/O error. */
+                        if (e.errNo == EPIPE)
+                            try {
+                                conn.processStderr();
+                            } catch (EndOfFile & e) { }
+                        throw;
                     }
-                    conn.processStderr();
-                } catch (SysError & e) {
-                    /* Daemon closed while we were sending the path. Probably OOM
-                      or I/O error. */
-                    if (e.errNo == EPIPE)
-                        try {
-                            conn.processStderr();
-                        } catch (EndOfFile & e) { }
-                    throw;
-                }
 
+                    co_return result::success();
+                } catch (...) {
+                    co_return result::current_exception();
+                }
             }
-        }, caMethod.raw);
+        };
+        TRY_AWAIT(std::visit(handlers, caMethod.raw));
         auto path = parseStorePath(readString(conn->from));
         // Release our connection to prevent a deadlock in queryPathInfo().
         conn_.reset();
@@ -477,7 +491,8 @@ try {
 kj::Promise<Result<StorePath>> RemoteStore::addToStoreFromDump(Source & dump, std::string_view name,
       FileIngestionMethod method, HashType hashType, RepairFlag repair, const StorePathSet & references)
 try {
-    co_return TRY_AWAIT(addCAToStore(dump, name, method, hashType, references, repair))->path;
+    AsyncSourceInputStream stream{dump};
+    co_return TRY_AWAIT(addCAToStore(stream, name, method, hashType, references, repair))->path;
 } catch (...) {
     co_return result::current_exception();
 }
@@ -557,7 +572,7 @@ kj::Promise<Result<StorePath>> RemoteStore::addTextToStore(
     const StorePathSet & references,
     RepairFlag repair)
 try {
-    StringSource source(s);
+    AsyncStringInputStream source(s);
     co_return TRY_AWAIT(addCAToStore(source, name, TextIngestionMethod {}, HashType::SHA256, references, repair))->path;
 } catch (...) {
     co_return result::current_exception();
