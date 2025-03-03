@@ -200,6 +200,7 @@ struct Directory
 };
 
 Entry create(Source & source);
+kj::Promise<Result<Entry>> create(AsyncInputStream & source);
 
 }
 

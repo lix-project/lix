@@ -752,28 +752,18 @@ Generator<Entry> parse(Source & source)
 namespace nar_index {
 
 namespace {
-struct NarSource : Source
+struct NarPositioner
 {
-    Source & source;
     uint64_t pos = 0;
-
-    NarSource(Source & source) : source(source) {}
-
-    size_t read(char * data, size_t len) override
-    {
-        auto n = source.read(data, len);
-        pos += n;
-        return n;
-    }
 };
 
 struct Indexer : NARParseVisitor
 {
-    NarSource & source;
+    NarPositioner & source;
     Directory & parent;
 
 public:
-    Indexer(NarSource & source, Directory & parent) : source(source), parent(parent) {}
+    Indexer(NarPositioner & source, Directory & parent) : source(source), parent(parent) {}
 
     box_ptr<NARParseVisitor> createDirectory(const std::string & name) override
     {
@@ -803,11 +793,52 @@ public:
 
 Entry create(Source & source)
 {
+    struct NarSource : Source, NarPositioner
+    {
+        Source & source;
+
+        NarSource(Source & source) : source(source) {}
+
+        size_t read(char * data, size_t len) override
+        {
+            auto n = source.read(data, len);
+            pos += n;
+            return n;
+        }
+    };
+
     Directory root;
     NarSource wrapper{source};
     Indexer index{wrapper, root};
     parseDump(index, wrapper);
     return root.contents.at("");
+}
+
+kj::Promise<Result<Entry>> create(AsyncInputStream & source)
+try {
+    struct NarSource : AsyncInputStream, NarPositioner
+    {
+        AsyncInputStream & source;
+
+        NarSource(AsyncInputStream & source) : source(source) {}
+
+        kj::Promise<Result<size_t>> read(void * data, size_t len) override
+        try {
+            auto n = TRY_AWAIT(source.read(data, len));
+            pos += n;
+            co_return n;
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    };
+
+    Directory root;
+    NarSource wrapper{source};
+    Indexer index{wrapper, root};
+    TRY_AWAIT(parseDump(index, wrapper));
+    co_return root.contents.at("");
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }

@@ -364,6 +364,26 @@ TEST_P(NarTest, index)
     }
 }
 
+TEST_P(NarTest, indexAsync)
+{
+    auto & [raw, entriesF] = GetParam();
+    AsyncStringInputStream source(raw);
+
+    kj::EventLoop el;
+    kj::WaitScope ws{el};
+    auto entries = entriesF();
+    auto indexed = fromIndex(raw, nar_index::create(source).wait(ws).value());
+    while (true) {
+        auto e = entries.next();
+        auto p = indexed.next();
+        ASSERT_EQ(e.has_value(), p.has_value());
+        if (!e) {
+            break;
+        }
+        assert_eq(*e, *p);
+    }
+}
+
 INSTANTIATE_TEST_SUITE_P(
     ,
     NarTest,
