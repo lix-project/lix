@@ -293,7 +293,8 @@
 
         # System tests.
         tests = import ./tests/nixos { inherit lib nixpkgs nixpkgsFor; } // {
-          nix-eval-jobs = forAllSystems (system: self.packages.${system}.nix-eval-jobs.tests.nix-eval-jobs);
+          # this test is *incredibly* flaky, sometimes taking six tries in ci to unflake
+          # nix-eval-jobs = forAllSystems (system: self.packages.${system}.nix-eval-jobs.tests.nix-eval-jobs);
 
           # This is x86_64-linux only, just because we have significantly
           # cheaper x86_64-linux compute in CI.
