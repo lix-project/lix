@@ -179,7 +179,34 @@ void assert_eq(Entry & a, Entry & b)
 }
 
 class NarTest : public testing::TestWithParam<Fragment>
-{};
+{
+public:
+    static Entries fromIndex(std::string_view raw, nar_index::Entry e)
+    {
+        auto handlers = overloaded{
+            [&](const nar_index::File & f) -> Entry {
+                std::span<const char> block{raw.substr(f.offset, f.size)};
+                return File{
+                    f.executable,
+                    f.size,
+                    [](auto block) -> Generator<Bytes> { co_yield block; }(block),
+                };
+            },
+            [&](const nar_index::Symlink & s) -> Entry { return Symlink{s.target}; },
+            [&](const nar_index::Directory & d) -> Entry {
+                return Directory{
+                    [](std::string_view raw, const nar_index::Directory & d
+                    ) -> Generator<std::pair<const std::string &, Entry>> {
+                        for (auto & [name, entry] : d.contents) {
+                            co_yield std::pair{std::cref(name), *fromIndex(raw, entry).next()};
+                        }
+                    }(raw, d)
+                };
+            },
+        };
+        co_yield std::visit(handlers, e);
+    }
+};
 
 TEST_P(NarTest, parse)
 {
@@ -206,6 +233,24 @@ TEST_P(NarTest, copy)
 
     auto copied = GeneratorSource(copyNAR(source)).drain();
     ASSERT_EQ(raw, copied);
+}
+
+TEST_P(NarTest, index)
+{
+    auto & [raw, entriesF] = GetParam();
+    StringSource source(raw);
+
+    auto entries = entriesF();
+    auto indexed = fromIndex(raw, nar_index::create(source));
+    while (true) {
+        auto e = entries.next();
+        auto p = indexed.next();
+        ASSERT_EQ(e.has_value(), p.has_value());
+        if (!e) {
+            break;
+        }
+        assert_eq(*e, *p);
+    }
 }
 
 INSTANTIATE_TEST_SUITE_P(

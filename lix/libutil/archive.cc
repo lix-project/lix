@@ -583,6 +583,69 @@ Generator<Entry> parse(Source & source)
 
 }
 
+namespace nar_index {
+
+namespace {
+struct NarSource : Source
+{
+    Source & source;
+    uint64_t pos = 0;
+
+    NarSource(Source & source) : source(source) {}
+
+    size_t read(char * data, size_t len) override
+    {
+        auto n = source.read(data, len);
+        pos += n;
+        return n;
+    }
+};
+
+struct Indexer : NARParseVisitor
+{
+    NarSource & source;
+    Directory & parent;
+
+public:
+    Indexer(NarSource & source, Directory & parent) : source(source), parent(parent) {}
+
+    box_ptr<NARParseVisitor> createDirectory(const std::string & name) override
+    {
+        auto & dir = std::get<Directory>(parent.contents[name] = Directory{});
+        return make_box_ptr<Indexer>(source, dir);
+    }
+
+    box_ptr<FileHandle>
+    createRegularFile(const std::string & name, uint64_t size, bool executable) override
+    {
+        struct IgnoringFileHandle : FileHandle
+        {
+            void close() override {}
+            void receiveContents(std::string_view data) override {}
+        };
+
+        parent.contents[name] = File{executable, source.pos, size};
+        return make_box_ptr<IgnoringFileHandle>();
+    }
+
+    void createSymlink(const std::string & name, const std::string & target) override
+    {
+        parent.contents[name] = Symlink{target};
+    }
+};
+}
+
+Entry create(Source & source)
+{
+    Directory root;
+    NarSource wrapper{source};
+    Indexer index{wrapper, root};
+    parseDump(index, wrapper);
+    return root.contents.at("");
+}
+
+}
+
 static void restore(NARParseVisitor & sink, nar::Entry entry, const Path & path)
 {
     return std::visit(

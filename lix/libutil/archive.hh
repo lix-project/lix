@@ -174,6 +174,33 @@ WireFormatGenerator dump(Entry nar);
 Generator<Entry> parse(Source & source);
 }
 
+namespace nar_index {
+
+struct File;
+struct Symlink;
+struct Directory;
+using Entry = std::variant<File, Symlink, Directory>;
+
+struct File
+{
+    bool executable;
+    uint64_t offset, size;
+};
+
+struct Symlink
+{
+    Path target;
+};
+
+struct Directory
+{
+    std::map<std::string, Entry> contents;
+};
+
+Entry create(Source & source);
+
+}
+
 void parseDump(NARParseVisitor & sink, Source & source);
 
 void restorePath(const Path & path, Source & source);
