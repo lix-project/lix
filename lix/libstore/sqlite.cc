@@ -78,7 +78,7 @@ SQLite::SQLite(const Path & path, SQLiteOpenMode mode)
     }
     this->db.reset(db);
 
-    if (sqlite3_busy_timeout(db, 60 * 60 * 1000) != SQLITE_OK)
+    if (sqlite3_busy_timeout(db, 50) != SQLITE_OK)
         SQLiteError::throw_(db, "setting timeout");
 
     if (getEnv("NIX_DEBUG_SQLITE_TRACES") == "1") {
