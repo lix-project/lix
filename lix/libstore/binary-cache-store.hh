@@ -153,7 +153,8 @@ public:
 
     ref<FSAccessor> getFSAccessor() override;
 
-    void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
+    kj::Promise<Result<void>>
+    addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 
     kj::Promise<Result<std::optional<std::string>>> getBuildLogExact(const StorePath & path) override;
 

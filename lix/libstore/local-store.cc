@@ -1810,21 +1810,31 @@ kj::Promise<Result<std::optional<TrustedFlag>>> LocalStore::isTrustedClient()
 }
 
 
-void LocalStore::addSignatures(const StorePath & storePath, const StringSet & sigs)
-{
-    retrySQLite([&]() {
-        auto state = dbPool.get();
+kj::Promise<Result<void>>
+LocalStore::addSignatures(const StorePath & storePath, const StringSet & sigs)
+try {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<void>> {
+        try {
+            auto state = dbPool.get();
 
-        SQLiteTxn txn = state->db.beginTransaction(SQLiteTxnType::Immediate);
+            SQLiteTxn txn = state->db.beginTransaction(SQLiteTxnType::Immediate);
 
-        auto info = std::const_pointer_cast<ValidPathInfo>(queryPathInfoInternal(*state, storePath));
+            auto info = std::const_pointer_cast<ValidPathInfo>(queryPathInfoInternal(*state, storePath));
 
-        info->sigs.insert(sigs.begin(), sigs.end());
+            info->sigs.insert(sigs.begin(), sigs.end());
 
-        updatePathInfo(*state, *info);
+            updatePathInfo(*state, *info);
 
-        txn.commit();
-    }, always_progresses);
+            txn.commit();
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    }));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

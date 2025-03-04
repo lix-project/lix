@@ -156,7 +156,8 @@ public:
     kj::Promise<Result<void>> repairPath(const StorePath & path) override
     try { unsupported("repairPath"); } catch (...) { return {result::current_exception()}; }
 
-    void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
+    kj::Promise<Result<void>>
+    addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 
     kj::Promise<Result<void>> queryMissing(const std::vector<DerivedPath> & targets,
         StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,

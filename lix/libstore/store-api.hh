@@ -750,8 +750,9 @@ public:
      * Add signatures to the specified store path. The signatures are
      * not verified.
      */
-    virtual void addSignatures(const StorePath & storePath, const StringSet & sigs)
-    { unsupported("addSignatures"); }
+    virtual kj::Promise<Result<void>>
+    addSignatures(const StorePath & storePath, const StringSet & sigs)
+    try { unsupported("addSignatures"); } catch (...) { return {result::current_exception()}; }
 
     /* Utility functions. */
 

@@ -1,10 +1,12 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/signals.hh"
 
 #include <atomic>
+#include <functional>
 
 using namespace nix;
 
@@ -42,7 +44,7 @@ struct CmdCopySigs : StorePathsCommand
 
         std::atomic<size_t> added{0};
 
-        auto doPath = [&](const Path & storePathS) {
+        auto doPath = [&](AsyncIoRoot & aio, const Path & storePathS) {
 
             checkInterrupt();
 
@@ -71,13 +73,16 @@ struct CmdCopySigs : StorePathsCommand
             }
 
             if (!newSigs.empty()) {
-                store->addSignatures(storePath, newSigs);
+                aio.blockOn(store->addSignatures(storePath, newSigs));
                 added += newSigs.size();
             }
         };
 
-        for (auto & storePath : storePaths)
-            pool.enqueue(std::bind(doPath, store->printStorePath(storePath)));
+        for (auto & storePath : storePaths) {
+            pool.enqueueWithAio(
+                std::bind(doPath, std::placeholders::_1, store->printStorePath(storePath))
+            );
+        }
 
         pool.process();
 
@@ -119,7 +124,7 @@ struct CmdSign : StorePathsCommand
 
         std::atomic<size_t> added{0};
 
-        auto doPath = [&](const Path & storePathS) {
+        auto doPath = [&](AsyncIoRoot & aio, const Path & storePathS) {
 
             checkInterrupt();
 
@@ -133,13 +138,16 @@ struct CmdSign : StorePathsCommand
             assert(!info2.sigs.empty());
 
             if (!info->sigs.count(*info2.sigs.begin())) {
-                store->addSignatures(storePath, info2.sigs);
+                aio.blockOn(store->addSignatures(storePath, info2.sigs));
                 added++;
             }
         };
 
-        for (auto & storePath : storePaths)
-            pool.enqueue(std::bind(doPath, store->printStorePath(storePath)));
+        for (auto & storePath : storePaths) {
+            pool.enqueueWithAio(
+                std::bind(doPath, std::placeholders::_1, store->printStorePath(storePath))
+            );
+        }
 
         pool.process();
 

@@ -875,7 +875,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         auto path = store->parseStorePath(readString(from));
         StringSet sigs = readStrings<StringSet>(from);
         logger->startWork();
-        store->addSignatures(path, sigs);
+        aio.blockOn(store->addSignatures(path, sigs));
         logger->stopWork();
         to << 1;
         break;

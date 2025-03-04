@@ -896,12 +896,16 @@ try {
 }
 
 
-void RemoteStore::addSignatures(const StorePath & storePath, const StringSet & sigs)
-{
+kj::Promise<Result<void>>
+RemoteStore::addSignatures(const StorePath & storePath, const StringSet & sigs)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::AddSignatures << printStorePath(storePath) << sigs;
     conn.processStderr();
     readInt(conn->from);
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

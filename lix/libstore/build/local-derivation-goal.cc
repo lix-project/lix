@@ -1242,8 +1242,9 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         return {result::success()};
     }
 
-    void addSignatures(const StorePath & storePath, const StringSet & sigs) override
-    { unsupported("addSignatures"); }
+    kj::Promise<Result<void>>
+    addSignatures(const StorePath & storePath, const StringSet & sigs) override
+    try { unsupported("addSignatures"); } catch (...) { return {result::current_exception()}; }
 
     kj::Promise<Result<void>> queryMissing(const std::vector<DerivedPath> & targets,
         StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,

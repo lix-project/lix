@@ -307,7 +307,8 @@ public:
 
     kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override;
 
-    void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
+    kj::Promise<Result<void>>
+    addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 
     /**
      * If free disk space in /nix/store if below minFree, delete

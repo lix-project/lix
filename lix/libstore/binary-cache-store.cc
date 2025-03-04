@@ -521,8 +521,9 @@ ref<FSAccessor> BinaryCacheStore::getFSAccessor()
     return make_ref<RemoteFSAccessor>(ref<Store>(shared_from_this()), config().localNarCache);
 }
 
-void BinaryCacheStore::addSignatures(const StorePath & storePath, const StringSet & sigs)
-{
+kj::Promise<Result<void>>
+BinaryCacheStore::addSignatures(const StorePath & storePath, const StringSet & sigs)
+try {
     /* Note: this is inherently racy since there is no locking on
        binary caches. In particular, with S3 this unreliable, even
        when addSignatures() is called sequentially on a path, because
@@ -534,6 +535,9 @@ void BinaryCacheStore::addSignatures(const StorePath & storePath, const StringSe
     narInfo->sigs.insert(sigs.begin(), sigs.end());
 
     writeNarInfo(narInfo);
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<std::optional<std::string>>>
