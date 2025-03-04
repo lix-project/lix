@@ -1155,7 +1155,7 @@ try {
         processGraph<Realisation>(
             "copyPaths pool",
             TRY_AWAIT(Realisation::closure(srcStore, toplevelRealisations)),
-            [&](const Realisation & current) -> std::set<Realisation> {
+            [&](AsyncIoRoot & aio, const Realisation & current) -> std::set<Realisation> {
                 std::set<Realisation> children;
                 for (const auto & [drvOutput, _] : current.dependentRealisations) {
                     auto currentChild = srcStore.queryRealisation(drvOutput);
@@ -1168,8 +1168,8 @@ try {
                 }
                 return children;
             },
-            [&](const Realisation& current) -> void {
-                dstStore.registerDrvOutput(current, checkSigs);
+            [&](AsyncIoRoot & aio, const Realisation& current) -> void {
+                aio.blockOn(dstStore.registerDrvOutput(current, checkSigs));
             });
     } catch (MissingExperimentalFeature & e) {
         // Don't fail if the remote doesn't support CA derivations is it might

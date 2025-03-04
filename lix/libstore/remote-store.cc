@@ -600,8 +600,8 @@ try {
     co_return result::current_exception();
 }
 
-void RemoteStore::registerDrvOutput(const Realisation & info)
-{
+kj::Promise<Result<void>> RemoteStore::registerDrvOutput(const Realisation & info)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::RegisterDrvOutput;
     if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 31) {
@@ -612,6 +612,9 @@ void RemoteStore::registerDrvOutput(const Realisation & info)
         conn->to << WorkerProto::write(*this, *conn, info);
     }
     conn.processStderr();
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 std::shared_ptr<const Realisation> RemoteStore::queryRealisationUncached(const DrvOutput & id)

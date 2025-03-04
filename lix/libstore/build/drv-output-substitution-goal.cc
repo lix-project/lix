@@ -141,15 +141,15 @@ try {
 
     if (nrFailed > 0) {
         debug("The output path of the derivation output '%s' could not be substituted", id.to_string());
-        return {WorkResult{
+        co_return WorkResult{
             nrNoSubstituters > 0 || nrIncompleteClosure > 0 ? ecIncompleteClosure : ecFailed,
-        }};
+        };
     }
 
-    worker.store.registerDrvOutput(*outputInfo);
-    return finished();
+    TRY_AWAIT(worker.store.registerDrvOutput(*outputInfo));
+    co_return TRY_AWAIT(finished());
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<Goal::WorkResult>> DrvOutputSubstitutionGoal::finished() noexcept

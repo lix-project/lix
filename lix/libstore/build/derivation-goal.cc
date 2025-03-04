@@ -1192,7 +1192,7 @@ try {
                     );
                 }
                 signRealisation(newRealisation);
-                worker.store.registerDrvOutput(newRealisation);
+                TRY_AWAIT(worker.store.registerDrvOutput(newRealisation));
             }
             outputPaths.insert(realisation.outPath);
             builtOutputs.emplace(outputName, realisation);
@@ -1691,12 +1691,12 @@ try {
                 // derivation, and the output path is valid, but we don't have
                 // its realisation stored (probably because it has been built
                 // without the `ca-derivations` experimental flag).
-                worker.store.registerDrvOutput(
+                TRY_AWAIT(worker.store.registerDrvOutput(
                     Realisation {
                         drvOutput,
                         info.known->path,
                     }
-                );
+                ));
             }
         }
         if (info.known && info.known->isValid())

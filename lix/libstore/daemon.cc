@@ -956,11 +956,11 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         if (GET_PROTOCOL_MINOR(clientVersion) < 31) {
             auto outputId = DrvOutput::parse(readString(from));
             auto outputPath = StorePath(readString(from));
-            store->registerDrvOutput(Realisation{
-                .id = outputId, .outPath = outputPath});
+            aio.blockOn(store->registerDrvOutput(Realisation{
+                .id = outputId, .outPath = outputPath}));
         } else {
             auto realisation = WorkerProto::Serialise<Realisation>::read(*store, rconn);
-            store->registerDrvOutput(realisation);
+            aio.blockOn(store->registerDrvOutput(realisation));
         }
         logger->stopWork();
         break;

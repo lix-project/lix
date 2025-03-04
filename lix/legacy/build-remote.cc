@@ -387,7 +387,7 @@ connected:
             // Should hold, because if the feature isn't enabled the set
             // of missing realisations should be empty
             experimentalFeatureSettings.require(Xp::CaDerivations);
-            store->registerDrvOutput(realisation);
+            aio.blockOn(store->registerDrvOutput(realisation));
         }
 
         return 0;

@@ -317,8 +317,9 @@ public:
      * Register the store path 'output' as the output named 'outputName' of
      * derivation 'deriver'.
      */
-    void registerDrvOutput(const Realisation & info) override;
-    void registerDrvOutput(const Realisation & info, CheckSigsFlag checkSigs) override;
+    kj::Promise<Result<void>> registerDrvOutput(const Realisation & info) override;
+    kj::Promise<Result<void>>
+    registerDrvOutput(const Realisation & info, CheckSigsFlag checkSigs) override;
     void cacheDrvOutputMapping(
         DBState & state,
         const uint64_t deriver,

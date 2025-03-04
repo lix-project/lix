@@ -1151,10 +1151,10 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         return {result::current_exception()};
     }
 
-    void registerDrvOutput(const Realisation & info) override
+    kj::Promise<Result<void>> registerDrvOutput(const Realisation & info) override
     // XXX: This should probably be allowed as a no-op if the realisation
     // corresponds to an allowed derivation
-    { throw Error("registerDrvOutput"); }
+    try { throw Error("registerDrvOutput"); } catch (...) { return {result::current_exception()}; }
 
     std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput & id) override
     // XXX: This should probably be allowed if the realisation corresponds to
@@ -2508,7 +2508,7 @@ try {
             && drv->type().isPure())
         {
             signRealisation(thisRealisation);
-            worker.store.registerDrvOutput(thisRealisation);
+            TRY_AWAIT(worker.store.registerDrvOutput(thisRealisation));
         }
         builtOutputs.emplace(outputName, thisRealisation);
     }

@@ -589,10 +589,13 @@ public:
      * floating-ca derivations and their dependencies as there's no way to
      * retrieve this information otherwise.
      */
-    virtual void registerDrvOutput(const Realisation & output)
-    { unsupported("registerDrvOutput"); }
-    virtual void registerDrvOutput(const Realisation & output, CheckSigsFlag checkSigs)
-    { return registerDrvOutput(output); }
+    virtual kj::Promise<Result<void>> registerDrvOutput(const Realisation & output)
+    try { unsupported("registerDrvOutput"); } catch (...) { return {result::current_exception()}; }
+    virtual kj::Promise<Result<void>>
+    registerDrvOutput(const Realisation & output, CheckSigsFlag checkSigs)
+    {
+        return registerDrvOutput(output);
+    }
 
     /**
      * Generate a NAR dump of a store path.

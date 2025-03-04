@@ -772,67 +772,80 @@ void canonicalisePathMetaData(const Path & path,
 }
 
 
-void LocalStore::registerDrvOutput(const Realisation & info, CheckSigsFlag checkSigs)
-{
+kj::Promise<Result<void>>
+LocalStore::registerDrvOutput(const Realisation & info, CheckSigsFlag checkSigs)
+try {
     experimentalFeatureSettings.require(Xp::CaDerivations);
     if (checkSigs == NoCheckSigs || !realisationIsUntrusted(info))
-        registerDrvOutput(info);
+        TRY_AWAIT(registerDrvOutput(info));
     else
         throw Error("cannot register realisation '%s' because it lacks a signature by a trusted key", info.outPath.to_string());
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
-void LocalStore::registerDrvOutput(const Realisation & info)
-{
+kj::Promise<Result<void>> LocalStore::registerDrvOutput(const Realisation & info)
+try {
     experimentalFeatureSettings.require(Xp::CaDerivations);
-    retrySQLite([&]() {
-        auto state = dbPool.get();
-        if (auto oldR = queryRealisation_(*state, info.id)) {
-            if (info.isCompatibleWith(*oldR)) {
-                auto combinedSignatures = oldR->signatures;
-                combinedSignatures.insert(info.signatures.begin(),
-                    info.signatures.end());
-                state->stmts->UpdateRealisedOutput.use()
-                    (concatStringsSep(" ", combinedSignatures))
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<void>> {
+        try {
+            auto state = dbPool.get();
+            if (auto oldR = queryRealisation_(*state, info.id)) {
+                if (info.isCompatibleWith(*oldR)) {
+                    auto combinedSignatures = oldR->signatures;
+                    combinedSignatures.insert(info.signatures.begin(),
+                        info.signatures.end());
+                    state->stmts->UpdateRealisedOutput.use()
+                        (concatStringsSep(" ", combinedSignatures))
+                        (info.id.strHash())
+                        (info.id.outputName)
+                        .exec();
+                } else {
+                    throw Error("Trying to register a realisation of '%s', but we already "
+                                "have another one locally.\n"
+                                "Local:  %s\n"
+                                "Remote: %s",
+                        info.id.to_string(),
+                        printStorePath(oldR->outPath),
+                        printStorePath(info.outPath)
+                    );
+                }
+            } else {
+                state->stmts->RegisterRealisedOutput.use()
                     (info.id.strHash())
                     (info.id.outputName)
+                    (printStorePath(info.outPath))
+                    (concatStringsSep(" ", info.signatures))
                     .exec();
-            } else {
-                throw Error("Trying to register a realisation of '%s', but we already "
-                            "have another one locally.\n"
-                            "Local:  %s\n"
-                            "Remote: %s",
-                    info.id.to_string(),
-                    printStorePath(oldR->outPath),
-                    printStorePath(info.outPath)
-                );
             }
-        } else {
-            state->stmts->RegisterRealisedOutput.use()
-                (info.id.strHash())
-                (info.id.outputName)
-                (printStorePath(info.outPath))
-                (concatStringsSep(" ", info.signatures))
-                .exec();
+            for (auto & [outputId, depPath] : info.dependentRealisations) {
+                auto localRealisation = queryRealisationCore_(*state, outputId);
+                if (!localRealisation)
+                    throw Error("unable to register the derivation '%s' as it "
+                                "depends on the non existent '%s'",
+                        info.id.to_string(), outputId.to_string());
+                if (localRealisation->second.outPath != depPath)
+                    throw Error("unable to register the derivation '%s' as it "
+                                "depends on a realisation of '%s' that doesn’t"
+                                "match what we have locally",
+                        info.id.to_string(), outputId.to_string());
+                state->stmts->AddRealisationReference.use()
+                    (info.id.strHash())
+                    (info.id.outputName)
+                    (outputId.strHash())
+                    (outputId.outputName)
+                    .exec();
+            }
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
         }
-        for (auto & [outputId, depPath] : info.dependentRealisations) {
-            auto localRealisation = queryRealisationCore_(*state, outputId);
-            if (!localRealisation)
-                throw Error("unable to register the derivation '%s' as it "
-                            "depends on the non existent '%s'",
-                    info.id.to_string(), outputId.to_string());
-            if (localRealisation->second.outPath != depPath)
-                throw Error("unable to register the derivation '%s' as it "
-                            "depends on a realisation of '%s' that doesn’t"
-                            "match what we have locally",
-                    info.id.to_string(), outputId.to_string());
-            state->stmts->AddRealisationReference.use()
-                (info.id.strHash())
-                (info.id.outputName)
-                (outputId.strHash())
-                (outputId.outputName)
-                .exec();
-        }
-    }, always_progresses);
+    }));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 void LocalStore::cacheDrvOutputMapping(
