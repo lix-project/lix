@@ -894,7 +894,7 @@ try {
            derivations).  Note that if this throws an error, then the
            DB transaction is rolled back, so the path validity
            registration above is undone. */
-        if (checkOutputs) drv.checkInvariants(*this, info.path);
+        if (checkOutputs) TRY_AWAIT(drv.checkInvariants(*this, info.path));
 
         for (auto & i : drv.outputsAndOptPaths(*this)) {
             /* Floating CA derivations have indeterminate output paths until
@@ -1228,7 +1228,7 @@ try {
             for (auto & [_, i] : infos)
                 if (i.path.isDerivation()) {
                     // FIXME: inefficient; we already loaded the derivation in addValidPath().
-                    readInvalidDerivation(i.path).checkInvariants(*this, i.path);
+                    TRY_AWAIT(readInvalidDerivation(i.path).checkInvariants(*this, i.path));
                 }
 
             /* Do a topological sort of the paths.  This will throw an

@@ -34,7 +34,7 @@ struct CmdAddDerivation : MixDryRun, StoreCommand
 
         auto drvPath = aio().blockOn(writeDerivation(*store, drv, NoRepair, /* read only */ dryRun));
 
-        drv.checkInvariants(*store, drvPath);
+        aio().blockOn(drv.checkInvariants(*store, drvPath));
 
         aio().blockOn(writeDerivation(*store, drv, NoRepair, dryRun));
 

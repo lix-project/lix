@@ -1161,8 +1161,9 @@ try {
 }
 
 
-void Derivation::checkInvariants(Store & store, const StorePath & drvPath) const
-{
+kj::Promise<Result<void>>
+Derivation::checkInvariants(Store & store, const StorePath & drvPath) const
+try {
     assert(drvPath.isDerivation());
     std::string drvName(drvPath.name());
     drvName = drvName.substr(0, drvName.size() - drvExtension.size());
@@ -1218,6 +1219,9 @@ void Derivation::checkInvariants(Store & store, const StorePath & drvPath) const
             },
         }, i.second.raw);
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

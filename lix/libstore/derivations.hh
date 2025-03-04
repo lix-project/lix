@@ -362,7 +362,7 @@ struct Derivation : BasicDerivation
      * representation supports all sorts of combinations we do not yet
      * allow.
      */
-    void checkInvariants(Store & store, const StorePath & drvPath) const;
+    kj::Promise<Result<void>> checkInvariants(Store & store, const StorePath & drvPath) const;
 
     Derivation() = default;
     Derivation(const BasicDerivation & bd) : BasicDerivation(bd) { }
