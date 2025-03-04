@@ -333,57 +333,67 @@ try {
         act.progress(nrDone, pathsToCopy.size(), nrRunning, nrFailed);
     };
 
-    processGraph<StorePath>("addMultipleToStore pool",
+    TRY_AWAIT(processGraphAsync<StorePath>(
         storePathsToAdd,
 
-        [&](AsyncIoRoot & aio, const StorePath & path) {
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        [&](const StorePath & path) -> kj::Promise<Result<StorePathSet>> {
+            try {
+                auto & [info, _] = *infosMap.at(path);
 
-            auto & [info, _] = *infosMap.at(path);
+                if (TRY_AWAIT(isValidPath(info.path))) {
+                    nrDone++;
+                    showProgress();
+                    co_return StorePathSet();
+                }
 
-            if (aio.blockOn(isValidPath(info.path))) {
-                nrDone++;
-                showProgress();
-                return StorePathSet();
+                bytesExpected += info.narSize;
+                act.setExpected(actCopyPath, bytesExpected);
+
+                co_return info.references;
+            } catch (...) {
+                co_return result::current_exception();
             }
-
-            bytesExpected += info.narSize;
-            act.setExpected(actCopyPath, bytesExpected);
-
-            return info.references;
         },
 
-        [&](AsyncIoRoot & aio, const StorePath & path) {
-            checkInterrupt();
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        [&](const StorePath & path) -> kj::Promise<Result<void>> {
+            try {
+                checkInterrupt();
 
-            auto & [info_, source_] = *infosMap.at(path);
-            auto info = info_;
-            info.ultimate = false;
+                auto & [info_, source_] = *infosMap.at(path);
+                auto info = info_;
+                info.ultimate = false;
 
-            /* Make sure that the Source object is destroyed when
-               we're done. In particular, a coroutine object must
-               be destroyed to ensure that the destructors in its
-               state are run; this includes
-               LegacySSHStore::narFromPath()'s connection lock. */
-            auto source = std::move(source_);
+                /* Make sure that the Source object is destroyed when
+                we're done. In particular, a coroutine object must
+                be destroyed to ensure that the destructors in its
+                state are run; this includes
+                LegacySSHStore::narFromPath()'s connection lock. */
+                auto source = std::move(source_);
 
-            if (!aio.blockOn(isValidPath(info.path))) {
-                MaintainCount<decltype(nrRunning)> mc(nrRunning);
-                showProgress();
-                try {
-                    aio.blockOn(addToStore(info, *aio.blockOn(source()), repair, checkSigs));
-                } catch (Error & e) {
-                    nrFailed++;
-                    if (!settings.keepGoing)
-                        throw e;
-                    printMsg(lvlError, "could not copy %s: %s", printStorePath(path), e.what());
+                if (!TRY_AWAIT(isValidPath(info.path))) {
+                    MaintainCount<decltype(nrRunning)> mc(nrRunning);
                     showProgress();
-                    return;
+                    try {
+                        TRY_AWAIT(addToStore(info, *TRY_AWAIT(source()), repair, checkSigs));
+                    } catch (Error & e) {
+                        nrFailed++;
+                        if (!settings.keepGoing)
+                            throw e;
+                        printMsg(lvlError, "could not copy %s: %s", printStorePath(path), e.what());
+                        showProgress();
+                        co_return result::success();
+                    }
                 }
-            }
 
-            nrDone++;
-            showProgress();
-        });
+                nrDone++;
+                showProgress();
+                co_return result::success();
+            } catch (...) {
+                co_return result::current_exception();
+            }
+        }));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -1178,25 +1188,29 @@ try {
 
     try {
         // Copy the realisation closure
-        processGraph<Realisation>(
-            "copyPaths pool",
+        TRY_AWAIT(processGraphAsync<Realisation>(
             TRY_AWAIT(Realisation::closure(srcStore, toplevelRealisations)),
-            [&](AsyncIoRoot & aio, const Realisation & current) -> std::set<Realisation> {
-                std::set<Realisation> children;
-                for (const auto & [drvOutput, _] : current.dependentRealisations) {
-                    auto currentChild = aio.blockOn(srcStore.queryRealisation(drvOutput));
-                    if (!currentChild)
-                        throw Error(
-                            "incomplete realisation closure: '%s' is a "
-                            "dependency of '%s' but isn't registered",
-                            drvOutput.to_string(), current.id.to_string());
-                    children.insert(*currentChild);
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+            [&](const Realisation & current) -> kj::Promise<Result<std::set<Realisation>>> {
+                try {
+                    std::set<Realisation> children;
+                    for (const auto & [drvOutput, _] : current.dependentRealisations) {
+                        auto currentChild = TRY_AWAIT(srcStore.queryRealisation(drvOutput));
+                        if (!currentChild)
+                            throw Error(
+                                "incomplete realisation closure: '%s' is a "
+                                "dependency of '%s' but isn't registered",
+                                drvOutput.to_string(), current.id.to_string());
+                        children.insert(*currentChild);
+                    }
+                    co_return children;
+                } catch (...) {
+                    co_return result::current_exception();
                 }
-                return children;
             },
-            [&](AsyncIoRoot & aio, const Realisation& current) -> void {
-                aio.blockOn(dstStore.registerDrvOutput(current, checkSigs));
-            });
+            [&](const Realisation& current) -> kj::Promise<Result<void>> {
+                return dstStore.registerDrvOutput(current, checkSigs);
+            }));
     } catch (MissingExperimentalFeature & e) {
         // Don't fail if the remote doesn't support CA derivations is it might
         // not be within our control to change that, and we might still want
