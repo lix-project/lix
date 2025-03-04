@@ -93,7 +93,7 @@ try {
     upsertFile(narInfoFile, narInfo->to_string(*this), "text/x-nix-narinfo");
 
     {
-        auto state_(state.lock());
+        auto state_(co_await state.lock());
         state_->pathInfoCache.upsert(
             std::string(narInfo->path.to_string()),
             PathInfoCacheValue { .value = std::shared_ptr<NarInfo>(narInfo) });

@@ -223,7 +223,7 @@ protected:
         LRUCache<std::string, PathInfoCacheValue> pathInfoCache;
     };
 
-    Sync<State> state;
+    Sync<State, AsyncMutex> state;
 
     std::shared_ptr<NarInfoDiskCache> diskCache;
 
@@ -866,9 +866,9 @@ public:
      * Hack to allow long-running processes like hydra-queue-runner to
      * occasionally flush their path info cache.
      */
-    void clearPathInfoCache()
+    kj::Promise<void> clearPathInfoCache()
     {
-        state.lock()->pathInfoCache.clear();
+        (co_await state.lock())->pathInfoCache.clear();
     }
 
     /**

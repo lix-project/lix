@@ -882,7 +882,7 @@ try {
     readLongLong(conn->from); // obsolete
 
     {
-        auto state_(Store::state.lock());
+        auto state_(co_await Store::state.lock());
         state_->pathInfoCache.clear();
     }
     co_return result::success();

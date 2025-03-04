@@ -637,7 +637,7 @@ try {
 kj::Promise<Result<bool>> Store::isValidPath(const StorePath & storePath)
 try {
     {
-        auto state_(state.lock());
+        auto state_(co_await state.lock());
         auto res = state_->pathInfoCache.get(std::string(storePath.to_string()));
         if (res && res->isKnownNow()) {
             stats.narInfoReadAverted++;
@@ -649,7 +649,7 @@ try {
         auto res = diskCache->lookupNarInfo(getUri(), std::string(storePath.hashPart()));
         if (res.first != NarInfoDiskCache::oUnknown) {
             stats.narInfoReadAverted++;
-            auto state_(state.lock());
+            auto state_(co_await state.lock());
             state_->pathInfoCache.upsert(std::string(storePath.to_string()),
                 res.first == NarInfoDiskCache::oInvalid ? PathInfoCacheValue{} : PathInfoCacheValue { .value = res.second });
             co_return res.first == NarInfoDiskCache::oValid;
@@ -702,7 +702,7 @@ try {
     auto hashPart = std::string(storePath.hashPart());
 
     {
-        auto res = state.lock()->pathInfoCache.get(std::string(storePath.to_string()));
+        auto res = (co_await state.lock())->pathInfoCache.get(std::string(storePath.to_string()));
         if (res && res->isKnownNow()) {
             stats.narInfoReadAverted++;
             if (!res->didExist())
@@ -716,7 +716,7 @@ try {
         if (res.first != NarInfoDiskCache::oUnknown) {
             stats.narInfoReadAverted++;
             {
-                auto state_(state.lock());
+                auto state_(co_await state.lock());
                 state_->pathInfoCache.upsert(std::string(storePath.to_string()),
                     res.first == NarInfoDiskCache::oInvalid ? PathInfoCacheValue{} : PathInfoCacheValue{ .value = res.second });
                 if (res.first == NarInfoDiskCache::oInvalid)
@@ -737,7 +737,7 @@ try {
     }
 
     {
-        auto state_(state.lock());
+        auto state_(co_await state.lock());
         state_->pathInfoCache.upsert(std::string(storePath.to_string()), PathInfoCacheValue { .value = info });
     }
 
@@ -1043,7 +1043,7 @@ try {
 kj::Promise<Result<Store::Stats<>>> Store::getStats()
 try {
     {
-        auto state_(state.lock());
+        auto state_(co_await state.lock());
         stats.pathInfoCacheSize = state_->pathInfoCache.size();
     }
     co_return {

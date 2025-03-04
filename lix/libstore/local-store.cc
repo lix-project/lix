@@ -905,7 +905,7 @@ try {
     }
 
     {
-        auto state_(Store::state.lock());
+        auto state_(co_await Store::state.lock());
         state_->pathInfoCache.upsert(std::string(info.path.to_string()),
             PathInfoCacheValue{ .value = std::make_shared<const ValidPathInfo>(info) });
     }
@@ -1289,7 +1289,7 @@ try {
        care of deleting the references entries for `path'. */
 
     {
-        auto state_(Store::state.lock());
+        auto state_(co_await Store::state.lock());
         state_->pathInfoCache.erase(std::string(path.to_string()));
     }
 
