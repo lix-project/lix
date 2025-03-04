@@ -352,7 +352,7 @@ try {
             );
         } else {
             auto & evalStore = *evalStore_;
-            auto outputs = evalStore.queryStaticPartialDerivationOutputMap(path);
+            auto outputs = TRY_AWAIT(evalStore.queryStaticPartialDerivationOutputMap(path));
             // union with the first branch overriding the statically-known ones
             // when non-`std::nullopt`.
             for (auto && [outputName, optPath] :
@@ -374,7 +374,7 @@ try {
         // from the derivation itself (and not the ones that are known because
         // the have been built), but as old stores don't handle floating-CA
         // derivations this shouldn't matter
-        co_return evalStore.queryStaticPartialDerivationOutputMap(path);
+        co_return TRY_AWAIT(evalStore.queryStaticPartialDerivationOutputMap(path));
     }
 } catch (...) {
     co_return result::current_exception();

@@ -506,14 +506,17 @@ bool Store::PathInfoCacheValue::isKnownNow()
     return std::chrono::steady_clock::now() < time_point + ttl;
 }
 
-std::map<std::string, std::optional<StorePath>> Store::queryStaticPartialDerivationOutputMap(const StorePath & path)
-{
+kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
+Store::queryStaticPartialDerivationOutputMap(const StorePath & path)
+try {
     std::map<std::string, std::optional<StorePath>> outputs;
     auto drv = readInvalidDerivation(path);
     for (auto & [outputName, output] : drv.outputsAndOptPaths(*this)) {
         outputs.emplace(outputName, output.second);
     }
-    return outputs;
+    co_return outputs;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
@@ -521,7 +524,7 @@ Store::queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore
 try {
     auto & evalStore = evalStore_ ? *evalStore_ : *this;
 
-    auto outputs = evalStore.queryStaticPartialDerivationOutputMap(path);
+    auto outputs = TRY_AWAIT(evalStore.queryStaticPartialDerivationOutputMap(path));
 
     if (!experimentalFeatureSettings.isEnabled(Xp::CaDerivations))
         co_return outputs;

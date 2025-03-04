@@ -1069,21 +1069,29 @@ StorePathSet LocalStore::queryValidDerivers(const StorePath & path)
 }
 
 
-std::map<std::string, std::optional<StorePath>>
+kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
 LocalStore::queryStaticPartialDerivationOutputMap(const StorePath & path)
-{
-    return retrySQLite([&]() {
-        auto state = dbPool.get();
-        std::map<std::string, std::optional<StorePath>> outputs;
-        uint64_t drvId;
-        drvId = queryValidPathId(*state, path);
-        auto use(state->stmts->QueryDerivationOutputs.use()(drvId));
-        while (use.next())
-            outputs.insert_or_assign(
-                use.getStr(0), parseStorePath(use.getStr(1)));
+try {
+    co_return TRY_AWAIT(
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        retrySQLite([&]() -> kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>> {
+            try {
+                auto state = dbPool.get();
+                std::map<std::string, std::optional<StorePath>> outputs;
+                uint64_t drvId;
+                drvId = queryValidPathId(*state, path);
+                auto use(state->stmts->QueryDerivationOutputs.use()(drvId));
+                while (use.next())
+                    outputs.insert_or_assign(use.getStr(0), parseStorePath(use.getStr(1)));
 
-        return outputs;
-    }, always_progresses);
+                co_return outputs;
+            } catch (...) {
+                co_return result::current_exception();
+            }
+        })
+    );
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<std::optional<StorePath>>>

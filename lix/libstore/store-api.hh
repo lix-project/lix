@@ -463,8 +463,8 @@ public:
      * Just a helper function for implementing
      * `queryPartialDerivationOutputMap`.
      */
-    virtual std::map<std::string, std::optional<StorePath>> queryStaticPartialDerivationOutputMap(
-        const StorePath & path);
+    virtual kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
+    queryStaticPartialDerivationOutputMap(const StorePath & path);
 
     /**
      * Query the mapping outputName=>outputPath for the given derivation.

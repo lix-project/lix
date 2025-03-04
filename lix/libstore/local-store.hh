@@ -202,7 +202,8 @@ public:
 
     StorePathSet queryValidDerivers(const StorePath & path) override;
 
-    std::map<std::string, std::optional<StorePath>> queryStaticPartialDerivationOutputMap(const StorePath & path) override;
+    kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
+    queryStaticPartialDerivationOutputMap(const StorePath & path) override;
 
     kj::Promise<Result<std::optional<StorePath>>>
     queryPathFromHashPart(const std::string & hashPart) override;
