@@ -2416,7 +2416,7 @@ try {
             else if (!oldInfo.ultimate) {
                 oldInfo.ultimate = true;
                 localStore.signPathInfo(oldInfo);
-                localStore.registerValidPaths({{oldInfo.path, oldInfo}});
+                TRY_AWAIT(localStore.registerValidPaths({{oldInfo.path, oldInfo}}));
             }
 
             /* Don't register anything, since we already have the
@@ -2445,7 +2445,7 @@ try {
            isn't statically known so that we can safely unlock the path before
            the next iteration */
         if (newInfo.ca)
-            localStore.registerValidPaths({{newInfo.path, newInfo}});
+            TRY_AWAIT(localStore.registerValidPaths({{newInfo.path, newInfo}}));
 
         infos.emplace(outputName, std::move(newInfo));
     }
@@ -2484,7 +2484,7 @@ try {
         for (auto & [outputName, newInfo] : infos) {
             infos2.insert_or_assign(newInfo.path, newInfo);
         }
-        localStore.registerValidPaths(infos2);
+        TRY_AWAIT(localStore.registerValidPaths(infos2));
     }
 
     /* In case of a fixed-output derivation hash mismatch, throw an

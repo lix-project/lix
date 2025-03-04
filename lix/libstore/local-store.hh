@@ -298,9 +298,9 @@ public:
      * register the hash of the file system contents of the path.  The
      * hash must be a SHA-256 hash.
      */
-    void registerValidPath(const ValidPathInfo & info);
+    kj::Promise<Result<void>> registerValidPath(const ValidPathInfo & info);
 
-    void registerValidPaths(const ValidPathInfos & infos);
+    kj::Promise<Result<void>> registerValidPaths(const ValidPathInfos & infos);
 
     kj::Promise<Result<unsigned int>> getProtocol() override;
 

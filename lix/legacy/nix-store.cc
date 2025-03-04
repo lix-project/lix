@@ -552,7 +552,7 @@ static void opDumpDB(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 }
 
 
-static void registerValidity(bool reregister, bool hashGiven, bool canonicalise)
+static void registerValidity(AsyncIoRoot & aio, bool reregister, bool hashGiven, bool canonicalise)
 {
     ValidPathInfos infos;
 
@@ -575,7 +575,7 @@ static void registerValidity(bool reregister, bool hashGiven, bool canonicalise)
         }
     }
 
-    ensureLocalStore()->registerValidPaths(infos);
+    aio.blockOn(ensureLocalStore()->registerValidPaths(infos));
 }
 
 
@@ -584,7 +584,7 @@ static void opLoadDB(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (!opArgs.empty())
         throw UsageError("no arguments expected");
-    registerValidity(true, true, false);
+    registerValidity(aio, true, true, false);
 }
 
 
@@ -600,7 +600,7 @@ static void opRegisterValidity(AsyncIoRoot & aio, Strings opFlags, Strings opArg
 
     if (!opArgs.empty()) throw UsageError("no arguments expected");
 
-    registerValidity(reregister, hashGiven, true);
+    registerValidity(aio, reregister, hashGiven, true);
 }
 
 

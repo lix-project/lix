@@ -1148,68 +1148,79 @@ try {
 }
 
 
-void LocalStore::registerValidPath(const ValidPathInfo & info)
-{
-    registerValidPaths({{info.path, info}});
+kj::Promise<Result<void>> LocalStore::registerValidPath(const ValidPathInfo & info)
+try {
+    TRY_AWAIT(registerValidPaths({{info.path, info}}));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
-void LocalStore::registerValidPaths(const ValidPathInfos & infos)
-{
+kj::Promise<Result<void>> LocalStore::registerValidPaths(const ValidPathInfos & infos)
+try {
     /* SQLite will fsync by default, but the new valid paths may not
        be fsync-ed.  So some may want to fsync them before registering
        the validity, at the expense of some speed of the path
        registering operation. */
     if (settings.syncBeforeRegistering) sync();
 
-    return retrySQLite([&]() {
-        auto state = dbPool.get();
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    co_return co_await retrySQLite([&]() -> kj::Promise<Result<void>> {
+        try {
+            auto state = dbPool.get();
 
-        SQLiteTxn txn = state->db.beginTransaction(SQLiteTxnType::Immediate);
-        StorePathSet paths;
+            SQLiteTxn txn = state->db.beginTransaction(SQLiteTxnType::Immediate);
+            StorePathSet paths;
 
-        for (auto & [_, i] : infos) {
-            assert(i.narHash.type == HashType::SHA256);
-            if (isValidPath_(*state, i.path))
-                updatePathInfo(*state, i);
-            else
-                addValidPath(*state, i, false);
-            paths.insert(i.path);
-        }
-
-        for (auto & [_, i] : infos) {
-            auto referrer = queryValidPathId(*state, i.path);
-            for (auto & j : i.references)
-                state->stmts->AddReference.use()(referrer)(queryValidPathId(*state, j)).exec();
-        }
-
-        /* Check that the derivation outputs are correct.  We can't do
-           this in addValidPath() above, because the references might
-           not be valid yet. */
-        for (auto & [_, i] : infos)
-            if (i.path.isDerivation()) {
-                // FIXME: inefficient; we already loaded the derivation in addValidPath().
-                readInvalidDerivation(i.path).checkInvariants(*this, i.path);
+            for (auto & [_, i] : infos) {
+                assert(i.narHash.type == HashType::SHA256);
+                if (isValidPath_(*state, i.path))
+                    updatePathInfo(*state, i);
+                else
+                    addValidPath(*state, i, false);
+                paths.insert(i.path);
             }
 
-        /* Do a topological sort of the paths.  This will throw an
-           error if a cycle is detected and roll back the
-           transaction.  Cycles can only occur when a derivation
-           has multiple outputs. */
-        topoSort(paths,
-            {[&](const StorePath & path) {
-                auto i = infos.find(path);
-                return i == infos.end() ? StorePathSet() : i->second.references;
-            }},
-            {[&](const StorePath & path, const StorePath & parent) {
-                return BuildError(
-                    "cycle detected in the references of '%s' from '%s'",
-                    printStorePath(path),
-                    printStorePath(parent));
-            }});
+            for (auto & [_, i] : infos) {
+                auto referrer = queryValidPathId(*state, i.path);
+                for (auto & j : i.references)
+                    state->stmts->AddReference.use()(referrer)(queryValidPathId(*state, j)).exec();
+            }
 
-        txn.commit();
-    }, always_progresses);
+            /* Check that the derivation outputs are correct.  We can't do
+               this in addValidPath() above, because the references might
+               not be valid yet. */
+            for (auto & [_, i] : infos)
+                if (i.path.isDerivation()) {
+                    // FIXME: inefficient; we already loaded the derivation in addValidPath().
+                    readInvalidDerivation(i.path).checkInvariants(*this, i.path);
+                }
+
+            /* Do a topological sort of the paths.  This will throw an
+               error if a cycle is detected and roll back the
+               transaction.  Cycles can only occur when a derivation
+               has multiple outputs. */
+            topoSort(paths,
+                {[&](const StorePath & path) {
+                    auto i = infos.find(path);
+                    return i == infos.end() ? StorePathSet() : i->second.references;
+                }},
+                {[&](const StorePath & path, const StorePath & parent) {
+                    return BuildError(
+                        "cycle detected in the references of '%s' from '%s'",
+                        printStorePath(path),
+                        printStorePath(parent));
+                }});
+
+            txn.commit();
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    });
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -1319,7 +1330,7 @@ try {
 
             optimisePath(realPath, repair); // FIXME: combine with hashPath()
 
-            registerValidPath(info);
+            TRY_AWAIT(registerValidPath(info));
         }
     }
 
@@ -1495,7 +1506,7 @@ try {
                 narHash.first
             };
             info.narSize = narHash.second;
-            registerValidPath(info);
+            TRY_AWAIT(registerValidPath(info));
         }
     }
 
@@ -1547,7 +1558,7 @@ try {
                 .method = TextIngestionMethod {},
                 .hash = hash,
             };
-            registerValidPath(info);
+            TRY_AWAIT(registerValidPath(info));
         }
     }
 
