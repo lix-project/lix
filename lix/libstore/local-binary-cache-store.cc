@@ -83,8 +83,8 @@ protected:
         }
     }
 
-    StorePathSet queryAllValidPaths() override
-    {
+    kj::Promise<Result<StorePathSet>> queryAllValidPaths() override
+    try {
         StorePathSet paths;
 
         for (auto & entry : readDirectory(binaryCacheDir)) {
@@ -96,7 +96,9 @@ protected:
                     + "-" + MissingName));
         }
 
-        return paths;
+        co_return paths;
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override

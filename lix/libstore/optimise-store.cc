@@ -261,7 +261,7 @@ kj::Promise<Result<void>> LocalStore::optimiseStore(OptimiseStats & stats)
 try {
     Activity act(*logger, actOptimiseStore);
 
-    auto paths = queryAllValidPaths();
+    auto paths = TRY_AWAIT(queryAllValidPaths());
     InodeHash inodeHash = loadInodeHash();
 
     act.progress(0, paths.size());

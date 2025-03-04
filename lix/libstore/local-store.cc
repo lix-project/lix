@@ -1023,15 +1023,22 @@ try {
 }
 
 
-StorePathSet LocalStore::queryAllValidPaths()
-{
-    return retrySQLite([&]() {
-        auto state = dbPool.get();
-        auto use(state->stmts->QueryValidPaths.use());
-        StorePathSet res;
-        while (use.next()) res.insert(parseStorePath(use.getStr(0)));
-        return res;
-    }, always_progresses);
+kj::Promise<Result<StorePathSet>> LocalStore::queryAllValidPaths()
+try {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    co_return TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<StorePathSet>> {
+        try {
+            auto state = dbPool.get();
+            auto use(state->stmts->QueryValidPaths.use());
+            StorePathSet res;
+            while (use.next()) res.insert(parseStorePath(use.getStr(0)));
+            co_return res;
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    }));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -1656,7 +1663,7 @@ try {
 
         StorePathSet done;
 
-        for (auto & i : queryAllValidPaths())
+        for (auto & i : TRY_AWAIT(queryAllValidPaths()))
             TRY_AWAIT(verifyPath(i, storePathsInStoreDir, done, validPaths, repair, errors));
     }
 

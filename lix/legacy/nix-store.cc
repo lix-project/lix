@@ -546,7 +546,7 @@ static void opDumpDB(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
             );
         }
     } else {
-        for (auto & i : store->queryAllValidPaths())
+        for (auto & i : aio.blockOn(store->queryAllValidPaths()))
             cout << aio.blockOn(store->makeValidityRegistration({i}, true, true));
     }
 }

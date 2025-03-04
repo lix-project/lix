@@ -55,7 +55,7 @@ public:
     kj::Promise<Result<StorePathSet>> queryValidPaths(const StorePathSet & paths,
         SubstituteFlag maybeSubstitute = NoSubstitute) override;
 
-    StorePathSet queryAllValidPaths() override;
+    kj::Promise<Result<StorePathSet>> queryAllValidPaths() override;
 
     std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) override;
 

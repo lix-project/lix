@@ -1040,12 +1040,14 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
     std::string getUri() override
     { return next->getUri(); }
 
-    StorePathSet queryAllValidPaths() override
-    {
+    kj::Promise<Result<StorePathSet>> queryAllValidPaths() override
+    try {
         StorePathSet paths;
         for (auto & p : goal.inputPaths) paths.insert(p);
         for (auto & p : goal.addedPaths) paths.insert(p);
-        return paths;
+        co_return paths;
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) override

@@ -826,7 +826,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
     case WorkerProto::Op::QueryAllValidPaths: {
         logger->startWork();
-        auto paths = store->queryAllValidPaths();
+        auto paths = aio.blockOn(store->queryAllValidPaths());
         logger->stopWork();
         to << WorkerProto::write(*store, wconn, paths);
         break;

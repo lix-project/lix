@@ -376,8 +376,8 @@ public:
      * full store path. FIXME: should return a set of
      * std::variant<StorePath, HashPart> to get rid of this hack.
      */
-    virtual StorePathSet queryAllValidPaths()
-    { unsupported("queryAllValidPaths"); }
+    virtual kj::Promise<Result<StorePathSet>> queryAllValidPaths()
+    try { unsupported("queryAllValidPaths"); } catch (...) { return {result::current_exception()}; }
 
     constexpr static const char * MissingName = "x";
 

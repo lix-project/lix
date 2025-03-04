@@ -487,8 +487,8 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
             throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache '%s'", path, getUri());
     }
 
-    StorePathSet queryAllValidPaths() override
-    {
+    kj::Promise<Result<StorePathSet>> queryAllValidPaths() override
+    try {
         StorePathSet paths;
         std::string marker;
 
@@ -518,7 +518,9 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
             marker = res.GetNextMarker();
         } while (!marker.empty());
 
-        return paths;
+        co_return paths;
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     /**

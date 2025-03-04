@@ -159,7 +159,7 @@ void BuiltPathsCommand::run(ref<Store> store, Installables && installables)
         if (installables.size())
             throw UsageError("'--all' does not expect arguments");
         // XXX: Only uses opaque paths, ignores all the realisations
-        for (auto & p : store->queryAllValidPaths())
+        for (auto & p : aio().blockOn(store->queryAllValidPaths()))
             paths.emplace_back(BuiltPath::Opaque{p});
     } else {
         paths = Installable::toBuiltPaths(

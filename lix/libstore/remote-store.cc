@@ -228,12 +228,14 @@ try {
 }
 
 
-StorePathSet RemoteStore::queryAllValidPaths()
-{
+kj::Promise<Result<StorePathSet>> RemoteStore::queryAllValidPaths()
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::QueryAllValidPaths;
     conn.processStderr();
-    return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
