@@ -359,7 +359,7 @@ private:
     /**
      * Delete a path from the Nix store.
      */
-    void invalidatePathChecked(const StorePath & path);
+    kj::Promise<Result<void>> invalidatePathChecked(const StorePath & path);
 
     kj::Promise<Result<void>> verifyPath(const StorePath & path, const StorePathSet & store,
         StorePathSet & done, StorePathSet & validPaths, RepairFlag repair, bool & errors);

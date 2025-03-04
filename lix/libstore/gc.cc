@@ -793,7 +793,7 @@ try {
                 if (!dead.insert(path).second) continue;
                 if (shouldDelete) {
                     try {
-                        invalidatePathChecked(path);
+                        TRY_AWAIT(invalidatePathChecked(path));
                         deleteFromStore(path.to_string());
                         referrersCache.erase(path);
                     } catch (PathInUse &) {

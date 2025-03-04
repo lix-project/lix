@@ -1622,24 +1622,33 @@ std::pair<Path, AutoCloseFD> LocalStore::createTempDirInStore()
 }
 
 
-void LocalStore::invalidatePathChecked(const StorePath & path)
-{
-    retrySQLite([&]() {
-        auto state = dbPool.get();
+kj::Promise<Result<void>> LocalStore::invalidatePathChecked(const StorePath & path)
+try {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<void>> {
+        try {
+            auto state = dbPool.get();
 
-        SQLiteTxn txn = state->db.beginTransaction(SQLiteTxnType::Immediate);
+            SQLiteTxn txn = state->db.beginTransaction(SQLiteTxnType::Immediate);
 
-        if (isValidPath_(*state, path)) {
-            StorePathSet referrers; queryReferrers(*state, path, referrers);
-            referrers.erase(path); /* ignore self-references */
-            if (!referrers.empty())
-                throw PathInUse("cannot delete path '%s' because it is in use by %s",
-                    printStorePath(path), showPaths(referrers));
-            invalidatePath(*state, path);
+            if (isValidPath_(*state, path)) {
+                StorePathSet referrers; queryReferrers(*state, path, referrers);
+                referrers.erase(path); /* ignore self-references */
+                if (!referrers.empty())
+                    throw PathInUse("cannot delete path '%s' because it is in use by %s",
+                        printStorePath(path), showPaths(referrers));
+                invalidatePath(*state, path);
+            }
+
+            txn.commit();
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
         }
-
-        txn.commit();
-    }, always_progresses);
+    }));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
