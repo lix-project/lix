@@ -2,7 +2,9 @@
 ///@file
 
 #include "lix/libutil/async.hh"
+#include "lix/libutil/async-collect.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/sync.hh"
 
 #include <kj/async.h>
@@ -187,6 +189,80 @@ void processGraph(
         [&](AsyncIoRoot &, const T & node) { return getEdges(node); },
         [&](AsyncIoRoot &, const T & node) { processNode(node); }
     );
+}
+
+template<typename T>
+kj::Promise<Result<void>> processGraphAsync(
+    const std::set<T> & nodes,
+    std::function<kj::Promise<Result<std::set<T>>>(const T &)> getEdges,
+    std::function<kj::Promise<Result<void>>(const T &)> processNode)
+try {
+    struct Graph {
+        std::set<T> left;
+        std::map<T, std::set<T>> refs, rrefs;
+    };
+
+    Graph graph{nodes, {}, {}};
+
+    std::function<kj::Promise<Result<void>>(const T &)> worker;
+
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    worker = [&](const T & node) -> kj::Promise<Result<void>> {
+        try {
+            auto i = graph.refs.find(node);
+            if (i == graph.refs.end())
+                goto getRefs;
+            goto doWork;
+
+        getRefs:
+            {
+                auto refs = LIX_TRY_AWAIT(getEdges(node));
+                refs.erase(node);
+
+                {
+                    for (auto & ref : refs)
+                        if (graph.left.count(ref)) {
+                            graph.refs[node].insert(ref);
+                            graph.rrefs[ref].insert(node);
+                        }
+                    if (graph.refs[node].empty())
+                        goto doWork;
+                }
+            }
+
+            co_return result::success();
+
+        doWork:
+            LIX_TRY_AWAIT(processNode(node));
+
+            /* Enqueue work for all nodes that were waiting on this one
+               and have no unprocessed dependencies. */
+            std::vector<T> unblocked;
+            for (auto & rref : graph.rrefs[node]) {
+                auto & refs(graph.refs[rref]);
+                auto i = refs.find(node);
+                assert(i != refs.end());
+                refs.erase(i);
+                if (refs.empty())
+                    unblocked.push_back(rref);
+            }
+            graph.left.erase(node);
+            graph.refs.erase(node);
+            graph.rrefs.erase(node);
+            LIX_TRY_AWAIT(asyncSpread(unblocked, worker));
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    };
+
+    LIX_TRY_AWAIT(asyncSpread(nodes, worker));
+
+    if (!graph.left.empty())
+        throw Error("graph processing incomplete (cyclic reference?)");
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }
