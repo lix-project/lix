@@ -168,6 +168,11 @@ teofilc:
   forgejo: teofilc
   github: TeofilC
 
+thubrecht:
+  display_name: Tom Hubrecht
+  forgejo: tom-hubrecht
+  github: Tom-Hubrecht
+
 thufschmitt:
   display_name: Théophane Hufschmitt
   github: thufschmitt

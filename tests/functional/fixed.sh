@@ -31,6 +31,13 @@ if isDaemonNewer "2.20pre20240108"; then
     expectStderr 1 nix-build fixed.nix -A badReferences | grepQuiet "not allowed to refer to other store paths"
 fi
 
+echo 'testing illegal references...'
+# Fixed FOD hashes cannot be asserted because:
+# - the store directory varies between the "Lix build sandbox environment" and a user test run
+# - *-darwin has a different store location on the top of this in the sandbox (/private/tmp/...) causing further changes.
+# Regex matching is the best we can afford.
+expectStderr 102 nix-build fixed.nix -A illegalReferences | grep -z "the fixed-output derivation '$TEST_ROOT/store/[a-z0-9]*-illegal-reference.drv' must not reference store paths but 1 such references were found:.*$TEST_ROOT/store/[a-z0-9]*-fixed" > /dev/null
+
 # While we're at it, check attribute selection a bit more.
 echo 'testing attribute selection...'
 test $(nix-instantiate fixed.nix -A good.1 | wc -l) = 1
