@@ -1081,7 +1081,8 @@ drvName, Bindings * attrs, Value & v)
                 DerivationOutput::Deferred { });
         }
 
-        auto hashModulo = hashDerivationModulo(*state.ctx.store, Derivation(drv), true);
+        auto hashModulo =
+            state.aio.blockOn(hashDerivationModulo(*state.ctx.store, Derivation(drv), true));
         switch (hashModulo.kind) {
         case DrvHash::Kind::Regular:
             for (auto & i : outputs) {
@@ -1118,7 +1119,7 @@ drvName, Bindings * attrs, Value & v)
        case we don't actually write store derivations, so we can't
        read them later. */
     {
-        auto h = hashDerivationModulo(*state.ctx.store, drv, false);
+        auto h = state.aio.blockOn(hashDerivationModulo(*state.ctx.store, drv, false));
         drvHashes.lock()->insert_or_assign(drvPath, h);
     }
 

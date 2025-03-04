@@ -475,7 +475,8 @@ void operator |= (DrvHash::Kind & self, const DrvHash::Kind & other) noexcept;
  * ATerm, after subderivations have been likewise expunged from that
  * derivation.
  */
-DrvHash hashDerivationModulo(Store & store, const Derivation & drv, bool maskOutputs);
+kj::Promise<Result<DrvHash>>
+hashDerivationModulo(Store & store, const Derivation & drv, bool maskOutputs);
 
 /**
  * Return a map associating each output to a hash that uniquely identifies its

@@ -244,7 +244,7 @@ try {
             output.second = DerivationOutput::Deferred { };
             drv.env[output.first] = "";
         }
-        auto hashesModulo = hashDerivationModulo(*evalStore, drv, true);
+        auto hashesModulo = TRY_AWAIT(hashDerivationModulo(*evalStore, drv, true));
 
         for (auto & output : drv.outputs) {
             Hash h = hashesModulo.hashes.at(output.first);

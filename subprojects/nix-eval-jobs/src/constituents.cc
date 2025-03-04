@@ -142,7 +142,7 @@ void rewriteAggregates(std::map<std::string, nlohmann::json> &jobs,
             assert(drvName.ends_with(nix::drvExtension));
             drvName.resize(drvName.size() - nix::drvExtension.size());
 
-            auto hashModulo = hashDerivationModulo(*store, drv, true);
+            auto hashModulo = aio.blockOn(hashDerivationModulo(*store, drv, true));
             if (hashModulo.kind != nix::DrvHash::Kind::Regular) {
                 continue;
             }

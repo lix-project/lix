@@ -783,22 +783,24 @@ Sync<DrvHashes> drvHashes;
 /* Look up the derivation by value and memoize the
    `hashDerivationModulo` call.
  */
-static const DrvHash pathDerivationModulo(Store & store, const StorePath & drvPath)
-{
+static kj::Promise<Result<DrvHash>> pathDerivationModulo(Store & store, const StorePath & drvPath)
+try {
     {
         auto hashes = drvHashes.lock();
         auto h = hashes->find(drvPath);
         if (h != hashes->end()) {
-            return h->second;
+            co_return h->second;
         }
     }
-    auto h = hashDerivationModulo(
+    auto h = TRY_AWAIT(hashDerivationModulo(
         store,
         store.readInvalidDerivation(drvPath),
-        false);
+        false));
     // Cache it
     drvHashes.lock()->insert_or_assign(drvPath, h);
-    return h;
+    co_return h;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 /* See the header for interface details. These are the implementation details.
@@ -818,8 +820,9 @@ static const DrvHash pathDerivationModulo(Store & store, const StorePath & drvPa
    don't leak the provenance of fixed outputs, reducing pointless cache
    misses as the build itself won't know this.
  */
-DrvHash hashDerivationModulo(Store & store, const Derivation & drv, bool maskOutputs)
-{
+kj::Promise<Result<DrvHash>>
+hashDerivationModulo(Store & store, const Derivation & drv, bool maskOutputs)
+try {
     auto type = drv.type();
 
     /* Return a fixed hash for fixed-output derivations. */
@@ -833,7 +836,7 @@ DrvHash hashDerivationModulo(Store & store, const Derivation & drv, bool maskOut
                 + store.printStorePath(dof.path(store, drv.name, i.first)));
             outputHashes.insert_or_assign(i.first, std::move(hash));
         }
-        return DrvHash {
+        co_return DrvHash {
             .hashes = outputHashes,
             .kind = DrvHash::Kind::Regular,
         };
@@ -843,7 +846,7 @@ DrvHash hashDerivationModulo(Store & store, const Derivation & drv, bool maskOut
         std::map<std::string, Hash> outputHashes;
         for (const auto & [outputName, _] : drv.outputs)
             outputHashes.insert_or_assign(outputName, impureOutputHash);
-        return DrvHash {
+        co_return DrvHash {
             .hashes = outputHashes,
             .kind = DrvHash::Kind::Deferred,
         };
@@ -867,7 +870,7 @@ DrvHash hashDerivationModulo(Store & store, const Derivation & drv, bool maskOut
 
     DerivedPathMap<StringSet>::ChildNode::Map inputs2;
     for (auto & [drvPath, node] : drv.inputDrvs.map) {
-        const auto & res = pathDerivationModulo(store, drvPath);
+        const auto & res = TRY_AWAIT(pathDerivationModulo(store, drvPath));
         if (res.kind == DrvHash::Kind::Deferred)
             kind = DrvHash::Kind::Deferred;
         for (auto & outputName : node.value) {
@@ -885,17 +888,19 @@ DrvHash hashDerivationModulo(Store & store, const Derivation & drv, bool maskOut
         outputHashes.insert_or_assign(outputName, hash);
     }
 
-    return DrvHash {
+    co_return DrvHash {
         .hashes = outputHashes,
         .kind = kind,
     };
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
 kj::Promise<Result<std::map<std::string, Hash>>>
 staticOutputHashes(Store & store, const Derivation & drv)
 try {
-    co_return hashDerivationModulo(store, drv, true).hashes;
+    co_return TRY_AWAIT(hashDerivationModulo(store, drv, true)).hashes;
 } catch (...) {
     co_return result::current_exception();
 }
@@ -1020,8 +1025,9 @@ std::string hashPlaceholder(const OutputNameView outputName)
 
 
 
-static void rewriteDerivation(Store & store, BasicDerivation & drv, const StringMap & rewrites)
-{
+static kj::Promise<Result<void>>
+rewriteDerivation(Store & store, BasicDerivation & drv, const StringMap & rewrites)
+try {
     debug("Rewriting the derivation");
 
     for (auto & rewrite : rewrites) {
@@ -1041,7 +1047,7 @@ static void rewriteDerivation(Store & store, BasicDerivation & drv, const String
     }
     drv.env = newEnv;
 
-    auto hashModulo = hashDerivationModulo(store, Derivation(drv), true);
+    auto hashModulo = TRY_AWAIT(hashDerivationModulo(store, Derivation(drv), true));
     for (auto & [outputName, output] : drv.outputs) {
         if (std::holds_alternative<DerivationOutput::Deferred>(output.raw)) {
             auto h = get(hashModulo.hashes, outputName);
@@ -1056,6 +1062,9 @@ static void rewriteDerivation(Store & store, BasicDerivation & drv, const String
         }
     }
 
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<std::optional<BasicDerivation>>>
@@ -1153,7 +1162,7 @@ try {
             nullptr, inputDrv, inputNode, inputDrvOutputs))
             co_return std::nullopt;
 
-    rewriteDerivation(store, resolved, inputRewrites);
+    TRY_AWAIT(rewriteDerivation(store, resolved, inputRewrites));
 
     co_return resolved;
 } catch (...) {
@@ -1188,36 +1197,50 @@ try {
 
     std::optional<DrvHash> hashesModulo;
     for (auto & i : outputs) {
-        std::visit(overloaded {
-            [&](const DerivationOutput::InputAddressed & doia) {
-                if (!hashesModulo) {
-                    // somewhat expensive so we do lazily
-                    hashesModulo = hashDerivationModulo(store, *this, true);
+        TRY_AWAIT(std::visit(overloaded {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+            [&](const DerivationOutput::InputAddressed & doia) -> kj::Promise<Result<void>> {
+                try {
+                    if (!hashesModulo) {
+                        // somewhat expensive so we do lazily
+                        hashesModulo = TRY_AWAIT(hashDerivationModulo(store, *this, true));
+                    }
+                    auto currentOutputHash = get(hashesModulo->hashes, i.first);
+                    if (!currentOutputHash)
+                        throw Error("derivation '%s' has unexpected output '%s' (local-store / hashesModulo) named '%s'",
+                            store.printStorePath(drvPath), store.printStorePath(doia.path), i.first);
+                    StorePath recomputed = store.makeOutputPath(i.first, *currentOutputHash, drvName);
+                    if (doia.path != recomputed)
+                        throw Error("derivation '%s' has incorrect output '%s', should be '%s'",
+                            store.printStorePath(drvPath), store.printStorePath(doia.path), store.printStorePath(recomputed));
+                    envHasRightPath(doia.path, i.first);
+                    co_return result::success();
+                } catch (...) {
+                    co_return result::current_exception();
                 }
-                auto currentOutputHash = get(hashesModulo->hashes, i.first);
-                if (!currentOutputHash)
-                    throw Error("derivation '%s' has unexpected output '%s' (local-store / hashesModulo) named '%s'",
-                        store.printStorePath(drvPath), store.printStorePath(doia.path), i.first);
-                StorePath recomputed = store.makeOutputPath(i.first, *currentOutputHash, drvName);
-                if (doia.path != recomputed)
-                    throw Error("derivation '%s' has incorrect output '%s', should be '%s'",
-                        store.printStorePath(drvPath), store.printStorePath(doia.path), store.printStorePath(recomputed));
-                envHasRightPath(doia.path, i.first);
             },
-            [&](const DerivationOutput::CAFixed & dof) {
-                auto path = dof.path(store, drvName, i.first);
-                envHasRightPath(path, i.first);
+            [&](const DerivationOutput::CAFixed & dof) -> kj::Promise<Result<void>> {
+                try {
+                    auto path = dof.path(store, drvName, i.first);
+                    envHasRightPath(path, i.first);
+                    return {result::success()};
+                } catch (...) {
+                    return {result::current_exception()};
+                }
             },
-            [&](const DerivationOutput::CAFloating &) {
+            [](const DerivationOutput::CAFloating &) -> kj::Promise<Result<void>> {
                 /* Nothing to check */
+                return {result::success()};
             },
-            [&](const DerivationOutput::Deferred &) {
+            [](const DerivationOutput::Deferred &) -> kj::Promise<Result<void>> {
                 /* Nothing to check */
+                return {result::success()};
             },
-            [&](const DerivationOutput::Impure &) {
+            [](const DerivationOutput::Impure &) -> kj::Promise<Result<void>> {
                 /* Nothing to check */
+                return {result::success()};
             },
-        }, i.second.raw);
+        }, i.second.raw));
     }
     co_return result::success();
 } catch (...) {
