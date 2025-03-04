@@ -317,12 +317,14 @@ void RemoteStore::queryReferrers(const StorePath & path,
 }
 
 
-StorePathSet RemoteStore::queryValidDerivers(const StorePath & path)
-{
+kj::Promise<Result<StorePathSet>> RemoteStore::queryValidDerivers(const StorePath & path)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::QueryValidDerivers << printStorePath(path);
     conn.processStderr();
-    return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

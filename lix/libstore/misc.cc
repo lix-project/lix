@@ -32,7 +32,7 @@ try {
                         res.insert(ref);
 
                 if (includeOutputs)
-                    for (auto& i : queryValidDerivers(path))
+                    for (auto& i : TRY_AWAIT(queryValidDerivers(path)))
                         res.insert(i);
 
                 if (includeDerivers && path.isDerivation())

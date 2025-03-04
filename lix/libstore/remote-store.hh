@@ -61,7 +61,7 @@ public:
 
     void queryReferrers(const StorePath & path, StorePathSet & referrers) override;
 
-    StorePathSet queryValidDerivers(const StorePath & path) override;
+    kj::Promise<Result<StorePathSet>> queryValidDerivers(const StorePath & path) override;
 
     kj::Promise<Result<StorePathSet>> queryDerivationOutputs(const StorePath & path) override;
 

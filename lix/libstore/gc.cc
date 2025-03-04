@@ -782,7 +782,7 @@ try {
 
                     /* If keep-outputs is set, then visit the derivers. */
                     if (gcKeepOutputs) {
-                        auto derivers = queryValidDerivers(*path);
+                        auto derivers = TRY_AWAIT(queryValidDerivers(*path));
                         for (auto & i : derivers)
                             enqueue(i);
                     }

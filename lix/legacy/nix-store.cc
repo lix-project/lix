@@ -398,8 +398,9 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qValidDerivers: {
             StorePathSet result;
             for (auto & i : opArgs) {
-                auto derivers = store->queryValidDerivers(store->followLinksToStorePath(i));
-                for (const auto &i: derivers) {
+                auto derivers =
+                    aio.blockOn(store->queryValidDerivers(store->followLinksToStorePath(i)));
+                for (const auto & i : derivers) {
                     result.insert(i);
                 }
             }

@@ -200,7 +200,7 @@ public:
 
     void queryReferrers(const StorePath & path, StorePathSet & referrers) override;
 
-    StorePathSet queryValidDerivers(const StorePath & path) override;
+    kj::Promise<Result<StorePathSet>> queryValidDerivers(const StorePath & path) override;
 
     kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
     queryStaticPartialDerivationOutputMap(const StorePath & path) override;

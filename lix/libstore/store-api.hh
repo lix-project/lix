@@ -440,7 +440,10 @@ public:
      * was actually used to produce `path`, which may not exist
      * anymore.)
      */
-    virtual StorePathSet queryValidDerivers(const StorePath & path) { return {}; };
+    virtual kj::Promise<Result<StorePathSet>> queryValidDerivers(const StorePath & path)
+    {
+        return {StorePathSet{}};
+    }
 
     /**
      * Query the outputs of the derivation denoted by `path`.

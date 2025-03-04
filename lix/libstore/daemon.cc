@@ -353,7 +353,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
                 break;
             }
             case WorkerProto::Op::QueryValidDerivers: {
-                paths = store->queryValidDerivers(path);
+                paths = aio.blockOn(store->queryValidDerivers(path));
                 break;
             }
             case WorkerProto::Op::QueryDerivationOutputs: {

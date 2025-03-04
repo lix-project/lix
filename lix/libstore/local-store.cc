@@ -1060,19 +1060,26 @@ void LocalStore::queryReferrers(const StorePath & path, StorePathSet & referrers
 }
 
 
-StorePathSet LocalStore::queryValidDerivers(const StorePath & path)
-{
-    return retrySQLite([&]() {
-        auto state = dbPool.get();
+kj::Promise<Result<StorePathSet>> LocalStore::queryValidDerivers(const StorePath & path)
+try {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    co_return TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<StorePathSet>> {
+        try {
+            auto state = dbPool.get();
 
-        auto useQueryValidDerivers(state->stmts->QueryValidDerivers.use()(printStorePath(path)));
+            auto useQueryValidDerivers(state->stmts->QueryValidDerivers.use()(printStorePath(path)));
 
-        StorePathSet derivers;
-        while (useQueryValidDerivers.next())
-            derivers.insert(parseStorePath(useQueryValidDerivers.getStr(1)));
+            StorePathSet derivers;
+            while (useQueryValidDerivers.next())
+                derivers.insert(parseStorePath(useQueryValidDerivers.getStr(1)));
 
-        return derivers;
-    }, always_progresses);
+            co_return derivers;
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    }));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

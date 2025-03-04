@@ -386,16 +386,18 @@ DerivedPathWithInfo Installable::toDerivedPath(EvalState & state)
     return std::move(buildables[0]);
 }
 
-static StorePath getDeriver(
+static kj::Promise<Result<StorePath>> getDeriver(
     ref<Store> store,
     const Installable & i,
     const StorePath & drvPath)
-{
-    auto derivers = store->queryValidDerivers(drvPath);
+try {
+    auto derivers = TRY_AWAIT(store->queryValidDerivers(drvPath));
     if (derivers.empty())
         throw Error("'%s' does not have a known deriver", i.what());
     // FIXME: use all derivers?
-    return *derivers.begin();
+    co_return *derivers.begin();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 ref<eval_cache::EvalCache> openEvalCache(
@@ -785,7 +787,7 @@ StorePathSet Installable::toDerivations(
                         bo.path.isDerivation()
                             ? bo.path
                         : useDeriver
-                            ? getDeriver(store, *i, bo.path)
+                            ? state.aio.blockOn(getDeriver(store, *i, bo.path))
                         : throw Error("argument '%s' did not evaluate to a derivation", i->what()));
                 },
                 [&](const DerivedPath::Built & bfd) {
