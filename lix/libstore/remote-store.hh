@@ -199,7 +199,7 @@ protected:
 
     virtual ref<FSAccessor> getFSAccessor() override;
 
-    virtual box_ptr<Source> narFromPath(const StorePath & path) override;
+    virtual kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override;
 
 private:
 

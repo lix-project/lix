@@ -248,15 +248,17 @@ struct LegacySSHStore final : public Store
         co_return result::current_exception();
     }
 
-    box_ptr<Source> narFromPath(const StorePath & path) override
-    {
+    kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override
+    try {
         auto conn(connections->get());
 
         conn->to << ServeProto::Command::DumpStorePath << printStorePath(path);
         conn->to.flush();
-        return make_box_ptr<GeneratorSource>([] (auto conn) -> WireFormatGenerator {
+        co_return make_box_ptr<GeneratorSource>([] (auto conn) -> WireFormatGenerator {
             co_yield copyNAR(conn->from);
         }(std::move(conn)));
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     kj::Promise<Result<std::optional<StorePath>>>

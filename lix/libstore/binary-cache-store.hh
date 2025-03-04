@@ -150,7 +150,7 @@ public:
     kj::Promise<Result<std::shared_ptr<const Realisation>>>
     queryRealisationUncached(const DrvOutput &) override;
 
-    box_ptr<Source> narFromPath(const StorePath & path) override;
+    kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override;
 
     ref<FSAccessor> getFSAccessor() override;
 

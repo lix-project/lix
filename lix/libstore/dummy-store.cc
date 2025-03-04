@@ -70,8 +70,8 @@ struct DummyStore final : public Store
         RepairFlag repair) override
     try { unsupported("addTextToStore"); } catch (...) { return {result::current_exception()}; }
 
-    box_ptr<Source> narFromPath(const StorePath & path) override
-    { unsupported("narFromPath"); }
+    kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override
+    try { unsupported("narFromPath"); } catch (...) { return {result::current_exception()}; }
 
     kj::Promise<Result<std::shared_ptr<const Realisation>>>
     queryRealisationUncached(const DrvOutput &) override

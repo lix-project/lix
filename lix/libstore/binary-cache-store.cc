@@ -350,33 +350,37 @@ try {
     co_return result::current_exception();
 }
 
-box_ptr<Source> BinaryCacheStore::narFromPath(const StorePath & storePath)
-{
+kj::Promise<Result<box_ptr<Source>>> BinaryCacheStore::narFromPath(const StorePath & storePath)
+try {
     auto info = queryPathInfo(storePath).cast<const NarInfo>();
 
     try {
         auto file = getFile(info->url);
-        return make_box_ptr<GeneratorSource>([](auto info, auto file, auto & stats) -> WireFormatGenerator {
-            constexpr size_t buflen = 65536;
-            auto buf = std::make_unique<char []>(buflen);
-            size_t total = 0;
-            auto decompressor = makeDecompressionSource(info->compression, *file);
-            try {
-                while (true) {
-                    const auto len = decompressor->read(buf.get(), buflen);
-                    co_yield std::span{buf.get(), len};
-                    total += len;
+        co_return make_box_ptr<GeneratorSource>(
+            [](auto info, auto file, auto & stats) -> WireFormatGenerator {
+                constexpr size_t buflen = 65536;
+                auto buf = std::make_unique<char[]>(buflen);
+                size_t total = 0;
+                auto decompressor = makeDecompressionSource(info->compression, *file);
+                try {
+                    while (true) {
+                        const auto len = decompressor->read(buf.get(), buflen);
+                        co_yield std::span{buf.get(), len};
+                        total += len;
+                    }
+                } catch (EndOfFile &) {
                 }
-            } catch (EndOfFile &) {
-            }
 
-            stats.narRead++;
-            //stats.narReadCompressedBytes += nar->size(); // FIXME
-            stats.narReadBytes += total;
-        }(std::move(info), std::move(file), stats));
+                stats.narRead++;
+                // stats.narReadCompressedBytes += nar->size(); // FIXME
+                stats.narReadBytes += total;
+            }(std::move(info), std::move(file), stats)
+        );
     } catch (NoSuchBinaryCacheFile & e) {
         throw SubstituteGone(std::move(e.info()));
     }
+} catch (...) {
+    co_return result::current_exception();
 }
 
 std::shared_ptr<const ValidPathInfo> BinaryCacheStore::queryPathInfoUncached(const StorePath & storePath)

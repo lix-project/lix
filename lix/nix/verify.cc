@@ -1,11 +1,13 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/exit.hh"
 
 #include <atomic>
+#include <functional>
 
 using namespace nix;
 
@@ -81,7 +83,7 @@ struct CmdVerify : StorePathsCommand
 
         ThreadPool pool{"Verify pool"};
 
-        auto doPath = [&](const StorePath & storePath) {
+        auto doPath = [&](AsyncIoRoot & aio, const StorePath & storePath) {
             try {
                 checkInterrupt();
 
@@ -99,7 +101,7 @@ struct CmdVerify : StorePathsCommand
 
                     auto hashSink = HashSink(info->narHash.type);
 
-                    store->narFromPath(info->path)->drainInto(hashSink);
+                    aio.blockOn(store->narFromPath(info->path))->drainInto(hashSink);
 
                     auto hash = hashSink.finish();
 
@@ -173,7 +175,7 @@ struct CmdVerify : StorePathsCommand
         };
 
         for (auto & storePath : storePaths)
-            pool.enqueue(std::bind(doPath, storePath));
+            pool.enqueueWithAio(std::bind(doPath, std::placeholders::_1, storePath));
 
         pool.process();
 

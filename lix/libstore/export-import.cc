@@ -32,7 +32,7 @@ try {
     HashSink hashSink(HashType::SHA256);
     TeeSink teeSink(sink, hashSink);
 
-    narFromPath(path)->drainInto(teeSink);
+    TRY_AWAIT(narFromPath(path))->drainInto(teeSink);
 
     /* Refuse to export paths that have changed.  This prevents
        filesystem corruption from spreading to other machines.

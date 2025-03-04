@@ -999,15 +999,17 @@ RemoteStore::Connection::~Connection()
     }
 }
 
-box_ptr<Source> RemoteStore::narFromPath(const StorePath & path)
-{
+kj::Promise<Result<box_ptr<Source>>> RemoteStore::narFromPath(const StorePath & path)
+try {
     auto conn(connections->get());
     conn->to << WorkerProto::Op::NarFromPath << printStorePath(path);
     conn->processStderr();
-    return make_box_ptr<GeneratorSource>([](auto conn) -> WireFormatGenerator {
+    co_return make_box_ptr<GeneratorSource>([](auto conn) -> WireFormatGenerator {
         co_yield copyNAR(conn->from);
     }(std::move(conn)));
-}
+} catch (...) {
+    co_return result::current_exception();}
+
 
 ref<FSAccessor> RemoteStore::getFSAccessor()
 {

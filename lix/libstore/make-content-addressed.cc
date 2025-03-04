@@ -26,7 +26,7 @@ try {
         std::string oldHashPart(path.hashPart());
 
         StringSink sink;
-        srcStore.narFromPath(path)->drainInto(sink);
+        TRY_AWAIT(srcStore.narFromPath(path))->drainInto(sink);
 
         StringMap rewrites;
 

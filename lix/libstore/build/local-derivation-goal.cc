@@ -1142,11 +1142,13 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         co_return result::current_exception();
     }
 
-    box_ptr<Source> narFromPath(const StorePath & path) override
-    {
+    kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override
+    try {
         if (!goal.isAllowed(path))
             throw InvalidPath("cannot dump unknown path '%s' in recursive Nix", printStorePath(path));
-        return LocalFSStore::narFromPath(path);
+        co_return TRY_AWAIT(LocalFSStore::narFromPath(path));
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     kj::Promise<Result<void>> ensurePath(const StorePath & path) override

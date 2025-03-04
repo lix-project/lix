@@ -42,7 +42,7 @@ public:
     ref<FSAccessor> getFSAccessor() override
     { return LocalFSStore::getFSAccessor(); }
 
-    box_ptr<Source> narFromPath(const StorePath & path) override
+    kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override
     { return LocalFSStore::narFromPath(path); }
 
     /**

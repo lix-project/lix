@@ -84,11 +84,15 @@ ref<FSAccessor> LocalFSStore::getFSAccessor()
             std::dynamic_pointer_cast<LocalFSStore>(shared_from_this())));
 }
 
-box_ptr<Source> LocalFSStore::narFromPath(const StorePath & path)
-{
+kj::Promise<Result<box_ptr<Source>>> LocalFSStore::narFromPath(const StorePath & path)
+try {
     if (!isValidPath(path))
         throw Error("path '%s' does not exist in store", printStorePath(path));
-    return make_box_ptr<GeneratorSource>(dumpPath(getRealStoreDir() + std::string(printStorePath(path), config().storeDir.size())));
+    co_return make_box_ptr<GeneratorSource>(
+        dumpPath(getRealStoreDir() + std::string(printStorePath(path), config().storeDir.size()))
+    );
+} catch (...) {
+    co_return result::current_exception();
 }
 
 const std::string LocalFSStore::drvsLogDir = "drvs";

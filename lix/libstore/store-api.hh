@@ -606,7 +606,7 @@ public:
     /**
      * Generate a NAR dump of a store path.
      */
-    virtual box_ptr<Source> narFromPath(const StorePath & path) = 0;
+    virtual kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) = 0;
 
     /**
      * For each path, if it's a derivation, build it.  Building a
