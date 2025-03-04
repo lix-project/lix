@@ -1,6 +1,8 @@
 #pragma once
 /// @file
 
+#include "lix/libutil/result.hh"
+#include <concepts>
 #include <kj/async.h>
 #include <kj/common.h>
 #include <kj/vector.h>
@@ -99,6 +101,39 @@ template<typename K, typename V>
 AsyncCollect<K, V> asyncCollect(kj::Array<std::pair<K, kj::Promise<V>>> promises)
 {
     return AsyncCollect<K, V>(std::move(promises));
+}
+
+/**
+ * Run `fn` for every item in the `input` range asynchronously, using
+ * the same fail-fast semantics as `asyncCollect`. `asyncSpread` is a
+ * shorthand for calling `asyncCollect` with `std::tuple()` values as
+ * keys, awaiting that to completion, and propagating all exceptions.
+ */
+template<typename Input, typename Fn>
+kj::Promise<Result<void>> asyncSpread(Input && input, Fn fn)
+    requires requires {
+        {
+            fn(*begin(input))
+        } -> std::same_as<kj::Promise<Result<void>>>;
+    }
+{
+    kj::Vector<std::pair<std::tuple<>, kj::Promise<Result<void>>>> children;
+    if constexpr (requires { input.size(); }) {
+        children.reserve(input.size());
+    }
+
+    for (auto & i : input) {
+        children.add(std::tuple(), fn(i));
+    }
+
+    auto collect = asyncCollect(children.releaseAsArray());
+    while (auto r = co_await collect.next()) {
+        if (!r->second.has_value()) {
+            co_return std::move(r->second);
+        }
+    }
+
+    co_return result::success();
 }
 
 }
