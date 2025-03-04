@@ -353,7 +353,8 @@ private:
 
     uint64_t queryValidPathId(DBState & state, const StorePath & path);
 
-    uint64_t addValidPath(DBState & state, const ValidPathInfo & info, bool checkOutputs = true);
+    kj::Promise<Result<uint64_t>>
+    addValidPath(DBState & state, const ValidPathInfo & info, bool checkOutputs = true);
 
     void invalidatePath(DBState & state, const StorePath & path);
 

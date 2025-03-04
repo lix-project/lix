@@ -863,9 +863,9 @@ void LocalStore::cacheDrvOutputMapping(
 }
 
 
-uint64_t LocalStore::addValidPath(DBState & state,
+kj::Promise<Result<uint64_t>> LocalStore::addValidPath(DBState & state,
     const ValidPathInfo & info, bool checkOutputs)
-{
+try {
     if (info.ca.has_value() && !info.isContentAddressed(*this))
         throw Error("cannot add path '%s' to the Nix store because it claims to be content-addressed but isn't",
             printStorePath(info.path));
@@ -910,7 +910,9 @@ uint64_t LocalStore::addValidPath(DBState & state,
             PathInfoCacheValue{ .value = std::make_shared<const ValidPathInfo>(info) });
     }
 
-    return id;
+    co_return id;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -1210,7 +1212,7 @@ try {
                 if (isValidPath_(*state, i.path))
                     updatePathInfo(*state, i);
                 else
-                    addValidPath(*state, i, false);
+                    TRY_AWAIT(addValidPath(*state, i, false));
                 paths.insert(i.path);
             }
 
