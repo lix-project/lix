@@ -101,7 +101,7 @@ private:
 
     std::string narInfoFileFor(const StorePath & storePath);
 
-    void writeNarInfo(ref<NarInfo> narInfo);
+    kj::Promise<Result<void>> writeNarInfo(ref<NarInfo> narInfo);
 
     kj::Promise<Result<ref<const ValidPathInfo>>> addToStoreCommon(
         AsyncInputStream & narSource, RepairFlag repair, CheckSigsFlag checkSigs,

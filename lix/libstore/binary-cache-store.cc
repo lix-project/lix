@@ -86,8 +86,8 @@ std::string BinaryCacheStore::narInfoFileFor(const StorePath & storePath)
     return std::string(storePath.hashPart()) + ".narinfo";
 }
 
-void BinaryCacheStore::writeNarInfo(ref<NarInfo> narInfo)
-{
+kj::Promise<Result<void>> BinaryCacheStore::writeNarInfo(ref<NarInfo> narInfo)
+try {
     auto narInfoFile = narInfoFileFor(narInfo->path);
 
     upsertFile(narInfoFile, narInfo->to_string(*this), "text/x-nix-narinfo");
@@ -101,6 +101,9 @@ void BinaryCacheStore::writeNarInfo(ref<NarInfo> narInfo)
 
     if (diskCache)
         diskCache->upsertNarInfo(getUri(), std::string(narInfo->path.hashPart()), std::shared_ptr<NarInfo>(narInfo));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<ref<const ValidPathInfo>>> BinaryCacheStore::addToStoreCommon(
@@ -258,7 +261,7 @@ try {
     /* Atomically write the NAR info file.*/
     if (secretKey) narInfo->sign(*this, *secretKey);
 
-    writeNarInfo(narInfo);
+    TRY_AWAIT(writeNarInfo(narInfo));
 
     stats.narInfoWrite++;
 
@@ -537,7 +540,7 @@ try {
 
     narInfo->sigs.insert(sigs.begin(), sigs.end());
 
-    writeNarInfo(narInfo);
+    TRY_AWAIT(writeNarInfo(narInfo));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
