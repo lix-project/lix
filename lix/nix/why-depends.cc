@@ -213,7 +213,7 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
             std::function<void(const Path &)> visitPath;
 
             visitPath = [&](const Path & p) {
-                auto st = accessor->stat(p);
+                auto st = aio().blockOn(accessor->stat(p));
 
                 auto p2 = p == pathS ? "/" : std::string(p, pathS.size() + 1);
 
@@ -222,13 +222,13 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
                 };
 
                 if (st.type == FSAccessor::Type::tDirectory) {
-                    auto names = accessor->readDirectory(p);
+                    auto names = aio().blockOn(accessor->readDirectory(p));
                     for (auto & name : names)
                         visitPath(p + "/" + name);
                 }
 
                 else if (st.type == FSAccessor::Type::tRegular) {
-                    auto contents = accessor->readFile(p);
+                    auto contents = aio().blockOn(accessor->readFile(p));
 
                     for (auto & hash : hashes) {
                         auto pos = contents.find(hash);
@@ -246,7 +246,7 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
                 }
 
                 else if (st.type == FSAccessor::Type::tSymlink) {
-                    auto target = accessor->readLink(p);
+                    auto target = aio().blockOn(accessor->readLink(p));
 
                     for (auto & hash : hashes) {
                         auto pos = target.find(hash);

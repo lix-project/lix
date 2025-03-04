@@ -139,7 +139,7 @@ struct CmdShell : InstallablesCommand, MixEnvironment
                 pathAdditions.push_back(store->printStorePath(path) + "/bin");
 
             auto propPath = store->printStorePath(path) + "/nix-support/propagated-user-env-packages";
-            if (accessor->stat(propPath).type == FSAccessor::tRegular) {
+            if (aio().blockOn(accessor->stat(propPath)).type == FSAccessor::tRegular) {
                 for (auto & p : tokenizeString<Paths>(readFile(propPath)))
                     todo.push(store->parseStorePath(p));
             }

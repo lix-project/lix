@@ -1,7 +1,9 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
+#include <kj/async.h>
 
 namespace nix {
 
@@ -33,9 +35,9 @@ public:
 
     virtual ~FSAccessor() { }
 
-    virtual Stat stat(const Path & path) = 0;
+    virtual kj::Promise<Result<Stat>> stat(const Path & path) = 0;
 
-    virtual StringSet readDirectory(const Path & path) = 0;
+    virtual kj::Promise<Result<StringSet>> readDirectory(const Path & path) = 0;
 
     /**
      * Read a file inside the store.
@@ -44,9 +46,10 @@ public:
      * inside a valid store path, otherwise it just needs to be physically
      * present (but not necessarily properly registered)
      */
-    virtual std::string readFile(const Path & path, bool requireValidPath = true) = 0;
+    virtual kj::Promise<Result<std::string>>
+    readFile(const Path & path, bool requireValidPath = true) = 0;
 
-    virtual std::string readLink(const Path & path) = 0;
+    virtual kj::Promise<Result<std::string>> readLink(const Path & path) = 0;
 };
 
 }

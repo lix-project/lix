@@ -22,8 +22,9 @@ Path RemoteFSAccessor::makeCacheFile(std::string_view hashPart, const std::strin
     return fmt("%s/%s.%s", cacheDir, hashPart, ext);
 }
 
-ref<FSAccessor> RemoteFSAccessor::addToCache(std::string_view hashPart, std::string && nar)
-{
+kj::Promise<Result<ref<FSAccessor>>>
+RemoteFSAccessor::addToCache(std::string_view hashPart, std::string && nar)
+try {
     if (cacheDir != "") {
         try {
             /* FIXME: do this asynchronously. */
@@ -38,18 +39,21 @@ ref<FSAccessor> RemoteFSAccessor::addToCache(std::string_view hashPart, std::str
 
     if (cacheDir != "") {
         try {
-            nlohmann::json j = listNar(narAccessor, "", true);
+            nlohmann::json j = TRY_AWAIT(listNar(narAccessor, "", true));
             writeFile(makeCacheFile(hashPart, "ls"), j.dump());
         } catch (...) {
             ignoreExceptionExceptInterrupt();
         }
     }
 
-    return narAccessor;
+    co_return narAccessor;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-std::pair<ref<FSAccessor>, Path> RemoteFSAccessor::fetch(const Path & path_, bool requireValidPath)
-{
+kj::Promise<Result<std::pair<ref<FSAccessor>, Path>>>
+RemoteFSAccessor::fetch(const Path & path_, bool requireValidPath)
+try {
     auto path = canonPath(path_);
 
     auto [storePath, restPath] = store->toStorePath(path);
@@ -58,7 +62,7 @@ std::pair<ref<FSAccessor>, Path> RemoteFSAccessor::fetch(const Path & path_, boo
         throw InvalidPath("path '%1%' does not exist in remote store", store->printStorePath(storePath));
 
     auto i = nars.find(std::string(storePath.hashPart()));
-    if (i != nars.end()) return {i->second, restPath};
+    if (i != nars.end()) co_return {i->second, restPath};
 
     std::string listing;
     Path cacheFile;
@@ -85,44 +89,55 @@ std::pair<ref<FSAccessor>, Path> RemoteFSAccessor::fetch(const Path & path_, boo
                 });
 
             nars.emplace(storePath.hashPart(), narAccessor);
-            return {narAccessor, restPath};
+            co_return {narAccessor, restPath};
 
         } catch (SysError &) { }
 
         try {
             auto narAccessor = makeNarAccessor(nix::readFile(cacheFile));
             nars.emplace(storePath.hashPart(), narAccessor);
-            return {narAccessor, restPath};
+            co_return {narAccessor, restPath};
         } catch (SysError &) { }
     }
 
     StringSink sink;
     store->narFromPath(storePath)->drainInto(sink);
-    return {addToCache(storePath.hashPart(), std::move(sink.s)), restPath};
+    co_return {TRY_AWAIT(addToCache(storePath.hashPart(), std::move(sink.s))), restPath};
+} catch (...) {
+    co_return result::current_exception();
 }
 
-FSAccessor::Stat RemoteFSAccessor::stat(const Path & path)
-{
-    auto res = fetch(path);
-    return res.first->stat(res.second);
+kj::Promise<Result<FSAccessor::Stat>> RemoteFSAccessor::stat(const Path & path)
+try {
+    auto res = TRY_AWAIT(fetch(path));
+    co_return TRY_AWAIT(res.first->stat(res.second));
+} catch (...) {
+    co_return result::current_exception();
 }
 
-StringSet RemoteFSAccessor::readDirectory(const Path & path)
-{
-    auto res = fetch(path);
-    return res.first->readDirectory(res.second);
+kj::Promise<Result<StringSet>> RemoteFSAccessor::readDirectory(const Path & path)
+try {
+    auto res = TRY_AWAIT(fetch(path));
+    co_return TRY_AWAIT(res.first->readDirectory(res.second));
+} catch (...) {
+    co_return result::current_exception();
 }
 
-std::string RemoteFSAccessor::readFile(const Path & path, bool requireValidPath)
-{
-    auto res = fetch(path, requireValidPath);
-    return res.first->readFile(res.second);
+kj::Promise<Result<std::string>>
+RemoteFSAccessor::readFile(const Path & path, bool requireValidPath)
+try {
+    auto res = TRY_AWAIT(fetch(path, requireValidPath));
+    co_return TRY_AWAIT(res.first->readFile(res.second));
+} catch (...) {
+    co_return result::current_exception();
 }
 
-std::string RemoteFSAccessor::readLink(const Path & path)
-{
-    auto res = fetch(path);
-    return res.first->readLink(res.second);
+kj::Promise<Result<std::string>> RemoteFSAccessor::readLink(const Path & path)
+try {
+    auto res = TRY_AWAIT(fetch(path));
+    co_return TRY_AWAIT(res.first->readLink(res.second));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 }

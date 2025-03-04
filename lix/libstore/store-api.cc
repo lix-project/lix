@@ -1392,9 +1392,11 @@ readDerivationCommon(Store& store, const StorePath& drvPath, bool requireValidPa
 try {
     auto accessor = store.getFSAccessor();
     try {
-        co_return parseDerivation(store,
-            accessor->readFile(store.printStorePath(drvPath), requireValidPath),
-            Derivation::nameFromPath(drvPath));
+        co_return parseDerivation(
+            store,
+            TRY_AWAIT(accessor->readFile(store.printStorePath(drvPath), requireValidPath)),
+            Derivation::nameFromPath(drvPath)
+        );
     } catch (FormatError & e) {
         throw Error("error parsing derivation '%s': %s", store.printStorePath(drvPath), e.msg());
     }

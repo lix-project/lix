@@ -1,5 +1,6 @@
 #include "lix/libstore/nar-accessor.hh"
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/async.hh"
 
 #include <map>
 #include <memory>
@@ -87,11 +88,11 @@ struct NarAccessor : public FSAccessor
         return *result;
     }
 
-    Stat stat(const Path & path) override
-    {
+    kj::Promise<Result<Stat>> stat(const Path & path) override
+    try {
         auto i = find(path);
         if (i == nullptr)
-            return {FSAccessor::Type::tMissing, 0, false};
+            co_return {FSAccessor::Type::tMissing, 0, false};
         auto handlers = overloaded{
             [](const nar_index::File & f) {
                 return Stat{tRegular, f.size, f.executable, f.offset};
@@ -99,11 +100,13 @@ struct NarAccessor : public FSAccessor
             [](const nar_index::Symlink &) { return Stat{tSymlink}; },
             [](const nar_index::Directory &) { return Stat{tDirectory}; },
         };
-        return std::visit(handlers, *i);
+        co_return std::visit(handlers, *i);
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    StringSet readDirectory(const Path & path) override
-    {
+    kj::Promise<Result<StringSet>> readDirectory(const Path & path) override
+    try {
         auto & i = get(path);
         auto dir = std::get_if<nar_index::Directory>(&i);
 
@@ -114,29 +117,36 @@ struct NarAccessor : public FSAccessor
         for (auto & child : dir->contents)
             res.insert(child.first);
 
-        return res;
+        co_return res;
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    std::string readFile(const Path & path, bool requireValidPath = true) override
-    {
+    kj::Promise<Result<std::string>>
+    readFile(const Path & path, bool requireValidPath = true) override
+    try {
         auto & i = get(path);
         auto file = std::get_if<nar_index::File>(&i);
         if (!file)
             throw Error("path '%1%' inside NAR file is not a regular file", path);
 
-        if (getNarBytes) return getNarBytes(file->offset, file->size);
+        if (getNarBytes) co_return getNarBytes(file->offset, file->size);
 
         assert(nar);
-        return std::string(*nar, file->offset, file->size);
+        co_return std::string(*nar, file->offset, file->size);
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    std::string readLink(const Path & path) override
-    {
+    kj::Promise<Result<std::string>> readLink(const Path & path) override
+    try {
         auto & i = get(path);
         auto link = std::get_if<nar_index::Symlink>(&i);
         if (!link)
             throw Error("path '%1%' inside NAR file is not a symlink", path);
-        return link->target;
+        co_return link->target;
+    } catch (...) {
+        co_return result::current_exception();
     }
 };
 
@@ -157,9 +167,9 @@ ref<FSAccessor> makeLazyNarAccessor(const std::string & listing,
 }
 
 using nlohmann::json;
-json listNar(ref<FSAccessor> accessor, const Path & path, bool recurse)
-{
-    auto st = accessor->stat(path);
+kj::Promise<Result<json>> listNar(ref<FSAccessor> accessor, const Path & path, bool recurse)
+try {
+    auto st = TRY_AWAIT(accessor->stat(path));
 
     json obj = json::object();
 
@@ -177,9 +187,9 @@ json listNar(ref<FSAccessor> accessor, const Path & path, bool recurse)
         {
             obj["entries"] = json::object();
             json &res2 = obj["entries"];
-            for (auto & name : accessor->readDirectory(path)) {
+            for (auto & name : TRY_AWAIT(accessor->readDirectory(path))) {
                 if (recurse) {
-                    res2[name] = listNar(accessor, path + "/" + name, true);
+                    res2[name] = TRY_AWAIT(listNar(accessor, path + "/" + name, true));
                 } else
                     res2[name] = json::object();
             }
@@ -187,13 +197,15 @@ json listNar(ref<FSAccessor> accessor, const Path & path, bool recurse)
         break;
     case FSAccessor::Type::tSymlink:
         obj["type"] = "symlink";
-        obj["target"] = accessor->readLink(path);
+        obj["target"] = TRY_AWAIT(accessor->readLink(path));
         break;
     case FSAccessor::Type::tMissing:
     default:
         throw Error("path '%s' does not exist in NAR", path);
     }
-    return obj;
+    co_return obj;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 static nlohmann::json listNar(const nar_index::Entry & e, Path path)

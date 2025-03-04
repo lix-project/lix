@@ -15,26 +15,28 @@ class RemoteFSAccessor : public FSAccessor
 
     Path cacheDir;
 
-    std::pair<ref<FSAccessor>, Path> fetch(const Path & path_, bool requireValidPath = true);
+    kj::Promise<Result<std::pair<ref<FSAccessor>, Path>>>
+    fetch(const Path & path_, bool requireValidPath = true);
 
     friend class BinaryCacheStore;
 
     Path makeCacheFile(std::string_view hashPart, const std::string & ext);
 
-    ref<FSAccessor> addToCache(std::string_view hashPart, std::string && nar);
+    kj::Promise<Result<ref<FSAccessor>>> addToCache(std::string_view hashPart, std::string && nar);
 
 public:
 
     RemoteFSAccessor(ref<Store> store,
         const /* FIXME: use std::optional */ Path & cacheDir = "");
 
-    Stat stat(const Path & path) override;
+    kj::Promise<Result<Stat>> stat(const Path & path) override;
 
-    StringSet readDirectory(const Path & path) override;
+    kj::Promise<Result<StringSet>> readDirectory(const Path & path) override;
 
-    std::string readFile(const Path & path, bool requireValidPath = true) override;
+    kj::Promise<Result<std::string>>
+    readFile(const Path & path, bool requireValidPath = true) override;
 
-    std::string readLink(const Path & path) override;
+    kj::Promise<Result<std::string>> readLink(const Path & path) override;
 };
 
 }

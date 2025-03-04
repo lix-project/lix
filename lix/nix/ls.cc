@@ -45,7 +45,7 @@ struct MixLs : virtual Args, MixJSON
 
         auto showFile = [&](const Path & curPath, const std::string & relPath) {
             if (verbose) {
-                auto st = accessor->stat(curPath);
+                auto st = aio().blockOn(accessor->stat(curPath));
                 std::string tp =
                     st.type == FSAccessor::Type::tRegular ?
                         (st.isExecutable ? "-r-xr-xr-x" : "-r--r--r--") :
@@ -53,14 +53,14 @@ struct MixLs : virtual Args, MixJSON
                     "dr-xr-xr-x";
                 auto line = fmt("%s %20d %s", tp, st.fileSize, relPath);
                 if (st.type == FSAccessor::Type::tSymlink)
-                    line += " -> " + accessor->readLink(curPath);
+                    line += " -> " + aio().blockOn(accessor->readLink(curPath));
                 logger->cout(line);
                 if (recursive && st.type == FSAccessor::Type::tDirectory)
                     doPath(st, curPath, relPath, false);
             } else {
                 logger->cout(relPath);
                 if (recursive) {
-                    auto st = accessor->stat(curPath);
+                    auto st = aio().blockOn(accessor->stat(curPath));
                     if (st.type == FSAccessor::Type::tDirectory)
                         doPath(st, curPath, relPath, false);
                 }
@@ -71,14 +71,14 @@ struct MixLs : virtual Args, MixJSON
             const std::string & relPath, bool showDirectory)
         {
             if (st.type == FSAccessor::Type::tDirectory && !showDirectory) {
-                auto names = accessor->readDirectory(curPath);
+                auto names = aio().blockOn(accessor->readDirectory(curPath));
                 for (auto & name : names)
                     showFile(curPath + "/" + name, relPath + "/" + name);
             } else
                 showFile(curPath, relPath);
         };
 
-        auto st = accessor->stat(path);
+        auto st = aio().blockOn(accessor->stat(path));
         if (st.type == FSAccessor::Type::tMissing)
             throw Error("path '%1%' does not exist", path);
         doPath(st, path,
@@ -93,7 +93,7 @@ struct MixLs : virtual Args, MixJSON
         if (json) {
             if (showDirectory)
                 throw UsageError("'--directory' is useless with '--json'");
-            logger->cout("%s", listNar(accessor, path, recursive));
+            logger->cout("%s", aio().blockOn(listNar(accessor, path, recursive)));
         } else
             listText(accessor);
     }
