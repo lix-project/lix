@@ -1279,8 +1279,8 @@ try {
 
 /* Invalidate a path.  The caller is responsible for checking that
    there are no referrers. */
-void LocalStore::invalidatePath(DBState & state, const StorePath & path)
-{
+kj::Promise<Result<void>> LocalStore::invalidatePath(DBState & state, const StorePath & path)
+try {
     debug("invalidating path '%s'", printStorePath(path));
 
     state.stmts->InvalidatePath.use()(printStorePath(path)).exec();
@@ -1292,6 +1292,10 @@ void LocalStore::invalidatePath(DBState & state, const StorePath & path)
         auto state_(Store::state.lock());
         state_->pathInfoCache.erase(std::string(path.to_string()));
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 const PublicKeys & LocalStore::getPublicKeys()
@@ -1658,7 +1662,7 @@ try {
                 if (!referrers.empty())
                     throw PathInUse("cannot delete path '%s' because it is in use by %s",
                         printStorePath(path), showPaths(referrers));
-                invalidatePath(*state, path);
+                TRY_AWAIT(invalidatePath(*state, path));
             }
 
             txn.commit();
@@ -1836,7 +1840,7 @@ try {
         if (canInvalidate) {
             printInfo("path '%s' disappeared, removing from database...", pathS);
             auto state = dbPool.get();
-            invalidatePath(*state, path);
+            TRY_AWAIT(invalidatePath(*state, path));
         } else {
             printError("path '%s' disappeared, but it still has valid referrers!", pathS);
             if (repair)
