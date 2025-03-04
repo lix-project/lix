@@ -1950,16 +1950,25 @@ std::optional<const Realisation> LocalStore::queryRealisation_(
     return { res };
 }
 
-std::shared_ptr<const Realisation> LocalStore::queryRealisationUncached(const DrvOutput & id)
-{
-    auto maybeRealisation = retrySQLite([&]() {
-        auto state = dbPool.get();
-        return queryRealisation_(*state, id);
-    }, always_progresses);
+kj::Promise<Result<std::shared_ptr<const Realisation>>>
+LocalStore::queryRealisationUncached(const DrvOutput & id)
+try {
+    auto maybeRealisation =
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<std::optional<const Realisation>>> {
+            try {
+                auto state = dbPool.get();
+                co_return queryRealisation_(*state, id);
+            } catch (...) {
+                co_return result::current_exception();
+            }
+        }));
     if (maybeRealisation)
-        return std::make_shared<const Realisation>(maybeRealisation.value());
+        co_return std::make_shared<const Realisation>(maybeRealisation.value());
     else
-        return nullptr;
+        co_return result::success(nullptr);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 ContentAddress LocalStore::hashCAPath(

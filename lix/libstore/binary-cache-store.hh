@@ -147,7 +147,8 @@ public:
 
     kj::Promise<Result<void>> registerDrvOutput(const Realisation & info) override;
 
-    std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput &) override;
+    kj::Promise<Result<std::shared_ptr<const Realisation>>>
+    queryRealisationUncached(const DrvOutput &) override;
 
     box_ptr<Source> narFromPath(const StorePath & path) override;
 

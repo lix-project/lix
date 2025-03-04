@@ -1163,21 +1163,28 @@ try {
                     "derivation '%s' doesn't have expected output '%s' (derivation-goal.cc/resolvedFinished,resolve)",
                     worker.store.printStorePath(drvPath), outputName);
 
-            auto realisation = [&]{
-              auto take1 = get(resolvedResult.builtOutputs, outputName);
-              if (take1) return *take1;
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+            auto realisation = TRY_AWAIT([&]() -> kj::Promise<Result<Realisation>> {
+                try {
+                    auto take1 = get(resolvedResult.builtOutputs, outputName);
+                    if (take1) co_return *take1;
 
-              /* The above `get` should work. But sateful tracking of
-                 outputs in resolvedResult, this can get out of sync with the
-                 store, which is our actual source of truth. For now we just
-                 check the store directly if it fails. */
-              auto take2 = worker.evalStore.queryRealisation(DrvOutput { *resolvedHash, outputName });
-              if (take2) return *take2;
+                    /* The above `get` should work. But sateful tracking of
+                       outputs in resolvedResult, this can get out of sync with the
+                       store, which is our actual source of truth. For now we just
+                       check the store directly if it fails. */
+                    auto take2 = TRY_AWAIT(
+                        worker.evalStore.queryRealisation(DrvOutput{*resolvedHash, outputName})
+                    );
+                    if (take2) co_return *take2;
 
-              throw Error(
-                  "derivation '%s' doesn't have expected output '%s' (derivation-goal.cc/resolvedFinished,realisation)",
-                  worker.store.printStorePath(resolvedDrvGoal->drvPath), outputName);
-            }();
+                    throw Error(
+                        "derivation '%s' doesn't have expected output '%s' (derivation-goal.cc/resolvedFinished,realisation)",
+                        worker.store.printStorePath(resolvedDrvGoal->drvPath), outputName);
+                } catch (...) {
+                    co_return result::current_exception();
+                }
+            }());
 
             if (drv->type().isPure()) {
                 auto newRealisation = realisation;
@@ -1681,7 +1688,7 @@ try {
         }
         auto drvOutput = DrvOutput{info.outputHash, i.first};
         if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-            if (auto real = worker.store.queryRealisation(drvOutput)) {
+            if (auto real = TRY_AWAIT(worker.store.queryRealisation(drvOutput))) {
                 info.known = {
                     .path = real->outPath,
                     .status = PathStatus::Valid,

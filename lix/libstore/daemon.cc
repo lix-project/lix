@@ -969,7 +969,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::QueryRealisation: {
         logger->startWork();
         auto outputId = DrvOutput::parse(readString(from));
-        auto info = store->queryRealisation(outputId);
+        auto info = aio.blockOn(store->queryRealisation(outputId));
         logger->stopWork();
         if (GET_PROTOCOL_MINOR(clientVersion) < 31) {
             std::set<StorePath> outPaths;

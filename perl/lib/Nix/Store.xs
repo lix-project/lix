@@ -134,7 +134,7 @@ SV * queryPathInfo(char * path, int base32)
 SV * queryRawRealisation(char * outputId)
     PPCODE:
       try {
-        auto realisation = store()->queryRealisation(DrvOutput::parse(outputId));
+        auto realisation = aio().blockOn(store()->queryRealisation(DrvOutput::parse(outputId)));
         if (realisation)
             XPUSHs(sv_2mortal(newSVpv(realisation->toJSON().dump().c_str(), 0)));
         else

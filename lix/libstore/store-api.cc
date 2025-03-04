@@ -532,7 +532,7 @@ try {
     auto drv = evalStore.readInvalidDerivation(path);
     auto drvHashes = staticOutputHashes(*this, drv);
     for (auto & [outputName, hash] : drvHashes) {
-        auto realisation = queryRealisation(DrvOutput{hash, outputName});
+        auto realisation = TRY_AWAIT(queryRealisation(DrvOutput{hash, outputName}));
         if (realisation) {
             outputs.insert_or_assign(outputName, realisation->outPath);
         } else {
@@ -746,8 +746,8 @@ ref<const ValidPathInfo> Store::queryPathInfo(const StorePath & storePath)
     return ref<const ValidPathInfo>(info);
 }
 
-std::shared_ptr<const Realisation> Store::queryRealisation(const DrvOutput & id)
-{
+kj::Promise<Result<std::shared_ptr<const Realisation>>> Store::queryRealisation(const DrvOutput & id)
+try {
 
     if (diskCache) {
         auto [cacheOutcome, maybeCachedRealisation]
@@ -755,18 +755,18 @@ std::shared_ptr<const Realisation> Store::queryRealisation(const DrvOutput & id)
         switch (cacheOutcome) {
         case NarInfoDiskCache::oValid:
             debug("Returning a cached realisation for %s", id.to_string());
-            return maybeCachedRealisation;
+            co_return maybeCachedRealisation;
         case NarInfoDiskCache::oInvalid:
             debug(
                 "Returning a cached missing realisation for %s",
                 id.to_string());
-            return nullptr;
+            co_return result::success(nullptr);
         case NarInfoDiskCache::oUnknown:
             break;
         }
     }
 
-    auto info = queryRealisationUncached(id);
+    auto info = TRY_AWAIT(queryRealisationUncached(id));
 
     if (diskCache) {
         if (info)
@@ -775,7 +775,9 @@ std::shared_ptr<const Realisation> Store::queryRealisation(const DrvOutput & id)
             diskCache->upsertAbsentRealisation(getUri(), id);
     }
 
-    return info;
+    co_return info;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<void>> Store::substitutePaths(const StorePathSet & paths)
@@ -1161,7 +1163,7 @@ try {
             [&](AsyncIoRoot & aio, const Realisation & current) -> std::set<Realisation> {
                 std::set<Realisation> children;
                 for (const auto & [drvOutput, _] : current.dependentRealisations) {
-                    auto currentChild = srcStore.queryRealisation(drvOutput);
+                    auto currentChild = aio.blockOn(srcStore.queryRealisation(drvOutput));
                     if (!currentChild)
                         throw Error(
                             "incomplete realisation closure: '%s' is a "

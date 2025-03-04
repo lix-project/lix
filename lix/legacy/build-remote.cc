@@ -353,7 +353,7 @@ connected:
             for (auto & outputName : wantedOutputs) {
                 auto thisOutputHash = outputHashes.at(outputName);
                 auto thisOutputId = DrvOutput{ thisOutputHash, outputName };
-                if (!store->queryRealisation(thisOutputId)) {
+                if (!aio.blockOn(store->queryRealisation(thisOutputId))) {
                     debug("missing output %s", outputName);
                     assert(optResult);
                     auto & result = *optResult;

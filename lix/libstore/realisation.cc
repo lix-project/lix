@@ -1,5 +1,6 @@
 #include "lix/libstore/realisation.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/closure.hh"
 #include "lix/libutil/result.hh"
 #include <nlohmann/json.hpp>
@@ -37,19 +38,24 @@ kj::Promise<Result<void>> Realisation::closure(
     Store & store, const std::set<Realisation> & startOutputs, std::set<Realisation> & res
 )
 try {
-    auto getDeps = [&](const Realisation& current) -> std::set<Realisation> {
-        std::set<Realisation> res;
-        for (auto& [currentDep, _] : current.dependentRealisations) {
-            if (auto currentRealisation = store.queryRealisation(currentDep))
-                res.insert(*currentRealisation);
-            else
-                throw Error(
-                    "Unrealised derivation '%s'", currentDep.to_string());
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    auto getDeps = [&](const Realisation& current) -> kj::Promise<Result<std::set<Realisation>>> {
+        try {
+            std::set<Realisation> res;
+            for (auto& [currentDep, _] : current.dependentRealisations) {
+                if (auto currentRealisation = TRY_AWAIT(store.queryRealisation(currentDep)))
+                    res.insert(*currentRealisation);
+                else
+                    throw Error(
+                        "Unrealised derivation '%s'", currentDep.to_string());
+            }
+            co_return res;
+        } catch (...) {
+            co_return result::current_exception();
         }
-        return res;
     };
 
-    res.merge(computeClosure<Realisation>(startOutputs, getDeps));
+    res.merge(TRY_AWAIT(computeClosureAsync<Realisation>(startOutputs, getDeps)));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();

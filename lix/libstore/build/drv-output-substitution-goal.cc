@@ -30,7 +30,7 @@ try {
     trace("init");
 
     /* If the derivation already exists, we’re done */
-    if (worker.store.queryRealisation(id)) {
+    if (TRY_AWAIT(worker.store.queryRealisation(id))) {
         co_return WorkResult{ecSuccess};
     }
 
@@ -79,7 +79,8 @@ try {
         std::async(std::launch::async, [downloadState{downloadState}, id{id}, sub{sub}] {
             Finally updateStats([&]() { downloadState->outPipe->fulfill(); });
             ReceiveInterrupts receiveInterrupts;
-            return sub->queryRealisation(id);
+            AsyncIoRoot aio;
+            return aio.blockOn(sub->queryRealisation(id));
         });
 
     co_await pipe.promise;
@@ -107,7 +108,7 @@ try {
     kj::Vector<std::pair<GoalPtr, kj::Promise<Result<WorkResult>>>> dependencies;
     for (const auto & [depId, depPath] : outputInfo->dependentRealisations) {
         if (depId != id) {
-            if (auto localOutputInfo = worker.store.queryRealisation(depId);
+            if (auto localOutputInfo = TRY_AWAIT(worker.store.queryRealisation(depId));
                 localOutputInfo && localOutputInfo->outPath != depPath) {
                 warn(
                     "substituter '%s' has an incompatible realisation for '%s', ignoring.\n"

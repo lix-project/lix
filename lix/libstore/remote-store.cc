@@ -628,13 +628,14 @@ try {
     co_return result::current_exception();
 }
 
-std::shared_ptr<const Realisation> RemoteStore::queryRealisationUncached(const DrvOutput & id)
-{
+kj::Promise<Result<std::shared_ptr<const Realisation>>>
+RemoteStore::queryRealisationUncached(const DrvOutput & id)
+try {
     auto conn(getConnection());
 
     if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 27) {
         warn("the daemon is too old to support content-addressed derivations, please upgrade it to 2.4");
-        return nullptr;
+        co_return result::success(nullptr);
     }
 
     conn->to << WorkerProto::Op::QueryRealisation;
@@ -645,15 +646,19 @@ std::shared_ptr<const Realisation> RemoteStore::queryRealisationUncached(const D
         auto outPaths = WorkerProto::Serialise<std::set<StorePath>>::read(
             *this, *conn);
         if (outPaths.empty())
-            return nullptr;
-        return std::make_shared<const Realisation>(Realisation { .id = id, .outPath = *outPaths.begin() });
+            co_return result::success(nullptr);
+        co_return std::make_shared<const Realisation>(
+            Realisation{.id = id, .outPath = *outPaths.begin()}
+        );
     } else {
         auto realisations = WorkerProto::Serialise<std::set<Realisation>>::read(
             *this, *conn);
         if (realisations.empty())
-            return nullptr;
-        return std::make_shared<const Realisation>(*realisations.begin());
+            co_return result::success(nullptr);
+        co_return std::make_shared<const Realisation>(*realisations.begin());
     }
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<void>> RemoteStore::copyDrvsFromEvalStore(
@@ -764,7 +769,7 @@ try {
                             auto outputId = DrvOutput{ *outputHash, output };
                             if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
                                 auto realisation =
-                                    queryRealisation(outputId);
+                                    TRY_AWAIT(queryRealisation(outputId));
                                 if (!realisation)
                                     throw MissingRealisation(outputId);
                                 res.builtOutputs.emplace(output, *realisation);

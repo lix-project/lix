@@ -1164,13 +1164,16 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
     // corresponds to an allowed derivation
     try { throw Error("registerDrvOutput"); } catch (...) { return {result::current_exception()}; }
 
-    std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput & id) override
+    kj::Promise<Result<std::shared_ptr<const Realisation>>>
+    queryRealisationUncached(const DrvOutput & id) override
     // XXX: This should probably be allowed if the realisation corresponds to
     // an allowed derivation
-    {
+    try {
         if (!goal.isAllowed(id))
-            return nullptr;
-        return next->queryRealisation(id);
+            co_return result::success(nullptr);
+        co_return TRY_AWAIT(next->queryRealisation(id));
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     kj::Promise<Result<void>> buildPaths(

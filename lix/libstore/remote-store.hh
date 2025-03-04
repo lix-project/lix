@@ -116,7 +116,8 @@ public:
 
     kj::Promise<Result<void>> registerDrvOutput(const Realisation & info) override;
 
-    std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput &) override;
+    kj::Promise<Result<std::shared_ptr<const Realisation>>>
+    queryRealisationUncached(const DrvOutput &) override;
 
     kj ::Promise<Result<void>> buildPaths(
         const std::vector<DerivedPath> & paths,

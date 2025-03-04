@@ -276,7 +276,7 @@ struct QueryMissingContext
 
                 bool found = false;
                 for (auto &sub : aio.blockOn(getDefaultSubstituters())) {
-                    auto realisation = sub->queryRealisation({hash, outputName});
+                    auto realisation = aio.blockOn(sub->queryRealisation({hash, outputName}));
                     if (!realisation)
                         continue;
                     found = true;
@@ -432,8 +432,8 @@ try {
                         throw Error(
                             "output '%s' of derivation '%s' isn't realised", outputName,
                             store.printStorePath(inputDrv));
-                    auto thisRealisation = store.queryRealisation(
-                        DrvOutput{*outputHash, outputName});
+                    auto thisRealisation = TRY_AWAIT(store.queryRealisation(
+                        DrvOutput{*outputHash, outputName}));
                     if (!thisRealisation)
                         throw Error(
                             "output '%s' of derivation '%s' isn’t built", outputName,

@@ -1,6 +1,8 @@
 #include "lix/libcmd/built-path.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async.hh"
+#include "lix/libutil/result.hh"
 
 #include <nlohmann/json.hpp>
 
@@ -126,10 +128,19 @@ try {
 kj::Promise<Result<RealisedPath::Set>> BuiltPath::toRealisedPaths(Store & store) const
 try {
     RealisedPath::Set res;
-    std::visit(
-        overloaded{
-            [&](const BuiltPath::Opaque & p) { res.insert(p.path); },
-            [&](const BuiltPath::Built & p) {
+    auto handlers = overloaded{
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        [&](const BuiltPath::Opaque & p) -> kj::Promise<Result<void>> {
+            try {
+                res.insert(p.path);
+                return {result::success()};
+            } catch (...) {
+                return {result::current_exception()};
+            }
+        },
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        [&](const BuiltPath::Built & p) -> kj::Promise<Result<void>> {
+            try {
                 auto drvHashes =
                     staticOutputHashes(store, store.readDerivation(p.drvPath->outPath()));
                 for (auto& [outputName, outputPath] : p.outputs) {
@@ -140,8 +151,8 @@ try {
                             throw Error(
                                 "the derivation '%s' has unrealised output '%s' (derived-path.cc/toRealisedPaths)",
                                 store.printStorePath(p.drvPath->outPath()), outputName);
-                        auto thisRealisation = store.queryRealisation(
-                            DrvOutput{*drvOutput, outputName});
+                        auto thisRealisation = TRY_AWAIT(store.queryRealisation(
+                            DrvOutput{*drvOutput, outputName}));
                         assert(thisRealisation);  // We’ve built it, so we must
                                                   // have the realisation
                         res.insert(*thisRealisation);
@@ -149,9 +160,13 @@ try {
                         res.insert(outputPath);
                     }
                 }
-            },
+                co_return result::success();
+            } catch (...) {
+                co_return result::current_exception();
+            }
         },
-        raw());
+    };
+    TRY_AWAIT(std::visit(handlers, raw()));
     co_return res;
 } catch (...) {
     co_return result::current_exception();

@@ -493,16 +493,19 @@ try {
     co_return result::current_exception();
 }
 
-std::shared_ptr<const Realisation> BinaryCacheStore::queryRealisationUncached(const DrvOutput & id)
-{
+kj::Promise<Result<std::shared_ptr<const Realisation>>>
+BinaryCacheStore::queryRealisationUncached(const DrvOutput & id)
+try {
     auto outputInfoFilePath = realisationsPrefix + "/" + id.to_string() + ".doi";
 
     auto data = getFileContents(outputInfoFilePath);
-    if (!data) return {};
+    if (!data) co_return result::success(nullptr);
 
     auto realisation = Realisation::fromJSON(
         nlohmann::json::parse(*data), outputInfoFilePath);
-    return std::make_shared<const Realisation>(realisation);
+    co_return std::make_shared<const Realisation>(realisation);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<void>> BinaryCacheStore::registerDrvOutput(const Realisation& info)

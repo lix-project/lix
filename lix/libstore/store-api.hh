@@ -390,7 +390,7 @@ public:
     /**
      * Query the information about a realisation.
      */
-    std::shared_ptr<const Realisation> queryRealisation(const DrvOutput &);
+    kj::Promise<Result<std::shared_ptr<const Realisation>>> queryRealisation(const DrvOutput &);
 
 
     /**
@@ -421,7 +421,8 @@ protected:
      * Note to implementors: should return `nullptr` when the path is not found.
      */
     virtual std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) = 0;
-    virtual std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput &) = 0;
+    virtual kj::Promise<Result<std::shared_ptr<const Realisation>>>
+    queryRealisationUncached(const DrvOutput &) = 0;
 
 public:
 
