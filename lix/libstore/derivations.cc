@@ -794,7 +794,7 @@ try {
     }
     auto h = TRY_AWAIT(hashDerivationModulo(
         store,
-        store.readInvalidDerivation(drvPath),
+        TRY_AWAIT(store.readInvalidDerivation(drvPath)),
         false));
     // Cache it
     drvHashes.lock()->insert_or_assign(drvPath, h);

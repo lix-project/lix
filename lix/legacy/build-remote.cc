@@ -297,7 +297,7 @@ connected:
 
         uploadLock.reset();
 
-        auto drv = store->readDerivation(*drvPath);
+        auto drv = aio.blockOn(store->readDerivation(*drvPath));
 
         std::optional<BuildResult> optResult;
 

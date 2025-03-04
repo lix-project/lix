@@ -100,7 +100,7 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
 
     drvPath = localStore->printStorePath(drvInfo.requireDrvPath(state));
 
-    auto drv = localStore->readDerivation(drvInfo.requireDrvPath(state));
+    auto drv = state.aio.blockOn(localStore->readDerivation(drvInfo.requireDrvPath(state)));
     for (const auto &[inputDrvPath, inputNode] : drv.inputDrvs.map) {
         std::set<std::string> inputDrvOutputs;
         for (auto &outputName : inputNode.value) {

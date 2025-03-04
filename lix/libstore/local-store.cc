@@ -887,7 +887,7 @@ try {
        efficiently query whether a path is an output of some
        derivation. */
     if (info.path.isDerivation()) {
-        auto drv = readInvalidDerivation(info.path);
+        auto drv = TRY_AWAIT(readInvalidDerivation(info.path));
 
         /* Verify that the output paths in the derivation are correct
            (i.e., follow the scheme for computing output paths from
@@ -1228,7 +1228,9 @@ try {
             for (auto & [_, i] : infos)
                 if (i.path.isDerivation()) {
                     // FIXME: inefficient; we already loaded the derivation in addValidPath().
-                    TRY_AWAIT(readInvalidDerivation(i.path).checkInvariants(*this, i.path));
+                     TRY_AWAIT(
+                        TRY_AWAIT(readInvalidDerivation(i.path)).checkInvariants(*this, i.path)
+                    );
                 }
 
             /* Do a topological sort of the paths.  This will throw an

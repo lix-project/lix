@@ -56,7 +56,7 @@ struct CmdShowDerivation : InstallablesCommand
             if (!drvPath.isDerivation()) continue;
 
             jsonRoot[store->printStorePath(drvPath)] =
-                store->readDerivation(drvPath).toJSON(*store);
+                aio().blockOn(store->readDerivation(drvPath)).toJSON(*store);
         }
         logger->cout(jsonRoot.dump(2));
     }

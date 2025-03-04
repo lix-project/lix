@@ -770,12 +770,12 @@ public:
     /**
      * Read a derivation (which must already be valid).
      */
-    Derivation readDerivation(const StorePath & drvPath);
+    kj::Promise<Result<Derivation>> readDerivation(const StorePath & drvPath);
 
     /**
      * Read a derivation from a potentially invalid path.
      */
-    Derivation readInvalidDerivation(const StorePath & drvPath);
+    kj::Promise<Result<Derivation>> readInvalidDerivation(const StorePath & drvPath);
 
     /**
      * @param [out] out Place in here the set of all store paths in the

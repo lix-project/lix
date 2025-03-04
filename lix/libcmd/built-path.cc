@@ -142,8 +142,9 @@ try {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
         [&](const BuiltPath::Built & p) -> kj::Promise<Result<void>> {
             try {
-                auto drvHashes =
-                    TRY_AWAIT(staticOutputHashes(store, store.readDerivation(p.drvPath->outPath())));
+                auto drvHashes = TRY_AWAIT(
+                    staticOutputHashes(store, TRY_AWAIT(store.readDerivation(p.drvPath->outPath())))
+                );
                 for (auto& [outputName, outputPath] : p.outputs) {
                     if (experimentalFeatureSettings.isEnabled(
                                 Xp::CaDerivations)) {

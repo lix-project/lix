@@ -921,7 +921,7 @@ std::string EvalState::mkSingleDerivedPathStringRaw(
         [&](const SingleDerivedPath::Built & b) {
             auto optStaticOutputPath = std::visit(overloaded {
                 [&](const SingleDerivedPath::Opaque & o) {
-                    auto drv = ctx.store->readDerivation(o.path);
+                    auto drv = aio.blockOn(ctx.store->readDerivation(o.path));
                     auto i = drv.outputs.find(b.output);
                     if (i == drv.outputs.end())
                         throw Error("derivation '%s' does not have output '%s'", b.drvPath->to_string(*ctx.store), b.output);

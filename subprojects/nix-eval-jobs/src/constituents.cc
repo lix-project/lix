@@ -125,13 +125,13 @@ void rewriteAggregates(std::map<std::string, nlohmann::json> &jobs,
     for (const auto &aggregateJob : aggregateJobs) {
         auto &job = jobs.find(aggregateJob.name)->second;
         auto drvPath = store->parseStorePath(std::string(job["drvPath"]));
-        auto drv = store->readDerivation(drvPath);
+        auto drv = aio.blockOn(store->readDerivation(drvPath));
 
         if (aggregateJob.brokenJobs.empty()) {
             for (const auto &childJobName : aggregateJob.dependencies) {
                 auto childDrvPath = store->parseStorePath(
                     std::string(jobs.find(childJobName)->second["drvPath"]));
-                auto childDrv = store->readDerivation(childDrvPath);
+                auto childDrv = aio.blockOn(store->readDerivation(childDrvPath));
                 job["constituents"].push_back(
                     store->printStorePath(childDrvPath));
                 drv.inputDrvs.map[childDrvPath].value = {

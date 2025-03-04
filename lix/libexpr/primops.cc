@@ -190,7 +190,7 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
     };
 
     if (auto storePath = isValidDerivationInStore()) {
-        Derivation drv = state.ctx.store->readDerivation(*storePath);
+        Derivation drv = state.aio.blockOn(state.ctx.store->readDerivation(*storePath));
         auto attrs = state.ctx.buildBindings(3 + drv.outputs.size());
         attrs.alloc(state.ctx.s.drvPath).mkString(path2, {
             NixStringContextElem::DrvDeep { .drvPath = *storePath },
@@ -982,7 +982,8 @@ drvName, Bindings * attrs, Value & v)
                 for (auto & j : refs) {
                     drv.inputSrcs.insert(j);
                     if (j.isDerivation()) {
-                        drv.inputDrvs.map[j].value = state.ctx.store->readDerivation(j).outputNames();
+                        drv.inputDrvs.map[j].value =
+                            state.aio.blockOn(state.ctx.store->readDerivation(j)).outputNames();
                     }
                 }
             },

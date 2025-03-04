@@ -424,8 +424,9 @@ try {
                         ) -> kj::Promise<Result<void>> {
         try {
             if (!inputNode.value.empty()) {
-                auto outputHashes =
-                    TRY_AWAIT(staticOutputHashes(evalStore, evalStore.readDerivation(inputDrv)));
+                auto outputHashes = TRY_AWAIT(
+                    staticOutputHashes(evalStore, TRY_AWAIT(evalStore.readDerivation(inputDrv)))
+                );
                 for (const auto & outputName : inputNode.value) {
                     auto outputHash = get(outputHashes, outputName);
                     if (!outputHash)

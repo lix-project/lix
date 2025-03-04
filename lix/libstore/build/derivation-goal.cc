@@ -206,7 +206,7 @@ try {
      */
     for (auto * drvStore : { &worker.evalStore, &worker.store }) {
         if (drvStore->isValidPath(drvPath)) {
-            drv = std::make_unique<Derivation>(drvStore->readDerivation(drvPath));
+            drv = std::make_unique<Derivation>(TRY_AWAIT(drvStore->readDerivation(drvPath)));
             break;
         }
     }
@@ -412,7 +412,7 @@ try {
             /* Ensure that pure, non-fixed-output derivations don't
                depend on impure derivations. */
             if (experimentalFeatureSettings.isEnabled(Xp::ImpureDerivations) && drv->type().isPure() && !drv->type().isFixed()) {
-                auto inputDrv = worker.evalStore.readDerivation(inputDrvPath);
+                auto inputDrv = TRY_AWAIT(worker.evalStore.readDerivation(inputDrvPath));
                 if (!inputDrv.type().isPure())
                     throw Error("pure derivation '%s' depends on impure derivation '%s'",
                         worker.store.printStorePath(drvPath),

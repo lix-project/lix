@@ -378,7 +378,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         REMOVE_AFTER_DROPPING_PROTO_MINOR(31);
         auto path = store->parseStorePath(readString(from));
         logger->startWork();
-        auto names = store->readDerivation(path).outputNames();
+        auto names = aio.blockOn(store->readDerivation(path)).outputNames();
         logger->stopWork();
         to << names;
         break;

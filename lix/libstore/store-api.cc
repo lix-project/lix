@@ -510,7 +510,7 @@ kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
 Store::queryStaticPartialDerivationOutputMap(const StorePath & path)
 try {
     std::map<std::string, std::optional<StorePath>> outputs;
-    auto drv = readInvalidDerivation(path);
+    auto drv = TRY_AWAIT(readInvalidDerivation(path));
     for (auto & [outputName, output] : drv.outputsAndOptPaths(*this)) {
         outputs.emplace(outputName, output.second);
     }
@@ -529,7 +529,7 @@ try {
     if (!experimentalFeatureSettings.isEnabled(Xp::CaDerivations))
         co_return outputs;
 
-    auto drv = evalStore.readInvalidDerivation(path);
+    auto drv = TRY_AWAIT(evalStore.readInvalidDerivation(path));
     auto drvHashes = TRY_AWAIT(staticOutputHashes(*this, drv));
     for (auto & [outputName, hash] : drvHashes) {
         auto realisation = TRY_AWAIT(queryRealisation(DrvOutput{hash, outputName}));
@@ -1382,21 +1382,24 @@ std::string showPaths(const PathSet & paths)
 kj::Promise<Result<Derivation>> Store::derivationFromPath(const StorePath & drvPath)
 try {
     TRY_AWAIT(ensurePath(drvPath));
-    co_return readDerivation(drvPath);
+    co_return TRY_AWAIT(readDerivation(drvPath));
 } catch (...) {
     co_return result::current_exception();
 }
 
-Derivation readDerivationCommon(Store& store, const StorePath& drvPath, bool requireValidPath)
-{
+kj::Promise<Result<Derivation>>
+readDerivationCommon(Store& store, const StorePath& drvPath, bool requireValidPath)
+try {
     auto accessor = store.getFSAccessor();
     try {
-        return parseDerivation(store,
+        co_return parseDerivation(store,
             accessor->readFile(store.printStorePath(drvPath), requireValidPath),
             Derivation::nameFromPath(drvPath));
     } catch (FormatError & e) {
         throw Error("error parsing derivation '%s': %s", store.printStorePath(drvPath), e.msg());
     }
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<std::optional<StorePath>>> Store::getBuildDerivationPath(const StorePath & path)
@@ -1414,7 +1417,7 @@ try {
     if (!experimentalFeatureSettings.isEnabled(Xp::CaDerivations) || !isValidPath(path))
         co_return path;
 
-    auto drv = readDerivation(path);
+    auto drv = TRY_AWAIT(readDerivation(path));
     if (!drv.type().hasKnownOutputPaths()) {
         // The build log is actually attached to the corresponding
         // resolved derivation, so we need to get it first
@@ -1428,10 +1431,10 @@ try {
     co_return result::current_exception();
 }
 
-Derivation Store::readDerivation(const StorePath & drvPath)
+kj::Promise<Result<Derivation>> Store::readDerivation(const StorePath & drvPath)
 { return readDerivationCommon(*this, drvPath, true); }
 
-Derivation Store::readInvalidDerivation(const StorePath & drvPath)
+kj::Promise<Result<Derivation>> Store::readInvalidDerivation(const StorePath & drvPath)
 { return readDerivationCommon(*this, drvPath, false); }
 
 }

@@ -776,7 +776,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
                     .outputs = OutputsSpec::All { },
                 },
             }));
-            auto drv = evaluator.store->readDerivation(drvPath);
+            auto drv = state.aio.blockOn(evaluator.store->readDerivation(drvPath));
             logger->cout("\nThis derivation produced the following outputs:");
             for (auto & [outputName, outputPath] :
                  state.aio.blockOn(evaluator.store->queryDerivationOutputMap(drvPath)))
