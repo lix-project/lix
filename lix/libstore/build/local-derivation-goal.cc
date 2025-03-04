@@ -1079,8 +1079,13 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         co_return result::current_exception();
     }
 
-    std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override
-    { throw Error("queryPathFromHashPart"); }
+    kj::Promise<Result<std::optional<StorePath>>>
+    queryPathFromHashPart(const std::string & hashPart) override
+    try {
+        throw Error("queryPathFromHashPart");
+    } catch (...) {
+        return {result::current_exception()};
+    }
 
     kj::Promise<Result<StorePath>> addToStoreRecursive(
         std::string_view name,

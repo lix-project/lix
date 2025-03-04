@@ -25,6 +25,7 @@
 #include <memory>
 #include <mutex>
 #include <new>
+#include <optional>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/select.h>
@@ -1085,24 +1086,32 @@ LocalStore::queryStaticPartialDerivationOutputMap(const StorePath & path)
     }, always_progresses);
 }
 
-std::optional<StorePath> LocalStore::queryPathFromHashPart(const std::string & hashPart)
-{
+kj::Promise<Result<std::optional<StorePath>>>
+LocalStore::queryPathFromHashPart(const std::string & hashPart)
+try {
     if (hashPart.size() != StorePath::HashLen) throw Error("invalid hash part");
 
     Path prefix = config_.storeDir + "/" + hashPart;
 
-    return retrySQLite([&]() -> std::optional<StorePath> {
-        auto state = dbPool.get();
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    co_return TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<std::optional<StorePath>>> {
+        try {
+            auto state = dbPool.get();
 
-        auto useQueryPathFromHashPart(state->stmts->QueryPathFromHashPart.use()(prefix));
+            auto useQueryPathFromHashPart(state->stmts->QueryPathFromHashPart.use()(prefix));
 
-        if (!useQueryPathFromHashPart.next()) return {};
+            if (!useQueryPathFromHashPart.next()) co_return std::nullopt;
 
-        auto s = useQueryPathFromHashPart.getStrNullable(0);
-        if (s.has_value() && s->starts_with(prefix))
-            return parseStorePath(*s);
-        return {};
-    }, always_progresses);
+            auto s = useQueryPathFromHashPart.getStrNullable(0);
+            if (s.has_value() && s->starts_with(prefix))
+                co_return parseStorePath(*s);
+            co_return std::nullopt;
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    }));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

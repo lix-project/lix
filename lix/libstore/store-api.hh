@@ -477,7 +477,8 @@ public:
      * Query the full store path given the hash part of a valid store
      * path, or empty if the path doesn't exist.
      */
-    virtual std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) = 0;
+    virtual kj::Promise<Result<std::optional<StorePath>>>
+    queryPathFromHashPart(const std::string & hashPart) = 0;
 
     /**
      * Query which of the given paths have substitutes.

@@ -147,7 +147,7 @@ SV * queryRawRealisation(char * outputId)
 SV * queryPathFromHashPart(char * hashPart)
     PPCODE:
         try {
-            auto path = store()->queryPathFromHashPart(hashPart);
+            auto path = aio().blockOn(store()->queryPathFromHashPart(hashPart));
             XPUSHs(sv_2mortal(newSVpv(path ? store()->printStorePath(*path).c_str() : "", 0)));
         } catch (Error & e) {
             croak("%s", e.what());

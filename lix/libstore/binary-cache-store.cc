@@ -333,15 +333,18 @@ bool BinaryCacheStore::isValidPathUncached(const StorePath & storePath)
     return fileExists(narInfoFileFor(storePath));
 }
 
-std::optional<StorePath> BinaryCacheStore::queryPathFromHashPart(const std::string & hashPart)
-{
+kj::Promise<Result<std::optional<StorePath>>>
+BinaryCacheStore::queryPathFromHashPart(const std::string & hashPart)
+try {
     auto pseudoPath = StorePath(hashPart + "-" + MissingName);
     try {
         auto info = queryPathInfo(pseudoPath);
-        return info->path;
+        co_return info->path;
     } catch (InvalidPath &) {
-        return std::nullopt;
+        co_return std::nullopt;
     }
+} catch (...) {
+    co_return result::current_exception();
 }
 
 box_ptr<Source> BinaryCacheStore::narFromPath(const StorePath & storePath)

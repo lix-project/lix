@@ -25,6 +25,7 @@
 
 #include <kj/async.h>
 #include <nlohmann/json.hpp>
+#include <optional>
 
 namespace nix {
 
@@ -379,14 +380,17 @@ try {
     co_return result::current_exception();
 }
 
-std::optional<StorePath> RemoteStore::queryPathFromHashPart(const std::string & hashPart)
-{
+kj::Promise<Result<std::optional<StorePath>>>
+RemoteStore::queryPathFromHashPart(const std::string & hashPart)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::QueryPathFromHashPart << hashPart;
     conn.processStderr();
     Path path = readString(conn->from);
-    if (path.empty()) return {};
-    return parseStorePath(path);
+    if (path.empty()) co_return std::nullopt;
+    co_return parseStorePath(path);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

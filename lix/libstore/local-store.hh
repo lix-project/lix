@@ -204,7 +204,8 @@ public:
 
     std::map<std::string, std::optional<StorePath>> queryStaticPartialDerivationOutputMap(const StorePath & path) override;
 
-    std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override;
+    kj::Promise<Result<std::optional<StorePath>>>
+    queryPathFromHashPart(const std::string & hashPart) override;
 
     kj::Promise<Result<StorePathSet>> querySubstitutablePaths(const StorePathSet & paths) override;
 

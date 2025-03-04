@@ -29,7 +29,7 @@ struct CmdPathFromHashPart : StoreCommand
 
     void run(ref<Store> store) override
     {
-        if (auto storePath = store->queryPathFromHashPart(hashPart))
+        if (auto storePath = aio().blockOn(store->queryPathFromHashPart(hashPart)))
             logger->cout(store->printStorePath(*storePath));
         else
             throw Error("there is no store path corresponding to '%s'", hashPart);

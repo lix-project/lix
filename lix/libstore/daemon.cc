@@ -396,7 +396,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::QueryPathFromHashPart: {
         auto hashPart = readString(from);
         logger->startWork();
-        auto path = store->queryPathFromHashPart(hashPart);
+        auto path = aio.blockOn(store->queryPathFromHashPart(hashPart));
         logger->stopWork();
         to << (path ? store->printStorePath(*path) : "");
         break;

@@ -259,8 +259,13 @@ struct LegacySSHStore final : public Store
         }(std::move(conn)));
     }
 
-    std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override
-    { unsupported("queryPathFromHashPart"); }
+    kj::Promise<Result<std::optional<StorePath>>>
+    queryPathFromHashPart(const std::string & hashPart) override
+    try {
+        unsupported("queryPathFromHashPart");
+    } catch (...) {
+        return {result::current_exception()};
+    }
 
     kj::Promise<Result<StorePath>> addToStoreRecursive(
         std::string_view name,
