@@ -17,7 +17,7 @@ struct LocalStoreAccessor : public FSAccessor
     kj::Promise<Result<Path>> toRealPath(const Path & path, bool requireValidPath = true)
     try {
         auto storePath = store->toStorePath(path).first;
-        if (requireValidPath && !store->isValidPath(storePath))
+        if (requireValidPath && !TRY_AWAIT(store->isValidPath(storePath)))
             throw InvalidPath("path '%1%' does not exist in the store", store->printStorePath(storePath));
         co_return store->getRealStoreDir() + std::string(path, store->config().storeDir.size());
     } catch (...) {
@@ -86,7 +86,7 @@ ref<FSAccessor> LocalFSStore::getFSAccessor()
 
 kj::Promise<Result<box_ptr<Source>>> LocalFSStore::narFromPath(const StorePath & path)
 try {
-    if (!isValidPath(path))
+    if (!TRY_AWAIT(isValidPath(path)))
         throw Error("path '%s' does not exist in store", printStorePath(path));
     co_return make_box_ptr<GeneratorSource>(
         dumpPath(getRealStoreDir() + std::string(printStorePath(path), config().storeDir.size()))

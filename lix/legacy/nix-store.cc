@@ -103,7 +103,7 @@ try {
 
     else {
         if (build) TRY_AWAIT(store->ensurePath(path.path));
-        else if (!store->isValidPath(path.path))
+        else if (!TRY_AWAIT(store->isValidPath(path.path)))
             throw Error("path '%s' does not exist and cannot be created", store->printStorePath(path.path));
         if (store2) {
             if (gcRoot == "")
@@ -563,7 +563,7 @@ static void registerValidity(AsyncIoRoot & aio, bool reregister, bool hashGiven,
         auto hashResultOpt = !hashGiven ? std::optional<HashResult> { {Hash::dummy, -1} } : std::nullopt;
         auto info = decodeValidPathInfo(*store, cin, hashResultOpt);
         if (!info) break;
-        if (!store->isValidPath(info->path) || reregister) {
+        if (!aio.blockOn(store->isValidPath(info->path)) || reregister) {
             /* !!! races */
             if (canonicalise)
                 canonicalisePathMetaData(store->printStorePath(info->path), {});
@@ -615,7 +615,7 @@ static void opCheckValidity(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
     for (auto & i : opArgs) {
         auto path = store->followLinksToStorePath(i);
-        if (!store->isValidPath(path)) {
+        if (!aio.blockOn(store->isValidPath(path))) {
             if (printInvalid)
                 cout << fmt("%s\n", store->printStorePath(path));
             else

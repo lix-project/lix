@@ -1,5 +1,6 @@
 #include "lix/libstore/local-store.hh"
 #include "lix/libstore/globals.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/strings.hh"
@@ -270,7 +271,7 @@ try {
 
     for (auto & i : paths) {
         TRY_AWAIT(addTempRoot(i));
-        if (!isValidPath(i)) continue; /* path was GC'ed, probably */
+        if (!TRY_AWAIT(isValidPath(i))) continue; /* path was GC'ed, probably */
         {
             Activity act(*logger, lvlTalkative, actUnknown, fmt("optimising path '%s'", printStorePath(i)));
             optimisePath_(

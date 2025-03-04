@@ -262,7 +262,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
                 .references = {}
             });
 
-        if (state.ctx.store->isValidPath(expectedPath)) {
+        if (state.aio.blockOn(state.ctx.store->isValidPath(expectedPath))) {
             state.ctx.paths.allowAndSetStorePathString(expectedPath, v);
             return;
         }

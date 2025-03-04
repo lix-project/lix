@@ -55,7 +55,7 @@ try {
     TRY_AWAIT(worker.store.addTempRoot(storePath));
 
     /* If the path already exists we're done. */
-    if (!repair && worker.store.isValidPath(storePath)) {
+    if (!repair && TRY_AWAIT(worker.store.isValidPath(storePath))) {
         co_return done(ecSuccess, BuildResult::AlreadyValid);
     }
 
@@ -180,19 +180,21 @@ try {
     trace("all references realised");
 
     if (nrFailed > 0) {
-        return {done(
+        co_return done(
             nrNoSubstituters > 0 || nrIncompleteClosure > 0 ? ecIncompleteClosure : ecFailed,
             BuildResult::DependencyFailed,
-            fmt("some references of path '%s' could not be realised", worker.store.printStorePath(storePath)))};
+            fmt("some references of path '%s' could not be realised",
+                worker.store.printStorePath(storePath))
+        );
     }
 
     for (auto & i : info->references)
         if (i != storePath) /* ignore self-references */
-            assert(worker.store.isValidPath(i));
+            assert(TRY_AWAIT(worker.store.isValidPath(i)));
 
-    return tryToRun();
+    co_return TRY_AWAIT(tryToRun());
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 

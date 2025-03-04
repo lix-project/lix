@@ -170,7 +170,7 @@ try {
     /* The first thing to do is to make sure that the derivation
        exists.  If it doesn't, it may be created through a
        substitute. */
-    if (buildMode == bmNormal && worker.evalStore.isValidPath(drvPath)) {
+    if (buildMode == bmNormal && TRY_AWAIT(worker.evalStore.isValidPath(drvPath))) {
         co_return co_await loadDerivation();
     }
 
@@ -205,7 +205,7 @@ try {
          - Dynamic derivations are built, and so are found in the main store.
      */
     for (auto * drvStore : { &worker.evalStore, &worker.store }) {
-        if (drvStore->isValidPath(drvPath)) {
+        if (TRY_AWAIT(drvStore->isValidPath(drvPath))) {
             drv = std::make_unique<Derivation>(TRY_AWAIT(drvStore->readDerivation(drvPath)));
             break;
         }
@@ -232,7 +232,7 @@ try {
 
         for (auto & [outputName, output] : drv->outputs) {
             auto randomPath = StorePath::random(outputPathName(drv->name, outputName));
-            assert(!worker.store.isValidPath(randomPath));
+            assert(!TRY_AWAIT(worker.store.isValidPath(randomPath)));
             initialOutputs.insert({
                 outputName,
                 InitialOutput {
@@ -431,13 +431,13 @@ try {
     if (&worker.evalStore != &worker.store) {
         RealisedPath::Set inputSrcs;
         for (auto & i : drv->inputSrcs)
-            if (worker.evalStore.isValidPath(i))
+            if (TRY_AWAIT(worker.evalStore.isValidPath(i)))
                 inputSrcs.insert(i);
         TRY_AWAIT(copyClosure(worker.evalStore, worker.store, inputSrcs));
     }
 
     for (auto & i : drv->inputSrcs) {
-        if (worker.store.isValidPath(i)) continue;
+        if (TRY_AWAIT(worker.store.isValidPath(i))) continue;
         if (!settings.useSubstitutes)
             throw Error("dependency '%s' of '%s' does not exist, and substitution is disabled",
                 worker.store.printStorePath(i), worker.store.printStorePath(drvPath));
@@ -648,9 +648,9 @@ try {
                             co_return *outPath;
                         }
                         else {
-                            auto outMap = worker.evalStore.isValidPath(depDrvPath)
+                            auto outMap = TRY_AWAIT(worker.evalStore.isValidPath(depDrvPath))
                                 ? TRY_AWAIT(worker.store.queryDerivationOutputMap(depDrvPath, &worker.evalStore))
-                                : worker.store.isValidPath(depDrvPath)
+                                : TRY_AWAIT(worker.store.isValidPath(depDrvPath))
                                 ? TRY_AWAIT(worker.store.queryDerivationOutputMap(depDrvPath, &worker.store))
                                 : (assert(false), OutputPathMap{});
 
@@ -1191,7 +1191,7 @@ try {
                 newRealisation.id = DrvOutput { initialOutput->outputHash, outputName };
                 newRealisation.signatures.clear();
                 if (!drv->type().isFixed()) {
-                    auto & drvStore = worker.evalStore.isValidPath(drvPath)
+                    auto & drvStore = TRY_AWAIT(worker.evalStore.isValidPath(drvPath))
                         ? worker.evalStore
                         : worker.store;
                     newRealisation.dependentRealisations = TRY_AWAIT(
@@ -1619,7 +1619,7 @@ try {
         co_return res;
     } else {
         for (auto * drvStore : {&worker.evalStore, &worker.store}) {
-            if (drvStore->isValidPath(drvPath)) {
+            if (TRY_AWAIT(drvStore->isValidPath(drvPath))) {
                 co_return TRY_AWAIT(worker.store.queryPartialDerivationOutputMap(drvPath, drvStore)
                 );
             }
@@ -1640,7 +1640,7 @@ try {
         co_return res;
     } else {
         for (auto * drvStore : {&worker.evalStore, &worker.store}) {
-            if (drvStore->isValidPath(drvPath)) {
+            if (TRY_AWAIT(drvStore->isValidPath(drvPath))) {
                 co_return TRY_AWAIT(worker.store.queryDerivationOutputMap(drvPath, drvStore));
             }
         }
@@ -1679,7 +1679,7 @@ try {
             auto outputPath = *i.second;
             info.known = {
                 .path = outputPath,
-                .status = !worker.store.isValidPath(outputPath)
+                .status = !TRY_AWAIT(worker.store.isValidPath(outputPath))
                     ? PathStatus::Absent
                     : !checkHash || TRY_AWAIT(worker.pathContentsGood(outputPath))
                     ? PathStatus::Valid

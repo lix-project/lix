@@ -131,7 +131,9 @@ struct PathInputScheme : InputScheme
             TRY_AWAIT(store->addTempRoot(*storePath));
 
         time_t mtime = 0;
-        if (!storePath || storePath->name() != "source" || !store->isValidPath(*storePath)) {
+        if (!storePath || storePath->name() != "source"
+            || !TRY_AWAIT(store->isValidPath(*storePath)))
+        {
             // FIXME: try to substitute storePath.
             auto src = AsyncGeneratorInputStream{dumpPathAndGetMtime(absPath, mtime)};
             storePath = TRY_AWAIT(store->addToStoreFromDump(src, "source"));

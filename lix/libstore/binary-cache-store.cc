@@ -277,7 +277,7 @@ kj::Promise<Result<void>> BinaryCacheStore::addToStore(
     CheckSigsFlag checkSigs
 )
 try {
-    if (!repair && isValidPath(info.path)) {
+    if (!repair && TRY_AWAIT(isValidPath(info.path))) {
         // FIXME: copyNAR -> null sink
         TRY_AWAIT(narSource.drain());
         co_return result::success();
@@ -477,7 +477,7 @@ try {
     auto textHash = hashString(HashType::SHA256, s);
     auto path = makeTextPath(name, TextInfo { { textHash }, references });
 
-    if (!repair && isValidPath(path))
+    if (!repair && TRY_AWAIT(isValidPath(path)))
         co_return path;
 
     StringSink sink;

@@ -195,7 +195,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
             );
         }
 
-        if (!store->isValidPath(store->parseStorePath(userEnv))) {
+        if (!aio().blockOn(store->isValidPath(store->parseStorePath(userEnv)))) {
             throw Error("directory '%s' is not in the Nix store", userEnv);
         }
 

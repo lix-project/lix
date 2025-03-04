@@ -79,7 +79,7 @@ std::tuple<StorePath, Hash> prefetchFile(
             .hash = *expectedHash,
             .references = {},
         });
-        if (store->isValidPath(*storePath))
+        if (aio.blockOn(store->isValidPath(*storePath)))
             hash = expectedHash;
         else
             storePath.reset();

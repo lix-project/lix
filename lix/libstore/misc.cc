@@ -37,7 +37,7 @@ try {
 
                 if (includeDerivers && path.isDerivation())
                     for (auto& [_, maybeOutPath] : TRY_AWAIT(queryPartialDerivationOutputMap(path)))
-                        if (maybeOutPath && isValidPath(*maybeOutPath))
+                        if (maybeOutPath && TRY_AWAIT(isValidPath(*maybeOutPath)))
                             res.insert(*maybeOutPath);
                 co_return res;
             } catch (...) {
@@ -56,10 +56,10 @@ try {
 
                 if (includeOutputs && path.isDerivation())
                     for (auto& [_, maybeOutPath] : TRY_AWAIT(queryPartialDerivationOutputMap(path)))
-                        if (maybeOutPath && isValidPath(*maybeOutPath))
+                        if (maybeOutPath && TRY_AWAIT(isValidPath(*maybeOutPath)))
                             res.insert(*maybeOutPath);
 
-                if (includeDerivers && info->deriver && isValidPath(*info->deriver))
+                if (includeDerivers && info->deriver && TRY_AWAIT(isValidPath(*info->deriver)))
                     res.insert(*info->deriver);
                 co_return res;
             } catch (...) {
@@ -236,7 +236,7 @@ struct QueryMissingContext
         }
         auto & drvPath = drvPathP->path;
 
-        if (!store.isValidPath(drvPath)) {
+        if (!aio.blockOn(store.isValidPath(drvPath))) {
             // FIXME: we could try to substitute the derivation.
             auto state(state_.lock());
             state->unknown.insert(drvPath);
@@ -254,7 +254,7 @@ struct QueryMissingContext
                 knownOutputPaths = false;
                 break;
             }
-            if (bfd.outputs.contains(outputName) && !store.isValidPath(*pathOpt))
+            if (bfd.outputs.contains(outputName) && !aio.blockOn(store.isValidPath(*pathOpt)))
                 invalid.insert(*pathOpt);
         }
         if (knownOutputPaths && invalid.empty()) return;
@@ -280,7 +280,7 @@ struct QueryMissingContext
                     if (!realisation)
                         continue;
                     found = true;
-                    if (!store.isValidPath(realisation->outPath))
+                    if (!aio.blockOn(store.isValidPath(realisation->outPath)))
                         invalid.insert(realisation->outPath);
                     break;
                 }
@@ -306,7 +306,7 @@ struct QueryMissingContext
 
     void doPathOpaque(AsyncIoRoot & aio, const DerivedPath::Opaque & bo)
     {
-        if (store.isValidPath(bo.path)) return;
+        if (aio.blockOn(store.isValidPath(bo.path))) return;
 
         SubstitutablePathInfos infos;
         aio.blockOn(store.querySubstitutablePathInfos({{bo.path, std::nullopt}}, infos));

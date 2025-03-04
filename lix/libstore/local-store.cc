@@ -1018,7 +1018,7 @@ LocalStore::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubs
 try {
     StorePathSet res;
     for (auto & i : paths)
-        if (isValidPath(i)) res.insert(i);
+        if (TRY_AWAIT(isValidPath(i))) res.insert(i);
     co_return res;
 } catch (...) {
     co_return result::current_exception();
@@ -1310,7 +1310,7 @@ try {
 
     TRY_AWAIT(addTempRoot(info.path));
 
-    if (repair || !isValidPath(info.path)) {
+    if (repair || !TRY_AWAIT(isValidPath(info.path))) {
 
         std::optional<PathLock> outputLock;
 
@@ -1322,7 +1322,7 @@ try {
         if (!locksHeld.count(printStorePath(info.path)))
             outputLock = TRY_AWAIT(lockPathAsync(realPath));
 
-        if (repair || !isValidPath(info.path)) {
+        if (repair || !TRY_AWAIT(isValidPath(info.path))) {
 
             deletePath(realPath);
 
@@ -1495,7 +1495,7 @@ try {
 
     TRY_AWAIT(addTempRoot(dstPath));
 
-    if (repair || !isValidPath(dstPath)) {
+    if (repair || !TRY_AWAIT(isValidPath(dstPath))) {
 
         /* The first check above is an optimisation to prevent
            unnecessary lock acquisition. */
@@ -1504,7 +1504,7 @@ try {
 
         PathLock outputLock = TRY_AWAIT(lockPathAsync(realPath));
 
-        if (repair || !isValidPath(dstPath)) {
+        if (repair || !TRY_AWAIT(isValidPath(dstPath))) {
 
             deletePath(realPath);
 
@@ -1565,13 +1565,13 @@ try {
 
     TRY_AWAIT(addTempRoot(dstPath));
 
-    if (repair || !isValidPath(dstPath)) {
+    if (repair || !TRY_AWAIT(isValidPath(dstPath))) {
 
         auto realPath = Store::toRealPath(dstPath);
 
         PathLock outputLock = TRY_AWAIT(lockPathAsync(realPath));
 
-        if (repair || !isValidPath(dstPath)) {
+        if (repair || !TRY_AWAIT(isValidPath(dstPath))) {
 
             deletePath(realPath);
 
@@ -1725,6 +1725,7 @@ try {
         Hash nullHash(HashType::SHA256);
 
         for (auto & i : validPaths) {
+            std::optional<Error> caught;
             try {
                 auto info = std::const_pointer_cast<ValidPathInfo>(std::shared_ptr<const ValidPathInfo>(queryPathInfo(i)));
 
@@ -1766,12 +1767,15 @@ try {
                 }
 
             } catch (Error & e) {
+                caught = std::move(e);
+            }
+            if (caught) {
                 /* It's possible that the path got GC'ed, so ignore
                    errors on invalid paths. */
-                if (isValidPath(i))
-                    logError(e.info());
+                if (TRY_AWAIT(isValidPath(i)))
+                    logError(caught->info());
                 else
-                    warn(e.msg());
+                    warn(caught->msg());
                 errors = true;
             }
         }

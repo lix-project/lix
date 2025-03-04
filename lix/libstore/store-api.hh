@@ -346,7 +346,7 @@ public:
      * Check whether a path is valid.
      * A path is valid when it exists in the store *now*.
      */
-    bool isValidPath(const StorePath & path);
+    kj::Promise<Result<bool>> isValidPath(const StorePath & path);
 
 protected:
 

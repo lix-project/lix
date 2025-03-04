@@ -230,7 +230,7 @@ static std::strong_ordering comparePriorities(EvalState & state, DrvInfo & drv1,
 static bool isPrebuilt(EvalState & state, DrvInfo & elem)
 {
     auto path = elem.queryOutPath(state);
-    if (state.ctx.store->isValidPath(path)) return true;
+    if (state.aio.blockOn(state.ctx.store->isValidPath(path))) return true;
     return state.aio.blockOn(state.ctx.store->querySubstitutablePaths({path})).count(path);
 }
 

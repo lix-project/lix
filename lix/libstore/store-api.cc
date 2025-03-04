@@ -339,7 +339,7 @@ try {
 
             auto & [info, _] = *infosMap.at(path);
 
-            if (isValidPath(info.path)) {
+            if (aio.blockOn(isValidPath(info.path))) {
                 nrDone++;
                 showProgress();
                 return StorePathSet();
@@ -365,7 +365,7 @@ try {
                LegacySSHStore::narFromPath()'s connection lock. */
             auto source = std::move(source_);
 
-            if (!isValidPath(info.path)) {
+            if (!aio.blockOn(isValidPath(info.path))) {
                 MaintainCount<decltype(nrRunning)> mc(nrRunning);
                 showProgress();
                 try {
@@ -463,7 +463,7 @@ try {
     };
     info.narSize = narSize;
 
-    if (!isValidPath(info.path)) {
+    if (!TRY_AWAIT(isValidPath(info.path))) {
         auto source = AsyncGeneratorInputStream{dumpPath(srcPath)};
         TRY_AWAIT(addToStore(info, source));
     }
@@ -633,14 +633,14 @@ try {
 }
 
 
-bool Store::isValidPath(const StorePath & storePath)
-{
+kj::Promise<Result<bool>> Store::isValidPath(const StorePath & storePath)
+try {
     {
         auto state_(state.lock());
         auto res = state_->pathInfoCache.get(std::string(storePath.to_string()));
         if (res && res->isKnownNow()) {
             stats.narInfoReadAverted++;
-            return res->didExist();
+            co_return res->didExist();
         }
     }
 
@@ -651,7 +651,7 @@ bool Store::isValidPath(const StorePath & storePath)
             auto state_(state.lock());
             state_->pathInfoCache.upsert(std::string(storePath.to_string()),
                 res.first == NarInfoDiskCache::oInvalid ? PathInfoCacheValue{} : PathInfoCacheValue { .value = res.second });
-            return res.first == NarInfoDiskCache::oValid;
+            co_return res.first == NarInfoDiskCache::oValid;
         }
     }
 
@@ -661,7 +661,9 @@ bool Store::isValidPath(const StorePath & storePath)
         // FIXME: handle valid = true case.
         diskCache->upsertNarInfo(getUri(), std::string(storePath.hashPart()), 0);
 
-    return valid;
+    co_return valid;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -1093,7 +1095,7 @@ kj::Promise<Result<void>> copyStorePath(
 try {
     /* Bail out early (before starting a download from srcStore) if
        dstStore already has this path. */
-    if (!repair && dstStore.isValidPath(storePath))
+    if (!repair && TRY_AWAIT(dstStore.isValidPath(storePath)))
         co_return result::success();
 
     auto srcUri = srcStore.getUri();
@@ -1416,7 +1418,7 @@ try {
         }
     }
 
-    if (!experimentalFeatureSettings.isEnabled(Xp::CaDerivations) || !isValidPath(path))
+    if (!experimentalFeatureSettings.isEnabled(Xp::CaDerivations) || !TRY_AWAIT(isValidPath(path)))
         co_return path;
 
     auto drv = TRY_AWAIT(readDerivation(path));

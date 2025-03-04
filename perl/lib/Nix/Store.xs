@@ -68,7 +68,7 @@ void setVerbosity(int level)
 int isValidPath(char * path)
     CODE:
         try {
-            RETVAL = store()->isValidPath(store()->parseStorePath(path));
+            RETVAL = aio().blockOn(store()->isValidPath(store()->parseStorePath(path)));
         } catch (Error & e) {
             croak("%s", e.what());
         }

@@ -2386,7 +2386,7 @@ try {
             } else if (buildMode == bmCheck) {
                 /* Path already exists, and we want to compare, so we leave out
                    new path in place. */
-            } else if (worker.store.isValidPath(newInfo.path)) {
+            } else if (TRY_AWAIT(worker.store.isValidPath(newInfo.path))) {
                 /* Path already exists because CA path produced by something
                    else. No moving needed. */
                 assert(newInfo.ca);
@@ -2402,7 +2402,7 @@ try {
 
         if (buildMode == bmCheck) {
 
-            if (!worker.store.isValidPath(newInfo.path)) continue;
+            if (!TRY_AWAIT(worker.store.isValidPath(newInfo.path))) continue;
             ValidPathInfo oldInfo(*worker.store.queryPathInfo(newInfo.path));
             if (newInfo.narHash != oldInfo.narHash) {
                 anyCheckMismatchSeen = true;

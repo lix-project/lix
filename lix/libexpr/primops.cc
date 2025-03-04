@@ -17,8 +17,10 @@
 #include "lix/libexpr/value-to-xml.hh"
 #include "lix/libexpr/primops.hh"
 #include "lix/libfetchers/fetch-to-store.hh"
+#include "lix/libutil/result.hh"
 
 #include <boost/container/small_vector.hpp>
+#include <kj/async.h>
 #include <nlohmann/json.hpp>
 
 #include <sys/types.h>
@@ -46,30 +48,36 @@ try {
     StringMap res;
 
     for (auto & c : context) {
-        auto ensureValid = [&](const StorePath & p) {
-            if (!store->isValidPath(p))
-                errors.make<InvalidPathError>(store->printStorePath(p)).debugThrow();
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        auto ensureValid = [&](const StorePath & p) -> kj::Promise<Result<void>> {
+            try {
+                if (!TRY_AWAIT(store->isValidPath(p)))
+                    errors.make<InvalidPathError>(store->printStorePath(p)).debugThrow();
+                co_return result::success();
+            } catch (...) {
+                co_return result::current_exception();
+            }
         };
-        std::visit(overloaded {
+        TRY_AWAIT(std::visit(overloaded {
             [&](const NixStringContextElem::Built & b) {
                 drvs.push_back(DerivedPath::Built {
                     .drvPath = b.drvPath,
                     .outputs = OutputsSpec::Names { b.output },
                 });
-                ensureValid(b.drvPath->getBaseStorePath());
+                return ensureValid(b.drvPath->getBaseStorePath());
             },
             [&](const NixStringContextElem::Opaque & o) {
                 auto ctxS = store->printStorePath(o.path);
                 res.insert_or_assign(ctxS, ctxS);
-                ensureValid(o.path);
+                return ensureValid(o.path);
             },
             [&](const NixStringContextElem::DrvDeep & d) {
                 /* Treat same as Opaque */
                 auto ctxS = store->printStorePath(d.drvPath);
                 res.insert_or_assign(ctxS, ctxS);
-                ensureValid(d.drvPath);
+                return ensureValid(d.drvPath);
             },
-        }, c.raw);
+        }, c.raw));
     }
 
     if (drvs.empty()) co_return StringMap{};
@@ -184,7 +192,7 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
         if (!state.ctx.store->isStorePath(path2))
             return std::nullopt;
         auto storePath = state.ctx.store->parseStorePath(path2);
-        if (!(state.ctx.store->isValidPath(storePath) && isDerivation(path2)))
+        if (!(state.aio.blockOn(state.ctx.store->isValidPath(storePath)) && isDerivation(path2)))
             return std::nullopt;
         return storePath;
     };
@@ -1565,7 +1573,7 @@ static void addPath(
                 .references = {},
             });
 
-        if (!expectedHash || !state.ctx.store->isValidPath(*expectedStorePath)) {
+        if (!expectedHash || !state.aio.blockOn(state.ctx.store->isValidPath(*expectedStorePath))) {
             auto checkedPath = state.ctx.paths.checkSourcePath(CanonPath(realPath));
             auto dstPath = state.aio.blockOn(
                 method == FileIngestionMethod::Flat

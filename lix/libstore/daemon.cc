@@ -275,7 +275,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::IsValidPath: {
         auto path = store->parseStorePath(readString(from));
         logger->startWork();
-        bool result = store->isValidPath(path);
+        bool result = aio.blockOn(store->isValidPath(path));
         logger->stopWork();
         to << result;
         break;

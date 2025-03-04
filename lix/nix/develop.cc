@@ -270,7 +270,7 @@ try {
     {
         assert(optPath);
         auto & outPath = *optPath;
-        assert(store->isValidPath(outPath));
+        assert(TRY_AWAIT(store->isValidPath(outPath)));
         auto outPathS = store->toRealPath(outPath);
         if (lstat(outPathS).st_size)
             co_return outPath;

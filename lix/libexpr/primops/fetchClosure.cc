@@ -2,6 +2,7 @@
 #include "lix/libexpr/extra-primops.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/make-content-addressed.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/url.hh"
 
 namespace nix {
@@ -19,7 +20,7 @@ static void runFetchClosureWithRewrite(EvalState & state, const PosIdx pos, Stor
 
     // establish toPath or throw
 
-    if (!toPathMaybe || !state.ctx.store->isValidPath(*toPathMaybe)) {
+    if (!toPathMaybe || !state.aio.blockOn(state.ctx.store->isValidPath(*toPathMaybe))) {
         auto rewrittenPath =
             state.aio.blockOn(makeContentAddressed(fromStore, *state.ctx.store, fromPath));
         if (toPathMaybe && *toPathMaybe != rewrittenPath)
@@ -67,7 +68,7 @@ static void runFetchClosureWithRewrite(EvalState & state, const PosIdx pos, Stor
  */
 static void runFetchClosureWithContentAddressedPath(EvalState & state, const PosIdx pos, Store & fromStore, const StorePath & fromPath, Value & v) {
 
-    if (!state.ctx.store->isValidPath(fromPath))
+    if (!state.aio.blockOn(state.ctx.store->isValidPath(fromPath)))
         state.aio.blockOn(copyClosure(fromStore, *state.ctx.store, RealisedPath::Set { fromPath }));
 
     auto info = state.ctx.store->queryPathInfo(fromPath);
@@ -93,7 +94,7 @@ static void runFetchClosureWithContentAddressedPath(EvalState & state, const Pos
  */
 static void runFetchClosureWithInputAddressedPath(EvalState & state, const PosIdx pos, Store & fromStore, const StorePath & fromPath, Value & v) {
 
-    if (!state.ctx.store->isValidPath(fromPath))
+    if (!state.aio.blockOn(state.ctx.store->isValidPath(fromPath)))
         state.aio.blockOn(copyClosure(fromStore, *state.ctx.store, RealisedPath::Set { fromPath }));
 
     auto info = state.ctx.store->queryPathInfo(fromPath);

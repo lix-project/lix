@@ -58,7 +58,7 @@ try {
 
     auto [storePath, restPath] = store->toStorePath(path);
 
-    if (requireValidPath && !store->isValidPath(storePath))
+    if (requireValidPath && !TRY_AWAIT(store->isValidPath(storePath)))
         throw InvalidPath("path '%1%' does not exist in remote store", store->printStorePath(storePath));
 
     auto i = nars.find(std::string(storePath.hashPart()));

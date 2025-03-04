@@ -110,7 +110,7 @@ struct CacheImpl : Cache
         auto timestamp = stmt.getInt(3);
 
         TRY_AWAIT(store->addTempRoot(storePath));
-        if (!store->isValidPath(storePath)) {
+        if (!TRY_AWAIT(store->isValidPath(storePath))) {
             // FIXME: we could try to substitute 'storePath'.
             debug("ignoring disappeared cache entry '%s'", inAttrsJSON);
             co_return std::nullopt;

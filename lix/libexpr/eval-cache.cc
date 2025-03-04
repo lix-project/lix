@@ -2,6 +2,7 @@
 #include "lix/libstore/sqlite.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/users.hh"
 
 namespace nix::eval_cache {
@@ -585,7 +586,7 @@ string_t AttrCursor::getStringWithContext(EvalState & state)
                             return o.path;
                         },
                     }, c.raw);
-                    if (!state.ctx.store->isValidPath(path)) {
+                    if (!state.aio.blockOn(state.ctx.store->isValidPath(path))) {
                         valid = false;
                         break;
                     }
@@ -729,11 +730,11 @@ StorePath AttrCursor::forceDerivation(EvalState & state)
 {
     auto aDrvPath = getAttr(state, "drvPath");
     auto drvPath = state.ctx.store->parseStorePath(aDrvPath->getString(state));
-    if (!state.ctx.store->isValidPath(drvPath) && !settings.readOnlyMode) {
+    if (!state.aio.blockOn(state.ctx.store->isValidPath(drvPath)) && !settings.readOnlyMode) {
         /* The eval cache contains 'drvPath', but the actual path has
            been garbage-collected. So force it to be regenerated. */
         aDrvPath->forceValue(state);
-        if (!state.ctx.store->isValidPath(drvPath))
+        if (!state.aio.blockOn(state.ctx.store->isValidPath(drvPath)))
             throw Error("don't know how to recreate store derivation '%s'!",
                 state.ctx.store->printStorePath(drvPath));
     }

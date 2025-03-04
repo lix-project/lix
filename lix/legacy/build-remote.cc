@@ -368,7 +368,7 @@ connected:
             auto outputPaths = drv.outputsAndOptPaths(*store);
             for (auto & [outputName, hopefullyOutputPath] : outputPaths) {
                 assert(hopefullyOutputPath.second);
-                if (!store->isValidPath(*hopefullyOutputPath.second))
+                if (!aio.blockOn(store->isValidPath(*hopefullyOutputPath.second)))
                     missingPaths.insert(*hopefullyOutputPath.second);
             }
         }

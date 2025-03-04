@@ -257,14 +257,19 @@ void LocalStore::findTempRoots(Roots & tempRoots, bool censor)
 kj::Promise<Result<void>>
 LocalStore::findRoots(const Path & path, unsigned char type, Roots & roots)
 try {
-    auto foundRoot = [&](const Path & path, const Path & target) {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    auto foundRoot = [&](const Path & path, const Path & target) -> kj::Promise<Result<void>> {
         try {
             auto storePath = toStorePath(target).first;
-            if (isValidPath(storePath))
+            if (TRY_AWAIT(isValidPath(storePath)))
                 roots[std::move(storePath)].emplace(path);
             else
                 printInfo("skipping invalid root from '%1%' to '%2%'", path, target);
-        } catch (BadStorePath &) { }
+        } catch (BadStorePath &) {
+        } catch (...) {
+            co_return result::current_exception();
+        }
+        co_return result::success();
     };
 
     try {
@@ -280,7 +285,7 @@ try {
         else if (type == DT_LNK) {
             Path target = readLink(path);
             if (isInStore(target))
-                foundRoot(path, target);
+                TRY_AWAIT(foundRoot(path, target));
 
             /* Handle indirect roots. */
             else {
@@ -294,7 +299,7 @@ try {
                     struct stat st2 = lstat(target);
                     if (!S_ISLNK(st2.st_mode)) co_return result::success();
                     Path target2 = readLink(target);
-                    if (isInStore(target2)) foundRoot(target, target2);
+                    if (isInStore(target2)) TRY_AWAIT(foundRoot(target, target2));
                 }
             }
         }
@@ -302,7 +307,7 @@ try {
         else if (type == DT_REG) {
             auto storePath =
                 maybeParseStorePath(config().storeDir + "/" + std::string(baseNameOf(path)));
-            if (storePath && isValidPath(*storePath))
+            if (storePath && TRY_AWAIT(isValidPath(*storePath)))
                 roots[std::move(*storePath)].emplace(path);
         }
 
@@ -380,7 +385,7 @@ try {
         if (!isInStore(target)) continue;
         try {
             auto path = toStorePath(target).first;
-            if (!isValidPath(path)) continue;
+            if (!TRY_AWAIT(isValidPath(path))) continue;
             debug("got additional root '%1%'", printStorePath(path));
             if (censor)
                 roots[path].insert(censored);
@@ -754,7 +759,7 @@ try {
                     co_return result::success();
                 }
 
-                if (isValidPath(*path)) {
+                if (TRY_AWAIT(isValidPath(*path))) {
 
                     /* Visit the referrers of this path. */
                     auto i = referrersCache.find(*path);
@@ -774,7 +779,7 @@ try {
                              TRY_AWAIT(queryPartialDerivationOutputMap(*path)))
                         {
                             if (maybeOutPath &&
-                                isValidPath(*maybeOutPath) &&
+                                TRY_AWAIT(isValidPath(*maybeOutPath)) &&
                                 queryPathInfo(*maybeOutPath)->deriver == *path)
                                 enqueue(*maybeOutPath);
                         }

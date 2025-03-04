@@ -110,7 +110,7 @@ try {
 kj::Promise<Result<void>> Store::ensurePath(const StorePath & path)
 try {
     /* If the path is already valid, we're done. */
-    if (isValidPath(path)) co_return result::success();
+    if (TRY_AWAIT(isValidPath(path))) co_return result::success();
 
     auto results = TRY_AWAIT(processGoals(*this, *this, [&](GoalFactory & gf) {
         Worker::Targets goals;
@@ -146,7 +146,7 @@ try {
         /* Since substituting the path didn't work, if we have a valid
            deriver, then rebuild the deriver. */
         auto info = queryPathInfo(path);
-        if (info->deriver && isValidPath(*info->deriver)) {
+        if (info->deriver && TRY_AWAIT(isValidPath(*info->deriver))) {
             TRY_AWAIT(processGoals(*this, *this, [&](GoalFactory & gf) {
                 Worker::Targets goals;
                 goals.emplace_back(gf.makeGoal(
