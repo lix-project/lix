@@ -373,7 +373,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                     }
                     else if (query == qReferrers) {
                         StorePathSet tmp;
-                        store->queryReferrers(j, tmp);
+                        aio.blockOn(store->queryReferrers(j, tmp));
                         for (auto & i : tmp)
                             paths.insert(i);
                     }

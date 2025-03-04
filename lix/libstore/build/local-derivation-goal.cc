@@ -1068,8 +1068,9 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
             return nullptr;
     };
 
-    void queryReferrers(const StorePath & path, StorePathSet & referrers) override
-    { }
+    kj::Promise<Result<void>>
+    queryReferrers(const StorePath & path, StorePathSet & referrers) override
+    { return {result::success()}; }
 
     kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
     queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore = nullptr) override

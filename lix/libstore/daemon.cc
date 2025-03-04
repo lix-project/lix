@@ -349,7 +349,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         #pragma GCC diagnostic ignored "-Wswitch-enum"
         switch (op) {
             case WorkerProto::Op::QueryReferrers: {
-                store->queryReferrers(path, paths);
+                aio.blockOn(store->queryReferrers(path, paths));
                 break;
             }
             case WorkerProto::Op::QueryValidDerivers: {

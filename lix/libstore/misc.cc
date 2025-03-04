@@ -26,7 +26,7 @@ try {
             try {
                 StorePathSet res;
                 StorePathSet referrers;
-                queryReferrers(path, referrers);
+                TRY_AWAIT(queryReferrers(path, referrers));
                 for (auto& ref : referrers)
                     if (ref != path)
                         res.insert(ref);

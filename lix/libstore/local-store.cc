@@ -1051,12 +1051,22 @@ void LocalStore::queryReferrers(DBState & state, const StorePath & path, StorePa
 }
 
 
-void LocalStore::queryReferrers(const StorePath & path, StorePathSet & referrers)
-{
-    return retrySQLite([&]() {
-        auto state = dbPool.get();
-        queryReferrers(*state, path, referrers);
-    }, always_progresses);
+kj::Promise<Result<void>>
+LocalStore::queryReferrers(const StorePath & path, StorePathSet & referrers)
+try {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<void>> {
+        try {
+            auto state = dbPool.get();
+            queryReferrers(*state, path, referrers);
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    }));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -1777,7 +1787,7 @@ try {
         /* Check any referrers first.  If we can invalidate them
            first, then we can invalidate this path as well. */
         bool canInvalidate = true;
-        StorePathSet referrers; queryReferrers(path, referrers);
+        StorePathSet referrers; TRY_AWAIT(queryReferrers(path, referrers));
         for (auto & i : referrers)
             if (i != path) {
                 TRY_AWAIT(verifyPath(i, storePathsInStoreDir, done, validPaths, repair, errors));

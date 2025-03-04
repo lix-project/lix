@@ -429,8 +429,9 @@ public:
      * Queries the set of incoming FS references for a store path.
      * The result is not cleared.
      */
-    virtual void queryReferrers(const StorePath & path, StorePathSet & referrers)
-    { unsupported("queryReferrers"); }
+    virtual kj::Promise<Result<void>>
+    queryReferrers(const StorePath & path, StorePathSet & referrers)
+    try { unsupported("queryReferrers"); } catch (...) { return {result::current_exception()}; }
 
     /**
      * @return all currently valid derivations that have `path` as an

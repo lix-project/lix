@@ -760,7 +760,7 @@ try {
                     auto i = referrersCache.find(*path);
                     if (i == referrersCache.end()) {
                         StorePathSet referrers;
-                        queryReferrers(*path, referrers);
+                        TRY_AWAIT(queryReferrers(*path, referrers));
                         referrersCache.emplace(*path, std::move(referrers));
                         i = referrersCache.find(*path);
                     }

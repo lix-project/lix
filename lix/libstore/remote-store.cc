@@ -306,14 +306,17 @@ std::shared_ptr<const ValidPathInfo> RemoteStore::queryPathInfoUncached(const St
 }
 
 
-void RemoteStore::queryReferrers(const StorePath & path,
+kj::Promise<Result<void>> RemoteStore::queryReferrers(const StorePath & path,
     StorePathSet & referrers)
-{
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::QueryReferrers << printStorePath(path);
     conn.processStderr();
     for (auto & i : WorkerProto::Serialise<StorePathSet>::read(*this, *conn))
         referrers.insert(i);
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
