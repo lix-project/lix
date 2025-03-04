@@ -290,6 +290,11 @@ LocalStore::LocalStore(LocalStoreConfig config)
         lockFile(globalLock.get(), ltRead, always_progresses);
     }
 
+    initDB(*state);
+}
+
+void LocalStore::initDB(DBState & state)
+{
     /* Check the current database schema and if necessary do an
        upgrade.  */
     int curSchema = getSchema();
@@ -307,7 +312,7 @@ LocalStore::LocalStore(LocalStoreConfig config)
 
     else if (curSchema == 0) { /* new store */
         curSchema = nixSchemaVersion;
-        openDB(*state, true);
+        openDB(state, true);
         writeFile(schemaPath, fmt("%1%", nixSchemaVersion), 0666, true);
     }
 
@@ -340,24 +345,24 @@ LocalStore::LocalStore(LocalStoreConfig config)
            have performed the upgrade already. */
         curSchema = getSchema();
 
-        openDB(*state, false);
+        openDB(state, false);
 
         if (curSchema < 8) {
-            SQLiteTxn txn = state->db.beginTransaction();
-            state->db.exec("alter table ValidPaths add column ultimate integer", always_progresses);
-            state->db.exec("alter table ValidPaths add column sigs text", always_progresses);
+            SQLiteTxn txn = state.db.beginTransaction();
+            state.db.exec("alter table ValidPaths add column ultimate integer", always_progresses);
+            state.db.exec("alter table ValidPaths add column sigs text", always_progresses);
             txn.commit();
         }
 
         if (curSchema < 9) {
-            SQLiteTxn txn = state->db.beginTransaction();
-            state->db.exec("drop table FailedPaths", always_progresses);
+            SQLiteTxn txn = state.db.beginTransaction();
+            state.db.exec("drop table FailedPaths", always_progresses);
             txn.commit();
         }
 
         if (curSchema < 10) {
-            SQLiteTxn txn = state->db.beginTransaction();
-            state->db.exec("alter table ValidPaths add column ca text", always_progresses);
+            SQLiteTxn txn = state.db.beginTransaction();
+            state.db.exec("alter table ValidPaths add column ca text", always_progresses);
             txn.commit();
         }
 
@@ -366,50 +371,55 @@ LocalStore::LocalStore(LocalStoreConfig config)
         lockFile(globalLock.get(), ltRead, always_progresses);
     }
 
-    else openDB(*state, false);
+    else openDB(state, false);
 
     if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
         if (!config_.readOnly) {
-            migrateCASchema(state->db, dbDir + "/ca-schema", globalLock, always_progresses);
+            migrateCASchema(state.db, dbDir + "/ca-schema", globalLock, always_progresses);
         } else {
             throw Error("need to migrate to content-addressed schema, but this cannot be done in read-only mode");
         }
     }
 
+    prepareStatements(state);
+}
+
+void LocalStore::prepareStatements(DBState & state)
+{
     /* Prepare SQL statements. */
-    state->stmts->RegisterValidPath = state->db.create(
+    state.stmts->RegisterValidPath = state.db.create(
         "insert into ValidPaths (path, hash, registrationTime, deriver, narSize, ultimate, sigs, ca) values (?, ?, ?, ?, ?, ?, ?, ?);");
-    state->stmts->UpdatePathInfo = state->db.create(
+    state.stmts->UpdatePathInfo = state.db.create(
         "update ValidPaths set narSize = ?, hash = ?, ultimate = ?, sigs = ?, ca = ? where path = ?;");
-    state->stmts->AddReference = state->db.create(
+    state.stmts->AddReference = state.db.create(
         "insert or replace into Refs (referrer, reference) values (?, ?);");
-    state->stmts->QueryPathInfo = state->db.create(
+    state.stmts->QueryPathInfo = state.db.create(
         "select id, hash, registrationTime, deriver, narSize, ultimate, sigs, ca from ValidPaths where path = ?;");
-    state->stmts->QueryReferences = state->db.create(
+    state.stmts->QueryReferences = state.db.create(
         "select path from Refs join ValidPaths on reference = id where referrer = ?;");
-    state->stmts->QueryReferrers = state->db.create(
+    state.stmts->QueryReferrers = state.db.create(
         "select path from Refs join ValidPaths on referrer = id where reference = (select id from ValidPaths where path = ?);");
-    state->stmts->InvalidatePath = state->db.create(
+    state.stmts->InvalidatePath = state.db.create(
         "delete from ValidPaths where path = ?;");
-    state->stmts->AddDerivationOutput = state->db.create(
+    state.stmts->AddDerivationOutput = state.db.create(
         "insert or replace into DerivationOutputs (drv, id, path) values (?, ?, ?);");
-    state->stmts->QueryValidDerivers = state->db.create(
+    state.stmts->QueryValidDerivers = state.db.create(
         "select v.id, v.path from DerivationOutputs d join ValidPaths v on d.drv = v.id where d.path = ?;");
-    state->stmts->QueryDerivationOutputs = state->db.create(
+    state.stmts->QueryDerivationOutputs = state.db.create(
         "select id, path from DerivationOutputs where drv = ?;");
     // Use "path >= ?" with limit 1 rather than "path like '?%'" to
     // ensure efficient lookup.
-    state->stmts->QueryPathFromHashPart = state->db.create(
+    state.stmts->QueryPathFromHashPart = state.db.create(
         "select path from ValidPaths where path >= ? limit 1;");
-    state->stmts->QueryValidPaths = state->db.create("select path from ValidPaths");
+    state.stmts->QueryValidPaths = state.db.create("select path from ValidPaths");
     if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-        state->stmts->RegisterRealisedOutput = state->db.create(
+        state.stmts->RegisterRealisedOutput = state.db.create(
             R"(
                 insert into Realisations (drvPath, outputName, outputPath, signatures)
                 values (?, ?, (select id from ValidPaths where path = ?), ?)
                 ;
             )");
-        state->stmts->UpdateRealisedOutput = state->db.create(
+        state.stmts->UpdateRealisedOutput = state.db.create(
             R"(
                 update Realisations
                     set signatures = ?
@@ -418,27 +428,27 @@ LocalStore::LocalStore(LocalStoreConfig config)
                     outputName = ?
                 ;
             )");
-        state->stmts->QueryRealisedOutput = state->db.create(
+        state.stmts->QueryRealisedOutput = state.db.create(
             R"(
                 select Realisations.id, Output.path, Realisations.signatures from Realisations
                     inner join ValidPaths as Output on Output.id = Realisations.outputPath
                     where drvPath = ? and outputName = ?
                     ;
             )");
-        state->stmts->QueryAllRealisedOutputs = state->db.create(
+        state.stmts->QueryAllRealisedOutputs = state.db.create(
             R"(
                 select outputName, Output.path from Realisations
                     inner join ValidPaths as Output on Output.id = Realisations.outputPath
                     where drvPath = ?
                     ;
             )");
-        state->stmts->QueryRealisationReferences = state->db.create(
+        state.stmts->QueryRealisationReferences = state.db.create(
             R"(
                 select drvPath, outputName from Realisations
                     join RealisationsRefs on realisationReference = Realisations.id
                     where referrer = ?;
             )");
-        state->stmts->AddRealisationReference = state->db.create(
+        state.stmts->AddRealisationReference = state.db.create(
             R"(
                 insert or replace into RealisationsRefs (referrer, realisationReference)
                 values (
