@@ -79,7 +79,7 @@ int isValidPath(char * path)
 SV * queryReferences(char * path)
     PPCODE:
         try {
-            for (auto & i : store()->queryPathInfo(store()->parseStorePath(path))->references)
+            for (auto & i : aio().blockOn(store()->queryPathInfo(store()->parseStorePath(path)))->references)
                 XPUSHs(sv_2mortal(newSVpv(store()->printStorePath(i).c_str(), 0)));
         } catch (Error & e) {
             croak("%s", e.what());
@@ -89,7 +89,7 @@ SV * queryReferences(char * path)
 SV * queryPathHash(char * path)
     PPCODE:
         try {
-            auto s = store()->queryPathInfo(store()->parseStorePath(path))->narHash.to_string(Base::Base32, true);
+            auto s = aio().blockOn(store()->queryPathInfo(store()->parseStorePath(path)))->narHash.to_string(Base::Base32, true);
             XPUSHs(sv_2mortal(newSVpv(s.c_str(), 0)));
         } catch (Error & e) {
             croak("%s", e.what());
@@ -99,7 +99,7 @@ SV * queryPathHash(char * path)
 SV * queryDeriver(char * path)
     PPCODE:
         try {
-            auto info = store()->queryPathInfo(store()->parseStorePath(path));
+            auto info = aio().blockOn(store()->queryPathInfo(store()->parseStorePath(path)));
             if (!info->deriver) XSRETURN_UNDEF;
             XPUSHs(sv_2mortal(newSVpv(store()->printStorePath(*info->deriver).c_str(), 0)));
         } catch (Error & e) {
@@ -110,7 +110,7 @@ SV * queryDeriver(char * path)
 SV * queryPathInfo(char * path, int base32)
     PPCODE:
         try {
-            auto info = store()->queryPathInfo(store()->parseStorePath(path));
+            auto info = aio().blockOn(store()->queryPathInfo(store()->parseStorePath(path)));
             if (!info->deriver)
                 XPUSHs(&PL_sv_undef);
             else

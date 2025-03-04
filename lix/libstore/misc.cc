@@ -9,6 +9,7 @@
 #include "lix/libutil/closure.hh"
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libutil/strings.hh"
+#include <kj/async.h>
 #include <kj/common.h>
 
 namespace nix {
@@ -70,8 +71,13 @@ try {
 
     paths_.merge(TRY_AWAIT(computeClosureAsync<StorePath>(
         startPaths,
-        [&](const StorePath& path) -> kj::Promise<Result<std::set<StorePath>>> {
-            return queryDeps(path, queryPathInfo(path));
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        [&](const StorePath& path) -> kj::Promise<Result<StorePathSet>> {
+            try {
+                co_return TRY_AWAIT(queryDeps(path, TRY_AWAIT(queryPathInfo(path))));
+            } catch (...) {
+                co_return result::current_exception();
+            }
         })));
     co_return result::success();
 } catch (...) {
@@ -369,12 +375,15 @@ try {
 
 kj::Promise<Result<StorePaths>> Store::topoSortPaths(const StorePathSet & paths)
 try {
-    co_return topoSort(paths,
-        {[&](const StorePath & path) {
+    co_return TRY_AWAIT(topoSortAsync(paths,
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        {[&](const StorePath & path) -> kj::Promise<Result<StorePathSet>> {
             try {
-                return queryPathInfo(path)->references;
+                co_return TRY_AWAIT(queryPathInfo(path))->references;
             } catch (InvalidPath &) {
-                return StorePathSet();
+                co_return StorePathSet();
+            } catch (...) {
+                co_return result::current_exception();
             }
         }},
         {[&](const StorePath & path, const StorePath & parent) {
@@ -382,7 +391,7 @@ try {
                 "cycle detected in the references of '%s' from '%s'",
                 printStorePath(path),
                 printStorePath(parent));
-        }});
+        }}));
 } catch (...) {
     co_return result::current_exception();
 }
@@ -461,7 +470,7 @@ try {
     for (const auto & [inputDrv, inputNode] : drv.inputDrvs.map)
         TRY_AWAIT(accumRealisations(inputDrv, inputNode));
 
-    auto info = store.queryPathInfo(outputPath);
+    auto info = TRY_AWAIT(store.queryPathInfo(outputPath));
 
     co_return TRY_AWAIT(drvOutputReferences(
         TRY_AWAIT(Realisation::closure(store, inputRealisations)), info->references

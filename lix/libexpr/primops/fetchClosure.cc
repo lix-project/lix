@@ -46,7 +46,7 @@ static void runFetchClosureWithRewrite(EvalState & state, const PosIdx pos, Stor
 
     // check and return
 
-    auto resultInfo = state.ctx.store->queryPathInfo(toPath);
+    auto resultInfo = state.aio.blockOn(state.ctx.store->queryPathInfo(toPath));
 
     if (!resultInfo->isContentAddressed(*state.ctx.store)) {
         // We don't perform the rewriting when outPath already exists, as an optimisation.
@@ -71,7 +71,7 @@ static void runFetchClosureWithContentAddressedPath(EvalState & state, const Pos
     if (!state.aio.blockOn(state.ctx.store->isValidPath(fromPath)))
         state.aio.blockOn(copyClosure(fromStore, *state.ctx.store, RealisedPath::Set { fromPath }));
 
-    auto info = state.ctx.store->queryPathInfo(fromPath);
+    auto info = state.aio.blockOn(state.ctx.store->queryPathInfo(fromPath));
 
     if (!info->isContentAddressed(*state.ctx.store)) {
         throw Error({
@@ -97,7 +97,7 @@ static void runFetchClosureWithInputAddressedPath(EvalState & state, const PosId
     if (!state.aio.blockOn(state.ctx.store->isValidPath(fromPath)))
         state.aio.blockOn(copyClosure(fromStore, *state.ctx.store, RealisedPath::Set { fromPath }));
 
-    auto info = state.ctx.store->queryPathInfo(fromPath);
+    auto info = state.aio.blockOn(state.ctx.store->queryPathInfo(fromPath));
 
     if (info->isContentAddressed(*state.ctx.store)) {
         throw Error({

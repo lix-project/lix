@@ -280,7 +280,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
 
     if (expectedHash) {
         auto hash = unpack
-            ? state.ctx.store->queryPathInfo(storePath)->narHash
+            ? state.aio.blockOn(state.ctx.store->queryPathInfo(storePath))->narHash
             : hashFile(HashType::SHA256, state.ctx.store->toRealPath(storePath));
         if (hash != *expectedHash) {
             state.ctx.errors.make<EvalError>(

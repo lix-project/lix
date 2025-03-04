@@ -21,6 +21,7 @@
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libutil/users.hh"
 
+#include <functional>
 #include <kj/async.h>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -600,7 +601,7 @@ try {
 
             debug("checking substituter '%s' for path '%s'", sub->getUri(), sub->printStorePath(subPath));
             try {
-                auto info = sub->queryPathInfo(subPath);
+                auto info = TRY_AWAIT(sub->queryPathInfo(subPath));
 
                 if (sub->config().storeDir != config().storeDir
                     && !(info->isContentAddressed(*sub) && info->references.empty()))
@@ -671,7 +672,7 @@ try {
    queryPathInfoUncached(). */
 kj::Promise<Result<bool>> Store::isValidPathUncached(const StorePath & path)
 try {
-    queryPathInfo(path);
+    TRY_AWAIT(queryPathInfo(path));
     co_return true;
 } catch (InvalidPath &) {
     co_return false;
@@ -696,8 +697,8 @@ static void ensureGoodStorePath(Store * store, const StorePath & expected, const
 }
 
 
-ref<const ValidPathInfo> Store::queryPathInfo(const StorePath & storePath)
-{
+kj::Promise<Result<ref<const ValidPathInfo>>> Store::queryPathInfo(const StorePath & storePath)
+try {
     auto hashPart = std::string(storePath.hashPart());
 
     {
@@ -706,7 +707,7 @@ ref<const ValidPathInfo> Store::queryPathInfo(const StorePath & storePath)
             stats.narInfoReadAverted++;
             if (!res->didExist())
                 throw InvalidPath("path '%s' does not exist in the store", printStorePath(storePath));
-            return ref<const ValidPathInfo>(res->value);
+            co_return ref<const ValidPathInfo>(res->value);
         }
     }
 
@@ -721,11 +722,11 @@ ref<const ValidPathInfo> Store::queryPathInfo(const StorePath & storePath)
                 if (res.first == NarInfoDiskCache::oInvalid)
                     throw InvalidPath("path '%s' does not exist in the store", printStorePath(storePath));
             }
-            return ref<const ValidPathInfo>(res.second);
+            co_return ref<const ValidPathInfo>(res.second);
         }
     }
 
-    auto info = queryPathInfoUncached(storePath);
+    auto info = TRY_AWAIT(queryPathInfoUncached(storePath));
     if (info) {
         // first, before we cache anything, check that the store gave us valid data.
         ensureGoodStorePath(this, storePath, info->path);
@@ -745,7 +746,9 @@ ref<const ValidPathInfo> Store::queryPathInfo(const StorePath & storePath)
         throw InvalidPath("path '%s' does not exist in the store", printStorePath(storePath));
     }
 
-    return ref<const ValidPathInfo>(info);
+    co_return ref<const ValidPathInfo>(info);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<std::shared_ptr<const Realisation>>> Store::queryRealisation(const DrvOutput & id)
@@ -823,14 +826,14 @@ try {
     std::condition_variable wakeup;
     ThreadPool pool{"queryValidPaths pool"};
 
-    auto doQuery = [&](const StorePath & path) {
+    auto doQuery = [&](AsyncIoRoot & aio, const StorePath & path) {
         checkInterrupt();
 
         bool exists = false;
         std::exception_ptr newExc{};
 
         try {
-            queryPathInfo(path);
+            aio.blockOn(queryPathInfo(path));
             exists = true;
         } catch (InvalidPath &) {
         } catch (...) {
@@ -853,7 +856,7 @@ try {
     };
 
     for (auto & path : paths)
-        pool.enqueue(std::bind(doQuery, path));
+        pool.enqueueWithAio(std::bind(doQuery, std::placeholders::_1, path));
 
     TRY_AWAIT(pool.processAsync());
 
@@ -881,7 +884,7 @@ try {
     for (auto & i : paths) {
         s += printStorePath(i) + "\n";
 
-        auto info = queryPathInfo(i);
+        auto info = TRY_AWAIT(queryPathInfo(i));
 
         if (showHash) {
             s += info->narHash.to_string(Base::Base16, false) + "\n";
@@ -952,7 +955,7 @@ try {
         auto& jsonPath = jsonList.emplace_back(json::object());
 
         try {
-            auto info = queryPathInfo(storePath);
+            auto info = TRY_AWAIT(queryPathInfo(storePath));
 
             jsonPath["path"] = printStorePath(info->path);
             jsonPath["valid"] = true;
@@ -1024,7 +1027,7 @@ try {
     StorePathSet closure;
     TRY_AWAIT(computeFSClosure(storePath, closure, false, false));
     for (auto & p : closure) {
-        auto info = queryPathInfo(p);
+        auto info = TRY_AWAIT(queryPathInfo(p));
         totalNarSize += info->narSize;
         auto narInfo = std::dynamic_pointer_cast<const NarInfo>(
             std::shared_ptr<const ValidPathInfo>(info));
@@ -1106,7 +1109,7 @@ try {
         {storePathS, srcUri, dstUri});
     PushActivity pact(act.id);
 
-    auto info = srcStore.queryPathInfo(storePath);
+    auto info = TRY_AWAIT(srcStore.queryPathInfo(storePath));
 
     // recompute store path on the chance dstStore does it differently
     if (info->ca && info->references.empty()) {
@@ -1239,7 +1242,7 @@ try {
     };
 
     for (auto & missingPath : sortedMissing) {
-        auto info = srcStore.queryPathInfo(missingPath);
+        auto info = TRY_AWAIT(srcStore.queryPathInfo(missingPath));
 
         auto storePathForDst = computeStorePathForDst(*info);
         pathsMap.insert_or_assign(missingPath, storePathForDst);
@@ -1411,7 +1414,7 @@ try {
 
     if (!path.isDerivation()) {
         try {
-            auto info = queryPathInfo(path);
+            auto info = TRY_AWAIT(queryPathInfo(path));
             co_return info->deriver;
         } catch (InvalidPath &) {
             co_return std::nullopt;

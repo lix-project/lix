@@ -916,12 +916,22 @@ try {
 }
 
 
-std::shared_ptr<const ValidPathInfo> LocalStore::queryPathInfoUncached(const StorePath & path)
-{
-    return retrySQLite([&]() {
-        auto state = dbPool.get();
-        return queryPathInfoInternal(*state, path);
-    }, always_progresses);
+kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
+LocalStore::queryPathInfoUncached(const StorePath & path)
+try {
+    co_return TRY_AWAIT(
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        retrySQLite([&]() -> kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>> {
+            try {
+                auto state = dbPool.get();
+                co_return queryPathInfoInternal(*state, path);
+            } catch (...) {
+                co_return result::current_exception();
+            }
+        })
+    );
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -1734,7 +1744,9 @@ try {
         for (auto & i : validPaths) {
             std::optional<Error> caught;
             try {
-                auto info = std::const_pointer_cast<ValidPathInfo>(std::shared_ptr<const ValidPathInfo>(queryPathInfo(i)));
+                auto info = std::const_pointer_cast<ValidPathInfo>(
+                    std::shared_ptr<const ValidPathInfo>(TRY_AWAIT(queryPathInfo(i)))
+                );
 
                 /* Check the content hash (optionally - slow). */
                 printMsg(lvlTalkative, "checking contents of '%s'", printStorePath(i));

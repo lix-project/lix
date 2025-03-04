@@ -51,13 +51,15 @@ ref<LocalStore> ensureLocalStore()
 }
 
 
-static StorePath useDeriver(const StorePath & path)
-{
-    if (path.isDerivation()) return path;
-    auto info = store->queryPathInfo(path);
+static kj::Promise<Result<StorePath>> useDeriver(const StorePath & path)
+try {
+    if (path.isDerivation()) co_return path;
+    auto info = TRY_AWAIT(store->queryPathInfo(path));
     if (!info->deriver)
         throw Error("deriver of path '%s' is not known", store->printStorePath(path));
-    return *info->deriver;
+    co_return *info->deriver;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -278,7 +280,7 @@ static void printTree(AsyncIoRoot & aio, const StorePath & path,
 
     cout << fmt("%s%s\n", firstPad, store->printStorePath(path));
 
-    auto info = store->queryPathInfo(path);
+    auto info = aio.blockOn(store->queryPathInfo(path));
 
     /* Topologically sort under the relation A < B iff A \in
        closure(B).  That is, if derivation A is an (possibly indirect)
@@ -368,7 +370,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                         aio.blockOn(store->computeFSClosure(j, paths, false, includeOutputs));
                     }
                     else if (query == qReferences) {
-                        for (auto & p : store->queryPathInfo(j)->references)
+                        for (auto & p : aio.blockOn(store->queryPathInfo(j))->references)
                             paths.insert(p);
                     }
                     else if (query == qReferrers) {
@@ -390,7 +392,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
         case qDeriver:
             for (auto & i : opArgs) {
-                auto info = store->queryPathInfo(store->followLinksToStorePath(i));
+                auto info = aio.blockOn(store->queryPathInfo(store->followLinksToStorePath(i)));
                 cout << fmt("%s\n", info->deriver ? store->printStorePath(*info->deriver) : "unknown-deriver");
             }
             break;
@@ -413,7 +415,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
         case qBinding:
             for (auto & i : opArgs) {
-                auto path = useDeriver(store->followLinksToStorePath(i));
+                auto path = aio.blockOn(useDeriver(store->followLinksToStorePath(i)));
                 Derivation drv = aio.blockOn(store->derivationFromPath(path));
                 StringPairs::iterator j = drv.env.find(bindingName);
                 if (j == drv.env.end())
@@ -427,7 +429,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qSize:
             for (auto & i : opArgs) {
                 for (auto & j : aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise))) {
-                    auto info = store->queryPathInfo(j);
+                    auto info = aio.blockOn(store->queryPathInfo(j));
                     if (query == qHash) {
                         assert(info->narHash.type == HashType::SHA256);
                         cout << fmt("%s\n", info->narHash.to_string(Base::Base32, true));
@@ -789,7 +791,7 @@ static void opVerifyPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     for (auto & i : opArgs) {
         auto path = store->followLinksToStorePath(i);
         printMsg(lvlTalkative, "checking path '%s'...", store->printStorePath(path));
-        auto info = store->queryPathInfo(path);
+        auto info = aio.blockOn(store->queryPathInfo(path));
         HashSink sink(info->narHash.type);
         aio.blockOn(store->narFromPath(path))->drainInto(sink);
         auto current = sink.finish();
@@ -917,7 +919,7 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                 // !!! Maybe we want a queryPathInfos?
                 for (auto & i : paths) {
                     try {
-                        auto info = store->queryPathInfo(i);
+                        auto info = aio.blockOn(store->queryPathInfo(i));
                         out << store->printStorePath(info->path);
                         out << ServeProto::write(*store, wconn, static_cast<const UnkeyedValidPathInfo &>(*info));
                     } catch (InvalidPath &) {

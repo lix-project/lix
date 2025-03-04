@@ -1,5 +1,6 @@
 #include "build/derivation-goal.hh"
 #include "lix/libutil/async-collect.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libstore/build/worker.hh"
 #include "lix/libutil/finally.hh"
@@ -326,7 +327,7 @@ try {
     auto i = pathContentsGoodCache.find(path);
     if (i != pathContentsGoodCache.end()) co_return i->second;
     printInfo("checking path '%s'...", store.printStorePath(path));
-    auto info = store.queryPathInfo(path);
+    auto info = TRY_AWAIT(store.queryPathInfo(path));
     bool res;
     if (!pathExists(store.printStorePath(path)))
         res = false;

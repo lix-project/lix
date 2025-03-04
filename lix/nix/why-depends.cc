@@ -132,7 +132,7 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
         for (auto & path : closure)
             graph.emplace(path, Node {
                 .path = path,
-                .refs = store->queryPathInfo(path)->references,
+                .refs = aio().blockOn(store->queryPathInfo(path))->references,
                 .dist = path == dependencyPath ? 0 : inf
             });
 

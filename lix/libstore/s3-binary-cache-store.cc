@@ -315,7 +315,7 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
        a GET is unlikely to be slower than HEAD. */
     kj::Promise<Result<bool>> isValidPathUncached(const StorePath & storePath) override
     try {
-        queryPathInfo(storePath);
+        TRY_AWAIT(queryPathInfo(storePath));
         co_return true;
     } catch (InvalidPath & e) {
         co_return false;

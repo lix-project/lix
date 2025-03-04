@@ -34,9 +34,10 @@ struct DummyStore final : public Store
         return *uriSchemes().begin();
     }
 
-    std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) override
+    kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
+    queryPathInfoUncached(const StorePath & path) override
     {
-        return nullptr;
+        return {result::success(nullptr)};
     }
 
     /**

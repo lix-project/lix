@@ -780,7 +780,7 @@ try {
                         {
                             if (maybeOutPath &&
                                 TRY_AWAIT(isValidPath(*maybeOutPath)) &&
-                                queryPathInfo(*maybeOutPath)->deriver == *path)
+                                TRY_AWAIT(queryPathInfo(*maybeOutPath))->deriver == *path)
                                 enqueue(*maybeOutPath);
                         }
                     }

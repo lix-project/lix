@@ -2,6 +2,7 @@
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libmain/common-args.hh"
+#include "lix/libutil/async.hh"
 
 #include <algorithm>
 #include <array>
@@ -100,7 +101,7 @@ struct CmdPathInfo : StorePathsCommand, MixJSON
         else {
 
             for (auto & storePath : storePaths) {
-                auto info = store->queryPathInfo(storePath);
+                auto info = aio().blockOn(store->queryPathInfo(storePath));
                 auto storePathS = store->printStorePath(info->path);
 
                 std::cout << storePathS;

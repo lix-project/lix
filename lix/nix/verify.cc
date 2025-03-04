@@ -90,7 +90,7 @@ struct CmdVerify : StorePathsCommand
                 MaintainCount<std::atomic<size_t>> mcActive(active);
                 update();
 
-                auto info = store->queryPathInfo(storePath);
+                auto info = aio.blockOn(store->queryPathInfo(storePath));
 
                 // Note: info->path can be different from storePath
                 // for binary cache stores when using --all (since we
@@ -143,7 +143,7 @@ struct CmdVerify : StorePathsCommand
                         for (auto & store2 : substituters) {
                             if (validSigs >= actualSigsNeeded) break;
                             try {
-                                auto info2 = store2->queryPathInfo(info->path);
+                                auto info2 = aio.blockOn(store2->queryPathInfo(info->path));
                                 if (info2->isContentAddressed(*store)) validSigs = ValidPathInfo::maxSigs;
                                 doSigs(info2->sigs);
                             } catch (InvalidPath &) {

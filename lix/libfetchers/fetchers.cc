@@ -176,7 +176,7 @@ try {
         .storePath = storePath,
     };
 
-    auto narHash = store->queryPathInfo(tree.storePath)->narHash;
+    auto narHash = TRY_AWAIT(store->queryPathInfo(tree.storePath))->narHash;
     input.attrs.insert_or_assign("narHash", narHash.to_string(Base::SRI, true));
 
     if (auto prevNarHash = getNarHash()) {

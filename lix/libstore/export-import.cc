@@ -27,7 +27,7 @@ try {
 
 kj::Promise<Result<void>> Store::exportPath(const StorePath & path, Sink & sink)
 try {
-    auto info = queryPathInfo(path);
+    auto info = TRY_AWAIT(queryPathInfo(path));
 
     HashSink hashSink(HashType::SHA256);
     TeeSink teeSink(sink, hashSink);

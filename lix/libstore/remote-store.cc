@@ -286,8 +286,9 @@ try {
 }
 
 
-std::shared_ptr<const ValidPathInfo> RemoteStore::queryPathInfoUncached(const StorePath & path)
-{
+kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
+RemoteStore::queryPathInfoUncached(const StorePath & path)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::QueryPathInfo << printStorePath(path);
     try {
@@ -295,16 +296,18 @@ std::shared_ptr<const ValidPathInfo> RemoteStore::queryPathInfoUncached(const St
     } catch (Error & e) {
         // Ugly backwards compatibility hack. TODO(fj#325): remove.
         if (e.msg().find("is not valid") != std::string::npos)
-            return nullptr;
+            co_return result::success(nullptr);
         throw;
     }
 
     bool valid; conn->from >> valid;
-    if (!valid) return nullptr;
+    if (!valid) co_return result::success(nullptr);
 
-    return std::make_shared<ValidPathInfo>(
+    co_return std::make_shared<ValidPathInfo>(
         StorePath{path},
         WorkerProto::Serialise<UnkeyedValidPathInfo>::read(*this, *conn));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
@@ -497,7 +500,7 @@ try {
         auto path = parseStorePath(readString(conn->from));
         // Release our connection to prevent a deadlock in queryPathInfo().
         conn_.reset();
-        co_return queryPathInfo(path);
+        co_return TRY_AWAIT(queryPathInfo(path));
     }
 } catch (...) {
     co_return result::current_exception();

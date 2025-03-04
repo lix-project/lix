@@ -1,5 +1,6 @@
 #include "dotgraph.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/result.hh"
 
 #include <iostream>
@@ -56,7 +57,7 @@ try {
 
         cout << makeNode(std::string(path.to_string()), path.name(), "#ff0000");
 
-        for (auto & p : store->queryPathInfo(path)->references) {
+        for (auto & p : TRY_AWAIT(store->queryPathInfo(path))->references) {
             if (p != path) {
                 workList.insert(p);
                 cout << makeEdge(std::string(p.to_string()), std::string(path.to_string()));

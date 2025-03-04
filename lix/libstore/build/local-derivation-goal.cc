@@ -1050,23 +1050,26 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         co_return result::current_exception();
     }
 
-    std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) override
-    {
+    kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
+    queryPathInfoUncached(const StorePath & path) override
+    try {
         if (goal.isAllowed(path)) {
             try {
                 /* Censor impure information. */
-                auto info = std::make_shared<ValidPathInfo>(*next->queryPathInfo(path));
+                auto info = std::make_shared<ValidPathInfo>(*TRY_AWAIT(next->queryPathInfo(path)));
                 info->deriver.reset();
                 info->registrationTime = 0;
                 info->ultimate = false;
                 info->sigs.clear();
-                return info;
+                co_return info;
             } catch (InvalidPath &) {
-                return nullptr;
+                co_return result::success(nullptr);
             }
         } else
-            return nullptr;
-    };
+            co_return result::success(nullptr);
+    } catch (...) {
+        co_return result::current_exception();
+    }
 
     kj::Promise<Result<void>>
     queryReferrers(const StorePath & path, StorePathSet & referrers) override
@@ -2403,7 +2406,7 @@ try {
         if (buildMode == bmCheck) {
 
             if (!TRY_AWAIT(worker.store.isValidPath(newInfo.path))) continue;
-            ValidPathInfo oldInfo(*worker.store.queryPathInfo(newInfo.path));
+            ValidPathInfo oldInfo(*TRY_AWAIT(worker.store.queryPathInfo(newInfo.path)));
             if (newInfo.narHash != oldInfo.narHash) {
                 anyCheckMismatchSeen = true;
                 if (settings.runDiffHook || settings.keepFailed) {
@@ -2558,115 +2561,132 @@ try {
         /* Compute the closure and closure size of some output. This
            is slightly tricky because some of its references (namely
            other outputs) may not be valid yet. */
-        auto getClosure = [&](const StorePath & path)
-        {
-            uint64_t closureSize = 0;
-            StorePathSet pathsDone;
-            std::queue<StorePath> pathsLeft;
-            pathsLeft.push(path);
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        auto getClosure = [&](const StorePath & path
+                          ) -> kj::Promise<Result<std::pair<StorePathSet, uint64_t>>> {
+            try {
+                uint64_t closureSize = 0;
+                StorePathSet pathsDone;
+                std::queue<StorePath> pathsLeft;
+                pathsLeft.push(path);
 
-            while (!pathsLeft.empty()) {
-                auto path = pathsLeft.front();
-                pathsLeft.pop();
-                if (!pathsDone.insert(path).second) continue;
+                while (!pathsLeft.empty()) {
+                    auto path = pathsLeft.front();
+                    pathsLeft.pop();
+                    if (!pathsDone.insert(path).second) continue;
 
-                auto i = outputsByPath.find(worker.store.printStorePath(path));
-                if (i != outputsByPath.end()) {
-                    closureSize += i->second.narSize;
-                    for (auto & ref : i->second.references)
-                        pathsLeft.push(ref);
-                } else {
-                    auto info = worker.store.queryPathInfo(path);
-                    closureSize += info->narSize;
-                    for (auto & ref : info->references)
-                        pathsLeft.push(ref);
+                    auto i = outputsByPath.find(worker.store.printStorePath(path));
+                    if (i != outputsByPath.end()) {
+                        closureSize += i->second.narSize;
+                        for (auto & ref : i->second.references)
+                            pathsLeft.push(ref);
+                    } else {
+                        auto info = TRY_AWAIT(worker.store.queryPathInfo(path));
+                        closureSize += info->narSize;
+                        for (auto & ref : info->references)
+                            pathsLeft.push(ref);
+                    }
                 }
-            }
 
-            return std::make_pair(std::move(pathsDone), closureSize);
+                co_return std::make_pair(std::move(pathsDone), closureSize);
+            } catch (...) {
+                co_return result::current_exception();
+            }
         };
 
-        auto applyChecks = [&](const Checks & checks)
-        {
-            if (checks.maxSize && info.narSize > *checks.maxSize)
-                throw BuildError("path '%s' is too large at %d bytes; limit is %d bytes",
-                    worker.store.printStorePath(info.path), info.narSize, *checks.maxSize);
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        auto applyChecks = [&](const Checks & checks) -> kj::Promise<Result<void>> {
+            try {
+                if (checks.maxSize && info.narSize > *checks.maxSize)
+                    throw BuildError("path '%s' is too large at %d bytes; limit is %d bytes",
+                        worker.store.printStorePath(info.path), info.narSize, *checks.maxSize);
 
-            if (checks.maxClosureSize) {
-                uint64_t closureSize = getClosure(info.path).second;
-                if (closureSize > *checks.maxClosureSize)
-                    throw BuildError("closure of path '%s' is too large at %d bytes; limit is %d bytes",
-                        worker.store.printStorePath(info.path), closureSize, *checks.maxClosureSize);
-            }
+                if (checks.maxClosureSize) {
+                    uint64_t closureSize = TRY_AWAIT(getClosure(info.path)).second;
+                    if (closureSize > *checks.maxClosureSize)
+                        throw BuildError("closure of path '%s' is too large at %d bytes; limit is %d bytes",
+                            worker.store.printStorePath(info.path), closureSize, *checks.maxClosureSize);
+                }
 
-            auto checkRefs = [&](const std::optional<Strings> & value, bool allowed, bool recursive)
-            {
-                if (!value) return;
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+                auto checkRefs = [&](const std::optional<Strings> & value,
+                                     bool allowed,
+                                     bool recursive) -> kj::Promise<Result<void>> {
+                    try {
+                        if (!value) co_return result::success();
 
-                /* Parse a list of reference specifiers.  Each element must
-                   either be a store path, or the symbolic name of the output
-                   of the derivation (such as `out'). */
-                StorePathSet spec;
-                for (auto & i : *value) {
-                    if (worker.store.isStorePath(i))
-                        spec.insert(worker.store.parseStorePath(i));
-                    else if (auto output = get(newlyBuiltOutputs, i))
-                        spec.insert(output->path);
-                    else if (auto storePath = get(alreadyRegisteredOutputs, i))
-                        spec.insert(*storePath);
-                    else {
-                        std::string outputsListing = concatMapStringsSep(
-                            ", ",
-                            newlyBuiltOutputs,
-                            [](auto & o) { return o.first; }
-                        );
-                        if (!alreadyRegisteredOutputs.empty()) {
-                            outputsListing.append(outputsListing.empty() ? "" : ", ");
-                            outputsListing.append(concatMapStringsSep(
-                                ", ",
-                                alreadyRegisteredOutputs,
-                                [](auto & o) { return o.first; })
-                            );
+                        /* Parse a list of reference specifiers.  Each element must
+                           either be a store path, or the symbolic name of the output
+                           of the derivation (such as `out'). */
+                        StorePathSet spec;
+                        for (auto & i : *value) {
+                            if (worker.store.isStorePath(i))
+                                spec.insert(worker.store.parseStorePath(i));
+                            else if (auto output = get(newlyBuiltOutputs, i))
+                                spec.insert(output->path);
+                            else if (auto storePath = get(alreadyRegisteredOutputs, i))
+                                spec.insert(*storePath);
+                            else {
+                                std::string outputsListing = concatMapStringsSep(
+                                    ", ",
+                                    newlyBuiltOutputs,
+                                    [](auto & o) { return o.first; }
+                                );
+                                if (!alreadyRegisteredOutputs.empty()) {
+                                    outputsListing.append(outputsListing.empty() ? "" : ", ");
+                                    outputsListing.append(concatMapStringsSep(
+                                        ", ",
+                                        alreadyRegisteredOutputs,
+                                        [](auto & o) { return o.first; })
+                                    );
+                                }
+                                throw BuildError("derivation '%s' output check for '%s' contains an illegal reference specifier '%s',"
+                                    " expected store path or output name (one of [%s])",
+                                    worker.store.printStorePath(drvPath), outputName, i, outputsListing);
+                            }
                         }
-                        throw BuildError("derivation '%s' output check for '%s' contains an illegal reference specifier '%s',"
-                            " expected store path or output name (one of [%s])",
-                            worker.store.printStorePath(drvPath), outputName, i, outputsListing);
+
+                        auto used = recursive
+                            ? TRY_AWAIT(getClosure(info.path)).first
+                            : info.references;
+
+                        if (recursive && checks.ignoreSelfRefs)
+                            used.erase(info.path);
+
+                        StorePathSet badPaths;
+
+                        for (auto & i : used)
+                            if (allowed) {
+                                if (!spec.count(i))
+                                    badPaths.insert(i);
+                            } else {
+                                if (spec.count(i))
+                                    badPaths.insert(i);
+                            }
+
+                        if (!badPaths.empty()) {
+                            std::string badPathsStr;
+                            for (auto & i : badPaths) {
+                                badPathsStr += "\n  ";
+                                badPathsStr += worker.store.printStorePath(i);
+                            }
+                            throw BuildError("output '%s' is not allowed to refer to the following paths:%s",
+                                worker.store.printStorePath(info.path), badPathsStr);
+                        }
+                        co_return result::success();
+                    } catch (...) {
+                        co_return result::current_exception();
                     }
-                }
+                };
 
-                auto used = recursive
-                    ? getClosure(info.path).first
-                    : info.references;
-
-                if (recursive && checks.ignoreSelfRefs)
-                    used.erase(info.path);
-
-                StorePathSet badPaths;
-
-                for (auto & i : used)
-                    if (allowed) {
-                        if (!spec.count(i))
-                            badPaths.insert(i);
-                    } else {
-                        if (spec.count(i))
-                            badPaths.insert(i);
-                    }
-
-                if (!badPaths.empty()) {
-                    std::string badPathsStr;
-                    for (auto & i : badPaths) {
-                        badPathsStr += "\n  ";
-                        badPathsStr += worker.store.printStorePath(i);
-                    }
-                    throw BuildError("output '%s' is not allowed to refer to the following paths:%s",
-                        worker.store.printStorePath(info.path), badPathsStr);
-                }
-            };
-
-            checkRefs(checks.allowedReferences, true, false);
-            checkRefs(checks.allowedRequisites, true, true);
-            checkRefs(checks.disallowedReferences, false, false);
-            checkRefs(checks.disallowedRequisites, false, true);
+                TRY_AWAIT(checkRefs(checks.allowedReferences, true, false));
+                TRY_AWAIT(checkRefs(checks.allowedRequisites, true, true));
+                TRY_AWAIT(checkRefs(checks.disallowedReferences, false, false));
+                TRY_AWAIT(checkRefs(checks.disallowedRequisites, false, true));
+                co_return result::success();
+            } catch (...) {
+                co_return result::current_exception();
+            }
         };
 
         if (auto structuredAttrs = parsedDrv->getStructuredAttrs()) {
@@ -2717,7 +2737,7 @@ try {
                     checks.disallowedReferences = get_("disallowedReferences");
                     checks.disallowedRequisites = get_("disallowedRequisites");
 
-                    applyChecks(checks);
+                    TRY_AWAIT(applyChecks(checks));
                 }
             }
         } else {
@@ -2728,7 +2748,7 @@ try {
             checks.allowedRequisites = parsedDrv->getStringsAttr("allowedRequisites");
             checks.disallowedReferences = parsedDrv->getStringsAttr("disallowedReferences");
             checks.disallowedRequisites = parsedDrv->getStringsAttr("disallowedRequisites");
-            applyChecks(checks);
+            TRY_AWAIT(applyChecks(checks));
         }
     }
 

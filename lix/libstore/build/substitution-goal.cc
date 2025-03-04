@@ -109,8 +109,7 @@ try {
 
     do {
         try {
-            // FIXME: make async
-            info = sub->queryPathInfo(subPath ? *subPath : storePath);
+            info = TRY_AWAIT(sub->queryPathInfo(subPath ? *subPath : storePath));
             break;
         } catch (InvalidPath &) {
         } catch (SubstituterDisabled &) {

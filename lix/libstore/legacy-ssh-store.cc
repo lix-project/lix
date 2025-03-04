@@ -160,8 +160,9 @@ struct LegacySSHStore final : public Store
         return *uriSchemes().begin() + "://" + host;
     }
 
-    std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) override
-    {
+    kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
+    queryPathInfoUncached(const StorePath & path) override
+    try {
         auto conn(connections->get());
 
         /* No longer support missing NAR hash */
@@ -173,7 +174,7 @@ struct LegacySSHStore final : public Store
         conn->to.flush();
 
         auto p = readString(conn->from);
-        if (p.empty()) return nullptr;
+        if (p.empty()) co_return result::success(nullptr);
         auto path2 = parseStorePath(p);
         assert(path == path2);
         auto info = std::make_shared<ValidPathInfo>(
@@ -186,7 +187,9 @@ struct LegacySSHStore final : public Store
         auto s = readString(conn->from);
         assert(s == "");
 
-        return info;
+        co_return info;
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, AsyncInputStream & source,

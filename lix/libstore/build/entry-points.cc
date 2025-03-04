@@ -145,7 +145,7 @@ try {
     if (result.exitCode != Goal::ecSuccess) {
         /* Since substituting the path didn't work, if we have a valid
            deriver, then rebuild the deriver. */
-        auto info = queryPathInfo(path);
+        auto info = TRY_AWAIT(queryPathInfo(path));
         if (info->deriver && TRY_AWAIT(isValidPath(*info->deriver))) {
             TRY_AWAIT(processGoals(*this, *this, [&](GoalFactory & gf) {
                 Worker::Targets goals;

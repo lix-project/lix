@@ -22,7 +22,7 @@ try {
 
     for (auto & path : paths) {
         auto pathS = srcStore.printStorePath(path);
-        auto oldInfo = srcStore.queryPathInfo(path);
+        auto oldInfo = TRY_AWAIT(srcStore.queryPathInfo(path));
         std::string oldHashPart(path.hashPart());
 
         StringSink sink;

@@ -1284,7 +1284,11 @@ static void prim_readFile(EvalState & state, const PosIdx pos, Value * * args, V
     StorePathSet refs;
     if (state.ctx.store->isInStore(path.canonical().abs())) {
         try {
-            refs = state.ctx.store->queryPathInfo(state.ctx.store->toStorePath(path.canonical().abs()).first)->references;
+            refs = state.aio
+                       .blockOn(state.ctx.store->queryPathInfo(
+                           state.ctx.store->toStorePath(path.canonical().abs()).first
+                       ))
+                       ->references;
         } catch (Error &) { // FIXME: should be InvalidPathError
         }
         // Re-scan references to filter down to just the ones that actually occur in the file.
@@ -1530,7 +1534,7 @@ static void addPath(
             try {
                 auto [storePath, subPath] = state.ctx.store->toStorePath(path);
                 // FIXME: we should scanForReferences on the path before adding it
-                refs = state.ctx.store->queryPathInfo(storePath)->references;
+                refs = state.aio.blockOn(state.ctx.store->queryPathInfo(storePath))->references;
                 realPath = state.ctx.store->toRealPath(path);
             } catch (Error &) { // FIXME: should be InvalidPathError
             }

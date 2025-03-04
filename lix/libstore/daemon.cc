@@ -426,14 +426,14 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
                         // We could stream this by changing Store
                         std::string contents = source.drain();
                         auto path = aio.blockOn(store->addTextToStore(name, contents, refs, repair));
-                        return store->queryPathInfo(path);
+                        return aio.blockOn(store->queryPathInfo(path));
                     },
                     [&](const FileIngestionMethod & fim) {
                         AsyncSourceInputStream stream{source};
                         auto path = aio.blockOn(
                             store->addToStoreFromDump(stream, name, fim, hashType, repair, refs)
                         );
-                        return store->queryPathInfo(path);
+                        return aio.blockOn(store->queryPathInfo(path));
                     },
                 }, contentAddressMethod.raw);
             }();
@@ -837,7 +837,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         std::shared_ptr<const ValidPathInfo> info;
         logger->startWork();
         try {
-            info = store->queryPathInfo(path);
+            info = aio.blockOn(store->queryPathInfo(path));
         } catch (InvalidPath &) {
             // The path being invalid isn't fatal here since it will just be
             // sent as not present.

@@ -1,6 +1,7 @@
 #include "graphml.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/derivations.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/result.hh"
 
 #include <iostream>
@@ -68,7 +69,7 @@ try {
         ret = doneSet.insert(path);
         if (ret.second == false) continue;
 
-        auto info = store->queryPathInfo(path);
+        auto info = TRY_AWAIT(store->queryPathInfo(path));
         cout << makeNode(*info);
 
         for (auto & p : info->references) {

@@ -50,13 +50,13 @@ struct CmdCopySigs : StorePathsCommand
 
             auto storePath = store->parseStorePath(storePathS);
 
-            auto info = store->queryPathInfo(storePath);
+            auto info = aio.blockOn(store->queryPathInfo(storePath));
 
             StringSet newSigs;
 
             for (auto & store2 : substituters) {
                 try {
-                    auto info2 = store2->queryPathInfo(info->path);
+                    auto info2 = aio.blockOn(store2->queryPathInfo(info->path));
 
                     /* Don't import signatures that don't match this
                        binary. */
@@ -130,7 +130,7 @@ struct CmdSign : StorePathsCommand
 
             auto storePath = store->parseStorePath(storePathS);
 
-            auto info = store->queryPathInfo(storePath);
+            auto info = aio.blockOn(store->queryPathInfo(storePath));
 
             auto info2(*info);
             info2.sigs.clear();

@@ -111,7 +111,8 @@ public:
 
     kj::Promise<Result<bool>> isValidPathUncached(const StorePath & path) override;
 
-    std::shared_ptr<const ValidPathInfo> queryPathInfoUncached(const StorePath & path) override;
+    kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
+    queryPathInfoUncached(const StorePath & path) override;
 
     kj::Promise<Result<std::optional<StorePath>>>
     queryPathFromHashPart(const std::string & hashPart) override;

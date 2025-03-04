@@ -166,7 +166,7 @@ try {
     for (auto & ref : info.references)
         try {
             if (ref != info.path)
-                queryPathInfo(ref);
+                TRY_AWAIT(queryPathInfo(ref));
         } catch (InvalidPath &) {
             throw Error("cannot add '%s' to the binary cache because the reference '%s' does not exist",
                 printStorePath(info.path), printStorePath(ref));
@@ -343,7 +343,7 @@ BinaryCacheStore::queryPathFromHashPart(const std::string & hashPart)
 try {
     auto pseudoPath = StorePath(hashPart + "-" + MissingName);
     try {
-        auto info = queryPathInfo(pseudoPath);
+        auto info = TRY_AWAIT(queryPathInfo(pseudoPath));
         co_return info->path;
     } catch (InvalidPath &) {
         co_return std::nullopt;
@@ -354,7 +354,7 @@ try {
 
 kj::Promise<Result<box_ptr<Source>>> BinaryCacheStore::narFromPath(const StorePath & storePath)
 try {
-    auto info = queryPathInfo(storePath).cast<const NarInfo>();
+    auto info = TRY_AWAIT(queryPathInfo(storePath)).cast<const NarInfo>();
 
     try {
         auto file = getFile(info->url);
@@ -385,8 +385,9 @@ try {
     co_return result::current_exception();
 }
 
-std::shared_ptr<const ValidPathInfo> BinaryCacheStore::queryPathInfoUncached(const StorePath & storePath)
-{
+kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
+BinaryCacheStore::queryPathInfoUncached(const StorePath & storePath)
+try {
     auto uri = getUri();
     auto storePathS = printStorePath(storePath);
     auto act = std::make_shared<Activity>(*logger, lvlTalkative, actQueryPathInfo,
@@ -397,11 +398,13 @@ std::shared_ptr<const ValidPathInfo> BinaryCacheStore::queryPathInfoUncached(con
 
     auto data = getFileContents(narInfoFile);
 
-    if (!data) return nullptr;
+    if (!data) co_return result::success(nullptr);
 
     stats.narInfoRead++;
 
-    return std::make_shared<NarInfo>(*this, *data, narInfoFile);
+    co_return std::make_shared<NarInfo>(*this, *data, narInfoFile);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 static ValidPathInfo makeAddToStoreInfo(
@@ -542,7 +545,8 @@ try {
        S3 might return an outdated cached version. */
 
     // downcast: BinaryCacheStore always returns NarInfo from queryPathInfoUncached, making it sound
-    auto narInfo = make_ref<NarInfo>(dynamic_cast<NarInfo const &>(*queryPathInfo(storePath)));
+    auto narInfo =
+        make_ref<NarInfo>(dynamic_cast<NarInfo const &>(*TRY_AWAIT(queryPathInfo(storePath))));
 
     narInfo->sigs.insert(sigs.begin(), sigs.end());
 

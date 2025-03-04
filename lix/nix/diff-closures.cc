@@ -67,17 +67,22 @@ try {
         auto & beforeVersions = beforeClosure[name];
         auto & afterVersions = afterClosure[name];
 
-        auto totalSize = [&](const std::map<std::string, std::map<StorePath, Info>> & versions)
-        {
-            uint64_t sum = 0;
-            for (auto & [_, paths] : versions)
-                for (auto & [path, _] : paths)
-                    sum += store->queryPathInfo(path)->narSize;
-            return sum;
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        auto totalSize = [&](const std::map<std::string, std::map<StorePath, Info>> & versions
+                         ) -> kj::Promise<Result<uint64_t>> {
+            try {
+                uint64_t sum = 0;
+                for (auto & [_, paths] : versions)
+                    for (auto & [path, _] : paths)
+                        sum += TRY_AWAIT(store->queryPathInfo(path))->narSize;
+                co_return sum;
+            } catch (...) {
+                co_return result::current_exception();
+            }
         };
 
-        auto beforeSize = totalSize(beforeVersions);
-        auto afterSize = totalSize(afterVersions);
+        auto beforeSize = TRY_AWAIT(totalSize(beforeVersions));
+        auto afterSize = TRY_AWAIT(totalSize(afterVersions));
         auto sizeDelta = (int64_t) afterSize - (int64_t) beforeSize;
         auto showDelta = std::abs(sizeDelta) >= 8 * 1024;
 
