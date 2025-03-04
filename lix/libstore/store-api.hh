@@ -26,6 +26,7 @@
 #include <atomic>
 #include <limits>
 #include <map>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
@@ -827,24 +828,25 @@ public:
     kj::Promise<Result<StorePaths>>
     importPaths(Source & source, CheckSigsFlag checkSigs = CheckSigs);
 
+    template<template<typename> typename Wrapper = std::type_identity_t>
     struct Stats
     {
-        std::atomic<uint64_t> narInfoRead{0};
-        std::atomic<uint64_t> narInfoReadAverted{0};
-        std::atomic<uint64_t> narInfoMissing{0};
-        std::atomic<uint64_t> narInfoWrite{0};
-        std::atomic<uint64_t> pathInfoCacheSize{0};
-        std::atomic<uint64_t> narRead{0};
-        std::atomic<uint64_t> narReadBytes{0};
-        std::atomic<uint64_t> narReadCompressedBytes{0};
-        std::atomic<uint64_t> narWrite{0};
-        std::atomic<uint64_t> narWriteAverted{0};
-        std::atomic<uint64_t> narWriteBytes{0};
-        std::atomic<uint64_t> narWriteCompressedBytes{0};
-        std::atomic<uint64_t> narWriteCompressionTimeMs{0};
+        Wrapper<uint64_t> narInfoRead{0};
+        Wrapper<uint64_t> narInfoReadAverted{0};
+        Wrapper<uint64_t> narInfoMissing{0};
+        Wrapper<uint64_t> narInfoWrite{0};
+        Wrapper<uint64_t> pathInfoCacheSize{0};
+        Wrapper<uint64_t> narRead{0};
+        Wrapper<uint64_t> narReadBytes{0};
+        Wrapper<uint64_t> narReadCompressedBytes{0};
+        Wrapper<uint64_t> narWrite{0};
+        Wrapper<uint64_t> narWriteAverted{0};
+        Wrapper<uint64_t> narWriteBytes{0};
+        Wrapper<uint64_t> narWriteCompressedBytes{0};
+        Wrapper<uint64_t> narWriteCompressionTimeMs{0};
     };
 
-    const Stats & getStats();
+    kj::Promise<Result<Stats<>>> getStats();
 
     /**
      * Computes the full closure of of a set of store-paths for e.g.
@@ -917,7 +919,7 @@ public:
 
 protected:
 
-    Stats stats;
+    Stats<std::atomic> stats;
 
     /**
      * Helper for methods that are not unsupported: this is used for

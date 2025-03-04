@@ -1040,13 +1040,29 @@ try {
 }
 
 
-const Store::Stats & Store::getStats()
-{
+kj::Promise<Result<Store::Stats<>>> Store::getStats()
+try {
     {
         auto state_(state.lock());
         stats.pathInfoCacheSize = state_->pathInfoCache.size();
     }
-    return stats;
+    co_return {
+        stats.narInfoRead,
+        stats.narInfoReadAverted,
+        stats.narInfoMissing,
+        stats.narInfoWrite,
+        stats.pathInfoCacheSize,
+        stats.narRead,
+        stats.narReadBytes,
+        stats.narReadCompressedBytes,
+        stats.narWrite,
+        stats.narWriteAverted,
+        stats.narWriteBytes,
+        stats.narWriteCompressedBytes,
+        stats.narWriteCompressionTimeMs,
+    };
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
