@@ -6,6 +6,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/indirect-root-store.hh"
 #include "lix/libutil/async-io.hh"
+#include "lix/libutil/pool.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libutil/types.hh"
 
@@ -106,7 +107,9 @@ private:
         std::unique_ptr<Stmts> stmts;
     };
 
-    Sync<DBState, AsyncMutex> _dbState;
+    // NOTE this pool is unbounded during the async transition phase.
+    // we may want to bound it again later, and make Pool async also.
+    Pool<DBState> dbPool;
 
     struct GCState
     {
@@ -336,7 +339,7 @@ private:
      */
     int getSchema();
 
-    void initDB(DBState & state);
+    void initDB();
     void openDB(DBState & state, bool create);
     void prepareStatements(DBState & state);
 
