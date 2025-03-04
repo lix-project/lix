@@ -1004,12 +1004,19 @@ bool LocalStore::isValidPath_(DBState & state, const StorePath & path)
 }
 
 
-bool LocalStore::isValidPathUncached(const StorePath & path)
-{
-    return retrySQLite([&]() {
-        auto state = dbPool.get();
-        return isValidPath_(*state, path);
-    }, always_progresses);
+kj::Promise<Result<bool>> LocalStore::isValidPathUncached(const StorePath & path)
+try {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    co_return TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<bool>> {
+        try {
+            auto state = dbPool.get();
+            co_return isValidPath_(*state, path);
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    }));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

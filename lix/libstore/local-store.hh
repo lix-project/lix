@@ -189,7 +189,7 @@ public:
 
     std::string getUri() override;
 
-    bool isValidPathUncached(const StorePath & path) override;
+    kj::Promise<Result<bool>> isValidPathUncached(const StorePath & path) override;
 
     kj::Promise<Result<StorePathSet>> queryValidPaths(const StorePathSet & paths,
         SubstituteFlag maybeSubstitute = NoSubstitute) override;

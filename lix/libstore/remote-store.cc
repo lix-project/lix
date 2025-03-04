@@ -203,12 +203,14 @@ try {
     co_return result::current_exception();
 }
 
-bool RemoteStore::isValidPathUncached(const StorePath & path)
-{
+kj::Promise<Result<bool>> RemoteStore::isValidPathUncached(const StorePath & path)
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::IsValidPath << printStorePath(path);
     conn.processStderr();
-    return readInt(conn->from);
+    co_return readInt(conn->from);
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

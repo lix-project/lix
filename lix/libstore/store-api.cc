@@ -655,7 +655,7 @@ try {
         }
     }
 
-    bool valid = isValidPathUncached(storePath);
+    bool valid = TRY_AWAIT(isValidPathUncached(storePath));
 
     if (diskCache && !valid)
         // FIXME: handle valid = true case.
@@ -669,14 +669,14 @@ try {
 
 /* Default implementation for stores that only implement
    queryPathInfoUncached(). */
-bool Store::isValidPathUncached(const StorePath & path)
-{
-    try {
-        queryPathInfo(path);
-        return true;
-    } catch (InvalidPath &) {
-        return false;
-    }
+kj::Promise<Result<bool>> Store::isValidPathUncached(const StorePath & path)
+try {
+    queryPathInfo(path);
+    co_return true;
+} catch (InvalidPath &) {
+    co_return false;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

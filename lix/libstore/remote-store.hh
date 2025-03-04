@@ -50,7 +50,7 @@ public:
 
     /* Implementations of abstract store API methods. */
 
-    bool isValidPathUncached(const StorePath & path) override;
+    kj::Promise<Result<bool>> isValidPathUncached(const StorePath & path) override;
 
     kj::Promise<Result<StorePathSet>> queryValidPaths(const StorePathSet & paths,
         SubstituteFlag maybeSubstitute = NoSubstitute) override;

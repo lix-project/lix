@@ -350,7 +350,7 @@ public:
 
 protected:
 
-    virtual bool isValidPathUncached(const StorePath & path);
+    virtual kj::Promise<Result<bool>> isValidPathUncached(const StorePath & path);
 
 public:
 

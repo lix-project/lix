@@ -328,12 +328,14 @@ try {
     co_return result::current_exception();
 }
 
-bool BinaryCacheStore::isValidPathUncached(const StorePath & storePath)
-{
+kj::Promise<Result<bool>> BinaryCacheStore::isValidPathUncached(const StorePath & storePath)
+try {
     // FIXME: this only checks whether a .narinfo with a matching hash
     // part exists. So ‘f4kb...-foo’ matches ‘f4kb...-bar’, even
     // though they shouldn't. Not easily fixed.
-    return fileExists(narInfoFileFor(storePath));
+    co_return fileExists(narInfoFileFor(storePath));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<std::optional<StorePath>>>
