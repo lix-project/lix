@@ -19,10 +19,7 @@ endif
 
 cxx = meson.get_compiler('cpp')
 
-# Really version 5.8.0, but Perl's version string is of the form
-# "This is perl 5, version 38, subversion 2", for 5.38.2, so as far
-# as Meson is concerned, the version of Perl we need is 8 or greater.
-perl = find_program('perl', version : '>=8')
+perl = find_program('perl')
 
 # "compiler to convert Perl XS code into C code"
 xsubpp = find_program('xsubpp')
