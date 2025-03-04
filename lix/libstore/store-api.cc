@@ -530,7 +530,7 @@ try {
         co_return outputs;
 
     auto drv = evalStore.readInvalidDerivation(path);
-    auto drvHashes = staticOutputHashes(*this, drv);
+    auto drvHashes = TRY_AWAIT(staticOutputHashes(*this, drv));
     for (auto & [outputName, hash] : drvHashes) {
         auto realisation = TRY_AWAIT(queryRealisation(DrvOutput{hash, outputName}));
         if (realisation) {

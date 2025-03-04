@@ -892,9 +892,12 @@ DrvHash hashDerivationModulo(Store & store, const Derivation & drv, bool maskOut
 }
 
 
-std::map<std::string, Hash> staticOutputHashes(Store & store, const Derivation & drv)
-{
-    return hashDerivationModulo(store, drv, true).hashes;
+kj::Promise<Result<std::map<std::string, Hash>>>
+staticOutputHashes(Store & store, const Derivation & drv)
+try {
+    co_return hashDerivationModulo(store, drv, true).hashes;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

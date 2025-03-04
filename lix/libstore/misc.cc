@@ -267,7 +267,7 @@ struct QueryMissingContext
 
             // If there are unknown output paths, attempt to find if the
             // paths are known to substituters through a realisation.
-            auto outputHashes = staticOutputHashes(store, *drv);
+            auto outputHashes = aio.blockOn(staticOutputHashes(store, *drv));
             knownOutputPaths = true;
 
             for (auto [outputName, hash] : outputHashes) {
@@ -425,7 +425,7 @@ try {
         try {
             if (!inputNode.value.empty()) {
                 auto outputHashes =
-                    staticOutputHashes(evalStore, evalStore.readDerivation(inputDrv));
+                    TRY_AWAIT(staticOutputHashes(evalStore, evalStore.readDerivation(inputDrv)));
                 for (const auto & outputName : inputNode.value) {
                     auto outputHash = get(outputHashes, outputName);
                     if (!outputHash)

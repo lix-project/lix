@@ -346,7 +346,7 @@ connected:
         }
 
 
-        auto outputHashes = staticOutputHashes(*store, drv);
+        auto outputHashes = aio.blockOn(staticOutputHashes(*store, drv));
         std::set<Realisation> missingRealisations;
         StorePathSet missingPaths;
         if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations) && !drv.type().hasKnownOutputPaths()) {

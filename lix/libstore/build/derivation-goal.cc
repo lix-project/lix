@@ -253,7 +253,7 @@ try {
         if (i.second.second)
             TRY_AWAIT(worker.store.addTempRoot(*i.second.second));
 
-    auto outputHashes = staticOutputHashes(worker.evalStore, *drv);
+    auto outputHashes = TRY_AWAIT(staticOutputHashes(worker.evalStore, *drv));
     for (auto & [outputName, outputHash] : outputHashes)
         initialOutputs.insert({
             outputName,
@@ -1151,7 +1151,7 @@ try {
     SingleDrvOutputs builtOutputs;
 
     if (resolvedResult.success()) {
-        auto resolvedHashes = staticOutputHashes(worker.store, resolvedDrv);
+        auto resolvedHashes = TRY_AWAIT(staticOutputHashes(worker.store, resolvedDrv));
 
         StorePathSet outputPaths;
 

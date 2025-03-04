@@ -4,6 +4,7 @@
 #include "lix/libutil/async.hh"
 #include "lix/libutil/result.hh"
 
+#include <kj/async.h>
 #include <nlohmann/json.hpp>
 
 #include <optional>
@@ -142,7 +143,7 @@ try {
         [&](const BuiltPath::Built & p) -> kj::Promise<Result<void>> {
             try {
                 auto drvHashes =
-                    staticOutputHashes(store, store.readDerivation(p.drvPath->outPath()));
+                    TRY_AWAIT(staticOutputHashes(store, store.readDerivation(p.drvPath->outPath())));
                 for (auto& [outputName, outputPath] : p.outputs) {
                     if (experimentalFeatureSettings.isEnabled(
                                 Xp::CaDerivations)) {

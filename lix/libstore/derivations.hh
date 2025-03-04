@@ -483,7 +483,8 @@ DrvHash hashDerivationModulo(Store & store, const Derivation & drv, bool maskOut
  *
  * \todo What is the Hash in this map?
  */
-std::map<std::string, Hash> staticOutputHashes(Store & store, const Derivation & drv);
+kj::Promise<Result<std::map<std::string, Hash>>>
+staticOutputHashes(Store & store, const Derivation & drv);
 
 /**
  * Memoisation of hashDerivationModulo().
