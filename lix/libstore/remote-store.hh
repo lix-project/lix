@@ -185,7 +185,7 @@ protected:
 
     virtual void setOptions(Connection & conn);
 
-    void setOptions() override;
+    kj::Promise<Result<void>> setOptions() override;
 
     struct ConnectionHandle;
 

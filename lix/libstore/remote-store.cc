@@ -194,9 +194,12 @@ RemoteStore::ConnectionHandle RemoteStore::getConnection()
     return ConnectionHandle(connections->get());
 }
 
-void RemoteStore::setOptions()
-{
+kj::Promise<Result<void>> RemoteStore::setOptions()
+try {
     setOptions(*(getConnection().handle));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 bool RemoteStore::isValidPathUncached(const StorePath & path)

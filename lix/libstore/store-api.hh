@@ -897,7 +897,7 @@ public:
      * Synchronises the options of the client with those of the daemon
      * (a no-op when there’s no daemon)
      */
-    virtual void setOptions() { }
+    virtual kj::Promise<Result<void>> setOptions() { return {result::success()}; }
 
     virtual std::optional<std::string> getVersion() { return {}; }
 

@@ -392,7 +392,7 @@ LockedFlake lockFlake(
 
     if (lockFlags.applyNixConfig) {
         flake.config.apply();
-        state.ctx.store->setOptions();
+        state.aio.blockOn(state.ctx.store->setOptions());
     }
 
     try {
