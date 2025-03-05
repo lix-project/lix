@@ -1740,9 +1740,9 @@ try {
 }
 
 
-unsigned int LocalStore::getProtocol()
+kj::Promise<Result<unsigned int>> LocalStore::getProtocol()
 {
-    return PROTOCOL_VERSION;
+    return {result::success(PROTOCOL_VERSION)};
 }
 
 std::optional<TrustedFlag> LocalStore::isTrustedClient()

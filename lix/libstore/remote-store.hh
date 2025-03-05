@@ -167,7 +167,7 @@ public:
 
     kj::Promise<Result<void>> connect() override;
 
-    unsigned int getProtocol() override;
+    kj::Promise<Result<unsigned int>> getProtocol() override;
 
     std::optional<TrustedFlag> isTrustedClient() override;
 

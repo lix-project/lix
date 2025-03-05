@@ -322,7 +322,7 @@ StorePathSet RemoteStore::queryValidDerivers(const StorePath & path)
 
 kj::Promise<Result<StorePathSet>> RemoteStore::queryDerivationOutputs(const StorePath & path)
 try {
-    if (GET_PROTOCOL_MINOR(getProtocol()) >= 22) {
+    if (GET_PROTOCOL_MINOR(TRY_AWAIT(getProtocol())) >= 22) {
         co_return TRY_AWAIT(Store::queryDerivationOutputs(path));
     }
     REMOVE_AFTER_DROPPING_PROTO_MINOR(21);
@@ -338,7 +338,7 @@ try {
 kj ::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
 RemoteStore::queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore_)
 try {
-    if (GET_PROTOCOL_MINOR(getProtocol()) >= 22) {
+    if (GET_PROTOCOL_MINOR(TRY_AWAIT(getProtocol())) >= 22) {
         if (!evalStore_) {
             auto conn(getConnection());
             conn->to << WorkerProto::Op::QueryDerivationOutputMap << printStorePath(path);
@@ -551,7 +551,7 @@ kj::Promise<Result<void>> RemoteStore::addMultipleToStore(
     CheckSigsFlag checkSigs)
 try {
     if (GET_PROTOCOL_MINOR(getConnection()->daemonVersion) >= 32) {
-        auto remoteVersion = getProtocol();
+        auto remoteVersion = TRY_AWAIT(getProtocol());
 
         auto conn(getConnection());
         conn->to
@@ -944,10 +944,12 @@ try {
 }
 
 
-unsigned int RemoteStore::getProtocol()
-{
+kj::Promise<Result<unsigned int>> RemoteStore::getProtocol()
+try {
     auto conn(connections->get());
-    return conn->daemonVersion;
+    co_return conn->daemonVersion;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 std::optional<TrustedFlag> RemoteStore::isTrustedClient()

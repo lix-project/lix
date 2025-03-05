@@ -439,10 +439,12 @@ public:
         co_return result::current_exception();
     }
 
-    unsigned int getProtocol() override
-    {
+    kj::Promise<Result<unsigned int>> getProtocol() override
+    try {
         auto conn(connections->get());
-        return conn->remoteVersion;
+        co_return conn->remoteVersion;
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     /**

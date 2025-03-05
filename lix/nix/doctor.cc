@@ -66,7 +66,7 @@ struct CmdDoctor : StoreCommand
             success &= checkNixInPath();
             success &= checkProfileRoots(store);
         }
-        success &= checkStoreProtocol(store->getProtocol());
+        success &= checkStoreProtocol(aio().blockOn(store->getProtocol()));
         checkTrustedUser(store);
 
         if (!success)

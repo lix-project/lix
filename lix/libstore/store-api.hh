@@ -867,9 +867,9 @@ public:
     /**
      * Get the protocol version of this store or it's connection.
      */
-    virtual unsigned int getProtocol()
+    virtual kj::Promise<Result<unsigned int>> getProtocol()
     {
-        return 0;
+        return {result::success(0)};
     };
 
     /**

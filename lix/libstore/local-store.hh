@@ -298,7 +298,7 @@ public:
 
     void registerValidPaths(const ValidPathInfos & infos);
 
-    unsigned int getProtocol() override;
+    kj::Promise<Result<unsigned int>> getProtocol() override;
 
     std::optional<TrustedFlag> isTrustedClient() override;
 
