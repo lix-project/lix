@@ -326,7 +326,7 @@ public:
     std::optional<std::pair<int64_t, Realisation>> queryRealisationCore_(DBState & state, const DrvOutput & id);
     std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput&) override;
 
-    std::optional<std::string> getVersion() override;
+    kj::Promise<Result<std::optional<std::string>>> getVersion() override;
 
 private:
 

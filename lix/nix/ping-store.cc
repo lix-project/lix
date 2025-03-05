@@ -26,7 +26,7 @@ struct CmdPingStore : StoreCommand, MixJSON
         if (!json) {
             notice("Store URL: %s", store->getUri());
             aio().blockOn(store->connect());
-            if (auto version = store->getVersion())
+            if (auto version = aio().blockOn(store->getVersion()))
                 notice("Version: %s", *version);
             if (auto trusted = aio().blockOn(store->isTrustedClient()))
                 notice("Trusted: %s", *trusted);
@@ -38,7 +38,7 @@ struct CmdPingStore : StoreCommand, MixJSON
 
             res["url"] = store->getUri();
             aio().blockOn(store->connect());
-            if (auto version = store->getVersion())
+            if (auto version = aio().blockOn(store->getVersion()))
                 res["version"] = *version;
             if (auto trusted = aio().blockOn(store->isTrustedClient()))
                 res["trusted"] = *trusted;

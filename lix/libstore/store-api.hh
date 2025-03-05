@@ -899,7 +899,10 @@ public:
      */
     virtual kj::Promise<Result<void>> setOptions() { return {result::success()}; }
 
-    virtual std::optional<std::string> getVersion() { return {}; }
+    virtual kj::Promise<Result<std::optional<std::string>>> getVersion()
+    {
+        return {result::success(std::nullopt)};
+    }
 
 protected:
 

@@ -931,10 +931,12 @@ try {
 }
 
 
-std::optional<std::string> RemoteStore::getVersion()
-{
+kj::Promise<Result<std::optional<std::string>>> RemoteStore::getVersion()
+try {
     auto conn(getConnection());
-    return conn->daemonNixVersion;
+    co_return conn->daemonNixVersion;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

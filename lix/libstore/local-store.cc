@@ -1918,9 +1918,9 @@ try {
     co_return result::current_exception();}
 
 
-std::optional<std::string> LocalStore::getVersion()
+kj::Promise<Result<std::optional<std::string>>> LocalStore::getVersion()
 {
-    return nixVersion;
+    return {result::success(nixVersion)};
 }
 
 }  // namespace nix
