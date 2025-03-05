@@ -157,7 +157,7 @@ public:
 
     void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 
-    void queryMissing(const std::vector<DerivedPath> & targets,
+    kj::Promise<Result<void>> queryMissing(const std::vector<DerivedPath> & targets,
         StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
         uint64_t & downloadSize, uint64_t & narSize) override;
 

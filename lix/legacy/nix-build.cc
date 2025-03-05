@@ -314,8 +314,8 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
            fetch binary cache data. */
         uint64_t downloadSize, narSize;
         StorePathSet willBuild, willSubstitute, unknown;
-        store->queryMissing(paths,
-            willBuild, willSubstitute, unknown, downloadSize, narSize);
+        aio.blockOn(store->queryMissing(paths,
+            willBuild, willSubstitute, unknown, downloadSize, narSize));
 
         if (settings.printMissing) {
             aio.blockOn(printMissing(

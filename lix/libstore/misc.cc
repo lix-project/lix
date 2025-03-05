@@ -142,7 +142,7 @@ struct QueryMissingContext
 
     KJ_DISALLOW_COPY_AND_MOVE(QueryMissingContext);
 
-    void queryMissing(const std::vector<DerivedPath> & targets);
+    kj::Promise<Result<void>> queryMissing(const std::vector<DerivedPath> & targets);
 
     void enqueueDerivedPaths(ref<SingleDerivedPath> inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode)
     {
@@ -336,25 +336,34 @@ struct QueryMissingContext
 };
 }
 
-void QueryMissingContext::queryMissing(const std::vector<DerivedPath> & targets)
-{
+kj::Promise<Result<void>> QueryMissingContext::queryMissing(const std::vector<DerivedPath> & targets)
+try {
     for (auto & path : targets) {
         pool.enqueueWithAio([=, this](AsyncIoRoot & aio) { doPath(aio, path); });
     }
 
-    pool.process();
+    TRY_AWAIT(pool.processAsync());
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
-void Store::queryMissing(const std::vector<DerivedPath> & targets,
+
+kj::Promise<Result<void>> Store::queryMissing(const std::vector<DerivedPath> & targets,
     StorePathSet & willBuild_, StorePathSet & willSubstitute_, StorePathSet & unknown_,
     uint64_t & downloadSize_, uint64_t & narSize_)
-{
+try {
     Activity act(*logger, lvlDebug, actUnknown, "querying info about missing paths");
 
     downloadSize_ = narSize_ = 0;
 
-    QueryMissingContext{*this, willBuild_, willSubstitute_, unknown_, downloadSize_, narSize_}
-        .queryMissing(targets);
+    TRY_AWAIT(
+        QueryMissingContext{*this, willBuild_, willSubstitute_, unknown_, downloadSize_, narSize_}
+            .queryMissing(targets)
+    );
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

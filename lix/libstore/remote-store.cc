@@ -895,10 +895,10 @@ void RemoteStore::addSignatures(const StorePath & storePath, const StringSet & s
 }
 
 
-void RemoteStore::queryMissing(const std::vector<DerivedPath> & targets,
+kj::Promise<Result<void>> RemoteStore::queryMissing(const std::vector<DerivedPath> & targets,
     StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
     uint64_t & downloadSize, uint64_t & narSize)
-{
+try {
     auto conn(getConnection());
     conn->to << WorkerProto::Op::QueryMissing;
     conn->to << WorkerProto::write(*this, *conn, targets);
@@ -907,6 +907,9 @@ void RemoteStore::queryMissing(const std::vector<DerivedPath> & targets,
     willSubstitute = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
     unknown = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
     conn->from >> downloadSize >> narSize;
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

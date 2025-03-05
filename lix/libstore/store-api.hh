@@ -790,7 +790,7 @@ public:
      * derivations that will be built, and the set of output paths that
      * will be substituted.
      */
-    virtual void queryMissing(const std::vector<DerivedPath> & targets,
+    virtual kj::Promise<Result<void>> queryMissing(const std::vector<DerivedPath> & targets,
         StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
         uint64_t & downloadSize, uint64_t & narSize);
 

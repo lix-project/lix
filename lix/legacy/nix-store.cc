@@ -142,9 +142,9 @@ static void opRealise(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
     uint64_t downloadSize, narSize;
     StorePathSet willBuild, willSubstitute, unknown;
-    store->queryMissing(
+    aio.blockOn(store->queryMissing(
         toDerivedPaths(paths),
-        willBuild, willSubstitute, unknown, downloadSize, narSize);
+        willBuild, willSubstitute, unknown, downloadSize, narSize));
 
     /* Filter out unknown paths from `paths`. */
     if (ignoreUnknown) {

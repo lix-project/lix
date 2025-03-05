@@ -940,7 +940,9 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         logger->startWork();
         StorePathSet willBuild, willSubstitute, unknown;
         uint64_t downloadSize, narSize;
-        store->queryMissing(targets, willBuild, willSubstitute, unknown, downloadSize, narSize);
+        aio.blockOn(
+            store->queryMissing(targets, willBuild, willSubstitute, unknown, downloadSize, narSize)
+        );
         logger->stopWork();
         to << WorkerProto::write(*store, wconn, willBuild);
         to << WorkerProto::write(*store, wconn, willSubstitute);

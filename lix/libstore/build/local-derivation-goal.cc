@@ -1240,10 +1240,10 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
     void addSignatures(const StorePath & storePath, const StringSet & sigs) override
     { unsupported("addSignatures"); }
 
-    void queryMissing(const std::vector<DerivedPath> & targets,
+    kj::Promise<Result<void>> queryMissing(const std::vector<DerivedPath> & targets,
         StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
         uint64_t & downloadSize, uint64_t & narSize) override
-    {
+    try {
         /* This is slightly impure since it leaks information to the
            client about what paths will be built/substituted or are
            already present. Probably not a big deal. */
@@ -1256,8 +1256,11 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
                 unknown.insert(pathPartOfReq(req));
         }
 
-        next->queryMissing(allowed, willBuild, willSubstitute,
-            unknown, downloadSize, narSize);
+        TRY_AWAIT(next->queryMissing(allowed, willBuild, willSubstitute,
+            unknown, downloadSize, narSize));
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     virtual kj::Promise<Result<std::optional<std::string>>> getBuildLogExact(const StorePath & path) override

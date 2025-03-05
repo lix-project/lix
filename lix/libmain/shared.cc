@@ -52,7 +52,7 @@ printMissing(ref<Store> store, const std::vector<DerivedPath> & paths, Verbosity
 try {
     uint64_t downloadSize, narSize;
     StorePathSet willBuild, willSubstitute, unknown;
-    store->queryMissing(paths, willBuild, willSubstitute, unknown, downloadSize, narSize);
+    TRY_AWAIT(store->queryMissing(paths, willBuild, willSubstitute, unknown, downloadSize, narSize));
     TRY_AWAIT(printMissing(store, willBuild, willSubstitute, unknown, downloadSize, narSize, lvl));
     co_return result::success();
 } catch (...) {
