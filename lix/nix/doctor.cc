@@ -146,7 +146,7 @@ struct CmdDoctor : StoreCommand
 
     void checkTrustedUser(ref<Store> store)
     {
-        auto trustedMay = store->isTrustedClient();
+        auto trustedMay = aio().blockOn(store->isTrustedClient());
         std::string_view trustedness = trustedMay ? (*trustedMay ? "trusted" : "not trusted") : "unknown trust";
         checkInfo(fmt("You are %s by store uri: %s", trustedness, store->getUri()));
     }

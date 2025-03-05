@@ -1057,7 +1057,7 @@ void processConnection(
         // We and the underlying store both need to trust the client for
         // it to be trusted.
         auto temp = trusted
-            ? store->isTrustedClient()
+            ? aio.blockOn(store->isTrustedClient())
             : std::optional { NotTrusted };
         WorkerProto::WriteConn wconn {clientVersion};
         to << WorkerProto::write(*store, wconn, temp);

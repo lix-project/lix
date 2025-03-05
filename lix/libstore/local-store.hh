@@ -300,7 +300,7 @@ public:
 
     kj::Promise<Result<unsigned int>> getProtocol() override;
 
-    std::optional<TrustedFlag> isTrustedClient() override;
+    kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override;
 
     void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 

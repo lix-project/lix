@@ -99,9 +99,9 @@ protected:
         return paths;
     }
 
-    std::optional<TrustedFlag> isTrustedClient() override
+    kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override
     {
-        return Trusted;
+        return {result::success(Trusted)};
     }
 };
 

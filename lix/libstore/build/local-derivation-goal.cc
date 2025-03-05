@@ -1276,8 +1276,8 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
         return {result::current_exception()};
     }
 
-    std::optional<TrustedFlag> isTrustedClient() override
-    { return NotTrusted; }
+    kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override
+    { return {result::success(NotTrusted)}; }
 };
 
 

@@ -451,9 +451,9 @@ public:
      * The legacy ssh protocol doesn't support checking for trusted-user.
      * Try using ssh-ng:// instead if you want to know.
      */
-    std::optional<TrustedFlag> isTrustedClient() override
+    kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override
     {
-        return std::nullopt;
+        return {result::success(std::nullopt)};
     }
 
     std::shared_ptr<const Realisation> queryRealisationUncached(const DrvOutput &) override

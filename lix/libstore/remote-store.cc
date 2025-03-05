@@ -952,11 +952,13 @@ try {
     co_return result::current_exception();
 }
 
-std::optional<TrustedFlag> RemoteStore::isTrustedClient()
-{
+kj::Promise<Result<std::optional<TrustedFlag>>> RemoteStore::isTrustedClient()
+try {
     auto conn(getConnection());
-    return conn->remoteTrustsUs;
-}
+    co_return conn->remoteTrustsUs;
+} catch (...) {
+    co_return result::current_exception();}
+
 
 
 RemoteStore::Connection::~Connection()

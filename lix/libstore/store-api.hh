@@ -880,7 +880,7 @@ public:
      * @note This is the opposite of the StoreConfig::isTrusted
      * store setting. That is about whether *we* trust the store.
      */
-    virtual std::optional<TrustedFlag> isTrustedClient() = 0;
+    virtual kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() = 0;
 
 
     virtual Path toRealPath(const Path & storePath)

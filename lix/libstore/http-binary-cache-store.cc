@@ -172,9 +172,9 @@ protected:
      *
      * \todo try to expose our HTTP authentication status.
      */
-    std::optional<TrustedFlag> isTrustedClient() override
+    kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override
     {
-        return std::nullopt;
+        return {result::success(std::nullopt)};
     }
 };
 

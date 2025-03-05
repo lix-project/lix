@@ -305,7 +305,7 @@ connected:
         // stores), we assume we are. This is necessary for backwards
         // compat.
         bool trustedOrLegacy = ({
-            std::optional trusted = sshStore->isTrustedClient();
+            std::optional trusted = aio.blockOn(sshStore->isTrustedClient());
             !trusted || *trusted;
         });
 

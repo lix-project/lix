@@ -42,9 +42,9 @@ struct DummyStore final : public Store
     /**
      * The dummy store is incapable of *not* trusting! :)
      */
-    virtual std::optional<TrustedFlag> isTrustedClient() override
+    virtual kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override
     {
-        return Trusted;
+        return {result::success(Trusted)};
     }
 
     static std::set<std::string> uriSchemes() {
