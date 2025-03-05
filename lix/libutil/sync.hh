@@ -168,6 +168,9 @@ private:
     std::mutex waitMutex;
     std::list<kj::Own<kj::CrossThreadPromiseFulfiller<void>>> waiters;
 
+    std::mutex conditionMutex;
+    std::list<kj::Own<kj::CrossThreadPromiseFulfiller<void>>> conditionWaiters;
+
 public:
     Sync() = default;
     Sync(T && data) : base_type(std::move(data)) {}
@@ -198,7 +201,44 @@ public:
         }
 
         using base_type::Lock::operator->, base_type::Lock::operator*;
+
+        /**
+         * Releases the lock, waits for another promise to call `Sync::notify`,
+         * and reacquires the lock. There is no `condition_variable`-equivalent
+         * object to allow multiple wait queues on the same lock since we don't
+         * need that yet. There's no reason not to add such a type when needed.
+         */
+        kj::Promise<void> wait()
+        {
+            auto * s = static_cast<Sync *>(this->s);
+
+            {
+                auto unlock = std::move(*this);
+            }
+
+            auto pfp = kj::newPromiseAndCrossThreadFulfiller<void>();
+            {
+                std::lock_guard clk(s->conditionMutex);
+                s->conditionWaiters.push_back(std::move(pfp.fulfiller));
+            }
+            co_await pfp.promise;
+
+            *this = co_await s->lock();
+        }
     };
+
+    /**
+     * Notify all promises awaiting `Lock::wait`. There is no `notify_one` like
+     * `std::condition_variable` provides owing to implementation complexities.
+     */
+    void notify()
+    {
+        std::lock_guard clk(conditionMutex);
+        for (auto & f : conditionWaiters) {
+            f->fulfill();
+        }
+        conditionWaiters.clear();
+    }
 
     auto lockSync(NeverAsync = {})
     {
