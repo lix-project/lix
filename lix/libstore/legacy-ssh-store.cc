@@ -431,9 +431,12 @@ public:
         co_return result::current_exception();
     }
 
-    void connect() override
-    {
+    kj::Promise<Result<void>> connect() override
+    try {
         auto conn(connections->get());
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     unsigned int getProtocol() override

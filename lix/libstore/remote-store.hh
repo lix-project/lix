@@ -165,7 +165,7 @@ public:
 
     std::optional<std::string> getVersion() override;
 
-    void connect() override;
+    kj::Promise<Result<void>> connect() override;
 
     unsigned int getProtocol() override;
 

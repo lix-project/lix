@@ -244,7 +244,7 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
                     Activity act(*logger, lvlTalkative, actUnknown, fmt("connecting to '%s'", bestMachine->storeUri));
 
                     sshStore = aio.blockOn(bestMachine->openStore());
-                    sshStore->connect();
+                    aio.blockOn(sshStore->connect());
                     storeUri = bestMachine->storeUri;
 
                 } catch (std::exception & e) {

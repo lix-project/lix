@@ -25,7 +25,7 @@ struct CmdPingStore : StoreCommand, MixJSON
     {
         if (!json) {
             notice("Store URL: %s", store->getUri());
-            store->connect();
+            aio().blockOn(store->connect());
             if (auto version = store->getVersion())
                 notice("Version: %s", *version);
             if (auto trusted = store->isTrustedClient())
@@ -37,7 +37,7 @@ struct CmdPingStore : StoreCommand, MixJSON
             });
 
             res["url"] = store->getUri();
-            store->connect();
+            aio().blockOn(store->connect());
             if (auto version = store->getVersion())
                 res["version"] = *version;
             if (auto trusted = store->isTrustedClient())

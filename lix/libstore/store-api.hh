@@ -862,7 +862,7 @@ public:
      * Establish a connection to the store, for store types that have
      * a notion of connection. Otherwise this is a no-op.
      */
-    virtual void connect() { };
+    virtual kj::Promise<Result<void>> connect() { return {result::success()}; }
 
     /**
      * Get the protocol version of this store or it's connection.

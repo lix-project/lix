@@ -935,9 +935,12 @@ std::optional<std::string> RemoteStore::getVersion()
 }
 
 
-void RemoteStore::connect()
-{
+kj::Promise<Result<void>> RemoteStore::connect()
+try {
     auto conn(getConnection());
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 
