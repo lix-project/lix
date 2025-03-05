@@ -53,7 +53,7 @@ public:
      * owned managed by the client's user account, and the server makes
      * the indirect symlink.
      */
-    void addIndirectRoot(const Path & path) override;
+    kj::Promise<Result<void>> addIndirectRoot(const Path & path) override;
 
 private:
 

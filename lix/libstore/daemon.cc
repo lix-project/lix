@@ -688,7 +688,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
         logger->startWork();
         auto & indirectRootStore = require<IndirectRootStore>(*store);
-        indirectRootStore.addIndirectRoot(path);
+        aio.blockOn(indirectRootStore.addIndirectRoot(path));
         logger->stopWork();
 
         to << 1;

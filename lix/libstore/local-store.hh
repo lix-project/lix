@@ -255,7 +255,7 @@ public:
      * The weak reference merely is a symlink to `path' from
      * /nix/var/nix/gcroots/auto/<hash of `path'>.
      */
-    void addIndirectRoot(const Path & path) override;
+    kj::Promise<Result<void>> addIndirectRoot(const Path & path) override;
 
 private:
 

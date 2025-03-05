@@ -1225,8 +1225,8 @@ struct RestrictedStore : public virtual IndirectRootStore, public virtual GcStor
     kj::Promise<Result<void>> addTempRoot(const StorePath & path) override
     { return {result::success()}; }
 
-    void addIndirectRoot(const Path & path) override
-    { }
+    kj::Promise<Result<void>> addIndirectRoot(const Path & path) override
+    { return {result::success()}; }
 
     kj::Promise<Result<Roots>> findRoots(bool censor) override
     { return {Roots()}; }

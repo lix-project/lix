@@ -47,11 +47,14 @@ static void makeSymlink(const Path & link, const Path & target)
 }
 
 
-void LocalStore::addIndirectRoot(const Path & path)
-{
+kj::Promise<Result<void>> LocalStore::addIndirectRoot(const Path & path)
+try {
     std::string hash = hashString(HashType::SHA1, path).to_string(Base::Base32, false);
     Path realRoot = canonPath(fmt("%1%/%2%/auto/%3%", config().stateDir, gcRootsDir, hash));
     makeSymlink(realRoot, path);
+    return {result::success()};
+} catch (...) {
+    return {result::current_exception()};
 }
 
 
@@ -75,7 +78,7 @@ try {
     if (pathExists(gcRoot) && (!isLink(gcRoot) || !isInStore(readLink(gcRoot))))
         throw Error("cannot create symlink '%1%'; already exists", gcRoot);
     makeSymlink(gcRoot, printStorePath(storePath));
-    addIndirectRoot(gcRoot);
+    TRY_AWAIT(addIndirectRoot(gcRoot));
 
     co_return gcRoot;
 } catch (...) {
