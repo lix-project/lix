@@ -792,7 +792,7 @@ try {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
     TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<void>> {
         try {
-            auto state = dbPool.get();
+            auto state = TRY_AWAIT(dbPool.get());
             if (auto oldR = queryRealisation_(*state, info.id)) {
                 if (info.isCompatibleWith(*oldR)) {
                     auto combinedSignatures = oldR->signatures;
@@ -923,7 +923,7 @@ try {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
         retrySQLite([&]() -> kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>> {
             try {
-                auto state = dbPool.get();
+                auto state = TRY_AWAIT(dbPool.get());
                 co_return queryPathInfoInternal(*state, path);
             } catch (...) {
                 co_return result::current_exception();
@@ -1019,7 +1019,7 @@ try {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
     co_return TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<bool>> {
         try {
-            auto state = dbPool.get();
+            auto state = TRY_AWAIT(dbPool.get());
             co_return isValidPath_(*state, path);
         } catch (...) {
             co_return result::current_exception();
@@ -1047,7 +1047,7 @@ try {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
     co_return TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<StorePathSet>> {
         try {
-            auto state = dbPool.get();
+            auto state = TRY_AWAIT(dbPool.get());
             auto use(state->stmts->QueryValidPaths.use());
             StorePathSet res;
             while (use.next()) res.insert(parseStorePath(use.getStr(0)));
@@ -1076,7 +1076,7 @@ try {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
     TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<void>> {
         try {
-            auto state = dbPool.get();
+            auto state = TRY_AWAIT(dbPool.get());
             queryReferrers(*state, path, referrers);
             co_return result::success();
         } catch (...) {
@@ -1094,7 +1094,7 @@ try {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
     co_return TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<StorePathSet>> {
         try {
-            auto state = dbPool.get();
+            auto state = TRY_AWAIT(dbPool.get());
 
             auto useQueryValidDerivers(state->stmts->QueryValidDerivers.use()(printStorePath(path)));
 
@@ -1119,7 +1119,7 @@ try {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
         retrySQLite([&]() -> kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>> {
             try {
-                auto state = dbPool.get();
+                auto state = TRY_AWAIT(dbPool.get());
                 std::map<std::string, std::optional<StorePath>> outputs;
                 uint64_t drvId;
                 drvId = queryValidPathId(*state, path);
@@ -1147,7 +1147,7 @@ try {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
     co_return TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<std::optional<StorePath>>> {
         try {
-            auto state = dbPool.get();
+            auto state = TRY_AWAIT(dbPool.get());
 
             auto useQueryPathFromHashPart(state->stmts->QueryPathFromHashPart.use()(prefix));
 
@@ -1219,7 +1219,7 @@ try {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
     co_return co_await retrySQLite([&]() -> kj::Promise<Result<void>> {
         try {
-            auto state = dbPool.get();
+            auto state = TRY_AWAIT(dbPool.get());
 
             SQLiteTxn txn = state->db.beginTransaction(SQLiteTxnType::Immediate);
             StorePathSet paths;
@@ -1652,7 +1652,7 @@ try {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
     TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<void>> {
         try {
-            auto state = dbPool.get();
+            auto state = TRY_AWAIT(dbPool.get());
 
             SQLiteTxn txn = state->db.beginTransaction(SQLiteTxnType::Immediate);
 
@@ -1783,7 +1783,7 @@ try {
                     }
 
                     if (update) {
-                        auto state = dbPool.get();
+                        auto state = TRY_AWAIT(dbPool.get());
                         updatePathInfo(*state, *info);
                     }
 
@@ -1839,7 +1839,7 @@ try {
 
         if (canInvalidate) {
             printInfo("path '%s' disappeared, removing from database...", pathS);
-            auto state = dbPool.get();
+            auto state = TRY_AWAIT(dbPool.get());
             TRY_AWAIT(invalidatePath(*state, path));
         } else {
             printError("path '%s' disappeared, but it still has valid referrers!", pathS);
@@ -1880,7 +1880,7 @@ try {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
     TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<void>> {
         try {
-            auto state = dbPool.get();
+            auto state = TRY_AWAIT(dbPool.get());
 
             SQLiteTxn txn = state->db.beginTransaction(SQLiteTxnType::Immediate);
 
@@ -1988,7 +1988,7 @@ try {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
         TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<std::optional<const Realisation>>> {
             try {
-                auto state = dbPool.get();
+                auto state = TRY_AWAIT(dbPool.get());
                 co_return queryRealisation_(*state, id);
             } catch (...) {
                 co_return result::current_exception();

@@ -1,5 +1,6 @@
 #include "lix/libutil/pool.hh"
 #include <gtest/gtest.h>
+#include <kj/async.h>
 
 namespace nix {
 
@@ -16,11 +17,20 @@ namespace nix {
         int num;
     };
 
+    class PoolTest : public testing::Test
+    {
+    public:
+        kj::EventLoop loop;
+        kj::WaitScope ws{loop};
+
+        ~PoolTest() noexcept(true) = default;
+    };
+
     /* ----------------------------------------------------------------------------
      * Pool
      * --------------------------------------------------------------------------*/
 
-    TEST(Pool, freshPoolHasZeroCountAndSpecifiedCapacity) {
+    TEST_F(PoolTest, freshPoolHasZeroCountAndSpecifiedCapacity) {
         auto isGood = [](const ref<TestResource> & r) { return r->good; };
         auto createResource = []() { return make_ref<TestResource>(); };
 
@@ -30,14 +40,14 @@ namespace nix {
         ASSERT_EQ(pool.capacity(), 1);
     }
 
-    TEST(Pool, freshPoolCanGetAResource) {
+    TEST_F(PoolTest, freshPoolCanGetAResource) {
         auto isGood = [](const ref<TestResource> & r) { return r->good; };
         auto createResource = []() { return make_ref<TestResource>(); };
 
         Pool<TestResource> pool = Pool<TestResource>((size_t)1, createResource, isGood);
         ASSERT_EQ(pool.count(), 0);
 
-        TestResource r = *(pool.get());
+        TestResource r = *(pool.get().wait(ws).value());
 
         ASSERT_EQ(pool.count(), 1);
         ASSERT_EQ(pool.capacity(), 1);
@@ -45,7 +55,7 @@ namespace nix {
         ASSERT_EQ(r.good, true);
     }
 
-    TEST(Pool, capacityCanBeIncremented) {
+    TEST_F(PoolTest, capacityCanBeIncremented) {
         auto isGood = [](const ref<TestResource> & r) { return r->good; };
         auto createResource = []() { return make_ref<TestResource>(); };
 
@@ -55,7 +65,7 @@ namespace nix {
         ASSERT_EQ(pool.capacity(), 2);
     }
 
-    TEST(Pool, capacityCanBeDecremented) {
+    TEST_F(PoolTest, capacityCanBeDecremented) {
         auto isGood = [](const ref<TestResource> & r) { return r->good; };
         auto createResource = []() { return make_ref<TestResource>(); };
 
@@ -66,7 +76,7 @@ namespace nix {
     }
 
     // Test that the resources we allocate are being reused when they are still good.
-    TEST(Pool, reuseResource) {
+    TEST_F(PoolTest, reuseResource) {
         auto isGood = [](const ref<TestResource> & r) { return true; };
         auto createResource = []() { return make_ref<TestResource>(); };
 
@@ -76,18 +86,18 @@ namespace nix {
         // as the pool should hand out the same (still) good one again.
         int counter = -1;
         {
-            Pool<TestResource>::Handle h = pool.get();
+            Pool<TestResource>::Handle h = pool.get().wait(ws).value();
             counter = h->num;
         } // the first handle goes out of scope
 
         { // the second handle should contain the same resource (with the same counter value)
-            Pool<TestResource>::Handle h = pool.get();
+            Pool<TestResource>::Handle h = pool.get().wait(ws).value();
             ASSERT_EQ(h->num, counter);
         }
     }
 
     // Test that the resources we allocate are being thrown away when they are no longer good.
-    TEST(Pool, badResourceIsNotReused) {
+    TEST_F(PoolTest, badResourceIsNotReused) {
         auto isGood = [](const ref<TestResource> & r) { return false; };
         auto createResource = []() { return make_ref<TestResource>(); };
 
@@ -98,14 +108,14 @@ namespace nix {
         // the first one was returned.
         int counter = -1;
         {
-            Pool<TestResource>::Handle h = pool.get();
+            Pool<TestResource>::Handle h = pool.get().wait(ws).value();
             counter = h->num;
         } // the first handle goes out of scope
 
         {
           // the second handle should contain a different resource (with a
           //different counter value)
-            Pool<TestResource>::Handle h = pool.get();
+            Pool<TestResource>::Handle h = pool.get().wait(ws).value();
             ASSERT_NE(h->num, counter);
         }
     }

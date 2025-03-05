@@ -194,7 +194,7 @@ protected:
 
     struct ConnectionHandle;
 
-    ConnectionHandle getConnection();
+    kj::Promise<Result<ConnectionHandle>> getConnection();
 
     friend struct ConnectionHandle;
 

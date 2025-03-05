@@ -163,7 +163,7 @@ struct LegacySSHStore final : public Store
     kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
     queryPathInfoUncached(const StorePath & path) override
     try {
-        auto conn(connections->get());
+        auto conn(TRY_AWAIT(connections->get()));
 
         /* No longer support missing NAR hash */
         assert(GET_PROTOCOL_MINOR(conn->remoteVersion) >= 4);
@@ -197,7 +197,7 @@ struct LegacySSHStore final : public Store
     try {
         debug("adding path '%s' to remote host '%s'", printStorePath(info.path), host);
 
-        auto conn(connections->get());
+        auto conn(TRY_AWAIT(connections->get()));
 
         if (GET_PROTOCOL_MINOR(conn->remoteVersion) >= 5) {
 
@@ -253,7 +253,7 @@ struct LegacySSHStore final : public Store
 
     kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override
     try {
-        auto conn(connections->get());
+        auto conn(TRY_AWAIT(connections->get()));
 
         conn->to << ServeProto::Command::DumpStorePath << printStorePath(path);
         conn->to.flush();
@@ -319,7 +319,7 @@ public:
         const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode
     ) override
     try {
-        auto conn(connections->get());
+        auto conn(TRY_AWAIT(connections->get()));
 
         conn->to
             << ServeProto::Command::BuildDerivation
@@ -330,9 +330,9 @@ public:
 
         conn->to.flush();
 
-        return {ServeProto::Serialise<BuildResult>::read(*this, *conn)};
+        co_return ServeProto::Serialise<BuildResult>::read(*this, *conn);
     } catch (...) {
-        return {result::current_exception()};
+        co_return result::current_exception();
     }
 
     kj ::Promise<Result<void>> buildPaths(
@@ -344,7 +344,7 @@ public:
         if (evalStore && evalStore.get() != this)
             throw Error("building on an SSH store is incompatible with '--eval-store'");
 
-        auto conn(connections->get());
+        auto conn(TRY_AWAIT(connections->get()));
 
         conn->to << ServeProto::Command::BuildPaths;
         Strings ss;
@@ -409,7 +409,7 @@ public:
             co_return result::success();
         }
 
-        auto conn(connections->get());
+        auto conn(TRY_AWAIT(connections->get()));
 
         conn->to
             << ServeProto::Command::QueryClosure
@@ -427,7 +427,7 @@ public:
     kj::Promise<Result<StorePathSet>> queryValidPaths(const StorePathSet & paths,
         SubstituteFlag maybeSubstitute = NoSubstitute) override
     try {
-        auto conn(connections->get());
+        auto conn(TRY_AWAIT(connections->get()));
 
         conn->to
             << ServeProto::Command::QueryValidPaths
@@ -443,7 +443,7 @@ public:
 
     kj::Promise<Result<void>> connect() override
     try {
-        auto conn(connections->get());
+        auto conn(TRY_AWAIT(connections->get()));
         co_return result::success();
     } catch (...) {
         co_return result::current_exception();
@@ -451,7 +451,7 @@ public:
 
     kj::Promise<Result<unsigned int>> getProtocol() override
     try {
-        auto conn(connections->get());
+        auto conn(TRY_AWAIT(connections->get()));
         co_return conn->remoteVersion;
     } catch (...) {
         co_return result::current_exception();

@@ -190,14 +190,16 @@ void RemoteStore::ConnectionHandle::processStderr(Sink * sink, Source * source, 
 }
 
 
-RemoteStore::ConnectionHandle RemoteStore::getConnection()
-{
-    return ConnectionHandle(connections->get());
+kj::Promise<Result<RemoteStore::ConnectionHandle>> RemoteStore::getConnection()
+try {
+    co_return ConnectionHandle(TRY_AWAIT(connections->get()));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<void>> RemoteStore::setOptions()
 try {
-    setOptions(*(getConnection().handle));
+    setOptions(*(TRY_AWAIT(getConnection()).handle));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -205,7 +207,7 @@ try {
 
 kj::Promise<Result<bool>> RemoteStore::isValidPathUncached(const StorePath & path)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::IsValidPath << printStorePath(path);
     conn.processStderr();
     co_return readInt(conn->from);
@@ -217,7 +219,7 @@ try {
 kj ::Promise<Result<StorePathSet>>
 RemoteStore::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryValidPaths;
     conn->to << WorkerProto::write(*this, *conn, paths);
     if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 27) {
@@ -232,7 +234,7 @@ try {
 
 kj::Promise<Result<StorePathSet>> RemoteStore::queryAllValidPaths()
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryAllValidPaths;
     conn.processStderr();
     co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
@@ -243,21 +245,21 @@ try {
 
 kj::Promise<Result<StorePathSet>> RemoteStore::querySubstitutablePaths(const StorePathSet & paths)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QuerySubstitutablePaths;
     conn->to << WorkerProto::write(*this, *conn, paths);
     conn.processStderr();
-    return {WorkerProto::Serialise<StorePathSet>::read(*this, *conn)};
+    co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 
 kj::Promise<Result<void>> RemoteStore::querySubstitutablePathInfos(const StorePathCAMap & pathsMap, SubstitutablePathInfos & infos)
 try {
-    if (pathsMap.empty()) return {result::success()};
+    if (pathsMap.empty()) co_return result::success();
 
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
 
 
     conn->to << WorkerProto::Op::QuerySubstitutablePathInfos;
@@ -280,16 +282,16 @@ try {
         info.narSize = readLongLong(conn->from);
     }
 
-    return {result::success()};
+    co_return result::success();
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 
 kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
 RemoteStore::queryPathInfoUncached(const StorePath & path)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryPathInfo << printStorePath(path);
     try {
         conn.processStderr();
@@ -314,7 +316,7 @@ try {
 kj::Promise<Result<void>> RemoteStore::queryReferrers(const StorePath & path,
     StorePathSet & referrers)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryReferrers << printStorePath(path);
     conn.processStderr();
     for (auto & i : WorkerProto::Serialise<StorePathSet>::read(*this, *conn))
@@ -327,7 +329,7 @@ try {
 
 kj::Promise<Result<StorePathSet>> RemoteStore::queryValidDerivers(const StorePath & path)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryValidDerivers << printStorePath(path);
     conn.processStderr();
     co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
@@ -342,7 +344,7 @@ try {
         co_return TRY_AWAIT(Store::queryDerivationOutputs(path));
     }
     REMOVE_AFTER_DROPPING_PROTO_MINOR(21);
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryDerivationOutputs << printStorePath(path);
     conn.processStderr();
     co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
@@ -356,7 +358,7 @@ RemoteStore::queryPartialDerivationOutputMap(const StorePath & path, Store * eva
 try {
     if (GET_PROTOCOL_MINOR(TRY_AWAIT(getProtocol())) >= 22) {
         if (!evalStore_) {
-            auto conn(getConnection());
+            auto conn(TRY_AWAIT(getConnection()));
             conn->to << WorkerProto::Op::QueryDerivationOutputMap << printStorePath(path);
             conn.processStderr();
             co_return WorkerProto::Serialise<std::map<std::string, std::optional<StorePath>>>::read(
@@ -395,7 +397,7 @@ try {
 kj::Promise<Result<std::optional<StorePath>>>
 RemoteStore::queryPathFromHashPart(const std::string & hashPart)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryPathFromHashPart << hashPart;
     conn.processStderr();
     Path path = readString(conn->from);
@@ -414,7 +416,7 @@ kj::Promise<Result<ref<const ValidPathInfo>>> RemoteStore::addCAToStore(
     const StorePathSet & references,
     RepairFlag repair)
 try {
-    std::optional<ConnectionHandle> conn_(getConnection());
+    std::optional<ConnectionHandle> conn_(TRY_AWAIT(getConnection()));
     auto & conn = *conn_;
 
     if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 25) {
@@ -529,7 +531,7 @@ kj::Promise<Result<void>> RemoteStore::addToStore(
     CheckSigsFlag checkSigs
 )
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
 
     conn->to << WorkerProto::Op::AddToStoreNar
              << printStorePath(info.path)
@@ -569,10 +571,10 @@ kj::Promise<Result<void>> RemoteStore::addMultipleToStore(
     RepairFlag repair,
     CheckSigsFlag checkSigs)
 try {
-    if (GET_PROTOCOL_MINOR(getConnection()->daemonVersion) >= 32) {
+    if (GET_PROTOCOL_MINOR(TRY_AWAIT(getConnection())->daemonVersion) >= 32) {
         auto remoteVersion = TRY_AWAIT(getProtocol());
 
-        auto conn(getConnection());
+        auto conn(TRY_AWAIT(getConnection()));
         conn->to
             << WorkerProto::Op::AddMultipleToStore
             << repair
@@ -618,7 +620,7 @@ try {
 
 kj::Promise<Result<void>> RemoteStore::registerDrvOutput(const Realisation & info)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::RegisterDrvOutput;
     if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 31) {
         REMOVE_AFTER_DROPPING_PROTO_MINOR(30);
@@ -636,7 +638,7 @@ try {
 kj::Promise<Result<std::shared_ptr<const Realisation>>>
 RemoteStore::queryRealisationUncached(const DrvOutput & id)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
 
     if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 27) {
         warn("the daemon is too old to support content-addressed derivations, please upgrade it to 2.4");
@@ -697,7 +699,7 @@ kj ::Promise<Result<void>> RemoteStore::buildPaths(
 try {
     TRY_AWAIT(copyDrvsFromEvalStore(drvPaths, evalStore));
 
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::BuildPaths;
     conn->to << WorkerProto::write(*this, *conn, drvPaths);
     conn->to << buildMode;
@@ -715,7 +717,7 @@ kj::Promise<Result<std::vector<KeyedBuildResult>>> RemoteStore::buildPathsWithRe
 try {
     TRY_AWAIT(copyDrvsFromEvalStore(paths, evalStore));
 
-    std::optional<ConnectionHandle> conn_(getConnection());
+    std::optional<ConnectionHandle> conn_(TRY_AWAIT(getConnection()));
     auto & conn = *conn_;
 
     if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 34) {
@@ -809,44 +811,44 @@ kj ::Promise<Result<BuildResult>> RemoteStore::buildDerivation(
     const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode
 )
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::BuildDerivation << printStorePath(drvPath);
     writeDerivation(conn->to, *this, drv);
     conn->to << buildMode;
     conn.processStderr();
-    return {WorkerProto::Serialise<BuildResult>::read(*this, *conn)};
+    co_return WorkerProto::Serialise<BuildResult>::read(*this, *conn);
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 
 kj::Promise<Result<void>> RemoteStore::ensurePath(const StorePath & path)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::EnsurePath << printStorePath(path);
     conn.processStderr();
     readInt(conn->from);
-    return {result::success()};
+    co_return result::success();
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 
 kj::Promise<Result<void>> RemoteStore::addTempRoot(const StorePath & path)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::AddTempRoot << printStorePath(path);
     conn.processStderr();
     readInt(conn->from);
-    return {result::success()};
+    co_return result::success();
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 
 kj::Promise<Result<Roots>> RemoteStore::findRoots(bool censor)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::FindRoots;
     conn.processStderr();
     size_t count = readNum<size_t>(conn->from);
@@ -865,7 +867,7 @@ try {
 kj::Promise<Result<void>>
 RemoteStore::collectGarbage(const GCOptions & options, GCResults & results)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
 
     conn->to
         << WorkerProto::Op::CollectGarbage << options.action;
@@ -893,7 +895,7 @@ try {
 
 kj::Promise<Result<void>> RemoteStore::optimiseStore()
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::OptimiseStore;
     conn.processStderr();
     readInt(conn->from);
@@ -905,19 +907,19 @@ try {
 
 kj::Promise<Result<bool>> RemoteStore::verifyStore(bool checkContents, RepairFlag repair)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::VerifyStore << checkContents << repair;
     conn.processStderr();
-    return {readInt(conn->from)};
+    co_return readInt(conn->from);
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 
 kj::Promise<Result<void>>
 RemoteStore::addSignatures(const StorePath & storePath, const StringSet & sigs)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::AddSignatures << printStorePath(storePath) << sigs;
     conn.processStderr();
     readInt(conn->from);
@@ -931,7 +933,7 @@ kj::Promise<Result<void>> RemoteStore::queryMissing(const std::vector<DerivedPat
     StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
     uint64_t & downloadSize, uint64_t & narSize)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryMissing;
     conn->to << WorkerProto::write(*this, *conn, targets);
     conn.processStderr();
@@ -947,7 +949,7 @@ try {
 
 kj::Promise<Result<void>> RemoteStore::addBuildLog(const StorePath & drvPath, std::string_view log)
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::AddBuildLog << drvPath.to_string();
     StringSource source(log);
     conn.withFramedSink([&](Sink & sink) {
@@ -962,7 +964,7 @@ try {
 
 kj::Promise<Result<std::optional<std::string>>> RemoteStore::getVersion()
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     co_return conn->daemonNixVersion;
 } catch (...) {
     co_return result::current_exception();
@@ -971,7 +973,7 @@ try {
 
 kj::Promise<Result<void>> RemoteStore::connect()
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -980,7 +982,7 @@ try {
 
 kj::Promise<Result<unsigned int>> RemoteStore::getProtocol()
 try {
-    auto conn(connections->get());
+    auto conn(TRY_AWAIT(connections->get()));
     co_return conn->daemonVersion;
 } catch (...) {
     co_return result::current_exception();
@@ -988,11 +990,11 @@ try {
 
 kj::Promise<Result<std::optional<TrustedFlag>>> RemoteStore::isTrustedClient()
 try {
-    auto conn(getConnection());
+    auto conn(TRY_AWAIT(getConnection()));
     co_return conn->remoteTrustsUs;
 } catch (...) {
-    co_return result::current_exception();}
-
+    co_return result::current_exception();
+}
 
 
 RemoteStore::Connection::~Connection()
@@ -1006,14 +1008,15 @@ RemoteStore::Connection::~Connection()
 
 kj::Promise<Result<box_ptr<Source>>> RemoteStore::narFromPath(const StorePath & path)
 try {
-    auto conn(connections->get());
+    auto conn(TRY_AWAIT(connections->get()));
     conn->to << WorkerProto::Op::NarFromPath << printStorePath(path);
     conn->processStderr();
     co_return make_box_ptr<GeneratorSource>([](auto conn) -> WireFormatGenerator {
         co_yield copyNAR(conn->from);
     }(std::move(conn)));
 } catch (...) {
-    co_return result::current_exception();}
+    co_return result::current_exception();
+}
 
 
 ref<FSAccessor> RemoteStore::getFSAccessor()

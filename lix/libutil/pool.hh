@@ -2,13 +2,19 @@
 ///@file
 
 #include <functional>
+#include <kj/async.h>
 #include <limits>
 #include <list>
 #include <memory>
 #include <cassert>
+#include <optional>
+#include <vector>
 
+#include "lix/libutil/async.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libutil/ref.hh"
+#include "lix/libutil/types.hh"
 
 namespace nix {
 
@@ -55,11 +61,18 @@ private:
         size_t inUse = 0;
         size_t max;
         std::vector<ref<R>> idle;
+        std::list<kj::Own<kj::CrossThreadPromiseFulfiller<void>>> waiters;
+
+        void notify()
+        {
+            for (auto & waiter : waiters) {
+                waiter->fulfill();
+            }
+            waiters.clear();
+        }
     };
 
     Sync<State> state;
-
-    std::condition_variable wakeup;
 
 public:
 
@@ -122,8 +135,8 @@ public:
                     state_->idle.push_back(ref<R>(r));
                 assert(state_->inUse);
                 state_->inUse--;
+                state_->notify();
             }
-            pool.wakeup.notify_one();
         }
 
         R * operator -> () { return &*r; }
@@ -132,39 +145,61 @@ public:
         void markBad() { bad = true; }
     };
 
-    Handle get()
+private:
+    void getFailed()
     {
-        {
-            auto state_(state.lock());
+        auto state_(state.lock());
+        state_->inUse--;
+        state_->notify();
+    }
 
-            /* If we're over the maximum number of instance, we need
-               to wait until a slot becomes available. */
-            while (state_->idle.empty() && state_->inUse >= state_->max)
-                state_.wait(wakeup);
+    // lock lifetimes must always be short, and *NEVER* cross a yield point.
+    // we ensure this by using explicit continuations instead of coroutines.
+    kj::Promise<Result<std::optional<Handle>>> tryGet()
+    try {
+        auto state_(state.lock());
 
-            while (!state_->idle.empty()) {
-                auto p = state_->idle.back();
-                state_->idle.pop_back();
-                if (validator(p)) {
-                    state_->inUse++;
-                    return Handle(*this, p);
-                }
+        /* If we're over the maximum number of instance, we need
+           to wait until a slot becomes available. */
+        if (state_->idle.empty() && state_->inUse >= state_->max) {
+            auto pfp = kj::newPromiseAndCrossThreadFulfiller<void>();
+            state_->waiters.push_back(std::move(pfp.fulfiller));
+            return pfp.promise.then([this] { return tryGet(); });
+        }
+
+        while (!state_->idle.empty()) {
+            auto p = state_->idle.back();
+            state_->idle.pop_back();
+            if (validator(p)) {
+                state_->inUse++;
+                return {Handle(*this, p)};
             }
+        }
 
-            state_->inUse++;
+        state_->inUse++;
+        return {std::nullopt};
+    } catch (...) {
+        return {result::current_exception()};
+    }
+
+public:
+    kj::Promise<Result<Handle>> get()
+    try {
+        if (auto existing = LIX_TRY_AWAIT(tryGet())) {
+            co_return std::move(*existing);
         }
 
         /* We need to create a new instance. Because that might take a
            while, we don't hold the lock in the meantime. */
         try {
             Handle h(*this, factory());
-            return h;
+            co_return h;
         } catch (...) {
-            auto state_(state.lock());
-            state_->inUse--;
-            wakeup.notify_one();
+            getFailed();
             throw;
         }
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     size_t count()
