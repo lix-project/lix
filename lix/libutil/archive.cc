@@ -626,7 +626,7 @@ struct AsyncCopier : AsyncInputStream
             throw badArchive("truncated NAR encountered");
         } else if (!current.pendingFileContents) {
             auto end = this->buffer.size();
-            this->buffer.resize(end + size);
+            this->buffer.resize(end + got);
             memcpy(this->buffer.data() + end, buffer, got);
         }
         co_return got;

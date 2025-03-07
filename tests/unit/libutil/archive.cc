@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <gtest/gtest.h>
 #include <kj/async.h>
+#include <limits>
 
 using namespace std::literals;
 
@@ -181,9 +182,23 @@ void assert_eq(Entry & a, Entry & b)
 }
 }
 
-class NarTest : public testing::TestWithParam<Fragment>
+class NarTest : public testing::TestWithParam<std::tuple<size_t, Fragment>>
 {
 public:
+    size_t blockSize() { return std::get<size_t>(GetParam()); }
+    std::string_view raw() { return std::get<Fragment>(GetParam()).first; }
+    std::function<Entries()> entriesFn() { return std::get<Fragment>(GetParam()).second; }
+
+    Generator<Bytes> rawStream()
+    {
+        auto left = raw();
+        while (left.size() > 0) {
+            auto nextLen = std::min(left.size(), blockSize());
+            co_yield std::span{left.substr(0, nextLen)};
+            left.remove_prefix(nextLen);
+        }
+    }
+
     static Entries fromIndex(std::string_view raw, nar_index::Entry e)
     {
         auto handlers = overloaded{
@@ -213,10 +228,9 @@ public:
 
 TEST_P(NarTest, parse)
 {
-    auto & [raw, entriesF] = GetParam();
-    StringSource source(raw);
+    GeneratorSource source(rawStream());
 
-    auto entries = entriesF();
+    auto entries = entriesFn()();
     auto parsed = parse(source);
     while (true) {
         auto e = entries.next();
@@ -303,8 +317,7 @@ TEST_P(NarTest, parseAsync)
         }
     };
 
-    auto & [raw, entriesF] = GetParam();
-    AsyncStringInputStream source(raw);
+    AsyncGeneratorInputStream source(rawStream());
 
     std::map<std::string, Entry> contents;
     ReconstructVisitor rv{contents};
@@ -312,7 +325,7 @@ TEST_P(NarTest, parseAsync)
     kj::EventLoop el;
     kj::WaitScope ws{el};
 
-    auto entries = entriesF();
+    auto entries = entriesFn()();
     parseDump(rv, source).wait(ws).value();
     auto parsed = Directory::toNar(contents.at(""));
     while (true) {
@@ -328,31 +341,28 @@ TEST_P(NarTest, parseAsync)
 
 TEST_P(NarTest, copy)
 {
-    auto & [raw, _] = GetParam();
-    StringSource source(raw);
+    GeneratorSource source(rawStream());
 
     auto copied = GeneratorSource(copyNAR(source)).drain();
-    ASSERT_EQ(raw, copied);
+    ASSERT_EQ(raw(), copied);
 }
 
 TEST_P(NarTest, copyAsync)
 {
-    auto & [raw, _] = GetParam();
-    AsyncStringInputStream source(raw);
+    AsyncGeneratorInputStream source(rawStream());
 
     kj::EventLoop el;
     kj::WaitScope ws{el};
     auto copied = copyNAR(source)->drain().wait(ws).value();
-    ASSERT_EQ(raw, copied);
+    ASSERT_EQ(raw(), copied);
 }
 
 TEST_P(NarTest, index)
 {
-    auto & [raw, entriesF] = GetParam();
-    StringSource source(raw);
+    GeneratorSource source(rawStream());
 
-    auto entries = entriesF();
-    auto indexed = fromIndex(raw, nar_index::create(source));
+    auto entries = entriesFn()();
+    auto indexed = fromIndex(raw(), nar_index::create(source));
     while (true) {
         auto e = entries.next();
         auto p = indexed.next();
@@ -366,13 +376,12 @@ TEST_P(NarTest, index)
 
 TEST_P(NarTest, indexAsync)
 {
-    auto & [raw, entriesF] = GetParam();
-    AsyncStringInputStream source(raw);
+    AsyncGeneratorInputStream source(rawStream());
 
     kj::EventLoop el;
     kj::WaitScope ws{el};
-    auto entries = entriesF();
-    auto indexed = fromIndex(raw, nar_index::create(source).wait(ws).value());
+    auto entries = entriesFn()();
+    auto indexed = fromIndex(raw(), nar_index::create(source).wait(ws).value());
     while (true) {
         auto e = entries.next();
         auto p = indexed.next();
@@ -387,45 +396,54 @@ TEST_P(NarTest, indexAsync)
 INSTANTIATE_TEST_SUITE_P(
     ,
     NarTest,
-    testing::Values(
-        concat({header, make_file(false, "")}),
-        concat({header, make_file(false, "short")}),
-        concat({header, make_file(false, "block000")}),
-        concat({header, make_file(false, "block0001")}),
-        concat({header, make_file(true, "")}),
-        concat({header, make_file(true, "short")}),
-        concat({header, make_file(true, "block000")}),
-        concat({header, make_file(true, "block0001")}),
-        concat({header, make_symlink("")}),
-        concat({header, make_symlink("short")}),
-        concat({header, make_symlink("block000")}),
-        concat({header, make_symlink("block0001")}),
+    testing::Combine(
+        // test all archives with a range of block sizes, from representing
+        // io that is as slow as possible, over sizes that require multiple
+        // retries to fill a metadata block, then only a single retry, then
+        // block sizes that fill multiple metadata blocks at once, and last
+        // the block sizes that cover the entire test range. two cases will
+        // be tried for this; our default block size for io (64kiB) and one
+        // that is much larger (to check for strange read buffer behavior).
+        testing::Values(1, 3, 7, 17, 65536, std::numeric_limits<size_t>::max()),
+        testing::Values(
+            concat({header, make_file(false, "")}),
+            concat({header, make_file(false, "short")}),
+            concat({header, make_file(false, "block000")}),
+            concat({header, make_file(false, "block0001")}),
+            concat({header, make_file(true, "")}),
+            concat({header, make_file(true, "short")}),
+            concat({header, make_file(true, "block000")}),
+            concat({header, make_file(true, "block0001")}),
+            concat({header, make_symlink("")}),
+            concat({header, make_symlink("short")}),
+            concat({header, make_symlink("block000")}),
+            concat({header, make_symlink("block0001")}),
 
-        concat({header, make_directory({{"a", make_file(false, "")}})}),
-        concat({header, make_directory({{"a", make_file(false, "short")}})}),
-        concat({header, make_directory({{"a", make_file(false, "block000")}})}),
-        concat({header, make_directory({{"a", make_file(false, "block0001")}})}),
-        concat({header, make_directory({{"a", make_file(true, "")}})}),
-        concat({header, make_directory({{"a", make_file(true, "short")}})}),
-        concat({header, make_directory({{"a", make_file(true, "block000")}})}),
-        concat({header, make_directory({{"a", make_file(true, "block0001")}})}),
-        concat({header, make_directory({{"a", make_symlink("")}})}),
-        concat({header, make_directory({{"a", make_symlink("short")}})}),
-        concat({header, make_directory({{"a", make_symlink("block000")}})}),
-        concat({header, make_directory({{"a", make_symlink("block0001")}})}),
+            concat({header, make_directory({{"a", make_file(false, "")}})}),
+            concat({header, make_directory({{"a", make_file(false, "short")}})}),
+            concat({header, make_directory({{"a", make_file(false, "block000")}})}),
+            concat({header, make_directory({{"a", make_file(false, "block0001")}})}),
+            concat({header, make_directory({{"a", make_file(true, "")}})}),
+            concat({header, make_directory({{"a", make_file(true, "short")}})}),
+            concat({header, make_directory({{"a", make_file(true, "block000")}})}),
+            concat({header, make_directory({{"a", make_file(true, "block0001")}})}),
+            concat({header, make_directory({{"a", make_symlink("")}})}),
+            concat({header, make_directory({{"a", make_symlink("short")}})}),
+            concat({header, make_directory({{"a", make_symlink("block000")}})}),
+            concat({header, make_directory({{"a", make_symlink("block0001")}})}),
 
-        concat({header, make_directory({{"d", make_directory({{"a", make_file(false, "")}})}})}),
-        concat({header, make_directory({{"d", make_directory({{"a", make_file(false, "short")}})}})}),
-        concat({header, make_directory({{"d", make_directory({{"a", make_file(false, "block000")}})}})}),
-        concat({header, make_directory({{"d", make_directory({{"a", make_file(false, "block0001")}})}})}),
-        concat({header, make_directory({{"d", make_directory({{"a", make_file(true, "")}})}})}),
-        concat({header, make_directory({{"d", make_directory({{"a", make_file(true, "short")}})}})}),
-        concat({header, make_directory({{"d", make_directory({{"a", make_file(true, "block000")}})}})}),
-        concat({header, make_directory({{"d", make_directory({{"a", make_file(true, "block0001")}})}})}),
-        concat({header, make_directory({{"d", make_directory({{"a", make_symlink("")}})}})}),
-        concat({header, make_directory({{"d", make_directory({{"a", make_symlink("short")}})}})}),
-        concat({header, make_directory({{"d", make_directory({{"a", make_symlink("block000")}})}})}),
-        concat({header, make_directory({{"d", make_directory({{"a", make_symlink("block0001")}})}})})
-    )
+            concat({header, make_directory({{"d", make_directory({{"a", make_file(false, "")}})}})}),
+            concat({header, make_directory({{"d", make_directory({{"a", make_file(false, "short")}})}})}),
+            concat({header, make_directory({{"d", make_directory({{"a", make_file(false, "block000")}})}})}),
+            concat({header, make_directory({{"d", make_directory({{"a", make_file(false, "block0001")}})}})}),
+            concat({header, make_directory({{"d", make_directory({{"a", make_file(true, "")}})}})}),
+            concat({header, make_directory({{"d", make_directory({{"a", make_file(true, "short")}})}})}),
+            concat({header, make_directory({{"d", make_directory({{"a", make_file(true, "block000")}})}})}),
+            concat({header, make_directory({{"d", make_directory({{"a", make_file(true, "block0001")}})}})}),
+            concat({header, make_directory({{"d", make_directory({{"a", make_symlink("")}})}})}),
+            concat({header, make_directory({{"d", make_directory({{"a", make_symlink("short")}})}})}),
+            concat({header, make_directory({{"d", make_directory({{"a", make_symlink("block000")}})}})}),
+            concat({header, make_directory({{"d", make_directory({{"a", make_symlink("block0001")}})}})})
+        ))
 );
 }
