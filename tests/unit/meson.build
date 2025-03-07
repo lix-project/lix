@@ -97,7 +97,7 @@ test(
   },
   suite : 'check',
   protocol : 'gtest',
-  verbose : true,
+  verbose : false,
 )
 
 libstore_test_support_sources = files(
@@ -167,7 +167,7 @@ test(
   },
   suite : 'check',
   protocol : 'gtest',
-  verbose : true,
+  verbose : false,
 )
 
 libexpr_test_support_sources = files(
@@ -235,7 +235,7 @@ test(
   },
   suite : 'check',
   protocol : 'gtest',
-  verbose : true,
+  verbose : false,
 )
 
 libcmd_tester = executable(
