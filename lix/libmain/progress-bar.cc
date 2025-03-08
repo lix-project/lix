@@ -91,7 +91,8 @@ void ProgressBar::resume()
         while (state->paused == 0) {
             if (!state->haveUpdate)
                 state.wait_for(updateCV, nextWakeup);
-            nextWakeup = draw(*state, {});
+            eraseProgressDisplay(*state);
+            nextWakeup = restoreProgressDisplay(*state);
             state.wait_for(quitCV, std::chrono::milliseconds(50));
         }
         eraseProgressDisplay(*state);
@@ -122,13 +123,9 @@ void ProgressBar::logEI(const ErrorInfo & ei)
 
 void ProgressBar::log(State & state, Verbosity lvl, std::string_view s)
 {
-    if (state.paused == 0) {
-        draw(state, s);
-    } else {
-        auto s2 = s + ANSI_NORMAL "\n";
-        if (!isTTY) s2 = filterANSIEscapes(s2, true);
-        writeLogsToStderr(s2);
-    }
+    if (state.paused == 0) eraseProgressDisplay(state);
+    writeLogsToStderr(filterANSIEscapes(s + ANSI_NORMAL "\n", !isTTY));
+    restoreProgressDisplay(state);
 }
 
 void ProgressBar::startActivity(
@@ -331,12 +328,12 @@ void ProgressBar::eraseProgressDisplay(State & state)
     }
 }
 
-std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<std::string_view> & s)
+std::chrono::milliseconds ProgressBar::restoreProgressDisplay(State & state)
 {
     auto nextWakeup = A_LONG_TIME;
 
     state.haveUpdate = false;
-    if (state.paused > 0) return nextWakeup;
+    if (state.paused > 0) return nextWakeup; // when paused, the progress display should not actually be shown
 
     auto windowSize = getWindowSize();
     auto width = windowSize.second;
@@ -344,12 +341,7 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
         width = std::numeric_limits<decltype(width)>::max();
     }
 
-    eraseProgressDisplay(state);
-
     state.lastLines = 0;
-
-    if (s != std::nullopt)
-        writeLogsToStderr(filterANSIEscapes(s.value(), !isTTY) + ANSI_NORMAL "\n");
 
     std::string line;
     std::string status = getStatus(state);
@@ -363,8 +355,8 @@ std::chrono::milliseconds ProgressBar::draw(State & state, const std::optional<s
         state.lastLines++;
     }
 
-     auto height = windowSize.first > 0 ? windowSize.first : 25;
-     auto moreActivities = 0;
+    auto height = windowSize.first > 0 ? windowSize.first : 25;
+    auto moreActivities = 0;
     auto now = std::chrono::steady_clock::now();
 
     std::string activity_line;
@@ -546,15 +538,9 @@ std::string ProgressBar::getStatus(State & state)
 void ProgressBar::writeToStdout(std::string_view s)
 {
     auto state(state_.lock());
-    if (state->paused == 0) {
-        if (isTTY && !printMultiline) {
-            eraseProgressDisplay(*state);
-        }
-        Logger::writeToStdout(s);
-        draw(*state, {});
-    } else {
-        Logger::writeToStdout(s);
-    }
+    if (state->paused == 0) eraseProgressDisplay(*state);
+    Logger::writeToStdout(s);
+    restoreProgressDisplay(*state);
 }
 
 std::optional<char> ProgressBar::ask(std::string_view msg)
@@ -565,7 +551,7 @@ std::optional<char> ProgressBar::ask(std::string_view msg)
     std::cerr << msg;
     auto s = trim(readLine(STDIN_FILENO));
     if (s.size() != 1) return {};
-    draw(*state, {});
+    restoreProgressDisplay(*state);
     return s[0];
 }
 

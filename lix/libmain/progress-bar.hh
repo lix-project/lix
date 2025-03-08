@@ -97,8 +97,6 @@ struct ProgressBar : public Logger
 
     void update(State & state);
 
-    std::chrono::milliseconds draw(State & state, const std::optional<std::string_view> & s);
-
     std::string getStatus(State & state);
 
     void writeToStdout(std::string_view s) override;
@@ -111,6 +109,8 @@ struct ProgressBar : public Logger
 
 private:
     void eraseProgressDisplay(State & state);
+
+    std::chrono::milliseconds restoreProgressDisplay(State & state);
 };
 
 Logger * makeProgressBar();
