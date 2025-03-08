@@ -1,4 +1,6 @@
 #include "lix/libstore/filetransfer.hh"
+#include "lix/libutil/box_ptr.hh"
+#include "lix/libutil/compression.hh"
 #include "lix/libutil/namespaces.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
@@ -35,6 +37,14 @@ FileTransferSettings fileTransferSettings;
 
 static GlobalConfig::Register rFileTransferSettings(&fileTransferSettings);
 
+namespace {
+struct FileTransferResultWithEncoding : FileTransferResult
+{
+    // empty string means identity (cf makeDecompressionSource)
+    std::string encoding;
+};
+}
+
 struct curlFileTransfer : public FileTransfer
 {
     std::unique_ptr<CURLM, decltype([](auto * m) { curl_multi_cleanup(m); })> curlm;
@@ -51,13 +61,13 @@ struct curlFileTransfer : public FileTransfer
         };
 
         std::string uri;
-        FileTransferResult result;
+        FileTransferResultWithEncoding result;
         Activity act;
         std::unique_ptr<FILE, decltype([](FILE * f) { fclose(f); })> uploadData;
         Sync<DownloadState> downloadState;
         std::condition_variable downloadEvent;
         bool headersDone = false, metadataReturned = false;
-        std::promise<FileTransferResult> metadataPromise;
+        std::promise<FileTransferResultWithEncoding> metadataPromise;
         std::string statusMsg;
 
         uint64_t bodySize = 0;
@@ -84,6 +94,17 @@ struct curlFileTransfer : public FileTransfer
             return uploadData ? "upload" : "download";
         }
 
+        void appendCurlHeader(std::string_view name, std::string_view value)
+        {
+            auto header = fmt("%s: %s", name, value);
+            if (auto next = curl_slist_append(requestHeaders.get(), header.c_str())) {
+                (void) requestHeaders.release(); // next now owns this pointer
+                requestHeaders.reset(next);
+            } else {
+                throw FileTransferError(Misc, {}, "could not allocate curl request headers");
+            }
+        }
+
         TransferItem(const std::string & uri,
             const Headers & headers,
             ActivityId parentAct,
@@ -100,17 +121,8 @@ struct curlFileTransfer : public FileTransfer
             if (req == nullptr) {
                 throw FileTransferError(Misc, {}, "could not allocate curl handle");
             }
-            for (auto it = headers.begin(); it != headers.end(); ++it){
-                if (auto next = curl_slist_append(
-                        requestHeaders.get(), fmt("%s: %s", it->first, it->second).c_str()
-                    );
-                    next != nullptr)
-                {
-                    (void) requestHeaders.release(); // next now owns this pointer
-                    requestHeaders.reset(next);
-                } else {
-                    throw FileTransferError(Misc, {}, "could not allocate curl request headers");
-                }
+            for (auto it = headers.begin(); it != headers.end(); ++it) {
+                appendCurlHeader(it->first, it->second);
             }
 
             if (verbosity >= lvlVomit) {
@@ -120,7 +132,14 @@ struct curlFileTransfer : public FileTransfer
 
             curl_easy_setopt(req.get(), CURLOPT_URL, uri.c_str());
             curl_easy_setopt(req.get(), CURLOPT_FOLLOWLOCATION, 1L);
-            curl_easy_setopt(req.get(), CURLOPT_ACCEPT_ENCODING, ""); // all of them!
+            {
+                // curl builtin decompression disabled due to bugs, instead we add
+                // an accept-encoding header of our own and decompress manually :(
+                // we don't support deflate because libarchive also doesn't either
+                // cf https://git.lix.systems/lix-project/lix/issues/662 for infos
+                // curl_easy_setopt(req.get(), CURLOPT_ACCEPT_ENCODING, ""); // all of them!
+                appendCurlHeader("Accept-Encoding", "gzip, br, zstd");
+            }
             curl_easy_setopt(req.get(), CURLOPT_MAXREDIRS, 10);
             curl_easy_setopt(req.get(), CURLOPT_NOSIGNAL, 1);
             curl_easy_setopt(req.get(), CURLOPT_USERAGENT,
@@ -270,6 +289,7 @@ struct curlFileTransfer : public FileTransfer
             static std::regex statusLine("HTTP/[^ ]+ +[0-9]+(.*)", std::regex::extended | std::regex::icase);
             if (std::smatch match; std::regex_match(line, match, statusLine)) {
                 statusMsg = trim(match.str(1));
+                result.encoding = "";
             } else {
                 auto i = line.find(':');
                 if (i != std::string::npos) {
@@ -289,6 +309,10 @@ struct curlFileTransfer : public FileTransfer
                             result.immutableUrl = match.str(1);
                         } else
                             debug("got invalid link header '%s'", value);
+                    }
+
+                    else if (name == "content-encoding") {
+                        result.encoding = trim(line.substr(i + 1));
                     }
                 }
             }
@@ -765,7 +789,7 @@ struct curlFileTransfer : public FileTransfer
 
         auto source = make_box_ptr<TransferSource>(*this, uri, headers, std::move(data), noBody);
         source->awaitData();
-        return {source->metadata, std::move(source)};
+        return {source->metadata, make_box_ptr<DecompressionWrapper>(std::move(source))};
     }
 
     struct TransferSource : Source
@@ -778,7 +802,7 @@ struct curlFileTransfer : public FileTransfer
         ActivityId parentAct = getCurActivity();
 
         std::shared_ptr<TransferItem> transfer;
-        FileTransferResult metadata;
+        FileTransferResultWithEncoding metadata;
         std::string chunk;
         std::string_view buffered;
 
@@ -840,7 +864,7 @@ struct curlFileTransfer : public FileTransfer
             }
         }
 
-        FileTransferResult startTransfer(const std::string & uri, curl_off_t offset = 0)
+        FileTransferResultWithEncoding startTransfer(const std::string & uri, curl_off_t offset = 0)
         {
             attempt += 1;
             auto uploadData = data ? std::optional(std::string_view(*data)) : std::nullopt;
@@ -887,6 +911,7 @@ struct curlFileTransfer : public FileTransfer
                 metadata.immutableUrl.value_or(""),
                 newMeta.immutableUrl.value_or("")
             );
+            throwChangedTarget("compression", metadata.encoding, newMeta.encoding);
         }
 
         bool awaitData()
@@ -935,6 +960,22 @@ struct curlFileTransfer : public FileTransfer
             }
 
             return total;
+        }
+    };
+
+    struct DecompressionWrapper : Source
+    {
+        box_ptr<TransferSource> wrapped;
+        std::unique_ptr<Source> decompressor;
+
+        explicit DecompressionWrapper(box_ptr<TransferSource> inner) : wrapped(std::move(inner)) {}
+
+        size_t read(char * data, size_t len) override
+        {
+            if (!decompressor) {
+                decompressor = makeDecompressionSource(wrapped->metadata.encoding, *wrapped);
+            }
+            return decompressor->read(data, len);
         }
     };
 
