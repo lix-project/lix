@@ -320,6 +320,9 @@ void ProgressBar::update(State & state)
 
 void ProgressBar::eraseProgressDisplay(State & state)
 {
+    if (state.paused == 0) {
+        writeLogsToStderr("\e[?2026h"); // begin synchronized update
+    }
     if (printMultiline && (state.lastLines >= 1)) {
         // FIXME: make sure this works on windows
         writeLogsToStderr(fmt("\e[G\e[%dF\e[J", state.lastLines));
@@ -413,6 +416,8 @@ std::chrono::milliseconds ProgressBar::restoreProgressDisplay(State & state)
             writeLogsToStderr(filterANSIEscapes(line, false, width) + ANSI_NORMAL);
         }
     }
+
+    writeLogsToStderr("\e[?2026l"); // end synchronized update
 
     return nextWakeup;
 }
@@ -548,8 +553,10 @@ std::optional<char> ProgressBar::ask(std::string_view msg)
     auto state(state_.lock());
     if (state->paused > 0 || !isatty(STDIN_FILENO)) return {};
     eraseProgressDisplay(*state);
+    writeLogsToStderr("\e[?2026l"); // end synchronized update
     std::cerr << msg;
     auto s = trim(readLine(STDIN_FILENO));
+    writeLogsToStderr("\e[?2026h"); // begin synchronized update
     if (s.size() != 1) return {};
     restoreProgressDisplay(*state);
     return s[0];
