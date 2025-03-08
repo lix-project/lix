@@ -677,13 +677,22 @@ static void opDelete(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     GCOptions options;
     options.action = GCOptions::gcDeleteSpecific;
+    bool deleteClosure = false;
 
     for (auto & i : opFlags)
         if (i == "--ignore-liveness") options.ignoreLiveness = true;
+        else if (i == "--skip-live") options.action = GCOptions::gcTryDeleteSpecific;
+        else if (i == "--delete-closure") deleteClosure = true;
         else throw UsageError("unknown flag '%1%'", i);
 
-    for (auto & i : opArgs)
-        options.pathsToDelete.insert(store->followLinksToStorePath(i));
+    for (auto & arg : opArgs) {
+        StorePath path = store->followLinksToStorePath(arg);
+        if (deleteClosure) {
+            aio.blockOn(store->computeFSClosure(path, options.pathsToDelete));
+        } else {
+            options.pathsToDelete.insert(path);
+        }
+    }
 
     auto & gcStore = require<GcStore>(*store);
 

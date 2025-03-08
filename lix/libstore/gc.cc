@@ -597,7 +597,8 @@ GCOperation::~GCOperation()
 
 kj::Promise<Result<void>> LocalStore::collectGarbage(const GCOptions & options, GCResults & results)
 try {
-    bool shouldDelete = options.action == GCOptions::gcDeleteDead || options.action == GCOptions::gcDeleteSpecific;
+    bool deleteSpecific = options.action == GCOptions::gcDeleteSpecific || options.action == GCOptions::gcTryDeleteSpecific;
+    bool shouldDelete = options.action == GCOptions::gcDeleteDead || deleteSpecific;
     bool gcKeepOutputs = settings.gcKeepOutputs;
     bool gcKeepDerivations = settings.gcKeepDerivations;
 
@@ -607,7 +608,7 @@ try {
        consequences if `keep-outputs' or `keep-derivations' are true
        (the garbage collector will recurse into deleting the outputs
        or derivers, respectively).  So disable them. */
-    if (options.action == GCOptions::gcDeleteSpecific && options.ignoreLiveness) {
+    if (deleteSpecific && options.ignoreLiveness) {
         gcKeepOutputs = false;
         gcKeepDerivations = false;
     }
@@ -812,17 +813,41 @@ try {
     };
 
     /* Either delete all garbage paths, or just the specified
-       paths (for gcDeleteSpecific). */
-    if (options.action == GCOptions::gcDeleteSpecific) {
-
+       paths (for gcDeleteSpecific and gcTryDeleteSpecific). */
+    if (deleteSpecific) {
+        PathSet kept;
         for (auto & i : options.pathsToDelete) {
             TRY_AWAIT(deleteReferrersClosure(i));
-            if (!dead.count(i))
-                throw Error(
-                    "Cannot delete path '%1%' since it is still alive. "
-                    "To find out why, use: "
-                    "nix-store --query --roots and nix-store --query --referrers",
-                    printStorePath(i));
+            if (!dead.count(i)) {
+                std::string path(i.to_string());
+                kept.insert(path);
+                results.kept.insert(path);
+            }
+        }
+        if (!kept.empty()) {
+            printTalkative("Paths not deleted because they are still referenced by GC roots:");
+            for (auto &path: kept) {
+                printTalkative(path);
+            }
+        }
+        if (options.action == GCOptions::gcDeleteSpecific && !kept.empty()) {
+            std::ostringstream pathSummary;
+            for (auto const [n, path]: enumerate(kept)) {
+                pathSummary << "\n  " << path;
+                const int summaryThreshold = 10;
+                if (n >= summaryThreshold) {
+                    pathSummary << "\nand " << kept.size() - summaryThreshold << " others.\n";
+                    break;
+                }
+            }
+            throw Error(
+                "Cannot delete some of the given paths because they are still alive. "
+                "Paths not deleted:"
+                "%1%"
+                "To find out why, use nix-store --query --roots and nix-store --query --referrers."
+                ,
+                pathSummary.str()
+            );
         }
 
     } else if (options.maxFreed > 0) {
@@ -874,7 +899,7 @@ try {
        safely deleted.  FIXME: race condition with optimisePath(): we
        might see a link count of 1 just before optimisePath() increases
        the link count. */
-    if (options.action == GCOptions::gcDeleteDead || options.action == GCOptions::gcDeleteSpecific) {
+    if (options.action == GCOptions::gcDeleteDead || deleteSpecific) {
         printInfo("deleting unused links...");
 
         AutoCloseDir dir(opendir(linksDir.c_str()));
