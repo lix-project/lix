@@ -21,6 +21,7 @@ libcmd_headers = files(
   'command.hh',
   'common-eval-args.hh',
   'editor-for.hh',
+  'enum-traits.hh',
   'installable-attr-path.hh',
   'installable-derived-path.hh',
   'installable-flake.hh',
