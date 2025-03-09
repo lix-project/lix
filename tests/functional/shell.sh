@@ -38,3 +38,7 @@ path2=$(nix shell --sandbox-paths '/nix? /bin? /lib? /lib64? /usr?' --store $TES
 [[ $path/bin/hello = $path2 ]]
 
 [[ -e $TEST_ROOT/store0/nix/store/$(basename $path)/bin/hello ]]
+
+# Test whether `nix shell` sets `IN_NIX_SHELL` appropriately
+[[ "$(nix shell -f shell-hello.nix -c sh -c 'echo $IN_NIX_SHELL')" == impure ]]
+[[ "$(nix shell --ignore-environment -f shell-hello.nix -c /bin/sh -c 'echo $IN_NIX_SHELL')" == pure ]]
