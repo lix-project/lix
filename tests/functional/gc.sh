@@ -2,12 +2,16 @@ source common.sh
 
 clearStore
 
-drvPath=$(nix-instantiate dependencies.nix)
-outPath=$(nix-store -rvv "$drvPath")
+createAndRootPaths() {
+  drvPath=$(nix-instantiate dependencies.nix)
+  outPath=$(nix-store -rvv "$drvPath")
 
-# Set a GC root.
-rm -f "$NIX_STATE_DIR"/gcroots/foo
-ln -sf $outPath "$NIX_STATE_DIR"/gcroots/foo
+  # Set a GC root.
+  rm -f "$NIX_STATE_DIR"/gcroots/foo
+  ln -sf $outPath "$NIX_STATE_DIR"/gcroots/foo
+}
+
+createAndRootPaths
 
 [ "$(nix-store -q --roots $outPath)" = "$NIX_STATE_DIR/gcroots/foo -> $outPath" ]
 
@@ -18,9 +22,9 @@ if nix-store --gc --print-dead | grep -E $outPath$; then false; fi
 
 nix-store --gc --print-dead
 
-inUse=$(readLink $outPath/reference-to-input-2)
-if nix-store --delete $inUse; then false; fi
-test -e $inUse
+input2=$(readLink $outPath/reference-to-input-2)
+if nix-store --delete $input2; then false; fi
+test -e $input2
 
 if nix-store --delete $outPath; then false; fi
 test -e $outPath
@@ -42,10 +46,14 @@ if test -e $drvPath; then false; fi
 
 rm "$NIX_STATE_DIR"/gcroots/foo
 
-nix-collect-garbage
+# Deleting the dependency should now be possible, and delete the referrer as well
+nix-store --delete $input2
+! test -e $outPath
+! test -e $input2
 
-# Check that the output has been GC'd.
-if test -e $outPath/foobar; then false; fi
+createAndRootPaths
+rm "$NIX_STATE_DIR"/gcroots/foo
+nix-collect-garbage
 
 # Check that the store is empty.
 rmdir $NIX_STORE_DIR/.links
