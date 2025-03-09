@@ -749,10 +749,6 @@ try {
                     co_return result::success();
                 }
 
-                if (options.action == GCOptions::gcDeleteSpecific
-                    && !options.pathsToDelete.count(*path))
-                    co_return result::success();
-
                 if (!gcServer.markPendingIfPresent(std::string(path->hashPart()))) {
                     debug("cannot delete '%s' because it's a temporary root", printStorePath(*path));
                     TRY_AWAIT(markAlive());
