@@ -362,6 +362,13 @@ try {
 
     auto [allValid, validOutputs] = TRY_AWAIT(checkPathValidity());
 
+    // recheck needRestart. more wanted outputs may have been added during the
+    // path validity check, and we do not want to treat !allValid as an error.
+    if (!allValid && needRestart == NeedRestartForMoreOutputs::OutputsAddedDoNeed) {
+        needRestart = NeedRestartForMoreOutputs::OutputsUnmodifedDontNeed;
+        co_return TRY_AWAIT(haveDerivation());
+    }
+
     if (buildMode == bmNormal && allValid) {
         co_return done(BuildResult::Substituted, std::move(validOutputs));
     }
@@ -509,6 +516,10 @@ try {
     }
 
     if (dependencies.empty()) {
+        // NOTE assertPathValidity *can* fail if wanted outputs are added while
+        // it is running. repair mode cannot work correctly if the goal was not
+        // created with all outputs wanted in the first place though, so we can
+        // ignore this possiblity and assume that all failures are real errors.
         co_return done(BuildResult::AlreadyValid, TRY_AWAIT(assertPathValidity()));
     }
 
@@ -1718,7 +1729,7 @@ try {
             worker.store.printStorePath(drvPath),
             concatStringsSep(", ", quoteStrings(wantedOutputsLeft)));
 
-    bool allValid = true;
+    bool allValid = needRestart != NeedRestartForMoreOutputs::OutputsAddedDoNeed;
     for (auto & [_, status] : initialOutputs) {
         if (!status.wanted) continue;
         if (!status.known || !status.known->isValid()) {
