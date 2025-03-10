@@ -21,6 +21,9 @@ std::string renderMarkdownToTerminal(std::string_view markdown)
         .feat = LOWDOWN_COMMONMARK | LOWDOWN_FENCED | LOWDOWN_DEFLIST | LOWDOWN_TABLES,
         .oflags = LOWDOWN_TERM_NOLINK,
     };
+    if (!shouldANSI()) {
+        opts.oflags |= LOWDOWN_TERM_NOANSI;
+    }
 
     auto doc = lowdown_doc_new(&opts);
     if (!doc)
@@ -47,7 +50,7 @@ std::string renderMarkdownToTerminal(std::string_view markdown)
     if (!rndr_res)
         throw Error("allocation error while rendering Markdown");
 
-    return filterANSIEscapes(std::string(buf->data, buf->size), !shouldANSI());
+    return std::string(buf->data, buf->size);
 }
 
 }
