@@ -18,6 +18,7 @@ struct CmdStoreDelete : StorePathsCommand
             .description = "Do not check whether the paths are reachable from a root.",
             .handler = {&options.ignoreLiveness, true}
         });
+        realiseMode = Realise::Nothing;
     }
 
     std::string description() override
