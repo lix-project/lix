@@ -109,7 +109,10 @@ struct RemoteStore::ConnectionHandle
 
     ConnectionHandle(ConnectionHandle && h)
         : handle(std::move(h.handle))
-    { }
+        , daemonException(h.daemonException)
+    {
+        h.daemonException = false;
+    }
 
     ~ConnectionHandle();
 
