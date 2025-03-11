@@ -21,11 +21,13 @@
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
+#include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/types.hh"
 
 #include <kj/async.h>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <utility>
 
 namespace nix {
 
@@ -192,7 +194,7 @@ void RemoteStore::ConnectionHandle::processStderr(Sink * sink, Source * source, 
 
 kj::Promise<Result<RemoteStore::ConnectionHandle>> RemoteStore::getConnection()
 try {
-    co_return ConnectionHandle(TRY_AWAIT(connections->get()));
+    co_return ConnectionHandle(TRY_AWAIT(connections->get()), handlerThreads);
 } catch (...) {
     co_return result::current_exception();
 }
@@ -1109,27 +1111,24 @@ std::exception_ptr RemoteStore::Connection::processStderr(Sink * sink, Source * 
     return nullptr;
 }
 
-RemoteStore::ConnectionHandle::FramedSinkHandler::FramedSinkHandler(ConnectionHandle & conn)
-{
-    conn.handle->to.flush();
-
-    stderrThread = std::thread([&]()
-    {
-        setCurrentThreadName("remote stderr thread");
+RemoteStore::ConnectionHandle::FramedSinkHandler::FramedSinkHandler(
+    ConnectionHandle & conn, ThreadPool & handlerThreads
+)
+    : stderrHandler([&]() {
         try {
-            ReceiveInterrupts receiveInterrupts;
             conn.processStderr(nullptr, nullptr, false);
         } catch (...) {
             ex = std::current_exception();
         }
-    });
+    })
+{
+    conn.handle->to.flush();
+    handlerThreads.enqueue([&] { stderrHandler(); });
 }
 
 RemoteStore::ConnectionHandle::FramedSinkHandler::~FramedSinkHandler() noexcept(false)
 {
-    if (stderrThread.joinable()) {
-        stderrThread.join();
-    }
+    stderrHandler.get_future().get();
     // if we're handling an Interrupted exception we must be careful: it's
     // possible that the exception was thrown by the withFramedSink framed
     // function, but not by the FramedSink itself. in this case our stderr
@@ -1145,7 +1144,7 @@ RemoteStore::ConnectionHandle::FramedSinkHandler::~FramedSinkHandler() noexcept(
 
 void RemoteStore::ConnectionHandle::withFramedSink(std::function<void(Sink & sink)> fun)
 {
-    FramedSinkHandler handler{*this};
+    FramedSinkHandler handler{*this, *handlerThreads.lock()};
     FramedSink sink((*this)->to, handler.ex);
     fun(sink);
     sink.flush();
@@ -1156,7 +1155,7 @@ kj::Promise<Result<void>> RemoteStore::ConnectionHandle::withFramedSinkAsync(
 )
 try {
     {
-        FramedSinkHandler handler{*this};
+        FramedSinkHandler handler{*this, *handlerThreads.lock()};
         FramedSink sink((*this)->to, handler.ex);
         TRY_AWAIT(fun(sink));
         sink.flush();

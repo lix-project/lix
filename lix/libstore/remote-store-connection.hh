@@ -101,14 +101,20 @@ struct RemoteStore::Connection
 struct RemoteStore::ConnectionHandle
 {
     Pool<RemoteStore::Connection>::Handle handle;
+    Sync<ThreadPool> & handlerThreads;
     bool daemonException = false;
 
-    ConnectionHandle(Pool<RemoteStore::Connection>::Handle && handle)
+    ConnectionHandle(
+        Pool<RemoteStore::Connection>::Handle && handle, Sync<ThreadPool> & handlerThreads
+    )
         : handle(std::move(handle))
-    { }
+        , handlerThreads(handlerThreads)
+    {
+    }
 
     ConnectionHandle(ConnectionHandle && h)
         : handle(std::move(h.handle))
+        , handlerThreads(h.handlerThreads)
         , daemonException(h.daemonException)
     {
         h.daemonException = false;
@@ -129,9 +135,9 @@ private:
     struct FramedSinkHandler
     {
         std::exception_ptr ex;
-        std::thread stderrThread;
+        std::packaged_task<void()> stderrHandler;
 
-        explicit FramedSinkHandler(ConnectionHandle & conn);
+        explicit FramedSinkHandler(ConnectionHandle & conn, ThreadPool & handlerThreads);
 
         ~FramedSinkHandler() noexcept(false);
     };
