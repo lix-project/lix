@@ -10,4 +10,3 @@ error:
             1| ({x, z}: x + z) {x = "foo"; y = "bla"; z = "bar";}
              |  ^
             2|
-       Did you mean one of x or z?

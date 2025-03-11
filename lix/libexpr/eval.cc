@@ -1,8 +1,11 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/eval-settings.hh"
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/ansicolor.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/english.hh"
+#include "lix/libutil/fmt.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libexpr/primops.hh"
 #include "lix/libexpr/print-options.hh"
@@ -23,12 +26,15 @@
 #include "lix/libfetchers/fetch-to-store.hh"
 #include "lix/libexpr/flake/flakeref.hh"
 #include "lix/libutil/exit.hh"
+#include "symbol-table.hh"
 
 #include <algorithm>
 #include <iostream>
+#include <ostream>
 #include <sstream>
 #include <cstring>
 #include <optional>
+#include <string>
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -1428,22 +1434,21 @@ public:
 };
 };
 
-/** Currently these each just take one, but maybe in the future we could have diagnostics
- * for all unexpected and missing arguments?
- */
 struct FormalsMatch
 {
-    std::vector<Symbol> missing;
-    std::vector<Symbol> unexpected;
+    std::vector<SymbolStr> missing;
+    std::vector<SymbolStr> unexpected;
+    std::set<std::string> unused;
 };
 
 /** Matchup an attribute argument set to a lambda's formal arguments,
  * or return what arguments were required but not given, or given but not allowed.
- * (currently returns only one, for each).
  */
-FormalsMatch matchupLambdaAttrs(EvalState & state, Env & env, Displacement & displ, AttrsPattern const & pattern, Bindings & attrs)
+FormalsMatch matchupLambdaAttrs(EvalState & state, Env & env, Displacement & displ, AttrsPattern const & pattern, Bindings & attrs, SymbolTable & symbols)
 {
     size_t attrsUsed = 0;
+
+    FormalsMatch result;
 
     for (auto const & formal : pattern.formals) {
 
@@ -1459,15 +1464,14 @@ FormalsMatch matchupLambdaAttrs(EvalState & state, Env & env, Displacement & dis
         }
 
         // The argument for this formal wasn't given.
+        result.unused.insert(symbols[formal.name]);
         // If the formal has a default, use it.
         if (formal.def) {
             env.values[displ] = formal.def->maybeThunk(state, env);
             displ += 1;
         } else {
             // Otherwise, let our caller know what was missing.
-            return FormalsMatch{
-                .missing = {formal.name},
-            };
+            result.missing.push_back(symbols[formal.name]);
         }
     }
 
@@ -1476,16 +1480,12 @@ FormalsMatch matchupLambdaAttrs(EvalState & state, Env & env, Displacement & dis
         // Return the first unexpected argument.
         for (Attr const & attr : attrs) {
             if (!pattern.has(attr.name)) {
-                return FormalsMatch{
-                    .unexpected = {attr.name},
-                };
+                result.unexpected.push_back(symbols[attr.name]);
             }
         }
-
-        abort(); // unreachable.
     }
 
-    return FormalsMatch{};
+    return result;
 }
 
 Env & SimplePattern::match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos)
@@ -1522,25 +1522,44 @@ Env & AttrsPattern::match(ExprLambda & lambda, EvalState & state, Env & up, Valu
         env2,
         displ,
         *this,
-        *arg->attrs
+        *arg->attrs,
+        ctx.symbols
     );
-    for (auto const & missingArg : formalsMatch.missing) {
-        auto const missing = ctx.symbols[missingArg];
-        ctx.errors.make<TypeError>("function '%s' called without required argument '%s'", lambda.getName(ctx.symbols), missing)
-            .atPos(lambda.pos)
-            .withTrace(pos, "from call site")
-            .withFrame(up, lambda)
-            .debugThrow();
-    }
-    for (auto const & unexpectedArg : formalsMatch.unexpected) {
-        auto const unex = ctx.symbols[unexpectedArg];
-        std::set<std::string> formalNames;
-        for (auto const & formal : formals) {
-            formalNames.insert(ctx.symbols[formal.name]);
+
+
+    if (!formalsMatch.unexpected.empty() || !formalsMatch.missing.empty()) {
+        Suggestions sug; // empty suggestions -> no suggestions
+        if (!formalsMatch.unexpected.empty()) {
+            // suggestions only for the first unexpected argument
+            // TODO: suggestions for all unexpected arguments
+            sug = Suggestions::bestMatches(formalsMatch.unused, formalsMatch.unexpected.front());
         }
-        auto sug = Suggestions::bestMatches(formalNames, unex);
-        ctx.errors.make<TypeError>("function '%s' called with unexpected argument '%s'", lambda.getName(ctx.symbols), unex)
-            .atPos(lambda.pos)
+
+        auto argFmt = [](const SymbolStr & argument) { return HintFmt("'%s'", argument); };
+
+        [&](){
+            if (formalsMatch.unexpected.empty() && !formalsMatch.missing.empty()) {
+                return ctx.errors.make<TypeError>(
+                    "function '%s' called without required argument%s %s", lambda.getName(ctx.symbols),
+                    Uncolored((formalsMatch.missing.size() == 1) ? "" : "s"),
+                    Uncolored(concatStringsCommaAnd(argFmt, formalsMatch.missing))
+                );
+            } else if (!formalsMatch.unexpected.empty() && formalsMatch.missing.empty()) {
+                return ctx.errors.make<TypeError>(
+                    "function '%s' called with unexpected argument%s %s", lambda.getName(ctx.symbols),
+                    Uncolored((formalsMatch.unexpected.size() == 1) ? "" : "s"),
+                    Uncolored(concatStringsCommaAnd(argFmt, formalsMatch.unexpected))
+                );
+            } else {
+                return ctx.errors.make<TypeError>(
+                    "function '%s' called without required argument%s %s and with unexpected argument%s %s", lambda.getName(ctx.symbols),
+                    Uncolored((formalsMatch.missing.size() == 1) ? "" : "s"),
+                    Uncolored(concatStringsCommaAnd(argFmt, formalsMatch.missing)),
+                    Uncolored((formalsMatch.unexpected.size() == 1) ? "" : "s"),
+                    Uncolored(concatStringsCommaAnd(argFmt, formalsMatch.unexpected))
+                );
+            }
+        }().atPos(lambda.pos)
             .withTrace(pos, "from call site")
             .withSuggestions(sug)
             .withFrame(up, lambda)
