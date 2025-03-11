@@ -4,7 +4,7 @@
 
 # Synopsis
 
-`nix-store` `--delete` [`--ignore-liveness`] *paths…*
+`nix-store` `--delete` [`--ignore-liveness`] [`--skip-live`] [`--delete-closure`] *paths…*
 
 # Description
 
@@ -17,6 +17,13 @@ only delete paths that would also be deleted by `nix-store --gc`. Thus,
 With the option `--ignore-liveness`, reachability from the roots is
 ignored. However, the path still won’t be deleted if there are other
 paths in the store that refer to it (i.e., depend on it).
+
+This operation will raise an error if any of the paths are still live
+and `--ignore-liveness` is not passed. Passing `--skip-live` will
+prevent this from being considered an error.
+
+The option `--delete-closure` will also attempt to delete any paths
+that are in the given path's dependency closure.
 
 {{#include ./opt-common.md}}
 

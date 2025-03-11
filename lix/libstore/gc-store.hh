@@ -32,13 +32,19 @@ struct GCOptions
      * - `gcDeleteDead`: actually delete the latter set.
      *
      * - `gcDeleteSpecific`: delete the paths listed in
+     *    `pathsToDelete`, failing if any are still reachable.
+     *
+     * - `gcTryDeleteSpecific`: delete the paths listed in
      *    `pathsToDelete`, insofar as they are not reachable.
+     *    Any that could not be deleted are returned via the
+     *    `kept` field of GCResults.
      */
     typedef enum {
         gcReturnLive,
         gcReturnDead,
         gcDeleteDead,
         gcDeleteSpecific,
+        gcTryDeleteSpecific,
     } GCAction;
 
     GCAction action{gcDeleteDead};
@@ -70,6 +76,12 @@ struct GCResults
      * be or have been deleted.
      */
     PathSet paths;
+
+    /**
+     * If the action was gcTryDeleteSpecific, the paths that were not
+     * deleted because they are still live.
+     */
+    PathSet kept;
 
     /**
      * For `gcReturnDead`, `gcDeleteDead` and `gcDeleteSpecific`, the

@@ -10,6 +10,7 @@ using namespace nix;
 struct CmdStoreDelete : StorePathsCommand
 {
     GCOptions options { .action = GCOptions::gcDeleteSpecific };
+    bool deleteClosure = false;
 
     CmdStoreDelete()
     {
@@ -17,6 +18,16 @@ struct CmdStoreDelete : StorePathsCommand
             .longName = "ignore-liveness",
             .description = "Do not check whether the paths are reachable from a root.",
             .handler = {&options.ignoreLiveness, true}
+        });
+        addFlag({
+            .longName = "skip-live",
+            .description = "Skip deleting any paths that are reachable from a root.",
+            .handler = {&options.action, GCOptions::gcTryDeleteSpecific}
+        });
+        addFlag({
+            .longName = "delete-closure",
+            .description = "Also attempt to delete all paths in the given paths' closures.",
+            .handler = {&deleteClosure, true}
         });
         realiseMode = Realise::Nothing;
     }
@@ -37,8 +48,13 @@ struct CmdStoreDelete : StorePathsCommand
     {
         auto & gcStore = require<GcStore>(*store);
 
-        for (auto & path : storePaths)
-            options.pathsToDelete.insert(path);
+        for (auto & path : storePaths) {
+            if (deleteClosure) {
+                aio().blockOn(store->computeFSClosure(path, options.pathsToDelete));
+            } else {
+                options.pathsToDelete.insert(path);
+            }
+        }
 
         GCResults results;
         PrintFreed freed(true, results);

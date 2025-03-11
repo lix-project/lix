@@ -58,3 +58,22 @@ nix-collect-garbage
 # Check that the store is empty.
 rmdir $NIX_STORE_DIR/.links
 rmdir $NIX_STORE_DIR
+
+createAndRootPaths
+input0=$(< $outPath/reference-to-input-2/input0)
+input2=$(readLink $outPath/reference-to-input-2)
+fodDrv=$(nix-store -qR $drvPath | grep fod-input.drv)
+fodOut=$(nix-store -q --outputs $fodDrv)
+# path is still live but command should still succeed because of --skip-live
+nix-store --delete --skip-live $(readLink $outPath/reference-to-input-2)
+
+rm "$NIX_STATE_DIR"/gcroots/foo
+# with the dependent unrooted, we should be able to remove input2...
+nix-store --delete --delete-closure $input2
+# which should remove input0, since only input2 and top depended on it and we passed --delete-closure
+! test -e $input0
+# but fod should be unaffected, since it's not part of input-2's closure
+test -e $fodOut
+
+
+nix-collect-garbage
