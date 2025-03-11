@@ -10,6 +10,7 @@
 #include <condition_variable>
 #include <cassert>
 #include <optional>
+#include <utility>
 
 namespace nix {
 
@@ -43,6 +44,9 @@ public:
     Sync() { }
     Sync(const T & data) : data(data) { }
     Sync(T && data) noexcept : data(std::move(data)) { }
+
+    template<typename ... Args>
+    Sync(std::in_place_t, Args &&... args) : data(std::forward<Args>(args)...) { }
 
     class Lock
     {
