@@ -113,7 +113,7 @@ public:
             auto lastLine = fields[0].s;
             printError(lastLine);
         }
-        else if (type == resPostBuildLogLine && printBuildLogs) {
+        else if (type == resPostBuildLogLine) {
             auto lastLine = fields[0].s;
             printError("post-build-hook: " + lastLine);
         }
