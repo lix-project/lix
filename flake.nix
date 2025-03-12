@@ -205,9 +205,11 @@
           #   lix -> Rust stuff -> fetchCargoVendor -> nix-prefetch-git -> nix (lix)
           # This will eventually become a problem upstream, but until then,
           # apply some duct tape and pray.
-          nix-prefetch-git = prev.nix-prefetch-git.override {
-            nix = prev.nix;
-          };
+          nix-prefetch-git =
+            if (lib.functionArgs prev.nix-prefetch-git.override) ? "nix" then
+              prev.nix-prefetch-git.override { nix = prev.nix; }
+            else
+              prev.nix-prefetch-git;
 
           # Export the patched version of boehmgc that Lix uses into the overlay
           # for consumers of this flake.
