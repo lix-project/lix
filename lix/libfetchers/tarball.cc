@@ -219,7 +219,7 @@ struct CurlInputScheme : InputScheme
 
         url.scheme = parseUrlScheme(url.scheme).transport;
 
-        emplaceURLQueryIntoAttrs(url, attrs, {"revCount"}, {});
+        emplaceURLQueryIntoAttrs(url, attrs, {"revCount", "lastModified"}, {});
 
         attrs.emplace("url", url.to_string());
         return inputFromAttrs(attrs);
