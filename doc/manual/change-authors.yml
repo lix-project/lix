@@ -53,6 +53,10 @@ bb010g:
   forgejo: bb010g
   github: bb010g
 
+blitz:
+  display_name: Julian Stecklina
+  github: blitz
+
 cole-h:
   display_name: Cole Helbling
   github: cole-h
@@ -196,6 +200,9 @@ vigress8:
 winter:
   forgejo: winter
   github: winterqt
+
+xanderio:
+  github: xanderio
 
 yshui:
   github: yshui
