@@ -32,6 +32,9 @@ RELENG_MSG = "Release created with releng/create_release.xsh"
 BUILD_CORES = 16
 MAX_JOBS = 2
 
+# Workaround for bug in garage: https://git.deuxfleurs.fr/Deuxfleurs/garage/issues/963
+S3_ARGS = ['--checksum-algorithm=SHA256']
+
 
 def setup_creds(env: RelengEnvironment):
     key = keys.get_ephemeral_key(env)
@@ -237,7 +240,7 @@ def upload_artifacts(env: RelengEnvironment, noconfirm=False, no_check_git=False
         docker.upload_docker_images(target, docker_images)
 
     print('[+] Upload to release bucket')
-    aws s3 cp --recursive @(ARTIFACTS)/ @(env.releases_bucket)/
+    aws s3 cp @(S3_ARGS) --recursive @(ARTIFACTS)/ @(env.releases_bucket)/
     print('[+] Upload manual')
     upload_manual(env)
 
@@ -284,9 +287,9 @@ def upload_manual(env: RelengEnvironment):
         version = 'nightly'
 
     print('[+] aws s3 sync manual')
-    aws s3 sync --delete @(MANUAL)/ @(env.docs_bucket)/manual/lix/@(version)/
+    aws s3 sync @(S3_ARGS) --delete @(MANUAL)/ @(env.docs_bucket)/manual/lix/@(version)/
     if OFFICIAL_RELEASE:
-        aws s3 sync --delete @(MANUAL)/ @(env.docs_bucket)/manual/lix/stable/
+        aws s3 sync @(S3_ARGS) --delete @(MANUAL)/ @(env.docs_bucket)/manual/lix/stable/
 
 
 def build_artifacts(build_profile, no_check_git=False):
