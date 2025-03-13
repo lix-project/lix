@@ -98,6 +98,26 @@ git switch -c releng/2.91.1 origin/release-2.91
 
 [lix-website]: https://git.lix.systems/lix-project/lix-website
 
+### Post-Validation
+
+After the release is created, we do some post-release validation for the Lix
+packaging in Nixpkgs. Most of these should probably be pre-release validation checks!
+
+- [ ] Build on 4 platforms (`{x86_64,aarch64}-{linux,darwin}`)
+- [ ] Build with debuginfo: build the `lix.debug` attribute and check it is not an empty directory.
+
+  FIXME(jade): this applies only to Linux right?
+  I think separate debuginfo on macOS is just broken so we have no debuginfo on there.
+- [ ] Verify that manual is present in the `doc` output at `share/doc/nix/manual/`
+- [ ] Verify that `:doc` in the `nix repl` finds documentation for `builtins` and Nixpkgs `lib.fix`
+- [ ] Cross from `x86_64` → `aarch64` (`pkgsCross.aarch64-multiplatform.lixVersions.lix_2_91`)
+- [ ] Cross from `x86_64` → `riscv64` (`pkgsCross.riscv64.lixVersions.lix_2_91`)
+- [ ] Cross from `x86_64` → `armv7l` (`pkgsCross.armv7l-hf-multiplatform.lixVersions.lix_2_91`)
+- [ ] Cross from `aarch64` → `x86_64` (`pkgsCross.gnu64.lixVersions.lix_2_91` from `aarch64-linux`)
+- [ ] Static builds on `x86_64-linux`, `aarch64-linux`, `aarch64-darwin` (`pkgs.pkgsStatic.lixVersions.lix_2_91`)
+- [ ] Perform closure checks and verify that no unnecessary dependencies are included (compare to previous versions: `du -hs result/` and `nix path-info -rsh result/`)
+- [ ] Ensure that previous versions did not explode in size neither in functionality: use the same methodology as above for `lixVersions.lix_2_91`, etc, after the new release is packaged.
+
 ### Installer
 
 The installer is cross-built to several systems from a Mac using `build-all.xsh` and `upload-to-lix.xsh` in the installer repo (FIXME: currently at least; maybe this should be moved here?).
