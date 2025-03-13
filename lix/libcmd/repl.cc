@@ -713,6 +713,8 @@ ProcessLineResult NixRepl::processLine(std::string line)
     }
 
     else if (command == ":log") {
+        if (arg.empty())
+            throw Error("cannot use ':log' without a specifying a derivation");
         StorePath drvPath = ([&] {
             auto maybeDrvPath = evaluator.store->maybeParseStorePath(arg);
             if (maybeDrvPath && maybeDrvPath->isDerivation()) {
