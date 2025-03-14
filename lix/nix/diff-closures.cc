@@ -6,17 +6,52 @@
 #include "lix/libstore/names.hh"
 #include "lix/libutil/result.hh"
 
+#include <nlohmann/json.hpp>
 #include <regex>
 
 namespace nix {
+
+static constexpr std::string_view CLOSURE_DIFF_SCHEMA_VERSION = "lix-closure-diff-v1";
 
 struct Info
 {
     std::string outputName;
 };
 
+struct DiffInfoForPackage
+{
+    int64_t sizeDelta;
+    std::set<std::string> addedVersions;
+    std::set<std::string> removedVersions;
+};
+
 // name -> version -> store paths
 typedef std::map<std::string, std::map<std::string, std::map<StorePath, Info>>> GroupedPaths;
+
+typedef std::map<std::string, DiffInfoForPackage> DiffInfo;
+
+nlohmann::json toJSON(const DiffInfo & diff)
+{
+    nlohmann::json res = nlohmann::json::object();
+    nlohmann::json content = nlohmann::json::object();
+
+    for (auto & [name, item] : diff) {
+        auto packageContent = nlohmann::json::object();
+
+        if (!item.removedVersions.empty() || !item.addedVersions.empty()) {
+            packageContent["versionsBefore"] = item.removedVersions;
+            packageContent["versionsAfter"] = item.addedVersions;
+        }
+        packageContent["sizeDelta"] = item.sizeDelta;
+
+        content[name] = std::move(packageContent);
+    }
+
+    res["packages"] = std::move(content);
+    res["schema"] = CLOSURE_DIFF_SCHEMA_VERSION;
+
+    return res;
+}
 
 static kj::Promise<Result<GroupedPaths>>
 getClosureInfo(ref<Store> store, const StorePath & toplevel)
@@ -50,11 +85,10 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> printClosureDiff(
+kj::Promise<Result<DiffInfo>> getDiffInfo(
     ref<Store> store,
     const StorePath & beforePath,
-    const StorePath & afterPath,
-    std::string_view indent)
+    const StorePath & afterPath)
 try {
     auto beforeClosure = TRY_AWAIT(getClosureInfo(store, beforePath));
     auto afterClosure = TRY_AWAIT(getClosureInfo(store, afterPath));
@@ -62,6 +96,8 @@ try {
     std::set<std::string> allNames;
     for (auto & [name, _] : beforeClosure) allNames.insert(name);
     for (auto & [name, _] : afterClosure) allNames.insert(name);
+
+    DiffInfo itemsToPrint;
 
     for (auto & name : allNames) {
         auto & beforeVersions = beforeClosure[name];
@@ -84,7 +120,6 @@ try {
         auto beforeSize = TRY_AWAIT(totalSize(beforeVersions));
         auto afterSize = TRY_AWAIT(totalSize(afterVersions));
         auto sizeDelta = (int64_t) afterSize - (int64_t) beforeSize;
-        auto showDelta = std::abs(sizeDelta) >= 8 * 1024;
 
         std::set<std::string> removed, unchanged;
         for (auto & [version, _] : beforeVersions)
@@ -94,17 +129,56 @@ try {
         for (auto & [version, _] : afterVersions)
             if (!beforeVersions.count(version)) added.insert(version);
 
-        if (showDelta || !removed.empty() || !added.empty()) {
-            std::vector<std::string> items;
-            if (!removed.empty() || !added.empty())
-                items.push_back(fmt("%s → %s", showVersions(removed), showVersions(added)));
-            if (showDelta)
-                items.push_back(fmt("%s%+.1f KiB" ANSI_NORMAL, sizeDelta > 0 ? ANSI_RED : ANSI_GREEN, sizeDelta / 1024.0));
-            logger->cout("%s%s: %s", indent, name, concatStringsSep(", ", items));
+        if (!removed.empty() || !added.empty()) {
+            auto info = DiffInfoForPackage {
+                .sizeDelta = sizeDelta,
+                .addedVersions = added,
+                .removedVersions = removed
+            };
+
+            itemsToPrint[name] = std::move(info);
         }
     }
+
+    co_return itemsToPrint;
+} catch (...) {
+    co_return result::current_exception();
+}
+
+void renderDiffInfo(
+    DiffInfo diff,
+    const std::string_view indent)
+{
+    for (auto & [name, item] : diff) {
+        auto showDelta = std::abs(item.sizeDelta) >= 8 * 1024;
+
+        std::vector<std::string> line;
+        if (!item.removedVersions.empty() || !item.addedVersions.empty())
+            line.push_back(fmt("%s → %s", showVersions(item.removedVersions), showVersions(item.addedVersions)));
+        if (showDelta)
+            line.push_back(fmt("%s%+.1f KiB" ANSI_NORMAL, item.sizeDelta > 0 ? ANSI_RED : ANSI_GREEN, item.sizeDelta / 1024.0));
+        logger->cout("%s%s: %s", indent, name, concatStringsSep(", ", line));
+    }
+}
+
+kj::Promise<Result<void>> printClosureDiff(
+    ref<Store> store,
+    const StorePath & beforePath,
+    const StorePath & afterPath,
+    const bool json,
+    const std::string_view indent)
+try {
+    DiffInfo diff = TRY_AWAIT(getDiffInfo(store, beforePath, afterPath));
+
+    if (json) {
+        logger->cout(toJSON(diff).dump());
+    } else {
+        renderDiffInfo(diff, indent);
+    }
+
     co_return result::success();
 } catch (...) {
+
     co_return result::current_exception();
 }
 
@@ -112,7 +186,7 @@ try {
 
 using namespace nix;
 
-struct CmdDiffClosures : SourceExprCommand, MixOperateOnOptions
+struct CmdDiffClosures : SourceExprCommand, MixJSON, MixOperateOnOptions
 {
     std::string _before, _after;
 
@@ -141,7 +215,7 @@ struct CmdDiffClosures : SourceExprCommand, MixOperateOnOptions
         auto beforePath = Installable::toStorePath(*state, getEvalStore(), store, Realise::Outputs, operateOn, before);
         auto after = parseInstallable(*state, store, _after);
         auto afterPath = Installable::toStorePath(*state, getEvalStore(), store, Realise::Outputs, operateOn, after);
-        aio().blockOn(printClosureDiff(store, beforePath, afterPath, ""));
+        aio().blockOn(printClosureDiff(store, beforePath, afterPath, json, ""));
     }
 };
 

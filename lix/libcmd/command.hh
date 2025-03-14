@@ -375,6 +375,7 @@ kj::Promise<Result<void>> printClosureDiff(
     ref<Store> store,
     const StorePath & beforePath,
     const StorePath & afterPath,
+    bool json,
     std::string_view indent);
 
 }
