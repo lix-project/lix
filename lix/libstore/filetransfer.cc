@@ -889,9 +889,9 @@ struct curlFileTransfer : public FileTransfer
             std::uniform_real_distribution<> dist(0.0, 0.5);
             int ms = parent.baseRetryTimeMs * std::pow(2.0f, attempt - 1 + dist(random));
             if (totalReceived) {
-                warn("%s; retrying from offset %d in %d ms", context, totalReceived, ms);
+                warn("%s; retrying from offset %d in %d ms (attempt %d/%d)", context, totalReceived, ms, attempt, tries);
             } else {
-                warn("%s; retrying in %d ms", context, ms);
+                warn("%s; retrying in %d ms (attempt %d/%d)", context, ms, attempt, tries);
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(ms));
