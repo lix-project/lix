@@ -29,3 +29,30 @@ clearStore
 nix copy --from "$REMOTE_STORE" --no-require-sigs -f dependencies.nix
 nix copy --from "$REMOTE_STORE" --no-require-sigs -f dependencies.nix input1_drv
 nix copy --from "$REMOTE_STORE" --no-require-sigs -f multiple-outputs.nix a^second
+
+clearStore
+
+# Should fail if the build hook fails
+cat > "$TEST_ROOT/fail.sh" <<-EOF
+#!${shell}
+false
+EOF
+chmod +x "$TEST_ROOT/fail.sh"
+expect 1 nix-build -o "$TEST_ROOT/result" dependencies.nix --post-build-hook "$TEST_ROOT/fail.sh"
+clearStore
+
+# Ensure that settings are passed into the post-build-hook, but only overridden
+# ones.
+rm -f "${TEST_ROOT}/nix-config"
+cat > "${TEST_ROOT}/settings.sh" <<-EOF
+#!${shell}
+echo "\$NIX_CONFIG" > "${TEST_ROOT}/nix-config"
+EOF
+chmod +x "${TEST_ROOT}/settings.sh"
+nix-build -o "${TEST_ROOT}/result" dependencies.nix --timeout 1337 --post-build-hook "${TEST_ROOT}/settings.sh"
+# Ensure pure-eval cannot become not a setting with the test passing.
+nix config show pure-eval
+# Defaulted setting does not appear.
+expect 1 grepQuiet pure-eval "${TEST_ROOT}/nix-config"
+# Overridden setting appears.
+grepQuiet "timeout = 1337" "${TEST_ROOT}/nix-config"
