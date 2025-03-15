@@ -68,17 +68,17 @@ def common_test(extra_args: List[str]) -> List[Dict[str, Any]]:
         assert built_job["outputs"]["out"].startswith("/nix/store")
         assert built_job["drvPath"].endswith(".drv")
         assert built_job["meta"]["broken"] is False
-        check_gc_root(tempdir, built_job['drvPath'])
+        check_gc_root(tempdir, built_job["drvPath"])
 
         dotted_job = results[1]
         assert dotted_job["attr"] == '"dotted.attr"'
         assert dotted_job["attrPath"] == ["dotted.attr"]
-        check_gc_root(tempdir, dotted_job['drvPath'])
+        check_gc_root(tempdir, dotted_job["drvPath"])
 
         recurse_drv = results[2]
         assert recurse_drv["attr"] == "recurse.drvB"
         assert recurse_drv["name"] == "drvB"
-        check_gc_root(tempdir, recurse_drv['drvPath'])
+        check_gc_root(tempdir, recurse_drv["drvPath"])
 
         substituted_job = results[3]
         assert substituted_job["attr"] == "substitutedJob"
@@ -138,8 +138,23 @@ def test_recursion_error() -> None:
             ],
         )
         print(stderr)
-        assert "packageWithInfiniteRecursion" in stderr
-        assert "possible infinite recursion" in stderr
+
+        # Closing pipes and exiting is not atomic, so it is possible
+        # that the worker is still up when the collector notices that
+        # the pipe is closed already. We mitigate this condition a bit
+        # by waiting a second and checking the state of the worker again,
+        # but assuming the infrec error is still racy.
+        # Hence, we assert that one of the two possible outcomes actually happen.
+        assert (
+            (
+                "packageWithInfiniteRecursion" in stderr
+                and "possible infinite recursion" in stderr
+            )
+            or
+            (
+                "worker pipe got closed" in stderr
+            )
+        )
 
 
 def test_constituents() -> None:

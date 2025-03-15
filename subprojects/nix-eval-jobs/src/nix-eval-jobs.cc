@@ -1,3 +1,4 @@
+#include <chrono>
 #include <lix/config.h> // IWYU pragma: keep
 
 #include <lix/libexpr/eval-settings.hh>
@@ -35,6 +36,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -157,7 +159,7 @@ struct State {
     std::map<std::string, nlohmann::json> jobs;
 };
 
-void handleBrokenWorkerPipe(Proc &proc, std::string_view msg) {
+void handleBrokenWorkerPipe(Proc &proc, std::string_view msg, bool retry = true) {
     // we already took the process status from Proc, no
     // need to wait for it again to avoid error messages
     pid_t pid = proc.pid.release();
@@ -165,10 +167,21 @@ void handleBrokenWorkerPipe(Proc &proc, std::string_view msg) {
         int status;
         int rc = waitpid(pid, &status, WNOHANG);
         if (rc == 0) {
-            kill(pid, SIGKILL);
-            throw Error("BUG: while %s, worker pipe got closed but evaluation "
-                        "worker still running?",
-                        msg);
+            // If the worker dies (e.g. with a SIGSEGV due to an unnoticed infinite
+            // recursion), it closes the pipes first and then exits. Now it may happen
+            // that a read from the pipe happens when the process is still alive, but the
+            // pipes are closed.
+            // This is still a valid condition and shouldn't be reported as `BUG:`. Hence
+            // we wait a bit and then retry.
+            if (retry) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                handleBrokenWorkerPipe(proc, msg, false);
+            } else {
+                kill(pid, SIGKILL);
+                throw Error("BUG: while %s, worker pipe got closed but evaluation "
+                            "worker still running?",
+                            msg);
+            }
         } else if (rc == -1) {
             kill(pid, SIGKILL);
             throw Error(
