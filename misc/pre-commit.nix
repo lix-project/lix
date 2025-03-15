@@ -35,11 +35,11 @@ pre-commit-run {
     check-case-conflicts.enable = true;
     check-executables-have-shebangs = {
       enable = true;
-      stages = [ "commit" ];
+      stages = [ "pre-commit" ];
     };
     check-shebang-scripts-are-executable = {
       enable = true;
-      stages = [ "commit" ];
+      stages = [ "pre-commit" ];
     };
     check-symlinks = {
       enable = true;
@@ -106,7 +106,7 @@ pre-commit-run {
     # check for it.
     trim-trailing-whitespace = {
       enable = true;
-      stages = [ "commit" ];
+      stages = [ "pre-commit" ];
       excludes = [ "^tests/functional/lang/" ];
     };
     treefmt = {
