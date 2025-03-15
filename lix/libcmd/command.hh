@@ -264,16 +264,16 @@ struct StorePathCommand : public StorePathsCommand
  */
 struct RegisterCommand
 {
-    typedef std::map<
+    using CommandMap = std::map<
         std::vector<std::string>,
         std::function<ref<Command>(AsyncIoRoot & aio)>
-    > Commands;
-    static Commands * commands;
+    >;
+    static CommandMap * commands;
 
     RegisterCommand(std::vector<std::string> && name,
         std::function<ref<Command>(AsyncIoRoot & aio)> command)
     {
-        if (!commands) commands = new Commands;
+        if (!commands) commands = new CommandMap;
         commands->emplace(name, command);
     }
 

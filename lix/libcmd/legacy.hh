@@ -13,12 +13,12 @@ typedef std::function<void(AsyncIoRoot &, std::string, std::list<std::string>)> 
 
 struct LegacyCommands
 {
-    typedef std::map<std::string, MainFunction> Commands;
-    static Commands * commands;
+    using LegacyCommandMap = std::map<std::string, MainFunction>;
+    static LegacyCommandMap * commands;
 
     static void add(const std::string & name, MainFunction fun)
     {
-        if (!commands) commands = new Commands;
+        if (!commands) commands = new LegacyCommandMap;
         (*commands)[name] = fun;
     }
 };
