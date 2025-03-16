@@ -3,6 +3,6 @@
 
 namespace nix {
 
-void registerNixBuildAndNixShell();
+void registerLegacyNixBuildAndNixShell();
 
 }

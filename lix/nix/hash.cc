@@ -233,7 +233,7 @@ static int compatNixHash(AsyncIoRoot & aio, std::string programName, Strings arg
     return 0;
 }
 
-void registerNixHash() {
+void registerLegacyNixHash() {
     LegacyCommandRegistry::add("nix-hash", compatNixHash);
 }
 

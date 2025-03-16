@@ -255,7 +255,7 @@ static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Str
     }
 }
 
-void registerNixPrefetchUrl() {
+void registerLegacyNixPrefetchUrl() {
     LegacyCommandRegistry::add("nix-prefetch-url", main_nix_prefetch_url);
 }
 

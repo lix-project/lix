@@ -3,6 +3,6 @@
 
 namespace nix {
 
-void registerBuildRemote();
+void registerLegacyBuildRemote();
 
 }

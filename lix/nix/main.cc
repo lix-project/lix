@@ -43,17 +43,17 @@ namespace nix {
 
 void registerLegacyCommands()
 {
-    registerNixEnv();
-    registerNixBuildAndNixShell();
-    registerNixInstantiate();
-    registerNixCopyClosure();
-    registerNixCollectGarbage();
-    registerNixChannel();
-    registerNixStore();
-    registerBuildRemote();
-    registerNixDaemon();
-    registerNixPrefetchUrl();
-    registerNixHash();
+    registerLegacyNixEnv();
+    registerLegacyNixBuildAndNixShell();
+    registerLegacyNixInstantiate();
+    registerLegacyNixCopyClosure();
+    registerLegacyNixCollectGarbage();
+    registerLegacyNixChannel();
+    registerLegacyNixStore();
+    registerLegacyBuildRemote();
+    registerLegacyNixDaemon();
+    registerLegacyNixPrefetchUrl();
+    registerLegacyNixHash();
 }
 
 static bool haveProxyEnvironmentVariables()

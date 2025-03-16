@@ -1578,7 +1578,7 @@ static int main_nix_env(AsyncIoRoot & aio, std::string programName, Strings argv
     }
 }
 
-void registerNixEnv() {
+void registerLegacyNixEnv() {
     LegacyCommandRegistry::add("nix-env", main_nix_env);
 }
 

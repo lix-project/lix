@@ -61,7 +61,7 @@ static int main_nix_copy_closure(AsyncIoRoot & aio, std::string programName, Str
     }
 }
 
-void registerNixCopyClosure() {
+void registerLegacyNixCopyClosure() {
     LegacyCommandRegistry::add("nix-copy-closure", main_nix_copy_closure);
 }
 

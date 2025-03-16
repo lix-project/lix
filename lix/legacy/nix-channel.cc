@@ -278,7 +278,7 @@ static int main_nix_channel(AsyncIoRoot & aio, std::string programName, Strings 
     }
 }
 
-void registerNixChannel() {
+void registerLegacyNixChannel() {
     LegacyCommandRegistry::add("nix-channel", main_nix_channel);
 }
 
