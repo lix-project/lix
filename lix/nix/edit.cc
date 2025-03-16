@@ -4,10 +4,11 @@
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libcmd/editor-for.hh"
 #include "lix/libutil/current-process.hh"
+#include "edit.hh"
 
 #include <unistd.h>
 
-using namespace nix;
+namespace nix {
 
 struct CmdEdit : InstallableCommand
 {
@@ -56,4 +57,9 @@ struct CmdEdit : InstallableCommand
     }
 };
 
-static auto rCmdEdit = registerCommand<CmdEdit>("edit");
+void registerNixEdit()
+{
+    registerCommand<CmdEdit>("edit");
+}
+
+}

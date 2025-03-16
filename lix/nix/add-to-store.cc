@@ -3,8 +3,9 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async-io.hh"
+#include "add-to-store.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdAddToStore : MixDryRun, StoreCommand
 {
@@ -103,5 +104,10 @@ struct CmdAddPath : CmdAddToStore
     }
 };
 
-static auto rCmdAddFile = registerCommand2<CmdAddFile>({"store", "add-file"});
-static auto rCmdAddPath = registerCommand2<CmdAddPath>({"store", "add-path"});
+void registerNixStoreAdd()
+{
+    registerCommand2<CmdAddFile>({"store", "add-file"});
+    registerCommand2<CmdAddPath>({"store", "add-path"});
+}
+
+}

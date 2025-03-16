@@ -1,8 +1,9 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/archive.hh"
+#include "dump-path.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdDumpPath : StorePathCommand
 {
@@ -26,8 +27,6 @@ struct CmdDumpPath : StorePathCommand
         sink.flush();
     }
 };
-
-static auto rDumpPath = registerCommand2<CmdDumpPath>({"store", "dump-path"});
 
 struct CmdDumpPath2 : Command
 {
@@ -63,4 +62,10 @@ struct CmdDumpPath2 : Command
     }
 };
 
-static auto rDumpPath2 = registerCommand2<CmdDumpPath2>({"nar", "dump-path"});
+void registerNixStoreDumpPath()
+{
+    registerCommand2<CmdDumpPath>({"store", "dump-path"});
+    registerCommand2<CmdDumpPath2>({"nar", "dump-path"});
+}
+
+}

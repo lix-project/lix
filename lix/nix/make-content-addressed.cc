@@ -2,10 +2,11 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/make-content-addressed.hh"
 #include "lix/libmain/common-args.hh"
+#include "make-content-addressed.hh"
 
 #include <nlohmann/json.hpp>
 
-using namespace nix;
+namespace nix {
 
 using nlohmann::json;
 
@@ -57,4 +58,9 @@ struct CmdMakeContentAddressed : virtual CopyCommand, virtual StorePathsCommand,
     }
 };
 
-static auto rCmdMakeContentAddressed = registerCommand2<CmdMakeContentAddressed>({"store", "make-content-addressed"});
+void registerNixMakeContentAddressed()
+{
+    registerCommand2<CmdMakeContentAddressed>({"store", "make-content-addressed"});
+}
+
+}

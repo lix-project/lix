@@ -1,8 +1,9 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
+#include "copy.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdCopy : virtual CopyCommand, BuiltPathsCommand
 {
@@ -59,4 +60,9 @@ struct CmdCopy : virtual CopyCommand, BuiltPathsCommand
     }
 };
 
-static auto rCmdCopy = registerCommand<CmdCopy>("copy");
+void registerNixCopy()
+{
+    registerCommand<CmdCopy>("copy");
+}
+
+}

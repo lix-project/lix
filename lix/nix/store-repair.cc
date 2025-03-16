@@ -1,7 +1,8 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libstore/store-api.hh"
+#include "store-repair.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdStoreRepair : StorePathsCommand
 {
@@ -24,4 +25,9 @@ struct CmdStoreRepair : StorePathsCommand
     }
 };
 
-static auto rStoreRepair = registerCommand2<CmdStoreRepair>({"store", "repair"});
+void registerNixStoreRepair()
+{
+    registerCommand2<CmdStoreRepair>({"store", "repair"});
+}
+
+}

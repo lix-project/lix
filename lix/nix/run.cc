@@ -153,8 +153,6 @@ struct CmdShell : InstallablesCommand, MixEnvironment
     }
 };
 
-static auto rCmdShell = registerCommand<CmdShell>("shell");
-
 struct CmdRun : InstallableCommand
 {
     using InstallableCommand::run;
@@ -219,7 +217,11 @@ struct CmdRun : InstallableCommand
     }
 };
 
-static auto rCmdRun = registerCommand<CmdRun>("run");
+void registerNixRun()
+{
+    registerCommand<CmdShell>("shell");
+    registerCommand<CmdRun>("run");
+}
 
 void chrootHelper(int argc, char * * argv)
 {

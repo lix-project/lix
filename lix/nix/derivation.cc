@@ -1,6 +1,7 @@
 #include "lix/libcmd/command.hh"
+#include "derivation.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdDerivation : MultiCommand
 {
@@ -22,4 +23,9 @@ struct CmdDerivation : MultiCommand
     }
 };
 
-static auto rCmdDerivation = registerCommand<CmdDerivation>("derivation");
+void registerNixDerivation()
+{
+    registerCommand<CmdDerivation>("derivation");
+}
+
+}

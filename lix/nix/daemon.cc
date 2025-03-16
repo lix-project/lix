@@ -14,7 +14,7 @@
 #include "lix/libutil/signals.hh"
 #include "lix/libstore/daemon.hh"
 #include "lix/libutil/unix-domain-socket.hh"
-#include "daemon-command.hh"
+#include "daemon.hh"
 
 #include <algorithm>
 #include <climits>
@@ -580,6 +580,9 @@ struct CmdDaemon : StoreCommand
     }
 };
 
-static auto rCmdDaemon = registerCommand2<CmdDaemon>({"daemon"});
+void registerNixDaemon()
+{
+    registerCommand2<CmdDaemon>({"daemon"});
+}
 
 }

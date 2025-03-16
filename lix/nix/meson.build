@@ -60,11 +60,13 @@ nix_settings_headers += custom_target(
 )
 
 nix_sources = files(
+  # keep-sorted start
   'add-to-store.cc',
   'app.cc',
   'build.cc',
   'bundle.cc',
   'cat.cc',
+  'config.cc',
   'copy.cc',
   'daemon.cc',
   'derivation-add.cc',
@@ -95,7 +97,6 @@ nix_sources = files(
   'repl.cc',
   'run.cc',
   'search.cc',
-  'config.cc',
   'sigs.cc',
   'store-copy-log.cc',
   'store-delete.cc',
@@ -105,12 +106,54 @@ nix_sources = files(
   'upgrade-nix.cc',
   'verify.cc',
   'why-depends.cc',
+  # keep-sorted end
 )
 
 nix_headers = files(
-  'daemon-command.hh',
-  'hash-command.hh',
-  'prefetch-command.hh',
+  # keep-sorted start
+  'add-to-store.hh',
+  'build.hh',
+  'bundle.hh',
+  'cat.hh',
+  'config.hh',
+  'copy.hh',
+  'daemon.hh',
+  'derivation-add.hh',
+  'derivation-show.hh',
+  'derivation.hh',
+  'develop.hh',
+  'diff-closures.hh',
+  'doctor.hh',
+  'dump-path.hh',
+  'edit.hh',
+  'eval.hh',
+  'flake.hh',
+  'fmt.hh',
+  'hash.hh',
+  'log.hh',
+  'ls.hh',
+  'make-content-addressed.hh',
+  'nar.hh',
+  'optimise-store.hh',
+  'path-from-hash-part.hh',
+  'path-info.hh',
+  'ping-store.hh',
+  'prefetch.hh',
+  'profile.hh',
+  'realisation.hh',
+  'registry.hh',
+  'repl.hh',
+  'search.hh',
+  'sigs.hh',
+  'store-copy-log.hh',
+  'store-delete.hh',
+  'store-gc.hh',
+  'store-repair.hh',
+  'store.hh',
+  'upgrade-nix.hh',
+  'verify.hh',
+  'why-depends.hh',
+  # keep-sorted end
 )
 
 nix = executable(

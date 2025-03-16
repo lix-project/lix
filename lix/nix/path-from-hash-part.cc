@@ -1,7 +1,8 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libstore/store-api.hh"
+#include "path-from-hash-part.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdPathFromHashPart : StoreCommand
 {
@@ -36,4 +37,9 @@ struct CmdPathFromHashPart : StoreCommand
     }
 };
 
-static auto rCmdPathFromHashPart = registerCommand2<CmdPathFromHashPart>({"store", "path-from-hash-part"});
+void registerNixStorePathFromHashPart()
+{
+    registerCommand2<CmdPathFromHashPart>({"store", "path-from-hash-part"});
+}
+
+}

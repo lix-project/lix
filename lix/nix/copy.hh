@@ -1,8 +1,7 @@
 #pragma once
 /// @file
-
 namespace nix {
 
-void registerLegacyNixDaemon();
+void registerNixCopy();
 
 }

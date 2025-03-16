@@ -4,10 +4,11 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/local-fs-store.hh"
 #include "lix/libutil/async.hh"
+#include "build.hh"
 
 #include <nlohmann/json.hpp>
 
-using namespace nix;
+namespace nix {
 
 static nlohmann::json derivedPathsToJSON(AsyncIoRoot & aio, const DerivedPaths & paths, Store & store)
 {
@@ -174,4 +175,9 @@ struct CmdBuild : InstallablesCommand, MixDryRun, MixJSON, MixProfile
     }
 };
 
-static auto rCmdBuild = registerCommand<CmdBuild>("build");
+void registerNixBuild()
+{
+    registerCommand<CmdBuild>("build");
+}
+
+}

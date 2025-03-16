@@ -19,4 +19,6 @@ void runProgramInStore(
     std::optional<std::string_view> system = std::nullopt
 );
 
+void registerNixRun();
+
 }

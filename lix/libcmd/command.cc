@@ -16,6 +16,9 @@ CommandRegistry::CommandMap * CommandRegistry::commands = nullptr;
 
 nix::CommandMap CommandRegistry::getCommandsFor(const std::vector<std::string> & prefix)
 {
+    if (!CommandRegistry::commands) {
+        CommandRegistry::commands = new CommandMap;
+    }
     nix::CommandMap res;
     for (auto & [name, command] : *CommandRegistry::commands) {
         if (name.size() == prefix.size() + 1) {

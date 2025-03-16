@@ -2,10 +2,11 @@
 #include "lix/libmain/shared.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libstore/store-api.hh"
+#include "optimise-store.hh"
 
 #include <atomic>
 
-using namespace nix;
+namespace nix {
 
 struct CmdOptimiseStore : StoreCommand
 {
@@ -27,4 +28,9 @@ struct CmdOptimiseStore : StoreCommand
     }
 };
 
-static auto rCmdOptimiseStore = registerCommand2<CmdOptimiseStore>({"store", "optimise"});
+void registerNixStoreOptimise()
+{
+    registerCommand2<CmdOptimiseStore>({"store", "optimise"});
+}
+
+}

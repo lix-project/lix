@@ -1,9 +1,10 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libmain/common-args.hh"
+#include "realisation.hh"
 
 #include <nlohmann/json.hpp>
 
-using namespace nix;
+namespace nix {
 
 struct CmdRealisation : MultiCommand
 {
@@ -24,8 +25,6 @@ struct CmdRealisation : MultiCommand
         command->second->run();
     }
 };
-
-static auto rCmdRealisation = registerCommand<CmdRealisation>("realisation");
 
 struct CmdRealisationInfo : BuiltPathsCommand, MixJSON
 {
@@ -81,4 +80,10 @@ struct CmdRealisationInfo : BuiltPathsCommand, MixJSON
     }
 };
 
-static auto rCmdRealisationInfo = registerCommand2<CmdRealisationInfo>({"realisation", "info"});
+void registerNixRealisation()
+{
+    registerCommand<CmdRealisation>("realisation");
+    registerCommand2<CmdRealisationInfo>({"realisation", "info"});
+}
+
+}

@@ -13,8 +13,9 @@
 #include "lix/libexpr/eval-settings.hh"
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libstore/names.hh"
+#include "upgrade-nix.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdUpgradeNix : MixDryRun, EvalCommand
 {
@@ -300,4 +301,9 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
     }
 };
 
-static auto rCmdUpgradeNix = registerCommand<CmdUpgradeNix>("upgrade-nix");
+void registerNixUpgradeNix()
+{
+    registerCommand<CmdUpgradeNix>("upgrade-nix");
+}
+
+}

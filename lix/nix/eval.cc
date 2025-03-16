@@ -6,10 +6,11 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/eval-inline.hh"
 #include "lix/libexpr/value-to-json.hh"
+#include "eval.hh"
 
 #include <nlohmann/json.hpp>
 
-using namespace nix;
+namespace nix {
 
 struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
 {
@@ -139,4 +140,9 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
     }
 };
 
-static auto rCmdEval = registerCommand<CmdEval>("eval");
+void registerNixEval()
+{
+    registerCommand<CmdEval>("eval");
+}
+
+}

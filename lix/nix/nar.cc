@@ -1,6 +1,7 @@
 #include "lix/libcmd/command.hh"
+#include "nar.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdNar : MultiCommand
 {
@@ -29,4 +30,9 @@ struct CmdNar : MultiCommand
     }
 };
 
-static auto rCmdNar = registerCommand<CmdNar>("nar");
+void registerNixNar()
+{
+    registerCommand<CmdNar>("nar");
+}
+
+}

@@ -11,12 +11,13 @@
 #include "user-env.hh"
 #include "lix/libstore/profiles.hh"
 #include "lix/libstore/names.hh"
+#include "profile.hh"
 
 #include <nlohmann/json.hpp>
 #include <regex>
 #include <iomanip>
 
-using namespace nix;
+namespace nix {
 
 
 static std::map<Installable *, std::pair<BuiltPaths, ref<ExtraPathInfo>>>
@@ -639,4 +640,9 @@ struct CmdProfile : MultiCommand
     }
 };
 
-static auto rCmdProfile = registerCommand<CmdProfile>("profile");
+void registerNixProfile()
+{
+    registerCommand<CmdProfile>("profile");
+}
+
+}

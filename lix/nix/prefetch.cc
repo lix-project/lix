@@ -11,7 +11,7 @@
 #include "lix/libcmd/legacy.hh"
 #include "lix/libstore/temporary-dir.hh"
 #include "lix/libutil/terminal.hh"
-#include "prefetch-command.hh"
+#include "prefetch.hh"
 
 #include <nlohmann/json.hpp>
 
@@ -337,6 +337,9 @@ struct CmdStorePrefetchFile : StoreCommand, MixJSON
     }
 };
 
-static auto rCmdStorePrefetchFile = registerCommand2<CmdStorePrefetchFile>({"store", "prefetch-file"});
+void registerNixStorePrefetchFile()
+{
+    registerCommand2<CmdStorePrefetchFile>({"store", "prefetch-file"});
+}
 
 }
