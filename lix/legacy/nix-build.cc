@@ -633,9 +633,9 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
     }
 }
 
-void registerNixBuildAndNixShell() {
-    LegacyCommands::add("nix-build", main_nix_build);
-    LegacyCommands::add("nix-shell", main_nix_build);
+void registerLegacyNixBuildAndNixShell() {
+    LegacyCommandRegistry::add("nix-build", main_nix_build);
+    LegacyCommandRegistry::add("nix-shell", main_nix_build);
 }
 
 }

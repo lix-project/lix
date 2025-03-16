@@ -458,7 +458,7 @@ std::optional<ExperimentalFeature> Command::experimentalFeature ()
     return { Xp::NixCommand };
 }
 
-MultiCommand::MultiCommand(const Commands & commands_, bool allowExternal)
+MultiCommand::MultiCommand(const CommandMap & commands_, bool allowExternal)
     : commands(commands_),
       customCommandSearchPaths(
           allowExternal ? tokenizeString<Strings>(

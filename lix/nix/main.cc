@@ -43,17 +43,17 @@ namespace nix {
 
 void registerLegacyCommands()
 {
-    registerNixEnv();
-    registerNixBuildAndNixShell();
-    registerNixInstantiate();
-    registerNixCopyClosure();
-    registerNixCollectGarbage();
-    registerNixChannel();
-    registerNixStore();
-    registerBuildRemote();
-    registerNixDaemon();
-    registerNixPrefetchUrl();
-    registerNixHash();
+    registerLegacyNixEnv();
+    registerLegacyNixBuildAndNixShell();
+    registerLegacyNixInstantiate();
+    registerLegacyNixCopyClosure();
+    registerLegacyNixCollectGarbage();
+    registerLegacyNixChannel();
+    registerLegacyNixStore();
+    registerLegacyBuildRemote();
+    registerLegacyNixDaemon();
+    registerLegacyNixPrefetchUrl();
+    registerLegacyNixHash();
 }
 
 static bool haveProxyEnvironmentVariables()
@@ -393,7 +393,7 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
 
     {
         registerLegacyCommands();
-        auto legacy = (*LegacyCommands::commands)[programName];
+        auto legacy = (*LegacyCommandRegistry::commands)[programName];
         if (legacy) {
             return legacy(aio, std::string(baseNameOf(argv[0])), Strings(argv + 1, argv + argc));
         }

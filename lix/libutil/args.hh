@@ -350,7 +350,7 @@ struct Command : virtual public Args
     virtual Category category() { return catDefault; }
 };
 
-typedef std::map<std::string, std::function<ref<Command>(AsyncIoRoot &)>> Commands;
+using CommandMap = std::map<std::string, std::function<ref<Command>(AsyncIoRoot &)>>;
 
 /**
  * An argument parser that supports multiple subcommands,
@@ -359,7 +359,7 @@ typedef std::map<std::string, std::function<ref<Command>(AsyncIoRoot &)>> Comman
 class MultiCommand : public Command
 {
 public:
-    Commands commands;
+    CommandMap commands;
     Strings customCommandSearchPaths;
     bool isExternalSubcommand;
 
@@ -370,7 +370,7 @@ public:
      */
     std::optional<std::pair<std::string, ref<Command>>> command;
 
-    MultiCommand(const Commands & commands, bool allowExternal = false);
+    MultiCommand(const CommandMap & commands, bool allowExternal = false);
 
     bool processFlag(Strings::iterator & pos, Strings::iterator end) override;
 

@@ -112,8 +112,8 @@ static int main_nix_collect_garbage(AsyncIoRoot & aio, std::string programName, 
     }
 }
 
-void registerNixCollectGarbage() {
-    LegacyCommands::add("nix-collect-garbage", main_nix_collect_garbage);
+void registerLegacyNixCollectGarbage() {
+    LegacyCommandRegistry::add("nix-collect-garbage", main_nix_collect_garbage);
 }
 
 }

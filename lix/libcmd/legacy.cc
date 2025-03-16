@@ -2,6 +2,6 @@
 
 namespace nix {
 
-LegacyCommands::Commands * LegacyCommands::commands = 0;
+LegacyCommandRegistry::LegacyCommandMap * LegacyCommandRegistry::commands = 0;
 
 }
