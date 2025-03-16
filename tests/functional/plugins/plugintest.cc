@@ -16,6 +16,8 @@ struct MySettings : Config
         "Whether the plugin-defined setting was set"};
 };
 
+bool entryCalled = false;
+
 MySettings mySettings;
 
 static GlobalConfig::Register rs(&mySettings);
@@ -27,6 +29,7 @@ static void maybeRequireMeowForDlopen() {
 
 static void prim_anotherNull (EvalState & state, const PosIdx pos, Value ** args, Value & v)
 {
+    assert(entryCalled);
     if (mySettings.settingSet)
         v.mkNull();
     else
@@ -38,3 +41,8 @@ static RegisterPrimOp rp({
     .arity = 0,
     .fun = prim_anotherNull,
 });
+
+extern "C" void nix_plugin_entry()
+{
+    entryCalled = true;
+}
