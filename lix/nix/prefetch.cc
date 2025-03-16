@@ -256,7 +256,7 @@ static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Str
 }
 
 void registerNixPrefetchUrl() {
-    LegacyCommands::add("nix-prefetch-url", main_nix_prefetch_url);
+    LegacyCommandRegistry::add("nix-prefetch-url", main_nix_prefetch_url);
 }
 
 struct CmdStorePrefetchFile : StoreCommand, MixJSON

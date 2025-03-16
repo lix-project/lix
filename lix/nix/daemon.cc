@@ -516,7 +516,7 @@ static int main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings a
 }
 
 void registerNixDaemon() {
-    LegacyCommands::add("nix-daemon", main_nix_daemon);
+    LegacyCommandRegistry::add("nix-daemon", main_nix_daemon);
 }
 
 struct CmdDaemon : StoreCommand

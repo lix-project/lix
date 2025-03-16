@@ -197,7 +197,7 @@ static int main_nix_instantiate(AsyncIoRoot & aio, std::string programName, Stri
 }
 
 void registerNixInstantiate() {
-    LegacyCommands::add("nix-instantiate", main_nix_instantiate);
+    LegacyCommandRegistry::add("nix-instantiate", main_nix_instantiate);
 }
 
 }

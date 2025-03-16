@@ -395,7 +395,7 @@ connected:
 }
 
 void registerBuildRemote() {
-    LegacyCommands::add("build-remote", main_build_remote);
+    LegacyCommandRegistry::add("build-remote", main_build_remote);
 }
 
 }

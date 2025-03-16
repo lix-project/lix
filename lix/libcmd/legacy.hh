@@ -11,7 +11,7 @@ namespace nix {
 
 typedef std::function<void(AsyncIoRoot &, std::string, std::list<std::string>)> MainFunction;
 
-struct LegacyCommands
+struct LegacyCommandRegistry
 {
     using LegacyCommandMap = std::map<std::string, MainFunction>;
     static LegacyCommandMap * commands;

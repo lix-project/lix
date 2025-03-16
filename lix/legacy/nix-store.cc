@@ -1224,7 +1224,7 @@ static int main_nix_store(AsyncIoRoot & aio, std::string programName, Strings ar
 }
 
 void registerNixStore() {
-    LegacyCommands::add("nix-store", main_nix_store);
+    LegacyCommandRegistry::add("nix-store", main_nix_store);
 }
 
 }
