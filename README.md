@@ -21,6 +21,9 @@ See our [Hacking guide](https://git.lix.systems/lix-project/lix/src/branch/main/
 
 ## Additional Resources
 
+- The Lix reference manual:
+  - [Stable](https://docs.lix.systems/manual/lix/stable/)
+  - [Nightly](https://docs.lix.systems/manual/lix/nightly/) (NOTE: [not automatically updated, yet](https://git.lix.systems/lix-project/lix/issues/742))
 - [Our wiki](https://wiki.lix.systems)
 - [Matrix - #space:lix.systems](https://matrix.to/#/#space:lix.systems)
 
