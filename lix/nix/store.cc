@@ -4,7 +4,7 @@ using namespace nix;
 
 struct CmdStore : MultiCommand
 {
-    CmdStore() : MultiCommand(RegisterCommand::getCommandsFor({"store"}))
+    CmdStore() : MultiCommand(CommandRegistry::getCommandsFor({"store"}))
     { }
 
     std::string description() override

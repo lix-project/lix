@@ -12,12 +12,12 @@ extern char * * environ __attribute__((weak));
 
 namespace nix {
 
-RegisterCommand::CommandMap * RegisterCommand::commands = nullptr;
+CommandRegistry::CommandMap * CommandRegistry::commands = nullptr;
 
-nix::CommandMap RegisterCommand::getCommandsFor(const std::vector<std::string> & prefix)
+nix::CommandMap CommandRegistry::getCommandsFor(const std::vector<std::string> & prefix)
 {
     nix::CommandMap res;
-    for (auto & [name, command] : *RegisterCommand::commands) {
+    for (auto & [name, command] : *CommandRegistry::commands) {
         if (name.size() == prefix.size() + 1) {
             bool equal = true;
             for (size_t i = 0; i < prefix.size(); ++i) {

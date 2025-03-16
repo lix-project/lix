@@ -4,7 +4,7 @@ using namespace nix;
 
 struct CmdNar : MultiCommand
 {
-    CmdNar() : MultiCommand(RegisterCommand::getCommandsFor({"nar"}))
+    CmdNar() : MultiCommand(CommandRegistry::getCommandsFor({"nar"}))
     { }
 
     std::string description() override

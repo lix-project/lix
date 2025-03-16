@@ -7,7 +7,7 @@ using namespace nix;
 
 struct CmdRealisation : MultiCommand
 {
-    CmdRealisation() : MultiCommand(RegisterCommand::getCommandsFor({"realisation"}))
+    CmdRealisation() : MultiCommand(CommandRegistry::getCommandsFor({"realisation"}))
     { }
 
     std::string description() override

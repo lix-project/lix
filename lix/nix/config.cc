@@ -9,7 +9,7 @@ using namespace nix;
 
 struct CmdConfig : MultiCommand
 {
-    CmdConfig() : MultiCommand(RegisterCommand::getCommandsFor({"config"}))
+    CmdConfig() : MultiCommand(CommandRegistry::getCommandsFor({"config"}))
     { }
 
     std::string description() override

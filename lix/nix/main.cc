@@ -114,7 +114,7 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
     AsyncIoRoot & aio() override { return aio_; }
 
     NixArgs(const std::string & programName, AsyncIoRoot & aio)
-        : MultiCommand(RegisterCommand::getCommandsFor({}), true)
+        : MultiCommand(CommandRegistry::getCommandsFor({}), true)
         , MixCommonArgs(programName)
         , aio_(aio)
     {
@@ -229,7 +229,7 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
     // Plugins may add new subcommands.
     void pluginsInited() override
     {
-        commands = RegisterCommand::getCommandsFor({});
+        commands = CommandRegistry::getCommandsFor({});
     }
 
     std::string dumpCli()

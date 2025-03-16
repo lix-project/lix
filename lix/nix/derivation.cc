@@ -4,7 +4,7 @@ using namespace nix;
 
 struct CmdDerivation : MultiCommand
 {
-    CmdDerivation() : MultiCommand(RegisterCommand::getCommandsFor({"derivation"}))
+    CmdDerivation() : MultiCommand(CommandRegistry::getCommandsFor({"derivation"}))
     { }
 
     std::string description() override
