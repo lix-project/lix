@@ -277,7 +277,7 @@ struct RegisterCommand
         commands->emplace(name, command);
     }
 
-    static nix::Commands getCommandsFor(const std::vector<std::string> & prefix);
+    static nix::CommandMap getCommandsFor(const std::vector<std::string> & prefix);
 };
 
 template<typename Base>

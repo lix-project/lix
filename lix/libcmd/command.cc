@@ -14,9 +14,9 @@ namespace nix {
 
 RegisterCommand::CommandMap * RegisterCommand::commands = nullptr;
 
-nix::Commands RegisterCommand::getCommandsFor(const std::vector<std::string> & prefix)
+nix::CommandMap RegisterCommand::getCommandsFor(const std::vector<std::string> & prefix)
 {
-    nix::Commands res;
+    nix::CommandMap res;
     for (auto & [name, command] : *RegisterCommand::commands) {
         if (name.size() == prefix.size() + 1) {
             bool equal = true;
