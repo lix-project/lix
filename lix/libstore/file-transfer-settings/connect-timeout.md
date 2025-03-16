@@ -2,7 +2,7 @@
 name: connect-timeout
 internalName: connectTimeout
 type: unsigned long
-default: 0
+default: 5
 ---
 The timeout (in seconds) for establishing connections in the
 binary cache substituter. It corresponds to `curl`’s
