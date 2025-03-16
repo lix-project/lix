@@ -59,12 +59,14 @@ void registerLegacyCommands()
 static bool haveProxyEnvironmentVariables()
 {
     static const std::vector<std::string> proxyVariables = {
-        "http_proxy",
-        "https_proxy",
-        "ftp_proxy",
-        "HTTP_PROXY",
+        // keep-sorted start
+        "FTP_PROXY",
         "HTTPS_PROXY",
-        "FTP_PROXY"
+        "HTTP_PROXY",
+        "ftp_proxy",
+        "http_proxy",
+        "https_proxy"
+        // keep-sorted end
     };
     for (auto & proxyVariable: proxyVariables) {
         if (getEnv(proxyVariable).has_value()) {
@@ -168,6 +170,7 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
     }
 
     std::map<std::string, std::vector<std::string>> aliases = {
+        // keep-sorted start
         {"add-to-store", {"store", "add-path"}},
         {"cat-nar", {"nar", "cat"}},
         {"cat-store", {"store", "cat"}},
@@ -182,13 +185,14 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
         {"make-content-addressable", {"store", "make-content-addressed"}},
         {"optimise-store", {"store", "optimise"}},
         {"ping-store", {"store", "ping"}},
-        {"sign-paths", {"store", "sign"}},
-        {"show-derivation", {"derivation", "show"}},
         {"show-config", {"config", "show"}},
+        {"show-derivation", {"derivation", "show"}},
+        {"sign-paths", {"store", "sign"}},
         {"to-base16", {"hash", "to-base16"}},
         {"to-base32", {"hash", "to-base32"}},
         {"to-base64", {"hash", "to-base64"}},
         {"verify", {"store", "verify"}},
+        // keep-sorted end
     };
 
     bool aliasUsed = false;

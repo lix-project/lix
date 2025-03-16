@@ -96,6 +96,11 @@ pre-commit-run {
       ];
       entry = lib.getExe pkgs.check-headers;
     };
+    keep-sorted = {
+      enable = true;
+      package = pkgs.keep-sorted;
+      entry = lib.getExe pkgs.keep-sorted;
+    };
     # TODO: Once the test suite is nicer, clean up and start
     # enforcing trailing whitespace on tests that don't explicitly
     # check for it.
