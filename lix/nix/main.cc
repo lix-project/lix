@@ -26,6 +26,7 @@
 #include "nix-instantiate.hh"
 #include "nix-store.hh"
 #include "prefetch-command.hh"
+#include "run.hh"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -34,10 +35,6 @@
 #include <netinet/in.h>
 
 #include <nlohmann/json.hpp>
-
-extern std::string chrootHelperName;
-
-void chrootHelper(int argc, char * * argv);
 
 namespace nix {
 

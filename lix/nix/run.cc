@@ -11,6 +11,7 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libstore/build/personality.hh"
 #include "lix/libutil/current-process.hh"
+#include "run.hh"
 
 #if __linux__
 #include "lix/libstore/temporary-dir.hh"
@@ -18,10 +19,6 @@
 #endif
 
 #include <queue>
-
-using namespace nix;
-
-std::string chrootHelperName = "__run_in_chroot";
 
 namespace nix {
 
@@ -50,7 +47,7 @@ void runProgramInStore(ref<Store> store,
 
     if (store->config().storeDir != store2->getRealStoreDir()) {
         Strings helperArgs = {
-            chrootHelperName,
+            std::string(chrootHelperName),
             store->config().storeDir,
             store2->getRealStoreDir(),
             std::string(system.value_or("")),
@@ -72,8 +69,6 @@ void runProgramInStore(ref<Store> store,
         execv(program.c_str(), stringsToCharPtrs(args).data());
 
     throw SysError("unable to execute '%s'", program);
-}
-
 }
 
 struct CmdShell : InstallablesCommand, MixEnvironment
@@ -305,4 +300,6 @@ void chrootHelper(int argc, char * * argv)
 #else
     throw Error("mounting the Nix store on '%s' is not supported on this platform", storeDir);
 #endif
+}
+
 }
