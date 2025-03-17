@@ -459,6 +459,10 @@ retry:
         }
         current = std::move(next);
     }
+    // Downstream users (e.g. `builtins.readDir` or `builtins.path`) will want to descend.
+    if (level && !level->allowAllChildren) {
+        goto failed;
+    }
 
     resolvedPaths.insert_or_assign(path_.canonical().abs(), current);
     return current;
