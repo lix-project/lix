@@ -248,7 +248,7 @@ std::pair<int, std::string> runProgram(RunOptions && options)
 
     try {
         auto proc = runProgram2(options);
-        Finally const _wait([&] { proc.wait(); });
+        Finally const _wait([&] { proc.waitAndCheck(); });
         stdout = proc.getStdout()->drain();
     } catch (ExecError & e) {
         status = e.status;
@@ -276,7 +276,22 @@ RunningProgram::~RunningProgram()
     }
 }
 
-void RunningProgram::wait()
+std::tuple<pid_t, std::unique_ptr<Source>, int> RunningProgram::release()
+{
+    return {pid.release(), std::move(stdoutSource), stdout_.release()};
+}
+
+int RunningProgram::kill()
+{
+    return pid.kill();
+}
+
+int RunningProgram::wait()
+{
+    return pid.wait();
+}
+
+void RunningProgram::waitAndCheck()
 {
     if (std::uncaught_exceptions() == 0) {
         int status = pid.wait();
