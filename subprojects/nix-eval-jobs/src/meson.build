@@ -1,3 +1,17 @@
+add_project_arguments(
+  '-Wno-unused-parameter',
+  '-Wno-deprecated-declarations',
+  '-Wno-missing-field-initializers',
+  '-Wimplicit-fallthrough',
+  '-Werror=switch',
+  '-Werror=switch-enum',
+  '-Werror=unused-result',
+  '-Wdeprecated-copy',
+  '-Wignored-qualifiers',
+  '-Werror=suggest-override',
+  language : 'cpp',
+)
+
 src = files(
   'nix-eval-jobs.cc',
   'eval-args.cc',
