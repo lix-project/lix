@@ -102,9 +102,23 @@ private:
 
 public:
     RunningProgram() = default;
+    RunningProgram(RunningProgram &&) = default;
+    RunningProgram & operator=(RunningProgram &&) = default;
     ~RunningProgram();
 
-    void wait();
+    explicit operator bool() const { return bool(pid); }
+
+    std::tuple<pid_t, std::unique_ptr<Source>, int> release();
+
+    int kill();
+    [[nodiscard]]
+    int wait();
+    void waitAndCheck();
+
+    std::optional<int> getStdoutFD() const
+    {
+        return stdout_ ? std::optional(stdout_.get()) : std::nullopt;
+    }
 
     Source * getStdout() const { return stdoutSource.get(); };
 };
