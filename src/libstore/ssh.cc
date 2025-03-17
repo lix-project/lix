@@ -4,6 +4,7 @@
 #include "finally.hh"
 #include "logging.hh"
 #include "strings.hh"
+#include <unistd.h>
 
 namespace nix {
 
@@ -49,7 +50,7 @@ bool SSHMaster::isMasterRunning() {
     Strings args = {"-O", "check", host};
     addCommonSSHOpts(args);
 
-    auto res = runProgram(RunOptions {.program = "ssh", .args = args, .mergeStderrToStdout = true});
+    auto res = runProgram(RunOptions {.program = "ssh", .args = args, .redirections = {{.from = STDERR_FILENO, .to = STDOUT_FILENO}}});
     return res.first == 0;
 }
 

@@ -17,6 +17,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 using namespace std::string_literals;
 
@@ -163,7 +164,7 @@ WorkdirInfo getWorkdirInfo(const Input & input, const Path & workdir)
         .program = "git",
         .args = { "-C", workdir, "--git-dir", gitDir, "rev-parse", "--verify", "--no-revs", "HEAD^{commit}" },
         .environment = env,
-        .mergeStderrToStdout = true
+        .redirections = {{.from = STDERR_FILENO, .to = STDOUT_FILENO}},
     });
     auto exitCode = WEXITSTATUS(result.first);
     auto errorMessage = result.second;
@@ -625,7 +626,7 @@ struct GitInputScheme : InputScheme
         auto result = runProgram(RunOptions {
             .program = "git",
             .args = { "-C", repoDir, "--git-dir", gitDir, "cat-file", "commit", input.getRev()->gitRev() },
-            .mergeStderrToStdout = true
+            .redirections = {{.from = STDERR_FILENO, .to = STDOUT_FILENO}},
         });
         if (WEXITSTATUS(result.first) == 128
             && result.second.find("bad file") != std::string::npos)
