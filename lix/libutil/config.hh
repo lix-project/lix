@@ -96,12 +96,6 @@ public:
     virtual nlohmann::json toJSON() = 0;
 
     /**
-     * Outputs all settings in a key-value pair format suitable to be used as
-     * `nix.conf`
-     */
-    virtual std::string toKeyValue() = 0;
-
-    /**
      * Converts settings to `Args` to be used on the command line interface
      * - args: args to write to
      * - category: category of the settings
@@ -165,8 +159,6 @@ public:
     void resetOverridden() override;
 
     nlohmann::json toJSON() override;
-
-    std::string toKeyValue() override;
 
     void convertToArgs(Args & args, const std::string & category) override;
 };
@@ -371,7 +363,11 @@ struct GlobalConfig : public AbstractConfig
 
     nlohmann::json toJSON() override;
 
-    std::string toKeyValue() override;
+    /**
+     * Outputs all settings in a key-value pair format suitable to be used as
+     * `nix.conf`
+     */
+    std::string toKeyValue(bool overriddenOnly = false);
 
     void convertToArgs(Args & args, const std::string & category) override;
 

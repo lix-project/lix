@@ -977,7 +977,7 @@ void runPostBuildHook(
     auto drvPathPretty = store.printStorePath(drvPath);
     hookEnvironment.emplace("DRV_PATH", drvPathPretty);
     hookEnvironment.emplace("OUT_PATHS", chomp(concatStringsSep(" ", store.printStorePathSet(outputPaths))));
-    hookEnvironment.emplace("NIX_CONFIG", globalConfig.toKeyValue());
+    hookEnvironment.emplace("NIX_CONFIG", globalConfig.toKeyValue(true));
 
     struct LogSink : Sink {
         Activity & act;

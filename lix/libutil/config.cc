@@ -187,15 +187,6 @@ nlohmann::json Config::toJSON()
     return res;
 }
 
-std::string Config::toKeyValue()
-{
-    std::string res;
-    for (const auto & s : _settings)
-        if (s.second.isAlias)
-            res += fmt("%s = %s\n", s.first, s.second.setting->to_string());
-    return res;
-}
-
 void Config::convertToArgs(Args & args, const std::string & category)
 {
     for (auto & s : _settings) {
@@ -534,11 +525,11 @@ nlohmann::json GlobalConfig::toJSON()
     return res;
 }
 
-std::string GlobalConfig::toKeyValue()
+std::string GlobalConfig::toKeyValue(bool overriddenOnly)
 {
     std::string res;
     std::map<std::string, Config::SettingInfo> settings;
-    globalConfig.getSettings(settings);
+    globalConfig.getSettings(settings, overriddenOnly);
     for (const auto & s : settings)
         res += fmt("%s = %s\n", s.first, s.second.value);
     return res;
