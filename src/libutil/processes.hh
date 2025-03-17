@@ -76,6 +76,11 @@ std::string runProgram(Path program, bool searchPath = false,
 
 struct RunOptions
 {
+    struct Redirection
+    {
+        int from, to;
+    };
+
     Path program;
     bool searchPath = true;
     Strings args;
@@ -84,8 +89,8 @@ struct RunOptions
     std::optional<Path> chdir;
     std::optional<std::map<std::string, std::string>> environment;
     bool captureStdout = false;
-    bool mergeStderrToStdout = false;
     bool isInteractive = false;
+    std::vector<Redirection> redirections;
 };
 
 struct [[nodiscard("you must call RunningProgram::wait()")]] RunningProgram

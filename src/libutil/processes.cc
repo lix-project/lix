@@ -329,9 +329,11 @@ RunningProgram runProgram2(const RunOptions & options)
             replaceEnv(*options.environment);
         if (options.captureStdout && dup2(out.writeSide.get(), STDOUT_FILENO) == -1)
             throw SysError("dupping stdout");
-        if (options.mergeStderrToStdout)
-            if (dup2(STDOUT_FILENO, STDERR_FILENO) == -1)
-                throw SysError("cannot dup stdout into stderr");
+        for (auto redirection : options.redirections) {
+            if (dup2(redirection.to, redirection.from) == -1) {
+                throw SysError("dupping fd %i to %i", redirection.from, redirection.to);
+            }
+        }
 
         if (options.chdir && chdir((*options.chdir).c_str()) == -1)
             throw SysError("chdir failed");
