@@ -22,9 +22,11 @@
 
 #include "drv.hh"
 #include "eval-args.hh"
+#include "lix/libutil/async.hh"
 
 static bool
-queryIsCached(nix::Store &store,
+queryIsCached(nix::AsyncIoRoot &aio,
+              nix::Store &store,
               std::map<std::string, std::optional<std::string>> &outputs) {
     uint64_t downloadSize, narSize;
     nix::StorePathSet willBuild, willSubstitute, unknown;
@@ -36,8 +38,8 @@ queryIsCached(nix::Store &store,
         }
     }
 
-    store.queryMissing(toDerivedPaths(paths), willBuild, willSubstitute,
-                       unknown, downloadSize, narSize);
+    aio.blockOn(store.queryMissing(toDerivedPaths(paths), willBuild, willSubstitute,
+                       unknown, downloadSize, narSize));
     return willBuild.empty() && unknown.empty();
 }
 
@@ -91,7 +93,7 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
         meta = meta_;
     }
     if (args.checkCacheStatus) {
-        cacheStatus = queryIsCached(*localStore, outputs)
+        cacheStatus = queryIsCached(state.aio, *localStore, outputs)
                           ? Drv::CacheStatus::Cached
                           : Drv::CacheStatus::Uncached;
     } else {
