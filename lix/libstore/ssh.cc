@@ -5,6 +5,7 @@
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libstore/temporary-dir.hh"
+#include <unistd.h>
 
 namespace nix {
 
