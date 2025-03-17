@@ -895,7 +895,7 @@ void runPostBuildHook(
     });
     Finally const _wait([&] {
         try {
-            proc.wait();
+            proc.waitAndCheck();
         } catch (nix::Error & e) {
             e.addTrace(nullptr,
                 "while running the post-build-hook %s for derivation %s",
