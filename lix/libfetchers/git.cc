@@ -766,7 +766,7 @@ struct GitInputScheme : InputScheme
                 .args = { "-C", repoDir, "--git-dir", gitDir, "archive", input.getRev()->gitRev() },
                 .captureStdout = true,
             });
-            Finally const _wait([&] { proc.wait(); });
+            Finally const _wait([&] { proc.waitAndCheck(); });
 
             unpackTarfile(*proc.getStdout(), tmpDir);
         }
