@@ -357,6 +357,10 @@ Paths PluginFilesSetting::parse(const std::string & str, const ApplyConfigOption
     return BaseSetting<Paths>::parse(str, options);
 }
 
+// C++ syntax so weird that it breaks the tree-sitter highlighter!
+// *Technically* the C linkage function pointer should be so annotated.
+// Does it actually matter? Almost certainly not!
+extern "C" using NixPluginEntry = void (*)();
 
 void initPlugins()
 {
@@ -365,11 +369,18 @@ void initPlugins()
         Paths pluginFiles;
         try {
             auto ents = readDirectory(pluginFile);
-            for (const auto & ent : ents)
+            for (const auto & ent : ents) {
                 pluginFiles.emplace_back(pluginFile + "/" + ent.name);
+            }
         } catch (SysError & e) {
-            if (e.errNo != ENOTDIR)
-                throw;
+            if (e.errNo != ENOTDIR) {
+                // I feel like it is more reasonable to skip plugins if they are
+                // inaccessible, since it is *already* the case that plugins
+                // are not guaranteed to load due to version mismatches etc
+                // causing dlopen failures.
+                warn("could not access plugin file '%s', skipping it: %s", pluginFile, e.msg());
+                continue;
+            }
             pluginFiles.emplace_back(pluginFile);
         }
         for (const auto & file : pluginFiles) {
@@ -377,8 +388,17 @@ void initPlugins()
                DSO needed by the action of the plugin. */
             void *handle =
                 dlopen(file.c_str(), RTLD_LAZY | RTLD_LOCAL);
-            if (!handle)
-                warn("could not dynamically open plugin file '%s': %s", file, dlerror());
+            if (!handle) {
+                warn("could not dynamically open plugin file '%s', skipping it: %s", file, dlerror());
+                continue;
+            }
+
+            /* Older plugins use a statically initialized object to run their code.
+               Newer plugins can also export nix_plugin_entry() */
+            auto nix_plugin_entry = reinterpret_cast<NixPluginEntry>(dlsym(handle, "nix_plugin_entry"));
+            if (nix_plugin_entry) {
+                nix_plugin_entry();
+            }
         }
     }
 
