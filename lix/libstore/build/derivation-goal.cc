@@ -990,7 +990,7 @@ void runPostBuildHook(
         .captureStdout = true,
         .mergeStderrToStdout = true,
     });
-    Finally const _wait([&] { proc.wait(); });
+    Finally const _wait([&] { proc.waitAndCheck(); });
 
     // FIXME just process the data, without a wrapper sink class
     proc.getStdout()->drainInto(sink);
