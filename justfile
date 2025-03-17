@@ -8,30 +8,47 @@ list:
 clean:
     rm -rf build
 
-# Prepare meson for building
-setup *OPTIONS:
+# Prepare meson for building with extra options
+setup-custom *OPTIONS:
     meson setup build --prefix="$PWD/outputs/out" $mesonFlags {{ OPTIONS }}
 
-# Build lix
-build *OPTIONS:
+# Prepare meson for building
+setup: (setup-custom)
+
+# Build lix with extra options
+build-custom *OPTIONS:
     meson compile -C build {{ OPTIONS }}
+
+# Build lix
+build: (build-custom)
 
 alias compile := build
 
-# Install lix for local development
-install *OPTIONS: (build OPTIONS)
+# Install lix for local development with extra options
+install-custom *OPTIONS: (build-custom OPTIONS)
     meson install -C build
 
-# Run tests
+# Install lix for local development
+install: (install-custom)
+
+# Run tests (usually requires `install`) with extra options
 test *OPTIONS:
     meson test -C build --print-errorlogs {{ OPTIONS }}
 
+# Run unit tests only
+test-unit *OPTIONS: (test "--suite" "check")
+
+# Run integration tests only
+test-integration *OPTIONS: install (test "--suite" "installcheck")
+
 alias clang-tidy := lint
 
+# Lint with `clang-tidy`
 lint:
     ninja -C build clang-tidy
 
 alias clang-tidy-fix := lint-fix
 
+# Fix lints with `clang-tidy-fix`
 lint-fix:
     ninja -C build clang-tidy-fix

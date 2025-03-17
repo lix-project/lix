@@ -39,25 +39,28 @@ $ nix-shell -A native-clangStdenvPackages
 
 ### Building from the development shell
 
-You can build and test Lix with just:
+Run a clean build and test with `just clean build install test`.
+
+You can also run the unit tests and integration tests separately:
 
 ```bash
-$ just setup
-$ just build
-$ just test --suite=check
-$ just install
-$ just test --suite=installcheck
+$ just setup build test-unit
+$ just install test-integration
 ```
 
-It's possible to pass additional `meson` flags to `just setup`. This is
-useful when e.g. working on both Lix and nix-eval-jobs which can be done
-with
+Many targets have a `-custom` variant which pass extra arguments to `meson`.
+For example, to work on both Lix and nix-eval-jobs you can run:
 
 ```
-$ just setup -Dnix-eval-jobs=enabled
+$ just setup-custom -Dnix-eval-jobs=enabled
+$ # or
+$ mesonFlags=-Dnix-eval-jobs=enabled just setup
 ```
 
-(Check and installcheck may both be done after install, allowing you to omit the --suite argument entirely, but this is the order package.nix runs them in.)
+Note that only targets which don't accept extra arguments can be used when
+running multiple targets at once; `just setup build` is fine, but `just
+setup-custom build` is an error. The `test` target is usually the last one to
+run, so it always accepts extra arguments.
 
 You can also build Lix manually:
 
