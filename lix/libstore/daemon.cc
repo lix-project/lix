@@ -738,7 +738,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
         logger->startWork();
         if (options.ignoreLiveness)
-            throw Error("you are not allowed to ignore liveness");
+            throw Error("ignore-liveness is not supported via the Lix daemon; try running the command again with `--store local` and as the user that owns the Nix store (usually root)");
         auto & gcStore = require<GcStore>(*store);
         aio.blockOn(gcStore.collectGarbage(options, results));
         logger->stopWork();
