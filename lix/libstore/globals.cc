@@ -244,7 +244,8 @@ StringSet Settings::getDefaultExtraPlatforms()
     // x86_64 in aarch64 environments or vice versa since they can
     // always exec with their own binary preferences.
     if (std::string{SYSTEM} == "aarch64-darwin" &&
-        runProgram(RunOptions {.program = "arch", .args = {"-arch", "x86_64", "/usr/bin/true"}, .mergeStderrToStdout = true}).first == 0)
+        runProgram(RunOptions {.program = "arch", .args = {"-arch", "x86_64", "/usr/bin/true"},
+            .redirections = {{.from = STDERR_FILENO, .to = STDOUT_FILENO}}}).first == 0)
         extraPlatforms.insert("x86_64-darwin");
 #endif
 
