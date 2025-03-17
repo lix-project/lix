@@ -1093,10 +1093,10 @@ namespace {
 struct CopyPathStream : AsyncInputStream
 {
     Activity & act;
-    size_t copied = 0, expected;
+    uint64_t copied = 0, expected;
     box_ptr<AsyncInputStream> inner;
 
-    CopyPathStream(Activity & act, size_t expected, box_ptr<AsyncInputStream> inner)
+    CopyPathStream(Activity & act, uint64_t expected, box_ptr<AsyncInputStream> inner)
         : act(act)
         , expected(expected)
         , inner(std::move(inner))
