@@ -251,7 +251,7 @@ void ProgressBar::result(ActivityId act, ResultType type, const std::vector<Fiel
             auto i = state->its.find(act);
             assert(i != state->its.end());
             ActInfo info = *i->second;
-            if (printBuildLogs) {
+            if (printBuildLogs || type == resPostBuildLogLine) {
                 auto suffix = "> ";
                 if (type == resPostBuildLogLine) {
                     suffix = " (post)> ";
