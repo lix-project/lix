@@ -8,6 +8,7 @@
 #include "lix/libutil/strings.hh"
 #include "lix/libstore/temporary-dir.hh"
 #include <sys/socket.h>
+#include <unistd.h>
 
 namespace nix {
 

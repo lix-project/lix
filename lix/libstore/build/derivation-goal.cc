@@ -891,7 +891,7 @@ void runPostBuildHook(
         .program = settings.postBuildHook,
         .environment = hookEnvironment,
         .captureStdout = true,
-        .mergeStderrToStdout = true,
+        .redirections = {{.from = STDERR_FILENO, .to = STDOUT_FILENO}},
     });
     Finally const _wait([&] {
         try {

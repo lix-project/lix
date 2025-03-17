@@ -22,6 +22,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 using namespace std::string_literals;
 
@@ -164,11 +165,19 @@ WorkdirInfo getWorkdirInfo(const Input & input, const Path & workdir)
 
     /* Check whether HEAD points to something that looks like a commit,
        since that is the refrence we want to use later on. */
-    auto result = runProgram(RunOptions {
+    auto result = runProgram(RunOptions{
         .program = "git",
-        .args = { "-C", workdir, "--git-dir", gitDir, "rev-parse", "--verify", "--no-revs", "HEAD^{commit}" },
+        .args =
+            {"-C",
+             workdir,
+             "--git-dir",
+             gitDir,
+             "rev-parse",
+             "--verify",
+             "--no-revs",
+             "HEAD^{commit}"},
         .environment = env,
-        .mergeStderrToStdout = true
+        .redirections = {{.from = STDERR_FILENO, .to = STDOUT_FILENO}},
     });
     auto exitCode = WEXITSTATUS(result.first);
     auto errorMessage = result.second;
@@ -709,10 +718,12 @@ struct GitInputScheme : InputScheme
         AutoDelete delTmpDir(tmpDir, true);
         PathFilter filter = defaultPathFilter;
 
-        auto result = runProgram(RunOptions {
+        auto result = runProgram(RunOptions{
             .program = "git",
-            .args = { "-C", repoDir, "--git-dir", gitDir, "cat-file", "commit", input.getRev()->gitRev() },
-            .mergeStderrToStdout = true
+            .args =
+                {"-C", repoDir, "--git-dir", gitDir, "cat-file", "commit", input.getRev()->gitRev()
+                },
+            .redirections = {{.from = STDERR_FILENO, .to = STDOUT_FILENO}},
         });
         if (WEXITSTATUS(result.first) == 128
             && result.second.find("bad file") != std::string::npos)
