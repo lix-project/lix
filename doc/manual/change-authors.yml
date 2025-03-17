@@ -62,6 +62,9 @@ ericson:
   display_name: John Ericson
   github: ericson2314
 
+gilice:
+  forgejo: gilice
+
 goldstein:
   display_name: goldstein
   forgejo: goldstein
