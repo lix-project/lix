@@ -1,5 +1,7 @@
 #include "lix/libexpr/flake/lockfile.hh"
+#include "json-to-value.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/error.hh"
 #include "lix/libutil/url-parts.hh"
 
 #include <iomanip>
@@ -186,8 +188,16 @@ std::string LockFile::to_string() const
 
 LockFile LockFile::read(const Path & path)
 {
-    if (!pathExists(path)) return LockFile();
-    return LockFile(nlohmann::json::parse(readFile(path)), path);
+    if (!pathExists(path)) {
+        return LockFile();
+    }
+    try {
+        return LockFile(nlohmann::json::parse(readFile(path)), path);
+    } catch (nlohmann::json::parse_error &nlohmann_json_parse_exc) {
+       auto json_parse_error = JSONParseError(nlohmann_json_parse_exc.what());
+       json_parse_error.addTrace(nullptr, "while parsing the lock file at %s", path);
+       throw json_parse_error;
+    }
 }
 
 std::ostream & operator <<(std::ostream & stream, const LockFile & lockFile)
