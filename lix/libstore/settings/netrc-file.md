@@ -17,7 +17,7 @@ format:
     password my-password
 
 For the exact syntax, see [the `curl`
-documentation](https://ec.haxx.se/usingcurl-netrc.html).
+documentation](https://everything.curl.dev/usingcurl/netrc.html).
 
 > **Note**
 >

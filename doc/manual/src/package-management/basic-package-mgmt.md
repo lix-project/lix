@@ -126,7 +126,7 @@ $ nix-env --install --attr nixpkgs.subversion
 ```
 
 will install the package called `subversion` from `nixpkgs` channel (which is, of course, the
-[Subversion version management system](http://subversion.tigris.org/)).
+[Subversion version management system](https://subversion.apache.org/)).
 
 > **Note**
 >

@@ -148,7 +148,7 @@ paths) are set.
 
 For example, the following command gets all dependencies of the
 Pan newsreader, as described by [its
-Nix expression](https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/networking/newsreaders/pan/default.nix):
+Nix expression](https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/pa/pan/package.nix):
 
 ```console
 $ nix-shell '<nixpkgs>' --attr pan
