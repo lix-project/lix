@@ -129,6 +129,8 @@ reference types:
 
 * `ref`: A Git or Mercurial branch or tag name.
 
+  On Git, this is the branch on which the `rev` commit appears.
+
 Finally, some attribute are typically not specified by the user, but
 can occur in *locked* flake references and are available to Nix code:
 
@@ -206,6 +208,10 @@ Currently the `type` attribute can be one of the following:
   `.tgz`, `.tar.gz`, `.tar.xz`, `.tar.bz2` or `.tar.zst`), then the `tarball+`
   can be dropped.
 
+  These URLs can indicate an immutable version's URL via the HTTP Link header in a response or any redirect leading up to it; see the [Lockable HTTP Tarball Protocol](../../protocols/tarball-fetcher.md) in the manual for details.
+  This protocol is used by several services on the Internet to rewrite an unlocked URL to a locked one.
+  For example, it is supported by the archive URLs on Forgejo: `https://git.lix.systems/lix-project/lix/archive/main.tar.gz` works as a stable flake input.
+
 * `file`: Plain files or directory tarballs, either over http(s) or from the local
   disk.
 
@@ -245,6 +251,7 @@ Currently the `type` attribute can be one of the following:
   * `github:edolstra/dwarffs/unstable`
   * `github:edolstra/dwarffs/d3f2baba8f425779026c6ec04021b2e927f61e31`
   * `github:internal/project?host=company-github.example.org`
+  * `github://github.com/lix-project/lix?ref=release-2.92`
 
 * `gitlab`: Similar to `github`, is a more efficient way to fetch
   GitLab repositories. The following attributes are required:

@@ -71,6 +71,7 @@ builtin_definitions = files(
   'builtins/fetchClosure.md',
   'builtins/fetchGit.md',
   'builtins/fetchTarball.md',
+  'builtins/fetchTree.md',
   'builtins/fetchurl.md',
   'builtins/filter.md',
   'builtins/filterSource.md',
