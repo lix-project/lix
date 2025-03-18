@@ -15,9 +15,30 @@
 #include "lix/libcmd/markdown.hh"
 #include "lix/libutil/experimental-features-json.hh"
 #include "lix/libutil/deprecated-features-json.hh"
+#include "add-to-store.hh"
 #include "build-remote.hh"
-#include "daemon-command.hh"
-#include "hash-command.hh"
+#include "build.hh"
+#include "bundle.hh"
+#include "cat.hh"
+#include "config.hh"
+#include "copy.hh"
+#include "daemon.hh"
+#include "derivation-add.hh"
+#include "derivation-show.hh"
+#include "derivation.hh"
+#include "develop.hh"
+#include "diff-closures.hh"
+#include "doctor.hh"
+#include "dump-path.hh"
+#include "edit.hh"
+#include "eval.hh"
+#include "flake.hh"
+#include "fmt.hh"
+#include "hash.hh"
+#include "log.hh"
+#include "ls.hh"
+#include "make-content-addressed.hh"
+#include "nar.hh"
 #include "nix-build.hh"
 #include "nix-channel.hh"
 #include "nix-collect-garbage.hh"
@@ -25,8 +46,26 @@
 #include "nix-env.hh"
 #include "nix-instantiate.hh"
 #include "nix-store.hh"
-#include "prefetch-command.hh"
+#include "optimise-store.hh"
+#include "path-from-hash-part.hh"
+#include "path-info.hh"
+#include "ping-store.hh"
+#include "prefetch.hh"
+#include "profile.hh"
+#include "realisation.hh"
+#include "registry.hh"
+#include "repl.hh"
 #include "run.hh"
+#include "search.hh"
+#include "sigs.hh"
+#include "store-copy-log.hh"
+#include "store-delete.hh"
+#include "store-gc.hh"
+#include "store-repair.hh"
+#include "store.hh"
+#include "upgrade-nix.hh"
+#include "verify.hh"
+#include "why-depends.hh"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -51,6 +90,58 @@ void registerLegacyCommands()
     registerLegacyNixDaemon();
     registerLegacyNixPrefetchUrl();
     registerLegacyNixHash();
+}
+
+void registerNixHelp();
+
+void registerCommands()
+{
+    // keep-sorted start
+    registerNixBuild();
+    registerNixBundle();
+    registerNixCat();
+    registerNixConfig();
+    registerNixCopy();
+    registerNixDaemon();
+    registerNixDerivation();
+    registerNixDerivationAdd();
+    registerNixDerivationShow();
+    registerNixDevelop();
+    registerNixDoctor();
+    registerNixEdit();
+    registerNixEval();
+    registerNixFlake();
+    registerNixFmt();
+    registerNixHash();
+    registerNixHelp();
+    registerNixLog();
+    registerNixLs();
+    registerNixMakeContentAddressed();
+    registerNixNar();
+    registerNixPathInfo();
+    registerNixProfile();
+    registerNixRealisation();
+    registerNixRegistry();
+    registerNixRepl();
+    registerNixRun();
+    registerNixSearch();
+    registerNixSigs();
+    registerNixStore();
+    registerNixStoreAdd();
+    registerNixStoreCopyLog();
+    registerNixStoreDelete();
+    registerNixStoreDiffClosures();
+    registerNixStoreDumpPath();
+    registerNixStoreGc();
+    registerNixStoreOptimise();
+    registerNixStorePathFromHashPart();
+    registerNixStorePing();
+    registerNixStorePrefetchFile();
+    registerNixStoreRepair();
+    registerNixStoreVerify();
+    registerNixUpgradeNix();
+    registerNixWhyDepends();
+    // keep-sorted end
 }
 
 static bool haveProxyEnvironmentVariables()
@@ -114,7 +205,7 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
     AsyncIoRoot & aio() override { return aio_; }
 
     NixArgs(const std::string & programName, AsyncIoRoot & aio)
-        : MultiCommand(RegisterCommand::getCommandsFor({}), true)
+        : MultiCommand(CommandRegistry::getCommandsFor({}), true)
         , MixCommonArgs(programName)
         , aio_(aio)
     {
@@ -229,7 +320,7 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
     // Plugins may add new subcommands.
     void pluginsInited() override
     {
-        commands = RegisterCommand::getCommandsFor({});
+        commands = CommandRegistry::getCommandsFor({});
     }
 
     std::string dumpCli()
@@ -326,7 +417,6 @@ struct CmdHelp : Command
     }
 };
 
-static auto rCmdHelp = registerCommand<CmdHelp>("help");
 
 struct CmdHelpStores : Command
 {
@@ -350,7 +440,11 @@ struct CmdHelpStores : Command
     }
 };
 
-static auto rCmdHelpStores = registerCommand<CmdHelpStores>("help-stores");
+void registerNixHelp()
+{
+    registerCommand<CmdHelp>("help");
+    registerCommand<CmdHelpStores>("help-stores");
+}
 
 void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
 {
@@ -407,6 +501,7 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
         verbosity = lvlInfo;
     }
 
+    registerCommands();
     // NOTE: out of over-cautiousness for backward compatibility,
     // the program name had always been `nix` for a long time.
     // Only when we invoke it as `lix`, we should propagate `lix`.

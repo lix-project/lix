@@ -3,13 +3,14 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libmain/common-args.hh"
 #include "lix/libutil/async.hh"
+#include "path-info.hh"
 
 #include <algorithm>
 #include <array>
 
 #include <nlohmann/json.hpp>
 
-using namespace nix;
+namespace nix {
 
 struct CmdPathInfo : StorePathsCommand, MixJSON
 {
@@ -131,4 +132,9 @@ struct CmdPathInfo : StorePathsCommand, MixJSON
     }
 };
 
-static auto rCmdPathInfo = registerCommand<CmdPathInfo>("path-info");
+void registerNixPathInfo()
+{
+    registerCommand<CmdPathInfo>("path-info");
+}
+
+}

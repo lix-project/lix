@@ -2,10 +2,11 @@
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/finally.hh"
+#include "ping-store.hh"
 
 #include <nlohmann/json.hpp>
 
-using namespace nix;
+namespace nix {
 
 struct CmdPingStore : StoreCommand, MixJSON
 {
@@ -46,4 +47,9 @@ struct CmdPingStore : StoreCommand, MixJSON
     }
 };
 
-static auto rCmdPingStore = registerCommand2<CmdPingStore>({"store", "ping"});
+void registerNixStorePing()
+{
+    registerCommand2<CmdPingStore>({"store", "ping"});
+}
+
+}

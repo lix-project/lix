@@ -1,8 +1,9 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libcmd/installable-value.hh"
 #include "run.hh"
+#include "fmt.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdFmt : SourceExprCommand {
     std::vector<std::string> args;
@@ -49,4 +50,9 @@ struct CmdFmt : SourceExprCommand {
     };
 };
 
-static auto r2 = registerCommand<CmdFmt>("fmt");
+void registerNixFmt()
+{
+    registerCommand<CmdFmt>("fmt");
+}
+
+}

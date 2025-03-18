@@ -5,6 +5,7 @@
 #include "lix/libmain/common-args.hh"
 #include "lix/libstore/names.hh"
 #include "lix/libutil/result.hh"
+#include "diff-closures.hh"
 
 #include <nlohmann/json.hpp>
 #include <regex>
@@ -184,7 +185,7 @@ try {
 
 }
 
-using namespace nix;
+namespace nix {
 
 struct CmdDiffClosures : SourceExprCommand, MixJSON, MixOperateOnOptions
 {
@@ -219,4 +220,8 @@ struct CmdDiffClosures : SourceExprCommand, MixJSON, MixOperateOnOptions
     }
 };
 
-static auto rCmdDiffClosures = registerCommand2<CmdDiffClosures>({"store", "diff-closures"});
+void registerNixStoreDiffClosures() {
+    registerCommand2<CmdDiffClosures>({"store", "diff-closures"});
+}
+
+}

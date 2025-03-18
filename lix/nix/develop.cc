@@ -9,6 +9,7 @@
 #include "lix/libutil/async.hh"
 #include "run.hh"
 #include "lix/libstore/temporary-dir.hh"
+#include "develop.hh"
 
 #include <iterator>
 #include <memory>
@@ -16,7 +17,7 @@
 #include <nlohmann/json.hpp>
 #include <algorithm>
 
-using namespace nix;
+namespace nix {
 
 struct DevelopSettings : Config
 {
@@ -703,5 +704,10 @@ struct CmdPrintDevEnv : Common, MixJSON
     }
 };
 
-static auto rCmdPrintDevEnv = registerCommand<CmdPrintDevEnv>("print-dev-env");
-static auto rCmdDevelop = registerCommand<CmdDevelop>("develop");
+void registerNixDevelop()
+{
+    registerCommand<CmdPrintDevEnv>("print-dev-env");
+    registerCommand<CmdDevelop>("develop");
+}
+
+}

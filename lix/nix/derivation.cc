@@ -1,10 +1,11 @@
 #include "lix/libcmd/command.hh"
+#include "derivation.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdDerivation : MultiCommand
 {
-    CmdDerivation() : MultiCommand(RegisterCommand::getCommandsFor({"derivation"}))
+    CmdDerivation() : MultiCommand(CommandRegistry::getCommandsFor({"derivation"}))
     { }
 
     std::string description() override
@@ -22,4 +23,9 @@ struct CmdDerivation : MultiCommand
     }
 };
 
-static auto rCmdDerivation = registerCommand<CmdDerivation>("derivation");
+void registerNixDerivation()
+{
+    registerCommand<CmdDerivation>("derivation");
+}
+
+}

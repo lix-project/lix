@@ -17,12 +17,13 @@
 #include "lix/libcmd/markdown.hh"
 #include "lix/libutil/terminal.hh"
 #include "lix/libutil/signals.hh"
+#include "flake.hh"
 
 #include <limits>
 #include <nlohmann/json.hpp>
 #include <iomanip>
 
-using namespace nix;
+namespace nix {
 using namespace nix::flake;
 using json = nlohmann::json;
 
@@ -1495,4 +1496,9 @@ struct CmdFlake : MultiCommand
     }
 };
 
-static auto rCmdFlake = registerCommand<CmdFlake>("flake");
+void registerNixFlake()
+{
+    registerCommand<CmdFlake>("flake");
+}
+
+}

@@ -1,10 +1,11 @@
 #include "lix/libcmd/command.hh"
+#include "store.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdStore : MultiCommand
 {
-    CmdStore() : MultiCommand(RegisterCommand::getCommandsFor({"store"}))
+    CmdStore() : MultiCommand(CommandRegistry::getCommandsFor({"store"}))
     { }
 
     std::string description() override
@@ -22,4 +23,9 @@ struct CmdStore : MultiCommand
     }
 };
 
-static auto rCmdStore = registerCommand<CmdStore>("store");
+void registerNixStore()
+{
+    registerCommand<CmdStore>("store");
+}
+
+}

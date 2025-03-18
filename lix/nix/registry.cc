@@ -7,8 +7,9 @@
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libutil/url-parts.hh"
 #include "lix/libfetchers/registry.hh"
+#include "registry.hh"
 
-using namespace nix;
+namespace nix {
 using namespace nix::flake;
 
 
@@ -240,4 +241,9 @@ struct CmdRegistry : MultiCommand
     }
 };
 
-static auto rCmdRegistry = registerCommand<CmdRegistry>("registry");
+void registerNixRegistry()
+{
+    registerCommand<CmdRegistry>("registry");
+}
+
+}

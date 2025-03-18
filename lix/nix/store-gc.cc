@@ -4,8 +4,9 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/store-cast.hh"
 #include "lix/libstore/gc-store.hh"
+#include "store-gc.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdStoreGC : StoreCommand, MixDryRun
 {
@@ -44,4 +45,9 @@ struct CmdStoreGC : StoreCommand, MixDryRun
     }
 };
 
-static auto rCmdStoreGC = registerCommand2<CmdStoreGC>({"store", "gc"});
+void registerNixStoreGc()
+{
+    registerCommand2<CmdStoreGC>({"store", "gc"});
+}
+
+}

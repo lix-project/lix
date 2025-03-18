@@ -4,6 +4,7 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libcmd/installable-value.hh"
 #include "lix/libcmd/repl.hh"
+#include "repl.hh"
 
 namespace nix {
 
@@ -84,6 +85,9 @@ struct CmdRepl : RawInstallablesCommand
     }
 };
 
-static auto rCmdRepl = registerCommand<CmdRepl>("repl");
+void registerNixRepl()
+{
+    registerCommand<CmdRepl>("repl");
+}
 
 }

@@ -4,11 +4,12 @@
 #include "lix/libutil/async.hh"
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/signals.hh"
+#include "sigs.hh"
 
 #include <atomic>
 #include <functional>
 
-using namespace nix;
+namespace nix {
 
 struct CmdCopySigs : StorePathsCommand
 {
@@ -90,8 +91,6 @@ struct CmdCopySigs : StorePathsCommand
     }
 };
 
-static auto rCmdCopySigs = registerCommand2<CmdCopySigs>({"store", "copy-sigs"});
-
 struct CmdSign : StorePathsCommand
 {
     Path secretKeyFile;
@@ -154,8 +153,6 @@ struct CmdSign : StorePathsCommand
         printInfo("added %d signatures", added);
     }
 };
-
-static auto rCmdSign = registerCommand2<CmdSign>({"store", "sign"});
 
 struct CmdKeyGenerateSecret : Command
 {
@@ -242,4 +239,11 @@ struct CmdKey : MultiCommand
     }
 };
 
-static auto rCmdKey = registerCommand<CmdKey>("key");
+void registerNixSigs()
+{
+    registerCommand2<CmdCopySigs>({"store", "copy-sigs"});
+    registerCommand2<CmdSign>({"store", "sign"});
+    registerCommand<CmdKey>("key");
+}
+
+}

@@ -2,14 +2,15 @@
 #include "lix/libmain/common-args.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
+#include "config.hh"
 
 #include <nlohmann/json.hpp>
 
-using namespace nix;
+namespace nix {
 
 struct CmdConfig : MultiCommand
 {
-    CmdConfig() : MultiCommand(RegisterCommand::getCommandsFor({"config"}))
+    CmdConfig() : MultiCommand(CommandRegistry::getCommandsFor({"config"}))
     { }
 
     std::string description() override
@@ -76,5 +77,10 @@ struct CmdConfigShow : Command, MixJSON
     }
 };
 
-static auto rCmdConfig = registerCommand<CmdConfig>("config");
-static auto rShowConfig = registerCommand2<CmdConfigShow>({"config", "show"});
+void registerNixConfig()
+{
+    registerCommand<CmdConfig>("config");
+    registerCommand2<CmdConfigShow>({"config", "show"});
+}
+
+}

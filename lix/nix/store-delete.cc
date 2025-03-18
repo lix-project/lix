@@ -4,8 +4,9 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/store-cast.hh"
 #include "lix/libstore/gc-store.hh"
+#include "store-delete.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdStoreDelete : StorePathsCommand
 {
@@ -62,4 +63,9 @@ struct CmdStoreDelete : StorePathsCommand
     }
 };
 
-static auto rCmdStoreDelete = registerCommand2<CmdStoreDelete>({"store", "delete"});
+void registerNixStoreDelete()
+{
+    registerCommand2<CmdStoreDelete>({"store", "delete"});
+}
+
+}

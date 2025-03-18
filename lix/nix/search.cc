@@ -10,12 +10,13 @@
 #include "lix/libexpr/eval-cache.hh"
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libutil/hilite.hh"
+#include "search.hh"
 
 #include <regex>
 #include <fstream>
 #include <nlohmann/json.hpp>
 
-using namespace nix;
+namespace nix {
 using json = nlohmann::json;
 
 std::string wrap(std::string prefix, std::string s)
@@ -203,4 +204,9 @@ struct CmdSearch : InstallableCommand, MixJSON
     }
 };
 
-static auto rCmdSearch = registerCommand<CmdSearch>("search");
+void registerNixSearch()
+{
+    registerCommand<CmdSearch>("search");
+}
+
+}

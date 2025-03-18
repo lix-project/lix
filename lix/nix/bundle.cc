@@ -7,8 +7,9 @@
 #include "lix/libstore/local-fs-store.hh"
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libexpr/eval-inline.hh"
+#include "bundle.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdBundle : InstallableCommand
 {
@@ -135,4 +136,9 @@ struct CmdBundle : InstallableCommand
     }
 };
 
-static auto r2 = registerCommand<CmdBundle>("bundle");
+void registerNixBundle()
+{
+    registerCommand<CmdBundle>("bundle");
+}
+
+}

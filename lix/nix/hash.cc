@@ -5,7 +5,7 @@
 #include "lix/libmain/shared.hh"
 #include "lix/libutil/references.hh"
 #include "lix/libutil/archive.hh"
-#include "hash-command.hh"
+#include "hash.hh"
 
 namespace nix {
 
@@ -163,7 +163,10 @@ struct CmdHash : MultiCommand
     }
 };
 
-static auto rCmdHash = registerCommand<CmdHash>("hash");
+void registerNixHash()
+{
+    registerCommand<CmdHash>("hash");
+}
 
 /* Legacy nix-hash command. */
 static int compatNixHash(AsyncIoRoot & aio, std::string programName, Strings argv)

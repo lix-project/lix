@@ -5,11 +5,12 @@
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/exit.hh"
+#include "verify.hh"
 
 #include <atomic>
 #include <functional>
 
-using namespace nix;
+namespace nix {
 
 struct CmdVerify : StorePathsCommand
 {
@@ -186,4 +187,9 @@ struct CmdVerify : StorePathsCommand
     }
 };
 
-static auto rCmdVerify = registerCommand2<CmdVerify>({"store", "verify"});
+void registerNixStoreVerify()
+{
+    registerCommand2<CmdVerify>({"store", "verify"});
+}
+
+}

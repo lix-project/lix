@@ -262,7 +262,7 @@ struct StorePathCommand : public StorePathsCommand
 /**
  * A helper class for registering \ref Command commands globally.
  */
-struct RegisterCommand
+struct CommandRegistry
 {
     using CommandMap = std::map<
         std::vector<std::string>,
@@ -270,10 +270,12 @@ struct RegisterCommand
     >;
     static CommandMap * commands;
 
-    RegisterCommand(std::vector<std::string> && name,
+    static void add(std::vector<std::string> && name,
         std::function<ref<Command>(AsyncIoRoot & aio)> command)
     {
-        if (!commands) commands = new CommandMap;
+        if (!commands) {
+            commands = new CommandMap;
+        }
         commands->emplace(name, command);
     }
 
@@ -301,17 +303,17 @@ public:
 };
 
 template<class T>
-static RegisterCommand registerCommand(const std::string & name)
+static void registerCommand(const std::string & name)
 {
-    return RegisterCommand({name}, [](AsyncIoRoot & aio) {
+    CommandRegistry::add({name}, [](AsyncIoRoot & aio) {
         return make_ref<MixAio<T>>(aio);
     });
 }
 
 template<class T>
-static RegisterCommand registerCommand2(std::vector<std::string> && name)
+static void registerCommand2(std::vector<std::string> && name)
 {
-    return RegisterCommand(std::move(name), [](AsyncIoRoot & aio) {
+    CommandRegistry::add(std::move(name), [](AsyncIoRoot & aio) {
         return make_ref<MixAio<T>>(aio);
     });
 }

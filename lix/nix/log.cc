@@ -3,8 +3,9 @@
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/log-store.hh"
+#include "log.hh"
 
-using namespace nix;
+namespace nix {
 
 struct CmdLog : InstallableCommand
 {
@@ -64,4 +65,9 @@ struct CmdLog : InstallableCommand
     }
 };
 
-static auto rCmdLog = registerCommand<CmdLog>("log");
+void registerNixLog()
+{
+    registerCommand<CmdLog>("log");
+}
+
+}

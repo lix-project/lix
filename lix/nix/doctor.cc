@@ -8,8 +8,9 @@
 #include "lix/libstore/local-fs-store.hh"
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libutil/exit.hh"
+#include "doctor.hh"
 
-using namespace nix;
+namespace nix {
 
 namespace {
 
@@ -152,4 +153,9 @@ struct CmdDoctor : StoreCommand
     }
 };
 
-static auto rCmdDoctor = registerCommand<CmdDoctor>("doctor");
+void registerNixDoctor()
+{
+    registerCommand<CmdDoctor>("doctor");
+}
+
+}

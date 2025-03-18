@@ -7,7 +7,7 @@
 #include "lix/libstore/derivations.hh"
 #include <nlohmann/json.hpp>
 
-using namespace nix;
+namespace nix {
 using json = nlohmann::json;
 
 struct CmdAddDerivation : MixDryRun, StoreCommand
@@ -42,4 +42,9 @@ struct CmdAddDerivation : MixDryRun, StoreCommand
     }
 };
 
-static auto rCmdAddDerivation = registerCommand2<CmdAddDerivation>({"derivation", "add"});
+void registerNixDerivationAdd()
+{
+    registerCommand2<CmdAddDerivation>({"derivation", "add"});
+}
+
+}

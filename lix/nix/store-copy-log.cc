@@ -5,10 +5,11 @@
 #include "lix/libstore/log-store.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libutil/thread-pool.hh"
+#include "store-copy-log.hh"
 
 #include <atomic>
 
-using namespace nix;
+namespace nix {
 
 struct CmdCopyLog : virtual CopyCommand, virtual InstallablesCommand
 {
@@ -43,4 +44,9 @@ struct CmdCopyLog : virtual CopyCommand, virtual InstallablesCommand
     }
 };
 
-static auto rCmdCopyLog = registerCommand2<CmdCopyLog>({"store", "copy-log"});
+void registerNixStoreCopyLog()
+{
+    registerCommand2<CmdCopyLog>({"store", "copy-log"});
+}
+
+}

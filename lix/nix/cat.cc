@@ -2,8 +2,9 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libstore/nar-accessor.hh"
+#include "cat.hh"
 
-using namespace nix;
+namespace nix {
 
 struct MixCat : virtual Args
 {
@@ -85,5 +86,10 @@ struct CmdCatNar : StoreCommand, MixCat
     }
 };
 
-static auto rCmdCatStore = registerCommand2<CmdCatStore>({"store", "cat"});
-static auto rCmdCatNar = registerCommand2<CmdCatNar>({"nar", "cat"});
+void registerNixCat()
+{
+    registerCommand2<CmdCatStore>({"store", "cat"});
+    registerCommand2<CmdCatNar>({"nar", "cat"});
+}
+
+}
