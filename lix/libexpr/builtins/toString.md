@@ -13,6 +13,8 @@ Convert the expression *e* to a string. *e* can be:
 
   - An integer.
 
+  - A floating-point value, it will be converted to the decimal notation in the style `[-]ddd.ddd` with 6 digits appearing after the decimal point.
+
   - A list, in which case the string representations of its elements
     are joined with spaces.
 
