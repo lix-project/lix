@@ -35,7 +35,7 @@ $ nix-eval-jobs --gc-roots-dir gcroot --flake 'github:NixOS/patchelf#hydraJobs'
 {"attr":"tarball","attrPath":["tarball"],"drvPath":"/nix/store/c0gg7lj101xhd8v2b3cjl5dwwkpxfc0q-patchelf-tarball-0.18.0.drv","inputDrvs":{"/nix/store/6z1jfnqqgyqr221zgbpm30v91yfj3r45-bash-5.1-p16.drv":["out"],"/nix/store/9d754glmsvpjm5kxvgsjslvgv356kbmn-libtool-2.4.7.drv":["out"],"/nix/store/ap9g09fxbicj836zm88d56dn3ff4clxl-stdenv-linux.drv":["out"],"/nix/store/f1ksgsyplvb0sli4pls6k6vsfvmv519d-autoconf-2.71.drv":["out"],"/nix/store/jf58lcnch1bmpbi2188c59w5zr1cqrx2-automake-1.16.5.drv":["out"]},"name":"patchelf-tarball-0.18.0","outputs":{"out":"/nix/store/72pz5awc7gpwdqxrdsy8j0bvg2n7z78q-patchelf-tarball-0.18.0"},"system":"x86_64-linux"}
 ```
 
-The output here is newline-seperated json according to https://jsonlines.org.
+The output here is newline-separated json according to https://jsonlines.org.
 
 The code is derived from [hydra's](https://github.com/nixos/hydra) eval-jobs
 executable.

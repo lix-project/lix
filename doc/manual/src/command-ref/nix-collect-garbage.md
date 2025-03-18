@@ -36,7 +36,7 @@ Instead, it looks in a few locations, and acts on all profiles it finds there:
    >
    > Not stable; subject to change
    >
-   > Do not rely on this functionality; it just exists for migration purposes and is may change in the future.
+   > Do not rely on this functionality; it just exists for migration purposes and may change in the future.
    > These deprecated paths remain a private implementation detail of Lix.
 
    <!-- FIXME(Qyriad): this is inconsistent with https://git.lix.systems/lix-project/lix/issues/215, needs updating when that happens -->

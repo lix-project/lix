@@ -17,7 +17,7 @@ For systems that **already have a Nix implementation installed**, such as NixOS 
 
 ## Building And Developing
 
-See our [Hacking guide](https://git.lix.systems/lix-project/lix/src/branch/main/doc/manual/src/contributing/hacking.md) in our manual for instruction on how to to set up a development environment and build Lix from source.
+See our [Hacking guide](https://git.lix.systems/lix-project/lix/src/branch/main/doc/manual/src/contributing/hacking.md) in our manual for instruction on how to set up a development environment and build Lix from source.
 
 ## Additional Resources
 

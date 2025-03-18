@@ -22,9 +22,9 @@ The following [concept map] shows its main components (rectangles), the objects 
            |                   |
 +----------|-------------------|--------------------------------+
 | Nix impl.|                   V                                |
-| (Lix)    |      +-------------------------+                   |
-|          |      | commmand line interface |------.            |
-|          |      +-------------------------+      |            |
+| (Lix)    |       +------------------------+                   |
+|          |       | command line interface |------.            |
+|          |       +------------------------+      |            |
 |          |                   |                   |            |
 |    evaluated by            calls              manages         |
 |          |                   |                   |            |

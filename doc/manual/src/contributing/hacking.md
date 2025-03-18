@@ -463,11 +463,11 @@ The following metadata properties are supported for builtin functions:
 * `implementation` (optional): a C++ expression specifying the implementation of the builtin.
   It must be a function of signature `void(EvalState &, PosIdx, Value * *, Value &)`.
   If not specified, defaults to `prim_${name}`.
-* `renameInGlobalScope` (optional): whether the definiton should be "hidden" in the global scope by prefixing its name with two underscores.
+* `renameInGlobalScope` (optional): whether the definition should be "hidden" in the global scope by prefixing its name with two underscores.
   If not specified, defaults to `true`.
 * `args` (required): list containing the names of the arguments, as shown in the documentation.
   All arguments must be listed here since the function arity is derived as the length of this list.
-* `experimental_feature` (optional): the user-facing name of the experimental feature which needs to be enabled for the bultin function to be available.
+* `experimental_feature` (optional): the user-facing name of the experimental feature which needs to be enabled for the builtin function to be available.
   If not specified, no experimental feature is required.
 
 New builtin function definition files must be added to `lix/libexpr/builtins` and registered in the `builtin_definitions` list in `lix/libexpr/meson.build`.

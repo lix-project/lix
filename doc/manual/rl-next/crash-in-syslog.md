@@ -1,5 +1,5 @@
 ---
-synopsis: "Crashs land in syslog now"
+synopsis: "Crashes land in syslog now"
 cls: [2640]
 category: Improvements
 credits: [jade]

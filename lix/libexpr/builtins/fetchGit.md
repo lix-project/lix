@@ -74,7 +74,7 @@ Here are some examples of how to use `fetchGit`.
     name in the `ref` attribute.
 
     However, if the revision you're looking for is in a future
-    branch for the non-default branch you will need to specify the
+    branch for the non-default branch you will need to specify
     the `ref` attribute as well.
 
     ```nix
