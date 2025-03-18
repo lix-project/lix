@@ -443,7 +443,15 @@ INSTANTIATE_TEST_SUITE_P(
             concat({header, make_directory({{"d", make_directory({{"a", make_symlink("")}})}})}),
             concat({header, make_directory({{"d", make_directory({{"a", make_symlink("short")}})}})}),
             concat({header, make_directory({{"d", make_directory({{"a", make_symlink("block000")}})}})}),
-            concat({header, make_directory({{"d", make_directory({{"a", make_symlink("block0001")}})}})})
+            concat({header, make_directory({{"d", make_directory({{"a", make_symlink("block0001")}})}})}),
+
+            // Validate that files with conflicting case get correctly
+            // processed through copyNAR without e.g. getting casehacked.
+            //
+            // By construction this can never happen anymore (since this file
+            // doesn't have the case hack machinery in its closure at all!),
+            // but it deserves checking anyway.
+            concat({header, make_directory({{"DE", make_file(false, "meow")}, {"de", make_file(false, "mrrp")}})})
         ))
 );
 }

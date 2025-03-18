@@ -138,6 +138,7 @@ static nar::Entry list(Path path, time_t & mtime, PathFilter & filter, bool retu
                the case hack applied by restorePath(). */
             std::map<std::string, std::string> unhacked;
             for (auto & i : readDirectory(path))
+                // See Note [Case Hack].
                 if (archiveSettings.useCaseHack) {
                     std::string name(i.name);
                     size_t pos = i.name.find(caseHackSuffix);
@@ -276,6 +277,7 @@ struct PrefilteredDump : PreparedDump
                     [](Path path, const Directory & d
                     ) -> Generator<std::pair<const std::string &, nar::Entry>> {
                         for (auto & [name, entry] : d.contents) {
+                            // FIXME(jade): what?! we have two copies of this case un-hack code?
                             std::string narName = archiveSettings.useCaseHack
                                 ? name.substr(0, name.find(caseHackSuffix))
                                 : name;
@@ -421,7 +423,6 @@ struct Parser
         } else if (t == "directory") {
             // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
             auto makeReader = [this](bool & completed) -> Directory::Stream {
-                std::map<Path, int, CaseInsensitiveCompare> names;
                 std::string prevName;
 
                 while (1) {
@@ -453,17 +454,9 @@ struct Parser
                         throw Error("NAR directory is not sorted");
                     }
                     prevName = name;
-                    if (archiveSettings.useCaseHack) {
-                        auto i = names.find(name);
-                        if (i != names.end()) {
-                            debug("case collision between '%1%' and '%2%'", i->first, name);
-                            name += caseHackSuffix;
-                            name += std::to_string(++i->second);
-                        } else {
-                            names[name] = 0;
-                        }
-                    }
 
+                    // N.B. The restore visitor will case-hack the filename if necessary
+                    // See Note [Case Hack].
                     EXPECT("node", "node");
                     co_yield Directory::Entry{name, parse()};
                     EXPECT(")", "close");
@@ -883,6 +876,45 @@ try {
     co_return result::current_exception();
 }
 
+/* Note [Case Hack]:
+ * Nix uses a "case hack" which intentionally messes up filenames of files that
+ * have conflicts only in case so that the mapping to a case insensitive
+ * filesystem is one-to-one and data is not corrupted when loading the data
+ * from said filesystem to send to a case-sensitive one.
+ *
+ * It exists so that NARs with case conflicts can be successfully extracted on
+ * default macOS installations and then re-compressed and sent to Linux
+ * machines without corrupting them.
+ *
+ * For example, a NAR with the files "pod" and "Pod" will extract as:
+ * - Pod
+ * - pod~nix~case~hack~1
+ *
+ * The case hacked filenames consist of a magic string `caseHackSuffix`, which
+ * is `~nix~case~hack~`, then an increasing number based on the number of
+ * conflicts that file name has.
+ *
+ * However: this is ITSELF corruption of NARs and is the cause of numerous
+ * bugs, and to top it off, it is not necessary anymore in a world where the
+ * Nix store is already on a separate APFS container *anyway*, so we can just
+ * enable case sensitivity on macOS and remove the case hack.
+ *
+ * It is *already* the case that not all NARs that exist can be extracted on
+ * macOS without throwing an extraction error; see
+ * Note [NAR restoration security]: Unicode normalization conflicts already
+ * error today.
+ *
+ * Unlike HFS+, APFS never corrupts filenames: it does not unicode-normalize
+ * them and will give you out the same output as you put in; HOWEVER, it uses a
+ * Unicode normalization insensitive hash function when searching for them,
+ * which means that two files with the same name under Unicode NFD will resolve
+ * to the same underlying file and fail as per Note [NAR restoration security].
+ *
+ * Lix intends to remove the case hack, see:
+ * https://git.lix.systems/lix-project/lix/issues/332
+ * https://git.lix.systems/lix-project/lix/projects/16
+ */
+
 /*
  * Note [NAR restoration security]:
  * It's *critical* that NAR restoration will never overwrite anything even if
@@ -915,6 +947,9 @@ try {
 struct NARRestoreVisitor : NARParseVisitor
 {
     Path dstPath;
+
+    bool useCaseHack;
+    std::map<Path, int, CaseInsensitiveCompare> caseHackNames;
 
 private:
     struct MyFileHandle : public FileHandle
@@ -971,19 +1006,39 @@ private:
         }
     };
 
-public:
-    NARRestoreVisitor(Path dstPath): dstPath(std::move(dstPath)) {}
-
-    box_ptr<NARParseVisitor> createDirectory(const std::string & name) override
+    /** See Note [Case Hack] */
+    std::string maybeCaseHackFilename(std::string const & name)
     {
+        if (this->useCaseHack) {
+            auto i = caseHackNames.find(name);
+            if (i != caseHackNames.end()) {
+                debug("case collision between '%1%' and '%2%'", i->first, name);
+                auto name2 = name;
+                name2 += caseHackSuffix;
+                name2 += std::to_string(++i->second);
+                return name2;
+            } else {
+                caseHackNames[name] = 0;
+            }
+        }
+        return name;
+    }
+
+public:
+    NARRestoreVisitor(Path dstPath, bool useCaseHack): dstPath(std::move(dstPath)), useCaseHack(useCaseHack) {}
+
+    box_ptr<NARParseVisitor> createDirectory(const std::string & name_) override
+    {
+        auto name = maybeCaseHackFilename(name_);
         Path p = dstPath + name;
         if (mkdir(p.c_str(), 0777) == -1)
             throw SysError("creating directory '%1%'", p);
-        return make_box_ptr<NARRestoreVisitor>(p + "/");
+        return make_box_ptr<NARRestoreVisitor>(p + "/", useCaseHack);
     };
 
-    box_ptr<FileHandle> createRegularFile(const std::string & name, uint64_t size, bool executable) override
+    box_ptr<FileHandle> createRegularFile(const std::string & name_, uint64_t size, bool executable) override
     {
+        auto name = maybeCaseHackFilename(name_);
         Path p = dstPath + name;
         AutoCloseFD fd = AutoCloseFD{open(p.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0666)};
         if (!fd) throw SysError("creating file '%1%'", p);
@@ -991,8 +1046,9 @@ public:
         return make_box_ptr<MyFileHandle>(std::move(fd), size, executable);
     }
 
-    void createSymlink(const std::string & name, const std::string & target) override
+    void createSymlink(const std::string & name_, const std::string & target) override
     {
+        auto name = maybeCaseHackFilename(name_);
         Path p = dstPath + name;
         nix::createSymlink(target, p);
     }
@@ -1001,13 +1057,13 @@ public:
 
 void restorePath(const Path & path, Source & source)
 {
-    NARRestoreVisitor sink(path);
+    NARRestoreVisitor sink(path, archiveSettings.useCaseHack);
     parseDump(sink, source);
 }
 
 kj::Promise<Result<void>> restorePath(const Path & path, AsyncInputStream & source)
 try {
-    NARRestoreVisitor sink(path);
+    NARRestoreVisitor sink(path, archiveSettings.useCaseHack);
     TRY_AWAIT(parseDump(sink, source));
     co_return result::success();
 } catch (...) {
