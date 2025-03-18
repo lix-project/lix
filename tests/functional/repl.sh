@@ -47,6 +47,12 @@ testRepl () {
       | grep "attribute 'currentSystem' missing"
     nix repl "${nixArgs[@]}" 2>&1 <<< "builtins.currentSystem" \
       | grep "$(nix-instantiate --eval -E 'builtins.currentSystem')"
+
+    local replOutput="$(nix repl "${nixArgs[@]}" ${testDir}/simple.nix 2>&1)"
+    echo "$replOutput"
+    echo "$replOutput" \
+      | grepQuiet "error: could not find a flake.nix file" \
+      || fail "nix repl simple.nix doesn't fail because simple.nix is not a flake"
 }
 
 # Simple test, try building a drv
@@ -115,7 +121,7 @@ testReplResponseNoRegex '
 testReplResponse '
 drvPath
 ' '".*-simple.drv"' \
-$testDir/simple.nix
+--file $testDir/simple.nix
 
 testReplResponse '
 drvPath
@@ -125,7 +131,7 @@ drvPath
 testReplResponse '
 drvPath
 ' '".*-simple.drv"' \
---file $testDir/simple.nix --extra-experimental-features 'repl-flake ca-derivations'
+--file $testDir/simple.nix --extra-experimental-features 'ca-derivations'
 
 mkdir -p flake && cat <<EOF > flake/flake.nix
 {
@@ -140,7 +146,7 @@ EOF
 testReplResponse '
 foo + baz
 ' "3" \
-    ./flake ./flake\#bar --experimental-features 'flakes repl-flake'
+    ./flake ./flake\#bar --experimental-features 'flakes'
 
 # Test the `:reload` mechansim with flakes:
 # - Eval `./flake#changingThing`
@@ -153,7 +159,7 @@ sleep 1 # Leave the repl the time to eval 'foo'
 sed -i 's/beforeChange/afterChange/' flake/flake.nix
 echo ":reload"
 echo "changingThing"
-) | nix repl ./flake --experimental-features 'flakes repl-flake')
+) | nix repl ./flake --experimental-features 'flakes')
 echo "$replResult" | grepQuiet -s beforeChange
 echo "$replResult" | grepQuiet -s afterChange
 
