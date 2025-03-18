@@ -128,7 +128,7 @@ static nar::Entry list(Path path, time_t & mtime, PathFilter & filter, bool retu
     if (S_ISREG(st.st_mode)) {
         return nar::File{
             (st.st_mode & S_IXUSR) != 0,
-            size_t(st.st_size),
+            uint64_t(st.st_size),
             dumpContents(std::move(path), st.st_size)
         };
     } else if (S_ISDIR(st.st_mode)) {
@@ -355,21 +355,21 @@ struct Parser
     // but in such a way that doing it *wrong* will definitely make
     // tests fail. we could also duplicate them completely, but not
     // doing so ensures that we're the inverse of dump at all times
-#define FETCH_U64()                                                       \
+#define FETCH_INT(type)                                                   \
     ({                                                                    \
         co_yield WantBytes{8};                                            \
         StringSource src(std::string_view(buffer.data(), buffer.size())); \
-        readNum<uint64_t>(src);                                           \
+        readNum<type>(src);                                               \
     })
 #define READ_U64()            \
     ({                        \
-        auto u = FETCH_U64(); \
+        auto u = FETCH_INT(uint64_t); \
         buffer.clear();       \
         u;                    \
     })
 #define READ_STRING_LIMITED(limit)                                        \
     ({                                                                    \
-        uint64_t len = FETCH_U64();                                       \
+        size_t len = FETCH_INT(size_t);                                   \
         co_yield WantBytes{len + (8 - len % 8) % 8};                      \
         StringSource src(std::string_view(buffer.data(), buffer.size())); \
         auto str = readString(src, (limit));                              \
@@ -380,7 +380,7 @@ struct Parser
 #define READ_PADDING(size)                                                    \
     do {                                                                      \
         if ((size) % 8) {                                                     \
-            co_yield WantBytes{8 - (size) % 8};                               \
+            co_yield WantBytes{size_t(8 - (size) % 8)};                       \
             StringSource src(std::string_view(buffer.data(), buffer.size())); \
             readPadding((size), src);                                         \
             buffer.clear();                                                   \
@@ -506,7 +506,7 @@ struct Parser
         co_yield parse();
     }
 
-#undef FETCH_U64
+#undef FETCH_INT
 #undef READ_U64
 #undef READ_STRING
 #undef READ_STRING_LIMITED
@@ -595,7 +595,7 @@ struct AsyncCopier : AsyncInputStream
     struct Fragment
     {
         // how many bytes the parser requested but we haven't read from source yet
-        size_t pending = 0;
+        uint64_t pending = 0;
         // whether the requested bytes are nar metadata (false) or contents (true)
         bool pendingFileContents = false;
     };
@@ -615,7 +615,7 @@ struct AsyncCopier : AsyncInputStream
             }
         }
 
-        size = std::min(current.pending, size);
+        size = std::min<uint64_t>(current.pending, size);
         if (size == 0) {
             co_return 0;
         }
