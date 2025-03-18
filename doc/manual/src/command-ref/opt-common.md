@@ -85,7 +85,7 @@ Most commands in Lix accept the following command-line options:
 
   - `multiline-with-logs`
 
-    Displayes the raw logs, with a progress bar and activities each in a new line at the bottom.
+    Display the raw logs, with a progress bar and activities each in a new line at the bottom.
 
 
 - <span id="opt-no-build-output">[`--no-build-output`](#opt-no-build-output)</span> / `-Q`

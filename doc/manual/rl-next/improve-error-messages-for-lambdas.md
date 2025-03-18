@@ -1,5 +1,5 @@
 ---
-synopsis: 'Show all missing and unexpected arguments in errorneous function calls'
+synopsis: 'Show all missing and unexpected arguments in erroneous function calls'
 issues: []
 cls: [2477]
 category: Improvements

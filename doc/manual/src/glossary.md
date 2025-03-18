@@ -249,7 +249,7 @@
   links.  NARs are generated and unpacked using `nix-store --dump`
   and `nix-store --restore`.
 
-- [`∅`]{#gloss-emtpy-set}
+- [`∅`]{#gloss-empty-set}
 
   The empty set symbol. In the context of profile history, this denotes a package is not present in a particular version of the profile.
 

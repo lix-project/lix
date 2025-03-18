@@ -261,7 +261,7 @@ Derivations can declare some infrequently used optional attributes.
     useful for very trivial derivations (such as `writeText` in Nixpkgs)
     that are cheaper to build than to substitute from a binary cache.
 
-    You may disable the effects of this attibute by enabling the
+    You may disable the effects of this attribute by enabling the
     `always-allow-substitutes` configuration option in Lix.
 
     > **Note**
