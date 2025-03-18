@@ -48,7 +48,9 @@ testRepl () {
     nix repl "${nixArgs[@]}" 2>&1 <<< "builtins.currentSystem" \
       | grep "$(nix-instantiate --eval -E 'builtins.currentSystem')"
 
-    local replOutput="$(nix repl "${nixArgs[@]}" ${testDir}/simple.nix 2>&1)"
+    # . is TEST_ROOT
+    cp "$testDir/simple.nix" .
+    local replOutput="$(nix repl "${nixArgs[@]}" ./simple.nix 2>&1)"
     echo "$replOutput"
     echo "$replOutput" \
       | grepQuiet "error: could not find a flake.nix file" \
