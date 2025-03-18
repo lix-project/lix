@@ -148,7 +148,7 @@ You can also build Lix for one of the [supported platforms](#platforms).
 
 Lix can be built for various platforms, as specified in [`flake.nix`]:
 
-[`flake.nix`]: https://git.lix.systems/lix-project/lix/lix/branch/main/flake.nix
+[`flake.nix`]: https://git.lix.systems/lix-project/lix/src/branch/main/flake.nix
 
 - `x86_64-linux`
 - `x86_64-darwin`
@@ -229,7 +229,7 @@ Lix uses a string with the following format to identify the *system type* or *pl
 
 It is set when Lix is compiled for the given system, and determined by [Meson's `host_machine.cpu_family()` and `host_machine.system()` values](https://mesonbuild.com/Reference-manual_builtin_host_machine.html).
 
-For historic reasons and backward-compatibility, some CPU and OS identifiers are translated from the GNU Autotools naming convention in [`meson.build`](https://git.lix.systems/lix-project/lix/blob/main/meson.build) as follows:
+For historic reasons and backward-compatibility, some CPU and OS identifiers are translated from the GNU Autotools naming convention in [`meson.build`](https://git.lix.systems/lix-project/lix/src/branch/main/meson.build) as follows:
 
 | `host_machine.cpu_family()`             | Nix                 |
 |----------------------------|---------------------|

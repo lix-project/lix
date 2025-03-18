@@ -47,7 +47,7 @@ stdenv.mkDerivation (rec {
 ```
 
 The builder is supposed to generate the configuration file for a
-[Jetty servlet container](http://jetty.mortbay.org/). A servlet
+[Jetty servlet container](https://jetty.org/). A servlet
 container contains a number of servlets (`*.war` files) each
 exported under a specific URI prefix. So the servlet configuration
 is a list of sets containing the `path` and `war` of the servlet
