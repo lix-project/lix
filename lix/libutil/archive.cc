@@ -56,7 +56,6 @@ static WireFormatGenerator dumpContents(Path path, off_t size)
 
 static WireFormatGenerator dumpSingle(nar::File f)
 {
-    co_yield "(";
     co_yield "type";
     co_yield "regular";
     if (f.executable) {
@@ -67,22 +66,18 @@ static WireFormatGenerator dumpSingle(nar::File f)
     co_yield f.size;
     co_yield std::move(f.contents);
     co_yield SerializingTransform::padding(f.size);
-    co_yield ")";
 }
 
 static WireFormatGenerator dumpSingle(nar::Symlink s)
 {
-    co_yield "(";
     co_yield "type";
     co_yield "symlink";
     co_yield "target";
     co_yield s.target;
-    co_yield ")";
 }
 
 static WireFormatGenerator dumpSingle(nar::Directory d)
 {
-    co_yield "(";
     co_yield "type";
     co_yield "directory";
     while (auto e = d.contents.next()) {
@@ -94,22 +89,25 @@ static WireFormatGenerator dumpSingle(nar::Directory d)
                     co_yield "name";
                     co_yield name;
                     co_yield "node";
+                    co_yield "(";
                     co_yield dumpSingle(std::move(i));
+                    co_yield ")";
                     co_yield ")";
                 }(e->first, i);
             },
             e->second
         );
     }
-    co_yield ")";
 }
 
 WireFormatGenerator nar::dump(nar::Entry nar)
 {
     co_yield narVersionMagic1;
+    co_yield "(";
     co_yield std::visit(
         [](auto i) -> WireFormatGenerator { return dumpSingle(std::move(i)); }, std::move(nar)
     );
+    co_yield ")";
 }
 
 // list the given path under the given filter and return the oldest mtime.
@@ -1077,8 +1075,17 @@ WireFormatGenerator copyNAR(Source & source)
     // we should just forward all data directly without parsing.
 
     auto items = nar::parse(source);
-    co_yield dump(*items.next());
-    assert(!items.next().has_value());
+
+    // we can't use dump() here because we must read the entire nar *before*
+    // returning the final `)` tag, otherwise the source will not be emptied
+    // before the returned generator is exhausted. that in turn confuses the
+    // remote store protocols that expect copyNAR to not finish any earlier.
+    co_yield narVersionMagic1;
+    co_yield "(";
+    for (auto && item : items) {
+        co_yield std::visit([](auto i) { return dumpSingle(std::move(i)); }, std::move(item));
+    }
+    co_yield ")";
 }
 
 box_ptr<AsyncInputStream> copyNAR(AsyncInputStream & source)

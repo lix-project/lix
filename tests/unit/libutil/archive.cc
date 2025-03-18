@@ -243,8 +243,7 @@ TEST_P(NarTest, parse)
     }
 }
 
-TEST_P(NarTest, parseAsync)
-{
+namespace parseAsync {
     struct File
     {
         bool executable;
@@ -316,10 +315,15 @@ TEST_P(NarTest, parseAsync)
             parent.emplace(name, Symlink{target});
         }
     };
+}
+
+TEST_P(NarTest, parseAsync)
+{
+    using namespace parseAsync;
 
     AsyncGeneratorInputStream source(rawStream());
 
-    std::map<std::string, Entry> contents;
+    std::map<std::string, parseAsync::Entry> contents;
     ReconstructVisitor rv{contents};
 
     kj::EventLoop el;
@@ -327,7 +331,7 @@ TEST_P(NarTest, parseAsync)
 
     auto entries = entriesFn()();
     parseDump(rv, source).wait(ws).value();
-    auto parsed = Directory::toNar(contents.at(""));
+    auto parsed = parseAsync::Directory::toNar(contents.at(""));
     while (true) {
         auto e = entries.next();
         auto p = parsed.next();
@@ -355,6 +359,57 @@ TEST_P(NarTest, copyAsync)
     kj::WaitScope ws{el};
     auto copied = copyNAR(source)->drain().wait(ws).value();
     ASSERT_EQ(raw(), copied);
+}
+
+TEST_P(NarTest, parseCopied)
+{
+    GeneratorSource input(rawStream());
+    GeneratorSource source(copyNAR(input));
+
+    auto entries = entriesFn()();
+    auto parsed = parse(source);
+    while (true) {
+        auto e = entries.next();
+        auto p = parsed.next();
+        ASSERT_EQ(e.has_value(), p.has_value());
+        if (!e) {
+            break;
+        }
+        assert_eq(*e, *p);
+    }
+
+    char buf;
+    ASSERT_THROW(input(&buf, 1), EndOfFile);
+}
+
+TEST_P(NarTest, parseCopiedAsync)
+{
+    using namespace parseAsync;
+
+    AsyncGeneratorInputStream input(rawStream());
+    auto source = copyNAR(input);
+
+    std::map<std::string, parseAsync::Entry> contents;
+    ReconstructVisitor rv{contents};
+
+    kj::EventLoop el;
+    kj::WaitScope ws{el};
+
+    auto entries = entriesFn()();
+    parseDump(rv, *source).wait(ws).value();
+    auto parsed = parseAsync::Directory::toNar(contents.at(""));
+    while (true) {
+        auto e = entries.next();
+        auto p = parsed.next();
+        ASSERT_EQ(e.has_value(), p.has_value());
+        if (!e) {
+            break;
+        }
+        assert_eq(*e, *p);
+    }
+
+    char buf;
+    ASSERT_EQ(input.read(&buf, 1).wait(ws).value(), 0);
 }
 
 TEST_P(NarTest, index)
