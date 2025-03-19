@@ -36,6 +36,7 @@
       sgr = builtins.fromJSON ''"\u001b["'';
       freezePage = "https://wiki.lix.systems/books/lix-contributors/page/freezes-and-recommended-contributions";
       codebaseOverview = "https://wiki.lix.systems/books/lix-contributors/page/codebase-overview";
+      gerritWiki = "https://wiki.lix.systems/books/lix-contributors/page/gerrit";
       contribNotice = builtins.toFile "lix-contrib-notice" ''
         Hey there!
 
@@ -52,6 +53,10 @@
         We can help you figure out where in the codebase to look for whatever you want to do,
         and we'd like to work together with all contributors as much as possible.
         Lix is a collaborative project :)
+
+        If you want to submit a patch and you never used gerrit before, please
+        check our gerrit wiki section:
+          ${sgr}32m${gerritWiki}${sgr}0m
 
         You can open an issue at https://git.lix.systems/lix-project/lix/issues
         or chat with us on Matrix: #space:lix.systems.
