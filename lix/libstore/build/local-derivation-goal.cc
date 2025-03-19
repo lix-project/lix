@@ -25,6 +25,7 @@
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
 
+#include <cstddef>
 #include <regex>
 #include <queue>
 
@@ -1847,7 +1848,16 @@ void LocalDerivationGoal::runChild()
                without file-write* allowed, access() incorrectly returns EPERM
              */
             sandboxProfile += "(allow file-read* file-write* process-exec\n";
+
+            // We create multiple allow lists, to avoid exceeding a limit in the darwin sandbox interpreter.
+            // See https://github.com/NixOS/nix/issues/4119
+            // We split our allow groups approximately at half the actual limit, 1 << 16
+            const size_t breakpoint = sandboxProfile.length() + (1 << 14);
             for (auto & i : pathsInChroot) {
+                if (sandboxProfile.length() >= breakpoint) {
+                    debug("Sandbox break: %d %d", sandboxProfile.length(), breakpoint);
+                    sandboxProfile += ")\n(allow file-read* file-write* process-exec\n";
+                }
                 if (i.first != i.second.source)
                     throw Error(
                         "can't map '%1%' to '%2%': mismatched impure paths not supported on Darwin",

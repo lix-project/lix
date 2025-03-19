@@ -155,6 +155,10 @@ midnightveil:
 ncfavier:
   github: ncfavier
 
+p-e-meunier:
+  display_name: Pierre-Etienne Meunier
+  github: P-E-Meunier
+
 pamplemousse:
   display_name: Xavier Maso
   github: pamplemousse
@@ -163,6 +167,10 @@ piegames:
   display_name: piegames
   forgejo: piegames
   github: piegamesde
+
+poliorcetics:
+  display_name: Poliorcetics
+  github: poliorcetics
 
 puck:
   display_name: puck
