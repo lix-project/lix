@@ -807,8 +807,8 @@ static void opVerifyPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         if (current.first != info->narHash) {
             printError("path '%s' was modified! expected hash '%s', got '%s'",
                 store->printStorePath(path),
-                info->narHash.to_string(Base::Base32, true),
-                current.first.to_string(Base::Base32, true));
+                info->narHash.to_string(Base::SRI, true),
+                current.first.to_string(Base::SRI, true));
             status = 1;
         }
     }

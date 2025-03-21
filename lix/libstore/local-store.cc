@@ -1353,7 +1353,7 @@ try {
 
             if (hashResult.first != info.narHash)
                 throw Error("hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
-                    printStorePath(info.path), info.narHash.to_string(Base::Base32, true), hashResult.first.to_string(Base::Base32, true));
+                    printStorePath(info.path), info.narHash.to_string(Base::SRI, true), hashResult.first.to_string(Base::SRI, true));
 
             if (hashResult.second != info.narSize)
                 throw Error("size mismatch importing path '%s';\n  specified: %s\n  got:       %s",
@@ -1369,8 +1369,8 @@ try {
                 if (specified.hash != actualHash.hash) {
                     throw Error("ca hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
                         printStorePath(info.path),
-                        specified.hash.to_string(Base::Base32, true),
-                        actualHash.hash.to_string(Base::Base32, true));
+                        specified.hash.to_string(Base::SRI, true),
+                        actualHash.hash.to_string(Base::SRI, true));
                 }
             }
 
@@ -1755,7 +1755,7 @@ try {
 
                 if (info->narHash != nullHash && info->narHash != current.first) {
                     printError("path '%s' was modified! expected hash '%s', got '%s'",
-                        printStorePath(i), info->narHash.to_string(Base::Base32, true), current.first.to_string(Base::Base32, true));
+                        printStorePath(i), info->narHash.to_string(Base::SRI, true), current.first.to_string(Base::SRI, true));
                     if (repair) TRY_AWAIT(repairPath(i)); else errors = true;
                 } else {
 

@@ -111,8 +111,8 @@ struct CmdVerify : StorePathsCommand
                         act2.result(resCorruptedPath, store->printStorePath(info->path));
                         printError("path '%s' was modified! expected hash '%s', got '%s'",
                             store->printStorePath(info->path),
-                            info->narHash.to_string(Base::Base32, true),
-                            hash.first.to_string(Base::Base32, true));
+                            info->narHash.to_string(Base::SRI, true),
+                            hash.first.to_string(Base::SRI, true));
                     }
                 }
 
