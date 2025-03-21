@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libstore/content-address.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/hash.hh"
@@ -214,7 +215,8 @@ kj::Promise<Result<DownloadFileResult>> downloadFile(
     const std::string & url,
     const std::string & name,
     bool locked,
-    Headers headers = {});
+    Headers headers = {},
+    FileIngestionMethod ingestionMethod = FileIngestionMethod::Flat);
 
 struct DownloadTarballResult
 {

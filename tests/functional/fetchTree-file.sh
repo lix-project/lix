@@ -4,17 +4,27 @@ clearStore
 
 cd "$TEST_ROOT"
 
+echo foo > test_input
+test_input_hash="$(nix hash path test_input)"
+
 test_fetch_file () {
-    echo foo > test_input
-
-    input_hash="$(nix hash path test_input)"
-
-    nix eval --impure --file - <<EOF
+    nix eval --raw --impure --file - <<EOF
     let
         tree = builtins.fetchTree { type = "file"; url = "file://$PWD/test_input"; };
     in
-    assert (tree.narHash == "$input_hash");
-    tree
+    assert (tree.narHash == "$test_input_hash");
+    tree.outPath
+EOF
+}
+
+test_substitution () {
+    # fetch a URL that will never work, make sure it hits the existing one in
+    # the store if it exists
+    nix eval --raw --impure --file - <<EOF
+    let
+        tree = builtins.fetchTree { type = "file"; url = "file:///dev/null"; narHash = "$test_input_hash"; };
+    in
+    tree.outPath
 EOF
 }
 
@@ -113,5 +123,21 @@ EOF
 EOF
 }
 
-test_fetch_file
 test_file_flake_input
+fetch_file_path=$(test_fetch_file)
+fetch_substitute_path=$(test_substitution)
+
+# Substituting with a narHash should give you the same path as fetching it
+# directly, which should give you the same path as throwing it in the store
+# with recursive ingestion mode.
+# Regression test for https://git.lix.systems/lix-project/lix/issues/750
+[[ "$fetch_file_path" == "$fetch_substitute_path" ]]
+
+# n.b. these are done after the first one which directly fetches the file in
+# order to make sure that substitution is *not* at play in test_fetch_file
+flat_hash_path=$(nix store add-file --name source ./test_input)
+recursive_hash_path=$(nix store add-path --name source ./test_input)
+
+# Fetching the file should give you a recursive-hashed path
+[[ "$flat_hash_path" != "$recursive_hash_path" ]]
+[[ "$fetch_file_path" == "$recursive_hash_path" ]]

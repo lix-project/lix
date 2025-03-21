@@ -1,5 +1,6 @@
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libfetchers/cache.hh"
+#include "lix/libstore/content-address.hh"
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libfetchers/builtin-fetchers.hh"
@@ -14,12 +15,46 @@
 
 namespace nix::fetchers {
 
+/* Note [Recursive hashing of file inputs]:
+ * We recursively hash `file` inputs to be consistent with the way that we look
+ * up the paths in binary caches (which is assumed all over the place in
+ * flakes, like in `nix flake archive`).
+ *
+ * It would also be easier to always hash downloadFile outputs as recursive,
+ * but there are a *whole bunch* of random usages of downloadFile for stuff
+ * from channel tarballs to GitHub API that I haven't fully figured out what
+ * they are doing or what the implications are for changing them. It seems that
+ * for things that are not directly *themselves* flake inputs, the intent is
+ * that they are flat-hashed, but flake inputs are always assumed
+ * recursive-hashed.
+ *
+ * So we make the flake usage of it do the thing that's right for flakes, and
+ * everything else we leave as before.
+ *
+ * Quoth Dr. Eelco Dolstra: https://github.com/NixOS/nix/pull/6548#discussion_r877921756
+ * > A problem with the use of downloadFile() is that it uses
+ * > FileIngestionMethod::Flat instead of FileIngestionMethod::Recursive.
+ * > Currently it's assumed that all flake inputs use recursive+sha256 with a
+ * > name of "source". This allows inputs to be substituted using the narHash
+ * > attribute in the lock file (see Input::computeStorePath()). However, the
+ * > lazy trees branch will probably remove the ability to substitute inputs
+ * > anyway...
+ *
+ * In other words, the feature was supposed to have been implemented consistent
+ * with other flake input types as recursive-hashed, but it was forgotten
+ * before merging it into CppNix, and was later fixed by some version between
+ * 2.19 and 2.24, which we are now consistent with.
+ *
+ * See: https://github.com/edolstra/flake-compat/pull/44
+ */
+
 kj::Promise<Result<DownloadFileResult>> downloadFile(
     ref<Store> store,
     const std::string & url,
     const std::string & name,
     bool locked,
-    Headers headers)
+    Headers headers,
+    FileIngestionMethod ingestionMethod)
 try {
     // FIXME: check store
 
@@ -27,6 +62,7 @@ try {
         {"type", "file"},
         {"url", url},
         {"name", name},
+        {"ingestionMethod", uint64_t(ingestionMethod)},
     });
 
     auto cached = TRY_AWAIT(getCache()->lookupExpired(store, inAttrs));
@@ -60,7 +96,8 @@ try {
             throw;
     }
 
-    // FIXME: write to temporary file.
+    // FIXME: write to temporary file. or stream it. or like. anything but load
+    // the entire thing in memory.
     Attrs infoAttrs({
         {"etag", res.etag},
         {"url", res.effectiveUri},
@@ -77,16 +114,18 @@ try {
     } else {
         StringSink sink;
         sink << dumpString(data);
-        auto hash = hashString(HashType::SHA256, data);
+        auto flatHash = [&]() { return hashString(HashType::SHA256, data); };
+        // See Note [Recursive hashing of file inputs].
+        auto narHash = hashString(HashType::SHA256, sink.s);
         ValidPathInfo info {
             *store,
             name,
             FixedOutputInfo {
-                .method = FileIngestionMethod::Flat,
-                .hash = hash,
+                .method = ingestionMethod,
+                .hash = ingestionMethod == FileIngestionMethod::Flat ? flatHash() : narHash,
                 .references = {},
             },
-            hashString(HashType::SHA256, sink.s),
+            narHash,
         };
         info.narSize = sink.s.size();
         auto source = AsyncStringInputStream { sink.s };
@@ -277,7 +316,8 @@ struct FileInputScheme : CurlInputScheme
     fetch(ref<Store> store, const Input & input) override
     try {
         auto file =
-            TRY_AWAIT(downloadFile(store, getStrAttr(input.attrs, "url"), input.getName(), false));
+            // See Note [Recursive hashing of file inputs].
+            TRY_AWAIT(downloadFile(store, getStrAttr(input.attrs, "url"), input.getName(), false, {}, FileIngestionMethod::Recursive));
         co_return {std::move(file.storePath), input};
     } catch (...) {
         co_return result::current_exception();
