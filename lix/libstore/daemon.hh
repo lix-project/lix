@@ -7,14 +7,11 @@
 
 namespace nix::daemon {
 
-enum RecursiveFlag : bool { NotRecursive = false, Recursive = true };
-
 void processConnection(
     AsyncIoRoot & aio,
     ref<Store> store,
     FdSource & from,
     FdSink & to,
-    TrustedFlag trusted,
-    RecursiveFlag recursive);
+    TrustedFlag trusted);
 
 }

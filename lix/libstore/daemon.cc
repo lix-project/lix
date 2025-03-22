@@ -264,7 +264,7 @@ struct ClientSettings
 };
 
 static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store,
-    TrustedFlag trusted, RecursiveFlag recursive, WorkerProto::Version clientVersion,
+    TrustedFlag trusted, WorkerProto::Version clientVersion,
     Source & from, BufferedSink & to, WorkerProto::Op op)
 {
     WorkerProto::ReadConn rconn{from, clientVersion};
@@ -773,12 +773,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         }
 
         logger->startWork();
-
-        // FIXME: use some setting in recursive mode. Will need to use
-        // non-global variables.
-        if (!recursive)
-            clientSettings.apply(trusted);
-
+        clientSettings.apply(trusted);
         logger->stopWork();
         break;
     }
@@ -1014,10 +1009,9 @@ void processConnection(
     ref<Store> store,
     FdSource & from,
     FdSink & to,
-    TrustedFlag trusted,
-    RecursiveFlag recursive)
+    TrustedFlag trusted)
 {
-    auto monitor = !recursive ? std::make_unique<MonitorFdHup>(from.fd) : nullptr;
+    auto monitor = std::make_unique<MonitorFdHup>(from.fd);
 
     /* Exchange the greeting. */
     unsigned int magic = readInt(from);
@@ -1031,9 +1025,7 @@ void processConnection(
 
     auto tunnelLogger = new TunnelLogger(to, clientVersion);
     auto prevLogger = nix::logger;
-    // FIXME
-    if (!recursive)
-        logger = tunnelLogger;
+    logger = tunnelLogger;
 
     unsigned int opCount = 0;
 
@@ -1089,7 +1081,7 @@ void processConnection(
             debug("performing daemon worker op: %d", op);
 
             try {
-                performOp(aio, tunnelLogger, store, trusted, recursive, clientVersion, from, to, op);
+                performOp(aio, tunnelLogger, store, trusted, clientVersion, from, to, op);
             } catch (Error & e) {
                 /* If we're not in a state where we can send replies, then
                    something went wrong processing the input of the

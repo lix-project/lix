@@ -973,18 +973,6 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
             "nixbld:!:%1%:\n"
             "nogroup:x:65534:\n", sandboxGid()));
 
-    /* Save the mount- and user namespace of the child. We have to do this
-       *before* the child does a chroot. */
-    sandboxMountNamespace = AutoCloseFD{open(fmt("/proc/%d/ns/mnt", pid.get()).c_str(), O_RDONLY)};
-    if (sandboxMountNamespace.get() == -1)
-        throw SysError("getting sandbox mount namespace");
-
-    if (usingUserNamespace) {
-        sandboxUserNamespace = AutoCloseFD{open(fmt("/proc/%d/ns/user", pid.get()).c_str(), O_RDONLY)};
-        if (sandboxUserNamespace.get() == -1)
-            throw SysError("getting sandbox user namespace");
-    }
-
     /* Move the child into its own cgroup. */
     if (cgroup)
         writeFile(*cgroup + "/cgroup.procs", fmt("%d", pid.get()));

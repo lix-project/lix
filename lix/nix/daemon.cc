@@ -368,7 +368,7 @@ static void daemonLoopImpl(std::optional<TrustedFlag> forceTrustClientOpt)
                 FdSource from(remote.get());
                 FdSink to(remote.get());
                 processConnection(
-                    aio, aio.blockOn(openUncachedStore()), from, to, trusted, NotRecursive
+                    aio, aio.blockOn(openUncachedStore()), from, to, trusted
                 );
 
                 exit(0);
@@ -451,7 +451,7 @@ processStdioConnection(AsyncIoRoot & aio, ref<Store> store, TrustedFlag trustCli
 {
     FdSource from(STDIN_FILENO);
     FdSink to(STDOUT_FILENO);
-    processConnection(aio, store, from, to, trustClient, NotRecursive);
+    processConnection(aio, store, from, to, trustClient);
 }
 
 /**

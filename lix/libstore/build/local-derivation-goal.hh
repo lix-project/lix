@@ -48,13 +48,6 @@ struct LocalDerivationGoal : public DerivationGoal
     Pipe userNamespaceSync;
 
     /**
-     * The mount namespace and user namespace of the builder, used to add additional
-     * paths to the sandbox as a result of recursive Nix calls.
-     */
-    AutoCloseFD sandboxMountNamespace;
-    AutoCloseFD sandboxUserNamespace;
-
-    /**
      * On Linux, whether we're doing the build in its own user
      * namespace.
      */
@@ -135,48 +128,9 @@ struct LocalDerivationGoal : public DerivationGoal
     const static Path homeDir;
 
     /**
-     * The recursive Nix daemon socket.
-     */
-    AutoCloseFD daemonSocket;
-
-    /**
-     * The daemon main thread.
-     */
-    std::thread daemonThread;
-
-    /**
      * The daemon worker threads.
      */
     std::vector<std::thread> daemonWorkerThreads;
-
-    /**
-     * Paths that were added via recursive Nix calls.
-     */
-    StorePathSet addedPaths;
-
-    /**
-     * Realisations that were added via recursive Nix calls.
-     */
-    std::set<DrvOutput> addedDrvOutputs;
-
-    /**
-     * Recursive Nix calls are only allowed to build or realize paths
-     * in the original input closure or added via a recursive Nix call
-     * (so e.g. you can't do 'nix-store -r /nix/store/<bla>' where
-     * /nix/store/<bla> is some arbitrary path in a binary cache).
-     */
-    bool isAllowed(const StorePath & path)
-    {
-        return inputPaths.count(path) || addedPaths.count(path);
-    }
-    bool isAllowed(const DrvOutput & id)
-    {
-        return addedDrvOutputs.count(id);
-    }
-
-    bool isAllowed(const DerivedPath & req);
-
-    friend struct RestrictedStore;
 
     /**
      * Create a LocalDerivationGoal without an on-disk .drv file,
@@ -235,16 +189,6 @@ struct LocalDerivationGoal : public DerivationGoal
      * Write a JSON file containing the derivation attributes.
      */
     kj::Promise<Result<void>> writeStructuredAttrs();
-
-    void startDaemon();
-
-    void stopDaemon();
-
-    /**
-     * Add 'path' to the set of paths that may be referenced by the
-     * outputs, and make it appear in the sandbox.
-     */
-    void addDependency(const StorePath & path);
 
     /**
      * Make a file owned by the builder.

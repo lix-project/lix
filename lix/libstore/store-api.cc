@@ -490,9 +490,6 @@ StringSet StoreConfig::getDefaultSystemFeatures()
     if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations))
         res.insert("ca-derivations");
 
-    if (experimentalFeatureSettings.isEnabled(Xp::RecursiveNix))
-        res.insert("recursive-nix");
-
     return res;
 }
 

@@ -154,7 +154,6 @@ experimental_feature_definitions = files(
   'experimental-features/parse-toml-timestamps.md',
   'experimental-features/pipe-operator.md',
   'experimental-features/read-only-local-store.md',
-  'experimental-features/recursive-nix.md',
   'experimental-features/repl-automation.md',
   # keep-sorted end
 )
