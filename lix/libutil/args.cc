@@ -5,7 +5,6 @@
 #include "lix/libutil/json.hh" // IWYU pragma: keep (instances)
 #include "lix/libutil/environment-variables.hh"
 
-#include "lix/libutil/experimental-features-json.hh" // IWYU pragma: keep (instances)
 #include "lix/libutil/logging.hh"
 
 #include <glob.h>

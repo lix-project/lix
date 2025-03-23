@@ -2,6 +2,7 @@
 ///@file
 
 #include "lix/libutil/error.hh"
+#include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/types.hh"
 
 namespace nix {
@@ -62,6 +63,20 @@ std::ostream & operator<<(
  * features, ignoring (but warning for) any unknown feature.
  */
 DeprecatedFeatures parseDeprecatedFeatures(const std::set<std::string> &);
+
+/**
+ * Compute the documentation of all deprecated features.
+ *
+ * See `doc/manual` for how this information is used.
+ */
+JSON documentDeprecatedFeatures();
+
+/**
+ * Semi-magic conversion to and from json.
+ * See the nlohmann/json readme for more details.
+ */
+void to_json(JSON &, const DeprecatedFeature &);
+void from_json(const JSON &, DeprecatedFeature &);
 
 /**
  * A deprecated feature used for some

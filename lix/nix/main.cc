@@ -14,8 +14,6 @@
 #include "lix/libutil/json.hh"
 #include "lix/libmain/loggers.hh"
 #include "lix/libcmd/markdown.hh"
-#include "lix/libutil/experimental-features-json.hh"
-#include "lix/libutil/deprecated-features-json.hh"
 #include "add-to-store.hh"
 #include "build-remote.hh"
 #include "build.hh"

@@ -307,4 +307,25 @@ void writeLogsToStderr(std::string_view s);
  * The purpose of this function is making failures with redirected stderr louder. */
 void logFatal(std::string const & s);
 
+/**
+ * @param source A noun phrase describing the source of the message, e.g. "the builder".
+ */
+std::optional<JSON> parseJSONMessage(const std::string & msg, std::string_view source);
+
+/**
+ * @param source A noun phrase describing the source of the message, e.g. "the builder".
+ */
+bool handleJSONLogMessage(JSON & json,
+    const Activity & act, std::map<ActivityId, Activity> & activities,
+    std::string_view source,
+    bool trusted);
+
+/**
+ * @param source A noun phrase describing the source of the message, e.g. "the builder".
+ */
+bool handleJSONLogMessage(const std::string & msg,
+    const Activity & act, std::map<ActivityId, Activity> & activities,
+    std::string_view source,
+    bool trusted);
+
 }

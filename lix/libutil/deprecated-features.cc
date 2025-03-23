@@ -1,6 +1,4 @@
 #include "lix/libutil/deprecated-features.hh"
-// Required for instances of to_json and from_json for DeprecatedFeature
-#include "lix/libutil/deprecated-features-json.hh"
 #include "lix/libutil/json.hh"
 #include "lix/libutil/strings.hh"
 

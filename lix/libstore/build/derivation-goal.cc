@@ -9,7 +9,6 @@
 #include "lix/libstore/common-protocol.hh"
 #include "lix/libstore/common-protocol-impl.hh" // IWYU pragma: keep
 #include "lix/libstore/local-store.hh" // TODO remove, along with remaining downcasts
-#include "lix/libutil/logging-json.hh"
 #include "lix/libstore/build/substitution-goal.hh"
 #include "lix/libstore/build/drv-output-substitution-goal.hh"
 #include "lix/libutil/result.hh"

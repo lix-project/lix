@@ -1,6 +1,4 @@
 #include "lix/libutil/experimental-features.hh"
-// Required for instances of to_json and from_json for ExperimentalFeature
-#include "lix/libutil/experimental-features-json.hh"
 #include "lix/libutil/json.hh"
 #include "lix/libutil/strings.hh"
 
