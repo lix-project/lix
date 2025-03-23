@@ -102,4 +102,20 @@ void from_json(const JSON & j, ExperimentalFeature & feature)
         throw Error("Unknown experimental feature '%s' in JSON input", input);
 }
 
+void to_json(JSON & j, const ExperimentalFeatures & f)
+{
+    StringSet res;
+    for (auto & xpFeature : xpFeatureDetails) {
+        if ((f & xpFeature.tag) == (ExperimentalFeatures{} | xpFeature.tag)) {
+            res.emplace(xpFeature.name);
+        }
+    }
+    j = res;
+}
+
+void from_json(const JSON & j, ExperimentalFeatures & f)
+{
+    f = parseFeatures(j.get<StringSet>());
+}
+
 }

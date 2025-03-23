@@ -2,6 +2,7 @@
 ///@file Lix-specific JSON handling (forward declarations only).
 
 #include <nlohmann/json_fwd.hpp>
+#include <type_traits>
 
 namespace nix {
 
@@ -16,7 +17,11 @@ template<typename T>
 struct avoids_null;
 
 template<typename T>
-struct is_integral_enum;
+struct is_integral_enum : std::false_type
+{};
+
+template<typename T>
+concept IntegralEnum = is_integral_enum<T>::value;
 
 template<typename T = void, typename SFINAE = void>
 struct adl_serializer;

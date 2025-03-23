@@ -44,6 +44,9 @@ typedef enum {
     actBuildWaiting = 111,
 } ActivityType;
 
+template<>
+struct json::is_integral_enum<ActivityType> : std::true_type {};
+
 typedef enum {
     /** Fields:
      * 0: int: bytes linked
@@ -81,6 +84,9 @@ typedef enum {
      */
     resPostBuildLogLine = 107,
 } ResultType;
+
+template<>
+struct json::is_integral_enum<ResultType> : std::true_type {};
 
 typedef uint64_t ActivityId;
 

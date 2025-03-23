@@ -4,6 +4,7 @@
 #include "lix/libutil/error.hh"
 #include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/types.hh"
+#include <type_traits>
 
 namespace nix {
 
@@ -15,6 +16,10 @@ enum struct ExperimentalFeature
     #include "experimental-features.gen.inc"
     NumXpFeatures, // number of available experimental features, do not use
 };
+
+template<>
+struct json::avoids_null<ExperimentalFeature> : std::true_type
+{};
 
 enum struct ExperimentalFeatures {};
 
@@ -74,6 +79,9 @@ JSON documentExperimentalFeatures();
  */
 void to_json(JSON &, const ExperimentalFeature &);
 void from_json(const JSON &, ExperimentalFeature &);
+
+void to_json(JSON &, const ExperimentalFeatures &);
+void from_json(const JSON &, ExperimentalFeatures &);
 
 /**
  * An experimental feature was required for some (experimental)

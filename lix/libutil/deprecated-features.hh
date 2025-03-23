@@ -4,6 +4,7 @@
 #include "lix/libutil/error.hh"
 #include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/types.hh"
+#include <type_traits>
 
 namespace nix {
 
@@ -18,6 +19,10 @@ enum struct DeprecatedFeature
     #include "deprecated-features.gen.inc"
     NumDepFeatures, // number of available deprecated features, do not use
 };
+
+template<>
+struct json::avoids_null<DeprecatedFeature> : std::true_type
+{};
 
 enum struct DeprecatedFeatures {};
 
@@ -77,6 +82,9 @@ JSON documentDeprecatedFeatures();
  */
 void to_json(JSON &, const DeprecatedFeature &);
 void from_json(const JSON &, DeprecatedFeature &);
+
+void to_json(JSON &, const DeprecatedFeatures &);
+void from_json(const JSON &, DeprecatedFeatures &);
 
 /**
  * A deprecated feature used for some

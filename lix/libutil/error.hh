@@ -15,6 +15,7 @@
  * See libutil/tests/logging.cc for usage examples.
  */
 
+#include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/suggestions.hh"
 #include "lix/libutil/fmt.hh"
 
@@ -27,6 +28,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <system_error>
+#include <type_traits>
 
 namespace nix {
 
@@ -41,6 +43,9 @@ typedef enum {
     lvlDebug,
     lvlVomit
 } Verbosity;
+
+template<>
+struct json::is_integral_enum<Verbosity> : std::true_type {};
 
 Verbosity verbosityFromIntClamped(int val);
 

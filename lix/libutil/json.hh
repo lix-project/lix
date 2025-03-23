@@ -4,6 +4,8 @@
 /// overrides on out-of-tree users of libutil, as we'd be required to when
 /// specializing templates in the nlohmann namespace. nlohmann::json can't
 /// deal with `std::optional<T>` types until 3.11.3 at, and we need those.
+/// We also customize enum serialization to not automatically cast to int;
+/// nlohmann can be told to disable this only via a special global define.
 
 #include "lix/libutil/json-fwd.hh" // IWYU pragma: keep
 #include <concepts>
@@ -30,7 +32,7 @@ namespace json {
  */
 template<typename T>
 struct avoids_null
-    : std::bool_constant<std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_enum_v<T>>
+    : std::bool_constant<std::is_integral_v<T> || std::is_floating_point_v<T> || IntegralEnum<T>>
 {};
 
 template<>
@@ -103,6 +105,20 @@ struct adl_serializer<T, void>
     static auto from_json(Json && j)
     {
         return T::from_json(std::forward<Json>(j));
+    }
+
+    template<typename Json>
+        requires IntegralEnum<T>
+    static void to_json(Json && json, const T & value)
+    {
+        json = static_cast<std::underlying_type_t<T>>(value);
+    }
+
+    template<typename Json>
+        requires IntegralEnum<T>
+    static void from_json(const Json & json, T & value)
+    {
+        value = static_cast<T>(json.template get<std::underlying_type_t<T>>());
     }
 };
 

@@ -518,6 +518,9 @@ add_project_arguments(
   '-Wdeprecated-copy',
   '-Wignored-qualifiers',
   '-Werror=suggest-override',
+  # don't let nlohmann automatically cast enums to ints. we don't set this
+  # inside libutil headers to not force this behavior on users of libutil.
+  '-DJSON_DISABLE_ENUM_SERIALIZATION=1',
   language : 'cpp',
 )
 

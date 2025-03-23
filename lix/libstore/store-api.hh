@@ -4,6 +4,7 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libstore/nar-info.hh"
 #include "lix/libstore/realisation.hh"
@@ -107,6 +108,9 @@ enum BuildMode { bmNormal, bmRepair, bmCheck };
 BuildMode buildModeFromInteger(int);
 
 enum TrustedFlag : bool { NotTrusted = false, Trusted = true };
+
+template<>
+struct json::is_integral_enum<TrustedFlag> : std::true_type {};
 
 struct BuildResult;
 struct KeyedBuildResult;

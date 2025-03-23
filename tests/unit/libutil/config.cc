@@ -1,5 +1,7 @@
 #include "lix/libutil/config.hh"
 #include "lix/libutil/args.hh"
+#include "lix/libutil/deprecated-features.hh"
+#include "lix/libutil/experimental-features.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libutil/json.hh"
@@ -323,4 +325,23 @@ namespace nix {
         ASSERT_THROW(config.applyConfig("value == key"), UsageError);
         ASSERT_THROW(config.applyConfig("value "), UsageError);
     }
+
+/* ----------------------------------------------------------------------------
+ * Config enums
+ * --------------------------------------------------------------------------*/
+TEST(Config, regression_738)
+{
+    // feature enums serialized as integers because bitmaks type serializers
+    // were forgotten and nlohmann casted then to ints automatically. -sigh-
+    ASSERT_EQ(JSON(ExperimentalFeature::AutoAllocateUids).dump(), "\"auto-allocate-uids\"");
+    ASSERT_EQ(
+        JSON((ExperimentalFeatures{} | ExperimentalFeature::AutoAllocateUids)).dump(),
+        "[\"auto-allocate-uids\"]"
+    );
+
+    ASSERT_EQ(JSON(DeprecatedFeature::AncientLet).dump(), "\"ancient-let\"");
+    ASSERT_EQ(
+        JSON((DeprecatedFeatures{} | DeprecatedFeature::AncientLet)).dump(), "[\"ancient-let\"]"
+    );
+}
 }

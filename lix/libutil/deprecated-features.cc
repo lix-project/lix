@@ -102,4 +102,20 @@ void from_json(const JSON & j, DeprecatedFeature & feature)
         throw Error("Unknown deprecated feature '%s' in JSON input", input);
 }
 
+void to_json(JSON & j, const DeprecatedFeatures & f)
+{
+    StringSet res;
+    for (auto & depFeature : depFeatureDetails) {
+        if ((f & depFeature.tag) == (DeprecatedFeatures{} | depFeature.tag)) {
+            res.emplace(depFeature.name);
+        }
+    }
+    j = res;
+}
+
+void from_json(const JSON & j, DeprecatedFeatures & f)
+{
+    f = parseDeprecatedFeatures(j.get<StringSet>());
+}
+
 }
