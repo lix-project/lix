@@ -1,8 +1,7 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libmain/common-args.hh"
+#include "lix/libutil/json.hh"
 #include "realisation.hh"
-
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

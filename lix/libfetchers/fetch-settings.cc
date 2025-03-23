@@ -1,9 +1,8 @@
 #include "lix/libutil/abstract-setting-to-json.hh"
 #include "lix/libutil/args.hh"
 #include "lix/libutil/config-impl.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libfetchers/fetch-settings.hh"
-
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

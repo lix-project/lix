@@ -1,9 +1,9 @@
 #include <regex>
-#include <nlohmann/json.hpp>
 
 #include "lix/libutil/regex-combinators.hh"
 #include "lix/libstore/outputs-spec.hh"
 #include "lix/libstore/path-regex.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/strings.hh"
 
 namespace nix {

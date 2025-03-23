@@ -2,12 +2,12 @@
 #include "lix/libutil/args.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/environment-variables.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/logging.hh"
 #include "tests/test-data.hh"
 
 #include <sstream>
 #include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

@@ -1,10 +1,9 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/json-fwd.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/store-api.hh"
-
-#include <nlohmann/json_fwd.hpp>
 
 namespace nix {
 

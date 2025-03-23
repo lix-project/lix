@@ -7,7 +7,6 @@
 #include <lix/libstore/local-fs-store.hh>
 #include <lix/libcmd/installable-flake.hh>
 #include <sys/resource.h>
-#include <nlohmann/json.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <lix/libexpr/attr-set.hh>
@@ -20,10 +19,9 @@
 #include <lix/libexpr/flake/flakeref.hh>
 #include <lix/libexpr/get-drvs.hh>
 #include <lix/libutil/input-accessor.hh>
+#include <lix/libutil/json.hh>
 #include <lix/libutil/logging.hh>
 #include <lix/libexpr/nixexpr.hh>
-#include <nlohmann/detail/json_ref.hpp>
-#include <nlohmann/json_fwd.hpp>
 #include <lix/libutil/ref.hh>
 #include <lix/libstore/store-api.hh>
 #include <lix/libexpr/symbol-table.hh>

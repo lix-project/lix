@@ -3,12 +3,12 @@
 #include "lix/libutil/sync.hh"
 #include "lix/libstore/sqlite.hh"
 #include "lix/libstore/globals.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/users.hh"
 #include "lix/libutil/strings.hh"
 
 #include <sqlite3.h>
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

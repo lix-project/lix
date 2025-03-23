@@ -1,7 +1,6 @@
+#include "lix/libutil/json.hh"
 #include "lix/libstore/derived-path.hh"
 #include "lix/libstore/store-api.hh"
-
-#include <nlohmann/json.hpp>
 
 #include <optional>
 

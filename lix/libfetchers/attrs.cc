@@ -1,7 +1,6 @@
 #include "lix/libfetchers/attrs.hh"
 #include "lix/libfetchers/fetchers.hh"
-
-#include <nlohmann/json.hpp>
+#include "lix/libutil/json.hh"
 
 namespace nix::fetchers {
 

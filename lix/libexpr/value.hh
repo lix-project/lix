@@ -15,8 +15,7 @@
 #include "lix/libexpr/print-options.hh"
 #include "lix/libutil/checked-arithmetic.hh"
 #include "lix/libutil/concepts.hh"
-
-#include <nlohmann/json_fwd.hpp>
+#include "lix/libutil/json-fwd.hh"
 
 namespace nix {
 

@@ -11,6 +11,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libutil/finally.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libmain/loggers.hh"
 #include "lix/libcmd/markdown.hh"
 #include "lix/libutil/experimental-features-json.hh"
@@ -72,8 +73,6 @@
 #include <ifaddrs.h>
 #include <netdb.h>
 #include <netinet/in.h>
-
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

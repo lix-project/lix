@@ -1,8 +1,8 @@
 #pragma once
 
 #include "lix/libutil/fmt.hh"
+#include "lix/libutil/json-fwd.hh"
 #include <map>
-#include <nlohmann/json_fwd.hpp>
 #include <set>
 #include <string>
 #include <utility>

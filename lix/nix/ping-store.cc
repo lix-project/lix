@@ -2,9 +2,8 @@
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/finally.hh"
+#include "lix/libutil/json.hh"
 #include "ping-store.hh"
-
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

@@ -8,14 +8,13 @@
 #include "lix/libutil/abstract-setting-to-json.hh"
 #include "lix/libutil/compute-levels.hh"
 #include "lix/libutil/current-process.hh"
+#include "lix/libutil/json.hh"
 
 #include <algorithm>
 #include <mutex>
 #include <thread>
 #include <dlfcn.h>
 #include <sys/utsname.h>
-
-#include <nlohmann/json.hpp>
 
 #include <sodium/core.h>
 

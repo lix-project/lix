@@ -10,11 +10,11 @@
 #include "lix/libexpr/eval-cache.hh"
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libutil/hilite.hh"
+#include "lix/libutil/json.hh"
 #include "search.hh"
 
 #include <regex>
 #include <fstream>
-#include <nlohmann/json.hpp>
 
 namespace nix {
 using json = nlohmann::json;

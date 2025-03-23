@@ -26,6 +26,7 @@
 #include "lix/libfetchers/fetch-to-store.hh"
 #include "lix/libexpr/flake/flakeref.hh"
 #include "lix/libutil/exit.hh"
+#include "lix/libutil/json.hh"
 #include "symbol-table.hh"
 
 #include <algorithm>
@@ -42,7 +43,6 @@
 #include <functional>
 
 #include <sys/resource.h>
-#include <nlohmann/json.hpp>
 #include <boost/container/small_vector.hpp>
 
 #if HAVE_BOEHMGC

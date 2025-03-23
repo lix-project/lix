@@ -3,10 +3,10 @@
 #include "lix/libutil/async.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/users.hh"
 
-#include <nlohmann/json.hpp>
 #include <optional>
 
 namespace nix::fetchers {

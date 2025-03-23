@@ -1,11 +1,10 @@
+#include "lix/libutil/json.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libstore/path-with-outputs.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/common-protocol.hh"
 #include "lix/libstore/common-protocol-impl.hh"
 #include "lix/libstore/derivations.hh"
-
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

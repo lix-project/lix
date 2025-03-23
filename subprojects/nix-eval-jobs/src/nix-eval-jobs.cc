@@ -6,9 +6,9 @@
 #include <lix/libutil/async.hh>
 #include <lix/libutil/sync.hh>
 #include <lix/libexpr/eval.hh>
+#include <lix/libutil/json.hh>
 #include <lix/libutil/signals.hh>
 #include <sys/wait.h>
-#include <nlohmann/json.hpp>
 #include <errno.h>
 #include <pthread.h>
 #include <signal.h>
@@ -21,9 +21,6 @@
 #include <lix/libstore/globals.hh>
 #include <lix/libutil/logging.hh>
 #include <lix/libutil/terminal.hh>
-#include <nlohmann/detail/iterators/iter_impl.hpp>
-#include <nlohmann/detail/json_ref.hpp>
-#include <nlohmann/json_fwd.hpp>
 #include <lix/libutil/ref.hh>
 #include <lix/libstore/store-api.hh>
 #include <condition_variable>

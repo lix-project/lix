@@ -1,10 +1,10 @@
 #include "lix/libexpr/json-to-value.hh"
 #include "lix/libexpr/value.hh"
 #include "lix/libexpr/eval.hh"
+#include "lix/libutil/json.hh"
 
 #include <limits>
 #include <variant>
-#include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 

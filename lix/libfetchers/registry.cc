@@ -1,6 +1,7 @@
 #include "lix/libfetchers/registry.hh"
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/users.hh"
@@ -12,7 +13,6 @@
 
 #include <memory>
 #include <mutex>
-#include <nlohmann/json.hpp>
 
 namespace nix::fetchers {
 

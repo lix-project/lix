@@ -11,6 +11,7 @@
 #include "lix/libstore/names.hh"
 #include "lix/libstore/path-references.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libexpr/value-to-json.hh"
@@ -21,7 +22,6 @@
 
 #include <boost/container/small_vector.hpp>
 #include <kj/async.h>
-#include <nlohmann/json.hpp>
 
 #include <sys/types.h>
 #include <sys/stat.h>

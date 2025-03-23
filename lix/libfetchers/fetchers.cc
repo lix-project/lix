@@ -2,10 +2,9 @@
 #include "lix/libfetchers/builtin-fetchers.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/source-path.hh"
 #include "lix/libfetchers/fetch-to-store.hh"
-
-#include <nlohmann/json.hpp>
 
 namespace nix::fetchers {
 

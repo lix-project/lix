@@ -2,11 +2,10 @@
 #include "json-to-value.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/url-parts.hh"
 
 #include <iomanip>
-
-#include <nlohmann/json.hpp>
 
 namespace nix::flake {
 

@@ -1,8 +1,8 @@
 #include <fnmatch.h>
-#include <nlohmann/json.hpp>
 #include <lix/config.h>
 #include <lix/libstore/derivations.hh>
 #include <lix/libstore/local-fs-store.hh>
+#include <lix/libutil/json.hh>
 
 #include "constituents.hh"
 #include "lix/libutil/async.hh"

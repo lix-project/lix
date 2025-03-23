@@ -1,8 +1,8 @@
 #include "lix/libstore/parsed-derivations.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/strings.hh"
 
-#include <nlohmann/json.hpp>
 #include <regex>
 
 namespace nix {

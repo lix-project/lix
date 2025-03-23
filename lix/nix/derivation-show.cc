@@ -5,8 +5,8 @@
 #include "lix/libmain/common-args.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libstore/derivations.hh"
-#include <nlohmann/json.hpp>
 
 namespace nix {
 using json = nlohmann::json;

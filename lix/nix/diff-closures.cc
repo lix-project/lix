@@ -4,10 +4,10 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libmain/common-args.hh"
 #include "lix/libstore/names.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/result.hh"
 #include "diff-closures.hh"
 
-#include <nlohmann/json.hpp>
 #include <regex>
 
 namespace nix {

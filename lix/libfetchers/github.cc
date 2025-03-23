@@ -8,11 +8,11 @@
 #include "lix/libutil/types.hh"
 #include "lix/libutil/url-parts.hh"
 #include "lix/libutil/git.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libfetchers/fetch-settings.hh"
 
 #include <optional>
-#include <nlohmann/json.hpp>
 #include <fstream>
 
 namespace nix::fetchers {

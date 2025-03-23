@@ -1,7 +1,7 @@
-#include <nlohmann/json.hpp>
 #include <gtest/gtest.h>
 
 #include "lix/libstore/derivations.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/strings.hh"
 
 #include "tests/libstore.hh"

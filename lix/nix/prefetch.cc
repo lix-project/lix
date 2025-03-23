@@ -10,10 +10,9 @@
 #include "lix/libexpr/eval-inline.hh" // IWYU pragma: keep
 #include "lix/libcmd/legacy.hh"
 #include "lix/libstore/temporary-dir.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/terminal.hh"
 #include "prefetch.hh"
-
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

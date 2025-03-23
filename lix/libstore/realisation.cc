@@ -2,8 +2,8 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/closure.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/result.hh"
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

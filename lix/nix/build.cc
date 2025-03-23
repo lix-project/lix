@@ -4,9 +4,8 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/local-fs-store.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/json.hh"
 #include "build.hh"
-
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

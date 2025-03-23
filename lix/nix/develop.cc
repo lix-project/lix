@@ -7,6 +7,7 @@
 #include "lix/libstore/outputs-spec.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/json.hh"
 #include "run.hh"
 #include "lix/libstore/temporary-dir.hh"
 #include "develop.hh"
@@ -14,7 +15,6 @@
 #include <iterator>
 #include <memory>
 #include <sstream>
-#include <nlohmann/json.hpp>
 #include <algorithm>
 
 namespace nix {

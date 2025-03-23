@@ -3,11 +3,10 @@
 
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/ref.hh"
 
 #include <functional>
-
-#include <nlohmann/json_fwd.hpp>
 
 namespace nix {
 

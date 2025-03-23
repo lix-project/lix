@@ -2,10 +2,10 @@
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/result.hh"
 
 #include <kj/async.h>
-#include <nlohmann/json.hpp>
 
 #include <optional>
 

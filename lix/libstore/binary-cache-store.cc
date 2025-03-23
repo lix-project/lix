@@ -5,6 +5,7 @@
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libstore/nar-info.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libstore/remote-fs-accessor.hh"
@@ -19,8 +20,6 @@
 #include <regex>
 #include <fstream>
 #include <sstream>
-
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

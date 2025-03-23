@@ -15,12 +15,12 @@
 #include "lix/libfetchers/registry.hh"
 #include "lix/libexpr/eval-cache.hh"
 #include "lix/libcmd/markdown.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/terminal.hh"
 #include "lix/libutil/signals.hh"
 #include "flake.hh"
 
 #include <limits>
-#include <nlohmann/json.hpp>
 #include <iomanip>
 
 namespace nix {

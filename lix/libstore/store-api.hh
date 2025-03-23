@@ -17,12 +17,12 @@
 #include "lix/libutil/sync.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libutil/config.hh"
+#include "lix/libutil/json-fwd.hh"
 #include "lix/libstore/path-info.hh"
 #include "lix/libutil/repair-flag.hh"
 #include "lix/libutil/source-path.hh"
 
 #include <kj/async.h>
-#include <nlohmann/json_fwd.hpp>
 #include <atomic>
 #include <limits>
 #include <map>

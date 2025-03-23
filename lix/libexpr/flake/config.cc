@@ -1,9 +1,8 @@
 #include "lix/libexpr/flake/flake.hh"
 #include "lix/libutil/logging.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/users.hh"
 #include "lix/libfetchers/fetch-settings.hh"
-
-#include <nlohmann/json.hpp>
 
 namespace nix::flake {
 

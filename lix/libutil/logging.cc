@@ -2,6 +2,7 @@
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/config.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/position.hh"
 #include "lix/libutil/terminal.hh"
 #include "manually-drop.hh"
@@ -10,7 +11,6 @@
 #include <atomic>
 #include <mutex>
 #include <sstream>
-#include <nlohmann/json.hpp>
 #include <syslog.h>
 
 namespace nix {

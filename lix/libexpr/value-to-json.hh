@@ -3,10 +3,10 @@
 
 #include "lix/libexpr/nixexpr.hh"
 #include "lix/libexpr/eval.hh"
+#include "lix/libutil/json-fwd.hh"
 
 #include <string>
 #include <map>
-#include <nlohmann/json_fwd.hpp>
 
 namespace nix {
 

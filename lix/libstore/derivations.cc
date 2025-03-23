@@ -2,6 +2,7 @@
 #include "lix/libstore/downstream-placeholder.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/globals.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libstore/common-protocol.hh"
@@ -11,7 +12,6 @@
 #include "lix/libutil/backed-string-view.hh"
 
 #include <boost/container/small_vector.hpp>
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

@@ -5,12 +5,11 @@
 #include "lix/libutil/experimental-features.hh"
 #include "lix/libutil/deprecated-features.hh"
 #include "lix/libutil/file-system.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/strings.hh"
 
 #include "lix/libutil/config-impl.hh"
-
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

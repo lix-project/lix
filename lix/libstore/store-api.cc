@@ -7,6 +7,7 @@
 #include "lix/libutil/async.hh"
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/hash.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/sync.hh"
@@ -24,7 +25,6 @@
 #include <functional>
 #include <kj/async.h>
 #include <mutex>
-#include <nlohmann/json.hpp>
 #include <regex>
 
 using json = nlohmann::json;

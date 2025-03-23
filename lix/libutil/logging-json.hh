@@ -4,9 +4,8 @@
 ///@brief Logging functions for json specifically, split due to the cost of
 ///including nlohmann.
 
+#include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/logging.hh"
-
-#include <nlohmann/json_fwd.hpp>
 
 namespace nix {
 

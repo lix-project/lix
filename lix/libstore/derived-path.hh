@@ -5,13 +5,12 @@
 #include "lix/libstore/path.hh"
 #include "lix/libstore/outputs-spec.hh"
 #include "lix/libutil/comparator.hh"
+#include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/ref.hh"
 #include "lix/libutil/result.hh"
 
 #include <kj/async.h>
 #include <variant>
-
-#include <nlohmann/json_fwd.hpp>
 
 namespace nix {
 

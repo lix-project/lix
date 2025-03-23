@@ -5,6 +5,7 @@
 #include "lix/libstore/build/worker.hh"
 #include "lix/libutil/finally.hh"
 #include "lix/libutil/compression.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libstore/common-protocol.hh"
 #include "lix/libstore/common-protocol-impl.hh" // IWYU pragma: keep
 #include "lix/libstore/local-store.hh" // TODO remove, along with remaining downcasts
@@ -61,8 +62,6 @@
 
 #include <pwd.h>
 #include <grp.h>
-
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

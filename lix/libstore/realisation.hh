@@ -4,9 +4,9 @@
 #include <variant>
 
 #include "lix/libutil/hash.hh"
+#include "lix/libutil/json-fwd.hh"
 #include "lix/libstore/path.hh"
 #include "lix/libstore/derived-path.hh"
-#include <nlohmann/json_fwd.hpp>
 #include "lix/libutil/comparator.hh"
 #include "lix/libstore/crypto.hh"
 

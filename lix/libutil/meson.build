@@ -93,6 +93,8 @@ libutil_headers = files(
   'hash.hh',
   'hilite.hh',
   'input-accessor.hh',
+  'json.hh',
+  'json-fwd.hh',
   'json-impls.hh',
   'json-utils.hh',
   'logging.hh',

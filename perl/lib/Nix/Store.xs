@@ -18,9 +18,9 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/crypto.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/json.hh"
 
 #include <sodium.h>
-#include <nlohmann/json.hpp>
 
 
 using namespace nix;

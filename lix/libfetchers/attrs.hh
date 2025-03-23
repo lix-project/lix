@@ -1,12 +1,11 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/hash.hh"
 
 #include <variant>
-
-#include <nlohmann/json_fwd.hpp>
 
 #include <optional>
 

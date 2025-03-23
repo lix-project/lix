@@ -2,9 +2,8 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/make-content-addressed.hh"
 #include "lix/libmain/common-args.hh"
+#include "lix/libutil/json.hh"
 #include "make-content-addressed.hh"
-
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

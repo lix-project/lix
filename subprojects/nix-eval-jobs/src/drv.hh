@@ -1,7 +1,5 @@
 #include <lix/libexpr/get-drvs.hh>
 #include <lix/libexpr/eval.hh>
-#include <nlohmann/json.hpp>
-#include <nlohmann/json_fwd.hpp>
 #include <string>
 #include <map>
 #include <set>
@@ -10,6 +8,7 @@
 
 #include "eval-args.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/json.hh"
 
 class MyArgs;
 

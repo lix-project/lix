@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include <nlohmann/json.hpp>
+#include "lix/libutil/json.hh"
 #include <list>
 
 namespace nix {

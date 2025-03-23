@@ -1,13 +1,13 @@
 #include "lix/libstore/nar-accessor.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/json.hh"
 
 #include <map>
 #include <memory>
 #include <stack>
 #include <algorithm>
 
-#include <nlohmann/json.hpp>
 #include <variant>
 
 namespace nix {

@@ -10,8 +10,8 @@
 #include <lix/libexpr/eval.hh>
 #include <lix/libexpr/get-drvs.hh>
 #include <lix/libexpr/nixexpr.hh>
-#include <nlohmann/detail/json_ref.hpp>
 #include <lix/libstore/path.hh>
+#include <lix/libutil/json.hh>
 #include <lix/libutil/ref.hh>
 #include <lix/libexpr/value/context.hh>
 #include <exception>

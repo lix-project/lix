@@ -3,6 +3,7 @@
 
 #include "lix/libutil/async.hh"
 #include "lix/libutil/experimental-features.hh"
+#include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/ref.hh"
 
@@ -11,7 +12,6 @@
 #include <memory>
 #include <limits>
 
-#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <set>
 #include <filesystem>

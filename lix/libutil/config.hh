@@ -5,8 +5,7 @@
 #include <map>
 #include <set>
 
-#include <nlohmann/json_fwd.hpp>
-
+#include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/experimental-features.hh"
 #include "lix/libutil/deprecated-features.hh"

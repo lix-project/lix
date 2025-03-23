@@ -1,6 +1,6 @@
 #include "tests/outputs-spec.hh"
+#include "lix/libutil/json.hh"
 
-#include <nlohmann/json.hpp>
 #include <gtest/gtest.h>
 #include <rapidcheck/gtest.h>
 

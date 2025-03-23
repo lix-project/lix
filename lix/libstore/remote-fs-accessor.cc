@@ -1,6 +1,6 @@
-#include <nlohmann/json.hpp>
 #include "lix/libstore/remote-fs-accessor.hh"
 #include "lix/libstore/nar-accessor.hh"
+#include "lix/libutil/json.hh"
 
 #include <sys/types.h>
 #include <sys/stat.h>
