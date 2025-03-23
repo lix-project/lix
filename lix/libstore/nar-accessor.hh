@@ -36,8 +36,8 @@ ref<FSAccessor> makeLazyNarAccessor(
  * Write a JSON representation of the contents of a NAR (except file
  * contents).
  */
-kj::Promise<Result<nlohmann::json>>
+kj::Promise<Result<JSON>>
 listNar(ref<FSAccessor> accessor, const Path & path, bool recurse);
-nlohmann::json listNar(const nar_index::Entry & nar);
+JSON listNar(const nar_index::Entry & nar);
 
 }

@@ -9,7 +9,7 @@
 
 namespace nix {
 template<typename T>
-std::map<std::string, nlohmann::json> BaseSetting<T>::toJSONObject() const
+std::map<std::string, JSON> BaseSetting<T>::toJSONObject() const
 {
     auto obj = AbstractSetting::toJSONObject();
     obj.emplace("value", value);

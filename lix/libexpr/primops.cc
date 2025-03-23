@@ -800,15 +800,14 @@ static void derivationStrictInternal(EvalState & state, const std::string &
 drvName, Bindings * attrs, Value & v)
 {
     /* Check whether attributes should be passed as a JSON file. */
-    using nlohmann::json;
-    std::optional<json> jsonObject;
+    std::optional<JSON> jsonObject;
     auto pos = v.determinePos(noPos);
     auto attr = attrs->find(state.ctx.s.structuredAttrs);
     if (attr != attrs->end() &&
         state.forceBool(*attr->value, pos,
                         "while evaluating the `__structuredAttrs` "
                         "attribute passed to builtins.derivationStrict"))
-        jsonObject = json::object();
+        jsonObject = JSON::object();
 
     /* Check whether null attributes should be ignored. */
     bool ignoreNulls = false;

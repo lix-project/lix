@@ -6,13 +6,11 @@
 #include <limits>
 #include <variant>
 
-using json = nlohmann::json;
-
 namespace nix {
 
 // for more information, refer to
 // https://github.com/nlohmann/json/blob/master/include/nlohmann/detail/input/json_sax.hpp
-class JSONSax : nlohmann::json_sax<json> {
+class JSONSax : nlohmann::json_sax<JSON> {
     class JSONState {
     protected:
         std::unique_ptr<JSONState> parent;
@@ -175,7 +173,7 @@ public:
 void parseJSON(EvalState & state, const std::string_view & s_, Value & v)
 {
     JSONSax parser(state, v);
-    bool res = json::sax_parse(s_, &parser);
+    bool res = JSON::sax_parse(s_, &parser);
     if (!res)
         throw JSONParseError("Invalid JSON Value");
 }

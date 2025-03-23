@@ -44,7 +44,7 @@ struct LockedNode : Node
         : lockedRef(lockedRef), originalRef(originalRef), isFlake(isFlake)
     { }
 
-    LockedNode(const nlohmann::json & json);
+    LockedNode(const JSON & json);
 
     StorePath computeStorePath(Store & store) const;
 };
@@ -54,11 +54,11 @@ struct LockFile
     ref<Node> root = make_ref<Node>();
 
     LockFile() {};
-    LockFile(const nlohmann::json & json, const Path & path);
+    LockFile(const JSON & json, const Path & path);
 
     typedef std::map<ref<const Node>, std::string> KeyMap;
 
-    nlohmann::json toJSON() const;
+    JSON toJSON() const;
 
     std::string to_string() const;
 

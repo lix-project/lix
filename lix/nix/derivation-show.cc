@@ -9,7 +9,6 @@
 #include "lix/libstore/derivations.hh"
 
 namespace nix {
-using json = nlohmann::json;
 
 struct CmdShowDerivation : InstallablesCommand
 {
@@ -50,7 +49,7 @@ struct CmdShowDerivation : InstallablesCommand
             drvPaths = std::move(closure);
         }
 
-        json jsonRoot = json::object();
+        JSON jsonRoot = JSON::object();
 
         for (auto & drvPath : drvPaths) {
             if (!drvPath.isDerivation()) continue;

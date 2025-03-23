@@ -54,8 +54,6 @@
 
 #endif
 
-using json = nlohmann::json;
-
 namespace nix {
 
 RootValue allocRootValue(Value * v)
@@ -2628,7 +2626,7 @@ void Evaluator::printStatistics()
     std::fstream fs;
     if (outPath != "-")
         fs.open(outPath, std::fstream::out);
-    json topObj = json::object();
+    JSON topObj = JSON::object();
     topObj["cpuTime"] = cpuTime;
     topObj["envs"] = {
         {"number", mem.nrEnvs},
@@ -2677,9 +2675,9 @@ void Evaluator::printStatistics()
         topObj["primops"] = stats.primOpCalls;
         {
             auto& list = topObj["functions"];
-            list = json::array();
+            list = JSON::array();
             for (auto & [fun, count] : stats.functionCalls) {
-                json obj = json::object();
+                JSON obj = JSON::object();
                 if (fun->name)
                     obj["name"] = (std::string_view) symbols[fun->name];
                 else
@@ -2696,9 +2694,9 @@ void Evaluator::printStatistics()
         }
         {
             auto list = topObj["attributes"];
-            list = json::array();
+            list = JSON::array();
             for (auto & i : stats.attrSelects) {
-                json obj = json::object();
+                JSON obj = JSON::object();
                 if (auto pos = positions[i.first]) {
                     if (auto path = std::get_if<CheckedSourcePath>(&pos.origin))
                         obj["file"] = path->to_string();
@@ -2713,7 +2711,7 @@ void Evaluator::printStatistics()
 
     if (getEnv("NIX_SHOW_SYMBOLS").value_or("0") != "0") {
         // XXX: overrides earlier assignment
-        topObj["symbols"] = json::array();
+        topObj["symbols"] = JSON::array();
         auto &list = topObj["symbols"];
         symbols.dump([&](const std::string & s) { list.emplace_back(s); });
     }

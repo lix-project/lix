@@ -9,7 +9,7 @@
         using namespace nix;                                           \
         template <>                                                    \
         struct adl_serializer<TYPE> {                                  \
-            static TYPE from_json(const json & json);                  \
-            static void to_json(json & json, TYPE t);                  \
+            static TYPE from_json(const JSON & json);                  \
+            static void to_json(JSON & json, TYPE t);                  \
         };                                                             \
     }

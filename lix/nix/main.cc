@@ -324,11 +324,11 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
 
     std::string dumpCli()
     {
-        auto res = nlohmann::json::object();
+        auto res = JSON::object();
 
         res["args"] = toJSON();
 
-        auto stores = nlohmann::json::object();
+        auto stores = JSON::object();
         for (auto & implem : *StoreImplementations::registered) {
             auto storeConfig = implem.getConfig();
             auto storeName = storeConfig->name();
@@ -518,12 +518,12 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
             | Xp::DynamicDerivations);
         evalSettings.pureEval.override(false);
         Evaluator state(aio, {}, aio.blockOn(openStore("dummy://")));
-        auto res = nlohmann::json::object();
+        auto res = JSON::object();
         res["builtins"] = ({
-            auto builtinsJson = nlohmann::json::object();
+            auto builtinsJson = JSON::object();
             auto builtins = state.builtins.env.values[0]->attrs;
             for (auto & builtin : *builtins) {
-                auto b = nlohmann::json::object();
+                auto b = JSON::object();
                 if (!builtin.value->isPrimOp()) continue;
                 auto primOp = builtin.value->primOp;
                 if (!primOp->doc) continue;
@@ -536,9 +536,9 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
             std::move(builtinsJson);
         });
         res["constants"] = ({
-            auto constantsJson = nlohmann::json::object();
+            auto constantsJson = JSON::object();
             for (auto & [name, info] : state.builtins.constantInfos) {
-                auto c = nlohmann::json::object();
+                auto c = JSON::object();
                 if (!info.doc) continue;
                 c["doc"] = trim(stripIndentation(info.doc));
                 c["type"] = showType(info.type, false);

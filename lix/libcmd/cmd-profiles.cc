@@ -111,7 +111,7 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
     auto manifestPath = profile + "/manifest.json";
 
     if (pathExists(manifestPath)) {
-        auto json = nlohmann::json::parse(readFile(manifestPath));
+        auto json = JSON::parse(readFile(manifestPath));
 
         auto version = json.value("version", 0);
         std::string sUrl;
@@ -198,15 +198,15 @@ void ProfileManifest::addElement(ProfileElement element)
     addElement(finalName, std::move(element));
 }
 
-nlohmann::json ProfileManifest::toJSON(Store & store) const
+JSON ProfileManifest::toJSON(Store & store) const
 {
-    auto es = nlohmann::json::object();
+    auto es = JSON::object();
     for (auto & [name, element] : elements) {
-        auto paths = nlohmann::json::array();
+        auto paths = JSON::array();
         for (auto & path : element.storePaths) {
             paths.push_back(store.printStorePath(path));
         }
-        nlohmann::json obj;
+        JSON obj;
         obj["storePaths"] = paths;
         obj["active"] = element.active;
         obj["priority"] = element.priority;
@@ -218,7 +218,7 @@ nlohmann::json ProfileManifest::toJSON(Store & store) const
         }
         es[name] = obj;
     }
-    nlohmann::json json;
+    JSON json;
     json["version"] = 3;
     json["elements"] = es;
     return json;

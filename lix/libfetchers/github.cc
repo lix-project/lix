@@ -278,7 +278,7 @@ struct GitHubInputScheme : GitArchiveInputScheme
 
         Headers headers = makeHeadersWithAuthTokens(host);
 
-        auto json = nlohmann::json::parse(readFile(store->toRealPath(
+        auto json = JSON::parse(readFile(store->toRealPath(
             TRY_AWAIT(downloadFile(store, url, "source", false, headers)).storePath
         )));
         auto rev = Hash::parseAny(std::string { json["sha"] }, HashType::SHA1);
@@ -359,7 +359,7 @@ struct GitLabInputScheme : GitArchiveInputScheme
 
         Headers headers = makeHeadersWithAuthTokens(host);
 
-        auto json = nlohmann::json::parse(readFile(store->toRealPath(
+        auto json = JSON::parse(readFile(store->toRealPath(
             TRY_AWAIT(downloadFile(store, url, "source", false, headers)).storePath
         )));
         if (json.is_array() && json.size() >= 1 && json[0]["id"] != nullptr) {

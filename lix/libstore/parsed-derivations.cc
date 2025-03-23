@@ -14,7 +14,7 @@ ParsedDerivation::ParsedDerivation(const StorePath & drvPath, BasicDerivation & 
     auto jsonAttr = drv.env.find("__json");
     if (jsonAttr != drv.env.end()) {
         try {
-            structuredAttrs = std::make_unique<nlohmann::json>(nlohmann::json::parse(jsonAttr->second));
+            structuredAttrs = std::make_unique<JSON>(JSON::parse(jsonAttr->second));
         } catch (std::exception & e) {
             throw Error("cannot process __json attribute of '%s': %s", drvPath.to_string(), e.what());
         }
@@ -134,7 +134,7 @@ bool ParsedDerivation::useUidRange() const
 
 static std::regex shVarName("[A-Za-z_][A-Za-z0-9_]*");
 
-kj::Promise<Result<std::optional<nlohmann::json>>>
+kj::Promise<Result<std::optional<JSON>>>
 ParsedDerivation::prepareStructuredAttrs(Store & store, const StorePathSet & inputPaths)
 try {
     auto structuredAttrs = getStructuredAttrs();
@@ -143,7 +143,7 @@ try {
     auto json = *structuredAttrs;
 
     /* Add an "outputs" object containing the output paths. */
-    nlohmann::json outputs;
+    JSON outputs;
     for (auto & i : drv.outputs)
         outputs[i.first] = hashPlaceholder(i.first);
     json["outputs"] = outputs;
@@ -171,10 +171,10 @@ try {
    namely, strings, integers, nulls, Booleans, and arrays and
    objects consisting entirely of those values. (So nested
    arrays or objects are not supported.) */
-std::string writeStructuredAttrsShell(const nlohmann::json & json)
+std::string writeStructuredAttrsShell(const JSON & json)
 {
 
-    auto handleSimpleType = [](const nlohmann::json & value) -> std::optional<std::string> {
+    auto handleSimpleType = [](const JSON & value) -> std::optional<std::string> {
         if (value.is_string())
             return shellEscape(value.get<std::string_view>());
 

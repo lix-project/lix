@@ -28,7 +28,7 @@ struct DerivedPathOpaque {
 
     std::string to_string(const Store & store) const;
     static DerivedPathOpaque parse(const Store & store, std::string_view);
-    kj::Promise<Result<nlohmann::json>> toJSON(const Store & store) const;
+    kj::Promise<Result<JSON>> toJSON(const Store & store) const;
 
     GENERATE_CMP(DerivedPathOpaque, me->path);
 };
@@ -75,7 +75,7 @@ struct SingleDerivedPathBuilt {
         const Store & store, ref<SingleDerivedPath> drvPath,
         OutputNameView outputs,
         const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
-    kj::Promise<Result<nlohmann::json>> toJSON(Store & store) const;
+    kj::Promise<Result<JSON>> toJSON(Store & store) const;
 
     DECLARE_CMP(SingleDerivedPathBuilt);
 };
@@ -147,7 +147,7 @@ struct SingleDerivedPath : derived_path::detail::SingleDerivedPathRaw {
         const Store & store,
         std::string_view,
         const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
-    kj::Promise<Result<nlohmann::json>> toJSON(Store & store) const;
+    kj::Promise<Result<JSON>> toJSON(Store & store) const;
 };
 
 static inline ref<SingleDerivedPath> makeConstantStorePathRef(StorePath drvPath)
@@ -200,7 +200,7 @@ struct DerivedPathBuilt {
         const Store & store, ref<SingleDerivedPath>,
         std::string_view,
         const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
-    kj::Promise<Result<nlohmann::json>> toJSON(Store & store) const;
+    kj::Promise<Result<JSON>> toJSON(Store & store) const;
 
     DECLARE_CMP(DerivedPathBuilt);
 };
@@ -277,7 +277,7 @@ struct DerivedPath : derived_path::detail::DerivedPathRaw {
      */
     static DerivedPath fromSingle(const SingleDerivedPath &);
 
-    kj::Promise<Result<nlohmann::json>> toJSON(Store & store) const;
+    kj::Promise<Result<JSON>> toJSON(Store & store) const;
 };
 
 typedef std::vector<DerivedPath> DerivedPaths;

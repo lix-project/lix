@@ -43,7 +43,6 @@
 #include "worker.hh"
 
 using namespace nix;
-using namespace nlohmann;
 
 using Processor = std::function<void(
     ref<nix::eval_cache::CachingEvaluator> state, Bindings &autoArgs,
@@ -75,7 +74,7 @@ struct Proc {
                     Bindings &autoArgs = *myArgs.getAutoArgs(*evaluator);
                     proc(evaluator, autoArgs, *to, *from, myArgs, aio);
                 } catch (Error &e) {
-                    nlohmann::json err;
+                    JSON err;
                     auto msg = e.msg();
                     err["error"] = nix::filterANSIEscapes(msg, true);
                     printError(msg);
@@ -150,10 +149,10 @@ struct Thread {
 };
 
 struct State {
-    std::set<json> todo = json::array({json::array()});
-    std::set<json> active;
+    std::set<JSON> todo = JSON::array({JSON::array()});
+    std::set<JSON> active;
     std::exception_ptr exc;
-    std::map<std::string, nlohmann::json> jobs;
+    std::map<std::string, JSON> jobs;
 };
 
 void handleBrokenWorkerPipe(Proc &proc, std::string_view msg, bool retry = true) {
@@ -226,7 +225,7 @@ void handleBrokenWorkerPipe(Proc &proc, std::string_view msg, bool retry = true)
     }
 }
 
-std::string joinAttrPath(json &attrPath) {
+std::string joinAttrPath(JSON &attrPath) {
     std::string joined;
     for (auto &element : attrPath) {
         if (!joined.empty()) {
@@ -262,9 +261,9 @@ void collector(MyArgs &myArgs, Sync<State> &state_,
                 continue;
             } else if (s != "next") {
                 try {
-                    auto json = json::parse(s);
+                    auto json = JSON::parse(s);
                     throw Error("worker error: %s", (std::string)json["error"]);
-                } catch (const json::exception &e) {
+                } catch (const JSON::exception &e) {
                     throw Error(
                         "Received invalid JSON from worker: %s\n json: '%s'",
                         e.what(), s);
@@ -272,7 +271,7 @@ void collector(MyArgs &myArgs, Sync<State> &state_,
             }
 
             /* Wait for a job name to become available. */
-            json attrPath;
+            JSON attrPath;
 
             while (true) {
                 checkInterrupt();
@@ -306,20 +305,20 @@ void collector(MyArgs &myArgs, Sync<State> &state_,
                            joinAttrPath(attrPath) + "'";
                 handleBrokenWorkerPipe(*proc.get(), msg);
             }
-            json response;
+            JSON response;
             try {
-                response = json::parse(respString);
-            } catch (const json::exception &e) {
+                response = JSON::parse(respString);
+            } catch (const JSON::exception &e) {
                 throw Error(
                     "Received invalid JSON from worker: %s\n json: '%s'",
                     e.what(), respString);
             }
 
             /* Handle the response. */
-            std::vector<json> newAttrs;
+            std::vector<JSON> newAttrs;
             if (response.find("attrs") != response.end()) {
                 for (auto &i : response["attrs"]) {
-                    json newAttr = json(response["attrPath"]);
+                    JSON newAttr = JSON(response["attrPath"]);
                     newAttr.emplace_back(i);
                     newAttrs.push_back(newAttr);
                 }

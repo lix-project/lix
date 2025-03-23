@@ -17,7 +17,7 @@ struct SingleBuiltPathBuilt {
 
     std::string to_string(const Store & store) const;
     static SingleBuiltPathBuilt parse(const Store & store, std::string_view, std::string_view);
-    kj::Promise<Result<nlohmann::json>> toJSON(const Store & store) const;
+    kj::Promise<Result<JSON>> toJSON(const Store & store) const;
 
     DECLARE_CMP(SingleBuiltPathBuilt);
 };
@@ -45,7 +45,7 @@ struct SingleBuiltPath : built_path::detail::SingleBuiltPathRaw {
     SingleDerivedPath discardOutputPath() const;
 
     static SingleBuiltPath parse(const Store & store, std::string_view);
-    kj::Promise<Result<nlohmann::json>> toJSON(const Store & store) const;
+    kj::Promise<Result<JSON>> toJSON(const Store & store) const;
 };
 
 static inline ref<SingleBuiltPath> staticDrv(StorePath drvPath)
@@ -64,7 +64,7 @@ struct BuiltPathBuilt {
 
     std::string to_string(const Store & store) const;
     static BuiltPathBuilt parse(const Store & store, std::string_view, std::string_view);
-    kj::Promise<Result<nlohmann::json>> toJSON(const Store & store) const;
+    kj::Promise<Result<JSON>> toJSON(const Store & store) const;
 
     DECLARE_CMP(BuiltPathBuilt);
 };
@@ -94,7 +94,7 @@ struct BuiltPath : built_path::detail::BuiltPathRaw {
     StorePathSet outPaths() const;
     kj::Promise<Result<RealisedPath::Set>> toRealisedPaths(Store & store) const;
 
-    kj::Promise<Result<nlohmann::json>> toJSON(const Store & store) const;
+    kj::Promise<Result<JSON>> toJSON(const Store & store) const;
 };
 
 typedef std::vector<BuiltPath> BuiltPaths;

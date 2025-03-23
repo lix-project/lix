@@ -10,7 +10,7 @@
 namespace nix::flake {
 
 FlakeRef getFlakeRef(
-    const nlohmann::json & json,
+    const JSON & json,
     const char * attr,
     const char * info)
 {
@@ -31,7 +31,7 @@ FlakeRef getFlakeRef(
     throw Error("attribute '%s' missing in lock file", attr);
 }
 
-LockedNode::LockedNode(const nlohmann::json & json)
+LockedNode::LockedNode(const JSON & json)
     : lockedRef(getFlakeRef(json, "locked", "info")) // FIXME: remove "info"
     , originalRef(getFlakeRef(json, "original", nullptr))
     , isFlake(json.find("flake") != json.end() ? (bool) json["flake"] : true)
@@ -67,7 +67,7 @@ std::shared_ptr<Node> LockFile::findInput(const InputPath & path)
     return pos;
 }
 
-LockFile::LockFile(const nlohmann::json & json, const Path & path)
+LockFile::LockFile(const JSON & json, const Path & path)
 {
     auto version = json.value("version", 0);
     if (version < 5 || version > 7)
@@ -75,9 +75,9 @@ LockFile::LockFile(const nlohmann::json & json, const Path & path)
 
     std::map<std::string, ref<Node>> nodeMap;
 
-    std::function<void(Node & node, const nlohmann::json & jsonNode)> getInputs;
+    std::function<void(Node & node, const JSON & jsonNode)> getInputs;
 
-    getInputs = [&](Node & node, const nlohmann::json & jsonNode)
+    getInputs = [&](Node & node, const JSON & jsonNode)
     {
         if (jsonNode.find("inputs") == jsonNode.end()) return;
         for (auto & i : jsonNode["inputs"].items()) {
@@ -117,9 +117,9 @@ LockFile::LockFile(const nlohmann::json & json, const Path & path)
     // a bit since we don't need to worry about cycles.
 }
 
-nlohmann::json LockFile::toJSON() const
+JSON LockFile::toJSON() const
 {
-    nlohmann::json nodes;
+    JSON nodes;
     std::unordered_map<std::shared_ptr<const Node>, std::string> nodeKeys;
     std::unordered_set<std::string> keys;
 
@@ -143,15 +143,15 @@ nlohmann::json LockFile::toJSON() const
 
         nodeKeys.insert_or_assign(node, key);
 
-        auto n = nlohmann::json::object();
+        auto n = JSON::object();
 
         if (!node->inputs.empty()) {
-            auto inputs = nlohmann::json::object();
+            auto inputs = JSON::object();
             for (auto & i : node->inputs) {
                 if (auto child = std::get_if<0>(&i.second)) {
                     inputs[i.first] = dumpNode(i.first, *child);
                 } else if (auto follows = std::get_if<1>(&i.second)) {
-                    auto arr = nlohmann::json::array();
+                    auto arr = JSON::array();
                     for (auto & x : *follows)
                         arr.push_back(x);
                     inputs[i.first] = std::move(arr);
@@ -172,7 +172,7 @@ nlohmann::json LockFile::toJSON() const
         return key;
     };
 
-    nlohmann::json json;
+    JSON json;
     json["version"] = 7;
     json["root"] = dumpNode("root", root);
     json["nodes"] = std::move(nodes);
@@ -191,8 +191,8 @@ LockFile LockFile::read(const Path & path)
         return LockFile();
     }
     try {
-        return LockFile(nlohmann::json::parse(readFile(path)), path);
-    } catch (nlohmann::json::parse_error &nlohmann_json_parse_exc) {
+        return LockFile(JSON::parse(readFile(path)), path);
+    } catch (JSON::parse_error &nlohmann_json_parse_exc) {
        auto json_parse_error = JSONParseError(nlohmann_json_parse_exc.what());
        json_parse_error.addTrace(nullptr, "while parsing the lock file at %s", path);
        throw json_parse_error;

@@ -27,16 +27,16 @@ CMP(SingleDerivedPath, DerivedPathBuilt, outputs)
 #undef CMP
 #undef CMP_ONE
 
-kj::Promise<Result<nlohmann::json>> DerivedPath::Opaque::toJSON(const Store & store) const
+kj::Promise<Result<JSON>> DerivedPath::Opaque::toJSON(const Store & store) const
 try {
     return {store.printStorePath(path)};
 } catch (...) {
     return {result::current_exception()};
 }
 
-kj::Promise<Result<nlohmann::json>> SingleDerivedPath::Built::toJSON(Store & store) const
+kj::Promise<Result<JSON>> SingleDerivedPath::Built::toJSON(Store & store) const
 try {
-    nlohmann::json res;
+    JSON res;
     res["drvPath"] = TRY_AWAIT(drvPath->toJSON(store));
     // Fallback for the input-addressed derivation case: We expect to always be
     // able to print the output paths, so let’s do it
@@ -57,9 +57,9 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<nlohmann::json>> DerivedPath::Built::toJSON(Store & store) const
+kj::Promise<Result<JSON>> DerivedPath::Built::toJSON(Store & store) const
 try {
-    nlohmann::json res;
+    JSON res;
     res["drvPath"] = TRY_AWAIT(drvPath->toJSON(store));
     // Fallback for the input-addressed derivation case: We expect to always be
     // able to print the output paths, so let’s do it
@@ -79,7 +79,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<nlohmann::json>> SingleDerivedPath::toJSON(Store & store) const
+kj::Promise<Result<JSON>> SingleDerivedPath::toJSON(Store & store) const
 try {
     co_return TRY_AWAIT(std::visit([&](const auto & buildable) {
         return buildable.toJSON(store);
@@ -88,7 +88,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<nlohmann::json>> DerivedPath::toJSON(Store & store) const
+kj::Promise<Result<JSON>> DerivedPath::toJSON(Store & store) const
 try {
     co_return TRY_AWAIT(std::visit([&](const auto & buildable) {
         return buildable.toJSON(store);

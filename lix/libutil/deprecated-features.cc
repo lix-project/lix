@@ -60,13 +60,13 @@ std::string_view showDeprecatedFeature(const DeprecatedFeature tag)
     return depFeatureDetails[(size_t)tag].name;
 }
 
-nlohmann::json documentDeprecatedFeatures()
+JSON documentDeprecatedFeatures()
 {
     StringMap res;
     for (auto & depFeature : depFeatureDetails)
         res[std::string { depFeature.name }] =
             trim(stripIndentation(depFeature.description));
-    return (nlohmann::json) res;
+    return (JSON) res;
 }
 
 DeprecatedFeatures parseDeprecatedFeatures(const std::set<std::string> & rawFeatures)
@@ -88,12 +88,12 @@ std::ostream & operator <<(std::ostream & str, const DeprecatedFeature & feature
     return str << showDeprecatedFeature(feature);
 }
 
-void to_json(nlohmann::json & j, const DeprecatedFeature & feature)
+void to_json(JSON & j, const DeprecatedFeature & feature)
 {
     j = showDeprecatedFeature(feature);
 }
 
-void from_json(const nlohmann::json & j, DeprecatedFeature & feature)
+void from_json(const JSON & j, DeprecatedFeature & feature)
 {
     const std::string input = j;
     const auto parsed = parseDeprecatedFeature(input);

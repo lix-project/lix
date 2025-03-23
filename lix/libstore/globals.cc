@@ -268,7 +268,7 @@ Path Settings::getDefaultSSLCertFile()
 
 const std::string nixVersion = PACKAGE_VERSION;
 
-void to_json(nlohmann::json & j, const SandboxMode & e)
+void to_json(JSON & j, const SandboxMode & e)
 {
     if (e == SandboxMode::smEnabled) {
         j = true;
@@ -281,7 +281,7 @@ void to_json(nlohmann::json & j, const SandboxMode & e)
     }
 }
 
-void from_json(const nlohmann::json & j, SandboxMode & e)
+void from_json(const JSON & j, SandboxMode & e)
 {
     if (j == true) {
         e = SandboxMode::smEnabled;

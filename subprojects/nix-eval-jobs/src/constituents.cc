@@ -69,7 +69,7 @@ auto topoSort(const std::set<AggregateJob> &items)
 }
 } // namespace
 
-auto resolveNamedConstituents(const std::map<std::string, nlohmann::json> &jobs)
+auto resolveNamedConstituents(const std::map<std::string, nix::JSON> &jobs)
     -> std::variant<std::vector<AggregateJob>, DependencyCycle> {
     std::set<AggregateJob> aggregateJobs;
     for (auto const &[jobName, job] : jobs) {
@@ -80,7 +80,7 @@ auto resolveNamedConstituents(const std::map<std::string, nlohmann::json> &jobs)
 
             auto isBroken = [&brokenJobs,
                              &jobName](const std::string &childJobName,
-                                       const nlohmann::json &job) -> bool {
+                                       const nix::JSON &job) -> bool {
                 if (job.find("error") != job.end()) {
                     std::string error = job["error"];
                     nix::logger->log(
@@ -118,7 +118,7 @@ auto resolveNamedConstituents(const std::map<std::string, nlohmann::json> &jobs)
     }
 }
 
-void rewriteAggregates(std::map<std::string, nlohmann::json> &jobs,
+void rewriteAggregates(std::map<std::string, nix::JSON> &jobs,
                        const std::vector<AggregateJob> &aggregateJobs,
                        nix::ref<nix::Store> &store, nix::Path &gcRootsDir,
                        nix::AsyncIoRoot &aio) {

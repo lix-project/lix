@@ -57,7 +57,7 @@ struct BuildEnvironment
 
         std::set<std::string> exported;
 
-        auto json = nlohmann::json::parse(in);
+        auto json = JSON::parse(in);
 
         for (auto & [name, info] : json["variables"].items()) {
             std::string type = info["type"];
@@ -82,11 +82,11 @@ struct BuildEnvironment
 
     std::string toJSON() const
     {
-        auto res = nlohmann::json::object();
+        auto res = JSON::object();
 
-        auto vars2 = nlohmann::json::object();
+        auto vars2 = JSON::object();
         for (auto & [name, value] : vars) {
-            auto info = nlohmann::json::object();
+            auto info = JSON::object();
             if (auto str = std::get_if<String>(&value)) {
                 info["type"] = str->exported ? "exported" : "var";
                 info["value"] = str->value;
@@ -106,7 +106,7 @@ struct BuildEnvironment
         res["bashFunctions"] = bashFunctions;
 
         if (providesStructuredAttrs()) {
-            auto contents = nlohmann::json::object();
+            auto contents = JSON::object();
             contents[".attrs.sh"] = getAttrsSH();
             contents[".attrs.json"] = getAttrsJSON();
             res["structuredAttrs"] = std::move(contents);

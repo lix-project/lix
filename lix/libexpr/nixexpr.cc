@@ -8,8 +8,6 @@
 #include <cstdlib>
 #include <sstream>
 
-using json = nlohmann::json;
-
 namespace nix {
 
 ExprBlackHole eBlackHole;
@@ -31,15 +29,15 @@ AttrName::AttrName(PosIdx pos, std::unique_ptr<Expr> e) : pos(pos), expr(std::mo
 {
 }
 
-json Expr::toJSON(const SymbolTable & symbols) const
+JSON Expr::toJSON(const SymbolTable & symbols) const
 {
     abort();
 }
 
-json ExprLiteral::toJSON(const SymbolTable & symbols) const
+JSON ExprLiteral::toJSON(const SymbolTable & symbols) const
 {
-    json valueType;
-    json value;
+    JSON valueType;
+    JSON value;
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wswitch-enum"
     switch (v.type()) {
@@ -71,7 +69,7 @@ json ExprLiteral::toJSON(const SymbolTable & symbols) const
     };
 }
 
-json ExprVar::toJSON(const SymbolTable & symbols) const
+JSON ExprVar::toJSON(const SymbolTable & symbols) const
 {
     return {
         {"_type", "ExprVar"},
@@ -79,16 +77,16 @@ json ExprVar::toJSON(const SymbolTable & symbols) const
     };
 }
 
-json ExprInheritFrom::toJSON(SymbolTable const & symbols) const
+JSON ExprInheritFrom::toJSON(SymbolTable const & symbols) const
 {
     return {
         {"_type", "ExprInheritFrom"}
     };
 }
 
-json ExprSelect::toJSON(const SymbolTable & symbols) const
+JSON ExprSelect::toJSON(const SymbolTable & symbols) const
 {
-    json out = {
+    JSON out = {
         {"_type", "ExprSelect"},
         {"e", e->toJSON(symbols)},
         {"attrs", printAttrPathToJson(symbols, attrPath)}
@@ -98,7 +96,7 @@ json ExprSelect::toJSON(const SymbolTable & symbols) const
     return out;
 }
 
-json ExprOpHasAttr::toJSON(const SymbolTable & symbols) const
+JSON ExprOpHasAttr::toJSON(const SymbolTable & symbols) const
 {
     return {
         {"_type", "ExprOpHasAttr"},
@@ -107,7 +105,7 @@ json ExprOpHasAttr::toJSON(const SymbolTable & symbols) const
     };
 }
 
-void ExprAttrs::addBindingsToJSON(json & out, const SymbolTable & symbols) const
+void ExprAttrs::addBindingsToJSON(JSON & out, const SymbolTable & symbols) const
 {
     typedef const decltype(attrs)::value_type * Attr;
     std::vector<Attr> sorted;
@@ -135,7 +133,7 @@ void ExprAttrs::addBindingsToJSON(json & out, const SymbolTable & symbols) const
     }
 
     for (const auto & [from, syms] : inheritsFrom) {
-        json attrs = json::array();
+        JSON attrs = JSON::array();
         for (auto sym : syms)
             attrs.push_back(symbols[sym]);
         out["inheritFrom"].push_back({
@@ -152,9 +150,9 @@ void ExprAttrs::addBindingsToJSON(json & out, const SymbolTable & symbols) const
     }
 }
 
-json ExprSet::toJSON(const SymbolTable & symbols) const
+JSON ExprSet::toJSON(const SymbolTable & symbols) const
 {
-    json out = {
+    JSON out = {
         {"_type", "ExprSet"},
         {"recursive", recursive},
     };
@@ -162,9 +160,9 @@ json ExprSet::toJSON(const SymbolTable & symbols) const
     return out;
 }
 
-json ExprList::toJSON(const SymbolTable & symbols) const
+JSON ExprList::toJSON(const SymbolTable & symbols) const
 {
-    json list = json::array();
+    JSON list = JSON::array();
     for (auto & i : elems)
         list.push_back(i->toJSON(symbols));
     return {
@@ -173,12 +171,12 @@ json ExprList::toJSON(const SymbolTable & symbols) const
     };
 }
 
-void SimplePattern::addBindingsToJSON(nlohmann::json & out, const SymbolTable & symbols) const
+void SimplePattern::addBindingsToJSON(JSON & out, const SymbolTable & symbols) const
 {
     out["arg"] = symbols[name];
 }
 
-void AttrsPattern::addBindingsToJSON(nlohmann::json & out, const SymbolTable & symbols) const
+void AttrsPattern::addBindingsToJSON(JSON & out, const SymbolTable & symbols) const
 {
     if (name)
         out["arg"] = symbols[name];
@@ -195,9 +193,9 @@ void AttrsPattern::addBindingsToJSON(nlohmann::json & out, const SymbolTable & s
     out["formalsEllipsis"] = ellipsis;
 }
 
-json ExprLambda::toJSON(const SymbolTable & symbols) const
+JSON ExprLambda::toJSON(const SymbolTable & symbols) const
 {
-    json out = {
+    JSON out = {
         { "_type", "ExprLambda" },
         { "body", body->toJSON(symbols) }
     };
@@ -205,9 +203,9 @@ json ExprLambda::toJSON(const SymbolTable & symbols) const
     return out;
 }
 
-json ExprCall::toJSON(const SymbolTable & symbols) const
+JSON ExprCall::toJSON(const SymbolTable & symbols) const
 {
-    json outArgs = json::array();
+    JSON outArgs = JSON::array();
     for (auto & e : args)
         outArgs.push_back(e->toJSON(symbols));
     return {
@@ -217,9 +215,9 @@ json ExprCall::toJSON(const SymbolTable & symbols) const
     };
 }
 
-json ExprLet::toJSON(const SymbolTable & symbols) const
+JSON ExprLet::toJSON(const SymbolTable & symbols) const
 {
-    json out = {
+    JSON out = {
         { "_type", "ExprLet" },
         { "body", body->toJSON(symbols) }
     };
@@ -227,7 +225,7 @@ json ExprLet::toJSON(const SymbolTable & symbols) const
     return out;
 }
 
-json ExprWith::toJSON(const SymbolTable & symbols) const
+JSON ExprWith::toJSON(const SymbolTable & symbols) const
 {
     return {
         {"_type", "ExprWith"},
@@ -236,7 +234,7 @@ json ExprWith::toJSON(const SymbolTable & symbols) const
     };
 }
 
-json ExprIf::toJSON(const SymbolTable & symbols) const
+JSON ExprIf::toJSON(const SymbolTable & symbols) const
 {
     return {
         {"_type", "ExprIf"},
@@ -246,7 +244,7 @@ json ExprIf::toJSON(const SymbolTable & symbols) const
     };
 }
 
-json ExprAssert::toJSON(const SymbolTable & symbols) const
+JSON ExprAssert::toJSON(const SymbolTable & symbols) const
 {
     return {
         {"_type", "ExprAssert"},
@@ -255,7 +253,7 @@ json ExprAssert::toJSON(const SymbolTable & symbols) const
     };
 }
 
-json ExprOpNot::toJSON(const SymbolTable & symbols) const
+JSON ExprOpNot::toJSON(const SymbolTable & symbols) const
 {
     return {
         {"_type", "ExprOpNot"},
@@ -263,9 +261,9 @@ json ExprOpNot::toJSON(const SymbolTable & symbols) const
     };
 }
 
-json ExprConcatStrings::toJSON(const SymbolTable & symbols) const
+JSON ExprConcatStrings::toJSON(const SymbolTable & symbols) const
 {
-    json parts = json::array();
+    JSON parts = JSON::array();
     for (auto & [_pos, part] : es)
         parts.push_back(part->toJSON(symbols));
     return {
@@ -275,7 +273,7 @@ json ExprConcatStrings::toJSON(const SymbolTable & symbols) const
     };
 }
 
-json ExprPos::toJSON(const SymbolTable & symbols) const
+JSON ExprPos::toJSON(const SymbolTable & symbols) const
 {
     return {{ "_type", "ExprPos" }};
 }
@@ -295,9 +293,9 @@ std::string showAttrPath(const SymbolTable & symbols, const AttrPath & attrPath)
     return out.str();
 }
 
-json printAttrPathToJson(const SymbolTable & symbols, const AttrPath & attrPath)
+JSON printAttrPathToJson(const SymbolTable & symbols, const AttrPath & attrPath)
 {
-    json out = json::array();
+    JSON out = JSON::array();
     for (auto & i : attrPath) {
         if (i.symbol)
             out.push_back(symbols[i.symbol]);

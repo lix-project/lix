@@ -60,13 +60,13 @@ std::string_view showExperimentalFeature(const ExperimentalFeature tag)
     return xpFeatureDetails[(size_t)tag].name;
 }
 
-nlohmann::json documentExperimentalFeatures()
+JSON documentExperimentalFeatures()
 {
     StringMap res;
     for (auto & xpFeature : xpFeatureDetails)
         res[std::string { xpFeature.name }] =
             trim(stripIndentation(xpFeature.description));
-    return (nlohmann::json) res;
+    return (JSON) res;
 }
 
 ExperimentalFeatures parseFeatures(const std::set<std::string> & rawFeatures)
@@ -88,12 +88,12 @@ std::ostream & operator <<(std::ostream & str, const ExperimentalFeature & featu
     return str << showExperimentalFeature(feature);
 }
 
-void to_json(nlohmann::json & j, const ExperimentalFeature & feature)
+void to_json(JSON & j, const ExperimentalFeature & feature)
 {
     j = showExperimentalFeature(feature);
 }
 
-void from_json(const nlohmann::json & j, ExperimentalFeature & feature)
+void from_json(const JSON & j, ExperimentalFeature & feature)
 {
     const std::string input = j;
     const auto parsed = parseExperimentalFeature(input);

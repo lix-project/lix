@@ -61,11 +61,11 @@ try {
     co_return result::current_exception();
 }
 
-nlohmann::json Realisation::toJSON() const {
-    auto jsonDependentRealisations = nlohmann::json::object();
+JSON Realisation::toJSON() const {
+    auto jsonDependentRealisations = JSON::object();
     for (auto & [depId, depOutPath] : dependentRealisations)
         jsonDependentRealisations.emplace(depId.to_string(), depOutPath.to_string());
-    return nlohmann::json{
+    return JSON{
         {"id", id.to_string()},
         {"outPath", outPath.to_string()},
         {"signatures", signatures},
@@ -74,7 +74,7 @@ nlohmann::json Realisation::toJSON() const {
 }
 
 Realisation Realisation::fromJSON(
-    const nlohmann::json& json,
+    const JSON& json,
     const std::string& whence) {
     auto getOptionalField = [&](std::string fieldName) -> std::optional<std::string> {
         auto fieldIterator = json.find(fieldName);

@@ -14,8 +14,8 @@ namespace nix {
 
 typedef enum { smEnabled, smRelaxed, smDisabled } SandboxMode;
 
-void to_json(nlohmann::json & j, const SandboxMode & e);
-void from_json(const nlohmann::json & j, SandboxMode & e);
+void to_json(JSON & j, const SandboxMode & e);
+void from_json(const JSON & j, SandboxMode & e);
 
 struct MaxBuildJobsSetting : public BaseSetting<unsigned int>
 {

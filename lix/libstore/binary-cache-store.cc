@@ -172,7 +172,7 @@ try {
     /* Optionally write a JSON file containing a listing of the
        contents of the NAR. */
     if (config().writeNARListing) {
-        nlohmann::json j = {
+        JSON j = {
             {"version", 1},
             {"root", listNar(narIndex)},
         };
@@ -200,7 +200,7 @@ try {
             auto doFile = [&](std::string member, std::string key, std::string target) {
                 checkInterrupt();
 
-                nlohmann::json json;
+                JSON json;
                 json["archive"] = target;
                 json["member"] = member;
 
@@ -511,7 +511,7 @@ try {
     if (!data) co_return result::success(nullptr);
 
     auto realisation = Realisation::fromJSON(
-        nlohmann::json::parse(*data), outputInfoFilePath);
+        JSON::parse(*data), outputInfoFilePath);
     co_return std::make_shared<const Realisation>(realisation);
 } catch (...) {
     co_return result::current_exception();

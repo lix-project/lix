@@ -14,9 +14,9 @@ namespace nix::fetchers {
 typedef std::variant<std::string, uint64_t, Explicit<bool>> Attr;
 typedef std::map<std::string, Attr> Attrs;
 
-Attrs jsonToAttrs(const nlohmann::json & json);
+Attrs jsonToAttrs(const JSON & json);
 
-nlohmann::json attrsToJSON(const Attrs & attrs);
+JSON attrsToJSON(const Attrs & attrs);
 
 std::optional<std::string> maybeGetStrAttr(const Attrs & attrs, const std::string & name);
 

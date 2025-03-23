@@ -38,7 +38,7 @@ struct AttrName
 typedef std::vector<AttrName> AttrPath;
 
 std::string showAttrPath(const SymbolTable & symbols, const AttrPath & attrPath);
-nlohmann::json printAttrPathToJson(const SymbolTable & symbols, const AttrPath & attrPath);
+JSON printAttrPathToJson(const SymbolTable & symbols, const AttrPath & attrPath);
 
 
 /* Abstract syntax of Nix expressions. */
@@ -62,7 +62,7 @@ public:
     Expr & operator=(const Expr &) = delete;
     virtual ~Expr() { };
 
-    virtual nlohmann::json toJSON(const SymbolTable & symbols) const;
+    virtual JSON toJSON(const SymbolTable & symbols) const;
     virtual void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env);
     virtual void eval(EvalState & state, Env & env, Value & v);
     virtual Value * maybeThunk(EvalState & state, Env & env);
@@ -71,7 +71,7 @@ public:
 };
 
 #define COMMON_METHODS \
-    nlohmann::json toJSON(const SymbolTable & symbols) const override; \
+    JSON toJSON(const SymbolTable & symbols) const override; \
     void eval(EvalState & state, Env & env, Value & v) override; \
     void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
 
@@ -153,7 +153,7 @@ struct ExprInheritFrom : ExprVar
         this->fromWith = nullptr;
     }
 
-    nlohmann::json toJSON(SymbolTable const & symbols) const override;
+    JSON toJSON(SymbolTable const & symbols) const override;
     void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
 };
 
@@ -240,7 +240,7 @@ struct ExprAttrs
     std::shared_ptr<const StaticEnv> bindInheritSources(
         Evaluator & es, const std::shared_ptr<const StaticEnv> & env);
     Env * buildInheritFromEnv(EvalState & state, Env & up);
-    void addBindingsToJSON(nlohmann::json & out, const SymbolTable & symbols) const;
+    void addBindingsToJSON(JSON & out, const SymbolTable & symbols) const;
 };
 
 struct ExprSet : Expr, ExprAttrs {
@@ -272,7 +272,7 @@ struct Pattern {
     virtual void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) = 0;
     virtual Env & match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos) = 0;
 
-    virtual void addBindingsToJSON(nlohmann::json & out, const SymbolTable & symbols) const = 0;
+    virtual void addBindingsToJSON(JSON & out, const SymbolTable & symbols) const = 0;
 };
 
 /** A plain old lambda */
@@ -287,7 +287,7 @@ struct SimplePattern : Pattern
     virtual void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
     virtual Env & match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos) override;
 
-    virtual void addBindingsToJSON(nlohmann::json & out, const SymbolTable & symbols) const override;
+    virtual void addBindingsToJSON(JSON & out, const SymbolTable & symbols) const override;
 };
 
 /** Attribute set destructuring in arguments of a lambda, if present */
@@ -308,7 +308,7 @@ struct AttrsPattern : Pattern
     virtual void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
     virtual Env & match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos) override;
 
-    virtual void addBindingsToJSON(nlohmann::json & out, const SymbolTable & symbols) const override;
+    virtual void addBindingsToJSON(JSON & out, const SymbolTable & symbols) const override;
 
     bool has(Symbol arg) const
     {
@@ -423,7 +423,7 @@ struct ExprOpNot : Expr
         std::unique_ptr<Expr> e1, e2; \
         name(std::unique_ptr<Expr> e1, std::unique_ptr<Expr> e2) : e1(std::move(e1)), e2(std::move(e2)) { }; \
         name(const PosIdx & pos, std::unique_ptr<Expr> e1, std::unique_ptr<Expr> e2) : Expr(pos), e1(std::move(e1)), e2(std::move(e2)) { }; \
-        nlohmann::json toJSON(const SymbolTable & symbols) const override \
+        JSON toJSON(const SymbolTable & symbols) const override \
         { \
             return { \
                 {"_type", #name}, \

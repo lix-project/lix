@@ -9,15 +9,14 @@
 
 
 namespace nix {
-using json = nlohmann::json;
-json printValueAsJSON(EvalState & state, bool strict,
+JSON printValueAsJSON(EvalState & state, bool strict,
     Value & v, const PosIdx pos, NixStringContext & context, bool copyToStore)
 {
     checkInterrupt();
 
     if (strict) state.forceValue(v, pos);
 
-    json out;
+    JSON out;
 
     switch (v.type()) {
 
@@ -56,7 +55,7 @@ json printValueAsJSON(EvalState & state, bool strict,
             }
             auto i = v.attrs->find(state.ctx.s.outPath);
             if (i == v.attrs->end()) {
-                out = json::object();
+                out = JSON::object();
                 StringSet names;
                 for (auto & j : *v.attrs)
                     names.emplace(state.ctx.symbols[j.name]);
@@ -76,7 +75,7 @@ json printValueAsJSON(EvalState & state, bool strict,
         }
 
         case nList: {
-            out = json::array();
+            out = JSON::array();
             int i = 0;
             for (auto elem : v.listItems()) {
                 try {
@@ -117,7 +116,7 @@ void printValueAsJSON(EvalState & state, bool strict,
     str << printValueAsJSON(state, strict, v, pos, context, copyToStore);
 }
 
-json ExternalValueBase::printValueAsJSON(EvalState & state, bool strict,
+JSON ExternalValueBase::printValueAsJSON(EvalState & state, bool strict,
     NixStringContext & context, bool copyToStore) const
 {
     state.ctx.errors.make<TypeError>("cannot convert %1% to JSON", showType())

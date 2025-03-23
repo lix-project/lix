@@ -39,7 +39,7 @@ try {
 
     if (cacheDir != "") {
         try {
-            nlohmann::json j = TRY_AWAIT(listNar(narAccessor, "", true));
+            JSON j = TRY_AWAIT(listNar(narAccessor, "", true));
             writeFile(makeCacheFile(hashPart, "ls"), j.dump());
         } catch (...) {
             ignoreExceptionExceptInterrupt();

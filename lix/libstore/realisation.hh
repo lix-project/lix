@@ -60,8 +60,8 @@ struct Realisation {
      */
     std::map<DrvOutput, StorePath> dependentRealisations = {};
 
-    nlohmann::json toJSON() const;
-    static Realisation fromJSON(const nlohmann::json& json, const std::string& whence);
+    JSON toJSON() const;
+    static Realisation fromJSON(const JSON& json, const std::string& whence);
 
     std::string fingerprint() const;
     void sign(const SecretKey &);

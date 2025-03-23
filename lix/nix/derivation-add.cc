@@ -8,7 +8,6 @@
 #include "lix/libstore/derivations.hh"
 
 namespace nix {
-using json = nlohmann::json;
 
 struct CmdAddDerivation : MixDryRun, StoreCommand
 {
@@ -28,7 +27,7 @@ struct CmdAddDerivation : MixDryRun, StoreCommand
 
     void run(ref<Store> store) override
     {
-        auto json = nlohmann::json::parse(drainFD(STDIN_FILENO));
+        auto json = JSON::parse(drainFD(STDIN_FILENO));
 
         auto drv = Derivation::fromJSON(*store, json);
 

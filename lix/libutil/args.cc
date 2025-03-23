@@ -275,12 +275,12 @@ bool Args::processArgs(const Strings & args, bool finish)
     return res;
 }
 
-nlohmann::json Args::toJSON()
+JSON Args::toJSON()
 {
-    auto flags = nlohmann::json::object();
+    auto flags = JSON::object();
 
     for (auto & [name, flag] : longFlags) {
-        auto j = nlohmann::json::object();
+        auto j = JSON::object();
         if (hiddenCategories.count(flag->category)) continue;
         if (flag->aliases.count(name)) continue;
         if (flag->shortName)
@@ -296,10 +296,10 @@ nlohmann::json Args::toJSON()
         flags[name] = std::move(j);
     }
 
-    auto args = nlohmann::json::array();
+    auto args = JSON::array();
 
     for (auto & arg : expectedArgs) {
-        auto j = nlohmann::json::object();
+        auto j = JSON::object();
         j["label"] = arg.label;
         j["optional"] = arg.optional;
         if (arg.handler.arity != ArityAny)
@@ -307,7 +307,7 @@ nlohmann::json Args::toJSON()
         args.push_back(std::move(j));
     }
 
-    auto res = nlohmann::json::object();
+    auto res = JSON::object();
     res["description"] = trim(description());
     res["flags"] = std::move(flags);
     res["args"] = std::move(args);
@@ -544,16 +544,16 @@ bool MultiCommand::processArgs(const Strings & args, bool finish)
         return Args::processArgs(args, finish);
 }
 
-nlohmann::json MultiCommand::toJSON()
+JSON MultiCommand::toJSON()
 {
     // FIXME: use Command::toJSON() as well.
 
-    auto cmds = nlohmann::json::object();
+    auto cmds = JSON::object();
 
     for (auto & [name, commandFun] : commands) {
         auto command = commandFun(aio());
         auto j = command->toJSON();
-        auto cat = nlohmann::json::object();
+        auto cat = JSON::object();
         cat["id"] = command->category();
         cat["description"] = trim(categories[command->category()]);
         cat["experimental-feature"] = command->experimentalFeature();

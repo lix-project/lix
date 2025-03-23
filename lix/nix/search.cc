@@ -17,7 +17,6 @@
 #include <fstream>
 
 namespace nix {
-using json = nlohmann::json;
 
 std::string wrap(std::string prefix, std::string s)
 {
@@ -88,8 +87,8 @@ struct CmdSearch : InstallableCommand, MixJSON
         auto evaluator = getEvaluator();
         auto state = evaluator->begin(aio());
 
-        std::optional<nlohmann::json> jsonOut;
-        if (json) jsonOut = json::object();
+        std::optional<JSON> jsonOut;
+        if (json) jsonOut = JSON::object();
 
         uint64_t results = 0;
 

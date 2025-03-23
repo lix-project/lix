@@ -9,8 +9,6 @@
 
 namespace nix {
 
-using nlohmann::json;
-
 class DerivationTest : public LibStoreTest
 {
 public:
@@ -79,7 +77,7 @@ TEST_F(DynDerivationTest, BadATerm_oldVersionDynDeps) {
         }                                                                 \
         else                                                              \
         {                                                                 \
-            auto encoded = json::parse(                                   \
+            auto encoded = JSON::parse(                                   \
                 readFile(goldenMaster("output-" #NAME ".json")));         \
             DerivationOutput got = DerivationOutput::fromJSON(            \
                 *store,                                                   \
@@ -95,7 +93,7 @@ TEST_F(DynDerivationTest, BadATerm_oldVersionDynDeps) {
     TEST_F(FIXTURE, DerivationOutput_ ## NAME ## _to_json) {              \
         auto file = goldenMaster("output-" #NAME ".json");                \
                                                                           \
-        json got = DerivationOutput { VAL }.toJSON(                       \
+        JSON got = DerivationOutput { VAL }.toJSON(                       \
             *store,                                                       \
             DRV_NAME,                                                     \
             OUTPUT_NAME);                                                 \
@@ -108,7 +106,7 @@ TEST_F(DynDerivationTest, BadATerm_oldVersionDynDeps) {
         }                                                                 \
         else                                                              \
         {                                                                 \
-            auto expected = json::parse(readFile(file));                  \
+            auto expected = JSON::parse(readFile(file));                  \
             ASSERT_EQ(got, expected);                                     \
         }                                                                 \
     }
@@ -173,7 +171,7 @@ TEST_JSON(ImpureDerivationTest, impure,
         }                                                                 \
         else                                                              \
         {                                                                 \
-            auto encoded = json::parse(                                   \
+            auto encoded = JSON::parse(                                   \
                 readFile(goldenMaster( #NAME ".json")));                  \
             Derivation expected { VAL };                                  \
             Derivation got = Derivation::fromJSON(                        \
@@ -187,7 +185,7 @@ TEST_JSON(ImpureDerivationTest, impure,
     TEST_F(FIXTURE, Derivation_ ## NAME ## _to_json) {                    \
         auto file = goldenMaster( #NAME ".json");                         \
                                                                           \
-        json got = Derivation { VAL }.toJSON(*store);                     \
+        JSON got = Derivation { VAL }.toJSON(*store);                     \
                                                                           \
         if (testAccept())                                                 \
         {                                                                 \
@@ -197,7 +195,7 @@ TEST_JSON(ImpureDerivationTest, impure,
         }                                                                 \
         else                                                              \
         {                                                                 \
-            auto expected = json::parse(readFile(file));                  \
+            auto expected = JSON::parse(readFile(file));                  \
             ASSERT_EQ(got, expected);                                     \
         }                                                                 \
     }

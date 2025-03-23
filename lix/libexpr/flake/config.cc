@@ -18,7 +18,7 @@ static TrustedList readTrustedList()
 {
     auto path = trustedListPath();
     if (!pathExists(path)) return {};
-    auto json = nlohmann::json::parse(readFile(path));
+    auto json = JSON::parse(readFile(path));
     return json;
 }
 
@@ -26,7 +26,7 @@ static void writeTrustedList(const TrustedList & trustedList)
 {
     auto path = trustedListPath();
     createDirs(dirOf(path));
-    writeFile(path, nlohmann::json(trustedList).dump());
+    writeFile(path, JSON(trustedList).dump());
 }
 
 static bool askForSetting(

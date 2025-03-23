@@ -36,10 +36,10 @@ struct AggregateJob {
     }
 };
 
-auto resolveNamedConstituents(const std::map<std::string, nlohmann::json> &jobs)
+auto resolveNamedConstituents(const std::map<std::string, nix::JSON> &jobs)
     -> std::variant<std::vector<AggregateJob>, DependencyCycle>;
 
-void rewriteAggregates(std::map<std::string, nlohmann::json> &jobs,
+void rewriteAggregates(std::map<std::string, nix::JSON> &jobs,
                        const std::vector<AggregateJob> &aggregateJobs,
                        nix::ref<nix::Store> &store, nix::Path &gcRootsDir,
                        nix::AsyncIoRoot &aio);

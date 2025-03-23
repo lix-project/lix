@@ -34,13 +34,13 @@ struct Drv {
     enum class CacheStatus { Cached, Uncached, Unknown } cacheStatus;
     std::map<std::string, std::optional<std::string>> outputs;
     std::map<std::string, std::set<std::string>> inputDrvs;
-    std::optional<nlohmann::json> meta;
+    std::optional<nix::JSON> meta;
     std::optional<Constituents> constituents;
 
     Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
         MyArgs &args, std::optional<Constituents> constituents);
 };
-void to_json(nlohmann::json &json, const Drv &drv);
+void to_json(nix::JSON &json, const Drv &drv);
 
 void register_gc_root(nix::Path &gcRootsDir, std::string &drvPath,
                       const nix::ref<nix::Store> &store, nix::AsyncIoRoot &aio);

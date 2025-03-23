@@ -1250,10 +1250,10 @@ try {
 
 const Hash impureOutputHash = hashString(HashType::SHA256, "impure");
 
-nlohmann::json DerivationOutput::toJSON(
+JSON DerivationOutput::toJSON(
     const Store & store, std::string_view drvName, OutputNameView outputName) const
 {
-    nlohmann::json res = nlohmann::json::object();
+    JSON res = JSON::object();
     std::visit(overloaded {
         [&](const DerivationOutput::InputAddressed & doi) {
             res["path"] = store.printStorePath(doi.path);
@@ -1279,12 +1279,12 @@ nlohmann::json DerivationOutput::toJSON(
 
 DerivationOutput DerivationOutput::fromJSON(
     const Store & store, std::string_view drvName, OutputNameView outputName,
-    const nlohmann::json & _json,
+    const JSON & _json,
     const ExperimentalFeatureSettings & xpSettings)
 {
     std::set<std::string_view> keys;
     ensureType(_json, nlohmann::detail::value_t::object);
-    auto json = (std::map<std::string, nlohmann::json>) _json;
+    auto json = (std::map<std::string, JSON>) _json;
 
     for (const auto & [key, _] : json)
         keys.insert(key);
@@ -1347,15 +1347,15 @@ DerivationOutput DerivationOutput::fromJSON(
 }
 
 
-nlohmann::json Derivation::toJSON(const Store & store) const
+JSON Derivation::toJSON(const Store & store) const
 {
-    nlohmann::json res = nlohmann::json::object();
+    JSON res = JSON::object();
 
     res["name"] = name;
 
     {
-        nlohmann::json & outputsObj = res["outputs"];
-        outputsObj = nlohmann::json::object();
+        JSON & outputsObj = res["outputs"];
+        outputsObj = JSON::object();
         for (auto & [outputName, output] : outputs) {
             outputsObj[outputName] = output.toJSON(store, name, outputName);
         }
@@ -1363,18 +1363,18 @@ nlohmann::json Derivation::toJSON(const Store & store) const
 
     {
         auto& inputsList = res["inputSrcs"];
-        inputsList = nlohmann::json ::array();
+        inputsList = JSON ::array();
         for (auto & input : inputSrcs)
             inputsList.emplace_back(store.printStorePath(input));
     }
 
     {
-        std::function<nlohmann::json(const DerivedPathMap<StringSet>::ChildNode &)> doInput;
+        std::function<JSON(const DerivedPathMap<StringSet>::ChildNode &)> doInput;
         doInput = [&](const auto & inputNode) {
-            auto value = nlohmann::json::object();
+            auto value = JSON::object();
             value["outputs"] = inputNode.value;
             {
-                auto next = nlohmann::json::object();
+                auto next = JSON::object();
                 for (auto & [outputId, childNode] : inputNode.childMap)
                     next[outputId] = doInput(childNode);
                 value["dynamicOutputs"] = std::move(next);
@@ -1383,7 +1383,7 @@ nlohmann::json Derivation::toJSON(const Store & store) const
         };
         {
             auto& inputDrvsObj = res["inputDrvs"];
-            inputDrvsObj = nlohmann::json::object();
+            inputDrvsObj = JSON::object();
             for (auto & [inputDrv, inputNode] : inputDrvs.map) {
                 inputDrvsObj[store.printStorePath(inputDrv)] = doInput(inputNode);
             }
@@ -1401,7 +1401,7 @@ nlohmann::json Derivation::toJSON(const Store & store) const
 
 Derivation Derivation::fromJSON(
     const Store & store,
-    const nlohmann::json & json,
+    const JSON & json,
     const ExperimentalFeatureSettings & xpSettings)
 {
     using nlohmann::detail::value_t;
@@ -1434,7 +1434,7 @@ Derivation Derivation::fromJSON(
     }
 
     try {
-        std::function<DerivedPathMap<StringSet>::ChildNode(const nlohmann::json &)> doInput;
+        std::function<DerivedPathMap<StringSet>::ChildNode(const JSON &)> doInput;
         doInput = [&](const auto & json) {
             DerivedPathMap<StringSet>::ChildNode node;
             node.value = static_cast<const StringSet &>(

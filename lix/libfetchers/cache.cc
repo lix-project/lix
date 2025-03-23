@@ -121,7 +121,7 @@ struct CacheImpl : Cache
 
         co_return LookupResult {
             .expired = !locked && (settings.tarballTtl.get() == 0 || timestamp + settings.tarballTtl < time(0)),
-            .infoAttrs = jsonToAttrs(nlohmann::json::parse(infoJSON)),
+            .infoAttrs = jsonToAttrs(JSON::parse(infoJSON)),
             .storePath = std::move(storePath)
         };
     } catch (...) {

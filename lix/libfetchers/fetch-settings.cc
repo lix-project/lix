@@ -6,7 +6,7 @@
 
 namespace nix {
 
-void to_json(nlohmann::json & j, const AcceptFlakeConfig & e)
+void to_json(JSON & j, const AcceptFlakeConfig & e)
 {
     if (e == AcceptFlakeConfig::False) {
         j = false;
@@ -19,7 +19,7 @@ void to_json(nlohmann::json & j, const AcceptFlakeConfig & e)
     }
 }
 
-void from_json(const nlohmann::json & j, AcceptFlakeConfig & e)
+void from_json(const JSON & j, AcceptFlakeConfig & e)
 {
     if (j == false) {
         e = AcceptFlakeConfig::False;

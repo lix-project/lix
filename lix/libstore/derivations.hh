@@ -136,7 +136,7 @@ struct DerivationOutput
      */
     std::optional<StorePath> path(const Store & store, std::string_view drvName, OutputNameView outputName) const;
 
-    nlohmann::json toJSON(
+    JSON toJSON(
         const Store & store,
         std::string_view drvName,
         OutputNameView outputName) const;
@@ -147,7 +147,7 @@ struct DerivationOutput
         const Store & store,
         std::string_view drvName,
         OutputNameView outputName,
-        const nlohmann::json & json,
+        const JSON & json,
         const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
 };
 
@@ -368,10 +368,10 @@ struct Derivation : BasicDerivation
     Derivation(const BasicDerivation & bd) : BasicDerivation(bd) { }
     Derivation(BasicDerivation && bd) : BasicDerivation(std::move(bd)) { }
 
-    nlohmann::json toJSON(const Store & store) const;
+    JSON toJSON(const Store & store) const;
     static Derivation fromJSON(
         const Store & store,
-        const nlohmann::json & json,
+        const JSON & json,
         const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
 
     GENERATE_CMP(Derivation,

@@ -13,9 +13,9 @@ namespace nix {
 
 TEST(to_json, optionalInt) {
     std::optional<int> val = std::make_optional(420);
-    ASSERT_EQ(nlohmann::json(val), nlohmann::json(420));
+    ASSERT_EQ(JSON(val), JSON(420));
     val = std::nullopt;
-    ASSERT_EQ(nlohmann::json(val), nlohmann::json(nullptr));
+    ASSERT_EQ(JSON(val), JSON(nullptr));
 }
 
 TEST(to_json, vectorOfOptionalInts) {
@@ -23,7 +23,7 @@ TEST(to_json, vectorOfOptionalInts) {
         std::make_optional(420),
         std::nullopt,
     };
-    ASSERT_EQ(nlohmann::json(vals), nlohmann::json::parse("[420,null]"));
+    ASSERT_EQ(JSON(vals), JSON::parse("[420,null]"));
 }
 
 TEST(to_json, optionalVectorOfInts) {
@@ -31,13 +31,13 @@ TEST(to_json, optionalVectorOfInts) {
         -420,
         420,
     });
-    ASSERT_EQ(nlohmann::json(val), nlohmann::json::parse("[-420,420]"));
+    ASSERT_EQ(JSON(val), JSON::parse("[-420,420]"));
     val = std::nullopt;
-    ASSERT_EQ(nlohmann::json(val), nlohmann::json(nullptr));
+    ASSERT_EQ(JSON(val), JSON(nullptr));
 }
 
 TEST(from_json, optionalInt) {
-    nlohmann::json json = 420;
+    JSON json = 420;
     std::optional<int> val = json;
     ASSERT_TRUE(val.has_value());
     ASSERT_EQ(*val, 420);
@@ -47,7 +47,7 @@ TEST(from_json, optionalInt) {
 }
 
 TEST(from_json, vectorOfOptionalInts) {
-    nlohmann::json json = { 420, nullptr };
+    JSON json = { 420, nullptr };
     std::vector<std::optional<int>> vals = json;
     ASSERT_EQ(vals.size(), 2);
     ASSERT_TRUE(vals.at(0).has_value());

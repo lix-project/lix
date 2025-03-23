@@ -25,7 +25,6 @@
 
 namespace nix {
 using namespace nix::flake;
-using json = nlohmann::json;
 
 struct CmdFlakeUpdate;
 class FlakeCommand : public virtual Args, public MixFlakeOptions
@@ -220,7 +219,7 @@ struct CmdFlakeMetadata : FlakeCommand, MixJSON
         };
 
         if (json) {
-            nlohmann::json j;
+            JSON j;
             if (flake.description)
                 j["description"] = *flake.description;
             j["originalUrl"] = flake.originalRef.to_string();
@@ -1051,10 +1050,10 @@ struct CmdFlakeArchive : FlakeCommand, MixJSON, MixDryRun
         sources.insert(flake.flake.sourceInfo->storePath);
 
         // FIXME: use graph output, handle cycles.
-        std::function<nlohmann::json(const Node & node)> traverse;
+        std::function<JSON(const Node & node)> traverse;
         traverse = [&](const Node & node)
         {
-            nlohmann::json jsonObj2 = json ? json::object() : nlohmann::json(nullptr);
+            JSON jsonObj2 = json ? JSON::object() : JSON(nullptr);
             for (auto & [inputName, input] : node.inputs) {
                 if (auto inputNode = std::get_if<0>(&input)) {
                     auto storePath =
@@ -1076,7 +1075,7 @@ struct CmdFlakeArchive : FlakeCommand, MixJSON, MixDryRun
         };
 
         if (json) {
-            nlohmann::json jsonRoot = {
+            JSON jsonRoot = {
                 {"path", store->printStorePath(flake.flake.sourceInfo->storePath)},
                 {"inputs", traverse(*flake.lockFile.root)},
             };
@@ -1191,7 +1190,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
             }
         };
 
-        std::function<nlohmann::json(
+        std::function<JSON(
             eval_cache::AttrCursor & visitor,
             const std::vector<std::string> & attrPath,
             const std::string & headerPrefix,
@@ -1202,9 +1201,9 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
             const std::vector<std::string> & attrPath,
             const std::string & headerPrefix,
             const std::string & nextPrefix)
-            -> nlohmann::json
+            -> JSON
         {
-            auto j = nlohmann::json::object();
+            auto j = JSON::object();
 
             Activity act(*logger, lvlInfo, actUnknown,
                 fmt("evaluating '%s'", concatStringsSep(".", attrPath)));
@@ -1443,7 +1442,7 @@ struct CmdFlakePrefetch : FlakeCommand, MixJSON
         auto hash = aio().blockOn(store->queryPathInfo(tree.storePath))->narHash;
 
         if (json) {
-            auto res = nlohmann::json::object();
+            auto res = JSON::object();
             res["storePath"] = store->printStorePath(tree.storePath);
             res["hash"] = hash.to_string(Base::SRI, true);
             logger->cout(res.dump());

@@ -4,7 +4,7 @@
 
 namespace nix::fetchers {
 
-Attrs jsonToAttrs(const nlohmann::json & json)
+Attrs jsonToAttrs(const JSON & json)
 {
     Attrs attrs;
 
@@ -22,9 +22,9 @@ Attrs jsonToAttrs(const nlohmann::json & json)
     return attrs;
 }
 
-nlohmann::json attrsToJSON(const Attrs & attrs)
+JSON attrsToJSON(const Attrs & attrs)
 {
-    nlohmann::json json;
+    JSON json;
     for (auto & attr : attrs) {
         if (auto v = std::get_if<uint64_t>(&attr.second)) {
             json[attr.first] = *v;

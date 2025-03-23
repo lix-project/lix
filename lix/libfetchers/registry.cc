@@ -30,7 +30,7 @@ std::shared_ptr<Registry> Registry::read(
 
     try {
 
-        auto json = nlohmann::json::parse(readFile(path));
+        auto json = JSON::parse(readFile(path));
 
         auto version = json.value("version", 0);
 
@@ -57,7 +57,7 @@ std::shared_ptr<Registry> Registry::read(
         else
             throw Error("flake registry '%s' has unsupported version %d", path, version);
 
-    } catch (nlohmann::json::exception & e) {
+    } catch (JSON::exception & e) {
         warn("cannot parse flake registry '%s': %s", path, e.what());
     } catch (Error & e) {
         warn("cannot read flake registry '%s': %s", path, e.what());
@@ -68,9 +68,9 @@ std::shared_ptr<Registry> Registry::read(
 
 void Registry::write(const Path & path)
 {
-    nlohmann::json arr;
+    JSON arr;
     for (auto & entry : entries) {
-        nlohmann::json obj;
+        JSON obj;
         obj["from"] = attrsToJSON(entry.from.toAttrs());
         obj["to"] = attrsToJSON(entry.to.toAttrs());
         if (!entry.extraAttrs.empty())
@@ -80,7 +80,7 @@ void Registry::write(const Path & path)
         arr.emplace_back(std::move(obj));
     }
 
-    nlohmann::json json;
+    JSON json;
     json["version"] = 2;
     json["flakes"] = std::move(arr);
 

@@ -73,7 +73,7 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
     }
 
     if (args.meta) {
-        nlohmann::json meta_;
+        nix::JSON meta_;
         for (auto &metaName : drvInfo.queryMetaNames(state)) {
             nix::NixStringContext context;
             std::stringstream ss;
@@ -88,7 +88,7 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
             nix::printValueAsJSON(state, true, *metaValue, nix::noPos, ss,
                                   context);
 
-            meta_[metaName] = nlohmann::json::parse(ss.str());
+            meta_[metaName] = nix::JSON::parse(ss.str());
         }
         meta = meta_;
     }
@@ -114,14 +114,14 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
     system = drv.platform;
 }
 
-void to_json(nlohmann::json &json, const Drv &drv) {
-    std::map<std::string, nlohmann::json> outputsJson;
+void to_json(nix::JSON &json, const Drv &drv) {
+    std::map<std::string, nix::JSON> outputsJson;
     for (auto &[name, optPath] : drv.outputs) {
         outputsJson[name] =
-            optPath ? nlohmann::json(*optPath) : nlohmann::json(nullptr);
+            optPath ? nix::JSON(*optPath) : nix::JSON(nullptr);
     }
 
-    json = nlohmann::json{{"name", drv.name},
+    json = nix::JSON{{"name", drv.name},
                           {"system", drv.system},
                           {"drvPath", drv.drvPath},
                           {"outputs", outputsJson},

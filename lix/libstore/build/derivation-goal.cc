@@ -1511,11 +1511,11 @@ try {
                                 // We want to get the same lines in case of remote builds.
                                 // The format is:
                                 //   @nix { "action": "setPhase", "phase": "$curPhase" }
-                                const auto logLine = nlohmann::json::object({
+                                const auto logLine = JSON::object({
                                     {"action", "setPhase"},
                                     {"phase", phase}
                                 });
-                                (*logSink)("@nix " + logLine.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace) + "\n");
+                                (*logSink)("@nix " + logLine.dump(-1, ' ', false, JSON::error_handler_t::replace) + "\n");
                             }
                         }
                     }

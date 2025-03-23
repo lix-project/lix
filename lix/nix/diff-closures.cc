@@ -31,13 +31,13 @@ typedef std::map<std::string, std::map<std::string, std::map<StorePath, Info>>> 
 
 typedef std::map<std::string, DiffInfoForPackage> DiffInfo;
 
-nlohmann::json toJSON(const DiffInfo & diff)
+JSON toJSON(const DiffInfo & diff)
 {
-    nlohmann::json res = nlohmann::json::object();
-    nlohmann::json content = nlohmann::json::object();
+    JSON res = JSON::object();
+    JSON content = JSON::object();
 
     for (auto & [name, item] : diff) {
-        auto packageContent = nlohmann::json::object();
+        auto packageContent = JSON::object();
 
         if (!item.removedVersions.empty() || !item.addedVersions.empty()) {
             packageContent["versionsBefore"] = item.removedVersions;

@@ -11,14 +11,14 @@ namespace nix {
  *
  * See `doc/manual` for how this information is used.
  */
-nlohmann::json documentDeprecatedFeatures();
+JSON documentDeprecatedFeatures();
 
 /**
  * Semi-magic conversion to and from json.
  * See the nlohmann/json readme for more details.
  */
-void to_json(nlohmann::json &, const DeprecatedFeature &);
-void from_json(const nlohmann::json &, DeprecatedFeature &);
+void to_json(JSON &, const DeprecatedFeature &);
+void from_json(const JSON &, DeprecatedFeature &);
 
 /**
  * It is always rendered as a string

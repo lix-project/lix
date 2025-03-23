@@ -323,7 +323,7 @@ struct CmdStorePrefetchFile : StoreCommand, MixJSON
             prefetchFile(aio(), store, url, name, hashType, expectedHash, unpack, executable);
 
         if (json) {
-            auto res = nlohmann::json::object();
+            auto res = JSON::object();
             res["storePath"] = store->printStorePath(storePath);
             res["hash"] = hash.to_string(Base::SRI, true);
             logger->cout(res.dump());

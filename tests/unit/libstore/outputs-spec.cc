@@ -177,7 +177,7 @@ TEST(ExtendedOutputsSpec, many_carrot) {
         ASSERT_EQ(                                           \
             STR ## _json,                                    \
             /* NOLINTNEXTLINE(bugprone-macro-parentheses) */ \
-            ((nlohmann::json) TYPE { VAL }));                \
+            ((JSON) TYPE { VAL }));                          \
     }                                                        \
                                                              \
     TEST(TYPE, NAME ## _from_json) {                         \

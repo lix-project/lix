@@ -306,7 +306,7 @@ public:
 
             auto realisation =
                 std::make_shared<Realisation>(Realisation::fromJSON(
-                    nlohmann::json::parse(queryRealisation.getStr(0)),
+                    JSON::parse(queryRealisation.getStr(0)),
                     "Local disk cache"));
 
             return {oValid, realisation};

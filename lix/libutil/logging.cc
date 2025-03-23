@@ -142,7 +142,7 @@ Activity::Activity(Logger & logger, Verbosity lvl, ActivityType type,
     logger.startActivity(id, lvl, type, s, fields, parent);
 }
 
-void to_json(nlohmann::json & json, std::shared_ptr<Pos> pos)
+void to_json(JSON & json, std::shared_ptr<Pos> pos)
 {
     if (pos) {
         json["line"] = pos->line;
@@ -166,10 +166,10 @@ struct JSONLogger : Logger {
         return true;
     }
 
-    void addFields(nlohmann::json & json, const Fields & fields)
+    void addFields(JSON & json, const Fields & fields)
     {
         if (fields.empty()) return;
-        auto & arr = json["fields"] = nlohmann::json::array();
+        auto & arr = json["fields"] = JSON::array();
         for (auto & f : fields)
             if (f.type == Logger::Field::tInt)
                 arr.push_back(f.i);
@@ -179,14 +179,14 @@ struct JSONLogger : Logger {
                 abort();
     }
 
-    void write(const nlohmann::json & json)
+    void write(const JSON & json)
     {
-        prevLogger.log(lvlError, "@nix " + json.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
+        prevLogger.log(lvlError, "@nix " + json.dump(-1, ' ', false, JSON::error_handler_t::replace));
     }
 
     void log(Verbosity lvl, std::string_view s) override
     {
-        nlohmann::json json;
+        JSON json;
         json["action"] = "msg";
         json["level"] = lvl;
         json["msg"] = s;
@@ -198,7 +198,7 @@ struct JSONLogger : Logger {
         std::ostringstream oss;
         showErrorInfo(oss, ei, loggerSettings.showTrace.get());
 
-        nlohmann::json json;
+        JSON json;
         json["action"] = "msg";
         json["level"] = ei.level;
         json["msg"] = oss.str();
@@ -206,9 +206,9 @@ struct JSONLogger : Logger {
         to_json(json, ei.pos);
 
         if (loggerSettings.showTrace.get() && !ei.traces.empty()) {
-            nlohmann::json traces = nlohmann::json::array();
+            JSON traces = JSON::array();
             for (auto iter = ei.traces.rbegin(); iter != ei.traces.rend(); ++iter) {
-                nlohmann::json stackFrame;
+                JSON stackFrame;
                 stackFrame["raw_msg"] = iter->hint.str();
                 to_json(stackFrame, iter->pos);
                 traces.push_back(stackFrame);
@@ -223,7 +223,7 @@ struct JSONLogger : Logger {
     void startActivity(ActivityId act, Verbosity lvl, ActivityType type,
         const std::string & s, const Fields & fields, ActivityId parent) override
     {
-        nlohmann::json json;
+        JSON json;
         json["action"] = "start";
         json["id"] = act;
         json["level"] = lvl;
@@ -236,7 +236,7 @@ struct JSONLogger : Logger {
 
     void stopActivity(ActivityId act) override
     {
-        nlohmann::json json;
+        JSON json;
         json["action"] = "stop";
         json["id"] = act;
         write(json);
@@ -244,7 +244,7 @@ struct JSONLogger : Logger {
 
     void result(ActivityId act, ResultType type, const Fields & fields) override
     {
-        nlohmann::json json;
+        JSON json;
         json["action"] = "result";
         json["id"] = act;
         json["type"] = type;
@@ -258,24 +258,24 @@ Logger * makeJSONLogger(Logger & prevLogger)
     return new JSONLogger(prevLogger);
 }
 
-static Logger::Fields getFields(nlohmann::json & json)
+static Logger::Fields getFields(JSON & json)
 {
     Logger::Fields fields;
     for (auto & f : json) {
-        if (f.type() == nlohmann::json::value_t::number_unsigned)
+        if (f.type() == JSON::value_t::number_unsigned)
             fields.emplace_back(Logger::Field(f.get<uint64_t>()));
-        else if (f.type() == nlohmann::json::value_t::string)
+        else if (f.type() == JSON::value_t::string)
             fields.emplace_back(Logger::Field(f.get<std::string>()));
         else throw Error("unsupported JSON type %d", (int) f.type());
     }
     return fields;
 }
 
-std::optional<nlohmann::json> parseJSONMessage(const std::string & msg, std::string_view source)
+std::optional<JSON> parseJSONMessage(const std::string & msg, std::string_view source)
 {
     if (!msg.starts_with("@nix ")) return std::nullopt;
     try {
-        return nlohmann::json::parse(std::string(msg, 5));
+        return JSON::parse(std::string(msg, 5));
     } catch (std::exception & e) {
         printError("bad JSON log message from %s: %s",
             Uncolored(source),
@@ -284,7 +284,7 @@ std::optional<nlohmann::json> parseJSONMessage(const std::string & msg, std::str
     return std::nullopt;
 }
 
-bool handleJSONLogMessage(nlohmann::json & json,
+bool handleJSONLogMessage(JSON & json,
     const Activity & act, std::map<ActivityId, Activity> & activities,
     std::string_view source, bool trusted)
 {
@@ -320,7 +320,7 @@ bool handleJSONLogMessage(nlohmann::json & json,
         }
 
         return true;
-    } catch (nlohmann::json::exception &e) {
+    } catch (JSON::exception &e) {
         warn(
             "Unable to handle a JSON message from %s: %s",
             Uncolored(source),

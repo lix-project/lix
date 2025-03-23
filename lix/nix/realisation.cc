@@ -54,9 +54,9 @@ struct CmdRealisationInfo : BuiltPathsCommand, MixJSON
         }
 
         if (json) {
-            nlohmann::json res = nlohmann::json::array();
+            JSON res = JSON::array();
             for (auto & path : realisations) {
-                nlohmann::json currentPath;
+                JSON currentPath;
                 if (auto realisation = std::get_if<Realisation>(&path.raw))
                     currentPath = realisation->toJSON();
                 else

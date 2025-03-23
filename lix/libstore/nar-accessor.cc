@@ -30,11 +30,10 @@ struct NarAccessor : public FSAccessor
         : getNarBytes(getNarBytes)
     {
         using namespace nar_index;
-        using json = nlohmann::json;
 
-        std::function<void(Entry &, json &)> recurse;
+        std::function<void(Entry &, JSON &)> recurse;
 
-        recurse = [&](Entry & member, json & v) {
+        recurse = [&](Entry & member, JSON & v) {
             std::string type = v["type"];
 
             if (type == "directory") {
@@ -51,7 +50,7 @@ struct NarAccessor : public FSAccessor
             } else return;
         };
 
-        json v = json::parse(listing);
+        JSON v = JSON::parse(listing);
         recurse(root, v);
     }
 
@@ -166,12 +165,11 @@ ref<FSAccessor> makeLazyNarAccessor(const std::string & listing,
     return make_ref<NarAccessor>(listing, getNarBytes);
 }
 
-using nlohmann::json;
-kj::Promise<Result<json>> listNar(ref<FSAccessor> accessor, const Path & path, bool recurse)
+kj::Promise<Result<JSON>> listNar(ref<FSAccessor> accessor, const Path & path, bool recurse)
 try {
     auto st = TRY_AWAIT(accessor->stat(path));
 
-    json obj = json::object();
+    JSON obj = JSON::object();
 
     switch (st.type) {
     case FSAccessor::Type::tRegular:
@@ -185,13 +183,13 @@ try {
     case FSAccessor::Type::tDirectory:
         obj["type"] = "directory";
         {
-            obj["entries"] = json::object();
-            json &res2 = obj["entries"];
+            obj["entries"] = JSON::object();
+            JSON &res2 = obj["entries"];
             for (auto & name : TRY_AWAIT(accessor->readDirectory(path))) {
                 if (recurse) {
                     res2[name] = TRY_AWAIT(listNar(accessor, path + "/" + name, true));
                 } else
-                    res2[name] = json::object();
+                    res2[name] = JSON::object();
             }
         }
         break;
@@ -208,9 +206,9 @@ try {
     co_return result::current_exception();
 }
 
-static nlohmann::json listNar(const nar_index::Entry & e, Path path)
+static JSON listNar(const nar_index::Entry & e, Path path)
 {
-    json obj = json::object();
+    JSON obj = JSON::object();
 
     auto handlers = overloaded{
         [&](const nar_index::File & f) {
@@ -227,8 +225,8 @@ static nlohmann::json listNar(const nar_index::Entry & e, Path path)
         },
         [&](const nar_index::Directory & d) {
             obj["type"] = "directory";
-            obj["entries"] = json::object();
-            json & res2 = obj["entries"];
+            obj["entries"] = JSON::object();
+            JSON & res2 = obj["entries"];
             for (auto & [name, entry] : d.contents) {
                 res2[name] = listNar(entry, path + "/" + name);
             }
@@ -239,7 +237,7 @@ static nlohmann::json listNar(const nar_index::Entry & e, Path path)
     return obj;
 }
 
-nlohmann::json listNar(const nar_index::Entry & nar)
+JSON listNar(const nar_index::Entry & nar)
 {
     return listNar(nar, "");
 }

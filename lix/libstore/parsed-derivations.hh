@@ -11,7 +11,7 @@ class ParsedDerivation
 {
     StorePath drvPath;
     BasicDerivation & drv;
-    std::unique_ptr<nlohmann::json> structuredAttrs;
+    std::unique_ptr<JSON> structuredAttrs;
 
 public:
 
@@ -19,7 +19,7 @@ public:
 
     ~ParsedDerivation();
 
-    const nlohmann::json * getStructuredAttrs() const
+    const JSON * getStructuredAttrs() const
     {
         return structuredAttrs.get();
     }
@@ -40,10 +40,10 @@ public:
 
     bool useUidRange() const;
 
-    kj::Promise<Result<std::optional<nlohmann::json>>>
+    kj::Promise<Result<std::optional<JSON>>>
     prepareStructuredAttrs(Store & store, const StorePathSet & inputPaths);
 };
 
-std::string writeStructuredAttrsShell(const nlohmann::json & json);
+std::string writeStructuredAttrsShell(const JSON & json);
 
 }

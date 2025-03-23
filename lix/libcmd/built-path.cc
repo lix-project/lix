@@ -83,9 +83,9 @@ SingleDerivedPath SingleBuiltPath::discardOutputPath() const
     );
 }
 
-kj::Promise<Result<nlohmann::json>> BuiltPath::Built::toJSON(const Store & store) const
+kj::Promise<Result<JSON>> BuiltPath::Built::toJSON(const Store & store) const
 try {
-    nlohmann::json res;
+    JSON res;
     res["drvPath"] = TRY_AWAIT(drvPath->toJSON(store));
     for (const auto & [outputName, outputPath] : outputs) {
         res["outputs"][outputName] = store.printStorePath(outputPath);
@@ -95,9 +95,9 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<nlohmann::json>> SingleBuiltPath::Built::toJSON(const Store & store) const
+kj::Promise<Result<JSON>> SingleBuiltPath::Built::toJSON(const Store & store) const
 try {
-    nlohmann::json res;
+    JSON res;
     res["drvPath"] = TRY_AWAIT(drvPath->toJSON(store));
     auto & [outputName, outputPath] = output;
     res["output"] = outputName;
@@ -107,7 +107,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<nlohmann::json>> SingleBuiltPath::toJSON(const Store & store) const
+kj::Promise<Result<JSON>> SingleBuiltPath::toJSON(const Store & store) const
 try {
     co_return TRY_AWAIT(std::visit([&](const auto & buildable) {
         return buildable.toJSON(store);
@@ -117,7 +117,7 @@ try {
 }
 
 
-kj::Promise<Result<nlohmann::json>> BuiltPath::toJSON(const Store & store) const
+kj::Promise<Result<JSON>> BuiltPath::toJSON(const Store & store) const
 try {
     co_return TRY_AWAIT(std::visit([&](const auto & buildable) {
         return buildable.toJSON(store);

@@ -7,8 +7,6 @@
 
 namespace nix {
 
-using nlohmann::json;
-
 struct CmdMakeContentAddressed : virtual CopyCommand, virtual StorePathsCommand, MixJSON
 {
     CmdMakeContentAddressed()
@@ -36,13 +34,13 @@ struct CmdMakeContentAddressed : virtual CopyCommand, virtual StorePathsCommand,
             StorePathSet(storePaths.begin(), storePaths.end())));
 
         if (json) {
-            auto jsonRewrites = json::object();
+            auto jsonRewrites = JSON::object();
             for (auto & path : storePaths) {
                 auto i = remappings.find(path);
                 assert(i != remappings.end());
                 jsonRewrites[srcStore->printStorePath(path)] = srcStore->printStorePath(i->second);
             }
-            auto json = json::object();
+            auto json = JSON::object();
             json["rewrites"] = jsonRewrites;
             logger->cout("%s", json);
         } else {

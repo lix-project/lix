@@ -31,7 +31,7 @@ struct CmdPingStore : StoreCommand, MixJSON
             if (auto trusted = aio().blockOn(store->isTrustedClient()))
                 notice("Trusted: %s", *trusted);
         } else {
-            nlohmann::json res;
+            JSON res;
             Finally printRes([&]() {
                 logger->cout("%s", res);
             });

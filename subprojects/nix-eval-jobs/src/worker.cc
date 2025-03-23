@@ -61,7 +61,7 @@ static nix::Value *releaseExprTopLevelValue(nix::EvalState &state,
     return vRoot;
 }
 
-static std::string attrPathJoin(nlohmann::json input) {
+static std::string attrPathJoin(nix::JSON input) {
     return std::accumulate(input.begin(), input.end(), std::string(),
                            [](std::string ss, std::string s) {
                                // Escape token if containing dots
@@ -157,12 +157,12 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
                     s.data());
             abort();
         }
-        auto path = nlohmann::json::parse(s.substr(3));
+        auto path = nix::JSON::parse(s.substr(3));
         auto attrPathS = attrPathJoin(path);
 
         /* Evaluate it and send info back to the collector. */
-        nlohmann::json reply =
-            nlohmann::json{{"attr", attrPathS}, {"attrPath", path}};
+        nix::JSON reply =
+            nix::JSON{{"attr", attrPathS}, {"attrPath", path}};
         try {
             auto vTmp =
                 nix::findAlongAttrPath(*state, attrPathS, autoArgs, *vRoot)
@@ -187,7 +187,7 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
                        done. */
                     register_gc_root(args.gcRootsDir, drv.drvPath, evaluator->store, aio);
                 } else {
-                    auto attrs = nlohmann::json::array();
+                    auto attrs = nix::JSON::array();
                     bool recurse =
                         args.forceRecurse ||
                         path.size() == 0; // Dont require `recurseForDerivations
@@ -210,11 +210,11 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
                     if (recurse)
                         reply["attrs"] = std::move(attrs);
                     else
-                        reply["attrs"] = nlohmann::json::array();
+                        reply["attrs"] = nix::JSON::array();
                 }
             } else {
                 // We ignore everything that cannot be build
-                reply["attrs"] = nlohmann::json::array();
+                reply["attrs"] = nix::JSON::array();
             }
         } catch (nix::EvalError &e) {
             auto err = e.info();

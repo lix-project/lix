@@ -177,9 +177,9 @@ void Config::resetOverridden()
         s.second.setting->overridden = false;
 }
 
-nlohmann::json Config::toJSON()
+JSON Config::toJSON()
 {
-    auto res = nlohmann::json::object();
+    auto res = JSON::object();
     for (const auto & s : _settings)
         if (!s.second.isAlias)
             res.emplace(s.first, s.second.setting->toJSON());
@@ -213,14 +213,14 @@ AbstractSetting::~AbstractSetting()
     assert(created == 123);
 }
 
-nlohmann::json AbstractSetting::toJSON()
+JSON AbstractSetting::toJSON()
 {
-    return nlohmann::json(toJSONObject());
+    return JSON(toJSONObject());
 }
 
-std::map<std::string, nlohmann::json> AbstractSetting::toJSONObject() const
+std::map<std::string, JSON> AbstractSetting::toJSONObject() const
 {
-    std::map<std::string, nlohmann::json> obj;
+    std::map<std::string, JSON> obj;
     obj.emplace("description", description);
     obj.emplace("aliases", aliases);
     if (experimentalFeature)
@@ -516,9 +516,9 @@ void GlobalConfig::resetOverridden()
         config->resetOverridden();
 }
 
-nlohmann::json GlobalConfig::toJSON()
+JSON GlobalConfig::toJSON()
 {
-    auto res = nlohmann::json::object();
+    auto res = JSON::object();
     for (const auto & config : *configRegistrations)
         res.update(config->toJSON());
     return res;

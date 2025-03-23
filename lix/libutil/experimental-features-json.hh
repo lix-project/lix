@@ -11,14 +11,14 @@ namespace nix {
  *
  * See `doc/manual` for how this information is used.
  */
-nlohmann::json documentExperimentalFeatures();
+JSON documentExperimentalFeatures();
 
 /**
  * Semi-magic conversion to and from json.
  * See the nlohmann/json readme for more details.
  */
-void to_json(nlohmann::json &, const ExperimentalFeature &);
-void from_json(const nlohmann::json &, ExperimentalFeature &);
+void to_json(JSON &, const ExperimentalFeature &);
+void from_json(const JSON &, ExperimentalFeature &);
 
 /**
  * It is always rendered as a string

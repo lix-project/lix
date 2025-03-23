@@ -961,15 +961,14 @@ static VersionDiff compareVersionAgainstSet(
 
 static void queryJSON(EvalState & state, Globals & globals, std::vector<DrvInfo> & elems, bool printOutPath, bool printDrvPath, bool printMeta)
 {
-    using nlohmann::json;
-    json topObj = json::object();
+    JSON topObj = JSON::object();
     for (auto & i : elems) {
         try {
             if (i.hasFailed()) continue;
 
 
             auto drvName = DrvName(i.queryName(state));
-            json &pkgObj = topObj[i.attrPath];
+            JSON &pkgObj = topObj[i.attrPath];
             pkgObj = {
                 {"name", drvName.fullName},
                 {"pname", drvName.name},
@@ -980,8 +979,8 @@ static void queryJSON(EvalState & state, Globals & globals, std::vector<DrvInfo>
 
             {
                 DrvInfo::Outputs outputs = i.queryOutputs(state, printOutPath);
-                json &outputObj = pkgObj["outputs"];
-                outputObj = json::object();
+                JSON &outputObj = pkgObj["outputs"];
+                outputObj = JSON::object();
                 for (auto & j : outputs) {
                     if (j.second)
                         outputObj[j.first] = globals.state->store->printStorePath(*j.second);
@@ -996,8 +995,8 @@ static void queryJSON(EvalState & state, Globals & globals, std::vector<DrvInfo>
             }
 
             if (printMeta) {
-                json &metaObj = pkgObj["meta"];
-                metaObj = json::object();
+                JSON &metaObj = pkgObj["meta"];
+                metaObj = JSON::object();
                 StringSet metaNames = i.queryMetaNames(state);
                 for (auto & j : metaNames) {
                     Value * v = i.queryMeta(state, j);

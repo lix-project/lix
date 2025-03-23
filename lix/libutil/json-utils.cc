@@ -3,22 +3,22 @@
 
 namespace nix {
 
-const nlohmann::json * get(const nlohmann::json & map, const std::string & key)
+const JSON * get(const JSON & map, const std::string & key)
 {
     auto i = map.find(key);
     if (i == map.end()) return nullptr;
     return &*i;
 }
 
-nlohmann::json * get(nlohmann::json & map, const std::string & key)
+JSON * get(JSON & map, const std::string & key)
 {
     auto i = map.find(key);
     if (i == map.end()) return nullptr;
     return &*i;
 }
 
-const nlohmann::json & valueAt(
-    const nlohmann::json & map,
+const JSON & valueAt(
+    const JSON & map,
     const std::string & key)
 {
     if (!map.contains(key))
@@ -27,15 +27,15 @@ const nlohmann::json & valueAt(
     return map[key];
 }
 
-const nlohmann::json & ensureType(
-    const nlohmann::json & value,
-    nlohmann::json::value_type expectedType
+const JSON & ensureType(
+    const JSON & value,
+    JSON::value_type expectedType
     )
 {
     if (value.type() != expectedType)
         throw Error(
             "Expected JSON value to be of type '%s' but it is of type '%s'",
-            nlohmann::json(expectedType).type_name(),
+            JSON(expectedType).type_name(),
             value.type_name());
 
     return value;

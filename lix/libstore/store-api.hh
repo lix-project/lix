@@ -714,7 +714,7 @@ public:
      * @param showClosureSize If true, the closure size of each path is
      * included.
      */
-    kj::Promise<Result<nlohmann::json>> pathInfoToJSON(const StorePathSet & storePaths,
+    kj::Promise<Result<JSON>> pathInfoToJSON(const StorePathSet & storePaths,
         bool includeImpureInfo, bool showClosureSize,
         Base hashBase = Base::Base32,
         AllowInvalidFlag allowInvalid = DisallowInvalid);

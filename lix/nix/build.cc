@@ -9,9 +9,9 @@
 
 namespace nix {
 
-static nlohmann::json derivedPathsToJSON(AsyncIoRoot & aio, const DerivedPaths & paths, Store & store)
+static JSON derivedPathsToJSON(AsyncIoRoot & aio, const DerivedPaths & paths, Store & store)
 {
-    auto res = nlohmann::json::array();
+    auto res = JSON::array();
     for (auto & t : paths) {
         std::visit([&](const auto & t) {
             res.push_back(aio.blockOn(t.toJSON(store)));
@@ -20,11 +20,11 @@ static nlohmann::json derivedPathsToJSON(AsyncIoRoot & aio, const DerivedPaths &
     return res;
 }
 
-static nlohmann::json builtPathsWithResultToJSON(
+static JSON builtPathsWithResultToJSON(
     AsyncIoRoot & aio, const std::vector<BuiltPathWithResult> & buildables, const Store & store
 )
 {
-    auto res = nlohmann::json::array();
+    auto res = JSON::array();
     for (auto & b : buildables) {
         std::visit([&](const auto & t) {
             auto j = aio.blockOn(t.toJSON(store));

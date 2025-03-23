@@ -27,8 +27,6 @@
 #include <mutex>
 #include <regex>
 
-using json = nlohmann::json;
-
 namespace nix {
 
 BuildMode buildModeFromInteger(int raw) {
@@ -954,15 +952,15 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<json>> Store::pathInfoToJSON(const StorePathSet & storePaths,
+kj::Promise<Result<JSON>> Store::pathInfoToJSON(const StorePathSet & storePaths,
     bool includeImpureInfo, bool showClosureSize,
     Base hashBase,
     AllowInvalidFlag allowInvalid)
 try {
-    json::array_t jsonList = json::array();
+    JSON::array_t jsonList = JSON::array();
 
     for (auto & storePath : storePaths) {
-        auto& jsonPath = jsonList.emplace_back(json::object());
+        auto& jsonPath = jsonList.emplace_back(JSON::object());
 
         try {
             auto info = TRY_AWAIT(queryPathInfo(storePath));
@@ -973,7 +971,7 @@ try {
             jsonPath["narSize"] = info->narSize;
 
             {
-                auto& jsonRefs = (jsonPath["references"] = json::array());
+                auto& jsonRefs = (jsonPath["references"] = JSON::array());
                 for (auto & ref : info->references)
                     jsonRefs.emplace_back(printStorePath(ref));
             }

@@ -61,7 +61,7 @@ struct ProfileManifest
 
     ProfileManifest(EvalState & state, const Path & profile);
 
-    nlohmann::json toJSON(Store & store) const;
+    JSON toJSON(Store & store) const;
 
     kj::Promise<Result<StorePath>> build(ref<Store> store);
 

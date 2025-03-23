@@ -118,7 +118,7 @@ class ExternalValueBase
     /**
      * Print the value as JSON. Defaults to unconvertable, i.e. throws an error
      */
-    virtual nlohmann::json printValueAsJSON(EvalState & state, bool strict,
+    virtual JSON printValueAsJSON(EvalState & state, bool strict,
         NixStringContext & context, bool copyToStore = true) const;
 
     /**
