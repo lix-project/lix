@@ -7,8 +7,6 @@
 #include "lix/libexpr/get-drvs.hh"
 #include "lix/libexpr/flake/flake.hh"
 
-#include <nlohmann/json.hpp>
-
 namespace nix {
 
 InstallableAttrPath::InstallableAttrPath(

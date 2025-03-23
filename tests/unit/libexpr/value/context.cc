@@ -1,4 +1,3 @@
-#include <nlohmann/json.hpp>
 #include <gtest/gtest.h>
 #include <rapidcheck/gtest.h>
 

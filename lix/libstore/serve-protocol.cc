@@ -6,8 +6,6 @@
 #include "lix/libstore/serve-protocol-impl.hh"
 #include "lix/libstore/path-info.hh"
 
-#include <nlohmann/json.hpp>
-
 namespace nix {
 
 /* protocol-specific definitions */

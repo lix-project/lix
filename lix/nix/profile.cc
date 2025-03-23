@@ -13,7 +13,6 @@
 #include "lix/libstore/names.hh"
 #include "profile.hh"
 
-#include <nlohmann/json.hpp>
 #include <regex>
 #include <iomanip>
 

@@ -20,8 +20,6 @@
 #include "lix/libstore/build-result.hh"
 
 
-#include <nlohmann/json.hpp>
-
 namespace nix {
 
 void completeFlakeInputPath(

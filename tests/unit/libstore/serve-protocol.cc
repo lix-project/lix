@@ -1,6 +1,5 @@
 #include <regex>
 
-#include <nlohmann/json.hpp>
 #include <gtest/gtest.h>
 
 #include "lix/libstore/serve-protocol.hh"

@@ -25,7 +25,6 @@
 #include "lix/libutil/types.hh"
 
 #include <kj/async.h>
-#include <nlohmann/json.hpp>
 #include <optional>
 #include <utility>
 

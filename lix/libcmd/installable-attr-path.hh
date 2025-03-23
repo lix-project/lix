@@ -8,8 +8,6 @@
 #include "lix/libcmd/common-eval-args.hh"
 #include "lix/libexpr/eval.hh"
 
-#include <nlohmann/json.hpp>
-
 namespace nix {
 
 class InstallableAttrPath : public InstallableValue

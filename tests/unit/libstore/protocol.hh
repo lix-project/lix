@@ -1,4 +1,3 @@
-#include <nlohmann/json.hpp>
 #include <gtest/gtest.h>
 
 #include "lix/libutil/strings.hh"

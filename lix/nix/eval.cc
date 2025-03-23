@@ -8,8 +8,6 @@
 #include "lix/libexpr/value-to-json.hh"
 #include "eval.hh"
 
-#include <nlohmann/json.hpp>
-
 namespace nix {
 
 struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption

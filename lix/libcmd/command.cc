@@ -6,8 +6,6 @@
 #include "lix/libstore/profiles.hh"
 #include "lix/libcmd/repl.hh"
 
-#include <nlohmann/json.hpp>
-
 extern char * * environ __attribute__((weak));
 
 namespace nix {

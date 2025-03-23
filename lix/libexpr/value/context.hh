@@ -5,8 +5,6 @@
 #include "lix/libstore/derived-path.hh"
 #include "lix/libutil/variant-wrapper.hh"
 
-#include <nlohmann/json_fwd.hpp>
-
 namespace nix {
 
 class BadNixStringContextElem : public Error

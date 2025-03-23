@@ -7,8 +7,6 @@
 #include <vector>
 #include <map>
 
-#include <nlohmann/json.hpp>
-
 #include "lix/libstore/parsed-derivations.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/local-fs-store.hh"

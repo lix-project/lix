@@ -4,8 +4,6 @@
 #include "lix/libstore/store-api.hh"
 #include "config.hh"
 
-#include <nlohmann/json.hpp>
-
 namespace nix {
 
 struct CmdConfig : MultiCommand

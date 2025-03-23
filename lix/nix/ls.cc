@@ -3,7 +3,6 @@
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libstore/nar-accessor.hh"
 #include "lix/libmain/common-args.hh"
-#include <nlohmann/json.hpp>
 
 namespace nix {
 

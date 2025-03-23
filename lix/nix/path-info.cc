@@ -8,8 +8,6 @@
 #include <algorithm>
 #include <array>
 
-#include <nlohmann/json.hpp>
-
 namespace nix {
 
 struct CmdPathInfo : StorePathsCommand, MixJSON

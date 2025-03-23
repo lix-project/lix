@@ -7,8 +7,6 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/path-info.hh"
 
-#include <nlohmann/json.hpp>
-
 namespace nix {
 
 /* protocol-specific definitions */
