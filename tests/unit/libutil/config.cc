@@ -162,7 +162,6 @@ namespace nix {
     }
 
     TEST(Config, toJSONOnNonEmptyConfig) {
-        using nlohmann::literals::operator "" _json;
         Config config;
         Setting<std::string> setting{
             &config,
@@ -173,7 +172,7 @@ namespace nix {
         setting.override("value");
 
         ASSERT_EQ(config.toJSON(),
-          R"#({
+          JSON::parse(R"#({
             "name-of-the-setting": {
               "aliases": [],
               "defaultValue": "",
@@ -182,11 +181,10 @@ namespace nix {
               "value": "value",
               "experimentalFeature": null
             }
-          })#"_json);
+          })#"));
     }
 
     TEST(Config, toJSONOnNonEmptyConfigWithExperimentalSetting) {
-        using nlohmann::literals::operator "" _json;
         Config config;
         Setting<std::string> setting{
             &config,
@@ -200,7 +198,7 @@ namespace nix {
         setting.override("value");
 
         ASSERT_EQ(config.toJSON(),
-          R"#({
+          JSON::parse(R"#({
             "name-of-the-setting": {
               "aliases": [],
               "defaultValue": "",
@@ -209,7 +207,7 @@ namespace nix {
               "value": "value",
               "experimentalFeature": "flakes"
             }
-          })#"_json);
+          })#"));
     }
 
     TEST(Config, setSettingAlias) {

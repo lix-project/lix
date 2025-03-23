@@ -1,5 +1,6 @@
 #include <regex>
 
+#include "lix/libutil/json.hh"
 #include "lix/libutil/regex-combinators.hh"
 #include "lix/libstore/outputs-spec.hh"
 #include "lix/libstore/path-regex.hh"
@@ -149,9 +150,7 @@ bool OutputsSpec::isSubsetOf(const OutputsSpec & that) const
 
 }
 
-namespace nlohmann {
-
-using namespace nix;
+namespace nix::json {
 
 OutputsSpec adl_serializer<OutputsSpec>::from_json(const JSON & json) {
     auto names = json.get<StringSet>();

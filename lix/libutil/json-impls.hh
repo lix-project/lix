@@ -5,8 +5,7 @@
 
 // Following https://github.com/nlohmann/json#how-can-i-use-get-for-non-default-constructiblenon-copyable-types
 #define JSON_IMPL(TYPE)                                                \
-    namespace nlohmann {                                               \
-        using namespace nix;                                           \
+    namespace nix::json {                                              \
         template <>                                                    \
         struct adl_serializer<TYPE> {                                  \
             static TYPE from_json(const JSON & json);                  \

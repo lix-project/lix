@@ -173,19 +173,17 @@ TEST(ExtendedOutputsSpec, many_carrot) {
 #define TEST_JSON(TYPE, NAME, STR, VAL)                      \
                                                              \
     TEST(TYPE, NAME ## _to_json) {                           \
-        using nlohmann::literals::operator "" _json;         \
         ASSERT_EQ(                                           \
-            STR ## _json,                                    \
+            JSON::parse(STR),                                \
             /* NOLINTNEXTLINE(bugprone-macro-parentheses) */ \
             ((JSON) TYPE { VAL }));                          \
     }                                                        \
                                                              \
     TEST(TYPE, NAME ## _from_json) {                         \
-        using nlohmann::literals::operator "" _json;         \
         ASSERT_EQ(                                           \
             /* NOLINTNEXTLINE(bugprone-macro-parentheses) */ \
             TYPE { VAL },                                    \
-            (STR ## _json).get<TYPE>());                     \
+            JSON::parse(STR).get<TYPE>());                   \
     }
 
 TEST_JSON(OutputsSpec, all, R"(["*"])", OutputsSpec::All { })
