@@ -20,10 +20,4 @@ JSON documentExperimentalFeatures();
 void to_json(JSON &, const ExperimentalFeature &);
 void from_json(const JSON &, ExperimentalFeature &);
 
-/**
- * It is always rendered as a string
- */
-template<>
-struct json_avoids_null<ExperimentalFeature> : std::true_type {};
-
 };

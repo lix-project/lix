@@ -20,10 +20,4 @@ JSON documentDeprecatedFeatures();
 void to_json(JSON &, const DeprecatedFeature &);
 void from_json(const JSON &, DeprecatedFeature &);
 
-/**
- * It is always rendered as a string
- */
-template<>
-struct json_avoids_null<DeprecatedFeature> : std::true_type {};
-
 };

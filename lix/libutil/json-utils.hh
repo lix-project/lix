@@ -3,6 +3,7 @@
 
 #include "lix/libutil/json.hh"
 #include <list>
+#include <type_traits>
 
 namespace nix {
 
@@ -41,10 +42,12 @@ template<typename T>
 struct json_avoids_null;
 
 /**
- * Handle numbers in default impl
+ * Handle numbers and enums in default impl
  */
 template<typename T>
-struct json_avoids_null : std::bool_constant<std::is_integral<T>::value> {};
+struct json_avoids_null
+    : std::bool_constant<std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_enum_v<T>>
+{};
 
 template<>
 struct json_avoids_null<std::nullptr_t> : std::false_type {};
