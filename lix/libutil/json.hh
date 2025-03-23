@@ -6,6 +6,7 @@
 /// deal with `std::optional<T>` types until 3.11.3 at, and we need those.
 
 #include "lix/libutil/json-fwd.hh" // IWYU pragma: keep
+#include <concepts>
 #include <nlohmann/json.hpp> // IWYU pragma: keep
 #include <list>
 #include <type_traits>
@@ -83,6 +84,25 @@ struct adl_serializer<T, void>
     static void from_json(Json && j, T & value)
     {
         detail::call_from_json(std::forward<Json>(j), value);
+    }
+
+    // Following https://github.com/nlohmann/json#how-can-i-use-get-for-non-default-constructiblenon-copyable-types
+    template<typename Json>
+        requires requires(Json & j, T value) { T::to_json(j, value); }
+    static void to_json(Json & j, const T & value)
+    {
+        T::to_json(j, value);
+    }
+
+    template<typename Json>
+        requires requires(Json && j) {
+            {
+                T::from_json(std::forward<Json>(j))
+            } -> std::same_as<T>;
+        }
+    static auto from_json(Json && j)
+    {
+        return T::from_json(std::forward<Json>(j));
     }
 };
 }

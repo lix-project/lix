@@ -7,8 +7,8 @@
 #include <variant>
 
 #include "lix/libutil/comparator.hh"
-#include "lix/libutil/json-impls.hh"
 #include "lix/libutil/comparator.hh"
+#include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/variant-wrapper.hh"
 
 namespace nix {
@@ -89,6 +89,9 @@ struct OutputsSpec {
     static std::optional<OutputsSpec> parseOpt(std::string_view s);
 
     std::string to_string() const;
+
+    static void to_json(JSON & json, const OutputsSpec & t);
+    static OutputsSpec from_json(const JSON & json);
 };
 
 struct ExtendedOutputsSpec {
@@ -116,9 +119,9 @@ struct ExtendedOutputsSpec {
     static std::optional<std::pair<std::string_view, ExtendedOutputsSpec>> parseOpt(std::string_view s);
 
     std::string to_string() const;
+
+    static void to_json(JSON & json, const ExtendedOutputsSpec & spec);
+    static ExtendedOutputsSpec from_json(const JSON & t);
 };
 
 }
-
-JSON_IMPL(OutputsSpec)
-JSON_IMPL(ExtendedOutputsSpec)
