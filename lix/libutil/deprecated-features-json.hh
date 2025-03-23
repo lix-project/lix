@@ -2,7 +2,7 @@
 ///@file
 
 #include "lix/libutil/deprecated-features.hh"
-#include "lix/libutil/json-utils.hh"
+#include "lix/libutil/json-fwd.hh"
 
 namespace nix {
 

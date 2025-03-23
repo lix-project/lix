@@ -7,7 +7,6 @@
 #include "lix/libutil/types.hh"
 #include "lix/libstore/common-protocol.hh"
 #include "lix/libstore/common-protocol-impl.hh"
-#include "lix/libutil/json-utils.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/backed-string-view.hh"
 

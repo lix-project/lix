@@ -105,6 +105,34 @@ struct adl_serializer<T, void>
         return T::from_json(std::forward<Json>(j));
     }
 };
+
+template<typename T>
+struct adl_serializer<std::optional<T>>
+{
+    /**
+     * @brief Convert a JSON type to an `optional<T>` treating
+     *        `null` as `std::nullopt`.
+     */
+    static void from_json(const auto & json, std::optional<T> & t)
+    {
+        static_assert(avoids_null<T>::value, "null is already in use for underlying type's JSON");
+        t = json.is_null() ? std::nullopt : std::make_optional(json.template get<T>());
+    }
+
+    /**
+     *  @brief Convert an optional type to a JSON type  treating `std::nullopt`
+     *         as `null`.
+     */
+    static void to_json(auto & json, const std::optional<T> & t)
+    {
+        static_assert(avoids_null<T>::value, "null is already in use for underlying type's JSON");
+        if (t) {
+            json = *t;
+        } else {
+            json = nullptr;
+        }
+    }
+};
 }
 
 }

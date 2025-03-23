@@ -14,7 +14,7 @@
 #include "lix/libstore/daemon.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/topo-sort.hh"
-#include "lix/libutil/json-utils.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/cgroup.hh"
 #include "lix/libstore/build/personality.hh"
 #include "lix/libutil/namespaces.hh"

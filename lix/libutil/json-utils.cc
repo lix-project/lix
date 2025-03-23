@@ -1,4 +1,4 @@
-#include "lix/libutil/json-utils.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/error.hh"
 
 namespace nix {

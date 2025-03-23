@@ -95,7 +95,6 @@ libutil_headers = files(
   'input-accessor.hh',
   'json.hh',
   'json-fwd.hh',
-  'json-utils.hh',
   'logging.hh',
   'logging-json.hh',
   'lru-cache.hh',

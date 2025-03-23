@@ -2,7 +2,7 @@
 #include "lix/libutil/args/root.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libutil/strings.hh"
-#include "lix/libutil/json-utils.hh" // IWYU pragma: keep (instances)
+#include "lix/libutil/json.hh" // IWYU pragma: keep (instances)
 #include "lix/libutil/environment-variables.hh"
 
 #include "lix/libutil/experimental-features-json.hh" // IWYU pragma: keep (instances)
