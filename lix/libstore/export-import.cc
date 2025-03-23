@@ -40,7 +40,7 @@ try {
     Hash hash = hashSink.currentHash().first;
     if (hash != info->narHash && info->narHash != Hash(info->narHash.type))
         throw Error("hash of path '%s' has changed from '%s' to '%s'!",
-            printStorePath(path), info->narHash.to_string(Base::Base32, true), hash.to_string(Base::Base32, true));
+            printStorePath(path), info->narHash.to_string(Base::SRI, true), hash.to_string(Base::SRI, true));
 
     teeSink
         << exportMagic
