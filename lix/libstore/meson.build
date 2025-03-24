@@ -13,12 +13,14 @@ endforeach
 libstore_settings_headers = []
 
 file_transfer_setting_definitions = files(
+  # keep-sorted start
   'file-transfer-settings/connect-timeout.md',
   'file-transfer-settings/download-attempts.md',
   'file-transfer-settings/http-connections.md',
   'file-transfer-settings/http2.md',
   'file-transfer-settings/stalled-download-timeout.md',
   'file-transfer-settings/user-agent-suffix.md',
+  # keep-sorted end
 )
 libstore_settings_headers += custom_target(
   command : [
@@ -36,6 +38,7 @@ libstore_settings_headers += custom_target(
 )
 
 libstore_setting_definitions = files(
+  # keep-sorted start
   'settings/allow-symlinked-store.md',
   'settings/allowed-impure-host-deps.md',
   'settings/always-allow-substitutes.md',
@@ -108,6 +111,7 @@ libstore_setting_definitions = files(
   'settings/use-cgroups.md',
   'settings/use-sqlite-wal.md',
   'settings/use-xdg-base-directories.md',
+  # keep-sorted end
 )
 libstore_settings_headers += custom_target(
   command : [
@@ -124,9 +128,29 @@ libstore_settings_headers += custom_target(
   install_dir : includedir / 'lix/libstore',
 )
 
+libstore_extra_objects = []
+if dtrace_feature.enabled()
+  libstore_settings_headers += dtrace_header_gen.process('trace-probes.d')
+  libstore_extra_objects += dtrace_object_gen.process('trace-probes.d')
+endif
+
 libstore_sources = files(
+  # keep-sorted start
   'binary-cache-store.cc',
   'build-result.cc',
+  'build/child.cc',
+  'build/derivation-goal.cc',
+  'build/drv-output-substitution-goal.cc',
+  'build/entry-points.cc',
+  'build/goal.cc',
+  'build/hook-instance.cc',
+  'build/local-derivation-goal.cc',
+  'build/personality.cc',
+  'build/substitution-goal.cc',
+  'build/worker.cc',
+  'builtins/buildenv.cc',
+  'builtins/fetchurl.cc',
+  'builtins/unpack-channel.cc',
   'common-protocol.cc',
   'content-address.cc',
   'crypto.cc',
@@ -176,24 +200,14 @@ libstore_sources = files(
   'temporary-dir.cc',
   'uds-remote-store.cc',
   'worker-protocol.cc',
-  'build/child.cc',
-  'build/derivation-goal.cc',
-  'build/drv-output-substitution-goal.cc',
-  'build/entry-points.cc',
-  'build/goal.cc',
-  'build/hook-instance.cc',
-  'build/local-derivation-goal.cc',
-  'build/personality.cc',
-  'build/substitution-goal.cc',
-  'build/worker.cc',
-  'builtins/buildenv.cc',
-  'builtins/fetchurl.cc',
-  'builtins/unpack-channel.cc',
+  # keep-sorted end
 )
 
 
 libstore_headers = files(
+  # keep-sorted start
   'binary-cache-store.hh',
+  'build-result.hh',
   'build/child.hh',
   'build/derivation-goal.hh',
   'build/drv-output-substitution-goal.hh',
@@ -203,9 +217,8 @@ libstore_headers = files(
   'build/personality.hh',
   'build/substitution-goal.hh',
   'build/worker.hh',
-  'build-result.hh',
-  'builtins/buildenv.hh',
   'builtins.hh',
+  'builtins/buildenv.hh',
   'common-protocol-impl.hh',
   'common-protocol.hh',
   'content-address.hh',
@@ -253,14 +266,15 @@ libstore_headers = files(
   'serve-protocol-impl.hh',
   'serve-protocol.hh',
   'sqlite.hh',
-  'ssh.hh',
   'ssh-store.hh',
+  'ssh.hh',
   'store-api.hh',
   'store-cast.hh',
   'temporary-dir.hh',
   'uds-remote-store.hh',
   'worker-protocol-impl.hh',
   'worker-protocol.hh',
+  # keep-sorted end
 )
 
 if host_machine.system() == 'linux'
@@ -350,6 +364,7 @@ libstore = library(
   libstore_sources,
   libstore_settings_headers,
   libstore_generated_headers,
+  libstore_extra_objects,
   include_directories : [ '../..' ],
   dependencies : dependencies,
   cpp_args : cpp_args,

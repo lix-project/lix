@@ -1,4 +1,5 @@
 libutil_sources = files(
+  # keep-sorted start
   'archive.cc',
   'args.cc',
   'async-io.cc',
@@ -42,23 +43,25 @@ libutil_sources = files(
   'thread-name.cc',
   'thread-pool.cc',
   'unix-domain-socket.cc',
-  'url.cc',
   'url-name.cc',
+  'url.cc',
   'users.cc',
   'xml-writer.cc',
+  # keep-sorted end
 )
 
 libutil_headers = files(
-  'apply-config-options.hh',
+  # keep-sorted start
   'abstract-setting-to-json.hh',
   'ansicolor.hh',
+  'apply-config-options.hh',
   'archive.hh',
-  'args/root.hh',
   'args.hh',
+  'args/root.hh',
   'async-collect.hh',
   'async-io.hh',
-  'async.hh',
   'async-semaphore.hh',
+  'async.hh',
   'backed-string-view.hh',
   'box_ptr.hh',
   'canon-path.hh',
@@ -74,16 +77,16 @@ libutil_headers = files(
   'config-impl.hh',
   'config.hh',
   'current-process.hh',
-  'deprecated-features.hh',
   'deprecated-features-json.hh',
+  'deprecated-features.hh',
   'english.hh',
   'environment-variables.hh',
   'error.hh',
   'escape-char.hh',
   'escape-string.hh',
   'exit.hh',
-  'experimental-features.hh',
   'experimental-features-json.hh',
+  'experimental-features.hh',
   'file-descriptor.hh',
   'file-system.hh',
   'finally.hh',
@@ -93,10 +96,10 @@ libutil_headers = files(
   'hash.hh',
   'hilite.hh',
   'input-accessor.hh',
-  'json.hh',
   'json-fwd.hh',
-  'logging.hh',
+  'json.hh',
   'logging-json.hh',
+  'logging.hh',
   'lru-cache.hh',
   'manually-drop.hh',
   'monitor-fd.hh',
@@ -126,17 +129,20 @@ libutil_headers = files(
   'thread-name.hh',
   'thread-pool.hh',
   'topo-sort.hh',
+  'tracepoint.hh',
   'types.hh',
   'unix-domain-socket.hh',
-  'url-parts.hh',
   'url-name.hh',
+  'url-parts.hh',
   'url.hh',
   'users.hh',
   'variant-wrapper.hh',
   'xml-writer.hh',
+  # keep-sorted end
 )
 
 experimental_feature_definitions = files(
+  # keep-sorted start
   'experimental-features/auto-allocate-uids.md',
   'experimental-features/ca-derivations.md',
   'experimental-features/cgroups.md',
@@ -153,15 +159,18 @@ experimental_feature_definitions = files(
   'experimental-features/read-only-local-store.md',
   'experimental-features/recursive-nix.md',
   'experimental-features/repl-automation.md',
+  # keep-sorted end
 )
 
 deprecated_feature_definitions = files(
+  # keep-sorted start
   'deprecated-features/ancient-let.md',
   'deprecated-features/cr-line-endings.md',
   'deprecated-features/nul-bytes.md',
   'deprecated-features/rec-set-overrides.md',
-  'deprecated-features/url-literals.md',
   'deprecated-features/shadow-internal-symbols.md',
+  'deprecated-features/url-literals.md',
+  # keep-sorted end
 )
 
 experimental_features_gen = custom_target(

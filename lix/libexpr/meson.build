@@ -14,6 +14,7 @@ endforeach
 subdir('flake')
 
 libexpr_setting_definitions = files(
+  # keep-sorted start
   'settings/allow-import-from-derivation.md',
   'settings/allow-unsafe-native-code-during-evaluation.md',
   'settings/allowed-uris.md',
@@ -28,6 +29,7 @@ libexpr_setting_definitions = files(
   'settings/restrict-eval.md',
   'settings/trace-function-calls.md',
   'settings/trace-verbose.md',
+  # keep-sorted end
 )
 libexpr_settings_header = custom_target(
   command : [
@@ -45,6 +47,7 @@ libexpr_settings_header = custom_target(
 )
 
 builtin_definitions = files(
+  # keep-sorted start
   'builtins/abort.md',
   'builtins/add.md',
   'builtins/addDrvOutputDependencies.md',
@@ -145,6 +148,7 @@ builtin_definitions = files(
   'builtins/typeOf.md',
   'builtins/unsafeDiscardOutputDependency.md',
   'builtins/zipAttrsWith.md',
+  # keep-sorted end
 )
 builtins_gen = custom_target(
   command : [
@@ -165,6 +169,7 @@ register_builtins_header = builtins_gen[0]
 builtins_md = builtins_gen[1]
 
 builtin_constant_definitions = files(
+  # keep-sorted start
   'builtin-constants/builtins.md',
   'builtin-constants/currentSystem.md',
   'builtin-constants/currentTime.md',
@@ -175,6 +180,7 @@ builtin_constant_definitions = files(
   'builtin-constants/null.md',
   'builtin-constants/storeDir.md',
   'builtin-constants/true.md',
+  # keep-sorted end
 )
 builtin_constants_gen = custom_target(
   command : [
@@ -194,38 +200,41 @@ register_builtin_constants_header = builtin_constants_gen[0]
 builtin_constants_md = builtin_constants_gen[1]
 
 libexpr_sources = files(
+  # keep-sorted start
   'attr-path.cc',
   'attr-set.cc',
   'eval-cache.cc',
   'eval-error.cc',
   'eval-settings.cc',
   'eval.cc',
-  'function-trace.cc',
-  'get-drvs.cc',
-  'gc-alloc.cc',
-  'json-to-value.cc',
-  'nixexpr.cc',
-  'parser/parser.cc',
-  'primops.cc',
-  'print-ambiguous.cc',
-  'print.cc',
-  'search-path.cc',
-  'value.cc',
-  'value-to-json.cc',
-  'value-to-xml.cc',
   'flake/config.cc',
   'flake/flake.cc',
   'flake/flakeref.cc',
   'flake/lockfile.cc',
+  'function-trace.cc',
+  'gc-alloc.cc',
+  'get-drvs.cc',
+  'json-to-value.cc',
+  'nixexpr.cc',
+  'parser/parser.cc',
+  'primops.cc',
   'primops/context.cc',
   'primops/fetchClosure.cc',
   'primops/fetchMercurial.cc',
   'primops/fetchTree.cc',
   'primops/fromTOML.cc',
+  'print-ambiguous.cc',
+  'print.cc',
+  'search-path.cc',
+  'value-to-json.cc',
+  'value-to-xml.cc',
+  'value.cc',
   'value/context.cc',
+  # keep-sorted end
 )
 
 libexpr_headers = files(
+  # keep-sorted start
   'attr-path.hh',
   'attr-set.hh',
   'eval-cache.hh',
@@ -237,9 +246,9 @@ libexpr_headers = files(
   'flake/flakeref.hh',
   'flake/lockfile.hh',
   'function-trace.hh',
+  'gc-alloc.hh',
   'gc-small-vector.hh',
   'get-drvs.hh',
-  'gc-alloc.hh',
   'json-to-value.hh',
   'nixexpr.hh',
   'parser/change_head.hh',
@@ -254,10 +263,11 @@ libexpr_headers = files(
   'repl-exit-status.hh',
   'search-path.hh',
   'symbol-table.hh',
-  'value/context.hh',
   'value-to-json.hh',
   'value-to-xml.hh',
   'value.hh',
+  'value/context.hh',
+  # keep-sorted end
 )
 
 libexpr = library(

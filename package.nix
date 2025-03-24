@@ -30,6 +30,8 @@
   libcpuid,
   libseccomp,
   libsodium,
+  libsystemtap,
+  linuxPackages,
   lix-clang-tidy ? null,
   llvmPackages,
   lsof,
@@ -51,6 +53,7 @@
   rustPlatform,
   rustc,
   sqlite,
+  systemtap-lix ? __forDefaults.systemtap-lix,
   toml11,
   util-linuxMinimal ? utillinuxMinimal,
   utillinuxMinimal ? null,
@@ -77,6 +80,11 @@
 
   lintInsteadOfBuild ? false,
 
+  # FIXME(jade): figure out if it is possible to support non-linux systems for dtrace probes
+  withDtrace ?
+    lib.meta.availableOn stdenv.hostPlatform libsystemtap
+    && lib.meta.availableOn stdenv.buildPlatform systemtap-lix,
+
   # Not a real argument, just the only way to approximate let-binding some
   # stuff for argument defaults.
   __forDefaults ? {
@@ -99,6 +107,10 @@
       propagatedBuildInputs = (prev.propagatedBuildInputs or [ ]) ++ [ ncurses ];
     });
 
+    # Avoid a bunch of build closure of the tracer, we just need the dtrace
+    # generator.
+    systemtap-lix = buildPackages.linuxPackages.systemtap.override { withStap = false; };
+
     build-release-notes = callPackage ./maintainers/build-release-notes.nix { };
 
     # needs derivation patching to add debuginfo and coroutine library support
@@ -116,6 +128,13 @@ let
   inherit (stdenv) hostPlatform buildPlatform;
 
   version = __forDefaults.versionJson.version + versionSuffix;
+
+  # This could be the dtrace for macOS, etc, but I have no idea if it is
+  # packaged or if it works.
+  dtrace-generator = lib.optional withDtrace systemtap-lix;
+
+  # This is for sys/sdt.h
+  dtrace-headers = lib.optional withDtrace libsystemtap;
 
   aws-sdk-cpp-nix =
     if aws-sdk-cpp == null then
@@ -238,6 +257,7 @@ stdenv.mkDerivation (finalAttrs: {
       # dependencies for.
       (lib.mesonEnable "gc" enableGC)
       (lib.mesonEnable "internal-api-docs" internalApiDocs)
+      (lib.mesonEnable "dtrace-probes" withDtrace)
       (lib.mesonBool "enable-tests" (finalAttrs.finalPackage.doCheck || lintInsteadOfBuild))
       (lib.mesonBool "enable-docs" canRunInstalled)
       (lib.mesonBool "werror" werror)
@@ -258,6 +278,7 @@ stdenv.mkDerivation (finalAttrs: {
       capnproto-lix
       # Required for libstd++ assertions that leaks inside of the final binary.
       removeReferencesTo
+      dtrace-generator
     ]
     ++ [
       (lib.getBin lowdown-unsandboxed)
@@ -304,6 +325,7 @@ stdenv.mkDerivation (finalAttrs: {
       toml11
       pegtl
       capnproto-lix
+      dtrace-headers
     ]
     ++ lib.optionals hostPlatform.isLinux [
       libseccomp

@@ -8,6 +8,7 @@
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
+#include "lix/libutil/tracepoint.hh"
 #include <cstddef>
 
 #include <cstdio>
@@ -947,6 +948,8 @@ struct curlFileTransfer : public FileTransfer
 
         size_t read(char * data, size_t len) override
         {
+            TRACE(DTRACE_PROBE2(lix_store, filetransfer__read, uri.c_str(), len));
+
             size_t total = 0;
             while (total < len && awaitData()) {
                 const auto available = std::min(len - total, buffered.size());
