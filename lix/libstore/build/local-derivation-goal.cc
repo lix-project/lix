@@ -1831,10 +1831,14 @@ void LocalDerivationGoal::runChild()
                 #include "sandbox-defaults.sb"
                 ;
 
-            if (!derivationType->isSandboxed())
+            if (!derivationType->isSandboxed()) {
                 sandboxProfile +=
                     #include "sandbox-network.sb"
                     ;
+                if (settings.caFile != "") {
+                    sandboxProfile += fmt("(allow file-read* %s)\n", settings.caFile);
+                }
+            }
 
             /* Add the output paths we'll use at build-time to the chroot */
             sandboxProfile += "(allow file-read* file-write* process-exec\n";
