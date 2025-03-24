@@ -5,7 +5,7 @@
 # Synopsis
 
 `nix-instantiate`
-  [`--parse` | `--eval` [`--strict`] [`--json`] [`--xml`] ]
+  [`--parse` | `--eval` [`--strict`] [`--raw`] [`--json`] [`--xml`] ]
   [`--read-write-mode`]
   [`--arg` *name* *value*]
   [{`--attr`| `-A`} *attrPath*]
@@ -106,6 +106,11 @@ See that section for complete details (`nix-build --help`), but in summary, a pa
     >
     > This option can cause non-termination, because lazy data
     > structures can be infinitely large.
+
+  - `--raw`
+    When used with `--eval`, the result must be coercible to a string, i.e.,
+    something that can be converted using `${...}`. The output is
+    printed exactly as-is, with no quotes, escaping, or trailing newline.
 
   - `--json`\
     When used with `--eval`, print the resulting value as an JSON

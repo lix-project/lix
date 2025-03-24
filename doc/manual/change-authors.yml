@@ -101,6 +101,9 @@ ian-h-chamberlain:
   forgejo: ian-h-chamberlain
   github: ian-h-chamberlain
 
+infinisil:
+  github: infinisil
+
 isabelroses:
   forgejo: isabelroses
   github: isabelroses
@@ -157,6 +160,10 @@ midnightveil:
 
 ncfavier:
   github: ncfavier
+
+not-my-profile:
+  display_name: Martin Fischer
+  github: not-my-profile
 
 p-e-meunier:
   display_name: Pierre-Etienne Meunier
