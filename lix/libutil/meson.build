@@ -129,6 +129,7 @@ libutil_headers = files(
   'thread-name.hh',
   'thread-pool.hh',
   'topo-sort.hh',
+  'tracepoint.hh',
   'types.hh',
   'unix-domain-socket.hh',
   'url-name.hh',

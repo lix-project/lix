@@ -128,6 +128,12 @@ libstore_settings_headers += custom_target(
   install_dir : includedir / 'lix/libstore',
 )
 
+libstore_extra_objects = []
+if dtrace_feature.enabled()
+  libstore_settings_headers += dtrace_header_gen.process('trace-probes.d')
+  libstore_extra_objects += dtrace_object_gen.process('trace-probes.d')
+endif
+
 libstore_sources = files(
   # keep-sorted start
   'binary-cache-store.cc',
@@ -358,6 +364,7 @@ libstore = library(
   libstore_sources,
   libstore_settings_headers,
   libstore_generated_headers,
+  libstore_extra_objects,
   include_directories : [ '../..' ],
   dependencies : dependencies,
   cpp_args : cpp_args,

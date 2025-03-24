@@ -402,6 +402,32 @@ endif
 # FIXME(Qyriad): the autoconf system checks that busybox has the "standalone" feature, indicating
 # that busybox sh won't run busybox applets as builtins (which would break our sandbox).
 
+# Trace points for dtrace and bpftrace
+dtrace_feature = get_option('dtrace-probes')
+if dtrace_feature.allowed()
+  dtrace_exe = find_program('dtrace', native : false, required : false)
+  dtrace_header_present = cxx.has_header('sys/sdt.h')
+  dtrace_feature = dtrace_feature.enable_auto_if(dtrace_exe.found() and dtrace_header_present)
+endif
+
+if dtrace_feature.enabled()
+  dtrace_feature.require(dtrace_exe.found() and dtrace_header_present,
+    error_message : 'trace probes require both the dtrace command and sys/sdt.h header to be available')
+
+  # NOTE: glib seems to have had to hack some stuff up that we are not hacking
+  # up. I don't know why.
+  # https://github.com/GNOME/glib/blob/03f7c1fbf3a3784cb4c3604f83ca3645e9225577/meson.build#L2420-L2434
+  dtrace_object_gen = generator(dtrace_exe,
+    output : '@BASENAME@.o',
+    arguments : ['-G', '-s', '@INPUT@', '-o', '@OUTPUT@'])
+  dtrace_header_gen = generator(dtrace_exe,
+    output : '@BASENAME@.gen.h',
+    arguments : ['-h', '-s', '@INPUT@', '-o', '@OUTPUT@'])
+endif
+configdata += {
+  'HAVE_DTRACE': dtrace_feature.enabled().to_int(),
+}
+
 lsof = find_program('lsof', native : true)
 
 # This is how Nix does generated headers...
