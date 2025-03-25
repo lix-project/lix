@@ -37,7 +37,7 @@ JSON printValueAsJSON(EvalState & state, bool strict,
             if (copyToStore)
                 out = state.ctx.store->printStorePath(state.aio.blockOn(
                     state.ctx.paths.copyPathToStore(context, v.path(), state.ctx.repair)
-                ));
+                ).unwrap());
             else {
                 out = v.path().to_string();
             }

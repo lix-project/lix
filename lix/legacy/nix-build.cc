@@ -255,7 +255,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
                         evaluator->paths.resolveExprPath(aio.blockOn(lookupFileArg(
                             *evaluator,
                             inShebang && !packages ? absPath(i, absPath(dirOf(script))) : i
-                        )))
+                        )).unwrap())
                     ));
             }
         }

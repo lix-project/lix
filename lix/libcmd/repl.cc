@@ -34,6 +34,7 @@
 #include "lix/libutil/signals.hh"
 #include "lix/libexpr/print.hh"
 #include "lix/libexpr/gc-small-vector.hh"
+#include "lix/libutil/types.hh"
 #include "lix/libutil/users.hh"
 
 #if HAVE_BOEHMGC
@@ -899,7 +900,7 @@ void NixRepl::loadFile(const Path & path)
     loadedFiles.remove(path);
     loadedFiles.push_back(path);
     Value v, v2;
-    state.evalFile(state.aio.blockOn(lookupFileArg(evaluator, path)), v);
+    state.evalFile(state.aio.blockOn(lookupFileArg(evaluator, path)).unwrap(always_progresses), v);
     state.autoCallFunction(*autoArgs, v, v2);
     addAttrsToScope(v2);
 }

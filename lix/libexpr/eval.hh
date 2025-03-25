@@ -452,10 +452,36 @@ public:
     Path toRealPath(const Path & path, const NixStringContext & context);
 
     /**
+     * findFile wants to throw a debuggable error when the requested file
+     * is not found, but it can't invoke the debugger itself because it's
+     * async code. This wraps the result-or-error to allow it regardless.
+     * This happens for copyPathToStore as well, with another error type.
+     */
+    template<typename T, typename E>
+    struct PathResult : private std::variant<T, EvalErrorBuilder<E>>
+    {
+        PathResult(T p) : std::variant<T, EvalErrorBuilder<E>>(std::move(p)) {}
+        PathResult(EvalErrorBuilder<E> e) : std::variant<T, EvalErrorBuilder<E>>(std::move(e)) {}
+
+        T unwrap(NeverAsync = {}) &&
+        {
+            return std::visit(
+                overloaded{
+                    [](T & p) -> T { return std::move(p); },
+                    [](EvalErrorBuilder<E> & e) -> T {
+                        std::move(e).debugThrow();
+                    }
+                },
+                static_cast<std::variant<T, EvalErrorBuilder<E>> &>(*this)
+            );
+        }
+    };
+
+    /**
      * Look up a file in the search path.
      */
-    kj::Promise<Result<SourcePath>> findFile(const std::string_view path);
-    kj::Promise<Result<SourcePath>>
+    kj::Promise<Result<PathResult<SourcePath, ThrownError>>> findFile(const std::string_view path);
+    kj::Promise<Result<PathResult<SourcePath, ThrownError>>>
     findFile(const SearchPath & searchPath, const std::string_view path, const PosIdx pos = noPos);
 
     /**
@@ -468,7 +494,7 @@ public:
     kj::Promise<Result<std::optional<std::string>>>
     resolveSearchPathPath(const SearchPath::Path & path);
 
-    kj::Promise<Result<StorePath>> copyPathToStore(
+    kj::Promise<Result<PathResult<StorePath, EvalError>>> copyPathToStore(
         NixStringContext & context, const SourcePath & path, RepairFlag repair = NoRepair
     );
 

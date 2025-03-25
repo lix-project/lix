@@ -2322,7 +2322,7 @@ BackedStringView EvalState::coerceToString(
               v._path
             : copyToStore
             ? ctx.store->printStorePath(
-                aio.blockOn(ctx.paths.copyPathToStore(context, v.path(), ctx.repair)))
+                aio.blockOn(ctx.paths.copyPathToStore(context, v.path(), ctx.repair)).unwrap())
             : v.path().to_string();
     }
 
@@ -2391,10 +2391,11 @@ BackedStringView EvalState::coerceToString(
 }
 
 
-kj::Promise<Result<StorePath>> EvalPaths::copyPathToStore(NixStringContext & context, const SourcePath & path, RepairFlag repair)
+kj::Promise<Result<EvalPaths::PathResult<StorePath, EvalError>>>
+EvalPaths::copyPathToStore(NixStringContext & context, const SourcePath & path, RepairFlag repair)
 try {
     if (nix::isDerivation(path.canonical().abs()))
-        errors.make<EvalError>("file names are not allowed to end in '%1%'", drvExtension).debugThrow();
+        co_return errors.make<EvalError>("file names are not allowed to end in '%1%'", drvExtension);
 
     auto i = srcToStore.find(path);
 
@@ -2792,13 +2793,14 @@ Expr & Evaluator::parseStdin()
 }
 
 
-kj::Promise<Result<SourcePath>> EvalPaths::findFile(const std::string_view path)
+kj::Promise<Result<EvalPaths::PathResult<SourcePath, ThrownError>>>
+EvalPaths::findFile(const std::string_view path)
 {
     return findFile(searchPath_, path);
 }
 
 
-kj::Promise<Result<SourcePath>>
+kj::Promise<Result<EvalPaths::PathResult<SourcePath, ThrownError>>>
 EvalPaths::findFile(const SearchPath & searchPath, const std::string_view path, const PosIdx pos)
 try {
     for (auto & i : searchPath.elements) {
@@ -2812,18 +2814,18 @@ try {
         auto r = *rOpt;
 
         Path res = suffix == "" ? r : concatStrings(r, "/", suffix);
-        if (pathExists(res)) co_return CanonPath(canonPath(res));
+        if (pathExists(res)) co_return SourcePath(CanonPath(canonPath(res)));
     }
 
     if (path.starts_with("nix/"))
-        co_return CanonPath(concatStrings(corepkgsPrefix, path.substr(4)));
+        co_return SourcePath(CanonPath(concatStrings(corepkgsPrefix, path.substr(4))));
 
-    errors.make<ThrownError>(
+    co_return errors.make<ThrownError>(
         evalSettings.pureEval
             ? "cannot look up '<%s>' in pure evaluation mode (use '--impure' to override)"
             : "file '%s' was not found in the Nix search path (add it using $NIX_PATH or -I)",
         path
-    ).atPos(pos).debugThrow();
+    ).atPos(pos);
 } catch (...) {
     co_return result::current_exception();
 }

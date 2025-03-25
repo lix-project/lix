@@ -1339,7 +1339,7 @@ static void prim_findFile(EvalState & state, const PosIdx pos, Value * * args, V
     auto path = state.forceStringNoCtx(*args[1], pos, "while evaluating the second argument passed to builtins.findFile");
 
     v.mkPath(state.ctx.paths.checkSourcePath(
-        state.aio.blockOn(state.ctx.paths.findFile(searchPath, path, pos))
+        state.aio.blockOn(state.ctx.paths.findFile(searchPath, path, pos)).unwrap()
     ));
 }
 

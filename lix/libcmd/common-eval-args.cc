@@ -188,7 +188,8 @@ Bindings * MixEvalArgs::getAutoArgs(Evaluator & state)
     return res.finish();
 }
 
-kj::Promise<Result<SourcePath>> lookupFileArg(Evaluator & state, std::string_view fileArg)
+kj::Promise<Result<EvalPaths::PathResult<SourcePath, ThrownError>>>
+lookupFileArg(Evaluator & state, std::string_view fileArg)
 try {
     if (EvalSettings::isPseudoUrl(fileArg)) {
         auto const url = EvalSettings::resolvePseudoUrl(fileArg);
@@ -199,19 +200,20 @@ try {
             /* locked */ false
         ));
         StorePath const storePath = downloaded.tree.storePath;
-        co_return CanonPath(state.store->toRealPath(storePath));
+        co_return SourcePath(CanonPath(state.store->toRealPath(storePath)));
     } else if (fileArg.starts_with("flake:")) {
         experimentalFeatureSettings.require(Xp::Flakes);
         static constexpr size_t FLAKE_LEN = std::string_view("flake:").size();
         auto flakeRef = parseFlakeRef(std::string(fileArg.substr(FLAKE_LEN)), {}, true, false);
         auto storePath = TRY_AWAIT(TRY_AWAIT(flakeRef.resolve(state.store)).fetchTree(state.store))
                              .first.storePath;
-        co_return CanonPath(state.store->toRealPath(storePath));
-    } else if (fileArg.size() > 2 && fileArg.at(0) == '<' && fileArg.at(fileArg.size() - 1) == '>') {
+        co_return SourcePath(CanonPath(state.store->toRealPath(storePath)));
+    } else if (fileArg.size() > 2 && fileArg.at(0) == '<' && fileArg.at(fileArg.size() - 1) == '>')
+    {
         Path p(fileArg.substr(1, fileArg.size() - 2));
         co_return TRY_AWAIT(state.paths.findFile(p));
     } else {
-        co_return CanonPath::fromCwd(fileArg);
+        co_return SourcePath(CanonPath::fromCwd(fileArg));
     }
 } catch (...) {
     co_return result::current_exception();

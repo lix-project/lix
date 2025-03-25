@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libexpr/eval-error.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libutil/args.hh"
 #include "lix/libmain/common-args.hh"
@@ -49,6 +50,7 @@ private:
  *
  * @exception nix::ThrownError for failed search path lookup. Probably others.
  */
-kj::Promise<Result<SourcePath>> lookupFileArg(Evaluator & state, std::string_view fileArg);
+kj::Promise<Result<EvalPaths::PathResult<SourcePath, ThrownError>>>
+lookupFileArg(Evaluator & state, std::string_view fileArg);
 
 }

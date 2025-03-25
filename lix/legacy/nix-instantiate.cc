@@ -167,7 +167,7 @@ static int main_nix_instantiate(AsyncIoRoot & aio, std::string programName, Stri
 
         if (findFile) {
             for (auto & i : files) {
-                auto p = aio.blockOn(evaluator->paths.findFile(i));
+                auto p = aio.blockOn(evaluator->paths.findFile(i)).unwrap();
                 std::cout << p.canonical().abs() << std::endl;
             }
             return 0;
@@ -181,11 +181,10 @@ static int main_nix_instantiate(AsyncIoRoot & aio, std::string programName, Stri
             files.push_back("./default.nix");
 
         for (auto & i : files) {
-            Expr & e = fromArgs
-                ? evaluator->parseExprFromString(i, CanonPath::fromCwd())
-                : evaluator->parseExprFromFile(
-                      evaluator->paths.resolveExprPath(aio.blockOn(lookupFileArg(*evaluator, i)))
-                  );
+            Expr & e = fromArgs ? evaluator->parseExprFromString(i, CanonPath::fromCwd())
+                                : evaluator->parseExprFromFile(evaluator->paths.resolveExprPath(
+                                      aio.blockOn(lookupFileArg(*evaluator, i)).unwrap()
+                                  ));
             processExpr(*state, attrPaths, parseOnly, strict, autoArgs,
                 evalOnly, outputKind, xmlOutputSourceLocation, e);
         }
