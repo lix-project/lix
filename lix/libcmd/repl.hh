@@ -2,10 +2,11 @@
 ///@file
 
 #include "lix/libexpr/eval.hh"
+#include "lix/libutil/types.hh"
 
 namespace nix {
 
-struct AbstractNixRepl
+struct AbstractNixRepl : NeverAsync
 {
     typedef std::vector<std::pair<Value*,std::string>> AnnotatedValues;
 

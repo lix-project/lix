@@ -1,6 +1,7 @@
 #include "lix/libexpr/eval-error.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/value.hh"
+#include "lix/libutil/types.hh"
 
 namespace nix {
 
@@ -72,7 +73,7 @@ EvalErrorBuilder<T>::addTrace(PosIdx pos, std::string_view formatString, const A
 }
 
 template<class T>
-void EvalErrorBuilder<T>::debugThrow() &&
+void EvalErrorBuilder<T>::debugThrow(NeverAsync) &&
 {
     if (debug) {
         if (auto last = debug->traces().next()) {

@@ -91,7 +91,7 @@ public:
     /**
      * Throw the underlying exception, invoking the debug state callback.
      */
-    [[gnu::noinline, gnu::noreturn]] void debugThrow() &&;
+    [[gnu::noinline, gnu::noreturn]] void debugThrow(NeverAsync = {}) &&;
 
     /**
      * Throw the underlying exception, bypassing the debug state callback.

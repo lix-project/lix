@@ -7,6 +7,7 @@
 #include "lix/libexpr/eval-inline.hh"
 #include "lix/libexpr/value-to-json.hh"
 #include "eval.hh"
+#include "lix/libutil/types.hh"
 
 namespace nix {
 
@@ -80,9 +81,9 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
             if (pathExists(*writeTo))
                 throw Error("path '%s' already exists", *writeTo);
 
-            std::function<void(Value & v, const PosIdx pos, const Path & path)> recurse;
+            std::function<void(Value & v, const PosIdx pos, const Path & path, NeverAsync)> recurse;
 
-            recurse = [&](Value & v, const PosIdx pos, const Path & path)
+            recurse = [&](Value & v, const PosIdx pos, const Path & path, NeverAsync)
             {
                 state->forceValue(v, pos);
                 if (v.type() == nString)
@@ -96,7 +97,7 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
                         try {
                             if (name == "." || name == "..")
                                 throw Error("invalid file name '%s'", name);
-                            recurse(*attr.value, attr.pos, concatStrings(path, "/", name));
+                            recurse(*attr.value, attr.pos, concatStrings(path, "/", name), {});
                         } catch (Error & e) {
                             e.addTrace(
                                 evaluator->positions[attr.pos],
@@ -109,7 +110,7 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
                     evaluator->errors.make<TypeError>("value at '%s' is not a string or an attribute set", evaluator->positions[pos]).debugThrow();
             };
 
-            recurse(*v, pos, *writeTo);
+            recurse(*v, pos, *writeTo, {});
         }
 
         else if (raw) {

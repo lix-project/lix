@@ -10,6 +10,7 @@
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/types.hh"
 
 constexpr std::string_view INVALID_CHANNEL = "channel:example";
 constexpr std::string_view CHANNEL_URL = "https://nixos.org/channels/example/nixexprs.tar.xz";

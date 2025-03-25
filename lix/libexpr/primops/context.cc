@@ -3,6 +3,7 @@
 #include "lix/libexpr/extra-primops.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/types.hh"
 
 namespace nix {
 
@@ -69,7 +70,7 @@ void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, Value * 
                     state.ctx.errors.make<EvalError>(
                         "path '%s' is not a derivation",
                         state.ctx.store->printStorePath(c.path)
-                    ).atPos(pos).debugThrow();
+                    ).atPos(pos).debugThrow(always_progresses);
                 }
                 return NixStringContextElem::DrvDeep {
                     .drvPath = c.path,
@@ -79,7 +80,7 @@ void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, Value * 
                 state.ctx.errors.make<EvalError>(
                     "`addDrvOutputDependencies` can only act on derivations, not on a derivation output such as '%1%'",
                     c.output
-                ).atPos(pos).debugThrow();
+                ).atPos(pos).debugThrow(always_progresses);
             },
             [&](const NixStringContextElem::DrvDeep & c) -> NixStringContextElem::DrvDeep {
                 /* Reuse original item because we want this to be idempotent. */

@@ -19,6 +19,7 @@
 #include "lix/libexpr/primops.hh"
 #include "lix/libfetchers/fetch-to-store.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/types.hh"
 
 #include <boost/container/small_vector.hpp>
 #include <kj/async.h>
@@ -50,7 +51,7 @@ StringMap EvalState::realiseContext(const NixStringContext & context)
     for (auto & c : context) {
         auto ensureValid = [&](const StorePath & p) {
             if (!aio.blockOn(ctx.store->isValidPath(p)))
-                ctx.errors.make<InvalidPathError>(ctx.store->printStorePath(p)).debugThrow();
+                ctx.errors.make<InvalidPathError>(ctx.store->printStorePath(p)).debugThrow(always_progresses);
         };
         std::visit(overloaded {
             [&](const NixStringContextElem::Built & b) {
@@ -432,7 +433,7 @@ template<typename Callable>
     }
 }
 
-struct CompareValues
+struct CompareValues : NeverAsync
 {
     EvalState & state;
     const PosIdx pos;
@@ -827,7 +828,7 @@ drvName, Bindings * attrs, Value & v)
         const std::string & key = state.ctx.symbols[i->name];
         vomit("processing attribute '%1%'", key);
 
-        auto handleHashMode = [&](const std::string_view s) {
+        auto handleHashMode = [&](const std::string_view s, NeverAsync = {}) {
             if (s == "recursive") ingestionMethod = FileIngestionMethod::Recursive;
             else if (s == "flat") ingestionMethod = FileIngestionMethod::Flat;
             else if (s == "text") {
@@ -839,7 +840,7 @@ drvName, Bindings * attrs, Value & v)
                 ).atPos(v).debugThrow();
         };
 
-        auto handleOutputs = [&](const Strings & ss) {
+        auto handleOutputs = [&](const Strings & ss, NeverAsync = {}) {
             outputs.clear();
             for (auto & j : ss) {
                 if (outputs.find(j) != outputs.end())

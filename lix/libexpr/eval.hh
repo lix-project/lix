@@ -7,6 +7,7 @@
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/generator.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/source-path.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libexpr/value.hh"
 #include "lix/libexpr/nixexpr.hh"
@@ -149,7 +150,7 @@ private:
     const SymbolTable & symbols;
 
 public:
-    std::function<ReplExitStatus(ValMap const & extraEnv)> errorCallback;
+    std::function<ReplExitStatus(ValMap const & extraEnv, NeverAsync)> errorCallback;
     bool stop = false;
     bool inDebugger = false;
     std::map<const Expr *, const std::shared_ptr<const StaticEnv>> exprEnvs;
@@ -158,7 +159,7 @@ public:
     explicit DebugState(
         const PosTable & positions,
         const SymbolTable & symbols,
-        std::function<ReplExitStatus(ValMap const & extraEnv)> errorCallback
+        std::function<ReplExitStatus(ValMap const & extraEnv, NeverAsync)> errorCallback
     )
         : positions(positions)
         , symbols(symbols)
@@ -167,7 +168,7 @@ public:
         assert(errorCallback);
     }
 
-    void onEvalError(const EvalError * error, const Env & env, const Expr & expr);
+    void onEvalError(const EvalError * error, const Env & env, const Expr & expr, NeverAsync = {});
 
     const std::shared_ptr<const StaticEnv> staticEnvFor(const Expr & expr) const
     {
@@ -469,7 +470,7 @@ public:
                 overloaded{
                     [](T & p) -> T { return std::move(p); },
                     [](EvalErrorBuilder<E> & e) -> T {
-                        std::move(e).debugThrow();
+                        std::move(e).debugThrow(always_progresses);
                     }
                 },
                 static_cast<std::variant<T, EvalErrorBuilder<E>> &>(*this)

@@ -89,7 +89,7 @@ readConstituents(const nix::Value *v, nix::box_ptr<nix::EvalState> &state,
             state->ctx.errors
                 .make<nix::EvalError>("derivation must have a ‘constituents’ "
                                       "attribute")
-                .debugThrow();
+                .debugThrow(nix::always_progresses); // we can't have a debugger here
 
         nix::NixStringContext context;
         state->coerceToString(a->pos, *a->value, context,

@@ -19,6 +19,7 @@
 #include "lix/libutil/terminal.hh"
 #include "lix/libutil/signals.hh"
 #include "flake.hh"
+#include "lix/libutil/types.hh"
 
 #include <limits>
 #include <iomanip>
@@ -1194,13 +1195,15 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
             eval_cache::AttrCursor & visitor,
             const std::vector<std::string> & attrPath,
             const std::string & headerPrefix,
-            const std::string & nextPrefix)> visit;
+            const std::string & nextPrefix,
+            NeverAsync)> visit;
 
         visit = [&](
             eval_cache::AttrCursor & visitor,
             const std::vector<std::string> & attrPath,
             const std::string & headerPrefix,
-            const std::string & nextPrefix)
+            const std::string & nextPrefix,
+            NeverAsync)
             -> JSON
         {
             auto j = JSON::object();
@@ -1209,7 +1212,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                 fmt("evaluating '%s'", concatStringsSep(".", attrPath)));
 
             try {
-                auto recurse = [&]()
+                auto recurse = [&](NeverAsync = {})
                 {
                     if (!json)
                         logger->cout("%s", headerPrefix);
@@ -1226,12 +1229,12 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                         attrPath2.push_back(attr);
                         auto j2 = visit(*visitor2, attrPath2,
                             fmt(ANSI_GREEN "%s%s" ANSI_NORMAL ANSI_BOLD "%s" ANSI_NORMAL, nextPrefix, last ? treeLast : treeConn, attr),
-                            nextPrefix + (last ? treeNull : treeLine));
+                            nextPrefix + (last ? treeNull : treeLine), {});
                         if (json) j.emplace(attr, std::move(j2));
                     }
                 };
 
-                auto showDerivation = [&]()
+                auto showDerivation = [&](NeverAsync = {})
                 {
                     auto name = visitor.getAttr(*state, "name")->getString(*state);
                     std::optional<std::string> description;
@@ -1410,7 +1413,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
 
         auto cache = openEvalCache(*evaluator, flake);
 
-        auto j = visit(*cache->getRoot(), {}, fmt(ANSI_BOLD "%s" ANSI_NORMAL, flake->flake.lockedRef), "");
+        auto j = visit(*cache->getRoot(), {}, fmt(ANSI_BOLD "%s" ANSI_NORMAL, flake->flake.lockedRef), "", {});
         if (json)
             logger->cout("%s", j.dump());
     }

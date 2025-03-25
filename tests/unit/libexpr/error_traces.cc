@@ -1,6 +1,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "lix/libutil/types.hh"
 #include "tests/libexpr.hh"
 
 namespace nix {
@@ -12,19 +13,23 @@ namespace nix {
 
     TEST_F(ErrorTraceTest, TraceBuilder) {
         ASSERT_THROW(
-            evaluator.errors.make<EvalError>("puppy").debugThrow(),
+            evaluator.errors.make<EvalError>("puppy").debugThrow(always_progresses),
             EvalError
         );
 
         ASSERT_THROW(
-            evaluator.errors.make<EvalError>("puppy").withTrace(noPos, "doggy").debugThrow(),
+            evaluator.errors.make<EvalError>("puppy")
+                .withTrace(noPos, "doggy")
+                .debugThrow(always_progresses),
             EvalError
         );
 
         ASSERT_THROW(
             try {
                 try {
-                    evaluator.errors.make<EvalError>("puppy").withTrace(noPos, "doggy").debugThrow();
+                    evaluator.errors.make<EvalError>("puppy")
+                        .withTrace(noPos, "doggy")
+                        .debugThrow(always_progresses);
                 } catch (Error & e) {
                     e.addTrace(evaluator.positions[noPos], "beans");
                     throw;
@@ -47,10 +52,12 @@ namespace nix {
 
     TEST_F(ErrorTraceTest, NestedThrows) {
         try {
-            evaluator.errors.make<EvalError>("puppy").withTrace(noPos, "doggy").debugThrow();
+            evaluator.errors.make<EvalError>("puppy")
+                .withTrace(noPos, "doggy")
+                .debugThrow(always_progresses);
         } catch (BaseError & e) {
             try {
-                evaluator.errors.make<EvalError>("beans").debugThrow();
+                evaluator.errors.make<EvalError>("beans").debugThrow(always_progresses);
             } catch (Error & e2) {
                 e.addTrace(evaluator.positions[noPos], "beans2");
                 //e2.addTrace(state.positions[noPos], "Something", "");

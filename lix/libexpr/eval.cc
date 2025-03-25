@@ -1,5 +1,6 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/eval-settings.hh"
+#include "lix/libstore/path.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/ansicolor.hh"
 #include "lix/libutil/async.hh"
@@ -337,7 +338,7 @@ Evaluator::Evaluator(
           debugRepl ? std::make_unique<DebugState>(
               positions,
               symbols,
-              [this, debugRepl](const ValMap & extraEnv) {
+              [this, debugRepl](const ValMap & extraEnv, NeverAsync) {
                   return activeEval
                       ? debugRepl(*activeEval, extraEnv)
                       : ReplExitStatus::Continue;
@@ -731,7 +732,9 @@ public:
     }
 };
 
-void DebugState::onEvalError(const EvalError * error, const Env & env, const Expr & expr)
+void DebugState::onEvalError(
+    const EvalError * error, const Env & env, const Expr & expr, NeverAsync
+)
 {
     // Make sure we have a debugger to run and we're not already in a debugger.
     if (inDebugger)
@@ -765,7 +768,7 @@ void DebugState::onEvalError(const EvalError * error, const Env & env, const Exp
     if (se) {
         auto vm = mapStaticEnvBindings(symbols, *se.get(), env);
         DebuggerGuard _guard(inDebugger);
-        auto exitStatus = errorCallback(*vm);
+        auto exitStatus = errorCallback(*vm, {});
         switch (exitStatus) {
             case ReplExitStatus::QuitAll:
                 if (error)
@@ -2458,7 +2461,7 @@ std::pair<SingleDerivedPath, std::string_view> EvalState::coerceToSingleDerivedP
         [&](NixStringContextElem::DrvDeep &&) -> SingleDerivedPath {
             ctx.errors.make<EvalError>(
                 "string '%s' has a context which refers to a complete source and binary closure. This is not supported at this time",
-                s).withTrace(pos, errorCtx).debugThrow();
+                s).withTrace(pos, errorCtx).debugThrow(always_progresses);
         },
         [&](NixStringContextElem::Built && b) -> SingleDerivedPath {
             return std::move(b);
@@ -2484,13 +2487,13 @@ SingleDerivedPath EvalState::coerceToSingleDerivedPath(const PosIdx pos, Value &
                 ctx.errors.make<EvalError>(
                     "path string '%s' has context with the different path '%s'",
                     s, sExpected)
-                    .withTrace(pos, errorCtx).debugThrow();
+                    .withTrace(pos, errorCtx).debugThrow(always_progresses);
             },
             [&](const SingleDerivedPath::Built & b) {
                 ctx.errors.make<EvalError>(
                     "string '%s' has context with the output '%s' from derivation '%s', but the string is not the right placeholder for this derivation output. It should be '%s'",
                     s, b.output, b.drvPath->to_string(*ctx.store), sExpected)
-                    .withTrace(pos, errorCtx).debugThrow();
+                    .withTrace(pos, errorCtx).debugThrow(always_progresses);
             }
         }, derivedPath.raw());
     }
