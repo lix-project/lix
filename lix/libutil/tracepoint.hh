@@ -15,10 +15,13 @@
 
 #include "lix/config.h"
 
-// NOTE: glib disables this for the clang static analyzer, idk if we need to also
-#if HAVE_DTRACE
+// The clang static analyzer is busted on these and throws reserved-identifier
+// lints at the crimes they put in the headers. Oh well.
+#if HAVE_DTRACE && !defined(__clang_analyzer__)
+#define ENABLE_DTRACE 1
 #define TRACE(body) body
 #include <sys/sdt.h>
 #else
+#define ENABLE_DTRACE 0
 #define TRACE(body)
 #endif
