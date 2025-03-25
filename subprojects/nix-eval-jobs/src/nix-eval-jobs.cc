@@ -216,10 +216,11 @@ void handleBrokenWorkerPipe(Proc &proc, std::string_view msg, bool retry = true)
                         "(possible infinite recursion)",
                         msg);
 #endif
+                default:
+                    throw Error(
+                        "while %s, evaluation worker got killed by signal %d (%s)",
+                        msg, WTERMSIG(status), strsignal(WTERMSIG(status)));
                 }
-                throw Error(
-                    "while %s, evaluation worker got killed by signal %d (%s)",
-                    msg, WTERMSIG(status), strsignal(WTERMSIG(status)));
             } // else ignore WIFSTOPPED and WIFCONTINUED
         }
     }
