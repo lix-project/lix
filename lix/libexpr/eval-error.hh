@@ -89,9 +89,14 @@ public:
     addTrace(PosIdx pos, std::string_view formatString, const Args &... formatArgs) &&;
 
     /**
-     * Throw the underlying exception.
+     * Throw the underlying exception, invoking the debug state callback.
      */
     [[gnu::noinline, gnu::noreturn]] void debugThrow() &&;
+
+    /**
+     * Throw the underlying exception, bypassing the debug state callback.
+     */
+    [[gnu::noinline, gnu::noreturn]] void throw_() &&;
 };
 
 }

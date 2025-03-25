@@ -85,6 +85,12 @@ void EvalErrorBuilder<T>::debugThrow() &&
     throw *error;
 }
 
+template<class T>
+void EvalErrorBuilder<T>::throw_() &&
+{
+    throw *error;
+}
+
 template class EvalErrorBuilder<EvalError>;
 template class EvalErrorBuilder<AssertionError>;
 template class EvalErrorBuilder<ThrownError>;

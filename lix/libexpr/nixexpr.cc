@@ -362,7 +362,7 @@ void ExprVar::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & 
         es.errors.make<UndefinedVarError>(
             "undefined variable '%1%'",
             es.symbols[name]
-        ).atPos(pos).debugThrow();
+        ).atPos(pos).throw_();
     for (auto * e = env.get(); e && !fromWith; e = e->up)
         fromWith = e->isWith;
     this->level = withLevel;
