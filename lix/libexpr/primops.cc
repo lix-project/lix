@@ -42,23 +42,17 @@ namespace nix {
  * Miscellaneous
  *************************************************************/
 
-kj::Promise<Result<StringMap>> EvalPaths::realiseContext(const NixStringContext & context)
-try {
+StringMap EvalState::realiseContext(const NixStringContext & context)
+{
     std::vector<DerivedPath::Built> drvs;
     StringMap res;
 
     for (auto & c : context) {
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-        auto ensureValid = [&](const StorePath & p) -> kj::Promise<Result<void>> {
-            try {
-                if (!TRY_AWAIT(store->isValidPath(p)))
-                    errors.make<InvalidPathError>(store->printStorePath(p)).debugThrow();
-                co_return result::success();
-            } catch (...) {
-                co_return result::current_exception();
-            }
+        auto ensureValid = [&](const StorePath & p) {
+            if (!aio.blockOn(ctx.store->isValidPath(p)))
+                ctx.errors.make<InvalidPathError>(ctx.store->printStorePath(p)).debugThrow();
         };
-        TRY_AWAIT(std::visit(overloaded {
+        std::visit(overloaded {
             [&](const NixStringContextElem::Built & b) {
                 drvs.push_back(DerivedPath::Built {
                     .drvPath = b.drvPath,
@@ -67,36 +61,36 @@ try {
                 return ensureValid(b.drvPath->getBaseStorePath());
             },
             [&](const NixStringContextElem::Opaque & o) {
-                auto ctxS = store->printStorePath(o.path);
+                auto ctxS = ctx.store->printStorePath(o.path);
                 res.insert_or_assign(ctxS, ctxS);
                 return ensureValid(o.path);
             },
             [&](const NixStringContextElem::DrvDeep & d) {
                 /* Treat same as Opaque */
-                auto ctxS = store->printStorePath(d.drvPath);
+                auto ctxS = ctx.store->printStorePath(d.drvPath);
                 res.insert_or_assign(ctxS, ctxS);
                 return ensureValid(d.drvPath);
             },
-        }, c.raw));
+        }, c.raw);
     }
 
-    if (drvs.empty()) co_return StringMap{};
+    if (drvs.empty()) return StringMap{};
 
     if (!evalSettings.enableImportFromDerivation)
-        errors.make<EvalError>(
+        ctx.errors.make<EvalError>(
             "cannot build '%1%' during evaluation because the option 'allow-import-from-derivation' is disabled",
-            drvs.begin()->to_string(*store)
+            drvs.begin()->to_string(*ctx.store)
         ).debugThrow();
 
     /* Build/substitute the context. */
     std::vector<DerivedPath> buildReqs;
     for (auto & d : drvs) buildReqs.emplace_back(DerivedPath { d });
-    TRY_AWAIT(buildStore->buildPaths(buildReqs, bmNormal, store));
+    aio.blockOn(ctx.buildStore->buildPaths(buildReqs, bmNormal, ctx.store));
 
     StorePathSet outputsToCopyAndAllow;
 
     for (auto & drv : drvs) {
-        auto outputs = TRY_AWAIT(resolveDerivedPath(*buildStore, drv, &*store));
+        auto outputs = aio.blockOn(resolveDerivedPath(*ctx.buildStore, drv, &*ctx.store));
         for (auto & [outputName, outputPath] : outputs) {
             outputsToCopyAndAllow.insert(outputPath);
 
@@ -108,24 +102,22 @@ try {
                             .drvPath = drv.drvPath,
                             .output = outputName,
                         }).render(),
-                    buildStore->printStorePath(outputPath)
+                    ctx.buildStore->printStorePath(outputPath)
                 );
             }
         }
     }
 
-    if (store != buildStore) TRY_AWAIT(copyClosure(*buildStore, *store, outputsToCopyAndAllow));
-    if (allowedPaths) {
-        for (auto & outputPath : outputsToCopyAndAllow) {
-            /* Add the output of this derivations to the allowed
-               paths. */
-            allowPath(outputPath);
-        }
+    if (ctx.store != ctx.buildStore) {
+        aio.blockOn(copyClosure(*ctx.buildStore, *ctx.store, outputsToCopyAndAllow));
+    }
+    for (auto & outputPath : outputsToCopyAndAllow) {
+        /* Add the output of this derivations to the allowed
+            paths. */
+        ctx.paths.allowPath(outputPath);
     }
 
-    co_return res;
-} catch (...) {
-    co_return result::current_exception();
+    return res;
 }
 
 static auto realisePath(EvalState & state, const PosIdx pos, Value & v, auto checkFn)
@@ -135,7 +127,7 @@ static auto realisePath(EvalState & state, const PosIdx pos, Value & v, auto che
     auto path = state.coerceToPath(noPos, v, context, "while realising the context of a path");
 
     try {
-        StringMap rewrites = state.aio.blockOn(state.ctx.paths.realiseContext(context));
+        StringMap rewrites = state.realiseContext(context);
 
         return checkFn(SourcePath(CanonPath(
             state.ctx.paths.toRealPath(rewriteStrings(path.canonical().abs(), rewrites), context)
@@ -332,7 +324,7 @@ void prim_exec(EvalState & state, const PosIdx pos, Value * * args, Value & v)
                         false, false).toOwned());
     }
     try {
-        auto _ = state.aio.blockOn(state.ctx.paths.realiseContext(context)); // FIXME: Handle CA derivations
+        auto _ = state.realiseContext(context); // FIXME: Handle CA derivations
     } catch (InvalidPathError & e) {
         e.addTrace(state.ctx.positions[pos], "while realising the context for builtins.exec");
         throw;
@@ -1328,7 +1320,7 @@ static void prim_findFile(EvalState & state, const PosIdx pos, Value * * args, V
                 false, false).toOwned();
 
         try {
-            auto rewrites = state.aio.blockOn(state.ctx.paths.realiseContext(context));
+            auto rewrites = state.realiseContext(context);
             path = rewriteStrings(path, rewrites);
         } catch (InvalidPathError & e) {
             state.ctx.errors.make<EvalError>(
@@ -1520,7 +1512,7 @@ static void addPath(
     try {
         // FIXME: handle CA derivation outputs (where path needs to
         // be rewritten to the actual output).
-        auto rewrites = state.aio.blockOn(state.ctx.paths.realiseContext(context));
+        auto rewrites = state.realiseContext(context);
         path = rewriteStrings(path, rewrites);
 
         Path realPath = path;

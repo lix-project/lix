@@ -280,12 +280,10 @@ EvalBuiltins::EvalBuiltins(
 EvalPaths::EvalPaths(
     AsyncIoRoot & aio,
     const ref<Store> & store,
-    const ref<Store> buildStore,
     SearchPath searchPath,
     EvalErrorContext & errors
 )
     : store(store)
-    , buildStore(buildStore)
     , searchPath_(std::move(searchPath))
     , errors(errors)
 {
@@ -321,7 +319,7 @@ Evaluator::Evaluator(
     std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl
 )
     : s(symbols)
-    , paths(aio, store, buildStore ? ref(buildStore) : store, [&] {
+    , paths(aio, store, [&] {
         SearchPath searchPath;
         if (!evalSettings.pureEval) {
             for (auto & i : _searchPath.elements)
@@ -334,6 +332,7 @@ Evaluator::Evaluator(
     , builtins(mem, symbols, paths.searchPath(), store->config().storeDir)
     , repair(NoRepair)
     , store(store)
+    , buildStore(buildStore ? ref(buildStore) : store)
     , debug{
           debugRepl ? std::make_unique<DebugState>(
               positions,

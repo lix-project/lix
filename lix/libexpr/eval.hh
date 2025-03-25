@@ -365,10 +365,6 @@ struct EvalErrorContext
 class EvalPaths
 {
     ref<Store> store;
-    /**
-     * Store used to build stuff.
-     */
-    ref<Store> buildStore;
     SearchPath searchPath_;
     EvalErrorContext & errors;
 
@@ -376,7 +372,6 @@ public:
     EvalPaths(
         AsyncIoRoot & aio,
         const ref<Store> & store,
-        const ref<Store> buildStore,
         SearchPath searchPath,
         EvalErrorContext & errors
     );
@@ -484,12 +479,6 @@ public:
      * single `NixStringContextElem::Opaque` element of that store path.
      */
     void mkStorePathString(const StorePath & storePath, Value & v);
-
-    /**
-     * Realise the given context, and return a mapping from the placeholders
-     * used to construct the associated value to their final store path
-     */
-    [[nodiscard]] kj::Promise<Result<StringMap>> realiseContext(const NixStringContext & context);
 };
 
 struct EvalStatistics
@@ -539,6 +528,11 @@ public:
      * Store used to materialise .drv files.
      */
     const ref<Store> store;
+
+    /**
+     * Store used to build stuff.
+     */
+    ref<Store> buildStore;
 
     std::unique_ptr<DebugState> debug;
     EvalErrorContext errors;
@@ -712,6 +706,12 @@ public:
     std::string_view forceString(Value & v, const PosIdx pos, std::string_view errorCtx);
     std::string_view forceString(Value & v, NixStringContext & context, const PosIdx pos, std::string_view errorCtx);
     std::string_view forceStringNoCtx(Value & v, const PosIdx pos, std::string_view errorCtx);
+
+    /**
+     * Realise the given context, and return a mapping from the placeholders
+     * used to construct the associated value to their final store path
+     */
+    [[nodiscard]] StringMap realiseContext(const NixStringContext & context);
 
 public:
     /**
