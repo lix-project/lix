@@ -265,6 +265,11 @@ configdata += {
   'HAVE_SECCOMP': seccomp.found().to_int(),
 }
 
+# fcntl(F_GETPATH) returns the path of an fd on macOS and BSDs
+configdata += {
+  'HAVE_F_GETPATH': cxx.has_header_symbol('fcntl.h', 'F_GETPATH').to_int(),
+}
+
 libarchive = dependency('libarchive', required : true, include_type : 'system')
 
 brotli = [
