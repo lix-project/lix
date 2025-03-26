@@ -839,8 +839,13 @@ void LocalDerivationGoal::initTmpDir() {
                 auto hash = hashString(HashType::SHA256, i.first);
                 std::string fn = ".attr-" + hash.to_string(Base::Base32, false);
                 Path p = tmpDir + "/" + fn;
-                writeFile(p, rewriteStrings(i.second, inputRewrites));
-                chownToBuilder(p);
+                /* TODO(jade): we should have BorrowedFD instead of OwnedFD. */
+                AutoCloseFD passAsFileFd{openat(tmpDirFd.get(), fn.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC | O_EXCL | O_NOFOLLOW, 0666)};
+                if (!passAsFileFd) {
+                    throw SysError("opening `passAsFile` file in the sandbox '%1%'", p);
+                }
+                writeFile(passAsFileFd, rewriteStrings(i.second, inputRewrites));
+                chownToBuilder(passAsFileFd);
                 env[i.first + "Path"] = tmpDirInSandbox + "/" + fn;
             }
         }
