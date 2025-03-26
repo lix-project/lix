@@ -191,11 +191,10 @@ LockFile LockFile::read(const Path & path)
         return LockFile();
     }
     try {
-        return LockFile(JSON::parse(readFile(path)), path);
-    } catch (JSON::parse_error &nlohmann_json_parse_exc) {
-       auto json_parse_error = JSONParseError(nlohmann_json_parse_exc.what());
+        return LockFile(json::parse(readFile(path)), path);
+    } catch (json::ParseError &json_parse_error) {
        json_parse_error.addTrace(nullptr, "while parsing the lock file at %s", path);
-       throw json_parse_error;
+       throw;
     }
 }
 

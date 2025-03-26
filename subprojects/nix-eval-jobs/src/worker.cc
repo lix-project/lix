@@ -160,7 +160,7 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
                     s.data());
             abort();
         }
-        auto path = nix::JSON::parse(s.substr(3));
+        auto path = nix::json::parse(s.substr(3));
         auto attrPathS = attrPathJoin(path);
 
         /* Evaluate it and send info back to the collector. */

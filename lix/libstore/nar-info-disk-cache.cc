@@ -306,7 +306,7 @@ public:
 
             auto realisation =
                 std::make_shared<Realisation>(Realisation::fromJSON(
-                    JSON::parse(queryRealisation.getStr(0)),
+                    json::parse(queryRealisation.getStr(0), "a nar cache entry"),
                     "Local disk cache"));
 
             return {oValid, realisation};

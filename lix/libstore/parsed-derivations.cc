@@ -14,7 +14,7 @@ ParsedDerivation::ParsedDerivation(const StorePath & drvPath, BasicDerivation & 
     auto jsonAttr = drv.env.find("__json");
     if (jsonAttr != drv.env.end()) {
         try {
-            structuredAttrs = std::make_unique<JSON>(JSON::parse(jsonAttr->second));
+            structuredAttrs = std::make_unique<JSON>(json::parse(jsonAttr->second));
         } catch (std::exception & e) {
             throw Error("cannot process __json attribute of '%s': %s", drvPath.to_string(), e.what());
         }

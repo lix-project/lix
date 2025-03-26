@@ -50,7 +50,7 @@ struct NarAccessor : public FSAccessor
             } else return;
         };
 
-        JSON v = JSON::parse(listing);
+        JSON v = json::parse(listing, "a nar content listing");
         recurse(root, v);
     }
 

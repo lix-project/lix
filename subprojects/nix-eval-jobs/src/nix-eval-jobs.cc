@@ -262,9 +262,9 @@ void collector(MyArgs &myArgs, Sync<State> &state_,
                 continue;
             } else if (s != "next") {
                 try {
-                    auto json = JSON::parse(s);
+                    auto json = json::parse(s);
                     throw Error("worker error: %s", (std::string)json["error"]);
-                } catch (const JSON::exception &e) {
+                } catch (const json::ParseError &e) {
                     throw Error(
                         "Received invalid JSON from worker: %s\n json: '%s'",
                         e.what(), s);
@@ -308,8 +308,8 @@ void collector(MyArgs &myArgs, Sync<State> &state_,
             }
             JSON response;
             try {
-                response = JSON::parse(respString);
-            } catch (const JSON::exception &e) {
+                response = json::parse(respString);
+            } catch (const json::ParseError &e) {
                 throw Error(
                     "Received invalid JSON from worker: %s\n json: '%s'",
                     e.what(), respString);

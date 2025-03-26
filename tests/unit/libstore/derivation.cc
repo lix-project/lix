@@ -77,7 +77,7 @@ TEST_F(DynDerivationTest, BadATerm_oldVersionDynDeps) {
         }                                                                 \
         else                                                              \
         {                                                                 \
-            auto encoded = JSON::parse(                                   \
+            auto encoded = json::parse(                                   \
                 readFile(goldenMaster("output-" #NAME ".json")));         \
             DerivationOutput got = DerivationOutput::fromJSON(            \
                 *store,                                                   \
@@ -106,7 +106,7 @@ TEST_F(DynDerivationTest, BadATerm_oldVersionDynDeps) {
         }                                                                 \
         else                                                              \
         {                                                                 \
-            auto expected = JSON::parse(readFile(file));                  \
+            auto expected = json::parse(readFile(file));                  \
             ASSERT_EQ(got, expected);                                     \
         }                                                                 \
     }
@@ -171,7 +171,7 @@ TEST_JSON(ImpureDerivationTest, impure,
         }                                                                 \
         else                                                              \
         {                                                                 \
-            auto encoded = JSON::parse(                                   \
+            auto encoded = json::parse(                                   \
                 readFile(goldenMaster( #NAME ".json")));                  \
             Derivation expected { VAL };                                  \
             Derivation got = Derivation::fromJSON(                        \
@@ -195,7 +195,7 @@ TEST_JSON(ImpureDerivationTest, impure,
         }                                                                 \
         else                                                              \
         {                                                                 \
-            auto expected = JSON::parse(readFile(file));                  \
+            auto expected = json::parse(readFile(file));                  \
             ASSERT_EQ(got, expected);                                     \
         }                                                                 \
     }

@@ -174,7 +174,7 @@ namespace nix {
         setting.override("value");
 
         ASSERT_EQ(config.toJSON(),
-          JSON::parse(R"#({
+          json::parse(R"#({
             "name-of-the-setting": {
               "aliases": [],
               "defaultValue": "",
@@ -200,7 +200,7 @@ namespace nix {
         setting.override("value");
 
         ASSERT_EQ(config.toJSON(),
-          JSON::parse(R"#({
+          json::parse(R"#({
             "name-of-the-setting": {
               "aliases": [],
               "defaultValue": "",

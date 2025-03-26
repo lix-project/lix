@@ -88,7 +88,7 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
             nix::printValueAsJSON(state, true, *metaValue, nix::noPos, ss,
                                   context);
 
-            meta_[metaName] = nix::JSON::parse(ss.str());
+            meta_[metaName] = nix::json::parse(ss.str());
         }
         meta = meta_;
     }

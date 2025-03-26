@@ -275,7 +275,7 @@ std::optional<JSON> parseJSONMessage(const std::string & msg, std::string_view s
 {
     if (!msg.starts_with("@nix ")) return std::nullopt;
     try {
-        return JSON::parse(std::string(msg, 5));
+        return json::parse(std::string(msg, 5));
     } catch (std::exception & e) {
         printError("bad JSON log message from %s: %s",
             Uncolored(source),

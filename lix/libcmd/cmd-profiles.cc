@@ -111,7 +111,7 @@ ProfileManifest::ProfileManifest(EvalState & state, const Path & profile)
     auto manifestPath = profile + "/manifest.json";
 
     if (pathExists(manifestPath)) {
-        auto json = JSON::parse(readFile(manifestPath));
+        auto json = json::parse(readFile(manifestPath), "a profile manifest");
 
         auto version = json.value("version", 0);
         std::string sUrl;

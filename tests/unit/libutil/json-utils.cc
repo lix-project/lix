@@ -23,7 +23,7 @@ TEST(to_json, vectorOfOptionalInts) {
         std::make_optional(420),
         std::nullopt,
     };
-    ASSERT_EQ(JSON(vals), JSON::parse("[420,null]"));
+    ASSERT_EQ(JSON(vals), json::parse("[420,null]"));
 }
 
 TEST(to_json, optionalVectorOfInts) {
@@ -31,7 +31,7 @@ TEST(to_json, optionalVectorOfInts) {
         -420,
         420,
     });
-    ASSERT_EQ(JSON(val), JSON::parse("[-420,420]"));
+    ASSERT_EQ(JSON(val), json::parse("[-420,420]"));
     val = std::nullopt;
     ASSERT_EQ(JSON(val), JSON(nullptr));
 }

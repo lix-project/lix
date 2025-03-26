@@ -511,7 +511,7 @@ try {
     if (!data) co_return result::success(nullptr);
 
     auto realisation = Realisation::fromJSON(
-        JSON::parse(*data), outputInfoFilePath);
+        json::parse(*data), outputInfoFilePath);
     co_return std::make_shared<const Realisation>(realisation);
 } catch (...) {
     co_return result::current_exception();

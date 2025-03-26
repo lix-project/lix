@@ -278,9 +278,9 @@ struct GitHubInputScheme : GitArchiveInputScheme
 
         Headers headers = makeHeadersWithAuthTokens(host);
 
-        auto json = JSON::parse(readFile(store->toRealPath(
+        auto json = json::parse(readFile(store->toRealPath(
             TRY_AWAIT(downloadFile(store, url, "source", false, headers)).storePath
-        )));
+        )), "a github API response");
         auto rev = Hash::parseAny(std::string { json["sha"] }, HashType::SHA1);
         debug("HEAD revision for '%s' is %s", url, rev.gitRev());
         co_return rev;
@@ -359,9 +359,9 @@ struct GitLabInputScheme : GitArchiveInputScheme
 
         Headers headers = makeHeadersWithAuthTokens(host);
 
-        auto json = JSON::parse(readFile(store->toRealPath(
+        auto json = json::parse(readFile(store->toRealPath(
             TRY_AWAIT(downloadFile(store, url, "source", false, headers)).storePath
-        )));
+        )), "a gitlab API response");
         if (json.is_array() && json.size() >= 1 && json[0]["id"] != nullptr) {
             auto rev = Hash::parseAny(std::string(json[0]["id"]), HashType::SHA1);
             debug("HEAD revision for '%s' is %s", url, rev.gitRev());

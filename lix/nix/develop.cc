@@ -57,7 +57,7 @@ struct BuildEnvironment
 
         std::set<std::string> exported;
 
-        auto json = JSON::parse(in);
+        auto json = json::parse(in, "a build environment file");
 
         for (auto & [name, info] : json["variables"].items()) {
             std::string type = info["type"];

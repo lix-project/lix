@@ -47,7 +47,7 @@ Realisation CommonProto::Serialise<Realisation>::read(const Store & store, Commo
 {
     std::string rawInput = readString(conn.from);
     return Realisation::fromJSON(
-        JSON::parse(rawInput),
+        json::parse(rawInput),
         "remote-protocol"
     );
 }

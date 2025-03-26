@@ -27,7 +27,7 @@ struct CmdAddDerivation : MixDryRun, StoreCommand
 
     void run(ref<Store> store) override
     {
-        auto json = JSON::parse(drainFD(STDIN_FILENO));
+        auto json = json::parse(drainFD(STDIN_FILENO), "a derivation from stdin");
 
         auto drv = Derivation::fromJSON(*store, json);
 

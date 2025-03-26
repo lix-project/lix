@@ -7,10 +7,13 @@
 /// We also customize enum serialization to not automatically cast to int;
 /// nlohmann can be told to disable this only via a special global define.
 
+#include "lix/libutil/error.hh"
+#include "lix/libutil/fmt.hh"
 #include "lix/libutil/json-fwd.hh" // IWYU pragma: keep
 #include <concepts>
 #include <nlohmann/json.hpp> // IWYU pragma: keep
 #include <list>
+#include <string_view>
 #include <type_traits>
 
 namespace nix {
@@ -149,6 +152,26 @@ struct adl_serializer<std::optional<T>>
         }
     }
 };
+
+MakeError(ParseError, Error);
+
+/**
+ * Parse some JSON and throw an `Error` on failure. This make nlohmann errors
+ * more inspectable and lets us add meaningful backtraces to any json errors.
+ */
+template<typename Source>
+JSON parse(Source && source, std::optional<std::string_view> context = {})
+{
+    try {
+        return JSON::parse(std::forward<Source>(source));
+    } catch (JSON::exception & e) {
+        ParseError error{"failed to parse JSON: %s", e.what()};
+        if (context) {
+            error.addTrace(nullptr, fmt("while parsing %s", *context));
+        }
+        throw error;
+    }
+}
 }
 
 }

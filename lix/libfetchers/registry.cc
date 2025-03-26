@@ -30,7 +30,7 @@ std::shared_ptr<Registry> Registry::read(
 
     try {
 
-        auto json = JSON::parse(readFile(path));
+        auto json = json::parse(readFile(path));
 
         auto version = json.value("version", 0);
 
@@ -57,8 +57,6 @@ std::shared_ptr<Registry> Registry::read(
         else
             throw Error("flake registry '%s' has unsupported version %d", path, version);
 
-    } catch (JSON::exception & e) {
-        warn("cannot parse flake registry '%s': %s", path, e.what());
     } catch (Error & e) {
         warn("cannot read flake registry '%s': %s", path, e.what());
     }

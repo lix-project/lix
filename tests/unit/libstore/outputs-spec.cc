@@ -174,7 +174,7 @@ TEST(ExtendedOutputsSpec, many_carrot) {
                                                              \
     TEST(TYPE, NAME ## _to_json) {                           \
         ASSERT_EQ(                                           \
-            JSON::parse(STR),                                \
+            json::parse(STR),                                \
             /* NOLINTNEXTLINE(bugprone-macro-parentheses) */ \
             ((JSON) TYPE { VAL }));                          \
     }                                                        \
@@ -183,7 +183,7 @@ TEST(ExtendedOutputsSpec, many_carrot) {
         ASSERT_EQ(                                           \
             /* NOLINTNEXTLINE(bugprone-macro-parentheses) */ \
             TYPE { VAL },                                    \
-            JSON::parse(STR).get<TYPE>());                   \
+            json::parse(STR).get<TYPE>());                   \
     }
 
 TEST_JSON(OutputsSpec, all, R"(["*"])", OutputsSpec::All { })

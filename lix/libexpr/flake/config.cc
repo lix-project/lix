@@ -18,7 +18,7 @@ static TrustedList readTrustedList()
 {
     auto path = trustedListPath();
     if (!pathExists(path)) return {};
-    auto json = JSON::parse(readFile(path));
+    auto json = json::parse(readFile(path), "trusted flake settings");
     return json;
 }
 
