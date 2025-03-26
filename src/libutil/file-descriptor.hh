@@ -36,6 +36,15 @@ void writeFull(int fd, std::string_view s, bool allowInterrupts = true);
  */
 std::string drainFD(int fd, bool block = true, const size_t reserveSize=0);
 
+
+/*
+ * Will attempt to guess *A* path associated that might lead to the same file as used by this
+ * file descriptor.
+ *
+ * The returned string should NEVER be used as a valid path.
+ */
+std::string guessOrInventPathFromFD(int fd);
+
 Generator<Bytes> drainFDSource(int fd, bool block = true);
 
 class AutoCloseFD
@@ -50,6 +59,15 @@ public:
     AutoCloseFD& operator =(const AutoCloseFD & fd) = delete;
     AutoCloseFD& operator =(AutoCloseFD&& fd) noexcept(false);
     int get() const;
+
+    /*
+     * Will attempt to guess *A* path associated that might lead to the same file as used by this
+     * file descriptor.
+     *
+     * The returned string should NEVER be used as a valid path.
+     */
+    std::string guessOrInventPath() const { return guessOrInventPathFromFD(fd); }
+
     explicit operator bool() const;
     int release();
     void close();
