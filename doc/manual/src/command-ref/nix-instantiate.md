@@ -11,7 +11,7 @@
   [{`--attr`| `-A`} *attrPath*]
   [`--add-root` *path*]
   [`--expr` | `-E`]
-  *files…*
+  *fileish…*
 
 `nix-instantiate` `--find-file` *files…*
 
@@ -25,8 +25,11 @@ of the resulting store derivations are printed on standard output.
 
 [store derivation]: ../glossary.md#gloss-store-derivation
 
-If *files* is the character `-`, then a Nix expression will be read from
-standard input.
+If *fileish* is the character `-`, then a Nix expression will be read from standard input.
+Otherwise, each *fileish* is interpreted the same as with [nix-build](./nix-build.md#fileish-syntax).
+See that section for complete details (`nix-build --help`), but in summary, a path argument may be one of:
+
+{{#include ./fileish-summary.md}}
 
 # Options
 

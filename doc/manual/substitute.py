@@ -1,15 +1,33 @@
 #!/usr/bin/env python3
+"""
+Preprocesses mdbook markdown, primarily for include directives.
+
+The include directive format is as follows:
+    {{#include foo/bar/baz.md}}
+
+The content of includes will be indented as much as the directive itself.
+
+Including a generated file (from building Lix; generally for the 'new' CLI):
+    {{#include @generated@/foo/bar/baz.md}}
+"""
 
 from pathlib import Path
 import json
 import os, os.path
 import sys
+import textwrap
 
 name = 'substitute.py'
 
 def log(*args, **kwargs):
     kwargs['file'] = sys.stderr
     return print(f'{name}:', *args, **kwargs)
+
+def remove_prefix_if_present(s: str, prefix: str) -> str | None:
+    if s.startswith(prefix):
+        return s.removeprefix(prefix)
+    else:
+        return None
 
 def do_include(content: str, relative_md_path: Path, source_root: Path, search_path: Path):
     assert not relative_md_path.is_absolute(), f'{relative_md_path=} from mdbook should be relative'
@@ -20,16 +38,32 @@ def do_include(content: str, relative_md_path: Path, source_root: Path, search_p
 
     lines = []
     for l in content.splitlines(keepends=True):
-        if l.strip().startswith("{{#include "):
-            requested = l.strip()[11:][:-2]
-            if requested.startswith("@generated@/"):
-                included = search_path / Path(requested[12:])
+        if remain := remove_prefix_if_present(l.strip(), "{{#include"):
+            requested = remain[1:-2]
+            # We indent bodies of indent directives by the indent of the
+            # directive itself.
+            num_leading_indent = len(l) - len(l.lstrip())
+
+            if subpath := remove_prefix_if_present(requested, "@generated@/"):
+                included = search_path / Path(subpath)
                 requested = included.relative_to(search_path)
             else:
                 included = source_root / relative_md_path.parent / requested
                 requested = included.resolve().relative_to(source_root)
             assert included.exists(), f"{requested} not found at {included}"
-            lines.append(do_include(included.read_text(), requested, source_root, search_path) + "\n")
+
+            lines.append(
+                textwrap.indent(
+                    do_include(
+                        included.read_text(),
+                        requested,
+                        source_root,
+                        search_path,
+                    ),
+                    " " * num_leading_indent
+                )
+                + "\n"
+            )
         else:
             lines.append(l)
     return "".join(lines)

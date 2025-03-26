@@ -90,7 +90,7 @@ The following types of installable are supported by most commands:
   - This is the default
 - [Store path](#store-path)
   - This is assumed if the argument is a Nix store path or a symlink to a Nix store path
-- [Nix file](#nix-file), optionally qualified by an attribute path
+- [Fileish](#nix-file), optionally qualified by an attribute path
   - Specified with `--file`/`-f`
 - [Nix expression](#nix-expression), optionally qualified by an attribute path
   - Specified with `--expr`/`-E`
@@ -182,19 +182,57 @@ All outputs can be referred to at once with the special syntax `^*`.
 
 Example: `/nix/store/p7gp6lxdg32h4ka1q398wd9r2zkbbz2v-hello-2.10.drv^*`
 
-### Nix file
+### Fileish {#nix-file}
 
 Example: `--file /path/to/nixpkgs hello`
 
-When the option `-f` / `--file` *path* \[*attrpath*...\] is given, installables are interpreted as the value of the expression in the Nix file at *path*.
+When the option `-f` / `--file` *fileish* \[*attrpath*...\] is given, installables are interpreted as the value of the Nix file specified by *fileish*.
 If attribute paths are provided, commands will operate on the corresponding values accessible at these paths.
 The Nix expression in that file, or any selected attribute, must evaluate to a derivation.
+
+The *fileish* itself may take one of a few different forms, the first being a simple filesystem path, e.g. `nix build -f /tmp/some-file.nix`.
+Like the [import builtin](../../language/builtins.md#builtins-import), specifying a directory is equivalent to specify `default.nix` within that directory.
+It may also be a [search path](../env-common.md#env-NIX_PATH) (also known as a lookup path), like `<nixpkgs>`.
+Unlike using `<nixpkgs>` in a `--expr` argument, this does not require `--impure`.
 
 To emulate the `nix-build '<nixpkgs>' -A hello` pattern, use:
 
 ```console
 $ nix build -f '<nixpkgs>' hello
 ```
+
+If a *fileish* starts with `http://` or `https://`, it is interpreted as the URL of a tarball which will be fetched and unpacked.
+Lix will then `import` the unpacked directory, so these tarballs must include at least a single top-level directory with a file called `default.nix`.
+For example, you could build from a specific version of Nixpkgs with something like:
+
+```console
+$ nix build -f "https://github.com/NixOS/nixpkgs/archive/refs/heads/release-24.11.tar.gz" firefox
+```
+
+If a *fileish* starts with `flake:`, the rest of the argument is interpreted as a [flakeref](./nix3-flake.md#flake-reference) (see `nix flake --help` or `man nix3-flake`), which requires the "flakes" experimental feature to be enabled.
+This is is *not quite* the same as specifying a [flake output attrpath](#flake-output-attribute).
+It does *not* access the flake directly and does not even consider the existence of flake.nix, but instead fetches it as if it is not a flake at all and `import`s the unpacked directory.
+In other words, it assumes that the flake has a `default.nix` file, and then interprets the attribute path relative to what `default.nix` evaluates to.
+
+For many flakes — including Nixpkgs — this will end up evaluating to the same thing.
+These two commands build the same derivation, but one from the flake, and the other from `default.nix`:
+
+```console
+$ nix build 'nixpkgs#firefox' # from flake.nix
+$ nix build -f flake:nixpkgs firefox # from default.nix in the flake directory; ignores flake.nix altogether
+```
+
+Finally, for legacy reasons, if a *fileish* starts with `channel:`, the rest of the argument is interpreted as the name of a channel to fetch from `https://nixos.org/channels/$CHANNEL_NAME/nixexprs.tar.gz`.
+This is a **hard coded URL** pattern and is *not* related to the subscribed channels managed by the [nix-channel](../nix-channel.md) command.
+
+<!-- XXX(jade): it is my understanding that although a lot of content here is duplicated from nix-build.md, THESE ARE NOT THE SAME BAD PARSER AAAAAAAAAAAA -->
+
+> **Note**: any of the special syntaxes may always be disambiguated by prefixing the path.
+> For example: a file in the current directory literally called `<nixpkgs>` can be addressed as `./<nixpkgs>`, to escape the special interpretation.
+
+In summary, a file path argument may be one of:
+
+{{#include ../fileish-summary.md}}
 
 ### Nix expression
 

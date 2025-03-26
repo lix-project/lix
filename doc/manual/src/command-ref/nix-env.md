@@ -8,7 +8,7 @@
   [`--option` *name* *value*]
   [`--arg` *name* *value*]
   [`--argstr` *name* *value*]
-  [{`--file` | `-f`} *path*]
+  [{`--file` | `-f`} *fileish*]
   [{`--profile` | `-p`} *path*]
   [`--system-filter` *system*]
   [`--dry-run`]
