@@ -188,9 +188,16 @@ Generator<Bytes> readFileSource(const Path & path);
 /**
  * Write a string to a file.
  */
-void writeFile(const Path & path, std::string_view s, mode_t mode = 0666, bool sync = false);
+void writeFile(const Path & path, std::string_view s, mode_t mode = 0666);
 
-void writeFile(const Path & path, Source & source, mode_t mode = 0666, bool sync = false);
+void writeFile(const Path & path, Source & source, mode_t mode = 0666);
+
+void writeFile(AutoCloseFD & fd, std::string_view s, mode_t mode = 0666);
+
+/**
+ * Write a string to a file and flush the file and its parents direcotry to disk.
+ */
+void writeFileAndSync(const Path & path, std::string_view s, mode_t mode = 0666);
 
 /**
  * Flush a file's parent directory to disk
