@@ -6,6 +6,7 @@ project('lix-clang-tidy', ['cpp', 'c'],
 llvm = dependency('Clang', version: '>= 16', modules: ['libclang'])
 sources = files(
   'CharPtrCast.cc',
+  'DisallowedDecls.cc',
   'HasPrefixSuffix.cc',
   'LixClangTidyChecks.cc',
   'NeverAsync.cc',

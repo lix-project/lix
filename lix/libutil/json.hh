@@ -163,6 +163,7 @@ template<typename Source>
 JSON parse(Source && source, std::optional<std::string_view> context = {})
 {
     try {
+        // NOLINTNEXTLINE(lix-disallowed-decls): this is the wrapper for that
         return JSON::parse(std::forward<Source>(source));
     } catch (JSON::exception & e) {
         ParseError error{"failed to parse JSON: %s", e.what()};
