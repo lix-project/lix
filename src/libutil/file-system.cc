@@ -311,17 +311,47 @@ Generator<Bytes> readFileSource(const Path & path)
 }
 
 
-void writeFile(const Path & path, std::string_view s, mode_t mode, bool sync)
+void writeFile(const Path & path, std::string_view s, mode_t mode)
 {
     AutoCloseFD fd{open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
     if (!fd)
         throw SysError("opening file '%1%'", path);
+
+    writeFile(fd, s, mode);
+
+    /* Close explicitly to propagate the exceptions. */
+    fd.close();
+}
+
+void writeFile(AutoCloseFD & fd, std::string_view s, mode_t mode)
+{
+    assert(fd);
     try {
         writeFull(fd.get(), s);
     } catch (Error & e) {
-        e.addTrace({}, "writing file '%1%'", path);
+        e.addTrace({}, "writing file '%1%'", fd.guessOrInventPath());
         throw;
     }
+}
+
+void writeFileAndSync(const Path & path, std::string_view s, mode_t mode)
+{
+    {
+        AutoCloseFD fd{open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
+        if (!fd)
+            throw SysError("opening file '%1%'", path);
+
+        writeFile(fd, s, mode);
+        fd.fsync();
+        /* Close explicitly to ensure that exceptions are propagated. */
+        fd.close();
+    }
+
+    syncParent(path);
+}
+
+static void closeForWrite(const Path & path, AutoCloseFD & fd, bool sync)
+{
     if (sync)
         fd.fsync();
     // Explicitly close to make sure exceptions are propagated.
@@ -330,8 +360,7 @@ void writeFile(const Path & path, std::string_view s, mode_t mode, bool sync)
         syncParent(path);
 }
 
-
-void writeFile(const Path & path, Source & source, mode_t mode, bool sync)
+void writeFile(const Path & path, Source & source, mode_t mode)
 {
     AutoCloseFD fd{open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
     if (!fd)
@@ -350,12 +379,8 @@ void writeFile(const Path & path, Source & source, mode_t mode, bool sync)
         e.addTrace({}, "writing file '%1%'", path);
         throw;
     }
-    if (sync)
-        fd.fsync();
-    // Explicitly close to make sure exceptions are propagated.
-    fd.close();
-    if (sync)
-        syncParent(path);
+
+    closeForWrite(path, fd, false);
 }
 
 void syncParent(const Path & path)
