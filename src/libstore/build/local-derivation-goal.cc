@@ -489,7 +489,7 @@ void LocalDerivationGoal::startBuilder()
     if (!tmpDirFd)
         throw SysError("failed to open the build temporary directory descriptor '%1%'", tmpDir);
 
-    chownToBuilder(tmpDir);
+    chownToBuilder(tmpDirFd);
 
     for (auto & [outputName, status] : initialOutputs) {
         /* Set scratch path we'll actually use during the build.
@@ -1357,6 +1357,13 @@ void LocalDerivationGoal::chownToBuilder(const Path & path)
     if (!buildUser) return;
     if (chown(path.c_str(), buildUser->getUID(), buildUser->getGID()) == -1)
         throw SysError("cannot change ownership of '%1%'", path);
+}
+
+void LocalDerivationGoal::chownToBuilder(const AutoCloseFD & fd)
+{
+    if (!buildUser) return;
+    if (fchown(fd.get(), buildUser->getUID(), buildUser->getGID()) == -1)
+        throw SysError("cannot change ownership of file '%1%'", fd.guessOrInventPath());
 }
 
 
