@@ -1721,12 +1721,6 @@ static void prim_unsafeGetAttrPos(EvalState & state, const PosIdx pos, Value * *
         state.mkPos(v, i->pos);
 }
 
-static RegisterPrimOp primop_unsafeGetAttrPos(PrimOp {
-    .name = "__unsafeGetAttrPos",
-    .arity = 2,
-    .fun = prim_unsafeGetAttrPos,
-});
-
 // access to exact position information (ie, line and colum numbers) is deferred
 // due to the cost associated with calculating that information and how rarely
 // it is used in practice. this is achieved by creating thunks to otherwise
