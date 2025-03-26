@@ -3,6 +3,8 @@
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/terminal.hh"
+#include "lix/libutil/unix-domain-socket.hh"
+#include "tests/test-data.hh"
 
 #include <gtest/gtest.h>
 
@@ -205,6 +207,85 @@ namespace nix {
 
     TEST(pathExists, bogusPathDoesNotExist) {
         ASSERT_FALSE(pathExists("/schnitzel/darmstadt/pommes"));
+    }
+
+    /* ----------------------------------------------------------------------------
+     * AutoCloseFD::guessOrInventPath
+     * --------------------------------------------------------------------------*/
+    void testGuessOrInventPathPrePostDeletion(AutoCloseFD & fd, Path & path) {
+        {
+            SCOPED_TRACE(fmt("guessing path before deletion of '%1%'", path));
+            ASSERT_TRUE(fd);
+            /* We cannot predict what the platform will return here.
+             * But it cannot fail. */
+            ASSERT_TRUE(fd.guessOrInventPath().size() >= 0);
+        }
+        {
+            SCOPED_TRACE(fmt("guessing path after deletion of '%1%'", path));
+            deletePath(path);
+            /* We cannot predict what the platform will return here.
+             * But it cannot fail. */
+            ASSERT_TRUE(fd.guessOrInventPath().size() >= 0);
+        }
+    }
+    TEST(guessOrInventPath, files) {
+        Path filePath = getUnitTestDataPath("guess-or-invent/test.txt");
+        createDirs(dirOf(filePath));
+        writeFile(filePath, "some text");
+        AutoCloseFD file{open(filePath.c_str(), O_RDONLY, 0666)};
+        testGuessOrInventPathPrePostDeletion(file, filePath);
+    }
+
+    TEST(guessOrInventPath, directories) {
+        Path dirPath = getUnitTestDataPath("guess-or-invent/test-dir");
+        createDirs(dirPath);
+        AutoCloseFD directory{open(dirPath.c_str(), O_DIRECTORY, 0666)};
+        testGuessOrInventPathPrePostDeletion(directory, dirPath);
+    }
+
+#ifdef O_PATH
+    TEST(guessOrInventPath, symlinks) {
+        Path symlinkPath = getUnitTestDataPath("guess-or-invent/test-symlink");
+        Path targetPath = getUnitTestDataPath("guess-or-invent/nowhere");
+        createDirs(dirOf(symlinkPath));
+        createSymlink(targetPath, symlinkPath);
+        AutoCloseFD symlink{open(symlinkPath.c_str(), O_PATH | O_NOFOLLOW, 0666)};
+        testGuessOrInventPathPrePostDeletion(symlink, symlinkPath);
+    }
+
+    TEST(guessOrInventPath, fifos) {
+        Path fifoPath = getUnitTestDataPath("guess-or-invent/fifo");
+        createDirs(dirOf(fifoPath));
+        ASSERT_TRUE(mkfifo(fifoPath.c_str(), 0666) == 0);
+        AutoCloseFD fifo{open(fifoPath.c_str(), O_PATH | O_NOFOLLOW, 0666)};
+        testGuessOrInventPathPrePostDeletion(fifo, fifoPath);
+    }
+#endif
+
+    TEST(guessOrInventPath, pipes) {
+        int pipefd[2];
+
+        ASSERT_TRUE(pipe(pipefd) == 0);
+
+        AutoCloseFD pipe_read{pipefd[0]};
+        ASSERT_TRUE(pipe_read);
+        AutoCloseFD pipe_write{pipefd[1]};
+        ASSERT_TRUE(pipe_write);
+
+        /* We cannot predict what the platform will return here.
+         * But it cannot fail. */
+        ASSERT_TRUE(pipe_read.guessOrInventPath().size() >= 0);
+        ASSERT_TRUE(pipe_write.guessOrInventPath().size() >= 0);
+        pipe_write.close();
+        ASSERT_TRUE(pipe_read.guessOrInventPath().size() >= 0);
+        pipe_read.close();
+    }
+
+    TEST(guessOrInventPath, sockets) {
+        Path socketPath = getUnitTestDataPath("guess-or-invent/socket");
+        createDirs(dirOf(socketPath));
+        AutoCloseFD socket = createUnixDomainSocket(socketPath, 0666);
+        testGuessOrInventPathPrePostDeletion(socket, socketPath);
     }
 
     /* ----------------------------------------------------------------------------
