@@ -202,9 +202,17 @@ struct LocalDerivationGoal : public DerivationGoal
     kj::Promise<Result<void>> writeStructuredAttrs();
 
     /**
-     * Make a file owned by the builder.
+     * Make a file owned by the builder addressed by its path.
+     *
+     * SAFETY: this function is prone to TOCTOU as it receives a path and not a descriptor.
+     * It's only safe to call in a child of a directory only visible to the owner.
      */
     void chownToBuilder(const Path & path);
+
+    /**
+     * Make a file owned by the builder addressed by its file descriptor.
+     */
+    void chownToBuilder(const AutoCloseFD & fd);
 
     int getChildStatus() override;
 
