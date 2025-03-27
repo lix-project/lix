@@ -147,6 +147,7 @@ builtin_definitions = files(
   'builtins/tryEval.md',
   'builtins/typeOf.md',
   'builtins/unsafeDiscardOutputDependency.md',
+  'builtins/unsafeGetAttrPos.md',
   'builtins/zipAttrsWith.md',
   # keep-sorted end
 )
