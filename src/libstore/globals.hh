@@ -561,6 +561,16 @@ public:
         )",
         {"build-chroot-dirs", "build-sandbox-paths"}};
 
+#if defined(__linux__)
+    Setting<Path> pastaPath{this, "", "pasta-path",
+        R"(
+            If set to an absolute path, enables fully sandboxing fixed-output
+            derivations, by using `pasta` to pass network traffic between the
+            private network namespace. This allows for greater levels of isolation
+            of builds to the host.
+        )"};
+#endif
+
     Setting<bool> sandboxFallback{this, true, "sandbox-fallback",
         "Whether to disable sandboxing when the kernel doesn't allow it."};
 

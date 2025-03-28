@@ -4,6 +4,7 @@
 #include "build/local-derivation-goal.hh"
 #include "gc-store.hh"
 #include "local-store.hh"
+#include "processes.hh"
 
 namespace nix {
 
@@ -41,7 +42,23 @@ class LinuxLocalDerivationGoal : public LocalDerivationGoal
 public:
     using LocalDerivationGoal::LocalDerivationGoal;
 
+    ~LinuxLocalDerivationGoal();
+
+    // NOTE these are all C strings because macos doesn't have constexpr std::string
+    // constructors, and std::string_view is a pain to turn into std::strings again.
+    static constexpr const char * PASTA_NS_IFNAME = "eth0";
+    static constexpr const char * PASTA_HOST_IPV4 = "169.254.1.1";
+    static constexpr const char * PASTA_CHILD_IPV4 = "169.254.1.2";
+    static constexpr const char * PASTA_IPV4_NETMASK = "16";
+    // randomly chosen 6to4 prefix, mapping the same ipv4ll as above.
+    // even if this id is used on the daemon host there should not be
+    // any collisions since ipv4ll should never be addressed by ipv6.
+    static constexpr const char * PASTA_HOST_IPV6 = "64:ff9b:1:4b8e:472e:a5c8:a9fe:0101";
+    static constexpr const char * PASTA_CHILD_IPV6 = "64:ff9b:1:4b8e:472e:a5c8:a9fe:0102";
+
 private:
+    RunningProgram pastaPid;
+
     /**
      * Create and populate chroot
      */
@@ -70,6 +87,7 @@ private:
         return true;
     }
 
+    std::string rewriteResolvConf(std::string fromHost) override;
 };
 
 }
