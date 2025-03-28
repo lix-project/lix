@@ -22,6 +22,7 @@
 #endif
 
 #ifdef __linux__
+# include <linux/capability.h>
 # include <sys/prctl.h>
 # include <sys/mman.h>
 #endif
@@ -338,6 +339,13 @@ RunningProgram runProgram2(const RunOptions & options)
 
         if (options.chdir && chdir((*options.chdir).c_str()) == -1)
             throw SysError("chdir failed");
+
+#if __linux__
+        if (!options.caps.empty() && prctl(PR_SET_KEEPCAPS, 1) < 0) {
+            throw SysError("setting keep-caps failed");
+        }
+#endif
+
         if (options.gid && setgid(*options.gid) == -1)
             throw SysError("setgid failed");
         /* Drop all other groups if we're setgid. */
@@ -345,6 +353,45 @@ RunningProgram runProgram2(const RunOptions & options)
             throw SysError("setgroups failed");
         if (options.uid && setuid(*options.uid) == -1)
             throw SysError("setuid failed");
+
+#if __linux__
+        if (!options.caps.empty()) {
+            if (prctl(PR_SET_KEEPCAPS, 0)) {
+                throw SysError("clearing keep-caps failed");
+            }
+
+            // we do the capability dance like this to avoid a dependency
+            // on libcap, which has a rather large build closure and many
+            // more features that we need for now. maybe some other time.
+            static constexpr uint32_t LINUX_CAPABILITY_VERSION_3 = 0x20080522;
+            static constexpr uint32_t LINUX_CAPABILITY_U32S_3 = 2;
+            struct user_cap_header_struct
+            {
+                uint32_t version;
+                int pid;
+            } hdr = {LINUX_CAPABILITY_VERSION_3, 0};
+            struct user_cap_data_struct
+            {
+                uint32_t effective;
+                uint32_t permitted;
+                uint32_t inheritable;
+            } data[LINUX_CAPABILITY_U32S_3] = {};
+            for (auto cap : options.caps) {
+                assert(cap / 32 < LINUX_CAPABILITY_U32S_3);
+                data[cap / 32].permitted |= 1 << (cap % 32);
+                data[cap / 32].inheritable |= 1 << (cap % 32);
+            }
+            if (syscall(SYS_capset, &hdr, data)) {
+                throw SysError("couldn't set capabilities");
+            }
+
+            for (auto cap : options.caps) {
+                if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0) < 0) {
+                    throw SysError("couldn't set ambient caps");
+                }
+            }
+        }
+#endif
 
         Strings args_(options.args);
         args_.push_front(options.program);
