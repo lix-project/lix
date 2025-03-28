@@ -91,6 +91,9 @@ struct RunOptions
     bool captureStdout = false;
     bool isInteractive = false;
     std::vector<Redirection> redirections;
+#if __linux__
+    std::set<long> caps;
+#endif
 };
 
 struct [[nodiscard("you must call RunningProgram::wait()")]] RunningProgram
