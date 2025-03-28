@@ -1,14 +1,24 @@
 #include "build/worker.hh"
 #include "cgroup.hh"
+#include "file-descriptor.hh"
+#include "file-system.hh"
 #include "finally.hh"
 #include "gc-store.hh"
+#include "processes.hh"
 #include "signals.hh"
 #include "platform/linux.hh"
 #include "regex.hh"
+#include "strings.hh"
 
+#include <csignal>
+#include <cstdlib>
 #include <grp.h>
 #include <regex>
 #include <sys/prctl.h>
+
+#if __linux__
+#include <linux/capability.h>
+#endif
 
 #if HAVE_SECCOMP
 #include <linux/filter.h>
@@ -54,6 +64,14 @@ static void readFileRoots(const char * path, UncheckedRoots & roots)
         if (e.errNo != ENOENT && e.errNo != EACCES) {
             throw;
         }
+    }
+}
+
+LinuxLocalDerivationGoal::~LinuxLocalDerivationGoal()
+{
+    // pasta being left around mostly happens when builds are aborted
+    if (pastaPid) {
+        pastaPid.kill();
     }
 }
 
@@ -832,6 +850,26 @@ void LinuxLocalDerivationGoal::prepareSandbox()
     }
 }
 
+std::string LinuxLocalDerivationGoal::rewriteResolvConf(std::string fromHost)
+{
+    if (!runPasta) {
+        return fromHost;
+    }
+
+    static constexpr auto flags = std::regex::ECMAScript | std::regex::multiline;
+    static std::regex lineRegex("^nameserver\\s.*$", flags);
+    static std::regex v4Regex("^nameserver\\s+\\d{1,3}\\.", flags);
+    static std::regex v6Regex("^nameserver.*:", flags);
+    std::string nsInSandbox = "\n";
+    if (std::regex_search(fromHost, v4Regex)) {
+        nsInSandbox += fmt("nameserver %s\n", PASTA_HOST_IPV4);
+    }
+    if (std::regex_search(fromHost, v6Regex)) {
+        nsInSandbox += fmt("nameserver %s\n", PASTA_HOST_IPV6);
+    }
+    return std::regex_replace(fromHost, lineRegex, "") + nsInSandbox;
+}
+
 Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
 {
 #if HAVE_SECCOMP
@@ -859,9 +897,11 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
 
        - The private network namespace ensures that the builder
          cannot talk to the outside world (or vice versa).  It
-         only has a private loopback interface. (Fixed-output
-         derivations are not run in a private network namespace
-         to allow functions like fetchurl to work.)
+         only has a private loopback interface. If a copy of
+         `pasta` is available, Fixed-output derivations are run
+         inside a private network namespace with internet
+         access, otherwise they are run in the host's network
+         namespace, to allow functions like fetchurl to work.
 
        - The IPC namespace prevents the builder from communicating
          with outside processes using SysV IPC mechanisms (shared
@@ -881,6 +921,10 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
 
     if (derivationType->isSandboxed())
         privateNetwork = true;
+
+    // don't launch pasta unless we have a tun device. in a build sandbox we
+    // commonly do not, and trying to run pasta anyway naturally won't work.
+    runPasta = !privateNetwork && settings.pastaPath != "" && pathExists("/dev/net/tun");
 
     userNamespaceSync.create();
 
@@ -906,7 +950,9 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
 
         ProcessOptions options;
         options.cloneFlags = CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWUTS | CLONE_PARENT | SIGCHLD;
-        if (privateNetwork)
+        // we always want to create a new network namespace for pasta, even when
+        // we can't actually run it. not doing so hides bugs and impairs purity.
+        if (settings.pastaPath != "" || privateNetwork)
             options.cloneFlags |= CLONE_NEWNET;
         if (usingUserNamespace)
             options.cloneFlags |= CLONE_NEWUSER;
@@ -988,6 +1034,67 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
     /* Signal the builder that we've updated its user namespace. */
     writeFull(userNamespaceSync.writeSide.get(), "1");
 
+    if (runPasta) {
+        // Bring up pasta, for handling FOD networking. We don't let it daemonize
+        // itself for process managements reasons and kill it manually when done.
+
+        // TODO add a new sandbox mode flag to disable all or parts of this?
+        Strings args = {
+            // clang-format off
+            "--quiet",
+            "--foreground",
+            "--config-net",
+            "--gateway", PASTA_HOST_IPV4,
+            "--address", PASTA_CHILD_IPV4, "--netmask", PASTA_IPV4_NETMASK,
+            "--dns-forward", PASTA_HOST_IPV4,
+            "--gateway", PASTA_HOST_IPV6,
+            "--address", PASTA_CHILD_IPV6,
+            "--dns-forward", PASTA_HOST_IPV6,
+            "--ns-ifname", PASTA_NS_IFNAME,
+            "--no-netns-quit",
+            "--netns", "/proc/self/fd/0",
+            // clang-format on
+        };
+
+        AutoCloseFD netns(open(fmt("/proc/%i/ns/net", pid.get()).c_str(), O_RDONLY | O_CLOEXEC));
+        if (!netns) {
+            throw SysError("failed to open netns");
+        }
+
+        AutoCloseFD userns;
+        if (usingUserNamespace) {
+            userns =
+                AutoCloseFD(open(fmt("/proc/%i/ns/user", pid.get()).c_str(), O_RDONLY | O_CLOEXEC));
+            if (!userns) {
+                throw SysError("failed to open userns");
+            }
+            args.push_back("--userns");
+            args.push_back("/proc/self/fd/1");
+        }
+
+        // FIXME ideally we want a notification when pasta exits, but we cannot do
+        // this at present. without such support we need to busy-wait for pasta to
+        // set up the namespace completely and time out after a while for the case
+        // of pasta launch failures. pasta logs go to syslog only for now as well.
+        pastaPid = runProgram2({
+            .program = settings.pastaPath,
+            .args = args,
+            .uid = useBuildUsers() ? std::optional(buildUser->getUID()) : std::nullopt,
+            .gid = useBuildUsers() ? std::optional(buildUser->getGID()) : std::nullopt,
+            // TODO these redirections are crimes. pasta closes all non-stdio file
+            // descriptors very early and lacks fd arguments for the namespaces we
+            // want it to join. we cannot have pasta join the namespaces via pids;
+            // doing so requires capabilities which pasta *also* drops very early.
+            .redirections = {
+                {.from = 0, .to = netns.get()},
+                {.from = 1, .to = userns ? userns.get() : 1},
+            },
+            .caps = getuid() == 0
+                ? std::set<long>{CAP_SYS_ADMIN, CAP_NET_BIND_SERVICE}
+                : std::set<long>{},
+        });
+    }
+
     return pid;
 }
 
@@ -1001,6 +1108,25 @@ void LinuxLocalDerivationGoal::killSandbox(bool getStats)
         }
     } else {
         LocalDerivationGoal::killSandbox(getStats);
+    }
+
+    if (pastaPid) {
+        // FIXME we really want to send SIGTERM instead and wait for pasta to exit,
+        // but we do not have the infra for that right now. we send SIGKILL instead
+        // and treat exiting with that as a successful exit code until such a time.
+        // this is not likely to cause problems since pasta runs as the build user,
+        // but not inside the build sandbox. if it's killed it's either due to some
+        // external influence (in which case the sandboxed child will probably fail
+        // due to network errors, if it used the network at all) or some bug in lix
+        if (auto status = pastaPid.kill(); !WIFSIGNALED(status) || WTERMSIG(status) != SIGKILL) {
+            if (WIFSIGNALED(status)) {
+                throw Error("pasta killed by signal %i", WTERMSIG(status));
+            } else if (WIFEXITED(status)) {
+                throw Error("pasta exited with code %i", WEXITSTATUS(status));
+            } else {
+                throw Error("pasta exited with status %i", status);
+            }
+        }
     }
 }
 }

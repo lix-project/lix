@@ -39,6 +39,8 @@
   meson,
   ninja,
   openssl,
+  # FIXME: we need passt 2024_12_11.09478d5 or newer, i.e. nixos 25.05 or later
+  passt-lix ? __forDefaults.passt-lix,
   pegtl,
   pkg-config,
   python3,
@@ -87,6 +89,8 @@
 
     lix-doc = callPackage ./lix-doc/package.nix { };
     build-release-notes = callPackage ./maintainers/build-release-notes.nix { };
+
+    passt-lix = callPackage ./misc/passt.nix { };
   },
 }:
 let
@@ -195,6 +199,7 @@ stdenv.mkDerivation (finalAttrs: {
       # which don't actually get added to PATH. And buildInputs is correct over
       # nativeBuildInputs since this should be a busybox executable on the host.
       "-Dsandbox-shell=${lib.getExe' busybox-sandbox-shell "busybox"}"
+      "-Dpasta-path=${lib.getExe' passt-lix "pasta"}"
     ]
     ++ lib.optional hostPlatform.isStatic "-Denable-embedded-sandbox-shell=true"
     ++ lib.optional (finalAttrs.dontBuild && !lintInsteadOfBuild) "-Denable-build=false"
@@ -266,6 +271,7 @@ stdenv.mkDerivation (finalAttrs: {
     ++ lib.optionals hostPlatform.isLinux [
       libseccomp
       busybox-sandbox-shell
+      passt-lix
     ]
     ++ lib.optional internalApiDocs rapidcheck
     ++ lib.optional hostPlatform.isx86_64 libcpuid

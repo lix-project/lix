@@ -197,6 +197,12 @@ if busybox.found()
   }
 endif
 
+if pasta.found()
+  cpp_str_defines += {
+    'PASTA_PATH': pasta.full_path(),
+  }
+endif
+
 cpp_args = []
 
 foreach name, value : cpp_str_defines
