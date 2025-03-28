@@ -52,7 +52,7 @@ in
 
       security.pki.certificateFiles = [ "${goodCert}/cert.pem" ];
 
-      networking.hosts."127.0.0.1" = [ "good" "bad" ];
+      networking.hosts."192.168.1.1" = [ "good" "bad" ];
 
       virtualisation.writableStore = true;
 
