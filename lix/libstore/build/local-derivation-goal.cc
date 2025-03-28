@@ -13,6 +13,8 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/daemon.hh"
 #include "lix/libutil/regex.hh"
+#include "lix/libutil/file-descriptor.hh"
+#include "lix/libutil/file-system.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/topo-sort.hh"
 #include "lix/libutil/json.hh"
@@ -25,6 +27,7 @@
 #include "lix/libutil/mount.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
+#include "platform/linux.hh"
 
 #include <cstddef>
 #include <exception>
@@ -1122,7 +1125,7 @@ void LocalDerivationGoal::runChild()
                 /* N.B. it is realistic that these paths might not exist. It
                    happens when testing Nix building fixed-output derivations
                    within a pure derivation. */
-                for (auto & path : { "/etc/resolv.conf", "/etc/services", "/etc/hosts" })
+                for (auto & path : { "/etc/services", "/etc/hosts" })
                     if (pathExists(path)) {
                         // Copy the actual file, not the symlink, because we don't know where
                         // the symlink is pointing, and we don't want to chase down the entire
@@ -1142,6 +1145,11 @@ void LocalDerivationGoal::runChild()
                         // even though it really shouldn't be a big deal. -K900
                         copyFile(path, chrootRootDir + path, { .followSymlinks = true });
                     }
+
+                if (pathExists("/etc/resolv.conf")) {
+                    const auto resolvConf = rewriteResolvConf(readFile("/etc/resolv.conf"));
+                    writeFile(chrootRootDir + "/etc/resolv.conf", resolvConf);
+                }
 
                 if (settings.caFile != "" && pathExists(settings.caFile)) {
                     // For the same reasons as above, copy the CA certificates file too.
@@ -1269,6 +1277,36 @@ void LocalDerivationGoal::runChild()
                 throw SysError("setgid failed");
             if (setuid(sandboxUid()) == -1)
                 throw SysError("setuid failed");
+
+            if (runPasta) {
+                // wait for the pasta interface to appear. pasta can't signal us when
+                // it's done setting up the namespace, so we have to wait for a while
+                AutoCloseFD fd(socket(PF_INET, SOCK_DGRAM, IPPROTO_IP));
+                if (!fd) throw SysError("cannot open IP socket");
+
+                struct ifreq ifr;
+                strcpy(ifr.ifr_name, LinuxLocalDerivationGoal::PASTA_NS_IFNAME);
+                // wait two minutes for the interface to appear. if it does not do so
+                // we are either grossly overloaded, or pasta startup failed somehow.
+                static constexpr int SINGLE_WAIT_US = 1000;
+                static constexpr int TOTAL_WAIT_US = 120'000'000;
+                for (unsigned tries = 0; ; tries++) {
+                    if (tries > TOTAL_WAIT_US / SINGLE_WAIT_US) {
+                        throw Error(
+                            "sandbox network setup timed out, please check daemon logs for "
+                            "possible error output."
+                        );
+                    } else if (ioctl(fd.get(), SIOCGIFFLAGS, &ifr) == 0) {
+                        if ((ifr.ifr_ifru.ifru_flags & IFF_UP) != 0) {
+                            break;
+                        }
+                    } else if (errno == ENODEV) {
+                        usleep(SINGLE_WAIT_US);
+                    } else {
+                        throw SysError("cannot get loopback interface flags");
+                    }
+                }
+            }
 
             setUser = false;
         }
