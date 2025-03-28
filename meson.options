@@ -24,6 +24,10 @@ option('sandbox-shell', type : 'string', value : 'busybox',
   description : 'path to a statically-linked shell to use as /bin/sh in sandboxes (usually busybox)',
 )
 
+option('pasta-path', type : 'string', value : 'pasta',
+  description : 'path to the location of pasta (provided by passt)',
+)
+
 option('enable-tests', type : 'boolean', value : true,
   description : 'whether to enable tests or not (requires rapidcheck and gtest)',
 )

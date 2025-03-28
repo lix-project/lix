@@ -451,6 +451,13 @@ configdata += {
   'HAVE_DTRACE': dtrace_feature.enabled().to_int(),
 }
 
+pasta_path = get_option('pasta-path')
+# we can't check the pasta version because passt misuses stdio (it calls _exit()
+# after printing the version, which will never print the version unless run from
+# a terminal). pasta isn't mandatory yet due to high fetcher breakage potential.
+# we *will* enable it in our own packaging, but distributions are not forced to.
+pasta = find_program(pasta_path, required : false, native : false)
+
 lsof = find_program('lsof', native : true)
 
 # This is how Nix does generated headers...
