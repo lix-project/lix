@@ -286,6 +286,12 @@ protected:
     using DerivationGoal::DerivationGoal;
 
     /**
+     * Whether to run pasta for network-endowed derivations. Running pasta
+     * currently requires actively waiting for its net-ns setup to finish.
+     */
+    bool runPasta = false;
+
+    /**
      * Setup dependencies outside the sandbox.
      * Called in the parent nix process.
      */
@@ -293,6 +299,15 @@ protected:
     {
         throw Error("sandboxing builds is not supported on this platform");
     };
+
+    /**
+     * Rewrite resolv.conf for use in the sandbox. Used in the linux platform
+     * to replace nameservers * when using pasta for fixed output derivations.
+     */
+    virtual std::string rewriteResolvConf(std::string fromHost)
+    {
+        return fromHost;
+    }
 
     /**
      * Create a new process that runs `openSlave` and `runChild`

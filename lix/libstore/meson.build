@@ -82,6 +82,7 @@ libstore_setting_definitions = files(
   'settings/narinfo-cache-negative-ttl.md',
   'settings/narinfo-cache-positive-ttl.md',
   'settings/netrc-file.md',
+  'settings/pasta-path.md',
   'settings/plugin-files.md',
   'settings/post-build-hook.md',
   'settings/pre-build-hook.md',
@@ -323,6 +324,12 @@ if enable_embedded_sandbox_shell
 elif busybox.found()
   cpp_str_defines += {
     'SANDBOX_SHELL': busybox.full_path()
+  }
+endif
+
+if pasta.found()
+  cpp_str_defines += {
+    'PASTA_PATH': pasta.full_path(),
   }
 endif
 

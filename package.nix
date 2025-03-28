@@ -45,6 +45,8 @@
   ninja,
   ncurses,
   openssl,
+  # FIXME: we need passt 2024_12_11.09478d5 or newer, i.e. nixos 25.05 or later
+  passt-lix ? __forDefaults.passt-lix,
   pegtl,
   pkg-config,
   python3,
@@ -116,6 +118,8 @@
     # needs derivation patching to add debuginfo and coroutine library support
     # !! must build this with clang as it is affected by the gcc coroutine bugs
     capnproto-lix = callPackage ./misc/capnproto.nix { inherit stdenv; };
+
+    passt-lix = callPackage ./misc/passt.nix { };
   },
 }:
 
@@ -249,6 +253,7 @@ stdenv.mkDerivation (finalAttrs: {
       # which don't actually get added to PATH. And buildInputs is correct over
       # nativeBuildInputs since this should be a busybox executable on the host.
       "-Dsandbox-shell=${lib.getExe' busybox-sandbox-shell "busybox"}"
+      "-Dpasta-path=${lib.getExe' passt-lix "pasta"}"
     ]
     ++ lib.optional hostPlatform.isStatic "-Denable-embedded-sandbox-shell=true"
     ++ lib.optional (finalAttrs.dontBuild && !lintInsteadOfBuild) "-Denable-build=false"
@@ -334,6 +339,7 @@ stdenv.mkDerivation (finalAttrs: {
     ++ lib.optionals hostPlatform.isLinux [
       libseccomp
       busybox-sandbox-shell
+      passt-lix
     ]
     ++ lib.optionals (
       stdenv.hostPlatform.isDarwin && lib.versionOlder stdenv.hostPlatform.darwinSdkVersion "11.0"

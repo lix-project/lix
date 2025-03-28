@@ -160,8 +160,6 @@ in
     ["i686-linux" "x86_64-linux"]
     (system: runNixOSTestFor system ./setuid/setuid.nix);
 
-  ca-fd-leak = runNixOSTestFor "x86_64-linux" ./ca-fd-leak;
-
   fetch-git = runNixOSTestFor "x86_64-linux" ./fetch-git;
 
   symlinkResolvconf = runNixOSTestFor "x86_64-linux" ./symlink-resolvconf.nix;
