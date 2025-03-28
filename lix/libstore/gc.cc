@@ -836,7 +836,7 @@ try {
                 pathSummary << "\n  " << path;
                 const int summaryThreshold = 10;
                 if (n >= summaryThreshold) {
-                    pathSummary << "\nand " << kept.size() - summaryThreshold << " others.\n";
+                    pathSummary << "\nand " << kept.size() - summaryThreshold << " others.";
                     break;
                 }
             }
@@ -844,7 +844,7 @@ try {
                 "Cannot delete some of the given paths because they are still alive. "
                 "Paths not deleted:"
                 "%1%"
-                "To find out why, use nix-store --query --roots and nix-store --query --referrers."
+                "\nTo find out why, use nix-store --query --roots and nix-store --query --referrers."
                 ,
                 pathSummary.str()
             );
