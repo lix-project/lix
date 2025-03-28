@@ -202,7 +202,9 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
     AsyncIoRoot & aio() override { return aio_; }
 
     NixArgs(const std::string & programName, AsyncIoRoot & aio)
-        : MultiCommand(CommandRegistry::getCommandsFor({}), true)
+        /* NOTE: when using lix, the command map is empty as `lix-command` is not stabilized neither designed.
+         * `lix` is only used for external commands. */
+        : MultiCommand(programName == "lix" ? CommandMap() : CommandRegistry::getCommandsFor({}), programName == "lix")
         , MixCommonArgs(programName)
         , aio_(aio)
     {
@@ -213,45 +215,47 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
         categories[catUtility] = "Utility/scripting commands";
         categories[catNixInstallation] = "Commands for upgrading or troubleshooting your Nix installation";
 
-        addFlag({
-            .longName = "help",
-            .description = "Show usage information.",
-            .category = miscCategory,
-            .handler = {[this]() { this->helpRequested = true; }},
-        });
+        if (programName != "lix") {
+            addFlag({
+                .longName = "help",
+                .description = "Show usage information.",
+                .category = miscCategory,
+                .handler = {[this]() { this->helpRequested = true; }},
+            });
 
-        addFlag({
-            .longName = "print-build-logs",
-            .shortName = 'L',
-            .description = "Print full build logs on standard error.",
-            .category = loggingCategory,
-            .handler = {[&]() { logger->setPrintBuildLogs(true); }},
-            .experimentalFeature = Xp::NixCommand,
-        });
+            addFlag({
+                .longName = "print-build-logs",
+                .shortName = 'L',
+                .description = "Print full build logs on standard error.",
+                .category = loggingCategory,
+                .handler = {[&]() { logger->setPrintBuildLogs(true); }},
+                .experimentalFeature = Xp::NixCommand,
+            });
 
-        addFlag({
-            .longName = "version",
-            .description = "Show version information.",
-            .category = miscCategory,
-            .handler = {[&]() { showVersion = true; }},
-        });
+            addFlag({
+                .longName = "version",
+                .description = "Show version information.",
+                .category = miscCategory,
+                .handler = {[&]() { showVersion = true; }},
+            });
 
-        addFlag({
-            .longName = "offline",
-            .aliases = {"no-net"}, // FIXME: remove
-            .description = "Disable substituters and consider all previously downloaded files up-to-date.",
-            .category = miscCategory,
-            .handler = {[&]() { useNet = false; }},
-            .experimentalFeature = Xp::NixCommand,
-        });
+            addFlag({
+                .longName = "offline",
+                .aliases = {"no-net"}, // FIXME: remove
+                .description = "Disable substituters and consider all previously downloaded files up-to-date.",
+                .category = miscCategory,
+                .handler = {[&]() { useNet = false; }},
+                .experimentalFeature = Xp::NixCommand,
+            });
 
-        addFlag({
-            .longName = "refresh",
-            .description = "Consider all previously downloaded files out-of-date.",
-            .category = miscCategory,
-            .handler = {[&]() { refresh = true; }},
-            .experimentalFeature = Xp::NixCommand,
-        });
+            addFlag({
+                .longName = "refresh",
+                .description = "Consider all previously downloaded files out-of-date.",
+                .category = miscCategory,
+                .handler = {[&]() { refresh = true; }},
+                .experimentalFeature = Xp::NixCommand,
+            });
+        }
     }
 
     std::map<std::string, std::vector<std::string>> aliases = {
