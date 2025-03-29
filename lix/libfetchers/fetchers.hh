@@ -166,6 +166,13 @@ struct InputScheme
     virtual kj::Promise<Result<std::pair<StorePath, Input>>>
     fetch(ref<Store> store, const Input & input) = 0;
 
+    /*
+     * By default, libfetchers considers inputs as locked if a `rev`
+     * is specified. This however doesn't make any sense for `path` inputs,
+     * so schemes can indicate that a `rev` on its own is not sufficient.
+     */
+    virtual bool isLockedByRev() const { return true; }
+
 protected:
     void emplaceURLQueryIntoAttrs(
         const ParsedURL & parsedURL,

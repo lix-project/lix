@@ -89,3 +89,8 @@ testFetchTreeError \
 testFetchTreeError \
     "{ type = \"hg\"; url = \"https://forge.tld/owner/repo\"; ref = \",\"; }" \
     "invalid Mercurial branch/tag name ','"
+
+echo 'hello lix' > testfile
+output="$(nix eval --expr '(builtins.fetchTree { path = "'"$(pwd)"'/testfile"; rev = "0000000000000000000000000000000000000000"; type = "path"; })' 2>&1)" && status=0 || status=$?
+[ "$status" -eq 1 ]
+grepQuiet "error: in pure evaluation mode, 'fetchTree' requires a locked input" <<<"$output"
