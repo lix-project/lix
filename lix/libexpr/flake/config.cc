@@ -1,4 +1,5 @@
 #include "lix/libexpr/flake/flake.hh"
+#include "lix/libutil/fmt.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/json.hh"
 #include "lix/libutil/users.hh"
@@ -29,19 +30,28 @@ static void writeTrustedList(const TrustedList & trustedList)
     writeFile(path, JSON(trustedList).dump());
 }
 
-static bool askForSetting(
+static bool batchAskForSetting(
     bool & negativeTrustOverride,
     TrustedList & trustedList,
-    const std::string & name,
-    const std::string & valueS)
+    std::map<std::string, std::string> & untrustedSettings)
 {
-    bool trusted = false;
+    printWarning("The following settings require your decision:");
+    for (const auto & [name, valueS] : untrustedSettings) {
+        // FIXME: filter ANSI escapes, newlines, \r, etc.
+        logger->cout("- %s = %s", name, valueS);
+    }
 
-    // FIXME: filter ANSI escapes, newlines, \r, etc.
-    auto reply = logger->ask(fmt("Do you want to allow configuration setting '%s' to be set to '" ANSI_RED "%s" ANSI_NORMAL "'?\nThis may allow the flake to gain root, see the nix.conf manual page (" ANSI_BOLD "y" ANSI_NORMAL "es/" ANSI_BOLD "n" ANSI_NORMAL "o/" ANSI_BOLD "N" ANSI_NORMAL "o to all) ", name, valueS)).value_or('n');
+    auto reply = logger
+                     ->ask(
+                         fmt("Do you want to allow configuration settings to be applied?\nThis may allow the "
+                             "flake to gain root, see the nix.conf manual page (" ANSI_BOLD "y" ANSI_NORMAL
+                             "es for now/" ANSI_BOLD "A" ANSI_NORMAL "llow always/" ANSI_BOLD "n" ANSI_NORMAL
+                             "o/" ANSI_BOLD "N" ANSI_NORMAL "o to all) ")
+                     )
+                     .value_or('n');
 
     if (reply == 'N') {
-        printTaggedWarning("Rejecting all untrusted nix.conf entries");
+        printWarning("Rejecting all untrusted nix.conf entries");
         printTaggedWarning(
             "you can set '%s' to '%b' to automatically reject configuration options supplied by "
             "flakes",
@@ -49,25 +59,59 @@ static bool askForSetting(
             false
         );
         negativeTrustOverride = true;
-    } else {
-        if (std::tolower(reply) == 'y') {
-            trusted = true;
-        } else {
-            printTaggedWarning(
-                "you can set '%s' to '%b' to automatically reject configuration options supplied "
-                "by flakes",
-                "accept-flake-config",
-                false
-            );
+        return false;
+    }
+
+    if (reply == 'y' || reply == 'A') {
+        auto alwaysAllow = reply == 'A';
+        for (const auto & [name, valueS] : untrustedSettings) {
+            if (alwaysAllow) {
+                trustedList[name][valueS] = true;
+            }
+            globalConfig.set(name, valueS);
         }
 
-        if (std::tolower(logger->ask(fmt("do you want to permanently (in %s) mark this value as %s? (y/N) ", trustedListPath(), trusted ? "trusted": "untrusted" )).value_or('n')) == 'y') {
-            trustedList[name][valueS] = trusted;
+        if (alwaysAllow) {
             writeTrustedList(trustedList);
+        }
+
+        return true;
+    } else {
+        printTaggedWarning(
+            "you can set '%s' to '%b' to automatically reject configuration options supplied "
+            "by flakes",
+            "accept-flake-config",
+            false
+        );
+    }
+
+    auto didTrustedListChange = false;
+    for (const auto & [name, valueS] : untrustedSettings) {
+        auto individualReply = logger
+                                   ->ask(
+                                       fmt("Do you want to allow setting '%s = %s'? (" ANSI_BOLD
+                                           "y" ANSI_NORMAL "es for now/" ANSI_BOLD "A" ANSI_NORMAL
+                                           "llow always/" ANSI_BOLD "n" ANSI_NORMAL "o for now) ",
+                                           name,
+                                           valueS)
+                                   )
+                                   .value_or('n');
+
+        if (individualReply == 'y' || individualReply == 'A') {
+            if (individualReply == 'A') {
+                trustedList[name][valueS] = true;
+                didTrustedListChange = true;
+            }
+
+            globalConfig.set(name, valueS);
         }
     }
 
-    return trusted;
+    if (didTrustedListChange) {
+        writeTrustedList(trustedList);
+    }
+
+    return false;
 }
 
 void ConfigFile::apply()
@@ -77,8 +121,11 @@ void ConfigFile::apply()
     // Allows to ignore all subsequent settings from this file.
     bool negativeTrustOverride = false;
 
-    for (auto & [name, value] : settings) {
+    std::map<std::string, std::string> untrustedSettings;
 
+    TrustedList trustedList = readTrustedList();
+
+    for (auto & [name, value] : settings) {
         auto baseName = name.starts_with("extra-") ? std::string(name, 6) : name;
 
         // FIXME: Move into libutil/config.cc.
@@ -90,11 +137,12 @@ void ConfigFile::apply()
         else if (auto* b = std::get_if<Explicit<bool>>(&value))
             valueS = b->t ? "true" : "false";
         else if (auto ss = std::get_if<std::vector<std::string>>(&value))
-            valueS = concatStringsSep(" ", *ss); // FIXME: evil
+            valueS = concatStringsSep(" ", *ss);  // FIXME: evil
         else
             assert(false);
 
         bool trusted = whitelist.count(baseName);
+
         if (!trusted) {
             switch (nix::fetchSettings.acceptFlakeConfig.get()) {
             case AcceptFlakeConfig::True: {
@@ -102,21 +150,16 @@ void ConfigFile::apply()
                 break;
             }
             case AcceptFlakeConfig::Ask: {
-                auto trustedList = readTrustedList();
                 auto tlname = get(trustedList, name);
                 if (auto saved = tlname ? get(*tlname, valueS) : nullptr) {
                     trusted = *saved;
                     printInfo("Using saved setting for '%s = %s' from ~/.local/share/nix/trusted-settings.json.", name, valueS);
                 } else {
-                    if (negativeTrustOverride) {
-                        trusted = false;
-                    } else {
-                        trusted = askForSetting(negativeTrustOverride, trustedList, name, valueS);
-                    }
+                    untrustedSettings[name] = valueS;
                 }
                 break;
             }
-            case nix::AcceptFlakeConfig::False: {
+            case AcceptFlakeConfig::False: {
                 trusted = false;
                 break;
             };
@@ -134,6 +177,10 @@ void ConfigFile::apply()
                 "--accept-flake-config"
             );
         }
+    }
+
+    if (!untrustedSettings.empty()) {
+        batchAskForSetting(negativeTrustOverride, trustedList, untrustedSettings);
     }
 }
 
