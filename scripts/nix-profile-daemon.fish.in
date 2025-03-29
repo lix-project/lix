@@ -15,7 +15,7 @@ if test -n "$__ETC_PROFILE_NIX_SOURCED"
   exit
 end
 
-set __ETC_PROFILE_NIX_SOURCED 1
+set --export __ETC_PROFILE_NIX_SOURCED 1
 
 set --export NIX_PROFILES "@localstatedir@/nix/profiles/default $HOME/.nix-profile"
 
