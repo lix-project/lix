@@ -475,10 +475,12 @@ void LocalDerivationGoal::startBuilder()
             settings.thisSystem,
             concatStringsSep<StringSet>(", ", worker.store.systemFeatures));
 
+    createDirs(settings.buildDir.get());
+
     /* Create a temporary directory where the build will take
        place. */
     tmpDir = createTempDir(
-        settings.buildDir.get().value_or(""),
+        settings.buildDir.get(),
         "nix-build-" + std::string(drvPath.name()),
         false,
         false,
