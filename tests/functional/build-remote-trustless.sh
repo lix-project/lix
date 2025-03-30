@@ -2,7 +2,6 @@ requireSandboxSupport
 [[ $busybox =~ busybox ]] || skipTest "no busybox"
 
 unset NIX_STORE_DIR
-unset NIX_STATE_DIR
 
 remoteDir=$TEST_ROOT/remote
 
