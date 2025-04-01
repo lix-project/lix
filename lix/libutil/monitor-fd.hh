@@ -83,7 +83,13 @@ public:
                 // 14.5) that in some limited cases on buggy kernel versions,
                 // all the non-POLLHUP events for the socket get delivered.
                 // Sleeping avoids pointlessly spinning a thread on those.
-                sleep(1);
+                //
+                // N.B. excessive delay on this can cause the daemon connection
+                // thread to live longer than the client and lead to
+                // synchronization problems if clients assume that the server
+                // thread has released its temporary gc roots, etc.
+                // See https://github.com/NixOS/nix/pull/12714#discussion_r2009265904
+                usleep(1'000);
             }
         });
     };
