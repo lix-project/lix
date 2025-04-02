@@ -27,7 +27,7 @@ function _nix
   # Skip the first line since it handled by _nix_accepts_files.
   # Tail lines each contain a command followed by a tab character and, optionally, a description.
   # This is also the format fish expects.
-  string collect -- $response[2..-1]
+  printf '%s\n' $response[2..-1]
 end
 
 # Disable file path completion if paths do not belong in the current context.
