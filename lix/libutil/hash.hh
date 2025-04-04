@@ -1,6 +1,8 @@
 #pragma once
 ///@file
 
+#include <openssl/evp.h>
+
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/serialise.hh"
@@ -8,6 +10,13 @@
 
 
 namespace nix {
+
+
+namespace detail {
+
+using EvpMdCtxPtr = std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)>;
+
+}
 
 
 MakeError(BadHash, Error);
@@ -184,8 +193,6 @@ std::optional<HashType> parseHashTypeOpt(std::string_view s);
 std::string_view printHashType(HashType ht);
 
 
-union Ctx;
-
 struct AbstractHashSink : virtual Sink
 {
     virtual HashResult finish() = 0;
@@ -195,7 +202,7 @@ class HashSink : public BufferedSink, public AbstractHashSink
 {
 private:
     HashType ht;
-    Ctx * ctx;
+    detail::EvpMdCtxPtr ctx;
     uint64_t bytes;
 
 public:

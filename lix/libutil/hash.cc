@@ -1,8 +1,6 @@
 #include <cstring>
 
-#include <openssl/crypto.h>
-#include <openssl/md5.h>
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 
 #include "lix/libutil/args.hh"
 #include "lix/libutil/hash.hh"
@@ -274,50 +272,50 @@ Hash newHashAllowEmpty(std::string_view hashStr, std::optional<HashType> ht)
 }
 
 
-union Ctx
+static detail::EvpMdCtxPtr start(HashType ht)
 {
-    MD5_CTX md5;
-    SHA_CTX sha1;
-    SHA256_CTX sha256;
-    SHA512_CTX sha512;
-};
+    detail::EvpMdCtxPtr ctx(EVP_MD_CTX_new(), &EVP_MD_CTX_free);
+    if (!ctx) {
+        throw Error("failed to create message digest context");
+    }
 
+    int ok;
+    switch (ht) {
+    case HashType::MD5: ok = EVP_DigestInit_ex(ctx.get(), EVP_md5(), NULL); break;
+    case HashType::SHA1: ok = EVP_DigestInit_ex(ctx.get(), EVP_sha1(), NULL); break;
+    case HashType::SHA256: ok = EVP_DigestInit_ex(ctx.get(), EVP_sha256(), NULL); break;
+    case HashType::SHA512: ok = EVP_DigestInit_ex(ctx.get(), EVP_sha512(), NULL); break;
+    }
+    if (!ok) {
+        throw Error("failed to initialize message digest");
+    }
 
-static void start(HashType ht, Ctx & ctx)
-{
-    if (ht == HashType::MD5) MD5_Init(&ctx.md5);
-    else if (ht == HashType::SHA1) SHA1_Init(&ctx.sha1);
-    else if (ht == HashType::SHA256) SHA256_Init(&ctx.sha256);
-    else if (ht == HashType::SHA512) SHA512_Init(&ctx.sha512);
+    return ctx;
 }
 
 
-static void update(HashType ht, Ctx & ctx,
-    std::string_view data)
+static void update(detail::EvpMdCtxPtr & ctx, std::string_view data)
 {
-    if (ht == HashType::MD5) MD5_Update(&ctx.md5, data.data(), data.size());
-    else if (ht == HashType::SHA1) SHA1_Update(&ctx.sha1, data.data(), data.size());
-    else if (ht == HashType::SHA256) SHA256_Update(&ctx.sha256, data.data(), data.size());
-    else if (ht == HashType::SHA512) SHA512_Update(&ctx.sha512, data.data(), data.size());
+    if (!EVP_DigestUpdate(ctx.get(), data.data(), data.size())) {
+        throw Error("failed to update message digest with %zu bytes", data.size());
+    }
 }
 
 
-static void finish(HashType ht, Ctx & ctx, unsigned char * hash)
+static void finish(detail::EvpMdCtxPtr & ctx, unsigned char * hash)
 {
-    if (ht == HashType::MD5) MD5_Final(hash, &ctx.md5);
-    else if (ht == HashType::SHA1) SHA1_Final(hash, &ctx.sha1);
-    else if (ht == HashType::SHA256) SHA256_Final(hash, &ctx.sha256);
-    else if (ht == HashType::SHA512) SHA512_Final(hash, &ctx.sha512);
+    if (!EVP_DigestFinal_ex(ctx.get(), hash, NULL)) {
+        throw Error("failed to finalize message digest");
+    }
 }
 
 
 Hash hashString(HashType ht, std::string_view s)
 {
-    Ctx ctx;
     Hash hash(ht);
-    start(ht, ctx);
-    update(ht, ctx, s);
-    finish(ht, ctx, hash.hash);
+    detail::EvpMdCtxPtr ctx = start(ht);
+    update(ctx, s);
+    finish(ctx, hash.hash);
     return hash;
 }
 
@@ -330,39 +328,39 @@ Hash hashFile(HashType ht, const Path & path)
 }
 
 
-HashSink::HashSink(HashType ht) : ht(ht)
+HashSink::HashSink(HashType ht) : ht(ht), ctx(start(ht))
 {
-    ctx = new Ctx;
     bytes = 0;
-    start(ht, *ctx);
 }
 
 HashSink::~HashSink()
 {
     bufPos = 0;
-    delete ctx;
 }
 
 void HashSink::writeUnbuffered(std::string_view data)
 {
     bytes += data.size();
-    update(ht, *ctx, data);
+    update(ctx, data);
 }
 
 HashResult HashSink::finish()
 {
     flush();
     Hash hash(ht);
-    nix::finish(ht, *ctx, hash.hash);
+    nix::finish(ctx, hash.hash);
     return HashResult(hash, bytes);
 }
 
 HashResult HashSink::currentHash()
 {
     flush();
-    Ctx ctx2 = *ctx;
+    detail::EvpMdCtxPtr ctx2 = start(ht);
+    if (!EVP_MD_CTX_copy(ctx2.get(), ctx.get())) {
+        throw Error("failed to copy message digest");
+    }
     Hash hash(ht);
-    nix::finish(ht, ctx2, hash.hash);
+    nix::finish(ctx2, hash.hash);
     return HashResult(hash, bytes);
 }
 
