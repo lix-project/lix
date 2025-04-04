@@ -42,6 +42,7 @@ liblixutil_test_support = declare_dependency(
 )
 
 libutil_tests_sources = files(
+  # keep-sorted start
   'libutil/archive.cc',
   'libutil/async-collect.cc',
   'libutil/async-io.cc',
@@ -53,6 +54,7 @@ libutil_tests_sources = files(
   'libutil/compression.cc',
   'libutil/config.cc',
   'libutil/escape-string.cc',
+  'libutil/fmt.cc',
   'libutil/generator.cc',
   'libutil/git.cc',
   'libutil/hash.cc',
@@ -67,9 +69,10 @@ libutil_tests_sources = files(
   'libutil/suggestions.cc',
   'libutil/tests.cc',
   'libutil/thread-pool.cc',
-  'libutil/url.cc',
   'libutil/url-name.cc',
+  'libutil/url.cc',
   'libutil/xml-writer.cc',
+  # keep-sorted end
 )
 
 libutil_tester = executable(

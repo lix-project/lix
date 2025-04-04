@@ -1,5 +1,5 @@
-#include "fmt.hh"
-#include "ansicolor.hh"
+#include "lix/libutil/fmt.hh"
+#include "lix/libutil/ansicolor.hh"
 
 #include <gtest/gtest.h>
 
