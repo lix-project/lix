@@ -1,11 +1,14 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/error.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include <future>
 #include <kj/async-io.h>
 #include <kj/async.h>
+#include <optional>
+#include <source_location>
 
 namespace nix {
 
@@ -94,14 +97,43 @@ auto runAsyncInNewThread(std::invocable<AsyncIoRoot &> auto fn)
         return AIOROOT.blockOn(__VA_ARGS__);                        \
     })
 
+#define LIX_TRY_AWAIT_CONTEXT(ctx, ...)                                           \
+    ({                                                                            \
+        auto _lix_awaited = co_await (__VA_ARGS__);                               \
+        if (_lix_awaited.has_error()) {                                           \
+            try {                                                                 \
+                _lix_awaited.value();                                             \
+            } catch (::nix::BaseException & e) {                                  \
+                e.addAsyncTrace(::std::source_location::current(), ctx());        \
+                throw;                                                            \
+            } catch (::std::exception & e) { /* NOLINT(lix-foreign-exceptions) */ \
+                ::nix::ForeignException fe(e);                                    \
+                fe.addAsyncTrace(::std::source_location::current(), ctx());       \
+                throw fe;                                                         \
+            }                                                                     \
+        }                                                                         \
+        ::nix::detail::materializeResult(std::move(_lix_awaited));                \
+    })
+
+/**
+ * Magic name used by `LIX_TRY_AWAIT` to insert additional context into an
+ * async trace frame. This name will be looked up in the local scope every
+ * time a try-await expression encounters an exception and then called. As
+ * such it can be a function, a member function name, or even a type name.
+ */
+static constexpr std::optional<std::string> lixAsyncTaskContext()
+{
+    return std::nullopt;
+}
+
 // force materialization of the value. result::value() returns only an rvalue reference
 // and is thus unsuitable for use in e.g. range for without materialization. ideally we
 // would wrap the expression in `auto()`, but apple clang fails when given `auto(void)`
-#define LIX_TRY_AWAIT(...) (::nix::detail::materializeResult(co_await (__VA_ARGS__)))
+#define LIX_TRY_AWAIT(...) LIX_TRY_AWAIT_CONTEXT(lixAsyncTaskContext, __VA_ARGS__)
 
 #if LIX_UR_COMPILER_UWU
-# define RUN_ASYNC_IN_NEW_THREAD LIX_RUN_ASYNC_IN_NEW_THREAD
-# define TRY_AWAIT LIX_TRY_AWAIT
+#define RUN_ASYNC_IN_NEW_THREAD LIX_RUN_ASYNC_IN_NEW_THREAD
+#define TRY_AWAIT LIX_TRY_AWAIT
 #endif
 
 template<typename T>

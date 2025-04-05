@@ -115,6 +115,11 @@ protected:
 
     virtual kj::Promise<Result<WorkResult>> workImpl() noexcept = 0;
 
+    std::string lixAsyncTaskContext() const
+    {
+        return name;
+    }
+
 public:
     explicit Goal(Worker & worker, bool isDependency)
         : worker(worker)

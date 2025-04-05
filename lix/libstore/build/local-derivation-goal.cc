@@ -26,9 +26,11 @@
 #include "lix/libutil/thread-name.hh"
 
 #include <cstddef>
+#include <exception>
 #include <regex>
 #include <queue>
 
+#include <stdexcept>
 #include <sys/un.h>
 #include <fcntl.h>
 #include <termios.h>

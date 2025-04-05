@@ -25,6 +25,7 @@
 #include <memory>
 #include <optional>
 
+#include <source_location>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -98,8 +99,37 @@ std::ostream & showErrorInfo(std::ostream & out, const ErrorInfo & einfo, bool s
  * Base class for both errors we can handle (c.f. `BaseError`) and anything
  * we want to log and terminate when encountered (c.f. `ForeignException`).
  */
-struct BaseException : public std::exception
+class BaseException : public std::exception
 {
+public:
+    struct AsyncTraceFrame
+    {
+        std::source_location location;
+        std::optional<std::string> description;
+    };
+
+private:
+    /**
+     * Approximate list of async tasks this exception propagated through.
+     * It is the responsibility of each task to add itself to the back of
+     * this list during stack unwinding. `TRY_AWAIT` does this when used.
+     */
+    std::shared_ptr<std::list<AsyncTraceFrame>> _asyncTrace;
+
+public:
+    std::shared_ptr<const std::list<AsyncTraceFrame>> asyncTrace() const
+    {
+        return _asyncTrace;
+    }
+
+    void
+    addAsyncTrace(std::source_location loc, std::optional<std::string> description = std::nullopt)
+    {
+        if (!_asyncTrace) {
+            _asyncTrace = std::make_shared<std::list<AsyncTraceFrame>>();
+        }
+        _asyncTrace->push_back(AsyncTraceFrame{loc, std::move(description)});
+    }
 };
 
 /**
