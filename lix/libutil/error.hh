@@ -20,6 +20,7 @@
 #include "lix/libutil/fmt.hh"
 
 #include <cstring>
+#include <exception>
 #include <list>
 #include <memory>
 #include <optional>
@@ -94,10 +95,18 @@ struct ErrorInfo {
 std::ostream & showErrorInfo(std::ostream & out, const ErrorInfo & einfo, bool showTrace);
 
 /**
+ * Base class for both errors we can handle (c.f. `BaseError`) and anything
+ * we want to log and terminate when encountered (c.f. `ForeignException`).
+ */
+struct BaseException : public std::exception
+{
+};
+
+/**
  * BaseError should generally not be caught, as it has Interrupted as
  * a subclass. Catch Error instead.
  */
-class BaseError : public std::exception
+class BaseError : public BaseException
 {
 protected:
     mutable ErrorInfo err;
@@ -185,6 +194,58 @@ public:
 MakeError(Error, BaseError);
 MakeError(UsageError, Error);
 MakeError(UnimplementedError, Error);
+
+/**
+ * Wrap any exception as BaseException. We don't wrap as Error because we do not
+ * usually want to catch these exceptions and we don't use std::nested_exception
+ * because we need the dynamic type to preserve the original exception for that.
+ * This should never be used to wrap something that already is a BaseError (or a
+ * BaseException), but this isn't checked since this should not be thrown often.
+ */
+class ForeignException : public BaseException
+{
+    std::shared_ptr<std::string> _what;
+
+public:
+    const std::exception_ptr inner;
+    const std::type_info & innerType;
+
+    explicit ForeignException(const std::exception & inner)
+        : _what(std::make_shared<std::string>(inner.what()))
+        , inner(std::make_exception_ptr(inner))
+        , innerType(typeid(inner))
+    {
+    }
+
+    [[noreturn]]
+    void rethrow() const
+    {
+        std::rethrow_exception(inner);
+    }
+
+    template<typename E>
+    E * as() const
+    {
+        try {
+            rethrow();
+        } catch (E & e) { // NOLINT(lix-foreign-exceptions)
+            return &e;
+        } catch (...) {
+            return nullptr;
+        }
+    }
+
+    template<typename E>
+    bool is() const
+    {
+        return as<E>() != nullptr;
+    }
+
+    const char * what() const noexcept override
+    {
+        return _what->c_str();
+    }
+};
 
 class SysError : public Error
 {
