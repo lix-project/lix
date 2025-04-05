@@ -530,7 +530,7 @@ try {
 
 ref<FSAccessor> BinaryCacheStore::getFSAccessor()
 {
-    return make_ref<RemoteFSAccessor>(ref<Store>(shared_from_this()), config().localNarCache);
+    return make_ref<RemoteFSAccessor>(*this, config().localNarCache);
 }
 
 kj::Promise<Result<void>>

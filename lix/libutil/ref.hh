@@ -32,6 +32,11 @@ public:
             throw std::invalid_argument("null pointer cast to ref");
     }
 
+    template<std::derived_from<std::enable_shared_from_this<T>> T2>
+    ref(T2 & r) : p(r.shared_from_this())
+    {
+    }
+
     T* operator ->() const
     {
         return &*p;

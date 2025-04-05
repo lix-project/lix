@@ -352,7 +352,7 @@ Value * EvalCache::getRootValue(EvalState & state)
 
 ref<AttrCursor> EvalCache::getRoot()
 {
-    return make_ref<AttrCursor>(ref(shared_from_this()), std::nullopt);
+    return make_ref<AttrCursor>(*this, std::nullopt);
 }
 
 AttrCursor::AttrCursor(

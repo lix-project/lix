@@ -1022,7 +1022,7 @@ try {
 
 ref<FSAccessor> RemoteStore::getFSAccessor()
 {
-    return make_ref<RemoteFSAccessor>(ref<Store>(shared_from_this()));
+    return make_ref<RemoteFSAccessor>(*this);
 }
 
 static Logger::Fields readFields(Source & from)
