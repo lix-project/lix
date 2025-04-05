@@ -131,8 +131,8 @@ struct CacheImpl : Cache
 
 ref<Cache> getCache()
 {
-    static auto cache = std::make_shared<CacheImpl>();
-    return ref<Cache>(cache);
+    static auto cache = make_ref<CacheImpl>();
+    return cache;
 }
 
 }

@@ -1053,7 +1053,7 @@ struct StoreFactory
 {
     std::set<std::string> uriSchemes;
     std::function<
-        std::shared_ptr<Store> (
+        std::optional<ref<Store>> (
             const std::string & scheme,
             const std::string & uri,
             const StoreConfig::Params & params
@@ -1074,8 +1074,8 @@ struct StoreImplementations
             .uriSchemes = T::uriSchemes(),
             .create =
                 ([](const std::string & scheme, const std::string & uri, const StoreConfig::Params & params)
-                 -> std::shared_ptr<Store>
-                 { return std::make_shared<T>(scheme, uri, params); }),
+                 -> std::optional<ref<Store>>
+                 { return make_ref<T>(scheme, uri, params); }),
             .getConfig =
                 ([]()
                  -> std::shared_ptr<StoreConfig>

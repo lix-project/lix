@@ -411,7 +411,7 @@ public:
  *
  * i.e. if $searchpath/$command exist for any $searchpath in `searchPaths` and $searchpath/$command links to an executable regular file.
  */
-std::shared_ptr<Command> searchForCustomSubcommand(const std::string_view & command, const Strings & searchPaths);
+std::optional<ref<Command>> searchForCustomSubcommand(const std::string_view & command, const Strings & searchPaths);
 /* This will read all directories in searchPaths one by one and look for all executable regular files which starts with `$prefix-`.
  * Finally, it will return the list of commands stripped of their `$prefix` prefix.
  *

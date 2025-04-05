@@ -1504,14 +1504,14 @@ static bool isNonUriPath(const std::string & spec)
         && spec.find("/") != std::string::npos;
 }
 
-std::shared_ptr<Store> openFromNonUri(const std::string & uri, const StoreConfig::Params & params)
+static std::optional<ref<Store>> openFromNonUri(const std::string & uri, const StoreConfig::Params & params)
 {
     if (uri == "" || uri == "auto") {
         auto stateDir = getOr(params, "state", settings.nixStateDir);
         if (access(stateDir.c_str(), R_OK | W_OK) == 0)
             return LocalStore::makeLocalStore(params);
         else if (pathExists(settings.nixDaemonSocketFile))
-            return std::make_shared<UDSRemoteStore>(params);
+            return make_ref<UDSRemoteStore>(params);
         #if __linux__
         else if (!pathExists(stateDir)
             && params.empty()
@@ -1541,7 +1541,7 @@ std::shared_ptr<Store> openFromNonUri(const std::string & uri, const StoreConfig
         else
             return LocalStore::makeLocalStore(params);
     } else if (uri == "daemon") {
-        return std::make_shared<UDSRemoteStore>(params);
+        return make_ref<UDSRemoteStore>(params);
     } else if (uri == "local") {
         return LocalStore::makeLocalStore(params);
     } else if (isNonUriPath(uri)) {
@@ -1549,7 +1549,7 @@ std::shared_ptr<Store> openFromNonUri(const std::string & uri, const StoreConfig
         params2["root"] = absPath(uri);
         return LocalStore::makeLocalStore(params2);
     } else {
-        return nullptr;
+        return std::nullopt;
     }
 }
 
@@ -1598,10 +1598,10 @@ try {
             if (implem.uriSchemes.count(parsedUri.scheme)) {
                 auto store = implem.create(parsedUri.scheme, baseURI, params);
                 if (store) {
-                    experimentalFeatureSettings.require(store->config().experimentalFeature());
-                    TRY_AWAIT(store->init());
-                    store->config().warnUnknownSettings();
-                    co_return ref<Store>(store);
+                    experimentalFeatureSettings.require((*store)->config().experimentalFeature());
+                    TRY_AWAIT((*store)->init());
+                    (*store)->config().warnUnknownSettings();
+                    co_return *store;
                 }
             }
         }
@@ -1611,8 +1611,8 @@ try {
         params.insert(uriParams.begin(), uriParams.end());
 
         if (auto store = openFromNonUri(uri, params)) {
-            store->config().warnUnknownSettings();
-            co_return ref<Store>(store);
+            (*store)->config().warnUnknownSettings();
+            co_return *store;
         }
     }
 

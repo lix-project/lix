@@ -46,7 +46,7 @@ struct StoreCommand : virtual Command
     virtual void run(ref<Store>) = 0;
 
 private:
-    std::shared_ptr<Store> _store;
+    std::optional<ref<Store>> _store;
 };
 
 /**
@@ -81,7 +81,7 @@ struct EvalCommand : virtual StoreCommand, MixEvalArgs
     virtual ref<eval_cache::CachingEvaluator> getEvaluator();
 
 private:
-    std::shared_ptr<Store> evalStore;
+    std::optional<ref<Store>> evalStore;
 
     std::shared_ptr<eval_cache::CachingEvaluator> evalState;
 };

@@ -12,16 +12,16 @@
 #endif
 
 namespace nix {
-std::shared_ptr<LocalStore> LocalStore::makeLocalStore(const StoreConfig::Params & params)
+ref<LocalStore> LocalStore::makeLocalStore(const StoreConfig::Params & params)
 {
 #if __linux__
-    return std::shared_ptr<LocalStore>(new LinuxLocalStore(params));
+    return make_ref<LinuxLocalStore>(params);
 #elif __APPLE__
-    return std::shared_ptr<LocalStore>(new DarwinLocalStore(params));
+    return make_ref<DarwinLocalStore>(params);
 #elif __FreeBSD__
-    return std::shared_ptr<LocalStore>(new FreeBSDLocalStore(params));
+    return make_ref<FreeBSDLocalStore>(params);
 #else
-    return std::shared_ptr<LocalStore>(new FallbackLocalStore(params));
+    return make_ref<FallbackLocalStore>(params);
 #endif
 }
 

@@ -388,7 +388,7 @@ static bool isAcceptableLixSubcommandExe(const std::filesystem::path & exe_path)
         (fs::status(exe_path).permissions() & (fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec)) != fs::perms::none;
 }
 
-std::shared_ptr<Command> searchForCustomSubcommand(AsyncIoRoot & aio, const std::string_view & command, const std::string_view & prefix, const Strings & searchPaths)
+std::optional<ref<Command>> searchForCustomSubcommand(AsyncIoRoot & aio, const std::string_view & command, const std::string_view & prefix, const Strings & searchPaths)
 {
     namespace fs = std::filesystem;
     for (auto searchPath : searchPaths) {
@@ -399,7 +399,7 @@ std::shared_ptr<Command> searchForCustomSubcommand(AsyncIoRoot & aio, const std:
         try {
             if (isAcceptableLixSubcommandExe(path)) {
                 debug("Found requested external subcommand '%s' in '%s'", command, path);
-                return std::make_shared<ExternalCommand>(aio, path);
+                return make_ref<ExternalCommand>(aio, path);
             }
         } catch (fs::filesystem_error & fs_exc) {
             if (fs_exc.code() != std::errc::no_such_file_or_directory && fs_exc.code() != std::errc::not_a_directory && fs_exc.code() != std::errc::permission_denied) {
@@ -408,7 +408,7 @@ std::shared_ptr<Command> searchForCustomSubcommand(AsyncIoRoot & aio, const std:
         }
     }
 
-    return nullptr;
+    return std::nullopt;
 }
 
 Strings searchForAllAvailableCustomSubcommands(const std::string_view & prefix, const Strings & searchPaths)
@@ -484,7 +484,7 @@ MultiCommand::MultiCommand(const CommandMap & commands_, bool allowExternal)
                 auto possibleNewSubcommand = searchForCustomSubcommand(aio(), s, ExternalCommand::lixExternalPrefix, customCommandSearchPaths);
 
                 if (possibleNewSubcommand) {
-                    command = {s, ref(possibleNewSubcommand)};
+                    command = {s, *possibleNewSubcommand};
                     isExternalSubcommand = true;
                 }
             } else {

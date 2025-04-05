@@ -42,7 +42,7 @@ ref<Store> StoreCommand::getStore()
 {
     if (!_store)
         _store = createStore();
-    return ref<Store>(_store);
+    return *_store;
 }
 
 ref<Store> StoreCommand::createStore()
@@ -105,7 +105,7 @@ ref<Store> EvalCommand::getEvalStore()
 {
     if (!evalStore)
         evalStore = evalStoreUrl ? aio().blockOn(openStore(*evalStoreUrl)) : getStore();
-    return ref<Store>(evalStore);
+    return *evalStore;
 }
 
 ref<eval_cache::CachingEvaluator> EvalCommand::getEvaluator()

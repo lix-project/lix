@@ -178,7 +178,7 @@ public:
     /**
      * Create a LocalStore, possibly a platform-specific subclass
      */
-    static std::shared_ptr<LocalStore> makeLocalStore(const StoreConfig::Params & params);
+    static ref<LocalStore> makeLocalStore(const StoreConfig::Params & params);
 
     /**
      * Implementations of abstract store API methods.
