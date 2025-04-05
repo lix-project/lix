@@ -42,8 +42,8 @@ TEST_F(ValuePrintingTests, tString)
 TEST_F(ValuePrintingTests, tPath)
 {
     Value vPath;
-    vPath.mkString("/foo");
-    test(vPath, "\"/foo\"");
+    vPath.mkPath("/foo");
+    test(vPath, "/foo");
 }
 
 TEST_F(ValuePrintingTests, tNull)
