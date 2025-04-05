@@ -18,6 +18,7 @@
 #include "lix/libexpr/repl-exit-status.hh"
 #include "lix/libutil/backed-string-view.hh"
 
+#include <concepts>
 #include <map>
 #include <optional>
 #include <unordered_map>
@@ -181,7 +182,7 @@ public:
     class TraceFrame
     {
         friend struct DebugState;
-        template<class T>
+        template<std::derived_from<EvalError> T>
         friend class EvalErrorBuilder;
 
         // holds both the data for this frame *and* a deleter that pulls this frame
@@ -356,7 +357,7 @@ struct EvalErrorContext
     const PosTable & positions;
     DebugState * debug;
 
-    template<class T, typename... Args>
+    template<std::derived_from<EvalError> T, typename... Args>
     [[gnu::noinline]]
     EvalErrorBuilder<T> make(const Args & ... args) {
         return EvalErrorBuilder<T>(positions, debug, args...);

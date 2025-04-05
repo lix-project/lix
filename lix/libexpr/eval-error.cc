@@ -5,27 +5,27 @@
 
 namespace nix {
 
-template<class T>
+template<std::derived_from<EvalError> T>
 EvalErrorBuilder<T> EvalErrorBuilder<T>::withExitStatus(unsigned int exitStatus) &&
 {
     error->withExitStatus(exitStatus);
     return std::move(*this);
 }
 
-template<class T>
+template<std::derived_from<EvalError> T>
 EvalErrorBuilder<T> EvalErrorBuilder<T>::atPos(PosIdx pos) &&
 {
     error->err.pos = positions[pos];
     return std::move(*this);
 }
 
-template<class T>
+template<std::derived_from<EvalError> T>
 EvalErrorBuilder<T> EvalErrorBuilder<T>::atPos(Value & value, PosIdx fallback) &&
 {
     return std::move(*this).atPos(value.determinePos(fallback));
 }
 
-template<class T>
+template<std::derived_from<EvalError> T>
 EvalErrorBuilder<T> EvalErrorBuilder<T>::withTrace(PosIdx pos, const std::string_view text) &&
 {
     error->err.traces.push_front(
@@ -33,14 +33,14 @@ EvalErrorBuilder<T> EvalErrorBuilder<T>::withTrace(PosIdx pos, const std::string
     return std::move(*this);
 }
 
-template<class T>
+template<std::derived_from<EvalError> T>
 EvalErrorBuilder<T> EvalErrorBuilder<T>::withSuggestions(Suggestions & s) &&
 {
     error->err.suggestions = s;
     return std::move(*this);
 }
 
-template<class T>
+template<std::derived_from<EvalError> T>
 EvalErrorBuilder<T> EvalErrorBuilder<T>::withFrame(const Env & env, const Expr & expr) &&
 {
     if (debug) {
@@ -55,14 +55,14 @@ EvalErrorBuilder<T> EvalErrorBuilder<T>::withFrame(const Env & env, const Expr &
     return std::move(*this);
 }
 
-template<class T>
+template<std::derived_from<EvalError> T>
 EvalErrorBuilder<T> EvalErrorBuilder<T>::addTrace(PosIdx pos, HintFmt hint) &&
 {
     error->addTrace(positions[pos], hint);
     return std::move(*this);
 }
 
-template<class T>
+template<std::derived_from<EvalError> T>
 template<typename... Args>
 EvalErrorBuilder<T>
 EvalErrorBuilder<T>::addTrace(PosIdx pos, std::string_view formatString, const Args &... formatArgs) &&
@@ -72,7 +72,7 @@ EvalErrorBuilder<T>::addTrace(PosIdx pos, std::string_view formatString, const A
     return std::move(*this);
 }
 
-template<class T>
+template<std::derived_from<EvalError> T>
 void EvalErrorBuilder<T>::debugThrow(NeverAsync) &&
 {
     if (debug) {
@@ -86,7 +86,7 @@ void EvalErrorBuilder<T>::debugThrow(NeverAsync) &&
     throw *error;
 }
 
-template<class T>
+template<std::derived_from<EvalError> T>
 void EvalErrorBuilder<T>::throw_() &&
 {
     throw *error;

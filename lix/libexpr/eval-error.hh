@@ -6,6 +6,7 @@
 #include "lix/libutil/types.hh"
 #include "lix/libexpr/pos-idx.hh"
 #include "lix/libexpr/pos-table.hh"
+#include <concepts>
 
 namespace nix {
 
@@ -15,13 +16,14 @@ struct Env;
 struct Expr;
 struct Value;
 
+class EvalError;
 class EvalState;
-template<class T>
+template<std::derived_from<EvalError> T>
 class EvalErrorBuilder;
 
 class EvalError : public Error
 {
-    template<class T>
+    template<std::derived_from<EvalError> T>
     friend class EvalErrorBuilder;
 
     std::shared_ptr<const DebugTrace> frame;
@@ -54,7 +56,7 @@ public:
     }
 };
 
-template<class T>
+template<std::derived_from<EvalError> T>
 class [[nodiscard]] EvalErrorBuilder final
 {
     const PosTable & positions;
