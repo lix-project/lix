@@ -178,7 +178,7 @@ try {
 
                 auto storePath =
                     TRY_AWAIT(downloadFile(store, path, "flake-registry.json", false)).storePath;
-                if (auto store2 = store.dynamic_pointer_cast<LocalFSStore>()) {
+                if (auto store2 = store.try_cast_shared<LocalFSStore>()) {
                     TRY_AWAIT(
                         store2->addPermRoot(storePath, getCacheDir() + "/nix/flake-registry.json")
                     );

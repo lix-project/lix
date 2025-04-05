@@ -470,7 +470,7 @@ runDaemon(AsyncIoRoot & aio, bool stdio, std::optional<TrustedFlag> forceTrustCl
         // If --force-untrusted is passed, we cannot forward the connection and
         // must process it ourselves (before delegating to the next store) to
         // force untrusting the client.
-        if (auto remoteStore = store.dynamic_pointer_cast<RemoteStore>(); remoteStore && (!forceTrustClientOpt || *forceTrustClientOpt != NotTrusted))
+        if (auto remoteStore = store.try_cast_shared<RemoteStore>(); remoteStore && (!forceTrustClientOpt || *forceTrustClientOpt != NotTrusted))
             forwardStdioConnection(*remoteStore);
         else
             // `Trusted` is passed in the auto (no override case) because we

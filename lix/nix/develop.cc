@@ -657,7 +657,7 @@ struct CmdDevelop : Common, MixEnvironment
         // Need to chdir since phases assume in flake directory
         if (phase) {
             // chdir if installable is a flake of type git+file or path
-            auto installableFlake = installable.dynamic_pointer_cast<InstallableFlake>();
+            auto installableFlake = installable.try_cast_shared<InstallableFlake>();
             if (installableFlake) {
                 auto sourcePath = installableFlake->getLockedFlake(*state)->flake.resolvedRef.input.getSourcePath();
                 if (sourcePath) {

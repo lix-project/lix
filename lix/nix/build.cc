@@ -148,7 +148,7 @@ struct CmdBuild : InstallablesCommand, MixDryRun, MixJSON, MixProfile
         if (json) logger->cout("%s", builtPathsWithResultToJSON(aio(), buildables, *store).dump());
 
         if (outLink != "")
-            if (auto store2 = store.dynamic_pointer_cast<LocalFSStore>())
+            if (auto store2 = store.try_cast_shared<LocalFSStore>())
                 createOutLinks(aio(), outLink, buildables, *store2);
 
         if (printOutputPaths) {

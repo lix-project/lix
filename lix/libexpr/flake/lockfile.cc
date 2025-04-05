@@ -48,15 +48,15 @@ StorePath LockedNode::computeStorePath(Store & store) const
 
 std::shared_ptr<Node> LockFile::findInput(const InputPath & path)
 {
-    auto pos = root;
+    auto pos = root.get_ptr();
 
     for (auto & elem : path) {
         if (auto i = get(pos->inputs, elem)) {
             if (auto node = std::get_if<0>(&*i))
-                pos = *node;
+                pos = node->get_ptr();
             else if (auto follows = std::get_if<1>(&*i)) {
                 if (auto p = findInput(*follows))
-                    pos = ref(p);
+                    pos = p;
                 else
                     return {};
             }
@@ -98,8 +98,8 @@ LockFile::LockFile(const JSON & json, const Path & path)
                     k = nodeMap.insert_or_assign(inputKey, input).first;
                     getInputs(*input, *jsonNode2);
                 }
-                if (auto child = k->second.dynamic_pointer_cast<LockedNode>())
-                    node.inputs.insert_or_assign(i.key(), ref(child));
+                if (auto child = k->second.try_cast<LockedNode>())
+                    node.inputs.insert_or_assign(i.key(), *child);
                 else
                     // FIXME: replace by follows node
                     throw Error("lock file contains cycle to root node");
@@ -160,7 +160,7 @@ JSON LockFile::toJSON() const
             n["inputs"] = std::move(inputs);
         }
 
-        if (auto lockedNode = node.dynamic_pointer_cast<const LockedNode>()) {
+        if (auto lockedNode = node.try_cast_shared<const LockedNode>()) {
             n["original"] = fetchers::attrsToJSON(lockedNode->originalRef.toAttrs());
             n["locked"] = fetchers::attrsToJSON(lockedNode->lockedRef.toAttrs());
             if (!lockedNode->isFlake)
@@ -228,7 +228,7 @@ std::optional<FlakeRef> LockFile::isUnlocked() const
 
     for (auto & i : nodes) {
         if (i == ref<const Node>(root)) continue;
-        auto node = i.dynamic_pointer_cast<const LockedNode>();
+        auto node = i.try_cast_shared<const LockedNode>();
         if (node && !node->lockedRef.input.isLocked())
             return node->lockedRef;
     }

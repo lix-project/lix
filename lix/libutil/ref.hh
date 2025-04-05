@@ -4,6 +4,7 @@
 #include <compare>
 #include <memory>
 #include <exception>
+#include <optional>
 #include <stdexcept>
 
 namespace nix {
@@ -58,13 +59,17 @@ public:
     }
 
     template<typename T2>
-    ref<T2> cast() const
+    std::optional<ref<T2>> try_cast() const
     {
-        return ref<T2>(std::dynamic_pointer_cast<T2>(p));
+        if (auto d = std::dynamic_pointer_cast<T2>(p)) {
+            return ref<T2>(d);
+        } else {
+            return std::nullopt;
+        }
     }
 
     template<typename T2>
-    std::shared_ptr<T2> dynamic_pointer_cast() const
+    std::shared_ptr<T2> try_cast_shared() const
     {
         return std::dynamic_pointer_cast<T2>(p);
     }

@@ -48,7 +48,7 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
          MyArgs &args, std::optional<Constituents> constituents)
     : constituents(constituents) {
 
-    auto localStore = state.ctx.store.dynamic_pointer_cast<nix::LocalFSStore>();
+    auto localStore = state.ctx.store.try_cast_shared<nix::LocalFSStore>();
 
     try {
         // CA derivations do not have static output paths, so we have to
@@ -148,9 +148,7 @@ void register_gc_root(nix::Path &gcRootsDir, std::string &drvPath, const nix::re
             gcRootsDir + "/" +
             std::string(nix::baseNameOf(drvPath));
         if (!nix::pathExists(root)) {
-            auto localStore =
-                store
-                    .dynamic_pointer_cast<nix::LocalFSStore>();
+            auto localStore = store.try_cast_shared<nix::LocalFSStore>();
             auto storePath =
                 localStore->parseStorePath(drvPath);
             aio.blockOn(localStore->addPermRoot(storePath, root));

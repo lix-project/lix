@@ -37,10 +37,10 @@ InstallableValue & InstallableValue::require(Installable & installable)
 
 ref<InstallableValue> InstallableValue::require(ref<Installable> installable)
 {
-    auto castedInstallable = installable.dynamic_pointer_cast<InstallableValue>();
+    auto castedInstallable = installable.try_cast<InstallableValue>();
     if (!castedInstallable)
         throw nonValueInstallable(*installable);
-    return ref { castedInstallable };
+    return *castedInstallable;
 }
 
 std::optional<DerivedPathWithInfo> InstallableValue::trySinglePathToDerivedPaths(

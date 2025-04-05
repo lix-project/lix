@@ -63,7 +63,7 @@ struct CmdDoctor : StoreCommand
     {
         logger->log("Running checks against store uri: " + store->getUri());
 
-        if (store.dynamic_pointer_cast<LocalFSStore>()) {
+        if (store.try_cast_shared<LocalFSStore>()) {
             success &= checkNixInPath();
             success &= checkProfileRoots(store);
         }

@@ -233,7 +233,7 @@ MixProfile::MixProfile()
 void MixProfile::updateProfile(const StorePath & storePath)
 {
     if (!profile) return;
-    auto store = getStore().dynamic_pointer_cast<LocalFSStore>();
+    auto store = getStore().try_cast_shared<LocalFSStore>();
     if (!store) throw Error("'--profile' is not supported for this Nix store");
     auto profile2 = absPath(*profile);
     switchLink(profile2,

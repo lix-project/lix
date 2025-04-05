@@ -89,7 +89,7 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
         /* It would be more appropriate to use $XDG_RUNTIME_DIR, since
            that gets cleared on reboot, but it wouldn't work on macOS. */
         auto currentLoadName = "/current-load";
-        if (auto localStore = store.dynamic_pointer_cast<LocalFSStore>())
+        if (auto localStore = store.try_cast_shared<LocalFSStore>())
             currentLoad = std::string { localStore->config().stateDir } + currentLoadName;
         else
             currentLoad = settings.nixStateDir + currentLoadName;
@@ -375,7 +375,7 @@ connected:
 
         if (!missingPaths.empty()) {
             Activity act(*logger, lvlTalkative, actUnknown, fmt("copying outputs from '%s'", storeUri));
-            if (auto localStore = store.dynamic_pointer_cast<LocalStore>())
+            if (auto localStore = store.try_cast_shared<LocalStore>())
                 for (auto & path : missingPaths)
                     localStore->locksHeld.insert(store->printStorePath(path)); /* FIXME: ugly */
             aio.blockOn(

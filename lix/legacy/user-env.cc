@@ -130,7 +130,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
         state.ctx.repair ? bmRepair : bmNormal));
 
     /* Switch the current user environment to the output path. */
-    auto store2 = state.ctx.store.dynamic_pointer_cast<LocalFSStore>();
+    auto store2 = state.ctx.store.try_cast_shared<LocalFSStore>();
 
     if (store2) {
         PathLock lock = lockProfile(profile);

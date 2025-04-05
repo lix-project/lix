@@ -78,7 +78,7 @@ void processExpr(EvalState & state, const Strings & attrPaths,
                 else {
                     Path rootName = absPath(gcRoot);
                     if (++rootNr > 1) rootName += "-" + std::to_string(rootNr);
-                    auto store2 = state.ctx.store.dynamic_pointer_cast<LocalFSStore>();
+                    auto store2 = state.ctx.store.try_cast_shared<LocalFSStore>();
                     if (store2)
                         drvPathS = state.aio.blockOn(store2->addPermRoot(drvPath, rootName));
                 }

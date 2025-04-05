@@ -351,7 +351,9 @@ try {
 
 kj::Promise<Result<box_ptr<Source>>> BinaryCacheStore::narFromPath(const StorePath & storePath)
 try {
-    auto info = TRY_AWAIT(queryPathInfo(storePath)).cast<const NarInfo>();
+    auto info_ = TRY_AWAIT(queryPathInfo(storePath)).try_cast<const NarInfo>();
+    assert(info_ && "binary cache queryPathInfo didn't return a NarInfo");
+    auto & info = *info_;
 
     try {
         auto file = getFile(info->url);

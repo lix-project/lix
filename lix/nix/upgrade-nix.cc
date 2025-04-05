@@ -208,7 +208,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
     // You can't just say the manifest version since v2 and v3 are both the latter.
     void upgradeNewStyleProfile(ref<Store> & store, StorePath const & newNix)
     {
-        auto fsStore = store.dynamic_pointer_cast<LocalFSStore>();
+        auto fsStore = store.try_cast_shared<LocalFSStore>();
         // TODO(Qyriad): this check is here because we need to cast to a LocalFSStore,
         // to pass to createGeneration(), ...but like, there's no way a remote store
         // would work with the nix-env based upgrade either right?

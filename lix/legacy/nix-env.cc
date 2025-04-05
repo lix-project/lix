@@ -769,7 +769,7 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
 {
     auto state = globals.state->begin(globals.aio);
 
-    auto store2 = globals.state->store.dynamic_pointer_cast<LocalFSStore>();
+    auto store2 = globals.state->store.try_cast_shared<LocalFSStore>();
     if (!store2) throw Error("--set is not supported for this Nix store");
 
     for (Strings::iterator i = opFlags.begin(); i != opFlags.end(); ) {
