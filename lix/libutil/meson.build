@@ -25,6 +25,7 @@ libutil_sources = files(
   'hilite.cc',
   'json-utils.cc',
   'logging.cc',
+  'monitor-fd.cc',
   'mount.cc',
   'namespaces.cc',
   'position.cc',
