@@ -132,7 +132,7 @@ public:
             {
                 auto state_(pool.state.lock());
                 if (!bad)
-                    state_->idle.push_back(ref<R>(r));
+                    state_->idle.push_back(ref<R>::unsafeFromPtr(r));
                 assert(state_->inUse);
                 state_->inUse--;
                 state_->notify();

@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include <cassert>
 #include <compare>
 #include <memory>
 #include <exception>
@@ -20,17 +21,21 @@ private:
 
     std::shared_ptr<T> p;
 
+    explicit ref<T>(const std::shared_ptr<T> & p)
+        : p(p)
+    {
+        assert(p);
+    }
+
 public:
 
     ref(const ref<T> & r)
         : p(r.p)
     { }
 
-    explicit ref<T>(const std::shared_ptr<T> & p)
-        : p(p)
+    static ref<T> unsafeFromPtr(const std::shared_ptr<T> & p)
     {
-        if (!p)
-            throw std::invalid_argument("null pointer cast to ref");
+        return ref(p);
     }
 
     template<std::derived_from<std::enable_shared_from_this<T>> T2>
@@ -62,7 +67,7 @@ public:
     std::optional<ref<T2>> try_cast() const
     {
         if (auto d = std::dynamic_pointer_cast<T2>(p)) {
-            return ref<T2>(d);
+            return ref<T2>::unsafeFromPtr(d);
         } else {
             return std::nullopt;
         }
@@ -77,7 +82,7 @@ public:
     template<typename T2>
     operator ref<T2> () const
     {
-        return ref<T2>((std::shared_ptr<T2>) p);
+        return ref<T2>::unsafeFromPtr((std::shared_ptr<T2>) p);
     }
 
     ref<T> & operator=(ref<T> const & rhs) = default;

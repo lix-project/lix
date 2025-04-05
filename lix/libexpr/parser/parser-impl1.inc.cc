@@ -387,7 +387,7 @@ template<> struct BuildAST<grammar::v1::inherit> : change_head<InheritState> {
         if (s.from != nullptr) {
             if (!b.attrs.inheritFromExprs)
                 b.attrs.inheritFromExprs = std::make_unique<std::vector<ref<Expr>>>();
-            auto fromExpr = ref<Expr>(std::move(s.from));
+            auto fromExpr = ref<Expr>::unsafeFromPtr(std::move(s.from));
             b.attrs.inheritFromExprs->push_back(fromExpr);
             for (auto & i : s.attrs) {
                 if (attrs.find(i.symbol) != attrs.end())

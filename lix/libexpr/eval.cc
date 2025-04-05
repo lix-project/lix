@@ -333,7 +333,7 @@ Evaluator::Evaluator(
     , builtins(mem, symbols, paths.searchPath(), store->config().storeDir)
     , repair(NoRepair)
     , store(store)
-    , buildStore(buildStore ? ref(buildStore) : store)
+    , buildStore(buildStore ? ref<Store>::unsafeFromPtr(buildStore) : store)
     , debug{
           debugRepl ? std::make_unique<DebugState>(
               positions,

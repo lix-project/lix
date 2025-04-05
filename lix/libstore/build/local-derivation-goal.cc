@@ -1310,9 +1310,13 @@ void LocalDerivationGoal::startDaemon()
         params["root"] = *optRoot;
     params["state"] = "/no-such-path";
     params["log"] = "/no-such-path";
-    auto store = make_ref<RestrictedStore>(params,
-        ref<LocalStore>(std::dynamic_pointer_cast<LocalStore>(worker.store.shared_from_this())),
-        *this);
+    auto store = make_ref<RestrictedStore>(
+        params,
+        ref<LocalStore>::unsafeFromPtr(
+            std::dynamic_pointer_cast<LocalStore>(worker.store.shared_from_this())
+        ),
+        *this
+    );
 
     addedPaths.clear();
 

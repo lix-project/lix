@@ -118,7 +118,7 @@ ref<eval_cache::CachingEvaluator> EvalCommand::getEvaluator()
 
         evalState->repair = repair;
     }
-    return ref<eval_cache::CachingEvaluator>(evalState);
+    return ref<eval_cache::CachingEvaluator>::unsafeFromPtr(evalState);
 }
 
 MixOperateOnOptions::MixOperateOnOptions()

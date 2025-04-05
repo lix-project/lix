@@ -34,7 +34,7 @@ static AsyncIoRoot & aio()
 
 static ref<Store> store()
 {
-    static std::shared_ptr<Store> _store;
+    static std::optional<ref<Store>> _store;
     if (!_store) {
         try {
             initLibStore();
@@ -43,7 +43,7 @@ static ref<Store> store()
             croak("%s", e.what());
         }
     }
-    return ref<Store>(_store);
+    return *_store;
 }
 
 

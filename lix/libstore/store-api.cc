@@ -715,7 +715,7 @@ try {
             stats.narInfoReadAverted++;
             if (!res->didExist())
                 throw InvalidPath("path '%s' does not exist in the store", printStorePath(storePath));
-            co_return ref<const ValidPathInfo>(res->value);
+            co_return ref<const ValidPathInfo>::unsafeFromPtr(res->value);
         }
     }
 
@@ -730,7 +730,7 @@ try {
                 if (res.first == NarInfoDiskCache::oInvalid)
                     throw InvalidPath("path '%s' does not exist in the store", printStorePath(storePath));
             }
-            co_return ref<const ValidPathInfo>(res.second);
+            co_return ref<const ValidPathInfo>::unsafeFromPtr(res.second);
         }
     }
 
@@ -754,7 +754,7 @@ try {
         throw InvalidPath("path '%s' does not exist in the store", printStorePath(storePath));
     }
 
-    co_return ref<const ValidPathInfo>(info);
+    co_return ref<const ValidPathInfo>::unsafeFromPtr(info);
 } catch (...) {
     co_return result::current_exception();
 }

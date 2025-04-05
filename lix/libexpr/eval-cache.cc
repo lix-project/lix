@@ -526,7 +526,7 @@ ref<AttrCursor> AttrCursor::getAttr(EvalState & state, const std::string & name)
     auto p = maybeGetAttr(state, name);
     if (!p)
         throw Error("attribute '%s' does not exist", getAttrPathStr(state, name));
-    return ref(p);
+    return ref<AttrCursor>::unsafeFromPtr(p);
 }
 
 OrSuggestions<ref<AttrCursor>> AttrCursor::findAlongAttrPath(EvalState & state, const std::vector<std::string> & attrPath)
@@ -540,7 +540,7 @@ OrSuggestions<ref<AttrCursor>> AttrCursor::findAlongAttrPath(EvalState & state, 
         }
         res = child;
     }
-    return ref(res);
+    return ref<AttrCursor>::unsafeFromPtr(res);
 }
 
 std::string AttrCursor::getString(EvalState & state)

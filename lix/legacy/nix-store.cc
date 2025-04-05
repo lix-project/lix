@@ -47,7 +47,7 @@ ref<LocalStore> ensureLocalStore()
 {
     auto store2 = std::dynamic_pointer_cast<LocalStore>(store);
     if (!store2) throw Error("you don't have sufficient rights to use this command");
-    return ref<LocalStore>(store2);
+    return ref<LocalStore>::unsafeFromPtr(store2);
 }
 
 
@@ -159,7 +159,7 @@ static void opRealise(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
     if (settings.printMissing) {
         aio.blockOn(printMissing(
-            ref<Store>(store), willBuild, willSubstitute, unknown, downloadSize, narSize
+            ref<Store>::unsafeFromPtr(store), willBuild, willSubstitute, unknown, downloadSize, narSize
         ));
     }
 
@@ -451,7 +451,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
             for (auto & i : opArgs)
                 for (auto & j : aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise)))
                     roots.insert(j);
-            aio.blockOn(printDotGraph(ref<Store>(store), std::move(roots)));
+            aio.blockOn(printDotGraph(ref<Store>::unsafeFromPtr(store), std::move(roots)));
             break;
         }
 
@@ -460,7 +460,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
             for (auto & i : opArgs)
                 for (auto & j : aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise)))
                     roots.insert(j);
-            aio.blockOn(printGraphML(ref<Store>(store), std::move(roots)));
+            aio.blockOn(printGraphML(ref<Store>::unsafeFromPtr(store), std::move(roots)));
             break;
         }
 

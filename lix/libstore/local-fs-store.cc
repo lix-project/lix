@@ -80,7 +80,7 @@ struct LocalStoreAccessor : public FSAccessor
 
 ref<FSAccessor> LocalFSStore::getFSAccessor()
 {
-    return make_ref<LocalStoreAccessor>(ref<LocalFSStore>(
+    return make_ref<LocalStoreAccessor>(ref<LocalFSStore>::unsafeFromPtr(
             std::dynamic_pointer_cast<LocalFSStore>(shared_from_this())));
 }
 
