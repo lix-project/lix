@@ -19,7 +19,7 @@ void onTerminate()
         } else {
             logFatal("std::terminate() called without exception");
         }
-    } catch (const std::exception & ex) {
+    } catch (const std::exception & ex) { // NOLINT(lix-foreign-exceptions)
         logFatal(fmt("Exception: %s: %s", boost::core::demangle(typeid(ex).name()), ex.what()));
     } catch (...) {
         logFatal("Unknown exception! Spooky.");

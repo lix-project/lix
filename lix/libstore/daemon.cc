@@ -1114,7 +1114,7 @@ void processConnection(
         tunnelLogger->stopWork(&e);
         to.flush();
         return;
-    } catch (std::exception & e) {
+    } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
         auto ex = Error(
             "Unexpected exception on the Lix daemon; this is a bug in Lix.\nWe would appreciate a report of the circumstances it happened in at https://git.lix.systems/lix-project/lix.\n%s: %s",
             Uncolored(boost::core::demangle(typeid(e).name())),

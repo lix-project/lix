@@ -247,7 +247,7 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
                     aio.blockOn(sshStore->connect());
                     storeUri = bestMachine->storeUri;
 
-                } catch (std::exception & e) {
+                } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
                     auto msg = chomp(drainFD(5, false));
                     printError("cannot build on '%s': %s%s",
                         bestMachine->storeUri, e.what(),

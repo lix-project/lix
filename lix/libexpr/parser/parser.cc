@@ -47,7 +47,7 @@ Expr * Evaluator::parse(
         auto [_pos, result] = x.finish(s);
         result->bindVars(*this, staticEnv);
         return result.release();
-    } catch (p::parse_error & e) {
+    } catch (p::parse_error & e) { // NOLINT(lix-foreign-exceptions)
         auto pos = e.positions().back();
         throw ParseError({
             .msg = HintFmt("syntax error, %s", e.message()),

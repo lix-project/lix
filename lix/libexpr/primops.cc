@@ -2611,7 +2611,7 @@ void prim_match(EvalState & state, const PosIdx pos, Value * * args, Value & v)
                 (v.listElems()[i] = state.ctx.mem.allocValue())->mkString(match[i + 1].str());
         }
 
-    } catch (std::regex_error & e) {
+    } catch (std::regex_error & e) { // NOLINT(lix-foreign-exceptions)
         if (e.code() == std::regex_constants::error_space) {
             // limit is _GLIBCXX_REGEX_STATE_LIMIT for libstdc++
             state.ctx.errors.make<EvalError>("memory limit exceeded by regular expression '%s'", re)
@@ -2677,7 +2677,7 @@ void prim_split(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 
         assert(idx == 2 * len + 1);
 
-    } catch (std::regex_error & e) {
+    } catch (std::regex_error & e) { // NOLINT(lix-foreign-exceptions)
         if (e.code() == std::regex_constants::error_space) {
             // limit is _GLIBCXX_REGEX_STATE_LIMIT for libstdc++
             state.ctx.errors.make<EvalError>("memory limit exceeded by regular expression '%s'", re)

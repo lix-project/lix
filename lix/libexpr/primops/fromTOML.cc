@@ -69,6 +69,7 @@ void prim_fromTOML(EvalState & state, const PosIdx pos, Value * * args, Value & 
                         attrs.alloc("value").mkString(s.str());
                         v.mkAttrs(attrs);
                     } else {
+                        // NOLINTNEXTLINE(lix-foreign-exceptions)
                         throw std::runtime_error("Dates and times are not supported");
                     }
                 }
@@ -82,7 +83,7 @@ void prim_fromTOML(EvalState & state, const PosIdx pos, Value * * args, Value & 
 
     try {
         visit(val, toml::parse(tomlStream, "fromTOML" /* the "filename" */));
-    } catch (std::exception & e) { // TODO: toml::syntax_error
+    } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions) // TODO: toml::syntax_error
         state.ctx.errors.make<EvalError>("while parsing TOML: %s", e.what()).atPos(pos).debugThrow();
     }
 }

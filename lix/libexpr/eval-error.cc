@@ -83,13 +83,13 @@ void EvalErrorBuilder<T>::debugThrow(NeverAsync) &&
         }
     }
 
-    throw *error;
+    throw *error; // NOLINT(lix-foreign-exceptions): type dependent
 }
 
 template<std::derived_from<EvalError> T>
 void EvalErrorBuilder<T>::throw_() &&
 {
-    throw *error;
+    throw *error; // NOLINT(lix-foreign-exceptions): type dependent
 }
 
 template class EvalErrorBuilder<EvalError>;

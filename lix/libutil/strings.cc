@@ -83,7 +83,7 @@ std::optional<N> string2Int(const std::string_view s)
         return std::nullopt;
     try {
         return boost::lexical_cast<N>(s.data(), s.size());
-    } catch (const boost::bad_lexical_cast &) {
+    } catch (const boost::bad_lexical_cast &) { // NOLINT(lix-foreign-exceptions)
         return std::nullopt;
     }
 }
@@ -105,7 +105,7 @@ std::optional<N> string2Float(const std::string_view s)
 {
     try {
         return boost::lexical_cast<N>(s.data(), s.size());
-    } catch (const boost::bad_lexical_cast &) {
+    } catch (const boost::bad_lexical_cast &) { // NOLINT(lix-foreign-exceptions)
         return std::nullopt;
     }
 }

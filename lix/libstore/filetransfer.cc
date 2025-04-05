@@ -663,7 +663,7 @@ struct curlFileTransfer : public FileTransfer
         try {
             workerThreadMain();
         } catch (nix::Interrupted & e) {
-        } catch (std::exception & e) {
+        } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
             printError("unexpected error in download thread: %s", e.what());
         } catch (...) {
             printError("unexpected error in download thread");

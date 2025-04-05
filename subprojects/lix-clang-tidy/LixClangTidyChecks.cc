@@ -1,6 +1,7 @@
 #include <clang-tidy/ClangTidyModule.h>
 #include <clang-tidy/ClangTidyModuleRegistry.h>
 #include "DisallowedDecls.hh"
+#include "ForeignExceptions.hh"
 #include "HasPrefixSuffix.hh"
 #include "CharPtrCast.hh"
 #include "NeverAsync.hh"
@@ -16,6 +17,7 @@ class NixClangTidyChecks : public ClangTidyModule {
             CheckFactories.registerCheck<CharPtrCastCheck>("lix-charptrcast");
             CheckFactories.registerCheck<NeverAsync>("lix-never-async");
             CheckFactories.registerCheck<DisallowedDeclsCheck>("lix-disallowed-decls");
+            CheckFactories.registerCheck<ForeignExceptions>("lix-foreign-exceptions");
         }
 };
 

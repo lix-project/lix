@@ -11,7 +11,7 @@
 #include <lix/config.h>
 #include <lix/libstore/store-api.hh>
 
-struct DependencyCycle : public std::exception {
+struct DependencyCycle : public nix::BaseException {
     std::string a;
     std::string b;
     std::set<std::string> remainingAggregates;

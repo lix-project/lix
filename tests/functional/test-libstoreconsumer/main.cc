@@ -40,7 +40,7 @@ int main (int argc, char **argv)
 
         return 0;
 
-    } catch (const std::exception & e) {
+    } catch (const std::exception & e) { // NOLINT(lix-foreign-exceptions)
         std::cerr << "Error: " << e.what() << "\n";
         return 1;
     }

@@ -18,7 +18,7 @@ class JSONSax : nlohmann::json_sax<JSON> {
     public:
         virtual std::unique_ptr<JSONState> resolve(EvalState &)
         {
-            throw std::logic_error("tried to close toplevel json parser state");
+            assert(false && "tried to close toplevel json parser state");
         }
         explicit JSONState(std::unique_ptr<JSONState> && p) : parent(std::move(p)) {}
         explicit JSONState(Value * v) : v(allocRootValue(v)) {}

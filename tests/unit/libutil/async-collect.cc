@@ -43,7 +43,9 @@ TEST(AsyncCollect, void)
     ASSERT_FALSE(p.poll(waitScope));
 
     // exceptions propagate
-    a.fulfiller->rejectIfThrows([] { throw std::runtime_error("test"); });
+    a.fulfiller->rejectIfThrows([] {
+        throw std::runtime_error("test"); // NOLINT(lix-foreign-exceptions)
+    });
 
     p = collect.next();
     ASSERT_TRUE(p.poll(waitScope));
@@ -90,7 +92,9 @@ TEST(AsyncCollect, nonVoid)
     ASSERT_FALSE(p.poll(waitScope));
 
     // exceptions propagate
-    a.fulfiller->rejectIfThrows([] { throw std::runtime_error("test"); });
+    a.fulfiller->rejectIfThrows([] {
+        throw std::runtime_error("test"); // NOLINT(lix-foreign-exceptions)
+    });
 
     p = collect.next();
     ASSERT_TRUE(p.poll(waitScope));

@@ -751,7 +751,7 @@ void moveFile(const Path & oldName, const Path & newName)
 {
     try {
         renameFile(oldName, newName);
-    } catch (fs::filesystem_error & e) {
+    } catch (fs::filesystem_error & e) { // NOLINT(lix-foreign-exceptions)
         auto oldPath = fs::path(oldName);
         auto newPath = fs::path(newName);
         // For the move to be as atomic as possible, copy to a temporary

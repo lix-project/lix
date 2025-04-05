@@ -401,7 +401,7 @@ std::optional<ref<Command>> searchForCustomSubcommand(AsyncIoRoot & aio, const s
                 debug("Found requested external subcommand '%s' in '%s'", command, path);
                 return make_ref<ExternalCommand>(aio, path);
             }
-        } catch (fs::filesystem_error & fs_exc) {
+        } catch (fs::filesystem_error & fs_exc) { // NOLINT(lix-foreign-exceptions)
             if (fs_exc.code() != std::errc::no_such_file_or_directory && fs_exc.code() != std::errc::not_a_directory && fs_exc.code() != std::errc::permission_denied) {
                 throw SysError("while searching for the subcommand '%1%' in search path '%2%': '%3%'", command, searchPath, fs_exc.what());
             }
@@ -441,7 +441,7 @@ Strings searchForAllAvailableCustomSubcommands(const std::string_view & prefix, 
                         commandNames.push_back(suffix);
                     }
                 }
-            } catch (fs::filesystem_error & fs_exc) {
+            } catch (fs::filesystem_error & fs_exc) { // NOLINT(lix-foreign-exceptions)
                 if (fs_exc.code() != std::errc::no_such_file_or_directory && fs_exc.code() != std::errc::not_a_directory && fs_exc.code() != std::errc::permission_denied) {
                     throw SysError("while searching for all available commands in search path '%1%', while analyzing '%2%': %3%'", searchPath, entry.path(), fs_exc.what());
                 }

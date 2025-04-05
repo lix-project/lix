@@ -29,7 +29,9 @@ void causeCrashForTesting(std::function<void()> fixture)
 TEST(CrashHandler, exceptionName)
 {
     ASSERT_DEATH(
-        causeCrashForTesting([]() { throw OopsException{"lol oops"}; }),
+        causeCrashForTesting([]() {
+            throw OopsException{"lol oops"}; // NOLINT(lix-foreign-exceptions)
+        }),
         "time to crash\nLix crashed.*OopsException: lol oops"
     );
 }
@@ -46,7 +48,7 @@ TEST(CrashHandler, nonStdException)
 {
     ASSERT_DEATH(
         causeCrashForTesting([]() {
-            // NOLINTNEXTLINE(hicpp-exception-baseclass): intentional
+            // NOLINTNEXTLINE(hicpp-exception-baseclass, lix-foreign-exceptions): intentional
             throw 4;
         }),
         "time to crash\nLix crashed.*Unknown exception! Spooky\\."

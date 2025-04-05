@@ -141,7 +141,7 @@ try {
     fmt_internal::setExceptions(f);
     (f % ... % args);
     return f.str();
-} catch (boost::io::format_error & fe) {
+} catch (boost::io::format_error & fe) { // NOLINT(lix-foreign-exceptions)
     // I don't care who catches this, we do not put up with boost format errors
     // Give me a stack trace and a core dump
     std::cerr << "nix::fmt threw format error. Original format string: '";
@@ -182,7 +182,7 @@ public:
             // And regardless of the coredump give me a damn stacktrace.
             std::terminate();
         }
-    } catch (boost::io::format_error & ex) {
+    } catch (boost::io::format_error & ex) { // NOLINT(lix-foreign-exceptions)
         // Same thing, but for anything that happens in the member initializers.
         std::cerr << "HintFmt received incorrect format string. Original format string: '";
         std::cerr << format << "'; number of arguments: " << sizeof...(args) << "\n";

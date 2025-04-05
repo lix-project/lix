@@ -1949,7 +1949,7 @@ void LocalDerivationGoal::runChild()
                 else
                     throw Error("unsupported builtin builder '%1%'", drv->builder.substr(8));
                 _exit(0);
-            } catch (std::exception & e) {
+            } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
                 writeFull(STDERR_FILENO, e.what() + std::string("\n"));
                 _exit(1);
             }

@@ -65,7 +65,7 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
                 outputs[outputName] = std::nullopt;
             }
         }
-    } catch (const std::exception &e) {
+    } catch (const std::exception &e) { // NOLINT(lix-foreign-exceptions)
         state.ctx.errors.make<nix::EvalError>(
             "derivation '%s' does not have valid outputs: %s",
             attrPath, e.what()

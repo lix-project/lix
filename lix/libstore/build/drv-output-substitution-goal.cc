@@ -96,7 +96,7 @@ try {
 
     try {
         outputInfo = downloadState->result.get();
-    } catch (std::exception & e) {
+    } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
         printError(e.what());
         substituterFailed = true;
     }

@@ -254,17 +254,14 @@ try {
             slotToken = {};
             thr.get();
             break;
-        } catch (std::exception & e) {
+        } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
             printError(e.what());
 
             /* Cause the parent build to fail unless --fallback is given,
                or the substitute has disappeared. The latter case behaves
                the same as the substitute never having existed in the
                first place. */
-            try {
-                throw;
-            } catch (SubstituteGone &) {
-            } catch (...) {
+            if (dynamic_cast<SubstituteGone *>(&e) == nullptr) {
                 substituterFailed = true;
             }
         }

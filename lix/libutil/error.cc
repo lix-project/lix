@@ -423,8 +423,8 @@ void ignoreExceptionInDestructor(Verbosity lvl)
        printError() also throws when remote is closed. */
     try {
         try {
-            throw;
-        } catch (std::exception & e) {
+            throw; // NOLINT(lix-foreign-exceptions)
+        } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
             printMsg(lvl, "error (ignored): %1%", e.what());
         }
     } catch (...) { }
@@ -433,10 +433,10 @@ void ignoreExceptionInDestructor(Verbosity lvl)
 void ignoreExceptionExceptInterrupt(Verbosity lvl)
 {
     try {
-        throw;
+        throw; // NOLINT(lix-foreign-exceptions)
     } catch (const Interrupted & e) {
         throw;
-    } catch (std::exception & e) {
+    } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
         printMsg(lvl, "error (ignored): %1%", e.what());
     }
 }

@@ -23,7 +23,7 @@ static ssize_t callback_read(struct archive * archive, void * _self, const void 
         return self->source->read(charptr_cast<char *>(self->buffer.data()), self->buffer.size());
     } catch (EndOfFile &) {
         return 0;
-    } catch (std::exception & err) {
+    } catch (std::exception & err) { // NOLINT(lix-foreign-exceptions)
         archive_set_error(archive, EIO, "Source threw exception: %s", err.what());
         return -1;
     }

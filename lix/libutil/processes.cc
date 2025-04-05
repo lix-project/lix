@@ -192,7 +192,7 @@ Pid startProcess(std::function<void()> fun, const ProcessOptions & options)
                 throw SysError("setting death signal");
 #endif
             fun();
-        } catch (std::exception & e) {
+        } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
             try {
                 std::cerr << options.errorPrefix << e.what() << "\n";
             } catch (...) { }

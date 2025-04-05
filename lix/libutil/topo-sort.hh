@@ -18,7 +18,9 @@ std::vector<T> topoSort(std::set<T> items,
     std::function<void(const T & path, const T * parent)> dfsVisit;
 
     dfsVisit = [&](const T & path, const T * parent) {
-        if (parents.count(path)) throw makeCycleError(path, *parent);
+        if (parents.count(path)) {
+            throw makeCycleError(path, *parent); // NOLINT(lix-foreign-exceptions): type dependent
+        }
 
         if (!visited.insert(path).second) return;
         parents.insert(path);
@@ -55,7 +57,10 @@ try {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
     dfsVisit = [&](const T & path, const T * parent) -> kj::Promise<Result<void>> {
         try {
-            if (parents.count(path)) throw makeCycleError(path, *parent);
+            if (parents.count(path)) {
+                // NOLINTNEXTLINE(lix-foreign-exceptions): type dependent
+                throw makeCycleError(path, *parent);
+            }
 
             if (!visited.insert(path).second) co_return result::success();
             parents.insert(path);
