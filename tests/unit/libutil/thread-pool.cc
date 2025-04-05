@@ -1,5 +1,6 @@
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/error.hh"
 #include <atomic>
 #include <exception>
 #include <gtest/gtest.h>
@@ -51,7 +52,7 @@ TEST(ThreadPool, early_quit)
     ThreadPool t{"test", 2};
     bool ran_anyway = false;
 
-    struct Dead : std::exception {};
+    struct Dead : BaseException {};
 
     std::atomic_bool unblockA{false}, unblockB{false};
     std::atomic_bool started{false};
@@ -92,7 +93,7 @@ TEST(ThreadPool, early_quit_async)
     ThreadPool t{"test", 2};
     bool ran_anyway = false;
 
-    struct Dead : std::exception {};
+    struct Dead : BaseException {};
 
     std::atomic_bool unblockA{false}, unblockB{false};
     std::atomic_bool started{false};
@@ -133,7 +134,7 @@ TEST(ThreadPool, always_rethrows)
 {
     ThreadPool t{"test"};
 
-    struct Dead : std::exception {};
+    struct Dead : BaseException {};
 
     std::atomic_bool flag{false};
 
@@ -155,7 +156,7 @@ TEST(ThreadPool, always_rethrows_async)
 {
     ThreadPool t{"test"};
 
-    struct Dead : std::exception {};
+    struct Dead : BaseException {};
 
     std::atomic_bool flag{false};
 

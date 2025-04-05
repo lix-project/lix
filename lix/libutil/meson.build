@@ -15,7 +15,6 @@ libutil_sources = files(
   'error.cc',
   'escape-char.cc',
   'escape-string.cc',
-  'exit.cc',
   'experimental-features.cc',
   'file-descriptor.cc',
   'file-system.cc',

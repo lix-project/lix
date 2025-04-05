@@ -1,5 +1,6 @@
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libutil/compression.hh"
+#include "lix/libutil/error.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/thread-name.hh"
 
@@ -203,7 +204,7 @@ serveHTTP(std::string status, std::string headers, std::function<std::string()> 
 
 TEST(FileTransfer, exceptionAbortsDownload)
 {
-    struct Done : std::exception
+    struct Done : BaseException
     {};
 
     auto ft = makeFileTransfer();

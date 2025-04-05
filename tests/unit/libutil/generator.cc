@@ -1,10 +1,16 @@
 #include "lix/libutil/generator.hh"
+#include "lix/libutil/error.hh"
 
 #include <concepts>
 #include <cstdint>
 #include <gtest/gtest.h>
 
 namespace nix {
+
+namespace {
+MakeError(TestError, BaseError);
+MakeError(TestError2, BaseError);
+}
 
 TEST(Generator, yields)
 {
@@ -85,8 +91,7 @@ TEST(Generator, nestsExceptions)
         co_yield 1;
         co_yield []() -> Generator<int> {
             co_yield 9;
-            // NOLINTNEXTLINE(hicpp-exception-baseclass)
-            throw 1;
+            throw TestError("");
             co_yield 10;
         }();
         co_yield 2;
@@ -94,7 +99,7 @@ TEST(Generator, nestsExceptions)
 
     ASSERT_EQ(g.next(), 1);
     ASSERT_EQ(g.next(), 9);
-    ASSERT_THROW(g.next(), int);
+    ASSERT_THROW(g.next(), TestError);
 }
 
 TEST(Generator, exception)
@@ -102,22 +107,20 @@ TEST(Generator, exception)
     {
         auto g = []() -> Generator<int> {
             co_yield 1;
-            // NOLINTNEXTLINE(hicpp-exception-baseclass)
-            throw 1;
+            throw TestError("");
         }();
 
         ASSERT_EQ(g.next(), 1);
-        ASSERT_THROW(g.next(), int);
+        ASSERT_THROW(g.next(), TestError);
         ASSERT_FALSE(g.next().has_value());
     }
     {
         auto g = []() -> Generator<int> {
-            // NOLINTNEXTLINE(hicpp-exception-baseclass)
-            throw 1;
+            throw TestError("");
             co_return;
         }();
 
-        ASSERT_THROW(g.next(), int);
+        ASSERT_THROW(g.next(), TestError);
         ASSERT_FALSE(g.next().has_value());
     }
 }
@@ -176,14 +179,12 @@ struct ThrowTransform
 
     int operator()(bool)
     {
-        // NOLINTNEXTLINE(hicpp-exception-baseclass)
-        throw 2;
+        throw TestError("");
     }
 
     Generator<int, void> operator()(Generator<int> && inner)
     {
-        // NOLINTNEXTLINE(hicpp-exception-baseclass)
-        throw false;
+        throw TestError2("");
     }
 };
 }
@@ -198,7 +199,7 @@ TEST(Generator, transformThrows)
         }();
 
         ASSERT_EQ(g.next(), 1);
-        ASSERT_THROW(g.next(), int);
+        ASSERT_THROW(g.next(), TestError);
         ASSERT_FALSE(g.next().has_value());
     }
     {
@@ -211,7 +212,7 @@ TEST(Generator, transformThrows)
         }();
 
         ASSERT_EQ(g.next(), 1);
-        ASSERT_THROW(g.next(), bool);
+        ASSERT_THROW(g.next(), TestError2);
         ASSERT_FALSE(g.next().has_value());
     }
 }

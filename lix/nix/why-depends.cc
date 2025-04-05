@@ -2,6 +2,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libmain/shared.hh"
+#include "lix/libutil/error.hh"
 #include "why-depends.hh"
 
 #include <queue>
@@ -173,7 +174,7 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
            and `dependency`. */
         std::function<void(Node &, const std::string &, const std::string &)> printNode;
 
-        struct BailOut : std::exception { };
+        struct BailOut : BaseException { };
 
         printNode = [&](Node & node, const std::string & firstPad, const std::string & tailPad) {
             auto pathS = store->printStorePath(node.path);

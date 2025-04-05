@@ -1,4 +1,5 @@
 #include "lix/libutil/closure.hh"
+#include "lix/libutil/error.hh"
 #include <gtest/gtest.h>
 
 namespace nix {
@@ -28,7 +29,7 @@ TEST(closure, correctClosure) {
 }
 
 TEST(closure, properlyHandlesDirectExceptions) {
-    struct TestExn : std::exception {};
+    struct TestExn : BaseException {};
     EXPECT_THROW(
         computeClosure<string>(
             {"A"},

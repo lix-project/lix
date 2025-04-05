@@ -2,6 +2,7 @@
 #include "lix/libstore/local-store.hh"
 #include "lix/libstore/pathlocks.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/error.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
@@ -399,7 +400,7 @@ try {
 }
 
 
-struct GCLimitReached : std::exception { };
+struct GCLimitReached : BaseException { };
 
 
 /**

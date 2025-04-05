@@ -3,6 +3,7 @@
  * @file Checked arithmetic with classes that make it hard to accidentally make something an unchecked operation.
  */
 
+#include "lix/libutil/error.hh"
 #include <compare>
 #include <concepts> // IWYU pragma: keep
 #include <exception>
@@ -13,7 +14,7 @@
 
 namespace nix::checked {
 
-class DivideByZero : std::exception
+struct DivideByZero : BaseException
 {};
 
 /**

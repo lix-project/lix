@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/error.hh"
 #include <compare>
 #include <memory>
 #include <optional>
@@ -127,7 +128,7 @@ struct ParseResult {
 /**
  * A parse error.
  */
-struct ParseError : std::exception {
+struct ParseError : BaseException {
   std::string expected;
   std::string rest;
 
