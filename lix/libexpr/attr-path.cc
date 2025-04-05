@@ -1,5 +1,6 @@
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libexpr/eval-inline.hh"
+#include "lix/libutil/strings.hh"
 #include "print-options.hh"
 #include <algorithm>
 #include <sstream>
@@ -184,15 +185,14 @@ std::pair<SourcePath, uint32_t> findPackageFilename(EvalState & state, Value & v
         throw ParseError("cannot parse 'meta.position' attribute '%s'", fn);
     };
 
-    try {
-        auto colon = fn.rfind(':');
-        if (colon == std::string::npos) fail();
-        auto lineno = std::stoi(std::string(fn, colon + 1, std::string::npos));
-        return {CanonPath(fn.substr(0, colon)), lineno};
-    } catch (std::invalid_argument & e) {
-        fail();
-        abort();
-    }
+    auto colon = fn.rfind(':');
+    if (colon == std::string::npos) fail();
+    // parsing as int32 instead of the uint32 we return for historical reasons.
+    // previously this was a stoi(), and we don't know what editors would do if
+    // we gave them line numbers that wouldn't fit into the int32 number space.
+    auto lineno = string2Int<int32_t>(std::string(fn, colon + 1, std::string::npos));
+    if (!lineno) fail();
+    return {CanonPath(fn.substr(0, colon)), *lineno};
 }
 
 
