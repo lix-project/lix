@@ -79,15 +79,41 @@ struct curlFileTransfer : public FileTransfer
         char errbuf[CURL_ERROR_SIZE];
 
         inline static const std::set<long> successfulStatuses {200, 201, 204, 206, 304, 0 /* other protocol */};
+
+        std::optional<long> httpStatusCode;
+
+        /* Get the scheme for the current curl handle, or none if curl returns NULL.
+         * Ensures the scheme is always casefolded to lowercase */
+        std::optional<std::string> getCurlScheme() {
+            char *scheme_raw = nullptr;
+            if (curl_easy_getinfo(req.get(), CURLINFO_SCHEME, &scheme_raw) != CURLE_OK) {
+                throw nix::Error("could not get scheme used from curl handle");
+            }
+            if (scheme_raw) {
+                return toLower(std::string(scheme_raw));
+            } else {
+                return {};
+            }
+        }
+
         /* Get the HTTP status code, or 0 for other protocols. */
         long getHTTPStatus()
         {
-            long httpStatus = 0;
-            long protocol = 0;
-            curl_easy_getinfo(req.get(), CURLINFO_PROTOCOL, &protocol);
-            if (protocol == CURLPROTO_HTTP || protocol == CURLPROTO_HTTPS)
-                curl_easy_getinfo(req.get(), CURLINFO_RESPONSE_CODE, &httpStatus);
-            return httpStatus;
+            if (httpStatusCode) {
+                return *httpStatusCode;
+            }
+
+            long statusCode = 0;
+
+            std::optional<std::string> scheme = getCurlScheme();
+            if (scheme == "http" || scheme == "https") {
+                if (curl_easy_getinfo(req.get(), CURLINFO_RESPONSE_CODE, &statusCode) != CURLE_OK) {
+                    throw nix::Error("could not get response code from curl handle");
+                }
+            }
+
+            httpStatusCode = statusCode;
+            return statusCode;
         }
 
         std::string verb() const
@@ -156,7 +182,7 @@ struct curlFileTransfer : public FileTransfer
             curl_easy_setopt(req.get(), CURLOPT_HEADERFUNCTION, TransferItem::headerCallbackWrapper);
             curl_easy_setopt(req.get(), CURLOPT_HEADERDATA, this);
 
-            curl_easy_setopt(req.get(), CURLOPT_PROGRESSFUNCTION, progressCallbackWrapper);
+            curl_easy_setopt(req.get(), CURLOPT_XFERINFOFUNCTION, progressCallbackWrapper);
             curl_easy_setopt(req.get(), CURLOPT_PROGRESSDATA, this);
             curl_easy_setopt(req.get(), CURLOPT_NOPROGRESS, 0);
 
@@ -328,7 +354,7 @@ struct curlFileTransfer : public FileTransfer
             return static_cast<TransferItem *>(userp)->headerCallback(contents, size, nmemb);
         }
 
-        int progressCallback(double dltotal, double dlnow)
+        int progressCallback(curl_off_t dltotal, curl_off_t dlnow)
         {
             try {
               act.progress(dlnow, dltotal);
@@ -338,7 +364,7 @@ struct curlFileTransfer : public FileTransfer
             return _isInterrupted;
         }
 
-        static int progressCallbackWrapper(void * userp, double dltotal, double dlnow, double ultotal, double ulnow)
+        static int progressCallbackWrapper(void * userp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
         {
             return static_cast<TransferItem *>(userp)->progressCallback(dltotal, dlnow);
         }
