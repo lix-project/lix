@@ -178,7 +178,10 @@ endif
 # treat generators like owned memory) and will cause inexplicable crashs.
 #
 # gcc 13 does not compile capnp coroutine code correctly. a newer version
-# may fix this. (cf. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=102051)
+# may fix this:
+# - https://gcc.gnu.org/PR102051
+# - https://gcc.gnu.org/PR102217
+# - https://gcc.gnu.org/PR115851
 # we allow gcc 13 here anyway because CI uses it for clang-tidy, and when
 # the compiler crashes outright if won't produce any bad binaries either.
 assert(
