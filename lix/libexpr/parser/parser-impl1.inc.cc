@@ -755,12 +755,15 @@ template<> struct BuildAST<grammar::v1::expr::ancient_let> : change_head<Binding
         // Added 2024-09-18. Turn into an error at some point in the future.
         // See the documentation on deprecated features for more details.
         if (!ps.featureSettings.isEnabled(Dep::AncientLet))
-            warn(
-                "%s found at %s. This feature is deprecated and will be removed in the future. Use %s to silence this warning.",
-                "let {",
-                ps.positions[ps.at(in)],
-                "--extra-deprecated-features ancient-let"
-            );
+            //FIXME: why aren't there any tests for this?
+            logWarning({
+                .msg = HintFmt(
+                    "%s is deprecated and will be removed in the future. Use %s to silence this warning.",
+                    "let {",
+                    "--extra-deprecated-features ancient-let"
+                    ),
+                .pos = ps.positions[ps.at(in)]
+            });
 
         auto pos = ps.at(in);
         b.set.pos = pos;

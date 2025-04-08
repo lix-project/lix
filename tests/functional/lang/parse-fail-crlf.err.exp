@@ -1,4 +1,9 @@
-warning: CR (`\r`) and CRLF (`\r\n`) line endings found at «stdin»:7:21. Please inspect the file and normalize it to use LF (`\n`) line endings instead. Use --extra-deprecated-features cr-line-endings to silence this warning.
+warning: CR (`\r`) and CRLF (`\r\n`) line endings are not supported. Please inspect the file and normalize it to use LF (`\n`) line endings instead. Use --extra-deprecated-features cr-line-endings to silence this warning.
+         at «stdin»:7:21:
+              6|   x =
+              7|   # Dit is een test.
+               |                     ^
+              8| y;
 error: CR (`\r`) and CRLF (`\r\n`) line endings are not supported. Please inspect the file and normalize it to use LF (`\n`) line endings instead. Use --extra-deprecated-features cr-line-endings to silence this warning.
        at «stdin»:14:15:
            13|   # translated to LF.

@@ -85,35 +85,34 @@ inline void State::dupAttr(Symbol attr, const PosIdx pos, const PosIdx prevPos)
 inline void State::overridesFound(const PosIdx pos) {
     // Added 2024-09-18. Turn into an error at some point in the future.
     // See the documentation on deprecated features for more details.
-    warn(
-        "%s found at %s. This feature is deprecated and will be removed in the future. Use %s to silence this warning.",
-        "__overrides",
-        positions[pos],
-        "--extra-deprecated-features rec-set-overrides"
-    );
+    logWarning({
+        .msg = HintFmt(
+            "%s attributes are deprecated and will be removed in the future. Use %s to silence this warning.",
+            "__overrides",
+             "--extra-deprecated-features rec-set-overrides"
+            ),
+        .pos = positions[pos],
+    });
 }
 
 // Added 2025-02-05. This is unlikely to ever occur in the wild, given how broken it is
 inline void State::badLineEndingFound(const PosIdx pos, bool warnOnly)
 {
+    ErrorInfo ei = {
+        .msg = HintFmt(
+            "CR (`\\r`) and CRLF (`\\r\\n`) line endings are not supported. Please inspect the file and normalize it to use LF (`\\n`) line endings instead. Use %s to silence this warning.",
+            "--extra-deprecated-features cr-line-endings"
+        ),
+        .pos = positions[pos],
+    };
     // Within strings we should throw because it is a correctness issue, outside of
     // strings it only harmlessly fucks up line numbers in error messages so warning is sufficient.
     if (warnOnly) {
         if (!hasWarnedAboutBadLineEndings)
-            warn(
-                "CR (`\\r`) and CRLF (`\\r\\n`) line endings found at %s. Please inspect the file and normalize it to use LF (`\\n`) line endings instead. Use %s to silence this warning.",
-                positions[pos],
-                "--extra-deprecated-features cr-line-endings"
-            );
+            logWarning(ei);
         hasWarnedAboutBadLineEndings = true;
     } else
-        throw ParseError({
-            .msg = HintFmt(
-                "CR (`\\r`) and CRLF (`\\r\\n`) line endings are not supported. Please inspect the file and normalize it to use LF (`\\n`) line endings instead. Use %s to silence this warning.",
-                "--extra-deprecated-features cr-line-endings"
-            ),
-            .pos = positions[pos],
-        });
+        throw ParseError(ei);
 }
 // Added 2025-02-05.
 inline void State::nulFound(const PosIdx pos)
