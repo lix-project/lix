@@ -1,11 +1,8 @@
 #pragma once
 ///@file
 
-#include <cinttypes>
-#include <numeric>
 #include <vector>
 
-#include "lix/libutil/chunked-vector.hh"
 #include "lix/libexpr/pos-idx.hh"
 #include "lix/libutil/position.hh"
 #include "lix/libutil/sync.hh"

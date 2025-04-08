@@ -7,8 +7,6 @@
 #include "lix/libexpr/get-drvs.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/json-fwd.hh"
-#include "lix/libutil/url.hh"
-#include "lix/libutil/url-name.hh"
 
 #include <string>
 #include <set>

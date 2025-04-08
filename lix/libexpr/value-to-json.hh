@@ -5,9 +5,6 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libutil/json-fwd.hh"
 
-#include <string>
-#include <map>
-
 namespace nix {
 
 JSON printValueAsJSON(EvalState & state, bool strict,

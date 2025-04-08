@@ -1,5 +1,4 @@
-#include "lix/libexpr/primops.hh"
-#include "lix/libexpr/eval-inline.hh"
+#include "lix/libexpr/eval.hh"
 #include "lix/libexpr/eval-settings.hh"
 #include "lix/libexpr/extra-primops.hh"
 #include "lix/libstore/store-api.hh"

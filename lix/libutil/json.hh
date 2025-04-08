@@ -9,9 +9,9 @@
 
 #include "lix/libutil/error.hh"
 #include "lix/libutil/fmt.hh"
-#include "lix/libutil/json-fwd.hh" // IWYU pragma: keep
+#include "lix/libutil/json-fwd.hh" // IWYU pragma: export
 #include <concepts>
-#include <nlohmann/json.hpp> // IWYU pragma: keep
+#include <nlohmann/json.hpp> // IWYU pragma: export
 #include <list>
 #include <string_view>
 #include <type_traits>

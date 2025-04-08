@@ -3,7 +3,7 @@
 
 #include "lix/libutil/error.hh"
 
-#include <string>
+#include <string_view>
 
 namespace nix {
 

@@ -1,24 +1,11 @@
-#include "lix/libstore/globals.hh"
 #include "lix/libcmd/installable-flake.hh"
-#include "lix/libcmd/installable-derived-path.hh"
 #include "lix/libstore/outputs-spec.hh"
 #include "lix/libcmd/command.hh"
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libcmd/common-eval-args.hh"
-#include "lix/libstore/derivations.hh"
-#include "lix/libexpr/eval-inline.hh"
 #include "lix/libexpr/eval.hh"
-#include "lix/libexpr/get-drvs.hh"
-#include "lix/libstore/store-api.hh"
-#include "lix/libmain/shared.hh"
 #include "lix/libexpr/flake/flake.hh"
 #include "lix/libexpr/eval-cache.hh"
-#include "lix/libutil/url.hh"
-#include "lix/libfetchers/registry.hh"
-#include "lix/libstore/build-result.hh"
-
-#include <regex>
-#include <queue>
 
 #include <nlohmann/json.hpp>
 

@@ -3,7 +3,6 @@
 
 #include "lix/libexpr/eval.hh"
 
-#include <tuple>
 #include <vector>
 
 namespace nix {

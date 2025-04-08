@@ -3,8 +3,6 @@
 #include "lix/libexpr/eval-settings.hh"
 #include "lix/libexpr/extra-primops.hh"
 #include "lix/libexpr/flake/lockfile.hh"
-#include "lix/libexpr/primops.hh"
-#include "lix/libexpr/eval-inline.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libutil/async.hh"

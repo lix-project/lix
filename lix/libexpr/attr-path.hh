@@ -4,7 +4,6 @@
 #include "lix/libexpr/eval.hh"
 
 #include <string>
-#include <map>
 
 namespace nix {
 

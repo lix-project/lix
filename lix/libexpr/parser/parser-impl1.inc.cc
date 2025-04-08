@@ -1,3 +1,14 @@
+#include "eval-settings.hh"
+#include "lix/libexpr/nixexpr.hh"
+#include "lix/libexpr/parser/change_head.hh"
+#include "lix/libexpr/parser/grammar.hh"
+#include "lix/libexpr/parser/state.hh"
+#include "lix/libexpr/pos-idx.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libutil/users.hh"
+
+#include <charconv>
+
 // flip this define when doing parser development to enable some g checks.
 #if 0
 #include <tao/pegtl/contrib/analyze.hpp>

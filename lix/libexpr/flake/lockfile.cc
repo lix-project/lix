@@ -1,5 +1,4 @@
 #include "lix/libexpr/flake/lockfile.hh"
-#include "json-to-value.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/json.hh"

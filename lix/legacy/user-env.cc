@@ -3,10 +3,8 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/path-with-outputs.hh"
 #include "lix/libstore/local-fs-store.hh"
-#include "lix/libstore/globals.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libexpr/eval.hh"
-#include "lix/libexpr/eval-inline.hh"
 #include "lix/libstore/profiles.hh"
 #include "lix/libexpr/print-ambiguous.hh"
 

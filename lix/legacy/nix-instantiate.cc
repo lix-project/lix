@@ -2,7 +2,6 @@
 #include "lix/libexpr/print-ambiguous.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libexpr/eval.hh"
-#include "lix/libexpr/eval-inline.hh"
 #include "lix/libexpr/get-drvs.hh"
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libexpr/value-to-xml.hh"
@@ -13,7 +12,6 @@
 #include "lix/libcmd/legacy.hh"
 #include "nix-instantiate.hh"
 
-#include <map>
 #include <iostream>
 
 

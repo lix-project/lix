@@ -4,7 +4,6 @@
 #include "lix/libutil/json.hh"
 
 #include <limits>
-#include <variant>
 
 namespace nix {
 

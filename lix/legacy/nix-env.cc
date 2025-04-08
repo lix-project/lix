@@ -13,7 +13,6 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/local-fs-store.hh"
 #include "user-env.hh"
-#include "lix/libutil/json.hh"
 #include "lix/libutil/users.hh"
 #include "lix/libexpr/value-to-json.hh"
 #include "lix/libutil/xml-writer.hh"

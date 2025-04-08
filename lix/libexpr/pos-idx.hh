@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include <cinttypes>
+#include <cstdint>
 
 namespace nix {
 

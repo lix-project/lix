@@ -7,8 +7,6 @@
 
 #include <kj/async.h>
 
-#include <optional>
-
 namespace nix {
 
 #define CMP_ONE(CHILD_TYPE, MY_TYPE, FIELD, COMPARATOR) \

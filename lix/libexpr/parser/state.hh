@@ -1,7 +1,8 @@
 #pragma once
 ///@file
 
-#include "lix/libexpr/eval.hh"
+#include "lix/libexpr/nixexpr.hh"
+#include "lix/libexpr/pos-idx.hh"
 #include "lix/libutil/logging.hh"
 
 namespace nix::parser {

@@ -10,7 +10,6 @@
 #include "lix/libexpr/gc-alloc.hh"
 #include "lix/libexpr/symbol-table.hh"
 #include "lix/libexpr/value/context.hh"
-#include "lix/libutil/input-accessor.hh"
 #include "lix/libutil/source-path.hh"
 #include "lix/libexpr/print-options.hh"
 #include "lix/libutil/checked-arithmetic.hh"

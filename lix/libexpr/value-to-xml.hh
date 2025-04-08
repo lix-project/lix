@@ -4,9 +4,6 @@
 #include "lix/libexpr/nixexpr.hh"
 #include "lix/libexpr/eval.hh"
 
-#include <string>
-#include <map>
-
 namespace nix {
 
 void printValueAsXML(EvalState & state, bool strict, bool location,

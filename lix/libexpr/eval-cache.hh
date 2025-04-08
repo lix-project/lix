@@ -1,7 +1,6 @@
 #pragma once
 ///@file
 
-#include "lix/libutil/sync.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libexpr/eval.hh"
 

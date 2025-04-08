@@ -12,10 +12,7 @@
 
 #include "lix/libutil/ansicolor.hh"
 #include "lix/libmain/shared.hh"
-#include "lix/libutil/escape-string.hh"
 #include "lix/libexpr/eval.hh"
-#include "lix/libexpr/eval-cache.hh"
-#include "lix/libexpr/eval-inline.hh"
 #include "lix/libexpr/eval-settings.hh"
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libutil/signals.hh"
