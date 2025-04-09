@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "tao/pegtl.hpp"
+#include "tao/pegtl.hpp" // IWYU pragma: keep
 #include <type_traits>
 #include <variant>
 

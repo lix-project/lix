@@ -5,7 +5,6 @@
 #include "lix/libexpr/symbol-table.hh"
 
 #include <algorithm>
-#include <optional>
 
 namespace nix {
 

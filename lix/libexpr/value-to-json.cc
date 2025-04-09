@@ -1,11 +1,9 @@
 #include "lix/libexpr/value-to-json.hh"
-#include "lix/libexpr/eval-inline.hh"
 #include "lix/libutil/json.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libstore/store-api.hh"
 
 #include <cstdlib>
-#include <iomanip>
 
 
 namespace nix {

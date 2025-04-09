@@ -1,7 +1,6 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/downstream-placeholder.hh"
-#include "lix/libexpr/eval-inline.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/eval-settings.hh"
 #include "lix/libexpr/extra-primops.hh"
@@ -18,7 +17,6 @@
 #include "lix/libexpr/value-to-xml.hh"
 #include "lix/libexpr/primops.hh"
 #include "lix/libfetchers/fetch-to-store.hh"
-#include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 
 #include <boost/container/small_vector.hpp>

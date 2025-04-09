@@ -1,7 +1,5 @@
 #include <cstring>
-#include <fstream>
 #include <iostream>
-#include <filesystem>
 #include <regex>
 #include <sstream>
 #include <vector>
@@ -16,7 +14,6 @@
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/path-with-outputs.hh"
 #include "lix/libexpr/eval.hh"
-#include "lix/libexpr/eval-inline.hh"
 #include "lix/libexpr/get-drvs.hh"
 #include "lix/libcmd/common-eval-args.hh"
 #include "lix/libexpr/attr-path.hh"

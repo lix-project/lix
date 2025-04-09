@@ -7,9 +7,9 @@
 #include "lix/libexpr/print.hh"
 #include "lix/libutil/ansicolor.hh"
 #include "lix/libstore/store-api.hh"
-#include "lix/libutil/english.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libexpr/eval.hh"
+#include "lix/libutil/print-elided.hh"
 #include "lix/libutil/terminal.hh"
 
 namespace nix {

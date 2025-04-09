@@ -3,7 +3,6 @@
 
 #include "lix/libexpr/eval.hh"
 #include "lix/libstore/path.hh"
-#include "lix/libstore/outputs-spec.hh"
 #include "lix/libstore/derived-path.hh"
 #include "lix/libcmd/built-path.hh"
 #include "lix/libstore/store-api.hh"

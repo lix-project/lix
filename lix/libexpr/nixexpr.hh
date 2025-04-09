@@ -6,12 +6,9 @@
 
 #include "lix/libexpr/value.hh"
 #include "lix/libexpr/symbol-table.hh"
-#include "lix/libutil/error.hh"
 #include "lix/libutil/json.hh"
-#include "lix/libutil/position.hh"
 #include "lix/libexpr/eval-error.hh"
 #include "lix/libexpr/pos-idx.hh"
-#include "lix/libexpr/pos-table.hh"
 #include "lix/libutil/strings.hh"
 
 namespace nix {

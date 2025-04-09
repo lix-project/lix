@@ -1,5 +1,4 @@
 #include "lix/libexpr/get-drvs.hh"
-#include "lix/libexpr/eval-inline.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libstore/path.hh"

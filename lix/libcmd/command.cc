@@ -2,7 +2,6 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/local-fs-store.hh"
 #include "lix/libstore/derivations.hh"
-#include "lix/libexpr/nixexpr.hh"
 #include "lix/libstore/profiles.hh"
 #include "lix/libcmd/repl.hh"
 

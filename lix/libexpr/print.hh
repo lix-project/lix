@@ -11,7 +11,6 @@
 
 #include "lix/libutil/fmt.hh"
 #include "lix/libexpr/print-options.hh"
-#include "lix/libutil/print-elided.hh"
 
 namespace nix {
 

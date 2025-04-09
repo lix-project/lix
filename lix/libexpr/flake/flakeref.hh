@@ -2,11 +2,8 @@
 ///@file
 
 #include "lix/libutil/types.hh"
-#include "lix/libutil/hash.hh"
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libstore/outputs-spec.hh"
-
-#include <variant>
 
 namespace nix {
 

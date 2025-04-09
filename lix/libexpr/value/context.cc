@@ -1,7 +1,5 @@
 #include "lix/libexpr/value/context.hh"
 
-#include <optional>
-
 namespace nix {
 
 NixStringContextElem NixStringContextElem::parse(

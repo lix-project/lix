@@ -1,17 +1,10 @@
-#include "lix/libexpr/attr-set.hh"
 #include "lix/libutil/error.hh"
-#include "lix/libexpr/eval-settings.hh"
 #include "lix/libexpr/eval.hh"
-#include "lix/libutil/finally.hh"
 #include "lix/libexpr/nixexpr.hh"
-#include "lix/libexpr/symbol-table.hh"
-#include "lix/libutil/users.hh"
 
-#include "lix/libexpr/parser/change_head.hh"
 #include "lix/libexpr/parser/grammar.hh"
 #include "lix/libexpr/parser/state.hh"
 
-#include <charconv>
 #include <memory>
 
 // Linter complains that this is a "suspicious include of file with '.cc' extension".

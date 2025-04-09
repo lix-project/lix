@@ -5,14 +5,14 @@
 #include "lix/libutil/async.hh"
 #include "lix/libutil/exit.hh"
 #include "lix/libstore/globals.hh"
-#include "lix/libstore/build-result.hh"
+#include "lix/libstore/build-result.hh" // IWYU pragma: keep
 #include "lix/libstore/store-cast.hh"
 #include "lix/libstore/gc-store.hh"
 #include "lix/libstore/log-store.hh"
 #include "lix/libstore/local-store.hh"
 #include "lix/libutil/monitor-fd.hh"
 #include "lix/libstore/serve-protocol.hh"
-#include "lix/libstore/serve-protocol-impl.hh"
+#include "lix/libstore/serve-protocol-impl.hh" // IWYU pragma: keep
 #include "lix/libmain/shared.hh"
 #include "graphml.hh"
 #include "lix/libcmd/legacy.hh"

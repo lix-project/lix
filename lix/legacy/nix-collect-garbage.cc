@@ -10,7 +10,6 @@
 #include "lix/libutil/types.hh"
 #include "nix-collect-garbage.hh"
 
-#include <iostream>
 #include <cerrno>
 
 namespace nix {

@@ -1,8 +1,6 @@
 #pragma once
 ///@file
 
-#include <list>
-#include <map>
 #include <unordered_map>
 
 #include "lix/libutil/types.hh"

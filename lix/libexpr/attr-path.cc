@@ -1,5 +1,4 @@
 #include "lix/libexpr/attr-path.hh"
-#include "lix/libexpr/eval-inline.hh"
 #include "lix/libutil/strings.hh"
 #include "print-options.hh"
 #include <algorithm>

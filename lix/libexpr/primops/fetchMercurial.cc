@@ -1,9 +1,6 @@
 #include "lix/libexpr/primops.hh"
-#include "lix/libexpr/eval-inline.hh"
 #include "lix/libexpr/eval-settings.hh"
-#include "lix/libstore/store-api.hh"
 #include "lix/libfetchers/fetchers.hh"
-#include "lix/libutil/url.hh"
 #include "lix/libutil/url-parts.hh"
 
 namespace nix {
