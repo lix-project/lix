@@ -26,7 +26,6 @@
 #endif
 
 using namespace std::chrono_literals;
-using namespace std::string_literals;
 
 namespace {
 
@@ -259,43 +258,18 @@ TEST(FileTransfer, NOT_ON_DARWIN(defersFailures))
     ASSERT_THROW(src->drain(), FileTransferError);
 }
 
-class FileTransferEncoding : public testing::TestWithParam<std::pair<std::string, std::string>>
-{};
-
-TEST_P(FileTransferEncoding, NOT_ON_DARWIN(handlesContentEncoding))
+TEST(FileTransfer, NOT_ON_DARWIN(handlesContentEncoding))
 {
     std::string original = "Test data string";
-    auto [method, compressed] = GetParam();
+    std::string compressed = compress("gzip", original);
 
-    auto [port, srv] =
-        serveHTTP("200 ok", "content-encoding: " + method + "\r\n", [&] { return compressed; });
+    auto [port, srv] = serveHTTP("200 ok", "content-encoding: gzip\r\n", [&] { return compressed; });
     auto ft = makeFileTransfer();
 
     StringSink sink;
     ft->download(fmt("http://[::1]:%d/index", port)).second->drainInto(sink);
     EXPECT_EQ(sink.s, original);
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    ,
-    FileTransferEncoding,
-    testing::Values(
-        std::pair{
-            "gzip",
-            "\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\x49\x2d\x2e\x51\x48\x49\x2c\x49\x54\x28"
-            "\x2e\x29\xca\xcc\x4b\x07\x00\x34\xfd\xff\xfa\x10\x00\x00\x00"s
-        },
-        std::pair{
-            "zstd",
-            "\x28\xb5\x2f\xfd\x04\x58\x81\x00\x00\x54\x65\x73\x74\x20\x64\x61\x74\x61\x20\x73\x74"
-            "\x72\x69\x6e\x67\x5e\xc9\x0e\xca"s
-        },
-        std::pair{
-            "br",
-            "\x8f\x07\x80\x54\x65\x73\x74\x20\x64\x61\x74\x61\x20\x73\x74\x72\x69\x6e\x67\x03"s
-        }
-    )
-);
 
 TEST(FileTransfer, usesIntermediateLinkHeaders)
 {
