@@ -30,7 +30,7 @@ TEST_P(RewriteTest, IdentityRewriteIsIdentity) {
     ASSERT_EQ(RewritingSource(param.rewrites, src).drain(), param.finalString);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     references,
     RewriteTest,
     ::testing::Values(
