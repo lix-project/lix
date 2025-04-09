@@ -1,9 +1,12 @@
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <limits>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <rapidcheck/Assertions.h>
 #include <rapidcheck/gtest.h>
 #include <rapidcheck/gen/Arbitrary.hpp>
+#pragma GCC diagnostic pop
 
 #include "lix/libutil/checked-arithmetic.hh"
 

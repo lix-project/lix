@@ -1,7 +1,10 @@
-#include <rapidcheck/gen/Arbitrary.h>
 #include <regex>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#include <rapidcheck/gen/Arbitrary.h>
 #include <rapidcheck.h>
+#pragma GCC diagnostic pop
 
 #include "lix/libstore/path-regex.hh"
 #include "lix/libstore/store-api.hh"

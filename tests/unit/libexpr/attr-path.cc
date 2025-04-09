@@ -2,10 +2,13 @@
 #include "lix/libexpr/attr-set.hh"
 #include "tests/libexpr.hh"
 #include <gtest/gtest.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <rapidcheck/gen/Arbitrary.h>
 #include <rapidcheck/gen/Container.h>
 #include <rapidcheck/gen/Predicate.h>
 #include <rapidcheck/gtest.h>
+#pragma GCC diagnostic pop
 
 namespace nix {
 

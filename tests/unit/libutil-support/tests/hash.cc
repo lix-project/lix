@@ -1,7 +1,10 @@
 // required due to rapidcheck generating an incomplete-return-type error due to
 // missing include on libc++ on macOS
 #include <exception> // IWYU pragma: keep
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <rapidcheck.h>
+#pragma GCC diagnostic pop
 
 #include "hash.hh"
 
