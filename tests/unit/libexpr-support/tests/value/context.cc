@@ -1,4 +1,7 @@
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <rapidcheck.h>
+#pragma GCC diagnostic pop
 
 #include "tests/path.hh"
 #include "tests/value/context.hh"

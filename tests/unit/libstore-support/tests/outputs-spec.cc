@@ -1,6 +1,9 @@
 #include "tests/outputs-spec.hh"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <rapidcheck.h>
+#pragma GCC diagnostic pop
 
 namespace rc {
 using namespace nix;

@@ -1,6 +1,9 @@
 #include <regex>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <rapidcheck.h>
+#pragma GCC diagnostic pop
 
 #include "tests/derived-path.hh"
 

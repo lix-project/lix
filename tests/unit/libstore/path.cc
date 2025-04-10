@@ -1,7 +1,10 @@
 #include <regex>
 
 #include <gtest/gtest.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <rapidcheck/gtest.h>
+#pragma GCC diagnostic pop
 
 #include "lix/libstore/path-regex.hh"
 #include "lix/libstore/store-api.hh"
