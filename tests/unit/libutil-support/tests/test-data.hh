@@ -1,4 +1,5 @@
 #pragma once
+/// @file
 
 #include "lix/libutil/types.hh"
 #include "lix/libutil/environment-variables.hh"
