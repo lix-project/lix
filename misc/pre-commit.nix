@@ -81,7 +81,7 @@ pre-commit-run {
     check-headers = {
       enable = true;
       package = pkgs.check-headers;
-      files = "^lix/";
+      files = "^(lix/|tests/)";
       types = [
         "c++"
         "file"

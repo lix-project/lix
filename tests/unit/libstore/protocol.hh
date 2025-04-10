@@ -1,3 +1,5 @@
+#pragma once
+/// @file
 #include <gtest/gtest.h>
 
 #include "lix/libutil/strings.hh"
