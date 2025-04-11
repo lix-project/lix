@@ -299,89 +299,98 @@
           });
 
         # System tests.
-        tests = import ./tests/nixos { inherit lib nixpkgs nixpkgsFor; } // {
-          nix-eval-jobs = forAllSystems (system: self.packages.${system}.nix-eval-jobs.tests.nix-eval-jobs);
+        tests =
+          import ./tests/nixos {
+            inherit
+              self
+              lib
+              nixpkgs
+              nixpkgsFor
+              ;
+          }
+          // {
+            nix-eval-jobs = forAllSystems (system: self.packages.${system}.nix-eval-jobs.tests.nix-eval-jobs);
 
-          # This is x86_64-linux only, just because we have significantly
-          # cheaper x86_64-linux compute in CI.
-          # It is clangStdenv because clang's sanitizers are nicer.
-          asanBuild = self.packages.x86_64-linux.nix-clangStdenv.override {
-            # Improve caching of non-code changes by not changing the
-            # derivation name every single time, since this will never be seen
-            # by users anyway.
-            versionSuffix = "";
-            sanitize = [
-              "address"
-              "undefined"
-            ];
-            # it is very hard to make *every* CI build use this option such
-            # that we don't wind up building Lix twice, so we do it here where
-            # we are already doing so.
-            werror = true;
-          };
-
-          # Although this might be nicer to do with pre-commit, that would
-          # require adding 12MB of nodejs to the dev shell, whereas building it
-          # in CI with Nix avoids that at a cost of slower feedback on rarely
-          # touched files.
-          jsSyntaxCheck =
-            let
-              nixpkgs = nixpkgsFor.x86_64-linux.native;
-              inherit (nixpkgs) pkgs;
-              docSources = lib.fileset.toSource {
-                root = ./doc;
-                fileset = lib.fileset.fileFilter (f: f.hasExt "js") ./doc;
-              };
-            in
-            pkgs.runCommand "js-syntax-check" { } ''
-              find ${docSources} -type f -print -exec ${pkgs.nodejs-slim}/bin/node --check '{}' ';'
-              touch $out
-            '';
-
-          # clang-tidy run against the Lix codebase using the Lix clang-tidy plugin
-          clang-tidy =
-            let
-              nixpkgs = nixpkgsFor.x86_64-linux.native;
-              inherit (nixpkgs) pkgs;
-            in
-            pkgs.callPackage ./package.nix {
-              # Required since we don't support gcc stdenv
-              stdenv = pkgs.clangStdenv;
+            # This is x86_64-linux only, just because we have significantly
+            # cheaper x86_64-linux compute in CI.
+            # It is clangStdenv because clang's sanitizers are nicer.
+            asanBuild = self.packages.x86_64-linux.nix-clangStdenv.override {
+              # Improve caching of non-code changes by not changing the
+              # derivation name every single time, since this will never be seen
+              # by users anyway.
               versionSuffix = "";
-              lintInsteadOfBuild = true;
+              sanitize = [
+                "address"
+                "undefined"
+              ];
+              # it is very hard to make *every* CI build use this option such
+              # that we don't wind up building Lix twice, so we do it here where
+              # we are already doing so.
+              werror = true;
             };
 
-          # Make sure that nix-env still produces the exact same result
-          # on a particular version of Nixpkgs.
-          evalNixpkgs =
-            with nixpkgsFor.x86_64-linux.native;
-            runCommand "eval-nixos" { buildInputs = [ nix ]; } ''
-              type -p nix-env
-              # Note: we're filtering out nixos-install-tools because https://github.com/NixOS/nixpkgs/pull/153594#issuecomment-1020530593.
-              time nix-env --store dummy:// -f ${nixpkgs-regression} -qaP --drv-path | sort | grep -v nixos-install-tools > packages
-              [[ $(sha1sum < packages | cut -c1-40) = 402242fca90874112b34718b8199d844e8b03d12 ]]
-              mkdir $out
-            '';
+            # Although this might be nicer to do with pre-commit, that would
+            # require adding 12MB of nodejs to the dev shell, whereas building it
+            # in CI with Nix avoids that at a cost of slower feedback on rarely
+            # touched files.
+            jsSyntaxCheck =
+              let
+                nixpkgs = nixpkgsFor.x86_64-linux.native;
+                inherit (nixpkgs) pkgs;
+                docSources = lib.fileset.toSource {
+                  root = ./doc;
+                  fileset = lib.fileset.fileFilter (f: f.hasExt "js") ./doc;
+                };
+              in
+              pkgs.runCommand "js-syntax-check" { } ''
+                find ${docSources} -type f -print -exec ${pkgs.nodejs-slim}/bin/node --check '{}' ';'
+                touch $out
+              '';
 
-          nixpkgsLibTests = forAllSystems (
-            system:
-            let
-              inherit (self.packages.${system}) nix;
-              pkgs = nixpkgsFor.${system}.native;
-              testWithNix = import (nixpkgs + "/lib/tests/test-with-nix.nix") { inherit pkgs lib nix; };
-            in
-            pkgs.symlinkJoin {
-              name = "nixpkgs-lib-tests";
-              paths =
-                [ testWithNix ]
-                # NOTE: nixpkgs 24.11 is being ... *creative*, and requires this dance to override
-                # the evaluator used for the test. it will break again in the future, don't worry.
-                ++ lib.optionals pkgs.stdenv.isLinux [
-                  (pkgs.callPackage "${nixpkgs}/ci/eval" { nixVersions.nix_2_24 = nix; }).attrpathsSuperset
-                ];
-            }
-          );
-        };
+            # clang-tidy run against the Lix codebase using the Lix clang-tidy plugin
+            clang-tidy =
+              let
+                nixpkgs = nixpkgsFor.x86_64-linux.native;
+                inherit (nixpkgs) pkgs;
+              in
+              pkgs.callPackage ./package.nix {
+                # Required since we don't support gcc stdenv
+                stdenv = pkgs.clangStdenv;
+                versionSuffix = "";
+                lintInsteadOfBuild = true;
+              };
+
+            # Make sure that nix-env still produces the exact same result
+            # on a particular version of Nixpkgs.
+            evalNixpkgs =
+              with nixpkgsFor.x86_64-linux.native;
+              runCommand "eval-nixos" { buildInputs = [ nix ]; } ''
+                type -p nix-env
+                # Note: we're filtering out nixos-install-tools because https://github.com/NixOS/nixpkgs/pull/153594#issuecomment-1020530593.
+                time nix-env --store dummy:// -f ${nixpkgs-regression} -qaP --drv-path | sort | grep -v nixos-install-tools > packages
+                [[ $(sha1sum < packages | cut -c1-40) = 402242fca90874112b34718b8199d844e8b03d12 ]]
+                mkdir $out
+              '';
+
+            nixpkgsLibTests = forAllSystems (
+              system:
+              let
+                inherit (self.packages.${system}) nix;
+                pkgs = nixpkgsFor.${system}.native;
+                testWithNix = import (nixpkgs + "/lib/tests/test-with-nix.nix") { inherit pkgs lib nix; };
+              in
+              pkgs.symlinkJoin {
+                name = "nixpkgs-lib-tests";
+                paths =
+                  [ testWithNix ]
+                  # NOTE: nixpkgs 24.11 is being ... *creative*, and requires this dance to override
+                  # the evaluator used for the test. it will break again in the future, don't worry.
+                  ++ lib.optionals pkgs.stdenv.isLinux [
+                    (pkgs.callPackage "${nixpkgs}/ci/eval" { nixVersions.nix_2_24 = nix; }).attrpathsSuperset
+                  ];
+              }
+            );
+          };
 
         pre-commit = forAvailableSystems (
           system:

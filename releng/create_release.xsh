@@ -41,7 +41,7 @@ def setup_creds(env: RelengEnvironment):
     $AWS_SECRET_ACCESS_KEY = key.secret_key
     $AWS_ACCESS_KEY_ID = key.id
     $AWS_DEFAULT_REGION = 'garage'
-    $AWS_ENDPOINT_URL = environment.S3_ENDPOINT
+    $AWS_ENDPOINT_URL = env.s3_endpoint
 
 
 def official_release_commit_tag(force_tag=False):
@@ -255,13 +255,14 @@ def upload_artifacts(env: RelengEnvironment, noconfirm=False, no_check_git=False
         print('[+] git push to the repo')
         # We have to push the ref to gerrit for review at least such that the
         # commit is known, before we can push it as a tag.
+        repo = env.git_repo()
         if env.git_repo_is_gerrit:
-            git push @(env.git_repo) f'{prev_branch}:refs/for/{prev_branch}'
+            git push @(repo) f'{prev_branch}:refs/for/{prev_branch}'
         else:
-            git push @(env.git_repo) f'{prev_branch}:{prev_branch}'
+            git push @(repo) f'{prev_branch}:{prev_branch}'
 
         print('[+] git push tag')
-        git push @(['-f'] if force_push_tag else []) @(env.git_repo) f'{VERSION}:refs/tags/{VERSION}'
+        git push @(['-f'] if force_push_tag else []) @(repo) f'{VERSION}:refs/tags/{VERSION}'
 
 
 def do_tag_merge(force_tag=False, no_check_git=False):
@@ -276,7 +277,6 @@ def build_manual(eval_result):
     (drv, manual) = next((x['drvPath'], x['outputs']['doc']) for x in eval_result if x['attr'] == 'build.x86_64-linux')
     print('[+] Building manual')
     realise([drv])
-
     cp --no-preserve=mode -T -vr @(manual)/share/doc/nix/manual @(MANUAL)
 
 

@@ -1,4 +1,4 @@
-{ lib, nixpkgs, nixpkgsFor }:
+{ self, lib, nixpkgs, nixpkgsFor }:
 
 let
 
@@ -17,6 +17,7 @@ let
       };
       _module.args.nixpkgs = nixpkgs;
       _module.args.system = system;
+      _module.args.self = self;
     })
     // {
       # allow running tests against older nix versions via `nix eval --apply`
@@ -40,6 +41,8 @@ let
 in
 
 {
+  local-releng = runNixOSTestFor "x86_64-linux" ../../releng/local;
+
   authorization = runNixOSTestFor "x86_64-linux" ./authorization.nix;
 
   remoteBuilds = runNixOSTestFor "x86_64-linux" ./remote-builds.nix;
