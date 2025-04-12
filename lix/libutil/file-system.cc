@@ -42,13 +42,11 @@ Path absPath(Path path, std::optional<PathView> dir, bool resolveSymlinks)
 
 Path canonPath(PathView path, bool resolveSymlinks)
 {
-    assert(path != "");
+    if (path == "" || path[0] != '/')
+        throw Error("not an absolute path: '%1%'", path);
 
     std::string s;
     s.reserve(256);
-
-    if (path[0] != '/')
-        throw Error("not an absolute path: '%1%'", path);
 
     std::string temp;
 

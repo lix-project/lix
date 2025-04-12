@@ -89,7 +89,7 @@ namespace nix {
         ASSERT_ANY_THROW(canonPath("."));
         ASSERT_ANY_THROW(canonPath(".."));
         ASSERT_ANY_THROW(canonPath("../"));
-        ASSERT_DEATH({ canonPath(""); }, "path != \"\"");
+        ASSERT_ANY_THROW(canonPath(""));
     }
 
     /* ----------------------------------------------------------------------------
