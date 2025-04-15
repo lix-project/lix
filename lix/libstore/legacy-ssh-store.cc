@@ -118,8 +118,6 @@ struct LegacySSHStore final : public Store
             config_.port,
             config_.sshKey,
             config_.sshPublicHostKey,
-            // Use SSH master only if using more than 1 connection.
-            connections->capacity() > 1,
             config_.compress,
             config_.logFD)
     {

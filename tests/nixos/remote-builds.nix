@@ -75,7 +75,23 @@ in
             virtualisation.writableStore = true;
             virtualisation.additionalPaths = [ config.system.build.extraUtils ];
             nix.settings.substituters = lib.mkForce [ ];
-            programs.ssh.extraConfig = "ConnectTimeout 30";
+            programs.ssh.extraConfig = ''
+              ConnectTimeout 30
+              Host builder2-cs
+                HostName        builder2
+                ControlMaster   auto
+                ControlPersist  yes
+                ControlPath     ~/.ssh/builder2-cs.sock
+            '';
+            specialisation.with-sharing.configuration.nix.buildMachines = lib.mkForce [
+              {
+                hostName = "builder2-cs";
+                sshUser = "root";
+                sshKey = "/root/.ssh/id_ed25519";
+                system = "i686-linux";
+                maxJobs = 1;
+              }
+            ];
           };
       };
 
@@ -126,6 +142,12 @@ in
       # Test whether the build hook automatically skips unavailable builders.
       builder1.block()
       client.succeed("nix-build ${expr nodes.client 4}")
+
+      # test that connection sharing doesn't break anything
+      client.succeed("/run/current-system/specialisation/with-sharing/bin/switch-to-configuration test")
+      client.succeed("ssh builder2-cs true")
+      client.succeed("ssh -O check builder2-cs")
+      client.succeed("nix-build ${expr nodes.client 6}")
     '';
   };
 }
