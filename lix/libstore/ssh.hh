@@ -8,7 +8,7 @@
 
 namespace nix {
 
-class SSHMaster
+class SSH
 {
 private:
 
@@ -31,7 +31,7 @@ private:
 
 public:
 
-    SSHMaster(const std::string & host, const std::optional<uint16_t> port, const std::string & keyFile, const std::string & sshPublicHostKey, bool compress, int logFD = -1);
+    SSH(const std::string & host, const std::optional<uint16_t> port, const std::string & keyFile, const std::string & sshPublicHostKey, bool compress, int logFD = -1);
 
     struct Connection
     {

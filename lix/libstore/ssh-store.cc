@@ -37,7 +37,7 @@ public:
         , RemoteStore(config)
         , config_(std::move(config))
         , host(host)
-        , master(
+        , ssh(
             host,
             config_.port,
             config_.sshKey,
@@ -68,7 +68,7 @@ protected:
 
     struct Connection : RemoteStore::Connection
     {
-        std::unique_ptr<SSHMaster::Connection> sshConn;
+        std::unique_ptr<SSH::Connection> sshConn;
 
         void closeWrite() override
         {
@@ -80,7 +80,7 @@ protected:
 
     std::string host;
 
-    SSHMaster master;
+    SSH ssh;
 
     void setOptions(RemoteStore::Connection & conn) override
     {
@@ -101,7 +101,7 @@ ref<RemoteStore::Connection> SSHStore::openConnection()
     if (config_.remoteStore.get() != "")
         command += " --store " + shellEscape(config_.remoteStore.get());
 
-    conn->sshConn = master.startCommand(command);
+    conn->sshConn = ssh.startCommand(command);
     conn->to = FdSink(conn->sshConn->in.get());
     conn->from = FdSource(conn->sshConn->out.get());
     return conn;

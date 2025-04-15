@@ -8,7 +8,7 @@
 
 namespace nix {
 
-SSHMaster::SSHMaster(const std::string & host, const std::optional<uint16_t> port, const std::string & keyFile, const std::string & sshPublicHostKey, bool compress, int logFD)
+SSH::SSH(const std::string & host, const std::optional<uint16_t> port, const std::string & keyFile, const std::string & sshPublicHostKey, bool compress, int logFD)
     : host(host)
     , port(port)
     , fakeSSH(host == "localhost")
@@ -24,7 +24,7 @@ SSHMaster::SSHMaster(const std::string & host, const std::optional<uint16_t> por
     state->tmpDir = std::make_unique<AutoDelete>(createTempDir("", "nix", true, true, 0700));
 }
 
-void SSHMaster::addCommonSSHOpts(Strings & args)
+void SSH::addCommonSSHOpts(Strings & args)
 {
     auto state(state_.lock());
 
@@ -45,7 +45,7 @@ void SSHMaster::addCommonSSHOpts(Strings & args)
         args.push_back("-C");
 }
 
-std::unique_ptr<SSHMaster::Connection> SSHMaster::startCommand(const std::string & command)
+std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
 {
     Pipe in, out;
     in.create();

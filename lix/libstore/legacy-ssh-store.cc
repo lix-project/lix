@@ -56,7 +56,7 @@ struct LegacySSHStore final : public Store
 
     struct Connection
     {
-        std::unique_ptr<SSHMaster::Connection> sshConn;
+        std::unique_ptr<SSH::Connection> sshConn;
         FdSink to;
         FdSource from;
         ServeProto::Version remoteVersion;
@@ -98,7 +98,7 @@ struct LegacySSHStore final : public Store
 
     ref<Pool<Connection>> connections;
 
-    SSHMaster master;
+    SSH ssh;
 
     static std::set<std::string> uriSchemes() { return {"ssh"}; }
 
@@ -113,7 +113,7 @@ struct LegacySSHStore final : public Store
             [this]() { return openConnection(); },
             [](const ref<Connection> & r) { return r->good; }
             ))
-        , master(
+        , ssh(
             host,
             config_.port,
             config_.sshKey,
@@ -126,7 +126,7 @@ struct LegacySSHStore final : public Store
     ref<Connection> openConnection()
     {
         auto conn = make_ref<Connection>();
-        conn->sshConn = master.startCommand(
+        conn->sshConn = ssh.startCommand(
             fmt("%s --serve --write", config_.remoteProgram)
             + (config_.remoteStore.get() == ""
                    ? ""
