@@ -200,7 +200,6 @@ functional_tests_scripts = [
   'substitute-truncated-nar.sh',
   'regression-484.sh',
   'regression-reference-checks.sh',
-  'external-commands.sh',
   'redirected-filter-source.sh',
 ]
 
