@@ -823,4 +823,22 @@ std::unique_ptr<InputScheme> makeGitInputScheme()
     return std::make_unique<GitInputScheme>();
 }
 
+struct GitLockedInputScheme : GitInputScheme {
+
+    std::string schemeType() const override {
+        using namespace std::literals::string_literals;
+        return "\0git-locked"s;
+    }
+
+    bool hasAllInfo(const Input & input) const override {
+        return true;
+    }
+
+};
+
+std::unique_ptr<InputScheme> makeGitLockedInputScheme()
+{
+    return std::make_unique<GitLockedInputScheme>();
+}
+
 }

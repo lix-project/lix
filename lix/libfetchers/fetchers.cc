@@ -22,6 +22,7 @@ void initLibFetchers()
     registerInputScheme(makeTarballInputScheme());
     registerInputScheme(makeFileInputScheme());
     registerInputScheme(makeGitInputScheme());
+    registerInputScheme(makeGitLockedInputScheme());
     registerInputScheme(makeMercurialInputScheme());
     registerInputScheme(makeGitHubInputScheme());
     registerInputScheme(makeGitLabInputScheme());

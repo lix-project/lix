@@ -10,6 +10,7 @@ std::unique_ptr<InputScheme> makePathInputScheme();
 std::unique_ptr<InputScheme> makeFileInputScheme();
 std::unique_ptr<InputScheme> makeTarballInputScheme();
 std::unique_ptr<InputScheme> makeGitInputScheme();
+std::unique_ptr<InputScheme> makeGitLockedInputScheme();
 std::unique_ptr<InputScheme> makeMercurialInputScheme();
 std::unique_ptr<InputScheme> makeGitHubInputScheme();
 std::unique_ptr<InputScheme> makeGitLabInputScheme();

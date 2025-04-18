@@ -169,6 +169,13 @@ static void fetchTree(
                     "attribute 'name' isn’t supported in call to 'fetchTree'"
                 ).atPos(pos).debugThrow();
 
+        // HACK: When using `fetchGit`, locking with only the hash should happen
+        //       as we don't care about flake shenanigans about `lastModified`
+        if (type == "git" && attrs.contains("narHash")) {
+            using namespace std::literals::string_literals;
+            attrs["type"] = "\0git-locked"s;
+        }
+
         input = fetchers::Input::fromAttrs(std::move(attrs));
     } else {
         auto url = state.coerceToString(pos, *args[0], context,

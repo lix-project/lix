@@ -48,6 +48,10 @@ attribute with the following attributes (all except `url` optional):
   With this argument being true, it's possible to load a `rev` from *any* `ref`
   (by default only `rev`s from the specified `ref` are supported).
 
+- `narHash`
+
+  If given, the source is first looked-up in the Nix store and the [substituters](@docroot@/command-ref/conf-file.md#conf-substituters), and only fetched if not available.
+
 The return value is an attrset containing the following keys:
 
 - `lastModified` (`integer`)

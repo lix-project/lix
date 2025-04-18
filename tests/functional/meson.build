@@ -76,6 +76,7 @@ functional_tests_scripts = [
   'tarball.sh',
   'fetchers.sh',
   'fetchGit.sh',
+  'fetchGitLocked.sh',
   'fetchurl.sh',
   'fetchPath.sh',
   'fetchTree-file.sh',
