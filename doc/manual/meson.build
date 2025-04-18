@@ -1,6 +1,7 @@
 nix_env_for_docs = {
   'HOME': '/dummy',
   'NIX_CONF_DIR': '/dummy',
+  'XDG_CONFIG_HOME': '/dummy',
   'NIX_SSL_CERT_FILE': '/dummy/no-ca-bundle.crt',
   'NIX_STATE_DIR': '/dummy',
   'NIX_CONFIG': 'cores = 0',
