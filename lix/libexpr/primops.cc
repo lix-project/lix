@@ -263,6 +263,11 @@ extern "C" typedef void (*ValueInitializer)(EvalState & state, Value & v);
 /* Load a ValueInitializer from a DSO and return whatever it initializes */
 void prim_importNative(EvalState & state, Value * * args, Value & v)
 {
+# if LIX_MAJOR > 2 || (LIX_MAJOR == 2 && LIX_MINOR >= 97)
+#pragma message ("Folks, we need to rip this out since we've reached 2.97 See fj#796 for more details")
+# endif
+    printTaggedWarning("builtins.importNative is deprecated and will be removed in Lix 2.97, please migrate away from it. You can browse issue #795 for more details.");
+
     auto path = realisePath(state, *args[0]);
 
     std::string sym(state.forceStringNoCtx(*args[1], noPos, "while evaluating the second argument passed to builtins.importNative"));
