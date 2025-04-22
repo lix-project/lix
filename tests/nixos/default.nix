@@ -64,6 +64,38 @@ in
     };
   });
 
+  remoteBuildsNushell = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
+    name = "remoteBuilds_nushell";
+    imports = [ ./remote-builds.nix ];
+    builders.config = { lib, pkgs, ... }: {
+      users.users.root.shell = pkgs.nushell;
+    };
+  });
+
+  remoteBuildsWeirdShell = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
+    name = "remoteBuilds_weird_shell";
+    imports = [ ./remote-builds.nix ];
+    builders.config = { lib, pkgs, ... }: {
+      # a pathologically weird shell that can do nothing BUT run bash
+      users.users.root.shell = pkgs.writeTextFile {
+        name = "watsh";
+        destination = "/bin/watsh";
+        executable = true;
+
+        text = ''
+          #!/bin/sh
+          if [ "$1" = "-c" ] && [ "$2" = "bash" ]; then
+            exec bash
+          else
+            echo "Wat."
+          fi
+        '';
+
+        passthru.shellPath = "/bin/watsh";
+      };
+    };
+  });
+
   # Test our Nix as a builder for clients that are older
 
   remoteBuilds_local_2_3 = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {

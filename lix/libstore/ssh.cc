@@ -76,14 +76,16 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
 
         Strings args;
 
+        // We specifically spawn bash here, to (hopefully) get
+        // reasonably POSIX-y semantics for the things we're about
+        // to do next.
         if (fakeSSH) {
-            args = { "bash", "-c" };
+            args = { "bash" };
         } else {
-            args = { "ssh", host.c_str(), "-x" };
+            args = { "ssh", host.c_str(), "-x", "-T", "-oRemoteCommand=bash" };
             addCommonSSHOpts(args);
         }
 
-        args.push_back(fmt("echo started; %s", command));
         execvp(args.begin()->c_str(), stringsToCharPtrs(args).data());
 
         // could not exec ssh/bash
@@ -94,9 +96,23 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
     in.readSide.reset();
     out.writeSide.reset();
 
-    // Wait for the SSH connection to be established,
-    // So that we don't overwrite the password prompt with our progress bar.
+    // Once we hand off to nix-store (on the remote) and the caller (on the client),
+    // we lose the ability to catch SSH failing, due to Historical Architectural Decisions.
+    //
+    // We want to catch at least _some_ errors and alert the user in case of
+    // an obvious misconfiguration, so run a very simple command first
+    // to make sure things are at least somewhat operational.
+    //
+    // The exact semantics of
+    // - not having a shell prompt get in the way when non-interactive
+    // - echo doing the reasonable thing
+    // Are exactly why we specifically forced bash (via ssh RemoteCommand) earlier.
+    // We do *not* use /bin/sh because that may be busybox and busybox breaks here.
+    //
+    // FIXME: make any of this shit make sense
     {
+        writeLine(in.writeSide.get(), "echo started");
+
         std::string reply;
         try {
             reply = readLine(out.readSide.get());
@@ -107,6 +123,10 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
             throw Error("failed to start SSH connection to '%s'", host);
         }
     }
+
+    // Now that we're reasonably confident we have something vaguely resembling
+    // a connection, hand off to the command.
+    writeLine(in.writeSide.get(), fmt("exec %s", command));
 
     conn->out = std::move(out.readSide);
     conn->in = std::move(in.writeSide);
