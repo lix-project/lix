@@ -1,0 +1,6 @@
+
+some_key is set to @some_key@
+more of @some_key@
+other_key is @other_key@
+@@not_a_key@@
+@@@key_in_braces@@@
