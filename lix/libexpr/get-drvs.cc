@@ -233,14 +233,18 @@ DrvInfo::Outputs DrvInfo::queryOutputs(EvalState & state, bool withPaths, bool o
     /* Check for `meta.outputsToInstall` and return `outputs` reduced to that. */
     const Value * outTI = queryMeta(state, "outputsToInstall");
     if (!outTI) return outputs;
-    auto errMsg = Error("this derivation has bad 'meta.outputsToInstall'");
+    auto errMsg = fmt("derivation '%s' has bad 'meta.outputsToInstall': ", name);
         /* ^ this shows during `nix-env -i` right under the bad derivation */
-    if (!outTI->isList()) throw errMsg;
+    if (!outTI->isList()) throw Error(errMsg + "expected a list but got %s", Uncolored(showType(outTI->type())));
     Outputs result;
     for (auto elem : outTI->listItems()) {
-        if (elem->type() != nString) throw errMsg;
+        if (elem->type() != nString)
+            throw Error(
+                errMsg + "element is %s where a string was expected",
+                Uncolored(showType(elem->type()))
+            );
         auto out = outputs.find(elem->string.s);
-        if (out == outputs.end()) throw errMsg;
+        if (out == outputs.end()) throw Error(errMsg + "output '%s' does not exist", elem->string.s);
         result.insert(*out);
     }
     return result;
