@@ -1,6 +1,7 @@
 #include "lix/libexpr/flake/flakeref.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/url.hh"
 #include "lix/libutil/url-parts.hh"
 #include "lix/libfetchers/fetchers.hh"
@@ -84,13 +85,13 @@ std::pair<FlakeRef, std::string> parseFlakeRefWithFragment(
 
     static std::string fnRegex = "[0-9a-zA-Z-._~!$&'\"()*+,;=]+";
 
-    static std::regex pathUrlRegex(
+    static std::regex pathUrlRegex = regex::parse(
         "(/?" + fnRegex + "(?:/" + fnRegex + ")*/?)"
         + "(?:\\?(" + queryRegex + "))?"
         + "(?:#(" + queryRegex + "))?",
         std::regex::ECMAScript);
 
-    static std::regex flakeShorthandRegex(
+    static std::regex flakeShorthandRegex = regex::parse(
         flakeShorthandRegexS
         + "(?:#(" + queryRegex + "))?",
         std::regex::ECMAScript);

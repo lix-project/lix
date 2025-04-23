@@ -1,4 +1,5 @@
 #include "lix/libutil/shlex.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/strings.hh"
 
 namespace nix {
@@ -15,7 +16,7 @@ std::vector<std::string> shell_split(const std::string & input)
         return result;
     }
 
-    std::regex whitespace("^\\s+");
+    std::regex whitespace = regex::parse("^\\s+");
     auto begin = inputTrimmed.cbegin();
     std::string currentToken;
     enum State { sBegin, sSingleQuote, sDoubleQuote };

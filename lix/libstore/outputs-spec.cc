@@ -5,6 +5,7 @@
 #include "lix/libstore/outputs-spec.hh"
 #include "lix/libstore/path-regex.hh"
 #include "lix/libutil/json.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/strings.hh"
 
 namespace nix {
@@ -28,7 +29,7 @@ static std::string outputSpecRegexStr =
 
 std::optional<OutputsSpec> OutputsSpec::parseOpt(std::string_view s)
 {
-    static std::regex regex(std::string { outputSpecRegexStr });
+    static std::regex regex = nix::regex::parse(std::string { outputSpecRegexStr });
 
     std::smatch match;
     std::string s2 { s }; // until some improves std::regex

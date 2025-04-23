@@ -1,6 +1,7 @@
 #include "lix/libstore/parsed-derivations.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/json.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/strings.hh"
 
 #include <regex>
@@ -132,7 +133,7 @@ bool ParsedDerivation::useUidRange() const
     return getRequiredSystemFeatures().count("uid-range");
 }
 
-static std::regex shVarName("[A-Za-z_][A-Za-z0-9_]*");
+static std::regex shVarName = regex::parse("[A-Za-z_][A-Za-z0-9_]*");
 
 kj::Promise<Result<std::optional<JSON>>>
 ParsedDerivation::prepareStructuredAttrs(Store & store, const StorePathSet & inputPaths)

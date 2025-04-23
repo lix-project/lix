@@ -1,4 +1,5 @@
 #include "lix/libutil/hilite.hh"
+#include "lix/libutil/regex.hh"
 
 #include <gtest/gtest.h>
 
@@ -11,7 +12,7 @@ namespace nix {
 
     TEST(hiliteMatches, simpleHighlight) {
         std::string str = "Hello, world!";
-        std::regex re = std::regex("world");
+        std::regex re = regex::parse("world");
         auto matches = std::vector(std::sregex_iterator(str.begin(), str.end(), re), std::sregex_iterator());
         ASSERT_STREQ(
                     hiliteMatches(str, matches, "(", ")").c_str(),
@@ -21,7 +22,7 @@ namespace nix {
 
     TEST(hiliteMatches, multipleMatches) {
         std::string str = "Hello, world, world, world, world, world, world, Hello!";
-        std::regex re = std::regex("world");
+        std::regex re = regex::parse("world");
         auto matches = std::vector(std::sregex_iterator(str.begin(), str.end(), re), std::sregex_iterator());
         ASSERT_STREQ(
                     hiliteMatches(str, matches, "(", ")").c_str(),
@@ -31,8 +32,8 @@ namespace nix {
 
     TEST(hiliteMatches, overlappingMatches) {
         std::string str = "world, Hello, world, Hello, world, Hello, world, Hello, world!";
-        std::regex re = std::regex("Hello, world");
-        std::regex re2 = std::regex("world, Hello");
+        std::regex re = regex::parse("Hello, world");
+        std::regex re2 = regex::parse("world, Hello");
         auto v = std::vector(std::sregex_iterator(str.begin(), str.end(), re), std::sregex_iterator());
         for(auto it = std::sregex_iterator(str.begin(), str.end(), re2); it != std::sregex_iterator(); ++it) {
             v.push_back(*it);
@@ -46,10 +47,10 @@ namespace nix {
     TEST(hiliteMatches, complexOverlappingMatches) {
         std::string str = "legacyPackages.x86_64-linux.git-crypt";
         std::vector regexes = {
-            std::regex("t-cry"),
-            std::regex("ux\\.git-cry"),
-            std::regex("git-c"),
-            std::regex("pt"),
+            regex::parse("t-cry"),
+            regex::parse("ux\\.git-cry"),
+            regex::parse("git-c"),
+            regex::parse("pt"),
         };
         std::vector<std::smatch> matches;
         for(auto regex : regexes)

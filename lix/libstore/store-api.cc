@@ -15,6 +15,7 @@
 #include "lix/libutil/url.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/uds-remote-store.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/strings.hh"
 // FIXME this should not be here, see TODO below on
@@ -1568,7 +1569,7 @@ static std::string extractConnStr(const std::string &proto, const std::string &c
 {
     if (proto.rfind("ssh") != std::string::npos) {
         std::smatch result;
-        std::regex v6AddrRegex("^((.*)@)?\\[(.*)\\]$");
+        std::regex v6AddrRegex = regex::parse("^((.*)@)?\\[(.*)\\]$");
 
         if (std::regex_match(connStr, result, v6AddrRegex)) {
             if (result[1].matched) {

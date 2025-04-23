@@ -42,6 +42,17 @@ void ForeignExceptions::registerMatchers(ast_matchers::MatchFinder *Finder) {
                     cxxThrowExpr(unless(anyOf(rethrowsAllowed, throwsAllowed)))
                         .bind("throw"))),
       this);
+
+  // flag STL constructors/functions that have caused exception problems before.
+  Finder->addMatcher(
+      traverse(
+          clang::TK_AsIs,
+          cxxConstructExpr(
+              hasDeclaration(cxxConstructorDecl(
+                  hasAncestor(cxxRecordDecl(hasName("std::basic_regex"))),
+                  unless(anyOf(isDefaultConstructor(), isCopyConstructor(), isMoveConstructor())))))
+              .bind("bad-ctor")),
+      this);
 }
 
 void ForeignExceptions::check(
@@ -64,6 +75,12 @@ void ForeignExceptions::check(
           "provide useful traces for async functions. Throw "
           "nix::ForeignException instead where possible.");
     }
+  } else if (const auto *ctor = Result.Nodes.getNodeAs<CXXConstructExpr>("bad-ctor")) {
+    diag(
+        ctor->getLocation(),
+        "%0 throws non-Lix exceptions. Ensure that they are caught and wrapped "
+        "properly, ideally by wrapping the constructor invocation itself.")
+        << ctor->getConstructor()->getNameAsString();
   } else {
     llvm_unreachable("bad match");
   }

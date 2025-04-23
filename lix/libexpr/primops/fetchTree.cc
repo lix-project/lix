@@ -5,6 +5,7 @@
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libfetchers/registry.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/url.hh"
 
 #include <ctime>
@@ -91,7 +92,7 @@ std::string fixURIForGit(std::string uri, EvalState & state)
     /* Detects scp-style uris (e.g. git@github.com:NixOS/nix) and fixes
      * them by removing the `:` and assuming a scheme of `ssh://`
      * */
-    static std::regex scp_uri("([^/]*)@(.*):(.*)");
+    static std::regex scp_uri = regex::parse("([^/]*)@(.*):(.*)");
     if (uri[0] != '/' && std::regex_match(uri, scp_uri))
         return fixURI(std::regex_replace(uri, scp_uri, "$1@$2/$3"), state, "ssh");
     else

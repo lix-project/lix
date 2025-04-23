@@ -4,6 +4,7 @@
 #include "lix/libstore/path.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/path-with-outputs.hh"
+#include "lix/libutil/regex.hh"
 
 #include <cstring>
 #include <regex>
@@ -408,7 +409,7 @@ static std::string addToPath(const std::string & s1, const std::string & s2)
 }
 
 
-static std::regex attrRegex("[A-Za-z_][A-Za-z0-9-_+]*");
+static std::regex attrRegex = regex::parse("[A-Za-z_][A-Za-z0-9-_+]*");
 
 
 /* Evaluate value `v'.  If it evaluates to a set of type `derivation',

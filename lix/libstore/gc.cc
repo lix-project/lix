@@ -9,6 +9,7 @@
 #include "lix/libutil/finally.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/unix-domain-socket.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
 
@@ -363,7 +364,7 @@ void LocalStore::findPlatformRoots(UncheckedRoots & unchecked)
     // non-Darwin, non-Linux platforms. Both major platforms have
     // platform-specific code in lix/libstore/platform/
     try {
-        std::regex lsofRegex(R"(^n(/.*)$)");
+        std::regex lsofRegex = regex::parse(R"(^n(/.*)$)");
         auto lsofLines =
             tokenizeString<std::vector<std::string>>(runProgram(LSOF, true, { "-n", "-w", "-F", "n" }), "\n");
         for (const auto & line : lsofLines) {

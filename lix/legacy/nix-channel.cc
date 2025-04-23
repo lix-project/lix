@@ -8,6 +8,7 @@
 #include "lix/libexpr/eval-settings.hh" // for defexpr
 #include "lix/libstore/temporary-dir.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/users.hh"
 #include "nix-channel.hh"
 
@@ -30,10 +31,10 @@ static void readChannels()
 
     for (const auto & line : tokenizeString<std::vector<std::string>>(channelsFile, "\n")) {
         chomp(line);
-        if (std::regex_search(line, std::regex("^\\s*\\#")))
+        if (std::regex_search(line, regex::parse("^\\s*\\#")))
             continue;
         auto split = tokenizeString<std::vector<std::string>>(line, " ");
-        auto url = std::regex_replace(split[0], std::regex("/*$"), "");
+        auto url = std::regex_replace(split[0], regex::parse("/*$"), "");
         auto name = split.size() > 1 ? split[1] : std::string(baseNameOf(url));
         channels[name] = url;
     }
@@ -52,9 +53,9 @@ static void writeChannels()
 // Adds a channel.
 static void addChannel(const std::string & url, const std::string & name)
 {
-    if (!regex_search(url, std::regex("^(file|http|https)://")))
+    if (!regex_search(url, regex::parse("^(file|http|https)://")))
         throw Error("invalid channel URL '%1%'", url);
-    if (!regex_search(name, std::regex("^[a-zA-Z0-9_][a-zA-Z0-9_\\.-]*$")))
+    if (!regex_search(name, regex::parse("^[a-zA-Z0-9_][a-zA-Z0-9_\\.-]*$")))
         throw Error("invalid channel identifier '%1%'", name);
     readChannels();
     channels[name] = url;
@@ -101,7 +102,7 @@ static void update(AsyncIoRoot & aio, const StringSet & channelNames)
         auto cname = name;
         std::smatch match;
         auto urlBase = std::string(baseNameOf(url));
-        if (std::regex_search(urlBase, match, std::regex("(-\\d.*)$")))
+        if (std::regex_search(urlBase, match, regex::parse("(-\\d.*)$")))
             cname = cname + match.str(1);
 
         std::string extraAttrs;
@@ -125,7 +126,7 @@ static void update(AsyncIoRoot & aio, const StringSet & channelNames)
             url = result.effectiveUrl;
 
             bool unpacked = false;
-            if (std::regex_search(filename, std::regex("\\.tar\\.(gz|bz2|xz)$"))) {
+            if (std::regex_search(filename, regex::parse("\\.tar\\.(gz|bz2|xz)$"))) {
                 runProgram(settings.nixBinDir + "/nix-build", false, { "--no-out-link", "--expr", "import " + unpackChannelPath +
                             "{ name = \"" + cname + "\"; channelName = \"" + name + "\"; src = builtins.storePath \"" + filename + "\"; }" });
                 unpacked = true;
@@ -234,8 +235,8 @@ static int main_nix_channel(AsyncIoRoot & aio, std::string programName, Strings 
                     name = args[1];
                 } else {
                     name = baseNameOf(url);
-                    name = std::regex_replace(name, std::regex("-unstable$"), "");
-                    name = std::regex_replace(name, std::regex("-stable$"), "");
+                    name = std::regex_replace(name, regex::parse("-unstable$"), "");
+                    name = std::regex_replace(name, regex::parse("-stable$"), "");
                 }
                 addChannel(url, name);
                 }

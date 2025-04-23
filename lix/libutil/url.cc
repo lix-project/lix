@@ -2,18 +2,19 @@
 #include "lix/libutil/url-parts.hh"
 #include "lix/libutil/split.hh"
 #include "lix/libutil/strings.hh"
+#include "regex.hh"
 
 namespace nix {
 
-std::regex refRegex(refRegexS, std::regex::ECMAScript);
-std::regex badGitRefRegex(badGitRefRegexS, std::regex::ECMAScript);
-std::regex revRegex(revRegexS, std::regex::ECMAScript);
-std::regex flakeIdRegex(flakeIdRegexS, std::regex::ECMAScript);
-std::regex flakeShorthandRegex(flakeShorthandRegexS, std::regex::ECMAScript);
+std::regex refRegex = regex::parse(refRegexS, std::regex::ECMAScript);
+std::regex badGitRefRegex = regex::parse(badGitRefRegexS, std::regex::ECMAScript);
+std::regex revRegex = regex::parse(revRegexS, std::regex::ECMAScript);
+std::regex flakeIdRegex = regex::parse(flakeIdRegexS, std::regex::ECMAScript);
+std::regex flakeShorthandRegex = regex::parse(flakeShorthandRegexS, std::regex::ECMAScript);
 
 ParsedURL parseURL(const std::string & url)
 {
-    static std::regex uriRegex(
+    static std::regex uriRegex = regex::parse(
         "((" + schemeRegex + "):"
         + "(?:(?://(" + authorityRegex + ")(" + absPathRegex + "))|(/?" + pathRegex + ")))"
         + "(?:\\?(" + queryRegex + "))?"

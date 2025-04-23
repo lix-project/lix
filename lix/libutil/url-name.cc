@@ -1,17 +1,18 @@
 #include <regex>
 
 #include "lix/libutil/url-name.hh"
+#include "regex.hh"
 
 namespace nix {
 
 static std::string const attributeNamePattern("[a-zA-Z0-9_-]+");
-static std::regex const lastAttributeRegex("(?:" + attributeNamePattern + "\\.)*(?!default)(" + attributeNamePattern +")(\\^.*)?");
+static std::regex const lastAttributeRegex = regex::parse("(?:" + attributeNamePattern + "\\.)*(?!default)(" + attributeNamePattern +")(\\^.*)?");
 static std::string const pathSegmentPattern("[a-zA-Z0-9_-]+");
-static std::regex const lastPathSegmentRegex(".*/(" + pathSegmentPattern +")");
-static std::regex const secondPathSegmentRegex("(?:" + pathSegmentPattern + ")/(" + pathSegmentPattern +")(?:/.*)?");
-static std::regex const gitProviderRegex("github|gitlab|sourcehut");
-static std::regex const gitSchemeRegex("git($|\\+.*)");
-static std::regex const defaultOutputRegex(".*\\.default($|\\^.*)");
+static std::regex const lastPathSegmentRegex = regex::parse(".*/(" + pathSegmentPattern +")");
+static std::regex const secondPathSegmentRegex = regex::parse("(?:" + pathSegmentPattern + ")/(" + pathSegmentPattern +")(?:/.*)?");
+static std::regex const gitProviderRegex = regex::parse("github|gitlab|sourcehut");
+static std::regex const gitSchemeRegex = regex::parse("git($|\\+.*)");
+static std::regex const defaultOutputRegex = regex::parse(".*\\.default($|\\^.*)");
 
 std::optional<std::string> getNameFromURL(ParsedURL const & url)
 {

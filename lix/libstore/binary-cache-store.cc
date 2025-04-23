@@ -6,6 +6,7 @@
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libstore/nar-info.hh"
 #include "lix/libutil/json.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libstore/remote-fs-accessor.hh"
@@ -213,8 +214,8 @@ try {
                 upsertFile(key, json.dump(), "application/json");
             };
 
-            std::regex regex1("^[0-9a-f]{2}$");
-            std::regex regex2("^[0-9a-f]{38}\\.debug$");
+            std::regex regex1 = regex::parse("^[0-9a-f]{2}$");
+            std::regex regex2 = regex::parse("^[0-9a-f]{38}\\.debug$");
 
             for (auto & [s1, s1Inode] : buildIdDir->contents) {
                 auto dir = std::get_if<nar_index::Directory>(&s1Inode);

@@ -1,3 +1,4 @@
+#include "lix/libutil/regex.hh"
 #include <regex>
 
 #include <gtest/gtest.h>
@@ -22,7 +23,7 @@ class StorePathTest : public LibStoreTest
 {
 };
 
-static std::regex nameRegex { std::string { nameRegexStr } };
+static std::regex nameRegex = regex::parse(nameRegexStr);
 
 #define TEST_DONT_PARSE(NAME, STR)                           \
     TEST_F(StorePathTest, bad_ ## NAME) {                    \

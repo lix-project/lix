@@ -5,6 +5,7 @@
 #include "lix/libfetchers/builtin-fetchers.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/url-parts.hh"
 #include "lix/libutil/git.hh"
@@ -25,7 +26,7 @@ struct DownloadUrl
 
 // A github, gitlab, or sourcehut host
 const static std::string hostRegexS = "[a-zA-Z0-9.-]*"; // FIXME: check
-std::regex hostRegex(hostRegexS, std::regex::ECMAScript);
+std::regex hostRegex = regex::parse(hostRegexS, std::regex::ECMAScript);
 
 struct GitArchiveInputScheme : InputScheme
 {
@@ -448,7 +449,7 @@ struct SourceHutInputScheme : GitArchiveInputScheme
         } else {
             refUri = fmt("refs/(heads|tags)/%s", ref);
         }
-        std::regex refRegex(refUri);
+        std::regex refRegex = regex::parse(refUri);
 
         auto file = store->toRealPath(
             TRY_AWAIT(downloadFile(store, fmt("%s/info/refs", base_url), "source", false, headers))

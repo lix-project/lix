@@ -18,6 +18,7 @@
 #include "lix/libcmd/common-eval-args.hh"
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libcmd/legacy.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/shlex.hh"
 #include "nix-build.hh"
 #include "lix/libstore/temporary-dir.hh"
@@ -31,7 +32,7 @@ using namespace std::string_literals;
 static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     auto dryRun = false;
-    auto runEnv = std::regex_search(programName, std::regex("nix-shell$"));
+    auto runEnv = std::regex_search(programName, regex::parse("nix-shell$"));
     auto pure = false;
     auto fromArgs = false;
     auto packages = false;
@@ -68,7 +69,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
         script = argv.front();
         try {
             auto lines = tokenizeString<Strings>(readFile(script), "\n");
-            if (std::regex_search(lines.front(), std::regex("^#!"))) {
+            if (std::regex_search(lines.front(), regex::parse("^#!"))) {
                 lines.pop_front();
                 inShebang = true;
                 savedArgs = {std::next(argv.begin()), argv.end()};
@@ -76,7 +77,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
                 for (auto line : lines) {
                     line = chomp(line);
                     std::smatch match;
-                    if (std::regex_match(line, match, std::regex("^#!\\s*nix-shell\\s+(.*)$")))
+                    if (std::regex_match(line, match, regex::parse("^#!\\s*nix-shell\\s+(.*)$")))
                         for (const auto & word : shell_split(match[1].str()))
                             argv.push_back(word);
                 }
@@ -148,14 +149,14 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
             // executes it unless it contains the string "perl" or "indir",
             // or (undocumented) argv[0] does not contain "perl". Exploit
             // the latter by doing "exec -a".
-            if (std::regex_search(interpreter, std::regex("perl")))
+            if (std::regex_search(interpreter, regex::parse("perl")))
                 execArgs = "-a PERL";
 
             std::ostringstream joined;
             for (const auto & i : savedArgs)
                 joined << shellEscape(i) << ' ';
 
-            if (std::regex_search(interpreter, std::regex("ruby"))) {
+            if (std::regex_search(interpreter, regex::parse("ruby"))) {
                 // Hack for Ruby. Ruby also examines the shebang. It tries to
                 // read the shebang to understand which packages to read from. Since
                 // this is handled via nix-shell -p, we wrap our ruby script execution
@@ -388,7 +389,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
             const auto & inputDrv = inputDrv0;
             if (std::all_of(envExclude.cbegin(), envExclude.cend(),
                     [&](const std::string & exclude) {
-                        return !std::regex_search(store->printStorePath(inputDrv), std::regex(exclude));
+                        return !std::regex_search(store->printStorePath(inputDrv), regex::parse(exclude));
                     }))
             {
                 accumDerivedPath(makeConstantStorePathRef(inputDrv), inputNode);

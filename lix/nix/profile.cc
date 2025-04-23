@@ -8,6 +8,7 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/builtins/buildenv.hh"
 #include "lix/libexpr/flake/flakeref.hh"
+#include "lix/libutil/regex.hh"
 #include "user-env.hh"
 #include "lix/libstore/profiles.hh"
 #include "lix/libstore/names.hh"
@@ -196,7 +197,7 @@ public:
             } else if (store->isStorePath(s)) {
                 res.push_back(s);
             } else {
-                res.push_back(RegexPattern{s,std::regex(s, std::regex::extended | std::regex::icase)});
+                res.push_back(RegexPattern{s, regex::parse(s, std::regex::extended | std::regex::icase)});
             }
         }
 

@@ -5,6 +5,7 @@
 #include "lix/libmain/common-args.hh"
 #include "lix/libstore/names.hh"
 #include "lix/libutil/json.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/result.hh"
 #include "diff-closures.hh"
 
@@ -66,7 +67,7 @@ try {
         /* Strip the output name. Unfortunately this is ambiguous (we
            can't distinguish between output names like "bin" and
            version suffixes like "unstable"). */
-        static std::regex regex("(.*)-([a-z]+|lib32|lib64)");
+        static std::regex regex = regex::parse("(.*)-([a-z]+|lib32|lib64)");
         std::cmatch match;
         std::string name{path.name()};
         std::string_view const origName = path.name();

@@ -66,8 +66,8 @@ void LinuxLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
     auto procDir = AutoCloseDir{opendir("/proc")};
     if (procDir) {
         struct dirent * ent;
-        auto digitsRegex = std::regex(R"(^\d+$)");
-        auto mapRegex = std::regex(R"(^\s*\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+(/\S+)\s*$)");
+        auto digitsRegex = regex::parse(R"(^\d+$)");
+        auto mapRegex = regex::parse(R"(^\s*\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+(/\S+)\s*$)");
         auto storePathRegex = regex::storePathRegex(config().storeDir);
         while (errno = 0, ent = readdir(procDir.get())) {
             checkInterrupt();

@@ -9,12 +9,13 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libcmd/command.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/regex.hh"
 
 #include <regex>
 
 namespace nix {
 
-static std::regex const identifierRegex("^[A-Za-z_][A-Za-z0-9_'-]*$");
+static std::regex const identifierRegex = regex::parse("^[A-Za-z_][A-Za-z0-9_'-]*$");
 static void warnInvalidNixIdentifier(const std::string & name)
 {
     std::smatch match;

@@ -87,6 +87,26 @@ namespace nix {
             , type                                                          \
         )
 
+#define ASSERT_TRACE1_PREFIX(args, type, message)                           \
+        ASSERT_THROW(                                                       \
+            std::string expr(args);                                         \
+            std::string name = expr.substr(0, expr.find(" "));              \
+            try {                                                           \
+                Value v = eval("builtins." args);                           \
+                state.forceValueDeep(v);                                    \
+            } catch (BaseError & e) {                                       \
+                ASSERT_PRED2([](auto got, auto want) { return got.starts_with(want); }, \
+                            PrintToString(e.info().msg),                    \
+                            PrintToString(message));                        \
+                ASSERT_EQ(e.info().traces.size(), 1) << "while testing " args << std::endl << e.what(); \
+                auto trace = e.info().traces.rbegin();                      \
+                ASSERT_EQ(PrintToString(trace->hint),                       \
+                          PrintToString(HintFmt("while calling the '%s' builtin", name))); \
+                throw;                                                      \
+            }                                                               \
+            , type                                                          \
+        )
+
 #define ASSERT_TRACE2(args, type, message, context)                         \
         ASSERT_THROW(                                                       \
             std::string expr(args);                                         \
@@ -1112,9 +1132,10 @@ namespace nix {
                       HintFmt("expected a string but found %s: %s", "a set", Uncolored("{ }")),
                       HintFmt("while evaluating the second argument passed to builtins.match"));
 
-        ASSERT_TRACE1("match \"(.*\" \"\"",
+        // explanation string may be platform dependent
+        ASSERT_TRACE1_PREFIX("match \"(.*\" \"\"",
                       EvalError,
-                      HintFmt("invalid regular expression '%s'", "(.*"));
+                      HintFmt("invalid regular expression '%s': ", "(.*"));
 
     }
 
@@ -1130,9 +1151,10 @@ namespace nix {
                       HintFmt("expected a string but found %s: %s", "a set", Uncolored("{ }")),
                       HintFmt("while evaluating the second argument passed to builtins.split"));
 
-        ASSERT_TRACE1("split \"f(o*o\" \"1foo2\"",
+        // explanation string may be platform dependent
+        ASSERT_TRACE1_PREFIX("split \"f(o*o\" \"1foo2\"",
                       EvalError,
-                      HintFmt("invalid regular expression '%s'", "f(o*o"));
+                      HintFmt("invalid regular expression '%s': ", "f(o*o"));
 
     }
 

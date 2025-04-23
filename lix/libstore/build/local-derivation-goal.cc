@@ -12,6 +12,7 @@
 #include "lix/libstore/path-references.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/daemon.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/topo-sort.hh"
 #include "lix/libutil/json.hh"
@@ -572,7 +573,7 @@ try {
             throw BuildError("odd number of tokens in 'exportReferencesGraph': '%1%'", s);
         for (Strings::iterator i = ss.begin(); i != ss.end(); ) {
             auto fileName = *i++;
-            static std::regex regex("[A-Za-z_][A-Za-z0-9_.-]*");
+            static std::regex regex = nix::regex::parse("[A-Za-z_][A-Za-z0-9_.-]*");
             if (!std::regex_match(fileName, regex))
                 throw Error("invalid file name '%s' in 'exportReferencesGraph'", fileName);
 

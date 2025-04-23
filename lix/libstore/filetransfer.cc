@@ -3,6 +3,7 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/s3.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
@@ -294,7 +295,7 @@ struct curlFileTransfer : public FileTransfer
             std::string line(static_cast<char *>(contents), realSize);
             printMsg(lvlVomit, "got header for '%s': %s", uri, trim(line));
 
-            static std::regex statusLine("HTTP/[^ ]+ +[0-9]+(.*)", std::regex::extended | std::regex::icase);
+            static std::regex statusLine = regex::parse("HTTP/[^ ]+ +[0-9]+(.*)", std::regex::extended | std::regex::icase);
             if (std::smatch match; std::regex_match(line, match, statusLine)) {
                 statusMsg = trim(match.str(1));
             } else {
@@ -311,7 +312,7 @@ struct curlFileTransfer : public FileTransfer
 
                     else if (name == "link" || name == "x-amz-meta-link") {
                         auto value = trim(line.substr(i + 1));
-                        static std::regex linkRegex("<([^>]*)>; rel=\"immutable\"", std::regex::extended | std::regex::icase);
+                        static std::regex linkRegex = regex::parse("<([^>]*)>; rel=\"immutable\"", std::regex::extended | std::regex::icase);
                         if (std::smatch match; std::regex_match(value, match, linkRegex)) {
                             result.immutableUrl = match.str(1);
                         } else

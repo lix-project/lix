@@ -11,6 +11,7 @@
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libutil/hilite.hh"
 #include "lix/libutil/json.hh"
+#include "lix/libutil/regex.hh"
 #include "search.hh"
 
 #include <regex>
@@ -79,10 +80,10 @@ struct CmdSearch : InstallableCommand, MixJSON
         excludeRegexes.reserve(excludeRes.size());
 
         for (auto & re : res)
-            regexes.push_back(std::regex(re, std::regex::extended | std::regex::icase));
+            regexes.push_back(nix::regex::parse(re, std::regex::extended | std::regex::icase));
 
         for (auto & re : excludeRes)
-            excludeRegexes.emplace_back(re, std::regex::extended | std::regex::icase);
+            excludeRegexes.emplace_back(nix::regex::parse(re, std::regex::extended | std::regex::icase));
 
         auto evaluator = getEvaluator();
         auto state = evaluator->begin(aio());

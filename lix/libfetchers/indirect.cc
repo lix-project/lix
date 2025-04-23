@@ -1,11 +1,12 @@
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libfetchers/builtin-fetchers.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/url-parts.hh"
 #include "lix/libstore/path.hh"
 
 namespace nix::fetchers {
 
-std::regex flakeRegex("[a-zA-Z][a-zA-Z0-9_-]*", std::regex::ECMAScript);
+std::regex flakeRegex = regex::parse("[a-zA-Z][a-zA-Z0-9_-]*", std::regex::ECMAScript);
 
 struct IndirectInputScheme : InputScheme
 {

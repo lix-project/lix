@@ -1,4 +1,5 @@
 #include "lix/libutil/logging.hh"
+#include "regex.hh"
 #if __linux__
 
 #include "lix/libutil/cgroup.hh"
@@ -39,7 +40,7 @@ std::map<std::string, std::string> getCgroups(const Path & cgroupFile)
     std::map<std::string, std::string> cgroups;
 
     for (auto & line : tokenizeString<std::vector<std::string>>(readFile(cgroupFile), "\n")) {
-        static std::regex regex("([0-9]+):([^:]*):(.*)");
+        static std::regex regex = nix::regex::parse("([0-9]+):([^:]*):(.*)");
         std::smatch match;
         if (!std::regex_match(line, match, regex))
             throw Error("invalid line '%s' in '%s'", line, cgroupFile);

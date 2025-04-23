@@ -1,4 +1,5 @@
 #include "lix/libstore/names.hh"
+#include "lix/libutil/regex.hh"
 #include "lix/libutil/strings.hh"
 
 #include <regex>
@@ -47,7 +48,7 @@ bool DrvName::matches(const DrvName & n)
     if (name != "*") {
         if (!regex) {
             regex = std::make_unique<Regex>();
-            regex->regex = std::regex(name, std::regex::extended);
+            regex->regex = nix::regex::parse(name, std::regex::extended);
         }
         if (!std::regex_match(n.name, regex->regex)) return false;
     }
