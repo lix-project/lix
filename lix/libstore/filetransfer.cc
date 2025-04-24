@@ -8,10 +8,14 @@
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
 #include "lix/libutil/tracepoint.hh"
-#include <cstddef>
 
+#include <cstddef>
 #include <cstdio>
 #include <kj/encoding.h>
+
+#if ENABLE_DTRACE
+#include "trace-probes.gen.hh"
+#endif
 
 #if ENABLE_S3
 #include <aws/core/client/ClientConfiguration.h>
@@ -950,7 +954,7 @@ struct curlFileTransfer : public FileTransfer
 
         size_t read(char * data, size_t len) override
         {
-            TRACE(DTRACE_PROBE2(lix_store, filetransfer__read, uri.c_str(), len));
+            TRACE(LIX_STORE_FILETRANSFER_READ(uri.c_str(), len));
 
             size_t total = 0;
             while (total < len && awaitData()) {

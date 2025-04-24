@@ -417,11 +417,29 @@ if dtrace_feature.enabled()
   # NOTE: glib seems to have had to hack some stuff up that we are not hacking
   # up. I don't know why.
   # https://github.com/GNOME/glib/blob/03f7c1fbf3a3784cb4c3604f83ca3645e9225577/meson.build#L2420-L2434
-  dtrace_object_gen = generator(dtrace_exe,
-    output : '@BASENAME@.o',
-    arguments : ['-G', '-s', '@INPUT@', '-o', '@OUTPUT@'])
+
+  # Darwin doesn't require an object generator for dtrace, but it's preferable
+  # to still have the build structured the same, so we generate empty object
+  # files with clang.
+  if is_darwin
+    dtrace_object_gen = generator(bash,
+      output : '@BASENAME@.o',
+      arguments : [
+        '-c',
+        'exec "$@"',
+        '--',
+        cxx.cmd_array(),
+        '-xc++',
+        '-c', '/dev/null',
+        '-o', '@OUTPUT@'
+      ])
+  else
+    dtrace_object_gen = generator(dtrace_exe,
+      output : '@BASENAME@.o',
+      arguments : ['-G', '-s', '@INPUT@', '-o', '@OUTPUT@'])
+  endif
   dtrace_header_gen = generator(dtrace_exe,
-    output : '@BASENAME@.gen.h',
+    output : '@BASENAME@.gen.hh',
     arguments : ['-h', '-s', '@INPUT@', '-o', '@OUTPUT@'])
 endif
 configdata += {
