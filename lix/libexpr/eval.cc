@@ -1039,40 +1039,34 @@ void EvalState::eval(Expr & e, Value & v)
     e.eval(*this, ctx.builtins.env, v);
 }
 
+#define checkType(typeName, stringName) \
+    if (v.type() != (typeName)) \
+        ctx.errors.make<TypeError>( \
+                "expected a %1% but found %2%: %3%", \
+                Uncolored(stringName), \
+                showType(v), \
+                ValuePrinter(*this, v, errorPrintOptions) \
+            ).atPos(e.getPos()).withFrame(env, e).debugThrow();
 
-inline bool EvalState::evalBool(Env & env, Expr & e, const PosIdx pos, std::string_view errorCtx)
+inline bool EvalState::evalBool(Env & env, Expr & e)
 {
-    try {
-        Value v;
-        e.eval(*this, env, v);
-        if (v.type() != nBool)
-            ctx.errors.make<TypeError>(
-                 "expected a Boolean but found %1%: %2%",
-                 showType(v),
-                 ValuePrinter(*this, v, errorPrintOptions)
-             ).atPos(pos).withFrame(env, e).debugThrow();
-        return v.boolean;
-    } catch (Error & e) {
-        e.addTrace(ctx.positions[pos], errorCtx);
-        throw;
-    }
+    Value v;
+    e.eval(*this, env, v);
+    checkType(nBool, "Boolean");
+    return v.boolean;
 }
 
 
-inline void EvalState::evalAttrs(Env & env, Expr & e, Value & v, const PosIdx pos, std::string_view errorCtx)
+inline void EvalState::evalAttrs(Env & env, Expr & e, Value & v)
 {
-    try {
-        e.eval(*this, env, v);
-        if (v.type() != nAttrs)
-            ctx.errors.make<TypeError>(
-                "expected a set but found %1%: %2%",
-                showType(v),
-                ValuePrinter(*this, v, errorPrintOptions)
-            ).withFrame(env, e).debugThrow();
-    } catch (Error & e) {
-        e.addTrace(ctx.positions[pos], errorCtx);
-        throw;
-    }
+    e.eval(*this, env, v);
+    checkType(nAttrs, "set");
+}
+
+inline void EvalState::evalList(Env & env, Expr & e, Value & v)
+{
+    e.eval(*this, env, v);
+    checkType(nList, "list");
 }
 
 
@@ -1248,7 +1242,19 @@ Value * ExprList::maybeThunk(EvalState & state, Env & env)
 void ExprVar::eval(EvalState & state, Env & env, Value & v)
 {
     Value * v2 = state.lookupVar(&env, *this, false);
-    state.forceValue(*v2, pos);
+    try {
+        state.forceValue(*v2, pos);
+    } catch (Error & e) {
+        /* `name` can be invalid if we are an ExprInheritFrom */
+        if (name) {
+            e.addTrace(
+                state.ctx.positions[getPos()],
+                "while evaluating %s",
+                state.ctx.symbols[name]
+            );
+        }
+        throw;
+    }
     v = *v2;
 }
 
@@ -1848,14 +1854,13 @@ void ExprWith::eval(EvalState & state, Env & env, Value & v)
 
 void ExprIf::eval(EvalState & state, Env & env, Value & v)
 {
-    // We cheat in the parser, and pass the position of the condition as the position of the if itself.
-    (state.evalBool(env, *cond, pos, "while evaluating a branch condition") ? *then : *else_).eval(state, env, v);
+    (state.evalBool(env, *cond) ? *then : *else_).eval(state, env, v);
 }
 
 
 void ExprAssert::eval(EvalState & state, Env & env, Value & v)
 {
-    if (!state.evalBool(env, *cond, pos, "in the condition of the assert statement")) {
+    if (!state.evalBool(env, *cond)) {
         state.ctx.errors.make<AssertionError>("assertion failed")
             .atPos(pos)
             .withFrame(env, *this)
@@ -1867,7 +1872,7 @@ void ExprAssert::eval(EvalState & state, Env & env, Value & v)
 
 void ExprOpNot::eval(EvalState & state, Env & env, Value & v)
 {
-    v.mkBool(!state.evalBool(env, *e, getPos(), "in the argument of the not operator")); // XXX: FIXME: !
+    v.mkBool(!state.evalBool(env, *e));
 }
 
 
@@ -1889,27 +1894,27 @@ void ExprOpNEq::eval(EvalState & state, Env & env, Value & v)
 
 void ExprOpAnd::eval(EvalState & state, Env & env, Value & v)
 {
-    v.mkBool(state.evalBool(env, *e1, pos, "in the left operand of the AND (&&) operator") && state.evalBool(env, *e2, pos, "in the right operand of the AND (&&) operator"));
+    v.mkBool(state.evalBool(env, *e1) && state.evalBool(env, *e2));
 }
 
 
 void ExprOpOr::eval(EvalState & state, Env & env, Value & v)
 {
-    v.mkBool(state.evalBool(env, *e1, pos, "in the left operand of the OR (||) operator") || state.evalBool(env, *e2, pos, "in the right operand of the OR (||) operator"));
+    v.mkBool(state.evalBool(env, *e1) || state.evalBool(env, *e2));
 }
 
 
 void ExprOpImpl::eval(EvalState & state, Env & env, Value & v)
 {
-    v.mkBool(!state.evalBool(env, *e1, pos, "in the left operand of the IMPL (->) operator") || state.evalBool(env, *e2, pos, "in the right operand of the IMPL (->) operator"));
+    v.mkBool(!state.evalBool(env, *e1) || state.evalBool(env, *e2));
 }
 
 
 void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
 {
     Value v1, v2;
-    state.evalAttrs(env, *e1, v1, pos, "in the left operand of the update (//) operator");
-    state.evalAttrs(env, *e2, v2, pos, "in the right operand of the update (//) operator");
+    state.evalAttrs(env, *e1, v1);
+    state.evalAttrs(env, *e2, v2);
 
     state.ctx.stats.nrOpUpdates++;
 
@@ -1945,10 +1950,25 @@ void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
 
 void ExprOpConcatLists::eval(EvalState & state, Env & env, Value & v)
 {
-    Value v1; e1->eval(state, env, v1);
-    Value v2; e2->eval(state, env, v2);
-    Value * lists[2] = { &v1, &v2 };
-    state.concatLists(v, 2, lists, pos, "while evaluating one of the elements to concatenate");
+    state.ctx.stats.nrListConcats++;
+
+    /* We don't call into `concatLists` as that loses the position information of the expressions. */
+
+    Value v1; state.evalList(env, *e1, v1);
+    Value v2; state.evalList(env, *e2, v2);
+
+    size_t l1 = v1.listSize(), l2 = v2.listSize(), len = l1 + l2;
+
+    if (l1 == 0)
+        v = v2;
+    else if (l2 == 0)
+        v = v1;
+    else {
+        v = state.ctx.mem.newList(len);
+        auto out = v.listElems();
+        std::copy(v1.listElems(), v1.listElems() + l1, out);
+        std::copy(v2.listElems(), v2.listElems() + l2, out + l1);
+    }
 }
 
 

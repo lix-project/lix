@@ -779,10 +779,9 @@ namespace nix {
                       TypeError,
                       HintFmt("attempt to call something which is not a function but %s: %s", "an integer", Uncolored(ANSI_CYAN "1" ANSI_NORMAL)));
 
-        ASSERT_TRACE2("foldl' (a: b: a && b) \"foo\" [ true ]",
+        ASSERT_TRACE1("foldl' (a: b: a && b) \"foo\" [ true ]",
                       TypeError,
-                      HintFmt("expected a Boolean but found %s: %s", "a string", Uncolored(ANSI_MAGENTA "\"foo\"" ANSI_NORMAL)),
-                      HintFmt("in the left operand of the AND (&&) operator"));
+                      HintFmt("expected a Boolean but found %s: %s", "a string", Uncolored(ANSI_MAGENTA "\"foo\"" ANSI_NORMAL)));
 
     }
 

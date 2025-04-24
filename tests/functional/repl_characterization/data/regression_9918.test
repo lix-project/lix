@@ -20,6 +20,13 @@ We expect to be able to see locals like r in the debugger:
   error:
          … while evaluating the file '$TEST_DATA/regression_9918.nix':
 
+         … while evaluating x
+           at $TEST_DATA/regression_9918.nix:5:3:
+              4| in
+              5|   x
+               |   ^
+              6|
+
          … while calling the 'throw' builtin
            at $TEST_DATA/regression_9918.nix:3:7:
               2|   r = [];
@@ -27,6 +34,6 @@ We expect to be able to see locals like r in the debugger:
                |       ^
               4| in
 
-         … while evaluating the error message passed to builtin.throw
+         (stack trace truncated; use '--show-trace' to show the full trace)
 
          error: cannot coerce a list to a string: [ ]

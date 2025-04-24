@@ -16,6 +16,13 @@ debugger should not crash now, but also not show any with variables
   error:
          … while evaluating the file '$TEST_DATA/regression_l145.nix':
 
+         … while evaluating variable x
+           at $TEST_DATA/regression_l145.nix:5:3:
+              4| in
+              5|   x
+               |   ^
+              6|
+
          … while calling the 'break' builtin
            at $TEST_DATA/regression_l145.nix:3:7:
               2| let
