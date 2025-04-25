@@ -59,7 +59,7 @@ testFetchTreeError \
 # test for unsupported attributes / validation in git fetcher
 testFetchTreeError \
     "\"git+https://github.com/owner/repo?invalid=1\"" \
-    "unsupported Git input attribute 'invalid'"
+    "unsupported input attribute 'invalid' for the 'git' scheme"
 
 testFetchTreeError \
     "\"git+https://github.com/owner/repo?url=foo\"" \
@@ -76,11 +76,11 @@ testFetchTreeError \
 # same for mercurial
 testFetchTreeError \
     "\"hg+https://forge.tld/owner/repo?invalid=1\"" \
-    "unsupported Mercurial input attribute 'invalid'"
+    "unsupported input attribute 'invalid' for the 'hg' scheme"
 
 testFetchTreeError \
     "{ type = \"hg\"; url = \"https://forge.tld/owner/repo\"; invalid = 1; }" \
-    "unsupported Mercurial input attribute 'invalid'"
+    "unsupported input attribute 'invalid' for the 'hg' scheme"
 
 testFetchTreeError \
     "\"hg+https://forge.tld/owner/repo?ref=,\"" \

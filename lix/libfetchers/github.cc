@@ -1,7 +1,5 @@
 #include "lix/libfetchers/attrs.hh"
 #include "lix/libstore/filetransfer.hh"
-#include "lix/libfetchers/cache.hh"
-#include "lix/libstore/globals.hh"
 #include "lix/libfetchers/builtin-fetchers.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/async.hh"
@@ -24,19 +22,30 @@ struct DownloadUrl
     Headers headers;
 };
 
+static const std::set<std::string> allowedGitArchiveAttrs = {
+    "host",
+    "lastModified",
+    "owner",
+    "ref",
+    "repo",
+    "rev",
+};
+
 // A github, gitlab, or sourcehut host
 const static std::string hostRegexS = "[a-zA-Z0-9.-]*"; // FIXME: check
 std::regex hostRegex = regex::parse(hostRegexS, std::regex::ECMAScript);
 
 struct GitArchiveInputScheme : InputScheme
 {
-    virtual std::string type() const = 0;
+    const std::set<std::string> & allowedAttrs() const override {
+        return allowedGitArchiveAttrs;
+    }
 
     virtual std::optional<std::pair<std::string, std::string>> accessHeaderFromToken(const std::string & token) const = 0;
 
     std::optional<Input> inputFromURL(const ParsedURL & url, bool requireTree) const override
     {
-        if (url.scheme != type()) return {};
+        if (url.scheme != schemeType()) return {};
 
         auto path = tokenizeString<std::vector<std::string>>(url.path, "/");
 
@@ -63,7 +72,7 @@ struct GitArchiveInputScheme : InputScheme
             throw BadURL("URL '%s' is invalid", url.url);
 
         Attrs attrs;
-        attrs.emplace("type", type());
+        attrs.emplace("type", schemeType());
         attrs.emplace("owner", path[0]);
         attrs.emplace("repo", path[1]);
 
@@ -93,20 +102,18 @@ struct GitArchiveInputScheme : InputScheme
         return inputFromAttrs(attrs);
     }
 
-    std::optional<Input> inputFromAttrs(const Attrs & attrs) const override
+    Attrs preprocessAttrs(const Attrs & attrs) const override
     {
         // Attributes can contain refOrRev and it needs to be figured out
         // which one it is (see inputFromURL for when that may happen).
         // The correct one (ref or rev) will be written into finalAttrs and
         // it needs to be mutable for that.
         Attrs finalAttrs(attrs);
-        auto type_ = maybeGetStrAttr(finalAttrs, "type");
-        if (type_ != type()) return {};
 
         auto owner = getStrAttr(finalAttrs, "owner");
         auto repo = getStrAttr(finalAttrs, "repo");
 
-        auto url = fmt("%s:%s/%s", *type_, owner, repo);
+        auto url = fmt("%s:%s/%s", schemeType(), owner, repo);
         if (auto host = maybeGetStrAttr(finalAttrs, "host")) {
             if (!std::regex_match(*host, hostRegex)) {
                 throw BadURL("URL '%s' contains an invalid instance host", url);
@@ -132,15 +139,7 @@ struct GitArchiveInputScheme : InputScheme
             }
         }
 
-        for (auto & [name, value] : finalAttrs) {
-            if (name != "type" && name != "owner" && name != "repo" && name != "ref" && name != "rev" && name != "narHash" && name != "lastModified" && name != "host") {
-                throw Error("unsupported input attribute '%s'", name);
-            }
-        }
-
-        Input input;
-        input.attrs = finalAttrs;
-        return input;
+        return finalAttrs;
     }
 
     ParsedURL toURL(const Input & input) const override
@@ -154,7 +153,7 @@ struct GitArchiveInputScheme : InputScheme
         if (ref) path += "/" + *ref;
         if (rev) path += "/" + rev->to_string(Base::Base16, false);
         return ParsedURL {
-            .scheme = type(),
+            .scheme = schemeType(),
             .path = path,
         };
     }
@@ -239,7 +238,7 @@ struct GitArchiveInputScheme : InputScheme
 
 struct GitHubInputScheme : GitArchiveInputScheme
 {
-    std::string type() const override { return "github"; }
+    std::string schemeType() const override { return "github"; }
 
     std::optional<std::pair<std::string, std::string>> accessHeaderFromToken(const std::string & token) const override
     {
@@ -329,7 +328,7 @@ struct GitHubInputScheme : GitArchiveInputScheme
 
 struct GitLabInputScheme : GitArchiveInputScheme
 {
-    std::string type() const override { return "gitlab"; }
+    std::string schemeType() const override { return "gitlab"; }
 
     std::optional<std::pair<std::string, std::string>> accessHeaderFromToken(const std::string & token) const override
     {
@@ -405,7 +404,7 @@ struct GitLabInputScheme : GitArchiveInputScheme
 
 struct SourceHutInputScheme : GitArchiveInputScheme
 {
-    std::string type() const override { return "sourcehut"; }
+    std::string schemeType() const override { return "sourcehut"; }
 
     std::optional<std::pair<std::string, std::string>> accessHeaderFromToken(const std::string & token) const override
     {

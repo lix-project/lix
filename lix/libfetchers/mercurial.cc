@@ -44,8 +44,22 @@ static std::string runHg(const Strings & args)
     return res.second;
 }
 
+static const std::set<std::string> allowedMercurialAttrs = {
+    "name",
+    "ref",
+    "rev",
+    "revCount",
+    "url",
+};
+
 struct MercurialInputScheme : InputScheme
 {
+    std::string schemeType() const override { return "hg"; }
+
+    const std::set<std::string> & allowedAttrs() const override {
+        return allowedMercurialAttrs;
+    }
+
     std::optional<Input> inputFromURL(const ParsedURL & url, bool requireTree) const override
     {
         if (url.scheme != "hg+http" &&
@@ -67,14 +81,8 @@ struct MercurialInputScheme : InputScheme
         return inputFromAttrs(attrs);
     }
 
-    std::optional<Input> inputFromAttrs(const Attrs & attrs) const override
+    Attrs preprocessAttrs(const Attrs & attrs) const override
     {
-        if (maybeGetStrAttr(attrs, "type") != "hg") return {};
-
-        for (auto & [name, value] : attrs)
-            if (name != "type" && name != "url" && name != "ref" && name != "rev" && name != "revCount" && name != "narHash" && name != "name")
-                throw Error("unsupported Mercurial input attribute '%s'", name);
-
         parseURL(getStrAttr(attrs, "url"));
 
         if (auto ref = maybeGetStrAttr(attrs, "ref")) {
@@ -82,9 +90,7 @@ struct MercurialInputScheme : InputScheme
                 throw BadURL("invalid Mercurial branch/tag name '%s'", *ref);
         }
 
-        Input input;
-        input.attrs = attrs;
-        return input;
+        return attrs;
     }
 
     ParsedURL toURL(const Input & input) const override

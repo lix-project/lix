@@ -304,6 +304,24 @@ std::optional<time_t> Input::getLastModified() const
     return maybeGetIntAttr(attrs, "lastModified");
 }
 
+std::optional<Input> InputScheme::inputFromAttrs(const Attrs & attrs) const
+{
+    if (maybeGetStrAttr(attrs, "type") != schemeType()) return {};
+
+    Attrs finalAttrs = preprocessAttrs(attrs);
+
+    for (auto & [name, value] : finalAttrs)
+        // All attrs need to accept a `type` and `narHash` key, the rest is scheme-specific
+        if (name != "type" && name != "narHash" && !allowedAttrs().contains(name))
+            throw UnsupportedAttributeError("unsupported input attribute '%s' for the '%s' scheme", name, schemeType());
+
+    Input input;
+    input.attrs = finalAttrs;
+    return input;
+}
+
+
+
 ParsedURL InputScheme::toURL(const Input & input) const
 {
     throw Error("don't know how to convert input '%s' to a URL", attrsToJSON(input.attrs));

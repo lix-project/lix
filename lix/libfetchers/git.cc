@@ -288,8 +288,28 @@ static std::optional<Path> resolveRefToCachePath(
     return std::nullopt;
 }
 
+static const std::set<std::string> allowedGitAttrs = {
+    "allRefs",
+    "dirtyRev",
+    "dirtyShortRev",
+    "lastModified",
+    "name",
+    "ref",
+    "rev",
+    "revCount",
+    "shallow",
+    "submodules",
+    "url",
+};
+
 struct GitInputScheme : InputScheme
 {
+    std::string schemeType() const override { return "git"; }
+
+    const std::set<std::string> & allowedAttrs() const override {
+        return allowedGitAttrs;
+    }
+
     std::optional<Input> inputFromURL(const ParsedURL & url, bool requireTree) const override
     {
         if (url.scheme != "git" &&
@@ -316,14 +336,7 @@ struct GitInputScheme : InputScheme
         return inputFromAttrs(attrs);
     }
 
-    std::optional<Input> inputFromAttrs(const Attrs & attrs) const override
-    {
-        if (maybeGetStrAttr(attrs, "type") != "git") return {};
-
-        for (auto & [name, value] : attrs)
-            if (name != "type" && name != "url" && name != "ref" && name != "rev" && name != "shallow" && name != "submodules" && name != "lastModified" && name != "revCount" && name != "narHash" && name != "allRefs" && name != "name" && name != "dirtyRev" && name != "dirtyShortRev")
-                throw Error("unsupported Git input attribute '%s'", name);
-
+    Attrs preprocessAttrs(const Attrs & attrs) const override {
         parseURL(getStrAttr(attrs, "url"));
         maybeGetBoolAttr(attrs, "shallow");
         maybeGetBoolAttr(attrs, "submodules");
@@ -334,9 +347,7 @@ struct GitInputScheme : InputScheme
                 throw BadURL("invalid Git branch/tag name '%s'", *ref);
         }
 
-        Input input;
-        input.attrs = attrs;
-        return input;
+        return attrs;
     }
 
     ParsedURL toURL(const Input & input) const override
