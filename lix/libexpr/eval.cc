@@ -2107,7 +2107,6 @@ void ExprPos::eval(EvalState & state, Env & env, Value & v)
 void ExprBlackHole::eval(EvalState & state, Env & env, Value & v)
 {
     state.ctx.errors.make<InfiniteRecursionError>("infinite recursion encountered")
-        .atPos(v.determinePos(noPos))
         .debugThrow();
 }
 
