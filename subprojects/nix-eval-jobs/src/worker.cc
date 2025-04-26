@@ -59,7 +59,7 @@ static nix::Value *releaseExprTopLevelValue(nix::EvalState &state,
 
     auto vRoot = state.ctx.mem.allocValue();
 
-    state.autoCallFunction(autoArgs, vTop, *vRoot);
+    state.autoCallFunction(autoArgs, vTop, *vRoot, {});
 
     return vRoot;
 }
@@ -172,7 +172,7 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
                     .first;
 
             auto v = evaluator->mem.allocValue();
-            state->autoCallFunction(autoArgs, *vTmp, *v);
+            state->autoCallFunction(autoArgs, *vTmp, *v, {});
 
             if (v->type() == nix::nAttrs) {
                 if (auto drvInfo = nix::getDerivation(*state, *v, false)) {

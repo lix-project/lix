@@ -1787,10 +1787,8 @@ void EvalStatistics::addCall(ExprLambda & fun)
 }
 
 
-void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res)
+void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res, PosIdx pos)
 {
-    auto pos = fun.determinePos(noPos);
-
     forceValue(fun, pos);
 
     if (fun.type() == nAttrs) {
@@ -1799,7 +1797,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res)
             Value * v = ctx.mem.allocValue();
             callFunction(*found->value, fun, *v, pos);
             forceValue(*v, pos);
-            return autoCallFunction(args, *v, res);
+            return autoCallFunction(args, *v, res, pos);
         }
     }
 

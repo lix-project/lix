@@ -885,7 +885,7 @@ void NixRepl::loadFile(const Path & path)
     loadedFiles.push_back(path);
     Value v, v2;
     state.evalFile(state.aio.blockOn(lookupFileArg(evaluator, path)).unwrap(always_progresses), v);
-    state.autoCallFunction(*autoArgs, v, v2);
+    state.autoCallFunction(*autoArgs, v, v2, noPos);
     addAttrsToScope(v2);
 }
 

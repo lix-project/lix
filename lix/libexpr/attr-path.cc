@@ -85,7 +85,7 @@ std::pair<Value *, PosIdx> findAlongAttrPath(EvalState & state, const std::strin
 
         /* Evaluate the expression. */
         Value * vNew = state.ctx.mem.allocValue();
-        state.autoCallFunction(autoArgs, *v, *vNew);
+        state.autoCallFunction(autoArgs, *v, *vNew, pos);
         v = vNew;
         state.forceValue(*v, noPos);
 

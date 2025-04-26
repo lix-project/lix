@@ -239,7 +239,7 @@ void SourceExprCommand::completeInstallable(EvalState & state, AddCompletions & 
             Value &v1(*v);
             state.forceValue(v1, pos);
             Value v2;
-            state.autoCallFunction(*autoArgs, v1, v2);
+            state.autoCallFunction(*autoArgs, v1, v2, pos);
 
             if (v2.type() == nAttrs) {
                 for (auto & i : *v2.attrs) {

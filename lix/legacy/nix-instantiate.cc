@@ -47,7 +47,7 @@ void processExpr(EvalState & state, const Strings & attrPaths,
             if (autoArgs.empty())
                 vRes = v;
             else
-                state.autoCallFunction(autoArgs, v, vRes);
+                state.autoCallFunction(autoArgs, v, vRes, noPos);
             if (output == okXML)
                 printValueAsXML(state, strict, location, vRes, std::cout, context, noPos);
             else if (output == okJSON) {

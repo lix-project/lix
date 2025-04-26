@@ -415,13 +415,13 @@ static std::regex attrRegex = regex::parse("[A-Za-z_][A-Za-z0-9-_+]*");
 /* Evaluate value `v'.  If it evaluates to a set of type `derivation',
    then put information about it in `drvs'. If it evaluates to a different
    kind of set recurse (unless it's already in `done'). */
-static void getDerivations(EvalState & state, Value & vIn,
+static void getDerivations(EvalState & state, Value & vIn, PosIdx pos,
     const std::string & pathPrefix, Bindings & autoArgs,
     DrvInfos & drvs, Done & done,
     bool ignoreAssertionFailures)
 {
     Value v;
-    state.autoCallFunction(autoArgs, vIn, v);
+    state.autoCallFunction(autoArgs, vIn, v, pos);
 
     bool shouldRecurse = getDerivation(state, v, pathPrefix, drvs, ignoreAssertionFailures);
     if (!shouldRecurse) {
@@ -439,6 +439,7 @@ static void getDerivations(EvalState & state, Value & vIn,
                 getDerivations(
                     state,
                     *elem,
+                    pos,
                     joinedAttrPath,
                     autoArgs,
                     drvs,
@@ -481,7 +482,16 @@ static void getDerivations(EvalState & state, Value & vIn,
         }
         std::string joinedAttrPath = addToPath(pathPrefix, state.ctx.symbols[attr->name]);
         if (combineChannels) {
-            getDerivations(state, *attr->value, joinedAttrPath, autoArgs, drvs, done, ignoreAssertionFailures);
+            getDerivations(
+                state,
+                *attr->value,
+                attr->pos,
+                joinedAttrPath,
+                autoArgs,
+                drvs,
+                done,
+                ignoreAssertionFailures
+            );
         } else if (getDerivation(state, *attr->value, joinedAttrPath, drvs, ignoreAssertionFailures)) {
             /* If the value of this attribute is itself a set,
                should we recurse into it?  => Only if it has a
@@ -503,6 +513,7 @@ static void getDerivations(EvalState & state, Value & vIn,
                 getDerivations(
                     state,
                     *attr->value,
+                    attr->pos,
                     joinedAttrPath,
                     autoArgs,
                     drvs,
@@ -519,7 +530,7 @@ void getDerivations(EvalState & state, Value & v, const std::string & pathPrefix
     Bindings & autoArgs, DrvInfos & drvs, bool ignoreAssertionFailures)
 {
     Done done;
-    getDerivations(state, v, pathPrefix, autoArgs, drvs, done, ignoreAssertionFailures);
+    getDerivations(state, v, noPos, pathPrefix, autoArgs, drvs, done, ignoreAssertionFailures);
 }
 
 
