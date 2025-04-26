@@ -1650,7 +1650,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 if (ctx.stats.countCalls) ctx.stats.primOpCalls[fn->name]++;
 
                 try {
-                    fn->fun(*this, vCur.determinePos(noPos), args, vCur);
+                    fn->fun(*this, noPos, args, vCur);
                 } catch (ThrownError & e) {
                     // Distinguish between an error that simply happened while "throw"
                     // was being evaluated and an explicit thrown error.
@@ -1708,7 +1708,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     // 1. Unify this and above code. Heavily redundant.
                     // 2. Create a fake env (arg1, arg2, etc.) and a fake expr (arg1: arg2: etc: builtins.name arg1 arg2 etc)
                     //    so the debugger allows to inspect the wrong parameters passed to the builtin.
-                    fn->fun(*this, vCur.determinePos(noPos), vArgs.data(), vCur);
+                    fn->fun(*this, noPos, vArgs.data(), vCur);
                 } catch (Error & e) {
                     e.addTrace(ctx.positions[pos], "while calling the '%1%' builtin", fn->name);
                     throw;
