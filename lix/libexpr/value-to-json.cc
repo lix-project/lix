@@ -102,7 +102,7 @@ JSON printValueAsJSON(EvalState & state, bool strict,
                 "cannot convert %1% to JSON",
                 showType(v)
             )
-            .atPos(v.determinePos(pos))
+            .atPos(pos)
             .debugThrow();
     }
     return out;
