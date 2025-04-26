@@ -962,13 +962,7 @@ void NixRepl::loadReplOverlays()
 
     Value &newAttrs(*evaluator.mem.allocValue());
     SmallValueVector<3> args = {replInitInfo(), bindingsToAttrs(), replOverlays()};
-    state.callFunction(
-        *replInitFilesFunction,
-        args.size(),
-        args.data(),
-        newAttrs,
-        replInitFilesFunction->determinePos(noPos)
-    );
+    state.callFunction(*replInitFilesFunction, args.size(), args.data(), newAttrs, noPos);
 
     // n.b. this does in fact load the stuff into the environment twice (once
     // from the superset of the environment returned by repl-overlays and once
@@ -1014,11 +1008,11 @@ Value * NixRepl::replOverlays()
 
         if (!replInit->isLambda()) {
             evaluator.errors.make<TypeError>(
-                "Expected `repl-overlays` to be a lambda but found %1%: %2%",
+                "Expected `repl-overlays` entry %s to be a lambda but found %s: %s",
+                path,
                 showType(*replInit),
                 ValuePrinter(state, *replInit, errorPrintOptions)
             )
-            .atPos(replInit->determinePos(noPos))
             .debugThrow();
         }
 
@@ -1028,7 +1022,7 @@ Value * NixRepl::replOverlays()
                 "repl-overlays",
                 "..."
             )
-                .atPos(replInit->determinePos(noPos))
+                .atPos(replInit->lambda.fun->pos)
                 .debugThrow();
         }
 
