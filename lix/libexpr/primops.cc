@@ -793,10 +793,9 @@ drvName, Bindings * attrs, Value & v)
 {
     /* Check whether attributes should be passed as a JSON file. */
     std::optional<JSON> jsonObject;
-    auto pos = v.determinePos(noPos);
     auto attr = attrs->find(state.ctx.s.structuredAttrs);
     if (attr != attrs->end() &&
-        state.forceBool(*attr->value, pos,
+        state.forceBool(*attr->value, attr->pos,
                         "while evaluating the `__structuredAttrs` "
                         "attribute passed to builtins.derivationStrict"))
         jsonObject = JSON::object();
@@ -805,7 +804,7 @@ drvName, Bindings * attrs, Value & v)
     bool ignoreNulls = false;
     attr = attrs->find(state.ctx.s.ignoreNulls);
     if (attr != attrs->end())
-        ignoreNulls = state.forceBool(*attr->value, pos, "while evaluating the `__ignoreNulls` attribute " "passed to builtins.derivationStrict");
+        ignoreNulls = state.forceBool(*attr->value, attr->pos, "while evaluating the `__ignoreNulls` attribute " "passed to builtins.derivationStrict");
 
     /* Build the derivation expression by processing the attributes. */
     Derivation drv;
@@ -836,7 +835,7 @@ drvName, Bindings * attrs, Value & v)
             } else
                 state.ctx.errors.make<EvalError>(
                     "invalid value '%s' for 'outputHashMode' attribute", s
-                ).atPos(v).debugThrow();
+                ).debugThrow();
         };
 
         auto handleOutputs = [&](const Strings & ss, NeverAsync = {}) {
@@ -844,7 +843,6 @@ drvName, Bindings * attrs, Value & v)
             for (auto & j : ss) {
                 if (outputs.find(j) != outputs.end())
                     state.ctx.errors.make<EvalError>("duplicate derivation output '%1%'", j)
-                        .atPos(v)
                         .debugThrow();
                 /* !!! Check whether j is a valid attribute
                    name. */
@@ -853,13 +851,11 @@ drvName, Bindings * attrs, Value & v)
                    the resulting set. */
                 if (j == "drv")
                     state.ctx.errors.make<EvalError>("invalid derivation output name 'drv'")
-                        .atPos(v)
                         .debugThrow();
                 outputs.insert(j);
             }
             if (outputs.empty())
                 state.ctx.errors.make<EvalError>("derivation cannot have an empty set of outputs")
-                    .atPos(v)
                     .debugThrow();
         };
 
@@ -869,16 +865,16 @@ drvName, Bindings * attrs, Value & v)
             const std::string_view context_below("");
 
             if (ignoreNulls) {
-                state.forceValue(*i->value, pos);
+                state.forceValue(*i->value, noPos);
                 if (i->value->type() == nNull) continue;
             }
 
-            if (i->name == state.ctx.s.contentAddressed && state.forceBool(*i->value, pos, context_below)) {
+            if (i->name == state.ctx.s.contentAddressed && state.forceBool(*i->value, noPos, context_below)) {
                 contentAddressed = true;
                 experimentalFeatureSettings.require(Xp::CaDerivations);
             }
 
-            else if (i->name == state.ctx.s.impure && state.forceBool(*i->value, pos, context_below)) {
+            else if (i->name == state.ctx.s.impure && state.forceBool(*i->value, noPos, context_below)) {
                 isImpure = true;
                 experimentalFeatureSettings.require(Xp::ImpureDerivations);
             }
@@ -886,9 +882,9 @@ drvName, Bindings * attrs, Value & v)
             /* The `args' attribute is special: it supplies the
                command-line arguments to the builder. */
             else if (i->name == state.ctx.s.args) {
-                state.forceList(*i->value, pos, context_below);
+                state.forceList(*i->value, noPos, context_below);
                 for (auto elem : i->value->listItems()) {
-                    auto s = state.coerceToString(pos, *elem, context,
+                    auto s = state.coerceToString(noPos, *elem, context,
                             "while evaluating an element of the argument list",
                             true).toOwned();
                     drv.args.push_back(s);
@@ -903,24 +899,24 @@ drvName, Bindings * attrs, Value & v)
 
                     if (i->name == state.ctx.s.structuredAttrs) continue;
 
-                    (*jsonObject)[key] = printValueAsJSON(state, true, *i->value, pos, context);
+                    (*jsonObject)[key] = printValueAsJSON(state, true, *i->value, noPos, context);
 
                     if (i->name == state.ctx.s.builder)
-                        drv.builder = state.forceString(*i->value, context, pos, context_below);
+                        drv.builder = state.forceString(*i->value, context, noPos, context_below);
                     else if (i->name == state.ctx.s.system)
-                        drv.platform = state.forceStringNoCtx(*i->value, pos, context_below);
+                        drv.platform = state.forceStringNoCtx(*i->value, noPos, context_below);
                     else if (i->name == state.ctx.s.outputHash)
-                        outputHash = state.forceStringNoCtx(*i->value, pos, context_below);
+                        outputHash = state.forceStringNoCtx(*i->value, noPos, context_below);
                     else if (i->name == state.ctx.s.outputHashAlgo)
-                        outputHashAlgo = state.forceStringNoCtx(*i->value, pos, context_below);
+                        outputHashAlgo = state.forceStringNoCtx(*i->value, noPos, context_below);
                     else if (i->name == state.ctx.s.outputHashMode)
-                        handleHashMode(state.forceStringNoCtx(*i->value, pos, context_below));
+                        handleHashMode(state.forceStringNoCtx(*i->value, noPos, context_below));
                     else if (i->name == state.ctx.s.outputs) {
                         /* Require ‘outputs’ to be a list of strings. */
-                        state.forceList(*i->value, pos, context_below);
+                        state.forceList(*i->value, noPos, context_below);
                         Strings ss;
                         for (auto elem : i->value->listItems())
-                            ss.emplace_back(state.forceStringNoCtx(*elem, pos, context_below));
+                            ss.emplace_back(state.forceStringNoCtx(*elem, noPos, context_below));
                         handleOutputs(ss);
                     }
 
@@ -939,7 +935,7 @@ drvName, Bindings * attrs, Value & v)
 
 
                 } else {
-                    auto s = state.coerceToString(pos, *i->value, context, context_below, true).toOwned();
+                    auto s = state.coerceToString(noPos, *i->value, context, context_below, true).toOwned();
                     drv.env.emplace(key, s);
                     if (i->name == state.ctx.s.builder) drv.builder = std::move(s);
                     else if (i->name == state.ctx.s.system) drv.platform = std::move(s);
@@ -998,12 +994,10 @@ drvName, Bindings * attrs, Value & v)
     /* Do we have all required attributes? */
     if (drv.builder == "")
         state.ctx.errors.make<EvalError>("required attribute 'builder' missing")
-            .atPos(v)
             .debugThrow();
 
     if (drv.platform == "")
         state.ctx.errors.make<EvalError>("required attribute 'system' missing")
-            .atPos(v)
             .debugThrow();
 
     /* Check whether the derivation name is valid. */
@@ -1015,7 +1009,7 @@ drvName, Bindings * attrs, Value & v)
         state.ctx.errors.make<EvalError>(
             "derivation names are allowed to end in '%s' only if they produce a single derivation file",
             drvExtension
-        ).atPos(v).debugThrow();
+        ).debugThrow();
     }
 
     if (outputHash) {
@@ -1026,7 +1020,7 @@ drvName, Bindings * attrs, Value & v)
         if (outputs.size() != 1 || *(outputs.begin()) != "out")
             state.ctx.errors.make<EvalError>(
                 "multiple outputs are not supported in fixed-output derivations"
-            ).atPos(v).debugThrow();
+            ).debugThrow();
 
         auto h = newHashAllowEmpty(*outputHash, parseHashTypeOpt(outputHashAlgo));
 
@@ -1046,7 +1040,7 @@ drvName, Bindings * attrs, Value & v)
     else if (contentAddressed || isImpure) {
         if (contentAddressed && isImpure)
             state.ctx.errors.make<EvalError>("derivation cannot be both content-addressed and impure")
-                .atPos(v).debugThrow();
+                .debugThrow();
 
         auto ht = parseHashTypeOpt(outputHashAlgo).value_or(HashType::SHA256);
         auto method = ingestionMethod.value_or(FileIngestionMethod::Recursive);
@@ -1091,7 +1085,7 @@ drvName, Bindings * attrs, Value & v)
                     state.ctx.errors.make<AssertionError>(
                         "derivation produced no hash for output '%s'",
                         i
-                    ).atPos(v).debugThrow();
+                    ).debugThrow();
                 auto outPath = state.ctx.store->makeOutputPath(i, *h, drvName);
                 drv.env[i] = state.ctx.store->printStorePath(outPath);
                 drv.outputs.insert_or_assign(
