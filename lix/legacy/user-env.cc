@@ -112,7 +112,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
     /* Evaluate it. */
     debug("evaluating user environment builder");
-    state.forceValue(topLevel, topLevel.determinePos(noPos));
+    state.forceValue(topLevel, noPos);
     NixStringContext context;
     Attr & aDrvPath(*topLevel.attrs->find(state.ctx.s.drvPath));
     auto topLevelDrv = state.coerceToStorePath(aDrvPath.pos, *aDrvPath.value, context, "");

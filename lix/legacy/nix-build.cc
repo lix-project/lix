@@ -291,7 +291,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
                 takesNixShellAttr(vRoot) ? *autoArgsWithInNixShell : *autoArgs,
                 vRoot
             ).first);
-            state->forceValue(v, v.determinePos(noPos));
+            state->forceValue(v, noPos);
             getDerivations(
                 *state,
                 v,

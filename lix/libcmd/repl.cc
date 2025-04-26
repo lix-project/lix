@@ -869,7 +869,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
                 Value v;
                 e->eval(state, *env, v);
                 (void) e.release(); // NOLINT(bugprone-unused-return-value): leak because of thunk references
-                state.forceValue(v, v.determinePos(noPos));
+                state.forceValue(v, noPos);
                 printValue(std::cout, v, 1);
                 std::cout << std::endl;
             }
@@ -1056,7 +1056,7 @@ Value * NixRepl::replInitInfo()
 
 void NixRepl::addAttrsToScope(Value & attrs)
 {
-    state.forceAttrs(attrs, attrs.determinePos(noPos), "while evaluating an attribute set to be merged in the global scope");
+    state.forceAttrs(attrs, noPos, "while evaluating an attribute set to be merged in the global scope");
     if (displ + attrs.attrs->size() >= envSize)
         throw Error("environment full; cannot add more variables");
 
@@ -1115,7 +1115,7 @@ void NixRepl::evalString(std::string s, Value & v)
 {
     Expr & e = parseString(s);
     e.eval(state, *env, v);
-    state.forceValue(v, v.determinePos(noPos));
+    state.forceValue(v, noPos);
 }
 
 Value * NixRepl::evalFile(SourcePath & path)
@@ -1123,7 +1123,7 @@ Value * NixRepl::evalFile(SourcePath & path)
     auto & expr = evaluator.parseExprFromFile(evaluator.paths.checkSourcePath(path), staticEnv);
     Value * result(evaluator.mem.allocValue());
     expr.eval(state, *env, *result);
-    state.forceValue(*result, result->determinePos(noPos));
+    state.forceValue(*result, noPos);
     return result;
 }
 

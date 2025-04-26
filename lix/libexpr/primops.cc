@@ -626,14 +626,14 @@ static RegisterPrimOp primop_addErrorContext(PrimOp {
 
 static void prim_ceil(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
-    auto value = state.forceFloat(*args[0], args[0]->determinePos(pos),
+    auto value = state.forceFloat(*args[0], pos,
             "while evaluating the first argument passed to builtins.ceil");
     v.mkInt(ceil(value));
 }
 
 static void prim_floor(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
-    auto value = state.forceFloat(*args[0], args[0]->determinePos(pos), "while evaluating the first argument passed to builtins.floor");
+    auto value = state.forceFloat(*args[0], pos, "while evaluating the first argument passed to builtins.floor");
     v.mkInt(floor(value));
 }
 
@@ -2346,7 +2346,7 @@ static void prim_concatMap(EvalState & state, const PosIdx pos, Value * * args, 
     for (unsigned int n = 0; n < nrLists; ++n) {
         Value * vElem = args[1]->listElems()[n];
         state.callFunction(*args[0], *vElem, lists[n], pos);
-        state.forceList(lists[n], lists[n].determinePos(args[0]->determinePos(pos)), "while evaluating the return value of the function passed to builtins.concatMap");
+        state.forceList(lists[n], pos, "while evaluating the return value of the function passed to builtins.concatMap");
         len += lists[n].listSize();
     }
 

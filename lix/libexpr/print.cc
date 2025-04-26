@@ -266,7 +266,7 @@ private:
 
         if (options.force) {
             // The item is going to be forced during printing anyway, but we need its type now.
-            state.forceValue(*item, item->determinePos(noPos));
+            state.forceValue(*item, noPos);
         }
 
         // Pretty-print single-item attrsets only if they contain nested
@@ -339,7 +339,7 @@ private:
 
         if (options.force) {
             // The item is going to be forced during printing anyway, but we need its type now.
-            state.forceValue(*item, item->determinePos(noPos));
+            state.forceValue(*item, noPos);
         }
 
         // Pretty-print single-item lists only if they contain nested
@@ -479,7 +479,7 @@ private:
 
         try {
             if (options.force) {
-                state.forceValue(v, v.determinePos(noPos));
+                state.forceValue(v, noPos);
             }
 
             switch (v.type()) {

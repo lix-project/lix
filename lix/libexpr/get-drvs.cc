@@ -286,7 +286,7 @@ StringSet DrvInfo::queryMetaNames(EvalState & state)
 
 bool DrvInfo::checkMeta(EvalState & state, Value & v)
 {
-    state.forceValue(v, v.determinePos(noPos));
+    state.forceValue(v, noPos);
     if (v.type() == nList) {
         for (auto elem : v.listItems())
             if (!checkMeta(state, *elem)) return false;
@@ -375,7 +375,7 @@ static bool getDerivation(EvalState & state, Value & v,
     bool ignoreAssertionFailures)
 {
     try {
-        state.forceValue(v, v.determinePos(noPos));
+        state.forceValue(v, noPos);
         if (!state.isDerivation(v)) return true;
 
         DrvInfo drv(attrPath, v.attrs);

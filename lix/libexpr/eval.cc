@@ -1136,7 +1136,7 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
            Hence we need __overrides.) */
         if (hasOverrides) {
             Value * vOverrides = (*v.attrs)[overrides->second.displ].value;
-            state.forceAttrs(*vOverrides, vOverrides->determinePos(noPos), "while evaluating the `__overrides` attribute");
+            state.forceAttrs(*vOverrides, noPos, "while evaluating the `__overrides` attribute");
             Bindings * newBnds = state.ctx.mem.allocBindings(v.attrs->capacity() + vOverrides->attrs->size());
             for (auto & i : *v.attrs)
                 newBnds->push_back(i);
@@ -2137,7 +2137,7 @@ void EvalState::forceValueDeep(Value & v)
     recurse = [&](Value & v) {
         if (!seen.insert(&v).second) return;
 
-        forceValue(v, v.determinePos(noPos));
+        forceValue(v, noPos);
 
         if (v.type() == nAttrs) {
             for (auto & i : *v.attrs)

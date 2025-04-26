@@ -39,7 +39,7 @@ void processExpr(EvalState & state, const Strings & attrPaths,
 
     for (auto & i : attrPaths) {
         Value & v(*findAlongAttrPath(state, i, autoArgs, vRoot).first);
-        state.forceValue(v, v.determinePos(noPos));
+        state.forceValue(v, noPos);
 
         NixStringContext context;
         if (evalOnly) {
