@@ -173,13 +173,12 @@ struct CmdFlakeLock : FlakeCommand
 static void enumerateOutputs(EvalState & state, Value & vFlake,
     std::function<void(const std::string & name, Value & vProvide, const PosIdx pos)> callback)
 {
-    auto pos = vFlake.determinePos(noPos);
-    state.forceAttrs(vFlake, pos, "while evaluating a flake to get its outputs");
+    state.forceAttrs(vFlake, noPos, "while evaluating a flake to get its outputs");
 
     auto aOutputs = vFlake.attrs->get(state.ctx.symbols.create("outputs"));
     assert(aOutputs);
 
-    state.forceAttrs(*aOutputs->value, pos, "while evaluating the outputs of a flake");
+    state.forceAttrs(*aOutputs->value, noPos, "while evaluating the outputs of a flake");
 
     auto sHydraJobs = state.ctx.symbols.create("hydraJobs");
 
