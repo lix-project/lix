@@ -2309,10 +2309,15 @@ std::optional<std::string> EvalState::tryAttrsToString(const PosIdx pos, Value &
     auto i = v.attrs->find(ctx.s.toString);
     if (i != v.attrs->end()) {
         Value v1;
-        callFunction(*i->value, v, v1, pos);
-        return coerceToString(pos, v1, context,
-                "while evaluating the result of the `__toString` attribute",
-                coerceMore, copyToStore).toOwned();
+        try {
+            callFunction(*i->value, v, v1, i->pos);
+            return coerceToString(pos, v1, context,
+                    "while evaluating the result of the `__toString` attribute",
+                    coerceMore, copyToStore).toOwned();
+        } catch (EvalError & e) {
+            e.addTrace(ctx.positions[pos], "while converting a set to string");
+            throw;
+        }
     }
 
     return {};
