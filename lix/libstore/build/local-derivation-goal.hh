@@ -100,8 +100,6 @@ struct LocalDerivationGoal : public DerivationGoal
      * Hash rewriting.
      */
     StringMap inputRewrites, outputRewrites;
-    typedef map<StorePath, StorePath> RedirectedOutputs;
-    RedirectedOutputs redirectedOutputs;
 
     /**
      * The outputs paths used during the build.
@@ -118,6 +116,19 @@ struct LocalDerivationGoal : public DerivationGoal
      *   self-references.
      */
     OutputPathMap scratchOutputs;
+    /**
+     * Output paths used during the build are scheduled for
+     * automatic cleanup unless they have been successfully built.
+     *
+     * `registerOutputs` take care of cancelling the cleanups
+     * and clearing this vector.
+     *
+     * `startBuilder` take care of filling this vector
+     * as `scratchOutputs` gets filled.
+     *
+     * This is a map from output names to automatic delete handles.
+     */
+    std::map<std::string, AutoDelete> scratchOutputsCleaner;
 
     /**
      * Path registration info from the previous round, if we're
