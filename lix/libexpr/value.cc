@@ -35,20 +35,6 @@ void Value::print(EvalState & state, std::ostream & str, PrintOptions options)
     printValue(state, str, *this, options);
 }
 
-PosIdx Value::determinePos(const PosIdx pos) const
-{
-    // Allow selecting a subset of enum values
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wswitch-enum"
-    switch (internalType) {
-        case tAttrs: return attrs->pos;
-        case tLambda: return lambda.fun->pos;
-        case tApp: return app.left->determinePos(pos);
-        default: return pos;
-    }
-    #pragma GCC diagnostic pop
-}
-
 bool Value::isTrivial() const
 {
     return

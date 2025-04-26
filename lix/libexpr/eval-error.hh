@@ -76,8 +76,6 @@ public:
 
     [[gnu::noinline]] EvalErrorBuilder<T> atPos(PosIdx pos) &&;
 
-    [[gnu::noinline]] EvalErrorBuilder<T> atPos(Value & value, PosIdx fallback = noPos) &&;
-
     [[gnu::noinline]] EvalErrorBuilder<T> withTrace(PosIdx pos, const std::string_view text) &&;
 
     [[gnu::noinline]] EvalErrorBuilder<T> withSuggestions(Suggestions & s) &&;

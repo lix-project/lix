@@ -20,12 +20,6 @@ EvalErrorBuilder<T> EvalErrorBuilder<T>::atPos(PosIdx pos) &&
 }
 
 template<std::derived_from<EvalError> T>
-EvalErrorBuilder<T> EvalErrorBuilder<T>::atPos(Value & value, PosIdx fallback) &&
-{
-    return std::move(*this).atPos(value.determinePos(fallback));
-}
-
-template<std::derived_from<EvalError> T>
 EvalErrorBuilder<T> EvalErrorBuilder<T>::withTrace(PosIdx pos, const std::string_view text) &&
 {
     error->err.traces.push_front(

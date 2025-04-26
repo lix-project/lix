@@ -790,8 +790,6 @@ public:
         return internalType == tList1 ? 1 : internalType == tList2 ? 2 : bigList.size;
     }
 
-    PosIdx determinePos(const PosIdx pos) const;
-
     /**
      * Check whether forcing this value requires a trivial amount of
      * computation. In particular, function applications are
