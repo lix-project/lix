@@ -51,8 +51,8 @@
       {
         formatter = eachSystem (pkgs:
           pkgs.writeShellScriptBin "formatter" ''
-            if [[ $# = 0 ]]; set -- .; fi
-            exec "${pkgs.nixfmt-rfc-style}/bin/nixfmt "$@"
+            if [[ $# = 0 ]]; then set -- .; fi
+            exec "${pkgs.nixfmt-rfc-style}/bin/nixfmt" "$@"
           '');
       };
   }
