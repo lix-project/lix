@@ -243,7 +243,7 @@ NixRepl::NixRepl(const SearchPath & searchPath, nix::ref<Store> store, EvalState
 void runNix(Path program, const Strings & args)
 {
     auto subprocessEnv = getEnv();
-    subprocessEnv["NIX_CONFIG"] = globalConfig.toKeyValue();
+    subprocessEnv["NIX_CONFIG"] = globalConfig.toKeyValue(true);
 
     runProgram2(RunOptions {
         .program = settings.nixBinDir+ "/" + program,
