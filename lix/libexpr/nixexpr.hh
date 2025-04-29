@@ -138,20 +138,17 @@ struct ExprVar : Expr
  * Unlike normal variable references, the displacement is set during parsing, and always refers to
  * `ExprAttrs::inheritFromExprs` (by itself or in `ExprLet`), whose values are put into their own `Env`.
  */
-struct ExprInheritFrom : ExprVar
+struct ExprInheritFrom : Expr
 {
     ref<Expr> fromExpr;
+    Displacement displ;
 
     ExprInheritFrom(PosIdx pos, Displacement displ, ref<Expr> fromExpr)
-          : ExprVar(pos, {}), fromExpr(fromExpr)
+          : Expr(pos), fromExpr(fromExpr), displ(displ)
     {
-        this->level = 0;
-        this->displ = displ;
-        this->fromWith = nullptr;
     }
 
-    JSON toJSON(SymbolTable const & symbols) const override;
-    void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
+    COMMON_METHODS
 };
 
 struct ExprSelect : Expr

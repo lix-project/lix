@@ -1259,6 +1259,14 @@ void ExprVar::eval(EvalState & state, Env & env, Value & v)
 }
 
 
+void ExprInheritFrom::eval(EvalState & state, Env & env, Value & v)
+{
+    Value * v2 = env.values[displ];
+    state.forceValue(*v2, pos);
+    v = *v2;
+}
+
+
 static std::string showAttrPath(EvalState & state, Env & env, const AttrPath & attrPath)
 {
     std::ostringstream out;
