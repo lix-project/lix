@@ -2,6 +2,7 @@
 ///@file
 
 #include <map>
+#include <memory>
 #include <vector>
 
 #include "lix/libexpr/value.hh"
@@ -116,8 +117,11 @@ public:
     Expr & operator=(const Expr &) = delete;
     virtual ~Expr() { };
 
+    static std::unique_ptr<Expr> finalize(
+        std::unique_ptr<Expr> parsed, Evaluator & es, const std::shared_ptr<const StaticEnv> & env
+    );
+
     virtual JSON toJSON(const SymbolTable & symbols) const;
-    virtual void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env);
     virtual void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) = 0;
     virtual void eval(EvalState & state, Env & env, Value & v);
     virtual Value * maybeThunk(EvalState & state, Env & env);
@@ -155,7 +159,6 @@ public:
     Value * maybeThunk(EvalState & state, Env & env) override;
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -205,7 +208,6 @@ struct ExprVar : Expr
     Value * maybeThunk(EvalState & state, Env & env) override;
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -226,7 +228,6 @@ struct ExprInheritFrom : Expr
 
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -247,7 +248,6 @@ struct ExprSelect : Expr
     ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, const PosIdx namePos, Symbol name) : Expr(pos), e(std::move(e)) { attrPath.push_back(AttrName(namePos, name)); };
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -258,7 +258,6 @@ struct ExprOpHasAttr : Expr
     ExprOpHasAttr(const PosIdx & pos, std::unique_ptr<Expr> e, AttrPath attrPath) : Expr(pos), e(std::move(e)), attrPath(std::move(attrPath)) { };
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -317,8 +316,7 @@ struct ExprAttrs
     DynamicAttrDefs dynamicAttrs;
 
     std::shared_ptr<const StaticEnv> buildRecursiveEnv(const std::shared_ptr<const StaticEnv> & env);
-    std::shared_ptr<const StaticEnv> bindInheritSources(
-        Evaluator & es, const std::shared_ptr<const StaticEnv> & env);
+    std::shared_ptr<const StaticEnv> bindInheritSources(ExprVisitor & e, const StaticEnv & env);
     Env * buildInheritFromEnv(EvalState & state, Env & up);
     void addBindingsToJSON(JSON & out, const SymbolTable & symbols) const;
 };
@@ -330,16 +328,15 @@ struct ExprSet : Expr, ExprAttrs {
     ExprSet() { };
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
 struct ExprReplBindings {
     std::map<Symbol, std::unique_ptr<Expr>> symbols;
 
-    void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) {
+    void finalize(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) {
         for (auto & [_, e] : symbols)
-            e->bindVars(es, env);
+            e = Expr::finalize(std::move(e), es, env);
     }
 };
 
@@ -349,7 +346,6 @@ struct ExprList : Expr
     ExprList(PosIdx pos) : Expr(pos) { };
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
     Value * maybeThunk(EvalState & state, Env & env) override;
 };
@@ -364,7 +360,6 @@ struct Pattern {
     virtual ~Pattern() = default;
 
     virtual std::shared_ptr<const StaticEnv> buildEnv(const StaticEnv * up) = 0;
-    virtual void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) = 0;
     virtual void accept(ExprVisitor & ev) = 0;
     virtual Env & match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos) = 0;
 
@@ -380,7 +375,6 @@ struct SimplePattern : Pattern
     }
 
     virtual std::shared_ptr<const StaticEnv> buildEnv(const StaticEnv * up) override;
-    virtual void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
     virtual void accept(ExprVisitor & ev) override;
     virtual Env & match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos) override;
 
@@ -402,7 +396,6 @@ struct AttrsPattern : Pattern
     bool ellipsis;
 
     virtual std::shared_ptr<const StaticEnv> buildEnv(const StaticEnv * up) override;
-    virtual void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
     virtual void accept(ExprVisitor & ev) override;
     virtual Env & match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos) override;
 
@@ -468,7 +461,6 @@ struct ExprLambda : Expr
 
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -481,7 +473,6 @@ struct ExprCall : Expr
     { }
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -490,7 +481,6 @@ struct ExprLet : Expr, ExprAttrs
     std::unique_ptr<Expr> body;
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -502,7 +492,6 @@ struct ExprWith : Expr
     ExprWith(const PosIdx & pos, std::unique_ptr<Expr> attrs, std::unique_ptr<Expr> body) : Expr(pos), attrs(std::move(attrs)), body(std::move(body)) { };
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -512,7 +501,6 @@ struct ExprIf : Expr
     ExprIf(const PosIdx & pos, std::unique_ptr<Expr> cond, std::unique_ptr<Expr> then, std::unique_ptr<Expr> else_) : Expr(pos), cond(std::move(cond)), then(std::move(then)), else_(std::move(else_)) { };
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -522,7 +510,6 @@ struct ExprAssert : Expr
     ExprAssert(const PosIdx & pos, std::unique_ptr<Expr> cond, std::unique_ptr<Expr> body) : Expr(pos), cond(std::move(cond)), body(std::move(body)) { };
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -532,7 +519,6 @@ struct ExprOpNot : Expr
     ExprOpNot(const PosIdx & pos, std::unique_ptr<Expr> e) : Expr(pos), e(std::move(e)) { };
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -551,10 +537,6 @@ struct ExprOpNot : Expr
             };\
         } \
         void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); } \
-        void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override \
-        { \
-            e1->bindVars(es, env); e2->bindVars(es, env);    \
-        } \
         void eval(EvalState & state, Env & env, Value & v) override; \
     };
 
@@ -574,7 +556,6 @@ struct ExprConcatStrings : Expr
         : Expr(pos), forceString(forceString), es(std::move(es)) { };
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -583,7 +564,6 @@ struct ExprPos : Expr
     ExprPos(const PosIdx & pos) : Expr(pos) { };
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -591,7 +571,6 @@ struct ExprPos : Expr
 struct ExprBlackHole : Expr
 {
     void eval(EvalState & state, Env & env, Value & v) override;
-    void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override {}
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 

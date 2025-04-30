@@ -38,7 +38,7 @@ Expr * Evaluator::parse(
         p::parse<parser::grammar::v1::root, parser::v1::BuildAST, parser::v1::Control>(inp, x, s);
 
         auto [_pos, result] = x.finish(s);
-        result->bindVars(*this, staticEnv);
+        result = Expr::finalize(std::move(result), *this, staticEnv);
         return result.release();
     } catch (p::parse_error & e) { // NOLINT(lix-foreign-exceptions)
         auto pos = e.positions().back();
@@ -73,8 +73,8 @@ Evaluator::parse_repl(
         p::parse<parser::grammar::v1::repl_root, parser::v1::BuildAST, parser::v1::Control>(inp, x, s);
 
         std::visit(overloaded {
-            [&] (ExprReplBindings & result) { result.bindVars(*this, staticEnv); },
-            [&] (auto & result) { result->bindVars(*this, staticEnv); }
+            [&] (ExprReplBindings & result) { result.finalize(*this, staticEnv); },
+            [&] (auto & result) { result = Expr::finalize(std::move(result), *this, staticEnv); }
         }, x);
         return x;
     } catch (p::parse_error & e) { // NOLINT(lix-foreign-exceptions)

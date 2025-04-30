@@ -313,23 +313,78 @@ JSON printAttrPathToJson(const SymbolTable & symbols, const AttrPath & attrPath)
 
 /* Computing levels/displacements for variables. */
 
-void Expr::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+namespace {
+struct VarBinder : ExprVisitor
 {
-    abort();
+    Evaluator & es;
+    std::shared_ptr<const StaticEnv> env;
+
+    VarBinder(Evaluator & eval, std::shared_ptr<const StaticEnv> env) : es(eval), env(env) {}
+
+    auto withEnv(std::shared_ptr<const StaticEnv> env, auto fn)
+    {
+        std::swap(env, this->env);
+        KJ_DEFER(std::swap(env, this->env););
+        return fn();
+    }
+
+    using ExprVisitor::visit;
+
+    void visit(ExprLiteral & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprVar & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprInheritFrom & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprSelect & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprOpHasAttr & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprSet & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprList & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprLambda & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprCall & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprLet & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprWith & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprIf & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprAssert & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprOpNot & e, std::unique_ptr<Expr> & ptr) override;
+#define BINOP(type)                                            \
+    /* NOLINTNEXTLINE(bugprone-macro-parentheses) */           \
+    void visit(type & e, std::unique_ptr<Expr> & ptr) override \
+    {                                                          \
+        visit(e.e1);                                           \
+        visit(e.e2);                                           \
+    }
+    BINOP(ExprOpEq)
+    BINOP(ExprOpNEq)
+    BINOP(ExprOpAnd)
+    BINOP(ExprOpOr)
+    BINOP(ExprOpImpl)
+    BINOP(ExprOpUpdate)
+    BINOP(ExprOpConcatLists)
+#undef BINOP
+    void visit(ExprConcatStrings & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprPos & e, std::unique_ptr<Expr> & ptr) override;
+    void visit(ExprBlackHole & e, std::unique_ptr<Expr> & ptr) override {}
+};
 }
 
-void ExprLiteral::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+std::unique_ptr<Expr> Expr::finalize(
+    std::unique_ptr<Expr> parsed, Evaluator & es, const std::shared_ptr<const StaticEnv> & env
+)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+    VarBinder{es, env}.visit(parsed);
+    return parsed;
 }
 
-void ExprVar::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprLiteral & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
+}
 
-    fromWith = nullptr;
+void VarBinder::visit(ExprVar & e, std::unique_ptr<Expr> & ptr)
+{
+    if (es.debug)
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
+
+    e.fromWith = nullptr;
 
     /* Check whether the variable appears in the environment.  If so,
        set its level and displacement. */
@@ -340,21 +395,21 @@ void ExprVar::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & 
         if (curEnv->isWith) {
             if (withLevel == -1) withLevel = level;
         } else {
-            auto i = curEnv->find(name);
+            auto i = curEnv->find(e.name);
             if (i != curEnv->vars.end()) {
-                if (this->needsRoot && !curEnv->isRoot) {
+                if (e.needsRoot && !curEnv->isRoot) {
                     throw ParseError({
                         .msg = HintFmt(
                             "Shadowing symbol '%s' used in internal expressions is not allowed. Use %s to disable this error.",
-                            es.symbols[name],
+                            es.symbols[e.name],
                             "--extra-deprecated-features shadow-internal-symbols"
                         ),
-                        .pos = es.positions[pos]
+                        .pos = es.positions[e.pos]
                     });
                 }
 
-                this->level = level;
-                displ = i->second;
+                e.level = level;
+                e.displ = i->second;
                 return;
             }
         }
@@ -366,40 +421,40 @@ void ExprVar::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & 
     if (withLevel == -1)
         es.errors.make<UndefinedVarError>(
             "undefined variable '%1%'",
-            es.symbols[name]
-        ).atPos(pos).throw_();
-    for (auto * e = env.get(); e && !fromWith; e = e->up)
-        fromWith = e->isWith;
-    this->level = withLevel;
+            es.symbols[e.name]
+        ).atPos(e.pos).throw_();
+    for (auto * se = env.get(); se && !e.fromWith; se = se->up)
+        e.fromWith = se->isWith;
+    e.level = withLevel;
 }
 
-void ExprInheritFrom::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprInheritFrom & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 }
 
-void ExprSelect::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprSelect & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 
-    e->bindVars(es, env);
-    if (def) def->bindVars(es, env);
-    for (auto & i : attrPath)
+    visit(e.e);
+    if (e.def) visit(e.def);
+    for (auto & i : e.attrPath)
         if (!i.symbol)
-            i.expr->bindVars(es, env);
+            visit(i.expr);
 }
 
-void ExprOpHasAttr::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprOpHasAttr & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 
-    e->bindVars(es, env);
-    for (auto & i : attrPath)
+    visit(e.e);
+    for (auto & i : e.attrPath)
         if (!i.symbol)
-            i.expr->bindVars(es, env);
+            visit(i.expr);
 }
 
 std::shared_ptr<const StaticEnv> ExprAttrs::buildRecursiveEnv(const std::shared_ptr<const StaticEnv> & env)
@@ -412,8 +467,7 @@ std::shared_ptr<const StaticEnv> ExprAttrs::buildRecursiveEnv(const std::shared_
     return newEnv;
 }
 
-std::shared_ptr<const StaticEnv> ExprAttrs::bindInheritSources(
-    Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+std::shared_ptr<const StaticEnv> ExprAttrs::bindInheritSources(ExprVisitor & e, const StaticEnv & env)
 {
     if (!inheritFromExprs)
         return nullptr;
@@ -426,143 +480,151 @@ std::shared_ptr<const StaticEnv> ExprAttrs::bindInheritSources(
     // and displacement, and nothing else is allowed to access it. ideally we'd
     // not even *have* an expr that grabs anything from this env since it's fully
     // invisible, but the evaluator does not allow for this yet.
-    auto inner = std::make_shared<StaticEnv>(nullptr, env.get(), 0);
+    auto inner = std::make_shared<StaticEnv>(nullptr, &env, 0);
     for (auto & from : *inheritFromExprs)
-        from->bindVars(es, env);
+        e.visit(from);
 
     return inner;
 }
 
-void ExprSet::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprSet & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 
-    auto innerEnv = recursive ? buildRecursiveEnv(env) : env;
-    auto inheritFromEnv = bindInheritSources(es, innerEnv);
+    auto innerEnv = e.recursive ? e.buildRecursiveEnv(env) : env;
+    auto inheritFromEnv = withEnv(innerEnv, [&] { return e.bindInheritSources(*this, *innerEnv); });
 
     // No need to sort newEnv since attrs is in sorted order.
 
-    for (auto & i : attrs)
-        i.second.e->bindVars(es, i.second.chooseByKind(innerEnv, env, inheritFromEnv));
-
-    for (auto & i : dynamicAttrs) {
-        i.nameExpr->bindVars(es, innerEnv);
-        i.valueExpr->bindVars(es, innerEnv);
+    for (auto & i : e.attrs) {
+        withEnv(i.second.chooseByKind(innerEnv, env, inheritFromEnv), [&] {
+            visit(i.second.e);
+        });
     }
+
+    withEnv(innerEnv, [&] {
+        for (auto & i : e.dynamicAttrs) {
+            visit(i.nameExpr);
+            visit(i.valueExpr);
+        }
+    });
 }
 
-void ExprList::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprList & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 
-    for (auto & i : elems)
-        i->bindVars(es, env);
+    for (auto & i : e.elems)
+        visit(i);
 }
 
-void ExprLambda::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprLambda & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 
-    auto newEnv = pattern->buildEnv(env.get());
-    pattern->bindVars(es, newEnv);
-    body->bindVars(es, newEnv);
+    withEnv(e.pattern->buildEnv(env.get()), [&] {
+        e.pattern->accept(*this);
+        visit(e.body);
+    });
 }
 
-void ExprCall::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprCall & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 
-    fun->bindVars(es, env);
-    for (auto & e : args)
-        e->bindVars(es, env);
+    visit(e.fun);
+    for (auto & se : e.args)
+        visit(se);
 }
 
-void ExprLet::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprLet & e, std::unique_ptr<Expr> & ptr)
 {
-    auto newEnv = buildRecursiveEnv(env);
+    auto newEnv = e.buildRecursiveEnv(env);
 
     // No need to sort newEnv since attrs is in sorted order.
 
-    auto inheritFromEnv = bindInheritSources(es, newEnv);
-    for (auto & i : attrs)
-        i.second.e->bindVars(es, i.second.chooseByKind(newEnv, env, inheritFromEnv));
+    auto inheritFromEnv = withEnv(newEnv, [&] { return e.bindInheritSources(*this, *newEnv); });
+    for (auto & i : e.attrs) {
+        withEnv(i.second.chooseByKind(newEnv, env, inheritFromEnv), [&] {
+            visit(i.second.e);
+        });
+    }
 
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 
-    body->bindVars(es, newEnv);
+    withEnv(std::move(newEnv), [&] { visit(e.body); });
 }
 
-void ExprWith::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprWith & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 
-    parentWith = nullptr;
-    for (auto * e = env.get(); e && !parentWith; e = e->up)
-        parentWith = e->isWith;
+    e.parentWith = nullptr;
+    for (auto * se = env.get(); se && !e.parentWith; se = se->up)
+        e.parentWith = se->isWith;
 
     /* Does this `with' have an enclosing `with'?  If so, record its
        level so that `lookupVar' can look up variables in the previous
        `with' if this one doesn't contain the desired attribute. */
     const StaticEnv * curEnv;
     Level level;
-    prevWith = 0;
+    e.prevWith = 0;
     for (curEnv = env.get(), level = 1; curEnv; curEnv = curEnv->up, level++)
         if (curEnv->isWith) {
-            prevWith = level;
+            e.prevWith = level;
             break;
         }
 
-    attrs->bindVars(es, env);
-    auto newEnv = std::make_shared<StaticEnv>(this, env.get());
-    body->bindVars(es, newEnv);
+    visit(e.attrs);
+    withEnv(std::make_shared<StaticEnv>(&e, env.get()), [&] { visit(e.body); });
 }
 
-void ExprIf::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprIf & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 
-    cond->bindVars(es, env);
-    then->bindVars(es, env);
-    else_->bindVars(es, env);
+    visit(e.cond);
+    visit(e.then);
+    visit(e.else_);
 }
 
-void ExprAssert::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprAssert & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 
-    cond->bindVars(es, env);
-    body->bindVars(es, env);
+    visit(e.cond);
+    visit(e.body);
 }
 
-void ExprOpNot::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprOpNot & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 
-    e->bindVars(es, env);
+    visit(e.e);
 }
 
-void ExprConcatStrings::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprConcatStrings & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 
-    for (auto & i : this->es)
-        i.second->bindVars(es, env);
+    for (auto & i : e.es)
+        visit(i.second);
 }
 
-void ExprPos::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
+void VarBinder::visit(ExprPos & e, std::unique_ptr<Expr> & ptr)
 {
     if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(this, env));
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 }
 
 /* Function argument destructuring */
@@ -574,7 +636,6 @@ std::shared_ptr<const StaticEnv> SimplePattern::buildEnv(const StaticEnv * up)
     return newEnv;
 }
 
-void SimplePattern::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) { }
 void SimplePattern::accept(ExprVisitor & ev) { }
 
 std::shared_ptr<const StaticEnv> AttrsPattern::buildEnv(const StaticEnv * up)
@@ -593,12 +654,6 @@ std::shared_ptr<const StaticEnv> AttrsPattern::buildEnv(const StaticEnv * up)
 
     newEnv->sort();
     return newEnv;
-}
-
-void AttrsPattern::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
-{
-    for (auto & i : formals)
-        if (i.def) i.def->bindVars(es, env);
 }
 
 void AttrsPattern::accept(ExprVisitor & ev)
