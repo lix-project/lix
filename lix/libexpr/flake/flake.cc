@@ -249,7 +249,7 @@ static Flake getFlake(
     Expr & flakeExpr = state.ctx.parseExprFromFile(resolvedFlakeFile);
 
     // Enforce that 'flake.nix' is a direct attrset, not a computation.
-    if (!(dynamic_cast<ExprAttrs *>(&flakeExpr))) {
+    if (!flakeExpr.try_cast<ExprAttrs>()) {
         state.ctx.errors.make<EvalError>("file '%s' must be an attribute set", resolvedFlakeFile).debugThrow();
     }
 

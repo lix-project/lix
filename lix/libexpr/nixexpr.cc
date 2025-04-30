@@ -122,8 +122,8 @@ void ExprAttrs::addBindingsToJSON(JSON & out, const SymbolTable & symbols) const
             out["inherit"][symbols[i->first]] = i->second.e->toJSON(symbols);
             break;
         case AttrDef::Kind::InheritedFrom: {
-            auto & select = dynamic_cast<ExprSelect &>(*i->second.e);
-            auto & from = dynamic_cast<ExprInheritFrom &>(*select.e);
+            auto & select = i->second.e->cast<ExprSelect>();
+            auto & from = select.e->cast<ExprInheritFrom>();
             inheritsFrom[from.displ].push_back(i->first);
             break;
         }

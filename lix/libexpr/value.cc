@@ -41,10 +41,10 @@ bool Value::isTrivial() const
         internalType != tApp
         && internalType != tPrimOpApp
         && (internalType != tThunk
-            || (dynamic_cast<ExprSet *>(thunk.expr)
+            || (thunk.expr->try_cast<ExprSet>()
                 && static_cast<ExprSet *>(thunk.expr)->dynamicAttrs.empty())
-            || dynamic_cast<ExprLambda *>(thunk.expr)
-            || dynamic_cast<ExprList *>(thunk.expr));
+            || thunk.expr->try_cast<ExprLambda>()
+            || thunk.expr->try_cast<ExprList>());
 }
 
 PrimOp * Value::primOpAppPrimOp() const

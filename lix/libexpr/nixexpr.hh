@@ -65,6 +65,18 @@ public:
     virtual Value * maybeThunk(EvalState & state, Env & env);
     virtual void setName(Symbol name);
     PosIdx getPos() const { return pos; }
+
+    template<typename E>
+    E & cast()
+    {
+        return dynamic_cast<E &>(*this);
+    }
+
+    template<typename E>
+    E * try_cast()
+    {
+        return dynamic_cast<E *>(this);
+    }
 };
 
 struct ExprLiteral : Expr
