@@ -575,6 +575,7 @@ std::shared_ptr<const StaticEnv> SimplePattern::buildEnv(const StaticEnv * up)
 }
 
 void SimplePattern::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) { }
+void SimplePattern::accept(ExprVisitor & ev) { }
 
 std::shared_ptr<const StaticEnv> AttrsPattern::buildEnv(const StaticEnv * up)
 {
@@ -598,6 +599,12 @@ void AttrsPattern::bindVars(Evaluator & es, const std::shared_ptr<const StaticEn
 {
     for (auto & i : formals)
         if (i.def) i.def->bindVars(es, env);
+}
+
+void AttrsPattern::accept(ExprVisitor & ev)
+{
+    for (auto & i : formals)
+        if (i.def) ev.visit(i.def);
 }
 
 /* Storing function names. */
