@@ -41,6 +41,7 @@ JSON printAttrPathToJson(const SymbolTable & symbols, const AttrPath & attrPath)
 
 /* Abstract syntax of Nix expressions. */
 
+struct ExprDebugFrame;
 struct ExprLiteral;
 struct ExprString;
 struct ExprPath;
@@ -70,6 +71,7 @@ struct ExprBlackHole;
 
 struct ExprVisitor
 {
+    virtual void visit(ExprDebugFrame & e, std::unique_ptr<Expr> & ptr) = 0;
     virtual void visit(ExprLiteral & e, std::unique_ptr<Expr> & ptr) = 0;
     virtual void visit(ExprVar & e, std::unique_ptr<Expr> & ptr) = 0;
     virtual void visit(ExprInheritFrom & e, std::unique_ptr<Expr> & ptr) = 0;
@@ -145,6 +147,26 @@ inline void ExprVisitor::visit(std::unique_ptr<Expr> & ptr)
 {
     ptr->accept(*this, ptr);
 }
+
+struct ExprDebugFrame : Expr
+{
+    std::unique_ptr<Expr> inner;
+    std::string message;
+
+    ExprDebugFrame(PosIdx pos, std::unique_ptr<Expr> inner, std::string message)
+        : Expr(pos)
+        , inner(std::move(inner))
+        , message(std::move(message))
+    {
+    }
+
+    JSON toJSON(const SymbolTable & symbols) const override
+    {
+        return inner->toJSON(symbols);
+    }
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
+};
 
 struct ExprLiteral : Expr
 {

@@ -330,6 +330,10 @@ struct VarBinder : ExprVisitor
 
     using ExprVisitor::visit;
 
+    void visit(ExprDebugFrame & e, std::unique_ptr<Expr> & ptr) override
+    {
+        visit(e.inner);
+    }
     void visit(ExprLiteral & e, std::unique_ptr<Expr> & ptr) override;
     void visit(ExprVar & e, std::unique_ptr<Expr> & ptr) override;
     void visit(ExprInheritFrom & e, std::unique_ptr<Expr> & ptr) override;
@@ -380,13 +384,41 @@ struct DebugVarBinder : VarBinder
     OVERRIDE(ExprLiteral)
     OVERRIDE(ExprVar)
     OVERRIDE(ExprInheritFrom)
-    OVERRIDE(ExprSelect)
+    void visit(ExprSelect & e, std::unique_ptr<Expr> & ptr) override
+    {
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
+        VarBinder::visit(e, ptr);
+
+        ptr = std::make_unique<ExprDebugFrame>(e.pos, std::move(ptr), "while evaluating an attribute");
+    }
     OVERRIDE(ExprOpHasAttr)
     OVERRIDE(ExprSet)
     OVERRIDE(ExprList)
-    OVERRIDE(ExprLambda)
-    OVERRIDE(ExprCall)
-    OVERRIDE(ExprLet)
+    void visit(ExprLambda & e, std::unique_ptr<Expr> & ptr) override
+    {
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
+        VarBinder::visit(e, ptr);
+
+        e.body = std::make_unique<ExprDebugFrame>(
+            e.pos, std::move(e.body), HintFmt("while calling %s", e.getQuotedName(es.symbols)).str()
+        );
+    }
+    void visit(ExprCall & e, std::unique_ptr<Expr> & ptr) override
+    {
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
+        VarBinder::visit(e, ptr);
+
+        ptr = std::make_unique<ExprDebugFrame>(e.pos, std::move(ptr), "while calling a function");
+    }
+    void visit(ExprLet & e, std::unique_ptr<Expr> & ptr) override
+    {
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));
+        VarBinder::visit(e, ptr);
+
+        e.body = std::make_unique<ExprDebugFrame>(
+            e.pos, std::move(e.body), HintFmt("while evaluating a '%1%' expression", "let").str()
+        );
+    }
     OVERRIDE(ExprWith)
     OVERRIDE(ExprIf)
     OVERRIDE(ExprAssert)

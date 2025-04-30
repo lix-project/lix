@@ -1205,19 +1205,6 @@ void ExprLet::eval(EvalState & state, Env & env, Value & v)
             *i.second.chooseByKind(&env2, &env, inheritEnv));
     }
 
-    auto dts = state.ctx.debug
-        ? makeDebugTraceStacker(
-            state,
-            *this,
-            env2,
-            getPos()
-                ? std::make_shared<Pos>(state.ctx.positions[getPos()])
-                : nullptr,
-            "while evaluating a '%1%' expression",
-            "let"
-        )
-        : nullptr;
-
     body->eval(state, env2, v);
 }
 
@@ -1308,16 +1295,6 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
     }
 
     try {
-        auto dts = state.ctx.debug
-            ? makeDebugTraceStacker(
-                state,
-                *this,
-                env,
-                state.ctx.positions[getPos()],
-                "while evaluating the attribute '%1%'",
-                showAttrPath(state, env, attrPath))
-            : nullptr;
-
         for (auto const & [partIdx, currentAttrName] : enumerate(attrPath)) {
             state.ctx.stats.nrLookups++;
 
@@ -1619,13 +1596,6 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
 
             /* Evaluate the body. */
             try {
-                auto dts = ctx.debug
-                    ? makeDebugTraceStacker(
-                        *this, *lambda.body, env2, ctx.positions[lambda.pos],
-                        "while calling %s",
-                        lambda.getQuotedName(ctx.symbols))
-                    : nullptr;
-
                 lambda.body->eval(*this, env2, vCur);
             } catch (Error & e) {
                 if (loggerSettings.showTrace.get()) {
@@ -1758,18 +1728,6 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
 
 void ExprCall::eval(EvalState & state, Env & env, Value & v)
 {
-    auto dts = state.ctx.debug
-        ? makeDebugTraceStacker(
-            state,
-            *this,
-            env,
-            getPos()
-                ? std::make_shared<Pos>(state.ctx.positions[getPos()])
-                : nullptr,
-            "while calling a function"
-        )
-        : nullptr;
-
     Value vFun;
     fun->eval(state, env, vFun);
 
@@ -2114,6 +2072,13 @@ void ExprBlackHole::eval(EvalState & state, Env & env, Value & v)
 {
     state.ctx.errors.make<InfiniteRecursionError>("infinite recursion encountered")
         .debugThrow();
+}
+
+void ExprDebugFrame::eval(EvalState & state, Env & env, Value & v)
+{
+    auto dts =
+        makeDebugTraceStacker(state, *inner, env, state.ctx.positions[pos], message);
+    inner->eval(state, env, v);
 }
 
 // always force this to be separate, otherwise forceValue may inline it and take
