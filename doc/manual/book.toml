@@ -7,9 +7,8 @@ create-missing = false
 [output.html]
 additional-css = ["custom.css"]
 additional-js = ["redirects.js"]
-# Using our GitHub mirror enables easier typo fixes since there is no easy way
-# to just submit a Gerrit CL by the web for trivial stuff.
-edit-url-template = "https://github.com/lix-project/lix/tree/main/doc/manual/{path}"
+# Jumps directly into a new Gerrit CL editing the file in question.
+edit-url-template = "https://gerrit.lix.systems/admin/repos/edit/repo/lix/branch/main/file/doc/manual/{path}"
 git-repository-url = "https://git.lix.systems/lix-project/lix"
 # Folding by default would prevent things like "Ctrl+F for nix-env" from working
 # trivially, but the user should be able to fold if they want to.
