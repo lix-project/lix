@@ -395,6 +395,16 @@ void ExprOpHasAttr::bindVars(Evaluator & es, const std::shared_ptr<const StaticE
             i.expr->bindVars(es, env);
 }
 
+std::shared_ptr<const StaticEnv> ExprAttrs::buildRecursiveEnv(const std::shared_ptr<const StaticEnv> & env)
+{
+    auto newEnv = std::make_shared<StaticEnv>(nullptr, env.get(), attrs.size());
+
+    Displacement displ = 0;
+    for (auto & i : attrs)
+        newEnv->vars.emplace_back(i.first, i.second.displ = displ++);
+    return newEnv;
+}
+
 std::shared_ptr<const StaticEnv> ExprAttrs::bindInheritSources(
     Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
 {
@@ -421,37 +431,17 @@ void ExprSet::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & 
     if (es.debug)
         es.debug->exprEnvs.insert(std::make_pair(this, env));
 
-    if (recursive) {
-        auto newEnv = [&] () -> std::shared_ptr<const StaticEnv> {
-            auto newEnv = std::make_shared<StaticEnv>(nullptr, env.get(), attrs.size());
+    auto innerEnv = recursive ? buildRecursiveEnv(env) : env;
+    auto inheritFromEnv = bindInheritSources(es, innerEnv);
 
-            Displacement displ = 0;
-            for (auto & i : attrs)
-                newEnv->vars.emplace_back(i.first, i.second.displ = displ++);
-            return newEnv;
-        }();
+    // No need to sort newEnv since attrs is in sorted order.
 
-        // No need to sort newEnv since attrs is in sorted order.
+    for (auto & i : attrs)
+        i.second.e->bindVars(es, i.second.chooseByKind(innerEnv, env, inheritFromEnv));
 
-        auto inheritFromEnv = bindInheritSources(es, newEnv);
-        for (auto & i : attrs)
-            i.second.e->bindVars(es, i.second.chooseByKind(newEnv, env, inheritFromEnv));
-
-        for (auto & i : dynamicAttrs) {
-            i.nameExpr->bindVars(es, newEnv);
-            i.valueExpr->bindVars(es, newEnv);
-        }
-    }
-    else {
-        auto inheritFromEnv = bindInheritSources(es, env);
-
-        for (auto & i : attrs)
-            i.second.e->bindVars(es, i.second.chooseByKind(env, env, inheritFromEnv));
-
-        for (auto & i : dynamicAttrs) {
-            i.nameExpr->bindVars(es, env);
-            i.valueExpr->bindVars(es, env);
-        }
+    for (auto & i : dynamicAttrs) {
+        i.nameExpr->bindVars(es, innerEnv);
+        i.valueExpr->bindVars(es, innerEnv);
     }
 }
 
@@ -486,14 +476,7 @@ void ExprCall::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> &
 
 void ExprLet::bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env)
 {
-    auto newEnv = [&] () -> std::shared_ptr<const StaticEnv> {
-        auto newEnv = std::make_shared<StaticEnv>(nullptr, env.get(), attrs.size());
-
-        Displacement displ = 0;
-        for (auto & i : attrs)
-            newEnv->vars.emplace_back(i.first, i.second.displ = displ++);
-        return newEnv;
-    }();
+    auto newEnv = buildRecursiveEnv(env);
 
     // No need to sort newEnv since attrs is in sorted order.
 

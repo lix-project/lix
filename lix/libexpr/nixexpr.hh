@@ -236,6 +236,7 @@ struct ExprAttrs
     typedef std::vector<DynamicAttrDef> DynamicAttrDefs;
     DynamicAttrDefs dynamicAttrs;
 
+    std::shared_ptr<const StaticEnv> buildRecursiveEnv(const std::shared_ptr<const StaticEnv> & env);
     std::shared_ptr<const StaticEnv> bindInheritSources(
         Evaluator & es, const std::shared_ptr<const StaticEnv> & env);
     Env * buildInheritFromEnv(EvalState & state, Env & up);
