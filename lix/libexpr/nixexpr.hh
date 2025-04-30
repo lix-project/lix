@@ -67,11 +67,6 @@ public:
     PosIdx getPos() const { return pos; }
 };
 
-#define COMMON_METHODS \
-    JSON toJSON(const SymbolTable & symbols) const override; \
-    void eval(EvalState & state, Env & env, Value & v) override; \
-    void bindVars(Evaluator & es, const std::shared_ptr<const StaticEnv> & env) override;
-
 struct ExprLiteral : Expr
 {
 protected:
@@ -83,7 +78,9 @@ public:
     ExprLiteral(const PosIdx pos, NewValueAs::integer_t, NixInt::Inner n) : Expr(pos) { v.mkInt(n); };
     ExprLiteral(const PosIdx pos, NewValueAs::floating_t, NixFloat nf) : Expr(pos) { v.mkFloat(nf); };
     Value * maybeThunk(EvalState & state, Env & env) override;
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 struct ExprString : ExprLiteral
@@ -130,7 +127,9 @@ struct ExprVar : Expr
     ExprVar(Symbol name) : name(name), needsRoot(false) { };
     ExprVar(const PosIdx & pos, Symbol name, bool needsRoot = false) : Expr(pos), name(name), needsRoot(needsRoot) { };
     Value * maybeThunk(EvalState & state, Env & env) override;
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 /**
@@ -148,7 +147,9 @@ struct ExprInheritFrom : Expr
     {
     }
 
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 struct ExprSelect : Expr
@@ -166,7 +167,9 @@ struct ExprSelect : Expr
 
     ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, AttrPath attrPath, std::unique_ptr<Expr> def) : Expr(pos), e(std::move(e)), def(std::move(def)), attrPath(std::move(attrPath)) { };
     ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, const PosIdx namePos, Symbol name) : Expr(pos), e(std::move(e)) { attrPath.push_back(AttrName(namePos, name)); };
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 struct ExprOpHasAttr : Expr
@@ -174,7 +177,9 @@ struct ExprOpHasAttr : Expr
     std::unique_ptr<Expr> e;
     AttrPath attrPath;
     ExprOpHasAttr(const PosIdx & pos, std::unique_ptr<Expr> e, AttrPath attrPath) : Expr(pos), e(std::move(e)), attrPath(std::move(attrPath)) { };
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 /* Helper struct to contain the data shared across lets and sets */
@@ -242,7 +247,9 @@ struct ExprSet : Expr, ExprAttrs {
 
     ExprSet(const PosIdx &pos, bool recursive = false) : Expr(pos), recursive(recursive) { };
     ExprSet() { };
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 struct ExprReplBindings {
@@ -258,7 +265,9 @@ struct ExprList : Expr
 {
     std::vector<std::unique_ptr<Expr>> elems;
     ExprList(PosIdx pos) : Expr(pos) { };
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
     Value * maybeThunk(EvalState & state, Env & env) override;
 };
 
@@ -371,7 +380,9 @@ struct ExprLambda : Expr
         return "anonymous lambda";
     }
 
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 struct ExprCall : Expr
@@ -381,13 +392,17 @@ struct ExprCall : Expr
     ExprCall(const PosIdx & pos, std::unique_ptr<Expr> fun, std::vector<std::unique_ptr<Expr>> && args)
         : Expr(pos), fun(std::move(fun)), args(std::move(args))
     { }
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 struct ExprLet : Expr, ExprAttrs
 {
     std::unique_ptr<Expr> body;
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 struct ExprWith : Expr
@@ -396,28 +411,36 @@ struct ExprWith : Expr
     size_t prevWith;
     ExprWith * parentWith;
     ExprWith(const PosIdx & pos, std::unique_ptr<Expr> attrs, std::unique_ptr<Expr> body) : Expr(pos), attrs(std::move(attrs)), body(std::move(body)) { };
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 struct ExprIf : Expr
 {
     std::unique_ptr<Expr> cond, then, else_;
     ExprIf(const PosIdx & pos, std::unique_ptr<Expr> cond, std::unique_ptr<Expr> then, std::unique_ptr<Expr> else_) : Expr(pos), cond(std::move(cond)), then(std::move(then)), else_(std::move(else_)) { };
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 struct ExprAssert : Expr
 {
     std::unique_ptr<Expr> cond, body;
     ExprAssert(const PosIdx & pos, std::unique_ptr<Expr> cond, std::unique_ptr<Expr> body) : Expr(pos), cond(std::move(cond)), body(std::move(body)) { };
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 struct ExprOpNot : Expr
 {
     std::unique_ptr<Expr> e;
     ExprOpNot(const PosIdx & pos, std::unique_ptr<Expr> e) : Expr(pos), e(std::move(e)) { };
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 #define MakeBinOp(name, s) \
@@ -455,13 +478,17 @@ struct ExprConcatStrings : Expr
     std::vector<std::pair<PosIdx, std::unique_ptr<Expr>>> es;
     ExprConcatStrings(const PosIdx & pos, bool forceString, std::vector<std::pair<PosIdx, std::unique_ptr<Expr>>> es)
         : Expr(pos), forceString(forceString), es(std::move(es)) { };
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 struct ExprPos : Expr
 {
     ExprPos(const PosIdx & pos) : Expr(pos) { };
-    COMMON_METHODS
+    JSON toJSON(const SymbolTable & symbols) const override;
+    void eval(EvalState & state, Env & env, Value & v) override;
+    void bindVars(Evaluator & es, const std ::shared_ptr<const StaticEnv> & env) override;
 };
 
 /* only used to mark thunks as black holes. */
