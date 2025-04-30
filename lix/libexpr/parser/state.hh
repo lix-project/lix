@@ -173,7 +173,7 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
             auto * jAttrs = dynamic_cast<ExprSet *>(j->second.e.get());
             if (jAttrs && ae) {
                 if (ae->inheritFromExprs && !jAttrs->inheritFromExprs)
-                    jAttrs->inheritFromExprs = std::make_unique<std::vector<ref<Expr>>>();
+                    jAttrs->inheritFromExprs = std::make_unique<std::list<std::unique_ptr<Expr>>>();
                 for (auto & ad : ae->attrs) {
                     auto j2 = jAttrs->attrs.find(ad.first);
                     if (j2 != jAttrs->attrs.end()) // Attr already defined in iAttrs, error.

@@ -398,16 +398,16 @@ template<> struct BuildAST<grammar::v1::inherit> : change_head<InheritState> {
         }
         if (s.from != nullptr) {
             if (!b.attrs.inheritFromExprs)
-                b.attrs.inheritFromExprs = std::make_unique<std::vector<ref<Expr>>>();
-            auto fromExpr = ref<Expr>::unsafeFromPtr(std::move(s.from));
-            b.attrs.inheritFromExprs->push_back(fromExpr);
+                b.attrs.inheritFromExprs = std::make_unique<std::list<std::unique_ptr<Expr>>>();
+            b.attrs.inheritFromExprs->push_back(std::move(s.from));
+            auto & fromExpr = b.attrs.inheritFromExprs->back();
             for (auto & i : s.attrs) {
                 if (attrs.find(i.symbol) != attrs.end())
                     ps.dupAttr(i.symbol, i.pos, attrs[i.symbol].pos);
                 auto inheritFrom = std::make_unique<ExprInheritFrom>(
                     s.fromPos,
                     b.attrs.inheritFromExprs->size() - 1,
-                    fromExpr
+                    *fromExpr
                 );
                 attrs.emplace(
                     i.symbol,

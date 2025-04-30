@@ -130,12 +130,19 @@ void ExprAttrs::addBindingsToJSON(JSON & out, const SymbolTable & symbols) const
         }
     }
 
+    std::vector<Expr *> inheritFromExprs;
+    if (this->inheritFromExprs) {
+        for (auto & e : *this->inheritFromExprs) {
+            inheritFromExprs.push_back(e.get());
+        }
+    }
+
     for (const auto & [from, syms] : inheritsFrom) {
         JSON attrs = JSON::array();
         for (auto sym : syms)
             attrs.push_back(symbols[sym]);
         out["inheritFrom"].push_back({
-            {"from", (*inheritFromExprs)[from]->toJSON(symbols)},
+            {"from", inheritFromExprs[from]->toJSON(symbols)},
             {"attrs", attrs}
         });
     }
