@@ -365,25 +365,63 @@ struct VarBinder : ExprVisitor
 };
 }
 
+struct DebugVarBinder : VarBinder
+{
+    using VarBinder::VarBinder, VarBinder::visit;
+
+#define OVERRIDE(type)                                         \
+    /* NOLINTNEXTLINE(bugprone-macro-parentheses) */           \
+    void visit(type & e, std::unique_ptr<Expr> & ptr) override \
+    {                                                          \
+        es.debug->exprEnvs.insert(std::make_pair(&e, env));    \
+        VarBinder::visit(e, ptr);                              \
+    }
+
+    OVERRIDE(ExprLiteral)
+    OVERRIDE(ExprVar)
+    OVERRIDE(ExprInheritFrom)
+    OVERRIDE(ExprSelect)
+    OVERRIDE(ExprOpHasAttr)
+    OVERRIDE(ExprSet)
+    OVERRIDE(ExprList)
+    OVERRIDE(ExprLambda)
+    OVERRIDE(ExprCall)
+    OVERRIDE(ExprLet)
+    OVERRIDE(ExprWith)
+    OVERRIDE(ExprIf)
+    OVERRIDE(ExprAssert)
+    OVERRIDE(ExprOpNot)
+    OVERRIDE(ExprOpEq)
+    OVERRIDE(ExprOpNEq)
+    OVERRIDE(ExprOpAnd)
+    OVERRIDE(ExprOpOr)
+    OVERRIDE(ExprOpImpl)
+    OVERRIDE(ExprOpUpdate)
+    OVERRIDE(ExprOpConcatLists)
+    OVERRIDE(ExprConcatStrings)
+    OVERRIDE(ExprPos)
+    OVERRIDE(ExprBlackHole)
+#undef OVERRIDE
+};
+
 std::unique_ptr<Expr> Expr::finalize(
     std::unique_ptr<Expr> parsed, Evaluator & es, const std::shared_ptr<const StaticEnv> & env
 )
 {
-    VarBinder{es, env}.visit(parsed);
+    if (es.debug) {
+        DebugVarBinder{es, env}.visit(parsed);
+    } else {
+        VarBinder{es, env}.visit(parsed);
+    }
     return parsed;
 }
 
 void VarBinder::visit(ExprLiteral & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 }
 
 void VarBinder::visit(ExprVar & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
-
     e.fromWith = nullptr;
 
     /* Check whether the variable appears in the environment.  If so,
@@ -430,15 +468,10 @@ void VarBinder::visit(ExprVar & e, std::unique_ptr<Expr> & ptr)
 
 void VarBinder::visit(ExprInheritFrom & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 }
 
 void VarBinder::visit(ExprSelect & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
-
     visit(e.e);
     if (e.def) visit(e.def);
     for (auto & i : e.attrPath)
@@ -448,9 +481,6 @@ void VarBinder::visit(ExprSelect & e, std::unique_ptr<Expr> & ptr)
 
 void VarBinder::visit(ExprOpHasAttr & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
-
     visit(e.e);
     for (auto & i : e.attrPath)
         if (!i.symbol)
@@ -489,9 +519,6 @@ std::shared_ptr<const StaticEnv> ExprAttrs::bindInheritSources(ExprVisitor & e, 
 
 void VarBinder::visit(ExprSet & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
-
     auto innerEnv = e.recursive ? e.buildRecursiveEnv(env) : env;
     auto inheritFromEnv = withEnv(innerEnv, [&] { return e.bindInheritSources(*this, *innerEnv); });
 
@@ -513,18 +540,12 @@ void VarBinder::visit(ExprSet & e, std::unique_ptr<Expr> & ptr)
 
 void VarBinder::visit(ExprList & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
-
     for (auto & i : e.elems)
         visit(i);
 }
 
 void VarBinder::visit(ExprLambda & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
-
     withEnv(e.pattern->buildEnv(env.get()), [&] {
         e.pattern->accept(*this);
         visit(e.body);
@@ -533,9 +554,6 @@ void VarBinder::visit(ExprLambda & e, std::unique_ptr<Expr> & ptr)
 
 void VarBinder::visit(ExprCall & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
-
     visit(e.fun);
     for (auto & se : e.args)
         visit(se);
@@ -554,17 +572,11 @@ void VarBinder::visit(ExprLet & e, std::unique_ptr<Expr> & ptr)
         });
     }
 
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
-
     withEnv(std::move(newEnv), [&] { visit(e.body); });
 }
 
 void VarBinder::visit(ExprWith & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
-
     e.parentWith = nullptr;
     for (auto * se = env.get(); se && !e.parentWith; se = se->up)
         e.parentWith = se->isWith;
@@ -587,9 +599,6 @@ void VarBinder::visit(ExprWith & e, std::unique_ptr<Expr> & ptr)
 
 void VarBinder::visit(ExprIf & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
-
     visit(e.cond);
     visit(e.then);
     visit(e.else_);
@@ -597,34 +606,23 @@ void VarBinder::visit(ExprIf & e, std::unique_ptr<Expr> & ptr)
 
 void VarBinder::visit(ExprAssert & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
-
     visit(e.cond);
     visit(e.body);
 }
 
 void VarBinder::visit(ExprOpNot & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
-
     visit(e.e);
 }
 
 void VarBinder::visit(ExprConcatStrings & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
-
     for (auto & i : e.es)
         visit(i.second);
 }
 
 void VarBinder::visit(ExprPos & e, std::unique_ptr<Expr> & ptr)
 {
-    if (es.debug)
-        es.debug->exprEnvs.insert(std::make_pair(&e, env));
 }
 
 /* Function argument destructuring */
