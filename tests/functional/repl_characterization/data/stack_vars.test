@@ -7,7 +7,13 @@ as it is in scope.
   nix-repl> :st
 
   0: error: breakpoint reached
-  «none»:0
+  $TEST_DATA/stack_vars.nix:6:22
+
+       5|   b = builtins.trace "before outer break" (
+       6|     let meow = 2; in builtins.break a
+        |                      ^
+       7|   );
+
   Env level 0
   static: meow
 
@@ -45,7 +51,13 @@ If we :st past the frame in the backtrace with the meow in it, the meow should n
   nix-repl> :st
 
   0: error: breakpoint reached
-  «none»:0
+  $TEST_DATA/stack_vars.nix:3:23
+
+       2|   a = builtins.trace "before inner break" (
+       3|     let meow' = 3; in builtins.break { msg = "hello"; }
+        |                       ^
+       4|   );
+
   Env level 0
   static: meow'
 

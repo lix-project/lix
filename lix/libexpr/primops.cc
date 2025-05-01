@@ -262,15 +262,15 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
 static RegisterPrimOp primop_scopedImport(PrimOp {
     .name = "scopedImport",
     .arity = 2,
-    .fun = [](EvalState & state, const PosIdx pos, Value * * args, Value & v)
+    .fun = [](EvalState & state, Value * * args, Value & v)
     {
-        import(state, pos, *args[1], args[0], v);
+        import(state, noPos, *args[1], args[0], v);
     }
 });
 
-static void prim_import(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_import(EvalState & state, Value * * args, Value & v)
 {
-    import(state, pos, *args[0], nullptr, v);
+    import(state, noPos, *args[0], nullptr, v);
 }
 
 /* Want reasonable symbol names, so extern C */
@@ -278,11 +278,11 @@ static void prim_import(EvalState & state, const PosIdx pos, Value * * args, Val
 extern "C" typedef void (*ValueInitializer)(EvalState & state, Value & v);
 
 /* Load a ValueInitializer from a DSO and return whatever it initializes */
-void prim_importNative(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_importNative(EvalState & state, Value * * args, Value & v)
 {
-    auto path = realisePath(state, pos, *args[0]);
+    auto path = realisePath(state, noPos, *args[0]);
 
-    std::string sym(state.forceStringNoCtx(*args[1], pos, "while evaluating the second argument passed to builtins.importNative"));
+    std::string sym(state.forceStringNoCtx(*args[1], noPos, "while evaluating the second argument passed to builtins.importNative"));
 
     void *handle = dlopen(path.canonical().c_str(), RTLD_LAZY | RTLD_LOCAL);
     if (!handle)
@@ -305,28 +305,28 @@ void prim_importNative(EvalState & state, const PosIdx pos, Value * * args, Valu
 
 
 /* Execute a program and parse its output */
-void prim_exec(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_exec(EvalState & state, Value * * args, Value & v)
 {
-    state.forceList(*args[0], pos, "while evaluating the first argument passed to builtins.exec");
+    state.forceList(*args[0], noPos, "while evaluating the first argument passed to builtins.exec");
     auto elems = args[0]->listElems();
     auto count = args[0]->listSize();
     if (count == 0)
-        state.ctx.errors.make<EvalError>("at least one argument to 'exec' required").atPos(pos).debugThrow();
+        state.ctx.errors.make<EvalError>("at least one argument to 'exec' required").debugThrow();
     NixStringContext context;
-    auto program = state.coerceToString(pos, *elems[0], context,
+    auto program = state.coerceToString(noPos, *elems[0], context,
             "while evaluating the first element of the argument passed to builtins.exec",
             false, false).toOwned();
     Strings commandArgs;
     for (unsigned int i = 1; i < args[0]->listSize(); ++i) {
         commandArgs.push_back(
-                state.coerceToString(pos, *elems[i], context,
+                state.coerceToString(noPos, *elems[i], context,
                         "while evaluating an element of the argument passed to builtins.exec",
                         false, false).toOwned());
     }
     try {
         auto _ = state.realiseContext(context); // FIXME: Handle CA derivations
     } catch (InvalidPathError & e) {
-        e.addTrace(state.ctx.positions[pos], "while realising the context for builtins.exec");
+        e.addTrace(nullptr, "while realising the context for builtins.exec");
         throw;
     }
 
@@ -335,21 +335,21 @@ void prim_exec(EvalState & state, const PosIdx pos, Value * * args, Value & v)
     try {
         parsed = &state.ctx.parseExprFromString(std::move(output), CanonPath::root);
     } catch (Error & e) {
-        e.addTrace(state.ctx.positions[pos], "while parsing the output from '%1%'", program);
+        e.addTrace(nullptr, "while parsing the output from '%1%'", program);
         throw;
     }
     try {
         state.eval(*parsed, v);
     } catch (Error & e) {
-        e.addTrace(state.ctx.positions[pos], "while evaluating the output from '%1%'", program);
+        e.addTrace(nullptr, "while evaluating the output from '%1%'", program);
         throw;
     }
 }
 
 /* Return a string representing the type of the expression. */
-static void prim_typeOf(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_typeOf(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
     std::string t;
     switch (args[0]->type()) {
         case nInt: t = "int"; break;
@@ -370,51 +370,51 @@ static void prim_typeOf(EvalState & state, const PosIdx pos, Value * * args, Val
 }
 
 /* Determine whether the argument is the null value. */
-static void prim_isNull(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_isNull(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
     v.mkBool(args[0]->type() == nNull);
 }
 
 /* Determine whether the argument is a function. */
-static void prim_isFunction(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_isFunction(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
     v.mkBool(args[0]->type() == nFunction);
 }
 
 /* Determine whether the argument is an integer. */
-static void prim_isInt(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_isInt(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
     v.mkBool(args[0]->type() == nInt);
 }
 
 /* Determine whether the argument is a float. */
-static void prim_isFloat(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_isFloat(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
     v.mkBool(args[0]->type() == nFloat);
 }
 
 /* Determine whether the argument is a string. */
-static void prim_isString(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_isString(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
     v.mkBool(args[0]->type() == nString);
 }
 
 /* Determine whether the argument is a Boolean. */
-static void prim_isBool(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_isBool(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
     v.mkBool(args[0]->type() == nBool);
 }
 
 /* Determine whether the argument is a path. */
-static void prim_isPath(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_isPath(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
     v.mkBool(args[0]->type() == nPath);
 }
 
@@ -509,7 +509,7 @@ static Bindings::iterator getAttr(
     return value;
 }
 
-static void prim_genericClosure(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_genericClosure(EvalState & state, Value * * args, Value & v)
 {
     state.forceAttrs(*args[0], noPos, "while evaluating the first argument passed to builtins.genericClosure");
 
@@ -571,13 +571,12 @@ static void prim_genericClosure(EvalState & state, const PosIdx pos, Value * * a
 }
 
 
-static void prim_break(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_break(EvalState & state, Value * * args, Value & v)
 {
     if (auto trace = state.ctx.debug ? state.ctx.debug->traces().next() : std::nullopt) {
         auto error = EvalError(ErrorInfo {
             .level = lvlInfo,
             .msg = HintFmt("breakpoint reached"),
-            .pos = state.ctx.positions[pos],
         });
 
         state.ctx.debug->onEvalError(&error, (*trace)->env, (*trace)->expr);
@@ -587,30 +586,30 @@ static void prim_break(EvalState & state, const PosIdx pos, Value * * args, Valu
     v = *args[0];
 }
 
-static void prim_abort(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_abort(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
-    auto s = state.coerceToString(pos, *args[0], context,
+    auto s = state.coerceToString(noPos, *args[0], context,
             "while evaluating the error message passed to builtins.abort").toOwned();
     state.ctx.errors.make<Abort>("evaluation aborted with the following error message: '%1%'", s).debugThrow();
 }
 
-static void prim_throw(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_throw(EvalState & state, Value * * args, Value & v)
 {
   NixStringContext context;
-  auto s = state.coerceToString(pos, *args[0], context,
+  auto s = state.coerceToString(noPos, *args[0], context,
           "while evaluating the error message passed to builtin.throw").toOwned();
   state.ctx.errors.make<ThrownError>(s).debugThrow();
 }
 
-static void prim_addErrorContext(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_addErrorContext(EvalState & state, Value * * args, Value & v)
 {
     try {
-        state.forceValue(*args[1], pos);
+        state.forceValue(*args[1], noPos);
         v = *args[1];
     } catch (Error & e) {
         NixStringContext context;
-        auto message = state.coerceToString(pos, *args[0], context,
+        auto message = state.coerceToString(noPos, *args[0], context,
                 "while evaluating the error message passed to builtins.addErrorContext",
                 false, false).toOwned();
         e.addTrace(nullptr, HintFmt(message));
@@ -624,22 +623,22 @@ static RegisterPrimOp primop_addErrorContext(PrimOp {
     .fun = prim_addErrorContext,
 });
 
-static void prim_ceil(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_ceil(EvalState & state, Value * * args, Value & v)
 {
-    auto value = state.forceFloat(*args[0], pos,
+    auto value = state.forceFloat(*args[0], noPos,
             "while evaluating the first argument passed to builtins.ceil");
     v.mkInt(ceil(value));
 }
 
-static void prim_floor(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_floor(EvalState & state, Value * * args, Value & v)
 {
-    auto value = state.forceFloat(*args[0], pos, "while evaluating the first argument passed to builtins.floor");
+    auto value = state.forceFloat(*args[0], noPos, "while evaluating the first argument passed to builtins.floor");
     v.mkInt(floor(value));
 }
 
 /* Try evaluating the argument. Success => {success=true; value=something;},
  * else => {success=false; value=false;} */
-static void prim_tryEval(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_tryEval(EvalState & state, Value * * args, Value & v)
 {
     auto attrs = state.ctx.buildBindings(2);
 
@@ -661,7 +660,7 @@ static void prim_tryEval(EvalState & state, const PosIdx pos, Value * * args, Va
         }
 
         try {
-            state.forceValue(*args[0], pos);
+            state.forceValue(*args[0], noPos);
         } catch (AssertionError & e) {
             return false;
         }
@@ -677,34 +676,34 @@ static void prim_tryEval(EvalState & state, const PosIdx pos, Value * * args, Va
 }
 
 /* Return an environment variable.  Use with care. */
-static void prim_getEnv(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_getEnv(EvalState & state, Value * * args, Value & v)
 {
-    std::string name(state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.getEnv"));
+    std::string name(state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.getEnv"));
     v.mkString(evalSettings.restrictEval || evalSettings.pureEval ? "" : getEnv(name).value_or(""));
 }
 
 /* Evaluate the first argument, then return the second argument. */
-static void prim_seq(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_seq(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
-    state.forceValue(*args[1], pos);
+    state.forceValue(*args[0], noPos);
+    state.forceValue(*args[1], noPos);
     v = *args[1];
 }
 
 /* Evaluate the first argument deeply (i.e. recursing into lists and
    attrsets), then return the second argument. */
-static void prim_deepSeq(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_deepSeq(EvalState & state, Value * * args, Value & v)
 {
     state.forceValueDeep(*args[0]);
-    state.forceValue(*args[1], pos);
+    state.forceValue(*args[1], noPos);
     v = *args[1];
 }
 
 /* Evaluate the first expression and print it on standard error.  Then
    return the second expression.  Useful for debugging. */
-static void prim_trace(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_trace(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
     if (args[0]->type() == nString)
         printError("trace: %1%", args[0]->string.s);
     else
@@ -715,7 +714,7 @@ static void prim_trace(EvalState & state, const PosIdx pos, Value * * args, Valu
     {
         state.ctx.debug->onEvalError(nullptr, (*last)->env, (*last)->expr);
     }
-    state.forceValue(*args[1], pos);
+    state.forceValue(*args[1], noPos);
     v = *args[1];
 }
 
@@ -723,9 +722,9 @@ static void prim_trace(EvalState & state, const PosIdx pos, Value * * args, Valu
 /* Takes two arguments and evaluates to the second one. Used as the
  * builtins.traceVerbose implementation when --trace-verbose is not enabled
  */
-static void prim_second(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_second(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[1], pos);
+    state.forceValue(*args[1], noPos);
     v = *args[1];
 }
 
@@ -742,9 +741,9 @@ static void derivationStrictInternal(EvalState & state, const std::string & name
    derivation; `drvPath' containing the path of the Nix expression;
    and `type' set to `derivation' to indicate that this is a
    derivation. */
-static void prim_derivationStrict(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_derivationStrict(EvalState & state, Value * * args, Value & v)
 {
-    state.forceAttrs(*args[0], pos, "while evaluating the argument passed to builtins.derivationStrict");
+    state.forceAttrs(*args[0], noPos, "while evaluating the argument passed to builtins.derivationStrict");
 
     Bindings * attrs = args[0]->attrs;
 
@@ -753,7 +752,7 @@ static void prim_derivationStrict(EvalState & state, const PosIdx pos, Value * *
 
     std::string drvName;
     try {
-        drvName = state.forceStringNoCtx(*nameAttr->value, pos, "while evaluating the `name` attribute passed to builtins.derivationStrict");
+        drvName = state.forceStringNoCtx(*nameAttr->value, noPos, "while evaluating the `name` attribute passed to builtins.derivationStrict");
     } catch (Error & e) {
         e.addTrace(state.ctx.positions[nameAttr->pos], "while evaluating the derivation attribute 'name'");
         throw;
@@ -1140,9 +1139,9 @@ static RegisterPrimOp primop_derivationStrict(PrimOp {
    time, any occurrence of this string in an derivation attribute will
    be replaced with the concrete path in the Nix store of the output
    ‘out’. */
-static void prim_placeholder(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_placeholder(EvalState & state, Value * * args, Value & v)
 {
-    v.mkString(hashPlaceholder(state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.placeholder")));
+    v.mkString(hashPlaceholder(state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.placeholder")));
 }
 
 
@@ -1152,10 +1151,10 @@ static void prim_placeholder(EvalState & state, const PosIdx pos, Value * * args
 
 
 /* Convert the argument to a path.  !!! obsolete? */
-static void prim_toPath(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_toPath(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
-    auto path = state.coerceToPath(pos, *args[0], context, "while evaluating the first argument passed to builtins.toPath");
+    auto path = state.coerceToPath(noPos, *args[0], context, "while evaluating the first argument passed to builtins.toPath");
     v.mkString(path.to_string(), context);
 }
 
@@ -1167,16 +1166,16 @@ static void prim_toPath(EvalState & state, const PosIdx pos, Value * * args, Val
    /nix/store/newhash-oldhash-oldname.  In the past, `toPath' had
    special case behaviour for store paths, but that created weird
    corner cases. */
-static void prim_storePath(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_storePath(EvalState & state, Value * * args, Value & v)
 {
     if (evalSettings.pureEval)
         state.ctx.errors.make<EvalError>(
             "'%s' is not allowed in pure evaluation mode",
             "builtins.storePath"
-        ).atPos(pos).debugThrow();
+        ).debugThrow();
 
     NixStringContext context;
-    auto path = state.ctx.paths.checkSourcePath(state.coerceToPath(pos, *args[0], context, "while evaluating the first argument passed to builtins.storePath")).canonical();
+    auto path = state.ctx.paths.checkSourcePath(state.coerceToPath(noPos, *args[0], context, "while evaluating the first argument passed to builtins.storePath")).canonical();
     /* Resolve symlinks in ‘path’, unless ‘path’ itself is a symlink
        directly in the store.  The latter condition is necessary so
        e.g. nix-push does the right thing. */
@@ -1184,7 +1183,7 @@ static void prim_storePath(EvalState & state, const PosIdx pos, Value * * args, 
         path = CanonPath(canonPath(path.abs(), true));
     if (!state.ctx.store->isInStore(path.abs()))
         state.ctx.errors.make<EvalError>("path '%1%' is not in the Nix store", path)
-            .atPos(pos).debugThrow();
+            .debugThrow();
     auto path2 = state.ctx.store->toStorePath(path.abs()).first;
     if (!settings.readOnlyMode)
         state.aio.blockOn(state.ctx.store->ensurePath(path2));
@@ -1192,7 +1191,7 @@ static void prim_storePath(EvalState & state, const PosIdx pos, Value * * args, 
     v.mkString(path.abs(), context);
 }
 
-static void prim_pathExists(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_pathExists(EvalState & state, Value * * args, Value & v)
 {
     auto & arg = *args[0];
 
@@ -1201,7 +1200,7 @@ static void prim_pathExists(EvalState & state, const PosIdx pos, Value * * args,
        can’t just catch the exception here because we still want to
        throw if something in the evaluation of `arg` tries to
        access an unauthorized path). */
-    auto path = realisePath(state, pos, arg, std::identity{});
+    auto path = realisePath(state, noPos, arg, std::identity{});
 
     /* SourcePath doesn't know about trailing slash. */
     auto mustBeDir = arg.type() == nString
@@ -1229,10 +1228,10 @@ static void prim_pathExists(EvalState & state, const PosIdx pos, Value * * args,
 
 /* Return the base name of the given string, i.e., everything
    following the last slash. */
-static void prim_baseNameOf(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_baseNameOf(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
-    v.mkString(baseNameOf(*state.coerceToString(pos, *args[0], context,
+    v.mkString(baseNameOf(*state.coerceToString(noPos, *args[0], context,
             "while evaluating the first argument passed to builtins.baseNameOf",
             false, false)), context);
 }
@@ -1240,15 +1239,15 @@ static void prim_baseNameOf(EvalState & state, const PosIdx pos, Value * * args,
 /* Return the directory of the given path, i.e., everything before the
    last slash.  Return either a path or a string depending on the type
    of the argument. */
-static void prim_dirOf(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_dirOf(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
     if (args[0]->type() == nPath) {
         auto path = args[0]->path();
         v.mkPath(path.canonical().isRoot() ? path : path.parent());
     } else {
         NixStringContext context;
-        auto path = state.coerceToString(pos, *args[0], context,
+        auto path = state.coerceToString(noPos, *args[0], context,
             "while evaluating the first argument passed to 'builtins.dirOf'",
             false, false);
         auto dir = dirOf(*path);
@@ -1257,15 +1256,15 @@ static void prim_dirOf(EvalState & state, const PosIdx pos, Value * * args, Valu
 }
 
 /* Return the contents of a file as a string. */
-static void prim_readFile(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_readFile(EvalState & state, Value * * args, Value & v)
 {
-    auto path = realisePath(state, pos, *args[0]);
+    auto path = realisePath(state, noPos, *args[0]);
     auto s = path.readFile();
     if (s.find((char) 0) != std::string::npos)
         state.ctx.errors.make<EvalError>(
             "the contents of the file '%1%' cannot be represented as a Nix string",
             path
-        ).atPos(pos).debugThrow();
+        ).debugThrow();
     StorePathSet refs;
     if (state.ctx.store->isInStore(path.canonical().abs())) {
         try {
@@ -1292,24 +1291,24 @@ static void prim_readFile(EvalState & state, const PosIdx pos, Value * * args, V
 
 /* Find a file in the Nix search path. Used to implement <x> paths,
    which are desugared to 'findFile __nixPath "x"'. */
-static void prim_findFile(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_findFile(EvalState & state, Value * * args, Value & v)
 {
-    state.forceList(*args[0], pos, "while evaluating the first argument passed to builtins.findFile");
+    state.forceList(*args[0], noPos, "while evaluating the first argument passed to builtins.findFile");
 
     SearchPath searchPath;
 
     for (auto v2 : args[0]->listItems()) {
-        state.forceAttrs(*v2, pos, "while evaluating an element of the list passed to builtins.findFile");
+        state.forceAttrs(*v2, noPos, "while evaluating an element of the list passed to builtins.findFile");
 
         std::string prefix;
         Bindings::iterator i = v2->attrs->find(state.ctx.s.prefix);
         if (i != v2->attrs->end())
-            prefix = state.forceStringNoCtx(*i->value, pos, "while evaluating the `prefix` attribute of an element of the list passed to builtins.findFile");
+            prefix = state.forceStringNoCtx(*i->value, noPos, "while evaluating the `prefix` attribute of an element of the list passed to builtins.findFile");
 
         i = getAttr(state, state.ctx.s.path, v2->attrs, "in an element of the __nixPath");
 
         NixStringContext context;
-        auto path = state.coerceToString(pos, *i->value, context,
+        auto path = state.coerceToString(noPos, *i->value, context,
                 "while evaluating the `path` attribute of an element of the list passed to builtins.findFile",
                 false, false).toOwned();
 
@@ -1321,7 +1320,7 @@ static void prim_findFile(EvalState & state, const PosIdx pos, Value * * args, V
                 "cannot find '%1%', since path '%2%' is not valid",
                 path,
                 e.path
-            ).atPos(pos).debugThrow();
+            ).debugThrow();
         }
 
         searchPath.elements.emplace_back(SearchPath::Elem {
@@ -1330,22 +1329,22 @@ static void prim_findFile(EvalState & state, const PosIdx pos, Value * * args, V
         });
     }
 
-    auto path = state.forceStringNoCtx(*args[1], pos, "while evaluating the second argument passed to builtins.findFile");
+    auto path = state.forceStringNoCtx(*args[1], noPos, "while evaluating the second argument passed to builtins.findFile");
 
     v.mkPath(state.ctx.paths.checkSourcePath(
-        state.aio.blockOn(state.ctx.paths.findFile(searchPath, path, pos)).unwrap()
+        state.aio.blockOn(state.ctx.paths.findFile(searchPath, path, noPos)).unwrap()
     ));
 }
 
 /* Return the cryptographic hash of a file in base-16. */
-static void prim_hashFile(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_hashFile(EvalState & state, Value * * args, Value & v)
 {
-    auto type = state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.hashFile");
+    auto type = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.hashFile");
     std::optional<HashType> ht = parseHashType(type);
     if (!ht)
-        state.ctx.errors.make<EvalError>("unknown hash type '%1%'", type).atPos(pos).debugThrow();
+        state.ctx.errors.make<EvalError>("unknown hash type '%1%'", type).debugThrow();
 
-    auto path = realisePath(state, pos, *args[1]);
+    auto path = realisePath(state, noPos, *args[1]);
 
     v.mkString(hashString(*ht, path.readFile()).to_string(Base::Base16, false));
 }
@@ -1359,17 +1358,17 @@ static std::string_view fileTypeToString(InputAccessor::Type type)
         "unknown";
 }
 
-static void prim_readFileType(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_readFileType(EvalState & state, Value * * args, Value & v)
 {
-    auto path = realisePath(state, pos, *args[0]);
+    auto path = realisePath(state, noPos, *args[0]);
     /* Retrieve the directory entry type and stringize it. */
     v.mkString(fileTypeToString(path.lstat().type));
 }
 
 /* Read a directory (without . or ..) */
-static void prim_readDir(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_readDir(EvalState & state, Value * * args, Value & v)
 {
-    auto path = realisePath(state, pos, *args[0]);
+    auto path = realisePath(state, noPos, *args[0]);
 
     // Retrieve directory entries for all nodes in a directory.
     // This is similar to `getFileType` but is optimized to reduce system calls
@@ -1405,11 +1404,11 @@ static void prim_readDir(EvalState & state, const PosIdx pos, Value * * args, Va
 }
 
 /* Extend single element string context with another output. */
-static void prim_outputOf(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_outputOf(EvalState & state, Value * * args, Value & v)
 {
-    SingleDerivedPath drvPath = state.coerceToSingleDerivedPath(pos, *args[0], "while evaluating the first argument to builtins.outputOf");
+    SingleDerivedPath drvPath = state.coerceToSingleDerivedPath(noPos, *args[0], "while evaluating the first argument to builtins.outputOf");
 
-    OutputNameView outputName = state.forceStringNoCtx(*args[1], pos, "while evaluating the second argument to builtins.outputOf");
+    OutputNameView outputName = state.forceStringNoCtx(*args[1], noPos, "while evaluating the second argument to builtins.outputOf");
 
     state.mkSingleDerivedPathString(
         SingleDerivedPath::Built {
@@ -1427,44 +1426,44 @@ static void prim_outputOf(EvalState & state, const PosIdx pos, Value * * args, V
 /* Convert the argument (which can be any Nix expression) to an XML
    representation returned in a string.  Not all Nix expressions can
    be sensibly or completely represented (e.g., functions). */
-static void prim_toXML(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_toXML(EvalState & state, Value * * args, Value & v)
 {
     std::ostringstream out;
     NixStringContext context;
-    printValueAsXML(state, true, false, *args[0], out, context, pos);
+    printValueAsXML(state, true, false, *args[0], out, context, noPos);
     v.mkString(out.str(), context);
 }
 
 /* Convert the argument (which can be any Nix expression) to a JSON
    string.  Not all Nix expressions can be sensibly or completely
    represented (e.g., functions). */
-static void prim_toJSON(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_toJSON(EvalState & state, Value * * args, Value & v)
 {
     std::ostringstream out;
     NixStringContext context;
-    printValueAsJSON(state, true, *args[0], pos, out, context);
+    printValueAsJSON(state, true, *args[0], noPos, out, context);
     v.mkString(out.str(), context);
 }
 
 /* Parse a JSON string to a value. */
-static void prim_fromJSON(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_fromJSON(EvalState & state, Value * * args, Value & v)
 {
-    auto s = state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.fromJSON");
+    auto s = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.fromJSON");
     try {
         parseJSON(state, s, v);
     } catch (JSONParseError &e) {
-        e.addTrace(state.ctx.positions[pos], "while decoding a JSON string");
+        e.addTrace(nullptr, "while decoding a JSON string");
         throw;
     }
 }
 
 /* Store a string in the Nix store as a source file that can be used
    as an input by derivations. */
-static void prim_toFile(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_toFile(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
-    std::string name(state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.toFile"));
-    std::string contents(state.forceString(*args[1], context, pos, "while evaluating the second argument passed to builtins.toFile"));
+    std::string name(state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.toFile"));
+    std::string contents(state.forceString(*args[1], context, noPos, "while evaluating the second argument passed to builtins.toFile"));
 
     StorePathSet refs;
 
@@ -1477,7 +1476,7 @@ static void prim_toFile(EvalState & state, const PosIdx pos, Value * * args, Val
                 "builtins.toFile",
                 name,
                 c.to_string()
-            ).atPos(pos).debugThrow();
+            ).debugThrow();
     }
 
     auto storePath = settings.readOnlyMode
@@ -1589,16 +1588,16 @@ static void addPath(
 }
 
 
-static void prim_filterSource(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_filterSource(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
-    auto path = state.coerceToPath(pos, *args[1], context,
+    auto path = state.coerceToPath(noPos, *args[1], context,
         "while evaluating the second argument (the path to filter) passed to builtins.filterSource");
-    state.forceFunction(*args[0], pos, "while evaluating the first argument passed to builtins.filterSource");
-    addPath(state, pos, path.baseName(), path.canonical().abs(), args[0], FileIngestionMethod::Recursive, std::nullopt, v, context);
+    state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.filterSource");
+    addPath(state, noPos, path.baseName(), path.canonical().abs(), args[0], FileIngestionMethod::Recursive, std::nullopt, v, context);
 }
 
-static void prim_path(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_path(EvalState & state, Value * * args, Value & v)
 {
     std::optional<SourcePath> path;
     std::string name;
@@ -1607,7 +1606,7 @@ static void prim_path(EvalState & state, const PosIdx pos, Value * * args, Value
     std::optional<Hash> expectedHash;
     NixStringContext context;
 
-    state.forceAttrs(*args[0], pos, "while evaluating the argument passed to 'builtins.path'");
+    state.forceAttrs(*args[0], noPos, "while evaluating the argument passed to 'builtins.path'");
 
     for (auto & attr : *args[0]->attrs) {
         auto n = state.ctx.symbols[attr.name];
@@ -1630,11 +1629,11 @@ static void prim_path(EvalState & state, const PosIdx pos, Value * * args, Value
     if (!path)
         state.ctx.errors.make<EvalError>(
             "missing required 'path' attribute in the first argument to builtins.path"
-        ).atPos(pos).debugThrow();
+        ).debugThrow();
     if (name.empty())
         name = path->baseName();
 
-    addPath(state, pos, name, path->canonical().abs(), filterFun, method, expectedHash, v, context);
+    addPath(state, noPos, name, path->canonical().abs(), filterFun, method, expectedHash, v, context);
 }
 
 
@@ -1645,9 +1644,9 @@ static void prim_path(EvalState & state, const PosIdx pos, Value * * args, Value
 
 /* Return the names of the attributes in a set as a sorted list of
    strings. */
-static void prim_attrNames(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_attrNames(EvalState & state, Value * * args, Value & v)
 {
-    state.forceAttrs(*args[0], pos, "while evaluating the argument passed to builtins.attrNames");
+    state.forceAttrs(*args[0], noPos, "while evaluating the argument passed to builtins.attrNames");
 
     v = state.ctx.mem.newList(args[0]->attrs->size());
 
@@ -1661,9 +1660,9 @@ static void prim_attrNames(EvalState & state, const PosIdx pos, Value * * args, 
 
 /* Return the values of the attributes in a set as a list, in the same
    order as attrNames. */
-static void prim_attrValues(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_attrValues(EvalState & state, Value * * args, Value & v)
 {
-    state.forceAttrs(*args[0], pos, "while evaluating the argument passed to builtins.attrValues");
+    state.forceAttrs(*args[0], noPos, "while evaluating the argument passed to builtins.attrValues");
 
     v = state.ctx.mem.newList(args[0]->attrs->size());
 
@@ -1686,10 +1685,10 @@ static void prim_attrValues(EvalState & state, const PosIdx pos, Value * * args,
 }
 
 /* Dynamic version of the `.' operator. */
-void prim_getAttr(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_getAttr(EvalState & state, Value * * args, Value & v)
 {
-    auto attr = state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.getAttr");
-    state.forceAttrs(*args[1], pos, "while evaluating the second argument passed to builtins.getAttr");
+    auto attr = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.getAttr");
+    state.forceAttrs(*args[1], noPos, "while evaluating the second argument passed to builtins.getAttr");
     Bindings::iterator i = getAttr(
         state,
         state.ctx.symbols.create(attr),
@@ -1698,15 +1697,15 @@ void prim_getAttr(EvalState & state, const PosIdx pos, Value * * args, Value & v
     );
     // !!! add to stack trace?
     if (state.ctx.stats.countCalls && i->pos) state.ctx.stats.attrSelects[i->pos]++;
-    state.forceValue(*i->value, pos);
+    state.forceValue(*i->value, noPos);
     v = *i->value;
 }
 
 /* Return position information of the specified attribute. */
-static void prim_unsafeGetAttrPos(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_unsafeGetAttrPos(EvalState & state, Value * * args, Value & v)
 {
-    auto attr = state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.unsafeGetAttrPos");
-    state.forceAttrs(*args[1], pos, "while evaluating the second argument passed to builtins.unsafeGetAttrPos");
+    auto attr = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.unsafeGetAttrPos");
+    state.forceAttrs(*args[1], noPos, "while evaluating the second argument passed to builtins.unsafeGetAttrPos");
     Bindings::iterator i = args[1]->attrs->find(state.ctx.symbols.create(attr));
     if (i == args[1]->attrs->end())
         v.mkNull();
@@ -1729,13 +1728,13 @@ static void prim_unsafeGetAttrPos(EvalState & state, const PosIdx pos, Value * *
 static struct LazyPosAcessors {
     PrimOp primop_lineOfPos{
         .arity = 1,
-        .fun = [] (EvalState & state, PosIdx pos, Value * * args, Value & v) {
+        .fun = [] (EvalState & state, Value * * args, Value & v) {
             v.mkInt(state.ctx.positions[PosIdx(args[0]->integer.value)].line);
         }
     };
     PrimOp primop_columnOfPos{
         .arity = 1,
-        .fun = [] (EvalState & state, PosIdx pos, Value * * args, Value & v) {
+        .fun = [] (EvalState & state, Value * * args, Value & v) {
             v.mkInt(state.ctx.positions[PosIdx(args[0]->integer.value)].column);
         }
     };
@@ -1763,24 +1762,24 @@ void makePositionThunks(EvalState & state, const PosIdx pos, Value & line, Value
 }
 
 /* Dynamic version of the `?' operator. */
-static void prim_hasAttr(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_hasAttr(EvalState & state, Value * * args, Value & v)
 {
-    auto attr = state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.hasAttr");
-    state.forceAttrs(*args[1], pos, "while evaluating the second argument passed to builtins.hasAttr");
+    auto attr = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.hasAttr");
+    state.forceAttrs(*args[1], noPos, "while evaluating the second argument passed to builtins.hasAttr");
     v.mkBool(args[1]->attrs->find(state.ctx.symbols.create(attr)) != args[1]->attrs->end());
 }
 
 /* Determine whether the argument is a set. */
-static void prim_isAttrs(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_isAttrs(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
     v.mkBool(args[0]->type() == nAttrs);
 }
 
-static void prim_removeAttrs(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_removeAttrs(EvalState & state, Value * * args, Value & v)
 {
-    state.forceAttrs(*args[0], pos, "while evaluating the first argument passed to builtins.removeAttrs");
-    state.forceList(*args[1], pos, "while evaluating the second argument passed to builtins.removeAttrs");
+    state.forceAttrs(*args[0], noPos, "while evaluating the first argument passed to builtins.removeAttrs");
+    state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.removeAttrs");
 
     /* Get the attribute names to be removed.
        We keep them as Attrs instead of Symbols so std::set_difference
@@ -1789,7 +1788,7 @@ static void prim_removeAttrs(EvalState & state, const PosIdx pos, Value * * args
     boost::container::small_vector<Attr, 64> names;
     names.reserve(args[1]->listSize());
     for (auto elem : args[1]->listItems()) {
-        state.forceStringNoCtx(*elem, pos, "while evaluating the values of the second argument passed to builtins.removeAttrs");
+        state.forceStringNoCtx(*elem, noPos, "while evaluating the values of the second argument passed to builtins.removeAttrs");
         names.emplace_back(state.ctx.symbols.create(elem->string.s), nullptr);
     }
     std::sort(names.begin(), names.end());
@@ -1810,16 +1809,16 @@ static void prim_removeAttrs(EvalState & state, const PosIdx pos, Value * * args
    "nameN"; value = valueN;}] is transformed to {name1 = value1;
    ... nameN = valueN;}.  In case of duplicate occurrences of the same
    name, the first takes precedence. */
-static void prim_listToAttrs(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_listToAttrs(EvalState & state, Value * * args, Value & v)
 {
-    state.forceList(*args[0], pos, "while evaluating the argument passed to builtins.listToAttrs");
+    state.forceList(*args[0], noPos, "while evaluating the argument passed to builtins.listToAttrs");
 
     auto attrs = state.ctx.buildBindings(args[0]->listSize());
 
     std::set<Symbol> seen;
 
     for (auto v2 : args[0]->listItems()) {
-        state.forceAttrs(*v2, pos, "while evaluating an element of the list passed to builtins.listToAttrs");
+        state.forceAttrs(*v2, noPos, "while evaluating an element of the list passed to builtins.listToAttrs");
 
         Bindings::iterator j = getAttr(state, state.ctx.s.name, v2->attrs, "in a {name=...; value=...;} pair");
 
@@ -1835,10 +1834,10 @@ static void prim_listToAttrs(EvalState & state, const PosIdx pos, Value * * args
     v.mkAttrs(attrs);
 }
 
-static void prim_intersectAttrs(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_intersectAttrs(EvalState & state, Value * * args, Value & v)
 {
-    state.forceAttrs(*args[0], pos, "while evaluating the first argument passed to builtins.intersectAttrs");
-    state.forceAttrs(*args[1], pos, "while evaluating the second argument passed to builtins.intersectAttrs");
+    state.forceAttrs(*args[0], noPos, "while evaluating the first argument passed to builtins.intersectAttrs");
+    state.forceAttrs(*args[1], noPos, "while evaluating the second argument passed to builtins.intersectAttrs");
 
     Bindings &left = *args[0]->attrs;
     Bindings &right = *args[1]->attrs;
@@ -1901,16 +1900,16 @@ static void prim_intersectAttrs(EvalState & state, const PosIdx pos, Value * * a
     v.mkAttrs(attrs.alreadySorted());
 }
 
-static void prim_catAttrs(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_catAttrs(EvalState & state, Value * * args, Value & v)
 {
-    auto attrName = state.ctx.symbols.create(state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.catAttrs"));
-    state.forceList(*args[1], pos, "while evaluating the second argument passed to builtins.catAttrs");
+    auto attrName = state.ctx.symbols.create(state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.catAttrs"));
+    state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.catAttrs");
 
     SmallValueVector<nonRecursiveStackReservation> res(args[1]->listSize());
     size_t found = 0;
 
     for (auto v2 : args[1]->listItems()) {
-        state.forceAttrs(*v2, pos, "while evaluating an element in the list passed as second argument to builtins.catAttrs");
+        state.forceAttrs(*v2, noPos, "while evaluating an element in the list passed as second argument to builtins.catAttrs");
         Bindings::iterator i = v2->attrs->find(attrName);
         if (i != v2->attrs->end())
             res[found++] = i->value;
@@ -1921,15 +1920,15 @@ static void prim_catAttrs(EvalState & state, const PosIdx pos, Value * * args, V
         v.listElems()[n] = res[n];
 }
 
-static void prim_functionArgs(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_functionArgs(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
     if (args[0]->isPrimOpApp() || args[0]->isPrimOp()) {
         v.mkAttrs(&Bindings::EMPTY);
         return;
     }
     if (!args[0]->isLambda())
-        state.ctx.errors.make<TypeError>("'functionArgs' requires a function").atPos(pos).debugThrow();
+        state.ctx.errors.make<TypeError>("'functionArgs' requires a function").debugThrow();
 
     AttrsPattern * formals = dynamic_cast<AttrsPattern *>(args[0]->lambda.fun->pattern.get());
     if (!formals) {
@@ -1945,9 +1944,9 @@ static void prim_functionArgs(EvalState & state, const PosIdx pos, Value * * arg
 }
 
 /*  */
-static void prim_mapAttrs(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_mapAttrs(EvalState & state, Value * * args, Value & v)
 {
-    state.forceAttrs(*args[1], pos, "while evaluating the second argument passed to builtins.mapAttrs");
+    state.forceAttrs(*args[1], noPos, "while evaluating the second argument passed to builtins.mapAttrs");
 
     auto attrs = state.ctx.buildBindings(args[1]->attrs->size());
 
@@ -1962,7 +1961,7 @@ static void prim_mapAttrs(EvalState & state, const PosIdx pos, Value * * args, V
     v.mkAttrs(attrs.alreadySorted());
 }
 
-static void prim_zipAttrsWith(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_zipAttrsWith(EvalState & state, Value * * args, Value & v)
 {
     // we will first count how many values are present for each given key.
     // we then allocate a single attrset and pre-populate it with lists of
@@ -1973,8 +1972,8 @@ static void prim_zipAttrsWith(EvalState & state, const PosIdx pos, Value * * arg
 
     std::map<Symbol, std::pair<size_t, Value * *>> attrsSeen;
 
-    state.forceFunction(*args[0], pos, "while evaluating the first argument passed to builtins.zipAttrsWith");
-    state.forceList(*args[1], pos, "while evaluating the second argument passed to builtins.zipAttrsWith");
+    state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.zipAttrsWith");
+    state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.zipAttrsWith");
     const auto listSize = args[1]->listSize();
     const auto listElems = args[1]->listElems();
 
@@ -2017,9 +2016,9 @@ static void prim_zipAttrsWith(EvalState & state, const PosIdx pos, Value * * arg
 
 
 /* Determine whether the argument is a list. */
-static void prim_isList(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_isList(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
     v.mkBool(args[0]->type() == nList);
 }
 
@@ -2036,26 +2035,26 @@ static void elemAt(EvalState & state, const PosIdx pos, Value & list, int n, Val
 }
 
 /* Return the n-1'th element of a list. */
-static void prim_elemAt(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_elemAt(EvalState & state, Value * * args, Value & v)
 {
-    NixInt::Inner elem = state.forceInt(*args[1], pos, "while evaluating the second argument passed to builtins.elemAt").value;
-    elemAt(state, pos, *args[0], elem, v);
+    NixInt::Inner elem = state.forceInt(*args[1], noPos, "while evaluating the second argument passed to builtins.elemAt").value;
+    elemAt(state, noPos, *args[0], elem, v);
 }
 
 /* Return the first element of a list. */
-static void prim_head(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_head(EvalState & state, Value * * args, Value & v)
 {
-    elemAt(state, pos, *args[0], 0, v);
+    elemAt(state, noPos, *args[0], 0, v);
 }
 
 /* Return a list consisting of everything but the first element of
    a list.  Warning: this function takes O(n) time, so you probably
    don't want to use it!  */
-static void prim_tail(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_tail(EvalState & state, Value * * args, Value & v)
 {
-    state.forceList(*args[0], pos, "while evaluating the first argument passed to builtins.tail");
+    state.forceList(*args[0], noPos, "while evaluating the first argument passed to builtins.tail");
     if (args[0]->listSize() == 0)
-        state.ctx.errors.make<EvalError>("'tail' called on an empty list").atPos(pos).debugThrow();
+        state.ctx.errors.make<EvalError>("'tail' called on an empty list").debugThrow();
 
     v = state.ctx.mem.newList(args[0]->listSize() - 1);
     for (unsigned int n = 0; n < v.listSize(); ++n)
@@ -2063,16 +2062,16 @@ static void prim_tail(EvalState & state, const PosIdx pos, Value * * args, Value
 }
 
 /* Apply a function to every element of a list. */
-static void prim_map(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_map(EvalState & state, Value * * args, Value & v)
 {
-    state.forceList(*args[1], pos, "while evaluating the second argument passed to builtins.map");
+    state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.map");
 
     if (args[1]->listSize() == 0) {
         v = *args[1];
         return;
     }
 
-    state.forceFunction(*args[0], pos, "while evaluating the first argument passed to builtins.map");
+    state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.map");
 
     v = state.ctx.mem.newList(args[1]->listSize());
     for (unsigned int n = 0; n < v.listSize(); ++n)
@@ -2083,16 +2082,16 @@ static void prim_map(EvalState & state, const PosIdx pos, Value * * args, Value 
 /* Filter a list using a predicate; that is, return a list containing
    every element from the list for which the predicate function
    returns true. */
-static void prim_filter(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_filter(EvalState & state, Value * * args, Value & v)
 {
-    state.forceList(*args[1], pos, "while evaluating the second argument passed to builtins.filter");
+    state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.filter");
 
     if (args[1]->listSize() == 0) {
         v = *args[1];
         return;
     }
 
-    state.forceFunction(*args[0], pos, "while evaluating the first argument passed to builtins.filter");
+    state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.filter");
 
     SmallValueVector<nonRecursiveStackReservation> vs(args[1]->listSize());
     size_t k = 0;
@@ -2101,7 +2100,7 @@ static void prim_filter(EvalState & state, const PosIdx pos, Value * * args, Val
     for (unsigned int n = 0; n < args[1]->listSize(); ++n) {
         Value res;
         state.callFunction(*args[0], *args[1]->listElems()[n], res, noPos);
-        if (state.forceBool(res, pos, "while evaluating the return value of the filtering function passed to builtins.filter"))
+        if (state.forceBool(res, noPos, "while evaluating the return value of the filtering function passed to builtins.filter"))
             vs[k++] = args[1]->listElems()[n];
         else
             same = false;
@@ -2116,12 +2115,12 @@ static void prim_filter(EvalState & state, const PosIdx pos, Value * * args, Val
 }
 
 /* Return true if a list contains a given element. */
-static void prim_elem(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_elem(EvalState & state, Value * * args, Value & v)
 {
     bool res = false;
-    state.forceList(*args[1], pos, "while evaluating the second argument passed to builtins.elem");
+    state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.elem");
     for (auto elem : args[1]->listItems())
-        if (state.eqValues(*args[0], *elem, pos, "while searching for the presence of the given element in the list")) {
+        if (state.eqValues(*args[0], *elem, noPos, "while searching for the presence of the given element in the list")) {
             res = true;
             break;
         }
@@ -2129,25 +2128,25 @@ static void prim_elem(EvalState & state, const PosIdx pos, Value * * args, Value
 }
 
 /* Concatenate a list of lists. */
-static void prim_concatLists(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_concatLists(EvalState & state, Value * * args, Value & v)
 {
-    state.forceList(*args[0], pos, "while evaluating the first argument passed to builtins.concatLists");
-    state.concatLists(v, args[0]->listSize(), args[0]->listElems(), pos, "while evaluating a value of the list passed to builtins.concatLists");
+    state.forceList(*args[0], noPos, "while evaluating the first argument passed to builtins.concatLists");
+    state.concatLists(v, args[0]->listSize(), args[0]->listElems(), noPos, "while evaluating a value of the list passed to builtins.concatLists");
 }
 
 /* Return the length of a list.  This is an O(1) time operation. */
-static void prim_length(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_length(EvalState & state, Value * * args, Value & v)
 {
-    state.forceList(*args[0], pos, "while evaluating the first argument passed to builtins.length");
+    state.forceList(*args[0], noPos, "while evaluating the first argument passed to builtins.length");
     v.mkInt(args[0]->listSize());
 }
 
 /* Reduce a list by applying a binary operator, from left to
    right. The operator is applied strictly. */
-static void prim_foldlStrict(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_foldlStrict(EvalState & state, Value * * args, Value & v)
 {
-    state.forceFunction(*args[0], pos, "while evaluating the first argument passed to builtins.foldlStrict");
-    state.forceList(*args[2], pos, "while evaluating the third argument passed to builtins.foldlStrict");
+    state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.foldlStrict");
+    state.forceList(*args[2], noPos, "while evaluating the third argument passed to builtins.foldlStrict");
 
     if (args[2]->listSize()) {
         Value * vCur = args[1];
@@ -2155,11 +2154,11 @@ static void prim_foldlStrict(EvalState & state, const PosIdx pos, Value * * args
         for (auto [n, elem] : enumerate(args[2]->listItems())) {
             Value * vs []{vCur, elem};
             vCur = n == args[2]->listSize() - 1 ? &v : state.ctx.mem.allocValue();
-            state.callFunction(*args[0], 2, vs, *vCur, pos);
+            state.callFunction(*args[0], 2, vs, *vCur, noPos);
         }
-        state.forceValue(v, pos);
+        state.forceValue(v, noPos);
     } else {
-        state.forceValue(*args[1], pos);
+        state.forceValue(*args[1], noPos);
         v = *args[1];
     }
 }
@@ -2187,22 +2186,22 @@ static void anyOrAll(bool any, EvalState & state, const PosIdx pos, Value * * ar
 }
 
 
-static void prim_any(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_any(EvalState & state, Value * * args, Value & v)
 {
-    anyOrAll(true, state, pos, args, v);
+    anyOrAll(true, state, noPos, args, v);
 }
 
-static void prim_all(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_all(EvalState & state, Value * * args, Value & v)
 {
-    anyOrAll(false, state, pos, args, v);
+    anyOrAll(false, state, noPos, args, v);
 }
 
-static void prim_genList(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_genList(EvalState & state, Value * * args, Value & v)
 {
-    auto len_ = state.forceInt(*args[1], pos, "while evaluating the second argument passed to builtins.genList").value;
+    auto len_ = state.forceInt(*args[1], noPos, "while evaluating the second argument passed to builtins.genList").value;
 
     if (len_ < 0)
-        state.ctx.errors.make<EvalError>("cannot create list of size %1%", len_).atPos(pos).debugThrow();
+        state.ctx.errors.make<EvalError>("cannot create list of size %1%", len_).debugThrow();
 
     size_t len = len_;
 
@@ -2218,12 +2217,12 @@ static void prim_genList(EvalState & state, const PosIdx pos, Value * * args, Va
     }
 }
 
-static void prim_lessThan(EvalState & state, const PosIdx pos, Value * * args, Value & v);
+static void prim_lessThan(EvalState & state, Value * * args, Value & v);
 
 
-static void prim_sort(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_sort(EvalState & state, Value * * args, Value & v)
 {
-    state.forceList(*args[1], pos, "while evaluating the second argument passed to builtins.sort");
+    state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.sort");
 
     auto len = args[1]->listSize();
     if (len == 0) {
@@ -2231,11 +2230,11 @@ static void prim_sort(EvalState & state, const PosIdx pos, Value * * args, Value
         return;
     }
 
-    state.forceFunction(*args[0], pos, "while evaluating the first argument passed to builtins.sort");
+    state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.sort");
 
     v = state.ctx.mem.newList(len);
     for (unsigned int n = 0; n < len; ++n) {
-        state.forceValue(*args[1]->listElems()[n], pos);
+        state.forceValue(*args[1]->listElems()[n], noPos);
         v.listElems()[n] = args[1]->listElems()[n];
     }
 
@@ -2253,7 +2252,7 @@ static void prim_sort(EvalState & state, const PosIdx pos, Value * * args, Value
         Value * vs[] = {a, b};
         Value vBool;
         state.callFunction(*args[0], 2, vs, vBool, noPos);
-        return state.forceBool(vBool, pos, "while evaluating the return value of the sorting function passed to builtins.sort");
+        return state.forceBool(vBool, noPos, "while evaluating the return value of the sorting function passed to builtins.sort");
     };
 
     /* FIXME: std::sort can segfault if the comparator is not a strict
@@ -2262,10 +2261,10 @@ static void prim_sort(EvalState & state, const PosIdx pos, Value * * args, Value
     std::stable_sort(v.listElems(), v.listElems() + len, comparator);
 }
 
-static void prim_partition(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_partition(EvalState & state, Value * * args, Value & v)
 {
-    state.forceFunction(*args[0], pos, "while evaluating the first argument passed to builtins.partition");
-    state.forceList(*args[1], pos, "while evaluating the second argument passed to builtins.partition");
+    state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.partition");
+    state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.partition");
 
     auto len = args[1]->listSize();
 
@@ -2273,10 +2272,10 @@ static void prim_partition(EvalState & state, const PosIdx pos, Value * * args, 
 
     for (unsigned int n = 0; n < len; ++n) {
         auto vElem = args[1]->listElems()[n];
-        state.forceValue(*vElem, pos);
+        state.forceValue(*vElem, noPos);
         Value res;
-        state.callFunction(*args[0], *vElem, res, pos);
-        if (state.forceBool(res, pos, "while evaluating the return value of the partition function passed to builtins.partition"))
+        state.callFunction(*args[0], *vElem, res, noPos);
+        if (state.forceBool(res, noPos, "while evaluating the return value of the partition function passed to builtins.partition"))
             right.push_back(vElem);
         else
             wrong.push_back(vElem);
@@ -2299,17 +2298,17 @@ static void prim_partition(EvalState & state, const PosIdx pos, Value * * args, 
     v.mkAttrs(attrs);
 }
 
-static void prim_groupBy(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_groupBy(EvalState & state, Value * * args, Value & v)
 {
-    state.forceFunction(*args[0], pos, "while evaluating the first argument passed to builtins.groupBy");
-    state.forceList(*args[1], pos, "while evaluating the second argument passed to builtins.groupBy");
+    state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.groupBy");
+    state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.groupBy");
 
     ValueVectorMap attrs;
 
     for (auto vElem : args[1]->listItems()) {
         Value res;
-        state.callFunction(*args[0], *vElem, res, pos);
-        auto name = state.forceStringNoCtx(res, pos, "while evaluating the return value of the grouping function passed to builtins.groupBy");
+        state.callFunction(*args[0], *vElem, res, noPos);
+        auto name = state.forceStringNoCtx(res, noPos, "while evaluating the return value of the grouping function passed to builtins.groupBy");
         auto sym = state.ctx.symbols.create(name);
         auto vector = attrs.try_emplace(sym, ValueVector()).first;
         vector->second.push_back(vElem);
@@ -2327,10 +2326,10 @@ static void prim_groupBy(EvalState & state, const PosIdx pos, Value * * args, Va
     v.mkAttrs(attrs2.alreadySorted());
 }
 
-static void prim_concatMap(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_concatMap(EvalState & state, Value * * args, Value & v)
 {
-    state.forceFunction(*args[0], pos, "while evaluating the first argument passed to builtins.concatMap");
-    state.forceList(*args[1], pos, "while evaluating the second argument passed to builtins.concatMap");
+    state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.concatMap");
+    state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.concatMap");
     auto nrLists = args[1]->listSize();
 
     // List of returned lists before concatenation. References to these Values must NOT be persisted.
@@ -2339,8 +2338,8 @@ static void prim_concatMap(EvalState & state, const PosIdx pos, Value * * args, 
 
     for (unsigned int n = 0; n < nrLists; ++n) {
         Value * vElem = args[1]->listElems()[n];
-        state.callFunction(*args[0], *vElem, lists[n], pos);
-        state.forceList(lists[n], pos, "while evaluating the return value of the function passed to builtins.concatMap");
+        state.callFunction(*args[0], *vElem, lists[n], noPos);
+        state.forceList(lists[n], noPos, "while evaluating the return value of the function passed to builtins.concatMap");
         len += lists[n].listSize();
     }
 
@@ -2360,119 +2359,119 @@ static void prim_concatMap(EvalState & state, const PosIdx pos, Value * * args, 
  *************************************************************/
 
 
-static void prim_add(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_add(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
-    state.forceValue(*args[1], pos);
+    state.forceValue(*args[0], noPos);
+    state.forceValue(*args[1], noPos);
     if (args[0]->type() == nFloat || args[1]->type() == nFloat)
-        v.mkFloat(state.forceFloat(*args[0], pos, "while evaluating the first argument of the addition")
-                + state.forceFloat(*args[1], pos, "while evaluating the second argument of the addition"));
+        v.mkFloat(state.forceFloat(*args[0], noPos, "while evaluating the first argument of the addition")
+                + state.forceFloat(*args[1], noPos, "while evaluating the second argument of the addition"));
     else {
-        auto i1 = state.forceInt(*args[0], pos, "while evaluating the first argument of the addition");
-        auto i2 = state.forceInt(*args[1], pos, "while evaluating the second argument of the addition");
+        auto i1 = state.forceInt(*args[0], noPos, "while evaluating the first argument of the addition");
+        auto i2 = state.forceInt(*args[1], noPos, "while evaluating the second argument of the addition");
 
         auto result_ = i1 + i2;
         if (auto result = result_.valueChecked(); result.has_value()) {
             v.mkInt(*result);
         } else {
-            state.ctx.errors.make<EvalError>("integer overflow in adding %1% + %2%", i1, i2).atPos(pos).debugThrow();
+            state.ctx.errors.make<EvalError>("integer overflow in adding %1% + %2%", i1, i2).debugThrow();
         }
     }
 }
 
-static void prim_sub(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_sub(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
-    state.forceValue(*args[1], pos);
+    state.forceValue(*args[0], noPos);
+    state.forceValue(*args[1], noPos);
     if (args[0]->type() == nFloat || args[1]->type() == nFloat)
-        v.mkFloat(state.forceFloat(*args[0], pos, "while evaluating the first argument of the subtraction")
-                - state.forceFloat(*args[1], pos, "while evaluating the second argument of the subtraction"));
+        v.mkFloat(state.forceFloat(*args[0], noPos, "while evaluating the first argument of the subtraction")
+                - state.forceFloat(*args[1], noPos, "while evaluating the second argument of the subtraction"));
     else {
-        auto i1 = state.forceInt(*args[0], pos, "while evaluating the first argument of the subtraction");
-        auto i2 = state.forceInt(*args[1], pos, "while evaluating the second argument of the subtraction");
+        auto i1 = state.forceInt(*args[0], noPos, "while evaluating the first argument of the subtraction");
+        auto i2 = state.forceInt(*args[1], noPos, "while evaluating the second argument of the subtraction");
 
         auto result_ = i1 - i2;
 
         if (auto result = result_.valueChecked(); result.has_value()) {
             v.mkInt(*result);
         } else {
-            state.ctx.errors.make<EvalError>("integer overflow in subtracting %1% - %2%", i1, i2).atPos(pos).debugThrow();
+            state.ctx.errors.make<EvalError>("integer overflow in subtracting %1% - %2%", i1, i2).debugThrow();
         }
     }
 }
 
-static void prim_mul(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_mul(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
-    state.forceValue(*args[1], pos);
+    state.forceValue(*args[0], noPos);
+    state.forceValue(*args[1], noPos);
     if (args[0]->type() == nFloat || args[1]->type() == nFloat)
-        v.mkFloat(state.forceFloat(*args[0], pos, "while evaluating the first of the multiplication")
-                * state.forceFloat(*args[1], pos, "while evaluating the second argument of the multiplication"));
+        v.mkFloat(state.forceFloat(*args[0], noPos, "while evaluating the first of the multiplication")
+                * state.forceFloat(*args[1], noPos, "while evaluating the second argument of the multiplication"));
     else {
-        auto i1 = state.forceInt(*args[0], pos, "while evaluating the first argument of the multiplication");
-        auto i2 = state.forceInt(*args[1], pos, "while evaluating the second argument of the multiplication");
+        auto i1 = state.forceInt(*args[0], noPos, "while evaluating the first argument of the multiplication");
+        auto i2 = state.forceInt(*args[1], noPos, "while evaluating the second argument of the multiplication");
 
         auto result_ = i1 * i2;
 
         if (auto result = result_.valueChecked(); result.has_value()) {
             v.mkInt(*result);
         } else {
-            state.ctx.errors.make<EvalError>("integer overflow in multiplying %1% * %2%", i1, i2).atPos(pos).debugThrow();
+            state.ctx.errors.make<EvalError>("integer overflow in multiplying %1% * %2%", i1, i2).debugThrow();
         }
     }
 }
 
-static void prim_div(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_div(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
-    state.forceValue(*args[1], pos);
+    state.forceValue(*args[0], noPos);
+    state.forceValue(*args[1], noPos);
 
-    NixFloat f2 = state.forceFloat(*args[1], pos, "while evaluating the second operand of the division");
+    NixFloat f2 = state.forceFloat(*args[1], noPos, "while evaluating the second operand of the division");
     if (f2 == 0)
-        state.ctx.errors.make<EvalError>("division by zero").atPos(pos).debugThrow();
+        state.ctx.errors.make<EvalError>("division by zero").debugThrow();
 
     if (args[0]->type() == nFloat || args[1]->type() == nFloat) {
-        v.mkFloat(state.forceFloat(*args[0], pos, "while evaluating the first operand of the division") / f2);
+        v.mkFloat(state.forceFloat(*args[0], noPos, "while evaluating the first operand of the division") / f2);
     } else {
-        NixInt i1 = state.forceInt(*args[0], pos, "while evaluating the first operand of the division");
-        NixInt i2 = state.forceInt(*args[1], pos, "while evaluating the second operand of the division");
+        NixInt i1 = state.forceInt(*args[0], noPos, "while evaluating the first operand of the division");
+        NixInt i2 = state.forceInt(*args[1], noPos, "while evaluating the second operand of the division");
         /* Avoid division overflow as it might raise SIGFPE. */
         auto result_ = i1 / i2;
         if (auto result = result_.valueChecked(); result.has_value()) {
             v.mkInt(*result);
         } else {
-            state.ctx.errors.make<EvalError>("integer overflow in dividing %1% / %2%", i1, i2).atPos(pos).debugThrow();
+            state.ctx.errors.make<EvalError>("integer overflow in dividing %1% / %2%", i1, i2).debugThrow();
         }
     }
 }
 
-static void prim_bitAnd(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_bitAnd(EvalState & state, Value * * args, Value & v)
 {
-    auto i1 = state.forceInt(*args[0], pos, "while evaluating the first argument passed to builtins.bitAnd");
-    auto i2 = state.forceInt(*args[1], pos, "while evaluating the second argument passed to builtins.bitAnd");
+    auto i1 = state.forceInt(*args[0], noPos, "while evaluating the first argument passed to builtins.bitAnd");
+    auto i2 = state.forceInt(*args[1], noPos, "while evaluating the second argument passed to builtins.bitAnd");
     v.mkInt(i1.value & i2.value);
 }
 
-static void prim_bitOr(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_bitOr(EvalState & state, Value * * args, Value & v)
 {
-    auto i1 = state.forceInt(*args[0], pos, "while evaluating the first argument passed to builtins.bitOr");
-    auto i2 = state.forceInt(*args[1], pos, "while evaluating the second argument passed to builtins.bitOr");
+    auto i1 = state.forceInt(*args[0], noPos, "while evaluating the first argument passed to builtins.bitOr");
+    auto i2 = state.forceInt(*args[1], noPos, "while evaluating the second argument passed to builtins.bitOr");
 
     v.mkInt(i1.value | i2.value);
 }
 
-static void prim_bitXor(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_bitXor(EvalState & state, Value * * args, Value & v)
 {
-    auto i1 = state.forceInt(*args[0], pos, "while evaluating the first argument passed to builtins.bitXor");
-    auto i2 = state.forceInt(*args[1], pos, "while evaluating the second argument passed to builtins.bitXor");
+    auto i1 = state.forceInt(*args[0], noPos, "while evaluating the first argument passed to builtins.bitXor");
+    auto i2 = state.forceInt(*args[1], noPos, "while evaluating the second argument passed to builtins.bitXor");
 
     v.mkInt(i1.value ^ i2.value);
 }
 
-static void prim_lessThan(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_lessThan(EvalState & state, Value * * args, Value & v)
 {
-    state.forceValue(*args[0], pos);
-    state.forceValue(*args[1], pos);
+    state.forceValue(*args[0], noPos);
+    state.forceValue(*args[1], noPos);
     // pos is exact here, no need for a message.
     CompareValues comp(state, noPos, "");
     v.mkBool(comp(args[0], args[1]));
@@ -2487,10 +2486,10 @@ static void prim_lessThan(EvalState & state, const PosIdx pos, Value * * args, V
 /* Convert the argument to a string.  Paths are *not* copied to the
    store, so `toString /foo/bar' yields `"/foo/bar"', not
    `"/nix/store/whatever..."'. */
-static void prim_toString(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_toString(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
-    auto s = state.coerceToString(pos, *args[0], context,
+    auto s = state.coerceToString(noPos, *args[0], context,
             "while evaluating the first argument passed to builtins.toString",
             true, false);
     v.mkString(*s, context);
@@ -2500,15 +2499,15 @@ static void prim_toString(EvalState & state, const PosIdx pos, Value * * args, V
    at character position `min(start, stringLength str)' inclusive and
    ending at `min(start + len, stringLength str)'.  `start' must be
    non-negative. */
-static void prim_substring(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_substring(EvalState & state, Value * * args, Value & v)
 {
-    NixInt::Inner start = state.forceInt(*args[0], pos, "while evaluating the first argument (the start offset) passed to builtins.substring").value;
+    NixInt::Inner start = state.forceInt(*args[0], noPos, "while evaluating the first argument (the start offset) passed to builtins.substring").value;
 
     if (start < 0)
-        state.ctx.errors.make<EvalError>("negative start position in 'substring'").atPos(pos).debugThrow();
+        state.ctx.errors.make<EvalError>("negative start position in 'substring'").debugThrow();
 
 
-    NixInt::Inner len = state.forceInt(*args[1], pos, "while evaluating the second argument (the substring length) passed to builtins.substring").value;
+    NixInt::Inner len = state.forceInt(*args[1], noPos, "while evaluating the second argument (the substring length) passed to builtins.substring").value;
 
     // Negative length may be idiomatically passed to builtins.substring to get
     // the tail of the string.
@@ -2519,7 +2518,7 @@ static void prim_substring(EvalState & state, const PosIdx pos, Value * * args, 
     // Special-case on empty substring to avoid O(n) strlen
     // This allows for the use of empty substrings to efficently capture string context
     if (len == 0) {
-        state.forceValue(*args[2], pos);
+        state.forceValue(*args[2], noPos);
         if (args[2]->type() == nString) {
             v.mkString("", args[2]->string.context);
             return;
@@ -2527,28 +2526,28 @@ static void prim_substring(EvalState & state, const PosIdx pos, Value * * args, 
     }
 
     NixStringContext context;
-    auto s = state.coerceToString(pos, *args[2], context, "while evaluating the third argument (the string) passed to builtins.substring");
+    auto s = state.coerceToString(noPos, *args[2], context, "while evaluating the third argument (the string) passed to builtins.substring");
 
     v.mkString((unsigned int) start >= s->size() ? "" : s->substr(start, len), context);
 }
 
-static void prim_stringLength(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_stringLength(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
-    auto s = state.coerceToString(pos, *args[0], context, "while evaluating the argument passed to builtins.stringLength");
+    auto s = state.coerceToString(noPos, *args[0], context, "while evaluating the argument passed to builtins.stringLength");
     v.mkInt(NixInt::Inner(s->size()));
 }
 
 /* Return the cryptographic hash of a string in base-16. */
-static void prim_hashString(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_hashString(EvalState & state, Value * * args, Value & v)
 {
-    auto type = state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.hashString");
+    auto type = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.hashString");
     std::optional<HashType> ht = parseHashType(type);
     if (!ht)
-        state.ctx.errors.make<EvalError>("unknown hash algorithm '%1%'", type).atPos(pos).debugThrow();
+        state.ctx.errors.make<EvalError>("unknown hash algorithm '%1%'", type).debugThrow();
 
     NixStringContext context; // discarded
-    auto s = state.forceString(*args[1], context, pos, "while evaluating the second argument passed to builtins.hashString");
+    auto s = state.forceString(*args[1], context, noPos, "while evaluating the second argument passed to builtins.hashString");
 
     v.mkString(hashString(*ht, s).to_string(Base::Base16, false));
 }
@@ -2577,16 +2576,16 @@ static RegexCache & regexCacheOf(EvalState & state)
     return *state.ctx.caches.regexes;
 }
 
-void prim_match(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_match(EvalState & state, Value * * args, Value & v)
 {
-    auto re = state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.match");
+    auto re = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.match");
 
     try {
 
         auto regex = regexCacheOf(state).get(re);
 
         NixStringContext context;
-        const auto str = state.forceString(*args[1], context, pos, "while evaluating the second argument passed to builtins.match");
+        const auto str = state.forceString(*args[1], context, noPos, "while evaluating the second argument passed to builtins.match");
 
         std::cmatch match;
         if (!std::regex_match(str.begin(), str.end(), match, regex)) {
@@ -2605,22 +2604,22 @@ void prim_match(EvalState & state, const PosIdx pos, Value * * args, Value & v)
         }
 
     } catch (regex::Error & e) {
-        state.ctx.errors.make<EvalError>(e.info()).atPos(pos).debugThrow();
+        state.ctx.errors.make<EvalError>(e.info()).debugThrow();
     }
 }
 
 /* Split a string with a regular expression, and return a list of the
    non-matching parts interleaved by the lists of the matching groups. */
-void prim_split(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_split(EvalState & state, Value * * args, Value & v)
 {
-    auto re = state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.split");
+    auto re = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.split");
 
     try {
 
         auto regex = regexCacheOf(state).get(re);
 
         NixStringContext context;
-        const auto str = state.forceString(*args[1], context, pos, "while evaluating the second argument passed to builtins.split");
+        const auto str = state.forceString(*args[1], context, noPos, "while evaluating the second argument passed to builtins.split");
 
         auto begin = std::cregex_iterator(str.begin(), str.end(), regex);
         auto end = std::cregex_iterator();
@@ -2663,16 +2662,16 @@ void prim_split(EvalState & state, const PosIdx pos, Value * * args, Value & v)
         assert(idx == 2 * len + 1);
 
     } catch (regex::Error & e) {
-        state.ctx.errors.make<EvalError>(e.info()).atPos(pos).debugThrow();
+        state.ctx.errors.make<EvalError>(e.info()).debugThrow();
     }
 }
 
-static void prim_concatStringsSep(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_concatStringsSep(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
 
-    auto sep = state.forceString(*args[0], context, pos, "while evaluating the first argument (the separator string) passed to builtins.concatStringsSep");
-    state.forceList(*args[1], pos, "while evaluating the second argument (the list of strings to concat) passed to builtins.concatStringsSep");
+    auto sep = state.forceString(*args[0], context, noPos, "while evaluating the first argument (the separator string) passed to builtins.concatStringsSep");
+    state.forceList(*args[1], noPos, "while evaluating the second argument (the list of strings to concat) passed to builtins.concatStringsSep");
 
     std::string res;
     res.reserve((args[1]->listSize() + 32) * sep.size());
@@ -2680,31 +2679,31 @@ static void prim_concatStringsSep(EvalState & state, const PosIdx pos, Value * *
 
     for (auto elem : args[1]->listItems()) {
         if (first) first = false; else res += sep;
-        res += *state.coerceToString(pos, *elem, context, "while evaluating one element of the list of strings to concat passed to builtins.concatStringsSep");
+        res += *state.coerceToString(noPos, *elem, context, "while evaluating one element of the list of strings to concat passed to builtins.concatStringsSep");
     }
 
     v.mkString(res, context);
 }
 
-static void prim_replaceStrings(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_replaceStrings(EvalState & state, Value * * args, Value & v)
 {
-    state.forceList(*args[0], pos, "while evaluating the first argument passed to builtins.replaceStrings");
-    state.forceList(*args[1], pos, "while evaluating the second argument passed to builtins.replaceStrings");
+    state.forceList(*args[0], noPos, "while evaluating the first argument passed to builtins.replaceStrings");
+    state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.replaceStrings");
     if (args[0]->listSize() != args[1]->listSize())
         state.ctx.errors.make<EvalError>(
             "'from' and 'to' arguments passed to builtins.replaceStrings have different lengths"
-        ).atPos(pos).debugThrow();
+        ).debugThrow();
 
     std::vector<std::string> from;
     from.reserve(args[0]->listSize());
     for (auto elem : args[0]->listItems())
-        from.emplace_back(state.forceString(*elem, pos, "while evaluating one of the strings to replace passed to builtins.replaceStrings"));
+        from.emplace_back(state.forceString(*elem, noPos, "while evaluating one of the strings to replace passed to builtins.replaceStrings"));
 
     std::unordered_map<size_t, std::string> cache;
     auto to = args[1]->listItems();
 
     NixStringContext context;
-    auto s = state.forceString(*args[2], context, pos, "while evaluating the third argument passed to builtins.replaceStrings");
+    auto s = state.forceString(*args[2], context, noPos, "while evaluating the third argument passed to builtins.replaceStrings");
 
     std::string res;
     // Loops one past last character to handle the case where 'from' contains an empty string.
@@ -2719,7 +2718,7 @@ static void prim_replaceStrings(EvalState & state, const PosIdx pos, Value * * a
                 auto v = cache.find(j_index);
                 if (v == cache.end()) {
                     NixStringContext ctx;
-                    auto ts = state.forceString(**j, ctx, pos, "while evaluating one of the replacement strings passed to builtins.replaceStrings");
+                    auto ts = state.forceString(**j, ctx, noPos, "while evaluating one of the replacement strings passed to builtins.replaceStrings");
                     v = (cache.emplace(j_index, ts)).first;
                     for (auto& path : ctx)
                         context.insert(path);
@@ -2750,9 +2749,9 @@ static void prim_replaceStrings(EvalState & state, const PosIdx pos, Value * * a
  *************************************************************/
 
 
-static void prim_parseDrvName(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_parseDrvName(EvalState & state, Value * * args, Value & v)
 {
-    auto name = state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.parseDrvName");
+    auto name = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.parseDrvName");
     DrvName parsed(name);
     auto attrs = state.ctx.buildBindings(2);
     attrs.alloc(state.ctx.s.name).mkString(parsed.name);
@@ -2760,17 +2759,17 @@ static void prim_parseDrvName(EvalState & state, const PosIdx pos, Value * * arg
     v.mkAttrs(attrs);
 }
 
-static void prim_compareVersions(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_compareVersions(EvalState & state, Value * * args, Value & v)
 {
-    auto version1 = state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.compareVersions");
-    auto version2 = state.forceStringNoCtx(*args[1], pos, "while evaluating the second argument passed to builtins.compareVersions");
+    auto version1 = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.compareVersions");
+    auto version2 = state.forceStringNoCtx(*args[1], noPos, "while evaluating the second argument passed to builtins.compareVersions");
     auto result = compareVersions(version1, version2);
     v.mkInt(result < 0 ? -1 : result > 0 ? 1 : 0);
 }
 
-static void prim_splitVersion(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_splitVersion(EvalState & state, Value * * args, Value & v)
 {
-    auto version = state.forceStringNoCtx(*args[0], pos, "while evaluating the first argument passed to builtins.splitVersion");
+    auto version = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.splitVersion");
     auto iter = version.cbegin();
     Strings components;
     while (iter != version.cend()) {
@@ -2848,7 +2847,7 @@ void EvalBuiltins::createBaseEnv(const SearchPath & searchPath, const Path & sto
     static PrimOp prim_initializeDerivation{
         .arity = 1,
         .fun =
-            [](EvalState & state, PosIdx pos, Value ** args, Value & v) {
+            [](EvalState & state, Value ** args, Value & v) {
                 char code[] =
                     #include "primops/derivation.nix.gen.hh"
                     ;

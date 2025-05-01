@@ -6,10 +6,10 @@
 
 namespace nix {
 
-static void prim_unsafeDiscardStringContext(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_unsafeDiscardStringContext(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
-    auto s = state.coerceToString(pos, *args[0], context, "while evaluating the argument passed to builtins.unsafeDiscardStringContext");
+    auto s = state.coerceToString(noPos, *args[0], context, "while evaluating the argument passed to builtins.unsafeDiscardStringContext");
     v.mkString(*s);
 }
 
@@ -20,18 +20,18 @@ static RegisterPrimOp primop_unsafeDiscardStringContext({
 });
 
 
-void prim_hasContext(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_hasContext(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
-    state.forceString(*args[0], context, pos, "while evaluating the argument passed to builtins.hasContext");
+    state.forceString(*args[0], context, noPos, "while evaluating the argument passed to builtins.hasContext");
     v.mkBool(!context.empty());
 }
 
 
-void prim_unsafeDiscardOutputDependency(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_unsafeDiscardOutputDependency(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
-    auto s = state.coerceToString(pos, *args[0], context, "while evaluating the argument passed to builtins.unsafeDiscardOutputDependency");
+    auto s = state.coerceToString(noPos, *args[0], context, "while evaluating the argument passed to builtins.unsafeDiscardOutputDependency");
 
     NixStringContext context2;
     for (auto && c : context) {
@@ -49,10 +49,10 @@ void prim_unsafeDiscardOutputDependency(EvalState & state, const PosIdx pos, Val
 }
 
 
-void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_addDrvOutputDependencies(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
-    auto s = state.coerceToString(pos, *args[0], context, "while evaluating the argument passed to builtins.addDrvOutputDependencies");
+    auto s = state.coerceToString(noPos, *args[0], context, "while evaluating the argument passed to builtins.addDrvOutputDependencies");
 
 	auto contextSize = context.size();
     if (contextSize != 1) {
@@ -60,7 +60,7 @@ void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, Value * 
             "context of string '%s' must have exactly one element, but has %d",
             *s,
             contextSize
-        ).atPos(pos).debugThrow();
+        ).debugThrow();
     }
     NixStringContext context2 {
         (NixStringContextElem { std::visit(overloaded {
@@ -69,7 +69,7 @@ void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, Value * 
                     state.ctx.errors.make<EvalError>(
                         "path '%s' is not a derivation",
                         state.ctx.store->printStorePath(c.path)
-                    ).atPos(pos).debugThrow(always_progresses);
+                    ).debugThrow(always_progresses);
                 }
                 return NixStringContextElem::DrvDeep {
                     .drvPath = c.path,
@@ -79,7 +79,7 @@ void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, Value * 
                 state.ctx.errors.make<EvalError>(
                     "`addDrvOutputDependencies` can only act on derivations, not on a derivation output such as '%1%'",
                     c.output
-                ).atPos(pos).debugThrow(always_progresses);
+                ).debugThrow(always_progresses);
             },
             [&](const NixStringContextElem::DrvDeep & c) -> NixStringContextElem::DrvDeep {
                 /* Reuse original item because we want this to be idempotent. */
@@ -111,7 +111,7 @@ void prim_addDrvOutputDependencies(EvalState & state, const PosIdx pos, Value * 
    Note that for a given path any combination of the above attributes
    may be present.
 */
-void prim_getContext(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_getContext(EvalState & state, Value * * args, Value & v)
 {
     struct ContextInfo {
         bool path = false;
@@ -119,7 +119,7 @@ void prim_getContext(EvalState & state, const PosIdx pos, Value * * args, Value 
         Strings outputs;
     };
     NixStringContext context;
-    state.forceString(*args[0], context, pos, "while evaluating the argument passed to builtins.getContext");
+    state.forceString(*args[0], context, noPos, "while evaluating the argument passed to builtins.getContext");
     auto contextInfos = std::map<StorePath, ContextInfo>();
     for (auto && i : context) {
         std::visit(overloaded {
@@ -165,12 +165,12 @@ void prim_getContext(EvalState & state, const PosIdx pos, Value * * args, Value 
    See the commentary above unsafeGetContext for details of the
    context representation.
 */
-static void prim_appendContext(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_appendContext(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
     auto orig = state.forceString(*args[0], context, noPos, "while evaluating the first argument passed to builtins.appendContext");
 
-    state.forceAttrs(*args[1], pos, "while evaluating the second argument passed to builtins.appendContext");
+    state.forceAttrs(*args[1], noPos, "while evaluating the second argument passed to builtins.appendContext");
 
     auto sAllOutputs = state.ctx.symbols.create("allOutputs");
     for (auto & i : *args[1]->attrs) {

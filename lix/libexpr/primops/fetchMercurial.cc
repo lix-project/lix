@@ -5,7 +5,7 @@
 
 namespace nix {
 
-static void prim_fetchMercurial(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void prim_fetchMercurial(EvalState & state, Value * * args, Value & v)
 {
     std::string url;
     std::optional<Hash> rev;
@@ -13,7 +13,7 @@ static void prim_fetchMercurial(EvalState & state, const PosIdx pos, Value * * a
     std::string_view name = "source";
     NixStringContext context;
 
-    state.forceValue(*args[0], pos);
+    state.forceValue(*args[0], noPos);
 
     if (args[0]->type() == nAttrs) {
 
@@ -39,10 +39,10 @@ static void prim_fetchMercurial(EvalState & state, const PosIdx pos, Value * * a
         }
 
         if (url.empty())
-            state.ctx.errors.make<EvalError>("'url' argument required").atPos(pos).debugThrow();
+            state.ctx.errors.make<EvalError>("'url' argument required").debugThrow();
 
     } else
-        url = state.coerceToString(pos, *args[0], context,
+        url = state.coerceToString(noPos, *args[0], context,
                 "while evaluating the first argument passed to builtins.fetchMercurial",
                 false, false).toOwned();
 

@@ -4,7 +4,13 @@
 debugger should not crash now, but also not show any with variables
   nix-repl> :st
   0: error: breakpoint reached
-  «none»:0
+  $TEST_DATA/regression_l145.nix:3:7
+
+       2| let
+       3|   x = builtins.break 1;
+        |       ^
+       4| in
+
   Env level 0
   static: x
 
@@ -16,7 +22,7 @@ debugger should not crash now, but also not show any with variables
   error:
          … while evaluating the file '$TEST_DATA/regression_l145.nix':
 
-         … while evaluating variable x
+         … while evaluating x
            at $TEST_DATA/regression_l145.nix:5:3:
               4| in
               5|   x

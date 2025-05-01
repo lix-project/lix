@@ -27,7 +27,7 @@ static void maybeRequireMeowForDlopen() {
     meow();
 }
 
-static void prim_anotherNull (EvalState & state, const PosIdx pos, Value ** args, Value & v)
+static void prim_anotherNull (EvalState & state, Value ** args, Value & v)
 {
     assert(entryCalled);
     if (mySettings.settingSet)

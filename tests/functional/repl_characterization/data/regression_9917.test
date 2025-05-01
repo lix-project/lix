@@ -12,7 +12,13 @@ This test ensures that continues don't skip opportunities to enter the debugger.
   nix-repl> :bt
 
   0: error: breakpoint reached
-  «none»:0
+  $TEST_DATA/regression_9917.nix:3:5
+
+       2|   a = builtins.trace "before inner break" (
+       3|     builtins.break { msg = "hello"; }
+        |     ^
+       4|   );
+
   1: while calling a function
   $TEST_DATA/regression_9917.nix:3:5
 

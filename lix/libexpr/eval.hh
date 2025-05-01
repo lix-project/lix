@@ -39,7 +39,7 @@ namespace eval_cache {
 /**
  * Function that implements a primop.
  */
-using PrimOpImpl = void(EvalState & state, PosIdx pos, Value ** args, Value & v);
+using PrimOpImpl = void(EvalState & state, Value ** args, Value & v);
 
 /**
  * Info about a primitive operation, and its implementation

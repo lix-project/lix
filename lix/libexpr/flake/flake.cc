@@ -810,12 +810,12 @@ void callFlake(EvalState & state,
     state.callFunction(*vTmp2, *vRootSubdir, vRes, noPos);
 }
 
-void prim_getFlake(EvalState & state, const PosIdx pos, Value * * args, Value & v)
+void prim_getFlake(EvalState & state, Value * * args, Value & v)
 {
-    std::string flakeRefS(state.forceStringNoCtx(*args[0], pos, "while evaluating the argument passed to builtins.getFlake"));
+    std::string flakeRefS(state.forceStringNoCtx(*args[0], noPos, "while evaluating the argument passed to builtins.getFlake"));
     auto flakeRef = parseFlakeRef(flakeRefS, {}, true);
     if (evalSettings.pureEval && !flakeRef.input.isLocked())
-        throw Error("cannot call 'getFlake' on unlocked flake reference '%s', at %s (use --impure to override)", flakeRefS, state.ctx.positions[pos]);
+        throw Error("cannot call 'getFlake' on unlocked flake reference '%s' (use --impure to override)", flakeRefS);
 
     callFlake(state,
         lockFlake(state, flakeRef,
@@ -830,11 +830,10 @@ void prim_getFlake(EvalState & state, const PosIdx pos, Value * * args, Value & 
 
 void prim_parseFlakeRef(
     EvalState & state,
-    const PosIdx pos,
     Value * * args,
     Value & v)
 {
-    std::string flakeRefS(state.forceStringNoCtx(*args[0], pos,
+    std::string flakeRefS(state.forceStringNoCtx(*args[0], noPos,
         "while evaluating the argument passed to builtins.parseFlakeRef"));
     auto attrs = parseFlakeRef(flakeRefS, {}, true).toAttrs();
     auto binds = state.ctx.buildBindings(attrs.size());
@@ -852,7 +851,6 @@ void prim_parseFlakeRef(
 
 void prim_flakeRefToString(
     EvalState & state,
-    const PosIdx pos,
     Value * * args,
     Value & v)
 {
@@ -865,7 +863,7 @@ void prim_flakeRefToString(
             auto intValue = attr.value->integer.value;
 
             if (intValue < 0) {
-                state.ctx.errors.make<EvalError>("negative value given for flake ref attr %1%: %2%", state.ctx.symbols[attr.name], intValue).atPos(pos).debugThrow();
+                state.ctx.errors.make<EvalError>("negative value given for flake ref attr %1%: %2%", state.ctx.symbols[attr.name], intValue).debugThrow();
             }
             uint64_t asUnsigned = intValue;
 
