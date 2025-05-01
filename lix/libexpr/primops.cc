@@ -120,7 +120,7 @@ StringMap EvalState::realiseContext(const NixStringContext & context)
     return res;
 }
 
-static auto realisePath(EvalState & state, const PosIdx pos, Value & v, auto checkFn)
+static auto realisePath(EvalState & state, Value & v, auto checkFn)
 {
     NixStringContext context;
 
@@ -133,14 +133,14 @@ static auto realisePath(EvalState & state, const PosIdx pos, Value & v, auto che
             state.ctx.paths.toRealPath(rewriteStrings(path.canonical().abs(), rewrites), context)
         )));
     } catch (Error & e) {
-        e.addTrace(state.ctx.positions[pos], "while realising the context of path '%s'", path);
+        e.addTrace(nullptr, "while realising the context of path '%s'", path);
         throw;
     }
 }
 
-static CheckedSourcePath realisePath(EvalState & state, const PosIdx pos, Value & v)
+static CheckedSourcePath realisePath(EvalState & state, Value & v)
 {
-    return realisePath(state, pos, v, [&](auto p) { return state.ctx.paths.checkSourcePath(p); });
+    return realisePath(state, v, [&](auto p) { return state.ctx.paths.checkSourcePath(p); });
 }
 
 /**
@@ -174,9 +174,9 @@ static void mkOutputString(
 
 /* Load and evaluate an expression from path specified by the
    argument. */
-static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * vScope, Value & v)
+static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
 {
-    auto path = realisePath(state, pos, vPath);
+    auto path = realisePath(state, vPath);
     auto path2 = path.canonical().abs();
 
     // FIXME
@@ -216,11 +216,11 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
 
         state.forceFunction(
             **state.ctx.caches.vImportedDrvToDerivation,
-            pos,
+            noPos,
             "while evaluating imported-drv-to-derivation.nix.gen.hh"
         );
         v.mkApp(*state.ctx.caches.vImportedDrvToDerivation, w);
-        state.forceAttrs(v, pos, "while calling imported-drv-to-derivation.nix.gen.hh");
+        state.forceAttrs(v, noPos, "while calling imported-drv-to-derivation.nix.gen.hh");
     }
 
     else if (path2 == corepkgsPrefix + "fetchurl.nix") {
@@ -233,7 +233,7 @@ static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * v
         if (!vScope)
             state.evalFile(path, v);
         else {
-            state.forceAttrs(*vScope, pos, "while evaluating the first argument passed to builtins.scopedImport");
+            state.forceAttrs(*vScope, noPos, "while evaluating the first argument passed to builtins.scopedImport");
 
             Env * env = &state.ctx.mem.allocEnv(vScope->attrs->size());
             env->up = &state.ctx.builtins.env;
@@ -264,13 +264,13 @@ static RegisterPrimOp primop_scopedImport(PrimOp {
     .arity = 2,
     .fun = [](EvalState & state, Value * * args, Value & v)
     {
-        import(state, noPos, *args[1], args[0], v);
+        import(state, *args[1], args[0], v);
     }
 });
 
 static void prim_import(EvalState & state, Value * * args, Value & v)
 {
-    import(state, noPos, *args[0], nullptr, v);
+    import(state, *args[0], nullptr, v);
 }
 
 /* Want reasonable symbol names, so extern C */
@@ -280,7 +280,7 @@ extern "C" typedef void (*ValueInitializer)(EvalState & state, Value & v);
 /* Load a ValueInitializer from a DSO and return whatever it initializes */
 void prim_importNative(EvalState & state, Value * * args, Value & v)
 {
-    auto path = realisePath(state, noPos, *args[0]);
+    auto path = realisePath(state, *args[0]);
 
     std::string sym(state.forceStringNoCtx(*args[1], noPos, "while evaluating the second argument passed to builtins.importNative"));
 
@@ -435,10 +435,9 @@ template<typename Callable>
 struct CompareValues : NeverAsync
 {
     EvalState & state;
-    const PosIdx pos;
     const std::string_view errorCtx;
 
-    CompareValues(EvalState & state, const PosIdx pos, const std::string_view && errorCtx) : state(state), pos(pos), errorCtx(errorCtx) { };
+    CompareValues(EvalState & state, const std::string_view && errorCtx) : state(state), errorCtx(errorCtx) { };
 
     bool operator () (Value * v1, Value * v2) const
     {
@@ -473,7 +472,7 @@ struct CompareValues : NeverAsync
                             return false;
                         } else if (i == v1->listSize()) {
                             return true;
-                        } else if (!state.eqValues(*v1->listElems()[i], *v2->listElems()[i], pos, errorCtx)) {
+                        } else if (!state.eqValues(*v1->listElems()[i], *v2->listElems()[i], noPos, errorCtx)) {
                             return (*this)(v1->listElems()[i], v2->listElems()[i], "while comparing two list elements");
                         }
                     }
@@ -537,7 +536,7 @@ static void prim_genericClosure(EvalState & state, Value * * args, Value & v)
     UnsafeValueList res;
     // `doneKeys' doesn't need to be a GC root, because its values are
     // reachable from res.
-    auto cmp = CompareValues(state, noPos, "while comparing the `key` attributes of two genericClosure elements");
+    auto cmp = CompareValues(state, "while comparing the `key` attributes of two genericClosure elements");
     std::set<Value *, decltype(cmp)> doneKeys(cmp);
     while (!workSet.empty()) {
         Value * e = *(workSet.begin());
@@ -1200,7 +1199,7 @@ static void prim_pathExists(EvalState & state, Value * * args, Value & v)
        can’t just catch the exception here because we still want to
        throw if something in the evaluation of `arg` tries to
        access an unauthorized path). */
-    auto path = realisePath(state, noPos, arg, std::identity{});
+    auto path = realisePath(state, arg, std::identity{});
 
     /* SourcePath doesn't know about trailing slash. */
     auto mustBeDir = arg.type() == nString
@@ -1258,7 +1257,7 @@ static void prim_dirOf(EvalState & state, Value * * args, Value & v)
 /* Return the contents of a file as a string. */
 static void prim_readFile(EvalState & state, Value * * args, Value & v)
 {
-    auto path = realisePath(state, noPos, *args[0]);
+    auto path = realisePath(state, *args[0]);
     auto s = path.readFile();
     if (s.find((char) 0) != std::string::npos)
         state.ctx.errors.make<EvalError>(
@@ -1344,7 +1343,7 @@ static void prim_hashFile(EvalState & state, Value * * args, Value & v)
     if (!ht)
         state.ctx.errors.make<EvalError>("unknown hash type '%1%'", type).debugThrow();
 
-    auto path = realisePath(state, noPos, *args[1]);
+    auto path = realisePath(state, *args[1]);
 
     v.mkString(hashString(*ht, path.readFile()).to_string(Base::Base16, false));
 }
@@ -1360,7 +1359,7 @@ static std::string_view fileTypeToString(InputAccessor::Type type)
 
 static void prim_readFileType(EvalState & state, Value * * args, Value & v)
 {
-    auto path = realisePath(state, noPos, *args[0]);
+    auto path = realisePath(state, *args[0]);
     /* Retrieve the directory entry type and stringize it. */
     v.mkString(fileTypeToString(path.lstat().type));
 }
@@ -1368,7 +1367,7 @@ static void prim_readFileType(EvalState & state, Value * * args, Value & v)
 /* Read a directory (without . or ..) */
 static void prim_readDir(EvalState & state, Value * * args, Value & v)
 {
-    auto path = realisePath(state, noPos, *args[0]);
+    auto path = realisePath(state, *args[0]);
 
     // Retrieve directory entries for all nodes in a directory.
     // This is similar to `getFileType` but is optimized to reduce system calls
@@ -1493,7 +1492,6 @@ static void prim_toFile(EvalState & state, Value * * args, Value & v)
 
 static void addPath(
     EvalState & state,
-    const PosIdx pos,
     std::string_view name,
     Path path,
     Value * filterFun,
@@ -1548,9 +1546,9 @@ static void addPath(
 
             Value * args []{&arg1, &arg2};
             Value res;
-            state.callFunction(*filterFun, 2, args, res, pos);
+            state.callFunction(*filterFun, 2, args, res, noPos);
 
-            return state.forceBool(res, pos, "while evaluating the return value of the path filter function");
+            return state.forceBool(res, noPos, "while evaluating the return value of the path filter function");
         }) : defaultPathFilter;
 
         std::optional<StorePath> expectedStorePath;
@@ -1577,12 +1575,12 @@ static void addPath(
                 state.ctx.errors.make<EvalError>(
                     "store path mismatch in (possibly filtered) path added from '%s'",
                     path
-                ).atPos(pos).debugThrow();
+                ).debugThrow();
             state.ctx.paths.allowAndSetStorePathString(dstPath, v);
         } else
             state.ctx.paths.allowAndSetStorePathString(*expectedStorePath, v);
     } catch (Error & e) {
-        e.addTrace(state.ctx.positions[pos], "while adding path '%s'", path);
+        e.addTrace(nullptr, "while adding path '%s'", path);
         throw;
     }
 }
@@ -1594,7 +1592,7 @@ static void prim_filterSource(EvalState & state, Value * * args, Value & v)
     auto path = state.coerceToPath(noPos, *args[1], context,
         "while evaluating the second argument (the path to filter) passed to builtins.filterSource");
     state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.filterSource");
-    addPath(state, noPos, path.baseName(), path.canonical().abs(), args[0], FileIngestionMethod::Recursive, std::nullopt, v, context);
+    addPath(state, path.baseName(), path.canonical().abs(), args[0], FileIngestionMethod::Recursive, std::nullopt, v, context);
 }
 
 static void prim_path(EvalState & state, Value * * args, Value & v)
@@ -1633,7 +1631,7 @@ static void prim_path(EvalState & state, Value * * args, Value & v)
     if (name.empty())
         name = path->baseName();
 
-    addPath(state, noPos, name, path->canonical().abs(), filterFun, method, expectedHash, v, context);
+    addPath(state, name, path->canonical().abs(), filterFun, method, expectedHash, v, context);
 }
 
 
@@ -2022,15 +2020,15 @@ static void prim_isList(EvalState & state, Value * * args, Value & v)
     v.mkBool(args[0]->type() == nList);
 }
 
-static void elemAt(EvalState & state, const PosIdx pos, Value & list, int n, Value & v)
+static void elemAt(EvalState & state, Value & list, int n, Value & v)
 {
-    state.forceList(list, pos, "while evaluating the first argument passed to builtins.elemAt");
+    state.forceList(list, noPos, "while evaluating the first argument passed to builtins.elemAt");
     if (n < 0 || (unsigned int) n >= list.listSize())
         state.ctx.errors.make<EvalError>(
             "list index %1% is out of bounds",
             n
-        ).atPos(pos).debugThrow();
-    state.forceValue(*list.listElems()[n], pos);
+        ).debugThrow();
+    state.forceValue(*list.listElems()[n], noPos);
     v = *list.listElems()[n];
 }
 
@@ -2038,13 +2036,13 @@ static void elemAt(EvalState & state, const PosIdx pos, Value & list, int n, Val
 static void prim_elemAt(EvalState & state, Value * * args, Value & v)
 {
     NixInt::Inner elem = state.forceInt(*args[1], noPos, "while evaluating the second argument passed to builtins.elemAt").value;
-    elemAt(state, noPos, *args[0], elem, v);
+    elemAt(state, *args[0], elem, v);
 }
 
 /* Return the first element of a list. */
 static void prim_head(EvalState & state, Value * * args, Value & v)
 {
-    elemAt(state, noPos, *args[0], 0, v);
+    elemAt(state, *args[0], 0, v);
 }
 
 /* Return a list consisting of everything but the first element of
@@ -2163,10 +2161,10 @@ static void prim_foldlStrict(EvalState & state, Value * * args, Value & v)
     }
 }
 
-static void anyOrAll(bool any, EvalState & state, const PosIdx pos, Value * * args, Value & v)
+static void anyOrAll(bool any, EvalState & state, Value * * args, Value & v)
 {
-    state.forceFunction(*args[0], pos, std::string("while evaluating the first argument passed to builtins.") + (any ? "any" : "all"));
-    state.forceList(*args[1], pos, std::string("while evaluating the second argument passed to builtins.") + (any ? "any" : "all"));
+    state.forceFunction(*args[0], noPos, std::string("while evaluating the first argument passed to builtins.") + (any ? "any" : "all"));
+    state.forceList(*args[1], noPos, std::string("while evaluating the second argument passed to builtins.") + (any ? "any" : "all"));
 
     std::string_view errorCtx = any
         ? "while evaluating the return value of the function passed to builtins.any"
@@ -2174,8 +2172,8 @@ static void anyOrAll(bool any, EvalState & state, const PosIdx pos, Value * * ar
 
     Value vTmp;
     for (auto elem : args[1]->listItems()) {
-        state.callFunction(*args[0], *elem, vTmp, pos);
-        bool res = state.forceBool(vTmp, pos, errorCtx);
+        state.callFunction(*args[0], *elem, vTmp, noPos);
+        bool res = state.forceBool(vTmp, noPos, errorCtx);
         if (res == any) {
             v.mkBool(any);
             return;
@@ -2188,12 +2186,12 @@ static void anyOrAll(bool any, EvalState & state, const PosIdx pos, Value * * ar
 
 static void prim_any(EvalState & state, Value * * args, Value & v)
 {
-    anyOrAll(true, state, noPos, args, v);
+    anyOrAll(true, state, args, v);
 }
 
 static void prim_all(EvalState & state, Value * * args, Value & v)
 {
-    anyOrAll(false, state, noPos, args, v);
+    anyOrAll(false, state, args, v);
 }
 
 static void prim_genList(EvalState & state, Value * * args, Value & v)
@@ -2246,7 +2244,7 @@ static void prim_sort(EvalState & state, Value * * args, Value & v)
         if (args[0]->isPrimOp()) {
             auto ptr = args[0]->primOp->fun.target<decltype(&prim_lessThan)>();
             if (ptr && *ptr == prim_lessThan)
-                return CompareValues(state, noPos, "while evaluating the ordering function passed to builtins.sort")(a, b);
+                return CompareValues(state, "while evaluating the ordering function passed to builtins.sort")(a, b);
         }
 
         Value * vs[] = {a, b};
@@ -2472,8 +2470,7 @@ static void prim_lessThan(EvalState & state, Value * * args, Value & v)
 {
     state.forceValue(*args[0], noPos);
     state.forceValue(*args[1], noPos);
-    // pos is exact here, no need for a message.
-    CompareValues comp(state, noPos, "");
+    CompareValues comp(state, "");
     v.mkBool(comp(args[0], args[1]));
 }
 
