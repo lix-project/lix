@@ -256,13 +256,13 @@ To build with one of those environments, you can use
 $ nix build .#nix-ccacheStdenv
 ```
 
-for flake-enabled Nix, or
+for <a id="nix-with-flakes">flake-enabled Nix</a>, or
 
 ```console
 $ nix-build --attr nix-ccacheStdenv
 ```
 
-for classic Nix.
+for <a id="classic-nix">classic Nix</a>.
 
 You can use any of the other supported environments in place of `nix-ccacheStdenv`.
 

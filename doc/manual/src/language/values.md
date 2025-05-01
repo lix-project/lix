@@ -164,7 +164,7 @@ Note that lists are only lazy in values, and they are strict in length.
 
 An attribute set is a collection of name-value-pairs (called *attributes*) enclosed in curly brackets (`{ }`).
 
-An attribute name can be an identifier or a [string](#string).
+An attribute name can be an identifier or a [string](#type-string).
 An identifier must start with a letter (`a-z`, `A-Z`) or underscore (`_`), and can otherwise contain letters (`a-z`, `A-Z`), numbers (`0-9`), underscores (`_`), apostrophes (`'`), or dashes (`-`).
 
 > *name* = *identifier* | *string* \
