@@ -101,7 +101,7 @@
 
   See [File System Object](@docroot@/architecture/file-system-object.md) for details.
 
-  [file system object]: #gloss-file-system-object
+  [file system object]: #gloss-store-path
 
 - [store object]{#gloss-store-object}
 

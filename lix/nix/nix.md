@@ -209,7 +209,7 @@ For example, you could build from a specific version of Nixpkgs with something l
 $ nix build -f "https://github.com/NixOS/nixpkgs/archive/refs/heads/release-24.11.tar.gz" firefox
 ```
 
-If a *fileish* starts with `flake:`, the rest of the argument is interpreted as a [flakeref](./nix3-flake.md#flake-reference) (see `nix flake --help` or `man nix3-flake`), which requires the "flakes" experimental feature to be enabled.
+If a *fileish* starts with `flake:`, the rest of the argument is interpreted as a [flakeref](./nix3-flake.md#flake-references) (see `nix flake --help` or `man nix3-flake`), which requires the "flakes" experimental feature to be enabled.
 This is is *not quite* the same as specifying a [flake output attrpath](#flake-output-attribute).
 It does *not* access the flake directly and does not even consider the existence of flake.nix, but instead fetches it as if it is not a flake at all and `import`s the unpacked directory.
 In other words, it assumes that the flake has a `default.nix` file, and then interprets the attribute path relative to what `default.nix` evaluates to.

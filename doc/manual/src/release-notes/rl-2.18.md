@@ -13,7 +13,7 @@
 
 - The `discard-references` feature has been stabilized.
   This means that the
-  [unsafeDiscardReferences](@docroot@/contributing/experimental-features.md#xp-feature-discard-references)
+  `unsafeDiscardReferences`
   attribute is no longer guarded by an experimental flag and can be used
   freely.
 
