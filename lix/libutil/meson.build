@@ -338,9 +338,11 @@ liblixutil = declare_dependency(
     libutil_settings_headers,
   ],
   dependencies: [
+    boost,
     # Everything has to link to kj if it uses libutil internally (ensured by
     # lix-base pkg-config externally)
     kj,
+    libarchive,
   ],
   link_with : libutil
 )
@@ -355,9 +357,11 @@ if is_static
       libutil_settings_headers,
     ],
     dependencies: [
+      boost,
       # Everything has to link to kj if it uses libutil internally (ensured by
       # lix-base pkg-config externally)
       kj,
+      libarchive,
     ],
     link_whole : libutil,
   )
