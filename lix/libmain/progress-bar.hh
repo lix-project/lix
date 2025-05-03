@@ -2,6 +2,7 @@
 ///@file
 
 #include <chrono>
+#include <thread>
 
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/sync.hh"

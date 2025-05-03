@@ -1,5 +1,7 @@
 #include "lix/libutil/hilite.hh"
 
+#include <algorithm>
+
 namespace nix {
 
 std::string hiliteMatches(
