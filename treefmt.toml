@@ -2,3 +2,15 @@
 command = "nixfmt"
 includes = ["*.nix"]
 excludes = ["tests/**"]
+
+[formatter.ruff-format]
+command = "ruff"
+options = ["format"]
+includes = ["tests/functional2/**/*.py"]
+priority = 0
+
+[formatter.ruff]
+command = "ruff"
+options = ["check"]
+includes = ["tests/functional2/**/*.py"]
+priority = 1
