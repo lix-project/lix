@@ -1,6 +1,5 @@
 import string
 from string import Template
-from typing import Dict, Type
 
 import pytest
 
@@ -9,7 +8,7 @@ class BalancedTemplater(Template):
     delimiter = "@"
     pattern = r"@((?P<escaped>@)|(?P<named>\w+?)@|\{(?P<braced>\w+?)\}@|(?P<invalid>.*?))"
 
-    def substitute(self, mapping: Dict[str, object] | None = None, /, **kwargs) -> str:
+    def substitute(self, mapping: dict[str, object] | None = None, /, **kwargs) -> str:
         if mapping is None:
             mapping = {}
         tmpl_idents = set(self.get_identifiers())
@@ -25,5 +24,5 @@ class BalancedTemplater(Template):
 
 
 @pytest.fixture
-def balanced_templater() -> Type[string.Template]:
+def balanced_templater() -> type[string.Template]:
     return BalancedTemplater

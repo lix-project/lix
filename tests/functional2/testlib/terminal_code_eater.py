@@ -18,34 +18,39 @@ class TerminalCodeEater:
     state: State = State.ExpectESC
 
     def feed(self, data: bytes) -> bytes:
-        is_param_char = lambda c: c >= 0x30 and c <= 0x3f
-        is_intermediate_char = lambda c: c >= 0x20 and c <= 0x2f
-        is_final_char = lambda c: c >= 0x40 and c <= 0x7e
+        def is_param_char(char: int) -> bool:
+            return 48 <= char <= 63
+
+        def is_intermediate_char(char: int) -> bool:
+            return 32 <= char <= 47
+
+        def is_final_char(char: int) -> bool:
+            return 64 <= char <= 126
 
         ret = bytearray()
         for c in data:
             match self.state:
                 case State.ExpectESC:
                     match c:
-                        case 0x1b:  # \e
+                        case 0x1B:  # \e
                             self._transition(State.ExpectESCSeq)
                             continue
-                        case 0xd:  # \r
+                        case 0xD:  # \r
                             continue
                     ret.append(c)
                 case State.ExpectESCSeq:
                     match c:
-                        case 0x5b:
-                            # CSI ('[')
+                        case 0x5B:
+                            # corresponds to CSI ('[')
                             self._transition(State.InCSIParams)
                             continue
-                        case 0x5d:
-                            # OSC (']')
+                        case 0x5D:
+                            # corresponds to OSC (']')
                             self._transition(State.InOSCParams)
                             continue
                         # FIXME(jade): whatever this was, we do not know how to
-                        # delimit it, so we just eat the next character and
-                        # keep going. Should we actually eat it?
+                        #  delimit it, so we just eat the next character and
+                        #  keep going. Should we actually eat it?
                         case _:
                             self._transition(State.ExpectESC)
                             continue
@@ -56,45 +61,44 @@ class TerminalCodeEater:
                     if is_final_char(c):
                         self._transition(State.ExpectESC)
                         continue
-                    elif is_intermediate_char(c):
+                    if is_intermediate_char(c):
                         self._transition(State.InCSIIntermediates)
                         continue
-                    elif is_param_char(c):
+                    if is_param_char(c):
                         continue
-                    else:
-                        raise ValueError(f'Corrupt escape sequence, at {c:x}')
+                    msg = f"Corrupt escape sequence, at {c:x}"
+                    raise ValueError(msg)
                 case State.InCSIIntermediates:
                     if is_final_char(c):
                         self._transition(State.ExpectESC)
                         continue
-                    elif is_intermediate_char(c):
+                    if is_intermediate_char(c):
                         continue
-                    else:
-                        raise ValueError(
-                            f'Corrupt escape sequence in intermediates, at {c:x}'
-                        )
+                    msg = f"Corrupt escape sequence in intermediates, at {c:x}"
+                    raise ValueError(msg)
                 # An OSC is OSC [\x20-\x7e]* ST per ECMA-48
                 # where OSC is \x1b ] and ST is \x1b \.
                 case State.InOSCParams:
                     # first part of ST
-                    if c == 0x1b:
+                    if c == 0x1B:
                         self._transition(State.InOSCST)
                         continue
                     # OSC sequences can be ended by BEL on old xterms
-                    elif c == 0x07:
+                    if c == 0x07:
                         self._transition(State.ExpectESC)
                         continue
-                    elif c < 0x20 or c == 0x7f:
-                        raise ValueError(f'Corrupt OSC sequence, at {c:x}')
+                    if c < 0x20 or c == 0x7F:
+                        msg = f"Corrupt OSC sequence, at {c:x}"
+                        raise ValueError(msg)
                     # either way, eat it
                     continue
                 case State.InOSCST:
                     # ST ends by \
-                    if c == 0x5c:  # \
+                    if c == 0x5C:  # \
                         self._transition(State.ExpectESC)
-                    elif c < 0x20 or c > 0x7e:
-                        raise ValueError(
-                            f'Corrupt OSC sequence in ST, at {c:x}')
+                    elif c < 0x20 or c > 0x7E:
+                        msg = f"Corrupt OSC sequence in ST, at {c:x}"
+                        raise ValueError(msg)
                     else:
                         self._transition(State.InOSCParams)
                     continue

@@ -13,8 +13,7 @@ from typing import Protocol
 class Writable(Protocol):
     """Realistically could just be IOBase but this is more constrained"""
 
-    def write(self, data: bytes, /) -> int:
-        ...
+    def write(self, data: bytes, /) -> int: ...
 
 
 @dataclasses.dataclass
@@ -25,14 +24,14 @@ class NarListener:
         self.data.write(data)
 
     def int_(self, v: int):
-        self.literal(struct.pack('<Q', v))
+        self.literal(struct.pack("<Q", v))
 
     def add_pad(self, data_len: int):
         npad = 8 - data_len % 8
         if npad == 8:
             npad = 0
-        # FIXME: implement nonzero padding
-        self.literal(b'\0' * npad)
+        # FIXME(Jade): implement nonzero padding
+        self.literal(b"\0" * npad)
 
     def str_(self, data: bytes):
         self.int_(len(data))
@@ -44,7 +43,7 @@ class NarItem(metaclass=ABCMeta):
     type_: bytes
 
     def serialize(self, out: NarListener):
-        out.str_(b'type')
+        out.str_(b"type")
         out.str_(self.type_)
         self.serialize_type(out)
 
@@ -57,13 +56,13 @@ class NarItem(metaclass=ABCMeta):
 class Regular(NarItem):
     executable: bool
     contents: bytes
-    type_ = b'regular'
+    type_ = b"regular"
 
     def serialize_type(self, out: NarListener):
         if self.executable:
-            out.str_(b'executable')
-            out.str_(b'')
-        out.str_(b'contents')
+            out.str_(b"executable")
+            out.str_(b"")
+        out.str_(b"contents")
         out.str_(self.contents)
 
 
@@ -71,23 +70,23 @@ class Regular(NarItem):
 class DirectoryUnordered(NarItem):
     entries: list[tuple[bytes, NarItem]]
     """Entries in the directory, not required to be in order because this nar is evil"""
-    type_ = b'directory'
+    type_ = b"directory"
 
     @staticmethod
-    def entry(out: NarListener, name: bytes, item: 'NarItem'):
+    def entry(out: NarListener, name: bytes, item: "NarItem"):
         # lol this format
-        out.str_(b'entry')
-        out.str_(b'(')
-        out.str_(b'name')
+        out.str_(b"entry")
+        out.str_(b"(")
+        out.str_(b"name")
         out.str_(name)
-        out.str_(b'node')
-        out.str_(b'(')
+        out.str_(b"node")
+        out.str_(b"(")
         item.serialize(out)
-        out.str_(b')')
-        out.str_(b')')
+        out.str_(b")")
+        out.str_(b")")
 
     def serialize_type(self, out: NarListener):
-        for (name, entry) in self.entries:
+        for name, entry in self.entries:
             self.entry(out, name, entry)
 
 
@@ -103,25 +102,25 @@ class Directory(NarItem):
 @dataclasses.dataclass
 class Symlink(NarItem):
     target: bytes
-    type_ = b'symlink'
+    type_ = b"symlink"
 
     def serialize_type(self, out: NarListener):
-        out.str_(b'target')
+        out.str_(b"target")
         out.str_(self.target)
 
 
 def serialize_nar(toplevel: NarItem, out: NarListener):
-    out.str_(b'nix-archive-1')
-    out.str_(b'(')
+    out.str_(b"nix-archive-1")
+    out.str_(b"(")
     toplevel.serialize(out)
-    out.str_(b')')
+    out.str_(b")")
 
 
 def write_with_export_header(nar: NarItem, name: bytes, out: NarListener):
     # n.b. this is *not* actually a nar serialization, it just happens that nix
     # used exactly the same format for ints and strings in its protocol (and
     # nix-store --export) as it did in NARs lol
-    EXPORT_MAGIC = 0x4558494e
+    export_magic = 0x4558494E
 
     # Store::exportPaths
     # For each path, put 1 then exportPath
@@ -129,12 +128,12 @@ def write_with_export_header(nar: NarItem, name: bytes, out: NarListener):
 
     # Store::exportPath
     serialize_nar(nar, out)
-    out.int_(EXPORT_MAGIC)
-    out.str_(b'/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-' + name)
+    out.int_(export_magic)
+    out.str_(b"/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-" + name)
     # no references
     out.int_(0)
     # no deriver
-    out.str_(b'')
+    out.str_(b"")
     # end of path
     out.int_(0)
 

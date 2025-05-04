@@ -5,7 +5,8 @@ import os
 import subprocess
 from functools import partialmethod
 from pathlib import Path
-from typing import Any, AnyStr, Callable, Dict
+from typing import Any, AnyStr
+from collections.abc import Callable
 
 import pytest
 
@@ -164,7 +165,7 @@ class NixCommand(Command):
 class Nix:
     test_root: Path
 
-    def hermetic_env(self) -> Dict[str, Path]:
+    def hermetic_env(self) -> dict[str, Path]:
         # mirroring vars-and-functions.sh
         home = self.test_root / "test-home"
         home.mkdir(parents=True, exist_ok=True)
@@ -178,7 +179,7 @@ class Nix:
             "HOME": home,
         }
 
-    def make_env(self) -> Dict[AnyStr, AnyStr]:
+    def make_env(self) -> dict[AnyStr, AnyStr]:
         # We conservatively assume that people might want to successfully get
         # some env through to the subprocess, so we override whatever is in the
         # global env.
