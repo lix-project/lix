@@ -10,6 +10,7 @@
 #include "lix/libutil/strings.hh"
 
 #include "lix/libutil/config-impl.hh"
+#include <mutex>
 
 namespace nix {
 
@@ -343,11 +344,31 @@ template<> std::string BaseSetting<StringSet>::to_string() const
 
 template<> ExperimentalFeatures BaseSetting<ExperimentalFeatures>::parse(const std::string & str, const ApplyConfigOptions & options) const
 {
+    auto warnDeprecated294 = [](std::once_flag & flag, std::string_view thing) {
+        std::call_once(flag, [&] {
+            warn(
+                "The %s experimental feature is deprecated and will be removed in Lix 2.94. "
+                "See https://git.lix.systems/lix-project/lix/issues/815 for more details.",
+                thing
+            );
+        });
+    };
+
     ExperimentalFeatures res{};
     for (auto & s : tokenizeString<StringSet>(str)) {
-        if (auto thisXpFeature = parseExperimentalFeature(s); thisXpFeature)
+        if (auto thisXpFeature = parseExperimentalFeature(s); thisXpFeature) {
+            if (*thisXpFeature == Xp::CaDerivations) {
+                static std::once_flag warned;
+                warnDeprecated294(warned, s);
+            } else if (*thisXpFeature == Xp::DynamicDerivations) {
+                static std::once_flag warned;
+                warnDeprecated294(warned, s);
+            } else if (*thisXpFeature == Xp::ImpureDerivations) {
+                static std::once_flag warned;
+                warnDeprecated294(warned, s);
+            }
             res = res | thisXpFeature.value();
-        else
+        } else
             warn("unknown experimental feature '%s'", s);
     }
     return res;
