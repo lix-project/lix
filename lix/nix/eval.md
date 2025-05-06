@@ -63,10 +63,13 @@ result on standard output.
 
 * With `--json`, the evaluation result is printed in JSON format. Note
   that this fails if the result contains values that are not
-  representable as JSON, such as functions.
+  representable as JSON, such as functions. 
+  Note also that if the evaluation result is an attrSet with an "outPath" attribute,
+  only the outPath value (typically a string) will be returned for historical reason.
 
-* With `--raw`, the evaluation result must be a string, which is
-  printed verbatim, without any quoting.
+* With `--raw`, the evaluation result must be a string (x), which is
+  printed verbatim, without any quoting. (x) or an attrset with an "outPath" attribute,
+  in which case that attribute's value is printed verbatim and must be a string.
 
 * With `--write-to` *path*, the evaluation result must be a string or
   a nested attribute set whose leaf values are strings. These strings
