@@ -153,7 +153,12 @@ struct NixRepl
     void loadFlake(const std::string & flakeRef);
     void loadFiles();
     void reloadFiles();
+
+    template<typename T, typename NameFn, typename ValueFn>
+    void addToScope(T && things, NameFn nameFn, ValueFn valueFn);
+
     void addAttrsToScope(Value & attrs);
+    void addValMapToScope(const ValMap & attrs);
     void addVarToScope(const Symbol name, Value & v);
     Expr & parseString(std::string s);
     std::variant<std::unique_ptr<Expr>, ExprReplBindings> parseReplString(std::string s);
@@ -491,8 +496,7 @@ void NixRepl::loadDebugTraceEnv(const DebugTrace & dt)
         auto vm = mapStaticEnvBindings(evaluator.symbols, *se.get(), dt.env);
 
         // add staticenv vars.
-        for (auto & [name, value] : *(vm.get()))
-            addVarToScope(evaluator.symbols.create(name), *value);
+        addValMapToScope(*vm);
     }
 }
 
@@ -1048,22 +1052,42 @@ Value * NixRepl::replInitInfo()
 }
 
 
+template<typename T, typename NameFn, typename ValueFn>
+void NixRepl::addToScope(T && things, NameFn nameFn, ValueFn valueFn)
+{
+    size_t added = 0;
+    for (auto && thing : things) {
+        if (displ + 1 >= envSize)
+            throw Error("environment full; cannot add more variables");
+
+        const auto name = nameFn(thing);
+        staticEnv->vars.emplace_back(name, displ);
+        env->values[displ++] = valueFn(thing);
+        varNames.emplace(evaluator.symbols[name]);
+        added++;
+    }
+
+    staticEnv->sort();
+    staticEnv->deduplicate();
+    if (added > 0) {
+        notice("Added %1% variables.", added);
+    }
+}
+
 void NixRepl::addAttrsToScope(Value & attrs)
 {
     state.forceAttrs(attrs, noPos, "while evaluating an attribute set to be merged in the global scope");
-    if (displ + attrs.attrs->size() >= envSize)
-        throw Error("environment full; cannot add more variables");
-
-    for (auto & i : *attrs.attrs) {
-        staticEnv->vars.emplace_back(i.name, displ);
-        env->values[displ++] = i.value;
-        varNames.emplace(evaluator.symbols[i.name]);
-    }
-    staticEnv->sort();
-    staticEnv->deduplicate();
-    notice("Added %1% variables.", attrs.attrs->size());
+    addToScope(*attrs.attrs, [](Attr & a) { return a.name; }, [](Attr & a) { return a.value; });
 }
 
+void NixRepl::addValMapToScope(const ValMap & attrs)
+{
+    addToScope(
+        attrs,
+        [&](auto & val) { return evaluator.symbols.create(val.first); },
+        [&](auto & val) { return val.second; }
+    );
+}
 
 void NixRepl::addVarToScope(const Symbol name, Value & v)
 {
@@ -1134,9 +1158,7 @@ ReplExitStatus AbstractNixRepl::run(
 
     repl.autoArgs = autoArgs;
     repl.initEnv();
-    for (auto & [name, value] : extraEnv) {
-        repl.addVarToScope(repl.evaluator.symbols.create(name), *value);
-    }
+    repl.addValMapToScope(extraEnv);
     return repl.mainLoop();
 }
 
