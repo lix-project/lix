@@ -1,10 +1,19 @@
-import pytest
 import os
 import unicodedata
-from pathlib import Path
-from ..testlib.nar import *
-from ..testlib.fixtures import Nix
 from io import BytesIO
+from pathlib import Path
+
+import pytest
+
+from ..testlib.fixtures.nix import Nix
+from ..testlib.nar import (
+    DirectoryUnordered,
+    NarItem,
+    NarListener,
+    Regular,
+    Symlink,
+    write_with_export_header,
+)
 
 meow_orig = 'méow'
 meow_nfc_ = unicodedata.normalize('NFC', meow_orig)
