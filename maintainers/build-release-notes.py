@@ -115,13 +115,20 @@ def do_category(author_info: AuthorInfoDB, entries: list[Tuple[pathlib.Path, Any
             links += [format_cl(int(cl)) for cl in listify(entry.metadata.get('cls', []))]
             if links != []:
                 header += " " + " ".join(links)
+
             if header:
                 print(f"- {header}")
                 print()
+            else:
+                print("- ", end='')
+
             print(textwrap.indent(entry.content, '  '))
             if credits := listify(entry.metadata.get('credits', [])):
                 print()
                 print(textwrap.indent('Many thanks to {} for this.'.format(plural_list(list(author_info[c] for c in credits))), '  '))
+
+            # Blank line after each entry.
+            print()
         except Exception as e:
             e.add_note(f"in {p}")
             raise
@@ -151,8 +158,14 @@ def run_on_dir(author_info: AuthorInfoDB, d):
 
     for category in CATEGORIES:
         if entries[category]:
-            print('\n##', category)
+            print('##', category)
+            # Blank line after each heading.
+            print()
             do_category(author_info, entries[category])
+            # Blank line after each category.
+            # This turns into two blank lines when combined with the blank line
+            # after each entry.
+            print()
 
 def main():
     import argparse
