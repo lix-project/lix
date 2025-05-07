@@ -16,6 +16,8 @@ let
     name = "dependencies-input-2";
     buildCommand = ''
       mkdir $out
+      # Space-filler to test GC stats reporting
+      head -c 100k /dev/zero > $out/filler
       echo BAR > $out/bar
       echo ${input0} > $out/input0
     '';

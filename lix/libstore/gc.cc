@@ -813,10 +813,10 @@ try {
         }
     };
 
+    PathSet kept;
     /* Either delete all garbage paths, or just the specified
        paths (for gcDeleteSpecific and gcTryDeleteSpecific). */
     if (deleteSpecific) {
-        PathSet kept;
         for (auto & i : options.pathsToDelete) {
             TRY_AWAIT(deleteReferrersClosure(i));
             if (!dead.count(i)) {
@@ -830,25 +830,6 @@ try {
             for (auto &path: kept) {
                 printTalkative(path);
             }
-        }
-        if (options.action == GCOptions::gcDeleteSpecific && !kept.empty()) {
-            std::ostringstream pathSummary;
-            for (auto const [n, path]: enumerate(kept)) {
-                pathSummary << "\n  " << path;
-                const int summaryThreshold = 10;
-                if (n >= summaryThreshold) {
-                    pathSummary << "\nand " << kept.size() - summaryThreshold << " others.";
-                    break;
-                }
-            }
-            throw Error(
-                "Cannot delete some of the given paths because they are still alive. "
-                "Paths not deleted:"
-                "%1%"
-                "\nTo find out why, use nix-store --query --roots and nix-store --query --referrers."
-                ,
-                pathSummary.str()
-            );
         }
 
     } else if (options.maxFreed > 0) {
@@ -939,6 +920,25 @@ try {
 
         printInfo("note: currently hard linking saves %.2f MiB",
             ((unsharedSize - actualSize - overhead) / (1024.0 * 1024.0)));
+    }
+    if (options.action == GCOptions::gcDeleteSpecific && !kept.empty()) {
+        std::ostringstream pathSummary;
+        for (auto const [n, path]: enumerate(kept)) {
+            pathSummary << "\n  " << path;
+            const int summaryThreshold = 10;
+            if (n >= summaryThreshold) {
+                pathSummary << "\nand " << kept.size() - summaryThreshold << " others.";
+                break;
+            }
+        }
+        throw Error(
+            "Cannot delete some of the given paths because they are still alive. "
+            "Paths not deleted:"
+            "%1%"
+            "\nTo find out why, use nix-store --query --roots and nix-store --query --referrers."
+            ,
+            pathSummary.str()
+        );
     }
     co_return result::success();
 } catch (...) {
