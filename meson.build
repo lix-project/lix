@@ -46,7 +46,7 @@
 # in the build directory.
 
 project('lix', 'cpp', 'rust',
-  meson_version : '>=1.4.0',
+  meson_version : '>=1.5.0',
   version : run_command('bash', '-c', 'echo -n $(jq -r .version < ./version.json)$VERSION_SUFFIX', check : true).stdout().strip(),
   default_options : [
     'cpp_std=c++23',
@@ -605,33 +605,6 @@ if cxx.get_id() in ['clang', 'gcc']
     language : 'cpp',
   )
 endif
-
-# Until Meson 1.5¹, we can't just give Meson a Cargo.lock file and be done with it.
-# Meson will *detect* what dependencies are needed from Cargo files; it just won't
-# fetch them. The Meson 1.5 feature essentially internally translates Cargo.lock entries
-# to .wrap files, and that translation is incredibly straightforward, so let's just
-# use a simple Python script to generate the .wrap files ourselves while we wait for
-# Meson 1.5. Weirdly, it seems Meson will only detect dependencies from other
-# dependency() calls, so we have to specify lix-doc's two top-level dependencies,
-# rnix and rowan, manually, and then their dependencies will be recursively translated
-# into more dependency() calls.
-#
-# When Meson translates a Cargo dependency, the string passed to `dependency()` follows
-# a fixed format, which is important as the .wrap files' basenames must match the string
-# passed to `dependency()` exactly.
-# In Meson 1.4, this format is `$packageName-rs`. Meson 1.5 changes this to
-# `$packageName-$shortenedVersionString-rs`, because of course it does, but we'll cross
-# that bridge when we get there...
-#
-# [1]: https://github.com/mesonbuild/meson/commit/9b8378985dbdc0112d11893dd42b33b7bc8d1e62
-# FIXME: remove (along with its generated wrap files) when we get rid of meson 1.4
-run_command(
-  python,
-  meson.project_source_root() / 'meson/cargo-lock-to-wraps.py',
-  meson.project_source_root() / 'Cargo.lock',
-  meson.project_source_root() / 'subprojects',
-  check : true,
-)
 
 if is_darwin
   fs.copyfile(

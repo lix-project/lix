@@ -1,6 +1,0 @@
-[wrap-file]
-method = cargo
-directory = memoffset-0.9.1
-source_url = https://crates.io/api/v1/crates/memoffset/0.9.1/download
-source_filename = memoffset-0.9.1.tar.gz
-source_hash = 488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a

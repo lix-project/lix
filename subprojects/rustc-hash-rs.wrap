@@ -1,6 +1,0 @@
-[wrap-file]
-method = cargo
-directory = rustc-hash-1.1.0
-source_url = https://crates.io/api/v1/crates/rustc-hash/1.1.0/download
-source_filename = rustc-hash-1.1.0.tar.gz
-source_hash = 08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2

@@ -1,6 +1,0 @@
-[wrap-file]
-method = cargo
-directory = hashbrown-0.14.5
-source_url = https://crates.io/api/v1/crates/hashbrown/0.14.5/download
-source_filename = hashbrown-0.14.5.tar.gz
-source_hash = e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1

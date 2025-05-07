@@ -1,6 +1,0 @@
-[wrap-file]
-method = cargo
-directory = rnix-0.11.0
-source_url = https://crates.io/api/v1/crates/rnix/0.11.0/download
-source_filename = rnix-0.11.0.tar.gz
-source_hash = bb35cedbeb70e0ccabef2a31bcff0aebd114f19566086300b8f42c725fc2cb5f
