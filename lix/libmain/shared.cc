@@ -16,6 +16,7 @@
 #include <iostream>
 
 #include <cstdlib>
+#include <kj/async-io.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -24,6 +25,7 @@
 #include <features.h>
 #endif
 
+#include <kj/async-unix.h>
 #include <openssl/crypto.h>
 
 
@@ -128,6 +130,12 @@ static void sigHandler(int signo) { }
 
 void initNix()
 {
+    // kj needs a signal for internal use. no system lix habitually runs on causes
+    // kj to actually *use* this signal, but better safe than sorry—and since some
+    // OSes (*cough* macos) don't support realtime signals we must use SIGUSR2 for
+    // this, thus "consuming" both USR signals. at some point we will change this.
+    kj::UnixEventPort::setReservedSignal(SIGUSR2);
+
     registerCrashHandler();
 
     /* Turn on buffering for cerr. */
