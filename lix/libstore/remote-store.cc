@@ -147,6 +147,7 @@ void RemoteStore::setOptions(Connection & conn)
     overrides.erase(experimentalFeatureSettings.experimentalFeatures.name);
     overrides.erase(settings.pluginFiles.name);
     overrides.erase(settings.storeUri.name); // the daemon *is* the store
+    overrides.erase(settings.tarballTtl.name); // eval-time only, implictly set by flake cli
     conn.to << overrides.size();
     for (auto & i : overrides)
         conn.to << i.first << i.second.value;
