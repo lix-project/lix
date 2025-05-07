@@ -1,2 +1,10 @@
 [tool.pytest.ini_options]
 addopts = "-p no:xonsh"
+log_cli = true
+log_cli_level = "INFO"
+# how the logs are being printed, default is `"%(filename)s %(lineno)d %(levelname)s %(message)s"`
+# Example log:
+# 2025-05-09T14:06:23Z [    INFO] [test_someting] This is a test message
+# 2025-05-09T14:06:25Z [   ERROR] [test_smt_else] Some error related log
+log_cli_format = "%(asctime)s [%(levelname)8s] [%(name)s] %(message)s"
+log_cli_date_format = "%Y-%m-%dT%H:%M:%SZ"

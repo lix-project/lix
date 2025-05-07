@@ -1,10 +1,11 @@
+from logging import Logger
 from pathlib import Path
 from textwrap import dedent
 from functional2.testlib.fixtures.nix import Nix
 import re
 
 
-def test_purity_traversal(nix: Nix, tmp_path: Path):
+def test_purity_traversal(nix: Nix, tmp_path: Path, logger: Logger):
     error_re = re.compile(r"error: access to absolute path '.+' is forbidden in pure eval mode")
 
     flake_dir = tmp_path / "flake"
@@ -60,7 +61,7 @@ def test_purity_traversal(nix: Nix, tmp_path: Path):
         cmd = nix.nix(["eval", f".#bad{idx}"], flake=True)
         cmd.cwd = flake_dir
         res = cmd.run().expect(1)
-        print(res.stderr_plain)
+        logger.info(res.stderr_plain)
         assert error_re.search(res.stderr_plain)
     for idx in range(1, 6):
         cmd = nix.nix(["eval", f".#good{idx}"], flake=True)

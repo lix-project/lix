@@ -13,6 +13,9 @@ import pytest
 from functional2.testlib.terminal_code_eater import eat_terminal_codes
 
 
+logger = logging.getLogger(__name__)
+
+
 @dataclasses.dataclass
 class CommandResult:
     cmd: list[str]
@@ -25,8 +28,8 @@ class CommandResult:
 
     def ok(self) -> "CommandResult":
         if self.rc != 0:
-            print("stdout: %s", self.stderr_s)
-            print("stderr: %s", self.stderr_s)
+            logger.debug("stdout: %s", self.stderr_s)
+            logger.debug("stderr: %s", self.stderr_s)
             raise subprocess.CalledProcessError(
                 returncode=self.rc, cmd=self.cmd, stderr=self.stderr, output=self.stdout
             )
@@ -34,8 +37,8 @@ class CommandResult:
 
     def expect(self, rc: int) -> "CommandResult":
         if self.rc != rc:
-            print("stdout: %s", self.stderr_s)
-            print("stderr: %s", self.stderr_s)
+            logger.debug("stdout: %s", self.stderr_s)
+            logger.debug("stderr: %s", self.stderr_s)
             raise subprocess.CalledProcessError(
                 returncode=self.rc, cmd=self.cmd, stderr=self.stderr, output=self.stdout
             )

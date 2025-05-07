@@ -5,11 +5,15 @@ HTTP server fixture for tests which binds to an auto-assigned port on localhost.
 import asyncio
 import contextlib
 import dataclasses
+import logging
 import time
 import socket
 import threading
 from queue import Queue
 import aiohttp.web as web
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -115,7 +119,7 @@ def dev_main():
     app.add_routes([web.get("/", root)])
 
     with http_server(app) as httpd:
-        print(f"Listening on http://[::1]:{httpd.port}")
+        logging.info("Listening on http://[::1]:%d", httpd.port)
         time.sleep(3600)
 
 

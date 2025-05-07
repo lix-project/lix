@@ -1,6 +1,7 @@
 import os
 import unicodedata
 from io import BytesIO
+from logging import Logger
 from pathlib import Path
 
 import pytest
@@ -101,12 +102,12 @@ EVIL_NARS: list[tuple[str, NarItem]] = [
 
 
 @pytest.mark.parametrize(("name", "nar"), EVIL_NARS)
-def test_evil_nar(nix: Nix, name: str, nar: NarItem):
+def test_evil_nar(nix: Nix, name: str, nar: NarItem, logger: Logger):
     bio = BytesIO()
 
     listener = NarListener(bio)
     write_with_export_header(nar, name.encode(), listener)
-    print(nar)
+    logger.info(nar)
 
     if name.startswith("valid-"):
         expected_rc = 0
@@ -116,10 +117,10 @@ def test_evil_nar(nix: Nix, name: str, nar: NarItem):
         raise ValueError("bad name", name)
 
     res = nix.nix_store(["--import"]).with_stdin(bio.getvalue()).run().expect(expected_rc)
-    print(res)
+    logger.info(res)
 
 
-def test_unicode_evil_nar(nix: Nix, tmp_path: Path):
+def test_unicode_evil_nar(nix: Nix, tmp_path: Path, logger: Logger):
     """
     Depending on the filesystem in use, filenames that are equal modulo unicode
     normalization may hit the same file or not.
@@ -147,6 +148,7 @@ def test_unicode_evil_nar(nix: Nix, tmp_path: Path):
                 (meow_nfc, Symlink(b"meowmeow")),
             ]
         ),
+        logger,
     )
     test_evil_nar(
         nix,
@@ -158,4 +160,5 @@ def test_unicode_evil_nar(nix: Nix, tmp_path: Path):
                 (meow_nfc, Regular(False, b"eepy")),
             ]
         ),
+        logger,
     )
