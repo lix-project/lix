@@ -4,6 +4,13 @@ if [ -z "${storeCleared-}" ]; then
     clearStore
 fi
 
+# Test if invalid profiles symlinks are supported.
+# https://git.lix.systems/lix-project/lix/issues/801
+VOID=$(mktemp -d)
+rm -rf "$VOID"
+linkProfilesTo $VOID
+expectStderr 1 nix-env --delete-generations 0 | grepQuiet -E "error: cannot find current generation of profile '.*local/state/nix/profiles/profile', is it a valid symlink?"
+
 clearProfiles
 
 # Query installed: should be empty.
