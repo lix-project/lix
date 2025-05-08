@@ -8,6 +8,7 @@
 #include "lix/libstore/local-fs-store.hh"
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libutil/exit.hh"
+#include "lix/libstore/profiles.hh"
 #include "doctor.hh"
 
 namespace nix {
@@ -69,6 +70,10 @@ struct CmdDoctor : StoreCommand
         }
         success &= checkStoreProtocol(aio().blockOn(store->getProtocol()));
         checkTrustedUser(store);
+        {
+            Path profile = getEnv("NIX_PROFILE").value_or(getDefaultProfile());
+            checkValidCurrentProfileGeneration(profile);
+        }
 
         if (!success)
             throw Exit(2);
@@ -151,6 +156,31 @@ struct CmdDoctor : StoreCommand
         auto trustedMay = aio().blockOn(store->isTrustedClient());
         std::string_view trustedness = trustedMay ? (*trustedMay ? "trusted" : "not trusted") : "unknown trust";
         checkInfo(fmt("You are %s by store uri: %s", trustedness, store->getUri()));
+    }
+
+    void checkValidCurrentProfileGeneration(const Path & profile)
+    {
+        Generations generations;
+        std::optional<GenerationNumber> currentGeneration;
+        std::string errStr;
+
+        try {
+            std::tie(generations, currentGeneration) = findGenerations(profile);
+        } catch (SysError const & e) {
+            errStr = fmt(": %s", e.msg());
+        }
+
+        if (!currentGeneration) {
+            std::stringstream ss;
+            ss << "Error: current generation cannot be discovered for profile: '" << profile << "'";
+            ss << errStr << "\n";
+            checkFail(ss.str());
+        } else {
+            std::stringstream ss;
+            ss << "You have " << generations.size() << " generations for profile '" << profile << "'\n";
+            ss << "The current generation number is '" << *currentGeneration << "'\n";
+            checkPass(ss.str());
+        }
     }
 };
 
