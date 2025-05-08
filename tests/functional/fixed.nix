@@ -57,6 +57,18 @@ rec {
     outputHashMode = "flat";
   };
 
+  illegalReferences = mkDerivation {
+    name = "illegal-reference";
+    ref = builtins.head good;
+
+    builder = builtins.toFile "builder.sh" ''
+      mkdir $out
+      cp -R $ref $out
+    '';
+    outputHashMode = "recursive";
+    outputHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+  };
+
   # Test for building two derivations in parallel that produce the
   # same output path because they're fixed-output derivations.
   parallelSame = [

@@ -1861,10 +1861,21 @@ try {
                             wanted.to_string(Base::SRI, true),
                             got.to_string(Base::SRI, true)));
                 }
-                if (!newInfo0.references.empty())
-                    delayedException = std::make_exception_ptr(
-                        BuildError("illegal path references in fixed-output derivation '%s'",
-                            worker.store.printStorePath(drvPath)));
+                if (!newInfo0.references.empty()) {
+                    std::string references;
+
+                    for (StorePath r : newInfo0.references) {
+                        references.append("\n  " + worker.store.printStorePath(r));
+                    }
+
+                    delayedException = std::make_exception_ptr(BuildError(
+                        "the fixed-output derivation '%s' must not reference store paths but "
+                        "%d such references were found:%s",
+                        worker.store.printStorePath(drvPath),
+                        newInfo0.references.size(),
+                        references
+                    ));
+                }
 
                 return newInfo0;
             },
