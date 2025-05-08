@@ -1,0 +1,47 @@
+From 11375442cf591f055ca95902f27c68b0e983d371 Mon Sep 17 00:00:00 2001
+From: Fabio Rossetto <fabio.rossetto@zhinst.com>
+Date: Thu, 8 May 2025 18:18:10 +0200
+Subject: [PATCH] Remove check for monotonic time
+
+The check was disabled on Mac, but in #2261 it was reported also on
+Linux. At this point, it makes more sense to remove the KJ_REQUIRE for
+monotonicity alltogether.
+
+Backport of the original PR #2296 to v1.0.2.
+
+Signed-off-by: Raito Bezarius <raito@lix.systems>
+Co-authored-by: Raito Bezarius <raito@lix.systems>
+---
+ c++/src/kj/timer.c++ | 15 ++++++---------
+ 1 file changed, 6 insertions(+), 9 deletions(-)
+
+diff --git a/c++/src/kj/timer.c++ b/c++/src/kj/timer.c++
+index e5cd2648..a659e5d0 100644
+--- a/c++/src/kj/timer.c++
++++ b/c++/src/kj/timer.c++
+@@ -110,16 +110,13 @@ Maybe<uint64_t> TimerImpl::timeoutToNextEvent(TimePoint start, Duration unit, ui
+ }
+ 
+ void TimerImpl::advanceTo(TimePoint newTime) {
+-  // On Macs running an Intel processor, it has been observed that clock_gettime 
+-  // may return non monotonic time, even when CLOCK_MONOTONIC is used.
+-  // This workaround is to avoid the assert triggering on these machines.
+-  // See also https://github.com/capnproto/capnproto/issues/1693
+-#if __APPLE__ && defined(__x86_64__)
++  // It has been observed that clock_gettime may return non monotonic time,
++  // even when CLOCK_MONOTONIC is used.
++  // We use std::max to guard against this rare issue.
++  // - on Mac: https://github.com/capnproto/capnproto/issues/1693
++  // - on Linux: https://github.com/capnproto/capnproto/issues/2261
++
+   time = std::max(time, newTime);
+-#else
+-  KJ_REQUIRE(newTime >= time, "can't advance backwards in time") { return; }
+-  time = newTime;
+-#endif
+ 
+   for (;;) {
+     auto front = impl->timers.begin();
+-- 
+2.49.0
+

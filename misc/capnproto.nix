@@ -38,6 +38,8 @@ stdenv.mkDerivation rec {
   patches = [
     # backport of https://github.com/capnproto/capnproto/pull/1810
     ./capnproto-promise-nodiscard.patch
+    # backport of https://github.com/capnproto/capnproto/pull/2296
+    ./capnproto-monotonic-clocks-are-a-lie.patch
   ];
 
   nativeBuildInputs = [ cmake ];

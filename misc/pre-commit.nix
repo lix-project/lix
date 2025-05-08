@@ -51,6 +51,7 @@ pre-commit-run {
       excludes = [
         "\\.drv$"
         "^tests/functional/lang/"
+        ''\.patch$''
       ];
     };
     mixed-line-endings = {
@@ -107,7 +108,10 @@ pre-commit-run {
     trim-trailing-whitespace = {
       enable = true;
       stages = [ "pre-commit" ];
-      excludes = [ "^tests/functional/lang/" ];
+      excludes = [
+        ''^tests/functional/lang/''
+        ''\.patch$''
+      ];
     };
     treefmt = {
       enable = true;
