@@ -7,7 +7,6 @@ from functools import partialmethod
 from functional2.testlib.terminal_code_eater import eat_terminal_codes
 import dataclasses
 
-
 @dataclasses.dataclass
 class CommandResult:
     cmd: list[str]
