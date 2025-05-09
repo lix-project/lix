@@ -1,6 +1,6 @@
 from pathlib import Path
 from textwrap import dedent
-from functional2.testlib.fixtures import Nix
+from functional2.testlib.fixtures.nix import Nix
 import re
 
 
