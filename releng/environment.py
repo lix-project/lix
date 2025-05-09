@@ -6,7 +6,6 @@ import subprocess
 import dataclasses
 
 S3_HOST = 's3.lix.systems'
-S3_ENDPOINT = 'https://s3.lix.systems'
 
 DEFAULT_STORE_URI_BITS = {
     'region': 'garage',
@@ -51,8 +50,11 @@ class RelengEnvironment:
     cache_bucket: str
     releases_bucket: str
     docs_bucket: str
-    git_repo: str
+    # We don't want to call functions that require computation (such as guess_gerrit_remote()) before they are needed
+    git_repo: Callable[[], str]
     git_repo_is_gerrit: bool
+    s3_endpoint: str
+    s3_ssh_host: str | None
 
     docker_targets: list[DockerTarget]
 
@@ -65,11 +67,27 @@ class RelengEnvironment:
 SGR = '\x1b['
 RED = '31;1m'
 GREEN = '32;1m'
+BLUE = '34;1m'
 RESET = '0m'
 
 
 def sgr(colour: str, text: str) -> str:
     return f'{SGR}{colour}{text}{SGR}{RESET}'
+
+
+LOCAL = RelengEnvironment(
+    name='local',
+    colour=functools.partial(sgr, BLUE),
+    docs_bucket='s3://local-docs',
+    cache_bucket='s3://local-cache',
+    cache_store_overlay={'secret-key': 'local.key', 'endpoint': 'localhost:3900', 'scheme': 'http'},
+    releases_bucket='s3://local-releases',
+    git_repo=lambda: '../releng-target',
+    git_repo_is_gerrit=False,
+    docker_targets=[],
+    s3_endpoint = 'http://localhost:3900',
+    s3_ssh_host = None,
+)
 
 
 STAGING = RelengEnvironment(
@@ -79,7 +97,7 @@ STAGING = RelengEnvironment(
     cache_bucket='s3://staging-cache',
     cache_store_overlay={'secret-key': 'staging.key'},
     releases_bucket='s3://staging-releases',
-    git_repo='ssh://git@git.lix.systems/lix-project/lix-releng-staging',
+    git_repo=lambda: 'ssh://git@git.lix.systems/lix-project/lix-releng-staging',
     git_repo_is_gerrit=False,
     docker_targets=[
         # latest will be auto tagged if appropriate
@@ -88,6 +106,8 @@ STAGING = RelengEnvironment(
         DockerTarget('ghcr.io/lix-project/lix-releng-staging',
                      tags=['{version}', '{major}']),
     ],
+    s3_endpoint = 'https://s3.lix.systems',
+    s3_ssh_host = S3_HOST,
 )
 
 GERRIT_REMOTE_RE = re.compile(r'^ssh://(\w+@)?gerrit.lix.systems:2022/lix$')
@@ -114,7 +134,7 @@ PROD = RelengEnvironment(
     # just delete it after doing a release.
     cache_store_overlay={'secret-key': 'prod.key'},
     releases_bucket='s3://releases',
-    git_repo=guess_gerrit_remote(),
+    git_repo=guess_gerrit_remote,
     git_repo_is_gerrit=True,
     docker_targets=[
         # latest will be auto tagged if appropriate
@@ -122,9 +142,12 @@ PROD = RelengEnvironment(
                      tags=['{version}', '{major}']),
         DockerTarget('ghcr.io/lix-project/lix', tags=['{version}', '{major}']),
     ],
+    s3_endpoint = 'https://s3.lix.systems',
+    s3_ssh_host = S3_HOST,
 )
 
 ENVIRONMENTS = {
+    'local': LOCAL,
     'staging': STAGING,
     'production': PROD,
 }
