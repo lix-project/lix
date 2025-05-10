@@ -225,28 +225,6 @@ try {
     if (!drv->type().hasKnownOutputPaths())
         experimentalFeatureSettings.require(Xp::CaDerivations);
 
-    if (!drv->type().isPure()) {
-        experimentalFeatureSettings.require(Xp::ImpureDerivations);
-
-        for (auto & [outputName, output] : drv->outputs) {
-            auto randomPath = StorePath::random(outputPathName(drv->name, outputName));
-            assert(!TRY_AWAIT(worker.store.isValidPath(randomPath)));
-            initialOutputs.insert({
-                outputName,
-                InitialOutput {
-                    .wanted = true,
-                    .outputHash = impureOutputHash,
-                    .known = InitialOutputStatus {
-                        .path = randomPath,
-                        .status = PathStatus::Absent
-                    }
-                }
-            });
-        }
-
-        co_return co_await gaveUpOnSubstitution();
-    }
-
     for (auto & i : drv->outputsAndOptPaths(worker.store))
         if (i.second.second)
             TRY_AWAIT(worker.store.addTempRoot(*i.second.second));
@@ -308,8 +286,6 @@ try {
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::outputsSubstitutionTried() noexcept
 try {
     trace("all outputs substituted (maybe)");
-
-    assert(drv->type().isPure());
 
     if (nrFailed > 0 && nrFailed > nrNoSubstituters + nrIncompleteClosure && !settings.tryFallback)
     {
@@ -414,16 +390,6 @@ try {
         };
 
         for (const auto & [inputDrvPath, inputNode] : dynamic_cast<Derivation *>(drv.get())->inputDrvs.map) {
-            /* Ensure that pure, non-fixed-output derivations don't
-               depend on impure derivations. */
-            if (experimentalFeatureSettings.isEnabled(Xp::ImpureDerivations) && drv->type().isPure() && !drv->type().isFixed()) {
-                auto inputDrv = TRY_AWAIT(worker.evalStore.readDerivation(inputDrvPath));
-                if (!inputDrv.type().isPure())
-                    throw Error("pure derivation '%s' depends on impure derivation '%s'",
-                        worker.store.printStorePath(drvPath),
-                        worker.store.printStorePath(inputDrvPath));
-            }
-
             addWaiteeDerivedPath(makeConstantStorePathRef(inputDrvPath), inputNode);
         }
     }
@@ -460,8 +426,6 @@ try {
 
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::repairClosure() noexcept
 try {
-    assert(drv->type().isPure());
-
     /* If we're repairing, we now know that our own outputs are valid.
        Now check whether the other paths in the outputs closure are
        good.  If not, then start derivation goals for the derivations
@@ -588,9 +552,6 @@ try {
                        drvs. */
                     : true);
             },
-            [&](const DerivationType::Impure &) {
-                return true;
-            }
         }, drvType.raw);
 
         if (resolveDrv && !fullDrv.inputDrvs.map.empty()) {
@@ -1195,21 +1156,19 @@ try {
                 }
             }());
 
-            if (drv->type().isPure()) {
-                auto newRealisation = realisation;
-                newRealisation.id = DrvOutput { initialOutput->outputHash, outputName };
-                newRealisation.signatures.clear();
-                if (!drv->type().isFixed()) {
-                    auto & drvStore = TRY_AWAIT(worker.evalStore.isValidPath(drvPath))
-                        ? worker.evalStore
-                        : worker.store;
-                    newRealisation.dependentRealisations = TRY_AWAIT(
-                        drvOutputReferences(worker.store, *drv, realisation.outPath, &drvStore)
-                    );
-                }
-                signRealisation(newRealisation);
-                TRY_AWAIT(worker.store.registerDrvOutput(newRealisation));
+            auto newRealisation = realisation;
+            newRealisation.id = DrvOutput { initialOutput->outputHash, outputName };
+            newRealisation.signatures.clear();
+            if (!drv->type().isFixed()) {
+                auto & drvStore = TRY_AWAIT(worker.evalStore.isValidPath(drvPath))
+                    ? worker.evalStore
+                    : worker.store;
+                newRealisation.dependentRealisations = TRY_AWAIT(
+                    drvOutputReferences(worker.store, *drv, realisation.outPath, &drvStore)
+                );
             }
+            signRealisation(newRealisation);
+            TRY_AWAIT(worker.store.registerDrvOutput(newRealisation));
             outputPaths.insert(realisation.outPath);
             builtOutputs.emplace(outputName, realisation);
         }
@@ -1620,7 +1579,6 @@ void DerivationGoal::flushLine()
 
 kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>> DerivationGoal::queryPartialDerivationOutputMap()
 try {
-    assert(drv->type().isPure());
     if (!useDerivation || drv->type().hasKnownOutputPaths()) {
         std::map<std::string, std::optional<StorePath>> res;
         for (auto & [name, output] : drv->outputs)
@@ -1641,7 +1599,6 @@ try {
 
 kj::Promise<Result<OutputPathMap>> DerivationGoal::queryDerivationOutputMap()
 try {
-    assert(drv->type().isPure());
     if (!useDerivation || drv->type().hasKnownOutputPaths()) {
         OutputPathMap res;
         for (auto & [name, output] : drv->outputsAndOptPaths(worker.store))
@@ -1662,8 +1619,6 @@ try {
 
 kj::Promise<Result<std::pair<bool, SingleDrvOutputs>>> DerivationGoal::checkPathValidity()
 try {
-    if (!drv->type().isPure()) co_return { false, SingleDrvOutputs{} };
-
     bool checkHash = buildMode == bmRepair;
     auto wantedOutputsLeft = std::visit(overloaded {
         [&](const OutputsSpec::All &) {

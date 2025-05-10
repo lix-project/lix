@@ -2053,9 +2053,7 @@ try {
             },
             .outPath = newInfo.path
         };
-        if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)
-            && drv->type().isPure())
-        {
+        if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
             signRealisation(thisRealisation);
             TRY_AWAIT(worker.store.registerDrvOutput(thisRealisation));
         }

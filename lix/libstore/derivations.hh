@@ -187,20 +187,9 @@ struct DerivationType {
         GENERATE_CMP(ContentAddressed, me->sandboxed, me->fixed);
     };
 
-    /**
-     * Impure derivation type
-     *
-     * This is similar at build-time to the content addressed, not sandboxed, not fixed
-     * type, but has some restrictions on its usage.
-     */
-    struct Impure {
-        GENERATE_CMP(Impure);
-    };
-
     typedef std::variant<
         InputAddressed,
-        ContentAddressed,
-        Impure
+        ContentAddressed
     > Raw;
 
     Raw raw;
@@ -233,14 +222,6 @@ struct DerivationType {
      * controlled separately. Always true for non-CA derivations.
      */
     bool isSandboxed() const;
-
-    /**
-     * Whether the derivation is expected to produce the same result
-     * every time, and therefore it only needs to be built once. This is
-     * only false for derivations that have the attribute '__impure =
-     * true'.
-     */
-    bool isPure() const;
 
     /**
      * Does the derivation knows its own output paths?

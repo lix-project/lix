@@ -56,9 +56,6 @@ bool DerivationType::isCA() const
         [](const ContentAddressed & ca) {
             return true;
         },
-        [](const Impure &) {
-            return true;
-        },
     }, raw);
 }
 
@@ -70,9 +67,6 @@ bool DerivationType::isFixed() const
         },
         [](const ContentAddressed & ca) {
             return ca.fixed;
-        },
-        [](const Impure &) {
-            return false;
         },
     }, raw);
 }
@@ -86,9 +80,6 @@ bool DerivationType::hasKnownOutputPaths() const
         [](const ContentAddressed & ca) {
             return ca.fixed;
         },
-        [](const Impure &) {
-            return false;
-        },
     }, raw);
 }
 
@@ -101,25 +92,6 @@ bool DerivationType::isSandboxed() const
         },
         [](const ContentAddressed & ca) {
             return ca.sandboxed;
-        },
-        [](const Impure &) {
-            return false;
-        },
-    }, raw);
-}
-
-
-bool DerivationType::isPure() const
-{
-    return std::visit(overloaded {
-        [](const InputAddressed & ia) {
-            return true;
-        },
-        [](const ContentAddressed & ca) {
-            return true;
-        },
-        [](const Impure &) {
-            return false;
         },
     }, raw);
 }
@@ -810,16 +782,6 @@ try {
         };
     }
 
-    if (!type.isPure()) {
-        std::map<std::string, Hash> outputHashes;
-        for (const auto & [outputName, _] : drv.outputs)
-            outputHashes.insert_or_assign(outputName, impureOutputHash);
-        co_return DrvHash {
-            .hashes = outputHashes,
-            .kind = DrvHash::Kind::Deferred,
-        };
-    }
-
     auto kind = std::visit(overloaded {
         [](const DerivationType::InputAddressed & ia) {
             /* This might be a "pesimistically" deferred output, so we don't
@@ -831,9 +793,6 @@ try {
                 ? DrvHash::Kind::Regular
                 : DrvHash::Kind::Deferred;
         },
-        [](const DerivationType::Impure &) -> DrvHash::Kind {
-            assert(false);
-        }
     }, drv.type().raw);
 
     DerivedPathMap<StringSet>::ChildNode::Map inputs2;
