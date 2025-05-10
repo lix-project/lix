@@ -31,9 +31,6 @@ std::optional<StorePath> DerivationOutput::path(const Store & store, std::string
         [](const DerivationOutput::Deferred &) -> std::optional<StorePath> {
             return std::nullopt;
         },
-        [](const DerivationOutput::Impure &) -> std::optional<StorePath> {
-            return std::nullopt;
-        },
     }, raw);
 }
 
@@ -601,12 +598,6 @@ std::string Derivation::unparse(const Store & store, bool maskOutputs,
                 s += ','; printUnquotedString(s, "");
                 s += ','; printUnquotedString(s, "");
             },
-            [&](const DerivationOutput::Impure & doi) {
-                // FIXME
-                s += ','; printUnquotedString(s, "");
-                s += ','; printUnquotedString(s, doi.method.renderPrefix() + printHashType(doi.hashType));
-                s += ','; printUnquotedString(s, "impure");
-            }
         }, i.second.raw);
         s += ')';
     }
@@ -675,8 +666,7 @@ DerivationType BasicDerivation::type() const
         inputAddressedOutputs,
         fixedCAOutputs,
         floatingCAOutputs,
-        deferredIAOutputs,
-        impureOutputs;
+        deferredIAOutputs;
     std::optional<HashType> floatingHashType;
 
     for (auto & i : outputs) {
@@ -699,24 +689,19 @@ DerivationType BasicDerivation::type() const
             [&](const DerivationOutput::Deferred &) {
                 deferredIAOutputs.insert(i.first);
             },
-            [&](const DerivationOutput::Impure &) {
-                impureOutputs.insert(i.first);
-            },
         }, i.second.raw);
     }
 
     if (inputAddressedOutputs.empty()
         && fixedCAOutputs.empty()
         && floatingCAOutputs.empty()
-        && deferredIAOutputs.empty()
-        && impureOutputs.empty())
+        && deferredIAOutputs.empty())
         throw Error("must have at least one output");
 
     if (!inputAddressedOutputs.empty()
         && fixedCAOutputs.empty()
         && floatingCAOutputs.empty()
-        && deferredIAOutputs.empty()
-        && impureOutputs.empty())
+        && deferredIAOutputs.empty())
         return DerivationType::InputAddressed {
             .deferred = false,
         };
@@ -724,8 +709,7 @@ DerivationType BasicDerivation::type() const
     if (inputAddressedOutputs.empty()
         && !fixedCAOutputs.empty()
         && floatingCAOutputs.empty()
-        && deferredIAOutputs.empty()
-        && impureOutputs.empty())
+        && deferredIAOutputs.empty())
     {
         if (fixedCAOutputs.size() > 1)
             // FIXME: Experimental feature?
@@ -741,8 +725,7 @@ DerivationType BasicDerivation::type() const
     if (inputAddressedOutputs.empty()
         && fixedCAOutputs.empty()
         && !floatingCAOutputs.empty()
-        && deferredIAOutputs.empty()
-        && impureOutputs.empty())
+        && deferredIAOutputs.empty())
         return DerivationType::ContentAddressed {
             .sandboxed = true,
             .fixed = false,
@@ -751,18 +734,10 @@ DerivationType BasicDerivation::type() const
     if (inputAddressedOutputs.empty()
         && fixedCAOutputs.empty()
         && floatingCAOutputs.empty()
-        && !deferredIAOutputs.empty()
-        && impureOutputs.empty())
+        && !deferredIAOutputs.empty())
         return DerivationType::InputAddressed {
             .deferred = true,
         };
-
-    if (inputAddressedOutputs.empty()
-        && fixedCAOutputs.empty()
-        && floatingCAOutputs.empty()
-        && deferredIAOutputs.empty()
-        && !impureOutputs.empty())
-        return DerivationType::Impure { };
 
     throw Error("can't mix derivation output types");
 }
@@ -991,11 +966,6 @@ void writeDerivation(Sink & out, const Store & store, const BasicDerivation & dr
                 out << ""
                     << ""
                     << "";
-            },
-            [&](const DerivationOutput::Impure & doi) {
-                out << ""
-                    << (doi.method.renderPrefix() + printHashType(doi.hashType))
-                    << "impure";
             },
         }, i.second.raw);
     }
@@ -1229,10 +1199,6 @@ try {
                 /* Nothing to check */
                 return {result::success()};
             },
-            [](const DerivationOutput::Impure &) -> kj::Promise<Result<void>> {
-                /* Nothing to check */
-                return {result::success()};
-            },
         }, i.second.raw));
     }
     co_return result::success();
@@ -1261,10 +1227,6 @@ JSON DerivationOutput::toJSON(
             res["hashAlgo"] = dof.method.renderPrefix() + printHashType(dof.hashType);
         },
         [&](const DerivationOutput::Deferred &) {},
-        [&](const DerivationOutput::Impure & doi) {
-            res["hashAlgo"] = doi.method.renderPrefix() + printHashType(doi.hashType);
-            res["impure"] = true;
-        },
     }, raw);
     return res;
 }

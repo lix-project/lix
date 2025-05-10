@@ -1889,14 +1889,6 @@ try {
                 // rewritten first
                 assert(false);
             },
-
-            [&](const DerivationOutput::Impure & doi) {
-                return newInfoFromCA(DerivationOutput::CAFloating {
-                    .method = doi.method,
-                    .hashType = doi.hashType,
-                });
-            },
-
         }, output->raw);
 
         /* FIXME: set proper permissions in restorePath() so

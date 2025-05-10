@@ -90,31 +90,11 @@ struct DerivationOutput
         GENERATE_CMP(Deferred);
     };
 
-    /**
-     * Impure output which is moved to a content-addressed location (like
-     * CAFloating) but isn't registered as a realization.
-     */
-    struct Impure
-    {
-        /**
-         * How the file system objects will be serialized for hashing
-         */
-        ContentAddressMethod method;
-
-        /**
-         * How the serialization will be hashed
-         */
-        HashType hashType;
-
-        GENERATE_CMP(Impure, me->method, me->hashType);
-    };
-
     typedef std::variant<
         InputAddressed,
         CAFixed,
         CAFloating,
-        Deferred,
-        Impure
+        Deferred
     > Raw;
 
     Raw raw;
