@@ -197,6 +197,7 @@ let
   lixPythonForBuild = python3.pythonOnBuildForHost.withPackages (p: [
     p.pytest
     p.pytest-xdist
+    p.ruff
     p.python-frontmatter
     p.aiohttp
   ]);
@@ -535,6 +536,7 @@ stdenv.mkDerivation (finalAttrs: {
             # wrapped python instead of build inputs for its python inputs
             p.pytest
             p.pytest-xdist
+            p.ruff
             p.aiohttp
             p.python-frontmatter
 

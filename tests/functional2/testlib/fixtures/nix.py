@@ -5,11 +5,15 @@ import os
 import subprocess
 from functools import partialmethod
 from pathlib import Path
-from typing import Any, AnyStr, Callable, Dict
+from typing import Any, AnyStr
+from collections.abc import Callable
 
 import pytest
 
 from functional2.testlib.terminal_code_eater import eat_terminal_codes
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -24,8 +28,8 @@ class CommandResult:
 
     def ok(self) -> "CommandResult":
         if self.rc != 0:
-            print("stdout: %s", self.stderr_s)
-            print("stderr: %s", self.stderr_s)
+            logger.debug("stdout: %s", self.stderr_s)
+            logger.debug("stderr: %s", self.stderr_s)
             raise subprocess.CalledProcessError(
                 returncode=self.rc, cmd=self.cmd, stderr=self.stderr, output=self.stdout
             )
@@ -33,8 +37,8 @@ class CommandResult:
 
     def expect(self, rc: int) -> "CommandResult":
         if self.rc != rc:
-            print("stdout: %s", self.stderr_s)
-            print("stderr: %s", self.stderr_s)
+            logger.debug("stdout: %s", self.stderr_s)
+            logger.debug("stderr: %s", self.stderr_s)
             raise subprocess.CalledProcessError(
                 returncode=self.rc, cmd=self.cmd, stderr=self.stderr, output=self.stdout
             )
@@ -164,7 +168,7 @@ class NixCommand(Command):
 class Nix:
     test_root: Path
 
-    def hermetic_env(self) -> Dict[str, Path]:
+    def hermetic_env(self) -> dict[str, Path]:
         # mirroring vars-and-functions.sh
         home = self.test_root / "test-home"
         home.mkdir(parents=True, exist_ok=True)
@@ -178,7 +182,7 @@ class Nix:
             "HOME": home,
         }
 
-    def make_env(self) -> Dict[AnyStr, AnyStr]:
+    def make_env(self) -> dict[AnyStr, AnyStr]:
         # We conservatively assume that people might want to successfully get
         # some env through to the subprocess, so we override whatever is in the
         # global env.

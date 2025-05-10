@@ -1,15 +1,19 @@
 """
 HTTP server fixture for tests which binds to an auto-assigned port on localhost.
 """
+
 import asyncio
 import contextlib
 import dataclasses
+import logging
 import time
 import socket
 import threading
-from typing import Tuple
 from queue import Queue
 import aiohttp.web as web
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -18,7 +22,7 @@ class HttpServer:
     port: int
 
 
-class Event_ts(asyncio.Event):
+class EventTS(asyncio.Event):
     """
     A thread safe version of the asyncio Event
 
@@ -27,10 +31,7 @@ class Event_ts(asyncio.Event):
     Taken from https://stackoverflow.com/a/33006667
     """
 
-    def __init__(self,
-                 *args,
-                 loop: asyncio.AbstractEventLoop | None = None,
-                 **kwargs):
+    def __init__(self, *args, loop: asyncio.AbstractEventLoop | None = None, **kwargs):
         """
         Creates a thread-safe event for the given loop (or the loop of the current thread).
         """
@@ -41,10 +42,10 @@ class Event_ts(asyncio.Event):
         self.target_loop.call_soon_threadsafe(super().set)
 
 
-def _make_localhost_socket() -> Tuple[socket.socket, int]:
+def _make_localhost_socket() -> tuple[socket.socket, int]:
     """Creates a localhost-bound socket with an auto-assigned port."""
     sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-    sock.bind(('::1', 0))
+    sock.bind(("::1", 0))
     # Shouldn't matter because we dynamically allocate ports, but this is generally preferred.
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     _, port = sock.getsockname()[:2]
@@ -52,15 +53,13 @@ def _make_localhost_socket() -> Tuple[socket.socket, int]:
     return (sock, port)
 
 
-def _server_thread(app: web.Application, sock: socket.socket,
-                   shutdown_ev_q: Queue):
-
+def _server_thread(app: web.Application, sock: socket.socket, shutdown_ev_q: Queue):
     async def async_main():
         nonlocal app, sock
         # Due to Reasons(tm) of event loop lifecycles and stuff of the sort,
         # it's far easier to just send the event object to the other thread
         # from inside the loop where it already knows which loop it is.
-        shutdown_ev = Event_ts()
+        shutdown_ev = EventTS()
         shutdown_ev_q.put(shutdown_ev)
 
         runner = web.AppRunner(app, handle_signals=False)
@@ -91,9 +90,11 @@ def http_server(app: web.Application):
     shutdown_ev = None
     try:
         sock, port = _make_localhost_socket()
-        thr = threading.Thread(target=_server_thread,
-                               args=(app, sock, shutdown_ev_q),
-                               name=f'functional2 httpd [::1]:{port}')
+        thr = threading.Thread(
+            target=_server_thread,
+            args=(app, sock, shutdown_ev_q),
+            name=f"functional2 httpd [::1]:{port}",
+        )
         thr.start()
         shutdown_ev = shutdown_ev_q.get()
         yield HttpServer(app=app, port=port)
@@ -109,16 +110,18 @@ def http_server(app: web.Application):
 def dev_main():
     """A little test server for poking at this manually"""
 
-    async def root(_req: web.Request):
-        return web.Response(body='hello world')
+    async def root(_req: web.Request) -> web.Response:
+        # sadly required to make this function async
+        await asyncio.sleep(0.01)
+        return web.Response(body="hello world")
 
     app = web.Application()
-    app.add_routes([web.get('/', root)])
+    app.add_routes([web.get("/", root)])
 
     with http_server(app) as httpd:
-        print(f'Listening on http://[::1]:{httpd.port}')
+        logging.info("Listening on http://[::1]:%d", httpd.port)
         time.sleep(3600)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     dev_main()

@@ -1,8 +1,8 @@
 import shutil
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -21,7 +21,6 @@ class Fileish(ABC):
         :param path: TempDir for the test
         :param origin: Directory the tests originates in. Used to adjust relative paths
         """
-        pass
 
 
 class _ByContentFileish(Fileish, ABC):
@@ -34,7 +33,6 @@ class _ByContentFileish(Fileish, ABC):
         Returns the content, which should be present in the current path
         :return: content as a string
         """
-        pass
 
     def copy_to(self, path: Path, origin: Path) -> None:
         path.write_text(self.get_content(origin))
@@ -81,7 +79,7 @@ class CopyTree(Fileish):
 
 
 class CopyTemplate(_ByContentFileish):
-    def __init__(self, template: str, values: Dict[str, Any], mode: int | None = None):
+    def __init__(self, template: str, values: dict[str, Any], mode: int | None = None):
         """
         Declares a file as an initiated version of the given file template
         :param template: source template's file name. Parameters formatted as `{key_name}` are replaced by corresponding values
@@ -103,7 +101,7 @@ class CopyTemplate(_ByContentFileish):
         return self.content
 
 
-class RelativeTo(str, Enum):
+class RelativeTo(StrEnum):
     TEST = "test"
     """
     Base for the given path is the directory of the test
@@ -154,7 +152,7 @@ class Symlink(Fileish):
         path.symlink_to(target_path)
 
 
-type FileDeclaration = Dict[str, Fileish | "FileDeclaration"]
+type FileDeclaration = dict[str, Fileish | "FileDeclaration"]
 
 
 def _init_files(files: FileDeclaration, tmp_path: Path, request: pytest.FixtureRequest) -> None:

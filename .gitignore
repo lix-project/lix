@@ -39,3 +39,5 @@ buildtime.bin
 
 # Python compiled files from the code generators and test suite
 *.pyc
+
+**/.idea
