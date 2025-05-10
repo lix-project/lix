@@ -138,7 +138,7 @@ def run_on_dir(author_info: AuthorInfoDB, d):
     d = pathlib.Path(d)
     if not d.is_dir():
         raise ValueError(f'provided path {d} is not a directory')
-    paths = pathlib.Path(d).glob('*.md')
+    paths = pathlib.Path(d).glob('[!.]*.md')
     entries = defaultdict(list)
     for p in paths:
         try:
