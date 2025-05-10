@@ -41,14 +41,6 @@ class DynDerivationTest : public DerivationTest
     }
 };
 
-class ImpureDerivationTest : public DerivationTest
-{
-    void SetUp() override
-    {
-        mockXpSettings.set("experimental-features", "impure-derivations");
-    }
-};
-
 TEST_F(DerivationTest, BadATerm_version) {
     ASSERT_THROW(
         parseDerivation(
@@ -152,13 +144,6 @@ TEST_JSON(CaDerivationTest, caFloating,
 
 TEST_JSON(DerivationTest, deferred,
     DerivationOutput::Deferred { },
-    "drv-name", "output-name")
-
-TEST_JSON(ImpureDerivationTest, impure,
-    (DerivationOutput::Impure {
-        .method = FileIngestionMethod::Recursive,
-        .hashType = HashType::SHA256,
-    }),
     "drv-name", "output-name")
 
 #undef TEST_JSON

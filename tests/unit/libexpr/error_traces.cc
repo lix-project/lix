@@ -1290,16 +1290,6 @@ namespace nix {
                       HintFmt("expected a Boolean but found %s: %s", "a string", "\"true\""),
                       HintFmt("while evaluating the attribute '__contentAddressed' of derivation 'foo'"));
 
-        ASSERT_TRACE2("derivationStrict { name = \"foo\"; builder = 1; system = 1; outputs = \"out\"; __impure = \"true\"; }",
-                      TypeError,
-                      HintFmt("expected a Boolean but found %s: %s", "a string", "\"true\""),
-                      HintFmt("while evaluating the attribute '__impure' of derivation 'foo'"));
-
-        ASSERT_TRACE2("derivationStrict { name = \"foo\"; builder = 1; system = 1; outputs = \"out\"; __impure = \"true\"; }",
-                      TypeError,
-                      HintFmt("expected a Boolean but found %s: %s", "a string", "\"true\""),
-                      HintFmt("while evaluating the attribute '__impure' of derivation 'foo'"));
-
         ASSERT_TRACE2("derivationStrict { name = \"foo\"; builder = 1; system = 1; outputs = \"out\"; args = \"foo\"; }",
                       TypeError,
                       HintFmt("expected a list but found %s: %s", "a string", "\"foo\""),

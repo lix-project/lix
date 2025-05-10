@@ -2,22 +2,6 @@ with import ./config.nix;
 
 rec {
 
-  impure = mkDerivation {
-    name = "impure";
-    outputs = [ "out" "stuff" ];
-    buildCommand =
-      ''
-        echo impure
-        x=$(< $TEST_ROOT/counter)
-        mkdir $out $stuff
-        echo $x > $out/n
-        ln -s $out/n $stuff/bla
-        printf $((x + 1)) > $TEST_ROOT/counter
-      '';
-    __impure = true;
-    impureEnvVars = [ "TEST_ROOT" ];
-  };
-
   impureOnImpure = mkDerivation {
     name = "impure-on-impure";
     buildCommand =

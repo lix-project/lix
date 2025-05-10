@@ -34,6 +34,7 @@
   executable ? false,
   unpack ? false,
   name ? baseNameOf (toString url),
+  # still translates to __impure to trigger derivationStrict error checks.
   impure ? false,
 }:
 
