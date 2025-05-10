@@ -276,13 +276,7 @@ static DerivationOutput parseDerivationOutput(
             xpSettings.require(Xp::DynamicDerivations);
         const auto hashType = parseHashType(hashAlgo);
         if (hashS == "impure") {
-            xpSettings.require(Xp::ImpureDerivations);
-            if (pathS != "")
-                throw FormatError("impure derivation output should not specify output path");
-            return DerivationOutput::Impure {
-                .method = std::move(method),
-                .hashType = std::move(hashType),
-            };
+            throw UnimplementedError("impure derivations are not supported");
         } else if (hashS != "") {
             validatePath(pathS);
             auto hash = Hash::parseNonSRIUnprefixed(hashS, hashType);
@@ -1332,12 +1326,7 @@ DerivationOutput DerivationOutput::fromJSON(
     }
 
     else if (keys == (std::set<std::string_view> { "hashAlgo", "impure" })) {
-        xpSettings.require(Xp::ImpureDerivations);
-        auto [method, hashType] = methodAlgo();
-        return DerivationOutput::Impure {
-            .method = std::move(method),
-            .hashType = hashType,
-        };
+        throw UnimplementedError("impure derivations are not supported");
     }
 
     else {
