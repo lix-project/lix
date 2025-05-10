@@ -48,6 +48,65 @@ attribute with the following attributes (all except `url` optional):
   With this argument being true, it's possible to load a `rev` from *any* `ref`
   (by default only `rev`s from the specified `ref` are supported).
 
+The return value is an attrset containing the following keys:
+
+- `lastModified` (`integer`)
+
+  Unix timestamp of the last update.
+  This corresponds to the timestamp of the "committer" timestamp embedded in the fetched commit.
+
+- `lastModifiedDate` (`string`)
+
+  Textual representation of the `lastModified` timestamp in UTC (the timezone embedded in the git commit is discarded).
+
+- `outPath` (`string`)
+
+  Resulting store path of the fetch process.
+
+- `narHash` (`string`)
+
+  SRI representation of the hash of the `outPath`.
+
+- `rev` (`string`)
+
+  The full-length revision fetched from the remote.
+  For further information see the `rev` input parameter.
+  This will usually be the output of `git rev-parse <rev>` (or `ref` when no `rev` is provided as an input parameter).
+
+- `revCount` (`integer`)
+
+  Number of revisions in the history of the revision fetched.
+  For a repository with a single commit (the root) this number equals 1.
+  Fetches of shallow repositories report a value of 0.
+
+- `shortRev` (`string`)
+
+  A short representation of the `rev`.
+  This string is a *truncated* version of the `rev`.
+  It is of fixed length and therefore not guaranteed to be unique (unlike the output of `git rev-parse --short`).
+  Future versions of Lix may change the length of this string only as part of a breaking change.
+  For maximum reproducibility and interoperability it is recommended to not rely on this value and to truncate the returned `rev` to an appropriate value instead.
+
+- `submodules` (`boolean`)
+
+  Indicates whether submodules have been fetched.
+  If this value is set to `true`, any submodules are already checked out in the resulting `outPath`.
+
+A full example of the output:
+
+```nix
+{
+  lastModified = 1746827286;
+  lastModifiedDate = "20250509214806";
+  narHash = "sha256-qCRBy8Bbh5XhPalPkhonxNgfsbw3lP0UIXBLSrhxAvI=";
+  outPath = "/nix/store/2qdnzhzccspwm70mni7jkvrfkpwcb3jn-source";
+  rev = "dcb0a97000d50b2868ed4f8d9fd465c5a5b8eb3a";
+  revCount = 17845;
+  shortRev = "dcb0a97";
+  submodules = false;
+}
+```
+
 Here are some examples of how to use `fetchGit`.
 
   - To fetch a private repository over SSH:
