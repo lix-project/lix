@@ -811,7 +811,6 @@ drvName, Bindings * attrs, Value & v)
     NixStringContext context;
 
     bool contentAddressed = false;
-    bool isImpure = false;
     std::optional<std::string> outputHash;
     std::string outputHashAlgo;
     std::optional<ContentAddressMethod> ingestionMethod;
@@ -873,8 +872,8 @@ drvName, Bindings * attrs, Value & v)
             }
 
             else if (i->name == state.ctx.s.impure && state.forceBool(*i->value, noPos, context_below)) {
-                isImpure = true;
-                experimentalFeatureSettings.require(Xp::ImpureDerivations);
+                state.ctx.errors.make<EvalError>("impure derivations are not supported in Lix")
+                    .debugThrow();
             }
 
             /* The `args' attribute is special: it supplies the
@@ -1035,28 +1034,17 @@ drvName, Bindings * attrs, Value & v)
         drv.outputs.insert_or_assign("out", std::move(dof));
     }
 
-    else if (contentAddressed || isImpure) {
-        if (contentAddressed && isImpure)
-            state.ctx.errors.make<EvalError>("derivation cannot be both content-addressed and impure")
-                .debugThrow();
-
+    else if (contentAddressed) {
         auto ht = parseHashTypeOpt(outputHashAlgo).value_or(HashType::SHA256);
         auto method = ingestionMethod.value_or(FileIngestionMethod::Recursive);
 
         for (auto & i : outputs) {
             drv.env[i] = hashPlaceholder(i);
-            if (isImpure)
-                drv.outputs.insert_or_assign(i,
-                    DerivationOutput::Impure {
-                        .method = method,
-                        .hashType = ht,
-                    });
-            else
-                drv.outputs.insert_or_assign(i,
-                    DerivationOutput::CAFloating {
-                        .method = method,
-                        .hashType = ht,
-                    });
+            drv.outputs.insert_or_assign(i,
+                DerivationOutput::CAFloating {
+                    .method = method,
+                    .hashType = ht,
+                });
         }
     }
 
