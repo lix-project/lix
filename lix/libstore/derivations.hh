@@ -472,6 +472,4 @@ void writeDerivation(Sink & out, const Store & store, const BasicDerivation & dr
  */
 std::string hashPlaceholder(const OutputNameView outputName);
 
-extern const Hash impureOutputHash;
-
 }

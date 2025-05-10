@@ -363,8 +363,6 @@ template<> ExperimentalFeatures BaseSetting<ExperimentalFeatures>::parse(const s
             } else if (*thisXpFeature == Xp::DynamicDerivations) {
                 static std::once_flag warned;
                 warnDeprecated294(warned, s);
-            } else if (*thisXpFeature == Xp::ImpureDerivations) {
-                throw Error("impure derivations are no longer supported");
             }
             res = res | thisXpFeature.value();
         } else

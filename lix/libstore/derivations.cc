@@ -1166,8 +1166,6 @@ try {
 }
 
 
-const Hash impureOutputHash = hashString(HashType::SHA256, "impure");
-
 JSON DerivationOutput::toJSON(
     const Store & store, std::string_view drvName, OutputNameView outputName) const
 {

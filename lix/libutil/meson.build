@@ -147,7 +147,6 @@ experimental_feature_definitions = files(
   'experimental-features/dynamic-derivations.md',
   'experimental-features/fetch-closure.md',
   'experimental-features/flakes.md',
-  'experimental-features/impure-derivations.md',
   'experimental-features/lix-custom-sub-commands.md',
   'experimental-features/nix-command.md',
   'experimental-features/no-url-literals.md',
