@@ -44,42 +44,11 @@ TEST_F(DerivedPathTest, built_opaque) {
     ASSERT_EQ(elem.to_string(*store), built);
 }
 
-/**
- * Round trip (string <-> data structure) test for a more complex,
- * inductive `DerivedPath::Built`.
- */
+// dynamic derivations are no longer supported
 TEST_F(DerivedPathTest, built_built) {
-    /**
-     * We set these in tests rather than the regular globals so we don't have
-     * to worry about race conditions if the tests run concurrently.
-     */
-    ExperimentalFeatureSettings mockXpSettings;
-    mockXpSettings.experimentalFeatures.override(
-        ExperimentalFeatures{} | Xp::DynamicDerivations | Xp::CaDerivations
-    );
-
-    std::string_view built = "/nix/store/g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-x.drv^foo^bar,baz";
-    auto elem = DerivedPath::parse(*store, built, mockXpSettings);
-    auto * p = std::get_if<DerivedPath::Built>(&elem);
-    ASSERT_TRUE(p);
-    ASSERT_EQ(p->outputs, ((OutputsSpec) OutputsSpec::Names { "bar", "baz" }));
-    auto * drvPath = std::get_if<SingleDerivedPath::Built>(&*p->drvPath);
-    ASSERT_TRUE(drvPath);
-    ASSERT_EQ(drvPath->output, "foo");
-    ASSERT_EQ(*drvPath->drvPath, ((SingleDerivedPath) SingleDerivedPath::Opaque {
-        .path = store->parseStorePath(built.substr(0, 49)),
-    }));
-    ASSERT_EQ(elem.to_string(*store), built);
-}
-
-/**
- * Without the right experimental features enabled, we cannot parse a
- * complex inductive derived path.
- */
-TEST_F(DerivedPathTest, built_built_xp) {
     ASSERT_THROW(
         DerivedPath::parse(*store, "/nix/store/g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-x.drv^foo^bar,baz"),
-        MissingExperimentalFeature);
+        BadStorePath);
 }
 
 /**

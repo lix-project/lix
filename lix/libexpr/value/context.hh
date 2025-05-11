@@ -69,12 +69,8 @@ struct NixStringContextElem {
      * - ‘<path>’
      * - ‘=<path>’
      * - ‘!<name>!<path>’
-     *
-     * @param xpSettings Stop-gap to avoid globals during unit tests.
      */
-    static NixStringContextElem parse(
-        std::string_view s,
-        const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
+    static NixStringContextElem parse(std::string_view s);
     std::string to_string() const;
 };
 

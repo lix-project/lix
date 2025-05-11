@@ -210,11 +210,9 @@ static DerivedPathT parseDerivedPath(
         return DerivedPathT::Opaque::parse(store, s);
     } else {
         auto path = DerivedPathT::Built::parse(store,
-            make_ref<SingleDerivedPath>(parseDerivedPath<SingleDerivedPath>(
+            make_ref<SingleDerivedPath>(DerivedPathT::Opaque::parse(
                 store,
-                s.substr(0, n),
-                separator,
-                xpSettings)),
+                s.substr(0, n))),
             s.substr(n + 1),
             xpSettings);
 

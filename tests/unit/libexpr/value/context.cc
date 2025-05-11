@@ -84,43 +84,6 @@ TEST(NixStringContextElemTest, built_opaque) {
     ASSERT_EQ(elem.to_string(), built);
 }
 
-/**
- * Round trip (string <-> data structure) test for a more complex,
- * inductive `NixStringContextElem::Built`.
- */
-TEST(NixStringContextElemTest, built_built) {
-    /**
-     * We set these in tests rather than the regular globals so we don't have
-     * to worry about race conditions if the tests run concurrently.
-     */
-    ExperimentalFeatureSettings mockXpSettings;
-    mockXpSettings.experimentalFeatures.override(
-        ExperimentalFeatures{} | Xp::DynamicDerivations | Xp::CaDerivations
-    );
-
-    std::string_view built = "!foo!bar!g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-x.drv";
-    auto elem = NixStringContextElem::parse(built, mockXpSettings);
-    auto * p = std::get_if<NixStringContextElem::Built>(&elem.raw);
-    ASSERT_TRUE(p);
-    ASSERT_EQ(p->output, "foo");
-    auto * drvPath = std::get_if<SingleDerivedPath::Built>(&*p->drvPath);
-    ASSERT_TRUE(drvPath);
-    ASSERT_EQ(drvPath->output, "bar");
-    ASSERT_EQ(*drvPath->drvPath, ((SingleDerivedPath) SingleDerivedPath::Opaque {
-        .path = StorePath { built.substr(9) },
-    }));
-    ASSERT_EQ(elem.to_string(), built);
-}
-
-/**
- * Without the right experimental features enabled, we cannot parse a
- * complex inductive string context element.
- */
-TEST(NixStringContextElemTest, built_built_xp) {
-    ASSERT_THROW(
-        NixStringContextElem::parse("!foo!bar!g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-x.drv"),        MissingExperimentalFeature);
-}
-
 #ifndef COVERAGE
 
 RC_GTEST_PROP(
