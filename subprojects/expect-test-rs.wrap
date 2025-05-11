@@ -1,6 +1,0 @@
-[wrap-file]
-method = cargo
-directory = expect-test-1.5.0
-source_url = https://crates.io/api/v1/crates/expect-test/1.5.0/download
-source_filename = expect-test-1.5.0.tar.gz
-source_hash = 9e0be0a561335815e06dab7c62e50353134c796e7a6155402a64bcff66b6a5e0

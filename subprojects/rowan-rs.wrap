@@ -1,6 +1,0 @@
-[wrap-file]
-method = cargo
-directory = rowan-0.15.16
-source_url = https://crates.io/api/v1/crates/rowan/0.15.16/download
-source_filename = rowan-0.15.16.tar.gz
-source_hash = 0a542b0253fa46e632d27a1dc5cf7b930de4df8659dc6e720b647fc72147ae3d

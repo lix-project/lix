@@ -1,13 +1,5 @@
-# FIXME: remove hack once we get rid of meson 1.4
-rnix_name = 'rnix-0.11-rs'
-rowan_name = 'rowan-0.15-rs'
-if meson.version().version_compare('< 1.5')
-  rnix_name = 'rnix-rs'
-  rowan_name = 'rowan-rs'
-endif
-
-rnix = dependency(rnix_name)
-rowan = dependency(rowan_name)
+rnix = dependency('rnix-0.11-rs')
+rowan = dependency('rowan-0.15-rs')
 
 lix_doc = static_library(
   'lix_doc',

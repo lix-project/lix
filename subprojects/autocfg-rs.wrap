@@ -1,6 +1,0 @@
-[wrap-file]
-method = cargo
-directory = autocfg-1.1.0
-source_url = https://crates.io/api/v1/crates/autocfg/1.1.0/download
-source_filename = autocfg-1.1.0.tar.gz
-source_hash = d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa

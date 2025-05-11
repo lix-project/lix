@@ -1,6 +1,0 @@
-[wrap-file]
-method = cargo
-directory = countme-3.0.1
-source_url = https://crates.io/api/v1/crates/countme/3.0.1/download
-source_filename = countme-3.0.1.tar.gz
-source_hash = 7704b5fdd17b18ae31c4c1da5a2e0305a2bf17b5249300a9ee9ed7b72114c636
