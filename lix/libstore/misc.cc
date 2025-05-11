@@ -551,36 +551,4 @@ try {
     co_return result::current_exception();
 }
 
-
-kj::Promise<Result<OutputPathMap>>
-resolveDerivedPath(Store & store, const DerivedPath::Built & bfd)
-try {
-    auto drvPath = TRY_AWAIT(resolveDerivedPath(store, *bfd.drvPath));
-    auto outputMap = TRY_AWAIT(store.queryDerivationOutputMap(drvPath));
-    auto outputsLeft = std::visit(overloaded {
-        [&](const OutputsSpec::All &) {
-            return StringSet {};
-        },
-        [&](const OutputsSpec::Names & names) {
-            return static_cast<StringSet>(names);
-        },
-    }, bfd.outputs.raw);
-    for (auto iter = outputMap.begin(); iter != outputMap.end();) {
-        auto & outputName = iter->first;
-        if (bfd.outputs.contains(outputName)) {
-            outputsLeft.erase(outputName);
-            ++iter;
-        } else {
-            iter = outputMap.erase(iter);
-        }
-    }
-    if (!outputsLeft.empty())
-        throw Error("derivation '%s' does not have an outputs %s",
-            store.printStorePath(drvPath),
-            concatStringsSep(", ", quoteStrings(std::get<OutputsSpec::Names>(bfd.outputs.raw))));
-    co_return outputMap;
-} catch (...) {
-    co_return result::current_exception();
-}
-
 }
