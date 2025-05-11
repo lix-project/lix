@@ -242,7 +242,7 @@ static DerivationOutput parseDerivationOutput(
     if (hashAlgo != "") {
         ContentAddressMethod method = ContentAddressMethod::parsePrefix(hashAlgo);
         if (method == TextIngestionMethod {})
-            xpSettings.require(Xp::DynamicDerivations);
+            throw UnimplementedError("dynamic derivations are not supported");
         const auto hashType = parseHashType(hashAlgo);
         if (hashS == "impure") {
             throw UnimplementedError("impure derivations are not supported");
@@ -287,66 +287,12 @@ static DerivationOutput parseDerivationOutput(
     return parseDerivationOutput(store, *pathS, *hashAlgo, *hash, xpSettings);
 }
 
-/**
- * All ATerm Derivation format versions currently known.
- *
- * Unknown versions are rejected at the parsing stage.
- */
-enum struct DerivationATermVersion {
-    /**
-     * Older unversioned form
-     */
-    Traditional,
-
-    /**
-     * Newer versioned form; only this version so far.
-     */
-    DynamicDerivations,
-};
-
 static DerivedPathMap<StringSet>::ChildNode parseDerivedPathMapNode(
     const Store & store,
-    StringViewStream & str,
-    DerivationATermVersion version)
+    StringViewStream & str)
 {
     DerivedPathMap<StringSet>::ChildNode node;
-
-    auto parseNonDynamic = [&]() {
-        node.value = parseStrings(str, false);
-    };
-
-    // Older derivation should never use new form, but newer
-    // derivaiton can use old form.
-    switch (version) {
-    case DerivationATermVersion::Traditional:
-        parseNonDynamic();
-        break;
-    case DerivationATermVersion::DynamicDerivations:
-        switch (str.peek()) {
-        case '[':
-            parseNonDynamic();
-            break;
-        case '(':
-            expect(str, "(");
-            node.value = parseStrings(str, false);
-            expect(str, ",[");
-            while (!endOfList(str)) {
-                expect(str, "(");
-                auto outputName = parseString(str).toOwned();
-                expect(str, ",");
-                node.childMap.insert_or_assign(outputName, parseDerivedPathMapNode(store, str, version));
-                expect(str, ")");
-            }
-            expect(str, ")");
-            break;
-        default:
-            throw FormatError("invalid inputDrvs entry in derivation");
-        }
-        break;
-    default:
-        // invalid format, not a parse error but internal error
-        assert(false);
-    }
+    node.value = parseStrings(str, false);
     return node;
 }
 
@@ -360,24 +306,14 @@ Derivation parseDerivation(
 
     StringViewStream str{s};
     expect(str, "D");
-    DerivationATermVersion version;
     switch (str.peek()) {
     case 'e':
         expect(str, "erive(");
-        version = DerivationATermVersion::Traditional;
         break;
     case 'r': {
         expect(str, "rvWithVersion(");
         auto versionS = parseString(str);
-        if (*versionS == "xp-dyn-drv") {
-            // Only verison we have so far
-            version = DerivationATermVersion::DynamicDerivations;
-            xpSettings.require(Xp::DynamicDerivations);
-        } else {
-            throw FormatError("Unknown derivation ATerm format version '%s'", *versionS);
-        }
-        expect(str, ",");
-        break;
+        throw FormatError("Unknown derivation ATerm format version '%s'", *versionS);
     }
     default:
         throw Error("derivation does not start with 'Derive' or 'DrvWithVersion'");
@@ -397,7 +333,7 @@ Derivation parseDerivation(
         expect(str, "(");
         auto drvPath = parsePath(str);
         expect(str, ",");
-        drv.inputDrvs.map.insert_or_assign(store.parseStorePath(*drvPath), parseDerivedPathMapNode(store, str, version));
+        drv.inputDrvs.map.insert_or_assign(store.parseStorePath(*drvPath), parseDerivedPathMapNode(store, str));
         expect(str, ")");
     }
 
@@ -506,43 +442,13 @@ static void unparseDerivedPathMapNode(const Store & store, std::string & s, cons
 }
 
 
-/**
- * Does the derivation have a dependency on the output of a dynamic
- * derivation?
- *
- * In other words, does it on the output of derivation that is itself an
- * ouput of a derivation? This corresponds to a dependency that is an
- * inductive derived path with more than one layer of
- * `DerivedPath::Built`.
- */
-static bool hasDynamicDrvDep(const Derivation & drv)
-{
-    return
-        std::find_if(
-            drv.inputDrvs.map.begin(),
-            drv.inputDrvs.map.end(),
-            [](auto & kv) { return !kv.second.childMap.empty(); })
-        != drv.inputDrvs.map.end();
-}
-
-
 std::string Derivation::unparse(const Store & store, bool maskOutputs,
     DerivedPathMap<StringSet>::ChildNode::Map * actualInputs) const
 {
     std::string s;
     s.reserve(65536);
 
-    /* Use older unversioned form if possible, for wider compat. Use
-       newer form only if we need it, which we do for
-       `Xp::DynamicDerivations`. */
-    if (hasDynamicDrvDep(*this)) {
-        s += "DrvWithVersion(";
-        // Only version we have so far
-        printUnquotedString(s, "xp-dyn-drv");
-        s += ",";
-    } else {
-        s += "Derive(";
-    }
+    s += "Derive(";
 
     bool first = true;
     s += "[";
@@ -1207,7 +1113,7 @@ DerivationOutput DerivationOutput::fromJSON(
         std::string_view s = hashAlgo;
         ContentAddressMethod method = ContentAddressMethod::parsePrefix(s);
         if (method == TextIngestionMethod {})
-            xpSettings.require(Xp::DynamicDerivations);
+            throw UnimplementedError("dynamic derivations are not supported");
         auto hashType = parseHashType(s);
         return { std::move(method), std::move(hashType) };
     };
@@ -1346,9 +1252,8 @@ Derivation Derivation::fromJSON(
             DerivedPathMap<StringSet>::ChildNode node;
             node.value = static_cast<const StringSet &>(
                 ensureType(valueAt(json, "outputs"), value_t::array));
-            for (auto & [outputId, childNode] : ensureType(valueAt(json, "dynamicOutputs"), value_t::object).items()) {
-                xpSettings.require(Xp::DynamicDerivations);
-                node.childMap[outputId] = doInput(childNode);
+            if (!ensureType(valueAt(json, "dynamicOutputs"), value_t::object).empty()) {
+                throw UnimplementedError("dynamic derivations are not supported");
             }
             return node;
         };
