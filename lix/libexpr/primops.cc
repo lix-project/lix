@@ -826,10 +826,7 @@ drvName, Bindings * attrs, Value & v)
         auto handleHashMode = [&](const std::string_view s, NeverAsync = {}) {
             if (s == "recursive") ingestionMethod = FileIngestionMethod::Recursive;
             else if (s == "flat") ingestionMethod = FileIngestionMethod::Flat;
-            else if (s == "text") {
-                experimentalFeatureSettings.require(Xp::DynamicDerivations);
-                ingestionMethod = TextIngestionMethod {};
-            } else
+            else
                 state.ctx.errors.make<EvalError>(
                     "invalid value '%s' for 'outputHashMode' attribute", s
                 ).debugThrow();
@@ -998,15 +995,10 @@ drvName, Bindings * attrs, Value & v)
             .debugThrow();
 
     /* Check whether the derivation name is valid. */
-    if (isDerivation(drvName) &&
-        !(ingestionMethod == ContentAddressMethod { TextIngestionMethod { } } &&
-          outputs.size() == 1 &&
-          *(outputs.begin()) == "out"))
-    {
-        state.ctx.errors.make<EvalError>(
-            "derivation names are allowed to end in '%s' only if they produce a single derivation file",
-            drvExtension
-        ).debugThrow();
+    if (isDerivation(drvName)) {
+        state.ctx.errors
+            .make<EvalError>("derivation names are not allowed to end in '%s'", drvExtension)
+            .debugThrow();
     }
 
     if (outputHash) {
