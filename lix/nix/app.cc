@@ -27,7 +27,7 @@ StringPairs resolveRewrites(
                     res.emplace(
                         DownstreamPlaceholder::fromSingleDerivedPathBuilt(
                             SingleDerivedPath::Built {
-                                .drvPath = makeConstantStorePathRef(drvDep->drvPath->path),
+                                .drvPath = makeConstantStorePath(drvDep->drvPath.path),
                                 .output = outputName,
                             }).render(),
                         store.printStorePath(outputPath)
@@ -73,7 +73,7 @@ UnresolvedApp InstallableValue::toApp(EvalState & state)
                 [&](const NixStringContextElem::DrvDeep & d) -> DerivedPath {
                     /* We want all outputs of the drv */
                     return DerivedPath::Built {
-                        .drvPath = makeConstantStorePathRef(d.drvPath),
+                        .drvPath = makeConstantStorePath(d.drvPath),
                         .outputs = OutputsSpec::All {},
                     };
                 },
@@ -114,7 +114,7 @@ UnresolvedApp InstallableValue::toApp(EvalState & state)
         auto program = outPath + "/bin/" + mainProgram;
         return UnresolvedApp { App {
             .context = { DerivedPath::Built {
-                .drvPath = makeConstantStorePathRef(drvPath),
+                .drvPath = makeConstantStorePath(drvPath),
                 .outputs = OutputsSpec::Names { outputName },
             } },
             .program = program,

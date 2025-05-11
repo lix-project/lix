@@ -25,7 +25,7 @@ int main (int argc, char **argv)
 
         std::vector<DerivedPath> paths {
             DerivedPath::Built {
-                .drvPath = makeConstantStorePathRef(store->parseStorePath(drvPath)),
+                .drvPath = makeConstantStorePath(store->parseStorePath(drvPath)),
                 .outputs = OutputsSpec::Names{"out"}
             }
         };

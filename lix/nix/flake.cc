@@ -615,7 +615,7 @@ struct CmdFlakeCheck : FlakeCommand
                                             *attr2.value, attr2.pos);
                                         if (drvPath && attr_name == evalSettings.getCurrentSystem()) {
                                             drvPaths.push_back(DerivedPath::Built {
-                                                .drvPath = makeConstantStorePathRef(*drvPath),
+                                                .drvPath = makeConstantStorePath(*drvPath),
                                                 .outputs = OutputsSpec::All { },
                                             });
                                         }

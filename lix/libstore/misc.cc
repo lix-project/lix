@@ -150,10 +150,10 @@ struct QueryMissingContext
 
     kj::Promise<Result<void>> queryMissing(const std::vector<DerivedPath> & targets);
 
-    void enqueueDerivedPaths(ref<DerivedPathOpaque> inputDrv, const StringSet & inputNode)
+    void enqueueDerivedPaths(DerivedPathOpaque inputDrv, const StringSet & inputNode)
     {
         if (!inputNode.empty()) {
-            pool.enqueueWithAio([this, path{DerivedPath::Built{inputDrv, inputNode}}](
+            pool.enqueueWithAio([this, path{DerivedPath::Built{std::move(inputDrv), inputNode}}](
                                     AsyncIoRoot & aio
                                 ) { doPath(aio, path); });
         }
@@ -167,7 +167,7 @@ struct QueryMissingContext
         }
 
         for (const auto & [inputDrv, inputNode] : drv.inputDrvs) {
-            enqueueDerivedPaths(makeConstantStorePathRef(inputDrv), inputNode);
+            enqueueDerivedPaths(makeConstantStorePath(inputDrv), inputNode);
         }
     }
 
@@ -230,7 +230,7 @@ struct QueryMissingContext
 
     void doPathBuilt(AsyncIoRoot & aio, const DerivedPath::Built & bfd)
     {
-        auto & drvPath = bfd.drvPath->path;
+        auto & drvPath = bfd.drvPath.path;
 
         if (!aio.blockOn(store.isValidPath(drvPath))) {
             // FIXME: we could try to substitute the derivation.
@@ -457,7 +457,7 @@ try {
 kj::Promise<Result<OutputPathMap>>
 resolveDerivedPath(Store & store, const DerivedPath::Built & bfd, Store * evalStore_)
 try {
-    auto drvPath = bfd.drvPath->path;
+    auto drvPath = bfd.drvPath.path;
 
     auto outputsOpt_ = TRY_AWAIT(store.queryPartialDerivationOutputMap(drvPath, evalStore_));
 
@@ -474,7 +474,7 @@ try {
                 if (!pOutputPathOpt)
                     throw Error(
                         "the derivation '%s' doesn't have an output named '%s'",
-                        bfd.drvPath->to_string(store), output);
+                        bfd.drvPath.to_string(store), output);
                 outputsOpt.insert_or_assign(output, std::move(*pOutputPathOpt));
             }
             return outputsOpt;
@@ -484,7 +484,7 @@ try {
     OutputPathMap outputs;
     for (auto & [outputName, outputPathOpt] : outputsOpt) {
         if (!outputPathOpt)
-            throw MissingRealisation(bfd.drvPath->to_string(store), outputName);
+            throw MissingRealisation(bfd.drvPath.to_string(store), outputName);
         auto & outputPath = *outputPathOpt;
         outputs.insert_or_assign(outputName, outputPath);
     }
@@ -506,7 +506,7 @@ try {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
         [&](const SingleDerivedPath::Built & bfd) -> kj::Promise<Result<StorePath>> {
             try {
-                auto drvPath = bfd.drvPath->path;
+                auto drvPath = bfd.drvPath.path;
                 auto outputPaths =
                     TRY_AWAIT(evalStore.queryPartialDerivationOutputMap(drvPath, evalStore_));
                 if (outputPaths.count(bfd.output) == 0)
@@ -514,7 +514,7 @@ try {
                         store.printStorePath(drvPath), bfd.output);
                 auto & optPath = outputPaths.at(bfd.output);
                 if (!optPath)
-                    throw MissingRealisation(bfd.drvPath->to_string(store), bfd.output);
+                    throw MissingRealisation(bfd.drvPath.to_string(store), bfd.output);
                 co_return *optPath;
             } catch (...) {
                 co_return result::current_exception();

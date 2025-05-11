@@ -20,7 +20,7 @@ Gen<DerivedPath::Opaque> Arbitrary<DerivedPath::Opaque>::arbitrary()
 Gen<SingleDerivedPath::Built> Arbitrary<SingleDerivedPath::Built>::arbitrary()
 {
     return gen::just(SingleDerivedPath::Built {
-        .drvPath = make_ref<DerivedPathOpaque>(*gen::arbitrary<DerivedPathOpaque>()),
+        .drvPath = *gen::arbitrary<DerivedPathOpaque>(),
         .output = (*gen::arbitrary<StorePathName>()).name,
     });
 }
@@ -28,7 +28,7 @@ Gen<SingleDerivedPath::Built> Arbitrary<SingleDerivedPath::Built>::arbitrary()
 Gen<DerivedPath::Built> Arbitrary<DerivedPath::Built>::arbitrary()
 {
     return gen::just(DerivedPath::Built {
-        .drvPath = make_ref<DerivedPathOpaque>(*gen::arbitrary<DerivedPathOpaque>()),
+        .drvPath = *gen::arbitrary<DerivedPathOpaque>(),
         .outputs = *gen::arbitrary<OutputsSpec>(),
     });
 }

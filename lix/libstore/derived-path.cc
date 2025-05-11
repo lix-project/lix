@@ -10,9 +10,9 @@ namespace nix {
     bool MY_TYPE ::operator COMPARATOR (const MY_TYPE & other) const \
     { \
         const MY_TYPE* me = this; \
-        auto fields1 = std::tie(*me->drvPath, me->FIELD); \
+        auto fields1 = std::tie(me->drvPath, me->FIELD); \
         me = &other; \
-        auto fields2 = std::tie(*me->drvPath, me->FIELD); \
+        auto fields2 = std::tie(me->drvPath, me->FIELD); \
         return fields1 COMPARATOR fields2; \
     }
 #define CMP(CHILD_TYPE, MY_TYPE, FIELD) \
@@ -37,10 +37,10 @@ try {
 kj::Promise<Result<JSON>> DerivedPath::Built::toJSON(Store & store) const
 try {
     JSON res;
-    res["drvPath"] = TRY_AWAIT(drvPath->toJSON(store));
+    res["drvPath"] = TRY_AWAIT(drvPath.toJSON(store));
     // Fallback for the input-addressed derivation case: We expect to always be
     // able to print the output paths, so let’s do it
-    const auto outputMap = TRY_AWAIT(store.queryPartialDerivationOutputMap(drvPath->path));
+    const auto outputMap = TRY_AWAIT(store.queryPartialDerivationOutputMap(drvPath.path));
     for (const auto & [output, outputPathOpt] : outputMap) {
         if (!outputs.contains(output)) continue;
         if (outputPathOpt)
@@ -60,14 +60,14 @@ std::string DerivedPath::Opaque::to_string(const Store & store) const
 
 std::string DerivedPath::Built::to_string(const Store & store) const
 {
-    return drvPath->to_string(store)
+    return drvPath.to_string(store)
         + '^'
         + outputs.to_string();
 }
 
 std::string DerivedPath::Built::to_string_legacy(const Store & store) const
 {
-    return drvPath->to_string(store)
+    return drvPath.to_string(store)
         + "!"
         + outputs.to_string();
 }
@@ -94,11 +94,11 @@ DerivedPath::Opaque DerivedPath::Opaque::parse(const Store & store, std::string_
 }
 
 DerivedPath::Built DerivedPath::Built::parse(
-    const Store & store, ref<DerivedPathOpaque> drv,
+    const Store & store, DerivedPathOpaque drv,
     OutputNameView outputsS)
 {
     return {
-        .drvPath = drv,
+        .drvPath = std::move(drv),
         .outputs = OutputsSpec::parse(outputsS),
     };
 }
@@ -112,12 +112,10 @@ static DerivedPathT parseDerivedPath(
         return DerivedPathT::Opaque::parse(store, s);
     } else {
         auto path = DerivedPathT::Built::parse(store,
-            make_ref<typename DerivedPathT::Opaque>(DerivedPathT::Opaque::parse(
-                store,
-                s.substr(0, n))),
+            DerivedPathT::Opaque::parse(store, s.substr(0, n)),
             s.substr(n + 1));
 
-        const auto& basePath = path.drvPath->path;
+        const auto& basePath = path.drvPath.path;
         if (!basePath.isDerivation()) {
             throw InvalidPath("cannot use output selection ('%s') on non-derivation store path '%s'",
                               separator, basePath.to_string());
@@ -152,7 +150,7 @@ static inline const StorePath & getBaseStorePath_(const DP & derivedPath)
 {
     return std::visit(overloaded {
         [&](const typename DP::Built & bfd) -> const StorePath & {
-            return bfd.drvPath->path;
+            return bfd.drvPath.path;
         },
         [&](const typename DP::Opaque & bo) -> const StorePath & {
             return bo.path;

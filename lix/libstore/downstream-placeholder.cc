@@ -27,7 +27,7 @@ DownstreamPlaceholder DownstreamPlaceholder::fromSingleDerivedPathBuilt(
     const SingleDerivedPath::Built & b,
     const ExperimentalFeatureSettings & xpSettings)
 {
-    return DownstreamPlaceholder::unknownCaOutput(b.drvPath->path, b.output, xpSettings);
+    return DownstreamPlaceholder::unknownCaOutput(b.drvPath.path, b.output, xpSettings);
 }
 
 }

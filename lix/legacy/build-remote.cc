@@ -336,7 +336,7 @@ connected:
             ));
             auto res = aio.blockOn(sshStore->buildPathsWithResults({
                 DerivedPath::Built {
-                    .drvPath = makeConstantStorePathRef(*drvPath),
+                    .drvPath = makeConstantStorePath(*drvPath),
                     .outputs = OutputsSpec::All {},
                 }
             }));

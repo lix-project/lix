@@ -26,7 +26,7 @@ NixStringContextElem NixStringContextElem::parse(std::string_view s0)
         std::string output { s.substr(0, index) };
         // Advance string to parse after the '!'
         s = s.substr(index + 1);
-        auto drv = make_ref<SingleDerivedPath::Opaque>(SingleDerivedPath::Opaque{StorePath{s}});
+        auto drv = SingleDerivedPath::Opaque{StorePath{s}};
         return SingleDerivedPath::Built{
             .drvPath = std::move(drv),
             .output = std::move(output),
@@ -59,7 +59,7 @@ std::string NixStringContextElem::to_string() const
             res += '!';
             res += b.output;
             res += '!';
-            res += b.drvPath->path.to_string();
+            res += b.drvPath.path.to_string();
         },
         [&](const NixStringContextElem::Opaque & o) {
             res += o.path.to_string();

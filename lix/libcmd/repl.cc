@@ -760,7 +760,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
 
             state.aio.blockOn(evaluator.store->buildPaths({
                 DerivedPath::Built {
-                    .drvPath = makeConstantStorePathRef(drvPath),
+                    .drvPath = makeConstantStorePath(drvPath),
                     .outputs = OutputsSpec::All { },
                 },
             }));

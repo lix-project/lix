@@ -53,7 +53,7 @@ static inline ref<SingleBuiltPath> staticDrv(StorePath drvPath)
  * See 'BuiltPath' for more an explanation.
  */
 struct BuiltPathBuilt {
-    ref<DerivedPathOpaque> drvPath;
+    DerivedPathOpaque drvPath;
     std::map<std::string, StorePath> outputs;
 
     std::string to_string(const Store & store) const;

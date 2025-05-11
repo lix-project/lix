@@ -93,7 +93,7 @@ try {
         }));
         auto & result = results.goals.begin()->second;
         co_return result.result.restrictTo(DerivedPath::Built {
-            .drvPath = makeConstantStorePathRef(drvPath),
+            .drvPath = makeConstantStorePath(drvPath),
             .outputs = OutputsSpec::All {},
         });
     } catch (Error & e) {
@@ -151,7 +151,7 @@ try {
                 Worker::Targets goals;
                 goals.emplace_back(gf.makeGoal(
                     DerivedPath::Built{
-                        .drvPath = makeConstantStorePathRef(*info->deriver),
+                        .drvPath = makeConstantStorePath(*info->deriver),
                         // FIXME: Should just build the specific output we need.
                         .outputs = OutputsSpec::All{},
                     },

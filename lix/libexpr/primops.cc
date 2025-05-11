@@ -58,7 +58,7 @@ StringMap EvalState::realiseContext(const NixStringContext & context)
                     .drvPath = b.drvPath,
                     .outputs = OutputsSpec::Names { b.output },
                 });
-                return ensureValid(b.drvPath->path);
+                return ensureValid(b.drvPath.path);
             },
             [&](const NixStringContextElem::Opaque & o) {
                 auto ctxS = ctx.store->printStorePath(o.path);
@@ -166,7 +166,7 @@ static void mkOutputString(
     state.mkOutputString(
         attrs.alloc(o.first),
         SingleDerivedPath::Built {
-            .drvPath = makeConstantStorePathRef(drvPath),
+            .drvPath = makeConstantStorePath(drvPath),
             .output = o.first,
         },
         o.second.path(*state.ctx.store, Derivation::nameFromPath(drvPath), o.first));
@@ -977,7 +977,7 @@ drvName, Bindings * attrs, Value & v)
                 }
             },
             [&](const NixStringContextElem::Built & b) {
-                drv.inputDrvs[b.drvPath->path].insert(b.output);
+                drv.inputDrvs[b.drvPath.path].insert(b.output);
             },
             [&](const NixStringContextElem::Opaque & o) {
                 drv.inputSrcs.insert(o.path);

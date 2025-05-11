@@ -355,7 +355,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
 
                 auto bashDrv = drv->requireDrvPath(*state);
                 pathsToBuild.push_back(DerivedPath::Built {
-                    .drvPath = makeConstantStorePathRef(bashDrv),
+                    .drvPath = makeConstantStorePath(bashDrv),
                     .outputs = OutputsSpec::Names {"out"},
                 });
                 pathsToCopy.insert(bashDrv);
@@ -368,7 +368,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
             }
         }
 
-        auto accumDerivedPath = [&](ref<SingleDerivedPath::Opaque> inputDrv, const StringSet & inputNode) {
+        auto accumDerivedPath = [&](SingleDerivedPath::Opaque inputDrv, const StringSet & inputNode) {
             if (!inputNode.empty())
                 pathsToBuild.push_back(DerivedPath::Built {
                     .drvPath = inputDrv,
@@ -386,7 +386,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
                         return !std::regex_search(store->printStorePath(inputDrv), regex::parse(exclude));
                     }))
             {
-                accumDerivedPath(makeConstantStorePathRef(inputDrv), inputNode);
+                accumDerivedPath(makeConstantStorePath(inputDrv), inputNode);
                 pathsToCopy.insert(inputDrv);
             }
         }
@@ -571,7 +571,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
                 throw Error("derivation '%s' lacks an 'outputName' attribute", store->printStorePath(drvPath));
 
             pathsToBuild.push_back(DerivedPath::Built{
-                .drvPath = makeConstantStorePathRef(drvPath),
+                .drvPath = makeConstantStorePath(drvPath),
                 .outputs = OutputsSpec::Names{outputName},
             });
             pathsToBuildOrdered.push_back({drvPath, {outputName}});

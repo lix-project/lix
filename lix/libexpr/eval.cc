@@ -922,10 +922,10 @@ std::string EvalState::mkSingleDerivedPathStringRaw(
             return ctx.store->printStorePath(o.path);
         },
         [&](const SingleDerivedPath::Built & b) {
-            auto drv = aio.blockOn(ctx.store->readDerivation(b.drvPath->path));
+            auto drv = aio.blockOn(ctx.store->readDerivation(b.drvPath.path));
             auto i = drv.outputs.find(b.output);
             if (i == drv.outputs.end())
-                throw Error("derivation '%s' does not have output '%s'", b.drvPath->to_string(*ctx.store), b.output);
+                throw Error("derivation '%s' does not have output '%s'", b.drvPath.to_string(*ctx.store), b.output);
             auto optStaticOutputPath = i->second.path(*ctx.store, drv.name, b.output);
             return mkOutputStringRaw(b, optStaticOutputPath);
         }
@@ -2477,7 +2477,7 @@ SingleDerivedPath EvalState::coerceToSingleDerivedPath(const PosIdx pos, Value &
             [&](const SingleDerivedPath::Built & b) {
                 ctx.errors.make<EvalError>(
                     "string '%s' has context with the output '%s' from derivation '%s', but the string is not the right placeholder for this derivation output. It should be '%s'",
-                    s, b.output, b.drvPath->to_string(*ctx.store), sExpected)
+                    s, b.output, b.drvPath.to_string(*ctx.store), sExpected)
                     .withTrace(pos, errorCtx).debugThrow(always_progresses);
             }
         }, derivedPath.raw());

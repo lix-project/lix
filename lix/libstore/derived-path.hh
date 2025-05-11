@@ -43,7 +43,7 @@ struct SingleDerivedPath;
  * path of the given output name.
  */
 struct SingleDerivedPathBuilt {
-    ref<DerivedPathOpaque> drvPath;
+    DerivedPathOpaque drvPath;
     OutputName output;
 
     DECLARE_CMP(SingleDerivedPathBuilt);
@@ -79,9 +79,9 @@ struct SingleDerivedPath : derived_path::detail::SingleDerivedPathRaw {
     }
 };
 
-static inline ref<DerivedPathOpaque> makeConstantStorePathRef(StorePath drvPath)
+static inline DerivedPathOpaque makeConstantStorePath(StorePath drvPath)
 {
-    return make_ref<DerivedPathOpaque>(SingleDerivedPath::Opaque { drvPath });
+    return SingleDerivedPath::Opaque { std::move(drvPath) };
 }
 
 /**
@@ -97,7 +97,7 @@ static inline ref<DerivedPathOpaque> makeConstantStorePathRef(StorePath drvPath)
  * output name.
  */
 struct DerivedPathBuilt {
-    ref<DerivedPathOpaque> drvPath;
+    DerivedPathOpaque drvPath;
     OutputsSpec outputs;
 
     /**
@@ -111,7 +111,7 @@ struct DerivedPathBuilt {
     /**
      * The caller splits on the separator, so it works for both variants.
      */
-    static DerivedPathBuilt parse(const Store & store, ref<DerivedPathOpaque>, std::string_view);
+    static DerivedPathBuilt parse(const Store & store, DerivedPathOpaque, std::string_view);
     kj::Promise<Result<JSON>> toJSON(Store & store) const;
 
     DECLARE_CMP(DerivedPathBuilt);

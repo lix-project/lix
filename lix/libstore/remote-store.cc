@@ -667,7 +667,7 @@ try {
                     // Do nothing, path is hopefully there already
                 },
                 [&](const DerivedPath::Built & bp) {
-                    drvPaths2.insert(bp.drvPath->path);
+                    drvPaths2.insert(bp.drvPath.path);
                 },
             }, i.raw());
         }
@@ -748,7 +748,7 @@ try {
                         };
 
                         OutputPathMap outputs;
-                        auto drvPath = bfd.drvPath->path;
+                        auto drvPath = bfd.drvPath.path;
                         auto drv = TRY_AWAIT(evalStore->readDerivation(drvPath));
                         const auto outputHashes =
                             TRY_AWAIT(staticOutputHashes(*evalStore, drv)); // FIXME: expensive

@@ -74,7 +74,7 @@ DerivationGoal::DerivationGoal(const StorePath & drvPath,
 {
     name = fmt(
         "building of '%s' from .drv file",
-        DerivedPath::Built { makeConstantStorePathRef(drvPath), wantedOutputs }.to_string(worker.store));
+        DerivedPath::Built { makeConstantStorePath(drvPath), wantedOutputs }.to_string(worker.store));
     trace("created");
 
     mcExpectedBuilds = worker.expectedBuilds.addTemporarily(1);
@@ -93,7 +93,7 @@ DerivationGoal::DerivationGoal(DrvHasRoot, const StorePath & drvPath, const Basi
 
     name = fmt(
         "building of '%s' from in-memory derivation",
-        DerivedPath::Built { makeConstantStorePathRef(drvPath), drv.outputNames() }.to_string(worker.store));
+        DerivedPath::Built { makeConstantStorePath(drvPath), drv.outputNames() }.to_string(worker.store));
     trace("created");
 
     mcExpectedBuilds = worker.expectedBuilds.addTemporarily(1);
@@ -373,7 +373,7 @@ try {
     /* The inputs must be built before we can build this goal. */
     inputDrvOutputs.clear();
     if (useDerivation) {
-        auto addWaiteeDerivedPath = [&](ref<DerivedPathOpaque> inputDrv, const StringSet & inputNode) {
+        auto addWaiteeDerivedPath = [&](DerivedPathOpaque inputDrv, const StringSet & inputNode) {
             if (!inputNode.empty())
                 dependencies.add(worker.goalFactory().makeGoal(
                     DerivedPath::Built {
@@ -384,7 +384,7 @@ try {
         };
 
         for (const auto & [inputDrvPath, inputNode] : dynamic_cast<Derivation *>(drv.get())->inputDrvs) {
-            addWaiteeDerivedPath(makeConstantStorePathRef(inputDrvPath), inputNode);
+            addWaiteeDerivedPath(makeConstantStorePath(inputDrvPath), inputNode);
         }
     }
 
@@ -465,7 +465,7 @@ try {
         else
             dependencies.add(worker.goalFactory().makeGoal(
                 DerivedPath::Built {
-                    .drvPath = makeConstantStorePathRef(drvPath2->second),
+                    .drvPath = makeConstantStorePath(drvPath2->second),
                     .outputs = OutputsSpec::All { },
                 },
                 bmRepair));
@@ -1762,7 +1762,7 @@ void DerivationGoal::waiteeDone(GoalPtr waitee)
 
     for (auto & outputName : outputs) {
         auto buildResult = dg->buildResult.restrictTo(DerivedPath::Built {
-            .drvPath = makeConstantStorePathRef(dg->drvPath),
+            .drvPath = makeConstantStorePath(dg->drvPath),
             .outputs = OutputsSpec::Names { outputName },
         });
         if (buildResult.success()) {

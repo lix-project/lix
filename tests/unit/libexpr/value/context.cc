@@ -78,7 +78,7 @@ TEST(NixStringContextElemTest, built_opaque) {
     auto * p = std::get_if<NixStringContextElem::Built>(&elem.raw);
     ASSERT_TRUE(p);
     ASSERT_EQ(p->output, "foo");
-    ASSERT_EQ(*p->drvPath, (SingleDerivedPath::Opaque {
+    ASSERT_EQ(p->drvPath, (SingleDerivedPath::Opaque {
         .path = StorePath { built.substr(5) },
     }));
     ASSERT_EQ(elem.to_string(), built);

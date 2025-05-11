@@ -76,13 +76,13 @@ VERSIONED_CHARACTERIZATION_TEST(
             .path = StorePath { "g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-foo" },
         },
         DerivedPath::Built {
-            .drvPath = makeConstantStorePathRef(StorePath {
+            .drvPath = makeConstantStorePath(StorePath {
                 "g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-bar.drv",
             }),
             .outputs = OutputsSpec::All { },
         },
         DerivedPath::Built {
-            .drvPath = makeConstantStorePathRef(StorePath {
+            .drvPath = makeConstantStorePath(StorePath {
                 "g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-bar.drv",
             }),
             .outputs = OutputsSpec::Names { "x", "y" },
@@ -102,13 +102,13 @@ VERSIONED_CHARACTERIZATION_TEST(
             .path = StorePath { "g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-foo.drv" },
         },
         DerivedPath::Built {
-            .drvPath = makeConstantStorePathRef(StorePath {
+            .drvPath = makeConstantStorePath(StorePath {
                 "g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-bar.drv",
             }),
             .outputs = OutputsSpec::All { },
         },
         DerivedPath::Built {
-            .drvPath = makeConstantStorePathRef(StorePath {
+            .drvPath = makeConstantStorePath(StorePath {
                 "g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-bar.drv",
             }),
             .outputs = OutputsSpec::Names { "x", "y" },
@@ -318,7 +318,7 @@ VERSIONED_CHARACTERIZATION_TEST(
                     .stopTime = 50,
                 },
                 /* .path = */ DerivedPath::Built {
-                    .drvPath = makeConstantStorePathRef(StorePath {
+                    .drvPath = makeConstantStorePath(StorePath {
                         "g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-bar.drv",
                     }),
                     .outputs = OutputsSpec::Names { "out" },

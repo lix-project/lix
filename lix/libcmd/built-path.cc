@@ -13,9 +13,9 @@ namespace nix {
     bool MY_TYPE ::operator COMPARATOR (const MY_TYPE & other) const \
     { \
         const MY_TYPE* me = this; \
-        auto fields1 = std::tie(*me->drvPath, me->FIELD); \
+        auto fields1 = std::tie(me->drvPath, me->FIELD); \
         me = &other; \
-        auto fields2 = std::tie(*me->drvPath, me->FIELD); \
+        auto fields2 = std::tie(me->drvPath, me->FIELD); \
         return fields1 COMPARATOR fields2; \
     }
 #define CMP(CHILD_TYPE, MY_TYPE, FIELD) \
@@ -52,7 +52,7 @@ StorePathSet BuiltPath::outPaths() const
 kj::Promise<Result<JSON>> BuiltPath::Built::toJSON(const Store & store) const
 try {
     JSON res;
-    res["drvPath"] = TRY_AWAIT(drvPath->toJSON(store));
+    res["drvPath"] = TRY_AWAIT(drvPath.toJSON(store));
     for (const auto & [outputName, outputPath] : outputs) {
         res["outputs"][outputName] = store.printStorePath(outputPath);
     }
@@ -109,7 +109,7 @@ try {
         [&](const BuiltPath::Built & p) -> kj::Promise<Result<void>> {
             try {
                 auto drvHashes = TRY_AWAIT(
-                    staticOutputHashes(store, TRY_AWAIT(store.readDerivation(p.drvPath->path)))
+                    staticOutputHashes(store, TRY_AWAIT(store.readDerivation(p.drvPath.path)))
                 );
                 for (auto& [outputName, outputPath] : p.outputs) {
                     if (experimentalFeatureSettings.isEnabled(
@@ -118,7 +118,7 @@ try {
                         if (!drvOutput)
                             throw Error(
                                 "the derivation '%s' has unrealised output '%s' (derived-path.cc/toRealisedPaths)",
-                                store.printStorePath(p.drvPath->path), outputName);
+                                store.printStorePath(p.drvPath.path), outputName);
                         auto thisRealisation = TRY_AWAIT(store.queryRealisation(
                             DrvOutput{*drvOutput, outputName}));
                         assert(thisRealisation);  // We’ve built it, so we must

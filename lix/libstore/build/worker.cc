@@ -201,7 +201,7 @@ std::pair<GoalPtr, kj::Promise<Result<Goal::WorkResult>>> Worker::makeGoal(const
 {
     return std::visit(overloaded {
         [&](const DerivedPath::Built & bfd) -> std::pair<GoalPtr, kj::Promise<Result<Goal::WorkResult>>> {
-            return makeDerivationGoal(bfd.drvPath->path, bfd.outputs, buildMode);
+            return makeDerivationGoal(bfd.drvPath.path, bfd.outputs, buildMode);
         },
         [&](const DerivedPath::Opaque & bo) -> std::pair<GoalPtr, kj::Promise<Result<Goal::WorkResult>>> {
             return makePathSubstitutionGoal(bo.path, buildMode == bmRepair ? Repair : NoRepair);

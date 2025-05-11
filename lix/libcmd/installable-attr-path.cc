@@ -76,7 +76,7 @@ DerivedPathsWithInfo InstallableAttrPath::toDerivedPaths(EvalState & state)
     for (auto & [drvPath, outputs] : byDrvPath)
         res.push_back({
             .path = DerivedPath::Built {
-                .drvPath = makeConstantStorePathRef(drvPath),
+                .drvPath = makeConstantStorePath(drvPath),
                 .outputs = outputs,
             },
             .info = make_ref<ExtraPathInfoValue>(ExtraPathInfoValue::Value {

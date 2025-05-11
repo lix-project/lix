@@ -99,7 +99,7 @@ readConstituents(const nix::Value *v, nix::box_ptr<nix::EvalState> &state,
             std::visit(nix::overloaded{
                            [&](const nix::NixStringContextElem::Built &b) {
                                constituents.push_back(
-                                   b.drvPath->to_string(*evaluator->store));
+                                   b.drvPath.to_string(*evaluator->store));
                            },
                            [&](const nix::NixStringContextElem::Opaque &) {},
                            [&](const nix::NixStringContextElem::DrvDeep &) {},

@@ -117,7 +117,7 @@ struct CmdBundle : InstallableCommand
 
         aio().blockOn(store->buildPaths({
             DerivedPath::Built {
-                .drvPath = makeConstantStorePathRef(drvPath),
+                .drvPath = makeConstantStorePath(drvPath),
                 .outputs = OutputsSpec::All { },
             },
         }));

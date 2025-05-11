@@ -98,7 +98,7 @@ DerivedPathsWithInfo InstallableFlake::toDerivedPaths(EvalState & state)
 
     return {{
         .path = DerivedPath::Built {
-            .drvPath = makeConstantStorePathRef(std::move(drvPath)),
+            .drvPath = makeConstantStorePath(std::move(drvPath)),
             .outputs = std::visit(overloaded {
                 [&](const ExtendedOutputsSpec::Default & d) -> OutputsSpec {
                     std::set<std::string> outputsToInstall;

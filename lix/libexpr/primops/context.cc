@@ -127,7 +127,7 @@ void prim_getContext(EvalState & state, Value * * args, Value & v)
                 contextInfos[std::move(d.drvPath)].allOutputs = true;
             },
             [&](NixStringContextElem::Built && b) {
-                auto drvPath = b.drvPath->path;
+                auto drvPath = b.drvPath.path;
                 contextInfos[std::move(drvPath)].outputs.emplace_back(std::move(b.output));
             },
             [&](NixStringContextElem::Opaque && o) {
@@ -217,7 +217,7 @@ static void prim_appendContext(EvalState & state, Value * * args, Value & v)
             for (auto elem : iter->value->listItems()) {
                 auto outputName = state.forceStringNoCtx(*elem, iter->pos, "while evaluating an output name within a string context");
                 context.emplace(NixStringContextElem::Built {
-                    .drvPath = makeConstantStorePathRef(namePath),
+                    .drvPath = makeConstantStorePath(namePath),
                     .output = std::string { outputName },
                 });
             }

@@ -16,13 +16,13 @@ DerivedPath StorePathWithOutputs::toDerivedPath() const
 {
     if (!outputs.empty()) {
         return DerivedPath::Built {
-            .drvPath = makeConstantStorePathRef(path),
+            .drvPath = makeConstantStorePath(path),
             .outputs = OutputsSpec::Names { outputs },
         };
     } else if (path.isDerivation()) {
         assert(outputs.empty());
         return DerivedPath::Built {
-            .drvPath = makeConstantStorePathRef(path),
+            .drvPath = makeConstantStorePath(path),
             .outputs = OutputsSpec::All { },
         };
     } else {
@@ -51,7 +51,7 @@ StorePathWithOutputs::ParseResult StorePathWithOutputs::tryFromDerivedPath(const
         },
         [&](const DerivedPath::Built & bfd) -> StorePathWithOutputs::ParseResult {
             return StorePathWithOutputs {
-                .path = bfd.drvPath->path,
+                .path = bfd.drvPath.path,
                 // Use legacy encoding of wildcard as empty set
                 .outputs = std::visit(overloaded {
                     [&](const OutputsSpec::All &) -> StringSet {

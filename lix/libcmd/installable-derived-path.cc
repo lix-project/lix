@@ -35,7 +35,7 @@ InstallableDerivedPath InstallableDerivedPath::parse(
             // Remove this prior to stabilizing the new CLI.
             if (storePath.isDerivation()) {
                 auto oldDerivedPath = DerivedPath::Built {
-                    .drvPath = makeConstantStorePathRef(storePath),
+                    .drvPath = makeConstantStorePath(storePath),
                     .outputs = OutputsSpec::All { },
                 };
                 warn(
@@ -48,7 +48,7 @@ InstallableDerivedPath InstallableDerivedPath::parse(
         },
         // If the user did use ^, we just do exactly what is written.
         [&](const ExtendedOutputsSpec::Explicit & outputSpec) -> DerivedPath {
-            auto drv = make_ref<DerivedPathOpaque>(DerivedPathOpaque::parse(*store, prefix));
+            auto drv = DerivedPathOpaque::parse(*store, prefix);
             return DerivedPath::Built {
                 .drvPath = std::move(drv),
                 .outputs = outputSpec,

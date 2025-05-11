@@ -39,7 +39,7 @@ struct CmdLog : InstallableCommand
                 return bo.path;
             },
             [&](const DerivedPath::Built & bfd) {
-                return bfd.drvPath->path;
+                return bfd.drvPath.path;
             },
         }, b.path.raw());
 

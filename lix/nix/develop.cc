@@ -262,7 +262,7 @@ try {
     /* Build the derivation. */
     TRY_AWAIT(store->buildPaths(
         { DerivedPath::Built {
-            .drvPath = makeConstantStorePathRef(shellDrvPath),
+            .drvPath = makeConstantStorePath(shellDrvPath),
             .outputs = OutputsSpec::All { },
         }},
         bmNormal, evalStore));
