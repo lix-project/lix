@@ -144,7 +144,6 @@ experimental_feature_definitions = files(
   'experimental-features/ca-derivations.md',
   'experimental-features/cgroups.md',
   'experimental-features/daemon-trust-override.md',
-  'experimental-features/dynamic-derivations.md',
   'experimental-features/fetch-closure.md',
   'experimental-features/flakes.md',
   'experimental-features/lix-custom-sub-commands.md',

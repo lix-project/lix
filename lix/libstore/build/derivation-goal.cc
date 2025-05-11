@@ -199,8 +199,6 @@ try {
     /* Get the derivation. It is probably in the eval store, but it might be inthe main store:
 
          - Resolved derivation are resolved against main store realisations, and so must be stored there.
-
-         - Dynamic derivations are built, and so are found in the main store.
      */
     for (auto * drvStore : { &worker.evalStore, &worker.store }) {
         if (TRY_AWAIT(drvStore->isValidPath(drvPath))) {

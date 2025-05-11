@@ -892,8 +892,7 @@ std::string EvalState::mkOutputStringRaw(
     std::optional<StorePath> optStaticOutputPath,
     const ExperimentalFeatureSettings & xpSettings)
 {
-    /* In practice, this is testing for the case of CA derivations, or
-       dynamic derivations. */
+    /* In practice, this is testing for the case of CA derivations. */
     return optStaticOutputPath
         ? ctx.store->printStorePath(std::move(*optStaticOutputPath))
         /* Downstream we would substitute this for an actual path once

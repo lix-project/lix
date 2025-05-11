@@ -360,8 +360,6 @@ template<> ExperimentalFeatures BaseSetting<ExperimentalFeatures>::parse(const s
             if (*thisXpFeature == Xp::CaDerivations) {
                 static std::once_flag warned;
                 warnDeprecated294(warned, s);
-            } else if (*thisXpFeature == Xp::DynamicDerivations) {
-                throw Error("dynamic derivations are no longer supported");
             }
             res = res | thisXpFeature.value();
         } else
