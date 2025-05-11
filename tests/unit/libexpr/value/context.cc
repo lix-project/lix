@@ -94,7 +94,9 @@ TEST(NixStringContextElemTest, built_built) {
      * to worry about race conditions if the tests run concurrently.
      */
     ExperimentalFeatureSettings mockXpSettings;
-    mockXpSettings.set("experimental-features", "dynamic-derivations ca-derivations");
+    mockXpSettings.experimentalFeatures.override(
+        ExperimentalFeatures{} | Xp::DynamicDerivations | Xp::CaDerivations
+    );
 
     std::string_view built = "!foo!bar!g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-x.drv";
     auto elem = NixStringContextElem::parse(built, mockXpSettings);

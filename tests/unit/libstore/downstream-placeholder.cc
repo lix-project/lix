@@ -25,7 +25,9 @@ TEST(DownstreamPlaceholder, unknownDerivation) {
      * Same reason as above
      */
     ExperimentalFeatureSettings mockXpSettings;
-    mockXpSettings.set("experimental-features", "dynamic-derivations ca-derivations");
+    mockXpSettings.experimentalFeatures.override(
+        ExperimentalFeatures{} | Xp::DynamicDerivations | Xp::CaDerivations
+    );
 
     ASSERT_EQ(
         DownstreamPlaceholder::unknownDerivation(

@@ -33,30 +33,12 @@ class CaDerivationTest : public DerivationTest
     }
 };
 
-class DynDerivationTest : public DerivationTest
-{
-    void SetUp() override
-    {
-        mockXpSettings.set("experimental-features", "dynamic-derivations ca-derivations");
-    }
-};
-
 TEST_F(DerivationTest, BadATerm_version) {
     ASSERT_THROW(
         parseDerivation(
             *store,
             readFile(goldenMaster("bad-version.drv")),
             "whatever",
-            mockXpSettings),
-        FormatError);
-}
-
-TEST_F(DynDerivationTest, BadATerm_oldVersionDynDeps) {
-    ASSERT_THROW(
-        parseDerivation(
-            *store,
-            readFile(goldenMaster("bad-old-version-dyn-deps.drv")),
-            "dyn-dep-derivation",
             mockXpSettings),
         FormatError);
 }
@@ -122,14 +104,6 @@ TEST_JSON(DerivationTest, caFixedNAR,
     (DerivationOutput::CAFixed {
         .ca = {
             .method = FileIngestionMethod::Recursive,
-            .hash = Hash::parseAnyPrefixed("sha256-iUUXyRY8iW7DGirb0zwGgf1fRbLA7wimTJKgP7l/OQ8="),
-        },
-    }),
-    "drv-name", "output-name")
-
-TEST_JSON(DynDerivationTest, caFixedText,
-    (DerivationOutput::CAFixed {
-        .ca = {
             .hash = Hash::parseAnyPrefixed("sha256-iUUXyRY8iW7DGirb0zwGgf1fRbLA7wimTJKgP7l/OQ8="),
         },
     }),
@@ -262,64 +236,6 @@ TEST_JSON(DerivationTest, simple, makeSimpleDrv(*store))
 TEST_ATERM(DerivationTest, simple,
     makeSimpleDrv(*store),
     "simple-derivation")
-
-Derivation makeDynDepDerivation(const Store & store) {
-    Derivation drv;
-    drv.name = "dyn-dep-derivation";
-    drv.inputSrcs = {
-        store.parseStorePath("/nix/store/c015dhfh5l0lp6wxyvdn7bmwhbbr6hr9-dep1"),
-    };
-    drv.inputDrvs = {
-        .map = {
-            {
-                store.parseStorePath("/nix/store/c015dhfh5l0lp6wxyvdn7bmwhbbr6hr9-dep2.drv"),
-                DerivedPathMap<StringSet>::ChildNode {
-                    .value = {
-                        "cat",
-                        "dog",
-                    },
-                    .childMap = {
-                        {
-                            "cat",
-                            DerivedPathMap<StringSet>::ChildNode {
-                                .value = {
-                                    "kitten",
-                                },
-                            },
-                        },
-                        {
-                            "goose",
-                            DerivedPathMap<StringSet>::ChildNode {
-                                .value = {
-                                    "gosling",
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-        },
-    };
-    drv.platform = "wasm-sel4";
-    drv.builder = "foo";
-    drv.args = {
-        "bar",
-        "baz",
-    };
-    drv.env = {
-        {
-            "BIG_BAD",
-            "WOLF",
-        },
-    };
-    return drv;
-}
-
-TEST_JSON(DynDerivationTest, dynDerivationDeps, makeDynDepDerivation(*store))
-
-TEST_ATERM(DynDerivationTest, dynDerivationDeps,
-    makeDynDepDerivation(*store),
-    "dyn-dep-derivation")
 
 #undef TEST_JSON
 #undef TEST_ATERM

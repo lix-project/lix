@@ -25,8 +25,6 @@ config_nix_in = configure_file(
 
 # Just configures `ca/config.nix.in`. Done as a subdir() for the same reason as above.
 subdir('ca')
-# Just configures `dyn-drv/config.nix.in`. Same as above.
-subdir('dyn-drv')
 # Just configures `nix-shell/config.nix.in`. Same as above.
 subdir('nix-shell')
 
@@ -54,11 +52,6 @@ functional_tests_scripts = [
   'ca/signatures.sh',
   'ca/substitute.sh',
   'ca/why-depends.sh',
-  'dyn-drv/text-hashed-output.sh',
-  'dyn-drv/build-built-drv.sh',
-  'dyn-drv/eval-outputOf.sh',
-  'dyn-drv/dep-built-drv.sh',
-  'dyn-drv/old-daemon-error-hack.sh',
   'flakes/flakes.sh',
   'flakes/develop.sh',
   'flakes/develop-r8854.sh',
