@@ -368,18 +368,16 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
             }
         }
 
-        auto accumDerivedPath = [&](ref<SingleDerivedPath::Opaque> inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode) {
-            if (!inputNode.value.empty())
+        auto accumDerivedPath = [&](ref<SingleDerivedPath::Opaque> inputDrv, const StringSet & inputNode) {
+            if (!inputNode.empty())
                 pathsToBuild.push_back(DerivedPath::Built {
                     .drvPath = inputDrv,
-                    .outputs = OutputsSpec::Names { inputNode.value },
+                    .outputs = OutputsSpec::Names { inputNode },
                 });
-            // only dynamic derivations have a non-empty childMap
-            assert(inputNode.childMap.empty());
         };
 
         // Build or fetch all dependencies of the derivation.
-        for (const auto & [inputDrv0, inputNode] : drv.inputDrvs.map) {
+        for (const auto & [inputDrv0, inputNode] : drv.inputDrvs) {
             // To get around lambda capturing restrictions in the
             // standard.
             const auto & inputDrv = inputDrv0;
@@ -451,20 +449,16 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
         if (env.count("__json")) {
             StorePathSet inputs;
 
-            std::function<void(const StorePath &, const DerivedPathMap<StringSet>::ChildNode &)> accumInputClosure;
-
-            accumInputClosure = [&](const StorePath & inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode) {
+            auto accumInputClosure = [&](const StorePath & inputDrv, const StringSet & inputNode) {
                 auto outputs =
                     aio.blockOn(store->queryPartialDerivationOutputMap(inputDrv, &*evalStore));
-                for (auto & i : inputNode.value) {
+                for (auto & i : inputNode) {
                     auto o = outputs.at(i);
                     aio.blockOn(store->computeFSClosure(*o, inputs));
                 }
-                for (const auto & [outputName, childNode] : inputNode.childMap)
-                    accumInputClosure(*outputs.at(outputName), childNode);
             };
 
-            for (const auto & [inputDrv, inputNode] : drv.inputDrvs.map)
+            for (const auto & [inputDrv, inputNode] : drv.inputDrvs)
                 accumInputClosure(inputDrv, inputNode);
 
             ParsedDerivation parsedDrv(drvInfo.requireDrvPath(*state), drv);

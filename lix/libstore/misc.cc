@@ -150,15 +150,13 @@ struct QueryMissingContext
 
     kj::Promise<Result<void>> queryMissing(const std::vector<DerivedPath> & targets);
 
-    void enqueueDerivedPaths(ref<DerivedPathOpaque> inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode)
+    void enqueueDerivedPaths(ref<DerivedPathOpaque> inputDrv, const StringSet & inputNode)
     {
-        if (!inputNode.value.empty()) {
-            pool.enqueueWithAio([this, path{DerivedPath::Built{inputDrv, inputNode.value}}](
+        if (!inputNode.empty()) {
+            pool.enqueueWithAio([this, path{DerivedPath::Built{inputDrv, inputNode}}](
                                     AsyncIoRoot & aio
                                 ) { doPath(aio, path); });
         }
-        // only dynamic derivations have a non-empty childMap
-        assert(inputNode.childMap.empty());
     }
 
     void mustBuildDrv(const StorePath & drvPath, const Derivation & drv)
@@ -168,7 +166,7 @@ struct QueryMissingContext
             state->willBuild.insert(drvPath);
         }
 
-        for (const auto & [inputDrv, inputNode] : drv.inputDrvs.map) {
+        for (const auto & [inputDrv, inputNode] : drv.inputDrvs) {
             enqueueDerivedPaths(makeConstantStorePathRef(inputDrv), inputNode);
         }
     }
@@ -415,20 +413,15 @@ try {
 
     std::set<Realisation> inputRealisations;
 
-    std::function<
-        kj::Promise<Result<void>>(const StorePath &, const DerivedPathMap<StringSet>::ChildNode &)>
-        accumRealisations;
-
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-    accumRealisations = [&](const StorePath & inputDrv,
-                            const DerivedPathMap<StringSet>::ChildNode & inputNode
-                        ) -> kj::Promise<Result<void>> {
+    auto accumRealisations = [&](const StorePath & inputDrv,
+                                 const StringSet & inputNode) -> kj::Promise<Result<void>> {
         try {
-            if (!inputNode.value.empty()) {
+            if (!inputNode.empty()) {
                 auto outputHashes = TRY_AWAIT(
                     staticOutputHashes(evalStore, TRY_AWAIT(evalStore.readDerivation(inputDrv)))
                 );
-                for (const auto & outputName : inputNode.value) {
+                for (const auto & outputName : inputNode) {
                     auto outputHash = get(outputHashes, outputName);
                     if (!outputHash)
                         throw Error(
@@ -443,23 +436,13 @@ try {
                     inputRealisations.insert(*thisRealisation);
                 }
             }
-            if (!inputNode.value.empty()) {
-                auto d = makeConstantStorePathRef(inputDrv);
-                for (const auto & [outputName, childNode] : inputNode.childMap) {
-                    SingleDerivedPath next = SingleDerivedPath::Built { d, outputName };
-                    TRY_AWAIT(accumRealisations(
-                        // TODO deep resolutions for dynamic derivations, issue #8947, would go here.
-                        TRY_AWAIT(resolveDerivedPath(store, next, evalStore_)),
-                        childNode));
-                }
-            }
             co_return result::success();
         } catch (...) {
             co_return result::current_exception();
         }
     };
 
-    for (const auto & [inputDrv, inputNode] : drv.inputDrvs.map)
+    for (const auto & [inputDrv, inputNode] : drv.inputDrvs)
         TRY_AWAIT(accumRealisations(inputDrv, inputNode));
 
     auto info = TRY_AWAIT(store.queryPathInfo(outputPath));

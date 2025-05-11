@@ -134,8 +134,7 @@ void rewriteAggregates(std::map<std::string, nix::JSON> &jobs,
                 auto childDrv = aio.blockOn(store->readDerivation(childDrvPath));
                 job["constituents"].push_back(
                     store->printStorePath(childDrvPath));
-                drv.inputDrvs.map[childDrvPath].value = {
-                    childDrv.outputs.begin()->first};
+                drv.inputDrvs[childDrvPath] = {childDrv.outputs.begin()->first};
             }
 
             std::string drvName(drvPath.name());

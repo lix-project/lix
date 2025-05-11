@@ -373,19 +373,17 @@ try {
     /* The inputs must be built before we can build this goal. */
     inputDrvOutputs.clear();
     if (useDerivation) {
-        auto addWaiteeDerivedPath = [&](ref<DerivedPathOpaque> inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode) {
-            if (!inputNode.value.empty())
+        auto addWaiteeDerivedPath = [&](ref<DerivedPathOpaque> inputDrv, const StringSet & inputNode) {
+            if (!inputNode.empty())
                 dependencies.add(worker.goalFactory().makeGoal(
                     DerivedPath::Built {
                         .drvPath = inputDrv,
-                        .outputs = inputNode.value,
+                        .outputs = inputNode,
                     },
                     buildMode == bmRepair ? bmRepair : bmNormal));
-            // only dynamic derivations have a non-empty childMap
-            assert(inputNode.childMap.empty());
         };
 
-        for (const auto & [inputDrvPath, inputNode] : dynamic_cast<Derivation *>(drv.get())->inputDrvs.map) {
+        for (const auto & [inputDrvPath, inputNode] : dynamic_cast<Derivation *>(drv.get())->inputDrvs) {
             addWaiteeDerivedPath(makeConstantStorePathRef(inputDrvPath), inputNode);
         }
     }
@@ -539,7 +537,7 @@ try {
                 return ia.deferred;
             },
             [&](const DerivationType::ContentAddressed & ca) {
-                return !fullDrv.inputDrvs.map.empty() && (
+                return !fullDrv.inputDrvs.empty() && (
                     ca.fixed
                     /* Can optionally resolve if fixed, which is good
                        for avoiding unnecessary rebuilds. */
@@ -550,7 +548,7 @@ try {
             },
         }, drvType.raw);
 
-        if (resolveDrv && !fullDrv.inputDrvs.map.empty()) {
+        if (resolveDrv && !fullDrv.inputDrvs.empty()) {
             experimentalFeatureSettings.require(Xp::CaDerivations);
 
             /* We are be able to resolve this derivation based on the
@@ -587,10 +585,8 @@ try {
             co_return co_await resolvedFinished();
         }
 
-        std::function<kj::Promise<Result<void>>(const StorePath &, const DerivedPathMap<StringSet>::ChildNode &)> accumInputPaths;
-
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-        accumInputPaths = [&](const StorePath & depDrvPath, const DerivedPathMap<StringSet>::ChildNode & inputNode) -> kj::Promise<Result<void>> {
+        auto accumInputPaths = [&](const StorePath & depDrvPath, const StringSet & inputNode) -> kj::Promise<Result<void>> {
             try {
                 /* Add the relevant output closures of the input derivation
                    `i' as input paths.  Only add the closures of output paths
@@ -633,21 +629,19 @@ try {
                     }
                 };
 
-                for (auto & outputName : inputNode.value) {
+                for (auto & outputName : inputNode) {
                     TRY_AWAIT(
                         worker.store.computeFSClosure(TRY_AWAIT(getOutput(outputName)), inputPaths)
                     );
                 }
 
-                for (auto & [outputName, childNode] : inputNode.childMap)
-                    TRY_AWAIT(accumInputPaths(TRY_AWAIT(getOutput(outputName)), childNode));
                 co_return result::success();
             } catch (...) {
                 co_return result::current_exception();
             }
         };
 
-        for (auto & [depDrvPath, depNode] : fullDrv.inputDrvs.map)
+        for (auto & [depDrvPath, depNode] : fullDrv.inputDrvs)
             TRY_AWAIT(accumInputPaths(depDrvPath, depNode));
     }
 
@@ -1762,9 +1756,9 @@ void DerivationGoal::waiteeDone(GoalPtr waitee)
 
     auto & fullDrv = *dynamic_cast<Derivation *>(drv.get());
 
-    auto * nodeP = fullDrv.inputDrvs.findSlot(DerivedPath::Opaque { .path = dg->drvPath });
+    auto * nodeP = get(fullDrv.inputDrvs, dg->drvPath);
     if (!nodeP) return;
-    auto & outputs = nodeP->value;
+    auto & outputs = *nodeP;
 
     for (auto & outputName : outputs) {
         auto buildResult = dg->buildResult.restrictTo(DerivedPath::Built {

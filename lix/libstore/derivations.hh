@@ -2,15 +2,16 @@
 ///@file
 
 #include "lix/libstore/path.hh"
+#include "lix/libutil/config.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libstore/content-address.hh"
 #include "lix/libutil/repair-flag.hh"
-#include "lix/libstore/derived-path-map.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libutil/comparator.hh"
 #include "lix/libutil/variant-wrapper.hh"
+#include "outputs-spec.hh"
 
 #include <kj/async.h>
 #include <map>
@@ -286,13 +287,13 @@ struct Derivation : BasicDerivation
     /**
      * inputs that are sub-derivations
      */
-    DerivedPathMap<std::set<OutputName>> inputDrvs;
+    std::map<StorePath, std::set<OutputName>> inputDrvs;
 
     /**
      * Print a derivation.
      */
     std::string unparse(const Store & store, bool maskOutputs,
-        DerivedPathMap<StringSet>::ChildNode::Map * actualInputs = nullptr) const;
+        std::map<std::string, StringSet> * actualInputs = nullptr) const;
 
     /**
      * Return the underlying basic derivation but with these changes:

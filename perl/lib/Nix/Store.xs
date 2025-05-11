@@ -339,7 +339,7 @@ SV * derivationFromPath(char * drvPath)
             hv_stores(hash, "outputs", newRV((SV *) outputs));
 
             AV * inputDrvs = newAV();
-            for (auto & i : drv.inputDrvs.map)
+            for (auto & i : drv.inputDrvs)
                 av_push(inputDrvs, newSVpv(store()->printStorePath(i.first).c_str(), 0)); // !!! ignores i->second
             hv_stores(hash, "inputDrvs", newRV((SV *) inputDrvs));
 

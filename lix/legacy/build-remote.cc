@@ -324,7 +324,7 @@ connected:
             //
             // 2. Changing the `inputSrcs` set changes the associated
             //    output ids, which break CA derivations
-            if (!drv.inputDrvs.map.empty())
+            if (!drv.inputDrvs.empty())
                 drv.inputSrcs = store->parseStorePathSet(inputs);
             optResult = aio.blockOn(sshStore->buildDerivation(*drvPath, (const BasicDerivation &) drv));
             auto & result = *optResult;

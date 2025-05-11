@@ -204,15 +204,11 @@ Derivation makeSimpleDrv(const Store & store) {
         store.parseStorePath("/nix/store/c015dhfh5l0lp6wxyvdn7bmwhbbr6hr9-dep1"),
     };
     drv.inputDrvs = {
-        .map = {
+        {
+            store.parseStorePath("/nix/store/c015dhfh5l0lp6wxyvdn7bmwhbbr6hr9-dep2.drv"),
             {
-                store.parseStorePath("/nix/store/c015dhfh5l0lp6wxyvdn7bmwhbbr6hr9-dep2.drv"),
-                {
-                    .value = {
-                        "cat",
-                        "dog",
-                    },
-                },
+                "cat",
+                "dog",
             },
         },
     };

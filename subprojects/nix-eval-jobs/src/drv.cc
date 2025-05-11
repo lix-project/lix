@@ -6,7 +6,6 @@
 #include <lix/libexpr/value-to-json.hh>
 #include <lix/libstore/derivations.hh>
 #include <stdint.h>
-#include <lix/libstore/derived-path-map.hh>
 #include <lix/libexpr/eval.hh>
 #include <lix/libexpr/get-drvs.hh>
 #include <lix/libexpr/nixexpr.hh>
@@ -103,9 +102,9 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
     drvPath = localStore->printStorePath(drvInfo.requireDrvPath(state));
 
     auto drv = state.aio.blockOn(localStore->readDerivation(drvInfo.requireDrvPath(state)));
-    for (const auto &[inputDrvPath, inputNode] : drv.inputDrvs.map) {
+    for (const auto &[inputDrvPath, inputNode] : drv.inputDrvs) {
         std::set<std::string> inputDrvOutputs;
-        for (auto &outputName : inputNode.value) {
+        for (auto &outputName : inputNode) {
             inputDrvOutputs.insert(outputName);
         }
         inputDrvs[localStore->printStorePath(inputDrvPath)] = inputDrvOutputs;

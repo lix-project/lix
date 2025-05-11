@@ -971,13 +971,13 @@ drvName, Bindings * attrs, Value & v)
                 for (auto & j : refs) {
                     drv.inputSrcs.insert(j);
                     if (j.isDerivation()) {
-                        drv.inputDrvs.map[j].value =
+                        drv.inputDrvs[j] =
                             state.aio.blockOn(state.ctx.store->readDerivation(j)).outputNames();
                     }
                 }
             },
             [&](const NixStringContextElem::Built & b) {
-                drv.inputDrvs.ensureSlot(*b.drvPath).value.insert(b.output);
+                drv.inputDrvs[b.drvPath->path].insert(b.output);
             },
             [&](const NixStringContextElem::Opaque & o) {
                 drv.inputSrcs.insert(o.path);
