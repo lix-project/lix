@@ -373,9 +373,7 @@ try {
     /* The inputs must be built before we can build this goal. */
     inputDrvOutputs.clear();
     if (useDerivation) {
-        std::function<void(ref<SingleDerivedPath>, const DerivedPathMap<StringSet>::ChildNode &)> addWaiteeDerivedPath;
-
-        addWaiteeDerivedPath = [&](ref<SingleDerivedPath> inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode) {
+        auto addWaiteeDerivedPath = [&](ref<DerivedPathOpaque> inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode) {
             if (!inputNode.value.empty())
                 dependencies.add(worker.goalFactory().makeGoal(
                     DerivedPath::Built {
@@ -383,10 +381,8 @@ try {
                         .outputs = inputNode.value,
                     },
                     buildMode == bmRepair ? bmRepair : bmNormal));
-            for (const auto & [outputName, childNode] : inputNode.childMap)
-                addWaiteeDerivedPath(
-                    make_ref<SingleDerivedPath>(SingleDerivedPath::Built { inputDrv, outputName }),
-                    childNode);
+            // only dynamic derivations have a non-empty childMap
+            assert(inputNode.childMap.empty());
         };
 
         for (const auto & [inputDrvPath, inputNode] : dynamic_cast<Derivation *>(drv.get())->inputDrvs.map) {

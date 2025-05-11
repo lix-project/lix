@@ -62,23 +62,9 @@ public:
         const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
 
     /**
-     * Create a placehold for the output of an unknown derivation.
-     *
-     * The derivation is not yet known because it is a dynamic
-     * derivaiton --- it is itself an output of another derivation ---
-     * and we just have (another) placeholder for it.
-     *
-     * @param xpSettings Stop-gap to avoid globals during unit tests.
-     */
-    static DownstreamPlaceholder unknownDerivation(
-        const DownstreamPlaceholder & drvPlaceholder,
-        OutputNameView outputName,
-        const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
-
-    /**
      * Convenience constructor that handles both cases (unknown
      * content-addressed output and unknown derivation), delegating as
-     * needed to `unknownCaOutput` and `unknownDerivation`.
+     * needed to `unknownCaOutput`.
      *
      * Recursively builds up a placeholder from a
      * `SingleDerivedPath::Built.drvPath` chain.

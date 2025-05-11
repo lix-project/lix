@@ -580,7 +580,7 @@ string_t AttrCursor::getStringWithContext(EvalState & state)
                             return d.drvPath;
                         },
                         [&](const NixStringContextElem::Built & b) -> const StorePath & {
-                            return b.drvPath->getBaseStorePath();
+                            return b.drvPath->path;
                         },
                         [&](const NixStringContextElem::Opaque & o) -> const StorePath & {
                             return o.path;

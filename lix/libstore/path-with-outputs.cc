@@ -50,25 +50,18 @@ StorePathWithOutputs::ParseResult StorePathWithOutputs::tryFromDerivedPath(const
             return StorePathWithOutputs { bo.path };
         },
         [&](const DerivedPath::Built & bfd) -> StorePathWithOutputs::ParseResult {
-            return std::visit(overloaded {
-                [&](const SingleDerivedPath::Opaque & bo) -> StorePathWithOutputs::ParseResult {
-                    return StorePathWithOutputs {
-                        .path = bo.path,
-                        // Use legacy encoding of wildcard as empty set
-                        .outputs = std::visit(overloaded {
-                            [&](const OutputsSpec::All &) -> StringSet {
-                                return {};
-                            },
-                            [&](const OutputsSpec::Names & outputs) {
-                                return static_cast<StringSet>(outputs);
-                            },
-                        }, bfd.outputs.raw),
-                    };
-                },
-                [&](const SingleDerivedPath::Built &) -> StorePathWithOutputs::ParseResult {
-                    return std::monostate {};
-                },
-            }, bfd.drvPath->raw());
+            return StorePathWithOutputs {
+                .path = bfd.drvPath->path,
+                // Use legacy encoding of wildcard as empty set
+                .outputs = std::visit(overloaded {
+                    [&](const OutputsSpec::All &) -> StringSet {
+                        return {};
+                    },
+                    [&](const OutputsSpec::Names & outputs) {
+                        return static_cast<StringSet>(outputs);
+                    },
+                }, bfd.outputs.raw),
+            };
         },
     }, p.raw());
 }

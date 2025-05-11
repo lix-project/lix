@@ -27,7 +27,7 @@ StringPairs resolveRewrites(
                     res.emplace(
                         DownstreamPlaceholder::fromSingleDerivedPathBuilt(
                             SingleDerivedPath::Built {
-                                .drvPath = make_ref<SingleDerivedPath>(drvDep->drvPath->discardOutputPath()),
+                                .drvPath = makeConstantStorePathRef(drvDep->drvPath->path),
                                 .output = outputName,
                             }).render(),
                         store.printStorePath(outputPath)

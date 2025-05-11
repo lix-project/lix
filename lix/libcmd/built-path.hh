@@ -10,10 +10,8 @@ namespace nix {
 struct SingleBuiltPath;
 
 struct SingleBuiltPathBuilt {
-    ref<SingleBuiltPath> drvPath;
+    ref<DerivedPathOpaque> drvPath;
     std::pair<std::string, StorePath> output;
-
-    SingleDerivedPathBuilt discardOutputPath() const;
 
     std::string to_string(const Store & store) const;
     static SingleBuiltPathBuilt parse(const Store & store, std::string_view, std::string_view);
@@ -40,10 +38,6 @@ struct SingleBuiltPath : built_path::detail::SingleBuiltPathRaw {
         return static_cast<const Raw &>(*this);
     }
 
-    StorePath outPath() const;
-
-    SingleDerivedPath discardOutputPath() const;
-
     static SingleBuiltPath parse(const Store & store, std::string_view);
     kj::Promise<Result<JSON>> toJSON(const Store & store) const;
 };
@@ -59,7 +53,7 @@ static inline ref<SingleBuiltPath> staticDrv(StorePath drvPath)
  * See 'BuiltPath' for more an explanation.
  */
 struct BuiltPathBuilt {
-    ref<SingleBuiltPath> drvPath;
+    ref<DerivedPathOpaque> drvPath;
     std::map<std::string, StorePath> outputs;
 
     std::string to_string(const Store & store) const;

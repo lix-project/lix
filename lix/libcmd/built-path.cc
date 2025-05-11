@@ -34,16 +34,6 @@ CMP(SingleBuiltPath, BuiltPathBuilt, outputs)
 #undef CMP
 #undef CMP_ONE
 
-StorePath SingleBuiltPath::outPath() const
-{
-    return std::visit(
-        overloaded{
-            [](const SingleBuiltPath::Opaque & p) { return p.path; },
-            [](const SingleBuiltPath::Built & b) { return b.output.second; },
-        }, raw()
-    );
-}
-
 StorePathSet BuiltPath::outPaths() const
 {
     return std::visit(
@@ -54,28 +44,6 @@ StorePathSet BuiltPath::outPaths() const
                 for (auto & [_, path] : b.outputs)
                     res.insert(path);
                 return res;
-            },
-        }, raw()
-    );
-}
-
-SingleDerivedPath::Built SingleBuiltPath::Built::discardOutputPath() const
-{
-    return SingleDerivedPath::Built {
-        .drvPath = make_ref<SingleDerivedPath>(drvPath->discardOutputPath()),
-        .output = output.first,
-    };
-}
-
-SingleDerivedPath SingleBuiltPath::discardOutputPath() const
-{
-    return std::visit(
-        overloaded{
-            [](const SingleBuiltPath::Opaque & p) -> SingleDerivedPath {
-                return p;
-            },
-            [](const SingleBuiltPath::Built & b) -> SingleDerivedPath {
-                return b.discardOutputPath();
             },
         }, raw()
     );
@@ -141,7 +109,7 @@ try {
         [&](const BuiltPath::Built & p) -> kj::Promise<Result<void>> {
             try {
                 auto drvHashes = TRY_AWAIT(
-                    staticOutputHashes(store, TRY_AWAIT(store.readDerivation(p.drvPath->outPath())))
+                    staticOutputHashes(store, TRY_AWAIT(store.readDerivation(p.drvPath->path)))
                 );
                 for (auto& [outputName, outputPath] : p.outputs) {
                     if (experimentalFeatureSettings.isEnabled(
@@ -150,7 +118,7 @@ try {
                         if (!drvOutput)
                             throw Error(
                                 "the derivation '%s' has unrealised output '%s' (derived-path.cc/toRealisedPaths)",
-                                store.printStorePath(p.drvPath->outPath()), outputName);
+                                store.printStorePath(p.drvPath->path), outputName);
                         auto thisRealisation = TRY_AWAIT(store.queryRealisation(
                             DrvOutput{*drvOutput, outputName}));
                         assert(thisRealisation);  // We’ve built it, so we must

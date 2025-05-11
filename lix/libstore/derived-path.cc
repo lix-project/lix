@@ -121,7 +121,7 @@ std::string DerivedPath::Built::to_string(const Store & store) const
 
 std::string DerivedPath::Built::to_string_legacy(const Store & store) const
 {
-    return drvPath->to_string_legacy(store)
+    return drvPath->to_string(store)
         + "!"
         + outputs.to_string();
 }
@@ -162,26 +162,11 @@ DerivedPath::Opaque DerivedPath::Opaque::parse(const Store & store, std::string_
     return {store.parseStorePath(s)};
 }
 
-void drvRequireExperiment(
-    const SingleDerivedPath & drv,
-    const ExperimentalFeatureSettings & xpSettings)
-{
-    std::visit(overloaded {
-        [&](const SingleDerivedPath::Opaque &) {
-            // plain drv path; no experimental features required.
-        },
-        [&](const SingleDerivedPath::Built &) {
-            xpSettings.require(Xp::DynamicDerivations);
-        },
-    }, drv.raw());
-}
-
 SingleDerivedPath::Built SingleDerivedPath::Built::parse(
-    const Store & store, ref<SingleDerivedPath> drv,
+    const Store & store, ref<DerivedPathOpaque> drv,
     OutputNameView output,
     const ExperimentalFeatureSettings & xpSettings)
 {
-    drvRequireExperiment(*drv, xpSettings);
     return {
         .drvPath = drv,
         .output = std::string { output },
@@ -189,11 +174,10 @@ SingleDerivedPath::Built SingleDerivedPath::Built::parse(
 }
 
 DerivedPath::Built DerivedPath::Built::parse(
-    const Store & store, ref<SingleDerivedPath> drv,
+    const Store & store, ref<DerivedPathOpaque> drv,
     OutputNameView outputsS,
     const ExperimentalFeatureSettings & xpSettings)
 {
-    drvRequireExperiment(*drv, xpSettings);
     return {
         .drvPath = drv,
         .outputs = OutputsSpec::parse(outputsS),
@@ -210,7 +194,7 @@ static DerivedPathT parseDerivedPath(
         return DerivedPathT::Opaque::parse(store, s);
     } else {
         auto path = DerivedPathT::Built::parse(store,
-            make_ref<SingleDerivedPath>(DerivedPathT::Opaque::parse(
+            make_ref<typename DerivedPathT::Opaque>(DerivedPathT::Opaque::parse(
                 store,
                 s.substr(0, n))),
             s.substr(n + 1),
@@ -275,22 +259,22 @@ DerivedPath DerivedPath::fromSingle(const SingleDerivedPath & req)
 
 const StorePath & SingleDerivedPath::Built::getBaseStorePath() const
 {
-	return drvPath->getBaseStorePath();
+	return drvPath->path;
 }
 
 const StorePath & DerivedPath::Built::getBaseStorePath() const
 {
-	return drvPath->getBaseStorePath();
+	return drvPath->path;
 }
 
 template<typename DP>
 static inline const StorePath & getBaseStorePath_(const DP & derivedPath)
 {
     return std::visit(overloaded {
-        [&](const typename DP::Built & bfd) -> auto & {
-            return bfd.drvPath->getBaseStorePath();
+        [&](const typename DP::Built & bfd) -> const StorePath & {
+            return bfd.drvPath->path;
         },
-        [&](const typename DP::Opaque & bo) -> auto & {
+        [&](const typename DP::Opaque & bo) -> const StorePath & {
             return bo.path;
         },
     }, derivedPath.raw());

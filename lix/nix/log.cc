@@ -36,7 +36,7 @@ struct CmdLog : InstallableCommand
         // For compat with CLI today, TODO revisit
         auto oneUp = std::visit(overloaded {
             [&](const DerivedPath::Opaque & bo) {
-                return make_ref<SingleDerivedPath>(bo);
+                return make_ref<SingleDerivedPath::Opaque>(bo);
             },
             [&](const DerivedPath::Built & bfd) {
                 return bfd.drvPath;

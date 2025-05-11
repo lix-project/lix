@@ -58,7 +58,7 @@ StringMap EvalState::realiseContext(const NixStringContext & context)
                     .drvPath = b.drvPath,
                     .outputs = OutputsSpec::Names { b.output },
                 });
-                return ensureValid(b.drvPath->getBaseStorePath());
+                return ensureValid(b.drvPath->path);
             },
             [&](const NixStringContextElem::Opaque & o) {
                 auto ctxS = ctx.store->printStorePath(o.path);

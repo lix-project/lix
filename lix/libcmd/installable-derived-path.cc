@@ -48,8 +48,7 @@ InstallableDerivedPath InstallableDerivedPath::parse(
         },
         // If the user did use ^, we just do exactly what is written.
         [&](const ExtendedOutputsSpec::Explicit & outputSpec) -> DerivedPath {
-            auto drv = make_ref<SingleDerivedPath>(SingleDerivedPath::parse(*store, prefix));
-            drvRequireExperiment(*drv);
+            auto drv = make_ref<DerivedPathOpaque>(DerivedPathOpaque::parse(*store, prefix));
             return DerivedPath::Built {
                 .drvPath = std::move(drv),
                 .outputs = outputSpec,

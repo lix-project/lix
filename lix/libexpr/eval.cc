@@ -922,18 +922,11 @@ std::string EvalState::mkSingleDerivedPathStringRaw(
             return ctx.store->printStorePath(o.path);
         },
         [&](const SingleDerivedPath::Built & b) {
-            auto optStaticOutputPath = std::visit(overloaded {
-                [&](const SingleDerivedPath::Opaque & o) {
-                    auto drv = aio.blockOn(ctx.store->readDerivation(o.path));
-                    auto i = drv.outputs.find(b.output);
-                    if (i == drv.outputs.end())
-                        throw Error("derivation '%s' does not have output '%s'", b.drvPath->to_string(*ctx.store), b.output);
-                    return i->second.path(*ctx.store, drv.name, b.output);
-                },
-                [&](const SingleDerivedPath::Built & o) -> std::optional<StorePath> {
-                    return std::nullopt;
-                },
-            }, b.drvPath->raw());
+            auto drv = aio.blockOn(ctx.store->readDerivation(b.drvPath->path));
+            auto i = drv.outputs.find(b.output);
+            if (i == drv.outputs.end())
+                throw Error("derivation '%s' does not have output '%s'", b.drvPath->to_string(*ctx.store), b.output);
+            auto optStaticOutputPath = i->second.path(*ctx.store, drv.name, b.output);
             return mkOutputStringRaw(b, optStaticOutputPath);
         }
     }, p.raw());

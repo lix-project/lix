@@ -667,7 +667,7 @@ try {
                     // Do nothing, path is hopefully there already
                 },
                 [&](const DerivedPath::Built & bp) {
-                    drvPaths2.insert(bp.drvPath->getBaseStorePath());
+                    drvPaths2.insert(bp.drvPath->path);
                 },
             }, i.raw());
         }

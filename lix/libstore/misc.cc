@@ -150,17 +150,15 @@ struct QueryMissingContext
 
     kj::Promise<Result<void>> queryMissing(const std::vector<DerivedPath> & targets);
 
-    void enqueueDerivedPaths(ref<SingleDerivedPath> inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode)
+    void enqueueDerivedPaths(ref<DerivedPathOpaque> inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode)
     {
         if (!inputNode.value.empty()) {
             pool.enqueueWithAio([this, path{DerivedPath::Built{inputDrv, inputNode.value}}](
                                     AsyncIoRoot & aio
                                 ) { doPath(aio, path); });
         }
-        for (const auto & [outputName, childNode] : inputNode.childMap)
-            enqueueDerivedPaths(
-                make_ref<SingleDerivedPath>(SingleDerivedPath::Built { inputDrv, outputName }),
-                childNode);
+        // only dynamic derivations have a non-empty childMap
+        assert(inputNode.childMap.empty());
     }
 
     void mustBuildDrv(const StorePath & drvPath, const Derivation & drv)
@@ -234,13 +232,7 @@ struct QueryMissingContext
 
     void doPathBuilt(AsyncIoRoot & aio, const DerivedPath::Built & bfd)
     {
-        auto drvPathP = std::get_if<DerivedPath::Opaque>(&*bfd.drvPath);
-        if (!drvPathP) {
-            // TODO make work in this case.
-            warn("Ignoring dynamic derivation %s while querying missing paths; not yet implemented", bfd.drvPath->to_string(store));
-            return;
-        }
-        auto & drvPath = drvPathP->path;
+        auto & drvPath = bfd.drvPath->path;
 
         if (!aio.blockOn(store.isValidPath(drvPath))) {
             // FIXME: we could try to substitute the derivation.

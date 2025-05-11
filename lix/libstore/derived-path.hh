@@ -43,7 +43,7 @@ struct SingleDerivedPath;
  * path of the given output name.
  */
 struct SingleDerivedPathBuilt {
-    ref<SingleDerivedPath> drvPath;
+    ref<DerivedPathOpaque> drvPath;
     OutputName output;
 
     /**
@@ -72,7 +72,7 @@ struct SingleDerivedPathBuilt {
      * @param xpSettings Stop-gap to avoid globals during unit tests.
      */
     static SingleDerivedPathBuilt parse(
-        const Store & store, ref<SingleDerivedPath> drvPath,
+        const Store & store, ref<DerivedPathOpaque> drvPath,
         OutputNameView outputs,
         const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
     kj::Promise<Result<JSON>> toJSON(Store & store) const;
@@ -150,9 +150,9 @@ struct SingleDerivedPath : derived_path::detail::SingleDerivedPathRaw {
     kj::Promise<Result<JSON>> toJSON(Store & store) const;
 };
 
-static inline ref<SingleDerivedPath> makeConstantStorePathRef(StorePath drvPath)
+static inline ref<DerivedPathOpaque> makeConstantStorePathRef(StorePath drvPath)
 {
-    return make_ref<SingleDerivedPath>(SingleDerivedPath::Opaque { drvPath });
+    return make_ref<DerivedPathOpaque>(SingleDerivedPath::Opaque { drvPath });
 }
 
 /**
@@ -168,7 +168,7 @@ static inline ref<SingleDerivedPath> makeConstantStorePathRef(StorePath drvPath)
  * output name.
  */
 struct DerivedPathBuilt {
-    ref<SingleDerivedPath> drvPath;
+    ref<DerivedPathOpaque> drvPath;
     OutputsSpec outputs;
 
     /**
@@ -197,7 +197,7 @@ struct DerivedPathBuilt {
      * @param xpSettings Stop-gap to avoid globals during unit tests.
      */
     static DerivedPathBuilt parse(
-        const Store & store, ref<SingleDerivedPath>,
+        const Store & store, ref<DerivedPathOpaque>,
         std::string_view,
         const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
     kj::Promise<Result<JSON>> toJSON(Store & store) const;
@@ -282,16 +282,4 @@ struct DerivedPath : derived_path::detail::DerivedPathRaw {
 
 typedef std::vector<DerivedPath> DerivedPaths;
 
-/**
- * Used by various parser functions to require experimental features as
- * needed.
- *
- * Somewhat unfortunate this cannot just be an implementation detail for
- * this module.
- *
- * @param xpSettings Stop-gap to avoid globals during unit tests.
- */
-void drvRequireExperiment(
-    const SingleDerivedPath & drv,
-    const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
 }

@@ -38,7 +38,7 @@ TEST_F(DerivedPathTest, built_opaque) {
     auto * p = std::get_if<DerivedPath::Built>(&elem);
     ASSERT_TRUE(p);
     ASSERT_EQ(p->outputs, ((OutputsSpec) OutputsSpec::Names { "foo", "bar" }));
-    ASSERT_EQ(*p->drvPath, ((SingleDerivedPath) SingleDerivedPath::Opaque {
+    ASSERT_EQ(*p->drvPath, (SingleDerivedPath::Opaque {
         .path = store->parseStorePath(built.substr(0, 49)),
     }));
     ASSERT_EQ(elem.to_string(*store), built);

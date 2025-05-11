@@ -524,36 +524,6 @@ ref<Installable> SourceExprCommand::parseInstallable(
     return installables.front();
 }
 
-static kj::Promise<Result<SingleBuiltPath>> getBuiltPath(ref<Store> evalStore, ref<Store> store, const SingleDerivedPath & b)
-try {
-    auto handlers = overloaded{
-        [&](const SingleDerivedPath::Opaque & bo) -> kj::Promise<Result<SingleBuiltPath>> {
-            return {SingleBuiltPath::Opaque { bo.path }};
-        },
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-        [&](const SingleDerivedPath::Built & bfd) -> kj::Promise<Result<SingleBuiltPath>> {
-            try {
-                auto drvPath = TRY_AWAIT(getBuiltPath(evalStore, store, *bfd.drvPath));
-                // Resolving this instead of `bfd` will yield the same result, but avoid duplicative work.
-                SingleDerivedPath::Built truncatedBfd {
-                    .drvPath = makeConstantStorePathRef(drvPath.outPath()),
-                    .output = bfd.output,
-                };
-                auto outputPath = TRY_AWAIT(resolveDerivedPath(*store, truncatedBfd, &*evalStore));
-                co_return SingleBuiltPath::Built {
-                    .drvPath = make_ref<SingleBuiltPath>(std::move(drvPath)),
-                    .output = { bfd.output, outputPath },
-                };
-            } catch (...) {
-                co_return result::current_exception();
-            }
-        },
-    };
-    co_return TRY_AWAIT(std::visit(handlers, b.raw()));
-} catch (...) {
-    co_return result::current_exception();
-}
-
 std::vector<BuiltPathWithResult> Installable::build(
     EvalState & state,
     ref<Store> evalStore,
@@ -642,7 +612,7 @@ std::vector<std::pair<ref<Installable>, BuiltPathWithResult>> Installable::build
                             state.aio.blockOn(resolveDerivedPath(*store, bfd, &*evalStore));
                         res.push_back({aux.installable, {
                             .path = BuiltPath::Built {
-                                .drvPath = make_ref<SingleBuiltPath>(state.aio.blockOn(getBuiltPath(evalStore, store, *bfd.drvPath))),
+                                .drvPath = bfd.drvPath,
                                 .outputs = outputs,
                              },
                             .info = aux.info}});
@@ -674,7 +644,7 @@ std::vector<std::pair<ref<Installable>, BuiltPathWithResult>> Installable::build
                             outputs.emplace(outputName, realisation.outPath);
                         res.push_back({aux.installable, {
                             .path = BuiltPath::Built {
-                                .drvPath = make_ref<SingleBuiltPath>(state.aio.blockOn(getBuiltPath(evalStore, store, *bfd.drvPath))),
+                                .drvPath = bfd.drvPath,
                                 .outputs = outputs,
                             },
                             .info = aux.info,

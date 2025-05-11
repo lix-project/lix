@@ -368,18 +368,14 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
             }
         }
 
-        std::function<void(ref<SingleDerivedPath>, const DerivedPathMap<StringSet>::ChildNode &)> accumDerivedPath;
-
-        accumDerivedPath = [&](ref<SingleDerivedPath> inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode) {
+        auto accumDerivedPath = [&](ref<SingleDerivedPath::Opaque> inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode) {
             if (!inputNode.value.empty())
                 pathsToBuild.push_back(DerivedPath::Built {
                     .drvPath = inputDrv,
                     .outputs = OutputsSpec::Names { inputNode.value },
                 });
-            for (const auto & [outputName, childNode] : inputNode.childMap)
-                accumDerivedPath(
-                    make_ref<SingleDerivedPath>(SingleDerivedPath::Built { inputDrv, outputName }),
-                    childNode);
+            // only dynamic derivations have a non-empty childMap
+            assert(inputNode.childMap.empty());
         };
 
         // Build or fetch all dependencies of the derivation.

@@ -931,7 +931,6 @@ try {
 
 static bool tryResolveInput(
     Store & store, StorePathSet & inputSrcs, StringMap & inputRewrites,
-    const DownstreamPlaceholder * placeholderOpt,
     const StorePath & inputDrv, const DerivedPathMap<StringSet>::ChildNode & inputNode,
     const std::map<std::pair<StorePath, std::string>, StorePath> & inputDrvOutputs)
 {
@@ -946,9 +945,7 @@ static bool tryResolveInput(
     };
 
     auto getPlaceholder = [&](const std::string & outputName) {
-        return placeholderOpt
-            ? DownstreamPlaceholder::unknownDerivation(*placeholderOpt, outputName)
-            : DownstreamPlaceholder::unknownCaOutput(inputDrv, outputName);
+        return DownstreamPlaceholder::unknownCaOutput(inputDrv, outputName);
     };
 
     for (auto & outputName : inputNode.value) {
@@ -963,16 +960,8 @@ static bool tryResolveInput(
         inputSrcs.insert(std::move(actualPath));
     }
 
-    for (auto & [outputName, childNode] : inputNode.childMap) {
-        auto actualPathOpt = getOutput(outputName);
-        if (!actualPathOpt) return false;
-        auto actualPath = *actualPathOpt;
-        auto nextPlaceholder = getPlaceholder(outputName);
-        if (!tryResolveInput(store, inputSrcs, inputRewrites,
-            &nextPlaceholder, actualPath, childNode,
-            inputDrvOutputs))
-            return false;
-    }
+    // only dynamic drvs can have non-empty childMaps
+    assert(inputNode.childMap.empty());
     return true;
 }
 
@@ -987,7 +976,7 @@ try {
 
     for (auto & [inputDrv, inputNode] : inputDrvs.map)
         if (!tryResolveInput(store, resolved.inputSrcs, inputRewrites,
-            nullptr, inputDrv, inputNode, inputDrvOutputs))
+            inputDrv, inputNode, inputDrvOutputs))
             co_return std::nullopt;
 
     TRY_AWAIT(rewriteDerivation(store, resolved, inputRewrites));
