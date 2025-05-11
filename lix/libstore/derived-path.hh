@@ -46,37 +46,6 @@ struct SingleDerivedPathBuilt {
     ref<DerivedPathOpaque> drvPath;
     OutputName output;
 
-    /**
-     * Get the store path this is ultimately derived from (by realising
-     * and projecting outputs).
-     *
-     * Note that this is *not* a property of the store object being
-     * referred to, but just of this path --- how we happened to be
-     * referring to that store object. In other words, this means this
-     * function breaks "referential transparency". It should therefore
-     * be used only with great care.
-     */
-    const StorePath & getBaseStorePath() const;
-
-    /**
-     * Uses `^` as the separator
-     */
-    std::string to_string(const Store & store) const;
-    /**
-     * Uses `!` as the separator
-     */
-    std::string to_string_legacy(const Store & store) const;
-    /**
-     * The caller splits on the separator, so it works for both variants.
-     *
-     * @param xpSettings Stop-gap to avoid globals during unit tests.
-     */
-    static SingleDerivedPathBuilt parse(
-        const Store & store, ref<DerivedPathOpaque> drvPath,
-        OutputNameView outputs,
-        const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
-    kj::Promise<Result<JSON>> toJSON(Store & store) const;
-
     DECLARE_CMP(SingleDerivedPathBuilt);
 };
 
@@ -108,46 +77,6 @@ struct SingleDerivedPath : derived_path::detail::SingleDerivedPathRaw {
     inline const Raw & raw() const {
         return static_cast<const Raw &>(*this);
     }
-
-    /**
-     * Get the store path this is ultimately derived from (by realising
-     * and projecting outputs).
-     *
-     * Note that this is *not* a property of the store object being
-     * referred to, but just of this path --- how we happened to be
-     * referring to that store object. In other words, this means this
-     * function breaks "referential transparency". It should therefore
-     * be used only with great care.
-     */
-    const StorePath & getBaseStorePath() const;
-
-    /**
-     * Uses `^` as the separator
-     */
-    std::string to_string(const Store & store) const;
-    /**
-     * Uses `!` as the separator
-     */
-    std::string to_string_legacy(const Store & store) const;
-    /**
-     * Uses `^` as the separator
-     *
-     * @param xpSettings Stop-gap to avoid globals during unit tests.
-     */
-    static SingleDerivedPath parse(
-        const Store & store,
-        std::string_view,
-        const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
-    /**
-     * Uses `!` as the separator
-     *
-     * @param xpSettings Stop-gap to avoid globals during unit tests.
-     */
-    static SingleDerivedPath parseLegacy(
-        const Store & store,
-        std::string_view,
-        const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
-    kj::Promise<Result<JSON>> toJSON(Store & store) const;
 };
 
 static inline ref<DerivedPathOpaque> makeConstantStorePathRef(StorePath drvPath)
@@ -172,18 +101,6 @@ struct DerivedPathBuilt {
     OutputsSpec outputs;
 
     /**
-     * Get the store path this is ultimately derived from (by realising
-     * and projecting outputs).
-     *
-     * Note that this is *not* a property of the store object being
-     * referred to, but just of this path --- how we happened to be
-     * referring to that store object. In other words, this means this
-     * function breaks "referential transparency". It should therefore
-     * be used only with great care.
-     */
-    const StorePath & getBaseStorePath() const;
-
-    /**
      * Uses `^` as the separator
      */
     std::string to_string(const Store & store) const;
@@ -193,13 +110,8 @@ struct DerivedPathBuilt {
     std::string to_string_legacy(const Store & store) const;
     /**
      * The caller splits on the separator, so it works for both variants.
-     *
-     * @param xpSettings Stop-gap to avoid globals during unit tests.
      */
-    static DerivedPathBuilt parse(
-        const Store & store, ref<DerivedPathOpaque>,
-        std::string_view,
-        const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
+    static DerivedPathBuilt parse(const Store & store, ref<DerivedPathOpaque>, std::string_view);
     kj::Promise<Result<JSON>> toJSON(Store & store) const;
 
     DECLARE_CMP(DerivedPathBuilt);
@@ -254,30 +166,14 @@ struct DerivedPath : derived_path::detail::DerivedPathRaw {
      */
     std::string to_string_legacy(const Store & store) const;
     /**
-     * Uses `^` as the separator
-     *
-     * @param xpSettings Stop-gap to avoid globals during unit tests.
-     */
-    static DerivedPath parse(
-        const Store & store,
-        std::string_view,
-        const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
-    /**
      * Uses `!` as the separator
-     *
-     * @param xpSettings Stop-gap to avoid globals during unit tests.
      */
-    static DerivedPath parseLegacy(
-        const Store & store,
-        std::string_view,
-        const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
+    static DerivedPath parseLegacy(const Store & store, std::string_view);
 
     /**
      * Convert a `SingleDerivedPath` to a `DerivedPath`.
      */
     static DerivedPath fromSingle(const SingleDerivedPath &);
-
-    kj::Promise<Result<JSON>> toJSON(Store & store) const;
 };
 
 typedef std::vector<DerivedPath> DerivedPaths;

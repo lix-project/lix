@@ -34,29 +34,6 @@ try {
     return {result::current_exception()};
 }
 
-kj::Promise<Result<JSON>> SingleDerivedPath::Built::toJSON(Store & store) const
-try {
-    JSON res;
-    res["drvPath"] = TRY_AWAIT(drvPath->toJSON(store));
-    // Fallback for the input-addressed derivation case: We expect to always be
-    // able to print the output paths, so let’s do it
-    // FIXME try-resolve on drvPath
-    const auto outputMap = TRY_AWAIT(
-        store.queryPartialDerivationOutputMap(TRY_AWAIT(resolveDerivedPath(store, *drvPath)))
-    );
-    res["output"] = output;
-    auto outputPathIter = outputMap.find(output);
-    if (outputPathIter == outputMap.end())
-        res["outputPath"] = nullptr;
-    else if (std::optional p = outputPathIter->second)
-        res["outputPath"] = store.printStorePath(*p);
-    else
-        res["outputPath"] = nullptr;
-    co_return res;
-} catch (...) {
-    co_return result::current_exception();
-}
-
 kj::Promise<Result<JSON>> DerivedPath::Built::toJSON(Store & store) const
 try {
     JSON res;
@@ -79,37 +56,9 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<JSON>> SingleDerivedPath::toJSON(Store & store) const
-try {
-    co_return TRY_AWAIT(std::visit([&](const auto & buildable) {
-        return buildable.toJSON(store);
-    }, raw()));
-} catch (...) {
-    co_return result::current_exception();
-}
-
-kj::Promise<Result<JSON>> DerivedPath::toJSON(Store & store) const
-try {
-    co_return TRY_AWAIT(std::visit([&](const auto & buildable) {
-        return buildable.toJSON(store);
-    }, raw()));
-} catch (...) {
-    co_return result::current_exception();
-}
-
 std::string DerivedPath::Opaque::to_string(const Store & store) const
 {
     return store.printStorePath(path);
-}
-
-std::string SingleDerivedPath::Built::to_string(const Store & store) const
-{
-    return drvPath->to_string(store) + "^" + output;
-}
-
-std::string SingleDerivedPath::Built::to_string_legacy(const Store & store) const
-{
-    return drvPath->to_string(store) + "!" + output;
 }
 
 std::string DerivedPath::Built::to_string(const Store & store) const
@@ -126,26 +75,11 @@ std::string DerivedPath::Built::to_string_legacy(const Store & store) const
         + outputs.to_string();
 }
 
-std::string SingleDerivedPath::to_string(const Store & store) const
-{
-    return std::visit(
-        [&](const auto & req) { return req.to_string(store); },
-        raw());
-}
-
 std::string DerivedPath::to_string(const Store & store) const
 {
     return std::visit(
         [&](const auto & req) { return req.to_string(store); },
         raw());
-}
-
-std::string SingleDerivedPath::to_string_legacy(const Store & store) const
-{
-    return std::visit(overloaded {
-        [&](const SingleDerivedPath::Built & req) { return req.to_string_legacy(store); },
-        [&](const SingleDerivedPath::Opaque & req) { return req.to_string(store); },
-    }, this->raw());
 }
 
 std::string DerivedPath::to_string_legacy(const Store & store) const
@@ -162,21 +96,9 @@ DerivedPath::Opaque DerivedPath::Opaque::parse(const Store & store, std::string_
     return {store.parseStorePath(s)};
 }
 
-SingleDerivedPath::Built SingleDerivedPath::Built::parse(
-    const Store & store, ref<DerivedPathOpaque> drv,
-    OutputNameView output,
-    const ExperimentalFeatureSettings & xpSettings)
-{
-    return {
-        .drvPath = drv,
-        .output = std::string { output },
-    };
-}
-
 DerivedPath::Built DerivedPath::Built::parse(
     const Store & store, ref<DerivedPathOpaque> drv,
-    OutputNameView outputsS,
-    const ExperimentalFeatureSettings & xpSettings)
+    OutputNameView outputsS)
 {
     return {
         .drvPath = drv,
@@ -186,8 +108,7 @@ DerivedPath::Built DerivedPath::Built::parse(
 
 template <typename DerivedPathT>
 static DerivedPathT parseDerivedPath(
-    const Store & store, std::string_view s, std::string_view separator,
-    const ExperimentalFeatureSettings & xpSettings)
+    const Store & store, std::string_view s, std::string_view separator)
 {
     size_t n = s.rfind(separator);
     if (n == s.npos) {
@@ -197,10 +118,9 @@ static DerivedPathT parseDerivedPath(
             make_ref<typename DerivedPathT::Opaque>(DerivedPathT::Opaque::parse(
                 store,
                 s.substr(0, n))),
-            s.substr(n + 1),
-            xpSettings);
+            s.substr(n + 1));
 
-        const auto& basePath = path.getBaseStorePath();
+        const auto& basePath = path.drvPath->path;
         if (!basePath.isDerivation()) {
             throw InvalidPath("cannot use output selection ('%s') on non-derivation store path '%s'",
                               separator, basePath.to_string());
@@ -210,36 +130,9 @@ static DerivedPathT parseDerivedPath(
     }
 }
 
-SingleDerivedPath SingleDerivedPath::parse(
-    const Store & store,
-    std::string_view s,
-    const ExperimentalFeatureSettings & xpSettings)
+DerivedPath DerivedPath::parseLegacy(const Store & store, std::string_view s)
 {
-    return parseDerivedPath<SingleDerivedPath>(store, s, "^", xpSettings);
-}
-
-SingleDerivedPath SingleDerivedPath::parseLegacy(
-    const Store & store,
-    std::string_view s,
-    const ExperimentalFeatureSettings & xpSettings)
-{
-    return parseDerivedPath<SingleDerivedPath>(store, s, "!", xpSettings);
-}
-
-DerivedPath DerivedPath::parse(
-    const Store & store,
-    std::string_view s,
-    const ExperimentalFeatureSettings & xpSettings)
-{
-    return parseDerivedPath<DerivedPath>(store, s, "^", xpSettings);
-}
-
-DerivedPath DerivedPath::parseLegacy(
-    const Store & store,
-    std::string_view s,
-    const ExperimentalFeatureSettings & xpSettings)
-{
-    return parseDerivedPath<DerivedPath>(store, s, "!", xpSettings);
+    return parseDerivedPath<DerivedPath>(store, s, "!");
 }
 
 DerivedPath DerivedPath::fromSingle(const SingleDerivedPath & req)
@@ -257,16 +150,6 @@ DerivedPath DerivedPath::fromSingle(const SingleDerivedPath & req)
     }, req.raw());
 }
 
-const StorePath & SingleDerivedPath::Built::getBaseStorePath() const
-{
-	return drvPath->path;
-}
-
-const StorePath & DerivedPath::Built::getBaseStorePath() const
-{
-	return drvPath->path;
-}
-
 template<typename DP>
 static inline const StorePath & getBaseStorePath_(const DP & derivedPath)
 {
@@ -278,11 +161,6 @@ static inline const StorePath & getBaseStorePath_(const DP & derivedPath)
             return bo.path;
         },
     }, derivedPath.raw());
-}
-
-const StorePath & SingleDerivedPath::getBaseStorePath() const
-{
-	return getBaseStorePath_(*this);
 }
 
 const StorePath & DerivedPath::getBaseStorePath() const
