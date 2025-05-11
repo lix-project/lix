@@ -759,7 +759,7 @@ StorePathSet Installable::toDerivations(
                         : throw Error("argument '%s' did not evaluate to a derivation", i->what()));
                 },
                 [&](const DerivedPath::Built & bfd) {
-                    drvPaths.insert(state.aio.blockOn(resolveDerivedPath(*store, *bfd.drvPath)));
+                    drvPaths.insert(bfd.drvPath->path);
                 },
             }, b.path.raw());
 

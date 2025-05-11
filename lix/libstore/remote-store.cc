@@ -748,7 +748,7 @@ try {
                         };
 
                         OutputPathMap outputs;
-                        auto drvPath = TRY_AWAIT(resolveDerivedPath(*evalStore, *bfd.drvPath));
+                        auto drvPath = bfd.drvPath->path;
                         auto drv = TRY_AWAIT(evalStore->readDerivation(drvPath));
                         const auto outputHashes =
                             TRY_AWAIT(staticOutputHashes(*evalStore, drv)); // FIXME: expensive

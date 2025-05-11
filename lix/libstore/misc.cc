@@ -474,7 +474,7 @@ try {
 kj::Promise<Result<OutputPathMap>>
 resolveDerivedPath(Store & store, const DerivedPath::Built & bfd, Store * evalStore_)
 try {
-    auto drvPath = TRY_AWAIT(resolveDerivedPath(store, *bfd.drvPath, evalStore_));
+    auto drvPath = bfd.drvPath->path;
 
     auto outputsOpt_ = TRY_AWAIT(store.queryPartialDerivationOutputMap(drvPath, evalStore_));
 
@@ -523,7 +523,7 @@ try {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
         [&](const SingleDerivedPath::Built & bfd) -> kj::Promise<Result<StorePath>> {
             try {
-                auto drvPath = TRY_AWAIT(resolveDerivedPath(store, *bfd.drvPath, evalStore_));
+                auto drvPath = bfd.drvPath->path;
                 auto outputPaths =
                     TRY_AWAIT(evalStore.queryPartialDerivationOutputMap(drvPath, evalStore_));
                 if (outputPaths.count(bfd.output) == 0)

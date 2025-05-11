@@ -34,15 +34,14 @@ struct CmdLog : InstallableCommand
         auto b = installable->toDerivedPath(*getEvaluator()->begin(aio()));
 
         // For compat with CLI today, TODO revisit
-        auto oneUp = std::visit(overloaded {
+        auto path = std::visit(overloaded {
             [&](const DerivedPath::Opaque & bo) {
-                return make_ref<SingleDerivedPath::Opaque>(bo);
+                return bo.path;
             },
             [&](const DerivedPath::Built & bfd) {
-                return bfd.drvPath;
+                return bfd.drvPath->path;
             },
         }, b.path.raw());
-        auto path = aio().blockOn(resolveDerivedPath(*store, *oneUp));
 
         RunPager pager;
         for (auto & sub : subs) {

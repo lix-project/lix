@@ -40,10 +40,7 @@ try {
     res["drvPath"] = TRY_AWAIT(drvPath->toJSON(store));
     // Fallback for the input-addressed derivation case: We expect to always be
     // able to print the output paths, so let’s do it
-    // FIXME try-resolve on drvPath
-    const auto outputMap = TRY_AWAIT(
-        store.queryPartialDerivationOutputMap(TRY_AWAIT(resolveDerivedPath(store, *drvPath)))
-    );
+    const auto outputMap = TRY_AWAIT(store.queryPartialDerivationOutputMap(drvPath->path));
     for (const auto & [output, outputPathOpt] : outputMap) {
         if (!outputs.contains(output)) continue;
         if (outputPathOpt)
