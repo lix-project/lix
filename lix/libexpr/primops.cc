@@ -1390,21 +1390,6 @@ static void prim_readDir(EvalState & state, Value * * args, Value & v)
     v.mkAttrs(attrs);
 }
 
-/* Extend single element string context with another output. */
-static void prim_outputOf(EvalState & state, Value * * args, Value & v)
-{
-    SingleDerivedPath drvPath = state.coerceToSingleDerivedPath(noPos, *args[0], "while evaluating the first argument to builtins.outputOf");
-
-    OutputNameView outputName = state.forceStringNoCtx(*args[1], noPos, "while evaluating the second argument to builtins.outputOf");
-
-    state.mkSingleDerivedPathString(
-        SingleDerivedPath::Built {
-            .drvPath = make_ref<SingleDerivedPath>(drvPath),
-            .output = std::string { outputName },
-        },
-        v);
-}
-
 /*************************************************************
  * Creating files
  *************************************************************/

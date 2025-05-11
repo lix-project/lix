@@ -115,7 +115,6 @@ builtin_definitions = files(
   'builtins/mapAttrs.md',
   'builtins/match.md',
   'builtins/mul.md',
-  'builtins/outputOf.md',
   'builtins/parseDrvName.md',
   'builtins/parseFlakeRef.md',
   'builtins/partition.md',
