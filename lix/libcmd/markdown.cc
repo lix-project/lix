@@ -3,10 +3,50 @@
 #include "lix/libutil/finally.hh"
 #include "lix/libutil/terminal.hh"
 
+#include <cstdlib>
+#include <iterator>
+#include <new>
+#include <regex>
 #include <sys/queue.h>
 #include <lowdown.h>
 
 namespace nix {
+
+static const std::string DOCROOT = "@docroot@";
+static const std::string DOCROOT_URL = "https://docs.lix.systems/manual/lix/stable";
+
+static void processLinks(struct lowdown_node * node)
+{
+    if (node->type == LOWDOWN_LINK) {
+        struct lowdown_buf *link = &node->rndr_link.link;
+        if (link && link->size && std::string_view(link->data, link->size).starts_with(DOCROOT)) {
+            // link starts with @docroot@, replace that and check the path extension too.
+            static std::regex mdRewrite{"\\.md(#.*)?$"}; // NOLINT(lix-foreign-exceptions)
+
+            auto oldLink = std::string_view(link->data, link->size).substr(DOCROOT.size());
+            std::string newLink = DOCROOT_URL;
+            std::regex_replace(
+                std::back_inserter(newLink), oldLink.begin(), oldLink.end(), mdRewrite, ".html$1"
+            );
+            if (link->maxsize < newLink.size()) {
+                // the existing link buffer doesn't have enough space for the new string
+                char *newData;
+                if (!(newData = static_cast<char *>(std::realloc(link->data, newLink.size())))) {
+                    throw std::bad_alloc();
+                }
+                link->data = newData;
+                link->maxsize = newLink.size();
+            }
+            newLink.copy(link->data, newLink.size());
+            link->size = newLink.size();
+        }
+    } else {
+        // recurse into children
+        struct lowdown_node *child;
+        TAILQ_FOREACH(child, &node->children, entries)
+            processLinks(child);
+    }
+}
 
 std::string renderMarkdownToTerminal(std::string_view markdown, StandardOutputStream fileno)
 {
@@ -35,6 +75,8 @@ std::string renderMarkdownToTerminal(std::string_view markdown, StandardOutputSt
     if (!node)
         throw Error("cannot parse Markdown document");
     Finally freeNode([&]() { lowdown_node_free(node); });
+
+    processLinks(node);
 
     auto renderer = lowdown_term_new(&opts);
     if (!renderer)
