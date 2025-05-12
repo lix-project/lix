@@ -68,6 +68,11 @@ clearProfiles() {
     rm -rf "$profiles"
 }
 
+linkProfilesTo() {
+    target="$1"
+    ln -s "$HOME"/.local/state/nix/profiles "$target"
+}
+
 clearStore() {
     echo "clearing store..."
     chmod -R +w "$NIX_STORE_DIR"

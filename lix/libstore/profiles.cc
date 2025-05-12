@@ -153,8 +153,11 @@ void deleteGenerations(
 
     auto [gens, curGen] = findGenerations(profile);
 
+    if (!curGen)
+        throw Error("cannot find current generation of profile '%1%', is it a valid symlink?", profile);
+
     if (gensToDelete.count(*curGen))
-        throw Error("cannot delete current version of profile %1%'", profile);
+        throw Error("cannot delete current version of profile '%1%'", profile);
 
     for (auto & i : gens) {
         if (!gensToDelete.count(i.number)) continue;
