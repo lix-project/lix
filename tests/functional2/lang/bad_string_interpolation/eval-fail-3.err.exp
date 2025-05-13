@@ -1,0 +1,8 @@
+error:
+       … while evaluating a path segment
+         at /pwd/in.nix:1:3:
+            1| ''${x: x}''
+             |   ^
+            2|
+
+       error: cannot coerce a function to a string: «lambda @ /pwd/in.nix:1:5»

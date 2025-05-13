@@ -1,0 +1,3 @@
+[eval-okay]
+runner = "eval-okay"
+extra-files = ["imported.nix", "imported2.nix"]

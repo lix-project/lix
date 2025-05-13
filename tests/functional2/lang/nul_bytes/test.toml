@@ -1,0 +1,13 @@
+[eval-depr]
+runner = "eval-fail"
+
+[eval-allow-depr]
+runner = "eval-okay"
+flags = ["--extra-deprecated-features", "nul-bytes"]
+
+[parse-depr]
+runner = "parse-fail"
+
+[parse-allow-depr]
+runner = "parse-okay"
+flags = ["--extra-deprecated-features", "nul-bytes"]

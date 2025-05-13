@@ -1,0 +1,6 @@
+[depr]
+runner = "parse-fail"
+
+[allow-depr]
+runner = "parse-okay"
+flags = ["--extra-deprecated-features", "cr-line-endings"]
