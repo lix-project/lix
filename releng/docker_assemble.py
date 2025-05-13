@@ -248,7 +248,8 @@ class AuthState:
             with path.open() as fh:
                 try:
                     json_obj = json.load(fh)
-                    return {k: v['auth'] for k, v in json_obj['auths'].items()}
+                    auths = json_obj.get('auths', {})
+                    return {k: v['auth'] for k, v in auths.items()}
                 except (json.JSONDecodeError, KeyError) as e:
                     log.exception('JSON decode error in %s', path, exc_info=e)
         return {}
