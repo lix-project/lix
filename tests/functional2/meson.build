@@ -1,8 +1,12 @@
 xdist_opts = [
   # auto number of workers, max 12 jobs
   '-n', 'auto', '--maxprocesses=12',
-  # group tests by module or class; ensures that any setup work occurs as little as possible
-  '--dist=loadscope',
+  # Distributes tests evenly at first and then, if workers run out of tests, they steal from a different worker
+  # This is useful here, due to differing durations of tests, especially when tests check timeout functionality
+  #
+  # grouping by module/file is disadventageous here too, as all lang tests are executed from the same module
+  # which would result in high run times for that single worker while everything else is bored
+  '--dist=worksteal',
 ]
 
 # surprisingly, this actually works even if PATH is set to something before
@@ -16,6 +20,8 @@ test(
   args : [
     '-m', 'pytest',
     '-v',
+    # Print out summaries of **f**ailed, **E**rrored and **s**kipped tests
+    '-r', 'fEs',
     xdist_opts,
     meson.current_source_dir()
   ],

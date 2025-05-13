@@ -200,6 +200,7 @@ let
     p.ruff
     p.python-frontmatter
     p.aiohttp
+    p.toml
   ]);
 in
 assert (lintInsteadOfBuild -> lix-clang-tidy != null);
@@ -541,6 +542,7 @@ stdenv.mkDerivation (finalAttrs: {
             p.ruff
             p.aiohttp
             p.python-frontmatter
+            p.toml
 
             p.yapf
             p.requests

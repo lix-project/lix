@@ -1,0 +1,4 @@
+error: syntax error, unexpected end of file, expecting '}'
+       at /pwd/in.nix:1:2:
+            1| {
+             |  ^

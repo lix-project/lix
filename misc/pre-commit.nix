@@ -52,11 +52,17 @@ pre-commit-run {
         "\\.drv$"
         "^tests/functional/lang/"
         ''\.patch$''
+        "^tests/functional2/.+\\.exp"
+        "^tests/functional2/.+\\.nix"
       ];
     };
     mixed-line-endings = {
       enable = true;
-      excludes = [ "^tests/functional/lang/" ];
+      excludes = [
+        "^tests/functional/lang/"
+        "^tests/functional2/.+\\.exp"
+        "^tests/functional2/.+\\.nix"
+      ];
     };
     release-notes = {
       enable = true;
@@ -110,6 +116,8 @@ pre-commit-run {
       stages = [ "pre-commit" ];
       excludes = [
         ''^tests/functional/lang/''
+        "^tests/functional2/.+\\.exp"
+        "^tests/functional2/.+\\.nix"
         ''\.patch$''
       ];
     };

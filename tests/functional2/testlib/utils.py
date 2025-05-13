@@ -66,3 +66,23 @@ def get_functional2_files_with_testlib(
             additional_files,
         )
     )
+
+
+def get_functional2_lang_files(additional_files: FileDeclaration | None = None) -> FileDeclaration:
+    if additional_files is None:
+        additional_files = {}
+    return get_functional2_files_with_testlib(
+        merge_file_declaration(
+            {
+                "functional2": {
+                    "lang": {
+                        "__init__.py": CopyFile(functional2_base_folder / "lang/__init__.py"),
+                        "lang_util.py": CopyFile(functional2_base_folder / "lang/lang_util.py"),
+                        "test_lang.py": CopyFile(functional2_base_folder / "lang/test_lang.py"),
+                        "lib.nix": CopyFile(functional2_base_folder / "lang/lib.nix"),
+                    }
+                }
+            },
+            additional_files,
+        )
+    )
