@@ -33,3 +33,7 @@ max_line_length = 0
 [meson.build]
 indent_style = space
 indent_size = 2
+
+[*.json]
+indent_style = space
+indent_size = 4
