@@ -22,11 +22,15 @@ For staging, the buckets are `staging-releases`, `staging-cache`, etc.
 
 FIXME: obtainment of signing key for signing cache paths?
 
-* Switch to the release branch you'd like to base your release off of
-
-```
-git switch -c releng/2.91.1 origin/release-2.91
-```
+* Switch to the release branch you'd like to base your release off of.
+  * For a major release:
+    ```
+    git switch -c releng/2.93.0 origin/main
+    ```
+  * For a patch release:
+    ```
+    git switch -c releng/2.93.1 origin/release-2.93
+    ```
 
 * Set the version and release name you are going to release in `version.json`.
 
@@ -62,7 +66,30 @@ git switch -c releng/2.91.1 origin/release-2.91
   which are ready to publish, and tags ready for publication. No keys are
   required to do this part.
 
-* Next, we do the publication with `python -m releng upload`:
+* Next, we do the publication with `python -m releng upload --environment production`:
+  * Running this command will require access tokens for a couple systems:
+    * Create an access token for `git.lix.systems` with `read:user` and
+      `write:package` permissions.
+      See: <https://git.lix.systems/user/settings/applications>
+
+    * Create an access token for GitHub. The easiest way to this is with the `gh` CLI:
+
+      ```
+      gh auth refresh --scopes write:packages && gh auth token
+      ```
+      See: <https://cli.github.com/>
+
+      Check your token's permissions:
+      ```
+      $ gh api -i / | grep '^X-Oauth-Scopes'
+      X-Oauth-Scopes: gist, read:org, repo, workflow, write:packages
+      ```
+
+      You can probably also do this with a traditional PAT, but GitHub has like
+      three different permissions systems and they're all poorly documented.
+      See: <https://github.com/settings/tokens>
+
+    * You'll also need `prod.key`; ask @jade where to find it.
 
   * s3://releases/manifest.nix, changing the default version of Lix for
     `nix upgrade-nix`.
@@ -81,7 +108,22 @@ git switch -c releng/2.91.1 origin/release-2.91
   FIXME: This currently requires a local Apple Macintosh® aarch64 computer, but
   we could possibly automate doing it from the aarch64-darwin builder.
 
-* **Manually** Push the main/release branch directly to gerrit.
+* **Manually** Push the main/release branch directly to Gerrit:
+  ```
+  git push HEAD:refs/for/main
+  ```
+
+* **Manually** Push the tag to Gerrit:
+  ```
+  git push origin 2.93.0:refs/tags/2.93.0
+  ```
+
+  TODO: `./create_release.xsh` has code that looks like it does this already,
+  but @rbt had to do it manually when running the release for 2.93.0.
+
+  From @jade: "This is because the code is broken; it's because Gerrit doesn't
+  like tags that haven't yet had their contents submitted for review."
+
 * If this is a new major release, branch-off to `release-MAJOR` and push *that* branch
   directly to gerrit as well (FIXME: special creds for doing this as a service
   account so we don't need to have the gerrit perms to shoot ourselves in the
