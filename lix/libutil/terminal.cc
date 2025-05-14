@@ -36,6 +36,7 @@ std::string filterANSIEscapes(std::string_view s, bool filterAll, unsigned int w
 {
     std::string t;
     size_t w = 0;
+    bool inHyperlink = false;
     auto i = s.begin();
 
     while (w < (size_t) width && i != s.end()) {
@@ -43,22 +44,81 @@ std::string filterANSIEscapes(std::string_view s, bool filterAll, unsigned int w
         if (*i == '\e') {
             std::string e;
             e += *i++;
-            char last = 0;
 
-            if (i != s.end() && *i == '[') {
+            if (i != s.end() && *i == '[') { // CSI sequence
                 e += *i++;
-                // eat parameter bytes
-                while (i != s.end() && *i >= 0x30 && *i <= 0x3f) e += *i++;
-                // eat intermediate bytes
-                while (i != s.end() && *i >= 0x20 && *i <= 0x2f) e += *i++;
-                // eat final byte
+                // CSI is terminated by a byte in the range 0x40–0x7e.
+                // Behavior is undefined if we get a byte outside 0x20–0x7e.
+                // We don't care about the exact format of the parameters, just that we find the
+                // end of the sequence, so we'll stop on an invalid byte.
+                char last = 0;
+
+                // eat parameter / intermediate bytes
+                while (i != s.end() && *i >= 0x20 && *i <= 0x3f) e += *i++;
+                // eat terminator byte
                 if (i != s.end() && *i >= 0x40 && *i <= 0x7e) e += last = *i++;
+
+                // print colors if enabled
+                if (!filterAll && last == 'm')
+                    t += e;
+            } else if (i != s.end() && *i == ']') { // OSC sequence
+                e += *i++;
+                // OSC is terminated by ST (\e\\).
+                // For historical reasons it can also be ended with BEL (\a).
+                // We only care about OSC 8, hyperlinks
+                char ps = 0;
+
+                // eat first parameter
+                if (i != s.end() && *i >= 0x30 && *i <= 0x3f) e += ps = *i++;
+                if (!(i != s.end() && *i == ';')) ps = 0; // not a single-digit parameter
+                // eat until ST
+                while (true) {
+                    if (i == s.end()) {
+                        ps = 0; // don't print unfinished sequences
+                        break;
+                    }
+                    char c;
+                    e += c = *i++;
+                    if (c == '\a') break;
+                    if (c == '\e' && i != s.end() && *i == '\\') {
+                        e += *i++;
+                        break;
+                    }
+                }
+
+                // print OSC 8 if enabled
+                if (!filterAll && ps == '8') {
+                    inHyperlink = !(e == "\e]8;;\a" || e == "\e]8;;\e\\");
+                    t += e;
+                }
             } else {
-                if (i != s.end() && *i >= 0x40 && *i <= 0x5f) e += *i++;
+                // some other escape. Most of these are just one byte, but the nF escapes can have
+                // multiple bytes in 0x20–0x2f before the terminator. Getting something outside
+                // 0x20–0x7e at this point is undefined but experimentally it seems some terminals
+                // process control chars without interrupting the sequence. We'll abort on
+                // non-ASCII though for simplicity, and \t so we can expand it.
+                while (i != s.end() && *i != '\e' && *i != '\t') {
+                    if (*i & 0x80) break; // utf8 byte
+                    else if (*i >= 0x30) {
+                        // terminator byte
+                        i++;
+                        break;
+                    } else if (*i >= 0x20) {
+                        // nF escape continuation byte
+                        i++;
+                    } else if (*i == '\r' || *i == '\a') {
+                        // escapes that we ignore down below
+                        i++;
+                    } else {
+                        // down below we don't check for other control chars, so we treat them as
+                        // printable chars. we should probably change that, but for now just match
+                        // the behavior.
+                        t += *i++;
+                        if (++w >= (size_t)width) break;
+                    }
+                }
             }
 
-            if (!filterAll && last == 'm')
-                t += e;
         }
 
         else if (*i == '\t' && eatTabs) {
@@ -95,6 +155,25 @@ std::string filterANSIEscapes(std::string_view s, bool filterAll, unsigned int w
                 }
             } else
                 t += *i++;
+        }
+    }
+
+    // if we truncated with an open OSC 8, check if we're throwing away another OSC 8 and, if so,
+    // close it. Our callers know to reset colors but probably don't know to reset hyperlink.
+    if (inHyperlink) {
+        char next = '\e';
+        while (i != s.end()) {
+            char c = *i++;
+            if (c == '\e') next = ']';
+            else if (c == next) {
+                if (next == ']') next = '8';
+                else if (next == '8') next = ';';
+                else if (next == ';') {
+                    // that's enough to identify an OSC 8
+                    t += "\e]8;;\e\\";
+                    break;
+                }  else next = '\e';
+            } else next = '\e';
         }
     }
 
