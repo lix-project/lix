@@ -927,7 +927,7 @@ struct CmdFlakeInitCommon : virtual Args, EvalCommand
         auto welcomeText = cursor->maybeGetAttr(*evalState, "welcomeText");
         if (welcomeText) {
             notice("\n");
-            notice(renderMarkdownToTerminal(welcomeText->getString(*evalState)));
+            notice(renderMarkdownToTerminal(welcomeText->getString(*evalState), StandardOutputStream::Stderr));
         }
 
         if (!conflictedFiles.empty())

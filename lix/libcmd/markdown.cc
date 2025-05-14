@@ -8,7 +8,7 @@
 
 namespace nix {
 
-std::string renderMarkdownToTerminal(std::string_view markdown)
+std::string renderMarkdownToTerminal(std::string_view markdown, StandardOutputStream fileno)
 {
     int windowWidth = getWindowSize().second;
 
@@ -21,7 +21,7 @@ std::string renderMarkdownToTerminal(std::string_view markdown)
         .feat = LOWDOWN_COMMONMARK | LOWDOWN_FENCED | LOWDOWN_DEFLIST | LOWDOWN_TABLES,
         .oflags = LOWDOWN_TERM_NOLINK,
     };
-    if (!shouldANSI()) {
+    if (!shouldANSI(fileno)) {
         opts.oflags |= LOWDOWN_TERM_NOANSI;
     }
 
