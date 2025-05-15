@@ -98,7 +98,7 @@ in
 
       out = client.fail("nix-build ${expr nodes.client 1} 2>&1")
       assert "Host key verification failed." in out, f"No host verification error:\n{out}"
-      assert "warning: SSH to 'root@builder' failed, stdout first line: '''" in out, f"No details about which host:\n{out}"
+      assert "'ssh-ng://root@builder'" in out, f"No details about which host:\n{out}"
 
       client.succeed(f"ssh -o StrictHostKeyChecking=no {builder.name} 'echo hello world' >&2")
 

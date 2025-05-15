@@ -67,6 +67,8 @@ in
     };
   });
 
+  # Let's ensure that reasonably popular shells are tested for remote building.
+
   remoteBuildsNushell = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
     name = "remoteBuilds_nushell";
     imports = [ ./remote-builds.nix ];
@@ -75,27 +77,11 @@ in
     };
   });
 
-  remoteBuildsWeirdShell = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
-    name = "remoteBuilds_weird_shell";
+  remoteBuildsBusybox = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
+    name = "remoteBuilds_busybox";
     imports = [ ./remote-builds.nix ];
     builders.config = { lib, pkgs, ... }: {
-      # a pathologically weird shell that can do nothing BUT run bash
-      users.users.root.shell = pkgs.writeTextFile {
-        name = "watsh";
-        destination = "/bin/watsh";
-        executable = true;
-
-        text = ''
-          #!/bin/sh
-          if [ "$1" = "-c" ] && [ "$2" = "bash" ]; then
-            exec bash
-          else
-            echo "Wat."
-          fi
-        '';
-
-        passthru.shellPath = "/bin/watsh";
-      };
+      users.users.root.shell = pkgs.busybox;
     };
   });
 
