@@ -526,26 +526,7 @@ Store::queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore
 try {
     auto & evalStore = evalStore_ ? *evalStore_ : *this;
 
-    auto outputs = TRY_AWAIT(evalStore.queryStaticPartialDerivationOutputMap(path));
-
-    if (!experimentalFeatureSettings.isEnabled(Xp::CaDerivations))
-        co_return outputs;
-
-    auto drv = TRY_AWAIT(evalStore.readInvalidDerivation(path));
-    auto drvHashes = TRY_AWAIT(staticOutputHashes(*this, drv));
-    for (auto & [outputName, hash] : drvHashes) {
-        auto realisation = TRY_AWAIT(queryRealisation(DrvOutput{hash, outputName}));
-        if (realisation) {
-            outputs.insert_or_assign(outputName, realisation->outPath);
-        } else {
-            // queryStaticPartialDerivationOutputMap is not guaranteed
-            // to return std::nullopt for outputs which are not
-            // statically known.
-            outputs.insert({outputName, std::nullopt});
-        }
-    }
-
-    co_return outputs;
+    co_return TRY_AWAIT(evalStore.queryStaticPartialDerivationOutputMap(path));
 } catch (...) {
     co_return result::current_exception();
 }

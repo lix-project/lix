@@ -259,33 +259,7 @@ struct QueryMissingContext
         ParsedDerivation parsedDrv(StorePath(drvPath), *drv);
 
         if (!knownOutputPaths && settings.useSubstitutes && parsedDrv.substitutesAllowed()) {
-            experimentalFeatureSettings.require(Xp::CaDerivations);
-
-            // If there are unknown output paths, attempt to find if the
-            // paths are known to substituters through a realisation.
-            auto outputHashes = aio.blockOn(staticOutputHashes(store, *drv));
-            knownOutputPaths = true;
-
-            for (auto [outputName, hash] : outputHashes) {
-                if (!bfd.outputs.contains(outputName))
-                    continue;
-
-                bool found = false;
-                for (auto &sub : aio.blockOn(getDefaultSubstituters())) {
-                    auto realisation = aio.blockOn(sub->queryRealisation({hash, outputName}));
-                    if (!realisation)
-                        continue;
-                    found = true;
-                    if (!aio.blockOn(store.isValidPath(realisation->outPath)))
-                        invalid.insert(realisation->outPath);
-                    break;
-                }
-                if (!found) {
-                    // Some paths did not have a realisation, this must be built.
-                    knownOutputPaths = false;
-                    break;
-                }
-            }
+            throw UnimplementedError("ca derivations are not supported");
         }
 
         if (knownOutputPaths && settings.useSubstitutes && parsedDrv.substitutesAllowed()) {

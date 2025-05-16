@@ -743,20 +743,12 @@ try {
                                     "the derivation '%s' doesn't have an output named '%s'",
                                     printStorePath(drvPath), output);
                             auto outputId = DrvOutput{ *outputHash, output };
-                            if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-                                auto realisation =
-                                    TRY_AWAIT(queryRealisation(outputId));
-                                if (!realisation)
-                                    throw MissingRealisation(outputId);
-                                res.builtOutputs.emplace(output, *realisation);
-                            } else {
-                                res.builtOutputs.emplace(
-                                    output,
-                                    Realisation {
-                                        .id = outputId,
-                                        .outPath = outputPath,
-                                    });
-                            }
+                            res.builtOutputs.emplace(
+                                output,
+                                Realisation {
+                                    .id = outputId,
+                                    .outPath = outputPath,
+                                });
                         }
 
                         results.push_back(res);

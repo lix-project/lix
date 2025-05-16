@@ -112,21 +112,7 @@ try {
                     staticOutputHashes(store, TRY_AWAIT(store.readDerivation(p.drvPath.path)))
                 );
                 for (auto& [outputName, outputPath] : p.outputs) {
-                    if (experimentalFeatureSettings.isEnabled(
-                                Xp::CaDerivations)) {
-                        auto drvOutput = get(drvHashes, outputName);
-                        if (!drvOutput)
-                            throw Error(
-                                "the derivation '%s' has unrealised output '%s' (derived-path.cc/toRealisedPaths)",
-                                store.printStorePath(p.drvPath.path), outputName);
-                        auto thisRealisation = TRY_AWAIT(store.queryRealisation(
-                            DrvOutput{*drvOutput, outputName}));
-                        assert(thisRealisation);  // We’ve built it, so we must
-                                                  // have the realisation
-                        res.insert(*thisRealisation);
-                    } else {
-                        res.insert(outputPath);
-                    }
+                    res.insert(outputPath);
                 }
                 co_return result::success();
             } catch (...) {
