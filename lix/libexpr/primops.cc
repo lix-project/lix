@@ -93,18 +93,6 @@ StringMap EvalState::realiseContext(const NixStringContext & context)
         auto outputs = aio.blockOn(resolveDerivedPath(*ctx.buildStore, drv, &*ctx.store));
         for (auto & [outputName, outputPath] : outputs) {
             outputsToCopyAndAllow.insert(outputPath);
-
-            /* Get all the output paths corresponding to the placeholders we had */
-            if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-                res.insert_or_assign(
-                    DownstreamPlaceholder::fromSingleDerivedPathBuilt(
-                        SingleDerivedPath::Built {
-                            .drvPath = drv.drvPath,
-                            .output = outputName,
-                        }).render(),
-                    ctx.buildStore->printStorePath(outputPath)
-                );
-            }
         }
     }
 
@@ -810,7 +798,6 @@ drvName, Bindings * attrs, Value & v)
 
     NixStringContext context;
 
-    bool contentAddressed = false;
     std::optional<std::string> outputHash;
     std::string outputHashAlgo;
     std::optional<ContentAddressMethod> ingestionMethod;
@@ -864,8 +851,8 @@ drvName, Bindings * attrs, Value & v)
             }
 
             if (i->name == state.ctx.s.contentAddressed && state.forceBool(*i->value, noPos, context_below)) {
-                contentAddressed = true;
-                experimentalFeatureSettings.require(Xp::CaDerivations);
+                state.ctx.errors.make<EvalError>("ca derivations are not supported in Lix")
+                    .debugThrow();
             }
 
             else if (i->name == state.ctx.s.impure && state.forceBool(*i->value, noPos, context_below)) {
@@ -1024,20 +1011,6 @@ drvName, Bindings * attrs, Value & v)
 
         drv.env["out"] = state.ctx.store->printStorePath(dof.path(*state.ctx.store, drvName, "out"));
         drv.outputs.insert_or_assign("out", std::move(dof));
-    }
-
-    else if (contentAddressed) {
-        auto ht = parseHashTypeOpt(outputHashAlgo).value_or(HashType::SHA256);
-        auto method = ingestionMethod.value_or(FileIngestionMethod::Recursive);
-
-        for (auto & i : outputs) {
-            drv.env[i] = hashPlaceholder(i);
-            drv.outputs.insert_or_assign(i,
-                DerivationOutput::CAFloating {
-                    .method = method,
-                    .hashType = ht,
-                });
-        }
     }
 
     else {
