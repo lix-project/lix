@@ -627,26 +627,12 @@ try {
         }
         co_return DrvHash {
             .hashes = outputHashes,
-            .kind = DrvHash::Kind::Regular,
         };
     }
-
-    auto kind = std::visit(overloaded {
-        [](const DerivationType::InputAddressed & ia) {
-            /* This might be a "pesimistically" deferred output, so we don't
-               "taint" the kind yet. */
-            return DrvHash::Kind::Regular;
-        },
-        [](const DerivationType::ContentAddressed & ca) {
-            return DrvHash::Kind::Regular;
-        },
-    }, drv.type().raw);
 
     std::map<std::string, StringSet> inputs2;
     for (auto & [drvPath, node] : drv.inputDrvs) {
         const auto & res = TRY_AWAIT(pathDerivationModulo(store, drvPath));
-        if (res.kind == DrvHash::Kind::Deferred)
-            kind = DrvHash::Kind::Deferred;
         for (auto & outputName : node) {
             const auto h = get(res.hashes, outputName);
             if (!h)
@@ -664,7 +650,6 @@ try {
 
     co_return DrvHash {
         .hashes = outputHashes,
-        .kind = kind,
     };
 } catch (...) {
     co_return result::current_exception();

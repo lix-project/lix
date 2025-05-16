@@ -344,7 +344,7 @@ std::string outputPathName(std::string_view drvName, OutputNameView outputName);
  * The hashes modulo of a derivation.
  *
  * Each output is given a hash, although in practice only the content-addressed
- * derivations (fixed-output or not) will have a different hash for each
+ * derivations (i.e. fixed-output) will have a different hash for each
  * output.
  */
 struct DrvHash {
@@ -352,28 +352,7 @@ struct DrvHash {
      * Map from output names to hashes
      */
     std::map<std::string, Hash> hashes;
-
-    enum struct Kind : bool {
-        /**
-         * Statically determined derivations.
-         * This hash will be directly used to compute the output paths
-         */
-        Regular,
-
-        /**
-         * Floating-output derivations (and their reverse dependencies).
-         */
-        Deferred,
-    };
-
-    /**
-     * The kind of derivation this is, simplified for just "derivation hash
-     * modulo" purposes.
-     */
-    Kind kind;
 };
-
-void operator |= (DrvHash::Kind & self, const DrvHash::Kind & other) noexcept;
 
 /**
  * Returns hashes with the details of fixed-output subderivations

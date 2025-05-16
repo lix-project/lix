@@ -1028,29 +1028,20 @@ drvName, Bindings * attrs, Value & v)
 
         auto hashModulo =
             state.aio.blockOn(hashDerivationModulo(*state.ctx.store, Derivation(drv), true));
-        switch (hashModulo.kind) {
-        case DrvHash::Kind::Regular:
-            for (auto & i : outputs) {
-                auto h = get(hashModulo.hashes, i);
-                if (!h)
-                    state.ctx.errors.make<AssertionError>(
-                        "derivation produced no hash for output '%s'",
-                        i
-                    ).debugThrow();
-                auto outPath = state.ctx.store->makeOutputPath(i, *h, drvName);
-                drv.env[i] = state.ctx.store->printStorePath(outPath);
-                drv.outputs.insert_or_assign(
-                    i,
-                    DerivationOutput::InputAddressed {
-                        .path = std::move(outPath),
-                    });
-            }
-            break;
-            ;
-        case DrvHash::Kind::Deferred:
-            for (auto & i : outputs) {
-                drv.outputs.insert_or_assign(i, DerivationOutput::Deferred {});
-            }
+        for (auto & i : outputs) {
+            auto h = get(hashModulo.hashes, i);
+            if (!h)
+                state.ctx.errors.make<AssertionError>(
+                    "derivation produced no hash for output '%s'",
+                    i
+                ).debugThrow();
+            auto outPath = state.ctx.store->makeOutputPath(i, *h, drvName);
+            drv.env[i] = state.ctx.store->printStorePath(outPath);
+            drv.outputs.insert_or_assign(
+                i,
+                DerivationOutput::InputAddressed {
+                    .path = std::move(outPath),
+                });
         }
     }
 
