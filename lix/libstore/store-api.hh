@@ -593,23 +593,6 @@ public:
         RepairFlag repair = NoRepair) = 0;
 
     /**
-     * Add a mapping indicating that `deriver!outputName` maps to the output path
-     * `output`.
-     *
-     * This is redundant for known-input-addressed and fixed-output derivations
-     * as this information is already present in the drv file, but necessary for
-     * floating-ca derivations and their dependencies as there's no way to
-     * retrieve this information otherwise.
-     */
-    virtual kj::Promise<Result<void>> registerDrvOutput(const Realisation & output)
-    try { unsupported("registerDrvOutput"); } catch (...) { return {result::current_exception()}; }
-    virtual kj::Promise<Result<void>>
-    registerDrvOutput(const Realisation & output, CheckSigsFlag checkSigs)
-    {
-        return registerDrvOutput(output);
-    }
-
-    /**
      * Generate a NAR dump of a store path.
      */
     virtual kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) = 0;

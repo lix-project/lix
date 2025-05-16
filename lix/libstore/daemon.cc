@@ -947,18 +947,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     }
 
     case WorkerProto::Op::RegisterDrvOutput: {
-        logger->startWork();
-        if (GET_PROTOCOL_MINOR(clientVersion) < 31) {
-            auto outputId = DrvOutput::parse(readString(from));
-            auto outputPath = StorePath(readString(from));
-            aio.blockOn(store->registerDrvOutput(Realisation{
-                .id = outputId, .outPath = outputPath}));
-        } else {
-            auto realisation = WorkerProto::Serialise<Realisation>::read(*store, rconn);
-            aio.blockOn(store->registerDrvOutput(realisation));
-        }
-        logger->stopWork();
-        break;
+        throw UnimplementedError("ca derivations are not supported");
     }
 
     case WorkerProto::Op::QueryRealisation: {

@@ -520,17 +520,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> BinaryCacheStore::registerDrvOutput(const Realisation& info)
-try {
-    if (diskCache)
-        diskCache->upsertRealisation(getUri(), info);
-    auto filePath = realisationsPrefix + "/" + info.id.to_string() + ".doi";
-    upsertFile(filePath, info.toJSON().dump(), "application/json");
-    co_return result::success();
-} catch (...) {
-    co_return result::current_exception();
-}
-
 ref<FSAccessor> BinaryCacheStore::getFSAccessor()
 {
     return make_ref<RemoteFSAccessor>(ref<Store>(*this), config().localNarCache);

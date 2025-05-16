@@ -117,8 +117,6 @@ public:
         const StorePathSet & references,
         RepairFlag repair) override;
 
-    kj::Promise<Result<void>> registerDrvOutput(const Realisation & info) override;
-
     kj::Promise<Result<std::shared_ptr<const Realisation>>>
     queryRealisationUncached(const DrvOutput &) override;
 

@@ -603,23 +603,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> RemoteStore::registerDrvOutput(const Realisation & info)
-try {
-    auto conn(TRY_AWAIT(getConnection()));
-    conn->to << WorkerProto::Op::RegisterDrvOutput;
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 31) {
-        REMOVE_AFTER_DROPPING_PROTO_MINOR(30);
-        conn->to << info.id.to_string();
-        conn->to << std::string(info.outPath.to_string());
-    } else {
-        conn->to << WorkerProto::write(*this, *conn, info);
-    }
-    conn.processStderr();
-    co_return result::success();
-} catch (...) {
-    co_return result::current_exception();
-}
-
 kj::Promise<Result<std::shared_ptr<const Realisation>>>
 RemoteStore::queryRealisationUncached(const DrvOutput & id)
 try {
