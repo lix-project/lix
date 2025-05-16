@@ -5,7 +5,6 @@
 #include "lix/libstore/build/worker.hh"
 #include "lix/libutil/finally.hh"
 #include "lix/libstore/build/substitution-goal.hh"
-#include "lix/libstore/build/drv-output-substitution-goal.hh"
 #include "lix/libstore/build/local-derivation-goal.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libstore/build/hook-instance.hh" // IWYU pragma: keep
@@ -50,7 +49,6 @@ Worker::~Worker()
     children.clear();
 
     derivationGoals.clear();
-    drvOutputSubstitutionGoals.clear();
     substitutionGoals.clear();
 
     assert(expectedSubstitutions == 0);
@@ -178,20 +176,6 @@ Worker::makePathSubstitutionGoal(
         substitutionGoals,
         path,
         [&] { return std::make_unique<PathSubstitutionGoal>(path, *this, running, repair, ca); },
-        [&](auto &) { return true; }
-    );
-}
-
-
-std::pair<std::shared_ptr<DrvOutputSubstitutionGoal>, kj::Promise<Result<Goal::WorkResult>>>
-Worker::makeDrvOutputSubstitutionGoal(
-    const DrvOutput & id, RepairFlag repair, std::optional<ContentAddress> ca
-)
-{
-    return makeGoalCommon(
-        drvOutputSubstitutionGoals,
-        id,
-        [&] { return std::make_unique<DrvOutputSubstitutionGoal>(id, *this, running, repair, ca); },
         [&](auto &) { return true; }
     );
 }

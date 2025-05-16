@@ -21,7 +21,6 @@ namespace nix {
 /* Forward definition. */
 struct DerivationGoal;
 struct PathSubstitutionGoal;
-class DrvOutputSubstitutionGoal;
 class LocalStore;
 
 typedef std::chrono::time_point<std::chrono::steady_clock> steady_time_point;
@@ -54,12 +53,6 @@ public:
         RepairFlag repair = NoRepair,
         std::optional<ContentAddress> ca = std::nullopt
     ) = 0;
-    virtual std::pair<std::shared_ptr<DrvOutputSubstitutionGoal>, kj::Promise<Result<Goal::WorkResult>>>
-    makeDrvOutputSubstitutionGoal(
-        const DrvOutput & id,
-        RepairFlag repair = NoRepair,
-        std::optional<ContentAddress> ca = std::nullopt
-    ) = 0;
 
     /**
      * Make a goal corresponding to the `DerivedPath`.
@@ -76,7 +69,6 @@ class WorkerBase : protected GoalFactory
 {
     friend struct DerivationGoal;
     friend struct PathSubstitutionGoal;
-    friend class DrvOutputSubstitutionGoal;
 
 protected:
     GoalFactory & goalFactory() { return *this; }
@@ -139,7 +131,6 @@ private:
      */
     std::map<StorePath, CachedGoal<DerivationGoal>> derivationGoals;
     std::map<StorePath, CachedGoal<PathSubstitutionGoal>> substitutionGoals;
-    std::map<DrvOutput, CachedGoal<DrvOutputSubstitutionGoal>> drvOutputSubstitutionGoals;
 
     /**
      * Cache for pathContentsGood().
@@ -262,12 +253,6 @@ private:
     std::pair<std::shared_ptr<PathSubstitutionGoal>, kj::Promise<Result<Goal::WorkResult>>>
     makePathSubstitutionGoal(
         const StorePath & storePath,
-        RepairFlag repair = NoRepair,
-        std::optional<ContentAddress> ca = std::nullopt
-    ) override;
-    std::pair<std::shared_ptr<DrvOutputSubstitutionGoal>, kj::Promise<Result<Goal::WorkResult>>>
-    makeDrvOutputSubstitutionGoal(
-        const DrvOutput & id,
         RepairFlag repair = NoRepair,
         std::optional<ContentAddress> ca = std::nullopt
     ) override;

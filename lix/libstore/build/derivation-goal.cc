@@ -10,7 +10,6 @@
 #include "lix/libstore/common-protocol-impl.hh" // IWYU pragma: keep
 #include "lix/libstore/local-store.hh" // TODO remove, along with remaining downcasts
 #include "lix/libstore/build/substitution-goal.hh"
-#include "lix/libstore/build/drv-output-substitution-goal.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/strings.hh"
 
@@ -253,14 +252,13 @@ try {
         if (parsedDrv->substitutesAllowed()) {
             for (auto & [outputName, status] : initialOutputs) {
                 if (!status.wanted) continue;
-                if (!status.known)
-                    dependencies.add(
-                        worker.goalFactory().makeDrvOutputSubstitutionGoal(
-                            DrvOutput{status.outputHash, outputName},
-                            buildMode == bmRepair ? Repair : NoRepair
-                        )
+                if (!status.known) {
+                    // TODO remove somehow
+                    throw Error(
+                        "congrats, you hit vestigial CA code. sigh.\n"
+                        "please report a bug at https://git.lix.systems/lix-project/lix/issues"
                     );
-                else {
+                } else {
                     auto * cap = getDerivationCA(*drv);
                     dependencies.add(worker.goalFactory().makePathSubstitutionGoal(
                         status.known->path,
