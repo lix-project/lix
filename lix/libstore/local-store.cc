@@ -1027,7 +1027,7 @@ try {
 
 
 kj::Promise<Result<std::map<std::string, StorePath>>>
-LocalStore::queryStaticPartialDerivationOutputMap(const StorePath & path)
+LocalStore::queryStaticDerivationOutputMap(const StorePath & path)
 try {
     co_return TRY_AWAIT(
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)

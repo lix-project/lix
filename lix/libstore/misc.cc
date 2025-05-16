@@ -37,7 +37,7 @@ try {
                         res.insert(i);
 
                 if (includeDerivers && path.isDerivation())
-                    for (auto& [_, outPath] : TRY_AWAIT(queryPartialDerivationOutputMap(path)))
+                    for (auto& [_, outPath] : TRY_AWAIT(queryDerivationOutputMap(path)))
                         if (TRY_AWAIT(isValidPath(outPath)))
                             res.insert(outPath);
                 co_return res;
@@ -56,7 +56,7 @@ try {
                         res.insert(ref);
 
                 if (includeOutputs && path.isDerivation())
-                    for (auto& [_, outPath] : TRY_AWAIT(queryPartialDerivationOutputMap(path)))
+                    for (auto& [_, outPath] : TRY_AWAIT(queryDerivationOutputMap(path)))
                         if (TRY_AWAIT(isValidPath(outPath)))
                             res.insert(outPath);
 
@@ -241,7 +241,7 @@ struct QueryMissingContext
 
         StorePathSet invalid;
         for (auto & [outputName, path] :
-             aio.blockOn(store.queryPartialDerivationOutputMap(drvPath)))
+             aio.blockOn(store.queryDerivationOutputMap(drvPath)))
         {
             if (bfd.outputs.contains(outputName) && !aio.blockOn(store.isValidPath(path)))
                 invalid.insert(path);
@@ -354,7 +354,7 @@ resolveDerivedPath(Store & store, const DerivedPath::Built & bfd, Store * evalSt
 try {
     auto drvPath = bfd.drvPath.path;
 
-    auto outputs_ = TRY_AWAIT(store.queryPartialDerivationOutputMap(drvPath, evalStore_));
+    auto outputs_ = TRY_AWAIT(store.queryDerivationOutputMap(drvPath, evalStore_));
 
     co_return std::visit(overloaded {
         [&](const OutputsSpec::All &) {

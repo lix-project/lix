@@ -260,7 +260,7 @@ try {
         }},
         bmNormal, evalStore));
 
-    for (auto & [_0, outPath] : TRY_AWAIT(evalStore->queryPartialDerivationOutputMap(shellDrvPath)))
+    for (auto & [_0, outPath] : TRY_AWAIT(evalStore->queryDerivationOutputMap(shellDrvPath)))
     {
         assert(TRY_AWAIT(store->isValidPath(outPath)));
         auto outPathS = store->toRealPath(outPath);

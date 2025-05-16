@@ -401,7 +401,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
 
         if (shellDrv) {
             auto shellDrvOutputs =
-                aio.blockOn(store->queryPartialDerivationOutputMap(shellDrv.value(), &*evalStore));
+                aio.blockOn(store->queryDerivationOutputMap(shellDrv.value(), &*evalStore));
             shell = store->printStorePath(shellDrvOutputs.at("out")) + "/bin/bash";
         }
 
@@ -445,7 +445,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
 
             auto accumInputClosure = [&](const StorePath & inputDrv, const StringSet & inputNode) {
                 auto outputs =
-                    aio.blockOn(store->queryPartialDerivationOutputMap(inputDrv, &*evalStore));
+                    aio.blockOn(store->queryDerivationOutputMap(inputDrv, &*evalStore));
                 for (auto & i : inputNode) {
                     auto o = outputs.at(i);
                     aio.blockOn(store->computeFSClosure(o, inputs));
@@ -591,7 +591,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
                 drvPrefix += fmt("-%d", counter + 1);
 
             auto builtOutputs =
-                aio.blockOn(store->queryPartialDerivationOutputMap(drvPath, &*evalStore));
+                aio.blockOn(store->queryDerivationOutputMap(drvPath, &*evalStore));
 
             auto outputPath = builtOutputs.at(outputName);
 

@@ -448,10 +448,10 @@ public:
 
     /**
      * Query the mapping outputName => outputPath for the given
-     * derivation. Naming is a historical accident.
+     * derivation.
      */
     virtual kj::Promise<Result<std::map<std::string, StorePath>>>
-    queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore = nullptr);
+    queryDerivationOutputMap(const StorePath & path, Store * evalStore = nullptr);
 
     /**
      * Like `queryPartialDerivationOutputMap` but only considers
@@ -459,17 +459,10 @@ public:
      * the derivation itself.
      *
      * Just a helper function for implementing
-     * `queryPartialDerivationOutputMap`.
+     * `queryDerivationOutputMap`.
      */
     virtual kj::Promise<Result<std::map<std::string, StorePath>>>
-    queryStaticPartialDerivationOutputMap(const StorePath & path);
-
-    /**
-     * Query the mapping outputName=>outputPath for the given derivation.
-     * Assume every output has a mapping and throw an exception otherwise.
-     */
-    kj::Promise<Result<OutputPathMap>>
-    queryDerivationOutputMap(const StorePath & path, Store * evalStore = nullptr);
+    queryStaticDerivationOutputMap(const StorePath & path);
 
     /**
      * Query the full store path given the hash part of a valid store

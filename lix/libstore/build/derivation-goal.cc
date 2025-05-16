@@ -438,7 +438,7 @@ try {
     for (auto & i : inputClosure)
         if (i.isDerivation()) {
             auto depOutputs =
-                TRY_AWAIT(worker.store.queryPartialDerivationOutputMap(i, &worker.evalStore));
+                TRY_AWAIT(worker.store.queryDerivationOutputMap(i, &worker.evalStore));
             for (auto & j : depOutputs)
                 outputsToDrv.insert_or_assign(j.second, i);
         }

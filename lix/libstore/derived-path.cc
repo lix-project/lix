@@ -40,7 +40,7 @@ try {
     res["drvPath"] = TRY_AWAIT(drvPath.toJSON(store));
     // Fallback for the input-addressed derivation case: We expect to always be
     // able to print the output paths, so let’s do it
-    const auto outputMap = TRY_AWAIT(store.queryPartialDerivationOutputMap(drvPath.path));
+    const auto outputMap = TRY_AWAIT(store.queryDerivationOutputMap(drvPath.path));
     for (const auto & [output, outputPathOpt] : outputMap) {
         if (!outputs.contains(output)) continue;
         res["outputs"][output] = store.printStorePath(outputPathOpt);

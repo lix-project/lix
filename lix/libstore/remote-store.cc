@@ -339,7 +339,7 @@ try {
 
 
 kj ::Promise<Result<std::map<std::string, StorePath>>>
-RemoteStore::queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore_)
+RemoteStore::queryDerivationOutputMap(const StorePath & path, Store * evalStore_)
 try {
     if (GET_PROTOCOL_MINOR(TRY_AWAIT(getProtocol())) >= 22) {
         if (!evalStore_) {
@@ -361,11 +361,11 @@ try {
             co_return result;
         } else {
             auto & evalStore = *evalStore_;
-            auto outputs = TRY_AWAIT(evalStore.queryStaticPartialDerivationOutputMap(path));
+            auto outputs = TRY_AWAIT(evalStore.queryStaticDerivationOutputMap(path));
             // union with the first branch overriding the statically-known ones
             // when non-`std::nullopt`.
             for (auto && [outputName, optPath] :
-                 TRY_AWAIT(queryPartialDerivationOutputMap(path, nullptr)))
+                 TRY_AWAIT(queryDerivationOutputMap(path, nullptr)))
             {
                 outputs.insert_or_assign(std::move(outputName), std::move(optPath));
             }
@@ -380,7 +380,7 @@ try {
         // from the derivation itself (and not the ones that are known because
         // the have been built), but as old stores don't handle floating-CA
         // derivations this shouldn't matter
-        co_return TRY_AWAIT(evalStore.queryStaticPartialDerivationOutputMap(path));
+        co_return TRY_AWAIT(evalStore.queryStaticDerivationOutputMap(path));
     }
 } catch (...) {
     co_return result::current_exception();

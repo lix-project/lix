@@ -509,7 +509,7 @@ bool Store::PathInfoCacheValue::isKnownNow()
 }
 
 kj::Promise<Result<std::map<std::string, StorePath>>>
-Store::queryStaticPartialDerivationOutputMap(const StorePath & path)
+Store::queryStaticDerivationOutputMap(const StorePath & path)
 try {
     std::map<std::string, StorePath> outputs;
     auto drv = TRY_AWAIT(readInvalidDerivation(path));
@@ -522,19 +522,11 @@ try {
 }
 
 kj::Promise<Result<std::map<std::string, StorePath>>>
-Store::queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore_)
+Store::queryDerivationOutputMap(const StorePath & path, Store * evalStore_)
 try {
     auto & evalStore = evalStore_ ? *evalStore_ : *this;
 
-    co_return TRY_AWAIT(evalStore.queryStaticPartialDerivationOutputMap(path));
-} catch (...) {
-    co_return result::current_exception();
-}
-
-kj::Promise<Result<OutputPathMap>>
-Store::queryDerivationOutputMap(const StorePath & path, Store * evalStore)
-try {
-    co_return TRY_AWAIT(queryPartialDerivationOutputMap(path, evalStore));
+    co_return TRY_AWAIT(evalStore.queryStaticDerivationOutputMap(path));
 } catch (...) {
     co_return result::current_exception();
 }

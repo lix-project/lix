@@ -775,7 +775,7 @@ try {
                        derivation, then visit the derivation outputs. */
                     if (gcKeepDerivations && path->isDerivation()) {
                         for (auto & [name, outPath] :
-                             TRY_AWAIT(queryPartialDerivationOutputMap(*path)))
+                             TRY_AWAIT(queryDerivationOutputMap(*path)))
                         {
                             if (TRY_AWAIT(isValidPath(outPath)) &&
                                 TRY_AWAIT(queryPathInfo(outPath))->deriver == *path)
