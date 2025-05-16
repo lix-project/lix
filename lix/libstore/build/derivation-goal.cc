@@ -1416,16 +1416,6 @@ void DerivationGoal::flushLine()
 }
 
 
-kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>> DerivationGoal::queryPartialDerivationOutputMap()
-try {
-    std::map<std::string, std::optional<StorePath>> res;
-    for (auto & [name, output] : drv->outputs)
-        res.insert_or_assign(name, output.path(worker.store, drv->name, name));
-    co_return res;
-} catch (...) {
-    co_return result::current_exception();
-}
-
 kj::Promise<Result<OutputPathMap>> DerivationGoal::queryDerivationOutputMap()
 try {
     OutputPathMap res;
@@ -1450,7 +1440,7 @@ try {
     }, wantedOutputs.raw);
     SingleDrvOutputs validOutputs;
 
-    for (auto & i : TRY_AWAIT(queryPartialDerivationOutputMap())) {
+    for (auto & i : TRY_AWAIT(queryDerivationOutputMap())) {
         auto initialOutput = get(initialOutputs, i.first);
         if (!initialOutput)
             // this is an invalid output, gets catched with (!wantedOutputsLeft.empty())
@@ -1459,17 +1449,15 @@ try {
         info.wanted = wantedOutputs.contains(i.first);
         if (info.wanted)
             wantedOutputsLeft.erase(i.first);
-        if (i.second) {
-            auto outputPath = *i.second;
-            info.known = {
-                .path = outputPath,
-                .status = !TRY_AWAIT(worker.store.isValidPath(outputPath))
-                    ? PathStatus::Absent
-                    : !checkHash || TRY_AWAIT(worker.pathContentsGood(outputPath))
-                    ? PathStatus::Valid
-                    : PathStatus::Corrupt,
-            };
-        }
+        auto & outputPath = i.second;
+        info.known = {
+            .path = outputPath,
+            .status = !TRY_AWAIT(worker.store.isValidPath(outputPath))
+                ? PathStatus::Absent
+                : !checkHash || TRY_AWAIT(worker.pathContentsGood(outputPath))
+                ? PathStatus::Valid
+                : PathStatus::Corrupt,
+        };
         auto drvOutput = DrvOutput{info.outputHash, i.first};
         if (info.known && info.known->isValid())
             validOutputs.emplace(i.first, Realisation { drvOutput, info.known->path });

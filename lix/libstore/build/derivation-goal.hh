@@ -326,11 +326,10 @@ protected:
 
 public:
     /**
-     * Wrappers around the corresponding Store methods that first consult the
+     * Wrappers around the corresponding Store method that first consults the
      * derivation.  This is currently needed because when there is no drv file
      * there also is no DB entry.
      */
-    kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>> queryPartialDerivationOutputMap();
     kj::Promise<Result<OutputPathMap>> queryDerivationOutputMap();
 
     /**
