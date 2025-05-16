@@ -533,7 +533,7 @@ try {
                 return ia.deferred;
             },
             [&](const DerivationType::ContentAddressed & ca) {
-                return !fullDrv.inputDrvs.empty() && !ca.fixed;
+                return false;
             },
         }, drvType.raw);
 

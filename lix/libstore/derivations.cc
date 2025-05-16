@@ -63,7 +63,7 @@ bool DerivationType::isFixed() const
             return false;
         },
         [](const ContentAddressed & ca) {
-            return ca.fixed;
+            return true;
         },
     }, raw);
 }
@@ -75,7 +75,7 @@ bool DerivationType::hasKnownOutputPaths() const
             return !ia.deferred;
         },
         [](const ContentAddressed & ca) {
-            return ca.fixed;
+            return true;
         },
     }, raw);
 }
@@ -88,7 +88,7 @@ bool DerivationType::isSandboxed() const
             return true;
         },
         [](const ContentAddressed & ca) {
-            return ca.sandboxed;
+            return false;
         },
     }, raw);
 }
@@ -550,10 +550,7 @@ DerivationType BasicDerivation::type() const
             throw Error("only one fixed output is allowed for now");
         if (*fixedCAOutputs.begin() != "out")
             throw Error("single fixed output must be named \"out\"");
-        return DerivationType::ContentAddressed {
-            .sandboxed = false,
-            .fixed = true,
-        };
+        return DerivationType::ContentAddressed {};
     }
 
     if (inputAddressedOutputs.empty()
@@ -641,9 +638,7 @@ try {
             return DrvHash::Kind::Regular;
         },
         [](const DerivationType::ContentAddressed & ca) {
-            return ca.fixed
-                ? DrvHash::Kind::Regular
-                : DrvHash::Kind::Deferred;
+            return DrvHash::Kind::Regular;
         },
     }, drv.type().raw);
 

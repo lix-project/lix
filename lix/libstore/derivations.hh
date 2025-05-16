@@ -147,24 +147,7 @@ struct DerivationType {
      * Content-addressed derivation types
      */
     struct ContentAddressed {
-        /**
-         * Whether the derivation should be built safely inside a sandbox.
-         */
-        bool sandboxed;
-        /**
-         * Whether the derivation's outputs' content-addresses are "fixed"
-         * or "floating".
-         *
-         *  - Fixed: content-addresses are written down as part of the
-         *    derivation itself. If the outputs don't end up matching the
-         *    build fails.
-         *
-         *  - Floating: content-addresses are not written down, we do not
-         *    know them until we perform the build.
-         */
-        bool fixed;
-
-        GENERATE_CMP(ContentAddressed, me->sandboxed, me->fixed);
+        GENERATE_CMP(ContentAddressed);
     };
 
     typedef std::variant<
