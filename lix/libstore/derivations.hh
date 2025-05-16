@@ -235,27 +235,6 @@ struct Derivation : BasicDerivation
         std::map<std::string, StringSet> * actualInputs = nullptr) const;
 
     /**
-     * Return the underlying basic derivation but with these changes:
-     *
-     * 1. Input drvs are emptied, but the outputs of them that were used
-     *    are added directly to input sources.
-     *
-     * 2. Input placeholders are replaced with realized input store
-     *    paths.
-     */
-    kj::Promise<Result<std::optional<BasicDerivation>>>
-    tryResolve(Store & store, Store * evalStore = nullptr) const;
-
-    /**
-     * Like the above, but instead of querying the Nix database for
-     * realisations, uses a given mapping from input derivation paths +
-     * output names to actual output store paths.
-     */
-    kj::Promise<Result<std::optional<BasicDerivation>>> tryResolve(
-        Store & store,
-        const std::map<std::pair<StorePath, std::string>, StorePath> & inputDrvOutputs) const;
-
-    /**
      * Check that the derivation is valid and does not present any
      * illegal states.
      *
