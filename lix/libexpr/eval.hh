@@ -804,8 +804,7 @@ public:
     /**
      * Coerce to `SingleDerivedPath`.
      *
-     * Must be a string which is either a literal store path or a
-     * "placeholder (see `DownstreamPlaceholder`).
+     * Must be a string which is either a literal store path.
      *
      * Even more importantly, the string context must be exactly one
      * element, which is either a `NixStringContextElem::Opaque` or

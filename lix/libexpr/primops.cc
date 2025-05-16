@@ -1,6 +1,5 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/derivations.hh"
-#include "lix/libstore/downstream-placeholder.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/eval-settings.hh"
 #include "lix/libexpr/extra-primops.hh"

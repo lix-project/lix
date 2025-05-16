@@ -7,7 +7,6 @@
 #include "lix/libstore/names.hh"
 #include "lix/libcmd/command.hh"
 #include "lix/libstore/derivations.hh"
-#include "lix/libstore/downstream-placeholder.hh"
 
 namespace nix {
 

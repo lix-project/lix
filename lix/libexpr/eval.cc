@@ -14,7 +14,6 @@
 #include "lix/libutil/types.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/derivations.hh"
-#include "lix/libstore/downstream-placeholder.hh"
 #include "lix/libexpr/gc-alloc.hh"
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libexpr/function-trace.hh"

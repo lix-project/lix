@@ -1,5 +1,4 @@
 #include "lix/libstore/derivations.hh"
-#include "lix/libstore/downstream-placeholder.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libutil/json.hh"
