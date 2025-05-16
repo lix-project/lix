@@ -338,7 +338,7 @@ try {
 }
 
 
-kj ::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
+kj ::Promise<Result<std::map<std::string, StorePath>>>
 RemoteStore::queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore_)
 try {
     if (GET_PROTOCOL_MINOR(TRY_AWAIT(getProtocol())) >= 22) {
@@ -346,9 +346,19 @@ try {
             auto conn(TRY_AWAIT(getConnection()));
             conn->to << WorkerProto::Op::QueryDerivationOutputMap << printStorePath(path);
             conn.processStderr();
-            co_return WorkerProto::Serialise<std::map<std::string, std::optional<StorePath>>>::read(
+            auto tmp = WorkerProto::Serialise<std::map<std::string, std::optional<StorePath>>>::read(
                 *this, *conn
             );
+            std::map<std::string, StorePath> result;
+            for (auto & [name, outPath] : tmp) {
+                if (!outPath) {
+                    throw Error(
+                        "remote responded with unknown outpath for %s^%s", path.to_string(), name
+                    );
+                }
+                result.emplace(std::move(name), std::move(*outPath));
+            }
+            co_return result;
         } else {
             auto & evalStore = *evalStore_;
             auto outputs = TRY_AWAIT(evalStore.queryStaticPartialDerivationOutputMap(path));
@@ -357,10 +367,7 @@ try {
             for (auto && [outputName, optPath] :
                  TRY_AWAIT(queryPartialDerivationOutputMap(path, nullptr)))
             {
-                if (optPath)
-                    outputs.insert_or_assign(std::move(outputName), std::move(optPath));
-                else
-                    outputs.insert({std::move(outputName), std::nullopt});
+                outputs.insert_or_assign(std::move(outputName), std::move(optPath));
             }
             co_return outputs;
         }

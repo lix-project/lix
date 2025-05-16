@@ -440,8 +440,7 @@ try {
             auto depOutputs =
                 TRY_AWAIT(worker.store.queryPartialDerivationOutputMap(i, &worker.evalStore));
             for (auto & j : depOutputs)
-                if (j.second)
-                    outputsToDrv.insert_or_assign(*j.second, i);
+                outputsToDrv.insert_or_assign(j.second, i);
         }
 
     /* Check each path (slow!). */

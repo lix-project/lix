@@ -448,10 +448,9 @@ public:
 
     /**
      * Query the mapping outputName => outputPath for the given
-     * derivation. All outputs are mentioned so ones mising the mapping
-     * are mapped to `std::nullopt`.
+     * derivation. Naming is a historical accident.
      */
-    virtual kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
+    virtual kj::Promise<Result<std::map<std::string, StorePath>>>
     queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore = nullptr);
 
     /**
@@ -462,7 +461,7 @@ public:
      * Just a helper function for implementing
      * `queryPartialDerivationOutputMap`.
      */
-    virtual kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
+    virtual kj::Promise<Result<std::map<std::string, StorePath>>>
     queryStaticPartialDerivationOutputMap(const StorePath & path);
 
     /**

@@ -774,13 +774,12 @@ try {
                     /* If keep-derivations is set and this is a
                        derivation, then visit the derivation outputs. */
                     if (gcKeepDerivations && path->isDerivation()) {
-                        for (auto & [name, maybeOutPath] :
+                        for (auto & [name, outPath] :
                              TRY_AWAIT(queryPartialDerivationOutputMap(*path)))
                         {
-                            if (maybeOutPath &&
-                                TRY_AWAIT(isValidPath(*maybeOutPath)) &&
-                                TRY_AWAIT(queryPathInfo(*maybeOutPath))->deriver == *path)
-                                enqueue(*maybeOutPath);
+                            if (TRY_AWAIT(isValidPath(outPath)) &&
+                                TRY_AWAIT(queryPathInfo(outPath))->deriver == *path)
+                                enqueue(outPath);
                         }
                     }
 

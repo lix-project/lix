@@ -1026,15 +1026,15 @@ try {
 }
 
 
-kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
+kj::Promise<Result<std::map<std::string, StorePath>>>
 LocalStore::queryStaticPartialDerivationOutputMap(const StorePath & path)
 try {
     co_return TRY_AWAIT(
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-        retrySQLite([&]() -> kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>> {
+        retrySQLite([&]() -> kj::Promise<Result<std::map<std::string, StorePath>>> {
             try {
                 auto state = co_await _dbState.lock();
-                std::map<std::string, std::optional<StorePath>> outputs;
+                std::map<std::string, StorePath> outputs;
                 uint64_t drvId;
                 drvId = queryValidPathId(*state, path);
                 auto use(state->stmts->QueryDerivationOutputs.use()(drvId));

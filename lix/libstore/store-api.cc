@@ -508,10 +508,10 @@ bool Store::PathInfoCacheValue::isKnownNow()
     return std::chrono::steady_clock::now() < time_point + ttl;
 }
 
-kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
+kj::Promise<Result<std::map<std::string, StorePath>>>
 Store::queryStaticPartialDerivationOutputMap(const StorePath & path)
 try {
-    std::map<std::string, std::optional<StorePath>> outputs;
+    std::map<std::string, StorePath> outputs;
     auto drv = TRY_AWAIT(readInvalidDerivation(path));
     for (auto & [outputName, output] : drv.outputsAndPaths(*this)) {
         outputs.emplace(outputName, output.second);
@@ -521,7 +521,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
+kj::Promise<Result<std::map<std::string, StorePath>>>
 Store::queryPartialDerivationOutputMap(const StorePath & path, Store * evalStore_)
 try {
     auto & evalStore = evalStore_ ? *evalStore_ : *this;
@@ -534,14 +534,7 @@ try {
 kj::Promise<Result<OutputPathMap>>
 Store::queryDerivationOutputMap(const StorePath & path, Store * evalStore)
 try {
-    auto resp = TRY_AWAIT(queryPartialDerivationOutputMap(path, evalStore));
-    OutputPathMap result;
-    for (auto & [outName, optOutPath] : resp) {
-        if (!optOutPath)
-            throw MissingRealisation(printStorePath(path), outName);
-        result.insert_or_assign(outName, *optOutPath);
-    }
-    co_return result;
+    co_return TRY_AWAIT(queryPartialDerivationOutputMap(path, evalStore));
 } catch (...) {
     co_return result::current_exception();
 }

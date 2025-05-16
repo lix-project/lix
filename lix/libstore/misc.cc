@@ -37,9 +37,9 @@ try {
                         res.insert(i);
 
                 if (includeDerivers && path.isDerivation())
-                    for (auto& [_, maybeOutPath] : TRY_AWAIT(queryPartialDerivationOutputMap(path)))
-                        if (maybeOutPath && TRY_AWAIT(isValidPath(*maybeOutPath)))
-                            res.insert(*maybeOutPath);
+                    for (auto& [_, outPath] : TRY_AWAIT(queryPartialDerivationOutputMap(path)))
+                        if (TRY_AWAIT(isValidPath(outPath)))
+                            res.insert(outPath);
                 co_return res;
             } catch (...) {
                 co_return result::current_exception();
@@ -56,9 +56,9 @@ try {
                         res.insert(ref);
 
                 if (includeOutputs && path.isDerivation())
-                    for (auto& [_, maybeOutPath] : TRY_AWAIT(queryPartialDerivationOutputMap(path)))
-                        if (maybeOutPath && TRY_AWAIT(isValidPath(*maybeOutPath)))
-                            res.insert(*maybeOutPath);
+                    for (auto& [_, outPath] : TRY_AWAIT(queryPartialDerivationOutputMap(path)))
+                        if (TRY_AWAIT(isValidPath(outPath)))
+                            res.insert(outPath);
 
                 if (includeDerivers && info->deriver && TRY_AWAIT(isValidPath(*info->deriver)))
                     res.insert(*info->deriver);
@@ -240,29 +240,18 @@ struct QueryMissingContext
         }
 
         StorePathSet invalid;
-        /* true for regular derivations, and CA derivations for which we
-            have a trust mapping for all wanted outputs. */
-        auto knownOutputPaths = true;
-        for (auto & [outputName, pathOpt] :
+        for (auto & [outputName, path] :
              aio.blockOn(store.queryPartialDerivationOutputMap(drvPath)))
         {
-            if (!pathOpt) {
-                knownOutputPaths = false;
-                break;
-            }
-            if (bfd.outputs.contains(outputName) && !aio.blockOn(store.isValidPath(*pathOpt)))
-                invalid.insert(*pathOpt);
+            if (bfd.outputs.contains(outputName) && !aio.blockOn(store.isValidPath(path)))
+                invalid.insert(path);
         }
-        if (knownOutputPaths && invalid.empty()) return;
+        if (invalid.empty()) return;
 
         auto drv = make_ref<Derivation>(aio.blockOn(store.derivationFromPath(drvPath)));
         ParsedDerivation parsedDrv(StorePath(drvPath), *drv);
 
-        if (!knownOutputPaths && settings.useSubstitutes && parsedDrv.substitutesAllowed()) {
-            throw UnimplementedError("ca derivations are not supported");
-        }
-
-        if (knownOutputPaths && settings.useSubstitutes && parsedDrv.substitutesAllowed()) {
+        if (settings.useSubstitutes && parsedDrv.substitutesAllowed()) {
             auto drvState = make_ref<Sync<DrvState>>(DrvState(invalid.size()));
             for (auto & output : invalid) {
                 pool.enqueueWithAio([=, this](AsyncIoRoot & aio) {
@@ -365,18 +354,18 @@ resolveDerivedPath(Store & store, const DerivedPath::Built & bfd, Store * evalSt
 try {
     auto drvPath = bfd.drvPath.path;
 
-    auto outputsOpt_ = TRY_AWAIT(store.queryPartialDerivationOutputMap(drvPath, evalStore_));
+    auto outputs_ = TRY_AWAIT(store.queryPartialDerivationOutputMap(drvPath, evalStore_));
 
-    auto outputsOpt = std::visit(overloaded {
+    co_return std::visit(overloaded {
         [&](const OutputsSpec::All &) {
             // Keep all outputs
-            return std::move(outputsOpt_);
+            return std::move(outputs_);
         },
         [&](const OutputsSpec::Names & names) {
             // Get just those mentioned by name
-            std::map<std::string, std::optional<StorePath>> outputsOpt;
+            std::map<std::string, StorePath> outputsOpt;
             for (auto & output : names) {
-                auto * pOutputPathOpt = get(outputsOpt_, output);
+                auto * pOutputPathOpt = get(outputs_, output);
                 if (!pOutputPathOpt)
                     throw Error(
                         "the derivation '%s' doesn't have an output named '%s'",
@@ -386,15 +375,6 @@ try {
             return outputsOpt;
         },
     }, bfd.outputs.raw);
-
-    OutputPathMap outputs;
-    for (auto & [outputName, outputPathOpt] : outputsOpt) {
-        if (!outputPathOpt)
-            throw MissingRealisation(bfd.drvPath.to_string(store), outputName);
-        auto & outputPath = *outputPathOpt;
-        outputs.insert_or_assign(outputName, outputPath);
-    }
-    co_return outputs;
 } catch (...) {
     co_return result::current_exception();
 }

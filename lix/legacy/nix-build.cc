@@ -402,7 +402,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
         if (shellDrv) {
             auto shellDrvOutputs =
                 aio.blockOn(store->queryPartialDerivationOutputMap(shellDrv.value(), &*evalStore));
-            shell = store->printStorePath(shellDrvOutputs.at("out").value()) + "/bin/bash";
+            shell = store->printStorePath(shellDrvOutputs.at("out")) + "/bin/bash";
         }
 
         // Set the environment.
@@ -448,7 +448,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
                     aio.blockOn(store->queryPartialDerivationOutputMap(inputDrv, &*evalStore));
                 for (auto & i : inputNode) {
                     auto o = outputs.at(i);
-                    aio.blockOn(store->computeFSClosure(*o, inputs));
+                    aio.blockOn(store->computeFSClosure(o, inputs));
                 }
             };
 
@@ -593,9 +593,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
             auto builtOutputs =
                 aio.blockOn(store->queryPartialDerivationOutputMap(drvPath, &*evalStore));
 
-            auto maybeOutputPath = builtOutputs.at(outputName);
-            assert(maybeOutputPath);
-            auto outputPath = *maybeOutputPath;
+            auto outputPath = builtOutputs.at(outputName);
 
             if (auto store2 = store.try_cast_shared<LocalFSStore>()) {
                 std::string symlink = drvPrefix;

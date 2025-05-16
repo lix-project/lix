@@ -201,7 +201,7 @@ public:
 
     kj::Promise<Result<StorePathSet>> queryValidDerivers(const StorePath & path) override;
 
-    kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>>
+    kj::Promise<Result<std::map<std::string, StorePath>>>
     queryStaticPartialDerivationOutputMap(const StorePath & path) override;
 
     kj::Promise<Result<std::optional<StorePath>>>

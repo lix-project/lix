@@ -43,10 +43,7 @@ try {
     const auto outputMap = TRY_AWAIT(store.queryPartialDerivationOutputMap(drvPath.path));
     for (const auto & [output, outputPathOpt] : outputMap) {
         if (!outputs.contains(output)) continue;
-        if (outputPathOpt)
-            res["outputs"][output] = store.printStorePath(*outputPathOpt);
-        else
-            res["outputs"][output] = nullptr;
+        res["outputs"][output] = store.printStorePath(outputPathOpt);
     }
     co_return res;
 } catch (...) {
