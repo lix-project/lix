@@ -102,10 +102,6 @@ TEST_JSON(DerivationTest, caFixedNAR,
     }),
     "drv-name", "output-name")
 
-TEST_JSON(DerivationTest, deferred,
-    DerivationOutput::Deferred { },
-    "drv-name", "output-name")
-
 #undef TEST_JSON
 
 #define TEST_JSON(FIXTURE, NAME, VAL)                                     \

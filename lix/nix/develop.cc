@@ -236,7 +236,7 @@ try {
     drv.env.emplace("name", drv.name);
     drv.inputSrcs.insert(std::move(getEnvShPath));
     for (auto & output : drv.outputs) {
-        output.second = DerivationOutput::Deferred { };
+        output.second = DerivationOutput::InputAddressed { .path = StorePath::dummy };
         drv.env[output.first] = "";
     }
     auto hashesModulo = TRY_AWAIT(hashDerivationModulo(*evalStore, drv, true));

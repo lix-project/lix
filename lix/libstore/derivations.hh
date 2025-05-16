@@ -63,18 +63,9 @@ struct DerivationOutput
         GENERATE_CMP(CAFixed, me->ca);
     };
 
-    /**
-     * Input-addressed output which depends on a (CA) derivation whose hash
-     * isn't known yet.
-     */
-    struct Deferred {
-        GENERATE_CMP(Deferred);
-    };
-
     typedef std::variant<
         InputAddressed,
-        CAFixed,
-        Deferred
+        CAFixed
     > Raw;
 
     Raw raw;
@@ -133,14 +124,7 @@ struct DerivationType {
      * Input-addressed derivation types
      */
     struct InputAddressed {
-        /**
-         * True iff the derivation type can't be determined statically,
-         * for instance because it (transitively) depends on a content-addressed
-         * derivation.
-        */
-        bool deferred;
-
-        GENERATE_CMP(InputAddressed, me->deferred);
+        GENERATE_CMP(InputAddressed);
     };
 
     /**

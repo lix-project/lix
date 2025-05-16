@@ -1023,7 +1023,7 @@ drvName, Bindings * attrs, Value & v)
         for (auto & i : outputs) {
             drv.env[i] = "";
             drv.outputs.insert_or_assign(i,
-                DerivationOutput::Deferred { });
+                DerivationOutput::InputAddressed { .path = StorePath::dummy });
         }
 
         auto hashModulo =

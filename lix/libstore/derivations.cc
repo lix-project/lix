@@ -25,9 +25,6 @@ std::optional<StorePath> DerivationOutput::path(const Store & store, std::string
                 dof.path(store, drvName, outputName)
             };
         },
-        [](const DerivationOutput::Deferred &) -> std::optional<StorePath> {
-            return std::nullopt;
-        },
     }, raw);
 }
 
@@ -72,7 +69,7 @@ bool DerivationType::hasKnownOutputPaths() const
 {
     return std::visit(overloaded {
         [](const InputAddressed & ia) {
-            return !ia.deferred;
+            return true;
         },
         [](const ContentAddressed & ca) {
             return true;
@@ -257,7 +254,7 @@ static DerivationOutput parseDerivationOutput(
         }
     } else {
         if (pathS == "") {
-            return DerivationOutput::Deferred { };
+            throw UnimplementedError("deferred input-addressed derivations are not supported");
         }
         validatePath(pathS);
         return DerivationOutput::InputAddressed {
@@ -441,11 +438,6 @@ std::string Derivation::unparse(const Store & store, bool maskOutputs,
                 s += ','; printUnquotedString(s, dof.ca.printMethodAlgo());
                 s += ','; printUnquotedString(s, dof.ca.hash.to_string(Base::Base16, false));
             },
-            [&](const DerivationOutput::Deferred &) {
-                s += ','; printUnquotedString(s, "");
-                s += ','; printUnquotedString(s, "");
-                s += ','; printUnquotedString(s, "");
-            },
         }, i.second.raw);
         s += ')';
     }
@@ -512,8 +504,7 @@ DerivationType BasicDerivation::type() const
 {
     std::set<std::string_view>
         inputAddressedOutputs,
-        fixedCAOutputs,
-        deferredIAOutputs;
+        fixedCAOutputs;
 
     for (auto & i : outputs) {
         std::visit(overloaded {
@@ -523,27 +514,19 @@ DerivationType BasicDerivation::type() const
             [&](const DerivationOutput::CAFixed &) {
                 fixedCAOutputs.insert(i.first);
             },
-            [&](const DerivationOutput::Deferred &) {
-                deferredIAOutputs.insert(i.first);
-            },
         }, i.second.raw);
     }
 
     if (inputAddressedOutputs.empty()
-        && fixedCAOutputs.empty()
-        && deferredIAOutputs.empty())
+        && fixedCAOutputs.empty())
         throw Error("must have at least one output");
 
     if (!inputAddressedOutputs.empty()
-        && fixedCAOutputs.empty()
-        && deferredIAOutputs.empty())
-        return DerivationType::InputAddressed {
-            .deferred = false,
-        };
+        && fixedCAOutputs.empty())
+        return DerivationType::InputAddressed {};
 
     if (inputAddressedOutputs.empty()
-        && !fixedCAOutputs.empty()
-        && deferredIAOutputs.empty())
+        && !fixedCAOutputs.empty())
     {
         if (fixedCAOutputs.size() > 1)
             // FIXME: Experimental feature?
@@ -552,13 +535,6 @@ DerivationType BasicDerivation::type() const
             throw Error("single fixed output must be named \"out\"");
         return DerivationType::ContentAddressed {};
     }
-
-    if (inputAddressedOutputs.empty()
-        && fixedCAOutputs.empty()
-        && !deferredIAOutputs.empty())
-        return DerivationType::InputAddressed {
-            .deferred = true,
-        };
 
     throw Error("can't mix derivation output types");
 }
@@ -748,11 +724,6 @@ void writeDerivation(Sink & out, const Store & store, const BasicDerivation & dr
                     << dof.ca.printMethodAlgo()
                     << dof.ca.hash.to_string(Base::Base16, false);
             },
-            [&](const DerivationOutput::Deferred &) {
-                out << ""
-                    << ""
-                    << "";
-            },
         }, i.second.raw);
     }
     out << CommonProto::write(store,
@@ -796,21 +767,7 @@ try {
     }
     drv.env = newEnv;
 
-    auto hashModulo = TRY_AWAIT(hashDerivationModulo(store, Derivation(drv), true));
-    for (auto & [outputName, output] : drv.outputs) {
-        if (std::holds_alternative<DerivationOutput::Deferred>(output.raw)) {
-            auto h = get(hashModulo.hashes, outputName);
-            if (!h)
-                throw Error("derivation '%s' output '%s' has no hash (derivations.cc/rewriteDerivation)",
-                    drv.name, outputName);
-            auto outPath = store.makeOutputPath(outputName, *h, drv.name);
-            drv.env[outputName] = store.printStorePath(outPath);
-            output = DerivationOutput::InputAddressed {
-                .path = std::move(outPath),
-            };
-        }
-    }
-
+    TRY_AWAIT(hashDerivationModulo(store, Derivation(drv), true));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -950,10 +907,6 @@ try {
                     return {result::current_exception()};
                 }
             },
-            [](const DerivationOutput::Deferred &) -> kj::Promise<Result<void>> {
-                /* Nothing to check */
-                return {result::success()};
-            },
         }, i.second.raw));
     }
     co_return result::success();
@@ -976,7 +929,6 @@ JSON DerivationOutput::toJSON(
             res["hash"] = dof.ca.hash.to_string(Base::Base16, false);
             // FIXME print refs?
         },
-        [&](const DerivationOutput::Deferred &) {},
     }, raw);
     return res;
 }
@@ -1029,7 +981,7 @@ DerivationOutput DerivationOutput::fromJSON(
     }
 
     else if (keys == (std::set<std::string_view> { })) {
-        return DerivationOutput::Deferred {};
+        throw UnimplementedError("deferred input-addressed derivations are not supported");
     }
 
     else if (keys == (std::set<std::string_view> { "hashAlgo", "impure" })) {

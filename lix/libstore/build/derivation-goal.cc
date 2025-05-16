@@ -526,21 +526,6 @@ try {
     if (useDerivation) {
         auto & fullDrv = *dynamic_cast<Derivation *>(drv.get());
 
-        auto drvType = fullDrv.type();
-        bool resolveDrv = std::visit(overloaded {
-            [&](const DerivationType::InputAddressed & ia) {
-                /* must resolve if deferred. */
-                return ia.deferred;
-            },
-            [&](const DerivationType::ContentAddressed & ca) {
-                return false;
-            },
-        }, drvType.raw);
-
-        if (resolveDrv && !fullDrv.inputDrvs.empty()) {
-            throw UnimplementedError("ca derivations are not supported");
-        }
-
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
         auto accumInputPaths = [&](const StorePath & depDrvPath, const StringSet & inputNode) -> kj::Promise<Result<void>> {
             try {

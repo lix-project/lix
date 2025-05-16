@@ -1878,12 +1878,6 @@ try {
 
                 return newInfo0;
             },
-
-            [&](const DerivationOutput::Deferred &) -> ValidPathInfo {
-                // No derivation should reach that point without having been
-                // rewritten first
-                assert(false);
-            },
         }, output->raw);
 
         /* FIXME: set proper permissions in restorePath() so
