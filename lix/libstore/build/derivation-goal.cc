@@ -219,9 +219,8 @@ try {
 
     parsedDrv = std::make_unique<ParsedDerivation>(drvPath, *drv);
 
-    for (auto & i : drv->outputsAndOptPaths(worker.store))
-        if (i.second.second)
-            TRY_AWAIT(worker.store.addTempRoot(*i.second.second));
+    for (auto & i : drv->outputsAndPaths(worker.store))
+        TRY_AWAIT(worker.store.addTempRoot(i.second.second));
 
     auto outputHashes = TRY_AWAIT(staticOutputHashes(worker.evalStore, *drv));
     for (auto & [outputName, outputHash] : outputHashes)
@@ -624,8 +623,6 @@ retry:
        other goal can start a build, and if not, the main loop will sleep a few
        seconds and then retry this goal. */
     PathSet lockFiles;
-    /* FIXME: Should lock something like the drv itself so we don't build same
-       CA drv concurrently */
     if (dynamic_cast<LocalStore *>(&worker.store)) {
         /* If we aren't a local store, we might need to use the local store as
            a build remote, but that would cause a deadlock. */
@@ -634,13 +631,8 @@ retry:
         /* FIXME: find some way to lock for scheduling for the other stores so
            a forking daemon with --store still won't farm out redundant builds.
            */
-        for (auto & i : drv->outputsAndOptPaths(worker.store)) {
-            if (i.second.second)
-                lockFiles.insert(worker.store.Store::toRealPath(*i.second.second));
-            else
-                lockFiles.insert(
-                    worker.store.Store::toRealPath(drvPath) + "." + i.first
-                );
+        for (auto & i : drv->outputsAndPaths(worker.store)) {
+            lockFiles.insert(worker.store.Store::toRealPath(i.second.second));
         }
     }
 
@@ -1438,8 +1430,8 @@ try {
 kj::Promise<Result<OutputPathMap>> DerivationGoal::queryDerivationOutputMap()
 try {
     OutputPathMap res;
-    for (auto & [name, output] : drv->outputsAndOptPaths(worker.store))
-        res.insert_or_assign(name, *output.second);
+    for (auto & [name, output] : drv->outputsAndPaths(worker.store))
+        res.insert_or_assign(name, output.second);
     co_return res;
 } catch (...) {
     co_return result::current_exception();

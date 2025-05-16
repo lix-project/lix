@@ -513,7 +513,7 @@ Store::queryStaticPartialDerivationOutputMap(const StorePath & path)
 try {
     std::map<std::string, std::optional<StorePath>> outputs;
     auto drv = TRY_AWAIT(readInvalidDerivation(path));
-    for (auto & [outputName, output] : drv.outputsAndOptPaths(*this)) {
+    for (auto & [outputName, output] : drv.outputsAndPaths(*this)) {
         outputs.emplace(outputName, output.second);
     }
     co_return outputs;
@@ -928,14 +928,8 @@ try {
     for (auto & j : paths2) {
         if (j.isDerivation()) {
             Derivation drv = TRY_AWAIT(derivationFromPath(j));
-            for (auto & k : drv.outputsAndOptPaths(*this)) {
-                if (!k.second.second)
-                    /* FIXME: I am confused why we are calling
-                       `computeFSClosure` on the output path, rather than
-                       derivation itself. That doesn't seem right to me, so I
-                       won't try to implemented this for CA derivations. */
-                    throw UnimplementedError("exportReferences on CA derivations is not yet implemented");
-                TRY_AWAIT(computeFSClosure(*k.second.second, paths));
+            for (auto & k : drv.outputsAndPaths(*this)) {
+                TRY_AWAIT(computeFSClosure(k.second.second, paths));
             }
         }
     }

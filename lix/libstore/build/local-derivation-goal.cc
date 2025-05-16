@@ -1893,10 +1893,8 @@ try {
            floating CA derivations and hash-mismatching fixed-output
            derivations. */
         std::optional<PathLock> dynamicOutputLock;
-        auto optFixedPath = output->path(worker.store, drv->name, outputName);
-        if (!optFixedPath ||
-            worker.store.printStorePath(*optFixedPath) != finalDestPath)
-        {
+        auto fixedPath = output->path(worker.store, drv->name, outputName);
+        if (worker.store.printStorePath(fixedPath) != finalDestPath) {
             assert(newInfo.ca);
             dynamicOutputLock = TRY_AWAIT(lockPathAsync(worker.store.toRealPath(finalDestPath)));
         }

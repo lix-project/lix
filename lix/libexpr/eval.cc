@@ -925,8 +925,8 @@ std::string EvalState::mkSingleDerivedPathStringRaw(
             auto i = drv.outputs.find(b.output);
             if (i == drv.outputs.end())
                 throw Error("derivation '%s' does not have output '%s'", b.drvPath.to_string(*ctx.store), b.output);
-            auto optStaticOutputPath = i->second.path(*ctx.store, drv.name, b.output);
-            return mkOutputStringRaw(b, optStaticOutputPath);
+            auto staticOutputPath = i->second.path(*ctx.store, drv.name, b.output);
+            return mkOutputStringRaw(b, staticOutputPath);
         }
     }, p.raw());
 }

@@ -347,11 +347,10 @@ connected:
 
 
         StorePathSet missingPaths;
-        auto outputPaths = drv.outputsAndOptPaths(*store);
-        for (auto & [outputName, hopefullyOutputPath] : outputPaths) {
-            assert(hopefullyOutputPath.second);
-            if (!aio.blockOn(store->isValidPath(*hopefullyOutputPath.second)))
-                missingPaths.insert(*hopefullyOutputPath.second);
+        auto outputPaths = drv.outputsAndPaths(*store);
+        for (auto & [outputName, outputPath] : outputPaths) {
+            if (!aio.blockOn(store->isValidPath(outputPath.second)))
+                missingPaths.insert(outputPath.second);
         }
 
         if (!missingPaths.empty()) {

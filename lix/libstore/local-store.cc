@@ -813,11 +813,8 @@ try {
            registration above is undone. */
         if (checkOutputs) TRY_AWAIT(drv.checkInvariants(*this, info.path));
 
-        for (auto & i : drv.outputsAndOptPaths(*this)) {
-            /* Floating CA derivations have indeterminate output paths until
-               they are built, so don't register anything in that case */
-            if (i.second.second)
-                cacheDrvOutputMapping(state, id, i.first, *i.second.second);
+        for (auto & i : drv.outputsAndPaths(*this)) {
+            cacheDrvOutputMapping(state, id, i.first, i.second.second);
         }
     }
 

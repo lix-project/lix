@@ -816,14 +816,8 @@ void LinuxLocalDerivationGoal::prepareSandbox()
        rebuilding a path that is in settings.sandbox-paths
        (typically the dependencies of /bin/sh).  Throw them
        out. */
-    for (auto & i : drv->outputsAndOptPaths(worker.store)) {
-        /* If the name isn't known a priori (i.e. floating
-           content-addressed derivation), the temporary location we use
-           should be fresh.  Freshness means it is impossible that the path
-           is already in the sandbox, so we don't need to worry about
-           removing it.  */
-        if (i.second.second)
-            pathsInChroot.erase(worker.store.printStorePath(*i.second.second));
+    for (auto & i : drv->outputsAndPaths(worker.store)) {
+        pathsInChroot.erase(worker.store.printStorePath(i.second.second));
     }
 
     if (cgroup) {

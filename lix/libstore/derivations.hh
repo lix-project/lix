@@ -83,9 +83,9 @@ struct DerivationOutput
      * \note when you use this function you should make sure that you're
      * passing the right derivation name. When in doubt, you should use
      * the safer interface provided by
-     * BasicDerivation::outputsAndOptPaths
+     * BasicDerivation::outputsAndPaths
      */
-    std::optional<StorePath> path(const Store & store, std::string_view drvName, OutputNameView outputName) const;
+    StorePath path(const Store & store, std::string_view drvName, OutputNameView outputName) const;
 
     JSON toJSON(
         const Store & store,
@@ -106,12 +106,12 @@ typedef std::map<std::string, DerivationOutput> DerivationOutputs;
 
 /**
  * These are analogues to the previous DerivationOutputs data type,
- * but they also contains, for each output, the (optional) store
+ * but they also contains, for each output, the store
  * path in which it would be written. To calculate values of these
  * types, see the corresponding functions in BasicDerivation.
  */
-typedef std::map<std::string, std::pair<DerivationOutput, std::optional<StorePath>>>
-  DerivationOutputsAndOptPaths;
+typedef std::map<std::string, std::pair<DerivationOutput, StorePath>>
+  DerivationOutputsAndPaths;
 
 /**
  * For inputs that are sub-derivations, we specify exactly which
@@ -207,7 +207,7 @@ struct BasicDerivation
      * augmented with knowledge of the Store paths they would be written
      * into.
      */
-    DerivationOutputsAndOptPaths outputsAndOptPaths(const Store & store) const;
+    DerivationOutputsAndPaths outputsAndPaths(const Store & store) const;
 
     static std::string_view nameFromPath(const StorePath & storePath);
 

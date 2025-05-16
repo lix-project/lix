@@ -14,16 +14,14 @@
 
 namespace nix {
 
-std::optional<StorePath> DerivationOutput::path(const Store & store, std::string_view drvName, OutputNameView outputName) const
+StorePath DerivationOutput::path(const Store & store, std::string_view drvName, OutputNameView outputName) const
 {
     return std::visit(overloaded {
-        [](const DerivationOutput::InputAddressed & doi) -> std::optional<StorePath> {
-            return { doi.path };
+        [](const DerivationOutput::InputAddressed & doi) -> StorePath {
+            return doi.path;
         },
-        [&](const DerivationOutput::CAFixed & dof) -> std::optional<StorePath> {
-            return {
-                dof.path(store, drvName, outputName)
-            };
+        [&](const DerivationOutput::CAFixed & dof) -> StorePath {
+            return dof.path(store, drvName, outputName);
         },
     }, raw);
 }
@@ -645,16 +643,16 @@ StringSet BasicDerivation::outputNames() const
     return names;
 }
 
-DerivationOutputsAndOptPaths BasicDerivation::outputsAndOptPaths(const Store & store) const
+DerivationOutputsAndPaths BasicDerivation::outputsAndPaths(const Store & store) const
 {
-    DerivationOutputsAndOptPaths outsAndOptPaths;
+    DerivationOutputsAndPaths outsAndPaths;
     for (auto & [outputName, output] : outputs)
-        outsAndOptPaths.insert(std::make_pair(
+        outsAndPaths.insert(std::make_pair(
             outputName,
             std::make_pair(output, output.path(store, name, outputName))
             )
         );
-    return outsAndOptPaths;
+    return outsAndPaths;
 }
 
 std::string_view BasicDerivation::nameFromPath(const StorePath & drvPath)
