@@ -1103,10 +1103,4 @@ std::pair<std::string, StoreConfig::Params> splitUriAndParams(const std::string 
 
 const ContentAddress * getDerivationCA(const BasicDerivation & drv);
 
-kj::Promise<Result<std::map<DrvOutput, StorePath>>> drvOutputReferences(
-    Store & store,
-    const Derivation & drv,
-    const StorePath & outputPath,
-    Store * evalStore = nullptr);
-
 }
