@@ -485,12 +485,7 @@ try {
 
 StringSet StoreConfig::getDefaultSystemFeatures()
 {
-    auto res = settings.systemFeatures.get();
-
-    if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations))
-        res.insert("ca-derivations");
-
-    return res;
+    return settings.systemFeatures.get();
 }
 
 Store::Store(const StoreConfig & config) : state({(size_t) config.pathInfoCacheSize})
@@ -1171,53 +1166,13 @@ kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
     SubstituteFlag substitute)
 try {
     StorePathSet storePaths;
-    std::set<Realisation> toplevelRealisations;
     for (auto & path : paths) {
         storePaths.insert(path.path());
         if (auto realisation = std::get_if<Realisation>(&path.raw)) {
-            experimentalFeatureSettings.require(Xp::CaDerivations);
-            toplevelRealisations.insert(*realisation);
+            throw UnimplementedError("ca derivations are not supported");
         }
     }
-    auto pathsMap =
-        TRY_AWAIT(copyPaths(srcStore, dstStore, storePaths, repair, checkSigs, substitute));
-
-    try {
-        // Copy the realisation closure
-        TRY_AWAIT(processGraphAsync<Realisation>(
-            TRY_AWAIT(Realisation::closure(srcStore, toplevelRealisations)),
-            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-            [&](const Realisation & current) -> kj::Promise<Result<std::set<Realisation>>> {
-                try {
-                    std::set<Realisation> children;
-                    for (const auto & [drvOutput, _] : current.dependentRealisations) {
-                        auto currentChild = TRY_AWAIT(srcStore.queryRealisation(drvOutput));
-                        if (!currentChild)
-                            throw Error(
-                                "incomplete realisation closure: '%s' is a "
-                                "dependency of '%s' but isn't registered",
-                                drvOutput.to_string(), current.id.to_string());
-                        children.insert(*currentChild);
-                    }
-                    co_return children;
-                } catch (...) {
-                    co_return result::current_exception();
-                }
-            },
-            [&](const Realisation& current) -> kj::Promise<Result<void>> {
-                return dstStore.registerDrvOutput(current, checkSigs);
-            }));
-    } catch (MissingExperimentalFeature & e) {
-        // Don't fail if the remote doesn't support CA derivations is it might
-        // not be within our control to change that, and we might still want
-        // to at least copy the output paths.
-        if (e.missingFeature == Xp::CaDerivations)
-            ignoreExceptionExceptInterrupt();
-        else
-            throw;
-    }
-
-    co_return pathsMap;
+    co_return TRY_AWAIT(copyPaths(srcStore, dstStore, storePaths, repair, checkSigs, substitute));
 } catch (...) {
     co_return result::current_exception();
 }
