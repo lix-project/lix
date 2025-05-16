@@ -38,24 +38,6 @@ RC_GTEST_FIXTURE_PROP(
 
 RC_GTEST_FIXTURE_PROP(
     DerivedPathExpressionTest,
-    prop_derived_path_built_placeholder_round_trip,
-    (const SingleDerivedPath::Built & b))
-{
-    /**
-     * We set these in tests rather than the regular globals so we don't have
-     * to worry about race conditions if the tests run concurrently.
-     */
-    ExperimentalFeatureSettings mockXpSettings;
-    mockXpSettings.experimentalFeatures.override(ExperimentalFeatures{} | Xp::CaDerivations);
-
-    auto * v = evaluator.mem.allocValue();
-    state.mkOutputString(*v, b, std::nullopt, mockXpSettings);
-    auto [d, _] = state.coerceToSingleDerivedPathUnchecked(noPos, *v, "");
-    RC_ASSERT(SingleDerivedPath { b } == d);
-}
-
-RC_GTEST_FIXTURE_PROP(
-    DerivedPathExpressionTest,
     prop_derived_path_built_out_path_round_trip,
     (const SingleDerivedPath::Built & b, const StorePath & outPath))
 {

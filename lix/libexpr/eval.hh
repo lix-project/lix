@@ -870,19 +870,13 @@ public:
      * @param b the drv whose output we are making a string for, and the
      * output
      *
-     * @param optStaticOutputPath Optional output path for that string.
-     * Must be passed if and only if output store object is
-     * input-addressed or fixed output. Will be printed to form string
-     * if passed, otherwise a placeholder will be used (see
-     * `DownstreamPlaceholder`).
-     *
-     * @param xpSettings Stop-gap to avoid globals during unit tests.
+     * @param staticOutputPath Output path for that string.
+     * Will be printed to form string.
      */
     void mkOutputString(
         Value & value,
         const SingleDerivedPath::Built & b,
-        std::optional<StorePath> optStaticOutputPath,
-        const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
+        const StorePath & staticOutputPath);
 
     /**
      * Create a string representing a `SingleDerivedPath`.
@@ -902,9 +896,7 @@ private:
      * string Value, which would also have a string context.
      */
     std::string mkOutputStringRaw(
-        const SingleDerivedPath::Built & b,
-        std::optional<StorePath> optStaticOutputPath,
-        const ExperimentalFeatureSettings & xpSettings = experimentalFeatureSettings);
+        const StorePath & staticOutputPath);
 
     /**
      * Like `mkSingleDerivedPathStringRaw` but just creates a raw string

@@ -888,28 +888,18 @@ void EvalPaths::mkStorePathString(const StorePath & p, Value & v)
 
 
 std::string EvalState::mkOutputStringRaw(
-    const SingleDerivedPath::Built & b,
-    std::optional<StorePath> optStaticOutputPath,
-    const ExperimentalFeatureSettings & xpSettings)
+    const StorePath & staticOutputPath)
 {
-    /* In practice, this is testing for the case of CA derivations. */
-    return optStaticOutputPath
-        ? ctx.store->printStorePath(std::move(*optStaticOutputPath))
-        /* Downstream we would substitute this for an actual path once
-           we build the floating CA derivation */
-        : DownstreamPlaceholder::fromSingleDerivedPathBuilt(b, xpSettings).render();
+    return ctx.store->printStorePath(staticOutputPath);
 }
 
 
 void EvalState::mkOutputString(
     Value & value,
     const SingleDerivedPath::Built & b,
-    std::optional<StorePath> optStaticOutputPath,
-    const ExperimentalFeatureSettings & xpSettings)
+    const StorePath & staticOutputPath)
 {
-    value.mkString(
-        mkOutputStringRaw(b, optStaticOutputPath, xpSettings),
-        NixStringContext { b });
+    value.mkString(mkOutputStringRaw(staticOutputPath), NixStringContext { b });
 }
 
 
@@ -926,7 +916,7 @@ std::string EvalState::mkSingleDerivedPathStringRaw(
             if (i == drv.outputs.end())
                 throw Error("derivation '%s' does not have output '%s'", b.drvPath.to_string(*ctx.store), b.output);
             auto staticOutputPath = i->second.path(*ctx.store, drv.name, b.output);
-            return mkOutputStringRaw(b, staticOutputPath);
+            return mkOutputStringRaw(staticOutputPath);
         }
     }, p.raw());
 }
