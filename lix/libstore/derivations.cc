@@ -256,13 +256,7 @@ static DerivationOutput parseDerivationOutput(
                 },
             };
         } else {
-            xpSettings.require(Xp::CaDerivations);
-            if (pathS != "")
-                throw FormatError("content-addressed derivation output should not specify output path");
-            return DerivationOutput::CAFloating {
-                .method = std::move(method),
-                .hashType = std::move(hashType),
-            };
+            throw UnimplementedError("ca derivations are not supported");
         }
     } else {
         if (pathS == "") {
@@ -923,19 +917,10 @@ static bool tryResolveInput(
         return actualPathOpt;
     };
 
-    auto getPlaceholder = [&](const std::string & outputName) {
-        return DownstreamPlaceholder::unknownCaOutput(inputDrv, outputName);
-    };
-
     for (auto & outputName : inputNode) {
         auto actualPathOpt = getOutput(outputName);
         if (!actualPathOpt) return false;
         auto actualPath = *actualPathOpt;
-        if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-            inputRewrites.emplace(
-                getPlaceholder(outputName).render(),
-                store.printStorePath(actualPath));
-        }
         inputSrcs.insert(std::move(actualPath));
     }
 
@@ -1104,12 +1089,7 @@ DerivationOutput DerivationOutput::fromJSON(
     }
 
     else if (keys == (std::set<std::string_view> { "hashAlgo" })) {
-        xpSettings.require(Xp::CaDerivations);
-        auto [method, hashType] = methodAlgo();
-        return DerivationOutput::CAFloating {
-            .method = std::move(method),
-            .hashType = std::move(hashType),
-        };
+        throw UnimplementedError("ca derivations are not supported");
     }
 
     else if (keys == (std::set<std::string_view> { })) {

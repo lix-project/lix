@@ -26,14 +26,6 @@ public:
     }
 };
 
-class CaDerivationTest : public DerivationTest
-{
-    void SetUp() override
-    {
-        mockXpSettings.experimentalFeatures.override(ExperimentalFeatures{} | Xp::CaDerivations);
-    }
-};
-
 TEST_F(DerivationTest, BadATerm_version) {
     ASSERT_THROW(
         parseDerivation(
@@ -107,13 +99,6 @@ TEST_JSON(DerivationTest, caFixedNAR,
             .method = FileIngestionMethod::Recursive,
             .hash = Hash::parseAnyPrefixed("sha256-iUUXyRY8iW7DGirb0zwGgf1fRbLA7wimTJKgP7l/OQ8="),
         },
-    }),
-    "drv-name", "output-name")
-
-TEST_JSON(CaDerivationTest, caFloating,
-    (DerivationOutput::CAFloating {
-        .method = FileIngestionMethod::Recursive,
-        .hashType = HashType::SHA256,
     }),
     "drv-name", "output-name")
 
