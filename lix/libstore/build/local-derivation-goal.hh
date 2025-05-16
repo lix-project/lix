@@ -128,11 +128,6 @@ struct LocalDerivationGoal : public DerivationGoal
     const static Path homeDir;
 
     /**
-     * The daemon worker threads.
-     */
-    std::vector<std::thread> daemonWorkerThreads;
-
-    /**
      * Create a LocalDerivationGoal without an on-disk .drv file,
      * possibly a platform-specific subclass
      */

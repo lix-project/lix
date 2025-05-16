@@ -191,21 +191,4 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> RealisedPath::closure(Store& store, RealisedPath::Set & ret) const
-try {
-    TRY_AWAIT(RealisedPath::closure(store, {*this}, ret));
-    co_return result::success();
-} catch (...) {
-    co_return result::current_exception();
-}
-
-kj::Promise<Result<RealisedPath::Set>> RealisedPath::closure(Store& store) const
-try {
-    RealisedPath::Set ret;
-    TRY_AWAIT(closure(store, ret));
-    co_return ret;
-} catch (...) {
-    co_return result::current_exception();
-}
-
 } // namespace nix

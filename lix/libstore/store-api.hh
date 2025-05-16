@@ -1002,8 +1002,6 @@ void removeTempRoots();
  * Resolve the derived path completely, failing if any derivation output
  * is unknown.
  */
-kj::Promise<Result<StorePath>>
-resolveDerivedPath(Store &, const SingleDerivedPath &, Store * evalStore = nullptr);
 kj::Promise<Result<OutputPathMap>>
 resolveDerivedPath(Store &, const DerivedPath::Built &, Store * evalStore = nullptr);
 

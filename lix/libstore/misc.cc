@@ -493,37 +493,4 @@ try {
     co_return result::current_exception();
 }
 
-
-kj ::Promise<Result<StorePath>>
-resolveDerivedPath(Store & store, const SingleDerivedPath & req, Store * evalStore_)
-try {
-    auto & evalStore = evalStore_ ? *evalStore_ : store;
-
-    auto handlers = overloaded {
-        [&](const SingleDerivedPath::Opaque & bo) -> kj::Promise<Result<StorePath>> {
-            return {bo.path};
-        },
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-        [&](const SingleDerivedPath::Built & bfd) -> kj::Promise<Result<StorePath>> {
-            try {
-                auto drvPath = bfd.drvPath.path;
-                auto outputPaths =
-                    TRY_AWAIT(evalStore.queryPartialDerivationOutputMap(drvPath, evalStore_));
-                if (outputPaths.count(bfd.output) == 0)
-                    throw Error("derivation '%s' does not have an output named '%s'",
-                        store.printStorePath(drvPath), bfd.output);
-                auto & optPath = outputPaths.at(bfd.output);
-                if (!optPath)
-                    throw MissingRealisation(bfd.drvPath.to_string(store), bfd.output);
-                co_return *optPath;
-            } catch (...) {
-                co_return result::current_exception();
-            }
-        },
-    };
-    co_return TRY_AWAIT(std::visit(handlers, req.raw()));
-} catch (...) {
-    co_return result::current_exception();
-}
-
 }

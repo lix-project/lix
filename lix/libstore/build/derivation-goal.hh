@@ -380,8 +380,6 @@ public:
         return false;
     }
 
-    StorePathSet exportReferences(const StorePathSet & storePaths);
-
     JobCategory jobCategory() const override {
         return JobCategory::Build;
     };
