@@ -235,26 +235,19 @@ try {
     drv.name += "-env";
     drv.env.emplace("name", drv.name);
     drv.inputSrcs.insert(std::move(getEnvShPath));
-    if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-        for (auto & output : drv.outputs) {
-            output.second = DerivationOutput::Deferred {},
-            drv.env[output.first] = hashPlaceholder(output.first);
-        }
-    } else {
-        for (auto & output : drv.outputs) {
-            output.second = DerivationOutput::Deferred { };
-            drv.env[output.first] = "";
-        }
-        auto hashesModulo = TRY_AWAIT(hashDerivationModulo(*evalStore, drv, true));
+    for (auto & output : drv.outputs) {
+        output.second = DerivationOutput::Deferred { };
+        drv.env[output.first] = "";
+    }
+    auto hashesModulo = TRY_AWAIT(hashDerivationModulo(*evalStore, drv, true));
 
-        for (auto & output : drv.outputs) {
-            Hash h = hashesModulo.hashes.at(output.first);
-            auto outPath = store->makeOutputPath(output.first, h, drv.name);
-            output.second = DerivationOutput::InputAddressed {
-                .path = outPath,
-            };
-            drv.env[output.first] = store->printStorePath(outPath);
-        }
+    for (auto & output : drv.outputs) {
+        Hash h = hashesModulo.hashes.at(output.first);
+        auto outPath = store->makeOutputPath(output.first, h, drv.name);
+        output.second = DerivationOutput::InputAddressed {
+            .path = outPath,
+        };
+        drv.env[output.first] = store->printStorePath(outPath);
     }
 
     auto shellDrvPath = TRY_AWAIT(writeDerivation(*evalStore, drv));

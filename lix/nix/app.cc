@@ -11,46 +11,6 @@
 
 namespace nix {
 
-/**
- * Return the rewrites that are needed to resolve a string whose context is
- * included in `dependencies`.
- */
-StringPairs resolveRewrites(
-    Store & store,
-    const std::vector<BuiltPathWithResult> & dependencies)
-{
-    StringPairs res;
-    if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-        for (auto & dep : dependencies) {
-            if (auto drvDep = std::get_if<BuiltPathBuilt>(&dep.path)) {
-                for (auto & [ outputName, outputPath ] : drvDep->outputs) {
-                    res.emplace(
-                        DownstreamPlaceholder::fromSingleDerivedPathBuilt(
-                            SingleDerivedPath::Built {
-                                .drvPath = makeConstantStorePath(drvDep->drvPath.path),
-                                .output = outputName,
-                            }).render(),
-                        store.printStorePath(outputPath)
-                    );
-                }
-            }
-        }
-    }
-    return res;
-}
-
-/**
- * Resolve the given string assuming the given context.
- */
-std::string resolveString(
-    Store & store,
-    const std::string & toResolve,
-    const std::vector<BuiltPathWithResult> & dependencies)
-{
-    auto rewrites = resolveRewrites(store, dependencies);
-    return rewriteStrings(toResolve, rewrites);
-}
-
 UnresolvedApp InstallableValue::toApp(EvalState & state)
 {
     auto cursor = getCursor(state);
@@ -136,8 +96,7 @@ App UnresolvedApp::resolve(EvalState & state, ref<Store> evalStore, ref<Store> s
         installableContext.push_back(
             make_ref<InstallableDerivedPath>(store, DerivedPath { ctxElt }));
 
-    auto builtContext = Installable::build(state, evalStore, store, Realise::Outputs, installableContext);
-    res.program = resolveString(*store, unresolved.program, builtContext);
+    Installable::build(state, evalStore, store, Realise::Outputs, installableContext);
     if (!store->isInStore(res.program))
         throw Error("app program '%s' is not in the Nix store", res.program);
 

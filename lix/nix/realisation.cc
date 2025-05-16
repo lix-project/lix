@@ -45,37 +45,7 @@ struct CmdRealisationInfo : BuiltPathsCommand, MixJSON
 
     void run(ref<Store> store, BuiltPaths && paths) override
     {
-        experimentalFeatureSettings.require(Xp::CaDerivations);
-        RealisedPath::Set realisations;
-
-        for (auto & builtPath : paths) {
-            auto theseRealisations = aio().blockOn(builtPath.toRealisedPaths(*store));
-            realisations.insert(theseRealisations.begin(), theseRealisations.end());
-        }
-
-        if (json) {
-            JSON res = JSON::array();
-            for (auto & path : realisations) {
-                JSON currentPath;
-                if (auto realisation = std::get_if<Realisation>(&path.raw))
-                    currentPath = realisation->toJSON();
-                else
-                    currentPath["opaquePath"] = store->printStorePath(path.path());
-
-                res.push_back(currentPath);
-            }
-            logger->cout("%s", res);
-        }
-        else {
-            for (auto & path : realisations) {
-                if (auto realisation = std::get_if<Realisation>(&path.raw)) {
-                    logger->cout("%s %s",
-                        realisation->id.to_string(),
-                        store->printStorePath(realisation->outPath));
-                } else
-                    logger->cout("%s", store->printStorePath(path.path()));
-            }
-        }
+        throw UnimplementedError("CA derivations are no longer supported");
     }
 };
 

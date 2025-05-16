@@ -50,19 +50,10 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
     auto localStore = state.ctx.store.try_cast_shared<nix::LocalFSStore>();
 
     try {
-        // CA derivations do not have static output paths, so we have to
-        // defensively not query output paths in case we encounter one.
         for (auto &[outputName, optOutputPath] :
-             drvInfo.queryOutputs(state, !nix::experimentalFeatureSettings.isEnabled(
-                 nix::Xp::CaDerivations))) {
-            if (optOutputPath) {
-                outputs[outputName] =
-                    localStore->printStorePath(*optOutputPath);
-            } else {
-                assert(nix::experimentalFeatureSettings.isEnabled(
-                    nix::Xp::CaDerivations));
-                outputs[outputName] = std::nullopt;
-            }
+             drvInfo.queryOutputs(state, true)) {
+            assert(optOutputPath);
+            outputs[outputName] = localStore->printStorePath(*optOutputPath);
         }
     } catch (const std::exception &e) { // NOLINT(lix-foreign-exceptions)
         state.ctx.errors.make<nix::EvalError>(
