@@ -219,9 +219,6 @@ try {
 
     parsedDrv = std::make_unique<ParsedDerivation>(drvPath, *drv);
 
-    if (!drv->type().hasKnownOutputPaths())
-        throw UnimplementedError("ca derivations are not supported");
-
     for (auto & i : drv->outputsAndOptPaths(worker.store))
         if (i.second.second)
             TRY_AWAIT(worker.store.addTempRoot(*i.second.second));
@@ -1430,39 +1427,20 @@ void DerivationGoal::flushLine()
 
 kj::Promise<Result<std::map<std::string, std::optional<StorePath>>>> DerivationGoal::queryPartialDerivationOutputMap()
 try {
-    if (!useDerivation || drv->type().hasKnownOutputPaths()) {
-        std::map<std::string, std::optional<StorePath>> res;
-        for (auto & [name, output] : drv->outputs)
-            res.insert_or_assign(name, output.path(worker.store, drv->name, name));
-        co_return res;
-    } else {
-        for (auto * drvStore : {&worker.evalStore, &worker.store}) {
-            if (TRY_AWAIT(drvStore->isValidPath(drvPath))) {
-                co_return TRY_AWAIT(worker.store.queryPartialDerivationOutputMap(drvPath, drvStore)
-                );
-            }
-        }
-        assert(false);
-    }
+    std::map<std::string, std::optional<StorePath>> res;
+    for (auto & [name, output] : drv->outputs)
+        res.insert_or_assign(name, output.path(worker.store, drv->name, name));
+    co_return res;
 } catch (...) {
     co_return result::current_exception();
 }
 
 kj::Promise<Result<OutputPathMap>> DerivationGoal::queryDerivationOutputMap()
 try {
-    if (!useDerivation || drv->type().hasKnownOutputPaths()) {
-        OutputPathMap res;
-        for (auto & [name, output] : drv->outputsAndOptPaths(worker.store))
-            res.insert_or_assign(name, *output.second);
-        co_return res;
-    } else {
-        for (auto * drvStore : {&worker.evalStore, &worker.store}) {
-            if (TRY_AWAIT(drvStore->isValidPath(drvPath))) {
-                co_return TRY_AWAIT(worker.store.queryDerivationOutputMap(drvPath, drvStore));
-            }
-        }
-        assert(false);
-    }
+    OutputPathMap res;
+    for (auto & [name, output] : drv->outputsAndOptPaths(worker.store))
+        res.insert_or_assign(name, *output.second);
+    co_return res;
 } catch (...) {
     co_return result::current_exception();
 }

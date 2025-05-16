@@ -65,19 +65,6 @@ bool DerivationType::isFixed() const
     }, raw);
 }
 
-bool DerivationType::hasKnownOutputPaths() const
-{
-    return std::visit(overloaded {
-        [](const InputAddressed & ia) {
-            return true;
-        },
-        [](const ContentAddressed & ca) {
-            return true;
-        },
-    }, raw);
-}
-
-
 bool DerivationType::isSandboxed() const
 {
     return std::visit(overloaded {

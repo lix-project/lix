@@ -346,31 +346,12 @@ connected:
         }
 
 
-        auto outputHashes = aio.blockOn(staticOutputHashes(*store, drv));
-        std::set<Realisation> missingRealisations;
         StorePathSet missingPaths;
-        if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations) && !drv.type().hasKnownOutputPaths()) {
-            for (auto & outputName : wantedOutputs) {
-                auto thisOutputHash = outputHashes.at(outputName);
-                auto thisOutputId = DrvOutput{ thisOutputHash, outputName };
-                if (!aio.blockOn(store->queryRealisation(thisOutputId))) {
-                    debug("missing output %s", outputName);
-                    assert(optResult);
-                    auto & result = *optResult;
-                    auto i = result.builtOutputs.find(outputName);
-                    assert(i != result.builtOutputs.end());
-                    auto & newRealisation = i->second;
-                    missingRealisations.insert(newRealisation);
-                    missingPaths.insert(newRealisation.outPath);
-                }
-            }
-        } else {
-            auto outputPaths = drv.outputsAndOptPaths(*store);
-            for (auto & [outputName, hopefullyOutputPath] : outputPaths) {
-                assert(hopefullyOutputPath.second);
-                if (!aio.blockOn(store->isValidPath(*hopefullyOutputPath.second)))
-                    missingPaths.insert(*hopefullyOutputPath.second);
-            }
+        auto outputPaths = drv.outputsAndOptPaths(*store);
+        for (auto & [outputName, hopefullyOutputPath] : outputPaths) {
+            assert(hopefullyOutputPath.second);
+            if (!aio.blockOn(store->isValidPath(*hopefullyOutputPath.second)))
+                missingPaths.insert(*hopefullyOutputPath.second);
         }
 
         if (!missingPaths.empty()) {
@@ -381,13 +362,6 @@ connected:
             aio.blockOn(
                 copyPaths(*sshStore, *store, missingPaths, NoRepair, NoCheckSigs, NoSubstitute)
             );
-        }
-        // XXX: Should be done as part of `copyPaths`
-        for (auto & realisation : missingRealisations) {
-            // Should hold, because if the feature isn't enabled the set
-            // of missing realisations should be empty
-            experimentalFeatureSettings.require(Xp::CaDerivations);
-            aio.blockOn(store->registerDrvOutput(realisation));
         }
 
         return 0;

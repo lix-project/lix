@@ -1447,18 +1447,6 @@ try {
         }
     }
 
-    if (!experimentalFeatureSettings.isEnabled(Xp::CaDerivations) || !TRY_AWAIT(isValidPath(path)))
-        co_return path;
-
-    auto drv = TRY_AWAIT(readDerivation(path));
-    if (!drv.type().hasKnownOutputPaths()) {
-        // The build log is actually attached to the corresponding
-        // resolved derivation, so we need to get it first
-        auto resolvedDrv = TRY_AWAIT(drv.tryResolve(*this));
-        if (resolvedDrv)
-            co_return TRY_AWAIT(writeDerivation(*this, *resolvedDrv, NoRepair, true));
-    }
-
     co_return path;
 } catch (...) {
     co_return result::current_exception();

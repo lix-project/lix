@@ -169,13 +169,6 @@ struct DerivationType {
      * controlled separately. Always true for non-CA derivations.
      */
     bool isSandboxed() const;
-
-    /**
-     * Does the derivation knows its own output paths?
-     * Only true when there's no floating-ca derivation involved in the
-     * closure, or if fixed output.
-     */
-    bool hasKnownOutputPaths() const;
 };
 
 struct BasicDerivation
