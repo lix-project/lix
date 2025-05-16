@@ -23,10 +23,6 @@ namespace nix {
     CMP_ONE(CHILD_TYPE, MY_TYPE, FIELD, !=) \
     CMP_ONE(CHILD_TYPE, MY_TYPE, FIELD, <)
 
-#define FIELD_TYPE std::pair<std::string, StorePath>
-CMP(SingleBuiltPath, SingleBuiltPathBuilt, output)
-#undef FIELD_TYPE
-
 #define FIELD_TYPE std::map<std::string, StorePath>
 CMP(SingleBuiltPath, BuiltPathBuilt, outputs)
 #undef FIELD_TYPE
@@ -61,36 +57,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<JSON>> SingleBuiltPath::Built::toJSON(const Store & store) const
-try {
-    JSON res;
-    res["drvPath"] = TRY_AWAIT(drvPath->toJSON(store));
-    auto & [outputName, outputPath] = output;
-    res["output"] = outputName;
-    res["outputPath"] = store.printStorePath(outputPath);
-    co_return res;
-} catch (...) {
-    co_return result::current_exception();
-}
-
-kj::Promise<Result<JSON>> SingleBuiltPath::toJSON(const Store & store) const
-try {
-    co_return TRY_AWAIT(std::visit([&](const auto & buildable) {
-        return buildable.toJSON(store);
-    }, raw()));
-} catch (...) {
-    co_return result::current_exception();
-}
-
-
-kj::Promise<Result<JSON>> BuiltPath::toJSON(const Store & store) const
-try {
-    co_return TRY_AWAIT(std::visit([&](const auto & buildable) {
-        return buildable.toJSON(store);
-    }, raw()));
-} catch (...) {
-    co_return result::current_exception();
-}
 
 kj::Promise<Result<RealisedPath::Set>> BuiltPath::toRealisedPaths(Store & store) const
 try {
