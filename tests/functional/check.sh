@@ -136,15 +136,27 @@ nix-build check.nix -A fetchurl --no-out-link --repair
 [[ $(cat $path) != foo ]]
 
 echo 'Hello World' > $TEST_ROOT/dummy
-nix-build check.nix -A hashmismatch --no-out-link || status=$?
+nix-build check.nix -A hashmismatch --no-out-link 2>mismatch-output || status=$?
 [ "$status" = "102" ]
+obtained=$(grep "got path:" mismatch-output | awk '{ print $3 }')
+# The path that actually came out should exist
+[ -e "$obtained" ]
+# and be registered as valid
+nix-store -q --references "$obtained" >/dev/null
 
 echo -n > $TEST_ROOT/dummy
-nix-build check.nix -A hashmismatch --no-out-link
-echo 'Hello World' > $TEST_ROOT/dummy
+successful_fod=$(nix-build check.nix -A hashmismatch --no-out-link)
 
-nix-build check.nix -A hashmismatch --no-out-link --check || status=$?
+echo 'Hello World 2' > $TEST_ROOT/dummy
+nix-build check.nix -A hashmismatch --no-out-link --check 2>mismatch-output || status=$?
+cat mismatch-output >&2
 [ "$status" = "102" ]
+grep -E "expected path:\s+$successful_fod" mismatch-output
+obtained=$(grep "got path:" mismatch-output | awk '{ print $3 }')
+# The path that actually came out should exist
+[ -e "$obtained" ]
+# and be registered as valid
+nix-store -q --references "$obtained" >/dev/null
 
 # Multiple failures with --keep-going
 nix-build check.nix -A nondeterministic --no-out-link

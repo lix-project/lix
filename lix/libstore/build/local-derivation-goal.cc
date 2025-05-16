@@ -1855,11 +1855,13 @@ try {
                     // XXX: shameless layering violation hack that makes the hash mismatch error at least not utterly worthless
                     auto guessedUrl = getOr(drv->env, "urls", getOr(drv->env, "url", "(unknown)"));
                     delayedException = std::make_exception_ptr(
-                        BuildError("hash mismatch in fixed-output derivation '%s':\n likely URL: %s\n  specified: %s\n     got:    %s",
+                        BuildError("hash mismatch in fixed-output derivation '%s':\n likely URL: %s\n  specified: %s\n     got:    %s\n expected path: %s\n   got path: %s",
                             worker.store.printStorePath(drvPath),
                             guessedUrl,
                             wanted.to_string(Base::SRI, true),
-                            got.to_string(Base::SRI, true)));
+                            got.to_string(Base::SRI, true),
+                            worker.store.printStorePath(dof.path(worker.store, drv->name, outputName)),
+                            worker.store.printStorePath(newInfo0.path)));
                 }
                 if (!newInfo0.references.empty()) {
                     std::string references;
@@ -1918,9 +1920,10 @@ try {
                 /* Path already exists, need to replace it */
                 replaceValidPath(worker.store.toRealPath(finalDestPath), actualPath);
                 actualPath = worker.store.toRealPath(finalDestPath);
-            } else if (buildMode == bmCheck) {
-                /* Path already exists, and we want to compare, so we leave out
-                   new path in place. */
+            } else if (buildMode == bmCheck && TRY_AWAIT(worker.store.isValidPath(newInfo.path))) {
+                /* Path already exists, and we want to compare, so we
+                   don't replace the previously existing output with
+                   the new one. */
             } else if (TRY_AWAIT(worker.store.isValidPath(newInfo.path))) {
                 /* Path already exists because CA path produced by something
                    else. No moving needed. */
@@ -1935,8 +1938,12 @@ try {
 
         auto & localStore = getLocalStore();
 
-        if (buildMode == bmCheck) {
+        // Check determinism and run the diff hook for input-addressed
+        // paths if we're in check mode.
+        // TODO: implement this for content-addressed paths too.
+        if (buildMode == bmCheck && !newInfo.ca) {
 
+            // We can only do this if we have a previous output path to compare.
             if (!TRY_AWAIT(worker.store.isValidPath(newInfo.path))) continue;
             ValidPathInfo oldInfo(*TRY_AWAIT(worker.store.queryPathInfo(newInfo.path)));
             if (newInfo.narHash != oldInfo.narHash) {
@@ -2007,12 +2014,11 @@ try {
             }
             throw NotDeterministic(msg.str());
         }
-        /* In case of fixed-output derivations, if there are
-           mismatches on `--check` an error must be thrown as this is
-           also a source for non-determinism. */
-        if (delayedException)
-            std::rethrow_exception(delayedException);
-        co_return TRY_AWAIT(assertPathValidity());
+        /* In case of fixed-output derivations with hash mismatches,
+           we don't want to rethrow the exception until later so that
+           the unexpected path is still registered as valid. */
+        if (!delayedException)
+            co_return TRY_AWAIT(assertPathValidity());
     }
 
     /* Apply output checks. */
