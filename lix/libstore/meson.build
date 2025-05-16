@@ -1,5 +1,5 @@
 libstore_generated_headers = []
-foreach header : [ 'schema.sql', 'ca-specific-schema.sql' ]
+foreach header : [ 'schema.sql' ]
   libstore_generated_headers += custom_target(
     command : [ 'bash', '-c', 'echo \'R"__NIX_STR(\' | cat - @INPUT@ && echo \')__NIX_STR"\'' ],
     input : header,

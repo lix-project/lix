@@ -68,16 +68,10 @@ struct LocalStore::DBState::Stmts {
     SQLiteStmt QueryReferrers;
     SQLiteStmt InvalidatePath;
     SQLiteStmt AddDerivationOutput;
-    SQLiteStmt RegisterRealisedOutput;
-    SQLiteStmt UpdateRealisedOutput;
     SQLiteStmt QueryValidDerivers;
     SQLiteStmt QueryDerivationOutputs;
-    SQLiteStmt QueryRealisedOutput;
-    SQLiteStmt QueryAllRealisedOutputs;
     SQLiteStmt QueryPathFromHashPart;
     SQLiteStmt QueryValidPaths;
-    SQLiteStmt QueryRealisationReferences;
-    SQLiteStmt AddRealisationReference;
 };
 
 int getSchema(Path schemaPath)
@@ -91,91 +85,6 @@ int getSchema(Path schemaPath)
         curSchema = *n;
     }
     return curSchema;
-}
-
-static void migrateCASchema(SQLite& db, Path schemaPath, AutoCloseFD& lockFd, NeverAsync = {})
-{
-    const int nixCASchemaVersion = 4;
-    int curCASchema = getSchema(schemaPath);
-    if (curCASchema != nixCASchemaVersion) {
-        if (curCASchema > nixCASchemaVersion) {
-            throw Error("current Nix store ca-schema is version %1%, but I only support %2%",
-                 curCASchema, nixCASchemaVersion);
-        }
-
-        if (!tryLockFile(lockFd.get(), ltWrite)) {
-            printInfo("waiting for exclusive access to the Nix store for ca drvs...");
-            unlockFile(lockFd.get()); // We have acquired a shared lock; release it to prevent deadlocks
-            lockFile(lockFd.get(), ltWrite);
-        }
-
-        if (curCASchema == 0) {
-            static const char schema[] =
-              #include "ca-specific-schema.sql.gen.hh"
-                ;
-            db.exec(schema);
-            curCASchema = nixCASchemaVersion;
-        }
-
-        if (curCASchema < 2) {
-            SQLiteTxn txn = db.beginTransaction();
-            // Ugly little sql dance to add a new `id` column and make it the primary key
-            db.exec(R"(
-                create table Realisations2 (
-                    id integer primary key autoincrement not null,
-                    drvPath text not null,
-                    outputName text not null, -- symbolic output id, usually "out"
-                    outputPath integer not null,
-                    signatures text, -- space-separated list
-                    foreign key (outputPath) references ValidPaths(id) on delete cascade
-                );
-                insert into Realisations2 (drvPath, outputName, outputPath, signatures)
-                    select drvPath, outputName, outputPath, signatures from Realisations;
-                drop table Realisations;
-                alter table Realisations2 rename to Realisations;
-            )");
-            db.exec(R"(
-                create index if not exists IndexRealisations on Realisations(drvPath, outputName);
-
-                create table if not exists RealisationsRefs (
-                    referrer integer not null,
-                    realisationReference integer,
-                    foreign key (referrer) references Realisations(id) on delete cascade,
-                    foreign key (realisationReference) references Realisations(id) on delete restrict
-                );
-            )");
-            txn.commit();
-        }
-
-        if (curCASchema < 3) {
-            SQLiteTxn txn = db.beginTransaction();
-            // Apply new indices added in this schema update.
-            db.exec(R"(
-                -- used by QueryRealisationReferences
-                create index if not exists IndexRealisationsRefs on RealisationsRefs(referrer);
-                -- used by cascade deletion when ValidPaths is deleted
-                create index if not exists IndexRealisationsRefsOnOutputPath on Realisations(outputPath);
-            )");
-            txn.commit();
-        }
-        if (curCASchema < 4) {
-            SQLiteTxn txn = db.beginTransaction();
-            db.exec(R"(
-                create trigger if not exists DeleteSelfRefsViaRealisations before delete on ValidPaths
-                begin
-                    delete from RealisationsRefs where realisationReference in (
-                    select id from Realisations where outputPath = old.id
-                    );
-                end;
-                -- used by deletion trigger
-                create index if not exists IndexRealisationsRefsRealisationReference on RealisationsRefs(realisationReference);
-            )");
-            txn.commit();
-        }
-
-        writeFile(schemaPath, fmt("%d", nixCASchemaVersion), 0666, true);
-        lockFile(lockFd.get(), ltRead);
-    }
 }
 
 // NOTE this constructor uses NeverAsync functions, but they are limited to schema migrations.
@@ -375,14 +284,6 @@ void LocalStore::initDB(DBState & state)
 
     else openDB(state, false);
 
-    if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-        if (!config_.readOnly) {
-            migrateCASchema(state.db, dbDir + "/ca-schema", globalLock, always_progresses);
-        } else {
-            throw Error("need to migrate to content-addressed schema, but this cannot be done in read-only mode");
-        }
-    }
-
     prepareStatements(state);
 }
 
@@ -414,50 +315,6 @@ void LocalStore::prepareStatements(DBState & state)
     state.stmts->QueryPathFromHashPart = state.db.create(
         "select path from ValidPaths where path >= ? limit 1;");
     state.stmts->QueryValidPaths = state.db.create("select path from ValidPaths");
-    if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-        state.stmts->RegisterRealisedOutput = state.db.create(
-            R"(
-                insert into Realisations (drvPath, outputName, outputPath, signatures)
-                values (?, ?, (select id from ValidPaths where path = ?), ?)
-                ;
-            )");
-        state.stmts->UpdateRealisedOutput = state.db.create(
-            R"(
-                update Realisations
-                    set signatures = ?
-                where
-                    drvPath = ? and
-                    outputName = ?
-                ;
-            )");
-        state.stmts->QueryRealisedOutput = state.db.create(
-            R"(
-                select Realisations.id, Output.path, Realisations.signatures from Realisations
-                    inner join ValidPaths as Output on Output.id = Realisations.outputPath
-                    where drvPath = ? and outputName = ?
-                    ;
-            )");
-        state.stmts->QueryAllRealisedOutputs = state.db.create(
-            R"(
-                select outputName, Output.path from Realisations
-                    inner join ValidPaths as Output on Output.id = Realisations.outputPath
-                    where drvPath = ?
-                    ;
-            )");
-        state.stmts->QueryRealisationReferences = state.db.create(
-            R"(
-                select drvPath, outputName from Realisations
-                    join RealisationsRefs on realisationReference = Realisations.id
-                    where referrer = ?;
-            )");
-        state.stmts->AddRealisationReference = state.db.create(
-            R"(
-                insert or replace into RealisationsRefs (referrer, realisationReference)
-                values (
-                    (select id from Realisations where drvPath = ? and outputName = ?),
-                    (select id from Realisations where drvPath = ? and outputName = ?));
-            )");
-    }
 }
 
 
