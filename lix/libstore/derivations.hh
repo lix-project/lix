@@ -64,26 +64,6 @@ struct DerivationOutput
     };
 
     /**
-     * Floating-output derivations, whose output paths are content
-     * addressed, but not fixed, and so are dynamically calculated from
-     * whatever the output ends up being.
-     * */
-    struct CAFloating
-    {
-        /**
-         * How the file system objects will be serialized for hashing
-         */
-        ContentAddressMethod method;
-
-        /**
-         * How the serialization will be hashed
-         */
-        HashType hashType;
-
-        GENERATE_CMP(CAFloating, me->method, me->hashType);
-    };
-
-    /**
      * Input-addressed output which depends on a (CA) derivation whose hash
      * isn't known yet.
      */
@@ -94,7 +74,6 @@ struct DerivationOutput
     typedef std::variant<
         InputAddressed,
         CAFixed,
-        CAFloating,
         Deferred
     > Raw;
 

@@ -25,9 +25,6 @@ std::optional<StorePath> DerivationOutput::path(const Store & store, std::string
                 dof.path(store, drvName, outputName)
             };
         },
-        [](const DerivationOutput::CAFloating & dof) -> std::optional<StorePath> {
-            return std::nullopt;
-        },
         [](const DerivationOutput::Deferred &) -> std::optional<StorePath> {
             return std::nullopt;
         },
@@ -444,11 +441,6 @@ std::string Derivation::unparse(const Store & store, bool maskOutputs,
                 s += ','; printUnquotedString(s, dof.ca.printMethodAlgo());
                 s += ','; printUnquotedString(s, dof.ca.hash.to_string(Base::Base16, false));
             },
-            [&](const DerivationOutput::CAFloating & dof) {
-                s += ','; printUnquotedString(s, "");
-                s += ','; printUnquotedString(s, dof.method.renderPrefix() + printHashType(dof.hashType));
-                s += ','; printUnquotedString(s, "");
-            },
             [&](const DerivationOutput::Deferred &) {
                 s += ','; printUnquotedString(s, "");
                 s += ','; printUnquotedString(s, "");
@@ -521,9 +513,7 @@ DerivationType BasicDerivation::type() const
     std::set<std::string_view>
         inputAddressedOutputs,
         fixedCAOutputs,
-        floatingCAOutputs,
         deferredIAOutputs;
-    std::optional<HashType> floatingHashType;
 
     for (auto & i : outputs) {
         std::visit(overloaded {
@@ -533,15 +523,6 @@ DerivationType BasicDerivation::type() const
             [&](const DerivationOutput::CAFixed &) {
                 fixedCAOutputs.insert(i.first);
             },
-            [&](const DerivationOutput::CAFloating & dof) {
-                floatingCAOutputs.insert(i.first);
-                if (!floatingHashType) {
-                    floatingHashType = dof.hashType;
-                } else {
-                    if (*floatingHashType != dof.hashType)
-                        throw Error("all floating outputs must use the same hash type");
-                }
-            },
             [&](const DerivationOutput::Deferred &) {
                 deferredIAOutputs.insert(i.first);
             },
@@ -550,13 +531,11 @@ DerivationType BasicDerivation::type() const
 
     if (inputAddressedOutputs.empty()
         && fixedCAOutputs.empty()
-        && floatingCAOutputs.empty()
         && deferredIAOutputs.empty())
         throw Error("must have at least one output");
 
     if (!inputAddressedOutputs.empty()
         && fixedCAOutputs.empty()
-        && floatingCAOutputs.empty()
         && deferredIAOutputs.empty())
         return DerivationType::InputAddressed {
             .deferred = false,
@@ -564,7 +543,6 @@ DerivationType BasicDerivation::type() const
 
     if (inputAddressedOutputs.empty()
         && !fixedCAOutputs.empty()
-        && floatingCAOutputs.empty()
         && deferredIAOutputs.empty())
     {
         if (fixedCAOutputs.size() > 1)
@@ -580,16 +558,6 @@ DerivationType BasicDerivation::type() const
 
     if (inputAddressedOutputs.empty()
         && fixedCAOutputs.empty()
-        && !floatingCAOutputs.empty()
-        && deferredIAOutputs.empty())
-        return DerivationType::ContentAddressed {
-            .sandboxed = true,
-            .fixed = false,
-        };
-
-    if (inputAddressedOutputs.empty()
-        && fixedCAOutputs.empty()
-        && floatingCAOutputs.empty()
         && !deferredIAOutputs.empty())
         return DerivationType::InputAddressed {
             .deferred = true,
@@ -800,11 +768,6 @@ void writeDerivation(Sink & out, const Store & store, const BasicDerivation & dr
                     << dof.ca.printMethodAlgo()
                     << dof.ca.hash.to_string(Base::Base16, false);
             },
-            [&](const DerivationOutput::CAFloating & dof) {
-                out << ""
-                    << (dof.method.renderPrefix() + printHashType(dof.hashType))
-                    << "";
-            },
             [&](const DerivationOutput::Deferred &) {
                 out << ""
                     << ""
@@ -1007,10 +970,6 @@ try {
                     return {result::current_exception()};
                 }
             },
-            [](const DerivationOutput::CAFloating &) -> kj::Promise<Result<void>> {
-                /* Nothing to check */
-                return {result::success()};
-            },
             [](const DerivationOutput::Deferred &) -> kj::Promise<Result<void>> {
                 /* Nothing to check */
                 return {result::success()};
@@ -1036,9 +995,6 @@ JSON DerivationOutput::toJSON(
             res["hashAlgo"] = dof.ca.printMethodAlgo();
             res["hash"] = dof.ca.hash.to_string(Base::Base16, false);
             // FIXME print refs?
-        },
-        [&](const DerivationOutput::CAFloating & dof) {
-            res["hashAlgo"] = dof.method.renderPrefix() + printHashType(dof.hashType);
         },
         [&](const DerivationOutput::Deferred &) {},
     }, raw);

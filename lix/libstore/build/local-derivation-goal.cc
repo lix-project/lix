@@ -1739,14 +1739,14 @@ try {
             return res;
         };
 
-        auto newInfoFromCA = [&](const DerivationOutput::CAFloating outputHash) -> ValidPathInfo {
+        auto newInfoFromCA = [&](ContentAddressMethod method, HashType hashType) -> ValidPathInfo {
             auto st = get(outputStats, outputName);
             if (!st)
                 throw BuildError(
                     "output path %1% without valid stats info",
                     actualPath);
-            if (outputHash.method == ContentAddressMethod { FileIngestionMethod::Flat } ||
-                outputHash.method == ContentAddressMethod { TextIngestionMethod {} })
+            if (method == ContentAddressMethod { FileIngestionMethod::Flat } ||
+                method == ContentAddressMethod { TextIngestionMethod {} })
             {
                 /* The output path should be a regular file without execute permission. */
                 if (!S_ISREG(st->st_mode) || (st->st_mode & S_IXUSR) != 0)
@@ -1771,11 +1771,11 @@ try {
                     }
                     assert(false);
                 },
-            }, outputHash.method.raw);
-            auto got = computeHashModulo(outputHash.hashType, oldHashPart, input).first;
+            }, method.raw);
+            auto got = computeHashModulo(hashType, oldHashPart, input).first;
 
             auto optCA = ContentAddressWithReferences::fromPartsOpt(
-                outputHash.method,
+                method,
                 std::move(got),
                 rewriteRefs());
             if (!optCA) {
@@ -1840,10 +1840,7 @@ try {
                 movePath(actualPath, tmpOutput);
                 copyFile(tmpOutput, actualPath, { .deleteAfter = true });
 
-                auto newInfo0 = newInfoFromCA(DerivationOutput::CAFloating {
-                    .method = dof.ca.method,
-                    .hashType = wanted.type,
-                });
+                auto newInfo0 = newInfoFromCA(dof.ca.method, wanted.type);
 
                 /* Check wanted hash */
                 assert(newInfo0.ca);
@@ -1880,10 +1877,6 @@ try {
                 }
 
                 return newInfo0;
-            },
-
-            [&](const DerivationOutput::CAFloating & dof) {
-                return newInfoFromCA(dof);
             },
 
             [&](const DerivationOutput::Deferred &) -> ValidPathInfo {
