@@ -603,39 +603,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<std::shared_ptr<const Realisation>>>
-RemoteStore::queryRealisationUncached(const DrvOutput & id)
-try {
-    auto conn(TRY_AWAIT(getConnection()));
-
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 27) {
-        warn("the daemon is too old to support content-addressed derivations, please upgrade it to 2.4");
-        co_return result::success(nullptr);
-    }
-
-    conn->to << WorkerProto::Op::QueryRealisation;
-    conn->to << id.to_string();
-    conn.processStderr();
-
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 31) {
-        auto outPaths = WorkerProto::Serialise<std::set<StorePath>>::read(
-            *this, *conn);
-        if (outPaths.empty())
-            co_return result::success(nullptr);
-        co_return std::make_shared<const Realisation>(
-            Realisation{.id = id, .outPath = *outPaths.begin()}
-        );
-    } else {
-        auto realisations = WorkerProto::Serialise<std::set<Realisation>>::read(
-            *this, *conn);
-        if (realisations.empty())
-            co_return result::success(nullptr);
-        co_return std::make_shared<const Realisation>(*realisations.begin());
-    }
-} catch (...) {
-    co_return result::current_exception();
-}
-
 kj::Promise<Result<void>> RemoteStore::copyDrvsFromEvalStore(
     const std::vector<DerivedPath> & paths,
     std::shared_ptr<Store> evalStore)

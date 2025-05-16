@@ -68,11 +68,6 @@ struct Realisation {
     bool checkSignature(const PublicKeys & publicKeys, const std::string & sig) const;
     size_t checkSignatures(const PublicKeys & publicKeys) const;
 
-    static kj::Promise<Result<std::set<Realisation>>>
-    closure(Store &, const std::set<Realisation> &);
-    static kj::Promise<Result<void>>
-    closure(Store &, const std::set<Realisation> &, std::set<Realisation> & res);
-
     bool isCompatibleWith(const Realisation & other) const;
 
     StorePath getPath() const { return outPath; }

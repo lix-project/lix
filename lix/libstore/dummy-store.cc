@@ -74,10 +74,6 @@ struct DummyStore final : public Store
     kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override
     try { unsupported("narFromPath"); } catch (...) { return {result::current_exception()}; }
 
-    kj::Promise<Result<std::shared_ptr<const Realisation>>>
-    queryRealisationUncached(const DrvOutput &) override
-    { co_return result::success(nullptr); }
-
     virtual ref<FSAccessor> getFSAccessor() override
     { unsupported("getFSAccessor"); }
 };

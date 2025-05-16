@@ -117,9 +117,6 @@ public:
         const StorePathSet & references,
         RepairFlag repair) override;
 
-    kj::Promise<Result<std::shared_ptr<const Realisation>>>
-    queryRealisationUncached(const DrvOutput &) override;
-
     kj ::Promise<Result<void>> buildPaths(
         const std::vector<DerivedPath> & paths,
         BuildMode buildMode,

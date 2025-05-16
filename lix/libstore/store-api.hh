@@ -392,11 +392,6 @@ public:
      */
     kj::Promise<Result<ref<const ValidPathInfo>>> queryPathInfo(const StorePath & path);
 
-    /**
-     * Query the information about a realisation.
-     */
-    kj::Promise<Result<std::shared_ptr<const Realisation>>> queryRealisation(const DrvOutput &);
-
 
     /**
      * Check whether the given valid path info is sufficiently attested, by
@@ -427,8 +422,6 @@ protected:
      */
     virtual kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
     queryPathInfoUncached(const StorePath & path) = 0;
-    virtual kj::Promise<Result<std::shared_ptr<const Realisation>>>
-    queryRealisationUncached(const DrvOutput &) = 0;
 
 public:
 

@@ -505,21 +505,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<std::shared_ptr<const Realisation>>>
-BinaryCacheStore::queryRealisationUncached(const DrvOutput & id)
-try {
-    auto outputInfoFilePath = realisationsPrefix + "/" + id.to_string() + ".doi";
-
-    auto data = getFileContents(outputInfoFilePath);
-    if (!data) co_return result::success(nullptr);
-
-    auto realisation = Realisation::fromJSON(
-        json::parse(*data), outputInfoFilePath);
-    co_return std::make_shared<const Realisation>(realisation);
-} catch (...) {
-    co_return result::current_exception();
-}
-
 ref<FSAccessor> BinaryCacheStore::getFSAccessor()
 {
     return make_ref<RemoteFSAccessor>(ref<Store>(*this), config().localNarCache);

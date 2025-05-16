@@ -463,11 +463,6 @@ public:
     {
         return {result::success(std::nullopt)};
     }
-
-    kj::Promise<Result<std::shared_ptr<const Realisation>>>
-    queryRealisationUncached(const DrvOutput &) override
-    // TODO: Implement
-    try { unsupported("queryRealisation"); } catch (...) { co_return result::current_exception(); }
 };
 
 void registerLegacySSHStore() {

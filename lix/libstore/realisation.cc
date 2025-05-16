@@ -24,43 +24,6 @@ std::string DrvOutput::to_string() const {
     return strHash() + "!" + outputName;
 }
 
-kj::Promise<Result<std::set<Realisation>>>
-Realisation::closure(Store & store, const std::set<Realisation> & startOutputs)
-try {
-    std::set<Realisation> res;
-    TRY_AWAIT(Realisation::closure(store, startOutputs, res));
-    co_return res;
-} catch (...) {
-    co_return result::current_exception();
-}
-
-kj::Promise<Result<void>> Realisation::closure(
-    Store & store, const std::set<Realisation> & startOutputs, std::set<Realisation> & res
-)
-try {
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-    auto getDeps = [&](const Realisation& current) -> kj::Promise<Result<std::set<Realisation>>> {
-        try {
-            std::set<Realisation> res;
-            for (auto& [currentDep, _] : current.dependentRealisations) {
-                if (auto currentRealisation = TRY_AWAIT(store.queryRealisation(currentDep)))
-                    res.insert(*currentRealisation);
-                else
-                    throw Error(
-                        "Unrealised derivation '%s'", currentDep.to_string());
-            }
-            co_return res;
-        } catch (...) {
-            co_return result::current_exception();
-        }
-    };
-
-    res.merge(TRY_AWAIT(computeClosureAsync<Realisation>(startOutputs, getDeps)));
-    co_return result::success();
-} catch (...) {
-    co_return result::current_exception();
-}
-
 JSON Realisation::toJSON() const {
     auto jsonDependentRealisations = JSON::object();
     for (auto & [depId, depOutPath] : dependentRealisations)

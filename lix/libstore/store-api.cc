@@ -733,40 +733,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<std::shared_ptr<const Realisation>>> Store::queryRealisation(const DrvOutput & id)
-try {
-
-    if (diskCache) {
-        auto [cacheOutcome, maybeCachedRealisation]
-            = diskCache->lookupRealisation(getUri(), id);
-        switch (cacheOutcome) {
-        case NarInfoDiskCache::oValid:
-            debug("Returning a cached realisation for %s", id.to_string());
-            co_return maybeCachedRealisation;
-        case NarInfoDiskCache::oInvalid:
-            debug(
-                "Returning a cached missing realisation for %s",
-                id.to_string());
-            co_return result::success(nullptr);
-        case NarInfoDiskCache::oUnknown:
-            break;
-        }
-    }
-
-    auto info = TRY_AWAIT(queryRealisationUncached(id));
-
-    if (diskCache) {
-        if (info)
-            diskCache->upsertRealisation(getUri(), *info);
-        else
-            diskCache->upsertAbsentRealisation(getUri(), id);
-    }
-
-    co_return info;
-} catch (...) {
-    co_return result::current_exception();
-}
-
 kj::Promise<Result<void>> Store::substitutePaths(const StorePathSet & paths)
 try {
     std::vector<DerivedPath> paths2;

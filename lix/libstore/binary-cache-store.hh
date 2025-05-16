@@ -146,9 +146,6 @@ public:
         const StorePathSet & references,
         RepairFlag repair) override;
 
-    kj::Promise<Result<std::shared_ptr<const Realisation>>>
-    queryRealisationUncached(const DrvOutput &) override;
-
     kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override;
 
     ref<FSAccessor> getFSAccessor() override;
