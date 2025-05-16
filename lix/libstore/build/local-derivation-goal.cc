@@ -2052,11 +2052,6 @@ try {
     co_return result::current_exception();
 }
 
-void LocalDerivationGoal::signRealisation(Realisation & realisation)
-{
-    getLocalStore().signRealisation(realisation);
-}
-
 
 kj::Promise<Result<void>> LocalDerivationGoal::checkOutputs(const std::map<std::string, ValidPathInfo> & newlyBuiltOutputs, const std::map<std::string, StorePath> & alreadyRegisteredOutputs)
 try {

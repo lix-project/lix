@@ -203,8 +203,6 @@ struct LocalDerivationGoal : public DerivationGoal
      */
     kj::Promise<Result<SingleDrvOutputs>> registerOutputs() override;
 
-    void signRealisation(Realisation &) override;
-
     /**
      * Check that an output meets the requirements specified by the
      * 'outputChecks' attribute (or the legacy

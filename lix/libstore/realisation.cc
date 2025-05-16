@@ -71,36 +71,6 @@ Realisation Realisation::fromJSON(
     };
 }
 
-std::string Realisation::fingerprint() const
-{
-    auto serialized = toJSON();
-    serialized.erase("signatures");
-    return serialized.dump();
-}
-
-void Realisation::sign(const SecretKey & secretKey)
-{
-    signatures.insert(secretKey.signDetached(fingerprint()));
-}
-
-bool Realisation::checkSignature(const PublicKeys & publicKeys, const std::string & sig) const
-{
-    return verifyDetached(fingerprint(), sig, publicKeys);
-}
-
-size_t Realisation::checkSignatures(const PublicKeys & publicKeys) const
-{
-    // FIXME: Maybe we should return `maxSigs` if the realisation corresponds to
-    // an input-addressed one − because in that case the drv is enough to check
-    // it − but we can't know that here.
-
-    size_t good = 0;
-    for (auto & sig : signatures)
-        if (checkSignature(publicKeys, sig))
-            good++;
-    return good;
-}
-
 
 SingleDrvOutputs filterDrvOutputs(const OutputsSpec& wanted, SingleDrvOutputs&& outputs)
 {
@@ -116,24 +86,6 @@ SingleDrvOutputs filterDrvOutputs(const OutputsSpec& wanted, SingleDrvOutputs&& 
 
 StorePath RealisedPath::path() const {
     return std::visit([](auto && arg) { return arg.getPath(); }, raw);
-}
-
-bool Realisation::isCompatibleWith(const Realisation & other) const
-{
-    assert (id == other.id);
-    if (outPath == other.outPath) {
-        if (dependentRealisations.empty() != other.dependentRealisations.empty()) {
-            warn(
-                "Encountered a realisation for '%s' with an empty set of "
-                "dependencies. This is likely an artifact from an older Nix. "
-                "I’ll try to fix the realisation if I can",
-                id.to_string());
-            return true;
-        } else if (dependentRealisations == other.dependentRealisations) {
-            return true;
-        }
-    }
-    return false;
 }
 
 kj::Promise<Result<void>> RealisedPath::closure(

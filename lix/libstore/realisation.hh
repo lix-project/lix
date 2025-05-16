@@ -63,13 +63,6 @@ struct Realisation {
     JSON toJSON() const;
     static Realisation fromJSON(const JSON& json, const std::string& whence);
 
-    std::string fingerprint() const;
-    void sign(const SecretKey &);
-    bool checkSignature(const PublicKeys & publicKeys, const std::string & sig) const;
-    size_t checkSignatures(const PublicKeys & publicKeys) const;
-
-    bool isCompatibleWith(const Realisation & other) const;
-
     StorePath getPath() const { return outPath; }
 
     GENERATE_CMP(Realisation, me->id, me->outPath);

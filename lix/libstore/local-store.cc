@@ -1225,11 +1225,6 @@ bool LocalStore::pathInfoIsUntrusted(const ValidPathInfo & info)
     return config_.requireSigs && !info.checkSignatures(*this, getPublicKeys());
 }
 
-bool LocalStore::realisationIsUntrusted(const Realisation & realisation)
-{
-    return config_.requireSigs && !realisation.checkSignatures(getPublicKeys());
-}
-
 kj::Promise<Result<void>> LocalStore::addToStore(
     const ValidPathInfo & info,
     AsyncInputStream & source,
@@ -1815,18 +1810,6 @@ try {
     co_return result::current_exception();
 }
 
-
-void LocalStore::signRealisation(Realisation & realisation)
-{
-    // FIXME: keep secret keys in memory.
-
-    auto secretKeyFiles = settings.secretKeyFiles;
-
-    for (auto & secretKeyFile : secretKeyFiles.get()) {
-        SecretKey secretKey(readFile(secretKeyFile));
-        realisation.sign(secretKey);
-    }
-}
 
 void LocalStore::signPathInfo(ValidPathInfo & info)
 {

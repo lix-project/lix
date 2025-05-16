@@ -210,7 +210,6 @@ public:
     kj::Promise<Result<StorePathSet>> querySubstitutablePaths(const StorePathSet & paths) override;
 
     bool pathInfoIsUntrusted(const ValidPathInfo &) override;
-    bool realisationIsUntrusted(const Realisation & ) override;
 
     kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, AsyncInputStream & source,
         RepairFlag repair, CheckSigsFlag checkSigs) override;
@@ -392,7 +391,6 @@ private:
      * specified by the ‘secret-key-files’ option.
      */
     void signPathInfo(ValidPathInfo & info);
-    void signRealisation(Realisation &);
 
     // XXX: Make a generic `Store` method
     ContentAddress hashCAPath(
