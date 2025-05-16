@@ -3,7 +3,6 @@ source common.sh
 clearStore
 clearProfiles
 
-enableFeatures "ca-derivations"
 restartDaemon
 
 # Make a flake.
@@ -105,24 +104,10 @@ nix profile remove simple-1 2>&1 | grep 'removed 1 packages'
 nix profile wipe-history
 [[ $(nix profile history | grep Version | wc -l) -eq 1 ]]
 
-# Test upgrade to CA package.
-printf true > $flake1Dir/ca.nix
-printf 3.0 > $flake1Dir/version
-nix profile upgrade flake1
-nix profile history | grep "packages.$system.default: 1.0, 1.0-man -> 3.0, 3.0-man"
-
-# Test new install of CA package.
-nix profile remove flake1 2>&1 | grep 'removed 1 packages'
-printf 4.0 > $flake1Dir/version
-printf Utrecht > $flake1Dir/who
-nix profile install $flake1Dir
-[[ $($TEST_HOME/.nix-profile/bin/hello) = "Hello Utrecht" ]]
-[[ $(nix path-info --json $(realpath $TEST_HOME/.nix-profile/bin/hello) | jq -r .[].ca) =~ fixed:r:sha256: ]]
-
 # Override the outputs.
 nix profile remove simple flake1
 nix profile install "$flake1Dir^*"
-[[ $($TEST_HOME/.nix-profile/bin/hello) = "Hello Utrecht" ]]
+[[ $($TEST_HOME/.nix-profile/bin/hello) = "Hello NixOS" ]]
 [ -e $TEST_HOME/.nix-profile/share/man ]
 [ -e $TEST_HOME/.nix-profile/include ]
 

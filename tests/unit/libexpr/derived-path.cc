@@ -46,7 +46,7 @@ RC_GTEST_FIXTURE_PROP(
      * to worry about race conditions if the tests run concurrently.
      */
     ExperimentalFeatureSettings mockXpSettings;
-    mockXpSettings.set("experimental-features", "ca-derivations");
+    mockXpSettings.experimentalFeatures.override(ExperimentalFeatures{} | Xp::CaDerivations);
 
     auto * v = evaluator.mem.allocValue();
     state.mkOutputString(*v, b, std::nullopt, mockXpSettings);

@@ -10,7 +10,7 @@ TEST(DownstreamPlaceholder, unknownCaOutput) {
      * to worry about race conditions if the tests run concurrently.
      */
     ExperimentalFeatureSettings mockXpSettings;
-    mockXpSettings.set("experimental-features", "ca-derivations");
+    mockXpSettings.experimentalFeatures.override(ExperimentalFeatures{} | Xp::CaDerivations);
 
     ASSERT_EQ(
         DownstreamPlaceholder::unknownCaOutput(

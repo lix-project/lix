@@ -23,9 +23,7 @@ config_nix_in = configure_file(
   configuration : test_confdata,
 )
 
-# Just configures `ca/config.nix.in`. Done as a subdir() for the same reason as above.
-subdir('ca')
-# Just configures `nix-shell/config.nix.in`. Same as above.
+# Just configures `nix-shell/config.nix.in`. Done as a subdir() for the same reason as above.
 subdir('nix-shell')
 
 subdir('plugins')
@@ -34,24 +32,6 @@ subdir('test-libstoreconsumer')
 functional_tests_scripts = [
   'init.sh',
   'test-infra.sh',
-  'ca/build.sh',
-  'ca/build-cache.sh',
-  'ca/concurrent-builds.sh',
-  'ca/derivation-json.sh',
-  'ca/duplicate-realisation-in-closure.sh',
-  'ca/eval-store.sh',
-  'ca/gc.sh',
-  'ca/import-derivation.sh',
-  'ca/new-build-cmd.sh',
-  'ca/nix-copy.sh',
-  'ca/nix-run.sh',
-  'ca/nix-shell.sh',
-  'ca/post-hook.sh',
-  'ca/repl.sh',
-  'ca/selfref-gc.sh',
-  'ca/signatures.sh',
-  'ca/substitute.sh',
-  'ca/why-depends.sh',
   'flakes/flakes.sh',
   'flakes/develop.sh',
   'flakes/develop-r8854.sh',
@@ -121,7 +101,6 @@ functional_tests_scripts = [
   'dependencies.sh',
   'check-reqs.sh',
   'build-remote-content-addressed-fixed.sh',
-  'build-remote-content-addressed-floating.sh',
   'build-remote-trustless-should-pass-0.sh',
   'build-remote-trustless-should-pass-1.sh',
   'build-remote-trustless-should-pass-2.sh',

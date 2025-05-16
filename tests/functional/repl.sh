@@ -125,16 +125,6 @@ drvPath
 ' '".*-simple.drv"' \
 --file $testDir/simple.nix
 
-testReplResponse '
-drvPath
-' '".*-simple.drv"' \
---file $testDir/simple.nix --experimental-features 'ca-derivations'
-
-testReplResponse '
-drvPath
-' '".*-simple.drv"' \
---file $testDir/simple.nix --extra-experimental-features 'ca-derivations'
-
 mkdir -p flake && cat <<EOF > flake/flake.nix
 {
     outputs = { self }: {

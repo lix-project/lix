@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "lix/libstore/derivations.hh"
+#include "lix/libutil/experimental-features.hh"
 #include "lix/libutil/json.hh"
 #include "lix/libutil/strings.hh"
 
@@ -29,7 +30,7 @@ class CaDerivationTest : public DerivationTest
 {
     void SetUp() override
     {
-        mockXpSettings.set("experimental-features", "ca-derivations");
+        mockXpSettings.experimentalFeatures.override(ExperimentalFeatures{} | Xp::CaDerivations);
     }
 };
 
