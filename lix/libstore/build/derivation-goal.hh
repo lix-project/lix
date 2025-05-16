@@ -88,11 +88,6 @@ struct DerivationGoal : public Goal
     StorePath drvPath;
 
     /**
-     * The goal for the corresponding resolved derivation
-     */
-    std::shared_ptr<DerivationGoal> resolvedDrvGoal;
-
-    /**
      * The specific outputs that we need to build.
      */
     OutputsSpec wantedOutputs;
@@ -278,8 +273,6 @@ struct DerivationGoal : public Goal
     kj::Promise<Result<WorkResult>> tryToBuild() noexcept;
     virtual kj::Promise<Result<WorkResult>> tryLocalBuild() noexcept;
     kj::Promise<Result<WorkResult>> buildDone() noexcept;
-
-    kj::Promise<Result<WorkResult>> resolvedFinished() noexcept;
 
     /**
      * Is the build hook willing to perform the build?

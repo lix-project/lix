@@ -2059,10 +2059,6 @@ try {
             },
             .outPath = newInfo.path
         };
-        if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-            signRealisation(thisRealisation);
-            TRY_AWAIT(worker.store.registerDrvOutput(thisRealisation));
-        }
         builtOutputs.emplace(outputName, thisRealisation);
     }
 

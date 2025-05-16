@@ -221,7 +221,7 @@ try {
     parsedDrv = std::make_unique<ParsedDerivation>(drvPath, *drv);
 
     if (!drv->type().hasKnownOutputPaths())
-        experimentalFeatureSettings.require(Xp::CaDerivations);
+        throw UnimplementedError("ca derivations are not supported");
 
     for (auto & i : drv->outputsAndOptPaths(worker.store))
         if (i.second.second)
@@ -535,52 +535,12 @@ try {
                 return ia.deferred;
             },
             [&](const DerivationType::ContentAddressed & ca) {
-                return !fullDrv.inputDrvs.empty() && (
-                    ca.fixed
-                    /* Can optionally resolve if fixed, which is good
-                       for avoiding unnecessary rebuilds. */
-                    ? experimentalFeatureSettings.isEnabled(Xp::CaDerivations)
-                    /* Must resolve if floating and there are any inputs
-                       drvs. */
-                    : true);
+                return !fullDrv.inputDrvs.empty() && !ca.fixed;
             },
         }, drvType.raw);
 
         if (resolveDrv && !fullDrv.inputDrvs.empty()) {
-            experimentalFeatureSettings.require(Xp::CaDerivations);
-
-            /* We are be able to resolve this derivation based on the
-               now-known results of dependencies. If so, we become a
-               stub goal aliasing that resolved derivation goal. */
-            std::optional attempt = TRY_AWAIT(fullDrv.tryResolve(worker.store, inputDrvOutputs));
-            if (!attempt) {
-              /* TODO (impure derivations-induced tech debt) (see below):
-                 The above attempt should have found it, but because we manage
-                 inputDrvOutputs statefully, sometimes it gets out of sync with
-                 the real source of truth (store). So we query the store
-                 directly if there's a problem. */
-              attempt = TRY_AWAIT(fullDrv.tryResolve(worker.store, &worker.evalStore));
-            }
-            assert(attempt);
-            Derivation drvResolved { std::move(*attempt) };
-
-            auto pathResolved = TRY_AWAIT(writeDerivation(worker.store, drvResolved));
-
-            auto msg = fmt("resolved derivation: '%s' -> '%s'",
-                worker.store.printStorePath(drvPath),
-                worker.store.printStorePath(pathResolved));
-            act = std::make_unique<Activity>(*logger, lvlInfo, actBuildWaiting, msg,
-                Logger::Fields {
-                       worker.store.printStorePath(drvPath),
-                       worker.store.printStorePath(pathResolved),
-                   });
-
-            auto dependency = worker.goalFactory().makeDerivationGoal(
-                pathResolved, wantedOutputs, buildMode);
-            resolvedDrvGoal = dependency.first;
-
-            TRY_AWAIT(waitForGoals(std::move(dependency)));
-            co_return co_await resolvedFinished();
+            throw UnimplementedError("ca derivations are not supported");
         }
 
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
@@ -1098,86 +1058,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::resolvedFinished() noexcept
-try {
-    trace("resolved derivation finished");
-
-    assert(resolvedDrvGoal);
-    auto resolvedDrv = *resolvedDrvGoal->drv;
-    auto & resolvedResult = resolvedDrvGoal->buildResult;
-
-    SingleDrvOutputs builtOutputs;
-
-    if (resolvedResult.success()) {
-        auto resolvedHashes = TRY_AWAIT(staticOutputHashes(worker.store, resolvedDrv));
-
-        StorePathSet outputPaths;
-
-        for (auto & outputName : resolvedDrv.outputNames()) {
-            auto initialOutput = get(initialOutputs, outputName);
-            auto resolvedHash = get(resolvedHashes, outputName);
-            if ((!initialOutput) || (!resolvedHash))
-                throw Error(
-                    "derivation '%s' doesn't have expected output '%s' (derivation-goal.cc/resolvedFinished,resolve)",
-                    worker.store.printStorePath(drvPath), outputName);
-
-            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-            auto realisation = TRY_AWAIT([&]() -> kj::Promise<Result<Realisation>> {
-                try {
-                    auto take1 = get(resolvedResult.builtOutputs, outputName);
-                    if (take1) co_return *take1;
-
-                    /* The above `get` should work. But sateful tracking of
-                       outputs in resolvedResult, this can get out of sync with the
-                       store, which is our actual source of truth. For now we just
-                       check the store directly if it fails. */
-                    auto take2 = TRY_AWAIT(
-                        worker.evalStore.queryRealisation(DrvOutput{*resolvedHash, outputName})
-                    );
-                    if (take2) co_return *take2;
-
-                    throw Error(
-                        "derivation '%s' doesn't have expected output '%s' (derivation-goal.cc/resolvedFinished,realisation)",
-                        worker.store.printStorePath(resolvedDrvGoal->drvPath), outputName);
-                } catch (...) {
-                    co_return result::current_exception();
-                }
-            }());
-
-            auto newRealisation = realisation;
-            newRealisation.id = DrvOutput { initialOutput->outputHash, outputName };
-            newRealisation.signatures.clear();
-            if (!drv->type().isFixed()) {
-                auto & drvStore = TRY_AWAIT(worker.evalStore.isValidPath(drvPath))
-                    ? worker.evalStore
-                    : worker.store;
-                newRealisation.dependentRealisations = TRY_AWAIT(
-                    drvOutputReferences(worker.store, *drv, realisation.outPath, &drvStore)
-                );
-            }
-            signRealisation(newRealisation);
-            TRY_AWAIT(worker.store.registerDrvOutput(newRealisation));
-            outputPaths.insert(realisation.outPath);
-            builtOutputs.emplace(outputName, realisation);
-        }
-
-        runPostBuildHook(
-            worker.store,
-            *logger,
-            drvPath,
-            outputPaths
-        );
-    }
-
-    auto status = resolvedResult.status;
-    if (status == BuildResult::AlreadyValid)
-        status = BuildResult::ResolvesToAlreadyValid;
-
-    co_return done(status, std::move(builtOutputs));
-} catch (...) {
-    co_return result::current_exception();
-}
-
 HookReply DerivationGoal::tryBuildHook()
 {
     if (!worker.hook.available || !useDerivation) return HookReply::Decline{};
@@ -1639,25 +1519,6 @@ try {
             };
         }
         auto drvOutput = DrvOutput{info.outputHash, i.first};
-        if (experimentalFeatureSettings.isEnabled(Xp::CaDerivations)) {
-            if (auto real = TRY_AWAIT(worker.store.queryRealisation(drvOutput))) {
-                info.known = {
-                    .path = real->outPath,
-                    .status = PathStatus::Valid,
-                };
-            } else if (info.known && info.known->isValid()) {
-                // We know the output because it's a static output of the
-                // derivation, and the output path is valid, but we don't have
-                // its realisation stored (probably because it has been built
-                // without the `ca-derivations` experimental flag).
-                TRY_AWAIT(worker.store.registerDrvOutput(
-                    Realisation {
-                        drvOutput,
-                        info.known->path,
-                    }
-                ));
-            }
-        }
         if (info.known && info.known->isValid())
             validOutputs.emplace(i.first, Realisation { drvOutput, info.known->path });
     }
