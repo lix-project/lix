@@ -43,15 +43,6 @@ create table if not exists NARs (
     foreign key (cache) references BinaryCaches(id) on delete cascade
 );
 
-create table if not exists Realisations (
-    cache integer not null,
-    outputId text not null,
-    content blob, -- Json serialisation of the realisation, or null if the realisation is absent
-    timestamp        integer not null,
-    primary key (cache, outputId),
-    foreign key (cache) references BinaryCaches(id) on delete cascade
-);
-
 create table if not exists LastPurge (
     dummy            text primary key,
     value            integer
@@ -81,8 +72,7 @@ public:
     {
         SQLite db;
         SQLiteStmt insertCache, queryCache, insertNAR, insertMissingNAR,
-            queryNAR, insertRealisation, insertMissingRealisation,
-            queryRealisation, purgeCache;
+            queryNAR, purgeCache;
         std::map<std::string, Cache> caches;
     };
 
@@ -115,26 +105,6 @@ public:
 
         state->queryNAR = state->db.create(
             "select present, namePart, url, compression, fileHash, fileSize, narHash, narSize, refs, deriver, sigs, ca from NARs where cache = ? and hashPart = ? and ((present = 0 and timestamp > ?) or (present = 1 and timestamp > ?))");
-
-        state->insertRealisation = state->db.create(
-            R"(
-                insert or replace into Realisations(cache, outputId, content, timestamp)
-                    values (?, ?, ?, ?)
-            )");
-
-        state->insertMissingRealisation = state->db.create(
-            R"(
-                insert or replace into Realisations(cache, outputId, timestamp)
-                    values (?, ?, ?)
-            )");
-
-        state->queryRealisation = state->db.create(
-            R"(
-                select content from Realisations
-                    where cache = ? and outputId = ?  and
-                        ((content is null and timestamp > ?) or
-                         (content is not null and timestamp > ?))
-            )");
 
         /* Periodically purge expired entries from the database. */
         retrySQLite([&]() {
@@ -282,37 +252,6 @@ public:
         }, always_progresses);
     }
 
-    std::pair<Outcome, std::shared_ptr<Realisation>> lookupRealisation(
-        const std::string & uri, const DrvOutput & id) override
-    {
-        return retrySQLite([&]() -> std::pair<Outcome, std::shared_ptr<Realisation>> {
-            auto state(_state.lock());
-
-            auto & cache(getCache(*state, uri));
-
-            auto now = time(0);
-
-            auto queryRealisation(state->queryRealisation.use()
-                (cache.id)
-                (id.to_string())
-                (now - settings.ttlNegativeNarInfoCache)
-                (now - settings.ttlPositiveNarInfoCache));
-
-            if (!queryRealisation.next())
-                return {oUnknown, 0};
-
-            if (queryRealisation.isNull(0))
-                return {oInvalid, 0};
-
-            auto realisation =
-                std::make_shared<Realisation>(Realisation::fromJSON(
-                    json::parse(queryRealisation.getStr(0), "a nar cache entry"),
-                    "Local disk cache"));
-
-            return {oValid, realisation};
-        }, always_progresses);
-    }
-
     void upsertNarInfo(
         const std::string & uri, const std::string & hashPart,
         std::shared_ptr<const ValidPathInfo> info) override
@@ -350,39 +289,6 @@ public:
                     (hashPart)
                     (time(0)).exec();
             }
-        }, always_progresses);
-    }
-
-    void upsertRealisation(
-        const std::string & uri,
-        const Realisation & realisation) override
-    {
-        retrySQLite([&]() {
-            auto state(_state.lock());
-
-            auto & cache(getCache(*state, uri));
-
-            state->insertRealisation.use()
-                (cache.id)
-                (realisation.id.to_string())
-                (realisation.toJSON().dump())
-                (time(0)).exec();
-        }, always_progresses);
-
-    }
-
-    virtual void upsertAbsentRealisation(
-        const std::string & uri,
-        const DrvOutput & id) override
-    {
-        retrySQLite([&]() {
-            auto state(_state.lock());
-
-            auto & cache(getCache(*state, uri));
-            state->insertMissingRealisation.use()
-                (cache.id)
-                (id.to_string())
-                (time(0)).exec();
         }, always_progresses);
     }
 };
