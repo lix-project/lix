@@ -185,7 +185,7 @@ static Sync<std::pair<unsigned short, unsigned short>> windowSize{{0, 0}};
 void updateWindowSize()
 {
     struct winsize ws;
-    if (ioctl(2, TIOCGWINSZ, &ws) == 0) {
+    if (ioctl(2, TIOCGWINSZ, &ws) == 0 || ioctl(1, TIOCGWINSZ, &ws) == 0) {
         auto windowSize_(windowSize.lock());
         windowSize_->first = ws.ws_row;
         windowSize_->second = ws.ws_col;
