@@ -139,7 +139,7 @@ static void fetchTree(
             if (attr.name == state.ctx.s.type) continue;
             state.forceValue(*attr.value, attr.pos);
             if (attr.value->type() == nPath || attr.value->type() == nString) {
-                auto s = state.coerceToString(attr.pos, *attr.value, context, "", false, false).toOwned();
+                auto s = state.coerceToString(attr.pos, *attr.value, context, "", StringCoercionMode::Strict, false).toOwned();
                 attrs.emplace(state.ctx.symbols[attr.name],
                     state.ctx.symbols[attr.name] == "url"
                     ? type == "git"
@@ -173,7 +173,7 @@ static void fetchTree(
     } else {
         auto url = state.coerceToString(pos, *args[0], context,
                 "while evaluating the first argument passed to the fetcher",
-                false, false).toOwned();
+                StringCoercionMode::Strict, false).toOwned();
 
         if (type == "git") {
             fetchers::Attrs attrs;

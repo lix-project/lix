@@ -46,7 +46,7 @@ JSON printValueAsJSON(EvalState & state, bool strict,
             break;
 
         case nAttrs: {
-            auto maybeString = state.tryAttrsToString(pos, v, context, false, false);
+            auto maybeString = state.tryAttrsToString(pos, v, context, StringCoercionMode::Strict, false);
             if (maybeString) {
                 out = *maybeString;
                 break;

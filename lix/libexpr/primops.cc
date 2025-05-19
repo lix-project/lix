@@ -315,13 +315,13 @@ void prim_exec(EvalState & state, Value * * args, Value & v)
     NixStringContext context;
     auto program = state.coerceToString(noPos, *elems[0], context,
             "while evaluating the first element of the argument passed to builtins.exec",
-            false, false).toOwned();
+            StringCoercionMode::Strict, false).toOwned();
     Strings commandArgs;
     for (unsigned int i = 1; i < args[0]->listSize(); ++i) {
         commandArgs.push_back(
                 state.coerceToString(noPos, *elems[i], context,
                         "while evaluating an element of the argument passed to builtins.exec",
-                        false, false).toOwned());
+                        StringCoercionMode::Strict, false).toOwned());
     }
     try {
         auto _ = state.realiseContext(context); // FIXME: Handle CA derivations
@@ -610,7 +610,7 @@ static void prim_addErrorContext(EvalState & state, Value * * args, Value & v)
         NixStringContext context;
         auto message = state.coerceToString(noPos, *args[0], context,
                 "while evaluating the error message passed to builtins.addErrorContext",
-                false, false).toOwned();
+                StringCoercionMode::Strict, false).toOwned();
         e.addTrace(nullptr, HintFmt(message));
         throw;
     }
@@ -880,7 +880,7 @@ drvName, Bindings * attrs, Value & v)
                 for (auto elem : i->value->listItems()) {
                     auto s = state.coerceToString(noPos, *elem, context,
                             "while evaluating an element of the argument list",
-                            true).toOwned();
+                            StringCoercionMode::ToString).toOwned();
                     drv.args.push_back(s);
                 }
             }
@@ -929,7 +929,7 @@ drvName, Bindings * attrs, Value & v)
 
 
                 } else {
-                    auto s = state.coerceToString(noPos, *i->value, context, context_below, true).toOwned();
+                    auto s = state.coerceToString(noPos, *i->value, context, context_below, StringCoercionMode::ToString).toOwned();
                     drv.env.emplace(key, s);
                     if (i->name == state.ctx.s.builder) drv.builder = std::move(s);
                     else if (i->name == state.ctx.s.system) drv.platform = std::move(s);
@@ -1212,7 +1212,7 @@ static void prim_baseNameOf(EvalState & state, Value * * args, Value & v)
     NixStringContext context;
     v.mkString(baseNameOf(*state.coerceToString(noPos, *args[0], context,
             "while evaluating the first argument passed to builtins.baseNameOf",
-            false, false)), context);
+            StringCoercionMode::Strict, false)), context);
 }
 
 /* Return the directory of the given path, i.e., everything before the
@@ -1228,7 +1228,7 @@ static void prim_dirOf(EvalState & state, Value * * args, Value & v)
         NixStringContext context;
         auto path = state.coerceToString(noPos, *args[0], context,
             "while evaluating the first argument passed to 'builtins.dirOf'",
-            false, false);
+            StringCoercionMode::Strict, false);
         auto dir = dirOf(*path);
         v.mkString(dir, context);
     }
@@ -1289,7 +1289,7 @@ static void prim_findFile(EvalState & state, Value * * args, Value & v)
         NixStringContext context;
         auto path = state.coerceToString(noPos, *i->value, context,
                 "while evaluating the `path` attribute of an element of the list passed to builtins.findFile",
-                false, false).toOwned();
+                StringCoercionMode::Strict, false).toOwned();
 
         try {
             auto rewrites = state.realiseContext(context);
@@ -2453,7 +2453,7 @@ static void prim_toString(EvalState & state, Value * * args, Value & v)
     NixStringContext context;
     auto s = state.coerceToString(noPos, *args[0], context,
             "while evaluating the first argument passed to builtins.toString",
-            true, false);
+            StringCoercionMode::ToString, false);
     v.mkString(*s, context);
 }
 

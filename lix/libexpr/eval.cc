@@ -2033,7 +2033,7 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
             path */
             auto part = state.coerceToString(i_pos, vTmp, context,
                                              "while evaluating a path segment",
-                                             false, firstType == nString, !first);
+                                             StringCoercionMode::Strict, firstType == nString, !first);
             sSize += part->size();
             s.emplace_back(std::move(part));
         }
@@ -2266,7 +2266,7 @@ bool EvalState::isDerivation(Value & v)
 
 
 std::optional<std::string> EvalState::tryAttrsToString(const PosIdx pos, Value & v,
-    NixStringContext & context, bool coerceMore, bool copyToStore)
+    NixStringContext & context, StringCoercionMode mode, bool copyToStore)
 {
     auto i = v.attrs->find(ctx.s.toString);
     if (i != v.attrs->end()) {
@@ -2275,7 +2275,7 @@ std::optional<std::string> EvalState::tryAttrsToString(const PosIdx pos, Value &
             callFunction(*i->value, v, v1, i->pos);
             return coerceToString(pos, v1, context,
                     "while evaluating the result of the `__toString` attribute",
-                    coerceMore, copyToStore).toOwned();
+                    mode, copyToStore).toOwned();
         } catch (EvalError & e) {
             e.addTrace(ctx.positions[pos], "while converting a set to string");
             throw;
@@ -2290,7 +2290,7 @@ BackedStringView EvalState::coerceToString(
     Value & v,
     NixStringContext & context,
     std::string_view errorCtx,
-    bool coerceMore,
+    StringCoercionMode mode,
     bool copyToStore,
     bool canonicalizePath)
 {
@@ -2314,7 +2314,7 @@ BackedStringView EvalState::coerceToString(
     }
 
     if (v.type() == nAttrs) {
-        auto maybeString = tryAttrsToString(pos, v, context, coerceMore, copyToStore);
+        auto maybeString = tryAttrsToString(pos, v, context, mode, copyToStore);
         if (maybeString)
             return std::move(*maybeString);
         auto i = v.attrs->find(ctx.s.outPath);
@@ -2328,19 +2328,19 @@ BackedStringView EvalState::coerceToString(
                 .debugThrow();
         }
         return coerceToString(pos, *i->value, context, errorCtx,
-                              coerceMore, copyToStore, canonicalizePath);
+                              mode, copyToStore, canonicalizePath);
     }
 
     if (v.type() == nExternal) {
         try {
-            return v.external->coerceToString(*this, pos, context, coerceMore, copyToStore);
+            return v.external->coerceToString(*this, pos, context, mode, copyToStore);
         } catch (Error & e) {
             e.addTrace(nullptr, errorCtx);
             throw;
         }
     }
 
-    if (coerceMore) {
+    if (mode >= StringCoercionMode::ToString) {
         /* Note that `false' is represented as an empty string for
            shell scripting convenience, just like `null'. */
         if (v.type() == nBool && v.boolean) return "1";
@@ -2355,7 +2355,7 @@ BackedStringView EvalState::coerceToString(
                 try {
                     result += *coerceToString(pos, *v2, context,
                             "while evaluating one element of the list",
-                            coerceMore, copyToStore, canonicalizePath);
+                            mode, copyToStore, canonicalizePath);
                 } catch (Error & e) {
                     e.addTrace(ctx.positions[pos], errorCtx);
                     throw;
@@ -2412,7 +2412,7 @@ try {
 
 SourcePath EvalState::coerceToPath(const PosIdx pos, Value & v, NixStringContext & context, std::string_view errorCtx)
 {
-    auto path = coerceToString(pos, v, context, errorCtx, false, false, true).toOwned();
+    auto path = coerceToString(pos, v, context, errorCtx, StringCoercionMode::Strict, false, true).toOwned();
     if (path == "" || path[0] != '/')
         ctx.errors.make<EvalError>("string '%1%' doesn't represent an absolute path", path).withTrace(pos, errorCtx).debugThrow();
     return CanonPath(path);
@@ -2421,7 +2421,7 @@ SourcePath EvalState::coerceToPath(const PosIdx pos, Value & v, NixStringContext
 
 StorePath EvalState::coerceToStorePath(const PosIdx pos, Value & v, NixStringContext & context, std::string_view errorCtx)
 {
-    auto path = coerceToString(pos, v, context, errorCtx, false, false, true).toOwned();
+    auto path = coerceToString(pos, v, context, errorCtx, StringCoercionMode::Strict, false, true).toOwned();
     if (auto storePath = ctx.store->maybeParseStorePath(path))
         return *storePath;
     ctx.errors.make<EvalError>("path '%1%' is not in the Nix store", path).withTrace(pos, errorCtx).debugThrow();
@@ -2883,7 +2883,7 @@ try {
 }
 
 
-std::string ExternalValueBase::coerceToString(EvalState & state, const PosIdx & pos, NixStringContext & context, bool copyMore, bool copyToStore) const
+std::string ExternalValueBase::coerceToString(EvalState & state, const PosIdx & pos, NixStringContext & context, StringCoercionMode mode, bool copyToStore) const
 {
     state.ctx.errors.make<TypeError>(
         "cannot coerce %1% to a string: %2%", showType(), *this
