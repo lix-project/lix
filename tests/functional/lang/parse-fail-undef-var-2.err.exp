@@ -1,5 +1,5 @@
 error: syntax error, expecting '}'
-       at «stdin»:3:13:
+       at /pwd/parse-fail-undef-var-2.nix:3:13:
             2|
             3|   f = {x, y : ["baz" "bar" z "bat"]}: x + y;
              |             ^

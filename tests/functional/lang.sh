@@ -47,8 +47,9 @@ for i in parse-fail-*.nix; do
     if test -e "$i.flags"; then
         read -r -a flags < "$i.flags"
     fi
-    if expectStderr 1 nix-instantiate --parse "${flags[@]}" - < "$i.nix" > "$i.err"
+    if expectStderr 1 nix-instantiate --parse "${flags[@]}" "$i.nix" > "$i.err"
     then
+        sed -i "s!$(pwd)!/pwd!g" "$i.err"
         diffAndAccept "$i" err err.exp
     else
         echo "FAIL: $i shouldn't parse"
@@ -65,11 +66,11 @@ for i in parse-okay-*.nix; do
         read -r -a flags < "$i.flags"
     fi
     if
-        expect 0 nix-instantiate --parse "${flags[@]}" - < "$i.nix" \
+        expect 0 nix-instantiate --parse "${flags[@]}" "$i.nix" \
             1> "$i.out" \
             2> "$i.err"
     then
-        sed "s!$(pwd)!/pwd!g" "$i.out" "$i.err"
+        sed -i "s!$(pwd)!/pwd!g" "$i.out" "$i.err"
         yq --in-place --yaml-output '.' "$i.out"
         diffAndAccept "$i" out exp
         diffAndAccept "$i" err err.exp

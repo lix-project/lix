@@ -1,5 +1,5 @@
-error: attribute 'x' already defined at «stdin»:9:5
-       at «stdin»:10:18:
+error: attribute 'x' already defined at /pwd/parse-fail-dup-attrs-2.nix:9:5
+       at /pwd/parse-fail-dup-attrs-2.nix:10:18:
             9|     x = 789;
            10|     inherit (as) x;
              |                  ^

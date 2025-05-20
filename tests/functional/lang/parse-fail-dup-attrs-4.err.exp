@@ -1,5 +1,5 @@
-error: attribute 'services.ssh.port' already defined at «stdin»:2:3
-       at «stdin»:3:3:
+error: attribute 'services.ssh.port' already defined at /pwd/parse-fail-dup-attrs-4.nix:2:3
+       at /pwd/parse-fail-dup-attrs-4.nix:3:3:
             2|   services.ssh.port = 22;
             3|   services.ssh.port = 23;
              |   ^

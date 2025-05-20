@@ -1,5 +1,5 @@
-error: attribute 'z' already defined at «stdin»:3:16
-       at «stdin»:2:3:
+error: attribute 'z' already defined at /pwd/parse-fail-mixed-nested-attrs1.nix:3:16
+       at /pwd/parse-fail-mixed-nested-attrs1.nix:2:3:
             1| {
             2|   x.z = 3;
              |   ^

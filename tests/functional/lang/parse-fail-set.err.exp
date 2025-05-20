@@ -1,5 +1,5 @@
 error: undefined variable 'x'
-       at «stdin»:1:3:
+       at /pwd/parse-fail-set.nix:1:3:
             1| 8.x
              |   ^
             2|

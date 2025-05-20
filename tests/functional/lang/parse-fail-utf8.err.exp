@@ -1,5 +1,5 @@
 error: syntax error, expecting end of file
-       at «stdin»:1:5:
+       at /pwd/parse-fail-utf8.nix:1:5:
             1| 123 é 4
              |     ^
             2|

@@ -1,5 +1,5 @@
 error: undefined variable 'y'
-       at «stdin»:1:4:
+       at /pwd/parse-fail-undef-var.nix:1:4:
             1| x: y
              |    ^
             2|

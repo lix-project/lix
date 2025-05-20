@@ -1,5 +1,5 @@
 error: undefined variable 'gcc'
-       at «stdin»:9:11:
+       at /pwd/parse-fail-regression-20060610.nix:9:11:
             8| ({
             9|   inherit gcc;
              |           ^
