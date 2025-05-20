@@ -22,4 +22,4 @@ body:
       fun:
         _type: ExprVar
         value: const
-  forceString: true
+  isInterpolation: true

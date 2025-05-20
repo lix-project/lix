@@ -8,10 +8,10 @@ body:
           value: x
         - _type: ExprVar
           value: y
-      forceString: false
+      isInterpolation: false
     - _type: ExprVar
       value: z
-  forceString: false
+  isInterpolation: false
 formals:
   x: null
   y: null

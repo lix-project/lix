@@ -95,7 +95,7 @@ body:
                     - _type: ExprLiteral
                       value: ''
                       valueType: String
-                  forceString: false
+                  isInterpolation: false
                 value:
                   _type: ExprVar
                   value: 'null'
@@ -171,7 +171,7 @@ body:
                     - _type: ExprLiteral
                       value: ''
                       valueType: String
-                  forceString: false
+                  isInterpolation: false
                 value:
                   _type: ExprVar
                   value: 'null'
@@ -401,7 +401,7 @@ body:
               fun:
                 _type: ExprVar
                 value: __div
-          forceString: false
+          isInterpolation: false
         - _type: ExprLiteral
           value: 1
           valueType: Int
@@ -428,7 +428,7 @@ body:
                   fun:
                     _type: ExprVar
                     value: __sub
-              forceString: false
+              isInterpolation: false
             - _type: ExprCall
               args:
                 - _type: ExprLiteral
@@ -448,7 +448,7 @@ body:
               fun:
                 _type: ExprVar
                 value: __sub
-          forceString: false
+          isInterpolation: false
         - _type: ExprCall
           args:
             - _type: ExprLiteral
@@ -459,7 +459,7 @@ body:
           fun:
             _type: ExprVar
             value: __sub
-      forceString: false
+      isInterpolation: false
     - _type: ExprIf
       cond:
         _type: ExprOpImpl
@@ -581,17 +581,17 @@ body:
             - _type: ExprLiteral
               value: 2
               valueType: Int
-          forceString: false
+          isInterpolation: false
         - _type: ExprLiteral
           value: 3
           valueType: Int
-      forceString: false
+      isInterpolation: false
     - _type: ExprConcatStrings
       es:
         - _type: ExprLiteral
           value: ''
           valueType: String
-      forceString: true
+      isInterpolation: true
     - _type: ExprConcatStrings
       es:
         - _type: ExprLiteral
@@ -605,6 +605,6 @@ body:
             - _type: ExprLiteral
               value: '2'
               valueType: String
-          forceString: false
-      forceString: true
+          isInterpolation: false
+      isInterpolation: true
     - _type: ExprPos

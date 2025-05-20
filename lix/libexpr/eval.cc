@@ -1965,7 +1965,7 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
     NixInt n{0};
     NixFloat nf = 0;
 
-    bool first = !forceString;
+    bool first = !isInterpolation;
     ValueType firstType = nString;
 
     const auto str = [&] {
