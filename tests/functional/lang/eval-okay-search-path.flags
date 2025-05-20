@@ -1,1 +1,1 @@
---extra-deprecated-features shadow-internal-symbols -I lang/dir1 -I lang/dir2 -I dir5=lang/dir3
+--extra-deprecated-features shadow-internal-symbols -I dir1 -I dir2 -I dir5=dir3

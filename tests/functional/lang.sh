@@ -4,13 +4,14 @@ source common.sh
 
 set -o pipefail
 
-source lang/framework.sh
+cd lang
+source framework.sh
 
 # specialize function a bit
 function diffAndAccept() {
     local -r testName="$1"
-    local -r got="lang/$testName.$2"
-    local -r expected="lang/$testName.$3"
+    local -r got="$testName.$2"
+    local -r expected="$testName.$3"
     diffAndAcceptInner "$testName" "$got" "$expected"
 }
 
@@ -38,15 +39,15 @@ set +x
 badDiff=0
 badExitCode=0
 
-for i in lang/parse-fail-*.nix; do
+for i in parse-fail-*.nix; do
     echo "parsing $i (should fail)";
     i=$(basename "$i" .nix)
 
     declare -a flags=()
-    if test -e "lang/$i.flags"; then
-        read -r -a flags < "lang/$i.flags"
+    if test -e "$i.flags"; then
+        read -r -a flags < "$i.flags"
     fi
-    if expectStderr 1 nix-instantiate --parse "${flags[@]}" - < "lang/$i.nix" > "lang/$i.err"
+    if expectStderr 1 nix-instantiate --parse "${flags[@]}" - < "$i.nix" > "$i.err"
     then
         diffAndAccept "$i" err err.exp
     else
@@ -55,21 +56,21 @@ for i in lang/parse-fail-*.nix; do
     fi
 done
 
-for i in lang/parse-okay-*.nix; do
+for i in parse-okay-*.nix; do
     echo "parsing $i (should succeed)";
     i=$(basename "$i" .nix)
 
     declare -a flags=()
-    if test -e "lang/$i.flags"; then
-        read -r -a flags < "lang/$i.flags"
+    if test -e "$i.flags"; then
+        read -r -a flags < "$i.flags"
     fi
     if
-        expect 0 nix-instantiate --parse "${flags[@]}" - < "lang/$i.nix" \
-            1> "lang/$i.out" \
-            2> "lang/$i.err"
+        expect 0 nix-instantiate --parse "${flags[@]}" - < "$i.nix" \
+            1> "$i.out" \
+            2> "$i.err"
     then
-        sed "s!$(pwd)!/pwd!g" "lang/$i.out" "lang/$i.err"
-        yq --in-place --yaml-output '.' "lang/$i.out"
+        sed "s!$(pwd)!/pwd!g" "$i.out" "$i.err"
+        yq --in-place --yaml-output '.' "$i.out"
         diffAndAccept "$i" out exp
         diffAndAccept "$i" err err.exp
     else
@@ -78,17 +79,17 @@ for i in lang/parse-okay-*.nix; do
     fi
 done
 
-for i in lang/eval-fail-*.nix; do
+for i in eval-fail-*.nix; do
     echo "evaluating $i (should fail)";
     i=$(basename "$i" .nix)
 
     declare -a flags=()
-    if test -e "lang/$i.flags"; then
-        read -r -a flags < "lang/$i.flags"
+    if test -e "$i.flags"; then
+        read -r -a flags < "$i.flags"
     fi
     if
-        expectStderr 1 nix-instantiate --eval --strict --show-trace "${flags[@]}" "lang/$i.nix" \
-            | sed "s!$(pwd)!/pwd!g" > "lang/$i.err"
+        expectStderr 1 nix-instantiate --eval --strict --show-trace "${flags[@]}" "$i.nix" \
+            | sed "s!$(pwd)!/pwd!g" > "$i.err"
     then
         diffAndAccept "$i" err err.exp
     else
@@ -97,34 +98,34 @@ for i in lang/eval-fail-*.nix; do
     fi
 done
 
-for i in lang/eval-okay-*.nix; do
+for i in eval-okay-*.nix; do
     echo "evaluating $i (should succeed)";
     i=$(basename "$i" .nix)
 
     declare -a flags=()
-    if test -e "lang/$i.flags"; then
-        read -r -a flags < "lang/$i.flags"
+    if test -e "$i.flags"; then
+        read -r -a flags < "$i.flags"
     fi
 
-    if test -e "lang/$i.exp.xml"; then
+    if test -e "$i.exp.xml"; then
         if expect 0 nix-instantiate --eval --xml --no-location --strict "${flags[@]}" \
-                "lang/$i.nix" > "lang/$i.out.xml"
+                "$i.nix" > "$i.out.xml"
         then
             diffAndAccept "$i" out.xml exp.xml
         else
             echo "FAIL: $i should evaluate"
             badExitCode=1
         fi
-    elif test ! -e "lang/$i.exp-disabled"; then
+    elif test ! -e "$i.exp-disabled"; then
         if
             expect 0 env \
-                NIX_PATH=lang/dir3:lang/dir4 \
+                NIX_PATH=dir3:dir4 \
                 HOME=/fake-home \
-                nix-instantiate "${flags[@]}" --eval --strict "lang/$i.nix" \
-                1> "lang/$i.out" \
-                2> "lang/$i.err"
+                nix-instantiate "${flags[@]}" --eval --strict "$i.nix" \
+                1> "$i.out" \
+                2> "$i.err"
         then
-            sed -i "s!$(pwd)!/pwd!g" "lang/$i.out" "lang/$i.err"
+            sed -i "s!$(pwd)!/pwd!g" "$i.out" "$i.err"
             diffAndAccept "$i" out exp
             diffAndAccept "$i" err err.exp
         else

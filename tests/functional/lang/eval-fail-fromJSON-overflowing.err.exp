@@ -1,6 +1,6 @@
 error:
        … while calling the 'fromJSON' builtin
-         at /pwd/lang/eval-fail-fromJSON-overflowing.nix:1:1:
+         at /pwd/eval-fail-fromJSON-overflowing.nix:1:1:
             1| builtins.fromJSON ''{"attr": 18446744073709551615}''
              | ^
             2|
