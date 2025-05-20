@@ -142,7 +142,6 @@ libutil_headers = files(
 experimental_feature_definitions = files(
   # keep-sorted start
   'experimental-features/auto-allocate-uids.md',
-  'experimental-features/ca-derivations.md',
   'experimental-features/cgroups.md',
   'experimental-features/daemon-trust-override.md',
   'experimental-features/fetch-closure.md',

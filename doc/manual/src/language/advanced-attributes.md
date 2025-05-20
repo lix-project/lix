@@ -209,15 +209,8 @@ Derivations can declare some infrequently used optional attributes.
 
   - [`__contentAddressed`]{#adv-attr-__contentAddressed}
     > **Warning**
-    > This attribute is part of an [experimental feature](@docroot@/contributing/experimental-features.md).
-    >
-    > To use this attribute, you must enable the
-    > [`ca-derivations`](@docroot@/contributing/experimental-features.md#xp-feature-ca-derivations) experimental feature.
-    > For example, in [nix.conf](../command-ref/conf-file.md) you could add:
-    >
-    > ```
-    > extra-experimental-features = ca-derivations
-    > ```
+    > This attribute is part of a removed [experimental feature](@docroot@/contributing/experimental-features.md).
+    > Setting this flag *will* cause eval errors.
 
     If this attribute is set to `true`, then the derivation
     outputs will be stored in a content-addressed location rather than the

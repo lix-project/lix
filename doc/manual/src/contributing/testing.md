@@ -449,9 +449,6 @@ I grepped `lix/` for `get[eE]nv\("` to find the mentions in Lix code.
 - `NIX_CLIENT_PACKAGE` - Runs the test suite against an alternate Nix client with the current daemon.
 
   **Expected value**: something like `/nix/store/...-nix-2.18.2`
-- `NIX_TESTS_CA_BY_DEFAULT` - Pass `__contentAddressed`, `outputHashMode` and `outputHashAlgo` to builds of some input-addressed derivations in the test suite.
-
-  **Expected value**: 1
 - `TEST_DATA` - Not an environment variable! This is used in repl characterization tests to refer to `tests/functional/repl_characterization/data`.
   More specifically, that path is replaced with the string `$TEST_DATA` in output for reproducibility.
 - `TEST_HOME` (output) - Set to the temporary directory that is set as `$HOME` inside the tests, underneath `$TEST_ROOT`.

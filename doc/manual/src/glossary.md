@@ -41,12 +41,6 @@
 
   [realise]: #gloss-realise
 
-- [content-addressed derivation]{#gloss-content-addressed-derivation}
-
-  A derivation which has the
-  [`__contentAddressed`](./language/advanced-attributes.md#adv-attr-__contentAddressed)
-  attribute set to `true`.
-
 - [fixed-output derivation]{#gloss-fixed-output-derivation}
 
   A derivation which includes the
@@ -114,14 +108,13 @@
 - [input-addressed store object]{#gloss-input-addressed-store-object}
 
   A store object produced by building a
-  non-[content-addressed](#gloss-content-addressed-derivation),
   non-[fixed-output](#gloss-fixed-output-derivation)
   derivation.
 
 - [output-addressed store object]{#gloss-output-addressed-store-object}
 
   A [store object] whose [store path] is determined by its contents.
-  This includes derivations, the outputs of [content-addressed derivations](#gloss-content-addressed-derivation), and the outputs of [fixed-output derivations](#gloss-fixed-output-derivation).
+  This includes derivations and the outputs of [fixed-output derivations](#gloss-fixed-output-derivation).
 
 - [substitute]{#gloss-substitute}
 

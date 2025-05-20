@@ -347,9 +347,6 @@ template<> ExperimentalFeatures BaseSetting<ExperimentalFeatures>::parse(const s
     ExperimentalFeatures res{};
     for (auto & s : tokenizeString<StringSet>(str)) {
         if (auto thisXpFeature = parseExperimentalFeature(s); thisXpFeature) {
-            if (*thisXpFeature == Xp::CaDerivations) {
-                throw Error("CA derivations are no longer supported");
-            }
             res = res | thisXpFeature.value();
         } else
             warn("unknown experimental feature '%s'", s);
