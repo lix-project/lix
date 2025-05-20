@@ -1,0 +1,10 @@
+error:
+       … while calling the 'substring' builtin
+         at /pwd/lang/eval-fail-over-coercive-builtins-with-xp-feature.nix:1:1:
+            1| builtins.substring 0 1 42 == "4"
+             | ^
+            2|
+
+       … while evaluating the third argument (the string) passed to builtins.substring
+
+       error: cannot coerce an integer to a string: 42

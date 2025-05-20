@@ -144,6 +144,7 @@ experimental_feature_definitions = files(
   'experimental-features/auto-allocate-uids.md',
   'experimental-features/ca-derivations.md',
   'experimental-features/cgroups.md',
+  'experimental-features/coerce-integers.md',
   'experimental-features/daemon-trust-override.md',
   'experimental-features/fetch-closure.md',
   'experimental-features/flakes.md',
