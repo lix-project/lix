@@ -117,7 +117,7 @@ for i in eval-okay-*.nix; do
             echo "FAIL: $i should evaluate"
             badExitCode=1
         fi
-    elif test ! -e "$i.exp-disabled"; then
+    else
         if
             expect 0 env \
                 NIX_PATH=dir3:dir4 \
