@@ -273,7 +273,7 @@ JSON ExprConcatStrings::toJSON(const SymbolTable & symbols) const
         parts.push_back(part->toJSON(symbols));
     return {
         {"_type", "ExprConcatStrings"},
-        {"forceString", forceString},
+        {"isInterpolation", isInterpolation},
         {"es", parts}
     };
 }

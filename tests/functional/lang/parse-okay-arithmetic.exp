@@ -32,7 +32,7 @@ args:
         fun:
           _type: ExprVar
           value: __div
-    forceString: false
+    isInterpolation: false
   - _type: ExprLiteral
     value: 1
     valueType: Int

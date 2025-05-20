@@ -298,7 +298,7 @@ static Flake getFlake(
                 NixStringContext emptyContext = {};
                 flake.config.settings.emplace(
                     state.ctx.symbols[setting.name],
-                    state.coerceToString(setting.pos, *setting.value, emptyContext, "", false, true, true) .toOwned());
+                    state.coerceToString(setting.pos, *setting.value, emptyContext, "", StringCoercionMode::Strict, true, true) .toOwned());
             }
             else if (setting.value->type() == nInt)
                 flake.config.settings.emplace(

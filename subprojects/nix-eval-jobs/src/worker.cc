@@ -94,7 +94,7 @@ readConstituents(const nix::Value *v, nix::box_ptr<nix::EvalState> &state,
         nix::NixStringContext context;
         state->coerceToString(a->pos, *a->value, context,
                               "while evaluating the `constituents` attribute",
-                              true, false);
+                              nix::StringCoercionMode::ToString, false);
         for (auto &c : context)
             std::visit(nix::overloaded{
                            [&](const nix::NixStringContextElem::Built &b) {

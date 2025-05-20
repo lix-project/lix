@@ -573,10 +573,10 @@ MakeBinOp(ExprOpConcatLists, "++")
 
 struct ExprConcatStrings : Expr
 {
-    bool forceString;
+    bool isInterpolation;
     std::vector<std::pair<PosIdx, std::unique_ptr<Expr>>> es;
-    ExprConcatStrings(const PosIdx & pos, bool forceString, std::vector<std::pair<PosIdx, std::unique_ptr<Expr>>> es)
-        : Expr(pos), forceString(forceString), es(std::move(es)) { };
+    ExprConcatStrings(const PosIdx & pos, bool isInterpolation, std::vector<std::pair<PosIdx, std::unique_ptr<Expr>>> es)
+        : Expr(pos), isInterpolation(isInterpolation), es(std::move(es)) { };
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }

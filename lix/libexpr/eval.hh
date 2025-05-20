@@ -767,19 +767,18 @@ public:
     bool isDerivation(Value & v);
 
     std::optional<std::string> tryAttrsToString(const PosIdx pos, Value & v,
-        NixStringContext & context, bool coerceMore = false, bool copyToStore = true);
+        NixStringContext & context, StringCoercionMode mode = StringCoercionMode::Strict, bool copyToStore = true);
 
     /**
      * String coercion.
      *
      * Converts strings, paths and derivations to a
-     * string.  If `coerceMore` is set, also converts nulls, integers,
-     * booleans and lists to a string.  If `copyToStore` is set,
+     * string. If `copyToStore` is set,
      * referenced paths are copied to the Nix store as a side effect.
      */
     BackedStringView coerceToString(const PosIdx pos, Value & v, NixStringContext & context,
         std::string_view errorCtx,
-        bool coerceMore = false, bool copyToStore = true,
+        StringCoercionMode mode = StringCoercionMode::Strict, bool copyToStore = true,
         bool canonicalizePath = true);
 
     /**

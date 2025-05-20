@@ -115,7 +115,7 @@ attrs:
               - _type: ExprLiteral
                 value: /lib/modules/dri
                 valueType: String
-            forceString: true
+            isInterpolation: true
         then:
           _type: ExprConcatStrings
           es:
@@ -128,7 +128,7 @@ attrs:
             - _type: ExprLiteral
               value: /X11R6/lib/modules/drivers/
               valueType: String
-          forceString: true
+          isInterpolation: true
       - _type: ExprLiteral
         value: " \n\nexec "
         valueType: String
@@ -140,7 +140,7 @@ attrs:
 
           '
         valueType: String
-    forceString: true
+    isInterpolation: true
   s14:
     _type: ExprLiteral
     value: "Escaping of ' followed by ': ''\nEscaping of $ followed by {: ${\nAnd\
@@ -170,7 +170,7 @@ attrs:
 
             '
           valueType: String
-      forceString: true
+      isInterpolation: true
   s16:
     _type: ExprLiteral
     value: 'cut -d $''\t'' -f 1
@@ -188,13 +188,13 @@ attrs:
           - _type: ExprLiteral
             value: $
             valueType: String
-        forceString: false
+        isInterpolation: false
       - _type: ExprLiteral
         value: '
 
           '
         valueType: String
-    forceString: false
+    isInterpolation: false
   s18:
     _type: ExprLiteral
     value: "    Lines without any indentation effectively disable the indentation\n\
@@ -255,7 +255,7 @@ attrs:
 
           '
         valueType: String
-    forceString: true
+    isInterpolation: true
   s5:
     _type: ExprConcatStrings
     es:
@@ -284,7 +284,7 @@ attrs:
 
           '
         valueType: String
-    forceString: true
+    isInterpolation: true
   s6:
     _type: ExprLiteral
     value: "   Tabs are not interpreted as whitespace (since we can't guess\n   what\
@@ -316,7 +316,7 @@ attrs:
 
           '
         valueType: String
-    forceString: true
+    isInterpolation: true
   s9:
     _type: ExprConcatStrings
     es:
@@ -327,7 +327,7 @@ attrs:
         value: "  Similarly you can force an indentation level,\n  in this case to\
           \ 2 spaces.  This works because the anti-quote\n  is significant (not whitespace).\n"
         valueType: String
-    forceString: true
+    isInterpolation: true
 body:
   _type: ExprConcatStrings
   es:
@@ -373,61 +373,61 @@ body:
                                                                                   value: s1
                                                                                 - _type: ExprVar
                                                                                   value: s2
-                                                                              forceString: false
+                                                                              isInterpolation: false
                                                                             - _type: ExprVar
                                                                               value: s3
-                                                                          forceString: false
+                                                                          isInterpolation: false
                                                                         - _type: ExprVar
                                                                           value: s4
-                                                                      forceString: false
+                                                                      isInterpolation: false
                                                                     - _type: ExprVar
                                                                       value: s5
-                                                                  forceString: false
+                                                                  isInterpolation: false
                                                                 - _type: ExprVar
                                                                   value: s6
-                                                              forceString: false
+                                                              isInterpolation: false
                                                             - _type: ExprVar
                                                               value: s7
-                                                          forceString: false
+                                                          isInterpolation: false
                                                         - _type: ExprVar
                                                           value: s8
-                                                      forceString: false
+                                                      isInterpolation: false
                                                     - _type: ExprVar
                                                       value: s9
-                                                  forceString: false
+                                                  isInterpolation: false
                                                 - _type: ExprVar
                                                   value: s10
-                                              forceString: false
+                                              isInterpolation: false
                                             - _type: ExprVar
                                               value: s11
-                                          forceString: false
+                                          isInterpolation: false
                                         - _type: ExprVar
                                           value: s12
-                                      forceString: false
+                                      isInterpolation: false
                                     - _type: ExprVar
                                       value: s13
-                                  forceString: false
+                                  isInterpolation: false
                                 - _type: ExprVar
                                   value: s14
-                              forceString: false
+                              isInterpolation: false
                             - _type: ExprVar
                               value: s15
-                          forceString: false
+                          isInterpolation: false
                         - _type: ExprVar
                           value: s16
-                      forceString: false
+                      isInterpolation: false
                     - _type: ExprVar
                       value: s17
-                  forceString: false
+                  isInterpolation: false
                 - _type: ExprVar
                   value: s18
-              forceString: false
+              isInterpolation: false
             - _type: ExprVar
               value: s19
-          forceString: false
+          isInterpolation: false
         - _type: ExprVar
           value: s20
-      forceString: false
+      isInterpolation: false
     - _type: ExprVar
       value: s21
-  forceString: false
+  isInterpolation: false

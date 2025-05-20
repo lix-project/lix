@@ -10,6 +10,7 @@
 #include "lix/libexpr/gc-alloc.hh"
 #include "lix/libexpr/symbol-table.hh"
 #include "lix/libexpr/value/context.hh"
+#include "lix/libutil/logging.hh"
 #include "lix/libutil/source-path.hh"
 #include "lix/libexpr/print-options.hh"
 #include "lix/libutil/checked-arithmetic.hh"
@@ -59,6 +60,23 @@ typedef enum {
     nExternal
 } ValueType;
 
+
+/**
+ * Modes of string coercion.
+ *
+ * Determines how permissive the coercion functions are when converting
+ * values to strings.
+ *
+ * - Strict: Only allow coercion of values that are already strings,
+ *   paths, or derivations.
+ * - ToString: Additionally allow coercion of integers, booleans, null,
+ *   and lists to strings.
+ */
+enum class StringCoercionMode {
+    Strict,
+    ToString,
+};
+
 class Bindings;
 struct Env;
 struct Expr;
@@ -106,7 +124,7 @@ class ExternalValueBase
      * Coerce the value to a string. Defaults to uncoercable, i.e. throws an
      * error.
      */
-    virtual std::string coerceToString(EvalState & state, const PosIdx & pos, NixStringContext & context, bool copyMore, bool copyToStore) const;
+    virtual std::string coerceToString(EvalState & state, const PosIdx & pos, NixStringContext & context, StringCoercionMode mode, bool copyToStore) const;
 
     /**
      * Compare to another value of the same type. Defaults to uncomparable,

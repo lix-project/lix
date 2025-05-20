@@ -33,7 +33,7 @@ elems:
             - _type: ExprLiteral
               value: ''
               valueType: String
-          forceString: false
+          isInterpolation: false
         value:
           _type: ExprSet
           recursive: false
