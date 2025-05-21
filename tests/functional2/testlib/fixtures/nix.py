@@ -31,6 +31,11 @@ class NixSettings:
     """
 
     def feature(self, *names: str) -> "NixSettings":
+        """
+        Adds the given features to the list of enabled `experimental_features`
+        :param names: feature names to enable
+        :return: self, command is chainable
+        """
         self.experimental_features = (self.experimental_features or set()) | set(names)
         return self
 
@@ -66,6 +71,10 @@ class NixSettings:
 
 @dataclasses.dataclass
 class NixCommand(Command):
+    """
+    Custom Command class which applies the given NixSettings before the command is run
+    """
+
     settings: NixSettings = dataclasses.field(default_factory=NixSettings)
 
     def apply_nix_config(self):
@@ -152,6 +161,11 @@ class Nix:
 
 @pytest.fixture
 def nix(tmp_path: Path) -> Generator[Nix, Any, None]:
+    """
+    Provides a rich way of calling `nix`.
+    For pre-applied commands use `nix.nix_instantiate`, `nix.nix_build` etc.
+    After configuring the command, use `.run()` to run it
+    """
     yield Nix(tmp_path)
     # when things are done using the nix store, the permissions for the store are read only
     # after the test was executed, we set the permissions to rwx (write being the important part)
