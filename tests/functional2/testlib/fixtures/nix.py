@@ -6,7 +6,7 @@ import subprocess
 from functools import partialmethod
 from pathlib import Path
 from typing import Any, AnyStr
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 
 import pytest
 
@@ -239,5 +239,9 @@ class Nix:
 
 
 @pytest.fixture
-def nix(tmp_path: Path) -> Nix:
-    return Nix(tmp_path)
+def nix(tmp_path: Path) -> Generator[Nix, Any, None]:
+    yield Nix(tmp_path)
+    # when things are done using the nix store, the permissions for the store are read only
+    # after the test was executed, we set the permissions to rwx (write being the important part)
+    # for pytest to be able to delete the files during cleanup
+    Command(argv=["chmod", "-R", "+w", str(tmp_path.absolute())], env=os.environ.copy()).run().ok()

@@ -5,6 +5,12 @@ requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
 addopts = "-p no:xonsh"
+
+# Keep the temporary files of the last 3 test runs (default value)
+tmp_path_retention_count = 3
+# Keep temporary files of all tests, regardless if they failed or not
+tmp_path_retention_policy = "all"
+
 log_cli = true
 log_cli_level = "INFO"
 # how the logs are being printed, default is `"%(filename)s %(lineno)d %(levelname)s %(message)s"`
