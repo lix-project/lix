@@ -1,6 +1,6 @@
 error:
        … while calling the 'toString' builtin
-         at /pwd/lang/eval-fail-toString.nix:1:1:
+         at /pwd/eval-fail-toString.nix:1:1:
             1| toString { __toString = 1; }
              | ^
             2|
@@ -8,7 +8,7 @@ error:
        … while converting a set to string
 
        error: attempt to call something which is not a function but an integer: 1
-       at /pwd/lang/eval-fail-toString.nix:1:12:
+       at /pwd/eval-fail-toString.nix:1:12:
             1| toString { __toString = 1; }
              |            ^
             2|

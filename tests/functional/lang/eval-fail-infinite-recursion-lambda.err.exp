@@ -1,30 +1,30 @@
 error:
        … from call site
-         at /pwd/lang/eval-fail-infinite-recursion-lambda.nix:1:1:
+         at /pwd/eval-fail-infinite-recursion-lambda.nix:1:1:
             1| (x: x x) (x: x x)
              | ^
             2|
 
        … while calling anonymous lambda
-         at /pwd/lang/eval-fail-infinite-recursion-lambda.nix:1:2:
+         at /pwd/eval-fail-infinite-recursion-lambda.nix:1:2:
             1| (x: x x) (x: x x)
              |  ^
             2|
 
        … from call site
-         at /pwd/lang/eval-fail-infinite-recursion-lambda.nix:1:5:
+         at /pwd/eval-fail-infinite-recursion-lambda.nix:1:5:
             1| (x: x x) (x: x x)
              |     ^
             2|
 
        … while calling anonymous lambda
-         at /pwd/lang/eval-fail-infinite-recursion-lambda.nix:1:11:
+         at /pwd/eval-fail-infinite-recursion-lambda.nix:1:11:
             1| (x: x x) (x: x x)
              |           ^
             2|
 
        … from call site
-         at /pwd/lang/eval-fail-infinite-recursion-lambda.nix:1:14:
+         at /pwd/eval-fail-infinite-recursion-lambda.nix:1:14:
             1| (x: x x) (x: x x)
              |              ^
             2|
@@ -32,7 +32,7 @@ error:
        (19997 duplicate frames omitted)
 
        error: stack overflow; max-call-depth exceeded
-       at /pwd/lang/eval-fail-infinite-recursion-lambda.nix:1:14:
+       at /pwd/eval-fail-infinite-recursion-lambda.nix:1:14:
             1| (x: x x) (x: x x)
              |              ^
             2|

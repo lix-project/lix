@@ -1,5 +1,5 @@
 error: expected a list but found an integer: 8
-       at /pwd/lang/eval-fail-list.nix:1:1:
+       at /pwd/eval-fail-list.nix:1:1:
             1| 8++1
              | ^
             2|

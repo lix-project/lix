@@ -1,7 +1,8 @@
 # Test the function for lang.sh
 source common.sh
 
-source lang/framework.sh
+cd lang
+source framework.sh
 
 # We are testing this, so don't want outside world to affect us.
 unset _NIX_TEST_ACCEPT

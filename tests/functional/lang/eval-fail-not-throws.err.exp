@@ -1,6 +1,6 @@
 error:
        … caused by explicit throw
-         at /pwd/lang/eval-fail-not-throws.nix:1:4:
+         at /pwd/eval-fail-not-throws.nix:1:4:
             1| ! (throw "uh oh!")
              |    ^
             2|

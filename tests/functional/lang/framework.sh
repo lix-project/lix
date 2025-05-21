@@ -12,7 +12,7 @@ function diffAndAcceptInner() {
     if test -e "$expected"; then
         local -r expectedOrEmpty="$expected"
     else
-        local -r expectedOrEmpty=lang/empty.exp
+        local -r expectedOrEmpty=empty.exp
     fi
 
     # Diff so we get a nice message

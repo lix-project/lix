@@ -1,1 +1,1 @@
---arg lib import(lang/lib.nix) --argstr xyzzy xyzzy! -A result
+--arg lib import(./lib.nix) --argstr xyzzy xyzzy! -A result
