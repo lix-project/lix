@@ -264,6 +264,8 @@ stdenv.mkDerivation (finalAttrs: {
       (lib.mesonBool "werror" werror)
     ]
     ++ lib.optional (hostPlatform != buildPlatform) "--cross-file=${mesonCrossFile}"
+    # Temporary workaround for https://git.lix.systems/lix-project/lix/issues/832
+    ++ lib.optional (hostPlatform.isDarwin) "-Db_lto=false"
     ++ sanitizeOpts;
 
   # We only include CMake so that Meson can locate toml11, which only ships CMake dependency metadata.
