@@ -1,3 +1,1 @@
-with import ./lib.nix;
-
-concat ["foo" "bar" "bla" "test"]
+builtins.concatStringsSep "" ["foo" "bar" "bla" "test"]
