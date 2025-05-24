@@ -26,13 +26,7 @@ class CommandResult:
         assumes a return code of 0
         :raises CalledProcessError: if the return code wasn't 0 and logs the processes stdout and stderr
         """
-        if self.rc != 0:
-            logger.error("stdout: %s", self.stdout_s)
-            logger.error("stderr: %s", self.stderr_s)
-            raise subprocess.CalledProcessError(
-                returncode=self.rc, cmd=self.cmd, stderr=self.stderr, output=self.stdout
-            )
-        return self
+        return self.expect(0)
 
     def expect(self, rc: int) -> "CommandResult":
         """
@@ -104,8 +98,17 @@ class Command:
 
     def with_env(self, **kwargs) -> "Command":
         """
-        adds or updates environment and path variables
-        :param kwargs: new or updated variables
+        sets the env to the given environment variables
+        :param kwargs: keyword arguments containing the environment
+        :return: self, command is chainable
+        """
+        self.env = kwargs
+        return self
+
+    def update_env(self, **kwargs) -> "Command":
+        """
+        updates the current environment with the given dict of variables
+        :param kwargs: new or updated environment variables
         :return: self, command is chainable
         """
         self.env.update(kwargs)
