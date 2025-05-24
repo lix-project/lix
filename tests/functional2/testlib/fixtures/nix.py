@@ -1,8 +1,5 @@
 import dataclasses
-import json
-import logging
 import os
-import subprocess
 from functools import partialmethod
 from pathlib import Path
 from typing import Any, AnyStr
@@ -10,63 +7,7 @@ from collections.abc import Callable, Generator
 
 import pytest
 
-from functional2.testlib.terminal_code_eater import eat_terminal_codes
-
-
-logger = logging.getLogger(__name__)
-
-
-@dataclasses.dataclass
-class CommandResult:
-    cmd: list[str]
-    rc: int
-    """Return code"""
-    stderr: bytes
-    """Outputted stderr"""
-    stdout: bytes
-    """Outputted stdout"""
-
-    def ok(self) -> "CommandResult":
-        if self.rc != 0:
-            logger.debug("stdout: %s", self.stderr_s)
-            logger.debug("stderr: %s", self.stderr_s)
-            raise subprocess.CalledProcessError(
-                returncode=self.rc, cmd=self.cmd, stderr=self.stderr, output=self.stdout
-            )
-        return self
-
-    def expect(self, rc: int) -> "CommandResult":
-        if self.rc != rc:
-            logger.debug("stdout: %s", self.stderr_s)
-            logger.debug("stderr: %s", self.stderr_s)
-            raise subprocess.CalledProcessError(
-                returncode=self.rc, cmd=self.cmd, stderr=self.stderr, output=self.stdout
-            )
-        return self
-
-    @property
-    def stdout_s(self) -> str:
-        """Command stdout as str"""
-        return self.stdout.decode("utf-8", errors="replace")
-
-    @property
-    def stderr_s(self) -> str:
-        """Command stderr as str"""
-        return self.stderr.decode("utf-8", errors="replace")
-
-    @property
-    def stdout_plain(self) -> str:
-        """Command stderr as str with terminal escape sequences eaten and whitespace stripped"""
-        return eat_terminal_codes(self.stdout).decode("utf-8", errors="replace").strip()
-
-    @property
-    def stderr_plain(self) -> str:
-        """Command stderr as str with terminal escape sequences eaten and whitespace stripped"""
-        return eat_terminal_codes(self.stderr).decode("utf-8", errors="replace").strip()
-
-    def json(self) -> Any:
-        self.ok()
-        return json.loads(self.stdout)
+from functional2.testlib.commands import CommandResult, Command
 
 
 @dataclasses.dataclass
@@ -121,35 +62,6 @@ class NixSettings:
         if self.nix_store_dir:
             ret["NIX_STORE_DIR"] = str(self.nix_store_dir)
         return ret
-
-
-@dataclasses.dataclass
-class Command:
-    argv: list[str]
-    env: dict[str, str] = dataclasses.field(default_factory=dict)
-    stdin: bytes | None = None
-    cwd: Path | None = None
-
-    def with_env(self, **kwargs) -> "Command":
-        self.env.update(kwargs)
-        return self
-
-    def with_stdin(self, stdin: bytes) -> "Command":
-        self.stdin = stdin
-        return self
-
-    def run(self) -> CommandResult:
-        proc = subprocess.Popen(
-            self.argv,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stdin=subprocess.PIPE if self.stdin else subprocess.DEVNULL,
-            cwd=self.cwd,
-            env=self.env,
-        )
-        (stdout, stderr) = proc.communicate(input=self.stdin)
-        rc = proc.returncode
-        return CommandResult(cmd=self.argv, rc=rc, stdout=stdout, stderr=stderr)
 
 
 @dataclasses.dataclass
