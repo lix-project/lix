@@ -11,5 +11,5 @@ in
 }:
 
 {
-  result = lib.concat [xyzzy xyzzy2 fb];
+  result = lib.id (builtins.concatStringsSep "" [xyzzy xyzzy2 fb]);
 }
