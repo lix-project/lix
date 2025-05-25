@@ -39,7 +39,7 @@ $ nix-shell -A native-clangStdenvPackages
 
 ### Building from the development shell
 
-Run a clean build and test with `just clean build install test`.
+Run a clean build and test with `just clean setup build install test`.
 
 You can also run the unit tests and integration tests separately:
 
