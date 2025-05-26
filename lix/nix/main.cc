@@ -562,29 +562,25 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
         return;
     }
 
-    Finally printCompletions([&]()
-    {
-        if (args.completions) {
-            switch (args.completions->type) {
-            case Completions::Type::Normal:
-                logger->cout("normal"); break;
-            case Completions::Type::Filenames:
-                logger->cout("filenames"); break;
-            case Completions::Type::Attrs:
-                logger->cout("attrs"); break;
-            }
-            for (auto & s : args.completions->completions)
-                logger->cout(s.completion + "\t" + trim(s.description));
-        }
-    });
-
     try {
         args.parseCmdline({argv + 1, argv + argc});
     } catch (UsageError &) {
         if (!args.helpRequested && !args.completions) throw;
     }
 
-    if (args.completions) return;
+    if (args.completions) {
+        switch (args.completions->type) {
+        case Completions::Type::Normal:
+            logger->cout("normal"); break;
+        case Completions::Type::Filenames:
+            logger->cout("filenames"); break;
+        case Completions::Type::Attrs:
+            logger->cout("attrs"); break;
+        }
+        for (auto & s : args.completions->completions)
+            logger->cout(s.completion + "\t" + trim(s.description));
+        return;
+    }
 
     if (args.helpRequested) {
         std::vector<std::string> subcommand;
