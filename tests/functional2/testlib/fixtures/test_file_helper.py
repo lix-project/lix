@@ -8,7 +8,7 @@ from functional2.testlib.fixtures.file_helper import (
     CopyTree,
     File,
     Symlink,
-    RelativeTo,
+    AssetSymlink,
 )
 
 
@@ -190,11 +190,9 @@ def test_mode_setting(files: Path):
 
 
 @pytest.mark.parametrize(
-    "files",
-    [{"a": Symlink("assets/test_file_helper/copy_file_test.txt", RelativeTo.TEST)}],
-    indirect=True,
+    "files", [{"a": AssetSymlink("assets/test_file_helper/copy_file_test.txt")}], indirect=True
 )
-def test_file_symlink(files: Path):
+def test_asset_symlink(files: Path):
     file = files / "a"
     assert file.exists(follow_symlinks=False)
 
@@ -206,23 +204,7 @@ def test_file_symlink(files: Path):
 
 
 @pytest.mark.parametrize(
-    "files",
-    [{"a": Symlink("test_folder/b.txt", RelativeTo.TARGET), "test_folder": {"b.txt": File("zzz")}}],
-    indirect=True,
-)
-def test_file_symlink_target(files: Path):
-    file = files / "a"
-    assert file.exists(follow_symlinks=False)
-
-    assert file.is_symlink()
-
-    assert file.readlink().exists()
-
-    assert file.read_text() == "zzz"
-
-
-@pytest.mark.parametrize(
-    "files", [{"a": Symlink("assets/test_file_helper/test_folder", RelativeTo.TEST)}], indirect=True
+    "files", [{"a": AssetSymlink("assets/test_file_helper/test_folder")}], indirect=True
 )
 def test_dir_symlink(files: Path):
     folder = files / "a"
@@ -238,23 +220,29 @@ def test_dir_symlink(files: Path):
 
 
 @pytest.mark.parametrize(
-    "files",
-    [{"a": Symlink("assets/test_file_helper/this_does_not_exist", RelativeTo.TEST)}],
-    indirect=True,
+    "files", [{"a": AssetSymlink("assets/test_file_helper/this_does_not_exist")}], indirect=True
 )
-def test_invalid_symlink(files: Path):
+def test_invalid_asset_symlink(files: Path):
     link = files / "a"
     assert link.exists(follow_symlinks=False)
     assert link.is_symlink()
     assert not link.readlink().exists()
 
 
+@pytest.mark.xfail(raises=ValueError)
 @pytest.mark.parametrize(
     "files",
-    [{"tg": File("Hello World"), "folder": {"link": Symlink("../tg", RelativeTo.SELF)}}],
+    [{"a": AssetSymlink("/absolute/assets/test_file_helper/this_does_not_exist")}],
     indirect=True,
 )
-def test_direct_relativity_symlink(files: Path):
+def test_absolute_asset_symlink(files: Path):
+    pass
+
+
+@pytest.mark.parametrize(
+    "files", [{"tg": File("Hello World"), "folder": {"link": Symlink("../tg")}}], indirect=True
+)
+def test_file_symlink(files: Path):
     assert (files / "tg").exists()
     link = files / "folder" / "link"
     assert link.exists(follow_symlinks=False)

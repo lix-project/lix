@@ -167,7 +167,8 @@ The input type is [FileDeclaration](./testlib/fixtures/file_helper.py), a dict f
 - `CopyFile("input/path")`: Copy the specified local file
 - `CopyTree("input/path")`: Like `CopyFile`, but recursively
 - `CopyTemplate("input/path", { "replace": "with"})`: Like `CopyFile`, but with an additional set of substitutions where each instance of "@key@" in the input file will be replaced by its associated value.
-- `Symlink("target/path")`
+- `Symlink("target/path")`: Create a symlink with the specified target. Therefore, relative paths are relative to the symlink's location.
+- `AssetSymlink("source/path)`: Create a symlink pointing to a local asset file within the test suite. Paths must be relative and will be resolved relative to the current Python file. The created symlink will be absolute.
 
 ```python
 import pytest
@@ -199,12 +200,12 @@ In order for the golden values to actually update within the code base (compared
 
 ```python
 import pytest
-from functional2.testlib.fixtures.file_helper import Symlink, RelativeTo
+from functional2.testlib.fixtures.file_helper import AssetSymlink
 
 @pytest.mark.parametrize(
     "files",
     # Setup the symlink so that the golden value will update
-    [ { "out": Symlink("assets/test_example/out.exp", RelativeTo.TEST), } ],
+    [ { "out": AssetSymlink("assets/test_example/out.exp"), } ],
     indirect=True,
 )
 def test_example(files, snapshot):

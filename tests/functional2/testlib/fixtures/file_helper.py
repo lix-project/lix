@@ -1,6 +1,5 @@
 import shutil
 from abc import ABC, abstractmethod
-from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -103,54 +102,37 @@ class CopyTemplate(_ByContentFileish):
         return self.content
 
 
-class RelativeTo(StrEnum):
-    TEST = "test"
-    """
-    Base for the given path is the directory of the test
-    """
-    TARGET = "target"
-    """
-    Base for the given path is the directory of the target / where all files are created
-    """
-    ROOT = "root"
-    """
-    Base for the given path is the root folder (/)
-    """
-    SELF = "self"
-    """
-    No base path is given, used to create relative symlinks (e.g. `"../test"`)
-    """
-
-
 class Symlink(Fileish):
-    def __init__(self, source: str, relative_to: RelativeTo = RelativeTo.TARGET):
+    def __init__(self, target: str):
         """
-        Declares a file as a symlink to a different location
+        Declares a file as a symlink to a different location.
+
+        NOTE: due to limitations of symlinks on Windows, tests using this might be flaky and fail!!
+        :param target: Path to the target where the symlink should be pointing
+        """
+        self.target = target
+
+    def copy_to(self, path: Path, _origin: Path):
+        path.symlink_to(self.target)
+
+
+class AssetSymlink(Fileish):
+    def __init__(self, source: str):
+        """
+        Declares a file as a symlink to a local asset file.
 
         NOTE: due to limitations of symlinks on Windows, tests using this might be flakey and fail!!
-        :param source: Path to the source where the symlink should be pointing
-        :raise ValueError: When the given source is an absolute Path, but relative to wasn't set to ROOT
+        :param source: Path to the source where the symlink should be pointing.
+            Paths are relative to the current test's module.
+        :raise ValueError: When the given source path is absolute
         """
         self.source = source
-        self.relative_to = relative_to
 
     def copy_to(self, path: Path, origin: Path):
-        if self.relative_to is not RelativeTo.ROOT and Path(self.source).is_absolute():
-            msg = "absolute paths are only supported when using RelativeTo.ROOT"
+        if Path(self.source).is_absolute():
+            msg = "absolute paths are not allowed"
             raise ValueError(msg)
-        match self.relative_to:
-            case RelativeTo.TEST:
-                base = origin
-            case RelativeTo.TARGET:
-                base = path.parent
-            case RelativeTo.ROOT:
-                base = Path("/")
-            case RelativeTo.SELF:
-                base = None
-            case _:
-                msg = f"unknown relativity {self.relative_to}"
-                raise ValueError(msg)
-        target_path = base / self.source if base is not None else Path(self.source)
+        target_path = origin / self.source
         path.symlink_to(target_path)
 
 

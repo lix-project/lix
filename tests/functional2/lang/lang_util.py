@@ -8,7 +8,7 @@ from typing import Any
 import toml
 from toml import TomlDecodeError
 
-from functional2.testlib.fixtures.file_helper import FileDeclaration, CopyFile, Symlink, RelativeTo
+from functional2.testlib.fixtures.file_helper import FileDeclaration, CopyFile, AssetSymlink
 from functional2.testlib.utils import test_base_folder
 
 
@@ -87,12 +87,8 @@ class LangTest:
         files = {
             "in.nix": CopyFile(f"{self.folder}/in{self.suffix}.nix"),
             "lib.nix": CopyFile("lib.nix"),
-            "out.exp": Symlink(
-                f"{self.folder}/{self.test_name}{self.suffix}.out.exp", relative_to=RelativeTo.TEST
-            ),
-            "err.exp": Symlink(
-                f"{self.folder}/{self.test_name}{self.suffix}.err.exp", relative_to=RelativeTo.TEST
-            ),
+            "out.exp": AssetSymlink(f"{self.folder}/{self.test_name}{self.suffix}.out.exp"),
+            "err.exp": AssetSymlink(f"{self.folder}/{self.test_name}{self.suffix}.err.exp"),
         }
         for file in self.extra_files:
             # Make sure to add the extra-files requested by the test.toml

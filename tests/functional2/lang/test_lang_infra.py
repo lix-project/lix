@@ -4,7 +4,7 @@ from textwrap import dedent
 
 import pytest
 from functional2.testlib.commands import Command
-from functional2.testlib.fixtures.file_helper import File, RelativeTo, Symlink
+from functional2.testlib.fixtures.file_helper import File, AssetSymlink
 from functional2.testlib.fixtures.snapshot import Snapshot
 from functional2.testlib.utils import get_functional2_lang_files
 
@@ -111,13 +111,11 @@ def test_skips_py_files(files: Path, pytest_command: Command):
                             "n_suffix": {
                                 "in-1.nix": File("{}"),
                                 "in-2.nix": File("{}"),
-                                "eval-okay-1.out.exp": Symlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp",
-                                    relative_to=RelativeTo.TEST,
+                                "eval-okay-1.out.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_eo.out.exp"
                                 ),
-                                "eval-okay-2.out.exp": Symlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp",
-                                    relative_to=RelativeTo.TEST,
+                                "eval-okay-2.out.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_eo.out.exp"
                                 ),
                             }
                         }
@@ -148,13 +146,11 @@ def test_collects_with_n_suffix(pytest_command: Command):
                             "short_string_suffix": {
                                 "in-speaker.nix": File("{}"),
                                 "in-microphone.nix": File("{}"),
-                                "eval-okay-speaker.out.exp": Symlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp",
-                                    relative_to=RelativeTo.TEST,
+                                "eval-okay-speaker.out.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_eo.out.exp"
                                 ),
-                                "eval-okay-microphone.out.exp": Symlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp",
-                                    relative_to=RelativeTo.TEST,
+                                "eval-okay-microphone.out.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_eo.out.exp"
                                 ),
                             }
                         }
@@ -185,13 +181,11 @@ def test_collects_short_string_suffix(pytest_command: Command):
                             "dash_suffix": {
                                 "in-string-with-dash.nix": File("{}"),
                                 "in-some-more--dashes.nix": File("{}"),
-                                "eval-okay-string-with-dash.out.exp": Symlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp",
-                                    relative_to=RelativeTo.TEST,
+                                "eval-okay-string-with-dash.out.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_eo.out.exp"
                                 ),
-                                "eval-okay-some-more--dashes.out.exp": Symlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp",
-                                    relative_to=RelativeTo.TEST,
+                                "eval-okay-some-more--dashes.out.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_eo.out.exp"
                                 ),
                             }
                         }
@@ -223,13 +217,11 @@ def test_collects_string_suffix_with_dash(pytest_command: Command):
                             "bad_naming": {
                                 "in-&x.nix": File("{}"),
                                 "in-.nix": File("{}"),
-                                "eval-okay-&x.out.exp": Symlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp",
-                                    relative_to=RelativeTo.TEST,
+                                "eval-okay-&x.out.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_eo.out.exp"
                                 ),
-                                "eval-okay-.out.exp": Symlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp",
-                                    relative_to=RelativeTo.TEST,
+                                "eval-okay-.out.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_eo.out.exp"
                                 ),
                             }
                         }
@@ -260,24 +252,20 @@ def test_collection_fails_with_bad_naming(pytest_command: Command):
                         "lang": {
                             "infra_okay_runners": {
                                 "in.nix": File("{}"),
-                                "eval-okay.out.exp": Symlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp",
-                                    relative_to=RelativeTo.TEST,
+                                "eval-okay.out.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_eo.out.exp"
                                 ),
-                                "parse-okay.out.exp": Symlink(
-                                    "assets/test_lang_infra/runner_po.out.exp",
-                                    relative_to=RelativeTo.TEST,
+                                "parse-okay.out.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_po.out.exp"
                                 ),
                             },
                             "infra_fail_runners": {
                                 "in.nix": File("{"),
-                                "eval-fail.err.exp": Symlink(
-                                    "assets/test_lang_infra/runner_ef.err.exp",
-                                    relative_to=RelativeTo.TEST,
+                                "eval-fail.err.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_ef.err.exp"
                                 ),
-                                "parse-fail.err.exp": Symlink(
-                                    "assets/test_lang_infra/runner_pf.err.exp",
-                                    relative_to=RelativeTo.TEST,
+                                "parse-fail.err.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_pf.err.exp"
                                 ),
                             },
                         }
@@ -495,9 +483,7 @@ def test_invalid_toml(pytest_command: Command):
                             "update_test": {"in.nix": File("{}"), "eval-okay.out.exp": File("old")}
                         }
                     },
-                    "out.exp": Symlink(
-                        "assets/test_lang_infra/runner_eo.out.exp", relative_to=RelativeTo.TEST
-                    ),
+                    "out.exp": AssetSymlink("assets/test_lang_infra/runner_eo.out.exp"),
                 }
             ),
             (["-k", "update_test", "--accept-tests"], False),
