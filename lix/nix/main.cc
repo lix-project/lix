@@ -584,6 +584,8 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
         if (!args.helpRequested && !args.completions) throw;
     }
 
+    if (args.completions) return;
+
     if (args.helpRequested) {
         std::vector<std::string> subcommand;
         MultiCommand * command = &args;
@@ -597,8 +599,6 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
         showHelp(aio, subcommand, args);
         return;
     }
-
-    if (args.completions) return;
 
     if (args.showVersion) {
         printVersion(programName);
