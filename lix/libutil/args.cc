@@ -87,7 +87,8 @@ void RootArgs::parseCmdline(const Strings & _cmdline)
 
     if (auto s = getEnv("NIX_GET_COMPLETIONS")) {
         size_t n = std::stoi(*s);
-        assert(n > 0 && n <= cmdline.size());
+        if (!(n > 0 && n <= cmdline.size()))
+            throw UsageError("Invalid word number to get completion for: %zu\n. Your autocompletions might be misconfigured", n);
         *std::next(cmdline.begin(), n - 1) += completionMarker;
         completions = std::make_shared<Completions>();
         verbosity = lvlError;

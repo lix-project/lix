@@ -37,6 +37,12 @@ EOF
 [[ "$(NIX_GET_COMPLETIONS=1 nix buil)" == $'normal\nbuild\t' ]]
 [[ "$(NIX_GET_COMPLETIONS=2 nix flake metad)" == $'normal\nmetadata\t' ]]
 
+# Test how completion  fails if the number is not a valid index for the number of arguments
+NIX_GET_COMPLETIONS=0 expectStderr 1 nix \
+    | grepQuiet "error: Invalid word number to get completion for:"
+NIX_GET_COMPLETIONS=4 expectStderr 1  nix build a \
+    | grepQuiet "error: Invalid word number to get completion for:"
+
 # Filename completion
 [[ "$(NIX_GET_COMPLETIONS=2 nix build ./f)" == $'filenames\n./foo\t' ]]
 [[ "$(NIX_GET_COMPLETIONS=2 nix build ./nonexistent)" == $'filenames' ]]
