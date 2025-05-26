@@ -1,0 +1,14 @@
+error:
+       … while evaluating an attribute name
+         at /pwd/in.nix:5:10:
+            4| in
+            5|   attr.${key}
+             |          ^
+            6|
+
+       error: expected a string but found a set: { }
+       at /pwd/in.nix:5:10:
+            4| in
+            5|   attr.${key}
+             |          ^
+            6|

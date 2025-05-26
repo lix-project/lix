@@ -1,0 +1,21 @@
+error:
+       … from call site
+         at /pwd/in.nix:4:1:
+            3| in
+            4| x "x"
+             | ^
+            5|
+
+       … while calling 'x'
+         at /pwd/in.nix:2:7:
+            1| let
+            2|   x = arg: assert arg == "y"; 123;
+             |       ^
+            3| in
+
+       error: assertion failed
+       at /pwd/in.nix:2:12:
+            1| let
+            2|   x = arg: assert arg == "y"; 123;
+             |            ^
+            3| in

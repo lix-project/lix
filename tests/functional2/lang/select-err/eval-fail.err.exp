@@ -1,0 +1,23 @@
+error:
+       … while evaluating the attribute 'src.meta'
+         at /pwd/in.nix:2:3:
+            1| let
+            2|   somepkg.src = throw "invalid foo bar";
+             |   ^
+            3| in somepkg.src.meta
+
+       … while evaluating an expression to select 'meta' on it
+         at /pwd/in.nix:3:16:
+            2|   somepkg.src = throw "invalid foo bar";
+            3| in somepkg.src.meta
+             |                ^
+            4|
+
+       … caused by explicit throw
+         at /pwd/in.nix:2:17:
+            1| let
+            2|   somepkg.src = throw "invalid foo bar";
+             |                 ^
+            3| in somepkg.src.meta
+
+       error: invalid foo bar

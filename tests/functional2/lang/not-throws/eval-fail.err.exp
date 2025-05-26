@@ -1,0 +1,8 @@
+error:
+       … caused by explicit throw
+         at /pwd/in.nix:1:4:
+            1| ! (throw "uh oh!")
+             |    ^
+            2|
+
+       error: uh oh!

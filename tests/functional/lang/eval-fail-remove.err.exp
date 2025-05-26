@@ -1,7 +1,0 @@
-error: attribute 'x' missing
-       at /pwd/eval-fail-remove.nix:4:29:
-            3| in
-            4|   (removeAttrs attrs ["x"]).x
-             |                             ^
-            5|
-       Did you mean y?

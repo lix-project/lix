@@ -1,0 +1,21 @@
+error:
+       … while evaluating x
+         at /pwd/in.nix:5:1:
+            4| in
+            5| x
+             | ^
+            6|
+
+       … while evaluating y
+         at /pwd/in.nix:2:7:
+            1| let
+            2|   x = y;
+             |       ^
+            3|   y = x;
+
+       error: infinite recursion encountered
+       at /pwd/in.nix:2:7:
+            1| let
+            2|   x = y;
+             |       ^
+            3|   y = x;
