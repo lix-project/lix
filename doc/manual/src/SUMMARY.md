@@ -20,7 +20,6 @@
   - [Basic Package Management](package-management/basic-package-mgmt.md)
   - [Profiles](package-management/profiles.md)
   - [Garbage Collection](package-management/garbage-collection.md)
-    - [Garbage Collector Roots](package-management/garbage-collector-roots.md)
   - [Sharing Packages Between Machines](package-management/sharing-packages.md)
     - [Serving a Nix store via HTTP](package-management/binary-cache-substituter.md)
     - [Copying Closures via SSH](package-management/copy-closure.md)
