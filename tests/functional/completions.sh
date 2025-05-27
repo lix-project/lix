@@ -37,6 +37,11 @@ EOF
 [[ "$(NIX_GET_COMPLETIONS=1 nix buil)" == $'normal\nbuild\t' ]]
 [[ "$(NIX_GET_COMPLETIONS=2 nix flake metad)" == $'normal\nmetadata\t' ]]
 
+
+# Test how completion fails if the value cant be parsed as a number
+NIX_GET_COMPLETIONS="-" expectStderr 1 nix \
+    | grepQuiet "error: Invalid value for environment variable NIX_GET_COMPLETIONS:"
+
 # Test how completion  fails if the number is not a valid index for the number of arguments
 NIX_GET_COMPLETIONS=0 expectStderr 1 nix \
     | grepQuiet "error: Invalid word number to get completion for:"
