@@ -1,6 +1,6 @@
 error:
        … while calling the 'substring' builtin
-         at /pwd/lang/eval-fail-over-coercive-builtins-with-xp-feature.nix:1:1:
+         at /pwd/eval-fail-over-coercive-builtins-with-xp-feature.nix:1:1:
             1| builtins.substring 0 1 42 == "4"
              | ^
             2|

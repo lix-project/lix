@@ -1,6 +1,6 @@
 error:
        … while evaluating a path segment
-         at /pwd/lang/eval-fail-coerce-integers-without-xp.nix:1:2:
+         at /pwd/eval-fail-coerce-integers-without-xp.nix:1:2:
             1| "${42}" == 42
              |  ^
             2|
