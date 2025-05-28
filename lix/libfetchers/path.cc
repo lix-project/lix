@@ -6,8 +6,25 @@
 
 namespace nix::fetchers {
 
+/* Allow the user to pass in "fake" tree info
+   attributes. This is useful for making a pinned tree
+   work the same as the repository from which is exported
+   (e.g. path:/nix/store/...-source?lastModified=1585388205&rev=b0c285...). */
+static const std::set<std::string> allowedPathAttrs = {
+    "lastModified",
+    "path",
+    "rev",
+    "revCount",
+};
+
 struct PathInputScheme : InputScheme
 {
+    std::string schemeType() const override { return "path"; }
+
+    const std::set<std::string> & allowedAttrs() const override {
+        return allowedPathAttrs;
+    }
+
     std::optional<Input> inputFromURL(const ParsedURL & url, bool requireTree) const override
     {
         if (url.scheme != "path") return {};
@@ -34,26 +51,11 @@ struct PathInputScheme : InputScheme
         return input;
     }
 
-    std::optional<Input> inputFromAttrs(const Attrs & attrs) const override
+    Attrs preprocessAttrs(const Attrs & attrs) const override
     {
-        if (maybeGetStrAttr(attrs, "type") != "path") return {};
-
         getStrAttr(attrs, "path");
 
-        for (auto & [name, value] : attrs)
-            /* Allow the user to pass in "fake" tree info
-               attributes. This is useful for making a pinned tree
-               work the same as the repository from which is exported
-               (e.g. path:/nix/store/...-source?lastModified=1585388205&rev=b0c285...). */
-            if (name == "type" || name == "rev" || name == "revCount" || name == "lastModified" || name == "narHash" || name == "path")
-                // checked in Input::fromAttrs
-                ;
-            else
-                throw Error("unsupported path input attribute '%s'", name);
-
-        Input input;
-        input.attrs = attrs;
-        return input;
+        return attrs;
     }
 
     bool isLockedByRev() const override { return false; }

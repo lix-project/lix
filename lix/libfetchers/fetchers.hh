@@ -2,6 +2,7 @@
 ///@file
 
 #include "lix/libstore/content-address.hh"
+#include "lix/libutil/error.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/hash.hh"
@@ -18,6 +19,8 @@
 namespace nix { class Store; }
 
 namespace nix::fetchers {
+
+MakeError(UnsupportedAttributeError, Error);
 
 struct Tree
 {
@@ -125,7 +128,6 @@ public:
     std::optional<time_t> getLastModified() const;
 };
 
-
 /**
  * The InputScheme represents a type of fetcher.  Each fetcher
  * registers with nix at startup time.  When processing an input for a
@@ -142,7 +144,12 @@ struct InputScheme
 
     virtual std::optional<Input> inputFromURL(const ParsedURL & url, bool requireTree) const = 0;
 
-    virtual std::optional<Input> inputFromAttrs(const Attrs & attrs) const = 0;
+    virtual Attrs preprocessAttrs(const Attrs & attrs) const = 0;
+
+    // The scheme type, which is used to match attributes to a specific scheme
+    virtual std::string schemeType() const = 0;
+
+    virtual std::optional<Input> inputFromAttrs(const Attrs & attrs) const;
 
     virtual ParsedURL toURL(const Input & input) const;
 
@@ -174,6 +181,9 @@ struct InputScheme
     virtual bool isLockedByRev() const { return true; }
 
 protected:
+    // The set of allowed attributes for this specific fetcher
+    virtual const std::set<std::string> & allowedAttrs() const = 0;
+
     void emplaceURLQueryIntoAttrs(
         const ParsedURL & parsedURL,
         Attrs & attrs,

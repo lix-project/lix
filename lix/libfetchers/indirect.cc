@@ -8,8 +8,20 @@ namespace nix::fetchers {
 
 std::regex flakeRegex = regex::parse("[a-zA-Z][a-zA-Z0-9_-]*", std::regex::ECMAScript);
 
+static const std::set<std::string> allowedIndirectAttrs = {
+    "id",
+    "ref",
+    "rev",
+};
+
 struct IndirectInputScheme : InputScheme
 {
+    std::string schemeType() const override { return "indirect"; }
+
+    const std::set<std::string> & allowedAttrs() const override {
+        return allowedIndirectAttrs;
+    }
+
     std::optional<Input> inputFromURL(const ParsedURL & url, bool requireTree) const override
     {
         if (url.scheme != "flake") return {};
@@ -47,14 +59,7 @@ struct IndirectInputScheme : InputScheme
         return inputFromAttrs(attrs);
     }
 
-    std::optional<Input> inputFromAttrs(const Attrs & attrs) const override
-    {
-        if (maybeGetStrAttr(attrs, "type") != "indirect") return {};
-
-        for (auto & [name, value] : attrs)
-            if (name != "type" && name != "id" && name != "ref" && name != "rev" && name != "narHash")
-                throw Error("unsupported indirect input attribute '%s'", name);
-
+    Attrs preprocessAttrs(const Attrs & attrs) const override {
         auto id = getStrAttr(attrs, "id");
         if (!std::regex_match(id, flakeRegex))
             throw BadURL("'%s' is not a valid flake ID", id);
@@ -71,9 +76,17 @@ struct IndirectInputScheme : InputScheme
             }
         }
 
-        Input input;
-        input.direct = false;
-        input.attrs = attrs;
+        return attrs;
+    }
+
+    std::optional<Input> inputFromAttrs(const Attrs & attrs) const override
+    {
+        std::optional<Input> input = InputScheme::inputFromAttrs(attrs);
+
+        if (input) {
+            input->direct = false;
+        }
+
         return input;
     }
 
