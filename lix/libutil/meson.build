@@ -143,6 +143,7 @@ experimental_feature_definitions = files(
   # keep-sorted start
   'experimental-features/auto-allocate-uids.md',
   'experimental-features/cgroups.md',
+  'experimental-features/coerce-integers.md',
   'experimental-features/daemon-trust-override.md',
   'experimental-features/fetch-closure.md',
   'experimental-features/flakes.md',

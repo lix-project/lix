@@ -69,11 +69,14 @@ typedef enum {
  *
  * - Strict: Only allow coercion of values that are already strings,
  *   paths, or derivations.
+ * - Interpolation: Additionally allow coercion of unambiguously printable values in a string, for
+ *   now: integers. This mode is meant as a stopgap measure until we get better formatting tools.
  * - ToString: Additionally allow coercion of integers, booleans, null,
  *   and lists to strings.
  */
 enum class StringCoercionMode {
     Strict,
+    Interpolation,
     ToString,
 };
 

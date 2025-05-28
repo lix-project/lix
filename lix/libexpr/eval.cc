@@ -2017,12 +2017,17 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
                 state.ctx.errors.make<EvalError>("cannot add %1% to a float", showType(vTmp)).atPos(i_pos).withFrame(env, *this).debugThrow();
         } else {
             if (s.empty()) s.reserve(es.size());
+
+            /* If we are coercing inside of an interpolation, we may allow slightly more comfort by coercing things like integers. */
+            auto coercionMode = isInterpolation && featureSettings.isEnabled(Xp::CoerceIntegers)
+                ? StringCoercionMode::Interpolation : StringCoercionMode::Strict;
+
             /* skip canonization of first path, which would only be not
             canonized in the first place if it's coming from a ./${foo} type
             path */
             auto part = state.coerceToString(i_pos, vTmp, context,
                                              "while evaluating a path segment",
-                                             StringCoercionMode::Strict, firstType == nString, !first);
+                                             coercionMode, firstType == nString, !first);
             sSize += part->size();
             s.emplace_back(std::move(part));
         }
@@ -2329,12 +2334,17 @@ BackedStringView EvalState::coerceToString(
         }
     }
 
+    /* Raito: Any addition to this mode is subject to extra scrutiny
+     * until we have better formatting tools. */
+    if (mode >= StringCoercionMode::Interpolation) {
+        if (v.type() == nInt) return std::to_string(v.integer.value);
+    }
+
     if (mode >= StringCoercionMode::ToString) {
         /* Note that `false' is represented as an empty string for
            shell scripting convenience, just like `null'. */
         if (v.type() == nBool && v.boolean) return "1";
         if (v.type() == nBool && !v.boolean) return "";
-        if (v.type() == nInt) return std::to_string(v.integer.value);
         if (v.type() == nFloat) return std::to_string(v.fpoint);
         if (v.type() == nNull) return "";
 

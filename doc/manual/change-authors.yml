@@ -66,6 +66,9 @@ delan:
   forgejo: delan
   github: delan
 
+delroth:
+  github: delroth
+
 detroyejr:
   display_name: Jonathan De Troye
   github: detroyejr

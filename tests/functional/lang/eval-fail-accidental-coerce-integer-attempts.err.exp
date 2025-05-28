@@ -1,0 +1,14 @@
+error:
+       … while evaluating x
+         at /pwd/lang/eval-fail-accidental-coerce-integer-attempts.nix:1:21:
+            1| let x = "" + 42; in x == "42"
+             |                     ^
+            2|
+
+       … while evaluating a path segment
+         at /pwd/lang/eval-fail-accidental-coerce-integer-attempts.nix:1:14:
+            1| let x = "" + 42; in x == "42"
+             |              ^
+            2|
+
+       error: cannot coerce an integer to a string: 42
