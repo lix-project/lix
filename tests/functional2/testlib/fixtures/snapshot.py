@@ -3,6 +3,7 @@ from collections.abc import Callable
 from logging import Logger
 from pathlib import Path
 from typing import Any
+from collections.abc import Generator
 
 import pytest
 from _pytest.fixtures import FixtureRequest
@@ -19,6 +20,13 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         action="store_true",
         help="if expected output should be updated",
         dest="accept-tests",
+    )
+
+
+@pytest.fixture(scope="session")
+def do_snapshot_update(request: FixtureRequest) -> bool:
+    return request.config.getoption("accept-tests") or (
+        os.environ.get("_NIX_TEST_ACCEPT") is not None
     )
 
 
@@ -40,6 +48,7 @@ class Snapshot:
         self.content = expected_output_path.read_text() if expected_output_path.exists() else ""
         self.do_update = do_update
         self.logger = logger
+        self.did_update = False
 
     def __eq__(self, other: Any) -> bool:
         """
@@ -56,6 +65,7 @@ class Snapshot:
                     "snapshot didn't propagate, the updated file can be found here: %s",
                     self.expected_output_path.absolute(),
                 )
+            self.did_update = True
             return True
         return are_equal
 
@@ -67,7 +77,9 @@ class Snapshot:
 
 
 @pytest.fixture
-def snapshot(request: FixtureRequest, logger: Logger, tmp_path: Path) -> Callable[[str], Snapshot]:
+def snapshot(
+    do_snapshot_update: bool, logger: Logger, tmp_path: Path
+) -> Generator[Callable[[str], Snapshot], Any, None]:
     """
     create a snapshot for the given output file
     the snapshot must be the **left hand operator** of the equal check.
@@ -82,17 +94,18 @@ def snapshot(request: FixtureRequest, logger: Logger, tmp_path: Path) -> Callabl
     :return: a snapshot object which one can use `==` on
     """
 
+    snaps: list[Snapshot] = []
+
     def create_snapshot(expected_output_path: str) -> Snapshot:
         exp_path = tmp_path / expected_output_path
         if not exp_path.is_symlink():
             logger.warning(
                 "expected output file isn't a symlink. When accepting the tests output, the update might not propagate"
             )
-        return Snapshot(
-            exp_path,
-            request.config.getoption("accept-tests")
-            or os.environ.get("_NIX_TEST_ACCEPT") is not None,
-            logger,
-        )
+        obj = Snapshot(exp_path, do_snapshot_update, logger)
+        snaps.append(obj)
+        return obj
 
-    return create_snapshot
+    yield create_snapshot
+    if any(s.did_update for s in snaps):
+        pytest.skip("Updated Golden Files")
