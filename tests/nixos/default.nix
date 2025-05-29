@@ -111,15 +111,6 @@ in
 
   # Test our Nix as a client against remotes that are older
 
-  remoteBuildsSshNg_remote_2_3 = runNixOSTestFor "x86_64-linux" {
-    name = "remoteBuildsSshNg_remote_2_3";
-    imports = [ ./remote-builds-ssh-ng.nix ];
-    builders.config = { lib, pkgs, ... }: {
-      imports = [ checkOverrideNixVersion ];
-      nix.package = lib.mkForce pkgs.nixVersions.nix_2_3;
-    };
-  };
-
   remoteBuildsSshNg_remote_2_18 = runNixOSTestFor "x86_64-linux" {
     name = "remoteBuildsSshNg_remote_2_18";
     imports = [ ./remote-builds-ssh-ng.nix ];

@@ -88,7 +88,7 @@ struct RemoteStore::Connection
 
     virtual void closeWrite() = 0;
 
-    std::exception_ptr processStderr(Sink * sink = 0, Source * source = 0, bool flush = true);
+    std::exception_ptr processStderr(bool flush = true);
 };
 
 /**
@@ -125,7 +125,7 @@ struct RemoteStore::ConnectionHandle
     RemoteStore::Connection & operator * () { return *handle; }
     RemoteStore::Connection * operator -> () { return &*handle; }
 
-    void processStderr(Sink * sink = 0, Source * source = 0, bool flush = true);
+    void processStderr(bool flush = true);
 
     void withFramedSink(std::function<void(Sink & sink)> fun);
     kj::Promise<Result<void>>

@@ -94,17 +94,9 @@ void RemoteStore::initConnection(Connection & conn)
 
         conn.to << false; // obsolete reserveSpace
 
-        if (GET_PROTOCOL_MINOR(conn.daemonVersion) >= 33) {
-            conn.to.flush();
-            conn.daemonNixVersion = readString(conn.from);
-        }
-
-        if (GET_PROTOCOL_MINOR(conn.daemonVersion) >= 35) {
-            conn.remoteTrustsUs = WorkerProto::Serialise<std::optional<TrustedFlag>>::read(*this, conn);
-        } else {
-            // We don't know the answer; protocol to old.
-            conn.remoteTrustsUs = std::nullopt;
-        }
+        conn.to.flush();
+        conn.daemonNixVersion = readString(conn.from);
+        conn.remoteTrustsUs = WorkerProto::Serialise<std::optional<TrustedFlag>>::read(*this, conn);
 
         auto ex = conn.processStderr();
         if (ex) std::rethrow_exception(ex);
@@ -165,9 +157,9 @@ RemoteStore::ConnectionHandle::~ConnectionHandle()
     }
 }
 
-void RemoteStore::ConnectionHandle::processStderr(Sink * sink, Source * source, bool flush)
+void RemoteStore::ConnectionHandle::processStderr(bool flush)
 {
-    auto ex = handle->processStderr(sink, source, flush);
+    auto ex = handle->processStderr(flush);
     if (ex) {
         daemonException = true;
         std::rethrow_exception(ex);
@@ -207,9 +199,7 @@ try {
     auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryValidPaths;
     conn->to << WorkerProto::write(*this, *conn, paths);
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 27) {
-        conn->to << maybeSubstitute;
-    }
+    conn->to << maybeSubstitute;
     conn.processStderr();
     co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
 } catch (...) {
@@ -248,13 +238,7 @@ try {
 
 
     conn->to << WorkerProto::Op::QuerySubstitutablePathInfos;
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) < 22) {
-        StorePathSet paths;
-        for (auto & path : pathsMap)
-            paths.insert(path.first);
-        conn->to << WorkerProto::write(*this, *conn, paths);
-    } else
-        conn->to << WorkerProto::write(*this, *conn, pathsMap);
+    conn->to << WorkerProto::write(*this, *conn, pathsMap);
     conn.processStderr();
     size_t count = readNum<size_t>(conn->from);
     for (size_t n = 0; n < count; n++) {
@@ -323,64 +307,37 @@ try {
 }
 
 
-kj::Promise<Result<StorePathSet>> RemoteStore::queryDerivationOutputs(const StorePath & path)
-try {
-    if (GET_PROTOCOL_MINOR(TRY_AWAIT(getProtocol())) >= 22) {
-        co_return TRY_AWAIT(Store::queryDerivationOutputs(path));
-    }
-    REMOVE_AFTER_DROPPING_PROTO_MINOR(21);
-    auto conn(TRY_AWAIT(getConnection()));
-    conn->to << WorkerProto::Op::QueryDerivationOutputs << printStorePath(path);
-    conn.processStderr();
-    co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
-} catch (...) {
-    co_return result::current_exception();
-}
-
-
 kj ::Promise<Result<std::map<std::string, StorePath>>>
 RemoteStore::queryDerivationOutputMap(const StorePath & path, Store * evalStore_)
 try {
-    if (GET_PROTOCOL_MINOR(TRY_AWAIT(getProtocol())) >= 22) {
-        if (!evalStore_) {
-            auto conn(TRY_AWAIT(getConnection()));
-            conn->to << WorkerProto::Op::QueryDerivationOutputMap << printStorePath(path);
-            conn.processStderr();
-            auto tmp = WorkerProto::Serialise<std::map<std::string, std::optional<StorePath>>>::read(
-                *this, *conn
-            );
-            std::map<std::string, StorePath> result;
-            for (auto & [name, outPath] : tmp) {
-                if (!outPath) {
-                    throw Error(
-                        "remote responded with unknown outpath for %s^%s", path.to_string(), name
-                    );
-                }
-                result.emplace(std::move(name), std::move(*outPath));
+    if (!evalStore_) {
+        auto conn(TRY_AWAIT(getConnection()));
+        conn->to << WorkerProto::Op::QueryDerivationOutputMap << printStorePath(path);
+        conn.processStderr();
+        auto tmp = WorkerProto::Serialise<std::map<std::string, std::optional<StorePath>>>::read(
+            *this, *conn
+        );
+        std::map<std::string, StorePath> result;
+        for (auto & [name, outPath] : tmp) {
+            if (!outPath) {
+                throw Error(
+                    "remote responded with unknown outpath for %s^%s", path.to_string(), name
+                );
             }
-            co_return result;
-        } else {
-            auto & evalStore = *evalStore_;
-            auto outputs = TRY_AWAIT(evalStore.queryStaticDerivationOutputMap(path));
-            // union with the first branch overriding the statically-known ones
-            // when non-`std::nullopt`.
-            for (auto && [outputName, optPath] :
-                 TRY_AWAIT(queryDerivationOutputMap(path, nullptr)))
-            {
-                outputs.insert_or_assign(std::move(outputName), std::move(optPath));
-            }
-            co_return outputs;
+            result.emplace(std::move(name), std::move(*outPath));
         }
+        co_return result;
     } else {
-        REMOVE_AFTER_DROPPING_PROTO_MINOR(21);
-        auto & evalStore = evalStore_ ? *evalStore_ : *this;
-        // Fallback for old daemon versions.
-        // For floating-CA derivations (and their co-dependencies) this is an
-        // under-approximation as it only returns the paths that can be inferred
-        // from the derivation itself (and not the ones that are known because
-        // the have been built), but as old stores don't handle floating-CA
-        // derivations this shouldn't matter
-        co_return TRY_AWAIT(evalStore.queryStaticDerivationOutputMap(path));
+        auto & evalStore = *evalStore_;
+        auto outputs = TRY_AWAIT(evalStore.queryStaticDerivationOutputMap(path));
+        // union with the first branch overriding the statically-known ones
+        // when non-`std::nullopt`.
+        for (auto && [outputName, optPath] :
+                TRY_AWAIT(queryDerivationOutputMap(path, nullptr)))
+        {
+            outputs.insert_or_assign(std::move(outputName), std::move(optPath));
+        }
+        co_return outputs;
     }
 } catch (...) {
     co_return result::current_exception();
@@ -411,91 +368,24 @@ try {
     std::optional<ConnectionHandle> conn_(TRY_AWAIT(getConnection()));
     auto & conn = *conn_;
 
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 25) {
+    conn->to
+        << WorkerProto::Op::AddToStore
+        << name
+        << caMethod.render(hashType);
+    conn->to << WorkerProto::write(*this, *conn, references);
+    conn->to << repair;
 
-        conn->to
-            << WorkerProto::Op::AddToStore
-            << name
-            << caMethod.render(hashType);
-        conn->to << WorkerProto::write(*this, *conn, references);
-        conn->to << repair;
-
-        // The dump source may invoke the store, so we need to make some room.
-        connections->incCapacity();
-        {
-            Finally cleanup([&]() { connections->decCapacity(); });
-            TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) {
-                return dump.drainInto(sink);
-            }));
-        }
-
-        co_return make_ref<ValidPathInfo>(
-            WorkerProto::Serialise<ValidPathInfo>::read(*this, *conn));
+    // The dump source may invoke the store, so we need to make some room.
+    connections->incCapacity();
+    {
+        Finally cleanup([&]() { connections->decCapacity(); });
+        TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) {
+            return dump.drainInto(sink);
+        }));
     }
-    else {
-        if (repair) throw Error("repairing is not supported when building through the Nix daemon protocol < 1.25");
 
-        auto handlers = overloaded{
-            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-            [&](const TextIngestionMethod & thm) -> kj::Promise<Result<void>> {
-                try {
-                    if (hashType != HashType::SHA256)
-                        throw UnimplementedError("When adding text-hashed data called '%s', only SHA-256 is supported but '%s' was given",
-                            name, printHashType(hashType));
-                    std::string s = TRY_AWAIT(dump.drain());
-                    conn->to << WorkerProto::Op::AddTextToStore << name << s;
-                    conn->to << WorkerProto::write(*this, *conn, references);
-                    conn.processStderr();
-                    co_return result::success();
-                } catch (...) {
-                    co_return result::current_exception();
-                }
-            },
-            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-            [&](const FileIngestionMethod & fim) -> kj::Promise<Result<void>> {
-                try {
-                    conn->to
-                    << WorkerProto::Op::AddToStore
-                    << name
-                    << ((hashType == HashType::SHA256 && fim == FileIngestionMethod::Recursive) ? 0 : 1) /* backwards compatibility hack */
-                    << (fim == FileIngestionMethod::Recursive ? 1 : 0)
-                    << printHashType(hashType);
-
-                    try {
-                        conn->to.written = 0;
-                        connections->incCapacity();
-                        {
-                            Finally cleanup([&]() { connections->decCapacity(); });
-                            if (fim == FileIngestionMethod::Recursive) {
-                                TRY_AWAIT(dump.drainInto(conn->to));
-                            } else {
-                                std::string contents = TRY_AWAIT(dump.drain());
-                                conn->to << dumpString(contents);
-                            }
-                        }
-                        conn.processStderr();
-                    } catch (SysError & e) {
-                        /* Daemon closed while we were sending the path. Probably OOM
-                           or I/O error. */
-                        if (e.errNo == EPIPE)
-                            try {
-                                conn.processStderr();
-                            } catch (EndOfFile & e) { }
-                        throw;
-                    }
-
-                    co_return result::success();
-                } catch (...) {
-                    co_return result::current_exception();
-                }
-            }
-        };
-        TRY_AWAIT(std::visit(handlers, caMethod.raw));
-        auto path = parseStorePath(readString(conn->from));
-        // Release our connection to prevent a deadlock in queryPathInfo().
-        conn_.reset();
-        co_return TRY_AWAIT(queryPathInfo(path));
-    }
+    co_return make_ref<ValidPathInfo>(
+        WorkerProto::Serialise<ValidPathInfo>::read(*this, *conn));
 } catch (...) {
     co_return result::current_exception();
 }
@@ -534,23 +424,10 @@ try {
              << info.ultimate << info.sigs << renderContentAddress(info.ca)
              << repair << !checkSigs;
 
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 23) {
-        auto copier = copyNAR(source);
-        TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) {
-            return copier->drainInto(sink);
-        }));
-    } else {
-        IndirectAsyncInputStreamToSource is(source);
-        auto pfp = kj::newPromiseAndCrossThreadFulfiller<void>();
-        auto thread = std::async(std::launch::async, [&] {
-            KJ_DEFER(pfp.fulfiller->fulfill());
-            conn.processStderr(0, &is);
-        });
-        co_await pfp.promise.exclusiveJoin(is.feed());
-        // if the thread stops we're always clear. if the feeder stops early (or
-        // fails) it'll have thrown an exception, and the thread will stop soon.
-        thread.get();
-    }
+    auto copier = copyNAR(source);
+    TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) {
+        return copier->drainInto(sink);
+    }));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -563,35 +440,28 @@ kj::Promise<Result<void>> RemoteStore::addMultipleToStore(
     RepairFlag repair,
     CheckSigsFlag checkSigs)
 try {
-    if (GET_PROTOCOL_MINOR(TRY_AWAIT(getConnection())->daemonVersion) >= 32) {
-        auto remoteVersion = TRY_AWAIT(getProtocol());
+    auto remoteVersion = TRY_AWAIT(getProtocol());
 
-        auto conn(TRY_AWAIT(getConnection()));
-        conn->to
-            << WorkerProto::Op::AddMultipleToStore
-            << repair
-            << !checkSigs;
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-        TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) -> kj::Promise<Result<void>> {
-            try {
-                sink << pathsToCopy.size();
-                for (auto & [pathInfo, pathSource] : pathsToCopy) {
-                    sink << WorkerProto::Serialise<ValidPathInfo>::write(*this,
-                        WorkerProto::WriteConn {remoteVersion},
-                        pathInfo);
-                    TRY_AWAIT(TRY_AWAIT(pathSource())->drainInto(sink));
-                }
-                co_return result::success();
-            } catch (...) {
-                co_return result::current_exception();
+    auto conn(TRY_AWAIT(getConnection()));
+    conn->to
+        << WorkerProto::Op::AddMultipleToStore
+        << repair
+        << !checkSigs;
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) -> kj::Promise<Result<void>> {
+        try {
+            sink << pathsToCopy.size();
+            for (auto & [pathInfo, pathSource] : pathsToCopy) {
+                sink << WorkerProto::Serialise<ValidPathInfo>::write(*this,
+                    WorkerProto::WriteConn {remoteVersion},
+                    pathInfo);
+                TRY_AWAIT(TRY_AWAIT(pathSource())->drainInto(sink));
             }
-        }));
-    } else {
-        for (auto & [pathInfo, pathSource] : pathsToCopy) {
-            pathInfo.ultimate = false; // duplicated in daemon.cc AddMultipleToStore
-            TRY_AWAIT(addToStore(pathInfo, *TRY_AWAIT(pathSource()), repair, checkSigs));
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
         }
-    }
+    }));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -662,81 +532,11 @@ try {
     std::optional<ConnectionHandle> conn_(TRY_AWAIT(getConnection()));
     auto & conn = *conn_;
 
-    if (GET_PROTOCOL_MINOR(conn->daemonVersion) >= 34) {
-        conn->to << WorkerProto::Op::BuildPathsWithResults;
-        conn->to << WorkerProto::write(*this, *conn, paths);
-        conn->to << buildMode;
-        conn.processStderr();
-        co_return WorkerProto::Serialise<std::vector<KeyedBuildResult>>::read(*this, *conn);
-    } else {
-        REMOVE_AFTER_DROPPING_PROTO_MINOR(33);
-        // Avoid deadlock.
-        conn_.reset();
-
-        // Note: this throws an exception if a build/substitution
-        // fails, but meh.
-        TRY_AWAIT(buildPaths(paths, buildMode, evalStore));
-
-        std::vector<KeyedBuildResult> results;
-
-        for (auto & path : paths) {
-            auto handlers = overloaded {
-                [&](const DerivedPath::Opaque & bo) -> kj::Promise<Result<void>> {
-                    try {
-                        results.push_back(KeyedBuildResult {
-                            {
-                                .status = BuildResult::Substituted,
-                            },
-                            /* .path = */ bo,
-                        });
-                        return {result::success()};
-                    } catch (...) {
-                        return {result::current_exception()};
-                    }
-                },
-                // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-                [&](const DerivedPath::Built & bfd) -> kj::Promise<Result<void>> {
-                    try {
-                        KeyedBuildResult res {
-                            {
-                                .status = BuildResult::Built
-                            },
-                            /* .path = */ bfd,
-                        };
-
-                        OutputPathMap outputs;
-                        auto drvPath = bfd.drvPath.path;
-                        auto drv = TRY_AWAIT(evalStore->readDerivation(drvPath));
-                        const auto outputHashes =
-                            TRY_AWAIT(staticOutputHashes(*evalStore, drv)); // FIXME: expensive
-                        auto built = TRY_AWAIT(resolveDerivedPath(*this, bfd, &*evalStore));
-                        for (auto & [output, outputPath] : built) {
-                            auto outputHash = get(outputHashes, output);
-                            if (!outputHash)
-                                throw Error(
-                                    "the derivation '%s' doesn't have an output named '%s'",
-                                    printStorePath(drvPath), output);
-                            auto outputId = DrvOutput{ *outputHash, output };
-                            res.builtOutputs.emplace(
-                                output,
-                                Realisation {
-                                    .id = outputId,
-                                    .outPath = outputPath,
-                                });
-                        }
-
-                        results.push_back(res);
-                        co_return result::success();
-                    } catch (...) {
-                        co_return result::current_exception();
-                    }
-                }
-            };
-            TRY_AWAIT(std::visit(handlers , path.raw()));
-        }
-
-        co_return results;
-    }
+    conn->to << WorkerProto::Op::BuildPathsWithResults;
+    conn->to << WorkerProto::write(*this, *conn, paths);
+    conn->to << buildMode;
+    conn.processStderr();
+    co_return WorkerProto::Serialise<std::vector<KeyedBuildResult>>::read(*this, *conn);
 } catch (...) {
     co_return result::current_exception();
 }
@@ -975,7 +775,7 @@ static Logger::Fields readFields(Source & from)
 }
 
 
-std::exception_ptr RemoteStore::Connection::processStderr(Sink * sink, Source * source, bool flush)
+std::exception_ptr RemoteStore::Connection::processStderr(bool flush)
 {
     if (flush)
         to.flush();
@@ -984,28 +784,8 @@ std::exception_ptr RemoteStore::Connection::processStderr(Sink * sink, Source * 
 
         auto msg = readNum<uint64_t>(from);
 
-        if (msg == STDERR_WRITE) {
-            auto s = readString(from);
-            if (!sink) throw Error("no sink");
-            (*sink)(s);
-        }
-
-        else if (msg == STDERR_READ) {
-            if (!source) throw Error("no source");
-            size_t len = readNum<size_t>(from);
-            auto buf = std::make_unique<char[]>(len);
-            to << std::string_view((const char *) buf.get(), source->read(buf.get(), len));
-            to.flush();
-        }
-
-        else if (msg == STDERR_ERROR) {
-            if (GET_PROTOCOL_MINOR(daemonVersion) >= 26) {
-                return std::make_exception_ptr(readError(from));
-            } else {
-                auto error = readString(from);
-                unsigned int status = readInt(from);
-                return std::make_exception_ptr(Error(status, error));
-            }
+        if (msg == STDERR_ERROR) {
+            return std::make_exception_ptr(readError(from));
         }
 
         else if (msg == STDERR_NEXT)
@@ -1048,7 +828,7 @@ RemoteStore::ConnectionHandle::FramedSinkHandler::FramedSinkHandler(
 )
     : stderrHandler([&]() {
         try {
-            conn.processStderr(nullptr, nullptr, false);
+            conn.processStderr(false);
         } catch (...) {
             ex = std::current_exception();
         }

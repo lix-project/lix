@@ -14,9 +14,7 @@ namespace nix {
 // protocol is bad in design and implementation and Lix intends to replace it
 // entirely.
 #define PROTOCOL_VERSION (1 << 8 | 35)
-// Nix 2.3 is protocol 1.21 (see RemoteStore::initConnection for client,
-// processConnection for server).
-#define MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION 21
+#define MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION 35
 #define MIN_SUPPORTED_WORKER_PROTO_VERSION (1 << 8 | MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION)
 
 #define GET_PROTOCOL_MAJOR(x) ((x) & 0xff00)
@@ -28,8 +26,6 @@ namespace nix {
 
 
 #define STDERR_NEXT  0x6f6c6d67
-#define STDERR_READ  0x64617461 // data needed from source
-#define STDERR_WRITE 0x64617416 // data for sink
 #define STDERR_LAST  0x616c7473
 #define STDERR_ERROR 0x63787470
 #define STDERR_START_ACTIVITY 0x53545254
@@ -145,19 +141,19 @@ enum struct WorkerProto::Op : uint64_t
     QueryReferences = 5, // obsolete since 2016, stubbed to error
     QueryReferrers = 6,
     AddToStore = 7,
-    AddTextToStore = 8, // obsolete since protocol 1.25, CppNix 2.4. Use WorkerProto::Op::AddToStore
+    AddTextToStore = 8, // obsolete, removed
     BuildPaths = 9,
     EnsurePath = 10,
     AddTempRoot = 11,
     AddIndirectRoot = 12,
-    SyncWithGC = 13, // obsolete since CppNix 2.5.0
+    SyncWithGC = 13, // obsolete since CppNix 2.5.0, removed
     FindRoots = 14,
     ExportPath = 16, // obsolete since 2017, stubbed to error
     QueryDeriver = 18, // obsolete since 2016, stubbed to error
     SetOptions = 19,
     CollectGarbage = 20,
     QuerySubstitutablePathInfo = 21,
-    QueryDerivationOutputs = 22, // obsolete since protocol 1.21, CppNix 2.4
+    QueryDerivationOutputs = 22, // obsolete, removed
     QueryAllValidPaths = 23,
     QueryFailedPaths = 24, // obsolete, removed
     ClearFailedPaths = 25, // obsolete, removed

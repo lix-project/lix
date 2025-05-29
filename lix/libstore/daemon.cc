@@ -126,11 +126,7 @@ struct TunnelLogger : public Logger
         if (!ex)
             to << STDERR_LAST;
         else {
-            if (GET_PROTOCOL_MINOR(clientVersion) >= 26) {
-                to << STDERR_ERROR << *ex;
-            } else {
-                to << STDERR_ERROR << ex->what() << ex->info().status;
-            }
+            to << STDERR_ERROR << *ex;
         }
     }
 
@@ -154,31 +150,6 @@ struct TunnelLogger : public Logger
         StringSink buf;
         buf << STDERR_RESULT << act << type << fields;
         enqueueMsg(buf.s);
-    }
-};
-
-struct TunnelSink : Sink
-{
-    Sink & to;
-    TunnelSink(Sink & to) : to(to) { }
-    void operator () (std::string_view data) override
-    {
-        to << STDERR_WRITE << data;
-    }
-};
-
-struct TunnelSource : BufferedSource
-{
-    Source & from;
-    BufferedSink & to;
-    TunnelSource(Source & from, BufferedSink & to) : from(from), to(to) { }
-    size_t readUnbuffered(char * data, size_t len) override
-    {
-        to << STDERR_READ << len;
-        to.flush();
-        size_t n = readString(data, len, from);
-        if (n == 0) throw EndOfFile("unexpected end-of-file");
-        return n;
     }
 };
 
@@ -284,10 +255,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::QueryValidPaths: {
         auto paths = WorkerProto::Serialise<StorePathSet>::read(*store, rconn);
 
-        SubstituteFlag substitute = NoSubstitute;
-        if (GET_PROTOCOL_MINOR(clientVersion) >= 27) {
-            substitute = readInt(from) ? Substitute : NoSubstitute;
-        }
+        SubstituteFlag substitute = readInt(from) ? Substitute : NoSubstitute;
 
         logger->startWork();
         if (substitute) {
@@ -338,9 +306,12 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         break;
     }
 
-    case WorkerProto::Op::QueryReferrers:
-    case WorkerProto::Op::QueryValidDerivers:
     case WorkerProto::Op::QueryDerivationOutputs: {
+        throw UnimplementedError("QueryDerivationOutputs is not supported in Lix. This is not used if the declared server protocol is >= 1.21 (Nix 2.4)");
+    }
+
+    case WorkerProto::Op::QueryReferrers:
+    case WorkerProto::Op::QueryValidDerivers: {
         auto path = store->parseStorePath(readString(from));
         logger->startWork();
         StorePathSet paths;
@@ -356,12 +327,6 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
                 paths = aio.blockOn(store->queryValidDerivers(path));
                 break;
             }
-            case WorkerProto::Op::QueryDerivationOutputs: {
-                // Only sent if server presents proto version <= 1.21
-                REMOVE_AFTER_DROPPING_PROTO_MINOR(21);
-                paths = aio.blockOn(store->queryDerivationOutputs(path));
-                break;
-            }
             default:
                 abort();
                 break;
@@ -374,14 +339,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     }
 
     case WorkerProto::Op::QueryDerivationOutputNames: {
-        // Unused in CppNix >= 2.4 (removed in 045b07200c77bf1fe19c0a986aafb531e7e1ba54)
-        REMOVE_AFTER_DROPPING_PROTO_MINOR(31);
-        auto path = store->parseStorePath(readString(from));
-        logger->startWork();
-        auto names = aio.blockOn(store->readDerivation(path)).outputNames();
-        logger->stopWork();
-        to << names;
-        break;
+        throw UnimplementedError("QueryDerivationOutputNames is not supported in Lix. This is not used if the declared server protocol is >= 1.31 (Nix 2.4)");
     }
 
     case WorkerProto::Op::QueryDerivationOutputMap: {
@@ -403,109 +361,42 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     }
 
     case WorkerProto::Op::AddToStore: {
-        if (GET_PROTOCOL_MINOR(clientVersion) >= 25) {
-            auto name = readString(from);
-            auto camStr = readString(from);
-            auto refs = WorkerProto::Serialise<StorePathSet>::read(*store, rconn);
-            bool repairBool;
-            from >> repairBool;
-            auto repair = RepairFlag{repairBool};
+        auto name = readString(from);
+        auto camStr = readString(from);
+        auto refs = WorkerProto::Serialise<StorePathSet>::read(*store, rconn);
+        bool repairBool;
+        from >> repairBool;
+        auto repair = RepairFlag{repairBool};
 
-            logger->startWork();
-            auto pathInfo = [&]() {
-                // NB: FramedSource must be out of scope before logger->stopWork();
-                auto [contentAddressMethod, hashType_] = ContentAddressMethod::parse(camStr);
-                auto hashType = hashType_; // work around clang bug
-                FramedSource source(from);
-                // TODO this is essentially RemoteStore::addCAToStore. Move it up to Store.
-                return std::visit(overloaded {
-                    [&](const TextIngestionMethod &) {
-                        if (hashType != HashType::SHA256)
-                            throw UnimplementedError("When adding text-hashed data called '%s', only SHA-256 is supported but '%s' was given",
-                                name, printHashType(hashType));
-                        // We could stream this by changing Store
-                        std::string contents = source.drain();
-                        auto path = aio.blockOn(store->addTextToStore(name, contents, refs, repair));
-                        return aio.blockOn(store->queryPathInfo(path));
-                    },
-                    [&](const FileIngestionMethod & fim) {
-                        AsyncSourceInputStream stream{source};
-                        auto path = aio.blockOn(
-                            store->addToStoreFromDump(stream, name, fim, hashType, repair, refs)
-                        );
-                        return aio.blockOn(store->queryPathInfo(path));
-                    },
-                }, contentAddressMethod.raw);
-            }();
-            logger->stopWork();
+        logger->startWork();
+        auto pathInfo = [&]() {
+            // NB: FramedSource must be out of scope before logger->stopWork();
+            auto [contentAddressMethod, hashType_] = ContentAddressMethod::parse(camStr);
+            auto hashType = hashType_; // work around clang bug
+            FramedSource source(from);
+            // TODO this is essentially RemoteStore::addCAToStore. Move it up to Store.
+            return std::visit(overloaded {
+                [&](const TextIngestionMethod &) {
+                    if (hashType != HashType::SHA256)
+                        throw UnimplementedError("When adding text-hashed data called '%s', only SHA-256 is supported but '%s' was given",
+                            name, printHashType(hashType));
+                    // We could stream this by changing Store
+                    std::string contents = source.drain();
+                    auto path = aio.blockOn(store->addTextToStore(name, contents, refs, repair));
+                    return aio.blockOn(store->queryPathInfo(path));
+                },
+                [&](const FileIngestionMethod & fim) {
+                    AsyncSourceInputStream stream{source};
+                    auto path = aio.blockOn(
+                        store->addToStoreFromDump(stream, name, fim, hashType, repair, refs)
+                    );
+                    return aio.blockOn(store->queryPathInfo(path));
+                },
+            }, contentAddressMethod.raw);
+        }();
+        logger->stopWork();
 
-            to << WorkerProto::Serialise<ValidPathInfo>::write(*store, wconn, *pathInfo);
-        } else {
-            HashType hashAlgo;
-            std::string baseName;
-            FileIngestionMethod method;
-            {
-                bool fixed;
-                uint8_t recursive;
-                std::string hashAlgoRaw;
-                from >> baseName >> fixed /* obsolete */ >> recursive >> hashAlgoRaw;
-                if (recursive > (uint8_t) FileIngestionMethod::Recursive)
-                    throw Error("unsupported FileIngestionMethod with value of %i; you may need to upgrade nix-daemon", recursive);
-                method = FileIngestionMethod { recursive };
-                /* Compatibility hack. */
-                if (!fixed) {
-                    hashAlgoRaw = "sha256";
-                    method = FileIngestionMethod::Recursive;
-                }
-                hashAlgo = parseHashType(hashAlgoRaw);
-            }
-
-            // Note to future maintainers: do *not* inline this into the
-            // generator statement as the lambda itself needs to live to the
-            // end of the generator's lifetime and is otherwise a UAF.
-            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines): does not outlive the outer function
-            auto g = [&]() -> WireFormatGenerator {
-                if (method == FileIngestionMethod::Recursive) {
-                    /* We parse the NAR dump through into `saved` unmodified,
-                       so why all this extra work? We still parse the NAR so
-                       that we aren't sending arbitrary data to `saved`
-                       unwittingly`, and we know when the NAR ends so we don't
-                       consume the rest of `from` and can't parse another
-                       command. (We don't trust `addToStoreFromDump` to not
-                       eagerly consume the entire stream it's given, past the
-                       length of the Nar. */
-                    co_yield copyNAR(from);
-                } else {
-                    /* Incrementally parse the NAR file, stripping the
-                       metadata, and streaming the sole file we expect into
-                       `saved`. */
-                    auto parser = nar::parse(from);
-                    nar::File * file = nullptr;
-                    while (auto entry = parser.next()) {
-                        file = std::visit(
-                            overloaded{
-                                [](nar::File & f) -> nar::File * { return &f; },
-                                [](auto &) -> nar::File * { throw Error("regular file expected"); },
-                            },
-                            *entry
-                        );
-                        if (file) {
-                            break;
-                        }
-                    }
-                    if (!file) {
-                        throw Error("regular file expected");
-                    }
-                    co_yield std::move(file->contents);
-                }
-            };
-            AsyncGeneratorInputStream dumpSource{g()};
-            logger->startWork();
-            auto path = aio.blockOn(store->addToStoreFromDump(dumpSource, baseName, method, hashAlgo));
-            logger->stopWork();
-
-            to << store->printStorePath(path);
-        }
+        to << WorkerProto::Serialise<ValidPathInfo>::write(*store, wconn, *pathInfo);
         break;
     }
 
@@ -535,14 +426,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     }
 
     case WorkerProto::Op::AddTextToStore: {
-        std::string suffix = readString(from);
-        std::string s = readString(from);
-        auto refs = WorkerProto::Serialise<StorePathSet>::read(*store, rconn);
-        logger->startWork();
-        auto path = aio.blockOn(store->addTextToStore(suffix, s, refs, NoRepair));
-        logger->stopWork();
-        to << store->printStorePath(path);
-        break;
+        throw UnimplementedError("AddTextToStore is not supported in Lix. This is not used if the declared server protocol is >= 1.25 (Nix 2.4)");
     }
 
     case WorkerProto::Op::BuildPaths: {
@@ -697,12 +581,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
     // Obsolete since 9947f1646a26b339fff2e02b77798e9841fac7f0 (included in CppNix 2.5.0).
     case WorkerProto::Op::SyncWithGC: {
-        // CppNix 2.5.0 is 32
-        REMOVE_AFTER_DROPPING_PROTO_MINOR(31);
-        logger->startWork();
-        logger->stopWork();
-        to << 1;
-        break;
+        throw UnimplementedError("SyncWithGC is not supported in Lix. This is not used if the declared server protocol is >= 1.31 (Nix 2.5)");
     }
 
     case WorkerProto::Op::FindRoots: {
@@ -799,13 +678,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
     case WorkerProto::Op::QuerySubstitutablePathInfos: {
         SubstitutablePathInfos infos;
-        StorePathCAMap pathsMap = {};
-        if (GET_PROTOCOL_MINOR(clientVersion) < 22) {
-            auto paths = WorkerProto::Serialise<StorePathSet>::read(*store, rconn);
-            for (auto & path : paths)
-                pathsMap.emplace(path, std::nullopt);
-        } else
-            pathsMap = WorkerProto::Serialise<StorePathCAMap>::read(*store, rconn);
+        StorePathCAMap pathsMap = WorkerProto::Serialise<StorePathCAMap>::read(*store, rconn);
         logger->startWork();
         aio.blockOn(store->querySubstitutablePathInfos(pathsMap, infos));
         logger->stopWork();
@@ -902,30 +775,14 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         if (!trusted)
             info.ultimate = false;
 
-        if (GET_PROTOCOL_MINOR(clientVersion) >= 23) {
-            logger->startWork();
-            {
-                FramedSource source(from);
-                AsyncSourceInputStream stream{source};
-                aio.blockOn(store->addToStore(info, stream, (RepairFlag) repair,
-                    dontCheckSigs ? NoCheckSigs : CheckSigs));
-            }
-            logger->stopWork();
-        }
-
-        else {
-            std::unique_ptr<Source> source;
-            source = std::make_unique<TunnelSource>(from, to);
-
-            logger->startWork();
-
-            // FIXME: race if addToStore doesn't read source?
-            AsyncSourceInputStream stream{*source};
+        logger->startWork();
+        {
+            FramedSource source(from);
+            AsyncSourceInputStream stream{source};
             aio.blockOn(store->addToStore(info, stream, (RepairFlag) repair,
                 dontCheckSigs ? NoCheckSigs : CheckSigs));
-
-            logger->stopWork();
         }
+        logger->stopWork();
 
         break;
     }
@@ -1015,18 +872,15 @@ void processConnection(
 
     readInt(from); // obsolete reserveSpace
 
-    if (GET_PROTOCOL_MINOR(clientVersion) >= 33)
-        to << nixVersion;
+    to << nixVersion;
 
-    if (GET_PROTOCOL_MINOR(clientVersion) >= 35) {
-        // We and the underlying store both need to trust the client for
-        // it to be trusted.
-        auto temp = trusted
-            ? aio.blockOn(store->isTrustedClient())
-            : std::optional { NotTrusted };
-        WorkerProto::WriteConn wconn {clientVersion};
-        to << WorkerProto::write(*store, wconn, temp);
-    }
+    // We and the underlying store both need to trust the client for
+    // it to be trusted.
+    auto temp = trusted
+        ? aio.blockOn(store->isTrustedClient())
+        : std::optional { NotTrusted };
+    WorkerProto::WriteConn wconn {clientVersion};
+    to << WorkerProto::write(*store, wconn, temp);
 
     /* Send startup error messages to the client. */
     tunnelLogger->startWork();

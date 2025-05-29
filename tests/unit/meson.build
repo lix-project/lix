@@ -45,7 +45,6 @@ libutil_tests_sources = files(
   # keep-sorted start
   'libutil/archive.cc',
   'libutil/async-collect.cc',
-  'libutil/async-io.cc',
   'libutil/async-semaphore.cc',
   'libutil/canon-path.cc',
   'libutil/checked-arithmetic.cc',

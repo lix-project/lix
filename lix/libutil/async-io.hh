@@ -93,48 +93,4 @@ public:
     kj::Promise<Result<size_t>> read(void * buffer, size_t size) override;
 };
 
-/**
- * Wraps a stream in a source. The returned source must not be used on the
- * event loop that created it, otherwise read requests cannot be serviced.
- */
-class IndirectAsyncInputStreamToSource : public Source
-{
-    struct Request
-    {
-        char * data;
-        size_t len;
-        std::promise<std::pair<size_t, kj::Own<kj::CrossThreadPromiseFulfiller<Request>>>> result;
-    };
-
-    struct Pipe
-    {
-        // used by the source implementation
-        kj::Own<kj::CrossThreadPromiseFulfiller<Request>> sendRequest;
-        // used by the async feeder function
-        kj::Promise<Request> nextRequest;
-    };
-
-    AsyncInputStream & source;
-    std::unique_ptr<AsyncInputStream> owned;
-    Pipe pipe;
-
-public:
-    explicit IndirectAsyncInputStreamToSource(AsyncInputStream & source);
-
-    explicit IndirectAsyncInputStreamToSource(box_ptr<AsyncInputStream> owned)
-        : IndirectAsyncInputStreamToSource(*owned)
-    {
-        this->owned = std::move(owned).take();
-    }
-
-    ~IndirectAsyncInputStreamToSource() noexcept(true);
-
-    KJ_DISALLOW_COPY_AND_MOVE(IndirectAsyncInputStreamToSource);
-
-    /** Feed the source. Must be awaited fully to drain the input stream. */
-    kj::Promise<void> feed();
-
-    size_t read(char * data, size_t len) override;
-};
-
 }
