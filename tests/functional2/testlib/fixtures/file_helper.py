@@ -157,6 +157,20 @@ class Symlink(Fileish):
 type FileDeclaration = dict[str, Fileish | "FileDeclaration"]
 
 
+def merge_file_declaration(a: FileDeclaration, b: FileDeclaration) -> FileDeclaration:
+    result = {}
+    for key in a.keys() | b.keys():
+        if (key in a) ^ (key in b):
+            result[key] = a.get(key) or b.get(key)
+            continue
+        if isinstance(a[key], Fileish) or isinstance(b[key], Fileish):
+            msg = "Cannot merge files; got two different values for the same path %s"
+            raise ValueError(msg, key)
+        result[key] = merge_file_declaration(a[key], b[key])
+
+    return result
+
+
 def _init_files(files: FileDeclaration, tmp_path: Path, request: pytest.FixtureRequest) -> None:
     """
     This internal function is needed because one cannot call a fixture directly since pytest 4.0
