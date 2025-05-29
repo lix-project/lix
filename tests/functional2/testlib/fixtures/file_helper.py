@@ -55,7 +55,7 @@ class File(_ByContentFileish):
 
 
 class CopyFile(Fileish):
-    def __init__(self, source: str):
+    def __init__(self, source: str | Path):
         """
         Declares a file as a copy of an existing file
         :param source: Path to the file to be copied
@@ -63,11 +63,12 @@ class CopyFile(Fileish):
         self.source = source
 
     def copy_to(self, path: Path, origin: Path):
-        shutil.copyfile(origin / self.source, path)
+        orig = self.source if isinstance(self.source, Path) else origin / self.source
+        shutil.copyfile(orig, path)
 
 
 class CopyTree(Fileish):
-    def __init__(self, tree_base: str):
+    def __init__(self, tree_base: str | Path):
         """
         Declares a folder as a copy of an existing folder
         :param tree_base: base folder of the tree being copied
@@ -75,11 +76,12 @@ class CopyTree(Fileish):
         self.tree_base = tree_base
 
     def copy_to(self, path: Path, origin: Path):
-        shutil.copytree(origin / self.tree_base, path, dirs_exist_ok=True)
+        orig = self.tree_base if isinstance(self.tree_base, Path) else origin / self.tree_base
+        shutil.copytree(orig, path, dirs_exist_ok=True)
 
 
 class CopyTemplate(_ByContentFileish):
-    def __init__(self, template: str, values: dict[str, Any], mode: int | None = None):
+    def __init__(self, template: str | Path, values: dict[str, Any], mode: int | None = None):
         """
         Declares a file as an initiated version of the given file template
         :param template: source template's file name. Parameters formatted as `{key_name}` are replaced by corresponding values
@@ -93,7 +95,7 @@ class CopyTemplate(_ByContentFileish):
         super().__init__(mode)
 
     def get_content(self, origin: Path) -> str:
-        template_path = origin / self.template
+        template_path = self.template if isinstance(self.template, Path) else origin / self.template
         template_content = template_path.read_text()
 
         self.content = BalancedTemplater(template_content).substitute(**self.values)
