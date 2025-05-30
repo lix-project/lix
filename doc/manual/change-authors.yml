@@ -236,6 +236,11 @@ vigress8:
   forgejo: vigress8
   github: vigress8
 
+vlinkz:
+  display_name: Victor Fuentes
+  forgejo: vlinkz
+  github: vlinkz
+
 winter:
   forgejo: winter
   github: winterqt

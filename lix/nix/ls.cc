@@ -1,4 +1,5 @@
 #include "lix/libcmd/command.hh"
+#include "lix/libstore/binary-cache-store.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libstore/nar-accessor.hh"
@@ -123,7 +124,24 @@ struct CmdLsStore : StoreCommand, MixLs
 
     void run(ref<Store> store) override
     {
-        list(store->getFSAccessor());
+        auto accessor = store->getFSAccessor();
+
+        try {
+            auto binaryCacheStore = store.try_cast_shared<BinaryCacheStore>();
+            if (binaryCacheStore) {
+                const auto [storePath, restPath] = store->toStorePath(path);
+                auto file = binaryCacheStore->getFile(fmt("%s.ls", storePath.hashPart()))->drain();
+                JSON j = json::parse(std::move(file), "a nar content listing");
+                if (j["version"] == 1) {
+                    path = restPath;
+                    accessor = makeLazyNarAccessor(j["root"].dump(), [](uint64_t, uint64_t) -> std::string {
+                        throw Error("attempted to read NAR content during listing");
+                    });
+                }
+            }
+        } catch (NoSuchBinaryCacheFile &) { }
+
+        list(accessor);
     }
 };
 

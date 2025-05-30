@@ -59,3 +59,23 @@ if nix-store --dump $storePath >/dev/full ; then
     echo "dumping to /dev/full should fail"
     exit -1
 fi
+
+
+# Test reading from remote nar listings if available
+
+nix copy --to "file://$cacheDir?write-nar-listing=true" $storePath
+
+export _NIX_FORCE_HTTP=1
+
+diff -u \
+    <(nix store ls --json $storePath --store "file://$cacheDir" | jq -S) \
+    <(echo '{"type":"directory","entries":{"foo":{},"foo-x":{},"qux":{},"zyx":{}}}' | jq -S)
+diff -u \
+    <(nix store ls --json -R $storePath/foo/bar --store "file://$cacheDir" | jq -S) \
+    <(echo '{"narOffset": 368,"type":"regular","size":0}' | jq -S)
+
+# Confirm that we are reading from ".ls" file by deleting the nar
+rm -rf $cacheDir/nar
+diff -u \
+    <(nix store ls --json -R $storePath/foo/bar --store "file://$cacheDir" | jq -S) \
+    <(echo '{"narOffset": 368,"type":"regular","size":0}' | jq -S)
