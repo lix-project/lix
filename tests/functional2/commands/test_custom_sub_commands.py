@@ -96,7 +96,7 @@ def test_sub_commands(
 ):
     # Test custom sub commands in various configurations
     nix_command = nix.nix([custom_sub_command, "--version"], nix_exe=nix_exe)
-    nix_command.with_env(PATH=path)
+    nix_command.update_env(PATH=path)
     if flag:
         nix_command.settings.feature("lix-custom-sub-commands")
 
@@ -114,7 +114,7 @@ def test_sub_command_path_order(
     # Test handling of the order of the path for custom sub commands
     # Incidentally also tests passing through exit codes
     nix_command = nix.nix([failing_sub_command, "--version"], nix_exe="lix")
-    nix_command.with_env(PATH=path_with_failure)
+    nix_command.update_env(PATH=path_with_failure)
     nix_command.settings.feature("lix-custom-sub-commands")
 
     nix_command.run().expect(expected)
