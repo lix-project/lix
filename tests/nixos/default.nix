@@ -150,6 +150,10 @@ in
 
   tarballFlakes = runNixOSTestFor "x86_64-linux" ./tarball-flakes.nix;
 
+  containers = runNixOSTestFor "x86_64-linux" ./containers/containers.nix;
+
+  cgroups = runNixOSTestFor "x86_64-linux" ./cgroups;
+
   setuid = lib.genAttrs
     ["i686-linux" "x86_64-linux"]
     (system: runNixOSTestFor system ./setuid/setuid.nix);

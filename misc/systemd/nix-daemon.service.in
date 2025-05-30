@@ -11,6 +11,8 @@ ExecStart=@@bindir@/nix-daemon nix-daemon --daemon
 KillMode=process
 LimitNOFILE=1048576
 TasksMax=1048576
+Delegate=yes
+DelegateSubgroup=supervisor
 
 [Install]
 WantedBy=multi-user.target

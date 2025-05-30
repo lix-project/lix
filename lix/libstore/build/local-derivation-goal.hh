@@ -4,8 +4,19 @@
 #include "lix/libstore/build/derivation-goal.hh"
 #include "lix/libstore/local-store.hh"
 #include "lix/libutil/processes.hh"
+#include "lix/libutil/cgroup.hh"
 
 namespace nix {
+
+struct BuildContext
+{
+#ifdef __linux__
+    /**
+     * Control group for this derivation goal.
+     */
+    std::optional<AutoDestroyCgroup> cgroup;
+#endif
+};
 
 struct LocalDerivationGoal : public DerivationGoal
 {
@@ -15,6 +26,11 @@ struct LocalDerivationGoal : public DerivationGoal
      * User selected for running the builder.
      */
     std::unique_ptr<UserLock> buildUser;
+
+    /**
+     * Build context for this goal.
+     */
+    BuildContext context;
 
     /**
      * The process ID of the builder.

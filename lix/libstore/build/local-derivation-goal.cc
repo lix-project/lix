@@ -402,9 +402,11 @@ void LocalDerivationGoal::cleanupPostOutputsRegisteredModeNonCheck()
 
 kj::Promise<Result<void>> LocalDerivationGoal::startBuilder()
 try {
+#if !(__linux__)
     if (buildUser && buildUser->getUIDCount() != 1) {
         throw Error("cgroups are not supported on this platform");
     }
+#endif
 
     /* Make sure that no other processes are executing under the
        sandbox uids. This must be done before any chownToBuilder()

@@ -1,4 +1,5 @@
 #include "lix/libstore/build/worker.hh"
+#include "lix/libutil/cgroup.hh"
 #include "lix/libutil/finally.hh"
 #include "lix/libstore/gc-store.hh"
 #include "lix/libutil/signals.hh"
@@ -780,11 +781,13 @@ void LinuxLocalDerivationGoal::prepareSandbox()
        nobody account.  The latter is kind of a hack to support
        Samba-in-QEMU. */
     createDirs(chrootRootDir + "/etc");
-    if (parsedDrv->useUidRange())
-        chownToBuilder(chrootRootDir + "/etc");
 
     if (parsedDrv->useUidRange() && (!buildUser || buildUser->getUIDCount() < 65536))
         throw Error("feature 'uid-range' requires the setting '%s' to be enabled", settings.autoAllocateUids.name);
+
+    if (parsedDrv->useUidRange()) {
+        chownToBuilder(chrootRootDir + "/etc");
+    }
 
     /* Create /etc/hosts with localhost entry. */
     if (derivationType->isSandboxed())
@@ -817,6 +820,42 @@ void LinuxLocalDerivationGoal::prepareSandbox()
        out. */
     for (auto & i : drv->outputsAndPaths(worker.store)) {
         pathsInChroot.erase(worker.store.printStorePath(i.second.second));
+    }
+
+    if (buildUser && (buildUser->getUIDCount() != 1 || settings.useCgroups)) {
+        context.cgroup.emplace(
+            settings.nixStateDir + "/cgroups",
+            fmt("nix-build-uid-%d", buildUser->getUID()),
+            buildUser->getUID(),
+            buildUser->getGID()
+        );
+
+        debug("using cgroup '%s' for build", context.cgroup->name());
+
+        /* TODO(raito): it would be very nice if we could propagate system features
+         * based on which cgroup controllers are available in `context.cgroup`
+         * so that we would re-schedule any derivation that actually has
+         * anti-affinity or pro-affinity with certain cgroup controllers, e.g.
+         * a derivation that is very sensitive to the memory cgroup controller
+         * for performance reason.
+         *
+         * Unfortunately, the current design of system features prevent mutation
+         * and worse, we are too late for rescheduling this derivation.
+         *
+         * Therefore, we decide to always copy all the available controllers
+         * to the delegated cgroup.
+         */
+        debug(
+            "available cgroup controllers for cgroup '%s': '%s'",
+            context.cgroup->name(),
+            concatStringsSep(",", context.cgroup->controllers())
+        );
+    }
+
+    if (parsedDrv->useUidRange() && !context.cgroup) {
+        throw Error(
+            "feature 'uid-range' requires the setting '%s' to be enabled", settings.useCgroups.name
+        );
     }
 }
 
@@ -957,6 +996,11 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
             "nixbld:!:%1%:\n"
             "nogroup:x:65534:\n", sandboxGid()));
 
+    /* Migrate the child inside the available control group. */
+    if (context.cgroup) {
+        context.cgroup->adoptProcess(pid.get());
+    }
+
     /* Signal the builder that we've updated its user namespace. */
     writeFull(userNamespaceSync.writeSide.get(), "1");
 
@@ -965,7 +1009,18 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
 
 void LinuxLocalDerivationGoal::killSandbox(bool getStats)
 {
-    if (!useChroot) {
+    if (context.cgroup) {
+        context.cgroup->kill();
+        if (getStats) {
+            auto stats = context.cgroup->getStatistics();
+            buildResult.cpuUser = stats.cpuUser;
+            buildResult.cpuSystem = stats.cpuSystem;
+        }
+        /* It may be desireable to destroy the cgroup here
+         * but we may be calling this at the start of the build
+         * to ensure that no leftover process are running under sandbox UIDs.
+         * With control groups, that's already impossible. */
+    } else if (!useChroot) {
         /* Linux sandboxes use PID namespaces, which ensure that processes cannot escape from a build.
            Therefore, we don't need to kill all processes belonging to the build user.
            This avoids processes unrelated to the build being killed, thus avoiding: https://git.lix.systems/lix-project/lix/issues/667 */

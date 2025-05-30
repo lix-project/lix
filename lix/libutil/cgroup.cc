@@ -1,6 +1,7 @@
-#include "lix/libutil/logging.hh"
-#include "regex.hh"
+#include "logging.hh"
 #if __linux__
+
+#include "regex.hh"
 
 #include "lix/libutil/cgroup.hh"
 #include "lix/libutil/file-system.hh"
@@ -10,32 +11,29 @@
 #include <chrono>
 #include <cmath>
 #include <regex>
-#include <unordered_set>
-#include <thread>
-#include <signal.h>
 
 #include <dirent.h>
 #include <mntent.h>
+#include <sys/xattr.h>
 
 namespace nix {
 
-std::optional<Path> getCgroupFS()
+static bool isCgroupDelegated(const Path & path)
 {
-    static auto res = [&]() -> std::optional<Path> {
-        auto fp = fopen("/proc/mounts", "r");
-        if (!fp) return std::nullopt;
-        Finally delFP = [&]() { fclose(fp); };
-        while (auto ent = getmntent(fp))
-            if (std::string_view(ent->mnt_type) == "cgroup2")
-                return ent->mnt_dir;
+    char delegate_xattr;
 
-        return std::nullopt;
-    }();
-    return res;
+    if (getxattr(path.c_str(), "user.delegate", &delegate_xattr, sizeof(delegate_xattr)) >= 1) {
+        if (delegate_xattr != '1') {
+            throw Error("Unexpected `user.delegate` xattr: '%c'", delegate_xattr);
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
-// FIXME: obsolete, check for cgroup2
-std::map<std::string, std::string> getCgroups(const Path & cgroupFile)
+static std::map<std::string, std::string> getCgroups(const Path & cgroupFile)
 {
     std::map<std::string, std::string> cgroups;
 
@@ -52,101 +50,342 @@ std::map<std::string, std::string> getCgroups(const Path & cgroupFile)
     return cgroups;
 }
 
-static CgroupStats destroyCgroup(const Path & cgroup, bool returnStats)
+static CgroupStats readStatistics(const std::filesystem::path & cgroup)
 {
-    if (!pathExists(cgroup)) return {};
-
-    auto procsFile = cgroup + "/cgroup.procs";
-
-    if (!pathExists(procsFile))
-        throw Error("'%s' is not a cgroup", cgroup);
-
-    /* Use the fast way to kill every process in a cgroup, if
-       available. */
-    auto killFile = cgroup + "/cgroup.kill";
-    if (pathExists(killFile))
-        writeFile(killFile, "1");
-
-    /* Otherwise, manually kill every process in the subcgroups and
-       this cgroup. */
-    for (auto & entry : readDirectory(cgroup)) {
-        if (entry.type != DT_DIR) continue;
-        destroyCgroup(cgroup + "/" + entry.name, false);
-    }
-
-    int round = 1;
-
-    std::unordered_set<pid_t> pidsShown;
-
-    while (true) {
-        auto pids = tokenizeString<std::vector<std::string>>(readFile(procsFile));
-
-        if (pids.empty()) break;
-
-        if (round > 20)
-            throw Error("cannot kill cgroup '%s'", cgroup);
-
-        for (auto & pid_s : pids) {
-            pid_t pid;
-            if (auto o = string2Int<pid_t>(pid_s))
-                pid = *o;
-            else
-                throw Error("invalid pid '%s'", pid);
-            if (pidsShown.insert(pid).second) {
-                try {
-                    auto cmdline = readFile(fmt("/proc/%d/cmdline", pid));
-                    using namespace std::string_literals;
-                    warn("killing stray builder process %d (%s)...",
-                        pid, trim(replaceStrings(cmdline, "\0"s, " ")));
-                } catch (SysError &) {
-                }
-            }
-            // FIXME: pid wraparound
-            if (kill(pid, SIGKILL) == -1 && errno != ESRCH)
-                throw SysError("killing member %d of cgroup '%s'", pid, cgroup);
-        }
-
-        auto sleep = std::chrono::milliseconds((int) std::pow(2.0, std::min(round, 10)));
-        if (sleep.count() > 100)
-            printError("waiting for %d ms for cgroup '%s' to become empty", sleep.count(), cgroup);
-        std::this_thread::sleep_for(sleep);
-        round++;
-    }
-
     CgroupStats stats;
 
-    if (returnStats) {
-        auto cpustatPath = cgroup + "/cpu.stat";
+    auto cpustatPath = cgroup / "cpu.stat";
 
-        if (pathExists(cpustatPath)) {
-            for (auto & line : tokenizeString<std::vector<std::string>>(readFile(cpustatPath), "\n")) {
-                std::string_view userPrefix = "user_usec ";
-                if (line.starts_with(userPrefix)) {
-                    auto n = string2Int<uint64_t>(line.substr(userPrefix.size()));
-                    if (n) stats.cpuUser = std::chrono::microseconds(*n);
+    if (pathExists(cpustatPath)) {
+        for (auto & line : tokenizeString<std::vector<std::string>>(readFile(cpustatPath), "\n")) {
+            std::string_view userPrefix = "user_usec ";
+            if (line.starts_with(userPrefix)) {
+                auto n = string2Int<uint64_t>(line.substr(userPrefix.size()));
+                if (n) {
+                    stats.cpuUser = std::chrono::microseconds(*n);
                 }
+            }
 
-                std::string_view systemPrefix = "system_usec ";
-                if (line.starts_with(systemPrefix)) {
-                    auto n = string2Int<uint64_t>(line.substr(systemPrefix.size()));
-                    if (n) stats.cpuSystem = std::chrono::microseconds(*n);
+            std::string_view systemPrefix = "system_usec ";
+            if (line.starts_with(systemPrefix)) {
+                auto n = string2Int<uint64_t>(line.substr(systemPrefix.size()));
+                if (n) {
+                    stats.cpuSystem = std::chrono::microseconds(*n);
                 }
             }
         }
-
     }
-
-    if (rmdir(cgroup.c_str()) == -1)
-        throw SysError("deleting cgroup '%s'", cgroup);
 
     return stats;
 }
 
-CgroupStats destroyCgroup(const Path & cgroup)
+static void killCgroup(const std::string & name, const std::filesystem::path & cgroup)
 {
-    return destroyCgroup(cgroup, true);
+    auto killFile = cgroup / "cgroup.kill";
+    if (pathExists(killFile))
+        writeFile(killFile, "1");
+    else {
+        throw SysError(
+            "cgroup '%s' at '%s' does not possess `cgroup.kill` ; are you running Lix on a kernel "
+            "older than 5.14 with cgroups?",
+            name,
+            cgroup
+        );
+    }
 }
 
+static std::optional<CgroupStats>
+destroyCgroup(const std::string & name, const std::filesystem::path & aliveCgroup)
+{
+    debug("destroying cgroup '%s' at '%s'", name, aliveCgroup);
+    if (!pathExists(aliveCgroup)) {
+        debug("destroying cgroup '%s' already destroyed", name);
+        return {};
+    }
+
+    auto procsFile = aliveCgroup / "cgroup.procs";
+
+    if (!pathExists(procsFile)) {
+        throw SysError(
+            "cgroup '%s' at '%s' has an invalid cgroup hierarchy (missing `cgroup.procs`)",
+            name,
+            aliveCgroup
+        );
+    }
+
+    killCgroup(name, aliveCgroup);
+
+    CgroupStats stats = readStatistics(aliveCgroup);
+
+    if (rmdir(aliveCgroup.c_str()) == -1) {
+        throw SysError("deleting cgroup '%s' at '%s'", name, aliveCgroup);
+    }
+
+    debug("cgroup '%s' destroyed", name);
+
+    return stats;
+}
+
+CgroupHierarchy getLocalHierarchy(const std::filesystem::path & cgroupFilesystem)
+{
+    CgroupHierarchy hierarchy;
+
+    auto ourCgroups = getCgroups("/proc/self/cgroup");
+    auto ourCgroup = ourCgroups[""];
+
+    if (ourCgroup == "") {
+        throw Error("cannot determine cgroup name from '/proc/self/cgroup'");
+    }
+
+    if (ourCgroup[0] == '/') {
+        ourCgroup.erase(0, 1);
+    }
+
+    auto ourCgroupPath = (cgroupFilesystem / ourCgroup).lexically_normal();
+
+    if (!pathExists(ourCgroupPath)) {
+        throw Error("expected cgroup directory '%s'", ourCgroupPath);
+    }
+
+    hierarchy.ourCgroupPath = ourCgroupPath;
+
+    return hierarchy;
+}
+
+CgroupAvailableFeatureSet operator|(CgroupAvailableFeatureSet lhs, CgroupAvailableFeatureSet rhs)
+{
+    return static_cast<CgroupAvailableFeatureSet>(
+        static_cast<std::underlying_type<CgroupAvailableFeatureSet>::type>(lhs)
+        | static_cast<std::underlying_type<CgroupAvailableFeatureSet>::type>(rhs)
+    );
+}
+
+CgroupAvailableFeatureSet &
+operator|=(CgroupAvailableFeatureSet & lhs, CgroupAvailableFeatureSet rhs)
+{
+    return lhs = lhs | rhs;
+}
+
+CgroupAvailableFeatureSet operator&(CgroupAvailableFeatureSet lhs, CgroupAvailableFeatureSet rhs)
+{
+    return static_cast<CgroupAvailableFeatureSet>(
+        static_cast<std::underlying_type<CgroupAvailableFeatureSet>::type>(lhs)
+        & static_cast<std::underlying_type<CgroupAvailableFeatureSet>::type>(rhs)
+    );
+}
+
+bool hasCgroupFeature(CgroupAvailableFeatureSet featureSet, CgroupAvailableFeatureSet testedFeature)
+{
+    return static_cast<std::underlying_type<CgroupAvailableFeatureSet>::type>(
+               featureSet & testedFeature
+           )
+        != 0;
+}
+
+CgroupAvailableFeatureSet detectAvailableCgroupFeatures()
+{
+    CgroupAvailableFeatureSet features = {};
+
+    auto fs = getCgroupFS();
+
+    if (fs && !fs->empty()) {
+        features |= CgroupAvailableFeatureSet::CGROUPV2;
+
+        auto localHierarchy = getLocalHierarchy(*fs);
+        if (pathExists(localHierarchy.ourCgroupPath / "cgroup.kill")) {
+            features |= CgroupAvailableFeatureSet::CGROUPV2_KILL;
+        }
+
+        if (isCgroupDelegated(localHierarchy.ourCgroupPath)) {
+            features |= CgroupAvailableFeatureSet::CGROUPV2_SELF_DELEGATED;
+        }
+
+        auto parentCgroupPath = localHierarchy.parentCgroupPath();
+        if (parentCgroupPath && isCgroupDelegated(*parentCgroupPath)) {
+            features |= CgroupAvailableFeatureSet::CGROUPV2_PARENT_DELEGATED;
+        }
+    }
+
+    return features;
+}
+
+static std::vector<std::string> readControllers(const std::filesystem::path & cgroupPath)
+{
+    return tokenizeString<std::vector<std::string>>(
+        readFile(cgroupPath / "cgroup.controllers"), " "
+    );
+}
+
+AutoDestroyCgroup::AutoDestroyCgroup(
+    const std::filesystem::path & cgroupRecordsDir, std::string const & name
+)
+    : name_(name)
+{
+    auto cgroupFilesystem = getCgroupFS();
+    if (!cgroupFilesystem || cgroupFilesystem->empty()) {
+        throw Error("cannot determine the path to the cgroupv2 filesystem");
+    }
+
+    auto hierarchy = getLocalHierarchy(*cgroupFilesystem);
+    auto parentCgroupPath = hierarchy.parentCgroupPath();
+    assert(parentCgroupPath && "AutoDestroyCgroup cannot be used on the root cgroup");
+    /* We assert that the parent cgroup is delegated at this point.
+     * This is a responsibility of the caller. */
+    assert(isCgroupDelegated(*parentCgroupPath) && "parent cgroup was supposed to be delegated");
+
+    /* All available controllers on the parent cgroup path will be delegated.
+     * TODO(raito): implementing a filtering mechanism is for the future. */
+    controllers_ = readControllers(*parentCgroupPath);
+
+    /* Enable all the controllers */
+    writeFile(
+        *parentCgroupPath / "cgroup.subtree_control",
+        concatMapStringsSep(
+            " ",
+            controllers_,
+            [](const std::string & controller) -> std::string { return fmt("+%s", controller); }
+        )
+    );
+
+    cgroup_ = *parentCgroupPath / name;
+
+    /*
+     * In case we get interrupted without cleaning up the cgroup we just created,
+     * we look at Nix's state directory where we record all cgroups being used
+     * and destroy it before reusing it. */
+    cleansePreviousInstancesAndRecordOurself(cgroupRecordsDir);
+}
+
+AutoDestroyCgroup::AutoDestroyCgroup(
+    const std::filesystem::path & cgroupRecordsDir, std::string const & name, uid_t uid, gid_t gid
+)
+    : AutoDestroyCgroup(cgroupRecordsDir, name)
+{
+    auto path = std::get<std::filesystem::path>(cgroup_);
+
+    if (mkdir(path.c_str(), 0755) == -1) {
+        throw SysError(
+            "cannot create the top-level directory at '%s' for cgroup '%s'", path, name_
+        );
+    }
+
+    if (chown(path.c_str(), uid, gid) == -1) {
+        throw SysError(
+            "cannot delegate the top-level directory '%s' from cgroup '%s' to user uid=%d,gid=%d",
+            path,
+            name_,
+            uid,
+            gid
+        );
+    }
+
+    AutoCloseFD cgroupFd{open(path.c_str(), O_PATH | O_NOFOLLOW)};
+    for (auto node : {"procs", "threads", "subtree_control"}) {
+        if (fchownat(cgroupFd.get(), fmt("cgroup.%s", node).c_str(), uid, gid, 0) == -1) {
+            throw SysError(
+                "cannot delegate '%s' from cgroup '%s' to user uid=%d,gid=%d", node, name_, uid, gid
+            );
+        }
+    }
+
+    delegation_ = {.uid = uid, .gid = gid};
+}
+
+AutoDestroyCgroup::~AutoDestroyCgroup()
+{
+    try {
+        std::visit(
+            overloaded{
+                [&, this](const Path & aliveCgroup) {
+                    auto maybeStats = destroyCgroup(name_, aliveCgroup);
+                    if (!maybeStats) {
+                        warn(
+                            "cgroup '%s' was destroyed unexpectedly (something else removed the "
+                            "cgroup).",
+                            aliveCgroup
+                        );
+                    }
+                },
+                [&](const CgroupStats & stats) {}
+            },
+            cgroup_
+        );
+    } catch (...) {
+        ignoreExceptionInDestructor();
+    }
+}
+
+void AutoDestroyCgroup::cleansePreviousInstancesAndRecordOurself(
+    const std::filesystem::path & cgroupRecordsDir
+)
+{
+    createDirs(cgroupRecordsDir);
+
+    auto cgroupFile = cgroupRecordsDir / name_;
+
+    if (pathExists(cgroupFile)) {
+        auto prevCgroup = readFile(cgroupFile);
+        warn("destroying past cgroup '%s' found in the state directory", name_);
+        destroyCgroup(fmt("past %s", name_), prevCgroup);
+    }
+
+    writeFile(cgroupFile, std::get<std::filesystem::path>(cgroup_).string());
+    stateRecord = AutoDelete(cgroupFile, false);
+}
+
+void AutoDestroyCgroup::adoptProcess(int pid)
+{
+    auto path = std::get_if<std::filesystem::path>(&cgroup_);
+    if (!path) {
+        throw SysError("cgroup '%s' went away while adopting process '%d'", name_, pid);
+    }
+
+    writeFile(*path / "cgroup.procs", fmt("%d", pid));
+}
+
+void AutoDestroyCgroup::kill()
+{
+    auto path = std::get_if<std::filesystem::path>(&cgroup_);
+    if (!path) {
+        throw SysError("killing cgroup '%s' but it went away", name_);
+    }
+
+    killCgroup(name_, *path);
+}
+
+CgroupStats AutoDestroyCgroup::getStatistics() const
+{
+    /* Either:
+     * - we need to pull statistics from an alive cgroup.
+     * - we need to get historical statistics from a dead cgroup.
+     */
+    return std::visit(
+        nix::overloaded{
+            [&](const Path & aliveCgroup) { return readStatistics(aliveCgroup); },
+            [&](const CgroupStats & stats) { return stats; }
+        },
+        cgroup_
+    );
+}
+
+std::optional<std::filesystem::path> getCgroupFS()
+{
+    static auto res = [&]() -> std::optional<std::filesystem::path> {
+        auto fp = fopen("/proc/mounts", "r");
+        if (!fp) {
+            return {};
+        }
+        Finally delFP = [&]() { fclose(fp); };
+        while (auto ent = getmntent(fp)) {
+            if (std::string_view(ent->mnt_type) == "cgroup2") {
+                return {ent->mnt_dir};
+            }
+        }
+
+        return {};
+    }();
+    return res;
+}
 }
 
 #endif

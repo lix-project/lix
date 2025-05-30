@@ -37,6 +37,85 @@ Worker::Worker(Store & store, Store & evalStore)
     , children(errorHandler)
 {
     /* Debugging: prevent recursive workers. */
+
+#ifdef __linux__
+
+    /* When cgroups are used, we need to verify if our context allows
+     * us to fully use cgroups delegation or ability to kill certain cgroups.
+     *
+     * Note that `uid-range` builds implies cgroups, the converse is false.
+     * A `uid-range` build is defined as `settings.autoAllocateUids && settings.uidCount >= 1`
+     */
+
+    if (settings.autoAllocateUids && settings.uidCount > 1 && !settings.useCgroups) {
+        throw Error(
+            "Running builds with UID ranges (setting `%s` enabled and `%d` UIDs) requires the "
+            "setting '%s' to be enabled.",
+            settings.autoAllocateUids.name,
+            settings.uidCount,
+            settings.useCgroups.name
+        );
+    }
+
+    /* Cgroup build absolutely need build user separation. */
+    if (!useBuildUsers() && settings.useCgroups) {
+        throw Error(
+            "Running all builds with cgroups requires privilege separation for build users but Lix "
+            "is not configured to use build users."
+        );
+    }
+
+    /*
+     * At this point, we know that if `settings.useCgroups = true`, then `useBuildUsers() = true`.
+     * UID ranges may or may not be available.
+     */
+    if (settings.useCgroups) {
+        if (!hasCgroupFeature(
+                platformFeatures.availableCgroupFeatures, CgroupAvailableFeatureSet::CGROUPV2
+            ))
+        {
+            throw Error("Running a build with cgroups requires cgroups v2 support on the system.");
+        }
+
+        if (!hasCgroupFeature(
+                platformFeatures.availableCgroupFeatures, CgroupAvailableFeatureSet::CGROUPV2_KILL
+            ))
+        {
+            throw Error(
+                "Running a build with cgroups requires cgroups v2 kill feature which requires "
+                "a Linux kernel newer than 5.14."
+            );
+        }
+
+        if (!hasCgroupFeature(
+                platformFeatures.availableCgroupFeatures,
+                CgroupAvailableFeatureSet::CGROUPV2_PARENT_DELEGATED
+            ))
+        {
+            if (hasCgroupFeature(
+                    platformFeatures.availableCgroupFeatures,
+                    CgroupAvailableFeatureSet::CGROUPV2_SELF_DELEGATED
+                ))
+            {
+                throw Error(
+                    "Running a build with cgroups requires the parent cgroup tree to be "
+                    "delegated, but only this process' cgroup is delegated.\n"
+                    "If you used systemd with `Delegate=yes`, consider moving the process in a "
+                    "sub-cgroup or use `DelegateSubtree=` to move it automatically.\n"
+                    "See <https://systemd.io/CGROUP_DELEGATION/> for more information."
+                );
+            } else {
+                throw Error(
+                    "Running a build with cgroups requires the parent cgroup tree to be "
+                    "delgated.\n"
+                    "If you use systemd, adding `Delegate=yes` and `DelegateSubtree=supervisor` to "
+                    "the [Unit] section will delegate the parent cgroup tree.\n"
+                    "See <https://systemd.io/CGROUP_DELEGATION/> for more information."
+                );
+            }
+        }
+    }
+#endif
 }
 
 

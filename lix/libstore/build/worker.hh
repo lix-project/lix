@@ -6,6 +6,7 @@
 #include "lix/libutil/concepts.hh"
 #include "lix/libutil/notifying-counter.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/cgroup.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libstore/lock.hh"
 #include "lix/libstore/store-api.hh"
@@ -186,6 +187,15 @@ public:
     Store & store;
     Store & evalStore;
     AsyncSemaphore substitutions, localBuilds;
+
+    struct PlatformFeatures
+    {
+#ifdef __linux__
+        CgroupAvailableFeatureSet availableCgroupFeatures = detectAvailableCgroupFeatures();
+#endif
+    };
+
+    PlatformFeatures platformFeatures;
 
 private:
     kj::TaskSet children;
