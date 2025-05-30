@@ -18,7 +18,7 @@
           nix.settings.substituters = lib.mkForce [ ];
           nix.extraOptions =
             ''
-              extra-experimental-features = nix-command auto-allocate-uids cgroups
+              extra-experimental-features = nix-command auto-allocate-uids
               extra-system-features = uid-range
             '';
           nix.nixPath = [ "nixpkgs=${nixpkgs}" ];

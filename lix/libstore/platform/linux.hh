@@ -40,14 +40,13 @@ private:
     void prepareSandbox() override;
 
     /**
-     * Start child process in new namespaces and cgroup,
+     * Start child process in new namespaces,
      * create /etc/passwd and /etc/group based on discovered uid/gid
      */
     Pid startChild(std::function<void()> openSlave) override;
 
     /**
-     * Kill all processes by build user, possibly using a reused
-     * cgroup if we have one
+     * Kill all processes by build user.
      */
     void killSandbox(bool getStatus) override;
 

@@ -22,11 +22,6 @@ struct LocalDerivationGoal : public DerivationGoal
     Pid pid;
 
     /**
-     * The cgroup of the builder, if any.
-     */
-    std::optional<Path> cgroup;
-
-    /**
      * The temporary directory.
      */
     Path tmpDir;
@@ -238,8 +233,7 @@ struct LocalDerivationGoal : public DerivationGoal
     void killChild() override final;
 
     /**
-     * Kill any processes running under the build user UID or in the
-     * cgroup of the build.
+     * Kill any processes running under the build user UID.
      */
     virtual void killSandbox(bool getStats);
 

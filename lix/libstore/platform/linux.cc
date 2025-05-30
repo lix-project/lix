@@ -1,5 +1,4 @@
 #include "lix/libstore/build/worker.hh"
-#include "lix/libutil/cgroup.hh"
 #include "lix/libutil/finally.hh"
 #include "lix/libstore/gc-store.hh"
 #include "lix/libutil/signals.hh"
@@ -819,15 +818,6 @@ void LinuxLocalDerivationGoal::prepareSandbox()
     for (auto & i : drv->outputsAndPaths(worker.store)) {
         pathsInChroot.erase(worker.store.printStorePath(i.second.second));
     }
-
-    if (cgroup) {
-        if (mkdir(cgroup->c_str(), 0755) != 0)
-            throw SysError("creating cgroup '%s'", *cgroup);
-        chownToBuilder(*cgroup);
-        chownToBuilder(*cgroup + "/cgroup.procs");
-        chownToBuilder(*cgroup + "/cgroup.threads");
-        //chownToBuilder(*cgroup + "/cgroup.subtree_control");
-    }
 }
 
 Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
@@ -967,10 +957,6 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
             "nixbld:!:%1%:\n"
             "nogroup:x:65534:\n", sandboxGid()));
 
-    /* Move the child into its own cgroup. */
-    if (cgroup)
-        writeFile(*cgroup + "/cgroup.procs", fmt("%d", pid.get()));
-
     /* Signal the builder that we've updated its user namespace. */
     writeFull(userNamespaceSync.writeSide.get(), "1");
 
@@ -979,13 +965,7 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
 
 void LinuxLocalDerivationGoal::killSandbox(bool getStats)
 {
-    if (cgroup) {
-        auto stats = destroyCgroup(*cgroup);
-        if (getStats) {
-            buildResult.cpuUser = stats.cpuUser;
-            buildResult.cpuSystem = stats.cpuSystem;
-        }
-    } else if (!useChroot) {
+    if (!useChroot) {
         /* Linux sandboxes use PID namespaces, which ensure that processes cannot escape from a build.
            Therefore, we don't need to kill all processes belonging to the build user.
            This avoids processes unrelated to the build being killed, thus avoiding: https://git.lix.systems/lix-project/lix/issues/667 */

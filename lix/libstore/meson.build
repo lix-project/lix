@@ -108,7 +108,6 @@ libstore_setting_definitions = files(
   'settings/timeout.md',
   'settings/trusted-public-keys.md',
   'settings/trusted-substituters.md',
-  'settings/use-cgroups.md',
   'settings/use-sqlite-wal.md',
   'settings/use-xdg-base-directories.md',
   # keep-sorted end

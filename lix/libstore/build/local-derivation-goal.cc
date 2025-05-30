@@ -16,7 +16,6 @@
 #include "lix/libutil/result.hh"
 #include "lix/libutil/topo-sort.hh"
 #include "lix/libutil/json.hh"
-#include "lix/libutil/cgroup.hh"
 #include "lix/libstore/build/personality.hh"
 #include "lix/libutil/namespaces.hh"
 #include "lix/libstore/build/child.hh"
@@ -403,57 +402,8 @@ void LocalDerivationGoal::cleanupPostOutputsRegisteredModeNonCheck()
 
 kj::Promise<Result<void>> LocalDerivationGoal::startBuilder()
 try {
-    if ((buildUser && buildUser->getUIDCount() != 1)
-        #if __linux__
-        || settings.useCgroups
-        #endif
-        )
-    {
-        #if __linux__
-        experimentalFeatureSettings.require(Xp::Cgroups);
-
-        auto cgroupFS = getCgroupFS();
-        if (!cgroupFS)
-            throw Error("cannot determine the cgroups file system");
-
-        auto ourCgroups = getCgroups("/proc/self/cgroup");
-        auto ourCgroup = ourCgroups[""];
-        if (ourCgroup == "")
-            throw Error("cannot determine cgroup name from /proc/self/cgroup");
-
-        auto ourCgroupPath = canonPath(*cgroupFS + "/" + ourCgroup);
-
-        if (!pathExists(ourCgroupPath))
-            throw Error("expected cgroup directory '%s'", ourCgroupPath);
-
-        static std::atomic<unsigned int> counter{0};
-
-        cgroup = buildUser
-            ? fmt("%s/nix-build-uid-%d", ourCgroupPath, buildUser->getUID())
-            : fmt("%s/nix-build-pid-%d-%d", ourCgroupPath, getpid(), counter++);
-
-        debug("using cgroup '%s'", *cgroup);
-
-        /* When using a build user, record the cgroup we used for that
-           user so that if we got interrupted previously, we can kill
-           any left-over cgroup first. */
-        if (buildUser) {
-            auto cgroupsDir = settings.nixStateDir + "/cgroups";
-            createDirs(cgroupsDir);
-
-            auto cgroupFile = fmt("%s/%d", cgroupsDir, buildUser->getUID());
-
-            if (pathExists(cgroupFile)) {
-                auto prevCgroup = readFile(cgroupFile);
-                destroyCgroup(prevCgroup);
-            }
-
-            writeFile(cgroupFile, *cgroup);
-        }
-
-        #else
+    if (buildUser && buildUser->getUIDCount() != 1) {
         throw Error("cgroups are not supported on this platform");
-        #endif
     }
 
     /* Make sure that no other processes are executing under the
@@ -822,7 +772,6 @@ try {
 } catch (...) {
     co_return result::current_exception();
 }
-
 
 Pid LocalDerivationGoal::startChild(std::function<void()> openSlave) {
     return startProcess([&]() {
