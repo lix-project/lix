@@ -4,16 +4,19 @@ needLocalStore "“min-free” and “max-free” are daemon options"
 
 clearStore
 
+fake_free=$TEST_ROOT/fake-free
+export _NIX_TEST_FREE_SPACE_FILE=$fake_free
+echo 1100 > $fake_free
+
+# Check that auto-GC during evaluation progresses.
+timeout --signal=KILL 10s nix eval --expr 'builtins.toFile "meow" "meow"' --min-free 2000
+
 garbage1=$(nix store add-path --name garbage1 ./nar-access.sh)
 garbage2=$(nix store add-path --name garbage2 ./nar-access.sh)
 garbage3=$(nix store add-path --name garbage3 ./nar-access.sh)
 
 ls -l $garbage3
 POSIXLY_CORRECT=1 du $garbage3
-
-fake_free=$TEST_ROOT/fake-free
-export _NIX_TEST_FREE_SPACE_FILE=$fake_free
-echo 1100 > $fake_free
 
 fifoLock=$TEST_ROOT/fifoLock
 mkfifo "$fifoLock"
