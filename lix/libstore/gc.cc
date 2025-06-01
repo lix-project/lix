@@ -966,9 +966,9 @@ try {
 
     {
         auto state(_gcState.lock());
+        state->gcWaiters.push_back(std::move(pfp.fulfiller));
 
         if (state->gcRunning) {
-            state->gcWaiters.push_back(std::move(pfp.fulfiller));
             debug("waiting for auto-GC to finish");
             goto sync;
         }
