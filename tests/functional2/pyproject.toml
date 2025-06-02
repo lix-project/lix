@@ -6,6 +6,9 @@ requires-python = ">=3.11"
 [tool.pytest.ini_options]
 addopts = "-p no:xonsh"
 
+# xfail tests should fail when not failing as described
+xfail_strict = true
+
 # Keep the temporary files of the last 3 test runs (default value)
 tmp_path_retention_count = 3
 # Keep temporary files of all tests, regardless if they failed or not
