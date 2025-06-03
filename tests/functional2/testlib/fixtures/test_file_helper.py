@@ -9,6 +9,7 @@ from functional2.testlib.fixtures.file_helper import (
     File,
     Symlink,
     AssetSymlink,
+    merge_file_declaration,
 )
 
 
@@ -249,3 +250,39 @@ def test_file_symlink(files: Path):
     assert link.is_symlink()
     # check that this is actually relative and not an absolute path
     assert str(link.readlink()) == "../tg"
+
+
+def test_merge_fd_merges_correctly():
+    fa = File("a")
+    fc = File("c")
+    fd = File("d")
+    ff = File("f")
+    fd1 = {"a": fa, "b": {"c": fc}}
+
+    fd2 = {"b": {"d": fd}, "e": {"f": ff}}
+
+    expected = {"a": fa, "b": {"c": fc, "d": fd}, "e": {"f": ff}}
+
+    result = merge_file_declaration(fd1, fd2)
+    assert result == expected
+
+
+def test_merge_fd_throws_on_conflict():
+    fd1 = {"a": {"b": File("b")}}
+    fd2 = {"a": File("a")}
+
+    with pytest.raises(
+        ValueError, match="('Cannot merge files; got two different values for the same path', 'a')"
+    ):
+        merge_file_declaration(fd1, fd2)
+
+
+def test_merge_fd_throws_on_conflict_with_full_path():
+    fd1 = {"a": {"b": {"c": {"d": File("d")}}}}
+    fd2 = {"a": {"b": {"c": {"d": File("different file")}}}}
+
+    with pytest.raises(
+        ValueError,
+        match="('Cannot merge files; got two different values for the same path', 'a/b/c/d')",
+    ):
+        merge_file_declaration(fd1, fd2)

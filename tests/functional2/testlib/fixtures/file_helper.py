@@ -146,9 +146,13 @@ def merge_file_declaration(a: FileDeclaration, b: FileDeclaration) -> FileDeclar
             result[key] = a.get(key) or b.get(key)
             continue
         if isinstance(a[key], Fileish) or isinstance(b[key], Fileish):
-            msg = "Cannot merge files; got two different values for the same path %s"
+            msg = "Cannot merge files; got two different values for the same path"
             raise ValueError(msg, key)
-        result[key] = merge_file_declaration(a[key], b[key])
+        try:
+            result[key] = merge_file_declaration(a[key], b[key])
+        except ValueError as e:
+            msg, path = e.args
+            raise ValueError(msg, f"{key}/{path}")
 
     return result
 
