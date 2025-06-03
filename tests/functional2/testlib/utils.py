@@ -1,4 +1,9 @@
+import builtins
+import types
+import typing
 from pathlib import Path
+from types import UnionType
+from typing import Any, Literal, get_args, get_origin
 
 from functional2.testlib.fixtures.file_helper import (
     CopyFile,
@@ -6,7 +11,6 @@ from functional2.testlib.fixtures.file_helper import (
     FileDeclaration,
     merge_file_declaration,
 )
-
 
 # Things have to be resolved from top to bottom, because otherwise the tests behave flakey
 # due to the internal file structure
@@ -86,3 +90,38 @@ def get_functional2_lang_files(additional_files: FileDeclaration | None = None) 
             additional_files,
         )
     )
+
+
+def is_value_of_type(value: Any, expected_type: type[Any] | UnionType) -> bool:
+    """
+    checks if the given value conforms to the type.
+    This function is useful, to check if all values conform to the inner iterable type
+    :param value: value to check
+    :param expected_type: what type each item should be; must be a non-generic type or one of {dict, list, set, UnionType, Literal}
+    :return: True if it conforms, otherwise False
+    """
+    supported_origin_types = {dict, list, set, type, UnionType, Literal}
+    origin = get_origin(expected_type)
+    if expected_type is Any:
+        return True
+    match origin:
+        case None | types.UnionType:
+            return isinstance(value, expected_type)
+        case typing.Literal:
+            return value in get_args(expected_type)
+        case builtins.type:
+            return value is get_args(expected_type)[0]
+        case builtins.list | builtins.set | builtins.dict:
+            matches_origin = isinstance(value, origin)
+            if not matches_origin:
+                return False
+            matches = all(is_value_of_type(v, get_args(expected_type)[0]) for v in value)
+            if origin is dict:
+                # also check the value side of dicts
+                matches = matches and all(
+                    is_value_of_type(v, get_args(expected_type)[1]) for v in value.values()
+                )
+            return matches
+        case _:
+            msg = f"Unsupported expected_type. Must be a non-generic or one of {supported_origin_types!r}"
+            raise ValueError(msg)

@@ -9,8 +9,7 @@ import toml
 from toml import TomlDecodeError
 
 from functional2.testlib.fixtures.file_helper import FileDeclaration, CopyFile, AssetSymlink
-from functional2.testlib.utils import test_base_folder
-
+from functional2.testlib.utils import test_base_folder, is_value_of_type
 
 LANG_TEST_ID_PATTERN = "{folder_name}:{test_name}"
 
@@ -126,25 +125,6 @@ def _group_lang_tests(tests: list[LangTest]) -> dict[LangTestRunner, list[LangTe
     return grouped_tests
 
 
-def _is_list_of_type(value: Any, expected_type: type[Any]) -> bool:
-    """
-    checks if the given value conforms to the type `list[expected_type]`
-    :param value: value to check
-    :param expected_type: what type each item should be
-    :return: True, if it conforms, False otherwise
-    """
-    return isinstance(value, list) and all(isinstance(v, expected_type) for v in value)
-
-
-def _is_list_of_strings(value: Any) -> bool:
-    """
-    same as `_is_list_of_type` but with type `str` pre-applied
-    :param value: value to check
-    :return: True, if the value conforms to `list[str]` otherwise False
-    """
-    return _is_list_of_type(value, str)
-
-
 def _collect_toml_test_group(folder: Path) -> tuple[list[LangTest], list[InvalidLangTest]]:
     """
     Collects all tests, declared by a `test.toml` file within the given folder
@@ -185,7 +165,7 @@ def _collect_toml_test_group(folder: Path) -> tuple[list[LangTest], list[Invalid
             continue
 
         flags = definition.pop("flags", [])
-        if not _is_list_of_strings(flags):
+        if not is_value_of_type(flags, list[str]):
             test_errors.append(
                 f"invalid value type for 'flags': {flags}, expected a list of strings"
             )
@@ -198,7 +178,7 @@ def _collect_toml_test_group(folder: Path) -> tuple[list[LangTest], list[Invalid
             runner = None
 
         extra_files = definition.pop("extra-files", [])
-        if not _is_list_of_strings(extra_files):
+        if not is_value_of_type(extra_files, list[str]):
             test_errors.append(
                 f"invalid value type for 'extra_files': {extra_files}, expected a list of strings"
             )
