@@ -8,6 +8,7 @@ from collections.abc import Callable, Generator
 import pytest
 
 from functional2.testlib.commands import CommandResult, Command
+from functional2.testlib.utils import is_value_of_type
 
 
 @dataclasses.dataclass
@@ -43,11 +44,13 @@ class NixSettings:
         config = ""
 
         def serialise(value: Any) -> str:
-            if type(value) in {str, int}:
+            # TODO(Commentator2.0): why exactly are ints supported?
+            if is_value_of_type(value, set[str | int]):
+                return " ".join(serialise(e) for e in value)
+            if is_value_of_type(value, str | int):
                 return str(value)
-            if type(value) in {list, set}:
-                return " ".join(str(e) for e in value)
-            msg = f"Value is unsupported in nix config: {value!r}"
+
+            msg = f"Value is unsupported in nix config: {value!r}, must bei either `str|int` or `set[str|int]`"
             raise ValueError(msg)
 
         def field_may(name: str, value: Any, serializer: Callable[[Any], str] = serialise):
