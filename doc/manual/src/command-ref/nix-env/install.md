@@ -148,8 +148,8 @@ To copy the store path with symbolic name `gcc` from another profile:
 $ nix-env --install --from-profile /nix/var/nix/profiles/foo gcc
 ```
 
-To install a specific [store derivation] (typically created by
-`nix-instantiate`):
+To install a specific [store derivation](@docroot@/glossary.md#gloss-store-derivation)
+(typically created by `nix-instantiate`):
 
 ```console
 $ nix-env --install /nix/store/fibjb1bfbpm5mrsxc4mh2d8n37sxh91i-gcc-3.4.3.drv
