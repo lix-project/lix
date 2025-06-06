@@ -692,29 +692,46 @@ Source & readDerivation(Source & in, const Store & store, BasicDerivation & drv,
 }
 
 
+WireFormatGenerator serializeDerivation(const Store & store, const BasicDerivation & drv)
+{
+    co_yield drv.outputs.size();
+    for (auto & i : drv.outputs) {
+        co_yield i.first;
+        auto [path, algo, hash] = std::visit(
+            overloaded{
+                [&](const DerivationOutput::InputAddressed & doi
+                ) -> std::tuple<std::string, std::string, std::string> {
+                    return {store.printStorePath(doi.path), "", ""};
+                },
+                [&](const DerivationOutput::CAFixed & dof
+                ) -> std::tuple<std::string, std::string, std::string> {
+                    return {
+                        store.printStorePath(dof.path(store, drv.name, i.first)),
+                        dof.ca.printMethodAlgo(),
+                        dof.ca.hash.to_string(Base::Base16, false)
+                    };
+                },
+            },
+            i.second.raw
+        );
+        co_yield path;
+        co_yield algo;
+        co_yield hash;
+    }
+    co_yield CommonProto::write(CommonProto::WriteConn{store}, drv.inputSrcs);
+    co_yield drv.platform;
+    co_yield drv.builder;
+    co_yield drv.args;
+    co_yield drv.env.size();
+    for (auto & i : drv.env) {
+        co_yield i.first;
+        co_yield i.second;
+    }
+}
+
 void writeDerivation(Sink & out, const Store & store, const BasicDerivation & drv)
 {
-    out << drv.outputs.size();
-    for (auto & i : drv.outputs) {
-        out << i.first;
-        std::visit(overloaded {
-            [&](const DerivationOutput::InputAddressed & doi) {
-                out << store.printStorePath(doi.path)
-                    << ""
-                    << "";
-            },
-            [&](const DerivationOutput::CAFixed & dof) {
-                out << store.printStorePath(dof.path(store, drv.name, i.first))
-                    << dof.ca.printMethodAlgo()
-                    << dof.ca.hash.to_string(Base::Base16, false);
-            },
-        }, i.second.raw);
-    }
-    out << CommonProto::write(CommonProto::WriteConn{store}, drv.inputSrcs);
-    out << drv.platform << drv.builder << drv.args;
-    out << drv.env.size();
-    for (auto & i : drv.env)
-        out << i.first << i.second;
+    out << serializeDerivation(store, drv);
 }
 
 
