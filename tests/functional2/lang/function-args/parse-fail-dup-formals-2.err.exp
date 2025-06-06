@@ -1,5 +1,5 @@
 error: duplicate formal function argument 'args'
-       at /pwd/parse-fail-patterns-1.nix:1:1:
+       at /pwd/in.nix:1:1:
             1| args@{args, x, y, z}: x
              | ^
             2|

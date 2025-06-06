@@ -1,4 +1,4 @@
 error: duplicate formal function argument 'x'
-       at /pwd/parse-fail-dup-formals.nix:1:8:
+       at /pwd/in.nix:1:8:
             1| {x, y, x}: x
              |        ^
