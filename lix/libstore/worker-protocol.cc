@@ -152,4 +152,25 @@ WireFormatGenerator WorkerProto::Serialise<UnkeyedValidPathInfo>::write(const St
     co_yield renderContentAddress(pathInfo.ca);
 }
 
+
+SubstitutablePathInfo WorkerProto::Serialise<SubstitutablePathInfo>::read(const Store & store, ReadConn conn)
+{
+    SubstitutablePathInfo info;
+    auto deriver = readString(conn.from);
+    if (deriver != "")
+        info.deriver = store.parseStorePath(deriver);
+    info.references = WorkerProto::Serialise<StorePathSet>::read(store, conn);
+    info.downloadSize = readLongLong(conn.from);
+    info.narSize = readLongLong(conn.from);
+    return info;
+}
+
+WireFormatGenerator WorkerProto::Serialise<SubstitutablePathInfo>::write(const Store & store, WriteConn conn, const SubstitutablePathInfo & info)
+{
+    co_yield (info.deriver ? store.printStorePath(*info.deriver) : "");
+    co_yield WorkerProto::write(store, conn, info.references);
+    co_yield info.downloadSize;
+    co_yield info.narSize;
+}
+
 }

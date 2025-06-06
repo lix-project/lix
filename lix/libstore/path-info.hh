@@ -27,6 +27,9 @@ struct SubstitutablePathInfo
      * 0 = unknown
      */
     uint64_t narSize;
+
+    bool operator==(const SubstitutablePathInfo &) const = default;
+    bool operator!=(const SubstitutablePathInfo &) const = default;
 };
 
 using SubstitutablePathInfos = std::map<StorePath, SubstitutablePathInfo>;

@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "lix/libstore/worker-protocol.hh"
+#include "lix/libstore/path-info.hh"
 #include "lix/libstore/worker-protocol-impl.hh"
 #include "lix/libstore/derived-path.hh"
 #include "lix/libstore/build-result.hh"
@@ -283,4 +284,36 @@ VERSIONED_CHARACTERIZATION_TEST(
         },
     }))
 
+VERSIONED_CHARACTERIZATION_TEST(
+    WorkerProtoTest,
+    substitutablePathInfos,
+    "substitutable-path-infos",
+    defaultVersion,
+    (SubstitutablePathInfos{
+        {StorePath{
+             "g1w7hyyyy1w7hy3qg1w7hy3qgqqqqy3q-foo",
+         },
+         SubstitutablePathInfo{
+             std::nullopt,
+             {},
+             123456789,
+             987654321,
+         }},
+        {StorePath{
+             "g1w7hyyyy1w7hy3qg1w7hy3qgqqqqy3q-bar",
+         },
+         SubstitutablePathInfo{
+             StorePath{
+                 "g1w7hyyyy1w7hy3qg1w7hy3qgqqqqy3q-fox",
+             },
+             {
+                 StorePath{
+                     "g1w7hyyyy1w7hy3qg1w7hy3qgqqqqy3q-other",
+                 },
+             },
+             987654321,
+             123456789,
+         }},
+    })
+)
 }

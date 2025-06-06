@@ -23,6 +23,7 @@
 #include "lix/libutil/thread-name.hh"
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/types.hh"
+#include "path-info.hh"
 
 #include <kj/async.h>
 #include <optional>
@@ -240,17 +241,7 @@ try {
     conn->to << WorkerProto::Op::QuerySubstitutablePathInfos;
     conn->to << WorkerProto::write(*this, *conn, pathsMap);
     conn.processStderr();
-    size_t count = readNum<size_t>(conn->from);
-    for (size_t n = 0; n < count; n++) {
-        SubstitutablePathInfo & info(infos[parseStorePath(readString(conn->from))]);
-        auto deriver = readString(conn->from);
-        if (deriver != "")
-            info.deriver = parseStorePath(deriver);
-        info.references = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
-        info.downloadSize = readLongLong(conn->from);
-        info.narSize = readLongLong(conn->from);
-    }
-
+    infos = WorkerProto::Serialise<SubstitutablePathInfos>::read(*this, *conn);
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();

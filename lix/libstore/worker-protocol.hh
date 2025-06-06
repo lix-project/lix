@@ -2,6 +2,7 @@
 ///@file
 
 #include "lix/libstore/common-protocol.hh"
+#include "path-info.hh"
 
 namespace nix {
 
@@ -230,6 +231,8 @@ template<>
 DECLARE_WORKER_SERIALISER(UnkeyedValidPathInfo);
 template<>
 DECLARE_WORKER_SERIALISER(std::optional<TrustedFlag>);
+template<>
+DECLARE_WORKER_SERIALISER(SubstitutablePathInfo);
 
 template<typename T>
 DECLARE_WORKER_SERIALISER(std::vector<T>);

@@ -682,13 +682,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         logger->startWork();
         aio.blockOn(store->querySubstitutablePathInfos(pathsMap, infos));
         logger->stopWork();
-        to << infos.size();
-        for (auto & i : infos) {
-            to << store->printStorePath(i.first)
-               << (i.second.deriver ? store->printStorePath(*i.second.deriver) : "");
-            to << WorkerProto::write(*store, wconn, i.second.references);
-            to << i.second.downloadSize << i.second.narSize;
-        }
+        to << WorkerProto::write(*store, wconn, infos);
         break;
     }
 
