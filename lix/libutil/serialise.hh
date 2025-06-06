@@ -155,7 +155,6 @@ private:
 struct FdSource : BufferedSource
 {
     int fd;
-    size_t read = 0;
     /** Defaults to "unexpected end-of-file" */
     std::optional<std::string> specialEndOfFileError;
 
@@ -169,7 +168,6 @@ struct FdSource : BufferedSource
     {
         fd = s.fd;
         s.fd = -1;
-        read = s.read;
         return *this;
     }
 
