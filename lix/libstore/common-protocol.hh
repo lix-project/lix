@@ -30,6 +30,7 @@ struct CommonProto
      */
     struct ReadConn {
         Source & from;
+        const Store & store;
     };
 
     /**
@@ -37,6 +38,7 @@ struct CommonProto
      * canonical serializers below.
      */
     struct WriteConn {
+        const Store & store;
     };
 
     template<typename T>
@@ -48,17 +50,17 @@ struct CommonProto
      */
     template<typename T>
     [[nodiscard]]
-    static WireFormatGenerator write(const Store & store, WriteConn conn, const T & t)
+    static WireFormatGenerator write(WriteConn conn, const T & t)
     {
-        return CommonProto::Serialise<T>::write(store, conn, t);
+        return CommonProto::Serialise<T>::write(conn, t);
     }
 };
 
 #define DECLARE_COMMON_SERIALISER(T) \
     struct CommonProto::Serialise< T > \
     { \
-        static T read(const Store & store, CommonProto::ReadConn conn); \
-        [[nodiscard]] static WireFormatGenerator write(const Store & store, CommonProto::WriteConn conn, const T & str); \
+        static T read(CommonProto::ReadConn conn); \
+        [[nodiscard]] static WireFormatGenerator write(CommonProto::WriteConn conn, const T & str); \
     }
 
 template<>

@@ -27,6 +27,11 @@ struct RemoteStore::Connection
     FdSource from;
 
     /**
+     * The store this connection belongs to.
+     */
+    Store * store;
+
+    /**
      * The worker protocol version of the connected daemon. This may be newer
      * than this Lix supports.
      */
@@ -68,7 +73,7 @@ struct RemoteStore::Connection
      */
     operator WorkerProto::ReadConn ()
     {
-        return WorkerProto::ReadConn {from, daemonVersion};
+        return WorkerProto::ReadConn{from, *store, daemonVersion};
     }
 
     /**
@@ -81,7 +86,7 @@ struct RemoteStore::Connection
      */
     operator WorkerProto::WriteConn ()
     {
-        return WorkerProto::WriteConn {daemonVersion};
+        return WorkerProto::WriteConn{*store, daemonVersion};
     }
 
     virtual ~Connection();

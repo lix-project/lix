@@ -32,8 +32,7 @@ public:
             T got = ({
                 StringSource from { encoded };
                 CommonProto::Serialise<T>::read(
-                    *store,
-                    CommonProto::ReadConn { .from = from });
+                    CommonProto::ReadConn { .from = from, .store = *store });
             });
 
             ASSERT_EQ(got, value);
@@ -49,10 +48,7 @@ public:
         auto file = goldenMaster(testStem);
 
         StringSink to;
-        to << CommonProto::write(
-            *store,
-            CommonProto::WriteConn {},
-            value);
+        to << CommonProto::write(CommonProto::WriteConn{*store}, value);
 
         if (testAccept())
         {

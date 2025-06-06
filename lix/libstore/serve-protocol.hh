@@ -52,6 +52,7 @@ struct ServeProto
      */
     struct ReadConn {
         Source & from;
+        const Store & store;
         Version version;
     };
 
@@ -60,6 +61,7 @@ struct ServeProto
      * canonical serializers below.
      */
     struct WriteConn {
+        const Store & store;
         Version version;
     };
 
@@ -77,8 +79,8 @@ struct ServeProto
     // See `worker-protocol.hh` for a longer explanation.
 #if 0
     {
-        static T read(const Store & store, ReadConn conn);
-        static WireFormatGenerator write(const Store & store, WriteConn conn, const T & t);
+        static T read(ReadConn conn);
+        static WireFormatGenerator write(WriteConn conn, const T & t);
     };
 #endif
 
@@ -88,9 +90,9 @@ struct ServeProto
      */
     template<typename T>
     [[nodiscard]]
-    static WireFormatGenerator write(const Store & store, WriteConn conn, const T & t)
+    static WireFormatGenerator write(WriteConn conn, const T & t)
     {
-        return ServeProto::Serialise<T>::write(store, conn, t);
+        return ServeProto::Serialise<T>::write(conn, t);
     }
 };
 
@@ -141,8 +143,8 @@ inline std::ostream & operator << (std::ostream & s, ServeProto::Command op)
 #define DECLARE_SERVE_SERIALISER(T) \
     struct ServeProto::Serialise< T > \
     { \
-        static T read(const Store & store, ServeProto::ReadConn conn); \
-        [[nodiscard]] static WireFormatGenerator write(const Store & store, ServeProto::WriteConn conn, const T & t); \
+        static T read(ServeProto::ReadConn conn); \
+        [[nodiscard]] static WireFormatGenerator write(ServeProto::WriteConn conn, const T & t); \
     };
 
 template<>

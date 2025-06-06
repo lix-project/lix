@@ -75,6 +75,7 @@ void RemoteStore::initConnection(Connection & conn)
 {
     /* Send the magic greeting, check for the reply. */
     try {
+        conn.store = this;
         conn.from.specialEndOfFileError = "Nix daemon disconnected unexpectedly (maybe it crashed?)";
         conn.to << WORKER_MAGIC_1;
         conn.to.flush();
@@ -97,7 +98,7 @@ void RemoteStore::initConnection(Connection & conn)
 
         conn.to.flush();
         conn.daemonNixVersion = readString(conn.from);
-        conn.remoteTrustsUs = WorkerProto::Serialise<std::optional<TrustedFlag>>::read(*this, conn);
+        conn.remoteTrustsUs = WorkerProto::Serialise<std::optional<TrustedFlag>>::read(conn);
 
         auto ex = conn.processStderr();
         if (ex) std::rethrow_exception(ex);
@@ -202,10 +203,10 @@ RemoteStore::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSub
 try {
     auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryValidPaths;
-    conn->to << WorkerProto::write(*this, *conn, paths);
+    conn->to << WorkerProto::write(*conn, paths);
     conn->to << maybeSubstitute;
     conn.processStderr();
-    co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    co_return WorkerProto::Serialise<StorePathSet>::read(*conn);
 } catch (...) {
     co_return result::current_exception();
 }
@@ -216,7 +217,7 @@ try {
     auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryAllValidPaths;
     conn.processStderr();
-    co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    co_return WorkerProto::Serialise<StorePathSet>::read(*conn);
 } catch (...) {
     co_return result::current_exception();
 }
@@ -226,9 +227,9 @@ kj::Promise<Result<StorePathSet>> RemoteStore::querySubstitutablePaths(const Sto
 try {
     auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QuerySubstitutablePaths;
-    conn->to << WorkerProto::write(*this, *conn, paths);
+    conn->to << WorkerProto::write(*conn, paths);
     conn.processStderr();
-    co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    co_return WorkerProto::Serialise<StorePathSet>::read(*conn);
 } catch (...) {
     co_return result::current_exception();
 }
@@ -242,9 +243,9 @@ try {
 
 
     conn->to << WorkerProto::Op::QuerySubstitutablePathInfos;
-    conn->to << WorkerProto::write(*this, *conn, pathsMap);
+    conn->to << WorkerProto::write(*conn, pathsMap);
     conn.processStderr();
-    infos = WorkerProto::Serialise<SubstitutablePathInfos>::read(*this, *conn);
+    infos = WorkerProto::Serialise<SubstitutablePathInfos>::read(*conn);
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -270,7 +271,7 @@ try {
 
     co_return std::make_shared<ValidPathInfo>(
         StorePath{path},
-        WorkerProto::Serialise<UnkeyedValidPathInfo>::read(*this, *conn));
+        WorkerProto::Serialise<UnkeyedValidPathInfo>::read(*conn));
 } catch (...) {
     co_return result::current_exception();
 }
@@ -282,7 +283,7 @@ try {
     auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryReferrers << printStorePath(path);
     conn.processStderr();
-    for (auto & i : WorkerProto::Serialise<StorePathSet>::read(*this, *conn))
+    for (auto & i : WorkerProto::Serialise<StorePathSet>::read(*conn))
         referrers.insert(i);
     co_return result::success();
 } catch (...) {
@@ -295,7 +296,7 @@ try {
     auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryValidDerivers << printStorePath(path);
     conn.processStderr();
-    co_return WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    co_return WorkerProto::Serialise<StorePathSet>::read(*conn);
 } catch (...) {
     co_return result::current_exception();
 }
@@ -309,7 +310,7 @@ try {
         conn->to << WorkerProto::Op::QueryDerivationOutputMap << printStorePath(path);
         conn.processStderr();
         auto tmp = WorkerProto::Serialise<std::map<std::string, std::optional<StorePath>>>::read(
-            *this, *conn
+            *conn
         );
         std::map<std::string, StorePath> result;
         for (auto & [name, outPath] : tmp) {
@@ -365,7 +366,7 @@ try {
         << WorkerProto::Op::AddToStore
         << name
         << caMethod.render(hashType);
-    conn->to << WorkerProto::write(*this, *conn, references);
+    conn->to << WorkerProto::write(*conn, references);
     conn->to << repair;
 
     // The dump source may invoke the store, so we need to make some room.
@@ -378,7 +379,7 @@ try {
     }
 
     co_return make_ref<ValidPathInfo>(
-        WorkerProto::Serialise<ValidPathInfo>::read(*this, *conn));
+        WorkerProto::Serialise<ValidPathInfo>::read(*conn));
 } catch (...) {
     co_return result::current_exception();
 }
@@ -412,7 +413,7 @@ try {
              << printStorePath(info.path)
              << (info.deriver ? printStorePath(*info.deriver) : "")
              << info.narHash.to_string(Base::Base16, false);
-    conn->to << WorkerProto::write(*this, *conn, info.references);
+    conn->to << WorkerProto::write(*conn, info.references);
     conn->to << info.registrationTime << info.narSize
              << info.ultimate << info.sigs << renderContentAddress(info.ca)
              << repair << !checkSigs;
@@ -445,8 +446,8 @@ try {
         try {
             sink << pathsToCopy.size();
             for (auto & [pathInfo, pathSource] : pathsToCopy) {
-                sink << WorkerProto::Serialise<ValidPathInfo>::write(*this,
-                    WorkerProto::WriteConn {remoteVersion},
+                sink << WorkerProto::Serialise<ValidPathInfo>::write(
+                    WorkerProto::WriteConn {*this, remoteVersion},
                     pathInfo);
                 TRY_AWAIT(TRY_AWAIT(pathSource())->drainInto(sink));
             }
@@ -506,7 +507,7 @@ try {
 
     auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::BuildPaths;
-    conn->to << WorkerProto::write(*this, *conn, drvPaths);
+    conn->to << WorkerProto::write(*conn, drvPaths);
     conn->to << buildMode;
     conn.processStderr();
     readInt(conn->from);
@@ -525,10 +526,10 @@ try {
     auto conn(TRY_AWAIT(getConnection()));
 
     conn->to << WorkerProto::Op::BuildPathsWithResults;
-    conn->to << WorkerProto::write(*this, *conn, paths);
+    conn->to << WorkerProto::write(*conn, paths);
     conn->to << buildMode;
     conn.processStderr();
-    co_return WorkerProto::Serialise<std::vector<KeyedBuildResult>>::read(*this, *conn);
+    co_return WorkerProto::Serialise<std::vector<KeyedBuildResult>>::read(*conn);
 } catch (...) {
     co_return result::current_exception();
 }
@@ -542,7 +543,7 @@ try {
     writeDerivation(conn->to, *this, drv);
     conn->to << buildMode;
     conn.processStderr();
-    co_return WorkerProto::Serialise<BuildResult>::read(*this, *conn);
+    co_return WorkerProto::Serialise<BuildResult>::read(*conn);
 } catch (...) {
     co_return result::current_exception();
 }
@@ -597,7 +598,7 @@ try {
 
     conn->to
         << WorkerProto::Op::CollectGarbage << options.action;
-    conn->to << WorkerProto::write(*this, *conn, options.pathsToDelete);
+    conn->to << WorkerProto::write(*conn, options.pathsToDelete);
     conn->to << options.ignoreLiveness
         << options.maxFreed
         /* removed options */
@@ -661,11 +662,11 @@ kj::Promise<Result<void>> RemoteStore::queryMissing(const std::vector<DerivedPat
 try {
     auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::QueryMissing;
-    conn->to << WorkerProto::write(*this, *conn, targets);
+    conn->to << WorkerProto::write(*conn, targets);
     conn.processStderr();
-    willBuild = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
-    willSubstitute = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
-    unknown = WorkerProto::Serialise<StorePathSet>::read(*this, *conn);
+    willBuild = WorkerProto::Serialise<StorePathSet>::read(*conn);
+    willSubstitute = WorkerProto::Serialise<StorePathSet>::read(*conn);
+    unknown = WorkerProto::Serialise<StorePathSet>::read(*conn);
     conn->from >> downloadSize >> narSize;
     co_return result::success();
 } catch (...) {

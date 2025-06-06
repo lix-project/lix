@@ -45,9 +45,7 @@ try {
     teeSink
         << exportMagic
         << printStorePath(path);
-    teeSink << CommonProto::write(*this,
-        CommonProto::WriteConn {},
-        info->references);
+    teeSink << CommonProto::write(CommonProto::WriteConn{*this}, info->references);
     teeSink
         << (info->deriver ? printStorePath(*info->deriver) : "")
         << 0;
@@ -76,8 +74,9 @@ try {
 
         //Activity act(*logger, lvlInfo, "importing path '%s'", info.path);
 
-        auto references = CommonProto::Serialise<StorePathSet>::read(*this,
-            CommonProto::ReadConn { .from = source });
+        auto references = CommonProto::Serialise<StorePathSet>::read(
+            CommonProto::ReadConn{.from = source, .store = *this}
+        );
         auto deriver = readString(source);
         auto narHash = hashString(HashType::SHA256, saved.s);
 

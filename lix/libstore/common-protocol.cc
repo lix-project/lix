@@ -10,40 +10,40 @@ namespace nix {
 
 /* protocol-agnostic definitions */
 
-std::string CommonProto::Serialise<std::string>::read(const Store & store, CommonProto::ReadConn conn)
+std::string CommonProto::Serialise<std::string>::read(CommonProto::ReadConn conn)
 {
     return readString(conn.from);
 }
 
-WireFormatGenerator CommonProto::Serialise<std::string>::write(const Store & store, CommonProto::WriteConn conn, const std::string & str)
+WireFormatGenerator CommonProto::Serialise<std::string>::write(CommonProto::WriteConn conn, const std::string & str)
 {
     co_yield str;
 }
 
 
-StorePath CommonProto::Serialise<StorePath>::read(const Store & store, CommonProto::ReadConn conn)
+StorePath CommonProto::Serialise<StorePath>::read(CommonProto::ReadConn conn)
 {
-    return store.parseStorePath(readString(conn.from));
+    return conn.store.parseStorePath(readString(conn.from));
 }
 
-WireFormatGenerator CommonProto::Serialise<StorePath>::write(const Store & store, CommonProto::WriteConn conn, const StorePath & storePath)
+WireFormatGenerator CommonProto::Serialise<StorePath>::write(CommonProto::WriteConn conn, const StorePath & storePath)
 {
-    co_yield store.printStorePath(storePath);
+    co_yield conn.store.printStorePath(storePath);
 }
 
 
-ContentAddress CommonProto::Serialise<ContentAddress>::read(const Store & store, CommonProto::ReadConn conn)
+ContentAddress CommonProto::Serialise<ContentAddress>::read(CommonProto::ReadConn conn)
 {
     return ContentAddress::parse(readString(conn.from));
 }
 
-WireFormatGenerator CommonProto::Serialise<ContentAddress>::write(const Store & store, CommonProto::WriteConn conn, const ContentAddress & ca)
+WireFormatGenerator CommonProto::Serialise<ContentAddress>::write(CommonProto::WriteConn conn, const ContentAddress & ca)
 {
     co_yield renderContentAddress(ca);
 }
 
 
-Realisation CommonProto::Serialise<Realisation>::read(const Store & store, CommonProto::ReadConn conn)
+Realisation CommonProto::Serialise<Realisation>::read(CommonProto::ReadConn conn)
 {
     std::string rawInput = readString(conn.from);
     return Realisation::fromJSON(
@@ -52,43 +52,43 @@ Realisation CommonProto::Serialise<Realisation>::read(const Store & store, Commo
     );
 }
 
-WireFormatGenerator CommonProto::Serialise<Realisation>::write(const Store & store, CommonProto::WriteConn conn, const Realisation & realisation)
+WireFormatGenerator CommonProto::Serialise<Realisation>::write(CommonProto::WriteConn conn, const Realisation & realisation)
 {
     co_yield realisation.toJSON().dump();
 }
 
 
-DrvOutput CommonProto::Serialise<DrvOutput>::read(const Store & store, CommonProto::ReadConn conn)
+DrvOutput CommonProto::Serialise<DrvOutput>::read(CommonProto::ReadConn conn)
 {
     return DrvOutput::parse(readString(conn.from));
 }
 
-WireFormatGenerator CommonProto::Serialise<DrvOutput>::write(const Store & store, CommonProto::WriteConn conn, const DrvOutput & drvOutput)
+WireFormatGenerator CommonProto::Serialise<DrvOutput>::write(CommonProto::WriteConn conn, const DrvOutput & drvOutput)
 {
     co_yield drvOutput.to_string();
 }
 
 
-std::optional<StorePath> CommonProto::Serialise<std::optional<StorePath>>::read(const Store & store, CommonProto::ReadConn conn)
+std::optional<StorePath> CommonProto::Serialise<std::optional<StorePath>>::read(CommonProto::ReadConn conn)
 {
     auto s = readString(conn.from);
-    return s == "" ? std::optional<StorePath> {} : store.parseStorePath(s);
+    return s == "" ? std::optional<StorePath> {} : conn.store.parseStorePath(s);
 }
 
-WireFormatGenerator CommonProto::Serialise<std::optional<StorePath>>::write(const Store & store, CommonProto::WriteConn conn, const std::optional<StorePath> & storePathOpt)
+WireFormatGenerator CommonProto::Serialise<std::optional<StorePath>>::write(CommonProto::WriteConn conn, const std::optional<StorePath> & storePathOpt)
 {
     return [](std::string s) -> WireFormatGenerator {
         co_yield s;
-    }(storePathOpt ? store.printStorePath(*storePathOpt) : "");
+    }(storePathOpt ? conn.store.printStorePath(*storePathOpt) : "");
 }
 
 
-std::optional<ContentAddress> CommonProto::Serialise<std::optional<ContentAddress>>::read(const Store & store, CommonProto::ReadConn conn)
+std::optional<ContentAddress> CommonProto::Serialise<std::optional<ContentAddress>>::read(CommonProto::ReadConn conn)
 {
     return ContentAddress::parseOpt(readString(conn.from));
 }
 
-WireFormatGenerator CommonProto::Serialise<std::optional<ContentAddress>>::write(const Store & store, CommonProto::WriteConn conn, const std::optional<ContentAddress> & caOpt)
+WireFormatGenerator CommonProto::Serialise<std::optional<ContentAddress>>::write(CommonProto::WriteConn conn, const std::optional<ContentAddress> & caOpt)
 {
     return [](std::string s) -> WireFormatGenerator {
         co_yield s;

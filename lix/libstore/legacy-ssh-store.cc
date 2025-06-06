@@ -60,6 +60,7 @@ struct LegacySSHStore final : public Store
         FdSink to;
         FdSource from;
         ServeProto::Version remoteVersion;
+        Store * store = nullptr;
         bool good = true;
 
         /**
@@ -74,6 +75,7 @@ struct LegacySSHStore final : public Store
         {
             return ServeProto::ReadConn {
                 .from = from,
+                .store = *store,
                 .version = remoteVersion,
             };
         }
@@ -89,6 +91,7 @@ struct LegacySSHStore final : public Store
         operator ServeProto::WriteConn ()
         {
             return ServeProto::WriteConn {
+                .store = *store,
                 .version = remoteVersion,
             };
         }
@@ -134,6 +137,7 @@ struct LegacySSHStore final : public Store
         );
         conn->to = FdSink(conn->sshConn->in.get());
         conn->from = FdSource(conn->sshConn->out.get());
+        conn->store = this;
 
         try {
             conn->to << SERVE_MAGIC_1 << SERVE_PROTOCOL_VERSION;
@@ -177,7 +181,7 @@ struct LegacySSHStore final : public Store
         assert(path == path2);
         auto info = std::make_shared<ValidPathInfo>(
             path,
-            ServeProto::Serialise<UnkeyedValidPathInfo>::read(*this, *conn));
+            ServeProto::Serialise<UnkeyedValidPathInfo>::read(*conn));
 
         if (info->narHash == Hash::dummy)
             throw Error("NAR hash is now mandatory");
@@ -204,7 +208,7 @@ struct LegacySSHStore final : public Store
                 << printStorePath(info.path)
                 << (info.deriver ? printStorePath(*info.deriver) : "")
                 << info.narHash.to_string(Base::Base16, false);
-            conn->to << ServeProto::write(*this, *conn, info.references);
+            conn->to << ServeProto::write(*conn, info.references);
             conn->to
                 << info.registrationTime
                 << info.narSize
@@ -233,7 +237,7 @@ struct LegacySSHStore final : public Store
             conn->to
                 << exportMagic
                 << printStorePath(info.path);
-            conn->to << ServeProto::write(*this, *conn, info.references);
+            conn->to << ServeProto::write(*conn, info.references);
             conn->to
                 << (info.deriver ? printStorePath(*info.deriver) : "")
                 << 0
@@ -328,7 +332,7 @@ public:
 
         conn->to.flush();
 
-        co_return ServeProto::Serialise<BuildResult>::read(*this, *conn);
+        co_return ServeProto::Serialise<BuildResult>::read(*conn);
     } catch (...) {
         co_return result::current_exception();
     }
@@ -412,10 +416,10 @@ public:
         conn->to
             << ServeProto::Command::QueryClosure
             << includeOutputs;
-        conn->to << ServeProto::write(*this, *conn, paths);
+        conn->to << ServeProto::write(*conn, paths);
         conn->to.flush();
 
-        for (auto & i : ServeProto::Serialise<StorePathSet>::read(*this, *conn))
+        for (auto & i : ServeProto::Serialise<StorePathSet>::read(*conn))
             out.insert(i);
         co_return result::success();
     } catch (...) {
@@ -431,10 +435,10 @@ public:
             << ServeProto::Command::QueryValidPaths
             << false // lock
             << maybeSubstitute;
-        conn->to << ServeProto::write(*this, *conn, paths);
+        conn->to << ServeProto::write(*conn, paths);
         conn->to.flush();
 
-        co_return ServeProto::Serialise<StorePathSet>::read(*this, *conn);
+        co_return ServeProto::Serialise<StorePathSet>::read(*conn);
     } catch (...) {
         co_return result::current_exception();
     }

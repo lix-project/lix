@@ -40,8 +40,7 @@ public:
             T got = ({
                 StringSource from { expected };
                 Proto::template Serialise<T>::read(
-                    *LibStoreTest::store,
-                    typename Proto::ReadConn {from, version}
+                    typename Proto::ReadConn{from, *LibStoreTest::store, version}
                 );
             });
 
@@ -58,10 +57,7 @@ public:
         auto file = ProtoTest<Proto, protocolDir>::goldenMaster(testStem);
 
         StringSink to;
-        to << Proto::write(
-            *LibStoreTest::store,
-            typename Proto::WriteConn {version},
-            value);
+        to << Proto::write(typename Proto::WriteConn{*LibStoreTest::store, version}, value);
 
         if (testAccept())
         {

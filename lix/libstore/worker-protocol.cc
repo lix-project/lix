@@ -11,7 +11,7 @@ namespace nix {
 
 /* protocol-specific definitions */
 
-std::optional<TrustedFlag> WorkerProto::Serialise<std::optional<TrustedFlag>>::read(const Store & store, WorkerProto::ReadConn conn)
+std::optional<TrustedFlag> WorkerProto::Serialise<std::optional<TrustedFlag>>::read(WorkerProto::ReadConn conn)
 {
     auto temp = readNum<uint8_t>(conn.from);
     switch (temp) {
@@ -26,7 +26,7 @@ std::optional<TrustedFlag> WorkerProto::Serialise<std::optional<TrustedFlag>>::r
     }
 }
 
-WireFormatGenerator WorkerProto::Serialise<std::optional<TrustedFlag>>::write(const Store & store, WorkerProto::WriteConn conn, const std::optional<TrustedFlag> & optTrusted)
+WireFormatGenerator WorkerProto::Serialise<std::optional<TrustedFlag>>::write(WorkerProto::WriteConn conn, const std::optional<TrustedFlag> & optTrusted)
 {
     if (!optTrusted)
         co_yield (uint8_t)0;
@@ -45,36 +45,36 @@ WireFormatGenerator WorkerProto::Serialise<std::optional<TrustedFlag>>::write(co
 }
 
 
-DerivedPath WorkerProto::Serialise<DerivedPath>::read(const Store & store, WorkerProto::ReadConn conn)
+DerivedPath WorkerProto::Serialise<DerivedPath>::read(WorkerProto::ReadConn conn)
 {
     auto s = readString(conn.from);
-    return DerivedPath::parseLegacy(store, s);
+    return DerivedPath::parseLegacy(conn.store, s);
 }
 
-WireFormatGenerator WorkerProto::Serialise<DerivedPath>::write(const Store & store, WorkerProto::WriteConn conn, const DerivedPath & req)
+WireFormatGenerator WorkerProto::Serialise<DerivedPath>::write(WorkerProto::WriteConn conn, const DerivedPath & req)
 {
-    co_yield req.to_string_legacy(store);
+    co_yield req.to_string_legacy(conn.store);
 }
 
 
-KeyedBuildResult WorkerProto::Serialise<KeyedBuildResult>::read(const Store & store, WorkerProto::ReadConn conn)
+KeyedBuildResult WorkerProto::Serialise<KeyedBuildResult>::read(WorkerProto::ReadConn conn)
 {
-    auto path = WorkerProto::Serialise<DerivedPath>::read(store, conn);
-    auto br = WorkerProto::Serialise<BuildResult>::read(store, conn);
+    auto path = WorkerProto::Serialise<DerivedPath>::read(conn);
+    auto br = WorkerProto::Serialise<BuildResult>::read(conn);
     return KeyedBuildResult {
         std::move(br),
         /* .path = */ std::move(path),
     };
 }
 
-WireFormatGenerator WorkerProto::Serialise<KeyedBuildResult>::write(const Store & store, WorkerProto::WriteConn conn, const KeyedBuildResult & res)
+WireFormatGenerator WorkerProto::Serialise<KeyedBuildResult>::write(WorkerProto::WriteConn conn, const KeyedBuildResult & res)
 {
-    co_yield WorkerProto::write(store, conn, res.path);
-    co_yield WorkerProto::write(store, conn, static_cast<const BuildResult &>(res));
+    co_yield WorkerProto::write(conn, res.path);
+    co_yield WorkerProto::write(conn, static_cast<const BuildResult &>(res));
 }
 
 
-BuildResult WorkerProto::Serialise<BuildResult>::read(const Store & store, WorkerProto::ReadConn conn)
+BuildResult WorkerProto::Serialise<BuildResult>::read(WorkerProto::ReadConn conn)
 {
     BuildResult res;
     res.status = (BuildResult::Status) readInt(conn.from);
@@ -84,7 +84,7 @@ BuildResult WorkerProto::Serialise<BuildResult>::read(const Store & store, Worke
         >> res.isNonDeterministic
         >> res.startTime
         >> res.stopTime;
-    auto builtOutputs = WorkerProto::Serialise<DrvOutputs>::read(store, conn);
+    auto builtOutputs = WorkerProto::Serialise<DrvOutputs>::read(conn);
     for (auto && [output, realisation] : builtOutputs)
         res.builtOutputs.insert_or_assign(
             std::move(output.outputName),
@@ -92,7 +92,7 @@ BuildResult WorkerProto::Serialise<BuildResult>::read(const Store & store, Worke
     return res;
 }
 
-WireFormatGenerator WorkerProto::Serialise<BuildResult>::write(const Store & store, WorkerProto::WriteConn conn, const BuildResult & res)
+WireFormatGenerator WorkerProto::Serialise<BuildResult>::write(WorkerProto::WriteConn conn, const BuildResult & res)
 {
     co_yield res.status;
     co_yield res.errorMsg;
@@ -103,33 +103,33 @@ WireFormatGenerator WorkerProto::Serialise<BuildResult>::write(const Store & sto
     DrvOutputs builtOutputs;
     for (auto & [output, realisation] : res.builtOutputs)
         builtOutputs.insert_or_assign(realisation.id, realisation);
-    co_yield WorkerProto::write(store, conn, builtOutputs);
+    co_yield WorkerProto::write(conn, builtOutputs);
 }
 
 
-ValidPathInfo WorkerProto::Serialise<ValidPathInfo>::read(const Store & store, ReadConn conn)
+ValidPathInfo WorkerProto::Serialise<ValidPathInfo>::read(ReadConn conn)
 {
-    auto path = WorkerProto::Serialise<StorePath>::read(store, conn);
+    auto path = WorkerProto::Serialise<StorePath>::read(conn);
     return ValidPathInfo {
         std::move(path),
-        WorkerProto::Serialise<UnkeyedValidPathInfo>::read(store, conn),
+        WorkerProto::Serialise<UnkeyedValidPathInfo>::read(conn),
     };
 }
 
-WireFormatGenerator WorkerProto::Serialise<ValidPathInfo>::write(const Store & store, WriteConn conn, const ValidPathInfo & pathInfo)
+WireFormatGenerator WorkerProto::Serialise<ValidPathInfo>::write(WriteConn conn, const ValidPathInfo & pathInfo)
 {
-    co_yield WorkerProto::write(store, conn, pathInfo.path);
-    co_yield WorkerProto::write(store, conn, static_cast<const UnkeyedValidPathInfo &>(pathInfo));
+    co_yield WorkerProto::write(conn, pathInfo.path);
+    co_yield WorkerProto::write(conn, static_cast<const UnkeyedValidPathInfo &>(pathInfo));
 }
 
 
-UnkeyedValidPathInfo WorkerProto::Serialise<UnkeyedValidPathInfo>::read(const Store & store, ReadConn conn)
+UnkeyedValidPathInfo WorkerProto::Serialise<UnkeyedValidPathInfo>::read(ReadConn conn)
 {
     auto deriver = readString(conn.from);
     auto narHash = Hash::parseAny(readString(conn.from), HashType::SHA256);
     UnkeyedValidPathInfo info(narHash);
-    if (deriver != "") info.deriver = store.parseStorePath(deriver);
-    info.references = WorkerProto::Serialise<StorePathSet>::read(store, conn);
+    if (deriver != "") info.deriver = conn.store.parseStorePath(deriver);
+    info.references = WorkerProto::Serialise<StorePathSet>::read(conn);
     conn.from >> info.registrationTime >> info.narSize;
 
     conn.from >> info.ultimate;
@@ -139,11 +139,11 @@ UnkeyedValidPathInfo WorkerProto::Serialise<UnkeyedValidPathInfo>::read(const St
     return info;
 }
 
-WireFormatGenerator WorkerProto::Serialise<UnkeyedValidPathInfo>::write(const Store & store, WriteConn conn, const UnkeyedValidPathInfo & pathInfo)
+WireFormatGenerator WorkerProto::Serialise<UnkeyedValidPathInfo>::write(WriteConn conn, const UnkeyedValidPathInfo & pathInfo)
 {
-    co_yield (pathInfo.deriver ? store.printStorePath(*pathInfo.deriver) : "");
+    co_yield (pathInfo.deriver ? conn.store.printStorePath(*pathInfo.deriver) : "");
     co_yield pathInfo.narHash.to_string(Base::Base16, false);
-    co_yield WorkerProto::write(store, conn, pathInfo.references);
+    co_yield WorkerProto::write(conn, pathInfo.references);
     co_yield pathInfo.registrationTime;
     co_yield pathInfo.narSize;
 
@@ -153,22 +153,22 @@ WireFormatGenerator WorkerProto::Serialise<UnkeyedValidPathInfo>::write(const St
 }
 
 
-SubstitutablePathInfo WorkerProto::Serialise<SubstitutablePathInfo>::read(const Store & store, ReadConn conn)
+SubstitutablePathInfo WorkerProto::Serialise<SubstitutablePathInfo>::read(ReadConn conn)
 {
     SubstitutablePathInfo info;
     auto deriver = readString(conn.from);
     if (deriver != "")
-        info.deriver = store.parseStorePath(deriver);
-    info.references = WorkerProto::Serialise<StorePathSet>::read(store, conn);
+        info.deriver = conn.store.parseStorePath(deriver);
+    info.references = WorkerProto::Serialise<StorePathSet>::read(conn);
     info.downloadSize = readLongLong(conn.from);
     info.narSize = readLongLong(conn.from);
     return info;
 }
 
-WireFormatGenerator WorkerProto::Serialise<SubstitutablePathInfo>::write(const Store & store, WriteConn conn, const SubstitutablePathInfo & info)
+WireFormatGenerator WorkerProto::Serialise<SubstitutablePathInfo>::write(WriteConn conn, const SubstitutablePathInfo & info)
 {
-    co_yield (info.deriver ? store.printStorePath(*info.deriver) : "");
-    co_yield WorkerProto::write(store, conn, info.references);
+    co_yield (info.deriver ? conn.store.printStorePath(*info.deriver) : "");
+    co_yield WorkerProto::write(conn, info.references);
     co_yield info.downloadSize;
     co_yield info.narSize;
 }

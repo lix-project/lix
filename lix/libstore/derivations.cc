@@ -676,8 +676,8 @@ Source & readDerivation(Source & in, const Store & store, BasicDerivation & drv,
         drv.outputs.emplace(std::move(name), std::move(output));
     }
 
-    drv.inputSrcs = CommonProto::Serialise<StorePathSet>::read(store,
-        CommonProto::ReadConn { .from = in });
+    drv.inputSrcs = CommonProto::Serialise<StorePathSet>::read(
+        CommonProto::ReadConn { .from = in, .store = store });
     in >> drv.platform >> drv.builder;
     drv.args = readStrings<Strings>(in);
 
@@ -710,9 +710,7 @@ void writeDerivation(Sink & out, const Store & store, const BasicDerivation & dr
             },
         }, i.second.raw);
     }
-    out << CommonProto::write(store,
-        CommonProto::WriteConn {},
-        drv.inputSrcs);
+    out << CommonProto::write(CommonProto::WriteConn{store}, drv.inputSrcs);
     out << drv.platform << drv.builder << drv.args;
     out << drv.env.size();
     for (auto & i : drv.env)

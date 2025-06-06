@@ -10,7 +10,7 @@ namespace nix {
 
 /* protocol-specific definitions */
 
-BuildResult ServeProto::Serialise<BuildResult>::read(const Store & store, ServeProto::ReadConn conn)
+BuildResult ServeProto::Serialise<BuildResult>::read(ServeProto::ReadConn conn)
 {
     BuildResult status;
     status.status = (BuildResult::Status) readInt(conn.from);
@@ -23,7 +23,7 @@ BuildResult ServeProto::Serialise<BuildResult>::read(const Store & store, ServeP
             >> status.startTime
             >> status.stopTime;
     if (GET_PROTOCOL_MINOR(conn.version) >= 6) {
-        auto builtOutputs = ServeProto::Serialise<DrvOutputs>::read(store, conn);
+        auto builtOutputs = ServeProto::Serialise<DrvOutputs>::read(conn);
         for (auto && [output, realisation] : builtOutputs)
             status.builtOutputs.insert_or_assign(
                 std::move(output.outputName),
@@ -32,7 +32,7 @@ BuildResult ServeProto::Serialise<BuildResult>::read(const Store & store, ServeP
     return status;
 }
 
-WireFormatGenerator ServeProto::Serialise<BuildResult>::write(const Store & store, ServeProto::WriteConn conn, const BuildResult & status)
+WireFormatGenerator ServeProto::Serialise<BuildResult>::write(ServeProto::WriteConn conn, const BuildResult & status)
 {
     co_yield status.status;
     co_yield status.errorMsg;
@@ -47,12 +47,12 @@ WireFormatGenerator ServeProto::Serialise<BuildResult>::write(const Store & stor
         DrvOutputs builtOutputs;
         for (auto & [output, realisation] : status.builtOutputs)
             builtOutputs.insert_or_assign(realisation.id, realisation);
-        co_yield ServeProto::write(store, conn, builtOutputs);
+        co_yield ServeProto::write(conn, builtOutputs);
     }
 }
 
 
-UnkeyedValidPathInfo ServeProto::Serialise<UnkeyedValidPathInfo>::read(const Store & store, ReadConn conn)
+UnkeyedValidPathInfo ServeProto::Serialise<UnkeyedValidPathInfo>::read(ReadConn conn)
 {
     /* Hash should be set below unless very old `nix-store --serve`.
        Caller should assert that it did set it. */
@@ -60,8 +60,8 @@ UnkeyedValidPathInfo ServeProto::Serialise<UnkeyedValidPathInfo>::read(const Sto
 
     auto deriver = readString(conn.from);
     if (deriver != "")
-        info.deriver = store.parseStorePath(deriver);
-    info.references = ServeProto::Serialise<StorePathSet>::read(store, conn);
+        info.deriver = conn.store.parseStorePath(deriver);
+    info.references = ServeProto::Serialise<StorePathSet>::read(conn);
 
     readLongLong(conn.from); // download size, unused
     info.narSize = readLongLong(conn.from);
@@ -77,11 +77,11 @@ UnkeyedValidPathInfo ServeProto::Serialise<UnkeyedValidPathInfo>::read(const Sto
     return info;
 }
 
-WireFormatGenerator ServeProto::Serialise<UnkeyedValidPathInfo>::write(const Store & store, WriteConn conn, const UnkeyedValidPathInfo & info)
+WireFormatGenerator ServeProto::Serialise<UnkeyedValidPathInfo>::write(WriteConn conn, const UnkeyedValidPathInfo & info)
 {
-    co_yield (info.deriver ? store.printStorePath(*info.deriver) : "");
+    co_yield (info.deriver ? conn.store.printStorePath(*info.deriver) : "");
 
-    co_yield ServeProto::write(store, conn, info.references);
+    co_yield ServeProto::write(conn, info.references);
     // !!! Maybe we want compression?
     co_yield info.narSize; // downloadSize, lie a little
     co_yield info.narSize;

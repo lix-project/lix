@@ -72,9 +72,14 @@ struct WorkerProto
      */
     struct ReadConn {
         Source & from;
+        const Store & store;
         Version version;
 
-        ReadConn(Source & from, Version version) : from(from), version(version) {
+        ReadConn(Source & from, const Store & store, Version version)
+            : from(from)
+            , store(store)
+            , version(version)
+        {
             assert(version >= MIN_SUPPORTED_WORKER_PROTO_VERSION);
         }
     };
@@ -84,9 +89,11 @@ struct WorkerProto
      * canonical serializers below.
      */
     struct WriteConn {
+        const Store & store;
         Version version;
 
-        explicit WriteConn(Version version) : version(version) {
+        WriteConn(const Store & store, Version version) : store(store), version(version)
+        {
             assert(version >= MIN_SUPPORTED_WORKER_PROTO_VERSION);
         }
     };
@@ -117,8 +124,8 @@ struct WorkerProto
     // This makes for a quicker debug cycle, as desired.
 #if 0
     {
-        static T read(const Store & store, ReadConn conn);
-        static WireFormatGenerator write(const Store & store, WriteConn conn, const T & t);
+        static T read(ReadConn conn);
+        static WireFormatGenerator write(WriteConn conn, const T & t);
     };
 #endif
 
@@ -128,9 +135,9 @@ struct WorkerProto
      */
     template<typename T>
     [[nodiscard]]
-    static WireFormatGenerator write(const Store & store, WriteConn conn, const T & t)
+    static WireFormatGenerator write(WriteConn conn, const T & t)
     {
-        return WorkerProto::Serialise<T>::write(store, conn, t);
+        return WorkerProto::Serialise<T>::write(conn, t);
     }
 };
 
@@ -215,8 +222,8 @@ inline std::ostream & operator << (std::ostream & s, WorkerProto::Op op)
 #define DECLARE_WORKER_SERIALISER(T) \
     struct WorkerProto::Serialise< T > \
     { \
-        static T read(const Store & store, WorkerProto::ReadConn conn); \
-        [[nodiscard]] static WireFormatGenerator write(const Store & store, WorkerProto::WriteConn conn, const T & t); \
+        static T read(WorkerProto::ReadConn conn); \
+        [[nodiscard]] static WireFormatGenerator write(WorkerProto::WriteConn conn, const T & t); \
     };
 
 template<>

@@ -858,9 +858,11 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
     ServeProto::ReadConn rconn {
         .from = in,
+        .store = *store,
         .version = clientVersion,
     };
     ServeProto::WriteConn wconn {
+        .store = *store,
         .version = clientVersion,
     };
 
@@ -907,7 +909,7 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
             case ServeProto::Command::QueryValidPaths: {
                 bool lock = readInt(in);
                 bool substitute = readInt(in);
-                auto paths = ServeProto::Serialise<StorePathSet>::read(*store, rconn);
+                auto paths = ServeProto::Serialise<StorePathSet>::read(rconn);
                 if (lock && writeAllowed)
                     for (auto & path : paths)
                         aio.blockOn(store->addTempRoot(path));
@@ -917,18 +919,18 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                 }
 
                 auto valid = aio.blockOn(store->queryValidPaths(paths));
-                out << ServeProto::write(*store, wconn, valid);
+                out << ServeProto::write(wconn, valid);
                 break;
             }
 
             case ServeProto::Command::QueryPathInfos: {
-                auto paths = ServeProto::Serialise<StorePathSet>::read(*store, rconn);
+                auto paths = ServeProto::Serialise<StorePathSet>::read(rconn);
                 // !!! Maybe we want a queryPathInfos?
                 for (auto & i : paths) {
                     try {
                         auto info = aio.blockOn(store->queryPathInfo(i));
                         out << store->printStorePath(info->path);
-                        out << ServeProto::write(*store, wconn, static_cast<const UnkeyedValidPathInfo &>(*info));
+                        out << ServeProto::write(wconn, static_cast<const UnkeyedValidPathInfo &>(*info));
                     } catch (InvalidPath &) {
                     }
                 }
@@ -951,7 +953,7 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
             case ServeProto::Command::ExportPaths: {
                 readInt(in); // obsolete
                 aio.blockOn(store->exportPaths(
-                    ServeProto::Serialise<StorePathSet>::read(*store, rconn), out
+                    ServeProto::Serialise<StorePathSet>::read(rconn), out
                 ));
                 break;
             }
@@ -990,7 +992,7 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                 MonitorFdHup monitor(in.fd);
                 auto status = aio.blockOn(store->buildDerivation(drvPath, drv));
 
-                out << ServeProto::write(*store, wconn, status);
+                out << ServeProto::write(wconn, status);
                 break;
             }
 
@@ -998,12 +1000,12 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                 bool includeOutputs = readInt(in);
                 StorePathSet closure;
                 aio.blockOn(store->computeFSClosure(
-                    ServeProto::Serialise<StorePathSet>::read(*store, rconn),
+                    ServeProto::Serialise<StorePathSet>::read(rconn),
                     closure,
                     false,
                     includeOutputs
                 ));
-                out << ServeProto::write(*store, wconn, closure);
+                out << ServeProto::write(wconn, closure);
                 break;
             }
 
@@ -1018,7 +1020,7 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
                 };
                 if (deriver != "")
                     info.deriver = store->parseStorePath(deriver);
-                info.references = ServeProto::Serialise<StorePathSet>::read(*store, rconn);
+                info.references = ServeProto::Serialise<StorePathSet>::read(rconn);
                 in >> info.registrationTime >> info.narSize >> info.ultimate;
                 info.sigs = readStrings<StringSet>(in);
                 info.ca = ContentAddress::parseOpt(readString(in));

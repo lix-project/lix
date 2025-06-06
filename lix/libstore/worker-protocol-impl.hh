@@ -16,14 +16,14 @@ namespace nix {
 /* protocol-agnostic templates */
 
 #define WORKER_USE_LENGTH_PREFIX_SERIALISER(TEMPLATE, T) \
-    TEMPLATE T WorkerProto::Serialise< T >::read(const Store & store, WorkerProto::ReadConn conn) \
+    TEMPLATE T WorkerProto::Serialise< T >::read(WorkerProto::ReadConn conn) \
     { \
-        return LengthPrefixedProtoHelper<WorkerProto, T >::read(store, conn); \
+        return LengthPrefixedProtoHelper<WorkerProto, T >::read(conn); \
     } \
     /* NOLINTNEXTLINE(bugprone-macro-parentheses) */ \
-    TEMPLATE [[nodiscard]] WireFormatGenerator WorkerProto::Serialise< T >::write(const Store & store, WorkerProto::WriteConn conn, const T & t) \
+    TEMPLATE [[nodiscard]] WireFormatGenerator WorkerProto::Serialise< T >::write(WorkerProto::WriteConn conn, const T & t) \
     { \
-        return LengthPrefixedProtoHelper<WorkerProto, T >::write(store, conn, t); \
+        return LengthPrefixedProtoHelper<WorkerProto, T >::write(conn, t); \
     }
 
 WORKER_USE_LENGTH_PREFIX_SERIALISER(template<typename T>, std::vector<T>)
@@ -42,17 +42,16 @@ WORKER_USE_LENGTH_PREFIX_SERIALISER(
 template<typename T>
 struct WorkerProto::Serialise
 {
-    static T read(const Store & store, WorkerProto::ReadConn conn)
+    static T read(WorkerProto::ReadConn conn)
     {
-        return CommonProto::Serialise<T>::read(store,
-            CommonProto::ReadConn { .from = conn.from });
+        return CommonProto::Serialise<T>::read(
+            CommonProto::ReadConn{.from = conn.from, .store = conn.store}
+        );
     }
     [[nodiscard]]
-    static WireFormatGenerator write(const Store & store, WorkerProto::WriteConn conn, const T & t)
+    static WireFormatGenerator write(WorkerProto::WriteConn conn, const T & t)
     {
-        return CommonProto::Serialise<T>::write(store,
-            CommonProto::WriteConn {},
-            t);
+        return CommonProto::Serialise<T>::write(CommonProto::WriteConn{.store = conn.store}, t);
     }
 };
 

@@ -238,8 +238,8 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     TrustedFlag trusted, WorkerProto::Version clientVersion,
     Source & from, BufferedSink & to, WorkerProto::Op op)
 {
-    WorkerProto::ReadConn rconn{from, clientVersion};
-    WorkerProto::WriteConn wconn{clientVersion};
+    WorkerProto::ReadConn rconn{from, *store, clientVersion};
+    WorkerProto::WriteConn wconn{*store, clientVersion};
 
     switch (op) {
 
@@ -253,7 +253,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     }
 
     case WorkerProto::Op::QueryValidPaths: {
-        auto paths = WorkerProto::Serialise<StorePathSet>::read(*store, rconn);
+        auto paths = WorkerProto::Serialise<StorePathSet>::read(rconn);
 
         SubstituteFlag substitute = readInt(from) ? Substitute : NoSubstitute;
 
@@ -263,16 +263,16 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         }
         auto res = aio.blockOn(store->queryValidPaths(paths, substitute));
         logger->stopWork();
-        to << WorkerProto::write(*store, wconn, res);
+        to << WorkerProto::write(wconn, res);
         break;
     }
 
     case WorkerProto::Op::QuerySubstitutablePaths: {
-        auto paths = WorkerProto::Serialise<StorePathSet>::read(*store, rconn);
+        auto paths = WorkerProto::Serialise<StorePathSet>::read(rconn);
         logger->startWork();
         auto res = aio.blockOn(store->querySubstitutablePaths(paths));
         logger->stopWork();
-        to << WorkerProto::write(*store, wconn, res);
+        to << WorkerProto::write(wconn, res);
         break;
     }
 
@@ -334,7 +334,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         #pragma GCC diagnostic pop
 
         logger->stopWork();
-        to << WorkerProto::write(*store, wconn, paths);
+        to << WorkerProto::write(wconn, paths);
         break;
     }
 
@@ -347,7 +347,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         logger->startWork();
         auto outputs = aio.blockOn(store->queryDerivationOutputMap(path));
         logger->stopWork();
-        to << WorkerProto::write(*store, wconn, outputs);
+        to << WorkerProto::write(wconn, outputs);
         break;
     }
 
@@ -363,7 +363,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::AddToStore: {
         auto name = readString(from);
         auto camStr = readString(from);
-        auto refs = WorkerProto::Serialise<StorePathSet>::read(*store, rconn);
+        auto refs = WorkerProto::Serialise<StorePathSet>::read(rconn);
         bool repairBool;
         from >> repairBool;
         auto repair = RepairFlag{repairBool};
@@ -396,7 +396,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         }();
         logger->stopWork();
 
-        to << WorkerProto::Serialise<ValidPathInfo>::write(*store, wconn, *pathInfo);
+        to << WorkerProto::Serialise<ValidPathInfo>::write(wconn, *pathInfo);
         break;
     }
 
@@ -412,7 +412,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             auto expected = readNum<uint64_t>(source);
             for (uint64_t i = 0; i < expected; ++i) {
                 auto info = WorkerProto::Serialise<ValidPathInfo>::read(
-                    *store, WorkerProto::ReadConn{source, clientVersion}
+                    WorkerProto::ReadConn{source, *store, clientVersion}
                 );
                 info.ultimate = false; // duplicated in RemoteStore::addMultipleToStore
                 AsyncSourceInputStream stream{source};
@@ -430,7 +430,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     }
 
     case WorkerProto::Op::BuildPaths: {
-        auto drvs = WorkerProto::Serialise<DerivedPaths>::read(*store, rconn);
+        auto drvs = WorkerProto::Serialise<DerivedPaths>::read(rconn);
         BuildMode mode = buildModeFromInteger(readInt(from));
 
         /* Repairing is not atomic, so disallowed for "untrusted"
@@ -452,7 +452,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     }
 
     case WorkerProto::Op::BuildPathsWithResults: {
-        auto drvs = WorkerProto::Serialise<DerivedPaths>::read(*store, rconn);
+        auto drvs = WorkerProto::Serialise<DerivedPaths>::read(rconn);
         BuildMode mode = bmNormal;
         mode = buildModeFromInteger(readInt(from));
 
@@ -467,7 +467,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         auto results = aio.blockOn(store->buildPathsWithResults(drvs, mode));
         logger->stopWork();
 
-        to << WorkerProto::write(*store, wconn, results);
+        to << WorkerProto::write(wconn, results);
 
         break;
     }
@@ -545,7 +545,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
         auto res = aio.blockOn(store->buildDerivation(drvPath, drv, buildMode));
         logger->stopWork();
-        to << WorkerProto::write(*store, wconn, res);
+        to << WorkerProto::write(wconn, res);
         break;
     }
 
@@ -606,7 +606,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::CollectGarbage: {
         GCOptions options;
         options.action = (GCOptions::GCAction) readInt(from);
-        options.pathsToDelete = WorkerProto::Serialise<StorePathSet>::read(*store, rconn);
+        options.pathsToDelete = WorkerProto::Serialise<StorePathSet>::read(rconn);
         from >> options.ignoreLiveness >> options.maxFreed;
         // obsolete fields
         readInt(from);
@@ -669,7 +669,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         else {
             to << 1
                << (i->second.deriver ? store->printStorePath(*i->second.deriver) : "");
-            to << WorkerProto::write(*store, wconn, i->second.references);
+            to << WorkerProto::write(wconn, i->second.references);
             to << i->second.downloadSize
                << i->second.narSize;
         }
@@ -678,11 +678,11 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
     case WorkerProto::Op::QuerySubstitutablePathInfos: {
         SubstitutablePathInfos infos;
-        StorePathCAMap pathsMap = WorkerProto::Serialise<StorePathCAMap>::read(*store, rconn);
+        StorePathCAMap pathsMap = WorkerProto::Serialise<StorePathCAMap>::read(rconn);
         logger->startWork();
         aio.blockOn(store->querySubstitutablePathInfos(pathsMap, infos));
         logger->stopWork();
-        to << WorkerProto::write(*store, wconn, infos);
+        to << WorkerProto::write(wconn, infos);
         break;
     }
 
@@ -690,7 +690,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         logger->startWork();
         auto paths = aio.blockOn(store->queryAllValidPaths());
         logger->stopWork();
-        to << WorkerProto::write(*store, wconn, paths);
+        to << WorkerProto::write(wconn, paths);
         break;
     }
 
@@ -707,7 +707,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         logger->stopWork();
         if (info) {
             to << 1;
-            to << WorkerProto::write(*store, wconn, static_cast<const UnkeyedValidPathInfo &>(*info));
+            to << WorkerProto::write(wconn, static_cast<const UnkeyedValidPathInfo &>(*info));
         } else {
             to << 0;
         }
@@ -759,7 +759,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         ValidPathInfo info { path, narHash };
         if (deriver != "")
             info.deriver = store->parseStorePath(deriver);
-        info.references = WorkerProto::Serialise<StorePathSet>::read(*store, rconn);
+        info.references = WorkerProto::Serialise<StorePathSet>::read(rconn);
         from >> info.registrationTime >> info.narSize >> info.ultimate;
         info.sigs = readStrings<StringSet>(from);
         info.ca = ContentAddress::parseOpt(readString(from));
@@ -782,7 +782,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     }
 
     case WorkerProto::Op::QueryMissing: {
-        auto targets = WorkerProto::Serialise<DerivedPaths>::read(*store, rconn);
+        auto targets = WorkerProto::Serialise<DerivedPaths>::read(rconn);
         logger->startWork();
         StorePathSet willBuild, willSubstitute, unknown;
         uint64_t downloadSize, narSize;
@@ -790,9 +790,9 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             store->queryMissing(targets, willBuild, willSubstitute, unknown, downloadSize, narSize)
         );
         logger->stopWork();
-        to << WorkerProto::write(*store, wconn, willBuild);
-        to << WorkerProto::write(*store, wconn, willSubstitute);
-        to << WorkerProto::write(*store, wconn, unknown);
+        to << WorkerProto::write(wconn, willBuild);
+        to << WorkerProto::write(wconn, willSubstitute);
+        to << WorkerProto::write(wconn, unknown);
         to << downloadSize << narSize;
         break;
     }
@@ -873,8 +873,8 @@ void processConnection(
     auto temp = trusted
         ? aio.blockOn(store->isTrustedClient())
         : std::optional { NotTrusted };
-    WorkerProto::WriteConn wconn {clientVersion};
-    to << WorkerProto::write(*store, wconn, temp);
+    WorkerProto::WriteConn wconn {*store, clientVersion};
+    to << WorkerProto::write(wconn, temp);
 
     /* Send startup error messages to the client. */
     tunnelLogger->startWork();
