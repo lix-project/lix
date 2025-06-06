@@ -138,7 +138,6 @@ functional_tests_scripts = [
   'flakes/config.sh',
   'fmt.sh',
   'eval-store.sh',
-  'why-depends.sh',
   'derivation-json.sh',
   'import-derivation.sh',
   'nix_path.sh',

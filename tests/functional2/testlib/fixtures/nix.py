@@ -1,8 +1,9 @@
 import dataclasses
+import sys
 from functools import partialmethod
 from pathlib import Path
 from textwrap import dedent
-from typing import Any
+from typing import Any, Literal
 from collections.abc import Callable, Generator
 
 import pytest
@@ -96,19 +97,38 @@ class Nix:
 
         return self._settings
 
-    def nix_cmd(self, argv: list[str], flake: bool = False) -> Command:
+    def nix_cmd(
+        self, argv: list[str], flake: bool = False, build: bool | Literal["auto"] = "auto"
+    ) -> Command:
         """
         Constructs a NixCommand with the appropriate settings.
+        :param build: if the executed command wants to build stuff. This is required due to darwin shenanigans. "auto" will try to autodetect, override using `True` or `False`. Has no effect on linux.
         """
         # Create a copy of settings to not have a writing side effect
         settings = dataclasses.replace(self.settings)
         if flake:
             settings.feature("nix-command", "flakes")
+        # FIXME(Commentator2.0): Darwin needs special handling here, as it does not support (non-root) chroots...
+        #  Hence, it cannot build using a relocated store so we just use the local (aka global) store instead
+        #  This is kinda ugly but what else can one do
+        if sys.platform == "darwin":
+            if build is True or (
+                build == "auto" and (argv[0] == "nix-build" or argv[1] == "build")
+            ):
+                settings.store = None
+                settings.nix_store_dir = self.env.dirs.nix_store_dir
+
         settings.to_env_overlay(self.env)
         return Command(argv=argv, _env=self.env)
 
-    def nix(self, cmd: list[str], nix_exe: str = "nix", flake: bool = False) -> Command:
-        return self.nix_cmd([nix_exe, *cmd], flake=flake)
+    def nix(
+        self,
+        cmd: list[str],
+        nix_exe: str = "nix",
+        flake: bool = False,
+        build: bool | Literal["auto"] = "auto",
+    ) -> Command:
+        return self.nix_cmd([nix_exe, *cmd], flake=flake, build=build)
 
     # Mark each of these as correct as they are not ClassVars, but we also don't want to turn off RUF045
     nix_build = partialmethod(nix, nix_exe="nix-build")  # noqa: RUF045
