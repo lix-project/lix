@@ -359,8 +359,7 @@ kj::Promise<Result<ref<const ValidPathInfo>>> RemoteStore::addCAToStore(
     const StorePathSet & references,
     RepairFlag repair)
 try {
-    std::optional<ConnectionHandle> conn_(TRY_AWAIT(getConnection()));
-    auto & conn = *conn_;
+    auto conn(TRY_AWAIT(getConnection()));
 
     conn->to
         << WorkerProto::Op::AddToStore
@@ -523,8 +522,7 @@ kj::Promise<Result<std::vector<KeyedBuildResult>>> RemoteStore::buildPathsWithRe
 try {
     TRY_AWAIT(copyDrvsFromEvalStore(paths, evalStore));
 
-    std::optional<ConnectionHandle> conn_(TRY_AWAIT(getConnection()));
-    auto & conn = *conn_;
+    auto conn(TRY_AWAIT(getConnection()));
 
     conn->to << WorkerProto::Op::BuildPathsWithResults;
     conn->to << WorkerProto::write(*this, *conn, paths);
