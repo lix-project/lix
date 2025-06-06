@@ -112,7 +112,9 @@ void RemoteStore::initConnection(Connection & conn)
 
 void RemoteStore::setOptions(Connection & conn)
 {
-    conn.to << WorkerProto::Op::SetOptions
+    StringSink command;
+
+    command << WorkerProto::Op::SetOptions
        << settings.keepFailed
        << settings.keepGoing
        << settings.tryFallback
@@ -141,10 +143,11 @@ void RemoteStore::setOptions(Connection & conn)
     overrides.erase(settings.pluginFiles.name);
     overrides.erase(settings.storeUri.name); // the daemon *is* the store
     overrides.erase(settings.tarballTtl.name); // eval-time only, implictly set by flake cli
-    conn.to << overrides.size();
+    command << overrides.size();
     for (auto & i : overrides)
-        conn.to << i.first << i.second.value;
+        command << i.first << i.second.value;
 
+    StringSource{command.s}.drainInto(conn.to);
     auto ex = conn.processStderr();
     if (ex) std::rethrow_exception(ex);
 }
