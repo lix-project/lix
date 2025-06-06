@@ -199,7 +199,8 @@ attrs:
     _type: ExprLiteral
     value: "    Lines without any indentation effectively disable the indentation\n\
       \    stripping for the entire string:\n\n        cat >$out/foo/data <<EOF\n\
-      \        lasjdöaxnasd\nasdom 12398\nä\"§Æẞ¢«»”alsd\nEOF\n"
+      \        lasjd\xF6axnasd\nasdom 12398\n\xE4\"\xA7\xC6\u1E9E\xA2\xAB\xBB\u201D\
+      alsd\nEOF\n"
     valueType: String
   s19:
     _type: ExprLiteral
