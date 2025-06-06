@@ -679,10 +679,10 @@ kj::Promise<Result<void>> RemoteStore::addBuildLog(const StorePath & drvPath, st
 try {
     auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::AddBuildLog << drvPath.to_string();
-    StringSource source(log);
-    conn.withFramedSink([&](Sink & sink) {
-        source.drainInto(sink);
-    });
+    AsyncStringInputStream source(log);
+    TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) {
+        return source.drainInto(sink);
+    }));
     readInt(conn->from);
     co_return result::success();
 } catch (...) {
@@ -846,14 +846,6 @@ RemoteStore::ConnectionHandle::FramedSinkHandler::~FramedSinkHandler() noexcept(
     if (ex && std::uncaught_exceptions() == 0) {
         std::rethrow_exception(ex);
     }
-}
-
-void RemoteStore::ConnectionHandle::withFramedSink(std::function<void(Sink & sink)> fun)
-{
-    FramedSinkHandler handler{*this, *handlerThreads.lock()};
-    FramedSink sink((*this)->to, handler.ex);
-    fun(sink);
-    sink.flush();
 }
 
 kj::Promise<Result<void>> RemoteStore::ConnectionHandle::withFramedSinkAsync(

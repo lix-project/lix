@@ -127,7 +127,6 @@ struct RemoteStore::ConnectionHandle
 
     void processStderr(bool flush = true);
 
-    void withFramedSink(std::function<void(Sink & sink)> fun);
     kj::Promise<Result<void>>
     withFramedSinkAsync(std::function<kj::Promise<Result<void>>(Sink & sink)> fun);
 
