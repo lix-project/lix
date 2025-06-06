@@ -734,7 +734,7 @@ RemoteStore::Connection::~Connection()
 
 kj::Promise<Result<box_ptr<Source>>> RemoteStore::narFromPath(const StorePath & path)
 try {
-    auto conn(TRY_AWAIT(connections->get()));
+    auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::NarFromPath << printStorePath(path);
     conn->processStderr();
     co_return make_box_ptr<GeneratorSource>([](auto conn) -> WireFormatGenerator {
