@@ -1,0 +1,5 @@
+error: attribute 'a.b.c' already defined at /pwd/in.nix:1:3
+       at /pwd/in.nix:1:14:
+            1| { a.b.c = 1; a.b.c.a.a = 1; }
+             |              ^
+            2|

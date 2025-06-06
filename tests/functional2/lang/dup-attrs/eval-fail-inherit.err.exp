@@ -1,0 +1,5 @@
+error: attribute 'a' already defined at /pwd/in.nix:1:16
+       at /pwd/in.nix:1:19:
+            1| { inherit ({}) a; a.b = 1; }
+             |                   ^
+            2|
