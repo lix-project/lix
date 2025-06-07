@@ -597,6 +597,9 @@ stdenv.mkDerivation (finalAttrs: {
               doxygen
               # Load-bearing order. Must come before clang-unwrapped below, but after clang_tools above.
               stdenv.cc
+
+              # git-clang-format
+              llvmPackages.libclang.python
             ]
             ++ [
               rust-analyzer
