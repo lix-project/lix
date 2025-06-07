@@ -32,6 +32,21 @@ pre-commit-run {
       enable = true;
       settings.branch = [ "main" ];
     };
+    clang-format = {
+      enable = true;
+      package = pkgs.llvmPackages.libclang.python;
+      entry = "${pkgs.llvmPackages.libclang.python}/bin/git-clang-format";
+      files = "^(lix/|tests/)";
+      types = [
+        "c++"
+        "file"
+      ];
+      excludes = [
+        ''^lix/pch/.*$''
+        ''\.gen\.hh$''
+      ];
+      pass_filenames = false; # this will automatically format everything in the stage area of Git.
+    };
     check-case-conflicts.enable = true;
     check-executables-have-shebangs = {
       enable = true;
