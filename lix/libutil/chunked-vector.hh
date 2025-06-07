@@ -43,7 +43,10 @@ public:
         addChunk();
     }
 
-    uint32_t size() const { return size_; }
+    uint32_t size() const noexcept
+    {
+        return size_;
+    }
 
     template<typename... Args>
     std::pair<T &, uint32_t> add(Args &&... args)
@@ -58,7 +61,12 @@ public:
         return {result, idx};
     }
 
-    const T & operator[](uint32_t idx) const
+    /**
+     * Unchecked subscript operator.
+     * @pre add must have been called at least idx + 1 times.
+     * @throws nothing
+     */
+    const T & operator[](uint32_t idx) const noexcept
     {
         return chunks[idx / ChunkSize][idx % ChunkSize];
     }
