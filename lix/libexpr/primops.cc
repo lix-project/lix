@@ -308,7 +308,7 @@ void prim_exec(EvalState & state, Value * * args, Value & v)
             "while evaluating the first element of the argument passed to builtins.exec",
             StringCoercionMode::Strict, false).toOwned();
     Strings commandArgs;
-    for (unsigned int i = 1; i < args[0]->listSize(); ++i) {
+    for (size_t i = 1; i < count; ++i) {
         commandArgs.push_back(
                 state.coerceToString(noPos, *elems[i], context,
                         "while evaluating an element of the argument passed to builtins.exec",
@@ -1846,8 +1846,9 @@ static void prim_catAttrs(EvalState & state, Value * * args, Value & v)
     }
 
     v = state.ctx.mem.newList(found);
-    for (unsigned int n = 0; n < found; ++n)
+    for (size_t n = 0; n < found; ++n) {
         v.listElems()[n] = res[n];
+    }
 }
 
 static void prim_functionArgs(EvalState & state, Value * * args, Value & v)
@@ -1950,14 +1951,12 @@ static void prim_isList(EvalState & state, Value * * args, Value & v)
     v.mkBool(args[0]->type() == nList);
 }
 
-static void elemAt(EvalState & state, Value & list, int n, Value & v)
+static void elemAt(EvalState & state, Value & list, NixInt::Inner n, Value & v)
 {
     state.forceList(list, noPos, "while evaluating the first argument passed to builtins.elemAt");
-    if (n < 0 || (unsigned int) n >= list.listSize())
-        state.ctx.errors.make<EvalError>(
-            "list index %1% is out of bounds",
-            n
-        ).debugThrow();
+    if (n < 0 || std::make_unsigned_t<NixInt::Inner>(n) >= list.listSize()) {
+        state.ctx.errors.make<EvalError>("list index %1% is out of bounds", n).debugThrow();
+    }
     state.forceValue(*list.listElems()[n], noPos);
     v = *list.listElems()[n];
 }
@@ -2021,11 +2020,12 @@ static void prim_filter(EvalState & state, Value * * args, Value & v)
 
     state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.filter");
 
-    SmallValueVector<nonRecursiveStackReservation> vs(args[1]->listSize());
+    auto len = args[1]->listSize();
+    SmallValueVector<nonRecursiveStackReservation> vs(len);
     size_t k = 0;
 
     bool same = true;
-    for (unsigned int n = 0; n < args[1]->listSize(); ++n) {
+    for (size_t n = 0; n < len; ++n) {
         Value res;
         state.callFunction(*args[0], *args[1]->listElems()[n], res, noPos);
         if (state.forceBool(res, noPos, "while evaluating the return value of the filtering function passed to builtins.filter"))
@@ -2128,8 +2128,10 @@ static void prim_genList(EvalState & state, Value * * args, Value & v)
 {
     auto len_ = state.forceInt(*args[1], noPos, "while evaluating the second argument passed to builtins.genList").value;
 
-    if (len_ < 0)
+    if (len_ < 0 || std::make_unsigned_t<NixInt::Inner>(len_) > std::numeric_limits<size_t>::max())
+    {
         state.ctx.errors.make<EvalError>("cannot create list of size %1%", len_).debugThrow();
+    }
 
     size_t len = len_;
 
@@ -2198,7 +2200,7 @@ static void prim_partition(EvalState & state, Value * * args, Value & v)
 
     ValueVector right, wrong;
 
-    for (unsigned int n = 0; n < len; ++n) {
+    for (size_t n = 0; n < len; ++n) {
         auto vElem = args[1]->listElems()[n];
         state.forceValue(*vElem, noPos);
         Value res;
@@ -2264,7 +2266,7 @@ static void prim_concatMap(EvalState & state, Value * * args, Value & v)
     SmallTemporaryValueVector<conservativeStackReservation> lists(nrLists);
     size_t len = 0;
 
-    for (unsigned int n = 0; n < nrLists; ++n) {
+    for (size_t n = 0; n < nrLists; ++n) {
         Value * vElem = args[1]->listElems()[n];
         state.callFunction(*args[0], *vElem, lists[n], noPos);
         state.forceList(lists[n], noPos, "while evaluating the return value of the function passed to builtins.concatMap");
@@ -2428,23 +2430,24 @@ static void prim_toString(EvalState & state, Value * * args, Value & v)
    non-negative. */
 static void prim_substring(EvalState & state, Value * * args, Value & v)
 {
+    using NixUInt = std::make_unsigned_t<NixInt::Inner>;
     NixInt::Inner start = state.forceInt(*args[0], noPos, "while evaluating the first argument (the start offset) passed to builtins.substring").value;
 
     if (start < 0)
         state.ctx.errors.make<EvalError>("negative start position in 'substring'").debugThrow();
 
-
-    NixInt::Inner len = state.forceInt(*args[1], noPos, "while evaluating the second argument (the substring length) passed to builtins.substring").value;
-
-    // Negative length may be idiomatically passed to builtins.substring to get
-    // the tail of the string.
-    if (len < 0) {
-        len = std::numeric_limits<NixInt::Inner>::max();
-    }
+    NixInt::Inner len_arg = state
+                                .forceInt(
+                                    *args[1],
+                                    noPos,
+                                    "while evaluating the second argument (the substring length) "
+                                    "passed to builtins.substring"
+                                )
+                                .value;
 
     // Special-case on empty substring to avoid O(n) strlen
-    // This allows for the use of empty substrings to efficently capture string context
-    if (len == 0) {
+    // This allows for the use of empty substrings to efficiently capture string context
+    if (len_arg == 0) {
         state.forceValue(*args[2], noPos);
         if (args[2]->type() == nString) {
             v.mkString("", args[2]->string.context);
@@ -2455,7 +2458,19 @@ static void prim_substring(EvalState & state, Value * * args, Value & v)
     NixStringContext context;
     auto s = state.coerceToString(noPos, *args[2], context, "while evaluating the third argument (the string) passed to builtins.substring");
 
-    v.mkString((unsigned int) start >= s->size() ? "" : s->substr(start, len), context);
+    // Negative length may be idiomatically passed to builtins.substring to get
+    // the tail of the string.
+    // Otherwise, clamp it to the size of the string or the length argument if it's smaller.
+    // This is notably useful on 32 bits platforms where max(size_t) (32 bits) < max(NixUInt) (64
+    // bits), because then the `len` argument fits a `size_t`.
+    static_assert(
+        sizeof(size_t) <= sizeof(NixUInt),
+        "std::size_t's size must be smaller or equal to Nix's unsigned int type's size (NixUInt)"
+    );
+    auto len = len_arg >= 0 ? std::min(static_cast<NixUInt>(s->size()), NixUInt(len_arg))
+                            : std::numeric_limits<std::string::size_type>::max();
+
+    v.mkString(NixUInt(start) >= s->size() ? "" : s->substr(start, len), context);
 }
 
 static void prim_stringLength(EvalState & state, Value * * args, Value & v)
