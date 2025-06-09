@@ -19,6 +19,12 @@ std::ostream & operator <<(std::ostream & str, const SymbolStr & symbol)
     return printIdentifier(str, s);
 }
 
+std::ostream & operator<<(std::ostream & str, const InternedSymbol & symbol)
+{
+    str << SymbolStr(symbol);
+    return str;
+}
+
 AttrName::AttrName(PosIdx pos, Symbol s) : pos(pos), symbol(s)
 {
 }

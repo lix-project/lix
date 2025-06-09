@@ -6,6 +6,8 @@
 #include "lix/libutil/types.hh"
 #include "lix/libutil/chunked-vector.hh"
 
+#include "lix/libexpr/value.hh"
+
 namespace nix {
 
 /**
@@ -16,6 +18,7 @@ namespace nix {
 class SymbolStr
 {
     friend class SymbolTable;
+    friend class InternedSymbol;
 
 private:
     const std::string * s;
@@ -39,6 +42,59 @@ public:
     }
 
     friend std::ostream & operator <<(std::ostream & os, const SymbolStr & symbol);
+};
+
+class InternedSymbol
+{
+private:
+    /*
+     * The type that actually stores the string contained inside of the Value.
+     */
+    std::string contents;
+
+    /*
+     * A value containing a string that can be immediately passed to the evaluator.
+     */
+    Value underlyingValue;
+
+public:
+    explicit InternedSymbol(std::string_view s)
+        : contents(s)
+        , underlyingValue(NewValueAs::string, contents.c_str(), nullptr)
+    {
+    }
+
+    InternedSymbol(InternedSymbol &&) = default;
+    InternedSymbol & operator=(InternedSymbol &&) = default;
+
+    KJ_DISALLOW_COPY(InternedSymbol);
+
+    operator SymbolStr() const
+    {
+        return SymbolStr(contents);
+    }
+
+    bool operator==(std::string_view s2) const
+    {
+        return contents == s2;
+    }
+
+    operator const std::string &() const
+    {
+        return contents;
+    }
+
+    operator std::string_view() const
+    {
+        return contents;
+    }
+
+    const Value * toValuePtr() const
+    {
+        return &underlyingValue;
+    }
+
+    friend std::ostream & operator<<(std::ostream & os, const InternedSymbol & symbol);
 };
 
 /**
@@ -77,7 +133,7 @@ private:
      * ChunkedVector references are never invalidated.
      */
     std::unordered_map<std::string_view, uint32_t> symbols;
-    ChunkedVector<std::string, 8192> store{16};
+    ChunkedVector<InternedSymbol, 8192> store{16};
 
 public:
 
@@ -101,11 +157,11 @@ public:
         return Symbol(idx + 1);
     }
 
-    SymbolStr operator[](Symbol s) const
+    const InternedSymbol & operator[](Symbol s) const
     {
         if (s.id == 0 || s.id > store.size())
             abort();
-        return SymbolStr(store[s.id - 1]);
+        return store[s.id - 1];
     }
 
     size_t size() const

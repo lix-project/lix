@@ -810,7 +810,7 @@ drvName, Bindings * attrs, Value & v)
 
     for (auto & i : attrs->lexicographicOrder(state.ctx.symbols)) {
         if (i->name == state.ctx.s.ignoreNulls) continue;
-        const std::string & key = state.ctx.symbols[i->name];
+        auto & key = state.ctx.symbols[i->name];
         vomit("processing attribute '%1%'", key);
 
         auto handleHashMode = [&](const std::string_view s, NeverAsync = {}) {
@@ -1539,7 +1539,7 @@ static void prim_path(EvalState & state, Value * * args, Value & v)
     state.forceAttrs(*args[0], noPos, "while evaluating the argument passed to 'builtins.path'");
 
     for (auto & attr : *args[0]->attrs) {
-        auto n = state.ctx.symbols[attr.name];
+        auto & n = state.ctx.symbols[attr.name];
         if (n == "path")
             path.emplace(state.coerceToPath(attr.pos, *attr.value, context, "while evaluating the 'path' attribute passed to 'builtins.path'"));
         else if (attr.name == state.ctx.s.name)
