@@ -516,6 +516,77 @@ def test_updates_expected_output(
                 {
                     "functional2": {
                         "lang": {
+                            "generic_unused": {
+                                "in.nix": File("{}"),
+                                "in-1.nix": File("{}"),
+                                "eval-okay.out.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_eo.out.exp"
+                                ),
+                            }
+                        }
+                    }
+                }
+            ),
+            [],
+        )
+    ],
+    indirect=True,
+)
+@pytest.mark.usefixtures("files")
+def test_generic_throws_unused_files(pytest_command: Command):
+    res = pytest_command.run().expect(1)
+    out = res.stdout_plain
+    assert "test_invalid_configuration[generic_unused-reasons0]" in out
+    assert "the following files weren't referenced: {'in-1.nix'}" in out
+
+
+@pytest.mark.parametrize(
+    ("files", "pytest_command"),
+    [
+        (
+            get_functional2_lang_files(
+                {
+                    "functional2": {
+                        "lang": {
+                            "toml_unused": {
+                                "in.nix": File("{}"),
+                                "in-1.nix": File("{}"),
+                                "eval-fail.err.exp": File(""),
+                                "eval-okay.out.exp": AssetSymlink(
+                                    "assets/test_lang_infra/runner_eo.out.exp"
+                                ),
+                                "test.toml": File(
+                                    dedent("""
+                                    [[test]]
+                                    runner = "eval-okay"
+                                    """)
+                                ),
+                            }
+                        }
+                    }
+                }
+            ),
+            [],
+        )
+    ],
+    indirect=True,
+)
+@pytest.mark.usefixtures("files")
+def test_toml_throws_unused_files(pytest_command: Command):
+    res = pytest_command.run().expect(1)
+    out = res.stdout_plain
+    assert "test_invalid_configuration[toml_unused-reasons0]" in out
+    assert "the following files weren't referenced: {'in-1.nix', 'eval-fail.err.exp'}" in out
+
+
+@pytest.mark.parametrize(
+    ("files", "pytest_command"),
+    [
+        (
+            get_functional2_lang_files(
+                {
+                    "functional2": {
+                        "lang": {
                             "single-multi": {
                                 "in.nix": File("{}"),
                                 "in-1.nix": File("{}"),

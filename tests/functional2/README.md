@@ -355,3 +355,4 @@ Here too, it is possible to work with multiple input files, though it works slig
 - In the `test.toml`, it is currently not supported to pass paths with subdirectories into the `extra-files` attribute. If that functionality is required, use a [pytest tests](#writing-python-tests) instead.
   - It is possible to call the according test runner function directly to avoid boilerplate
 - If additional functionalities are required, placing a `.py` file in the directory tells the framework to ignore it. One can then write [pytest tests](#writing-python-tests) as usual
+- The test suit will fail, if any files are unused. This is done to avoid unrecognized tests due to bad naming.

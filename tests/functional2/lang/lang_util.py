@@ -299,6 +299,8 @@ def _collect_toml_test_group(folder: Path) -> tuple[list[LangTest], list[Invalid
     # files starting with "_" will be ignored, e.g. "__pycache__"
     all_files = {f.name for f in folder.iterdir() if not f.name.startswith("_")}
     in_files = [f for f in all_files if re.fullmatch(rf"in({SUFFIX_REGEX})?\.nix", f) is not None]
+    # used to make sure all files are actually used
+    unused_files = all_files - {"test.toml"}
 
     try:
         infos: dict[str, Any] = toml.load(folder / "test.toml")
@@ -317,6 +319,16 @@ def _collect_toml_test_group(folder: Path) -> tuple[list[LangTest], list[Invalid
         tests += new_tests
         invalid_tests += new_invalids
 
+        unused_files -= set(test.extra_files)
+        for t in new_tests:
+            unused_files -= {t.in_file_name, f"{t.test_name}.out.exp", f"{t.test_name}.err.exp"}
+
+    if len(unused_files) > 0:
+        invalid_tests.append(
+            InvalidLangTest(
+                parent_name, [f"the following files weren't referenced: {unused_files!r}"]
+            )
+        )
     return tests, invalid_tests
 
 
@@ -329,7 +341,9 @@ def _collect_generic_test_group(folder: Path) -> tuple[list[LangTest], list[Inva
     parent_name = folder.name
     tests: list[LangTest] = []
     invalid_tests: list[InvalidLangTest] = []
-    for file in folder.iterdir():
+    all_files = set(folder.iterdir())
+    unused = {f.name for f in all_files if not f.name.startswith("_")}
+    for file in all_files:
         file: Path
         if file.suffix == ".exp":
             # we cannot use `file.stem` here, as it only removes the last suffix. i.e.
@@ -355,6 +369,11 @@ def _collect_generic_test_group(folder: Path) -> tuple[list[LangTest], list[Inva
             tests.append(
                 LangTest(runner_name, folder.name, runner, InFile(f"in{suffix}.nix", suffix))
             )
+            unused -= {file.name, f"in{suffix or ''}.nix"}
+    if len(unused) > 0:
+        invalid_tests.append(
+            InvalidLangTest(parent_name, [f"the following files weren't referenced: {unused!r}"])
+        )
     return tests, invalid_tests
 
 
