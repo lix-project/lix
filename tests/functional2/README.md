@@ -92,7 +92,7 @@ Conversely, this convention makes it easy to see which test an asset belongs to.
 
 For a more exhaustive documentation, check the [pytest documentation](https://docs.pytest.org/en/stable/example/parametrize.html).
 When parametrizing a test, the test is called once per provided argument.
-When a test is parameterized multiple times, every combination of parameters will be run in a matrix.
+When a test is parametrized multiple times, every combination of parameters will be run in a matrix.
 If that is not intended, one can provide multiple tuple arguments within a single parametrization:
 
 ```python
@@ -204,7 +204,7 @@ from functional2.testlib.fixtures.file_helper import AssetSymlink
 
 @pytest.mark.parametrize(
     "files",
-    # Setup the symlink so that the golden value will update
+    # Set up the symlink so that the golden value will update
     [ { "out": AssetSymlink("assets/test_example/out.exp"), } ],
     indirect=True,
 )
@@ -242,7 +242,7 @@ Calls to the logger are captured separately by pytest and results in more beauti
 
 The `lang` tests are special in that in addition to the usual Python tests, it also has a framework for automatically creating tests purely from resource files.
 
-Each folder in `lang` is a test, although it may contain multiple sub-tests.
+Each folder in `lang` is a test, although it may contain multiple subtests.
 If a folder is a Python module (i.e. has an `__init__.py`), it will be treated as a Python test instead.
 
 There are two different ways of creating Lang tests.
@@ -260,7 +260,7 @@ All lang tests focus on testing either the parsing or evaluation of Nix code, wh
 
 The runners will test a given input file, and assert that the Nix stdout and stderr match the golden files.
 Typical names for these are `eval-fail.err.exp` or `parse-okay.out.exp`, indicating which runner they are referring to and whether they contain stdout or stderr.
-If an `out.exp` or `err.exp` is not present for a test, the Nix output will be *expected* to be empty (i.e. no file is equivalent to empty file).
+If an `*.out.exp` or `*.err.exp` is not present for a test, the Nix output will be *expected* to be empty (i.e. no file is equivalent to empty file).
 
 ### Without `test.toml`
 
@@ -271,6 +271,11 @@ A test without `test.toml` simply contains the following files:
   - The output of multiple runners may be provided, in which all of them will be run against the input file individually.
 
 When creating a test, simply `touch` the desired `exp` files and use `--accept-tests` to fill them.
+
+It is possible to use different `in`-files within the same folder:
+to do so, suffix them with `-number-or-descriptive-string` resulting in `in-number-or-descriptive-string.nix`.
+Add the same suffix to the expected output file, e.g. `eval-okay-number-or-descriptive-string.out.exp`
+The tests will be discovered by searching the expected output files for the corresponding in files.
 
 ### With `test.toml`
 
@@ -283,21 +288,26 @@ A `test.toml` allows for the following additional test configuration features:
 The `test.toml` has the following structure:
 
 ```toml
-[custom-runner-name]
+[[test]]
 runner = "RUNNER_NAME"
 
-[another-runner]
+[[test]]
+name = "another-test"
 runner = "eval-fail"
 flags = ["-some", "-new", "flag"]
 
-[third-runner]
+[[test]]
+name = "third-runner"
 runner = "eval-okay"
 extra-files = ["./other_nix_file.nix"]
 ```
-
-- The top-level names are the names for the test and may be chosen freely. The reason this exists is that when running the same runner multiple times, its name is not a unique identifier for the test anymore.
-  - It is okay to simply write `[eval-okay] runner = "eval-okay"` for tests that don't make use of this.
+- The top-level element is a list called `test`. One can add a new element by labeling a section `[[test]]`
 - `runner` must be one of `"eval-okay"`, `"eval-fail"`, `"parse-okay"`, `"parse-fail"`
+- `name` defaults to `runner` plus the suffix of the given in file. Must be set manually if multiple test use the same runner and files.
+- `matrix` optional boolean, which indicates if the test will be run on a single file or multiple. defaults to `False` (single file)
+- `in` optional argument to specify on what files to run.
+  - For non-matrix tests, it must be a single file name and defaults to `"in.nix"`
+  - For matrix tests, it must be a list of file names and defaults to all available in files.
 - `flags` optionally specifies a list of additional CLI arguments to be passed to Nix
 - `extra-files` optionally describes a list of (relative) file paths for additional files to be copied into the test directory before execution.
 
@@ -308,14 +318,16 @@ For these, the naming scheme is
 **Example:**
 
 ```toml
-[parse-okay]
+[[test]]
 runner = "parse-okay"
 flags = ["--no-warning"]
 
-[parse-okay-with-warning]
+[[test]]
+# We must set this name manually to avoid collision
+name = "parse-okay-with-warning"
 runner = "parse-okay"
 
-[eval-fail]
+[[test]]
 runner = "eval-fail"
 ```
 
@@ -332,13 +344,14 @@ eval-fail.err.exp
 
 When creating a test, simply writing the `in.nix` and `test.toml` is sufficient, all `.exp` files can be automatically generated with `--accept-tests`.
 
-### Additional Notes
 
-- Instead of providing a single `in.nix` file, multiple `in-$name.nix` files can be provided instead (where `$name` may be a descriptive name or simply a counting number).
-  - When using a `test.toml`, all in files will be tested with all runners in a Matrix
-  - When not using the toml, the runner for each in file will be determined by the `RUNNER_NAME-$name.out.exp` file name, e.g. `eval-fail-1.err.exp` for `in-1.nix` as input and `eval-fail` as runner
+Here too, it is possible to work with multiple input files, though it works slightly differently to without a test toml:
+- for non-matrix tests, set the `in` parameter to the name of the according in file, equivalent to tests without a toml.
+- for matrix tests, either not set the `in` parameter (this will test the runner on *all* present in files) or set it to a list of in file names.
+
+### Additional Notes
 - The file [`lib.nix`](./lang/lib.nix) is a general library file available to all test, and for that copied into each lang test's directory automatically.
   - There is no need to declare and copy it for each individual test that needs it, `import ./lib.nix` will always work out of the box.
-- In the `test.toml`, it is currently not supported to pass paths with subdirectories into the `extra-files` attribute. If that functionality is required, use a [pytest tests](#writing-othercustom-tests) instead.
+- In the `test.toml`, it is currently not supported to pass paths with subdirectories into the `extra-files` attribute. If that functionality is required, use a [pytest tests](#writing-python-tests) instead.
   - It is possible to call the according test runner function directly to avoid boilerplate
-- If additional functionalities are required, placing a `.py` file in the directory tells the framework to ignore it. One can then write [pytest tests](#writing-othercustom-tests) as usual
+- If additional functionalities are required, placing a `.py` file in the directory tells the framework to ignore it. One can then write [pytest tests](#writing-python-tests) as usual

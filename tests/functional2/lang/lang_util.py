@@ -1,15 +1,16 @@
+import dataclasses
 import logging
 import re
 from enum import StrEnum
 from functools import cache
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple, ClassVar
+from collections.abc import Generator
 
 import toml
+from functional2.testlib.fixtures.file_helper import AssetSymlink, CopyFile, FileDeclaration
+from functional2.testlib.utils import is_value_of_type, test_base_folder
 from toml import TomlDecodeError
-
-from functional2.testlib.fixtures.file_helper import FileDeclaration, CopyFile, AssetSymlink
-from functional2.testlib.utils import test_base_folder, is_value_of_type
 
 LANG_TEST_ID_PATTERN = "{folder_name}:{test_name}"
 
@@ -44,39 +45,68 @@ Base message for invalid runner, to use across collection
 """
 
 SUFFIX_REGEX = r"-[\w-]+?"
-NAMING_PATTERN_LANG_TEST = re.compile(
+NAME_PATTERN_GENERIC_EXP = re.compile(
     rf"{LangTestRunner.as_regex_selector()}(?P<suffix>{SUFFIX_REGEX})?"
 )
+NAME_PATTERN_IN_FILE = rf"in({SUFFIX_REGEX})?.nix"
+
+
+class InFile(NamedTuple):
+    name: str
+    suffix: str
+
+    @classmethod
+    def parse(cls, name_str: str) -> "InFile":
+        """
+        Parses the given name into a InFile object
+        :param name_str: string to parse
+        :raises ValueError: When The given string was invalid
+        :return: InFile named tuple, on successful parse
+        """
+        match_ = re.fullmatch(NAME_PATTERN_IN_FILE, name_str)
+        if match_ is None:
+            msg = f"invalid in-file name {name_str!r}"
+            raise ValueError(msg)
+        return cls(match_.group(0), match_.group(1) or "")
 
 
 class LangTest:
+    ids: ClassVar[set[str]] = set()
+    """
+    Set of all existing Ids
+    """
+
     def __init__(
         self,
-        test_name: str,
+        name: str,
         folder_name: str,
         runner: LangTestRunner,
+        in_file: InFile,
         flags: list[str] | None = None,
         extra_files: list[str] | None = None,
-        suffix: str = "",
     ):
         """
         Internal class to represent a lang test
-        :param test_name: name of the explicit test (e.g. "eval-depr" or "eval-allow-depr")
+        :param name: name of the explicit test (e.g. "eval-depr" or "eval-allow-depr")
         :param folder_name: the folder / group of tests this one originates from (e.g. "nul_bytes")
         :param runner: which runner to run this test on (e.g. EVAL_FAIL or PARSE_OKAY)
+        :param in_file: what the input file is
         :param flags: additional flags provided for nix
         :param extra_files: any additional files which should be copied into the tests directory
-        :param suffix: suffix of the in file
+        :raises ValueError(id, msg): when the id constructed from the parameters is not unique
         """
-        self.test_name = test_name
-        self.full_name = LANG_TEST_ID_PATTERN.format(
-            folder_name=folder_name, test_name=f"{test_name}{suffix}"
-        )
         self.runner = runner
         self.flags = flags or []
         self.folder = folder_name
         self.extra_files = extra_files or []
-        self.suffix = suffix
+        self.in_file_name = in_file.name
+        self.suffix = in_file.suffix
+        self.test_name = f"{name}{self.suffix}"
+        self.id = LANG_TEST_ID_PATTERN.format(folder_name=self.folder, test_name=self.test_name)
+        if self.id in LangTest.ids:
+            msg = f"id {self.id!r} is not unique. Please set the 'name' attribute manually"
+            raise ValueError(self.id, msg)
+        LangTest.ids.add(self.id)
 
     def _get_files(self) -> FileDeclaration:
         """
@@ -84,10 +114,10 @@ class LangTest:
         :return: FileDeclaration object containing all files required for the test
         """
         files = {
-            "in.nix": CopyFile(f"{self.folder}/in{self.suffix}.nix"),
+            "in.nix": CopyFile(f"{self.folder}/{self.in_file_name}"),
             "lib.nix": CopyFile("lib.nix"),
-            "out.exp": AssetSymlink(f"{self.folder}/{self.test_name}{self.suffix}.out.exp"),
-            "err.exp": AssetSymlink(f"{self.folder}/{self.test_name}{self.suffix}.err.exp"),
+            "out.exp": AssetSymlink(f"{self.folder}/{self.test_name}.out.exp"),
+            "err.exp": AssetSymlink(f"{self.folder}/{self.test_name}.err.exp"),
         }
         for file in self.extra_files:
             # Make sure to add the extra-files requested by the test.toml
@@ -99,7 +129,7 @@ class LangTest:
         Converts the LangTest to the parameters required for parametrization of the test runners
         :return: a Tuple of the FileDeclaration (used by the `files` fixture), list of flags and a unique id
         """
-        return self._get_files(), self.flags, self.full_name
+        return self._get_files(), self.flags, self.id
 
 
 class InvalidLangTest:
@@ -125,6 +155,138 @@ def _group_lang_tests(tests: list[LangTest]) -> dict[LangTestRunner, list[LangTe
     return grouped_tests
 
 
+@dataclasses.dataclass
+class LangTestDefinition:
+    """
+    A parsed object of a singular `test` section from the `test.toml` file
+    """
+
+    runner: LangTestRunner
+    name: str
+    flags: list[str]
+    extra_files: list[str]
+    matrix: bool
+    in_: list[InFile]
+
+    @classmethod
+    def parse(cls, dict_: dict[str, Any], in_file_names: list[str]) -> "LangTestDefinition":
+        """
+        Parses the given dict to a LangTestDefinition object.
+        :param dict_: content of a singular test section within the `test.toml` file
+        :param in_file_names: a list of all existing in files, used as a default for matrix tests
+        :return: LangTestDefinition object containing the parsed information
+        :raises ValueError(test_name, [*reasons]): when any information was invalid
+        """
+        issues = []
+        runner_name = dict_.pop("runner", "")
+        try:
+            runner = LangTestRunner(runner_name)
+        except ValueError:
+            issues.append(INVALID_TESTER_NAME % runner_name)
+            runner = None
+        extra_files = dict_.pop("extra-files", [])
+        if not is_value_of_type(extra_files, list[str]):
+            issues.append(
+                f"invalid value type for 'extra_files': {extra_files}, expected a list of strings"
+            )
+
+        flags = dict_.pop("flags", [])
+        if not is_value_of_type(flags, list[str]):
+            issues.append(f"invalid value type for 'flags': {flags}, expected a list of strings")
+        test_name = dict_.pop("name", runner_name)
+
+        is_matrix = dict_.pop("matrix", False)
+        if not is_value_of_type(is_matrix, bool):
+            issues.append(f"invalid type for 'matrix': {is_matrix}, expected a boolean")
+
+        in_file_def = dict_.pop("in", None)
+        if is_matrix:
+            in_correct_type = in_file_def is None or is_value_of_type(in_file_def, list[str])
+            in_file_names = in_file_def or in_file_names
+        else:
+            in_correct_type = is_value_of_type(in_file_def, str | None)
+            in_file_names = [in_file_def] if in_file_def is not None else ["in.nix"]
+
+        in_files: list[InFile] = []
+        if not in_correct_type or len(in_file_names) == 0:
+            issues.append(
+                f"invalid type for 'in': {in_file_def!r}, expected a{' list of' if is_matrix else ''} string"
+            )
+        else:
+            # Only check naming if the type is actually correct
+            for i, name in enumerate(in_file_names):
+                try:
+                    in_files.append(InFile.parse(name))
+                except ValueError as e:
+                    issues.append(f"{e.args[0]} at position {i} for 'in'")
+
+        if dict_:
+            issues.append(f"unexpected arguments: {list(dict_.keys())!r}")
+
+        if issues:
+            raise ValueError(test_name, issues)
+        return cls(
+            runner=runner,
+            name=test_name,
+            flags=flags,
+            extra_files=extra_files,
+            matrix=is_matrix,
+            in_=in_files,
+        )
+
+    def build(self, folder: str) -> tuple[list[LangTest], list[InvalidLangTest]]:
+        """
+        Builds this LangTestDefinition into LangTests.
+        :param folder: test group folder name this Definition was created from
+        :return: list of valid LangTests and a list of InvalidLangTests (created when the id wasn't unique)
+        """
+        tests = []
+        invalid = []
+        for file in self.in_:
+            try:
+                tests.append(
+                    LangTest(self.name, folder, self.runner, file, self.flags, self.extra_files)
+                )
+            except ValueError as e:
+                id_, *reasons = e.args
+                invalid.append(InvalidLangTest(id_, reasons))
+        return tests, invalid
+
+
+def parse_toml(
+    toml_content: dict[str, Any], in_files: list[str]
+) -> Generator[LangTestDefinition | ValueError, None, None]:
+    """
+    Parses the given toml content to LangTestDefinitions.
+    :param toml_content: content of the `test.toml` file
+    :param in_files: a list of all in files, used as a default for matrix tests
+    :returns: Generator yielding `LangTestDefinition`s for successful parses and ValueError(test_name, [*reasons]) for parse failures
+    """
+    test_attr_name = "test"
+    issues = []
+    test_dicts = toml_content.pop(test_attr_name, [])
+    if not test_dicts:
+        issues.append(f"key {test_attr_name!r} not found or empty")
+        test_dicts = []
+    elif not is_value_of_type(test_dicts, list[dict[str, Any]]):
+        issues.append(f"Invalid type for {test_attr_name!r}. Expected an Array of Tables")
+        test_dicts = []
+
+    if len(toml_content) > 0:
+        issues.append(
+            f"unexpected key(s) {list(toml_content.keys())}; expected only {test_attr_name!r}"
+        )
+
+    for declaration in test_dicts:
+        try:
+            yield LangTestDefinition.parse(declaration, in_files)
+        except ValueError as e:
+            yield e
+
+    if issues:
+        yield ValueError("", issues)
+
+
 def _collect_toml_test_group(folder: Path) -> tuple[list[LangTest], list[InvalidLangTest]]:
     """
     Collects all tests, declared by a `test.toml` file within the given folder
@@ -132,68 +294,28 @@ def _collect_toml_test_group(folder: Path) -> tuple[list[LangTest], list[Invalid
     :return: a list of valid test configurations and a list of invalid test configurations
     """
     parent_name = folder.name
-    test_declaration = folder / "test.toml"
-    try:
-        infos: dict[str, Any] = toml.load(test_declaration)
-    except TomlDecodeError as e:
-        return [], [InvalidLangTest(parent_name, [f"couldn't parse toml: {e!r}"])]
     invalid_tests: list[InvalidLangTest] = []
     tests: list[LangTest] = []
+    # files starting with "_" will be ignored, e.g. "__pycache__"
+    all_files = {f.name for f in folder.iterdir() if not f.name.startswith("_")}
+    in_files = [f for f in all_files if re.fullmatch(rf"in({SUFFIX_REGEX})?\.nix", f) is not None]
 
-    # suffixes of the in files, e.g.
-    # in.nix => ''
-    # in-1.nix => '-1'
-    # in-some-test.nix => '-some-test'
-    # etc
-    in_suffixes = [
-        suffix.group(1) or ""
-        for suffix in [
-            re.fullmatch(rf"in({SUFFIX_REGEX})?\.nix", file.name) for file in folder.iterdir()
-        ]
-        if suffix is not None
-    ]
+    try:
+        infos: dict[str, Any] = toml.load(folder / "test.toml")
+    except TomlDecodeError as e:
+        return [], [InvalidLangTest(parent_name, [f"couldn't parse toml: {e!r}"])]
 
-    for test_name, definition in infos.items():
-        test_errors: list[str] = []
+    for test in parse_toml(infos, in_files):
+        test_name = test.name if isinstance(test, LangTestDefinition) else test.args[0]
         full_name = LANG_TEST_ID_PATTERN.format(folder_name=parent_name, test_name=test_name)
-        if not isinstance(definition, dict):
-            invalid_tests.append(
-                InvalidLangTest(
-                    full_name, [f"invalid value for {test_name!r}; only tests are expected"]
-                )
-            )
+
+        if isinstance(test, ValueError):
+            invalid_tests.append(InvalidLangTest(full_name, test.args[1]))
             continue
 
-        flags = definition.pop("flags", [])
-        if not is_value_of_type(flags, list[str]):
-            test_errors.append(
-                f"invalid value type for 'flags': {flags}, expected a list of strings"
-            )
-
-        runner_name = definition.pop("runner", None)
-        try:
-            runner = LangTestRunner(runner_name)
-        except ValueError:
-            test_errors.append(INVALID_TESTER_NAME % runner_name)
-            runner = None
-
-        extra_files = definition.pop("extra-files", [])
-        if not is_value_of_type(extra_files, list[str]):
-            test_errors.append(
-                f"invalid value type for 'extra_files': {extra_files}, expected a list of strings"
-            )
-
-        if len(definition) > 0:
-            test_errors.append(f"unexpected arguments: {list(definition.keys())!r}")
-        if test_errors:
-            invalid_tests.append(InvalidLangTest(full_name, test_errors))
-            continue
-
-        # Add a test for each in file
-        tests += [
-            LangTest(test_name, folder.name, runner, flags, extra_files, in_suffix)
-            for in_suffix in in_suffixes
-        ]
+        new_tests, new_invalids = test.build(parent_name)
+        tests += new_tests
+        invalid_tests += new_invalids
 
     return tests, invalid_tests
 
@@ -218,7 +340,7 @@ def _collect_generic_test_group(folder: Path) -> tuple[list[LangTest], list[Inva
             # `"parse-fail-some-name.err.exp".split(".")[0]` => "parse-fail-some-name"
             test_name = file.name.rsplit(".", 2)[0]
             full_name = LANG_TEST_ID_PATTERN.format(folder_name=parent_name, test_name=test_name)
-            match = re.fullmatch(NAMING_PATTERN_LANG_TEST, test_name)
+            match = re.fullmatch(NAME_PATTERN_GENERIC_EXP, test_name)
             if match is None:
                 if re.match(LangTestRunner.as_regex_selector(), test_name) is None:
                     reason = INVALID_TESTER_NAME % test_name
@@ -228,7 +350,11 @@ def _collect_generic_test_group(folder: Path) -> tuple[list[LangTest], list[Inva
                 continue
             runner_name, suffix = match.groups()
             runner = LangTestRunner(runner_name)
-            tests.append(LangTest(runner_name, folder.name, runner, suffix=suffix or ""))
+            suffix = suffix or ""
+
+            tests.append(
+                LangTest(runner_name, folder.name, runner, InFile(f"in{suffix}.nix", suffix))
+            )
     return tests, invalid_tests
 
 
@@ -257,7 +383,7 @@ def _collect_all_tests() -> tuple[list[LangTest], list[InvalidLangTest]]:
         node: Path
         # skip files, as test groups are folders and custom tests will be collected by pytest
         # these are files like this `lang_util.py` or the `lib.nix` etc
-        if node.is_file() or node.name == "assets":
+        if node.is_file() or node.name == "assets" or node.name.startswith("_"):
             continue
 
         # ignore test groups, which have a py file, as those are set up fully custom

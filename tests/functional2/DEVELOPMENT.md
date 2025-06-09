@@ -1,4 +1,4 @@
-# DEVELOOPMENT
+# DEVELOPMENT
 ## Goals
 
 - Eliminate implicit dependencies on files in the test directory as well as the requirement to copy the test files to the build directory as is currently hacked in the other functional test suite.
