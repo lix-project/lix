@@ -2,6 +2,7 @@ source common.sh
 
 echo "building test path"
 storePath="$(nix-build nar-access.nix -A a --no-out-link)"
+strangerStorePath="$(nix-build nar-access.nix -A a --arg nonUtf8Inode true --no-out-link)"
 
 cd "$TEST_ROOT"
 
@@ -79,3 +80,9 @@ rm -rf $cacheDir/nar
 diff -u \
     <(nix store ls --json -R $storePath/foo/bar --store "file://$cacheDir" | jq -S) \
     <(echo '{"narOffset": 368,"type":"regular","size":0}' | jq -S)
+
+# Confirm that there's no more than one `.ls` in the `$cacheDir` because non-UTF8 inodes cannot have `.ls` generated for them.
+[[ $(find $cacheDir -type f -name '*.ls' | wc -l) -eq 1 ]] || (echo "Expected at most one listing file in $cacheDir, found more"; exit -1)
+
+# Confirm that NARs with non-UTF8 inodes can still be listed
+expect 0 nix store ls $strangerStorePath/ --store "file://$cacheDir"

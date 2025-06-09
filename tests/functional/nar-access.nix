@@ -1,3 +1,4 @@
+{ nonUtf8Inodes ? false }:
 with import ./config.nix;
 
 rec {
@@ -12,6 +13,8 @@ rec {
         touch $out/foo/baz
         touch $out/qux
         mkdir $out/zyx
+
+        ${if nonUtf8Inodes then ''printf "data" > "$out/invalid-\x80file"'' else ""}
 
         cat >$out/foo/data <<EOF
         lasjdöaxnasd

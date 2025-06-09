@@ -178,7 +178,19 @@ try {
             {"root", listNar(narIndex)},
         };
 
-        upsertFile(std::string(info.path.hashPart()) + ".ls", j.dump(), "application/json");
+        try {
+            upsertFile(std::string(info.path.hashPart()) + ".ls", j.dump(), "application/json");
+        } catch (ForeignException & exc) {
+            if (exc.is<JSON::exception>()) {
+                warn(
+                    "Skipping NAR listing for path '%1%' due to serialization failure: %2%",
+                    printStorePath(narInfo->path),
+                    exc.what()
+                );
+            } else {
+                throw exc;
+            }
+        }
     }
 
     /* Optionally maintain an index of DWARF debug info files
