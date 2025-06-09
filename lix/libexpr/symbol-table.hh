@@ -90,7 +90,7 @@ public:
         auto it = symbols.find(s);
         if (it != symbols.end()) return Symbol(it->second.second + 1);
 
-        const auto & [rawSym, idx] = store.add(std::string(s));
+        const auto & [rawSym, idx] = store.add(s);
         symbols.emplace(rawSym, std::make_pair(&rawSym, idx));
         return Symbol(idx + 1);
     }
