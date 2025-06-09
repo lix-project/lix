@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libexpr/symbol-table.hh"
 #include "lix/libexpr/value.hh"
 
 namespace nix {

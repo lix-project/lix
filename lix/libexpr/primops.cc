@@ -36,6 +36,10 @@
 
 namespace nix {
 
+/*
+ * Used for `builtins.groupBy`
+ */
+using ValueVectorMap = std::map<Symbol, ValueVector>;
 
 /*************************************************************
  * Miscellaneous

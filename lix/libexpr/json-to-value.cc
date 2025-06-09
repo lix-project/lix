@@ -7,6 +7,11 @@
 
 namespace nix {
 
+/*
+ * Used for `JSONObjectState`
+ */
+using ValueMap = GcMap<Symbol, Value *>;
+
 // for more information, refer to
 // https://github.com/nlohmann/json/blob/master/include/nlohmann/detail/input/json_sax.hpp
 class JSONSax : nlohmann::json_sax<JSON> {

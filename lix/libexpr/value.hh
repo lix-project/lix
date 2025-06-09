@@ -8,7 +8,6 @@
 #include <span>
 
 #include "lix/libexpr/gc-alloc.hh"
-#include "lix/libexpr/symbol-table.hh"
 #include "lix/libexpr/value/context.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/source-path.hh"
@@ -86,7 +85,6 @@ struct Expr;
 struct ExprLambda;
 struct ExprBlackHole;
 struct PrimOp;
-class Symbol;
 class PosIdx;
 struct Pos;
 class StorePath;
@@ -860,8 +858,6 @@ public:
 };
 
 using ValueVector = GcVector<Value *>;
-using ValueMap = GcMap<Symbol, Value *>;
-using ValueVectorMap = std::map<Symbol, ValueVector>;
 
 /**
  * A value allocated in traceable memory.
