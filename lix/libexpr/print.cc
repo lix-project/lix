@@ -287,7 +287,7 @@ private:
 
             AttrVec sorted;
             for (auto & i : *v.attrs)
-                sorted.emplace_back(std::pair(state.ctx.symbols[i.name], i.value));
+                sorted.emplace_back(state.ctx.symbols[i.name], i.value);
 
             if (options.maxAttrs == std::numeric_limits<size_t>::max())
                 std::sort(sorted.begin(), sorted.end());
