@@ -1582,7 +1582,7 @@ static void prim_attrNames(EvalState & state, Value * * args, Value & v)
 
     size_t n = 0;
     for (auto & i : *args[0]->attrs)
-        (v.listElems()[n++] = state.ctx.mem.allocValue())->mkString(state.ctx.symbols[i.name]);
+        v.listElems()[n++] = const_cast<Value *>(state.ctx.symbols[i.name].toValuePtr());
 
     std::sort(v.listElems(), v.listElems() + n,
               [](Value * v1, Value * v2) { return strcmp(v1->string.s, v2->string.s) < 0; });
@@ -1881,9 +1881,8 @@ static void prim_mapAttrs(EvalState & state, Value * * args, Value & v)
     auto attrs = state.ctx.buildBindings(args[1]->attrs->size());
 
     for (auto & i : *args[1]->attrs) {
-        Value * vName = state.ctx.mem.allocValue();
         Value * vFun2 = state.ctx.mem.allocValue();
-        vName->mkString(state.ctx.symbols[i.name]);
+        auto vName = const_cast<Value *>(state.ctx.symbols[i.name].toValuePtr());
         vFun2->mkApp(args[0], vName);
         attrs.alloc(i.name).mkApp(vFun2, i.value);
     }
@@ -1929,8 +1928,7 @@ static void prim_zipAttrsWith(EvalState & state, Value * * args, Value & v)
     }
 
     for (auto & attr : *v.attrs) {
-        auto name = state.ctx.mem.allocValue();
-        name->mkString(state.ctx.symbols[attr.name]);
+        auto name = const_cast<Value *>(state.ctx.symbols[attr.name].toValuePtr());
         auto call1 = state.ctx.mem.allocValue();
         call1->mkApp(args[0], name);
         auto call2 = state.ctx.mem.allocValue();
