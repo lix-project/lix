@@ -158,6 +158,10 @@ midnightveil:
   forgejo: midnightveil
   github: midnightveil
 
+nan-git:
+  display_name: NaN-git
+  github: NaN-git
+
 ncfavier:
   github: ncfavier
 
