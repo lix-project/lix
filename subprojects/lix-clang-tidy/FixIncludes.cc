@@ -34,6 +34,7 @@ private:
                                   OptionalFileEntryRef File,
                                   StringRef SearchPath, StringRef RelativePath,
                                   const Module *Imported,
+                                  bool ModuleImported,
                                   SrcMgr::CharacteristicKind FileType) override;
 };
 
@@ -46,7 +47,7 @@ void FixIncludesCallbacks::LexedFileChanged(FileID, LexedFileChangeReason,
 void FixIncludesCallbacks::InclusionDirective(
     SourceLocation, const Token &, StringRef FileName, bool IsAngled,
     CharSourceRange FilenameRange, OptionalFileEntryRef File, StringRef,
-    StringRef, const Module *, SrcMgr::CharacteristicKind) {
+    StringRef, const Module *, bool, SrcMgr::CharacteristicKind) {
   if (Ignore)
     return;
 

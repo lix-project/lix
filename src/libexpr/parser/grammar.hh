@@ -624,10 +624,13 @@ struct nothing : p::nothing<Rule> {
     static_assert(!std::is_base_of_v<semantic, Rule>);
 };
 
-
-
 template<typename Self, typename OpCtx, typename AttrPathT, typename ExprT>
-struct operator_semantics {
+struct operator_semantics
+{
+private:
+    operator_semantics() = default;
+    friend Self;
+public:
     struct has_attr : grammar::op::has_attr {
         AttrPathT path;
     };

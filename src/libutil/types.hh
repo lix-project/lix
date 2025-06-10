@@ -80,12 +80,18 @@ typename T::mapped_type * get(T & map, const typename T::key_type & key)
  * Get a value for the specified key from an associate container, or a default value if the key isn't present.
  */
 template <class T>
-const typename T::mapped_type & getOr(T & map,
+const typename T::mapped_type & getOr(
+    T & map [[clang::lifetimebound]],
     const typename T::key_type & key,
-    const typename T::mapped_type & defaultValue)
+    const typename T::mapped_type & defaultValue [[clang::lifetimebound]]
+)
 {
     auto i = map.find(key);
-    if (i == map.end()) return defaultValue;
+    if (i == map.end()) {
+        /* FIXME(Raito): `[[clang::lifetimebound]]` has no effect on `defaultValue` warning. */
+        // NOLINTNEXTLINE(bugprone-return-const-ref-from-parameter)
+        return defaultValue;
+    }
     return i->second;
 }
 
