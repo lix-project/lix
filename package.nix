@@ -50,6 +50,7 @@
   rapidcheck,
   removeReferencesTo,
   rustPlatform,
+  rust-cbindgen,
   rustc,
   sqlite,
   systemtap-lix ? __forDefaults.systemtap-lix,
@@ -339,6 +340,7 @@ stdenv.mkDerivation (finalAttrs: {
     meson
     ninja
     cmake
+    rust-cbindgen
     rustc
     capnproto
     # Required for libstd++ assertions that leaks inside of the final binary.

@@ -25,6 +25,13 @@ install_headers(config_h, subdir : 'lix')
 # Subcomponents: these link into artifacts themselves, and have interdependencies.
 subdir('lix-doc')
 
+subdir('rust-monocrate')
+
+# liblix_doc is actually rust-monocrate in a trenchcoat.
+liblix_doc = declare_dependency(
+  link_with : rust_monocrate,
+)
+
 subdir('libutil')
 # Load-bearing order. libstore depends on libutil.
 subdir('libstore')

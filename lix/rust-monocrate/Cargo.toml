@@ -1,0 +1,8 @@
+# This may not actually build with Cargo, but exists to help Meson and to manage lockfiles.
+[package]
+name = "rust-monocrate"
+edition.workspace = true
+
+[lib]
+crate-type = ["staticlib"]
+lix-doc = { path = "../lix-doc" }

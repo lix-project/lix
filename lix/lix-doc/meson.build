@@ -3,22 +3,31 @@ rowan = dependency('rowan-0.15-rs')
 
 rust = import('rust')
 
+# This hack is required by the wombo combo of meson bugs:
+# Meson does not set the soname for us: https://github.com/mesonbuild/meson/issues/13537
+# Meson ignores link_args for Rust targets: https://github.com/mesonbuild/meson/issues/13538
+lix_doc_rust_args = [
+  # link-arg=-soname has no effect when building a static lib,
+  # since the linker is never actually invoked.
+  '-C', f'link-arg=-Wl,@soname_arg@,liblix_doc.@dylib_suffix@',
+]
+
 lix_doc = static_library(
   'lix_doc',
   sources : files('src/lib.rs'),
-  rust_abi : 'c',
   dependencies : [
     rowan,
     rnix,
   ],
-  # If an installed static library depends on this target, then Meson will force
-  # that to link with `-Wl,--whole-archive`, unless we also install this target.
-  # `-Wl,--whole-archive` can cause some Problems when linking multiple nested
-  # static libraries, so let's just install the damn thing.
-  install : is_static,
+  rust_args : [
+    # Empty when default_library=static
+    rust_dynamic_args,
+    lix_doc_rust_args,
+  ],
 )
 
-liblix_doc = declare_dependency(
+# NOTE: this dependency object is only used for `rust_monocrate`
+liblix_doc_internal = declare_dependency(
   link_with : lix_doc,
 )
 

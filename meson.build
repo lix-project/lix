@@ -223,6 +223,14 @@ is_darwin = host_machine.system() == 'darwin'
 is_freebsd = host_machine.system() == 'freebsd'
 is_x64 = host_machine.cpu_family() == 'x86_64'
 
+# Meson knows these, but won't tell us. We need them to hack around some linker shenanigans.
+# See the 'Rust Support' section below.
+if is_darwin
+  dylib_suffix = 'dylib'
+elif is_linux
+  dylib_suffix = 'so'
+endif
+
 # Per-platform arguments that you should probably pass to shared_module() invocations.
 # Something like add_project_arguments() can't be scoped on only shared modules, so this
 # variable is here instead.
@@ -237,6 +245,30 @@ elif is_linux
   # FIXME(Qyriad): is that true?
 endif
 configdata = { }
+
+#
+# Rust Support
+#
+
+if is_static
+  rust_dynamic_args = []
+else
+  rust_dynamic_args = ['-C', 'prefer-dynamic']
+endif
+
+# This hack is required by the wombo combo of meson bugs:
+# Meson does not set the soname for us: https://github.com/mesonbuild/meson/issues/13537
+# Meson ignores link_args for Rust targets: https://github.com/mesonbuild/meson/issues/13538
+# Thus we have to, when the build is dynamic, pass these in rust_args to make it link properly.
+if cxx.get_linker_id().startswith('ld64')
+  # Rust actually sets the -install_name if you pass -C rpath=yes on macOS targets (?!):
+  # https://github.com/rust-lang/rust/blob/2a8af4f7c8262a90b886bc063fe0c271d2b51a45/compiler/rustc_codegen_ssa/src/back/linker.rs#L441-L445
+  # https://rust-lang.zulipchat.com/#narrow/channel/182449-t-compiler.2Fhelp/topic/libstd.2C.20rpath.2C.20dylibs.20and.20packaging
+  # This seems like a bug, so let's keep passing it deliberately.
+  soname_arg = '-install_name'
+elif cxx.get_linker_id().startswith('ld')
+  soname_arg = '-soname'
+endif
 
 #
 # Dependencies
@@ -404,6 +436,7 @@ endif
 # Build-time tools
 #
 dot = find_program('dot', required : false, native : true)
+cbindgen = find_program('cbindgen', native : true)
 pymod = import('python')
 python = pymod.find_installation('python3')
 
