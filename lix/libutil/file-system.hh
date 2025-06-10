@@ -273,6 +273,8 @@ class AutoDelete
     bool del;
     bool recursive;
 public:
+    KJ_DISALLOW_COPY_AND_MOVE(AutoDelete);
+
     AutoDelete();
     AutoDelete(const Path & p, bool recursive = true);
     ~AutoDelete();

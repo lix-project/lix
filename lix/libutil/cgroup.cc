@@ -330,7 +330,7 @@ void AutoDestroyCgroup::cleansePreviousInstancesAndRecordOurself(
     }
 
     writeFile(cgroupFile, std::get<std::filesystem::path>(cgroup_).string());
-    stateRecord = AutoDelete(cgroupFile, false);
+    stateRecord.reset(cgroupFile, false);
 }
 
 void AutoDestroyCgroup::adoptProcess(int pid)
