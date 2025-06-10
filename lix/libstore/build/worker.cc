@@ -101,15 +101,15 @@ Worker::Worker(Store & store, Store & evalStore)
                     "Running a build with cgroups requires the parent cgroup tree to be "
                     "delegated, but only this process' cgroup is delegated.\n"
                     "If you used systemd with `Delegate=yes`, consider moving the process in a "
-                    "sub-cgroup or use `DelegateSubtree=` to move it automatically.\n"
+                    "sub-cgroup or use `DelegateSubgroup=` to move it automatically.\n"
                     "See <https://systemd.io/CGROUP_DELEGATION/> for more information."
                 );
             } else {
                 throw Error(
                     "Running a build with cgroups requires the parent cgroup tree to be "
-                    "delgated.\n"
-                    "If you use systemd, adding `Delegate=yes` and `DelegateSubtree=supervisor` to "
-                    "the [Unit] section will delegate the parent cgroup tree.\n"
+                    "delegated.\n"
+                    "If you use systemd, adding `Delegate=yes` and `DelegateSubgroup=supervisor` "
+                    "to the [Unit] section will delegate the parent cgroup tree.\n"
                     "See <https://systemd.io/CGROUP_DELEGATION/> for more information."
                 );
             }
