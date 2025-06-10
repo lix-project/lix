@@ -1094,7 +1094,7 @@ try {
     StorePathSet storePaths;
     for (auto & path : paths) {
         storePaths.insert(path.path());
-        if (auto realisation = std::get_if<Realisation>(&path.raw)) {
+        if (auto _ = std::get_if<Realisation>(&path.raw)) {
             throw UnimplementedError("ca derivations are not supported");
         }
     }

@@ -63,6 +63,12 @@ in
         environment.sessionVariables = {
           GARAGE_ADMIN_TOKEN = "UkLeGWEvHnXBqnueR3ISEMWpOnm40jH2tM2HnnL/0F4=";
         };
+
+        # ≥ v6.12 kernel has a system wide corruption related to 9p. wait until
+        # https://lore.kernel.org/all/w5ap2zcsatkx4dmakrkjmaexwh3mnmgc5vhavb2miaj6grrzat@7kzr5vlsrmh5/
+        # resolves. once this is resolved and the fix lands in a stable kernel
+        # in nixpkgs, this pin can be removed.
+        boot.kernelPackages = pkgs.linuxPackages_6_6;
       };
   };
   testScript = ''

@@ -632,7 +632,7 @@ struct AsyncCopier : AsyncInputStream
                 co_yield Fragment{want->n, false};
             } else if (auto f = std::get_if<Parser::FileHeader>(&*i)) {
                 co_yield Fragment{f->size, true};
-            } else if (auto sl = std::get_if<Parser::Symlink>(&*i)) {
+            } else if (auto _ = std::get_if<Parser::Symlink>(&*i)) {
                 // nothing to do
             } else if (auto dir = std::get_if<Parser::Directory>(&*i)) {
                 while (auto e = dir->content.next()) {

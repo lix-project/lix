@@ -53,7 +53,7 @@ void RefScanSink::operator () (std::string_view data)
        previous fragment and the start of the current fragment. */
     auto s = tail;
     auto tailLen = std::min(data.size(), refLength);
-    s.append(data.data(), tailLen);
+    s.append(data.data(), tailLen); // NOLINT(bugprone-suspicious-stringview-data-usage)
     search(s, hashes, seen);
 
     search(data, hashes, seen);

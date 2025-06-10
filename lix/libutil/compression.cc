@@ -259,6 +259,7 @@ struct BrotliCompressionSink : ChunkedCompressionSink
 
     void writeInternal(std::string_view data) override
     {
+        // NOLINTNEXTLINE(bugprone-suspicious-stringview-data-usage)
         auto next_in = charptr_cast<const uint8_t *>(data.data());
         size_t avail_in = data.size();
         uint8_t * next_out = outbuf;

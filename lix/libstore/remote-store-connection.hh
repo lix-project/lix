@@ -169,7 +169,10 @@ struct RemoteStore::ConnectionHandle
             AllArgsT allArgs(std::forward<Args>(args)...);
 
             [&]<size_t... Ids>(std::integer_sequence<size_t, Ids...>) {
-                ((handle->to << std::get<Ids>(std::forward<AllArgsT>(allArgs))), ...);
+                ((handle->to << std::forward<std::tuple_element_t<Ids, AllArgsT>>(
+                      std::get<Ids>(allArgs)
+                  )),
+                 ...);
                 handle->to.flush();
             }(ImmediateArgsIdxs{});
 

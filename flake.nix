@@ -2,8 +2,19 @@
   description = "Lix: A modern, delicious implementation of the Nix package manager";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11-small";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05-small";
     nixpkgs-regression.url = "github:NixOS/nixpkgs/215d4d0fd80ca5163643b03a33fde804a29cc1e2";
+
+    # Required because Nix 2.18 is not in Nixpkgs ≥ 25.05 anymore.
+    nix_2_18 = {
+      url = "github:NixOS/nix/2.18.9";
+      # NOTE(Raito): this is not possible because patches on libseccomp does not apply anymore on this Nix.
+      # Let's keep the latest known nixpkgs useable with Nix 2.18 for our tests.
+      # inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nixpkgs-regression.follows = "nixpkgs-regression";
+      inputs.flake-compat.follows = "flake-compat";
+    };
+
     pre-commit-hooks = {
       url = "github:cachix/git-hooks.nix";
       flake = false;
@@ -25,6 +36,7 @@
       nixpkgs-regression,
       pre-commit-hooks,
       nix2container,
+      nix_2_18,
       flake-compat,
     }:
 
@@ -162,6 +174,11 @@
         in
         {
           nixStable = prev.nix;
+
+          # Nix 2.18 has been removed from Nixpkgs ≥ 25.05, so we need to reintroduce it ourselves for our tests.
+          nixVersions = prev.nixVersions // {
+            nix_2_18 = nix_2_18.outputs.packages.${currentStdenv.hostPlatform.system}.default;
+          };
 
           # Forward from the previous stage as we don’t want it to pick the lowdown override
           nixUnstable = prev.nixUnstable;
@@ -383,10 +400,12 @@
                 name = "nixpkgs-lib-tests";
                 paths =
                   [ testWithNix ]
-                  # NOTE: nixpkgs 24.11 is being ... *creative*, and requires this dance to override
+                  # NOTE: nixpkgs 25.05 is being ... *creative*, and requires this dance to override
                   # the evaluator used for the test. it will break again in the future, don't worry.
                   ++ lib.optionals pkgs.stdenv.isLinux [
-                    (pkgs.callPackage "${nixpkgs}/ci/eval" { nixVersions.nix_2_24 = nix; }).attrpathsSuperset
+                    ((pkgs.callPackage "${nixpkgs}/ci/eval" { nixVersions.latest = nix; }).attrpathsSuperset {
+                      evalSystem = system;
+                    })
                   ];
               }
             );
