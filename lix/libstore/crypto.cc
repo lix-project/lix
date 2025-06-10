@@ -45,8 +45,15 @@ std::string SecretKey::signDetached(std::string_view data) const
 {
     unsigned char sig[crypto_sign_BYTES];
     unsigned long long sigLen;
-    crypto_sign_detached(sig, &sigLen, charptr_cast<const unsigned char *>(data.data()), data.size(),
-        charptr_cast<const unsigned char *>(key.data()));
+    crypto_sign_detached(
+        sig,
+        &sigLen,
+        // the following is not a string function so no null termination issues are possible here.
+        // NOLINTNEXTLINE(bugprone-suspicious-stringview-data-usage)
+        charptr_cast<const unsigned char *>(data.data()),
+        data.size(),
+        charptr_cast<const unsigned char *>(key.data())
+    );
     return name + ":" + base64Encode(std::string(reinterpret_cast<char *>(sig), sigLen));
 }
 

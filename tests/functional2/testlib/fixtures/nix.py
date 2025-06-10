@@ -107,9 +107,9 @@ class NixSettings:
 
         field_may("experimental-features", self.experimental_features)
         field_may("store", self.store)
-        assert (
-            self.store or self.nix_store_dir
-        ), "Failing to set either nix_store_dir or store will cause accidental use of the system store."
+        assert self.store or self.nix_store_dir, (
+            "Failing to set either nix_store_dir or store will cause accidental use of the system store."
+        )
         return config
 
     def to_env_overlay(self) -> dict[str, str]:
@@ -215,13 +215,14 @@ class Nix:
     def nix(self, cmd: list[str], nix_exe: str = "nix", flake: bool = False) -> NixCommand:
         return self.nix_cmd([nix_exe, *cmd], flake=flake)
 
-    nix_build = partialmethod(nix, nix_exe="nix-build")
-    nix_shell = partialmethod(nix, nix_exe="nix-shell")
-    nix_store = partialmethod(nix, nix_exe="nix-store")
-    nix_env = partialmethod(nix, nix_exe="nix-env")
-    nix_instantiate = partialmethod(nix, nix_exe="nix-instantiate")
-    nix_channel = partialmethod(nix, nix_exe="nix-channel")
-    nix_prefetch_url = partialmethod(nix, nix_exe="nix-prefetch-url")
+    # Mark each of these as correct as they are not ClassVars, but we also don't want to turn off RUF045
+    nix_build = partialmethod(nix, nix_exe="nix-build")  # noqa: RUF045
+    nix_shell = partialmethod(nix, nix_exe="nix-shell")  # noqa: RUF045
+    nix_store = partialmethod(nix, nix_exe="nix-store")  # noqa: RUF045
+    nix_env = partialmethod(nix, nix_exe="nix-env")  # noqa: RUF045
+    nix_instantiate = partialmethod(nix, nix_exe="nix-instantiate")  # noqa: RUF045
+    nix_channel = partialmethod(nix, nix_exe="nix-channel")  # noqa: RUF045
+    nix_prefetch_url = partialmethod(nix, nix_exe="nix-prefetch-url")  # noqa: RUF045
 
     def eval(self, expr: str, settings: NixSettings | None = None) -> CommandResult:
         if settings is None:

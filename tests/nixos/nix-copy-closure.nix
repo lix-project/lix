@@ -45,12 +45,12 @@ in {
     server.wait_for_unit("network-online.target")
     client.wait_for_unit("network-online.target")
 
-    client.succeed("mkdir -m 700 /root/.ssh")
+    client.succeed("mkdir -m 700 /root/.ssh || [[ -d /root/.ssh ]]")
     client.copy_from_host("key", "/root/.ssh/id_ed25519")
     client.succeed("chmod 600 /root/.ssh/id_ed25519")
 
     # Install the SSH key on the server.
-    server.succeed("mkdir -m 700 /root/.ssh")
+    server.succeed("mkdir -m 700 /root/.ssh || [[ -d /root/.ssh ]]")
     server.copy_from_host("key.pub", "/root/.ssh/authorized_keys")
     server.wait_for_unit("sshd.service")
     client.succeed(f"ssh -o StrictHostKeyChecking=no {server.name} 'echo hello world' >&2")

@@ -193,13 +193,11 @@ let
             in
             ''
               {
-                ${
-                  lib.concatStringsSep "\n" (
-                    builtins.map (output: ''
-                      ${output} = { outPath = "${lib.getOutput output drv}"; };
-                    '') outputs
-                  )
-                }
+                ${lib.concatStringsSep "\n" (
+                  builtins.map (output: ''
+                    ${output} = { outPath = "${lib.getOutput output drv}"; };
+                  '') outputs
+                )}
                 outputs = [ ${lib.concatStringsSep " " (builtins.map (x: "\"${x}\"") outputs)} ];
                 name = "${drv.name}";
                 outPath = "${drv}";
@@ -361,7 +359,8 @@ let
         "org.opencontainers.image.source" = "https://git.lix.systems/lix-project/lix";
         "org.opencontainers.image.vendor" = "Lix project";
         "org.opencontainers.image.version" = pkgs.nix.version;
-        "org.opencontainers.image.description" = "Minimal Lix container image, with some batteries included.";
+        "org.opencontainers.image.description" =
+          "Minimal Lix container image, with some batteries included.";
       } // lib.optionalAttrs (lixRevision != null) { "org.opencontainers.image.revision" = lixRevision; };
     };
 

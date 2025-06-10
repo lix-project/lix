@@ -312,7 +312,7 @@ struct ExprAttrs
         AttrDef() { };
 
         template<typename T>
-        const T & chooseByKind(const T & plain, const T & inherited, const T & inheritedFrom) const
+        T chooseByKind(const T & plain, const T & inherited, const T & inheritedFrom) const
         {
             switch (kind) {
             case Kind::Plain:

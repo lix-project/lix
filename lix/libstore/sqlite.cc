@@ -179,8 +179,13 @@ SQLiteStmt::Use::~Use()
 SQLiteStmt::Use & SQLiteStmt::Use::operator () (std::string_view value, bool notNull)
 {
     if (notNull) {
-        if (sqlite3_bind_text(stmt.stmt.get(), curArg++, value.data(), -1, SQLITE_TRANSIENT) != SQLITE_OK)
+        if (sqlite3_bind_text(
+                stmt.stmt.get(), curArg++, value.data(), value.length(), SQLITE_TRANSIENT
+            )
+            != SQLITE_OK)
+        {
             SQLiteError::throw_(stmt.db, "binding argument");
+        }
     } else
         bind();
     return *this;
