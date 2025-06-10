@@ -518,7 +518,7 @@ static void _deletePath(const Path & path, uint64_t & bytesFreed)
         throw SysError("opening directory '%1%'", path);
     }
 
-    _deletePath(dirfd.get(), baseNameOf(path).data(), bytesFreed);
+    _deletePath(dirfd.get(), std::string(baseNameOf(path)), bytesFreed);
 }
 
 

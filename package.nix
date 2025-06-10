@@ -86,14 +86,6 @@
     boehmgc-nix = boehmgc.override { enableLargeConfig = true; };
 
     editline-lix = editline.overrideAttrs (prev: {
-      patches = (prev.patches or [ ]) ++ [
-        # Recognize `Alt-Left` and `Alt-Right` for navigating by words in more
-        # terminals/shells/platforms.
-        #
-        # See: https://github.com/troglobit/editline/pull/70
-        ./nix-support/editline.patch
-      ];
-
       configureFlags = (prev.configureFlags or [ ]) ++ [
         # Enable SIGSTOP (Ctrl-Z) behavior.
         (lib.enableFeature true "sigstop")

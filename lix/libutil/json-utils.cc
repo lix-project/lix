@@ -38,6 +38,6 @@ const nlohmann::json & ensureType(
             nlohmann::json(expectedType).type_name(),
             value.type_name());
 
-    return value;
+    return value; // NOLINT(bugprone-return-const-ref-from-parameter)
 }
 }
