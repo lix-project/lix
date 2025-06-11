@@ -7,7 +7,9 @@
 #include "lix/libutil/pool.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
+#include <tuple>
 #include <type_traits>
+#include <utility>
 
 namespace nix {
 
@@ -140,8 +142,29 @@ struct RemoteStore::ConnectionHandle
     template<typename R = void, typename... Args>
     kj::Promise<Result<R>> sendCommand(Args &&... args)
     try {
-        ((handle->to << std::forward<Args>(args)), ...);
-        processStderr();
+        constexpr auto LastArgIdx = sizeof...(Args) - 1;
+        using AllArgsT = std::tuple<Args &&...>;
+        using LastArgT = std::tuple_element_t<LastArgIdx, AllArgsT>;
+
+        // if the last argument can be serialized normally we will serialize *all*
+        // arguments at once and hand off to the remote. if the last argument does
+        // not have a serializer we assume it's a callback for a subframe protocol
+        // and serialize all *preceding* arguments normally before handing over to
+        // the subframing layer (which is then responsible for any error handling)
+        if constexpr (requires { handle->to << std::declval<LastArgT>(); }) {
+            ((handle->to << std::forward<Args>(args)), ...);
+            processStderr();
+        } else {
+            using ImmediateArgsIdxs = std::make_index_sequence<sizeof...(Args) - 1>;
+            AllArgsT allArgs(std::forward<Args>(args)...);
+
+            [&]<size_t... Ids>(std::integer_sequence<size_t, Ids...>) {
+                ((handle->to << std::get<Ids>(std::forward<AllArgsT>(allArgs))), ...);
+            }(ImmediateArgsIdxs{});
+
+            LIX_TRY_AWAIT(withFramedSinkAsync(std::get<LastArgIdx>(allArgs)));
+        }
+
         if constexpr (std::is_void_v<R>) {
             co_return result::success();
         } else {

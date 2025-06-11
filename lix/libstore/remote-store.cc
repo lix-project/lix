@@ -354,24 +354,18 @@ kj::Promise<Result<ref<const ValidPathInfo>>> RemoteStore::addCAToStore(
 try {
     auto conn(TRY_AWAIT(getConnection()));
 
-    conn->to
-        << WorkerProto::Op::AddToStore
-        << name
-        << caMethod.render(hashType);
-    conn->to << WorkerProto::write(*conn, references);
-    conn->to << repair;
-
     // The dump source may invoke the store, so we need to make some room.
     connections->incCapacity();
-    {
-        Finally cleanup([&]() { connections->decCapacity(); });
-        TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) {
-            return dump.drainInto(sink);
-        }));
-    }
+    Finally cleanup([&]() { connections->decCapacity(); });
 
-    co_return make_ref<ValidPathInfo>(
-        WorkerProto::Serialise<ValidPathInfo>::read(*conn));
+    co_return make_ref<ValidPathInfo>(TRY_AWAIT(conn.sendCommand<ValidPathInfo>(
+        WorkerProto::Op::AddToStore,
+        name,
+        caMethod.render(hashType),
+        WorkerProto::write(*conn, references),
+        repair,
+        [&](Sink & sink) { return dump.drainInto(sink); }
+    )));
 } catch (...) {
     co_return result::current_exception();
 }
@@ -401,19 +395,22 @@ kj::Promise<Result<void>> RemoteStore::addToStore(
 try {
     auto conn(TRY_AWAIT(getConnection()));
 
-    conn->to << WorkerProto::Op::AddToStoreNar
-             << printStorePath(info.path)
-             << (info.deriver ? printStorePath(*info.deriver) : "")
-             << info.narHash.to_string(Base::Base16, false);
-    conn->to << WorkerProto::write(*conn, info.references);
-    conn->to << info.registrationTime << info.narSize
-             << info.ultimate << info.sigs << renderContentAddress(info.ca)
-             << repair << !checkSigs;
-
     auto copier = copyNAR(source);
-    TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) {
-        return copier->drainInto(sink);
-    }));
+    TRY_AWAIT(conn.sendCommand(
+        WorkerProto::Op::AddToStoreNar,
+        printStorePath(info.path),
+        (info.deriver ? printStorePath(*info.deriver) : ""),
+        info.narHash.to_string(Base::Base16, false),
+        WorkerProto::write(*conn, info.references),
+        info.registrationTime,
+        info.narSize,
+        info.ultimate,
+        info.sigs,
+        renderContentAddress(info.ca),
+        repair,
+        !checkSigs,
+        [&](Sink & sink) { return copier->drainInto(sink); }
+    ));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -429,25 +426,26 @@ try {
     auto remoteVersion = TRY_AWAIT(getProtocol());
 
     auto conn(TRY_AWAIT(getConnection()));
-    conn->to
-        << WorkerProto::Op::AddMultipleToStore
-        << repair
-        << !checkSigs;
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-    TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) -> kj::Promise<Result<void>> {
-        try {
-            sink << pathsToCopy.size();
-            for (auto & [pathInfo, pathSource] : pathsToCopy) {
-                sink << WorkerProto::Serialise<ValidPathInfo>::write(
-                    WorkerProto::WriteConn {*this, remoteVersion},
-                    pathInfo);
-                TRY_AWAIT(TRY_AWAIT(pathSource())->drainInto(sink));
+    TRY_AWAIT(conn.sendCommand(
+        WorkerProto::Op::AddMultipleToStore,
+        repair,
+        !checkSigs,
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        [&](Sink & sink) -> kj::Promise<Result<void>> {
+            try {
+                sink << pathsToCopy.size();
+                for (auto & [pathInfo, pathSource] : pathsToCopy) {
+                    sink << WorkerProto::Serialise<ValidPathInfo>::write(
+                        WorkerProto::WriteConn{*this, remoteVersion}, pathInfo
+                    );
+                    TRY_AWAIT(TRY_AWAIT(pathSource())->drainInto(sink));
+                }
+                co_return result::success();
+            } catch (...) {
+                co_return result::current_exception();
             }
-            co_return result::success();
-        } catch (...) {
-            co_return result::current_exception();
         }
-    }));
+    ));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -654,12 +652,12 @@ try {
 kj::Promise<Result<void>> RemoteStore::addBuildLog(const StorePath & drvPath, std::string_view log)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    conn->to << WorkerProto::Op::AddBuildLog << drvPath.to_string();
     AsyncStringInputStream source(log);
-    TRY_AWAIT(conn.withFramedSinkAsync([&](Sink & sink) {
-        return source.drainInto(sink);
-    }));
-    readInt(conn->from);
+    TRY_AWAIT(conn.sendCommand<unsigned>(
+        WorkerProto::Op::AddBuildLog,
+        drvPath.to_string(),
+        [&](Sink & sink) { return source.drainInto(sink); }
+    ));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
