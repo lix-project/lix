@@ -72,8 +72,7 @@ ref<RemoteStore::Connection> UDSRemoteStore::openConnection()
 kj::Promise<Result<void>> UDSRemoteStore::addIndirectRoot(const Path & path)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::AddIndirectRoot, path));
-    readInt(conn->from);
+    TRY_AWAIT(conn.sendCommand<unsigned>(WorkerProto::Op::AddIndirectRoot, path));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();

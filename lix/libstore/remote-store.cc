@@ -195,8 +195,9 @@ try {
 kj::Promise<Result<bool>> RemoteStore::isValidPathUncached(const StorePath & path)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::IsValidPath, printStorePath(path)));
-    co_return readInt(conn->from);
+    co_return TRY_AWAIT(
+        conn.sendCommand<unsigned>(WorkerProto::Op::IsValidPath, printStorePath(path))
+    );
 } catch (...) {
     co_return result::current_exception();
 }
@@ -206,10 +207,9 @@ kj ::Promise<Result<StorePathSet>>
 RemoteStore::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(
+    co_return TRY_AWAIT(conn.sendCommand<StorePathSet>(
         WorkerProto::Op::QueryValidPaths, WorkerProto::write(*conn, paths), maybeSubstitute
     ));
-    co_return WorkerProto::Serialise<StorePathSet>::read(*conn);
 } catch (...) {
     co_return result::current_exception();
 }
@@ -218,8 +218,7 @@ try {
 kj::Promise<Result<StorePathSet>> RemoteStore::queryAllValidPaths()
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::QueryAllValidPaths));
-    co_return WorkerProto::Serialise<StorePathSet>::read(*conn);
+    co_return TRY_AWAIT(conn.sendCommand<StorePathSet>(WorkerProto::Op::QueryAllValidPaths));
 } catch (...) {
     co_return result::current_exception();
 }
@@ -228,10 +227,9 @@ try {
 kj::Promise<Result<StorePathSet>> RemoteStore::querySubstitutablePaths(const StorePathSet & paths)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(
-        conn.sendCommand(WorkerProto::Op::QuerySubstitutablePaths, WorkerProto::write(*conn, paths))
-    );
-    co_return WorkerProto::Serialise<StorePathSet>::read(*conn);
+    co_return TRY_AWAIT(conn.sendCommand<StorePathSet>(
+        WorkerProto::Op::QuerySubstitutablePaths, WorkerProto::write(*conn, paths)
+    ));
 } catch (...) {
     co_return result::current_exception();
 }
@@ -243,10 +241,9 @@ try {
 
     auto conn(TRY_AWAIT(getConnection()));
 
-    TRY_AWAIT(conn.sendCommand(
+    infos = TRY_AWAIT(conn.sendCommand<SubstitutablePathInfos>(
         WorkerProto::Op::QuerySubstitutablePathInfos, WorkerProto::write(*conn, pathsMap)
     ));
-    infos = WorkerProto::Serialise<SubstitutablePathInfos>::read(*conn);
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -258,16 +255,15 @@ RemoteStore::queryPathInfoUncached(const StorePath & path)
 try {
     auto conn(TRY_AWAIT(getConnection()));
     try {
-        TRY_AWAIT(conn.sendCommand(WorkerProto::Op::QueryPathInfo, printStorePath(path)));
+        auto valid =
+            TRY_AWAIT(conn.sendCommand<bool>(WorkerProto::Op::QueryPathInfo, printStorePath(path)));
+        if (!valid) co_return result::success(nullptr);
     } catch (Error & e) {
         // Ugly backwards compatibility hack. TODO(fj#325): remove.
         if (e.msg().find("is not valid") != std::string::npos)
             co_return result::success(nullptr);
         throw;
     }
-
-    bool valid; conn->from >> valid;
-    if (!valid) co_return result::success(nullptr);
 
     co_return std::make_shared<ValidPathInfo>(
         StorePath{path},
@@ -293,8 +289,9 @@ try {
 kj::Promise<Result<StorePathSet>> RemoteStore::queryValidDerivers(const StorePath & path)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::QueryValidDerivers, printStorePath(path)));
-    co_return WorkerProto::Serialise<StorePathSet>::read(*conn);
+    co_return TRY_AWAIT(
+        conn.sendCommand<StorePathSet>(WorkerProto::Op::QueryValidDerivers, printStorePath(path))
+    );
 } catch (...) {
     co_return result::current_exception();
 }
@@ -305,10 +302,9 @@ RemoteStore::queryDerivationOutputMap(const StorePath & path, Store * evalStore_
 try {
     if (!evalStore_) {
         auto conn(TRY_AWAIT(getConnection()));
-        TRY_AWAIT(conn.sendCommand(WorkerProto::Op::QueryDerivationOutputMap, printStorePath(path)));
-        auto tmp = WorkerProto::Serialise<std::map<std::string, std::optional<StorePath>>>::read(
-            *conn
-        );
+        auto tmp = TRY_AWAIT(conn.sendCommand<std::map<std::string, std::optional<StorePath>>>(
+            WorkerProto::Op::QueryDerivationOutputMap, printStorePath(path)
+        ));
         std::map<std::string, StorePath> result;
         for (auto & [name, outPath] : tmp) {
             if (!outPath) {
@@ -339,8 +335,8 @@ kj::Promise<Result<std::optional<StorePath>>>
 RemoteStore::queryPathFromHashPart(const std::string & hashPart)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::QueryPathFromHashPart, hashPart));
-    Path path = readString(conn->from);
+    Path path =
+        TRY_AWAIT(conn.sendCommand<std::string>(WorkerProto::Op::QueryPathFromHashPart, hashPart));
     if (path.empty()) co_return std::nullopt;
     co_return parseStorePath(path);
 } catch (...) {
@@ -502,10 +498,9 @@ try {
     TRY_AWAIT(copyDrvsFromEvalStore(drvPaths, evalStore));
 
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(
+    TRY_AWAIT(conn.sendCommand<unsigned>(
         WorkerProto::Op::BuildPaths, WorkerProto::write(*conn, drvPaths), buildMode
     ));
-    readInt(conn->from);
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -520,10 +515,9 @@ try {
 
     auto conn(TRY_AWAIT(getConnection()));
 
-    TRY_AWAIT(conn.sendCommand(
+    co_return TRY_AWAIT(conn.sendCommand<std::vector<KeyedBuildResult>>(
         WorkerProto::Op::BuildPathsWithResults, WorkerProto::write(*conn, paths), buildMode
     ));
-    co_return WorkerProto::Serialise<std::vector<KeyedBuildResult>>::read(*conn);
 } catch (...) {
     co_return result::current_exception();
 }
@@ -533,13 +527,12 @@ kj ::Promise<Result<BuildResult>> RemoteStore::buildDerivation(
 )
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(
+    co_return TRY_AWAIT(conn.sendCommand<BuildResult>(
         WorkerProto::Op::BuildDerivation,
         printStorePath(drvPath),
         serializeDerivation(*this, drv),
         buildMode
     ));
-    co_return WorkerProto::Serialise<BuildResult>::read(*conn);
 } catch (...) {
     co_return result::current_exception();
 }
@@ -548,8 +541,7 @@ try {
 kj::Promise<Result<void>> RemoteStore::ensurePath(const StorePath & path)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::EnsurePath, printStorePath(path)));
-    readInt(conn->from);
+    TRY_AWAIT(conn.sendCommand<unsigned>(WorkerProto::Op::EnsurePath, printStorePath(path)));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -559,8 +551,7 @@ try {
 kj::Promise<Result<void>> RemoteStore::addTempRoot(const StorePath & path)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::AddTempRoot, printStorePath(path)));
-    readInt(conn->from);
+    TRY_AWAIT(conn.sendCommand<unsigned>(WorkerProto::Op::AddTempRoot, printStorePath(path)));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -570,10 +561,10 @@ try {
 kj::Promise<Result<Roots>> RemoteStore::findRoots(bool censor)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::FindRoots));
 
-    auto roots =
-        WorkerProto::Serialise<std::vector<std::tuple<std::string, StorePath>>>::read(*conn);
+    auto roots = TRY_AWAIT(conn.sendCommand<std::vector<std::tuple<std::string, StorePath>>>(
+        WorkerProto::Op::FindRoots
+    ));
     Roots result;
     for (auto & [link, target] : roots) {
         result[std::move(target)].emplace(link);
@@ -589,7 +580,9 @@ RemoteStore::collectGarbage(const GCOptions & options, GCResults & results)
 try {
     auto conn(TRY_AWAIT(getConnection()));
 
-    TRY_AWAIT(conn.sendCommand(
+    using ResultT = std::tuple<PathSet, uint64_t, uint64_t>;
+
+    std::tie(results.paths, results.bytesFreed, std::ignore) = TRY_AWAIT(conn.sendCommand<ResultT>(
         WorkerProto::Op::CollectGarbage,
         options.action,
         WorkerProto::write(*conn, options.pathsToDelete),
@@ -598,10 +591,6 @@ try {
         /* removed options */
         0, 0, 0
     ));
-
-    results.paths = readStrings<PathSet>(conn->from);
-    results.bytesFreed = readLongLong(conn->from);
-    readLongLong(conn->from); // obsolete
 
     {
         auto state_(co_await Store::state.lock());
@@ -616,8 +605,7 @@ try {
 kj::Promise<Result<void>> RemoteStore::optimiseStore()
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::OptimiseStore));
-    readInt(conn->from);
+    TRY_AWAIT(conn.sendCommand<unsigned>(WorkerProto::Op::OptimiseStore));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -627,8 +615,9 @@ try {
 kj::Promise<Result<bool>> RemoteStore::verifyStore(bool checkContents, RepairFlag repair)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::VerifyStore, checkContents, repair));
-    co_return readInt(conn->from);
+    co_return TRY_AWAIT(
+        conn.sendCommand<unsigned>(WorkerProto::Op::VerifyStore, checkContents, repair)
+    );
 } catch (...) {
     co_return result::current_exception();
 }
@@ -638,8 +627,9 @@ kj::Promise<Result<void>>
 RemoteStore::addSignatures(const StorePath & storePath, const StringSet & sigs)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::AddSignatures, printStorePath(storePath), sigs));
-    readInt(conn->from);
+    TRY_AWAIT(
+        conn.sendCommand<unsigned>(WorkerProto::Op::AddSignatures, printStorePath(storePath), sigs)
+    );
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -651,11 +641,10 @@ kj::Promise<Result<void>> RemoteStore::queryMissing(const std::vector<DerivedPat
     uint64_t & downloadSize, uint64_t & narSize)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::QueryMissing, WorkerProto::write(*conn, targets)));
-    willBuild = WorkerProto::Serialise<StorePathSet>::read(*conn);
-    willSubstitute = WorkerProto::Serialise<StorePathSet>::read(*conn);
-    unknown = WorkerProto::Serialise<StorePathSet>::read(*conn);
-    conn->from >> downloadSize >> narSize;
+    using ResultT = std::tuple<StorePathSet, StorePathSet, StorePathSet, uint64_t, uint64_t>;
+    std::tie(willBuild, willSubstitute, unknown, downloadSize, narSize) = TRY_AWAIT(
+        conn.sendCommand<ResultT>(WorkerProto::Op::QueryMissing, WorkerProto::write(*conn, targets))
+    );
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
