@@ -55,16 +55,22 @@ def get_functional2_files(additional_files: FileDeclaration | None = None) -> Fi
 
 
 def get_functional2_files_with_testlib(
-    additional_files: FileDeclaration | None = None,
+    additional_files: FileDeclaration | None = None, no_tests: bool = True
 ) -> FileDeclaration:
     if additional_files is None:
         additional_files = {}
+    if no_tests:
+
+        def ignore(_: Any, names: list[str]) -> list[str]:
+            return [name for name in names if name.startswith("test_")]
+    else:
+        ignore = None
     return get_functional2_files(
         merge_file_declaration(
             {
                 "functional2": {
                     "conftest.py": CopyFile(functional2_base_folder / "conftest.py"),
-                    "testlib": CopyTree(functional2_base_folder / "testlib"),
+                    "testlib": CopyTree(functional2_base_folder / "testlib", ignore=ignore),
                 }
             },
             additional_files,

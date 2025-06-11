@@ -2,6 +2,7 @@ import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
+from collections.abc import Callable, Iterable
 
 import pytest
 
@@ -67,16 +68,19 @@ class CopyFile(Fileish):
 
 
 class CopyTree(Fileish):
-    def __init__(self, tree_base: str | Path):
+    def __init__(
+        self, tree_base: str | Path, ignore: Callable[[str, list[str]], Iterable[str]] | None = None
+    ):
         """
         Declares a folder as a copy of an existing folder
         :param tree_base: base folder of the tree being copied
         """
         self.tree_base = tree_base
+        self.ignore = ignore
 
     def copy_to(self, path: Path, origin: Path):
         orig = self.tree_base if isinstance(self.tree_base, Path) else origin / self.tree_base
-        shutil.copytree(orig, path, dirs_exist_ok=True)
+        shutil.copytree(orig, path, dirs_exist_ok=True, ignore=self.ignore)
 
 
 class CopyTemplate(_ByContentFileish):
