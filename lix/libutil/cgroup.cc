@@ -311,6 +311,8 @@ void AutoDestroyCgroup::destroy()
         },
         cgroup_
     );
+
+    stateRecord.reset();
 }
 
 AutoDestroyCgroup::~AutoDestroyCgroup()
@@ -326,6 +328,9 @@ void AutoDestroyCgroup::cleansePreviousInstancesAndRecordOurself(
     const std::filesystem::path & cgroupRecordsDir
 )
 {
+    assert(
+        !stateRecord && "`stateRecord` cannot be created before the cleansing process takes place"
+    );
     createDirs(cgroupRecordsDir);
 
     auto cgroupFile = cgroupRecordsDir / name_;
@@ -337,7 +342,7 @@ void AutoDestroyCgroup::cleansePreviousInstancesAndRecordOurself(
     }
 
     writeFile(cgroupFile, std::get<std::filesystem::path>(cgroup_).string());
-    stateRecord.reset(cgroupFile, false);
+    stateRecord.emplace(cgroupFile, false);
 }
 
 void AutoDestroyCgroup::adoptProcess(int pid)

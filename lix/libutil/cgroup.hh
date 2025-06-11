@@ -138,8 +138,10 @@ private:
      * Path to the state record of this cgroup's existence.
      * This is used when the deletion process is interrupted
      * for the next run.
+     *
+     * This might be deleted earlier, in which case, this is left to none.
      */
-    AutoDelete stateRecord;
+    std::optional<AutoDelete> stateRecord;
 
     /*
      * Cleanse all previous instances of this cgroup where the deletion process
