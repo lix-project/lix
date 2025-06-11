@@ -583,11 +583,11 @@ try {
     auto conn(TRY_AWAIT(getConnection()));
     conn->to << WorkerProto::Op::FindRoots;
     conn.processStderr();
-    size_t count = readNum<size_t>(conn->from);
+
+    auto roots =
+        WorkerProto::Serialise<std::vector<std::tuple<std::string, StorePath>>>::read(*conn);
     Roots result;
-    while (count--) {
-        Path link = readString(conn->from);
-        auto target = parseStorePath(readString(conn->from));
+    for (auto & [link, target] : roots) {
         result[std::move(target)].emplace(link);
     }
     co_return result;
