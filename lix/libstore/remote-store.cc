@@ -66,7 +66,7 @@ kj::Promise<Result<ref<RemoteStore::Connection>>> RemoteStore::openAndInitConnec
 try {
     auto conn = openConnection();
     try {
-        initConnection(*conn);
+        TRY_AWAIT(initConnection(*conn));
         co_return conn;
     } catch (...) {
         failed = true;
@@ -76,8 +76,8 @@ try {
     co_return result::current_exception();
 }
 
-void RemoteStore::initConnection(Connection & conn)
-{
+kj::Promise<Result<void>> RemoteStore::initConnection(Connection & conn)
+try {
     /* Send the magic greeting, check for the reply. */
     try {
         conn.store = this;
@@ -112,12 +112,14 @@ void RemoteStore::initConnection(Connection & conn)
         throw Error("cannot open connection to remote store '%s': %s", getUri(), e.what());
     }
 
-    setOptions(conn);
+    TRY_AWAIT(setOptions(conn));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
-
-void RemoteStore::setOptions(Connection & conn)
-{
+kj::Promise<Result<void>> RemoteStore::setOptions(Connection & conn)
+try {
     StringSink command;
 
     command << WorkerProto::Op::SetOptions
@@ -157,8 +159,10 @@ void RemoteStore::setOptions(Connection & conn)
     conn.to.flush();
     auto ex = conn.processStderr();
     if (ex) std::rethrow_exception(ex);
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
-
 
 RemoteStore::ConnectionHandle::~ConnectionHandle()
 {
@@ -187,7 +191,7 @@ try {
 
 kj::Promise<Result<void>> RemoteStore::setOptions()
 try {
-    setOptions(*(TRY_AWAIT(getConnection()).handle));
+    TRY_AWAIT(setOptions(*(TRY_AWAIT(getConnection()).handle)));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();

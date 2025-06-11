@@ -5,6 +5,7 @@
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libutil/pool.hh"
 #include "lix/libstore/ssh.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/strings.hh"
 
 namespace nix {
@@ -77,7 +78,7 @@ protected:
 
     SSH ssh;
 
-    void setOptions(RemoteStore::Connection & conn) override
+    kj::Promise<Result<void>> setOptions(RemoteStore::Connection & conn) override
     {
         /* TODO Add a way to explicitly ask for some options to be
            forwarded. One option: A way to query the daemon for its
@@ -85,6 +86,7 @@ protected:
            forward-cores or forward-overridden-cores that only
            override the requested settings.
         */
+        return {result::success()};
     };
 };
 

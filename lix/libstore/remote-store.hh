@@ -181,11 +181,11 @@ protected:
 
     kj::Promise<Result<ref<Connection>>> openAndInitConnection();
 
-    void initConnection(Connection & conn);
+    kj::Promise<Result<void>> initConnection(Connection & conn);
 
     ref<Pool<Connection>> connections;
 
-    virtual void setOptions(Connection & conn);
+    virtual kj::Promise<Result<void>> setOptions(Connection & conn);
 
     kj::Promise<Result<void>> setOptions() override;
 
