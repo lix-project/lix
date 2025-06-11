@@ -53,19 +53,19 @@ void BufferedSink::operator () (std::string_view data)
     while (!data.empty()) {
         /* Optimisation: bypass the buffer if the data exceeds the
            buffer size. */
-        if (buffer.used() + data.size() >= buffer.size()) {
+        if (buffer->used() + data.size() >= buffer->size()) {
             flush();
             writeUnbuffered(data);
             break;
         }
         /* Otherwise, copy the bytes to the buffer.  Flush the buffer
            when it's full. */
-        auto into = buffer.getWriteBuffer();
+        auto into = buffer->getWriteBuffer();
         size_t n = std::min(data.size(), into.size());
         memcpy(into.data(), data.data(), n);
         data.remove_prefix(n);
-        buffer.added(n);
-        if (buffer.used() == buffer.size()) {
+        buffer->added(n);
+        if (buffer->used() == buffer->size()) {
             flush();
         }
     }
@@ -73,10 +73,10 @@ void BufferedSink::operator () (std::string_view data)
 
 void BufferedSink::flush()
 {
-    if (buffer.used() > 0) {
-        auto from = buffer.getReadBuffer();
+    if (buffer->used() > 0) {
+        auto from = buffer->getReadBuffer();
         writeUnbuffered({from.data(), from.size()});
-        buffer.consumed(from.size());
+        buffer->consumed(from.size());
     }
 }
 
@@ -138,22 +138,22 @@ std::string Source::drain()
 
 size_t BufferedSource::read(char * data, size_t len)
 {
-    if (buffer.used() == 0) {
-        auto into = buffer.getWriteBuffer();
-        buffer.added(readUnbuffered(into.data(), into.size()));
+    if (buffer->used() == 0) {
+        auto into = buffer->getWriteBuffer();
+        buffer->added(readUnbuffered(into.data(), into.size()));
     }
 
-    auto from = buffer.getReadBuffer();
+    auto from = buffer->getReadBuffer();
     len = std::min(len, from.size());
     memcpy(data, from.data(), len);
-    buffer.consumed(len);
+    buffer->consumed(len);
     return len;
 }
 
 
 bool BufferedSource::hasData()
 {
-    return buffer.used() > 0;
+    return buffer->used() > 0;
 }
 
 

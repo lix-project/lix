@@ -6,6 +6,7 @@
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/generator.hh"
 #include "lix/libutil/io-buffer.hh"
+#include "lix/libutil/ref.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/file-descriptor.hh"
 
@@ -44,9 +45,10 @@ struct FinishSink : virtual Sink
  */
 struct BufferedSink : virtual Sink
 {
-    IoBuffer buffer;
+    ref<IoBuffer> buffer;
 
-    BufferedSink(size_t bufSize = 32 * 1024) : buffer(bufSize) {}
+    BufferedSink(size_t bufSize = 32 * 1024) : buffer(make_ref<IoBuffer>(bufSize)) {}
+    explicit BufferedSink(ref<IoBuffer> buffer) : buffer(std::move(buffer)) {}
 
     void operator () (std::string_view data) override;
 
@@ -97,9 +99,10 @@ struct Source
  */
 struct BufferedSource : Source
 {
-    IoBuffer buffer;
+    ref<IoBuffer> buffer;
 
-    BufferedSource(size_t bufSize = 32 * 1024) : buffer(bufSize) {}
+    BufferedSource(size_t bufSize = 32 * 1024) : buffer(make_ref<IoBuffer>(bufSize)) {}
+    explicit BufferedSource(ref<IoBuffer> buffer) : buffer(std::move(buffer)) {}
 
     size_t read(char * data, size_t len) override;
 
