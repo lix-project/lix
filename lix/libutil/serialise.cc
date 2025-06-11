@@ -4,8 +4,6 @@
 
 #include <cstring>
 #include <cerrno>
-#include <memory>
-
 
 namespace nix {
 
@@ -52,32 +50,34 @@ template long long readNum<long long>(Source & source);
 
 void BufferedSink::operator () (std::string_view data)
 {
-    if (!buffer) buffer = decltype(buffer)(new char[bufSize]);
-
     while (!data.empty()) {
         /* Optimisation: bypass the buffer if the data exceeds the
            buffer size. */
-        if (bufPos + data.size() >= bufSize) {
+        if (buffer.used() + data.size() >= buffer.size()) {
             flush();
             writeUnbuffered(data);
             break;
         }
         /* Otherwise, copy the bytes to the buffer.  Flush the buffer
            when it's full. */
-        size_t n = bufPos + data.size() > bufSize ? bufSize - bufPos : data.size();
-        memcpy(buffer.get() + bufPos, data.data(), n);
-        data.remove_prefix(n); bufPos += n;
-        if (bufPos == bufSize) flush();
+        auto into = buffer.getWriteBuffer();
+        size_t n = std::min(data.size(), into.size());
+        memcpy(into.data(), data.data(), n);
+        data.remove_prefix(n);
+        buffer.added(n);
+        if (buffer.used() == buffer.size()) {
+            flush();
+        }
     }
 }
 
-
 void BufferedSink::flush()
 {
-    if (bufPos == 0) return;
-    size_t n = bufPos;
-    bufPos = 0; // don't trigger the assert() in ~BufferedSink()
-    writeUnbuffered({buffer.get(), n});
+    if (buffer.used() > 0) {
+        auto from = buffer.getReadBuffer();
+        writeUnbuffered({from.data(), from.size()});
+        buffer.consumed(from.size());
+    }
 }
 
 
@@ -136,25 +136,24 @@ std::string Source::drain()
     return std::move(s.s);
 }
 
-
 size_t BufferedSource::read(char * data, size_t len)
 {
-    if (!buffer) buffer = decltype(buffer)(new char[bufSize]);
+    if (buffer.used() == 0) {
+        auto into = buffer.getWriteBuffer();
+        buffer.added(readUnbuffered(into.data(), into.size()));
+    }
 
-    if (!bufPosIn) bufPosIn = readUnbuffered(buffer.get(), bufSize);
-
-    /* Copy out the data in the buffer. */
-    size_t n = len > bufPosIn - bufPosOut ? bufPosIn - bufPosOut : len;
-    memcpy(data, buffer.get() + bufPosOut, n);
-    bufPosOut += n;
-    if (bufPosIn == bufPosOut) bufPosIn = bufPosOut = 0;
-    return n;
+    auto from = buffer.getReadBuffer();
+    len = std::min(len, from.size());
+    memcpy(data, from.data(), len);
+    buffer.consumed(len);
+    return len;
 }
 
 
 bool BufferedSource::hasData()
 {
-    return bufPosOut < bufPosIn;
+    return buffer.used() > 0;
 }
 
 

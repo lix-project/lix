@@ -208,7 +208,6 @@ private:
 public:
     HashSink(HashType ht);
     HashSink(const HashSink & h);
-    ~HashSink();
     void writeUnbuffered(std::string_view data) override;
     HashResult finish() override;
     HashResult currentHash();

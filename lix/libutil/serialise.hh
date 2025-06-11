@@ -5,6 +5,7 @@
 
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/generator.hh"
+#include "lix/libutil/io-buffer.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/file-descriptor.hh"
 
@@ -43,11 +44,9 @@ struct FinishSink : virtual Sink
  */
 struct BufferedSink : virtual Sink
 {
-    size_t bufSize, bufPos;
-    std::unique_ptr<char[]> buffer;
+    IoBuffer buffer;
 
-    BufferedSink(size_t bufSize = 32 * 1024)
-        : bufSize(bufSize), bufPos(0), buffer(nullptr) { }
+    BufferedSink(size_t bufSize = 32 * 1024) : buffer(bufSize) {}
 
     void operator () (std::string_view data) override;
 
@@ -92,18 +91,15 @@ struct Source
     std::string drain();
 };
 
-
 /**
  * A buffered abstract source. Warning: a BufferedSource should not be
  * used from multiple threads concurrently.
  */
 struct BufferedSource : Source
 {
-    size_t bufSize, bufPosIn, bufPosOut;
-    std::unique_ptr<char[]> buffer;
+    IoBuffer buffer;
 
-    BufferedSource(size_t bufSize = 32 * 1024)
-        : bufSize(bufSize), bufPosIn(0), bufPosOut(0), buffer(nullptr) { }
+    BufferedSource(size_t bufSize = 32 * 1024) : buffer(bufSize) {}
 
     size_t read(char * data, size_t len) override;
 

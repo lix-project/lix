@@ -333,11 +333,6 @@ HashSink::HashSink(HashType ht) : ht(ht), ctx(start(ht))
     bytes = 0;
 }
 
-HashSink::~HashSink()
-{
-    bufPos = 0;
-}
-
 void HashSink::writeUnbuffered(std::string_view data)
 {
     bytes += data.size();
