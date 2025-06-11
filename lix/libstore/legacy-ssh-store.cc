@@ -135,8 +135,8 @@ struct LegacySSHStore final : public Store
                    ? ""
                    : " --store " + shellEscape(config_.remoteStore.get()))
         );
-        conn->to = FdSink(conn->sshConn->in.get());
-        conn->from = FdSource(conn->sshConn->out.get());
+        conn->to = FdSink(conn->sshConn->socket.get());
+        conn->from = FdSource(conn->sshConn->socket.get());
         conn->store = this;
 
         try {

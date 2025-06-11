@@ -1,10 +1,13 @@
 #include "lix/libutil/current-process.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libstore/ssh.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/finally.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libstore/temporary-dir.hh"
+#include <sys/socket.h>
 
 namespace nix {
 
@@ -47,9 +50,23 @@ void SSH::addCommonSSHOpts(Strings & args)
 
 std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
 {
-    Pipe in, out;
-    in.create();
-    out.create();
+    int sp[2];
+    // only linux and bsd support SOCK_CLOEXEC in socketpair type.
+#if __linux__ || __FreeBSD__
+    constexpr int sock_type = SOCK_STREAM | SOCK_CLOEXEC;
+#else
+    constexpr int sock_type = SOCK_STREAM;
+#endif
+    if (socketpair(AF_UNIX, sock_type, 0, sp) < 0) {
+        throw SysError("socketpair() for ssh");
+    }
+
+    AutoCloseFD parent(sp[0]), child(sp[1]);
+#if !(__linux__ || __FreeBSD__)
+    if (fcntl(parent.get(), F_SETFD, O_CLOEXEC) < 0 || fcntl(child.get(), F_SETFD, O_CLOEXEC) < 0) {
+        throw SysError("making socketpair O_CLOEXEC");
+    }
+#endif
 
     auto conn = std::make_unique<Connection>();
     ProcessOptions options;
@@ -64,13 +81,14 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
     conn->sshPid = startProcess([&]() {
         restoreProcessContext();
 
-        close(in.writeSide.get());
-        close(out.readSide.get());
+        parent.close();
 
-        if (dup2(in.readSide.get(), STDIN_FILENO) == -1)
+        if (dup2(child.get(), STDIN_FILENO) == -1) {
             throw SysError("duping over stdin");
-        if (dup2(out.writeSide.get(), STDOUT_FILENO) == -1)
+        }
+        if (dup2(child.get(), STDOUT_FILENO) == -1) {
             throw SysError("duping over stdout");
+        }
         if (logFD != -1 && dup2(logFD, STDERR_FILENO) == -1)
             throw SysError("duping over stderr");
 
@@ -93,12 +111,9 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
         throw SysError("unable to execute '%s'", args.front());
     }, options);
 
+    child.close();
 
-    in.readSide.reset();
-    out.writeSide.reset();
-
-    conn->out = std::move(out.readSide);
-    conn->in = std::move(in.writeSide);
+    conn->socket = std::move(parent);
 
     return conn;
 }

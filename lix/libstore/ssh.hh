@@ -36,7 +36,7 @@ public:
     struct Connection
     {
         Pid sshPid;
-        AutoCloseFD out, in;
+        AutoCloseFD socket;
     };
 
     std::unique_ptr<Connection> startCommand(const std::string & command);
