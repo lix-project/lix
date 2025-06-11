@@ -1,4 +1,5 @@
 #include "lix/libstore/uds-remote-store.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/unix-domain-socket.hh"
 #include "lix/libstore/worker-protocol.hh"
@@ -71,8 +72,7 @@ ref<RemoteStore::Connection> UDSRemoteStore::openConnection()
 kj::Promise<Result<void>> UDSRemoteStore::addIndirectRoot(const Path & path)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    conn->to << WorkerProto::Op::AddIndirectRoot << path;
-    conn.processStderr();
+    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::AddIndirectRoot, path));
     readInt(conn->from);
     co_return result::success();
 } catch (...) {

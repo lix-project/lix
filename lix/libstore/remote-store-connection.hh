@@ -4,6 +4,7 @@
 #include "lix/libstore/remote-store.hh"
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libutil/pool.hh"
+#include "lix/libutil/result.hh"
 
 namespace nix {
 
@@ -132,6 +133,16 @@ struct RemoteStore::ConnectionHandle
 
     kj::Promise<Result<void>>
     withFramedSinkAsync(std::function<kj::Promise<Result<void>>(Sink & sink)> fun);
+
+    template<typename... Args>
+    kj::Promise<Result<void>> sendCommand(Args &&... args)
+    try {
+        ((handle->to << std::forward<Args>(args)), ...);
+        processStderr();
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
+    }
 
 private:
     struct FramedSinkHandler
