@@ -94,7 +94,8 @@ def snapshot(
     as otherwise the expected output won't be updated.
     :return: a snapshot object which one can use `==` on
     """
-
+    tmp_path = tmp_path / "test-home"
+    tmp_path.mkdir(parents=True, exist_ok=True)
     snaps: list[Snapshot] = []
 
     def create_snapshot(expected_output_path: str) -> Snapshot:

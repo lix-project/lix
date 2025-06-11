@@ -5,7 +5,8 @@ from textwrap import dedent
 
 import pytest
 from _pytest.logging import LogCaptureFixture
-from functional2.testlib.commands import Command
+from functional2.testlib.fixtures.command import Command
+from functional2.testlib.fixtures.env import ManagedEnv
 from functional2.testlib.fixtures.file_helper import (
     CopyFile,
     File,
@@ -116,11 +117,11 @@ _update_test_files = _get_f2_snapshot_files(
 )
 @pytest.mark.parametrize("set_env", [False, True])
 @pytest.mark.usefixtures("files")
-def test_do_update_true_when_any_set(pytest_command: Command, set_env: bool):
+def test_do_update_true_when_any_set(env: ManagedEnv, pytest_command: Command, set_env: bool):
     if not (set_env or "--accept-tests" in pytest_command.argv):
         pytest.skip("not this test case")
     if set_env:
-        pytest_command.update_env(_NIX_TEST_ACCEPT="1")
+        env.set_env("_NIX_TEST_ACCEPT", "1")
     pytest_command.run().ok()
 
 
@@ -132,7 +133,7 @@ def _snapshot_test_files(content: str) -> FileDeclaration:
                     "test_snapshot.py": File(
                         dedent(f"""
                             def test_snapshot(snapshot, tmp_path):
-                                (tmp_path / "out.exp").write_text("{content}")
+                                (tmp_path / "test-home" / "out.exp").write_text("{content}")
                                 assert snapshot("out.exp") == "plush plush"
                             """)
                     )
@@ -168,7 +169,7 @@ def test_snapshot_fails_on_diff(pytest_command: Command):
     indirect=True,
 )
 def test_snapshot_updates_diff(files: Path, pytest_command: Command):
-    output_file = files / "pytest_files/test_snapshot0/out.exp"
+    output_file = files / "pytest_files/test_snapshot0/test-home/out.exp"
     pytest_command.run().ok()
     assert output_file.read_text() == "plush plush"
 
@@ -181,7 +182,7 @@ def test_snapshot_updates_diff(files: Path, pytest_command: Command):
 def test_snapshot_updates_shares_updated_location_without_symlink(
     files: Path, pytest_command: Command
 ):
-    expected_path = "pytest_files/test_snapshot0/out.exp"
+    expected_path = "pytest_files/test_snapshot0/test-home/out.exp"
     output_file = files / expected_path
     res = pytest_command.run().ok()
     assert output_file.read_text() == "plush plush"
@@ -195,7 +196,7 @@ def test_snapshot_updates_shares_updated_location_without_symlink(
     indirect=True,
 )
 def test_snapshot_marks_skip_after_update(files: Path, pytest_command: Command):
-    expected_path = "pytest_files/test_snapshot0/out.exp"
+    expected_path = "pytest_files/test_snapshot0/test-home/out.exp"
     output_file = files / expected_path
     res = pytest_command.run().ok()
     assert output_file.read_text() == "plush plush"
@@ -213,8 +214,8 @@ def test_snapshot_marks_skip_after_update(files: Path, pytest_command: Command):
                             "test_snapshot.py": File(
                                 dedent("""
                                     def test_snapshot(snapshot, tmp_path):
-                                        (tmp_path / "out.exp").write_text("fops plush")
-                                        (tmp_path / "err.exp").write_text("shork plush")
+                                        (tmp_path / "test-home" / "out.exp").write_text("fops plush")
+                                        (tmp_path / "test-home" / "err.exp").write_text("shork plush")
                                         assert snapshot("out.exp") == "plush plush"
                                         assert snapshot("err.exp") == "blobhaj"
                                     """)
@@ -229,7 +230,7 @@ def test_snapshot_marks_skip_after_update(files: Path, pytest_command: Command):
     indirect=True,
 )
 def test_snapshot_updates_multiple(files: Path, pytest_command: Command):
-    expected_path = "pytest_files/test_snapshot0"
+    expected_path = "pytest_files/test_snapshot0/test-home"
     first_file = files / expected_path / "out.exp"
     second_file = files / expected_path / "err.exp"
     res = pytest_command.run().ok()
@@ -249,8 +250,8 @@ def test_snapshot_updates_multiple(files: Path, pytest_command: Command):
                             "test_snapshot.py": File(
                                 dedent("""
                                     def test_snapshot(snapshot, tmp_path):
-                                        (tmp_path / "updated.txt").write_text("snek plush")
-                                        (tmp_path / "out.exp").symlink_to("./updated.txt")
+                                        (tmp_path / "test-home" / "updated.txt").write_text("snek plush")
+                                        (tmp_path / "test-home" / "out.exp").symlink_to("./updated.txt")
                                         assert snapshot("out.exp") == "plush plush"
                                     """)
                             )
@@ -264,7 +265,7 @@ def test_snapshot_updates_multiple(files: Path, pytest_command: Command):
     indirect=True,
 )
 def test_snapshot_updates_no_location_when_symlink(files: Path, pytest_command: Command):
-    expected_path = "pytest_files/test_snapshot0/updated.txt"
+    expected_path = "pytest_files/test_snapshot0/test-home/updated.txt"
     output_file = files / expected_path
     res = pytest_command.run().ok()
     assert output_file.read_text() == "plush plush"

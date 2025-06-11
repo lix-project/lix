@@ -1,9 +1,11 @@
+import string
 from collections.abc import Callable
 from pathlib import Path
 from textwrap import dedent
 
 import pytest
-from functional2.testlib.commands import Command
+
+from functional2.testlib.fixtures.command import Command
 from functional2.testlib.fixtures.file_helper import File, AssetSymlink
 from functional2.testlib.fixtures.snapshot import Snapshot
 from functional2.testlib.utils import get_functional2_lang_files
@@ -572,11 +574,16 @@ def test_generic_throws_unused_files(pytest_command: Command):
     indirect=True,
 )
 @pytest.mark.usefixtures("files")
-def test_toml_throws_unused_files(pytest_command: Command):
+def test_toml_throws_unused_files(
+    pytest_command: Command, balanced_templater: type[string.Template]
+):
     res = pytest_command.run().expect(1)
     out = res.stdout_plain
     assert "test_invalid_configuration[toml_unused-reasons0]" in out
-    assert "the following files weren't referenced: {'in-1.nix', 'eval-fail.err.exp'}" in out
+    pattern = balanced_templater("the following files weren't referenced: {'@A@', '@B@'}")
+    assert pattern.substitute(A="eval-fail.err.exp", B="in-1.nix") in out or pattern.substitute(
+        B="eval-fail.err.exp", A="in-1.nix"
+    )
 
 
 @pytest.mark.parametrize(

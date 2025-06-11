@@ -407,6 +407,7 @@ if enable_embedded_sandbox_shell
 endif
 
 sandbox_shell = get_option('sandbox-shell')
+build_test_shell = get_option('build-test-shell')
 # Consider it required if we're on Linux and the user explicitly specified a non-default value.
 sandbox_shell_required = sandbox_shell != 'busybox' and host_machine.system() == 'linux'
 # NOTE(Qyriad): package.nix puts busybox in buildInputs for Linux.

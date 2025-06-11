@@ -129,7 +129,9 @@ def write_with_export_header(nar: NarItem, name: bytes, out: NarListener):
     # Store::exportPath
     serialize_nar(nar, out)
     out.int_(export_magic)
-    out.str_(b"/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-" + name)
+    # Due to `nix` setting the store using chroots /nix/store is still the test-local store and not the global one
+    store_path = b"/nix/store"
+    out.str_(store_path + b"/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-" + name)
     # no references
     out.int_(0)
     # no deriver

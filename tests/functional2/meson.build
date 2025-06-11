@@ -12,7 +12,11 @@ xdist_opts = [
 # surprisingly, this actually works even if PATH is set to something before
 # meson gets hold of it. neat!
 functional2_env = environment()
-functional2_env.prepend('PATH', bindir)
+# set the bin dir for us to know where to find the lix binaries for our declarative path
+# without leaking all of PATH or env
+functional2_env.set('NIX_BIN_DIR', bindir)
+functional2_env.set('BUILD_TEST_SHELL', build_test_shell)
+functional2_env.set('system', host_system)
 
 test(
   'functional2',
@@ -32,4 +36,8 @@ test(
   # protocol : 'tap',
   suite : 'installcheck',
   timeout : 300,
+  # Do not cut output of this runner on failure!
+  # As TAP is currently not supported (see above), we do need all lines to actually know
+  # why and how the failing tests actually failed
+  verbose: true,
 )

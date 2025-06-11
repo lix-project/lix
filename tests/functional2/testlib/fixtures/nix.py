@@ -1,13 +1,14 @@
 import dataclasses
-import os
 from functools import partialmethod
 from pathlib import Path
-from typing import Any, AnyStr
+from textwrap import dedent
+from typing import Any
 from collections.abc import Callable, Generator
 
 import pytest
 
-from functional2.testlib.commands import CommandResult, Command
+from functional2.testlib.fixtures.command import CommandResult, Command
+from functional2.testlib.fixtures.env import ManagedEnv
 from functional2.testlib.utils import is_value_of_type
 
 
@@ -18,7 +19,7 @@ class NixSettings:
     experimental_features: set[str] | None = None
     store: str | None = None
     """
-    The store to operate on (may be a path or other thing, see nix help-stores).
+    The store to operate on (may be a path or other thing, see `nix help-stores`).
 
     Note that this can be set to the test's store directory if you want to use
     /nix/store paths inside that test rather than NIX_STORE_DIR renaming
@@ -40,8 +41,14 @@ class NixSettings:
         self.experimental_features = (self.experimental_features or set()) | set(names)
         return self
 
-    def to_config(self) -> str:
-        config = ""
+    def to_config(self, env: ManagedEnv) -> str:
+        config = dedent(f"""
+            show-trace = true
+            sandbox = true
+            extra-sandbox-paths = {" ".join(env.path.to_sandbox_paths())}
+        """)
+        # Note: newline at the end is required due to nix being nix;
+        # FIXME(Jade): #953 this is annoying in the CLI too, we should fix it!
 
         def serialise(value: Any) -> str:
             # TODO(Commentator2.0): why exactly are ints supported?
@@ -65,83 +72,42 @@ class NixSettings:
         )
         return config
 
-    def to_env_overlay(self) -> dict[str, str]:
-        ret = {"NIX_CONFIG": self.to_config()}
+    def to_env_overlay(self, env: ManagedEnv) -> None:
+        cfg = self.to_config(env)
+        (env.dirs.nix_conf_dir / "nix.conf").write_text(cfg)
+        env.set_env("NIX_CONFIG", cfg)
         if self.nix_store_dir:
-            ret["NIX_STORE_DIR"] = str(self.nix_store_dir)
-        return ret
-
-
-@dataclasses.dataclass
-class NixCommand(Command):
-    """
-    Custom Command class which applies the given NixSettings before the command is run
-    """
-
-    settings: NixSettings = dataclasses.field(default_factory=NixSettings)
-
-    def apply_nix_config(self):
-        self.env.update(self.settings.to_env_overlay())
-
-    def run(self) -> CommandResult:
-        self.apply_nix_config()
-        return super().run()
+            env.dirs.nix_store_dir = str(self.nix_store_dir)
 
 
 @dataclasses.dataclass
 class Nix:
-    test_root: Path
+    env: ManagedEnv
+    _settings: NixSettings | None = dataclasses.field(init=False, default=None)
 
-    def hermetic_env(self) -> dict[str, Path]:
-        # mirroring vars-and-functions.sh
-        home = self.test_root / "test-home"
-        home.mkdir(parents=True, exist_ok=True)
-        return {
-            "NIX_LOCALSTATE_DIR": self.test_root / "var",
-            "NIX_LOG_DIR": self.test_root / "var/log/nix",
-            "NIX_STATE_DIR": self.test_root / "var/nix",
-            "NIX_CONF_DIR": self.test_root / "etc",
-            "NIX_DAEMON_SOCKET_PATH": self.test_root / "daemon-socket",
-            "NIX_USER_CONF_FILES": "",
-            "HOME": home,
-            "XDG_CACHE_HOME": home / ".cache",
-        }
-
-    def make_env(self) -> dict[AnyStr, AnyStr]:
-        # We conservatively assume that people might want to successfully get
-        # some env through to the subprocess, so we override whatever is in the
-        # global env.
-        d = os.environ.copy()
-        d.update(self.hermetic_env())
-        return d
-
-    def cmd(self, argv: list[str]) -> Command:
-        return Command(argv=argv, cwd=self.test_root, env=self.make_env())
-
-    def settings(self, allow_builds: bool = False) -> NixSettings:
+    @property
+    def settings(self) -> NixSettings:
         """
-        Parameters:
-        - allow_builds: relocate the Nix store so that builds work (however, makes store paths non-reproducible across test runs!)
+        :return: the settings for the nix instance
         """
-        settings = NixSettings()
-        store_path = self.test_root / "store"
-        if allow_builds:
-            settings.nix_store_dir = store_path
-        else:
-            settings.store = str(store_path)
-        return settings
+        if self._settings is None:
+            self._settings = NixSettings()
+            self._settings.store = f"local?root={self.env.dirs.test_root}&store=/nix/store"
 
-    def nix_cmd(self, argv: list[str], flake: bool = False) -> NixCommand:
+        return self._settings
+
+    def nix_cmd(self, argv: list[str], flake: bool = False) -> Command:
         """
         Constructs a NixCommand with the appropriate settings.
         """
-        settings = self.settings()
+        # Create a copy of settings to not have a writing side effect
+        settings = dataclasses.replace(self.settings)
         if flake:
             settings.feature("nix-command", "flakes")
+        settings.to_env_overlay(self.env)
+        return Command(argv=argv, _env=self.env)
 
-        return NixCommand(argv=argv, cwd=self.test_root, env=self.make_env(), settings=settings)
-
-    def nix(self, cmd: list[str], nix_exe: str = "nix", flake: bool = False) -> NixCommand:
+    def nix(self, cmd: list[str], nix_exe: str = "nix", flake: bool = False) -> Command:
         return self.nix_cmd([nix_exe, *cmd], flake=flake)
 
     # Mark each of these as correct as they are not ClassVars, but we also don't want to turn off RUF045
@@ -154,25 +120,32 @@ class Nix:
     nix_prefetch_url = partialmethod(nix, nix_exe="nix-prefetch-url")  # noqa: RUF045
 
     def eval(self, expr: str, settings: NixSettings | None = None) -> CommandResult:
-        if settings is None:
-            settings = self.settings()
-        # clone due to reference-shenanigans
-        settings = dataclasses.replace(settings).feature("nix-command")
+        """
+        calls `nix eval --json --expr {expr}` using the given expression
+        :param expr: what to evaluate
+        :param settings: if none, the global settings will be used, otherwise the given one
+        :return: result of the evaluation
+        """
+        orig = dataclasses.replace(self.settings)
+        self._settings = settings or self.settings
+        self.settings.feature("nix-command")
 
         cmd = self.nix(["eval", "--json", "--expr", expr])
-        cmd.settings = settings
+        # restore previous settings
+        self._settings = orig
         return cmd.run()
 
 
 @pytest.fixture
-def nix(tmp_path: Path) -> Generator[Nix, Any, None]:
+def nix(tmp_path: Path, env: ManagedEnv) -> Generator[Nix, Any, None]:
     """
     Provides a rich way of calling `nix`.
     For pre-applied commands use `nix.nix_instantiate`, `nix.nix_build` etc.
     After configuring the command, use `.run()` to run it
     """
-    yield Nix(tmp_path)
+    yield Nix(env)
     # when things are done using the nix store, the permissions for the store are read only
     # after the test was executed, we set the permissions to rwx (write being the important part)
     # for pytest to be able to delete the files during cleanup
-    Command(argv=["chmod", "-R", "+w", str(tmp_path.absolute())], env=os.environ.copy()).run().ok()
+    cmd = Command(argv=["chmod", "-R", "+w", str(tmp_path.absolute())], _env=env)
+    cmd.run().ok()

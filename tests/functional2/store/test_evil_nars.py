@@ -101,7 +101,7 @@ EVIL_NARS: list[tuple[str, NarItem]] = [
 ]
 
 
-@pytest.mark.parametrize(("name", "nar"), EVIL_NARS)
+@pytest.mark.parametrize(("name", "nar"), EVIL_NARS, ids=next(zip(*EVIL_NARS)))
 def test_evil_nar(nix: Nix, name: str, nar: NarItem, logger: Logger):
     bio = BytesIO()
 

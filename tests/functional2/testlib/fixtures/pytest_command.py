@@ -1,14 +1,12 @@
-import os
-from pathlib import Path
-
 import pytest
 from _pytest.fixtures import FixtureRequest
 
-from functional2.testlib.commands import Command
+from functional2.testlib.fixtures.command import Command
+from functional2.testlib.fixtures.env import ManagedEnv
 
 
 @pytest.fixture(name="pytest_command")
-def _pytest_command(request: FixtureRequest, tmp_path: Path, do_snapshot_update: bool) -> Command:
+def _pytest_command(env: ManagedEnv, request: FixtureRequest, do_snapshot_update: bool) -> Command:
     """
     returns a preconfigured pytest command.
     The following things must be passed into the parametrization:
@@ -25,12 +23,9 @@ def _pytest_command(request: FixtureRequest, tmp_path: Path, do_snapshot_update:
     else:
         flags = params
         propagate_update = True
-
-    env = os.environ.copy()
+    env.path.add_program("pytest")
+    cwd = env.get_env("HOME") / "functional2"
+    cmd = Command(argv=["pytest", "--basetemp", "../pytest_files", *flags], _env=env, cwd=cwd)
     if propagate_update and do_snapshot_update:
         flags.append("--accept-tests")
-    else:
-        env.pop("_NIX_TEST_ACCEPT", None)
-    return Command(
-        argv=["pytest", "--basetemp", "../pytest_files", *flags], cwd=tmp_path / "functional2"
-    ).with_env(**env)
+    return cmd

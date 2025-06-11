@@ -3,9 +3,14 @@ import json
 import logging
 import subprocess
 from pathlib import Path
+from collections.abc import Callable
 from typing import Any
 
+import pytest
+
+from functional2.testlib.fixtures.env import ManagedEnv
 from functional2.testlib.terminal_code_eater import eat_terminal_codes
+
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +31,7 @@ class CommandResult:
         assumes a return code of 0
         :raises CalledProcessError: if the return code wasn't 0 and logs the processes stdout and stderr
         """
+        __tracebackhide__ = True
         return self.expect(0)
 
     def expect(self, rc: int) -> "CommandResult":
@@ -34,12 +40,14 @@ class CommandResult:
         :param rc: The expected return code
         :raises CalledProcessError: if the return code wasn't `rc` and logs the processes stdout and stderr
         """
+        __tracebackhide__ = True
         if self.rc != rc:
             logger.error("stdout: %s", self.stdout_s)
             logger.error("stderr: %s", self.stderr_s)
-            raise subprocess.CalledProcessError(
+            exc = subprocess.CalledProcessError(
                 returncode=self.rc, cmd=self.cmd, stderr=self.stderr, output=self.stdout
             )
+            raise exc
         return self
 
     @property
@@ -67,60 +75,29 @@ class CommandResult:
         Assumes an ok() result and returns the Commands stdout parsed as json
         :return: A parsed json object
         """
+        __tracebackhide__ = True
         self.ok()
         return json.loads(self.stdout)
 
 
 @dataclasses.dataclass
 class Command:
-    """
-    Provides a way of configuring a shell command and then running it
-    calls Popen internally
-    """
-
     argv: list[str]
-    """
-    Arguments of the Process; argv[0] is the name of the binary
-    """
-    env: dict[str, str] = dataclasses.field(default_factory=dict)
-    """
-    environment variables; Note that `$PATH` is not added by default.
-    Use `.with_env(**os.environ.copy())` to add `$PATH`
-    """
+    _env: ManagedEnv
     stdin: bytes | None = None
-    """
-    Things to pipe into stdin of the process
-    """
-    cwd: Path | None = None
-    """
-    current-working-directory fo the process
-    """
+    cwd: Path = dataclasses.field(default=None)
+    _logger: logging.Logger = dataclasses.field(default=logger, init=False)
 
-    def with_env(self, **kwargs) -> "Command":
-        """
-        sets the env to the given environment variables
-        :param kwargs: keyword arguments containing the environment
-        :return: self, command is chainable
-        """
-        self.env = kwargs
-        return self
-
-    def update_env(self, **kwargs) -> "Command":
-        """
-        updates the current environment with the given dict of variables
-        :param kwargs: new or updated environment variables
-        :return: self, command is chainable
-        """
-        self.env.update(kwargs)
-        return self
+    def __post_init__(self):
+        if self.cwd is None:
+            self.cwd = self._env.dirs.home
 
     def with_stdin(self, stdin: bytes) -> "Command":
-        """
-        sets the input provided to stdin of the commands
-        :param stdin: data to pipe into stdin
-        :return: self, command is chainable
-        """
         self.stdin = stdin
+        return self
+
+    def set_args(self, *argv: str) -> "Command":
+        self.argv = list(argv)
         return self
 
     def run(self) -> CommandResult:
@@ -128,14 +105,23 @@ class Command:
         Runs the configured command
         :return: Information about the Result of the execution
         """
+        self._logger.debug("Running Command with args: %s", self.argv)
         proc = subprocess.Popen(
             self.argv,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE if self.stdin else subprocess.DEVNULL,
             cwd=self.cwd,
-            env=self.env,
+            env=self._env.to_env(),
         )
         (stdout, stderr) = proc.communicate(input=self.stdin)
         rc = proc.returncode
         return CommandResult(cmd=self.argv, rc=rc, stdout=stdout, stderr=stderr)
+
+
+@pytest.fixture
+def command(env: ManagedEnv) -> Callable[..., Command]:
+    def wrapper(*args, **kwargs) -> Command:
+        return Command(_env=env, *args, **kwargs)
+
+    return wrapper

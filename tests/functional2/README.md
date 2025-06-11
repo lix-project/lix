@@ -155,6 +155,22 @@ For a full intro on what exactly fixtures are, see the Pytest documentation ["Ab
 For an exhaustive documentation on how fixtures work and how to use them check the Pytest documentation ["How-to use fixtures"](https://docs.pytest.org/en/stable/how-to/fixtures.html).
 For a complete list of fixtures and their documentation, run ```just test-functional2 --fixtures```.
 
+#### [`env`](./testlib/fixtures/command.py)
+
+Declarative Environment used by `Command` to execute sub commands (often `nix`)
+without leaking any global configuration.
+Provides rich access to setting and unsetting variables
+as well as modifying `PATH`.
+
+#### [`command`](./testlib/fixtures/command.py)
+
+Get a function to create Commands with the given arguments and stdin.
+
+This fixture pre-applies the [declarative environment](#env).
+If one is already requesting the `env` fixture,
+one can alternatively instantiate the `Command` class directly, passing in `env` to the `_env` argument
+
+
 #### [`files`](./testlib/fixtures/file_helper.py)
 
 Pass in file resources into the test's temporary runtime directory.

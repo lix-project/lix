@@ -108,17 +108,15 @@ def test_http_simple(nix: Nix, store: HTTPStore, files: Path):
     store_path = result.stdout_plain
     hash_part, _ = Path(store_path).stem.split("-", 1)
 
-    nar_info_cache = nix.test_root / "test-home" / ".cache" / "nix" / "binary-cache-v6.sqlite"
+    nar_info_cache = nix.env.dirs.xdg_cache_home / "nix" / "binary-cache-v6.sqlite"
 
     app = start_server(store)
     with http_server(app) as httpd:
-        url = f"http://localhost:{httpd.port}?compression=none"
+        url = f"http://localhost:{httpd.port}?compression=none&store=/nix/store"
         nix.nix(cmd=["store", "ping", "--store", url], flake=True).run().ok()
 
         # Narinfo shouldn't exist yet
-        nix.nix(
-            cmd=["path-info", "--store", f"http://localhost:{httpd.port}", store_path], flake=True
-        ).run().expect(1)
+        nix.nix(cmd=["path-info", "--store", url, store_path], flake=True).run().expect(1)
         cache_entries = nars_from_narinfo_cache(nar_info_cache)
 
         assert len(cache_entries) == 1
@@ -127,17 +125,16 @@ def test_http_simple(nix: Nix, store: HTTPStore, files: Path):
 
         # Successful upload
         nix.nix(
-            cmd=["copy", "--from", nix.test_root / "store", "--to", url, store_path], flake=True
+            cmd=["copy", "--from", nix.settings.store, "--to", url, store_path], flake=True
         ).run().ok()
         assert hash_part in store.uploaded_nars
 
         # Make sure the negative entry got removed
-        assert not nars_from_narinfo_cache(nar_info_cache)
+        cache_entries = nars_from_narinfo_cache(nar_info_cache)
+        assert len(cache_entries) == 0
 
         # Ensure that the narinfo can be found now.
-        nix.nix(
-            cmd=["path-info", "--store", f"http://localhost:{httpd.port}", store_path], flake=True
-        ).run().ok()
+        nix.nix(cmd=["path-info", "--store", url, store_path], flake=True).run().ok()
 
         # Ensure local narinfo cache is up-to-date.
         nar_entries = nars_from_narinfo_cache(nar_info_cache)

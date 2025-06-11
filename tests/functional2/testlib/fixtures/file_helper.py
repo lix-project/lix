@@ -6,6 +6,7 @@ from collections.abc import Callable, Iterable
 
 import pytest
 
+from functional2.testlib.fixtures.env import ManagedEnv
 from functional2.testlib.fixtures.formatter import BalancedTemplater
 
 
@@ -177,7 +178,7 @@ def _init_files(files: FileDeclaration, tmp_path: Path, request: pytest.FixtureR
 
 
 @pytest.fixture
-def files(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
+def files(env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
     """
     Initializes the given files into the TempDir of the test.
     This ensures all necessary files and only those are present
@@ -185,9 +186,10 @@ def files(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
     The test is run once for each of the sets of files provided as the second argument.
     Each Set of files should be of the :py:type:`FileDeclaration` type
 
-    :param tmp_path: TempDir of the test
+    :param env: environment to get the HOME path from
     :param request: Fixture information provided by pytest, used to parametrize the files
     :return: Path to where the files were created
     """
-    _init_files(request.param, tmp_path, request)
-    return tmp_path
+    home = env.dirs.home
+    _init_files(request.param, home, request)
+    return home

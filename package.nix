@@ -1,5 +1,6 @@
 {
   pkgs,
+  pkgsStatic,
   lib,
   stdenv,
   aws-sdk-cpp,
@@ -254,6 +255,7 @@ stdenv.mkDerivation (finalAttrs: {
       # which don't actually get added to PATH. And buildInputs is correct over
       # nativeBuildInputs since this should be a busybox executable on the host.
       "-Dsandbox-shell=${lib.getExe' busybox-sandbox-shell "busybox"}"
+      "-Dbuild-test-shell=${pkgsStatic.busybox}/bin"
       "-Dpasta-path=${lib.getExe' passt-lix "pasta"}"
     ]
     ++ lib.optional hostPlatform.isStatic "-Denable-embedded-sandbox-shell=true"
@@ -345,7 +347,6 @@ stdenv.mkDerivation (finalAttrs: {
     ++ lib.optionals stdenv.hostPlatform.isStatic [ llvmPackages.libunwind ]
     ++ lib.optionals hostPlatform.isLinux [
       libseccomp
-      busybox-sandbox-shell
       passt-lix
     ]
     ++ lib.optional internalApiDocs rapidcheck
@@ -357,10 +358,14 @@ stdenv.mkDerivation (finalAttrs: {
     # configure, but we don't actually want to *run* the checks here.
     ++ lib.optionals lintInsteadOfBuild finalAttrs.checkInputs;
 
-  checkInputs = [
-    gtest
-    rapidcheck
-  ];
+  checkInputs =
+    [
+      gtest
+      rapidcheck
+    ]
+    ++ lib.optionals hostPlatform.isLinux [
+      pkgsStatic.busybox
+    ];
 
   propagatedBuildInputs = lib.optionals (!finalAttrs.dontBuild) maybePropagatedInputs;
 
@@ -370,14 +375,18 @@ stdenv.mkDerivation (finalAttrs: {
     finalAttrs.lixPythonForBuild
   ];
 
-  env = {
-    # Meson allows referencing a /usr/share/cargo/registry shaped thing for subproject sources.
-    # Turns out the Nix-generated Cargo dependencies are named the same as they
-    # would be in a Cargo registry cache.
-    MESON_PACKAGE_CACHE_DIR = finalAttrs.cargoDeps;
+  env =
+    {
+      # Meson allows referencing a /usr/share/cargo/registry shaped thing for subproject sources.
+      # Turns out the Nix-generated Cargo dependencies are named the same as they
+      # would be in a Cargo registry cache.
+      MESON_PACKAGE_CACHE_DIR = finalAttrs.cargoDeps;
 
-    VERSION_SUFFIX = versionSuffix;
-  };
+      VERSION_SUFFIX = versionSuffix;
+    }
+    // lib.optionalAttrs hostPlatform.isLinux {
+      BUILD_TEST_SHELL = "${pkgsStatic.busybox}/bin";
+    };
 
   cargoDeps = rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
 
