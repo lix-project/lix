@@ -69,11 +69,6 @@ protected:
     struct Connection : RemoteStore::Connection
     {
         std::unique_ptr<SSH::Connection> sshConn;
-
-        void closeWrite() override
-        {
-            sshConn->in.close();
-        }
     };
 
     ref<RemoteStore::Connection> openConnection() override;

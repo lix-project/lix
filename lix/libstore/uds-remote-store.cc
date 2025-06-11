@@ -50,13 +50,6 @@ std::string UDSRemoteStore::getUri()
     }
 }
 
-
-void UDSRemoteStore::Connection::closeWrite()
-{
-    shutdown(fd.get(), SHUT_WR);
-}
-
-
 ref<RemoteStore::Connection> UDSRemoteStore::openConnection()
 {
     auto conn = make_ref<Connection>();

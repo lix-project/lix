@@ -91,8 +91,6 @@ struct RemoteStore::Connection
 
     virtual ~Connection();
 
-    virtual void closeWrite() = 0;
-
     std::exception_ptr processStderr(bool flush = true);
 };
 
