@@ -1,4 +1,5 @@
 #include "lix/libutil/pool.hh"
+#include "lix/libutil/result.hh"
 #include <gtest/gtest.h>
 #include <kj/async.h>
 
@@ -32,7 +33,9 @@ namespace nix {
 
     TEST_F(PoolTest, freshPoolHasZeroCountAndSpecifiedCapacity) {
         auto isGood = [](const ref<TestResource> & r) { return r->good; };
-        auto createResource = []() { return make_ref<TestResource>(); };
+        auto createResource = []() -> kj::Promise<Result<ref<TestResource>>> {
+            return {result::success(make_ref<TestResource>())};
+        };
 
         Pool<TestResource> pool = Pool<TestResource>((size_t)1, createResource, isGood);
 
@@ -42,7 +45,9 @@ namespace nix {
 
     TEST_F(PoolTest, freshPoolCanGetAResource) {
         auto isGood = [](const ref<TestResource> & r) { return r->good; };
-        auto createResource = []() { return make_ref<TestResource>(); };
+        auto createResource = []() -> kj::Promise<Result<ref<TestResource>>> {
+            return {result::success(make_ref<TestResource>())};
+        };
 
         Pool<TestResource> pool = Pool<TestResource>((size_t)1, createResource, isGood);
         ASSERT_EQ(pool.count(), 0);
@@ -57,7 +62,9 @@ namespace nix {
 
     TEST_F(PoolTest, capacityCanBeIncremented) {
         auto isGood = [](const ref<TestResource> & r) { return r->good; };
-        auto createResource = []() { return make_ref<TestResource>(); };
+        auto createResource = []() -> kj::Promise<Result<ref<TestResource>>> {
+            return {result::success(make_ref<TestResource>())};
+        };
 
         Pool<TestResource> pool = Pool<TestResource>((size_t)1, createResource, isGood);
         ASSERT_EQ(pool.capacity(), 1);
@@ -67,7 +74,9 @@ namespace nix {
 
     TEST_F(PoolTest, capacityCanBeDecremented) {
         auto isGood = [](const ref<TestResource> & r) { return r->good; };
-        auto createResource = []() { return make_ref<TestResource>(); };
+        auto createResource = []() -> kj::Promise<Result<ref<TestResource>>> {
+            return {result::success(make_ref<TestResource>())};
+        };
 
         Pool<TestResource> pool = Pool<TestResource>((size_t)1, createResource, isGood);
         ASSERT_EQ(pool.capacity(), 1);
@@ -78,7 +87,9 @@ namespace nix {
     // Test that the resources we allocate are being reused when they are still good.
     TEST_F(PoolTest, reuseResource) {
         auto isGood = [](const ref<TestResource> & r) { return true; };
-        auto createResource = []() { return make_ref<TestResource>(); };
+        auto createResource = []() -> kj::Promise<Result<ref<TestResource>>> {
+            return {result::success(make_ref<TestResource>())};
+        };
 
         Pool<TestResource> pool = Pool<TestResource>((size_t)1, createResource, isGood);
 
@@ -99,7 +110,9 @@ namespace nix {
     // Test that the resources we allocate are being thrown away when they are no longer good.
     TEST_F(PoolTest, badResourceIsNotReused) {
         auto isGood = [](const ref<TestResource> & r) { return false; };
-        auto createResource = []() { return make_ref<TestResource>(); };
+        auto createResource = []() -> kj::Promise<Result<ref<TestResource>>> {
+            return {result::success(make_ref<TestResource>())};
+        };
 
         Pool<TestResource> pool = Pool<TestResource>((size_t)1, createResource, isGood);
 

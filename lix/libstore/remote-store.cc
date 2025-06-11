@@ -35,25 +35,17 @@ namespace nix {
 RemoteStore::RemoteStore(const RemoteStoreConfig & config)
     : Store(config)
     , connections(make_ref<Pool<Connection>>(
-            std::max(1, (int) config.maxConnections),
-            [this]() {
-                auto conn = openConnectionWrapper();
-                try {
-                    initConnection(*conn);
-                } catch (...) {
-                    failed = true;
-                    throw;
-                }
-                return conn;
-            },
-            [this](const ref<Connection> & r) {
-                return
-                    r->to.good()
-                    && r->from.good()
-                    && std::chrono::duration_cast<std::chrono::seconds>(
-                        std::chrono::steady_clock::now() - r->startTime).count() < this->config().maxConnectionAge;
-            }
-            ))
+          std::max(1, (int) config.maxConnections),
+          [this]() { return openAndInitConnection(); },
+          [this](const ref<Connection> & r) {
+              return r->to.good() && r->from.good()
+                  && std::chrono::duration_cast<std::chrono::seconds>(
+                         std::chrono::steady_clock::now() - r->startTime
+                     )
+                         .count()
+                  < this->config().maxConnectionAge;
+          }
+      ))
 {
 }
 
@@ -70,6 +62,19 @@ ref<RemoteStore::Connection> RemoteStore::openConnectionWrapper()
     }
 }
 
+kj::Promise<Result<ref<RemoteStore::Connection>>> RemoteStore::openAndInitConnection()
+try {
+    auto conn = openConnection();
+    try {
+        initConnection(*conn);
+        co_return conn;
+    } catch (...) {
+        failed = true;
+        throw;
+    }
+} catch (...) {
+    co_return result::current_exception();
+}
 
 void RemoteStore::initConnection(Connection & conn)
 {

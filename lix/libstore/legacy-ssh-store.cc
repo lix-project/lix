@@ -126,8 +126,8 @@ struct LegacySSHStore final : public Store
     {
     }
 
-    ref<Connection> openConnection()
-    {
+    kj::Promise<Result<ref<Connection>>> openConnection()
+    try {
         auto conn = make_ref<Connection>();
         conn->sshConn = ssh.startCommand(
             fmt("%s --serve --write", config_.remoteProgram)
@@ -154,7 +154,9 @@ struct LegacySSHStore final : public Store
             throw Error("cannot connect to '%1%'", host);
         }
 
-        return conn;
+        return {conn};
+    } catch (...) {
+        return {result::current_exception()};
     };
 
     std::string getUri() override

@@ -43,7 +43,7 @@ public:
     /**
      * A function that produces new instances of R on demand.
      */
-    typedef std::function<ref<R>()> Factory;
+    typedef std::function<kj::Promise<Result<ref<R>>>()> Factory;
 
     /**
      * A function that checks whether an instance of R is still
@@ -76,9 +76,17 @@ private:
 
 public:
 
-    Pool(size_t max = std::numeric_limits<size_t>::max(),
-        const Factory & factory = []() { return make_ref<R>(); },
-        const Validator & validator = [](ref<R> r) { return true; })
+    Pool(
+        size_t max = std::numeric_limits<size_t>::max(),
+        const Factory & factory = []() -> kj::Promise<Result<ref<R>>> {
+            try {
+                return {result::success(make_ref<R>())};
+            } catch (...) {
+                return {result::current_exception()};
+            }
+        },
+        const Validator & validator = [](ref<R> r) { return true; }
+    )
         : factory(factory)
         , validator(validator)
     {
@@ -192,7 +200,7 @@ public:
         /* We need to create a new instance. Because that might take a
            while, we don't hold the lock in the meantime. */
         try {
-            Handle h(*this, factory());
+            Handle h(*this, LIX_TRY_AWAIT(factory()));
             co_return h;
         } catch (...) {
             getFailed();

@@ -179,6 +179,8 @@ protected:
 
     virtual ref<Connection> openConnection() = 0;
 
+    kj::Promise<Result<ref<Connection>>> openAndInitConnection();
+
     void initConnection(Connection & conn);
 
     ref<Pool<Connection>> connections;
