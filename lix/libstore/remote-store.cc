@@ -105,8 +105,10 @@ try {
         conn.daemonNixVersion = readString(conn.from);
         conn.remoteTrustsUs = WorkerProto::Serialise<std::optional<TrustedFlag>>::read(conn);
 
-        auto ex = conn.processStderr();
-        if (ex) std::rethrow_exception(ex);
+        auto ex = TRY_AWAIT(conn.processStderr());
+        if (ex.e) {
+            std::rethrow_exception(ex.e);
+        }
     }
     catch (Error & e) {
         throw Error("cannot open connection to remote store '%s': %s", getUri(), e.what());
@@ -157,8 +159,10 @@ try {
 
     StringSource{command.s}.drainInto(conn.to);
     conn.to.flush();
-    auto ex = conn.processStderr();
-    if (ex) std::rethrow_exception(ex);
+    auto ex = TRY_AWAIT(conn.processStderr());
+    if (ex.e) {
+        std::rethrow_exception(ex.e);
+    }
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -172,15 +176,17 @@ RemoteStore::ConnectionHandle::~ConnectionHandle()
     }
 }
 
-void RemoteStore::ConnectionHandle::processStderr()
-{
-    auto ex = handle->processStderr();
-    if (ex) {
+kj::Promise<Result<void>> RemoteStore::ConnectionHandle::processStderr()
+try {
+    auto ex = TRY_AWAIT(handle->processStderr());
+    if (ex.e) {
         daemonException = true;
-        std::rethrow_exception(ex);
+        std::rethrow_exception(ex.e);
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
-
 
 kj::Promise<Result<RemoteStore::ConnectionHandle>> RemoteStore::getConnection()
 try {
@@ -746,15 +752,14 @@ static Logger::Fields readFields(Source & from)
     return fields;
 }
 
-
-std::exception_ptr RemoteStore::Connection::processStderr()
-{
+kj::Promise<Result<RemoteStore::Connection::RemoteError>> RemoteStore::Connection::processStderr()
+try {
     while (true) {
 
         auto msg = readNum<uint64_t>(from);
 
         if (msg == STDERR_ERROR) {
-            return std::make_exception_ptr(readError(from));
+            co_return RemoteError{std::make_exception_ptr(readError(from))};
         }
 
         else if (msg == STDERR_NEXT)
@@ -789,21 +794,23 @@ std::exception_ptr RemoteStore::Connection::processStderr()
             throw Error("got unknown message type %x from Nix daemon", msg);
     }
 
-    return nullptr;
+    co_return RemoteError{nullptr};
+} catch (...) {
+    co_return result::current_exception();
 }
 
 RemoteStore::ConnectionHandle::FramedSinkHandler::FramedSinkHandler(
     ConnectionHandle & conn, ThreadPool & handlerThreads
 )
-    : stderrHandler([&]() {
+    : stderrHandler([&](AsyncIoRoot & aio) {
         try {
-            conn.processStderr();
+            aio.blockOn(conn.processStderr());
         } catch (...) {
             ex = std::current_exception();
         }
     })
 {
-    handlerThreads.enqueue([&] { stderrHandler(); });
+    handlerThreads.enqueueWithAio([&](AsyncIoRoot & aio) { stderrHandler(aio); });
 }
 
 RemoteStore::ConnectionHandle::FramedSinkHandler::~FramedSinkHandler() noexcept(false)

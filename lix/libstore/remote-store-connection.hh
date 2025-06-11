@@ -4,9 +4,11 @@
 #include "lix/libstore/remote-store.hh"
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libstore/worker-protocol-impl.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/pool.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
+#include <kj/async.h>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -97,7 +99,14 @@ struct RemoteStore::Connection
 
     virtual ~Connection();
 
-    std::exception_ptr processStderr();
+    // wrapper type for remote errors because `Result<std::exception_ptr>`
+    // does not work very well and `Result<Result<void>>` is too confusing
+    struct [[nodiscard]] RemoteError
+    {
+        std::exception_ptr e;
+    };
+
+    kj::Promise<Result<RemoteError>> processStderr();
 };
 
 /**
@@ -134,7 +143,7 @@ struct RemoteStore::ConnectionHandle
     RemoteStore::Connection & operator * () { return *handle; }
     RemoteStore::Connection * operator -> () { return &*handle; }
 
-    void processStderr();
+    kj::Promise<Result<void>> processStderr();
 
     kj::Promise<Result<void>>
     withFramedSinkAsync(std::function<kj::Promise<Result<void>>(Sink & sink)> fun);
@@ -154,7 +163,7 @@ struct RemoteStore::ConnectionHandle
         if constexpr (requires { handle->to << std::declval<LastArgT>(); }) {
             ((handle->to << std::forward<Args>(args)), ...);
             handle->to.flush();
-            processStderr();
+            LIX_TRY_AWAIT(processStderr());
         } else {
             using ImmediateArgsIdxs = std::make_index_sequence<sizeof...(Args) - 1>;
             AllArgsT allArgs(std::forward<Args>(args)...);
@@ -180,7 +189,7 @@ private:
     struct FramedSinkHandler
     {
         std::exception_ptr ex;
-        std::packaged_task<void()> stderrHandler;
+        std::packaged_task<void(AsyncIoRoot &)> stderrHandler;
 
         explicit FramedSinkHandler(ConnectionHandle & conn, ThreadPool & handlerThreads);
 
