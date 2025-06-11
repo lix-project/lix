@@ -10,6 +10,38 @@ namespace nix {
 
 /* protocol-agnostic definitions */
 
+bool CommonProto::Serialise<bool>::read(CommonProto::ReadConn conn)
+{
+    return readNum<uint64_t>(conn.from);
+}
+
+WireFormatGenerator CommonProto::Serialise<bool>::write(CommonProto::WriteConn conn, const bool & b)
+{
+    co_yield b;
+}
+
+unsigned CommonProto::Serialise<unsigned>::read(CommonProto::ReadConn conn)
+{
+    return readNum<unsigned>(conn.from);
+}
+
+WireFormatGenerator
+CommonProto::Serialise<unsigned>::write(CommonProto::WriteConn conn, const unsigned & u)
+{
+    co_yield u;
+}
+
+uint64_t CommonProto::Serialise<uint64_t>::read(CommonProto::ReadConn conn)
+{
+    return readNum<uint64_t>(conn.from);
+}
+
+WireFormatGenerator
+CommonProto::Serialise<uint64_t>::write(CommonProto::WriteConn conn, const uint64_t & u)
+{
+    co_yield u;
+}
+
 std::string CommonProto::Serialise<std::string>::read(CommonProto::ReadConn conn)
 {
     return readString(conn.from);

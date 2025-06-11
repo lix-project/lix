@@ -64,6 +64,12 @@ struct CommonProto
     }
 
 template<>
+DECLARE_COMMON_SERIALISER(bool);
+template<>
+DECLARE_COMMON_SERIALISER(unsigned);
+template<>
+DECLARE_COMMON_SERIALISER(uint64_t);
+template<>
 DECLARE_COMMON_SERIALISER(std::string);
 template<>
 DECLARE_COMMON_SERIALISER(StorePath);
