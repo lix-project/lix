@@ -1,0 +1,16 @@
+[[test]]
+runner = "eval-okay"
+
+[[test]]
+runner = "eval-okay"
+in = "in-override.nix"
+flags = [ "--extra-deprecated-features", "shadow-internal-symbols" ]
+
+[[test]]
+runner = "eval-fail"
+in = [ "in-overflowing-add.nix", "in-overflowing-div.nix", "in-overflowing-mul.nix", "in-overflowing-sub.nix" ]
+matrix = true
+
+[[test]]
+runner = "parse-okay"
+in = "in-precedence.nix"
