@@ -34,6 +34,13 @@ public:
     using LocalDerivationGoal::LocalDerivationGoal;
 
 private:
+    /*
+     * Destroy the cgroup otherwise another build
+     * may grab the current UID which is used in the cgroup name
+     * and then mess with a cgroup we might be reading statistics from.
+     */
+    void cleanupHookFinally() override;
+
     /**
      * Create and populate chroot
      */

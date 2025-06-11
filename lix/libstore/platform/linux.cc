@@ -1007,9 +1007,33 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
     return pid;
 }
 
+void LinuxLocalDerivationGoal::cleanupHookFinally()
+{
+    /* This hook is used to release the build users
+     * and release the lock on this UID.
+     *
+     * So we need to ensure that our cgroup business
+     * is already done before releasing it,
+     * otherwise, another build may grab the UID
+     * and start a cgroup with it, resulting
+     * in a confusing set of errors.
+     *
+     * Statistics are stored inside the cgroup
+     * object so that `killSandbox` can retrieve
+     * them later.
+     */
+    if (context.cgroup) {
+        context.cgroup->destroy();
+    }
+
+    LocalDerivationGoal::cleanupHookFinally();
+}
+
 void LinuxLocalDerivationGoal::killSandbox(bool getStats)
 {
     if (context.cgroup) {
+        /* This might have already been killed
+         * by the clean-up hook above. */
         context.cgroup->kill();
         if (getStats) {
             auto stats = context.cgroup->getStatistics();

@@ -291,25 +291,32 @@ AutoDestroyCgroup::AutoDestroyCgroup(
     delegation_ = {.uid = uid, .gid = gid};
 }
 
+void AutoDestroyCgroup::destroy()
+{
+    std::visit(
+        overloaded{
+            [&, this](const Path & aliveCgroup) {
+                auto maybeStats = destroyCgroup(name_, aliveCgroup);
+                if (!maybeStats) {
+                    warn(
+                        "cgroup '%s' was destroyed unexpectedly (something else removed the "
+                        "cgroup).",
+                        aliveCgroup
+                    );
+                } else {
+                    cgroup_ = *maybeStats;
+                }
+            },
+            [&](const CgroupStats & stats) {}
+        },
+        cgroup_
+    );
+}
+
 AutoDestroyCgroup::~AutoDestroyCgroup()
 {
     try {
-        std::visit(
-            overloaded{
-                [&, this](const Path & aliveCgroup) {
-                    auto maybeStats = destroyCgroup(name_, aliveCgroup);
-                    if (!maybeStats) {
-                        warn(
-                            "cgroup '%s' was destroyed unexpectedly (something else removed the "
-                            "cgroup).",
-                            aliveCgroup
-                        );
-                    }
-                },
-                [&](const CgroupStats & stats) {}
-            },
-            cgroup_
-        );
+        destroy();
     } catch (...) {
         ignoreExceptionInDestructor();
     }
@@ -347,7 +354,10 @@ void AutoDestroyCgroup::kill()
 {
     auto path = std::get_if<std::filesystem::path>(&cgroup_);
     if (!path) {
-        throw SysError("killing cgroup '%s' but it went away", name_);
+        /* If the cgroup already disappeared,
+         * processes already got killed.
+         */
+        return;
     }
 
     killCgroup(name_, *path);

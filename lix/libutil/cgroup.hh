@@ -141,9 +141,6 @@ private:
      */
     AutoDelete stateRecord;
 
-    /* Kill all processes under its hierarchy and tear down the cgroup */
-    void destroy();
-
     /*
      * Cleanse all previous instances of this cgroup where the deletion process
      * might have been interrupted and record ourself in stead.
@@ -166,6 +163,9 @@ public:
         gid_t gid
     );
     ~AutoDestroyCgroup();
+
+    /* Kill all processes under its hierarchy and tear down the cgroup */
+    void destroy();
 
     std::optional<Path> path() const
     {
