@@ -97,7 +97,7 @@ struct RemoteStore::Connection
 
     virtual ~Connection();
 
-    std::exception_ptr processStderr(bool flush = true);
+    std::exception_ptr processStderr();
 };
 
 /**
@@ -134,7 +134,7 @@ struct RemoteStore::ConnectionHandle
     RemoteStore::Connection & operator * () { return *handle; }
     RemoteStore::Connection * operator -> () { return &*handle; }
 
-    void processStderr(bool flush = true);
+    void processStderr();
 
     kj::Promise<Result<void>>
     withFramedSinkAsync(std::function<kj::Promise<Result<void>>(Sink & sink)> fun);
@@ -153,6 +153,7 @@ struct RemoteStore::ConnectionHandle
         // the subframing layer (which is then responsible for any error handling)
         if constexpr (requires { handle->to << std::declval<LastArgT>(); }) {
             ((handle->to << std::forward<Args>(args)), ...);
+            handle->to.flush();
             processStderr();
         } else {
             using ImmediateArgsIdxs = std::make_index_sequence<sizeof...(Args) - 1>;
@@ -160,6 +161,7 @@ struct RemoteStore::ConnectionHandle
 
             [&]<size_t... Ids>(std::integer_sequence<size_t, Ids...>) {
                 ((handle->to << std::get<Ids>(std::forward<AllArgsT>(allArgs))), ...);
+                handle->to.flush();
             }(ImmediateArgsIdxs{});
 
             LIX_TRY_AWAIT(withFramedSinkAsync(std::get<LastArgIdx>(allArgs)));

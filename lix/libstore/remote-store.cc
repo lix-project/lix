@@ -154,6 +154,7 @@ void RemoteStore::setOptions(Connection & conn)
         command << i.first << i.second.value;
 
     StringSource{command.s}.drainInto(conn.to);
+    conn.to.flush();
     auto ex = conn.processStderr();
     if (ex) std::rethrow_exception(ex);
 }
@@ -167,9 +168,9 @@ RemoteStore::ConnectionHandle::~ConnectionHandle()
     }
 }
 
-void RemoteStore::ConnectionHandle::processStderr(bool flush)
+void RemoteStore::ConnectionHandle::processStderr()
 {
-    auto ex = handle->processStderr(flush);
+    auto ex = handle->processStderr();
     if (ex) {
         daemonException = true;
         std::rethrow_exception(ex);
@@ -742,11 +743,8 @@ static Logger::Fields readFields(Source & from)
 }
 
 
-std::exception_ptr RemoteStore::Connection::processStderr(bool flush)
+std::exception_ptr RemoteStore::Connection::processStderr()
 {
-    if (flush)
-        to.flush();
-
     while (true) {
 
         auto msg = readNum<uint64_t>(from);
@@ -795,13 +793,12 @@ RemoteStore::ConnectionHandle::FramedSinkHandler::FramedSinkHandler(
 )
     : stderrHandler([&]() {
         try {
-            conn.processStderr(false);
+            conn.processStderr();
         } catch (...) {
             ex = std::current_exception();
         }
     })
 {
-    conn.handle->to.flush();
     handlerThreads.enqueue([&] { stderrHandler(); });
 }
 
