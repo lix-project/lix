@@ -272,7 +272,8 @@ def test_merge_fd_throws_on_conflict():
     fd2 = {"a": File("a")}
 
     with pytest.raises(
-        ValueError, match="('Cannot merge files; got two different values for the same path', 'a')"
+        ValueError,
+        match=r"\('Cannot merge files; got two different values for the same path', 'a'\)",
     ):
         merge_file_declaration(fd1, fd2)
 
@@ -283,6 +284,6 @@ def test_merge_fd_throws_on_conflict_with_full_path():
 
     with pytest.raises(
         ValueError,
-        match="('Cannot merge files; got two different values for the same path', 'a/b/c/d')",
+        match=r"\('Cannot merge files; got two different values for the same path', 'a/b/c/d'\)",
     ):
         merge_file_declaration(fd1, fd2)

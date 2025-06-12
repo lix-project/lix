@@ -7,7 +7,7 @@ See "The Purely Functional Software Deployment Model", fig. 5.2 [1].
 from abc import ABCMeta, abstractmethod
 import dataclasses
 import struct
-from typing import Protocol
+from typing import Protocol, ClassVar
 
 
 class Writable(Protocol):
@@ -56,7 +56,7 @@ class NarItem(metaclass=ABCMeta):
 class Regular(NarItem):
     executable: bool
     contents: bytes
-    type_ = b"regular"
+    type_: ClassVar[bytes] = b"regular"
 
     def serialize_type(self, out: NarListener):
         if self.executable:
@@ -70,7 +70,7 @@ class Regular(NarItem):
 class DirectoryUnordered(NarItem):
     entries: list[tuple[bytes, NarItem]]
     """Entries in the directory, not required to be in order because this nar is evil"""
-    type_ = b"directory"
+    type_: ClassVar[bytes] = b"directory"
 
     @staticmethod
     def entry(out: NarListener, name: bytes, item: "NarItem"):
@@ -102,7 +102,7 @@ class Directory(NarItem):
 @dataclasses.dataclass
 class Symlink(NarItem):
     target: bytes
-    type_ = b"symlink"
+    type_: ClassVar[bytes] = b"symlink"
 
     def serialize_type(self, out: NarListener):
         out.str_(b"target")

@@ -34,7 +34,7 @@ def test_nix_settings_ser_fails_bad_top_level_type():
     settings = NixSettings(nix_store_dir=Path("/store/nix"))
     settings.experimental_features = {"a": "b"}  # type: ignore we are testing the types here
 
-    with pytest.raises(ValueError, match="Value is unsupported in nix config: {'a': 'b'}"):
+    with pytest.raises(ValueError, match=r"Value is unsupported in nix config: {'a': 'b'}"):
         settings.to_config()
 
 
@@ -42,7 +42,7 @@ def test_nix_settings_ser_fails_bad_sub_type():
     settings = NixSettings(nix_store_dir=Path("/store/nix"))
     settings.experimental_features = [["a", "b"], "c"]  # type: ignore we are testing the types here
 
-    with pytest.raises(ValueError, match="Value is unsupported in nix config: .+"):
+    with pytest.raises(ValueError, match=r"Value is unsupported in nix config: .+"):
         settings.to_config()
 
 
@@ -51,7 +51,7 @@ def test_nix_settings_fails_without_store_and_store_dir():
 
     with pytest.raises(
         AssertionError,
-        match="Failing to set either nix_store_dir or store will cause accidental use of the system store.",
+        match=r"Failing to set either nix_store_dir or store will cause accidental use of the system store.",
     ):
         settings.to_config()
 

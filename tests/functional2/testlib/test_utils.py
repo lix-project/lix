@@ -43,15 +43,15 @@ def test_type_doesnt_allow_generator():
     def foo():
         yield 1
 
-    with pytest.raises(ValueError, match="Unsupported expected_type.+"):
+    with pytest.raises(ValueError, match=r"Unsupported expected_type.+"):
         is_value_of_type(foo, Generator[int, None, None])
 
 
 def test_type_doesnt_allow_callable():
-    def foo(a):  # noqa: ANN001, ANN202: dummy stuff within testing, nothing external
+    def foo(a):  # noqa: ANN001, ANN202 # dummy stuff within testing, nothing external
         return "a" + str(a)
 
-    with pytest.raises(ValueError, match="Unsupported expected_type.+"):
+    with pytest.raises(ValueError, match=r"Unsupported expected_type.+"):
         is_value_of_type(foo, Callable[[int], str])
 
 
@@ -62,7 +62,7 @@ def test_type_allows_none():
 def test_doesnt_allow_generic():
     class X[T]: ...
 
-    with pytest.raises(ValueError, match="Unsupported expected_type.+"):
+    with pytest.raises(ValueError, match=r"Unsupported expected_type.+"):
         is_value_of_type(0, X[int])
 
 

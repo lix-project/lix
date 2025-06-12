@@ -43,7 +43,7 @@ INVALID_TESTER_NAME = (
 Base message for invalid runner, to use across collection
 """
 
-SUFFIX_REGEX = re.compile("-[\\w-]+?").pattern
+SUFFIX_REGEX = r"-[\w-]+?"
 NAMING_PATTERN_LANG_TEST = re.compile(
     rf"{LangTestRunner.as_regex_selector()}(?P<suffix>{SUFFIX_REGEX})?"
 )
@@ -262,7 +262,7 @@ def _collect_all_tests() -> tuple[list[LangTest], list[InvalidLangTest]]:
 
         # ignore test groups, which have a py file, as those are set up fully custom
         # and expected to be collected by pytest and not by us
-        if len(list(node.glob("*.py"))):
+        if list(node.glob("*.py")):
             logger.info("skipping %s as it contains a py file, assuming custom tests", node)
             continue
         t, i = _collect_test_group(node)

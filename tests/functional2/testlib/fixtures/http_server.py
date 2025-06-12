@@ -119,7 +119,7 @@ def dev_main():
     app.add_routes([web.get("/", root)])
 
     with http_server(app) as httpd:
-        logging.info("Listening on http://[::1]:%d", httpd.port)
+        logger.info("Listening on http://[::1]:%d", httpd.port)
         time.sleep(3600)
 
 
