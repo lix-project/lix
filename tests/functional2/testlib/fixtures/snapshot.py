@@ -6,6 +6,7 @@ from typing import Any
 from collections.abc import Generator
 
 import pytest
+from _pytest.config import Config
 from _pytest.fixtures import FixtureRequest
 
 
@@ -109,3 +110,25 @@ def snapshot(
     yield create_snapshot
     if any(s.did_update for s in snaps):
         pytest.skip("Updated Golden Files")
+
+
+def pytest_assertrepr_compare(config: Config, op: str, left: Any, right: Any) -> list[str] | None:
+    if not isinstance(left, Snapshot) or op != "==" or not isinstance(right, str):
+        return None
+    left: Snapshot
+    right: str
+
+    exp_lines = str(left).splitlines()
+    act_lines = right.splitlines()
+    expl = [
+        f"snapshot({left.expected_output_path.name}) == output. Consider using `--accept-tests` to update the golden files."
+    ]
+    if config.get_verbosity():
+        expl.append("The following lines were mismatched:")
+        for i, (exp, act) in enumerate(zip(exp_lines, act_lines)):
+            if exp == act:
+                continue
+            expl.append(f"{i + 1}: - {exp}")
+            expl.append(f"{i + 1}: + {act}")
+
+    return expl
