@@ -1,0 +1,10 @@
+[[test]]
+runner = "eval-okay"
+in = [ "in.nix", "in-functionargs.nix", "in-undefined.nix" ]
+matrix = true
+
+[[test]]
+runner = "eval-okay"
+in = "in-cursed.nix"
+extra-files = [ "imported.nix" ]
+flags = [ "--extra-deprecated-features", "cr-line-endings" ]
