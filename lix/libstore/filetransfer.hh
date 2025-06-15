@@ -4,10 +4,12 @@
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/ref.hh"
 #include "lix/libutil/logging.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/config.hh"
 
+#include <kj/async.h>
 #include <string>
 #include <future>
 
@@ -40,7 +42,7 @@ struct FileTransfer
     /**
      * Upload some data. May throw a FileTransferError exception.
      */
-    virtual void
+    virtual kj::Promise<Result<void>>
     upload(const std::string & uri, std::string data, const Headers & headers = {}) = 0;
 
     /**
@@ -53,7 +55,8 @@ struct FileTransfer
      *
      * S3 objects are downloaded completely to answer this request.
      */
-    virtual bool exists(const std::string & uri, const Headers & headers = {}) = 0;
+    virtual kj::Promise<Result<bool>>
+    exists(const std::string & uri, const Headers & headers = {}) = 0;
 
     /**
      * Download a file, returning its contents through a source. Will not return
@@ -62,7 +65,7 @@ struct FileTransfer
      * thrown by the returned source. The source will only throw errors detected
      * during the transfer itself (decompression errors, connection drops, etc).
      */
-    virtual std::pair<FileTransferResult, box_ptr<Source>>
+    virtual kj::Promise<Result<std::pair<FileTransferResult, box_ptr<Source>>>>
     download(const std::string & uri, const Headers & headers = {}) = 0;
 
     enum Error { NotFound, Forbidden, Misc, Transient, Interrupted };

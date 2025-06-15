@@ -287,7 +287,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         Activity act(*logger, lvlInfo, actUnknown, "querying latest Nix version");
 
         // FIXME: use nixos.org?
-        auto [res, content] = getFileTransfer()->download(storePathsUrl);
+        auto [res, content] = aio().blockOn(getFileTransfer()->download(storePathsUrl));
         auto data = content->drain();
 
         auto evaluator = std::make_unique<Evaluator>(aio(), SearchPath{}, store);

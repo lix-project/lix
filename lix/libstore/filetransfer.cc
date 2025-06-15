@@ -4,6 +4,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/s3.hh"
 #include "lix/libutil/regex.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
@@ -692,9 +693,13 @@ struct curlFileTransfer : public FileTransfer
     }
 #endif
 
-    void upload(const std::string & uri, std::string data, const Headers & headers) override
-    {
-        enqueueFileTransfer(uri, headers, std::move(data), false);
+    kj::Promise<Result<void>>
+    upload(const std::string & uri, std::string data, const Headers & headers) override
+    try {
+        TRY_AWAIT(enqueueFileTransfer(uri, headers, std::move(data), false));
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     std::optional<std::pair<FileTransferResult, box_ptr<Source>>> tryEagerTransfers(
@@ -784,20 +789,22 @@ struct curlFileTransfer : public FileTransfer
         return std::nullopt;
     }
 
-    std::pair<FileTransferResult, box_ptr<Source>> enqueueFileTransfer(
+    kj::Promise<Result<std::pair<FileTransferResult, box_ptr<Source>>>> enqueueFileTransfer(
         const std::string & uri,
         const Headers & headers,
         std::optional<std::string> data,
         bool noBody
     )
-    {
+    try {
         if (auto eager = tryEagerTransfers(uri, headers, data, noBody)) {
-            return std::move(*eager);
+            co_return std::move(*eager);
         }
 
         auto source = make_box_ptr<TransferSource>(*this, uri, headers, std::move(data), noBody);
         source->awaitData();
-        return {source->metadata, std::move(source)};
+        co_return {source->metadata, std::move(source)};
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     struct TransferSource : Source
@@ -972,21 +979,23 @@ struct curlFileTransfer : public FileTransfer
         }
     };
 
-    bool exists(const std::string & uri, const Headers & headers) override
-    {
+    kj::Promise<Result<bool>> exists(const std::string & uri, const Headers & headers) override
+    try {
         try {
-            enqueueFileTransfer(uri, headers, std::nullopt, true);
-            return true;
+            TRY_AWAIT(enqueueFileTransfer(uri, headers, std::nullopt, true));
+            co_return true;
         } catch (FileTransferError & e) {
             /* S3 buckets return 403 if a file doesn't exist and the
                 bucket is unlistable, so treat 403 as 404. */
             if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
-                return false;
+                co_return false;
             throw;
         }
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    std::pair<FileTransferResult, box_ptr<Source>>
+    kj::Promise<Result<std::pair<FileTransferResult, box_ptr<Source>>>>
     download(const std::string & uri, const Headers & headers) override
     {
         return enqueueFileTransfer(uri, headers, std::nullopt, false);

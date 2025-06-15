@@ -85,7 +85,7 @@ try {
     FileTransferResult res;
     std::string data;
     try {
-        auto [meta, content] = getFileTransfer()->download(url, headers);
+        auto [meta, content] = TRY_AWAIT(getFileTransfer()->download(url, headers));
         res = std::move(meta);
         data = content->drain();
     } catch (FileTransferError & e) {

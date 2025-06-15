@@ -1,4 +1,5 @@
 #include "lix/libstore/filetransfer.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/signals.hh"
@@ -206,12 +207,16 @@ TEST(FileTransfer, exceptionAbortsDownload)
     struct Done : BaseException
     {};
 
+    AsyncIoRoot aio;
     auto ft = makeFileTransfer();
 
     LambdaSink broken([](auto block) { throw Done(); });
 
     auto [port, srv] = serveHTTP({{"200 ok", "", [](int) { return "foo"; }}});
-    ASSERT_THROW(ft->download(fmt("http://[::1]:%d/index", port)).second->drainInto(broken), Done);
+    ASSERT_THROW(
+        aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->drainInto(broken),
+        Done
+    );
 
     // makeFileTransfer returns a ref<>, which cannot be cleared. since we also
     // can't default-construct it we'll have to overwrite it instead, but we'll
@@ -228,19 +233,21 @@ TEST(FileTransfer, exceptionAbortsDownload)
 TEST(FileTransfer, exceptionAbortsRead)
 {
     auto [port, srv] = serveHTTP("200 ok", "content-length: 0\r\n", [] { return ""; });
+    AsyncIoRoot aio;
     auto ft = makeFileTransfer();
     char buf[10] = "";
-    ASSERT_THROW(ft->download(fmt("http://[::1]:%d/index", port)).second->read(buf, 10), EndOfFile);
+    ASSERT_THROW(
+        aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->read(buf, 10),
+        EndOfFile
+    );
 }
 
 TEST(FileTransfer, NOT_ON_DARWIN(reportsSetupErrors))
 {
     auto [port, srv] = serveHTTP("404 not found", "", [] { return ""; });
+    AsyncIoRoot aio;
     auto ft = makeFileTransfer();
-    ASSERT_THROW(
-        ft->download(fmt("http://[::1]:%d/index", port)),
-        FileTransferError
-    );
+    ASSERT_THROW(aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))), FileTransferError);
 }
 
 TEST(FileTransfer, NOT_ON_DARWIN(defersFailures))
@@ -253,8 +260,9 @@ TEST(FileTransfer, NOT_ON_DARWIN(defersFailures))
         // might only do so once its internal buffer has already been filled.)
         return std::string(1024 * 1024, ' ');
     });
+    AsyncIoRoot aio;
     auto ft = makeFileTransfer(0);
-    auto src = ft->download(fmt("http://[::1]:%d/index", port)).second;
+    auto src = aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second;
     ASSERT_THROW(src->drain(), FileTransferError);
 }
 
@@ -264,10 +272,11 @@ TEST(FileTransfer, NOT_ON_DARWIN(handlesContentEncoding))
     std::string compressed = compress("gzip", original);
 
     auto [port, srv] = serveHTTP("200 ok", "content-encoding: gzip\r\n", [&] { return compressed; });
+    AsyncIoRoot aio;
     auto ft = makeFileTransfer();
 
     StringSink sink;
-    ft->download(fmt("http://[::1]:%d/index", port)).second->drainInto(sink);
+    aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->drainInto(sink);
     EXPECT_EQ(sink.s, original);
 }
 
@@ -289,8 +298,9 @@ TEST(FileTransfer, usesIntermediateLinkHeaders)
          [] { return ""; }},
         {"200 ok", "content-length: 1\r\n", [] { return "a"; }},
     });
+    AsyncIoRoot aio;
     auto ft = makeFileTransfer(0);
-    auto [result, _data] = ft->download(fmt("http://[::1]:%d/first", port));
+    auto [result, _data] = aio.blockOn(ft->download(fmt("http://[::1]:%d/first", port)));
     ASSERT_EQ(result.immutableUrl, "http://foo");
 }
 
@@ -303,9 +313,10 @@ TEST(FileTransfer, stalledReaderDoesntBlockOthers)
              return round < 100 ? std::optional(std::string(1'000'000, ' ')) : std::nullopt;
          }},
     });
+    AsyncIoRoot aio;
     auto ft = makeFileTransfer(0);
-    auto [_result1, data1] = ft->download(fmt("http://[::1]:%d", port));
-    auto [_result2, data2] = ft->download(fmt("http://[::1]:%d", port));
+    auto [_result1, data1] = aio.blockOn(ft->download(fmt("http://[::1]:%d", port)));
+    auto [_result2, data2] = aio.blockOn(ft->download(fmt("http://[::1]:%d", port)));
     auto drop = [](Source & source, size_t size) {
         char buf[1000];
         while (size > 0) {
@@ -342,8 +353,9 @@ TEST(FileTransfer, retries)
          [] { return "b"; },
          {"Range: bytes=1-"}},
     });
+    AsyncIoRoot aio;
     auto ft = makeFileTransfer(0);
-    auto [result, data] = ft->download(fmt("http://[::1]:%d", port));
+    auto [result, data] = aio.blockOn(ft->download(fmt("http://[::1]:%d", port)));
     ASSERT_EQ(data->drain(), "ab");
 }
 
@@ -352,8 +364,9 @@ TEST(FileTransfer, doesntRetrySetupForever)
     auto [port, srv] = serveHTTP({
         {"429 try again later", "content-length: 0\r\n", [] { return ""; }},
     });
+    AsyncIoRoot aio;
     auto ft = makeFileTransfer(0);
-    ASSERT_THROW(ft->download(fmt("http://[::1]:%d", port)), FileTransferError);
+    ASSERT_THROW(aio.blockOn(ft->download(fmt("http://[::1]:%d", port))), FileTransferError);
 }
 
 TEST(FileTransfer, doesntRetryTransferForever)
@@ -374,12 +387,16 @@ TEST(FileTransfer, doesntRetryTransferForever)
         );
     }
     auto [port, srv] = serveHTTP(replies);
+    AsyncIoRoot aio;
     auto ft = makeFileTransfer(0);
-    ASSERT_THROW(ft->download(fmt("http://[::1]:%d", port)).second->drain(), FileTransferError);
+    ASSERT_THROW(
+        aio.blockOn(ft->download(fmt("http://[::1]:%d", port))).second->drain(), FileTransferError
+    );
 }
 
 TEST(FileTransfer, doesntRetryUploads)
 {
+    AsyncIoRoot aio;
     auto ft = makeFileTransfer(0);
 
     {
@@ -387,14 +404,16 @@ TEST(FileTransfer, doesntRetryUploads)
             {"429 try again later", "", [] { return ""; }},
             {"200 ok", "", [] { return ""; }},
         });
-        ASSERT_THROW(ft->upload(fmt("http://[::1]:%d", port), ""), FileTransferError);
+        ASSERT_THROW(aio.blockOn(ft->upload(fmt("http://[::1]:%d", port), "")), FileTransferError);
     }
     {
         auto [port, srv] = serveHTTP({
             {"429 try again later", "", [] { return ""; }},
             {"200 ok", "", [] { return ""; }},
         });
-        ASSERT_THROW(ft->upload(fmt("http://[::1]:%d", port), "foo"), FileTransferError);
+        ASSERT_THROW(
+            aio.blockOn(ft->upload(fmt("http://[::1]:%d", port), "foo")), FileTransferError
+        );
     }
 }
 
@@ -419,12 +438,16 @@ TEST(FileTransfer, DISABLED_interrupt)
     verbosity = lvlDebug;
     logger = new InterruptingLogger;
 
+    AsyncIoRoot aio;
     auto ft = makeFileTransfer(0);
     auto [port, srv] = serveHTTP({
         {"200 ok", "content-length: 10\r\n", [] { return "0123456789"; }},
     });
 
-    ASSERT_THROW(ft->download(fmt("http://[::1]:%d/index", port)).second->drain(), FileTransferError);
+    ASSERT_THROW(
+        aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->drain(),
+        FileTransferError
+    );
 }
 
 TEST(FileTransfer, setupErrorsAreMetadata)
@@ -432,8 +455,9 @@ TEST(FileTransfer, setupErrorsAreMetadata)
     auto [port, srv] = serveHTTP({
         {"404 try again later", "content-length: 1\r\n", [] { return "X"; }},
     });
+    AsyncIoRoot aio;
     auto ft = makeFileTransfer(0);
-    ASSERT_THROW(ft->upload(fmt("http://[::1]:%d", port), ""), FileTransferError);
+    ASSERT_THROW(aio.blockOn(ft->upload(fmt("http://[::1]:%d", port), "")), FileTransferError);
 }
 
 }

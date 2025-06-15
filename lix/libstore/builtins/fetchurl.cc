@@ -2,6 +2,7 @@
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libutil/strings.hh"
 
@@ -34,9 +35,11 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData,
        a forked process. */
     auto fileTransfer = makeFileTransfer();
 
-    auto fetch = [&](const std::string & url) {
-
-        auto raw = fileTransfer->download(url).second;
+    // we also have to run the remainder of this function in a fresh thread so
+    // we can have an aio root. the existing root on the current thread is not
+    // safe to use because that would badly interfere with the parent process.
+    auto fetch = [&](AsyncIoRoot & aio, const std::string & url) {
+        auto raw = aio.blockOn(fileTransfer->download(url)).second;
         auto decompressor = makeDecompressionSource(
             unpack && mainUrl.ends_with(".xz") ? "xz" : "none", *raw);
 
@@ -52,21 +55,33 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData,
         }
     };
 
-    /* Try the hashed mirrors first. */
-    if (getAttr("outputHashMode") == "flat")
-        for (auto hashedMirror : settings.hashedMirrors.get())
-            try {
-                if (!hashedMirror.ends_with("/")) hashedMirror += '/';
-                std::optional<HashType> ht = parseHashTypeOpt(getAttr("outputHashAlgo"));
-                Hash h = newHashAllowEmpty(getAttr("outputHash"), ht);
-                fetch(hashedMirror + printHashType(h.type) + "/" + h.to_string(Base::Base16, false));
-                return;
-            } catch (Error & e) {
-                debug(e.what());
-            }
+    std::async(std::launch::async, [&] {
+        AsyncIoRoot aio;
 
-    /* Otherwise try the specified URL. */
-    fetch(mainUrl);
+        /* Try the hashed mirrors first. */
+        if (getAttr("outputHashMode") == "flat") {
+            for (auto hashedMirror : settings.hashedMirrors.get()) {
+                try {
+                    if (!hashedMirror.ends_with("/")) {
+                        hashedMirror += '/';
+                    }
+                    std::optional<HashType> ht = parseHashTypeOpt(getAttr("outputHashAlgo"));
+                    Hash h = newHashAllowEmpty(getAttr("outputHash"), ht);
+                    fetch(
+                        aio,
+                        hashedMirror + printHashType(h.type) + "/"
+                            + h.to_string(Base::Base16, false)
+                    );
+                    return;
+                } catch (Error & e) {
+                    debug(e.what());
+                }
+            }
+        }
+
+        /* Otherwise try the specified URL. */
+        fetch(aio, mainUrl);
+    }).get();
 }
 
 }

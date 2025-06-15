@@ -125,7 +125,7 @@ protected:
         checkEnabled();
 
         try {
-            co_return getFileTransfer()->exists(makeURI(path));
+            co_return TRY_AWAIT(getFileTransfer()->exists(makeURI(path)));
         } catch (FileTransferError & e) {
             maybeDisable();
             throw;
@@ -142,7 +142,9 @@ protected:
     try {
         auto data = StreamToSourceAdapter(istream).drain();
         try {
-            getFileTransfer()->upload(makeURI(path), std::move(data), {{"Content-Type", mimeType}});
+            TRY_AWAIT(getFileTransfer()->upload(
+                makeURI(path), std::move(data), {{"Content-Type", mimeType}}
+            ));
         } catch (FileTransferError & e) {
             throw UploadToHTTP(
                 "while uploading to HTTP binary cache at '%s': %s", cacheUri, e.msg()
@@ -175,7 +177,9 @@ protected:
                 {
                 }
             };
-            return {make_box_ptr<HttpFile>(getFileTransfer()->download(makeURI(path)).second)};
+            co_return make_box_ptr<HttpFile>(
+                TRY_AWAIT(getFileTransfer()->download(makeURI(path))).second
+            );
         } catch (FileTransferError & e) {
             if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
                 throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache '%s'", path, getUri());
@@ -183,7 +187,7 @@ protected:
             throw;
         }
     } catch (...) {
-        return {result::current_exception()};
+        co_return result::current_exception();
     }
 
     /**
