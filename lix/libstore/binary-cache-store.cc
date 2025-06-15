@@ -2,7 +2,6 @@
 #include "lix/libstore/binary-cache-store.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
-#include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/fs-accessor.hh"
@@ -40,7 +39,7 @@ kj::Promise<Result<void>> BinaryCacheStore::init()
 try {
     std::string cacheInfoFile = "nix-cache-info";
 
-    auto cacheInfo = getFileContents(cacheInfoFile);
+    auto cacheInfo = TRY_AWAIT(getFileContents(cacheInfoFile));
     if (!cacheInfo) {
         upsertFile(cacheInfoFile, "StoreDir: " + config().storeDir + "\n", "text/x-nix-cache-info");
     } else {
@@ -72,13 +71,16 @@ void BinaryCacheStore::upsertFile(const std::string & path,
     upsertFile(path, std::make_shared<std::stringstream>(std::move(data)), mimeType);
 }
 
-std::optional<std::string> BinaryCacheStore::getFileContents(const std::string & path)
-{
+kj::Promise<Result<std::optional<std::string>>>
+BinaryCacheStore::getFileContents(const std::string & path)
+try {
     try {
-        return getFile(path)->drain();
+        co_return getFile(path)->drain();
     } catch (NoSuchBinaryCacheFile &) {
-        return std::nullopt;
+        co_return std::nullopt;
     }
+} catch (...) {
+    co_return result::current_exception();
 }
 
 std::string BinaryCacheStore::narInfoFileFor(const StorePath & storePath)
@@ -425,7 +427,7 @@ try {
 
     auto narInfoFile = narInfoFileFor(storePath);
 
-    auto data = getFileContents(narInfoFile);
+    auto data = TRY_AWAIT(getFileContents(narInfoFile));
 
     if (!data) co_return result::success(nullptr);
 
@@ -566,7 +568,7 @@ try {
 
     debug("fetching build log from binary cache '%s/%s'", getUri(), logPath);
 
-    co_return getFileContents(logPath);
+    co_return TRY_AWAIT(getFileContents(logPath));
 } catch (...) {
     co_return result::current_exception();
 }

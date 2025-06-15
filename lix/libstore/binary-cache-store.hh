@@ -89,7 +89,8 @@ public:
      */
     virtual box_ptr<Source> getFile(const std::string & path) = 0;
 
-    virtual std::optional<std::string> getFileContents(const std::string & path);
+    virtual kj::Promise<Result<std::optional<std::string>>> getFileContents(const std::string & path
+    );
 
 public:
 
