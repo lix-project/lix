@@ -3,7 +3,10 @@
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/nar-info-disk-cache.hh"
+#include "lix/libutil/async-io.hh"
+#include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/serialise.hh"
 
 namespace nix {
 
@@ -151,17 +154,29 @@ protected:
             : cacheUri + "/" + path;
     }
 
-    box_ptr<Source> getFile(const std::string & path) override
-    {
+    kj::Promise<Result<box_ptr<AsyncInputStream>>> getFile(const std::string & path) override
+    try {
         checkEnabled();
         try {
-            return getFileTransfer()->download(makeURI(path)).second;
+            struct HttpFile : AsyncSourceInputStream
+            {
+                box_ptr<Source> source;
+
+                HttpFile(box_ptr<Source> source)
+                    : AsyncSourceInputStream(*source)
+                    , source(std::move(source))
+                {
+                }
+            };
+            return {make_box_ptr<HttpFile>(getFileTransfer()->download(makeURI(path)).second)};
         } catch (FileTransferError & e) {
             if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
                 throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache '%s'", path, getUri());
             maybeDisable();
             throw;
         }
+    } catch (...) {
+        return {result::current_exception()};
     }
 
     /**

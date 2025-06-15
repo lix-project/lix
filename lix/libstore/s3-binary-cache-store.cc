@@ -5,6 +5,7 @@
 #include "lix/libstore/nar-info.hh"
 #include "lix/libstore/nar-info-disk-cache.hh"
 #include "lix/libstore/globals.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libutil/result.hh"
@@ -464,8 +465,8 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
             uploadFile(path, istream, mimeType, "");
     }
 
-    box_ptr<Source> getFile(const std::string & path) override
-    {
+    kj::Promise<Result<box_ptr<AsyncInputStream>>> getFile(const std::string & path) override
+    try {
         stats.get++;
 
         // FIXME: stream output to sink.
@@ -478,13 +479,15 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
             printTalkative("downloaded 's3://%s/%s' (%d bytes) in %d ms",
                 bucketName, path, res.data->size(), res.durationMs);
 
-            return make_box_ptr<GeneratorSource>(
-                [](std::string data) -> Generator<Bytes> {
+            return {
+                make_box_ptr<AsyncGeneratorInputStream>([](std::string data) -> Generator<Bytes> {
                     co_yield std::span{data.data(), data.size()};
-                }(std::move(*res.data))
-            );
+                }(std::move(*res.data)))
+            };
         } else
             throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache '%s'", path, getUri());
+    } catch (...) {
+        return {result::current_exception()};
     }
 
     kj::Promise<Result<StorePathSet>> queryAllValidPaths() override

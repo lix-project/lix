@@ -87,7 +87,7 @@ public:
     /**
      * Dump the contents of the specified file to a sink.
      */
-    virtual box_ptr<Source> getFile(const std::string & path) = 0;
+    virtual kj::Promise<Result<box_ptr<AsyncInputStream>>> getFile(const std::string & path) = 0;
 
     virtual kj::Promise<Result<std::optional<std::string>>> getFileContents(const std::string & path
     );

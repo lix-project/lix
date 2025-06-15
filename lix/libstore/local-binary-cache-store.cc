@@ -2,6 +2,7 @@
 #include "lix/libstore/binary-cache-store.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/nar-info-disk-cache.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/result.hh"
 
 #include <atomic>
@@ -72,15 +73,19 @@ protected:
         del.cancel();
     }
 
-    box_ptr<Source> getFile(const std::string & path) override
-    {
+    kj::Promise<Result<box_ptr<AsyncInputStream>>> getFile(const std::string & path) override
+    try {
         try {
-            return make_box_ptr<GeneratorSource>(readFileSource(binaryCacheDir + "/" + path));
+            return {
+                make_box_ptr<AsyncGeneratorInputStream>(readFileSource(binaryCacheDir + "/" + path))
+            };
         } catch (SysError & e) {
             if (e.errNo == ENOENT)
                 throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache", path);
             throw;
         }
+    } catch (...) {
+        return {result::current_exception()};
     }
 
     kj::Promise<Result<StorePathSet>> queryAllValidPaths() override

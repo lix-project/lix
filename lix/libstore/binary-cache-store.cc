@@ -75,7 +75,7 @@ kj::Promise<Result<std::optional<std::string>>>
 BinaryCacheStore::getFileContents(const std::string & path)
 try {
     try {
-        co_return getFile(path)->drain();
+        co_return TRY_AWAIT(TRY_AWAIT(getFile(path))->drain());
     } catch (NoSuchBinaryCacheFile &) {
         co_return std::nullopt;
     }
@@ -372,16 +372,14 @@ try {
     struct NarFromPath : AsyncInputStream
     {
         Stats<std::atomic> & stats;
-        box_ptr<Source> file;
         box_ptr<AsyncInputStream> decompressed;
         uint64_t total;
 
-        NarFromPath(Stats<std::atomic> & stats, const std::string & method, box_ptr<Source> file)
+        NarFromPath(
+            Stats<std::atomic> & stats, const std::string & method, box_ptr<AsyncInputStream> file
+        )
             : stats(stats)
-            , file(std::move(file))
-            , decompressed(
-                  makeDecompressionStream(method, make_box_ptr<AsyncSourceInputStream>(*this->file))
-              )
+            , decompressed(makeDecompressionStream(method, std::move(file)))
         {
         }
 
@@ -407,7 +405,7 @@ try {
     auto & info = *info_;
 
     try {
-        auto file = getFile(info->url);
+        auto file = TRY_AWAIT(getFile(info->url));
         co_return make_box_ptr<NarFromPath>(stats, info->compression, std::move(file));
     } catch (NoSuchBinaryCacheFile & e) {
         throw SubstituteGone(std::move(e.info()));

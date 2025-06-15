@@ -130,7 +130,11 @@ struct CmdLsStore : StoreCommand, MixLs
             auto binaryCacheStore = store.try_cast_shared<BinaryCacheStore>();
             if (binaryCacheStore) {
                 const auto [storePath, restPath] = store->toStorePath(path);
-                auto file = binaryCacheStore->getFile(fmt("%s.ls", storePath.hashPart()))->drain();
+                auto file = aio().blockOn(
+                    aio()
+                        .blockOn(binaryCacheStore->getFile(fmt("%s.ls", storePath.hashPart())))
+                        ->drain()
+                );
                 JSON j = json::parse(std::move(file), "a nar content listing");
                 if (j["version"] == 1) {
                     path = restPath;
