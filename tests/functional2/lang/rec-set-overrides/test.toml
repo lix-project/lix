@@ -1,0 +1,18 @@
+[[test]]
+runner = "parse-okay"
+flags = [ "--extra-deprecated-features", "rec-set-overrides" ]
+
+# Same as above but with deprecation warning
+[[test]]
+name = "parse-okay-deprecation-warning"
+runner = "parse-okay"
+
+[[test]]
+runner = "eval-fail"
+in = "in-2.nix"
+flags = [ "--extra-deprecated-features", "rec-set-overrides" ]
+
+[[test]]
+runner = "eval-okay"
+in = "in-3.nix"
+flags = [ "--extra-deprecated-features", "rec-set-overrides" ]
