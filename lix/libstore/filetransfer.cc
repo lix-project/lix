@@ -801,6 +801,7 @@ struct curlFileTransfer : public FileTransfer
         }
 
         auto source = make_box_ptr<TransferSource>(*this, uri, headers, std::move(data), noBody);
+        source->init();
         source->awaitData();
         co_return {source->metadata, std::move(source)};
     } catch (...) {
@@ -838,8 +839,6 @@ struct curlFileTransfer : public FileTransfer
             , data(std::move(data))
             , noBody(noBody)
         {
-            auto setup = [&] { return startTransfer(uri); };
-            metadata = withRetries(setup, setup);
         }
 
         ~TransferSource()
@@ -852,6 +851,12 @@ struct curlFileTransfer : public FileTransfer
             } catch (...) {
                 ignoreExceptionInDestructor();
             }
+        }
+
+        void init()
+        {
+            auto setup = [&] { return startTransfer(uri); };
+            metadata = withRetries(setup, setup);
         }
 
         auto withRetries(auto && initial, auto && retry) -> decltype(initial())
