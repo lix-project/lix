@@ -5,16 +5,21 @@
 #include "lix/libstore/nar-info.hh"
 #include "lix/libstore/nar-info-disk-cache.hh"
 #include "lix/libstore/globals.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/strings.hh"
 
+#include <kj/async.h>
+#include <memory>
+
 #include <aws/core/Aws.h>
 #include <aws/core/VersionConfig.h>
 #include <aws/core/auth/AWSCredentialsProvider.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
+#include <aws/core/client/AsyncCallerContext.h>
 #include <aws/core/client/ClientConfiguration.h>
 #include <aws/core/client/DefaultRetryStrategy.h>
 #include <aws/core/utils/logging/FormattedLogSystem.h>
@@ -25,6 +30,7 @@
 #include <aws/s3/model/HeadObjectRequest.h>
 #include <aws/s3/model/ListObjectsRequest.h>
 #include <aws/s3/model/PutObjectRequest.h>
+#include <aws/transfer/TransferHandle.h>
 #include <aws/transfer/TransferManager.h>
 
 using namespace Aws::Transfer;
@@ -148,9 +154,9 @@ ref<Aws::Client::ClientConfiguration> S3Helper::makeConfig(
     return res;
 }
 
-S3Helper::FileTransferResult S3Helper::getObject(
-    const std::string & bucketName, const std::string & key)
-{
+kj::Promise<Result<S3Helper::FileTransferResult>>
+S3Helper::getObject(const std::string & bucketName, const std::string & key)
+try {
     debug("fetching 's3://%s/%s'...", bucketName, key);
 
     auto request =
@@ -168,8 +174,17 @@ S3Helper::FileTransferResult S3Helper::getObject(
 
     try {
 
-        auto result = checkAws(fmt("AWS error fetching '%s'", key),
-            client->GetObject(request));
+        auto pfp = kj::newPromiseAndCrossThreadFulfiller<Aws::S3::Model::GetObjectOutcome>();
+        client->GetObjectAsync(
+            request,
+            [&](const Aws::S3::S3Client *,
+                const Aws::S3::Model::GetObjectRequest &,
+                Aws::S3::Model::GetObjectOutcome res,
+                const std::shared_ptr<const Aws::Client::AsyncCallerContext> &) {
+                pfp.fulfiller->fulfill(std::move(res));
+            }
+        );
+        auto result = checkAws(fmt("AWS error fetching '%s'", key), co_await pfp.promise);
 
         res.data = decompress(result.GetContentEncoding(),
             dynamic_cast<std::stringstream &>(result.GetBody()).str());
@@ -183,7 +198,9 @@ S3Helper::FileTransferResult S3Helper::getObject(
 
     res.durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(now2 - now1).count();
 
-    return res;
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 struct S3BinaryCacheStoreConfig final : BinaryCacheStoreConfig
@@ -328,10 +345,17 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
     try {
         stats.head++;
 
-        auto res = s3Helper.client->HeadObject(
-            Aws::S3::Model::HeadObjectRequest()
-            .WithBucket(bucketName)
-            .WithKey(path));
+        auto pfp = kj::newPromiseAndCrossThreadFulfiller<Aws::S3::Model::HeadObjectOutcome>();
+        s3Helper.client->HeadObjectAsync(
+            Aws::S3::Model::HeadObjectRequest().WithBucket(bucketName).WithKey(path),
+            [&](const Aws::S3::S3Client *,
+                const Aws::S3::Model::HeadObjectRequest &,
+                const Aws::S3::Model::HeadObjectOutcome & res,
+                const std::shared_ptr<const Aws::Client::AsyncCallerContext> &) {
+                pfp.fulfiller->fulfill(auto(res));
+            }
+        );
+        auto res = co_await pfp.promise;
 
         if (!res.IsSuccess()) {
             auto & error = res.GetError();
@@ -339,23 +363,25 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
                 || error.GetErrorType() == Aws::S3::S3Errors::NO_SUCH_KEY
                 // If bucket listing is disabled, 404s turn into 403s
                 || error.GetErrorType() == Aws::S3::S3Errors::ACCESS_DENIED)
-                return {false};
+                co_return false;
             throw Error("AWS error fetching '%s': %s", path, error.GetMessage());
         }
 
-        return {true};
+        co_return true;
     } catch (...) {
-        return {result::current_exception()};
+        co_return result::current_exception();
     }
 
     std::shared_ptr<TransferManager> transferManager;
     std::once_flag transferManagerCreated;
 
-    void uploadFile(const std::string & path,
+    kj::Promise<Result<void>> uploadFile(
+        const std::string & path,
         std::shared_ptr<std::basic_iostream<char>> istream,
         const std::string & mimeType,
-        const std::string & contentEncoding)
-    {
+        const std::string & contentEncoding
+    )
+    try {
         istream->seekg(0, istream->end);
         auto size = istream->tellg();
         istream->seekg(0, istream->beg);
@@ -364,6 +390,15 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
 
         static std::shared_ptr<Aws::Utils::Threading::PooledThreadExecutor>
             executor = std::make_shared<Aws::Utils::Threading::PooledThreadExecutor>(maxThreads);
+
+        struct TransferContext : Aws::Client::AsyncCallerContext
+        {
+            kj::CrossThreadPromiseFulfiller<void> * signal;
+            explicit TransferContext(kj::CrossThreadPromiseFulfiller<void> * signal)
+                : signal(signal)
+            {
+            }
+        };
 
         std::call_once(transferManagerCreated, [&]()
         {
@@ -384,6 +419,17 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
                             transferHandle->GetKey(),
                             transferHandle->GetBytesTransferred(),
                             transferHandle->GetBytesTotalSize());
+
+                        if (transferHandle->GetStatus() != TransferStatus::NOT_STARTED
+                            && transferHandle->GetStatus() != TransferStatus::IN_PROGRESS)
+                        {
+                            auto context = std::static_pointer_cast<const TransferContext>(
+                                transferHandle->GetContext()
+                            );
+                            if (context->signal) {
+                                context->signal->fulfill();
+                            }
+                        }
                     };
 
                 transferManager = TransferManager::Create(transferConfig);
@@ -397,12 +443,17 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
             if (contentEncoding != "")
                 throw Error("setting a content encoding is not supported with S3 multi-part uploads");
 
-            std::shared_ptr<TransferHandle> transferHandle =
-                transferManager->UploadFile(
-                    istream, bucketName, path, mimeType,
-                    Aws::Map<Aws::String, Aws::String>(),
-                    nullptr /*, contentEncoding */);
+            auto pfp = kj::newPromiseAndCrossThreadFulfiller<void>();
+            std::shared_ptr<TransferHandle> transferHandle = transferManager->UploadFile(
+                istream,
+                bucketName,
+                path,
+                mimeType,
+                Aws::Map<Aws::String, Aws::String>(),
+                std::make_shared<TransferContext>(pfp.fulfiller.get()) /*, contentEncoding */
+            );
 
+            co_await pfp.promise;
             transferHandle->WaitUntilFinished();
 
             if (transferHandle->GetStatus() == TransferStatus::FAILED)
@@ -427,8 +478,17 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
 
             request.SetBody(istream);
 
-            auto result = checkAws(fmt("AWS error uploading '%s'", path),
-                s3Helper.client->PutObject(request));
+            auto pfp = kj::newPromiseAndCrossThreadFulfiller<Aws::S3::Model::HeadObjectOutcome>();
+            s3Helper.client->PutObjectAsync(
+                request,
+                [&](const Aws::S3::S3Client *,
+                    const Aws::S3::Model::PutObjectRequest &,
+                    const Aws::S3::Model::PutObjectOutcome & res,
+                    const std::shared_ptr<const Aws::Client::AsyncCallerContext> &) {
+                    pfp.fulfiller->fulfill(auto(res));
+                }
+            );
+            auto result = checkAws(fmt("AWS error uploading '%s'", path), co_await pfp.promise);
         }
 
         auto now2 = std::chrono::steady_clock::now();
@@ -443,6 +503,9 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         stats.putTimeMs += duration;
         stats.putBytes += std::max(size, (decltype(size)) 0);
         stats.put++;
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     kj::Promise<Result<void>> upsertFile(
@@ -458,18 +521,22 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         };
 
         if (config().narinfoCompression != "" && path.ends_with(".narinfo")) {
-            uploadFile(
+            TRY_AWAIT(uploadFile(
                 path, compress(config().narinfoCompression), mimeType, config().narinfoCompression
-            );
+            ));
         } else if (config().lsCompression != "" && path.ends_with(".ls")) {
-            uploadFile(path, compress(config().lsCompression), mimeType, config().lsCompression);
+            TRY_AWAIT(
+                uploadFile(path, compress(config().lsCompression), mimeType, config().lsCompression)
+            );
         } else if (config().logCompression != "" && path.starts_with("log/"))
-            uploadFile(path, compress(config().logCompression), mimeType, config().logCompression);
+            TRY_AWAIT(uploadFile(
+                path, compress(config().logCompression), mimeType, config().logCompression
+            ));
         else
-            uploadFile(path, istream, mimeType, "");
-        return {result::success()};
+            TRY_AWAIT(uploadFile(path, istream, mimeType, ""));
+        co_return result::success();
     } catch (...) {
-        return {result::current_exception()};
+        co_return result::current_exception();
     }
 
     kj::Promise<Result<box_ptr<AsyncInputStream>>> getFile(const std::string & path) override
@@ -477,7 +544,7 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         stats.get++;
 
         // FIXME: stream output to sink.
-        auto res = s3Helper.getObject(bucketName, path);
+        auto res = TRY_AWAIT(s3Helper.getObject(bucketName, path));
 
         stats.getBytes += res.data ? res.data->size() : 0;
         stats.getTimeMs += res.durationMs;
@@ -486,15 +553,15 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
             printTalkative("downloaded 's3://%s/%s' (%d bytes) in %d ms",
                 bucketName, path, res.data->size(), res.durationMs);
 
-            return {
-                make_box_ptr<AsyncGeneratorInputStream>([](std::string data) -> Generator<Bytes> {
+            co_return make_box_ptr<AsyncGeneratorInputStream>(
+                [](std::string data) -> Generator<Bytes> {
                     co_yield std::span{data.data(), data.size()};
-                }(std::move(*res.data)))
-            };
+                }(std::move(*res.data))
+            );
         } else
             throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache '%s'", path, getUri());
     } catch (...) {
-        return {result::current_exception()};
+        co_return result::current_exception();
     }
 
     kj::Promise<Result<StorePathSet>> queryAllValidPaths() override
@@ -505,12 +572,21 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         do {
             debug("listing bucket 's3://%s' from key '%s'...", bucketName, marker);
 
-            auto res = checkAws(fmt("AWS error listing bucket '%s'", bucketName),
-                s3Helper.client->ListObjects(
-                    Aws::S3::Model::ListObjectsRequest()
+            auto pfp = kj::newPromiseAndCrossThreadFulfiller<Aws::S3::Model::ListObjectsOutcome>();
+            s3Helper.client->ListObjectsAsync(
+                Aws::S3::Model::ListObjectsRequest()
                     .WithBucket(bucketName)
                     .WithDelimiter("/")
-                    .WithMarker(marker)));
+                    .WithMarker(marker),
+                [&](const Aws::S3::S3Client *,
+                    const Aws::S3::Model::ListObjectsRequest &,
+                    const Aws::S3::Model::ListObjectsOutcome & res,
+                    const std::shared_ptr<const Aws::Client::AsyncCallerContext> &) {
+                    pfp.fulfiller->fulfill(auto(res));
+                }
+            );
+            auto res =
+                checkAws(fmt("AWS error listing bucket '%s'", bucketName), co_await pfp.promise);
 
             auto & contents = res.GetContents();
 

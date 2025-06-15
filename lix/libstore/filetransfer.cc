@@ -730,13 +730,14 @@ struct curlFileTransfer : public FileTransfer
         co_return result::current_exception();
     }
 
-    std::optional<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>> tryEagerTransfers(
+    kj::Promise<Result<std::optional<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>>>>
+    tryEagerTransfers(
         const std::string & uri,
         const Headers & headers,
         const std::optional<std::string> & data,
         bool noBody
     )
-    {
+    try {
         // curl transfers using file:// urls cannot be paused, and are a bit unruly
         // in other ways too. since their metadata is trivial and we already have a
         // backend for simple file system reads we can use that instead. we'll pass
@@ -777,7 +778,9 @@ struct curlFileTransfer : public FileTransfer
                     );
                 }
                 if (S_ISDIR(st.st_mode)) {
-                    return {{std::move(metadata), make_box_ptr<AsyncStringInputStream>("")}};
+                    co_return std::pair{
+                        std::move(metadata), make_box_ptr<AsyncStringInputStream>("")
+                    };
                 }
                 struct OwningFdStream : AsyncInputStream
                 {
@@ -795,7 +798,9 @@ struct curlFileTransfer : public FileTransfer
                         }
                     }
                 };
-                return {{std::move(metadata), make_box_ptr<OwningFdStream>(std::move(fd))}};
+                co_return std::pair{
+                    std::move(metadata), make_box_ptr<OwningFdStream>(std::move(fd))
+                };
             }
         }
 
@@ -813,7 +818,7 @@ struct curlFileTransfer : public FileTransfer
             S3Helper s3Helper(profile, region, scheme, endpoint);
 
             // FIXME: implement ETag
-            auto s3Res = s3Helper.getObject(bucketName, key);
+            auto s3Res = TRY_AWAIT(s3Helper.getObject(bucketName, key));
             FileTransferResult res;
             if (!s3Res.data)
                 throw FileTransferError(NotFound, "S3 object '%s' does not exist", uri);
@@ -825,7 +830,7 @@ struct curlFileTransfer : public FileTransfer
                 {
                 }
             };
-            return {{ res, make_box_ptr<OwningStringStream>(std::move(*s3Res.data)) }};
+            co_return std::pair{res, make_box_ptr<OwningStringStream>(std::move(*s3Res.data))};
 #else
             throw nix::Error(
                 "cannot download '%s' because Lix is not built with S3 support", uri
@@ -833,7 +838,9 @@ struct curlFileTransfer : public FileTransfer
 #endif
         }
 
-        return std::nullopt;
+        co_return std::nullopt;
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     kj::Promise<Result<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>>>
@@ -844,7 +851,7 @@ struct curlFileTransfer : public FileTransfer
         bool noBody
     )
     try {
-        if (auto eager = tryEagerTransfers(uri, headers, data, noBody)) {
+        if (auto eager = TRY_AWAIT(tryEagerTransfers(uri, headers, data, noBody))) {
             co_return std::move(*eager);
         }
 

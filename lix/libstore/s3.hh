@@ -3,8 +3,10 @@
 
 #if ENABLE_S3
 
+#include "lix/libutil/result.hh"
 #include "lix/libutil/ref.hh"
 
+#include <kj/async.h>
 #include <optional>
 #include <string>
 
@@ -28,8 +30,8 @@ struct S3Helper
         unsigned int durationMs;
     };
 
-    FileTransferResult getObject(
-        const std::string & bucketName, const std::string & key);
+    kj::Promise<Result<FileTransferResult>>
+    getObject(const std::string & bucketName, const std::string & key);
 };
 
 }
