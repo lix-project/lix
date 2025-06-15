@@ -928,35 +928,42 @@ struct curlFileTransfer : public FileTransfer
             );
         }
 
+        bool waitForData()
+        {
+            /* Grab data if available, otherwise wait for the download
+               thread to wake us up. */
+            while (buffered.empty()) {
+                auto state(transfer->downloadState.lock());
+
+                if (!state->data.empty()) {
+                    chunk = std::move(state->data);
+                    buffered = chunk;
+                    totalReceived += chunk.size();
+                    parent.unpause(transfer);
+                } else if (state->exc) {
+                    std::rethrow_exception(state->exc);
+                } else if (state->done) {
+                    return false;
+                } else {
+                    parent.unpause(transfer);
+                    state.wait(transfer->downloadEvent);
+                }
+            }
+
+            return true;
+        }
+
+        bool restartAndWaitForData()
+        {
+            restartTransfer();
+            return waitForData();
+        }
+
         bool awaitData()
         {
-            auto waitForData = [&] {
-                /* Grab data if available, otherwise wait for the download
-                   thread to wake us up. */
-                while (buffered.empty()) {
-                    auto state(transfer->downloadState.lock());
-
-                    if (!state->data.empty()) {
-                        chunk = std::move(state->data);
-                        buffered = chunk;
-                        totalReceived += chunk.size();
-                        parent.unpause(transfer);
-                    } else if (state->exc) {
-                        std::rethrow_exception(state->exc);
-                    } else if (state->done) {
-                        return false;
-                    } else {
-                        parent.unpause(transfer);
-                        state.wait(transfer->downloadEvent);
-                    }
-                }
-
-                return true;
-            };
-            return withRetries(waitForData, [&] {
-                restartTransfer();
-                return waitForData();
-            });
+            return withRetries(
+                [&] { return waitForData(); }, [&] { return restartAndWaitForData(); }
+            );
         }
 
         size_t read(char * data, size_t len) override
