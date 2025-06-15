@@ -42,7 +42,9 @@ try {
 
     auto cacheInfo = TRY_AWAIT(getFileContents(cacheInfoFile));
     if (!cacheInfo) {
-        upsertFile(cacheInfoFile, "StoreDir: " + config().storeDir + "\n", "text/x-nix-cache-info");
+        TRY_AWAIT(upsertFile(
+            cacheInfoFile, "StoreDir: " + config().storeDir + "\n", "text/x-nix-cache-info"
+        ));
     } else {
         for (auto & line : tokenizeString<Strings>(*cacheInfo, "\n")) {
             size_t colon= line.find(':');
@@ -65,11 +67,14 @@ try {
     co_return result::current_exception();
 }
 
-void BinaryCacheStore::upsertFile(const std::string & path,
-    std::string && data,
-    const std::string & mimeType)
-{
-    upsertFile(path, std::make_shared<std::stringstream>(std::move(data)), mimeType);
+kj::Promise<Result<void>> BinaryCacheStore::upsertFile(
+    const std::string & path, std::string && data, const std::string & mimeType
+)
+try {
+    TRY_AWAIT(upsertFile(path, std::make_shared<std::stringstream>(std::move(data)), mimeType));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<std::optional<std::string>>>
@@ -93,7 +98,7 @@ kj::Promise<Result<void>> BinaryCacheStore::writeNarInfo(ref<NarInfo> narInfo)
 try {
     auto narInfoFile = narInfoFileFor(narInfo->path);
 
-    upsertFile(narInfoFile, narInfo->to_string(*this), "text/x-nix-narinfo");
+    TRY_AWAIT(upsertFile(narInfoFile, narInfo->to_string(*this), "text/x-nix-narinfo"));
 
     {
         auto state_(co_await state.lock());
@@ -184,7 +189,9 @@ try {
         };
 
         try {
-            upsertFile(std::string(info.path.hashPart()) + ".ls", j.dump(), "application/json");
+            TRY_AWAIT(
+                upsertFile(std::string(info.path.hashPart()) + ".ls", j.dump(), "application/json")
+            );
         } catch (ForeignException & exc) {
             if (exc.is<JSON::exception>()) {
                 warn(
@@ -233,7 +240,7 @@ try {
 
                 printMsg(lvlTalkative, "creating debuginfo link from '%s' to '%s'", key, target);
 
-                upsertFile(key, json.dump(), "application/json");
+                aio.blockOn(upsertFile(key, json.dump(), "application/json"));
             };
 
             std::regex regex1 = regex::parse("^[0-9a-f]{2}$");
@@ -270,9 +277,11 @@ try {
     /* Atomically write the NAR file. */
     if (repair || !TRY_AWAIT(fileExists(narInfo->url))) {
         stats.narWrite++;
-        upsertFile(narInfo->url,
+        TRY_AWAIT(upsertFile(
+            narInfo->url,
             std::make_shared<std::fstream>(fnTemp, std::ios_base::in | std::ios_base::binary),
-            "application/x-nix-nar");
+            "application/x-nix-nar"
+        ));
     } else {
         stats.narWriteAverted++;
     }
@@ -585,10 +594,11 @@ BinaryCacheStore::addBuildLog(const StorePath & drvPath, std::string_view log)
 try {
     assert(drvPath.isDerivation());
 
-    upsertFile(
+    TRY_AWAIT(upsertFile(
         "log/" + std::string(drvPath.to_string()),
         (std::string) log, // FIXME: don't copy
-        "text/plain; charset=utf-8");
+        "text/plain; charset=utf-8"
+    ));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();

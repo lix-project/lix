@@ -75,14 +75,18 @@ public:
 
     virtual kj::Promise<Result<bool>> fileExists(const std::string & path) = 0;
 
-    virtual void upsertFile(const std::string & path,
+    virtual kj::Promise<Result<void>> upsertFile(
+        const std::string & path,
         std::shared_ptr<std::basic_iostream<char>> istream,
-        const std::string & mimeType) = 0;
+        const std::string & mimeType
+    ) = 0;
 
-    void upsertFile(const std::string & path,
+    kj::Promise<Result<void>> upsertFile(
+        const std::string & path,
         // FIXME: use std::string_view
         std::string && data,
-        const std::string & mimeType);
+        const std::string & mimeType
+    );
 
     /**
      * Dump the contents of the specified file to a sink.

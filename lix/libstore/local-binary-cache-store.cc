@@ -59,10 +59,12 @@ protected:
 
     kj::Promise<Result<bool>> fileExists(const std::string & path) override;
 
-    void upsertFile(const std::string & path,
+    kj::Promise<Result<void>> upsertFile(
+        const std::string & path,
         std::shared_ptr<std::basic_iostream<char>> istream,
-        const std::string & mimeType) override
-    {
+        const std::string & mimeType
+    ) override
+    try {
         auto path2 = binaryCacheDir + "/" + path;
         static std::atomic<int> counter{0};
         Path tmp = fmt("%s.tmp.%d.%d", path2, getpid(), ++counter);
@@ -71,6 +73,9 @@ protected:
         writeFile(tmp, source);
         renameFile(tmp, path2);
         del.cancel();
+        return {result::success()};
+    } catch (...) {
+        return {result::current_exception()};
     }
 
     kj::Promise<Result<box_ptr<AsyncInputStream>>> getFile(const std::string & path) override

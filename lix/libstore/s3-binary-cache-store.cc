@@ -445,10 +445,12 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         stats.put++;
     }
 
-    void upsertFile(const std::string & path,
+    kj::Promise<Result<void>> upsertFile(
+        const std::string & path,
         std::shared_ptr<std::basic_iostream<char>> istream,
-        const std::string & mimeType) override
-    {
+        const std::string & mimeType
+    ) override
+    try {
         auto compress = [&](std::string compression)
         {
             auto compressed = nix::compress(compression, StreamToSourceAdapter(istream).drain());
@@ -465,6 +467,9 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
             uploadFile(path, compress(config().logCompression), mimeType, config().logCompression);
         else
             uploadFile(path, istream, mimeType, "");
+        return {result::success()};
+    } catch (...) {
+        return {result::current_exception()};
     }
 
     kj::Promise<Result<box_ptr<AsyncInputStream>>> getFile(const std::string & path) override

@@ -134,10 +134,12 @@ protected:
         co_return result::current_exception();
     }
 
-    void upsertFile(const std::string & path,
+    kj::Promise<Result<void>> upsertFile(
+        const std::string & path,
         std::shared_ptr<std::basic_iostream<char>> istream,
-        const std::string & mimeType) override
-    {
+        const std::string & mimeType
+    ) override
+    try {
         auto data = StreamToSourceAdapter(istream).drain();
         try {
             getFileTransfer()->upload(makeURI(path), std::move(data), {{"Content-Type", mimeType}});
@@ -146,6 +148,9 @@ protected:
                 "while uploading to HTTP binary cache at '%s': %s", cacheUri, e.msg()
             );
         }
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     std::string makeURI(const std::string & path)
