@@ -40,13 +40,14 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData,
     // safe to use because that would badly interfere with the parent process.
     auto fetch = [&](AsyncIoRoot & aio, const std::string & url) {
         auto raw = aio.blockOn(fileTransfer->download(url)).second;
-        auto decompressor = makeDecompressionSource(
-            unpack && mainUrl.ends_with(".xz") ? "xz" : "none", *raw);
+        auto decompressor = makeDecompressionStream(
+            unpack && mainUrl.ends_with(".xz") ? "xz" : "none", std::move(raw)
+        );
 
         if (unpack)
-            restorePath(storePath, *decompressor);
+            aio.blockOn(restorePath(storePath, *decompressor));
         else
-            writeFile(storePath, *decompressor);
+            aio.blockOn(writeFile(storePath, *decompressor));
 
         auto executable = drv.env.find("executable");
         if (executable != drv.env.end() && executable->second == "1") {

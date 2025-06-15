@@ -1,4 +1,7 @@
 #include "lix/libstore/filetransfer.hh"
+#include "lix/libutil/async-io.hh"
+#include "lix/libutil/async.hh"
+#include "lix/libutil/error.hh"
 #include "lix/libutil/namespaces.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
@@ -12,7 +15,10 @@
 
 #include <cstddef>
 #include <cstdio>
+#include <exception>
+#include <kj/async.h>
 #include <kj/encoding.h>
+#include <kj/time.h>
 
 #if ENABLE_DTRACE
 #include "trace-probes.gen.hh"
@@ -55,6 +61,22 @@ struct curlFileTransfer : public FileTransfer
             bool done = false;
             std::exception_ptr exc;
             std::string data;
+            std::optional<kj::Own<kj::CrossThreadPromiseFulfiller<void>>> downloadEvent;
+
+            auto wait()
+            {
+                auto pfp = kj::newPromiseAndCrossThreadFulfiller<void>();
+                downloadEvent = std::move(pfp.fulfiller);
+                return std::move(pfp.promise);
+            }
+
+            void signal()
+            {
+                if (downloadEvent) {
+                    (*downloadEvent)->fulfill();
+                    downloadEvent.reset();
+                }
+            }
         };
 
         std::string uri;
@@ -62,9 +84,8 @@ struct curlFileTransfer : public FileTransfer
         Activity act;
         std::unique_ptr<FILE, decltype([](FILE * f) { fclose(f); })> uploadData;
         Sync<DownloadState> downloadState;
-        std::condition_variable downloadEvent;
         bool headersDone = false, metadataReturned = false;
-        std::promise<FileTransferResult> metadataPromise;
+        kj::Own<kj::CrossThreadPromiseFulfiller<Result<FileTransferResult>>> metadataPromise;
         std::string statusMsg;
 
         uint64_t bodySize = 0;
@@ -117,17 +138,23 @@ struct curlFileTransfer : public FileTransfer
             return uploadData ? "upload" : "download";
         }
 
-        TransferItem(const std::string & uri,
+        TransferItem(
+            const std::string & uri,
             const Headers & headers,
             ActivityId parentAct,
             std::optional<std::string_view> uploadData,
             bool noBody,
-            curl_off_t writtenToSink
+            curl_off_t writtenToSink,
+            kj::Own<kj::CrossThreadPromiseFulfiller<Result<FileTransferResult>>> metadataPromise
         )
             : uri(uri)
-            , act(*logger, lvlTalkative, actFileTransfer,
-                fmt(uploadData ? "uploading '%s'" : "downloading '%s'", uri),
-                {uri}, parentAct)
+            , act(*logger,
+                  lvlTalkative,
+                  actFileTransfer,
+                  fmt(uploadData ? "uploading '%s'" : "downloading '%s'", uri),
+                  {uri},
+                  parentAct)
+            , metadataPromise(std::move(metadataPromise))
             , req(curl_easy_init())
         {
             if (req == nullptr) {
@@ -227,10 +254,10 @@ struct curlFileTransfer : public FileTransfer
             auto state = downloadState.lock();
             assert(!state->done && !state->exc);
             if (!metadataReturned) {
-                metadataPromise.set_exception(ex);
+                metadataPromise->fulfill(ex);
             }
             state->exc = ex;
-            downloadEvent.notify_all();
+            state->signal();
         }
 
         template<class T>
@@ -255,7 +282,7 @@ struct curlFileTransfer : public FileTransfer
 
             result.cached = status == 304;
             if (successfulStatuses.contains(status)) {
-                metadataPromise.set_value(result);
+                metadataPromise->fulfill(result);
                 metadataReturned = true;
             }
 
@@ -280,7 +307,7 @@ struct curlFileTransfer : public FileTransfer
                 }
 
                 state->data.append(static_cast<const char *>(contents), realSize);
-                downloadEvent.notify_all();
+                state->signal();
                 bodySize += realSize;
                 return realSize;
             } catch (...) {
@@ -373,8 +400,9 @@ struct curlFileTransfer : public FileTransfer
             else if (code == CURLE_OK && successfulStatuses.count(httpStatus))
             {
                 act.progress(bodySize, bodySize);
-                downloadState.lock()->done = true;
-                downloadEvent.notify_all();
+                auto state = downloadState.lock();
+                state->done = true;
+                state->signal();
             }
 
             else {
@@ -702,7 +730,7 @@ struct curlFileTransfer : public FileTransfer
         co_return result::current_exception();
     }
 
-    std::optional<std::pair<FileTransferResult, box_ptr<Source>>> tryEagerTransfers(
+    std::optional<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>> tryEagerTransfers(
         const std::string & uri,
         const Headers & headers,
         const std::optional<std::string> & data,
@@ -749,14 +777,25 @@ struct curlFileTransfer : public FileTransfer
                     );
                 }
                 if (S_ISDIR(st.st_mode)) {
-                    return {{std::move(metadata), make_box_ptr<StringSource>("")}};
+                    return {{std::move(metadata), make_box_ptr<AsyncStringInputStream>("")}};
                 }
-                struct OwningFdSource : FdSource
+                struct OwningFdStream : AsyncInputStream
                 {
                     AutoCloseFD fd;
-                    OwningFdSource(AutoCloseFD fd) : FdSource(fd.get()), fd(std::move(fd)) {}
+                    OwningFdStream(AutoCloseFD fd) : fd(std::move(fd)) {}
+                    kj::Promise<Result<size_t>> read(void * buffer, size_t size) override
+                    {
+                        // NOTE the synchronous implementation used to have a buffer for
+                        // file data, but we cannot be bothered to treat this edge case.
+                        if (const auto got = ::read(fd.get(), buffer, size); got >= 0) {
+                            return {result::success(got)};
+                        } else {
+                            return {result::failure(std::make_exception_ptr(SysError("reading file")
+                            ))};
+                        }
+                    }
                 };
-                return {{std::move(metadata), make_box_ptr<OwningFdSource>(std::move(fd))}};
+                return {{std::move(metadata), make_box_ptr<OwningFdStream>(std::move(fd))}};
             }
         }
 
@@ -778,7 +817,15 @@ struct curlFileTransfer : public FileTransfer
             FileTransferResult res;
             if (!s3Res.data)
                 throw FileTransferError(NotFound, "S3 object '%s' does not exist", uri);
-            return {{res, make_box_ptr<StringSource>(std::move(*s3Res.data))}};
+            struct OwningStringStream : private std::string, AsyncStringInputStream
+            {
+                OwningStringStream(std::string data)
+                    : std::string(std::move(data))
+                    , AsyncStringInputStream(*this)
+                {
+                }
+            };
+            return {{ res, make_box_ptr<OwningStringStream>(std::move(*s3Res.data)) }};
 #else
             throw nix::Error(
                 "cannot download '%s' because Lix is not built with S3 support", uri
@@ -789,7 +836,8 @@ struct curlFileTransfer : public FileTransfer
         return std::nullopt;
     }
 
-    kj::Promise<Result<std::pair<FileTransferResult, box_ptr<Source>>>> enqueueFileTransfer(
+    kj::Promise<Result<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>>>
+    enqueueFileTransfer(
         const std::string & uri,
         const Headers & headers,
         std::optional<std::string> data,
@@ -800,15 +848,15 @@ struct curlFileTransfer : public FileTransfer
             co_return std::move(*eager);
         }
 
-        auto source = make_box_ptr<TransferSource>(*this, uri, headers, std::move(data), noBody);
-        source->init();
-        source->awaitData();
+        auto source = make_box_ptr<TransferStream>(*this, uri, headers, std::move(data), noBody);
+        TRY_AWAIT(source->init());
+        TRY_AWAIT(source->awaitData());
         co_return {source->metadata, std::move(source)};
     } catch (...) {
         co_return result::current_exception();
     }
 
-    struct TransferSource : Source
+    struct TransferStream : AsyncInputStream
     {
         curlFileTransfer & parent;
         std::string uri;
@@ -826,7 +874,7 @@ struct curlFileTransfer : public FileTransfer
         const size_t tries = fileTransferSettings.tries;
         curl_off_t totalReceived = 0;
 
-        TransferSource(
+        TransferStream(
             curlFileTransfer & parent,
             const std::string & uri,
             const Headers & headers,
@@ -841,7 +889,7 @@ struct curlFileTransfer : public FileTransfer
         {
         }
 
-        ~TransferSource()
+        ~TransferStream()
         {
             // wake up the download thread if it's still going and have it abort
             try {
@@ -853,22 +901,25 @@ struct curlFileTransfer : public FileTransfer
             }
         }
 
-        void init()
-        {
+        kj::Promise<Result<void>> init()
+        try {
             auto setup = [&] { return startTransfer(uri); };
-            metadata = withRetries(setup, setup);
+            metadata = TRY_AWAIT(withRetries(setup, setup));
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
         }
 
         auto withRetries(auto && initial, auto && retry) -> decltype(initial())
-        {
+        try {
             std::optional<std::string> retryContext;
             while (true) {
                 try {
                     if (retryContext) {
-                        prepareRetry(*retryContext);
-                        return retry();
+                        TRY_AWAIT(prepareRetry(*retryContext));
+                        co_return TRY_AWAIT(retry());
                     } else {
-                        return initial();
+                        co_return TRY_AWAIT(initial());
                     }
                 } catch (FileTransferError & e) {
                     // If this is a transient error, then maybe retry after a while. after any
@@ -882,16 +933,23 @@ struct curlFileTransfer : public FileTransfer
                     retryContext = e.what();
                 }
             }
+        } catch (...) {
+            co_return result::current_exception();
         }
 
-        FileTransferResult startTransfer(const std::string & uri, curl_off_t offset = 0)
-        {
+        kj::Promise<Result<FileTransferResult>>
+        startTransfer(const std::string & uri, curl_off_t offset = 0)
+        try {
             attempt += 1;
             auto uploadData = data ? std::optional(std::string_view(*data)) : std::nullopt;
-            transfer =
-                std::make_shared<TransferItem>(uri, headers, parentAct, uploadData, noBody, offset);
+            auto pfp = kj::newPromiseAndCrossThreadFulfiller<Result<FileTransferResult>>();
+            transfer = std::make_shared<TransferItem>(
+                uri, headers, parentAct, uploadData, noBody, offset, std::move(pfp.fulfiller)
+            );
             parent.enqueueItem(transfer);
-            return transfer->metadataPromise.get_future().get();
+            co_return TRY_AWAIT(pfp.promise);
+        } catch (...) {
+            co_return result::current_exception();
         }
 
         void throwChangedTarget(std::string_view what, std::string_view from, std::string_view to)
@@ -903,8 +961,8 @@ struct curlFileTransfer : public FileTransfer
             }
         }
 
-        void prepareRetry(const std::string & context)
-        {
+        kj::Promise<Result<void>> prepareRetry(const std::string & context)
+        try {
             thread_local std::minstd_rand random{std::random_device{}()};
             std::uniform_real_distribution<> dist(0.0, 0.5);
             int ms = parent.baseRetryTimeMs * std::pow(2.0f, attempt - 1 + dist(random));
@@ -914,16 +972,19 @@ struct curlFileTransfer : public FileTransfer
                 warn("%s; retrying in %d ms (attempt %d/%d)", context, ms, attempt, tries);
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+            co_await AIO().provider.getTimer().afterDelay(ms * kj::MILLISECONDS);
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
         }
 
-        void restartTransfer()
-        {
+        kj::Promise<Result<void>> restartTransfer()
+        try {
             // use the effective URI of the previous transfer for retries. this avoids
             // some silent corruption if a redirect changes between starting and retry
             const auto & uri = metadata.effectiveUri.empty() ? this->uri : metadata.effectiveUri;
 
-            auto newMeta = startTransfer(uri, totalReceived);
+            auto newMeta = TRY_AWAIT(startTransfer(uri, totalReceived));
             throwChangedTarget("final destination", metadata.effectiveUri, newMeta.effectiveUri);
             throwChangedTarget("ETag", metadata.etag, newMeta.etag);
             throwChangedTarget(
@@ -931,13 +992,23 @@ struct curlFileTransfer : public FileTransfer
                 metadata.immutableUrl.value_or(""),
                 newMeta.immutableUrl.value_or("")
             );
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
         }
 
-        bool waitForData()
-        {
+        kj::Promise<Result<bool>> waitForData()
+        try {
             /* Grab data if available, otherwise wait for the download
                thread to wake us up. */
+            std::optional<kj::Promise<void>> signal;
+
             while (buffered.empty()) {
+                if (signal) {
+                    co_await *signal;
+                    signal.reset();
+                }
+
                 auto state(transfer->downloadState.lock());
 
                 if (!state->data.empty()) {
@@ -948,46 +1019,51 @@ struct curlFileTransfer : public FileTransfer
                 } else if (state->exc) {
                     std::rethrow_exception(state->exc);
                 } else if (state->done) {
-                    return false;
+                    co_return false;
                 } else {
                     parent.unpause(transfer);
-                    state.wait(transfer->downloadEvent);
+                    signal = state->wait();
                 }
             }
 
-            return true;
+            co_return true;
+        } catch (...) {
+            co_return result::current_exception();
         }
 
-        bool restartAndWaitForData()
-        {
-            restartTransfer();
-            return waitForData();
+        kj::Promise<Result<bool>> restartAndWaitForData()
+        try {
+            TRY_AWAIT(restartTransfer());
+            co_return TRY_AWAIT(waitForData());
+        } catch (...) {
+            co_return result::current_exception();
         }
 
-        bool awaitData()
-        {
-            return withRetries(
-                [&] { return waitForData(); }, [&] { return restartAndWaitForData(); }
+        kj::Promise<Result<bool>> awaitData()
+        try {
+            co_return TRY_AWAIT(
+                withRetries([&] { return waitForData(); }, [&] { return restartAndWaitForData(); })
             );
+        } catch (...) {
+            co_return result::current_exception();
         }
 
-        size_t read(char * data, size_t len) override
-        {
+        kj::Promise<Result<size_t>> read(void * buffer, size_t len) override
+        try {
             TRACE(LIX_STORE_FILETRANSFER_READ(uri.c_str(), len));
 
             size_t total = 0;
-            while (total < len && awaitData()) {
+            auto data = static_cast<char *>(buffer);
+            while (total < len && TRY_AWAIT(awaitData())) {
                 const auto available = std::min(len - total, buffered.size());
                 memcpy(data + total, buffered.data(), available);
                 buffered.remove_prefix(available);
                 total += available;
             }
 
-            if (total == 0) {
-                throw EndOfFile("transfer finished");
-            }
-
-            return total;
+            co_return total;
+        } catch (...) {
+            co_return result::current_exception();
         }
     };
 
@@ -1007,7 +1083,7 @@ struct curlFileTransfer : public FileTransfer
         co_return result::current_exception();
     }
 
-    kj::Promise<Result<std::pair<FileTransferResult, box_ptr<Source>>>>
+    kj::Promise<Result<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>>>
     download(const std::string & uri, const Headers & headers) override
     {
         return enqueueFileTransfer(uri, headers, std::nullopt, false);

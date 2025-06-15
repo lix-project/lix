@@ -100,7 +100,7 @@ std::tuple<StorePath, Hash> prefetchFile(
 
             FdSink sink(fd.get());
 
-            aio.blockOn(getFileTransfer()->download(url)).second->drainInto(sink);
+            aio.blockOn(aio.blockOn(getFileTransfer()->download(url)).second->drainInto(sink));
         }
 
         /* Optionally unpack the file. */

@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/ref.hh"
 #include "lix/libutil/logging.hh"
@@ -65,7 +66,7 @@ struct FileTransfer
      * thrown by the returned source. The source will only throw errors detected
      * during the transfer itself (decompression errors, connection drops, etc).
      */
-    virtual kj::Promise<Result<std::pair<FileTransferResult, box_ptr<Source>>>>
+    virtual kj::Promise<Result<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>>>
     download(const std::string & uri, const Headers & headers = {}) = 0;
 
     enum Error { NotFound, Forbidden, Misc, Transient, Interrupted };

@@ -87,7 +87,7 @@ try {
     try {
         auto [meta, content] = TRY_AWAIT(getFileTransfer()->download(url, headers));
         res = std::move(meta);
-        data = content->drain();
+        data = TRY_AWAIT(content->drain());
     } catch (FileTransferError & e) {
         if (cached) {
             warn("%s; using cached version", e.msg());

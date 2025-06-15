@@ -288,7 +288,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
 
         // FIXME: use nixos.org?
         auto [res, content] = aio().blockOn(getFileTransfer()->download(storePathsUrl));
-        auto data = content->drain();
+        auto data = aio().blockOn(content->drain());
 
         auto evaluator = std::make_unique<Evaluator>(aio(), SearchPath{}, store);
         auto state = evaluator->begin(aio());

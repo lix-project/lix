@@ -167,19 +167,7 @@ protected:
     try {
         checkEnabled();
         try {
-            struct HttpFile : AsyncSourceInputStream
-            {
-                box_ptr<Source> source;
-
-                HttpFile(box_ptr<Source> source)
-                    : AsyncSourceInputStream(*source)
-                    , source(std::move(source))
-                {
-                }
-            };
-            co_return make_box_ptr<HttpFile>(
-                TRY_AWAIT(getFileTransfer()->download(makeURI(path))).second
-            );
+            co_return TRY_AWAIT(getFileTransfer()->download(makeURI(path))).second;
         } catch (FileTransferError & e) {
             if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
                 throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache '%s'", path, getUri());

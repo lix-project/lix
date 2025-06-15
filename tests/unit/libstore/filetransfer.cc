@@ -1,4 +1,5 @@
 #include "lix/libstore/filetransfer.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libutil/error.hh"
@@ -214,7 +215,9 @@ TEST(FileTransfer, exceptionAbortsDownload)
 
     auto [port, srv] = serveHTTP({{"200 ok", "", [](int) { return "foo"; }}});
     ASSERT_THROW(
-        aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->drainInto(broken),
+        aio.blockOn(
+            aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->drainInto(broken)
+        ),
         Done
     );
 
@@ -236,9 +239,11 @@ TEST(FileTransfer, exceptionAbortsRead)
     AsyncIoRoot aio;
     auto ft = makeFileTransfer();
     char buf[10] = "";
-    ASSERT_THROW(
-        aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->read(buf, 10),
-        EndOfFile
+    ASSERT_EQ(
+        aio.blockOn(
+            aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->read(buf, 10)
+        ),
+        0
     );
 }
 
@@ -263,7 +268,7 @@ TEST(FileTransfer, NOT_ON_DARWIN(defersFailures))
     AsyncIoRoot aio;
     auto ft = makeFileTransfer(0);
     auto src = aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second;
-    ASSERT_THROW(src->drain(), FileTransferError);
+    ASSERT_THROW(aio.blockOn(src->drain()), FileTransferError);
 }
 
 TEST(FileTransfer, NOT_ON_DARWIN(handlesContentEncoding))
@@ -276,7 +281,9 @@ TEST(FileTransfer, NOT_ON_DARWIN(handlesContentEncoding))
     auto ft = makeFileTransfer();
 
     StringSink sink;
-    aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->drainInto(sink);
+    aio.blockOn(
+        aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->drainInto(sink)
+    );
     EXPECT_EQ(sink.s, original);
 }
 
@@ -317,23 +324,29 @@ TEST(FileTransfer, stalledReaderDoesntBlockOthers)
     auto ft = makeFileTransfer(0);
     auto [_result1, data1] = aio.blockOn(ft->download(fmt("http://[::1]:%d", port)));
     auto [_result2, data2] = aio.blockOn(ft->download(fmt("http://[::1]:%d", port)));
-    auto drop = [](Source & source, size_t size) {
+    auto drop = [&](AsyncInputStream & source, size_t size) {
         char buf[1000];
+        size_t dropped = 0;
         while (size > 0) {
             auto round = std::min(size, sizeof(buf));
-            source(buf, round);
+            round = aio.blockOn(source.read(buf, round));
+            if (round == 0) {
+                break;
+            }
             size -= round;
+            dropped += round;
         }
+        return dropped;
     };
     // read 10M of each of the 100M, then the rest. neither reader should
     // block the other, nor should it take that long to copy 200MB total.
-    drop(*data1, 10'000'000);
-    drop(*data2, 10'000'000);
-    drop(*data1, 90'000'000);
-    drop(*data2, 90'000'000);
+    ASSERT_EQ(drop(*data1, 10'000'000), 10'000'000);
+    ASSERT_EQ(drop(*data2, 10'000'000), 10'000'000);
+    ASSERT_EQ(drop(*data1, 90'000'000), 90'000'000);
+    ASSERT_EQ(drop(*data2, 90'000'000), 90'000'000);
 
-    ASSERT_THROW(drop(*data1, 1), EndOfFile);
-    ASSERT_THROW(drop(*data2, 1), EndOfFile);
+    ASSERT_EQ(drop(*data1, 1), 0);
+    ASSERT_EQ(drop(*data2, 1), 0);
 }
 
 TEST(FileTransfer, retries)
@@ -356,7 +369,7 @@ TEST(FileTransfer, retries)
     AsyncIoRoot aio;
     auto ft = makeFileTransfer(0);
     auto [result, data] = aio.blockOn(ft->download(fmt("http://[::1]:%d", port)));
-    ASSERT_EQ(data->drain(), "ab");
+    ASSERT_EQ(aio.blockOn(data->drain()), "ab");
 }
 
 TEST(FileTransfer, doesntRetrySetupForever)
@@ -390,7 +403,8 @@ TEST(FileTransfer, doesntRetryTransferForever)
     AsyncIoRoot aio;
     auto ft = makeFileTransfer(0);
     ASSERT_THROW(
-        aio.blockOn(ft->download(fmt("http://[::1]:%d", port))).second->drain(), FileTransferError
+        aio.blockOn(aio.blockOn(ft->download(fmt("http://[::1]:%d", port))).second->drain()),
+        FileTransferError
     );
 }
 
@@ -445,7 +459,7 @@ TEST(FileTransfer, DISABLED_interrupt)
     });
 
     ASSERT_THROW(
-        aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->drain(),
+        aio.blockOn(aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->drain()),
         FileTransferError
     );
 }
