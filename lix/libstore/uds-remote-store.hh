@@ -4,6 +4,7 @@
 #include "lix/libstore/remote-store.hh"
 #include "lix/libstore/remote-store-connection.hh"
 #include "lix/libstore/indirect-root-store.hh"
+#include "lix/libutil/async-io.hh"
 
 namespace nix {
 
@@ -42,7 +43,7 @@ public:
     ref<FSAccessor> getFSAccessor() override
     { return LocalFSStore::getFSAccessor(); }
 
-    kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override
+    kj::Promise<Result<box_ptr<AsyncInputStream>>> narFromPath(const StorePath & path) override
     { return LocalFSStore::narFromPath(path); }
 
     /**

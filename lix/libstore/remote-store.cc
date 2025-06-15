@@ -719,11 +719,11 @@ RemoteStore::Connection::~Connection()
     }
 }
 
-kj::Promise<Result<box_ptr<Source>>> RemoteStore::narFromPath(const StorePath & path)
+kj::Promise<Result<box_ptr<AsyncInputStream>>> RemoteStore::narFromPath(const StorePath & path)
 try {
     auto conn(TRY_AWAIT(getConnection()));
     TRY_AWAIT(conn.sendCommand(WorkerProto::Op::NarFromPath, printStorePath(path)));
-    co_return make_box_ptr<GeneratorSource>([](auto conn) -> WireFormatGenerator {
+    co_return make_box_ptr<AsyncGeneratorInputStream>([](auto conn) -> WireFormatGenerator {
         co_yield copyNAR(conn->from);
     }(std::move(conn)));
 } catch (...) {

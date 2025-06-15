@@ -800,7 +800,7 @@ static void opVerifyPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         printMsg(lvlTalkative, "checking path '%s'...", store->printStorePath(path));
         auto info = aio.blockOn(store->queryPathInfo(path));
         HashSink sink(info->narHash.type);
-        aio.blockOn(store->narFromPath(path))->drainInto(sink);
+        aio.blockOn(aio.blockOn(store->narFromPath(path))->drainInto(sink));
         auto current = sink.finish();
         if (current.first != info->narHash) {
             printError("path '%s' was modified! expected hash '%s', got '%s'",
@@ -939,8 +939,8 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
             }
 
             case ServeProto::Command::DumpStorePath:
-                aio.blockOn(store->narFromPath(store->parseStorePath(readString(in))))
-                    ->drainInto(out);
+                aio.blockOn(aio.blockOn(store->narFromPath(store->parseStorePath(readString(in))))
+                                ->drainInto(out));
                 break;
 
             case ServeProto::Command::ImportPaths: {

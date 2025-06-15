@@ -1071,11 +1071,7 @@ try {
         info = info2;
     }
 
-    CopyPathStream source{
-        act,
-        info->narSize,
-        make_box_ptr<AsyncSourceInputStream>(TRY_AWAIT(srcStore.narFromPath(storePath)))
-    };
+    CopyPathStream source{act, info->narSize, TRY_AWAIT(srcStore.narFromPath(storePath))};
     TRY_AWAIT(dstStore.addToStore(*info, source, repair, checkSigs));
     co_return result::success();
 } catch (...) {
@@ -1187,7 +1183,7 @@ try {
                     makeCopyPathMessage(srcUri, dstUri, storePathS),
                     Logger::Fields{storePathS, srcUri, dstUri},
                     info->narSize,
-                    make_box_ptr<AsyncSourceInputStream>(TRY_AWAIT(srcStore.narFromPath(missingPath)))
+                    TRY_AWAIT(srcStore.narFromPath(missingPath))
                 );
             } catch (...) {
                 co_return result::current_exception();

@@ -101,7 +101,7 @@ try {
     }
 
     StringSink sink;
-    TRY_AWAIT(store->narFromPath(storePath))->drainInto(sink);
+    TRY_AWAIT(TRY_AWAIT(store->narFromPath(storePath))->drainInto(sink));
     co_return {TRY_AWAIT(addToCache(storePath.hashPart(), std::move(sink.s))), restPath};
 } catch (...) {
     co_return result::current_exception();

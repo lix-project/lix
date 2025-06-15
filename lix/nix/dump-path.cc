@@ -23,7 +23,7 @@ struct CmdDumpPath : StorePathCommand
     {
         logger->pause();
         FdSink sink(STDOUT_FILENO);
-        aio().blockOn(store->narFromPath(storePath))->drainInto(sink);
+        aio().blockOn(aio().blockOn(store->narFromPath(storePath))->drainInto(sink));
         sink.flush();
     }
 };

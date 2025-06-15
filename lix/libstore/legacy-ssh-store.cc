@@ -1,5 +1,6 @@
 #include "lix/libstore/legacy-ssh-store.hh"
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/pool.hh"
 #include "lix/libstore/remote-store.hh"
 #include "lix/libstore/serve-protocol.hh"
@@ -255,13 +256,13 @@ struct LegacySSHStore final : public Store
         co_return result::current_exception();
     }
 
-    kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override
+    kj::Promise<Result<box_ptr<AsyncInputStream>>> narFromPath(const StorePath & path) override
     try {
         auto conn(TRY_AWAIT(connections->get()));
 
         conn->to << ServeProto::Command::DumpStorePath << printStorePath(path);
         conn->to.flush();
-        co_return make_box_ptr<GeneratorSource>([] (auto conn) -> WireFormatGenerator {
+        co_return make_box_ptr<AsyncGeneratorInputStream>([](auto conn) -> WireFormatGenerator {
             co_yield copyNAR(conn->from);
         }(std::move(conn)));
     } catch (...) {

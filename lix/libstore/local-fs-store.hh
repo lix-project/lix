@@ -4,6 +4,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/gc-store.hh"
 #include "lix/libstore/log-store.hh"
+#include "lix/libutil/async-io.hh"
 
 namespace nix {
 
@@ -42,7 +43,7 @@ public:
     LocalFSStoreConfig & config() override = 0;
     const LocalFSStoreConfig & config() const override = 0;
 
-    kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override;
+    kj::Promise<Result<box_ptr<AsyncInputStream>>> narFromPath(const StorePath & path) override;
     ref<FSAccessor> getFSAccessor() override;
 
     /**

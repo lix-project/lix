@@ -1,5 +1,6 @@
 #include "lix/libstore/dummy-store.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async-io.hh"
 
 namespace nix {
 
@@ -71,7 +72,7 @@ struct DummyStore final : public Store
         RepairFlag repair) override
     try { unsupported("addTextToStore"); } catch (...) { return {result::current_exception()}; }
 
-    kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override
+    kj::Promise<Result<box_ptr<AsyncInputStream>>> narFromPath(const StorePath & path) override
     try { unsupported("narFromPath"); } catch (...) { return {result::current_exception()}; }
 
     virtual ref<FSAccessor> getFSAccessor() override

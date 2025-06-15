@@ -102,7 +102,7 @@ struct CmdVerify : StorePathsCommand
 
                     auto hashSink = HashSink(info->narHash.type);
 
-                    aio.blockOn(store->narFromPath(info->path))->drainInto(hashSink);
+                    aio.blockOn(aio.blockOn(store->narFromPath(info->path))->drainInto(hashSink));
 
                     auto hash = hashSink.finish();
 

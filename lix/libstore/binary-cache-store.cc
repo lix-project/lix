@@ -1,6 +1,8 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/binary-cache-store.hh"
 #include "lix/libutil/async-io.hh"
+#include "lix/libutil/async.hh"
+#include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/fs-accessor.hh"
@@ -362,34 +364,49 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<box_ptr<Source>>> BinaryCacheStore::narFromPath(const StorePath & storePath)
+kj::Promise<Result<box_ptr<AsyncInputStream>>>
+BinaryCacheStore::narFromPath(const StorePath & storePath)
 try {
+    struct NarFromPath : AsyncInputStream
+    {
+        Stats<std::atomic> & stats;
+        box_ptr<Source> file;
+        box_ptr<AsyncInputStream> decompressed;
+        uint64_t total;
+
+        NarFromPath(Stats<std::atomic> & stats, const std::string & method, box_ptr<Source> file)
+            : stats(stats)
+            , file(std::move(file))
+            , decompressed(
+                  makeDecompressionStream(method, make_box_ptr<AsyncSourceInputStream>(*this->file))
+              )
+        {
+        }
+
+        kj::Promise<Result<size_t>> read(void * buffer, size_t size) override
+        {
+            return decompressed->read(buffer, size).then([&](auto r) {
+                if (r.has_value()) {
+                    if (r.value() > 0) {
+                        total += r.value();
+                    } else {
+                        stats.narRead++;
+                        // stats.narReadCompressedBytes += nar->size(); // FIXME
+                        stats.narReadBytes += total;
+                    }
+                }
+                return r;
+            });
+        }
+    };
+
     auto info_ = TRY_AWAIT(queryPathInfo(storePath)).try_cast<const NarInfo>();
     assert(info_ && "binary cache queryPathInfo didn't return a NarInfo");
     auto & info = *info_;
 
     try {
         auto file = getFile(info->url);
-        co_return make_box_ptr<GeneratorSource>(
-            [](auto info, auto file, auto & stats) -> WireFormatGenerator {
-                constexpr size_t buflen = 65536;
-                auto buf = std::make_unique<char[]>(buflen);
-                size_t total = 0;
-                auto decompressor = makeDecompressionSource(info->compression, *file);
-                try {
-                    while (true) {
-                        const auto len = decompressor->read(buf.get(), buflen);
-                        co_yield std::span{buf.get(), len};
-                        total += len;
-                    }
-                } catch (EndOfFile &) {
-                }
-
-                stats.narRead++;
-                // stats.narReadCompressedBytes += nar->size(); // FIXME
-                stats.narReadBytes += total;
-            }(std::move(info), std::move(file), stats)
-        );
+        co_return make_box_ptr<NarFromPath>(stats, info->compression, std::move(file));
     } catch (NoSuchBinaryCacheFile & e) {
         throw SubstituteGone(std::move(e.info()));
     }

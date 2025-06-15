@@ -146,7 +146,7 @@ public:
         const StorePathSet & references,
         RepairFlag repair) override;
 
-    kj::Promise<Result<box_ptr<Source>>> narFromPath(const StorePath & path) override;
+    kj::Promise<Result<box_ptr<AsyncInputStream>>> narFromPath(const StorePath & path) override;
 
     ref<FSAccessor> getFSAccessor() override;
 
