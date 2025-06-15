@@ -1,0 +1,7 @@
+[[test]]
+runner = "eval-okay"
+extra-files = [ "data", "binary-data" ]
+
+[[test]]
+runner = "eval-fail"
+in = "in-missing.nix"
