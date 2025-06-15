@@ -57,7 +57,7 @@ public:
 
 protected:
 
-    bool fileExists(const std::string & path) override;
+    kj::Promise<Result<bool>> fileExists(const std::string & path) override;
 
     void upsertFile(const std::string & path,
         std::shared_ptr<std::basic_iostream<char>> istream,
@@ -125,9 +125,11 @@ try {
     co_return result::current_exception();
 }
 
-bool LocalBinaryCacheStore::fileExists(const std::string & path)
-{
-    return pathExists(binaryCacheDir + "/" + path);
+kj::Promise<Result<bool>> LocalBinaryCacheStore::fileExists(const std::string & path)
+try {
+    return {pathExists(binaryCacheDir + "/" + path)};
+} catch (...) {
+    return {result::current_exception()};
 }
 
 std::set<std::string> LocalBinaryCacheStore::uriSchemes()

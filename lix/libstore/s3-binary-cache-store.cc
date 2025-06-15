@@ -324,8 +324,8 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         co_return result::current_exception();
     }
 
-    bool fileExists(const std::string & path) override
-    {
+    kj::Promise<Result<bool>> fileExists(const std::string & path) override
+    try {
         stats.head++;
 
         auto res = s3Helper.client->HeadObject(
@@ -339,11 +339,13 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
                 || error.GetErrorType() == Aws::S3::S3Errors::NO_SUCH_KEY
                 // If bucket listing is disabled, 404s turn into 403s
                 || error.GetErrorType() == Aws::S3::S3Errors::ACCESS_DENIED)
-                return false;
+                return {false};
             throw Error("AWS error fetching '%s': %s", path, error.GetMessage());
         }
 
-        return true;
+        return {true};
+    } catch (...) {
+        return {result::current_exception()};
     }
 
     std::shared_ptr<TransferManager> transferManager;

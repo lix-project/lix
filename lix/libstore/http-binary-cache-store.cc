@@ -120,16 +120,18 @@ protected:
         throw SubstituterDisabled("substituter '%s' is disabled", getUri());
     }
 
-    bool fileExists(const std::string & path) override
-    {
+    kj::Promise<Result<bool>> fileExists(const std::string & path) override
+    try {
         checkEnabled();
 
         try {
-            return getFileTransfer()->exists(makeURI(path));
+            co_return getFileTransfer()->exists(makeURI(path));
         } catch (FileTransferError & e) {
             maybeDisable();
             throw;
         }
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     void upsertFile(const std::string & path,

@@ -19,6 +19,7 @@
 #include "lix/libutil/strings.hh"
 
 #include <chrono>
+#include <functional>
 #include <regex>
 #include <fstream>
 #include <sstream>
@@ -214,7 +215,10 @@ try {
 
             ThreadPool threadPool("write debuginfo pool", 25);
 
-            auto doFile = [&](std::string member, std::string key, std::string target) {
+            auto doFile = [&](AsyncIoRoot & aio,
+                              std::string member,
+                              std::string key,
+                              std::string target) {
                 checkInterrupt();
 
                 JSON json;
@@ -223,7 +227,9 @@ try {
 
                 // FIXME: or should we overwrite? The previous link may point
                 // to a GC'ed file, so overwriting might be useful...
-                if (fileExists(key)) return;
+                if (aio.blockOn(fileExists(key))) {
+                    return;
+                }
 
                 printMsg(lvlTalkative, "creating debuginfo link from '%s' to '%s'", key, target);
 
@@ -251,7 +257,9 @@ try {
                     std::string key = "debuginfo/" + buildId;
                     std::string target = "../" + narInfo->url;
 
-                    threadPool.enqueue(std::bind(doFile, std::string(debugPath, 1), key, target));
+                    threadPool.enqueueWithAio(std::bind(
+                        doFile, std::placeholders::_1, std::string(debugPath, 1), key, target
+                    ));
                 }
             }
 
@@ -260,13 +268,14 @@ try {
     }
 
     /* Atomically write the NAR file. */
-    if (repair || !fileExists(narInfo->url)) {
+    if (repair || !TRY_AWAIT(fileExists(narInfo->url))) {
         stats.narWrite++;
         upsertFile(narInfo->url,
             std::make_shared<std::fstream>(fnTemp, std::ios_base::in | std::ios_base::binary),
             "application/x-nix-nar");
-    } else
+    } else {
         stats.narWriteAverted++;
+    }
 
     stats.narWriteBytes += info.narSize;
     stats.narWriteCompressedBytes += fileSize;
@@ -347,7 +356,7 @@ try {
     // FIXME: this only checks whether a .narinfo with a matching hash
     // part exists. So ‘f4kb...-foo’ matches ‘f4kb...-bar’, even
     // though they shouldn't. Not easily fixed.
-    co_return fileExists(narInfoFileFor(storePath));
+    co_return TRY_AWAIT(fileExists(narInfoFileFor(storePath)));
 } catch (...) {
     co_return result::current_exception();
 }
