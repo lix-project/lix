@@ -1,4 +1,7 @@
 #include "lix/libutil/compression.hh"
+#include "lix/libutil/async-io.hh"
+#include "lix/libutil/async.hh"
+#include "lix/libutil/box_ptr.hh"
 #include <cstddef>
 #include <gtest/gtest.h>
 
@@ -124,6 +127,24 @@ TEST_P(PerTypeCompressionTest, sinkAndSource)
     auto decompressionSource = makeDecompressionSource(method, strSource);
 
     ASSERT_STREQ(decompressionSource->drain().c_str(), inputString);
+}
+
+TEST_P(PerTypeCompressionTest, sinkAndAsyncStream)
+{
+    AsyncIoRoot aio;
+
+    auto method = GetParam();
+    auto inputString = "slfja;sljfklsa;jfklsjfkl;sdjfkl;sadjfkl;sdjf;lsdfjsadlf";
+
+    StringSink strSink;
+    auto sink = makeCompressionSink(method, strSink);
+    (*sink)(inputString);
+    sink->finish();
+
+    auto decompressionStream =
+        makeDecompressionStream(method, make_box_ptr<AsyncStringInputStream>(strSink.s));
+
+    ASSERT_STREQ(aio.blockOn(decompressionStream->drain()).c_str(), inputString);
 }
 
 /* ---------------------------------------

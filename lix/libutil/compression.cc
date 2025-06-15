@@ -1,17 +1,34 @@
+#include "async-io.hh"
+#include "async.hh"
+#include "box_ptr.hh"
+#include "error.hh"
+#include "file-descriptor.hh"
+#include "io-buffer.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libutil/tarfile.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/logging.hh"
+#include "result.hh"
+#include "serialise.hh"
 
 #include <archive.h>
 #include <archive_entry.h>
+#include <cerrno>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 
 #include <brotli/decode.h>
 #include <brotli/encode.h>
-
+#include <exception>
+#include <fcntl.h>
+#include <future>
+#include <kj/async-io.h>
+#include <kj/async-unix.h>
+#include <kj/async.h>
+#include <kj/exception.h>
+#include <memory>
 
 namespace nix {
 
@@ -230,6 +247,163 @@ std::unique_ptr<Source> makeDecompressionSource(const std::string & method, Sour
     } else {
         return std::make_unique<ArchiveDecompressionSource>(inner);
     }
+}
+
+namespace {
+struct DecompressorPipes
+{
+    Pipe compressed, uncompressed;
+    std::optional<kj::UnixEventPort::FdObserver> writeObserver;
+    std::optional<kj::UnixEventPort::FdObserver> readObserver;
+
+    DecompressorPipes()
+    {
+        compressed.create();
+        uncompressed.create();
+
+        writeObserver.emplace(
+            AIO().unixEventPort,
+            compressed.writeSide.get(),
+            kj::UnixEventPort::FdObserver::OBSERVE_WRITE
+        );
+        readObserver.emplace(
+            AIO().unixEventPort,
+            uncompressed.readSide.get(),
+            kj::UnixEventPort::FdObserver::OBSERVE_READ
+        );
+    }
+};
+
+// since we do not have any good async decompression libraries, especially none that behave
+// like libarchive, we must make async decompression an adaptor for sync decompression. the
+// least painful way to do this is two pipe pairs and a thread that handles the synchronous
+// bit. care must be taken to clear kj fd observer before closing the corresponding fds; if
+// we close the fds first kj will throw an EBADFD exception. we use a feeder promise in the
+// background to copy data from the inner stream to the decompressor, this promise too must
+// be cancelled before we close any of our file descriptors. decompression errors are moved
+// from the thread to the main user via a `std::async` future and (its result) during read.
+//
+// this is easier to write than userspace-only pipes and involves marginally more syscalls,
+// but those few are unavoidable *anyway* (or we might starve other promises in the system)
+struct DecompressionStream : DecompressorPipes, AsyncInputStream
+{
+    box_ptr<AsyncInputStream> inner;
+    std::unique_ptr<FdSource> source;
+    std::unique_ptr<FdSink> sink;
+    std::unique_ptr<Source> decompressor;
+    std::future<void> thread;
+    std::exception_ptr feedExc;
+    kj::Promise<void> feeder = nullptr;
+
+    DecompressionStream(const std::string & method, box_ptr<AsyncInputStream> inner)
+        : inner(std::move(inner))
+    {
+        if (auto flags = fcntl(compressed.writeSide.get(), F_GETFL);
+            flags == -1 || fcntl(compressed.writeSide.get(), F_SETFL, flags | O_NONBLOCK))
+        {
+            throw SysError("setting up decompression stream");
+        }
+        if (auto flags = fcntl(uncompressed.readSide.get(), F_GETFL);
+            flags == -1 || fcntl(uncompressed.readSide.get(), F_SETFL, flags | O_NONBLOCK))
+        {
+            throw SysError("setting up decompression stream");
+        }
+
+        source = std::make_unique<FdSource>(compressed.readSide.get());
+        sink = std::make_unique<FdSink>(uncompressed.writeSide.get());
+        decompressor = makeDecompressionSource(method, *source);
+
+        thread = std::async(std::launch::async, [&] {
+            // signal the feeder and reader when we're done
+            KJ_DEFER({
+                uncompressed.writeSide.close();
+                compressed.readSide.close();
+            });
+            decompressor->drainInto(*sink);
+            sink->flush();
+        });
+        feeder = feed().eagerlyEvaluate([&](auto e) {
+            feedExc = std::make_exception_ptr(std::move(e));
+            compressed.writeSide.close();
+        });
+    }
+
+    ~DecompressionStream()
+    {
+        feeder = nullptr;
+        readObserver.reset();
+        writeObserver.reset();
+        // have the decompressor thread exit
+        compressed.writeSide.close();
+        uncompressed.readSide.close();
+        // don't poll the decompressor future, we don't want the error.
+        // we just want it to be gone so ~future doesn't block forever.
+    }
+
+    kj::Promise<void> feed()
+    try {
+        KJ_DEFER({
+            // signal the decompressor thread that we're done
+            writeObserver.reset();
+            compressed.writeSide.close();
+        });
+        // buffer size chosen by lifting the maximum from kj decompression wrappers
+        IoBuffer buf{8192};
+        while (true) {
+            if (buf.used() == 0) {
+                const auto space = buf.getWriteBuffer();
+                const auto got = TRY_AWAIT(inner->read(space.data(), space.size()));
+                if (got > 0) {
+                    buf.added(got);
+                } else {
+                    co_return;
+                }
+            }
+
+            while (buf.used() > 0) {
+                const auto available = buf.getReadBuffer();
+                const auto wrote =
+                    ::write(compressed.writeSide.get(), available.data(), available.size());
+                if (wrote >= 0) {
+                    buf.consumed(wrote);
+                } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    co_await writeObserver->whenBecomesWritable();
+                } else if (errno == EPIPE) {
+                    co_return;
+                } else {
+                    throw SysError("feeding decompression stream");
+                }
+            }
+        }
+    } catch (...) {
+        feedExc = std::current_exception();
+    }
+
+    kj::Promise<Result<size_t>> read(void * buffer, size_t size) override
+    try {
+        while (true) {
+            if (const auto got = ::read(uncompressed.readSide.get(), buffer, size); got > 0) {
+                co_return got;
+            } else if (got == 0) {
+                // decompresser must have finished, poll for any errors and return EOF
+                thread.get();
+                co_return 0;
+            } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                co_await readObserver->whenBecomesReadable();
+            } else {
+                throw SysError("reading decompression stream");
+            }
+        }
+    } catch (...) {
+        co_return result::current_exception();
+    }
+};
+}
+
+box_ptr<AsyncInputStream>
+makeDecompressionStream(const std::string & method, box_ptr<AsyncInputStream> inner)
+{
+    return make_box_ptr<DecompressionStream>(method, std::move(inner));
 }
 
 struct BrotliCompressionSink : ChunkedCompressionSink
