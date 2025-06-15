@@ -1,5 +1,5 @@
 error: expected a Boolean but found a set: { a = { a = { a = { a = { a = { a = { a = { a = { a = { a = { ... }; b = 2; }; }; }; }; }; }; }; }; «1 attribute elided» }; «1 attribute elided» }
-       at /pwd/eval-fail-print-limit-set.nix:2:3:
+       at /pwd/in.nix:2:3:
             1| assert (
             2|   let x = { a.a.a.a.a.a.a.a.a = { a.a = 1; b = 2; }; a.b.c.x = 3; c = 4; };
              |   ^
