@@ -9,6 +9,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libcmd/command.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/error.hh"
 #include "lix/libutil/regex.hh"
 
 #include <regex>
@@ -16,31 +17,36 @@
 namespace nix {
 
 static std::regex const identifierRegex = regex::parse("^[A-Za-z_][A-Za-z0-9_'-]*$");
-static void warnInvalidNixIdentifier(const std::string & name)
+static void checkValidNixIdentifier(const std::string & name)
 {
     std::smatch match;
     if (!std::regex_match(name, match, identifierRegex)) {
-        warn("This Nix invocation specifies a value for argument '%s' which isn't a valid \
-Nix identifier. The project is considering to drop support for this \
-or to require quotes around args that aren't valid Nix identifiers. \
-If you depend on this behvior, please reach out in \
-https://git.lix.systems/lix-project/lix/issues/496 so we can discuss \
-your use-case.", name);
+        throw UsageError(
+            "This invocation specifies a value for argument '%s' "
+            "which isn't a valid Nix identifier. "
+            "The project is dropping support for this so that it's possible to make e.g. "
+            "'%s' evaluating to '%s' in the future. "
+            "If you depend on this behavior, please reach out in "
+            "<https://git.lix.systems/lix-project/lix/issues/496> so we can discuss your use-case.",
+            name,
+            "--arg config.allowUnfree true",
+            "{ config.allowUnfree = true; }"
+        );
     }
 }
 
 MixEvalArgs::MixEvalArgs()
 {
-    addFlag({
-        .longName = "arg",
-        .description = "Pass the value *expr* as the argument *name* to Nix functions.",
-        .category = category,
-        .labels = {"name", "expr"},
-        .handler = {[&](std::string name, std::string expr) {
-            warnInvalidNixIdentifier(name);
-            autoArgs[name] = 'E' + expr;
-        }}
-    });
+    addFlag(
+        {.longName = "arg",
+         .description = "Pass the value *expr* as the argument *name* to Nix functions.",
+         .category = category,
+         .labels = {"name", "expr"},
+         .handler = {[&](std::string name, std::string expr) {
+             checkValidNixIdentifier(name);
+             autoArgs[name] = 'E' + expr;
+         }}}
+    );
 
     addFlag({
         .longName = "argstr",
@@ -48,7 +54,7 @@ MixEvalArgs::MixEvalArgs()
         .category = category,
         .labels = {"name", "string"},
         .handler = {[&](std::string name, std::string s) {
-            warnInvalidNixIdentifier(name);
+            checkValidNixIdentifier(name);
             autoArgs[name] = 'S' + s;
         }},
     });
