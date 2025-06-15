@@ -44,7 +44,9 @@ struct AsyncIoRoot
     KJ_DISALLOW_COPY_AND_MOVE(AsyncIoRoot);
 
     template<typename T>
-    auto blockOn(kj::Promise<T> && promise);
+    auto blockOn(
+        kj::Promise<T> && promise, std::source_location call_site = std::source_location::current()
+    );
 };
 
 inline AsyncContext & AIO()
@@ -137,7 +139,14 @@ static constexpr std::optional<std::string> lixAsyncTaskContext()
 #endif
 
 template<typename T>
-inline auto nix::AsyncIoRoot::blockOn(kj::Promise<T> && promise)
-{
+inline auto nix::AsyncIoRoot::blockOn(kj::Promise<T> && promise, std::source_location call_site)
+try {
     return detail::runAsyncUnwrap(promise.wait(kj.waitScope));
+} catch (BaseException & e) {
+    e.addAsyncTrace(call_site);
+    throw;
+} catch (std::exception & e) { /* NOLINT(lix-foreign-exceptions) */
+    ForeignException fe(e);
+    fe.addAsyncTrace(call_site);
+    throw fe;
 }

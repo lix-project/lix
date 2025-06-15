@@ -328,4 +328,6 @@ void ignoreExceptionInDestructor(Verbosity lvl = lvlError);
  */
 void ignoreExceptionExceptInterrupt(Verbosity lvl = lvlError);
 
+/** Print out details about an exception and its stack trace. */
+void logException(std::string_view message_prefix, const std::exception & ex);
 }

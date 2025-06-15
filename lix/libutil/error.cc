@@ -10,6 +10,8 @@
 #include <optional>
 #include <sstream>
 
+#include <boost/core/demangle.hpp>
+
 namespace nix {
 
 void BaseError::addTrace(std::shared_ptr<Pos> && e, HintFmt hint)
@@ -441,4 +443,33 @@ void ignoreExceptionExceptInterrupt(Verbosity lvl)
     }
 }
 
+void logException(std::string_view message_prefix, const std::exception & ex)
+{
+    const ForeignException * cast_exc = dynamic_cast<const ForeignException *>(&ex);
+    auto typeName = cast_exc ? cast_exc->innerType.name() : typeid(ex).name();
+    logFatal(fmt("%s: %s: %s", message_prefix, boost::core::demangle(typeName), ex.what()));
+    logFatal("Stack trace:");
+    logFatal(getStackTrace());
+
+    const BaseException * cast_exc_with_async_trace = dynamic_cast<const BaseException *>(&ex);
+    if (cast_exc_with_async_trace) {
+        auto asyncTrace = cast_exc_with_async_trace->asyncTrace();
+        if (asyncTrace && !asyncTrace->empty()) {
+            logFatal("Async task trace (probably incomplete):");
+            for (auto [i, frame] : enumerate(*asyncTrace)) {
+                logFatal(
+                    fmt("#%i: %s (%s:%i:%i)",
+                        i,
+                        frame.location.function_name(),
+                        frame.location.file_name(),
+                        frame.location.line(),
+                        frame.location.column())
+                );
+                if (frame.description) {
+                    logFatal(fmt("\t%s", *frame.description));
+                }
+            }
+        }
+    }
+}
 }
