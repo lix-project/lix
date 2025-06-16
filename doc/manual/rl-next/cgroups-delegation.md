@@ -21,7 +21,7 @@ already delegated cgroup tree by the service manager.
 systemd offers knobs to perform the required setup using:
 
 ```
-[Unit]
+[Service]
 Delegate=yes
 DelegateSubtree=supervisor
 ```
