@@ -120,7 +120,6 @@ struct RemoteStore::ConnectionHandle
 {
     Pool<RemoteStore::Connection>::Handle handle;
     Sync<ThreadPool> & handlerThreads;
-    bool daemonException = false;
 
     ConnectionHandle(
         Pool<RemoteStore::Connection>::Handle && handle, Sync<ThreadPool> & handlerThreads
@@ -133,12 +132,8 @@ struct RemoteStore::ConnectionHandle
     ConnectionHandle(ConnectionHandle && h)
         : handle(std::move(h.handle))
         , handlerThreads(h.handlerThreads)
-        , daemonException(h.daemonException)
     {
-        h.daemonException = false;
     }
-
-    ~ConnectionHandle();
 
     RemoteStore::Connection & operator * () { return *handle; }
     RemoteStore::Connection * operator -> () { return &*handle; }
@@ -161,23 +156,33 @@ struct RemoteStore::ConnectionHandle
         // and serialize all *preceding* arguments normally before handing over to
         // the subframing layer (which is then responsible for any error handling)
         if constexpr (requires { *handle->to << std::declval<LastArgT>(); }) {
-            StringSink msg;
-            ((msg << std::forward<Args>(args)), ...);
-            StringSource{msg.s}.drainInto(*handle->to);
-            handle->to->flush();
+            try {
+                StringSink msg;
+                ((msg << std::forward<Args>(args)), ...);
+                StringSource{msg.s}.drainInto(*handle->to);
+                handle->to->flush();
+            } catch (...) {
+                handle.markBad();
+                throw;
+            }
             LIX_TRY_AWAIT(processStderr());
         } else {
             using ImmediateArgsIdxs = std::make_index_sequence<sizeof...(Args) - 1>;
             AllArgsT allArgs(std::forward<Args>(args)...);
 
             [&]<size_t... Ids>(std::integer_sequence<size_t, Ids...>) {
-                StringSink msg;
-                ((msg << std::forward<std::tuple_element_t<Ids, AllArgsT>>(
-                      std::get<Ids>(allArgs)
-                  )),
-                 ...);
-                StringSource{msg.s}.drainInto(*handle->to);
-                handle->to->flush();
+                try {
+                    StringSink msg;
+                    ((msg << std::forward<std::tuple_element_t<Ids, AllArgsT>>(
+                        std::get<Ids>(allArgs)
+                    )),
+                    ...);
+                    StringSource{msg.s}.drainInto(*handle->to);
+                    handle->to->flush();
+                } catch (...) {
+                    handle.markBad();
+                    throw;
+                }
             }(ImmediateArgsIdxs{});
 
             LIX_TRY_AWAIT(withFramedSinkAsync(std::get<LastArgIdx>(allArgs)));
@@ -186,7 +191,12 @@ struct RemoteStore::ConnectionHandle
         if constexpr (std::is_void_v<R>) {
             co_return result::success();
         } else {
-            co_return WorkerProto::Serialise<R>::read(*handle);
+            try {
+                co_return WorkerProto::Serialise<R>::read(*handle);
+            } catch (...) {
+                handle.markBad();
+                throw;
+            }
         }
     } catch (...) {
         co_return result::current_exception();

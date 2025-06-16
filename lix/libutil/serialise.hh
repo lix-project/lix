@@ -1,8 +1,10 @@
 #pragma once
 ///@file
 
+#include <exception>
 #include <memory>
 
+#include "error.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/generator.hh"
 #include "lix/libutil/io-buffer.hh"
@@ -559,6 +561,16 @@ struct FramedSink : nix::BufferedSink
     BufferedSink & to;
     std::exception_ptr & ex;
 
+    struct RemoteError : BaseException
+    {
+        std::exception_ptr e;
+
+        RemoteError(std::exception_ptr e)
+            : e(e) // NOLINT(bugprone-throw-keyword-missing): intentional copy
+        {
+        }
+    };
+
     FramedSink(BufferedSink & to, std::exception_ptr & ex) : to(to), ex(ex)
     { }
 
@@ -579,7 +591,7 @@ struct FramedSink : nix::BufferedSink
         if (ex) {
             auto ex2 = ex;
             ex = nullptr;
-            std::rethrow_exception(ex2);
+            throw RemoteError{ex2};
         }
         to << data.size();
         to(data);

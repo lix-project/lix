@@ -38,8 +38,7 @@ RemoteStore::RemoteStore(const RemoteStoreConfig & config)
           std::max(1, (int) config.maxConnections),
           [this]() { return openAndInitConnection(); },
           [this](const ref<Connection> & r) {
-              return r->to->good() && r->from->good()
-                  && std::chrono::duration_cast<std::chrono::seconds>(
+              return std::chrono::duration_cast<std::chrono::seconds>(
                          std::chrono::steady_clock::now() - r->startTime
                      )
                          .count()
@@ -169,23 +168,15 @@ try {
     co_return result::current_exception();
 }
 
-RemoteStore::ConnectionHandle::~ConnectionHandle()
-{
-    if (!daemonException && std::uncaught_exceptions()) {
-        handle.markBad();
-        debug("closing daemon connection because of an exception");
-    }
-}
-
 kj::Promise<Result<void>> RemoteStore::ConnectionHandle::processStderr()
 try {
     auto ex = TRY_AWAIT(handle->processStderr());
     if (ex.e) {
-        daemonException = true;
-        std::rethrow_exception(ex.e);
+        co_return result::failure(ex.e);
     }
     co_return result::success();
 } catch (...) {
+    handle.markBad();
     co_return result::current_exception();
 }
 
@@ -727,7 +718,12 @@ try {
     auto conn(TRY_AWAIT(getConnection()));
     TRY_AWAIT(conn.sendCommand(WorkerProto::Op::NarFromPath, printStorePath(path)));
     co_return make_box_ptr<AsyncGeneratorInputStream>([](auto conn) -> WireFormatGenerator {
-        co_yield copyNAR(*conn->from);
+        try {
+            co_yield copyNAR(*conn->from);
+        } catch (...) {
+            conn.handle.markBad();
+            throw;
+        }
     }(std::move(conn)));
 } catch (...) {
     co_return result::current_exception();
@@ -828,7 +824,7 @@ RemoteStore::ConnectionHandle::FramedSinkHandler::~FramedSinkHandler() noexcept(
     // handle multiple exceptions anyway the safest path is to simply drop
     // the remote (possibly Interrupted) exception when called for unwind.
     if (ex && std::uncaught_exceptions() == 0) {
-        std::rethrow_exception(ex);
+        throw FramedSink::RemoteError(ex);
     }
 }
 
@@ -843,8 +839,10 @@ try {
         sink.flush();
     }
     co_return result::success();
+} catch (FramedSink::RemoteError & e) {
+    co_return result::failure(e.e);
 } catch (...) {
+    handle.markBad();
     co_return result::current_exception();
 }
-
 }
