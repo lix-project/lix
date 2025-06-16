@@ -161,7 +161,9 @@ struct RemoteStore::ConnectionHandle
         // and serialize all *preceding* arguments normally before handing over to
         // the subframing layer (which is then responsible for any error handling)
         if constexpr (requires { *handle->to << std::declval<LastArgT>(); }) {
-            ((*handle->to << std::forward<Args>(args)), ...);
+            StringSink msg;
+            ((msg << std::forward<Args>(args)), ...);
+            StringSource{msg.s}.drainInto(*handle->to);
             handle->to->flush();
             LIX_TRY_AWAIT(processStderr());
         } else {
@@ -169,10 +171,12 @@ struct RemoteStore::ConnectionHandle
             AllArgsT allArgs(std::forward<Args>(args)...);
 
             [&]<size_t... Ids>(std::integer_sequence<size_t, Ids...>) {
-                ((*handle->to << std::forward<std::tuple_element_t<Ids, AllArgsT>>(
+                StringSink msg;
+                ((msg << std::forward<std::tuple_element_t<Ids, AllArgsT>>(
                       std::get<Ids>(allArgs)
                   )),
                  ...);
+                StringSource{msg.s}.drainInto(*handle->to);
                 handle->to->flush();
             }(ImmediateArgsIdxs{});
 
