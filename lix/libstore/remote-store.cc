@@ -1,5 +1,7 @@
+#include "lix/libutil/async-collect.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
@@ -20,13 +22,14 @@
 #include "lix/libutil/logging.hh"
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libutil/strings.hh"
-#include "lix/libutil/thread-name.hh"
-#include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/types.hh"
 #include "path-info.hh"
 
+#include <cstdint>
 #include <kj/async.h>
+#include <kj/common.h>
 #include <optional>
+#include <string_view>
 #include <utility>
 
 namespace nix {
@@ -78,6 +81,9 @@ try {
 kj::Promise<Result<void>> RemoteStore::initConnection(Connection & conn)
 try {
     /* Send the magic greeting, check for the reply. */
+    // NOTE: this is synchronous until we call processStderr. this is intentional;
+    // reading the response would be synchronous anyway, and making sending of the
+    // greeting synchronous also makes this code path significantly more readable.
     try {
         conn.store = this;
         FdSource from{conn.getFD(), conn.fromBuf};
@@ -109,7 +115,8 @@ try {
             {from, *conn.store, conn.daemonVersion}
         );
 
-        auto ex = TRY_AWAIT(conn.processStderr());
+        AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, conn.getFD()};
+        auto ex = TRY_AWAIT(conn.processStderr(stream));
         if (ex.e) {
             std::rethrow_exception(ex.e);
         }
@@ -161,8 +168,9 @@ try {
     for (auto & i : overrides)
         command << i.first << i.second.value;
 
-    writeFull(conn.getFD(), command.s);
-    auto ex = TRY_AWAIT(conn.processStderr());
+    AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, conn.getFD()};
+    TRY_AWAIT(stream.writeFull(command.s.data(), command.s.size()));
+    auto ex = TRY_AWAIT(conn.processStderr(stream));
     if (ex.e) {
         std::rethrow_exception(ex.e);
     }
@@ -171,9 +179,9 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> RemoteStore::ConnectionHandle::processStderr()
+kj::Promise<Result<void>> RemoteStore::ConnectionHandle::processStderr(AsyncFdIoStream & stream)
 try {
-    auto ex = TRY_AWAIT(handle->processStderr());
+    auto ex = TRY_AWAIT(handle->processStderr(stream));
     if (ex.e) {
         co_return result::failure(ex.e);
     }
@@ -185,7 +193,7 @@ try {
 
 kj::Promise<Result<RemoteStore::ConnectionHandle>> RemoteStore::getConnection()
 try {
-    co_return ConnectionHandle(TRY_AWAIT(connections->get()), handlerThreads);
+    co_return ConnectionHandle(TRY_AWAIT(connections->get()));
 } catch (...) {
     co_return result::current_exception();
 }
@@ -372,7 +380,7 @@ try {
         caMethod.render(hashType),
         WorkerProto::write(*conn, references),
         repair,
-        [&](Sink & sink) { return dump.drainInto(sink); }
+        [&](AsyncOutputStream & stream) { return dump.drainInto(stream); }
     )));
 } catch (...) {
     co_return result::current_exception();
@@ -417,7 +425,7 @@ try {
         renderContentAddress(info.ca),
         repair,
         !checkSigs,
-        [&](Sink & sink) { return copier->drainInto(sink); }
+        [&](AsyncOutputStream & stream) { return copier->drainInto(stream); }
     ));
     co_return result::success();
 } catch (...) {
@@ -439,14 +447,20 @@ try {
         repair,
         !checkSigs,
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-        [&](Sink & sink) -> kj::Promise<Result<void>> {
+        [&](AsyncOutputStream & stream) -> kj::Promise<Result<void>> {
             try {
-                sink << pathsToCopy.size();
+                auto send = [&]<typename T>(T && value) {
+                    auto tmp = make_box_ptr<StringSink>();
+                    *tmp << std::forward<T>(value);
+                    return stream.writeFull(tmp->s.data(), tmp->s.size()).attach(std::move(tmp));
+                };
+
+                TRY_AWAIT(send(pathsToCopy.size()));
                 for (auto & [pathInfo, pathSource] : pathsToCopy) {
-                    sink << WorkerProto::Serialise<ValidPathInfo>::write(
+                    TRY_AWAIT(send(WorkerProto::Serialise<ValidPathInfo>::write(
                         WorkerProto::WriteConn{*this, remoteVersion}, pathInfo
-                    );
-                    TRY_AWAIT(TRY_AWAIT(pathSource())->drainInto(sink));
+                    )));
+                    TRY_AWAIT(TRY_AWAIT(pathSource())->drainInto(stream));
                 }
                 co_return result::success();
             } catch (...) {
@@ -664,7 +678,7 @@ try {
     TRY_AWAIT(conn.sendCommand<unsigned>(
         WorkerProto::Op::AddBuildLog,
         drvPath.to_string(),
-        [&](Sink & sink) { return source.drainInto(sink); }
+        [&](AsyncOutputStream & stream) { return source.drainInto(stream); }
     ));
     co_return result::success();
 } catch (...) {
@@ -757,9 +771,28 @@ static Logger::Fields readFields(Source & from)
     return fields;
 }
 
-kj::Promise<Result<RemoteStore::Connection::RemoteError>> RemoteStore::Connection::processStderr()
+kj::Promise<Result<RemoteStore::Connection::RemoteError>>
+RemoteStore::Connection::processStderr(AsyncFdIoStream & stream)
 try {
     while (true) {
+        // fill the read buffer asynchronously until we have at least a message type.
+        // once we have this we'll continue synchronously as in the sendCommand case.
+        while (fromBuf->used() < sizeof(uint64_t)) {
+            const auto available = fromBuf->getWriteBuffer();
+            fromBuf->added(TRY_AWAIT(stream.read(available.data(), available.size())));
+        }
+
+        // SAFETY NOTE: while we're running we own the executor, and thus the stream.
+        // setting these flags is unsafe if the stream is shared with another thread.
+        const int oldFlags = fcntl(getFD(), F_GETFL);
+        if (oldFlags == -1 || fcntl(getFD(), F_SETFL, oldFlags & ~O_NONBLOCK) < 0) {
+            throw SysError("making connection blocking");
+        }
+        KJ_DEFER({
+            if (fcntl(getFD(), F_SETFL, oldFlags) < 0) {
+                throw SysError("restoring connection flags");
+            }
+        });
 
         FdSource from{getFD(), fromBuf};
         from.specialEndOfFileError = "Nix daemon disconnected while waiting for a response";
@@ -807,52 +840,30 @@ try {
     co_return result::current_exception();
 }
 
-RemoteStore::ConnectionHandle::FramedSinkHandler::FramedSinkHandler(
-    ConnectionHandle & conn, ThreadPool & handlerThreads
-)
-    : stderrHandler([&](AsyncIoRoot & aio) {
-        try {
-            aio.blockOn(conn.processStderr());
-        } catch (...) {
-            ex = std::current_exception();
-        }
-    })
-{
-    handlerThreads.enqueueWithAio([&](AsyncIoRoot & aio) { stderrHandler(aio); });
-}
-
-RemoteStore::ConnectionHandle::FramedSinkHandler::~FramedSinkHandler() noexcept(false)
-{
-    stderrHandler.get_future().get();
-    // if we're handling an Interrupted exception we must be careful: it's
-    // possible that the exception was thrown by the withFramedSink framed
-    // function, but not by the FramedSink itself. in this case our stderr
-    // handler thread may race with FramedSink::writeUnbuffered, catch the
-    // Interrupted exception independently, store it into ex, and have our
-    // own destructor rethrow a second copy of Interrupted. since we can't
-    // handle multiple exceptions anyway the safest path is to simply drop
-    // the remote (possibly Interrupted) exception when called for unwind.
-    if (ex && std::uncaught_exceptions() == 0) {
-        throw FramedSink::RemoteError(ex);
-    }
-}
-
-kj::Promise<Result<void>> RemoteStore::ConnectionHandle::withFramedSinkAsync(
-    std::function<kj::Promise<Result<void>>(Sink & sink)> fun
+kj::Promise<Result<void>> RemoteStore::ConnectionHandle::withFramedStream(
+    AsyncFdIoStream & stream,
+    std::function<kj::Promise<Result<void>>(AsyncOutputStream & stream)> fun
 )
 try {
-    {
-        FdSink to{handle->getFD()};
-        FramedSinkHandler handler{*this, *handlerThreads.lock()};
-        FramedSink sink(to, handler.ex);
-        TRY_AWAIT(fun(sink));
-        sink.flush();
-    }
+    AsyncBufferedOutputStream to(stream);
+    AsyncFramedStream sink(to);
+
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    auto send = [&]() -> kj::Promise<Result<void>> {
+        try {
+            TRY_AWAIT(fun(sink));
+            TRY_AWAIT(sink.finish());
+            TRY_AWAIT(to.flush());
+            co_return result::success();
+        } catch (...) {
+            handle.markBad();
+            co_return result::current_exception();
+        }
+    };
+
+    TRY_AWAIT(asyncJoin(send(), processStderr(stream)));
     co_return result::success();
-} catch (FramedSink::RemoteError & e) {
-    co_return result::failure(e.e);
 } catch (...) {
-    handle.markBad();
     co_return result::current_exception();
 }
 }

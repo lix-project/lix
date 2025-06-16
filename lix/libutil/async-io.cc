@@ -190,4 +190,25 @@ kj::Promise<Result<size_t>> AsyncFdIoStream::write(const void * src, size_t size
         return {result::failure(std::make_exception_ptr(SysError(errno, "write failed")))};
     }
 }
+
+kj::Promise<Result<void>> AsyncFramedStream::finish()
+try {
+    StringSink tmp;
+    tmp << 0;
+    TRY_AWAIT(to.writeFull(tmp.s.data(), tmp.s.size()));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<size_t>> AsyncFramedStream::write(const void * buffer, size_t size)
+try {
+    StringSink tmp;
+    tmp << size;
+    TRY_AWAIT(to.writeFull(tmp.s.data(), tmp.s.size()));
+    TRY_AWAIT(to.writeFull(buffer, size));
+    co_return size;
+} catch (...) {
+    co_return result::current_exception();
+}
 }

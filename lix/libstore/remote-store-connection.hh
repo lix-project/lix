@@ -5,11 +5,13 @@
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libstore/worker-protocol-impl.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/io-buffer.hh"
 #include "lix/libutil/pool.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
+#include "lix/libutil/signals.hh"
 #include <kj/async.h>
 #include <tuple>
 #include <type_traits>
@@ -98,7 +100,7 @@ struct RemoteStore::Connection
         std::exception_ptr e;
     };
 
-    kj::Promise<Result<RemoteError>> processStderr();
+    kj::Promise<Result<RemoteError>> processStderr(AsyncFdIoStream & stream);
 };
 
 /**
@@ -111,36 +113,35 @@ struct RemoteStore::Connection
 struct RemoteStore::ConnectionHandle
 {
     Pool<RemoteStore::Connection>::Handle handle;
-    Sync<ThreadPool> & handlerThreads;
 
-    ConnectionHandle(
-        Pool<RemoteStore::Connection>::Handle && handle, Sync<ThreadPool> & handlerThreads
-    )
-        : handle(std::move(handle))
-        , handlerThreads(handlerThreads)
-    {
-    }
-
-    ConnectionHandle(ConnectionHandle && h)
-        : handle(std::move(h.handle))
-        , handlerThreads(h.handlerThreads)
-    {
-    }
+    ConnectionHandle(Pool<RemoteStore::Connection>::Handle && handle) : handle(std::move(handle)) {}
 
     RemoteStore::Connection & operator * () { return *handle; }
     RemoteStore::Connection * operator -> () { return &*handle; }
 
-    kj::Promise<Result<void>> processStderr();
+    kj::Promise<Result<void>> processStderr(AsyncFdIoStream & stream);
 
-    kj::Promise<Result<void>>
-    withFramedSinkAsync(std::function<kj::Promise<Result<void>>(Sink & sink)> fun);
+    kj::Promise<Result<void>> withFramedStream(
+        AsyncFdIoStream & stream,
+        std::function<kj::Promise<Result<void>>(AsyncOutputStream & stream)> fun
+    );
 
     template<typename R = void, typename... Args>
-    kj::Promise<Result<R>> sendCommand(Args &&... args)
+    kj::Promise<Result<R>> sendCommandUninterruptible(Args &&... args)
     try {
         constexpr auto LastArgIdx = sizeof...(Args) - 1;
         using AllArgsT = std::tuple<Args &&...>;
         using LastArgT = std::tuple_element_t<LastArgIdx, AllArgsT>;
+
+        // invalidate this connection if we're cancelled early, e.g. by a user ^C.
+        // regular exceptions must be handled elsewhere due the subframe requests.
+        // this also invalidates connections if a request was sent while unwinding
+        // the stack, but that's sufficiently suspect to warrant being as careful.
+        auto invalidateOnCancel = kj::defer([&] {
+            if (std::uncaught_exceptions() == 0) {
+                handle.markBad();
+            }
+        });
 
         // if the last argument can be serialized normally we will serialize *all*
         // arguments at once and hand off to the remote. if the last argument does
@@ -148,45 +149,53 @@ struct RemoteStore::ConnectionHandle
         // and serialize all *preceding* arguments normally before handing over to
         // the subframing layer (which is then responsible for any error handling)
         if constexpr (requires(StringSink s) { s << std::declval<LastArgT>(); }) {
+            AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, handle->getFD()};
             try {
                 StringSink msg;
                 ((msg << std::forward<Args>(args)), ...);
-                writeFull(handle->getFD(), msg.s);
+                TRY_AWAIT(stream.writeFull(msg.s.data(), msg.s.size()));
             } catch (...) {
                 handle.markBad();
                 throw;
             }
-            LIX_TRY_AWAIT(processStderr());
+            LIX_TRY_AWAIT(processStderr(stream));
         } else {
             using ImmediateArgsIdxs = std::make_index_sequence<sizeof...(Args) - 1>;
             AllArgsT allArgs(std::forward<Args>(args)...);
 
-            [&]<size_t... Ids>(std::integer_sequence<size_t, Ids...>) {
+                AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, handle->getFD()};
                 try {
                     StringSink msg;
-                    ((msg << std::forward<std::tuple_element_t<Ids, AllArgsT>>(
-                        std::get<Ids>(allArgs)
-                    )),
-                    ...);
-                    writeFull(handle->getFD(), msg.s);
+                    [&]<size_t... Ids>(std::integer_sequence<size_t, Ids...>) {
+                        ((msg << std::forward<std::tuple_element_t<Ids, AllArgsT>>(
+                              std::get<Ids>(allArgs)
+                          )),
+                         ...);
+                    }(ImmediateArgsIdxs{});
+                    TRY_AWAIT(stream.writeFull(msg.s.data(), msg.s.size()));
                 } catch (...) {
                     handle.markBad();
                     throw;
                 }
-            }(ImmediateArgsIdxs{});
 
-            LIX_TRY_AWAIT(withFramedSinkAsync(std::get<LastArgIdx>(allArgs)));
+                LIX_TRY_AWAIT(withFramedStream(stream, std::get<LastArgIdx>(allArgs)));
         }
 
         if constexpr (std::is_void_v<R>) {
+            invalidateOnCancel.cancel();
             co_return result::success();
         } else {
             try {
+                // NOTE while no async streams are using the fd it is fully synchronous.
+                // we need either sync sources or async sources, and async sources would
+                // require a *lot* of code duplication. response messages are mostly not
+                // large enough to block us for long, so we just accept the hit for now.
                 FdSource from{handle->getFD(), handle->fromBuf};
                 from.specialEndOfFileError = "Nix daemon disconnected while reading a response";
-                co_return WorkerProto::Serialise<R>::read(
-                    {from, *handle->store, handle->daemonVersion}
-                );
+                auto result =
+                    WorkerProto::Serialise<R>::read({from, *handle->store, handle->daemonVersion});
+                invalidateOnCancel.cancel();
+                co_return result;
             } catch (...) {
                 handle.markBad();
                 throw;
@@ -196,16 +205,11 @@ struct RemoteStore::ConnectionHandle
         co_return result::current_exception();
     }
 
-private:
-    struct FramedSinkHandler
+    template<typename R = void, typename... Args>
+    kj::Promise<Result<R>> sendCommand(Args &&... args)
     {
-        std::exception_ptr ex;
-        std::packaged_task<void(AsyncIoRoot &)> stderrHandler;
-
-        explicit FramedSinkHandler(ConnectionHandle & conn, ThreadPool & handlerThreads);
-
-        ~FramedSinkHandler() noexcept(false);
-    };
+        return makeInterruptible(sendCommandUninterruptible<R>(std::forward<Args>(args)...));
+    }
 };
 
 }

@@ -182,4 +182,19 @@ public:
     kj::Promise<Result<size_t>> read(void * tgt, size_t size) override;
     kj::Promise<Result<size_t>> write(const void * src, size_t size) override;
 };
+
+/**
+ * Write as chunks in the format expected by FramedSource.
+ */
+class AsyncFramedStream : public AsyncOutputStream
+{
+    AsyncOutputStream & to;
+
+public:
+    explicit AsyncFramedStream(AsyncOutputStream & to) : to(to) {}
+
+    kj::Promise<Result<void>> finish();
+
+    kj::Promise<Result<size_t>> write(const void * src, size_t size) override;
+};
 }

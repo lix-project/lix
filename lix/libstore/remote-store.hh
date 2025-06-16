@@ -9,7 +9,6 @@
 #include "lix/libstore/gc-store.hh"
 #include "lix/libstore/log-store.hh"
 #include "lix/libutil/async-io.hh"
-#include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/types.hh"
 
 
@@ -203,13 +202,6 @@ protected:
 private:
 
     std::atomic_bool failed{false};
-
-    // NOTE we rely on the thread pool not starting threads eagerly. if it ever starts
-    // doing that we're certainly going to fail due to the immense thread count, which
-    // we need to satisfy temporary `incCapacity` calls by some RemoteStore functions.
-    Sync<ThreadPool> handlerThreads{
-        std::in_place, "remote stderr", std::numeric_limits<size_t>::max()
-    };
 
     kj::Promise<Result<void>> copyDrvsFromEvalStore(
         const std::vector<DerivedPath> & paths,
