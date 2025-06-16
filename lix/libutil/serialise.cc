@@ -89,7 +89,6 @@ FdSink::~FdSink()
 
 void FdSink::writeUnbuffered(std::string_view data)
 {
-    written += data.size();
     try {
         writeFull(fd, data);
     } catch (SysError & e) {
@@ -97,7 +96,6 @@ void FdSink::writeUnbuffered(std::string_view data)
         throw;
     }
 }
-
 
 bool FdSink::good()
 {

@@ -122,7 +122,6 @@ protected:
 struct FdSink : BufferedSink
 {
     int fd;
-    size_t written = 0;
 
     FdSink() : fd(-1) { }
     FdSink(int fd) : fd(fd) { }
@@ -133,7 +132,6 @@ struct FdSink : BufferedSink
         flush();
         fd = s.fd;
         s.fd = -1;
-        written = s.written;
         return *this;
     }
 
