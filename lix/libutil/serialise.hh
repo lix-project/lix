@@ -88,8 +88,6 @@ struct Source
      */
     virtual size_t read(char * data, size_t len) = 0;
 
-    virtual bool good() { return true; }
-
     void drainInto(Sink & sink);
 
     std::string drain();
@@ -163,11 +161,8 @@ struct FdSource : BufferedSource
     FdSource & operator=(const FdSource &) = delete;
     FdSource & operator=(FdSource &&) = delete;
 
-    bool good() override;
 protected:
     size_t readUnbuffered(char * data, size_t len) override;
-private:
-    bool _good = true;
 };
 
 

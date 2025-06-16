@@ -162,15 +162,13 @@ size_t FdSource::readUnbuffered(char * data, size_t len)
         checkInterrupt();
         n = ::read(fd, data, len);
     } while (n == -1 && errno == EINTR);
-    if (n == -1) { _good = false; throw SysError("reading from file"); }
-    if (n == 0) { _good = false; throw EndOfFile(endOfFileError()); }
+    if (n == -1) {
+        throw SysError("reading from file");
+    }
+    if (n == 0) {
+        throw EndOfFile(endOfFileError());
+    }
     return n;
-}
-
-
-bool FdSource::good()
-{
-    return _good;
 }
 
 std::string FdSource::endOfFileError() const
