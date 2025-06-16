@@ -1802,14 +1802,16 @@ try {
                     anyHashMismatchSeen = true;
                     // XXX: shameless layering violation hack that makes the hash mismatch error at least not utterly worthless
                     auto guessedUrl = getOr(drv->env, "urls", getOr(drv->env, "url", "(unknown)"));
-                    delayedException = std::make_exception_ptr(
-                        BuildError("hash mismatch in fixed-output derivation '%s':\n likely URL: %s\n  specified: %s\n     got:    %s\n expected path: %s\n   got path: %s",
-                            worker.store.printStorePath(drvPath),
-                            guessedUrl,
-                            wanted.to_string(Base::SRI, true),
-                            got.to_string(Base::SRI, true),
-                            worker.store.printStorePath(dof.path(worker.store, drv->name, outputName)),
-                            worker.store.printStorePath(newInfo0.path)));
+                    delayedException = std::make_exception_ptr(BuildError(
+                        "hash mismatch in fixed-output derivation '%s':\n    likely URL: %s\n     "
+                        "specified: %s\n           got: %s\n expected path: %s\n      got path: %s",
+                        worker.store.printStorePath(drvPath),
+                        guessedUrl,
+                        wanted.to_string(Base::SRI, true),
+                        got.to_string(Base::SRI, true),
+                        worker.store.printStorePath(dof.path(worker.store, drv->name, outputName)),
+                        worker.store.printStorePath(newInfo0.path)
+                    ));
                 }
                 if (!newInfo0.references.empty()) {
                     std::string references;
