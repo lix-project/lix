@@ -82,8 +82,9 @@ try {
         conn.store = this;
         conn.from->specialEndOfFileError =
             "Nix daemon disconnected unexpectedly (maybe it crashed?)";
-        *conn.to << WORKER_MAGIC_1;
-        conn.to->flush();
+        FdSink to{conn.toFD};
+        to << WORKER_MAGIC_1;
+        to.flush();
 
         uint64_t magic = readLongLong(*conn.from);
         if (magic != WORKER_MAGIC_2)
@@ -94,14 +95,14 @@ try {
             throw Error("Nix daemon protocol version not supported");
         if (GET_PROTOCOL_MINOR(conn.daemonVersion) < MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION)
             throw Error("the Nix daemon version is too old");
-        *conn.to << PROTOCOL_VERSION;
+        to << PROTOCOL_VERSION;
 
         // Obsolete CPU affinity.
-        *conn.to << 0;
+        to << 0;
 
-        *conn.to << false; // obsolete reserveSpace
+        to << false; // obsolete reserveSpace
 
-        conn.to->flush();
+        to.flush();
         conn.daemonNixVersion = readString(*conn.from);
         conn.remoteTrustsUs = WorkerProto::Serialise<std::optional<TrustedFlag>>::read(conn);
 
@@ -157,8 +158,7 @@ try {
     for (auto & i : overrides)
         command << i.first << i.second.value;
 
-    StringSource{command.s}.drainInto(*conn.to);
-    conn.to->flush();
+    writeFull(conn.toFD, command.s);
     auto ex = TRY_AWAIT(conn.processStderr());
     if (ex.e) {
         std::rethrow_exception(ex.e);
@@ -703,16 +703,6 @@ try {
     co_return result::current_exception();
 }
 
-
-RemoteStore::Connection::~Connection()
-{
-    try {
-        to->flush();
-    } catch (...) {
-        ignoreExceptionInDestructor();
-    }
-}
-
 kj::Promise<Result<box_ptr<AsyncInputStream>>> RemoteStore::narFromPath(const StorePath & path)
 try {
     auto conn(TRY_AWAIT(getConnection()));
@@ -833,8 +823,9 @@ kj::Promise<Result<void>> RemoteStore::ConnectionHandle::withFramedSinkAsync(
 )
 try {
     {
+        FdSink to{handle->toFD};
         FramedSinkHandler handler{*this, *handlerThreads.lock()};
-        FramedSink sink(*(*this)->to, handler.ex);
+        FramedSink sink(to, handler.ex);
         TRY_AWAIT(fun(sink));
         sink.flush();
     }

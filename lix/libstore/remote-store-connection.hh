@@ -5,6 +5,7 @@
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libstore/worker-protocol-impl.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/pool.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
@@ -27,7 +28,7 @@ struct RemoteStore::Connection
     /**
      * Send with this.
      */
-    std::unique_ptr<FdSink> to;
+    int toFD;
 
     /**
      * Receive with this.
@@ -97,7 +98,7 @@ struct RemoteStore::Connection
         return WorkerProto::WriteConn{*store, daemonVersion};
     }
 
-    virtual ~Connection();
+    virtual ~Connection() = default;
 
     // wrapper type for remote errors because `Result<std::exception_ptr>`
     // does not work very well and `Result<Result<void>>` is too confusing
@@ -155,12 +156,11 @@ struct RemoteStore::ConnectionHandle
         // not have a serializer we assume it's a callback for a subframe protocol
         // and serialize all *preceding* arguments normally before handing over to
         // the subframing layer (which is then responsible for any error handling)
-        if constexpr (requires { *handle->to << std::declval<LastArgT>(); }) {
+        if constexpr (requires(StringSink s) { s << std::declval<LastArgT>(); }) {
             try {
                 StringSink msg;
                 ((msg << std::forward<Args>(args)), ...);
-                StringSource{msg.s}.drainInto(*handle->to);
-                handle->to->flush();
+                writeFull(handle->toFD, msg.s);
             } catch (...) {
                 handle.markBad();
                 throw;
@@ -177,8 +177,7 @@ struct RemoteStore::ConnectionHandle
                         std::get<Ids>(allArgs)
                     )),
                     ...);
-                    StringSource{msg.s}.drainInto(*handle->to);
-                    handle->to->flush();
+                    writeFull(handle->toFD, msg.s);
                 } catch (...) {
                     handle.markBad();
                     throw;
