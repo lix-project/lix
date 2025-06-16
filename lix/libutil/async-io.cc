@@ -71,13 +71,4 @@ try {
 } catch (...) {
     return {result::current_exception()};
 }
-
-kj::Promise<Result<size_t>> AsyncFdInputStream::read(void * buffer, size_t size)
-{
-    if (auto got = ::read(fd, buffer, size); got >= 0) {
-        return {result::success(size_t(got))};
-    } else {
-        return {result::failure(std::make_exception_ptr(SysError(errno, "read failed")))};
-    }
-}
 }

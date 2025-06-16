@@ -77,20 +77,4 @@ public:
 
     kj::Promise<Result<size_t>> read(void * data, size_t len) override;
 };
-
-class AsyncFdInputStream : public AsyncInputStream
-{
-    int fd;
-    AutoCloseFD ownedFd; // only for closing automatically, must equal fd if set
-
-public:
-    struct shared_fd
-    {};
-
-    explicit AsyncFdInputStream(AutoCloseFD fd) : fd(fd.get()), ownedFd(std::move(fd)) {}
-    AsyncFdInputStream(shared_fd, int fd) : fd(fd) {}
-
-    kj::Promise<Result<size_t>> read(void * buffer, size_t size) override;
-};
-
 }
