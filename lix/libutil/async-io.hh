@@ -3,10 +3,13 @@
 
 #include "lix/libutil/async.hh"
 #include "lix/libutil/box_ptr.hh"
+#include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/io-buffer.hh"
 #include "lix/libutil/ref.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
+#include <kj/async-io.h>
+#include <kj/async-unix.h>
 #include <kj/async.h>
 #include <kj/common.h>
 #include <memory>
@@ -151,5 +154,32 @@ public:
 
     kj::Promise<Result<size_t>> write(const void * src, size_t size) override;
     kj::Promise<Result<void>> flush();
+};
+
+class AsyncStream : public AsyncInputStream, public AsyncOutputStream
+{};
+
+class AsyncFdIoStream : public AsyncStream
+{
+    int fd, oldFlags;
+    AutoCloseFD ownedFd; // only for closing automatically, must equal fd if set
+    kj::UnixEventPort::FdObserver observer;
+
+public:
+    struct shared_fd
+    {};
+
+    explicit AsyncFdIoStream(AutoCloseFD fd);
+    AsyncFdIoStream(shared_fd, int fd);
+
+    ~AsyncFdIoStream() noexcept(false);
+
+    int getFD() const
+    {
+        return fd;
+    }
+
+    kj::Promise<Result<size_t>> read(void * tgt, size_t size) override;
+    kj::Promise<Result<size_t>> write(const void * src, size_t size) override;
 };
 }

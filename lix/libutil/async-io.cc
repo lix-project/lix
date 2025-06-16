@@ -1,4 +1,11 @@
 #include "async-io.hh"
+#include "async.hh"
+#include "error.hh"
+#include "file-descriptor.hh"
+#include "result.hh"
+#include <cerrno>
+#include <exception>
+#include <fcntl.h>
 
 namespace nix {
 kj::Promise<Result<void>> AsyncInputStream::drainInto(Sink & sink)
@@ -132,5 +139,55 @@ try {
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
+}
+
+AsyncFdIoStream::AsyncFdIoStream(AutoCloseFD fd) : AsyncFdIoStream(shared_fd{}, fd.get())
+{
+    ownedFd = std::move(fd);
+}
+
+AsyncFdIoStream::AsyncFdIoStream(shared_fd, int fd)
+    : fd(fd)
+    , observer(AIO().unixEventPort, fd, kj::UnixEventPort::FdObserver::OBSERVE_READ_WRITE)
+{
+    oldFlags = fcntl(fd, F_GETFL, 0);
+    if (oldFlags == -1 || fcntl(fd, F_SETFL, oldFlags | O_NONBLOCK)) {
+        throw SysError("making file descriptor non-blocking");
+    }
+}
+
+AsyncFdIoStream::~AsyncFdIoStream() noexcept(false)
+{
+    if (fcntl(fd, F_SETFL, oldFlags)) {
+        try {
+            throw SysError("restoring file descriptor flags");
+        } catch (...) {
+            ignoreExceptionInDestructor();
+        }
+    }
+}
+
+kj::Promise<Result<size_t>> AsyncFdIoStream::read(void * tgt, size_t size)
+{
+    auto got = ::read(fd, tgt, size);
+    if (got >= 0) {
+        return {result::success(got)};
+    } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        return observer.whenBecomesReadable().then([=, this] { return read(tgt, size); });
+    } else {
+        return {result::failure(std::make_exception_ptr(SysError(errno, "read failed")))};
+    }
+}
+
+kj::Promise<Result<size_t>> AsyncFdIoStream::write(const void * src, size_t size)
+{
+    auto got = ::write(fd, src, size);
+    if (got >= 0) {
+        return {result::success(got)};
+    } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        return observer.whenBecomesWritable().then([=, this] { return write(src, size); });
+    } else {
+        return {result::failure(std::make_exception_ptr(SysError(errno, "write failed")))};
+    }
 }
 }
