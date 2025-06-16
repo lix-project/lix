@@ -13,6 +13,18 @@ try {
     co_return result::current_exception();
 }
 
+kj::Promise<Result<void>> AsyncInputStream::drainInto(AsyncOutputStream & stream)
+try {
+    constexpr size_t BUF_SIZE = 65536;
+    auto buf = std::make_unique<char[]>(BUF_SIZE);
+    while (auto r = TRY_AWAIT(read(buf.get(), BUF_SIZE))) {
+        TRY_AWAIT(stream.writeFull(buf.get(), r));
+    }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<std::string>> AsyncInputStream::drain()
 try {
     StringSink s;

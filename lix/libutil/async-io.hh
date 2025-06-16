@@ -12,6 +12,8 @@
 
 namespace nix {
 
+class AsyncOutputStream;
+
 // not derived from kj's AsyncInputStream because read and tryRead are already
 // taken as method names, we don't need the other functions, and the bit about
 // minBytes does not work well with our current io model. some day, who knows?
@@ -24,6 +26,7 @@ public:
     virtual kj::Promise<Result<size_t>> read(void * buffer, size_t size) = 0;
 
     kj::Promise<Result<void>> drainInto(Sink & sink);
+    kj::Promise<Result<void>> drainInto(AsyncOutputStream & stream);
 
     kj::Promise<Result<std::string>> drain();
 };
@@ -76,5 +79,30 @@ public:
     AsyncGeneratorInputStream(Generator<Bytes> && g) : g(std::move(g)) {}
 
     kj::Promise<Result<size_t>> read(void * data, size_t len) override;
+};
+
+class AsyncOutputStream : private kj::AsyncObject
+{
+public:
+    virtual ~AsyncOutputStream() noexcept(false) {}
+
+    virtual kj::Promise<Result<size_t>> write(const void * src, size_t size) = 0;
+
+    kj::Promise<Result<void>> writeFull(const void * src, size_t size)
+    {
+        return write(src, size).then(
+            [this, src, size](Result<size_t> wrote) -> kj::Promise<Result<void>> {
+                if (!wrote.has_value()) {
+                    return {wrote.error()};
+                } else if (wrote.value() == size) {
+                    return {result::success()};
+                } else {
+                    return writeFull(
+                        static_cast<const char *>(src) + wrote.value(), size - wrote.value()
+                    );
+                }
+            }
+        );
+    }
 };
 }
