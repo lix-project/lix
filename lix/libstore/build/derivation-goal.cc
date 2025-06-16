@@ -1039,13 +1039,10 @@ HookReply DerivationGoal::tryBuildHook()
     try {
 
         /* Send the request to the hook. */
-        worker.hook.instance->sink
-            << "try"
-            << (slotToken.valid() ? 1 : 0)
-            << drv->platform
-            << worker.store.printStorePath(drvPath)
-            << parsedDrv->getRequiredSystemFeatures();
-        worker.hook.instance->sink.flush();
+        *worker.hook.instance->sink << "try" << (slotToken.valid() ? 1 : 0) << drv->platform
+                                    << worker.store.printStorePath(drvPath)
+                                    << parsedDrv->getRequiredSystemFeatures();
+        worker.hook.instance->sink->flush();
 
         /* Read the first line of input, which should be a word indicating
            whether the hook wishes to perform the build. */
@@ -1108,7 +1105,7 @@ HookReply DerivationGoal::tryBuildHook()
 
     /* Tell the hook all the inputs that have to be copied to the
        remote system. */
-    hook->sink << CommonProto::write({worker.store}, inputPaths);
+    *hook->sink << CommonProto::write({worker.store}, inputPaths);
 
     /* Tell the hooks the missing outputs that have to be copied back
        from the remote system. */
@@ -1119,10 +1116,10 @@ HookReply DerivationGoal::tryBuildHook()
             if (buildMode != bmCheck && status.known && status.known->isValid()) continue;
             missingOutputs.insert(outputName);
         }
-        hook->sink << CommonProto::write({worker.store}, missingOutputs);
+        *hook->sink << CommonProto::write({worker.store}, missingOutputs);
     }
 
-    hook->sink = FdSink();
+    hook->sink = nullptr;
     hook->toHook.reset();
 
     /* Create the log file and pipe. */

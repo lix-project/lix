@@ -29,7 +29,7 @@ struct HookInstance
      */
     Pid pid;
 
-    FdSink sink;
+    std::unique_ptr<FdSink> sink;
 
     std::map<ActivityId, Activity> activities;
 

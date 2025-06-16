@@ -27,12 +27,12 @@ struct RemoteStore::Connection
     /**
      * Send with this.
      */
-    FdSink to;
+    std::unique_ptr<FdSink> to;
 
     /**
      * Receive with this.
      */
-    FdSource from;
+    std::unique_ptr<FdSource> from;
 
     /**
      * The store this connection belongs to.
@@ -81,7 +81,7 @@ struct RemoteStore::Connection
      */
     operator WorkerProto::ReadConn ()
     {
-        return WorkerProto::ReadConn{from, *store, daemonVersion};
+        return WorkerProto::ReadConn{*from, *store, daemonVersion};
     }
 
     /**
@@ -160,20 +160,20 @@ struct RemoteStore::ConnectionHandle
         // not have a serializer we assume it's a callback for a subframe protocol
         // and serialize all *preceding* arguments normally before handing over to
         // the subframing layer (which is then responsible for any error handling)
-        if constexpr (requires { handle->to << std::declval<LastArgT>(); }) {
-            ((handle->to << std::forward<Args>(args)), ...);
-            handle->to.flush();
+        if constexpr (requires { *handle->to << std::declval<LastArgT>(); }) {
+            ((*handle->to << std::forward<Args>(args)), ...);
+            handle->to->flush();
             LIX_TRY_AWAIT(processStderr());
         } else {
             using ImmediateArgsIdxs = std::make_index_sequence<sizeof...(Args) - 1>;
             AllArgsT allArgs(std::forward<Args>(args)...);
 
             [&]<size_t... Ids>(std::integer_sequence<size_t, Ids...>) {
-                ((handle->to << std::forward<std::tuple_element_t<Ids, AllArgsT>>(
+                ((*handle->to << std::forward<std::tuple_element_t<Ids, AllArgsT>>(
                       std::get<Ids>(allArgs)
                   )),
                  ...);
-                handle->to.flush();
+                handle->to->flush();
             }(ImmediateArgsIdxs{});
 
             LIX_TRY_AWAIT(withFramedSinkAsync(std::get<LastArgIdx>(allArgs)));

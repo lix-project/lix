@@ -125,15 +125,10 @@ struct FdSink : BufferedSink
 
     FdSink() : fd(-1) { }
     FdSink(int fd) : fd(fd) { }
-    FdSink(FdSink&&) = default;
-
-    FdSink & operator=(FdSink && s)
-    {
-        flush();
-        fd = s.fd;
-        s.fd = -1;
-        return *this;
-    }
+    FdSink(const FdSink &) = delete;
+    FdSink(FdSink &&) = delete;
+    FdSink & operator=(const FdSink &) = delete;
+    FdSink & operator=(FdSink &&) = delete;
 
     ~FdSink();
 
@@ -159,14 +154,10 @@ struct FdSource : BufferedSource
 
     FdSource() : fd(-1) { }
     FdSource(int fd) : fd(fd) { }
-    FdSource(FdSource &&) = default;
-
-    FdSource & operator=(FdSource && s)
-    {
-        fd = s.fd;
-        s.fd = -1;
-        return *this;
-    }
+    FdSource(const FdSource &) = delete;
+    FdSource(FdSource &&) = delete;
+    FdSource & operator=(const FdSource &) = delete;
+    FdSource & operator=(FdSource &&) = delete;
 
     bool good() override;
 protected:

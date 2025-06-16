@@ -38,7 +38,7 @@ RemoteStore::RemoteStore(const RemoteStoreConfig & config)
           std::max(1, (int) config.maxConnections),
           [this]() { return openAndInitConnection(); },
           [this](const ref<Connection> & r) {
-              return r->to.good() && r->from.good()
+              return r->to->good() && r->from->good()
                   && std::chrono::duration_cast<std::chrono::seconds>(
                          std::chrono::steady_clock::now() - r->startTime
                      )
@@ -81,28 +81,29 @@ try {
     /* Send the magic greeting, check for the reply. */
     try {
         conn.store = this;
-        conn.from.specialEndOfFileError = "Nix daemon disconnected unexpectedly (maybe it crashed?)";
-        conn.to << WORKER_MAGIC_1;
-        conn.to.flush();
+        conn.from->specialEndOfFileError =
+            "Nix daemon disconnected unexpectedly (maybe it crashed?)";
+        *conn.to << WORKER_MAGIC_1;
+        conn.to->flush();
 
-        uint64_t magic = readLongLong(conn.from);
+        uint64_t magic = readLongLong(*conn.from);
         if (magic != WORKER_MAGIC_2)
             throw Error("protocol mismatch");
 
-        conn.from >> conn.daemonVersion;
+        *conn.from >> conn.daemonVersion;
         if (GET_PROTOCOL_MAJOR(conn.daemonVersion) != GET_PROTOCOL_MAJOR(PROTOCOL_VERSION))
             throw Error("Nix daemon protocol version not supported");
         if (GET_PROTOCOL_MINOR(conn.daemonVersion) < MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION)
             throw Error("the Nix daemon version is too old");
-        conn.to << PROTOCOL_VERSION;
+        *conn.to << PROTOCOL_VERSION;
 
         // Obsolete CPU affinity.
-        conn.to << 0;
+        *conn.to << 0;
 
-        conn.to << false; // obsolete reserveSpace
+        *conn.to << false; // obsolete reserveSpace
 
-        conn.to.flush();
-        conn.daemonNixVersion = readString(conn.from);
+        conn.to->flush();
+        conn.daemonNixVersion = readString(*conn.from);
         conn.remoteTrustsUs = WorkerProto::Serialise<std::optional<TrustedFlag>>::read(conn);
 
         auto ex = TRY_AWAIT(conn.processStderr());
@@ -157,8 +158,8 @@ try {
     for (auto & i : overrides)
         command << i.first << i.second.value;
 
-    StringSource{command.s}.drainInto(conn.to);
-    conn.to.flush();
+    StringSource{command.s}.drainInto(*conn.to);
+    conn.to->flush();
     auto ex = TRY_AWAIT(conn.processStderr());
     if (ex.e) {
         std::rethrow_exception(ex.e);
@@ -715,7 +716,7 @@ try {
 RemoteStore::Connection::~Connection()
 {
     try {
-        to.flush();
+        to->flush();
     } catch (...) {
         ignoreExceptionInDestructor();
     }
@@ -726,7 +727,7 @@ try {
     auto conn(TRY_AWAIT(getConnection()));
     TRY_AWAIT(conn.sendCommand(WorkerProto::Op::NarFromPath, printStorePath(path)));
     co_return make_box_ptr<AsyncGeneratorInputStream>([](auto conn) -> WireFormatGenerator {
-        co_yield copyNAR(conn->from);
+        co_yield copyNAR(*conn->from);
     }(std::move(conn)));
 } catch (...) {
     co_return result::current_exception();
@@ -758,34 +759,34 @@ kj::Promise<Result<RemoteStore::Connection::RemoteError>> RemoteStore::Connectio
 try {
     while (true) {
 
-        auto msg = readNum<uint64_t>(from);
+        auto msg = readNum<uint64_t>(*from);
 
         if (msg == STDERR_ERROR) {
-            co_return RemoteError{std::make_exception_ptr(readError(from))};
+            co_return RemoteError{std::make_exception_ptr(readError(*from))};
         }
 
         else if (msg == STDERR_NEXT)
-            printError(chomp(readString(from)));
+            printError(chomp(readString(*from)));
 
         else if (msg == STDERR_START_ACTIVITY) {
-            auto act = readNum<ActivityId>(from);
-            auto lvl = (Verbosity) readInt(from);
-            auto type = (ActivityType) readInt(from);
-            auto s = readString(from);
-            auto fields = readFields(from);
-            auto parent = readNum<ActivityId>(from);
+            auto act = readNum<ActivityId>(*from);
+            auto lvl = (Verbosity) readInt(*from);
+            auto type = (ActivityType) readInt(*from);
+            auto s = readString(*from);
+            auto fields = readFields(*from);
+            auto parent = readNum<ActivityId>(*from);
             logger->startActivity(act, lvl, type, s, fields, parent);
         }
 
         else if (msg == STDERR_STOP_ACTIVITY) {
-            auto act = readNum<ActivityId>(from);
+            auto act = readNum<ActivityId>(*from);
             logger->stopActivity(act);
         }
 
         else if (msg == STDERR_RESULT) {
-            auto act = readNum<ActivityId>(from);
-            auto type = (ResultType) readInt(from);
-            auto fields = readFields(from);
+            auto act = readNum<ActivityId>(*from);
+            auto type = (ResultType) readInt(*from);
+            auto fields = readFields(*from);
             logger->result(act, type, fields);
         }
 
@@ -837,7 +838,7 @@ kj::Promise<Result<void>> RemoteStore::ConnectionHandle::withFramedSinkAsync(
 try {
     {
         FramedSinkHandler handler{*this, *handlerThreads.lock()};
-        FramedSink sink((*this)->to, handler.ex);
+        FramedSink sink(*(*this)->to, handler.ex);
         TRY_AWAIT(fun(sink));
         sink.flush();
     }

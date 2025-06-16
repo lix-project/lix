@@ -99,8 +99,8 @@ ref<RemoteStore::Connection> SSHStore::openConnection()
         command += " --store " + shellEscape(config_.remoteStore.get());
 
     conn->sshConn = ssh.startCommand(command);
-    conn->to = FdSink(conn->sshConn->socket.get());
-    conn->from = FdSource(conn->sshConn->socket.get());
+    conn->to = std::make_unique<FdSink>(conn->sshConn->socket.get());
+    conn->from = std::make_unique<FdSource>(conn->sshConn->socket.get());
     return conn;
 }
 

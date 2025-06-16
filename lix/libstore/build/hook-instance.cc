@@ -72,12 +72,12 @@ HookInstance::HookInstance()
     toHook = std::move(toHook_.writeSide);
     builderOut = std::move(builderOut_.readSide);
 
-    sink = FdSink(toHook.get());
+    sink = std::make_unique<FdSink>(toHook.get());
     std::map<std::string, Config::SettingInfo> settings;
     globalConfig.getSettings(settings, true);
     for (auto & setting : settings)
-        sink << 1 << setting.first << setting.second.value;
-    sink << 0;
+        *sink << 1 << setting.first << setting.second.value;
+    *sink << 0;
 }
 
 
