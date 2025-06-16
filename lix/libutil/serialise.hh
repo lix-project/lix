@@ -125,6 +125,7 @@ struct FdSink : BufferedSink
 
     FdSink() : fd(-1) { }
     FdSink(int fd) : fd(fd) { }
+    FdSink(int fd, ref<IoBuffer> buffer) : BufferedSink(buffer), fd(fd) {}
     FdSink(const FdSink &) = delete;
     FdSink(FdSink &&) = delete;
     FdSink & operator=(const FdSink &) = delete;
@@ -154,6 +155,7 @@ struct FdSource : BufferedSource
 
     FdSource() : fd(-1) { }
     FdSource(int fd) : fd(fd) { }
+    FdSource(int fd, ref<IoBuffer> buffer) : BufferedSource(buffer), fd(fd) {}
     FdSource(const FdSource &) = delete;
     FdSource(FdSource &&) = delete;
     FdSource & operator=(const FdSource &) = delete;
