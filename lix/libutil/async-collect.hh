@@ -136,4 +136,23 @@ kj::Promise<Result<void>> asyncSpread(Input && input, Fn fn)
     co_return result::success();
 }
 
+/**
+ * Run `promises` concurrently until they've all succeeded, or pass on
+ * the error returned by the first failing promise. This is similar to
+ * `kj::joinPromisesFailFast()`, but not limited to thrown exceptions.
+ */
+template<typename... Promises>
+kj::Promise<Result<void>> asyncJoin(Promises &&... promises)
+    requires(std::same_as<Promises, kj::Promise<Result<void>>> && ...)
+{
+    auto collect =
+        asyncCollect(kj::arr(std::pair{std::tuple{}, std::forward<Promises>(promises)}...));
+    while (auto r = co_await collect.next()) {
+        if (!r->second.has_value()) {
+            co_return std::move(r->second);
+        }
+    }
+
+    co_return result::success();
+}
 }
