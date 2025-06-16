@@ -83,4 +83,54 @@ try {
 } catch (...) {
     return {result::current_exception()};
 }
+
+kj::Promise<Result<size_t>> AsyncBufferedInputStream::read(void * data, size_t size)
+try {
+    while (buffer->used() == 0) {
+        const auto space = buffer->getWriteBuffer();
+        const auto got = TRY_AWAIT(inner.read(space.data(), space.size()));
+        if (got == 0) {
+            co_return 0;
+        }
+        buffer->added(got);
+    }
+
+    const auto available = buffer->getReadBuffer();
+    const auto n = std::min(size, available.size());
+    memcpy(data, available.data(), n);
+    buffer->consumed(n);
+    co_return result::success(n);
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<size_t>> AsyncBufferedOutputStream::write(const void * src, size_t size)
+try {
+    if (size > buffer->size()) {
+        TRY_AWAIT(flush());
+        co_return TRY_AWAIT(inner.write(src, size));
+    }
+
+    if (size > buffer->getWriteBuffer().size()) {
+        TRY_AWAIT(flush());
+    }
+
+    const auto into = buffer->getWriteBuffer();
+    memcpy(into.data(), src, size);
+    buffer->added(size);
+    co_return size;
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<void>> AsyncBufferedOutputStream::flush()
+try {
+    if (auto unsent = buffer->getReadBuffer(); !unsent.empty()) {
+        TRY_AWAIT(inner.writeFull(unsent.data(), unsent.size()));
+        buffer->consumed(unsent.size());
+    }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
 }

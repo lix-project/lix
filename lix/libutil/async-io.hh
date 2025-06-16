@@ -3,6 +3,8 @@
 
 #include "lix/libutil/async.hh"
 #include "lix/libutil/box_ptr.hh"
+#include "lix/libutil/io-buffer.hh"
+#include "lix/libutil/ref.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
 #include <kj/async.h>
@@ -81,6 +83,28 @@ public:
     kj::Promise<Result<size_t>> read(void * data, size_t len) override;
 };
 
+class AsyncBufferedInputStream : public AsyncInputStream
+{
+    AsyncInputStream & inner;
+    ref<IoBuffer> buffer;
+
+public:
+    AsyncBufferedInputStream(AsyncInputStream & inner, ref<IoBuffer> buffer)
+        : inner(inner)
+        , buffer(buffer)
+    {
+    }
+
+    AsyncBufferedInputStream(AsyncInputStream & inner, size_t bufSize = 32 * 1024)
+        : AsyncBufferedInputStream(inner, make_ref<IoBuffer>(bufSize))
+    {
+    }
+
+    KJ_DISALLOW_COPY_AND_MOVE(AsyncBufferedInputStream);
+
+    kj::Promise<Result<size_t>> read(void * data, size_t size) override;
+};
+
 class AsyncOutputStream : private kj::AsyncObject
 {
 public:
@@ -104,5 +128,28 @@ public:
             }
         );
     }
+};
+
+class AsyncBufferedOutputStream : public AsyncOutputStream
+{
+    AsyncOutputStream & inner;
+    ref<IoBuffer> buffer;
+
+public:
+    AsyncBufferedOutputStream(AsyncOutputStream & inner, ref<IoBuffer> buffer)
+        : inner(inner)
+        , buffer(buffer)
+    {
+    }
+
+    AsyncBufferedOutputStream(AsyncOutputStream & inner, size_t bufSize = 32 * 1024)
+        : AsyncBufferedOutputStream(inner, make_ref<IoBuffer>(bufSize))
+    {
+    }
+
+    KJ_DISALLOW_COPY_AND_MOVE(AsyncBufferedOutputStream);
+
+    kj::Promise<Result<size_t>> write(const void * src, size_t size) override;
+    kj::Promise<Result<void>> flush();
 };
 }
