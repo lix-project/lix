@@ -34,11 +34,15 @@ static AsyncIoRoot & aio()
 
 static ref<Store> store()
 {
-    static std::optional<ref<Store>> _store;
+    auto & aioRoot = aio();
+
+    // SAFETY: this store will be destructed after its associated aio
+    // root because the root is initialized first (due to call above)
+    static thread_local std::optional<ref<Store>> _store;
     if (!_store) {
         try {
             initLibStore();
-            _store = aio().blockOn(openStore());
+            _store = aioRoot.blockOn(openStore());
         } catch (Error & e) {
             croak("%s", e.what());
         }
