@@ -33,25 +33,23 @@ namespace nix {
 using std::cin;
 using std::cout;
 
-
-typedef void (* Operation) (AsyncIoRoot & aio, Strings opFlags, Strings opArgs);
-
+typedef void (*Operation)(
+    std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs
+);
 
 static Path gcRoot;
 static int rootNr = 0;
 static bool noOutput = false;
-static std::shared_ptr<Store> store;
 
-
-ref<LocalStore> ensureLocalStore()
+ref<LocalStore> ensureLocalStore(std::shared_ptr<Store> store)
 {
     auto store2 = std::dynamic_pointer_cast<LocalStore>(store);
     if (!store2) throw Error("you don't have sufficient rights to use this command");
     return ref<LocalStore>::unsafeFromPtr(store2);
 }
 
-
-static kj::Promise<Result<StorePath>> useDeriver(const StorePath & path)
+static kj::Promise<Result<StorePath>>
+useDeriver(std::shared_ptr<Store> store, const StorePath & path)
 try {
     if (path.isDerivation()) co_return path;
     auto info = TRY_AWAIT(store->queryPathInfo(path));
@@ -65,7 +63,8 @@ try {
 
 /* Realise the given path.  For a derivation that means build it; for
    other paths it means ensure their validity. */
-static kj::Promise<Result<PathSet>> realisePath(StorePathWithOutputs path, bool build = true)
+static kj::Promise<Result<PathSet>>
+realisePath(std::shared_ptr<Store> store, StorePathWithOutputs path, bool build = true)
 try {
     auto store2 = std::dynamic_pointer_cast<LocalFSStore>(store);
 
@@ -125,7 +124,8 @@ try {
 
 
 /* Realise the given paths. */
-static void opRealise(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opRealise(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     bool dryRun = false;
     BuildMode buildMode = bmNormal;
@@ -170,7 +170,7 @@ static void opRealise(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
     if (!ignoreUnknown)
         for (auto & i : paths) {
-            auto paths2 = aio.blockOn(realisePath(i, false));
+            auto paths2 = aio.blockOn(realisePath(store, i, false));
             if (!noOutput)
                 for (auto & j : paths2)
                     cout << fmt("%1%\n", j);
@@ -179,7 +179,7 @@ static void opRealise(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
 
 /* Add files to the Nix store and print the resulting paths. */
-static void opAdd(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void opAdd(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
 
@@ -196,7 +196,8 @@ static void opAdd(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
 /* Preload the output of a fixed-output derivation into the Nix
    store. */
-static void opAddFixed(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opAddFixed(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     auto method = FileIngestionMethod::Flat;
 
@@ -222,7 +223,8 @@ static void opAddFixed(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
 
 /* Hack to support caching in `nix-prefetch-url'. */
-static void opPrintFixedPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opPrintFixedPath(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     auto method = FileIngestionMethod::Flat;
 
@@ -245,10 +247,13 @@ static void opPrintFixedPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     })));
 }
 
-
-static kj::Promise<Result<StorePathSet>> maybeUseOutputs(const StorePath & storePath, bool useOutput, bool forceRealise)
+static kj::Promise<Result<StorePathSet>> maybeUseOutputs(
+    std::shared_ptr<Store> store, const StorePath & storePath, bool useOutput, bool forceRealise
+)
 try {
-    if (forceRealise) TRY_AWAIT(realisePath({storePath}));
+    if (forceRealise) {
+        TRY_AWAIT(realisePath(store, {storePath}));
+    }
     if (useOutput && storePath.isDerivation()) {
         auto drv = TRY_AWAIT(store->derivationFromPath(storePath));
         StorePathSet outputs;
@@ -268,8 +273,14 @@ try {
 /* Some code to print a tree representation of a derivation dependency
    graph.  Topological sorting is used to keep the tree relatively
    flat. */
-static void printTree(AsyncIoRoot & aio, const StorePath & path,
-    const std::string & firstPad, const std::string & tailPad, StorePathSet & done)
+static void printTree(
+    std::shared_ptr<Store> store,
+    AsyncIoRoot & aio,
+    const StorePath & path,
+    const std::string & firstPad,
+    const std::string & tailPad,
+    StorePathSet & done
+)
 {
     if (!done.insert(path).second) {
         cout << fmt("%s%s [...]\n", firstPad, store->printStorePath(path));
@@ -289,16 +300,21 @@ static void printTree(AsyncIoRoot & aio, const StorePath & path,
 
     for (const auto &[n, i] : enumerate(sorted)) {
         bool last = n + 1 == sorted.size();
-        printTree(aio, i,
+        printTree(
+            store,
+            aio,
+            i,
             tailPad + (last ? treeLast : treeConn),
             tailPad + (last ? treeNull : treeLine),
-            done);
+            done
+        );
     }
 }
 
 
 /* Perform various sorts of queries. */
-static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     enum QueryType
         { qOutputs, qRequisites, qReferences, qReferrers
@@ -349,7 +365,9 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
         case qOutputs: {
             for (auto & i : opArgs) {
-                auto outputs = aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), true, forceRealise));
+                auto outputs = aio.blockOn(
+                    maybeUseOutputs(store, store->followLinksToStorePath(i), true, forceRealise)
+                );
                 for (auto & outputPath : outputs)
                     cout << fmt("%1%\n", store->printStorePath(outputPath));
             }
@@ -362,7 +380,9 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qReferrersClosure: {
             StorePathSet paths;
             for (auto & i : opArgs) {
-                auto ps = aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise));
+                auto ps = aio.blockOn(maybeUseOutputs(
+                    store, store->followLinksToStorePath(i), useOutput, forceRealise
+                ));
                 for (auto & j : ps) {
                     if (query == qRequisites) {
                         aio.blockOn(store->computeFSClosure(j, paths, false, includeOutputs));
@@ -413,7 +433,7 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
         case qBinding:
             for (auto & i : opArgs) {
-                auto path = aio.blockOn(useDeriver(store->followLinksToStorePath(i)));
+                auto path = aio.blockOn(useDeriver(store, store->followLinksToStorePath(i)));
                 Derivation drv = aio.blockOn(store->derivationFromPath(path));
                 StringPairs::iterator j = drv.env.find(bindingName);
                 if (j == drv.env.end())
@@ -426,7 +446,10 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qHash:
         case qSize:
             for (auto & i : opArgs) {
-                for (auto & j : aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise))) {
+                for (auto & j : aio.blockOn(maybeUseOutputs(
+                         store, store->followLinksToStorePath(i), useOutput, forceRealise
+                     )))
+                {
                     auto info = aio.blockOn(store->queryPathInfo(j));
                     if (query == qHash) {
                         assert(info->narHash.type == HashType::SHA256);
@@ -440,15 +463,19 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qTree: {
             StorePathSet done;
             for (auto & i : opArgs)
-                printTree(aio, store->followLinksToStorePath(i), "", "", done);
+                printTree(store, aio, store->followLinksToStorePath(i), "", "", done);
             break;
         }
 
         case qGraph: {
             StorePathSet roots;
             for (auto & i : opArgs)
-                for (auto & j : aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise)))
+                for (auto & j : aio.blockOn(maybeUseOutputs(
+                         store, store->followLinksToStorePath(i), useOutput, forceRealise
+                     )))
+                {
                     roots.insert(j);
+                }
             aio.blockOn(printDotGraph(ref<Store>::unsafeFromPtr(store), std::move(roots)));
             break;
         }
@@ -456,8 +483,12 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qGraphML: {
             StorePathSet roots;
             for (auto & i : opArgs)
-                for (auto & j : aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise)))
+                for (auto & j : aio.blockOn(maybeUseOutputs(
+                         store, store->followLinksToStorePath(i), useOutput, forceRealise
+                     )))
+                {
                     roots.insert(j);
+                }
             aio.blockOn(printGraphML(ref<Store>::unsafeFromPtr(store), std::move(roots)));
             break;
         }
@@ -471,8 +502,12 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
         case qRoots: {
             StorePathSet args;
             for (auto & i : opArgs)
-                for (auto & p : aio.blockOn(maybeUseOutputs(store->followLinksToStorePath(i), useOutput, forceRealise)))
+                for (auto & p : aio.blockOn(maybeUseOutputs(
+                         store, store->followLinksToStorePath(i), useOutput, forceRealise
+                     )))
+                {
                     args.insert(p);
+                }
 
             StorePathSet referrers;
             aio.blockOn(store->computeFSClosure(
@@ -492,8 +527,8 @@ static void opQuery(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     }
 }
 
-
-static void opPrintEnv(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opPrintEnv(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (opArgs.size() != 1) throw UsageError("'--print-env' requires one derivation store path");
@@ -518,8 +553,8 @@ static void opPrintEnv(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     cout << "'\n";
 }
 
-
-static void opReadLog(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opReadLog(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
 
@@ -536,8 +571,8 @@ static void opReadLog(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     }
 }
 
-
-static void opDumpDB(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opDumpDB(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (!opArgs.empty()) {
@@ -552,8 +587,13 @@ static void opDumpDB(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     }
 }
 
-
-static void registerValidity(AsyncIoRoot & aio, bool reregister, bool hashGiven, bool canonicalise)
+static void registerValidity(
+    std::shared_ptr<Store> store,
+    AsyncIoRoot & aio,
+    bool reregister,
+    bool hashGiven,
+    bool canonicalise
+)
 {
     ValidPathInfos infos;
 
@@ -576,20 +616,20 @@ static void registerValidity(AsyncIoRoot & aio, bool reregister, bool hashGiven,
         }
     }
 
-    aio.blockOn(ensureLocalStore()->registerValidPaths(infos));
+    aio.blockOn(ensureLocalStore(store)->registerValidPaths(infos));
 }
 
-
-static void opLoadDB(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opLoadDB(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (!opArgs.empty())
         throw UsageError("no arguments expected");
-    registerValidity(aio, true, true, false);
+    registerValidity(store, aio, true, true, false);
 }
 
-
-static void opRegisterValidity(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opRegisterValidity(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     bool reregister = false; // !!! maybe this should be the default
     bool hashGiven = false;
@@ -601,11 +641,11 @@ static void opRegisterValidity(AsyncIoRoot & aio, Strings opFlags, Strings opArg
 
     if (!opArgs.empty()) throw UsageError("no arguments expected");
 
-    registerValidity(aio, reregister, hashGiven, true);
+    registerValidity(store, aio, reregister, hashGiven, true);
 }
 
-
-static void opCheckValidity(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opCheckValidity(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     bool printInvalid = false;
 
@@ -624,8 +664,7 @@ static void opCheckValidity(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     }
 }
 
-
-static void opGC(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void opGC(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     bool printRoots = false;
     GCOptions options;
@@ -671,7 +710,8 @@ static void opGC(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 /* Remove paths from the Nix store if possible (i.e., if they do not
    have any remaining referrers and are not reachable from any GC
    roots). */
-static void opDelete(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opDelete(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     GCOptions options;
     options.action = GCOptions::gcDeleteSpecific;
@@ -701,7 +741,7 @@ static void opDelete(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
 
 /* Dump a path as a Nix archive.  The archive is written to stdout */
-static void opDump(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void opDump(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (opArgs.size() != 1) throw UsageError("only one argument allowed");
@@ -714,7 +754,8 @@ static void opDump(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
 
 /* Restore a value from a Nix archive.  The archive is read from stdin. */
-static void opRestore(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opRestore(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (opArgs.size() != 1) throw UsageError("only one argument allowed");
@@ -723,8 +764,8 @@ static void opRestore(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     restorePath(*opArgs.begin(), source);
 }
 
-
-static void opExport(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opExport(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     for (auto & i : opFlags)
         throw UsageError("unknown flag '%1%'", i);
@@ -739,8 +780,8 @@ static void opExport(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     sink.flush();
 }
 
-
-static void opImport(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opImport(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     for (auto & i : opFlags)
         throw UsageError("unknown flag '%1%'", i);
@@ -756,7 +797,7 @@ static void opImport(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
 
 /* Initialise the Nix databases. */
-static void opInit(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void opInit(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty()) throw UsageError("unknown flag");
     if (!opArgs.empty())
@@ -767,7 +808,8 @@ static void opInit(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
 
 /* Verify the consistency of the Nix environment. */
-static void opVerify(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opVerify(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opArgs.empty())
         throw UsageError("no arguments expected");
@@ -788,7 +830,8 @@ static void opVerify(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
 
 /* Verify whether the contents of the given store path have not changed. */
-static void opVerifyPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opVerifyPath(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty())
         throw UsageError("no flags expected");
@@ -817,7 +860,8 @@ static void opVerifyPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
 /* Repair the contents of the given path by redownloading it using a
    substituter (if available). */
-static void opRepairPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opRepairPath(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opFlags.empty())
         throw UsageError("no flags expected");
@@ -828,7 +872,8 @@ static void opRepairPath(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 
 /* Optimise the disk space usage of the Nix store by hard-linking
    files with the same contents. */
-static void opOptimise(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opOptimise(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     if (!opArgs.empty() || !opFlags.empty())
         throw UsageError("no arguments expected");
@@ -837,7 +882,8 @@ static void opOptimise(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 }
 
 /* Serve the nix store in a way usable by a restricted ssh user. */
-static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opServe(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     bool writeAllowed = false;
     for (auto & i : opFlags)
@@ -1049,8 +1095,9 @@ static void opServe(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
     }
 }
 
-
-static void opGenerateBinaryCacheKey(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void opGenerateBinaryCacheKey(
+    std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs
+)
 {
     for (auto & i : opFlags)
         throw UsageError("unknown flag '%1%'", i);
@@ -1068,8 +1115,8 @@ static void opGenerateBinaryCacheKey(AsyncIoRoot & aio, Strings opFlags, Strings
     writeFile(secretKeyFile, secretKey.to_string());
 }
 
-
-static void opVersion(AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
+static void
+opVersion(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strings opArgs)
 {
     printVersion("nix-store");
 }
@@ -1214,10 +1261,11 @@ static int main_nix_store(AsyncIoRoot & aio, std::string programName, Strings ar
         if (showHelp) showManPage("nix-store" + opName);
         if (!op) throw UsageError("no operation specified");
 
+        std::shared_ptr<Store> store;
         if (op != opDump && op != opRestore) /* !!! hack */
             store = aio.blockOn(openStore());
 
-        op(aio, std::move(opFlags), std::move(opArgs));
+        op(store, aio, std::move(opFlags), std::move(opArgs));
 
         return 0;
     }
