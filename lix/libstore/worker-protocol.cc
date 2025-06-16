@@ -6,6 +6,7 @@
 #include "lix/libstore/worker-protocol-impl.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/path-info.hh"
+#include <optional>
 
 namespace nix {
 
@@ -152,6 +153,27 @@ WireFormatGenerator WorkerProto::Serialise<UnkeyedValidPathInfo>::write(WriteCon
     co_yield renderContentAddress(pathInfo.ca);
 }
 
+std::optional<UnkeyedValidPathInfo>
+WorkerProto::Serialise<std::optional<UnkeyedValidPathInfo>>::read(ReadConn conn)
+{
+    bool valid;
+    conn.from >> valid;
+    if (valid) {
+        return WorkerProto::Serialise<UnkeyedValidPathInfo>::read(conn);
+    } else {
+        return std::nullopt;
+    }
+}
+
+WireFormatGenerator WorkerProto::Serialise<std::optional<UnkeyedValidPathInfo>>::write(
+    WriteConn conn, const std::optional<UnkeyedValidPathInfo> & pathInfo
+)
+{
+    co_yield pathInfo.has_value();
+    if (pathInfo.has_value()) {
+        co_yield WorkerProto::write(conn, *pathInfo);
+    }
+}
 
 SubstitutablePathInfo WorkerProto::Serialise<SubstitutablePathInfo>::read(ReadConn conn)
 {

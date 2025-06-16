@@ -239,6 +239,8 @@ DECLARE_WORKER_SERIALISER(UnkeyedValidPathInfo);
 template<>
 DECLARE_WORKER_SERIALISER(std::optional<TrustedFlag>);
 template<>
+DECLARE_WORKER_SERIALISER(std::optional<UnkeyedValidPathInfo>);
+template<>
 DECLARE_WORKER_SERIALISER(SubstitutablePathInfo);
 
 template<typename T>

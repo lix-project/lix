@@ -265,10 +265,14 @@ kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
 RemoteStore::queryPathInfoUncached(const StorePath & path)
 try {
     auto conn(TRY_AWAIT(getConnection()));
+    std::optional<UnkeyedValidPathInfo> pathInfo;
     try {
-        auto valid =
-            TRY_AWAIT(conn.sendCommand<bool>(WorkerProto::Op::QueryPathInfo, printStorePath(path)));
-        if (!valid) co_return result::success(nullptr);
+        pathInfo = TRY_AWAIT(conn.sendCommand<std::optional<UnkeyedValidPathInfo>>(
+            WorkerProto::Op::QueryPathInfo, printStorePath(path)
+        ));
+        if (!pathInfo) {
+            co_return result::success(nullptr);
+        }
     } catch (Error & e) {
         // Ugly backwards compatibility hack. TODO(fj#325): remove.
         if (e.msg().find("is not valid") != std::string::npos)
@@ -276,9 +280,7 @@ try {
         throw;
     }
 
-    co_return std::make_shared<ValidPathInfo>(
-        StorePath{path},
-        WorkerProto::Serialise<UnkeyedValidPathInfo>::read(*conn));
+    co_return std::make_shared<ValidPathInfo>(StorePath{path}, std::move(*pathInfo));
 } catch (...) {
     co_return result::current_exception();
 }
@@ -288,9 +290,9 @@ kj::Promise<Result<void>> RemoteStore::queryReferrers(const StorePath & path,
     StorePathSet & referrers)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand(WorkerProto::Op::QueryReferrers, printStorePath(path)));
-    for (auto & i : WorkerProto::Serialise<StorePathSet>::read(*conn))
-        referrers.insert(i);
+    referrers.merge(TRY_AWAIT(
+        conn.sendCommand<StorePathSet>(WorkerProto::Op::QueryReferrers, printStorePath(path))
+    ));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
