@@ -60,9 +60,6 @@ ref<RemoteStore::Connection> UDSRemoteStore::openConnection()
 
     nix::connect(conn->fd.get(), path ? *path : settings.nixDaemonSocketFile);
 
-    conn->from = std::make_unique<FdSource>(conn->fd.get());
-    conn->toFD = conn->fd.get();
-
     conn->startTime = std::chrono::steady_clock::now();
 
     return conn;

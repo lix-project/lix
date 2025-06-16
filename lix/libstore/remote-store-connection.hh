@@ -6,6 +6,7 @@
 #include "lix/libstore/worker-protocol-impl.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/file-descriptor.hh"
+#include "lix/libutil/io-buffer.hh"
 #include "lix/libutil/pool.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
@@ -20,20 +21,23 @@ namespace nix {
  * Bidirectional connection (send and receive) used by the Remote Store
  * implementation.
  *
- * Contains `Source` and `Sink` for actual communication, along with
+ * Contains a socket fd and IO buffer for actual communication, along with
  * other information learned when negotiating the connection.
  */
 struct RemoteStore::Connection
 {
     /**
-     * Send with this.
+     * Receive buffer, shared between sync Sources and async Streams.
+     * All buffered receiving sources or streams using the `getFD()`
+     * fd must use this buffer, or they will corrupt the connection.
      */
-    int toFD;
+    ref<IoBuffer> fromBuf{make_ref<IoBuffer>()};
 
     /**
-     * Receive with this.
+     * Returns the file descriptors socket backing this connection. A
+     * connection must be backed by a socket, not by a pair of pipes.
      */
-    std::unique_ptr<FdSource> from;
+    virtual int getFD() const = 0;
 
     /**
      * The store this connection belongs to.
@@ -71,19 +75,6 @@ struct RemoteStore::Connection
      * Time this connection was established.
      */
     std::chrono::time_point<std::chrono::steady_clock> startTime;
-
-    /**
-     * Coercion to `WorkerProto::ReadConn`. This makes it easy to use the
-     * factored out worker protocol searlizers with a
-     * `RemoteStore::Connection`.
-     *
-     * The worker protocol connection types are unidirectional, unlike
-     * this type.
-     */
-    operator WorkerProto::ReadConn ()
-    {
-        return WorkerProto::ReadConn{*from, *store, daemonVersion};
-    }
 
     /**
      * Coercion to `WorkerProto::WriteConn`. This makes it easy to use the
@@ -160,7 +151,7 @@ struct RemoteStore::ConnectionHandle
             try {
                 StringSink msg;
                 ((msg << std::forward<Args>(args)), ...);
-                writeFull(handle->toFD, msg.s);
+                writeFull(handle->getFD(), msg.s);
             } catch (...) {
                 handle.markBad();
                 throw;
@@ -177,7 +168,7 @@ struct RemoteStore::ConnectionHandle
                         std::get<Ids>(allArgs)
                     )),
                     ...);
-                    writeFull(handle->toFD, msg.s);
+                    writeFull(handle->getFD(), msg.s);
                 } catch (...) {
                     handle.markBad();
                     throw;
@@ -191,7 +182,11 @@ struct RemoteStore::ConnectionHandle
             co_return result::success();
         } else {
             try {
-                co_return WorkerProto::Serialise<R>::read(*handle);
+                FdSource from{handle->getFD(), handle->fromBuf};
+                from.specialEndOfFileError = "Nix daemon disconnected while reading a response";
+                co_return WorkerProto::Serialise<R>::read(
+                    {from, *handle->store, handle->daemonVersion}
+                );
             } catch (...) {
                 handle.markBad();
                 throw;

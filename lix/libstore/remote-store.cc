@@ -80,17 +80,18 @@ try {
     /* Send the magic greeting, check for the reply. */
     try {
         conn.store = this;
-        conn.from->specialEndOfFileError =
-            "Nix daemon disconnected unexpectedly (maybe it crashed?)";
-        FdSink to{conn.toFD};
+        FdSource from{conn.getFD(), conn.fromBuf};
+        from.specialEndOfFileError =
+            "Nix daemon connection broke during setup phase (is it reachable?)";
+        FdSink to{conn.getFD()};
         to << WORKER_MAGIC_1;
         to.flush();
 
-        uint64_t magic = readLongLong(*conn.from);
+        uint64_t magic = readLongLong(from);
         if (magic != WORKER_MAGIC_2)
             throw Error("protocol mismatch");
 
-        *conn.from >> conn.daemonVersion;
+        from >> conn.daemonVersion;
         if (GET_PROTOCOL_MAJOR(conn.daemonVersion) != GET_PROTOCOL_MAJOR(PROTOCOL_VERSION))
             throw Error("Nix daemon protocol version not supported");
         if (GET_PROTOCOL_MINOR(conn.daemonVersion) < MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION)
@@ -103,8 +104,10 @@ try {
         to << false; // obsolete reserveSpace
 
         to.flush();
-        conn.daemonNixVersion = readString(*conn.from);
-        conn.remoteTrustsUs = WorkerProto::Serialise<std::optional<TrustedFlag>>::read(conn);
+        conn.daemonNixVersion = readString(from);
+        conn.remoteTrustsUs = WorkerProto::Serialise<std::optional<TrustedFlag>>::read(
+            {from, *conn.store, conn.daemonVersion}
+        );
 
         auto ex = TRY_AWAIT(conn.processStderr());
         if (ex.e) {
@@ -158,7 +161,7 @@ try {
     for (auto & i : overrides)
         command << i.first << i.second.value;
 
-    writeFull(conn.toFD, command.s);
+    writeFull(conn.getFD(), command.s);
     auto ex = TRY_AWAIT(conn.processStderr());
     if (ex.e) {
         std::rethrow_exception(ex.e);
@@ -705,16 +708,29 @@ try {
 
 kj::Promise<Result<box_ptr<AsyncInputStream>>> RemoteStore::narFromPath(const StorePath & path)
 try {
+    struct NarStream : AsyncInputStream
+    {
+        ConnectionHandle conn;
+        AsyncFdIoStream rawStream;
+        AsyncBufferedInputStream bufferedIn;
+        box_ptr<AsyncInputStream> narCopier;
+        NarStream(ConnectionHandle conn)
+            : conn(std::move(conn))
+            , rawStream(AsyncFdIoStream::shared_fd{}, this->conn->getFD())
+            , bufferedIn(this->rawStream, this->conn->fromBuf)
+            , narCopier(copyNAR(bufferedIn))
+        {
+        }
+
+        kj::Promise<Result<size_t>> read(void * buffer, size_t size) override
+        {
+            return narCopier->read(buffer, size);
+        }
+    };
+
     auto conn(TRY_AWAIT(getConnection()));
     TRY_AWAIT(conn.sendCommand(WorkerProto::Op::NarFromPath, printStorePath(path)));
-    co_return make_box_ptr<AsyncGeneratorInputStream>([](auto conn) -> WireFormatGenerator {
-        try {
-            co_yield copyNAR(*conn->from);
-        } catch (...) {
-            conn.handle.markBad();
-            throw;
-        }
-    }(std::move(conn)));
+    co_return make_box_ptr<NarStream>(std::move(conn));
 } catch (...) {
     co_return result::current_exception();
 }
@@ -745,34 +761,37 @@ kj::Promise<Result<RemoteStore::Connection::RemoteError>> RemoteStore::Connectio
 try {
     while (true) {
 
-        auto msg = readNum<uint64_t>(*from);
+        FdSource from{getFD(), fromBuf};
+        from.specialEndOfFileError = "Nix daemon disconnected while waiting for a response";
+
+        auto msg = readNum<uint64_t>(from);
 
         if (msg == STDERR_ERROR) {
-            co_return RemoteError{std::make_exception_ptr(readError(*from))};
+            co_return RemoteError{std::make_exception_ptr(readError(from))};
         }
 
         else if (msg == STDERR_NEXT)
-            printError(chomp(readString(*from)));
+            printError(chomp(readString(from)));
 
         else if (msg == STDERR_START_ACTIVITY) {
-            auto act = readNum<ActivityId>(*from);
-            auto lvl = (Verbosity) readInt(*from);
-            auto type = (ActivityType) readInt(*from);
-            auto s = readString(*from);
-            auto fields = readFields(*from);
-            auto parent = readNum<ActivityId>(*from);
+            auto act = readNum<ActivityId>(from);
+            auto lvl = (Verbosity) readInt(from);
+            auto type = (ActivityType) readInt(from);
+            auto s = readString(from);
+            auto fields = readFields(from);
+            auto parent = readNum<ActivityId>(from);
             logger->startActivity(act, lvl, type, s, fields, parent);
         }
 
         else if (msg == STDERR_STOP_ACTIVITY) {
-            auto act = readNum<ActivityId>(*from);
+            auto act = readNum<ActivityId>(from);
             logger->stopActivity(act);
         }
 
         else if (msg == STDERR_RESULT) {
-            auto act = readNum<ActivityId>(*from);
-            auto type = (ResultType) readInt(*from);
-            auto fields = readFields(*from);
+            auto act = readNum<ActivityId>(from);
+            auto type = (ResultType) readInt(from);
+            auto fields = readFields(from);
             logger->result(act, type, fields);
         }
 
@@ -823,7 +842,7 @@ kj::Promise<Result<void>> RemoteStore::ConnectionHandle::withFramedSinkAsync(
 )
 try {
     {
-        FdSink to{handle->toFD};
+        FdSink to{handle->getFD()};
         FramedSinkHandler handler{*this, *handlerThreads.lock()};
         FramedSink sink(to, handler.ex);
         TRY_AWAIT(fun(sink));

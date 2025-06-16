@@ -70,6 +70,11 @@ protected:
     struct Connection : RemoteStore::Connection
     {
         std::unique_ptr<SSH::Connection> sshConn;
+
+        int getFD() const override
+        {
+            return sshConn->socket.get();
+        }
     };
 
     ref<RemoteStore::Connection> openConnection() override;
@@ -99,8 +104,6 @@ ref<RemoteStore::Connection> SSHStore::openConnection()
         command += " --store " + shellEscape(config_.remoteStore.get());
 
     conn->sshConn = ssh.startCommand(command);
-    conn->toFD = conn->sshConn->socket.get();
-    conn->from = std::make_unique<FdSource>(conn->sshConn->socket.get());
     return conn;
 }
 

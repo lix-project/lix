@@ -61,6 +61,11 @@ private:
     struct Connection : RemoteStore::Connection
     {
         AutoCloseFD fd;
+
+        int getFD() const override
+        {
+            return fd.get();
+        }
     };
 
     ref<RemoteStore::Connection> openConnection() override;

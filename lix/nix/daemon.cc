@@ -409,8 +409,8 @@ static void daemonLoop(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustC
  */
 static void forwardStdioConnection(RemoteStore & store) {
     auto conn = store.openConnectionWrapper();
-    int from = conn->from->fd;
-    int to = conn->toFD;
+    int from = conn->getFD();
+    int to = conn->getFD();
 
     auto nfds = std::max(from, STDIN_FILENO) + 1;
     while (true) {
