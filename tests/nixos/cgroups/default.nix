@@ -24,7 +24,7 @@
     host.wait_for_unit("multi-user.target")
 
     # Start build in background
-    host.execute("NIX_REMOTE=daemon nix build --use-cgroups --auto-allocate-uids --file ${./hang.nix} >&2 &")
+    host.execute("nix build --use-cgroups --auto-allocate-uids --file ${./hang.nix} >&2 &")
     pid = int(host.succeed("pgrep nix"))
     service = "/sys/fs/cgroup/system.slice/nix-daemon.service"
 

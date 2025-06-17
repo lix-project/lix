@@ -983,9 +983,7 @@ resolveDerivedPath(Store &, const DerivedPath::Built &, Store * evalStore = null
  * - ‘unix://<path>’: The Nix store accessed via a Unix domain socket
  *   connection to nix-daemon, with the socket located at <path>.
  *
- * - ‘auto’ or ‘’: Equivalent to ‘local’ or ‘daemon’ depending on
- *   whether the user has write access to the local Nix
- *   store/database.
+ * - ‘auto’ or ‘’: Try `daemon` if the daemon socket exists and `local` otherwise.
  *
  * - ‘file://<path>’: A binary cache stored in <path>.
  *
@@ -1003,6 +1001,14 @@ resolveDerivedPath(Store &, const DerivedPath::Built &, Store * evalStore = null
 kj::Promise<Result<ref<Store>>> openStore(const std::string & uri = settings.storeUri.get(),
     const StoreConfig::Params & extraParams = {});
 
+/**
+ * Same as `openStore`, but no connections to the daemon are attempted.
+ * `""` and `"auto"` urls will only attempt the `local` methods, `"daemon"`
+ * urls will cause a hard error.
+ */
+kj::Promise<Result<ref<Store>>> openNonDaemonStore(
+    const std::string & uri = settings.storeUri.get(), const StoreConfig::Params & extraParams = {}
+);
 
 /**
  * @return the default substituter stores, defined by the

@@ -50,25 +50,25 @@
     host.fail("nix build -v --auto-allocate-uids --no-use-cgroups --no-sandbox -L --offline --impure --file ${./id-test.nix} --argstr name id-test-4")
 
     # Auto-allocated UIDs, UID range, sandbox, via daemon.
-    host.succeed("NIX_REMOTE=daemon nix build -v --auto-allocate-uids --sandbox -L --offline --impure --file ${./id-test.nix} --argstr name id-test-5 --arg uidRange true")
+    host.succeed("nix build -v --auto-allocate-uids --sandbox -L --offline --impure --file ${./id-test.nix} --argstr name id-test-5 --arg uidRange true")
     host.succeed("[[ $(cat ./result) = 'uid=0(root) gid=0(root) groups=0(root)' ]]")
 
     # Auto-allocated UIDs, UID range, no sandbox, with and without daemon.
-    host.fail("NIX_REMOTE=daemon nix build -v --auto-allocate-uids --no-sandbox -L --offline --impure --file ${./id-test.nix} --argstr name id-test-6 --arg uidRange true")
+    host.fail("nix build -v --auto-allocate-uids --no-sandbox -L --offline --impure --file ${./id-test.nix} --argstr name id-test-6 --arg uidRange true")
     host.fail("nix build -v --auto-allocate-uids --no-use-cgroups --no-sandbox -L --offline --impure --file ${./id-test.nix} --argstr name id-test-7 --arg uidRange true")
 
     # Run systemd-nspawn in a Nix build, via daemon.
-    host.succeed("NIX_REMOTE=daemon nix build -vv --auto-allocate-uids --sandbox -L --offline --impure --file ${./systemd-nspawn.nix} --argstr nixpkgs ${nixpkgs}")
+    host.succeed("nix build -vv --auto-allocate-uids --sandbox -L --offline --impure --file ${./systemd-nspawn.nix} --argstr nixpkgs ${nixpkgs}")
     host.succeed("[[ $(cat ./result/msg) = 'Hello World' ]]")
 
     # Auto-allocated UIDs, UID range, sandbox, WITHOUT daemon (so-called: Nix as root), IN `systemd-run` transient scope.
     # `systemd-run` is CRITICAL to run this successfully.
-    host.succeed("systemd-run --same-dir --wait -p Delegate=yes -p DelegateSubgroup=supervisor nix build -v --auto-allocate-uids --sandbox -L --offline --impure --file ${./id-test.nix} --argstr name id-test-8 --arg uidRange true -I nixpkgs=${nixpkgs}")
+    host.succeed("systemd-run --same-dir --wait -E NIX_REMOTE=local -p Delegate=yes -p DelegateSubgroup=supervisor nix build -v --auto-allocate-uids --sandbox -L --offline --impure --file ${./id-test.nix} --argstr name id-test-8 --arg uidRange true -I nixpkgs=${nixpkgs}")
     host.succeed("[[ $(cat ./result) = 'uid=0(root) gid=0(root) groups=0(root)' ]]")
 
     # Run systemd-nspawn in a Nix build, WITHOUT daemon (so-called: Nix as root) IN `systemd-run`.
     # `systemd-run` is CRITICAL to run this successfully.
-    host.succeed("systemd-run --same-dir --wait -p Delegate=yes -p DelegateSubgroup=supervisor nix build -v --auto-allocate-uids --sandbox -L --offline --impure --file ${./systemd-nspawn.nix} --argstr nixpkgs ${nixpkgs} -I nixpkgs=${nixpkgs}")
+    host.succeed("systemd-run --same-dir --wait -E NIX_REMOTE=local -p Delegate=yes -p DelegateSubgroup=supervisor nix build -v --auto-allocate-uids --sandbox -L --offline --impure --file ${./systemd-nspawn.nix} --argstr nixpkgs ${nixpkgs} -I nixpkgs=${nixpkgs}")
     host.succeed("[[ $(cat ./result/msg) = 'Hello World' ]]")
   '';
 

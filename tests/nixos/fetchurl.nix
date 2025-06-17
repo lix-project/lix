@@ -79,6 +79,6 @@ in
     assert "SSL certificate problem: self-signed certificate" in err
 
     # Fetching from a server with a trusted cert should work via environment variable override.
-    machine.succeed("NIX_SSL_CERT_FILE=/tmp/cafile.pem nix build --no-substitute --expr 'import <nix/fetchurl.nix> { url = \"https://bad/index.html\"; hash = \"sha256-rsBwZF/lPuOzdjBZN2E08FjMM3JHyXit0Xi2zN+wAZ8=\"; }'")
+    machine.succeed("NIX_SSL_CERT_FILE=/tmp/cafile.pem NIX_REMOTE=local nix build --no-substitute --expr 'import <nix/fetchurl.nix> { url = \"https://bad/index.html\"; hash = \"sha256-rsBwZF/lPuOzdjBZN2E08FjMM3JHyXit0Xi2zN+wAZ8=\"; }'")
   '';
 }

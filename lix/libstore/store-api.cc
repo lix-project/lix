@@ -1367,20 +1367,19 @@ static bool isNonUriPath(const std::string & spec)
         && spec.find("/") != std::string::npos;
 }
 
-static std::optional<ref<Store>> openFromNonUri(const std::string & uri, const StoreConfig::Params & params)
+static std::optional<ref<Store>>
+openFromNonUri(const std::string & uri, const StoreConfig::Params & params, bool allowDaemon)
 {
     if (uri == "" || uri == "auto") {
         auto stateDir = getOr(params, "state", settings.nixStateDir);
-        if (access(stateDir.c_str(), R_OK | W_OK) == 0)
-            return LocalStore::makeLocalStore(params);
-        else if (pathExists(settings.nixDaemonSocketFile))
+        if (allowDaemon && pathExists(settings.nixDaemonSocketFile)) {
             return make_ref<UDSRemoteStore>(params);
-        #if __linux__
-        else if (!pathExists(stateDir)
-            && params.empty()
-            && getuid() != 0
-            && !getEnv("NIX_STORE_DIR").has_value()
-            && !getEnv("NIX_STATE_DIR").has_value())
+        } else if (access(stateDir.c_str(), R_OK | W_OK) == 0) {
+            return LocalStore::makeLocalStore(params);
+        }
+#if __linux__
+        else if (!pathExists(stateDir) && params.empty() && getuid() != 0
+                 && !getEnv("NIX_STORE_DIR").has_value() && !getEnv("NIX_STATE_DIR").has_value())
         {
             /* If /nix doesn't exist, there is no daemon socket, and
                we're not root, then automatically set up a chroot
@@ -1404,6 +1403,9 @@ static std::optional<ref<Store>> openFromNonUri(const std::string & uri, const S
         else
             return LocalStore::makeLocalStore(params);
     } else if (uri == "daemon") {
+        if (!allowDaemon) {
+            throw Error("tried to open a daemon store in a context that doesn't support this");
+        }
         return make_ref<UDSRemoteStore>(params);
     } else if (uri == "local") {
         return LocalStore::makeLocalStore(params);
@@ -1444,8 +1446,8 @@ static std::string extractConnStr(const std::string &proto, const std::string &c
     return connStr;
 }
 
-kj::Promise<Result<ref<Store>>> openStore(const std::string & uri_,
-    const StoreConfig::Params & extraParams)
+static kj::Promise<Result<ref<Store>>>
+openStore(const std::string & uri_, const StoreConfig::Params & extraParams, bool allowDaemon)
 try {
     auto params = extraParams;
     try {
@@ -1473,7 +1475,7 @@ try {
         auto [uri, uriParams] = splitUriAndParams(uri_);
         params.insert(uriParams.begin(), uriParams.end());
 
-        if (auto store = openFromNonUri(uri, params)) {
+        if (auto store = openFromNonUri(uri, params, allowDaemon)) {
             (*store)->config().warnUnknownSettings();
             co_return *store;
         }
@@ -1482,6 +1484,18 @@ try {
     throw Error("don't know how to open Nix store '%s'", uri_);
 } catch (...) {
     co_return result::current_exception();
+}
+
+kj::Promise<Result<ref<Store>>>
+openStore(const std::string & uri, const StoreConfig::Params & extraParams)
+{
+    return openStore(uri, extraParams, true);
+}
+
+kj::Promise<Result<ref<Store>>>
+openNonDaemonStore(const std::string & uri, const StoreConfig::Params & extraParams)
+{
+    return openStore(uri, extraParams, false);
 }
 
 kj::Promise<Result<std::list<ref<Store>>>> getDefaultSubstituters()

@@ -84,7 +84,13 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
 
         initPlugins();
 
-        auto store = aio.blockOn(openStore());
+        // FIXME this does not open a daemon connection for historical reasons.
+        // we may create a lot of build hook instances, and having each of them
+        // also create a daemon instance is inefficient and wasteful. in future
+        // versions of the build hook (where we don't need one hook process per
+        // build) we should change this to using a daemon connection, ideally a
+        // daemon connection provided by the parent via file descriptor passing
+        auto store = aio.blockOn(openNonDaemonStore());
 
         /* It would be more appropriate to use $XDG_RUNTIME_DIR, since
            that gets cleared on reboot, but it wouldn't work on macOS. */
