@@ -2,6 +2,7 @@
 #include "lix/libstore/parsed-derivations.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async-collect.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/thread-pool.hh"
@@ -11,6 +12,7 @@
 #include "lix/libutil/strings.hh"
 #include <kj/async.h>
 #include <kj/common.h>
+#include <kj/vector.h>
 
 namespace nix {
 
@@ -128,10 +130,7 @@ struct QueryMissingContext
         DrvState(size_t left) : left(left) { }
     };
 
-    Sync<State> state_;
-
-    // FIXME: make async.
-    ThreadPool pool{"queryMissing pool", fileTransferSettings.httpConnections};
+    State state;
 
     explicit QueryMissingContext(
         Store & store,
@@ -142,7 +141,7 @@ struct QueryMissingContext
         uint64_t & narSize_
     )
         : store(store)
-        , state_{{{}, unknown_, willSubstitute_, willBuild_, downloadSize_, narSize_}}
+        , state{{}, unknown_, willSubstitute_, willBuild_, downloadSize_, narSize_}
     {
     }
 
@@ -150,158 +149,160 @@ struct QueryMissingContext
 
     kj::Promise<Result<void>> queryMissing(const std::vector<DerivedPath> & targets);
 
-    void enqueueDerivedPaths(DerivedPathOpaque inputDrv, const StringSet & inputNode)
-    {
+    kj::Promise<Result<void>>
+    enqueueDerivedPaths(DerivedPathOpaque inputDrv, const StringSet & inputNode)
+    try {
         if (!inputNode.empty()) {
-            pool.enqueueWithAio([this, path{DerivedPath::Built{std::move(inputDrv), inputNode}}](
-                                    AsyncIoRoot & aio
-                                ) { doPath(aio, path); });
+            TRY_AWAIT(doPath(DerivedPath::Built{std::move(inputDrv), inputNode}));
         }
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    void mustBuildDrv(const StorePath & drvPath, const Derivation & drv)
-    {
-        {
-            auto state(state_.lock());
-            state->willBuild.insert(drvPath);
-        }
+    kj::Promise<Result<void>> mustBuildDrv(const StorePath & drvPath, const Derivation & drv)
+    try {
+        state.willBuild.insert(drvPath);
 
-        for (const auto & [inputDrv, inputNode] : drv.inputDrvs) {
-            enqueueDerivedPaths(makeConstantStorePath(inputDrv), inputNode);
-        }
+        TRY_AWAIT(asyncSpread(drv.inputDrvs, [&](const auto & input) {
+            const auto & [inputDrv, inputNode] = input;
+            return enqueueDerivedPaths(makeConstantStorePath(inputDrv), inputNode);
+        }));
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    void checkOutput(
-        AsyncIoRoot & aio,
+    kj::Promise<Result<void>> checkOutput(
         const StorePath & drvPath,
         ref<Derivation> drv,
         const StorePath & outPath,
-        ref<Sync<DrvState>> drvState_
+        DrvState & drvState
     )
-    {
-        if (drvState_->lock()->done) return;
-
+    try {
         SubstitutablePathInfos infos;
         auto * cap = getDerivationCA(*drv);
-        aio.blockOn(store.querySubstitutablePathInfos({
+        TRY_AWAIT(store.querySubstitutablePathInfos(
             {
-                outPath,
-                cap ? std::optional { *cap } : std::nullopt,
+                {
+                    outPath,
+                    cap ? std::optional{*cap} : std::nullopt,
+                },
             },
-        }, infos));
+            infos
+        ));
 
         if (infos.empty()) {
-            drvState_->lock()->done = true;
-            mustBuildDrv(drvPath, *drv);
+            drvState.done = true;
+            TRY_AWAIT(mustBuildDrv(drvPath, *drv));
         } else {
             {
-                auto drvState(drvState_->lock());
-                if (drvState->done) return;
-                assert(drvState->left);
-                drvState->left--;
-                drvState->outPaths.insert(outPath);
-                if (!drvState->left) {
-                    for (auto & path : drvState->outPaths) {
-                        pool.enqueueWithAio([this,
-                                             path{DerivedPath::Opaque{path}}](AsyncIoRoot & aio) {
-                            doPath(aio, path);
-                        });
-                    }
+                if (drvState.done) {
+                    co_return result::success();
+                }
+                assert(drvState.left);
+                drvState.left--;
+                drvState.outPaths.insert(outPath);
+                if (!drvState.left) {
+                    TRY_AWAIT(asyncSpread(drvState.outPaths, [&](auto & path) {
+                        return doPath(DerivedPath::Opaque{path});
+                    }));
                 }
             }
         }
+
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    void doPath(AsyncIoRoot & aio, const DerivedPath & req)
+    kj::Promise<Result<void>> doPath(DerivedPath req)
     {
-        {
-            auto state(state_.lock());
-            if (!state->done.insert(req.to_string(store)).second) return;
+        if (!state.done.insert(req.to_string(store)).second) {
+            return {result::success()};
         }
 
-        std::visit(
+        return std::visit(
             overloaded{
-                [&](const DerivedPath::Built & bfd) { doPathBuilt(aio, bfd); },
-                [&](const DerivedPath::Opaque & bo) { doPathOpaque(aio, bo); },
+                [&](DerivedPath::Built bfd) { return doPathBuilt(std::move(bfd)); },
+                [&](DerivedPath::Opaque bo) { return doPathOpaque(std::move(bo)); },
             },
-            req.raw()
+            std::move(req.raw())
         );
     }
 
-    void doPathBuilt(AsyncIoRoot & aio, const DerivedPath::Built & bfd)
-    {
+    kj::Promise<Result<void>> doPathBuilt(DerivedPath::Built bfd)
+    try {
         auto & drvPath = bfd.drvPath.path;
 
-        if (!aio.blockOn(store.isValidPath(drvPath))) {
+        if (!TRY_AWAIT(store.isValidPath(drvPath))) {
             // FIXME: we could try to substitute the derivation.
-            auto state(state_.lock());
-            state->unknown.insert(drvPath);
-            return;
+            state.unknown.insert(drvPath);
+            co_return result::success();
         }
 
         StorePathSet invalid;
-        for (auto & [outputName, path] :
-             aio.blockOn(store.queryDerivationOutputMap(drvPath)))
-        {
-            if (bfd.outputs.contains(outputName) && !aio.blockOn(store.isValidPath(path)))
+        for (auto & [outputName, path] : TRY_AWAIT(store.queryDerivationOutputMap(drvPath))) {
+            if (bfd.outputs.contains(outputName) && !TRY_AWAIT(store.isValidPath(path))) {
                 invalid.insert(path);
+            }
         }
-        if (invalid.empty()) return;
+        if (invalid.empty()) {
+            co_return result::success();
+        }
 
-        auto drv = make_ref<Derivation>(aio.blockOn(store.derivationFromPath(drvPath)));
+        auto drv = make_ref<Derivation>(TRY_AWAIT(store.derivationFromPath(drvPath)));
         ParsedDerivation parsedDrv(StorePath(drvPath), *drv);
 
         if (settings.useSubstitutes && parsedDrv.substitutesAllowed()) {
-            auto drvState = make_ref<Sync<DrvState>>(DrvState(invalid.size()));
-            for (auto & output : invalid) {
-                pool.enqueueWithAio([=, this](AsyncIoRoot & aio) {
-                    checkOutput(aio, drvPath, drv, output, drvState);
-                });
-            }
+            DrvState drvState(invalid.size());
+            TRY_AWAIT(asyncSpread(invalid, [&](auto & output) {
+                return checkOutput(drvPath, drv, output, drvState);
+            }));
         } else {
-            mustBuildDrv(drvPath, *drv);
+            TRY_AWAIT(mustBuildDrv(drvPath, *drv));
         }
+
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    void doPathOpaque(AsyncIoRoot & aio, const DerivedPath::Opaque & bo)
-    {
-        if (aio.blockOn(store.isValidPath(bo.path))) return;
+    kj::Promise<Result<void>> doPathOpaque(DerivedPath::Opaque bo)
+    try {
+        if (TRY_AWAIT(store.isValidPath(bo.path))) {
+            co_return result::success();
+        }
 
         SubstitutablePathInfos infos;
-        aio.blockOn(store.querySubstitutablePathInfos({{bo.path, std::nullopt}}, infos));
+        TRY_AWAIT(store.querySubstitutablePathInfos({{bo.path, std::nullopt}}, infos));
 
         if (infos.empty()) {
-            auto state(state_.lock());
-            state->unknown.insert(bo.path);
-            return;
+            state.unknown.insert(bo.path);
+            co_return result::success();
         }
 
         auto info = infos.find(bo.path);
         assert(info != infos.end());
 
-        {
-            auto state(state_.lock());
-            state->willSubstitute.insert(bo.path);
-            state->downloadSize += info->second.downloadSize;
-            state->narSize += info->second.narSize;
-        }
+        state.willSubstitute.insert(bo.path);
+        state.downloadSize += info->second.downloadSize;
+        state.narSize += info->second.narSize;
 
-        for (auto & ref : info->second.references) {
-            pool.enqueueWithAio([this, path{DerivedPath::Opaque{ref}}](AsyncIoRoot & aio) {
-                doPath(aio, path);
-            });
-        }
+        TRY_AWAIT(asyncSpread(info->second.references, [&](auto & ref) {
+            return doPath(DerivedPath::Opaque{ref});
+        }));
+
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 };
 }
 
 kj::Promise<Result<void>> QueryMissingContext::queryMissing(const std::vector<DerivedPath> & targets)
 try {
-    for (auto & path : targets) {
-        pool.enqueueWithAio([=, this](AsyncIoRoot & aio) { doPath(aio, path); });
-    }
-
-    TRY_AWAIT(pool.processAsync());
+    TRY_AWAIT(asyncSpread(targets, [&](auto & path) { return doPath(path); }));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
