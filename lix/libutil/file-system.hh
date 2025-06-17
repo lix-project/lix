@@ -189,7 +189,16 @@ Generator<Bytes> readFileSource(const Path & path);
 /**
  * Write a string to a file.
  */
-void writeFile(const Path & path, std::string_view s, mode_t mode = 0666, bool sync = false);
+void writeFile(
+    const Path & path,
+    std::string_view s,
+    mode_t mode = 0666,
+    bool sync = false,
+    bool allowInterrupts = true
+);
+void writeFileUninterruptible(
+    const Path & path, std::string_view s, mode_t mode = 0666, bool sync = false
+);
 
 void writeFile(const Path & path, Source & source, mode_t mode = 0666, bool sync = false);
 kj::Promise<Result<void>>

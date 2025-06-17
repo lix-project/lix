@@ -358,14 +358,13 @@ Generator<Bytes> readFileSource(const Path & path)
     }(std::move(fd));
 }
 
-
-void writeFile(const Path & path, std::string_view s, mode_t mode, bool sync)
+void writeFile(const Path & path, std::string_view s, mode_t mode, bool sync, bool allowInterrupts)
 {
     AutoCloseFD fd{open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
     if (!fd)
         throw SysError("opening file '%1%'", path);
     try {
-        writeFull(fd.get(), s);
+        writeFull(fd.get(), s, allowInterrupts);
     } catch (Error & e) {
         e.addTrace({}, "writing file '%1%'", path);
         throw;
@@ -378,6 +377,10 @@ void writeFile(const Path & path, std::string_view s, mode_t mode, bool sync)
         syncParent(path);
 }
 
+void writeFileUninterruptible(const Path & path, std::string_view s, mode_t mode, bool sync)
+{
+    writeFile(path, s, mode, sync, false);
+}
 
 static AutoCloseFD openForWrite(const Path & path, mode_t mode)
 {

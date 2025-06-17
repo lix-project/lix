@@ -25,6 +25,7 @@
 
     # Start build in background
     host.execute("NIX_REMOTE=daemon nix build --use-cgroups --auto-allocate-uids --file ${./hang.nix} >&2 &")
+    pid = int(host.succeed("pgrep nix"))
     service = "/sys/fs/cgroup/system.slice/nix-daemon.service"
 
     # Wait for cgroups to be created
@@ -35,6 +36,13 @@
     host.succeed(f'[ -z "$(cat {service}/cgroup.procs)" ]')
     host.succeed(f'[ -n "$(cat {service}/supervisor/cgroup.procs)" ]')
     host.succeed(f'[ -n "$(cat {service}/nix-build-uid-*/cgroup.procs)" ]')
+
+    # Perform an interrupt
+    host.execute(f"kill -SIGINT {pid}")
+
+    # Check that there aren't any cgroups anymore, neither any state records
+    host.succeed(f"until [ ! -e {service}/nix-build-uid-* ]; do sleep 1; done", timeout=30)
+    host.succeed("until [ ! -e /nix/var/nix/cgroups/nix-build-uid-* ]; do sleep 1; done", timeout=30)
   '';
 
 }

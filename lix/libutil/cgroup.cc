@@ -50,10 +50,9 @@ static std::map<std::string, std::string> getCgroups(const Path & cgroupFile)
     return cgroups;
 }
 
-static CgroupStats readStatistics(const std::filesystem::path & cgroup)
-{
+static Result<CgroupStats> readStatistics(const std::filesystem::path & cgroup)
+try {
     CgroupStats stats;
-
     auto cpustatPath = cgroup / "cpu.stat";
 
     if (pathExists(cpustatPath)) {
@@ -77,13 +76,15 @@ static CgroupStats readStatistics(const std::filesystem::path & cgroup)
     }
 
     return stats;
+} catch (...) {
+    return result::current_exception();
 }
 
 static void killCgroup(const std::string & name, const std::filesystem::path & cgroup)
 {
     auto killFile = cgroup / "cgroup.kill";
     if (pathExists(killFile))
-        writeFile(killFile, "1");
+        writeFileUninterruptible(killFile, "1");
     else {
         throw SysError(
             "cgroup '%s' at '%s' does not possess `cgroup.kill` ; are you running Lix on a kernel "
@@ -115,7 +116,7 @@ destroyCgroup(const std::string & name, const std::filesystem::path & aliveCgrou
 
     killCgroup(name, aliveCgroup);
 
-    CgroupStats stats = readStatistics(aliveCgroup);
+    Result<CgroupStats> stats = readStatistics(aliveCgroup);
 
     if (rmdir(aliveCgroup.c_str()) == -1) {
         throw SysError("deleting cgroup '%s' at '%s'", name, aliveCgroup);
@@ -123,7 +124,8 @@ destroyCgroup(const std::string & name, const std::filesystem::path & aliveCgrou
 
     debug("cgroup '%s' destroyed", name);
 
-    return stats;
+    /* Even if this contains an exception, this is fine. */
+    return stats.value();
 }
 
 CgroupHierarchy getLocalHierarchy(const std::filesystem::path & cgroupFilesystem)
@@ -376,7 +378,7 @@ CgroupStats AutoDestroyCgroup::getStatistics() const
      */
     return std::visit(
         nix::overloaded{
-            [&](const Path & aliveCgroup) { return readStatistics(aliveCgroup); },
+            [&](const Path & aliveCgroup) { return readStatistics(aliveCgroup).value(); },
             [&](const CgroupStats & stats) { return stats; }
         },
         cgroup_
