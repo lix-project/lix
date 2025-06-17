@@ -1,6 +1,7 @@
 #include "lix/libstore/legacy-ssh-store.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async-io.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/pool.hh"
 #include "lix/libstore/remote-store.hh"
 #include "lix/libstore/serve-protocol.hh"
@@ -16,8 +17,62 @@
 #include "lix/libstore/derivations.hh"
 #include "lix/libutil/config-impl.hh"
 #include "lix/libutil/abstract-setting-to-json.hh"
+#include "path-info.hh"
+#include "path.hh"
+#include <optional>
 
 namespace nix {
+
+namespace {
+struct QueryPathInfoResult
+{
+    std::string p;
+    UnkeyedValidPathInfo info;
+};
+
+struct BuildPathsResult
+{
+    BuildResult result;
+    std::optional<Error> error;
+};
+}
+
+template<>
+DECLARE_SERVE_SERIALISER(QueryPathInfoResult);
+template<>
+DECLARE_SERVE_SERIALISER(BuildPathsResult);
+
+QueryPathInfoResult ServeProto::Serialise<QueryPathInfoResult>::read(ServeProto::ReadConn conn)
+{
+    auto p = readString(conn.from);
+    if (p.empty()) {
+        return {"", UnkeyedValidPathInfo{Hash::dummy}};
+    }
+    auto info = ServeProto::Serialise<UnkeyedValidPathInfo>::read(conn);
+
+    if (info.narHash == Hash::dummy) {
+        throw Error("NAR hash is now mandatory");
+    }
+
+    auto s = readString(conn.from);
+    assert(s == "");
+    return {std::move(p), std::move(info)};
+}
+
+BuildPathsResult ServeProto::Serialise<BuildPathsResult>::read(ServeProto::ReadConn conn)
+{
+    BuildResult result;
+    result.status = (BuildResult::Status) readInt(conn.from);
+
+    if (!result.success()) {
+        conn.from >> result.errorMsg;
+        return {result, Error(result.status, result.errorMsg)};
+    }
+
+    return {result, std::nullopt};
+}
+
+// writers are intentionally not defined
 
 struct LegacySSHStoreConfig : CommonSSHStoreConfig
 {
@@ -96,6 +151,40 @@ struct LegacySSHStore final : public Store
                 .store = *store,
                 .version = remoteVersion,
             };
+        }
+
+        template<typename Arg>
+        kj::Promise<Result<void>> sendArg(Arg && arg)
+        try {
+            *to << std::forward<Arg>(arg);
+            return {result::success()};
+        } catch (...) {
+            return {result::current_exception()};
+        }
+
+        kj::Promise<Result<void>> sendArg(box_ptr<AsyncInputStream> && arg)
+        try {
+            TRY_AWAIT(arg->drainInto(*to));
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
+        }
+
+        template<typename R = void, typename... Args>
+        kj::Promise<Result<R>> sendCommand(Args &&... args)
+        try {
+            // can't use TRY_AWAIT here because macros break with variadic templates. sigh.
+            ((co_await sendArg(std::forward<Args>(args))).value(), ...);
+            to->flush();
+
+            if constexpr (std::is_void_v<R>) {
+                co_return result::success();
+            } else {
+                co_return ServeProto::Serialise<R>::read({*from, *store, remoteVersion});
+            }
+        } catch (...) {
+            good = false;
+            co_return result::current_exception();
         }
     };
 
@@ -180,24 +269,16 @@ struct LegacySSHStore final : public Store
 
         debug("querying remote host '%s' for info on '%s'", host, printStorePath(path));
 
-        *conn->to << ServeProto::Command::QueryPathInfos << PathSet{printStorePath(path)};
-        conn->to->flush();
+        auto result = TRY_AWAIT(conn->sendCommand<QueryPathInfoResult>(
+            ServeProto::Command::QueryPathInfos, PathSet{printStorePath(path)}
+        ));
 
-        auto p = readString(*conn->from);
-        if (p.empty()) co_return result::success(nullptr);
-        auto path2 = parseStorePath(p);
+        if (result.p.empty()) {
+            co_return result::success(nullptr);
+        }
+        auto path2 = parseStorePath(result.p);
         assert(path == path2);
-        auto info = std::make_shared<ValidPathInfo>(
-            path,
-            ServeProto::Serialise<UnkeyedValidPathInfo>::read(*conn));
-
-        if (info->narHash == Hash::dummy)
-            throw Error("NAR hash is now mandatory");
-
-        auto s = readString(*conn->from);
-        assert(s == "");
-
-        co_return info;
+        co_return std::make_shared<ValidPathInfo>(path, std::move(result.info));
     } catch (...) {
         co_return result::current_exception();
     }
@@ -208,39 +289,37 @@ struct LegacySSHStore final : public Store
         debug("adding path '%s' to remote host '%s'", printStorePath(info.path), host);
 
         auto conn(TRY_AWAIT(connections->get()));
+        unsigned result;
 
         if (GET_PROTOCOL_MINOR(conn->remoteVersion) >= 5) {
-
-            *conn->to << ServeProto::Command::AddToStoreNar << printStorePath(info.path)
-                      << (info.deriver ? printStorePath(*info.deriver) : "")
-                      << info.narHash.to_string(Base::Base16, false);
-            *conn->to << ServeProto::write(*conn, info.references);
-            *conn->to << info.registrationTime << info.narSize << info.ultimate << info.sigs
-                      << renderContentAddress(info.ca);
-            try {
-                TRY_AWAIT(copyNAR(source)->drainInto(*conn->to));
-            } catch (...) {
-                conn->good = false;
-                throw;
-            }
-            conn->to->flush();
-
+            result = TRY_AWAIT(conn->sendCommand<unsigned>(
+                ServeProto::Command::AddToStoreNar,
+                printStorePath(info.path),
+                (info.deriver ? printStorePath(*info.deriver) : ""),
+                info.narHash.to_string(Base::Base16, false),
+                ServeProto::write(*conn, info.references),
+                info.registrationTime,
+                info.narSize,
+                info.ultimate,
+                info.sigs,
+                renderContentAddress(info.ca),
+                copyNAR(source)
+            ));
         } else {
-
-            *conn->to << ServeProto::Command::ImportPaths << 1;
-            try {
-                TRY_AWAIT(copyNAR(source)->drainInto(*conn->to));
-            } catch (...) {
-                conn->good = false;
-                throw;
-            }
-            *conn->to << exportMagic << printStorePath(info.path);
-            *conn->to << ServeProto::write(*conn, info.references);
-            *conn->to << (info.deriver ? printStorePath(*info.deriver) : "") << 0 << 0;
-            conn->to->flush();
+            result = TRY_AWAIT(conn->sendCommand<unsigned>(
+                ServeProto::Command::ImportPaths,
+                1,
+                copyNAR(source),
+                exportMagic,
+                printStorePath(info.path),
+                ServeProto::write(*conn, info.references),
+                (info.deriver ? printStorePath(*info.deriver) : ""),
+                0,
+                0
+            ));
         }
 
-        if (readInt(*conn->from) != 1) {
+        if (result != 1) {
             throw Error(
                 "failed to add path '%s' to remote host '%s'", printStorePath(info.path), host
             );
@@ -254,8 +333,7 @@ struct LegacySSHStore final : public Store
     try {
         auto conn(TRY_AWAIT(connections->get()));
 
-        *conn->to << ServeProto::Command::DumpStorePath << printStorePath(path);
-        conn->to->flush();
+        TRY_AWAIT(conn->sendCommand(ServeProto::Command::DumpStorePath, printStorePath(path)));
         co_return make_box_ptr<AsyncGeneratorInputStream>([](auto conn) -> WireFormatGenerator {
             co_yield copyNAR(*conn->from);
         }(std::move(conn)));
@@ -315,14 +393,12 @@ public:
     try {
         auto conn(TRY_AWAIT(connections->get()));
 
-        *conn->to << ServeProto::Command::BuildDerivation << printStorePath(drvPath);
-        writeDerivation(*conn->to, *this, drv);
-
-        *conn->to << putBuildSettings(*conn);
-
-        conn->to->flush();
-
-        co_return ServeProto::Serialise<BuildResult>::read(*conn);
+        co_return TRY_AWAIT(conn->sendCommand<BuildResult>(
+            ServeProto::Command::BuildDerivation,
+            printStorePath(drvPath),
+            serializeDerivation(*this, drv),
+            putBuildSettings(*conn)
+        ));
     } catch (...) {
         co_return result::current_exception();
     }
@@ -338,7 +414,6 @@ public:
 
         auto conn(TRY_AWAIT(connections->get()));
 
-        *conn->to << ServeProto::Command::BuildPaths;
         Strings ss;
         for (auto & p : drvPaths) {
             auto sOrDrvPath = StorePathWithOutputs::tryFromDerivedPath(p);
@@ -354,18 +429,13 @@ public:
                 },
             }, sOrDrvPath);
         }
-        *conn->to << ss;
 
-        *conn->to << putBuildSettings(*conn);
+        auto result = TRY_AWAIT(conn->sendCommand<BuildPathsResult>(
+            ServeProto::Command::BuildPaths, ss, putBuildSettings(*conn)
+        ));
 
-        conn->to->flush();
-
-        BuildResult result;
-        result.status = (BuildResult::Status) readInt(*conn->from);
-
-        if (!result.success()) {
-            *conn->from >> result.errorMsg;
-            throw Error(result.status, result.errorMsg);
+        if (result.error) {
+            throw *result.error;
         }
 
         co_return result::success();
@@ -403,12 +473,10 @@ public:
 
         auto conn(TRY_AWAIT(connections->get()));
 
-        *conn->to << ServeProto::Command::QueryClosure << includeOutputs;
-        *conn->to << ServeProto::write(*conn, paths);
-        conn->to->flush();
+        out.merge(TRY_AWAIT(conn->sendCommand<StorePathSet>(
+            ServeProto::Command::QueryClosure, includeOutputs, ServeProto::write(*conn, paths)
+        )));
 
-        for (auto & i : ServeProto::Serialise<StorePathSet>::read(*conn))
-            out.insert(i);
         co_return result::success();
     } catch (...) {
         co_return result::current_exception();
@@ -419,12 +487,12 @@ public:
     try {
         auto conn(TRY_AWAIT(connections->get()));
 
-        *conn->to << ServeProto::Command::QueryValidPaths << false // lock
-                  << maybeSubstitute;
-        *conn->to << ServeProto::write(*conn, paths);
-        conn->to->flush();
-
-        co_return ServeProto::Serialise<StorePathSet>::read(*conn);
+        co_return TRY_AWAIT(conn->sendCommand<StorePathSet>(
+            ServeProto::Command::QueryValidPaths,
+            false, // lock
+            maybeSubstitute,
+            ServeProto::write(*conn, paths)
+        ));
     } catch (...) {
         co_return result::current_exception();
     }
