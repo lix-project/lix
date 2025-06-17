@@ -113,29 +113,11 @@ struct LegacySSHStore final : public Store
 
     struct Connection
     {
+        ref<IoBuffer> fromBuf{make_ref<IoBuffer>()};
         std::unique_ptr<SSH::Connection> sshConn;
-        std::unique_ptr<FdSink> to;
-        std::unique_ptr<FdSource> from;
         ServeProto::Version remoteVersion;
         Store * store = nullptr;
         bool good = true;
-
-        /**
-         * Coercion to `ServeProto::ReadConn`. This makes it easy to use the
-         * factored out serve protocol searlizers with a
-         * `LegacySSHStore::Connection`.
-         *
-         * The serve protocol connection types are unidirectional, unlike
-         * this type.
-         */
-        operator ServeProto::ReadConn ()
-        {
-            return ServeProto::ReadConn{
-                .from = *from,
-                .store = *store,
-                .version = remoteVersion,
-            };
-        }
 
         /*
          * Coercion to `ServeProto::WriteConn`. This makes it easy to use the
@@ -154,37 +136,69 @@ struct LegacySSHStore final : public Store
         }
 
         template<typename Arg>
-        kj::Promise<Result<void>> sendArg(Arg && arg)
+        kj::Promise<Result<void>>
+        sendArg(AsyncOutputStream & stream, StringSink & buffer, Arg && arg)
         try {
-            *to << std::forward<Arg>(arg);
+            buffer << std::forward<Arg>(arg);
             return {result::success()};
         } catch (...) {
             return {result::current_exception()};
         }
 
-        kj::Promise<Result<void>> sendArg(box_ptr<AsyncInputStream> && arg)
+        kj::Promise<Result<void>>
+        sendArg(AsyncOutputStream & stream, StringSink & buffer, box_ptr<AsyncInputStream> && arg)
         try {
-            TRY_AWAIT(arg->drainInto(*to));
+            TRY_AWAIT(stream.writeFull(buffer.s.data(), buffer.s.size()));
+            buffer = {};
+            TRY_AWAIT(arg->drainInto(stream));
             co_return result::success();
         } catch (...) {
             co_return result::current_exception();
         }
 
         template<typename R = void, typename... Args>
-        kj::Promise<Result<R>> sendCommand(Args &&... args)
+        kj::Promise<Result<R>> sendCommandUninterruptible(Args &&... args)
         try {
-            // can't use TRY_AWAIT here because macros break with variadic templates. sigh.
-            ((co_await sendArg(std::forward<Args>(args))).value(), ...);
-            to->flush();
+            // invalidate this connection if we're cancelled early, e.g. by a user ^C.
+            // regular exceptions must be handled elsewhere due the subframe requests.
+            // this also invalidates connections if a request was sent while unwinding
+            // the stack, but that's sufficiently suspect to warrant being as careful.
+            auto invalidateOnCancel = kj::defer([&] {
+                if (std::uncaught_exceptions() == 0) {
+                    good = false;
+                }
+            });
+
+            {
+                AsyncFdIoStream stream(AsyncFdIoStream::shared_fd{}, sshConn->socket.get());
+                StringSink buffer;
+                // can't use TRY_AWAIT here because macros break with variadic templates. sigh.
+                ((co_await sendArg(stream, buffer, std::forward<Args>(args))).value(), ...);
+                TRY_AWAIT(stream.writeFull(buffer.s.data(), buffer.s.size()));
+            }
 
             if constexpr (std::is_void_v<R>) {
+                invalidateOnCancel.cancel();
                 co_return result::success();
             } else {
-                co_return ServeProto::Serialise<R>::read({*from, *store, remoteVersion});
+                // NOTE while no async streams are using the fd it is fully synchronous.
+                // we need either sync sources or async sources, and async sources would
+                // require a *lot* of code duplication. response messages are mostly not
+                // large enough to block us for long, so we just accept the hit for now.
+                FdSource from{sshConn->socket.get(), fromBuf};
+                auto result = ServeProto::Serialise<R>::read({from, *store, remoteVersion});
+                invalidateOnCancel.cancel();
+                co_return result;
             }
         } catch (...) {
             good = false;
             co_return result::current_exception();
+        }
+
+        template<typename R = void, typename... Args>
+        kj::Promise<Result<R>> sendCommand(Args &&... args)
+        {
+            return makeInterruptible(sendCommandUninterruptible<R>(std::forward<Args>(args)...));
         }
     };
 
@@ -226,18 +240,18 @@ struct LegacySSHStore final : public Store
                    ? ""
                    : " --store " + shellEscape(config_.remoteStore.get()))
         );
-        conn->to = std::make_unique<FdSink>(conn->sshConn->socket.get());
-        conn->from = std::make_unique<FdSource>(conn->sshConn->socket.get());
+        FdSink to(conn->sshConn->socket.get());
+        FdSource from(conn->sshConn->socket.get(), conn->fromBuf);
         conn->store = this;
 
         try {
-            *conn->to << SERVE_MAGIC_1 << SERVE_PROTOCOL_VERSION;
-            conn->to->flush();
+            to << SERVE_MAGIC_1 << SERVE_PROTOCOL_VERSION;
+            to.flush();
 
-            uint64_t magic = readLongLong(*conn->from);
+            uint64_t magic = readLongLong(from);
             if (magic != SERVE_MAGIC_2)
                 throw Error("'nix-store --serve' protocol mismatch from '%s'", host);
-            conn->remoteVersion = readInt(*conn->from);
+            conn->remoteVersion = readInt(from);
             if (GET_PROTOCOL_MAJOR(conn->remoteVersion) != 0x200)
                 throw Error("unsupported 'nix-store --serve' protocol version on '%s'", host);
 
@@ -333,10 +347,23 @@ struct LegacySSHStore final : public Store
     try {
         auto conn(TRY_AWAIT(connections->get()));
 
+        struct NarStream : AsyncInputStream
+        {
+            Pool<Connection>::Handle conn;
+            AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, conn->sshConn->socket.get()};
+            AsyncBufferedInputStream buffered{stream, conn->fromBuf};
+            box_ptr<AsyncInputStream> copier{copyNAR(buffered)};
+
+            NarStream(Pool<Connection>::Handle conn) : conn(std::move(conn)) {}
+
+            kj::Promise<Result<size_t>> read(void * buffer, size_t size) override
+            {
+                return copier->read(buffer, size);
+            }
+        };
+
         TRY_AWAIT(conn->sendCommand(ServeProto::Command::DumpStorePath, printStorePath(path)));
-        co_return make_box_ptr<AsyncGeneratorInputStream>([](auto conn) -> WireFormatGenerator {
-            co_yield copyNAR(*conn->from);
-        }(std::move(conn)));
+        co_return make_box_ptr<NarStream>(std::move(conn));
     } catch (...) {
         co_return result::current_exception();
     }
