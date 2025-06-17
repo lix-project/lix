@@ -151,6 +151,13 @@ struct LegacySSHStore final : public Store
             if (GET_PROTOCOL_MAJOR(conn->remoteVersion) != 0x200)
                 throw Error("unsupported 'nix-store --serve' protocol version on '%s'", host);
 
+            /* No longer support protocols this old*/
+            if (GET_PROTOCOL_MINOR(conn->remoteVersion) < 4) {
+                throw Error(
+                    "remote '%s' is too old (protocol version %x)", host, conn->remoteVersion
+                );
+            }
+
         } catch (EndOfFile & e) {
             throw Error("cannot connect to '%1%'", host);
         }
@@ -169,9 +176,6 @@ struct LegacySSHStore final : public Store
     queryPathInfoUncached(const StorePath & path) override
     try {
         auto conn(TRY_AWAIT(connections->get()));
-
-        /* No longer support missing NAR hash */
-        assert(GET_PROTOCOL_MINOR(conn->remoteVersion) >= 4);
 
         debug("querying remote host '%s' for info on '%s'", host, printStorePath(path));
 
@@ -292,12 +296,9 @@ private:
     void putBuildSettings(Connection & conn)
     {
         *conn.to << settings.maxSilentTime << settings.buildTimeout;
-        if (GET_PROTOCOL_MINOR(conn.remoteVersion) >= 2) {
-            *conn.to << settings.maxLogSize;
-        }
-        if (GET_PROTOCOL_MINOR(conn.remoteVersion) >= 3)
-            *conn.to << 0 // buildRepeat hasn't worked for ages anyway
-                     << 0;
+        *conn.to << settings.maxLogSize;
+        *conn.to << 0 // buildRepeat hasn't worked for ages anyway
+                 << 0;
 
         if (GET_PROTOCOL_MINOR(conn.remoteVersion) >= 7) {
             *conn.to << ((int) settings.keepFailed);
