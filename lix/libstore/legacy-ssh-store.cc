@@ -11,6 +11,7 @@
 #include "lix/libstore/ssh.hh"
 #include "lix/libstore/ssh-store.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/serialise.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libutil/config-impl.hh"
@@ -293,15 +294,16 @@ struct LegacySSHStore final : public Store
 
 private:
 
-    void putBuildSettings(Connection & conn)
+    WireFormatGenerator putBuildSettings(Connection & conn)
     {
-        *conn.to << settings.maxSilentTime << settings.buildTimeout;
-        *conn.to << settings.maxLogSize;
-        *conn.to << 0 // buildRepeat hasn't worked for ages anyway
-                 << 0;
+        co_yield settings.maxSilentTime;
+        co_yield settings.buildTimeout;
+        co_yield settings.maxLogSize;
+        co_yield 0; // buildRepeat hasn't worked for ages anyway
+        co_yield 0;
 
         if (GET_PROTOCOL_MINOR(conn.remoteVersion) >= 7) {
-            *conn.to << ((int) settings.keepFailed);
+            co_yield ((int) settings.keepFailed);
         }
     }
 
@@ -316,7 +318,7 @@ public:
         *conn->to << ServeProto::Command::BuildDerivation << printStorePath(drvPath);
         writeDerivation(*conn->to, *this, drv);
 
-        putBuildSettings(*conn);
+        *conn->to << putBuildSettings(*conn);
 
         conn->to->flush();
 
@@ -354,7 +356,7 @@ public:
         }
         *conn->to << ss;
 
-        putBuildSettings(*conn);
+        *conn->to << putBuildSettings(*conn);
 
         conn->to->flush();
 
