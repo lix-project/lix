@@ -3,7 +3,6 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
-#include <climits>
 #include <string_view>
 
 #include "lix/libutil/box_ptr.hh"
@@ -1008,7 +1007,15 @@ Value * NixRepl::replOverlays()
     for (auto path : evalSettings.replOverlays.get()) {
         debug("Loading '%1%' path '%2%'...", "repl-overlays", path);
         SourcePath sourcePath((CanonPath(path)));
+
+        // XXX(jade): This is a somewhat unsatisfying solution to
+        // https://git.lix.systems/lix-project/lix/issues/777 which means that
+        // the top level item in the repl-overlays file (that is, the lambda)
+        // gets evaluated with pure eval off. This means that if you want to do
+        // impure eval stuff, you will have to force it with builtins.seq.
+        bool prevPureEval = evalSettings.pureEval.get();
         auto replInit = evalFile(sourcePath);
+        evalSettings.pureEval.setDefault(prevPureEval);
 
         if (!replInit->isLambda()) {
             evaluator.errors.make<TypeError>(
