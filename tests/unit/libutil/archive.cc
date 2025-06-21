@@ -248,6 +248,7 @@ namespace parseAsync {
     {
         bool executable;
         uint64_t size;
+        bool closed;
         std::string contents;
         operator nar::Entry() const
         {
@@ -292,7 +293,10 @@ namespace parseAsync {
                 file.contents += data;
             }
 
-            void close() override {}
+            void close() override
+            {
+                file.closed = true;
+            }
         };
 
         explicit ReconstructVisitor(std::map<std::string, Entry> & parent) : parent(parent) {}
@@ -306,7 +310,8 @@ namespace parseAsync {
         box_ptr<FileHandle>
         createRegularFile(const std::string & name, uint64_t size, bool executable) override
         {
-            auto & file = std::get<File>(parent.emplace(name, File{executable, size}).first->second);
+            auto & file =
+                std::get<File>(parent.emplace(name, File{executable, size, false}).first->second);
             return make_box_ptr<FileReader>(file);
         }
 
@@ -331,6 +336,13 @@ TEST_P(NarTest, parseAsync)
 
     auto entries = entriesFn()();
     parseDump(rv, source).wait(ws).value();
+
+    for (auto & [i, val] : contents) {
+        if (auto f = std::get_if<parseAsync::File>(&val)) {
+            ASSERT_TRUE(f->closed);
+        }
+    }
+
     auto parsed = parseAsync::Directory::toNar(contents.at(""));
     while (true) {
         auto e = entries.next();

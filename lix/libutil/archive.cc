@@ -708,6 +708,7 @@ struct AsyncParser
                     file->receiveContents({buf.data(), n});
                     left -= n;
                 }
+                file->close();
             } else if (auto sl = std::get_if<Parser::Symlink>(&*i)) {
                 target.createSymlink(name, sl->target);
             } else if (auto d = std::get_if<Parser::Directory>(&*i)) {
