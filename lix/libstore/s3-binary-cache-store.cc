@@ -478,7 +478,7 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
 
             request.SetBody(istream);
 
-            auto pfp = kj::newPromiseAndCrossThreadFulfiller<Aws::S3::Model::HeadObjectOutcome>();
+            auto pfp = kj::newPromiseAndCrossThreadFulfiller<Aws::S3::Model::PutObjectOutcome>();
             s3Helper.client->PutObjectAsync(
                 request,
                 [&](const Aws::S3::S3Client *,

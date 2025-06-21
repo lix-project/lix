@@ -47,6 +47,8 @@ in
 
   remoteBuilds = runNixOSTestFor "x86_64-linux" ./remote-builds.nix;
 
+  s3-binary-cache = runNixOSTestFor "x86_64-linux" ./s3-cache.nix;
+
   # Test our Nix as a client against remotes that are older
 
   remoteBuilds_remote_2_3 = runNixOSTestFor "x86_64-linux" {
