@@ -200,19 +200,19 @@ try {
         };
 
         try {
-            TRY_AWAIT(upsertFile(
-                std::string(info.path.hashPart()) + ".ls", j.dump(), "application/json", context
-            ));
-        } catch (ForeignException & exc) {
-            if (exc.is<JSON::exception>()) {
-                warn(
-                    "Skipping NAR listing for path '%1%' due to serialization failure: %2%",
-                    printStorePath(narInfo->path),
-                    exc.what()
-                );
-            } else {
-                throw exc;
-            }
+            TRY_AWAIT(
+                upsertFile(std::string(info.path.hashPart()) + ".ls", j.dump(), "application/json", context)
+            );
+            // FIXME(raito): use a ForeignException here by wrapping basic_json in a JSON type that
+            // wraps all non-exception-free methods into methods that throws ForeignExceptions
+            // instead.
+            // NOLINTNEXTLINE(lix-foreign-exceptions): see above
+        } catch (JSON::exception & exc) {
+            warn(
+                "Skipping NAR listing for path '%1%' due to serialization failure: %2%",
+                printStorePath(narInfo->path),
+                exc.what()
+            );
         }
     }
 

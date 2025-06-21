@@ -148,6 +148,10 @@ if [[ $(uname) == Linux ]] && [[ -L /proc/self/ns/user ]] && unshare --user true
     _canUseSandbox=1
 fi
 
+if touch `echo -e $(mktemp -d)/$'\322'.txt`; then
+    _canWriteNonUtf8Inodes=1
+fi
+
 isDaemonNewer () {
     [[ -n "${NIX_DAEMON_PACKAGE:-}" ]] || return 0
     local requiredVersion="$1"
@@ -171,6 +175,10 @@ requireDaemonNewerThan () {
 
 canUseSandbox() {
     [[ ${_canUseSandbox-} ]]
+}
+
+canWriteNonUtf8Inodes() {
+    [[ ${_canWriteNonUtf8Inodes-} ]]
 }
 
 requireSandboxSupport () {

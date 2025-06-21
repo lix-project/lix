@@ -14,7 +14,7 @@ rec {
         touch $out/qux
         mkdir $out/zyx
 
-        ${if nonUtf8Inodes then ''printf "data" > "$out/invalid-\x80file"'' else ""}
+        ${if nonUtf8Inodes then ''touch `echo -e $out/$'\322'.txt`'' else ""}
 
         cat >$out/foo/data <<EOF
         lasjdöaxnasd
