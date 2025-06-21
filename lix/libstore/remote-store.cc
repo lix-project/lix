@@ -101,7 +101,7 @@ try {
         if (GET_PROTOCOL_MAJOR(conn.daemonVersion) != GET_PROTOCOL_MAJOR(PROTOCOL_VERSION))
             throw Error("Nix daemon protocol version not supported");
         if (GET_PROTOCOL_MINOR(conn.daemonVersion) < MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION)
-            throw Error("the Nix daemon version is too old");
+            throw Error("The remote Nix daemon version is too old");
         to << PROTOCOL_VERSION;
 
         // Obsolete CPU affinity.
