@@ -1,4 +1,47 @@
 # Lix 2.91 "Dragon's Breath" (2024-08-12)
+# Lix 2.91.2 (2025-06-23)
+
+## Breaking Changes
+- Fixed output derivations can be run using `pasta` network isolation [fj#285](https://git.lix.systems/lix-project/lix/issues/285) [cl/3418](https://gerrit.lix.systems/c/lix/+/3418)
+
+  Fixed output derivations traditionally run in the host network namespace.
+  On Linux this allows such derivations to communicate with other sandboxes
+  or the host using the abstract Unix domains socket namespace; this hasn't
+  been unproblematic in the past and has been used in two distinct exploits
+  to break out of the sandbox. For this reason fixed output derivations can
+  now run in a network namespace (provided by [`pasta`]), restricted to TCP
+  and UDP communication with the rest of the world. When enabled this could
+  be a breaking change and we classify it as such, even though we don't yet
+  enable or require such isolation by default. We may enforce this in later
+  releases of Lix once we have sufficient confidence that breakage is rare.
+
+  [`pasta`]: https://passt.top/
+
+  Many thanks to [eldritch horrors](https://git.lix.systems/pennae) and [puck](https://git.lix.systems/puck) for this.
+
+## Fixes
+- Always clean up scratch paths after derivations failed to build [cl/3420](https://gerrit.lix.systems/c/lix/+/3420)
+
+  Previously, scratch paths created during builds were not always cleaned up if
+  the derivation failed, potentially leaving behind unnecessary temporary files
+  or directories in the Nix store.
+
+  This fix ensures that such paths are consistently removed after a failed build,
+  improving Nix store hygiene, hardening Lix against mis-reuse of failed builds
+  scratch paths.
+
+  Many thanks to [Raito Bezarius](https://git.lix.systems/raito) and [eldritch horrors](https://git.lix.systems/pennae) for this.
+- `build-dir` no longer defaults to `temp-dir` [cl/3419](https://gerrit.lix.systems/c/lix/+/3419)
+
+  The directory in which temporary build directories are created no longer defaults
+  to the value of the `temp-dir` setting to avoid builders making their directories
+  world-accessible. This behavior has been used to escape the build sandbox and can
+  cause build impurities even when not used maliciously. We now default to `builds`
+  in `NIX_STATE_DIR` (which is `/nix/var/nix/builds` in the default configuration).
+
+  Many thanks to [eldritch horrors](https://git.lix.systems/pennae) for this.
+
+
 # Lix 2.91.1 (2024-10-18)
 
 ## Fixes
