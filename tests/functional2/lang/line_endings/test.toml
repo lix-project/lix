@@ -1,8 +1,0 @@
-[[test]]
-name = "depr"
-runner = "parse-fail"
-
-[[test]]
-name = "allow-depr"
-runner = "parse-okay"
-flags = ["--extra-deprecated-features", "cr-line-endings"]

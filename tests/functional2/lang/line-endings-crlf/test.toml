@@ -1,0 +1,14 @@
+[[test]]
+name = "parse-fail-crlf"
+runner = "parse-fail"
+
+[[test]]
+name = "parse-okay-with-warning"
+runner = "parse-okay"
+flags = ["--extra-deprecated-features", "cr-line-endings"]
+
+[[test]]
+runner = "parse-fail"
+in = [ "in-eol-1.nix", "in-eol-2.nix", "in-eol-3.nix" ]
+matrix = true
+flags = ["--extra-deprecated-features", "cr-line-endings"]

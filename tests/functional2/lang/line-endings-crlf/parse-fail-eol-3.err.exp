@@ -1,5 +1,5 @@
 error: undefined variable 'invalid'
-       at /pwd/parse-fail-eol-1.nix:2:1:
+       at /pwd/in.nix:2:1:
             1| # foo
             2| invalid
              | ^
