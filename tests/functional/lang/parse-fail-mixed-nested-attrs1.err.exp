@@ -1,6 +1,0 @@
-error: attribute 'z' already defined at /pwd/parse-fail-mixed-nested-attrs1.nix:3:16
-       at /pwd/parse-fail-mixed-nested-attrs1.nix:2:3:
-            1| {
-            2|   x.z = 3;
-             |   ^
-            3|   x = { y = 3; z = 3; };

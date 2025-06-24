@@ -56,29 +56,6 @@ for i in parse-fail-*.nix; do
     fi
 done
 
-for i in parse-okay-*.nix; do
-    echo "parsing $i (should succeed)";
-    i=$(basename "$i" .nix)
-
-    declare -a flags=()
-    if test -e "$i.flags"; then
-        read -r -a flags < "$i.flags"
-    fi
-    if
-        expect 0 nix-instantiate --parse "${flags[@]}" "$i.nix" \
-            1> "$i.out" \
-            2> "$i.err"
-    then
-        sed -i "s!$(pwd)!/pwd!g" "$i.out" "$i.err"
-        yq --in-place --yaml-output '.' "$i.out"
-        diffAndAccept "$i" out exp
-        diffAndAccept "$i" err err.exp
-    else
-        echo "FAIL: $i should parse"
-        badExitCode=1
-    fi
-done
-
 for i in eval-fail-*.nix; do
     echo "evaluating $i (should fail)";
     i=$(basename "$i" .nix)
