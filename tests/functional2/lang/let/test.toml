@@ -1,0 +1,7 @@
+[[test]]
+runner = "eval-okay"
+
+[[test]]
+runner = "eval-okay"
+in = "in-ancient-let.nix"
+flags = [ "--extra-deprecated-features", "ancient-let" ]
