@@ -119,7 +119,7 @@ LocalStore::LocalStore(LocalStoreConfig config)
     Path gcRootsDir = config_.stateDir + "/gcroots";
     if (!pathExists(gcRootsDir)) {
         createDirs(gcRootsDir);
-        createSymlink(profilesDir, gcRootsDir + "/profiles");
+        replaceSymlink(profilesDir, gcRootsDir + "/profiles");
     }
 
     for (auto & perUserDir : {profilesDir + "/per-user", gcRootsDir + "/per-user"}) {
