@@ -1,5 +1,5 @@
 error: undefined variable 'y'
-       at /pwd/parse-fail-undef-var.nix:1:4:
+       at /pwd/in.nix:1:4:
             1| x: y
              |    ^
             2|

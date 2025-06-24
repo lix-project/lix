@@ -1,0 +1,6 @@
+error: undefined variable 'z'
+       at /pwd/in.nix:3:28:
+            2|
+            3|   f = {x, y ? ["baz" "bar" z "bat"]}: x + y;
+             |                            ^
+            4|
