@@ -1,4 +1,8 @@
+#include "error.hh"
+#include "file-descriptor.hh"
 #include "logging.hh"
+#include <fcntl.h>
+#include <sys/poll.h>
 #if __linux__
 
 #include "regex.hh"
@@ -115,6 +119,54 @@ destroyCgroup(const std::string & name, const std::filesystem::path & aliveCgrou
     }
 
     killCgroup(name, aliveCgroup);
+
+    // FIXME this should be done asynchronously, but we can't do that without
+    // a proper cgroup management entity at a higher level (eg in Worker). we
+    // can either synchronously kill the cgroup and have simple RAII classes,
+    // or we can have a management entity that can asynchronously destroy our
+    // cgroups since asynchronous destructors unfortunately don't exist here.
+    // FIXME we should also check that no new processes are added, but we can
+    // only do this without *even more* code duplication after checkInterrupt
+    // has been excised. until then a timeout on group death will have to do.
+    {
+        auto eventsFile = aliveCgroup / "cgroup.events";
+        AutoCloseFD events(open(eventsFile.c_str(), O_RDONLY));
+        if (!events) {
+            throw SysError("failed to open %s", eventsFile);
+        }
+
+        constexpr int WAIT_MS = 1000;
+        constexpr std::chrono::seconds TIMEOUT{120};
+
+        const auto started = std::chrono::steady_clock::now();
+
+        bool populated = true;
+        while (populated && (std::chrono::steady_clock::now() - started) < TIMEOUT) {
+            // there's only two keys today, this should be fine for a while
+            std::array<char, 1024> buf = {};
+            const auto got = pread(events.get(), buf.data(), buf.size(), 0);
+            if (got < 0) {
+                throw SysError("reading %s", eventsFile);
+            }
+            auto lines = tokenizeString<Strings>(std::string_view{buf.data(), size_t(got)}, "\n");
+            for (const auto & line : lines) {
+                auto tokens = tokenizeString<Strings>(line);
+                if (tokens.front() == "populated" && tokens.back() == "0") {
+                    populated = false;
+                    break;
+                }
+            }
+
+            debug("cgroup %s isn't empty yet, waiting for a while", aliveCgroup);
+            pollfd pfd{.fd = events.get(), .events = POLLPRI | POLLERR};
+            if (poll(&pfd, 1, WAIT_MS) < 0) {
+                throw SysError("polling %s", eventsFile);
+            }
+        }
+
+        // if the cgroup is still populated after waiting we just continue.
+        // cleanup will fail, but we can't do any better than this for now.
+    }
 
     Result<CgroupStats> stats = readStatistics(aliveCgroup);
 
