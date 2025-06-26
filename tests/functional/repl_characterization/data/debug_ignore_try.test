@@ -1,8 +1,11 @@
-@args --debugger --ignore-try
+@args --debugger --no-ignore-try
 
-we don't enter a debug repl through tryEval
+we should enter a debug repl through tryEval
   nix-repl> (builtins.tryEval ((x: throw "foo") 1)).success
-  false
+  error: foo
+
+  This exception occurred in a 'tryEval' call. Use --ignore-try to skip these.
 
 no segfault either
   nix-repl> :quit
+  error: foo

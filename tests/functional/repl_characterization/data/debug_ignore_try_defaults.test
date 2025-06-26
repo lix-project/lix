@@ -1,0 +1,8 @@
+@args --debugger
+
+we don't enter a debug repl through tryEval
+  nix-repl> (builtins.tryEval ((x: throw "foo") 1)).success
+  false
+
+no segfault either
+  nix-repl> :quit
