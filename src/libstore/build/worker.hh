@@ -161,6 +161,7 @@ public:
 
     Store & store;
     Store & evalStore;
+    std::optional<Path> buildDirOverride;
 
     struct HookState {
         std::unique_ptr<HookInstance> instance;

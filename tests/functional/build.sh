@@ -170,3 +170,8 @@ test "$(<<<"$out" grep -E '^error:' | wc -l)" = 3
 <<<"$out" grepQuiet -E "error: 2 dependencies of derivation '.*-x4\\.drv' failed to build"
 <<<"$out" grepQuiet -vE "hash mismatch in fixed-output derivation '.*-x3\\.drv'"
 <<<"$out" grepQuiet -vE "hash mismatch in fixed-output derivation '.*-x2\\.drv'"
+
+# Ensure when if the system build dir is inaccessible, we can still build things
+BUILD_DIR=$(mktemp -d)
+chmod 0000 "$BUILD_DIR"
+nix --build-dir "$BUILD_DIR" build -E 'with import ./config.nix; mkDerivation { name = "test"; buildCommand = "echo rawr > $out"; }' --impure --no-link
