@@ -187,6 +187,7 @@ public:
     Store & store;
     Store & evalStore;
     AsyncSemaphore substitutions, localBuilds;
+    std::optional<Path> buildDirOverride;
 
     struct PlatformFeatures
     {
