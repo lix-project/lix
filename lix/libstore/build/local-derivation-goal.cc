@@ -483,17 +483,47 @@ try {
         });
     }
 
-    createDirs(settings.buildDir.get());
+    try {
+        auto buildDir = worker.buildDirOverride.value_or(settings.buildDir.get());
 
-    /* Create a temporary directory where the build will take
-       place. */
-    tmpDir = createTempDir(
-        settings.buildDir.get(),
-        "nix-build-" + std::string(drvPath.name()),
-        false,
-        false,
-        0700
-    );
+        createDirs(buildDir);
+
+        /* Create a temporary directory where the build will take
+           place. */
+        tmpDir =
+            createTempDir(buildDir, "nix-build-" + std::string(drvPath.name()), false, false, 0700);
+    } catch (SysError & e) {
+        /*
+         * Fallback to the global tmpdir and create a safe space there
+         * only if it's a permission error.
+         */
+        if (e.errNo != EACCES) {
+            throw;
+        }
+
+        auto globalTmp = defaultTempDir();
+        createDirs(globalTmp);
+#if __APPLE__
+        /* macOS filesystem namespacing does not exist, to avoid breaking builds, we need to weaken
+         * the mode bits on the top-level directory. This avoids issues like
+         * https://github.com/NixOS/nix/pull/11031. */
+        constexpr int toplevelDirMode = 0755;
+#else
+        constexpr int toplevelDirMode = 0700;
+#endif
+        auto nixBuildsTmp =
+            createTempDir(globalTmp, fmt("nix-builds-%s", geteuid()), false, false, toplevelDirMode);
+        warn(
+            "Failed to use the system-wide build directory '%s', falling back to a temporary "
+            "directory inside '%s'",
+            settings.buildDir.get(),
+            nixBuildsTmp
+        );
+        worker.buildDirOverride = nixBuildsTmp;
+        tmpDir = createTempDir(
+            nixBuildsTmp, "nix-build-" + std::string(drvPath.name()), false, false, 0700
+        );
+    }
     /* The TOCTOU between the previous mkdir call and this open call is unavoidable due to
      * POSIX semantics.*/
     tmpDirFd = AutoCloseFD{open(tmpDir.c_str(), O_RDONLY | O_NOFOLLOW | O_DIRECTORY)};

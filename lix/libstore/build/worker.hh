@@ -195,6 +195,7 @@ public:
     Store & store;
     Store & evalStore;
     AsyncSemaphore substitutions, localBuilds;
+    std::optional<Path> buildDirOverride;
 
 private:
     kj::TaskSet children;
