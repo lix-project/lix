@@ -193,6 +193,7 @@ public:
     Store & evalStore;
     kj::AsyncIoContext & aio;
     AsyncSemaphore substitutions, localBuilds;
+    std::optional<Path> buildDirOverride;
 
 private:
     kj::TaskSet children;
