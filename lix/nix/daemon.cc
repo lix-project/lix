@@ -225,12 +225,12 @@ static PeerInfo getPeerInfo(int remote)
 /**
  * Open a store without a path info cache.
  */
-static kj::Promise<Result<ref<Store>>> openUncachedStore()
+static kj::Promise<Result<ref<Store>>> openUncachedStore(AllowDaemon allowDaemon = AllowDaemon::Allow)
 try {
     StoreConfig::Params params; // FIXME: get params from somewhere
     // Disable caching since the client already does that.
     params["path-info-cache-size"] = "0";
-    co_return TRY_AWAIT(openStore(settings.storeUri, params, AllowDaemon::Disallow));
+    co_return TRY_AWAIT(openStore(settings.storeUri, params, allowDaemon));
 } catch (...) {
     co_return result::current_exception();
 }
@@ -369,7 +369,7 @@ static void daemonLoopImpl(std::optional<TrustedFlag> forceTrustClientOpt)
                 FdSource from(remote.get());
                 FdSink to(remote.get());
                 processConnection(
-                    aio, aio.blockOn(openUncachedStore()), from, to, trusted
+                    aio, aio.blockOn(openUncachedStore(AllowDaemon::Disallow)), from, to, trusted
                 );
 
                 exit(0);

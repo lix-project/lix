@@ -44,14 +44,6 @@ in
       '';
       default = "root";
     };
-
-    expectSuccess = lib.mkOption {
-      type = lib.types.bool;
-      description = ''
-        Whether to expect the remote build to succeed or not.
-      '';
-      default = true;
-    };
   };
 
   config = {
@@ -123,9 +115,8 @@ in
       client.succeed(f"ssh -o StrictHostKeyChecking=no {ssh_user}@{builder.name} 'echo hello world' >&2")
 
       # Perform a build
-      out = client.${if test.config.expectSuccess then "succeed" else "fail"}("nix-build ${expr nodes.client 1} 2> build-output")
+      out = client.succeed("nix-build ${expr nodes.client 1} 2> build-output")
 
-    '' + lib.optionalString test.config.expectSuccess ''
       # Verify that the build was done on the builder
       builder.succeed(f"test -e {out.strip()}")
 

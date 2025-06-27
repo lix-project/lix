@@ -122,8 +122,6 @@ in
       };
     };
     sshUser = "test-user";
-    # FIXME: <https://git.lix.systems/lix-project/lix/issues/884>
-    expectSuccess = false;
   };
 
   # Test our Nix as a client against remotes that are older
