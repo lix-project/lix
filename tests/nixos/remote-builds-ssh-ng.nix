@@ -36,6 +36,22 @@ in
       '';
       default = { };
     };
+
+    sshUser = lib.mkOption {
+      type = lib.types.str;
+      description = ''
+        Builder user to run remote builds as.
+      '';
+      default = "root";
+    };
+
+    expectSuccess = lib.mkOption {
+      type = lib.types.bool;
+      description = ''
+        Whether to expect the remote build to succeed or not.
+      '';
+      default = true;
+    };
   };
 
   config = {
@@ -54,11 +70,12 @@ in
 
         client =
           { config, lib, pkgs, ... }:
-          { nix.settings.max-jobs = 0; # force remote building
+          {
+            nix.settings.max-jobs = 0; # force remote building
             nix.distributedBuilds = true;
             nix.buildMachines =
               [ { hostName = "builder";
-                  sshUser = "root";
+                  inherit (test.config) sshUser;
                   sshKey = "/root/.ssh/id_ed25519";
                   system = "i686-linux";
                   maxJobs = 1;
@@ -92,19 +109,23 @@ in
       client.succeed("chmod 600 /root/.ssh/id_ed25519")
 
       # Install the SSH key on the builder.
-      builder.succeed("mkdir -p -m 700 /root/.ssh")
-      builder.copy_from_host("key.pub", "/root/.ssh/authorized_keys")
+      ssh_user = "${test.config.sshUser}"
+      ssh_directory = "${nodes.builder.users.users.${test.config.sshUser}.home}/.ssh"
+      builder.succeed(f"mkdir -p -m 700 {ssh_directory}")
+      builder.succeed(f"chown {ssh_user}:root {ssh_directory}")
+      builder.copy_from_host("key.pub", f"{ssh_directory}/authorized_keys")
       builder.wait_for_unit("sshd.service")
 
       out = client.fail("nix-build ${expr nodes.client 1} 2>&1")
       assert "Host key verification failed." in out, f"No host verification error:\n{out}"
-      assert "'ssh-ng://root@builder'" in out, f"No details about which host:\n{out}"
+      assert f"'ssh-ng://{ssh_user}@builder'" in out, f"No details about which host:\n{out}"
 
-      client.succeed(f"ssh -o StrictHostKeyChecking=no {builder.name} 'echo hello world' >&2")
+      client.succeed(f"ssh -o StrictHostKeyChecking=no {ssh_user}@{builder.name} 'echo hello world' >&2")
 
       # Perform a build
-      out = client.succeed("nix-build ${expr nodes.client 1} 2> build-output")
+      out = client.${if test.config.expectSuccess then "succeed" else "fail"}("nix-build ${expr nodes.client 1} 2> build-output")
 
+    '' + lib.optionalString test.config.expectSuccess ''
       # Verify that the build was done on the builder
       builder.succeed(f"test -e {out.strip()}")
 

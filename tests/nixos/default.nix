@@ -111,6 +111,21 @@ in
 
   remoteBuildsSshNg = runNixOSTestFor "x86_64-linux" ./remote-builds-ssh-ng.nix;
 
+  # Test building with a non‐`root` user on the remote
+
+  remoteBuildsSshNgNonRoot = runNixOSTestFor "x86_64-linux" {
+    name = "remoteBuildsSshNgNonRoot";
+    imports = [ ./remote-builds-ssh-ng.nix ];
+    builders.config = {
+      users.users.test-user = {
+        isNormalUser = true;
+      };
+    };
+    sshUser = "test-user";
+    # FIXME: <https://git.lix.systems/lix-project/lix/issues/884>
+    expectSuccess = false;
+  };
+
   # Test our Nix as a client against remotes that are older
 
   remoteBuildsSshNg_remote_2_18 = runNixOSTestFor "x86_64-linux" {
