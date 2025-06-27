@@ -479,7 +479,10 @@
         }
         // (
           lib.optionalAttrs (builtins.elem system linux64BitSystems) {
-            nix-static = nixpkgsFor.${system}.static.nix;
+            # python doesn't work in static builds as of 2025-06-27
+            nix-static = nixpkgsFor.${system}.static.nix.overrideAttrs (_: {
+              doCheck = false;
+            });
             dockerImage =
               let
                 pkgs = nixpkgsFor.${system}.native;

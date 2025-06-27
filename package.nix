@@ -196,20 +196,25 @@ let
     ./tests/unit
     (fileset.fileFilter (f: lib.strings.hasPrefix "nix-profile" f.name) ./scripts)
   ];
-
-  # python3.withPackages does not splice properly, see https://github.com/NixOS/nixpkgs/issues/305858
-  lixPythonForBuild = python3.pythonOnBuildForHost.withPackages (p: [
-    p.pytest
-    p.pytest-xdist
-    p.ruff
-    p.python-frontmatter
-    p.aiohttp
-    p.toml
-  ]);
 in
 assert (lintInsteadOfBuild -> lix-clang-tidy != null);
 stdenv.mkDerivation (finalAttrs: {
   inherit pname version;
+
+  # python3.withPackages does not splice properly, see https://github.com/NixOS/nixpkgs/issues/305858
+  lixPythonForBuild = python3.pythonOnBuildForHost.withPackages (
+    p:
+    [
+      p.python-frontmatter
+    ]
+    ++ lib.optionals finalAttrs.doCheck [
+      p.pytest
+      p.pytest-xdist
+      p.ruff
+      p.aiohttp
+      p.toml
+    ]
+  );
 
   src = fileset.toSource {
     root = ./.;
@@ -279,7 +284,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   nativeBuildInputs =
     [
-      lixPythonForBuild
+      finalAttrs.lixPythonForBuild
       meson
       ninja
       cmake
@@ -336,6 +341,10 @@ stdenv.mkDerivation (finalAttrs: {
       capnproto-lix
       dtrace-headers
     ]
+    # NOTE(Raito): I'd have expected that the LLVM packaging would inject the
+    # libunwind library path directly in the wrappers, but it does inject
+    # -lunwind without injecting the library path...
+    ++ lib.optionals stdenv.hostPlatform.isStatic [ llvmPackages.libunwind ]
     ++ lib.optionals hostPlatform.isLinux [
       libseccomp
       busybox-sandbox-shell
@@ -363,7 +372,7 @@ stdenv.mkDerivation (finalAttrs: {
   disallowedReferences = [
     boost
     buildPackages.python3
-    lixPythonForBuild
+    finalAttrs.lixPythonForBuild
   ];
 
   # Needed for Meson to find Boost.
