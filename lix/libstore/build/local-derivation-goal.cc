@@ -459,8 +459,17 @@ try {
 
         auto globalTmp = defaultTempDir();
         createDirs(globalTmp);
-        auto nixBuildsTmp =
-            createTempDir(globalTmp, fmt("nix-builds-%s", geteuid()), false, false, 0700);
+#if __APPLE__
+        /* macOS filesystem namespacing does not exist, to avoid breaking builds, we need to weaken
+         * the mode bits on the top-level directory. This avoids issues like
+         * https://github.com/NixOS/nix/pull/11031. */
+        constexpr int toplevelDirMode = 0755;
+#else
+        constexpr int toplevelDirMode = 0700;
+#endif
+        auto nixBuildsTmp = createTempDir(
+            globalTmp, fmt("nix-builds-%s", geteuid()), false, false, toplevelDirMode
+        );
         warn(
             "Failed to use the system-wide build directory '%s', falling back to a temporary "
             "directory inside '%s'",
