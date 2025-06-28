@@ -969,6 +969,15 @@ kj::Promise<Result<OutputPathMap>>
 resolveDerivedPath(Store &, const DerivedPath::Built &, Store * evalStore = nullptr);
 
 /**
+ * Whether to allow daemon connections in openStore().
+ */
+enum class AllowDaemon
+{
+    Disallow,
+    Allow,
+};
+
+/**
  * @return a Store object to access the Nix store denoted by
  * ‘uri’ (slight misnomer...).
  *
@@ -983,7 +992,8 @@ resolveDerivedPath(Store &, const DerivedPath::Built &, Store * evalStore = null
  * - ‘unix://<path>’: The Nix store accessed via a Unix domain socket
  *   connection to nix-daemon, with the socket located at <path>.
  *
- * - ‘auto’ or ‘’: Try `daemon` if the daemon socket exists and `local` otherwise.
+ * - ‘auto’ or ‘’: Try `daemon` if the daemon socket exists and
+ *   `allowDaemon` is `AllowDaemon::Allow`, and `local` otherwise.
  *
  * - ‘file://<path>’: A binary cache stored in <path>.
  *
@@ -997,18 +1007,15 @@ resolveDerivedPath(Store &, const DerivedPath::Built &, Store * evalStore = null
  *
  * You can pass parameters to the store implementation by appending
  * ‘?key=value&key=value&...’ to the URI.
+ *
+ * @param allowDaemon Whether to allow connections to the daemon. The
+ * default should only be overridden with very good reason. When this is
+ * `AllowDaemon::Disallow`, `""` and `"auto"` URIs will only attempt the
+ * ‘local’ method, and `"daemon"` URIs will cause a hard error.
  */
 kj::Promise<Result<ref<Store>>> openStore(const std::string & uri = settings.storeUri.get(),
-    const StoreConfig::Params & extraParams = {});
-
-/**
- * Same as `openStore`, but no connections to the daemon are attempted.
- * `""` and `"auto"` urls will only attempt the `local` methods, `"daemon"`
- * urls will cause a hard error.
- */
-kj::Promise<Result<ref<Store>>> openNonDaemonStore(
-    const std::string & uri = settings.storeUri.get(), const StoreConfig::Params & extraParams = {}
-);
+    const StoreConfig::Params & extraParams = {},
+    AllowDaemon allowDaemon = AllowDaemon::Allow);
 
 /**
  * @return the default substituter stores, defined by the

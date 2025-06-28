@@ -90,7 +90,7 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
         // versions of the build hook (where we don't need one hook process per
         // build) we should change this to using a daemon connection, ideally a
         // daemon connection provided by the parent via file descriptor passing
-        auto store = aio.blockOn(openNonDaemonStore());
+        auto store = aio.blockOn(openStore(settings.storeUri, {}, AllowDaemon::Disallow));
 
         /* It would be more appropriate to use $XDG_RUNTIME_DIR, since
            that gets cleared on reboot, but it wouldn't work on macOS. */

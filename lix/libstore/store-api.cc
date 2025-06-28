@@ -1368,11 +1368,11 @@ static bool isNonUriPath(const std::string & spec)
 }
 
 static std::optional<ref<Store>>
-openFromNonUri(const std::string & uri, const StoreConfig::Params & params, bool allowDaemon)
+openFromNonUri(const std::string & uri, const StoreConfig::Params & params, AllowDaemon allowDaemon)
 {
     if (uri == "" || uri == "auto") {
         auto stateDir = getOr(params, "state", settings.nixStateDir);
-        if (allowDaemon && pathExists(settings.nixDaemonSocketFile)) {
+        if (allowDaemon == AllowDaemon::Allow && pathExists(settings.nixDaemonSocketFile)) {
             return make_ref<UDSRemoteStore>(params);
         } else if (access(stateDir.c_str(), R_OK | W_OK) == 0) {
             return LocalStore::makeLocalStore(params);
@@ -1403,7 +1403,7 @@ openFromNonUri(const std::string & uri, const StoreConfig::Params & params, bool
         else
             return LocalStore::makeLocalStore(params);
     } else if (uri == "daemon") {
-        if (!allowDaemon) {
+        if (allowDaemon == AllowDaemon::Disallow) {
             throw Error("tried to open a daemon store in a context that doesn't support this");
         }
         return make_ref<UDSRemoteStore>(params);
@@ -1446,8 +1446,8 @@ static std::string extractConnStr(const std::string &proto, const std::string &c
     return connStr;
 }
 
-static kj::Promise<Result<ref<Store>>>
-openStore(const std::string & uri_, const StoreConfig::Params & extraParams, bool allowDaemon)
+kj::Promise<Result<ref<Store>>>
+openStore(const std::string & uri_, const StoreConfig::Params & extraParams, AllowDaemon allowDaemon)
 try {
     auto params = extraParams;
     try {
@@ -1484,18 +1484,6 @@ try {
     throw Error("don't know how to open Nix store '%s'", uri_);
 } catch (...) {
     co_return result::current_exception();
-}
-
-kj::Promise<Result<ref<Store>>>
-openStore(const std::string & uri, const StoreConfig::Params & extraParams)
-{
-    return openStore(uri, extraParams, true);
-}
-
-kj::Promise<Result<ref<Store>>>
-openNonDaemonStore(const std::string & uri, const StoreConfig::Params & extraParams)
-{
-    return openStore(uri, extraParams, false);
 }
 
 kj::Promise<Result<std::list<ref<Store>>>> getDefaultSubstituters()
