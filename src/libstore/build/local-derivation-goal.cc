@@ -530,9 +530,7 @@ void LocalDerivationGoal::startBuilder()
         /* Schedule this scratch output path for automatic deletion
          * if we do not cancel it, e.g. when registering the outputs.
          */
-        scratchOutputsCleaner.emplace(
-            outputName, worker.store.toRealPath(worker.store.printStorePath(scratchPath))
-        );
+        scratchOutputsCleaner.insert_or_assign(outputName, worker.store.printStorePath(scratchPath));
 
         /* Substitute output placeholders with the scratch output paths.
            We'll use during the build. */
