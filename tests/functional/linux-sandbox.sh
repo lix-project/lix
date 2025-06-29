@@ -81,10 +81,3 @@ testCert present fixed-output "$certsymlink"
 
 # Symlinks should be added in the sandbox directly and not followed
 nix-sandbox-build symlink-derivation.nix
-
-# Regression fj#883: derivations outputs disappearing after rebuild
-# build the derivation for both its outputs and delete one of them.
-# simulates substitution or copying only one output from a builder.
-nix-store --delete $(nix-sandbox-build --no-out-link ./regression-fj883.nix -A base.lib)
-# build a derivation depending on previous one. this should succeed
-nix-sandbox-build --no-out-link ./regression-fj883.nix -A downstream

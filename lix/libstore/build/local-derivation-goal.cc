@@ -1725,11 +1725,6 @@ try {
                before this for loop. */
             if (*scratchPath != finalStorePath)
                 outputRewrites[std::string { scratchPath->hashPart() }] = std::string { finalStorePath.hashPart() };
-            /* Cancel automatic deletion of that output if it was a scratch output that we just
-             * registered. */
-            if (auto cleaner = scratchOutputsCleaner.extract(outputName)) {
-                cleaner.mapped().cancel();
-            }
         };
 
         auto orifu = get(outputReferencesIfUnregistered, outputName);
@@ -2040,6 +2035,10 @@ try {
            the next iteration */
         if (newInfo.ca) {
             TRY_AWAIT(localStore.registerValidPaths({{newInfo.path, newInfo}}));
+            /* Cancel automatic deletion of that output if it was a scratch output. */
+            if (auto cleaner = scratchOutputsCleaner.extract(outputName)) {
+                cleaner.mapped().cancel();
+            }
         }
 
         infos.emplace(outputName, std::move(newInfo));
@@ -2079,6 +2078,13 @@ try {
             infos2.insert_or_assign(newInfo.path, newInfo);
         }
         TRY_AWAIT(localStore.registerValidPaths(infos2));
+
+        /* Cancel automatic deletion of that output if it was a scratch output that we just registered. */
+        for (auto & [outputName, _ ] : infos) {
+            if (auto cleaner = scratchOutputsCleaner.extract(outputName)) {
+                cleaner.mapped().cancel();
+            }
+        }
     }
 
     /* In case of a fixed-output derivation hash mismatch, throw an
