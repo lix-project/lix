@@ -394,13 +394,9 @@ void LocalDerivationGoal::cleanupPostOutputsRegisteredModeCheck()
 
 void LocalDerivationGoal::cleanupPostOutputsRegisteredModeNonCheck()
 {
-    /* In the past, redirected outputs were manually tracked for deletion.
-     * Now that we have the scratch outputs cleaner which are a superset of
-     * redirected outputs, we just fire all uncancelled automatic deleters now.
-     *
-     * This should clean up any paths that IS NOT registered in the database.
-     */
-    scratchOutputsCleaner.clear();
+    /* Delete unused redirected outputs (when doing hash rewriting). */
+    for (auto & i : redirectedOutputs)
+        deletePath(worker.store.Store::toRealPath(i.second));
 
     /* Delete the chroot (if we were using one). */
     autoDelChroot.reset(); /* this runs the destructor */
@@ -535,10 +531,6 @@ try {
                    to use a temporary path */
                 makeFallbackPath(status.known->path);
         scratchOutputs.insert_or_assign(outputName, scratchPath);
-        /* Schedule this scratch output path for automatic deletion
-         * if we do not cancel it, e.g. when registering the outputs.
-         */
-        scratchOutputsCleaner.insert_or_assign(outputName, worker.store.printStorePath(scratchPath));
 
         /* Substitute output placeholders with the scratch output paths.
            We'll use during the build. */
@@ -561,6 +553,8 @@ try {
             std::string h2 { scratchPath.hashPart() };
             inputRewrites[h1] = h2;
         }
+
+        redirectedOutputs.insert_or_assign(std::move(fixedFinalPath), std::move(scratchPath));
     }
 
     /* Construct the environment passed to the builder. */
@@ -2035,9 +2029,7 @@ try {
             }
 
             /* Don't register anything, since we already have the
-               previous versions which we're comparing.
-               NOTE: this means that the `.check` path will be automatically deleted.
-            */
+               previous versions which we're comparing. */
             continue;
         }
 
@@ -2061,13 +2053,8 @@ try {
         /* If it's a CA path, register it right away. This is necessary if it
            isn't statically known so that we can safely unlock the path before
            the next iteration */
-        if (newInfo.ca) {
+        if (newInfo.ca)
             TRY_AWAIT(localStore.registerValidPaths({{newInfo.path, newInfo}}));
-            /* Cancel automatic deletion of that output if it was a scratch output. */
-            if (auto cleaner = scratchOutputsCleaner.extract(outputName)) {
-                cleaner.mapped().cancel();
-            }
-        }
 
         infos.emplace(outputName, std::move(newInfo));
     }
@@ -2107,13 +2094,6 @@ try {
             infos2.insert_or_assign(newInfo.path, newInfo);
         }
         TRY_AWAIT(localStore.registerValidPaths(infos2));
-
-        /* Cancel automatic deletion of that output if it was a scratch output that we just registered. */
-        for (auto & [outputName, _ ] : infos) {
-            if (auto cleaner = scratchOutputsCleaner.extract(outputName)) {
-                cleaner.mapped().cancel();
-            }
-        }
     }
 
     /* In case of a fixed-output derivation hash mismatch, throw an
@@ -2146,13 +2126,6 @@ try {
         }
         builtOutputs.emplace(outputName, thisRealisation);
     }
-
-    /* NOTE: At this point, all outputs MAY NOT have been registered.
-     * Therefore, there may remains auto-deleters pending in the cleaner list (`scratchOutputsCleaner`).
-     *
-     * They will be finally deleted but we have no way to assert they all have been, e.g.
-     * `assert(scratchOutputsCleaner.size() == 0)` cannot be written.
-     */
 
     co_return builtOutputs;
 } catch (...) {
