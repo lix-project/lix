@@ -146,9 +146,6 @@ in
 
   symlinkResolvconf = runNixOSTestFor "x86_64-linux" ./symlink-resolvconf.nix;
 
-  # Use this test to test things that cannot easily be tested under chroot Nix stores in functional test suite.
-  non-chroot-misc = runNixOSTestFor "x86_64-linux" ./non-chroot-misc;
-
   noNewPrivilegesInSandbox = runNixOSTestFor "x86_64-linux" ./no-new-privileges/sandbox.nix;
 
   noNewPrivilegesOutsideSandbox = runNixOSTestFor "x86_64-linux" ./no-new-privileges/no-sandbox.nix;
