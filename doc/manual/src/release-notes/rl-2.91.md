@@ -1,4 +1,59 @@
 # Lix 2.91 "Dragon's Breath" (2024-08-12)
+# Lix 2.91.3 (2025-06-30)
+
+## Fixes
+- Revert CVE-2025-52992 failed mitigation [fj#883](https://git.lix.systems/lix-project/lix/issues/883) [fj#887](https://git.lix.systems/lix-project/lix/issues/887) [cl/3420](https://gerrit.lix.systems/c/lix/+/3420) [cl/3524](https://gerrit.lix.systems/c/lix/+/3524) [cl/3523](https://gerrit.lix.systems/c/lix/+/3523) [cl/3522](https://gerrit.lix.systems/c/lix/+/3522)
+
+  Following the initial mitigation of **CVE-2025-52992** in `cl/3420`, we
+  received reports of **unexpected deletion of in-use store paths**.
+
+  Upon investigation, we found that the patch did **not correctly cancel all
+  automatic deleters**, resulting in potentially critical path loss during normal
+  operation.
+
+  Given the severity and time-sensitive nature of the situation ([see incident
+  report](https://lix.systems/blog/2025-06-27-lix-critical-bug/)), we evaluated
+  possible options to repair the behavior safely. However, we concluded that a
+  rushed fix would either:
+
+  * **Overdelete**, i.e. breaking running systems, or,
+  * **Underdelete**, effectively **reopening CVE-2025-52992** while leaving
+    orphaned paths behind.
+
+  As **CVE-2025-52992 has no known exploit vector**, and correctness is critical
+  in the Lix project, we have **fully reverted the previous mitigations**.
+
+  Moving forward, the Lix team will rework this code path in a **long-term,
+  correctness-first fix** on the main branch. We will explore backporting it to
+  stable channels once its safety is assured.
+
+  We are deeply sorry for the stability incident and the Lix team remain
+  available for assisting you in recovering your systems.
+
+  Many thanks to [Raito Bezarius](https://git.lix.systems/raito) and [eldritch horrors](https://git.lix.systems/pennae) for this.
+- Fallback to safe temp dir when build-dir is unwritable [fj#876](https://git.lix.systems/lix-project/lix/issues/876) [cl/3502](https://gerrit.lix.systems/c/lix/+/3502)
+
+  Non-daemon builds started failing with a permission error after introducing the `build-dir` option:
+
+  ```
+  $ nix build --store ~/scratch nixpkgs#hello --rebuild
+  error: creating directory '/nix/var/nix/builds/nix-build-hello-2.12.2.drv-0': Permission denied
+  ```
+
+  This happens because:
+
+  1. These builds are not run via the daemon, which owns `/nix/var/nix/builds`.
+  2. The user lacks permissions for that path.
+
+  We considered making `build-dir` a store-level option and defaulting it to `<chroot-root>/nix/var/nix/builds` for chroot stores, but opted instead for a fallback: if the default fails, Nix now creates a safe build directory under `/tmp`.
+
+  To avoid CVE-2025-52991, the fallback uses an extra path component between `/tmp` and the build dir.
+
+  **Note**: this fallback clutters `/tmp` with build directories that are not cleaned up. To prevent this, explicitly set `build-dir` to a path managed by Lix, even for local workloads.
+
+  Many thanks to [Raito Bezarius](https://git.lix.systems/raito) and [eldritch horrors](https://git.lix.systems/pennae) for this.
+
+
 # Lix 2.91.2 (2025-06-23)
 
 ## Breaking Changes
