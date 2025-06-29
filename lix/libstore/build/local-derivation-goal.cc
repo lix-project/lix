@@ -12,6 +12,7 @@
 #include "lix/libstore/path-references.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/daemon.hh"
+#include "lix/libutil/fmt.hh"
 #include "lix/libutil/regex.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/file-system.hh"
@@ -27,6 +28,7 @@
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
 #include "platform/linux.hh"
+#include "path-tree.hh"
 
 #include <cstddef>
 #include <exception>
@@ -2113,37 +2115,50 @@ try {
             std::optional<Strings> allowedReferences, allowedRequisites, disallowedReferences, disallowedRequisites;
         };
 
+        struct Closure {
+            /** Keys: paths in the closure, values: reverse path from an initial path to the parent of the key */
+            std::map<StorePath, StorePathSet> paths;
+            uint64_t size;
+        };
+
         /* Compute the closure and closure size of some output. This
            is slightly tricky because some of its references (namely
            other outputs) may not be valid yet. */
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
         auto getClosure = [&](const StorePath & path
-                          ) -> kj::Promise<Result<std::pair<StorePathSet, uint64_t>>> {
+                          ) -> kj::Promise<Result<Closure>> {
             try {
                 uint64_t closureSize = 0;
-                StorePathSet pathsDone;
+                std::map<StorePath, StorePathSet> pathsDone;
                 std::queue<StorePath> pathsLeft;
                 pathsLeft.push(path);
 
                 while (!pathsLeft.empty()) {
                     auto path = pathsLeft.front();
                     pathsLeft.pop();
-                    if (!pathsDone.insert(path).second) continue;
+                    if (pathsDone.contains(path)) {
+                        continue;
+                    }
 
                     auto i = outputsByPath.find(worker.store.printStorePath(path));
+                    auto & refs = pathsDone[path];
                     if (i != outputsByPath.end()) {
                         closureSize += i->second.narSize;
-                        for (auto & ref : i->second.references)
+                        for (auto & ref : i->second.references) {
                             pathsLeft.push(ref);
+                            refs.insert(ref);
+                        }
                     } else {
                         auto info = TRY_AWAIT(worker.store.queryPathInfo(path));
                         closureSize += info->narSize;
-                        for (auto & ref : info->references)
+                        for (auto & ref : info->references) {
                             pathsLeft.push(ref);
+                            refs.insert(ref);
+                        }
                     }
                 }
 
-                co_return std::make_pair(std::move(pathsDone), closureSize);
+                co_return Closure { std::move(pathsDone), closureSize};
             } catch (...) {
                 co_return result::current_exception();
             }
@@ -2157,7 +2172,7 @@ try {
                         worker.store.printStorePath(info.path), info.narSize, *checks.maxSize);
 
                 if (checks.maxClosureSize) {
-                    uint64_t closureSize = TRY_AWAIT(getClosure(info.path)).second;
+                    uint64_t closureSize = TRY_AWAIT(getClosure(info.path)).size;
                     if (closureSize > *checks.maxClosureSize)
                         throw BuildError("closure of path '%s' is too large at %d bytes; limit is %d bytes",
                             worker.store.printStorePath(info.path), closureSize, *checks.maxClosureSize);
@@ -2201,32 +2216,64 @@ try {
                             }
                         }
 
-                        auto used = recursive
-                            ? TRY_AWAIT(getClosure(info.path)).first
-                            : info.references;
-
-                        if (recursive && checks.ignoreSelfRefs)
-                            used.erase(info.path);
-
-                        StorePathSet badPaths;
-
-                        for (auto & i : used)
-                            if (allowed) {
-                                if (!spec.count(i))
-                                    badPaths.insert(i);
-                            } else {
-                                if (spec.count(i))
-                                    badPaths.insert(i);
+                        std::map<StorePath, StorePathSet> used;
+                        if (recursive) {
+                            used = TRY_AWAIT(getClosure(info.path)).paths;
+                        } else {
+                            for (auto & ref : info.references) {
+                                used.insert({ref, {}});
                             }
+                        }
+
+                        std::set<StorePath> badPaths;
+                        for (auto & [path, refs] : used) {
+                            if (path == info.path && recursive && checks.ignoreSelfRefs) {
+                                continue;
+                            }
+                            if (allowed) {
+                                if (!spec.count(path)) {
+                                    badPaths.insert(path);
+                                }
+                            } else {
+                                if (spec.count(path)) {
+                                    badPaths.insert(path);
+                                }
+                            }
+                        }
 
                         if (!badPaths.empty()) {
-                            std::string badPathsStr;
-                            for (auto & i : badPaths) {
-                                badPathsStr += "\n  ";
-                                badPathsStr += worker.store.printStorePath(i);
+                            auto badPathsList = concatMapStringsSep(
+                                "\n",
+                                badPaths,
+                                [&](const StorePath & i) -> std::string {
+                                    return worker.store.printStorePath(i);
+                                }
+                            );
+                            if (recursive) {
+                                std::string badPathRefsTree;
+                                for (auto & i : badPaths) {
+                                    badPathRefsTree += TRY_AWAIT(genGraphString(
+                                        info.path, i, used, worker.store, true, false
+                                    ));
+                                    badPathRefsTree += "\n";
+                                }
+
+                                throw BuildError(
+                                    "output '%s' is not allowed to refer to the following "
+                                    "paths:\n%s\n\nShown below are chains that lead to the "
+                                    "forbidden path(s).\n%s",
+                                    worker.store.printStorePath(info.path),
+                                    badPathsList,
+                                    Uncolored(badPathRefsTree)
+                                );
+                            } else {
+                                throw BuildError(
+                                    "output '%s' is not allowed to have direct references to the "
+                                    "following paths:\n%s",
+                                    worker.store.printStorePath(info.path),
+                                    badPathsList
+                                );
                             }
-                            throw BuildError("output '%s' is not allowed to refer to the following paths:%s",
-                                worker.store.printStorePath(info.path), badPathsStr);
                         }
                         co_return result::success();
                     } catch (...) {

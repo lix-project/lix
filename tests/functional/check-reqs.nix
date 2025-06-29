@@ -45,7 +45,7 @@ rec {
     name = "check-reqs";
     inherit deps;
     builder = builtins.toFile "builder.sh" "mkdir $out; ln -s $deps $out/depdir1";
-    disallowedRequisites = [dep1];
+    disallowedRequisites = [ dep1 dep2 ];
   };
 
   test7 = mkDerivation {
@@ -53,5 +53,33 @@ rec {
     inherit deps;
     builder = builtins.toFile "builder.sh" "mkdir $out; ln -s $deps $out/depdir1";
     disallowedRequisites = [test1];
+  };
+
+  test8 = mkDerivation {
+    name = "check-reqs-structured-attrs";
+    __structuredAttrs = true;
+    outputChecks.out = {
+      allowedRequisites = [dep2];
+    };
+    inherit dep2;
+    outputs = [ "out" ];
+    buildCommand = ''
+      set -x
+      out=''${outputs[out]}
+      mkdir $out
+      ln -s $dep2 $out/depdir1
+      ln -sf $out $out/self-reference
+    '';
+  };
+
+  test9 = mkDerivation {
+    name = "check-reqs-structured-attrs";
+    allowedRequisites = [dep2];
+    inherit dep2;
+    buildCommand = ''
+      mkdir $out
+      ln -s $dep2 $out/depdir1
+      ln -sf $out $out/self-reference
+    '';
   };
 }
