@@ -302,8 +302,6 @@ Derivations can declare some infrequently used optional attributes.
 
     - `maxSize` defines the maximum size of the resulting [store object](../glossary.md#gloss-store-object).
     - `maxClosureSize` defines the maximum size of the output's closure.
-    - `ignoreSelfRefs` controls whether self-references should be considered when
-      checking for allowed references/requisites.
 
     Example:
 
