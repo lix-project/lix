@@ -141,6 +141,13 @@ static constexpr std::optional<std::string> lixAsyncTaskContext()
 template<typename T>
 inline auto nix::AsyncIoRoot::blockOn(kj::Promise<T> && promise, std::source_location call_site)
 try {
+    // always check for user interrupts. since this is c++ we must always be prepared for
+    // random exceptions out of literally nowhere, which is why RAII is such an important
+    // idiom. interruptions are also exceptions, so all exception-safe (and for promises,
+    // cancellation-safe) code is automatically interruption-safe. in this code base with
+    // its very creative approach to exception usage all promises *must* be cancellation-
+    // safe to not wreck system state constantly, so calling checkInterrupt is safe here.
+    checkInterrupt();
     return detail::runAsyncUnwrap(promise.wait(kj.waitScope));
 } catch (BaseException & e) {
     e.addAsyncTrace(call_site);
