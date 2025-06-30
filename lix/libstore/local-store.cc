@@ -1585,8 +1585,6 @@ kj::Promise<Result<void>> LocalStore::verifyPath(
     bool & errors
 )
 try {
-    checkInterrupt();
-
     if (!done.insert(path).second) co_return result::success();
 
     if (!storePathsInStoreDir.count(path)) {
@@ -1627,7 +1625,6 @@ try {
 } catch (...) {
     co_return result::current_exception();
 }
-
 
 kj::Promise<Result<unsigned int>> LocalStore::getProtocol()
 {
