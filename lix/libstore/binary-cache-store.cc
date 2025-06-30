@@ -226,8 +226,6 @@ try {
                               std::string member,
                               std::string key,
                               std::string target) {
-                checkInterrupt();
-
                 JSON json;
                 json["archive"] = target;
                 json["member"] = member;

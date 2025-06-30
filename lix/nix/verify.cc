@@ -86,8 +86,6 @@ struct CmdVerify : StorePathsCommand
 
         auto doPath = [&](AsyncIoRoot & aio, const StorePath & storePath) {
             try {
-                checkInterrupt();
-
                 MaintainCount<std::atomic<size_t>> mcActive(active);
                 update();
 
@@ -145,7 +143,9 @@ struct CmdVerify : StorePathsCommand
                             if (validSigs >= actualSigsNeeded) break;
                             try {
                                 auto info2 = aio.blockOn(store2->queryPathInfo(info->path));
-                                if (info2->isContentAddressed(*store)) validSigs = ValidPathInfo::maxSigs;
+                                if (info2->isContentAddressed(*store)) {
+                                    validSigs = ValidPathInfo::maxSigs;
+                                }
                                 doSigs(info2->sigs);
                             } catch (InvalidPath &) {
                             } catch (Error & e) {

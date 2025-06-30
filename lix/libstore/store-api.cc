@@ -760,8 +760,6 @@ try {
     ThreadPool pool{"queryValidPaths pool"};
 
     auto doQuery = [&](AsyncIoRoot & aio, const StorePath & path) {
-        checkInterrupt();
-
         bool exists = false;
         std::exception_ptr newExc{};
 
@@ -769,6 +767,8 @@ try {
             aio.blockOn(queryPathInfo(path));
             exists = true;
         } catch (InvalidPath &) {
+        } catch (Interrupted &) {
+            throw;
         } catch (...) {
             newExc = std::current_exception();
         }

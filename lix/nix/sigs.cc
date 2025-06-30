@@ -46,9 +46,6 @@ struct CmdCopySigs : StorePathsCommand
         std::atomic<size_t> added{0};
 
         auto doPath = [&](AsyncIoRoot & aio, const Path & storePathS) {
-
-            checkInterrupt();
-
             auto storePath = store->parseStorePath(storePathS);
 
             auto info = aio.blockOn(store->queryPathInfo(storePath));
@@ -124,9 +121,6 @@ struct CmdSign : StorePathsCommand
         std::atomic<size_t> added{0};
 
         auto doPath = [&](AsyncIoRoot & aio, const Path & storePathS) {
-
-            checkInterrupt();
-
             auto storePath = store->parseStorePath(storePathS);
 
             auto info = aio.blockOn(store->queryPathInfo(storePath));
