@@ -130,11 +130,7 @@ static void sigHandler(int signo) { }
 
 void initNix()
 {
-    // kj needs a signal for internal use. no system lix habitually runs on causes
-    // kj to actually *use* this signal, but better safe than sorry—and since some
-    // OSes (*cough* macos) don't support realtime signals we must use SIGUSR2 for
-    // this, thus "consuming" both USR signals. at some point we will change this.
-    kj::UnixEventPort::setReservedSignal(SIGUSR2);
+    kj::UnixEventPort::setReservedSignal(KJ_RESERVED_SIGNAL);
 
     registerCrashHandler();
 
@@ -155,9 +151,11 @@ void initNix()
     if (sigaction(SIGCHLD, &act, 0))
         throw SysError("resetting SIGCHLD");
 
-    /* Install a dummy SIGUSR1 handler for use with pthread_kill(). */
+    /* Install a dummy INTERRUPT_NOTIFY_SIGNAL handler for use with pthread_kill(). */
     act.sa_handler = sigHandler;
-    if (sigaction(SIGUSR1, &act, 0)) throw SysError("handling SIGUSR1");
+    if (sigaction(INTERRUPT_NOTIFY_SIGNAL, &act, 0)) {
+        throw SysError("handling interrupt notify signal %i", INTERRUPT_NOTIFY_SIGNAL);
+    }
 
 #if __APPLE__
     /* HACK: on darwin, we need can’t use sigprocmask with SIGWINCH.

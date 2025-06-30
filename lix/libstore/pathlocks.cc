@@ -48,8 +48,8 @@ void lockFile(int fd, LockType lockType, NeverAsync)
 
 static kj::Promise<Result<void>> lockFileAsyncInner(int fd, LockType lockType)
 try {
-    // start a thread to lock the file synchronously, waiting for SIGUSR1 to signal
-    // that the call was canceled. SIGUSR1 is already set aside for such signaling.
+    // start a thread to lock the file synchronously, waiting for an
+    // INTERRUPT_NOTIFY_SIGNAL to signal that the call was canceled.
 
     int type = convertLockType(lockType);
     auto pfp = kj::newPromiseAndCrossThreadFulfiller<Result<void>>();
@@ -64,7 +64,7 @@ try {
         pfp.fulfiller->fulfill(result::success());
     });
     auto cancel = kj::defer([&] {
-        pthread_kill(locker.native_handle(), SIGUSR1);
+        pthread_kill(locker.native_handle(), INTERRUPT_NOTIFY_SIGNAL);
         locker.join();
     });
 

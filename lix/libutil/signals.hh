@@ -35,6 +35,16 @@
 
 namespace nix {
 
+/// reserved signal used to notify threads of interruption requests, e.g. users
+/// pressing Control-C on the terminal. we purposely do not use SIGINT handlers
+/// provided by the OS to allow for more orderly cleanup of running operations.
+static inline constexpr int INTERRUPT_NOTIFY_SIGNAL = SIGUSR1;
+/// kj needs a signal for internal use. no system lix habitually runs on causes
+/// kj to actually *use* this signal, but better safe than sorry—and since some
+/// OSes (*cough* macos) don't support realtime signals we must use SIGUSR2 for
+/// this, thus "consuming" both USR signals. at some point we will change this.
+static inline constexpr int KJ_RESERVED_SIGNAL = SIGUSR2;
+
 /* User interruption. */
 
 class Interrupted;
@@ -124,7 +134,7 @@ kj::Promise<Result<T>> makeInterruptible(kj::Promise<Result<T>> p)
 void triggerInterrupt();
 
 /**
- * A RAII class that causes the current thread to receive SIGUSR1 when
+ * A RAII class that causes the current thread to receive `INTERRUPT_NOTIFY_SIGNAL` when
  * the signal handler thread receives SIGINT. That is, this allows
  * SIGINT to be multiplexed to multiple threads.
  */
@@ -135,8 +145,9 @@ struct ReceiveInterrupts
 
     ReceiveInterrupts()
         : target(pthread_self())
-        , callback(createInterruptCallback([&]() { pthread_kill(target, SIGUSR1); }))
-    { }
+        , callback(createInterruptCallback([&] { pthread_kill(target, INTERRUPT_NOTIFY_SIGNAL); }))
+    {
+    }
 };
 
 };
