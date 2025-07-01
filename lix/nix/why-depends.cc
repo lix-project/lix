@@ -100,13 +100,12 @@ try {
     co_return result::current_exception();
 }
 
-auto const inf = std::numeric_limits<size_t>::max();
 struct Node
 {
     StorePath path;
-    StorePathSet refs;
-    StorePathSet rrefs;
-    size_t dist = inf;
+    StorePathSet dependencies;
+    StorePathSet dependents;
+    std::optional<size_t> dist = std::nullopt;
     Node * prev = nullptr;
     bool queued = false;
     bool visited = false;
@@ -130,7 +129,7 @@ static kj::Promise<Result<void>> printNode(
 try {
     auto pathS = store.printStorePath(node.path);
 
-    assert(node.dist != inf);
+    assert(node.dist.has_value());
     if (precise) {
         output.push_back(
             fmt("%s%s%s%s" ANSI_NORMAL,
@@ -158,16 +157,15 @@ try {
     std::multimap<size_t, Node *> refs;
     std::set<std::string> hashes;
 
-    for (auto & ref : node.refs) {
+    for (auto & ref : node.dependencies) {
         if (ref == node.path && packagePath != dependencyPath) {
             continue;
         }
         auto & node2 = graph.at(ref);
-        if (node2.dist == inf) {
-            continue;
+        if (auto dist = node2.dist) {
+            refs.emplace(*node2.dist, &node2);
+            hashes.insert(std::string(node2.path.hashPart()));
         }
-        refs.emplace(node2.dist, &node2);
-        hashes.insert(std::string(node2.path.hashPart()));
     }
 
     /* For each reference, find the files and symlinks that
@@ -321,31 +319,36 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
         std::map<StorePath, Node> graph;
 
         for (auto & path : closure)
-            graph.emplace(path, Node {
-                .path = path,
-                .refs = aio().blockOn(store->queryPathInfo(path))->references,
-                .dist = path == dependencyPath ? 0 : inf
-            });
+            graph.emplace(
+                path,
+                Node{
+                    .path = path,
+                    .dependencies = aio().blockOn(store->queryPathInfo(path))->references,
+                    .dist = path == dependencyPath ? std::optional(0) : std::nullopt
+                }
+            );
 
         // Transpose the graph.
         for (auto & node : graph)
-            for (auto & ref : node.second.refs)
-                graph.find(ref)->second.rrefs.insert(node.first);
+            for (auto & ref : node.second.dependencies) {
+                graph.find(ref)->second.dependents.insert(node.first);
+            }
 
         /* Run Dijkstra's shortest path algorithm to get the distance
            of every path in the closure to 'dependency'. */
         std::priority_queue<Node *> queue;
 
         queue.push(&graph.at(dependencyPath));
+        auto const inf = std::numeric_limits<size_t>::max();
 
         while (!queue.empty()) {
             auto & node = *queue.top();
             queue.pop();
 
-            for (auto & rref : node.rrefs) {
+            for (auto & rref : node.dependents) {
                 auto & node2 = graph.at(rref);
-                auto dist = node.dist + 1;
-                if (dist < node2.dist) {
+                auto dist = node.dist.transform([](auto n) { return n + 1; });
+                if (dist.value_or(inf) < node2.dist.value_or(inf)) {
                     node2.dist = dist;
                     node2.prev = &node;
                     if (!node2.queued) {
@@ -353,7 +356,6 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
                         queue.push(&node2);
                     }
                 }
-
             }
         }
 
