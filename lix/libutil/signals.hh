@@ -124,11 +124,14 @@ template<typename T>
 kj::Promise<Result<T>> makeInterruptible(kj::Promise<Result<T>> p)
 {
     auto onInterrupt = kj::newPromiseAndCrossThreadFulfiller<Result<T>>();
-    auto interruptCallback = createInterruptCallback([fulfiller{onInterrupt.fulfiller.get()}] {
-        fulfiller->fulfill(result::failure(std::make_exception_ptr(makeInterrupted())));
+    // the fulfiller must be a shared_ptr<Own<...>> since functions must
+    // be copyable, and we don't have move_only_function on all stdlibs.
+    auto fulfiller =
+        std::make_shared<decltype(onInterrupt.fulfiller)>(std::move(onInterrupt.fulfiller));
+    auto interruptCallback = createInterruptCallback([fulfiller] {
+        (*fulfiller)->fulfill(result::failure(std::make_exception_ptr(makeInterrupted())));
     });
-    return p.attach(std::move(onInterrupt.fulfiller), std::move(interruptCallback))
-        .exclusiveJoin(std::move(onInterrupt.promise));
+    return p.attach(std::move(interruptCallback)).exclusiveJoin(std::move(onInterrupt.promise));
 }
 
 void triggerInterrupt();
