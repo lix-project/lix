@@ -141,6 +141,7 @@ libstore_tests_sources = files(
   'libstore/nar-info-disk-cache.cc',
   'libstore/outputs-spec.cc',
   'libstore/path.cc',
+  'libstore/path-tree.cc',
   'libstore/references.cc',
   'libstore/serve-protocol.cc',
   'libstore/worker-protocol.cc',
