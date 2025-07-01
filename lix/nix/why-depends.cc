@@ -33,7 +33,7 @@ static kj::Promise<Result<std::map<std::string, Strings>>> visitPath(
     const Path & p,
     Store & store,
     const Path & pathS,
-    std::string_view & dependencyPathHash,
+    std::string_view dependencyPathHash,
     const std::set<std::string> & hashes,
     const StorePath & from,
     const StorePath & to
@@ -97,6 +97,132 @@ try {
     co_return hits;
 } catch (...) {
     co_return result::current_exception();
+}
+
+struct BailOut : BaseException
+{};
+
+auto const inf = std::numeric_limits<size_t>::max();
+struct Node
+{
+    StorePath path;
+    StorePathSet refs;
+    StorePathSet rrefs;
+    size_t dist = inf;
+    Node * prev = nullptr;
+    bool queued = false;
+    bool visited = false;
+};
+
+static void printNode(
+    Node & node,
+    const std::string & firstPad,
+    const std::string & tailPad,
+    bool all,
+    bool precise,
+    Store & store,
+    AsyncIoRoot & aio,
+    const StorePath & packagePath,
+    const StorePath & dependencyPath,
+    std::map<StorePath, Node> & graph
+)
+{
+    auto pathS = store.printStorePath(node.path);
+
+    assert(node.dist != inf);
+    if (precise) {
+        logger->cout(
+            "%s%s%s%s" ANSI_NORMAL,
+            firstPad,
+            node.visited ? "\e[38;5;244m" : "",
+            firstPad != "" ? "→ " : "",
+            pathS
+        );
+    }
+
+    if (node.path == dependencyPath && !all && packagePath != dependencyPath) {
+        throw BailOut();
+    }
+
+    if (node.visited) {
+        return;
+    }
+    if (precise) {
+        node.visited = true;
+    }
+
+    /* Sort the references by distance to `dependency` to
+       ensure that the shortest path is printed first. */
+    std::multimap<size_t, Node *> refs;
+    std::set<std::string> hashes;
+
+    for (auto & ref : node.refs) {
+        if (ref == node.path && packagePath != dependencyPath) {
+            continue;
+        }
+        auto & node2 = graph.at(ref);
+        if (node2.dist == inf) {
+            continue;
+        }
+        refs.emplace(node2.dist, &node2);
+        hashes.insert(std::string(node2.path.hashPart()));
+    }
+
+    /* For each reference, find the files and symlinks that
+       contain the reference. */
+    std::map<std::string, Strings> hits;
+
+    // FIXME: should use scanForReferences().
+
+    if (precise) {
+        hits = aio.blockOn(visitPath(
+            pathS, store, pathS, dependencyPath.hashPart(), hashes, packagePath, dependencyPath
+        ));
+    }
+
+    for (auto & ref : refs) {
+        std::string hash(ref.second->path.hashPart());
+
+        bool last = all ? ref == *refs.rbegin() : true;
+
+        for (auto & hit : hits[hash]) {
+            bool first = hit == *hits[hash].begin();
+            logger->cout(
+                "%s%s%s",
+                tailPad,
+                (first ? (last ? treeLast : treeConn) : (last ? treeNull : treeLine)),
+                hit
+            );
+            if (!all) {
+                break;
+            }
+        }
+
+        if (!precise) {
+            auto pathS = store.printStorePath(ref.second->path);
+            logger->cout(
+                "%s%s%s%s" ANSI_NORMAL,
+                firstPad,
+                ref.second->visited ? "\e[38;5;244m" : "",
+                last ? treeLast : treeConn,
+                pathS
+            );
+            node.visited = true;
+        }
+
+        printNode(
+            *ref.second,
+            tailPad + (last ? treeNull : treeLine),
+            tailPad + (last ? treeNull : treeLine),
+            all,
+            precise,
+            store,
+            aio,
+            packagePath,
+            dependencyPath,
+            graph
+        );
+    }
 }
 
 struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
@@ -181,24 +307,10 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
         }
 
         auto dependencyPath = *optDependencyPath;
-        auto dependencyPathHash = dependencyPath.hashPart();
 
         logger->pause(); // FIXME
 
         auto accessor = store->getFSAccessor();
-
-        auto const inf = std::numeric_limits<size_t>::max();
-
-        struct Node
-        {
-            StorePath path;
-            StorePathSet refs;
-            StorePathSet rrefs;
-            size_t dist = inf;
-            Node * prev = nullptr;
-            bool queued = false;
-            bool visited = false;
-        };
 
         std::map<StorePath, Node> graph;
 
@@ -243,89 +355,23 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
            closure (i.e., that have a non-infinite distance to
            'dependency'). Print every edge on a path between `package`
            and `dependency`. */
-        std::function<void(Node &, const std::string &, const std::string &)> printNode;
-
-        struct BailOut : BaseException { };
-
-        printNode = [&](Node & node, const std::string & firstPad, const std::string & tailPad) {
-            auto pathS = store->printStorePath(node.path);
-
-            assert(node.dist != inf);
-            if (precise) {
-                logger->cout("%s%s%s%s" ANSI_NORMAL,
-                    firstPad,
-                    node.visited ? "\e[38;5;244m" : "",
-                    firstPad != "" ? "→ " : "",
-                    pathS);
-            }
-
-            if (node.path == dependencyPath && !all
-                && packagePath != dependencyPath)
-                throw BailOut();
-
-            if (node.visited) return;
-            if (precise) node.visited = true;
-
-            /* Sort the references by distance to `dependency` to
-               ensure that the shortest path is printed first. */
-            std::multimap<size_t, Node *> refs;
-            std::set<std::string> hashes;
-
-            for (auto & ref : node.refs) {
-                if (ref == node.path && packagePath != dependencyPath) continue;
-                auto & node2 = graph.at(ref);
-                if (node2.dist == inf) continue;
-                refs.emplace(node2.dist, &node2);
-                hashes.insert(std::string(node2.path.hashPart()));
-            }
-
-            /* For each reference, find the files and symlinks that
-               contain the reference. */
-            std::map<std::string, Strings> hits;
-
-            // FIXME: should use scanForReferences().
-
-            if (precise) {
-                hits = aio().blockOn(visitPath(
-                    pathS, *store, pathS, dependencyPathHash, hashes, packagePath, dependencyPath
-                ));
-            }
-
-            for (auto & ref : refs) {
-                std::string hash(ref.second->path.hashPart());
-
-                bool last = all ? ref == *refs.rbegin() : true;
-
-                for (auto & hit : hits[hash]) {
-                    bool first = hit == *hits[hash].begin();
-                    logger->cout("%s%s%s", tailPad,
-                              (first ? (last ? treeLast : treeConn) : (last ? treeNull : treeLine)),
-                              hit);
-                    if (!all) break;
-                }
-
-                if (!precise) {
-                    auto pathS = store->printStorePath(ref.second->path);
-                    logger->cout("%s%s%s%s" ANSI_NORMAL,
-                        firstPad,
-                        ref.second->visited ? "\e[38;5;244m" : "",
-                        last ? treeLast : treeConn,
-                        pathS);
-                    node.visited = true;
-                }
-
-                printNode(*ref.second,
-                    tailPad + (last ? treeNull : treeLine),
-                    tailPad + (last ? treeNull : treeLine));
-            }
-        };
-
         RunPager pager;
         try {
             if (!precise) {
                 logger->cout("%s", store->printStorePath(graph.at(packagePath).path));
             }
-            printNode(graph.at(packagePath), "", "");
+            printNode(
+                graph.at(packagePath),
+                "",
+                "",
+                all,
+                precise,
+                *store,
+                aio(),
+                packagePath,
+                dependencyPath,
+                graph
+            );
         } catch (BailOut & ) { }
     }
 };
