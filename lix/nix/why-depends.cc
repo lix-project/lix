@@ -3,11 +3,10 @@
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libutil/error.hh"
-#include "lix/libutil/generator.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/strings.hh"
 #include "why-depends.hh"
 
-#include <algorithm>
 #include <queue>
 
 namespace nix {
@@ -285,6 +284,32 @@ static std::map<StorePath, Node> mkGraph(
     return graph_data;
 }
 
+static kj::Promise<Result<std::string>> genGraphString(
+    const StorePath & start,
+    const StorePath & to,
+    const std::map<StorePath, StorePathSet> & graphData,
+    Store & store,
+    bool all,
+    bool precise
+)
+try {
+    auto graph = mkGraph(start, to, graphData, store, all, precise);
+
+    Strings output;
+    if (!precise) {
+        output.push_back(fmt("%s", store.printStorePath(graph.at(start).path)));
+    }
+
+    try {
+        TRY_AWAIT(printNode(graph.at(start), "", "", all, precise, store, start, to, graph, output));
+    } catch (BailOut &) {
+    }
+
+    co_return concatStringsSep("\n", output);
+} catch (...) {
+    co_return result::current_exception();
+}
+
 struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
 {
     std::string _package, _dependency;
@@ -377,37 +402,17 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
             graphData.emplace(path, aio().blockOn(store->queryPathInfo(path))->references);
         }
 
-        auto graph = mkGraph(packagePath, dependencyPath, graphData, *store, all, precise);
-
         /* Print the subgraph of nodes that have 'dependency' in their
            closure (i.e., that have a non-infinite distance to
            'dependency'). Print every edge on a path between `package`
            and `dependency`. */
         RunPager pager;
-        if (!precise) {
-            logger->cout("%s", store->printStorePath(graph.at(packagePath).path));
-        }
-
-        Strings output;
-        try {
-            aio().blockOn(printNode(
-                graph.at(packagePath),
-                "",
-                "",
-                all,
-                precise,
-                *store,
-                packagePath,
-                dependencyPath,
-                graph,
-                output
-            ));
-        } catch (BailOut &) {
-        }
-
-        for (auto & l : output) {
-            logger->cout("%s", l);
-        }
+        logger->cout(
+            "%s",
+            aio().blockOn(
+                genGraphString(packagePath, dependencyPath, graphData, *store, all, precise)
+            )
+        );
     }
 };
 
