@@ -775,18 +775,22 @@ static Logger::Fields readFields(Source & from)
 kj::Promise<Result<RemoteStore::Connection::RemoteError>>
 RemoteStore::Connection::processStderr(AsyncFdIoStream & stream)
 try {
+    // SAFETY NOTE: while we're running we own the executor, and thus the stream.
+    // setting these flags is unsafe if the stream is shared with another thread.
+    const auto oldState = makeBlocking(getFD());
+    KJ_DEFER(resetBlockingState(getFD(), oldState));
+
     while (true) {
         // fill the read buffer asynchronously until we have at least a message type.
         // once we have this we'll continue synchronously as in the sendCommand case.
-        while (fromBuf->used() < sizeof(uint64_t)) {
-            const auto available = fromBuf->getWriteBuffer();
-            fromBuf->added(TRY_AWAIT(stream.read(available.data(), available.size())));
+        if (fromBuf->used() < sizeof(uint64_t)) {
+            const auto oldState = makeNonBlocking(getFD());
+            KJ_DEFER(resetBlockingState(getFD(), oldState));
+            while (fromBuf->used() < sizeof(uint64_t)) {
+                const auto available = fromBuf->getWriteBuffer();
+                fromBuf->added(TRY_AWAIT(stream.read(available.data(), available.size())));
+            }
         }
-
-        // SAFETY NOTE: while we're running we own the executor, and thus the stream.
-        // setting these flags is unsafe if the stream is shared with another thread.
-        const auto oldState = makeBlocking(getFD());
-        KJ_DEFER(resetBlockingState(getFD(), oldState));
 
         FdSource from{getFD(), fromBuf};
         from.specialEndOfFileError = "Nix daemon disconnected while waiting for a response";
