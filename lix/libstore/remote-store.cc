@@ -3,6 +3,7 @@
 #include "lix/libutil/async.hh"
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/signals.hh"
@@ -784,15 +785,8 @@ try {
 
         // SAFETY NOTE: while we're running we own the executor, and thus the stream.
         // setting these flags is unsafe if the stream is shared with another thread.
-        const int oldFlags = fcntl(getFD(), F_GETFL);
-        if (oldFlags == -1 || fcntl(getFD(), F_SETFL, oldFlags & ~O_NONBLOCK) < 0) {
-            throw SysError("making connection blocking");
-        }
-        KJ_DEFER({
-            if (fcntl(getFD(), F_SETFL, oldFlags) < 0) {
-                throw SysError("restoring connection flags");
-            }
-        });
+        const auto oldState = makeBlocking(getFD());
+        KJ_DEFER(resetBlockingState(getFD(), oldState));
 
         FdSource from{getFD(), fromBuf};
         from.specialEndOfFileError = "Nix daemon disconnected while waiting for a response";

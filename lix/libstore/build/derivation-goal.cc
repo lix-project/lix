@@ -1,5 +1,6 @@
 #include "lix/libstore/build/derivation-goal.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libstore/build/hook-instance.hh"
 #include "lix/libstore/build/worker.hh"
@@ -1204,13 +1205,7 @@ struct DerivationGoal::InputStream final : private kj::AsyncObject
         : fd(fd)
         , observer(ep, fd, kj::UnixEventPort::FdObserver::OBSERVE_READ)
     {
-        int flags = fcntl(fd, F_GETFL);
-        if (flags < 0) {
-            throw SysError("fcntl(F_GETFL) failed on fd %i", fd);
-        }
-        if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-            throw SysError("fcntl(F_SETFL) failed on fd %i", fd);
-        }
+        makeNonBlocking(fd);
     }
 
     kj::Promise<std::string_view> read(kj::ArrayPtr<char> buffer)

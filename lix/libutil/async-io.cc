@@ -148,22 +148,17 @@ AsyncFdIoStream::AsyncFdIoStream(AutoCloseFD fd) : AsyncFdIoStream(shared_fd{}, 
 
 AsyncFdIoStream::AsyncFdIoStream(shared_fd, int fd)
     : fd(fd)
+    , oldState(makeNonBlocking(fd))
     , observer(AIO().unixEventPort, fd, kj::UnixEventPort::FdObserver::OBSERVE_READ_WRITE)
 {
-    oldFlags = fcntl(fd, F_GETFL, 0);
-    if (oldFlags == -1 || fcntl(fd, F_SETFL, oldFlags | O_NONBLOCK)) {
-        throw SysError("making file descriptor non-blocking");
-    }
 }
 
 AsyncFdIoStream::~AsyncFdIoStream() noexcept(false)
 {
-    if (fcntl(fd, F_SETFL, oldFlags)) {
-        try {
-            throw SysError("restoring file descriptor flags");
-        } catch (...) {
-            ignoreExceptionInDestructor();
-        }
+    try {
+        resetBlockingState(fd, oldState);
+    } catch (...) {
+        ignoreExceptionInDestructor();
     }
 }
 

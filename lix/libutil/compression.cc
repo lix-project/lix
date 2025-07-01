@@ -298,16 +298,8 @@ struct DecompressionStream : DecompressorPipes, AsyncInputStream
     DecompressionStream(const std::string & method, box_ptr<AsyncInputStream> inner)
         : inner(std::move(inner))
     {
-        if (auto flags = fcntl(compressed.writeSide.get(), F_GETFL);
-            flags == -1 || fcntl(compressed.writeSide.get(), F_SETFL, flags | O_NONBLOCK))
-        {
-            throw SysError("setting up decompression stream");
-        }
-        if (auto flags = fcntl(uncompressed.readSide.get(), F_GETFL);
-            flags == -1 || fcntl(uncompressed.readSide.get(), F_SETFL, flags | O_NONBLOCK))
-        {
-            throw SysError("setting up decompression stream");
-        }
+        makeNonBlocking(compressed.writeSide.get());
+        makeNonBlocking(uncompressed.readSide.get());
 
         source = std::make_unique<FdSource>(compressed.readSide.get());
         sink = std::make_unique<FdSink>(uncompressed.writeSide.get());

@@ -3,6 +3,7 @@
 #include "lix/libstore/pathlocks.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
@@ -456,9 +457,7 @@ class GCOperation {
         createDirs(dirOf(socketPath));
         fdServer = createUnixDomainSocket(socketPath, 0666);
 
-        if (fcntl(fdServer.get(), F_SETFL, fcntl(fdServer.get(), F_GETFL) | O_NONBLOCK) == -1) {
-            throw SysError("making socket '%1%' non-blocking", socketPath);
-        }
+        makeNonBlocking(fdServer.get());
 
         serverThread = std::thread([this]() {
             setCurrentThreadName("gc server");
@@ -547,8 +546,11 @@ void GCOperation::runServerThread()
                 /* On macOS, accepted sockets inherit the
                    non-blocking flag from the server socket, so
                    explicitly make it blocking. */
-                if (fcntl(fdClient.get(), F_SETFL, fcntl(fdClient.get(), F_GETFL) & ~O_NONBLOCK) == -1)
+                try {
+                    makeBlocking(fdClient.get());
+                } catch (...) {
                     abort();
+                }
 
                 while (true) {
                     try {

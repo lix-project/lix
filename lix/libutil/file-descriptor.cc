@@ -1,3 +1,4 @@
+#include "file-descriptor.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/finally.hh"
@@ -89,18 +90,15 @@ std::string drainFD(int fd, bool block, const size_t reserveSize)
 Generator<Bytes> drainFDSource(int fd, bool block)
 {
     // silence GCC maybe-uninitialized warning in finally
-    int saved = 0;
+    FdBlockingState saved{};
 
     if (!block) {
-        saved = fcntl(fd, F_GETFL);
-        if (fcntl(fd, F_SETFL, saved | O_NONBLOCK) == -1)
-            throw SysError("making file descriptor non-blocking");
+        saved = makeNonBlocking(fd);
     }
 
     Finally finally([&]() {
         if (!block) {
-            if (fcntl(fd, F_SETFL, saved) == -1)
-                throw SysError("making file descriptor blocking");
+            resetBlockingState(fd, saved);
         }
     });
 
@@ -294,4 +292,29 @@ void closeOnExec(int fd)
         throw SysError("setting close-on-exec flag");
 }
 
+FdBlockingState makeNonBlocking(int fd)
+{
+    const auto oldFlags = fcntl(fd, F_GETFL);
+    if (oldFlags < 0 || fcntl(fd, F_SETFL, oldFlags | O_NONBLOCK) == -1) {
+        throw SysError("makeNonBlocking");
+    }
+    return FdBlockingState(oldFlags & O_NONBLOCK);
+}
+
+FdBlockingState makeBlocking(int fd)
+{
+    const auto oldFlags = fcntl(fd, F_GETFL);
+    if (fcntl(fd, F_SETFL, oldFlags & ~O_NONBLOCK) == -1) {
+        throw SysError("makeBlocking");
+    }
+    return FdBlockingState(oldFlags & O_NONBLOCK);
+}
+
+void resetBlockingState(int fd, FdBlockingState prevState)
+{
+    const auto oldFlags = fcntl(fd, F_GETFL);
+    if (oldFlags < 0 || fcntl(fd, F_SETFL, (oldFlags & ~O_NONBLOCK) | int(prevState)) == -1) {
+        throw SysError("resetBlockingState");
+    }
+}
 }

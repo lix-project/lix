@@ -161,7 +161,8 @@ class AsyncStream : public AsyncInputStream, public AsyncOutputStream
 
 class AsyncFdIoStream : public AsyncStream
 {
-    int fd, oldFlags;
+    int fd;
+    FdBlockingState oldState;
     AutoCloseFD ownedFd; // only for closing automatically, must equal fd if set
     kj::UnixEventPort::FdObserver observer;
 

@@ -94,6 +94,23 @@ void closeExtraFDs();
  */
 void closeOnExec(int fd);
 
+enum class FdBlockingState : int {};
+
+/**
+ * Make the given file descriptor non-blocking. Returns the old flag set; this
+ * can be passed to resetBlockingState to return the fd to its original state.
+ */
+FdBlockingState makeNonBlocking(int fd);
+/**
+ * Make the given file descriptor blocking. Returns the old flag set; it can
+ * be passed to `resetBlockingState` to return the fd to its original state.
+ */
+FdBlockingState makeBlocking(int fd);
+/**
+ * Undo a `makeNonBlocking` or `makeBlocking` call.
+ */
+void resetBlockingState(int fd, FdBlockingState prevState);
+
 MakeError(EndOfFile, Error);
 
 }
