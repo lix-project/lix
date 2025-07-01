@@ -28,6 +28,74 @@ static std::string filterPrintable(const std::string & s)
     return res;
 }
 
+static std::map<std::string, Strings> visitPath(
+    const Path & p,
+    Store & store,
+    AsyncIoRoot & aio,
+    const Path & pathS,
+    std::string_view & dependencyPathHash,
+    const std::set<std::string> & hashes,
+    const StorePath & from,
+    const StorePath & to
+)
+{
+    /* For each reference, find the files and symlinks that
+       contain the reference. */
+    std::map<std::string, Strings> hits;
+    auto accessor = store.getFSAccessor();
+    auto st = aio.blockOn(accessor->stat(p));
+
+    auto p2 = p == pathS ? "/" : std::string(p, pathS.size() + 1);
+
+    auto getColour = [&](const std::string & hash) {
+        return hash == dependencyPathHash ? ANSI_GREEN : ANSI_BLUE;
+    };
+
+    if (st.type == FSAccessor::Type::tDirectory) {
+        auto names = aio.blockOn(accessor->readDirectory(p));
+        for (auto & name : names) {
+            auto found =
+                visitPath(p + "/" + name, store, aio, pathS, dependencyPathHash, hashes, from, to);
+            hits.merge(found);
+        }
+    } else if (st.type == FSAccessor::Type::tRegular) {
+        auto contents = aio.blockOn(accessor->readFile(p));
+
+        for (auto & hash : hashes) {
+            auto pos = contents.find(hash);
+            if (pos != std::string::npos) {
+                size_t margin = 32;
+                auto pos2 = pos >= margin ? pos - margin : 0;
+                hits[hash].emplace_back(
+                    fmt("%s: …%s…",
+                        p2,
+                        hilite(
+                            filterPrintable(
+                                std::string(contents, pos2, pos - pos2 + hash.size() + margin)
+                            ),
+                            pos - pos2,
+                            StorePath::HashLen,
+                            getColour(hash)
+                        ))
+                );
+            }
+        }
+    } else if (st.type == FSAccessor::Type::tSymlink) {
+        auto target = aio.blockOn(accessor->readLink(p));
+
+        for (auto & hash : hashes) {
+            auto pos = target.find(hash);
+            if (pos != std::string::npos) {
+                hits[hash].emplace_back(
+                    fmt("%s -> %s", p2, hilite(target, pos, StorePath::HashLen, getColour(hash)))
+                );
+            }
+        }
+    }
+
+    return hits;
+};
+
 struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
 {
     std::string _package, _dependency;
@@ -212,56 +280,20 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
                contain the reference. */
             std::map<std::string, Strings> hits;
 
-            std::function<void(const Path &)> visitPath;
-
-            visitPath = [&](const Path & p) {
-                auto st = aio().blockOn(accessor->stat(p));
-
-                auto p2 = p == pathS ? "/" : std::string(p, pathS.size() + 1);
-
-                auto getColour = [&](const std::string & hash) {
-                    return hash == dependencyPathHash ? ANSI_GREEN : ANSI_BLUE;
-                };
-
-                if (st.type == FSAccessor::Type::tDirectory) {
-                    auto names = aio().blockOn(accessor->readDirectory(p));
-                    for (auto & name : names)
-                        visitPath(p + "/" + name);
-                }
-
-                else if (st.type == FSAccessor::Type::tRegular) {
-                    auto contents = aio().blockOn(accessor->readFile(p));
-
-                    for (auto & hash : hashes) {
-                        auto pos = contents.find(hash);
-                        if (pos != std::string::npos) {
-                            size_t margin = 32;
-                            auto pos2 = pos >= margin ? pos - margin : 0;
-                            hits[hash].emplace_back(fmt("%s: …%s…",
-                                    p2,
-                                    hilite(filterPrintable(
-                                            std::string(contents, pos2, pos - pos2 + hash.size() + margin)),
-                                        pos - pos2, StorePath::HashLen,
-                                        getColour(hash))));
-                        }
-                    }
-                }
-
-                else if (st.type == FSAccessor::Type::tSymlink) {
-                    auto target = aio().blockOn(accessor->readLink(p));
-
-                    for (auto & hash : hashes) {
-                        auto pos = target.find(hash);
-                        if (pos != std::string::npos)
-                            hits[hash].emplace_back(fmt("%s -> %s", p2,
-                                    hilite(target, pos, StorePath::HashLen, getColour(hash))));
-                    }
-                }
-            };
-
             // FIXME: should use scanForReferences().
 
-            if (precise) visitPath(pathS);
+            if (precise) {
+                hits = visitPath(
+                    pathS,
+                    *store,
+                    aio(),
+                    pathS,
+                    dependencyPathHash,
+                    hashes,
+                    packagePath,
+                    dependencyPath
+                );
+            }
 
             for (auto & ref : refs) {
                 std::string hash(ref.second->path.hashPart());
