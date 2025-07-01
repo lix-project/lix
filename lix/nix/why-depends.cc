@@ -3,6 +3,7 @@
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/result.hh"
 #include "why-depends.hh"
 
 #include <queue>
@@ -28,22 +29,21 @@ static std::string filterPrintable(const std::string & s)
     return res;
 }
 
-static std::map<std::string, Strings> visitPath(
+static kj::Promise<Result<std::map<std::string, Strings>>> visitPath(
     const Path & p,
     Store & store,
-    AsyncIoRoot & aio,
     const Path & pathS,
     std::string_view & dependencyPathHash,
     const std::set<std::string> & hashes,
     const StorePath & from,
     const StorePath & to
 )
-{
+try {
     /* For each reference, find the files and symlinks that
        contain the reference. */
     std::map<std::string, Strings> hits;
     auto accessor = store.getFSAccessor();
-    auto st = aio.blockOn(accessor->stat(p));
+    auto st = TRY_AWAIT(accessor->stat(p));
 
     auto p2 = p == pathS ? "/" : std::string(p, pathS.size() + 1);
 
@@ -52,14 +52,15 @@ static std::map<std::string, Strings> visitPath(
     };
 
     if (st.type == FSAccessor::Type::tDirectory) {
-        auto names = aio.blockOn(accessor->readDirectory(p));
+        auto names = TRY_AWAIT(accessor->readDirectory(p));
         for (auto & name : names) {
-            auto found =
-                visitPath(p + "/" + name, store, aio, pathS, dependencyPathHash, hashes, from, to);
+            auto found = TRY_AWAIT(
+                visitPath(p + "/" + name, store, pathS, dependencyPathHash, hashes, from, to)
+            );
             hits.merge(found);
         }
     } else if (st.type == FSAccessor::Type::tRegular) {
-        auto contents = aio.blockOn(accessor->readFile(p));
+        auto contents = TRY_AWAIT(accessor->readFile(p));
 
         for (auto & hash : hashes) {
             auto pos = contents.find(hash);
@@ -81,7 +82,7 @@ static std::map<std::string, Strings> visitPath(
             }
         }
     } else if (st.type == FSAccessor::Type::tSymlink) {
-        auto target = aio.blockOn(accessor->readLink(p));
+        auto target = TRY_AWAIT(accessor->readLink(p));
 
         for (auto & hash : hashes) {
             auto pos = target.find(hash);
@@ -93,8 +94,10 @@ static std::map<std::string, Strings> visitPath(
         }
     }
 
-    return hits;
-};
+    co_return hits;
+} catch (...) {
+    co_return result::current_exception();
+}
 
 struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
 {
@@ -283,16 +286,9 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
             // FIXME: should use scanForReferences().
 
             if (precise) {
-                hits = visitPath(
-                    pathS,
-                    *store,
-                    aio(),
-                    pathS,
-                    dependencyPathHash,
-                    hashes,
-                    packagePath,
-                    dependencyPath
-                );
+                hits = aio().blockOn(visitPath(
+                    pathS, *store, pathS, dependencyPathHash, hashes, packagePath, dependencyPath
+                ));
             }
 
             for (auto & ref : refs) {
