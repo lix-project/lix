@@ -3,6 +3,7 @@
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/generator.hh"
 #include "lix/libutil/result.hh"
 #include "why-depends.hh"
 
@@ -99,9 +100,6 @@ try {
     co_return result::current_exception();
 }
 
-struct BailOut : BaseException
-{};
-
 auto const inf = std::numeric_limits<size_t>::max();
 struct Node
 {
@@ -114,29 +112,32 @@ struct Node
     bool visited = false;
 };
 
-static void printNode(
+struct BailOut : BaseException
+{};
+
+static kj::Promise<Result<void>> printNode(
     Node & node,
     const std::string & firstPad,
     const std::string & tailPad,
     bool all,
     bool precise,
     Store & store,
-    AsyncIoRoot & aio,
     const StorePath & packagePath,
     const StorePath & dependencyPath,
-    std::map<StorePath, Node> & graph
+    std::map<StorePath, Node> & graph,
+    Strings & output
 )
-{
+try {
     auto pathS = store.printStorePath(node.path);
 
     assert(node.dist != inf);
     if (precise) {
-        logger->cout(
-            "%s%s%s%s" ANSI_NORMAL,
-            firstPad,
-            node.visited ? "\e[38;5;244m" : "",
-            firstPad != "" ? "→ " : "",
-            pathS
+        output.push_back(
+            fmt("%s%s%s%s" ANSI_NORMAL,
+                firstPad,
+                node.visited ? "\e[38;5;244m" : "",
+                firstPad != "" ? "→ " : "",
+                pathS)
         );
     }
 
@@ -145,8 +146,9 @@ static void printNode(
     }
 
     if (node.visited) {
-        return;
+        co_return result::success();
     }
+
     if (precise) {
         node.visited = true;
     }
@@ -175,7 +177,7 @@ static void printNode(
     // FIXME: should use scanForReferences().
 
     if (precise) {
-        hits = aio.blockOn(visitPath(
+        hits = TRY_AWAIT(visitPath(
             pathS, store, pathS, dependencyPath.hashPart(), hashes, packagePath, dependencyPath
         ));
     }
@@ -187,11 +189,11 @@ static void printNode(
 
         for (auto & hit : hits[hash]) {
             bool first = hit == *hits[hash].begin();
-            logger->cout(
-                "%s%s%s",
-                tailPad,
-                (first ? (last ? treeLast : treeConn) : (last ? treeNull : treeLine)),
-                hit
+            output.push_back(
+                fmt("%s%s%s",
+                    tailPad,
+                    (first ? (last ? treeLast : treeConn) : (last ? treeNull : treeLine)),
+                    hit)
             );
             if (!all) {
                 break;
@@ -200,29 +202,33 @@ static void printNode(
 
         if (!precise) {
             auto pathS = store.printStorePath(ref.second->path);
-            logger->cout(
-                "%s%s%s%s" ANSI_NORMAL,
-                firstPad,
-                ref.second->visited ? "\e[38;5;244m" : "",
-                last ? treeLast : treeConn,
-                pathS
+            output.push_back(
+                fmt("%s%s%s%s" ANSI_NORMAL,
+                    firstPad,
+                    ref.second->visited ? "\e[38;5;244m" : "",
+                    last ? treeLast : treeConn,
+                    pathS)
             );
             node.visited = true;
         }
 
-        printNode(
+        TRY_AWAIT(printNode(
             *ref.second,
             tailPad + (last ? treeNull : treeLine),
             tailPad + (last ? treeNull : treeLine),
             all,
             precise,
             store,
-            aio,
             packagePath,
             dependencyPath,
-            graph
-        );
+            graph,
+            output
+        ));
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
@@ -356,23 +362,30 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
            'dependency'). Print every edge on a path between `package`
            and `dependency`. */
         RunPager pager;
+        if (!precise) {
+            logger->cout("%s", store->printStorePath(graph.at(packagePath).path));
+        }
+
+        Strings output;
         try {
-            if (!precise) {
-                logger->cout("%s", store->printStorePath(graph.at(packagePath).path));
-            }
-            printNode(
+            aio().blockOn(printNode(
                 graph.at(packagePath),
                 "",
                 "",
                 all,
                 precise,
                 *store,
-                aio(),
                 packagePath,
                 dependencyPath,
-                graph
-            );
-        } catch (BailOut & ) { }
+                graph,
+                output
+            ));
+        } catch (BailOut &) {
+        }
+
+        for (auto & l : output) {
+            logger->cout("%s", l);
+        }
     }
 };
 

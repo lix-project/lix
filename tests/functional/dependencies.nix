@@ -20,7 +20,13 @@ let
       head -c 100k /dev/zero > $out/filler
       echo BAR > $out/bar
       echo ${input0} > $out/input0
+      echo ${input3} > $out/input3
     '';
+  };
+
+  input3 = mkDerivation {
+    name = "dependencies-input-3";
+    buildCommand = "mkdir $out; echo FOO > $out/foo";
   };
 
   fod_input = mkDerivation {
@@ -40,8 +46,10 @@ mkDerivation {
   builder = ./dependencies.builder0.sh + "/FOOBAR/../.";
   input1 = input1 + "/.";
   input2 = "${input2}/.";
+  input3 = "${input3}/.";
   input1_drv = input1;
   input2_drv = input2;
+  input3_drv = input3;
   input0_drv = input0;
   fod_input_drv = fod_input;
   meta.description = "Random test package";
