@@ -6,7 +6,9 @@
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/signals.hh"
 
+#include <cerrno>
 #include <fcntl.h>
+#include <sys/poll.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -71,8 +73,16 @@ void writeFull(int fd, std::string_view s, bool allowInterrupts)
     while (!s.empty()) {
         if (allowInterrupts) checkInterrupt();
         ssize_t res = write(fd, s.data(), s.size());
-        if (res == -1 && errno != EINTR)
-            throw SysError("writing to file");
+        if (res == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                pollfd pfd = {.fd = fd, .events = POLLOUT};
+                if (poll(&pfd, 1, -1) < 0) {
+                    throw SysError("polling for writing to file");
+                }
+            } else if (errno != EINTR) {
+                throw SysError("writing to file");
+            }
+        }
         if (res > 0)
             s.remove_prefix(res);
     }
