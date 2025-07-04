@@ -196,13 +196,10 @@ Pid startProcess(std::function<void()> fun, const ProcessOptions & options)
             fun();
         } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
             try {
-                std::cerr << options.errorPrefix << e.what() << "\n";
+                std::cerr << e.what() << "\n";
             } catch (...) { }
         } catch (...) { }
-        if (options.runExitHandlers)
-            exit(1);
-        else
-            _exit(1);
+        _exit(1);
     };
 
     pid_t pid = -1;
