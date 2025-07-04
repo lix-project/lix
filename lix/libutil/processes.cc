@@ -332,8 +332,8 @@ RunningProgram runProgram2(const RunOptions & options)
         if (options.captureStdout && dup2(out.writeSide.get(), STDOUT_FILENO) == -1)
             throw SysError("dupping stdout");
         for (auto redirection : options.redirections) {
-            if (dup2(redirection.to, redirection.from) == -1) {
-                throw SysError("dupping fd %i to %i", redirection.from, redirection.to);
+            if (dup2(redirection.from, redirection.dup) == -1) {
+                throw SysError("dupping fd %i to %i", redirection.dup, redirection.from);
             }
         }
 

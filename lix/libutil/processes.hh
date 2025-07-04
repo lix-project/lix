@@ -78,7 +78,7 @@ struct RunOptions
 {
     struct Redirection
     {
-        int from, to;
+        int dup, from;
     };
 
     Path program;

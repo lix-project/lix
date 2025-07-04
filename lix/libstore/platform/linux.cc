@@ -1100,13 +1100,13 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
             // descriptors very early and lacks fd arguments for the namespaces we
             // want it to join. we cannot have pasta join the namespaces via pids;
             // doing so requires capabilities which pasta *also* drops very early.
-            .redirections = {
-                {.from = 0, .to = netns.get()},
-                {.from = 1, .to = userns ? userns.get() : 1},
-            },
-            .caps = getuid() == 0
-                ? std::set<long>{CAP_SYS_ADMIN, CAP_NET_BIND_SERVICE}
-                : std::set<long>{},
+            .redirections =
+                {
+                    {.dup = 0, .from = netns.get()},
+                    {.dup = 1, .from = userns ? userns.get() : 1},
+                },
+            .caps = getuid() == 0 ? std::set<long>{CAP_SYS_ADMIN, CAP_NET_BIND_SERVICE}
+                                  : std::set<long>{},
         });
     }
 

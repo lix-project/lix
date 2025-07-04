@@ -177,7 +177,7 @@ WorkdirInfo getWorkdirInfo(const Input & input, const Path & workdir)
              "--no-revs",
              "HEAD^{commit}"},
         .environment = env,
-        .redirections = {{.from = STDERR_FILENO, .to = STDOUT_FILENO}},
+        .redirections = {{.dup = STDERR_FILENO, .from = STDOUT_FILENO}},
     });
     auto exitCode = WEXITSTATUS(result.first);
     auto errorMessage = result.second;
@@ -723,7 +723,7 @@ struct GitInputScheme : InputScheme
             .args =
                 {"-C", repoDir, "--git-dir", gitDir, "cat-file", "commit", input.getRev()->gitRev()
                 },
-            .redirections = {{.from = STDERR_FILENO, .to = STDOUT_FILENO}},
+            .redirections = {{.dup = STDERR_FILENO, .from = STDOUT_FILENO}},
         });
         if (WEXITSTATUS(result.first) == 128
             && result.second.find("bad file") != std::string::npos)

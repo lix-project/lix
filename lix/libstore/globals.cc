@@ -249,7 +249,7 @@ StringSet Settings::getDefaultExtraPlatforms()
         && runProgram(RunOptions{
                           .program = "arch",
                           .args = {"-arch", "x86_64", "/usr/bin/true"},
-                          .redirections = {{.from = STDERR_FILENO, .to = STDOUT_FILENO}}
+                          .redirections = {{.dup = STDERR_FILENO, .from = STDOUT_FILENO}}
                       }
            ).first
             == 0)
