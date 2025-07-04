@@ -853,10 +853,7 @@ void processConnection(
 
     unsigned int opCount = 0;
 
-    Finally finally([&]() {
-        _isInterrupted = false;
-        printMsgUsing(prevLogger, lvlDebug, "%d operations", opCount);
-    });
+    Finally finally([&]() { printMsgUsing(prevLogger, lvlDebug, "%d operations", opCount); });
 
     // FIXME: what is *supposed* to be in this even?
     if (readInt(from)) {

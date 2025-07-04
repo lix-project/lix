@@ -366,11 +366,10 @@ struct curlFileTransfer : public FileTransfer
         int progressCallback(curl_off_t dltotal, curl_off_t dlnow)
         {
             try {
-              act.progress(dlnow, dltotal);
+                act.progress(dlnow, dltotal);
             } catch (nix::Interrupted &) {
-              assert(_isInterrupted);
             }
-            return _isInterrupted;
+            return isInterrupted();
         }
 
         static int progressCallbackWrapper(void * userp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
@@ -466,19 +465,36 @@ struct curlFileTransfer : public FileTransfer
                         return curl_easy_strerror(code);
                     }
                 };
-                auto exc =
-                    code == CURLE_ABORTED_BY_CALLBACK && _isInterrupted
-                    ? FileTransferError(Interrupted, std::move(response), "%s of '%s' was interrupted", verb(), uri)
+                auto exc = code == CURLE_ABORTED_BY_CALLBACK && isInterrupted()
+                    ? FileTransferError(
+                          Interrupted,
+                          std::move(response),
+                          "%s of '%s' was interrupted",
+                          verb(),
+                          uri
+                      )
                     : httpStatus != 0
-                    ? FileTransferError(err,
-                        std::move(response),
-                        "unable to %s '%s': HTTP error %d (%s)%s",
-                        verb(), uri, httpStatus, statusMsg,
-                        code == CURLE_OK ? "" : fmt(" (curl error code=%d: %s)", code, textualError(errbuf, code)))
-                    : FileTransferError(err,
-                        std::move(response),
-                        "unable to %s '%s': %s (curl error code=%d)",
-                        verb(), uri, textualError(errbuf, code), code);
+                    ? FileTransferError(
+                          err,
+                          std::move(response),
+                          "unable to %s '%s': HTTP error %d (%s)%s",
+                          verb(),
+                          uri,
+                          httpStatus,
+                          statusMsg,
+                          code == CURLE_OK
+                              ? ""
+                              : fmt(" (curl error code=%d: %s)", code, textualError(errbuf, code))
+                      )
+                    : FileTransferError(
+                          err,
+                          std::move(response),
+                          "unable to %s '%s': %s (curl error code=%d)",
+                          verb(),
+                          uri,
+                          textualError(errbuf, code),
+                          code
+                      );
 
                 fail(std::move(exc));
             }

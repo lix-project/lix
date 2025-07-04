@@ -41,9 +41,14 @@ static inline constexpr int KJ_RESERVED_SIGNAL = SIGUSR2;
 
 class Interrupted;
 
-extern std::atomic<bool> _isInterrupted;
+// global counter of how many interrupt requests of any type we've received. we
+// count SIGINT, SIGTERM and SIGHUP equally here, but this mainly exists to let
+// us keep track of which SIGINT events we have processed and which we haven't.
+extern std::atomic_unsigned_lock_free _interruptSequence;
 
 extern thread_local std::function<bool()> interruptCheck;
+// the largest `_interruptSequence` the current thread has seen and acted upon.
+extern thread_local std::atomic_unsigned_lock_free::value_type threadInterruptSeq;
 
 Interrupted makeInterrupted();
 void _interrupted();
@@ -54,10 +59,21 @@ void _interrupted();
  */
 void unsetUserInterruptRequest();
 
+bool isInterrupted();
+
+/**
+ * check whether an interrupt request is pending and throw Interrupted if so. a
+ * user hitting ^C is the main source of interrupts in interactive use, daemons
+ * are interrupted mainly by SIGHUP from clients disconnecting unexpectedly, or
+ * SIGTERM sent by the system service managers to tell the daemon to shut down.
+ */
 void inline checkInterrupt()
 {
-    if (_isInterrupted || (interruptCheck && interruptCheck()))
+    const auto seq = _interruptSequence.load(std::memory_order::relaxed);
+    if (seq > threadInterruptSeq || (interruptCheck && interruptCheck())) {
+        threadInterruptSeq = seq;
         _interrupted();
+    }
 }
 
 MakeError(Interrupted, BaseError);

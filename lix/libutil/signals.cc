@@ -5,6 +5,7 @@
 #include "lix/libutil/terminal.hh"
 #include "lix/libutil/thread-name.hh"
 #include "logging.hh"
+#include <atomic>
 #include <csignal>
 #include <kj/time.h>
 
@@ -18,7 +19,10 @@
 
 namespace nix {
 
-std::atomic<bool> _isInterrupted = false;
+std::atomic_unsigned_lock_free _interruptSequence{0};
+static std::atomic_unsigned_lock_free printMessageForSeq{0}, allowInterruptsAfter{0};
+thread_local std::atomic_unsigned_lock_free::value_type threadInterruptSeq{_interruptSequence.load()
+};
 
 thread_local std::function<bool()> interruptCheck;
 
@@ -27,8 +31,18 @@ Interrupted makeInterrupted()
     return Interrupted("interrupted by the user");
 }
 
+bool isInterrupted()
+{
+    const auto seq = _interruptSequence.load(std::memory_order::relaxed);
+    return seq > threadInterruptSeq && seq > allowInterruptsAfter.load(std::memory_order::relaxed);
+}
+
 void _interrupted()
 {
+    // don't throw for inhibited interrupt, ie those that were explicitly unset
+    if (_interruptSequence.load() <= allowInterruptsAfter.load()) {
+        return;
+    }
     /* Block user interrupts while an exception is being handled.
        Throwing an exception while another exception is being handled
        kills the program! */
@@ -39,7 +53,10 @@ void _interrupted()
 
 void unsetUserInterruptRequest()
 {
-    _isInterrupted = false;
+    // inhibit handling of pending interruptions in other threads
+    allowInterruptsAfter = _interruptSequence.load();
+    // tell the signal handler thread to skip the please-try-again message
+    printMessageForSeq = 0;
     // recapture the signal as the signal handler thread will have released it
     AIO().unixEventPort.captureSignal(SIGINT);
 }
@@ -96,7 +113,7 @@ static void signalHandlerThread(const std::vector<int> set)
             // we only print to a terminal, and only by bypassing the logger, to
             // ensure that it's both a *user* who is sending us this signal, and
             // that the user will get a notification that isn't mixed with logs.
-            if (_isInterrupted && isatty(STDERR_FILENO)) {
+            if (_interruptSequence.load() == printMessageForSeq.load() && isatty(STDERR_FILENO)) {
                 writeLogsToStderr(
                     "Still shutting down. Press ^C again to abort all operations immediately.\n"
                 );
@@ -112,6 +129,10 @@ static void signalHandlerThread(const std::vector<int> set)
             pthread_sigmask(SIG_UNBLOCK, &unblock, nullptr);
             ::signal(SIGINT, SIG_DFL);
             printInterruptMessageAt = AIO().provider.getTimer().now() + 1 * kj::SECONDS;
+            // this is intentionally racy. triggerInterrupt increments the counter, if
+            // another interrupt is triggered in close proximity we do not want to see
+            // a message. this can happen if the repl or from the MonitorFdHup thread.
+            printMessageForSeq = _interruptSequence.load() + 1;
             triggerInterrupt();
         } else if (signal == SIGTERM || signal == SIGHUP) {
             triggerInterrupt();
@@ -123,7 +144,7 @@ static void signalHandlerThread(const std::vector<int> set)
 
 void triggerInterrupt()
 {
-    _isInterrupted = true;
+    _interruptSequence++;
 
     auto callbacks = *_interruptCallbacks.lock();
     if (callbacks) {
