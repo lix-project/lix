@@ -6,9 +6,14 @@
 #include "lix/libstore/remote-store.hh"
 #include "lix/libstore/remote-store-connection.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async-io.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/current-process.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/file-descriptor.hh"
+#include "lix/libutil/logging.hh"
 #include "lix/libutil/processes.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/globals.hh"
@@ -22,6 +27,7 @@
 #include "daemon.hh"
 
 #include <algorithm>
+#include <cerrno>
 #include <climits>
 #include <cstdint>
 #include <cstring>
@@ -286,8 +292,8 @@ static std::pair<TrustedFlag, std::string> authPeer(const PeerInfo & peer)
  * the client. Otherwise, decide based on the authentication settings
  * and user credentials (from the unix domain socket).
  */
-static void daemonLoop(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt)
-{
+static kj::Promise<Result<void>> daemonLoop(std::optional<TrustedFlag> forceTrustClientOpt)
+try {
     if (chdir("/") == -1)
         throw SysError("cannot change current directory");
 
@@ -319,6 +325,11 @@ static void daemonLoop(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustC
         return *tmp;
     }();
 
+    makeNonBlocking(fdSocket.get());
+    auto observer = kj::UnixEventPort::FdObserver{
+        AIO().unixEventPort, fdSocket.get(), kj::UnixEventPort::FdObserver::OBSERVE_READ
+    };
+
     //  Loop accepting connections.
     while (1) {
 
@@ -327,13 +338,22 @@ static void daemonLoop(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustC
             struct sockaddr_un remoteAddr;
             socklen_t remoteAddrLen = sizeof(remoteAddr);
 
-            AutoCloseFD remote{accept(fdSocket.get(),
-                    reinterpret_cast<struct sockaddr *>(&remoteAddr), &remoteAddrLen)};
-            checkInterrupt();
+            AutoCloseFD remote{accept(
+                fdSocket.get(), reinterpret_cast<struct sockaddr *>(&remoteAddr), &remoteAddrLen
+            )};
             if (!remote) {
-                if (errno == EINTR) continue;
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    co_await observer.whenBecomesReadable();
+                    continue;
+                } else if (errno == EINTR) {
+                    continue;
+                }
                 throw SysError("accepting connection");
             }
+
+            // On macOS, accepted sockets inherit the non-blocking flag from the server socket, so
+            // explicitly make it blocking.
+            makeBlocking(remote.get());
 
             closeOnExec(remote.get());
 
@@ -375,8 +395,6 @@ static void daemonLoop(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustC
             }
             sink << 0;
             sink.flush();
-        } catch (Interrupted & e) {
-            return;
         } catch (Error & error) {
             auto ei = error.info();
             // FIXME: add to trace?
@@ -384,6 +402,10 @@ static void daemonLoop(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustC
             logError(ei);
         }
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 static void daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt)
@@ -515,8 +537,12 @@ runDaemon(AsyncIoRoot & aio, bool stdio, std::optional<TrustedFlag> forceTrustCl
             // cannot see who is on the other side of a plain pipe. Limiting
             // access to those is explicitly not `nix-daemon`'s responsibility.
             processStdioConnection(aio, store, forceTrustClientOpt.value_or(Trusted));
-    } else
-        daemonLoop(aio, forceTrustClientOpt);
+    } else {
+        try {
+            aio.blockOn(makeInterruptible(daemonLoop(forceTrustClientOpt)));
+        } catch (Interrupted &) {
+        }
+    }
 }
 
 static int main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv)
