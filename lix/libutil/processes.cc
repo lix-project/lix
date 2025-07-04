@@ -10,6 +10,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 #include <iostream>
 
 #include <grp.h>
@@ -332,7 +333,13 @@ RunningProgram runProgram2(const RunOptions & options)
         if (options.captureStdout && dup2(out.writeSide.get(), STDOUT_FILENO) == -1)
             throw SysError("dupping stdout");
         for (auto redirection : options.redirections) {
-            if (dup2(redirection.from, redirection.dup) == -1) {
+            if (redirection.dup == redirection.from) {
+                if (int flags = fcntl(redirection.from, F_GETFD);
+                    flags < 0 || fcntl(redirection.from, F_SETFD, flags & ~FD_CLOEXEC) < 0)
+                {
+                    throw SysError("clearing O_CLOEXEC of fd %i", redirection.dup);
+                }
+            } else if (dup2(redirection.from, redirection.dup) == -1) {
                 throw SysError("dupping fd %i to %i", redirection.dup, redirection.from);
             }
         }
