@@ -83,6 +83,7 @@ struct RunOptions
 
     Path program;
     bool searchPath = true;
+    std::optional<std::string> argv0;
     Strings args = {};
     std::optional<uid_t> uid = {};
     std::optional<uid_t> gid = {};
