@@ -48,6 +48,12 @@ extern thread_local std::function<bool()> interruptCheck;
 Interrupted makeInterrupted();
 void _interrupted();
 
+/**
+ * Clear a pending `checkInterrupt()` request. Mainly useful for the REPL which
+ * can safely continue after a user interruption of eg. some hung Nixlang code.
+ */
+void unsetUserInterruptRequest();
+
 void inline checkInterrupt()
 {
     if (_isInterrupted || (interruptCheck && interruptCheck()))

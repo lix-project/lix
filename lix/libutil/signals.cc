@@ -4,6 +4,7 @@
 #include "lix/libutil/sync.hh"
 #include "lix/libutil/terminal.hh"
 #include "lix/libutil/thread-name.hh"
+#include "logging.hh"
 #include <csignal>
 #include <kj/time.h>
 
@@ -11,7 +12,9 @@
 #include <kj/async.h>
 #include <map>
 #include <memory>
+#include <optional>
 #include <thread>
+#include <unistd.h>
 
 namespace nix {
 
@@ -34,6 +37,12 @@ void _interrupted()
     }
 }
 
+void unsetUserInterruptRequest()
+{
+    _isInterrupted = false;
+    // recapture the signal as the signal handler thread will have released it
+    AIO().unixEventPort.captureSignal(SIGINT);
+}
 
 //////////////////////////////////////////////////////////////////////
 
@@ -59,6 +68,7 @@ static void signalHandlerThread(const std::vector<int> set)
     setCurrentThreadName("signal handler");
 
     AsyncIoRoot aio;
+    std::optional<kj::TimePoint> printInterruptMessageAt;
 
     for (auto sig : set) {
         AIO().unixEventPort.captureSignal(sig);
@@ -69,17 +79,43 @@ static void signalHandlerThread(const std::vector<int> set)
         for (auto sig : set) {
             promise = promise.exclusiveJoin(AIO().unixEventPort.onSignal(sig));
         }
-        return promise;
+        if (printInterruptMessageAt) {
+            return AIO().provider.getTimer().atTime(*printInterruptMessageAt).then([] {
+                return siginfo_t{.si_signo = -1};
+            });
+        } else {
+            return promise;
+        }
     };
 
     while (true) {
         auto info = onSignal().wait(aio.kj.waitScope);
         int signal = info.si_signo;
 
-        if (signal == SIGINT || signal == SIGTERM || signal == SIGHUP)
-            triggerInterrupt();
+        if (printInterruptMessageAt && *printInterruptMessageAt <= AIO().provider.getTimer().now()) {
+            // we only print to a terminal, and only by bypassing the logger, to
+            // ensure that it's both a *user* who is sending us this signal, and
+            // that the user will get a notification that isn't mixed with logs.
+            if (_isInterrupted && isatty(STDERR_FILENO)) {
+                writeLogsToStderr(
+                    "Still shutting down. Press ^C again to abort all operations immediately.\n"
+                );
+            }
+            printInterruptMessageAt = std::nullopt;
+        }
 
-        else if (signal == SIGWINCH) {
+        // treat SIGINT specially. SIGINT is usually sent interactively, SIGTERM only to daemons
+        if (signal == SIGINT) {
+            sigset_t unblock;
+            sigemptyset(&unblock);
+            sigaddset(&unblock, signal);
+            pthread_sigmask(SIG_UNBLOCK, &unblock, nullptr);
+            ::signal(SIGINT, SIG_DFL);
+            printInterruptMessageAt = AIO().provider.getTimer().now() + 1 * kj::SECONDS;
+            triggerInterrupt();
+        } else if (signal == SIGTERM || signal == SIGHUP) {
+            triggerInterrupt();
+        } else if (signal == SIGWINCH) {
             updateWindowSize();
         }
     }

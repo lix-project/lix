@@ -306,7 +306,7 @@ ReplExitStatus NixRepl::mainLoop()
     std::string input;
 
     while (true) {
-        _isInterrupted = false;
+        unsetUserInterruptRequest();
 
         // When continuing input from previous lines, don't print a prompt, just align to the same
         // number of chars as the prompt.
