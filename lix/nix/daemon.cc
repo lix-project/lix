@@ -6,6 +6,9 @@
 #include "lix/libstore/remote-store.hh"
 #include "lix/libstore/remote-store-connection.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/current-process.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/processes.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/globals.hh"
@@ -14,13 +17,16 @@
 #include "lix/libcmd/legacy.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libstore/daemon.hh"
+#include "lix/libutil/strings.hh"
 #include "lix/libutil/unix-domain-socket.hh"
 #include "daemon.hh"
 
 #include <algorithm>
 #include <climits>
+#include <cstdint>
 #include <cstring>
 
+#include <string>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/types.h>
@@ -40,6 +46,9 @@
 #if __APPLE__
 #include <membership.h>
 #endif
+
+static constexpr int SUBDAEMON_CONNECTION_FD = 0;
+static constexpr int SUBDAEMON_SETTINGS_FD = 3;
 
 namespace nix {
 
@@ -303,6 +312,14 @@ static void daemonLoopImpl(std::optional<TrustedFlag> forceTrustClientOpt)
     //  Get rid of children automatically; don't let them become zombies.
     setSigChldAction(true);
 
+    const auto self = [] {
+        auto tmp = getSelfExe();
+        if (!tmp) {
+            throw Error("can't locate the daemon binary!");
+        }
+        return *tmp;
+    }();
+
     //  Loop accepting connections.
     while (1) {
 
@@ -321,60 +338,44 @@ static void daemonLoopImpl(std::optional<TrustedFlag> forceTrustClientOpt)
 
             closeOnExec(remote.get());
 
-            PeerInfo peer { .pidKnown = false };
-            TrustedFlag trusted;
-            std::string user;
+            PeerInfo peer = getPeerInfo(remote.get());
+            printInfo(
+                "accepted connection from %1%",
+                peer.pidKnown ? fmt("pid %1%", peer.pid) : "unknown peer"
+            );
 
-            if (forceTrustClientOpt)
-                trusted = *forceTrustClientOpt;
-            else {
-                peer = getPeerInfo(remote.get());
-                auto [_trusted, _user] = authPeer(peer);
-                trusted = _trusted;
-                user = _user;
+            Pipe settings;
+            settings.create();
+
+            // Fork a child to handle the connection. make sure it's called with
+            // argv0 `nix-daemon` so we don't try to run `nix --for` when called
+            // from more modern scripts that assume nix-command being available.
+            RunOptions options{
+                .program = self,
+                .argv0 = "nix-daemon",
+                .args =
+                    {
+                        "--for",
+                        peer.pidKnown ? fmt("%1%", peer.pid) : "unknown",
+                        "--log-level",
+                        fmt("%1%", int(verbosity)),
+                    },
+                .redirections =
+                    {
+                        {.dup = SUBDAEMON_CONNECTION_FD, .from = remote.get()},
+                        {.dup = SUBDAEMON_SETTINGS_FD, .from = settings.readSide.get()},
+                    }
             };
+            runProgram2(options).release();
 
-            printInfo((std::string) "accepted connection from pid %1%, user %2%" + (trusted ? " (trusted)" : ""),
-                peer.pidKnown ? std::to_string(peer.pid) : "<unknown>",
-                peer.uidKnown ? user : "<unknown>");
-
-            //  Fork a child to handle the connection.
-            ProcessOptions options;
-            options.errorPrefix = "unexpected Nix daemon error: ";
-            options.dieWithParent = false;
-            options.runExitHandlers = true;
-            startProcess([&]() {
-                fdSocket.reset();
-
-                //  Background the daemon.
-                if (setsid() == -1)
-                    throw SysError("creating a new session");
-
-                AsyncIoRoot aio;
-
-                // Restart the signal handler thread since it met its untimely
-                // demise at fork time.
-                startSignalHandlerThread(DoSignalSave::DontSaveBecauseAdvancedProcess);
-
-                //  Restore normal handling of SIGCHLD.
-                setSigChldAction(false);
-
-                //  For debugging, stuff the pid into argv[1].
-                if (peer.pidKnown && savedArgv[1]) {
-                    auto processName = std::to_string(peer.pid);
-                    strncpy(savedArgv[1], processName.c_str(), strlen(savedArgv[1]));
-                }
-
-                //  Handle the connection.
-                FdSource from(remote.get());
-                FdSink to(remote.get());
-                processConnection(
-                    aio, aio.blockOn(openUncachedStore(AllowDaemon::Disallow)), from, to, trusted
-                );
-
-                exit(0);
-            }, options).release();
-
+            FdSink sink(settings.writeSide.get());
+            std::map<std::string, Config::SettingInfo> overriddenSettings;
+            globalConfig.getSettings(overriddenSettings, true);
+            for (auto & setting : overriddenSettings) {
+                sink << 1 << setting.first << setting.second.value;
+            }
+            sink << 0;
+            sink.flush();
         } catch (Interrupted & e) {
             return;
         } catch (Error & error) {
@@ -398,6 +399,57 @@ static void daemonLoop(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustC
         ReceiveInterrupts ri;
         return daemonLoopImpl(forceTrustClientOpt);
     }).get();
+}
+
+static void daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt)
+{
+    PeerInfo peer = getPeerInfo(SUBDAEMON_CONNECTION_FD);
+    TrustedFlag trusted;
+    std::string user;
+
+    if (forceTrustClientOpt) {
+        trusted = *forceTrustClientOpt;
+    } else {
+        std::tie(trusted, user) = authPeer(peer);
+    }
+
+    printInfo(
+        "%1% is %2% (%3%%4%)",
+        peer.pidKnown ? fmt("remote pid %s", peer.pid) : "remote with unknown pid",
+        peer.uidKnown ? fmt("user %s", user) : "unknown user",
+        trusted ? "trusted" : "untrusted",
+        forceTrustClientOpt ? " by override" : ""
+    );
+
+    {
+        FdSource source(SUBDAEMON_SETTINGS_FD);
+
+        /* Read the parent's settings. */
+        while (readInt(source)) {
+            auto name = readString(source);
+            auto value = readString(source);
+            settings.set(name, value);
+        }
+
+        if (close(SUBDAEMON_SETTINGS_FD) < 0) {
+            throw SysError("preparing subdaemon connection");
+        }
+    }
+
+    //  Background the daemon.
+    if (setsid() == -1) {
+        throw SysError("creating a new session");
+    }
+
+    //  Restore normal handling of SIGCHLD.
+    setSigChldAction(false);
+
+    //  Handle the connection.
+    FdSource from(SUBDAEMON_CONNECTION_FD);
+    FdSink to(SUBDAEMON_CONNECTION_FD);
+    processConnection(
+        aio, aio.blockOn(openUncachedStore(AllowDaemon::Disallow)), from, to, trusted
+    );
 }
 
 /**
@@ -487,6 +539,8 @@ static int main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings a
     {
         auto stdio = false;
         std::optional<TrustedFlag> isTrustedOpt = std::nullopt;
+        bool isInstance = false;
+        Verbosity subdaemonLogLevel = lvlInfo;
 
         LegacyArgs(aio, programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--daemon")
@@ -506,11 +560,27 @@ static int main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings a
             } else if (*arg == "--default-trust") {
                 experimentalFeatureSettings.require(Xp::DaemonTrustOverride);
                 isTrustedOpt = std::nullopt;
-            } else return false;
+            } else if (*arg == "--for") {
+                isInstance = true;
+                getArg(*arg, arg, end);
+            } else if (*arg == "--log-level") {
+                if (auto level = string2Int<int>(getArg(*arg, arg, end)); level) {
+                    subdaemonLogLevel = static_cast<Verbosity>(std::min<int>(lvlVomit, *level));
+                } else {
+                    throw UsageError("--log-level expects an integer in the range [0..7]");
+                }
+            } else {
+                return false;
+            }
             return true;
         }).parseCmdline(argv);
 
-        runDaemon(aio, stdio, isTrustedOpt);
+        if (isInstance) {
+            verbosity = Verbosity(std::min<uint64_t>(subdaemonLogLevel, lvlVomit));
+            daemonInstance(aio, isTrustedOpt);
+        } else {
+            runDaemon(aio, stdio, isTrustedOpt);
+        }
 
         return 0;
     }
