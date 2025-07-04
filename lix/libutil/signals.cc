@@ -1,9 +1,14 @@
 #include "lix/libutil/signals.hh"
+#include "async.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libutil/terminal.hh"
 #include "lix/libutil/thread-name.hh"
+#include <csignal>
+#include <kj/time.h>
 
+#include <kj/async-unix.h>
+#include <kj/async.h>
 #include <map>
 #include <memory>
 #include <thread>
@@ -49,12 +54,27 @@ struct InterruptCallbacks {
 
 static Sync<std::shared_ptr<Sync<InterruptCallbacks>>> _interruptCallbacks;
 
-static void signalHandlerThread(sigset_t set)
+static void signalHandlerThread(const std::vector<int> set)
 {
     setCurrentThreadName("signal handler");
+
+    AsyncIoRoot aio;
+
+    for (auto sig : set) {
+        AIO().unixEventPort.captureSignal(sig);
+    }
+
+    auto onSignal = [&] {
+        kj::Promise<siginfo_t> promise(kj::NEVER_DONE);
+        for (auto sig : set) {
+            promise = promise.exclusiveJoin(AIO().unixEventPort.onSignal(sig));
+        }
+        return promise;
+    };
+
     while (true) {
-        int signal = 0;
-        sigwait(&set, &signal);
+        auto info = onSignal().wait(aio.kj.waitScope);
+        int signal = info.si_signo;
 
         if (signal == SIGINT || signal == SIGTERM || signal == SIGHUP)
             triggerInterrupt();
@@ -127,17 +147,17 @@ void startSignalHandlerThread()
     updateWindowSize();
     saveSignalMask();
 
+    std::vector<int> signals{SIGINT, SIGTERM, SIGHUP, SIGPIPE, SIGWINCH};
+
     sigset_t set;
     sigemptyset(&set);
-    sigaddset(&set, SIGINT);
-    sigaddset(&set, SIGTERM);
-    sigaddset(&set, SIGHUP);
-    sigaddset(&set, SIGPIPE);
-    sigaddset(&set, SIGWINCH);
+    for (auto sig : signals) {
+        sigaddset(&set, sig);
+    }
     if (pthread_sigmask(SIG_BLOCK, &set, nullptr))
         throw SysError("blocking signals");
 
-    std::thread(signalHandlerThread, set).detach();
+    std::thread(signalHandlerThread, signals).detach();
 }
 
 void restoreSignals()
