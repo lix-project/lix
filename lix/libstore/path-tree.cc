@@ -8,6 +8,8 @@
 #include <boost/algorithm/string/join.hpp>
 #include <queue>
 
+#define ANSI_DIM_ALREADY_VISITED "\e[38;5;244m"
+
 namespace nix {
 static std::string hilite(const std::string & s, size_t pos, size_t len,
     const std::string & colour = ANSI_RED)
@@ -132,7 +134,9 @@ try {
         output.push_back(
             fmt("%s%s%s%s" ANSI_NORMAL,
                 firstPad,
-                node.visited ? "\e[38;5;244m" : "",
+                node.path == dependencyPath ? ANSI_NORMAL
+                    : node.visited          ? ANSI_DIM_ALREADY_VISITED
+                                            : "",
                 firstPad != "" ? "→ " : "",
                 pathS)
         );
@@ -201,7 +205,9 @@ try {
             output.push_back(
                 fmt("%s%s%s%s" ANSI_NORMAL,
                     firstPad,
-                    ref.second->visited ? "\e[38;5;244m" : "",
+                    ref.second->path == dependencyPath ? ANSI_BOLD
+                        : ref.second->visited          ? ANSI_DIM_ALREADY_VISITED
+                                                       : "",
                     last ? treeLast : treeConn,
                     pathS)
             );
