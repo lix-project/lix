@@ -3,7 +3,7 @@ synopsis: Symbols reuses once-allocated Value to reduce garbage collected alloca
 issues: []
 cls: [3308, 3300, 3314, 3310, 3312, 3313]
 category: Improvements
-credits: [raito, horrors, thubrecht, nan-git]
+credits: [raito, horrors, thubrecht, xokdvium, nan-git]
 ---
 
 In the Lix evaluator, **symbols** represent immutable strings, like those used
@@ -30,3 +30,5 @@ As a result, this reduces the number of allocations, leading to:
 * A slight decrease in CPU usage during Nix evaluations.
 
 This change is inspired by https://github.com/NixOS/nix/pull/13258 but the approach is different.
+
+**Note** : [`xokdvium`](https://github.com/xokdvium) is the rightful author of https://gerrit.lix.systems/c/lix/+/3300 and the credit was missed on our end during the development process. We are deeply sorry for this mistake.
