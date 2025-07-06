@@ -1,16 +1,12 @@
 #include "lix/libutil/signals.hh"
-#include "async.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libutil/terminal.hh"
 #include "lix/libutil/thread-name.hh"
 #include "logging.hh"
 #include <atomic>
-#include <csignal>
-#include <kj/time.h>
 
-#include <kj/async-unix.h>
-#include <kj/async.h>
+#include <chrono>
 #include <map>
 #include <memory>
 #include <optional>
@@ -57,8 +53,6 @@ void unsetUserInterruptRequest()
     allowInterruptsAfter = _interruptSequence.load();
     // tell the signal handler thread to skip the please-try-again message
     printMessageForSeq = 0;
-    // recapture the signal as the signal handler thread will have released it
-    AIO().unixEventPort.captureSignal(SIGINT);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -80,36 +74,13 @@ struct InterruptCallbacks {
 
 static Sync<std::shared_ptr<Sync<InterruptCallbacks>>> _interruptCallbacks;
 
-static void signalHandlerThread(const std::vector<int> set)
+static void signalHandlerThread(sigset_t set)
 {
-    setCurrentThreadName("signal handler");
-
-    AsyncIoRoot aio;
-    std::optional<kj::TimePoint> printInterruptMessageAt;
-
-    for (auto sig : set) {
-        AIO().unixEventPort.captureSignal(sig);
-    }
-
-    auto onSignal = [&] {
-        kj::Promise<siginfo_t> promise(kj::NEVER_DONE);
-        for (auto sig : set) {
-            promise = promise.exclusiveJoin(AIO().unixEventPort.onSignal(sig));
-        }
-        if (printInterruptMessageAt) {
-            return AIO().provider.getTimer().atTime(*printInterruptMessageAt).then([] {
-                return siginfo_t{.si_signo = -1};
-            });
-        } else {
-            return promise;
-        }
-    };
-
-    while (true) {
-        auto info = onSignal().wait(aio.kj.waitScope);
-        int signal = info.si_signo;
-
-        if (printInterruptMessageAt && *printInterruptMessageAt <= AIO().provider.getTimer().now()) {
+    // sleep for one second in a dedicated thread. this is needed beacuse darwin
+    // does not let us receive process signals in a non-main thread. what fun 🫠
+    const auto scheduleSigintMessage = [] {
+        std::thread([] {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
             // we only print to a terminal, and only by bypassing the logger, to
             // ensure that it's both a *user* who is sending us this signal, and
             // that the user will get a notification that isn't mixed with logs.
@@ -118,22 +89,33 @@ static void signalHandlerThread(const std::vector<int> set)
                     "Still shutting down. Press ^C again to abort all operations immediately.\n"
                 );
             }
-            printInterruptMessageAt = std::nullopt;
-        }
+        }).detach();
+    };
+
+    setCurrentThreadName("signal handler");
+    while (true) {
+        int signal = 0;
+        sigwait(&set, &signal);
 
         // treat SIGINT specially. SIGINT is usually sent interactively, SIGTERM only to daemons
         if (signal == SIGINT) {
-            sigset_t unblock;
-            sigemptyset(&unblock);
-            sigaddset(&unblock, signal);
-            pthread_sigmask(SIG_UNBLOCK, &unblock, nullptr);
-            ::signal(SIGINT, SIG_DFL);
-            printInterruptMessageAt = AIO().provider.getTimer().now() + 1 * kj::SECONDS;
-            // this is intentionally racy. triggerInterrupt increments the counter, if
-            // another interrupt is triggered in close proximity we do not want to see
-            // a message. this can happen if the repl or from the MonitorFdHup thread.
-            printMessageForSeq = _interruptSequence.load() + 1;
-            triggerInterrupt();
+            if (_interruptSequence.load() > allowInterruptsAfter.load()) {
+                // unblock and re-kill the entire process if sigint was sent twice in this
+                // round of interruption processing. this is apparently the easiest way to
+                // make sure the process terminates on double ^C without breaking anything
+                sigset_t unblock;
+                sigemptyset(&unblock);
+                sigaddset(&unblock, signal);
+                pthread_sigmask(SIG_UNBLOCK, &unblock, nullptr);
+                kill(getpid(), SIGINT);
+            } else {
+                // this is intentionally racy. triggerInterrupt increments the counter, if
+                // another interrupt is triggered in close proximity we do not want to see
+                // a message. this can happen if the repl or from the MonitorFdHup thread.
+                printMessageForSeq = _interruptSequence.load() + 1;
+                scheduleSigintMessage();
+                triggerInterrupt();
+            }
         } else if (signal == SIGTERM || signal == SIGHUP) {
             triggerInterrupt();
         } else if (signal == SIGWINCH) {
@@ -204,17 +186,17 @@ void startSignalHandlerThread()
     updateWindowSize();
     saveSignalMask();
 
-    std::vector<int> signals{SIGINT, SIGTERM, SIGHUP, SIGPIPE, SIGWINCH};
-
     sigset_t set;
     sigemptyset(&set);
-    for (auto sig : signals) {
-        sigaddset(&set, sig);
-    }
+    sigaddset(&set, SIGINT);
+    sigaddset(&set, SIGTERM);
+    sigaddset(&set, SIGHUP);
+    sigaddset(&set, SIGPIPE);
+    sigaddset(&set, SIGWINCH);
     if (pthread_sigmask(SIG_BLOCK, &set, nullptr))
         throw SysError("blocking signals");
 
-    std::thread(signalHandlerThread, signals).detach();
+    std::thread(signalHandlerThread, set).detach();
 }
 
 void restoreSignals()
