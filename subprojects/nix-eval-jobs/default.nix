@@ -70,7 +70,7 @@ let
           buildPhase = ''
             export NIX_REMOTE="$NIX_BUILD_TOP"
             export HOME="$(mktemp -d)"
-            pytest
+            pytest -v
           '';
           installPhase = "touch $out";
         })
