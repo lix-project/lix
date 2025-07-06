@@ -186,6 +186,8 @@ assert (lintInsteadOfBuild -> lix-clang-tidy != null);
 stdenv.mkDerivation (finalAttrs: {
   inherit pname version;
 
+  __structuredAttrs = true;
+
   src = fileset.toSource {
     root = ./.;
     fileset = fileset.intersection baseFiles (
