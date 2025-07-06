@@ -135,10 +135,10 @@ let
 
   # This could be the dtrace for macOS, etc, but I have no idea if it is
   # packaged or if it works.
-  dtrace-generator = lib.optional withDtrace systemtap-lix;
+  dtrace-generator = if withDtrace then systemtap-lix else null;
 
   # This is for sys/sdt.h
-  dtrace-headers = lib.optional withDtrace libsystemtap;
+  dtrace-headers = if withDtrace then libsystemtap else null;
 
   aws-sdk-cpp-nix =
     if aws-sdk-cpp == null then
@@ -208,6 +208,8 @@ in
 assert (lintInsteadOfBuild -> lix-clang-tidy != null);
 stdenv.mkDerivation (finalAttrs: {
   inherit pname version;
+
+  __structuredAttrs = true;
 
   src = fileset.toSource {
     root = ./.;
