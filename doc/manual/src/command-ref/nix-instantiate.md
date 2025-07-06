@@ -107,20 +107,27 @@ See that section for complete details (`nix-build --help`), but in summary, a pa
     > This option can cause non-termination, because lazy data
     > structures can be infinitely large.
 
-  - `--raw`
+  - `--raw`\
     When used with `--eval`, the result must be coercible to a string, i.e.,
-    something that can be converted using `${...}`. The output is
-    printed exactly as-is, with no quotes, escaping, or trailing newline.
+    something that can be converted using `${...}`.
+
+    Integers will always generate an error when output via `--raw`, regardless of
+    [`coerce-integers`](../contributing/experimental-features.md#xp-feature-coerce-integers) being enabled, to avoid ambiguity.
+
+    The output is printed exactly as-is, with no quotes, escaping, or trailing
+    newline.
 
   - `--json`\
     When used with `--eval`, print the resulting value as an JSON
-    representation of the abstract syntax tree rather than as a Nix expression.
+    representation of the resulting value rather than as a Nix expression.
+
+    The conversion behaviour, if `--strict` is passed, is the same as
+    [`builtins.toJSON`](../language/builtins.md#builtins-toJSON).
 
   - `--xml`\
     When used with `--eval`, print the resulting value as an XML
-    representation of the abstract syntax tree rather than as a Nix expression.
-    The schema is the same as that used by the [`toXML`
-    built-in](../language/builtins.md).
+    representation of the resulting value rather than as a Nix expression.
+    The schema is the same as that used by [`builtins.toXML`](../language/builtins.md#builtins-toXML).
 
   - `--read-write-mode`\
     When used with `--eval`, perform evaluation in read/write mode so

@@ -61,12 +61,20 @@ result on standard output.
 
 * By default, the evaluation result is printed as a Nix expression.
 
-* With `--json`, the evaluation result is printed in JSON format. Note
-  that this fails if the result contains values that are not
-  representable as JSON, such as functions.
+* With `--json`, the evaluation result is printed in JSON format.
 
-* With `--raw`, the evaluation result must be a string, which is
-  printed verbatim, without any quoting.
+  The conversion behaviour is the same as
+  [`builtins.toJSON`](../../language/builtins.md#builtins-toJSON) except that
+  paths are printed as-is without being copied to the Nix store.
+
+* With `--raw`, the result must be coercible to a string, i.e.,
+  something that can be converted using `${...}`.
+
+  Integers will always generate an error when output via `--raw`, regardless of
+  [`coerce-integers`](../../contributing/experimental-features.md#xp-feature-coerce-integers) being enabled, to avoid ambiguity.
+
+  The output is printed exactly as-is, with no quotes, escaping, or trailing
+  newline.
 
 * With `--write-to` *path*, the evaluation result must be a string or
   a nested attribute set whose leaf values are strings. These strings
