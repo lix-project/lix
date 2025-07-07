@@ -170,7 +170,12 @@ private:
     using base_type = Sync<T, std::mutex>;
 
     std::mutex waitMutex;
-    std::list<kj::Own<kj::CrossThreadPromiseFulfiller<void>>> waiters;
+    // map of active waiters. contained fulfillers must still be waiting while waitMutex is
+    // held, otherwise waking the first waiter in this map may fulfill a cancelled promise,
+    // which in turn may starve the mutex if no further independent lock attempts are made.
+    std::map<uint64_t, kj::Own<kj::CrossThreadPromiseFulfiller<void>>> waiters;
+    // uint64 should be enough to never *ever* wrap. recall that 2**64 ns is over 500 years
+    uint64_t waitSeq = 0;
 
     std::mutex conditionMutex;
     std::list<kj::Own<kj::CrossThreadPromiseFulfiller<void>>> conditionWaiters;
@@ -195,12 +200,10 @@ public:
                 this->lk.unlock();
                 auto * s = static_cast<Sync *>(this->s);
                 std::lock_guard wlk(s->waitMutex);
-                // wake them all. it's too hard to ensure liveness with promises
-                // that can be cancelled, and contention isn't usually that big.
-                for (auto & f : s->waiters) {
-                    f->fulfill();
+                if (auto it = s->waiters.begin(); it != s->waiters.end()) {
+                    it->second->fulfill();
+                    s->waiters.erase(it);
                 }
-                s->waiters.clear();
             }
         }
 
@@ -257,14 +260,33 @@ public:
 
         while (true) {
             auto pfp = kj::newPromiseAndCrossThreadFulfiller<void>();
-            {
+            // enqueue this attempt as a waiter
+            const auto seq = [&] {
                 std::lock_guard wlk(waitMutex);
-                waiters.push_back(std::move(pfp.fulfiller));
-            }
+                auto seq = waitSeq++;
+                waiters.emplace(seq, std::move(pfp.fulfiller));
+                return seq;
+            }();
+            // unregister this waiter and signal the first remaining waiter if
+            // this promise is cancelled before being granted the lock. we may
+            // spuriously wake a waiter if exceptions occur without us holding
+            // the lock, these waiters will then requeue themselves as needed.
+            auto dequeueAndWake = kj::defer([&] {
+                std::lock_guard wlk(waitMutex);
+                waiters.erase(seq);
+                if (auto it = waiters.begin(); it != waiters.end()) {
+                    it->second->fulfill();
+                    waiters.erase(it);
+                }
+            });
             if (auto lk = tryLock()) {
+                std::lock_guard wlk(waitMutex);
+                waiters.erase(seq);
+                dequeueAndWake.cancel();
                 co_return std::move(*lk);
             }
             co_await pfp.promise;
+            dequeueAndWake.cancel();
         }
     }
 
