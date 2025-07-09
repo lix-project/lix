@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/ref.hh"
 #include "lix/libutil/result.hh"
 #include <kj/async.h>
@@ -49,7 +50,7 @@ struct Machine {
         decltype(mandatoryFeatures) mandatoryFeatures,
         decltype(sshPublicHostKey) sshPublicHostKey);
 
-    kj::Promise<Result<ref<Store>>> openStore() const;
+    kj::Promise<Result<std::pair<ref<Store>, Pipe>>> openStore() const;
 };
 
 typedef std::vector<Machine> Machines;

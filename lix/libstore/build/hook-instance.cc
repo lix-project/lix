@@ -35,10 +35,6 @@ HookInstance::HookInstance()
     Pipe toHook_;
     toHook_.create();
 
-    /* Create a pipe to get the output of the builder. */
-    Pipe builderOut_;
-    builderOut_.create();
-
     /* Fork the hook. */
     pid = startProcess([&]() {
 
@@ -53,15 +49,6 @@ HookInstance::HookInstance()
         if (dup2(toHook_.readSide.get(), STDIN_FILENO) == -1)
             throw SysError("dupping to-hook read side");
 
-        /* Use fd 4 for the builder's stdout/stderr. */
-        if (dup2(builderOut_.writeSide.get(), 4) == -1)
-            throw SysError("dupping builder's stdout/stderr");
-
-        /* Hack: pass the read side of that fd to allow build-remote
-           to read SSH error messages. */
-        if (dup2(builderOut_.readSide.get(), 5) == -1)
-            throw SysError("dupping builder's stdout/stderr");
-
         execv(buildHook.c_str(), stringsToCharPtrs(args).data());
 
         throw SysError("executing '%s'", buildHook);
@@ -70,7 +57,6 @@ HookInstance::HookInstance()
     pid.setSeparatePG(true);
     fromHook = std::move(fromHook_.readSide);
     toHook = std::move(toHook_.writeSide);
-    builderOut = std::move(builderOut_.readSide);
 
     sink = std::make_unique<FdSink>(toHook.get());
     std::map<std::string, Config::SettingInfo> settings;

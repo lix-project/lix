@@ -20,11 +20,6 @@ struct HookInstance
     AutoCloseFD fromHook;
 
     /**
-     * Pipe for the builder's standard output/error.
-     */
-    AutoCloseFD builderOut;
-
-    /**
      * The process ID of the hook.
      */
     Pid pid;

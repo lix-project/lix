@@ -801,11 +801,9 @@ int DerivationGoal::getChildStatus()
 
 void DerivationGoal::closeReadPipes()
 {
-    hook->builderOut.reset();
     hook->fromHook.reset();
     builderOutFD = nullptr;
 }
-
 
 void DerivationGoal::cleanupHookFinally()
 {
@@ -1126,7 +1124,6 @@ HookReply DerivationGoal::tryBuildHook()
     /* Create the log file and pipe. */
     openLogFile();
 
-    builderOutFD = &hook->builderOut;
     return HookReply::Accept{handleChildOutput()};
 }
 
@@ -1319,15 +1316,16 @@ try {
 
 kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::handleChildOutput() noexcept
 try {
-    assert(builderOutFD);
-
-    auto builderIn = kj::heap<InputStream>(AIO().unixEventPort, builderOutFD->get());
-    kj::Own<InputStream> hookIn;
+    kj::Own<InputStream> builderIn, hookIn;
+    if (builderOutFD) {
+        builderIn = kj::heap<InputStream>(AIO().unixEventPort, builderOutFD->get());
+    }
     if (hook) {
         hookIn = kj::heap<InputStream>(AIO().unixEventPort, hook->fromHook.get());
     }
 
-    auto handlers = handleChildStreams(*builderIn, hookIn.get()).attach(std::move(builderIn), std::move(hookIn));
+    auto handlers = handleChildStreams(builderIn.get(), hookIn.get())
+                        .attach(std::move(builderIn), std::move(hookIn));
 
     if (respectsTimeouts() && settings.buildTimeout != 0) {
         handlers = handlers.exclusiveJoin(
@@ -1364,14 +1362,18 @@ kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::monitorForSilence()
 }
 
 kj::Promise<Outcome<void, Goal::WorkResult>>
-DerivationGoal::handleChildStreams(InputStream & builderIn, InputStream * hookIn) noexcept
+DerivationGoal::handleChildStreams(InputStream * builderIn, InputStream * hookIn) noexcept
 {
+    assert(builderIn || hookIn);
+
     lastChildActivity = AIO().provider.getTimer().now();
 
     auto handlers = kj::joinPromisesFailFast([&] {
         kj::Vector<kj::Promise<Outcome<void, WorkResult>>> parts{2};
 
-        parts.add(handleBuilderOutput(builderIn));
+        if (builderIn) {
+            parts.add(handleBuilderOutput(*builderIn));
+        }
         if (hookIn) {
             parts.add(handleHookOutput(*hookIn));
         }

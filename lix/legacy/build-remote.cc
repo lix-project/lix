@@ -1,6 +1,10 @@
+#include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
+#include "lix/libutil/logging.hh"
 #include <algorithm>
 #include <chrono>
+#include <cstring>
+#include <future>
 #include <set>
 #include <memory>
 #include <string>
@@ -156,6 +160,61 @@ struct BuilderConnection
     AutoCloseFD slotLock;
     std::shared_ptr<Store> sshStore;
     std::string storeUri;
+    Pipe logPipe;
+
+    // start the thread that reads ssh stderr and turns it into log items.
+    // this future *must* outlive sshStore, otherwise it will never finish
+    std::future<void> startLogThread()
+    {
+        if (!logPipe.readSide) {
+            return {};
+        }
+
+        return std::async(
+            std::launch::async,
+            [](AutoCloseFD logFD) {
+                Activity act(*logger, lvlTalkative, actUnknown, "remote builder");
+                std::vector<char> buf(4096);
+                size_t currentLogLinePos = 0;
+                std::string currentLogLine;
+
+                auto flushLine = [&] {
+                    act.result(resBuildLogLine, {currentLogLine});
+                    currentLogLine.clear();
+                    currentLogLinePos = 0;
+                };
+
+                while (true) {
+                    const auto got = ::read(logFD.get(), buf.data(), buf.size());
+                    if (got < 0) {
+                        printError("error reading builder response: %s", strerror(errno));
+                        break;
+                    } else if (got == 0) {
+                        if (!currentLogLine.empty()) {
+                            flushLine();
+                        }
+                        break;
+                    }
+
+                    std::string_view data{buf.data(), size_t(got)};
+
+                    for (auto c : data) {
+                        if (c == '\r') {
+                            currentLogLinePos = 0;
+                        } else if (c == '\n') {
+                            flushLine();
+                        } else {
+                            if (currentLogLinePos >= currentLogLine.size()) {
+                                currentLogLine.resize(currentLogLinePos + 1);
+                            }
+                            currentLogLine[currentLogLinePos++] = c;
+                        }
+                    }
+                }
+            },
+            std::move(logPipe.readSide)
+        );
+    }
 };
 }
 
@@ -217,16 +276,21 @@ static std::variant<std::monostate, std::string, BuilderConnection> connectToBui
 
         lock.reset();
 
+        std::shared_ptr<Store> sshStore;
+        Pipe logPipe;
+
         try {
             Activity act(
                 *logger, lvlTalkative, actUnknown, fmt("connecting to '%s'", bestMachine->storeUri)
             );
 
-            auto sshStore = aio.blockOn(bestMachine->openStore());
+            std::tie(sshStore, logPipe) = aio.blockOn(bestMachine->openStore());
             aio.blockOn(sshStore->connect());
-            return BuilderConnection{std::move(bestSlotLock), sshStore, bestMachine->storeUri};
+            return BuilderConnection{
+                std::move(bestSlotLock), sshStore, bestMachine->storeUri, std::move(logPipe)
+            };
         } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
-            auto msg = chomp(drainFD(5, false));
+            std::string msg = logPipe.readSide ? chomp(drainFD(logPipe.readSide.get(), false)) : "";
             printError(
                 "cannot build on '%s': %s%s",
                 bestMachine->storeUri,
@@ -287,8 +351,8 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
         else
             currentLoad = settings.nixStateDir + currentLoadName;
 
-        std::shared_ptr<Store> sshStore;
-        AutoCloseFD bestSlotLock;
+        std::future<void> logThread;
+        std::optional<BuilderConnection> builder;
 
         auto machines = getMachines();
         debug("got %d remote builders", machines.size());
@@ -299,9 +363,8 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
         }
 
         std::optional<StorePath> drvPath;
-        std::string storeUri;
 
-        while (!sshStore) {
+        while (!builder) {
 
             try {
                 auto s = readString(source);
@@ -328,18 +391,17 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
                 continue;
             } else if (auto immediateResponse = std::get_if<std::string>(&result)) {
                 std::cerr << *immediateResponse;
-                continue;
+            } else {
+                builder = std::move(std::get<BuilderConnection>(result));
             }
-
-            auto & builder = std::get<BuilderConnection>(result);
-            bestSlotLock = std::move(builder.slotLock);
-            sshStore = std::move(builder.sshStore);
-            storeUri = std::move(builder.storeUri);
         }
 
-        close(5);
+        auto & sshStore = builder->sshStore;
+        auto & storeUri = builder->storeUri;
 
         std::cerr << "# accept\n" << storeUri << "\n";
+
+        logThread = builder->startLogThread();
 
         auto inputs = readStrings<PathSet>(source);
         auto wantedOutputs = readStrings<StringSet>(source);

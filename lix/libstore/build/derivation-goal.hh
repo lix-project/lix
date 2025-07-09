@@ -317,7 +317,7 @@ protected:
 
     kj::Promise<Outcome<void, WorkResult>> handleChildOutput() noexcept;
     kj::Promise<Outcome<void, WorkResult>>
-    handleChildStreams(InputStream & builderIn, InputStream * hookIn) noexcept;
+    handleChildStreams(InputStream * builderIn, InputStream * hookIn) noexcept;
     kj::Promise<Outcome<void, WorkResult>> handleBuilderOutput(InputStream & in) noexcept;
     kj::Promise<Outcome<void, WorkResult>> handleHookOutput(InputStream & in) noexcept;
     kj::Promise<Outcome<void, WorkResult>> monitorForSilence() noexcept;

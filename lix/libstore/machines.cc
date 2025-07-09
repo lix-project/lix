@@ -65,11 +65,14 @@ bool Machine::mandatoryMet(const std::set<std::string> & features) const
         });
 }
 
-kj::Promise<Result<ref<Store>>> Machine::openStore() const
+kj::Promise<Result<std::pair<ref<Store>, Pipe>>> Machine::openStore() const
 try {
+    Pipe pipe;
+
     StoreConfig::Params storeParams;
     if (storeUri.starts_with("ssh://")) {
-        storeParams["log-fd"] = "4";
+        pipe.create();
+        storeParams["log-fd"] = std::to_string(pipe.writeSide.get());
         storeParams["max-connections"] = "1";
     }
 
@@ -92,7 +95,7 @@ try {
         append(mandatoryFeatures);
     }
 
-    co_return TRY_AWAIT(nix::openStore(storeUri, storeParams));
+    co_return {TRY_AWAIT(nix::openStore(storeUri, storeParams)), std::move(pipe)};
 } catch (...) {
     co_return result::current_exception();
 }
