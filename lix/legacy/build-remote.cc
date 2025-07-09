@@ -1,7 +1,9 @@
+#include "lix/libutil/file-descriptor.hh"
 #include <algorithm>
 #include <chrono>
 #include <set>
 #include <memory>
+#include <string>
 #include <tuple>
 #if __APPLE__
 #include <sys/time.h>
@@ -51,6 +53,64 @@ static bool allSupportedLocally(Store & store, const std::set<std::string>& requ
     for (auto & feature : requiredFeatures)
         if (!store.config().systemFeatures.get().count(feature)) return false;
     return true;
+}
+
+static std::tuple<bool, Machine *, AutoCloseFD> selectBestMachine(
+    Machines & machines,
+    const std::string & neededSystem,
+    const std::set<std::string> & requiredFeatures
+)
+{
+    bool rightType = false;
+    Machine * bestMachine = nullptr;
+    AutoCloseFD bestSlotLock;
+    uint64_t bestLoad = 0;
+
+    for (auto & m : machines) {
+        debug("considering building on remote machine '%s'", m.storeUri);
+
+        if (m.enabled && m.systemSupported(neededSystem) && m.allSupported(requiredFeatures)
+            && m.mandatoryMet(requiredFeatures))
+        {
+            rightType = true;
+            AutoCloseFD free;
+            uint64_t load = 0;
+            for (uint64_t slot = 0; slot < m.maxJobs; ++slot) {
+                auto slotLock = openSlotLock(m, slot);
+                if (tryLockFile(slotLock.get(), ltWrite)) {
+                    if (!free) {
+                        free = std::move(slotLock);
+                    }
+                } else {
+                    ++load;
+                }
+            }
+            if (!free) {
+                continue;
+            }
+            bool best = false;
+            if (!bestSlotLock) {
+                best = true;
+            } else if (load / m.speedFactor < bestLoad / bestMachine->speedFactor) {
+                best = true;
+            } else if (load / m.speedFactor == bestLoad / bestMachine->speedFactor) {
+                if (m.speedFactor > bestMachine->speedFactor) {
+                    best = true;
+                } else if (m.speedFactor == bestMachine->speedFactor) {
+                    if (load < bestLoad) {
+                        best = true;
+                    }
+                }
+            }
+            if (best) {
+                bestLoad = load;
+                bestSlotLock = std::move(free);
+                bestMachine = &m;
+            }
+        }
+    }
+
+    return {rightType, bestMachine, std::move(bestSlotLock)};
 }
 
 static void printSelectionFailureMessage(
@@ -180,55 +240,9 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
                 AutoCloseFD lock = openLockFile(currentLoad + "/main-lock", true);
                 lockFile(lock.get(), ltWrite);
 
-                bool rightType = false;
-
-                Machine * bestMachine = nullptr;
-                uint64_t bestLoad = 0;
-                for (auto & m : machines) {
-                    debug("considering building on remote machine '%s'", m.storeUri);
-
-                    if (m.enabled &&
-                        m.systemSupported(neededSystem) &&
-                        m.allSupported(requiredFeatures) &&
-                        m.mandatoryMet(requiredFeatures))
-                    {
-                        rightType = true;
-                        AutoCloseFD free;
-                        uint64_t load = 0;
-                        for (uint64_t slot = 0; slot < m.maxJobs; ++slot) {
-                            auto slotLock = openSlotLock(m, slot);
-                            if (tryLockFile(slotLock.get(), ltWrite)) {
-                                if (!free) {
-                                    free = std::move(slotLock);
-                                }
-                            } else {
-                                ++load;
-                            }
-                        }
-                        if (!free) {
-                            continue;
-                        }
-                        bool best = false;
-                        if (!bestSlotLock) {
-                            best = true;
-                        } else if (load / m.speedFactor < bestLoad / bestMachine->speedFactor) {
-                            best = true;
-                        } else if (load / m.speedFactor == bestLoad / bestMachine->speedFactor) {
-                            if (m.speedFactor > bestMachine->speedFactor) {
-                                best = true;
-                            } else if (m.speedFactor == bestMachine->speedFactor) {
-                                if (load < bestLoad) {
-                                    best = true;
-                                }
-                            }
-                        }
-                        if (best) {
-                            bestLoad = load;
-                            bestSlotLock = std::move(free);
-                            bestMachine = &m;
-                        }
-                    }
-                }
+                auto [rightType, bestMachine, slotLock] =
+                    selectBestMachine(machines, neededSystem, requiredFeatures);
+                bestSlotLock = std::move(slotLock);
 
                 if (!bestSlotLock) {
                     if (rightType && !canBuildLocally)
