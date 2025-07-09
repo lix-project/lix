@@ -53,6 +53,43 @@ static bool allSupportedLocally(Store & store, const std::set<std::string>& requ
     return true;
 }
 
+static void printSelectionFailureMessage(
+    Verbosity level,
+    const std::string_view drvstr,
+    const Machines & machines,
+    const std::string & neededSystem,
+    const std::set<std::string> & requiredFeatures
+)
+{
+    std::string machinesFormatted;
+
+    for (auto & m : machines) {
+        machinesFormatted += HintFmt(
+                                 "\n([%s], %s, [%s], [%s])",
+                                 concatStringsSep<StringSet>(", ", m.systemTypes),
+                                 m.maxJobs,
+                                 concatStringsSep<StringSet>(", ", m.supportedFeatures),
+                                 concatStringsSep<StringSet>(", ", m.mandatoryFeatures)
+        )
+                                 .str();
+    }
+
+    auto error = HintFmt(
+        "Failed to find a machine for remote build!\n"
+        "derivation: %s\n"
+        "required (system, features): (%s, [%s])\n"
+        "%s available machines:\n"
+        "(systems, maxjobs, supportedFeatures, mandatoryFeatures)%s",
+        drvstr,
+        neededSystem,
+        concatStringsSep<StringSet>(", ", requiredFeatures),
+        machines.size(),
+        Uncolored(machinesFormatted)
+    );
+
+    printMsg(level, error.str());
+}
+
 static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     {
@@ -198,39 +235,13 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
                         std::cerr << "# postpone\n";
                     else
                     {
-                        // add the template values.
-                        std::string drvstr;
-                        if (drvPath.has_value())
-                            drvstr = drvPath->to_string();
-                        else
-                            drvstr = "<unknown>";
-
-                        std::string machinesFormatted;
-
-                        for (auto & m : machines) {
-                            machinesFormatted += HintFmt(
-                                "\n([%s], %s, [%s], [%s])",
-                                concatStringsSep<StringSet>(", ", m.systemTypes),
-                                m.maxJobs,
-                                concatStringsSep<StringSet>(", ", m.supportedFeatures),
-                                concatStringsSep<StringSet>(", ", m.mandatoryFeatures)
-                            ).str();
-                        }
-
-                        auto error = HintFmt(
-                            "Failed to find a machine for remote build!\n"
-                            "derivation: %s\n"
-                            "required (system, features): (%s, [%s])\n"
-                            "%s available machines:\n"
-                            "(systems, maxjobs, supportedFeatures, mandatoryFeatures)%s",
-                            drvstr,
+                        printSelectionFailureMessage(
+                            couldBuildLocally ? lvlChatty : lvlWarn,
+                            drvPath ? drvPath->to_string() : "<unknown>",
+                            machines,
                             neededSystem,
-                            concatStringsSep<StringSet>(", ", requiredFeatures),
-                            machines.size(),
-                            Uncolored(machinesFormatted)
-                       );
-
-                        printMsg(couldBuildLocally ? lvlChatty : lvlWarn, error.str());
+                            requiredFeatures
+                        );
 
                         std::cerr << "# decline\n";
                     }
