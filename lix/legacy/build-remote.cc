@@ -150,6 +150,96 @@ static void printSelectionFailureMessage(
     printMsg(level, error.str());
 }
 
+namespace {
+struct BuilderConnection
+{
+    AutoCloseFD slotLock;
+    std::shared_ptr<Store> sshStore;
+    std::string storeUri;
+};
+}
+
+static std::variant<std::monostate, std::string, BuilderConnection> connectToBuilder(
+    AsyncIoRoot & aio,
+    const ref<Store> & store,
+    const std::optional<StorePath> & drvPath,
+    Machines & machines,
+    const unsigned int maxBuildJobs,
+    const bool amWilling,
+    const std::string & neededSystem,
+    const std::set<std::string> & requiredFeatures
+)
+{
+    AutoCloseFD bestSlotLock;
+
+    /* It would be possible to build locally after some builds clear out,
+       so don't show the warning now: */
+    bool couldBuildLocally = maxBuildJobs > 0
+        && (neededSystem == settings.thisSystem
+            || settings.extraPlatforms.get().count(neededSystem) > 0)
+        && allSupportedLocally(*store, requiredFeatures);
+    /* It's possible to build this locally right now: */
+    bool canBuildLocally = amWilling && couldBuildLocally;
+
+    /* Error ignored here, will be caught later */
+    mkdir(currentLoad.c_str(), 0777);
+
+    while (true) {
+        bestSlotLock.reset();
+        AutoCloseFD lock = openLockFile(currentLoad + "/main-lock", true);
+        lockFile(lock.get(), ltWrite);
+
+        auto [rightType, bestMachine, slotLock] =
+            selectBestMachine(machines, neededSystem, requiredFeatures);
+        bestSlotLock = std::move(slotLock);
+
+        if (!bestSlotLock) {
+            if (rightType && !canBuildLocally) {
+                return "# postpone\n";
+            } else {
+                printSelectionFailureMessage(
+                    couldBuildLocally ? lvlChatty : lvlWarn,
+                    drvPath ? drvPath->to_string() : "<unknown>",
+                    machines,
+                    neededSystem,
+                    requiredFeatures
+                );
+
+                return "# decline\n";
+            }
+        }
+
+#if __APPLE__
+        futimes(bestSlotLock.get(), nullptr);
+#else
+        futimens(bestSlotLock.get(), nullptr);
+#endif
+
+        lock.reset();
+
+        try {
+            Activity act(
+                *logger, lvlTalkative, actUnknown, fmt("connecting to '%s'", bestMachine->storeUri)
+            );
+
+            auto sshStore = aio.blockOn(bestMachine->openStore());
+            aio.blockOn(sshStore->connect());
+            return BuilderConnection{std::move(bestSlotLock), sshStore, bestMachine->storeUri};
+        } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
+            auto msg = chomp(drainFD(5, false));
+            printError(
+                "cannot build on '%s': %s%s",
+                bestMachine->storeUri,
+                e.what(),
+                msg.empty() ? "" : ": " + msg
+            );
+            bestMachine->enabled = false;
+        }
+    }
+
+    return std::monostate{};
+}
+
 static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     {
@@ -211,7 +301,7 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
         std::optional<StorePath> drvPath;
         std::string storeUri;
 
-        while (true) {
+        while (!sshStore) {
 
             try {
                 auto s = readString(source);
@@ -223,78 +313,31 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
             drvPath = store->parseStorePath(readString(source));
             auto requiredFeatures = readStrings<std::set<std::string>>(source);
 
-            /* It would be possible to build locally after some builds clear out,
-               so don't show the warning now: */
-            bool couldBuildLocally = maxBuildJobs > 0
-                 &&  (  neededSystem == settings.thisSystem
-                     || settings.extraPlatforms.get().count(neededSystem) > 0)
-                 &&  allSupportedLocally(*store, requiredFeatures);
-            /* It's possible to build this locally right now: */
-            bool canBuildLocally = amWilling && couldBuildLocally;
+            auto result = connectToBuilder(
+                aio,
+                store,
+                drvPath,
+                machines,
+                maxBuildJobs,
+                amWilling,
+                neededSystem,
+                requiredFeatures
+            );
 
-            /* Error ignored here, will be caught later */
-            mkdir(currentLoad.c_str(), 0777);
-
-            while (true) {
-                bestSlotLock.reset();
-                AutoCloseFD lock = openLockFile(currentLoad + "/main-lock", true);
-                lockFile(lock.get(), ltWrite);
-
-                auto [rightType, bestMachine, slotLock] =
-                    selectBestMachine(machines, neededSystem, requiredFeatures);
-                bestSlotLock = std::move(slotLock);
-
-                if (!bestSlotLock) {
-                    if (rightType && !canBuildLocally)
-                        std::cerr << "# postpone\n";
-                    else
-                    {
-                        printSelectionFailureMessage(
-                            couldBuildLocally ? lvlChatty : lvlWarn,
-                            drvPath ? drvPath->to_string() : "<unknown>",
-                            machines,
-                            neededSystem,
-                            requiredFeatures
-                        );
-
-                        std::cerr << "# decline\n";
-                    }
-                    break;
-                }
-
-#if __APPLE__
-                futimes(bestSlotLock.get(), nullptr);
-#else
-                futimens(bestSlotLock.get(), nullptr);
-#endif
-
-                lock.reset();
-
-                try {
-
-                    Activity act(*logger, lvlTalkative, actUnknown, fmt("connecting to '%s'", bestMachine->storeUri));
-
-                    sshStore = aio.blockOn(bestMachine->openStore());
-                    aio.blockOn(sshStore->connect());
-                    storeUri = bestMachine->storeUri;
-
-                } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
-                    auto msg = chomp(drainFD(5, false));
-                    printError("cannot build on '%s': %s%s",
-                        bestMachine->storeUri, e.what(),
-                        msg.empty() ? "" : ": " + msg);
-                    bestMachine->enabled = false;
-                    continue;
-                }
-
-                goto connected;
+            if (std::get_if<std::monostate>(&result)) {
+                continue;
+            } else if (auto immediateResponse = std::get_if<std::string>(&result)) {
+                std::cerr << *immediateResponse;
+                continue;
             }
+
+            auto & builder = std::get<BuilderConnection>(result);
+            bestSlotLock = std::move(builder.slotLock);
+            sshStore = std::move(builder.sshStore);
+            storeUri = std::move(builder.storeUri);
         }
 
-connected:
         close(5);
-
-        assert(sshStore);
 
         std::cerr << "# accept\n" << storeUri << "\n";
 
