@@ -1,0 +1,25 @@
+# Docs
+per-file README.md=*
+per-file CONTRIBUTING.md=*
+
+# DevX
+per-file justfile=*
+per-file .envrc=*
+per-file .gitignore=*
+per-file .github=*
+per-file .mailmap=*
+
+# Build
+per-file meson.build=*
+per-file meson.options=*
+per-file flake.nix=*
+per-file flake.lock=*
+per-file *.nix=*
+per-file Cargo.lock=*
+per-file Cargo.toml=*
+
+# Code style
+per-file .clang-tidy=*
+per-file .clang-format=*
+per-file .editorconfig=*
+per-file treefmt.toml=*
