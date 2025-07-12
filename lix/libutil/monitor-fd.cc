@@ -64,6 +64,7 @@ void MonitorFdHup::runThread(int watchFd, int terminateFd)
             if (event.ident == uintptr_t(watchFd)) {
                 if ((event.flags & EV_EOF) != 0) {
                     callback();
+                    return;
                 }
             }
         }

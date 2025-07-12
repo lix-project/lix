@@ -16,7 +16,11 @@
 
 namespace nix {
 
-/** Observes a file descriptor for hang-up events and notifies a callback. */
+/**
+ * Observes a file descriptor for hang-up events and notifies a callback if any show up.
+ *
+ * The callback will be called at most once.
+ */
 class MonitorFdHup
 {
 private:
