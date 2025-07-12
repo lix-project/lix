@@ -12,8 +12,8 @@ Example:
 ```
 $ nix-build -A hello
 error: output '/nix/store/0b7k85gg5r28gb54px9nq7iv5986mns9-hello-2.12.2' is not allowed to refer to the following paths:
-       /nix/store/q4wq65gl3r8fy746v9bbwgx4gzn0r2kl-glibc-2.40-66
+       /nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-glibc-2.40-66
        Shown below are chains that lead to the forbidden path(s).
        /nix/store/0b7k85gg5r28gb54px9nq7iv5986mns9-hello-2.12.2
-       └───/nix/store/q4wq65gl3r8fy746v9bbwgx4gzn0r2kl-glibc-2.40-66
+       └───/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-glibc-2.40-66
 ```

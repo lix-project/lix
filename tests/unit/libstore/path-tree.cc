@@ -12,7 +12,7 @@ TEST(PathTree, simple)
     auto store = aio.blockOn(openStore("dummy://"));
 
     auto parent = StorePath{"hr8lmmjmd1jk6s3p5ymggyk4am7n2lmb-openssh-10.0p2"};
-    auto child = StorePath{"q4wq65gl3r8fy746v9bbwgx4gzn0r2kl-glibc-2.40-66"};
+    auto child = StorePath{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-glibc-2.40-66"};
 
     std::map<StorePath, StorePathSet> graph;
     graph.insert({child, {}});
@@ -25,7 +25,7 @@ TEST(PathTree, simple)
     ASSERT_EQ(
         graph_data,
                "/nix/store/hr8lmmjmd1jk6s3p5ymggyk4am7n2lmb-openssh-10.0p2\n"
-        "\x1B[1m└───/nix/store/q4wq65gl3r8fy746v9bbwgx4gzn0r2kl-glibc-2.40-66\x1B[0m"
+        "\x1B[1m└───/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-glibc-2.40-66\x1B[0m"
     );
     // clang-format on
 }
@@ -37,7 +37,7 @@ TEST(PathTree, all)
     auto store = aio.blockOn(openStore("dummy://"));
 
     auto parent = StorePath{"hr8lmmjmd1jk6s3p5ymggyk4am7n2lmb-openssh-10.0p2"};
-    auto child = StorePath{"q4wq65gl3r8fy746v9bbwgx4gzn0r2kl-glibc-2.40-66"};
+    auto child = StorePath{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-glibc-2.40-66"};
     auto intermediate = StorePath{"6r4zqb04fq5l5l4zghq76wvcpz7dwd35-linux-pam-1.6.1"};
 
     std::map<StorePath, StorePathSet> graph;
@@ -48,9 +48,9 @@ TEST(PathTree, all)
     // clang-format off
     const std::string expected =
         "/nix/store/hr8lmmjmd1jk6s3p5ymggyk4am7n2lmb-openssh-10.0p2\n"
-        "\x1B[1m├───/nix/store/q4wq65gl3r8fy746v9bbwgx4gzn0r2kl-glibc-2.40-66\x1B[0m\n"
+        "\x1B[1m├───/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-glibc-2.40-66\x1B[0m\n"
                "└───/nix/store/6r4zqb04fq5l5l4zghq76wvcpz7dwd35-linux-pam-1.6.1\x1B[0m\n"
-        "    \x1B[1m└───/nix/store/q4wq65gl3r8fy746v9bbwgx4gzn0r2kl-glibc-2.40-66\x1B[0m";
+        "    \x1B[1m└───/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-glibc-2.40-66\x1B[0m";
     // clang-format on
 
     auto graph_data =
