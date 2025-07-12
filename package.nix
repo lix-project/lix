@@ -231,8 +231,6 @@ stdenv.mkDerivation (finalAttrs: {
     );
   };
 
-  VERSION_SUFFIX = versionSuffix;
-
   outputs =
     [ "out" ]
     ++ lib.optionals (!finalAttrs.dontBuild) [
@@ -366,9 +364,9 @@ stdenv.mkDerivation (finalAttrs: {
     lixPythonForBuild
   ];
 
-  # Needed for Meson to find Boost.
-  # https://github.com/NixOS/nixpkgs/issues/86131.
   env = {
+    # Needed for Meson to find Boost.
+    # https://github.com/NixOS/nixpkgs/issues/86131.
     BOOST_INCLUDEDIR = "${lib.getDev boost}/include";
     BOOST_LIBRARYDIR = "${lib.getLib boost}/lib";
 
@@ -376,6 +374,8 @@ stdenv.mkDerivation (finalAttrs: {
     # Turns out the Nix-generated Cargo dependencies are named the same as they
     # would be in a Cargo registry cache.
     MESON_PACKAGE_CACHE_DIR = finalAttrs.cargoDeps;
+
+    VERSION_SUFFIX = versionSuffix;
   };
 
   cargoDeps = rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
