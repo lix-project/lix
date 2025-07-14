@@ -208,6 +208,7 @@ stdenv.mkDerivation (finalAttrs: {
     p:
     [
       p.python-frontmatter
+      p.pycapnp
     ]
     ++ lib.optionals finalAttrs.doCheck [
       p.pytest
@@ -560,6 +561,7 @@ stdenv.mkDerivation (finalAttrs: {
             p.aiohttp
             p.python-frontmatter
             p.toml
+            p.pycapnp
 
             p.yapf
             p.requests

@@ -248,6 +248,7 @@ configdata += {
 
 boost = dependency('boost', required : true, modules : ['container'], include_type : 'system')
 kj = dependency('kj-async', required : true, include_type : 'system')
+capnp_rpc = dependency('capnp-rpc', required : true, include_type : 'system')
 
 # cpuid only makes sense on x86_64
 cpuid_required = is_x64 ? get_option('cpuid') : false
@@ -627,6 +628,21 @@ if is_darwin
     install_dir : prefix / 'Library/LaunchDaemons',
   )
 endif
+
+capnpc_wrapper = custom_target(
+  'capnpc_wrapper',
+  command : ['cp', '@INPUT@', '@OUTPUT@'],
+  input : configure_file(
+    input : 'lix/code-generation/capnpc_wrapper.py',
+    output : 'capnpc_wrapper.configured',
+    configuration : {
+      'capnp_include' : capnp_rpc.get_variable(pkgconfig : 'includedir'),
+      'capnp' : find_program('capnp', required : true, native : true).full_path(),
+      'python' : python.full_path(),
+    },
+  ),
+  output : 'capnpc_wrapper',
+)
 
 subdir('lix')
 subdir('scripts')
