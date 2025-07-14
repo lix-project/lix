@@ -19,7 +19,8 @@ struct HookInstance;
 
 struct HookResultBase
 {
-    struct [[nodiscard]] Accept {
+    struct [[nodiscard]] Accept
+    {
         Goal::WorkResult result;
     };
     struct [[nodiscard]] Decline {};

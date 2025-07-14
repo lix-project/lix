@@ -1,7 +1,11 @@
+#include "lix/libstore/path.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/logging.hh"
+#include "lix/libutil/rpc.hh"
+#include "lix/libutil/types-rpc.hh"
 #include <algorithm>
+#include <capnp/rpc-twoparty.h>
 #include <chrono>
 #include <cstring>
 #include <future>
@@ -24,12 +28,26 @@
 #include "lix/libstore/derivations.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libstore/local-store.hh"
+#include "lix/libstore/types-rpc.hh"
 #include "lix/libcmd/legacy.hh"
 #include "lix/libutil/experimental-features.hh"
 #include "lix/libutil/hash.hh"
 #include "build-remote.hh"
 
+#include "lix/libstore/build/hook-instance.capnp.h"
+
 namespace nix {
+
+namespace {
+struct Instance final : rpc::build_remote::HookInstance::Server
+{
+    unsigned int maxBuildJobs;
+
+    Instance(unsigned int maxBuildJobs) : maxBuildJobs(maxBuildJobs) {}
+
+    kj::Promise<void> build(BuildContext context) override;
+};
+}
 
 std::string escapeUri(std::string uri)
 {
@@ -171,6 +189,8 @@ struct BuilderConnection
             return {};
         }
 
+        logPipe.writeSide.close();
+
         return std::async(
             std::launch::async,
             [](AutoCloseFD logFD) {
@@ -217,10 +237,27 @@ struct BuilderConnection
         );
     }
 };
+
+struct AcceptedBuild final : rpc::build_remote::HookInstance::AcceptedBuild::Server
+{
+    ref<Store> store;
+    StorePath drvPath;
+    BuilderConnection builder;
+
+    AcceptedBuild(ref<Store> store, StorePath drvPath, BuilderConnection builder)
+        : store(store)
+        , drvPath(drvPath)
+        , builder(std::move(builder))
+    {
+    }
+
+    kj::Promise<void> run(RunContext context) override;
+};
+
+enum class BuildRejected { Temporarily, Permanently };
 }
 
-static kj::Promise<Result<std::variant<std::monostate, std::string, BuilderConnection>>>
-connectToBuilder(
+static kj::Promise<Result<std::variant<BuildRejected, BuilderConnection>>> connectToBuilder(
     const ref<Store> & store,
     const std::optional<StorePath> & drvPath,
     Machines & machines,
@@ -255,7 +292,7 @@ try {
 
         if (!bestSlotLock) {
             if (rightType && !canBuildLocally) {
-                co_return "# postpone\n";
+                co_return BuildRejected::Temporarily;
             } else {
                 printSelectionFailureMessage(
                     couldBuildLocally ? lvlChatty : lvlWarn,
@@ -265,7 +302,7 @@ try {
                     requiredFeatures
                 );
 
-                co_return "# decline\n";
+                co_return BuildRejected::Permanently;
             }
         }
 
@@ -301,8 +338,6 @@ try {
             bestMachine->enabled = false;
         }
     }
-
-    co_return std::monostate{};
 } catch (...) {
     co_return result::current_exception();
 }
@@ -338,13 +373,23 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
 
         initPlugins();
 
+        auto conn = aio.kj.lowLevelProvider->wrapUnixSocketFd(1);
+        capnp::TwoPartyServer srv(kj::heap<Instance>(maxBuildJobs));
+        srv.accept(*conn).wait(aio.kj.waitScope);
+        return 0;
+    }
+}
+
+kj::Promise<void> Instance::build(BuildContext context)
+{
+    try {
         // FIXME this does not open a daemon connection for historical reasons.
         // we may create a lot of build hook instances, and having each of them
         // also create a daemon instance is inefficient and wasteful. in future
         // versions of the build hook (where we don't need one hook process per
         // build) we should change this to using a daemon connection, ideally a
         // daemon connection provided by the parent via file descriptor passing
-        auto store = aio.blockOn(openStore(settings.storeUri, {}, AllowDaemon::Disallow));
+        auto store = TRY_AWAIT(openStore(settings.storeUri, {}, AllowDaemon::Disallow));
 
         /* It would be more appropriate to use $XDG_RUNTIME_DIR, since
            that gets cleared on reboot, but it wouldn't work on macOS. */
@@ -354,53 +399,63 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
         else
             currentLoad = settings.nixStateDir + currentLoadName;
 
-        std::future<void> logThread;
-        std::optional<BuilderConnection> builder;
-
         auto machines = getMachines();
         debug("got %d remote builders", machines.size());
 
         if (machines.empty()) {
-            std::cerr << "# decline-permanently\n";
-            return 0;
+            context.getResults().initResult().initGood().setDeclinePermanently();
+            co_return;
         }
 
-        std::optional<StorePath> drvPath;
+        auto amWilling = context.getParams().getAmWilling();
+        auto neededSystem = rpc::to<std::string>(context.getParams().getNeededSystem());
+        auto drvPath = from(context.getParams().getDrvPath(), *store);
+        auto requiredFeatures =
+            rpc::to<std::set<std::string>>(context.getParams().getRequiredFeatures());
 
-        while (!builder) {
+        auto result = TRY_AWAIT(connectToBuilder(
+            store, drvPath, machines, maxBuildJobs, amWilling, neededSystem, requiredFeatures
+        ));
 
-            try {
-                auto s = readString(source);
-                if (s != "try") return 0;
-            } catch (EndOfFile &) { return 0; }
-
-            auto amWilling = readInt(source);
-            auto neededSystem = readString(source);
-            drvPath = store->parseStorePath(readString(source));
-            auto requiredFeatures = readStrings<std::set<std::string>>(source);
-
-            auto result = aio.blockOn(connectToBuilder(
-                store, drvPath, machines, maxBuildJobs, amWilling, neededSystem, requiredFeatures
-            ));
-
-            if (std::get_if<std::monostate>(&result)) {
-                continue;
-            } else if (auto immediateResponse = std::get_if<std::string>(&result)) {
-                std::cerr << *immediateResponse;
-            } else {
-                builder = std::move(std::get<BuilderConnection>(result));
+        if (auto immediateResponse = std::get_if<BuildRejected>(&result)) {
+            switch (*immediateResponse) {
+            case BuildRejected::Temporarily:
+                context.getResults().initResult().initGood().setPostpone();
+                co_return;
+            case BuildRejected::Permanently:
+                context.getResults().initResult().initGood().setDecline();
+                co_return;
             }
         }
 
-        auto & sshStore = builder->sshStore;
-        auto & storeUri = builder->storeUri;
+        auto builder = std::get_if<BuilderConnection>(&result);
+        assert(builder);
 
-        std::cerr << "# accept\n" << storeUri << "\n";
+        auto ac = context.getResults().initResult().initGood().initAccept();
+        RPC_FILL(ac, setMachineName, builder->storeUri);
+        ac.setMachine(kj::heap<AcceptedBuild>(store, drvPath, std::move(*builder)));
+    } catch (...) {
+        RPC_FILL(context.getResults(), initResult, std::current_exception());
+    }
+}
 
-        logThread = builder->startLogThread();
+kj::Promise<void> AcceptedBuild::run(RunContext context)
+{
+    try {
+        auto logThread = builder.startLogThread();
+        KJ_DEFER({
+            // drop any existing ssh connection so the log thread can exit
+            builder.sshStore = nullptr;
+            if (logThread.valid()) {
+                logThread.get();
+            }
+        });
 
-        auto inputs = readStrings<PathSet>(source);
-        auto wantedOutputs = readStrings<StringSet>(source);
+        auto & sshStore = builder.sshStore;
+        auto & storeUri = builder.storeUri;
+
+        auto inputs = rpc::to<std::set<StorePath>>(context.getParams().getInputs(), *store);
+        auto wantedOutputs = rpc::to<std::set<std::string>>(context.getParams().getWantedOutputs());
 
         auto lockFileName = currentLoad + "/" + makeLockFilename(storeUri) + ".upload-lock";
 
@@ -409,7 +464,7 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
         {
             Activity act(*logger, lvlTalkative, actUnknown, fmt("waiting for the upload lock to '%s'", storeUri));
 
-            auto result = aio.blockOn(
+            auto result = TRY_AWAIT(
                 AIO().timeoutAfter(15 * kj::MINUTES, lockFileAsync(uploadLock.get(), ltWrite))
             );
             if (!result) {
@@ -421,19 +476,12 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
 
         {
             Activity act(*logger, lvlTalkative, actUnknown, fmt("copying dependencies to '%s'", storeUri));
-            aio.blockOn(copyPaths(
-                *store,
-                *sshStore,
-                store->parseStorePathSet(inputs),
-                NoRepair,
-                NoCheckSigs,
-                substitute
-            ));
+            TRY_AWAIT(copyPaths(*store, *sshStore, inputs, NoRepair, NoCheckSigs, substitute));
         }
 
         uploadLock.reset();
 
-        auto drv = aio.blockOn(store->readDerivation(*drvPath));
+        auto drv = TRY_AWAIT(store->readDerivation(drvPath));
 
         std::optional<BuildResult> optResult;
 
@@ -441,7 +489,7 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
         // stores), we assume we are. This is necessary for backwards
         // compat.
         bool trustedOrLegacy = ({
-            std::optional trusted = aio.blockOn(sshStore->isTrustedClient());
+            std::optional trusted = TRY_AWAIT(sshStore->isTrustedClient());
             !trusted || *trusted;
         });
 
@@ -460,22 +508,27 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
             //
             // 2. Changing the `inputSrcs` set changes the associated
             //    output ids, which break CA derivations
-            if (!drv.inputDrvs.empty())
-                drv.inputSrcs = store->parseStorePathSet(inputs);
-            optResult = aio.blockOn(sshStore->buildDerivation(*drvPath, (const BasicDerivation &) drv));
+            if (!drv.inputDrvs.empty()) {
+                drv.inputSrcs = inputs;
+            }
+            optResult =
+                TRY_AWAIT(sshStore->buildDerivation(drvPath, (const BasicDerivation &) drv));
             auto & result = *optResult;
             if (!result.success())
-                throw Error("build of '%s' on '%s' failed: %s", store->printStorePath(*drvPath), storeUri, result.errorMsg);
+                throw Error(
+                    "build of '%s' on '%s' failed: %s",
+                    store->printStorePath(drvPath),
+                    storeUri,
+                    result.errorMsg
+                );
         } else {
-            aio.blockOn(copyClosure(
-                *store, *sshStore, StorePathSet{*drvPath}, NoRepair, NoCheckSigs, substitute
+            TRY_AWAIT(copyClosure(
+                *store, *sshStore, StorePathSet{drvPath}, NoRepair, NoCheckSigs, substitute
             ));
-            auto res = aio.blockOn(sshStore->buildPathsWithResults({
-                DerivedPath::Built {
-                    .drvPath = makeConstantStorePath(*drvPath),
-                    .outputs = OutputsSpec::All {},
-                }
-            }));
+            auto res = TRY_AWAIT(sshStore->buildPathsWithResults({DerivedPath::Built{
+                .drvPath = makeConstantStorePath(drvPath),
+                .outputs = OutputsSpec::All{},
+            }}));
             // One path to build should produce exactly one build result
             assert(res.size() == 1);
             optResult = std::move(res[0]);
@@ -485,8 +538,9 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
         StorePathSet missingPaths;
         auto outputPaths = drv.outputsAndPaths(*store);
         for (auto & [outputName, outputPath] : outputPaths) {
-            if (!aio.blockOn(store->isValidPath(outputPath.second)))
+            if (!TRY_AWAIT(store->isValidPath(outputPath.second))) {
                 missingPaths.insert(outputPath.second);
+            }
         }
 
         if (!missingPaths.empty()) {
@@ -494,12 +548,14 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
             if (auto localStore = store.try_cast_shared<LocalStore>())
                 for (auto & path : missingPaths)
                     localStore->locksHeld.insert(store->printStorePath(path)); /* FIXME: ugly */
-            aio.blockOn(
+            TRY_AWAIT(
                 copyPaths(*sshStore, *store, missingPaths, NoRepair, NoCheckSigs, NoSubstitute)
             );
         }
 
-        return 0;
+        context.getResults().initResult().setGood();
+    } catch (...) {
+        RPC_FILL(context.getResults(), initResult, std::current_exception());
     }
 }
 

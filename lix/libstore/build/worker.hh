@@ -202,8 +202,9 @@ private:
     kj::TaskSet children;
 
 public:
-    struct HookState {
-        std::unique_ptr<HookInstance> instance;
+    struct HookState
+    {
+        std::list<std::unique_ptr<HookInstance>> instances;
 
         /**
          * Whether to ask the build hook if it can build a derivation. If

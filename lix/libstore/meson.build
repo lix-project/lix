@@ -35,6 +35,9 @@ libstore_rpc += custom_target(
   depfile : '@PLAINNAME@.d',
 )
 
+# rpc definitions only here to get relative paths of generated files right
+subdir('build')
+
 foreach i : libstore_rpc
   foreach rpc_src : i.to_list()
     if rpc_src.full_path().endswith('.h')

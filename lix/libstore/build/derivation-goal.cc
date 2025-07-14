@@ -12,9 +12,14 @@
 #include "lix/libstore/local-store.hh" // TODO remove, along with remaining downcasts
 #include "lix/libstore/build/substitution-goal.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/rpc.hh"
 #include "lix/libutil/strings.hh"
+#include "lix/libstore/build/hook-instance.capnp.h"
+#include "lix/libstore/types-rpc.hh"
+#include "lix/libutil/types-rpc.hh"
 
 #include <boost/outcome/try.hpp>
+#include <capnp/rpc-twoparty.h>
 #include <fstream>
 #include <kj/array.h>
 #include <kj/async-unix.h>
@@ -22,6 +27,7 @@
 #include <kj/debug.h>
 #include <kj/vector.h>
 #include <optional>
+#include <ranges>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -1023,79 +1029,45 @@ try {
         co_return HookResult::Decline{};
     }
 
-    if (!worker.hook.instance)
-        worker.hook.instance = std::make_unique<HookInstance>();
-
-    try {
-
-        /* Send the request to the hook. */
-        *worker.hook.instance->sink << "try" << (slotToken.valid() ? 1 : 0) << drv->platform
-                                    << worker.store.printStorePath(drvPath)
-                                    << parsedDrv->getRequiredSystemFeatures();
-        worker.hook.instance->sink->flush();
-
-        /* Read the first line of input, which should be a word indicating
-           whether the hook wishes to perform the build. */
-        std::string reply;
-        while (true) {
-            auto s = [&]() {
-                try {
-                    return readLine(worker.hook.instance->fromHook.get());
-                } catch (Error & e) {
-                    e.addTrace({}, "while reading the response from the build hook");
-                    throw;
-                }
-            }();
-            if (handleJSONLogMessage(s, worker.act, worker.hook.instance->activities, "the build hook", true))
-                ;
-            else if (s.substr(0, 2) == "# ") {
-                reply = s.substr(2);
-                break;
-            }
-            else {
-                s += "\n";
-                writeLogsToStderr(s);
-                logger->log(lvlInfo, s);
-            }
-        }
-
-        debug("hook reply is '%1%'", reply);
-
-        if (reply == "decline")
-            co_return HookResult::Decline{};
-        else if (reply == "decline-permanently") {
-            worker.hook.available = false;
-            worker.hook.instance.reset();
-            co_return HookResult::Decline{};
-        }
-        else if (reply == "postpone")
-            co_return HookResult::Postpone{};
-        else if (reply != "accept")
-            throw Error("bad hook reply '%s'", reply);
-
-    } catch (SysError & e) {
-        if (e.errNo == EPIPE) {
-            printError(
-                "build hook died unexpectedly: %s",
-                chomp(drainFD(worker.hook.instance->fromHook.get())));
-            worker.hook.instance.reset();
-            co_return HookResult::Decline{};
-        } else
-            throw;
+    if (!worker.hook.instances.empty()) {
+        hook = std::move(worker.hook.instances.front());
+        worker.hook.instances.pop_front();
+    } else {
+        hook = TRY_AWAIT(HookInstance::create());
     }
 
-    hook = std::move(worker.hook.instance);
+    KJ_DEFER(hook = nullptr);
+    auto output = handleChildOutput();
 
-    try {
-        machineName = readLine(hook->fromHook.get());
-    } catch (Error & e) {
-        e.addTrace({}, "while reading the machine name from the build hook");
-        throw;
+    auto buildReq = hook->rpc.buildRequest();
+    RPC_FILL(buildReq, setAmWilling, slotToken.valid());
+    RPC_FILL(buildReq, setNeededSystem, drv->platform);
+    RPC_FILL(buildReq, initDrvPath, drvPath, worker.store);
+    RPC_FILL(buildReq, initRequiredFeatures, parsedDrv->getRequiredSystemFeatures());
+    auto buildRespPromise = buildReq.send();
+    auto buildResp = TRY_AWAIT_RPC(buildRespPromise);
+
+    debug("hook reply is '%1%'", buildResp.toString().flatten().cStr());
+
+    if (buildResp.isDecline()) {
+        worker.hook.instances.push_back(std::move(hook));
+        co_return HookResult::Decline{};
+    } else if (buildResp.isDeclinePermanently()) {
+        worker.hook.available = false;
+        co_return HookResult::Decline{};
+    } else if (buildResp.isPostpone()) {
+        worker.hook.instances.push_back(std::move(hook));
+        co_return HookResult::Postpone{};
+    } else if (!buildResp.isAccept()) {
+        throw Error("bad hook reply '%s'", buildResp.which());
     }
 
+    machineName = rpc::to<std::string>(buildResp.getAccept().getMachineName());
+
+    auto runReq = buildResp.getAccept().getMachine().runRequest();
     /* Tell the hook all the inputs that have to be copied to the
        remote system. */
-    *hook->sink << CommonProto::write({worker.store}, inputPaths);
+    RPC_FILL(runReq, initInputs, inputPaths, worker.store);
 
     /* Tell the hooks the missing outputs that have to be copied back
        from the remote system. */
@@ -1106,22 +1078,28 @@ try {
             if (buildMode != bmCheck && status.known && status.known->isValid()) continue;
             missingOutputs.insert(outputName);
         }
-        *hook->sink << CommonProto::write({worker.store}, missingOutputs);
+        RPC_FILL(runReq, initWantedOutputs, missingOutputs);
     }
-
-    hook->sink = nullptr;
-    hook->toHook.reset();
 
     /* Create the log file and pipe. */
     openLogFile();
 
-    // we have started to build. wait for the build to finish and process logs.
+    auto runPromise = runReq.send();
+
+    // build via hook is now properly running. wait for it to finish
     actLock.reset();
     buildResult.startTime = time(0); // inexact
     started();
 
-    if (auto error = TRY_AWAIT(handleChildOutput())) {
-        co_return HookResult::Accept{*error};
+    TRY_AWAIT_RPC(runPromise);
+
+    // close the rpc connection to have the hook exit
+    hook->rpc = nullptr;
+    hook->client = std::nullopt;
+    hook->conn = nullptr;
+
+    if (auto error = TRY_AWAIT(output)) {
+        co_return HookResult::Accept{std::move(*error)};
     }
     co_return HookResult::Accept{TRY_AWAIT(buildDone())};
 } catch (...) {
