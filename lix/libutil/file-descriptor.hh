@@ -83,6 +83,18 @@ public:
     void close();
 };
 
+struct SocketPair
+{
+    /** The two sides of the socket pair. */
+    AutoCloseFD a, b;
+
+    /** Create a unix stream socket pair with the `O_CLOEXEC` set on both ends. */
+    static SocketPair stream();
+
+private:
+    SocketPair(AutoCloseFD a, AutoCloseFD b) : a(std::move(a)), b(std::move(b)) {}
+};
+
 /**
  * Close all file descriptors except stdio fds (ie 0, 1, 2).
  * Good practice in child processes.

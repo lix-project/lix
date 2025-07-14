@@ -9,6 +9,7 @@
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/poll.h>
+#include <sys/socket.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -327,4 +328,26 @@ void resetBlockingState(int fd, FdBlockingState prevState)
         throw SysError("resetBlockingState");
     }
 }
+
+SocketPair SocketPair::stream()
+{
+    int sp[2];
+#ifdef SOCK_CLOEXEC
+    constexpr int sock_type = SOCK_STREAM | SOCK_CLOEXEC;
+#else
+    constexpr int sock_type = SOCK_STREAM;
+#endif
+    if (socketpair(AF_UNIX, sock_type, 0, sp) < 0) {
+        throw SysError("socketpair()");
+    }
+
+    AutoCloseFD a(sp[0]), b(sp[1]);
+#ifndef SOCK_CLOEXEC
+    closeOnExec(a.get());
+    closeOnExec(b.get());
+#endif
+
+    return {std::move(a), std::move(b)};
+}
+
 }

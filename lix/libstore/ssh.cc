@@ -51,24 +51,7 @@ void SSH::addCommonSSHOpts(Strings & args)
 
 std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
 {
-    int sp[2];
-    // only linux and bsd support SOCK_CLOEXEC in socketpair type.
-#if __linux__ || __FreeBSD__
-    constexpr int sock_type = SOCK_STREAM | SOCK_CLOEXEC;
-#else
-    constexpr int sock_type = SOCK_STREAM;
-#endif
-    if (socketpair(AF_UNIX, sock_type, 0, sp) < 0) {
-        throw SysError("socketpair() for ssh");
-    }
-
-    AutoCloseFD parent(sp[0]), child(sp[1]);
-#if !(__linux__ || __FreeBSD__)
-    if (fcntl(parent.get(), F_SETFD, O_CLOEXEC) < 0 || fcntl(child.get(), F_SETFD, O_CLOEXEC) < 0) {
-        throw SysError("making socketpair O_CLOEXEC");
-    }
-#endif
-
+    auto [parent, child] = SocketPair::stream();
     auto conn = std::make_unique<Connection>();
     ProcessOptions options;
     options.dieWithParent = false;
