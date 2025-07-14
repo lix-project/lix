@@ -7,8 +7,10 @@
 #include <future>
 #include <kj/async-io.h>
 #include <kj/async.h>
+#include <kj/time.h>
 #include <optional>
 #include <source_location>
+#include <type_traits>
 
 namespace nix {
 
@@ -33,6 +35,34 @@ struct AsyncContext
     }
 
     KJ_DISALLOW_COPY_AND_MOVE(AsyncContext);
+
+    /**
+     * Wrap a promise in a timeout. `Result<void>` promises are turned into
+     * `Result<bool>` promises, where `true` means that the wrapped promise
+     * ran to completion and `false` means it timed out. Other promises are
+     * wrapped to return `Result<std::optional<T>>` and return `nullopt` if
+     * the have time out or wrap their inner type as an optional otherwise.
+     */
+    template<typename T>
+    auto timeoutAfter(kj::Duration timeout, kj::Promise<Result<T>> && p)
+    {
+        using RetT = std::conditional_t<std::is_void_v<T>, bool, std::optional<T>>;
+        return p
+            .then([](Result<T> r) -> Result<RetT> {
+                if (r.has_value()) {
+                    if constexpr (std::is_void_v<T>) {
+                        return true;
+                    } else {
+                        return std::move(r.value());
+                    }
+                } else {
+                    return r.error();
+                }
+            })
+            .exclusiveJoin(provider.getTimer().afterDelay(timeout).then([]() -> Result<RetT> {
+                return RetT{};
+            }));
+    }
 };
 
 struct AsyncIoRoot
