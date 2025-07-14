@@ -19,10 +19,12 @@ struct AsyncContext
     static inline thread_local AsyncContext * current = nullptr;
 
     kj::AsyncIoProvider & provider;
+    kj::LowLevelAsyncIoProvider & lowLevelProvider;
     kj::UnixEventPort & unixEventPort;
 
     explicit AsyncContext(kj::AsyncIoContext & aio)
         : provider(*aio.provider)
+        , lowLevelProvider(*aio.lowLevelProvider)
         , unixEventPort(aio.unixEventPort)
     {
         assert(current == nullptr);
