@@ -90,6 +90,11 @@ def recursive_replace(data, book_root, search_path):
                     ).replace(
                         '@docroot@',
                         ("../" * len(path_to_chapter.parent.parts) or "./")[:-1]
+                    ).replace(
+                        # this replacement is to avoid corrupting the
+                        # hacking.md manual section on docroot
+                        '@\\docroot\\@',
+                        '@docroot@',
                     ),
                     sub_items = [
                         recursive_replace(sub_item, book_root, search_path)

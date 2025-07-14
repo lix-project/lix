@@ -11,7 +11,19 @@ The following instructions assume you already have some version of Nix or Lix in
 
 [installation instructions]: ../installation/installation.md
 
-## Building Lix in a development shell
+A typical development flow for simple changes in Lix looks like:
+- [Set up and build Lix](#building)
+- For large changes, check in regarding design and possibly create an RFD issue on Forgejo
+- Make the changes in your editor
+- [Send the changes to Gerrit](#sending-to-gerrit)
+- Once you have the number for the CL from Gerrit to put in the changelog, [write a changelog entry](#release-notes) and amend it into the commit
+- Update the Gerrit change by submitting it with the same command as the first time
+- Request and receive a code review
+- Address feedback from the review
+- Amend commits, send to Gerrit again
+- Submit the approved change
+
+## Building Lix in a development shell {#building}
 
 ### Setting up the development shell
 
@@ -48,7 +60,7 @@ $ just setup build test-unit
 $ just install test-integration
 ```
 
-Many targets have a `-custom` variant which pass extra arguments to `meson`.
+Many justfile aliases have a `-custom` variant which pass extra arguments to `meson`.
 For example, to work on both Lix and nix-eval-jobs you can run:
 
 ```
@@ -129,7 +141,36 @@ To inspect the canonical source of truth on what the state of the buildsystem co
 $ meson introspect
 ```
 
-## Building Lix outside of development shells
+## Sending changes to Gerrit for review {#sending-to-gerrit}
+
+We use Gerrit for all our code review in Lix.
+Our instance is at <https://gerrit.lix.systems>.
+
+There's much more information about how to use Gerrit in the [wiki section on Gerrit][wiki-gerrit] including how to use Jujutsu, how to use the UI and more.
+The Snix project also has some Gerrit information [in their contributing docs][snix-gerrit].
+
+[wiki-gerrit]: https://wiki.lix.systems/books/lix-contributors/chapter/gerrit
+[snix-gerrit]: https://snix.dev/docs/guides/contributing/
+
+The gist is that once you have your SSH key and git remote set up, you can send commits for review with:
+
+```
+$ git remote set-url origin ssh://YOURUSERNAME@gerrit.lix.systems:2022/lix
+$ git push origin HEAD:refs/for/main
+```
+
+Then, you can request a review via the "Reply" button on the web UI.
+If you click "Suggest Owners", it will try to suggest the maintainers of the area of the code change to send review requests to.
+Requesting reviews from multiple people is normal.
+
+We do our best to respond to directly sent reviews in a few days, so feel free to request another reviewer or ask on Matrix if you've not got a response for a while.
+Keep in mind that Lix is a volunteer project and we have limited bandwidth, so some changes aren't feasible to shepherd through; please check in on Matrix at design time when doing large changes.
+
+Once you get a `Code-Review+2` vote on your change, it's rebased on `main` and CI marks it `Verified+1`, you're able (and usually expected, so you can have a second chance to check it over) to hit the Submit button to merge it.
+If the change appears as "Rebase Required", you need to rebase it on `main` locally or via the Gerrit UI and wait for `Verified+1` before the Submit button is made active
+The `Code-Review+2` from before will stick around through trivial rebases so no need to re-request review for a mere rebase.
+
+## Building Lix with `nix`
 
 To build a release version of Lix for the current operating system and CPU architecture:
 
@@ -286,10 +327,10 @@ Configure your editor to use the `clangd` from the shell, either by running it i
 > Some other editors (e.g. Emacs, Vim) need a plugin to support LSP servers in general (e.g. [lsp-mode](https://github.com/emacs-lsp/lsp-mode) for Emacs and [vim-lsp](https://github.com/prabirshrestha/vim-lsp) for vim).
 > Editor-specific setup is typically opinionated, so we will not cover it here in more detail.
 
-### Checking links in the manual
+# Manual and documentation
 
-The build checks for broken internal links.
-This happens late in the process, so `nix build` is not suitable for iterating.
+## Building the manual
+
 To build the manual incrementally, run:
 
 ```console
@@ -301,15 +342,20 @@ meson compile -C build manual
 [`mdbook-linkcheck`]: https://github.com/Michael-F-Bryan/mdbook-linkcheck
 [URI fragments]: https://en.wikipedia.org/wiki/URI_fragment
 
-#### `@docroot@` variable
+The built manual is in `build/doc/manual/manual/index.html`.
 
-`@docroot@` provides a base path for links that occur in reusable snippets or other documentation that doesn't have a base path of its own.
+The build checks for broken internal links.
+This happens late in the process, so `nix build` is not suitable for iterating and it's recommended to use the `meson` command above instead.
 
-If a broken link occurs in a snippet that was inserted into multiple generated files in different directories, use `@docroot@` to reference the `doc/manual/src` directory.
+### `@\docroot\@` variable
 
-If the `@docroot@` literal appears in an error message from the `mdbook-linkcheck` tool, the `@docroot@` replacement needs to be applied to the generated source file that mentions it.
-See existing `@docroot@` logic in the [Makefile].
-Regular markdown files used for the manual have a base path of their own and they can use relative paths instead of `@docroot@`.
+`@\docroot\@` provides a base path for links that occur in reusable snippets or other documentation that doesn't have a base path of its own.
+
+If a broken link occurs in a snippet that was inserted into multiple generated files in different directories, use `@\docroot\@` to reference the `doc/manual/src` directory.
+
+If the `@\docroot\@` literal appears in an error message from the `mdbook-linkcheck` tool, the `@\docroot\@` replacement needs to be applied to the generated source file that mentions it.
+See existing `@\docroot\@` logic in `doc/manual/substitute.py`.
+Regular markdown files used for the manual have a base path of their own and they can use relative paths instead of `@\docroot\@`.
 
 ## API documentation
 
@@ -341,7 +387,7 @@ You can build it yourself:
 
 Metrics about the change in line/function coverage over time will be available in the future (FIXME(lix-hydra)).
 
-## Add a release note
+## Add a release note {#release-notes}
 
 `doc/manual/rl-next` contains release notes entries for all unreleased changes.
 
@@ -410,15 +456,15 @@ The following properties are supported:
 ### Build process
 
 Releases have a precomputed `rl-MAJOR.MINOR.md`, and no `rl-next.md`.
-Set `buildUnreleasedNotes = true;` in `flake.nix` to build the release notes on the fly.
+Development releases have a generated `rl-next.md`.
 
-## Adding experimental or deprecated features, global settings, or builtins
+# Adding experimental or deprecated features, global settings, or builtins
 
 Experimental and deprecated features, global settings, and builtins are generally referenced both in the code and in the documentation.
 To prevent duplication or divergence, they are defined in data files, and a script generates the necessary glue.
 The data file format is similar to the release notes: it consists of a YAML metadata header, followed by the documentation in Markdown format.
 
-### Experimental or deprecated features
+## Experimental or deprecated features
 
 Experimental and deprecated features support the following metadata properties:
 * `name` (required): user-facing name of the feature, to be used in `nix.conf` options and on the command line.
@@ -428,7 +474,7 @@ Experimental and deprecated features support the following metadata properties:
 Experimental feature data files should live in `lix/libutil/experimental-features`, and deprecated features in `lix/libutil/deprecated-features`.
 They must be listed in the `experimental_feature_definitions` or `deprecated_feature_definitions` lists in `lix/libutil/meson.build` respectively to be considered by the build system.
 
-### Global settings
+## Global settings
 
 Global settings support the following metadata properties:
 * `name` (required): user-facing name of the setting, to be used as key in `nix.conf` and in the `--option` command line argument.
@@ -456,7 +502,7 @@ Settings are not collected in a single place in the source tree, so an appropria
 Look for related setting definition files under second-level subdirectories of `lix` whose name includes `settings`.
 Then add the new file there, and don't forget to register it in the appropriate `meson.build` file.
 
-### Builtin functions
+## Builtin functions
 
 The following metadata properties are supported for builtin functions:
 * `name` (required): the language-facing name (as a member of the `builtins` attribute set) of the function.
@@ -472,7 +518,7 @@ The following metadata properties are supported for builtin functions:
 
 New builtin function definition files must be added to `lix/libexpr/builtins` and registered in the `builtin_definitions` list in `lix/libexpr/meson.build`.
 
-### Builtin constants
+## Builtin constants
 The following metadata properties are supported for builtin constants:
 * `name` (required): the language-facing name (as a member of the `builtins` attribute set) of the constant.
 * `type` (required): the Nix language type of the constant; the C++ type is automatically derived.
