@@ -680,29 +680,20 @@ retry:
         && settings.maxBuildJobs.get() != 0;
 
     if (!buildLocally) {
-        auto hookReply = tryBuildHook();
+        auto hookReply = TRY_AWAIT(tryBuildHook());
         switch (hookReply.index()) {
         case 0: {
-            HookReply::Accept & a = std::get<0>(hookReply);
-            /* Yes, it has started doing so.  Wait until we get
-                EOF from the hook. */
-            actLock.reset();
-            buildResult.startTime = time(0); // inexact
-            started();
-            if (auto error = TRY_AWAIT(a.promise)) {
-                co_return *error;
-            } else {
-                co_return co_await buildDone();
-            }
+            HookResult::Accept & a = std::get<0>(hookReply);
+            co_return std::move(a.result);
         }
 
         case 1: {
-            HookReply::Decline _ [[gnu::unused]] = std::get<1>(hookReply);
+            HookResult::Decline _ = std::get<1>(hookReply);
             break;
         }
 
         case 2: {
-            HookReply::Postpone _ [[gnu::unused]] = std::get<2>(hookReply);
+            HookResult::Postpone _ = std::get<2>(hookReply);
             /* Not now; wait until at least one child finishes or
                 the wake-up timeout expires. */
             if (!actLock)
@@ -1026,9 +1017,11 @@ try {
     co_return result::current_exception();
 }
 
-HookReply DerivationGoal::tryBuildHook()
-{
-    if (!worker.hook.available || !useDerivation) return HookReply::Decline{};
+kj::Promise<Result<HookResult>> DerivationGoal::tryBuildHook()
+try {
+    if (!worker.hook.available || !useDerivation) {
+        co_return HookResult::Decline{};
+    }
 
     if (!worker.hook.instance)
         worker.hook.instance = std::make_unique<HookInstance>();
@@ -1069,14 +1062,14 @@ HookReply DerivationGoal::tryBuildHook()
         debug("hook reply is '%1%'", reply);
 
         if (reply == "decline")
-            return HookReply::Decline{};
+            co_return HookResult::Decline{};
         else if (reply == "decline-permanently") {
             worker.hook.available = false;
             worker.hook.instance.reset();
-            return HookReply::Decline{};
+            co_return HookResult::Decline{};
         }
         else if (reply == "postpone")
-            return HookReply::Postpone{};
+            co_return HookResult::Postpone{};
         else if (reply != "accept")
             throw Error("bad hook reply '%s'", reply);
 
@@ -1086,7 +1079,7 @@ HookReply DerivationGoal::tryBuildHook()
                 "build hook died unexpectedly: %s",
                 chomp(drainFD(worker.hook.instance->fromHook.get())));
             worker.hook.instance.reset();
-            return HookReply::Decline{};
+            co_return HookResult::Decline{};
         } else
             throw;
     }
@@ -1122,9 +1115,18 @@ HookReply DerivationGoal::tryBuildHook()
     /* Create the log file and pipe. */
     openLogFile();
 
-    return HookReply::Accept{handleChildOutput()};
-}
+    // we have started to build. wait for the build to finish and process logs.
+    actLock.reset();
+    buildResult.startTime = time(0); // inexact
+    started();
 
+    if (auto error = TRY_AWAIT(handleChildOutput())) {
+        co_return HookResult::Accept{*error};
+    }
+    co_return HookResult::Accept{TRY_AWAIT(buildDone())};
+} catch (...) {
+    co_return result::current_exception();
+}
 
 kj::Promise<Result<SingleDrvOutputs>> DerivationGoal::registerOutputs()
 {

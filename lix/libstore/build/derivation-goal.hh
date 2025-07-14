@@ -17,19 +17,20 @@ using std::map;
 
 struct HookInstance;
 
-struct HookReplyBase {
+struct HookResultBase
+{
     struct [[nodiscard]] Accept {
-        kj::Promise<Result<std::optional<Goal::WorkResult>>> promise;
+        Goal::WorkResult result;
     };
     struct [[nodiscard]] Decline {};
     struct [[nodiscard]] Postpone {};
 };
 
-struct [[nodiscard]] HookReply
-    : HookReplyBase,
-      std::variant<HookReplyBase::Accept, HookReplyBase::Decline, HookReplyBase::Postpone>
+struct [[nodiscard]] HookResult
+    : HookResultBase,
+      std::variant<HookResultBase::Accept, HookResultBase::Decline, HookResultBase::Postpone>
 {
-    HookReply() = delete;
+    HookResult() = delete;
     using variant::variant;
 };
 
@@ -276,7 +277,7 @@ struct DerivationGoal : public Goal
     /**
      * Is the build hook willing to perform the build?
      */
-    HookReply tryBuildHook();
+    kj::Promise<Result<HookResult>> tryBuildHook();
 
     virtual int getChildStatus();
 
