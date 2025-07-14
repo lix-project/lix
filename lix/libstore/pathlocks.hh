@@ -22,13 +22,6 @@ enum LockType { ltRead, ltWrite };
 
 void lockFile(int fd, LockType lockType, NeverAsync = {});
 kj::Promise<Result<void>> lockFileAsync(int fd, LockType lockType);
-/**
- * Same as `lockFile`, but with a timeout. This timeout uses the POSIX `alarm`
- * facility and a `SIGALRM` handler. Using this function from multiple threads
- * in the same process is not safe: all `SIGALRM` handlers set previously will
- * be overwritten while this function is executing and are restored on return.
- */
-bool unsafeLockFileSingleThreaded(int fd, LockType lockType, std::chrono::seconds timeout);
 bool tryLockFile(int fd, LockType lockType);
 void unlockFile(int fd);
 

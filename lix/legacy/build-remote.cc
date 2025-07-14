@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstring>
 #include <future>
+#include <kj/time.h>
 #include <set>
 #include <memory>
 #include <string>
@@ -413,8 +414,12 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
         {
             Activity act(*logger, lvlTalkative, actUnknown, fmt("waiting for the upload lock to '%s'", storeUri));
 
-            if (!unsafeLockFileSingleThreaded(uploadLock.get(), ltWrite, std::chrono::minutes(15)))
+            auto result = aio.blockOn(
+                AIO().timeoutAfter(15 * kj::MINUTES, lockFileAsync(uploadLock.get(), ltWrite))
+            );
+            if (!result) {
                 printError("somebody is hogging the upload lock for '%s', continuing...");
+            }
         }
 
         auto substitute = settings.buildersUseSubstitutes ? Substitute : NoSubstitute;

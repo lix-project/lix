@@ -87,28 +87,6 @@ try {
     return {result::current_exception()};
 }
 
-bool unsafeLockFileSingleThreaded(int fd, LockType lockType, std::chrono::seconds timeout)
-{
-    int type = convertLockType(lockType);
-
-    auto old = signal(SIGALRM, [](int) {});
-    alarm(timeout.count());
-    KJ_DEFER({
-        alarm(0);
-        signal(SIGALRM, old);
-    });
-
-    while (flock(fd, type) != 0) {
-        checkInterrupt();
-        if (errno != EINTR)
-            throw SysError("acquiring lock");
-        else
-            return false;
-    }
-
-    return true;
-}
-
 bool tryLockFile(int fd, LockType lockType)
 {
     int type = convertLockType(lockType);
