@@ -33,8 +33,6 @@ const std::string & BaseError::calcWhat() const
     }
 }
 
-std::optional<std::string> ErrorInfo::programName = std::nullopt;
-
 std::ostream & operator <<(std::ostream & os, const HintFmt & hf)
 {
     return os << hf.str();
@@ -264,11 +262,7 @@ std::ostream & showErrorInfo(std::ostream & out, const ErrorInfo & einfo, bool s
             assert(false);
     }
 
-    // FIXME: show the program name as part of the trace?
-    if (einfo.programName && einfo.programName != ErrorInfo::programName)
-        prefix += fmt(" [%s]:" ANSI_NORMAL " ", einfo.programName.value_or(""));
-    else
-        prefix += ":" ANSI_NORMAL " ";
+    prefix += ":" ANSI_NORMAL " ";
 
     std::ostringstream oss;
 

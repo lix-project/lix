@@ -89,8 +89,6 @@ struct ErrorInfo {
     unsigned int status = 1;
 
     Suggestions suggestions = {};
-
-    static std::optional<std::string> programName;
 };
 
 std::ostream & showErrorInfo(std::ostream & out, const ErrorInfo & einfo, bool showTrace);

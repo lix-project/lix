@@ -317,11 +317,10 @@ int handleExceptions(const std::string & programName, std::function<void()> fun)
 {
     ReceiveInterrupts receiveInterrupts; // FIXME: need better place for this
 
-    ErrorInfo::programName = baseNameOf(programName);
     /* Lix command line is not yet stabilized.
      * Explain that it is experimental and reserved for custom subcommands for now.
      * */
-    bool onlyForSubcommands = ErrorInfo::programName == "lix";
+    bool onlyForSubcommands = baseNameOf(programName) == "lix";
 
     std::string error = ANSI_RED "error:" ANSI_NORMAL " ";
     try {
