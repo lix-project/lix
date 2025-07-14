@@ -129,23 +129,26 @@ auto runAsyncInNewThread(std::invocable<AsyncIoRoot &> auto fn)
         return AIOROOT.blockOn(__VA_ARGS__);                        \
     })
 
-#define LIX_TRY_AWAIT_CONTEXT(ctx, ...)                                           \
+#define LIX_TRY_AWAIT_CONTEXT_MAP(_l_ctx, _l_map, ...)                            \
     ({                                                                            \
-        auto _lix_awaited = co_await (__VA_ARGS__);                               \
+        auto _lix_awaited = (_l_map) (co_await (__VA_ARGS__));                    \
         if (_lix_awaited.has_error()) {                                           \
             try {                                                                 \
                 _lix_awaited.value();                                             \
             } catch (::nix::BaseException & e) {                                  \
-                e.addAsyncTrace(::std::source_location::current(), ctx());        \
+                e.addAsyncTrace(::std::source_location::current(), _l_ctx());     \
                 throw;                                                            \
             } catch (::std::exception & e) { /* NOLINT(lix-foreign-exceptions) */ \
                 ::nix::ForeignException fe(e);                                    \
-                fe.addAsyncTrace(::std::source_location::current(), ctx());       \
+                fe.addAsyncTrace(::std::source_location::current(), _l_ctx());    \
                 throw fe;                                                         \
             }                                                                     \
         }                                                                         \
         ::nix::detail::materializeResult(std::move(_lix_awaited));                \
     })
+
+#define LIX_TRY_AWAIT_CONTEXT(_l_ctx, ...) \
+    LIX_TRY_AWAIT_CONTEXT_MAP(_l_ctx, (std::identity{}), __VA_ARGS__)
 
 /**
  * Magic name used by `LIX_TRY_AWAIT` to insert additional context into an
