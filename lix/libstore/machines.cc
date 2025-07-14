@@ -71,12 +71,12 @@ try {
 
     StoreConfig::Params storeParams;
     if (storeUri.starts_with("ssh://")) {
-        pipe.create();
-        storeParams["log-fd"] = std::to_string(pipe.writeSide.get());
         storeParams["max-connections"] = "1";
     }
 
     if (storeUri.starts_with("ssh://") || storeUri.starts_with("ssh-ng://")) {
+        pipe.create();
+        storeParams["log-fd"] = std::to_string(pipe.writeSide.get());
         if (sshKey != "")
             storeParams["ssh-key"] = sshKey;
         if (sshPublicHostKey != "")

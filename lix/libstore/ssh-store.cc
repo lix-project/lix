@@ -28,27 +28,51 @@ struct SSHStoreConfig : virtual RemoteStoreConfig, virtual CommonSSHStoreConfig
     }
 };
 
+struct SSHStoreConfigWithLog : SSHStoreConfig
+{
+    SSHStoreConfigWithLog(const Params & params)
+        : StoreConfig(params)
+        , RemoteStoreConfig(params)
+        , CommonSSHStoreConfig(params)
+        , SSHStoreConfig(params)
+    {
+    }
+
+    // Hack for getting ssh errors into build-remote.
+    // Intentionally not in `SSHStoreConfig` so that it doesn't appear in
+    // the documentation
+    const Setting<int> logFD{
+        this, -1, "log-fd", "file descriptor to which SSH's stderr is connected"
+    };
+};
+
 class SSHStore final : public RemoteStore
 {
-    SSHStoreConfig config_;
+    SSHStoreConfigWithLog config_;
 
 public:
-    SSHStore(const std::string & scheme, const std::string & host, SSHStoreConfig config)
+    SSHStore(const std::string & scheme, const std::string & host, SSHStoreConfigWithLog config)
         : Store(config)
         , RemoteStore(config)
         , config_(std::move(config))
         , host(host)
-        , ssh(
-            host,
-            config_.port,
-            config_.sshKey,
-            config_.sshPublicHostKey,
-            config_.compress)
+        , ssh(host,
+              config_.port,
+              config_.sshKey,
+              config_.sshPublicHostKey,
+              config_.compress,
+              config_.logFD)
     {
     }
 
-    SSHStoreConfig & config() override { return config_; }
-    const SSHStoreConfig & config() const override { return config_; }
+    SSHStoreConfigWithLog & config() override
+    {
+        return config_;
+    }
+    const SSHStoreConfigWithLog & config() const override
+    {
+        return config_;
+    }
 
     static std::set<std::string> uriSchemes() { return {"ssh-ng"}; }
 
