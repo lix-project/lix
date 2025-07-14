@@ -1193,45 +1193,23 @@ Goal::WorkResult DerivationGoal::tooMuchLogs()
             getName(), settings.maxLogSize));
 }
 
-struct DerivationGoal::InputStream final : private kj::AsyncObject
-{
-    int fd;
-    kj::UnixEventPort::FdObserver observer;
-
-    InputStream(kj::UnixEventPort & ep, int fd)
-        : fd(fd)
-        , observer(ep, fd, kj::UnixEventPort::FdObserver::OBSERVE_READ)
-    {
-        makeNonBlocking(fd);
-    }
-
-    kj::Promise<std::string_view> read(kj::ArrayPtr<char> buffer)
-    {
-        const auto res = ::read(fd, buffer.begin(), buffer.size());
-        // closing a pty endpoint causes EIO on the other endpoint. stock kj streams
-        // do not handle this and throw exceptions we can't ask for errno instead :(
-        // (we can't use `errno` either because kj may well have mangled it by now.)
-        if (res == 0 || (res == -1 && errno == EIO)) {
-            return std::string_view{};
-        }
-
-        KJ_NONBLOCKING_SYSCALL(res) {}
-
-        if (res > 0) {
-            return std::string_view{buffer.begin(), static_cast<size_t>(res)};
-        }
-
-        return observer.whenBecomesReadable().then([this, buffer] {
-            return read(buffer);
-        });
-    }
-};
-
-kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::handleBuilderOutput(InputStream & in) noexcept
+kj::Promise<Outcome<void, Goal::WorkResult>>
+DerivationGoal::handleBuilderOutput(AsyncInputStream & in) noexcept
 try {
     auto buf = kj::heapArray<char>(4096);
     while (true) {
-        auto data = co_await in.read(buf);
+        std::string_view data;
+        try {
+            data = {buf.begin(), TRY_AWAIT(in.read(buf.begin(), buf.size()))};
+        } catch (SysError & e) {
+            // the builder output stream may be a pty fd, and closing one pty
+            // endpoint sends EIO to the other endpoint. this is a good exit.
+            if (e.errNo == EIO) {
+                data = {};
+            } else {
+                throw;
+            }
+        }
         lastChildActivity = AIO().provider.getTimer().now();
 
         if (data.empty()) {
@@ -1260,11 +1238,12 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::handleHookOutput(InputStream & in) noexcept
+kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::handleHookOutput(AsyncInputStream & in
+) noexcept
 try {
     auto buf = kj::heapArray<char>(4096);
     while (true) {
-        auto data = co_await in.read(buf);
+        std::string_view data = {buf.begin(), TRY_AWAIT(in.read(buf.begin(), buf.size()))};
         lastChildActivity = AIO().provider.getTimer().now();
 
         if (data.empty()) {
@@ -1316,12 +1295,12 @@ try {
 
 kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::handleChildOutput() noexcept
 try {
-    kj::Own<InputStream> builderIn, hookIn;
+    kj::Own<AsyncInputStream> builderIn, hookIn;
     if (builderOutFD) {
-        builderIn = kj::heap<InputStream>(AIO().unixEventPort, builderOutFD->get());
+        builderIn = kj::heap<AsyncFdIoStream>(AsyncFdIoStream::shared_fd{}, builderOutFD->get());
     }
     if (hook) {
-        hookIn = kj::heap<InputStream>(AIO().unixEventPort, hook->fromHook.get());
+        hookIn = kj::heap<AsyncFdIoStream>(AsyncFdIoStream::shared_fd{}, hook->fromHook.get());
     }
 
     auto handlers = handleChildStreams(builderIn.get(), hookIn.get())
@@ -1362,7 +1341,7 @@ kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::monitorForSilence()
 }
 
 kj::Promise<Outcome<void, Goal::WorkResult>>
-DerivationGoal::handleChildStreams(InputStream * builderIn, InputStream * hookIn) noexcept
+DerivationGoal::handleChildStreams(AsyncInputStream * builderIn, AsyncInputStream * hookIn) noexcept
 {
     assert(builderIn || hookIn);
 

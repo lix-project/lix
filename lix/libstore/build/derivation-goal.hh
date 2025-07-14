@@ -71,8 +71,6 @@ struct InitialOutput {
  */
 struct DerivationGoal : public Goal
 {
-    struct InputStream;
-
     /**
       * Whether this goal has completed. Completed goals can not be
       * asked for more outputs, a new goal must be created instead.
@@ -317,9 +315,9 @@ protected:
 
     kj::Promise<Outcome<void, WorkResult>> handleChildOutput() noexcept;
     kj::Promise<Outcome<void, WorkResult>>
-    handleChildStreams(InputStream * builderIn, InputStream * hookIn) noexcept;
-    kj::Promise<Outcome<void, WorkResult>> handleBuilderOutput(InputStream & in) noexcept;
-    kj::Promise<Outcome<void, WorkResult>> handleHookOutput(InputStream & in) noexcept;
+    handleChildStreams(AsyncInputStream * builderIn, AsyncInputStream * hookIn) noexcept;
+    kj::Promise<Outcome<void, WorkResult>> handleBuilderOutput(AsyncInputStream & in) noexcept;
+    kj::Promise<Outcome<void, WorkResult>> handleHookOutput(AsyncInputStream & in) noexcept;
     kj::Promise<Outcome<void, WorkResult>> monitorForSilence() noexcept;
     WorkResult tooMuchLogs();
     void flushLine();
