@@ -261,13 +261,8 @@ retry:
         TRY_AWAIT(startBuilder());
 
         started();
-        auto r = co_await handleChildOutput();
-        if (r.has_value()) {
-            // all good so far
-        } else if (r.has_error()) {
-            co_return r.assume_error();
-        } else {
-            co_return r.assume_exception();
+        if (auto error = TRY_AWAIT(handleChildOutput())) {
+            co_return std::move(*error);
         }
 
     } catch (BuildError & e) {

@@ -21,6 +21,7 @@
 #include <kj/async.h>
 #include <kj/debug.h>
 #include <kj/vector.h>
+#include <optional>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -688,13 +689,10 @@ retry:
             actLock.reset();
             buildResult.startTime = time(0); // inexact
             started();
-            auto r = co_await a.promise;
-            if (r.has_value()) {
-                co_return co_await buildDone();
-            } else if (r.has_error()) {
-                co_return r.assume_error();
+            if (auto error = TRY_AWAIT(a.promise)) {
+                co_return *error;
             } else {
-                co_return r.assume_exception();
+                co_return co_await buildDone();
             }
         }
 
@@ -1193,7 +1191,7 @@ Goal::WorkResult DerivationGoal::tooMuchLogs()
             getName(), settings.maxLogSize));
 }
 
-kj::Promise<Outcome<void, Goal::WorkResult>>
+kj::Promise<Result<std::optional<Goal::WorkResult>>>
 DerivationGoal::handleBuilderOutput(AsyncInputStream & in) noexcept
 try {
     auto buf = kj::heapArray<char>(4096);
@@ -1213,7 +1211,7 @@ try {
         lastChildActivity = AIO().provider.getTimer().now();
 
         if (data.empty()) {
-            co_return result::success();
+            co_return std::nullopt;
         }
 
         logSize += data.size();
@@ -1238,8 +1236,8 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::handleHookOutput(AsyncInputStream & in
-) noexcept
+kj::Promise<Result<std::optional<Goal::WorkResult>>>
+DerivationGoal::handleHookOutput(AsyncInputStream & in) noexcept
 try {
     auto buf = kj::heapArray<char>(4096);
     while (true) {
@@ -1247,7 +1245,7 @@ try {
         lastChildActivity = AIO().provider.getTimer().now();
 
         if (data.empty()) {
-            co_return result::success();
+            co_return std::nullopt;
         }
 
         for (auto c : data)
@@ -1293,7 +1291,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::handleChildOutput() noexcept
+kj::Promise<Result<std::optional<Goal::WorkResult>>> DerivationGoal::handleChildOutput() noexcept
 try {
     kj::Own<AsyncInputStream> builderIn, hookIn;
     if (builderOutFD) {
@@ -1308,9 +1306,10 @@ try {
 
     if (respectsTimeouts() && settings.buildTimeout != 0) {
         handlers = handlers.exclusiveJoin(
-            AIO().provider.getTimer()
+            AIO()
+                .provider.getTimer()
                 .afterDelay(settings.buildTimeout.get() * kj::SECONDS)
-                .then([this]() -> Outcome<void, WorkResult> {
+                .then([this]() -> Result<std::optional<WorkResult>> {
                     return timedOut(
                         Error("%1% timed out after %2% seconds", name, settings.buildTimeout)
                     );
@@ -1318,7 +1317,7 @@ try {
         );
     }
 
-    return handlers.then([this](auto r) -> Outcome<void, WorkResult> {
+    return handlers.then([this](auto r) {
         if (!currentLogLine.empty()) flushLine();
         return r;
     });
@@ -1326,7 +1325,7 @@ try {
     return {result::current_exception()};
 }
 
-kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::monitorForSilence() noexcept
+kj::Promise<Result<std::optional<Goal::WorkResult>>> DerivationGoal::monitorForSilence() noexcept
 {
     while (true) {
         const auto stash = lastChildActivity;
@@ -1340,7 +1339,7 @@ kj::Promise<Outcome<void, Goal::WorkResult>> DerivationGoal::monitorForSilence()
     }
 }
 
-kj::Promise<Outcome<void, Goal::WorkResult>>
+kj::Promise<Result<std::optional<Goal::WorkResult>>>
 DerivationGoal::handleChildStreams(AsyncInputStream * builderIn, AsyncInputStream * hookIn) noexcept
 {
     assert(builderIn || hookIn);
@@ -1348,7 +1347,7 @@ DerivationGoal::handleChildStreams(AsyncInputStream * builderIn, AsyncInputStrea
     lastChildActivity = AIO().provider.getTimer().now();
 
     auto handlers = kj::joinPromisesFailFast([&] {
-        kj::Vector<kj::Promise<Outcome<void, WorkResult>>> parts{2};
+        kj::Vector<kj::Promise<Result<std::optional<WorkResult>>>> parts{2};
 
         if (builderIn) {
             parts.add(handleBuilderOutput(*builderIn));
@@ -1367,9 +1366,11 @@ DerivationGoal::handleChildStreams(AsyncInputStream * builderIn, AsyncInputStrea
     }
 
     for (auto r : co_await handlers) {
-        BOOST_OUTCOME_CO_TRYV(r);
+        if (r) {
+            co_return r;
+        }
     }
-    co_return result::success();
+    co_return std::nullopt;
 }
 
 void DerivationGoal::flushLine()

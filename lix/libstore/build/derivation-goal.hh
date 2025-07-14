@@ -9,6 +9,7 @@
 #include "lix/libstore/pathlocks.hh"
 #include "lix/libstore/build/goal.hh"
 #include <kj/time.h>
+#include <optional>
 
 namespace nix {
 
@@ -18,7 +19,7 @@ struct HookInstance;
 
 struct HookReplyBase {
     struct [[nodiscard]] Accept {
-        kj::Promise<Outcome<void, Goal::WorkResult>> promise;
+        kj::Promise<Result<std::optional<Goal::WorkResult>>> promise;
     };
     struct [[nodiscard]] Decline {};
     struct [[nodiscard]] Postpone {};
@@ -313,12 +314,13 @@ struct DerivationGoal : public Goal
 protected:
     kj::TimePoint lastChildActivity = kj::minValue;
 
-    kj::Promise<Outcome<void, WorkResult>> handleChildOutput() noexcept;
-    kj::Promise<Outcome<void, WorkResult>>
+    kj::Promise<Result<std::optional<WorkResult>>> handleChildOutput() noexcept;
+    kj::Promise<Result<std::optional<WorkResult>>>
     handleChildStreams(AsyncInputStream * builderIn, AsyncInputStream * hookIn) noexcept;
-    kj::Promise<Outcome<void, WorkResult>> handleBuilderOutput(AsyncInputStream & in) noexcept;
-    kj::Promise<Outcome<void, WorkResult>> handleHookOutput(AsyncInputStream & in) noexcept;
-    kj::Promise<Outcome<void, WorkResult>> monitorForSilence() noexcept;
+    kj::Promise<Result<std::optional<WorkResult>>> handleBuilderOutput(AsyncInputStream & in
+    ) noexcept;
+    kj::Promise<Result<std::optional<WorkResult>>> handleHookOutput(AsyncInputStream & in) noexcept;
+    kj::Promise<Result<std::optional<WorkResult>>> monitorForSilence() noexcept;
     WorkResult tooMuchLogs();
     void flushLine();
 
