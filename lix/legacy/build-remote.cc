@@ -219,8 +219,8 @@ struct BuilderConnection
 };
 }
 
-static std::variant<std::monostate, std::string, BuilderConnection> connectToBuilder(
-    AsyncIoRoot & aio,
+static kj::Promise<Result<std::variant<std::monostate, std::string, BuilderConnection>>>
+connectToBuilder(
     const ref<Store> & store,
     const std::optional<StorePath> & drvPath,
     Machines & machines,
@@ -229,7 +229,7 @@ static std::variant<std::monostate, std::string, BuilderConnection> connectToBui
     const std::string & neededSystem,
     const std::set<std::string> & requiredFeatures
 )
-{
+try {
     AutoCloseFD bestSlotLock;
 
     /* It would be possible to build locally after some builds clear out,
@@ -247,7 +247,7 @@ static std::variant<std::monostate, std::string, BuilderConnection> connectToBui
     while (true) {
         bestSlotLock.reset();
         AutoCloseFD lock = openLockFile(currentLoad + "/main-lock", true);
-        lockFile(lock.get(), ltWrite);
+        TRY_AWAIT(lockFileAsync(lock.get(), ltWrite));
 
         auto [rightType, bestMachine, slotLock] =
             selectBestMachine(machines, neededSystem, requiredFeatures);
@@ -255,7 +255,7 @@ static std::variant<std::monostate, std::string, BuilderConnection> connectToBui
 
         if (!bestSlotLock) {
             if (rightType && !canBuildLocally) {
-                return "# postpone\n";
+                co_return "# postpone\n";
             } else {
                 printSelectionFailureMessage(
                     couldBuildLocally ? lvlChatty : lvlWarn,
@@ -265,7 +265,7 @@ static std::variant<std::monostate, std::string, BuilderConnection> connectToBui
                     requiredFeatures
                 );
 
-                return "# decline\n";
+                co_return "# decline\n";
             }
         }
 
@@ -285,9 +285,9 @@ static std::variant<std::monostate, std::string, BuilderConnection> connectToBui
                 *logger, lvlTalkative, actUnknown, fmt("connecting to '%s'", bestMachine->storeUri)
             );
 
-            std::tie(sshStore, logPipe) = aio.blockOn(bestMachine->openStore());
-            aio.blockOn(sshStore->connect());
-            return BuilderConnection{
+            std::tie(sshStore, logPipe) = TRY_AWAIT(bestMachine->openStore());
+            TRY_AWAIT(sshStore->connect());
+            co_return BuilderConnection{
                 std::move(bestSlotLock), sshStore, bestMachine->storeUri, std::move(logPipe)
             };
         } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
@@ -302,7 +302,9 @@ static std::variant<std::monostate, std::string, BuilderConnection> connectToBui
         }
     }
 
-    return std::monostate{};
+    co_return std::monostate{};
+} catch (...) {
+    co_return result::current_exception();
 }
 
 static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings argv)
@@ -377,16 +379,9 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
             drvPath = store->parseStorePath(readString(source));
             auto requiredFeatures = readStrings<std::set<std::string>>(source);
 
-            auto result = connectToBuilder(
-                aio,
-                store,
-                drvPath,
-                machines,
-                maxBuildJobs,
-                amWilling,
-                neededSystem,
-                requiredFeatures
-            );
+            auto result = aio.blockOn(connectToBuilder(
+                store, drvPath, machines, maxBuildJobs, amWilling, neededSystem, requiredFeatures
+            ));
 
             if (std::get_if<std::monostate>(&result)) {
                 continue;
