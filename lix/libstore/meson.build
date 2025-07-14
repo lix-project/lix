@@ -1,4 +1,5 @@
 libstore_generated_headers = []
+libstore_generated_sources = []
 foreach header : [ 'schema.sql' ]
   libstore_generated_headers += custom_target(
     command : [ 'bash', '-c', 'echo \'R"__NIX_STR(\' | cat - @INPUT@ && echo \')__NIX_STR"\'' ],
@@ -8,6 +9,40 @@ foreach header : [ 'schema.sql' ]
     install : true,
     install_dir : includedir / 'lix/libstore',
   )
+endforeach
+
+libstore_rpc = []
+
+libstore_rpc += custom_target(
+  command : [
+    capnpc_wrapper,
+    '--language=c++',
+    '--src-prefix=@CURRENT_SOURCE_DIR@',
+    '--outdir=@OUTDIR@',
+    '--depfile=@DEPFILE@',
+    '-I@SOURCE_ROOT@',
+    '@INPUT@',
+  ],
+  input : files(
+    # keep-sorted start
+    'types.capnp',
+    # keep-sorted end
+  ),
+  output : [
+    '@PLAINNAME@.h',
+    '@PLAINNAME@.c++',
+  ],
+  depfile : '@PLAINNAME@.d',
+)
+
+foreach i : libstore_rpc
+  foreach rpc_src : i.to_list()
+    if rpc_src.full_path().endswith('.h')
+      libstore_generated_headers += [ rpc_src ]
+    else
+      libstore_generated_sources += [ rpc_src ]
+    endif
+  endforeach
 endforeach
 
 libstore_settings_headers = []
@@ -268,6 +303,7 @@ libstore_headers = files(
   'store-api.hh',
   'store-cast.hh',
   'temporary-dir.hh',
+  'types-rpc.hh',
   'uds-remote-store.hh',
   'worker-protocol-impl.hh',
   'worker-protocol.hh',
@@ -356,6 +392,7 @@ dependencies = [
   aws_sdk_transfer,
   nlohmann_json,
   kj,
+  capnp_rpc,
 ]
 
 if host_machine.system() == 'freebsd'
@@ -365,6 +402,7 @@ endif
 libstore = library(
   'lixstore',
   libstore_sources,
+  libstore_generated_sources,
   libstore_settings_headers,
   libstore_generated_headers,
   libstore_extra_objects,

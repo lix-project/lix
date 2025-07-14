@@ -116,6 +116,8 @@ libutil_headers = files(
   'regex.hh',
   'repair-flag.hh',
   'result.hh',
+  'rpc-fwd.hh',
+  'rpc.hh',
   'serialise.hh',
   'shlex.hh',
   'signals.hh',
@@ -130,6 +132,7 @@ libutil_headers = files(
   'thread-pool.hh',
   'topo-sort.hh',
   'tracepoint.hh',
+  'types-rpc.hh',
   'types.hh',
   'unix-domain-socket.hh',
   'url-name.hh',
@@ -287,9 +290,44 @@ libutil_settings_headers += custom_target(
   install_dir : includedir / 'lix/libutil',
 )
 
+libutil_rpc_headers = []
+libutil_rpc_sources = []
+libutil_rpc = []
+
+libutil_rpc += custom_target(
+  command : [
+    capnpc_wrapper,
+    '--language=c++',
+    '--src-prefix=@CURRENT_SOURCE_DIR@',
+    '--outdir=@OUTDIR@',
+    '--depfile=@DEPFILE@',
+    '-I@SOURCE_ROOT@',
+    '@INPUT@',
+  ],
+  input : files(
+    # keep-sorted start
+    'types.capnp',
+    # keep-sorted end
+  ),
+  output : [
+    '@PLAINNAME@.h',
+    '@PLAINNAME@.c++',
+  ],
+  install : true,
+  install_dir : [includedir / 'lix/libutil', false],
+  depfile : '@PLAINNAME@.d',
+)
+
+foreach rpc : libutil_rpc
+  libutil_rpc_headers += rpc[0]
+  libutil_rpc_sources += rpc[1]
+endforeach
+
 libutil = library(
   'lixutil',
   libutil_sources,
+  libutil_rpc_sources,
+  libutil_rpc_headers,
   experimental_features_header,
   experimental_features_impl_header,
   deprecated_features_header,
@@ -307,6 +345,7 @@ libutil = library(
     openssl,
     nlohmann_json,
     kj,
+    capnp_rpc,
   ],
   include_directories : [ '../..' ],
   cpp_pch : cpp_pch,
@@ -337,6 +376,7 @@ liblixutil = declare_dependency(
     experimental_features_header,
     deprecated_features_header,
     libutil_settings_headers,
+    libutil_rpc_headers,
   ],
   dependencies: [
     boost,
@@ -344,6 +384,7 @@ liblixutil = declare_dependency(
     # lix-base pkg-config externally)
     kj,
     libarchive,
+    capnp_rpc,
   ],
   link_with : libutil
 )
@@ -356,6 +397,7 @@ if is_static
       experimental_features_header,
       deprecated_features_header,
       libutil_settings_headers,
+      libutil_rpc_headers,
     ],
     dependencies: [
       boost,
@@ -363,6 +405,7 @@ if is_static
       # lix-base pkg-config externally)
       kj,
       libarchive,
+      capnp_rpc,
     ],
     link_whole : libutil,
   )
