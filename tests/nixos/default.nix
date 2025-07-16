@@ -180,4 +180,6 @@ in
   io_uring = runNixOSTestFor "x86_64-linux" ./io_uring;
 
   fetchurl = runNixOSTestFor "x86_64-linux" ./fetchurl.nix;
+
+  chown-to-user = runNixOSTestFor "x86_64-linux" ./chown-to-user.nix;
 }

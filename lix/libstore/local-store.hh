@@ -135,6 +135,8 @@ private:
 
     Sync<GCState> _gcState;
 
+    std::optional<AssociatedCredentials> association;
+
 public:
 
     const Path dbDir;
@@ -147,6 +149,16 @@ public:
 
     LocalStoreConfig & config() override { return config_; }
     const LocalStoreConfig & config() const override { return config_; }
+
+    std::optional<AssociatedCredentials> associatedCredentials() const override
+    {
+        return association;
+    }
+
+    void associateWithCredentials(uid_t user, gid_t group)
+    {
+        association = {user, group};
+    }
 
 private:
 

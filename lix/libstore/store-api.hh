@@ -234,6 +234,22 @@ protected:
     Store(const StoreConfig & config);
 
 public:
+    struct AssociatedCredentials
+    {
+        uid_t user;
+        gid_t group;
+    };
+
+    /**
+     * Credentials of the context using this store if this store is proxied
+     * to somewhere else and the peer context is known. Only the daemon can
+     * set this to values that make any sense, using unix peer credentials.
+     */
+    virtual std::optional<AssociatedCredentials> associatedCredentials() const
+    {
+        return {};
+    }
+
     /**
      * Perform any necessary effectful operation to make the store up and
      * running

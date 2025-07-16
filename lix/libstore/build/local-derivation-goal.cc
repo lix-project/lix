@@ -30,11 +30,13 @@
 #include "platform/linux.hh"
 
 #include <cstddef>
+#include <dirent.h>
 #include <exception>
 #include <regex>
 #include <queue>
 
 #include <stdexcept>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <fcntl.h>
 #include <termios.h>
@@ -113,7 +115,11 @@ LocalDerivationGoal::~LocalDerivationGoal() noexcept(false)
     /* Careful: we should never ever throw an exception from a
        destructor. */
     try { killChild(); } catch (...) { ignoreExceptionInDestructor(); }
-    try { deleteTmpDir(false, true); } catch (...) { ignoreExceptionInDestructor(); }
+    try {
+        finalizeTmpDir(false, true);
+    } catch (...) {
+        ignoreExceptionInDestructor();
+    }
 }
 
 
@@ -370,7 +376,7 @@ bool LocalDerivationGoal::cleanupDecideWhetherDiskFull()
     }
 #endif
 
-    deleteTmpDir(false);
+    finalizeTmpDir(false);
 
     /* Move paths out of the chroot for easier debugging of
        build failures. */
@@ -389,7 +395,7 @@ bool LocalDerivationGoal::cleanupDecideWhetherDiskFull()
 
 void LocalDerivationGoal::cleanupPostOutputsRegisteredModeCheck()
 {
-    deleteTmpDir(true);
+    finalizeTmpDir(true);
 }
 
 
@@ -2416,14 +2422,71 @@ try {
     co_return result::current_exception();
 }
 
+// make `entry` in `parentFd` visible to the given user and group, preserving
+// inode modes as much as possible. if the builder sets the mode of any inode
+// to not be readable by the owner we keep this; not doing so could interfere
+// with error analysis. if the builder used multiple uids or gids we will not
+// keep them around and instead collapse them all onto the uid/gid given here
+// to not leave around inodes owned by unassigned uids/gids in the system. we
+// also clear setuid/setgid/sticky bits just to be safe even though a builder
+// should not be able to set them to begin, otherwise we may leave setuid/gid
+// executables in the tree even with user/group set to -1/-1. there have been
+// enough bugs of this kind in the past to warrant some extra attention here.
+static void makeVisible(int parentFd, const char * entry, uid_t user, gid_t group)
+{
+    struct stat st;
+    if (fstatat(parentFd, entry, &st, AT_SYMLINK_NOFOLLOW)) {
+        throw SysError("fstat(%s)", guessOrInventPathFromFD(parentFd));
+    }
+    if (S_ISDIR(st.st_mode)) {
+        int dirfd = openat(parentFd, entry, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+        if (dirfd < 0) {
+            throw SysError("openat(%s/%s)", guessOrInventPathFromFD(parentFd), entry);
+        }
+        AutoCloseDir dir(fdopendir(dirfd));
+        if (!dir) {
+            close(dirfd);
+            throw SysError("fdopendir(%s/%s)", guessOrInventPathFromFD(parentFd), entry);
+        }
 
-void LocalDerivationGoal::deleteTmpDir(bool force, bool duringDestruction)
+        struct dirent * dirent;
+        while (errno = 0, dirent = readdir(dir.get())) {
+            if (strcmp(dirent->d_name, ".") == 0 || strcmp(dirent->d_name, "..") == 0) {
+                continue;
+            }
+            makeVisible(dirfd, dirent->d_name, user, group);
+        }
+    }
+
+    // ignore permissions errors for symlinks. linux can't chmod them.
+    // clear special permission bits while we're here, just to be safe
+    if (fchmodat(parentFd, entry, st.st_mode & 0777, AT_SYMLINK_NOFOLLOW) && !S_ISLNK(st.st_mode)) {
+        throw SysError("fchmod(%s)", guessOrInventPathFromFD(parentFd));
+    }
+    if (user != uid_t(-1) && group != gid_t(-1)
+        && fchownat(parentFd, entry, user, group, AT_SYMLINK_NOFOLLOW))
+    {
+        throw SysError("fchown(%s)", guessOrInventPathFromFD(parentFd));
+    }
+}
+
+void LocalDerivationGoal::finalizeTmpDir(bool force, bool duringDestruction)
 {
     if (tmpDirRoot != "") {
         /* Don't keep temporary directories for builtins because they
            might have privileged stuff (like a copy of netrc). */
         if (settings.keepFailed && !force && !drv->isBuiltin()) {
             printError("note: keeping build directory '%s'", tmpDirRoot);
+            try {
+                // always make visible, but don't always chown. if we run as
+                // root we may not want to chown things to root:root so much
+                auto creds = worker.store.associatedCredentials();
+                makeVisible(
+                    tmpDirFd.get(), ".", creds ? creds->user : -1, creds ? creds->group : -1
+                );
+            } catch (SysError & e) {
+                printError("error making '%s' accessible: %s", tmpDir, e.what());
+            }
             chmod(tmpDirRoot.c_str(), 0755);
         }
         else if (duringDestruction)

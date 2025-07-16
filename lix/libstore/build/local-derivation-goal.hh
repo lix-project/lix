@@ -246,9 +246,12 @@ struct LocalDerivationGoal : public DerivationGoal
     void cleanupPostOutputsRegisteredModeNonCheck() override;
 
     /**
-     * Delete the temporary directory, if we have one.
+     * Delete the temporary directory or make it visible to the user requesting
+     * this build, if a temporary directory was created at all. Temporary files
+     * of derivations using builtin builders are deleted even for `keep-failed`
+     * builds as otherwise we may expose secrets (e.g. from the system .netrc).
      */
-    void deleteTmpDir(bool force, bool duringDestruction = false);
+    void finalizeTmpDir(bool force, bool duringDestruction = false);
 
     /**
      * Forcibly kill the child process, if any.

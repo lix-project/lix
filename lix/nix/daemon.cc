@@ -364,11 +364,17 @@ static void daemonLoopImpl(std::optional<TrustedFlag> forceTrustClientOpt)
                     strncpy(savedArgv[1], processName.c_str(), strlen(savedArgv[1]));
                 }
 
+                auto store = aio.blockOn(openUncachedStore());
+                if (auto local = dynamic_cast<LocalStore *>(&*store); local && peer.uidKnown && peer.gidKnown) {
+                    local->associateWithCredentials(peer.uid, peer.gid);
+                }
+
                 //  Handle the connection.
                 FdSource from(remote.get());
                 FdSink to(remote.get());
+
                 processConnection(
-                    aio, aio.blockOn(openUncachedStore()), from, to, trusted
+                    aio, store, from, to, trusted
                 );
 
                 exit(0);
