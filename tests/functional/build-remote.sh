@@ -77,4 +77,4 @@ out="$(nix-build 2>&1 failing.nix \
 [[ "$out" =~ .*"note: keeping build directory".* ]]
 
 build_dir="$(grep "note: keeping build" <<< "$out" | sed -E "s/^(.*)note: keeping build directory '(.*)'(.*)$/\2/")"
-[[ "foo" = $(<"$build_dir"/bar) ]]
+[[ "foo" = $(<"$build_dir"/b/bar) ]]

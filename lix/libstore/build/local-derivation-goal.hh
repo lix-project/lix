@@ -40,12 +40,12 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * The temporary directory.
      */
-    Path tmpDir;
+    Path tmpDirRoot, tmpDir;
 
     /**
      * The temporary directory file descriptor
      */
-    AutoCloseFD tmpDirFd;
+    AutoCloseFD tmpDirRootFd, tmpDirFd;
 
     /**
      * The path of the temporary directory in the sandbox.
