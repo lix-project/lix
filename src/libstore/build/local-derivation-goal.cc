@@ -332,7 +332,7 @@ bool LocalDerivationGoal::cleanupDecideWhetherDiskFull()
         if (statvfs(localStore.realStoreDir.get().c_str(), &st) == 0 &&
             (uint64_t) st.f_bavail * st.f_bsize < required)
             diskFull = true;
-        if (statvfs(tmpDir.c_str(), &st) == 0 &&
+        if (statvfs(tmpDirRoot.c_str(), &st) == 0 &&
             (uint64_t) st.f_bavail * st.f_bsize < required)
             diskFull = true;
     }
@@ -482,7 +482,7 @@ void LocalDerivationGoal::startBuilder()
 
         /* Create a temporary directory where the build will take
            place. */
-        tmpDir =
+        tmpDirRoot =
             createTempDir(buildDir, "nix-build-" + std::string(drvPath.name()), false, false, 0700);
     } catch (SysError & e) {
         /*
@@ -512,17 +512,46 @@ void LocalDerivationGoal::startBuilder()
             nixBuildsTmp
         );
         worker.buildDirOverride = nixBuildsTmp;
-        tmpDir = createTempDir(
+        tmpDirRoot = createTempDir(
             nixBuildsTmp, "nix-build-" + std::string(drvPath.name()), false, false, 0700
         );
     }
     /* The TOCTOU between the previous mkdir call and this open call is unavoidable due to
      * POSIX semantics.*/
-    tmpDirFd = AutoCloseFD{open(tmpDir.c_str(), O_RDONLY | O_NOFOLLOW | O_DIRECTORY)};
+    tmpDirRootFd = AutoCloseFD{open(tmpDirRoot.c_str(), O_RDONLY | O_NOFOLLOW | O_DIRECTORY)};
+    if (!tmpDirRootFd)
+        throw SysError("failed to open the build temporary directory descriptor '%1%'", tmpDirRoot);
+
+    // place the actual build directory in a subdirectory of tmpDirRoot. if
+    // we do not do this a build can `chown 777` its build directory and so
+    // make it accessible to everyone in the system, breaking isolation. we
+    // also need the intermediate level to be inaccessible to others. build
+    // processes must be able to at least traverse to the directory though,
+    // without being able to chmod. this means either mode 0750 or 0710. we
+    // use 0710 just to be extra safe; if we ever add more directories they
+    // will not be enumerable to other processes in the builder user group.
+    //
+    // use a short name to not increase the path length too much on darwin.
+    // darwin has a severe sockaddr_un path length limitation, so this does
+    // make a difference over more evocative names. we use `b` for `build`.
+    tmpDir = tmpDirRoot + "/b";
+    if (mkdirat(tmpDirRootFd.get(), "b", 0700)) {
+        throw SysError("failed to create the build temporary directory '%1%'", tmpDir);
+    }
+    tmpDirFd = AutoCloseFD{openat(tmpDirRootFd.get(), "b", O_RDONLY | O_NOFOLLOW | O_DIRECTORY)};
     if (!tmpDirFd)
         throw SysError("failed to open the build temporary directory descriptor '%1%'", tmpDir);
 
     chownToBuilder(tmpDirFd);
+
+    if (buildUser) {
+        if (fchown(tmpDirRootFd.get(), -1, buildUser->getGID()) == -1) {
+            throw SysError("cannot change ownership of '%1%'", tmpDirRoot);
+        }
+        if (fchmod(tmpDirRootFd.get(), 0710) == -1) {
+            throw SysError("cannot change mode of '%1%'", tmpDirRoot);
+        }
+    }
 
     for (auto & [outputName, status] : initialOutputs) {
         /* Set scratch path we'll actually use during the build.
@@ -2682,16 +2711,16 @@ void LocalDerivationGoal::checkOutputs(const std::map<std::string, ValidPathInfo
 
 void LocalDerivationGoal::deleteTmpDir(bool force)
 {
-    if (tmpDir != "") {
+    if (tmpDirRoot != "") {
         /* Don't keep temporary directories for builtins because they
            might have privileged stuff (like a copy of netrc). */
         if (settings.keepFailed && !force && !drv->isBuiltin()) {
-            printError("note: keeping build directory '%s'", tmpDir);
-            chmod(tmpDir.c_str(), 0755);
+            printError("note: keeping build directory '%s'", tmpDirRoot);
+            chmod(tmpDirRoot.c_str(), 0755);
         }
         else
-            deletePath(tmpDir);
-        tmpDir = "";
+            deletePath(tmpDirRoot);
+        tmpDirRoot = "";
     }
 }
 
