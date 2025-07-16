@@ -451,12 +451,15 @@ static void daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTr
     //  Restore normal handling of SIGCHLD.
     setSigChldAction(false);
 
+    auto store = aio.blockOn(openUncachedStore(AllowDaemon::Disallow));
+    if (auto local = dynamic_cast<LocalStore *>(&*store); local && peer.uidKnown && peer.gidKnown) {
+        local->associateWithCredentials(peer.uid, peer.gid);
+    }
+
     //  Handle the connection.
     FdSource from(SUBDAEMON_CONNECTION_FD);
     FdSink to(SUBDAEMON_CONNECTION_FD);
-    processConnection(
-        aio, aio.blockOn(openUncachedStore(AllowDaemon::Disallow)), from, to, trusted
-    );
+    processConnection(aio, store, from, to, trusted);
 }
 
 /**
