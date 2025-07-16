@@ -45,7 +45,7 @@ test_custom_build_dir() {
   [ "$status" = "100" ]
   [[ 1 == "$(count "$customBuildDir/nix-build-"*)" ]]
   local buildDir="$customBuildDir/nix-build-"*
-  grep $checkBuildId $buildDir/checkBuildId
+  grep $checkBuildId $buildDir/b/checkBuildId
 }
 test_custom_build_dir
 
