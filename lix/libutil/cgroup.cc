@@ -140,8 +140,7 @@ destroyCgroup(const std::string & name, const std::filesystem::path & aliveCgrou
 
         const auto started = std::chrono::steady_clock::now();
 
-        bool populated = true;
-        while (populated && (std::chrono::steady_clock::now() - started) < TIMEOUT) {
+        do {
             // there's only two keys today, this should be fine for a while
             std::array<char, 1024> buf = {};
             const auto got = pread(events.get(), buf.data(), buf.size(), 0);
@@ -152,8 +151,7 @@ destroyCgroup(const std::string & name, const std::filesystem::path & aliveCgrou
             for (const auto & line : lines) {
                 auto tokens = tokenizeString<Strings>(line);
                 if (tokens.front() == "populated" && tokens.back() == "0") {
-                    populated = false;
-                    break;
+                    goto done;
                 }
             }
 
@@ -162,8 +160,9 @@ destroyCgroup(const std::string & name, const std::filesystem::path & aliveCgrou
             if (poll(&pfd, 1, WAIT_MS) < 0) {
                 throw SysError("polling %s", eventsFile);
             }
-        }
+        } while ((std::chrono::steady_clock::now() - started) < TIMEOUT);
 
+    done:
         // if the cgroup is still populated after waiting we just continue.
         // cleanup will fail, but we can't do any better than this for now.
     }
