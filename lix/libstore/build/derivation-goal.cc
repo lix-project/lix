@@ -1029,6 +1029,9 @@ try {
         co_return HookResult::Decline{};
     }
 
+    // make sure we don't launch an unbounded number of build hooks
+    auto hookSlot = co_await worker.hook.instancesSem.acquire();
+
     if (!worker.hook.instances.empty()) {
         hook = std::move(worker.hook.instances.front());
         worker.hook.instances.pop_front();
@@ -1061,6 +1064,9 @@ try {
     } else if (!buildResp.isAccept()) {
         throw Error("bad hook reply '%s'", buildResp.which());
     }
+
+    // the build was accepted by the hook, we can free the slot for another build now
+    hookSlot = {};
 
     machineName = rpc::to<std::string>(buildResp.getAccept().getMachineName());
 
