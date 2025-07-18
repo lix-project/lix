@@ -21,7 +21,20 @@ std::string readFile(int fd)
     if (fstat(fd, &st) == -1)
         throw SysError("statting file");
 
-    return drainFD(fd, true, st.st_size);
+    // st_size is off_t, which is signed for some reason, and there doesn't
+    // seem to be any rule stating that it _can't_ return a negative value.
+    //
+    // So, when a filesystem returns a small negative value for whatever reason,
+    // we cast it to unsigned and then try to preallocate ALL THE MEMORY,
+    // which, of course, explodes horribly and very user-unfriendly-ly.
+    //
+    // This should really just be a `saturate_cast`, which does exactly
+    // what we want (clamp to 0..TargetT::MAX if out of range),
+    // but that's C++26, so we can't have nice things yet, and are
+    // forced to roll out own, bad one.
+    //
+    // FIXME(C++26): use saturate_cast.
+    return drainFD(fd, true, (size_t) std::max((off_t) 0, st.st_size));
 }
 
 
