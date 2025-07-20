@@ -11,6 +11,7 @@
 #include "lix/libutil/config.hh"
 
 #include <kj/async.h>
+#include <curl/curl.h>
 #include <string>
 #include <future>
 
@@ -34,6 +35,18 @@ struct FileTransferResult
     std::optional<std::string> immutableUrl;
 };
 
+struct FileTransferOptions
+{
+    Headers headers;
+
+    /**
+     * Function to perform any additional curl setup, e.g. auth method, key material.
+     * This is meant to be used by plugins which want to extend the initialization that Lix
+     * performs.
+     */
+    std::function<void(CURL*)> extraSetup;
+};
+
 class Store;
 
 struct FileTransfer
@@ -44,7 +57,7 @@ struct FileTransfer
      * Upload some data. May throw a FileTransferError exception.
      */
     virtual kj::Promise<Result<void>>
-    upload(const std::string & uri, std::string data, const Headers & headers = {}) = 0;
+    upload(const std::string & uri, std::string data, FileTransferOptions options = {}) = 0;
 
     /**
      * Checks whether the given URI exists. For historical reasons this function
@@ -57,7 +70,7 @@ struct FileTransfer
      * S3 objects are downloaded completely to answer this request.
      */
     virtual kj::Promise<Result<bool>>
-    exists(const std::string & uri, const Headers & headers = {}) = 0;
+    exists(const std::string & uri, FileTransferOptions options = {}) = 0;
 
     /**
      * Download a file, returning its contents through a source. Will not return
@@ -67,7 +80,7 @@ struct FileTransfer
      * during the transfer itself (decompression errors, connection drops, etc).
      */
     virtual kj::Promise<Result<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>>>
-    download(const std::string & uri, const Headers & headers = {}) = 0;
+    download(const std::string & uri, FileTransferOptions options = {}) = 0;
 
     enum Error { NotFound, Forbidden, Misc, Transient, Interrupted };
 };

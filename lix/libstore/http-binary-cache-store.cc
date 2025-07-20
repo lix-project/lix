@@ -12,7 +12,7 @@ namespace nix {
 
 MakeError(UploadToHTTP, Error);
 
-struct HttpBinaryCacheStoreConfig final : BinaryCacheStoreConfig
+struct HttpBinaryCacheStoreConfig : BinaryCacheStoreConfig
 {
     using BinaryCacheStoreConfig::BinaryCacheStoreConfig;
 
@@ -26,7 +26,7 @@ struct HttpBinaryCacheStoreConfig final : BinaryCacheStoreConfig
     }
 };
 
-class HttpBinaryCacheStore final : public BinaryCacheStore
+class HttpBinaryCacheStore : public BinaryCacheStore
 {
 private:
 
@@ -87,6 +87,17 @@ public:
         co_return result::current_exception();
     }
 
+    /** Override this to configure additional curl options on the request.
+     * e.g. authentication method or key material.
+     *
+     * This is meant mostly for plugins who wish to perform their own
+     * custom initialization.
+     */
+    virtual FileTransferOptions makeOptions(Headers && headers = {})
+    {
+        return {.headers = std::move(headers)};
+    }
+
     static std::set<std::string> uriSchemes()
     {
         static bool forceHttp = getEnv("_NIX_FORCE_HTTP") == "1";
@@ -125,7 +136,7 @@ protected:
         checkEnabled();
 
         try {
-            co_return TRY_AWAIT(getFileTransfer()->exists(makeURI(path)));
+            co_return TRY_AWAIT(getFileTransfer()->exists(makeURI(path), makeOptions()));
         } catch (FileTransferError & e) {
             maybeDisable();
             throw;
@@ -143,7 +154,7 @@ protected:
         auto data = StreamToSourceAdapter(istream).drain();
         try {
             TRY_AWAIT(getFileTransfer()->upload(
-                makeURI(path), std::move(data), {{"Content-Type", mimeType}}
+                makeURI(path), std::move(data), makeOptions({{"Content-Type", mimeType}})
             ));
         } catch (FileTransferError & e) {
             throw UploadToHTTP(
@@ -167,7 +178,7 @@ protected:
     try {
         checkEnabled();
         try {
-            co_return TRY_AWAIT(getFileTransfer()->download(makeURI(path))).second;
+            co_return TRY_AWAIT(getFileTransfer()->download(makeURI(path), makeOptions())).second;
         } catch (FileTransferError & e) {
             if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden)
                 throw NoSuchBinaryCacheFile("file '%s' does not exist in binary cache '%s'", path, getUri());

@@ -140,7 +140,7 @@ struct curlFileTransfer : public FileTransfer
 
         TransferItem(
             const std::string & uri,
-            const Headers & headers,
+            FileTransferOptions && options,
             ActivityId parentAct,
             std::optional<std::string_view> uploadData,
             bool noBody,
@@ -160,7 +160,7 @@ struct curlFileTransfer : public FileTransfer
             if (req == nullptr) {
                 throw FileTransferError(Misc, {}, "could not allocate curl handle");
             }
-            for (auto it = headers.begin(); it != headers.end(); ++it){
+            for (auto it = options.headers.begin(); it != options.headers.end(); ++it){
                 if (auto next = curl_slist_append(
                         requestHeaders.get(), fmt("%s: %s", it->first, it->second).c_str()
                     );
@@ -235,6 +235,10 @@ struct curlFileTransfer : public FileTransfer
 
             if (writtenToSink)
                 curl_easy_setopt(req.get(), CURLOPT_RESUME_FROM_LARGE, writtenToSink);
+
+            if (options.extraSetup) {
+                options.extraSetup(req.get());
+            }
         }
 
         bool acceptsRanges()
@@ -738,9 +742,9 @@ struct curlFileTransfer : public FileTransfer
 #endif
 
     kj::Promise<Result<void>>
-    upload(const std::string & uri, std::string data, const Headers & headers) override
+    upload(const std::string & uri, std::string data, FileTransferOptions options) override
     try {
-        TRY_AWAIT(enqueueFileTransfer(uri, headers, std::move(data), false));
+        TRY_AWAIT(enqueueFileTransfer(uri, std::move(options), std::move(data), false));
         co_return result::success();
     } catch (...) {
         co_return result::current_exception();
@@ -749,7 +753,7 @@ struct curlFileTransfer : public FileTransfer
     kj::Promise<Result<std::optional<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>>>>
     tryEagerTransfers(
         const std::string & uri,
-        const Headers & headers,
+        const FileTransferOptions & options,
         const std::optional<std::string> & data,
         bool noBody
     )
@@ -867,16 +871,17 @@ struct curlFileTransfer : public FileTransfer
     kj::Promise<Result<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>>>
     enqueueFileTransfer(
         const std::string & uri,
-        const Headers & headers,
+        FileTransferOptions && options,
         std::optional<std::string> data,
         bool noBody
     )
     try {
-        if (auto eager = TRY_AWAIT(tryEagerTransfers(uri, headers, data, noBody))) {
+        if (auto eager = TRY_AWAIT(tryEagerTransfers(uri, options, data, noBody))) {
             co_return std::move(*eager);
         }
 
-        auto source = make_box_ptr<TransferStream>(*this, uri, headers, std::move(data), noBody);
+        auto source =
+            make_box_ptr<TransferStream>(*this, uri, std::move(options), std::move(data), noBody);
         TRY_AWAIT(source->init());
         TRY_AWAIT(source->awaitData());
         co_return {source->metadata, std::move(source)};
@@ -888,7 +893,7 @@ struct curlFileTransfer : public FileTransfer
     {
         curlFileTransfer & parent;
         std::string uri;
-        Headers headers;
+        FileTransferOptions options;
         std::optional<std::string> data;
         bool noBody;
         ActivityId parentAct = getCurActivity();
@@ -905,13 +910,13 @@ struct curlFileTransfer : public FileTransfer
         TransferStream(
             curlFileTransfer & parent,
             const std::string & uri,
-            const Headers & headers,
+            FileTransferOptions && options,
             std::optional<std::string> data,
             bool noBody
         )
             : parent(parent)
             , uri(uri)
-            , headers(headers)
+            , options(options)
             , data(std::move(data))
             , noBody(noBody)
         {
@@ -972,7 +977,13 @@ struct curlFileTransfer : public FileTransfer
             auto uploadData = data ? std::optional(std::string_view(*data)) : std::nullopt;
             auto pfp = kj::newPromiseAndCrossThreadFulfiller<Result<FileTransferResult>>();
             transfer = std::make_shared<TransferItem>(
-                uri, headers, parentAct, uploadData, noBody, offset, std::move(pfp.fulfiller)
+                uri,
+                std::move(options),
+                parentAct,
+                uploadData,
+                noBody,
+                offset,
+                std::move(pfp.fulfiller)
             );
             parent.enqueueItem(transfer);
             co_return TRY_AWAIT(pfp.promise);
@@ -1099,10 +1110,10 @@ struct curlFileTransfer : public FileTransfer
         }
     };
 
-    kj::Promise<Result<bool>> exists(const std::string & uri, const Headers & headers) override
+    kj::Promise<Result<bool>> exists(const std::string & uri, FileTransferOptions options) override
     try {
         try {
-            TRY_AWAIT(enqueueFileTransfer(uri, headers, std::nullopt, true));
+            TRY_AWAIT(enqueueFileTransfer(uri, std::move(options), std::nullopt, true));
             co_return true;
         } catch (FileTransferError & e) {
             /* S3 buckets return 403 if a file doesn't exist and the
@@ -1116,9 +1127,9 @@ struct curlFileTransfer : public FileTransfer
     }
 
     kj::Promise<Result<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>>>
-    download(const std::string & uri, const Headers & headers) override
+    download(const std::string & uri, FileTransferOptions options) override
     {
-        return enqueueFileTransfer(uri, headers, std::nullopt, false);
+        return enqueueFileTransfer(uri, std::move(options), std::nullopt, false);
     }
 };
 
