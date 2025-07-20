@@ -294,6 +294,7 @@ stdenv.mkDerivation (finalAttrs: {
           ./doc
           ./lix
           ./misc
+          ./contrib/plugins
           ./COPYING
         ]
         ++ lib.optionals lintInsteadOfBuild [ ./.clang-tidy ]
@@ -395,6 +396,8 @@ stdenv.mkDerivation (finalAttrs: {
     yq
     lsof
     zstd
+    # For mTLS tests
+    curl
   ]
   ++ lib.optional useLld lldBintools
   ++ lib.optional hostPlatform.isLinux util-linuxMinimal

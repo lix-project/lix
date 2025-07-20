@@ -198,6 +198,9 @@ nan-git:
 ncfavier:
   github: ncfavier
 
+nkk0:
+  github: nkk0
+
 not-my-profile:
   display_name: Martin Fischer
   github: not-my-profile
@@ -275,6 +278,9 @@ vigress8:
   display_name: Vigress
   forgejo: vigress8
   github: vigress8
+
+vlaci:
+  github: vlaci
 
 vlinkz:
   display_name: Victor Fuentes

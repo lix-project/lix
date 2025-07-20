@@ -10,7 +10,7 @@ if test -d "$TEST_ROOT"; then
     killDaemon
     rm -rf "$TEST_ROOT"
 fi
-mkdir "$TEST_ROOT"
+mkdir -p "$TEST_ROOT"
 
 mkdir "$NIX_STORE_DIR"
 mkdir "$NIX_LOCALSTATE_DIR"

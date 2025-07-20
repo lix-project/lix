@@ -242,9 +242,20 @@ buggyNeedLocalStore() {
   needLocalStore "$1"
 }
 
+# BSD/macOS sed -i requires '' as separate arg; GNU sed does not.
+sedInPlace() {
+    local expr="$1"
+    local file="$2"
+    if sed --version >/dev/null 2>&1; then
+        sed -i -e "$expr" "$file"
+    else
+        sed -i '' -e "$expr" "$file"
+    fi
+}
+
 enableFeatures() {
     local features="$1"
-    sed -i 's/experimental-features .*/& '"$features"'/' "$NIX_CONF_DIR"/nix.conf
+    sedInPlace 's/experimental-features .*/& '"$features"'/' "$NIX_CONF_DIR"/nix.conf
 }
 
 runinpty() {
@@ -254,7 +265,7 @@ runinpty() {
 # Add a plugin to `plugin-files` configuration.
 loadPlugin() {
     local plugin_path="$1"
-    sed -i 's|plugin-files .*|& '"$plugin_path"'|' "$NIX_CONF_DIR"/nix.conf
+    sedInPlace 's|plugin-files .*|& '"$plugin_path"'|' "$NIX_CONF_DIR"/nix.conf
 }
 
 loadContribPlugin() {
