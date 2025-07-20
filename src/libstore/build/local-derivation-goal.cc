@@ -528,8 +528,12 @@ void LocalDerivationGoal::startBuilder()
     // also need the intermediate level to be inaccessible to others. build
     // processes must be able to at least traverse to the directory though,
     // without being able to chmod. this means either mode 0750 or 0710. we
-    // use 0710 just to be extra safe; if we ever add more directories they
-    // will not be enumerable to other processes in the builder user group.
+    // cannot use 0710 because the libarchive we link with is compiled with
+    // an old apple sdk that does not have O_SEARCH, which makes libarchive
+    // try to open tmpDirRoot for *read* and fail because g+r is not set. a
+    // future update to nixpkgs may fix this. until then we do not lose any
+    // security by setting mode 0750 because we use only a single subdir in
+    // tmpDirRoot, so being able to list its parent doesn't break anything.
     //
     // use a short name to not increase the path length too much on darwin.
     // darwin has a severe sockaddr_un path length limitation, so this does
@@ -548,7 +552,7 @@ void LocalDerivationGoal::startBuilder()
         if (fchown(tmpDirRootFd.get(), -1, buildUser->getGID()) == -1) {
             throw SysError("cannot change ownership of '%1%'", tmpDirRoot);
         }
-        if (fchmod(tmpDirRootFd.get(), 0710) == -1) {
+        if (fchmod(tmpDirRootFd.get(), 0750) == -1) {
             throw SysError("cannot change mode of '%1%'", tmpDirRoot);
         }
     }
