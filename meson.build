@@ -125,6 +125,7 @@ endif
 
 enable_nix_eval_jobs = get_option('nix-eval-jobs')
 enable_tests = get_option('enable-tests')
+enable_contrib_plugins = get_option('enable-contrib-plugins')
 
 tests_args = []
 
@@ -224,12 +225,13 @@ is_x64 = host_machine.cpu_family() == 'x86_64'
 # This corresponds to the $(1)_ALLOW_UNDEFINED option from the Make buildsystem.
 # Mostly this is load-bearing on the plugin tests defined in tests/functional/plugins/meson.build.
 shared_module_link_args = []
+# This is a stricter additional set of link flags.
+strict_shared_module_link_args = []
 if is_darwin
   shared_module_link_args += ['-undefined', 'suppress', '-flat_namespace']
+  strict_shared_module_link_args += ['-flat_namespace']
 elif is_linux
-  # -Wl,-z,defs is the equivalent, but a comment in the Make buildsystem says that breaks
-  # Clang sanitizers on Linux.
-  # FIXME(Qyriad): is that true?
+  strict_shared_module_link_args += ['-Wl,-z,defs']
 endif
 configdata = { }
 
@@ -661,6 +663,10 @@ if enable_tests
   subdir('tests/unit')
   subdir('tests/functional')
   subdir('tests/functional2')
+endif
+
+if enable_contrib_plugins
+  subdir('contrib/plugins')
 endif
 
 subdir('meson/clang-tidy')

@@ -32,6 +32,10 @@ option('enable-tests', type : 'boolean', value : true,
   description : 'whether to enable tests or not (requires rapidcheck and gtest)',
 )
 
+option('enable-contrib-plugins', type : 'boolean', value : true,
+  description : 'whether to build contributed plugins'
+)
+
 option('tests-color', type : 'boolean', value : true,
   description : 'set to false to disable color output in gtest',
 )

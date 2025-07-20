@@ -232,6 +232,7 @@ stdenv.mkDerivation (finalAttrs: {
           ./doc
           ./lix
           ./misc
+          ./contrib/plugins
           ./COPYING
         ]
         ++ lib.optionals lintInsteadOfBuild [ ./.clang-tidy ]
@@ -309,6 +310,10 @@ stdenv.mkDerivation (finalAttrs: {
       jq
       yq
       lsof
+      # For mTLS tests.
+      curl
+      openssl
+      python3
     ]
     ++ lib.optional hostPlatform.isLinux util-linuxMinimal
     ++ lib.optional (!officialRelease && buildUnreleasedNotes) build-release-notes
