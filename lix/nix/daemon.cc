@@ -364,6 +364,11 @@ try {
                         {.dup = SUBDAEMON_SETTINGS_FD, .from = settings.readSide.get()},
                     }
             };
+            if (forceTrustClientOpt) {
+                options.args.push_back(
+                    *forceTrustClientOpt ? "--force-trusted" : "--force-untrusted"
+                );
+            }
             runProgram2(options).release();
 
             FdSink sink(settings.writeSide.get());
