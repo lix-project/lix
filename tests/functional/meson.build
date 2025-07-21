@@ -61,7 +61,6 @@ functional_tests_scripts = [
   'fetchMercurial.sh',
   'gc-auto.sh',
   'user-envs.sh',
-  'user-envs-migration.sh',
   'binary-cache.sh',
   'binary-cache-regression-fj647.sh',
   'multiple-outputs.sh',

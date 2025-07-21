@@ -15,10 +15,8 @@ nix path-info --json $path | grep fixed:md5:2qk15sxzzjlnpjk9brn7j8ppcd
 echo 'testing good...'
 nix-build fixed.nix -A good --no-out-link
 
-if isDaemonNewer "2.4pre20210927"; then
-    echo 'testing --check...'
-    nix-build fixed.nix -A check --check && fail "should fail"
-fi
+echo 'testing --check...'
+nix-build fixed.nix -A check --check && fail "should fail"
 
 echo 'testing good2...'
 nix-build fixed.nix -A good2 --no-out-link
@@ -26,10 +24,8 @@ nix-build fixed.nix -A good2 --no-out-link
 echo 'testing reallyBad...'
 nix-instantiate fixed.nix -A reallyBad && fail "should fail"
 
-if isDaemonNewer "2.20pre20240108"; then
-    echo 'testing fixed with references...'
-    expectStderr 1 nix-build fixed.nix -A badReferences | grepQuiet "not allowed to refer to other store paths"
-fi
+echo 'testing fixed with references...'
+expectStderr 1 nix-build fixed.nix -A badReferences | grepQuiet "not allowed to refer to other store paths"
 
 echo 'testing illegal references...'
 # Fixed FOD hashes cannot be asserted because:

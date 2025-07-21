@@ -10,15 +10,10 @@ nix --store ssh-ng://localhost?remote-store=$TEST_ROOT/other-store store ping --
 
 startDaemon
 
-if isDaemonNewer "2.15pre0"; then
-    # Ensure that ping works trusted with new daemon
-    nix store ping --json | jq -e '.trusted'
-    # Suppress grumpiness about multiple nixes on PATH
-    (nix doctor || true) 2>&1 | grep 'You are trusted by'
-else
-    # And the the field is absent with the old daemon
-    nix store ping --json | jq -e 'has("trusted") | not'
-fi
+# Ensure that ping works trusted with new daemon
+nix store ping --json | jq -e '.trusted'
+# Suppress grumpiness about multiple nixes on PATH
+(nix doctor || true) 2>&1 | grep 'You are trusted by'
 
 # Test import-from-derivation through the daemon.
 [[ $(nix eval --impure --raw --file ./ifd.nix) = hi ]]

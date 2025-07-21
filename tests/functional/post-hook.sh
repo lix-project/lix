@@ -9,11 +9,7 @@ echo 'require-sigs = false' >> $NIX_CONF_DIR/nix.conf
 
 restartDaemon
 
-if isDaemonNewer "2.13"; then
-    pushToStore="$PWD/push-to-store.sh"
-else
-    pushToStore="$PWD/push-to-store-old.sh"
-fi
+pushToStore="$PWD/push-to-store.sh"
 
 # Build the dependencies and push them to the remote store.
 nix-build -o $TEST_ROOT/result dependencies.nix --post-build-hook "$pushToStore"

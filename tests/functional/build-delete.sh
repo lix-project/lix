@@ -49,6 +49,4 @@ second
 EOF
     nix-store --delete "$p" # Clean up for next test
 }
-if isDaemonNewer "2.12pre0"; then
-    issue_6572_dependent_outputs
-fi
+issue_6572_dependent_outputs

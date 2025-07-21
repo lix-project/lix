@@ -41,16 +41,9 @@ nix-build -o $RESULT check-refs.nix -A test7
 # test10 should succeed (no disallowed references).
 nix-build -o $RESULT check-refs.nix -A test10
 
-if isDaemonNewer 2.12pre20230103; then
-    if ! isDaemonNewer 2.16.0; then
-        enableFeatures discard-references
-        restartDaemon
-    fi
-
-    # test11 should succeed.
-    test11=$(nix-build -o $RESULT check-refs.nix -A test11)
-    [[ -z $(nix-store -q --references "$test11") ]]
-fi
+# test11 should succeed.
+test11=$(nix-build -o $RESULT check-refs.nix -A test11)
+[[ -z $(nix-store -q --references "$test11") ]]
 
 # test12 should fail (syntactically invalid).
 expectStderr 1 nix-build -vvv -o "$RESULT" check-refs.nix -A test12 >"$TEST_ROOT/test12.stderr"
