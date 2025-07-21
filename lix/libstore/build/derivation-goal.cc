@@ -1023,6 +1023,20 @@ try {
     co_return result::current_exception();
 }
 
+namespace {
+struct BuildHookLogger final : rpc::build_remote::HookInstance::BuildLogger::Server
+{
+    AutoCloseFD fd;
+
+    BuildHookLogger(AutoCloseFD fd) : fd(std::move(fd)) {}
+
+    kj::Maybe<int> getFd() override
+    {
+        return fd.get();
+    }
+};
+}
+
 kj::Promise<Result<HookResult>> DerivationGoal::tryBuildHook()
 try {
     if (!worker.hook.available || !useDerivation) {
@@ -1038,6 +1052,12 @@ try {
     } else {
         hook = TRY_AWAIT(HookInstance::create());
     }
+
+    // open a pipe to receive logs directly from the hook
+    Pipe logPipe;
+    logPipe.create();
+    builderOutFD = &logPipe.readSide;
+    KJ_DEFER(builderOutFD = nullptr);
 
     KJ_DEFER(hook = nullptr);
     auto output = handleChildOutput();
@@ -1074,6 +1094,7 @@ try {
     /* Tell the hook all the inputs that have to be copied to the
        remote system. */
     RPC_FILL(runReq, initInputs, inputPaths, worker.store);
+    runReq.setBuildLogger(kj::heap<BuildHookLogger>(std::move(logPipe.writeSide)));
 
     /* Tell the hooks the missing outputs that have to be copied back
        from the remote system. */

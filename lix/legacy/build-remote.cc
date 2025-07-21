@@ -1,4 +1,5 @@
 #include "lix/libstore/path.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/logging.hh"
@@ -183,7 +184,7 @@ struct BuilderConnection
 
     // start the thread that reads ssh stderr and turns it into log items.
     // this future *must* outlive sshStore, otherwise it will never finish
-    std::future<void> startLogThread()
+    std::future<void> startLogThread(int intoFD)
     {
         if (!logPipe.readSide) {
             return {};
@@ -193,47 +194,16 @@ struct BuilderConnection
 
         return std::async(
             std::launch::async,
-            [](AutoCloseFD logFD) {
-                Activity act(*logger, lvlTalkative, actUnknown, "remote builder");
-                std::vector<char> buf(4096);
-                size_t currentLogLinePos = 0;
-                std::string currentLogLine;
+            [](int from, int to) {
+                AsyncIoRoot aio;
 
-                auto flushLine = [&] {
-                    act.result(resBuildLogLine, {currentLogLine});
-                    currentLogLine.clear();
-                    currentLogLinePos = 0;
-                };
+                auto reader = AIO().lowLevelProvider.wrapInputFd(from);
+                auto writer = AIO().lowLevelProvider.wrapOutputFd(to);
 
-                while (true) {
-                    const auto got = ::read(logFD.get(), buf.data(), buf.size());
-                    if (got < 0) {
-                        printError("error reading builder response: %s", strerror(errno));
-                        break;
-                    } else if (got == 0) {
-                        if (!currentLogLine.empty()) {
-                            flushLine();
-                        }
-                        break;
-                    }
-
-                    std::string_view data{buf.data(), size_t(got)};
-
-                    for (auto c : data) {
-                        if (c == '\r') {
-                            currentLogLinePos = 0;
-                        } else if (c == '\n') {
-                            flushLine();
-                        } else {
-                            if (currentLogLinePos >= currentLogLine.size()) {
-                                currentLogLine.resize(currentLogLinePos + 1);
-                            }
-                            currentLogLine[currentLogLinePos++] = c;
-                        }
-                    }
-                }
+                reader->pumpTo(*writer).wait(aio.kj.waitScope);
             },
-            std::move(logPipe.readSide)
+            logPipe.readSide.get(),
+            intoFD
         );
     }
 };
@@ -375,7 +345,7 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
 
         auto conn = aio.kj.lowLevelProvider->wrapUnixSocketFd(1);
         capnp::TwoPartyServer srv(kj::heap<Instance>(maxBuildJobs));
-        srv.accept(*conn).wait(aio.kj.waitScope);
+        srv.accept(*conn, 1).wait(aio.kj.waitScope);
         return 0;
     }
 }
@@ -442,7 +412,13 @@ kj::Promise<void> Instance::build(BuildContext context)
 kj::Promise<void> AcceptedBuild::run(RunContext context)
 {
     try {
-        auto logThread = builder.startLogThread();
+        auto builderLogger = context.getParams().getBuildLogger();
+        const int logFD = (co_await builderLogger.getFd()).orDefault(-1);
+        if (logFD < 0) {
+            throw Error("build-hook needs a logFD from the builder to build");
+        }
+
+        auto logThread = builder.startLogThread(logFD);
         KJ_DEFER({
             // drop any existing ssh connection so the log thread can exit
             builder.sshStore = nullptr;

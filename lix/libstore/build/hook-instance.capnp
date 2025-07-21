@@ -8,10 +8,15 @@ using Types = import "/lix/libutil/types.capnp";
 using StoreTypes = import "/lix/libstore/types.capnp";
 
 interface HookInstance {
+  interface BuildLogger {
+    # only used for fd passing
+  }
+
   interface AcceptedBuild {
     run @0 (
       inputs :List(StoreTypes.StorePath), # actual a set
       wantedOutputs :List(Data), # actually StringSet
+      buildLogger :BuildLogger,
     ) -> (result :Types.ResultV);
   }
 
