@@ -31,4 +31,7 @@ nix-store --dump-db > $TEST_ROOT/d1
 NIX_REMOTE= nix-store --dump-db > $TEST_ROOT/d2
 cmp $TEST_ROOT/d1 $TEST_ROOT/d2
 
+# check that proxying one daemon through another works
+nix --store 'ssh-ng://localhost?remote-store=ssh-ng%3a%2f%2flocalhost' store add-file ./ifd.nix
+
 killDaemon

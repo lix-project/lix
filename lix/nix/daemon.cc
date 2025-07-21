@@ -81,27 +81,6 @@ AuthorizationSettings authorizationSettings;
 
 static GlobalConfig::Register rSettings(&authorizationSettings);
 
-#ifndef __linux__
-#define SPLICE_F_MOVE 0
-static ssize_t splice(int fd_in, void *off_in, int fd_out, void *off_out, size_t len, unsigned int flags)
-{
-    // We ignore most parameters, we just have them for conformance with the linux syscall
-    std::vector<char> buf(8192);
-    auto read_count = read(fd_in, buf.data(), buf.size());
-    if (read_count == -1)
-        return read_count;
-    auto write_count = decltype(read_count)(0);
-    while (write_count < read_count) {
-        auto res = write(fd_out, buf.data() + write_count, read_count - write_count);
-        if (res == -1)
-            return res;
-        write_count += res;
-    }
-    return read_count;
-}
-#endif
-
-
 static void sigChldHandler(int sigNo)
 {
     // Ensure we don't modify errno of whatever we've interrupted
@@ -470,34 +449,22 @@ static void daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTr
  *
  * Loops until standard input disconnects, or an error is encountered.
  */
-static void forwardStdioConnection(RemoteStore & store) {
+static void forwardStdioConnection(AsyncIoRoot & aio, RemoteStore & store)
+{
     auto conn = store.openConnectionWrapper();
-    int from = conn->getFD();
-    int to = conn->getFD();
+    auto connSocket = AIO().lowLevelProvider.wrapSocketFd(conn->getFD());
+    auto stdin = AIO().lowLevelProvider.wrapInputFd(STDIN_FILENO);
+    auto stdout = AIO().lowLevelProvider.wrapOutputFd(STDOUT_FILENO);
 
-    auto nfds = std::max(from, STDIN_FILENO) + 1;
-    while (true) {
-        fd_set fds;
-        FD_ZERO(&fds);
-        FD_SET(from, &fds);
-        FD_SET(STDIN_FILENO, &fds);
-        if (select(nfds, &fds, nullptr, nullptr, nullptr) == -1)
-            throw SysError("waiting for data from client or server");
-        if (FD_ISSET(from, &fds)) {
-            auto res = splice(from, nullptr, STDOUT_FILENO, nullptr, SSIZE_MAX, SPLICE_F_MOVE);
-            if (res == -1)
-                throw SysError("splicing data from daemon socket to stdout");
-            else if (res == 0)
-                throw EndOfFile("unexpected EOF from daemon socket");
-        }
-        if (FD_ISSET(STDIN_FILENO, &fds)) {
-            auto res = splice(STDIN_FILENO, nullptr, to, nullptr, SSIZE_MAX, SPLICE_F_MOVE);
-            if (res == -1)
-                throw SysError("splicing data from stdin to daemon socket");
-            else if (res == 0)
-                return;
-        }
-    }
+    aio.blockOn(connSocket->pumpTo(*stdout)
+                    .then([](auto) -> Result<void> {
+                        return {
+                            std::make_exception_ptr(EndOfFile("unexpected EOF from daemon socket"))
+                        };
+                    })
+                    .exclusiveJoin(stdin->pumpTo(*connSocket).then([](auto) -> Result<void> {
+                        return result::success();
+                    })));
 }
 
 /**
@@ -534,7 +501,7 @@ runDaemon(AsyncIoRoot & aio, bool stdio, std::optional<TrustedFlag> forceTrustCl
         // must process it ourselves (before delegating to the next store) to
         // force untrusting the client.
         if (auto remoteStore = store.try_cast_shared<RemoteStore>(); remoteStore && (!forceTrustClientOpt || *forceTrustClientOpt != NotTrusted))
-            forwardStdioConnection(*remoteStore);
+            forwardStdioConnection(aio, *remoteStore);
         else
             // `Trusted` is passed in the auto (no override case) because we
             // cannot see who is on the other side of a plain pipe. Limiting
