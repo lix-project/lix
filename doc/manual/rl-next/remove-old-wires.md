@@ -1,6 +1,6 @@
 ---
 synopsis: Remove support for daemon protocols before 2.18
-issues: []
+issues: [fj#510]
 cls: [3249]
 significance: significant
 category: "Breaking Changes"
