@@ -198,7 +198,8 @@ public:
 
     std::string getUri() override;
 
-    kj::Promise<Result<bool>> isValidPathUncached(const StorePath & path) override;
+    kj::Promise<Result<bool>>
+    isValidPathUncached(const StorePath & path, const Activity * context) override;
 
     kj::Promise<Result<StorePathSet>> queryValidPaths(const StorePathSet & paths,
         SubstituteFlag maybeSubstitute = NoSubstitute) override;
@@ -206,7 +207,7 @@ public:
     kj::Promise<Result<StorePathSet>> queryAllValidPaths() override;
 
     kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
-    queryPathInfoUncached(const StorePath & path) override;
+    queryPathInfoUncached(const StorePath & path, const Activity * context) override;
 
     kj::Promise<Result<void>>
     queryReferrers(const StorePath & path, StorePathSet & referrers) override;
@@ -223,8 +224,13 @@ public:
 
     bool pathInfoIsUntrusted(const ValidPathInfo &) override;
 
-    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, AsyncInputStream & source,
-        RepairFlag repair, CheckSigsFlag checkSigs) override;
+    kj::Promise<Result<void>> addToStore(
+        const ValidPathInfo & info,
+        AsyncInputStream & source,
+        RepairFlag repair,
+        CheckSigsFlag checkSigs,
+        const Activity * context
+    ) override;
 
     kj::Promise<Result<StorePath>> addToStoreFromDump(
         AsyncInputStream & dump,

@@ -19,17 +19,6 @@ LoggerSettings loggerSettings;
 
 static GlobalConfig::Register rLoggerSettings(&loggerSettings);
 
-static thread_local ActivityId curActivity = 0;
-
-ActivityId getCurActivity()
-{
-    return curActivity;
-}
-void setCurActivity(const ActivityId activityId)
-{
-    curActivity = activityId;
-}
-
 Logger * logger = makeSimpleLogger(true);
 
 void Logger::warn(const std::string & msg)

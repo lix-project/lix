@@ -219,15 +219,19 @@ try {
         try {
             ReceiveInterrupts receiveInterrupts;
 
-            Activity act(*logger, actSubstitute, Logger::Fields{worker.store.printStorePath(storePath), sub->getUri()});
-            PushActivity pact(act.id);
+            Activity act(
+                *logger,
+                actSubstitute,
+                Logger::Fields{worker.store.printStorePath(storePath), sub->getUri()}
+            );
 
             aio.blockOn(copyStorePath(
                 *sub,
                 worker.store,
                 fetchPath,
                 repair,
-                sub->config().isTrusted ? NoCheckSigs : CheckSigs
+                sub->config().isTrusted ? NoCheckSigs : CheckSigs,
+                &act
             ));
         } catch (const EndOfFile &) {
             throw EndOfFile(

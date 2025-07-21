@@ -207,7 +207,8 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<bool>> RemoteStore::isValidPathUncached(const StorePath & path)
+kj::Promise<Result<bool>>
+RemoteStore::isValidPathUncached(const StorePath & path, const Activity * context)
 try {
     auto conn(TRY_AWAIT(getConnection()));
     co_return TRY_AWAIT(
@@ -264,9 +265,8 @@ try {
     co_return result::current_exception();
 }
 
-
 kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
-RemoteStore::queryPathInfoUncached(const StorePath & path)
+RemoteStore::queryPathInfoUncached(const StorePath & path, const Activity * context)
 try {
     auto conn(TRY_AWAIT(getConnection()));
     std::optional<UnkeyedValidPathInfo> pathInfo;
@@ -402,12 +402,12 @@ try {
     co_return result::current_exception();
 }
 
-
 kj::Promise<Result<void>> RemoteStore::addToStore(
     const ValidPathInfo & info,
     AsyncInputStream & source,
     RepairFlag repair,
-    CheckSigsFlag checkSigs
+    CheckSigsFlag checkSigs,
+    const Activity * context
 )
 try {
     auto conn(TRY_AWAIT(getConnection()));
@@ -721,7 +721,8 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<box_ptr<AsyncInputStream>>> RemoteStore::narFromPath(const StorePath & path)
+kj::Promise<Result<box_ptr<AsyncInputStream>>>
+RemoteStore::narFromPath(const StorePath & path, const Activity * context)
 try {
     struct NarStream : AsyncInputStream
     {

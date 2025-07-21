@@ -840,10 +840,13 @@ void runPostBuildHook(
     if (hook == "")
         return;
 
-    Activity act(logger, lvlTalkative, actPostBuildHook,
-            fmt("running post-build-hook '%s'", settings.postBuildHook),
-            Logger::Fields{store.printStorePath(drvPath)});
-    PushActivity pact(act.id);
+    Activity act(
+        logger,
+        lvlTalkative,
+        actPostBuildHook,
+        fmt("running post-build-hook '%s'", settings.postBuildHook),
+        Logger::Fields{store.printStorePath(drvPath)}
+    );
     std::map<std::string, std::string> hookEnvironment = getEnv();
 
     auto drvPathPretty = store.printStorePath(drvPath);

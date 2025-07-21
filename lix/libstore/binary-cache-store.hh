@@ -73,28 +73,32 @@ public:
     BinaryCacheStoreConfig & config() override = 0;
     const BinaryCacheStoreConfig & config() const override = 0;
 
-    virtual kj::Promise<Result<bool>> fileExists(const std::string & path) = 0;
+    virtual kj::Promise<Result<bool>>
+    fileExists(const std::string & path, const Activity * context = nullptr) = 0;
 
     virtual kj::Promise<Result<void>> upsertFile(
         const std::string & path,
         std::shared_ptr<std::basic_iostream<char>> istream,
-        const std::string & mimeType
+        const std::string & mimeType,
+        const Activity * context
     ) = 0;
 
     kj::Promise<Result<void>> upsertFile(
         const std::string & path,
         // FIXME: use std::string_view
         std::string && data,
-        const std::string & mimeType
+        const std::string & mimeType,
+        const Activity * context = nullptr
     );
 
     /**
      * Dump the contents of the specified file to a sink.
      */
-    virtual kj::Promise<Result<box_ptr<AsyncInputStream>>> getFile(const std::string & path) = 0;
+    virtual kj::Promise<Result<box_ptr<AsyncInputStream>>>
+    getFile(const std::string & path, const Activity * context = nullptr) = 0;
 
-    virtual kj::Promise<Result<std::optional<std::string>>> getFileContents(const std::string & path
-    );
+    virtual kj::Promise<Result<std::optional<std::string>>>
+    getFileContents(const std::string & path, const Activity * context = nullptr);
 
 public:
 
@@ -106,24 +110,35 @@ private:
 
     std::string narInfoFileFor(const StorePath & storePath);
 
-    kj::Promise<Result<void>> writeNarInfo(ref<NarInfo> narInfo);
+    kj::Promise<Result<void>>
+    writeNarInfo(ref<NarInfo> narInfo, const Activity * context = nullptr);
 
     kj::Promise<Result<ref<const ValidPathInfo>>> addToStoreCommon(
-        AsyncInputStream & narSource, RepairFlag repair, CheckSigsFlag checkSigs,
-        std::function<ValidPathInfo(HashResult)> mkInfo);
+        AsyncInputStream & narSource,
+        RepairFlag repair,
+        CheckSigsFlag checkSigs,
+        const Activity * context,
+        std::function<ValidPathInfo(HashResult)> mkInfo
+    );
 
 public:
 
-    kj::Promise<Result<bool>> isValidPathUncached(const StorePath & path) override;
+    kj::Promise<Result<bool>>
+    isValidPathUncached(const StorePath & path, const Activity * context = nullptr) override;
 
     kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
-    queryPathInfoUncached(const StorePath & path) override;
+    queryPathInfoUncached(const StorePath & path, const Activity * context = nullptr) override;
 
     kj::Promise<Result<std::optional<StorePath>>>
     queryPathFromHashPart(const std::string & hashPart) override;
 
-    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, AsyncInputStream & narSource,
-        RepairFlag repair, CheckSigsFlag checkSigs) override;
+    kj::Promise<Result<void>> addToStore(
+        const ValidPathInfo & info,
+        AsyncInputStream & narSource,
+        RepairFlag repair,
+        CheckSigsFlag checkSigs,
+        const Activity * context
+    ) override;
 
     kj::Promise<Result<StorePath>> addToStoreFromDump(
         AsyncInputStream & dump,
@@ -151,7 +166,8 @@ public:
         const StorePathSet & references,
         RepairFlag repair) override;
 
-    kj::Promise<Result<box_ptr<AsyncInputStream>>> narFromPath(const StorePath & path) override;
+    kj::Promise<Result<box_ptr<AsyncInputStream>>>
+    narFromPath(const StorePath & path, const Activity * context) override;
 
     ref<FSAccessor> getFSAccessor() override;
 

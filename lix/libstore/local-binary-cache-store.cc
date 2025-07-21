@@ -3,6 +3,7 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/nar-info-disk-cache.hh"
 #include "lix/libutil/async-io.hh"
+#include "lix/libutil/logging.hh"
 #include "lix/libutil/result.hh"
 
 #include <atomic>
@@ -57,12 +58,14 @@ public:
 
 protected:
 
-    kj::Promise<Result<bool>> fileExists(const std::string & path) override;
+    kj::Promise<Result<bool>>
+    fileExists(const std::string & path, const Activity * context) override;
 
     kj::Promise<Result<void>> upsertFile(
         const std::string & path,
         std::shared_ptr<std::basic_iostream<char>> istream,
-        const std::string & mimeType
+        const std::string & mimeType,
+        const Activity * context
     ) override
     try {
         auto path2 = binaryCacheDir + "/" + path;
@@ -78,7 +81,8 @@ protected:
         return {result::current_exception()};
     }
 
-    kj::Promise<Result<box_ptr<AsyncInputStream>>> getFile(const std::string & path) override
+    kj::Promise<Result<box_ptr<AsyncInputStream>>>
+    getFile(const std::string & path, const Activity * context) override
     try {
         try {
             return {
@@ -130,7 +134,8 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<bool>> LocalBinaryCacheStore::fileExists(const std::string & path)
+kj::Promise<Result<bool>>
+LocalBinaryCacheStore::fileExists(const std::string & path, const Activity * context)
 try {
     return {pathExists(binaryCacheDir + "/" + path)};
 } catch (...) {

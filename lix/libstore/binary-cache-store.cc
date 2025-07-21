@@ -68,20 +68,25 @@ try {
 }
 
 kj::Promise<Result<void>> BinaryCacheStore::upsertFile(
-    const std::string & path, std::string && data, const std::string & mimeType
+    const std::string & path,
+    std::string && data,
+    const std::string & mimeType,
+    const Activity * context
 )
 try {
-    TRY_AWAIT(upsertFile(path, std::make_shared<std::stringstream>(std::move(data)), mimeType));
+    TRY_AWAIT(
+        upsertFile(path, std::make_shared<std::stringstream>(std::move(data)), mimeType, context)
+    );
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
 }
 
 kj::Promise<Result<std::optional<std::string>>>
-BinaryCacheStore::getFileContents(const std::string & path)
+BinaryCacheStore::getFileContents(const std::string & path, const Activity * context)
 try {
     try {
-        co_return TRY_AWAIT(TRY_AWAIT(getFile(path))->drain());
+        co_return TRY_AWAIT(TRY_AWAIT(getFile(path, context))->drain());
     } catch (NoSuchBinaryCacheFile &) {
         co_return std::nullopt;
     }
@@ -94,11 +99,12 @@ std::string BinaryCacheStore::narInfoFileFor(const StorePath & storePath)
     return std::string(storePath.hashPart()) + ".narinfo";
 }
 
-kj::Promise<Result<void>> BinaryCacheStore::writeNarInfo(ref<NarInfo> narInfo)
+kj::Promise<Result<void>>
+BinaryCacheStore::writeNarInfo(ref<NarInfo> narInfo, const Activity * context)
 try {
     auto narInfoFile = narInfoFileFor(narInfo->path);
 
-    TRY_AWAIT(upsertFile(narInfoFile, narInfo->to_string(*this), "text/x-nix-narinfo"));
+    TRY_AWAIT(upsertFile(narInfoFile, narInfo->to_string(*this), "text/x-nix-narinfo", context));
 
     {
         auto state_(co_await state.lock());
@@ -115,8 +121,12 @@ try {
 }
 
 kj::Promise<Result<ref<const ValidPathInfo>>> BinaryCacheStore::addToStoreCommon(
-    AsyncInputStream & narSource, RepairFlag repair, CheckSigsFlag checkSigs,
-    std::function<ValidPathInfo(HashResult)> mkInfo)
+    AsyncInputStream & narSource,
+    RepairFlag repair,
+    CheckSigsFlag checkSigs,
+    const Activity * context,
+    std::function<ValidPathInfo(HashResult)> mkInfo
+)
 try {
     auto [fdTemp, fnTemp] = createTempFile();
 
@@ -173,8 +183,9 @@ try {
        reads, but typically they'll already be cached. */
     for (auto & ref : info.references)
         try {
-            if (ref != info.path)
-                TRY_AWAIT(queryPathInfo(ref));
+            if (ref != info.path) {
+                TRY_AWAIT(queryPathInfo(ref, context));
+            }
         } catch (InvalidPath &) {
             throw Error("cannot add '%s' to the binary cache because the reference '%s' does not exist",
                 printStorePath(info.path), printStorePath(ref));
@@ -189,9 +200,9 @@ try {
         };
 
         try {
-            TRY_AWAIT(
-                upsertFile(std::string(info.path.hashPart()) + ".ls", j.dump(), "application/json")
-            );
+            TRY_AWAIT(upsertFile(
+                std::string(info.path.hashPart()) + ".ls", j.dump(), "application/json", context
+            ));
         } catch (ForeignException & exc) {
             if (exc.is<JSON::exception>()) {
                 warn(
@@ -273,12 +284,13 @@ try {
     }
 
     /* Atomically write the NAR file. */
-    if (repair || !TRY_AWAIT(fileExists(narInfo->url))) {
+    if (repair || !TRY_AWAIT(fileExists(narInfo->url, context))) {
         stats.narWrite++;
         TRY_AWAIT(upsertFile(
             narInfo->url,
             std::make_shared<std::fstream>(fnTemp, std::ios_base::in | std::ios_base::binary),
-            "application/x-nix-nar"
+            "application/x-nix-nar",
+            context
         ));
     } else {
         stats.narWriteAverted++;
@@ -291,7 +303,7 @@ try {
     /* Atomically write the NAR info file.*/
     if (secretKey) narInfo->sign(*this, *secretKey);
 
-    TRY_AWAIT(writeNarInfo(narInfo));
+    TRY_AWAIT(writeNarInfo(narInfo, context));
 
     stats.narInfoWrite++;
 
@@ -304,22 +316,24 @@ kj::Promise<Result<void>> BinaryCacheStore::addToStore(
     const ValidPathInfo & info,
     AsyncInputStream & narSource,
     RepairFlag repair,
-    CheckSigsFlag checkSigs
+    CheckSigsFlag checkSigs,
+    const Activity * context
 )
 try {
-    if (!repair && TRY_AWAIT(isValidPath(info.path))) {
+    if (!repair && TRY_AWAIT(isValidPath(info.path, context))) {
         // FIXME: copyNAR -> null sink
         TRY_AWAIT(narSource.drain());
         co_return result::success();
     }
 
-    TRY_AWAIT(addToStoreCommon(narSource, repair, checkSigs, {[&](HashResult nar) {
-        /* FIXME reinstate these, once we can correctly do hash modulo sink as
-           needed. We need to throw here in case we uploaded a corrupted store path. */
-        // assert(info.narHash == nar.first);
-        // assert(info.narSize == nar.second);
-        return info;
-    }}));
+    TRY_AWAIT(addToStoreCommon(narSource, repair, checkSigs, context, {[&](HashResult nar) {
+                                   /* FIXME reinstate these, once we can correctly do hash modulo
+                                      sink as needed. We need to throw here in case we uploaded a
+                                      corrupted store path. */
+                                   // assert(info.narHash == nar.first);
+                                   // assert(info.narSize == nar.second);
+                                   return info;
+                               }}));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -336,7 +350,7 @@ kj::Promise<Result<StorePath>> BinaryCacheStore::addToStoreFromDump(
 try {
     if (method != FileIngestionMethod::Recursive || hashAlgo != HashType::SHA256)
         unsupported("addToStoreFromDump");
-    co_return TRY_AWAIT(addToStoreCommon(dump, repair, CheckSigs, [&](HashResult nar) {
+    co_return TRY_AWAIT(addToStoreCommon(dump, repair, CheckSigs, nullptr, [&](HashResult nar) {
         ValidPathInfo info {
             *this,
             name,
@@ -358,12 +372,13 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<bool>> BinaryCacheStore::isValidPathUncached(const StorePath & storePath)
+kj::Promise<Result<bool>>
+BinaryCacheStore::isValidPathUncached(const StorePath & storePath, const Activity * context)
 try {
     // FIXME: this only checks whether a .narinfo with a matching hash
     // part exists. So ‘f4kb...-foo’ matches ‘f4kb...-bar’, even
     // though they shouldn't. Not easily fixed.
-    co_return TRY_AWAIT(fileExists(narInfoFileFor(storePath)));
+    co_return TRY_AWAIT(fileExists(narInfoFileFor(storePath), context));
 } catch (...) {
     co_return result::current_exception();
 }
@@ -383,7 +398,7 @@ try {
 }
 
 kj::Promise<Result<box_ptr<AsyncInputStream>>>
-BinaryCacheStore::narFromPath(const StorePath & storePath)
+BinaryCacheStore::narFromPath(const StorePath & storePath, const Activity * context)
 try {
     struct NarFromPath : AsyncInputStream
     {
@@ -416,12 +431,12 @@ try {
         }
     };
 
-    auto info_ = TRY_AWAIT(queryPathInfo(storePath)).try_cast<const NarInfo>();
+    auto info_ = TRY_AWAIT(queryPathInfo(storePath, context)).try_cast<const NarInfo>();
     assert(info_ && "binary cache queryPathInfo didn't return a NarInfo");
     auto & info = *info_;
 
     try {
-        auto file = TRY_AWAIT(getFile(info->url));
+        auto file = TRY_AWAIT(getFile(info->url, context));
         co_return make_box_ptr<NarFromPath>(stats, info->compression, std::move(file));
     } catch (NoSuchBinaryCacheFile & e) {
         throw SubstituteGone(std::move(e.info()));
@@ -431,17 +446,22 @@ try {
 }
 
 kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
-BinaryCacheStore::queryPathInfoUncached(const StorePath & storePath)
+BinaryCacheStore::queryPathInfoUncached(const StorePath & storePath, const Activity * context)
 try {
     auto uri = getUri();
     auto storePathS = printStorePath(storePath);
-    auto act = std::make_shared<Activity>(*logger, lvlTalkative, actQueryPathInfo,
-        fmt("querying info about '%s' on '%s'", storePathS, uri), Logger::Fields{storePathS, uri});
-    PushActivity pact(act->id);
+    auto act = std::make_shared<Activity>(
+        *logger,
+        lvlTalkative,
+        actQueryPathInfo,
+        fmt("querying info about '%s' on '%s'", storePathS, uri),
+        Logger::Fields{storePathS, uri},
+        context ? context->id : 0
+    );
 
     auto narInfoFile = narInfoFileFor(storePath);
 
-    auto data = TRY_AWAIT(getFileContents(narInfoFile));
+    auto data = TRY_AWAIT(getFileContents(narInfoFile, act.get()));
 
     if (!data) co_return result::success(nullptr);
 
@@ -489,7 +509,7 @@ try {
     auto h = sink.finish().first;
 
     auto source = AsyncGeneratorInputStream{_source.dump()};
-    co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
+    co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, nullptr, [&](HashResult nar) {
         return makeAddToStoreInfo(nar, *this, FileIngestionMethod::Recursive, name, h);
     }))->path;
 } catch (...) {
@@ -511,7 +531,7 @@ try {
     auto h = sink.finish().first;
 
     auto source = AsyncGeneratorInputStream{dumpPath(srcPath)};
-    co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
+    co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, nullptr, [&](HashResult nar) {
         return makeAddToStoreInfo(nar, *this, FileIngestionMethod::Flat, name, h);
     }))->path;
 } catch (...) {
@@ -533,7 +553,7 @@ try {
     StringSink sink;
     sink << dumpString(s);
     AsyncStringInputStream source(sink.s);
-    co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, [&](HashResult nar) {
+    co_return TRY_AWAIT(addToStoreCommon(source, repair, CheckSigs, nullptr, [&](HashResult nar) {
         ValidPathInfo info {
             *this,
             std::string { name },

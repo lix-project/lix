@@ -82,12 +82,13 @@ void HttpBinaryCacheStore::checkEnabled()
     throw SubstituterDisabled("substituter '%s' is disabled", getUri());
 }
 
-kj::Promise<Result<bool>> HttpBinaryCacheStore::fileExists(const std::string & path)
+kj::Promise<Result<bool>>
+HttpBinaryCacheStore::fileExists(const std::string & path, const Activity * context)
 try {
     checkEnabled();
 
     try {
-        co_return TRY_AWAIT(getFileTransfer()->exists(makeURI(path), makeOptions()));
+        co_return TRY_AWAIT(getFileTransfer()->exists(makeURI(path), makeOptions(), context));
     } catch (FileTransferError & e) {
         maybeDisable();
         throw;
@@ -99,13 +100,14 @@ try {
 kj::Promise<Result<void>> HttpBinaryCacheStore::upsertFile(
     const std::string & path,
     std::shared_ptr<std::basic_iostream<char>> istream,
-    const std::string & mimeType
+    const std::string & mimeType,
+        const Activity * context
 )
 try {
     auto data = StreamToSourceAdapter(istream).drain();
     try {
         TRY_AWAIT(getFileTransfer()->upload(
-            makeURI(path), std::move(data), makeOptions({{"Content-Type", mimeType}})
+            makeURI(path), std::move(data), makeOptions({{"Content-Type", mimeType}}), context
         ));
     } catch (FileTransferError & e) {
         throw UploadToHTTP("while uploading to HTTP binary cache at '%s': %s", cacheUri, e.msg());
@@ -116,11 +118,12 @@ try {
 }
 
 kj::Promise<Result<box_ptr<AsyncInputStream>>>
-HttpBinaryCacheStore::getFile(const std::string & path)
+HttpBinaryCacheStore::getFile(const std::string & path, const Activity * context)
 try {
     checkEnabled();
     try {
-        co_return TRY_AWAIT(getFileTransfer()->download(makeURI(path), makeOptions())).second;
+        co_return TRY_AWAIT(getFileTransfer()->download(makeURI(path), makeOptions(), context))
+            .second;
     } catch (FileTransferError & e) {
         if (e.error == FileTransfer::NotFound || e.error == FileTransfer::Forbidden) {
             throw NoSuchBinaryCacheFile(

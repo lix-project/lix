@@ -36,7 +36,7 @@ struct DummyStore final : public Store
     }
 
     kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
-    queryPathInfoUncached(const StorePath & path) override
+    queryPathInfoUncached(const StorePath & path, const Activity * context) override
     {
         return {result::success(nullptr)};
     }
@@ -61,9 +61,18 @@ struct DummyStore final : public Store
         return {result::current_exception()};
     }
 
-    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, AsyncInputStream & source,
-        RepairFlag repair, CheckSigsFlag checkSigs) override
-    try { unsupported("addToStore"); } catch (...) { return {result::current_exception()}; }
+    kj::Promise<Result<void>> addToStore(
+        const ValidPathInfo & info,
+        AsyncInputStream & source,
+        RepairFlag repair,
+        CheckSigsFlag checkSigs,
+        const Activity * context
+    ) override
+    try {
+        unsupported("addToStore");
+    } catch (...) {
+        return {result::current_exception()};
+    }
 
     kj::Promise<Result<StorePath>> addTextToStore(
         std::string_view name,
@@ -72,8 +81,13 @@ struct DummyStore final : public Store
         RepairFlag repair) override
     try { unsupported("addTextToStore"); } catch (...) { return {result::current_exception()}; }
 
-    kj::Promise<Result<box_ptr<AsyncInputStream>>> narFromPath(const StorePath & path) override
-    try { unsupported("narFromPath"); } catch (...) { return {result::current_exception()}; }
+    kj::Promise<Result<box_ptr<AsyncInputStream>>>
+    narFromPath(const StorePath & path, const Activity * context) override
+    try {
+        unsupported("narFromPath");
+    } catch (...) {
+        return {result::current_exception()};
+    }
 
     virtual ref<FSAccessor> getFSAccessor() override
     { unsupported("getFSAccessor"); }

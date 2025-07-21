@@ -56,8 +56,12 @@ struct FileTransfer
     /**
      * Upload some data. May throw a FileTransferError exception.
      */
-    virtual kj::Promise<Result<void>>
-    upload(const std::string & uri, std::string data, FileTransferOptions options = {}) = 0;
+    virtual kj::Promise<Result<void>> upload(
+        const std::string & uri,
+        std::string data,
+        FileTransferOptions options = {},
+        const Activity * context = nullptr
+    ) = 0;
 
     /**
      * Checks whether the given URI exists. For historical reasons this function
@@ -69,8 +73,11 @@ struct FileTransfer
      *
      * S3 objects are downloaded completely to answer this request.
      */
-    virtual kj::Promise<Result<bool>>
-    exists(const std::string & uri, FileTransferOptions options = {}) = 0;
+    virtual kj::Promise<Result<bool>> exists(
+        const std::string & uri,
+        FileTransferOptions options = {},
+        const Activity * context = nullptr
+    ) = 0;
 
     /**
      * Download a file, returning its contents through a source. Will not return
@@ -79,8 +86,11 @@ struct FileTransfer
      * thrown by the returned source. The source will only throw errors detected
      * during the transfer itself (decompression errors, connection drops, etc).
      */
-    virtual kj::Promise<Result<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>>>
-    download(const std::string & uri, FileTransferOptions options = {}) = 0;
+    virtual kj::Promise<Result<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>>> download(
+        const std::string & uri,
+        FileTransferOptions options = {},
+        const Activity * context = nullptr
+    ) = 0;
 
     enum Error { NotFound, Forbidden, Misc, Transient, Interrupted };
 };

@@ -80,13 +80,14 @@ protected:
     void maybeDisable();
     void checkEnabled();
 
-    kj::Promise<Result<bool>> fileExists(const std::string & path) override;
+    kj::Promise<Result<bool>> fileExists(const std::string & path, const Activity * context) override;
     kj::Promise<Result<void>> upsertFile(
         const std::string & path,
         std::shared_ptr<std::basic_iostream<char>> istream,
-        const std::string & mimeType
+        const std::string & mimeType,
+        const Activity * context
     ) override;
-    kj::Promise<Result<box_ptr<AsyncInputStream>>> getFile(const std::string & path) override;
+    kj::Promise<Result<box_ptr<AsyncInputStream>>> getFile(const std::string & path, const Activity * context) override;
 
     std::string makeURI(const std::string & path)
     {

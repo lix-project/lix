@@ -277,7 +277,7 @@ struct LegacySSHStore final : public Store
     }
 
     kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
-    queryPathInfoUncached(const StorePath & path) override
+    queryPathInfoUncached(const StorePath & path, const Activity * context) override
     try {
         auto conn(TRY_AWAIT(connections->get()));
 
@@ -297,8 +297,13 @@ struct LegacySSHStore final : public Store
         co_return result::current_exception();
     }
 
-    kj::Promise<Result<void>> addToStore(const ValidPathInfo & info, AsyncInputStream & source,
-        RepairFlag repair, CheckSigsFlag checkSigs) override
+    kj::Promise<Result<void>> addToStore(
+        const ValidPathInfo & info,
+        AsyncInputStream & source,
+        RepairFlag repair,
+        CheckSigsFlag checkSigs,
+        const Activity * context
+    ) override
     try {
         debug("adding path '%s' to remote host '%s'", printStorePath(info.path), host);
 
@@ -343,7 +348,8 @@ struct LegacySSHStore final : public Store
         co_return result::current_exception();
     }
 
-    kj::Promise<Result<box_ptr<AsyncInputStream>>> narFromPath(const StorePath & path) override
+    kj::Promise<Result<box_ptr<AsyncInputStream>>>
+    narFromPath(const StorePath & path, const Activity * context) override
     try {
         auto conn(TRY_AWAIT(connections->get()));
 

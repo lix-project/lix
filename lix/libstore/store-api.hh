@@ -367,11 +367,13 @@ public:
      * Check whether a path is valid.
      * A path is valid when it exists in the store *now*.
      */
-    kj::Promise<Result<bool>> isValidPath(const StorePath & path);
+    kj::Promise<Result<bool>>
+    isValidPath(const StorePath & path, const Activity * context = nullptr);
 
 protected:
 
-    virtual kj::Promise<Result<bool>> isValidPathUncached(const StorePath & path);
+    virtual kj::Promise<Result<bool>>
+    isValidPathUncached(const StorePath & path, const Activity * context = nullptr);
 
 public:
 
@@ -406,8 +408,8 @@ public:
      * Query information about a valid path. It is permitted to omit
      * the name part of the store path.
      */
-    kj::Promise<Result<ref<const ValidPathInfo>>> queryPathInfo(const StorePath & path);
-
+    kj::Promise<Result<ref<const ValidPathInfo>>>
+    queryPathInfo(const StorePath & path, const Activity * context = nullptr);
 
     /**
      * Check whether the given valid path info is sufficiently attested, by
@@ -432,7 +434,7 @@ protected:
      * Note to implementors: should return `nullptr` when the path is not found.
      */
     virtual kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
-    queryPathInfoUncached(const StorePath & path) = 0;
+    queryPathInfoUncached(const StorePath & path, const Activity * context = nullptr) = 0;
 
 public:
 
@@ -512,7 +514,8 @@ public:
         const ValidPathInfo & info,
         AsyncInputStream & narSource,
         RepairFlag repair = NoRepair,
-        CheckSigsFlag checkSigs = CheckSigs
+        CheckSigsFlag checkSigs = CheckSigs,
+        const Activity * context = nullptr
     ) = 0;
 
     /**
@@ -591,7 +594,8 @@ public:
     /**
      * Generate a NAR dump of a store path.
      */
-    virtual kj::Promise<Result<box_ptr<AsyncInputStream>>> narFromPath(const StorePath & path) = 0;
+    virtual kj::Promise<Result<box_ptr<AsyncInputStream>>>
+    narFromPath(const StorePath & path, const Activity * context = nullptr) = 0;
 
     /**
      * For each path, if it's a derivation, build it.  Building a
@@ -927,8 +931,9 @@ kj::Promise<Result<void>> copyStorePath(
     Store & dstStore,
     const StorePath & storePath,
     RepairFlag repair = NoRepair,
-    CheckSigsFlag checkSigs = CheckSigs);
-
+    CheckSigsFlag checkSigs = CheckSigs,
+    const Activity * context = nullptr
+);
 
 /**
  * Copy store paths from one store to another. The paths may be copied

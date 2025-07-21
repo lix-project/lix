@@ -8,6 +8,7 @@
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libutil/json.hh"
+#include "lix/libutil/logging.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/sync.hh"
@@ -25,6 +26,7 @@
 
 #include <functional>
 #include <kj/async.h>
+#include <memory>
 #include <mutex>
 #include <regex>
 
@@ -600,8 +602,7 @@ try {
     co_return result::current_exception();
 }
 
-
-kj::Promise<Result<bool>> Store::isValidPath(const StorePath & storePath)
+kj::Promise<Result<bool>> Store::isValidPath(const StorePath & storePath, const Activity * context)
 try {
     {
         auto state_(co_await state.lock());
@@ -623,7 +624,7 @@ try {
         }
     }
 
-    bool valid = TRY_AWAIT(isValidPathUncached(storePath));
+    bool valid = TRY_AWAIT(isValidPathUncached(storePath, context));
 
     if (diskCache && !valid)
         // FIXME: handle valid = true case.
@@ -634,12 +635,12 @@ try {
     co_return result::current_exception();
 }
 
-
 /* Default implementation for stores that only implement
    queryPathInfoUncached(). */
-kj::Promise<Result<bool>> Store::isValidPathUncached(const StorePath & path)
+kj::Promise<Result<bool>>
+Store::isValidPathUncached(const StorePath & path, const Activity * context)
 try {
-    TRY_AWAIT(queryPathInfo(path));
+    TRY_AWAIT(queryPathInfo(path, context));
     co_return true;
 } catch (InvalidPath &) {
     co_return false;
@@ -663,8 +664,8 @@ static void ensureGoodStorePath(Store * store, const StorePath & expected, const
     }
 }
 
-
-kj::Promise<Result<ref<const ValidPathInfo>>> Store::queryPathInfo(const StorePath & storePath)
+kj::Promise<Result<ref<const ValidPathInfo>>>
+Store::queryPathInfo(const StorePath & storePath, const Activity * context)
 try {
     auto hashPart = std::string(storePath.hashPart());
 
@@ -693,7 +694,7 @@ try {
         }
     }
 
-    auto info = TRY_AWAIT(queryPathInfoUncached(storePath));
+    auto info = TRY_AWAIT(queryPathInfoUncached(storePath, context));
     if (info) {
         // first, before we cache anything, check that the store gave us valid data.
         ensureGoodStorePath(this, storePath, info->path);
@@ -1039,22 +1040,29 @@ kj::Promise<Result<void>> copyStorePath(
     Store & dstStore,
     const StorePath & storePath,
     RepairFlag repair,
-    CheckSigsFlag checkSigs)
+    CheckSigsFlag checkSigs,
+    const Activity * context
+)
 try {
     /* Bail out early (before starting a download from srcStore) if
        dstStore already has this path. */
-    if (!repair && TRY_AWAIT(dstStore.isValidPath(storePath)))
+    if (!repair && TRY_AWAIT(dstStore.isValidPath(storePath, context))) {
         co_return result::success();
+    }
 
     auto srcUri = srcStore.getUri();
     auto dstUri = dstStore.getUri();
     auto storePathS = srcStore.printStorePath(storePath);
-    Activity act(*logger, lvlInfo, actCopyPath,
+    Activity act(
+        *logger,
+        lvlInfo,
+        actCopyPath,
         makeCopyPathMessage(srcUri, dstUri, storePathS),
-        {storePathS, srcUri, dstUri});
-    PushActivity pact(act.id);
+        {storePathS, srcUri, dstUri},
+        context ? context->id : 0
+    );
 
-    auto info = TRY_AWAIT(srcStore.queryPathInfo(storePath));
+    auto info = TRY_AWAIT(srcStore.queryPathInfo(storePath, &act));
 
     // recompute store path on the chance dstStore does it differently
     if (info->ca && info->references.empty()) {
@@ -1073,8 +1081,8 @@ try {
         info = info2;
     }
 
-    CopyPathStream source{act, info->narSize, TRY_AWAIT(srcStore.narFromPath(storePath))};
-    TRY_AWAIT(dstStore.addToStore(*info, source, repair, checkSigs));
+    CopyPathStream source{act, info->narSize, TRY_AWAIT(srcStore.narFromPath(storePath, &act))};
+    TRY_AWAIT(dstStore.addToStore(*info, source, repair, checkSigs, &act));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -1157,17 +1165,15 @@ try {
 
         struct SinglePathStream : CopyPathStream
         {
-            Activity act;
-            PushActivity pact{act.id};
+            std::shared_ptr<Activity> act;
 
             SinglePathStream(
-                std::string message,
-                Logger::Fields fields,
+                const std::shared_ptr<Activity> & act,
                 size_t expected,
                 box_ptr<AsyncInputStream> inner
             )
-                : CopyPathStream(act, expected, std::move(inner))
-                , act(*logger, lvlInfo, actCopyPath, message, fields)
+                : CopyPathStream(*act, expected, std::move(inner))
+                , act(act)
             {
             }
         };
@@ -1180,12 +1186,16 @@ try {
                 auto srcUri = srcStore.getUri();
                 auto dstUri = dstStore.getUri();
                 auto storePathS = srcStore.printStorePath(missingPath);
+                auto act = std::make_shared<Activity>(
+                    *logger,
+                    lvlInfo,
+                    actCopyPath,
+                    makeCopyPathMessage(srcUri, dstUri, storePathS),
+                    Logger::Fields{storePathS, srcUri, dstUri}
+                );
 
                 co_return make_box_ptr<SinglePathStream>(
-                    makeCopyPathMessage(srcUri, dstUri, storePathS),
-                    Logger::Fields{storePathS, srcUri, dstUri},
-                    info->narSize,
-                    TRY_AWAIT(srcStore.narFromPath(missingPath))
+                    act, info->narSize, TRY_AWAIT(srcStore.narFromPath(missingPath, act.get()))
                 );
             } catch (...) {
                 co_return result::current_exception();

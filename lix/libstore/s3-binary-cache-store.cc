@@ -331,9 +331,10 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
        fetches the .narinfo file, rather than first checking for its
        existence via a HEAD request. Since .narinfos are small, doing
        a GET is unlikely to be slower than HEAD. */
-    kj::Promise<Result<bool>> isValidPathUncached(const StorePath & storePath) override
+    kj::Promise<Result<bool>>
+    isValidPathUncached(const StorePath & storePath, const Activity * context) override
     try {
-        TRY_AWAIT(queryPathInfo(storePath));
+        TRY_AWAIT(queryPathInfo(storePath, context));
         co_return true;
     } catch (InvalidPath & e) {
         co_return false;
@@ -341,7 +342,8 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         co_return result::current_exception();
     }
 
-    kj::Promise<Result<bool>> fileExists(const std::string & path) override
+    kj::Promise<Result<bool>>
+    fileExists(const std::string & path, const Activity * context) override
     try {
         stats.head++;
 
@@ -508,7 +510,8 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
     kj::Promise<Result<void>> upsertFile(
         const std::string & path,
         std::shared_ptr<std::basic_iostream<char>> istream,
-        const std::string & mimeType
+        const std::string & mimeType,
+        const Activity * context
     ) override
     try {
         auto compress = [&](std::string compression)
@@ -536,7 +539,8 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         co_return result::current_exception();
     }
 
-    kj::Promise<Result<box_ptr<AsyncInputStream>>> getFile(const std::string & path) override
+    kj::Promise<Result<box_ptr<AsyncInputStream>>>
+    getFile(const std::string & path, const Activity * context) override
     try {
         stats.get++;
 

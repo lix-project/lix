@@ -178,21 +178,28 @@ struct nop
     { }
 };
 
-ActivityId getCurActivity();
-void setCurActivity(const ActivityId activityId);
-
 struct Activity
 {
     Logger & logger;
 
     const ActivityId id;
 
-    Activity(Logger & logger, Verbosity lvl, ActivityType type, const std::string & s = "",
-        const Logger::Fields & fields = {}, ActivityId parent = getCurActivity());
+    Activity(
+        Logger & logger,
+        Verbosity lvl,
+        ActivityType type,
+        const std::string & s = "",
+        const Logger::Fields & fields = {},
+        ActivityId parent = 0
+    );
 
-    Activity(Logger & logger, ActivityType type,
-        const Logger::Fields & fields = {}, ActivityId parent = getCurActivity())
-        : Activity(logger, lvlError, type, "", fields, parent) { };
+    Activity(
+        Logger & logger,
+        ActivityType type,
+        const Logger::Fields & fields = {},
+        ActivityId parent = 0
+    )
+        : Activity(logger, lvlError, type, "", fields, parent) {};
 
     Activity(const Activity & act) = delete;
 
@@ -218,36 +225,6 @@ struct Activity
     }
 
     friend class Logger;
-};
-
-class PushActivity
-{
-    std::optional<ActivityId> prevAct;
-
-public:
-    PushActivity(ActivityId act) : prevAct(getCurActivity())
-    {
-        setCurActivity(act);
-    }
-
-    PushActivity(PushActivity && other)
-    {
-        std::swap(prevAct, other.prevAct);
-    }
-
-    PushActivity & operator=(PushActivity && other)
-    {
-        auto tmp(std::move(other));
-        std::swap(prevAct, tmp.prevAct);
-        return *this;
-    }
-
-    ~PushActivity()
-    {
-        if (prevAct) {
-            setCurActivity(*prevAct);
-        }
-    }
 };
 
 extern Logger * logger;

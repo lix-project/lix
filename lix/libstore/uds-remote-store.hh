@@ -43,8 +43,11 @@ public:
     ref<FSAccessor> getFSAccessor() override
     { return LocalFSStore::getFSAccessor(); }
 
-    kj::Promise<Result<box_ptr<AsyncInputStream>>> narFromPath(const StorePath & path) override
-    { return LocalFSStore::narFromPath(path); }
+    kj::Promise<Result<box_ptr<AsyncInputStream>>>
+    narFromPath(const StorePath & path, const Activity * context) override
+    {
+        return LocalFSStore::narFromPath(path, context);
+    }
 
     /**
      * Implementation of `IndirectRootStore::addIndirectRoot()` which

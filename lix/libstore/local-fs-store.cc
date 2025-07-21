@@ -85,10 +85,12 @@ ref<FSAccessor> LocalFSStore::getFSAccessor()
             std::dynamic_pointer_cast<LocalFSStore>(shared_from_this())));
 }
 
-kj::Promise<Result<box_ptr<AsyncInputStream>>> LocalFSStore::narFromPath(const StorePath & path)
+kj::Promise<Result<box_ptr<AsyncInputStream>>>
+LocalFSStore::narFromPath(const StorePath & path, const Activity * context)
 try {
-    if (!TRY_AWAIT(isValidPath(path)))
+    if (!TRY_AWAIT(isValidPath(path, context))) {
         throw Error("path '%s' does not exist in store", printStorePath(path));
+    }
     co_return make_box_ptr<AsyncGeneratorInputStream>(
         dumpPath(getRealStoreDir() + std::string(printStorePath(path), config().storeDir.size()))
     );

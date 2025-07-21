@@ -741,10 +741,14 @@ struct curlFileTransfer : public FileTransfer
     }
 #endif
 
-    kj::Promise<Result<void>>
-    upload(const std::string & uri, std::string data, FileTransferOptions options) override
+    kj::Promise<Result<void>> upload(
+        const std::string & uri,
+        std::string data,
+        FileTransferOptions options,
+        const Activity * context
+    ) override
     try {
-        TRY_AWAIT(enqueueFileTransfer(uri, std::move(options), std::move(data), false));
+        TRY_AWAIT(enqueueFileTransfer(uri, std::move(options), std::move(data), false, context));
         co_return result::success();
     } catch (...) {
         co_return result::current_exception();
@@ -873,15 +877,17 @@ struct curlFileTransfer : public FileTransfer
         const std::string & uri,
         FileTransferOptions && options,
         std::optional<std::string> data,
-        bool noBody
+        bool noBody,
+        const Activity * context
     )
     try {
         if (auto eager = TRY_AWAIT(tryEagerTransfers(uri, options, data, noBody))) {
             co_return std::move(*eager);
         }
 
-        auto source =
-            make_box_ptr<TransferStream>(*this, uri, std::move(options), std::move(data), noBody);
+        auto source = make_box_ptr<TransferStream>(
+            *this, uri, std::move(options), std::move(data), noBody, context
+        );
         TRY_AWAIT(source->init());
         TRY_AWAIT(source->awaitData());
         co_return {source->metadata, std::move(source)};
@@ -896,7 +902,7 @@ struct curlFileTransfer : public FileTransfer
         FileTransferOptions options;
         std::optional<std::string> data;
         bool noBody;
-        ActivityId parentAct = getCurActivity();
+        ActivityId parentAct;
 
         std::shared_ptr<TransferItem> transfer;
         FileTransferResult metadata;
@@ -912,13 +918,15 @@ struct curlFileTransfer : public FileTransfer
             const std::string & uri,
             FileTransferOptions && options,
             std::optional<std::string> data,
-            bool noBody
+            bool noBody,
+            const Activity * context
         )
             : parent(parent)
             , uri(uri)
             , options(options)
             , data(std::move(data))
             , noBody(noBody)
+            , parentAct(context ? context->id : 0)
         {
         }
 
@@ -1110,10 +1118,11 @@ struct curlFileTransfer : public FileTransfer
         }
     };
 
-    kj::Promise<Result<bool>> exists(const std::string & uri, FileTransferOptions options) override
+    kj::Promise<Result<bool>>
+    exists(const std::string & uri, FileTransferOptions options, const Activity * context) override
     try {
         try {
-            TRY_AWAIT(enqueueFileTransfer(uri, std::move(options), std::nullopt, true));
+            TRY_AWAIT(enqueueFileTransfer(uri, std::move(options), std::nullopt, true, context));
             co_return true;
         } catch (FileTransferError & e) {
             /* S3 buckets return 403 if a file doesn't exist and the
@@ -1126,10 +1135,11 @@ struct curlFileTransfer : public FileTransfer
         co_return result::current_exception();
     }
 
-    kj::Promise<Result<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>>>
-    download(const std::string & uri, FileTransferOptions options) override
+    kj::Promise<Result<std::pair<FileTransferResult, box_ptr<AsyncInputStream>>>> download(
+        const std::string & uri, FileTransferOptions options, const Activity * context
+    ) override
     {
-        return enqueueFileTransfer(uri, std::move(options), std::nullopt, false);
+        return enqueueFileTransfer(uri, std::move(options), std::nullopt, false, context);
     }
 };
 

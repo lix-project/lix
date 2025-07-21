@@ -43,7 +43,8 @@ public:
     LocalFSStoreConfig & config() override = 0;
     const LocalFSStoreConfig & config() const override = 0;
 
-    kj::Promise<Result<box_ptr<AsyncInputStream>>> narFromPath(const StorePath & path) override;
+    kj::Promise<Result<box_ptr<AsyncInputStream>>>
+    narFromPath(const StorePath & path, const Activity * context) override;
     ref<FSAccessor> getFSAccessor() override;
 
     /**

@@ -686,9 +686,8 @@ try {
     co_return result::current_exception();
 }
 
-
 kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
-LocalStore::queryPathInfoUncached(const StorePath & path)
+LocalStore::queryPathInfoUncached(const StorePath & path, const Activity * context)
 try {
     co_return TRY_AWAIT(
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
@@ -704,7 +703,6 @@ try {
 } catch (...) {
     co_return result::current_exception();
 }
-
 
 std::shared_ptr<const ValidPathInfo> LocalStore::queryPathInfoInternal(DBState & state, const StorePath & path)
 {
@@ -784,8 +782,8 @@ bool LocalStore::isValidPath_(DBState & state, const StorePath & path)
     return state.stmts->QueryPathInfo.use()(printStorePath(path)).next();
 }
 
-
-kj::Promise<Result<bool>> LocalStore::isValidPathUncached(const StorePath & path)
+kj::Promise<Result<bool>>
+LocalStore::isValidPathUncached(const StorePath & path, const Activity * context)
 try {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
     co_return TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<bool>> {
@@ -1088,7 +1086,8 @@ kj::Promise<Result<void>> LocalStore::addToStore(
     const ValidPathInfo & info,
     AsyncInputStream & source,
     RepairFlag repair,
-    CheckSigsFlag checkSigs
+    CheckSigsFlag checkSigs,
+    const Activity * context
 )
 try {
     if (checkSigs && pathInfoIsUntrusted(info))
@@ -1099,7 +1098,7 @@ try {
 
     TRY_AWAIT(addTempRoot(info.path));
 
-    if (repair || !TRY_AWAIT(isValidPath(info.path))) {
+    if (repair || !TRY_AWAIT(isValidPath(info.path, context))) {
 
         std::optional<PathLock> outputLock;
 
@@ -1111,7 +1110,7 @@ try {
         if (!locksHeld.count(printStorePath(info.path)))
             outputLock = TRY_AWAIT(lockPathAsync(realPath));
 
-        if (repair || !TRY_AWAIT(isValidPath(info.path))) {
+        if (repair || !TRY_AWAIT(isValidPath(info.path, context))) {
 
             deletePath(realPath);
 
