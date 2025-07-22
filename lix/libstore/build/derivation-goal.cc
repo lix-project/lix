@@ -904,7 +904,8 @@ void runPostBuildHook(
     proc.getStdout()->drainInto(sink);
 }
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::buildDone() noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::buildDone(std::shared_ptr<Error> remoteError
+) noexcept
 try {
     trace("build done");
 
@@ -917,7 +918,21 @@ try {
        to have terminated.  In fact, the builder could also have
        simply have closed its end of the pipe, so just to be sure,
        kill it. */
-    int status = getChildStatus();
+    int rawStatus = getChildStatus();
+    const auto [exited, exitCode, exitMsg] = [&]() -> std::tuple<bool, int, std::string> {
+        // override exit status with 1 if we received an exception via rpc for
+        // historical reasons: the build hook used to turn build errors into a
+        // log line and an `exit(1)` previously, now it returns the full error
+        if (remoteError) {
+            return {true, 1, "failed on remote builder"};
+        } else {
+            if (WIFEXITED(rawStatus)) {
+                return {true, WEXITSTATUS(rawStatus), statusToString(rawStatus)};
+            } else {
+                return {false, -1, statusToString(rawStatus)};
+            }
+        }
+    }();
 
     debug("builder process for '%s' finished", worker.store.printStorePath(drvPath));
 
@@ -933,11 +948,13 @@ try {
     cleanupPostChildKill();
 
     if (buildResult.cpuUser && buildResult.cpuSystem) {
-        debug("builder for '%s' terminated with status %d, user CPU %.3fs, system CPU %.3fs",
+        debug(
+            "builder for '%s' terminated with status %d, user CPU %.3fs, system CPU %.3fs",
             worker.store.printStorePath(drvPath),
-            status,
+            rawStatus,
             ((double) buildResult.cpuUser->count()) / 1000000,
-            ((double) buildResult.cpuSystem->count()) / 1000000);
+            ((double) buildResult.cpuSystem->count()) / 1000000
+        );
     }
 
     bool diskFull = false;
@@ -945,13 +962,12 @@ try {
     try {
 
         /* Check the exit status. */
-        if (!statusOk(status)) {
+        if (!exited || exitCode != 0) {
 
             diskFull |= cleanupDecideWhetherDiskFull();
 
-            auto msg = fmt("builder for '%s' %s",
-                Magenta(worker.store.printStorePath(drvPath)),
-                statusToString(status));
+            auto msg =
+                fmt("builder for '%s' %s", Magenta(worker.store.printStorePath(drvPath)), exitMsg);
 
             if (!logger->isVerbose() && !logTail.empty()) {
                 msg += fmt(";\nlast %d log lines:\n", logTail.size());
@@ -1002,19 +1018,21 @@ try {
 
         BuildResult::Status st = BuildResult::MiscFailure;
 
-        if (hook && WIFEXITED(status) && WEXITSTATUS(status) == 101)
+        if (hook && exited && exitCode == 101) {
             st = BuildResult::TimedOut;
-
-        else if (hook && (!WIFEXITED(status) || WEXITSTATUS(status) != 100)) {
         }
 
-        else {
+        else if (hook && (!exited || exitCode != 100))
+        {
+        }
+
+        else
+        {
             assert(derivationType);
-            st =
-                dynamic_cast<NotDeterministic*>(&e) ? BuildResult::NotDeterministic :
-                statusOk(status) ? BuildResult::OutputRejected :
-                !derivationType->isSandboxed() || diskFull ? BuildResult::TransientFailure :
-                BuildResult::PermanentFailure;
+            st = dynamic_cast<NotDeterministic *>(&e)        ? BuildResult::NotDeterministic
+                : exited && exitCode == 0                    ? BuildResult::OutputRejected
+                : !derivationType->isSandboxed() || diskFull ? BuildResult::TransientFailure
+                                                             : BuildResult::PermanentFailure;
         }
 
         co_return done(st, {}, std::move(e));
@@ -1118,7 +1136,7 @@ try {
     buildResult.startTime = time(0); // inexact
     started();
 
-    TRY_AWAIT_RPC(runPromise);
+    auto result = co_await runPromise;
 
     // close the rpc connection to have the hook exit
     hook->rpc = nullptr;
@@ -1128,7 +1146,13 @@ try {
     if (auto error = TRY_AWAIT(output)) {
         co_return HookResult::Accept{std::move(*error)};
     }
-    co_return HookResult::Accept{TRY_AWAIT(buildDone())};
+
+    std::shared_ptr<Error> remoteError;
+    if (result.getResult().isBad()) {
+        remoteError = std::make_shared<Error>(from(result.getResult().getBad()));
+        logger->logEI(remoteError->info());
+    }
+    co_return HookResult::Accept{TRY_AWAIT(buildDone(remoteError))};
 } catch (...) {
     co_return result::current_exception();
 }

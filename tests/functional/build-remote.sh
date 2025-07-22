@@ -78,3 +78,25 @@ out="$(nix-build 2>&1 failing.nix \
 
 build_dir="$(grep "note: keeping build" <<< "$out" | sed -E "s/^(.*)note: keeping build directory '(.*)'(.*)$/\2/")"
 [[ "foo" = $(<"$build_dir"/b/bar) ]]
+
+# regression fj#928: --keep-going doesn't keep going with remote builders
+output="$(nix-build 2>&1 \
+  --store $TEST_ROOT/machine0 \
+  --builders "ssh-ng://localhost?remote-store=$TEST_ROOT/machine3 - - 1 1" \
+  --keep-going \
+  --max-jobs 0 \
+  --expr '
+    let
+      fail = n: derivation {
+        name = n;
+        system = builtins.currentSystem;
+        builder = "/bin/sh";
+        args = [ "-c" "false" ];
+      };
+    in {
+      a = fail "a";
+      b = fail "b";
+    }
+  ' || true)"
+grep 'a.drv. failed on remote builder' <<<"$output"
+grep 'b.drv. failed on remote builder' <<<"$output"
