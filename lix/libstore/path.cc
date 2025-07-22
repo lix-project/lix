@@ -8,9 +8,11 @@ static void checkName(std::string_view path, std::string_view name)
 {
     if (name.empty())
         throw BadStorePath("store path '%s' has an empty name", path);
-    if (name.size() > StorePath::MaxPathLen)
-        throw BadStorePath("store path '%s' has a name longer than %d characters",
-            path, StorePath::MaxPathLen);
+    if (name.size() > StorePath::MAX_PATH_LEN) {
+        throw BadStorePath(
+            "store path '%s' has a name longer than %d characters", path, StorePath::MAX_PATH_LEN
+        );
+    }
     // See nameRegexStr for the definition
     if (name[0] == '.') {
         // check against "." and "..", followed by end or dash
@@ -36,8 +38,9 @@ static void checkName(std::string_view path, std::string_view name)
 StorePath::StorePath(std::string_view _baseName)
     : baseName(_baseName)
 {
-    if (baseName.size() < HashLen + 1)
+    if (baseName.size() < HASH_PART_LEN + 1) {
         throw BadStorePath("'%s' is too short to be a valid store path", baseName);
+    }
     for (auto c : hashPart())
         if (c == 'e' || c == 'o' || c == 'u' || c == 't'
             || !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z')))
@@ -48,6 +51,7 @@ StorePath::StorePath(std::string_view _baseName)
 StorePath::StorePath(const Hash & hash, std::string_view _name)
     : baseName((hash.to_string(Base::Base32, false) + "-").append(std::string(_name)))
 {
+    assert(hash.base32Len() == HASH_PART_LEN);
     checkName(baseName, name());
 }
 

@@ -76,7 +76,7 @@ try {
                                 std::string(contents, pos2, pos - pos2 + hash.size() + margin)
                             ),
                             pos - pos2,
-                            StorePath::HashLen,
+                            StorePath::HASH_PART_LEN,
                             getColour(hash)
                         ))
                 );
@@ -88,9 +88,9 @@ try {
         for (auto & hash : hashes) {
             auto pos = target.find(hash);
             if (pos != std::string::npos) {
-                hits[hash].emplace_back(
-                    fmt("%s -> %s", p2, hilite(target, pos, StorePath::HashLen, getColour(hash)))
-                );
+                hits[hash].emplace_back(fmt(
+                    "%s -> %s", p2, hilite(target, pos, StorePath::HASH_PART_LEN, getColour(hash))
+                ));
             }
         }
     }

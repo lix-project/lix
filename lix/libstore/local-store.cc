@@ -911,7 +911,9 @@ try {
 kj::Promise<Result<std::optional<StorePath>>>
 LocalStore::queryPathFromHashPart(const std::string & hashPart)
 try {
-    if (hashPart.size() != StorePath::HashLen) throw Error("invalid hash part");
+    if (hashPart.size() != StorePath::HASH_PART_LEN) {
+        throw Error("invalid hash part");
+    }
 
     Path prefix = config_.storeDir + "/" + hashPart;
 
