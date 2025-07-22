@@ -243,7 +243,7 @@ TEST(FileTransfer, exceptionAbortsRead)
         aio.blockOn(
             aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->read(buf, 10)
         ),
-        0
+        std::nullopt
     );
 }
 
@@ -329,10 +329,11 @@ TEST(FileTransfer, stalledReaderDoesntBlockOthers)
         size_t dropped = 0;
         while (size > 0) {
             auto round = std::min(size, sizeof(buf));
-            round = aio.blockOn(source.read(buf, round));
-            if (round == 0) {
+            auto got = aio.blockOn(source.read(buf, round));
+            if (!got) {
                 break;
             }
+            round = *got;
             size -= round;
             dropped += round;
         }

@@ -356,7 +356,7 @@ struct LegacySSHStore final : public Store
 
             NarStream(Pool<Connection>::Handle conn) : conn(std::move(conn)) {}
 
-            kj::Promise<Result<size_t>> read(void * buffer, size_t size) override
+            kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) override
             {
                 return copier->read(buffer, size);
             }

@@ -1211,12 +1211,10 @@ try {
             free(toRealloc);
             throw std::bad_alloc();
         }
-        auto got = 0;
-        Finally cleanup([&]() {
-            dump = {dumpBuffer.get(), dump.size() + got};
-        });
+        std::optional<size_t> got = std::nullopt;
+        Finally cleanup([&]() { dump = {dumpBuffer.get(), dump.size() + got.value_or(0)}; });
         got = TRY_AWAIT(source.read(dumpBuffer.get() + oldSize, want));
-        if (got == 0) {
+        if (!got) {
             inMemory = true;
             break;
         }
@@ -1234,7 +1232,7 @@ try {
             bool useSecond = false;
             ChainSource(AsyncInputStream & s1, AsyncInputStream & s2) : source1(s1), source2(s2) {}
 
-            kj::Promise<Result<size_t>> read(void * data, size_t len) override
+            kj::Promise<Result<std::optional<size_t>>> read(void * data, size_t len) override
             try {
                 if (useSecond) {
                     co_return TRY_AWAIT(source2.read(data, len));

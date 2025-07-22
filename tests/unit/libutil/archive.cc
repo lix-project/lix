@@ -421,7 +421,7 @@ TEST_P(NarTest, parseCopiedAsync)
     }
 
     char buf;
-    ASSERT_EQ(input.read(&buf, 1).wait(ws).value(), 0);
+    ASSERT_EQ(input.read(&buf, 1).wait(ws).value(), std::nullopt);
 }
 
 TEST_P(NarTest, index)

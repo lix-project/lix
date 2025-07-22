@@ -737,7 +737,7 @@ try {
         {
         }
 
-        kj::Promise<Result<size_t>> read(void * buffer, size_t size) override
+        kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) override
         {
             return narCopier->read(buffer, size);
         }
@@ -788,7 +788,12 @@ try {
             KJ_DEFER(resetBlockingState(getFD(), oldState));
             while (fromBuf->used() < sizeof(uint64_t)) {
                 const auto available = fromBuf->getWriteBuffer();
-                fromBuf->added(TRY_AWAIT(stream.read(available.data(), available.size())));
+                const auto got = TRY_AWAIT(stream.read(available.data(), available.size()));
+                if (got) {
+                    fromBuf->added(*got);
+                } else {
+                    throw Error("Nix daemon disconnected while waiting for a response");
+                }
             }
         }
 

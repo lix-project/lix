@@ -596,31 +596,32 @@ struct AsyncCopier : AsyncInputStream
 
     explicit AsyncCopier(AsyncInputStream & source) : source(source) {}
 
-    kj::Promise<Result<size_t>> read(void * buffer, size_t size) override
+    kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) override
     try {
         while (current.pending == 0) {
             if (auto want = stream.next()) {
                 current = *want;
             } else {
-                co_return 0;
+                co_return std::nullopt;
             }
         }
 
         size = std::min<uint64_t>(current.pending, size);
         if (size == 0) {
-            co_return 0;
+            co_return std::nullopt;
         }
 
         auto got = TRY_AWAIT(source.read(buffer, size));
-        current.pending -= got;
-        if (got == 0) {
+        if (!got) {
             throw badArchive("truncated NAR encountered");
-        } else if (!current.pendingFileContents) {
-            auto end = this->buffer.size();
-            this->buffer.resize(end + got);
-            memcpy(this->buffer.data() + end, buffer, got);
         }
-        co_return got;
+        current.pending -= *got;
+        if (!current.pendingFileContents) {
+            auto end = this->buffer.size();
+            this->buffer.resize(end + *got);
+            memcpy(this->buffer.data() + end, buffer, *got);
+        }
+        co_return *got;
     } catch (...) {
         co_return result::current_exception();
     }
@@ -673,11 +674,12 @@ struct AsyncParser
     try {
         while (n > 0) {
             auto got = TRY_AWAIT(source.read(buffer, n));
-            if (got == 0) {
+            if (!got) {
                 throw badArchive("unexpected end of nar encountered");
             }
-            buffer += got;
-            n -= got;
+
+            buffer += *got;
+            n -= *got;
         }
         co_return result::success();
     } catch (...) {
@@ -814,10 +816,10 @@ try {
 
         NarSource(AsyncInputStream & source) : source(source) {}
 
-        kj::Promise<Result<size_t>> read(void * data, size_t len) override
+        kj::Promise<Result<std::optional<size_t>>> read(void * data, size_t len) override
         try {
             auto n = TRY_AWAIT(source.read(data, len));
-            pos += n;
+            pos += n.value_or(0);
             co_return n;
         } catch (...) {
             co_return result::current_exception();

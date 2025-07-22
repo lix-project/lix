@@ -345,8 +345,8 @@ struct DecompressionStream : DecompressorPipes, AsyncInputStream
             if (buf.used() == 0) {
                 const auto space = buf.getWriteBuffer();
                 const auto got = TRY_AWAIT(inner->read(space.data(), space.size()));
-                if (got > 0) {
-                    buf.added(got);
+                if (got) {
+                    buf.added(*got);
                 } else {
                     co_return;
                 }
@@ -371,7 +371,7 @@ struct DecompressionStream : DecompressorPipes, AsyncInputStream
         feedExc = std::current_exception();
     }
 
-    kj::Promise<Result<size_t>> read(void * buffer, size_t size) override
+    kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) override
     try {
         while (true) {
             if (const auto got = ::read(uncompressed.readSide.get(), buffer, size); got > 0) {
@@ -379,7 +379,7 @@ struct DecompressionStream : DecompressorPipes, AsyncInputStream
             } else if (got == 0) {
                 // decompresser must have finished, poll for any errors and return EOF
                 thread.get();
-                co_return 0;
+                co_return std::nullopt;
             } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 co_await readObserver->whenBecomesReadable();
             } else {

@@ -27,8 +27,8 @@ class AsyncInputStream : private kj::AsyncObject
 public:
     virtual ~AsyncInputStream() noexcept(false) {}
 
-    // expected to return 0 only on EOF or when `size = 0` was explicitly set.
-    virtual kj::Promise<Result<size_t>> read(void * buffer, size_t size) = 0;
+    // expected to return none only on EOF or when `size = 0` was explicitly set.
+    virtual kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) = 0;
 
     kj::Promise<Result<void>> drainInto(Sink & sink);
     kj::Promise<Result<void>> drainInto(AsyncOutputStream & stream);
@@ -48,7 +48,7 @@ public:
     AsyncSourceInputStream(Source & inner) : inner(inner) {}
     AsyncSourceInputStream(box_ptr<Source> inner) : inner(*inner), owned(std::move(inner).take()) {}
 
-    kj::Promise<Result<size_t>> read(void * buffer, size_t size) override;
+    kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) override;
 };
 
 class AsyncStringInputStream : public AsyncInputStream
@@ -58,7 +58,7 @@ class AsyncStringInputStream : public AsyncInputStream
 public:
     explicit AsyncStringInputStream(std::string_view s) : s(s) {}
 
-    kj::Promise<Result<size_t>> read(void * buffer, size_t size) override;
+    kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) override;
 };
 
 // this writes to sources instead of async streams because none of the sinks
@@ -71,7 +71,7 @@ class AsyncTeeInputStream : public AsyncInputStream
 public:
     AsyncTeeInputStream(AsyncInputStream & inner, Sink & sink) : inner(inner), sink(sink) {}
 
-    kj::Promise<Result<size_t>> read(void * buffer, size_t size) override;
+    kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) override;
 };
 
 class AsyncGeneratorInputStream : public AsyncInputStream
@@ -83,7 +83,7 @@ private:
 public:
     AsyncGeneratorInputStream(Generator<Bytes> && g) : g(std::move(g)) {}
 
-    kj::Promise<Result<size_t>> read(void * data, size_t len) override;
+    kj::Promise<Result<std::optional<size_t>>> read(void * data, size_t len) override;
 };
 
 class AsyncBufferedInputStream : public AsyncInputStream
@@ -105,7 +105,7 @@ public:
 
     KJ_DISALLOW_COPY_AND_MOVE(AsyncBufferedInputStream);
 
-    kj::Promise<Result<size_t>> read(void * data, size_t size) override;
+    kj::Promise<Result<std::optional<size_t>>> read(void * data, size_t size) override;
 };
 
 class AsyncOutputStream : private kj::AsyncObject
@@ -180,7 +180,7 @@ public:
         return fd;
     }
 
-    kj::Promise<Result<size_t>> read(void * tgt, size_t size) override;
+    kj::Promise<Result<std::optional<size_t>>> read(void * tgt, size_t size) override;
     kj::Promise<Result<size_t>> write(const void * src, size_t size) override;
 };
 

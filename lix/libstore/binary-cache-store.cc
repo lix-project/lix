@@ -399,12 +399,12 @@ try {
         {
         }
 
-        kj::Promise<Result<size_t>> read(void * buffer, size_t size) override
+        kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) override
         {
             return decompressed->read(buffer, size).then([&](auto r) {
                 if (r.has_value()) {
-                    if (r.value() > 0) {
-                        total += r.value();
+                    if (r.value()) {
+                        total += *r.value();
                     } else {
                         stats.narRead++;
                         // stats.narReadCompressedBytes += nar->size(); // FIXME

@@ -450,7 +450,7 @@ try {
     try {
         while (true) {
             if (auto n = TRY_AWAIT(source.read(buf.data(), buf.size()))) {
-                writeFull(fd.get(), {buf.data(), n});
+                writeFull(fd.get(), {buf.data(), *n});
             } else {
                 break;
             }

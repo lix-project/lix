@@ -1020,11 +1020,13 @@ struct CopyPathStream : AsyncInputStream
     {
     }
 
-    kj::Promise<Result<size_t>> read(void * data, size_t len) override
+    kj::Promise<Result<std::optional<size_t>>> read(void * data, size_t len) override
     try {
         auto result = TRY_AWAIT(inner->read(data, len));
-        copied += result;
-        act.progress(copied, expected);
+        if (result) {
+            copied += *result;
+            act.progress(copied, expected);
+        }
         co_return result;
     } catch (...) {
         co_return result::current_exception();

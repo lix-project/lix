@@ -1229,7 +1229,11 @@ try {
     while (true) {
         std::string_view data;
         try {
-            data = {buf.begin(), TRY_AWAIT(in.read(buf.begin(), buf.size()))};
+            if (const auto got = TRY_AWAIT(in.read(buf.begin(), buf.size()))) {
+                data = {buf.begin(), *got};
+            } else {
+                co_return std::nullopt;
+            }
         } catch (SysError & e) {
             // the builder output stream may be a pty fd, and closing one pty
             // endpoint sends EIO to the other endpoint. this is a good exit.
@@ -1272,12 +1276,13 @@ DerivationGoal::handleHookOutput(AsyncInputStream & in) noexcept
 try {
     auto buf = kj::heapArray<char>(4096);
     while (true) {
-        std::string_view data = {buf.begin(), TRY_AWAIT(in.read(buf.begin(), buf.size()))};
-        lastChildActivity = AIO().provider.getTimer().now();
-
-        if (data.empty()) {
+        const auto got = TRY_AWAIT(in.read(buf.begin(), buf.size()));
+        if (!got) {
             co_return std::nullopt;
         }
+
+        std::string_view data = {buf.begin(), *got};
+        lastChildActivity = AIO().provider.getTimer().now();
 
         for (auto c : data)
             if (c == '\n') {

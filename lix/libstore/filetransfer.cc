@@ -802,12 +802,17 @@ struct curlFileTransfer : public FileTransfer
                 {
                     AutoCloseFD fd;
                     OwningFdStream(AutoCloseFD fd) : fd(std::move(fd)) {}
-                    kj::Promise<Result<size_t>> read(void * buffer, size_t size) override
+                    kj::Promise<Result<std::optional<size_t>>>
+                    read(void * buffer, size_t size) override
                     {
                         // NOTE the synchronous implementation used to have a buffer for
                         // file data, but we cannot be bothered to treat this edge case.
                         if (const auto got = ::read(fd.get(), buffer, size); got >= 0) {
-                            return {result::success(got)};
+                            if (got == 0) {
+                                return {result::success(std::nullopt)};
+                            } else {
+                                return {result::success(got)};
+                            }
                         } else {
                             return {result::failure(std::make_exception_ptr(SysError("reading file")
                             ))};
@@ -1071,7 +1076,7 @@ struct curlFileTransfer : public FileTransfer
             co_return result::current_exception();
         }
 
-        kj::Promise<Result<size_t>> read(void * buffer, size_t len) override
+        kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t len) override
         try {
             TRACE(LIX_STORE_FILETRANSFER_READ(uri.c_str(), len));
 
@@ -1084,7 +1089,11 @@ struct curlFileTransfer : public FileTransfer
                 total += available;
             }
 
-            co_return total;
+            if (total == 0) {
+                co_return std::nullopt;
+            } else {
+                co_return total;
+            }
         } catch (...) {
             co_return result::current_exception();
         }
