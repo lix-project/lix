@@ -1,4 +1,20 @@
 # Lix 2.93 "Bici Bici" (2025-05-09)
+# Lix 2.93.3 (2025-07-22)
+## Improvements
+
+- `--keep-failed` chowns the build directory to the user that request the build [cl/3678](https://gerrit.lix.systems/c/lix/+/3678)
+
+  Running a build with `--keep-failed` now chowns the temporary directory from the
+  builder user and group to the user that request the build if the build came from
+  a local user connected to the daemon. This makes inspecting failed derivations a
+  lot easier. On Linux the build directory made visible to the user will not be in
+  the same path as it was in the sandbox and continuing builds will usually break.
+
+  Many thanks to [eldritch horrors](https://git.lix.systems/pennae) for this.
+
+
+
+
 # Lix 2.93.2 (2025-06-30)
 ## Fixes
 
