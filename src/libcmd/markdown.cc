@@ -11,13 +11,28 @@ namespace nix {
 std::string renderMarkdownToTerminal(std::string_view markdown)
 {
     int windowWidth = getWindowSize().second;
+    size_t lowdown_cols = std::max(windowWidth - 5, 60);
 
-    struct lowdown_opts opts {
+    struct lowdown_opts opts{
         .type = LOWDOWN_TERM,
+#ifdef LOWDOWN_SEPARATE_TERM_OPTS
+        .term =
+            {
+                .cols = lowdown_cols,
+                .width = 0,
+                .hmargin = 0,
+                .hpadding = 4,
+                .vmargin = 0,
+                .centre = 0,
+            },
+        // maxdepth needs to be part of the ifdefs to match declaration order
         .maxdepth = 20,
-        .cols = (size_t) std::max(windowWidth - 5, 60),
+#else
+        .maxdepth = 20,
+        .cols = lowdown_cols,
         .hmargin = 0,
         .vmargin = 0,
+#endif /* LOWDOWN_SEPARATE_TERM_OPTS */
         .feat = LOWDOWN_COMMONMARK | LOWDOWN_FENCED | LOWDOWN_DEFLIST | LOWDOWN_TABLES,
         .oflags = LOWDOWN_TERM_NOLINK,
     };

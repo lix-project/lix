@@ -301,6 +301,11 @@ editline = dependency('libeditline', 'editline', version : '>=1.14', required : 
 
 lowdown = dependency('lowdown', version : '>=0.9.0', required : true, include_type : 'system')
 
+# TODO(sterni): drop the corresponding #ifdef after NixOS 25.05 is EOL which still distributes lowdown < 1.4.0
+if lowdown.version().version_compare('>= 1.4.0')
+  add_project_arguments('-DLOWDOWN_SEPARATE_TERM_OPTS', language: 'cpp')
+endif
+
 # HACK(Qyriad): rapidcheck's pkg-config doesn't include the libs lol
 # Note: technically we 'check' for rapidcheck twice, for the internal-api-docs handling above,
 # but Meson will cache the result of the first one, and the required : arguments are different.
