@@ -1,12 +1,11 @@
   nix-repl> 1 + 1
   2
 
-  nix-repl> :doc builtins.head
-  Synopsis: builtins.head list
+  nix-repl> :doc builtins.add
+  Synopsis: builtins.add e1 e2
 
-      Return the first element of a list; abort evaluation if
-      the argument isn’t a list or is an empty list. You can
-      test whether a list is empty by comparing it with [].
+      Return the sum of the numbers e1 and e2.
+
 
   nix-repl> f = a: "" + a
 
