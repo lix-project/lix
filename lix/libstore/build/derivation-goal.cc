@@ -1085,6 +1085,7 @@ try {
     RPC_FILL(buildReq, setNeededSystem, drv->platform);
     RPC_FILL(buildReq, initDrvPath, drvPath, worker.store);
     RPC_FILL(buildReq, initRequiredFeatures, parsedDrv->getRequiredSystemFeatures());
+    buildReq.setBuildLogger(kj::heap<BuildHookLogger>(std::move(logPipe.writeSide)));
     auto buildRespPromise = buildReq.send();
     auto buildResp = TRY_AWAIT_RPC(buildRespPromise);
 
@@ -1112,7 +1113,6 @@ try {
     /* Tell the hook all the inputs that have to be copied to the
        remote system. */
     RPC_FILL(runReq, initInputs, inputPaths, worker.store);
-    runReq.setBuildLogger(kj::heap<BuildHookLogger>(std::move(logPipe.writeSide)));
 
     /* Tell the hooks the missing outputs that have to be copied back
        from the remote system. */

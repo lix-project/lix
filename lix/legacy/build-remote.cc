@@ -213,11 +213,18 @@ struct AcceptedBuild final : rpc::build_remote::HookInstance::AcceptedBuild::Ser
     ref<Store> store;
     StorePath drvPath;
     BuilderConnection builder;
+    rpc::build_remote::HookInstance::BuildLogger::Client buildLogger;
 
-    AcceptedBuild(ref<Store> store, StorePath drvPath, BuilderConnection builder)
+    AcceptedBuild(
+        ref<Store> store,
+        StorePath drvPath,
+        BuilderConnection builder,
+        rpc::build_remote::HookInstance::BuildLogger::Client buildLogger
+    )
         : store(store)
         , drvPath(drvPath)
         , builder(std::move(builder))
+        , buildLogger(std::move(buildLogger))
     {
     }
 
@@ -382,6 +389,7 @@ kj::Promise<void> Instance::build(BuildContext context)
         auto drvPath = from(context.getParams().getDrvPath(), *store);
         auto requiredFeatures =
             rpc::to<std::set<std::string>>(context.getParams().getRequiredFeatures());
+        auto buildLogger = context.getParams().getBuildLogger();
 
         auto result = TRY_AWAIT(connectToBuilder(
             store, drvPath, machines, maxBuildJobs, amWilling, neededSystem, requiredFeatures
@@ -403,7 +411,7 @@ kj::Promise<void> Instance::build(BuildContext context)
 
         auto ac = context.getResults().initResult().initGood().initAccept();
         RPC_FILL(ac, setMachineName, builder->storeUri);
-        ac.setMachine(kj::heap<AcceptedBuild>(store, drvPath, std::move(*builder)));
+        ac.setMachine(kj::heap<AcceptedBuild>(store, drvPath, std::move(*builder), buildLogger));
     } catch (...) {
         RPC_FILL(context.getResults(), initResult, std::current_exception());
     }
@@ -412,8 +420,7 @@ kj::Promise<void> Instance::build(BuildContext context)
 kj::Promise<void> AcceptedBuild::run(RunContext context)
 {
     try {
-        auto builderLogger = context.getParams().getBuildLogger();
-        const int logFD = (co_await builderLogger.getFd()).orDefault(-1);
+        const int logFD = (co_await buildLogger.getFd()).orDefault(-1);
         if (logFD < 0) {
             throw Error("build-hook needs a logFD from the builder to build");
         }

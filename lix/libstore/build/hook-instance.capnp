@@ -16,7 +16,6 @@ interface HookInstance {
     run @0 (
       inputs :List(StoreTypes.StorePath), # actual a set
       wantedOutputs :List(Data), # actually StringSet
-      buildLogger :BuildLogger,
     ) -> (result :Types.ResultV);
   }
 
@@ -36,6 +35,7 @@ interface HookInstance {
     amWilling :Bool,
     neededSystem :Data,
     drvPath :StoreTypes.StorePath,
-    requiredFeatures :List(Data)
+    requiredFeatures :List(Data),
+    buildLogger :BuildLogger,
   ) -> (result :Types.Result(BuildResponse));
 }
