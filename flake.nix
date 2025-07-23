@@ -238,6 +238,16 @@
           boehmgc-nix = final.nix.passthru.boehmgc-nix;
           # And same thing for our build-release-notes package.
           build-release-notes = final.nix.passthru.build-release-notes;
+
+          lowdown = prev.lowdown.overrideAttrs (prevAttrs: rec {
+            version = "2.0.2";
+            src = final.fetchurl {
+              url = "https://kristaps.bsd.lv/lowdown/snapshots/lowdown-${version}.tar.gz";
+              sha512 = "2a4d0rqh8gkw4ca3gkzddp0hjpmmw74cbks8k0inhh0vizmgbn188zdv6m1kgmr019b99g7insli8js3ci1ji7y4n5nk704bswf3z3i";
+            };
+            nativeBuildInputs = prevAttrs.nativeBuildInputs ++ [ final.bmake ];
+            postInstall = lib.replaceStrings [ "lowdown.so.1" ] [ "lowdown.so.2" ] prevAttrs.postInstall;
+          });
         };
     in
     {
