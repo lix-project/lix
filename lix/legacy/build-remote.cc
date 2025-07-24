@@ -496,14 +496,6 @@ kj::Promise<void> AcceptedBuild::run(RunContext context)
             }
             optResult =
                 TRY_AWAIT(sshStore->buildDerivation(drvPath, (const BasicDerivation &) drv));
-            auto & result = *optResult;
-            if (!result.success())
-                throw Error(
-                    "build of '%s' on '%s' failed: %s",
-                    store->printStorePath(drvPath),
-                    storeUri,
-                    result.errorMsg
-                );
         } else {
             TRY_AWAIT(copyClosure(
                 *store, *sshStore, StorePathSet{drvPath}, NoRepair, NoCheckSigs, substitute
@@ -517,6 +509,15 @@ kj::Promise<void> AcceptedBuild::run(RunContext context)
             optResult = std::move(res[0]);
         }
 
+        auto & result = *optResult;
+        if (!result.success()) {
+            throw Error(
+                "build of '%s' on '%s' failed: %s",
+                store->printStorePath(drvPath),
+                storeUri,
+                result.errorMsg
+            );
+        }
 
         StorePathSet missingPaths;
         auto outputPaths = drv.outputsAndPaths(*store);
