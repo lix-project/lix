@@ -1599,13 +1599,14 @@ try {
             }
 
         auto pathS = printStorePath(path);
+        auto physicalPathS = toRealPath(pathS);
 
         if (canInvalidate) {
-            printInfo("path '%s' disappeared, removing from database...", pathS);
+            printInfo("path '%s' disappeared, removing from database...", physicalPathS);
             auto state(co_await _dbState.lock());
             TRY_AWAIT(invalidatePath(*state, path));
         } else {
-            printError("path '%s' disappeared, but it still has valid referrers!", pathS);
+            printError("path '%s' disappeared, but it still has valid referrers!", physicalPathS);
             if (repair)
                 try {
                     TRY_AWAIT(repairPath(path));
