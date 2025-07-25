@@ -389,10 +389,11 @@ try {
     printInfo("checking path '%s'...", store.toRealPath(store.printStorePath(path)));
     auto info = TRY_AWAIT(store.queryPathInfo(path));
     bool res;
-    if (!pathExists(store.printStorePath(path)))
+    if (!pathExists(store.toRealPath(store.printStorePath(path)))) {
         res = false;
-    else {
-        HashResult current = hashPath(info->narHash.type, store.printStorePath(path));
+    } else {
+        HashResult current =
+            hashPath(info->narHash.type, store.toRealPath(store.printStorePath(path)));
         Hash nullHash(HashType::SHA256);
         res = info->narHash == nullHash || info->narHash == current.first;
     }

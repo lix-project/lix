@@ -67,6 +67,7 @@ functional_tests_scripts = [
   'nix-build.sh',
   'gc-concurrent.sh',
   'repair.sh',
+  'repair-chroot.sh',
   'fixed.sh',
   'export-graph.sh',
   'timeout.sh',
