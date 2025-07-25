@@ -674,7 +674,9 @@ try {
         if (res && res->isKnownNow()) {
             stats.narInfoReadAverted++;
             if (!res->didExist())
-                throw InvalidPath("path '%s' does not exist in the store", printStorePath(storePath));
+                throw InvalidPath(
+                    "path '%s' does not exist in the store", toRealPath(printStorePath(storePath))
+                );
             co_return ref<const ValidPathInfo>::unsafeFromPtr(res->value);
         }
     }
@@ -688,7 +690,10 @@ try {
                 state_->pathInfoCache.upsert(std::string(storePath.to_string()),
                     res.first == NarInfoDiskCache::oInvalid ? PathInfoCacheValue{} : PathInfoCacheValue{ .value = res.second });
                 if (res.first == NarInfoDiskCache::oInvalid)
-                    throw InvalidPath("path '%s' does not exist in the store", printStorePath(storePath));
+                    throw InvalidPath(
+                        "path '%s' does not exist in the store",
+                        toRealPath(printStorePath(storePath))
+                    );
             }
             co_return ref<const ValidPathInfo>::unsafeFromPtr(res.second);
         }
@@ -711,7 +716,9 @@ try {
 
     if (!info) {
         stats.narInfoMissing++;
-        throw InvalidPath("path '%s' does not exist in the store", printStorePath(storePath));
+        throw InvalidPath(
+            "path '%s' does not exist in the store", toRealPath(printStorePath(storePath))
+        );
     }
 
     co_return ref<const ValidPathInfo>::unsafeFromPtr(info);
