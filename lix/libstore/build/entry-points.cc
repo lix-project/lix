@@ -160,7 +160,11 @@ try {
                 return goals;
             }));
         } else
-            throw Error(results.failingExitStatus, "cannot repair path '%s'", printStorePath(path));
+            throw Error(
+                results.failingExitStatus,
+                "cannot repair path '%s'",
+                toRealPath(printStorePath(path))
+            );
     }
 
     co_return result::success();
