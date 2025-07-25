@@ -1147,7 +1147,7 @@ void LocalDerivationGoal::runChild()
                    happens when testing Nix building fixed-output derivations
                    within a pure derivation. */
                 for (auto & path : { "/etc/services", "/etc/hosts" })
-                    if (pathExists(path)) {
+                    if (pathAccessible(path, true)) {
                         // Copy the actual file, not the symlink, because we don't know where
                         // the symlink is pointing, and we don't want to chase down the entire
                         // chain.
@@ -1165,18 +1165,52 @@ void LocalDerivationGoal::runChild()
                         // I also just generally feel icky about modifying sandbox state under a build,
                         // even though it really shouldn't be a big deal. -K900
                         copyFile(path, chrootRootDir + path, { .followSymlinks = true });
+                    } else if (pathExists(path)) {
+                        // The path exist but we were not able to access it. This is not a fatal
+                        // error, warn about this so the user can remediate.
+                        warn(
+                            "'%1%' exists but is inaccessible, it will not be copied in the "
+                            "sandbox",
+                            path
+                        );
                     }
 
-                if (pathExists("/etc/resolv.conf")) {
+                if (pathAccessible("/etc/resolv.conf", true)) {
                     const auto resolvConf = rewriteResolvConf(readFile("/etc/resolv.conf"));
                     writeFile(chrootRootDir + "/etc/resolv.conf", resolvConf);
+                } else if (pathExists("/etc/resolv.conf")) {
+                    // The path exist but we were not able to access it. This is not a fatal error,
+                    // warn about this so the user can remediate.
+                    warn(
+                        "'/etc/resolv.conf' exists but is inaccessible, it will not be rewritten "
+                        "inside the sandbox; DNS operations inside the sandbox may be "
+                        "non-functional."
+                    );
                 }
 
-                if (settings.caFile != "" && pathExists(settings.caFile)) {
-                    // For the same reasons as above, copy the CA certificates file too.
-                    // It should be even less likely to change during the build than resolv.conf.
-                    createDirs(chrootRootDir + "/etc/ssl/certs");
-                    copyFile(settings.caFile, chrootRootDir + "/etc/ssl/certs/ca-certificates.crt", { .followSymlinks = true });
+                if (settings.caFile != "") {
+                    if (pathAccessible(settings.caFile, true)) {
+                        // For the same reasons as above, copy the CA certificates file too.
+                        // It should be even less likely to change during the build than
+                        // resolv.conf.
+                        createDirs(chrootRootDir + "/etc/ssl/certs");
+                        copyFile(
+                            settings.caFile,
+                            chrootRootDir + "/etc/ssl/certs/ca-certificates.crt",
+                            {.followSymlinks = true}
+                        );
+                    } else if (pathExists(settings.caFile)) {
+                        // The path exist but we were not able to access it. This is not a fatal
+                        // error, warn about this so the user can remediate.
+                        warn(
+                            "Configured certificate authority '%1' exists but is inaccessible, it "
+                            "will "
+                            "not be copied in the sandbox. TLS operations inside the sandbox may "
+                            "be "
+                            "non-functional.",
+                            settings.caFile
+                        );
+                    }
                 }
             }
 
