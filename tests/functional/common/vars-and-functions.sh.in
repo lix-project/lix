@@ -251,6 +251,21 @@ runinpty() {
     @python@ @runinpty@ "$@"
 }
 
+# Add a plugin to `plugin-files` configuration.
+loadPlugin() {
+    local plugin_path="$1"
+    sed -i 's|plugin-files .*|& '"$plugin_path"'|' "$NIX_CONF_DIR"/nix.conf
+}
+
+loadContribPlugin() {
+    local plugin_name="$1"
+    libext=so
+    if [[ "$(uname -s)" == Darwin ]]; then
+        libext=dylib
+    fi
+    loadPlugin "$MESON_BUILD_ROOT/contrib/plugins/libplugin_$plugin_name.$libext"
+}
+
 set -x
 
 onError() {

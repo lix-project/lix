@@ -27,6 +27,7 @@ gc-reserved-space = 0
 substituters =
 flake-registry = $TEST_ROOT/registry.json
 show-trace = true
+plugin-files =
 include nix.conf.extra
 trusted-users = $(whoami || id -u)
 EOF
