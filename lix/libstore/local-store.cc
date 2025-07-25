@@ -1518,7 +1518,7 @@ try {
                 );
 
                 /* Check the content hash (optionally - slow). */
-                printMsg(lvlTalkative, "checking contents of '%s'", printStorePath(i));
+                printMsg(lvlTalkative, "checking contents of '%s'", toRealPath(printStorePath(i)));
 
                 auto hashSink = HashSink(info->narHash.type);
 
@@ -1526,8 +1526,12 @@ try {
                 auto current = hashSink.finish();
 
                 if (info->narHash != nullHash && info->narHash != current.first) {
-                    printError("path '%s' was modified! expected hash '%s', got '%s'",
-                        printStorePath(i), info->narHash.to_string(Base::SRI, true), current.first.to_string(Base::SRI, true));
+                    printError(
+                        "path '%s' was modified! expected hash '%s', got '%s'",
+                        toRealPath(printStorePath(i)),
+                        info->narHash.to_string(Base::SRI, true),
+                        current.first.to_string(Base::SRI, true)
+                    );
                     if (repair) TRY_AWAIT(repairPath(i)); else errors = true;
                 } else {
 
@@ -1535,14 +1539,18 @@ try {
 
                     /* Fill in missing hashes. */
                     if (info->narHash == nullHash) {
-                        printInfo("fixing missing hash on '%s'", printStorePath(i));
+                        printInfo("fixing missing hash on '%s'", toRealPath(printStorePath(i)));
                         info->narHash = current.first;
                         update = true;
                     }
 
                     /* Fill in missing narSize fields (from old stores). */
                     if (info->narSize == 0) {
-                        printInfo("updating size field on '%s' to %s", printStorePath(i), current.second);
+                        printInfo(
+                            "updating size field on '%s' to %s",
+                            toRealPath(printStorePath(i)),
+                            current.second
+                        );
                         info->narSize = current.second;
                         update = true;
                     }
