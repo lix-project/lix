@@ -386,7 +386,7 @@ kj::Promise<Result<bool>> Worker::pathContentsGood(const StorePath & path)
 try {
     auto i = pathContentsGoodCache.find(path);
     if (i != pathContentsGoodCache.end()) co_return i->second;
-    printInfo("checking path '%s'...", store.printStorePath(path));
+    printInfo("checking path '%s'...", store.toRealPath(store.printStorePath(path)));
     auto info = TRY_AWAIT(store.queryPathInfo(path));
     bool res;
     if (!pathExists(store.printStorePath(path)))
@@ -398,7 +398,9 @@ try {
     }
     pathContentsGoodCache.insert_or_assign(path, res);
     if (!res)
-        printError("path '%s' is corrupted or missing!", store.printStorePath(path));
+        printError(
+            "path '%s' is corrupted or missing!", store.toRealPath(store.printStorePath(path))
+        );
     co_return res;
 } catch (...) {
     co_return result::current_exception();
