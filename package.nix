@@ -377,11 +377,6 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   env = {
-    # Needed for Meson to find Boost.
-    # https://github.com/NixOS/nixpkgs/issues/86131.
-    BOOST_INCLUDEDIR = "${lib.getDev boost}/include";
-    BOOST_LIBRARYDIR = "${lib.getLib boost}/lib";
-
     # Meson allows referencing a /usr/share/cargo/registry shaped thing for subproject sources.
     # Turns out the Nix-generated Cargo dependencies are named the same as they
     # would be in a Cargo registry cache.
