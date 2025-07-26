@@ -914,6 +914,68 @@ void LocalDerivationGoal::initTmpDir() {
     env["PWD"] = tmpDirInSandbox;
 }
 
+void LocalDerivationGoal::setupConfiguredCertificateAuthority()
+{
+    if (settings.caFile != "") {
+        if (pathAccessible(settings.caFile)) {
+            auto prefix = useChroot ? chrootRootDir : tmpDir;
+            debug(
+                "rendering visible configured CA '%s' in the builder (prefix directory: '%s')",
+                settings.caFile,
+                prefix
+            );
+
+            // Setting the certificate authorities implies to copy the files inside
+            // the builder's environment.
+            //
+            // Extra care has to be taken to adjust the paths depending on whether
+            // we actually have a proper filesystem namespacing or not.
+            auto logicalTargetPath = "/etc/ssl/certs/ca-certificates.crt";
+
+            createDirs(prefix + "/etc/ssl/certs");
+            copyFile(settings.caFile, prefix + logicalTargetPath, {.followSymlinks = true});
+
+            /* Do not let the derivation dictate what should be these values if `caFile` is
+             * set. */
+            auto impureVars = parsedDrv->getStringsAttr("impureEnvVars").value_or(Strings());
+            if (std::find(impureVars.begin(), impureVars.end(), "NIX_SSL_CERT_FILE") != impureVars.end()
+                && env["NIX_SSL_CERT_FILE"] != settings.caFile)
+            {
+                warn(
+                    "'NIX_SSL_CERT_FILE' is an impure environment variable of this "
+                    "derivation but a *DIFFERENT* `ssl-cert-file` was set in the settings "
+                    "which takes precedence.\n"
+                    "If you use `ssl-cert-file`, the certificate gets copied in the builder "
+                    "environment and the environment variables are set automatically.\n"
+                    "If you set this environment variable to be an impure environment "
+                    "variable, you need to ensure it is accessible to the sandbox via "
+                    "`extra-sandbox-paths`.\n"
+                    "This warning may become a hard error in the future version of Lix."
+                );
+            }
+
+            /* Currently, outside of Linux, there's no filesystem namespacing. */
+            auto certBundleInBuilder =
+#if __linux__
+                /* If we are using no sandboxing, we still need to use the physical prefix. */
+                useChroot ? logicalTargetPath : prefix + logicalTargetPath;
+#else
+                prefix + logicalTargetPath;
+#endif
+
+            env["NIX_SSL_CERT_FILE"] = certBundleInBuilder;
+        } else if (pathExists(settings.caFile)) {
+            // The path exist but we were not able to access it. This is not a fatal
+            // error, warn about this so the user can remediate.
+            warn(
+                "Configured certificate authority '%1' exists but is inaccessible, it "
+                "will not be copied in the sandbox. TLS operations inside the sandbox may "
+                "be non-functional.",
+                settings.caFile
+            );
+        }
+    }
+}
 
 void LocalDerivationGoal::initEnv()
 {
@@ -1188,30 +1250,7 @@ void LocalDerivationGoal::runChild()
                     );
                 }
 
-                if (settings.caFile != "") {
-                    if (pathAccessible(settings.caFile, true)) {
-                        // For the same reasons as above, copy the CA certificates file too.
-                        // It should be even less likely to change during the build than
-                        // resolv.conf.
-                        createDirs(chrootRootDir + "/etc/ssl/certs");
-                        copyFile(
-                            settings.caFile,
-                            chrootRootDir + "/etc/ssl/certs/ca-certificates.crt",
-                            {.followSymlinks = true}
-                        );
-                    } else if (pathExists(settings.caFile)) {
-                        // The path exist but we were not able to access it. This is not a fatal
-                        // error, warn about this so the user can remediate.
-                        warn(
-                            "Configured certificate authority '%1' exists but is inaccessible, it "
-                            "will "
-                            "not be copied in the sandbox. TLS operations inside the sandbox may "
-                            "be "
-                            "non-functional.",
-                            settings.caFile
-                        );
-                    }
-                }
+                setupConfiguredCertificateAuthority();
             }
 
             for (auto & i : ss) pathsInChroot.emplace(i, i);
@@ -1366,6 +1405,13 @@ void LocalDerivationGoal::runChild()
             setUser = false;
         }
 #endif
+
+        if (!useChroot) {
+            /* When chroot is not used, FODs still requires a CA to be available as well. */
+            if (!derivationType->isSandboxed()) {
+                setupConfiguredCertificateAuthority();
+            }
+        }
 
         if (chdir(tmpDirInSandbox.c_str()) == -1)
             throw SysError("changing into '%1%'", tmpDir);

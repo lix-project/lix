@@ -59,6 +59,8 @@ functional_tests_scripts = [
   'lang-test-infra.sh',
   'experimental-features.sh',
   'fetchMercurial.sh',
+  'sandboxed-certificate-authorities.sh',
+  'unsandboxed-certificate-authorities.sh',
   'gc-auto.sh',
   'user-envs.sh',
   'binary-cache.sh',

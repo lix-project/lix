@@ -197,6 +197,11 @@ struct LocalDerivationGoal : public DerivationGoal
     void initTmpDir();
 
     /**
+     * Setup the configured certificate authority for the builder.
+     */
+    void setupConfiguredCertificateAuthority();
+
+    /**
      * Write a JSON file containing the derivation attributes.
      */
     kj::Promise<Result<void>> writeStructuredAttrs();

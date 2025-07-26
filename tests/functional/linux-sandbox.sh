@@ -46,38 +46,5 @@ grepQuiet 'may not be deterministic' $TEST_ROOT/log
 expectStderr 100 nix-sandbox-build -E 'with import ./config.nix; mkDerivation { name = "etc-write"; buildCommand = "echo > /etc/test"; }' |
     grepQuiet "/etc/test: Permission denied"
 
-
-## Test mounting of SSL certificates into the sandbox
-testCert () {
-    expectation=$1 # "missing" | "present"
-    mode=$2        # "normal" | "fixed-output"
-    certFile=$3    # a string that can be the path to a cert file
-    # `100` means build failure without extra info, see doc/manual/src/command-ref/status-build-failure.md
-    [ "$mode" == fixed-output ] && ret=1 || ret=100
-    expectStderr $ret nix-sandbox-build linux-sandbox-cert-test.nix --argstr mode "$mode" --option ssl-cert-file "$certFile" |
-        grepQuiet "CERT_${expectation}_IN_SANDBOX"
-}
-
-nocert=$TEST_ROOT/no-cert-file.pem
-cert=$TEST_ROOT/some-cert-file.pem
-certsymlink=$TEST_ROOT/cert-symlink.pem
-echo -n "CERT_CONTENT" > $cert
-ln -s $cert $certsymlink
-
-# No cert in sandbox when not a fixed-output derivation
-testCert missing normal       "$cert"
-
-# No cert in sandbox when ssl-cert-file is empty
-testCert missing fixed-output ""
-
-# No cert in sandbox when ssl-cert-file is a nonexistent file
-testCert missing fixed-output "$nocert"
-
-# Cert in sandbox when ssl-cert-file is set to an existing file
-testCert present fixed-output "$cert"
-
-# Cert in sandbox when ssl-cert-file is set to a symlink
-testCert present fixed-output "$certsymlink"
-
 # Symlinks should be added in the sandbox directly and not followed
 nix-sandbox-build symlink-derivation.nix

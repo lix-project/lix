@@ -77,6 +77,9 @@ edolstra:
   display_name: Eelco Dolstra
   github: edolstra
 
+emilazy:
+  github: emilazy
+
 ericson:
   display_name: John Ericson
   github: ericson2314
