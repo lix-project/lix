@@ -665,10 +665,4 @@ endif
 
 subdir('meson/clang-tidy')
 
-if enable_nix_eval_jobs.enabled()
-  subproject(
-    'nix-eval-jobs',
-    # Well, it was enabled! Surely it's wanted.
-    required : true,
-  )
-endif
+subproject('nix-eval-jobs', required : enable_nix_eval_jobs)
