@@ -1052,7 +1052,7 @@ try {
    there are no referrers. */
 kj::Promise<Result<void>> LocalStore::invalidatePath(DBState & state, const StorePath & path)
 try {
-    debug("invalidating path '%s'", printStorePath(path));
+    debug("invalidating path '%s'", toRealPath(printStorePath(path)));
 
     state.stmts->InvalidatePath.use()(printStorePath(path)).exec();
 
