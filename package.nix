@@ -387,30 +387,10 @@ stdenv.mkDerivation (finalAttrs: {
 
   cargoDeps = rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
 
-  preConfigure =
-    lib.optionalString (!finalAttrs.dontBuild && !hostPlatform.isStatic) ''
-      # Copy libboost_context so we don't get all of Boost in our closure.
-      # https://github.com/NixOS/nixpkgs/issues/45462
-      mkdir -p $out/lib
-      cp -pd ${boost}/lib/{libboost_context*,libboost_thread*,libboost_system*} $out/lib
-      rm -f $out/lib/*.a
-    ''
-    + lib.optionalString (!finalAttrs.dontBuild && hostPlatform.isLinux && !hostPlatform.isStatic) ''
-      chmod u+w $out/lib/*.so.*
-      patchelf --set-rpath $out/lib:${stdenv.cc.cc.lib}/lib $out/lib/libboost_thread.so.*
-    ''
-    + lib.optionalString (!finalAttrs.dontBuild && hostPlatform.isDarwin) ''
-      for LIB in $out/lib/*.dylib; do
-        chmod u+w $LIB
-        install_name_tool -id $LIB $LIB
-        install_name_tool -delete_rpath ${boost}/lib/ $LIB || true
-      done
-      install_name_tool -change ${boost}/lib/libboost_system.dylib $out/lib/libboost_system.dylib $out/lib/libboost_thread.dylib
-    ''
-    + ''
-      # Fix up /usr/bin/env shebangs relied on by the build
-      patchShebangs --build tests/ doc/manual/
-    '';
+  preConfigure = ''
+    # Fix up /usr/bin/env shebangs relied on by the build
+    patchShebangs --build tests/ doc/manual/
+  '';
 
   mesonBuildType = "debugoptimized";
 
@@ -453,14 +433,6 @@ stdenv.mkDerivation (finalAttrs: {
     + lib.optionalString hostPlatform.isStatic ''
       mkdir -p $out/nix-support
       echo "file binary-dist $out/bin/nix" >> $out/nix-support/hydra-build-products
-    ''
-    + lib.optionalString stdenv.isDarwin ''
-      for lib in liblixutil.dylib liblixexpr.dylib; do
-        install_name_tool \
-          -change "${lib.getLib boost}/lib/libboost_context.dylib" \
-          "$out/lib/libboost_context.dylib" \
-          "$out/lib/$lib"
-      done
     ''
     + lib.optionalString internalApiDocs ''
       mkdir -p $out/nix-support
