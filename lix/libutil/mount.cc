@@ -7,7 +7,8 @@
 
 namespace nix {
 
-void bindPath(const Path & source, const Path & target, bool optional) {
+void bindPath(const Path & source, const Path & target, bool optional, CopyFileFlags flags)
+{
     debug("bind mounting '%1%' to '%2%'", source, target);
 
     auto bindMount = [&]() {
@@ -30,14 +31,13 @@ void bindPath(const Path & source, const Path & target, bool optional) {
     } else if (S_ISLNK(st.st_mode)) {
         // Symlinks can (apparently) not be bind-mounted, so just copy it
         createDirs(dirOf(target));
-        copyFile(source, target, {});
+        copyFile(source, target, flags);
     } else {
         createDirs(dirOf(target));
         writeFile(target, "");
         bindMount();
     }
 }
-
 }
 
 #endif
