@@ -32,6 +32,9 @@ public:
     virtual void upsertNarInfo(
         const std::string & uri, const std::string & hashPart,
         std::shared_ptr<const ValidPathInfo> info) = 0;
+
+    virtual void
+    removeNegativeCacheEntry(const std::string & uri, const std::string & hashPart) = 0;
 };
 
 /**

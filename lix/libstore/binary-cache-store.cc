@@ -108,13 +108,12 @@ try {
 
     {
         auto state_(co_await state.lock());
-        state_->pathInfoCache.upsert(
-            std::string(narInfo->path.to_string()),
-            PathInfoCacheValue { .value = std::shared_ptr<NarInfo>(narInfo) });
+        state_->pathInfoCache.erase(std::string(narInfo->path.to_string()));
     }
 
-    if (diskCache)
-        diskCache->upsertNarInfo(getUri(), std::string(narInfo->path.hashPart()), std::shared_ptr<NarInfo>(narInfo));
+    if (diskCache) {
+        diskCache->removeNegativeCacheEntry(getUri(), std::string(narInfo->path.hashPart()));
+    }
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();

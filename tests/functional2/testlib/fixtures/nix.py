@@ -104,6 +104,7 @@ class Nix:
             "NIX_DAEMON_SOCKET_PATH": self.test_root / "daemon-socket",
             "NIX_USER_CONF_FILES": "",
             "HOME": home,
+            "XDG_CACHE_HOME": home / ".cache",
         }
 
     def make_env(self) -> dict[AnyStr, AnyStr]:
