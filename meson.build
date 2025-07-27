@@ -208,6 +208,16 @@ elif host_cpu == 'amd64'
   host_cpu = 'x86_64'
 elif host_cpu in ['armv6', 'armv7']
   host_cpu += 'l'
+elif host_cpu == 'ppc'
+  host_cpu = 'powerpc'
+  if host_machine.endian() == 'little'
+    host_cpu += 'le'
+  endif
+elif host_cpu == 'ppc64'
+  host_cpu = 'powerpc64'
+  if host_machine.endian() == 'little'
+    host_cpu += 'le'
+  endif
 endif
 
 host_system = host_machine.cpu_family() + '-' + host_machine.system()
