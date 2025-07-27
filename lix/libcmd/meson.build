@@ -43,15 +43,16 @@ libcmd = library(
   dependencies : [
     liblixutil,
     liblixstore,
-    liblixexpr,
     liblixfetchers,
+    liblixexpr,
     liblixmain,
-    ncurses,
-    editline,
-    lowdown,
-    nlohmann_json,
     liblix_doc,
+    boehm,
+    editline,
     kj,
+    lowdown,
+    ncurses,
+    nlohmann_json,
   ],
   # '../..' for self references like "lix/libcmd/*.hh"
   include_directories : [ '../..' ],
@@ -72,6 +73,11 @@ custom_target(
 
 liblixcmd = declare_dependency(
   include_directories : include_directories('../..'),
+  dependencies : [
+    liblixutil,
+    liblixstore,
+    kj,
+  ],
   link_with : libcmd,
 )
 meson.override_dependency('lix-cmd', liblixcmd)

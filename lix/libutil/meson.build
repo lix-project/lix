@@ -324,18 +324,13 @@ foreach rpc : libutil_rpc
 endforeach
 
 dependencies = [
-  aws_sdk,
-  aws_s3,
-  boehm,
   boost,
-  cpuid,
-  seccomp,
-  libarchive,
   brotli,
-  openssl,
-  nlohmann_json,
+  cpuid,
   kj,
-  capnp_rpc,
+  libarchive,
+  nlohmann_json,
+  openssl,
 ]
 
 libutil_temp = library(
@@ -411,7 +406,7 @@ liblixutil = declare_dependency(
     # lix-base pkg-config externally)
     kj,
     libarchive,
-    capnp_rpc,
+    nlohmann_json,
   ],
   link_with : libutil
 )

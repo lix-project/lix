@@ -49,8 +49,8 @@ libfetchers_settings_header = custom_target(
 dependencies = [
   liblixstore,
   liblixutil,
-  nlohmann_json,
   kj,
+  nlohmann_json,
 ]
 
 libfetchers_temp = library(
@@ -109,6 +109,11 @@ configure_file(
 liblixfetchers = declare_dependency(
   include_directories : include_directories('../..'),
   sources : libfetchers_settings_header,
+  dependencies : [
+    liblixutil,
+    liblixstore,
+    kj,
+  ],
   link_with : libfetchers,
 )
 

@@ -21,6 +21,7 @@ libmain = library(
   dependencies : [
     liblixutil,
     liblixstore,
+    boost,
     kj,
   ],
   include_directories : [ '../..' ],
@@ -34,6 +35,9 @@ install_headers(libmain_headers, subdir : 'lix/libmain', preserve_path : true)
 
 liblixmain = declare_dependency(
   include_directories : include_directories('../..'),
+  dependencies : [
+    liblixutil,
+  ],
   link_with : libmain,
 )
 meson.override_dependency('lix-main', liblixmain)

@@ -276,9 +276,9 @@ dependencies = [
   liblixfetchers,
   boehm,
   boost,
-  toml11,
-  nlohmann_json,
   kj,
+  nlohmann_json,
+  toml11,
 ]
 
 libexpr_temp = library(
@@ -333,8 +333,12 @@ install_headers(
 liblixexpr = declare_dependency(
   include_directories : include_directories('../..'),
   sources : libexpr_settings_header,
-  # Parallels the requirement to link with boehm of the pkg-config but for internal targets.
-  dependencies : [boehm],
+  dependencies : [
+    liblixutil,
+    liblixfetchers,
+    boehm,
+    boost,
+  ],
   link_with : libexpr,
 )
 

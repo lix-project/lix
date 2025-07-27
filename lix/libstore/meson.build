@@ -383,19 +383,19 @@ foreach name, value : cpp_str_defines
 endforeach
 
 dependencies = [
-  libarchive,
   liblixutil, # Internal.
-  seccomp,
-  sqlite,
-  sodium,
-  curl,
-  openssl,
-  aws_sdk,
   aws_s3,
+  aws_sdk,
   aws_sdk_transfer,
-  nlohmann_json,
-  kj,
+  boost,
   capnp_rpc,
+  curl,
+  kj,
+  libarchive,
+  nlohmann_json,
+  seccomp,
+  sodium,
+  sqlite,
 ]
 
 if host_machine.system() == 'freebsd'
@@ -449,6 +449,10 @@ install_headers(libstore_headers, subdir : 'lix/libstore', preserve_path : true)
 liblixstore = declare_dependency(
   include_directories : include_directories('../..'),
   sources : libstore_settings_headers,
+  dependencies : [
+    liblixutil,
+    kj,
+  ],
   link_with : libstore,
 )
 
