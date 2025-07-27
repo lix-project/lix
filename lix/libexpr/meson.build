@@ -270,32 +270,59 @@ libexpr_headers = files(
   # keep-sorted end
 )
 
-libexpr = library(
-  'lixexpr',
+dependencies = [
+  liblixutil,
+  liblixstore,
+  liblixfetchers,
+  boehm,
+  boost,
+  toml11,
+  nlohmann_json,
+  kj,
+]
+
+libexpr_temp = library(
+  is_static ? 'lixexpr_temp' : 'lixexpr',
   libexpr_sources,
   libexpr_settings_header,
   libexpr_generated_headers,
   register_builtins_header,
   register_builtin_constants_header,
-  dependencies : [
-    liblixutil,
-    liblixstore,
-    liblixfetchers,
-    boehm,
-    boost,
-    toml11,
-    nlohmann_json,
-    kj,
-  ],
+  dependencies : dependencies,
   # for shared.hh
   include_directories : [
     '../libmain',
   ],
   cpp_pch : cpp_pch,
-  install : true,
+  install : not is_static,
   # FIXME(Qyriad): is this right?
   install_rpath : libdir,
 )
+# FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
+# FIXME: replace by prelink when https://github.com/mesonbuild/meson/pull/14846 is widely available.
+if is_static
+  libexpr_prelink = custom_target(
+    'lixexpr-prelink',
+    output : 'lixexpr-prelink.o',
+    input : libexpr_temp,
+    command : [
+      cxx.cmd_array(),
+      '-r',
+      '-o',
+      '@OUTPUT@',
+      is_darwin ? '-Wl,-force_load' : '-Wl,--whole-archive',
+      '@INPUT@',
+    ],
+  )
+  libexpr = library(
+    'lixexpr',
+    [libexpr_prelink],
+    dependencies : dependencies,
+    install : true,
+  )
+else
+  libexpr = libexpr_temp
+endif
 
 install_headers(
   libexpr_headers,
@@ -312,16 +339,7 @@ liblixexpr = declare_dependency(
 )
 
 # FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
-if is_static
-  liblixexpr_mstatic = declare_dependency(
-    include_directories : include_directories('../..'),
-    sources : libexpr_settings_header,
-    dependencies : [boehm],
-    link_whole : libexpr,
-  )
-else
-  liblixexpr_mstatic = liblixexpr
-endif
+liblixexpr_mstatic = is_static ? liblixexpr.as_link_whole() : liblixexpr
 meson.override_dependency('lix-expr', liblixexpr_mstatic)
 
 # FIXME: not using the pkg-config module because it creates way too many deps

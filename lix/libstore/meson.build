@@ -402,8 +402,8 @@ if host_machine.system() == 'freebsd'
   dependencies += [ libprocstat ]
 endif
 
-libstore = library(
-  'lixstore',
+libstore_temp = library(
+  is_static ? 'lixstore_temp' : 'lixstore',
   libstore_sources,
   libstore_generated_sources,
   libstore_settings_headers,
@@ -413,10 +413,35 @@ libstore = library(
   dependencies : dependencies,
   cpp_args : cpp_args,
   cpp_pch : cpp_pch,
-  install : true,
+  install : not is_static,
   # FIXME(Qyriad): is this right?
   install_rpath : libdir,
 )
+# FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
+# FIXME: replace by prelink when https://github.com/mesonbuild/meson/pull/14846 is widely available.
+if is_static
+  libstore_prelink = custom_target(
+    'lixstore-prelink',
+    output : 'lixstore-prelink.o',
+    input : libstore_temp,
+    command : [
+      cxx.cmd_array(),
+      '-r',
+      '-o',
+      '@OUTPUT@',
+      is_darwin ? '-Wl,-force_load' : '-Wl,--whole-archive',
+      '@INPUT@',
+    ],
+  )
+  libstore = library(
+    'lixstore',
+    [libstore_prelink],
+    dependencies : dependencies,
+    install : true,
+  )
+else
+  libstore = libstore_temp
+endif
 
 install_headers(libstore_headers, subdir : 'lix/libstore', preserve_path : true)
 
@@ -427,17 +452,7 @@ liblixstore = declare_dependency(
   link_with : libstore,
 )
 
-# FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
-if is_static
-  liblixstore_mstatic = declare_dependency(
-    include_directories : include_directories('../..'),
-    sources : libstore_settings_headers,
-    link_whole : libstore,
-  )
-else
-  liblixstore_mstatic = liblixstore
-endif
-meson.override_dependency('lix-store', liblixstore_mstatic)
+meson.override_dependency('lix-store', liblixstore)
 
 # FIXME: not using the pkg-config module because it creates way too many deps
 # while meson migration is in progress, and we want to not include boost here

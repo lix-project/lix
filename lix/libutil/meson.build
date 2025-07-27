@@ -323,8 +323,23 @@ foreach rpc : libutil_rpc
   libutil_rpc_sources += rpc[1]
 endforeach
 
-libutil = library(
-  'lixutil',
+dependencies = [
+  aws_sdk,
+  aws_s3,
+  boehm,
+  boost,
+  cpuid,
+  seccomp,
+  libarchive,
+  brotli,
+  openssl,
+  nlohmann_json,
+  kj,
+  capnp_rpc,
+]
+
+libutil_temp = library(
+  is_static ? 'lixutil_temp' : 'lixutil',
   libutil_sources,
   libutil_rpc_sources,
   libutil_rpc_headers,
@@ -333,25 +348,37 @@ libutil = library(
   deprecated_features_header,
   deprecated_features_impl_header,
   libutil_settings_headers,
-  dependencies : [
-    aws_sdk,
-    aws_s3,
-    boehm,
-    boost,
-    cpuid,
-    seccomp,
-    libarchive,
-    brotli,
-    openssl,
-    nlohmann_json,
-    kj,
-    capnp_rpc,
-  ],
+  dependencies : dependencies,
   include_directories : [ '../..' ],
   cpp_pch : cpp_pch,
   implicit_include_directories : true,
-  install : true,
+  install : not is_static,
 )
+# FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
+# FIXME: replace by prelink when https://github.com/mesonbuild/meson/pull/14846 is widely available.
+if is_static
+  libutil_prelink = custom_target(
+    'lixutil-prelink',
+    output : 'lixutil-prelink.o',
+    input : libutil_temp,
+    command : [
+      cxx.cmd_array(),
+      '-r',
+      '-o',
+      '@OUTPUT@',
+      is_darwin ? '-Wl,-force_load' : '-Wl,--whole-archive',
+      '@INPUT@',
+    ],
+  )
+  libutil = library(
+    'lixutil',
+    [libutil_prelink],
+    dependencies : dependencies,
+    install : true,
+  )
+else
+  libutil = libutil_temp
+endif
 
 install_headers(libutil_headers, subdir : 'lix/libutil', preserve_path : true)
 
@@ -389,27 +416,4 @@ liblixutil = declare_dependency(
   link_with : libutil
 )
 
-# FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
-if is_static
-  liblixutil_mstatic = declare_dependency(
-    include_directories : include_directories('../..'),
-    sources : [
-      experimental_features_header,
-      deprecated_features_header,
-      libutil_settings_headers,
-      libutil_rpc_headers,
-    ],
-    dependencies: [
-      boost,
-      # Everything has to link to kj if it uses libutil internally (ensured by
-      # lix-base pkg-config externally)
-      kj,
-      libarchive,
-      capnp_rpc,
-    ],
-    link_whole : libutil,
-  )
-else
-  liblixutil_mstatic = liblixutil
-endif
-meson.override_dependency('lix-util', liblixutil_mstatic)
+meson.override_dependency('lix-util', liblixutil)

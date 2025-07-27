@@ -16,19 +16,6 @@
 #
 # Finally, lix/nix/meson.build defines the Nix command itself, relying on all prior meson files.
 #
-# libstore, libexpr, and libfetchers have some special handling to make static builds work.
-# Their use static constructors for dynamic registration of primops, store backends, etc
-# gets borked during static link. We can't simply wholesale apply `link_whole :` either,
-# because these libraries get linked multiple times since Lix's components are transitively
-# dependent. So instead, each of those libraries have two dependency objects:
-# liblix{store,expr,fetchers,util} and liblix{store,expr,fetchers,util}_mstatic ("maybe static").
-# The _mstatic versions should be used in the `dependencies :` arguments to ALL EXECUTABLES
-# but executables ONLY. When we are not building statically (default_library != 'static'),
-# they are equivalent. When we are building statically, the _mstatic version will be
-# `link_whole :` rather than `link_with :`.
-# FIXME: This hack should be removed when https://git.lix.systems/lix-project/lix/issues/359
-# is fixed.
-#
 # lix-doc is built with Meson in lix-doc/meson.build, and linked into libcmd in
 # lix/libcmd/meson.build. When building outside the Nix sandbox, Meson will use the .wrap
 # files in subprojects/ to download and extract the dependency crates into subprojects/.
