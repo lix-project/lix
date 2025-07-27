@@ -5,5 +5,7 @@ includedir=@includedir@
 Name: Lix libutil
 Description: Lix Package Manager (libutil)
 Version: @PACKAGE_VERSION@
-Requires: lix-base lix-util
+# dependencies on boost, libarchive, nlohmann_json are omitted since they are optional (only required by some headers)
+Requires: lix-base
+Requires.private: libbrotlidec libbrotlienc libcpuid libarchive libcrypto
 Libs: -L${libdir} -llixutil

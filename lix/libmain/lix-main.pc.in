@@ -6,4 +6,5 @@ Name: Lix libmain
 Description: Lix Package Manager (libmain)
 Version: @PACKAGE_VERSION@
 Requires: lix-base lix-util
+Requires.private: lix-store
 Libs: -L${libdir} -llixmain

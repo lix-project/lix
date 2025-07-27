@@ -5,5 +5,5 @@ includedir=@includedir@
 Name: Lix libfetchers
 Description: Lix Package Manager (libfetchers)
 Version: @PACKAGE_VERSION@
-Requires: lix-base lix-util
+Requires: lix-base lix-util lix-store
 Libs: -L${libdir} -llixfetchers

@@ -93,5 +93,7 @@ configure_file(
     'libdir' : libdir,
     'includedir' : includedir,
     'PACKAGE_VERSION' : meson.project_version(),
+    'BOEHM_IF_FOUND' : boehm.found() ? 'bdw-gc' : '',
+    'LIBLIX_DOC_IF_STATIC' : is_static ? '-llix_doc' : '',
   },
 )

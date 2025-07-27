@@ -5,5 +5,6 @@ includedir=@includedir@
 Name: Lix (libcmd)
 Description: Lix Package Manager (libcmd)
 Version: @PACKAGE_VERSION@
-Requires: lix-base lix-util
-Libs: -L${libdir} -llixcmd
+Requires: lix-base lix-util lix-store
+Requires.private: lix-fetchers lix-expr lix-main @BOEHM_IF_FOUND@ libeditline lowdown ncurses
+Libs: -L${libdir} @LIBLIX_DOC_IF_STATIC@ -llixcmd

@@ -6,4 +6,5 @@ Name: Lix libstore
 Description: Lix Package Manager (libstore)
 Version: @PACKAGE_VERSION@
 Requires: lix-base lix-util
-Libs: -L${libdir} -llixstore -llixutil
+Requires.private: @AWS_SDK_IF_FOUND@ capnp-rpc libcurl libarchive libseccomp libsodium sqlite3
+Libs: -L${libdir} -llixstore

@@ -5,5 +5,6 @@ includedir=@includedir@
 Name: Lix libexpr
 Description: Lix Package Manager (libexpr)
 Version: @PACKAGE_VERSION@
-Requires: lix-base lix-util lix-fetchers lix-store bdw-gc
+# dependencies on boost is omitted since it is optional (only required by some headers)
+Requires: lix-base lix-util lix-store lix-fetchers @BOEHM_IF_FOUND@
 Libs: -L${libdir} -llixexpr
