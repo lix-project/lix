@@ -13,7 +13,7 @@ lix_doc = static_library(
   # that to link with `-Wl,--whole-archive`, unless we also install this target.
   # `-Wl,--whole-archive` can cause some Problems when linking multiple nested
   # static libraries, so let's just install the damn thing.
-  install : true,
+  install : is_static,
 )
 
 liblix_doc = declare_dependency(
