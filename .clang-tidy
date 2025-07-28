@@ -20,6 +20,8 @@ Checks:
   - -bugprone-multi-level-implicit-pointer-conversion
     # we don't compile out our asserts
   - -bugprone-assert-side-effect
+    # FIXME(jade): figure out if this warning is any good
+  - -bugprone-exception-escape
     # all thrown exceptions must derive from std::exception
   - hicpp-exception-baseclass
     # capturing async lambdas are dangerous

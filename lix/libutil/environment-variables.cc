@@ -3,6 +3,8 @@
 #include <optional>
 #include <string>
 
+#include <stdlib.h>
+
 extern char * * environ __attribute__((weak));
 
 namespace nix {

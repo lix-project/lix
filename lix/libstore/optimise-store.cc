@@ -103,6 +103,7 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
        *.app/Contents/Resources/\*.lproj seem to be the only paths affected. See
        https://github.com/NixOS/nix/issues/1443 for more discussion. */
 
+    // NOLINTNEXTLINE(lix-foreign-exceptions): static regex
     if (std::regex_search(path, std::regex("\\.app/Contents/.+$")))
     {
         debug("'%1%' is not allowed to be linked in macOS", path);
