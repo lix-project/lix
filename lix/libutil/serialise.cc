@@ -1,6 +1,8 @@
 #include "lix/libutil/serialise.hh"
+#include "async-io.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/signals.hh"
+#include "result.hh"
 
 #include <cstring>
 #include <cerrno>
@@ -47,6 +49,35 @@ template long readNum<long>(Source & source);
 
 template unsigned long long readNum<unsigned long long>(Source & source);
 template long long readNum<long long>(Source & source);
+
+template<typename T>
+kj::Promise<Result<T>> readNum(AsyncInputStream & source)
+try {
+    unsigned char buf[8];
+    if (TRY_AWAIT(source.readRange(buf, sizeof(buf), sizeof(buf))) != sizeof(buf)) {
+        throw SerialisationError("stream ended unexpectedly");
+    }
+
+    auto n = readLittleEndian<uint64_t>(buf);
+
+    if (n > (uint64_t) std::numeric_limits<T>::max()) {
+        throw SerialisationError(
+            "serialised integer %d is too large for type '%s'", n, typeid(T).name()
+        );
+    }
+
+    co_return (T) n;
+} catch (...) {
+    co_return result::current_exception();
+}
+
+template kj::Promise<Result<bool>> readNum(AsyncInputStream & source);
+template kj::Promise<Result<unsigned char>> readNum(AsyncInputStream & source);
+template kj::Promise<Result<unsigned int>> readNum(AsyncInputStream & source);
+template kj::Promise<Result<unsigned long>> readNum(AsyncInputStream & source);
+template kj::Promise<Result<long>> readNum(AsyncInputStream & source);
+template kj::Promise<Result<unsigned long long>> readNum(AsyncInputStream & source);
+template kj::Promise<Result<long long>> readNum(AsyncInputStream & source);
 
 void BufferedSink::operator () (std::string_view data)
 {
@@ -244,6 +275,25 @@ void readPadding(size_t len, Source & source)
     }
 }
 
+kj::Promise<Result<void>> readPadding(size_t len, AsyncInputStream & source)
+try {
+    if (len % 8) {
+        char zero[8];
+        size_t n = 8 - (len % 8);
+        if (TRY_AWAIT(source.readRange(zero, n, n)) != n) {
+            throw SerialisationError("stream ended unexpectedly");
+        }
+        for (unsigned int i = 0; i < n; i++) {
+            if (zero[i]) {
+                throw SerialisationError("non-zero padding");
+            }
+        }
+    }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
 std::string readString(Source & source, size_t max)
 {
     auto len = readNum<size_t>(source);
@@ -252,6 +302,22 @@ std::string readString(Source & source, size_t max)
     source(res.data(), len);
     readPadding(len, source);
     return res;
+}
+
+kj::Promise<Result<std::string>> readString(AsyncInputStream & source, size_t max)
+try {
+    auto len = TRY_AWAIT(readNum<size_t>(source));
+    if (len > max) {
+        throw SerialisationError("string is too long");
+    }
+    std::string res(len, 0);
+    if (len > 0 && TRY_AWAIT(source.readRange(res.data(), len, len)) != len) {
+        throw SerialisationError("stream ended unexpectedly");
+    }
+    TRY_AWAIT(readPadding(len, source));
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 template<class T> T readStrings(Source & source)
@@ -266,6 +332,21 @@ template<class T> T readStrings(Source & source)
 template Paths readStrings(Source & source);
 template PathSet readStrings(Source & source);
 
+template<class T>
+kj::Promise<Result<T>> readStrings(AsyncInputStream & source)
+try {
+    auto count = TRY_AWAIT(readNum<size_t>(source));
+    T ss;
+    while (count--) {
+        ss.insert(ss.end(), TRY_AWAIT(readString(source)));
+    }
+    co_return ss;
+} catch (...) {
+    co_return result::current_exception();
+}
+
+template kj::Promise<Result<Paths>> readStrings(AsyncInputStream & source);
+template kj::Promise<Result<PathSet>> readStrings(AsyncInputStream & source);
 
 Error readError(Source & source)
 {
@@ -291,6 +372,29 @@ Error readError(Source & source)
     return Error(std::move(info));
 }
 
+kj::Promise<Result<Error>> readError(AsyncInputStream & source)
+try {
+    auto type = TRY_AWAIT(readString(source));
+    assert(type == "Error");
+    auto level = (Verbosity) TRY_AWAIT(readNum<unsigned>(source));
+    TRY_AWAIT(readString(source)); // removed (name)
+    auto msg = TRY_AWAIT(readString(source));
+    ErrorInfo info{
+        .level = level,
+        .msg = HintFmt(msg),
+    };
+    auto havePos = TRY_AWAIT(readNum<size_t>(source));
+    assert(havePos == 0);
+    auto nrTraces = TRY_AWAIT(readNum<size_t>(source));
+    for (size_t i = 0; i < nrTraces; ++i) {
+        havePos = TRY_AWAIT(readNum<size_t>(source));
+        assert(havePos == 0);
+        info.traces.push_back(Trace{.hint = HintFmt(TRY_AWAIT(readString(source)))});
+    }
+    co_return Error(std::move(info));
+} catch (...) {
+    co_return result::current_exception();
+}
 
 void StringSink::operator () (std::string_view data)
 {

@@ -2,18 +2,22 @@
 ///@file
 
 #include <exception>
+#include <kj/async.h>
 #include <memory>
 
 #include "error.hh"
+#include "lix/libutil/async.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/generator.hh"
 #include "lix/libutil/io-buffer.hh"
 #include "lix/libutil/ref.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/file-descriptor.hh"
 
 namespace nix {
 
+class AsyncInputStream;
 
 /**
  * Abstract destination of binary data.
@@ -379,18 +383,35 @@ MakeError(SerialisationError, Error);
 
 template<typename T>
 T readNum(Source & source);
+template<typename T>
+kj::Promise<Result<T>> readNum(AsyncInputStream & source);
 
 void readPadding(size_t len, Source & source);
+kj::Promise<Result<void>> readPadding(size_t len, AsyncInputStream & source);
+
 std::string readString(Source & source, size_t max = std::numeric_limits<size_t>::max());
-template<class T> T readStrings(Source & source);
+kj::Promise<Result<std::string>>
+readString(AsyncInputStream & source, size_t max = std::numeric_limits<size_t>::max());
+
+template<class T>
+T readStrings(Source & source);
+template<class T>
+kj::Promise<Result<T>> readStrings(AsyncInputStream & source);
 
 inline bool readBool(Source & in)
 {
     return readNum<uint64_t>(in);
 }
 
-Error readError(Source & source);
+inline kj::Promise<Result<bool>> readBool(AsyncInputStream & in)
+try {
+    co_return LIX_TRY_AWAIT(readNum<uint64_t>(in));
+} catch (...) {
+    co_return result::current_exception();
+}
 
+Error readError(Source & source);
+kj::Promise<Result<Error>> readError(AsyncInputStream & source);
 
 /**
  * An adapter that converts a std::basic_istream into a source.
