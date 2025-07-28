@@ -159,6 +159,7 @@ public:
 
     Value & alloc(std::string_view name, PosIdx pos = noPos);
 
+    [[nodiscard("must use created bindings")]]
     Bindings * finish()
     {
         bindings->sort();

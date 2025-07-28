@@ -2,6 +2,7 @@
 #include <span>
 #include <unordered_set>
 #include <sstream>
+#include <variant>
 
 #include "lix/libutil/escape-string.hh"
 #include "lix/libexpr/print.hh"
@@ -10,6 +11,7 @@
 #include "lix/libutil/signals.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libutil/print-elided.hh"
+#include "lix/libutil/source-path.hh"
 #include "lix/libutil/terminal.hh"
 
 namespace nix {
@@ -90,7 +92,7 @@ bool isImportantAttrName(const std::string& attrName)
     return attrName == "type" || attrName == "_type";
 }
 
-typedef std::pair<std::string, Value *> AttrPair;
+typedef std::pair<std::string, Attr const *> AttrPair;
 
 struct ImportantFirstAttrNameCmp
 {
@@ -105,7 +107,7 @@ struct ImportantFirstAttrNameCmp
 };
 
 typedef std::set<const void *> ValuesSeen;
-typedef std::vector<std::pair<std::string, Value *>> AttrVec;
+typedef std::vector<std::pair<std::string, Attr const *>> AttrVec;
 
 class Printer
 {
@@ -259,18 +261,18 @@ private:
         }
 
         auto item = v[0].second;
-        if (!item) {
+        if (!item->value) {
             return true;
         }
 
         if (options.force) {
             // The item is going to be forced during printing anyway, but we need its type now.
-            state.forceValue(*item, noPos);
+            state.forceValue(*item->value, noPos);
         }
 
         // Pretty-print single-item attrsets only if they contain nested
         // structures.
-        auto itemType = item->type();
+        auto itemType = item->value->type();
         return itemType == nList || itemType == nAttrs;
     }
 
@@ -286,7 +288,7 @@ private:
 
             AttrVec sorted;
             for (auto & i : *v.attrs)
-                sorted.emplace_back(state.ctx.symbols[i.name], i.value);
+                sorted.emplace_back(state.ctx.symbols[i.name], &i);
 
             if (options.maxAttrs == std::numeric_limits<size_t>::max())
                 std::sort(sorted.begin(), sorted.end());
@@ -304,9 +306,22 @@ private:
                     break;
                 }
 
-                printAttributeName(output, i.first);
+                std::ostringstream name;
+                printAttributeName(name, i.first);
+
+                auto pos = state.ctx.positions[i.second->pos];
+                if (auto path = std::get_if<CheckedSourcePath>(&pos.origin);
+                    path && options.ansiColors)
+                {
+                    output << makeHyperlink(
+                        name.str(), makeHyperlinkLocalPath(path->to_string(), pos.line)
+                    );
+                } else {
+                    output << name.str();
+                }
+
                 output << " = ";
-                print(*i.second, depth + 1);
+                print(*i.second->value, depth + 1);
                 output << ";";
                 attrsPrinted++;
                 printedHere++;

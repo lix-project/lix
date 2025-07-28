@@ -1,9 +1,12 @@
 #include "lix/libutil/terminal.hh"
+#include "fmt.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libutil/sync.hh"
+#include "url.hh"
 
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <limits.h>
 
 namespace nix {
 
@@ -198,4 +201,55 @@ std::pair<unsigned short, unsigned short> getWindowSize()
     return *windowSize.lock();
 }
 
+std::string makeHyperlink(std::string_view linkText, std::string_view target)
+{
+    // 700 is arbitrarily chosen as a length limit as it's where screen breaks
+    // according to https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda#length-limits
+    if (target.empty() || target.length() > 700) {
+        return std::string{linkText};
+    }
+
+#define OSC "\e]"
+#define ST "\e\\"
+
+    return fmt(OSC "8;;%s" ST "%s" OSC "8;;" ST, target, linkText);
+
+#undef OSC
+#undef ST
+}
+
+std::string makeHyperlinkLocalPath(std::string_view path, std::optional<unsigned> lineNumber)
+{
+    // File paths in OSC 8 are required to have the hostname in them per the
+    // spec.
+    static std::string theHostname = []() -> std::string {
+        // According to POSIX if the hostname is too long, there is no guarantee of
+        // null termination so let's make sure there's always one.
+        char theHostname_[_POSIX_HOST_NAME_MAX + 1] = {};
+
+        int err = gethostname(theHostname_, sizeof(theHostname_) - 1);
+        // Who knows why getting the hostname would fail, but it is fallible!
+        if (err < 0) {
+            return "localhost";
+        } else {
+            return theHostname_;
+        }
+    }();
+
+    if (!path.starts_with('/')) {
+        // Problematic to have non absolute paths
+        return "";
+    }
+    auto content = percentEncode(path, "/");
+
+    // XXX(jade): these schemes are not standardized and even the file link
+    // line number has no guarantee to work (and in fact theoretically is
+    // supported in kitty but in practice is mostly ignored).
+    // https://github.com/BurntSushi/ripgrep/blob/bf63fe8f258afc09bae6caa48f0ae35eaf115005/crates/printer/src/hyperlink_aliases.rs#L4-L22
+    auto result = fmt("file://%s%s", theHostname, content);
+    if (lineNumber.has_value()) {
+        result += fmt("#%d", *lineNumber);
+    }
+    return result;
+}
 }

@@ -1,3 +1,6 @@
+#include "lix/libutil/canon-path.hh"
+#include "lix/libutil/source-path.hh"
+#include "lix/libutil/terminal.hh"
 #include "tests/libexpr.hh"
 
 #include "lix/libexpr/value.hh"
@@ -772,6 +775,27 @@ TEST_F(ValuePrintingTests, ansiColorsListElided)
              .ansiColors = true,
              .maxListItems = 1
          });
+}
+
+TEST_F(ValuePrintingTests, osc8InAttrSets)
+{
+    const auto arbitrarySource = SourcePath(CanonPath("/dev/null")).unsafeIntoChecked();
+    auto origin = evaluator.positions.addOrigin(Pos::Origin(arbitrarySource), 0);
+    auto pos = evaluator.positions.add(origin, 0);
+    BindingsBuilder builder = evaluator.buildBindings(1);
+
+    auto vZero = Value{NewValueAs::integer, NixInt{0}};
+
+    builder.insert(evaluator.symbols.create("x"), &vZero, pos);
+    auto vAttrs = Value{NewValueAs::attrs, builder.finish()};
+
+    auto hyperlink = makeHyperlink("x", makeHyperlinkLocalPath("/dev/null", 1));
+
+    test(
+        vAttrs,
+        "{ " + hyperlink + " = " ANSI_CYAN "0" ANSI_NORMAL "; }",
+        PrintOptions{.ansiColors = true}
+    );
 }
 
 } // namespace nix

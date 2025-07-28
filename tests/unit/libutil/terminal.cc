@@ -1,5 +1,6 @@
 #include "lix/libutil/terminal.hh"
 #include <gtest/gtest.h>
+#include <regex>
 
 namespace nix {
 
@@ -176,4 +177,23 @@ TEST(filterANSIEscapes, controlChars) {
     EXPECT_EQ(filterANSIEscapes("foo\v\n\fbar", false, 8), "foo\v\n\fba");
 }
 
+TEST(makeHyperlink, works)
+{
+    auto big = std::string(701, 'A');
+    EXPECT_EQ(makeHyperlink(big, "meow"), "\e]8;;meow\e\\" + big + "\e]8;;\e\\");
+    EXPECT_EQ(makeHyperlink("meow", big), "meow");
+}
+
+TEST(makeHyperlinkLocalPath, works)
+{
+    // NOLINTNEXTLINE(lix-foreign-exceptions): its a test lol
+    auto regex = std::regex{R""(^file://([^/]+)/(.*)$)""};
+    std::smatch match;
+    auto output = makeHyperlinkLocalPath("/a/b/ c", 4);
+
+    ASSERT_TRUE(std::regex_match(output, match, regex));
+    // Hostname has a value
+    ASSERT_GT(match[1].length(), 0);
+    ASSERT_EQ(match[2].str(), "a/b/%20c#4");
+}
 }
