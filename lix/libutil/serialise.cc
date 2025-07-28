@@ -244,17 +244,6 @@ void readPadding(size_t len, Source & source)
     }
 }
 
-
-size_t readString(char * buf, size_t max, Source & source)
-{
-    auto len = readNum<size_t>(source);
-    if (len > max) throw SerialisationError("string is too long");
-    source(buf, len);
-    readPadding(len, source);
-    return len;
-}
-
-
 std::string readString(Source & source, size_t max)
 {
     auto len = readNum<size_t>(source);

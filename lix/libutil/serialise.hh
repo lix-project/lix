@@ -391,9 +391,7 @@ inline uint64_t readLongLong(Source & source)
     return readNum<uint64_t>(source);
 }
 
-
 void readPadding(size_t len, Source & source);
-size_t readString(char * buf, size_t max, Source & source);
 std::string readString(Source & source, size_t max = std::numeric_limits<size_t>::max());
 template<class T> T readStrings(Source & source);
 
