@@ -7,7 +7,7 @@ category: "Breaking Changes"
 credits: [horrors]
 ---
 
-Support for daemon wire protocols belonging to Nix 2.18 or older have been
+Support for daemon wire protocols belonging to Nix 2.17 or older have been
 removed. This impacts clients connecting to the local daemon socket or any
 remote builder configured using the `ssh-ng` protocol. Builders configured
 with the `ssh` protocol are still accessible from clients such as Nix 2.3.
