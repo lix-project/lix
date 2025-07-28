@@ -94,7 +94,7 @@ try {
         to << WORKER_MAGIC_1;
         to.flush();
 
-        uint64_t magic = readLongLong(from);
+        uint64_t magic = readNum<uint64_t>(from);
         if (magic != WORKER_MAGIC_2)
             throw Error("protocol mismatch");
 
@@ -760,9 +760,9 @@ ref<FSAccessor> RemoteStore::getFSAccessor()
 static Logger::Fields readFields(Source & from)
 {
     Logger::Fields fields;
-    size_t size = readInt(from);
+    size_t size = readNum<unsigned>(from);
     for (size_t n = 0; n < size; n++) {
-        auto type = (decltype(Logger::Field::type)) readInt(from);
+        auto type = (decltype(Logger::Field::type)) readNum<unsigned>(from);
         if (type == Logger::Field::tInt)
             fields.push_back(readNum<uint64_t>(from));
         else if (type == Logger::Field::tString)
@@ -812,8 +812,8 @@ try {
 
         else if (msg == STDERR_START_ACTIVITY) {
             auto act = readNum<ActivityId>(from);
-            auto lvl = (Verbosity) readInt(from);
-            auto type = (ActivityType) readInt(from);
+            auto lvl = (Verbosity) readNum<unsigned>(from);
+            auto type = (ActivityType) readNum<unsigned>(from);
             auto s = readString(from);
             auto fields = readFields(from);
             auto parent = readNum<ActivityId>(from);
@@ -827,7 +827,7 @@ try {
 
         else if (msg == STDERR_RESULT) {
             auto act = readNum<ActivityId>(from);
-            auto type = (ResultType) readInt(from);
+            auto type = (ResultType) readNum<unsigned>(from);
             auto fields = readFields(from);
             logger->result(act, type, fields);
         }

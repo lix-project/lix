@@ -271,7 +271,7 @@ Error readError(Source & source)
 {
     auto type = readString(source);
     assert(type == "Error");
-    auto level = (Verbosity) readInt(source);
+    auto level = (Verbosity) readNum<unsigned>(source);
     readString(source); // removed (name)
     auto msg = readString(source);
     ErrorInfo info {

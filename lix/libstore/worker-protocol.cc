@@ -80,7 +80,7 @@ WireFormatGenerator WorkerProto::Serialise<KeyedBuildResult>::write(WorkerProto:
 BuildResult WorkerProto::Serialise<BuildResult>::read(WorkerProto::ReadConn conn)
 {
     BuildResult res;
-    res.status = (BuildResult::Status) readInt(conn.from);
+    res.status = (BuildResult::Status) readNum<unsigned>(conn.from);
     res.errorMsg = readString(conn.from);
     res.timesBuilt = readNum<unsigned>(conn.from);
     res.isNonDeterministic = readBool(conn.from);
@@ -183,8 +183,8 @@ SubstitutablePathInfo WorkerProto::Serialise<SubstitutablePathInfo>::read(ReadCo
     if (deriver != "")
         info.deriver = conn.store.parseStorePath(deriver);
     info.references = WorkerProto::Serialise<StorePathSet>::read(conn);
-    info.downloadSize = readLongLong(conn.from);
-    info.narSize = readLongLong(conn.from);
+    info.downloadSize = readNum<uint64_t>(conn.from);
+    info.narSize = readNum<uint64_t>(conn.from);
     return info;
 }
 

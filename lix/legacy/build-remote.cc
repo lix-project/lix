@@ -339,7 +339,7 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
         FdSource source(STDIN_FILENO);
 
         /* Read the parent's settings. */
-        while (readInt(source)) {
+        while (readNum<unsigned>(source)) {
             auto name = readString(source);
             auto value = readString(source);
             settings.set(name, value);

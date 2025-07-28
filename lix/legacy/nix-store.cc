@@ -899,11 +899,11 @@ opServe(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
     FdSink out(STDOUT_FILENO);
 
     /* Exchange the greeting. */
-    unsigned int magic = readInt(in);
+    unsigned int magic = readNum<unsigned>(in);
     if (magic != SERVE_MAGIC_1) throw Error("protocol mismatch");
     out << SERVE_MAGIC_2 << SERVE_PROTOCOL_VERSION;
     out.flush();
-    ServeProto::Version clientVersion = readInt(in);
+    ServeProto::Version clientVersion = readNum<unsigned>(in);
 
     ServeProto::ReadConn rconn {
         .from = in,
@@ -921,12 +921,12 @@ opServe(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
         verbosity = lvlError;
         settings.keepLog.override(false);
         settings.useSubstitutes.override(false);
-        settings.maxSilentTime.override(readInt(in));
-        settings.buildTimeout.override(readInt(in));
+        settings.maxSilentTime.override(readNum<unsigned>(in));
+        settings.buildTimeout.override(readNum<unsigned>(in));
         if (GET_PROTOCOL_MINOR(clientVersion) >= 2)
             settings.maxLogSize.override(readNum<unsigned long>(in));
         if (GET_PROTOCOL_MINOR(clientVersion) >= 3) {
-            auto nrRepeats = readInt(in);
+            auto nrRepeats = readNum<unsigned>(in);
             if (nrRepeats != 0) {
                 throw Error("client requested repeating builds, but this is not currently implemented");
             }
@@ -936,19 +936,19 @@ opServe(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
             // `nrRepeats` in fact is 0, so we can safely ignore this
             // without doing something other than what the client
             // asked for.
-            readInt(in);
+            readNum<unsigned>(in);
 
             settings.runDiffHook.override(true);
         }
         if (GET_PROTOCOL_MINOR(clientVersion) >= 7) {
-            settings.keepFailed.override((bool) readInt(in));
+            settings.keepFailed.override((bool) readNum<unsigned>(in));
         }
     };
 
     while (true) {
         ServeProto::Command cmd;
         try {
-            cmd = (ServeProto::Command) readInt(in);
+            cmd = (ServeProto::Command) readNum<unsigned>(in);
         } catch (EndOfFile & e) {
             break;
         }
@@ -956,8 +956,8 @@ opServe(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
         switch (cmd) {
 
             case ServeProto::Command::QueryValidPaths: {
-                bool lock = readInt(in);
-                bool substitute = readInt(in);
+                bool lock = readNum<unsigned>(in);
+                bool substitute = readNum<unsigned>(in);
                 auto paths = ServeProto::Serialise<StorePathSet>::read(rconn);
                 if (lock && writeAllowed)
                     for (auto & path : paths)
@@ -1000,7 +1000,7 @@ opServe(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
             }
 
             case ServeProto::Command::ExportPaths: {
-                readInt(in); // obsolete
+                readNum<unsigned>(in); // obsolete
                 aio.blockOn(store->exportPaths(
                     ServeProto::Serialise<StorePathSet>::read(rconn), out
                 ));
@@ -1046,7 +1046,7 @@ opServe(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
             }
 
             case ServeProto::Command::QueryClosure: {
-                bool includeOutputs = readInt(in);
+                bool includeOutputs = readNum<unsigned>(in);
                 StorePathSet closure;
                 aio.blockOn(store->computeFSClosure(
                     ServeProto::Serialise<StorePathSet>::read(rconn),

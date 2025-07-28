@@ -66,7 +66,7 @@ try {
         StringSink saved;
         saved << copyNAR(source);
 
-        uint32_t magic = readInt(source);
+        uint32_t magic = readNum<unsigned>(source);
         if (magic != exportMagic)
             throw Error("Nix archive cannot be imported; wrong format");
 
@@ -87,8 +87,9 @@ try {
         info.narSize = saved.s.size();
 
         // Ignore optional legacy signature.
-        if (readInt(source) == 1)
+        if (readNum<unsigned>(source) == 1) {
             readString(source);
+        }
 
         // Can't use underlying source, which would have been exhausted
         auto source = AsyncStringInputStream(saved.s);

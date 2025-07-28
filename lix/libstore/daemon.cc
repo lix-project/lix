@@ -258,7 +258,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::QueryValidPaths: {
         auto paths = WorkerProto::Serialise<StorePathSet>::read(rconn);
 
-        SubstituteFlag substitute = readInt(from) ? Substitute : NoSubstitute;
+        SubstituteFlag substitute = readNum<unsigned>(from) ? Substitute : NoSubstitute;
 
         logger->startWork();
         if (substitute) {
@@ -433,7 +433,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
     case WorkerProto::Op::BuildPaths: {
         auto drvs = WorkerProto::Serialise<DerivedPaths>::read(rconn);
-        BuildMode mode = buildModeFromInteger(readInt(from));
+        BuildMode mode = buildModeFromInteger(readNum<unsigned>(from));
 
         /* Repairing is not atomic, so disallowed for "untrusted"
            clients.
@@ -456,7 +456,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::BuildPathsWithResults: {
         auto drvs = WorkerProto::Serialise<DerivedPaths>::read(rconn);
         BuildMode mode = bmNormal;
-        mode = buildModeFromInteger(readInt(from));
+        mode = buildModeFromInteger(readNum<unsigned>(from));
 
         /* Repairing is not atomic, so disallowed for "untrusted"
            clients.
@@ -487,7 +487,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
          * correctly.
          */
         readDerivation(from, *store, drv, Derivation::nameFromPath(drvPath));
-        BuildMode buildMode = buildModeFromInteger(readInt(from));
+        BuildMode buildMode = buildModeFromInteger(readNum<unsigned>(from));
         logger->startWork();
 
         auto drvType = drv.type();
@@ -607,14 +607,14 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
     case WorkerProto::Op::CollectGarbage: {
         GCOptions options;
-        options.action = (GCOptions::GCAction) readInt(from);
+        options.action = (GCOptions::GCAction) readNum<unsigned>(from);
         options.pathsToDelete = WorkerProto::Serialise<StorePathSet>::read(rconn);
         options.ignoreLiveness = readBool(from);
         options.maxFreed = readNum<uint64_t>(from);
         // obsolete fields
-        readInt(from);
-        readInt(from);
-        readInt(from);
+        readNum<unsigned>(from);
+        readNum<unsigned>(from);
+        readNum<unsigned>(from);
 
         GCResults results;
 
@@ -634,20 +634,20 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
         ClientSettings clientSettings;
 
-        clientSettings.keepFailed = readInt(from);
-        clientSettings.keepGoing = readInt(from);
-        clientSettings.tryFallback = readInt(from);
-        clientSettings.verbosity = (Verbosity) readInt(from);
-        clientSettings.maxBuildJobs = readInt(from);
-        clientSettings.maxSilentTime = readInt(from);
-        readInt(from); // obsolete useBuildHook
-        clientSettings.verboseBuild = lvlError == (Verbosity) readInt(from);
-        readInt(from); // obsolete logType
-        readInt(from); // obsolete printBuildTrace
-        clientSettings.buildCores = readInt(from);
-        clientSettings.useSubstitutes = readInt(from);
+        clientSettings.keepFailed = readNum<unsigned>(from);
+        clientSettings.keepGoing = readNum<unsigned>(from);
+        clientSettings.tryFallback = readNum<unsigned>(from);
+        clientSettings.verbosity = (Verbosity) readNum<unsigned>(from);
+        clientSettings.maxBuildJobs = readNum<unsigned>(from);
+        clientSettings.maxSilentTime = readNum<unsigned>(from);
+        readNum<unsigned>(from); // obsolete useBuildHook
+        clientSettings.verboseBuild = lvlError == (Verbosity) readNum<unsigned>(from);
+        readNum<unsigned>(from); // obsolete logType
+        readNum<unsigned>(from); // obsolete printBuildTrace
+        clientSettings.buildCores = readNum<unsigned>(from);
+        clientSettings.useSubstitutes = readNum<unsigned>(from);
 
-        unsigned int n = readInt(from);
+        unsigned int n = readNum<unsigned>(from);
         for (unsigned int i = 0; i < n; i++) {
             auto name = readString(from);
             auto value = readString(from);
@@ -844,11 +844,11 @@ void processConnection(
     auto monitor = std::make_unique<MonitorFdHup>(from.fd);
 
     /* Exchange the greeting. */
-    unsigned int magic = readInt(from);
+    unsigned int magic = readNum<unsigned>(from);
     if (magic != WORKER_MAGIC_1) throw Error("protocol mismatch");
     to << WORKER_MAGIC_2 << PROTOCOL_VERSION;
     to.flush();
-    WorkerProto::Version clientVersion = readInt(from);
+    WorkerProto::Version clientVersion = readNum<unsigned>(from);
 
     if (clientVersion < MIN_SUPPORTED_WORKER_PROTO_VERSION)
         throw Error("the Nix client version is too old");
@@ -862,12 +862,12 @@ void processConnection(
     Finally finally([&]() { printMsgUsing(prevLogger, lvlDebug, "%d operations", opCount); });
 
     // FIXME: what is *supposed* to be in this even?
-    if (readInt(from)) {
+    if (readNum<unsigned>(from)) {
         // Obsolete CPU affinity.
-        readInt(from);
+        readNum<unsigned>(from);
     }
 
-    readInt(from); // obsolete reserveSpace
+    readNum<unsigned>(from); // obsolete reserveSpace
 
     to << nixVersion;
 
@@ -891,7 +891,7 @@ void processConnection(
         while (true) {
             WorkerProto::Op op;
             try {
-                op = (enum WorkerProto::Op) readInt(from);
+                op = (enum WorkerProto::Op) readNum<unsigned>(from);
             } catch (Interrupted & e) {
                 break;
             } catch (EndOfFile & e) {

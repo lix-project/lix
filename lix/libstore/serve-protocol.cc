@@ -5,6 +5,7 @@
 #include "lix/libstore/serve-protocol.hh"
 #include "lix/libstore/serve-protocol-impl.hh"
 #include "lix/libstore/path-info.hh"
+#include <cstdint>
 
 namespace nix {
 
@@ -13,7 +14,7 @@ namespace nix {
 BuildResult ServeProto::Serialise<BuildResult>::read(ServeProto::ReadConn conn)
 {
     BuildResult status;
-    status.status = (BuildResult::Status) readInt(conn.from);
+    status.status = (BuildResult::Status) readNum<unsigned>(conn.from);
     status.errorMsg = readString(conn.from);
 
     if (GET_PROTOCOL_MINOR(conn.version) >= 3) {
@@ -63,8 +64,8 @@ UnkeyedValidPathInfo ServeProto::Serialise<UnkeyedValidPathInfo>::read(ReadConn 
         info.deriver = conn.store.parseStorePath(deriver);
     info.references = ServeProto::Serialise<StorePathSet>::read(conn);
 
-    readLongLong(conn.from); // download size, unused
-    info.narSize = readLongLong(conn.from);
+    readNum<uint64_t>(conn.from); // download size, unused
+    info.narSize = readNum<uint64_t>(conn.from);
 
     if (GET_PROTOCOL_MINOR(conn.version) >= 4) {
         auto s = readString(conn.from);

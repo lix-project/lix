@@ -19,6 +19,7 @@
 #include "lix/libutil/abstract-setting-to-json.hh"
 #include "path-info.hh"
 #include "path.hh"
+#include <cstdint>
 #include <optional>
 
 namespace nix {
@@ -62,7 +63,7 @@ QueryPathInfoResult ServeProto::Serialise<QueryPathInfoResult>::read(ServeProto:
 BuildPathsResult ServeProto::Serialise<BuildPathsResult>::read(ServeProto::ReadConn conn)
 {
     BuildResult result;
-    result.status = (BuildResult::Status) readInt(conn.from);
+    result.status = (BuildResult::Status) readNum<unsigned>(conn.from);
 
     if (!result.success()) {
         result.errorMsg = readString(conn.from);
@@ -248,10 +249,10 @@ struct LegacySSHStore final : public Store
             to << SERVE_MAGIC_1 << SERVE_PROTOCOL_VERSION;
             to.flush();
 
-            uint64_t magic = readLongLong(from);
+            uint64_t magic = readNum<uint64_t>(from);
             if (magic != SERVE_MAGIC_2)
                 throw Error("'nix-store --serve' protocol mismatch from '%s'", host);
-            conn->remoteVersion = readInt(from);
+            conn->remoteVersion = readNum<unsigned>(from);
             if (GET_PROTOCOL_MAJOR(conn->remoteVersion) != 0x200)
                 throw Error("unsupported 'nix-store --serve' protocol version on '%s'", host);
 

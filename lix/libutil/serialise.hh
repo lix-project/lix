@@ -380,17 +380,6 @@ MakeError(SerialisationError, Error);
 template<typename T>
 T readNum(Source & source);
 
-inline unsigned int readInt(Source & source)
-{
-    return readNum<unsigned int>(source);
-}
-
-
-inline uint64_t readLongLong(Source & source)
-{
-    return readNum<uint64_t>(source);
-}
-
 void readPadding(size_t len, Source & source);
 std::string readString(Source & source, size_t max = std::numeric_limits<size_t>::max());
 template<class T> T readStrings(Source & source);
@@ -451,7 +440,7 @@ struct FramedSource : Source
         try {
             if (!eof) {
                 while (true) {
-                    auto n = readInt(from);
+                    auto n = readNum<unsigned>(from);
                     if (!n) break;
                     std::vector<char> data(n);
                     from(data.data(), n);
@@ -467,7 +456,7 @@ struct FramedSource : Source
         if (eof) throw EndOfFile("reached end of FramedSource");
 
         if (pos >= pending.size()) {
-            size_t len = readInt(from);
+            size_t len = readNum<unsigned>(from);
             if (!len) {
                 eof = true;
                 return 0;

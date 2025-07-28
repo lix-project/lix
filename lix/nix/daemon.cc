@@ -416,7 +416,7 @@ static void daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTr
         FdSource source(SUBDAEMON_SETTINGS_FD);
 
         /* Read the parent's settings. */
-        while (readInt(source)) {
+        while (readNum<unsigned>(source)) {
             auto name = readString(source);
             auto value = readString(source);
             settings.set(name, value);
