@@ -1074,6 +1074,34 @@ opServe(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                 if (info.narSize == 0)
                     throw Error("narInfo is too old and missing the narSize field");
 
+                struct SizedSource : Source
+                {
+                    Source & orig;
+                    size_t remain;
+                    SizedSource(Source & orig, size_t size) : orig(orig), remain(size) {}
+                    size_t read(char * data, size_t len) override
+                    {
+                        if (this->remain <= 0) {
+                            throw EndOfFile("sized: unexpected end-of-file");
+                        }
+                        len = std::min(len, this->remain);
+                        size_t n = this->orig.read(data, len);
+                        this->remain -= n;
+                        return n;
+                    }
+
+                    size_t drainAll()
+                    {
+                        std::vector<char> buf(8192);
+                        size_t sum = 0;
+                        while (this->remain > 0) {
+                            size_t n = read(buf.data(), buf.size());
+                            sum += n;
+                        }
+                        return sum;
+                    }
+                };
+
                 SizedSource sizedSource(in, info.narSize);
                 AsyncSourceInputStream stream{sizedSource};
 
