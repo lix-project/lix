@@ -1031,8 +1031,17 @@ struct CopyPathStream : AsyncInputStream
     kj::Promise<Result<std::optional<size_t>>> read(void * data, size_t len) override
     try {
         auto result = TRY_AWAIT(inner->read(data, len));
+
+        // do not log progress on every call. nar copies cause a lot of small
+        // reads, letting each read report the current copy progress causes a
+        // huge amount of overhead (20x or more) in log traffic. reporting at
+        // 64 kiB intervals is probably enough, being about 1000 dir entries.
+        constexpr size_t CHUNK = 65536;
+        const auto doLog = !result || copied / CHUNK < (copied + *result) / CHUNK || *result < len;
         if (result) {
             copied += *result;
+        }
+        if (doLog) {
             act.progress(copied, expected);
         }
         co_return result;
