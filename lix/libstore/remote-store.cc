@@ -835,7 +835,7 @@ kj::Promise<Result<void>> RemoteStore::ConnectionHandle::withFramedStream(
 )
 try {
     AsyncBufferedOutputStream to(stream);
-    AsyncFramedStream sink(to);
+    AsyncFramedOutputStream sink(to);
 
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
     auto send = [&]() -> kj::Promise<Result<void>> {

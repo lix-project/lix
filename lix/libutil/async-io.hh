@@ -208,14 +208,42 @@ public:
 };
 
 /**
+ * A stream that reads a distinct format of concatenated chunks back into its
+ * logical form, in order to guarantee a known state to the original stream,
+ * even in the event of errors.
+ *
+ * Use with AsyncFramedOutputStream, which also allows the logical stream to be terminated
+ * in the event of an exception.
+ */
+class AsyncFramedInputStream : public AsyncInputStream
+{
+private:
+    AsyncInputStream & from;
+    bool eof = false;
+    /** Full contents of the current data frame. */
+    std::vector<char> pending;
+    /** Read offset into `pending`. The frame is fully processed if `pos == pending.size()`. */
+    size_t pos = 0;
+
+public:
+    AsyncFramedInputStream(AsyncInputStream & from) : from(from) {}
+
+    ~AsyncFramedInputStream();
+
+    kj::Promise<Result<void>> finish();
+
+    kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) override;
+};
+
+/**
  * Write as chunks in the format expected by FramedSource.
  */
-class AsyncFramedStream : public AsyncOutputStream
+class AsyncFramedOutputStream : public AsyncOutputStream
 {
     AsyncOutputStream & to;
 
 public:
-    explicit AsyncFramedStream(AsyncOutputStream & to) : to(to) {}
+    explicit AsyncFramedOutputStream(AsyncOutputStream & to) : to(to) {}
 
     kj::Promise<Result<void>> finish();
 

@@ -2,7 +2,9 @@
 #include "async.hh"
 #include "error.hh"
 #include "file-descriptor.hh"
+#include "logging.hh"
 #include "result.hh"
+#include "serialise.hh"
 #include <cerrno>
 #include <exception>
 #include <fcntl.h>
@@ -195,8 +197,63 @@ kj::Promise<Result<size_t>> AsyncFdIoStream::write(const void * src, size_t size
         return {result::failure(std::make_exception_ptr(SysError(errno, "write failed")))};
     }
 }
+AsyncFramedInputStream::~AsyncFramedInputStream()
+{
+    if (!eof) {
+        printError(
+            "AsyncFramedInputStream wasn't read to finish! its connection is now probably broken."
+        );
+    }
+}
 
-kj::Promise<Result<void>> AsyncFramedStream::finish()
+kj::Promise<Result<void>> AsyncFramedInputStream::finish()
+try {
+    if (!eof) {
+        while (true) {
+            auto n = TRY_AWAIT(readNum<unsigned>(from));
+            if (!n) {
+                eof = true;
+                break;
+            }
+            std::vector<char> data(n);
+            if (TRY_AWAIT(from.readRange(data.data(), n, n)) != n) {
+                throw Error("framed stream ended unexpectedly");
+            }
+        }
+    }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<std::optional<size_t>>> AsyncFramedInputStream::read(void * buffer, size_t size)
+try {
+    if (eof) {
+        co_return std::nullopt;
+    }
+
+    if (pos >= pending.size()) {
+        size_t len = TRY_AWAIT(readNum<unsigned>(from));
+        if (!len) {
+            eof = true;
+            co_return std::nullopt;
+        }
+        pending = std::vector<char>(len);
+        pos = 0;
+        if (TRY_AWAIT(from.readRange(pending.data(), len, len)) != len) {
+            throw Error("framed stream ended unexpectedly");
+        }
+    }
+
+    auto n = std::min(size, pending.size() - pos);
+    memcpy(buffer, pending.data() + pos, n);
+    pos += n;
+    co_return n;
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<void>> AsyncFramedOutputStream::finish()
 try {
     StringSink tmp;
     tmp << 0;
@@ -206,7 +263,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<size_t>> AsyncFramedStream::write(const void * buffer, size_t size)
+kj::Promise<Result<size_t>> AsyncFramedOutputStream::write(const void * buffer, size_t size)
 try {
     StringSink tmp;
     tmp << size;
