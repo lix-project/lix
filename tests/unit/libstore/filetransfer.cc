@@ -203,23 +203,16 @@ serveHTTP(std::string status, std::string headers, std::function<std::string()> 
     return serveHTTP({{{status, headers, content}}});
 }
 
-TEST(FileTransfer, exceptionAbortsDownload)
+TEST(FileTransfer, destructionAbortsDownload)
 {
-    struct Done : BaseException
-    {};
-
     AsyncIoRoot aio;
     auto ft = makeFileTransfer();
 
-    LambdaSink broken([](auto block) { throw Done(); });
-
     auto [port, srv] = serveHTTP({{"200 ok", "", [](int) { return "foo"; }}});
-    ASSERT_THROW(
-        aio.blockOn(
-            aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port))).second->drainInto(broken)
-        ),
-        Done
-    );
+    // discard the download stream. this must cancel the download, even when the
+    // remote still has data to send. we simulate this by sending the same block
+    // of data over and over without any content-length headers sent the client.
+    (void) aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port)));
 
     // makeFileTransfer returns a ref<>, which cannot be cleared. since we also
     // can't default-construct it we'll have to overwrite it instead, but we'll
