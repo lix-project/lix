@@ -3,6 +3,7 @@
 
 #include "lix/libutil/async.hh"
 #include "lix/libutil/box_ptr.hh"
+#include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/io-buffer.hh"
 #include "lix/libutil/ref.hh"
@@ -29,6 +30,28 @@ public:
 
     // expected to return none only on EOF or when `size = 0` was explicitly set.
     virtual kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) = 0;
+
+    /**
+     * Read between `min` and `max` bytes or return `nullopt` if the stream ends
+     * early. The buffer may be partially filled even when `nullopt` is returned
+     * without giving an indication of how many bytes were read from the stream;
+     * reading less than `min` bytes must be considered a fatal error condition.
+     */
+    kj::Promise<Result<std::optional<size_t>>> readRange(void * buffer, size_t min, size_t max)
+    try {
+        size_t total = 0;
+        auto bufferC = charptr_cast<char *>(buffer);
+        while (total < min) {
+            if (auto got = LIX_TRY_AWAIT(read(bufferC + total, max - total)); !got) {
+                co_return std::nullopt;
+            } else {
+                total += *got;
+            }
+        }
+        co_return total;
+    } catch (...) {
+        co_return result::current_exception();
+    }
 
     kj::Promise<Result<void>> drainInto(Sink & sink);
     kj::Promise<Result<void>> drainInto(AsyncOutputStream & stream);

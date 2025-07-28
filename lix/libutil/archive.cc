@@ -672,15 +672,10 @@ struct AsyncParser
 
     kj::Promise<Result<void>> read(char * buffer, size_t n)
     try {
-        while (n > 0) {
-            auto got = TRY_AWAIT(source.read(buffer, n));
-            if (!got) {
-                throw badArchive("unexpected end of nar encountered");
-            }
-
-            buffer += *got;
-            n -= *got;
+        if (!TRY_AWAIT(source.readRange(buffer, n, n))) {
+            throw badArchive("unexpected end of nar encountered");
         }
+
         co_return result::success();
     } catch (...) {
         co_return result::current_exception();
