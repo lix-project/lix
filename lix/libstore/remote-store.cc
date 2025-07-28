@@ -27,6 +27,7 @@
 #include "path-info.hh"
 
 #include <cstdint>
+#include <exception>
 #include <kj/async.h>
 #include <kj/common.h>
 #include <optional>
@@ -757,78 +758,58 @@ ref<FSAccessor> RemoteStore::getFSAccessor()
     return make_ref<RemoteFSAccessor>(ref<Store>(*this));
 }
 
-static Logger::Fields readFields(Source & from)
-{
+static kj::Promise<Result<Logger::Fields>> readFields(AsyncInputStream & from)
+try {
     Logger::Fields fields;
-    size_t size = readNum<unsigned>(from);
+    size_t size = TRY_AWAIT(readNum<unsigned>(from));
     for (size_t n = 0; n < size; n++) {
-        auto type = (decltype(Logger::Field::type)) readNum<unsigned>(from);
+        auto type = (decltype(Logger::Field::type)) TRY_AWAIT(readNum<unsigned>(from));
         if (type == Logger::Field::tInt)
-            fields.push_back(readNum<uint64_t>(from));
+            fields.push_back(TRY_AWAIT(readNum<uint64_t>(from)));
         else if (type == Logger::Field::tString)
-            fields.push_back(readString(from));
+            fields.push_back(TRY_AWAIT(readString(from)));
         else
             throw Error("got unsupported field type %x from Nix daemon", (int) type);
     }
-    return fields;
+    co_return fields;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<RemoteStore::Connection::RemoteError>>
 RemoteStore::Connection::processStderr(AsyncFdIoStream & stream)
 try {
-    // SAFETY NOTE: while we're running we own the executor, and thus the stream.
-    // setting these flags is unsafe if the stream is shared with another thread.
-    const auto oldState = makeBlocking(getFD());
-    KJ_DEFER(resetBlockingState(getFD(), oldState));
+    AsyncBufferedInputStream from{stream, fromBuf};
 
     while (true) {
-        // fill the read buffer asynchronously until we have at least a message type.
-        // once we have this we'll continue synchronously as in the sendCommand case.
-        if (fromBuf->used() < sizeof(uint64_t)) {
-            const auto oldState = makeNonBlocking(getFD());
-            KJ_DEFER(resetBlockingState(getFD(), oldState));
-            while (fromBuf->used() < sizeof(uint64_t)) {
-                const auto available = fromBuf->getWriteBuffer();
-                const auto got = TRY_AWAIT(stream.read(available.data(), available.size()));
-                if (got) {
-                    fromBuf->added(*got);
-                } else {
-                    throw Error("Nix daemon disconnected while waiting for a response");
-                }
-            }
-        }
-
-        FdSource from{getFD(), fromBuf};
-        from.specialEndOfFileError = "Nix daemon disconnected while waiting for a response";
-
-        auto msg = readNum<uint64_t>(from);
+        auto msg = TRY_AWAIT(readNum<uint64_t>(from));
 
         if (msg == STDERR_ERROR) {
-            co_return RemoteError{std::make_exception_ptr(readError(from))};
+            co_return RemoteError{std::make_exception_ptr(TRY_AWAIT(readError(from)))};
         }
 
         else if (msg == STDERR_NEXT)
-            printError(chomp(readString(from)));
+            printError(chomp(TRY_AWAIT(readString(from))));
 
         else if (msg == STDERR_START_ACTIVITY) {
-            auto act = readNum<ActivityId>(from);
-            auto lvl = (Verbosity) readNum<unsigned>(from);
-            auto type = (ActivityType) readNum<unsigned>(from);
-            auto s = readString(from);
-            auto fields = readFields(from);
-            auto parent = readNum<ActivityId>(from);
+            auto act = TRY_AWAIT(readNum<ActivityId>(from));
+            auto lvl = (Verbosity) TRY_AWAIT(readNum<unsigned>(from));
+            auto type = (ActivityType) TRY_AWAIT(readNum<unsigned>(from));
+            auto s = TRY_AWAIT(readString(from));
+            auto fields = TRY_AWAIT(readFields(from));
+            auto parent = TRY_AWAIT(readNum<ActivityId>(from));
             logger->startActivity(act, lvl, type, s, fields, parent);
         }
 
         else if (msg == STDERR_STOP_ACTIVITY) {
-            auto act = readNum<ActivityId>(from);
+            auto act = TRY_AWAIT(readNum<ActivityId>(from));
             logger->stopActivity(act);
         }
 
         else if (msg == STDERR_RESULT) {
-            auto act = readNum<ActivityId>(from);
-            auto type = (ResultType) readNum<unsigned>(from);
-            auto fields = readFields(from);
+            auto act = TRY_AWAIT(readNum<ActivityId>(from));
+            auto type = (ResultType) TRY_AWAIT(readNum<unsigned>(from));
+            auto fields = TRY_AWAIT(readFields(from));
             logger->result(act, type, fields);
         }
 
@@ -840,6 +821,10 @@ try {
     }
 
     co_return RemoteError{nullptr};
+} catch (SerialisationError & e) {
+    co_return result::failure(
+        std::make_exception_ptr(Error("error reading daemon response: %s", e.what()))
+    );
 } catch (...) {
     co_return result::current_exception();
 }
