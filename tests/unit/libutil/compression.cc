@@ -2,8 +2,10 @@
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/box_ptr.hh"
+#include "lix/libutil/serialise.hh"
 #include <cstddef>
 #include <gtest/gtest.h>
+#include <memory>
 
 namespace nix {
 
@@ -123,8 +125,8 @@ TEST_P(PerTypeCompressionTest, sinkAndSource)
     (*sink)(inputString);
     sink->finish();
 
-    StringSource strSource{strSink.s};
-    auto decompressionSource = makeDecompressionSource(method, strSource);
+    auto decompressionSource =
+        makeDecompressionSource(method, std::make_unique<StringSource>(strSink.s));
 
     ASSERT_STREQ(decompressionSource->drain().c_str(), inputString);
 }

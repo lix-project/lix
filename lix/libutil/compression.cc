@@ -55,13 +55,13 @@ struct ChunkedCompressionSink : CompressionSink
 struct ArchiveDecompressionSource : Source
 {
     std::unique_ptr<TarArchive> archive = 0;
-    Source & src;
-    ArchiveDecompressionSource(Source & src) : src(src) {}
+    std::unique_ptr<Source> src;
+    ArchiveDecompressionSource(std::unique_ptr<Source> src) : src(std::move(src)) {}
     ~ArchiveDecompressionSource() override {}
     size_t read(char * data, size_t len) override {
         struct archive_entry * ae;
         if (!archive) {
-            archive = std::make_unique<TarArchive>(src, true);
+            archive = std::make_unique<TarArchive>(*src, true);
             this->archive->check(archive_read_next_header(this->archive->archive, &ae),
                 "failed to read header (%s)");
             if (archive_filter_count(this->archive->archive) < 2) {
@@ -163,14 +163,15 @@ struct BrotliDecompressionSource : Source
     const uint8_t * next_in;
     std::exception_ptr inputEofException = nullptr;
 
-    Source * inner;
+    std::unique_ptr<Source> inner;
     std::unique_ptr<BrotliDecoderState, void (*)(BrotliDecoderState *)> state;
 
-    BrotliDecompressionSource(Source & inner)
+    BrotliDecompressionSource(std::unique_ptr<Source> inner)
         : buf(std::make_unique<char[]>(BUF_SIZE))
-        , inner(&inner)
+        , inner(std::move(inner))
         , state{
-              BrotliDecoderCreateInstance(nullptr, nullptr, nullptr), BrotliDecoderDestroyInstance}
+              BrotliDecoderCreateInstance(nullptr, nullptr, nullptr), BrotliDecoderDestroyInstance
+          }
     {
         if (!state) {
             throw CompressionError("unable to initialize brotli decoder");
@@ -231,21 +232,19 @@ finish:
 
 std::string decompress(const std::string & method, std::string_view in)
 {
-    StringSource src{in};
-    auto filter = makeDecompressionSource(method, src);
+    auto filter = makeDecompressionSource(method, std::make_unique<StringSource>(in));
     return filter->drain();
 }
 
-std::unique_ptr<Source> makeDecompressionSource(const std::string & method, Source & inner)
+std::unique_ptr<Source>
+makeDecompressionSource(const std::string & method, std::unique_ptr<Source> inner)
 {
     if (method == "none" || method == "") {
-        return std::make_unique<LambdaSource>([&](char * data, size_t len) {
-            return inner.read(data, len);
-        });
+        return inner;
     } else if (method == "br") {
-        return std::make_unique<BrotliDecompressionSource>(inner);
+        return std::make_unique<BrotliDecompressionSource>(std::move(inner));
     } else {
-        return std::make_unique<ArchiveDecompressionSource>(inner);
+        return std::make_unique<ArchiveDecompressionSource>(std::move(inner));
     }
 }
 
@@ -288,7 +287,6 @@ struct DecompressorPipes
 struct DecompressionStream : DecompressorPipes, AsyncInputStream
 {
     box_ptr<AsyncInputStream> inner;
-    std::unique_ptr<FdSource> source;
     std::unique_ptr<FdSink> sink;
     std::unique_ptr<Source> decompressor;
     std::future<void> thread;
@@ -301,9 +299,9 @@ struct DecompressionStream : DecompressorPipes, AsyncInputStream
         makeNonBlocking(compressed.writeSide.get());
         makeNonBlocking(uncompressed.readSide.get());
 
-        source = std::make_unique<FdSource>(compressed.readSide.get());
         sink = std::make_unique<FdSink>(uncompressed.writeSide.get());
-        decompressor = makeDecompressionSource(method, *source);
+        decompressor =
+            makeDecompressionSource(method, std::make_unique<FdSource>(compressed.readSide.get()));
 
         thread = std::async(std::launch::async, [&] {
             // signal the feeder and reader when we're done

@@ -7,6 +7,7 @@
 #include "lix/libutil/types.hh"
 #include "lix/libutil/serialise.hh"
 
+#include <memory>
 #include <string>
 
 namespace nix {
@@ -20,7 +21,8 @@ struct CompressionSink : BufferedSink, FinishSink
 
 std::string decompress(const std::string & method, std::string_view in);
 
-std::unique_ptr<Source> makeDecompressionSource(const std::string & method, Source & inner);
+std::unique_ptr<Source>
+makeDecompressionSource(const std::string & method, std::unique_ptr<Source> inner);
 
 box_ptr<AsyncInputStream>
 makeDecompressionStream(const std::string & method, box_ptr<AsyncInputStream> inner);
