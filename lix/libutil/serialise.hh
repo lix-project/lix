@@ -395,20 +395,9 @@ void readPadding(size_t len, Source & source);
 std::string readString(Source & source, size_t max = std::numeric_limits<size_t>::max());
 template<class T> T readStrings(Source & source);
 
-Source & operator >> (Source & in, std::string & s);
-
-template<typename T>
-Source & operator >> (Source & in, T & n)
+inline bool readBool(Source & in)
 {
-    n = readNum<T>(in);
-    return in;
-}
-
-template<typename T>
-Source & operator >> (Source & in, bool & b)
-{
-    b = readNum<uint64_t>(in);
-    return in;
+    return readNum<uint64_t>(in);
 }
 
 Error readError(Source & source);

@@ -17,8 +17,11 @@
 #include "graphml.hh"
 #include "lix/libcmd/legacy.hh"
 #include "lix/libstore/path-with-outputs.hh"
+#include "lix/libutil/serialise.hh"
 #include "nix-store.hh"
 
+#include <cstdint>
+#include <ctime>
 #include <iostream>
 #include <algorithm>
 
@@ -1067,7 +1070,9 @@ opServe(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                 if (deriver != "")
                     info.deriver = store->parseStorePath(deriver);
                 info.references = ServeProto::Serialise<StorePathSet>::read(rconn);
-                in >> info.registrationTime >> info.narSize >> info.ultimate;
+                info.registrationTime = readNum<time_t>(in);
+                info.narSize = readNum<uint64_t>(in);
+                info.ultimate = readBool(in);
                 info.sigs = readStrings<StringSet>(in);
                 info.ca = ContentAddress::parseOpt(readString(in));
 

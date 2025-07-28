@@ -254,13 +254,6 @@ std::string readString(Source & source, size_t max)
     return res;
 }
 
-Source & operator >> (Source & in, std::string & s)
-{
-    s = readString(in);
-    return in;
-}
-
-
 template<class T> T readStrings(Source & source)
 {
     auto count = readNum<size_t>(source);

@@ -13,10 +13,13 @@
 #include "lix/libutil/finally.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/derivations.hh"
+#include "lix/libutil/serialise.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/args.hh"
 
 #include <boost/core/demangle.hpp>
+#include <cstdint>
+#include <ctime>
 #include <sstream>
 
 namespace nix::daemon {
@@ -364,8 +367,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         auto name = readString(from);
         auto camStr = readString(from);
         auto refs = WorkerProto::Serialise<StorePathSet>::read(rconn);
-        bool repairBool;
-        from >> repairBool;
+        bool repairBool = readBool(from);
         auto repair = RepairFlag{repairBool};
 
         logger->startWork();
@@ -401,8 +403,8 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     }
 
     case WorkerProto::Op::AddMultipleToStore: {
-        bool repair, dontCheckSigs;
-        from >> repair >> dontCheckSigs;
+        bool repair = readBool(from);
+        bool dontCheckSigs = readBool(from);
         if (!trusted && dontCheckSigs)
             dontCheckSigs = false;
 
@@ -607,7 +609,8 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         GCOptions options;
         options.action = (GCOptions::GCAction) readInt(from);
         options.pathsToDelete = WorkerProto::Serialise<StorePathSet>::read(rconn);
-        from >> options.ignoreLiveness >> options.maxFreed;
+        options.ignoreLiveness = readBool(from);
+        options.maxFreed = readNum<uint64_t>(from);
         // obsolete fields
         readInt(from);
         readInt(from);
@@ -722,8 +725,8 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         break;
 
     case WorkerProto::Op::VerifyStore: {
-        bool checkContents, repair;
-        from >> checkContents >> repair;
+        bool checkContents = readBool(from);
+        bool repair = readBool(from);
         logger->startWork();
         if (repair && !trusted)
             throw Error("you are not privileged to repair paths");
@@ -760,10 +763,13 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         if (deriver != "")
             info.deriver = store->parseStorePath(deriver);
         info.references = WorkerProto::Serialise<StorePathSet>::read(rconn);
-        from >> info.registrationTime >> info.narSize >> info.ultimate;
+        info.registrationTime = readNum<time_t>(from);
+        info.narSize = readNum<uint64_t>(from);
+        info.ultimate = readBool(from);
         info.sigs = readStrings<StringSet>(from);
         info.ca = ContentAddress::parseOpt(readString(from));
-        from >> repair >> dontCheckSigs;
+        repair = readBool(from);
+        dontCheckSigs = readBool(from);
         if (!trusted && dontCheckSigs)
             dontCheckSigs = false;
         if (!trusted)

@@ -3,6 +3,7 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libutil/json.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/serialise.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libstore/common-protocol.hh"
 #include "lix/libstore/common-protocol-impl.hh"
@@ -678,7 +679,8 @@ Source & readDerivation(Source & in, const Store & store, BasicDerivation & drv,
 
     drv.inputSrcs = CommonProto::Serialise<StorePathSet>::read(
         CommonProto::ReadConn { .from = in, .store = store });
-    in >> drv.platform >> drv.builder;
+    drv.platform = readString(in);
+    drv.builder = readString(in);
     drv.args = readStrings<Strings>(in);
 
     nr = readNum<size_t>(in);

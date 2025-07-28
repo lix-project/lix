@@ -6,6 +6,8 @@
 #include "lix/libstore/worker-protocol-impl.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/path-info.hh"
+#include <cstdint>
+#include <ctime>
 #include <optional>
 
 namespace nix {
@@ -79,12 +81,11 @@ BuildResult WorkerProto::Serialise<BuildResult>::read(WorkerProto::ReadConn conn
 {
     BuildResult res;
     res.status = (BuildResult::Status) readInt(conn.from);
-    conn.from >> res.errorMsg;
-    conn.from
-        >> res.timesBuilt
-        >> res.isNonDeterministic
-        >> res.startTime
-        >> res.stopTime;
+    res.errorMsg = readString(conn.from);
+    res.timesBuilt = readNum<unsigned>(conn.from);
+    res.isNonDeterministic = readBool(conn.from);
+    res.startTime = readNum<time_t>(conn.from);
+    res.stopTime = readNum<time_t>(conn.from);
     auto builtOutputs = WorkerProto::Serialise<DrvOutputs>::read(conn);
     for (auto && [output, realisation] : builtOutputs)
         res.builtOutputs.insert_or_assign(
@@ -131,9 +132,10 @@ UnkeyedValidPathInfo WorkerProto::Serialise<UnkeyedValidPathInfo>::read(ReadConn
     UnkeyedValidPathInfo info(narHash);
     if (deriver != "") info.deriver = conn.store.parseStorePath(deriver);
     info.references = WorkerProto::Serialise<StorePathSet>::read(conn);
-    conn.from >> info.registrationTime >> info.narSize;
+    info.registrationTime = readNum<time_t>(conn.from);
+    info.narSize = readNum<uint64_t>(conn.from);
 
-    conn.from >> info.ultimate;
+    info.ultimate = readBool(conn.from);
     info.sigs = readStrings<StringSet>(conn.from);
     info.ca = ContentAddress::parseOpt(readString(conn.from));
 
@@ -156,8 +158,7 @@ WireFormatGenerator WorkerProto::Serialise<UnkeyedValidPathInfo>::write(WriteCon
 std::optional<UnkeyedValidPathInfo>
 WorkerProto::Serialise<std::optional<UnkeyedValidPathInfo>>::read(ReadConn conn)
 {
-    bool valid;
-    conn.from >> valid;
+    bool valid = readBool(conn.from);
     if (valid) {
         return WorkerProto::Serialise<UnkeyedValidPathInfo>::read(conn);
     } else {

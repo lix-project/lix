@@ -14,14 +14,14 @@ BuildResult ServeProto::Serialise<BuildResult>::read(ServeProto::ReadConn conn)
 {
     BuildResult status;
     status.status = (BuildResult::Status) readInt(conn.from);
-    conn.from >> status.errorMsg;
+    status.errorMsg = readString(conn.from);
 
-    if (GET_PROTOCOL_MINOR(conn.version) >= 3)
-        conn.from
-            >> status.timesBuilt
-            >> status.isNonDeterministic
-            >> status.startTime
-            >> status.stopTime;
+    if (GET_PROTOCOL_MINOR(conn.version) >= 3) {
+        status.timesBuilt = readNum<unsigned>(conn.from);
+        status.isNonDeterministic = readBool(conn.from);
+        status.startTime = readNum<time_t>(conn.from);
+        status.stopTime = readNum<time_t>(conn.from);
+    }
     if (GET_PROTOCOL_MINOR(conn.version) >= 6) {
         auto builtOutputs = ServeProto::Serialise<DrvOutputs>::read(conn);
         for (auto && [output, realisation] : builtOutputs)

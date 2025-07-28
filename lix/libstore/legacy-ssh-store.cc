@@ -65,7 +65,7 @@ BuildPathsResult ServeProto::Serialise<BuildPathsResult>::read(ServeProto::ReadC
     result.status = (BuildResult::Status) readInt(conn.from);
 
     if (!result.success()) {
-        conn.from >> result.errorMsg;
+        result.errorMsg = readString(conn.from);
         return {result, Error(result.status, result.errorMsg)};
     }
 
