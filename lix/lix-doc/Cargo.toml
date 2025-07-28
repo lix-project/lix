@@ -9,7 +9,7 @@ homepage = "https://github.com/lf-/nix-doc"
 repository = "https://github.com/lf-/nix-doc"
 
 [dependencies]
-rnix = "0.11.0"
+rnix = "0.12.0"
 # Necessary because rnix fails to export a critical trait (Rowan's AstNode).
 rowan = "0.15.16"
 

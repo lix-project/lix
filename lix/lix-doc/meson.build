@@ -1,4 +1,4 @@
-rnix = dependency('rnix-0.11-rs')
+rnix = dependency('rnix-0.12-rs')
 rowan = dependency('rowan-0.15-rs')
 
 lix_doc = static_library(
