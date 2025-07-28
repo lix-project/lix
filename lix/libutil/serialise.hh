@@ -227,19 +227,6 @@ struct TeeSource : Source
 };
 
 /**
- * A sink that that just counts the number of bytes given to it
- */
-struct LengthSink : Sink
-{
-    uint64_t length = 0;
-
-    void operator () (std::string_view data) override
-    {
-        length += data.size();
-    }
-};
-
-/**
  * Convert a function into a sink.
  */
 struct LambdaSink : Sink

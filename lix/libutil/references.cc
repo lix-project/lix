@@ -155,12 +155,25 @@ size_t RewritingSource::read(char * data, size_t len)
 
 HashResult computeHashModulo(HashType ht, const std::string & modulus, Source & source)
 {
-    HashSink hashSink(ht);
-    LengthSink lengthSink;
-    RewritingSource rewritingSource(modulus, std::string(modulus.size(), 0), source);
+    struct LengthSink : Sink
+    {
+        Sink & inner;
+        uint64_t length = 0;
 
-    TeeSink tee{hashSink, lengthSink};
-    rewritingSource.drainInto(tee);
+        LengthSink(Sink & inner) : inner(inner) {}
+
+        void operator()(std::string_view data) override
+        {
+            length += data.size();
+            inner(data);
+        }
+    };
+
+    HashSink hashSink(ht);
+    RewritingSource rewritingSource(modulus, std::string(modulus.size(), 0), source);
+    LengthSink lengthSink{hashSink};
+
+    rewritingSource.drainInto(lengthSink);
 
     /* Hash the positions of the self-references. This ensures that a
        NAR with self-references and a NAR with some of the
