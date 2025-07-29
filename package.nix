@@ -402,7 +402,6 @@ stdenv.mkDerivation (finalAttrs: {
 
   mesonCheckFlags = [
     "--suite=check"
-    "--print-errorlogs"
   ];
   # the tests access localhost.
   __darwinAllowLocalNetworking = true;
@@ -447,7 +446,6 @@ stdenv.mkDerivation (finalAttrs: {
 
   mesonInstallCheckFlags = [
     "--suite=installcheck"
-    "--print-errorlogs"
   ];
 
   preInstallCheck = ''
