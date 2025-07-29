@@ -180,12 +180,6 @@ if get_option('default_library') != 'static'
   functional_tests_scripts += ['plugins.sh']
 endif
 
-if get_option('default_library') != 'static' and get_option('enable-contrib-plugins')
-  functional_tests_scripts += [
-    'plugins/mtls/substituter-ssl-client-cert.sh'
-  ]
-endif
-
 # TODO(Qyriad): this will hopefully be able to be removed when we remove the autoconf+Make
 # buildsystem. See the comments at the top of setup-functional-tests.py for why this is here.
 meson.add_install_script(

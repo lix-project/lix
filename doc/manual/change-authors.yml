@@ -156,9 +156,6 @@ ma27:
 matthewbauer:
   github: matthewbauer
 
-mic92:
-  github: Mic92
-
 midnightveil:
   display_name: julia
   forgejo: midnightveil
@@ -245,9 +242,6 @@ vigress8:
   display_name: Vigress
   forgejo: vigress8
   github: vigress8
-
-vlaci:
-  github: vlaci
 
 vlinkz:
   display_name: Victor Fuentes

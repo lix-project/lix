@@ -36,7 +36,7 @@ pre-commit-run {
       enable = true;
       package = pkgs.llvmPackages.libclang.python;
       entry = "${pkgs.llvmPackages.libclang.python}/bin/git-clang-format --binary ${pkgs.llvmPackages.clang-tools}/bin/clang-format";
-      files = "^(lix/|tests/|contrib/plugins/)";
+      files = "^(lix/|tests/)";
       types = [
         "c++"
         "file"
