@@ -208,6 +208,14 @@ elif host_cpu == 'amd64'
   host_cpu = 'x86_64'
 elif host_cpu in ['armv6', 'armv7']
   host_cpu += 'l'
+elif host_cpu == 'arm'
+  # Too generic, we use more specific ones
+  host_cpu = host_machine.cpu()
+elif host_cpu in ['mips', 'mips64']
+  # LE is suffixed with 'el'
+  if host_machine.endian() == 'little'
+    host_cpu += 'el'
+  endif
 elif host_cpu == 'ppc'
   host_cpu = 'powerpc'
   if host_machine.endian() == 'little'
@@ -220,7 +228,7 @@ elif host_cpu == 'ppc64'
   endif
 endif
 
-host_system = host_machine.cpu_family() + '-' + host_machine.system()
+host_system = host_cpu + '-' + host_machine.system()
 message('canonical Nix system name:', host_system)
 
 is_linux = host_machine.system() == 'linux'
