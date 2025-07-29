@@ -153,6 +153,7 @@ experimental_feature_definitions = files(
   'experimental-features/coerce-integers.md',
   'experimental-features/daemon-trust-override.md',
   'experimental-features/fetch-closure.md',
+  'experimental-features/flake-self-attrs.md',
   'experimental-features/flakes.md',
   'experimental-features/lix-custom-sub-commands.md',
   'experimental-features/nix-command.md',

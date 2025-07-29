@@ -94,9 +94,55 @@ static void expectType(EvalState & state, ValueType type,
             showType(type), showType(value.type()), state.ctx.positions[pos]);
 }
 
-static std::map<FlakeId, FlakeInput> parseFlakeInputs(
-    EvalState & state, Value * value, const PosIdx pos,
-    const std::optional<Path> & baseDir, InputPath lockRootPath, unsigned depth);
+static std::pair<std::map<FlakeId, FlakeInput>, std::optional<fetchers::Attrs>> parseFlakeInputs(
+    EvalState & state,
+    Value * value,
+    const PosIdx pos,
+    const std::optional<Path> & baseDir,
+    InputPath lockRootPath,
+    unsigned depth,
+    bool allowSelf
+);
+
+static void parseFlakeInputAttr(EvalState & state, const Attr & attr, fetchers::Attrs & attrs)
+{
+// Allow selecting a subset of enum values
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch-enum"
+    switch (attr.value->type()) {
+    case nString:
+        attrs.emplace(state.ctx.symbols[attr.name], attr.value->string.s);
+        break;
+    case nBool:
+        attrs.emplace(state.ctx.symbols[attr.name], Explicit<bool>{attr.value->boolean});
+        break;
+    case nInt: {
+        auto intValue = attr.value->integer.value;
+
+        if (intValue < 0) {
+            state.ctx.errors
+                .make<EvalError>(
+                    "negative value given for flake input attribute %1%: %2%",
+                    state.ctx.symbols[attr.name],
+                    intValue
+                )
+                .debugThrow();
+        }
+        uint64_t asUnsigned = intValue;
+        attrs.emplace(state.ctx.symbols[attr.name], asUnsigned);
+        break;
+    }
+    default:
+        state.ctx.errors
+            .make<TypeError>(
+                "flake input attribute '%s' is %s while a string, Boolean, or integer is expected",
+                state.ctx.symbols[attr.name],
+                showType(*attr.value)
+            )
+            .debugThrow();
+    }
+#pragma GCC diagnostic pop
+}
 
 static FlakeInput parseFlakeInput(EvalState & state,
     const std::string & inputName, Value * value, const PosIdx pos,
@@ -124,38 +170,18 @@ static FlakeInput parseFlakeInput(EvalState & state,
                 expectType(state, nBool, *attr.value, attr.pos);
                 input.isFlake = attr.value->boolean;
             } else if (attr.name == sInputs) {
-                input.overrides = parseFlakeInputs(state, attr.value, attr.pos, baseDir, lockRootPath, depth + 1);
+                input.overrides =
+                    parseFlakeInputs(
+                        state, attr.value, attr.pos, baseDir, lockRootPath, depth + 1, false
+                    )
+                        .first;
             } else if (attr.name == sFollows) {
                 expectType(state, nString, *attr.value, attr.pos);
                 auto follows(parseInputPath(attr.value->string.s));
                 follows.insert(follows.begin(), lockRootPath.begin(), lockRootPath.end());
                 input.follows = follows;
             } else {
-                // Allow selecting a subset of enum values
-                #pragma GCC diagnostic push
-                #pragma GCC diagnostic ignored "-Wswitch-enum"
-                switch (attr.value->type()) {
-                    case nString:
-                        attrs.emplace(state.ctx.symbols[attr.name], attr.value->string.s);
-                        break;
-                    case nBool:
-                        attrs.emplace(state.ctx.symbols[attr.name], Explicit<bool> { attr.value->boolean });
-                        break;
-                    case nInt: {
-                        auto intValue = attr.value->integer.value;
-
-                        if (intValue < 0) {
-                            state.ctx.errors.make<EvalError>("negative value given for flake input attribute %1%: %2%", state.ctx.symbols[attr.name], intValue).debugThrow();
-                        }
-                        uint64_t asUnsigned = intValue;
-                        attrs.emplace(state.ctx.symbols[attr.name], asUnsigned);
-                        break;
-                    }
-                    default:
-                        state.ctx.errors.make<TypeError>("flake input attribute '%s' is %s while a string, Boolean, or integer is expected",
-                            state.ctx.symbols[attr.name], showType(*attr.value)).debugThrow();
-                }
-                #pragma GCC diagnostic pop
+                parseFlakeInputAttr(state, attr, attrs);
             }
         } catch (Error & e) {
             e.addTrace(
@@ -190,26 +216,72 @@ static FlakeInput parseFlakeInput(EvalState & state,
     return input;
 }
 
-static std::map<FlakeId, FlakeInput> parseFlakeInputs(
-    EvalState & state, Value * value, const PosIdx pos,
-    const std::optional<Path> & baseDir, InputPath lockRootPath, unsigned depth)
+static std::pair<std::map<FlakeId, FlakeInput>, std::optional<fetchers::Attrs>> parseFlakeInputs(
+    EvalState & state,
+    Value * value,
+    const PosIdx pos,
+    const std::optional<Path> & baseDir,
+    InputPath lockRootPath,
+    unsigned depth,
+    bool allowSelf = true
+)
 {
     std::map<FlakeId, FlakeInput> inputs;
 
     expectType(state, nAttrs, *value, pos);
 
+    std::optional<fetchers::Attrs> selfAttrs = std::nullopt;
     for (nix::Attr & inputAttr : *(*value).attrs) {
-        inputs.emplace(state.ctx.symbols[inputAttr.name],
-            parseFlakeInput(state,
-                state.ctx.symbols[inputAttr.name],
-                inputAttr.value,
-                inputAttr.pos,
-                baseDir,
-                lockRootPath,
-                depth));
+        std::string inputName = state.ctx.symbols[inputAttr.name];
+        if (inputName == "self") {
+            experimentalFeatureSettings.require(Xp::FlakeSelfAttrs);
+
+            if (!allowSelf) {
+                throw Error(
+                    "'self' input attributes not allowed at %s", state.ctx.positions[inputAttr.pos]
+                );
+            }
+            expectType(state, nAttrs, *inputAttr.value, inputAttr.pos);
+
+            selfAttrs = selfAttrs.value_or(fetchers::Attrs{});
+            for (auto & attr : *inputAttr.value->attrs) {
+                parseFlakeInputAttr(state, attr, *selfAttrs);
+            }
+        } else {
+            inputs.emplace(
+                inputName,
+                parseFlakeInput(
+                    state, inputName, inputAttr.value, inputAttr.pos, baseDir, lockRootPath, depth
+                )
+            );
+        }
     }
 
-    return inputs;
+    return {inputs, selfAttrs};
+}
+
+static std::optional<FlakeRef> applySelfAttrs(const FlakeRef & ref, const Flake & flake)
+{
+    // silently failing here is ok; since the parser requires the feature, we'll
+    // crash much earlier if it wasn't enabled
+    if (!flake.selfAttrs.has_value() || !experimentalFeatureSettings.isEnabled(Xp::FlakeSelfAttrs))
+    {
+        return std::nullopt;
+    }
+
+    static std::set<std::string> allowedAttrs{"submodules"};
+    auto newRef(ref);
+
+    for (auto & attr : *flake.selfAttrs) {
+        if (!allowedAttrs.contains(attr.first)) {
+            throw Error("flake 'self' attribute '%s' is not supported", attr.first);
+        }
+        newRef.input.attrs.insert_or_assign(attr.first, attr.second);
+    }
+    if (newRef != ref) {
+        return newRef;
+    }
+    return std::nullopt;
 }
 
 static Flake getFlake(
@@ -263,8 +335,31 @@ static Flake getFlake(
 
     auto sInputs = state.ctx.symbols.create("inputs");
 
-    if (auto inputs = vInfo.attrs->get(sInputs))
-        flake.inputs = parseFlakeInputs(state, inputs->value, inputs->pos, flakeDir, lockRootPath, 0);
+    if (auto inputs = vInfo.attrs->get(sInputs)) {
+        auto [flakeInputs, selfAttrs] =
+            parseFlakeInputs(state, inputs->value, inputs->pos, flakeDir, lockRootPath, 0, true);
+        flake.inputs = std::move(flakeInputs);
+        flake.selfAttrs = std::move(selfAttrs);
+    }
+
+    auto newLockedRef = applySelfAttrs(lockedRef, flake);
+    if (newLockedRef.has_value()) {
+        debug("refetching input '%s' due to self attribute", *newLockedRef);
+        // FIXME: need to remove attrs that are invalidated by the changed input
+        // attrs, such as 'narHash'.
+        newLockedRef->input.attrs.erase("narHash");
+        auto [sourceInfo2, resolvedRef2, lockedRef2] =
+            state.aio.blockOn(fetchOrSubstituteTree(state.ctx, *newLockedRef, false, flakeCache));
+
+        lockedRef = lockedRef2;
+        flake.lockedRef = lockedRef;
+
+        sourceInfo = sourceInfo2;
+        flake.sourceInfo = std::make_shared<fetchers::Tree>(std::move(sourceInfo));
+
+        resolvedRef = resolvedRef2;
+        flake.resolvedRef = resolvedRef;
+    }
 
     if (auto outputs = vInfo.attrs->get(state.ctx.s.outputs)) {
         expectType(state, nFunction, *outputs->value, outputs->pos);

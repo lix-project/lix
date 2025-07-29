@@ -118,6 +118,11 @@ jade:
 just1602:
   forgejo: just1602
 
+kasimeka:
+  display_name: ورد
+  forgejo: janw4ld
+  github: kasimeka
+
 kfears:
   display_name: KFears
   forgejo: kfearsoff
