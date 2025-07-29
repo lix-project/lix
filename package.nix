@@ -450,12 +450,11 @@ stdenv.mkDerivation (finalAttrs: {
     "--print-errorlogs"
   ];
 
-  installCheckPhase = ''
-    runHook preInstallCheck
-    flagsArray=($mesonInstallCheckFlags "''${mesonInstallCheckFlagsArray[@]}")
-    meson test --no-rebuild "''${flagsArray[@]}"
-    runHook postInstallCheck
+  preInstallCheck = ''
+    mesonCheckFlags=("''${mesonInstallCheckFlags[@]}")
   '';
+
+  installCheckPhase = "mesonCheckPhase";
 
   separateDebugInfo = !hostPlatform.isStatic && !finalAttrs.dontBuild;
 
