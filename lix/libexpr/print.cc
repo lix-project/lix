@@ -286,6 +286,11 @@ private:
         } else if (seen && !v.attrs()->empty() && !seen->insert(v.attrs()).second) {
             printRepeated();
         } else if (depth < options.maxDepth || v.attrs()->empty()) {
+            bool isPrintingReplDerivation = depth == 0 && options.replDerivation && state.isDerivation(v);
+            if (isPrintingReplDerivation) {
+                // Switch back to eliding paths if it was initially off.
+                options.derivationPaths = true;
+            }
             increaseIndent();
             output << "{";
 
@@ -304,7 +309,7 @@ private:
             for (auto & i : sorted) {
                 printSpace(prettyPrint);
 
-                if (attrsPrinted >= options.maxAttrs) {
+                if (attrsPrinted >= options.maxAttrs ) {
                     printElided(sorted.size() - printedHere, "attribute", "attributes");
                     break;
                 }
@@ -324,6 +329,21 @@ private:
                 }
 
                 output << " = ";
+
+                // Elide repeated drvAttrs attribute.
+                if (isPrintingReplDerivation && i.first == "drvAttrs") {
+                    state.forceValue(i.second->value, noPos);
+                    if (i.second->value.type() == ValueType::nAttrs) {
+                        printElided(i.second->value.attrs()->size(), "attribute", "attributes");
+                    } else {
+                        print(i.second->value, depth + 1);
+                    }
+                    output << ";";
+                    attrsPrinted++;
+                    printedHere++;
+                    continue;
+                }
+
                 print(i.second->value, depth + 1);
                 output << ";";
                 attrsPrinted++;
@@ -582,7 +602,6 @@ public:
             seen.reset();
         }
 
-        ValuesSeen seen;
         print(v, 0);
     }
 };

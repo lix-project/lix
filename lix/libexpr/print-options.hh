@@ -54,6 +54,12 @@ struct PrintOptions
     bool derivationPaths = false;
 
     /**
+     * If true, we are interactively printing a full derivation and should
+     * switch back to printing paths as desired normally after the first entry.
+     */
+    bool replDerivation = false;
+
+    /**
      * If true, track which values have been printed and skip them on
      * subsequent encounters. Useful for self-referential values.
      */

@@ -100,3 +100,15 @@ Printing an environment with :env after adding a variable to the scope
 
   Env level 1
   abort baseNameOf break builtins derivation derivationStrict dirOf false fetchGit fetchMercurial fetchTarball fetchTree fromTOML import isNull map null placeholder removeAttrs scopedImport throw toString true
+
+Printing a derivation or something
+
+  nix-repl> fakeDrv = let drvAttrs = { builder = "meow"; system = "meower"; name = "mrowmrow"; }; in { inherit (drvAttrs) builder system name; inherit drvAttrs; type = "derivation"; }
+  nix-repl> :p fakeDrv
+  {
+   builder = "meow";
+   drvAttrs = «3 attributes elided»;
+   name = "mrowmrow";
+   system = "meower";
+   type = "derivation";
+  }
