@@ -365,6 +365,64 @@ namespace nix {
     }
 
     /* ----------------------------------------------------------------------------
+     * base32Encode
+     * --------------------------------------------------------------------------*/
+
+    TEST(base32Encode, emptyString) {
+        ASSERT_EQ(base32EncodeStr(""), "");
+    }
+
+    TEST(base32Encode, encodesAString) {
+        ASSERT_EQ(base32EncodeStr("quod erat demonstrandum"), "6sxb4drhp4x3kdrpnsrb441s62wk541j6yxbi");
+    }
+
+    TEST(base32Encode, encodeAndDecode) {
+        auto s = "quod erat demonstrandum";
+        auto encoded = base32EncodeStr(s);
+        auto decoded = base32Decode(encoded);
+
+        ASSERT_EQ(decoded, s);
+    }
+
+    TEST(base32Encode, encodeAndDecodeNonPrintable) {
+        std::string s(257, '\0');
+        std::iota(std::rbegin(s), std::rend(s), 0);
+
+        auto encoded = base32EncodeStr(s);
+        auto decoded = base32Decode(encoded);
+
+        EXPECT_EQ(decoded.length(), 257);
+        ASSERT_EQ(decoded, s);
+    }
+
+    TEST(base32Encode, handleNulChars) {
+        std::string s = "cat girls say meow even with NULs";
+        // Just throw a NUL in there somewhere.
+        s[5] = '\0';
+
+        auto encoded = base32EncodeStr(s);
+        auto decoded = base32Decode(encoded);
+
+        EXPECT_EQ(decoded, s);
+    }
+
+    /* ----------------------------------------------------------------------------
+     * base32Decode
+     * --------------------------------------------------------------------------*/
+
+    TEST(base32Decode, emptyString) {
+        ASSERT_EQ(base32Decode(""), "");
+    }
+
+    TEST(base32Decode, decodeAString) {
+        ASSERT_EQ(base32Decode("6sxb4drhp4x3kdrpnsrb441s62wk541j6yxbi"), "quod erat demonstrandum");
+    }
+
+    TEST(base32Decode, decodeThrowsOnInvalidChar) {
+        ASSERT_THROW(base32Decode("6sxb4drhp4x3kdrpnsrb441s62wk541j6yxbe"), Error);
+    }
+
+    /* ----------------------------------------------------------------------------
      * getLine
      * --------------------------------------------------------------------------*/
 
