@@ -1,4 +1,5 @@
 #include "lix/libutil/references.hh"
+#include "lix/libutil/strings.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libutil/logging.hh"
 

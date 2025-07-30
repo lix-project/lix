@@ -197,6 +197,12 @@ std::string shellEscape(const std::string_view s);
 std::string base64Encode(std::string_view s);
 std::string base64Decode(std::string_view s);
 
+/**
+ * Base32 encoding/decoding.
+ */
+extern const std::string base32Chars;
+std::string base32Encode(std::string_view s);
+std::string base32Decode(std::string_view s);
 
 /**
  * Remove common leading whitespace from the lines in the string
