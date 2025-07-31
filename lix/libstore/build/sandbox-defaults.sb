@@ -26,6 +26,20 @@ R""(
 ; Allow getpwuid.
 (allow mach-lookup (global-name "com.apple.system.opendirectoryd.libinfo"))
 
+; Disallow messing with the top‐level build directory.
+(deny file-write-owner file-write-flags file-write-xattr file-write-mount
+      file-write-unmount
+      (literal (param "_NIX_BUILD_TOP")))
+; Nixpkgs does `chmod -R` on `$NIX_BUILD_TOP/$sourceRoot` by default,
+; which results in it trying to set the mode of `$NIX_BUILD_TOP` when
+; derivations set `sourceRoot = ".";`. Thankfully, the GNU `chmod(1)`
+; treats `ENOTSUP` as a non‐fatal, non‐reported error in this case, and
+; continues to descend into the directory tree.
+;
+; See: <https://gitweb.git.savannah.gnu.org/gitweb/?p=coreutils.git;a=blob;f=src/chmod.c;hb=refs/tags/v9.7#l312>
+(deny file-write-mode (with errno ENOTSUP)
+      (literal (param "_NIX_BUILD_TOP")))
+
 ; Access to /tmp and the build directory.
 ; The network-outbound/network-inbound ones are for unix domain sockets, which
 ; we allow access to in TMPDIR (but if we allow them more broadly, you could in

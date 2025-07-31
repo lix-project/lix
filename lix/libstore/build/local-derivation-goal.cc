@@ -466,15 +466,7 @@ try {
             throw;
         }
 
-#if __APPLE__
-        /* macOS filesystem namespacing does not exist, to avoid breaking builds, we need to weaken
-         * the mode bits on the top-level directory. This avoids issues like
-         * https://github.com/NixOS/nix/pull/11031. */
-        constexpr int toplevelDirMode = 0755;
-#else
-        constexpr int toplevelDirMode = 0700;
-#endif
-        auto nixBuildsTmp = createTempDir(fmt("nix-builds-%s", geteuid()), toplevelDirMode);
+        auto nixBuildsTmp = createTempDir(fmt("nix-builds-%s", geteuid()), 0700);
         printTaggedWarning(
             "Failed to use the system-wide build directory '%s', falling back to a temporary "
             "directory inside '%s'",
@@ -491,22 +483,24 @@ try {
         throw SysError("failed to open the build temporary directory descriptor '%1%'", tmpDirRoot);
     }
 
+#if __APPLE__
+    // The Darwin sandbox ensures that builds cannot change the
+    // permissions of their own build directory. Unsandboxed builds
+    // disable this, but have no isolation by design anyway. The
+    // minimal sandbox (applied even when `sandbox = false`, though not
+    // when `_NIX_TEST_NO_SANDBOX` is set) prevents the creation of
+    // `set{u,g}id` files regardless.
+    tmpDir = tmpDirRoot;
+    tmpDirFd = std::move(tmpDirRootFd);
+#else
     // place the actual build directory in a subdirectory of tmpDirRoot. if
     // we do not do this a build can `chown 777` its build directory and so
     // make it accessible to everyone in the system, breaking isolation. we
     // also need the intermediate level to be inaccessible to others. build
     // processes must be able to at least traverse to the directory though,
     // without being able to chmod. this means either mode 0750 or 0710. we
-    // cannot use 0710 because the libarchive we link with is compiled with
-    // an old apple sdk that does not have O_SEARCH, which makes libarchive
-    // try to open tmpDirRoot for *read* and fail because g+r is not set. a
-    // future update to nixpkgs may fix this. until then we do not lose any
-    // security by setting mode 0750 because we use only a single subdir in
-    // tmpDirRoot, so being able to list its parent doesn't break anything.
-    //
-    // use a short name to not increase the path length too much on darwin.
-    // darwin has a severe sockaddr_un path length limitation, so this does
-    // make a difference over more evocative names. we use `b` for `build`.
+    // use 0710 just to be extra safe; if we ever add more directories they
+    // will not be enumerable to other processes in the builder user group.
     tmpDir = tmpDirRoot + "/b";
     if (mkdirat(tmpDirRootFd.get(), "b", 0700)) {
         throw SysError("failed to create the build temporary directory '%1%'", tmpDir);
@@ -515,15 +509,17 @@ try {
     if (!tmpDirFd)
         throw SysError("failed to open the build temporary directory descriptor '%1%'", tmpDir);
 
-    chownToBuilder(tmpDirFd);
     if (buildUser) {
         if (fchown(tmpDirRootFd.get(), -1, buildUser->getGID()) == -1) {
             throw SysError("cannot change ownership of '%1%'", tmpDirRoot);
         }
-        if (fchmod(tmpDirRootFd.get(), 0750) == -1) {
+        if (fchmod(tmpDirRootFd.get(), 0710) == -1) {
             throw SysError("cannot change mode of '%1%'", tmpDirRoot);
         }
     }
+#endif
+
+    chownToBuilder(tmpDirFd);
 
     for (auto & [outputName, status] : initialOutputs) {
         /* Set scratch path we'll actually use during the build.
