@@ -646,7 +646,7 @@ void AutoDelete::reset(const Path & p, bool recursive) {
 
 //////////////////////////////////////////////////////////////////////
 
-Path createTempSubdir(const Path & parent, const Path & prefix,
+Path createTempSubdir(const Path & parent, const std::optional<Path> & prefix,
     mode_t mode)
 {
     checkInterrupt();
@@ -670,7 +670,7 @@ Path createTempSubdir(const Path & parent, const Path & prefix,
     throw SysError("creating directory '%1%'", tmpDir);
 }
 
-Path makeTempPath(const Path & root, const Path & prefix)
+Path makeTempPath(const Path & root, const std::optional<Path> & prefix)
 {
     static thread_local std::random_device generator{};
     std::uniform_int_distribution<uint64_t> uniform_dist{};
@@ -679,7 +679,11 @@ Path makeTempPath(const Path & root, const Path & prefix)
         reinterpret_cast<const char *>(entropy),
         sizeof(entropy)
     ));
-    return fmt("%s%s-%s", root, prefix, unique);
+    if (prefix) {
+        return fmt("%s%s-%s", root, *prefix, unique);
+    } else {
+        return root + unique;
+    }
 }
 
 Path makeTempSiblingPath(const Path & path)
