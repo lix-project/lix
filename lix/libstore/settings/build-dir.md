@@ -2,12 +2,12 @@
 name: build-dir
 internalName: buildDir
 settingType: PathsSetting<Path>
-defaultText: "`«nixStateDir»/builds`"
-defaultExpr: nixStateDir + "/builds"
+defaultText: "`«nixStateDir»/b`"
+defaultExpr: nixStateDir + "/b"
 ---
 The directory on the host, in which derivations' temporary build directories are created.
 
-If not set, Lix will use the `builds` subdirectory of its configured state directory.
+If not set, Lix will use the `b` subdirectory of its configured state directory.
 Lix will create this directory automatically with suitable permissions if it does not
 exist, otherwise its permissions must allow all users to traverse the directory (i.e.
 it must have `o+x` set, in unix parlance) for non-sandboxed builds to work correctly.

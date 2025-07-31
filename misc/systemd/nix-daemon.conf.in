@@ -1,2 +1,4 @@
 d @localstatedir@/nix/daemon-socket 0755 root root -  -
-d @localstatedir@/nix/builds        0755 root root 7d -
+d @localstatedir@/nix/b             0755 root root 7d -
+# TODO: Remove this after (at least) August 2026.
+R! @localstatedir@/nix/builds       -    -    -    -  -
