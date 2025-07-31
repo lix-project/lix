@@ -467,8 +467,6 @@ try {
             throw;
         }
 
-        auto globalTmp = defaultTempDir();
-        createDirs(globalTmp);
 #if __APPLE__
         /* macOS filesystem namespacing does not exist, to avoid breaking builds, we need to weaken
          * the mode bits on the top-level directory. This avoids issues like
@@ -478,7 +476,7 @@ try {
         constexpr int toplevelDirMode = 0700;
 #endif
         auto nixBuildsTmp = createTempDir(
-            globalTmp, fmt("nix-builds-%s", geteuid()), false, false, toplevelDirMode
+            "", fmt("nix-builds-%s", geteuid()), false, false, toplevelDirMode
         );
         printTaggedWarning(
             "Failed to use the system-wide build directory '%s', falling back to a temporary "
@@ -486,10 +484,10 @@ try {
             settings.buildDir.get(),
             nixBuildsTmp
         );
-        worker.buildDirOverride = nixBuildsTmp;
         tmpDirRoot = createTempDir(
             nixBuildsTmp, "nix-build-" + std::string(drvPath.name()), false, false, 0700
         );
+        worker.buildDirOverride = nixBuildsTmp;
     }
     /* The TOCTOU between the previous mkdir call and this open call is unavoidable due to
      * POSIX semantics.*/
