@@ -308,16 +308,16 @@ typedef std::unique_ptr<DIR, DIRDeleter> AutoCloseDir;
 /**
  * Create a temporary directory in a given parent directory.
  */
-Path createTempSubdir(const Path & parent, const Path & prefix = "nix",
+Path createTempSubdir(const Path & parent, const std::optional<Path> & prefix = "nix",
     mode_t mode = 0755);
 
 /**
  * Return temporary path constructed by appending to a root path.
  *
- * The constructed path looks like `<root><prefix>-<unique>`. To create a
+ * The constructed path looks like `<root>[<prefix>-]<unique>`. To create a
  * path nested in a directory, provide a root ending with `/`.
  */
-Path makeTempPath(const Path & root, const Path & prefix = ".tmp");
+Path makeTempPath(const Path & root, const std::optional<Path> & prefix = ".tmp");
 
 /**
  * Return temporary path in the same directory as a given path.
