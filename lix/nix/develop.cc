@@ -552,7 +552,7 @@ struct CmdDevelop : Common, MixEnvironment
 
         auto [rcFileFd, rcFilePath] = createTempFile("nix-shell");
 
-        AutoDelete tmpDir(createTempDir("", "nix-develop"), true);
+        AutoDelete tmpDir(createTempDir("nix-develop"), true);
 
         auto script = makeRcScript(*state, store, buildEnvironment, (Path) tmpDir);
 
@@ -689,7 +689,7 @@ struct CmdPrintDevEnv : Common, MixJSON
         if (json) {
             logger->writeToStdout(buildEnvironment.toJSON());
         } else {
-            AutoDelete tmpDir(createTempDir("", "nix-dev-env"), true);
+            AutoDelete tmpDir(createTempDir("nix-dev-env"), true);
             logger->writeToStdout(makeRcScript(*state, store, buildEnvironment, tmpDir));
         }
     }
