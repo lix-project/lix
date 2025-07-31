@@ -834,15 +834,15 @@ kj::Promise<Result<void>> RemoteStore::ConnectionHandle::withFramedStream(
     std::function<kj::Promise<Result<void>>(AsyncOutputStream & stream)> fun
 )
 try {
-    AsyncBufferedOutputStream to(stream);
-    AsyncFramedOutputStream sink(to);
+    AsyncFramedOutputStream framed(stream);
+    AsyncBufferedOutputStream sink(framed);
 
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
     auto send = [&]() -> kj::Promise<Result<void>> {
         try {
             TRY_AWAIT(fun(sink));
-            TRY_AWAIT(sink.finish());
-            TRY_AWAIT(to.flush());
+            TRY_AWAIT(sink.flush());
+            TRY_AWAIT(framed.finish());
             co_return result::success();
         } catch (...) {
             handle.markBad();
