@@ -26,7 +26,7 @@ SSH::SSH(const std::string & host, const std::optional<uint16_t> port, const std
         throw Error("invalid SSH host name '%s'", host);
 
     auto state(state_.lock());
-    state->tmpDir = std::make_unique<AutoDelete>(createTempDir("", "nix", 0700));
+    state->tmpDir = std::make_unique<AutoDelete>(createTempDir("nix", 0700));
 }
 
 void SSH::addCommonSSHOpts(Strings & args)
