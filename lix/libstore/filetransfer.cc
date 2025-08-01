@@ -12,6 +12,7 @@
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
 #include "lix/libutil/tracepoint.hh"
+#include "lix/libutil/backoff.hh"
 
 #include <cstddef>
 #include <cstdio>
@@ -36,7 +37,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <random>
 #include <thread>
 #include <regex>
 
@@ -145,7 +145,8 @@ struct curlFileTransfer : public FileTransfer
             std::optional<std::string_view> uploadData,
             bool noBody,
             curl_off_t writtenToSink,
-            kj::Own<kj::CrossThreadPromiseFulfiller<Result<FileTransferResult>>> metadataPromise
+            kj::Own<kj::CrossThreadPromiseFulfiller<Result<FileTransferResult>>> metadataPromise,
+            const std::chrono::milliseconds & connectTimeout
         )
             : uri(uri)
             , act(*logger,
@@ -223,7 +224,7 @@ struct curlFileTransfer : public FileTransfer
             if (settings.caFile != "")
                 curl_easy_setopt(req.get(), CURLOPT_CAINFO, settings.caFile.get().c_str());
 
-            curl_easy_setopt(req.get(), CURLOPT_CONNECTTIMEOUT, fileTransferSettings.connectTimeout.get());
+            curl_easy_setopt(req.get(), CURLOPT_CONNECTTIMEOUT_MS, connectTimeout.count());
 
             curl_easy_setopt(req.get(), CURLOPT_LOW_SPEED_LIMIT, 1L);
             curl_easy_setopt(req.get(), CURLOPT_LOW_SPEED_TIME, fileTransferSettings.stalledDownloadTimeout.get());
@@ -909,9 +910,10 @@ struct curlFileTransfer : public FileTransfer
         std::string chunk;
         std::string_view buffered;
 
-        unsigned int attempt = 0;
         const size_t tries = fileTransferSettings.tries;
         curl_off_t totalReceived = 0;
+
+        Generator<BackoffTiming> backoff;
 
         TransferStream(
             curlFileTransfer & parent,
@@ -927,6 +929,12 @@ struct curlFileTransfer : public FileTransfer
             , data(std::move(data))
             , noBody(noBody)
             , parentAct(context ? context->id : 0)
+            , backoff(backoffTimeouts(
+                  fileTransferSettings.tries,
+                  std::chrono::seconds(fileTransferSettings.maxConnectTimeout.get()),
+                  std::chrono::seconds(fileTransferSettings.initialConnectTimeout.get()),
+                  std::chrono::milliseconds(parent.baseRetryTimeMs)
+              ))
         {
         }
 
@@ -944,8 +952,16 @@ struct curlFileTransfer : public FileTransfer
 
         kj::Promise<Result<void>> init()
         try {
-            auto setup = [&] { return startTransfer(uri); };
-            metadata = TRY_AWAIT(withRetries(setup, setup));
+            metadata = TRY_AWAIT(withRetries(
+                [&]() {
+                    return startTransfer(
+                        uri, std::chrono::seconds(fileTransferSettings.initialConnectTimeout.get())
+                    );
+                },
+                [&](const std::chrono::milliseconds & timeout) {
+                    return startTransfer(uri, timeout);
+                }
+            ));
             co_return result::success();
         } catch (...) {
             co_return result::current_exception();
@@ -954,34 +970,39 @@ struct curlFileTransfer : public FileTransfer
         auto withRetries(auto && initial, auto && retry) -> decltype(initial())
         try {
             std::optional<std::string> retryContext;
+            BackoffTiming timings;
             while (true) {
                 try {
                     if (retryContext) {
-                        TRY_AWAIT(prepareRetry(*retryContext));
-                        co_return TRY_AWAIT(retry());
+                        TRY_AWAIT(prepareRetry(*retryContext, timings.waitTime, timings.attempt));
+                        co_return TRY_AWAIT(retry(timings.downloadTimeout));
                     } else {
                         co_return TRY_AWAIT(initial());
                     }
                 } catch (FileTransferError & e) {
+                    auto next = backoff.next();
                     // If this is a transient error, then maybe retry after a while. after any
                     // bytes have been received we require range support to proceed, otherwise
                     // we'd need to start from scratch and discard everything we already have.
-                    if (e.error != Transient || data.has_value() || attempt >= tries
+                    if (e.error != Transient || data.has_value() || !next.has_value()
                         || (totalReceived > 0 && !transfer->acceptsRanges()))
                     {
                         throw;
                     }
                     retryContext = e.what();
+                    timings = *next;
                 }
             }
         } catch (...) {
             co_return result::current_exception();
         }
 
-        kj::Promise<Result<FileTransferResult>>
-        startTransfer(const std::string & uri, curl_off_t offset = 0)
+        kj::Promise<Result<FileTransferResult>> startTransfer(
+            const std::string & uri,
+            const std::chrono::milliseconds & timeout,
+            curl_off_t offset = 0
+        )
         try {
-            attempt += 1;
             auto uploadData = data ? std::optional(std::string_view(*data)) : std::nullopt;
             auto pfp = kj::newPromiseAndCrossThreadFulfiller<Result<FileTransferResult>>();
             transfer = std::make_shared<TransferItem>(
@@ -991,7 +1012,8 @@ struct curlFileTransfer : public FileTransfer
                 uploadData,
                 noBody,
                 offset,
-                std::move(pfp.fulfiller)
+                std::move(pfp.fulfiller),
+                timeout
             );
             parent.enqueueItem(transfer);
             co_return TRY_AWAIT(pfp.promise);
@@ -1008,30 +1030,38 @@ struct curlFileTransfer : public FileTransfer
             }
         }
 
-        kj::Promise<Result<void>> prepareRetry(const std::string & context)
+        kj::Promise<Result<void>> prepareRetry(
+            const std::string & context,
+            const std::chrono::milliseconds & waitTime,
+            unsigned int attempt
+        )
         try {
-            thread_local std::minstd_rand random{std::random_device{}()};
-            std::uniform_real_distribution<> dist(0.0, 0.5);
-            int ms = parent.baseRetryTimeMs * std::pow(2.0f, attempt - 1 + dist(random));
             if (totalReceived) {
-                warn("%s; retrying from offset %d in %d ms (attempt %d/%d)", context, totalReceived, ms, attempt, tries);
+                warn(
+                    "%s; retrying from offset %d in %d ms (attempt %d/%d)",
+                    context,
+                    totalReceived,
+                    waitTime,
+                    attempt,
+                    tries
+                );
             } else {
-                warn("%s; retrying in %d ms (attempt %d/%d)", context, ms, attempt, tries);
+                warn("%s; retrying in %d ms (attempt %d/%d)", context, waitTime, attempt, tries);
             }
 
-            co_await AIO().provider.getTimer().afterDelay(ms * kj::MILLISECONDS);
+            co_await AIO().provider.getTimer().afterDelay(waitTime.count() * kj::MILLISECONDS);
             co_return result::success();
         } catch (...) {
             co_return result::current_exception();
         }
 
-        kj::Promise<Result<void>> restartTransfer()
+        kj::Promise<Result<void>> restartTransfer(const std::chrono::milliseconds & timeout)
         try {
             // use the effective URI of the previous transfer for retries. this avoids
             // some silent corruption if a redirect changes between starting and retry
             const auto & uri = metadata.effectiveUri.empty() ? this->uri : metadata.effectiveUri;
 
-            auto newMeta = TRY_AWAIT(startTransfer(uri, totalReceived));
+            auto newMeta = TRY_AWAIT(startTransfer(uri, timeout, totalReceived));
             throwChangedTarget("final destination", metadata.effectiveUri, newMeta.effectiveUri);
             throwChangedTarget("ETag", metadata.etag, newMeta.etag);
             throwChangedTarget(
@@ -1078,9 +1108,9 @@ struct curlFileTransfer : public FileTransfer
             co_return result::current_exception();
         }
 
-        kj::Promise<Result<bool>> restartAndWaitForData()
+        kj::Promise<Result<bool>> restartAndWaitForData(const std::chrono::milliseconds & timeout)
         try {
-            TRY_AWAIT(restartTransfer());
+            TRY_AWAIT(restartTransfer(timeout));
             co_return TRY_AWAIT(waitForData());
         } catch (...) {
             co_return result::current_exception();
@@ -1088,9 +1118,12 @@ struct curlFileTransfer : public FileTransfer
 
         kj::Promise<Result<bool>> awaitData()
         try {
-            co_return TRY_AWAIT(
-                withRetries([&] { return waitForData(); }, [&] { return restartAndWaitForData(); })
-            );
+            co_return TRY_AWAIT(withRetries(
+                [&] { return waitForData(); },
+                [&](const std::chrono::milliseconds & timeout) {
+                    return restartAndWaitForData(timeout);
+                }
+            ));
         } catch (...) {
             co_return result::current_exception();
         }

@@ -294,6 +294,21 @@ public:
     void convertToArg(Args & args, const std::string & category) override;
 
     std::map<std::string, JSON> toJSONObject() const override;
+
+    bool isNameOrAlias(const std::string & requestedName)
+    {
+        if (requestedName == name) {
+            return true;
+        }
+
+        for (auto & alias : aliases) {
+            if (alias == requestedName) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 };
 
 template<typename T>

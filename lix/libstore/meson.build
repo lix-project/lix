@@ -52,10 +52,11 @@ libstore_settings_headers = []
 
 file_transfer_setting_definitions = files(
   # keep-sorted start
-  'file-transfer-settings/connect-timeout.md',
   'file-transfer-settings/download-attempts.md',
   'file-transfer-settings/http-connections.md',
   'file-transfer-settings/http2.md',
+  'file-transfer-settings/initial-connect-timeout.md',
+  'file-transfer-settings/max-connect-timeout.md',
   'file-transfer-settings/stalled-download-timeout.md',
   'file-transfer-settings/user-agent-suffix.md',
   # keep-sorted end

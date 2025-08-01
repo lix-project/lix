@@ -47,6 +47,7 @@ libutil_tests_sources = files(
   'libutil/async-collect.cc',
   'libutil/async-io.cc',
   'libutil/async-semaphore.cc',
+  'libutil/backoff.cc',
   'libutil/canon-path.cc',
   'libutil/checked-arithmetic.cc',
   'libutil/chunked-vector.cc',

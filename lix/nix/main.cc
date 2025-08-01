@@ -616,8 +616,9 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
         // FIXME: should check for command line overrides only.
         settings.useSubstitutes.setDefault(false);
         settings.tarballTtl.setDefault(std::numeric_limits<unsigned int>::max());
-        fileTransferSettings.tries.setDefault(0);
-        fileTransferSettings.connectTimeout.setDefault(1);
+        fileTransferSettings.tries.setDefault(1);
+        fileTransferSettings.maxConnectTimeout.setDefault(1);
+        fileTransferSettings.initialConnectTimeout.setDefault(1);
     }
 
     if (args.refresh) {

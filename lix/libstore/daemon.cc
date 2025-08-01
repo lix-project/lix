@@ -1,4 +1,5 @@
 #include "lix/libstore/daemon.hh"
+#include "filetransfer.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/monitor-fd.hh"
 #include "lix/libstore/worker-protocol.hh"
@@ -218,15 +219,15 @@ struct ClientSettings
                     if (tokenizeString<Paths>(value) != settings.pluginFiles.get())
                         warn("Ignoring the client-specified plugin-files.\n"
                              "The client specifying plugins to the daemon never made sense, and was removed in Nix.");
-                }
-                else if (trusted
-                    || name == settings.buildTimeout.name
-                    || name == settings.maxSilentTime.name
-                    || name == settings.pollInterval.name
-                    || name == "connect-timeout"
-                    || (name == "builders" && value == ""))
+                } else if (trusted || name == settings.buildTimeout.name
+                           || name == settings.maxSilentTime.name
+                           || name == settings.pollInterval.name
+                           || name == fileTransferSettings.maxConnectTimeout.name
+                           || fileTransferSettings.initialConnectTimeout.isNameOrAlias(name)
+                           || (name == "builders" && value == ""))
+                {
                     settings.set(name, value);
-                else if (setSubstituters(settings.substituters))
+                } else if (setSubstituters(settings.substituters))
                     ;
                 else
                     warn("Ignoring the client-specified setting '%s', because it is a restricted setting and you are not a trusted user", name);
