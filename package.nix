@@ -444,11 +444,17 @@ stdenv.mkDerivation (finalAttrs: {
     "--suite=installcheck"
   ];
 
-  preInstallCheck = ''
-    mesonCheckFlags=("''${mesonInstallCheckFlags[@]}")
-  '';
+  installCheckPhase = ''
+    runHook preInstallCheck
 
-  installCheckPhase = "mesonCheckPhase";
+    (
+      unset -v preCheck preCheckHooks postCheck postCheckHooks
+      mesonCheckFlags=("''${mesonInstallCheckFlags[@]}")
+      mesonCheckPhase
+    )
+
+    runHook postInstallCheck
+  '';
 
   separateDebugInfo = !hostPlatform.isStatic && !finalAttrs.dontBuild;
 
