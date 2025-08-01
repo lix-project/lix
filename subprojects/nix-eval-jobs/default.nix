@@ -2,9 +2,16 @@
   stdenv,
   lib,
   nix,
-  pkgs,
   srcDir ? ./.,
   callPackage,
+  meson,
+  pkg-config,
+  ninja,
+  cmake,
+  capnproto,
+  clang-tools,
+  nlohmann_json,
+  boost,
 }:
 
 let
@@ -19,23 +26,20 @@ let
         ./src
       ];
     };
-    buildInputs = with pkgs; [
+    buildInputs = [
       nlohmann_json
       nix
       boost
+      capnproto
     ];
-    nativeBuildInputs =
-      with pkgs;
-      [
-        meson
-        pkg-config
-        ninja
-        # nlohmann_json can be only discovered via cmake files
-        cmake
-        # XXX: ew
-        nix.passthru.capnproto-lix
-      ]
-      ++ (lib.optional stdenv.cc.isClang [ pkgs.clang-tools ]);
+    nativeBuildInputs = [
+      meson
+      pkg-config
+      ninja
+      # nlohmann_json can be only discovered via cmake files
+      cmake
+      capnproto
+    ] ++ (lib.optional stdenv.cc.isClang [ clang-tools ]);
 
     passthru = {
       inherit nix;

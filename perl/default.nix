@@ -14,6 +14,7 @@
   darwin,
   meson,
   ninja,
+  capnproto,
 }:
 
 perl.pkgs.toPerlModule (
@@ -46,7 +47,7 @@ perl.pkgs.toPerlModule (
         perlPackages.DBI
         perlPackages.DBDSQLite
         # for kj-async
-        nix.passthru.capnproto-lix
+        capnproto
       ]
       ++ lib.optional (stdenv.isLinux || stdenv.isDarwin) libsodium
       ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security;

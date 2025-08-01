@@ -16,7 +16,7 @@
   brotli,
   bzip2,
   callPackage,
-  capnproto-lix ? __forDefaults.capnproto-lix,
+  capnproto,
   cmake,
   curl,
   doxygen,
@@ -113,10 +113,6 @@
     systemtap-lix = buildPackages.linuxPackages.systemtap.override { withStap = false; };
 
     build-release-notes = callPackage ./maintainers/build-release-notes.nix { };
-
-    # needs derivation patching to add debuginfo and coroutine library support
-    # !! must build this with clang as it is affected by the gcc coroutine bugs
-    capnproto-lix = callPackage ./misc/capnproto.nix { inherit stdenv; };
 
     passt-lix = callPackage ./misc/passt.nix { };
   },
@@ -289,7 +285,7 @@ stdenv.mkDerivation (finalAttrs: {
       ninja
       cmake
       rustc
-      capnproto-lix
+      capnproto
       # Required for libstd++ assertions that leaks inside of the final binary.
       removeReferencesTo
       dtrace-generator
@@ -338,7 +334,7 @@ stdenv.mkDerivation (finalAttrs: {
       libsodium
       toml11
       pegtl
-      capnproto-lix
+      capnproto
       dtrace-headers
     ]
     # NOTE(Raito): I'd have expected that the LLVM packaging would inject the
@@ -476,7 +472,6 @@ stdenv.mkDerivation (finalAttrs: {
       editline-lix
       build-release-notes
       pegtl
-      capnproto-lix
       ;
 
     # The collection of dependency logic for this derivation is complicated enough that
