@@ -907,6 +907,32 @@ void runPostBuildHook(
     proc.getStdout()->drainInto(sink);
 }
 
+std::string DerivationGoal::buildErrorContents(const std::string & exitMsg, bool diskFull)
+{
+    auto msg = fmt("builder for '%s' %s", Magenta(worker.store.printStorePath(drvPath)), exitMsg);
+
+    if (!logger->isVerbose() && !logTail.empty()) {
+        msg += fmt(";\nlast %d log lines:\n", logTail.size());
+        for (auto & line : logTail) {
+            msg += "> ";
+            msg += line;
+            msg += "\n";
+        }
+        auto nixLogCommand =
+            experimentalFeatureSettings.isEnabled(Xp::NixCommand) ? "nix log" : "nix-store -l";
+        msg +=
+            fmt("For full logs, run: '" ANSI_BOLD "%s %s" ANSI_NORMAL "'.",
+                nixLogCommand,
+                worker.store.printStorePath(drvPath));
+    }
+
+    if (diskFull) {
+        msg += "\nnote: build failure may have been caused by lack of free disk space";
+    }
+
+    return msg;
+}
+
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::buildDone(std::shared_ptr<Error> remoteError
 ) noexcept
 try {
@@ -961,36 +987,12 @@ try {
     }
 
     bool diskFull = false;
-
     try {
 
         /* Check the exit status. */
         if (!exited || exitCode != 0) {
-
             diskFull |= cleanupDecideWhetherDiskFull();
-
-            auto msg =
-                fmt("builder for '%s' %s", Magenta(worker.store.printStorePath(drvPath)), exitMsg);
-
-            if (!logger->isVerbose() && !logTail.empty()) {
-                msg += fmt(";\nlast %d log lines:\n", logTail.size());
-                for (auto & line : logTail) {
-                    msg += "> ";
-                    msg += line;
-                    msg += "\n";
-                }
-                auto nixLogCommand = experimentalFeatureSettings.isEnabled(Xp::NixCommand)
-                    ? "nix log"
-                    : "nix-store -l";
-                msg += fmt("For full logs, run '" ANSI_BOLD "%s %s" ANSI_NORMAL "'.",
-                    nixLogCommand,
-                    worker.store.printStorePath(drvPath));
-            }
-
-            if (diskFull)
-                msg += "\nnote: build failure may have been caused by lack of free disk space";
-
-            throw BuildError("%s", msg);
+            throw BuildError(buildErrorContents(exitMsg, diskFull));
         }
 
         /* Compute the FS closure of the outputs and register them as

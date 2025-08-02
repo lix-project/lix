@@ -327,6 +327,8 @@ protected:
     WorkResult tooMuchLogs();
     void flushLine();
 
+    virtual std::string buildErrorContents(const std::string & exitMsg, bool diskFull);
+
 public:
     /**
      * Wrappers around the corresponding Store method that first consults the
