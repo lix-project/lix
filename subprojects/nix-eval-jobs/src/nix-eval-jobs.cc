@@ -355,10 +355,6 @@ void collector(MyArgs &myArgs, Sync<State> &state_,
 
 int main(int argc, char **argv) {
 
-    /* Prevent undeclared dependencies in the evaluation via
-       $NIX_PATH. */
-    unsetenv("NIX_PATH");
-
     /* We are doing the garbage collection by killing forks */
     setenv("GC_DONT_GC", "1", 1);
 
