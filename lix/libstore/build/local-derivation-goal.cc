@@ -911,7 +911,15 @@ void LocalDerivationGoal::setupConfiguredCertificateAuthority()
 {
     if (settings.caFile != "") {
         if (pathAccessible(settings.caFile)) {
-            auto prefix = useChroot ? chrootRootDir : tmpDir;
+            auto prefix = useChroot ?
+#if __linux__
+                                    chrootRootDir
+#elif __APPLE__
+                                    tmpDir
+#else
+#error "Your platform has no known behavior under `useChroot` flag"
+#endif
+                                    : tmpDir;
             debug(
                 "rendering visible configured CA '%s' in the builder (prefix directory: '%s')",
                 settings.caFile,
@@ -1102,6 +1110,10 @@ void LocalDerivationGoal::runChild()
             } catch (SysError &) { }
         }
 
+        if (!derivationType->isSandboxed()) {
+            setupConfiguredCertificateAuthority();
+        }
+
 #if __linux__
         if (useChroot) {
 
@@ -1242,8 +1254,6 @@ void LocalDerivationGoal::runChild()
                         "non-functional."
                     );
                 }
-
-                setupConfiguredCertificateAuthority();
             }
 
             for (auto & i : ss) pathsInChroot.emplace(i, i);
@@ -1398,13 +1408,6 @@ void LocalDerivationGoal::runChild()
             setUser = false;
         }
 #endif
-
-        if (!useChroot) {
-            /* When chroot is not used, FODs still requires a CA to be available as well. */
-            if (!derivationType->isSandboxed()) {
-                setupConfiguredCertificateAuthority();
-            }
-        }
 
         if (chdir(tmpDirInSandbox.c_str()) == -1)
             throw SysError("changing into '%1%'", tmpDir);
