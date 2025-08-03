@@ -363,15 +363,39 @@ Generator<Bytes> readFileSource(const Path & path)
     }(std::move(fd));
 }
 
-void writeFile(const Path & path, std::string_view s, mode_t mode, bool allowInterrupts)
+static AutoCloseFD openForWrite(const Path & path, mode_t mode)
 {
     AutoCloseFD fd{sys::open(path, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
     if (!fd)
         throw SysError("opening file '%1%'", path);
+    return fd;
+}
+
+static AutoCloseFD openForWriteExcl(const Path & path, mode_t mode)
+{
+    AutoCloseFD fd{sys::open(path, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC | O_EXCL, mode)};
+    if (!fd)
+        throw SysError("opening file '%1%'", path);
+    return fd;
+}
+
+void writeFile(const Path & path, std::string_view s, mode_t mode, bool allowInterrupts)
+{
+    AutoCloseFD fd = openForWrite(path, mode);
 
     writeFile(fd, s, mode, allowInterrupts);
 
     /* Close explicitly to propagate the exceptions. */
+    fd.close();
+}
+
+void writeFileExcl(const Path & path, std::string_view s, mode_t mode, bool allowInterrupts)
+{
+    AutoCloseFD fd = openForWriteExcl(path, mode);
+
+    writeFile(fd, s, mode, allowInterrupts);
+
+    // Close explicitly to propagate the exceptions.
     fd.close();
 }
 
@@ -394,10 +418,7 @@ void writeFileUninterruptible(const Path & path, std::string_view s, mode_t mode
 void writeFileAndSync(const Path & path, std::string_view s, mode_t mode)
 {
     {
-        AutoCloseFD fd{sys::open(path, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
-        if (!fd) {
-            throw SysError("opening file '%1%'", path);
-        }
+        AutoCloseFD fd = openForWrite(path, mode);
 
         writeFile(fd, s, mode);
         fd.fsync();
@@ -406,14 +427,6 @@ void writeFileAndSync(const Path & path, std::string_view s, mode_t mode)
     }
 
     syncParent(path);
-}
-
-static AutoCloseFD openForWrite(const Path & path, mode_t mode)
-{
-    AutoCloseFD fd{sys::open(path, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
-    if (!fd)
-        throw SysError("opening file '%1%'", path);
-    return fd;
 }
 
 static void closeForWrite(const Path & path, AutoCloseFD & fd, bool sync)
@@ -429,6 +442,26 @@ static void closeForWrite(const Path & path, AutoCloseFD & fd, bool sync)
 void writeFile(const Path & path, Source & source, mode_t mode)
 {
     AutoCloseFD fd = openForWrite(path, mode);
+
+    std::vector<char> buf(64 * 1024);
+
+    try {
+        while (true) {
+            try {
+                auto n = source.read(buf.data(), buf.size());
+                writeFull(fd.get(), {buf.data(), n});
+            } catch (EndOfFile &) { break; }
+        }
+    } catch (Error & e) {
+        e.addTrace({}, "writing file '%1%'", path);
+        throw;
+    }
+    closeForWrite(path, fd, false);
+}
+
+void writeFileExcl(const Path & path, Source & source, mode_t mode)
+{
+    AutoCloseFD fd = openForWriteExcl(path, mode);
 
     std::vector<char> buf(64 * 1024);
 
@@ -724,20 +757,9 @@ void createSymlink(const Path & target, const Path & link)
 
 void replaceSymlink(const Path & target, const Path & link)
 {
-    for (unsigned int n = 0; true; n++) {
-        Path tmp = canonPath(fmt("%s/.%d_%s", dirOf(link), n, baseNameOf(link)));
-
-        try {
-            createSymlink(target, tmp);
-        } catch (SysError & e) {
-            if (e.errNo == EEXIST) continue;
-            throw;
-        }
-
-        renameFile(tmp, link);
-
-        break;
-    }
+    Path tmp = canonPath(makeTempSiblingPath(link));
+    createSymlink(target, tmp);
+    renameFile(tmp, link);
 }
 
 void setWriteTime(const fs::path & p, const struct stat & st)
