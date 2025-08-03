@@ -646,44 +646,28 @@ void AutoDelete::reset(const Path & p, bool recursive) {
 
 //////////////////////////////////////////////////////////////////////
 
-static Path tempName(PathView parent, const Path & prefix, bool includePid,
-    std::atomic<unsigned int> & counter)
-{
-    auto tmpRoot = canonPath(parent, true);
-    if (includePid)
-        return fmt("%1%/%2%-%3%-%4%", tmpRoot, prefix, getpid(), counter++);
-    else
-        return fmt("%1%/%2%-%3%", tmpRoot, prefix, counter++);
-}
-
 Path createTempSubdir(const Path & parent, const Path & prefix,
-    bool includePid, bool useGlobalCounter, mode_t mode)
+    mode_t mode)
 {
-    static std::atomic<unsigned int> globalCounter = 0;
-    std::atomic<unsigned int> localCounter = 0;
-    auto & counter(useGlobalCounter ? globalCounter : localCounter);
-
-    while (1) {
-        checkInterrupt();
-        Path tmpDir = tempName(parent, prefix, includePid, counter);
-        if (mkdir(tmpDir.c_str(), mode) == 0) {
+    checkInterrupt();
+    Path tmpDir = makeTempPath(parent + "/", prefix);
+    if (mkdir(tmpDir.c_str(), mode) == 0) {
 #if __FreeBSD__
-            /* Explicitly set the group of the directory.  This is to
-               work around around problems caused by BSD's group
-               ownership semantics (directories inherit the group of
-               the parent).  For instance, the group of /tmp on
-               FreeBSD is "wheel", so all directories created in /tmp
-               will be owned by "wheel"; but if the user is not in
-               "wheel", then "tar" will fail to unpack archives that
-               have the setgid bit set on directories. */
-            if (chown(tmpDir.c_str(), (uid_t) -1, getegid()) != 0)
-                throw SysError("setting group of directory '%1%'", tmpDir);
-#endif
-            return tmpDir;
+        /* Explicitly set the group of the directory.  This is to
+           work around around problems caused by BSD's group
+           ownership semantics (directories inherit the group of
+           the parent).  For instance, the group of /tmp on
+           FreeBSD is "wheel", so all directories created in /tmp
+           will be owned by "wheel"; but if the user is not in
+           "wheel", then "tar" will fail to unpack archives that
+           have the setgid bit set on directories. */
+        if (chown(tmpDir.c_str(), (uid_t) -1, getegid()) != 0) {
+            throw SysError("setting group of directory '%1%'", tmpDir);
         }
-        if (errno != EEXIST)
-            throw SysError("creating directory '%1%'", tmpDir);
+#endif
+        return tmpDir;
     }
+    throw SysError("creating directory '%1%'", tmpDir);
 }
 
 Path makeTempPath(const Path & root, const Path & prefix)

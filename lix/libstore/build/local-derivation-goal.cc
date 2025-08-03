@@ -447,7 +447,7 @@ try {
         /* Create a temporary directory where the build will take
            place. */
         tmpDirRoot =
-            createTempDir(buildDir, "nix-build-" + std::string(drvPath.name()), false, false, 0700);
+            createTempDir(buildDir, "nix-build-" + std::string(drvPath.name()), 0700);
     } catch (SysError & e) {
         /*
          * Fallback to the global tmpdir and create a safe space there
@@ -466,7 +466,7 @@ try {
         constexpr int toplevelDirMode = 0700;
 #endif
         auto nixBuildsTmp = createTempDir(
-            "", fmt("nix-builds-%s", geteuid()), false, false, toplevelDirMode
+            "", fmt("nix-builds-%s", geteuid()), toplevelDirMode
         );
         warn(
             "Failed to use the system-wide build directory '%s', falling back to a temporary "
@@ -475,7 +475,7 @@ try {
             nixBuildsTmp
         );
         tmpDirRoot = createTempDir(
-            nixBuildsTmp, "nix-build-" + std::string(drvPath.name()), false, false, 0700
+            nixBuildsTmp, "nix-build-" + std::string(drvPath.name()), 0700
         );
         worker.buildDirOverride = nixBuildsTmp;
     }
