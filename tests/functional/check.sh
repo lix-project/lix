@@ -40,8 +40,8 @@ test_custom_build_dir() {
   nix-build check.nix -A failed --argstr checkBuildId $checkBuildId \
       --no-out-link --keep-failed --option build-dir "$TEST_ROOT/custom-build-dir" 2> $TEST_ROOT/log || status=$?
   [ "$status" = "100" ]
-  [[ 1 == "$(count "$customBuildDir/nix-build-"*)" ]]
-  local buildDir="$customBuildDir/nix-build-"*
+  [[ 1 == "$(count "$customBuildDir/"*)" ]]
+  local buildDir="$customBuildDir/"*
   grep $checkBuildId $buildDir/b/checkBuildId
 }
 test_custom_build_dir
