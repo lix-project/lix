@@ -2043,9 +2043,9 @@ try {
 
     createDirs(dirOf(logPath));
 
-    auto tmpFile = fmt("%s.tmp.%d", logPath, getpid());
+    auto tmpFile = makeTempSiblingPath(logPath);
 
-    writeFile(tmpFile, compress("bzip2", log));
+    writeFileExcl(tmpFile, compress("bzip2", log));
 
     renameFile(tmpFile, logPath);
     co_return result::success();

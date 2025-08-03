@@ -189,11 +189,18 @@ Generator<Bytes> readFileSource(const Path & path);
 /**
  * Write a string to a file.
  */
-void writeFile(const Path & path, std::string_view s, mode_t mode = 0666);
-
+void writeFile(
+    const Path & path, std::string_view s, mode_t mode = 0666, bool allowInterrupts = true
+);
+/** Write a string to an exclusively-opened file. */
+void writeFileExcl(
+    const Path & path, std::string_view s, mode_t mode = 0666, bool allowInterrupts = true
+);
+void writeFileUninterruptible(const Path & path, std::string_view s, mode_t mode = 0666);
 void writeFile(const Path & path, Source & source, mode_t mode = 0666);
+void writeFileExcl(const Path & path, Source & source, mode_t mode = 0666);
 
-void writeFile(AutoCloseFD & fd, std::string_view s, mode_t mode = 0666);
+void writeFile(AutoCloseFD & fd, std::string_view s, mode_t mode = 0666, bool allowInterrupts = true);
 kj::Promise<Result<void>>
 writeFile(const Path & path, AsyncInputStream & source, mode_t mode = 0666);
 

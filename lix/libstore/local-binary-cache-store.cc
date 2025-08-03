@@ -63,11 +63,10 @@ protected:
         const std::string & mimeType) override
     {
         auto path2 = binaryCacheDir + "/" + path;
-        static std::atomic<int> counter{0};
-        Path tmp = fmt("%s.tmp.%d.%d", path2, getpid(), ++counter);
+        Path tmp = makeTempPath(path2);
         AutoDelete del(tmp, false);
         StreamToSourceAdapter source(istream);
-        writeFile(tmp, source);
+        writeFileExcl(tmp, source);
         renameFile(tmp, path2);
         del.cancel();
     }
