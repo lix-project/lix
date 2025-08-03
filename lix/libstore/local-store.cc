@@ -1734,7 +1734,7 @@ try {
 
     createDirs(dirOf(logPath));
 
-    auto tmpFile = fmt("%s.tmp.%d", logPath, getpid());
+    auto tmpFile = makeTempSiblingPath(logPath);
 
     writeFile(tmpFile, compress("bzip2", log));
 
