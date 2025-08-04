@@ -319,6 +319,11 @@ Path createTempSubdir(const Path & parent, const Path & prefix = "nix",
 Path makeTempPath(const Path & root, const Path & suffix = ".tmp");
 
 /**
+ * Return temporary path in the same directory as a given path.
+ */
+Path makeTempSiblingPath(const Path & root);
+
+/**
  * Used in various places.
  */
 typedef std::function<bool(const Path & path)> PathFilter;
