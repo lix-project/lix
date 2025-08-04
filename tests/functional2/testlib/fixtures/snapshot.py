@@ -1,4 +1,3 @@
-import os
 from collections.abc import Callable
 from logging import Logger
 from pathlib import Path
@@ -8,6 +7,8 @@ from collections.abc import Generator
 import pytest
 from _pytest.config import Config
 from _pytest.fixtures import FixtureRequest
+
+from functional2.testlib.environ import environ
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -26,9 +27,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 @pytest.fixture(scope="session")
 def do_snapshot_update(request: FixtureRequest) -> bool:
-    return request.config.getoption("accept-tests") or (
-        os.environ.get("_NIX_TEST_ACCEPT") is not None
-    )
+    return request.config.getoption("accept-tests") or (environ.get("_NIX_TEST_ACCEPT") is not None)
 
 
 class Snapshot:

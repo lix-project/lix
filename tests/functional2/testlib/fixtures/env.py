@@ -1,9 +1,10 @@
 import dataclasses
 import logging
-import os
 import platform
 import shutil
 from pathlib import Path
+
+from functional2.testlib.environ import environ
 
 import pytest
 
@@ -149,15 +150,15 @@ class _Dirs:
 class ManagedEnv:
     def __init__(self, tmp_path: Path):
         # Things fetched from the global env
-        build_shell = os.environ.get("BUILD_TEST_SHELL")
-        global_path = os.environ.get("PATH")
+        build_shell = environ.get("BUILD_TEST_SHELL")
+        global_path = environ.get("PATH")
         # `NIX_BIN_DIR` either propagated from us or set by meson
         # Set to the codebase internal output if started standalone
         # This is where the current lix binaries are located.
         # local import to avoid cyclic dependencies
         from functional2.testlib.utils import lix_base_folder  # noqa: PLC0415
 
-        lix_bin = Path(os.environ.get("NIX_BIN_DIR", lix_base_folder / "outputs/out/bin"))
+        lix_bin = Path(environ.get("NIX_BIN_DIR", lix_base_folder / "outputs/out/bin"))
 
         self._env = {}
         self.path = _ManagedPath(build_shell)

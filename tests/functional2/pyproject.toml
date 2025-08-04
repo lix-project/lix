@@ -102,6 +102,8 @@ task-tags = ["TODO", "FIXME", "XXX"]
 #   SIM2: double negation in comparasions (`not a == b` instead of `a != b` etc)
 #   SIM3: yoda conditions use `foo == "Foo"` instead of `"Foo" == foo`
 #   SIM9: defaults for get and zip
+# TID: banning of certain imports
+#   TID251: ban certain APIs
 # TD: enforce TODO comment style
 #   disabled TD001: allow FIXME and XXX comments
 #   disabled TD003: todos don't require an explicit issue link for us
@@ -151,7 +153,6 @@ task-tags = ["TODO", "FIXME", "XXX"]
 # PYI: things for pyi files
 # SLF: accessing of private members
 # SLOT: subclassing of builtin-types (str, tuple, namedtuple) related issues
-# TID: banning of certain imports
 # TC: typechecking imports (typechecking imports required to be inside of a `if TYPECHECKING` block
 # FLY: string joins
 # I: import sorting; covered by other rulesets
@@ -162,7 +163,7 @@ task-tags = ["TODO", "FIXME", "XXX"]
 # PGH: things about pygrep, we don't use
 # FURB: covered by other rule sets
 # TRY: try and raise related things, not helpful as we only do testing
-select = ["E4", "E7", "E9", "F", "ERA", "ASYNC", "ANN0", "ANN2", "A", "C4", "EM", "ISC", "INP", "LOG", "G", "PIE", "T20", "PT", "Q", "RSE", "RET", "SIM", "TD", "ARG", "PTH", "N", "PERF", "PLC", "PLE", "UP", "RUF"]
+select = ["E4", "E7", "E9", "F", "ERA", "ASYNC", "ANN0", "ANN2", "A", "C4", "EM", "ISC", "INP", "LOG", "G", "PIE", "T20", "PT", "Q", "RSE", "RET", "SIM", "TID251", "TD", "ARG", "PTH", "N", "PERF", "PLC", "PLE", "UP", "RUF"]
 ignore = ["ANN002", "ANN003", "TD001", "TD003", "PLE1", "RUF005"]
 
 [tool.ruff.lint.per-file-ignores]
@@ -191,3 +192,35 @@ suppress-none-returning = true
 [tool.ruff.lint.flake8-errmsg]
 # Allow raw strings to be up to 10 characters in error messages
 max-string-length = 10
+
+[tool.ruff.lint.flake8-tidy-imports]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+# Forbid symbols that are footguns in our codebase due to unsafe global state
+"os.environ".msg = """
+Environment variables are process wide and are unsafe to set as they interfere with other tests. Instead, use:
+  - env= in subprocess functions
+  - functional2.testlib.commands.Command.with_env for starting subprocesses
+  - functional2.testlib.environ for read-only access
+"""
+"os.environb".msg = """
+Environment variables are process wide and are unsafe to set as they interfere with other tests. Instead, use:
+  - env= in subprocess functions
+  - functional2.testlib.commands.Command.with_env for starting subprocesses
+  - functional2.testlib.environ for read-only access
+"""
+"os.putenv".msg = """
+Environment variables are process wide and are unsafe to set as they interfere with other tests. Instead, use:
+  - env= in subprocess functions
+  - functional2.testlib.commands.Command.with_env for starting subprocesses
+  - functional2.testlib.environ for read-only access
+"""
+"os.unsetenv".msg = """
+Environment variables are process wide and are unsafe to set as they interfere with other tests. Instead, use:
+  - env= in subprocess functions
+  - functional2.testlib.commands.Command.with_env for starting subprocesses
+  - functional2.testlib.environ for read-only access
+"""
+"os.chdir".msg = "Changing current directory is process wide and may interfere with other tests. Use cwd= while spawning a process instead."
+"os.fchdir".msg = "Changing current directory is process wide and may interfere with other tests. Use cwd= while spawning a process instead."
+"contextlib.chdir".msg = "Changing current directory is process wide and may interfere with other tests. Use cwd= while spawning a process instead."

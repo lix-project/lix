@@ -1,11 +1,11 @@
 import builtins
-import os
 import types
 import typing
 from pathlib import Path
 from types import UnionType
 from typing import Any, Literal, get_args, get_origin
 
+from functional2.testlib.environ import environ
 from functional2.testlib.fixtures.file_helper import (
     CopyFile,
     CopyTree,
@@ -141,9 +141,9 @@ def get_global_asset(name: str) -> Fileish:
         return CopyTemplate(
             functional2_base_folder / "testlib" / "global_assets" / "config.nix.template",
             {
-                "system": os.environ.get("system"),  # noqa: SIM112 # system is actually lowercase here
+                "system": environ.get("system"),
                 # Either just the build shell or entire global path if we are darwin
-                "path": os.environ.get("BUILD_TEST_SHELL") or os.environ.get("PATH"),
+                "path": environ.get("BUILD_TEST_SHELL") or environ.get("PATH"),
             },
         )
     return CopyFile(functional2_base_folder / "testlib" / "global_assets" / name)

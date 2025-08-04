@@ -62,6 +62,12 @@ For `installcheck` specifically, first run `just install` before running the tes
 
 Finer-grained filtering within a test suite is also possible using the [--gtest_filter](https://google.github.io/googletest/advanced.html#running-a-subset-of-the-tests) command-line option to a test suite executable, or the `GTEST_FILTER` environment variable.
 
+### Inspecting failures
+
+The test suite emits logs in `build/meson-logs/`; the full textual failure logs are in `build/meson-logs/testlog.txt`.
+
+If you want a much nicer experience of viewing the logs in a structured manner, use `xunit-viewer --results build/meson-logs/testlog.junit.xml --server` to view them in a web browser.
+
 ### Unit test support libraries
 
 There are headers and code which are not just used to test the library in question, but also downstream libraries.

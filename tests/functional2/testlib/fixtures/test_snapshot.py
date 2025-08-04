@@ -25,6 +25,7 @@ def _get_f2_snapshot_files(additional_files: FileDeclaration) -> FileDeclaration
                 "functional2": {
                     "testlib": {
                         "__init__.py": CopyFile("../__init__.py"),
+                        "environ.py": CopyFile("../environ.py"),
                         "fixtures": {
                             "__init__.py": CopyFile("__init__.py"),
                             "snapshot.py": CopyFile("snapshot.py"),

@@ -1,12 +1,8 @@
 import stat
 import sys
-
 import pytest
-
 from pathlib import Path
-
 from textwrap import dedent
-
 from functional2.testlib.fixtures.env import ManagedEnv
 from functional2.testlib.fixtures.nix import Nix
 

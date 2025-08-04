@@ -11,7 +11,6 @@ import pytest
 from functional2.testlib.fixtures.env import ManagedEnv
 from functional2.testlib.terminal_code_eater import eat_terminal_codes
 
-
 logger = logging.getLogger(__name__)
 
 
