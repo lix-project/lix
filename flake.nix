@@ -239,6 +239,12 @@
           # And same thing for our build-release-notes package.
           build-release-notes = final.nix.passthru.build-release-notes;
 
+          lowdown_1_3 =
+            # If the stable channel we are using ships lowdown >= 1.4, we need
+            # to swap this around, take the default lowdown from the stable
+            # channel and add an overridden one for the legacy version.
+            assert lib.versionOlder prev.lowdown.version "1.4.0";
+            prev.lowdown;
           lowdown = prev.lowdown.overrideAttrs (prevAttrs: rec {
             version = "2.0.2";
             src = final.fetchurl {
@@ -263,6 +269,14 @@
       hydraJobs = {
         # Binary package for various platforms.
         build = forAllSystems (system: self.packages.${system}.nix);
+
+        # Ensure support for lowdown < 1.4 doesn't regress
+        build-lowdown_1_3 = forAllSystems (
+          system:
+          self.packages.${system}.nix.override {
+            lowdown = nixpkgsFor.${system}.native.lowdown_1_3;
+          }
+        );
 
         devShell = forAllSystems (system: {
           default = self.devShells.${system}.default;
@@ -467,6 +481,7 @@
           # devShells and packages already get checked by nix flake check, so
           # this is just jobs that are special
 
+          build-lowdown_1_3 = self.hydraJobs.build-lowdown_1_3.${system};
           binaryTarball = self.hydraJobs.binaryTarball.${system};
           perlBindings = self.hydraJobs.perlBindings.${system};
           nix-eval-jobs = self.hydraJobs.nix-eval-jobs.${system};
