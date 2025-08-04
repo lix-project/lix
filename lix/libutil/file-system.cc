@@ -689,6 +689,11 @@ Path makeTempPath(const Path & root, const Path & suffix)
     return fmt("%1%%2%-%3%-%4%", root, suffix, getpid(), counter.fetch_add(1, std::memory_order_relaxed));
 }
 
+Path makeTempSiblingPath(const Path & path)
+{
+    return makeTempPath(fs::path(path).remove_filename());
+}
+
 void createSymlink(const Path & target, const Path & link)
 {
     if (symlink(target.c_str(), link.c_str()))
