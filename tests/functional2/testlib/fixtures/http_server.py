@@ -11,7 +11,7 @@ import socket
 import threading
 from queue import Queue
 import aiohttp.web as web
-
+import aiohttp.http_writer as http_writer
 
 logger = logging.getLogger(__name__)
 
@@ -42,12 +42,12 @@ class EventTS(asyncio.Event):
         self.target_loop.call_soon_threadsafe(super().set)
 
 
-def _make_localhost_socket() -> tuple[socket.socket, int]:
-    """Creates a localhost-bound socket with an auto-assigned port."""
+def _make_localhost_socket(port: int = 0) -> tuple[socket.socket, int]:
+    """Creates a localhost-bound socket with an auto-assigned port (unless specified)."""
     sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-    sock.bind(("::1", 0))
     # Shouldn't matter because we dynamically allocate ports, but this is generally preferred.
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("::1", port))
     _, port = sock.getsockname()[:2]
 
     return (sock, port)
@@ -73,10 +73,10 @@ def _server_thread(app: web.Application, sock: socket.socket, shutdown_ev_q: Que
 
 
 @contextlib.contextmanager
-def http_server(app: web.Application):
+def http_server(app: web.Application, port: int = 0):
     """
-    Creates an http server on an automatically chosen port on the host
-    running the given web.Application, gives you the port for it.
+    Creates an http server on an automatically chosen port (if not given) on
+    the host running the given web.Application, gives you the port for it.
 
     The server is run on a separate thread.
     """
@@ -89,7 +89,7 @@ def http_server(app: web.Application):
     sock = None
     shutdown_ev = None
     try:
-        sock, port = _make_localhost_socket()
+        sock, port = _make_localhost_socket(port=port)
         thr = threading.Thread(
             target=_server_thread,
             args=(app, sock, shutdown_ev_q),
@@ -109,18 +109,40 @@ def http_server(app: web.Application):
 
 def dev_main():
     """A little test server for poking at this manually"""
+    logging.basicConfig(level=logging.DEBUG)
 
     async def root(_req: web.Request) -> web.Response:
         # sadly required to make this function async
         await asyncio.sleep(0.01)
         return web.Response(body="hello world")
 
-    app = web.Application()
-    app.add_routes([web.get("/", root)])
+    async def eof(req: web.Request) -> web.StreamResponse:
+        # sadly required to make this function async
+        await asyncio.sleep(0.01)
+        writer: http_writer.StreamWriter = req.writer  # type: ignore
+        assert writer.transport
+        writer.transport.close()
+        return web.StreamResponse()
 
-    with http_server(app) as httpd:
+    async def eof_after_headers(req: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse()
+        resp.headers["content-length"] = "1337"
+        await resp.prepare(req)
+        await resp.write_eof()
+        writer: http_writer.StreamWriter = req.writer  # type: ignore
+        assert writer.transport
+        writer.transport.close()
+        return resp
+
+    app = web.Application()
+    app.add_routes(
+        [web.get("/", root), web.get("/eof", eof), web.get("/eof_after_headers", eof_after_headers)]
+    )
+
+    with http_server(app, 1337) as httpd:
         logger.info("Listening on http://[::1]:%d", httpd.port)
-        time.sleep(3600)
+        while True:
+            time.sleep(3600)
 
 
 if __name__ == "__main__":
