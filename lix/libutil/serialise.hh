@@ -152,10 +152,6 @@ private:
 struct FdSource : BufferedSource
 {
     int fd;
-    /** Defaults to "unexpected end-of-file" */
-    std::optional<std::string> specialEndOfFileError;
-
-    std::string endOfFileError() const;
 
     FdSource() : fd(-1) { }
     FdSource(int fd) : fd(fd) { }

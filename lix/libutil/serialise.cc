@@ -197,16 +197,10 @@ size_t FdSource::readUnbuffered(char * data, size_t len)
         throw SysError("reading from file");
     }
     if (n == 0) {
-        throw EndOfFile(endOfFileError());
+        throw EndOfFile("unexpected end-of-file");
     }
     return n;
 }
-
-std::string FdSource::endOfFileError() const
-{
-    return specialEndOfFileError.has_value() ? *specialEndOfFileError : "unexpected end-of-file";
-}
-
 
 size_t StringSource::read(char * data, size_t len)
 {
