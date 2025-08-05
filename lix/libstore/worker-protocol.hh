@@ -2,7 +2,9 @@
 ///@file
 
 #include "lix/libstore/common-protocol.hh"
+#include "lix/libutil/serialise-async.hh"
 #include "path-info.hh"
+#include <kj/async.h>
 
 namespace nix {
 
@@ -138,6 +140,18 @@ struct WorkerProto
     static WireFormatGenerator write(WriteConn conn, const T & t)
     {
         return WorkerProto::Serialise<T>::write(conn, t);
+    }
+
+    /**
+     * Create a `WorkerProto::ReadConn` from the async input stream `from` and pass
+     * it to `fn`. `fn` will be run asynchronously on a fresh stack using kj fibers
+     * and can thus safely use synchronous deserializers with very little overhead.
+     */
+    static auto readAsync(auto & from, Store & store, WorkerProto::Version version, auto fn)
+    {
+        return deserializeFrom(from, [&store, version, fn{std::move(fn)}](Source & wrapped) {
+            return fn(WorkerProto::ReadConn{wrapped, store, version});
+        });
     }
 };
 

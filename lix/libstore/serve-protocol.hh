@@ -2,6 +2,7 @@
 ///@file
 
 #include "lix/libstore/common-protocol.hh"
+#include "lix/libutil/serialise-async.hh"
 
 namespace nix {
 
@@ -93,6 +94,18 @@ struct ServeProto
     static WireFormatGenerator write(WriteConn conn, const T & t)
     {
         return ServeProto::Serialise<T>::write(conn, t);
+    }
+
+    /**
+     * Create a `ServeProto::ReadConn` using the async input stream `from` and pass
+     * it to `fn`. `fn` will be run asynchronously on a fresh stack using kj fibers
+     * and can thus safely use synchronous deserializers with very little overhead.
+     */
+    static auto readAsync(auto & from, Store & store, ServeProto::Version version, auto fn)
+    {
+        return deserializeFrom(from, [&store, version, fn{std::move(fn)}](Source & wrapped) {
+            return fn(ServeProto::ReadConn{wrapped, store, version});
+        });
     }
 };
 
