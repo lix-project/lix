@@ -170,8 +170,9 @@ struct LegacySSHStore final : public Store
                 }
             });
 
+            AsyncFdIoStream stream(AsyncFdIoStream::shared_fd{}, sshConn->socket.get());
+
             {
-                AsyncFdIoStream stream(AsyncFdIoStream::shared_fd{}, sshConn->socket.get());
                 StringSink buffer;
                 // can't use TRY_AWAIT here because macros break with variadic templates. sigh.
                 ((co_await sendArg(stream, buffer, std::forward<Args>(args))).value(), ...);
@@ -182,12 +183,10 @@ struct LegacySSHStore final : public Store
                 invalidateOnCancel.cancel();
                 co_return result::success();
             } else {
-                // NOTE while no async streams are using the fd it is fully synchronous.
-                // we need either sync sources or async sources, and async sources would
-                // require a *lot* of code duplication. response messages are mostly not
-                // large enough to block us for long, so we just accept the hit for now.
-                FdSource from{sshConn->socket.get(), fromBuf};
-                auto result = ServeProto::Serialise<R>::read({from, *store, remoteVersion});
+                AsyncBufferedInputStream from{stream, fromBuf};
+                auto result = TRY_AWAIT(ServeProto::readAsync(
+                    from, *store, remoteVersion, ServeProto::Serialise<R>::read
+                ));
                 invalidateOnCancel.cancel();
                 co_return result;
             }

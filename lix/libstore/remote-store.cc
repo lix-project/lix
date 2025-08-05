@@ -5,6 +5,7 @@
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/serialise-async.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libstore/path-with-outputs.hh"
@@ -83,41 +84,43 @@ try {
 kj::Promise<Result<void>> RemoteStore::initConnection(Connection & conn)
 try {
     /* Send the magic greeting, check for the reply. */
-    // NOTE: this is synchronous until we call processStderr. this is intentional;
-    // reading the response would be synchronous anyway, and making sending of the
-    // greeting synchronous also makes this code path significantly more readable.
     try {
-        conn.store = this;
-        FdSource from{conn.getFD(), conn.fromBuf};
-        from.specialEndOfFileError =
-            "Nix daemon connection broke during setup phase (is it reachable?)";
-        FdSink to{conn.getFD()};
-        to << WORKER_MAGIC_1;
-        to.flush();
+        AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, conn.getFD()};
+        AsyncBufferedInputStream from{stream, conn.fromBuf};
 
-        uint64_t magic = readNum<uint64_t>(from);
+        conn.store = this;
+        {
+            StringSink packet;
+            packet << WORKER_MAGIC_1;
+            TRY_AWAIT(stream.writeFull(packet.s.data(), packet.s.size()));
+        }
+
+        uint64_t magic = TRY_AWAIT(readNum<uint64_t>(from));
         if (magic != WORKER_MAGIC_2)
             throw Error("protocol mismatch");
 
-        conn.daemonVersion = readNum<unsigned>(from);
+        conn.daemonVersion = TRY_AWAIT(readNum<unsigned>(from));
         if (GET_PROTOCOL_MAJOR(conn.daemonVersion) != GET_PROTOCOL_MAJOR(PROTOCOL_VERSION))
             throw Error("Nix daemon protocol version not supported");
         if (GET_PROTOCOL_MINOR(conn.daemonVersion) < MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION)
             throw Error("The remote Nix daemon version is too old");
-        to << PROTOCOL_VERSION;
 
-        // Obsolete CPU affinity.
-        to << 0;
+        {
+            StringSink packet;
+            packet << PROTOCOL_VERSION;
+            packet << 0;     // Obsolete CPU affinity.
+            packet << false; // obsolete reserveSpace
+            TRY_AWAIT(stream.writeFull(packet.s.data(), packet.s.size()));
+        }
 
-        to << false; // obsolete reserveSpace
+        conn.daemonNixVersion = TRY_AWAIT(readString(from));
+        conn.remoteTrustsUs = TRY_AWAIT(WorkerProto::readAsync(
+            from,
+            *conn.store,
+            conn.daemonVersion,
+            WorkerProto::Serialise<std::optional<TrustedFlag>>::read
+        ));
 
-        to.flush();
-        conn.daemonNixVersion = readString(from);
-        conn.remoteTrustsUs = WorkerProto::Serialise<std::optional<TrustedFlag>>::read(
-            {from, *conn.store, conn.daemonVersion}
-        );
-
-        AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, conn.getFD()};
         auto ex = TRY_AWAIT(conn.processStderr(stream));
         if (ex.e) {
             std::rethrow_exception(ex.e);

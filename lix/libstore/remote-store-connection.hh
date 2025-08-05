@@ -10,6 +10,7 @@
 #include "lix/libutil/io-buffer.hh"
 #include "lix/libutil/pool.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/serialise-async.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/signals.hh"
 #include <kj/async.h>
@@ -143,13 +144,14 @@ struct RemoteStore::ConnectionHandle
             }
         });
 
+        AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, handle->getFD()};
+
         // if the last argument can be serialized normally we will serialize *all*
         // arguments at once and hand off to the remote. if the last argument does
         // not have a serializer we assume it's a callback for a subframe protocol
         // and serialize all *preceding* arguments normally before handing over to
         // the subframing layer (which is then responsible for any error handling)
         if constexpr (requires(StringSink s) { s << std::declval<LastArgT>(); }) {
-            AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, handle->getFD()};
             try {
                 StringSink msg;
                 ((msg << std::forward<Args>(args)), ...);
@@ -163,7 +165,6 @@ struct RemoteStore::ConnectionHandle
             using ImmediateArgsIdxs = std::make_index_sequence<sizeof...(Args) - 1>;
             AllArgsT allArgs(std::forward<Args>(args)...);
 
-                AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, handle->getFD()};
                 try {
                     StringSink msg;
                     [&]<size_t... Ids>(std::integer_sequence<size_t, Ids...>) {
@@ -186,14 +187,10 @@ struct RemoteStore::ConnectionHandle
             co_return result::success();
         } else {
             try {
-                // NOTE while no async streams are using the fd it is fully synchronous.
-                // we need either sync sources or async sources, and async sources would
-                // require a *lot* of code duplication. response messages are mostly not
-                // large enough to block us for long, so we just accept the hit for now.
-                FdSource from{handle->getFD(), handle->fromBuf};
-                from.specialEndOfFileError = "Nix daemon disconnected while reading a response";
-                auto result =
-                    WorkerProto::Serialise<R>::read({from, *handle->store, handle->daemonVersion});
+                AsyncBufferedInputStream from{stream, handle->fromBuf};
+                auto result = LIX_TRY_AWAIT(WorkerProto::readAsync(
+                    from, *handle->store, handle->daemonVersion, WorkerProto::Serialise<R>::read
+                ));
                 invalidateOnCancel.cancel();
                 co_return result;
             } catch (...) {
