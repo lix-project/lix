@@ -129,6 +129,11 @@ public:
     KJ_DISALLOW_COPY_AND_MOVE(AsyncBufferedInputStream);
 
     kj::Promise<Result<std::optional<size_t>>> read(void * data, size_t size) override;
+
+    IoBuffer & getBuffer()
+    {
+        return *buffer;
+    }
 };
 
 class AsyncOutputStream : private kj::AsyncObject
@@ -177,6 +182,11 @@ public:
 
     kj::Promise<Result<size_t>> write(const void * src, size_t size) override;
     kj::Promise<Result<void>> flush();
+
+    IoBuffer & getBuffer()
+    {
+        return *buffer;
+    }
 };
 
 class AsyncStream : public AsyncInputStream, public AsyncOutputStream
