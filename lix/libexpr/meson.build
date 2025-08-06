@@ -31,6 +31,7 @@ libexpr_setting_definitions = files(
   'settings/restrict-eval.md',
   'settings/trace-function-calls.md',
   'settings/trace-verbose.md',
+  'settings/warn-import-from-derivation.md',
   # keep-sorted end
 )
 liblix_generated_headers += custom_target(

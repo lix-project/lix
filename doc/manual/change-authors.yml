@@ -99,6 +99,9 @@ goldstein:
   forgejo: goldstein
   github: GoldsteinE
 
+gustavderdrache:
+  github: gustavderdrache
+
 horrors:
   display_name: eldritch horrors
   forgejo: pennae

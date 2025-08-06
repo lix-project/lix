@@ -82,6 +82,13 @@ StringMap EvalState::realiseContext(const NixStringContext & context)
             drvs.begin()->to_string(*ctx.store)
         ).debugThrow();
 
+    if (evalSettings.warnImportFromDerivation) {
+        printTaggedWarning(
+            "building '%1%' during evaluation due to the use of import from derivation",
+            drvs.begin()->to_string(*ctx.store)
+        );
+    }
+
     /* Build/substitute the context. */
     std::vector<DerivedPath> buildReqs;
     for (auto & d : drvs) buildReqs.emplace_back(DerivedPath { d });

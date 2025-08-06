@@ -105,6 +105,7 @@ functional_tests_scripts = [
   'extra-sandbox-profile.sh',
   'regression-484.sh',
   'redirected-filter-source.sh',
+  'warn-import-from-derivation.sh',
 ]
 
 # Plugin tests require shared libraries support.
