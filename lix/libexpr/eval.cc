@@ -43,6 +43,21 @@
 #include <sys/resource.h>
 #include <boost/container/small_vector.hpp>
 
+// Ignore all internal signals boehm uses for parallel marking
+// FIXME: Find out how to do this with LLDB for macOS!
+#ifndef __APPLE__
+[[gnu::section(".debug_gdb_scripts"), gnu::used]]
+// TODO: We should use `SECTION_SCRIPT_ID_PYTHON_TEXT` from
+// `<gdb/section-scripts.h>` instead of hardcoding 4.
+// But why isn't this header exported by GDB?
+static const char printer_script[] =
+    "\4"
+    R"(lix-ignore-boehm-signals
+import gdb
+gdb.execute("handle SIGPWR SIGXCPU ignore")
+)";
+#endif
+
 #if HAVE_BOEHMGC
 
 #define GC_INCLUDE_NEW
@@ -160,6 +175,9 @@ void initLibExpr()
     GC_set_no_dls(1);
 
     GC_INIT();
+
+    // Enable parallel marking
+    GC_start_mark_threads();
 
     GC_set_oom_fn(oomHandler);
 

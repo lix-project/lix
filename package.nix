@@ -95,7 +95,20 @@
 
     versionJson = builtins.fromJSON (builtins.readFile ./version.json);
 
-    boehmgc-nix = boehmgc.override { enableLargeConfig = true; };
+    boehmgc-nix = (boehmgc.override { enableLargeConfig = true; }).overrideAttrs (oldAttrs: {
+      /*
+        TODO: Use the `initialMarkStackSize` override when
+        https://github.com/NixOS/nixpkgs/pull/439943 hits a stable branch
+
+        Increase the initial mark stack size to avoid stack
+        overflows, since these inhibit parallel marking (see
+        GC_mark_some()). To check whether the mark stack is too
+        small, run Nix with GC_PRINT_STATS=1 and look for messages
+        such as `Mark stack overflow`, `No room to copy back mark
+        stack`, and `Grew mark stack to ... frames`.
+      */
+      NIX_CFLAGS_COMPILE = (oldAttrs.NIX_CFLAGS_COMPILE or "") + " -DINITIAL_MARK_STACK_SIZE=1048576";
+    });
 
     editline-lix = editline.overrideAttrs (prev: {
       configureFlags = (prev.configureFlags or [ ]) ++ [
@@ -469,7 +482,9 @@ stdenv.mkDerivation (finalAttrs: {
     runHook postInstallCheck
   '';
 
-  separateDebugInfo = !hostPlatform.isStatic && !finalAttrs.dontBuild;
+  # NOTE: This is disabled everywhere except Darwin due to Nixpkgs
+  # corrupting `.debug_gdb_scripts` segments (which currently aren't used on Darwin)
+  separateDebugInfo = !hostPlatform.isStatic && !finalAttrs.dontBuild && hostPlatform.isDarwin;
 
   strictDeps = true;
 

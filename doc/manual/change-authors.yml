@@ -86,6 +86,11 @@ ericson:
   display_name: John Ericson
   github: ericson2314
 
+getchoo:
+  display_name: Seth Flynn
+  forgejo: getchoo
+  github: getchoo
+
 gilice:
   forgejo: gilice
 
