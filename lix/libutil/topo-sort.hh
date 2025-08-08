@@ -8,36 +8,56 @@
 namespace nix {
 
 template<typename T>
-std::vector<T> topoSort(std::set<T> items,
-        std::function<std::set<T>(const T &)> getChildren,
-        std::function<Error(const T &, const T &)> makeCycleError)
+struct Cycle
+{
+    T path;
+    T parent;
+};
+
+template<typename T>
+using TopoSortResult = std::variant<std::vector<T>, Cycle<T>>;
+
+template<typename T>
+TopoSortResult<T> topoSort(std::set<T> items, std::function<std::set<T>(const T &)> getChildren)
 {
     std::vector<T> sorted;
     std::set<T> visited, parents;
 
-    std::function<void(const T & path, const T * parent)> dfsVisit;
+    std::function<std::optional<Cycle<T>>(const T & path, const T * parent)> dfsVisit;
 
-    dfsVisit = [&](const T & path, const T * parent) {
+    dfsVisit = [&](const T & path, const T * parent) -> std::optional<Cycle<T>> {
         if (parents.count(path)) {
-            throw makeCycleError(path, *parent); // NOLINT(lix-foreign-exceptions): type dependent
+            return Cycle{path, *parent};
         }
 
-        if (!visited.insert(path).second) return;
+        if (!visited.insert(path).second) {
+            return std::nullopt;
+        }
         parents.insert(path);
 
         std::set<T> references = getChildren(path);
 
         for (auto & i : references)
             /* Don't traverse into items that don't exist in our starting set. */
-            if (i != path && items.count(i))
-                dfsVisit(i, &path);
+            if (i != path && items.count(i)) {
+                auto result = dfsVisit(i, &path);
+                if (result.has_value()) {
+                    return result;
+                }
+            }
 
         sorted.push_back(path);
         parents.erase(path);
+
+        return std::nullopt;
     };
 
-    for (auto & i : items)
-        dfsVisit(i, nullptr);
+    for (auto & i : items) {
+        auto cycle = dfsVisit(i, nullptr);
+        if (cycle.has_value()) {
+            return *cycle;
+        }
+    }
 
     std::reverse(sorted.begin(), sorted.end());
 

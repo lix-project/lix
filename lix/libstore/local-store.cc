@@ -1025,17 +1025,22 @@ try {
                error if a cycle is detected and roll back the
                transaction.  Cycles can only occur when a derivation
                has multiple outputs. */
-            topoSort(paths,
-                {[&](const StorePath & path) {
-                    auto i = infos.find(path);
-                    return i == infos.end() ? StorePathSet() : i->second.references;
-                }},
-                {[&](const StorePath & path, const StorePath & parent) {
-                    return BuildError(
-                        "cycle detected in the references of '%s' from '%s'",
-                        printStorePath(path),
-                        printStorePath(parent));
-                }});
+            std::visit(
+                overloaded{
+                    [&](const std::vector<StorePath> &) {},
+                    [&](const Cycle<StorePath> & cycle) {
+                        throw BuildError(
+                            "cycle detected in the references of '%s' from '%s'",
+                            printStorePath(cycle.path),
+                            printStorePath(cycle.parent)
+                        );
+                    }
+                },
+                topoSort(paths, {[&](const StorePath & path) {
+                             auto i = infos.find(path);
+                             return i == infos.end() ? StorePathSet() : i->second.references;
+                         }})
+            );
 
             txn.commit();
             co_return result::success();

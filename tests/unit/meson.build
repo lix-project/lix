@@ -74,6 +74,7 @@ libutil_tests_sources = files(
   'libutil/terminal.cc',
   'libutil/tests.cc',
   'libutil/thread-pool.cc',
+  'libutil/topo-sort.cc',
   'libutil/url-name.cc',
   'libutil/url.cc',
   'libutil/xml-writer.cc',
