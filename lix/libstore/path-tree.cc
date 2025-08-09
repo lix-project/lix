@@ -37,13 +37,13 @@ static kj::Promise<Result<std::map<std::string, Strings>>> visitPath(
     std::string_view dependencyPathHash,
     const std::set<std::string> & hashes,
     const StorePath & from,
-    const StorePath & to
+    const StorePath & to,
+    const ref<FSAccessor> & accessor
 )
 try {
     /* For each reference, find the files and symlinks that
        contain the reference. */
     std::map<std::string, Strings> hits;
-    auto accessor = store.getFSAccessor();
     auto st = TRY_AWAIT(accessor->stat(p));
 
     auto p2 = p == pathS ? "/" : std::string(p, pathS.size() + 1);
@@ -55,9 +55,9 @@ try {
     if (st.type == FSAccessor::Type::tDirectory) {
         auto names = TRY_AWAIT(accessor->readDirectory(p));
         for (auto & name : names) {
-            auto found = TRY_AWAIT(
-                visitPath(p + "/" + name, store, pathS, dependencyPathHash, hashes, from, to)
-            );
+            auto found = TRY_AWAIT(visitPath(
+                p + "/" + name, store, pathS, dependencyPathHash, hashes, from, to, accessor
+            ));
             hits.merge(found);
         }
     } else if (st.type == FSAccessor::Type::tRegular) {
@@ -124,7 +124,8 @@ static kj::Promise<Result<void>> printNode(
     const StorePath & packagePath,
     const StorePath & dependencyPath,
     std::map<StorePath, Node> & graph,
-    Strings & output
+    Strings & output,
+    ref<FSAccessor> accessor
 )
 try {
     auto pathS = store.printStorePath(node.path);
@@ -178,7 +179,14 @@ try {
 
     if (precise) {
         hits = TRY_AWAIT(visitPath(
-            pathS, store, pathS, dependencyPath.hashPart(), hashes, packagePath, dependencyPath
+            pathS,
+            store,
+            pathS,
+            dependencyPath.hashPart(),
+            hashes,
+            packagePath,
+            dependencyPath,
+            accessor
         ));
     }
 
@@ -224,7 +232,8 @@ try {
             packagePath,
             dependencyPath,
             graph,
-            output
+            output,
+            accessor
         ));
     }
 
@@ -294,10 +303,12 @@ kj::Promise<Result<std::string>> genGraphString(
     const std::map<StorePath, StorePathSet> & graphData,
     Store & store,
     bool all,
-    bool precise
+    bool precise,
+    std::optional<ref<FSAccessor>> maybeAccessor
 )
 try {
     auto graph = mkGraph(start, to, graphData, store, all, precise);
+    auto accessor = maybeAccessor ? *maybeAccessor : store.getFSAccessor();
 
     Strings output;
     if (!precise) {
@@ -305,7 +316,9 @@ try {
     }
 
     try {
-        TRY_AWAIT(printNode(graph.at(start), "", "", all, precise, store, start, to, graph, output));
+        TRY_AWAIT(printNode(
+            graph.at(start), "", "", all, precise, store, start, to, graph, output, accessor
+        ));
     } catch (BailOut &) {
     }
 

@@ -1,6 +1,7 @@
 #pragma once
 /// @file
 
+#include "fs-accessor.hh"
 #include "lix/libutil/result.hh"
 #include "path.hh"
 #include "store-api.hh"
@@ -15,6 +16,7 @@ kj::Promise<Result<std::string>> genGraphString(
     const std::map<StorePath, StorePathSet> & graphData,
     Store & store,
     bool all,
-    bool precise
+    bool precise,
+    std::optional<ref<FSAccessor>> accessor = std::nullopt
 );
 }
