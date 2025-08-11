@@ -84,3 +84,7 @@ option('dtrace-probes', type : 'feature', value : 'auto',
 option('lix-clang-tidy-checks-path', type : 'string', value : '',
   description: 'path to lix-clang-tidy-checks library file, if providing it externally. Uses an internal one if this is not set',
 )
+
+option('disable-fibers', type : 'boolean', value : false,
+  description : 'whether to disable fibers. use only when building with musl; we can\'t detect this.',
+)

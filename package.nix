@@ -257,6 +257,8 @@ stdenv.mkDerivation (finalAttrs: {
       "-Dpasta-path=${lib.getExe' passt-lix "pasta"}"
     ]
     ++ lib.optional hostPlatform.isStatic "-Denable-embedded-sandbox-shell=true"
+    # musl doesn't support fibers, and we can't detect this with meson alone.
+    ++ lib.optional hostPlatform.isMusl "-Ddisable-fibers=true"
     ++ lib.optional (finalAttrs.dontBuild && !lintInsteadOfBuild) "-Denable-build=false"
     ++ lib.optional lintInsteadOfBuild "-Dlix-clang-tidy-checks-path=${lix-clang-tidy}/lib/liblix-clang-tidy.so"
     ++ [

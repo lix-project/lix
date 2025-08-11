@@ -2,12 +2,17 @@
 ///@file Helpers for processing legacy wire protocol data on async streams
 
 #include "async-io.hh"
-#include "async.hh"
 #include "result.hh"
-#include <concepts>
 #include <kj/async.h>
 #include <type_traits>
 #include <utility>
+
+// #define HAVE_THREADBARE_LIBC 1
+
+#if defined(HAVE_THREADBARE_LIBC)
+#include "async.hh"
+#include "thread-pool.hh"
+#endif
 
 namespace nix {
 // Source wrappers for async streams. we must do this because the async deserialization overhead is
@@ -16,19 +21,7 @@ namespace nix {
 // support many small wire protocol reads on a single syscall, making the async scheduling overhead
 // even more of a loss compared to the old synchronous code. this will at least get us pretty close
 namespace detail {
-// naively adapt an async stream into a Source
-struct UnbufferedAsyncSource : Source
-{
-    kj::WaitScope & ws;
-    AsyncInputStream & from;
-
-    UnbufferedAsyncSource(kj::WaitScope & ws, AsyncInputStream & from) : ws(ws), from(from) {}
-
-    size_t read(char * data, size_t len) override;
-};
-
-// adapt a buffered async stream into a Source. unlike the unbuffered variant we will try to use the
-// read buffer as much as possible since each wait operation we do not need for IO is pure overhead.
+#if !defined(HAVE_THREADBARE_LIBC)
 struct BufferedAsyncSource : Source
 {
     kj::WaitScope & ws;
@@ -43,6 +36,23 @@ struct BufferedAsyncSource : Source
 // we can only get from fibers or running at the top level of an async tree. we
 // can do the latter in the daemon, but remote stores also need to deserialize.
 inline thread_local kj::FiberPool serializerFibers{65536};
+#else
+struct IndirectSource : Source
+{
+    const kj::Executor & executor;
+    AsyncBufferedInputStream & from;
+
+    IndirectSource(const kj::Executor & executor, AsyncBufferedInputStream & from)
+        : executor(executor)
+        , from(from)
+    {
+    }
+
+    size_t read(char * data, size_t len) override;
+};
+
+extern ThreadPool deserPool;
+#endif
 }
 
 /**
@@ -53,17 +63,16 @@ inline thread_local kj::FiberPool serializerFibers{65536};
  * the executor to other promises. Use async deserializers instead if possible;
  * use this wrapper only to avoid async deserialization overhead when it hurts.
  */
-inline auto deserializeFrom(std::derived_from<AsyncInputStream> auto & from, auto fn)
+inline auto deserializeFrom(AsyncBufferedInputStream & from, auto fn)
+    -> kj::Promise<Result<decltype(fn(std::declval<Source &>()))>>
 {
     using ResultT = decltype(fn(std::declval<Source &>()));
-    using WrapperSourceT = std::conditional_t<requires(kj::WaitScope ws) {
-        detail::BufferedAsyncSource{ws, from};
-    }, detail::BufferedAsyncSource, detail::UnbufferedAsyncSource>;
 
+#if !defined(HAVE_THREADBARE_LIBC)
     return detail::serializerFibers.startFiber(
         [&from, fn{std::move(fn)}](kj::WaitScope & ws) -> Result<ResultT> {
             try {
-                WrapperSourceT wrapped{ws, from};
+                detail::BufferedAsyncSource wrapped{ws, from};
                 if constexpr (std::is_void_v<ResultT>) {
                     fn(wrapped);
                     return result::success();
@@ -75,5 +84,26 @@ inline auto deserializeFrom(std::derived_from<AsyncInputStream> auto & from, aut
             }
         }
     );
+#else
+    try {
+        auto pfp = kj::newPromiseAndCrossThreadFulfiller<Result<ResultT>>();
+        detail::deserPool.enqueue([&, &executor{kj::getCurrentThreadExecutor()}] {
+            try {
+                detail::IndirectSource wrapped{executor, from};
+                if constexpr (std::is_void_v<ResultT>) {
+                    fn(wrapped);
+                    pfp.fulfiller->fulfill(result::success());
+                } else {
+                    pfp.fulfiller->fulfill(fn(wrapped));
+                }
+            } catch (...) {
+                pfp.fulfiller->fulfill(result::current_exception());
+            }
+        });
+        co_return LIX_TRY_AWAIT(pfp.promise);
+    } catch (...) {
+        co_return result::current_exception();
+    }
+#endif
 }
 }

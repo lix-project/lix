@@ -427,6 +427,13 @@ if dtrace_feature.allowed()
   dtrace_feature = dtrace_feature.enable_auto_if(dtrace_exe.found() and dtrace_header_present)
 endif
 
+if get_option('disable-fibers')
+  warning('building Lix without fiber support. performance will suffer.')
+  configdata += {
+    'HAVE_THREADBARE_LIBC': 1,
+  }
+endif
+
 if dtrace_feature.enabled()
   dtrace_feature.require(dtrace_exe.found() and dtrace_header_present,
     error_message : 'trace probes require both the dtrace command and sys/sdt.h header to be available')
