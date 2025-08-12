@@ -14,9 +14,7 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
 
     std::istringstream tomlStream(std::string{toml});
 
-    std::function<void(Value &, toml::value)> visit;
-
-    visit = [&](Value & v, toml::value t) {
+    auto visit = [&](this const auto & self, Value & v, toml::value t) -> void {
         switch (t.type()) {
         case toml::value_t::table: {
             auto table = toml::get<toml::table>(t);
@@ -30,7 +28,7 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
             auto attrs = state.ctx.buildBindings(size);
 
             for (auto & elem : table) {
-                visit(attrs.alloc(elem.first), elem.second);
+                self(attrs.alloc(elem.first), elem.second);
             }
 
             v.mkAttrs(attrs);
@@ -41,7 +39,7 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
             size_t size = array.size();
             v = state.ctx.mem.newList(size);
             for (size_t i = 0; i < size; ++i) {
-                visit(*(v.listElems()[i] = state.ctx.mem.allocValue()), array[i]);
+                self(*(v.listElems()[i] = state.ctx.mem.allocValue()), array[i]);
             }
         } break;
         case toml::value_t::boolean:
