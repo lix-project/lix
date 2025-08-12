@@ -366,6 +366,9 @@ gtest = [
 ]
 
 toml11 = dependency('toml11', version : '>=3.7.0', required : true, method : 'cmake', include_type : 'system')
+configdata += {
+  'HAVE_TOML11_4': toml11.version().version_compare('>= 4.0.0').to_int(),
+}
 
 pegtl = dependency(
   'pegtl',
