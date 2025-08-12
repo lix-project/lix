@@ -18,14 +18,7 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
         switch (t.type()) {
         case toml::value_t::table: {
             auto table = toml::get<toml::table>(t);
-
-            size_t size = 0;
-            for (auto & i : table) {
-                (void) i;
-                size++;
-            }
-
-            auto attrs = state.ctx.buildBindings(size);
+            auto attrs = state.ctx.buildBindings(table.size());
 
             for (auto & elem : table) {
                 self(attrs.alloc(elem.first), elem.second);
