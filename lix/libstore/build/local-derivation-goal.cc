@@ -1829,19 +1829,44 @@ try {
                      return dependencies;
                  }});
 
-    auto sortedOutputNames = std::visit(overloaded {
-        [&](Cycle<std::string> & cycle) -> std::vector<std::string> {
-            // TODO with more -vvvv also show the temporary paths for manual inspection.
-            throw BuildError(
-                "cycle detected in build of '%s' in the references of output '%s' from output "
-                "'%s'",
-                worker.store.printStorePath(drvPath),
-                cycle.path,
-                cycle.parent
-            );
+    auto & localStore = getLocalStore();
+    auto sortedOutputNames = TRY_AWAIT(std::visit(
+        overloaded{
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+            [&](Cycle<std::string> & cycle) -> kj::Promise<Result<std::vector<std::string>>> {
+                try {
+                    auto chrootAwareAccessor = getChrootDirAwareFSAccessor();
+                    auto graphStr = TRY_AWAIT(genGraphString(
+                        scratchOutputs.at(cycle.path),
+                        scratchOutputs.at(cycle.parent),
+                        outputGraph,
+                        worker.store,
+                        true,
+                        // We need to access store-paths that aren't registered yet for
+                        // precise=true. Hence, only do this if a chroot-aware accessor is
+                        // implemented in for this platform.
+                        chrootAwareAccessor.has_value(),
+                        chrootAwareAccessor
+                    ));
+
+                    throw BuildError(
+                        "cycle detected in build of '%s' in the references of output '%s' from "
+                        "output "
+                        "'%s'.\n\nShown below are the files inside the outputs leading to the "
+                        "cycle:\n%s",
+                        worker.store.printStorePath(drvPath),
+                        cycle.path,
+                        cycle.parent,
+                        Uncolored(graphStr)
+                    );
+                } catch (...) {
+                    co_return result::current_exception();
+                }
+            },
+            [](auto & r) -> kj::Promise<Result<std::vector<std::string>>> { co_return r; }
         },
-        [&](auto & r) { return r; }
-    }, topoSortedOutputs);
+        topoSortedOutputs
+    ));
 
     std::reverse(sortedOutputNames.begin(), sortedOutputNames.end());
 
@@ -2110,8 +2135,6 @@ try {
                 actualPath = destPath;
             }
         }
-
-        auto & localStore = getLocalStore();
 
         // Check determinism and run the diff hook for input-addressed
         // paths if we're in check mode.

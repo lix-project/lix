@@ -13,6 +13,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <grp.h>
+#include <memory>
 #include <regex>
 #include <sys/prctl.h>
 
@@ -1175,5 +1176,49 @@ void LinuxLocalDerivationGoal::killSandbox(bool getStats)
             }
         }
     }
+}
+
+struct ChrootDirAwareFSAccessor : public LocalStoreAccessor
+{
+    Path chrootDir;
+
+    ChrootDirAwareFSAccessor(ref<LocalFSStore> store, const Path & chrootDir)
+        : LocalStoreAccessor(store)
+        , chrootDir(chrootDir)
+    {
+    }
+
+    kj::Promise<Result<Path>> toRealPath(const Path & path, bool requireValidPath = true) override
+    try {
+        auto storePath = store->toStorePath(path).first;
+        if (!TRY_AWAIT(store->isValidPath(storePath))) {
+            auto chrootStorePath = chrootDir + "/" + path;
+            if (pathExists(chrootStorePath)) {
+                co_return chrootStorePath;
+            }
+
+            if (requireValidPath) {
+                throw InvalidPath(
+                    "path '%1%' does not exist in the store, neither does chrooted path '%2%'",
+                    store->printStorePath(storePath),
+                    chrootStorePath
+                );
+            }
+        }
+
+        co_return TRY_AWAIT(LocalStoreAccessor::toRealPath(path, false));
+    } catch (...) {
+        co_return result::current_exception();
+    }
+};
+
+std::optional<ref<FSAccessor>> LinuxLocalDerivationGoal::getChrootDirAwareFSAccessor()
+{
+    return make_ref<ChrootDirAwareFSAccessor>(
+        ref<LocalFSStore>::unsafeFromPtr(
+            std::dynamic_pointer_cast<LocalFSStore>(getLocalStore().shared_from_this())
+        ),
+        chrootRootDir
+    );
 }
 }

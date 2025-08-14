@@ -59,6 +59,12 @@ private:
     RunningProgram pastaPid;
 
     /**
+     * Create a special accessor that can access paths that were built within the sandbox's
+     * chroot.
+     */
+    std::optional<ref<FSAccessor>> getChrootDirAwareFSAccessor() override;
+
+    /**
      * Create and populate chroot
      */
     void prepareSandbox() override;

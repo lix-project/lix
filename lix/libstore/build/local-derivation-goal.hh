@@ -3,6 +3,7 @@
 
 #include "lix/libstore/build/derivation-goal.hh"
 #include "lix/libstore/local-store.hh"
+#include "lix/libutil/error.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/cgroup.hh"
 
@@ -328,6 +329,15 @@ protected:
      * This currently only has an effect on Linux.
      */
     virtual void setupSyscallFilter() {}
+
+    /**
+     * Create a special accessor that can access paths that were built within the sandbox's
+     * chroot.
+     */
+    virtual std::optional<ref<FSAccessor>> getChrootDirAwareFSAccessor()
+    {
+        return std::nullopt;
+    };
 
     /**
      * Execute the builder, replacing the current process.
