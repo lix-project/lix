@@ -1,0 +1,11 @@
+[[test]]
+name = "eval-depr"
+matrix = true
+# FIXME: These should fail.
+runner = "eval-okay"
+
+[[test]]
+name = "eval-allow-depr"
+matrix = true
+runner = "eval-okay"
+flags = ["--extra-deprecated-features", "nul-bytes"]
