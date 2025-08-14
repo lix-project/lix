@@ -6,8 +6,6 @@
 
 namespace nix {
 
-#if HAVE_TOML11_4
-
 /**
  * This is what toml11 < 4.0 did when choosing the subsecond precision.
  * TOML 1.0.0 spec doesn't define how sub-millisecond ranges should be handled and calls it
@@ -82,8 +80,6 @@ static void normalizeDatetimeFormat(toml::value & t)
     }
 }
 
-#endif
-
 void prim_fromTOML(EvalState & state, Value ** args, Value & val)
 {
     auto toml = state.forceStringNoCtx(
@@ -130,9 +126,7 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
         case toml::value_t::local_date:
         case toml::value_t::local_time: {
             if (experimentalFeatureSettings.isEnabled(Xp::ParseTomlTimestamps)) {
-#if HAVE_TOML11_4
                 normalizeDatetimeFormat(t);
-#endif
                 auto attrs = state.ctx.buildBindings(2);
                 attrs.alloc("_type").mkString("timestamp");
                 std::ostringstream s;
@@ -155,13 +149,10 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
             val,
             toml::parse(
                 tomlStream,
-                "fromTOML" /* the "filename" */
-#if HAVE_TOML11_4
-                ,
+                "fromTOML", /* the "filename" */
                 toml::spec::v(
                     1, 0, 0
                 ) // Be explicit that we are parsing TOML 1.0.0 without extensions
-#endif
             )
         );
     } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions) // TODO: toml::syntax_error

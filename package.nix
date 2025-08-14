@@ -56,6 +56,8 @@
   rustc,
   sqlite,
   systemtap-lix ? __forDefaults.systemtap-lix,
+  # FIXME: remove default after dropping NixOS 25.05
+  toml11-lix ? __forDefaults.toml11-lix,
   toml11,
   util-linuxMinimal ? utillinuxMinimal,
   utillinuxMinimal ? null,
@@ -116,6 +118,9 @@
     build-release-notes = callPackage ./maintainers/build-release-notes.nix { };
 
     passt-lix = callPackage ./misc/passt.nix { };
+
+    toml11-lix =
+      if lib.versionOlder toml11.version "4.4.0" then callPackage ./misc/toml11.nix { } else toml11;
   },
 }:
 
@@ -336,7 +341,7 @@ stdenv.mkDerivation (finalAttrs: {
       boost
       lowdown
       libsodium
-      toml11
+      toml11-lix
       pegtl
       capnproto
       dtrace-headers
