@@ -36,6 +36,7 @@
 #include <dlfcn.h>
 
 #include <cmath>
+#include <cfenv>
 
 namespace nix {
 
@@ -703,17 +704,80 @@ static Value prim_addErrorContext(EvalState & state, Value ** args)
     }
 }
 
+static std::optional<NixInt> floatToIntChecked(NixFloat f)
+{
+// Required to detect overflows when converting floats to integers
+#pragma STDC FENV_ACCESS ON
+
+    std::feclearexcept(FE_ALL_EXCEPT);
+    auto converted = llrint(f);
+    if (std::fetestexcept(FE_ALL_EXCEPT)) {
+        return std::nullopt;
+    }
+    return NixInt{converted};
+}
+
+/*
+  Note [floor/ceil corrupt integers]:
+  Integers above 2**54 that aren't a power of two get corrupted when passed
+  through floor/ceil.
+
+  Corrupting integers would become impossible if we just passed through integer
+  inputs, since the corruption actually happens when casting from int to float,
+  *not* from float to int, which is the one we actually safely cast.
+
+  Floats generate an error as intended if they are out of range.
+
+  In a future release, we'd like to pass through all integers, but it would be
+  an eval semantics change, so it's safer to error first before relaxing the
+  semantics again.
+ */
+
+using FloorCeilFunc = auto (*)(NixFloat) -> NixFloat;
+
+static Value
+floorCeil(std::string_view const which, FloorCeilFunc f, EvalState & state, NixFloat value, Value * arg0)
+{
+    bool isInt = arg0->type() == nInt;
+
+    NixFloat result = f(value);
+
+    if (auto checked = floatToIntChecked(result); checked.has_value()) {
+        // See Note [floor/ceil corrupt integers].
+        if (isInt && *checked != arg0->integer()
+            && !featureSettings.isEnabled(DeprecatedFeature::FloorCeilCorruptIntegers))
+        {
+            state.ctx.errors
+                .make<EvalError>(
+                    "%s was corrupting your integer (was %d, became %d) in previous versions due to a "
+                    "historical Nix bug (https://github.com/NixOS/nix/issues/12899).\n"
+                    "This may be changed in the future to pass through integers as-is, which will change the "
+                    "semantics of this code.\n"
+                    "To suppress this error, use %s",
+                    which,
+                    arg0->integer(),
+                    *checked,
+                    "--extra-deprecated-features floor-ceil-corrupt-integers"
+                )
+                .debugThrow();
+        }
+        return {NewValueAs::integer, NixInt::Inner(*checked)};
+    } else {
+        state.ctx.errors.make<EvalError>("%s result %f is out of range for Nix integer (i64)", which, result)
+            .debugThrow();
+    }
+}
+
 static Value prim_ceil(EvalState & state, Value ** args)
 {
-    auto value = state.forceFloat(*args[0], noPos,
-            "while evaluating the first argument passed to builtins.ceil");
-    return {NewValueAs::integer, NixInt::Inner(ceil(value))};
+    auto value = state.forceFloat(*args[0], noPos, "while evaluating the argument passed to builtins.ceil");
+    return floorCeil("builtins.ceil", ceil, state, value, args[0]);
 }
 
 static Value prim_floor(EvalState & state, Value ** args)
 {
-    auto value = state.forceFloat(*args[0], noPos, "while evaluating the first argument passed to builtins.floor");
-    return {NewValueAs::integer, NixInt::Inner(floor(value))};
+    auto value = state.forceFloat(*args[0], noPos, "while evaluating the argument passed to builtins.floor");
+    return floorCeil("builtins.floor", floor, state, value, args[0]);
 }
 
 /* Try evaluating the argument. Success => {success=true; value=something;},

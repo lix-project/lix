@@ -1,0 +1,30 @@
+[[test]]
+name = "floor-bad-weird-int"
+runner = "eval-fail"
+flags = ["-A", "floor-bad-weird-int"]
+
+[[test]]
+name = "floor-bad-weird-int-depr"
+runner = "eval-okay"
+flags = ["--extra-deprecated-features", "floor-ceil-corrupt-integers", "-A", "floor-bad-weird-int"]
+
+[[test]]
+name = "floor-okay-weird-int"
+runner = "eval-okay"
+flags = ["-A", "floor-okay-weird-int"]
+
+[[test]]
+name = "ceil-bad-weird-int-depr"
+runner = "eval-okay"
+flags = ["--extra-deprecated-features", "floor-ceil-corrupt-integers", "-A", "ceil-bad-weird-int"]
+
+[[test]]
+name = "ceil-bad-weird-int"
+runner = "eval-fail"
+flags = ["-A", "ceil-bad-weird-int"]
+
+
+[[test]]
+name = "ceil-okay-weird-int"
+runner = "eval-okay"
+flags = ["-A", "ceil-okay-weird-int"]

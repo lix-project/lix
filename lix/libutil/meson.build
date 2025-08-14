@@ -177,6 +177,7 @@ deprecated_feature_definitions = files(
   'deprecated-features/broken-string-indentation.md',
   'deprecated-features/cr-line-endings.md',
   'deprecated-features/floating-without-zero.md',
+  'deprecated-features/floor-ceil-corrupt-integers.md',
   'deprecated-features/nix-path-shadow.md',
   'deprecated-features/nul-bytes.md',
   'deprecated-features/or-as-identifier.md',

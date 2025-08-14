@@ -1,0 +1,11 @@
+error:
+       … while calling the 'ceil' builtin
+         at /pwd/in.nix:7:24:
+            6|   floor-okay-weird-int = builtins.floor big;
+            7|   ceil-bad-weird-int = builtins.ceil (big - 1);
+             |                        ^
+            8|   ceil-okay-weird-int = builtins.ceil big;
+
+       error: builtins.ceil was corrupting your integer (was 9223090561878065151, became 9223090561878065152) in previous versions due to a historical Nix bug (https://github.com/NixOS/nix/issues/12899).
+       This may be changed in the future to pass through integers as-is, which will change the semantics of this code.
+       To suppress this error, use --extra-deprecated-features floor-ceil-corrupt-integers

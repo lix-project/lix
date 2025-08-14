@@ -268,20 +268,26 @@ namespace nix {
 
 
     TEST_F(ErrorTraceTest, ceil) {
-        ASSERT_TRACE2("ceil \"foo\"",
-                      TypeError,
-                      HintFmt("expected a float but found %s: %s", "a string", Uncolored(ANSI_MAGENTA "\"foo\"" ANSI_NORMAL)),
-                      HintFmt("while evaluating the first argument passed to builtins.ceil"));
-
+        ASSERT_TRACE2(
+            "ceil \"foo\"",
+            TypeError,
+            HintFmt(
+                "expected a float but found %s: %s", "a string", Uncolored(ANSI_MAGENTA "\"foo\"" ANSI_NORMAL)
+            ),
+            HintFmt("while evaluating the argument passed to builtins.ceil")
+        );
     }
 
 
     TEST_F(ErrorTraceTest, floor) {
-        ASSERT_TRACE2("floor \"foo\"",
-                      TypeError,
-                      HintFmt("expected a float but found %s: %s", "a string", Uncolored(ANSI_MAGENTA "\"foo\"" ANSI_NORMAL)),
-                      HintFmt("while evaluating the first argument passed to builtins.floor"));
-
+        ASSERT_TRACE2(
+            "floor \"foo\"",
+            TypeError,
+            HintFmt(
+                "expected a float but found %s: %s", "a string", Uncolored(ANSI_MAGENTA "\"foo\"" ANSI_NORMAL)
+            ),
+            HintFmt("while evaluating the argument passed to builtins.floor")
+        );
     }
 
 

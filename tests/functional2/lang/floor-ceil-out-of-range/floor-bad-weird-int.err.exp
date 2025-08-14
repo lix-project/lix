@@ -1,0 +1,11 @@
+error:
+       … while calling the 'floor' builtin
+         at /pwd/in.nix:5:25:
+            4| {
+            5|   floor-bad-weird-int = builtins.floor (big - 1);
+             |                         ^
+            6|   floor-okay-weird-int = builtins.floor big;
+
+       error: builtins.floor was corrupting your integer (was 9223090561878065151, became 9223090561878065152) in previous versions due to a historical Nix bug (https://github.com/NixOS/nix/issues/12899).
+       This may be changed in the future to pass through integers as-is, which will change the semantics of this code.
+       To suppress this error, use --extra-deprecated-features floor-ceil-corrupt-integers
