@@ -137,13 +137,21 @@ struct CmdLsStore : StoreCommand, MixLs
                 );
                 JSON j = json::parse(std::move(file), "a nar content listing");
                 if (j["version"] == 1) {
-                    path = restPath;
                     accessor = makeLazyNarAccessor(j["root"].dump(), [](uint64_t, uint64_t) -> std::string {
                         throw Error("attempted to read NAR content during listing");
                     });
+                    path = restPath;
                 }
             }
-        } catch (NoSuchBinaryCacheFile &) { }
+        } catch (NoSuchBinaryCacheFile &) {
+        } catch (Error & e) {
+            warn(
+                "nar listing for %s on %s is bad (falling back to full nar download): %s",
+                path,
+                store->getUri(),
+                e.what()
+            );
+        }
 
         list(accessor);
     }

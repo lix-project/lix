@@ -82,11 +82,21 @@ diff -u \
     <(echo '{"narOffset": 368,"type":"regular","size":0}' | jq -S)
 
 
-# Confirm that we are reading from ".ls" file by deleting the nar
-rm -rf $cacheDir/nar
+# Confirm that we are reading from ".ls" file by moving the nar
+mv $cacheDir/nar $cacheDir/nar.gone
 diff -u \
     <(nix store ls --json -R $storePath/foo/bar --store "file://$cacheDir" | jq -S) \
     <(echo '{"narOffset": 368,"type":"regular","size":0}' | jq -S)
+mv $cacheDir/nar.gone $cacheDir/nar
+
+# confirm that we read the nar if the listing is missing offsets
+narls=$(echo "$cacheDir/"*.ls)
+cp "$narls" "$narls.old"
+jq 'walk(if type == "object" then del(.narOffset) else . end)' < "$narls.old" >"$narls"
+diff -u \
+    <(nix store ls --json $storePath/foo/bar --store "file://$cacheDir" | jq -S) \
+    <(echo '{"narOffset": 368,"type":"regular","size":0}' | jq -S)
+mv "$narls.old" "$narls"
 
 if canWriteNonUtf8Inodes; then
     # Confirm that there's no more than one `.ls` in the `$cacheDir` because non-UTF8 inodes cannot have `.ls` generated for them.
