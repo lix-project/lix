@@ -358,14 +358,10 @@ stdenv.mkDerivation (finalAttrs: {
     # configure, but we don't actually want to *run* the checks here.
     ++ lib.optionals lintInsteadOfBuild finalAttrs.checkInputs;
 
-  checkInputs =
-    [
-      gtest
-      rapidcheck
-    ]
-    ++ lib.optionals hostPlatform.isLinux [
-      pkgsStatic.busybox
-    ];
+  checkInputs = [
+    gtest
+    rapidcheck
+  ];
 
   propagatedBuildInputs = lib.optionals (!finalAttrs.dontBuild) maybePropagatedInputs;
 
