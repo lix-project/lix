@@ -31,23 +31,30 @@ struct NarAccessor : public FSAccessor
     {
         using namespace nar_index;
 
-        std::function<void(Entry &, JSON &)> recurse;
+        std::function<void(Entry &, const JSON &)> recurse;
 
-        recurse = [&](Entry & member, JSON & v) {
-            std::string type = v["type"];
+        recurse = [&](Entry & member, const JSON & v) {
+            std::string type = valueAt(v, "type");
 
             if (type == "directory") {
+                auto & entries = ensureType(valueAt(v, "entries"), JSON::value_t::object);
                 Directory dir;
-                for (auto i = v["entries"].begin(); i != v["entries"].end(); ++i) {
+                for (auto i = entries.begin(); i != entries.end(); ++i) {
                     std::string name = i.key();
                     recurse(dir.contents[name], i.value());
                 }
                 member = std::move(dir);
             } else if (type == "regular") {
-                member = File{v.value("executable", false), v["narOffset"], v["size"]};
+                member = File{
+                    ensureType(v.value("executable", false), JSON::value_t::boolean),
+                    ensureType(valueAt(v, "narOffset"), JSON::value_t::number_unsigned),
+                    ensureType(valueAt(v, "size"), JSON::value_t::number_unsigned),
+                };
             } else if (type == "symlink") {
-                member = Symlink{v.value("target", "")};
-            } else return;
+                member = Symlink{ensureType(v.value("target", ""), JSON::value_t::string)};
+            } else {
+                return;
+            }
         };
 
         JSON v = json::parse(listing, "a nar content listing");
