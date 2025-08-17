@@ -21,24 +21,19 @@ class SymbolStr
     friend class InternedSymbol;
 
 private:
-    const std::string * s;
+    std::string_view s;
 
-    explicit SymbolStr(const std::string & symbol): s(&symbol) {}
+    explicit SymbolStr(std::string_view symbol) : s(symbol) {}
 
 public:
     bool operator == (std::string_view s2) const
     {
-        return *s == s2;
-    }
-
-    operator const std::string & () const
-    {
-        return *s;
+        return s == s2;
     }
 
     operator const std::string_view () const
     {
-        return *s;
+        return s;
     }
 
     friend std::ostream & operator <<(std::ostream & os, const SymbolStr & symbol);
@@ -77,11 +72,6 @@ public:
     bool operator==(std::string_view s2) const
     {
         return contents == s2;
-    }
-
-    operator const std::string &() const
-    {
-        return contents;
     }
 
     operator std::string_view() const

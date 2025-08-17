@@ -696,13 +696,13 @@ void mapStaticEnvBindings(const SymbolTable & st, const StaticEnv & se, const En
             // add 'with' bindings.
             Bindings::iterator j = env.values[0]->attrs->begin();
             while (j != env.values[0]->attrs->end()) {
-                vm[st[j->name]] = j->value;
+                vm[std::string(st[j->name])] = j->value;
                 ++j;
             }
         } else {
             // iterate through staticenv bindings and add them.
             for (auto & i : se.vars)
-                vm[st[i.first]] = env.values[i.second];
+                vm[std::string(st[i.first])] = env.values[i.second];
         }
     }
 }
@@ -1326,7 +1326,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                 // Otherwise, missing attr error.
                 std::set<std::string> allAttrNames;
                 for (auto const & attr : *vCurrent->attrs) {
-                    allAttrNames.insert(state.ctx.symbols[attr.name]);
+                    allAttrNames.emplace(state.ctx.symbols[attr.name]);
                 }
                 auto suggestions = Suggestions::bestMatches(allAttrNames, state.ctx.symbols[name]);
                 state.ctx.errors.make<EvalError>("attribute '%s' missing", state.ctx.symbols[name])
@@ -1433,7 +1433,7 @@ FormalsMatch matchupLambdaAttrs(EvalState & state, Env & env, Displacement & dis
         }
 
         // The argument for this formal wasn't given.
-        result.unused.insert(symbols[formal.name]);
+        result.unused.emplace(symbols[formal.name]);
         // If the formal has a default, use it.
         if (formal.def) {
             env.values[displ] = formal.def->maybeThunk(state, env);
@@ -2706,7 +2706,7 @@ void Evaluator::printStatistics()
         // XXX: overrides earlier assignment
         topObj["symbols"] = JSON::array();
         auto &list = topObj["symbols"];
-        symbols.dump([&](const std::string & s) { list.emplace_back(s); });
+        symbols.dump([&](std::string_view s) { list.emplace_back(s); });
     }
     if (outPath == "-") {
         std::cerr << topObj.dump(2) << std::endl;

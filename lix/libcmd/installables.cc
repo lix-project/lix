@@ -243,7 +243,7 @@ void SourceExprCommand::completeInstallable(EvalState & state, AddCompletions & 
 
             if (v2.type() == nAttrs) {
                 for (auto & i : *v2.attrs) {
-                    std::string name = evaluator->symbols[i.name];
+                    std::string name{evaluator->symbols[i.name]};
                     if (name.find(searchWord) == 0) {
                         if (prefix_ == "")
                             completions.add(name);

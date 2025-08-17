@@ -198,8 +198,8 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
 
                     for (auto &i :
                          v->attrs->lexicographicOrder(evaluator->symbols)) {
-                        const std::string &name = evaluator->symbols[i->name];
-                        attrs.push_back(name);
+                        const std::string_view name = evaluator->symbols[i->name];
+                        attrs.emplace_back(name);
 
                         if (name == "recurseForDerivations" &&
                             !args.forceRecurse) {

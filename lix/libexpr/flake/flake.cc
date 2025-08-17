@@ -232,7 +232,7 @@ static std::pair<std::map<FlakeId, FlakeInput>, std::optional<fetchers::Attrs>> 
 
     std::optional<fetchers::Attrs> selfAttrs = std::nullopt;
     for (nix::Attr & inputAttr : *(*value).attrs) {
-        std::string inputName = state.ctx.symbols[inputAttr.name];
+        std::string inputName{state.ctx.symbols[inputAttr.name]};
         if (inputName == "self") {
             experimentalFeatureSettings.require(Xp::FlakeSelfAttrs);
 
@@ -368,9 +368,12 @@ static Flake getFlake(
             if (auto pattern = dynamic_cast<AttrsPattern *>(outputs->value->lambda.fun->pattern.get()); pattern) {
                 for (auto & formal : pattern->formals) {
                     if (formal.name != state.ctx.s.self)
-                        flake.inputs.emplace(state.ctx.symbols[formal.name], FlakeInput {
-                            .ref = parseFlakeRef(state.ctx.symbols[formal.name])
-                        });
+                        flake.inputs.emplace(
+                            state.ctx.symbols[formal.name],
+                            FlakeInput{
+                                .ref = parseFlakeRef(std::string(state.ctx.symbols[formal.name]))
+                            }
+                        );
                 }
             }
         }

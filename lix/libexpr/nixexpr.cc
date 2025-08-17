@@ -122,10 +122,10 @@ void ExprAttrs::addBindingsToJSON(JSON & out, const SymbolTable & symbols) const
     for (auto & i : sorted) {
         switch (i->second.kind) {
         case AttrDef::Kind::Plain:
-            out["attrs"][symbols[i->first]] = i->second.e->toJSON(symbols);
+            out["attrs"][std::string(symbols[i->first])] = i->second.e->toJSON(symbols);
             break;
         case AttrDef::Kind::Inherited:
-            out["inherit"][symbols[i->first]] = i->second.e->toJSON(symbols);
+            out["inherit"][std::string(symbols[i->first])] = i->second.e->toJSON(symbols);
             break;
         case AttrDef::Kind::InheritedFrom: {
             auto & select = i->second.e->cast<ExprSelect>();
@@ -197,9 +197,9 @@ void AttrsPattern::addBindingsToJSON(JSON & out, const SymbolTable & symbols) co
     // context. always use lexicographic ordering to avoid this.
     for (const Formal & i : lexicographicOrder(symbols)) {
         if (i.def)
-            out["formals"][symbols[i.name]] = i.def->toJSON(symbols);
+            out["formals"][std::string(symbols[i.name])] = i.def->toJSON(symbols);
         else
-            out["formals"][symbols[i.name]] = nullptr;
+            out["formals"][std::string(symbols[i.name])] = nullptr;
     }
     out["formalsEllipsis"] = ellipsis;
 }
@@ -765,7 +765,7 @@ Pos PosTable::operator[](PosIdx p) const
 size_t SymbolTable::totalSize() const
 {
     size_t n = 0;
-    dump([&] (const std::string & s) { n += s.size(); });
+    dump([&](const std::string_view s) { n += s.size(); });
     return n;
 }
 

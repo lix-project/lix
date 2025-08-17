@@ -461,7 +461,7 @@ struct ExprLambda : Expr
     /** Returns the name of the lambda,
      * or "anonymous lambda" if it doesn't have one.
      */
-    inline std::string getName(SymbolTable const & symbols) const
+    inline std::string_view getName(SymbolTable const & symbols) const
     {
         if (this->name) {
             return symbols[this->name];

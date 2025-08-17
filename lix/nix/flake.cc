@@ -170,8 +170,11 @@ struct CmdFlakeLock : FlakeCommand
     }
 };
 
-static void enumerateOutputs(EvalState & state, Value & vFlake,
-    std::function<void(const std::string & name, Value & vProvide, const PosIdx pos)> callback)
+static void enumerateOutputs(
+    EvalState & state,
+    Value & vFlake,
+    std::function<void(const std::string_view name, Value & vProvide, const PosIdx pos)> callback
+)
 {
     state.forceAttrs(vFlake, noPos, "while evaluating a flake to get its outputs");
 
@@ -391,15 +394,15 @@ struct CmdFlakeCheck : FlakeCommand
             return evaluator->positions[p];
         };
 
-        auto checkSystemName = [&](const std::string & system, const PosIdx pos) {
+        auto checkSystemName = [&](const std::string_view system, const PosIdx pos) {
             // FIXME: what's the format of "system"?
             if (system.find('-') == std::string::npos)
                 reportError(Error("'%s' is not a valid system type, at %s", system, resolve(pos)));
         };
 
-        auto checkSystemType = [&](const std::string & system, const PosIdx pos) {
+        auto checkSystemType = [&](const std::string_view system, const PosIdx pos) {
             if (!checkAllSystems && system != localSystem) {
-                omittedSystems.insert(system);
+                omittedSystems.emplace(system);
                 return false;
             } else {
                 return true;
@@ -448,7 +451,7 @@ struct CmdFlakeCheck : FlakeCommand
             }
         };
 
-        auto checkOverlay = [&](const std::string & attrPath, Value & v, const PosIdx pos) {
+        auto checkOverlay = [&](const std::string_view attrPath, Value & v, const PosIdx pos) {
             try {
                 Activity act(*logger, lvlInfo, actUnknown,
                     fmt("checking overlay '%s'", attrPath));
@@ -469,7 +472,7 @@ struct CmdFlakeCheck : FlakeCommand
             }
         };
 
-        auto checkModule = [&](const std::string & attrPath, Value & v, const PosIdx pos) {
+        auto checkModule = [&](const std::string_view attrPath, Value & v, const PosIdx pos) {
             try {
                 Activity act(*logger, lvlInfo, actUnknown,
                     fmt("checking NixOS module '%s'", attrPath));
@@ -480,9 +483,10 @@ struct CmdFlakeCheck : FlakeCommand
             }
         };
 
-        std::function<void(const std::string & attrPath, Value & v, const PosIdx pos)> checkHydraJobs;
+        std::function<void(const std::string_view attrPath, Value & v, const PosIdx pos)>
+            checkHydraJobs;
 
-        checkHydraJobs = [&](const std::string & attrPath, Value & v, const PosIdx pos) {
+        checkHydraJobs = [&](const std::string_view attrPath, Value & v, const PosIdx pos) {
             try {
                 Activity act(*logger, lvlInfo, actUnknown,
                     fmt("checking Hydra job '%s'", attrPath));
@@ -523,7 +527,7 @@ struct CmdFlakeCheck : FlakeCommand
             }
         };
 
-        auto checkTemplate = [&](const std::string & attrPath, Value & v, const PosIdx pos) {
+        auto checkTemplate = [&](const std::string_view attrPath, Value & v, const PosIdx pos) {
             try {
                 Activity act(*logger, lvlInfo, actUnknown,
                     fmt("checking template '%s'", attrPath));
@@ -579,9 +583,10 @@ struct CmdFlakeCheck : FlakeCommand
             auto vFlake = evaluator->mem.allocValue();
             flake::callFlake(*state, flake, *vFlake);
 
-            enumerateOutputs(*state,
+            enumerateOutputs(
+                *state,
                 *vFlake,
-                [&](const std::string & name, Value & vOutput, const PosIdx pos) {
+                [&](const std::string_view name, Value & vOutput, const PosIdx pos) {
                     Activity act(*logger, lvlInfo, actUnknown,
                         fmt("checking flake output '%s'", name));
 
@@ -624,7 +629,8 @@ struct CmdFlakeCheck : FlakeCommand
                             }
                         }
 
-                        else if (name == "formatter") {
+                        else if (name == "formatter")
+                        {
                             state->forceAttrs(vOutput, pos, "");
                             for (auto & attr : *vOutput.attrs) {
                                 const auto & attr_name = evaluator->symbols[attr.name];
@@ -637,7 +643,8 @@ struct CmdFlakeCheck : FlakeCommand
                             }
                         }
 
-                        else if (name == "packages" || name == "devShells") {
+                        else if (name == "packages" || name == "devShells")
+                        {
                             state->forceAttrs(vOutput, pos, "");
                             for (auto & attr : *vOutput.attrs) {
                                 const auto & attr_name = evaluator->symbols[attr.name];
@@ -652,7 +659,8 @@ struct CmdFlakeCheck : FlakeCommand
                             }
                         }
 
-                        else if (name == "apps") {
+                        else if (name == "apps")
+                        {
                             state->forceAttrs(vOutput, pos, "");
                             for (auto & attr : *vOutput.attrs) {
                                 const auto & attr_name = evaluator->symbols[attr.name];
@@ -667,7 +675,8 @@ struct CmdFlakeCheck : FlakeCommand
                             }
                         }
 
-                        else if (name == "defaultPackage" || name == "devShell") {
+                        else if (name == "defaultPackage" || name == "devShell")
+                        {
                             state->forceAttrs(vOutput, pos, "");
                             for (auto & attr : *vOutput.attrs) {
                                 const auto & attr_name = evaluator->symbols[attr.name];
@@ -680,7 +689,8 @@ struct CmdFlakeCheck : FlakeCommand
                             }
                         }
 
-                        else if (name == "defaultApp") {
+                        else if (name == "defaultApp")
+                        {
                             state->forceAttrs(vOutput, pos, "");
                             for (auto & attr : *vOutput.attrs) {
                                 const auto & attr_name = evaluator->symbols[attr.name];
@@ -693,7 +703,8 @@ struct CmdFlakeCheck : FlakeCommand
                             }
                         }
 
-                        else if (name == "legacyPackages") {
+                        else if (name == "legacyPackages")
+                        {
                             state->forceAttrs(vOutput, pos, "");
                             for (auto & attr : *vOutput.attrs) {
                                 checkSystemName(evaluator->symbols[attr.name], attr.pos);
@@ -703,9 +714,12 @@ struct CmdFlakeCheck : FlakeCommand
                         }
 
                         else if (name == "overlay")
+                        {
                             checkOverlay(name, vOutput, pos);
+                        }
 
-                        else if (name == "overlays") {
+                        else if (name == "overlays")
+                        {
                             state->forceAttrs(vOutput, pos, "");
                             for (auto & attr : *vOutput.attrs)
                                 checkOverlay(fmt("%s.%s", name, evaluator->symbols[attr.name]),
@@ -713,16 +727,20 @@ struct CmdFlakeCheck : FlakeCommand
                         }
 
                         else if (name == "nixosModule")
+                        {
                             checkModule(name, vOutput, pos);
+                        }
 
-                        else if (name == "nixosModules") {
+                        else if (name == "nixosModules")
+                        {
                             state->forceAttrs(vOutput, pos, "");
                             for (auto & attr : *vOutput.attrs)
                                 checkModule(fmt("%s.%s", name, evaluator->symbols[attr.name]),
                                     *attr.value, attr.pos);
                         }
 
-                        else if (name == "nixosConfigurations") {
+                        else if (name == "nixosConfigurations")
+                        {
                             state->forceAttrs(vOutput, pos, "");
                             for (auto & attr : *vOutput.attrs)
                                 checkNixOSConfiguration(fmt("%s.%s", name, evaluator->symbols[attr.name]),
@@ -730,19 +748,25 @@ struct CmdFlakeCheck : FlakeCommand
                         }
 
                         else if (name == "hydraJobs")
+                        {
                             checkHydraJobs(name, vOutput, pos);
+                        }
 
                         else if (name == "defaultTemplate")
+                        {
                             checkTemplate(name, vOutput, pos);
+                        }
 
-                        else if (name == "templates") {
+                        else if (name == "templates")
+                        {
                             state->forceAttrs(vOutput, pos, "");
                             for (auto & attr : *vOutput.attrs)
                                 checkTemplate(fmt("%s.%s", name, evaluator->symbols[attr.name]),
                                     *attr.value, attr.pos);
                         }
 
-                        else if (name == "defaultBundler") {
+                        else if (name == "defaultBundler")
+                        {
                             state->forceAttrs(vOutput, pos, "");
                             for (auto & attr : *vOutput.attrs) {
                                 const auto & attr_name = evaluator->symbols[attr.name];
@@ -755,7 +779,8 @@ struct CmdFlakeCheck : FlakeCommand
                             }
                         }
 
-                        else if (name == "bundlers") {
+                        else if (name == "bundlers")
+                        {
                             state->forceAttrs(vOutput, pos, "");
                             for (auto & attr : *vOutput.attrs) {
                                 const auto & attr_name = evaluator->symbols[attr.name];
@@ -771,16 +796,10 @@ struct CmdFlakeCheck : FlakeCommand
                             }
                         }
 
-                        else if (
-                            name == "lib"
-                            || name == "darwinConfigurations"
-                            || name == "darwinModules"
-                            || name == "flakeModule"
-                            || name == "flakeModules"
-                            || name == "herculesCI"
-                            || name == "homeConfigurations"
-                            || name == "nixopsConfigurations"
-                            )
+                        else if (name == "lib" || name == "darwinConfigurations"
+                                 || name == "darwinModules" || name == "flakeModule"
+                                 || name == "flakeModules" || name == "herculesCI"
+                                 || name == "homeConfigurations" || name == "nixopsConfigurations")
                             // Known but unchecked community attribute
                             ;
 
@@ -791,7 +810,8 @@ struct CmdFlakeCheck : FlakeCommand
                         e.addTrace(resolve(pos), HintFmt("while checking flake output '%s'", name));
                         reportError(e);
                     }
-                });
+                }
+            );
         }
 
         if (build && !drvPaths.empty()) {

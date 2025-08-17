@@ -883,7 +883,8 @@ drvName, Bindings * attrs, Value & v)
 
                     if (i->name == state.ctx.s.structuredAttrs) continue;
 
-                    (*jsonObject)[key] = printValueAsJSON(state, true, *i->value, noPos, context);
+                    (*jsonObject)[std::string(key)] =
+                        printValueAsJSON(state, true, *i->value, noPos, context);
 
                     if (i->name == state.ctx.s.builder)
                         drv.builder = state.forceString(*i->value, context, noPos, context_below);

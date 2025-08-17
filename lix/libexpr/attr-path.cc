@@ -115,7 +115,7 @@ std::pair<Value *, PosIdx> findAlongAttrPath(EvalState & state, const std::strin
             if (a == v->attrs->end()) {
                 std::set<std::string> attrNames;
                 for (auto & attr : *v->attrs)
-                    attrNames.insert(state.ctx.symbols[attr.name]);
+                    attrNames.emplace(state.ctx.symbols[attr.name]);
 
                 auto suggestions = Suggestions::bestMatches(attrNames, attr);
                 auto pathPart =

@@ -712,7 +712,7 @@ std::vector<std::string> AttrCursor::getAttrs(EvalState & state)
 
     fullattr_t attrs;
     for (auto & attr : *getValue(state).attrs)
-        attrs.p.push_back(state.ctx.symbols[attr.name]);
+        attrs.p.emplace_back(state.ctx.symbols[attr.name]);
     std::sort(attrs.p.begin(), attrs.p.end());
 
     if (root->db)
