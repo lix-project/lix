@@ -453,7 +453,7 @@ struct CompareValues : NeverAsync
                 case nFloat:
                     return v1->fpoint < v2->fpoint;
                 case nString:
-                    return strcmp(v1->string.s, v2->string.s) < 0;
+                    return v1->str() < v2->str();
                 case nPath:
                     return strcmp(v1->_path, v2->_path) < 0;
                 case nList:
@@ -695,7 +695,7 @@ static void prim_trace(EvalState & state, Value * * args, Value & v)
 {
     state.forceValue(*args[0], noPos);
     if (args[0]->type() == nString)
-        printError("trace: %1%", args[0]->string.s);
+        printError("trace: %1%", args[0]->str());
     else
         printError("trace: %1%", ValuePrinter(state, *args[0]));
     if (auto last = evalSettings.builtinsTraceDebugger && state.ctx.debug
@@ -1584,8 +1584,9 @@ static void prim_attrNames(EvalState & state, Value * * args, Value & v)
     for (auto & i : *args[0]->attrs)
         v.listElems()[n++] = const_cast<Value *>(state.ctx.symbols[i.name].toValuePtr());
 
-    std::sort(v.listElems(), v.listElems() + n,
-              [](Value * v1, Value * v2) { return strcmp(v1->string.s, v2->string.s) < 0; });
+    std::sort(v.listElems(), v.listElems() + n, [](Value * v1, Value * v2) {
+        return v1->str() < v2->str();
+    });
 }
 
 /* Return the values of the attributes in a set as a list, in the same
@@ -1719,7 +1720,7 @@ static void prim_removeAttrs(EvalState & state, Value * * args, Value & v)
     names.reserve(args[1]->listSize());
     for (auto elem : args[1]->listItems()) {
         state.forceStringNoCtx(*elem, noPos, "while evaluating the values of the second argument passed to builtins.removeAttrs");
-        names.emplace_back(state.ctx.symbols.create(elem->string.s), nullptr);
+        names.emplace_back(state.ctx.symbols.create(elem->str()), nullptr);
     }
     std::sort(names.begin(), names.end());
 

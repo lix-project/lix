@@ -244,8 +244,10 @@ DrvInfo::Outputs DrvInfo::queryOutputs(EvalState & state, bool withPaths, bool o
                 errMsg + "element is %s where a string was expected",
                 Uncolored(showType(elem->type()))
             );
-        auto out = outputs.find(elem->string.s);
-        if (out == outputs.end()) throw Error(errMsg + "output '%s' does not exist", elem->string.s);
+        auto out = outputs.find(std::string(elem->str()));
+        if (out == outputs.end()) {
+            throw Error(errMsg + "output '%s' does not exist", elem->str());
+        }
         result.insert(*out);
     }
     return result;
@@ -317,7 +319,7 @@ std::string DrvInfo::queryMetaString(EvalState & state, const std::string & name
 {
     Value * v = queryMeta(state, name);
     if (!v || v->type() != nString) return "";
-    return v->string.s;
+    return std::string(v->str());
 }
 
 
@@ -329,8 +331,9 @@ NixInt DrvInfo::queryMetaInt(EvalState & state, const std::string & name, NixInt
     if (v->type() == nString) {
         /* Backwards compatibility with before we had support for
            integer meta fields. */
-        if (auto n = string2Int<NixInt::Inner>(v->string.s))
+        if (auto n = string2Int<NixInt::Inner>(v->str())) {
             return NixInt{*n};
+        }
     }
     return def;
 }
@@ -343,8 +346,12 @@ bool DrvInfo::queryMetaBool(EvalState & state, const std::string & name, bool de
     if (v->type() == nString) {
         /* Backwards compatibility with before we had support for
            Boolean meta fields. */
-        if (strcmp(v->string.s, "true") == 0) return true;
-        if (strcmp(v->string.s, "false") == 0) return false;
+        if (v->str() == "true") {
+            return true;
+        }
+        if (v->str() == "false") {
+            return false;
+        }
     }
     return def;
 }

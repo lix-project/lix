@@ -140,7 +140,7 @@ static Symbol getName(const AttrName & name, EvalState & state, Env & env)
         Value nameValue;
         name.expr->eval(state, env, nameValue);
         state.forceStringNoCtx(nameValue, name.expr->getPos(), "while evaluating an attribute name");
-        return state.ctx.symbols.create(nameValue.string.s);
+        return state.ctx.symbols.create(nameValue.str());
     }
 }
 
@@ -1152,7 +1152,7 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
         if (nameVal.type() == nNull)
             continue;
         state.forceStringNoCtx(nameVal, i.pos, "while evaluating the name of a dynamic attribute");
-        auto nameSym = state.ctx.symbols.create(nameVal.string.s);
+        auto nameSym = state.ctx.symbols.create(nameVal.str());
         Bindings::iterator j = v.attrs->find(nameSym);
         if (j != v.attrs->end())
             state.ctx.errors.make<EvalError>("dynamic attribute '%1%' already defined at %2%", state.ctx.symbols[nameSym], state.ctx.positions[j->pos]).atPos(i.pos).withFrame(env, *this).debugThrow();
@@ -2214,7 +2214,7 @@ std::string_view EvalState::forceString(Value & v, const PosIdx pos, std::string
                 showType(v),
                 ValuePrinter(*this, v, errorPrintOptions)
             ).atPos(pos).debugThrow();
-        return v.string.s;
+        return v.str();
     } catch (Error & e) {
         e.addTrace(ctx.positions[pos], errorCtx);
         throw;
@@ -2242,7 +2242,14 @@ std::string_view EvalState::forceStringNoCtx(Value & v, const PosIdx pos, std::s
 {
     auto s = forceString(v, pos, errorCtx);
     if (v.string.context) {
-        ctx.errors.make<EvalError>("the string '%1%' is not allowed to refer to a store path (such as '%2%')", v.string.s, v.string.context[0]).withTrace(pos, errorCtx).debugThrow();
+        ctx.errors
+            .make<EvalError>(
+                "the string '%1%' is not allowed to refer to a store path (such as '%2%')",
+                v.str(),
+                v.string.context[0]
+            )
+            .withTrace(pos, errorCtx)
+            .debugThrow();
     }
     return s;
 }
@@ -2255,7 +2262,7 @@ bool EvalState::isDerivation(Value & v)
     if (i == v.attrs->end()) return false;
     forceValue(*i->value, i->pos);
     if (i->value->type() != nString) return false;
-    return strcmp(i->value->string.s, "derivation") == 0;
+    return i->value->str() == "derivation";
 }
 
 
@@ -2292,7 +2299,7 @@ BackedStringView EvalState::coerceToString(
 
     if (v.type() == nString) {
         copyContext(v, context);
-        return std::string_view(v.string.s);
+        return v.str();
     }
 
     if (v.type() == nPath) {
@@ -2511,7 +2518,7 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             return v1.boolean == v2.boolean;
 
         case nString:
-            return strcmp(v1.string.s, v2.string.s) == 0;
+            return v1.str() == v2.str();
 
         case nPath:
             return strcmp(v1._path, v2._path) == 0;

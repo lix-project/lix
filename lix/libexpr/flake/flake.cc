@@ -111,7 +111,7 @@ static void parseFlakeInputAttr(EvalState & state, const Attr & attr, fetchers::
 #pragma GCC diagnostic ignored "-Wswitch-enum"
     switch (attr.value->type()) {
     case nString:
-        attrs.emplace(state.ctx.symbols[attr.name], attr.value->string.s);
+        attrs.emplace(state.ctx.symbols[attr.name], std::string(attr.value->str()));
         break;
     case nBool:
         attrs.emplace(state.ctx.symbols[attr.name], Explicit<bool>{attr.value->boolean});
@@ -164,7 +164,7 @@ static FlakeInput parseFlakeInput(EvalState & state,
         try {
             if (attr.name == sUrl) {
                 expectType(state, nString, *attr.value, attr.pos);
-                url = attr.value->string.s;
+                url = attr.value->str();
                 attrs.emplace("url", *url);
             } else if (attr.name == sFlake) {
                 expectType(state, nBool, *attr.value, attr.pos);
@@ -177,7 +177,7 @@ static FlakeInput parseFlakeInput(EvalState & state,
                         .first;
             } else if (attr.name == sFollows) {
                 expectType(state, nString, *attr.value, attr.pos);
-                auto follows(parseInputPath(attr.value->string.s));
+                auto follows(parseInputPath(attr.value->str()));
                 follows.insert(follows.begin(), lockRootPath.begin(), lockRootPath.end());
                 input.follows = follows;
             } else {
@@ -330,7 +330,7 @@ static Flake getFlake(
 
     if (auto description = vInfo.attrs->get(state.ctx.s.description)) {
         expectType(state, nString, *description->value, description->pos);
-        flake.description = description->value->string.s;
+        flake.description = description->value->str();
     }
 
     auto sInputs = state.ctx.symbols.create("inputs");

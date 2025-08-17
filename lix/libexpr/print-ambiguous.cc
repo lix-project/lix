@@ -29,7 +29,7 @@ void printAmbiguous(
         printLiteralBool(str, v.boolean);
         break;
     case nString:
-        escapeString(str, v.string.s);
+        escapeString(str, v.str());
         break;
     case nPath:
         str << v.path().to_string(); // !!! escaping?

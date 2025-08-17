@@ -28,7 +28,7 @@ JSON printValueAsJSON(EvalState & state, bool strict,
 
         case nString:
             copyContext(v, context);
-            out = v.string.s;
+            out = v.str();
             break;
 
         case nPath:

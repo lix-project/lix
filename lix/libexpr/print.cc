@@ -202,10 +202,9 @@ private:
     {
         escapeString(
             output,
-            v.string.s,
+            v.str(),
             {
-                .maxLength = options.maxStringLength,
-                .outputAnsiColors = options.ansiColors,
+                .maxLength = options.maxStringLength, .outputAnsiColors = options.ansiColors,
                 // NB: Non-printing characters won't be escaped.
             }
         );

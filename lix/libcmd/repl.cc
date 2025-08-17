@@ -788,7 +788,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
         Value v;
         evalString(arg, v);
         if (v.type() == nString) {
-            std::cout << v.string.s;
+            std::cout << v.str();
         } else {
             printValue(std::cout, v);
         }

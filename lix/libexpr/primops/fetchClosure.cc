@@ -131,7 +131,7 @@ void prim_fetchClosure(EvalState & state, Value * * args, Value & v)
 
         else if (attrName == "toPath") {
             state.forceValue(*attr.value, attr.pos);
-            bool isEmptyString = attr.value->type() == nString && attr.value->string.s == std::string("");
+            bool isEmptyString = attr.value->type() == nString && attr.value->str().empty();
             if (isEmptyString) {
                 toPath = StorePathOrGap {};
             }

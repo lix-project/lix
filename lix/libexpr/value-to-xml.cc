@@ -5,8 +5,7 @@
 
 namespace nix {
 
-
-static XMLAttrs singletonAttrs(const std::string & name, const std::string & value)
+static XMLAttrs singletonAttrs(const std::string & name, const std::string_view value)
 {
     XMLAttrs attrs;
     attrs[name] = value;
@@ -71,7 +70,7 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
         case nString:
             /* !!! show the context? */
             copyContext(v, context);
-            doc.writeEmptyElement("string", singletonAttrs("value", v.string.s));
+            doc.writeEmptyElement("string", singletonAttrs("value", v.str()));
             break;
 
         case nPath:
@@ -93,14 +92,15 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
                 if (a != v.attrs->end()) {
                     if (strict) state.forceValue(*a->value, a->pos);
                     if (a->value->type() == nString)
-                        xmlAttrs["drvPath"] = drvPath = a->value->string.s;
+                        xmlAttrs["drvPath"] = drvPath = a->value->str();
                 }
 
                 a = v.attrs->find(state.ctx.s.outPath);
                 if (a != v.attrs->end()) {
                     if (strict) state.forceValue(*a->value, a->pos);
-                    if (a->value->type() == nString)
-                        xmlAttrs["outPath"] = a->value->string.s;
+                    if (a->value->type() == nString) {
+                        xmlAttrs["outPath"] = a->value->str();
+                    }
                 }
 
                 XMLOpenElement _(doc, "derivation", xmlAttrs);

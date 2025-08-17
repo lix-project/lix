@@ -284,7 +284,7 @@ public:
     /// enabled), and string and context data copied into that memory.
     Value(string_t, char const * strPtr, char const ** contextPtr = nullptr)
         : internalType(tString)
-        , string({ .s = strPtr, .context = contextPtr })
+        , string({.content = strPtr, .context = contextPtr})
     { }
 
     /// Constructx a nix language value of type "string", with a copy of the
@@ -294,7 +294,7 @@ public:
     /// performs a dynamic (GC) allocation to do so.
     Value(string_t, std::string_view copyFrom, NixStringContext const & context = {})
         : internalType(tString)
-        , string({ .s = gcCopyStringIfNeeded(copyFrom), .context = nullptr })
+        , string({.content = gcCopyStringIfNeeded(copyFrom), .context = nullptr})
     {
         if (context.empty()) {
             // It stays nullptr.
@@ -325,7 +325,7 @@ public:
     /// to do so.
     Value(string_t, char const * strPtr, NixStringContext const & context)
         : internalType(tString)
-        , string({ .s = strPtr, .context = nullptr })
+        , string({.content = strPtr, .context = nullptr})
     {
         if (context.empty()) {
             // It stays nullptr
@@ -583,7 +583,7 @@ public:
          * For canonicity, the store paths should be in sorted order.
          */
         struct {
-            const char * s;
+            const char * content;
             const char * * context; // must be in sorted order
         } string;
 
@@ -687,7 +687,7 @@ public:
     inline void mkString(const char * s, const char * * context = 0)
     {
         internalType = tString;
-        string.s = s;
+        string.content = s;
         string.context = context;
     }
 
@@ -853,7 +853,7 @@ public:
     std::string_view str() const
     {
         assert(internalType == tString);
-        return std::string_view(string.s);
+        return std::string_view(string.content);
     }
 };
 

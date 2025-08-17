@@ -113,7 +113,7 @@ readConstituents(const nix::Value *v, nix::box_ptr<nix::EvalState> &state,
             auto v = a->value->listElems()[n];
             state->forceValue(*v, nix::noPos);
             if (v->type() == nix::nString)
-                namedConstituents.push_back(v->string.s);
+                namedConstituents.emplace_back(v->str());
         }
 
         return Constituents(constituents, namedConstituents);

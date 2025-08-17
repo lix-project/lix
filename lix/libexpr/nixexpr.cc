@@ -55,7 +55,7 @@ JSON ExprLiteral::toJSON(const SymbolTable & symbols) const
             break;
         case nString:
             valueType = "String";
-            value = v.string.s;
+            value = v.str();
             break;
         case nPath:
             valueType = "Path";

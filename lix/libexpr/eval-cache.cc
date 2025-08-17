@@ -437,8 +437,9 @@ Value & AttrCursor::forceValue(EvalState & state)
 
     if (root->db && (!cachedValue || std::get_if<placeholder_t>(&cachedValue->second))) {
         if (v.type() == nString)
-            cachedValue = {root->db->setString(getKey(), v.string.s, v.string.context),
-                           string_t{v.string.s, {}}};
+            cachedValue = {
+                root->db->setString(getKey(), v.str(), v.string.context), string_t{v.str(), {}}
+            };
         else if (v.type() == nPath) {
             auto path = v.path().canonical().abs();
             cachedValue = {root->db->setString(getKey(), path), string_t{path, {}}};
@@ -563,7 +564,7 @@ std::string AttrCursor::getString(EvalState & state)
         state.ctx.errors.make<TypeError>("'%s' is not a string but %s", getAttrPathStr(state), v.type()).debugThrow();
     }
 
-    return v.type() == nString ? v.string.s : v.path().to_string();
+    return v.type() == nString ? std::string(v.str()) : v.path().to_string();
 }
 
 string_t AttrCursor::getStringWithContext(EvalState & state)
@@ -605,7 +606,7 @@ string_t AttrCursor::getStringWithContext(EvalState & state)
     if (v.type() == nString) {
         NixStringContext context;
         copyContext(v, context);
-        return {v.string.s, std::move(context)};
+        return {std::string(v.str()), std::move(context)};
     } else if (v.type() == nPath) {
         return {v.path().to_string(), {}};
     } else {
