@@ -921,7 +921,7 @@ std::string DerivationGoal::buildErrorContents(const std::string & exitMsg, bool
         auto nixLogCommand =
             experimentalFeatureSettings.isEnabled(Xp::NixCommand) ? "nix log" : "nix-store -l";
         msg +=
-            fmt("For full logs, run: '" ANSI_BOLD "%s %s" ANSI_NORMAL "'.",
+            fmt("For full logs, run:\n\t" ANSI_BOLD "%s %s" ANSI_NORMAL "",
                 nixLogCommand,
                 worker.store.printStorePath(drvPath));
     }
