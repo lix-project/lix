@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import Any, NamedTuple, ClassVar
 from collections.abc import Generator
 
-import toml
+import tomllib
 from functional2.testlib.fixtures.file_helper import AssetSymlink, CopyFile, FileDeclaration
 from functional2.testlib.utils import is_value_of_type, test_base_folder
-from toml import TomlDecodeError
+from tomllib import TOMLDecodeError
 
 LANG_TEST_ID_PATTERN = "{folder_name}:{test_name}"
 
@@ -303,8 +303,8 @@ def _collect_toml_test_group(folder: Path) -> tuple[list[LangTest], list[Invalid
     unused_files = all_files - {"test.toml"}
 
     try:
-        infos: dict[str, Any] = toml.load(folder / "test.toml")
-    except TomlDecodeError as e:
+        infos: dict[str, Any] = tomllib.loads((folder / "test.toml").read_text())
+    except TOMLDecodeError as e:
         return [], [InvalidLangTest(parent_name, [f"couldn't parse toml: {e!r}"])]
 
     for test in parse_toml(infos, in_files):

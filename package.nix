@@ -216,7 +216,6 @@ stdenv.mkDerivation (finalAttrs: {
       p.pytest-xdist
       p.ruff
       p.aiohttp
-      p.toml
     ]
   );
 
@@ -533,7 +532,6 @@ stdenv.mkDerivation (finalAttrs: {
             p.ruff
             p.aiohttp
             p.python-frontmatter
-            p.toml
             p.pycapnp
 
             p.yapf
