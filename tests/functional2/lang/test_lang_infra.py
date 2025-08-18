@@ -6,93 +6,68 @@ from textwrap import dedent
 import pytest
 
 from functional2.testlib.fixtures.command import Command
-from functional2.testlib.fixtures.file_helper import File, AssetSymlink
+from functional2.testlib.fixtures.file_helper import File, AssetSymlink, with_files
 from functional2.testlib.fixtures.snapshot import Snapshot
 from functional2.testlib.utils import get_functional2_lang_files
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "generic_test": {
-                                "in.nix": File("{}"),
-                                "eval-okay.out.exp": File("{ }\n"),
-                            }
-                        }
-                    }
-                }
-            ),
-            ["-k", "generic_test", "--setup-plan"],
-        )
-    ],
-    indirect=True,
+@pytest.mark.parametrize("pytest_command", [["-k", "generic_test", "--setup-plan"]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {"generic_test": {"in.nix": File("{}"), "eval-okay.out.exp": File("{ }\n")}}
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_detects_generic_lang_test(pytest_command: Command):
     result = pytest_command.run().ok()
     assert "lang/test_lang.py::test_eval[generic_test:eval-okay]" in result.stdout_plain
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "toml_test": {
-                                "in.nix": File("{}"),
-                                "my_name.out.exp": File("{ }\n"),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [["-k", "toml_test", "--setup-plan"]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "toml_test": {
+                        "in.nix": File("{}"),
+                        "my_name.out.exp": File("{ }\n"),
+                        "test.toml": File(
+                            dedent("""
                                     [[test]]
                                     name = "my_name"
                                     runner = "eval-okay"
                                     """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            ["-k", "toml_test", "--setup-plan"],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_detects_toml_lang_test(pytest_command: Command):
     result = pytest_command.run().ok()
     assert "lang/test_lang.py::test_eval[toml_test:my_name]" in result.stdout_plain
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "some_py_module": {
-                                "in.nix": File("{}"),
-                                "eval-okay.out.exp": File("{ }\n"),
-                                "__init__.py": File(""),
-                            }
-                        }
+@pytest.mark.parametrize("pytest_command", [["--setup-plan"]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "some_py_module": {
+                        "in.nix": File("{}"),
+                        "eval-okay.out.exp": File("{ }\n"),
+                        "__init__.py": File(""),
                     }
                 }
-            ),
-            ["--setup-plan"],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
 def test_skips_py_files(files: Path, pytest_command: Command):
     result = pytest_command.run().ok()
@@ -103,34 +78,27 @@ def test_skips_py_files(files: Path, pytest_command: Command):
     )
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "n_suffix": {
-                                "in-1.nix": File("{}"),
-                                "in-2.nix": File("{}"),
-                                "eval-okay-1.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "eval-okay-2.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                            }
-                        }
+@pytest.mark.parametrize("pytest_command", [["-k", "n_suffix"]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "n_suffix": {
+                        "in-1.nix": File("{}"),
+                        "in-2.nix": File("{}"),
+                        "eval-okay-1.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "eval-okay-2.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
                     }
                 }
-            ),
-            ["-k", "n_suffix"],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_collects_with_n_suffix(pytest_command: Command):
     result = pytest_command.run().ok()
     out = result.stdout_plain
@@ -138,34 +106,27 @@ def test_collects_with_n_suffix(pytest_command: Command):
     assert "n_suffix:eval-okay-2" in out
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "short_string_suffix": {
-                                "in-speaker.nix": File("{}"),
-                                "in-microphone.nix": File("{}"),
-                                "eval-okay-speaker.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "eval-okay-microphone.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                            }
-                        }
+@pytest.mark.parametrize("pytest_command", [["-k", "short_string_suffix"]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "short_string_suffix": {
+                        "in-speaker.nix": File("{}"),
+                        "in-microphone.nix": File("{}"),
+                        "eval-okay-speaker.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "eval-okay-microphone.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
                     }
                 }
-            ),
-            ["-k", "short_string_suffix"],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_collects_short_string_suffix(pytest_command: Command):
     result = pytest_command.run().ok()
     out = result.stdout_plain
@@ -173,34 +134,27 @@ def test_collects_short_string_suffix(pytest_command: Command):
     assert "short_string_suffix:eval-okay-microphone" in out
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "dash_suffix": {
-                                "in-string-with-dash.nix": File("{}"),
-                                "in-some-more--dashes.nix": File("{}"),
-                                "eval-okay-string-with-dash.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "eval-okay-some-more--dashes.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                            }
-                        }
+@pytest.mark.parametrize("pytest_command", [["-k", "dash_suffix"]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "dash_suffix": {
+                        "in-string-with-dash.nix": File("{}"),
+                        "in-some-more--dashes.nix": File("{}"),
+                        "eval-okay-string-with-dash.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "eval-okay-some-more--dashes.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
                     }
                 }
-            ),
-            ["-k", "dash_suffix"],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_collects_string_suffix_with_dash(pytest_command: Command):
     result = pytest_command.run().ok()
     out = result.stdout_plain
@@ -209,34 +163,27 @@ def test_collects_string_suffix_with_dash(pytest_command: Command):
     assert "dash_suffix:eval-okay-" in out
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "bad_naming": {
-                                "in-&x.nix": File("{}"),
-                                "in-.nix": File("{}"),
-                                "eval-okay-&x.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "eval-okay-.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                            }
-                        }
+@pytest.mark.parametrize("pytest_command", [["-k", "bad_naming"]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "bad_naming": {
+                        "in-&x.nix": File("{}"),
+                        "in-.nix": File("{}"),
+                        "eval-okay-&x.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "eval-okay-.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
                     }
                 }
-            ),
-            ["-k", "bad_naming"],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_collection_fails_with_bad_naming(pytest_command: Command):
     result = pytest_command.run().expect(1)
     err = result.stdout_plain
@@ -245,42 +192,35 @@ def test_collection_fails_with_bad_naming(pytest_command: Command):
     assert "incorrectly formatted test name: 'eval-okay-&x'" in err
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "infra_okay_runners": {
-                                "in.nix": File("{}"),
-                                "eval-okay.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "parse-okay.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_po.out.exp"
-                                ),
-                            },
-                            "infra_fail_runners": {
-                                "in.nix": File("{"),
-                                "eval-fail.err.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_ef.err.exp"
-                                ),
-                                "parse-fail.err.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_pf.err.exp"
-                                ),
-                            },
-                        }
-                    }
+@pytest.mark.parametrize("pytest_command", [["-k", "infra and runners"]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "infra_okay_runners": {
+                        "in.nix": File("{}"),
+                        "eval-okay.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "parse-okay.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_po.out.exp"
+                        ),
+                    },
+                    "infra_fail_runners": {
+                        "in.nix": File("{"),
+                        "eval-fail.err.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_ef.err.exp"
+                        ),
+                        "parse-fail.err.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_pf.err.exp"
+                        ),
+                    },
                 }
-            ),
-            ["-k", "infra and runners"],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_all_runners_work(pytest_command: Command):
     result = pytest_command.run().ok()
     assert "lang/test_lang.py::test_eval[infra_okay_runners:eval-okay]" in result.stdout_plain
@@ -291,30 +231,23 @@ def test_all_runners_work(pytest_command: Command):
     )
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "generic_bad": {
-                                "in.nix": File("{}"),
-                                "fee-foo.out.exp": File(""),
-                                "hello-okay.out.exp": File(""),
-                                "parse-fops.out.exp": File(""),
-                            }
-                        }
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "generic_bad": {
+                        "in.nix": File("{}"),
+                        "fee-foo.out.exp": File(""),
+                        "hello-okay.out.exp": File(""),
+                        "parse-fops.out.exp": File(""),
                     }
                 }
-            ),
-            [],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_generic_bad_runner_name(pytest_command: Command):
     result = pytest_command.run().expect(1)
     err = result.stdout_s
@@ -325,35 +258,28 @@ def test_generic_bad_runner_name(pytest_command: Command):
     assert "Invalid configuration for 'generic_bad:parse-fops'" in err
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "toml_test": {
-                                "in.nix": File("{}"),
-                                "my_name.out.exp": File("{ }\n"),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [["-k", "toml_test"]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "toml_test": {
+                        "in.nix": File("{}"),
+                        "my_name.out.exp": File("{ }\n"),
+                        "test.toml": File(
+                            dedent("""
                                     [[test]]
                                     name = "my_name"
                                     runner = "plushies"
                                     """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            ["-k", "toml_test"],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_toml_bad_runner_name(pytest_command: Command):
     result = pytest_command.run().expect(1)
     err = result.stdout_plain
@@ -362,36 +288,29 @@ def test_toml_bad_runner_name(pytest_command: Command):
     assert "Invalid configuration for 'toml_test:my_name':" in err
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "toml_test": {
-                                "in.nix": File("{}"),
-                                "my_name.out.exp": File("{ }\n"),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [["-k", "toml_test"]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "toml_test": {
+                        "in.nix": File("{}"),
+                        "my_name.out.exp": File("{ }\n"),
+                        "test.toml": File(
+                            dedent("""
                                     [[test]]
                                     name = "my_name"
                                     runner = "eval-okay"
                                     cuddles = true
                                     """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            ["-k", "toml_test"],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_toml_too_many_args(pytest_command: Command):
     result = pytest_command.run().expect(1)
     err = result.stdout_plain
@@ -399,19 +318,17 @@ def test_toml_too_many_args(pytest_command: Command):
     assert "unexpected arguments: ['cuddles']" in err
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "toml_test": {
-                                "in.nix": File("{}"),
-                                "my_name.out.exp": File("{ }\n"),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [["-k", "toml_test"]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "toml_test": {
+                        "in.nix": File("{}"),
+                        "my_name.out.exp": File("{ }\n"),
+                        "test.toml": File(
+                            dedent("""
                                     invalid_test = "eval-okay"
                                     [[test]]
                                     name = "my_name"
@@ -422,18 +339,13 @@ def test_toml_too_many_args(pytest_command: Command):
                                     runner = "eval-okay"
                                     extra-files = [false, true, true]
                                     """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            ["-k", "toml_test"],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_toml_invalid_argument_types(pytest_command: Command):
     result = pytest_command.run().expect(1)
     err = result.stdout_plain
@@ -443,36 +355,29 @@ def test_toml_invalid_argument_types(pytest_command: Command):
     assert "invalid value type for 'extra_files':" in err
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "toml_test": {
-                                "in.nix": File("{}"),
-                                "my_name.out.exp": File("{ }\n"),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [["-k", "toml_test"]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "toml_test": {
+                        "in.nix": File("{}"),
+                        "my_name.out.exp": File("{ }\n"),
+                        "test.toml": File(
+                            dedent("""
                                     [[test]]
                                     name = "my_name"
                                     runner = "eval-okay"
                                     cuddles = True
                                     """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            ["-k", "toml_test"],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_invalid_toml(pytest_command: Command):
     result = pytest_command.run().expect(1)
     err = result.stdout_plain
@@ -481,23 +386,17 @@ def test_invalid_toml(pytest_command: Command):
 
 
 @pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "update_test": {"in.nix": File("{}"), "eval-okay.out.exp": File("old")}
-                        }
-                    },
-                    "out.exp": AssetSymlink("assets/test_lang_infra/runner_eo.out.exp"),
-                }
-            ),
-            (["-k", "update_test", "--accept-tests"], False),
-        )
-    ],
-    indirect=True,
+    "pytest_command", [(["-k", "update_test", "--accept-tests"], False)], indirect=True
+)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {"update_test": {"in.nix": File("{}"), "eval-okay.out.exp": File("old")}}
+            },
+            "out.exp": AssetSymlink("assets/test_lang_infra/runner_eo.out.exp"),
+        }
+    )
 )
 def test_updates_expected_output(
     files: Path, pytest_command: Command, snapshot: Callable[[str], Snapshot]
@@ -510,31 +409,24 @@ def test_updates_expected_output(
     )
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "generic_unused": {
-                                "in.nix": File("{}"),
-                                "in-1.nix": File("{}"),
-                                "eval-okay.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                            }
-                        }
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "generic_unused": {
+                        "in.nix": File("{}"),
+                        "in-1.nix": File("{}"),
+                        "eval-okay.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
                     }
                 }
-            ),
-            [],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_generic_throws_unused_files(pytest_command: Command):
     res = pytest_command.run().expect(1)
     out = res.stdout_plain
@@ -542,38 +434,31 @@ def test_generic_throws_unused_files(pytest_command: Command):
     assert "the following files weren't referenced: {'in-1.nix'}" in out
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "toml_unused": {
-                                "in.nix": File("{}"),
-                                "in-1.nix": File("{}"),
-                                "eval-fail.err.exp": File(""),
-                                "eval-okay.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "toml_unused": {
+                        "in.nix": File("{}"),
+                        "in-1.nix": File("{}"),
+                        "eval-fail.err.exp": File(""),
+                        "eval-okay.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "test.toml": File(
+                            dedent("""
                                     [[test]]
                                     runner = "eval-okay"
                                     """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            [],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_toml_throws_unused_files(
     pytest_command: Command, balanced_templater: type[string.Template]
 ):
@@ -586,39 +471,32 @@ def test_toml_throws_unused_files(
     )
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "single-multi": {
-                                "in.nix": File("{}"),
-                                "in-1.nix": File("{}"),
-                                "eval-fail.err.exp": File(""),
-                                "eval-okay.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "single-multi": {
+                        "in.nix": File("{}"),
+                        "in-1.nix": File("{}"),
+                        "eval-fail.err.exp": File(""),
+                        "eval-okay.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "test.toml": File(
+                            dedent("""
                                         [[test]]
                                         runner = "eval-okay"
                                         in = ["in.nix", "in-1.nix"]
                                         """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            [],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_toml_single_only_str(pytest_command: Command):
     res = pytest_command.run().expect(1)
     err = res.stdout_plain
@@ -626,38 +504,31 @@ def test_toml_single_only_str(pytest_command: Command):
     assert "invalid type for 'in': ['in.nix', 'in-1.nix'], expected a string" in err
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "multi-single": {
-                                "in.nix": File("{}"),
-                                "eval-okay.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "multi-single": {
+                        "in.nix": File("{}"),
+                        "eval-okay.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "test.toml": File(
+                            dedent("""
                                         [[test]]
                                         matrix = true
                                         runner = "eval-okay"
                                         in = "in.nix"
                                         """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            [],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_toml_matrix_only_list_str(pytest_command: Command):
     res = pytest_command.run().expect(1)
     err = res.stdout_plain
@@ -665,41 +536,34 @@ def test_toml_matrix_only_list_str(pytest_command: Command):
     assert "invalid type for 'in': 'in.nix', expected a list of string" in err
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "matrix-all": {
-                                "in.nix": File("{}"),
-                                "in-1.nix": File("{}"),
-                                "eval-okay-1.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "eval-okay.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "matrix-all": {
+                        "in.nix": File("{}"),
+                        "in-1.nix": File("{}"),
+                        "eval-okay-1.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "eval-okay.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "test.toml": File(
+                            dedent("""
                                         [[test]]
                                         matrix = true
                                         runner = "eval-okay"
                                         """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            [],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_toml_matrix_uses_all_files(pytest_command: Command):
     res = pytest_command.run().ok()
     out = res.stdout_plain
@@ -707,28 +571,26 @@ def test_toml_matrix_uses_all_files(pytest_command: Command):
     assert "test_eval[matrix-all:eval-okay-1] PASSED" in out
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "mixed-matrix": {
-                                "in.nix": File("{}"),
-                                "in-1.nix": File("{}"),
-                                "eval-okay-1.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "eval-okay.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "non-matrix-1.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "mixed-matrix": {
+                        "in.nix": File("{}"),
+                        "in-1.nix": File("{}"),
+                        "eval-okay-1.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "eval-okay.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "non-matrix-1.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "test.toml": File(
+                            dedent("""
                                         [[test]]
                                         matrix = true
                                         runner = "eval-okay"
@@ -737,18 +599,13 @@ def test_toml_matrix_uses_all_files(pytest_command: Command):
                                         in = "in-1.nix"
                                         runner = "eval-okay"
                                         """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            [],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_toml_mixing_matrix_single(pytest_command: Command):
     res = pytest_command.run().ok()
     out = res.stdout_plain
@@ -757,19 +614,17 @@ def test_toml_mixing_matrix_single(pytest_command: Command):
     assert "test_eval[mixed-matrix:non-matrix-1] PASSED" in out
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "non-unique": {
-                                "in.nix": File("{}"),
-                                "in-1.nix": File("{}"),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "non-unique": {
+                        "in.nix": File("{}"),
+                        "in-1.nix": File("{}"),
+                        "test.toml": File(
+                            dedent("""
                                         [[test]]
                                         matrix = true
                                         runner = "eval-okay"
@@ -777,18 +632,13 @@ def test_toml_mixing_matrix_single(pytest_command: Command):
                                         in = "in-1.nix"
                                         runner = "eval-okay"
                                         """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            [],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_toml_non_unique_name(pytest_command: Command):
     res = pytest_command.run().expect(1)
     err = res.stdout_plain
@@ -798,29 +648,25 @@ def test_toml_non_unique_name(pytest_command: Command):
     )
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "subset": {
-                                "in.nix": File("{}"),
-                                "in-1.nix": File("{}"),
-                                "in-hello.nix": File("{}"),
-                                "eval-okay-1.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "matrix.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "matrix-hello.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "subset": {
+                        "in.nix": File("{}"),
+                        "in-1.nix": File("{}"),
+                        "in-hello.nix": File("{}"),
+                        "eval-okay-1.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "matrix.out.exp": AssetSymlink("assets/test_lang_infra/runner_eo.out.exp"),
+                        "matrix-hello.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "test.toml": File(
+                            dedent("""
                                         [[test]]
                                         name = "matrix"
                                         matrix = true
@@ -830,18 +676,13 @@ def test_toml_non_unique_name(pytest_command: Command):
                                         runner = "eval-okay"
                                         in = "in-1.nix"
                                         """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            [],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_toml_matrix_subset(pytest_command: Command):
     res = pytest_command.run().ok()
     out = res.stdout_plain
@@ -852,38 +693,31 @@ def test_toml_matrix_subset(pytest_command: Command):
     assert "test_eval[subset:eval-okay] PASSED" not in out
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "in-naming": {
-                                "in-some-name.nix": File("{}"),
-                                "eval-okay-some-name.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "in-naming": {
+                        "in-some-name.nix": File("{}"),
+                        "eval-okay-some-name.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "test.toml": File(
+                            dedent("""
                                         [[test]]
                                         matrix = true
                                         in = ["in-some-name", "-some-name.nix", "some-name.nix"]
                                         runner = "eval-okay"
                                         """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            [],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_toml_bad_in_naming(pytest_command: Command):
     res = pytest_command.run().expect(1)
     out = res.stdout_plain
@@ -896,64 +730,50 @@ def test_toml_bad_in_naming(pytest_command: Command):
         assert msg in out
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "toml-missing": {
-                                "eval-okay.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                ),
-                                "test.toml": File(
-                                    dedent("""
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "toml-missing": {
+                        "eval-okay.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "test.toml": File(
+                            dedent("""
                                         [[test]]
                                         runner = "eval-okay"
                                         """)
-                                ),
-                            }
-                        }
+                        ),
                     }
                 }
-            ),
-            [],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_toml_missing_in_file(pytest_command: Command):
     res = pytest_command.run().expect(1)
     out = res.stdout_plain
     assert "ERROR lang/test_lang.py::test_eval[toml-missing:eval-okay] - FileNotFound" in out
 
 
-@pytest.mark.parametrize(
-    ("files", "pytest_command"),
-    [
-        (
-            get_functional2_lang_files(
-                {
-                    "functional2": {
-                        "lang": {
-                            "generic-missing": {
-                                "eval-okay.out.exp": AssetSymlink(
-                                    "assets/test_lang_infra/runner_eo.out.exp"
-                                )
-                            }
-                        }
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "generic-missing": {
+                        "eval-okay.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        )
                     }
                 }
-            ),
-            [],
-        )
-    ],
-    indirect=True,
+            }
+        }
+    )
 )
-@pytest.mark.usefixtures("files")
 def test_generic_missing_in_file(pytest_command: Command):
     res = pytest_command.run().expect(1)
     out = res.stdout_plain

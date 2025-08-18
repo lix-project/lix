@@ -23,7 +23,6 @@ Tests for the test suite itself are located in the `testlib` package.
 
 ```just test functional2``` will run the entire test suite which will call Python from our meson build infrastructure.
 Alternatively, ```just test-functional2``` will run the test suite through pytest directly, which allows providing additional arguments to pytest.
-Additionally, ```just test-functional2-parallel```  will do the same but in parallel, trading faster run time against a larger start-up time and a lack of detailed log output.
 
 A quick primer on useful `pytest` arguments:
 
@@ -126,26 +125,24 @@ def test_both_params_at_once(a: int, b: str):
 
 Injecting parameters into a test that are controlled by [fixtures](#useful-fixtures) requires setting `indirect=True` to the parametrization:
 
+This is currently only used by the `pytest_command` fixture, to test our framework.
 ```python
 import pytest
-from pathlib import Path
-from functional2.testlib.fixtures.file_helper import File
-
-@pytest.mark.parametrize("files",
+from functional2.testlib.fixtures.pytest_command import Command
+@pytest.mark.parametrize("pytest_command",
     [
-        {"test.txt": File("first fileset")},
-        {"test.txt": File("second fileset")},
+        ["-k", "fun"],
+        ["-k", "cake", "--accept-tests"],
     ],
     indirect=True,
 )
-def test_using_files(files: Path):
+def test_pytest_collection(pytest_command: Command):
     # is called twice, resulting in the following output:
-    # first fileset
-    # second fileset
-    print((files / "test.txt").read_text())
+    # ["pytest", "-k", "fun"]
+    # ["pytest", "-k", "cake", "--accept-tests"]
+    print(pytest_command.argv)
 ```
-
-Without `indirect=True` here, the `test_using_files` would be called with the raw dictionary values (`{"test.txt": File("first fileset")}` etc.) instead of the desired file paths that the fixture provides.
+Without `indirect=True`, the function would get the raw argument lists and not the configured Command.
 
 ### Useful fixtures
 
@@ -186,19 +183,32 @@ The input type is [FileDeclaration](./testlib/fixtures/file_helper.py), a dict f
 - `Symlink("target/path")`: Create a symlink with the specified target. Therefore, relative paths are relative to the symlink's location.
 - `AssetSymlink("source/path)`: Create a symlink pointing to a local asset file within the test suite. Paths must be relative and will be resolved relative to the current Python file. The created symlink will be absolute.
 
+In order to make its usage easier, one can also use this fixture by using our custom decorator.
+
 ```python
 import pytest
 from pathlib import Path
-from functional2.testlib.fixtures.file_helper import File, Symlink
+from functional2.testlib.fixtures.file_helper import File, Symlink, with_files
 
-@pytest.mark.parametrize(
-    "files",
-    # Arguments to the fixture
-    [ {
+@with_files(
+    {
         "test.txt": File("File content"),
         "some-symlink": Symlink("../in.nix"),
-    } ],
-    indirect=True, # Required
+    }
+)
+def test_using_files(files: Path):
+    print((files / "test.txt").read_text())
+```
+To run a function twice with a different set of files, one can pass multiple dictionaries to the mark:
+
+```python
+from pathlib import Path
+from functional2.testlib.fixtures.file_helper import File, with_files
+
+
+@with_files(
+    {"test.txt": File("fileset 1")},
+    {"test.txt": File("fileset 2")},
 )
 def test_using_files(files: Path):
     print((files / "test.txt").read_text())
@@ -216,15 +226,14 @@ In order for the golden values to actually update within the code base (compared
 
 ```python
 import pytest
-from functional2.testlib.fixtures.file_helper import AssetSymlink
+from functional2.testlib.fixtures.file_helper import AssetSymlink, with_files
 
-@pytest.mark.parametrize(
-    "files",
-    # Set up the symlink so that the golden value will update
-    [ { "out": AssetSymlink("assets/test_example/out.exp"), } ],
-    indirect=True,
+
+@with_files(
+  # Set up the symlink so that the golden value will update
+  { "out": AssetSymlink("assets/test_example/out.exp"), }
 )
-def test_example(files, snapshot):
+def test_example(snapshot):
     # snapshot must be on the LHS of ==
     assert snapshot("out") == "Hello World"
 ```

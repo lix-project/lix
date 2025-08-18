@@ -4,7 +4,7 @@ import sqlite3
 import aiohttp.web as web
 import pytest
 
-from functional2.testlib.fixtures.file_helper import File
+from functional2.testlib.fixtures.file_helper import File, with_files
 from functional2.testlib.fixtures.http_server import http_server
 from functional2.testlib.fixtures.nix import Nix
 
@@ -100,7 +100,7 @@ def nars_from_narinfo_cache(db_path: Path) -> list[dict[str, str | bool]]:
     ]
 
 
-@pytest.mark.parametrize("files", [{"test-file": File("hello world")}], indirect=True)
+@with_files({"test-file": File("hello world")})
 def test_http_simple(nix: Nix, store: HTTPStore, files: Path):
     test_file = files / "test-file"
     result = nix.nix(cmd=["store", "add-file", test_file], flake=True).run()

@@ -7,7 +7,7 @@ import pytest
 from _pytest.logging import LogCaptureFixture
 from functional2.testlib.fixtures.command import Command
 from functional2.testlib.fixtures.env import ManagedEnv
-from functional2.testlib.fixtures.file_helper import File
+from functional2.testlib.fixtures.file_helper import File, with_files
 
 
 def test_command_valid_runs(command: Callable[[list[str]], Command]):
@@ -39,18 +39,13 @@ def test_command_expect_failure(env: ManagedEnv):
     Command(_env=env, argv=["grep", "xxx"], stdin=b"").run().expect(1)
 
 
-@pytest.mark.parametrize(
-    "files",
-    [
-        {
-            "script.sh": File(
-                "#!/bin/sh\necho forb\nexit 1", mode=stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO
-            )
-        }
-    ],
-    indirect=True,
+@with_files(
+    {
+        "script.sh": File(
+            "#!/bin/sh\necho forb\nexit 1", mode=stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO
+        )
+    }
 )
-@pytest.mark.usefixtures("files")
 def test_command_ok_fails_on_bad_exit_code(
     command: Callable[[list[str]], Command], caplog: LogCaptureFixture
 ):
@@ -65,18 +60,13 @@ def test_command_ok_fails_on_bad_exit_code(
     assert err_msg == "stderr: "
 
 
-@pytest.mark.parametrize(
-    "files",
-    [
-        {
-            "script.sh": File(
-                "#!/bin/sh\necho drgn fops\nexit 2", mode=stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO
-            )
-        }
-    ],
-    indirect=True,
+@with_files(
+    {
+        "script.sh": File(
+            "#!/bin/sh\necho drgn fops\nexit 2", mode=stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO
+        )
+    }
 )
-@pytest.mark.usefixtures("files")
 def test_command_exec_fails_on_other_bad_exit_code(
     command: Callable[[list[str]], Command], caplog: LogCaptureFixture
 ):

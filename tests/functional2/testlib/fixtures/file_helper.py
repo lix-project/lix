@@ -177,12 +177,21 @@ def _init_files(files: FileDeclaration, tmp_path: Path, request: pytest.FixtureR
             _init_files(definition, destination, request)
 
 
+def with_files(*files: FileDeclaration) -> Callable[[Any], Callable[[Any], None]]:
+    def decorator(func: Callable[[Any], None]) -> Callable[[Any], None]:
+        return pytest.mark.usefixtures("files")(
+            pytest.mark.parametrize("files", files, indirect=True)(func)
+        )
+
+    return decorator
+
+
 @pytest.fixture
 def files(env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
     """
     Initializes the given files into the TempDir of the test.
     This ensures all necessary files and only those are present
-    To use this add `@pytest.mark.parametrize("files", [list_of_your_files_to_test, more_files_to_test], indirect=True)` above your test.
+    To use this add `@with_files(list_of_your_files_to_test, more_files_to_test)` above your test.
     The test is run once for each of the sets of files provided as the second argument.
     Each Set of files should be of the :py:type:`FileDeclaration` type
 
@@ -191,5 +200,6 @@ def files(env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
     :return: Path to where the files were created
     """
     home = env.dirs.home
-    _init_files(request.param, home, request)
+    if hasattr(request, "param"):
+        _init_files(request.param, home, request)
     return home
