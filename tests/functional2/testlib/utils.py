@@ -1,4 +1,5 @@
 import builtins
+import os
 import types
 import typing
 from pathlib import Path
@@ -10,6 +11,8 @@ from functional2.testlib.fixtures.file_helper import (
     CopyTree,
     FileDeclaration,
     merge_file_declaration,
+    Fileish,
+    CopyTemplate,
 )
 
 # Things have to be resolved from top to bottom, because otherwise the tests behave flakey
@@ -130,4 +133,30 @@ def is_value_of_type(value: Any, expected_type: type[Any] | UnionType) -> bool:
             return matches
         case _:
             msg = f"Unsupported expected_type. Must be a non-generic or one of {supported_origin_types!r}"
+            raise ValueError(msg)
+
+
+def get_global_asset(name: str) -> Fileish:
+    if name == "config.nix":
+        return CopyTemplate(
+            functional2_base_folder / "testlib" / "global_assets" / "config.nix.template",
+            {
+                "system": os.environ.get("system"),  # noqa: SIM112 # system is actually lowercase here
+                # Either just the build shell or entire global path if we are darwin
+                "path": os.environ.get("BUILD_TEST_SHELL") or os.environ.get("PATH"),
+            },
+        )
+    return CopyFile(functional2_base_folder / "testlib" / "global_assets" / name)
+
+
+def get_global_asset_pack(name: Literal["dependencies"]) -> FileDeclaration:
+    match name:
+        case "dependencies":
+            return {
+                "config.nix": get_global_asset("config.nix"),
+                "dependencies.nix": get_global_asset("dependencies.nix"),
+                "dependencies.builder0.sh": get_global_asset("dependencies.builder0.sh"),
+            }
+        case _:
+            msg = f"invalid pack name {name!r}"
             raise ValueError(msg)
