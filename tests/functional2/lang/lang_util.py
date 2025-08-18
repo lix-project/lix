@@ -323,7 +323,10 @@ def _collect_toml_test_group(folder: Path) -> tuple[list[LangTest], list[Invalid
         for t in new_tests:
             unused_files -= {t.in_file_name, f"{t.test_name}.out.exp", f"{t.test_name}.err.exp"}
 
-    if len(unused_files) > 0:
+    # Only throw issues about unused files when the group is otherwise valid
+    # this is done to avoid having unused files showing up due to invalid configurations,
+    # which should be fixed first and the unused files would just clutter the error messages in that case
+    if len(unused_files) > 0 and not invalid_tests:
         invalid_tests.append(
             InvalidLangTest(
                 parent_name, [f"the following files weren't referenced: {unused_files!r}"]
@@ -370,7 +373,11 @@ def _collect_generic_test_group(folder: Path) -> tuple[list[LangTest], list[Inva
                 LangTest(runner_name, folder.name, runner, InFile(f"in{suffix}.nix", suffix))
             )
             unused -= {file.name, f"in{suffix or ''}.nix"}
-    if len(unused) > 0:
+
+    # Only throw issues about unused files when the group is otherwise valid
+    # this is done to avoid having unused files showing up due to invalid configurations,
+    # which should be fixed first and the unused files would just clutter the error messages in that case
+    if len(unused) > 0 and not invalid_tests:
         invalid_tests.append(
             InvalidLangTest(parent_name, [f"the following files weren't referenced: {unused!r}"])
         )

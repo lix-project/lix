@@ -477,6 +477,67 @@ def test_toml_throws_unused_files(
         {
             "functional2": {
                 "lang": {
+                    "toml_unused": {
+                        "in.nix": File("{}"),
+                        "in-1.nix": File("{}"),
+                        "eval-fail.err.exp": File(""),
+                        "eval-okay.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                        "test.toml": File(
+                            dedent("""
+                                    [[test]]
+                                    runner = "eval-okay"
+                                    [[test]]
+                                    runner = "bad-name"
+                                    """)
+                        ),
+                    }
+                }
+            }
+        }
+    )
+)
+def test_toml_no_unused_on_invalid_config(pytest_command: Command):
+    res = pytest_command.run().expect(1)
+    log = res.stdout_plain
+    assert "test_invalid_configuration[toml_unused:bad-name-reasons0]" in log
+    assert "invalid runner name:" in log
+    assert "the following files weren't referenced" not in log
+
+
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "generic_unused": {
+                        "in.nix": File("{}"),
+                        "in-1.nix": File("{}"),
+                        "shrimpy-okay.out.exp": AssetSymlink(
+                            "assets/test_lang_infra/runner_eo.out.exp"
+                        ),
+                    }
+                }
+            }
+        }
+    )
+)
+def test_generic_no_unused_on_invalid_config(pytest_command: Command):
+    res = pytest_command.run().expect(1)
+    out = res.stdout_plain
+    assert "test_invalid_configuration[generic_unused:shrimpy-okay-reasons0]" in out
+    assert "invalid runner name:" in out
+    assert "the following files weren't referenced" not in out
+
+
+@pytest.mark.parametrize("pytest_command", [[]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
                     "single-multi": {
                         "in.nix": File("{}"),
                         "in-1.nix": File("{}"),
