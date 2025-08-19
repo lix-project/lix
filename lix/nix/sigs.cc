@@ -1,7 +1,10 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libmain/shared.hh"
+#include "lix/libstore/path.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async-collect.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/signals.hh"
 #include "sigs.hh"
@@ -41,48 +44,48 @@ struct CmdCopySigs : StorePathsCommand
         for (auto & s : substituterUris)
             substituters.push_back(aio().blockOn(openStore(s)));
 
-        ThreadPool pool{"CopySigs pool"};
+        size_t added = 0;
 
-        std::atomic<size_t> added{0};
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        auto doPath = [&](const StorePath & storePath) -> kj::Promise<Result<void>> {
+            try {
+                auto info = TRY_AWAIT(store->queryPathInfo(storePath));
 
-        auto doPath = [&](AsyncIoRoot & aio, const Path & storePathS) {
-            auto storePath = store->parseStorePath(storePathS);
+                StringSet newSigs;
 
-            auto info = aio.blockOn(store->queryPathInfo(storePath));
+                for (auto & store2 : substituters) {
+                    try {
+                        auto info2 = TRY_AWAIT(store2->queryPathInfo(info->path));
 
-            StringSet newSigs;
+                        /* Don't import signatures that don't match this
+                           binary. */
+                        if (info->narHash != info2->narHash || info->narSize != info2->narSize
+                            || info->references != info2->references)
+                        {
+                            continue;
+                        }
 
-            for (auto & store2 : substituters) {
-                try {
-                    auto info2 = aio.blockOn(store2->queryPathInfo(info->path));
-
-                    /* Don't import signatures that don't match this
-                       binary. */
-                    if (info->narHash != info2->narHash ||
-                        info->narSize != info2->narSize ||
-                        info->references != info2->references)
-                        continue;
-
-                    for (auto & sig : info2->sigs)
-                        if (!info->sigs.count(sig))
-                            newSigs.insert(sig);
-                } catch (InvalidPath &) {
+                        for (auto & sig : info2->sigs) {
+                            if (!info->sigs.count(sig)) {
+                                newSigs.insert(sig);
+                            }
+                        }
+                    } catch (InvalidPath &) {
+                    }
                 }
-            }
 
-            if (!newSigs.empty()) {
-                aio.blockOn(store->addSignatures(storePath, newSigs));
-                added += newSigs.size();
+                if (!newSigs.empty()) {
+                    TRY_AWAIT(store->addSignatures(storePath, newSigs));
+                    added += newSigs.size();
+                }
+
+                co_return result::success();
+            } catch (...) {
+                co_return result::current_exception();
             }
         };
 
-        for (auto & storePath : storePaths) {
-            pool.enqueueWithAio(
-                std::bind(doPath, std::placeholders::_1, store->printStorePath(storePath))
-            );
-        }
-
-        pool.process();
+        aio().blockOn(asyncSpread(storePaths, doPath));
 
         printInfo("imported %d signatures", added);
     }
