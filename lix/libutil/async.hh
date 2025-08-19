@@ -109,27 +109,8 @@ T runAsyncUnwrap(Result<T> t)
 {
     return std::move(t).value();
 }
-
-auto runAsyncInNewThread(std::invocable<AsyncIoRoot &> auto fn)
-{
-    auto future = std::async(std::launch::async, [&] {
-        ReceiveInterrupts ri;
-        AsyncIoRoot aioRoot;
-        if constexpr (!std::is_void_v<decltype(fn(aioRoot))>) {
-            return runAsyncUnwrap(fn(aioRoot));
-        } else {
-            fn(aioRoot);
-        }
-    });
-    return future.get();
 }
 }
-}
-
-#define LIX_RUN_ASYNC_IN_NEW_THREAD(...)                            \
-    ::nix::detail::runAsyncInNewThread([&](AsyncIoRoot & AIOROOT) { \
-        return AIOROOT.blockOn(__VA_ARGS__);                        \
-    })
 
 #define LIX_TRY_AWAIT_CONTEXT_MAP(_l_ctx, _l_map, ...)                            \
     ({                                                                            \
@@ -169,7 +150,6 @@ static constexpr std::optional<std::string> lixAsyncTaskContext()
 #define LIX_TRY_AWAIT(...) LIX_TRY_AWAIT_CONTEXT(lixAsyncTaskContext, __VA_ARGS__)
 
 #if LIX_UR_COMPILER_UWU
-#define RUN_ASYNC_IN_NEW_THREAD LIX_RUN_ASYNC_IN_NEW_THREAD
 #define TRY_AWAIT LIX_TRY_AWAIT
 #endif
 
