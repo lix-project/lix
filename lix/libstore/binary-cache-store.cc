@@ -1,5 +1,6 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/binary-cache-store.hh"
+#include "lix/libutil/async-collect.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/compression.hh"
@@ -229,30 +230,36 @@ try {
         }
 
         if (buildIdDir) {
-
-            ThreadPool threadPool("write debuginfo pool", 25);
-
             struct DebugInfo
             {
                 std::string member, key, target;
             };
 
-            auto doFile = [&](AsyncIoRoot & aio, DebugInfo info) {
-                JSON json;
-                json["archive"] = info.target;
-                json["member"] = info.member;
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+            auto doFile = [&](DebugInfo info) -> kj::Promise<Result<void>> {
+                try {
+                    JSON json;
+                    json["archive"] = info.target;
+                    json["member"] = info.member;
 
-                // FIXME: or should we overwrite? The previous link may point
-                // to a GC'ed file, so overwriting might be useful...
-                if (aio.blockOn(fileExists(info.key))) {
-                    return;
+                    // FIXME: or should we overwrite? The previous link may point
+                    // to a GC'ed file, so overwriting might be useful...
+                    if (TRY_AWAIT(fileExists(info.key))) {
+                        co_return result::success();
+                    }
+
+                    printMsg(
+                        lvlTalkative,
+                        "creating debuginfo link from '%s' to '%s'",
+                        info.key,
+                        info.target
+                    );
+
+                    TRY_AWAIT(upsertFile(info.key, json.dump(), "application/json"));
+                    co_return result::success();
+                } catch (...) {
+                    co_return result::current_exception();
                 }
-
-                printMsg(
-                    lvlTalkative, "creating debuginfo link from '%s' to '%s'", info.key, info.target
-                );
-
-                aio.blockOn(upsertFile(info.key, json.dump(), "application/json"));
             };
 
             static std::regex regex1 = regex::parse("^[0-9a-f]{2}$");
@@ -285,11 +292,7 @@ try {
                 }
             }(narInfo, buildIdDir);
 
-            for (auto & candidate : allDebugInfo) {
-                threadPool.enqueueWithAio(std::bind(doFile, std::placeholders::_1, candidate));
-            }
-
-            threadPool.process();
+            TRY_AWAIT(asyncSpread(allDebugInfo, doFile));
         }
     }
 
