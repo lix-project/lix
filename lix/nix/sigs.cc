@@ -5,7 +5,6 @@
 #include "lix/libutil/async-collect.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/result.hh"
-#include "lix/libutil/thread-pool.hh"
 #include "lix/libutil/signals.hh"
 #include "sigs.hh"
 
@@ -119,33 +118,30 @@ struct CmdSign : StorePathsCommand
 
         SecretKey secretKey(readFile(secretKeyFile));
 
-        ThreadPool pool{"Sign pool"};
+        size_t added = 0;
 
-        std::atomic<size_t> added{0};
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        auto doPath = [&](const StorePath & storePath) -> kj::Promise<Result<void>> {
+            try {
+                auto info = TRY_AWAIT(store->queryPathInfo(storePath));
 
-        auto doPath = [&](AsyncIoRoot & aio, const Path & storePathS) {
-            auto storePath = store->parseStorePath(storePathS);
+                auto info2(*info);
+                info2.sigs.clear();
+                info2.sign(*store, secretKey);
+                assert(!info2.sigs.empty());
 
-            auto info = aio.blockOn(store->queryPathInfo(storePath));
+                if (!info->sigs.count(*info2.sigs.begin())) {
+                    TRY_AWAIT(store->addSignatures(storePath, info2.sigs));
+                    added++;
+                }
 
-            auto info2(*info);
-            info2.sigs.clear();
-            info2.sign(*store, secretKey);
-            assert(!info2.sigs.empty());
-
-            if (!info->sigs.count(*info2.sigs.begin())) {
-                aio.blockOn(store->addSignatures(storePath, info2.sigs));
-                added++;
+                co_return result::success();
+            } catch (...) {
+                co_return result::current_exception();
             }
         };
 
-        for (auto & storePath : storePaths) {
-            pool.enqueueWithAio(
-                std::bind(doPath, std::placeholders::_1, store->printStorePath(storePath))
-            );
-        }
-
-        pool.process();
+        aio().blockOn(asyncSpread(storePaths, doPath));
 
         printInfo("added %d signatures", added);
     }
