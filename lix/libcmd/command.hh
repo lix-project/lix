@@ -39,7 +39,7 @@ struct StoreCommand : virtual Command
     StoreCommand();
     void run() override;
     ref<Store> getStore();
-    virtual ref<Store> createStore();
+    virtual ref<Store> createStore(AsyncIoRoot & in);
     /**
      * Main entry point, with a `Store` provided
      */
@@ -59,7 +59,7 @@ struct CopyCommand : virtual StoreCommand
 
     CopyCommand();
 
-    ref<Store> createStore() override;
+    ref<Store> createStore(AsyncIoRoot & in) override;
 
     ref<Store> getDstStore();
 };

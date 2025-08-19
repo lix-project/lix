@@ -160,6 +160,11 @@ public:
         association = {user, group};
     }
 
+    bool isThreadSafe() const override
+    {
+        return true;
+    }
+
 private:
 
     const PublicKeys & getPublicKeys();

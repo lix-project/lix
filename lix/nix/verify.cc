@@ -85,6 +85,8 @@ struct CmdVerify : StorePathsCommand
         ThreadPool pool{"Verify pool"};
 
         auto doPath = [&](AsyncIoRoot & aio, const StorePath & storePath) {
+            thread_local auto store = getStore()->isThreadSafe() ? getStore() : createStore(aio);
+
             try {
                 MaintainCount<std::atomic<size_t>> mcActive(active);
                 update();

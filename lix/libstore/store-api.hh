@@ -266,6 +266,18 @@ public:
 
     virtual std::string getUri() = 0;
 
+    /**
+     * whether this store can safely be used by multiple threads. Stores with
+     * async state (such as network connections) cannot be thread-safe due to
+     * kj async objects' thread binding. realistically only stores using only
+     * file system state can be thread-safe, i.e. only our local stores. even
+     * daemon stores can't be safe as they hold onto unix socket connections.
+     */
+    virtual bool isThreadSafe() const
+    {
+        return false;
+    }
+
     StorePath parseStorePath(std::string_view path) const;
 
     std::optional<StorePath> maybeParseStorePath(std::string_view path) const;

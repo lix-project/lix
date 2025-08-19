@@ -4,6 +4,7 @@
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/profiles.hh"
 #include "lix/libcmd/repl.hh"
+#include "lix/libutil/async.hh"
 
 extern char * * environ __attribute__((weak));
 
@@ -39,14 +40,15 @@ StoreCommand::StoreCommand()
 
 ref<Store> StoreCommand::getStore()
 {
-    if (!_store)
-        _store = createStore();
+    if (!_store) {
+        _store = createStore(aio());
+    }
     return *_store;
 }
 
-ref<Store> StoreCommand::createStore()
+ref<Store> StoreCommand::createStore(AsyncIoRoot & in)
 {
-    return aio().blockOn(openStore());
+    return in.blockOn(openStore());
 }
 
 void StoreCommand::run()
@@ -71,9 +73,9 @@ CopyCommand::CopyCommand()
     });
 }
 
-ref<Store> CopyCommand::createStore()
+ref<Store> CopyCommand::createStore(AsyncIoRoot & in)
 {
-    return srcUri.empty() ? StoreCommand::createStore() : aio().blockOn(openStore(srcUri));
+    return srcUri.empty() ? StoreCommand::createStore(in) : in.blockOn(openStore(srcUri));
 }
 
 ref<Store> CopyCommand::getDstStore()
