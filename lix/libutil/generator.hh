@@ -346,6 +346,15 @@ struct Generator
     iterator begin() { return iterator{*this}; }
     iterator end() { return iterator{}; }
 
+    friend iterator begin(Generator & g)
+    {
+        return g.begin();
+    }
+    friend iterator end(Generator & g)
+    {
+        return g.end();
+    }
+
 private:
     _generator::GeneratorBase<T> impl;
 
