@@ -220,7 +220,7 @@ try {
        specify the NAR file and member containing the debug info. */
     if (config().writeDebugInfo) {
 
-        const std::string buildIdPath = "/lib/debug/.build-id";
+        static const std::string buildIdPath = "/lib/debug/.build-id";
 
         auto * buildIdDir = std::get_if<nar_index::Directory>(&narIndex);
         for (auto subdir : { "lib", "debug", ".build-id" }) {
@@ -232,50 +232,61 @@ try {
 
             ThreadPool threadPool("write debuginfo pool", 25);
 
-            auto doFile = [&](AsyncIoRoot & aio,
-                              std::string member,
-                              std::string key,
-                              std::string target) {
+            struct DebugInfo
+            {
+                std::string member, key, target;
+            };
+
+            auto doFile = [&](AsyncIoRoot & aio, DebugInfo info) {
                 JSON json;
-                json["archive"] = target;
-                json["member"] = member;
+                json["archive"] = info.target;
+                json["member"] = info.member;
 
                 // FIXME: or should we overwrite? The previous link may point
                 // to a GC'ed file, so overwriting might be useful...
-                if (aio.blockOn(fileExists(key))) {
+                if (aio.blockOn(fileExists(info.key))) {
                     return;
                 }
 
-                printMsg(lvlTalkative, "creating debuginfo link from '%s' to '%s'", key, target);
+                printMsg(
+                    lvlTalkative, "creating debuginfo link from '%s' to '%s'", info.key, info.target
+                );
 
-                aio.blockOn(upsertFile(key, json.dump(), "application/json"));
+                aio.blockOn(upsertFile(info.key, json.dump(), "application/json"));
             };
 
-            std::regex regex1 = regex::parse("^[0-9a-f]{2}$");
-            std::regex regex2 = regex::parse("^[0-9a-f]{38}\\.debug$");
+            static std::regex regex1 = regex::parse("^[0-9a-f]{2}$");
+            static std::regex regex2 = regex::parse("^[0-9a-f]{38}\\.debug$");
 
-            for (auto & [s1, s1Inode] : buildIdDir->contents) {
-                auto dir = std::get_if<nar_index::Directory>(&s1Inode);
+            auto allDebugInfo = [](ref<NarInfo> narInfo,
+                                   nar_index::Directory * buildIdDir) -> Generator<DebugInfo> {
+                for (auto & [s1, s1Inode] : buildIdDir->contents) {
+                    auto dir = std::get_if<nar_index::Directory>(&s1Inode);
 
-                if (!dir || !std::regex_match(s1, regex1))
-                    continue;
-
-                for (auto & [s2, s2Inode] : dir->contents) {
-                    auto debugPath = fmt("%s/%s/%s", buildIdPath, s1, s2);
-
-                    auto file = std::get_if<nar_index::File>(&s2Inode);
-                    if (!file || !std::regex_match(s2, regex2))
+                    if (!dir || !std::regex_match(s1, regex1)) {
                         continue;
+                    }
 
-                    auto buildId = s1 + s2;
+                    for (auto & [s2, s2Inode] : dir->contents) {
+                        auto debugPath = fmt("%s/%s/%s", buildIdPath, s1, s2);
 
-                    std::string key = "debuginfo/" + buildId;
-                    std::string target = "../" + narInfo->url;
+                        auto file = std::get_if<nar_index::File>(&s2Inode);
+                        if (!file || !std::regex_match(s2, regex2)) {
+                            continue;
+                        }
 
-                    threadPool.enqueueWithAio(std::bind(
-                        doFile, std::placeholders::_1, std::string(debugPath, 1), key, target
-                    ));
+                        auto buildId = s1 + s2;
+
+                        std::string key = "debuginfo/" + buildId;
+                        std::string target = "../" + narInfo->url;
+
+                        co_yield DebugInfo{std::string(debugPath, 1), key, target};
+                    }
                 }
+            }(narInfo, buildIdDir);
+
+            for (auto & candidate : allDebugInfo) {
+                threadPool.enqueueWithAio(std::bind(doFile, std::placeholders::_1, candidate));
             }
 
             threadPool.process();
