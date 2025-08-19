@@ -3,6 +3,7 @@
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/nar-info-disk-cache.hh"
+#include "lix/libutil/async-collect.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/box_ptr.hh"
@@ -755,60 +756,23 @@ try {
 kj::Promise<Result<StorePathSet>>
 Store::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
 try {
-    struct State
-    {
-        size_t left;
-        StorePathSet valid;
-        std::exception_ptr exc = {};
-    };
+    StorePathSet valid;
 
-    Sync<State> state_(State{paths.size(), StorePathSet()});
-
-    std::condition_variable wakeup;
-    ThreadPool pool{"queryValidPaths pool"};
-
-    auto doQuery = [&](AsyncIoRoot & aio, const StorePath & path) {
-        bool exists = false;
-        std::exception_ptr newExc{};
-
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    auto doQuery = [&](const StorePath & path) -> kj::Promise<Result<void>> {
         try {
-            aio.blockOn(queryPathInfo(path));
-            exists = true;
+            TRY_AWAIT(queryPathInfo(path));
+            valid.insert(path);
         } catch (InvalidPath &) {
-        } catch (Interrupted &) {
-            throw;
         } catch (...) {
-            newExc = std::current_exception();
+            co_return result::current_exception();
         }
-
-        {
-            auto state(state_.lock());
-
-            if (exists) {
-                state->valid.insert(path);
-            }
-            if (newExc != nullptr) {
-                state->exc = newExc;
-            }
-            assert(state->left);
-            if (!--state->left)
-                wakeup.notify_one();
-        }
+        co_return result::success();
     };
 
-    for (auto & path : paths)
-        pool.enqueueWithAio(std::bind(doQuery, std::placeholders::_1, path));
+    TRY_AWAIT(asyncSpread(paths, doQuery));
 
-    TRY_AWAIT(pool.processAsync());
-
-    while (true) {
-        auto state(state_.lock());
-        if (!state->left) {
-            if (state->exc) std::rethrow_exception(state->exc);
-            co_return std::move(state->valid);
-        }
-        state.wait(wakeup);
-    }
+    co_return valid;
 } catch (...) {
     co_return result::current_exception();
 }
