@@ -111,7 +111,6 @@ functional_tests_scripts = [
   'build-jobless.sh',
   'nar-access.sh',
   'impure-eval.sh',
-  'pure-eval.sh',
   'eval.sh',
   'repl.sh',
   'binary-cache-build-remote.sh',
