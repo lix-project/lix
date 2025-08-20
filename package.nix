@@ -386,6 +386,9 @@ stdenv.mkDerivation (finalAttrs: {
     }
     // lib.optionalAttrs hostPlatform.isLinux {
       BUILD_TEST_SHELL = "${pkgsStatic.busybox}/bin";
+    }
+    // lib.optionalAttrs hostPlatform.isStatic {
+      NIX_CFLAGS_COMPILE = " -static";
     };
 
   cargoDeps = rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
