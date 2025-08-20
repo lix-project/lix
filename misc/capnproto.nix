@@ -46,7 +46,7 @@ stdenv.mkDerivation rec {
   propagatedBuildInputs = [
     openssl
     zlib
-  ] ++ lib.optional (stdenv.cc.isClang && stdenv.targetPlatform.isStatic) empty-libgcc_eh;
+  ] ++ lib.optional (stdenv.cc.isClang && stdenv.hostPlatform.isStatic) empty-libgcc_eh;
 
   # FIXME: separate the binaries from the stuff that user systems actually use
   # This runs into a terrible UX issue in Lix and I just don't want to debug it
