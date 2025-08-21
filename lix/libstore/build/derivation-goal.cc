@@ -762,7 +762,7 @@ void replaceValidPath(const Path & storePath, const Path & tmpPath)
     Path oldPath;
     if (pathExists(storePath)) {
         do {
-            oldPath = makeTempSiblingPath(storePath);
+            oldPath = makeTempPath(storePath, ".old");
             // store paths are often directories so we can't just unlink() it
             // let's make sure the path doesn't exist before we try to use it
         } while (pathExists(oldPath));
