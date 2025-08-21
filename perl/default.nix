@@ -58,5 +58,7 @@ perl.pkgs.toPerlModule (
     enableParallelBuilding = true;
 
     postUnpack = "sourceRoot=$sourceRoot/perl";
+
+    passthru = { inherit perl; };
   }
 )
