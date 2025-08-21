@@ -711,9 +711,20 @@ void createSymlink(const Path & target, const Path & link)
 
 void replaceSymlink(const Path & target, const Path & link)
 {
-    Path tmp = canonPath(makeTempSiblingPath(link));
-    createSymlink(target, tmp);
-    renameFile(tmp, link);
+    for (unsigned int n = 0; true; n++) {
+        Path tmp = canonPath(fmt("%s/.%d_%s", dirOf(link), n, baseNameOf(link)));
+
+        try {
+            createSymlink(target, tmp);
+        } catch (SysError & e) {
+            if (e.errNo == EEXIST) continue;
+            throw;
+        }
+
+        renameFile(tmp, link);
+
+        break;
+    }
 }
 
 void setWriteTime(const fs::path & p, const struct stat & st)

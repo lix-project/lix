@@ -69,7 +69,8 @@ protected:
     ) override
     try {
         auto path2 = binaryCacheDir + "/" + path;
-        Path tmp = makeTempPath(path2);
+        static std::atomic<int> counter{0};
+        Path tmp = fmt("%s.tmp.%d.%d", path2, getpid(), ++counter);
         AutoDelete del(tmp, false);
         StreamToSourceAdapter source(istream);
         writeFile(tmp, source);
