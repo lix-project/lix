@@ -187,7 +187,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
     if (packages && fromArgs)
         throw UsageError("'-p' and '-E' are mutually exclusive");
 
-    AutoDelete tmpDir(createTempDir(myName));
+    AutoDelete tmpDir(createTempDir("", myName));
     if (outLink.empty())
         outLink = (Path) tmpDir + "/result";
 
