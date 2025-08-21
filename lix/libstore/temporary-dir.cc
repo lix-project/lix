@@ -5,7 +5,7 @@
 
 namespace nix {
 
-Path createTempDir(const std::optional<Path> & prefix, mode_t mode)
+Path createTempDir(const Path & prefix, mode_t mode)
 {
     return createTempSubdir(defaultTempDir(), prefix, mode);
 }
