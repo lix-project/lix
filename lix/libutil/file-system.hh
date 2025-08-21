@@ -311,12 +311,12 @@ Path createTempSubdir(const Path & parent, const Path & prefix = "nix",
     bool includePid = true, bool useGlobalCounter = true, mode_t mode = 0755);
 
 /**
- * Return temporary path constructed by appending to a root path.
+ * Return temporary path constructed by appending a suffix to a root path.
  *
- * The constructed path looks like `<root><prefix>-<unique>`. To create a
- * path nested in a directory, provide a root ending with `/`.
+ * The constructed path looks like `<root><suffix>-<pid>-<unique>`. To create a
+ * path nested in a directory, provide a suffix starting with `/`.
  */
-Path makeTempPath(const Path & root, const Path & prefix = ".tmp");
+Path makeTempPath(const Path & root, const Path & suffix = ".tmp");
 
 /**
  * Return temporary path in the same directory as a given path.
