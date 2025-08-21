@@ -446,7 +446,8 @@ try {
 
         /* Create a temporary directory where the build will take
            place. */
-        tmpDirRoot = createTempSubdir(buildDir, std::nullopt, 0700);
+        tmpDirRoot =
+            createTempSubdir(buildDir, "nix-build-" + std::string(drvPath.name()), 0700);
     } catch (SysError & e) {
         /*
          * Fallback to the global tmpdir and create a safe space there
@@ -471,7 +472,9 @@ try {
             settings.buildDir.get(),
             nixBuildsTmp
         );
-        tmpDirRoot = createTempSubdir(nixBuildsTmp, std::nullopt, 0700);
+        tmpDirRoot = createTempSubdir(
+            nixBuildsTmp, "nix-build-" + std::string(drvPath.name()), 0700
+        );
         worker.buildDirOverride = nixBuildsTmp;
     }
     /* The TOCTOU between the previous mkdir call and this open call is unavoidable due to
