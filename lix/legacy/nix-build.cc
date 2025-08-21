@@ -544,6 +544,8 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
 
         logger->pause();
 
+        printMsg(lvlChatty, "running shell: %s", concatMapStringsSep(" ", args, shellEscape));
+
         execvp(shell->c_str(), argPtrs.data());
 
         throw SysError("executing shell '%s'", *shell);

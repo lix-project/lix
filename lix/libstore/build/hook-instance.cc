@@ -37,6 +37,8 @@ try {
 
     auto [selfRPC, hookRPC] = SocketPair::stream();
 
+    printMsg(lvlChatty, "running build hook: %s", concatMapStringsSep(" ", args, shellEscape));
+
     /* Fork the hook. */
     auto pid = startProcess([&]() {
         if (dup2(fromHook_.writeSide.get(), STDERR_FILENO) == -1)

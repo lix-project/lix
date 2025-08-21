@@ -661,8 +661,8 @@ Verbosity levels are:
 
 The default level that the command starts is `ERROR`. The simplest way to
 increase the verbosity by stacking `-v` option (eg: `-vvv == level 3 == INFO`).
-There are also two shortcuts, `--debug` to run in `DEBUG` verbosity level and
-`--quiet` to run in `ERROR` verbosity level.
+Use `--quiet` to decrease verbosity by one level.
+There is one shortcut, `--debug` to run in `DEBUG` verbosity level.
 
 ----------
 

@@ -598,6 +598,11 @@ bool ExternalCommand::processArgs(const Strings & args, bool finish)
 }
 
 void ExternalCommand::run() {
+    printMsg(
+        lvlChatty,
+        "running external command: %s",
+        concatMapStringsSep(" ", externalArgv, shellEscape)
+    );
     execv(absoluteBinaryPath.c_str(), stringsToCharPtrs(externalArgv).data());
 
     throw SysError(errno, "failed to execute external command '%1%'", absoluteBinaryPath);

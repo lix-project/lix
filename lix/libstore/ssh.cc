@@ -62,6 +62,21 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
         resumeLoggerDefer.emplace([&]() { logger->resume(); });
     }
 
+    Strings args;
+
+    // We specifically spawn bash here, to (hopefully) get
+    // reasonably POSIX-y semantics for the things we're about
+    // to do next.
+    if (fakeSSH) {
+        args = {"bash", "-c", command};
+    } else {
+        args = {"ssh", host.c_str(), "-x", "-T"};
+        addCommonSSHOpts(args);
+        args.push_back(command);
+    }
+
+    printMsg(lvlChatty, "running ssh: %s", concatMapStringsSep(" ", args, shellEscape));
+
     conn->sshPid = startProcess([&]() {
         restoreProcessContext();
 
@@ -73,20 +88,8 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
         if (dup2(child.get(), STDOUT_FILENO) == -1) {
             throw SysError("duping over stdout");
         }
-        if (logFD != -1 && dup2(logFD, STDERR_FILENO) == -1)
+        if (logFD != -1 && dup2(logFD, STDERR_FILENO) == -1) {
             throw SysError("duping over stderr");
-
-        Strings args;
-
-        // We specifically spawn bash here, to (hopefully) get
-        // reasonably POSIX-y semantics for the things we're about
-        // to do next.
-        if (fakeSSH) {
-            args = { "bash", "-c", command };
-        } else {
-            args = { "ssh", host.c_str(), "-x", "-T" };
-            addCommonSSHOpts(args);
-            args.push_back(command);
         }
 
         execvp(args.begin()->c_str(), stringsToCharPtrs(args).data());

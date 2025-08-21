@@ -49,6 +49,8 @@ struct CmdEdit : InstallableCommand
 
         restoreProcessContext();
 
+        printMsg(lvlChatty, "running editor: %s", concatMapStringsSep(" ", args, shellEscape));
+
         execvp(args.front().c_str(), stringsToCharPtrs(args).data());
 
         std::string command;

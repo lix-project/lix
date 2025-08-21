@@ -32,6 +32,10 @@ void runProgramInStore(ref<Store> store,
 
     restoreProcessContext();
 
+    printMsg(
+        lvlChatty, "running command in store: %s", concatMapStringsSep(" ", args, shellEscape)
+    );
+
     /* If this is a diverted store (i.e. its "logical" location
        (typically /nix/store) differs from its "physical" location
        (e.g. /home/eelco/nix/store), then run the command in a
