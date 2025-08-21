@@ -87,7 +87,6 @@ functional_tests_scripts = [
   'optimise-store.sh',
   'substitute-with-invalid-ca.sh',
   'signing.sh',
-  'hash.sh',
   'gc-non-blocking.sh',
   'check.sh',
   'nix-shell/basic.sh',

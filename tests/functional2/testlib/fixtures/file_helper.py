@@ -162,19 +162,19 @@ def merge_file_declaration(a: FileDeclaration, b: FileDeclaration) -> FileDeclar
     return result
 
 
-def _init_files(files: FileDeclaration, tmp_path: Path, request: pytest.FixtureRequest) -> None:
+def _init_files(files: FileDeclaration, current_folder: Path, caller_path: Path) -> None:
     """
     This internal function is needed because one cannot call a fixture directly since pytest 4.0
     """
 
     for name, definition in files.items():
-        destination = tmp_path / name
+        destination = current_folder / name
         if isinstance(definition, Fileish):
-            definition.copy_to(destination, request.path.parent)
+            definition.copy_to(destination, caller_path)
         else:
             # Initialize subdirectory
             destination.mkdir()
-            _init_files(definition, destination, request)
+            _init_files(definition, destination, caller_path)
 
 
 def with_files(*files: FileDeclaration) -> Callable[[Any], Callable[[Any], None]]:
@@ -201,5 +201,5 @@ def files(env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
     """
     home = env.dirs.home
     if hasattr(request, "param"):
-        _init_files(request.param, home, request)
+        _init_files(request.param, home, request.path.parent)
     return home
