@@ -32,6 +32,8 @@ const int sha512HashSize = 64;
 
 extern std::set<std::string> hashTypes;
 
+extern const std::string base32Chars;
+
 enum class Base : int { Base64, Base32, Base16, SRI };
 
 

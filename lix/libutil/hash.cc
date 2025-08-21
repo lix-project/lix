@@ -80,6 +80,33 @@ static std::string printHash16(const Hash & hash)
 }
 
 
+// omitted: E O U T
+const std::string base32Chars = "0123456789abcdfghijklmnpqrsvwxyz";
+
+
+static std::string printHash32(const Hash & hash)
+{
+    assert(hash.hashSize);
+    size_t len = hash.base32Len();
+    assert(len);
+
+    std::string s;
+    s.reserve(len);
+
+    for (int n = (int) len - 1; n >= 0; n--) {
+        unsigned int b = n * 5;
+        unsigned int i = b / 8;
+        unsigned int j = b % 8;
+        unsigned char c =
+            (hash.hash[i] >> j)
+            | (i >= hash.hashSize - 1 ? 0 : hash.hash[i + 1] << (8 - j));
+        s.push_back(base32Chars[c & 0x1f]);
+    }
+
+    return s;
+}
+
+
 std::string printHash16or32(const Hash & hash)
 {
     return hash.to_string(hash.type == HashType::MD5 ? Base::Base16 : Base::Base32, false);
@@ -98,7 +125,7 @@ std::string Hash::to_string(Base base, bool includeType) const
         s += printHash16(*this);
         break;
     case Base::Base32:
-        s += base32Encode(std::string_view(charptr_cast<const char *>(hash), hashSize));
+        s += printHash32(*this);
         break;
     case Base::Base64:
     case Base::SRI:
@@ -198,8 +225,26 @@ Hash::Hash(std::string_view rest, HashType type, bool isSRI)
     }
 
     else if (!isSRI && rest.size() == base32Len()) {
-        auto d = base32Decode(rest);
-        memcpy(hash, d.data(), hashSize);
+
+        for (unsigned int n = 0; n < rest.size(); ++n) {
+            char c = rest[rest.size() - n - 1];
+            size_t digit;
+            for (digit = 0; digit < base32Chars.size(); ++digit) /* !!! slow */
+                if (base32Chars[digit] == c) break;
+            if (digit >= 32)
+                throw BadHash("invalid base-32 hash '%s'", rest);
+            unsigned int b = n * 5;
+            unsigned int i = b / 8;
+            unsigned int j = b % 8;
+            hash[i] |= digit << j;
+
+            if (i < hashSize - 1) {
+                hash[i + 1] |= digit >> (8 - j);
+            } else {
+                if (digit >> (8 - j))
+                    throw BadHash("invalid base-32 hash '%s'", rest);
+            }
+        }
     }
 
     else if (isSRI || rest.size() == base64Len()) {
