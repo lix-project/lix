@@ -5,9 +5,10 @@
 
 namespace nix {
 
-Path createTempDir(const Path & tmpRoot, const Path & prefix, mode_t mode)
+Path createTempDir(const Path & tmpRoot, const Path & prefix,
+    bool includePid, bool useGlobalCounter, mode_t mode)
 {
-    return createTempSubdir(tmpRoot.empty() ? defaultTempDir() : tmpRoot, prefix, mode);
+    return createTempSubdir(tmpRoot.empty() ? defaultTempDir() : tmpRoot, prefix, includePid, useGlobalCounter, mode);
 }
 
 std::pair<AutoCloseFD, Path> createTempFile(const Path & prefix)
