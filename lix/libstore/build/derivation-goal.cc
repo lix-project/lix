@@ -761,7 +761,11 @@ void replaceValidPath(const Path & storePath, const Path & tmpPath)
        we're repairing (say) Glibc, we end up with a broken system. */
     Path oldPath;
     if (pathExists(storePath)) {
-        oldPath = makeTempSiblingPath(storePath);
+        do {
+            oldPath = makeTempSiblingPath(storePath);
+            // store paths are often directories so we can't just unlink() it
+            // let's make sure the path doesn't exist before we try to use it
+        } while (pathExists(oldPath));
         movePath(storePath, oldPath);
     }
 
