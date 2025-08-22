@@ -168,6 +168,8 @@ protected:
         Strings labels;
         Handler handler;
         CompleterClosure completer;
+        /// Whether to hide this flag in generated documentation and CLI specifications.
+        bool hidden = false;
 
         std::optional<ExperimentalFeature> experimentalFeature;
 

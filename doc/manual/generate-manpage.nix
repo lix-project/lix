@@ -225,7 +225,7 @@ let
           showCategory = cat: ''
             ${optionalString (cat != "") "**${cat}:**"}
 
-            ${listOptions (filterAttrs (n: v: v.category == cat) allOptions)}
+            ${listOptions (filterAttrs (n: v: v.category == cat && !v.hidden) allOptions)}
           '';
           listOptions = opts: concatStringsSep "\n" (attrValues (mapAttrs showOption opts));
           showOption =

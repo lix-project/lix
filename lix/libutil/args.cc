@@ -299,6 +299,7 @@ JSON Args::toJSON()
         if (!flag->labels.empty())
             j["labels"] = flag->labels;
         j["experimental-feature"] = flag->experimentalFeature;
+        j["hidden"] = flag->hidden;
         flags[name] = std::move(j);
     }
 

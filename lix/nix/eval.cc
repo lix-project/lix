@@ -32,11 +32,15 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
             .handler = {&apply},
         });
 
+        // `--write-to` was axed because it was not used in-tree, no non-packaging uses out of tree
+        // could be found, and it was rife with misvehavior including arbitrary file writes as root
+        // when run a prepared input. we have opted to remove it instead of trying to make it safe.
         addFlag({
             .longName = "write-to",
-            .description = "Write a string or attrset of strings to *path*.",
+            .description = "Previously used to write a string or attrset of strings to *path*.",
             .labels = {"path"},
             .handler = {&writeTo},
+            .hidden = true,
         });
     }
 
@@ -59,6 +63,13 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
         if (raw && json)
             throw UsageError("--raw and --json are mutually exclusive");
 
+        if (writeTo) {
+            throw UsageError(
+                "--write-to has been removed because it was insecure and broken, please use "
+                "structured output formats (e.g. via --json) instead"
+            );
+        }
+
         auto const installableValue = InstallableValue::require(installable);
 
         auto evaluator = getEvaluator();
@@ -75,54 +86,18 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
             v = vRes;
         }
 
-        if (writeTo) {
-            logger->pause();
-
-            if (pathExists(*writeTo))
-                throw Error("path '%s' already exists", *writeTo);
-
-            std::function<void(Value & v, const PosIdx pos, const Path & path, NeverAsync)> recurse;
-
-            recurse = [&](Value & v, const PosIdx pos, const Path & path, NeverAsync)
-            {
-                state->forceValue(v, pos);
-                if (v.type() == nString)
-                    // FIXME: disallow strings with contexts?
-                    writeFile(path, v.str());
-                else if (v.type() == nAttrs) {
-                    if (mkdir(path.c_str(), 0777) == -1)
-                        throw SysError("creating directory '%s'", path);
-                    for (auto & attr : *v.attrs) {
-                        std::string_view name = evaluator->symbols[attr.name];
-                        try {
-                            if (name == "." || name == "..")
-                                throw Error("invalid file name '%s'", name);
-                            recurse(*attr.value, attr.pos, concatStrings(path, "/", name), {});
-                        } catch (Error & e) {
-                            e.addTrace(
-                                evaluator->positions[attr.pos],
-                                HintFmt("while evaluating the attribute '%s'", name));
-                            throw;
-                        }
-                    }
-                }
-                else
-                    evaluator->errors.make<TypeError>("value at '%s' is not a string or an attribute set", evaluator->positions[pos]).debugThrow();
-            };
-
-            recurse(*v, pos, *writeTo, {});
-        }
-
-        else if (raw) {
+        if (raw) {
             logger->pause();
             writeFull(STDOUT_FILENO, *state->coerceToString(noPos, *v, context, "while generating the eval command output"));
         }
 
-        else if (json) {
+        else if (json)
+        {
             logger->cout("%s", printValueAsJSON(*state, true, *v, pos, context, false));
         }
 
-        else {
+        else
+        {
             logger->cout(
                 "%s",
                 ValuePrinter(

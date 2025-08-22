@@ -41,15 +41,6 @@ R""(
   # nix eval nix#checks.x86_64-linux --apply builtins.attrNames
   ```
 
-* Generate a directory with the specified contents:
-
-  ```console
-  # nix eval --write-to ./out --expr '{ foo = "bar"; subdir.bla = "123"; }'
-  # cat ./out/foo
-  bar
-  # cat ./out/subdir/bla
-  123
-
 # Description
 
 This command evaluates the given Nix expression and prints the
@@ -75,10 +66,5 @@ result on standard output.
 
   The output is printed exactly as-is, with no quotes, escaping, or trailing
   newline.
-
-* With `--write-to` *path*, the evaluation result must be a string or
-  a nested attribute set whose leaf values are strings. These strings
-  are written to files named *path*/*attrpath*. *path* must not
-  already exist.
 
 )""
