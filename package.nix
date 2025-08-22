@@ -140,6 +140,13 @@ let
   # This is for sys/sdt.h
   dtrace-headers = if withDtrace then libsystemtap else null;
 
+  # FIXME(jade): can be removed once our nixpkgs has https://github.com/NixOS/nixpkgs/pull/435749 (probably 25.11?)
+  dontWrapPython =
+    drv:
+    drv.overridePythonAttrs (old: {
+      dontWrapPythonPrograms = true;
+    });
+
   aws-sdk-cpp-nix =
     if aws-sdk-cpp == null then
       null
@@ -211,7 +218,7 @@ stdenv.mkDerivation (finalAttrs: {
       p.pycapnp
     ]
     ++ lib.optionals finalAttrs.doCheck [
-      p.pytest
+      (dontWrapPython p.pytest)
       p.pytest-xdist
       p.ruff
       p.aiohttp
@@ -526,7 +533,7 @@ stdenv.mkDerivation (finalAttrs: {
           p: [
             # FIXME: these have to be added twice due to the nix shell using a
             # wrapped python instead of build inputs for its python inputs
-            p.pytest
+            (dontWrapPython p.pytest)
             p.pytest-xdist
             p.ruff
             p.aiohttp
