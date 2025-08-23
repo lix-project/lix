@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "fs-accessor.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/gc-store.hh"
 #include "lix/libstore/log-store.hh"
@@ -76,4 +77,21 @@ public:
 
 };
 
+struct LocalStoreAccessor : public FSAccessor
+{
+    ref<LocalFSStore> store;
+
+    LocalStoreAccessor(ref<LocalFSStore> store) : store(store) {}
+
+    virtual kj::Promise<Result<Path>> toRealPath(const Path & path, bool requireValidPath = true);
+
+    kj::Promise<Result<FSAccessor::Stat>> stat(const Path & path) override;
+
+    kj::Promise<Result<StringSet>> readDirectory(const Path & path) override;
+
+    kj::Promise<Result<std::string>>
+    readFile(const Path & path, bool requireValidPath = true) override;
+
+    kj::Promise<Result<std::string>> readLink(const Path & path) override;
+};
 }

@@ -2,82 +2,83 @@
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/local-fs-store.hh"
-#include "lix/libstore/globals.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/compression.hh"
-#include "lix/libstore/derivations.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/result.hh"
 
 namespace nix {
 
-struct LocalStoreAccessor : public FSAccessor
-{
-    ref<LocalFSStore> store;
-
-    LocalStoreAccessor(ref<LocalFSStore> store) : store(store) { }
-
-    kj::Promise<Result<Path>> toRealPath(const Path & path, bool requireValidPath = true)
-    try {
-        auto storePath = store->toStorePath(path).first;
-        if (requireValidPath && !TRY_AWAIT(store->isValidPath(storePath)))
-            throw InvalidPath("path '%1%' does not exist in the store", store->printStorePath(storePath));
-        co_return store->getRealStoreDir() + std::string(path, store->config().storeDir.size());
-    } catch (...) {
-        co_return result::current_exception();
+kj::Promise<Result<Path>> LocalStoreAccessor::toRealPath(const Path & path, bool requireValidPath)
+try {
+    auto storePath = store->toStorePath(path).first;
+    if (requireValidPath && !TRY_AWAIT(store->isValidPath(storePath))) {
+        throw InvalidPath(
+            "path '%1%' does not exist in the store", store->printStorePath(storePath)
+        );
     }
+    co_return store->getRealStoreDir() + std::string(path, store->config().storeDir.size());
+} catch (...) {
+    co_return result::current_exception();
+}
 
-    kj::Promise<Result<FSAccessor::Stat>> stat(const Path & path) override
-    try {
-        auto realPath = TRY_AWAIT(toRealPath(path));
+kj::Promise<Result<FSAccessor::Stat>> LocalStoreAccessor::stat(const Path & path)
+try {
+    auto realPath = TRY_AWAIT(toRealPath(path));
 
-        struct stat st;
-        if (lstat(realPath.c_str(), &st)) {
-            if (errno == ENOENT || errno == ENOTDIR) co_return {Type::tMissing, 0, false};
-            throw SysError("getting status of '%1%'", path);
+    struct stat st;
+    if (lstat(realPath.c_str(), &st)) {
+        if (errno == ENOENT || errno == ENOTDIR) {
+            co_return {Type::tMissing, 0, false};
         }
-
-        if (!S_ISREG(st.st_mode) && !S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode))
-            throw Error("file '%1%' has unsupported type", path);
-
-        co_return {
-            S_ISREG(st.st_mode) ? Type::tRegular :
-            S_ISLNK(st.st_mode) ? Type::tSymlink :
-            Type::tDirectory,
-            S_ISREG(st.st_mode) ? (uint64_t) st.st_size : 0,
-            S_ISREG(st.st_mode) && st.st_mode & S_IXUSR};
-    } catch (...) {
-        co_return result::current_exception();
+        throw SysError("getting status of '%1%'", path);
     }
 
-    kj::Promise<Result<StringSet>> readDirectory(const Path & path) override
-    try {
-        auto realPath = TRY_AWAIT(toRealPath(path));
-
-        auto entries = nix::readDirectory(realPath);
-
-        StringSet res;
-        for (auto & entry : entries)
-            res.insert(entry.name);
-
-        co_return res;
-    } catch (...) {
-        co_return result::current_exception();
+    if (!S_ISREG(st.st_mode) && !S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode)) {
+        throw Error("file '%1%' has unsupported type", path);
     }
 
-    kj::Promise<Result<std::string>>
-    readFile(const Path & path, bool requireValidPath = true) override
-    try {
-        co_return nix::readFile(TRY_AWAIT(toRealPath(path, requireValidPath)));
-    } catch (...) {
-        co_return result::current_exception();
+    co_return {
+        S_ISREG(st.st_mode)       ? Type::tRegular
+            : S_ISLNK(st.st_mode) ? Type::tSymlink
+                                  : Type::tDirectory,
+        S_ISREG(st.st_mode) ? (uint64_t) st.st_size : 0,
+        S_ISREG(st.st_mode) && st.st_mode & S_IXUSR
+    };
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<StringSet>> LocalStoreAccessor::readDirectory(const Path & path)
+try {
+    auto realPath = TRY_AWAIT(toRealPath(path));
+
+    auto entries = nix::readDirectory(realPath);
+
+    StringSet res;
+    for (auto & entry : entries) {
+        res.insert(entry.name);
     }
 
-    kj::Promise<Result<std::string>> readLink(const Path & path) override
-    try {
-        co_return nix::readLink(TRY_AWAIT(toRealPath(path)));
-    } catch (...) {
-        co_return result::current_exception();
-    }
-};
+    co_return res;
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<std::string>>
+LocalStoreAccessor::readFile(const Path & path, bool requireValidPath)
+try {
+    co_return nix::readFile(TRY_AWAIT(toRealPath(path, requireValidPath)));
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<std::string>> LocalStoreAccessor::readLink(const Path & path)
+try {
+    co_return nix::readLink(TRY_AWAIT(toRealPath(path)));
+} catch (...) {
+    co_return result::current_exception();
+}
 
 ref<FSAccessor> LocalFSStore::getFSAccessor()
 {
