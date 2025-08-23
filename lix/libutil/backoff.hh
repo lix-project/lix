@@ -27,7 +27,7 @@ struct BackoffTiming
  * The increase factor 2^i is capped at 2^48, the initial backoff value is capped at 30s
  * (30000ms) to prevent overflows.
  */
-Generator<BackoffTiming> backoffTimeouts(
+inline Generator<BackoffTiming> backoffTimeouts(
     unsigned int maxAttempts,
     std::chrono::milliseconds maxBackoff,
     std::chrono::milliseconds initialBackoff,
