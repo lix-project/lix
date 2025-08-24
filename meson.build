@@ -339,8 +339,6 @@ configdata += {
 
 sqlite = dependency('sqlite3', 'sqlite', version : '>=3.6.19', required : true, include_type : 'system')
 
-sodium = dependency('libsodium', 'sodium', required : true, include_type : 'system')
-
 curl = dependency('libcurl', 'curl', required : true, include_type : 'system')
 
 editline = dependency('libeditline', 'editline', version : '>=1.14', required : true, include_type : 'system')

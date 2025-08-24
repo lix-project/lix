@@ -10,7 +10,6 @@
   bzip2,
   xz,
   boost,
-  libsodium,
   darwin,
   meson,
   ninja,
@@ -36,21 +35,18 @@ perl.pkgs.toPerlModule (
       ninja
     ];
 
-    buildInputs =
-      [
-        nix
-        curl
-        bzip2
-        xz
-        perl
-        boost
-        perlPackages.DBI
-        perlPackages.DBDSQLite
-        # for kj-async
-        capnproto
-      ]
-      ++ lib.optional (stdenv.isLinux || stdenv.isDarwin) libsodium
-      ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security;
+    buildInputs = [
+      nix
+      curl
+      bzip2
+      xz
+      perl
+      boost
+      perlPackages.DBI
+      perlPackages.DBDSQLite
+      # for kj-async
+      capnproto
+    ] ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security;
 
     # Nixpkgs' Meson hook likes to set this to "plain".
     mesonBuildType = "debugoptimized";

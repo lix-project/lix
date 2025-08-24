@@ -116,7 +116,7 @@ struct CmdSign : StorePathsCommand
         if (secretKeyFile.empty())
             throw UsageError("you must specify a secret key file using '-k'");
 
-        SecretKey secretKey(readFile(secretKeyFile));
+        auto secretKey = SecretKey::parse(readFile(secretKeyFile));
 
         size_t added = 0;
 
@@ -198,7 +198,7 @@ struct CmdKeyConvertSecretToPublic : Command
 
     void run() override
     {
-        SecretKey secretKey(drainFD(STDIN_FILENO));
+        auto secretKey = SecretKey::parse(drainFD(STDIN_FILENO));
         writeFull(STDOUT_FILENO, secretKey.toPublicKey().to_string());
     }
 };

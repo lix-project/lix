@@ -29,7 +29,6 @@
   libarchive,
   libcpuid,
   libseccomp,
-  libsodium,
   libsystemtap,
   linuxPackages,
   lix-clang-tidy ? null,
@@ -339,7 +338,6 @@ stdenv.mkDerivation (finalAttrs: {
       libarchive
       boost
       lowdown
-      libsodium
       toml11-lix
       pegtl
       capnproto

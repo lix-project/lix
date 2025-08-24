@@ -394,8 +394,8 @@ dependencies = [
   kj,
   libarchive,
   nlohmann_json,
+  openssl,
   seccomp,
-  sodium,
   sqlite,
 ]
 

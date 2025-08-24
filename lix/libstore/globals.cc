@@ -16,8 +16,6 @@
 #include <dlfcn.h>
 #include <sys/utsname.h>
 
-#include <sodium/core.h>
-
 #ifdef __GLIBC__
 #include <gnu/lib-names.h>
 #include <nss.h>
@@ -478,9 +476,6 @@ void assertLibStoreInitialized() {
 }
 
 void initLibStore() {
-
-    if (sodium_init() == -1)
-        throw Error("could not initialise libsodium");
 
     loadConfFile();
 

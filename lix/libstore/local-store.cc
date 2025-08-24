@@ -1685,7 +1685,7 @@ void LocalStore::signPathInfo(ValidPathInfo & info)
     auto secretKeyFiles = settings.secretKeyFiles;
 
     for (auto & secretKeyFile : secretKeyFiles.get()) {
-        SecretKey secretKey(readFile(secretKeyFile));
+        auto secretKey = SecretKey::parse(readFile(secretKeyFile));
         info.sign(*this, secretKey);
     }
 }

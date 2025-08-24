@@ -30,7 +30,7 @@ namespace nix {
 BinaryCacheStore::BinaryCacheStore(const BinaryCacheStoreConfig & config)
 {
     if (config.secretKeyFile != "")
-        secretKey = std::unique_ptr<SecretKey>(new SecretKey(readFile(config.secretKeyFile)));
+        secretKey = std::make_unique<SecretKey>(SecretKey::parse(readFile(config.secretKeyFile)));
 
     StringSink sink;
     sink << narVersionMagic1;

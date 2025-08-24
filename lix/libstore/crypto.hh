@@ -3,33 +3,25 @@
 
 
 #include <map>
+#include <memory>
 #include <string>
+
+#include <openssl/evp.h>
 
 namespace nix {
 
-struct Key
-{
-    std::string name;
-    std::string key;
-
-    /**
-     * Construct Key from a string in the format
-     * ‘<name>:<key-in-base64>’.
-     */
-    Key(std::string_view s);
-
-    std::string to_string() const;
-
-protected:
-    Key(std::string_view name, std::string && key)
-        : name(name), key(std::move(key)) { }
-};
+using EvpPkeyPtr = std::unique_ptr<EVP_PKEY, decltype([](auto key) { EVP_PKEY_free(key); })>;
 
 struct PublicKey;
 
-struct SecretKey : Key
+struct SecretKey
 {
-    SecretKey(std::string_view s);
+    std::string name;
+    EvpPkeyPtr pkey;
+
+    SecretKey(std::string name, EvpPkeyPtr pkey);
+    SecretKey(SecretKey &&) = default;
+    ~SecretKey();
 
     /**
      * Return a detached signature of the given string.
@@ -38,21 +30,39 @@ struct SecretKey : Key
 
     PublicKey toPublicKey() const;
 
+    std::string to_string() const;
+
     static SecretKey generate(std::string_view name);
 
-private:
-    SecretKey(std::string_view name, std::string && key)
-        : Key(name, std::move(key)) { }
+    /**
+     * Parse a secret key in the format `<name>:<key-in-base64>`.
+     * For backwards compatibility, the key must be the concatenation of the secret and public key.
+     */
+    static SecretKey parse(std::string_view s);
 };
 
-struct PublicKey : Key
+struct PublicKey
 {
-    PublicKey(std::string_view data);
+    std::string name;
+    EvpPkeyPtr pkey;
 
-private:
-    PublicKey(std::string_view name, std::string && key)
-        : Key(name, std::move(key)) { }
-    friend struct SecretKey;
+    PublicKey(std::string name, EvpPkeyPtr pkey);
+    PublicKey(PublicKey &&) = default;
+    ~PublicKey();
+
+    /**
+     * Check whether a detached signature is valid.
+     */
+    bool verifyDetached(std::string_view data, std::string_view sig) const;
+
+    std::string to_string() const;
+
+    static PublicKey fromRaw(std::string_view name, std::string_view raw);
+
+    /**
+     * Parse a public key in the format `<name>:<key-in-base64>`.
+     */
+    static PublicKey parse(std::string_view data);
 };
 
 typedef std::map<std::string, PublicKey> PublicKeys;

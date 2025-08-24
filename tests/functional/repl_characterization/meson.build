@@ -10,7 +10,6 @@ repl_characterization_tester = executable(
     libasanoptions,
     liblixutil,
     liblixutil_test_support,
-    sodium,
     editline,
     boost,
     lowdown,

@@ -60,8 +60,6 @@ perl_include = declare_dependency(
   include_directories : include_directories(perl_incdir, is_system : true),
 )
 
-sodium = dependency('libsodium', 'sodium', required : true)
-
 if cxx.get_linker_id() in ['ld.bfd', 'ld.gold']
   add_project_link_arguments('-Wl,--no-copy-dt-needed-entries', language : 'cpp')
 endif

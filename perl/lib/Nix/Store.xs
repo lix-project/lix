@@ -20,9 +20,6 @@
 #include "lix/libutil/async.hh"
 #include "lix/libutil/json.hh"
 
-#include <sodium.h>
-
-
 using namespace nix;
 
 
@@ -254,7 +251,7 @@ SV * convertHash(char * algo, char * s, int toBase32)
 SV * signString(char * secretKey_, char * msg)
     PPCODE:
         try {
-            auto sig = SecretKey(secretKey_).signDetached(msg);
+            auto sig = SecretKey::parse(secretKey_).signDetached(msg);
             XPUSHs(sv_2mortal(newSVpv(sig.c_str(), sig.size())));
         } catch (Error & e) {
             croak("%s", e.what());
@@ -265,16 +262,12 @@ int checkSignature(SV * publicKey_, SV * sig_, char * msg)
     CODE:
         try {
             STRLEN publicKeyLen;
-            unsigned char * publicKey = (unsigned char *) SvPV(publicKey_, publicKeyLen);
-            if (publicKeyLen != crypto_sign_PUBLICKEYBYTES)
-                throw Error("public key is not valid");
+            char * publicKey = SvPV(publicKey_, publicKeyLen);
+            auto key = PublicKey::fromRaw("", {publicKey, publicKeyLen});
 
             STRLEN sigLen;
-            unsigned char * sig = (unsigned char *) SvPV(sig_, sigLen);
-            if (sigLen != crypto_sign_BYTES)
-                throw Error("signature is not valid");
-
-            RETVAL = crypto_sign_verify_detached(sig, (unsigned char *) msg, strlen(msg), publicKey) == 0;
+            char * sig = SvPV(sig_, sigLen);
+            RETVAL = key.verifyDetached(msg, {sig, sigLen});
         } catch (Error & e) {
             croak("%s", e.what());
         }

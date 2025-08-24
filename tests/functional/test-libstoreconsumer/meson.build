@@ -5,7 +5,6 @@ libstoreconsumer_tester = executable(
     libasanoptions,
     liblixutil,
     liblixstore,
-    sodium,
     editline,
     boost,
     lowdown,

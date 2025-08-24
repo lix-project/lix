@@ -23,7 +23,6 @@ perl_libstore = shared_module(
   dependencies : [
     libstore,
     libutil,
-    sodium,
     perl_include,
     kj,
   ],
