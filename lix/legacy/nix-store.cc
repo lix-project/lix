@@ -25,6 +25,7 @@
 #include <iostream>
 #include <algorithm>
 
+#include <ranges>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -88,6 +89,16 @@ try {
             if (i == drv.outputs.end())
                 throw Error("derivation '%s' does not have an output named '%s'",
                     store2->printStorePath(path.path), j);
+            if (!outputPaths.contains(i->first)) {
+                throw Error(
+                    "Possible SQLite database corruption: derivation '%s' output map contains only "
+                    "outputs '{%s}', not '%s'\n"
+                    "Note: derivation output maps are stored in the SQLite database.",
+                    store2->printStorePath(path.path),
+                    concatStringsSep(", ", std::views::keys(outputPaths)),
+                    i->first
+                );
+            }
             auto outPath = outputPaths.at(i->first);
             auto retPath = store->printStorePath(outPath);
             if (store2) {
