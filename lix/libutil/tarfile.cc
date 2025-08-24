@@ -94,7 +94,7 @@ static void extract_archive(TarArchive & archive, const Path & destDir)
         if (!name)
             throw Error("cannot get archive member name: %s", archive_error_string(archive.archive));
         if (r == ARCHIVE_WARN)
-            printTaggedWarning(archive_error_string(archive.archive));
+            printTaggedWarning("%1%", Uncolored(archive_error_string(archive.archive)));
         else
             archive.check(r);
 

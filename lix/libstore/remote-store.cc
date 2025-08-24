@@ -792,7 +792,7 @@ try {
         }
 
         else if (msg == STDERR_NEXT)
-            printError(chomp(TRY_AWAIT(readString(from))));
+            printError("%1%", chomp(TRY_AWAIT(readString(from))));
 
         else if (msg == STDERR_START_ACTIVITY) {
             auto act = TRY_AWAIT(readNum<ActivityId>(from));

@@ -322,7 +322,6 @@ int handleExceptions(const std::string & programName, std::function<void()> fun)
      * */
     bool onlyForSubcommands = baseNameOf(programName) == "lix";
 
-    std::string error = ANSI_RED "error:" ANSI_NORMAL " ";
     try {
         fun();
     } catch (Exit & e) {
@@ -338,7 +337,7 @@ int handleExceptions(const std::string & programName, std::function<void()> fun)
         logError(e.info());
         return e.info().status;
     } catch (const std::bad_alloc & e) {
-        printError(error + "out of memory");
+        printError(ANSI_RED "error:" ANSI_NORMAL " out of memory");
         return 1;
     }
     // Deliberately do not catch random std exceptions! We have a nice

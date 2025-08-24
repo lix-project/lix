@@ -52,7 +52,7 @@ void restoreMountNamespace()
         if (chdir(savedCwd.c_str()) == -1)
             throw SysError("restoring cwd");
     } catch (Error & e) {
-        debug(e.msg());
+        debug("%1%", e.msg());
     }
 #endif
 }

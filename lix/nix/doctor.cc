@@ -25,17 +25,17 @@ std::string formatProtocol(unsigned int proto)
 }
 
 bool checkPass(const std::string & msg) {
-    notice(ANSI_GREEN "[PASS] " ANSI_NORMAL + msg);
+    notice(ANSI_GREEN "[PASS]" ANSI_NORMAL " %1%", msg);
     return true;
 }
 
 bool checkFail(const std::string & msg) {
-    notice(ANSI_RED "[FAIL] " ANSI_NORMAL + msg);
+    notice(ANSI_RED "[FAIL]" ANSI_NORMAL " %1%", msg);
     return false;
 }
 
 void checkInfo(const std::string & msg) {
-    notice(ANSI_BLUE "[INFO] " ANSI_NORMAL + msg);
+    notice(ANSI_BLUE "[INFO]" ANSI_NORMAL " %1%", msg);
 }
 
 }
@@ -61,7 +61,7 @@ struct CmdDoctor : StoreCommand
 
     void run(ref<Store> store) override
     {
-        printInfo("Running checks against store uri: " + store->getUri());
+        printInfo("Running checks against store uri %1%", store->getUri());
 
         if (store.try_cast_shared<LocalFSStore>()) {
             success &= checkNixInPath();

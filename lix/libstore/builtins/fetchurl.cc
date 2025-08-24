@@ -75,7 +75,7 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData,
                     );
                     return;
                 } catch (Error & e) {
-                    debug(e.what());
+                    debug("%1%", e.what());
                 }
             }
         }

@@ -255,27 +255,28 @@ extern Verbosity verbosity;
 /**
  * Print a string message if the current log level is at least the specified
  * level. Note that this has to be implemented as a macro to ensure that the
- * arguments are evaluated lazily.
+ * arguments are evaluated lazily. The format string *must* be a literal.
  */
-#define printMsgUsing(loggerParam, level, args...)                     \
-    do {                                                               \
-        auto _lix_logger_print_lvl = level;                            \
-        if (_lix_logger_print_lvl <= ::nix::verbosity) {               \
-            loggerParam->log(_lix_logger_print_lvl, ::nix::fmt(args)); \
-        }                                                              \
+#define printMsgUsing(loggerParam, level, fs, args...)                                            \
+    do {                                                                                          \
+        auto _lix_logger_print_lvl = level;                                                       \
+        const char * _lix_format = []<size_t N>(const char(&_lix_fs)[N]) { return _lix_fs; }(fs); \
+        if (_lix_logger_print_lvl <= ::nix::verbosity) {                                          \
+            loggerParam->log(_lix_logger_print_lvl, ::nix::fmt(_lix_format, ##args));             \
+        }                                                                                         \
     } while (0)
-#define printMsg(level, args...) printMsgUsing(::nix::logger, level, args)
+#define printMsg(level, fs, args...) printMsgUsing(::nix::logger, level, fs, ##args)
 
-#define printWarning(args...) printMsg(::nix::lvlWarn, args)
-#define printError(args...) printMsg(::nix::lvlError, args)
-#define notice(args...) printMsg(::nix::lvlNotice, args)
-#define printInfo(args...) printMsg(::nix::lvlInfo, args)
-#define printTalkative(args...) printMsg(::nix::lvlTalkative, args)
-#define debug(args...) printMsg(::nix::lvlDebug, args)
-#define vomit(args...) printMsg(::nix::lvlVomit, args)
+#define printWarning(fs, args...) printMsg(::nix::lvlWarn, fs, ##args)
+#define printError(fs, args...) printMsg(::nix::lvlError, fs, ##args)
+#define notice(fs, args...) printMsg(::nix::lvlNotice, fs, ##args)
+#define printInfo(fs, args...) printMsg(::nix::lvlInfo, fs, ##args)
+#define printTalkative(fs, args...) printMsg(::nix::lvlTalkative, fs, ##args)
+#define debug(fs, args...) printMsg(::nix::lvlDebug, fs, ##args)
+#define vomit(fs, args...) printMsg(::nix::lvlVomit, fs, ##args)
 
-#define printTaggedWarning(args...) \
-    printWarning(ANSI_WARNING "warning:" ANSI_NORMAL " %1%", ::nix::HintFmt(args).str())
+#define printTaggedWarning(fs, args...) \
+    printWarning("%1%", ::nix::HintFmt(ANSI_WARNING "warning:" ANSI_NORMAL " " fs, ##args).str())
 
 void writeLogsToStderr(std::string_view s);
 

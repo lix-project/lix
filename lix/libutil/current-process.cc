@@ -61,15 +61,18 @@ void setStackSize(rlim_t stackSize)
         savedStackSize = limit.rlim_cur;
         limit.rlim_cur = std::min(stackSize, limit.rlim_max);
         if (setrlimit(RLIMIT_STACK, &limit) != 0) {
-            printError(HintFmt(
-                           "Failed to increase stack size from %1% to %2% (maximum allowed "
-                           "stack size: %3%): %4%",
-                           savedStackSize,
-                           stackSize,
-                           limit.rlim_max,
-                           std::strerror(errno)
-            )
-                           .str());
+            printError(
+                "%1%",
+                HintFmt(
+                    "Failed to increase stack size from %1% to %2% (maximum allowed "
+                    "stack size: %3%): %4%",
+                    savedStackSize,
+                    stackSize,
+                    limit.rlim_max,
+                    std::strerror(errno)
+                )
+                    .str()
+            );
         }
     }
 }

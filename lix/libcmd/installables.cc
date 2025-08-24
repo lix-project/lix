@@ -344,7 +344,7 @@ void completeFlakeRefWithFragment(
             }
         }
     } catch (Error & e) {
-        printTaggedWarning(e.msg());
+        printTaggedWarning("%1%", Uncolored(e.msg()));
     }
 }
 

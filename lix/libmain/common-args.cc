@@ -42,7 +42,7 @@ MixCommonArgs::MixCommonArgs(const std::string & programName)
                 globalConfig.set(name, value);
             } catch (UsageError & e) {
                 if (!getRoot().completions) {
-                    printTaggedWarning(e.what());
+                    printTaggedWarning("%1%", Uncolored(e.what()));
                 }
             }
         }},

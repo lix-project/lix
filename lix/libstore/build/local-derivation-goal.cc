@@ -97,8 +97,9 @@ void handleDiffHook(
                     diffHook,
                     statusToString(diffRes.first));
 
-            if (diffRes.second != "")
-                printError(chomp(diffRes.second));
+            if (diffRes.second != "") {
+                printError("%1%", chomp(diffRes.second));
+            }
         } catch (Error & error) {
             ErrorInfo ei = error.info();
             // FIXME: wrap errors.
@@ -844,7 +845,7 @@ try {
             ex.addTrace({}, "while setting up the build environment");
             throw ex;
         }
-        debug("sandbox setup: " + msg);
+        debug("sandbox setup: %1%", msg);
         msgs.push_back(std::move(msg));
     }
 
@@ -1569,8 +1570,7 @@ void LocalDerivationGoal::runChild()
                 #include "sandbox-minimal.sb"
                 ;
 
-        debug("Generated sandbox profile:");
-        debug(sandboxProfile);
+        debug("Generated sandbox profile: %1%", sandboxProfile);
 
         bool allowLocalNetworking = parsedDrv->getBoolAttr("__darwinAllowLocalNetworking");
 

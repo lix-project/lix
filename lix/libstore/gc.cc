@@ -830,7 +830,7 @@ try {
         if (!kept.empty()) {
             printTalkative("Paths not deleted because they are still referenced by GC roots:");
             for (auto &path: kept) {
-                printTalkative(path);
+                printTalkative("%1%", path);
             }
         }
 

@@ -145,7 +145,9 @@ PathLock::lockImpl(const Path & path, std::string_view waitMsg, bool wait, Never
         /* Acquire an exclusive lock. */
         if (!tryLockFile(fd.get(), ltWrite)) {
             if (wait) {
-                if (waitMsg != "") printError(std::string(waitMsg));
+                if (waitMsg != "") {
+                    printError("%1%", waitMsg);
+                }
                 lockFile(fd.get(), ltWrite);
             } else {
                 return std::nullopt;

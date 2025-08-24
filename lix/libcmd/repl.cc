@@ -337,14 +337,14 @@ ReplExitStatus NixRepl::mainLoop()
                 // input without clearing the input so far.
                 continue;
             } else {
-              printMsg(lvlError, e.msg());
+                printMsg(lvlError, "%1%", e.msg());
             }
         } catch (EvalError & e) {
-            printMsg(lvlError, e.msg());
+            printMsg(lvlError, "%1%", e.msg());
         } catch (Error & e) {
-            printMsg(lvlError, e.msg());
+            printMsg(lvlError, "%1%", e.msg());
         } catch (Interrupted & e) {
-            printMsg(lvlError, e.msg());
+            printMsg(lvlError, "%1%", e.msg());
         }
 
         // We handled the current input fully, so we should clear it

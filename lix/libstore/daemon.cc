@@ -243,7 +243,7 @@ struct ClientSettings
                         name
                     );
             } catch (UsageError & e) {
-                printTaggedWarning(e.what());
+                printTaggedWarning("%1%", Uncolored(e.what()));
             }
         }
     }

@@ -171,7 +171,7 @@ static void printSelectionFailureMessage(
         Uncolored(machinesFormatted)
     );
 
-    printMsg(level, error.str());
+    printMsg(level, "%1%", error.str());
 }
 
 namespace {
