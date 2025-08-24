@@ -61,7 +61,7 @@ struct CmdDoctor : StoreCommand
 
     void run(ref<Store> store) override
     {
-        logger->log("Running checks against store uri: " + store->getUri());
+        printInfo("Running checks against store uri: " + store->getUri());
 
         if (store.try_cast_shared<LocalFSStore>()) {
             success &= checkNixInPath();

@@ -83,11 +83,9 @@ auto resolveNamedConstituents(const std::map<std::string, nix::JSON> &jobs)
                                        const nix::JSON &job) -> bool {
                 if (job.find("error") != job.end()) {
                     std::string error = job["error"];
-                    nix::logger->log(
-                        nix::lvlError,
-                        nix::fmt(
-                            "aggregate job '%s' references broken job '%s': %s",
-                            jobName, childJobName, error));
+                    printError(
+                        "aggregate job '%s' references broken job '%s': %s",
+                        jobName, childJobName, error);
                     brokenJobs[childJobName] = error;
                     return true;
                 }
@@ -97,10 +95,9 @@ auto resolveNamedConstituents(const std::map<std::string, nix::JSON> &jobs)
             for (const std::string childJobName : *named) {
                 auto childJobIter = jobs.find(childJobName);
                 if (childJobIter == jobs.end()) {
-                    nix::logger->log(nix::lvlError,
-                                     nix::fmt("aggregate job '%s' references "
-                                              "non-existent job '%s'",
-                                              jobName, childJobName));
+                    printError(
+                        "aggregate job '%s' references non-existent job '%s'",
+                        jobName, childJobName);
                     brokenJobs[childJobName] = "does not exist";
                 } else if (!isBroken(childJobName, childJobIter->second)) {
                     results.insert(childJobName);
@@ -156,10 +153,8 @@ void rewriteAggregates(std::map<std::string, nix::JSON> &jobs,
 
             register_gc_root(gcRootsDir, newDrvPathS, store, aio);
 
-            nix::logger->log(nix::lvlDebug,
-                             nix::fmt("rewrote aggregate derivation %s -> %s",
-                                      store->printStorePath(drvPath),
-                                      newDrvPathS));
+            printError("rewrote aggregate derivation %s -> %s",
+                       store->printStorePath(drvPath), newDrvPathS);
 
             job["drvPath"] = newDrvPathS;
             job["outputs"]["out"] = store->printStorePath(outPath);

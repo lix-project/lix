@@ -417,10 +417,9 @@ int main(int argc, char **argv) {
                                           myArgs.gcRootsDir, aio);
                     },
                     [&](const DependencyCycle &e) {
-                        nix::logger->log(nix::lvlError,
-                                         nix::fmt("Found dependency cycle "
-                                                  "between jobs '%s' and '%s'",
-                                                  e.a, e.b));
+                        printError(
+                            "Found dependency cycle between jobs '%s' and '%s'",
+                            e.a, e.b);
                         state->jobs[e.a]["error"] = e.message();
                         state->jobs[e.b]["error"] = e.message();
 

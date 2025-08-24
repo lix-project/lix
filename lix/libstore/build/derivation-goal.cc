@@ -1155,7 +1155,7 @@ try {
     std::shared_ptr<Error> remoteError;
     if (result.getResult().isBad()) {
         remoteError = std::make_shared<Error>(from(result.getResult().getBad()));
-        logger->logEI(remoteError->info());
+        logErrorInfo(remoteError->info().level, remoteError->info());
     }
     co_return HookResult::Accept{TRY_AWAIT(buildDone(remoteError))};
 } catch (...) {

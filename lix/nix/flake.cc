@@ -424,9 +424,9 @@ struct CmdFlakeCheck : FlakeCommand
                     // FIXME: check meta attributes
                     auto storePath = drvInfo->queryDrvPath(*state);
                     if (storePath) {
-                        logger->log(lvlInfo,
-                            fmt("derivation evaluated to %s",
-                                store->printStorePath(storePath.value())));
+                        printInfo(
+                            "derivation evaluated to %s", store->printStorePath(storePath.value())
+                        );
                     }
                     return storePath;
                 }
