@@ -95,11 +95,11 @@ public:
     {
         if (type == resBuildLogLine && printBuildLogs) {
             auto lastLine = fields[0].s;
-            printError("%1%", lastLine);
+            printError("%1%", Uncolored(lastLine));
         }
         else if (type == resPostBuildLogLine) {
             auto lastLine = fields[0].s;
-            printError("post-build-hook: %1%", lastLine);
+            printError("post-build-hook: %1%", Uncolored(lastLine));
         }
     }
 };

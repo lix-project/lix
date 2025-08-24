@@ -90,7 +90,7 @@ try {
         data = TRY_AWAIT(content->drain());
     } catch (FileTransferError & e) {
         if (cached) {
-            printTaggedWarning("%s; using cached version", e.msg());
+            printTaggedWarning("%s; using cached version", Uncolored(e.msg()));
             co_return useCached();
         } else
             throw;

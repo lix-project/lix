@@ -695,9 +695,9 @@ static void prim_trace(EvalState & state, Value * * args, Value & v)
 {
     state.forceValue(*args[0], noPos);
     if (args[0]->type() == nString)
-        printError("trace: %1%", args[0]->str());
+        printError("trace: %1%", Uncolored(args[0]->str()));
     else
-        printError("trace: %1%", ValuePrinter(state, *args[0]));
+        printError("trace: %1%", Uncolored(ValuePrinter(state, *args[0])));
     if (auto last = evalSettings.builtinsTraceDebugger && state.ctx.debug
             ? state.ctx.debug->traces().next()
             : std::nullopt)

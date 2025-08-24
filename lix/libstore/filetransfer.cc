@@ -1039,15 +1039,19 @@ struct curlFileTransfer : public FileTransfer
             if (totalReceived) {
                 printTaggedWarning(
                     "%s; retrying from offset %d in %d ms (attempt %d/%d)",
-                    context,
+                    Uncolored(context),
                     totalReceived,
                     waitTime,
-                    attempt,
-                    tries
+                    Uncolored(attempt),
+                    Uncolored(tries)
                 );
             } else {
                 printTaggedWarning(
-                    "%s; retrying in %d ms (attempt %d/%d)", context, waitTime, attempt, tries
+                    "%s; retrying in %d ms (attempt %d/%d)",
+                    Uncolored(context),
+                    waitTime,
+                    Uncolored(attempt),
+                    Uncolored(tries)
                 );
             }
 

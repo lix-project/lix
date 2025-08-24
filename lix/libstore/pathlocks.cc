@@ -146,7 +146,7 @@ PathLock::lockImpl(const Path & path, std::string_view waitMsg, bool wait, Never
         if (!tryLockFile(fd.get(), ltWrite)) {
             if (wait) {
                 if (waitMsg != "") {
-                    printError("%1%", waitMsg);
+                    printError("%1%", Uncolored(waitMsg));
                 }
                 lockFile(fd.get(), ltWrite);
             } else {
@@ -258,7 +258,7 @@ FdLock::FdLock(AutoCloseFD & fd, LockType lockType, DontWait)
 FdLock::FdLock(AutoCloseFD & fd, LockType lockType, std::string_view waitMsg, NeverAsync)
 {
     if (!tryLockFile(fd.get(), lockType)) {
-        printInfo("%s", waitMsg);
+        printInfo("%s", Uncolored(waitMsg));
         lockFile(fd.get(), lockType);
         this->fd.reset(&fd);
     }
@@ -268,7 +268,7 @@ kj::Promise<Result<FdLock>>
 FdLock::lockAsync(AutoCloseFD & fd, LockType lockType, std::string_view waitMsg)
 try {
     if (!tryLockFile(fd.get(), lockType)) {
-        printInfo("%s", waitMsg);
+        printInfo("%s", Uncolored(waitMsg));
         TRY_AWAIT(lockFileAsyncInner(fd.get(), lockType));
     }
     co_return FdLock{fd};

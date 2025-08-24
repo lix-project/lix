@@ -158,7 +158,8 @@ static void printSelectionFailureMessage(
                                  .str();
     }
 
-    auto error = HintFmt(
+    printMsg(
+        level,
         "Failed to find a machine for remote build!\n"
         "derivation: %s\n"
         "required (system, features): (%s, [%s])\n"
@@ -170,8 +171,6 @@ static void printSelectionFailureMessage(
         machines.size(),
         Uncolored(machinesFormatted)
     );
-
-    printMsg(level, "%1%", error.str());
 }
 
 namespace {

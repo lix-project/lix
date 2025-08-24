@@ -25,17 +25,17 @@ std::string formatProtocol(unsigned int proto)
 }
 
 bool checkPass(const std::string & msg) {
-    notice(ANSI_GREEN "[PASS]" ANSI_NORMAL " %1%", msg);
+    notice(ANSI_GREEN "[PASS] " ANSI_NORMAL "%1%", Uncolored(msg));
     return true;
 }
 
 bool checkFail(const std::string & msg) {
-    notice(ANSI_RED "[FAIL]" ANSI_NORMAL " %1%", msg);
+    notice(ANSI_RED "[FAIL] " ANSI_NORMAL "%1%", Uncolored(msg));
     return false;
 }
 
 void checkInfo(const std::string & msg) {
-    notice(ANSI_BLUE "[INFO]" ANSI_NORMAL " %1%", msg);
+    notice(ANSI_BLUE "[INFO] " ANSI_NORMAL "%1%", Uncolored(msg));
 }
 
 }

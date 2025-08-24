@@ -41,7 +41,7 @@ Goal::WorkResult PathSubstitutionGoal::done(
 {
     BuildResult buildResult{.status = status};
     if (errorMsg) {
-        debug("%1%", *errorMsg);
+        debug("%1%", Uncolored(*errorMsg));
         buildResult.errorMsg = *errorMsg;
     }
     return WorkResult{result, std::move(buildResult)};
@@ -263,7 +263,7 @@ try {
             thr.get();
             break;
         } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
-            printError("%1%", e.what());
+            printError("%1%", Uncolored(e.what()));
 
             /* Cause the parent build to fail unless --fallback is given,
                or the substitute has disappeared. The latter case behaves

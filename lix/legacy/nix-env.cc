@@ -686,8 +686,12 @@ static void upgradeDerivations(Globals & globals,
                 {
                     const char * action = compareVersions(drvName.version, bestVersion) <= 0
                         ? "upgrading" : "downgrading";
-                    printInfo("%1% '%2%' to '%3%'",
-                        action, i.queryName(*state), bestElem->queryName(*state));
+                    printInfo(
+                        "%1% '%2%' to '%3%'",
+                        Uncolored(action),
+                        i.queryName(*state),
+                        bestElem->queryName(*state)
+                    );
                     newElems.push_back(*bestElem);
                 } else newElems.push_back(i);
 

@@ -74,7 +74,7 @@ try {
         auto sorted = TRY_AWAIT(store->topoSortPaths(willBuild));
         reverse(sorted.begin(), sorted.end());
         for (auto & i : sorted)
-            printMsg(lvl, "  %s", store->printStorePath(i));
+            printMsg(lvl, "  %s", Uncolored(store->printStorePath(i)));
     }
 
     if (!willSubstitute.empty()) {
@@ -101,14 +101,14 @@ try {
                       return lhs->name() < rhs->name();
                   });
         for (auto p : willSubstituteSorted)
-            printMsg(lvl, "  %s", store->printStorePath(*p));
+            printMsg(lvl, "  %s", Uncolored(store->printStorePath(*p)));
     }
 
     if (!unknown.empty()) {
         printMsg(lvl, "don't know how to build these paths%s:",
                 (settings.readOnlyMode ? " (may be caused by read-only store access)" : ""));
         for (auto & i : unknown)
-            printMsg(lvl, "  %s", store->printStorePath(i));
+            printMsg(lvl, "  %s", Uncolored(store->printStorePath(i)));
     }
 
     co_return result::success();
@@ -331,7 +331,7 @@ int handleExceptions(const std::string & programName, std::function<void()> fun)
         if (onlyForSubcommands)
             printError("'%1%' is reserved for external subcommands, is your subcommand available in the PATH?", programName);
         else
-            printError("Try '%1% --help' for more information.", programName);
+            printError("Try '%1%' for more information.", programName + " --help");
         return 1;
     } catch (BaseError & e) {
         logError(e.info());

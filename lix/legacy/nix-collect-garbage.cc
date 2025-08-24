@@ -103,7 +103,7 @@ static int main_nix_collect_garbage(AsyncIoRoot & aio, std::string programName, 
         if (dryRun) {
             // Only print results for dry run; when !dryRun, paths will be printed as they're deleted.
             for (auto & i : results.paths) {
-                printInfo("%s", i);
+                printInfo("%s", Uncolored(i));
             }
         }
 

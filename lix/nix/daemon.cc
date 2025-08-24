@@ -406,7 +406,7 @@ static void daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTr
 
     printInfo(
         "%1% is %2% (%3%%4%)",
-        peer.pidKnown ? fmt("remote pid %s", peer.pid) : "remote with unknown pid",
+        Uncolored(peer.pidKnown ? fmt("remote pid %s", peer.pid) : "remote with unknown pid"),
         peer.uidKnown ? fmt("user %s", user) : "unknown user",
         trusted ? "trusted" : "untrusted",
         forceTrustClientOpt ? " by override" : ""

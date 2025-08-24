@@ -77,7 +77,7 @@ struct Proc {
                     JSON err;
                     auto msg = e.msg();
                     err["error"] = nix::filterANSIEscapes(msg, true);
-                    printError("%1%", msg);
+                    printError("%1%", Uncolored(msg));
                     if (tryWriteLine(to->get(), err.dump()) < 0) {
                         return; // main process died
                     };

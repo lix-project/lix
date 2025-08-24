@@ -956,9 +956,9 @@ struct CmdFlakeInitCommon : virtual Args, EvalCommand
         if (welcomeText) {
             notice(
                 "\n%1%",
-                renderMarkdownToTerminal(
+                Uncolored(renderMarkdownToTerminal(
                     welcomeText->getString(*evalState), StandardOutputStream::Stderr
-                )
+                ))
             );
         }
 

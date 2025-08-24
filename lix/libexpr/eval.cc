@@ -749,7 +749,7 @@ void DebugState::onEvalError(
 
     if (error)
     {
-        printError("%s\n", error->what());
+        printError("%s\n", Uncolored(error->what()));
 
         if (trylevel > 0 && error->info().level != lvlInfo) {
             if (evalSettings.ignoreExceptionsDuringTry) {

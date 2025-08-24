@@ -98,7 +98,7 @@ void handleDiffHook(
                     statusToString(diffRes.first));
 
             if (diffRes.second != "") {
-                printError("%1%", chomp(diffRes.second));
+                printError("%1%", Uncolored(chomp(diffRes.second)));
             }
         } catch (Error & error) {
             ErrorInfo ei = error.info();
@@ -845,7 +845,7 @@ try {
             ex.addTrace({}, "while setting up the build environment");
             throw ex;
         }
-        debug("sandbox setup: %1%", msg);
+        debug("sandbox setup: %1%", Uncolored(msg));
         msgs.push_back(std::move(msg));
     }
 

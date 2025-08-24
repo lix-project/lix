@@ -262,7 +262,7 @@ extern Verbosity verbosity;
         auto _lix_logger_print_lvl = level;                                                       \
         const char * _lix_format = []<size_t N>(const char(&_lix_fs)[N]) { return _lix_fs; }(fs); \
         if (_lix_logger_print_lvl <= ::nix::verbosity) {                                          \
-            loggerParam->log(_lix_logger_print_lvl, ::nix::fmt(_lix_format, ##args));             \
+            loggerParam->log(_lix_logger_print_lvl, ::nix::HintFmt(_lix_format, ##args).str());   \
         }                                                                                         \
     } while (0)
 #define printMsg(level, fs, args...) printMsgUsing(::nix::logger, level, fs, ##args)
@@ -276,7 +276,7 @@ extern Verbosity verbosity;
 #define vomit(fs, args...) printMsg(::nix::lvlVomit, fs, ##args)
 
 #define printTaggedWarning(fs, args...) \
-    printWarning("%1%", ::nix::HintFmt(ANSI_WARNING "warning:" ANSI_NORMAL " " fs, ##args).str())
+    printWarning(ANSI_WARNING "warning:" ANSI_NORMAL " " fs, ##args)
 
 void writeLogsToStderr(std::string_view s);
 

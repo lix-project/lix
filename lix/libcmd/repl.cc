@@ -290,7 +290,7 @@ ReplExitStatus NixRepl::mainLoop()
         if (evaluator.debug && evaluator.debug->inDebugger) {
             debuggerNotice = " debugger";
         }
-        notice("Lix %1%%2%\nType :? for help.", nixVersion, debuggerNotice);
+        notice("Lix %1%%2%\nType :? for help.", Uncolored(nixVersion), debuggerNotice);
     }
 
     isFirstRepl = false;
@@ -337,14 +337,14 @@ ReplExitStatus NixRepl::mainLoop()
                 // input without clearing the input so far.
                 continue;
             } else {
-                printMsg(lvlError, "%1%", e.msg());
+                printMsg(lvlError, "%1%", Uncolored(e.msg()));
             }
         } catch (EvalError & e) {
-            printMsg(lvlError, "%1%", e.msg());
+            printMsg(lvlError, "%1%", Uncolored(e.msg()));
         } catch (Error & e) {
-            printMsg(lvlError, "%1%", e.msg());
+            printMsg(lvlError, "%1%", Uncolored(e.msg()));
         } catch (Interrupted & e) {
-            printMsg(lvlError, "%1%", e.msg());
+            printMsg(lvlError, "%1%", Uncolored(e.msg()));
         }
 
         // We handled the current input fully, so we should clear it
@@ -960,7 +960,7 @@ void NixRepl::loadReplOverlays()
         return;
     }
 
-    notice("Loading '%1%'...", Magenta("repl-overlays"));
+    notice("Loading '%1%'...", "repl-overlays");
     auto replInitFilesFunction = getReplOverlaysEvalFunction();
 
     Value &newAttrs(*evaluator.mem.allocValue());
