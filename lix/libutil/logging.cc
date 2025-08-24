@@ -21,11 +21,6 @@ static GlobalConfig::Register rLoggerSettings(&loggerSettings);
 
 Logger * logger = makeSimpleLogger(true);
 
-void Logger::warn(const std::string & msg)
-{
-    log(lvlWarn, ANSI_WARNING "warning:" ANSI_NORMAL " " + msg);
-}
-
 void Logger::writeToStdout(std::string_view s)
 {
     writeFull(

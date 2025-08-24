@@ -140,8 +140,6 @@ public:
         logEI(ei);
     }
 
-    virtual void warn(const std::string & msg);
-
     virtual void startActivity(ActivityId act, Verbosity lvl, ActivityType type,
         const std::string & s, const Fields & fields, ActivityId parent) { };
 
@@ -279,9 +277,11 @@ extern Verbosity verbosity;
  * if verbosity >= lvlWarn, print a message with a yellow 'warning:' prefix.
  */
 template<typename... Args>
-inline void warn(const std::string & fs, const Args & ... args)
+inline void warn(const std::string & fs, const Args &... args)
 {
-    logger->warn(HintFmt(fs, args...).str());
+    logger->log(
+        lvlWarn, fmt(ANSI_WARNING "warning:" ANSI_NORMAL " %1%", HintFmt(fs, args...).str())
+    );
 }
 
 void writeLogsToStderr(std::string_view s);

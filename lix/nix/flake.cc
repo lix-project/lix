@@ -1340,7 +1340,10 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                         if (!json)
                             logger->cout(fmt("%s " ANSI_WARNING "omitted" ANSI_NORMAL " (use '--all-systems' to show)", headerPrefix));
                         else {
-                            logger->warn(fmt("%s omitted (use '--all-systems' to show)", concatStringsSep(".", attrPath)));
+                            warn(
+                                "%s omitted (use '--all-systems' to show)",
+                                concatStringsSep(".", attrPath)
+                            );
                         }
                     } else {
                         if (visitor.isDerivation(*state))
@@ -1364,13 +1367,19 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                         if (!json)
                             logger->cout(fmt("%s " ANSI_WARNING "omitted" ANSI_NORMAL " (use '--legacy' to show)", headerPrefix));
                         else {
-                            logger->warn(fmt("%s omitted (use '--legacy' to show)", concatStringsSep(".", attrPath)));
+                            warn(
+                                "%s omitted (use '--legacy' to show)",
+                                concatStringsSep(".", attrPath)
+                            );
                         }
                     } else if (!showAllSystems && attrPath[1] != localSystem) {
                         if (!json)
                             logger->cout(fmt("%s " ANSI_WARNING "omitted" ANSI_NORMAL " (use '--all-systems' to show)", headerPrefix));
                         else {
-                            logger->warn(fmt("%s omitted (use '--all-systems' to show)", concatStringsSep(".", attrPath)));
+                            warn(
+                                "%s omitted (use '--all-systems' to show)",
+                                concatStringsSep(".", attrPath)
+                            );
                         }
                     } else {
                         if (visitor.isDerivation(*state))
