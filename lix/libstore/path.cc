@@ -1,7 +1,5 @@
 #include "lix/libstore/store-api.hh"
 
-#include <sodium.h>
-
 namespace nix {
 
 static void checkName(std::string_view path, std::string_view name)
@@ -61,13 +59,6 @@ bool StorePath::isDerivation() const
 }
 
 StorePath StorePath::dummy("ffffffffffffffffffffffffffffffff-x");
-
-StorePath StorePath::random(std::string_view name)
-{
-    Hash hash(HashType::SHA1);
-    randombytes_buf(hash.hash, hash.hashSize);
-    return StorePath(hash, name);
-}
 
 StorePath Store::parseStorePath(std::string_view path) const
 {

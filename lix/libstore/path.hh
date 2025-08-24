@@ -72,8 +72,6 @@ public:
     }
 
     static StorePath dummy;
-
-    static StorePath random(std::string_view name);
 };
 
 typedef std::set<StorePath> StorePathSet;
