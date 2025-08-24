@@ -826,7 +826,7 @@ opVerify(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strin
         else throw UsageError("unknown flag '%1%'", i);
 
     if (aio.blockOn(store->verifyStore(checkContents, repair))) {
-        warn("not all store errors were fixed");
+        printTaggedWarning("not all store errors were fixed");
         throw Exit(1);
     }
 }

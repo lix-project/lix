@@ -1576,7 +1576,7 @@ try {
                 if (TRY_AWAIT(isValidPath(i)))
                     logError(caught->info());
                 else
-                    warn(caught->msg());
+                    printTaggedWarning(caught->msg());
                 errors = true;
             }
         }

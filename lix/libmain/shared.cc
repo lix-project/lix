@@ -41,7 +41,7 @@ void printGCWarning()
     static bool haveWarned = false;
     if (!haveWarned) {
         haveWarned = true;
-        warn(
+        printTaggedWarning(
             "you did not specify '--add-root'; "
             "the result might be removed by the garbage collector"
         );

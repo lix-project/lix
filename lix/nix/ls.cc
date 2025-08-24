@@ -145,7 +145,7 @@ struct CmdLsStore : StoreCommand, MixLs
             }
         } catch (NoSuchBinaryCacheFile &) {
         } catch (Error & e) {
-            warn(
+            printTaggedWarning(
                 "nar listing for %s on %s is bad (falling back to full nar download): %s",
                 path,
                 store->getUri(),

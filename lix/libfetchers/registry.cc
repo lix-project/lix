@@ -23,7 +23,7 @@ std::shared_ptr<Registry> Registry::read(
 
     if (!pathExists(path)) {
         if (type == RegistryType::Global) {
-            warn("cannot read flake registry '%s': path does not exist", path);
+            printTaggedWarning("cannot read flake registry '%s': path does not exist", path);
         }
         return std::make_shared<Registry>(type);
     }
@@ -58,7 +58,7 @@ std::shared_ptr<Registry> Registry::read(
             throw Error("flake registry '%s' has unsupported version %d", path, version);
 
     } catch (Error & e) {
-        warn("cannot read flake registry '%s': %s", path, e.what());
+        printTaggedWarning("cannot read flake registry '%s': %s", path, e.what());
     }
 
     return registry;
@@ -170,7 +170,7 @@ try {
             *lk = Registry::read(settings.nixDataDir + "/flake-registry.json", Registry::Global);
         } else {
             if (!path.starts_with("/")) {
-                warn(
+                printTaggedWarning(
                     "config option flake-registry referring to a URL is deprecated and will be "
                     "removed in Lix 3.0; yours is: `%s'",
                     path

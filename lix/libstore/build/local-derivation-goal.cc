@@ -470,7 +470,7 @@ try {
         auto nixBuildsTmp = createTempDir(
             globalTmp, fmt("nix-builds-%s", geteuid()), false, false, toplevelDirMode
         );
-        warn(
+        printTaggedWarning(
             "Failed to use the system-wide build directory '%s', falling back to a temporary "
             "directory inside '%s'",
             settings.buildDir.get(),
@@ -949,7 +949,7 @@ void LocalDerivationGoal::setupConfiguredCertificateAuthority()
             if (std::find(impureVars.begin(), impureVars.end(), "NIX_SSL_CERT_FILE") != impureVars.end()
                 && env["NIX_SSL_CERT_FILE"] != settings.caFile)
             {
-                warn(
+                printTaggedWarning(
                     "'NIX_SSL_CERT_FILE' is an impure environment variable of this "
                     "derivation but a *DIFFERENT* `ssl-cert-file` was set in the settings "
                     "which takes precedence.\n"
@@ -975,7 +975,7 @@ void LocalDerivationGoal::setupConfiguredCertificateAuthority()
         } else if (pathExists(settings.caFile)) {
             // The path exist but we were not able to access it. This is not a fatal
             // error, warn about this so the user can remediate.
-            warn(
+            printTaggedWarning(
                 "Configured certificate authority '%1' exists but is inaccessible, it "
                 "will not be copied in the sandbox. TLS operations inside the sandbox may "
                 "be non-functional.",
@@ -1242,7 +1242,7 @@ void LocalDerivationGoal::runChild()
                     } else if (pathExists(path)) {
                         // The path exist but we were not able to access it. This is not a fatal
                         // error, warn about this so the user can remediate.
-                        warn(
+                        printTaggedWarning(
                             "'%1%' exists but is inaccessible, it will not be copied in the "
                             "sandbox",
                             path
@@ -1255,7 +1255,7 @@ void LocalDerivationGoal::runChild()
                 } else if (pathExists("/etc/resolv.conf")) {
                     // The path exist but we were not able to access it. This is not a fatal error,
                     // warn about this so the user can remediate.
-                    warn(
+                    printTaggedWarning(
                         "'/etc/resolv.conf' exists but is inaccessible, it will not be rewritten "
                         "inside the sandbox; DNS operations inside the sandbox may be "
                         "non-functional."
@@ -2461,22 +2461,40 @@ try {
 
         if (auto structuredAttrs = parsedDrv->getStructuredAttrs()) {
             if (get(*structuredAttrs, "allowedReferences")){
-                warn("'structuredAttrs' disables the effect of the top-level attribute 'allowedReferences'; use 'outputChecks' instead");
+                printTaggedWarning(
+                    "'structuredAttrs' disables the effect of the top-level attribute "
+                    "'allowedReferences'; use 'outputChecks' instead"
+                );
             }
             if (get(*structuredAttrs, "allowedRequisites")){
-                warn("'structuredAttrs' disables the effect of the top-level attribute 'allowedRequisites'; use 'outputChecks' instead");
+                printTaggedWarning(
+                    "'structuredAttrs' disables the effect of the top-level attribute "
+                    "'allowedRequisites'; use 'outputChecks' instead"
+                );
             }
             if (get(*structuredAttrs, "disallowedRequisites")){
-                warn("'structuredAttrs' disables the effect of the top-level attribute 'disallowedRequisites'; use 'outputChecks' instead");
+                printTaggedWarning(
+                    "'structuredAttrs' disables the effect of the top-level attribute "
+                    "'disallowedRequisites'; use 'outputChecks' instead"
+                );
             }
             if (get(*structuredAttrs, "disallowedReferences")){
-                warn("'structuredAttrs' disables the effect of the top-level attribute 'disallowedReferences'; use 'outputChecks' instead");
+                printTaggedWarning(
+                    "'structuredAttrs' disables the effect of the top-level attribute "
+                    "'disallowedReferences'; use 'outputChecks' instead"
+                );
             }
             if (get(*structuredAttrs, "maxSize")){
-                warn("'structuredAttrs' disables the effect of the top-level attribute 'maxSize'; use 'outputChecks' instead");
+                printTaggedWarning(
+                    "'structuredAttrs' disables the effect of the top-level attribute 'maxSize'; "
+                    "use 'outputChecks' instead"
+                );
             }
             if (get(*structuredAttrs, "maxClosureSize")){
-                warn("'structuredAttrs' disables the effect of the top-level attribute 'maxClosureSize'; use 'outputChecks' instead");
+                printTaggedWarning(
+                    "'structuredAttrs' disables the effect of the top-level attribute "
+                    "'maxClosureSize'; use 'outputChecks' instead"
+                );
             }
             if (auto outputChecks = get(*structuredAttrs, "outputChecks")) {
                 if (auto output = get(*outputChecks, outputName)) {

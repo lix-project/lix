@@ -74,15 +74,17 @@ void BaseSetting<T>::set(const std::string & str, bool append, const ApplyConfig
     if (experimentalFeatureSettings.isEnabled(experimentalFeature)) {
         auto parsed = parse(str, options);
         if (deprecated && (append || parsed != value)) {
-            warn("deprecated setting '%s' found (set to '%s')", name, str);
+            printTaggedWarning("deprecated setting '%s' found (set to '%s')", name, str);
         }
         overridden = true;
         appendOrSet(std::move(parsed), append, options);
     } else {
         assert(experimentalFeature);
-        warn("Ignoring setting '%s' because experimental feature '%s' is not enabled",
+        printTaggedWarning(
+            "Ignoring setting '%s' because experimental feature '%s' is not enabled",
             name,
-            showExperimentalFeature(*experimentalFeature));
+            showExperimentalFeature(*experimentalFeature)
+        );
     }
 }
 

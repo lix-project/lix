@@ -367,7 +367,11 @@ struct Common : InstallableCommand, MixProfile
             for (auto & path: builtPaths) {
                 auto from = store->printStorePath(path);
                 if (script.find(from) == std::string::npos)
-                    warn("'%s' (path '%s') is not used by this build environment", installable->what(), from);
+                    printTaggedWarning(
+                        "'%s' (path '%s') is not used by this build environment",
+                        installable->what(),
+                        from
+                    );
                 else {
                     printInfo("redirecting '%s' to '%s'", from, dir);
                     rewrites.insert({from, dir});

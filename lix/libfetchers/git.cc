@@ -134,7 +134,11 @@ std::optional<std::string> readHeadCached(const std::string & actualUrl)
         // fails, it falls back to continuing with the most recent version.
         // This function must behave the same way, so we return the expired
         // cached ref here.
-        warn("could not get HEAD ref for repository '%s'; using expired cached ref '%s'", actualUrl, *cachedRef);
+        printTaggedWarning(
+            "could not get HEAD ref for repository '%s'; using expired cached ref '%s'",
+            actualUrl,
+            *cachedRef
+        );
         return cachedRef;
     }
 
@@ -225,8 +229,9 @@ try {
     if (!fetchSettings.allowDirty)
         throw Error("Git tree '%s' is dirty", workdir);
 
-    if (fetchSettings.warnDirty)
-        warn("Git tree '%s' is dirty", workdir);
+    if (fetchSettings.warnDirty) {
+        printTaggedWarning("Git tree '%s' is dirty", workdir);
+    }
 
     auto gitOpts = Strings({ "-C", workdir, "--git-dir", gitDir, "ls-files", "-z" });
     if (submodules)
@@ -544,7 +549,9 @@ struct GitInputScheme : InputScheme
             if (!input.getRef()) {
                 auto head = readHead(actualUrl);
                 if (!head) {
-                    warn("could not read HEAD ref from repo at '%s', using 'master'", actualUrl);
+                    printTaggedWarning(
+                        "could not read HEAD ref from repo at '%s', using 'master'", actualUrl
+                    );
                     head = "master";
                 }
                 input.attrs.insert_or_assign("ref", *head);
@@ -561,7 +568,9 @@ struct GitInputScheme : InputScheme
             if (useHeadRef) {
                 auto head = readHeadCached(actualUrl);
                 if (!head) {
-                    warn("could not read HEAD ref from repo at '%s', using 'master'", actualUrl);
+                    printTaggedWarning(
+                        "could not read HEAD ref from repo at '%s', using 'master'", actualUrl
+                    );
                     head = "master";
                 }
                 input.attrs.insert_or_assign("ref", *head);
@@ -685,13 +694,21 @@ struct GitInputScheme : InputScheme
                     }, true);
                 } catch (Error & e) {
                     if (!pathExists(localRefFile)) throw;
-                    warn("could not update local clone of Git repository '%s'; continuing with the most recent version", actualUrl);
+                    printTaggedWarning(
+                        "could not update local clone of Git repository '%s'; continuing with the "
+                        "most recent version",
+                        actualUrl
+                    );
                 }
 
                 if (!touchCacheFile(localRefFile, now))
-                    warn("could not update mtime for file '%s': %s", localRefFile, strerror(errno));
+                    printTaggedWarning(
+                        "could not update mtime for file '%s': %s", localRefFile, strerror(errno)
+                    );
                 if (useHeadRef && !storeCachedHead(actualUrl, *input.getRef()))
-                    warn("could not update cached head '%s' for '%s'", *input.getRef(), actualUrl);
+                    printTaggedWarning(
+                        "could not update cached head '%s' for '%s'", *input.getRef(), actualUrl
+                    );
             }
 
             if (!input.getRev())

@@ -45,7 +45,7 @@ struct CacheImpl : Cache
         try {
             createDirs(dirOf(dbPath));
         } catch (SysError const & ex) {
-            warn("ignoring error initializing Lix fetcher cache: %s", ex.what());
+            printTaggedWarning("ignoring error initializing Lix fetcher cache: %s", ex.what());
             dbPath = ":memory:";
         }
 

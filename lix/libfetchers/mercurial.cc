@@ -185,7 +185,7 @@ struct MercurialInputScheme : InputScheme
                     throw Error("Mercurial tree '%s' is unclean", actualUrl);
 
                 if (fetchSettings.warnDirty)
-                    warn("Mercurial tree '%s' is unclean", actualUrl);
+                    printTaggedWarning("Mercurial tree '%s' is unclean", actualUrl);
 
                 input.attrs.insert_or_assign("ref", chomp(runHg({ "branch", "-R", actualUrl })));
 

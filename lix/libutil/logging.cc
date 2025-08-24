@@ -305,10 +305,8 @@ bool handleJSONLogMessage(JSON & json,
 
         return true;
     } catch (JSON::exception &e) { // NOLINT(lix-foreign-exceptions)
-        warn(
-            "Unable to handle a JSON message from %s: %s",
-            Uncolored(source),
-            e.what()
+        printTaggedWarning(
+            "Unable to handle a JSON message from %s: %s", Uncolored(source), e.what()
         );
         return false;
     }

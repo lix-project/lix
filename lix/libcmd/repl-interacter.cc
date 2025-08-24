@@ -244,8 +244,7 @@ void ReadlineLikeInteracter::writeHistory()
     // them so the user isn't confused why their history is getting eaten.
 
     std::string_view const errMsg(std::strerror(writeHistErr));
-    warn("ignoring error writing repl history to %s: %s", this->historyFile, errMsg);
-
+    printTaggedWarning("ignoring error writing repl history to %s: %s", this->historyFile, errMsg);
 }
 
 ReadlineLikeInteracter::~ReadlineLikeInteracter()

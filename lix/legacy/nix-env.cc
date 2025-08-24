@@ -317,9 +317,9 @@ std::vector<Match> pickNewestOnly(EvalState & state, std::vector<Match> matches)
     matches.clear();
     for (auto & [name, match] : newest) {
         if (multiple.find(name) != multiple.end())
-            warn(
-                "there are multiple derivations named '%1%'; using the first one",
-                name);
+            printTaggedWarning(
+                "there are multiple derivations named '%1%'; using the first one", name
+            );
         matches.push_back(match);
     }
 
@@ -845,7 +845,7 @@ static void uninstallDerivations(Globals & globals, Strings & selectors,
                 );
             }
             if (split == workingElems.end())
-                warn("selector '%s' matched no installed derivations", selector);
+                printTaggedWarning("selector '%s' matched no installed derivations", selector);
             for (auto removedElem = split; removedElem != workingElems.end(); removedElem++) {
                 printInfo("uninstalling '%s'", removedElem->queryName(*state));
             }

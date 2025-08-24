@@ -386,7 +386,9 @@ void initPlugins()
                 // inaccessible, since it is *already* the case that plugins
                 // are not guaranteed to load due to version mismatches etc
                 // causing dlopen failures.
-                warn("could not access plugin file '%s', skipping it: %s", pluginFile, e.msg());
+                printTaggedWarning(
+                    "could not access plugin file '%s', skipping it: %s", pluginFile, e.msg()
+                );
                 continue;
             }
             pluginFiles.emplace_back(pluginFile);
@@ -397,7 +399,9 @@ void initPlugins()
             void *handle =
                 dlopen(file.c_str(), RTLD_LAZY | RTLD_LOCAL);
             if (!handle) {
-                warn("could not dynamically open plugin file '%s', skipping it: %s", file, dlerror());
+                printTaggedWarning(
+                    "could not dynamically open plugin file '%s', skipping it: %s", file, dlerror()
+                );
                 continue;
             }
 
@@ -447,8 +451,7 @@ static void preloadNSS()
          *
          * All other platforms are unaffected.
          */
-        if (!dlopen(LIBNSS_DNS_SO, RTLD_NOW))
-            warn("unable to load nss_dns backend");
+        if (!dlopen(LIBNSS_DNS_SO, RTLD_NOW)) printTaggedWarning("unable to load nss_dns backend");
         // FIXME: get hosts entry from nsswitch.conf.
         __nss_configure_lookup("hosts", "files dns");
 #endif

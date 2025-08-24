@@ -71,21 +71,29 @@ void unshareFilesystem()
 static void diagnoseUserNamespaces()
 {
     if (!pathExists("/proc/self/ns/user")) {
-        warn("'/proc/self/ns/user' does not exist; your kernel was likely built without CONFIG_USER_NS=y");
+        printTaggedWarning(
+            "'/proc/self/ns/user' does not exist; your kernel was likely built without "
+            "CONFIG_USER_NS=y"
+        );
     }
 
     Path maxUserNamespaces = "/proc/sys/user/max_user_namespaces";
     if (!pathExists(maxUserNamespaces) ||
         trim(readFile(maxUserNamespaces)) == "0")
     {
-        warn("user namespaces appear to be disabled; check '/proc/sys/user/max_user_namespaces'");
+        printTaggedWarning(
+            "user namespaces appear to be disabled; check '/proc/sys/user/max_user_namespaces'"
+        );
     }
 
     Path procSysKernelUnprivilegedUsernsClone = "/proc/sys/kernel/unprivileged_userns_clone";
     if (pathExists(procSysKernelUnprivilegedUsernsClone)
         && trim(readFile(procSysKernelUnprivilegedUsernsClone)) == "0")
     {
-        warn("user namespaces appear to be disabled for unprivileged users; check '/proc/sys/kernel/unprivileged_userns_clone'");
+        printTaggedWarning(
+            "user namespaces appear to be disabled for unprivileged users; check "
+            "'/proc/sys/kernel/unprivileged_userns_clone'"
+        );
     }
 }
 
@@ -99,7 +107,7 @@ bool userNamespacesSupported()
             auto r = pid.wait();
             assert(!r);
         } catch (SysError & e) {
-            warn("user namespaces do not work on this system: %s", e.msg());
+            printTaggedWarning("user namespaces do not work on this system: %s", e.msg());
             diagnoseUserNamespaces();
             return false;
         }

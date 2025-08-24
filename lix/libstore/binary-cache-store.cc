@@ -208,7 +208,7 @@ try {
             // instead.
             // NOLINTNEXTLINE(lix-foreign-exceptions): see above
         } catch (JSON::exception & exc) {
-            warn(
+            printTaggedWarning(
                 "Skipping NAR listing for path '%1%' due to serialization failure: %2%",
                 printStorePath(narInfo->path),
                 exc.what()

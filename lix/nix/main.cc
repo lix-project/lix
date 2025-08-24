@@ -292,8 +292,9 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
         auto arg = *pos;
         auto i = aliases.find(arg);
         if (i == aliases.end()) return pos;
-        warn("'%s' is a deprecated alias for '%s'",
-            arg, concatStringsSep(" ", i->second));
+        printTaggedWarning(
+            "'%s' is a deprecated alias for '%s'", arg, concatStringsSep(" ", i->second)
+        );
         pos = args.erase(pos);
         for (auto j = i->second.rbegin(); j != i->second.rend(); ++j)
             pos = args.insert(pos, *j);
@@ -608,7 +609,9 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
         args.command->second->experimentalFeature());
 
     if (args.useNet && !haveInternet()) {
-        warn("you don't have Internet access; disabling some network-dependent features");
+        printTaggedWarning(
+            "you don't have Internet access; disabling some network-dependent features"
+        );
         args.useNet = false;
     }
 

@@ -266,6 +266,7 @@ extern Verbosity verbosity;
     } while (0)
 #define printMsg(level, args...) printMsgUsing(::nix::logger, level, args)
 
+#define printWarning(args...) printMsg(::nix::lvlWarn, args)
 #define printError(args...) printMsg(::nix::lvlError, args)
 #define notice(args...) printMsg(::nix::lvlNotice, args)
 #define printInfo(args...) printMsg(::nix::lvlInfo, args)
@@ -273,16 +274,8 @@ extern Verbosity verbosity;
 #define debug(args...) printMsg(::nix::lvlDebug, args)
 #define vomit(args...) printMsg(::nix::lvlVomit, args)
 
-/**
- * if verbosity >= lvlWarn, print a message with a yellow 'warning:' prefix.
- */
-template<typename... Args>
-inline void warn(const std::string & fs, const Args &... args)
-{
-    logger->log(
-        lvlWarn, fmt(ANSI_WARNING "warning:" ANSI_NORMAL " %1%", HintFmt(fs, args...).str())
-    );
-}
+#define printTaggedWarning(args...) \
+    printWarning(ANSI_WARNING "warning:" ANSI_NORMAL " %1%", ::nix::HintFmt(args).str())
 
 void writeLogsToStderr(std::string_view s);
 

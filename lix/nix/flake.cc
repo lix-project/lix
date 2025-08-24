@@ -94,7 +94,11 @@ public:
                 for (const auto & inputToUpdate : inputsToUpdate) {
                     auto inputPath = flake::parseInputPath(inputToUpdate);
                     if (lockFlags.inputUpdates.contains(inputPath))
-                        warn("Input '%s' was specified multiple times. You may have done this by accident.", inputToUpdate);
+                        printTaggedWarning(
+                            "Input '%s' was specified multiple times. You may have done this by "
+                            "accident.",
+                            inputToUpdate
+                        );
                     lockFlags.inputUpdates.insert(inputPath);
                 }
             }},
@@ -320,7 +324,7 @@ struct CmdFlakeInfo : CmdFlakeMetadata
 {
     void run(nix::ref<nix::Store> store) override
     {
-        warn("'nix flake info' is a deprecated alias for 'nix flake metadata'");
+        printTaggedWarning("'nix flake info' is a deprecated alias for 'nix flake metadata'");
         CmdFlakeMetadata::run(store);
     }
 };
@@ -605,7 +609,11 @@ struct CmdFlakeCheck : FlakeCommand
                             name == "nixosModule" ? "nixosModules.default" :
                             "";
                         if (replacement != "")
-                            warn("flake output attribute '%s' is deprecated; use '%s' instead", name, replacement);
+                            printTaggedWarning(
+                                "flake output attribute '%s' is deprecated; use '%s' instead",
+                                name,
+                                replacement
+                            );
 
                         if (name == "checks") {
                             state->forceAttrs(vOutput, pos, "");
@@ -804,7 +812,7 @@ struct CmdFlakeCheck : FlakeCommand
                             ;
 
                         else
-                            warn("unknown flake output '%s'", name);
+                            printTaggedWarning("unknown flake output '%s'", name);
 
                     } catch (Error & e) {
                         e.addTrace(resolve(pos), HintFmt("while checking flake output '%s'", name));
@@ -823,7 +831,7 @@ struct CmdFlakeCheck : FlakeCommand
             throw Error("some errors were encountered during the evaluation");
 
         if (!omittedSystems.empty()) {
-            warn(
+            printTaggedWarning(
                 "The check omitted these incompatible systems: %s\n"
                 "Use '--all-systems' to check all.",
                 concatStringsSep(", ", omittedSystems)
@@ -1340,7 +1348,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                         if (!json)
                             logger->cout(fmt("%s " ANSI_WARNING "omitted" ANSI_NORMAL " (use '--all-systems' to show)", headerPrefix));
                         else {
-                            warn(
+                            printTaggedWarning(
                                 "%s omitted (use '--all-systems' to show)",
                                 concatStringsSep(".", attrPath)
                             );
@@ -1367,7 +1375,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                         if (!json)
                             logger->cout(fmt("%s " ANSI_WARNING "omitted" ANSI_NORMAL " (use '--legacy' to show)", headerPrefix));
                         else {
-                            warn(
+                            printTaggedWarning(
                                 "%s omitted (use '--legacy' to show)",
                                 concatStringsSep(".", attrPath)
                             );
@@ -1376,7 +1384,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                         if (!json)
                             logger->cout(fmt("%s " ANSI_WARNING "omitted" ANSI_NORMAL " (use '--all-systems' to show)", headerPrefix));
                         else {
-                            warn(
+                            printTaggedWarning(
                                 "%s omitted (use '--all-systems' to show)",
                                 concatStringsSep(".", attrPath)
                             );

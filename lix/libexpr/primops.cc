@@ -906,18 +906,47 @@ drvName, Bindings * attrs, Value & v)
                     }
 
                     if (i->name == state.ctx.s.allowedReferences)
-                        warn("In a derivation named '%s', 'structuredAttrs' disables the effect of the derivation attribute 'allowedReferences'; use 'outputChecks.<output>.allowedReferences' instead", drvName);
+                        printTaggedWarning(
+                            "In a derivation named '%s', 'structuredAttrs' disables the effect of "
+                            "the derivation attribute 'allowedReferences'; use "
+                            "'outputChecks.<output>.allowedReferences' instead",
+                            drvName
+                        );
                     if (i->name == state.ctx.s.allowedRequisites)
-                        warn("In a derivation named '%s', 'structuredAttrs' disables the effect of the derivation attribute 'allowedRequisites'; use 'outputChecks.<output>.allowedRequisites' instead", drvName);
+                        printTaggedWarning(
+                            "In a derivation named '%s', 'structuredAttrs' disables the effect of "
+                            "the derivation attribute 'allowedRequisites'; use "
+                            "'outputChecks.<output>.allowedRequisites' instead",
+                            drvName
+                        );
                     if (i->name == state.ctx.s.disallowedReferences)
-                        warn("In a derivation named '%s', 'structuredAttrs' disables the effect of the derivation attribute 'disallowedReferences'; use 'outputChecks.<output>.disallowedReferences' instead", drvName);
+                        printTaggedWarning(
+                            "In a derivation named '%s', 'structuredAttrs' disables the effect of "
+                            "the derivation attribute 'disallowedReferences'; use "
+                            "'outputChecks.<output>.disallowedReferences' instead",
+                            drvName
+                        );
                     if (i->name == state.ctx.s.disallowedRequisites)
-                        warn("In a derivation named '%s', 'structuredAttrs' disables the effect of the derivation attribute 'disallowedRequisites'; use 'outputChecks.<output>.disallowedRequisites' instead", drvName);
+                        printTaggedWarning(
+                            "In a derivation named '%s', 'structuredAttrs' disables the effect of "
+                            "the derivation attribute 'disallowedRequisites'; use "
+                            "'outputChecks.<output>.disallowedRequisites' instead",
+                            drvName
+                        );
                     if (i->name == state.ctx.s.maxSize)
-                        warn("In a derivation named '%s', 'structuredAttrs' disables the effect of the derivation attribute 'maxSize'; use 'outputChecks.<output>.maxSize' instead", drvName);
+                        printTaggedWarning(
+                            "In a derivation named '%s', 'structuredAttrs' disables the effect of "
+                            "the derivation attribute 'maxSize'; use "
+                            "'outputChecks.<output>.maxSize' instead",
+                            drvName
+                        );
                     if (i->name == state.ctx.s.maxClosureSize)
-                        warn("In a derivation named '%s', 'structuredAttrs' disables the effect of the derivation attribute 'maxClosureSize'; use 'outputChecks.<output>.maxClosureSize' instead", drvName);
-
+                        printTaggedWarning(
+                            "In a derivation named '%s', 'structuredAttrs' disables the effect of "
+                            "the derivation attribute 'maxClosureSize'; use "
+                            "'outputChecks.<output>.maxClosureSize' instead",
+                            drvName
+                        );
 
                 } else {
                     auto s = state.coerceToString(noPos, *i->value, context, context_below, StringCoercionMode::ToString).toOwned();

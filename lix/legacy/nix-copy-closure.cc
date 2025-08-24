@@ -23,7 +23,7 @@ static int main_nix_copy_closure(AsyncIoRoot & aio, std::string programName, Str
                 printVersion("nix-copy-closure");
             else if (*arg == "--gzip" || *arg == "--bzip2" || *arg == "--xz") {
                 if (*arg != "--gzip")
-                    warn("'%1%' is not implemented, falling back to gzip", *arg);
+                    printTaggedWarning("'%1%' is not implemented, falling back to gzip", *arg);
                 gzip = true;
             } else if (*arg == "--from")
                 toMode = false;

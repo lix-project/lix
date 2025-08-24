@@ -1383,7 +1383,11 @@ openFromNonUri(const std::string & uri, const StoreConfig::Params & params, Allo
                 } catch (Error & e) {
                     return LocalStore::makeLocalStore(params);
                 }
-                warn("'%s' does not exist, so Lix will use '%s' as a chroot store", stateDir, chrootStore);
+                printTaggedWarning(
+                    "'%s' does not exist, so Lix will use '%s' as a chroot store",
+                    stateDir,
+                    chrootStore
+                );
             } else
                 debug("'%s' does not exist, so Lix will use '%s' as a chroot store", stateDir, chrootStore);
             StoreConfig::Params chrootStoreParams;

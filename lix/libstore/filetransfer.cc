@@ -1037,7 +1037,7 @@ struct curlFileTransfer : public FileTransfer
         )
         try {
             if (totalReceived) {
-                warn(
+                printTaggedWarning(
                     "%s; retrying from offset %d in %d ms (attempt %d/%d)",
                     context,
                     totalReceived,
@@ -1046,7 +1046,9 @@ struct curlFileTransfer : public FileTransfer
                     tries
                 );
             } else {
-                warn("%s; retrying in %d ms (attempt %d/%d)", context, waitTime, attempt, tries);
+                printTaggedWarning(
+                    "%s; retrying in %d ms (attempt %d/%d)", context, waitTime, attempt, tries
+                );
             }
 
             co_await AIO().provider.getTimer().afterDelay(waitTime.count() * kj::MILLISECONDS);

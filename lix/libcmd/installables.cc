@@ -61,7 +61,7 @@ MixFlakeOptions::MixFlakeOptions()
         .category = category,
         .handler = {[&]() {
             lockFlags.useRegistries = false;
-            warn("'--no-registries' is deprecated; use '--no-use-registries'");
+            printTaggedWarning("'--no-registries' is deprecated; use '--no-use-registries'");
         }}
     });
 
@@ -344,7 +344,7 @@ void completeFlakeRefWithFragment(
             }
         }
     } catch (Error & e) {
-        warn(e.msg());
+        printTaggedWarning(e.msg());
     }
 }
 

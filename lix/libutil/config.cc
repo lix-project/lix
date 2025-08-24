@@ -52,8 +52,11 @@ void Config::addSetting(AbstractSetting * setting)
     for (auto & alias : setting->aliases) {
         if (auto i = unknownSettings.find(alias); i != unknownSettings.end()) {
             if (set)
-                warn("setting '%s' is set, but it's an alias of '%s' which is also set",
-                    alias, setting->name);
+                printTaggedWarning(
+                    "setting '%s' is set, but it's an alias of '%s' which is also set",
+                    alias,
+                    setting->name
+                );
             else {
                 setting->set(std::move(i->second));
                 unknownSettings.erase(i);
@@ -70,7 +73,7 @@ AbstractConfig::AbstractConfig(StringMap initials)
 void AbstractConfig::warnUnknownSettings()
 {
     for (const auto & s : unknownSettings)
-        warn("unknown setting '%s'", s.first);
+        printTaggedWarning("unknown setting '%s'", s.first);
 }
 
 void AbstractConfig::reapplyUnknownSettings()
@@ -349,7 +352,7 @@ template<> ExperimentalFeatures BaseSetting<ExperimentalFeatures>::parse(const s
         if (auto thisXpFeature = parseExperimentalFeature(s); thisXpFeature) {
             res = res | thisXpFeature.value();
         } else
-            warn("unknown experimental feature '%s'", s);
+            printTaggedWarning("unknown experimental feature '%s'", s);
     }
     return res;
 }
@@ -378,7 +381,7 @@ template<> DeprecatedFeatures BaseSetting<DeprecatedFeatures>::parse(const std::
         if (auto thisDpFeature = parseDeprecatedFeature(s); thisDpFeature)
             res = res | thisDpFeature.value();
         else
-            warn("unknown deprecated feature '%s'", s);
+            printTaggedWarning("unknown deprecated feature '%s'", s);
     }
     return res;
 }

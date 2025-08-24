@@ -351,7 +351,7 @@ void AutoDestroyCgroup::destroy()
             [&, this](const Path & aliveCgroup) {
                 auto maybeStats = destroyCgroup(name_, aliveCgroup);
                 if (!maybeStats) {
-                    warn(
+                    printTaggedWarning(
                         "cgroup '%s' was destroyed unexpectedly (something else removed the "
                         "cgroup).",
                         aliveCgroup
@@ -390,7 +390,7 @@ void AutoDestroyCgroup::cleansePreviousInstancesAndRecordOurself(
 
     if (pathExists(cgroupFile)) {
         auto prevCgroup = readFile(cgroupFile);
-        warn("destroying past cgroup '%s' found in the state directory", name_);
+        printTaggedWarning("destroying past cgroup '%s' found in the state directory", name_);
         destroyCgroup(fmt("past %s", name_), prevCgroup);
     }
 

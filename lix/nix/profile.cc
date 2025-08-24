@@ -264,12 +264,12 @@ struct CmdProfileRemove : virtual EvalCommand, MixDefaultProfile, MixProfileElem
         if (removedCount == 0) {
             for (auto matcher: matchers) {
                 if (const Path * path = std::get_if<Path>(&matcher)) {
-                    warn("'%s' does not match any paths", *path);
+                    printTaggedWarning("'%s' does not match any paths", *path);
                 } else if (const RegexPattern * regex = std::get_if<RegexPattern>(&matcher)){
-                    warn("'%s' does not match any packages", regex->pattern);
+                    printTaggedWarning("'%s' does not match any packages", regex->pattern);
                 }
             }
-            warn ("Use 'nix profile list' to see the current profile.");
+            printTaggedWarning("Use 'nix profile list' to see the current profile.");
         }
         updateProfile(aio().blockOn(newManifest.build(store)));
     }
@@ -310,16 +310,18 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
             matchedCount += 1;
 
             if (!element.source) {
-                warn(
-                    "Found package '%s', but it was not installed from a flake, so it can't be checked for upgrades",
+                printTaggedWarning(
+                    "Found package '%s', but it was not installed from a flake, so it can't be "
+                    "checked for upgrades",
                     element.identifier()
                 );
                 continue;
             }
 
             if (element.source->originalRef.input.isLocked()) {
-                warn(
-                    "Found package '%s', but it was installed from a locked flake reference so it can't be upgraded",
+                printTaggedWarning(
+                    "Found package '%s', but it was installed from a locked flake reference so it "
+                    "can't be upgraded",
                     element.identifier()
                 );
                 continue;
@@ -383,15 +385,15 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
             if (matchedCount == 0) {
                 for (auto & matcher : matchers) {
                     if (const Path * path = std::get_if<Path>(&matcher)){
-                        warn("'%s' does not match any paths", *path);
+                        printTaggedWarning("'%s' does not match any paths", *path);
                     } else if (const RegexPattern * regex = std::get_if<RegexPattern>(&matcher)) {
-                        warn("'%s' does not match any packages", regex->pattern);
+                        printTaggedWarning("'%s' does not match any packages", regex->pattern);
                     }
                 }
             } else {
-                warn("Found some packages but none of them could be upgraded");
+                printTaggedWarning("Found some packages but none of them could be upgraded");
             }
-            warn ("Use 'nix profile list' to see the current profile.");
+            printTaggedWarning("Use 'nix profile list' to see the current profile.");
         }
 
         auto builtPaths = builtPathsPerInstallable(

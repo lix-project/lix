@@ -153,8 +153,12 @@ try {
        only after we've downloaded the path. */
     if (!sub->config().isTrusted && worker.store.pathInfoIsUntrusted(*info))
     {
-        warn("ignoring substitute for '%s' from '%s', as it's not signed by any of the keys in 'trusted-public-keys'",
-            worker.store.printStorePath(storePath), sub->getUri());
+        printTaggedWarning(
+            "ignoring substitute for '%s' from '%s', as it's not signed by any of the keys in "
+            "'trusted-public-keys'",
+            worker.store.printStorePath(storePath),
+            sub->getUri()
+        );
         co_return co_await tryNext();
     }
 

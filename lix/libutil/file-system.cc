@@ -794,7 +794,7 @@ void moveFile(const Path & oldName, const Path & newName)
         auto tempCopyTarget = temp / "copy-target";
         if (e.code().value() == EXDEV) {
             fs::remove(newPath);
-            warn("Can’t rename %s as %s, copying instead", oldName, newName);
+            printTaggedWarning("Can’t rename %s as %s, copying instead", oldName, newName);
             copy(fs::directory_entry(oldPath), tempCopyTarget, { .deleteAfter = true });
             renameFile(tempCopyTarget, newPath);
         }

@@ -89,7 +89,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
 
         if (dryRun) {
             logger->pause();
-            warn("would upgrade to version %s", version);
+            printTaggedWarning("would upgrade to version %s", version);
             return;
         }
 

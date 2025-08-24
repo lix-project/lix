@@ -41,8 +41,9 @@ MixCommonArgs::MixCommonArgs(const std::string & programName)
             try {
                 globalConfig.set(name, value);
             } catch (UsageError & e) {
-                if (!getRoot().completions)
-                    warn(e.what());
+                if (!getRoot().completions) {
+                    printTaggedWarning(e.what());
+                }
             }
         }},
         .completer = [](AddCompletions & completions, size_t index, std::string_view prefix) {

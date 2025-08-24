@@ -41,14 +41,24 @@ static bool askForSetting(
     auto reply = logger->ask(fmt("Do you want to allow configuration setting '%s' to be set to '" ANSI_RED "%s" ANSI_NORMAL "'?\nThis may allow the flake to gain root, see the nix.conf manual page (" ANSI_BOLD "y" ANSI_NORMAL "es/" ANSI_BOLD "n" ANSI_NORMAL "o/" ANSI_BOLD "N" ANSI_NORMAL "o to all) ", name, valueS)).value_or('n');
 
     if (reply == 'N') {
-        warn("Rejecting all untrusted nix.conf entries");
-        warn("you can set '%s' to '%b' to automatically reject configuration options supplied by flakes", "accept-flake-config", false);
+        printTaggedWarning("Rejecting all untrusted nix.conf entries");
+        printTaggedWarning(
+            "you can set '%s' to '%b' to automatically reject configuration options supplied by "
+            "flakes",
+            "accept-flake-config",
+            false
+        );
         negativeTrustOverride = true;
     } else {
         if (std::tolower(reply) == 'y') {
             trusted = true;
         } else {
-            warn("you can set '%s' to '%b' to automatically reject configuration options supplied by flakes", "accept-flake-config", false);
+            printTaggedWarning(
+                "you can set '%s' to '%b' to automatically reject configuration options supplied "
+                "by flakes",
+                "accept-flake-config",
+                false
+            );
         }
 
         if (std::tolower(logger->ask(fmt("do you want to permanently (in %s) mark this value as %s? (y/N) ", trustedListPath(), trusted ? "trusted": "untrusted" )).value_or('n')) == 'y') {
@@ -117,7 +127,12 @@ void ConfigFile::apply()
             debug("accepting trusted flake configuration setting '%s'", name);
             globalConfig.set(name, valueS);
         } else {
-            warn("ignoring untrusted flake configuration setting '%s', pass '%s' to trust it (may allow the flake to gain root, see the nix.conf manual page)", name, "--accept-flake-config");
+            printTaggedWarning(
+                "ignoring untrusted flake configuration setting '%s', pass '%s' to trust it (may "
+                "allow the flake to gain root, see the nix.conf manual page)",
+                name,
+                "--accept-flake-config"
+            );
         }
     }
 }

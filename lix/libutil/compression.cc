@@ -149,7 +149,9 @@ struct NoneSink : CompressionSink
     NoneSink(Sink & nextSink, int level = COMPRESSION_LEVEL_DEFAULT) : nextSink(nextSink)
     {
         if (level != COMPRESSION_LEVEL_DEFAULT)
-            warn("requested compression level '%d' not supported by compression method 'none'", level);
+            printTaggedWarning(
+                "requested compression level '%d' not supported by compression method 'none'", level
+            );
     }
     void finish() override { flush(); }
     void writeUnbuffered(std::string_view data) override { nextSink(data); }

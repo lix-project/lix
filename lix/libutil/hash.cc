@@ -265,7 +265,7 @@ Hash newHashAllowEmpty(std::string_view hashStr, std::optional<HashType> ht)
         if (!ht)
             throw BadHash("empty hash requires explicit hash type");
         Hash h(*ht);
-        warn("found empty hash, assuming '%s'", h.to_string(Base::SRI, true));
+        printTaggedWarning("found empty hash, assuming '%s'", h.to_string(Base::SRI, true));
         return h;
     } else
         return Hash::parseAny(hashStr, ht);

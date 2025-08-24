@@ -130,7 +130,7 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
        NixOS (example: $fontconfig/var/cache being modified).  Skip
        those files.  FIXME: check the modification time. */
     if (S_ISREG(st.st_mode) && (st.st_mode & S_IWUSR)) {
-        warn("skipping suspicious writable file '%1%'", path);
+        printTaggedWarning("skipping suspicious writable file '%1%'", path);
         return;
     }
 
@@ -162,9 +162,11 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
             || (repair && hash != hashPath(HashType::SHA256, linkPath).first))
         {
             // XXX: Consider overwriting linkPath with our valid version.
-            warn("removing corrupted link '%s'", linkPath);
-            warn("There may be more corrupted paths."
-                 "\nYou should run `nix-store --verify --check-contents --repair` to fix them all");
+            printTaggedWarning("removing corrupted link '%s'", linkPath);
+            printTaggedWarning(
+                "There may be more corrupted paths."
+                "\nYou should run `nix-store --verify --check-contents --repair` to fix them all"
+            );
             if (unlink(linkPath.c_str()) == -1 && errno != ENOENT)
                 throw SysError("cannot unlink '%1%'", linkPath);
             stLinkOpt.reset();

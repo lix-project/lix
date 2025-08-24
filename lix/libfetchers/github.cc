@@ -200,7 +200,7 @@ struct GitArchiveInputScheme : InputScheme
             if (hdr)
                 headers.push_back(*hdr);
             else
-                warn("Unrecognized access token for host '%s'", host);
+                printTaggedWarning("Unrecognized access token for host '%s'", host);
         }
         return headers;
     }
@@ -345,7 +345,7 @@ struct GitLabInputScheme : GitArchiveInputScheme
             return std::make_pair("Authorization", fmt("Bearer %s", token.substr(fldsplit+1)));
         if ("PAT" == token.substr(0, fldsplit))
             return std::make_pair("Private-token", token.substr(fldsplit+1));
-        warn("Unrecognized GitLab token type %s",  token.substr(0, fldsplit));
+        printTaggedWarning("Unrecognized GitLab token type %s", token.substr(0, fldsplit));
         return std::make_pair(token.substr(0,fldsplit), token.substr(fldsplit+1));
     }
 

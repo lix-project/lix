@@ -555,9 +555,11 @@ LockedFlake lockFlake(
                 auto follow = inputPath2.back();
                 inputPath2.pop_back();
                 if (inputPath2 == inputPathPrefix && !flakeInputs.count(follow))
-                    warn(
+                    printTaggedWarning(
                         "input '%s' has an override for a non-existent input '%s'",
-                        printInputPath(inputPathPrefix), follow);
+                        printInputPath(inputPathPrefix),
+                        follow
+                    );
             }
 
             /* Go over the flake inputs, resolve/fetch them if
@@ -768,12 +770,17 @@ LockedFlake lockFlake(
 
         for (auto & i : lockFlags.inputOverrides)
             if (!overridesUsed.count(i.first))
-                warn("the flag '--override-input %s %s' does not match any input",
-                    printInputPath(i.first), i.second);
+                printTaggedWarning(
+                    "the flag '--override-input %s %s' does not match any input",
+                    printInputPath(i.first),
+                    i.second
+                );
 
         for (auto & i : lockFlags.inputUpdates)
             if (!updatesUsed.count(i))
-                warn("'%s' does not match any input of this flake", printInputPath(i));
+                printTaggedWarning(
+                    "'%s' does not match any input of this flake", printInputPath(i)
+                );
 
         /* Check 'follows' inputs. */
         newLockFile.check();
@@ -791,7 +798,12 @@ LockedFlake lockFlake(
                 if (sourcePath || lockFlags.outputLockFilePath) {
                     if (auto unlockedInput = newLockFile.isUnlocked()) {
                         if (fetchSettings.warnDirty)
-                            warn("will not write lock file of flake '%s' because it has an unlocked input ('%s')", topRef, *unlockedInput);
+                            printTaggedWarning(
+                                "will not write lock file of flake '%s' because it has an unlocked "
+                                "input ('%s')",
+                                topRef,
+                                *unlockedInput
+                            );
                     } else {
                         if (!lockFlags.updateLockFile)
                             throw Error("flake '%s' requires lock file changes but they're not allowed due to '--no-update-lock-file'", topRef);
@@ -811,11 +823,19 @@ LockedFlake lockFlake(
                             auto s = chomp(diff);
                             if (lockFileExists) {
                                 if (s.empty())
-                                    warn("updating lock file '%s'", outputLockFilePath);
+                                    printTaggedWarning(
+                                        "updating lock file '%s'", outputLockFilePath
+                                    );
                                 else
-                                    warn("updating lock file '%s':\n%s", outputLockFilePath, Uncolored(s));
+                                    printTaggedWarning(
+                                        "updating lock file '%s':\n%s",
+                                        outputLockFilePath,
+                                        Uncolored(s)
+                                    );
                             } else
-                                warn("creating lock file '%s':\n%s", outputLockFilePath, Uncolored(s));
+                                printTaggedWarning(
+                                    "creating lock file '%s':\n%s", outputLockFilePath, Uncolored(s)
+                                );
 
                             std::optional<std::string> commitMessage = std::nullopt;
 
@@ -848,7 +868,10 @@ LockedFlake lockFlake(
                         if (lockFlags.commitLockFile &&
                             flake.lockedRef.input.getRev() &&
                             prevLockedRef.input.getRev() != flake.lockedRef.input.getRev())
-                            warn("committed new revision '%s'", flake.lockedRef.input.getRev()->gitRev());
+                            printTaggedWarning(
+                                "committed new revision '%s'",
+                                flake.lockedRef.input.getRev()->gitRev()
+                            );
 
                         /* Make sure that we picked up the change,
                            i.e. the tree should usually be dirty
@@ -861,7 +884,9 @@ LockedFlake lockFlake(
                 } else
                     throw Error("cannot write modified lock file of flake '%s' (use '--no-write-lock-file' to ignore)", topRef);
             } else {
-                warn("not writing modified lock file of flake '%s':\n%s", topRef, chomp(diff));
+                printTaggedWarning(
+                    "not writing modified lock file of flake '%s':\n%s", topRef, chomp(diff)
+                );
                 flake.forceDirty = true;
             }
         }

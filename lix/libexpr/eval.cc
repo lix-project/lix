@@ -2591,7 +2591,7 @@ void Evaluator::maybePrintStats()
         // Make the final heap size more deterministic.
 #if HAVE_BOEHMGC
         if (!fullGC()) {
-            warn("failed to perform a full GC before reporting stats");
+            printTaggedWarning("failed to perform a full GC before reporting stats");
         }
 #endif
         printStatistics();
