@@ -127,11 +127,6 @@ public:
 
     virtual void log(Verbosity lvl, std::string_view s) = 0;
 
-    void log(std::string_view s)
-    {
-        log(lvlInfo, s);
-    }
-
     virtual void logEI(const ErrorInfo & ei) = 0;
 
     void logEI(Verbosity lvl, ErrorInfo ei)
