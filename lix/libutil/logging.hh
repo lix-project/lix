@@ -244,36 +244,36 @@ extern Verbosity verbosity;
  * intervention or that need more explanation.  Use the 'print' macros for more
  * lightweight status messages.
  */
-#define logErrorInfo(level, errorInfo...) \
-    do { \
-        if ((level) <= nix::verbosity) {     \
-            logger->logEI((level), errorInfo);  \
-        } \
+#define logErrorInfo(level, errorInfo...)             \
+    do {                                              \
+        if ((level) <= ::nix::verbosity) {            \
+            ::nix::logger->logEI((level), errorInfo); \
+        }                                             \
     } while (0)
 
-#define logError(errorInfo...) logErrorInfo(lvlError, errorInfo)
-#define logWarning(errorInfo...) logErrorInfo(lvlWarn, errorInfo)
+#define logError(errorInfo...) logErrorInfo(::nix::lvlError, errorInfo)
+#define logWarning(errorInfo...) logErrorInfo(::nix::lvlWarn, errorInfo)
 
 /**
  * Print a string message if the current log level is at least the specified
  * level. Note that this has to be implemented as a macro to ensure that the
  * arguments are evaluated lazily.
  */
-#define printMsgUsing(loggerParam, level, args...)              \
-    do {                                                        \
-        auto _lix_logger_print_lvl = level;                     \
-        if (_lix_logger_print_lvl <= nix::verbosity) {          \
-            loggerParam->log(_lix_logger_print_lvl, fmt(args)); \
-        }                                                       \
+#define printMsgUsing(loggerParam, level, args...)                     \
+    do {                                                               \
+        auto _lix_logger_print_lvl = level;                            \
+        if (_lix_logger_print_lvl <= ::nix::verbosity) {               \
+            loggerParam->log(_lix_logger_print_lvl, ::nix::fmt(args)); \
+        }                                                              \
     } while (0)
-#define printMsg(level, args...) printMsgUsing(logger, level, args)
+#define printMsg(level, args...) printMsgUsing(::nix::logger, level, args)
 
-#define printError(args...) printMsg(lvlError, args)
-#define notice(args...) printMsg(lvlNotice, args)
-#define printInfo(args...) printMsg(lvlInfo, args)
-#define printTalkative(args...) printMsg(lvlTalkative, args)
-#define debug(args...) printMsg(lvlDebug, args)
-#define vomit(args...) printMsg(lvlVomit, args)
+#define printError(args...) printMsg(::nix::lvlError, args)
+#define notice(args...) printMsg(::nix::lvlNotice, args)
+#define printInfo(args...) printMsg(::nix::lvlInfo, args)
+#define printTalkative(args...) printMsg(::nix::lvlTalkative, args)
+#define debug(args...) printMsg(::nix::lvlDebug, args)
+#define vomit(args...) printMsg(::nix::lvlVomit, args)
 
 /**
  * if verbosity >= lvlWarn, print a message with a yellow 'warning:' prefix.
