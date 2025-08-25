@@ -188,6 +188,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
         throw UsageError("'-p' and '-E' are mutually exclusive");
 
     AutoDelete tmpDir(createTempDir("", myName));
+    AutoDelete buildTopTmpDir(createTempDir(tmpDir, "build-top"));
     if (outLink.empty())
         outLink = (Path) tmpDir + "/result";
 
@@ -431,7 +432,8 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
         }
 
         // Don't use defaultTempDir() here! We want to preserve the user's TMPDIR for the shell
-        env["NIX_BUILD_TOP"] = env["TMPDIR"] = env["TEMPDIR"] = env["TMP"] = env["TEMP"] = getEnvNonEmpty("TMPDIR").value_or("/tmp");
+        env["NIX_BUILD_TOP"] = env["TMPDIR"] = env["TEMPDIR"] = env["TMP"] = env["TEMP"] =
+            getEnvNonEmpty("TMPDIR").value_or(buildTopTmpDir);
         env["NIX_STORE"] = store->config().storeDir;
         env["NIX_BUILD_CORES"] = std::to_string(settings.buildCores);
 
