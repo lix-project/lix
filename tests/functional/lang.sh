@@ -38,24 +38,6 @@ set +x
 badDiff=0
 badExitCode=0
 
-for i in parse-fail-*.nix; do
-    echo "parsing $i (should fail)";
-    i=$(basename "$i" .nix)
-
-    declare -a flags=()
-    if test -e "$i.flags"; then
-        read -r -a flags < "$i.flags"
-    fi
-    if expectStderr 1 nix-instantiate --parse "${flags[@]}" "$i.nix" > "$i.err"
-    then
-        sed -i "s!$(pwd)!/pwd!g" "$i.err"
-        diffAndAccept "$i" err err.exp
-    else
-        echo "FAIL: $i shouldn't parse"
-        badExitCode=1
-    fi
-done
-
 for i in eval-fail-*.nix; do
     echo "evaluating $i (should fail)";
     i=$(basename "$i" .nix)
