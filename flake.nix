@@ -270,6 +270,22 @@
         # Binary package for various platforms.
         build = forAllSystems (system: self.packages.${system}.nix);
 
+        # Building Lix twice in CI is expensive, but we can catch a lot of static
+        # build regressions by at least making sure it evals and configures.
+        configure-static = lib.genAttrs linux64BitSystems (
+          system:
+          self.packages.${system}.nix-static.overrideAttrs {
+            dontBuild = true;
+            installPhase = ''
+              runHook preInstall
+
+              echo "configure-static complete. exiting with success"
+              mkdir -p "$out"
+              exit 0
+            '';
+          }
+        );
+
         # Ensure support for lowdown < 1.4 doesn't regress
         build-lowdown_1_3 = forAllSystems (
           system:
