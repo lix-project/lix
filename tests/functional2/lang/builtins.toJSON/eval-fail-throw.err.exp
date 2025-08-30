@@ -1,47 +1,47 @@
 error:
        … while calling the 'toJSON' builtin
-         at /pwd/eval-fail-toJSON.nix:1:1:
+         at /pwd/in.nix:1:1:
             1| builtins.toJSON {
              | ^
             2|   a.b = [
 
        … while evaluating attribute 'a'
-         at /pwd/eval-fail-toJSON.nix:2:3:
+         at /pwd/in.nix:2:3:
             1| builtins.toJSON {
             2|   a.b = [
              |   ^
             3|     true
 
        … while evaluating attribute 'b'
-         at /pwd/eval-fail-toJSON.nix:2:3:
+         at /pwd/in.nix:2:3:
             1| builtins.toJSON {
             2|   a.b = [
              |   ^
             3|     true
 
        … while evaluating list element at index 3
-         at /pwd/eval-fail-toJSON.nix:2:3:
+         at /pwd/in.nix:2:3:
             1| builtins.toJSON {
             2|   a.b = [
              |   ^
             3|     true
 
        … while evaluating attribute 'c'
-         at /pwd/eval-fail-toJSON.nix:7:7:
+         at /pwd/in.nix:7:7:
             6|     {
             7|       c.d = throw "hah no";
              |       ^
             8|     }
 
        … while evaluating attribute 'd'
-         at /pwd/eval-fail-toJSON.nix:7:7:
+         at /pwd/in.nix:7:7:
             6|     {
             7|       c.d = throw "hah no";
              |       ^
             8|     }
 
        … caused by explicit throw
-         at /pwd/eval-fail-toJSON.nix:7:13:
+         at /pwd/in.nix:7:13:
             6|     {
             7|       c.d = throw "hah no";
              |             ^

@@ -1,18 +1,18 @@
 error:
        … while calling the 'toJSON' builtin
-         at /pwd/eval-fail-toJSON-nested.nix:1:1:
+         at /pwd/in.nix:1:1:
             1| builtins.toJSON { foo = a: 1; }
              | ^
             2|
 
        … while evaluating attribute 'foo'
-         at /pwd/eval-fail-toJSON-nested.nix:1:19:
+         at /pwd/in.nix:1:19:
             1| builtins.toJSON { foo = a: 1; }
              |                   ^
             2|
 
        error: cannot convert a function to JSON
-       at /pwd/eval-fail-toJSON-nested.nix:1:19:
+       at /pwd/in.nix:1:19:
             1| builtins.toJSON { foo = a: 1; }
              |                   ^
             2|
