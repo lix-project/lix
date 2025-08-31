@@ -342,9 +342,7 @@ liblixexpr = declare_dependency(
   link_with : libexpr,
 )
 
-# FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
-liblixexpr_mstatic = is_static ? liblixexpr.as_link_whole() : liblixexpr
-meson.override_dependency('lix-expr', liblixexpr_mstatic)
+meson.override_dependency('lix-expr', liblixexpr)
 
 # FIXME: not using the pkg-config module because it creates way too many deps
 # while meson migration is in progress, and we want to not include boost here
