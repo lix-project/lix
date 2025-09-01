@@ -162,6 +162,47 @@ def test_apply() -> None:
         assert substituted_job["extraValue"]["the-name"].startswith("hello-")
         assert substituted_job["extraValue"]["version"] is not None
 
+def test_select_flake() -> None:
+    """Test the --select option to filter flake outputs before evaluation"""
+    with TemporaryDirectory() as tempdir:
+        # Test 1: Select specific attributes from hydraJobs
+        results, _ = evaluate(
+            tempdir,
+            0,
+            [
+                "--flake",
+                ".#hydraJobs",
+                "--select",
+                "outputs: { inherit (outputs) builtJob substitutedJob; }",
+            ],
+        )
+
+        # Should only have the two selected jobs
+        assert len(results) == 2
+        attrs = {r["attr"] for r in results}
+        assert attrs == {"builtJob", "substitutedJob"}
+
+        # Test 2: Select from the whole flake (outputs and inputs)
+        # When using --flake . we get a structure with 'outputs' and 'inputs'
+        results, _ = evaluate(
+            tempdir,
+            0,
+            [
+                "--flake",
+                "--workers",
+                "1",
+                ".",
+                "--select",
+                "flake: flake.outputs.hydraJobs",  # Select just hydraJobs from outputs
+            ],
+        )
+
+        # Should get the 4 hydraJobs
+        assert len(results) == 4
+        attrs = {r["attr"] for r in results}
+        assert "builtJob" in attrs
+        assert "substitutedJob" in attrs
+
 
 @pytest.mark.infiniterecursion
 def test_recursion_error() -> None:

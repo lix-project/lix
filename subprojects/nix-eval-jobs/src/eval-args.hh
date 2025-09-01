@@ -23,6 +23,7 @@ struct MyArgs : virtual public nix::MixEvalArgs,
     bool worker = false;
     std::string releaseExpr;
     std::string applyExpr;
+    std::string selectExpr;
     nix::Path gcRootsDir;
     bool flake = false;
     bool fromArgs = false;

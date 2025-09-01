@@ -18,6 +18,7 @@
 #include <lix/libexpr/eval-inline.hh>
 #include <lix/libexpr/eval.hh>
 #include <lix/libexpr/flake/flakeref.hh>
+#include <lix/libexpr/flake/flake.hh>
 #include <lix/libexpr/get-drvs.hh>
 #include <lix/libutil/input-accessor.hh>
 #include <lix/libutil/json.hh>
@@ -61,6 +62,29 @@ static nix::Value releaseExprTopLevelValue(nix::EvalState &state,
 
     return state.autoCallFunction(autoArgs, vTop, {});
 }
+
+auto evaluateFlake(nix::box_ptr<nix::EvalState> &state,
+                   nix::ref<nix::eval_cache::CachingEvaluator> &evaluator,
+                   const std::string &releaseExpr,
+                   const nix::flake::LockFlags &lockFlags) -> nix::Value {
+
+            auto [flakeRef, fragment, outputSpec] =
+                nix::parseFlakeRefWithFragmentAndExtendedOutputsSpec(
+                    releaseExpr, nix::absPath("."));
+            nix::InstallableFlake flake{
+                {}, evaluator, std::move(flakeRef), fragment, outputSpec,
+                {}, {},        lockFlags};
+
+    // If no fragment specified, use callFlake to get the full flake structure
+    // (just like :lf in the REPL)
+    if (fragment.empty()) {
+        return nix::flake::callFlake(*state, *flake.getLockedFlake(*state));
+    } else {
+        // Fragment specified, use normal evaluation
+        return flake.toValue(*state).first;
+    }
+}
+
 
 static std::string attrPathJoin(nix::JSON input) {
     return std::accumulate(input.begin(), input.end(), std::string(),
@@ -152,18 +176,26 @@ try {
 
     nix::Value vRoot = [&]() {
         auto state = evaluator->begin(aio);
-        if (args.flake) {
-            auto [flakeRef, fragment, outputSpec] =
-                nix::parseFlakeRefWithFragmentAndExtendedOutputsSpec(
-                    args.releaseExpr, nix::absPath("."));
-            nix::InstallableFlake flake{
-                {}, evaluator, std::move(flakeRef), fragment, outputSpec,
-                {}, {},        args.lockFlags};
+        nix::Value vEvaluated =
+            args.flake ? evaluateFlake(state, evaluator, args.releaseExpr, args.lockFlags)
+                       : releaseExprTopLevelValue(*state, autoArgs, args);
 
-            return flake.toValue(*state).first;
-        } else {
-            return releaseExprTopLevelValue(*state, autoArgs, args);
-        }
+        if (args.selectExpr.empty()) {
+            return vEvaluated;
+         }
+
+        // Apply the provided select function
+        auto & selectExpr =
+            evaluator->parseExprFromString(args.selectExpr, nix::CanonPath::fromCwd());
+
+        nix::Value vSelect = state->eval(selectExpr);
+
+        nix::Value vSelected = state->callFunction(vSelect, vEvaluated,nix::noPos);
+        state->forceAttrs(
+            vSelected, nix::noPos,
+            "'--select' must evaluate to an attrset (the traversal root)");
+
+        return vSelected;
     }();
 
     LineReader fromReader(from.release());
