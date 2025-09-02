@@ -488,9 +488,9 @@ int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
 
     {
         registerLegacyCommands();
-        auto legacy = (*LegacyCommandRegistry::commands)[programName];
+        auto legacy = nix::get(*LegacyCommandRegistry::commands, programName);
         if (legacy) {
-            return legacy(
+            return (*legacy)(
                 aio,
                 std::string(baseNameOf(argv[0])),
                 Strings(argv + 1, argv + argc),
