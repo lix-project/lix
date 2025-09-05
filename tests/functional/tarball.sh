@@ -30,6 +30,14 @@ test_tarball() {
     # Do not re-fetch paths already present
     nix-build  -o $TEST_ROOT/result -E "import (fetchTarball { url = \"file:///does-not-exist/must-remain-unused/$tarball\"; sha256 = \"$hash\"; })"
 
+    # Regression test: Ensure tarballs can be unpacked when the
+    # temporary directory is a symbolic link.
+    (
+        export HOME=$(mktemp -d)
+        ln -sf "$TMPDIR" "$HOME/tmp"
+        nix-build -o "$TEST_ROOT/result" --temp-dir "$HOME/tmp" -E "import (fetchTarball \"file://$tarball\")"
+    )
+
     nix-build  -o $TEST_ROOT/result -E "import (fetchTree \"file://$tarball\")"
     nix-build  -o $TEST_ROOT/result -E "import (fetchTree { type = \"tarball\"; url = \"file://$tarball\"; })"
     nix-build  -o $TEST_ROOT/result -E "import (fetchTree { type = \"tarball\"; url = \"file://$tarball\"; narHash = \"$hash\"; })"
