@@ -5,6 +5,7 @@
 #include "lix/libutil/finally.hh"
 #include "lix/libstore/gc-store.hh"
 #include "lix/libutil/processes.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libstore/platform/linux.hh"
 #include "lix/libutil/regex.hh"
@@ -79,8 +80,8 @@ LinuxLocalDerivationGoal::~LinuxLocalDerivationGoal()
     }
 }
 
-void LinuxLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
-{
+kj::Promise<Result<void>> LinuxLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
+try {
     auto procDir = AutoCloseDir{opendir("/proc")};
     if (procDir) {
         struct dirent * ent;
@@ -154,6 +155,10 @@ void LinuxLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
     readFileRoots("/proc/sys/kernel/modprobe", unchecked);
     readFileRoots("/proc/sys/kernel/fbsplash", unchecked);
     readFileRoots("/proc/sys/kernel/poweroff_cmd", unchecked);
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 #if HAVE_SECCOMP

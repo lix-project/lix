@@ -359,8 +359,8 @@ try {
     co_return result::current_exception();
 }
 
-void LocalStore::findPlatformRoots(UncheckedRoots & unchecked)
-{
+kj::Promise<Result<void>> LocalStore::findPlatformRoots(UncheckedRoots & unchecked)
+try {
     // N.B. This is (read: undertested!) fallback code only used for
     // non-Darwin, non-Linux platforms. Both major platforms have
     // platform-specific code in lix/libstore/platform/
@@ -376,13 +376,17 @@ void LocalStore::findPlatformRoots(UncheckedRoots & unchecked)
     } catch (ExecError & e) {
         /* lsof not installed, lsof failed */
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<void>> LocalStore::findRuntimeRoots(Roots & roots, bool censor)
 try {
     UncheckedRoots unchecked;
 
-    findPlatformRoots(unchecked);
+    TRY_AWAIT(findPlatformRoots(unchecked));
 
     for (auto & [target, links] : unchecked) {
         if (!isInStore(target)) continue;

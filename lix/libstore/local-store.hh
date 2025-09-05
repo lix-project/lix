@@ -393,7 +393,7 @@ private:
      * Find possible garbage collector roots in a platform-specific manner,
      * e.g. by looking in `/proc` or using `lsof`
      */
-    virtual void findPlatformRoots(UncheckedRoots & unchecked);
+    virtual kj::Promise<Result<void>> findPlatformRoots(UncheckedRoots & unchecked);
 
     kj::Promise<Result<void>> findRuntimeRoots(Roots & roots, bool censor);
 

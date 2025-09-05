@@ -23,7 +23,7 @@ public:
 
 private:
 
-    void findPlatformRoots(UncheckedRoots & unchecked) override;
+    kj::Promise<Result<void>> findPlatformRoots(UncheckedRoots & unchecked) override;
 };
 
 /**

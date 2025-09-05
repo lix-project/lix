@@ -1,4 +1,5 @@
 #include "lix/libstore/gc-store.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libstore/platform/darwin.hh"
 #include "lix/libutil/regex.hh"
@@ -14,8 +15,8 @@
 
 namespace nix {
 
-void DarwinLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
-{
+kj::Promise<Result<void>> DarwinLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
+try {
     auto storePathRegex = regex::storePathRegex(config().storeDir);
 
     std::vector<int> pids;
@@ -240,6 +241,10 @@ void DarwinLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
             throw;
         }
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 void DarwinLocalDerivationGoal::execBuilder(std::string builder, Strings args, Strings envStrs)
