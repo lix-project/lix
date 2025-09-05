@@ -33,8 +33,8 @@ static RunOptions hgOptions(const Strings & args)
 }
 
 // runProgram wrapper that uses hgOptions instead of stock RunOptions.
-static std::string runHg(const Strings & args)
-{
+static kj::Promise<Result<std::string>> runHg(const Strings & args)
+try {
     RunOptions opts = hgOptions(args);
 
     auto res = runProgram(std::move(opts));
@@ -42,7 +42,9 @@ static std::string runHg(const Strings & args)
     if (!statusOk(res.first))
         throw ExecError(res.first, "hg %1%", statusToString(res.first));
 
-    return res.second;
+    co_return res.second;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 static const std::set<std::string> allowedMercurialAttrs = {
@@ -145,12 +147,11 @@ struct MercurialInputScheme : InputScheme
         writeFile(absPath.abs(), contents);
 
         // FIXME: shut up if file is already tracked.
-        runHg(
-            { "add", absPath.abs() });
+        TRY_AWAIT(runHg({"add", absPath.abs()}));
 
-        if (commitMsg)
-            runHg(
-                { "commit", absPath.abs(), "-m", *commitMsg });
+        if (commitMsg) {
+            TRY_AWAIT(runHg({"commit", absPath.abs(), "-m", *commitMsg}));
+        }
         co_return result::success();
     } catch (...) {
         co_return result::current_exception();
@@ -179,7 +180,9 @@ struct MercurialInputScheme : InputScheme
 
         if (!input.getRef() && !input.getRev() && isLocal && pathExists(actualUrl + "/.hg")) {
 
-            bool clean = runHg({ "status", "-R", actualUrl, "--modified", "--added", "--removed" }) == "";
+            bool clean =
+                TRY_AWAIT(runHg({"status", "-R", actualUrl, "--modified", "--added", "--removed"}))
+                == "";
 
             if (!clean) {
 
@@ -192,10 +195,23 @@ struct MercurialInputScheme : InputScheme
                 if (fetchSettings.warnDirty)
                     printTaggedWarning("Mercurial tree '%s' is unclean", actualUrl);
 
-                input.attrs.insert_or_assign("ref", chomp(runHg({ "branch", "-R", actualUrl })));
+                input.attrs.insert_or_assign(
+                    "ref", chomp(TRY_AWAIT(runHg({"branch", "-R", actualUrl})))
+                );
 
                 auto files = tokenizeString<std::set<std::string>>(
-                    runHg({ "status", "-R", actualUrl, "--clean", "--modified", "--added", "--no-status", "--print0" }), "\0"s);
+                    TRY_AWAIT(runHg(
+                        {"status",
+                         "-R",
+                         actualUrl,
+                         "--clean",
+                         "--modified",
+                         "--added",
+                         "--no-status",
+                         "--print0"}
+                    )),
+                    "\0"s
+                );
 
                 Path actualPath(absPath(actualUrl));
 
@@ -221,8 +237,9 @@ struct MercurialInputScheme : InputScheme
                 co_return {std::move(storePath), input};
             }
 
-            auto tokens = tokenizeString<std::vector<std::string>>(
-                runHg({ "identify", "-R", actualUrl, "-r", ".", "--template", "{branch} {node}" }));
+            auto tokens = tokenizeString<std::vector<std::string>>(TRY_AWAIT(
+                runHg({"identify", "-R", actualUrl, "-r", ".", "--template", "{branch} {node}"})
+            ));
             assert(tokens.size() == 2);
             input.attrs.insert_or_assign("ref", tokens[0]);
             input.attrs.insert_or_assign("rev", tokens[1]);
@@ -291,26 +308,37 @@ struct MercurialInputScheme : InputScheme
 
             if (pathExists(cacheDir)) {
                 try {
-                    runHg({ "pull", "-R", cacheDir, "--", actualUrl });
-                }
-                catch (ExecError & e) {
+                    TRY_AWAIT(runHg({"pull", "-R", cacheDir, "--", actualUrl}));
+                } catch (ExecError & e) {
                     auto transJournal = cacheDir + "/.hg/store/journal";
-                    /* hg throws "abandoned transaction" error only if this file exists */
                     if (pathExists(transJournal)) {
-                        runHg({ "recover", "-R", cacheDir });
-                        runHg({ "pull", "-R", cacheDir, "--", actualUrl });
+                        // cannot await in catch, rest of exception handled below
+                        goto failed;
                     } else {
                         throw ExecError(e.status, "'hg pull' %s", statusToString(e.status));
                     }
                 }
+                if (false) {
+                failed:
+                    /* hg throws "abandoned transaction" error only if this file exists */
+                    TRY_AWAIT(runHg({"recover", "-R", cacheDir}));
+                    TRY_AWAIT(runHg({"pull", "-R", cacheDir, "--", actualUrl}));
+                }
             } else {
                 createDirs(dirOf(cacheDir));
-                runHg({ "clone", "--noupdate", "--", actualUrl, cacheDir });
+                TRY_AWAIT(runHg({"clone", "--noupdate", "--", actualUrl, cacheDir}));
             }
         }
 
-        auto tokens = tokenizeString<std::vector<std::string>>(
-            runHg({ "identify", "-R", cacheDir, "-r", revOrRef, "--template", "{node} {count(revset('::{rev}'))} {branch}" }));
+        auto tokens = tokenizeString<std::vector<std::string>>(TRY_AWAIT(runHg(
+            {"identify",
+             "-R",
+             cacheDir,
+             "-r",
+             revOrRef,
+             "--template",
+             "{node} {count(revset('::{rev}'))} {branch}"}
+        )));
         assert(tokens.size() == 3);
 
         input.attrs.insert_or_assign("rev", Hash::parseAny(tokens[0], HashType::SHA1).gitRev());
@@ -323,7 +351,9 @@ struct MercurialInputScheme : InputScheme
         Path tmpDir = createTempDir();
         AutoDelete delTmpDir(tmpDir, true);
 
-        runHg({ "archive", "-R", cacheDir, "-r", fmt("id(%s)", input.getRev()->gitRev()), tmpDir });
+        TRY_AWAIT(runHg(
+            {"archive", "-R", cacheDir, "-r", fmt("id(%s)", input.getRev()->gitRev()), tmpDir}
+        ));
 
         deletePath(tmpDir + "/.hg_archival.txt");
 

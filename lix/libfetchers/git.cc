@@ -67,15 +67,17 @@ Path getCachePath(std::string_view key)
 //
 //   ref: refs/heads/main       HEAD
 //   ...
-std::optional<std::string> readHead(const Path & path)
-{
+static kj::Promise<Result<std::optional<std::string>>> readHead(const Path & path)
+try {
     auto [status, output] = runProgram(RunOptions {
         .program = "git",
         // FIXME: use 'HEAD' to avoid returning all refs
         .args = {"ls-remote", "--symref", path},
         .isInteractive = true,
     });
-    if (status != 0) return std::nullopt;
+    if (status != 0) {
+        co_return std::nullopt;
+    }
 
     std::string_view line = output;
     line = line.substr(0, line.find("\n"));
@@ -88,27 +90,32 @@ std::optional<std::string> readHead(const Path & path)
                 debug("resolved HEAD rev '%s' for repo '%s'", parseResult->target, path);
                 break;
         }
-        return parseResult->target;
+        co_return parseResult->target;
     }
-    return std::nullopt;
+    co_return std::nullopt;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 // Persist the HEAD ref from the remote repo in the local cached repo.
-bool storeCachedHead(const std::string & actualUrl, const std::string & headRef)
-{
+static kj::Promise<Result<bool>>
+storeCachedHead(const std::string & actualUrl, const std::string & headRef)
+try {
     Path cacheDir = getCachePath(actualUrl);
     try {
         runProgram("git", true, { "-C", cacheDir, "--git-dir", ".", "symbolic-ref", "--", "HEAD", headRef });
     } catch (ExecError &e) {
         if (!WIFEXITED(e.status)) throw;
-        return false;
+        co_return false;
     }
     /* No need to touch refs/HEAD, because `git symbolic-ref` updates the mtime. */
-    return true;
+    co_return true;
+} catch (...) {
+    co_return result::current_exception();
 }
 
-std::optional<std::string> readHeadCached(const std::string & actualUrl)
-{
+static kj::Promise<Result<std::optional<std::string>>> readHeadCached(const std::string & actualUrl)
+try {
     // Create a cache path to store the branch of the HEAD ref. Append something
     // in front of the URL to prevent collision with the repository itself.
     Path cacheDir = getCachePath(actualUrl);
@@ -118,18 +125,20 @@ std::optional<std::string> readHeadCached(const std::string & actualUrl)
     struct stat st;
     std::optional<std::string> cachedRef;
     if (stat(headRefFile.c_str(), &st) == 0) {
-        cachedRef = readHead(cacheDir);
+        cachedRef = TRY_AWAIT(readHead(cacheDir));
         if (cachedRef != std::nullopt &&
             *cachedRef != gitInitialBranch &&
             isCacheFileWithinTtl(now, st))
         {
             debug("using cached HEAD ref '%s' for repo '%s'", *cachedRef, actualUrl);
-            return cachedRef;
+            co_return cachedRef;
         }
     }
 
-    auto ref = readHead(actualUrl);
-    if (ref) return ref;
+    auto ref = TRY_AWAIT(readHead(actualUrl));
+    if (ref) {
+        co_return ref;
+    }
 
     if (cachedRef) {
         // If the cached git ref is expired in fetch() below, and the 'git fetch'
@@ -141,10 +150,12 @@ std::optional<std::string> readHeadCached(const std::string & actualUrl)
             actualUrl,
             *cachedRef
         );
-        return cachedRef;
+        co_return cachedRef;
     }
 
-    return std::nullopt;
+    co_return std::nullopt;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 bool isNotDotGitDirectory(const Path & path)
@@ -159,8 +170,8 @@ struct WorkdirInfo
 };
 
 // Returns whether a git workdir is clean and has commits.
-WorkdirInfo getWorkdirInfo(const Input & input, const Path & workdir)
-{
+static kj::Promise<Result<WorkdirInfo>> getWorkdirInfo(const Input & input, const Path & workdir)
+try {
     const bool submodules = maybeGetBoolAttr(input.attrs, "submodules").value_or(false);
     std::string gitDir(".git");
 
@@ -220,7 +231,9 @@ WorkdirInfo getWorkdirInfo(const Input & input, const Path & workdir)
         if (!WIFEXITED(e.status) || WEXITSTATUS(e.status) != 1) throw;
     }
 
-    return WorkdirInfo { .clean = clean, .hasHead = hasHead };
+    co_return WorkdirInfo{.clean = clean, .hasHead = hasHead};
+} catch (...) {
+    co_return result::current_exception();
 }
 
 static kj::Promise<Result<std::pair<StorePath, Input>>> fetchFromWorkdir(ref<Store> store, Input & input, const Path & workdir, const WorkdirInfo & workdirInfo)
@@ -541,7 +554,7 @@ struct GitInputScheme : InputScheme
         /* If this is a local directory and no ref or revision is given,
            allow fetching directly from a dirty workdir. */
         if (!input.getRef() && !input.getRev() && isLocal) {
-            auto workdirInfo = getWorkdirInfo(input, actualUrl);
+            auto workdirInfo = TRY_AWAIT(getWorkdirInfo(input, actualUrl));
             if (!workdirInfo.clean) {
                 co_return TRY_AWAIT(fetchFromWorkdir(store, input, actualUrl, workdirInfo));
             }
@@ -557,7 +570,7 @@ struct GitInputScheme : InputScheme
 
         if (isLocal) {
             if (!input.getRef()) {
-                auto head = readHead(actualUrl);
+                auto head = TRY_AWAIT(readHead(actualUrl));
                 if (!head) {
                     printTaggedWarning(
                         "could not read HEAD ref from repo at '%s', using 'master'", actualUrl
@@ -576,7 +589,7 @@ struct GitInputScheme : InputScheme
         } else {
             const bool useHeadRef = !input.getRef();
             if (useHeadRef) {
-                auto head = readHeadCached(actualUrl);
+                auto head = TRY_AWAIT(readHeadCached(actualUrl));
                 if (!head) {
                     printTaggedWarning(
                         "could not read HEAD ref from repo at '%s', using 'master'", actualUrl
@@ -715,10 +728,11 @@ struct GitInputScheme : InputScheme
                     printTaggedWarning(
                         "could not update mtime for file '%s': %s", localRefFile, strerror(errno)
                     );
-                if (useHeadRef && !storeCachedHead(actualUrl, *input.getRef()))
+                if (useHeadRef && !TRY_AWAIT(storeCachedHead(actualUrl, *input.getRef()))) {
                     printTaggedWarning(
                         "could not update cached head '%s' for '%s'", *input.getRef(), actualUrl
                     );
+                }
             }
 
             if (!input.getRev())
