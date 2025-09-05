@@ -1,10 +1,12 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
 
+#include <kj/async.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -69,8 +71,12 @@ Pid startProcess(std::function<void()> fun, const ProcessOptions & options = Pro
  * Run a program and return its stdout in a string (i.e., like the
  * shell backtick operator).
  */
-std::string runProgram(Path program, bool searchPath = false,
-    const Strings & args = Strings(), bool isInteractive = false);
+kj::Promise<Result<std::string>> runProgram(
+    Path program,
+    bool searchPath = false,
+    const Strings args = Strings(),
+    bool isInteractive = false
+);
 
 struct RunOptions
 {
@@ -130,7 +136,7 @@ public:
     Source * getStdout() const { return stdoutSource.get(); };
 };
 
-std::pair<int, std::string> runProgram(RunOptions && options);
+kj::Promise<Result<std::pair<int, std::string>>> runProgram(RunOptions options);
 
 RunningProgram runProgram2(const RunOptions & options);
 

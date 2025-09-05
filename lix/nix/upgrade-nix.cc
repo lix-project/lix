@@ -108,7 +108,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
 
         {
             Activity act(*logger, lvlInfo, actUnknown, fmt("verifying that '%s' works...", store->printStorePath(storePath)));
-            auto s = runProgram(newNixEnv, false, {"--version"});
+            auto s = aio().blockOn(runProgram(newNixEnv, false, {"--version"}));
             if (s.find("Nix") == std::string::npos)
                 throw Error("could not verify that '%s' works", newNixEnv);
         }
@@ -128,7 +128,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
                 this->profileDir,
             };
             printTalkative("running %s %s", newNixEnv, concatStringsSep(" ", removeArgs));
-            runProgram(newNixEnv, false, removeArgs);
+            aio().blockOn(runProgram(newNixEnv, false, removeArgs));
 
             Strings upgradeArgs = {
                 "--profile",
@@ -139,7 +139,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
             };
 
             printTalkative("running %s %s", newNixEnv, concatStringsSep(" ", upgradeArgs));
-            runProgram(newNixEnv, false, upgradeArgs);
+            aio().blockOn(runProgram(newNixEnv, false, upgradeArgs));
         } else if (pathExists(canonProfileDir + "/manifest.json")) {
             this->upgradeNewStyleProfile(store, storePath);
         } else {

@@ -321,7 +321,7 @@ void prim_exec(EvalState & state, Value * * args, Value & v)
         throw;
     }
 
-    auto output = runProgram(program, true, commandArgs);
+    auto output = state.aio.blockOn(runProgram(program, true, commandArgs));
     Expr * parsed;
     try {
         parsed = &state.ctx.parseExprFromString(std::move(output), CanonPath::root);

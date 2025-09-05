@@ -74,23 +74,27 @@ extern "C" int sandbox_init_with_parameters(const char *profile, uint64_t flags,
 
 namespace nix {
 
-void handleDiffHook(
-    uid_t uid, uid_t gid,
-    const Path & tryA, const Path & tryB,
-    const Path & drvPath, const Path & tmpDir)
-{
+static kj::Promise<Result<void>> handleDiffHook(
+    uid_t uid,
+    uid_t gid,
+    const Path & tryA,
+    const Path & tryB,
+    const Path & drvPath,
+    const Path & tmpDir
+)
+try {
     auto & diffHookOpt = settings.diffHook.get();
     if (diffHookOpt && settings.runDiffHook) {
         auto & diffHook = *diffHookOpt;
         try {
-            auto diffRes = runProgram(RunOptions {
+            auto diffRes = TRY_AWAIT(runProgram(RunOptions{
                 .program = diffHook,
                 .searchPath = true,
                 .args = {tryA, tryB, drvPath, tmpDir},
                 .uid = uid,
                 .gid = gid,
                 .chdir = "/"
-            });
+            }));
             if (!statusOk(diffRes.first))
                 throw ExecError(diffRes.first,
                     "diff-hook program '%1%' %2%",
@@ -107,6 +111,9 @@ void handleDiffHook(
             logError(ei);
         }
     }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 const Path LocalDerivationGoal::homeDir = "/homeless-shelter";
@@ -724,7 +731,7 @@ try {
         auto state = stBegin;
         std::string lines;
         try {
-            runProgram(settings.preBuildHook, false, args);
+            TRY_AWAIT(runProgram(settings.preBuildHook, false, args));
         } catch (nix::Error & e) {
             e.addTrace(nullptr,
                 "while running pre-build-hook %s for derivation %s",
@@ -2151,10 +2158,14 @@ try {
                     deletePath(dst);
                     movePath(actualPath, dst);
 
-                    handleDiffHook(
+                    TRY_AWAIT(handleDiffHook(
                         buildUser ? buildUser->getUID() : getuid(),
                         buildUser ? buildUser->getGID() : getgid(),
-                        finalDestPath, dst, worker.store.printStorePath(drvPath), tmpDir);
+                        finalDestPath,
+                        dst,
+                        worker.store.printStorePath(drvPath),
+                        tmpDir
+                    ));
 
                     nondeterministic.push_back(std::make_pair(worker.store.toRealPath(finalDestPath), dst));
                 } else

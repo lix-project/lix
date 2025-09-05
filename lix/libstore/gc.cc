@@ -366,8 +366,9 @@ try {
     // platform-specific code in lix/libstore/platform/
     try {
         std::regex lsofRegex = regex::parse(R"(^n(/.*)$)");
-        auto lsofLines =
-            tokenizeString<std::vector<std::string>>(runProgram(LSOF, true, { "-n", "-w", "-F", "n" }), "\n");
+        auto lsofLines = tokenizeString<std::vector<std::string>>(
+            TRY_AWAIT(runProgram(LSOF, true, {"-n", "-w", "-F", "n"})), "\n"
+        );
         for (const auto & line : lsofLines) {
             std::smatch match;
             if (std::regex_match(line, match, lsofRegex))

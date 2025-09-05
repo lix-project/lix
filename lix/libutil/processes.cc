@@ -1,3 +1,4 @@
+#include "async-io.hh"
 #include "lix/libutil/current-process.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libutil/finally.hh"
@@ -228,19 +229,25 @@ Pid startProcess(std::function<void()> fun, const ProcessOptions & options)
     return Pid{pid};
 }
 
-std::string runProgram(Path program, bool searchPath, const Strings & args, bool isInteractive)
-{
-    auto res = runProgram(RunOptions {.program = program, .searchPath = searchPath, .args = args, .isInteractive = isInteractive});
+kj::Promise<Result<std::string>>
+runProgram(Path program, bool searchPath, const Strings args, bool isInteractive)
+try {
+    auto res = TRY_AWAIT(runProgram(RunOptions{
+        .program = program, .searchPath = searchPath, .args = args, .isInteractive = isInteractive
+    }));
 
-    if (!statusOk(res.first))
+    if (!statusOk(res.first)) {
         throw ExecError(res.first, "program '%1%' %2%", program, statusToString(res.first));
+    }
 
-    return res.second;
+    co_return res.second;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 // Output = error code + "standard out" output stream
-std::pair<int, std::string> runProgram(RunOptions && options)
-{
+kj::Promise<Result<std::pair<int, std::string>>> runProgram(RunOptions options)
+try {
     options.captureStdout = true;
 
     int status = 0;
@@ -254,7 +261,9 @@ std::pair<int, std::string> runProgram(RunOptions && options)
         status = e.status;
     }
 
-    return {status, std::move(stdout)};
+    co_return {status, std::move(stdout)};
+} catch (...) {
+    co_return result::current_exception();
 }
 
 RunningProgram::RunningProgram(PathView program, Pid pid, AutoCloseFD stdout)

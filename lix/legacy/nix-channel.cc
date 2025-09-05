@@ -9,6 +9,7 @@
 #include "lix/libstore/temporary-dir.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/regex.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/users.hh"
 #include "nix-channel.hh"
 
@@ -65,13 +66,18 @@ static void addChannel(const std::string & url, const std::string & name)
 static Path profile;
 
 // Remove a channel.
-static void removeChannel(const std::string & name)
-{
+static kj::Promise<Result<void>> removeChannel(const std::string & name)
+try {
     readChannels();
     channels.erase(name);
     writeChannels();
 
-    runProgram(settings.nixBinDir + "/nix-env", true, { "--profile", profile, "--uninstall", name });
+    TRY_AWAIT(runProgram(
+        settings.nixBinDir + "/nix-env", true, {"--profile", profile, "--uninstall", name}
+    ));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 static Path nixDefExpr;
@@ -127,8 +133,14 @@ static void update(AsyncIoRoot & aio, const StringSet & channelNames)
 
             bool unpacked = false;
             if (std::regex_search(filename, regex::parse("\\.tar\\.(gz|bz2|xz)$"))) {
-                runProgram(settings.nixBinDir + "/nix-build", false, { "--no-out-link", "--expr", "import " + unpackChannelPath +
-                            "{ name = \"" + cname + "\"; channelName = \"" + name + "\"; src = builtins.storePath \"" + filename + "\"; }" });
+                aio.blockOn(runProgram(
+                    settings.nixBinDir + "/nix-build",
+                    false,
+                    {"--no-out-link",
+                     "--expr",
+                     "import " + unpackChannelPath + "{ name = \"" + cname + "\"; channelName = \""
+                         + name + "\"; src = builtins.storePath \"" + filename + "\"; }"}
+                ));
                 unpacked = true;
             }
 
@@ -158,7 +170,7 @@ static void update(AsyncIoRoot & aio, const StringSet & channelNames)
     for (auto & expr : exprs)
         envArgs.push_back(std::move(expr));
     envArgs.push_back("--quiet");
-    runProgram(settings.nixBinDir + "/nix-env", false, envArgs);
+    aio.blockOn(runProgram(settings.nixBinDir + "/nix-env", false, envArgs));
 
     // Make the channels appear in nix-env.
     struct stat st;
@@ -244,7 +256,7 @@ static int main_nix_channel(AsyncIoRoot & aio, std::string programName, Strings 
             case cRemove:
                 if (args.size() != 1)
                     throw UsageError("'--remove' requires one argument");
-                removeChannel(args[0]);
+                aio.blockOn(removeChannel(args[0]));
                 break;
             case cList:
                 if (!args.empty())
@@ -259,7 +271,11 @@ static int main_nix_channel(AsyncIoRoot & aio, std::string programName, Strings 
             case cListGenerations:
                 if (!args.empty())
                     throw UsageError("'--list-generations' expects no arguments");
-                std::cout << runProgram(settings.nixBinDir + "/nix-env", false, {"--profile", profile, "--list-generations"}) << std::flush;
+                std::cout << aio.blockOn(runProgram(
+                    settings.nixBinDir + "/nix-env",
+                    false,
+                    {"--profile", profile, "--list-generations"}
+                )) << std::flush;
                 break;
             case cRollback:
                 if (args.size() > 1)
@@ -271,7 +287,7 @@ static int main_nix_channel(AsyncIoRoot & aio, std::string programName, Strings 
                 } else {
                     envArgs.push_back("--rollback");
                 }
-                runProgram(settings.nixBinDir + "/nix-env", false, envArgs);
+                aio.blockOn(runProgram(settings.nixBinDir + "/nix-env", false, envArgs));
                 break;
         }
 

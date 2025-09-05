@@ -69,12 +69,12 @@ Path getCachePath(std::string_view key)
 //   ...
 static kj::Promise<Result<std::optional<std::string>>> readHead(const Path & path)
 try {
-    auto [status, output] = runProgram(RunOptions {
+    auto [status, output] = TRY_AWAIT(runProgram(RunOptions{
         .program = "git",
         // FIXME: use 'HEAD' to avoid returning all refs
         .args = {"ls-remote", "--symref", path},
         .isInteractive = true,
-    });
+    }));
     if (status != 0) {
         co_return std::nullopt;
     }
@@ -103,9 +103,13 @@ storeCachedHead(const std::string & actualUrl, const std::string & headRef)
 try {
     Path cacheDir = getCachePath(actualUrl);
     try {
-        runProgram("git", true, { "-C", cacheDir, "--git-dir", ".", "symbolic-ref", "--", "HEAD", headRef });
-    } catch (ExecError &e) {
-        if (!WIFEXITED(e.status)) throw;
+        TRY_AWAIT(runProgram(
+            "git", true, {"-C", cacheDir, "--git-dir", ".", "symbolic-ref", "--", "HEAD", headRef}
+        ));
+    } catch (ExecError & e) {
+        if (!WIFEXITED(e.status)) {
+            throw;
+        }
         co_return false;
     }
     /* No need to touch refs/HEAD, because `git symbolic-ref` updates the mtime. */
@@ -182,7 +186,7 @@ try {
 
     /* Check whether HEAD points to something that looks like a commit,
        since that is the refrence we want to use later on. */
-    auto result = runProgram(RunOptions{
+    auto result = TRY_AWAIT(runProgram(RunOptions{
         .program = "git",
         .args =
             {"-C",
@@ -195,7 +199,7 @@ try {
              "HEAD^{commit}"},
         .environment = env,
         .redirections = {{.dup = STDERR_FILENO, .from = STDOUT_FILENO}},
-    });
+    }));
     auto exitCode = WEXITSTATUS(result.first);
     auto errorMessage = result.second;
 
@@ -223,7 +227,7 @@ try {
                 gitDiffOpts.emplace_back("--ignore-submodules");
             }
             gitDiffOpts.emplace_back("--");
-            runProgram("git", true, gitDiffOpts);
+            TRY_AWAIT(runProgram("git", true, gitDiffOpts));
 
             clean = true;
         }
@@ -252,8 +256,8 @@ try {
     if (submodules)
         gitOpts.emplace_back("--recurse-submodules");
 
-    auto files = tokenizeString<std::set<std::string>>(
-        runProgram("git", true, gitOpts), "\0"s);
+    auto files =
+        tokenizeString<std::set<std::string>>(TRY_AWAIT(runProgram("git", true, gitOpts)), "\0"s);
 
     Path actualPath(absPath(workdir));
 
@@ -280,13 +284,39 @@ try {
     // modified dirty file?
     input.attrs.insert_or_assign(
         "lastModified",
-        workdirInfo.hasHead ? std::stoull(runProgram("git", true, { "-C", actualPath, "--git-dir", gitDir, "log", "-1", "--format=%ct", "--no-show-signature", "HEAD" })) : 0);
+        workdirInfo.hasHead ? std::stoull(TRY_AWAIT(runProgram(
+                                  "git",
+                                  true,
+                                  {"-C",
+                                   actualPath,
+                                   "--git-dir",
+                                   gitDir,
+                                   "log",
+                                   "-1",
+                                   "--format=%ct",
+                                   "--no-show-signature",
+                                   "HEAD"}
+                              )))
+                            : 0
+    );
 
     if (workdirInfo.hasHead) {
-        input.attrs.insert_or_assign("dirtyRev", chomp(
-            runProgram("git", true, { "-C", actualPath, "--git-dir", gitDir, "rev-parse", "--verify", "HEAD" })) + "-dirty");
-        input.attrs.insert_or_assign("dirtyShortRev", chomp(
-            runProgram("git", true, { "-C", actualPath, "--git-dir", gitDir, "rev-parse", "--verify", "--short", "HEAD" })) + "-dirty");
+        input.attrs.insert_or_assign(
+            "dirtyRev",
+            chomp(TRY_AWAIT(runProgram(
+                "git",
+                true,
+                {"-C", actualPath, "--git-dir", gitDir, "rev-parse", "--verify", "HEAD"}
+            ))) + "-dirty"
+        );
+        input.attrs.insert_or_assign(
+            "dirtyShortRev",
+            chomp(TRY_AWAIT(runProgram(
+                "git",
+                true,
+                {"-C", actualPath, "--git-dir", gitDir, "rev-parse", "--verify", "--short", "HEAD"}
+            ))) + "-dirty"
+        );
     }
 
     co_return {std::move(storePath), input};
@@ -429,7 +459,7 @@ struct GitInputScheme : InputScheme
 
         args.push_back(destDir);
 
-        runProgram("git", true, args, true);
+        TRY_AWAIT(runProgram("git", true, args, true));
         co_return result::success();
     } catch (...) {
         co_return result::current_exception();
@@ -458,25 +488,52 @@ struct GitInputScheme : InputScheme
 
         auto gitDir = ".git";
 
-        auto result = runProgram(RunOptions {
+        auto result = TRY_AWAIT(runProgram(RunOptions{
             .program = "git",
-            .args = {"-C", *root, "--git-dir", gitDir, "check-ignore", "--quiet", std::string(path.rel())},
-        });
+            .args =
+                {"-C",
+                 *root,
+                 "--git-dir",
+                 gitDir,
+                 "check-ignore",
+                 "--quiet",
+                 std::string(path.rel())},
+        }));
         auto exitCode = WEXITSTATUS(result.first);
 
         if (exitCode != 0) {
             // The path is not `.gitignore`d, we can add the file.
-            runProgram("git", true,
-                { "-C", *root, "--git-dir", gitDir, "add", "--intent-to-add", "--", std::string(path.rel()) });
-
+            TRY_AWAIT(runProgram(
+                "git",
+                true,
+                {"-C",
+                 *root,
+                 "--git-dir",
+                 gitDir,
+                 "add",
+                 "--intent-to-add",
+                 "--",
+                 std::string(path.rel())}
+            ));
 
             if (commitMsg) {
                 auto [_fd, msgPath] = createTempFile("nix-msg");
                 AutoDelete const _delete{msgPath};
                 writeFile(msgPath, *commitMsg);
 
-                runProgram("git", true,
-                    { "-C", *root, "--git-dir", gitDir, "commit", std::string(path.rel()), "-F", msgPath }, true);
+                TRY_AWAIT(runProgram(
+                    "git",
+                    true,
+                    {"-C",
+                     *root,
+                     "--git-dir",
+                     gitDir,
+                     "commit",
+                     std::string(path.rel()),
+                     "-F",
+                     msgPath},
+                    true
+                ));
             }
         }
 
@@ -582,8 +639,18 @@ struct GitInputScheme : InputScheme
             }
 
             if (!input.getRev())
-                input.attrs.insert_or_assign("rev",
-                    Hash::parseAny(chomp(runProgram("git", true, { "-C", actualUrl, "--git-dir", gitDir, "rev-parse", *input.getRef() })), HashType::SHA1).gitRev());
+                input.attrs.insert_or_assign(
+                    "rev",
+                    Hash::parseAny(
+                        chomp(TRY_AWAIT(runProgram(
+                            "git",
+                            true,
+                            {"-C", actualUrl, "--git-dir", gitDir, "rev-parse", *input.getRef()}
+                        ))),
+                        HashType::SHA1
+                    )
+                        .gitRev()
+                );
 
             repoDir = actualUrl;
         } else {
@@ -620,7 +687,11 @@ struct GitInputScheme : InputScheme
             PathLock cacheDirLock = TRY_AWAIT(lockPathAsync(cacheDir + ".lock"));
 
             if (!pathExists(cacheDir)) {
-                runProgram("git", true, { "-c", "init.defaultBranch=" + gitInitialBranch, "init", "--bare", repoDir });
+                TRY_AWAIT(runProgram(
+                    "git",
+                    true,
+                    {"-c", "init.defaultBranch=" + gitInitialBranch, "init", "--bare", repoDir}
+                ));
             }
 
             std::vector<Path> gitRefFileCandidates;
@@ -638,7 +709,17 @@ struct GitInputScheme : InputScheme
                repo. */
             if (input.getRev()) {
                 try {
-                    runProgram("git", true, { "-C", repoDir, "--git-dir", gitDir, "cat-file", "-e", input.getRev()->gitRev() });
+                    TRY_AWAIT(runProgram(
+                        "git",
+                        true,
+                        {"-C",
+                         repoDir,
+                         "--git-dir",
+                         gitDir,
+                         "cat-file",
+                         "-e",
+                         input.getRev()->gitRev()}
+                    ));
                     doFetch = false;
                 } catch (ExecError & e) {
                     if (WIFEXITED(e.status)) {
@@ -707,14 +788,21 @@ struct GitInputScheme : InputScheme
 
                     // FIXME: git stderr messes up our progress indicator, so
                     // we're using --quiet for now. Should process its stderr.
-                    runProgram("git", true, {
-                        "-C", repoDir,
-                        "--git-dir", gitDir,
-                        "fetch",
-                        "--quiet",
-                        "--force",
-                        "--", actualUrl, fmt("%s:%s", fetchRef, fetchRef)
-                    }, true);
+                    TRY_AWAIT(runProgram(
+                        "git",
+                        true,
+                        {"-C",
+                         repoDir,
+                         "--git-dir",
+                         gitDir,
+                         "fetch",
+                         "--quiet",
+                         "--force",
+                         "--",
+                         actualUrl,
+                         fmt("%s:%s", fetchRef, fetchRef)},
+                        true
+                    ));
                 } catch (Error & e) {
                     if (!pathExists(localRefFile)) throw;
                     printTaggedWarning(
@@ -741,7 +829,13 @@ struct GitInputScheme : InputScheme
             // cache dir lock is removed at scope end; we will only use read-only operations on specific revisions in the remainder
         }
 
-        bool isShallow = chomp(runProgram("git", true, { "-C", repoDir, "--git-dir", gitDir, "rev-parse", "--is-shallow-repository" })) == "true";
+        bool isShallow =
+            chomp(TRY_AWAIT(runProgram(
+                "git",
+                true,
+                {"-C", repoDir, "--git-dir", gitDir, "rev-parse", "--is-shallow-repository"}
+            )))
+            == "true";
 
         if (isShallow && !shallow)
             throw Error("'%s' is a shallow Git repository, but shallow repositories are only allowed when `shallow = true;` is specified.", actualUrl);
@@ -759,13 +853,13 @@ struct GitInputScheme : InputScheme
         AutoDelete delTmpDir(tmpDir, true);
         PathFilter filter = defaultPathFilter;
 
-        auto result = runProgram(RunOptions{
+        auto result = TRY_AWAIT(runProgram(RunOptions{
             .program = "git",
             .args =
                 {"-C", repoDir, "--git-dir", gitDir, "cat-file", "commit", input.getRev()->gitRev()
                 },
             .redirections = {{.dup = STDERR_FILENO, .from = STDOUT_FILENO}},
-        });
+        }));
         if (WEXITSTATUS(result.first) == 128
             && result.second.find("bad file") != std::string::npos)
         {
@@ -784,18 +878,41 @@ struct GitInputScheme : InputScheme
             Path tmpGitDir = createTempDir();
             AutoDelete delTmpGitDir(tmpGitDir, true);
 
-            runProgram("git", true, { "-c", "init.defaultBranch=" + gitInitialBranch, "init", tmpDir, "--separate-git-dir", tmpGitDir });
+            TRY_AWAIT(runProgram(
+                "git",
+                true,
+                {"-c",
+                 "init.defaultBranch=" + gitInitialBranch,
+                 "init",
+                 tmpDir,
+                 "--separate-git-dir",
+                 tmpGitDir}
+            ));
 
             {
                 // TODO: repoDir might lack the ref (it only checks if rev
                 // exists, see FIXME above) so use a big hammer and fetch
                 // everything to ensure we get the rev.
                 Activity act(*logger, lvlTalkative, actUnknown, fmt("making temporary clone of '%s'", repoDir));
-                runProgram("git", true, { "-C", tmpDir, "fetch", "--quiet", "--force",
-                        "--update-head-ok", "--", repoDir, "refs/*:refs/*" }, true);
+                TRY_AWAIT(runProgram(
+                    "git",
+                    true,
+                    {"-C",
+                     tmpDir,
+                     "fetch",
+                     "--quiet",
+                     "--force",
+                     "--update-head-ok",
+                     "--",
+                     repoDir,
+                     "refs/*:refs/*"},
+                    true
+                ));
             }
 
-            runProgram("git", true, { "-C", tmpDir, "checkout", "--quiet", input.getRev()->gitRev() });
+            TRY_AWAIT(runProgram(
+                "git", true, {"-C", tmpDir, "checkout", "--quiet", input.getRev()->gitRev()}
+            ));
 
             /* Ensure that we use the correct origin for fetching
                submodules. This matters for submodules with relative
@@ -805,21 +922,29 @@ struct GitInputScheme : InputScheme
 
                 /* Restore the config.bare setting we may have just
                    copied erroneously from the user's repo. */
-                runProgram("git", true, { "-C", tmpDir, "config", "core.bare", "false" });
+                TRY_AWAIT(runProgram("git", true, {"-C", tmpDir, "config", "core.bare", "false"}));
             } else
-                runProgram("git", true, { "-C", tmpDir, "config", "remote.origin.url", actualUrl });
+                TRY_AWAIT(runProgram(
+                    "git", true, {"-C", tmpDir, "config", "remote.origin.url", actualUrl}
+                ));
 
             /* As an optimisation, copy the modules directory of the
                source repo if it exists. */
             auto modulesPath = repoDir + "/" + gitDir + "/modules";
             if (pathExists(modulesPath)) {
                 Activity act(*logger, lvlTalkative, actUnknown, fmt("copying submodules of '%s'", actualUrl));
-                runProgram("cp", true, { "-R", "--", modulesPath, tmpGitDir + "/modules" });
+                TRY_AWAIT(runProgram("cp", true, {"-R", "--", modulesPath, tmpGitDir + "/modules"})
+                );
             }
 
             {
                 Activity act(*logger, lvlTalkative, actUnknown, fmt("fetching submodules of '%s'", actualUrl));
-                runProgram("git", true, { "-C", tmpDir, "submodule", "--quiet", "update", "--init", "--recursive" }, true);
+                TRY_AWAIT(runProgram(
+                    "git",
+                    true,
+                    {"-C", tmpDir, "submodule", "--quiet", "update", "--init", "--recursive"},
+                    true
+                ));
             }
 
             filter = isNotDotGitDirectory;
@@ -839,7 +964,19 @@ struct GitInputScheme : InputScheme
             store->addToStoreRecursive(name, *prepareDump(tmpDir, filter), HashType::SHA256)
         );
 
-        auto lastModified = std::stoull(runProgram("git", true, { "-C", repoDir, "--git-dir", gitDir, "log", "-1", "--format=%ct", "--no-show-signature", input.getRev()->gitRev() }));
+        auto lastModified = std::stoull(TRY_AWAIT(runProgram(
+            "git",
+            true,
+            {"-C",
+             repoDir,
+             "--git-dir",
+             gitDir,
+             "log",
+             "-1",
+             "--format=%ct",
+             "--no-show-signature",
+             input.getRev()->gitRev()}
+        )));
 
         Attrs infoAttrs({
             {"rev", input.getRev()->gitRev()},
@@ -847,8 +984,20 @@ struct GitInputScheme : InputScheme
         });
 
         if (!shallow)
-            infoAttrs.insert_or_assign("revCount",
-                std::stoull(runProgram("git", true, { "-C", repoDir, "--git-dir", gitDir, "rev-list", "--count", input.getRev()->gitRev() })));
+            infoAttrs.insert_or_assign(
+                "revCount",
+                std::stoull(TRY_AWAIT(runProgram(
+                    "git",
+                    true,
+                    {"-C",
+                     repoDir,
+                     "--git-dir",
+                     gitDir,
+                     "rev-list",
+                     "--count",
+                     input.getRev()->gitRev()}
+                )))
+            );
 
         if (!_input.getRev())
             getCache()->add(

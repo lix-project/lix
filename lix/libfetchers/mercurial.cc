@@ -37,7 +37,7 @@ static kj::Promise<Result<std::string>> runHg(const Strings & args)
 try {
     RunOptions opts = hgOptions(args);
 
-    auto res = runProgram(std::move(opts));
+    auto res = TRY_AWAIT(runProgram(std::move(opts)));
 
     if (!statusOk(res.first))
         throw ExecError(res.first, "hg %1%", statusToString(res.first));
@@ -300,9 +300,12 @@ struct MercurialInputScheme : InputScheme
 
         /* If this is a commit hash that we already have, we don't
            have to pull again. */
-        if (!(input.getRev()
-                && pathExists(cacheDir)
-                && runProgram(hgOptions({ "identify", "-R", cacheDir, "-r", revOrRef, "--template", "1" })).second == "1"))
+        if (!(input.getRev() && pathExists(cacheDir)
+              && TRY_AWAIT(runProgram(hgOptions(
+                               {"identify", "-R", cacheDir, "-r", revOrRef, "--template", "1"}
+                           )))
+                      .second
+                  == "1"))
         {
             Activity act(*logger, lvlTalkative, actUnknown, fmt("fetching Mercurial repository '%s'", actualUrl));
 

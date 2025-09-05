@@ -243,16 +243,23 @@ StringSet Settings::getDefaultExtraPlatforms()
     // machines. Note that we can’t force processes from executing
     // x86_64 in aarch64 environments or vice versa since they can
     // always exec with their own binary preferences.
-    if (std::string{SYSTEM} == "aarch64-darwin"
-        && runProgram(RunOptions{
-                          .program = "arch",
-                          .args = {"-arch", "x86_64", "/usr/bin/true"},
-                          .redirections = {{.dup = STDERR_FILENO, .from = STDOUT_FILENO}}
-                      }
-           ).first
+    if (std::string{SYSTEM} == "aarch64-darwin") {
+        AutoCloseFD null(open("/dev/null", O_RDWR | O_CLOEXEC));
+        if (!null) {
+            throw Error("could not open /dev/null");
+        }
+        if (runProgram2(RunOptions{
+                            .program = "arch",
+                            .args = {"-arch", "x86_64", "/usr/bin/true"},
+                            .redirections =
+                                {{.dup = STDOUT_FILENO, .from = null.get()},
+                                 {.dup = STDERR_FILENO, .from = null.get()}}
+                        }
+            ).wait()
             == 0)
-    {
-        extraPlatforms.insert("x86_64-darwin");
+        {
+            extraPlatforms.insert("x86_64-darwin");
+        }
     }
 #endif
 

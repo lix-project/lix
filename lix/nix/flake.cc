@@ -950,7 +950,7 @@ struct CmdFlakeInitCommon : virtual Args, EvalCommand
         if (!changedFiles.empty() && pathExists(flakeDir + "/.git")) {
             Strings args = { "-C", flakeDir, "add", "--intent-to-add", "--force", "--" };
             for (auto & s : changedFiles) args.push_back(s);
-            runProgram("git", true, args);
+            aio().blockOn(runProgram("git", true, args));
         }
         auto welcomeText = cursor->maybeGetAttr(*evalState, "welcomeText");
         if (welcomeText) {
