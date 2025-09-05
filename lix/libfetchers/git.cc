@@ -956,8 +956,7 @@ struct GitInputScheme : InputScheme
             });
             Finally const _wait([&] { proc.waitAndCheck(); });
 
-            AsyncSourceInputStream stdout{*proc.getStdout()};
-            TRY_AWAIT(unpackTarfile(stdout, tmpDir));
+            TRY_AWAIT(unpackTarfile(*proc.getStdout(), tmpDir));
         }
 
         auto storePath = TRY_AWAIT(

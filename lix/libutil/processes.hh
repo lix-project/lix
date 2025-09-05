@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/error.hh"
@@ -108,8 +109,7 @@ struct [[nodiscard("you must call RunningProgram::wait()")]] RunningProgram
 private:
     Path program;
     Pid pid;
-    std::unique_ptr<Source> stdoutSource;
-    AutoCloseFD stdout_;
+    std::unique_ptr<AsyncFdIoStream> stdout;
 
     RunningProgram(PathView program, Pid pid, AutoCloseFD stdout);
 
@@ -121,7 +121,7 @@ public:
 
     explicit operator bool() const { return bool(pid); }
 
-    std::tuple<pid_t, std::unique_ptr<Source>, int> release();
+    std::tuple<pid_t, std::unique_ptr<AsyncFdIoStream>> release();
 
     int kill();
     [[nodiscard]]
@@ -130,10 +130,13 @@ public:
 
     std::optional<int> getStdoutFD() const
     {
-        return stdout_ ? std::optional(stdout_.get()) : std::nullopt;
+        return stdout ? std::optional(stdout->getFD()) : std::nullopt;
     }
 
-    Source * getStdout() const { return stdoutSource.get(); };
+    AsyncFdIoStream * getStdout() const
+    {
+        return stdout.get();
+    };
 };
 
 kj::Promise<Result<std::pair<int, std::string>>> runProgram(RunOptions options);

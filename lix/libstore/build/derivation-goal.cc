@@ -1,4 +1,5 @@
 #include "lix/libstore/build/derivation-goal.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/file-system.hh"
@@ -11,6 +12,7 @@
 #include "lix/libstore/common-protocol-impl.hh" // IWYU pragma: keep
 #include "lix/libstore/local-store.hh" // TODO remove, along with remaining downcasts
 #include "lix/libstore/build/substitution-goal.hh"
+#include "lix/libutil/logging.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/rpc.hh"
 #include "lix/libutil/strings.hh"
@@ -830,15 +832,14 @@ void DerivationGoal::cleanupPostOutputsRegisteredModeNonCheck()
 {
 }
 
-void runPostBuildHook(
-    Store & store,
-    Logger & logger,
-    const StorePath & drvPath,
-    const StorePathSet & outputPaths)
-{
+static kj::Promise<Result<void>> runPostBuildHook(
+    Store & store, Logger & logger, const StorePath & drvPath, const StorePathSet & outputPaths
+)
+try {
     auto hook = settings.postBuildHook;
-    if (hook == "")
-        return;
+    if (hook == "") {
+        co_return result::success();
+    }
 
     Activity act(
         logger,
@@ -860,7 +861,7 @@ void runPostBuildHook(
         .captureStdout = true,
         .redirections = {{.dup = STDERR_FILENO, .from = STDOUT_FILENO}},
     });
-    Finally const _wait([&] {
+    auto wait = kj::defer([&] {
         try {
             proc.waitAndCheck();
         } catch (nix::Error & e) {
@@ -876,26 +877,27 @@ void runPostBuildHook(
     auto & hookStdout = *proc.getStdout();
     std::string currentLine;
     std::vector<char> buffer(8192);
-    try {
-        while (true) {
-            const auto got = hookStdout.read(buffer.data(), buffer.size());
-            const std::string_view data{buffer.data(), got};
-            for (auto c : data) {
-                if (c == '\n') {
-                    act.result(resPostBuildLogLine, currentLine);
-                    currentLine.clear();
-                } else {
-                    currentLine += c;
-                }
+    while (const auto got = TRY_AWAIT(hookStdout.readRange(buffer.data(), 1, buffer.size()))) {
+        const std::string_view data{buffer.data(), *got};
+        for (auto c : data) {
+            if (c == '\n') {
+                act.result(resPostBuildLogLine, currentLine);
+                currentLine.clear();
+            } else {
+                currentLine += c;
             }
         }
-    } catch (EndOfFile &) {
     }
 
     if (currentLine != "") {
         currentLine += '\n';
         act.result(resPostBuildLogLine, currentLine);
     }
+
+    wait.run();
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 std::string DerivationGoal::buildErrorContents(const std::string & exitMsg, bool diskFull)
@@ -993,12 +995,7 @@ try {
         StorePathSet outputPaths;
         for (auto & [_, output] : builtOutputs)
             outputPaths.insert(output.outPath);
-        runPostBuildHook(
-            worker.store,
-            *logger,
-            drvPath,
-            outputPaths
-        );
+        TRY_AWAIT(runPostBuildHook(worker.store, *logger, drvPath, outputPaths));
 
         cleanupPostOutputsRegisteredModeNonCheck();
 

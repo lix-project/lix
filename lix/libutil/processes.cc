@@ -256,7 +256,7 @@ try {
     try {
         auto proc = runProgram2(options);
         Finally const _wait([&] { proc.waitAndCheck(); });
-        stdout = proc.getStdout()->drain();
+        stdout = TRY_AWAIT(proc.getStdout()->drain());
     } catch (ExecError & e) {
         status = e.status;
     }
@@ -269,8 +269,7 @@ try {
 RunningProgram::RunningProgram(PathView program, Pid pid, AutoCloseFD stdout)
     : program(program)
     , pid(std::move(pid))
-    , stdoutSource(stdout ? std::make_unique<FdSource>(stdout.get()) : nullptr)
-    , stdout_(std::move(stdout))
+    , stdout(stdout ? std::make_unique<AsyncFdIoStream>(std::move(stdout)) : nullptr)
 {
 }
 
@@ -285,9 +284,9 @@ RunningProgram::~RunningProgram()
     }
 }
 
-std::tuple<pid_t, std::unique_ptr<Source>, int> RunningProgram::release()
+std::tuple<pid_t, std::unique_ptr<AsyncFdIoStream>> RunningProgram::release()
 {
-    return {pid.release(), std::move(stdoutSource), stdout_.release()};
+    return {pid.release(), std::move(stdout)};
 }
 
 int RunningProgram::kill()
