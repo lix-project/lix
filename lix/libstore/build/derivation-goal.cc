@@ -854,36 +854,6 @@ void runPostBuildHook(
     hookEnvironment.emplace("OUT_PATHS", chomp(concatStringsSep(" ", store.printStorePathSet(outputPaths))));
     hookEnvironment.emplace("NIX_CONFIG", globalConfig.toKeyValue(true));
 
-    struct LogSink : Sink {
-        Activity & act;
-        std::string currentLine;
-
-        LogSink(Activity & act) : act(act) { }
-
-        void operator() (std::string_view data) override {
-            for (auto c : data) {
-                if (c == '\n') {
-                    flushLine();
-                } else {
-                    currentLine += c;
-                }
-            }
-        }
-
-        void flushLine() {
-            act.result(resPostBuildLogLine, currentLine);
-            currentLine.clear();
-        }
-
-        ~LogSink() {
-            if (currentLine != "") {
-                currentLine += '\n';
-                flushLine();
-            }
-        }
-    };
-    LogSink sink(act);
-
     auto proc = runProgram2({
         .program = settings.postBuildHook,
         .environment = hookEnvironment,
@@ -903,8 +873,29 @@ void runPostBuildHook(
         }
     });
 
-    // FIXME just process the data, without a wrapper sink class
-    proc.getStdout()->drainInto(sink);
+    auto & hookStdout = *proc.getStdout();
+    std::string currentLine;
+    std::vector<char> buffer(8192);
+    try {
+        while (true) {
+            const auto got = hookStdout.read(buffer.data(), buffer.size());
+            const std::string_view data{buffer.data(), got};
+            for (auto c : data) {
+                if (c == '\n') {
+                    act.result(resPostBuildLogLine, currentLine);
+                    currentLine.clear();
+                } else {
+                    currentLine += c;
+                }
+            }
+        }
+    } catch (EndOfFile &) {
+    }
+
+    if (currentLine != "") {
+        currentLine += '\n';
+        act.result(resPostBuildLogLine, currentLine);
+    }
 }
 
 std::string DerivationGoal::buildErrorContents(const std::string & exitMsg, bool diskFull)
