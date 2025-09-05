@@ -1,10 +1,14 @@
 #include <archive.h>
 #include <archive_entry.h>
+#include <kj/async.h>
 
+#include "async-io.hh"
+#include "file-descriptor.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/serialise.hh"
+#include "result.hh"
 #include "lix/libutil/tarfile.hh"
 
 namespace nix {
@@ -118,12 +122,29 @@ static void extract_archive(TarArchive & archive, const Path & destDir)
     archive.close();
 }
 
-void unpackTarfile(Source & source, const Path & destDir)
-{
-    auto archive = TarArchive(source);
+kj::Promise<Result<void>> unpackTarfile(AsyncInputStream & source, const Path & destDir)
+try {
+    Pipe pipe;
+    pipe.create();
 
-    createDirs(destDir);
-    extract_archive(archive, destDir);
+    auto thr = std::async(
+        std::launch::async,
+        [&](AutoCloseFD fd) {
+            FdSource source(fd.get());
+            auto archive = TarArchive(source);
+
+            createDirs(destDir);
+            extract_archive(archive, destDir);
+        },
+        std::move(pipe.readSide)
+    );
+
+    AsyncFdIoStream sink{std::move(pipe.writeSide)};
+    TRY_AWAIT(source.drainInto(sink));
+    thr.get();
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 void unpackTarfile(const Path & tarFile, const Path & destDir)

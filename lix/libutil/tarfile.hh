@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "async-io.hh"
 #include "lix/libutil/serialise.hh"
 #include <archive.h>
 
@@ -25,7 +26,7 @@ struct TarArchive {
     ~TarArchive();
 };
 
-void unpackTarfile(Source & source, const Path & destDir);
+kj::Promise<Result<void>> unpackTarfile(AsyncInputStream & source, const Path & destDir);
 
 void unpackTarfile(const Path & tarFile, const Path & destDir);
 

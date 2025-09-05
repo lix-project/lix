@@ -1,4 +1,5 @@
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libfetchers/fetchers.hh"
@@ -807,7 +808,8 @@ struct GitInputScheme : InputScheme
             });
             Finally const _wait([&] { proc.waitAndCheck(); });
 
-            unpackTarfile(*proc.getStdout(), tmpDir);
+            AsyncSourceInputStream stdout{*proc.getStdout()};
+            TRY_AWAIT(unpackTarfile(stdout, tmpDir));
         }
 
         auto storePath = TRY_AWAIT(
