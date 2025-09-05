@@ -6,6 +6,7 @@
 #include "lix/libutil/processes.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/temporary-dir.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/url-parts.hh"
 #include "lix/libutil/users.hh"
 
@@ -128,12 +129,13 @@ struct MercurialInputScheme : InputScheme
         return {};
     }
 
-    void putFile(
+    kj::Promise<Result<void>> putFile(
         const Input & input,
         const CanonPath & path,
         std::string_view contents,
-        std::optional<std::string> commitMsg) const override
-    {
+        std::optional<std::string> commitMsg
+    ) const override
+    try {
         auto [isLocal, repoPath] = getActualUrl(input);
         if (!isLocal)
             throw Error("cannot commit '%s' to Mercurial repository '%s' because it's not a working tree", path, input.to_string());
@@ -149,6 +151,9 @@ struct MercurialInputScheme : InputScheme
         if (commitMsg)
             runHg(
                 { "commit", absPath.abs(), "-m", *commitMsg });
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     std::pair<bool, std::string> getActualUrl(const Input & input) const

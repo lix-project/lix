@@ -3,6 +3,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/json.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/source-path.hh"
 #include "lix/libfetchers/fetch-to-store.hh"
 
@@ -220,10 +221,13 @@ Input Input::applyOverrides(
     return scheme->applyOverrides(*this, ref, rev);
 }
 
-void Input::clone(const Path & destDir) const
-{
+kj::Promise<Result<void>> Input::clone(const Path & destDir) const
+try {
     assert(scheme);
-    scheme->clone(*this, destDir);
+    TRY_AWAIT(scheme->clone(*this, destDir));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 std::optional<Path> Input::getSourcePath() const
@@ -232,13 +236,15 @@ std::optional<Path> Input::getSourcePath() const
     return scheme->getSourcePath(*this);
 }
 
-void Input::putFile(
-    const CanonPath & path,
-    std::string_view contents,
-    std::optional<std::string> commitMsg) const
-{
+kj::Promise<Result<void>> Input::putFile(
+    const CanonPath & path, std::string_view contents, std::optional<std::string> commitMsg
+) const
+try {
     assert(scheme);
-    return scheme->putFile(*this, path, contents, commitMsg);
+    TRY_AWAIT(scheme->putFile(*this, path, contents, commitMsg));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 std::string Input::getName() const
@@ -345,18 +351,22 @@ std::optional<Path> InputScheme::getSourcePath(const Input & input) const
     return {};
 }
 
-void InputScheme::putFile(
+kj::Promise<Result<void>> InputScheme::putFile(
     const Input & input,
     const CanonPath & path,
     std::string_view contents,
-    std::optional<std::string> commitMsg) const
-{
+    std::optional<std::string> commitMsg
+) const
+try {
     throw Error("input '%s' does not support modifying file '%s'", input.to_string(), path);
+} catch (...) {
+    co_return result::current_exception();
 }
 
-void InputScheme::clone(const Input & input, const Path & destDir) const
-{
+kj::Promise<Result<void>> InputScheme::clone(const Input & input, const Path & destDir) const
+try {
     throw Error("do not know how to clone input '%s'", input.to_string());
+} catch (...) {
+    co_return result::current_exception();
 }
-
 }

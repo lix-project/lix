@@ -102,7 +102,7 @@ public:
         std::optional<std::string> ref,
         std::optional<Hash> rev) const;
 
-    void clone(const Path & destDir) const;
+    kj::Promise<Result<void>> clone(const Path & destDir) const;
 
     std::optional<Path> getSourcePath() const;
 
@@ -110,10 +110,9 @@ public:
      * Write a file to this input, for input types that support
      * writing. Optionally commit the change (for e.g. Git inputs).
      */
-    void putFile(
-        const CanonPath & path,
-        std::string_view contents,
-        std::optional<std::string> commitMsg) const;
+    kj::Promise<Result<void>> putFile(
+        const CanonPath & path, std::string_view contents, std::optional<std::string> commitMsg
+    ) const;
 
     std::string getName() const;
 
@@ -160,15 +159,16 @@ struct InputScheme
         std::optional<std::string> ref,
         std::optional<Hash> rev) const;
 
-    virtual void clone(const Input & input, const Path & destDir) const;
+    virtual kj::Promise<Result<void>> clone(const Input & input, const Path & destDir) const;
 
     virtual std::optional<Path> getSourcePath(const Input & input) const;
 
-    virtual void putFile(
+    virtual kj::Promise<Result<void>> putFile(
         const Input & input,
         const CanonPath & path,
         std::string_view contents,
-        std::optional<std::string> commitMsg) const;
+        std::optional<std::string> commitMsg
+    ) const;
 
     virtual kj::Promise<Result<std::pair<StorePath, Input>>>
     fetch(ref<Store> store, const Input & input) = 0;

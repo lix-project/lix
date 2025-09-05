@@ -4,6 +4,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/regex.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/url-parts.hh"
 #include "lix/libutil/git.hh"
@@ -309,13 +310,17 @@ struct GitHubInputScheme : GitArchiveInputScheme
         return DownloadUrl { url, headers };
     }
 
-    void clone(const Input & input, const Path & destDir) const override
-    {
+    kj::Promise<Result<void>> clone(const Input & input, const Path & destDir) const override
+    try {
         auto host = getHost(input);
-        Input::fromURL(fmt("git+https://%s/%s/%s.git",
-                host, getOwner(input), getRepo(input)))
-            .applyOverrides(input.getRef(), input.getRev())
-            .clone(destDir);
+        TRY_AWAIT(
+            Input::fromURL(fmt("git+https://%s/%s/%s.git", host, getOwner(input), getRepo(input)))
+                .applyOverrides(input.getRef(), input.getRev())
+                .clone(destDir)
+        );
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     Headers makeHeadersWithAuthTokens(const std::string & host) const
@@ -391,14 +396,19 @@ struct GitLabInputScheme : GitArchiveInputScheme
         return DownloadUrl { url, headers };
     }
 
-    void clone(const Input & input, const Path & destDir) const override
-    {
+    kj::Promise<Result<void>> clone(const Input & input, const Path & destDir) const override
+    try {
         auto host = maybeGetStrAttr(input.attrs, "host").value_or("gitlab.com");
         // FIXME: get username somewhere
-        Input::fromURL(fmt("git+https://%s/%s/%s.git",
-                host, getStrAttr(input.attrs, "owner"), getStrAttr(input.attrs, "repo")))
-            .applyOverrides(input.getRef(), input.getRev())
-            .clone(destDir);
+        TRY_AWAIT(Input::fromURL(fmt("git+https://%s/%s/%s.git",
+                                     host,
+                                     getStrAttr(input.attrs, "owner"),
+                                     getStrAttr(input.attrs, "repo")))
+                      .applyOverrides(input.getRef(), input.getRev())
+                      .clone(destDir));
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 };
 
@@ -485,13 +495,18 @@ struct SourceHutInputScheme : GitArchiveInputScheme
         return DownloadUrl { url, headers };
     }
 
-    void clone(const Input & input, const Path & destDir) const override
-    {
+    kj::Promise<Result<void>> clone(const Input & input, const Path & destDir) const override
+    try {
         auto host = maybeGetStrAttr(input.attrs, "host").value_or("git.sr.ht");
-        Input::fromURL(fmt("git+https://%s/%s/%s",
-                host, getStrAttr(input.attrs, "owner"), getStrAttr(input.attrs, "repo")))
-            .applyOverrides(input.getRef(), input.getRev())
-            .clone(destDir);
+        TRY_AWAIT(Input::fromURL(fmt("git+https://%s/%s/%s",
+                                     host,
+                                     getStrAttr(input.attrs, "owner"),
+                                     getStrAttr(input.attrs, "repo")))
+                      .applyOverrides(input.getRef(), input.getRev())
+                      .clone(destDir));
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 };
 

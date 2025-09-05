@@ -3,6 +3,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async-io.hh"
+#include "lix/libutil/result.hh"
 
 namespace nix::fetchers {
 
@@ -82,13 +83,17 @@ struct PathInputScheme : InputScheme
         return getStrAttr(input.attrs, "path");
     }
 
-    void putFile(
+    kj::Promise<Result<void>> putFile(
         const Input & input,
         const CanonPath & path,
         std::string_view contents,
-        std::optional<std::string> commitMsg) const override
-    {
+        std::optional<std::string> commitMsg
+    ) const override
+    try {
         writeFile((CanonPath(getAbsPath(input)) + path).abs(), contents);
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     CanonPath getAbsPath(const Input & input) const

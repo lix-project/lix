@@ -853,9 +853,13 @@ LockedFlake lockFlake(
                                 commitMessage = cm;
                             }
 
-                            topRef.input.putFile(
-                                CanonPath((topRef.subdir == "" ? "" : topRef.subdir + "/") + "flake.lock"),
-                                newLockFileS, commitMessage);
+                            state.aio.blockOn(topRef.input.putFile(
+                                CanonPath(
+                                    (topRef.subdir == "" ? "" : topRef.subdir + "/") + "flake.lock"
+                                ),
+                                newLockFileS,
+                                commitMessage
+                            ));
                         }
 
                         /* Rewriting the lockfile changed the top-level

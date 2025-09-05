@@ -7,6 +7,7 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libfetchers/builtin-fetchers.hh"
 #include "lix/libutil/processes.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/tarfile.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/temporary-dir.hh"
@@ -398,8 +399,8 @@ struct GitInputScheme : InputScheme
         return res;
     }
 
-    void clone(const Input & input, const Path & destDir) const override
-    {
+    kj::Promise<Result<void>> clone(const Input & input, const Path & destDir) const override
+    try {
         auto [isLocal, actualUrl] = getActualUrl(input);
 
         Strings args = {"clone"};
@@ -416,6 +417,9 @@ struct GitInputScheme : InputScheme
         args.push_back(destDir);
 
         runProgram("git", true, args, true);
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     std::optional<Path> getSourcePath(const Input & input) const override
@@ -426,12 +430,13 @@ struct GitInputScheme : InputScheme
         return {};
     }
 
-    void putFile(
+    kj::Promise<Result<void>> putFile(
         const Input & input,
         const CanonPath & path,
         std::string_view contents,
-        std::optional<std::string> commitMsg) const override
-    {
+        std::optional<std::string> commitMsg
+    ) const override
+    try {
         auto root = getSourcePath(input);
         if (!root)
             throw Error("cannot commit '%s' to Git repository '%s' because it's not a working tree", path, input.to_string());
@@ -461,6 +466,10 @@ struct GitInputScheme : InputScheme
                     { "-C", *root, "--git-dir", gitDir, "commit", std::string(path.rel()), "-F", msgPath }, true);
             }
         }
+
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     std::pair<bool, std::string> getActualUrl(const Input & input) const
