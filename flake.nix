@@ -175,8 +175,13 @@
         {
           nixStable = prev.nix;
 
-          # Nix 2.18 has been removed from Nixpkgs ≥ 25.05, so we need to reintroduce it ourselves for our tests.
           nixVersions = prev.nixVersions // {
+            nix_2_3 = prev.nixVersions.nix_2_3.overrideAttrs (old: {
+              meta = old.meta // {
+                knownVulnerabilities = [ ];
+              };
+            });
+            # Nix 2.18 has been removed from Nixpkgs ≥ 25.05, so we need to reintroduce it ourselves for our tests.
             nix_2_18 = nix_2_18.outputs.packages.${currentStdenv.hostPlatform.system}.default;
           };
 
@@ -398,15 +403,16 @@
               in
               pkgs.symlinkJoin {
                 name = "nixpkgs-lib-tests";
-                paths =
-                  [ testWithNix ]
-                  # NOTE: nixpkgs 25.05 is being ... *creative*, and requires this dance to override
-                  # the evaluator used for the test. it will break again in the future, don't worry.
-                  ++ lib.optionals pkgs.stdenv.isLinux [
-                    ((pkgs.callPackage "${nixpkgs}/ci/eval" { nixVersions.latest = nix; }).attrpathsSuperset {
-                      evalSystem = system;
-                    })
-                  ];
+                paths = [
+                  testWithNix
+                ]
+                # NOTE: nixpkgs 25.05 is being ... *creative*, and requires this dance to override
+                # the evaluator used for the test. it will break again in the future, don't worry.
+                ++ lib.optionals pkgs.stdenv.isLinux [
+                  ((pkgs.callPackage "${nixpkgs}/ci/eval" { inherit nix; }).attrpathsSuperset {
+                    evalSystem = system;
+                  })
+                ];
               }
             );
           };

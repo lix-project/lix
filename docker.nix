@@ -62,38 +62,37 @@ let
     ++ autoLayered
     ++ extraPkgs;
 
-  users =
-    {
+  users = {
 
-      root = {
-        uid = 0;
-        shell = "${pkgs.bashInteractive}/bin/bash";
-        home = "/root";
-        gid = 0;
-        groups = [ "root" ];
-        description = "System administrator";
-      };
+    root = {
+      uid = 0;
+      shell = "${pkgs.bashInteractive}/bin/bash";
+      home = "/root";
+      gid = 0;
+      groups = [ "root" ];
+      description = "System administrator";
+    };
 
-      nobody = {
-        uid = 65534;
-        shell = "${pkgs.shadow}/bin/nologin";
-        home = "/var/empty";
-        gid = 65534;
-        groups = [ "nobody" ];
-        description = "Unprivileged account (don't use!)";
+    nobody = {
+      uid = 65534;
+      shell = "${pkgs.shadow}/bin/nologin";
+      home = "/var/empty";
+      gid = 65534;
+      groups = [ "nobody" ];
+      description = "Unprivileged account (don't use!)";
+    };
+  }
+  // lib.listToAttrs (
+    map (n: {
+      name = "nixbld${toString n}";
+      value = {
+        uid = 30000 + n;
+        gid = 30000;
+        groups = [ "nixbld" ];
+        description = "Nix build user ${toString n}";
       };
-    }
-    // lib.listToAttrs (
-      map (n: {
-        name = "nixbld${toString n}";
-        value = {
-          uid = 30000 + n;
-          gid = 30000;
-          groups = [ "nixbld" ];
-          description = "Nix build user ${toString n}";
-        };
-      }) (lib.lists.range 1 32)
-    );
+    }) (lib.lists.range 1 32)
+  );
 
   groups = {
     root.gid = 0;
@@ -361,7 +360,8 @@ let
         "org.opencontainers.image.version" = pkgs.nix.version;
         "org.opencontainers.image.description" =
           "Minimal Lix container image, with some batteries included.";
-      } // lib.optionalAttrs (lixRevision != null) { "org.opencontainers.image.revision" = lixRevision; };
+      }
+      // lib.optionalAttrs (lixRevision != null) { "org.opencontainers.image.revision" = lixRevision; };
     };
 
     meta = {
