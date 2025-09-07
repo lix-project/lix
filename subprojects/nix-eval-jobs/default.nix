@@ -39,7 +39,8 @@ let
       # nlohmann_json can be only discovered via cmake files
       cmake
       capnproto
-    ] ++ (lib.optional stdenv.cc.isClang [ clang-tools ]);
+    ]
+    ++ (lib.optional stdenv.cc.isClang [ clang-tools ]);
 
     passthru = {
       inherit nix;

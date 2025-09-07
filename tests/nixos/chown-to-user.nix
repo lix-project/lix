@@ -26,8 +26,9 @@ in
   name = "chown-to-user";
 
   nodes = {
-    machine = { lib, pkgs, ... }: {
+    machine = { config, lib, pkgs, ... }: {
       virtualisation.writableStore = true;
+      virtualisation.additionalPaths = [ config.system.build.extraUtils ];
 
       users.users.test = {
         isNormalUser = true;

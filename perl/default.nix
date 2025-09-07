@@ -46,7 +46,8 @@ perl.pkgs.toPerlModule (
       perlPackages.DBDSQLite
       # for kj-async
       capnproto
-    ] ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security;
+    ]
+    ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security;
 
     # Nixpkgs' Meson hook likes to set this to "plain".
     mesonBuildType = "debugoptimized";
