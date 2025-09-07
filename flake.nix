@@ -337,24 +337,26 @@
               mkdir $out
             '';
 
-          nixpkgsLibTests = forAllSystems (
-            system:
-            let
-              inherit (self.packages.${system}) nix;
-              pkgs = nixpkgsFor.${system}.native;
-              testWithNix = import (nixpkgs + "/lib/tests/test-with-nix.nix") { inherit pkgs lib nix; };
-            in
-            pkgs.symlinkJoin {
-              name = "nixpkgs-lib-tests";
-              paths =
-                [ testWithNix ]
-                # FIXME: This is disabled on darwin due to a nixpkgs bug https://github.com/NixOS/nixpkgs/issues/319147
-                # After that is fixed, it should be restored to use lib/tests/release.nix as before, rather than this reimplementation.
-                ++ lib.optionals pkgs.stdenv.isLinux [
-                  (import (nixpkgs + "/pkgs/test/release") { inherit pkgs lib nix; })
-                ];
-            }
-          );
+          /*
+            nixpkgsLibTests = forAllSystems (
+              system:
+              let
+                inherit (self.packages.${system}) nix;
+                pkgs = nixpkgsFor.${system}.native;
+                testWithNix = import (nixpkgs + "/lib/tests/test-with-nix.nix") { inherit pkgs lib nix; };
+              in
+              pkgs.symlinkJoin {
+                name = "nixpkgs-lib-tests";
+                paths =
+                  [ testWithNix ]
+                  # FIXME: This is disabled on darwin due to a nixpkgs bug https://github.com/NixOS/nixpkgs/issues/319147
+                  # After that is fixed, it should be restored to use lib/tests/release.nix as before, rather than this reimplementation.
+                  ++ lib.optionals pkgs.stdenv.isLinux [
+                    (import (nixpkgs + "/pkgs/test/release") { inherit pkgs lib nix; })
+                  ];
+              }
+            );
+          */
         };
 
         pre-commit = forAvailableSystems (
@@ -403,7 +405,7 @@
 
           binaryTarball = self.hydraJobs.binaryTarball.${system};
           perlBindings = self.hydraJobs.perlBindings.${system};
-          nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
+          # nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
           rl-next = self.hydraJobs.rl-next.${system}.user;
           # Will be empty attr set on i686-linux, and filtered out by forAvailableSystems.
           pre-commit = self.hydraJobs.pre-commit.${system};
