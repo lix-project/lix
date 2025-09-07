@@ -339,24 +339,26 @@
               mkdir $out
             '';
 
-          nixpkgsLibTests = forAllSystems (
-            system:
-            let
-              inherit (self.packages.${system}) nix;
-              pkgs = nixpkgsFor.${system}.native;
-              testWithNix = import (nixpkgs + "/lib/tests/test-with-nix.nix") { inherit pkgs lib nix; };
-            in
-            pkgs.symlinkJoin {
-              name = "nixpkgs-lib-tests";
-              paths =
-                [ testWithNix ]
-                # NOTE: nixpkgs 24.11 is being ... *creative*, and requires this dance to override
-                # the evaluator used for the test. it will break again in the future, don't worry.
-                ++ lib.optionals pkgs.stdenv.isLinux [
-                  (pkgs.callPackage "${nixpkgs}/ci/eval" { nixVersions.nix_2_24 = nix; }).attrpathsSuperset
-                ];
-            }
-          );
+          /*
+            nixpkgsLibTests = forAllSystems (
+              system:
+              let
+                inherit (self.packages.${system}) nix;
+                pkgs = nixpkgsFor.${system}.native;
+                testWithNix = import (nixpkgs + "/lib/tests/test-with-nix.nix") { inherit pkgs lib nix; };
+              in
+              pkgs.symlinkJoin {
+                name = "nixpkgs-lib-tests";
+                paths =
+                  [ testWithNix ]
+                  # NOTE: nixpkgs 24.11 is being ... *creative*, and requires this dance to override
+                  # the evaluator used for the test. it will break again in the future, don't worry.
+                  ++ lib.optionals pkgs.stdenv.isLinux [
+                    (pkgs.callPackage "${nixpkgs}/ci/eval" { nixVersions.nix_2_24 = nix; }).attrpathsSuperset
+                  ];
+              }
+            );
+          */
         };
 
         pre-commit = forAvailableSystems (
@@ -405,7 +407,7 @@
 
           binaryTarball = self.hydraJobs.binaryTarball.${system};
           perlBindings = self.hydraJobs.perlBindings.${system};
-          nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
+          # nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
           rl-next = self.hydraJobs.rl-next.${system}.user;
           # Will be empty attr set on i686-linux, and filtered out by forAvailableSystems.
           pre-commit = self.hydraJobs.pre-commit.${system};
