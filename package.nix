@@ -179,12 +179,13 @@ stdenv.mkDerivation (finalAttrs: {
 
   VERSION_SUFFIX = versionSuffix;
 
-  outputs =
-    [ "out" ]
-    ++ lib.optionals (!finalAttrs.dontBuild) [
-      "dev"
-      "doc"
-    ];
+  outputs = [
+    "out"
+  ]
+  ++ lib.optionals (!finalAttrs.dontBuild) [
+    "dev"
+    "doc"
+  ];
 
   dontBuild = lintInsteadOfBuild;
 
@@ -220,67 +221,65 @@ stdenv.mkDerivation (finalAttrs: {
   # We only include CMake so that Meson can locate toml11, which only ships CMake dependency metadata.
   dontUseCmakeConfigure = true;
 
-  nativeBuildInputs =
-    [
-      python3
-      meson
-      ninja
-      cmake
-    ]
-    ++ [
-      (lib.getBin lowdown-unsandboxed)
-      mdbook
-      mdbook-linkcheck
-    ]
-    ++ [
-      pkg-config
+  nativeBuildInputs = [
+    python3
+    meson
+    ninja
+    cmake
+  ]
+  ++ [
+    (lib.getBin lowdown-unsandboxed)
+    mdbook
+    mdbook-linkcheck
+  ]
+  ++ [
+    pkg-config
 
-      # Tests
-      git
-      mercurial
-      jq
-      lsof
-    ]
-    ++ lib.optional hostPlatform.isLinux util-linuxMinimal
-    ++ lib.optional (!officialRelease && buildUnreleasedNotes) build-release-notes
-    ++ lib.optional internalApiDocs doxygen
-    ++ lib.optionals lintInsteadOfBuild [
-      # required for a wrapped clang-tidy
-      llvmPackages.clang-tools
-      # required for run-clang-tidy
-      llvmPackages.clang-unwrapped
-    ];
+    # Tests
+    git
+    mercurial
+    jq
+    lsof
+  ]
+  ++ lib.optional hostPlatform.isLinux util-linuxMinimal
+  ++ lib.optional (!officialRelease && buildUnreleasedNotes) build-release-notes
+  ++ lib.optional internalApiDocs doxygen
+  ++ lib.optionals lintInsteadOfBuild [
+    # required for a wrapped clang-tidy
+    llvmPackages.clang-tools
+    # required for run-clang-tidy
+    llvmPackages.clang-unwrapped
+  ];
 
-  buildInputs =
-    [
-      curl
-      bzip2
-      xz
-      brotli
-      editline-lix
-      openssl
-      sqlite
-      libarchive
-      boost
-      lowdown
-      libsodium
-      toml11
-      lix-doc
-      pegtl
-    ]
-    ++ lib.optionals hostPlatform.isLinux [
-      libseccomp
-      busybox-sandbox-shell
-      passt-lix
-    ]
-    ++ lib.optional internalApiDocs rapidcheck
-    ++ lib.optional hostPlatform.isx86_64 libcpuid
-    # There have been issues building these dependencies
-    ++ lib.optional (hostPlatform.canExecute buildPlatform) aws-sdk-cpp-nix
-    ++ lib.optionals (finalAttrs.dontBuild) maybePropagatedInputs
-    # I am so sorry. This is because checkInputs are required to pass
-    # configure, but we don't actually want to *run* the checks here.
-    ++ lib.optionals lintInsteadOfBuild finalAttrs.checkInputs;
+  buildInputs = [
+    curl
+    bzip2
+    xz
+    brotli
+    editline-lix
+    openssl
+    sqlite
+    libarchive
+    boost
+    lowdown
+    libsodium
+    toml11
+    lix-doc
+    pegtl
+  ]
+  ++ lib.optionals hostPlatform.isLinux [
+    libseccomp
+    busybox-sandbox-shell
+    passt-lix
+  ]
+  ++ lib.optional internalApiDocs rapidcheck
+  ++ lib.optional hostPlatform.isx86_64 libcpuid
+  # There have been issues building these dependencies
+  ++ lib.optional (hostPlatform.canExecute buildPlatform) aws-sdk-cpp-nix
+  ++ lib.optionals (finalAttrs.dontBuild) maybePropagatedInputs
+  # I am so sorry. This is because checkInputs are required to pass
+  # configure, but we don't actually want to *run* the checks here.
+  ++ lib.optionals lintInsteadOfBuild finalAttrs.checkInputs;
 
   checkInputs = [
     gtest

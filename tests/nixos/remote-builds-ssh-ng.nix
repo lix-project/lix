@@ -48,6 +48,7 @@ in
           imports = [ test.config.builders.config ];
           services.openssh.enable = true;
           virtualisation.writableStore = true;
+          virtualisation.additionalPaths = [ config.system.build.extraUtils ];
           nix.settings.sandbox = true;
           nix.settings.substituters = lib.mkForce [ ];
         };
