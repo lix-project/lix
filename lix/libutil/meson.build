@@ -306,6 +306,7 @@ libutil = library(
     openssl,
     nlohmann_json,
     kj,
+    libatomic,
   ],
   include_directories : [ '../..' ],
   cpp_pch : cpp_pch,
@@ -343,6 +344,7 @@ liblixutil = declare_dependency(
     # lix-base pkg-config externally)
     kj,
     libarchive,
+    libatomic,
   ],
   link_with : libutil
 )

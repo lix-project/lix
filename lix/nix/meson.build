@@ -177,6 +177,7 @@ nix = executable(
     boehm,
     nlohmann_json,
     kj,
+    libatomic,
   ],
   cpp_pch : cpp_pch,
   install : true,

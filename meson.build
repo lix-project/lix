@@ -378,6 +378,26 @@ if is_freebsd
   libprocstat = declare_dependency(link_args : [ '-lprocstat' ])
 endif
 
+libatomic_test_program = '''
+#include <atomic>
+int main() {
+  std::atomic<uint8_t> w1;
+  std::atomic<uint16_t> w2;
+  std::atomic<uint32_t> w4;
+  std::atomic<uint64_t> w8;
+  return ++w1 + ++w2 + ++w4 + ++w8;
+}
+'''
+
+libatomic = cxx.find_library('atomic', required : false)
+
+# Some platforms like 32-Bit PowerPC need libatomic because they're lacking 64-Bit hardware atomic instructions
+# and compilers don't handle this automatically (yet).
+# See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81358 and https://clang.llvm.org/docs/Toolchain.html#atomics-library
+if not cxx.links(libatomic_test_program, name : 'test if simple atomic program links')
+  libatomic = cxx.find_library('atomic', required : true)
+endif
+
 #
 # Build-time tools
 #
