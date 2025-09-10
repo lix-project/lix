@@ -333,6 +333,7 @@ dependencies = [
   libarchive,
   nlohmann_json,
   openssl,
+  libatomic,
 ]
 
 libutil_temp = library(
@@ -409,6 +410,7 @@ liblixutil = declare_dependency(
     kj,
     libarchive,
     nlohmann_json,
+    libatomic,
   ],
   link_with : libutil
 )

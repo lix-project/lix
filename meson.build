@@ -34,7 +34,7 @@
 
 project('lix', 'cpp', 'rust',
   # NOTE: when bumping this, remember to also bump meson_version in subprojects.
-  meson_version : '>=1.5.0',
+  meson_version : '>=1.7.0',
   version : run_command('bash', '-c', 'echo -n $(jq -r .version < ./version.json)$VERSION_SUFFIX', check : true).stdout().strip(),
   default_options : [
     'cpp_std=c++23',
@@ -378,6 +378,26 @@ nlohmann_json = dependency('nlohmann_json', required : true, include_type : 'sys
 
 if is_freebsd
   libprocstat = declare_dependency(link_args : [ '-lprocstat' ])
+endif
+
+libatomic_test_program = '''
+#include <atomic>
+int main() {
+  std::atomic<uint8_t> w1;
+  std::atomic<uint16_t> w2;
+  std::atomic<uint32_t> w4;
+  std::atomic<uint64_t> w8;
+  return ++w1 + ++w2 + ++w4 + ++w8;
+}
+'''
+
+libatomic = dependency('atomic', required : false)
+
+# Some platforms like 32-Bit PowerPC need libatomic because they're lacking 64-Bit hardware atomic instructions
+# and compilers don't handle this automatically (yet).
+# See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81358 and https://clang.llvm.org/docs/Toolchain.html#atomics-library
+if cxx.links(libatomic_test_program, name : 'test if simple atomic program links')
+  libatomic = dependency('atomic', required : true)
 endif
 
 #

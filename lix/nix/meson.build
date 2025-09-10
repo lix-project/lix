@@ -178,6 +178,7 @@ nix = executable(
     capnp_rpc,
     nlohmann_json,
     kj,
+    libatomic,
   ],
   cpp_pch : cpp_pch,
   install : true,
