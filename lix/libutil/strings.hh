@@ -192,6 +192,11 @@ std::string toLower(const std::string & s);
 std::string shellEscape(const std::string_view s);
 
 /**
+ * Same as shellEscape, but also escapes nonprinting characters using $'ANSI C quotes'.
+ */
+std::string bashEscape(const std::string_view s);
+
+/**
  * Base64 encoding/decoding.
  */
 std::string base64Encode(std::string_view s);
