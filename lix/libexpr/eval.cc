@@ -1076,7 +1076,8 @@ Env * ExprAttrs::buildInheritFromEnv(EvalState & state, Env & up)
 
 void ExprSet::eval(EvalState & state, Env & env, Value & v)
 {
-    v.mkAttrs(state.ctx.buildBindings(attrs.size() + dynamicAttrs.size()).finish());
+    Bindings::Size capacity = attrs.size() + dynamicAttrs.size();
+    v.mkAttrs(state.ctx.buildBindings(capacity).finish());
     auto dynamicEnv = &env;
 
     if (recursive) {
@@ -1118,7 +1119,7 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
         if (hasOverrides) {
             Value * vOverrides = (*v.attrs)[overrides->second.displ].value;
             state.forceAttrs(*vOverrides, noPos, "while evaluating the `__overrides` attribute");
-            Bindings * newBnds = state.ctx.mem.allocBindings(v.attrs->capacity() + vOverrides->attrs->size());
+            Bindings * newBnds = state.ctx.mem.allocBindings(capacity + vOverrides->attrs->size());
             for (auto & i : *v.attrs)
                 newBnds->push_back(i);
             for (auto & i : *vOverrides->attrs) {

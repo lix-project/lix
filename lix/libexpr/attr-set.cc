@@ -7,8 +7,7 @@
 
 namespace nix {
 
-Bindings Bindings::EMPTY{0};
-
+Bindings Bindings::EMPTY{};
 
 /* Allocate a new array of attributes for an attribute set with a specific
    capacity. The space is implicitly reserved after the Bindings
@@ -21,7 +20,7 @@ Bindings * EvalMemory::allocBindings(size_t capacity)
         throw Error("attribute set of size %d is too big", capacity);
     stats.nrAttrsets++;
     stats.nrAttrsInAttrsets += capacity;
-    return new (gcAllocBytes(sizeof(Bindings) + sizeof(Attr) * capacity)) Bindings((Bindings::Size) capacity);
+    return new (gcAllocBytes(sizeof(Bindings) + sizeof(Attr) * capacity)) Bindings();
 }
 
 

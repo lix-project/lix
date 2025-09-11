@@ -53,10 +53,10 @@ public:
     static Bindings EMPTY;
 
 private:
-    Size size_, capacity_;
+    Size size_ = 0;
     Attr attrs[0];
 
-    Bindings(Size capacity) : size_(0), capacity_(capacity) { }
+    Bindings() = default;
     Bindings(const Bindings & bindings) = delete;
 
 public:
@@ -68,7 +68,6 @@ public:
 
     void push_back(const Attr & attr)
     {
-        assert(size_ < capacity_);
         attrs[size_++] = attr;
     }
 
@@ -98,8 +97,6 @@ public:
 
     void sort();
 
-    Size capacity() { return capacity_; }
-
     /**
      * Returns the attributes in lexicographically sorted order.
      */
@@ -126,19 +123,26 @@ public:
  */
 class BindingsBuilder
 {
+public:
+    using Size = Bindings::Size;
+
+private:
     Bindings * bindings;
     EvalMemory & mem;
     SymbolTable & symbols;
+    Size capacity;
 
 public:
     // needed by std::back_inserter
     using value_type = Attr;
 
-    BindingsBuilder(EvalMemory & mem, SymbolTable & symbols, Bindings * bindings)
+    BindingsBuilder(EvalMemory & mem, SymbolTable & symbols, Bindings * bindings, Size capacity)
         : bindings(bindings)
         , mem(mem)
         , symbols(symbols)
-    { }
+        , capacity(capacity)
+    {
+    }
 
     void insert(Symbol name, Value * value, PosIdx pos = noPos)
     {
@@ -152,6 +156,7 @@ public:
 
     void push_back(const Attr & attr)
     {
+        assert(bindings->size() < capacity);
         bindings->push_back(attr);
     }
 
