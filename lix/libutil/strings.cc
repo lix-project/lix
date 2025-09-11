@@ -128,8 +128,41 @@ std::string shellEscape(const std::string_view s)
     std::string r;
     r.reserve(s.size() + 2);
     r += "'";
-    for (auto & i : s)
-        if (i == '\'') r += "'\\''"; else r += i;
+    for (auto & i : s) {
+        if (i == '\'') {
+            // End the single quote, add a single backslash-escaped single quote,
+            // then start a single quote again.
+            // i.e., `I didn't know` becomes `'I didn'\''t know'`.
+            r += "'\\''";
+        } else {
+            r += i;
+        }
+    }
+
+    r += '\'';
+    return r;
+}
+
+std::string bashEscape(const std::string_view s)
+{
+    std::string r;
+    r.reserve(s.size() + 2);
+    r += "'";
+    for (auto & i : s) {
+        if (!std::isprint(i)) {
+            // Close the single quote, start an "ANSI-C Quote" ($'foo'), add `\xXX`,
+            // close the ANSI-C Quote, and finally start a normal single quote again.
+            r += fmt("'$'\\x%02x''", static_cast<unsigned int>(static_cast<unsigned char>(i)));
+        } else if (i == '\'') {
+            // End the single quote, add a single backslash-escaped single quote,
+            // then start a single quote again.
+            // i.e., `I didn't know` becomes `'I didn'\''t know'`.
+            r += "'\\''";
+        } else {
+            r += i;
+        }
+    }
+
     r += '\'';
     return r;
 }
