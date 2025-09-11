@@ -141,20 +141,20 @@ struct BuildEnvironment
         for (auto & [name, value] : vars) {
             if (!ignoreVars.count(name)) {
                 if (auto str = std::get_if<String>(&value)) {
-                    out << fmt("%s=%s\n", name, shellEscape(str->value));
+                    out << fmt("%s=%s\n", name, bashEscape(str->value));
                     if (str->exported)
                         out << fmt("export %s\n", name);
                 }
                 else if (auto arr = std::get_if<Array>(&value)) {
                     out << "declare -a " << name << "=(";
                     for (auto & s : *arr)
-                        out << shellEscape(s) << " ";
+                        out << bashEscape(s) << " ";
                     out << ")\n";
                 }
                 else if (auto arr = std::get_if<Associative>(&value)) {
                     out << "declare -A " << name << "=(";
                     for (auto & [n, v] : *arr)
-                        out << "[" << shellEscape(n) << "]=" << shellEscape(v) << " ";
+                        out << "[" << bashEscape(n) << "]=" << bashEscape(v) << " ";
                     out << ")\n";
                 }
             }
@@ -577,21 +577,24 @@ struct CmdDevelop : Common, MixEnvironment
         else if (!command.empty()) {
             std::vector<std::string> args;
             for (auto s : command)
-                args.push_back(shellEscape(s));
+                args.push_back(bashEscape(s));
             script += fmt("exec %s\n", concatStringsSep(" ", args));
         }
 
         else {
             script = "[ -n \"$PS1\" ] && [ -e ~/.bashrc ] && source ~/.bashrc;\n" + script;
             if (developSettings.bashPrompt != "")
-                script += fmt("[ -n \"$PS1\" ] && PS1=%s;\n",
-                    shellEscape(developSettings.bashPrompt.get()));
+                script +=
+                    fmt("[ -n \"$PS1\" ] && PS1=%s;\n",
+                        bashEscape(developSettings.bashPrompt.get()));
             if (developSettings.bashPromptPrefix != "")
-                script += fmt("[ -n \"$PS1\" ] && PS1=%s\"$PS1\";\n",
-                    shellEscape(developSettings.bashPromptPrefix.get()));
+                script +=
+                    fmt("[ -n \"$PS1\" ] && PS1=%s\"$PS1\";\n",
+                        bashEscape(developSettings.bashPromptPrefix.get()));
             if (developSettings.bashPromptSuffix != "")
-                script += fmt("[ -n \"$PS1\" ] && PS1+=%s;\n",
-                    shellEscape(developSettings.bashPromptSuffix.get()));
+                script +=
+                    fmt("[ -n \"$PS1\" ] && PS1+=%s;\n",
+                        bashEscape(developSettings.bashPromptSuffix.get()));
         }
 
         writeFull(rcFileFd.get(), script);

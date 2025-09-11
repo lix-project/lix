@@ -12,6 +12,31 @@ fi
 __vars="$(declare -p)"
 __functions="$(declare -F)"
 
+# Literal control characters (ASCII 0-31) aren't valid JSON.
+__escapeCtrl() {
+    local escaped="$1"
+
+    # I don't know if NUL bytes are at ALL possible in here,
+    # but covering them is free.
+    local i=0
+    # NOTE: safe input `i` to arithmetic expansion.
+    while [[ "$i" -le 32 ]]; do
+        # Convert the decimal ASCII value to its actual string.
+        local asHex; printf -v asHex "%02x" "$i"
+        local asStr; printf -v asStr "%b" "\x$asHex"
+
+        # Format it to \uXXXX.
+        # All control characters fit within four hex digits.
+        local asUni; printf -v asUni '\\u%04x' "$i"
+
+        escaped="${escaped//"$asStr"/"$asUni"}"
+
+        i="$((i + 1))"
+    done
+
+    printf "%s" "$escaped"
+}
+
 __dumpEnv() {
     printf '{\n'
 
@@ -125,6 +150,7 @@ __escapeString() {
     __s="${__s//$'\n'/\\n}"
     __s="${__s//$'\r'/\\r}"
     __s="${__s//$'\t'/\\t}"
+    __s="$(__escapeCtrl "$__s")"
     printf '"%s"' "$__s"
 }
 
