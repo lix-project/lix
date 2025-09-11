@@ -132,6 +132,7 @@ set -u
     [[ ${arr2[1]} = $'\n' ]]
     [[ ${arr2[2]} = $'x\ny' ]]
     [[ $(fun) = blabla ]]
+    [[ "$ASCII_ESC" = "$(printf "\e")" ]]
     [[ $PATH = $(jq -r .variables.PATH.value $TEST_ROOT/dev-env.json):$path ]]
 )
 

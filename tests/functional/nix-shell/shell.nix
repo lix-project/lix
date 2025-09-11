@@ -50,6 +50,7 @@ let pkgs = rec {
     VAR_FROM_NIX = "bar";
     ASCII_PERCENT = "%";
     ASCII_AT = "@";
+    ASCII_ESC = "";
     TEST_inNixShell = if inNixShell then "true" else "false";
     inherit stdenv;
     outputs = ["dev" "out"];
