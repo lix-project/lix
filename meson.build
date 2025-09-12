@@ -396,7 +396,7 @@ libatomic = dependency('atomic', required : false)
 # Some platforms like 32-Bit PowerPC need libatomic because they're lacking 64-Bit hardware atomic instructions
 # and compilers don't handle this automatically (yet).
 # See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81358 and https://clang.llvm.org/docs/Toolchain.html#atomics-library
-if cxx.links(libatomic_test_program, name : 'test if simple atomic program links')
+if not cxx.links(libatomic_test_program, name : 'test if simple atomic program links')
   libatomic = dependency('atomic', required : true)
 endif
 
