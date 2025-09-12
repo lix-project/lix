@@ -62,6 +62,12 @@ if nix-store --dump $storePath >/dev/full ; then
     exit -1
 fi
 
+# compressed nars should cause a useful error message. we use ascii
+# text input because the salient point is the initial length field.
+echo 'not a real nar' > bad.nar
+expect 1 nix nar ls bad.nar / 2>&1 | fgrep "doesn't look like a Nix archive (found malformed string tag"
+
+
 # Test reading from remote nar listings if available
 nix copy --to "file://$cacheDir?write-nar-listing=true" $storePath
 

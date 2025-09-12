@@ -367,14 +367,20 @@ struct Parser
         buffer.clear();       \
         u;                    \
     })
-#define READ_STRING_LIMITED(limit)                                        \
-    ({                                                                    \
-        size_t len = FETCH_INT(size_t);                                   \
-        co_yield WantBytes{len + (8 - len % 8) % 8};                      \
-        StringSource src(std::string_view(buffer.data(), buffer.size())); \
-        auto str = readString(src, (limit));                              \
-        buffer.clear();                                                   \
-        std::move(str);                                                   \
+#define READ_STRING_LIMITED(limit)                                                                 \
+    ({                                                                                             \
+        size_t len = FETCH_INT(size_t);                                                            \
+        if (len > (limit)) {                                                                       \
+            throw SerialisationError(                                                              \
+                "found malformed string tag. input may be a compressed NAR, which cannot be read " \
+                "directly"                                                                         \
+            );                                                                                     \
+        }                                                                                          \
+        co_yield WantBytes{len + (8 - len % 8) % 8};                                               \
+        StringSource src(std::string_view(buffer.data(), buffer.size()));                          \
+        auto str = readString(src, (limit));                                                       \
+        buffer.clear();                                                                            \
+        std::move(str);                                                                            \
     })
 #define READ_STRING() READ_STRING_LIMITED(std::numeric_limits<size_t>::max())
 #define READ_PADDING(size)                                                    \
@@ -487,14 +493,13 @@ struct Parser
         std::string version;
         try {
             version = READ_STRING_LIMITED(narVersionMagic1.size());
+            if (version != narVersionMagic1) {
+                throw SerialisationError("bad NAR version tag");
+            }
+            co_yield parse();
         } catch (SerialisationError & e) {
-            /* This generally means the integer at the start couldn't be
-               decoded.  Ignore and throw the exception below. */
+            throw badArchive(fmt("input doesn't look like a Nix archive (%s)", e.info().msg.str()));
         }
-        if (version != narVersionMagic1) {
-            throw badArchive("input doesn't look like a Nix archive");
-        }
-        co_yield parse();
     }
 
 #undef FETCH_INT
