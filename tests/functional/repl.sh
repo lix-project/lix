@@ -147,7 +147,9 @@ foo + baz
 # - Check that the result has changed
 replResult=$( (
 echo "changingThing"
-sleep 1 # Leave the repl the time to eval 'foo'
+mkfifo fifo
+echo "builtins.readFile ./fifo"
+echo > fifo
 sed -i 's/beforeChange/afterChange/' flake/flake.nix
 echo ":reload"
 echo "changingThing"
