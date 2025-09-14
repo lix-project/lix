@@ -285,3 +285,82 @@ def test_transitivity() -> None:
         assert aggregate0["attr"] == "aggregate0"
 
         assert aggregate1["drvPath"] == aggregate0["constituents"][0]
+
+
+def test_mutually_exclusive_combinations() -> None:
+    with TemporaryDirectory() as tempdir:
+        for flag in ["constituents", "check-cache-status"]:
+            result = subprocess.run(
+                [
+                    str(BIN),
+                    "--gc-roots-dir",
+                    tempdir,
+                    "--meta",
+                    "--extra-experimental-features",
+                    "flakes",
+                    "--no-instantiate",
+                    f"--{flag}",
+                    "--workers",
+                    "1",
+                    "--flake",
+                    ".#legacyPackages.x86_64-linux.constituents.success",
+                ],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+
+            assert result.returncode == 1
+            assert f"--no-instantiate and --{flag} are mutually exclusive" in result.stderr
+
+
+def test_no_instantiate_mode() -> None:
+    """Test that --no-instantiate flag works correctly"""
+    with TemporaryDirectory() as tempdir:
+        path = Path(tempdir)
+        gcroots = path / "gcroots"
+        gcroots.mkdir()
+        results, _ = evaluate(
+            tempdir,
+            0,
+            [
+                "--gc-roots-dir",
+                gcroots,
+                "--eval-store",
+                path / "root",
+                "--meta",
+                "--no-instantiate",
+                "--flake",
+                ".#hydraJobs",
+            ]
+        )
+        assert len(results) == 4
+
+        # Check that all results have the expected structure
+        for result in results:
+            # In no-instantiate mode, drvPath should still be present (from the attr)
+            assert "drvPath" in result
+            assert result["drvPath"].endswith(".drv")
+
+            assert not (path / "root" / result["drvPath"][1:]).exists()
+
+            # System should still be present (from querySystem fallback)
+            assert "system" in result
+            assert result["system"] != ""
+
+            # Name should still be present
+            assert "name" in result
+
+            # Outputs should still be present but may be empty
+            assert "outputs" in result
+
+            # Cache status should not be present (it's Unknown and not included)
+            assert "cacheStatus" not in result
+            assert "neededBuilds" not in result
+            assert "neededSubstitutes" not in result
+
+            # Input drvs should not be present (requires reading derivation from store)
+            assert not result["inputDrvs"]
+
+        # No GC roots should be created in no-instantiate mode
+        assert len(list(Path(gcroots).iterdir())) == 0

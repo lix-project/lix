@@ -48,12 +48,13 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
     : constituents(constituents) {
 
     auto localStore = state.ctx.store.try_cast_shared<nix::LocalFSStore>();
+    auto canReadDerivation = localStore && !nix::settings.readOnlyMode;
 
     try {
         for (auto &[outputName, optOutputPath] :
              drvInfo.queryOutputs(state, true)) {
             assert(optOutputPath);
-            outputs[outputName] = localStore->printStorePath(*optOutputPath);
+            outputs[outputName] = state.ctx.store->printStorePath(*optOutputPath);
         }
     } catch (const std::exception &e) { // NOLINT(lix-foreign-exceptions)
         state.ctx.errors.make<nix::EvalError>(
@@ -82,6 +83,8 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
         }
         meta = meta_;
     }
+
+    // !canReadDerivation together with checkCacheStatus is rejected in main().
     if (args.checkCacheStatus) {
         cacheStatus = queryIsCached(state.aio, *localStore, outputs)
                           ? Drv::CacheStatus::Cached
@@ -90,18 +93,22 @@ Drv::Drv(std::string &attrPath, nix::EvalState &state, nix::DrvInfo &drvInfo,
         cacheStatus = Drv::CacheStatus::Unknown;
     }
 
-    drvPath = localStore->printStorePath(drvInfo.requireDrvPath(state));
-
-    auto drv = state.aio.blockOn(localStore->readDerivation(drvInfo.requireDrvPath(state)));
-    for (const auto &[inputDrvPath, inputNode] : drv.inputDrvs) {
-        std::set<std::string> inputDrvOutputs;
-        for (auto &outputName : inputNode) {
-            inputDrvOutputs.insert(outputName);
-        }
-        inputDrvs[localStore->printStorePath(inputDrvPath)] = inputDrvOutputs;
-    }
+    drvPath = state.ctx.store->printStorePath(drvInfo.requireDrvPath(state));
     name = drvInfo.queryName(state);
-    system = drv.platform;
+
+    if (canReadDerivation) {
+        auto drv = state.aio.blockOn(localStore->readDerivation(drvInfo.requireDrvPath(state)));
+        for (const auto &[inputDrvPath, inputNode] : drv.inputDrvs) {
+            std::set<std::string> inputDrvOutputs;
+            for (auto &outputName : inputNode) {
+                inputDrvOutputs.insert(outputName);
+            }
+            inputDrvs[localStore->printStorePath(inputDrvPath)] = inputDrvOutputs;
+        }
+        system = drv.platform;
+    } else {
+        system = drvInfo.querySystem(state);
+    }
 }
 
 void to_json(nix::JSON &json, const Drv &drv) {
@@ -133,15 +140,17 @@ void to_json(nix::JSON &json, const Drv &drv) {
 
 void register_gc_root(nix::Path &gcRootsDir, std::string &drvPath, const nix::ref<nix::Store> &store,
                       nix::AsyncIoRoot &aio) {
-    if (!gcRootsDir.empty()) {
+    if (!gcRootsDir.empty() && !nix::settings.readOnlyMode) {
         nix::Path root =
             gcRootsDir + "/" +
             std::string(nix::baseNameOf(drvPath));
         if (!nix::pathExists(root)) {
             auto localStore = store.try_cast_shared<nix::LocalFSStore>();
-            auto storePath =
-                localStore->parseStorePath(drvPath);
-            aio.blockOn(localStore->addPermRoot(storePath, root));
+            if (localStore) {
+                auto storePath =
+                    localStore->parseStorePath(drvPath);
+                aio.blockOn(localStore->addPermRoot(storePath, root));
+            }
         }
     }
 }

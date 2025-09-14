@@ -326,6 +326,10 @@ void collector(MyArgs &myArgs, Sync<State> &state_,
             } else {
                 auto state(state_.lock());
                 state->jobs.insert_or_assign(response["attr"], response);
+                if (nix::settings.readOnlyMode) {
+                    response.erase("namedConstituents");
+                    response.erase("constituents");
+                }
                 auto named = response.find("namedConstituents");
                 if (named == response.end() || named->empty()) {
                     response.erase("namedConstituents");
@@ -366,6 +370,17 @@ int main(int argc, char **argv) {
         MyArgs myArgs(aio);
 
         myArgs.parseArgs(argv, argc);
+
+        /* Set no-instantiate mode if requested (makes evaluation faster) */
+        if (myArgs.noInstantiate) {
+            nix::settings.readOnlyMode = true;
+            if (myArgs.constituents) {
+                throw UsageError("--no-instantiate and --constituents are mutually exclusive");
+            }
+            if (myArgs.checkCacheStatus) {
+                throw UsageError("--no-instantiate and --check-cache-status are mutually exclusive");
+            }
+        }
 
         /* When building a flake, use pure evaluation (no access to
            'getEnv', 'currentSystem' etc. */

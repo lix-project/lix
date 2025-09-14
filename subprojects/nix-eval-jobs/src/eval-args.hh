@@ -29,6 +29,7 @@ class MyArgs : virtual public nix::MixEvalArgs,
     bool forceRecurse = false;
     bool checkCacheStatus = false;
     bool constituents = false;
+    bool noInstantiate = false;
     size_t nrWorkers = 1;
     size_t maxMemorySize = 4096;
 

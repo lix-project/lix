@@ -82,6 +82,19 @@ MyArgs::MyArgs(nix::AsyncIoRoot & aio) : MixCommonArgs("nix-eval-jobs"), aio_(ai
          .description = "print out a stack trace in case of evaluation errors",
          .handler = {&showTrace, true}});
 
+    addFlag({
+        .longName = "no-instantiate",
+        .aliases = {},
+        .shortName = 0,
+        .description =
+            "don't instantiate (write) derivations, only evaluate (faster)",
+        .category = "",
+        .labels = {},
+        .handler = {&noInstantiate, true},
+        .completer = nullptr,
+        .experimentalFeature = std::nullopt,
+    });
+
     addFlag({.longName = "expr",
              .shortName = 'E',
              .description = "treat the argument as a Nix expression",
