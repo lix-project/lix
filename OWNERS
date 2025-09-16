@@ -17,6 +17,7 @@ per-file flake.lock=*
 per-file *.nix=*
 per-file Cargo.lock=*
 per-file Cargo.toml=*
+per-file version.json=*
 
 # Code style
 per-file .clang-tidy=*
