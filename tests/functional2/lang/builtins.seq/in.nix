@@ -1,1 +1,1 @@
-builtins.seq (abort "foo") 2
+builtins.seq 1 2
