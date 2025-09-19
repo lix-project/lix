@@ -6,6 +6,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/outputs-spec.hh"
 #include "lix/libstore/derivations.hh"
+#include "lix/libstore/parsed-derivations.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/json.hh"
 #include "run.hh"
@@ -214,6 +215,8 @@ const static std::string getEnvSh =
 static kj::Promise<Result<StorePath>> getDerivationEnvironment(ref<Store> store, ref<Store> evalStore, const StorePath & drvPath)
 try {
     auto drv = TRY_AWAIT(evalStore->derivationFromPath(drvPath));
+    ParsedDerivation parsedDrv(drvPath, drv);
+    JSON updatedStructuredAttrs;
 
     auto builder = baseNameOf(drv.builder);
     if (builder != "bash")
@@ -229,6 +232,20 @@ try {
     drv.env.erase("disallowedReferences");
     drv.env.erase("disallowedRequisites");
     drv.env.erase("name");
+
+    /* Remove output checks in structured attrs. */
+    if (auto structuredAttrs = parsedDrv.getStructuredAttrs()) {
+        drv.env.erase("__json");
+        updatedStructuredAttrs = *structuredAttrs;
+        updatedStructuredAttrs.erase("allowedReferences");
+        updatedStructuredAttrs.erase("allowedRequisites");
+        updatedStructuredAttrs.erase("disallowedReferences");
+        updatedStructuredAttrs.erase("disallowedRequisites");
+        updatedStructuredAttrs.erase("maxSize");
+        updatedStructuredAttrs.erase("maxClosureSize");
+        updatedStructuredAttrs.erase("outputChecks");
+        drv.env.emplace("__json", updatedStructuredAttrs.dump());
+    }
 
     /* Rehash and write the derivation. FIXME: would be nice to use
        'buildDerivation', but that's privileged. */
