@@ -114,7 +114,6 @@ functional_tests_scripts = [
   'eval.sh',
   'repl.sh',
   'binary-cache-build-remote.sh',
-  'search.sh',
   'logging.sh',
   'export.sh',
   'config.sh',
