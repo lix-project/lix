@@ -51,14 +51,14 @@ JSON printValueAsJSON(EvalState & state, bool strict,
                 out = *maybeString;
                 break;
             }
-            auto i = v.attrs->find(state.ctx.s.outPath);
-            if (i == v.attrs->end()) {
+            auto i = v.attrs->get(state.ctx.s.outPath);
+            if (!i) {
                 out = JSON::object();
                 StringSet names;
                 for (auto & j : *v.attrs)
                     names.emplace(state.ctx.symbols[j.name]);
                 for (auto & j : names) {
-                    const Attr & a(*v.attrs->find(state.ctx.symbols.create(j)));
+                    const Attr & a(*v.attrs->get(state.ctx.symbols.create(j)));
                     try {
                         out[j] = printValueAsJSON(state, strict, *a.value, a.pos, context, copyToStore);
                     } catch (Error & e) {
@@ -67,8 +67,9 @@ JSON printValueAsJSON(EvalState & state, bool strict,
                         throw;
                     }
                 }
-            } else
+            } else {
                 return printValueAsJSON(state, strict, *i->value, i->pos, context, copyToStore);
+            }
             break;
         }
 

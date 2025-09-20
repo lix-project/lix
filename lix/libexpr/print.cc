@@ -232,11 +232,14 @@ private:
 
     void printDerivation(Value & v)
     {
-        Bindings::iterator i = v.attrs->find(state.ctx.s.drvPath);
+        auto i = v.attrs->get(state.ctx.s.drvPath);
         NixStringContext context;
         std::string storePath;
-        if (i != v.attrs->end())
-            storePath = state.ctx.store->printStorePath(state.coerceToStorePath(i->pos, *i->value, context, "while evaluating the drvPath of a derivation"));
+        if (i) {
+            storePath = state.ctx.store->printStorePath(state.coerceToStorePath(
+                i->pos, *i->value, context, "while evaluating the drvPath of a derivation"
+            ));
+        }
 
         if (options.ansiColors)
             output << ANSI_GREEN;

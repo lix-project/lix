@@ -592,7 +592,7 @@ Value * EvalBuiltins::addPrimOp(PrimOp && primOp)
 
 Value & EvalBuiltins::get(const std::string & name)
 {
-    return *env.values[0]->attrs->find(symbols.create(name))->value;
+    return *env.values[0]->attrs->get(symbols.create(name))->value;
 }
 
 
@@ -833,8 +833,8 @@ inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
     auto * fromWith = var.fromWith;
     while (1) {
         forceAttrs(*env->values[0], fromWith->pos, "while evaluating the first subexpression of a with expression");
-        Bindings::iterator j = env->values[0]->attrs->find(var.name);
-        if (j != env->values[0]->attrs->end()) {
+        auto j = env->values[0]->attrs->get(var.name);
+        if (j) {
             if (ctx.stats.countCalls) ctx.stats.attrSelects[j->pos]++;
             return j->value;
         }
@@ -1154,9 +1154,18 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
             continue;
         state.forceStringNoCtx(nameVal, i.pos, "while evaluating the name of a dynamic attribute");
         auto nameSym = state.ctx.symbols.create(nameVal.str());
-        Bindings::iterator j = v.attrs->find(nameSym);
-        if (j != v.attrs->end())
-            state.ctx.errors.make<EvalError>("dynamic attribute '%1%' already defined at %2%", state.ctx.symbols[nameSym], state.ctx.positions[j->pos]).atPos(i.pos).withFrame(env, *this).debugThrow();
+        auto j = v.attrs->get(nameSym);
+        if (j) {
+            state.ctx.errors
+                .make<EvalError>(
+                    "dynamic attribute '%1%' already defined at %2%",
+                    state.ctx.symbols[nameSym],
+                    state.ctx.positions[j->pos]
+                )
+                .atPos(i.pos)
+                .withFrame(env, *this)
+                .debugThrow();
+        }
 
         i.valueExpr->setName(nameSym);
         /* Keep sorted order so find can catch duplicates */
@@ -1315,8 +1324,8 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
 
             // Now that we know this is actually an attrset, try to find an attr
             // with the selected name.
-            Bindings::iterator attrIt = vCurrent->attrs->find(name);
-            if (attrIt == vCurrent->attrs->end()) {
+            auto attrIt = vCurrent->attrs->get(name);
+            if (!attrIt) {
 
                 // If we have an `or` provided default, then we'll use that.
                 if (def != nullptr) {
@@ -1368,11 +1377,9 @@ void ExprOpHasAttr::eval(EvalState & state, Env & env, Value & v)
 
     for (auto & i : attrPath) {
         state.forceValue(*vAttrs, getPos());
-        Bindings::iterator j;
+        const Attr * j;
         auto name = getName(i, state, env);
-        if (vAttrs->type() != nAttrs ||
-            (j = vAttrs->attrs->find(name)) == vAttrs->attrs->end())
-        {
+        if (vAttrs->type() != nAttrs || (j = vAttrs->attrs->get(name)) == nullptr) {
             v.mkBool(false);
             return;
         } else {
@@ -1740,8 +1747,8 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res, PosI
     forceValue(fun, pos);
 
     if (fun.type() == nAttrs) {
-        auto found = fun.attrs->find(ctx.s.functor);
-        if (found != fun.attrs->end()) {
+        auto found = fun.attrs->get(ctx.s.functor);
+        if (found) {
             Value * v = ctx.mem.allocValue();
             callFunction(*found->value, fun, *v, pos);
             forceValue(*v, pos);
@@ -1770,8 +1777,8 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res, PosI
     } else {
         // Otherwise, only pass the arguments that the function accepts
         for (auto & i : pattern->formals) {
-            Bindings::iterator j = args.find(i.name);
-            if (j != args.end()) {
+            auto j = args.get(i.name);
+            if (j) {
                 attrs.insert(*j);
             } else if (!i.def) {
                 ctx.errors.make<MissingArgumentError>(R"(cannot evaluate a function that has an argument without a value ('%1%')
@@ -2184,7 +2191,7 @@ bool EvalState::forceBool(Value & v, const PosIdx pos, std::string_view errorCtx
 
 bool EvalState::isFunctor(Value & fun)
 {
-    return fun.type() == nAttrs && fun.attrs->find(ctx.s.functor) != fun.attrs->end();
+    return fun.type() == nAttrs && fun.attrs->get(ctx.s.functor);
 }
 
 
@@ -2259,8 +2266,10 @@ std::string_view EvalState::forceStringNoCtx(Value & v, const PosIdx pos, std::s
 bool EvalState::isDerivation(Value & v)
 {
     if (v.type() != nAttrs) return false;
-    Bindings::iterator i = v.attrs->find(ctx.s.type);
-    if (i == v.attrs->end()) return false;
+    auto i = v.attrs->get(ctx.s.type);
+    if (!i) {
+        return false;
+    }
     forceValue(*i->value, i->pos);
     if (i->value->type() != nString) return false;
     return i->value->str() == "derivation";
@@ -2270,8 +2279,8 @@ bool EvalState::isDerivation(Value & v)
 std::optional<std::string> EvalState::tryAttrsToString(const PosIdx pos, Value & v,
     NixStringContext & context, StringCoercionMode mode, bool copyToStore)
 {
-    auto i = v.attrs->find(ctx.s.toString);
-    if (i != v.attrs->end()) {
+    auto i = v.attrs->get(ctx.s.toString);
+    if (i) {
         Value v1;
         try {
             callFunction(*i->value, v, v1, i->pos);
@@ -2319,8 +2328,8 @@ BackedStringView EvalState::coerceToString(
         auto maybeString = tryAttrsToString(pos, v, context, mode, copyToStore);
         if (maybeString)
             return std::move(*maybeString);
-        auto i = v.attrs->find(ctx.s.outPath);
-        if (i == v.attrs->end()) {
+        auto i = v.attrs->get(ctx.s.outPath);
+        if (!i) {
             ctx.errors.make<TypeError>(
                 "cannot coerce %1% to a string: %2%",
                 showType(v),
@@ -2537,10 +2546,11 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             /* If both sets denote a derivation (type = "derivation"),
                then compare their outPaths. */
             if (isDerivation(v1) && isDerivation(v2)) {
-                Bindings::iterator i = v1.attrs->find(ctx.s.outPath);
-                Bindings::iterator j = v2.attrs->find(ctx.s.outPath);
-                if (i != v1.attrs->end() && j != v2.attrs->end())
+                auto i = v1.attrs->get(ctx.s.outPath);
+                auto j = v2.attrs->get(ctx.s.outPath);
+                if (i && j) {
                     return eqValues(*i->value, *j->value, pos, errorCtx);
+                }
             }
 
             if (v1.attrs->size() != v2.attrs->size()) return false;

@@ -64,8 +64,10 @@ try {
 std::string DrvInfo::queryName(EvalState & state)
 {
     if (name == "" && attrs) {
-        auto i = attrs->find(state.ctx.s.name);
-        if (i == attrs->end()) state.ctx.errors.make<TypeError>("derivation name missing").debugThrow();
+        auto i = attrs->get(state.ctx.s.name);
+        if (!i) {
+            state.ctx.errors.make<TypeError>("derivation name missing").debugThrow();
+        }
         name = state.forceStringNoCtx(*i->value, noPos, "while evaluating the 'name' attribute of a derivation");
     }
     return name;
@@ -75,8 +77,12 @@ std::string DrvInfo::queryName(EvalState & state)
 std::string DrvInfo::querySystem(EvalState & state)
 {
     if (system == "" && attrs) {
-        auto i = attrs->find(state.ctx.s.system);
-        system = i == attrs->end() ? "unknown" : state.forceStringNoCtx(*i->value, i->pos, "while evaluating the 'system' attribute of a derivation");
+        auto i = attrs->get(state.ctx.s.system);
+        system = !i
+            ? "unknown"
+            : state.forceStringNoCtx(
+                  *i->value, i->pos, "while evaluating the 'system' attribute of a derivation"
+              );
     }
     return system;
 }
@@ -85,12 +91,18 @@ std::string DrvInfo::querySystem(EvalState & state)
 std::optional<StorePath> DrvInfo::queryDrvPath(EvalState & state)
 {
     if (!drvPath && attrs) {
-        Bindings::iterator i = attrs->find(state.ctx.s.drvPath);
+        auto i = attrs->get(state.ctx.s.drvPath);
         NixStringContext context;
-        if (i == attrs->end())
+        if (!i) {
             drvPath = {std::nullopt};
-        else
-            drvPath = {state.coerceToStorePath(i->pos, *i->value, context, "while evaluating the 'drvPath' attribute of a derivation")};
+        } else {
+            drvPath = {state.coerceToStorePath(
+                i->pos,
+                *i->value,
+                context,
+                "while evaluating the 'drvPath' attribute of a derivation"
+            )};
+        }
     }
     return drvPath.value_or(std::nullopt);
 }
@@ -107,10 +119,13 @@ StorePath DrvInfo::requireDrvPath(EvalState & state)
 StorePath DrvInfo::queryOutPath(EvalState & state)
 {
     if (!outPath && attrs) {
-        Bindings::iterator i = attrs->find(state.ctx.s.outPath);
+        auto i = attrs->get(state.ctx.s.outPath);
         NixStringContext context;
-        if (i != attrs->end())
-            outPath = state.coerceToStorePath(i->pos, *i->value, context, "while evaluating the output path of a derivation");
+        if (i) {
+            outPath = state.coerceToStorePath(
+                i->pos, *i->value, context, "while evaluating the output path of a derivation"
+            );
+        }
     }
     if (!outPath)
         throw UnimplementedError("CA derivations are not yet supported");
@@ -257,8 +272,11 @@ DrvInfo::Outputs DrvInfo::queryOutputs(EvalState & state, bool withPaths, bool o
 std::string DrvInfo::queryOutputName(EvalState & state)
 {
     if (outputName == "" && attrs) {
-        Bindings::iterator i = attrs->find(state.ctx.s.outputName);
-        outputName = i != attrs->end() ? state.forceStringNoCtx(*i->value, noPos, "while evaluating the output name of a derivation") : "";
+        auto i = attrs->get(state.ctx.s.outputName);
+        outputName = i ? state.forceStringNoCtx(
+                             *i->value, noPos, "while evaluating the output name of a derivation"
+                         )
+                       : "";
     }
     return outputName;
 }
@@ -268,8 +286,10 @@ Bindings * DrvInfo::getMeta(EvalState & state)
 {
     if (meta) return meta;
     if (!attrs) return 0;
-    Bindings::iterator a = attrs->find(state.ctx.s.meta);
-    if (a == attrs->end()) return 0;
+    auto a = attrs->get(state.ctx.s.meta);
+    if (!a) {
+        return 0;
+    }
     state.forceAttrs(*a->value, a->pos, "while evaluating the 'meta' attribute of a derivation");
     meta = a->value->attrs;
     return meta;
@@ -295,8 +315,10 @@ bool DrvInfo::checkMeta(EvalState & state, Value & v)
         return true;
     }
     else if (v.type() == nAttrs) {
-        Bindings::iterator i = v.attrs->find(state.ctx.s.outPath);
-        if (i != v.attrs->end()) return false;
+        auto i = v.attrs->get(state.ctx.s.outPath);
+        if (i) {
+            return false;
+        }
         for (auto & i : *v.attrs)
             if (!checkMeta(state, *i.value)) return false;
         return true;
@@ -309,8 +331,10 @@ bool DrvInfo::checkMeta(EvalState & state, Value & v)
 Value * DrvInfo::queryMeta(EvalState & state, const std::string & name)
 {
     if (!getMeta(state)) return 0;
-    Bindings::iterator a = meta->find(state.ctx.symbols.create(name));
-    if (a == meta->end() || !checkMeta(state, *a->value)) return 0;
+    auto a = meta->get(state.ctx.symbols.create(name));
+    if (!a || !checkMeta(state, *a->value)) {
+        return 0;
+    }
     return a->value;
 }
 
@@ -473,7 +497,7 @@ static void getDerivations(EvalState & state, Value & vIn, PosIdx pos,
     // FIXME: what the fuck???
     /* !!! undocumented hackery to support combining channels in
        nix-env.cc. */
-    bool combineChannels = v.attrs->find(state.ctx.symbols.create("_combineChannels")) != v.attrs->end();
+    bool combineChannels = v.attrs->get(state.ctx.symbols.create("_combineChannels"));
 
     /* Consider the attributes in sorted order to get more
        deterministic behaviour in nix-env operations (e.g. when

@@ -111,8 +111,8 @@ std::pair<Value *, PosIdx> findAlongAttrPath(EvalState & state, const std::strin
                     .debugThrow();
             }
 
-            Bindings::iterator a = v->attrs->find(state.ctx.symbols.create(attr));
-            if (a == v->attrs->end()) {
+            auto a = v->attrs->get(state.ctx.symbols.create(attr));
+            if (!a) {
                 std::set<std::string> attrNames;
                 for (auto & attr : *v->attrs)
                     attrNames.emplace(state.ctx.symbols[attr.name]);

@@ -36,7 +36,7 @@ static void showAttrs(EvalState & state, bool strict, bool location,
         names.emplace(state.ctx.symbols[i.name]);
 
     for (auto & i : names) {
-        const Attr & a(*attrs.find(state.ctx.symbols.create(i)));
+        const Attr & a(*attrs.get(state.ctx.symbols.create(i)));
 
         XMLAttrs xmlAttrs;
         xmlAttrs["name"] = i;
@@ -85,18 +85,18 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
             if (state.isDerivation(v)) {
                 XMLAttrs xmlAttrs;
 
-                Bindings::iterator a = v.attrs->find(state.ctx.symbols.create("derivation"));
+                auto a = v.attrs->get(state.ctx.symbols.create("derivation"));
 
                 Path drvPath;
-                a = v.attrs->find(state.ctx.s.drvPath);
-                if (a != v.attrs->end()) {
+                a = v.attrs->get(state.ctx.s.drvPath);
+                if (a) {
                     if (strict) state.forceValue(*a->value, a->pos);
                     if (a->value->type() == nString)
                         xmlAttrs["drvPath"] = drvPath = a->value->str();
                 }
 
-                a = v.attrs->find(state.ctx.s.outPath);
-                if (a != v.attrs->end()) {
+                a = v.attrs->get(state.ctx.s.outPath);
+                if (a) {
                     if (strict) state.forceValue(*a->value, a->pos);
                     if (a->value->type() == nString) {
                         xmlAttrs["outPath"] = a->value->str();

@@ -71,15 +71,7 @@ public:
         attrs[size_++] = attr;
     }
 
-    iterator find(Symbol name)
-    {
-        Attr key(name, 0);
-        iterator i = std::lower_bound(begin(), end(), key);
-        if (i != end() && i->name == name) return i;
-        return end();
-    }
-
-    Attr * get(Symbol name)
+    const Attr * get(Symbol name)
     {
         Attr key(name, 0);
         iterator i = std::lower_bound(begin(), end(), key);

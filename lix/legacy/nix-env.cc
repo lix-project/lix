@@ -1299,7 +1299,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                                 XMLOpenElement m(xml, "meta", attrs2);
                                 Bindings & attrs = *v->attrs;
                                 for (auto &i : attrs) {
-                                    const Attr & a(*attrs.find(i.name));
+                                    const Attr & a(*attrs.get(i.name));
                                     if(a.value->type() != nString) continue;
                                     XMLAttrs attrs3;
                                     attrs3["type"] = globals.state->symbols[i.name];
