@@ -1947,26 +1947,31 @@ static void prim_zipAttrsWith(EvalState & state, Value * * args, Value & v)
 
     auto attrs = state.ctx.buildBindings(attrsSeen.size());
     for (auto & [sym, elem] : attrsSeen) {
-        auto & list = attrs.alloc(sym);
-        list = state.ctx.mem.newList(elem.first);
-        elem.second = list.listElems();
-    }
-    v.mkAttrs(attrs.alreadySorted());
+        /* Take care of the returned lists. */
+        auto list = state.ctx.mem.allocValue();
+        *list = state.ctx.mem.newList(elem.first);
+        elem.second = list->listElems();
 
-    for (unsigned int n = 0; n < listSize; ++n) {
-        Value * vElem = listElems[n];
-        for (auto & attr : *vElem->attrs)
-            *attrsSeen[attr.name].second++ = attr.value;
-    }
-
-    for (auto & attr : *v.attrs) {
-        auto name = const_cast<Value *>(state.ctx.symbols[attr.name].toValuePtr());
+        /* Construct a `fn name list` function call value. */
+        auto name = const_cast<Value *>(state.ctx.symbols[sym].toValuePtr());
         auto call1 = state.ctx.mem.allocValue();
         call1->mkApp(args[0], name);
         auto call2 = state.ctx.mem.allocValue();
-        call2->mkApp(call1, attr.value);
-        attr.value = call2;
+        call2->mkApp(call1, list);
+
+        /* Insert it inside the returned attribute set. */
+        attrs.insert(sym, call2);
     }
+
+    /* Populate the lists inside the attribute set */
+    for (unsigned int n = 0; n < listSize; ++n) {
+        Value * vElem = listElems[n];
+        for (auto & attr : *vElem->attrs) {
+            *attrsSeen[attr.name].second++ = attr.value;
+        }
+    }
+
+    v.mkAttrs(attrs.alreadySorted());
 }
 
 
