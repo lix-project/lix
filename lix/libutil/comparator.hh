@@ -24,6 +24,8 @@
     GENERATE_ONE_CMP(prefix, qualification, ==, my_type, args)
 #define GENERATE_LEQ(prefix, qualification, my_type, args...) \
     GENERATE_ONE_CMP(prefix, qualification, <, my_type, args)
+#define GENERATE_GEQ(prefix, qualification, my_type, args...) \
+    GENERATE_ONE_CMP(prefix, qualification, >, my_type, args)
 #define GENERATE_NEQ(prefix, qualification, my_type, args...) \
     GENERATE_ONE_CMP(prefix, qualification, !=, my_type, args)
 
@@ -63,9 +65,10 @@
  * ```
  */
 #define GENERATE_CMP(args...) \
-    GENERATE_EQUAL(,,args) \
-    GENERATE_LEQ(,,args) \
-    GENERATE_NEQ(,,args)
+    GENERATE_EQUAL(, , args)  \
+    GENERATE_LEQ(, , args)    \
+    GENERATE_GEQ(, , args)    \
+    GENERATE_NEQ(, , args)
 
 /**
  * @param prefix This is for something before each declaration like
