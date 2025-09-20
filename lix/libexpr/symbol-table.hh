@@ -106,9 +106,7 @@ public:
 
     explicit operator bool() const { return id > 0; }
 
-    bool operator<(const Symbol other) const { return id < other.id; }
-    bool operator==(const Symbol other) const { return id == other.id; }
-    bool operator!=(const Symbol other) const { return id != other.id; }
+    constexpr auto operator<=>(const Symbol & other) const noexcept = default;
 };
 
 /**
