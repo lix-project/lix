@@ -458,16 +458,16 @@ static void forwardStdioConnection(AsyncIoRoot & aio, RemoteStore & store)
 {
     auto conn = store.openConnectionWrapper();
     auto connSocket = AIO().lowLevelProvider.wrapSocketFd(conn->getFD());
-    auto stdin = AIO().lowLevelProvider.wrapInputFd(STDIN_FILENO);
-    auto stdout = AIO().lowLevelProvider.wrapOutputFd(STDOUT_FILENO);
+    auto asyncStdin = AIO().lowLevelProvider.wrapInputFd(STDIN_FILENO);
+    auto asyncStdout = AIO().lowLevelProvider.wrapOutputFd(STDOUT_FILENO);
 
-    aio.blockOn(connSocket->pumpTo(*stdout)
+    aio.blockOn(connSocket->pumpTo(*asyncStdout)
                     .then([](auto) -> Result<void> {
                         return {
                             std::make_exception_ptr(EndOfFile("unexpected EOF from daemon socket"))
                         };
                     })
-                    .exclusiveJoin(stdin->pumpTo(*connSocket).then([](auto) -> Result<void> {
+                    .exclusiveJoin(asyncStdin->pumpTo(*connSocket).then([](auto) -> Result<void> {
                         return result::success();
                     })));
 }

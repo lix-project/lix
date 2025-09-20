@@ -251,25 +251,25 @@ try {
     options.captureStdout = true;
 
     int status = 0;
-    std::string stdout;
+    std::string childStdout;
 
     try {
         auto proc = runProgram2(options);
         Finally const _wait([&] { proc.waitAndCheck(); });
-        stdout = TRY_AWAIT(proc.getStdout()->drain());
+        childStdout = TRY_AWAIT(proc.getStdout()->drain());
     } catch (ExecError & e) {
         status = e.status;
     }
 
-    co_return {status, std::move(stdout)};
+    co_return {status, std::move(childStdout)};
 } catch (...) {
     co_return result::current_exception();
 }
 
-RunningProgram::RunningProgram(PathView program, Pid pid, AutoCloseFD stdout)
+RunningProgram::RunningProgram(PathView program, Pid pid, AutoCloseFD childStdout)
     : program(program)
     , pid(std::move(pid))
-    , stdout(stdout ? std::make_unique<AsyncFdIoStream>(std::move(stdout)) : nullptr)
+    , childStdout(childStdout ? std::make_unique<AsyncFdIoStream>(std::move(childStdout)) : nullptr)
 {
 }
 
@@ -286,7 +286,7 @@ RunningProgram::~RunningProgram()
 
 std::tuple<pid_t, std::unique_ptr<AsyncFdIoStream>> RunningProgram::release()
 {
-    return {pid.release(), std::move(stdout)};
+    return {pid.release(), std::move(childStdout)};
 }
 
 int RunningProgram::kill()

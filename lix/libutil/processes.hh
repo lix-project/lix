@@ -109,9 +109,9 @@ struct [[nodiscard("you must call RunningProgram::wait()")]] RunningProgram
 private:
     Path program;
     Pid pid;
-    std::unique_ptr<AsyncFdIoStream> stdout;
+    std::unique_ptr<AsyncFdIoStream> childStdout;
 
-    RunningProgram(PathView program, Pid pid, AutoCloseFD stdout);
+    RunningProgram(PathView program, Pid pid, AutoCloseFD childStdout);
 
 public:
     RunningProgram() = default;
@@ -130,12 +130,12 @@ public:
 
     std::optional<int> getStdoutFD() const
     {
-        return stdout ? std::optional(stdout->getFD()) : std::nullopt;
+        return childStdout ? std::optional(childStdout->getFD()) : std::nullopt;
     }
 
     AsyncFdIoStream * getStdout() const
     {
-        return stdout.get();
+        return childStdout.get();
     };
 };
 
