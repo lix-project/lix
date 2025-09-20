@@ -133,7 +133,7 @@ void DrvInfo::fillOutputs(EvalState & state, bool withPaths)
         return;
     }
 
-    Attr * outputs = this->attrs->get(state.ctx.s.outputs);
+    const Attr * outputs = this->attrs->get(state.ctx.s.outputs);
     if (outputs == nullptr) {
         fillDefault();
         return;
@@ -161,7 +161,7 @@ void DrvInfo::fillOutputs(EvalState & state, bool withPaths)
 
         if (withPaths) {
             // Find the attr with this output's name...
-            Attr * out = this->attrs->get(state.ctx.symbols.create(outputName));
+            const Attr * out = this->attrs->get(state.ctx.symbols.create(outputName));
             if (out == nullptr) {
                 // FIXME: throw error?
                 continue;
@@ -172,7 +172,7 @@ void DrvInfo::fillOutputs(EvalState & state, bool withPaths)
             state.forceAttrs(*out->value, outputs->pos, errMsg);
 
             // ...and evaluate its `outPath` attribute.
-            Attr * outPath = out->value->attrs->get(state.ctx.s.outPath);
+            const Attr * outPath = out->value->attrs->get(state.ctx.s.outPath);
             if (outPath == nullptr) {
                 continue;
                 // FIXME: throw error?
@@ -216,7 +216,7 @@ DrvInfo::Outputs DrvInfo::queryOutputs(EvalState & state, bool withPaths, bool o
     // output by its attribute, e.g. `pkgs.lix.dev`, which (lol?) sets the magic
     // attribute `outputSpecified = true`, and changes the `outputName` attr to the
     // explicitly selected-into output.
-    if (Attr * outSpecAttr = attrs->get(state.ctx.s.outputSpecified)) {
+    if (const Attr * outSpecAttr = attrs->get(state.ctx.s.outputSpecified)) {
         bool outputSpecified = state.forceBool(
             *outSpecAttr->value,
             outSpecAttr->pos,
@@ -503,7 +503,8 @@ static void getDerivations(EvalState & state, Value & vIn, PosIdx pos,
                should we recurse into it?  => Only if it has a
                `recurseForDerivations = true' attribute. */
             if (attr->value->type() == nAttrs) {
-                Attr * recurseForDrvs = attr->value->attrs->get(state.ctx.s.recurseForDerivations);
+                const Attr * recurseForDrvs =
+                    attr->value->attrs->get(state.ctx.s.recurseForDerivations);
                 if (recurseForDrvs == nullptr) {
                     continue;
                 }

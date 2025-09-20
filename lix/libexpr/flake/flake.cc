@@ -231,7 +231,7 @@ static std::pair<std::map<FlakeId, FlakeInput>, std::optional<fetchers::Attrs>> 
     expectType(state, nAttrs, *value, pos);
 
     std::optional<fetchers::Attrs> selfAttrs = std::nullopt;
-    for (nix::Attr & inputAttr : *(*value).attrs) {
+    for (const nix::Attr & inputAttr : *(*value).attrs) {
         std::string inputName{state.ctx.symbols[inputAttr.name]};
         if (inputName == "self") {
             experimentalFeatureSettings.require(Xp::FlakeSelfAttrs);

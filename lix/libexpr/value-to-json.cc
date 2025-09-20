@@ -58,7 +58,7 @@ JSON printValueAsJSON(EvalState & state, bool strict,
                 for (auto & j : *v.attrs)
                     names.emplace(state.ctx.symbols[j.name]);
                 for (auto & j : names) {
-                    Attr & a(*v.attrs->find(state.ctx.symbols.create(j)));
+                    const Attr & a(*v.attrs->find(state.ctx.symbols.create(j)));
                     try {
                         out[j] = printValueAsJSON(state, strict, *a.value, a.pos, context, copyToStore);
                     } catch (Error & e) {

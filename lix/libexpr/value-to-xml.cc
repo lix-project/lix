@@ -36,7 +36,7 @@ static void showAttrs(EvalState & state, bool strict, bool location,
         names.emplace(state.ctx.symbols[i.name]);
 
     for (auto & i : names) {
-        Attr & a(*attrs.find(state.ctx.symbols.create(i)));
+        const Attr & a(*attrs.find(state.ctx.symbols.create(i)));
 
         XMLAttrs xmlAttrs;
         xmlAttrs["name"] = i;

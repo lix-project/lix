@@ -1089,7 +1089,9 @@ void NixRepl::addToScope(T && things, NameFn nameFn, ValueFn valueFn)
 void NixRepl::addAttrsToScope(Value & attrs)
 {
     state.forceAttrs(attrs, noPos, "while evaluating an attribute set to be merged in the global scope");
-    addToScope(*attrs.attrs, [](Attr & a) { return a.name; }, [](Attr & a) { return a.value; });
+    addToScope(
+        *attrs.attrs, [](const Attr & a) { return a.name; }, [](const Attr & a) { return a.value; }
+    );
 }
 
 void NixRepl::addValMapToScope(const ValMap & attrs)
