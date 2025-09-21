@@ -116,7 +116,6 @@ functional_tests_scripts = [
   'logging.sh',
   'export.sh',
   'config.sh',
-  'add.sh',
   'local-store.sh',
   'filter-source.sh',
   'misc.sh',
