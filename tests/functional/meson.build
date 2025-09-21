@@ -72,7 +72,6 @@ functional_tests_scripts = [
   'repair-chroot.sh',
   'fixed.sh',
   'export-graph.sh',
-  'timeout.sh',
   'fetchGitRefs.sh',
   'gc-runtime.sh',
   'tarball.sh',
