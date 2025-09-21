@@ -78,7 +78,6 @@ for i in eval-okay-*.nix; do
     else
         if
             expect 0 env \
-                NIX_PATH=dir3:dir4 \
                 HOME=/fake-home \
                 nix-instantiate "${flags[@]}" --eval --strict "$i.nix" \
                 1> "$i.out" \

@@ -1,1 +1,0 @@
---extra-deprecated-features shadow-internal-symbols -I dir1 -I dir2 -I dir5=dir3
