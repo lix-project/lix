@@ -259,8 +259,6 @@
             nativeBuildInputs = prevAttrs.nativeBuildInputs ++ [ final.buildPackages.bmake ];
             postInstall = lib.replaceStrings [ "lowdown.so.1" ] [ "lowdown.so.2" ] prevAttrs.postInstall;
           });
-
-          capnproto = final.callPackage ./misc/capnproto.nix { stdenv = final.clangStdenv; };
         };
     in
     {
