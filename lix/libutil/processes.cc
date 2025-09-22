@@ -319,7 +319,9 @@ RunningProgram runProgram2(const RunOptions & options)
     Pipe out;
     if (options.captureStdout) out.create();
 
-    ProcessOptions processOptions;
+    ProcessOptions processOptions {
+        .dieWithParent = options.dieWithParent,
+    };
 
     std::optional<Finally<std::function<void()>>> resumeLoggerDefer;
     if (options.isInteractive) {

@@ -94,6 +94,7 @@ struct RunOptions
     std::optional<uid_t> gid = {};
     std::optional<Path> chdir = {};
     std::optional<std::map<std::string, std::string>> environment = {};
+    bool dieWithParent = true;
     bool captureStdout = false;
     bool isInteractive = false;
     std::vector<Redirection> redirections;

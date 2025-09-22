@@ -358,6 +358,7 @@ try {
                         "--log-level",
                         fmt("%1%", int(verbosity)),
                     },
+                .dieWithParent = false,
                 .redirections =
                     {
                         {.dup = SUBDAEMON_CONNECTION_FD, .from = remote.get()},
