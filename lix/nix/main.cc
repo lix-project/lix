@@ -352,8 +352,6 @@ static void showHelp(AsyncIoRoot & aio, std::vector<std::string> subcommand, Nix
 {
     auto mdName = subcommand.empty() ? "nix" : fmt("nix3-%s", concatStringsSep("-", subcommand));
 
-    evalSettings.restrictEval.override(false);
-    evalSettings.pureEval.override(false);
     Evaluator evaluator(aio, {}, aio.blockOn(openStore("dummy://")));
     auto state = evaluator.begin(aio);
 
