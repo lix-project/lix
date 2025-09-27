@@ -112,7 +112,7 @@ namespace nix {
             if (arg.type() != nPath) {
                 *result_listener << "Expected a path got " << arg.type();
                 return false;
-            } else if (std::string_view(arg._path) != p) {
+            } else if (std::string_view(arg.string().content) != p) {
                 *result_listener << "Expected a path that equals \"" << p
                                  << "\" but got: " << arg.path();
                 return false;

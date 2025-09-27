@@ -24,7 +24,6 @@ typedef enum {
     tInt = 1,
     tBool,
     tString,
-    tPath,
     tNull,
     tAttrs,
     tList,
@@ -347,9 +346,8 @@ public:
     /// has already been allocated (with the GC if enabled), and string data
     /// has been copied into that memory.
     Value(path_t, char const * strPtr)
-        : internalType(tPath)
-        , _path(strPtr)
-        , _path_pad(0)
+        : internalType(tString)
+        , _string{.content = strPtr, .context = String::path}
     { }
 
     /// Constructs a nix language value of type "path", with the path
@@ -358,9 +356,8 @@ public:
     /// The data from @ref path *is* copied, and this constructor performs a
     /// dynamic (GC) allocation to do so.
     Value(path_t, SourcePath const & path)
-        : internalType(tPath)
-        , _path(gcCopyStringIfNeeded(path.canonical().abs()))
-        , _path_pad(0)
+        : internalType(tString)
+        , _string{.content = gcCopyStringIfNeeded(path.canonical().abs()), .context = String::path}
     { }
 
     /// Constructs a nix language value of type "list", with element array
@@ -529,6 +526,42 @@ public:
         }
     };
 
+    /**
+     * Strings in the evaluator carry a so-called `context` which
+     * is a list of strings representing store paths.  This is to
+     * allow users to write things like
+
+     *   "--with-freetype2-library=" + freetype + "/lib"
+
+     * where `freetype` is a derivation (or a source to be copied
+     * to the store).  If we just concatenated the strings without
+     * keeping track of the referenced store paths, then if the
+     * string is used as a derivation attribute, the derivation
+     * will not have the correct dependencies in its inputDrvs and
+     * inputSrcs.
+
+     * The semantics of the context is as follows: when a string
+     * with context C is used as a derivation attribute, then the
+     * derivations in C will be added to the inputDrvs of the
+     * derivation, and the other store paths in C will be added to
+     * the inputSrcs of the derivations.
+
+     * For canonicity, the store paths should be in sorted order.
+     */
+    struct String
+    {
+        /// marker location for paths, to be used as path context.
+        static inline const char * path[] = {"\1<path>", nullptr};
+
+        const char * content;
+        const char ** context; // must be in sorted order
+
+        bool isPath() const
+        {
+            return context == path;
+        }
+    };
+
     union
     {
         /// Dummy field, which takes up as much space as the largest union variants
@@ -541,37 +574,8 @@ public:
             uintptr_t _bool_pad;
         };
 
-        /**
-         * Strings in the evaluator carry a so-called `context` which
-         * is a list of strings representing store paths.  This is to
-         * allow users to write things like
+        String _string;
 
-         *   "--with-freetype2-library=" + freetype + "/lib"
-
-         * where `freetype` is a derivation (or a source to be copied
-         * to the store).  If we just concatenated the strings without
-         * keeping track of the referenced store paths, then if the
-         * string is used as a derivation attribute, the derivation
-         * will not have the correct dependencies in its inputDrvs and
-         * inputSrcs.
-
-         * The semantics of the context is as follows: when a string
-         * with context C is used as a derivation attribute, then the
-         * derivations in C will be added to the inputDrvs of the
-         * derivation, and the other store paths in C will be added to
-         * the inputSrcs of the derivations.
-
-         * For canonicity, the store paths should be in sorted order.
-         */
-        struct {
-            const char * content;
-            const char * * context; // must be in sorted order
-        } _string;
-
-        struct {
-            const char * _path;
-            uintptr_t _path_pad;
-        };
         struct {
             Bindings * _attrs;
             uintptr_t _attrs_pad;
@@ -620,8 +624,8 @@ public:
         switch (internalType) {
             case tInt: return nInt;
             case tBool: return nBool;
-            case tString: return nString;
-            case tPath: return nPath;
+            case tString:
+                return _string.isPath() ? nPath : nString;
             case tNull: return nNull;
             case tAttrs: return nAttrs;
             case tList:
@@ -683,8 +687,9 @@ public:
     inline void mkPath(const char * path)
     {
         clearValue();
-        internalType = tPath;
-        _path = path;
+        internalType = tString;
+        _string.content = path;
+        _string.context = String::path;
     }
 
     inline void mkNull()
@@ -809,13 +814,13 @@ public:
 
     SourcePath path() const
     {
-        assert(internalType == tPath);
-        return SourcePath{CanonPath(_path)};
+        assert(internalType == tString && _string.isPath());
+        return SourcePath{CanonPath(_string.content)};
     }
 
     std::string_view str() const
     {
-        assert(internalType == tString);
+        assert(internalType == tString && !_string.isPath());
         return std::string_view(_string.content);
     }
 

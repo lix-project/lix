@@ -459,7 +459,7 @@ struct CompareValues : NeverAsync
                 case nString:
                     return v1->str() < v2->str();
                 case nPath:
-                    return strcmp(v1->_path, v2->_path) < 0;
+                    return strcmp(v1->string().content, v2->string().content) < 0;
                 case nList:
                     // Lexicographic comparison
                     for (size_t i = 0;; i++) {
