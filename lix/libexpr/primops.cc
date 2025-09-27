@@ -1666,21 +1666,20 @@ static void prim_attrValues(EvalState & state, Value * * args, Value & v)
     auto result = state.ctx.mem.newList(args[0]->attrs()->size());
     v = {NewValueAs::list, result};
 
-    // FIXME: this is incredibly evil, *why*
-    // NOLINTBEGIN(cppcoreguidelines-pro-type-cstyle-cast)
-    unsigned int n = 0;
-    for (auto & i : *args[0]->attrs())
-        result->elems[n++] = (Value *) &i;
+    boost::container::small_vector<const Attr *, 128> tmp;
+    tmp.reserve(args[0]->attrs()->size());
 
-    std::sort(result->elems, result->elems + n, [&](Value * v1, Value * v2) {
-        std::string_view s1 = state.ctx.symbols[((Attr *) v1)->name],
-                         s2 = state.ctx.symbols[((Attr *) v2)->name];
+    for (auto & i : *args[0]->attrs())
+        tmp.push_back(&i);
+
+    std::sort(tmp.begin(), tmp.end(), [&](const Attr * v1, const Attr * v2) {
+        std::string_view s1 = state.ctx.symbols[v1->name], s2 = state.ctx.symbols[v2->name];
         return s1 < s2;
     });
 
-    for (unsigned int i = 0; i < n; ++i)
-        result->elems[i] = ((Attr *) result->elems[i])->value;
-    // NOLINTEND(cppcoreguidelines-pro-type-cstyle-cast)
+    for (auto [i, attr] : enumerate(tmp)) {
+        result->elems[i] = attr->value;
+    }
 }
 
 /* Dynamic version of the `.' operator. */
