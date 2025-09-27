@@ -5,8 +5,26 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/eval-error.hh"
 #include "lix/libexpr/gc-alloc.hh"
+#include "value.hh"
+#include <cstdint>
 
 namespace nix {
+
+inline Value::Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value *> args)
+    : internalType(tApp)
+{
+    if (args.size() == 1) {
+        _app._left = reinterpret_cast<uintptr_t>(&lhs);
+        _app._right = args[0];
+    } else {
+        auto app =
+            static_cast<Value::AppN *>(mem.allocBytes(sizeof(Value::AppN) + args.size_bytes()));
+        app->nargs = args.size();
+        memcpy(app->args, args.data(), args.size_bytes());
+        _app._left = reinterpret_cast<uintptr_t>(&lhs) | 1;
+        _app._appn = app;
+    }
+}
 
 [[gnu::always_inline]]
 void * EvalMemory::allocBytes(size_t size)
@@ -89,11 +107,10 @@ void EvalState::forceValue(Value & v, const PosIdx pos)
             tryFixupBlackHolePos(v, pos);
             throw;
         }
+    } else if (v.isApp()) {
+        callFunction(*v.app().left(), v.app().args(), v, pos);
     }
-    else if (v.isApp())
-        callFunction(*v.app().left, *v.app().right, v, pos);
 }
-
 
 [[gnu::always_inline]]
 inline void EvalState::forceAttrs(Value & v, const PosIdx pos, std::string_view errorCtx)

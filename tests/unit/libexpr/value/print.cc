@@ -102,7 +102,7 @@ TEST_F(ValuePrintingTests, vThunk)
 TEST_F(ValuePrintingTests, vApp)
 {
     Value vApp;
-    vApp.mkApp(nullptr, nullptr);
+    vApp.mkApp(&vApp, &vApp);
 
     test(vApp, "«thunk»");
 }

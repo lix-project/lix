@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <climits>
+#include <cstdint>
 #include <functional>
 #include <ranges>
 #include <span>
@@ -19,6 +20,7 @@
 namespace nix {
 
 class BindingsBuilder;
+class EvalMemory;
 
 typedef enum {
     tInt = 1,
@@ -440,8 +442,13 @@ public:
     /// lazy partial application of another lambda.
     Value(app_t, Value & lhs, Value & rhs)
         : internalType(tApp)
-        , _app({ .left = &lhs, .right = &rhs })
-    { }
+        , _app{._left = reinterpret_cast<uintptr_t>(&lhs), ._right = &rhs}
+    {
+    }
+
+    /// Constructs a nix language value of type "lambda", which represents a
+    /// lazy partial application of another lambda.
+    Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value *> args);
 
     /// Constructs a nix language value of type "external", which is only used
     /// by plugins. Do any existing plugins even use this mechanism?
@@ -562,6 +569,17 @@ public:
         }
     };
 
+    struct AppN
+    {
+        size_t nargs;
+        Value * args[0];
+
+        std::span<Value *> argsSpan()
+        {
+            return {args, nargs};
+        }
+    };
+
     union
     {
         /// Dummy field, which takes up as much space as the largest union variants
@@ -589,9 +607,25 @@ public:
             Expr * expr;
         } _thunk;
         struct {
-            Value * left, * right;
+            uintptr_t _left;
+            union
+            {
+                Value * _right;
+                AppN * _appn;
+            };
+
+            Value * left() const
+            {
+                return reinterpret_cast<Value *>(_left & ~uintptr_t(1));
+            }
+
+            std::span<Value *> args()
+            {
+                return _left & 1 ? _appn->argsSpan() : std::span{&_right, 1};
+            }
         } _app;
-        struct {
+        struct
+        {
             Env * env;
             ExprLambda * fun;
         } _lambda;
@@ -647,7 +681,7 @@ public:
      */
     inline void clearValue()
     {
-        _app.left = _app.right = 0;
+        _empty[0] = _empty[1] = 0;
     }
 
     inline void mkInt(NixInt::Inner n)
@@ -716,9 +750,7 @@ public:
 
     inline void mkApp(Value * l, Value * r)
     {
-        internalType = tApp;
-        _app.left = l;
-        _app.right = r;
+        *this = {NewValueAs::app, *l, *r};
     }
 
     inline void mkLambda(Env * e, ExprLambda * f)
@@ -849,7 +881,7 @@ public:
         return _thunk;
     }
 
-    const auto & app() const
+    auto & app()
     {
         return _app;
     }

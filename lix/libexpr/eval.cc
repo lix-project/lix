@@ -157,6 +157,7 @@ void initLibExpr()
     /* Don't look for interior pointers. This reduces the odds of
        misdetection a bit. */
     GC_set_all_interior_pointers(0);
+    GC_REGISTER_DISPLACEMENT(1);
 
     /* We don't have any roots in data segments, so don't scan from
        there. */

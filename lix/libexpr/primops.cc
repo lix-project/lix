@@ -1955,10 +1955,9 @@ static void prim_mapAttrs(EvalState & state, Value * * args, Value & v)
     auto attrs = state.ctx.buildBindings(args[1]->attrs()->size());
 
     for (auto & i : *args[1]->attrs()) {
-        Value * vFun2 = state.ctx.mem.allocValue();
         auto vName = const_cast<Value *>(state.ctx.symbols[i.name].toValuePtr());
-        vFun2->mkApp(args[0], vName);
-        attrs.alloc(i.name).mkApp(vFun2, i.value);
+        Value * appArgs[] = {vName, i.value};
+        attrs.alloc(i.name) = {NewValueAs::app, state.ctx.mem, *args[0], appArgs};
     }
 
     v.mkAttrs(attrs.alreadySorted());
@@ -1997,13 +1996,12 @@ static void prim_zipAttrsWith(EvalState & state, Value * * args, Value & v)
 
         /* Construct a `fn name list` function call value. */
         auto name = const_cast<Value *>(state.ctx.symbols[sym].toValuePtr());
-        auto call1 = state.ctx.mem.allocValue();
-        call1->mkApp(args[0], name);
-        auto call2 = state.ctx.mem.allocValue();
-        call2->mkApp(call1, list);
+        Value * callArgs[] = {name, list};
+        auto call = state.ctx.mem.allocValue();
+        *call = {NewValueAs::app, state.ctx.mem, *args[0], callArgs};
 
         /* Insert it inside the returned attribute set. */
-        attrs.insert(sym, call2);
+        attrs.insert(sym, call);
     }
 
     /* Populate the lists inside the attribute set */
