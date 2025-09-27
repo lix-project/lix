@@ -114,10 +114,10 @@ static void parseFlakeInputAttr(EvalState & state, const Attr & attr, fetchers::
         attrs.emplace(state.ctx.symbols[attr.name], std::string(attr.value->str()));
         break;
     case nBool:
-        attrs.emplace(state.ctx.symbols[attr.name], Explicit<bool>{attr.value->boolean});
+        attrs.emplace(state.ctx.symbols[attr.name], Explicit<bool>{attr.value->boolean()});
         break;
     case nInt: {
-        auto intValue = attr.value->integer.value;
+        auto intValue = attr.value->integer().value;
 
         if (intValue < 0) {
             state.ctx.errors
@@ -160,7 +160,7 @@ static FlakeInput parseFlakeInput(EvalState & state,
     fetchers::Attrs attrs;
     std::optional<std::string> url;
 
-    for (nix::Attr attr : *(value->attrs)) {
+    for (nix::Attr attr : *(value->attrs())) {
         try {
             if (attr.name == sUrl) {
                 expectType(state, nString, *attr.value, attr.pos);
@@ -168,7 +168,7 @@ static FlakeInput parseFlakeInput(EvalState & state,
                 attrs.emplace("url", *url);
             } else if (attr.name == sFlake) {
                 expectType(state, nBool, *attr.value, attr.pos);
-                input.isFlake = attr.value->boolean;
+                input.isFlake = attr.value->boolean();
             } else if (attr.name == sInputs) {
                 input.overrides =
                     parseFlakeInputs(
@@ -231,7 +231,7 @@ static std::pair<std::map<FlakeId, FlakeInput>, std::optional<fetchers::Attrs>> 
     expectType(state, nAttrs, *value, pos);
 
     std::optional<fetchers::Attrs> selfAttrs = std::nullopt;
-    for (const nix::Attr & inputAttr : *(*value).attrs) {
+    for (const nix::Attr & inputAttr : *(*value).attrs()) {
         std::string inputName{state.ctx.symbols[inputAttr.name]};
         if (inputName == "self") {
             experimentalFeatureSettings.require(Xp::FlakeSelfAttrs);
@@ -244,7 +244,7 @@ static std::pair<std::map<FlakeId, FlakeInput>, std::optional<fetchers::Attrs>> 
             expectType(state, nAttrs, *inputAttr.value, inputAttr.pos);
 
             selfAttrs = selfAttrs.value_or(fetchers::Attrs{});
-            for (auto & attr : *inputAttr.value->attrs) {
+            for (auto & attr : *inputAttr.value->attrs()) {
                 parseFlakeInputAttr(state, attr, *selfAttrs);
             }
         } else {
@@ -328,14 +328,14 @@ static Flake getFlake(
     Value vInfo;
     state.eval(flakeExpr, vInfo);
 
-    if (auto description = vInfo.attrs->get(state.ctx.s.description)) {
+    if (auto description = vInfo.attrs()->get(state.ctx.s.description)) {
         expectType(state, nString, *description->value, description->pos);
         flake.description = description->value->str();
     }
 
     auto sInputs = state.ctx.symbols.create("inputs");
 
-    if (auto inputs = vInfo.attrs->get(sInputs)) {
+    if (auto inputs = vInfo.attrs()->get(sInputs)) {
         auto [flakeInputs, selfAttrs] =
             parseFlakeInputs(state, inputs->value, inputs->pos, flakeDir, lockRootPath, 0, true);
         flake.inputs = std::move(flakeInputs);
@@ -361,11 +361,11 @@ static Flake getFlake(
         flake.resolvedRef = resolvedRef;
     }
 
-    if (auto outputs = vInfo.attrs->get(state.ctx.s.outputs)) {
+    if (auto outputs = vInfo.attrs()->get(state.ctx.s.outputs)) {
         expectType(state, nFunction, *outputs->value, outputs->pos);
 
         if (outputs->value->isLambda()) {
-            if (auto pattern = dynamic_cast<AttrsPattern *>(outputs->value->lambda.fun->pattern.get()); pattern) {
+            if (auto pattern = dynamic_cast<AttrsPattern *>(outputs->value->lambda().fun->pattern.get()); pattern) {
                 for (auto & formal : pattern->formals) {
                     if (formal.name != state.ctx.s.self)
                         flake.inputs.emplace(
@@ -383,10 +383,10 @@ static Flake getFlake(
 
     auto sNixConfig = state.ctx.symbols.create("nixConfig");
 
-    if (auto nixConfig = vInfo.attrs->get(sNixConfig)) {
+    if (auto nixConfig = vInfo.attrs()->get(sNixConfig)) {
         expectType(state, nAttrs, *nixConfig->value, nixConfig->pos);
 
-        for (auto & setting : *nixConfig->value->attrs) {
+        for (auto & setting : *nixConfig->value->attrs()) {
             forceTrivialValue(state, *setting.value, setting.pos);
             if (setting.value->type() == nString)
                 flake.config.settings.emplace(
@@ -422,7 +422,7 @@ static Flake getFlake(
         }
     }
 
-    for (auto & attr : *vInfo.attrs) {
+    for (auto & attr : *vInfo.attrs()) {
         if (attr.name != state.ctx.s.description &&
             attr.name != sInputs &&
             attr.name != state.ctx.s.outputs &&
@@ -984,10 +984,10 @@ void prim_flakeRefToString(
     state.forceAttrs(*args[0], noPos,
         "while evaluating the argument passed to builtins.flakeRefToString");
     fetchers::Attrs attrs;
-    for (const auto & attr : *args[0]->attrs) {
+    for (const auto & attr : *args[0]->attrs()) {
         auto t = attr.value->type();
         if (t == nInt) {
-            auto intValue = attr.value->integer.value;
+            auto intValue = attr.value->integer().value;
 
             if (intValue < 0) {
                 state.ctx.errors.make<EvalError>("negative value given for flake ref attr %1%: %2%", state.ctx.symbols[attr.name], intValue).debugThrow();
@@ -996,8 +996,7 @@ void prim_flakeRefToString(
 
             attrs.emplace(state.ctx.symbols[attr.name], asUnsigned);
         } else if (t == nBool) {
-            attrs.emplace(state.ctx.symbols[attr.name],
-                          Explicit<bool> { attr.value->boolean });
+            attrs.emplace(state.ctx.symbols[attr.name], Explicit<bool>{attr.value->boolean()});
         } else if (t == nString) {
             attrs.emplace(state.ctx.symbols[attr.name],
                           std::string(attr.value->str()));

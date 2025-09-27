@@ -450,7 +450,7 @@ StringSet NixRepl::completePrefix(const std::string &prefix)
             e.eval(state, *env, v);
             state.forceAttrs(v, noPos, "while evaluating an attrset for the purpose of completion (this error should not be displayed; file an issue?)");
 
-            for (auto & i : *v.attrs) {
+            for (auto & i : *v.attrs()) {
                 std::ostringstream output;
                 printAttributeName(output, evaluator.symbols[i.name]);
                 std::string name = output.str();
@@ -653,7 +653,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
                 auto path = state.coerceToPath(noPos, v, context, "while evaluating the filename to edit");
                 return {path, 0};
             } else if (v.isLambda()) {
-                auto pos = evaluator.positions[v.lambda.fun->pos];
+                auto pos = evaluator.positions[v.lambda().fun->pos];
                 if (auto path = std::get_if<CheckedSourcePath>(&pos.origin))
                     return {*path, pos.line};
                 else
@@ -822,7 +822,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
 
             logger->cout(trim(renderMarkdownToTerminal(markdown)));
         } else if (v.isLambda()) {
-            auto pos = evaluator.positions[v.lambda.fun->pos];
+            auto pos = evaluator.positions[v.lambda().fun->pos];
             if (auto path = std::get_if<CheckedSourcePath>(&pos.origin)) {
                 // Path and position have now been obtained, feed to nix-doc library to get data.
                 auto docComment = lambdaDocsForPos(*path, pos);
@@ -1027,13 +1027,13 @@ Value * NixRepl::replOverlays()
             .debugThrow();
         }
 
-        if (auto attrs = dynamic_cast<AttrsPattern *>(replInit->lambda.fun->pattern.get()); attrs && !attrs->ellipsis) {
+        if (auto attrs = dynamic_cast<AttrsPattern *>(replInit->lambda().fun->pattern.get()); attrs && !attrs->ellipsis) {
             evaluator.errors.make<TypeError>(
                 "Expected first argument of %1% to have %2% to allow future versions of Lix to add additional attributes to the argument",
                 "repl-overlays",
                 "..."
             )
-                .atPos(replInit->lambda.fun->pos)
+                .atPos(replInit->lambda().fun->pos)
                 .debugThrow();
         }
 
@@ -1090,7 +1090,7 @@ void NixRepl::addAttrsToScope(Value & attrs)
 {
     state.forceAttrs(attrs, noPos, "while evaluating an attribute set to be merged in the global scope");
     addToScope(
-        *attrs.attrs, [](const Attr & a) { return a.name; }, [](const Attr & a) { return a.value; }
+        *attrs.attrs(), [](const Attr & a) { return a.name; }, [](const Attr & a) { return a.value; }
     );
 }
 

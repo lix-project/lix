@@ -35,7 +35,7 @@ std::string resolveMirrorUrl(EvalState & state, const std::string & url)
         vMirrors);
     state.forceAttrs(vMirrors, noPos, "while evaluating the set of all mirrors");
 
-    auto mirrorList = vMirrors.attrs->get(state.ctx.symbols.create(mirrorName));
+    auto mirrorList = vMirrors.attrs()->get(state.ctx.symbols.create(mirrorName));
     if (!mirrorList) {
         throw Error("unknown mirror name '%s'", mirrorName);
     }
@@ -211,7 +211,7 @@ static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Str
             state->forceAttrs(v, noPos, "while evaluating the source attribute to prefetch");
 
             /* Extract the URL. */
-            auto * attr = v.attrs->get(evaluator->symbols.create("urls"));
+            auto * attr = v.attrs()->get(evaluator->symbols.create("urls"));
             if (!attr)
                 throw Error("attribute 'urls' missing");
             state->forceList(*attr->value, noPos, "while evaluating the urls to prefetch");
@@ -220,7 +220,7 @@ static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Str
             url = state->forceString(*attr->value->listElems()[0], noPos, "while evaluating the first url from the urls list");
 
             /* Extract the hash mode. */
-            auto attr2 = v.attrs->get(evaluator->symbols.create("outputHashMode"));
+            auto attr2 = v.attrs()->get(evaluator->symbols.create("outputHashMode"));
             if (!attr2)
                 printInfo("warning: this does not look like a fetchurl call");
             else
@@ -228,7 +228,7 @@ static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Str
 
             /* Extract the name. */
             if (!name) {
-                auto attr3 = v.attrs->get(evaluator->symbols.create("name"));
+                auto attr3 = v.attrs()->get(evaluator->symbols.create("name"));
                 if (!attr3)
                     name = state->forceString(*attr3->value, noPos, "while evaluating the name of the source to prefetch");
             }

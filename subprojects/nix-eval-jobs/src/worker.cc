@@ -78,13 +78,13 @@ static std::string attrPathJoin(nix::JSON input) {
 static std::optional<Constituents>
 readConstituents(const nix::Value *v, nix::box_ptr<nix::EvalState> &state,
                  nix::ref<nix::eval_cache::CachingEvaluator> &evaluator) {
-    auto a = v->attrs->get(state->ctx.symbols.create("_hydraAggregate"));
+    auto a = v->attrs()->get(state->ctx.symbols.create("_hydraAggregate"));
     if (a && state->forceBool(*a->value, a->pos,
                               "while evaluating the "
                               "`_hydraAggregate` attribute")) {
         std::vector<std::string> constituents;
         std::vector<std::string> namedConstituents;
-        auto a = v->attrs->get(state->ctx.symbols.create("constituents"));
+        auto a = v->attrs()->get(state->ctx.symbols.create("constituents"));
         if (!a)
             state->ctx.errors
                 .make<nix::EvalError>("derivation must have a ‘constituents’ "
@@ -197,13 +197,13 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
                                           // = true;` for top-level attrset
 
                     for (auto &i :
-                         v->attrs->lexicographicOrder(evaluator->symbols)) {
+                         v->attrs()->lexicographicOrder(evaluator->symbols)) {
                         const std::string_view name = evaluator->symbols[i->name];
                         attrs.emplace_back(name);
 
                         if (name == "recurseForDerivations" &&
                             !args.forceRecurse) {
-                            auto attrv = v->attrs->get(
+                            auto attrv = v->attrs()->get(
                                 evaluator->s.recurseForDerivations);
                             recurse = state->forceBool(
                                 *attrv->value, attrv->pos,

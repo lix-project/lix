@@ -69,8 +69,8 @@ Env & EvalMemory::allocEnv(size_t size)
 void EvalState::forceValue(Value & v, const PosIdx pos)
 {
     if (v.isThunk()) {
-        Env * env = v.thunk.env;
-        Expr & expr = *v.thunk.expr;
+        Env * env = v.thunk().env;
+        Expr & expr = *v.thunk().expr;
         try {
             v.mkBlackhole();
             expr.eval(*this, *env, v);
@@ -81,7 +81,7 @@ void EvalState::forceValue(Value & v, const PosIdx pos)
         }
     }
     else if (v.isApp())
-        callFunction(*v.app.left, *v.app.right, v, pos);
+        callFunction(*v.app().left, *v.app().right, v, pos);
 }
 
 

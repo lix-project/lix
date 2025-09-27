@@ -122,7 +122,7 @@ static void fetchTree(
 
         fetchers::Attrs attrs;
 
-        if (auto aType = args[0]->attrs->get(state.ctx.s.type)) {
+        if (auto aType = args[0]->attrs()->get(state.ctx.s.type)) {
             if (type)
                 state.ctx.errors.make<EvalError>(
                     "unexpected attribute 'type'"
@@ -135,7 +135,7 @@ static void fetchTree(
 
         attrs.emplace("type", type.value());
 
-        for (auto & attr : *args[0]->attrs) {
+        for (auto & attr : *args[0]->attrs()) {
             if (attr.name == state.ctx.s.type) continue;
             state.forceValue(*attr.value, attr.pos);
             if (attr.value->type() == nPath || attr.value->type() == nString) {
@@ -148,9 +148,9 @@ static void fetchTree(
                     : s);
             }
             else if (attr.value->type() == nBool)
-                attrs.emplace(state.ctx.symbols[attr.name], Explicit<bool>{attr.value->boolean});
+                attrs.emplace(state.ctx.symbols[attr.name], Explicit<bool>{attr.value->boolean()});
             else if (attr.value->type() == nInt) {
-                auto intValue = attr.value->integer.value;
+                auto intValue = attr.value->integer().value;
 
                 if (intValue < 0) {
                     state.ctx.errors.make<EvalError>("negative value given for fetchTree attr %1%: %2%", state.ctx.symbols[attr.name], intValue).atPos(pos).debugThrow();
@@ -221,7 +221,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
 
     if (args[0]->type() == nAttrs) {
 
-        for (auto & attr : *args[0]->attrs) {
+        for (auto & attr : *args[0]->attrs()) {
             std::string_view n(state.ctx.symbols[attr.name]);
             if (n == "url")
                 url = state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the url we should fetch");

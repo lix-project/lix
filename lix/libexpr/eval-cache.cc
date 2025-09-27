@@ -383,7 +383,7 @@ Value & AttrCursor::getValue(EvalState & state)
         if (parent) {
             auto & vParent = parent->first->getValue(state);
             state.forceAttrs(vParent, noPos, "while searching for an attribute");
-            auto attr = vParent.attrs->get(state.ctx.symbols.create(parent->second));
+            auto attr = vParent.attrs()->get(state.ctx.symbols.create(parent->second));
             if (!attr)
                 throw Error("attribute '%s' is unexpectedly missing", getAttrPathStr(state));
             _value = allocRootValue(attr->value);
@@ -438,16 +438,16 @@ Value & AttrCursor::forceValue(EvalState & state)
     if (root->db && (!cachedValue || std::get_if<placeholder_t>(&cachedValue->second))) {
         if (v.type() == nString)
             cachedValue = {
-                root->db->setString(getKey(), v.str(), v.string.context), string_t{v.str(), {}}
+                root->db->setString(getKey(), v.str(), v.string().context), string_t{v.str(), {}}
             };
         else if (v.type() == nPath) {
             auto path = v.path().canonical().abs();
             cachedValue = {root->db->setString(getKey(), path), string_t{path, {}}};
         }
         else if (v.type() == nBool)
-            cachedValue = {root->db->setBool(getKey(), v.boolean), v.boolean};
+            cachedValue = {root->db->setBool(getKey(), v.boolean()), v.boolean()};
         else if (v.type() == nInt)
-            cachedValue = {root->db->setInt(getKey(), v.integer.value), int_t{v.integer}};
+            cachedValue = {root->db->setInt(getKey(), v.integer().value), int_t{v.integer()}};
         else if (v.type() == nAttrs)
             ; // FIXME: do something?
         else
@@ -500,7 +500,7 @@ std::shared_ptr<AttrCursor> AttrCursor::maybeGetAttr(EvalState & state, const st
         return nullptr;
         //errors.make<TypeError>("'%s' is not an attribute set", getAttrPathStr()).debugThrow();
 
-    auto attr = v.attrs->get(state.ctx.symbols.create(name));
+    auto attr = v.attrs()->get(state.ctx.symbols.create(name));
 
     if (!attr) {
         if (root->db) {
@@ -633,7 +633,7 @@ bool AttrCursor::getBool(EvalState & state)
     if (v.type() != nBool)
         state.ctx.errors.make<TypeError>("'%s' is not a Boolean", getAttrPathStr(state)).debugThrow();
 
-    return v.boolean;
+    return v.boolean();
 }
 
 NixInt AttrCursor::getInt(EvalState & state)
@@ -655,7 +655,7 @@ NixInt AttrCursor::getInt(EvalState & state)
     if (v.type() != nInt)
         state.ctx.errors.make<TypeError>("'%s' is not an integer", getAttrPathStr(state)).debugThrow();
 
-    return v.integer;
+    return v.integer();
 }
 
 std::vector<std::string> AttrCursor::getListOfStrings(EvalState & state)
@@ -711,7 +711,7 @@ std::vector<std::string> AttrCursor::getAttrs(EvalState & state)
         state.ctx.errors.make<TypeError>("'%s' is not an attribute set", getAttrPathStr(state)).debugThrow();
 
     fullattr_t attrs;
-    for (auto & attr : *getValue(state).attrs)
+    for (auto & attr : *getValue(state).attrs())
         attrs.p.emplace_back(state.ctx.symbols[attr.name]);
     std::sort(attrs.p.begin(), attrs.p.end());
 

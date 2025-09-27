@@ -272,7 +272,7 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
             }
             bool add = false;
             if (v.type() == nFunction) {
-                if (auto pattern = dynamic_cast<AttrsPattern *>(v.lambda.fun->pattern.get())) {
+                if (auto pattern = dynamic_cast<AttrsPattern *>(v.lambda().fun->pattern.get())) {
                     for (auto & i : pattern->formals) {
                         if (evaluator->symbols[i.name] == "inNixShell") {
                             add = true;

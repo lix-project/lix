@@ -369,7 +369,7 @@ static void showHelp(AsyncIoRoot & aio, std::vector<std::string> subcommand, Nix
     state->callFunction(*vGenerateManpage, evaluator.builtins.get("false"), *vRes, noPos);
     state->callFunction(*vRes, *vDump, *vRes, noPos);
 
-    auto attr = vRes->attrs->get(evaluator.symbols.create(mdName + ".md"));
+    auto attr = vRes->attrs()->get(evaluator.symbols.create(mdName + ".md"));
     if (!attr)
         throw UsageError("`nix` has no subcommand '%s'", concatStringsSep("", subcommand));
 
@@ -523,11 +523,11 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
         auto res = JSON::object();
         res["builtins"] = ({
             auto builtinsJson = JSON::object();
-            auto builtins = state.builtins.env.values[0]->attrs;
+            auto builtins = state.builtins.env.values[0]->attrs();
             for (auto & builtin : *builtins) {
                 auto b = JSON::object();
                 if (!builtin.value->isPrimOp()) continue;
-                auto primOp = builtin.value->primOp;
+                auto primOp = builtin.value->primOp();
                 if (!primOp->doc) continue;
                 b["arity"] = primOp->arity;
                 b["args"] = primOp->args;

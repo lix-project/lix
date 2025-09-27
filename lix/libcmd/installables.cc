@@ -242,7 +242,7 @@ void SourceExprCommand::completeInstallable(EvalState & state, AddCompletions & 
             state.autoCallFunction(*autoArgs, v1, v2, pos);
 
             if (v2.type() == nAttrs) {
-                for (auto & i : *v2.attrs) {
+                for (auto & i : *v2.attrs()) {
                     std::string name{evaluator->symbols[i.name]};
                     if (name.find(searchWord) == 0) {
                         if (prefix_ == "")
@@ -417,7 +417,7 @@ ref<eval_cache::EvalCache> openEvalCache(
 
             state.forceAttrs(*vFlake, noPos, "while parsing cached flake data");
 
-            auto aOutputs = vFlake->attrs->get(state.ctx.symbols.create("outputs"));
+            auto aOutputs = vFlake->attrs()->get(state.ctx.symbols.create("outputs"));
             assert(aOutputs);
 
             return aOutputs->value;

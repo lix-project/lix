@@ -60,11 +60,11 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
     switch (v.type()) {
 
         case nInt:
-            doc.writeEmptyElement("int", singletonAttrs("value", fmt("%1%", v.integer)));
+            doc.writeEmptyElement("int", singletonAttrs("value", fmt("%1%", v.integer())));
             break;
 
         case nBool:
-            doc.writeEmptyElement("bool", singletonAttrs("value", v.boolean ? "true" : "false"));
+            doc.writeEmptyElement("bool", singletonAttrs("value", v.boolean() ? "true" : "false"));
             break;
 
         case nString:
@@ -85,17 +85,17 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
             if (state.isDerivation(v)) {
                 XMLAttrs xmlAttrs;
 
-                auto a = v.attrs->get(state.ctx.symbols.create("derivation"));
+                auto a = v.attrs()->get(state.ctx.symbols.create("derivation"));
 
                 Path drvPath;
-                a = v.attrs->get(state.ctx.s.drvPath);
+                a = v.attrs()->get(state.ctx.s.drvPath);
                 if (a) {
                     if (strict) state.forceValue(*a->value, a->pos);
                     if (a->value->type() == nString)
                         xmlAttrs["drvPath"] = drvPath = a->value->str();
                 }
 
-                a = v.attrs->get(state.ctx.s.outPath);
+                a = v.attrs()->get(state.ctx.s.outPath);
                 if (a) {
                     if (strict) state.forceValue(*a->value, a->pos);
                     if (a->value->type() == nString) {
@@ -106,14 +106,14 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
                 XMLOpenElement _(doc, "derivation", xmlAttrs);
 
                 if (drvPath != "" && drvsSeen.insert(drvPath).second)
-                    showAttrs(state, strict, location, *v.attrs, doc, context, drvsSeen);
+                    showAttrs(state, strict, location, *v.attrs(), doc, context, drvsSeen);
                 else
                     doc.writeEmptyElement("repeated");
             }
 
             else {
                 XMLOpenElement _(doc, "attrs");
-                showAttrs(state, strict, location, *v.attrs, doc, context, drvsSeen);
+                showAttrs(state, strict, location, *v.attrs(), doc, context, drvsSeen);
             }
 
             break;
@@ -132,10 +132,10 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
                 break;
             }
             XMLAttrs xmlAttrs;
-            if (location) posToXML(state, xmlAttrs, state.ctx.positions[v.lambda.fun->pos]);
+            if (location) posToXML(state, xmlAttrs, state.ctx.positions[v.lambda().fun->pos]);
             XMLOpenElement _(doc, "function", xmlAttrs);
 
-            if (auto formals = dynamic_cast<AttrsPattern *>(v.lambda.fun->pattern.get()); formals) {
+            if (auto formals = dynamic_cast<AttrsPattern *>(v.lambda().fun->pattern.get()); formals) {
                 XMLAttrs attrs;
                 if (formals->name) attrs["name"] = state.ctx.symbols[formals->name];
                 if (formals->ellipsis) attrs["ellipsis"] = "1";
@@ -143,17 +143,17 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
                 for (const AttrsPattern::Formal & i : formals->lexicographicOrder(state.ctx.symbols))
                     doc.writeEmptyElement("attr", singletonAttrs("name", state.ctx.symbols[i.name]));
             } else
-                doc.writeEmptyElement("varpat", singletonAttrs("name", state.ctx.symbols[v.lambda.fun->pattern->name]));
+                doc.writeEmptyElement("varpat", singletonAttrs("name", state.ctx.symbols[v.lambda().fun->pattern->name]));
 
             break;
         }
 
         case nExternal:
-            v.external->printValueAsXML(state, strict, location, doc, context, drvsSeen, pos);
+            v.external()->printValueAsXML(state, strict, location, doc, context, drvsSeen, pos);
             break;
 
         case nFloat:
-            doc.writeEmptyElement("float", singletonAttrs("value", fmt("%1%", v.fpoint)));
+            doc.writeEmptyElement("float", singletonAttrs("value", fmt("%1%", v.fpoint())));
             break;
 
         case nThunk:

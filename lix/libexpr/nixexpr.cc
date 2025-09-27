@@ -47,11 +47,11 @@ JSON ExprLiteral::toJSON(const SymbolTable & symbols) const
     switch (v.type()) {
         case nInt:
             valueType = "Int";
-            value = v.integer.value;
+            value = v.integer().value;
             break;
         case nFloat:
             valueType = "Float";
-            value = v.fpoint;
+            value = v.fpoint();
             break;
         case nString:
             valueType = "String";

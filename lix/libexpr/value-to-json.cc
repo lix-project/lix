@@ -19,11 +19,11 @@ JSON printValueAsJSON(EvalState & state, bool strict,
     switch (v.type()) {
 
         case nInt:
-            out = v.integer.value;
+            out = v.integer().value;
             break;
 
         case nBool:
-            out = v.boolean;
+            out = v.boolean();
             break;
 
         case nString:
@@ -51,14 +51,14 @@ JSON printValueAsJSON(EvalState & state, bool strict,
                 out = *maybeString;
                 break;
             }
-            auto i = v.attrs->get(state.ctx.s.outPath);
+            auto i = v.attrs()->get(state.ctx.s.outPath);
             if (!i) {
                 out = JSON::object();
                 StringSet names;
-                for (auto & j : *v.attrs)
+                for (auto & j : *v.attrs())
                     names.emplace(state.ctx.symbols[j.name]);
                 for (auto & j : names) {
-                    const Attr & a(*v.attrs->get(state.ctx.symbols.create(j)));
+                    const Attr & a(*v.attrs()->get(state.ctx.symbols.create(j)));
                     try {
                         out[j] = printValueAsJSON(state, strict, *a.value, a.pos, context, copyToStore);
                     } catch (Error & e) {
@@ -90,11 +90,11 @@ JSON printValueAsJSON(EvalState & state, bool strict,
         }
 
         case nExternal:
-            return v.external->printValueAsJSON(state, strict, context, copyToStore);
+            return v.external()->printValueAsJSON(state, strict, context, copyToStore);
             break;
 
         case nFloat:
-            out = v.fpoint;
+            out = v.fpoint();
             break;
 
         case nThunk:

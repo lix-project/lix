@@ -171,7 +171,7 @@ static void prim_appendContext(EvalState & state, Value * * args, Value & v)
     state.forceAttrs(*args[1], noPos, "while evaluating the second argument passed to builtins.appendContext");
 
     auto sAllOutputs = state.ctx.symbols.create("allOutputs");
-    for (auto & i : *args[1]->attrs) {
+    for (auto & i : *args[1]->attrs()) {
         const auto & name = state.ctx.symbols[i.name];
         if (!state.ctx.store->isStorePath(name))
             state.ctx.errors.make<EvalError>(
@@ -182,7 +182,7 @@ static void prim_appendContext(EvalState & state, Value * * args, Value & v)
         if (!settings.readOnlyMode)
             state.aio.blockOn(state.ctx.store->ensurePath(namePath));
         state.forceAttrs(*i.value, i.pos, "while evaluating the value of a string context");
-        auto a = i.value->attrs->get(state.ctx.s.path);
+        auto a = i.value->attrs()->get(state.ctx.s.path);
         if (a) {
             if (state.forceBool(
                     *a->value, a->pos, "while evaluating the `path` attribute of a string context"
@@ -194,7 +194,7 @@ static void prim_appendContext(EvalState & state, Value * * args, Value & v)
             }
         }
 
-        a = i.value->attrs->get(sAllOutputs);
+        a = i.value->attrs()->get(sAllOutputs);
         if (a) {
             if (state.forceBool(
                     *a->value,
@@ -214,7 +214,7 @@ static void prim_appendContext(EvalState & state, Value * * args, Value & v)
             }
         }
 
-        a = i.value->attrs->get(state.ctx.s.outputs);
+        a = i.value->attrs()->get(state.ctx.s.outputs);
         if (a) {
             state.forceList(
                 *a->value, a->pos, "while evaluating the `outputs` attribute of a string context"

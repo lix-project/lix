@@ -25,6 +25,7 @@
 #include "lix/libutil/exit.hh"
 #include "lix/libutil/json.hh"
 #include "symbol-table.hh"
+#include "value.hh"
 
 #include <algorithm>
 #include <iostream>
@@ -74,7 +75,7 @@ std::string printValue(EvalState & state, Value & v)
 const Value * getPrimOp(const Value &v) {
     const Value * primOp = &v;
     while (primOp->isPrimOpApp()) {
-        primOp = primOp->primOpApp.left;
+        primOp = primOp->primOpApp().left;
     }
     assert(primOp->isPrimOp());
     return primOp;
@@ -106,12 +107,12 @@ std::string showType(const Value & v)
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wswitch-enum"
     switch (v.internalType) {
-        case tString: return v.string.context ? "a string with context" : "a string";
+        case tString: return v.string().context ? "a string with context" : "a string";
         case tPrimOp:
-            return fmt("the built-in function '%s'", std::string(v.primOp->name));
+            return fmt("the built-in function '%s'", std::string(v.primOp()->name));
         case tPrimOpApp:
-            return fmt("the partially applied built-in function '%s'", std::string(getPrimOp(v)->primOp->name));
-        case tExternal: return v.external->showType();
+            return fmt("the partially applied built-in function '%s'", std::string(getPrimOp(v)->primOp()->name));
+        case tExternal: return v.external()->showType();
         case tThunk: return v.isBlackhole() ? "a black hole" : "a thunk";
         case tApp: return "a function application";
     default:
@@ -550,7 +551,7 @@ void EvalBuiltins::addConstant(const std::string & name, Value * v, Constant inf
         /* Install value the base environment. */
         staticEnv->vars.insert_or_assign(symbols.create(name), baseEnvDispl);
         env.values[baseEnvDispl++] = v;
-        env.values[0]->attrs->push_back(Attr(symbols.create(name2), v));
+        env.values[0]->attrs()->push_back(Attr(symbols.create(name2), v));
     }
 }
 
@@ -585,14 +586,14 @@ Value * EvalBuiltins::addPrimOp(PrimOp && primOp)
     v->mkPrimOp(new PrimOp(primOp));
     staticEnv->vars.insert_or_assign(auto(envName), baseEnvDispl);
     env.values[baseEnvDispl++] = v;
-    env.values[0]->attrs->push_back(Attr(symbols.create(primOp.name), v));
+    env.values[0]->attrs()->push_back(Attr(symbols.create(primOp.name), v));
     return v;
 }
 
 
 Value & EvalBuiltins::get(const std::string & name)
 {
-    return *env.values[0]->attrs->get(symbols.create(name))->value;
+    return *env.values[0]->attrs()->get(symbols.create(name))->value;
 }
 
 
@@ -600,12 +601,12 @@ std::optional<EvalBuiltins::Doc> EvalBuiltins::getDoc(Value & v)
 {
     if (v.isPrimOp()) {
         auto v2 = &v;
-        if (auto * doc = v2->primOp->doc)
+        if (auto * doc = v2->primOp()->doc)
             return Doc {
                 .pos = {},
-                .name = v2->primOp->name,
-                .arity = v2->primOp->arity,
-                .args = v2->primOp->args,
+                .name = v2->primOp()->name,
+                .arity = v2->primOp()->arity,
+                .args = v2->primOp()->args,
                 .doc = doc,
             };
     }
@@ -637,7 +638,7 @@ void printWithBindings(const SymbolTable & st, const Env & env)
 {
     if (env.values[0]->type() == nAttrs) {
         std::set<std::string_view> bindings;
-        for (const auto & attr : *env.values[0]->attrs)
+        for (const auto & attr : *env.values[0]->attrs())
             bindings.emplace(st[attr.name]);
 
         std::cout << "with: ";
@@ -694,8 +695,8 @@ void mapStaticEnvBindings(const SymbolTable & st, const StaticEnv & se, const En
 
         if (se.isWith && env.values[0]->type() == nAttrs) {
             // add 'with' bindings.
-            Bindings::iterator j = env.values[0]->attrs->begin();
-            while (j != env.values[0]->attrs->end()) {
+            Bindings::iterator j = env.values[0]->attrs()->begin();
+            while (j != env.values[0]->attrs()->end()) {
                 vm[std::string(st[j->name])] = j->value;
                 ++j;
             }
@@ -833,7 +834,7 @@ inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
     auto * fromWith = var.fromWith;
     while (1) {
         forceAttrs(*env->values[0], fromWith->pos, "while evaluating the first subexpression of a with expression");
-        auto j = env->values[0]->attrs->get(var.name);
+        auto j = env->values[0]->attrs()->get(var.name);
         if (j) {
             if (ctx.stats.countCalls) ctx.stats.attrSelects[j->pos]++;
             return j->value;
@@ -850,7 +851,7 @@ Value EvalMemory::newList(size_t size)
     Value v;
     v.mkList(size);
     if (size > 2)
-        v.bigList.elems = gcAllocType<Value *>(size);
+        v._bigList.elems = gcAllocType<Value *>(size);
     stats.nrListElems += size;
     return v;
 }
@@ -1034,7 +1035,7 @@ inline bool EvalState::evalBool(Env & env, Expr & e)
     Value v;
     e.eval(*this, env, v);
     checkType(nBool, "Boolean");
-    return v.boolean;
+    return v.boolean();
 }
 
 
@@ -1105,7 +1106,7 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
             } else
                 vAttr = i.second.e->maybeThunk(state, *i.second.chooseByKind(&env2, &env, inheritEnv));
             env2.values[displ++] = vAttr;
-            v.attrs->push_back(Attr(i.first, vAttr, i.second.pos));
+            v.attrs()->push_back(Attr(i.first, vAttr, i.second.pos));
         }
 
         /* If the rec contains an attribute called `__overrides', then
@@ -1117,12 +1118,12 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
            been substituted into the bodies of the other attributes.
            Hence we need __overrides.) */
         if (hasOverrides) {
-            Value * vOverrides = (*v.attrs)[overrides->second.displ].value;
+            Value * vOverrides = (*v.attrs())[overrides->second.displ].value;
             state.forceAttrs(*vOverrides, noPos, "while evaluating the `__overrides` attribute");
-            Bindings * newBnds = state.ctx.mem.allocBindings(capacity + vOverrides->attrs->size());
-            for (auto & i : *v.attrs)
+            Bindings * newBnds = state.ctx.mem.allocBindings(capacity + vOverrides->attrs()->size());
+            for (auto & i : *v.attrs())
                 newBnds->push_back(i);
-            for (auto & i : *vOverrides->attrs) {
+            for (auto & i : *vOverrides->attrs()) {
                 ExprAttrs::AttrDefs::iterator j = attrs.find(i.name);
                 if (j != attrs.end()) {
                     (*newBnds)[j->second.displ] = i;
@@ -1131,14 +1132,14 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
                     newBnds->push_back(i);
             }
             newBnds->sort();
-            v.attrs = newBnds;
+            v.mkAttrs(newBnds);
         }
     }
 
     else {
         Env * inheritEnv = inheritFromExprs ? buildInheritFromEnv(state, env) : nullptr;
         for (auto & i : attrs) {
-            v.attrs->push_back(Attr(
+            v.attrs()->push_back(Attr(
                     i.first,
                     i.second.e->maybeThunk(state, *i.second.chooseByKind(&env, &env, inheritEnv)),
                     i.second.pos));
@@ -1154,7 +1155,7 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
             continue;
         state.forceStringNoCtx(nameVal, i.pos, "while evaluating the name of a dynamic attribute");
         auto nameSym = state.ctx.symbols.create(nameVal.str());
-        auto j = v.attrs->get(nameSym);
+        auto j = v.attrs()->get(nameSym);
         if (j) {
             state.ctx.errors
                 .make<EvalError>(
@@ -1169,11 +1170,11 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
 
         i.valueExpr->setName(nameSym);
         /* Keep sorted order so find can catch duplicates */
-        v.attrs->push_back(Attr(nameSym, i.valueExpr->maybeThunk(state, *dynamicEnv), i.pos));
-        v.attrs->sort(); // FIXME: inefficient
+        v.attrs()->push_back(Attr(nameSym, i.valueExpr->maybeThunk(state, *dynamicEnv), i.pos));
+        v.attrs()->sort(); // FIXME: inefficient
     }
 
-    v.attrs->pos = pos;
+    v.attrs()->pos = pos;
 }
 
 
@@ -1324,7 +1325,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
 
             // Now that we know this is actually an attrset, try to find an attr
             // with the selected name.
-            auto attrIt = vCurrent->attrs->get(name);
+            auto attrIt = vCurrent->attrs()->get(name);
             if (!attrIt) {
 
                 // If we have an `or` provided default, then we'll use that.
@@ -1335,7 +1336,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
 
                 // Otherwise, missing attr error.
                 std::set<std::string> allAttrNames;
-                for (auto const & attr : *vCurrent->attrs) {
+                for (auto const & attr : *vCurrent->attrs()) {
                     allAttrNames.emplace(state.ctx.symbols[attr.name]);
                 }
                 auto suggestions = Suggestions::bestMatches(allAttrNames, state.ctx.symbols[name]);
@@ -1379,7 +1380,7 @@ void ExprOpHasAttr::eval(EvalState & state, Env & env, Value & v)
         state.forceValue(*vAttrs, getPos());
         const Attr * j;
         auto name = getName(i, state, env);
-        if (vAttrs->type() != nAttrs || (j = vAttrs->attrs->get(name)) == nullptr) {
+        if (vAttrs->type() != nAttrs || (j = vAttrs->attrs()->get(name)) == nullptr) {
             v.mkBool(false);
             return;
         } else {
@@ -1499,7 +1500,7 @@ Env & AttrsPattern::match(ExprLambda & lambda, EvalState & state, Env & up, Valu
         env2,
         displ,
         *this,
-        *arg->attrs,
+        *arg->attrs(),
         ctx.symbols
     );
 
@@ -1576,9 +1577,9 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
 
         if (vCur.isLambda()) {
 
-            ExprLambda & lambda(*vCur.lambda.fun);
+            ExprLambda & lambda(*vCur.lambda().fun);
 
-            Env & env2 = lambda.pattern->match(lambda, *this, *vCur.lambda.env, args[0], pos);
+            Env & env2 = lambda.pattern->match(lambda, *this, *vCur.lambda().env, args[0], pos);
 
             ctx.stats.nrFunctionCalls++;
             if (ctx.stats.countCalls) ctx.stats.addCall(lambda);
@@ -1603,7 +1604,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
 
         else if (vCur.isPrimOp()) {
 
-            size_t argsLeft = vCur.primOp->arity;
+            size_t argsLeft = vCur.primOp()->arity;
 
             if (nrArgs < argsLeft) {
                 /* We don't have enough arguments, so create a tPrimOpApp chain. */
@@ -1611,7 +1612,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 return;
             } else {
                 /* We have all the arguments, so call the primop. */
-                auto * fn = vCur.primOp;
+                auto * fn = vCur.primOp();
 
                 ctx.stats.nrPrimOpCalls++;
                 if (ctx.stats.countCalls) ctx.stats.primOpCalls[fn->name]++;
@@ -1643,10 +1644,10 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
             Value * primOp = &vCur;
             while (primOp->isPrimOpApp()) {
                 argsDone++;
-                primOp = primOp->primOpApp.left;
+                primOp = primOp->primOpApp().left;
             }
             assert(primOp->isPrimOp());
-            auto arity = primOp->primOp->arity;
+            auto arity = primOp->primOp()->arity;
             auto argsLeft = arity - argsDone;
 
             if (nrArgs < argsLeft) {
@@ -1660,13 +1661,13 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 // max arity as of writing is 3. even 4 seems excessive though.
                 SmallVector<Value *, 4> vArgs(arity);
                 auto n = argsDone;
-                for (Value * arg = &vCur; arg->isPrimOpApp(); arg = arg->primOpApp.left)
-                    vArgs[--n] = arg->primOpApp.right;
+                for (Value * arg = &vCur; arg->isPrimOpApp(); arg = arg->primOpApp().left)
+                    vArgs[--n] = arg->primOpApp().right;
 
                 for (size_t i = 0; i < argsLeft; ++i)
                     vArgs[argsDone + i] = args[i];
 
-                auto fn = primOp->primOp;
+                auto fn = primOp->primOp();
                 ctx.stats.nrPrimOpCalls++;
                 if (ctx.stats.countCalls) ctx.stats.primOpCalls[fn->name]++;
 
@@ -1686,7 +1687,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
             }
         }
 
-        else if (vCur.type() == nAttrs && (functor = vCur.attrs->get(ctx.s.functor))) {
+        else if (vCur.type() == nAttrs && (functor = vCur.attrs()->get(ctx.s.functor))) {
             /* 'vCur' may be allocated on the stack of the calling
                function, but for functors we may keep a reference, so
                heap-allocate a copy and use that instead. */
@@ -1747,7 +1748,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res, PosI
     forceValue(fun, pos);
 
     if (fun.type() == nAttrs) {
-        auto found = fun.attrs->get(ctx.s.functor);
+        auto found = fun.attrs()->get(ctx.s.functor);
         if (found) {
             Value * v = ctx.mem.allocValue();
             callFunction(*found->value, fun, *v, pos);
@@ -1760,7 +1761,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res, PosI
         res = fun;
         return;
     }
-    auto pattern = dynamic_cast<AttrsPattern *>(fun.lambda.fun->pattern.get());
+    auto pattern = dynamic_cast<AttrsPattern *>(fun.lambda().fun->pattern.get());
     if (!pattern) {
         res = fun;
         return;
@@ -1786,7 +1787,7 @@ Lix attempted to evaluate a function as a top level expression; in
 this case it must have its arguments supplied either by default
 values, or passed explicitly with '--arg' or '--argstr'. See
 https://docs.lix.systems/manual/lix/stable/language/constructs.html#functions)", ctx.symbols[i.name])
-                    .atPos(i.pos).withFrame(*fun.lambda.env, *fun.lambda.fun).debugThrow();
+                    .atPos(i.pos).withFrame(*fun.lambda().env, *fun.lambda().fun).debugThrow();
             }
         }
     }
@@ -1871,17 +1872,17 @@ void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
 
     state.ctx.stats.nrOpUpdates++;
 
-    if (v1.attrs->size() == 0) { v = v2; return; }
-    if (v2.attrs->size() == 0) { v = v1; return; }
+    if (v1.attrs()->size() == 0) { v = v2; return; }
+    if (v2.attrs()->size() == 0) { v = v1; return; }
 
-    auto attrs = state.ctx.buildBindings(v1.attrs->size() + v2.attrs->size());
+    auto attrs = state.ctx.buildBindings(v1.attrs()->size() + v2.attrs()->size());
 
     /* Merge the sets, preferring values from the second set.  Make
        sure to keep the resulting vector in sorted order. */
-    Bindings::iterator i = v1.attrs->begin();
-    Bindings::iterator j = v2.attrs->begin();
+    Bindings::iterator i = v1.attrs()->begin();
+    Bindings::iterator j = v2.attrs()->begin();
 
-    while (i != v1.attrs->end() && j != v2.attrs->end()) {
+    while (i != v1.attrs()->end() && j != v2.attrs()->end()) {
         if (i->name == j->name) {
             attrs.insert(*j);
             ++i; ++j;
@@ -1892,12 +1893,12 @@ void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
             attrs.insert(*j++);
     }
 
-    while (i != v1.attrs->end()) attrs.insert(*i++);
-    while (j != v2.attrs->end()) attrs.insert(*j++);
+    while (i != v1.attrs()->end()) attrs.insert(*i++);
+    while (j != v2.attrs()->end()) attrs.insert(*j++);
 
     v.mkAttrs(attrs.alreadySorted());
 
-    state.ctx.stats.nrOpUpdateValuesCopied += v.attrs->size();
+    state.ctx.stats.nrOpUpdateValuesCopied += v.attrs()->size();
 }
 
 
@@ -2003,24 +2004,27 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
 
         if (firstType == nInt) {
             if (vTmp.type() == nInt) {
-                auto newN = n + vTmp.integer;
+                auto newN = n + vTmp.integer();
                 if (auto checked = newN.valueChecked(); checked.has_value()) {
                     n = NixInt(*checked);
                 } else {
-                    state.ctx.errors.make<EvalError>("integer overflow in adding %1% + %2%", n, vTmp.integer).atPos(i_pos).debugThrow();
+                    state.ctx.errors
+                        .make<EvalError>("integer overflow in adding %1% + %2%", n, vTmp.integer())
+                        .atPos(i_pos)
+                        .debugThrow();
                 }
             } else if (vTmp.type() == nFloat) {
                 // Upgrade the type from int to float;
                 firstType = nFloat;
                 nf = n.value;
-                nf += vTmp.fpoint;
+                nf += vTmp.fpoint();
             } else
                 state.ctx.errors.make<EvalError>("cannot add %1% to an integer", showType(vTmp)).atPos(i_pos).withFrame(env, *this).debugThrow();
         } else if (firstType == nFloat) {
             if (vTmp.type() == nInt) {
-                nf += vTmp.integer.value;
+                nf += vTmp.integer().value;
             } else if (vTmp.type() == nFloat) {
-                nf += vTmp.fpoint;
+                nf += vTmp.fpoint();
             } else
                 state.ctx.errors.make<EvalError>("cannot add %1% to a float", showType(vTmp)).atPos(i_pos).withFrame(env, *this).debugThrow();
         } else {
@@ -2104,11 +2108,11 @@ void EvalState::forceValueDeep(Value & v)
         forceValue(v, noPos);
 
         if (v.type() == nAttrs) {
-            for (auto & i : *v.attrs)
+            for (auto & i : *v.attrs())
                 try {
                     // If the value is a thunk, we're evaling. Otherwise no trace necessary.
                     auto dts = ctx.debug && i.value->isThunk()
-                        ? makeDebugTraceStacker(*this, *i.value->thunk.expr, *i.value->thunk.env, ctx.positions[i.pos],
+                        ? makeDebugTraceStacker(*this, *i.value->thunk().expr, *i.value->thunk().env, ctx.positions[i.pos],
                             "while evaluating the attribute '%1%'", ctx.symbols[i.name])
                         : nullptr;
 
@@ -2139,13 +2143,13 @@ NixInt EvalState::forceInt(Value & v, const PosIdx pos, std::string_view errorCt
                 showType(v),
                 ValuePrinter(*this, v, errorPrintOptions)
             ).atPos(pos).debugThrow();
-        return v.integer;
+        return v.integer();
     } catch (Error & e) {
         e.addTrace(ctx.positions[pos], errorCtx);
         throw;
     }
 
-    return v.integer;
+    return v.integer();
 }
 
 
@@ -2154,14 +2158,14 @@ NixFloat EvalState::forceFloat(Value & v, const PosIdx pos, std::string_view err
     try {
         forceValue(v, pos);
         if (v.type() == nInt)
-            return v.integer.value;
+            return v.integer().value;
         else if (v.type() != nFloat)
             ctx.errors.make<TypeError>(
                 "expected a float but found %1%: %2%",
                 showType(v),
                 ValuePrinter(*this, v, errorPrintOptions)
             ).atPos(pos).debugThrow();
-        return v.fpoint;
+        return v.fpoint();
     } catch (Error & e) {
         e.addTrace(ctx.positions[pos], errorCtx);
         throw;
@@ -2179,19 +2183,19 @@ bool EvalState::forceBool(Value & v, const PosIdx pos, std::string_view errorCtx
                 showType(v),
                 ValuePrinter(*this, v, errorPrintOptions)
             ).atPos(pos).debugThrow();
-        return v.boolean;
+        return v.boolean();
     } catch (Error & e) {
         e.addTrace(ctx.positions[pos], errorCtx);
         throw;
     }
 
-    return v.boolean;
+    return v.boolean();
 }
 
 
 bool EvalState::isFunctor(Value & fun)
 {
-    return fun.type() == nAttrs && fun.attrs->get(ctx.s.functor);
+    return fun.type() == nAttrs && fun.attrs()->get(ctx.s.functor);
 }
 
 
@@ -2232,8 +2236,8 @@ std::string_view EvalState::forceString(Value & v, const PosIdx pos, std::string
 
 void copyContext(const Value & v, NixStringContext & context)
 {
-    if (v.string.context)
-        for (const char * * p = v.string.context; *p; ++p)
+    if (v.string().context)
+        for (const char * * p = v.string().context; *p; ++p)
             context.insert(NixStringContextElem::parse(*p));
 }
 
@@ -2249,12 +2253,12 @@ std::string_view EvalState::forceString(Value & v, NixStringContext & context, c
 std::string_view EvalState::forceStringNoCtx(Value & v, const PosIdx pos, std::string_view errorCtx)
 {
     auto s = forceString(v, pos, errorCtx);
-    if (v.string.context) {
+    if (v.string().context) {
         ctx.errors
             .make<EvalError>(
                 "the string '%1%' is not allowed to refer to a store path (such as '%2%')",
                 v.str(),
-                v.string.context[0]
+                v.string().context[0]
             )
             .withTrace(pos, errorCtx)
             .debugThrow();
@@ -2266,7 +2270,7 @@ std::string_view EvalState::forceStringNoCtx(Value & v, const PosIdx pos, std::s
 bool EvalState::isDerivation(Value & v)
 {
     if (v.type() != nAttrs) return false;
-    auto i = v.attrs->get(ctx.s.type);
+    auto i = v.attrs()->get(ctx.s.type);
     if (!i) {
         return false;
     }
@@ -2279,7 +2283,7 @@ bool EvalState::isDerivation(Value & v)
 std::optional<std::string> EvalState::tryAttrsToString(const PosIdx pos, Value & v,
     NixStringContext & context, StringCoercionMode mode, bool copyToStore)
 {
-    auto i = v.attrs->get(ctx.s.toString);
+    auto i = v.attrs()->get(ctx.s.toString);
     if (i) {
         Value v1;
         try {
@@ -2328,7 +2332,7 @@ BackedStringView EvalState::coerceToString(
         auto maybeString = tryAttrsToString(pos, v, context, mode, copyToStore);
         if (maybeString)
             return std::move(*maybeString);
-        auto i = v.attrs->get(ctx.s.outPath);
+        auto i = v.attrs()->get(ctx.s.outPath);
         if (!i) {
             ctx.errors.make<TypeError>(
                 "cannot coerce %1% to a string: %2%",
@@ -2344,7 +2348,7 @@ BackedStringView EvalState::coerceToString(
 
     if (v.type() == nExternal) {
         try {
-            return v.external->coerceToString(*this, pos, context, mode, copyToStore);
+            return v.external()->coerceToString(*this, pos, context, mode, copyToStore);
         } catch (Error & e) {
             e.addTrace(nullptr, errorCtx);
             throw;
@@ -2354,15 +2358,21 @@ BackedStringView EvalState::coerceToString(
     /* Raito: Any addition to this mode is subject to extra scrutiny
      * until we have better formatting tools. */
     if (mode >= StringCoercionMode::Interpolation) {
-        if (v.type() == nInt) return std::to_string(v.integer.value);
+        if (v.type() == nInt) {
+            return std::to_string(v.integer().value);
+        }
     }
 
     if (mode >= StringCoercionMode::ToString) {
         /* Note that `false' is represented as an empty string for
            shell scripting convenience, just like `null'. */
-        if (v.type() == nBool && v.boolean) return "1";
-        if (v.type() == nBool && !v.boolean) return "";
-        if (v.type() == nFloat) return std::to_string(v.fpoint);
+        if (v.type() == nBool && v.boolean()) {
+            return "1";
+        }
+        if (v.type() == nBool && !v.boolean()) {
+            return "";
+        }
+        if (v.type() == nFloat) return std::to_string(v.fpoint());
         if (v.type() == nNull) return "";
 
         if (v.isList()) {
@@ -2512,20 +2522,22 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
     if (&v1 == &v2) return true;
 
     // Special case type-compatibility between float and int
-    if (v1.type() == nInt && v2.type() == nFloat)
-        return v1.integer.value == v2.fpoint;
-    if (v1.type() == nFloat && v2.type() == nInt)
-        return v1.fpoint == v2.integer.value;
+    if (v1.type() == nInt && v2.type() == nFloat) {
+        return v1.integer().value == v2.fpoint();
+    }
+    if (v1.type() == nFloat && v2.type() == nInt) {
+        return v1.fpoint() == v2.integer().value;
+    }
 
     // All other types are not compatible with each other.
     if (v1.type() != v2.type()) return false;
 
     switch (v1.type()) {
         case nInt:
-            return v1.integer == v2.integer;
+            return v1.integer() == v2.integer();
 
         case nBool:
-            return v1.boolean == v2.boolean;
+            return v1.boolean() == v2.boolean();
 
         case nString:
             return v1.str() == v2.str();
@@ -2546,18 +2558,18 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             /* If both sets denote a derivation (type = "derivation"),
                then compare their outPaths. */
             if (isDerivation(v1) && isDerivation(v2)) {
-                auto i = v1.attrs->get(ctx.s.outPath);
-                auto j = v2.attrs->get(ctx.s.outPath);
+                auto i = v1.attrs()->get(ctx.s.outPath);
+                auto j = v2.attrs()->get(ctx.s.outPath);
                 if (i && j) {
                     return eqValues(*i->value, *j->value, pos, errorCtx);
                 }
             }
 
-            if (v1.attrs->size() != v2.attrs->size()) return false;
+            if (v1.attrs()->size() != v2.attrs()->size()) return false;
 
             /* Otherwise, compare the attributes one by one. */
             Bindings::iterator i, j;
-            for (i = v1.attrs->begin(), j = v2.attrs->begin(); i != v1.attrs->end(); ++i, ++j)
+            for (i = v1.attrs()->begin(), j = v2.attrs()->begin(); i != v1.attrs()->end(); ++i, ++j)
                 if (i->name != j->name || !eqValues(*i->value, *j->value, pos, errorCtx))
                     return false;
 
@@ -2569,10 +2581,10 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             return false;
 
         case nExternal:
-            return *v1.external == *v2.external;
+            return *v1.external() == *v2.external();
 
         case nFloat:
-            return v1.fpoint == v2.fpoint;
+            return v1.fpoint() == v2.fpoint();
 
         case nThunk: // Must not be left by forceValue
         default:

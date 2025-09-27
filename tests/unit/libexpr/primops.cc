@@ -71,7 +71,7 @@ namespace nix {
         auto v = eval("builtins.tryEval (throw \"\")");
         ASSERT_THAT(v, IsAttrsOfSize(2));
         auto s = createSymbol("success");
-        auto p = v.attrs->get(s);
+        auto p = v.attrs()->get(s);
         ASSERT_NE(p, nullptr);
         ASSERT_THAT(*p->value, IsFalse());
     }
@@ -80,11 +80,11 @@ namespace nix {
         auto v = eval("builtins.tryEval 123");
         ASSERT_THAT(v, IsAttrs());
         auto s = createSymbol("success");
-        auto p = v.attrs->get(s);
+        auto p = v.attrs()->get(s);
         ASSERT_NE(p, nullptr);
         ASSERT_THAT(*p->value, IsTrue());
         s = createSymbol("value");
-        p = v.attrs->get(s);
+        p = v.attrs()->get(s);
         ASSERT_NE(p, nullptr);
         ASSERT_THAT(*p->value, IsIntEq(123));
     }
@@ -184,14 +184,14 @@ namespace nix {
     TEST_F(PrimOpTest, removeAttrsRetains) {
         auto v = eval("builtins.removeAttrs { x = 1; y = 2; } [\"x\"]");
         ASSERT_THAT(v, IsAttrsOfSize(1));
-        ASSERT_NE(v.attrs->get(createSymbol("y")), nullptr);
+        ASSERT_NE(v.attrs()->get(createSymbol("y")), nullptr);
     }
 
     TEST_F(PrimOpTest, listToAttrsEmptyList) {
         auto v = eval("builtins.listToAttrs []");
         ASSERT_THAT(v, IsAttrsOfSize(0));
         ASSERT_EQ(v.type(), nAttrs);
-        ASSERT_EQ(v.attrs->size(), 0);
+        ASSERT_EQ(v.attrs()->size(), 0);
     }
 
     TEST_F(PrimOpTest, listToAttrsNotFieldName) {
@@ -201,7 +201,7 @@ namespace nix {
     TEST_F(PrimOpTest, listToAttrs) {
         auto v = eval("builtins.listToAttrs [ { name = \"key\"; value = 123; } ]");
         ASSERT_THAT(v, IsAttrsOfSize(1));
-        auto key = v.attrs->get(createSymbol("key"));
+        auto key = v.attrs()->get(createSymbol("key"));
         ASSERT_NE(key, nullptr);
         ASSERT_THAT(*key->value, IsIntEq(123));
     }
@@ -209,7 +209,7 @@ namespace nix {
     TEST_F(PrimOpTest, intersectAttrs) {
         auto v = eval("builtins.intersectAttrs { a = 1; b = 2; } { b = 3; c = 4; }");
         ASSERT_THAT(v, IsAttrsOfSize(1));
-        auto b = v.attrs->get(createSymbol("b"));
+        auto b = v.attrs()->get(createSymbol("b"));
         ASSERT_NE(b, nullptr);
         ASSERT_THAT(*b->value, IsIntEq(3));
     }
@@ -225,11 +225,11 @@ namespace nix {
         auto v = eval("builtins.functionArgs ({ x, y ? 123}: 1)");
         ASSERT_THAT(v, IsAttrsOfSize(2));
 
-        auto x = v.attrs->get(createSymbol("x"));
+        auto x = v.attrs()->get(createSymbol("x"));
         ASSERT_NE(x, nullptr);
         ASSERT_THAT(*x->value, IsFalse());
 
-        auto y = v.attrs->get(createSymbol("y"));
+        auto y = v.attrs()->get(createSymbol("y"));
         ASSERT_NE(y, nullptr);
         ASSERT_THAT(*y->value, IsTrue());
     }
@@ -238,13 +238,13 @@ namespace nix {
         auto v = eval("builtins.mapAttrs (name: value: value * 10) { a = 1; b = 2; }");
         ASSERT_THAT(v, IsAttrsOfSize(2));
 
-        auto a = v.attrs->get(createSymbol("a"));
+        auto a = v.attrs()->get(createSymbol("a"));
         ASSERT_NE(a, nullptr);
         ASSERT_THAT(*a->value, IsThunk());
         state.forceValue(*a->value, noPos);
         ASSERT_THAT(*a->value, IsIntEq(10));
 
-        auto b = v.attrs->get(createSymbol("b"));
+        auto b = v.attrs()->get(createSymbol("b"));
         ASSERT_NE(b, nullptr);
         ASSERT_THAT(*b->value, IsThunk());
         state.forceValue(*b->value, noPos);
@@ -393,13 +393,13 @@ namespace nix {
         auto v = eval("builtins.partition (x: x > 10) [1 23 9 3 42]");
         ASSERT_THAT(v, IsAttrsOfSize(2));
 
-        auto right = v.attrs->get(createSymbol("right"));
+        auto right = v.attrs()->get(createSymbol("right"));
         ASSERT_NE(right, nullptr);
         ASSERT_THAT(*right->value, IsListOfSize(2));
         ASSERT_THAT(*right->value->listElems()[0], IsIntEq(23));
         ASSERT_THAT(*right->value->listElems()[1], IsIntEq(42));
 
-        auto wrong = v.attrs->get(createSymbol("wrong"));
+        auto wrong = v.attrs()->get(createSymbol("wrong"));
         ASSERT_NE(wrong, nullptr);
         ASSERT_EQ(wrong->value->type(), nList);
         ASSERT_EQ(wrong->value->listSize(), 3);
@@ -636,14 +636,14 @@ namespace nix {
         auto v = eval("derivation");
         ASSERT_EQ(v.type(), nFunction);
         ASSERT_TRUE(v.isLambda());
-        ASSERT_NE(v.lambda.fun, nullptr);
-        ASSERT_TRUE(dynamic_cast<AttrsPattern *>(v.lambda.fun->pattern.get()));
+        ASSERT_NE(v.lambda().fun, nullptr);
+        ASSERT_TRUE(dynamic_cast<AttrsPattern *>(v.lambda().fun->pattern.get()));
     }
 
     TEST_F(PrimOpTest, currentTime) {
         auto v = eval("builtins.currentTime");
         ASSERT_EQ(v.type(), nInt);
-        ASSERT_TRUE(v.integer > 0);
+        ASSERT_TRUE(v.integer() > 0);
     }
 
     TEST_F(PrimOpTest, splitVersion) {
@@ -704,11 +704,11 @@ namespace nix {
         auto v = eval(expr);
         ASSERT_THAT(v, IsAttrsOfSize(2));
 
-        auto name = v.attrs->get(createSymbol("name"));
+        auto name = v.attrs()->get(createSymbol("name"));
         ASSERT_TRUE(name);
         ASSERT_THAT(*name->value, IsStringEq(expectedName));
 
-        auto version = v.attrs->get(createSymbol("version"));
+        auto version = v.attrs()->get(createSymbol("version"));
         ASSERT_TRUE(version);
         ASSERT_THAT(*version->value, IsStringEq(expectedVersion));
     }

@@ -187,7 +187,7 @@ void DrvInfo::fillOutputs(EvalState & state, bool withPaths)
             state.forceAttrs(*out->value, outputs->pos, errMsg);
 
             // ...and evaluate its `outPath` attribute.
-            const Attr * outPath = out->value->attrs->get(state.ctx.s.outPath);
+            const Attr * outPath = out->value->attrs()->get(state.ctx.s.outPath);
             if (outPath == nullptr) {
                 continue;
                 // FIXME: throw error?
@@ -291,7 +291,7 @@ Bindings * DrvInfo::getMeta(EvalState & state)
         return 0;
     }
     state.forceAttrs(*a->value, a->pos, "while evaluating the 'meta' attribute of a derivation");
-    meta = a->value->attrs;
+    meta = a->value->attrs();
     return meta;
 }
 
@@ -315,11 +315,11 @@ bool DrvInfo::checkMeta(EvalState & state, Value & v)
         return true;
     }
     else if (v.type() == nAttrs) {
-        auto i = v.attrs->get(state.ctx.s.outPath);
+        auto i = v.attrs()->get(state.ctx.s.outPath);
         if (i) {
             return false;
         }
-        for (auto & i : *v.attrs)
+        for (auto & i : *v.attrs())
             if (!checkMeta(state, *i.value)) return false;
         return true;
     }
@@ -351,7 +351,9 @@ NixInt DrvInfo::queryMetaInt(EvalState & state, const std::string & name, NixInt
 {
     Value * v = queryMeta(state, name);
     if (!v) return def;
-    if (v->type() == nInt) return v->integer;
+    if (v->type() == nInt) {
+        return v->integer();
+    }
     if (v->type() == nString) {
         /* Backwards compatibility with before we had support for
            integer meta fields. */
@@ -366,7 +368,9 @@ bool DrvInfo::queryMetaBool(EvalState & state, const std::string & name, bool de
 {
     Value * v = queryMeta(state, name);
     if (!v) return def;
-    if (v->type() == nBool) return v->boolean;
+    if (v->type() == nBool) {
+        return v->boolean();
+    }
     if (v->type() == nString) {
         /* Backwards compatibility with before we had support for
            Boolean meta fields. */
@@ -409,7 +413,7 @@ static bool getDerivation(EvalState & state, Value & v,
         state.forceValue(v, noPos);
         if (!state.isDerivation(v)) return true;
 
-        DrvInfo drv(attrPath, v.attrs);
+        DrvInfo drv(attrPath, v.attrs());
 
         drv.queryName(state);
 
@@ -489,7 +493,7 @@ static void getDerivations(EvalState & state, Value & vIn, PosIdx pos,
 
     /* Dont consider sets we've already seen, e.g. y in
        `rec { x.d = derivation {...}; y = x; }`. */
-    auto const &[_, didInsert] = done.insert(v.attrs);
+    auto const &[_, didInsert] = done.insert(v.attrs());
     if (!didInsert) {
         return;
     }
@@ -497,14 +501,14 @@ static void getDerivations(EvalState & state, Value & vIn, PosIdx pos,
     // FIXME: what the fuck???
     /* !!! undocumented hackery to support combining channels in
        nix-env.cc. */
-    bool combineChannels = v.attrs->get(state.ctx.symbols.create("_combineChannels"));
+    bool combineChannels = v.attrs()->get(state.ctx.symbols.create("_combineChannels"));
 
     /* Consider the attributes in sorted order to get more
        deterministic behaviour in nix-env operations (e.g. when
        there are names clashes between derivations, the derivation
        bound to the attribute with the "lower" name should take
        precedence). */
-    for (auto & attr : v.attrs->lexicographicOrder(state.ctx.symbols)) {
+    for (auto & attr : v.attrs()->lexicographicOrder(state.ctx.symbols)) {
         debug("evaluating attribute '%1%'", state.ctx.symbols[attr->name]);
         // FIXME: only consider attrs with identifier-like names?? Why???
         if (!std::regex_match(std::string(state.ctx.symbols[attr->name]), attrRegex)) {
@@ -528,7 +532,7 @@ static void getDerivations(EvalState & state, Value & vIn, PosIdx pos,
                `recurseForDerivations = true' attribute. */
             if (attr->value->type() == nAttrs) {
                 const Attr * recurseForDrvs =
-                    attr->value->attrs->get(state.ctx.s.recurseForDerivations);
+                    attr->value->attrs()->get(state.ctx.s.recurseForDerivations);
                 if (recurseForDrvs == nullptr) {
                     continue;
                 }

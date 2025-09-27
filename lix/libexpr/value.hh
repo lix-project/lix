@@ -256,24 +256,20 @@ public:
         // we're not allowed to have it as an anonymous aggreagte member. we do
         // however still have the option to clear the data members using _empty
         // and leaving the second word of data cleared by setting only integer.
-        integer = i;
+        _integer = i;
     }
 
     /// Constructs a nix language value of type "float", with the floating
     /// point value of @ref f.
     Value(floating_t, NixFloat f)
         : internalType(tFloat)
-        , fpoint(f)
+        , _fpoint(f)
         , _float_pad(0)
     { }
 
     /// Constructs a nix language value of type "bool", with the boolean
     /// value of @ref b.
-    Value(boolean_t, bool b)
-        : internalType(tBool)
-        , boolean(b)
-        , _bool_pad(0)
-    { }
+    Value(boolean_t, bool b) : internalType(tBool), _boolean(b), _bool_pad(0) {}
 
     /// Constructs a nix language value of type "string", with the value of the
     /// C-string pointed to by @ref strPtr, and optionally with an array of
@@ -284,7 +280,7 @@ public:
     /// enabled), and string and context data copied into that memory.
     Value(string_t, char const * strPtr, char const ** contextPtr = nullptr)
         : internalType(tString)
-        , string({.content = strPtr, .context = contextPtr})
+        , _string({.content = strPtr, .context = contextPtr})
     { }
 
     /// Constructx a nix language value of type "string", with a copy of the
@@ -294,7 +290,7 @@ public:
     /// performs a dynamic (GC) allocation to do so.
     Value(string_t, std::string_view copyFrom, NixStringContext const & context = {})
         : internalType(tString)
-        , string({.content = gcCopyStringIfNeeded(copyFrom), .context = nullptr})
+        , _string({.content = gcCopyStringIfNeeded(copyFrom), .context = nullptr})
     {
         if (context.empty()) {
             // It stays nullptr.
@@ -302,16 +298,16 @@ public:
         }
 
         // Copy the context.
-        this->string.context = gcAllocType<char const *>(context.size() + 1);
+        this->_string.context = gcAllocType<char const *>(context.size() + 1);
 
         size_t n = 0;
         for (NixStringContextElem const & contextElem : context) {
-            this->string.context[n] = gcCopyStringIfNeeded(contextElem.to_string());
+            this->_string.context[n] = gcCopyStringIfNeeded(contextElem.to_string());
             n += 1;
         }
 
         // Terminator sentinel.
-        this->string.context[n] = nullptr;
+        this->_string.context[n] = nullptr;
     }
 
     /// Constructx a nix language value of type "string", with the value of the
@@ -325,7 +321,7 @@ public:
     /// to do so.
     Value(string_t, char const * strPtr, NixStringContext const & context)
         : internalType(tString)
-        , string({.content = strPtr, .context = nullptr})
+        , _string({.content = strPtr, .context = nullptr})
     {
         if (context.empty()) {
             // It stays nullptr
@@ -333,16 +329,16 @@ public:
         }
 
         // Copy the context.
-        this->string.context = gcAllocType<char const *>(context.size() + 1);
+        this->_string.context = gcAllocType<char const *>(context.size() + 1);
 
         size_t n = 0;
         for (NixStringContextElem const & contextElem : context) {
-            this->string.context[n] = gcCopyStringIfNeeded(contextElem.to_string());
+            this->_string.context[n] = gcCopyStringIfNeeded(contextElem.to_string());
             n += 1;
         }
 
         // Terminator sentinel.
-        this->string.context[n] = nullptr;
+        this->_string.context[n] = nullptr;
     }
 
     /// Constructs a nix language value of type "path", with the value of the
@@ -384,16 +380,16 @@ public:
     {
         if (items.size() == 1) {
             this->internalType = tList1;
-            this->smallList[0] = items[0];
-            this->smallList[1] = nullptr;
+            this->_smallList[0] = items[0];
+            this->_smallList[1] = nullptr;
         } else if (items.size() == 2) {
             this->internalType = tList2;
-            this->smallList[0] = items[0];
-            this->smallList[1] = items[1];
+            this->_smallList[0] = items[0];
+            this->_smallList[1] = items[1];
         } else {
             this->internalType = tListN;
-            this->bigList.size = items.size();
-            this->bigList.elems = items.data();
+            this->_bigList.size = items.size();
+            this->_bigList.elems = items.data();
         }
     }
 
@@ -412,21 +408,21 @@ public:
     {
         if (items.size() == 1) {
             this->internalType = tList1;
-            this->smallList[0] = transformer(*items.begin());
-            this->smallList[1] = nullptr;
+            this->_smallList[0] = transformer(*items.begin());
+            this->_smallList[1] = nullptr;
         } else if (items.size() == 2) {
             this->internalType = tList2;
             auto it = items.begin();
-            this->smallList[0] = transformer(*it);
+            this->_smallList[0] = transformer(*it);
             it++;
-            this->smallList[1] = transformer(*it);
+            this->_smallList[1] = transformer(*it);
         } else {
             this->internalType = tListN;
-            this->bigList.size = items.size();
-            this->bigList.elems = gcAllocType<Value *>(items.size());
+            this->_bigList.size = items.size();
+            this->_bigList.elems = gcAllocType<Value *>(items.size());
             auto it = items.begin();
             for (size_t i = 0; i < items.size(); i++, it++) {
-                this->bigList.elems[i] = transformer(*it);
+                this->_bigList.elems[i] = transformer(*it);
             }
         }
     }
@@ -444,7 +440,7 @@ public:
     /// has already been suitably allocated by something like nix::buildBindings.
     Value(attrs_t, Bindings * bindings)
         : internalType(tAttrs)
-        , attrs(bindings)
+        , _attrs(bindings)
         , _attrs_pad(0)
     { }
 
@@ -454,7 +450,7 @@ public:
     /// the expression that will need to be evaluated @ref expr.
     Value(thunk_t, Env & env, Expr & expr)
         : internalType(tThunk)
-        , thunk({ .env = &env, .expr = &expr })
+        , _thunk({ .env = &env, .expr = &expr })
     { }
 
     /// Constructs a nix language value of type "lambda", which represents
@@ -466,21 +462,21 @@ public:
     /// partially applied primop.
     Value(primOpApp_t, Value & lhs, Value & rhs)
         : internalType(tPrimOpApp)
-        , primOpApp({ .left = &lhs, .right = &rhs })
+        , _primOpApp({ .left = &lhs, .right = &rhs })
     { }
 
     /// Constructs a nix language value of type "lambda", which represents a
     /// lazy partial application of another lambda.
     Value(app_t, Value & lhs, Value & rhs)
         : internalType(tApp)
-        , app({ .left = &lhs, .right = &rhs })
+        , _app({ .left = &lhs, .right = &rhs })
     { }
 
     /// Constructs a nix language value of type "external", which is only used
     /// by plugins. Do any existing plugins even use this mechanism?
     Value(external_t, ExternalValueBase & external)
         : internalType(tExternal)
-        , external(&external)
+        , _external(&external)
         , _external_pad(0)
     { }
 
@@ -492,13 +488,13 @@ public:
     /// until it is applied.
     Value(lambda_t, Env & env, ExprLambda & lambda)
         : internalType(tLambda)
-        , lambda({ .env = &env, .fun = &lambda })
+        , _lambda({ .env = &env, .fun = &lambda })
     { }
 
     /// Constructs an evil thunk, whose evaluation represents infinite recursion.
     explicit Value(blackhole_t)
         : internalType(tThunk)
-        , thunk({ .env = nullptr, .expr = eBlackHoleAddr })
+        , _thunk({ .env = nullptr, .expr = eBlackHoleAddr })
     { }
 
     Value(Value const & rhs) = default;
@@ -540,7 +536,7 @@ public:
     inline bool isApp() const { return internalType == tApp; };
     inline bool isBlackhole() const
     {
-        return internalType == tThunk && thunk.expr == eBlackHoleAddr;
+        return internalType == tThunk && _thunk.expr == eBlackHoleAddr;
     }
 
     // type() == nFunction
@@ -554,9 +550,9 @@ public:
         /// to set the union's memory to zeroed memory.
         uintptr_t _empty[2];
 
-        NixInt integer;
+        NixInt _integer;
         struct {
-            bool boolean;
+            bool _boolean;
             uintptr_t _bool_pad;
         };
 
@@ -585,45 +581,45 @@ public:
         struct {
             const char * content;
             const char * * context; // must be in sorted order
-        } string;
+        } _string;
 
         struct {
             const char * _path;
             uintptr_t _path_pad;
         };
         struct {
-            Bindings * attrs;
+            Bindings * _attrs;
             uintptr_t _attrs_pad;
         };
         struct {
             size_t size;
             Value * * elems;
-        } bigList;
-        Value * smallList[2];
+        } _bigList;
+        Value * _smallList[2];
         struct {
             Env * env;
             Expr * expr;
-        } thunk;
+        } _thunk;
         struct {
             Value * left, * right;
-        } app;
+        } _app;
         struct {
             Env * env;
             ExprLambda * fun;
-        } lambda;
+        } _lambda;
         struct {
-            PrimOp * primOp;
+            PrimOp * _primOp;
             uintptr_t _primop_pad;
         };
         struct {
             Value * left, * right;
-        } primOpApp;
+        } _primOpApp;
         struct {
-            ExternalValueBase * external;
+            ExternalValueBase * _external;
             uintptr_t _external_pad;
         };
         struct {
-            NixFloat fpoint;
+            NixFloat _fpoint;
             uintptr_t _float_pad;
         };
     };
@@ -662,7 +658,7 @@ public:
      */
     inline void clearValue()
     {
-        app.left = app.right = 0;
+        _app.left = _app.right = 0;
     }
 
     inline void mkInt(NixInt::Inner n)
@@ -674,21 +670,21 @@ public:
     {
         clearValue();
         internalType = tInt;
-        integer = n;
+        _integer = n;
     }
 
     inline void mkBool(bool b)
     {
         clearValue();
         internalType = tBool;
-        boolean = b;
+        _boolean = b;
     }
 
     inline void mkString(const char * s, const char * * context = 0)
     {
         internalType = tString;
-        string.content = s;
-        string.context = context;
+        _string.content = s;
+        _string.context = context;
     }
 
     void mkString(std::string_view s);
@@ -716,7 +712,7 @@ public:
     {
         clearValue();
         internalType = tAttrs;
-        attrs = a;
+        _attrs = a;
     }
 
     Value & mkAttrs(BindingsBuilder & bindings);
@@ -730,35 +726,35 @@ public:
             internalType = tList2;
         else {
             internalType = tListN;
-            bigList.size = size;
+            _bigList.size = size;
         }
     }
 
     inline void mkThunk(Env * e, Expr & ex)
     {
         internalType = tThunk;
-        thunk.env = e;
-        thunk.expr = &ex;
+        _thunk.env = e;
+        _thunk.expr = &ex;
     }
 
     inline void mkApp(Value * l, Value * r)
     {
         internalType = tApp;
-        app.left = l;
-        app.right = r;
+        _app.left = l;
+        _app.right = r;
     }
 
     inline void mkLambda(Env * e, ExprLambda * f)
     {
         internalType = tLambda;
-        lambda.env = e;
-        lambda.fun = f;
+        _lambda.env = e;
+        _lambda.fun = f;
     }
 
     inline void mkBlackhole()
     {
         internalType = tThunk;
-        thunk.expr = eBlackHoleAddr;
+        _thunk.expr = eBlackHoleAddr;
     }
 
     void mkPrimOp(PrimOp * p);
@@ -766,8 +762,8 @@ public:
     inline void mkPrimOpApp(Value * l, Value * r)
     {
         internalType = tPrimOpApp;
-        primOpApp.left = l;
-        primOpApp.right = r;
+        _primOpApp.left = l;
+        _primOpApp.right = r;
     }
 
     /**
@@ -779,14 +775,14 @@ public:
     {
         clearValue();
         internalType = tExternal;
-        external = e;
+        _external = e;
     }
 
     inline void mkFloat(NixFloat n)
     {
         clearValue();
         internalType = tFloat;
-        fpoint = n;
+        _fpoint = n;
     }
 
     bool isList() const
@@ -796,17 +792,17 @@ public:
 
     Value * * listElems()
     {
-        return internalType == tList1 || internalType == tList2 ? smallList : bigList.elems;
+        return internalType == tList1 || internalType == tList2 ? _smallList : _bigList.elems;
     }
 
     Value * const * listElems() const
     {
-        return internalType == tList1 || internalType == tList2 ? smallList : bigList.elems;
+        return internalType == tList1 || internalType == tList2 ? _smallList : _bigList.elems;
     }
 
     size_t listSize() const
     {
-        return internalType == tList1 ? 1 : internalType == tList2 ? 2 : bigList.size;
+        return internalType == tList1 ? 1 : internalType == tList2 ? 2 : _bigList.size;
     }
 
     /**
@@ -853,7 +849,62 @@ public:
     std::string_view str() const
     {
         assert(internalType == tString);
-        return std::string_view(string.content);
+        return std::string_view(_string.content);
+    }
+
+    NixInt integer() const
+    {
+        return _integer;
+    }
+
+    bool boolean() const
+    {
+        return _boolean;
+    }
+
+    const auto & string() const
+    {
+        return _string;
+    }
+
+    auto attrs() const
+    {
+        return _attrs;
+    }
+
+    const auto & thunk() const
+    {
+        return _thunk;
+    }
+
+    const auto & app() const
+    {
+        return _app;
+    }
+
+    const auto & lambda() const
+    {
+        return _lambda;
+    }
+
+    PrimOp * primOp() const
+    {
+        return _primOp;
+    }
+
+    const auto & primOpApp() const
+    {
+        return _primOpApp;
+    }
+
+    ExternalValueBase * external() const
+    {
+        return _external;
+    }
+
+    NixFloat fpoint() const
+    {
+        return _fpoint;
     }
 };
 

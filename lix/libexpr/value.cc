@@ -15,16 +15,16 @@ static void copyContextToValue(Value & v, const NixStringContext & context)
 {
     if (!context.empty()) {
         size_t n = 0;
-        v.string.context = gcAllocType<char const *>(context.size() + 1);
+        v._string.context = gcAllocType<char const *>(context.size() + 1);
         for (auto & i : context)
-            v.string.context[n++] = gcCopyStringIfNeeded(i.to_string());
-        v.string.context[n] = 0;
+            v._string.context[n++] = gcCopyStringIfNeeded(i.to_string());
+        v._string.context[n] = 0;
     }
 }
 
 Value::Value(primop_t, PrimOp & primop)
     : internalType(tPrimOp)
-    , primOp(&primop)
+    , _primOp(&primop)
     , _primop_pad(0)
 {
 }
@@ -41,29 +41,29 @@ bool Value::isTrivial() const
         internalType != tApp
         && internalType != tPrimOpApp
         && (internalType != tThunk
-            || (thunk.expr->try_cast<ExprSet>()
-                && static_cast<ExprSet *>(thunk.expr)->dynamicAttrs.empty())
-            || thunk.expr->try_cast<ExprLambda>()
-            || thunk.expr->try_cast<ExprList>());
+            || (thunk().expr->try_cast<ExprSet>()
+                && static_cast<ExprSet *>(thunk().expr)->dynamicAttrs.empty())
+            || thunk().expr->try_cast<ExprLambda>()
+            || thunk().expr->try_cast<ExprList>());
 }
 
 PrimOp * Value::primOpAppPrimOp() const
 {
-    Value * left = primOpApp.left;
+    Value * left = primOpApp().left;
     while (left && !left->isPrimOp()) {
-        left = left->primOpApp.left;
+        left = left->primOpApp().left;
     }
 
     if (!left)
         return nullptr;
-    return left->primOp;
+    return left->primOp();
 }
 
 void Value::mkPrimOp(PrimOp * p)
 {
     clearValue();
     internalType = tPrimOp;
-    primOp = p;
+    _primOp = p;
 }
 
 void Value::mkString(std::string_view s)

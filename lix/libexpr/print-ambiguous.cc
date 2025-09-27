@@ -23,10 +23,10 @@ void printAmbiguous(
     }
     switch (v.type()) {
     case nInt:
-        str << v.integer;
+        str << v.integer();
         break;
     case nBool:
-        printLiteralBool(str, v.boolean);
+        printLiteralBool(str, v.boolean());
         break;
     case nString:
         escapeString(str, v.str());
@@ -38,11 +38,11 @@ void printAmbiguous(
         str << "null";
         break;
     case nAttrs: {
-        if (seen && !v.attrs->empty() && !seen->insert(v.attrs).second)
+        if (seen && !v.attrs()->empty() && !seen->insert(v.attrs()).second)
             str << "«repeated»";
         else {
             str << "{ ";
-            for (auto & i : v.attrs->lexicographicOrder(symbols)) {
+            for (auto & i : v.attrs()->lexicographicOrder(symbols)) {
                 str << symbols[i->name] << " = ";
                 printAmbiguous(*i->value, symbols, str, seen, depth - 1);
                 str << "; ";
@@ -89,10 +89,10 @@ void printAmbiguous(
         }
         break;
     case nExternal:
-        str << *v.external;
+        str << *v.external();
         break;
     case nFloat:
-        str << v.fpoint;
+        str << v.fpoint();
         break;
     default:
         printError("Lix evaluator internal error: printAmbiguous: invalid value type");
