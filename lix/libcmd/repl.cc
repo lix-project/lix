@@ -174,35 +174,37 @@ struct NixRepl
     /**
      * Get a list of each of the `repl-overlays` (parsed and evaluated).
      */
-    Value * replOverlays();
+    Value replOverlays();
 
     /**
      * Get the Nix function that composes the `repl-overlays` together.
      */
-    Value * getReplOverlaysEvalFunction();
+    Value getReplOverlaysEvalFunction();
 
     /**
      * Cached return value of `getReplOverlaysEvalFunction`.
      *
      * Note: This is `shared_ptr` to avoid garbage collection.
      */
-    std::shared_ptr<Value *> replOverlaysEvalFunction =
-        std::allocate_shared<Value *>(TraceableAllocator<Value *>(), nullptr);
+    std::shared_ptr<std::optional<Value>> replOverlaysEvalFunction =
+        std::allocate_shared<std::optional<Value>>(
+            TraceableAllocator<std::optional<Value>>(), std::nullopt
+        );
 
     /**
      * Get the `info` AttrSet that's passed as the first argument to each
      * of the `repl-overlays`.
      */
-    Value * replInitInfo();
+    Value replInitInfo();
 
     /**
      * Get the current top-level bindings as an AttrSet.
      */
-    Value * bindingsToAttrs();
+    Value bindingsToAttrs();
     /**
      * Parse a file, evaluate its result, and force the resulting value.
      */
-    Value * evalFile(SourcePath & path);
+    Value evalFile(SourcePath & path);
 
     void printValue(std::ostream & str,
                               Value & v,
@@ -863,10 +865,10 @@ ProcessLineResult NixRepl::processLine(std::string line)
         std::visit(overloaded {
             [&](ExprReplBindings & b) {
                 for (auto & [name, e] : b.symbols) {
-                    Value * v = state.ctx.mem.allocValue();
-                    e->eval(state, *env, *v);
+                    Value v;
+                    e->eval(state, *env, v);
                     (void) e.release(); // NOLINT(bugprone-unused-return-value): leak because of thunk references
-                    addVarToScope(name, *v);
+                    addVarToScope(name, v);
                 }
             },
             [&](std::unique_ptr<Expr> & e) {
@@ -964,9 +966,9 @@ void NixRepl::loadReplOverlays()
     notice("Loading '%1%'...", "repl-overlays");
     auto replInitFilesFunction = getReplOverlaysEvalFunction();
 
-    Value &newAttrs(*evaluator.mem.allocValue());
-    SmallValueVector<3> args = {replInitInfo(), bindingsToAttrs(), replOverlays()};
-    state.callFunction(*replInitFilesFunction, args, newAttrs, noPos);
+    Value newAttrs;
+    Value args[] = {replInitInfo(), bindingsToAttrs(), replOverlays()};
+    state.callFunction(replInitFilesFunction, args, newAttrs, noPos);
 
     // n.b. this does in fact load the stuff into the environment twice (once
     // from the superset of the environment returned by repl-overlays and once
@@ -976,14 +978,14 @@ void NixRepl::loadReplOverlays()
     addAttrsToScope(newAttrs);
 }
 
-Value * NixRepl::getReplOverlaysEvalFunction()
+Value NixRepl::getReplOverlaysEvalFunction()
 {
     if (replOverlaysEvalFunction && *replOverlaysEvalFunction) {
-        return *replOverlaysEvalFunction;
+        return **replOverlaysEvalFunction;
     }
 
     auto evalReplInitFilesPath = CanonPath::root + "repl-overlays.nix";
-    *replOverlaysEvalFunction = evaluator.mem.allocValue();
+    *replOverlaysEvalFunction = Value{};
     auto code =
         #include "repl-overlays.nix.gen.hh"
         ;
@@ -995,14 +997,14 @@ Value * NixRepl::getReplOverlaysEvalFunction()
 
     state.eval(expr, **replOverlaysEvalFunction);
 
-    return *replOverlaysEvalFunction;
+    return **replOverlaysEvalFunction;
 }
 
-Value * NixRepl::replOverlays()
+Value NixRepl::replOverlays()
 {
-    Value * replInits(evaluator.mem.allocValue());
+    Value replInits;
     auto replInitStorage = evaluator.mem.newList(evalSettings.replOverlays.get().size());
-    *replInits = {NewValueAs::list, replInitStorage};
+    replInits = {NewValueAs::list, replInitStorage};
 
     size_t i = 0;
     for (auto path : evalSettings.replOverlays.get()) {
@@ -1018,18 +1020,18 @@ Value * NixRepl::replOverlays()
         auto replInit = evalFile(sourcePath);
         evalSettings.pureEval.setDefault(prevPureEval);
 
-        if (!replInit->isLambda()) {
+        if (!replInit.isLambda()) {
             evaluator.errors
                 .make<TypeError>(
                     "Expected `repl-overlays` entry %s to be a lambda but found %s: %s",
                     path,
-                    showType(*replInit),
-                    ValuePrinter(state, *replInit, errorPrintOptions)
+                    showType(replInit),
+                    ValuePrinter(state, replInit, errorPrintOptions)
                 )
                 .debugThrow();
         }
 
-        if (auto attrs = dynamic_cast<AttrsPattern *>(replInit->lambda().fun->pattern.get());
+        if (auto attrs = dynamic_cast<AttrsPattern *>(replInit.lambda().fun->pattern.get());
             attrs && !attrs->ellipsis)
         {
             evaluator.errors
@@ -1039,7 +1041,7 @@ Value * NixRepl::replOverlays()
                     "repl-overlays",
                     "..."
                 )
-                .atPos(replInit->lambda().fun->pos)
+                .atPos(replInit.lambda().fun->pos)
                 .debugThrow();
         }
 
@@ -1051,16 +1053,16 @@ Value * NixRepl::replOverlays()
     return replInits;
 }
 
-Value * NixRepl::replInitInfo()
+Value NixRepl::replInitInfo()
 {
     auto builder = evaluator.buildBindings(2);
 
-    Value * currentSystem(evaluator.mem.allocValue());
-    currentSystem->mkString(evalSettings.getCurrentSystem());
+    Value currentSystem;
+    currentSystem.mkString(evalSettings.getCurrentSystem());
     builder.insert(evaluator.symbols.create("currentSystem"), currentSystem);
 
-    Value * info(evaluator.mem.allocValue());
-    info->mkAttrs(builder.finish());
+    Value info;
+    info.mkAttrs(builder.finish());
     return info;
 }
 
@@ -1118,19 +1120,19 @@ void NixRepl::addVarToScope(const Symbol name, Value & v)
     } else {
         notice("Added %s.", evaluator.symbols[name]);
     }
-    env->values[displ++] = &v;
+    env->values[displ++] = v;
     varNames.emplace(evaluator.symbols[name]);
 }
 
-Value * NixRepl::bindingsToAttrs()
+Value NixRepl::bindingsToAttrs()
 {
     auto builder = evaluator.buildBindings(staticEnv->vars.size());
     for (auto & [symbol, displacement] : staticEnv->vars) {
         builder.insert(symbol, env->values[displacement]);
     }
 
-    Value * attrs(evaluator.mem.allocValue());
-    attrs->mkAttrs(builder.finish());
+    Value attrs;
+    attrs.mkAttrs(builder.finish());
     return attrs;
 }
 
@@ -1153,12 +1155,12 @@ void NixRepl::evalString(std::string s, Value & v)
     state.forceValue(v, noPos);
 }
 
-Value * NixRepl::evalFile(SourcePath & path)
+Value NixRepl::evalFile(SourcePath & path)
 {
     auto & expr = evaluator.parseExprFromFile(evaluator.paths.checkSourcePath(path), staticEnv);
-    Value * result(evaluator.mem.allocValue());
-    expr.eval(state, *env, *result);
-    state.forceValue(*result, noPos);
+    Value result;
+    expr.eval(state, *env, result);
+    state.forceValue(result, noPos);
     return result;
 }
 

@@ -126,26 +126,26 @@ void prim_fetchClosure(EvalState & state, Value * * args, Value & v)
 
         if (attrName == "fromPath") {
             NixStringContext context;
-            fromPath = state.coerceToStorePath(attr.pos, *attr.value, context, attrHint());
+            fromPath = state.coerceToStorePath(attr.pos, attr.value, context, attrHint());
         }
 
         else if (attrName == "toPath") {
-            state.forceValue(*attr.value, attr.pos);
-            bool isEmptyString = attr.value->type() == nString && attr.value->str().empty();
+            state.forceValue(attr.value, attr.pos);
+            bool isEmptyString = attr.value.type() == nString && attr.value.str().empty();
             if (isEmptyString) {
                 toPath = StorePathOrGap {};
             }
             else {
                 NixStringContext context;
-                toPath = state.coerceToStorePath(attr.pos, *attr.value, context, attrHint());
+                toPath = state.coerceToStorePath(attr.pos, attr.value, context, attrHint());
             }
         }
 
         else if (attrName == "fromStore")
-            fromStoreUrl = state.forceStringNoCtx(*attr.value, attr.pos, attrHint());
+            fromStoreUrl = state.forceStringNoCtx(attr.value, attr.pos, attrHint());
 
         else if (attrName == "inputAddressed")
-            inputAddressedMaybe = state.forceBool(*attr.value, attr.pos, attrHint());
+            inputAddressedMaybe = state.forceBool(attr.value, attr.pos, attrHint());
 
         else
             throw Error({

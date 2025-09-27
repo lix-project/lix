@@ -237,7 +237,7 @@ private:
         std::string storePath;
         if (i) {
             storePath = state.ctx.store->printStorePath(state.coerceToStorePath(
-                i->pos, *i->value, context, "while evaluating the drvPath of a derivation"
+                i->pos, i->value, context, "while evaluating the drvPath of a derivation"
             ));
         }
 
@@ -264,18 +264,18 @@ private:
         }
 
         auto item = v[0].second;
-        if (!item->value) {
+        if (item->value.isInvalid()) {
             return true;
         }
 
         if (options.force) {
             // The item is going to be forced during printing anyway, but we need its type now.
-            state.forceValue(*item->value, noPos);
+            state.forceValue(item->value, noPos);
         }
 
         // Pretty-print single-item attrsets only if they contain nested
         // structures.
-        auto itemType = item->value->type();
+        auto itemType = item->value.type();
         return itemType == nList || itemType == nAttrs;
     }
 
@@ -324,7 +324,7 @@ private:
                 }
 
                 output << " = ";
-                print(*i.second->value, depth + 1);
+                print(i.second->value, depth + 1);
                 output << ";";
                 attrsPrinted++;
                 printedHere++;
@@ -338,7 +338,7 @@ private:
         }
     }
 
-    bool shouldPrettyPrintList(std::span<Value * const> list)
+    bool shouldPrettyPrintList(std::span<Value> list)
     {
         if (!options.shouldPrettyPrint() || list.empty()) {
             return false;
@@ -349,19 +349,19 @@ private:
             return true;
         }
 
-        auto item = list[0];
-        if (!item) {
+        auto & item = list[0];
+        if (item.isInvalid()) {
             return true;
         }
 
         if (options.force) {
             // The item is going to be forced during printing anyway, but we need its type now.
-            state.forceValue(*item, noPos);
+            state.forceValue(item, noPos);
         }
 
         // Pretty-print single-item lists only if they contain nested
         // structures.
-        auto itemType = item->type();
+        auto itemType = item.type();
         return itemType == nList || itemType == nAttrs;
     }
 
@@ -378,7 +378,7 @@ private:
             auto listItems = v.listItems();
             auto prettyPrint = shouldPrettyPrintList(listItems);
             size_t printedHere = 0;
-            for (auto elem : listItems) {
+            for (auto & elem : listItems) {
                 printSpace(prettyPrint);
 
                 if (listItemsPrinted >= options.maxListItems) {
@@ -386,11 +386,7 @@ private:
                     break;
                 }
 
-                if (elem) {
-                    print(*elem, depth + 1);
-                } else {
-                    printNullptr();
-                }
+                print(elem, depth + 1);
                 listItemsPrinted++;
                 printedHere++;
             }
@@ -427,7 +423,7 @@ private:
                 output << "primop";
         } else if (v.isPrimOpApp()) {
             output << "partially applied ";
-            auto primOp = v.app().target()->primOp();
+            auto primOp = v.app().target().primOp();
             if (primOp)
                 output << *primOp;
             else
@@ -495,11 +491,22 @@ private:
         checkInterrupt();
 
         try {
+            if (v.isInvalid()) {
+                if (options.ansiColors) {
+                    output << ANSI_MAGENTA;
+                }
+                output << "«invalid»";
+                if (options.ansiColors) {
+                    output << ANSI_NORMAL;
+                }
+                return;
+            }
+
             if (options.force) {
                 state.forceValue(v, noPos);
             }
 
-            switch (v.type()) {
+            switch (v.type(true)) {
 
             case nInt:
                 printInt(v);

@@ -130,7 +130,7 @@ findAlongAttrPath(EvalState & state, const std::string & attrPath, Bindings & au
                     ValuePrinter(state, v, errorPrintOptions)
                 );
             }
-            v = *a->value;
+            v = a->value;
             pos = a->pos;
         } else {
             if (!v.isList()) {
@@ -153,7 +153,7 @@ findAlongAttrPath(EvalState & state, const std::string & attrPath, Bindings & au
                 );
             }
 
-            v = *v.listElems()[*attrIndex];
+            v = v.listElems()[*attrIndex];
             pos = noPos;
         }
 

@@ -66,8 +66,8 @@ TEST_F(ValuePrintingTests, tAttrs)
     vTwo.mkInt(2);
 
     BindingsBuilder builder = evaluator.buildBindings(10);
-    builder.insert(evaluator.symbols.create("one"), &vOne);
-    builder.insert(evaluator.symbols.create("two"), &vTwo);
+    builder.insert(evaluator.symbols.create("one"), vOne);
+    builder.insert(evaluator.symbols.create("two"), vTwo);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -84,11 +84,11 @@ TEST_F(ValuePrintingTests, tList)
     vTwo.mkInt(2);
 
     auto vList = evaluator.mem.newList(5);
-    vList->elems[0] = &vOne;
-    vList->elems[1] = &vTwo;
+    vList->elems[0] = vOne;
+    vList->elems[1] = vTwo;
     vList->size = 3;
 
-    test(Value(NewValueAs::list, vList), "[ 1 2 «nullptr» ]");
+    test(Value(NewValueAs::list, vList), "[ 1 2 «invalid» ]");
 }
 
 TEST_F(ValuePrintingTests, vThunk)
@@ -210,23 +210,23 @@ TEST_F(ValuePrintingTests, depthAttrs)
     vAttrsEmpty.mkAttrs(builderEmpty.finish());
 
     BindingsBuilder builderNested = evaluator.buildBindings(1);
-    builderNested.insert(evaluator.symbols.create("zero"), &vZero);
+    builderNested.insert(evaluator.symbols.create("zero"), vZero);
     Value vAttrsNested;
     vAttrsNested.mkAttrs(builderNested.finish());
 
     BindingsBuilder builder = evaluator.buildBindings(10);
-    builder.insert(evaluator.symbols.create("one"), &vOne);
-    builder.insert(evaluator.symbols.create("two"), &vTwo);
-    builder.insert(evaluator.symbols.create("empty"), &vAttrsEmpty);
-    builder.insert(evaluator.symbols.create("nested"), &vAttrsNested);
+    builder.insert(evaluator.symbols.create("one"), vOne);
+    builder.insert(evaluator.symbols.create("two"), vTwo);
+    builder.insert(evaluator.symbols.create("empty"), vAttrsEmpty);
+    builder.insert(evaluator.symbols.create("nested"), vAttrsNested);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
 
     BindingsBuilder builder2 = evaluator.buildBindings(10);
-    builder2.insert(evaluator.symbols.create("one"), &vOne);
-    builder2.insert(evaluator.symbols.create("two"), &vTwo);
-    builder2.insert(evaluator.symbols.create("nested"), &vAttrs);
+    builder2.insert(evaluator.symbols.create("one"), vOne);
+    builder2.insert(evaluator.symbols.create("two"), vTwo);
+    builder2.insert(evaluator.symbols.create("nested"), vAttrs);
 
     Value vNested;
     vNested.mkAttrs(builder2.finish());
@@ -246,24 +246,24 @@ TEST_F(ValuePrintingTests, depthList)
     vTwo.mkInt(2);
 
     BindingsBuilder builder = evaluator.buildBindings(10);
-    builder.insert(evaluator.symbols.create("one"), &vOne);
-    builder.insert(evaluator.symbols.create("two"), &vTwo);
+    builder.insert(evaluator.symbols.create("one"), vOne);
+    builder.insert(evaluator.symbols.create("two"), vTwo);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
 
     BindingsBuilder builder2 = evaluator.buildBindings(10);
-    builder2.insert(evaluator.symbols.create("one"), &vOne);
-    builder2.insert(evaluator.symbols.create("two"), &vTwo);
-    builder2.insert(evaluator.symbols.create("nested"), &vAttrs);
+    builder2.insert(evaluator.symbols.create("one"), vOne);
+    builder2.insert(evaluator.symbols.create("two"), vTwo);
+    builder2.insert(evaluator.symbols.create("nested"), vAttrs);
 
     Value vNested;
     vNested.mkAttrs(builder2.finish());
 
     auto list = evaluator.mem.newList(5);
-    list->elems[0] = &vOne;
-    list->elems[1] = &vTwo;
-    list->elems[2] = &vNested;
+    list->elems[0] = vOne;
+    list->elems[1] = vTwo;
+    list->elems[2] = vNested;
     list->size = 3;
 
     Value vList{NewValueAs::list, list};
@@ -310,8 +310,8 @@ TEST_F(ValuePrintingTests, attrsTypeFirst)
     vApple.mkString("apple");
 
     BindingsBuilder builder = evaluator.buildBindings(10);
-    builder.insert(evaluator.symbols.create("type"), &vType);
-    builder.insert(evaluator.symbols.create("apple"), &vApple);
+    builder.insert(evaluator.symbols.create("type"), vType);
+    builder.insert(evaluator.symbols.create("apple"), vApple);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -421,8 +421,8 @@ TEST_F(ValuePrintingTests, ansiColorsAttrs)
     vTwo.mkInt(2);
 
     BindingsBuilder builder = evaluator.buildBindings(10);
-    builder.insert(evaluator.symbols.create("one"), &vOne);
-    builder.insert(evaluator.symbols.create("two"), &vTwo);
+    builder.insert(evaluator.symbols.create("one"), vOne);
+    builder.insert(evaluator.symbols.create("two"), vTwo);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -440,7 +440,7 @@ TEST_F(ValuePrintingTests, ansiColorsDerivation)
     vDerivation.mkString("derivation");
 
     BindingsBuilder builder = evaluator.buildBindings(10);
-    builder.insert(evaluator.s.type, &vDerivation);
+    builder.insert(evaluator.s.type, vDerivation);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -468,7 +468,7 @@ TEST_F(ValuePrintingTests, ansiColorsError)
     state.eval(e, vError);
 
     test(
-        *vError.attrs()->begin()->value,
+        vError.attrs()->begin()->value,
         ANSI_RED "«error: uh oh!»" ANSI_NORMAL,
         PrintOptions{
             .ansiColors = true,
@@ -519,7 +519,7 @@ TEST_F(ValuePrintingTests, ansiColorsAssert)
 
     ASSERT_EQ(v.type(), nAttrs);
     test(
-        *v.attrs()->begin()->value,
+        v.attrs()->begin()->value,
         ANSI_RED "«error: assertion failed»" ANSI_NORMAL,
         PrintOptions{.ansiColors = true, .force = true}
     );
@@ -534,14 +534,14 @@ TEST_F(ValuePrintingTests, ansiColorsList)
     vTwo.mkInt(2);
 
     auto vList = evaluator.mem.newList(5);
-    vList->elems[0] = &vOne;
-    vList->elems[1] = &vTwo;
+    vList->elems[0] = vOne;
+    vList->elems[1] = vTwo;
     vList->size = 3;
 
     test(
         Value(NewValueAs::list, vList),
         "[ " ANSI_CYAN "1" ANSI_NORMAL " " ANSI_CYAN "2" ANSI_NORMAL " " ANSI_MAGENTA
-        "«nullptr»" ANSI_NORMAL " ]",
+        "«invalid»" ANSI_NORMAL " ]",
         PrintOptions{.ansiColors = true}
     );
 }
@@ -640,14 +640,14 @@ TEST_F(ValuePrintingTests, ansiColorsAttrsRepeated)
     vZero.mkInt(0);
 
     BindingsBuilder innerBuilder = evaluator.buildBindings(1);
-    innerBuilder.insert(evaluator.symbols.create("x"), &vZero);
+    innerBuilder.insert(evaluator.symbols.create("x"), vZero);
 
     Value vInner;
     vInner.mkAttrs(innerBuilder.finish());
 
     BindingsBuilder builder = evaluator.buildBindings(10);
-    builder.insert(evaluator.symbols.create("a"), &vInner);
-    builder.insert(evaluator.symbols.create("b"), &vInner);
+    builder.insert(evaluator.symbols.create("a"), vInner);
+    builder.insert(evaluator.symbols.create("b"), vInner);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -665,14 +665,14 @@ TEST_F(ValuePrintingTests, ansiColorsListRepeated)
     vZero.mkInt(0);
 
     BindingsBuilder innerBuilder = evaluator.buildBindings(1);
-    innerBuilder.insert(evaluator.symbols.create("x"), &vZero);
+    innerBuilder.insert(evaluator.symbols.create("x"), vZero);
 
     Value vInner;
     vInner.mkAttrs(innerBuilder.finish());
 
     auto vList = evaluator.mem.newList(3);
-    vList->elems[0] = &vInner;
-    vList->elems[1] = &vInner;
+    vList->elems[0] = vInner;
+    vList->elems[1] = vInner;
     vList->size = 2;
 
     test(
@@ -688,14 +688,14 @@ TEST_F(ValuePrintingTests, listRepeated)
     vZero.mkInt(0);
 
     BindingsBuilder innerBuilder = evaluator.buildBindings(1);
-    innerBuilder.insert(evaluator.symbols.create("x"), &vZero);
+    innerBuilder.insert(evaluator.symbols.create("x"), vZero);
 
     Value vInner;
     vInner.mkAttrs(innerBuilder.finish());
 
     auto list = evaluator.mem.newList(3);
-    list->elems[0] = &vInner;
-    list->elems[1] = &vInner;
+    list->elems[0] = vInner;
+    list->elems[1] = vInner;
     list->size = 2;
 
     Value vList(NewValueAs::list, list);
@@ -716,8 +716,8 @@ TEST_F(ValuePrintingTests, ansiColorsAttrsElided)
     vTwo.mkInt(2);
 
     BindingsBuilder builder = evaluator.buildBindings(10);
-    builder.insert(evaluator.symbols.create("one"), &vOne);
-    builder.insert(evaluator.symbols.create("two"), &vTwo);
+    builder.insert(evaluator.symbols.create("one"), vOne);
+    builder.insert(evaluator.symbols.create("two"), vTwo);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());
@@ -732,7 +732,7 @@ TEST_F(ValuePrintingTests, ansiColorsAttrsElided)
     Value vThree;
     vThree.mkInt(3);
 
-    builder.insert(evaluator.symbols.create("three"), &vThree);
+    builder.insert(evaluator.symbols.create("three"), vThree);
     vAttrs.mkAttrs(builder.finish());
 
     test(vAttrs,
@@ -753,8 +753,8 @@ TEST_F(ValuePrintingTests, ansiColorsListElided)
 
     auto list = evaluator.mem.newList(4);
     Value vList{NewValueAs::list, list};
-    list->elems[0] = &vOne;
-    list->elems[1] = &vTwo;
+    list->elems[0] = vOne;
+    list->elems[1] = vTwo;
     list->size = 2;
 
     test(vList,
@@ -767,7 +767,7 @@ TEST_F(ValuePrintingTests, ansiColorsListElided)
     Value vThree;
     vThree.mkInt(3);
 
-    list->elems[2] = &vThree;
+    list->elems[2] = vThree;
     list->size = 3;
 
     test(vList,
@@ -787,7 +787,7 @@ TEST_F(ValuePrintingTests, osc8InAttrSets)
 
     auto vZero = Value{NewValueAs::integer, NixInt{0}};
 
-    builder.insert(evaluator.symbols.create("x"), &vZero, pos);
+    builder.insert(evaluator.symbols.create("x"), vZero, pos);
     auto vAttrs = Value{NewValueAs::attrs, builder.finish()};
 
     auto hyperlink = makeHyperlink("x", makeHyperlinkLocalPath("/dev/null", 1));

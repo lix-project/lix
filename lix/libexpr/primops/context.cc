@@ -151,7 +151,7 @@ void prim_getContext(EvalState & state, Value * * args, Value & v)
             auto content = state.ctx.mem.newList(info.second.outputs.size());
             outputsVal = {NewValueAs::list, content};
             for (const auto & [i, output] : enumerate(info.second.outputs))
-                (content->elems[i] = state.ctx.mem.allocValue())->mkString(output);
+                content->elems[i].mkString(output);
         }
         attrs.alloc(state.ctx.store->printStorePath(info.first)).mkAttrs(infoAttrs);
     }
@@ -183,11 +183,11 @@ static void prim_appendContext(EvalState & state, Value * * args, Value & v)
         auto namePath = state.ctx.store->parseStorePath(name);
         if (!settings.readOnlyMode)
             state.aio.blockOn(state.ctx.store->ensurePath(namePath));
-        state.forceAttrs(*i.value, i.pos, "while evaluating the value of a string context");
-        auto a = i.value->attrs()->get(state.ctx.s.path);
+        state.forceAttrs(i.value, i.pos, "while evaluating the value of a string context");
+        auto a = i.value.attrs()->get(state.ctx.s.path);
         if (a) {
             if (state.forceBool(
-                    *a->value, a->pos, "while evaluating the `path` attribute of a string context"
+                    a->value, a->pos, "while evaluating the `path` attribute of a string context"
                 ))
             {
                 context.emplace(NixStringContextElem::Opaque{
@@ -196,10 +196,10 @@ static void prim_appendContext(EvalState & state, Value * * args, Value & v)
             }
         }
 
-        a = i.value->attrs()->get(sAllOutputs);
+        a = i.value.attrs()->get(sAllOutputs);
         if (a) {
             if (state.forceBool(
-                    *a->value,
+                    a->value,
                     a->pos,
                     "while evaluating the `allOutputs` attribute of a string context"
                 ))
@@ -216,20 +216,20 @@ static void prim_appendContext(EvalState & state, Value * * args, Value & v)
             }
         }
 
-        a = i.value->attrs()->get(state.ctx.s.outputs);
+        a = i.value.attrs()->get(state.ctx.s.outputs);
         if (a) {
             state.forceList(
-                *a->value, a->pos, "while evaluating the `outputs` attribute of a string context"
+                a->value, a->pos, "while evaluating the `outputs` attribute of a string context"
             );
-            if (a->value->listSize() && !isDerivation(name)) {
+            if (a->value.listSize() && !isDerivation(name)) {
                 state.ctx.errors.make<EvalError>(
                     "tried to add derivation output context of %s, which is not a derivation, to a string",
                     name
                 ).atPos(i.pos).debugThrow();
             }
-            for (auto elem : a->value->listItems()) {
+            for (auto & elem : a->value.listItems()) {
                 auto outputName = state.forceStringNoCtx(
-                    *elem, a->pos, "while evaluating an output name within a string context"
+                    elem, a->pos, "while evaluating an output name within a string context"
                 );
                 context.emplace(NixStringContextElem::Built {
                     .drvPath = makeConstantStorePath(namePath),

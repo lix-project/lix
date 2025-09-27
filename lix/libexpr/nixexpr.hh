@@ -127,7 +127,7 @@ public:
     virtual JSON toJSON(const SymbolTable & symbols) const;
     virtual void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) = 0;
     virtual void eval(EvalState & state, Env & env, Value & v);
-    virtual Value * maybeThunk(EvalState & state, Env & env);
+    virtual Value maybeThunk(EvalState & state, Env & env);
     virtual void setName(Symbol name);
     PosIdx getPos() const { return pos; }
 
@@ -175,7 +175,7 @@ protected:
     Value v;
     ExprLiteral(const PosIdx pos) : Expr(pos) {};
 public:
-    Value * maybeThunk(EvalState & state, Env & env) override;
+    Value maybeThunk(EvalState & state, Env & env) override;
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
@@ -253,7 +253,7 @@ struct ExprVar : Expr
 
     ExprVar(Symbol name) : name(name), needsRoot(false) { };
     ExprVar(const PosIdx & pos, Symbol name, bool needsRoot = false) : Expr(pos), name(name), needsRoot(needsRoot) { };
-    Value * maybeThunk(EvalState & state, Env & env) override;
+    Value maybeThunk(EvalState & state, Env & env) override;
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
@@ -395,7 +395,7 @@ struct ExprList : Expr
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
-    Value * maybeThunk(EvalState & state, Env & env) override;
+    Value maybeThunk(EvalState & state, Env & env) override;
 };
 
 struct Pattern {

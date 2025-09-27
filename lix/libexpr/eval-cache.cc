@@ -387,7 +387,7 @@ Value & AttrCursor::getValue(EvalState & state)
             auto attr = vParent.attrs()->get(state.ctx.symbols.create(parent->second));
             if (!attr)
                 throw Error("attribute '%s' is unexpectedly missing", getAttrPathStr(state));
-            _value = allocRootValue(*attr->value);
+            _value = allocRootValue(attr->value);
         } else
             _value = allocRootValue(root->getRootValue(state));
     }
@@ -520,7 +520,7 @@ std::shared_ptr<AttrCursor> AttrCursor::maybeGetAttr(EvalState & state, const st
     }
 
     return make_ref<AttrCursor>(
-        root, std::make_pair(shared_from_this(), name), attr->value, std::move(cachedValue2)
+        root, std::make_pair(shared_from_this(), name), &attr->value, std::move(cachedValue2)
     );
 }
 
@@ -686,7 +686,7 @@ std::vector<std::string> AttrCursor::getListOfStrings(EvalState & state)
 
     for (auto & elem : v.listItems()) {
         res.push_back(std::string(
-            state.forceStringNoCtx(*elem, noPos, "while evaluating an attribute for caching")
+            state.forceStringNoCtx(elem, noPos, "while evaluating an attribute for caching")
         ));
     }
 

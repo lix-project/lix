@@ -419,7 +419,7 @@ ref<eval_cache::EvalCache> openEvalCache(
             auto aOutputs = vFlake.attrs()->get(state.ctx.symbols.create("outputs"));
             assert(aOutputs);
 
-            return *aOutputs->value;
+            return aOutputs->value;
         };
 
     if (fingerprint) {
@@ -449,23 +449,23 @@ Installables SourceExprCommand::parseInstallables(
             throw UsageError("'--file' and '--expr' are exclusive");
 
         auto evaluator = getEvaluator();
-        auto vFile = evaluator->mem.allocValue();
+        Value vFile;
 
         if (file == "-") {
             auto & e = evaluator->parseStdin();
-            state.eval(e, *vFile);
+            state.eval(e, vFile);
         }
         else if (file)
-            state.evalFile(state.aio.blockOn(lookupFileArg(*evaluator, *file)).unwrap(), *vFile);
+            state.evalFile(state.aio.blockOn(lookupFileArg(*evaluator, *file)).unwrap(), vFile);
         else {
             auto & e = evaluator->parseExprFromString(*expr, CanonPath::fromCwd());
-            state.eval(e, *vFile);
+            state.eval(e, vFile);
         }
 
         for (auto & s : ss) {
             auto [prefix, extendedOutputsSpec] = ExtendedOutputsSpec::parse(s);
             result.push_back(make_ref<InstallableAttrPath>(InstallableAttrPath::parse(
-                evaluator, *this, *vFile, std::move(prefix), std::move(extendedOutputsSpec)
+                evaluator, *this, vFile, std::move(prefix), std::move(extendedOutputsSpec)
             )));
         }
 

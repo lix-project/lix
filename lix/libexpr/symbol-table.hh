@@ -82,9 +82,9 @@ public:
         return contents;
     }
 
-    const Value * toValuePtr() const
+    Value toValue() const
     {
-        return &underlyingValue;
+        return underlyingValue;
     }
 
     friend std::ostream & operator<<(std::ostream & os, const InternedSymbol & symbol);

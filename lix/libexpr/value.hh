@@ -75,13 +75,15 @@ struct PrimOpDetails
 // NOTE value.cc contains alignment assertions for pointers tagged thusly.
 // *always* ensure that these assertions match the tag types declared here
 typedef enum {
+    // NOTE: tThunk *must* be 0, otherwise invalid value detection breaks
+    // since invalid values are encoded as thunks with a null thunk state
+    tThunk = 0,
+    tApp,
     tInt,
     tBool,
     tString,
     tAttrs,
     tList,
-    tThunk,
-    tApp,
     tAuxiliary,
 } InternalType;
 
@@ -483,29 +485,6 @@ public:
     /// allocating memory.
     Value(list_t, const List * items) : raw(tag(tList, items)) {}
 
-    /// Constructs a nix language value of type "list", with an element array
-    /// initialized by applying @ref transformer to each element in @ref items.
-    ///
-    /// This allows "in-place" construction of a nix list when some logic is
-    /// needed to get each Value pointer. This constructor dynamically (GC)
-    /// allocates memory for the size of @ref items, and the Value pointers
-    /// returned by @ref transformer are shallow copied into it.
-    template<
-        std::ranges::sized_range SizedIterableT,
-        InvocableR<Value *, typename SizedIterableT::value_type const &> TransformerT
-    >
-    Value(list_t, SizedIterableT & items, TransformerT const & transformer)
-    {
-        auto list =
-            reinterpret_cast<List *>(gcAllocBytes(sizeof(List) + items.size() * sizeof(Value *)));
-        list->size = items.size();
-        auto it = items.begin();
-        for (size_t i = 0; i < items.size(); i++, it++) {
-            list->elems[i] = transformer(*it);
-        }
-        raw = tag(tList, list);
-    }
-
     /// Constructs a nix language value of the singleton type "null".
     Value(null_t) : raw(tag(tAuxiliary, &NULL_ACB)) {}
 
@@ -533,7 +512,7 @@ public:
 
     /// Constructs a nix language value of type "lambda", which represents a
     /// lazy and/or partial application of a function.
-    Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value *> args);
+    Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value> args);
 
     /// Constructs a nix language value of type "external", which is only used
     /// by plugins. Do any existing plugins even use this mechanism?
@@ -597,9 +576,10 @@ public:
     {
         return internalType() == tApp;
     }
-    inline bool isBlackhole() const
+    inline bool isBlackhole() const;
+    inline bool isInvalid() const
     {
-        return internalType() == tThunk && untag<const Thunk *>() == &blackHole;
+        return raw == 0;
     }
 
     // type() == nFunction
@@ -611,21 +591,7 @@ public:
     {
         return internalType() == tAuxiliary && auxiliary()->type() == Acb::tPrimOp;
     }
-    inline bool isPrimOpApp() const
-    {
-        return internalType() == tApp && !app().resolved() && app().target()->isPrimOp();
-    }
-
-    struct alignas(TAG_ALIGN) List
-    {
-        size_t size;
-        Value * elems[0];
-
-        std::span<Value *> span()
-        {
-            return {elems, elems + size};
-        }
-    };
+    inline bool isPrimOpApp() const;
 
     /**
      * Strings in the evaluator carry a so-called `context` which
@@ -663,50 +629,7 @@ public:
         }
     };
 
-    struct alignas(TAG_ALIGN) App
-    {
-        uintptr_t _left;
-        size_t _n;
-        Value * _args[0];
-
-        bool resolved() const
-        {
-            return _n == 0;
-        }
-
-        void resolve(Value v)
-        {
-            _left = v.raw;
-            _n = 0;
-        }
-
-        Value * left() const
-        {
-            return reinterpret_cast<Value *>(_left);
-        }
-
-        Value result() const
-        {
-            Value v;
-            v.raw = _left;
-            return v;
-        }
-
-        Value * target() const
-        {
-            return left()->isApp() ? left()->app().target() : left();
-        }
-
-        std::span<Value *> args()
-        {
-            return std::span{_args, _n};
-        }
-
-        size_t totalArgs() const
-        {
-            return _n + (left()->isApp() ? left()->app().totalArgs() : 0);
-        }
-    };
+    struct App;
 
     /// auxiliary control block for values that require more space.
     /// these blocks are usually heap-allocated in GC memory space.
@@ -861,15 +784,9 @@ public:
         return internalType() == tList;
     }
 
-    Value * const * listElems() const
-    {
-        return untag<const List *>()->elems;
-    }
+    Value * listElems() const;
 
-    size_t listSize() const
-    {
-        return untag<const List *>()->size;
-    }
+    size_t listSize() const;
 
     /**
      * Check whether forcing this value requires a trivial amount of
@@ -878,11 +795,11 @@ public:
      */
     bool isTrivial() const;
 
-    auto listItems()
+    auto listItems() const
     {
         struct ListIterable
         {
-            typedef Value * const * iterator;
+            typedef Value * iterator;
             iterator _begin, _end;
             iterator begin() const { return _begin; }
             iterator end() const { return _end; }
@@ -890,20 +807,6 @@ public:
         assert(isList());
         auto begin = listElems();
         return ListIterable { begin, begin + listSize() };
-    }
-
-    auto listItems() const
-    {
-        struct ConstListIterable
-        {
-            typedef const Value * const * iterator;
-            iterator _begin, _end;
-            iterator begin() const { return _begin; }
-            iterator end() const { return _end; }
-        };
-        assert(isList());
-        auto begin = listElems();
-        return ConstListIterable { begin, begin + listSize() };
     }
 
     SourcePath path() const
@@ -982,6 +885,11 @@ public:
     {
         return untag<const Acb *>();
     }
+
+    uintptr_t pointerEqProxy() const
+    {
+        return raw;
+    }
 };
 
 struct alignas(Value::TAG_ALIGN) Value::Thunk
@@ -1014,6 +922,60 @@ struct alignas(Value::TAG_ALIGN) Value::Thunk
     }
 };
 
+struct alignas(Value::TAG_ALIGN) Value::List
+{
+    size_t size;
+    Value elems[0];
+
+    std::span<Value> span()
+    {
+        return {elems, elems + size};
+    }
+};
+
+struct alignas(Value::TAG_ALIGN) Value::App
+{
+    Value _left;
+    size_t _n;
+    Value _args[0];
+
+    bool resolved() const
+    {
+        return _n == ~size_t(0);
+    }
+
+    void resolve(Value v)
+    {
+        _left = v;
+        _n = ~size_t(0);
+    }
+
+    Value left() const
+    {
+        return _left;
+    }
+
+    Value result() const
+    {
+        return left();
+    }
+
+    Value target() const
+    {
+        return left().isApp() ? left().app().target() : left();
+    }
+
+    std::span<Value> args()
+    {
+        return std::span{_args, _n};
+    }
+
+    size_t totalArgs() const
+    {
+        return _n + (left().isApp() ? left().app().totalArgs() : 0);
+    }
+};
+
 inline ValueType Value::type(bool invalidIsThunk) const
 {
 again:
@@ -1043,7 +1005,13 @@ again:
             return nInt;
         }
     case tThunk:
-        if (thunk().resolved()) {
+        if (isInvalid()) {
+            if (invalidIsThunk) {
+                return nThunk;
+            } else {
+                abort();
+            }
+        } else if (thunk().resolved()) {
             raw = thunk().result().raw;
             goto again;
         }
@@ -1053,12 +1021,28 @@ again:
             raw = app().result().raw;
             goto again;
         }
-        return app().target()->isPrimOp() ? nFunction : nThunk;
+        return app().target().isPrimOp() ? nFunction : nThunk;
     }
-    if (invalidIsThunk)
-        return nThunk;
-    else
-        abort();
+}
+
+inline bool Value::isBlackhole() const
+{
+    return internalType() == tThunk && untag<const Thunk *>()->expr == blackHole.expr;
+}
+
+inline bool Value::isPrimOpApp() const
+{
+    return internalType() == tApp && !app().resolved() && app().target().isPrimOp();
+}
+
+inline Value * Value::listElems() const
+{
+    return untag<List *>()->elems;
+}
+
+inline size_t Value::listSize() const
+{
+    return untag<const List *>()->size;
 }
 
 using PrimOp = Value::PrimOp;

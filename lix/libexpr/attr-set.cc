@@ -26,9 +26,8 @@ Bindings * EvalMemory::allocBindings(size_t capacity)
 
 Value & BindingsBuilder::alloc(Symbol name, PosIdx pos)
 {
-    auto value = mem.allocValue();
-    bindings->push_back(Attr(name, value, pos));
-    return *value;
+    bindings->push_back(Attr(name, {}, pos));
+    return (bindings->end() - 1)->value;
 }
 
 

@@ -23,8 +23,8 @@ struct Attr
        way we keep Attr size at two words with no wasted space. */
     Symbol name;
     PosIdx pos;
-    Value * value;
-    Attr(Symbol name, Value * value, PosIdx pos = noPos) : name(name), pos(pos), value(value) {}
+    mutable Value value;
+    Attr(Symbol name, Value value, PosIdx pos = noPos) : name(name), pos(pos), value(value) {}
     Attr() { };
     bool operator < (const Attr & a) const
     {
@@ -72,7 +72,7 @@ public:
 
     const Attr * get(Symbol name)
     {
-        Attr key(name, 0);
+        Attr key(name, {});
         iterator i = std::lower_bound(begin(), end(), key);
         if (i != end() && i->name == name) return &*i;
         return nullptr;
@@ -135,7 +135,7 @@ public:
     {
     }
 
-    void insert(Symbol name, Value * value, PosIdx pos = noPos)
+    void insert(Symbol name, Value value, PosIdx pos = noPos)
     {
         insert(Attr(name, value, pos));
     }

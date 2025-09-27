@@ -23,7 +23,7 @@ class JSONSax : nlohmann::json_sax<JSON> {
         explicit JSONState(std::unique_ptr<JSONState> && p) : parent(std::move(p)) {}
         JSONState() = default;
         JSONState(JSONState & p) = delete;
-        Value & value(EvalState & state)
+        Value & value()
         {
             if (!v) {
                 v = allocRootValue({});
@@ -31,7 +31,7 @@ class JSONSax : nlohmann::json_sax<JSON> {
             return *v;
         }
         virtual ~JSONState() {}
-        virtual void add(EvalState & state) {}
+        virtual void add() {}
     };
 
     class JSONObjectState : public JSONState {
@@ -41,17 +41,14 @@ class JSONSax : nlohmann::json_sax<JSON> {
         std::unique_ptr<JSONState> resolve(EvalState & state) override
         {
             auto attrs2 = state.ctx.buildBindings(attrs.size());
-            for (auto & i : attrs) {
-                auto v = state.ctx.mem.allocValue();
-                *v = i.second;
-                attrs2.insert(i.first, v);
-            }
-            parent->value(state).mkAttrs(attrs2.alreadySorted());
+            for (auto & i : attrs)
+                attrs2.insert(i.first, i.second);
+            parent->value().mkAttrs(attrs2.alreadySorted());
             return std::move(parent);
         }
-        void add(EvalState & state) override
+        void add() override
         {
-            attrs.insert_or_assign(_key, value(state));
+            attrs.insert_or_assign(_key, value());
             v = nullptr;
         }
     public:
@@ -66,13 +63,13 @@ class JSONSax : nlohmann::json_sax<JSON> {
         std::unique_ptr<JSONState> resolve(EvalState & state) override
         {
             auto list = state.ctx.mem.newList(values.size());
-            parent->value(state) = {NewValueAs::list, list};
+            parent->value() = {NewValueAs::list, list};
             for (size_t n = 0; n < values.size(); ++n) {
-                *(list->elems[n] = state.ctx.mem.allocValue()) = values[n];
+                list->elems[n] = values[n];
             }
             return std::move(parent);
         }
-        void add(EvalState & state) override
+        void add() override
         {
             values.push_back(*v);
             v = nullptr;
@@ -92,27 +89,27 @@ public:
 
     Value result()
     {
-        return rs->value(state);
+        return rs->value();
     }
 
     bool null() override
     {
-        rs->value(state).mkNull();
-        rs->add(state);
+        rs->value().mkNull();
+        rs->add();
         return true;
     }
 
     bool boolean(bool val) override
     {
-        rs->value(state).mkBool(val);
-        rs->add(state);
+        rs->value().mkBool(val);
+        rs->add();
         return true;
     }
 
     bool number_integer(number_integer_t val) override
     {
-        rs->value(state).mkInt(val);
-        rs->add(state);
+        rs->value().mkInt(val);
+        rs->add();
         return true;
     }
 
@@ -124,22 +121,22 @@ public:
             return number_float(static_cast<number_float_t>(val_), "");
         }
         NixInt::Inner val = val_;
-        rs->value(state).mkInt(val);
-        rs->add(state);
+        rs->value().mkInt(val);
+        rs->add();
         return true;
     }
 
     bool number_float(number_float_t val, const string_t & s) override
     {
-        rs->value(state).mkFloat(val);
-        rs->add(state);
+        rs->value().mkFloat(val);
+        rs->add();
         return true;
     }
 
     bool string(string_t & val) override
     {
-        rs->value(state).mkString(val);
-        rs->add(state);
+        rs->value().mkString(val);
+        rs->add();
         return true;
     }
 
@@ -166,7 +163,7 @@ public:
 
     bool end_object() override {
         rs = rs->resolve(state);
-        rs->add(state);
+        rs->add();
         return true;
     }
 

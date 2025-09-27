@@ -151,12 +151,12 @@ static void getAllExprs(Evaluator & state,
                 continue;
             }
             /* Load the expression on demand. */
-            auto vArg = state.mem.allocValue();
-            vArg->mkString(path2.canonical().abs());
+            Value vArg;
+            vArg.mkString(path2.canonical().abs());
             if (seen.size() == maxAttrs)
                 throw Error("too many Nix expressions in directory '%1%'", path);
             attrs.alloc(attrName
-            ) = {NewValueAs::app, state.mem, state.builtins.get("import"), *vArg};
+            ) = {NewValueAs::app, state.mem, state.builtins.get("import"), vArg};
         }
         else if (st.type == InputAccessor::tDirectory)
             /* `path2' is a directory (with no default.nix in it);
@@ -517,9 +517,9 @@ static bool keep(EvalState & state, DrvInfo & drv)
 static void setMetaFlag(EvalState & state, DrvInfo & drv,
     const std::string & name, const std::string & value)
 {
-    auto v = state.ctx.mem.allocValue();
-    v->mkString(value);
-    drv.setMeta(state, name, *v);
+    Value v;
+    v.mkString(value);
+    drv.setMeta(state, name, v);
 }
 
 static void installDerivations(Globals & globals,
@@ -1290,12 +1290,12 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                             } else if (v->type() == nList) {
                                 attrs2["type"] = "strings";
                                 XMLOpenElement m(xml, "meta", attrs2);
-                                for (auto elem : v->listItems()) {
-                                    if (elem->type() != nString) {
+                                for (auto & elem : v->listItems()) {
+                                    if (elem.type() != nString) {
                                         continue;
                                     }
                                     XMLAttrs attrs3;
-                                    attrs3["value"] = elem->str();
+                                    attrs3["value"] = elem.str();
                                     xml.writeEmptyElement("string", attrs3);
                                 }
                             } else if (v->type() == nAttrs) {
@@ -1304,12 +1304,12 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                                 Bindings & attrs = *v->attrs();
                                 for (auto &i : attrs) {
                                     const Attr & a(*attrs.get(i.name));
-                                    if (a.value->type() != nString) {
+                                    if (a.value.type() != nString) {
                                         continue;
                                     }
                                     XMLAttrs attrs3;
                                     attrs3["type"] = globals.state->symbols[i.name];
-                                    attrs3["value"] = a.value->str();
+                                    attrs3["value"] = a.value.str();
                                     xml.writeEmptyElement("string", attrs3);
                             }
                             }

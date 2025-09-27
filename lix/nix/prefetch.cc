@@ -39,14 +39,14 @@ std::string resolveMirrorUrl(EvalState & state, const std::string & url)
     if (!mirrorList) {
         throw Error("unknown mirror name '%s'", mirrorName);
     }
-    state.forceList(*mirrorList->value, noPos, "while evaluating one mirror configuration");
+    state.forceList(mirrorList->value, noPos, "while evaluating one mirror configuration");
 
-    if (mirrorList->value->listSize() < 1) {
+    if (mirrorList->value.listSize() < 1) {
         throw Error("mirror URL '%s' did not expand to anything", url);
     }
 
     std::string mirror(state.forceString(
-        *mirrorList->value->listElems()[0], noPos, "while evaluating the first available mirror"
+        mirrorList->value.listElems()[0], noPos, "while evaluating the first available mirror"
     ));
     return mirror + (mirror.ends_with("/") ? "" : "/") + s.substr(p + 1);
 }
@@ -217,12 +217,12 @@ static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Str
             auto * attr = v.attrs()->get(evaluator->symbols.create("urls"));
             if (!attr)
                 throw Error("attribute 'urls' missing");
-            state->forceList(*attr->value, noPos, "while evaluating the urls to prefetch");
-            if (attr->value->listSize() < 1) {
+            state->forceList(attr->value, noPos, "while evaluating the urls to prefetch");
+            if (attr->value.listSize() < 1) {
                 throw Error("'urls' list is empty");
             }
             url = state->forceString(
-                *attr->value->listElems()[0],
+                attr->value.listElems()[0],
                 noPos,
                 "while evaluating the first url from the urls list"
             );
@@ -233,7 +233,7 @@ static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Str
                 printInfo("warning: this does not look like a fetchurl call");
             else
                 unpack = state->forceString(
-                             *attr2->value,
+                             attr2->value,
                              noPos,
                              "while evaluating the outputHashMode of the source to prefetch"
                          )
@@ -244,7 +244,7 @@ static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Str
                 auto attr3 = v.attrs()->get(evaluator->symbols.create("name"));
                 if (!attr3)
                     name = state->forceString(
-                        *attr3->value, noPos, "while evaluating the name of the source to prefetch"
+                        attr3->value, noPos, "while evaluating the name of the source to prefetch"
                     );
             }
         }

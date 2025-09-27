@@ -61,7 +61,7 @@ JSON printValueAsJSON(EvalState & state, bool strict,
                     const Attr & a(*v.attrs()->get(state.ctx.symbols.create(j)));
                     try {
                         out[j] =
-                            printValueAsJSON(state, strict, *a.value, a.pos, context, copyToStore);
+                            printValueAsJSON(state, strict, a.value, a.pos, context, copyToStore);
                     } catch (Error & e) {
                         e.addTrace(
                             state.ctx.positions[a.pos],
@@ -71,7 +71,7 @@ JSON printValueAsJSON(EvalState & state, bool strict,
                     }
                 }
             } else {
-                return printValueAsJSON(state, strict, *i->value, i->pos, context, copyToStore);
+                return printValueAsJSON(state, strict, i->value, i->pos, context, copyToStore);
             }
             break;
         }
@@ -81,7 +81,7 @@ JSON printValueAsJSON(EvalState & state, bool strict,
             int i = 0;
             for (auto elem : v.listItems()) {
                 try {
-                    out.push_back(printValueAsJSON(state, strict, *elem, pos, context, copyToStore));
+                    out.push_back(printValueAsJSON(state, strict, elem, pos, context, copyToStore));
                 } catch (Error & e) {
                     e.addTrace(state.ctx.positions[pos],
                         HintFmt("while evaluating list element at index %1%", i));

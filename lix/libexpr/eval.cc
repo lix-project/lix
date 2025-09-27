@@ -135,7 +135,7 @@ std::string showType(const Value & v)
     case tApp:
         if (v.isPrimOpApp()) {
             return fmt(
-                "the partially applied built-in function '%s'", v.app().target()->primOp()->name
+                "the partially applied built-in function '%s'", v.app().target().primOp()->name
             );
         } else {
             return "a function application";
@@ -563,11 +563,8 @@ Path EvalPaths::toRealPath(const Path & path, const NixStringContext & context)
         : path;
 }
 
-void EvalBuiltins::addConstant(const std::string & name, const Value & v2, Constant info)
+void EvalBuiltins::addConstant(const std::string & name, const Value & v, Constant info)
 {
-    Value * v = mem.allocValue();
-    *v = v2;
-
     auto name2 = name.substr(0, 2) == "__" ? name.substr(2) : name;
 
     constantInfos.push_back({name2, info});
@@ -577,14 +574,14 @@ void EvalBuiltins::addConstant(const std::string & name, const Value & v2, Const
 
            We might know the type of a thunk in advance, so be allowed
            to just write it down in that case. */
-        if (auto gotType = v->type(true); gotType != nThunk) {
+        if (auto gotType = v.type(true); gotType != nThunk) {
             assert(info.type == gotType);
         }
 
         /* Install value the base environment. */
         staticEnv->vars.insert_or_assign(symbols.create(name), baseEnvDispl);
         env.values[baseEnvDispl++] = v;
-        env.values[0]->attrs()->push_back(Attr(symbols.create(name2), v));
+        env.values[0].attrs()->push_back(Attr(symbols.create(name2), v));
     }
 }
 
@@ -600,15 +597,14 @@ void EvalBuiltins::addPrimOp(PrimOpDetails primOp)
        the primop to a dummy value. */
     if (primOp.arity == 0) {
         primOp.arity = 1;
-        auto vPrimOp = mem.allocValue();
-        vPrimOp->mkPrimOp(new PrimOp(primOp));
-        Value v{NewValueAs::app, mem, *vPrimOp, *vPrimOp};
+        Value vPrimOp{NewValueAs::primop, *new PrimOp(primOp)};
+        Value v{NewValueAs::app, mem, vPrimOp, vPrimOp};
         addConstant(
-            primOp.name,
+            vPrimOp.primOp()->name,
             v,
             {
                 .type = nFunction,
-                .doc = vPrimOp->primOp()->doc,
+                .doc = vPrimOp.primOp()->doc,
             }
         );
     }
@@ -617,17 +613,16 @@ void EvalBuiltins::addPrimOp(PrimOpDetails primOp)
     if (primOp.name.starts_with("__"))
         primOp.name = primOp.name.substr(2);
 
-    Value * v = mem.allocValue();
-    v->mkPrimOp(new PrimOp(std::move(primOp)));
+    Value v{NewValueAs::primop, *new PrimOp(std::move(primOp))};
     staticEnv->vars.insert_or_assign(auto(envName), baseEnvDispl);
     env.values[baseEnvDispl++] = v;
-    env.values[0]->attrs()->push_back(Attr(symbols.create(v->primOp()->name), v));
+    env.values[0].attrs()->push_back(Attr(symbols.create(v.primOp()->name), v));
 }
 
 
 Value & EvalBuiltins::get(const std::string & name)
 {
-    return *env.values[0]->attrs()->get(symbols.create(name))->value;
+    return env.values[0].attrs()->get(symbols.create(name))->value;
 }
 
 
@@ -670,9 +665,9 @@ void printStaticEnvBindings(const SymbolTable & st, const StaticEnv & se)
 // just for the current level of Env, not the whole chain.
 void printWithBindings(const SymbolTable & st, const Env & env)
 {
-    if (env.values[0]->type() == nAttrs) {
+    if (env.values[0].type() == nAttrs) {
         std::set<std::string_view> bindings;
-        for (const auto & attr : *env.values[0]->attrs()) {
+        for (const auto & attr : *env.values[0].attrs()) {
             bindings.emplace(st[attr.name]);
         }
 
@@ -728,10 +723,10 @@ void mapStaticEnvBindings(const SymbolTable & st, const StaticEnv & se, const En
     if (env.up && se.up) {
         mapStaticEnvBindings(st, *se.up, *env.up, vm);
 
-        if (se.isWith && env.values[0]->type() == nAttrs) {
+        if (se.isWith && env.values[0].type() == nAttrs) {
             // add 'with' bindings.
-            Bindings::iterator j = env.values[0]->attrs()->begin();
-            while (j != env.values[0]->attrs()->end()) {
+            Bindings::iterator j = env.values[0].attrs()->begin();
+            while (j != env.values[0].attrs()->end()) {
                 vm[std::string(st[j->name])] = j->value;
                 ++j;
             }
@@ -860,7 +855,7 @@ inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
     for (auto l = var.level; l; --l, env = env->up) ;
 
     if (!var.fromWith) {
-        return env->values[var.displ];
+        return &env->values[var.displ];
     }
 
     // This early exit defeats the `maybeThunk` optimization for variables from `with`,
@@ -871,14 +866,14 @@ inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
     auto * fromWith = var.fromWith;
     while (1) {
         forceAttrs(
-            *env->values[0],
+            env->values[0],
             fromWith->pos,
             "while evaluating the first subexpression of a with expression"
         );
-        auto j = env->values[0]->attrs()->get(var.name);
+        auto j = env->values[0].attrs()->get(var.name);
         if (j) {
             if (ctx.stats.countCalls) ctx.stats.attrSelects[j->pos]++;
-            return j->value;
+            return &j->value;
         }
         if (!fromWith->parentWith)
             ctx.errors.make<UndefinedVarError>("undefined variable '%1%'", ctx.symbols[var.name]).atPos(var.pos).withFrame(*env, var).debugThrow();
@@ -978,31 +973,28 @@ void EvalState::mkSingleDerivedPathString(
    in the given environment.  But if the expression is a variable,
    then look it up right away.  This significantly reduces the number
    of thunks allocated. */
-Value * Expr::maybeThunk(EvalState & state, Env & env)
+Value Expr::maybeThunk(EvalState & state, Env & env)
 {
-    Value * v = state.ctx.mem.allocValue();
-    *v = {NewValueAs::thunk, state.ctx.mem, env, *this};
     state.ctx.stats.nrThunks++;
-    return v;
+    return {NewValueAs::thunk, state.ctx.mem, env, *this};
 }
 
-
-Value * ExprVar::maybeThunk(EvalState & state, Env & env)
+Value ExprVar::maybeThunk(EvalState & state, Env & env)
 {
     Value * v = state.lookupVar(&env, *this, true);
     /* The value might not be initialised in the environment yet.
        In that case, ignore it. */
-    if (v) {
+    if (v && !v->isInvalid()) {
         state.ctx.stats.nrAvoided++;
-        return v;
+        return *v;
     }
     return Expr::maybeThunk(state, env);
 }
 
-Value * ExprLiteral::maybeThunk(EvalState & state, Env & env)
+Value ExprLiteral::maybeThunk(EvalState & state, Env & env)
 {
     state.ctx.stats.nrAvoided++;
-    return &v;
+    return v;
 }
 
 
@@ -1140,10 +1132,9 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
            in the original environment. */
         Displacement displ = 0;
         for (auto & i : attrs) {
-            Value * vAttr;
+            Value vAttr;
             if (hasOverrides && i.second.kind != ExprAttrs::AttrDef::Kind::Inherited) {
-                vAttr = state.ctx.mem.allocValue();
-                *vAttr = {
+                vAttr = {
                     NewValueAs::thunk,
                     state.ctx.mem,
                     *i.second.chooseByKind(&env2, &env, inheritEnv),
@@ -1167,7 +1158,7 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
            been substituted into the bodies of the other attributes.
            Hence we need __overrides.) */
         if (hasOverrides) {
-            Value & vOverrides = *(*v.attrs())[overrides->second.displ].value;
+            Value & vOverrides = (*v.attrs())[overrides->second.displ].value;
             state.forceAttrs(vOverrides, noPos, "while evaluating the `__overrides` attribute");
             Bindings * newBnds = state.ctx.mem.allocBindings(capacity + vOverrides.attrs()->size());
             for (auto & i : *v.attrs())
@@ -1254,16 +1245,15 @@ void ExprList::eval(EvalState & state, Env & env, Value & v)
 {
     auto result = state.ctx.mem.newList(elems.size());
     v = {NewValueAs::list, result};
-    for (auto [n, v2] : enumerate(result->span())) {
-        const_cast<Value *&>(v2) = elems[n]->maybeThunk(state, env);
+    for (auto && [n, v2] : enumerate(result->span())) {
+        v2 = elems[n]->maybeThunk(state, env);
     }
 }
 
-
-Value * ExprList::maybeThunk(EvalState & state, Env & env)
+Value ExprList::maybeThunk(EvalState & state, Env & env)
 {
     if (elems.empty()) {
-        return &Value::EMPTY_LIST;
+        return Value::EMPTY_LIST;
     }
     return Expr::maybeThunk(state, env);
 }
@@ -1291,9 +1281,9 @@ void ExprVar::eval(EvalState & state, Env & env, Value & v)
 
 void ExprInheritFrom::eval(EvalState & state, Env & env, Value & v)
 {
-    Value * v2 = env.values[displ];
-    state.forceValue(*v2, pos);
-    v = *v2;
+    Value & v2 = env.values[displ];
+    state.forceValue(v2, pos);
+    v = v2;
 }
 
 
@@ -1400,7 +1390,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
 
             // If we're here, then we successfully found the attribute.
             // Set our currently operated-on attrset to this one, and keep going.
-            vCurrent = attrIt->value;
+            vCurrent = &attrIt->value;
             posCurrent = attrIt->pos;
             posCurrentSyntax = currentAttrName.pos;
             if (state.ctx.stats.countCalls) state.ctx.stats.attrSelects[posCurrent]++;
@@ -1435,7 +1425,7 @@ void ExprOpHasAttr::eval(EvalState & state, Env & env, Value & v)
             v.mkBool(false);
             return;
         } else {
-            vAttrs = j->value;
+            vAttrs = &j->value;
         }
     }
 
@@ -1523,7 +1513,7 @@ Env & SimplePattern::match(
 {
     Env & env2(state.ctx.mem.allocEnv(1));
     env2.up = &up;
-    env2.values[0] = &arg;
+    env2.values[0] = arg;
     return env2;
 }
 
@@ -1547,7 +1537,7 @@ Env & AttrsPattern::match(
     }
 
     if (name) {
-        env2.values[displ++] = &arg;
+        env2.values[displ++] = arg;
     }
 
     ///* For each formal argument, get the actual argument.  If
@@ -1598,7 +1588,7 @@ Env & AttrsPattern::match(
     return env2;
 }
 
-void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes, const PosIdx pos)
+void EvalState::callFunction(Value & fun, std::span<Value> args, Value & vRes, const PosIdx pos)
 {
     if (callDepth > evalSettings.maxCallDepth)
         ctx.errors.make<EvalError>("stack overflow; max-call-depth exceeded").atPos(pos).debugThrow();
@@ -1612,11 +1602,7 @@ void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes,
 
     Value vCur(fun);
 
-    auto makeAppChain = [&]() {
-        auto fun2 = ctx.mem.allocValue();
-        *fun2 = vCur;
-        vRes = {NewValueAs::app, ctx.mem, *fun2, args};
-    };
+    auto makeAppChain = [&]() { vRes = {NewValueAs::app, ctx.mem, vCur, args}; };
 
     const Attr * functor;
 
@@ -1626,7 +1612,7 @@ void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes,
 
             ExprLambda & lambda(*vCur.lambda().fun);
 
-            Env & env2 = lambda.pattern->match(lambda, *this, *vCur.lambda().env(), *args[0], pos);
+            Env & env2 = lambda.pattern->match(lambda, *this, *vCur.lambda().env(), args[0], pos);
 
             ctx.stats.nrFunctionCalls++;
             if (ctx.stats.countCalls) ctx.stats.addCall(lambda);
@@ -1664,7 +1650,11 @@ void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes,
                 if (ctx.stats.countCalls) ctx.stats.primOpCalls[fn->name]++;
 
                 try {
-                    fn->fun(*this, args.data(), vCur);
+                    SmallVector<Value *, 4> pargs(argsLeft);
+                    for (unsigned i = 0; i < argsLeft; i++) {
+                        pargs[i] = &args[i];
+                    }
+                    fn->fun(*this, pargs.data(), vCur);
                 } catch (ThrownError & e) {
                     // Distinguish between an error that simply happened while "throw"
                     // was being evaluated and an explicit thrown error.
@@ -1684,13 +1674,16 @@ void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes,
         }
 
         else if (vCur.isPrimOpApp()) {
-            /* Figure out the number of arguments still needed. */
-            size_t argsDone = vCur.app().totalArgs();
-            Value * primOp = vCur.app().target();
-            auto arity = primOp->primOp()->arity;
-            auto argsLeft = arity - argsDone;
+            auto & app = vCur.app();
+            auto prevArgs = app.args();
 
-            if (args.size() < argsLeft) {
+            assert(!vCur.app().left().isApp());
+
+            /* Figure out the number of arguments still needed. */
+            Value primOp = app.target();
+            auto arity = primOp.primOp()->arity;
+
+            if (args.size() < arity - prevArgs.size()) {
                 /* We still don't have enough arguments, so extend the tPrimOpApp chain. */
                 makeAppChain();
                 return;
@@ -1699,18 +1692,16 @@ void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes,
                    the previous and new arguments. */
 
                 // max arity as of writing is 3. even 4 seems excessive though.
-                SmallVector<Value *, 4> vArgs(arity);
-                auto n = argsDone;
-                for (Value * arg = &vCur; arg->isApp(); arg = arg->app().left()) {
-                    auto curArgs = arg->app().args();
-                    memcpy(&vArgs[n] - curArgs.size(), curArgs.data(), curArgs.size_bytes());
-                    n -= curArgs.size();
+                SmallVector<Value *, 4> vArgs;
+                for (auto & arg : prevArgs) {
+                    vArgs.push_back(&arg);
+                }
+                while (vArgs.size() < arity) {
+                    vArgs.push_back(&args[0]);
+                    args = args.subspan(1);
                 }
 
-                for (size_t i = 0; i < argsLeft; ++i)
-                    vArgs[argsDone + i] = args[i];
-
-                auto fn = primOp->primOp();
+                auto fn = primOp.primOp();
                 ctx.stats.nrPrimOpCalls++;
                 if (ctx.stats.countCalls) ctx.stats.primOpCalls[fn->name]++;
 
@@ -1724,8 +1715,6 @@ void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes,
                     e.addTrace(ctx.positions[pos], "while calling the '%1%' builtin", fn->name);
                     throw;
                 }
-
-                args = args.subspan(argsLeft);
             }
         }
 
@@ -1733,10 +1722,9 @@ void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes,
             /* 'vCur' may be allocated on the stack of the calling
                function, but for functors we may keep a reference, so
                heap-allocate a copy and use that instead. */
-            Value * args2[] = {ctx.mem.allocValue(), args[0]};
-            *args2[0] = vCur;
+            Value args2[] = {vCur, args[0]};
             try {
-                callFunction(*functor->value, args2, vCur, functor->pos);
+                callFunction(functor->value, args2, vCur, functor->pos);
             } catch (Error & e) {
                 e.addTrace(ctx.positions[pos], "while calling a functor (an attribute set with a '__functor' attribute)");
                 throw;
@@ -1792,7 +1780,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res, PosI
         auto found = fun.attrs()->get(ctx.s.functor);
         if (found) {
             Value v;
-            callFunction(*found->value, fun, v, pos);
+            callFunction(found->value, fun, v, pos);
             forceValue(v, pos);
             return autoCallFunction(args, v, res, pos);
         }
@@ -1975,19 +1963,19 @@ void ExprOpConcatLists::eval(EvalState & state, Env & env, Value & v)
 }
 
 void EvalState::concatLists(
-    Value & v, size_t nrLists, Value * const * lists, const PosIdx pos, std::string_view errorCtx
+    Value & v, std::span<Value> lists, const PosIdx pos, std::string_view errorCtx
 )
 {
     ctx.stats.nrListConcats++;
 
     Value * nonEmpty = 0;
     size_t len = 0;
-    for (size_t n = 0; n < nrLists; ++n) {
-        forceList(*lists[n], pos, errorCtx);
-        auto l = lists[n]->listSize();
+    for (size_t n = 0; n < lists.size(); ++n) {
+        forceList(lists[n], pos, errorCtx);
+        auto l = lists[n].listSize();
         len += l;
         if (l) {
-            nonEmpty = lists[n];
+            nonEmpty = &lists[n];
         }
     }
 
@@ -1999,10 +1987,10 @@ void EvalState::concatLists(
     auto list = ctx.mem.newList(len);
     v = {NewValueAs::list, list};
     auto out = list->elems;
-    for (size_t n = 0, pos = 0; n < nrLists; ++n) {
-        auto l = lists[n]->listSize();
+    for (size_t n = 0, pos = 0; n < lists.size(); ++n) {
+        auto l = lists[n].listSize();
         if (l) {
-            memcpy(out + pos, lists[n]->listElems(), l * sizeof(Value *));
+            std::copy(lists[n].listItems().begin(), lists[n].listItems().end(), out + pos);
         }
         pos += l;
     }
@@ -2165,18 +2153,18 @@ void EvalState::forceValueDeep(Value & v)
             for (auto & i : *v.attrs())
                 try {
                     // If the value is a thunk, we're evaling. Otherwise no trace necessary.
-                    auto dts = ctx.debug && i.value->isThunk()
+                    auto dts = ctx.debug && i.value.isThunk()
                         ? makeDebugTraceStacker(
                               *this,
-                              *i.value->thunk().expr,
-                              *i.value->thunk().env(),
+                              *i.value.thunk().expr,
+                              *i.value.thunk().env(),
                               ctx.positions[i.pos],
                               "while evaluating the attribute '%1%'",
                               ctx.symbols[i.name]
                           )
                         : nullptr;
 
-                    recurse(*i.value);
+                    recurse(i.value);
                 } catch (Error & e) {
                     e.addTrace(ctx.positions[i.pos], "while evaluating the attribute '%1%'", ctx.symbols[i.name]);
                     throw;
@@ -2184,8 +2172,8 @@ void EvalState::forceValueDeep(Value & v)
         }
 
         else if (v.isList()) {
-            for (auto v2 : v.listItems()) {
-                recurse(*v2);
+            for (auto & v2 : v.listItems()) {
+                recurse(v2);
             }
         }
     };
@@ -2335,11 +2323,11 @@ bool EvalState::isDerivation(Value & v)
     if (!i) {
         return false;
     }
-    forceValue(*i->value, i->pos);
-    if (i->value->type() != nString) {
+    forceValue(i->value, i->pos);
+    if (i->value.type() != nString) {
         return false;
     }
-    return i->value->str() == "derivation";
+    return i->value.str() == "derivation";
 }
 
 
@@ -2350,7 +2338,7 @@ std::optional<std::string> EvalState::tryAttrsToString(const PosIdx pos, Value &
     if (i) {
         Value v1;
         try {
-            callFunction(*i->value, v, v1, i->pos);
+            callFunction(i->value, v, v1, i->pos);
             return coerceToString(pos, v1, context,
                     "while evaluating the result of the `__toString` attribute",
                     mode, copyToStore).toOwned();
@@ -2406,7 +2394,7 @@ BackedStringView EvalState::coerceToString(
                 .debugThrow();
         }
         return coerceToString(
-            pos, *i->value, context, errorCtx, mode, copyToStore, canonicalizePath
+            pos, i->value, context, errorCtx, mode, copyToStore, canonicalizePath
         );
     }
 
@@ -2445,7 +2433,7 @@ BackedStringView EvalState::coerceToString(
                 try {
                     result += *coerceToString(
                         pos,
-                        *v2,
+                        v2,
                         context,
                         "while evaluating one element of the list",
                         mode,
@@ -2458,7 +2446,7 @@ BackedStringView EvalState::coerceToString(
                 }
                 if (n < v.listSize() - 1
                     /* !!! not quite correct */
-                    && (!v2->isList() || v2->listSize() != 0))
+                    && (!v2.isList() || v2.listSize() != 0))
                 {
                     result += " ";
                 }
@@ -2588,11 +2576,6 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
     forceValue(v1, pos);
     forceValue(v2, pos);
 
-    /* !!! Hack to support some old broken code that relies on pointer
-       equality tests between sets.  (Specifically, builderDefs calls
-       uniqList on a list of sets.)  Will remove this eventually. */
-    if (&v1 == &v2) return true;
-
     // Special case type-compatibility between float and int
     if (v1.type() == nInt && v2.type() == nFloat) {
         return v1.integer().value == v2.fpoint();
@@ -2603,6 +2586,11 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
 
     // All other types are not compatible with each other.
     if (v1.type() != v2.type()) return false;
+
+    /* !!! Hack to support some old broken code that relies on pointer
+       equality tests between sets.  (Specifically, builderDefs calls
+       uniqList on a list of sets.)  Will remove this eventually. */
+    auto pointerEq = [&] { return v1.pointerEqProxy() == v2.pointerEqProxy(); };
 
     switch (v1.type()) {
         case nInt:
@@ -2621,22 +2609,24 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             return true;
 
         case nList:
+            if (pointerEq()) return true;
             if (v1.listSize() != v2.listSize()) return false;
             for (size_t n = 0; n < v1.listSize(); ++n) {
-                if (!eqValues(*v1.listElems()[n], *v2.listElems()[n], pos, errorCtx)) {
+                if (!eqValues(v1.listElems()[n], v2.listElems()[n], pos, errorCtx)) {
                     return false;
                 }
             }
             return true;
 
         case nAttrs: {
+            if (pointerEq()) return true;
             /* If both sets denote a derivation (type = "derivation"),
                then compare their outPaths. */
             if (isDerivation(v1) && isDerivation(v2)) {
                 auto i = v1.attrs()->get(ctx.s.outPath);
                 auto j = v2.attrs()->get(ctx.s.outPath);
                 if (i && j) {
-                    return eqValues(*i->value, *j->value, pos, errorCtx);
+                    return eqValues(i->value, j->value, pos, errorCtx);
                 }
             }
 
@@ -2646,7 +2636,7 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             Bindings::iterator i, j;
             for (i = v1.attrs()->begin(), j = v2.attrs()->begin(); i != v1.attrs()->end(); ++i, ++j)
             {
-                if (i->name != j->name || !eqValues(*i->value, *j->value, pos, errorCtx)) {
+                if (i->name != j->name || !eqValues(i->value, j->value, pos, errorCtx)) {
                     return false;
                 }
             }
@@ -2659,6 +2649,7 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             return false;
 
         case nExternal:
+            if (pointerEq()) return true;
             return *v1.external() == *v2.external();
 
         case nFloat:
@@ -2708,7 +2699,6 @@ void Evaluator::printStatistics()
 
     uint64_t bEnvs = mem.nrEnvs * sizeof(Env) + mem.nrValuesInEnvs * sizeof(Value *);
     uint64_t bLists = mem.nrListElems * sizeof(Value *);
-    uint64_t bValues = mem.nrValues * sizeof(Value);
     uint64_t bAttrsets = mem.nrAttrsets * sizeof(Bindings) + mem.nrAttrsInAttrsets * sizeof(Attr);
 
 #if HAVE_BOEHMGC
@@ -2732,9 +2722,10 @@ void Evaluator::printStatistics()
         {"bytes", bLists},
         {"concats", stats.nrListConcats},
     };
+    // reported for compatibility, even though we no longer allocate these on the heap
     topObj["values"] = {
-        {"number", mem.nrValues},
-        {"bytes", bValues},
+        {"number", 0},
+        {"bytes", 0},
     };
     topObj["symbols"] = {
         {"number", symbols.size()},

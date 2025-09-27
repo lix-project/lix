@@ -13,18 +13,18 @@ namespace nix {
 inline Value::Value(app_t, EvalMemory & mem, Value & lhs, Value & rhs)
 {
     auto app = static_cast<Value::App *>(mem.allocBytes(sizeof(Value::App) + sizeof(Value *)));
-    app->_left = reinterpret_cast<uintptr_t>(&lhs);
+    app->_left = lhs;
     app->_n = 1;
-    app->_args[0] = &rhs;
+    app->_args[0] = rhs;
     raw = tag(tApp, app);
 }
 
-inline Value::Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value *> args)
+inline Value::Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value> args)
 {
     auto app = static_cast<Value::App *>(mem.allocBytes(sizeof(Value::App) + args.size_bytes()));
-    app->_left = reinterpret_cast<uintptr_t>(&lhs);
+    app->_left = lhs;
     app->_n = args.size();
-    memcpy(app->_args, args.data(), args.size_bytes());
+    std::copy(args.begin(), args.end(), app->_args);
     raw = tag(tApp, app);
 }
 
@@ -86,14 +86,6 @@ T * EvalMemory::allocType(size_t n)
 }
 
 [[gnu::always_inline]]
-Value * EvalMemory::allocValue()
-{
-    static_assert(CACHES * CACHE_INCREMENT >= sizeof(Value));
-    stats.nrValues++;
-    return static_cast<Value *>(allocBytes(sizeof(Value)));
-}
-
-[[gnu::always_inline]]
 Env & EvalMemory::allocEnv(size_t size)
 {
     static_assert(CACHES * CACHE_INCREMENT >= sizeof(Env) + sizeof(Value *));
@@ -117,15 +109,15 @@ void EvalState::forceValue(Value & v, const PosIdx pos)
         if (thunk.resolved()) {
             v = thunk.result();
         } else {
-            const auto backup = v;
-            Env * env = v.thunk().env();
-            Expr & expr = *v.thunk().expr;
-            v = Value{NewValueAs::blackhole};
+            const auto backup = thunk;
+            Env * env = thunk.env();
+            Expr & expr = *thunk.expr;
+            thunk = Value::blackHole;
             try {
                 expr.eval(*this, *env, v);
-                backup.thunk().resolve(v);
+                thunk.resolve(v);
             } catch (...) {
-                v = backup;
+                thunk = backup;
                 tryFixupBlackHolePos(v, pos);
                 throw;
             }
@@ -136,8 +128,9 @@ void EvalState::forceValue(Value & v, const PosIdx pos)
             v = app.result();
         } else {
             auto target = app.target();
-            if (!target->isPrimOp() || target->primOp()->arity <= app.totalArgs()) {
-                callFunction(*v.app().left(), v.app().args(), v, pos);
+            if (!target.isPrimOp() || target.primOp()->arity <= app.totalArgs()) {
+                auto tmp = v.app().left();
+                callFunction(tmp, v.app().args(), v, pos);
                 app.resolve(v);
             }
         }

@@ -69,11 +69,11 @@ namespace nix {
         ASSERT_THAT(v, IsAttrsOfSize(2));
         auto a = v.attrs()->get(createSymbol("a"));
         ASSERT_NE(a, nullptr);
-        ASSERT_THAT(*a->value, IsIntEq(3));
+        ASSERT_THAT(a->value, IsIntEq(3));
 
         auto b = v.attrs()->get(createSymbol("b"));
         ASSERT_NE(b, nullptr);
-        ASSERT_THAT(*b->value, IsIntEq(2));
+        ASSERT_THAT(b->value, IsIntEq(2));
     }
 
     TEST_F(TrivialExpressionTest, hasAttrOpFalse) {
@@ -171,18 +171,18 @@ namespace nix {
         auto a = v.attrs()->get(createSymbol("a"));
         ASSERT_NE(a, nullptr);
 
-        ASSERT_THAT(*a->value, IsThunk());
-        state.forceValue(*a->value, noPos);
+        ASSERT_THAT(a->value, IsThunk());
+        state.forceValue(a->value, noPos);
 
-        ASSERT_THAT(*a->value, IsAttrsOfSize(2));
+        ASSERT_THAT(a->value, IsAttrsOfSize(2));
 
-        auto b = a->value->attrs()->get(createSymbol("b"));
+        auto b = a->value.attrs()->get(createSymbol("b"));
         ASSERT_NE(b, nullptr);
-        ASSERT_THAT(*b->value, IsIntEq(1));
+        ASSERT_THAT(b->value, IsIntEq(1));
 
-        auto c = a->value->attrs()->get(createSymbol("c"));
+        auto c = a->value.attrs()->get(createSymbol("c"));
         ASSERT_NE(c, nullptr);
-        ASSERT_THAT(*c->value, IsIntEq(2));
+        ASSERT_THAT(c->value, IsIntEq(2));
     }
 
     INSTANTIATE_TEST_SUITE_P(
@@ -204,7 +204,7 @@ namespace nix {
         ASSERT_THAT(v, IsAttrsOfSize(1));
         auto b = v.attrs()->get(createSymbol("or"));
         ASSERT_NE(b, nullptr);
-        ASSERT_THAT(*b->value, IsIntEq(1));
+        ASSERT_THAT(b->value, IsIntEq(1));
     }
 
     TEST_F(TrivialExpressionTest, orCantBeUsed) {

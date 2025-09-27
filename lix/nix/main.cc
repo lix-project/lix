@@ -378,7 +378,7 @@ static void showHelp(AsyncIoRoot & aio, std::vector<std::string> subcommand, Nix
         throw UsageError("`nix` has no subcommand '%s'", concatStringsSep("", subcommand));
 
     auto markdown =
-        state->forceString(*attr->value, noPos, "while evaluating the lowdown help text");
+        state->forceString(attr->value, noPos, "while evaluating the lowdown help text");
 
     RunPager pager;
     std::cout << renderMarkdownToTerminal(markdown) << "\n";
@@ -528,13 +528,13 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
         auto res = JSON::object();
         res["builtins"] = ({
             auto builtinsJson = JSON::object();
-            auto builtins = state.builtins.env.values[0]->attrs();
+            auto builtins = state.builtins.env.values[0].attrs();
             for (auto & builtin : *builtins) {
                 auto b = JSON::object();
-                if (!builtin.value->isPrimOp()) {
+                if (!builtin.value.isPrimOp()) {
                     continue;
                 }
-                auto primOp = builtin.value->primOp();
+                auto primOp = builtin.value.primOp();
                 if (!primOp->doc) {
                     continue;
                 }

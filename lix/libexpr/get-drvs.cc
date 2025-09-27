@@ -69,7 +69,7 @@ std::string DrvInfo::queryName(EvalState & state)
             state.ctx.errors.make<TypeError>("derivation name missing").debugThrow();
         }
         name = state.forceStringNoCtx(
-            *i->value, noPos, "while evaluating the 'name' attribute of a derivation"
+            i->value, noPos, "while evaluating the 'name' attribute of a derivation"
         );
     }
     return name;
@@ -83,7 +83,7 @@ std::string DrvInfo::querySystem(EvalState & state)
         system = !i
             ? "unknown"
             : state.forceStringNoCtx(
-                  *i->value, i->pos, "while evaluating the 'system' attribute of a derivation"
+                  i->value, i->pos, "while evaluating the 'system' attribute of a derivation"
               );
     }
     return system;
@@ -100,7 +100,7 @@ std::optional<StorePath> DrvInfo::queryDrvPath(EvalState & state)
         } else {
             drvPath = {state.coerceToStorePath(
                 i->pos,
-                *i->value,
+                i->value,
                 context,
                 "while evaluating the 'drvPath' attribute of a derivation"
             )};
@@ -125,7 +125,7 @@ StorePath DrvInfo::queryOutPath(EvalState & state)
         NixStringContext context;
         if (i) {
             outPath = state.coerceToStorePath(
-                i->pos, *i->value, context, "while evaluating the output path of a derivation"
+                i->pos, i->value, context, "while evaluating the output path of a derivation"
             );
         }
     }
@@ -158,17 +158,17 @@ void DrvInfo::fillOutputs(EvalState & state, bool withPaths)
 
     // NOTE(Qyriad): I don't think there is any codepath that can cause this to error.
     state.forceList(
-        *outputs->value, outputs->pos, "while evaluating the 'outputs' attribute of a derivation"
+        outputs->value, outputs->pos, "while evaluating the 'outputs' attribute of a derivation"
     );
 
-    for (auto [idx, elem] : enumerate(outputs->value->listItems())) {
+    for (auto && [idx, elem] : enumerate(outputs->value.listItems())) {
         // NOTE(Qyriad): This error should be *extremely* rare in practice.
         // It is impossible to construct with `stdenv.mkDerivation`,
         // `builtins.derivation`, or even `derivationStrict`. As far as we can tell,
         // it is only possible by overriding a derivation attrset already created by
         // one of those with `//` to introduce the failing `outputs` entry.
         auto errMsg = fmt("while evaluating output %d of a derivation", idx);
-        std::string_view outputName = state.forceStringNoCtx(*elem, outputs->pos, errMsg);
+        std::string_view outputName = state.forceStringNoCtx(elem, outputs->pos, errMsg);
 
         if (withPaths) {
             // Find the attr with this output's name...
@@ -180,10 +180,10 @@ void DrvInfo::fillOutputs(EvalState & state, bool withPaths)
 
             // Meanwhile we couldn't figure out any circumstances
             // that cause this to error.
-            state.forceAttrs(*out->value, outputs->pos, errMsg);
+            state.forceAttrs(out->value, outputs->pos, errMsg);
 
             // ...and evaluate its `outPath` attribute.
-            const Attr * outPath = out->value->attrs()->get(state.ctx.s.outPath);
+            const Attr * outPath = out->value.attrs()->get(state.ctx.s.outPath);
             if (outPath == nullptr) {
                 continue;
                 // FIXME: throw error?
@@ -192,8 +192,7 @@ void DrvInfo::fillOutputs(EvalState & state, bool withPaths)
             NixStringContext context;
             // And idk what could possibly cause this one to error
             // that wouldn't error before here.
-            auto storePath =
-                state.coerceToStorePath(outPath->pos, *outPath->value, context, errMsg);
+            auto storePath = state.coerceToStorePath(outPath->pos, outPath->value, context, errMsg);
             this->outputs.emplace(outputName, storePath);
         } else {
             this->outputs.emplace(outputName, std::nullopt);
@@ -225,7 +224,7 @@ DrvInfo::Outputs DrvInfo::queryOutputs(EvalState & state, bool withPaths, bool o
     // explicitly selected-into output.
     if (const Attr * outSpecAttr = attrs->get(state.ctx.s.outputSpecified)) {
         bool outputSpecified = state.forceBool(
-            *outSpecAttr->value,
+            outSpecAttr->value,
             outSpecAttr->pos,
             "while evaluating the 'outputSpecified' attribute of a derivation"
         );
@@ -245,16 +244,16 @@ DrvInfo::Outputs DrvInfo::queryOutputs(EvalState & state, bool withPaths, bool o
         /* ^ this shows during `nix-env -i` right under the bad derivation */
     if (!outTI->isList()) throw Error(errMsg + "expected a list but got %s", Uncolored(showType(outTI->type())));
     Outputs result;
-    for (auto elem : outTI->listItems()) {
-        if (elem->type() != nString) {
+    for (auto & elem : outTI->listItems()) {
+        if (elem.type() != nString) {
             throw Error(
                 errMsg + "element is %s where a string was expected",
-                Uncolored(showType(elem->type()))
+                Uncolored(showType(elem.type()))
             );
         }
-        auto out = outputs.find(std::string(elem->str()));
+        auto out = outputs.find(std::string(elem.str()));
         if (out == outputs.end()) {
-            throw Error(errMsg + "output '%s' does not exist", elem->str());
+            throw Error(errMsg + "output '%s' does not exist", elem.str());
         }
         result.insert(*out);
     }
@@ -267,7 +266,7 @@ std::string DrvInfo::queryOutputName(EvalState & state)
     if (outputName == "" && attrs) {
         auto i = attrs->get(state.ctx.s.outputName);
         outputName = i ? state.forceStringNoCtx(
-                             *i->value, noPos, "while evaluating the output name of a derivation"
+                             i->value, noPos, "while evaluating the output name of a derivation"
                          )
                        : "";
     }
@@ -283,8 +282,8 @@ Bindings * DrvInfo::getMeta(EvalState & state)
     if (!a) {
         return 0;
     }
-    state.forceAttrs(*a->value, a->pos, "while evaluating the 'meta' attribute of a derivation");
-    meta = a->value->attrs();
+    state.forceAttrs(a->value, a->pos, "while evaluating the 'meta' attribute of a derivation");
+    meta = a->value.attrs();
     return meta;
 }
 
@@ -303,8 +302,8 @@ bool DrvInfo::checkMeta(EvalState & state, Value & v)
 {
     state.forceValue(v, noPos);
     if (v.type() == nList) {
-        for (auto elem : v.listItems()) {
-            if (!checkMeta(state, *elem)) {
+        for (auto & elem : v.listItems()) {
+            if (!checkMeta(state, elem)) {
                 return false;
             }
         }
@@ -316,7 +315,7 @@ bool DrvInfo::checkMeta(EvalState & state, Value & v)
             return false;
         }
         for (auto & i : *v.attrs()) {
-            if (!checkMeta(state, *i.value)) {
+            if (!checkMeta(state, i.value)) {
                 return false;
             }
         }
@@ -331,10 +330,10 @@ Value * DrvInfo::queryMeta(EvalState & state, const std::string & name)
 {
     if (!getMeta(state)) return 0;
     auto a = meta->get(state.ctx.symbols.create(name));
-    if (!a || !checkMeta(state, *a->value)) {
+    if (!a || !checkMeta(state, a->value)) {
         return 0;
     }
-    return a->value;
+    return &a->value;
 }
 
 
@@ -392,7 +391,7 @@ void DrvInfo::setMeta(EvalState & state, const std::string & name, Value & v)
         for (auto i : *meta)
             if (i.name != sym)
                 attrs.insert(i);
-    attrs.insert(sym, &v);
+    attrs.insert(sym, v);
     meta = attrs.finish();
 }
 
@@ -464,13 +463,13 @@ static void getDerivations(EvalState & state, Value & vIn, PosIdx pos,
     if (v.type() == nList) {
         // NOTE we can't really deduplicate here because small lists don't have stable addresses
         // and can cause spurious duplicate detections due to v being on the stack.
-        for (auto [n, elem] : enumerate(v.listItems())) {
+        for (auto && [n, elem] : enumerate(v.listItems())) {
             std::string joinedAttrPath = addToPath(pathPrefix, fmt("%d", n));
             bool shouldRecurse =
-                getDerivation(state, *elem, joinedAttrPath, drvs, ignoreAssertionFailures);
+                getDerivation(state, elem, joinedAttrPath, drvs, ignoreAssertionFailures);
             if (shouldRecurse) {
                 getDerivations(
-                    state, *elem, pos, joinedAttrPath, autoArgs, drvs, done, ignoreAssertionFailures
+                    state, elem, pos, joinedAttrPath, autoArgs, drvs, done, ignoreAssertionFailures
                 );
             }
         }
@@ -510,7 +509,7 @@ static void getDerivations(EvalState & state, Value & vIn, PosIdx pos,
         if (combineChannels) {
             getDerivations(
                 state,
-                *attr->value,
+                attr->value,
                 attr->pos,
                 joinedAttrPath,
                 autoArgs,
@@ -518,18 +517,19 @@ static void getDerivations(EvalState & state, Value & vIn, PosIdx pos,
                 done,
                 ignoreAssertionFailures
             );
-        } else if (getDerivation(state, *attr->value, joinedAttrPath, drvs, ignoreAssertionFailures)) {
+        } else if (getDerivation(state, attr->value, joinedAttrPath, drvs, ignoreAssertionFailures))
+        {
             /* If the value of this attribute is itself a set,
                should we recurse into it?  => Only if it has a
                `recurseForDerivations = true' attribute. */
-            if (attr->value->type() == nAttrs) {
+            if (attr->value.type() == nAttrs) {
                 const Attr * recurseForDrvs =
-                    attr->value->attrs()->get(state.ctx.s.recurseForDerivations);
+                    attr->value.attrs()->get(state.ctx.s.recurseForDerivations);
                 if (recurseForDrvs == nullptr) {
                     continue;
                 }
                 bool shouldRecurse = state.forceBool(
-                    *recurseForDrvs->value,
+                    recurseForDrvs->value,
                     attr->pos,
                     fmt("while evaluating the '%s' attribute", Magenta("recurseForDerivations"))
                 );
@@ -539,7 +539,7 @@ static void getDerivations(EvalState & state, Value & vIn, PosIdx pos,
 
                 getDerivations(
                     state,
-                    *attr->value,
+                    attr->value,
                     attr->pos,
                     joinedAttrPath,
                     autoArgs,

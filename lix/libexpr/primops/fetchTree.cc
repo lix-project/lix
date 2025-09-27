@@ -128,7 +128,7 @@ static void fetchTree(
                     "unexpected attribute 'type'"
                 ).atPos(pos).debugThrow();
             type = state.forceStringNoCtx(
-                *aType->value,
+                aType->value,
                 aType->pos,
                 "while evaluating the `type` attribute passed to builtins.fetchTree"
             );
@@ -142,12 +142,12 @@ static void fetchTree(
 
         for (auto & attr : *args[0]->attrs()) {
             if (attr.name == state.ctx.s.type) continue;
-            state.forceValue(*attr.value, attr.pos);
-            if (attr.value->type() == nPath || attr.value->type() == nString) {
+            state.forceValue(attr.value, attr.pos);
+            if (attr.value.type() == nPath || attr.value.type() == nString) {
                 auto s =
                     state
                         .coerceToString(
-                            attr.pos, *attr.value, context, "", StringCoercionMode::Strict, false
+                            attr.pos, attr.value, context, "", StringCoercionMode::Strict, false
                         )
                         .toOwned();
                 attrs.emplace(state.ctx.symbols[attr.name],
@@ -156,10 +156,10 @@ static void fetchTree(
                       ? fixURIForGit(s, state)
                       : fixURI(s, state)
                     : s);
-            } else if (attr.value->type() == nBool) {
-                attrs.emplace(state.ctx.symbols[attr.name], Explicit<bool>{attr.value->boolean()});
-            } else if (attr.value->type() == nInt) {
-                auto intValue = attr.value->integer().value;
+            } else if (attr.value.type() == nBool) {
+                attrs.emplace(state.ctx.symbols[attr.name], Explicit<bool>{attr.value.boolean()});
+            } else if (attr.value.type() == nInt) {
+                auto intValue = attr.value.integer().value;
 
                 if (intValue < 0) {
                     state.ctx.errors.make<EvalError>("negative value given for fetchTree attr %1%: %2%", state.ctx.symbols[attr.name], intValue).atPos(pos).debugThrow();
@@ -173,7 +173,7 @@ static void fetchTree(
                         "fetchTree argument '%s' is %s while a string, Boolean or integer is "
                         "expected",
                         state.ctx.symbols[attr.name],
-                        showType(*attr.value)
+                        showType(attr.value)
                     )
                     .debugThrow();
             }
@@ -241,12 +241,12 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
             std::string_view n(state.ctx.symbols[attr.name]);
             if (n == "url")
                 url = state.forceStringNoCtx(
-                    *attr.value, attr.pos, "while evaluating the url we should fetch"
+                    attr.value, attr.pos, "while evaluating the url we should fetch"
                 );
             else if (n == "sha256") {
                 expectedHash = newHashAllowEmpty(
                     state.forceStringNoCtx(
-                        *attr.value,
+                        attr.value,
                         attr.pos,
                         "while evaluating the sha256 of the content we should fetch"
                     ),
@@ -254,7 +254,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
                 );
             } else if (n == "name")
                 name = state.forceStringNoCtx(
-                    *attr.value,
+                    attr.value,
                     attr.pos,
                     "while evaluating the name of the content we should fetch"
                 );

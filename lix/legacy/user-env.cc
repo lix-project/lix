@@ -60,7 +60,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
         auto outputsList = state.ctx.mem.newList(outputs.size());
         vOutputs = {NewValueAs::list, outputsList};
         for (const auto & [m, j] : enumerate(outputs)) {
-            (outputsList->elems[m] = state.ctx.mem.allocValue())->mkString(j.first);
+            outputsList->elems[m].mkString(j.first);
             auto outputAttrs = state.ctx.buildBindings(2);
             outputAttrs.alloc(state.ctx.s.outPath).mkString(state.ctx.store->printStorePath(*j.second));
             attrs.alloc(j.first).mkAttrs(outputAttrs);
@@ -78,12 +78,12 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
         for (auto & j : metaNames) {
             Value * v = i.queryMeta(state, j);
             if (!v) continue;
-            meta.insert(state.ctx.symbols.create(j), v);
+            meta.insert(state.ctx.symbols.create(j), *v);
         }
 
         attrs.alloc(state.ctx.s.meta).mkAttrs(meta);
 
-        (manifest->elems[n++] = state.ctx.mem.allocValue())->mkAttrs(attrs);
+        manifest->elems[n++].mkAttrs(attrs);
 
         if (drvPath) references.insert(*drvPath);
     }
@@ -106,7 +106,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
        builder with the manifest as argument. */
     auto attrs = state.ctx.buildBindings(3);
     state.ctx.paths.mkStorePathString(manifestFile, attrs.alloc("manifest"));
-    attrs.insert(state.ctx.symbols.create("derivations"), &vManifest);
+    attrs.insert(state.ctx.symbols.create("derivations"), vManifest);
     Value args;
     args.mkAttrs(attrs);
 
@@ -117,9 +117,9 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
     state.forceValue(topLevel, noPos);
     NixStringContext context;
     const Attr & aDrvPath(*topLevel.attrs()->get(state.ctx.s.drvPath));
-    auto topLevelDrv = state.coerceToStorePath(aDrvPath.pos, *aDrvPath.value, context, "");
+    auto topLevelDrv = state.coerceToStorePath(aDrvPath.pos, aDrvPath.value, context, "");
     const Attr & aOutPath(*topLevel.attrs()->get(state.ctx.s.outPath));
-    auto topLevelOut = state.coerceToStorePath(aOutPath.pos, *aOutPath.value, context, "");
+    auto topLevelOut = state.coerceToStorePath(aOutPath.pos, aOutPath.value, context, "");
 
     /* Realise the resulting store expression. */
     debug("building user environment");

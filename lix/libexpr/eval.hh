@@ -61,12 +61,12 @@ struct Constant
     bool impureOnly = false;
 };
 
-using ValMap = GcMap<std::string, Value *>;
+using ValMap = GcMap<std::string, Value>;
 
 struct alignas(Value::Acb::TAG_ALIGN) Env
 {
     Env * up;
-    Value * values[0];
+    Value values[0];
 };
 
 void printEnvBindings(const EvalState &es, const Expr & expr, const Env & env);
@@ -192,7 +192,6 @@ public:
     {
         unsigned long nrEnvs = 0;
         unsigned long nrValuesInEnvs = 0;
-        unsigned long nrValues = 0;
         unsigned long nrAttrsets = 0;
         unsigned long nrAttrsInAttrsets = 0;
         unsigned long nrListElems = 0;
@@ -210,7 +209,6 @@ public:
     template<typename T>
     inline T * allocType(size_t n = 1);
 
-    inline Value * allocValue();
     inline Env & allocEnv(size_t size);
 
     Bindings * allocBindings(size_t capacity);
@@ -795,12 +793,11 @@ public:
 
     bool isFunctor(Value & fun);
 
-    void callFunction(Value & fun, std::span<Value *> args, Value & vRes, const PosIdx pos);
+    void callFunction(Value & fun, std::span<Value> args, Value & vRes, const PosIdx pos);
 
     void callFunction(Value & fun, Value & arg, Value & vRes, const PosIdx pos)
     {
-        Value * args[] = {&arg};
-        callFunction(fun, args, vRes, pos);
+        callFunction(fun, {&arg, 1}, vRes, pos);
     }
 
     /**
@@ -840,13 +837,8 @@ public:
         const SingleDerivedPath & p,
         Value & v);
 
-    void concatLists(
-        Value & v,
-        size_t nrLists,
-        Value * const * lists,
-        const PosIdx pos,
-        std::string_view errorCtx
-    );
+    void
+    concatLists(Value & v, std::span<Value> lists, const PosIdx pos, std::string_view errorCtx);
 
 private:
 

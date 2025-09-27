@@ -23,7 +23,7 @@ static void prim_fetchMercurial(EvalState & state, Value * * args, Value & v)
                 url = state
                           .coerceToString(
                               attr.pos,
-                              *attr.value,
+                              attr.value,
                               context,
                               "while evaluating the `url` attribute passed to "
                               "builtins.fetchMercurial",
@@ -35,7 +35,7 @@ static void prim_fetchMercurial(EvalState & state, Value * * args, Value & v)
                 // Ugly: unlike fetchGit, here the "rev" attribute can
                 // be both a revision or a branch/tag name.
                 auto value = state.forceStringNoCtx(
-                    *attr.value,
+                    attr.value,
                     attr.pos,
                     "while evaluating the `rev` attribute passed to builtins.fetchMercurial"
                 );
@@ -46,7 +46,7 @@ static void prim_fetchMercurial(EvalState & state, Value * * args, Value & v)
             }
             else if (n == "name")
                 name = state.forceStringNoCtx(
-                    *attr.value,
+                    attr.value,
                     attr.pos,
                     "while evaluating the `name` attribute passed to builtins.fetchMercurial"
                 );

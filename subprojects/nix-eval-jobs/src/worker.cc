@@ -41,9 +41,9 @@
 #include "buffered-io.hh"
 #include "eval-args.hh"
 
-static nix::Value *releaseExprTopLevelValue(nix::EvalState &state,
-                                            nix::Bindings &autoArgs,
-                                            MyArgs &args) {
+static nix::Value releaseExprTopLevelValue(nix::EvalState &state,
+                                           nix::Bindings &autoArgs,
+                                           MyArgs &args) {
     nix::Value vTop;
 
     if (args.fromArgs) {
@@ -57,9 +57,9 @@ static nix::Value *releaseExprTopLevelValue(nix::EvalState &state,
             vTop);
     }
 
-    auto vRoot = state.ctx.mem.allocValue();
+    nix::Value vRoot;
 
-    state.autoCallFunction(autoArgs, vTop, *vRoot, {});
+    state.autoCallFunction(autoArgs, vTop, vRoot, {});
 
     return vRoot;
 }
@@ -79,7 +79,7 @@ static std::optional<Constituents>
 readConstituents(const nix::Value *v, nix::box_ptr<nix::EvalState> &state,
                  nix::ref<nix::eval_cache::CachingEvaluator> &evaluator) {
     auto a = v->attrs()->get(state->ctx.symbols.create("_hydraAggregate"));
-    if (a && state->forceBool(*a->value, a->pos,
+    if (a && state->forceBool(a->value, a->pos,
                               "while evaluating the "
                               "`_hydraAggregate` attribute")) {
         std::vector<std::string> constituents;
@@ -92,7 +92,7 @@ readConstituents(const nix::Value *v, nix::box_ptr<nix::EvalState> &state,
                 .debugThrow(nix::always_progresses); // we can't have a debugger here
 
         nix::NixStringContext context;
-        state->coerceToString(a->pos, *a->value, context,
+        state->coerceToString(a->pos, a->value, context,
                               "while evaluating the `constituents` attribute",
                               nix::StringCoercionMode::ToString, false);
         for (auto &c : context)
@@ -106,14 +106,14 @@ readConstituents(const nix::Value *v, nix::box_ptr<nix::EvalState> &state,
                        },
                        c.raw);
 
-        state->forceList(*a->value, a->pos,
+        state->forceList(a->value, a->pos,
                          "while evaluating the "
                          "`constituents` attribute");
-        for (unsigned int n = 0; n < a->value->listSize(); ++n) {
-            auto v = a->value->listElems()[n];
-            state->forceValue(*v, nix::noPos);
-            if (v->type() == nix::nString)
-                namedConstituents.emplace_back(v->str());
+        for (unsigned int n = 0; n < a->value.listSize(); ++n) {
+            auto v = a->value.listElems()[n];
+            state->forceValue(v, nix::noPos);
+            if (v.type() == nix::nString)
+                namedConstituents.emplace_back(v.str());
         }
 
         return Constituents(constituents, namedConstituents);
@@ -138,7 +138,7 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
 
             return flake.toValue(*state).first;
         } else {
-            return *releaseExprTopLevelValue(*state, autoArgs, args);
+            return releaseExprTopLevelValue(*state, autoArgs, args);
         }
     }();
 
@@ -171,15 +171,15 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
                 nix::findAlongAttrPath(*state, attrPathS, autoArgs, vRoot)
                     .first;
 
-            auto v = evaluator->mem.allocValue();
-            state->autoCallFunction(autoArgs, vTmp, *v, {});
+            nix::Value v;
+            state->autoCallFunction(autoArgs, vTmp, v, {});
 
-            if (v->type() == nix::nAttrs) {
-                if (auto drvInfo = nix::getDerivation(*state, *v, false)) {
+            if (v.type() == nix::nAttrs) {
+                if (auto drvInfo = nix::getDerivation(*state, v, false)) {
                     std::optional<Constituents> maybeConstituents;
                     if (args.constituents) {
                         maybeConstituents =
-                            readConstituents(v, state, evaluator);
+                            readConstituents(&v, state, evaluator);
                     }
                     auto drv = Drv(attrPathS, *state, *drvInfo, args,
                                    maybeConstituents);
@@ -197,16 +197,16 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
                                           // = true;` for top-level attrset
 
                     for (auto &i :
-                         v->attrs()->lexicographicOrder(evaluator->symbols)) {
+                         v.attrs()->lexicographicOrder(evaluator->symbols)) {
                         const std::string_view name = evaluator->symbols[i->name];
                         attrs.emplace_back(name);
 
                         if (name == "recurseForDerivations" &&
                             !args.forceRecurse) {
-                            auto attrv = v->attrs()->get(
+                            auto attrv = v.attrs()->get(
                                 evaluator->s.recurseForDerivations);
                             recurse = state->forceBool(
-                                *attrv->value, attrv->pos,
+                                attrv->value, attrv->pos,
                                 "while evaluating recurseForDerivations");
                         }
                     }

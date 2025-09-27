@@ -73,7 +73,7 @@ namespace nix {
         auto s = createSymbol("success");
         auto p = v.attrs()->get(s);
         ASSERT_NE(p, nullptr);
-        ASSERT_THAT(*p->value, IsFalse());
+        ASSERT_THAT(p->value, IsFalse());
     }
 
     TEST_F(PrimOpTest, tryEvalSuccess) {
@@ -82,11 +82,11 @@ namespace nix {
         auto s = createSymbol("success");
         auto p = v.attrs()->get(s);
         ASSERT_NE(p, nullptr);
-        ASSERT_THAT(*p->value, IsTrue());
+        ASSERT_THAT(p->value, IsTrue());
         s = createSymbol("value");
         p = v.attrs()->get(s);
         ASSERT_NE(p, nullptr);
-        ASSERT_THAT(*p->value, IsIntEq(123));
+        ASSERT_THAT(p->value, IsIntEq(123));
     }
 
     TEST_F(PrimOpTest, getEnv) {
@@ -134,8 +134,8 @@ namespace nix {
     TEST_F(PrimOpTest, attrValues) {
         auto v = eval("builtins.attrValues { x = \"foo\";  a = 1; }");
         ASSERT_THAT(v, IsListOfSize(2));
-        ASSERT_THAT(*v.listElems()[0], IsIntEq(1));
-        ASSERT_THAT(*v.listElems()[1], IsStringEq("foo"));
+        ASSERT_THAT(v.listElems()[0], IsIntEq(1));
+        ASSERT_THAT(v.listElems()[1], IsStringEq("foo"));
     }
 
     TEST_F(PrimOpTest, getAttr) {
@@ -203,7 +203,7 @@ namespace nix {
         ASSERT_THAT(v, IsAttrsOfSize(1));
         auto key = v.attrs()->get(createSymbol("key"));
         ASSERT_NE(key, nullptr);
-        ASSERT_THAT(*key->value, IsIntEq(123));
+        ASSERT_THAT(key->value, IsIntEq(123));
     }
 
     TEST_F(PrimOpTest, intersectAttrs) {
@@ -211,14 +211,14 @@ namespace nix {
         ASSERT_THAT(v, IsAttrsOfSize(1));
         auto b = v.attrs()->get(createSymbol("b"));
         ASSERT_NE(b, nullptr);
-        ASSERT_THAT(*b->value, IsIntEq(3));
+        ASSERT_THAT(b->value, IsIntEq(3));
     }
 
     TEST_F(PrimOpTest, catAttrs) {
         auto v = eval("builtins.catAttrs \"a\" [{a = 1;} {b = 0;} {a = 2;}]");
         ASSERT_THAT(v, IsListOfSize(2));
-        ASSERT_THAT(*v.listElems()[0], IsIntEq(1));
-        ASSERT_THAT(*v.listElems()[1], IsIntEq(2));
+        ASSERT_THAT(v.listElems()[0], IsIntEq(1));
+        ASSERT_THAT(v.listElems()[1], IsIntEq(2));
     }
 
     TEST_F(PrimOpTest, functionArgs) {
@@ -227,11 +227,11 @@ namespace nix {
 
         auto x = v.attrs()->get(createSymbol("x"));
         ASSERT_NE(x, nullptr);
-        ASSERT_THAT(*x->value, IsFalse());
+        ASSERT_THAT(x->value, IsFalse());
 
         auto y = v.attrs()->get(createSymbol("y"));
         ASSERT_NE(y, nullptr);
-        ASSERT_THAT(*y->value, IsTrue());
+        ASSERT_THAT(y->value, IsTrue());
     }
 
     TEST_F(PrimOpTest, mapAttrs) {
@@ -240,15 +240,15 @@ namespace nix {
 
         auto a = v.attrs()->get(createSymbol("a"));
         ASSERT_NE(a, nullptr);
-        ASSERT_THAT(*a->value, IsThunk());
-        state.forceValue(*a->value, noPos);
-        ASSERT_THAT(*a->value, IsIntEq(10));
+        ASSERT_THAT(a->value, IsThunk());
+        state.forceValue(a->value, noPos);
+        ASSERT_THAT(a->value, IsIntEq(10));
 
         auto b = v.attrs()->get(createSymbol("b"));
         ASSERT_NE(b, nullptr);
-        ASSERT_THAT(*b->value, IsThunk());
-        state.forceValue(*b->value, noPos);
-        ASSERT_THAT(*b->value, IsIntEq(20));
+        ASSERT_THAT(b->value, IsThunk());
+        state.forceValue(b->value, noPos);
+        ASSERT_THAT(b->value, IsIntEq(20));
     }
 
     TEST_F(PrimOpTest, isList) {
@@ -288,7 +288,7 @@ namespace nix {
         auto v = eval("builtins.tail [ 3 2 1 0 ]");
         ASSERT_THAT(v, IsListOfSize(3));
         for (const auto [n, elem] : enumerate(v.listItems()))
-            ASSERT_THAT(*elem, IsIntEq(2 - static_cast<int>(n)));
+            ASSERT_THAT(elem, IsIntEq(2 - static_cast<int>(n)));
     }
 
     TEST_F(PrimOpTest, tailEmpty) {
@@ -299,26 +299,26 @@ namespace nix {
         auto v = eval("map (x: \"foo\" + x) [ \"bar\" \"bla\" \"abc\" ]");
         ASSERT_THAT(v, IsListOfSize(3));
         auto elem = v.listElems()[0];
-        ASSERT_THAT(*elem, IsThunk());
-        state.forceValue(*elem, noPos);
-        ASSERT_THAT(*elem, IsStringEq("foobar"));
+        ASSERT_THAT(elem, IsThunk());
+        state.forceValue(elem, noPos);
+        ASSERT_THAT(elem, IsStringEq("foobar"));
 
         elem = v.listElems()[1];
-        ASSERT_THAT(*elem, IsThunk());
-        state.forceValue(*elem, noPos);
-        ASSERT_THAT(*elem, IsStringEq("foobla"));
+        ASSERT_THAT(elem, IsThunk());
+        state.forceValue(elem, noPos);
+        ASSERT_THAT(elem, IsStringEq("foobla"));
 
         elem = v.listElems()[2];
-        ASSERT_THAT(*elem, IsThunk());
-        state.forceValue(*elem, noPos);
-        ASSERT_THAT(*elem, IsStringEq("fooabc"));
+        ASSERT_THAT(elem, IsThunk());
+        state.forceValue(elem, noPos);
+        ASSERT_THAT(elem, IsStringEq("fooabc"));
     }
 
     TEST_F(PrimOpTest, filter) {
         auto v = eval("builtins.filter (x: x == 2) [ 3 2 3 2 3 2 ]");
         ASSERT_THAT(v, IsListOfSize(3));
         for (const auto elem : v.listItems())
-            ASSERT_THAT(*elem, IsIntEq(2));
+            ASSERT_THAT(elem, IsIntEq(2));
     }
 
     TEST_F(PrimOpTest, elemTrue) {
@@ -335,7 +335,7 @@ namespace nix {
         auto v = eval("builtins.concatLists [[1 2] [3 4]]");
         ASSERT_THAT(v, IsListOfSize(4));
         for (const auto [i, elem] : enumerate(v.listItems()))
-            ASSERT_THAT(*elem, IsIntEq(static_cast<int>(i)+1));
+            ASSERT_THAT(elem, IsIntEq(static_cast<int>(i) + 1));
     }
 
     TEST_F(PrimOpTest, length) {
@@ -373,9 +373,9 @@ namespace nix {
         ASSERT_EQ(v.type(), nList);
         ASSERT_EQ(v.listSize(), 3);
         for (const auto [i, elem] : enumerate(v.listItems())) {
-            ASSERT_THAT(*elem, IsThunk());
-            state.forceValue(*elem, noPos);
-            ASSERT_THAT(*elem, IsIntEq(static_cast<int>(i)+1));
+            ASSERT_THAT(elem, IsThunk());
+            state.forceValue(elem, noPos);
+            ASSERT_THAT(elem, IsIntEq(static_cast<int>(i) + 1));
         }
     }
 
@@ -386,7 +386,7 @@ namespace nix {
 
         const std::vector<int> numbers = { 42, 77, 147, 249, 483, 526 };
         for (const auto [n, elem] : enumerate(v.listItems()))
-            ASSERT_THAT(*elem, IsIntEq(numbers[n]));
+            ASSERT_THAT(elem, IsIntEq(numbers[n]));
     }
 
     TEST_F(PrimOpTest, partition) {
@@ -395,18 +395,18 @@ namespace nix {
 
         auto right = v.attrs()->get(createSymbol("right"));
         ASSERT_NE(right, nullptr);
-        ASSERT_THAT(*right->value, IsListOfSize(2));
-        ASSERT_THAT(*right->value->listElems()[0], IsIntEq(23));
-        ASSERT_THAT(*right->value->listElems()[1], IsIntEq(42));
+        ASSERT_THAT(right->value, IsListOfSize(2));
+        ASSERT_THAT(right->value.listElems()[0], IsIntEq(23));
+        ASSERT_THAT(right->value.listElems()[1], IsIntEq(42));
 
         auto wrong = v.attrs()->get(createSymbol("wrong"));
         ASSERT_NE(wrong, nullptr);
-        ASSERT_EQ(wrong->value->type(), nList);
-        ASSERT_EQ(wrong->value->listSize(), 3);
-        ASSERT_THAT(*wrong->value, IsListOfSize(3));
-        ASSERT_THAT(*wrong->value->listElems()[0], IsIntEq(1));
-        ASSERT_THAT(*wrong->value->listElems()[1], IsIntEq(9));
-        ASSERT_THAT(*wrong->value->listElems()[2], IsIntEq(3));
+        ASSERT_EQ(wrong->value.type(), nList);
+        ASSERT_EQ(wrong->value.listSize(), 3);
+        ASSERT_THAT(wrong->value, IsListOfSize(3));
+        ASSERT_THAT(wrong->value.listElems()[0], IsIntEq(1));
+        ASSERT_THAT(wrong->value.listElems()[1], IsIntEq(9));
+        ASSERT_THAT(wrong->value.listElems()[2], IsIntEq(3));
     }
 
     TEST_F(PrimOpTest, concatMap) {
@@ -416,7 +416,7 @@ namespace nix {
 
         const std::vector<int> numbers = { 1, 2, 0, 3, 4, 0 };
         for (const auto [n, elem] : enumerate(v.listItems()))
-            ASSERT_THAT(*elem, IsIntEq(numbers[n]));
+            ASSERT_THAT(elem, IsIntEq(numbers[n]));
     }
 
     TEST_F(PrimOpTest, addInt) {
@@ -652,7 +652,7 @@ namespace nix {
 
         const std::vector<std::string_view> strings = { "1", "2", "3", "git" };
         for (const auto [n, p] : enumerate(v.listItems()))
-            ASSERT_THAT(*p, IsStringEq(strings[n]));
+            ASSERT_THAT(p, IsStringEq(strings[n]));
     }
 
     class CompareVersionsPrimOpTest :
@@ -706,11 +706,11 @@ namespace nix {
 
         auto name = v.attrs()->get(createSymbol("name"));
         ASSERT_TRUE(name);
-        ASSERT_THAT(*name->value, IsStringEq(expectedName));
+        ASSERT_THAT(name->value, IsStringEq(expectedName));
 
         auto version = v.attrs()->get(createSymbol("version"));
         ASSERT_TRUE(version);
-        ASSERT_THAT(*version->value, IsStringEq(expectedVersion));
+        ASSERT_THAT(version->value, IsStringEq(expectedVersion));
     }
 
     INSTANTIATE_TEST_SUITE_P(
@@ -741,12 +741,12 @@ namespace nix {
         auto v = eval("builtins.split \"(a)b\" \"abc\"");
         ASSERT_THAT(v, IsListOfSize(3));
 
-        ASSERT_THAT(*v.listElems()[0], IsStringEq(""));
+        ASSERT_THAT(v.listElems()[0], IsStringEq(""));
 
-        ASSERT_THAT(*v.listElems()[1], IsListOfSize(1));
-        ASSERT_THAT(*v.listElems()[1]->listElems()[0], IsStringEq("a"));
+        ASSERT_THAT(v.listElems()[1], IsListOfSize(1));
+        ASSERT_THAT(v.listElems()[1].listElems()[0], IsStringEq("a"));
 
-        ASSERT_THAT(*v.listElems()[2], IsStringEq("c"));
+        ASSERT_THAT(v.listElems()[2], IsStringEq("c"));
     }
 
     TEST_F(PrimOpTest, split2) {
@@ -754,17 +754,17 @@ namespace nix {
         auto v = eval("builtins.split \"([ac])\" \"abc\"");
         ASSERT_THAT(v, IsListOfSize(5));
 
-        ASSERT_THAT(*v.listElems()[0], IsStringEq(""));
+        ASSERT_THAT(v.listElems()[0], IsStringEq(""));
 
-        ASSERT_THAT(*v.listElems()[1], IsListOfSize(1));
-        ASSERT_THAT(*v.listElems()[1]->listElems()[0], IsStringEq("a"));
+        ASSERT_THAT(v.listElems()[1], IsListOfSize(1));
+        ASSERT_THAT(v.listElems()[1].listElems()[0], IsStringEq("a"));
 
-        ASSERT_THAT(*v.listElems()[2], IsStringEq("b"));
+        ASSERT_THAT(v.listElems()[2], IsStringEq("b"));
 
-        ASSERT_THAT(*v.listElems()[3], IsListOfSize(1));
-        ASSERT_THAT(*v.listElems()[3]->listElems()[0], IsStringEq("c"));
+        ASSERT_THAT(v.listElems()[3], IsListOfSize(1));
+        ASSERT_THAT(v.listElems()[3].listElems()[0], IsStringEq("c"));
 
-        ASSERT_THAT(*v.listElems()[4], IsStringEq(""));
+        ASSERT_THAT(v.listElems()[4], IsStringEq(""));
     }
 
     TEST_F(PrimOpTest, split3) {
@@ -772,23 +772,23 @@ namespace nix {
         ASSERT_THAT(v, IsListOfSize(5));
 
         // First list element
-        ASSERT_THAT(*v.listElems()[0], IsStringEq(""));
+        ASSERT_THAT(v.listElems()[0], IsStringEq(""));
 
         // 2nd list element is a list [ "" null ]
-        ASSERT_THAT(*v.listElems()[1], IsListOfSize(2));
-        ASSERT_THAT(*v.listElems()[1]->listElems()[0], IsStringEq("a"));
-        ASSERT_THAT(*v.listElems()[1]->listElems()[1], IsNull());
+        ASSERT_THAT(v.listElems()[1], IsListOfSize(2));
+        ASSERT_THAT(v.listElems()[1].listElems()[0], IsStringEq("a"));
+        ASSERT_THAT(v.listElems()[1].listElems()[1], IsNull());
 
         // 3rd element
-        ASSERT_THAT(*v.listElems()[2], IsStringEq("b"));
+        ASSERT_THAT(v.listElems()[2], IsStringEq("b"));
 
         // 4th element is a list: [ null "c" ]
-        ASSERT_THAT(*v.listElems()[3], IsListOfSize(2));
-        ASSERT_THAT(*v.listElems()[3]->listElems()[0], IsNull());
-        ASSERT_THAT(*v.listElems()[3]->listElems()[1], IsStringEq("c"));
+        ASSERT_THAT(v.listElems()[3], IsListOfSize(2));
+        ASSERT_THAT(v.listElems()[3].listElems()[0], IsNull());
+        ASSERT_THAT(v.listElems()[3].listElems()[1], IsStringEq("c"));
 
         // 5th element is the empty string
-        ASSERT_THAT(*v.listElems()[4], IsStringEq(""));
+        ASSERT_THAT(v.listElems()[4], IsStringEq(""));
     }
 
     TEST_F(PrimOpTest, split4) {
@@ -798,12 +798,12 @@ namespace nix {
         auto second = v.listElems()[1];
         auto third = v.listElems()[2];
 
-        ASSERT_THAT(*first, IsStringEq(" "));
+        ASSERT_THAT(first, IsStringEq(" "));
 
-        ASSERT_THAT(*second, IsListOfSize(1));
-        ASSERT_THAT(*second->listElems()[0], IsStringEq("FOO"));
+        ASSERT_THAT(second, IsListOfSize(1));
+        ASSERT_THAT(second.listElems()[0], IsStringEq("FOO"));
 
-        ASSERT_THAT(*third, IsStringEq(" "));
+        ASSERT_THAT(third, IsStringEq(" "));
     }
 
     TEST_F(PrimOpTest, match1) {
@@ -819,14 +819,14 @@ namespace nix {
     TEST_F(PrimOpTest, match3) {
         auto v = eval("builtins.match \"a(b)(c)\" \"abc\"");
         ASSERT_THAT(v, IsListOfSize(2));
-        ASSERT_THAT(*v.listElems()[0], IsStringEq("b"));
-        ASSERT_THAT(*v.listElems()[1], IsStringEq("c"));
+        ASSERT_THAT(v.listElems()[0], IsStringEq("b"));
+        ASSERT_THAT(v.listElems()[1], IsStringEq("c"));
     }
 
     TEST_F(PrimOpTest, match4) {
         auto v = eval("builtins.match \"[[:space:]]+([[:upper:]]+)[[:space:]]+\" \"  FOO   \"");
         ASSERT_THAT(v, IsListOfSize(1));
-        ASSERT_THAT(*v.listElems()[0], IsStringEq("FOO"));
+        ASSERT_THAT(v.listElems()[0], IsStringEq("FOO"));
     }
 
     TEST_F(PrimOpTest, attrNames) {
@@ -836,7 +836,7 @@ namespace nix {
         // ensure that the list is sorted
         const std::vector<std::string_view> expected { "a", "x", "y", "z" };
         for (const auto [n, elem] : enumerate(v.listItems()))
-            ASSERT_THAT(*elem, IsStringEq(expected[n]));
+            ASSERT_THAT(elem, IsStringEq(expected[n]));
     }
 
     TEST_F(PrimOpTest, genericClosure_not_strict) {
