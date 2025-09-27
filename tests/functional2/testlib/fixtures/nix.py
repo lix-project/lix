@@ -46,6 +46,9 @@ class NixSettings:
         config = dedent(f"""
             show-trace = true
             sandbox = true
+            # explicitly disable substitution by default, otherwise we may attempt to contact
+            # substituters and slow down many tests with pointless connection retry timeouts.
+            substituters =
             extra-sandbox-paths = {" ".join(env.path.to_sandbox_paths())}
         """)
         # Note: newline at the end is required due to nix being nix;
