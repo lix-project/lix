@@ -3,6 +3,7 @@
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/types.hh"
+#include "value.hh"
 
 namespace nix {
 
@@ -147,9 +148,10 @@ void prim_getContext(EvalState & state, Value * * args, Value & v)
             infoAttrs.alloc(sAllOutputs).mkBool(true);
         if (!info.second.outputs.empty()) {
             auto & outputsVal = infoAttrs.alloc(state.ctx.s.outputs);
-            outputsVal = state.ctx.mem.newList(info.second.outputs.size());
+            auto content = state.ctx.mem.newList(info.second.outputs.size());
+            outputsVal = {NewValueAs::list, content};
             for (const auto & [i, output] : enumerate(info.second.outputs))
-                (outputsVal.listElems()[i] = state.ctx.mem.allocValue())->mkString(output);
+                (content->elems[i] = state.ctx.mem.allocValue())->mkString(output);
         }
         attrs.alloc(state.ctx.store->printStorePath(info.first)).mkAttrs(infoAttrs);
     }

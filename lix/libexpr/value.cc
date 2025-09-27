@@ -9,7 +9,8 @@
 namespace nix
 {
 
-Value Value::EMPTY_LIST{Value::list_t{}, {}};
+static const Value::List emptyListData{.size = 0};
+Value Value::EMPTY_LIST{Value::list_t{}, &emptyListData};
 
 static void copyContextToValue(Value & v, const NixStringContext & context)
 {

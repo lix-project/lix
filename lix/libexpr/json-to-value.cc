@@ -60,10 +60,10 @@ class JSONSax : nlohmann::json_sax<JSON> {
         ValueVector values;
         std::unique_ptr<JSONState> resolve(EvalState & state) override
         {
-            Value & v = parent->value(state);
-            v = state.ctx.mem.newList(values.size());
+            auto list = state.ctx.mem.newList(values.size());
+            parent->value(state) = {NewValueAs::list, list};
             for (size_t n = 0; n < values.size(); ++n) {
-                v.listElems()[n] = values[n];
+                list->elems[n] = values[n];
             }
             return std::move(parent);
         }

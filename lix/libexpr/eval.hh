@@ -259,7 +259,7 @@ public:
     inline Env & allocEnv(size_t size);
 
     Bindings * allocBindings(size_t capacity);
-    Value newList(size_t length);
+    Value::List * newList(size_t length);
 
     BindingsBuilder buildBindings(SymbolTable & symbols, size_t capacity)
     {
@@ -888,7 +888,13 @@ public:
         const SingleDerivedPath & p,
         Value & v);
 
-    void concatLists(Value & v, size_t nrLists, Value * * lists, const PosIdx pos, std::string_view errorCtx);
+    void concatLists(
+        Value & v,
+        size_t nrLists,
+        Value * const * lists,
+        const PosIdx pos,
+        std::string_view errorCtx
+    );
 
 private:
 

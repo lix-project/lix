@@ -1,5 +1,6 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/extra-primops.hh"
+#include "value.hh"
 
 #include <sstream>
 #include <toml.hpp>
@@ -30,9 +31,10 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
             auto array = toml::get<std::vector<toml::value>>(t);
 
             size_t size = array.size();
-            v = state.ctx.mem.newList(size);
+            auto list = state.ctx.mem.newList(size);
+            v = {NewValueAs::list, list};
             for (size_t i = 0; i < size; ++i) {
-                self(*(v.listElems()[i] = state.ctx.mem.allocValue()), array[i]);
+                self(*(list->elems[i] = state.ctx.mem.allocValue()), array[i]);
             }
         } break;
         case toml::value_t::boolean:

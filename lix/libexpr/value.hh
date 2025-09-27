@@ -236,6 +236,8 @@ public:
     USING_VALUETYPE(blackhole_t);
 #undef USING_VALUETYPE
 
+    struct List;
+
     /// Default constructor which is still used in the codebase but should not
     /// be used in new code. Zero initializes its members.
     [[deprecated]] Value()
@@ -373,12 +375,7 @@ public:
     /// smaller, the list is stored inline, and the Value pointers in
     /// @ref items are shallow copied into this structure, without dynamically
     /// allocating memory.
-    Value(list_t, std::span<Value *> items)
-    {
-        this->internalType = tList;
-        this->_list.size = items.size();
-        this->_list.elems = items.data();
-    }
+    Value(list_t, const List * items) : internalType(tList), _list(items), _list_pad(0) {}
 
     /// Constructs a nix language value of type "list", with an element array
     /// initialized by applying @ref transformer to each element in @ref items.
@@ -394,12 +391,14 @@ public:
     Value(list_t, SizedIterableT & items, TransformerT const & transformer)
     {
         this->internalType = tList;
-        this->_list.size = items.size();
-        this->_list.elems = gcAllocType<Value *>(items.size());
+        auto list =
+            reinterpret_cast<List *>(gcAllocBytes(sizeof(List) + items.size() * sizeof(Value *)));
+        list->size = items.size();
         auto it = items.begin();
         for (size_t i = 0; i < items.size(); i++, it++) {
-            this->_list.elems[i] = transformer(*it);
+            list->elems[i] = transformer(*it);
         }
+        _list = list;
     }
 
     /// Constructs a nix language value of the singleton type "null".
@@ -519,6 +518,17 @@ public:
     inline bool isPrimOp() const { return internalType == tPrimOp; };
     inline bool isPrimOpApp() const { return internalType == tPrimOpApp; };
 
+    struct List
+    {
+        size_t size;
+        Value * elems[0];
+
+        std::span<Value *> span()
+        {
+            return {elems, elems + size};
+        }
+    };
+
     union
     {
         /// Dummy field, which takes up as much space as the largest union variants
@@ -567,9 +577,9 @@ public:
             uintptr_t _attrs_pad;
         };
         struct {
-            size_t size;
-            Value * * elems;
-        } _list;
+            const List * _list;
+            uintptr_t _list_pad;
+        };
         struct {
             Env * env;
             Expr * expr;
@@ -692,13 +702,6 @@ public:
 
     Value & mkAttrs(BindingsBuilder & bindings);
 
-    inline void mkList(size_t size)
-    {
-        clearValue();
-        internalType = tList;
-        _list.size = size;
-    }
-
     inline void mkThunk(Env * e, Expr & ex)
     {
         internalType = tThunk;
@@ -759,19 +762,14 @@ public:
         return internalType == tList;
     }
 
-    Value * * listElems()
-    {
-        return _list.elems;
-    }
-
     Value * const * listElems() const
     {
-        return _list.elems;
+        return _list->elems;
     }
 
     size_t listSize() const
     {
-        return _list.size;
+        return _list->size;
     }
 
     /**

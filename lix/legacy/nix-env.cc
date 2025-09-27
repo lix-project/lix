@@ -181,7 +181,7 @@ static void loadSourceExpr(EvalState & state, const SourcePath & path_, Value & 
        directory). */
     else if (st.type == InputAccessor::tDirectory) {
         auto attrs = state.ctx.buildBindings(maxAttrs);
-        attrs.alloc("_combineChannels").mkList(0);
+        attrs.alloc("_combineChannels") = Value::EMPTY_LIST;
         StringSet seen;
         getAllExprs(state.ctx, path, seen, attrs);
         v.mkAttrs(attrs);

@@ -1,4 +1,5 @@
 #include "user-env.hh"
+#include "lix/libexpr/value.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/path-with-outputs.hh"
@@ -32,7 +33,8 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
     /* Construct the whole top level derivation. */
     StorePathSet references;
-    Value manifest = state.ctx.mem.newList(elems.size());
+    auto manifest = state.ctx.mem.newList(elems.size());
+    Value vManifest{NewValueAs::list, manifest};
     size_t n = 0;
     for (auto & i : elems) {
         /* Create a pseudo-derivation containing the name, system,
@@ -55,9 +57,10 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
         // Copy each output meant for installation.
         auto & vOutputs = attrs.alloc(state.ctx.s.outputs);
-        vOutputs = state.ctx.mem.newList(outputs.size());
+        auto outputsList = state.ctx.mem.newList(outputs.size());
+        vOutputs = {NewValueAs::list, outputsList};
         for (const auto & [m, j] : enumerate(outputs)) {
-            (vOutputs.listElems()[m] = state.ctx.mem.allocValue())->mkString(j.first);
+            (outputsList->elems[m] = state.ctx.mem.allocValue())->mkString(j.first);
             auto outputAttrs = state.ctx.buildBindings(2);
             outputAttrs.alloc(state.ctx.s.outPath).mkString(state.ctx.store->printStorePath(*j.second));
             attrs.alloc(j.first).mkAttrs(outputAttrs);
@@ -80,7 +83,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
         attrs.alloc(state.ctx.s.meta).mkAttrs(meta);
 
-        (manifest.listElems()[n++] = state.ctx.mem.allocValue())->mkAttrs(attrs);
+        (manifest->elems[n++] = state.ctx.mem.allocValue())->mkAttrs(attrs);
 
         if (drvPath) references.insert(*drvPath);
     }
@@ -89,7 +92,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
        the store; we need it for future modifications of the
        environment. */
     std::ostringstream str;
-    printAmbiguous(manifest, state.ctx.symbols, str, nullptr, std::numeric_limits<int>::max());
+    printAmbiguous(vManifest, state.ctx.symbols, str, nullptr, std::numeric_limits<int>::max());
     auto manifestFile = state.aio.blockOn(state.ctx.store->addTextToStore("env-manifest.nix",
         str.str(), references));
 
@@ -103,7 +106,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
        builder with the manifest as argument. */
     auto attrs = state.ctx.buildBindings(3);
     state.ctx.paths.mkStorePathString(manifestFile, attrs.alloc("manifest"));
-    attrs.insert(state.ctx.symbols.create("derivations"), &manifest);
+    attrs.insert(state.ctx.symbols.create("derivations"), &vManifest);
     Value args;
     args.mkAttrs(attrs);
 

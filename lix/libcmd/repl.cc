@@ -5,6 +5,7 @@
 #include <cstring>
 #include <string_view>
 
+#include "lix/libexpr/value.hh"
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libcmd/repl-interacter.hh"
 #include "lix/libcmd/repl.hh"
@@ -1000,8 +1001,8 @@ Value * NixRepl::getReplOverlaysEvalFunction()
 Value * NixRepl::replOverlays()
 {
     Value * replInits(evaluator.mem.allocValue());
-    *replInits = evaluator.mem.newList(evalSettings.replOverlays.get().size());
-    Value ** replInitElems = replInits->listElems();
+    auto replInitStorage = evaluator.mem.newList(evalSettings.replOverlays.get().size());
+    *replInits = {NewValueAs::list, replInitStorage};
 
     size_t i = 0;
     for (auto path : evalSettings.replOverlays.get()) {
@@ -1037,7 +1038,7 @@ Value * NixRepl::replOverlays()
                 .debugThrow();
         }
 
-        replInitElems[i] = replInit;
+        replInitStorage->elems[i] = replInit;
         i++;
     }
 

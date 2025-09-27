@@ -854,13 +854,13 @@ inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
     }
 }
 
-Value EvalMemory::newList(size_t size)
+Value::List * EvalMemory::newList(size_t size)
 {
-    Value v;
-    v.mkList(size);
-    v._list.elems = allocType<Value *>(size);
+    auto list =
+        reinterpret_cast<Value::List *>(allocBytes(sizeof(Value::List) + size * sizeof(Value *)));
+    list->size = size;
     stats.nrListElems += size;
-    return v;
+    return list;
 }
 
 
@@ -1210,9 +1210,11 @@ void ExprLet::eval(EvalState & state, Env & env, Value & v)
 
 void ExprList::eval(EvalState & state, Env & env, Value & v)
 {
-    v = state.ctx.mem.newList(elems.size());
-    for (auto [n, v2] : enumerate(v.listItems()))
-        const_cast<Value * &>(v2) = elems[n]->maybeThunk(state, env);
+    auto result = state.ctx.mem.newList(elems.size());
+    v = {NewValueAs::list, result};
+    for (auto [n, v2] : enumerate(result->span())) {
+        const_cast<Value *&>(v2) = elems[n]->maybeThunk(state, env);
+    }
 }
 
 
@@ -1925,15 +1927,17 @@ void ExprOpConcatLists::eval(EvalState & state, Env & env, Value & v)
     else if (l2 == 0)
         v = v1;
     else {
-        v = state.ctx.mem.newList(len);
-        auto out = v.listElems();
+        auto list = state.ctx.mem.newList(len);
+        v = {NewValueAs::list, list};
+        auto out = list->elems;
         std::copy(v1.listElems(), v1.listElems() + l1, out);
         std::copy(v2.listElems(), v2.listElems() + l2, out + l1);
     }
 }
 
-
-void EvalState::concatLists(Value & v, size_t nrLists, Value * * lists, const PosIdx pos, std::string_view errorCtx)
+void EvalState::concatLists(
+    Value & v, size_t nrLists, Value * const * lists, const PosIdx pos, std::string_view errorCtx
+)
 {
     ctx.stats.nrListConcats++;
 
@@ -1951,8 +1955,9 @@ void EvalState::concatLists(Value & v, size_t nrLists, Value * * lists, const Po
         return;
     }
 
-    v = ctx.mem.newList(len);
-    auto out = v.listElems();
+    auto list = ctx.mem.newList(len);
+    v = {NewValueAs::list, list};
+    auto out = list->elems;
     for (size_t n = 0, pos = 0; n < nrLists; ++n) {
         auto l = lists[n]->listSize();
         if (l)
