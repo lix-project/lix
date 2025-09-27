@@ -73,8 +73,8 @@ arg_parser.add_argument(
     help='Run a temporary daemon for the benchmark instead of using a local store directly',
 )
 args = arg_parser.parse_args()
-if len(args.builds) < 2:
-    raise ValueError("need at least two build directories to compare")
+if len(args.builds) < 1:
+    raise ValueError("need at least one build directory to benchmark")
 
 benchmarks: list[str] = []
 if args.cases is None:
