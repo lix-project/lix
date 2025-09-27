@@ -9,55 +9,65 @@
 namespace nix {
 
 [[gnu::always_inline]]
-Value * EvalMemory::allocValue()
+void * EvalMemory::allocBytes(size_t size)
 {
 #if HAVE_BOEHMGC
     /* We use the boehm batch allocator to speed up allocations of Values (of which there are many).
        GC_malloc_many returns a linked list of objects of the given size, where the first word
        of each object is also the pointer to the next object in the list. This also means that we
        have to explicitly clear the first word of every object we take. */
-    if (!*valueAllocCache) {
-        *valueAllocCache = GC_malloc_many(sizeof(Value));
-        if (!*valueAllocCache) throw std::bad_alloc();
-    }
+    // NOTE: we purposely do not allocate 0 byte blocks on caches; we never allocate
+    // zero bytes anyway, and it makes cache index calculation a little bit simpler.
+    const auto cacheIdx = (size - 1) / CACHE_INCREMENT;
+    if (cacheIdx < CACHES) {
+        const auto roundedSize = (cacheIdx + 1) * CACHE_INCREMENT;
+        auto & cache = gcCache[cacheIdx];
+        if (!cache) {
+            cache = GC_malloc_many(roundedSize);
+            if (!cache) {
+                throw std::bad_alloc();
+            }
+        }
 
-    /* GC_NEXT is a convenience macro for accessing the first word of an object.
-       Take the first list item, advance the list to the next item, and clear the next pointer. */
-    void * p = *valueAllocCache;
-    *valueAllocCache = GC_NEXT(p);
-    GC_NEXT(p) = nullptr;
-#else
-    void * p = gcAllocBytes(sizeof(Value));
+        /* GC_NEXT is a convenience macro for accessing the first word of an object.
+           Take the first list item, advance the list to the next item, and clear the next pointer.
+         */
+        void * p = cache;
+        cache = GC_NEXT(p);
+        GC_NEXT(p) = nullptr;
+        return p;
+    }
 #endif
 
-    stats.nrValues++;
-    return static_cast<Value *>(p);
+    return gcAllocBytes(size);
 }
 
+/// `gcAllocType`, but using allocation caches to amortize allocation overhead.
+template<typename T>
+[[gnu::always_inline]]
+T * EvalMemory::allocType(size_t n)
+{
+    // NOLINTNEXTLINE(bugprone-sizeof-expression)
+    return static_cast<T *>(allocBytes(checkedArrayAllocSize(sizeof(T), n)));
+}
+
+[[gnu::always_inline]]
+Value * EvalMemory::allocValue()
+{
+    static_assert(CACHES * CACHE_INCREMENT >= sizeof(Value));
+    stats.nrValues++;
+    return static_cast<Value *>(allocBytes(sizeof(Value)));
+}
 
 [[gnu::always_inline]]
 Env & EvalMemory::allocEnv(size_t size)
 {
+    static_assert(CACHES * CACHE_INCREMENT >= sizeof(Env) + sizeof(Value *));
+
     stats.nrEnvs++;
     stats.nrValuesInEnvs += size;
 
-    Env * env;
-
-#if HAVE_BOEHMGC
-    if (size == 1) {
-        /* see allocValue for explanations. */
-        if (!*env1AllocCache) {
-            *env1AllocCache = GC_malloc_many(sizeof(Env) + sizeof(Value *));
-            if (!*env1AllocCache) throw std::bad_alloc();
-        }
-
-        void * p = *env1AllocCache;
-        *env1AllocCache = GC_NEXT(p);
-        GC_NEXT(p) = nullptr;
-        env = static_cast<Env *>(p);
-    } else
-#endif
-        env = static_cast<Env *>(gcAllocBytes(sizeof(Env) + size * sizeof(Value *)));
+    Env * env = static_cast<Env *>(allocBytes(sizeof(Env) + size * sizeof(Value *)));
 
     /* We assume that env->values has been cleared by the allocator; maybeThunk() and lookupVar fromWith expect this. */
 

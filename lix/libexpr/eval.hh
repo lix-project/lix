@@ -224,15 +224,13 @@ struct StaticSymbols
 
 class EvalMemory
 {
-    /**
-     * Allocation cache for GC'd Value objects.
-     */
-    std::shared_ptr<void *> valueAllocCache;
+    static constexpr size_t CACHES = 8;
+    static constexpr size_t CACHE_INCREMENT = sizeof(void *);
 
     /**
-     * Allocation cache for size-1 Env objects.
+     * Allocation caches for small values.
      */
-    std::shared_ptr<void *> env1AllocCache;
+    void * gcCache[CACHES] = {};
 
 public:
     struct Statistics
@@ -246,11 +244,16 @@ public:
     };
 
     EvalMemory();
+    ~EvalMemory();
 
     EvalMemory(const EvalMemory &) = delete;
     EvalMemory(EvalMemory &&) = delete;
     EvalMemory & operator=(const EvalMemory &) = delete;
     EvalMemory & operator=(EvalMemory &&) = delete;
+
+    inline void * allocBytes(size_t size);
+    template<typename T>
+    inline T * allocType(size_t n = 1);
 
     inline Value * allocValue();
     inline Env & allocEnv(size_t size);

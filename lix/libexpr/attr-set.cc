@@ -20,7 +20,7 @@ Bindings * EvalMemory::allocBindings(size_t capacity)
         throw Error("attribute set of size %d is too big", capacity);
     stats.nrAttrsets++;
     stats.nrAttrsInAttrsets += capacity;
-    return new (gcAllocBytes(sizeof(Bindings) + sizeof(Attr) * capacity)) Bindings();
+    return new (allocBytes(sizeof(Bindings) + sizeof(Attr) * capacity)) Bindings();
 }
 
 

@@ -95,6 +95,24 @@ inline void * gcAllocBytes(size_t n)
     return ptr;
 }
 
+[[gnu::always_inline]]
+inline size_t checkedArrayAllocSize(size_t size, size_t howMany)
+{
+    // NOTE: size_t * size_t, which can definitely overflow.
+    // Unsigned integer overflow is definitely a bug, but isn't undefined
+    // behavior, so we can just check if we overflowed after the fact.
+    // However, people can and do request zero sized allocations, so we need
+    // to check that neither of our multiplicands were zero before complaining
+    // about it.
+    auto checkedSz = checked::Checked<size_t>(howMany) * size;
+    if (checkedSz.overflowed()) {
+        // Congrats, you done did an overflow.
+        throw std::bad_alloc();
+    }
+
+    return checkedSz.valueWrapping();
+}
+
 /// Typed, safe wrapper around calloc() (transparently GC-enabled). Allocates
 /// enough for the requested count of the specified type. Also checks for
 /// nullptr (and throws @ref std::bad_alloc), and casts the void pointer to
@@ -103,21 +121,7 @@ template<typename T>
 [[gnu::always_inline]]
 inline T * gcAllocType(size_t howMany = 1)
 {
-    // NOTE: size_t * size_t, which can definitely overflow.
-    // Unsigned integer overflow is definitely a bug, but isn't undefined
-    // behavior, so we can just check if we overflowed after the fact.
-    // However, people can and do request zero sized allocations, so we need
-    // to check that neither of our multiplicands were zero before complaining
-    // about it.
-    // NOLINTNEXTLINE(bugprone-sizeof-expression): yeah we only seem to alloc pointers with this. the calculation *is* correct though!
-    auto checkedSz = checked::Checked<size_t>(howMany) * sizeof(T);
-    size_t sz = checkedSz.valueWrapping();
-    if (checkedSz.overflowed()) {
-        // Congrats, you done did an overflow.
-        throw std::bad_alloc();
-    }
-
-    return static_cast<T *>(gcAllocBytes(sz));
+    return static_cast<T *>(gcAllocBytes(checkedArrayAllocSize(sizeof(T), howMany)));
 }
 
 /// GC-transparently allocates a buffer for a C-string of @ref size *bytes*,

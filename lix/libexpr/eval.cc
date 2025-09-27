@@ -254,10 +254,18 @@ StaticSymbols::StaticSymbols(SymbolTable & symbols)
 }
 
 EvalMemory::EvalMemory()
-    : valueAllocCache(std::allocate_shared<void *>(TraceableAllocator<void *>(), nullptr))
-    , env1AllocCache(std::allocate_shared<void *>(TraceableAllocator<void *>(), nullptr))
 {
     assert(libexprInitialised);
+#if HAVE_BOEHMGC
+    GC_add_roots(gcCache, gcCache + CACHES);
+#endif
+}
+
+EvalMemory::~EvalMemory()
+{
+#if HAVE_BOEHMGC
+    GC_remove_roots(gcCache, gcCache + CACHES);
+#endif
 }
 
 EvalBuiltins::EvalBuiltins(
@@ -850,8 +858,9 @@ Value EvalMemory::newList(size_t size)
 {
     Value v;
     v.mkList(size);
-    if (size > 2)
-        v._bigList.elems = gcAllocType<Value *>(size);
+    if (size > 2) {
+        v._bigList.elems = allocType<Value *>(size);
+    }
     stats.nrListElems += size;
     return v;
 }
