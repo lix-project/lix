@@ -11,41 +11,35 @@
 namespace nix {
 
 inline Value::Value(app_t, EvalMemory & mem, Value & lhs, Value & rhs)
-    : internalType(tApp)
-    , _app_pad(0)
 {
-    _app = static_cast<Value::App *>(mem.allocBytes(sizeof(Value::App) + sizeof(Value *)));
-    _app->_left = &lhs;
-    _app->_n = 1;
-    _app->_args[0] = &rhs;
+    auto app = static_cast<Value::App *>(mem.allocBytes(sizeof(Value::App) + sizeof(Value *)));
+    app->_left = &lhs;
+    app->_n = 1;
+    app->_args[0] = &rhs;
+    raw = tag(tApp, app);
 }
 
 inline Value::Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value *> args)
-    : internalType(tApp)
-    , _app_pad(0)
 {
-    _app = static_cast<Value::App *>(mem.allocBytes(sizeof(Value::App) + args.size_bytes()));
-    _app->_left = &lhs;
-    _app->_n = args.size();
-    memcpy(_app->_args, args.data(), args.size_bytes());
+    auto app = static_cast<Value::App *>(mem.allocBytes(sizeof(Value::App) + args.size_bytes()));
+    app->_left = &lhs;
+    app->_n = args.size();
+    memcpy(app->_args, args.data(), args.size_bytes());
+    raw = tag(tApp, app);
 }
 
 inline Value::Value(thunk_t, EvalMemory & mem, Env & env, Expr & expr)
-    : internalType(tThunk)
-    , _thunk_pad(0)
 {
     auto thunk = mem.allocType<Thunk>();
     *thunk = {.env = &env, .expr = &expr};
-    _thunk = thunk;
+    raw = tag(tThunk, thunk);
 }
 
 inline Value::Value(lambda_t, EvalMemory & mem, Env & env, ExprLambda & lambda)
-    : internalType(tAuxiliary)
-    , _aux_pad(0)
 {
     auto lp = mem.allocType<Lambda>();
     *lp = Lambda{{Acb::tLambda}, &env, &lambda};
-    _auxiliary = lp;
+    raw = tag(tAuxiliary, lp);
 }
 
 [[gnu::always_inline]]

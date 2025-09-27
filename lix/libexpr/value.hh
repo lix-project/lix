@@ -4,10 +4,12 @@
 #include <cassert>
 #include <climits>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <limits>
 #include <ranges>
 #include <span>
+#include <type_traits>
 
 #include "lix/libexpr/gc-alloc.hh"
 #include "lix/libexpr/value/context.hh"
@@ -70,8 +72,10 @@ struct PrimOpDetails
     std::optional<ExperimentalFeature> experimentalFeature;
 };
 
+// NOTE value.cc contains alignment assertions for pointers tagged thusly.
+// *always* ensure that these assertions match the tag types declared here
 typedef enum {
-    tInt = 1,
+    tInt,
     tBool,
     tString,
     tAttrs,
@@ -241,7 +245,43 @@ struct NewValueAs
 struct Value
 {
 private:
-    InternalType internalType;
+    uintptr_t raw;
+
+public:
+    static constexpr size_t TAG_BITS = 3;
+    static constexpr size_t TAG_ALIGN = 1 << TAG_BITS;
+    static constexpr uintptr_t TAG_MASK = (1 << TAG_BITS) - 1;
+
+private:
+    // boehmgc always allocate in two-word chunks, which means 8 bytes on 32 bit architectures.
+    // ensure that malloc must always use at least 8 byte chunks as well so our tags always fit
+    static_assert(alignof(std::max_align_t) >= Value::TAG_ALIGN);
+
+    static uintptr_t tag(InternalType t, auto v)
+    {
+        if constexpr (std::is_null_pointer_v<decltype(v)>) {
+            return t;
+        } else if constexpr (std::is_pointer_v<decltype(v)>) {
+            return (reinterpret_cast<uintptr_t>(v)) | t;
+        } else {
+            return (static_cast<uintptr_t>(v) << TAG_BITS) | t;
+        }
+    }
+
+    template<typename T>
+    T untag() const
+    {
+        if constexpr (std::is_pointer_v<T>) {
+            return reinterpret_cast<T>(raw & ~TAG_MASK);
+        } else {
+            return static_cast<T>((raw & ~TAG_MASK) >> TAG_BITS);
+        }
+    }
+
+    InternalType internalType() const
+    {
+        return InternalType(raw & TAG_MASK);
+    }
 
     friend std::string showType(const Value & v);
 
@@ -294,41 +334,39 @@ public:
 
     /// Default constructor which is still used in the codebase but should not
     /// be used in new code. Zero initializes its members.
-    [[deprecated]] Value()
-        : internalType(static_cast<InternalType>(0))
-        , _empty{ 0, 0 }
-    { }
+    [[deprecated]]
+    Value()
+        : raw{0}
+    {
+    }
 
     /// Constructs a nix language value of type "int", with the integral value
     /// of @ref i.
     Value(integer_t, NixInt i)
-        : internalType(tInt)
-        , _empty{ 0, 0 }
     {
         if (isTaggableInteger(i)) {
-            _integer = i;
+            raw = tInt | (uintptr_t(i.value) << TAG_BITS);
         } else {
-            internalType = tAuxiliary;
             auto ip = gcAllocType<Int>();
             ip->type = Acb::tInt;
             ip->value = i;
-            _auxiliary = ip;
+            raw = tag(tAuxiliary, ip);
         }
     }
 
     /// Constructs a nix language value of type "float", with the floating
     /// point value of @ref f.
-    Value(floating_t, NixFloat f) : internalType(tAuxiliary), _aux_pad(0)
+    Value(floating_t, NixFloat f)
     {
         auto fp = gcAllocType<Float>();
         fp->type = Acb::tFloat;
         fp->value = f;
-        _auxiliary = fp;
+        raw = tag(tAuxiliary, fp);
     }
 
     /// Constructs a nix language value of type "bool", with the boolean
     /// value of @ref b.
-    Value(boolean_t, bool b) : internalType(tBool), _boolean(b), _bool_pad(0) {}
+    Value(boolean_t, bool b) : raw(tag(tBool, b)) {}
 
     /// Constructs a nix language value of type "string", with the value of the
     /// C-string pointed to by @ref strPtr, and optionally with an array of
@@ -338,15 +376,13 @@ public:
     /// assumes suitable memory has already been allocated (with the GC if
     /// enabled), and string and context data copied into that memory.
     Value(string_t, char const * strPtr, char const ** contextPtr = nullptr)
-        : internalType(tString)
-        , _string_pad(0)
     {
         auto block = gcAllocType<String>();
         *block = {.content = strPtr, .context = contextPtr};
-        _string = block;
+        raw = tag(tString, block);
     }
 
-    Value(string_t, const String * str) : internalType(tString), _string(str), _string_pad(0) {}
+    Value(string_t, const String * str) : raw(tag(tString, str)) {}
 
     /// Constructx a nix language value of type "string", with a copy of the
     /// string data viewed by @ref copyFrom.
@@ -354,12 +390,10 @@ public:
     /// The string data *is* copied from @ref copyFrom, and this constructor
     /// performs a dynamic (GC) allocation to do so.
     Value(string_t, std::string_view copyFrom, NixStringContext const & context = {})
-        : internalType(tString)
-        , _string_pad(0)
     {
         auto block = gcAllocType<String>();
         *block = {.content = gcCopyStringIfNeeded(copyFrom), .context = nullptr};
-        _string = block;
+        raw = tag(tString, block);
 
         if (context.empty()) {
             // It stays nullptr.
@@ -389,12 +423,10 @@ public:
     /// @ref context, and this constructor performs a dynamic (GC) allocation
     /// to do so.
     Value(string_t, char const * strPtr, NixStringContext const & context)
-        : internalType(tString)
-        , _string_pad(0)
     {
         auto block = gcAllocType<String>();
         *block = {.content = strPtr, .context = nullptr};
-        _string = block;
+        raw = tag(tString, block);
 
         if (context.empty()) {
             // It stays nullptr
@@ -420,7 +452,7 @@ public:
     /// The C-string is not copied; this constructor assumes suitable memory
     /// has already been allocated (with the GC if enabled), and string data
     /// has been copied into that memory.
-    Value(path_t, const String * str) : internalType(tString), _string(str), _string_pad(0)
+    Value(path_t, const String * str) : raw(tag(tString, str))
     {
         assert(str->isPath());
     }
@@ -430,11 +462,11 @@ public:
     ///
     /// The data from @ref path *is* copied, and this constructor performs a
     /// dynamic (GC) allocation to do so.
-    Value(path_t, SourcePath const & path) : internalType(tString), _string_pad(0)
+    Value(path_t, SourcePath const & path)
     {
         auto block = gcAllocType<String>();
         *block = {.content = gcCopyStringIfNeeded(path.canonical().abs()), .context = String::path};
-        _string = block;
+        raw = tag(tString, block);
     }
 
     /// Constructs a nix language value of type "list", with element array
@@ -449,7 +481,7 @@ public:
     /// smaller, the list is stored inline, and the Value pointers in
     /// @ref items are shallow copied into this structure, without dynamically
     /// allocating memory.
-    Value(list_t, const List * items) : internalType(tList), _list(items), _list_pad(0) {}
+    Value(list_t, const List * items) : raw(tag(tList, items)) {}
 
     /// Constructs a nix language value of type "list", with an element array
     /// initialized by applying @ref transformer to each element in @ref items.
@@ -464,7 +496,6 @@ public:
     >
     Value(list_t, SizedIterableT & items, TransformerT const & transformer)
     {
-        this->internalType = tList;
         auto list =
             reinterpret_cast<List *>(gcAllocBytes(sizeof(List) + items.size() * sizeof(Value *)));
         list->size = items.size();
@@ -472,22 +503,18 @@ public:
         for (size_t i = 0; i < items.size(); i++, it++) {
             list->elems[i] = transformer(*it);
         }
-        _list = list;
+        raw = tag(tList, list);
     }
 
     /// Constructs a nix language value of the singleton type "null".
-    Value(null_t) : Value(NULL_ACB) {}
+    Value(null_t) : raw(tag(tAuxiliary, &NULL_ACB)) {}
 
     /// Constructs a nix language value of type "set", with the attribute
     /// bindings pointed to by @ref bindings.
     ///
     /// The bindings are not not copied; this constructor assumes @ref bindings
     /// has already been suitably allocated by something like nix::buildBindings.
-    Value(attrs_t, Bindings * bindings)
-        : internalType(tAttrs)
-        , _attrs(bindings)
-        , _attrs_pad(0)
-    { }
+    Value(attrs_t, Bindings * bindings) : raw(tag(tAttrs, bindings)) {}
 
     /// Constructs a nix language lazy delayed computation, or "thunk".
     ///
@@ -511,13 +538,11 @@ public:
     /// Constructs a nix language value of type "external", which is only used
     /// by plugins. Do any existing plugins even use this mechanism?
     Value(external_t, ExternalValueBase & external)
-        : internalType(tAuxiliary)
-        , _aux_pad(0)
     {
-        auto ep = gcAllocType<External>();
-        ep->type = Acb::tExternal;
-        ep->external = &external;
-        _auxiliary = ep;
+        auto ext = gcAllocType<External>();
+        ext->type = Acb::tExternal;
+        ext->external = &external;
+        raw = tag(tAuxiliary, ext);
     }
 
     /// Constructs a nix language value of type "lambda", which represents a
@@ -529,22 +554,15 @@ public:
     Value(lambda_t, EvalMemory & mem, Env & env, ExprLambda & lambda);
 
     /// Constructs an evil thunk, whose evaluation represents infinite recursion.
-    explicit Value(blackhole_t) : internalType(tThunk), _thunk(&blackHole), _thunk_pad(0) {}
+    explicit Value(blackhole_t) : raw(tag(tThunk, &blackHole)) {}
 
-    explicit Value(const Acb & backing)
-        : internalType(tAuxiliary)
-        , _auxiliary(&backing)
-        , _aux_pad(0)
-    {
-    }
+    explicit Value(const Acb & backing) : raw(tag(tAuxiliary, &backing)) {}
 
     Value(Value const & rhs) = default;
 
     /// Move constructor. Does the same thing as the copy constructor, but
     /// also zeroes out the other Value.
-    Value(Value && rhs)
-        : internalType(rhs.internalType)
-        , _empty{ 0, 0 }
+    Value(Value && rhs) : raw(0)
     {
         *this = std::move(rhs);
     }
@@ -559,9 +577,7 @@ public:
         *this = static_cast<const Value &>(rhs);
         if (this != &rhs) {
             // Kill `rhs`, because non-destructive move lol.
-            rhs.internalType = static_cast<InternalType>(0);
-            rhs._empty[0] = 0;
-            rhs._empty[1] = 0;
+            rhs.raw = 0;
         }
         return *this;
     }
@@ -573,28 +589,34 @@ public:
     // needed by callers into methods of this type
 
     // type() == nThunk
-    inline bool isThunk() const { return internalType == tThunk; };
-    inline bool isApp() const { return internalType == tApp; };
+    inline bool isThunk() const
+    {
+        return internalType() == tThunk;
+    };
+    inline bool isApp() const
+    {
+        return internalType() == tApp;
+    }
     inline bool isBlackhole() const
     {
-        return internalType == tThunk && _thunk == &blackHole;
+        return internalType() == tThunk && untag<const Thunk *>() == &blackHole;
     }
 
     // type() == nFunction
     inline bool isLambda() const
     {
-        return internalType == tAuxiliary && _auxiliary->type == Acb::tLambda;
+        return internalType() == tAuxiliary && auxiliary()->type == Acb::tLambda;
     };
     inline bool isPrimOp() const
     {
-        return internalType == tAuxiliary && _auxiliary->type == Acb::tPrimOp;
+        return internalType() == tAuxiliary && auxiliary()->type == Acb::tPrimOp;
     }
     inline bool isPrimOpApp() const
     {
-        return internalType == tApp && app().target()->isPrimOp();
+        return internalType() == tApp && app().target()->isPrimOp();
     }
 
-    struct List
+    struct alignas(TAG_ALIGN) List
     {
         size_t size;
         Value * elems[0];
@@ -627,7 +649,7 @@ public:
 
      * For canonicity, the store paths should be in sorted order.
      */
-    struct String
+    struct alignas(TAG_ALIGN) String
     {
         /// marker location for paths, to be used as path context.
         static inline const char * path[] = {"\1<path>", nullptr};
@@ -641,7 +663,7 @@ public:
         }
     };
 
-    struct App
+    struct alignas(TAG_ALIGN) App
     {
         Value * _left;
         size_t _n;
@@ -670,7 +692,7 @@ public:
 
     /// auxiliary control block for values that require more space.
     /// these blocks are usually heap-allocated in GC memory space.
-    struct Acb
+    struct alignas(TAG_ALIGN) Acb
     {
         enum {
             tExternal,
@@ -705,50 +727,10 @@ public:
         Env * env;
         ExprLambda * fun;
     };
-    struct Thunk
+    struct alignas(TAG_ALIGN) Thunk
     {
         Env * env;
         Expr * expr;
-    };
-
-    union
-    {
-        /// Dummy field, which takes up as much space as the largest union variants
-        /// to set the union's memory to zeroed memory.
-        uintptr_t _empty[2];
-
-        NixInt _integer;
-        struct {
-            bool _boolean;
-            uintptr_t _bool_pad;
-        };
-
-        struct
-        {
-            const String * _string;
-            uintptr_t _string_pad;
-        };
-        struct {
-            Bindings * _attrs;
-            uintptr_t _attrs_pad;
-        };
-        struct {
-            const List * _list;
-            uintptr_t _list_pad;
-        };
-        struct {
-            Thunk * _thunk;
-            uintptr_t _thunk_pad;
-        };
-        struct
-        {
-            App * _app;
-            uintptr_t _app_pad;
-        };
-        struct {
-            const Acb * _auxiliary;
-            uintptr_t _aux_pad;
-        };
     };
 
     /**
@@ -760,46 +742,40 @@ public:
      */
     inline ValueType type(bool invalidIsThunk = false) const
     {
-        switch (internalType) {
-            case tInt: return nInt;
-            case tBool: return nBool;
-            case tString:
-                return _string->isPath() ? nPath : nString;
-            case tAttrs: return nAttrs;
-            case tList:
-                return nList;
-            case tAuxiliary:
-                switch (_auxiliary->type) {
-                case Acb::tExternal:
-                    return nExternal;
-                case Acb::tFloat:
-                    return nFloat;
-                case Acb::tNull:
-                    return nNull;
-                case Acb::tPrimOp:
-                case Acb::tLambda:
-                    return nFunction;
-                case Acb::tInt:
-                    return nInt;
-                }
+        switch (internalType()) {
+        case tInt:
+            return nInt;
+        case tBool:
+            return nBool;
+        case tString:
+            return untag<const String *>()->isPath() ? nPath : nString;
+        case tAttrs:
+            return nAttrs;
+        case tList:
+            return nList;
+        case tAuxiliary:
+            switch (untag<const Acb *>()->type) {
+            case Acb::tExternal:
+                return nExternal;
+            case Acb::tFloat:
+                return nFloat;
+            case Acb::tNull:
+                return nNull;
+            case Acb::tPrimOp:
+            case Acb::tLambda:
+                return nFunction;
+            case Acb::tInt:
+                return nInt;
+            }
             case tThunk:
                 return nThunk;
             case tApp:
                 return app().target()->isPrimOp() ? nFunction : nThunk;
-        }
+            }
         if (invalidIsThunk)
             return nThunk;
         else
             abort();
-    }
-
-    /**
-     * After overwriting an app node, be sure to clear pointers in the
-     * Value to ensure that the target isn't kept alive unnecessarily.
-     */
-    inline void clearValue()
-    {
-        _empty[0] = _empty[1] = 0;
     }
 
     inline void mkInt(NixInt::Inner n)
@@ -814,17 +790,14 @@ public:
 
     inline void mkBool(bool b)
     {
-        clearValue();
-        internalType = tBool;
-        _boolean = b;
+        raw = tag(tBool, b);
     }
 
     inline void mkString(const char * s, const char * * context = 0)
     {
-        internalType = tString;
         auto block = gcAllocType<String>();
         *block = {.content = s, .context = context};
-        _string = block;
+        raw = tag(tString, block);
     }
 
     void mkString(std::string_view s);
@@ -837,11 +810,9 @@ public:
 
     inline void mkPath(const char * path)
     {
-        clearValue();
-        internalType = tString;
         auto block = gcAllocType<String>();
         *block = {.content = path, .context = String::path};
-        _string = block;
+        raw = tag(tString, block);
     }
 
     inline void mkNull()
@@ -851,9 +822,7 @@ public:
 
     inline void mkAttrs(Bindings * a)
     {
-        clearValue();
-        internalType = tAttrs;
-        _attrs = a;
+        raw = tag(tAttrs, a);
     }
 
     Value & mkAttrs(BindingsBuilder & bindings);
@@ -872,17 +841,17 @@ public:
 
     bool isList() const
     {
-        return internalType == tList;
+        return internalType() == tList;
     }
 
     Value * const * listElems() const
     {
-        return _list->elems;
+        return untag<const List *>()->elems;
     }
 
     size_t listSize() const
     {
-        return _list->size;
+        return untag<const List *>()->size;
     }
 
     /**
@@ -922,83 +891,84 @@ public:
 
     SourcePath path() const
     {
-        assert(internalType == tString && _string->isPath());
-        return SourcePath{CanonPath(_string->content)};
+        assert(internalType() == tString && untag<const String *>()->isPath());
+        return SourcePath{CanonPath(untag<const String *>()->content)};
     }
 
     std::string_view str() const
     {
-        assert(internalType == tString && !_string->isPath());
-        return std::string_view(_string->content);
+        assert(internalType() == tString && !untag<const String *>()->isPath());
+        return std::string_view(untag<const String *>()->content);
     }
 
     NixInt integer() const
     {
-        if (internalType == tInt) {
-            return _integer;
+        if (internalType() == tInt) {
+            intptr_t tmp;
+            memcpy(&tmp, &raw, sizeof(tmp));
+            return NixInt(tmp >> 3);
         } else {
-            assert(internalType == tAuxiliary && _auxiliary->type == Acb::tInt);
-            return static_cast<const Int *>(_auxiliary)->value;
+            assert(internalType() == tAuxiliary && untag<const Acb *>()->type == Acb::tInt);
+            return untag<const Int *>()->value;
         }
     }
 
     bool boolean() const
     {
-        return _boolean;
+        return untag<bool>();
     }
 
     const auto & string() const
     {
-        return *_string;
+        return *untag<const String *>();
     }
 
     auto attrs() const
     {
-        return _attrs;
+        return untag<Bindings *>();
     }
 
     const auto & thunk() const
     {
-        return *_thunk;
+        return *untag<const Thunk *>();
     }
 
     App & app()
     {
-        return *_app;
+        return *untag<App *>();
     }
 
     const App & app() const
     {
-        return *_app;
+        return *untag<const App *>();
     }
 
     const auto & lambda() const
     {
-        assert(internalType == tAuxiliary && _auxiliary->type == Acb::tLambda);
-        return *static_cast<const Lambda *>(_auxiliary);
+        return *untag<const Lambda *>();
     }
 
     const PrimOp * primOp() const
     {
-        assert(internalType == tAuxiliary && _auxiliary->type == Acb::tPrimOp);
-        return static_cast<const PrimOp *>(_auxiliary);
+        assert(internalType() == tAuxiliary && untag<const Acb *>()->type == Acb::tPrimOp);
+        return untag<const PrimOp *>();
     }
 
     const ExternalValueBase * external() const
     {
-        assert(internalType == tAuxiliary && _auxiliary->type == Acb::tExternal);
-        return static_cast<const External *>(_auxiliary)->external;
+        assert(internalType() == tAuxiliary && untag<const Acb *>()->type == Acb::tExternal);
+        return untag<const External *>()->external;
     }
 
     NixFloat fpoint() const
     {
-        assert(internalType == tAuxiliary && _auxiliary->type == Acb::tFloat);
-        return static_cast<const Float *>(_auxiliary)->value;
+        assert(internalType() == tAuxiliary && untag<const Acb *>()->type == Acb::tFloat);
+        return untag<const Float *>()->value;
     }
 
     const Acb * auxiliary() const
     {
-        return _auxiliary;
+        return untag<const Acb *>();
     }
 };
 

@@ -112,7 +112,7 @@ std::string showType(const Value & v)
     // Allow selecting a subset of enum values
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch-enum"
-    switch (v.internalType) {
+    switch (v.internalType()) {
     case tString:
         return v.string().context ? "a string with context" : "a string";
     case tAuxiliary:
@@ -182,7 +182,9 @@ void initLibExpr()
     /* Don't look for interior pointers. This reduces the odds of
        misdetection a bit. */
     GC_set_all_interior_pointers(0);
-    GC_REGISTER_DISPLACEMENT(1);
+    for (int i = 1; i < 8; i++) {
+        GC_REGISTER_DISPLACEMENT(i);
+    }
 
     /* We don't have any roots in data segments, so don't scan from
        there. */

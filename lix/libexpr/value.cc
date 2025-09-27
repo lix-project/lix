@@ -14,6 +14,12 @@ Value Value::EMPTY_LIST{Value::list_t{}, &emptyListData};
 
 const Value::Null Value::NULL_ACB = {{Value::Acb::tNull}};
 
+static_assert(alignof(Value::String) >= Value::TAG_ALIGN);
+static_assert(alignof(Bindings) >= Value::TAG_ALIGN);
+static_assert(alignof(Value::List) >= Value::TAG_ALIGN);
+static_assert(alignof(Value::Thunk) >= Value::TAG_ALIGN);
+static_assert(alignof(Value::App) >= Value::TAG_ALIGN);
+
 static void copyContextToValue(Value::String & s, const NixStringContext & context)
 {
     if (!context.empty()) {
@@ -25,10 +31,7 @@ static void copyContextToValue(Value::String & s, const NixStringContext & conte
     }
 }
 
-Value::Value(primop_t, PrimOp & primop) : internalType(tAuxiliary), _auxiliary(&primop), _aux_pad(0)
-{
-}
-
+Value::Value(primop_t, PrimOp & primop) : raw(tag(tAuxiliary, &primop)) {}
 
 void Value::print(EvalState & state, std::ostream & str, PrintOptions options)
 {
@@ -37,8 +40,8 @@ void Value::print(EvalState & state, std::ostream & str, PrintOptions options)
 
 bool Value::isTrivial() const
 {
-    return internalType != tApp
-        && (internalType != tThunk
+    return internalType() != tApp
+        && (internalType() != tThunk
             || (thunk().expr->try_cast<ExprSet>()
                 && static_cast<ExprSet *>(thunk().expr)->dynamicAttrs.empty())
             || thunk().expr->try_cast<ExprLambda>() || thunk().expr->try_cast<ExprList>());
@@ -57,13 +60,13 @@ void Value::mkString(std::string_view s)
 void Value::mkString(std::string_view s, const NixStringContext & context)
 {
     mkString(s);
-    copyContextToValue(*const_cast<String *>(_string), context);
+    copyContextToValue(*untag<String *>(), context);
 }
 
 void Value::mkStringMove(const char * s, const NixStringContext & context)
 {
     mkString(s);
-    copyContextToValue(*const_cast<String *>(_string), context);
+    copyContextToValue(*untag<String *>(), context);
 }
 
 void Value::mkPath(const SourcePath & path)

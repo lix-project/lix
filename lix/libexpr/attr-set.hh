@@ -44,7 +44,7 @@ static_assert(sizeof(Attr) == 2 * sizeof(uint32_t) + sizeof(Value *),
  * elements allocated after this structure, while the size corresponds to
  * the number of elements already inserted in this structure.
  */
-class Bindings
+class alignas(Value::TAG_ALIGN) Bindings
 {
 public:
     using Size = uint32_t;
