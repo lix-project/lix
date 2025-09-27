@@ -559,7 +559,7 @@ static void prim_genericClosure(EvalState & state, Value * * args, Value & v)
 
         /* Call the `operator' function with `e' as argument. */
         Value newElements;
-        state.callFunction(*op->value, 1, &e, newElements, noPos);
+        state.callFunction(*op->value, {&e, 1}, newElements, noPos);
         state.forceList(newElements, noPos, "while evaluating the return value of the `operator` passed to builtins.genericClosure");
 
         /* Add the values returned by the operator to the work set. */
@@ -1547,7 +1547,7 @@ static void addPath(
 
             Value * args []{&arg1, &arg2};
             Value res;
-            state.callFunction(*filterFun, 2, args, res, noPos);
+            state.callFunction(*filterFun, args, res, noPos);
 
             return state.forceBool(res, noPos, "while evaluating the return value of the path filter function");
         }) : defaultPathFilter;
@@ -2165,7 +2165,7 @@ static void prim_foldlStrict(EvalState & state, Value * * args, Value & v)
         for (auto [n, elem] : enumerate(args[2]->listItems())) {
             Value * vs []{vCur, elem};
             vCur = n == args[2]->listSize() - 1 ? &v : state.ctx.mem.allocValue();
-            state.callFunction(*args[0], 2, vs, *vCur, noPos);
+            state.callFunction(*args[0], vs, *vCur, noPos);
         }
         state.forceValue(v, noPos);
     } else {
@@ -2266,7 +2266,7 @@ static void prim_sort(EvalState & state, Value * * args, Value & v)
 
         Value * vs[] = {a, b};
         Value vBool;
-        state.callFunction(*args[0], 2, vs, vBool, noPos);
+        state.callFunction(*args[0], vs, vBool, noPos);
         return state.forceBool(vBool, noPos, "while evaluating the return value of the sorting function passed to builtins.sort");
     };
 

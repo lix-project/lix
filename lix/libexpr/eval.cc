@@ -1556,7 +1556,7 @@ Env & AttrsPattern::match(ExprLambda & lambda, EvalState & state, Env & up, Valu
     return env2;
 }
 
-void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value & vRes, const PosIdx pos)
+void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes, const PosIdx pos)
 {
     if (callDepth > evalSettings.maxCallDepth)
         ctx.errors.make<EvalError>("stack overflow; max-call-depth exceeded").atPos(pos).debugThrow();
@@ -1573,16 +1573,16 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
     auto makeAppChain = [&]()
     {
         vRes = vCur;
-        for (size_t i = 0; i < nrArgs; ++i) {
+        for (auto arg : args) {
             auto fun2 = ctx.mem.allocValue();
             *fun2 = vRes;
-            vRes.mkPrimOpApp(fun2, args[i]);
+            vRes.mkPrimOpApp(fun2, arg);
         }
     };
 
     const Attr * functor;
 
-    while (nrArgs > 0) {
+    while (args.size() > 0) {
 
         if (vCur.isLambda()) {
 
@@ -1607,15 +1607,14 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 throw;
             }
 
-            nrArgs--;
-            args += 1;
+            args = args.subspan(1);
         }
 
         else if (vCur.isPrimOp()) {
 
             size_t argsLeft = vCur.primOp()->arity;
 
-            if (nrArgs < argsLeft) {
+            if (args.size() < argsLeft) {
                 /* We don't have enough arguments, so create a tPrimOpApp chain. */
                 makeAppChain();
                 return;
@@ -1627,7 +1626,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                 if (ctx.stats.countCalls) ctx.stats.primOpCalls[fn->name]++;
 
                 try {
-                    fn->fun(*this, args, vCur);
+                    fn->fun(*this, args.data(), vCur);
                 } catch (ThrownError & e) {
                     // Distinguish between an error that simply happened while "throw"
                     // was being evaluated and an explicit thrown error.
@@ -1642,8 +1641,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     throw;
                 }
 
-                nrArgs -= argsLeft;
-                args += argsLeft;
+                args = args.subspan(argsLeft);
             }
         }
 
@@ -1659,7 +1657,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
             auto arity = primOp->primOp()->arity;
             auto argsLeft = arity - argsDone;
 
-            if (nrArgs < argsLeft) {
+            if (args.size() < argsLeft) {
                 /* We still don't have enough arguments, so extend the tPrimOpApp chain. */
                 makeAppChain();
                 return;
@@ -1691,8 +1689,7 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
                     throw;
                 }
 
-                nrArgs -= argsLeft;
-                args += argsLeft;
+                args = args.subspan(argsLeft);
             }
         }
 
@@ -1703,13 +1700,12 @@ void EvalState::callFunction(Value & fun, size_t nrArgs, Value * * args, Value &
             Value * args2[] = {ctx.mem.allocValue(), args[0]};
             *args2[0] = vCur;
             try {
-                callFunction(*functor->value, 2, args2, vCur, functor->pos);
+                callFunction(*functor->value, args2, vCur, functor->pos);
             } catch (Error & e) {
                 e.addTrace(ctx.positions[pos], "while calling a functor (an attribute set with a '__functor' attribute)");
                 throw;
             }
-            nrArgs--;
-            args++;
+            args = args.subspan(1);
         }
 
         else
@@ -1740,7 +1736,7 @@ void ExprCall::eval(EvalState & state, Env & env, Value & v)
     for (size_t i = 0; i < args.size(); ++i)
         vArgs[i] = args[i]->maybeThunk(state, env);
 
-    state.callFunction(vFun, args.size(), vArgs.data(), v, pos);
+    state.callFunction(vFun, vArgs, v, pos);
 }
 
 
