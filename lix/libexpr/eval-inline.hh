@@ -13,7 +13,7 @@ namespace nix {
 inline Value::Value(app_t, EvalMemory & mem, Value & lhs, Value & rhs)
 {
     auto app = static_cast<Value::App *>(mem.allocBytes(sizeof(Value::App) + sizeof(Value *)));
-    app->_left = &lhs;
+    app->_left = reinterpret_cast<uintptr_t>(&lhs);
     app->_n = 1;
     app->_args[0] = &rhs;
     raw = tag(tApp, app);
@@ -22,7 +22,7 @@ inline Value::Value(app_t, EvalMemory & mem, Value & lhs, Value & rhs)
 inline Value::Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value *> args)
 {
     auto app = static_cast<Value::App *>(mem.allocBytes(sizeof(Value::App) + args.size_bytes()));
-    app->_left = &lhs;
+    app->_left = reinterpret_cast<uintptr_t>(&lhs);
     app->_n = args.size();
     memcpy(app->_args, args.data(), args.size_bytes());
     raw = tag(tApp, app);
@@ -31,7 +31,7 @@ inline Value::Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value *> arg
 inline Value::Value(thunk_t, EvalMemory & mem, Env & env, Expr & expr)
 {
     auto thunk = mem.allocType<Thunk>();
-    *thunk = {.env = &env, .expr = &expr};
+    *thunk = {._env = &env, .expr = &expr};
     raw = tag(tThunk, thunk);
 }
 
@@ -113,22 +113,33 @@ Env & EvalMemory::allocEnv(size_t size)
 void EvalState::forceValue(Value & v, const PosIdx pos)
 {
     if (v.isThunk()) {
-        const auto backup = v;
-        Env * env = v.thunk().env;
-        Expr & expr = *v.thunk().expr;
-        v = Value{NewValueAs::blackhole};
-        try {
-            expr.eval(*this, *env, v);
-        } catch (...) {
-            v = backup;
-            tryFixupBlackHolePos(v, pos);
-            throw;
+        auto & thunk = v.thunk();
+        if (thunk.resolved()) {
+            v = thunk.result();
+        } else {
+            const auto backup = v;
+            Env * env = v.thunk().env();
+            Expr & expr = *v.thunk().expr;
+            v = Value{NewValueAs::blackhole};
+            try {
+                expr.eval(*this, *env, v);
+                backup.thunk().resolve(v);
+            } catch (...) {
+                v = backup;
+                tryFixupBlackHolePos(v, pos);
+                throw;
+            }
         }
     } else if (v.isApp()) {
         auto & app = v.app();
-        auto target = app.target();
-        if (!target->isPrimOp() || target->primOp()->arity <= app.totalArgs()) {
-            callFunction(*v.app().left(), v.app().args(), v, pos);
+        if (app.resolved()) {
+            v = app.result();
+        } else {
+            auto target = app.target();
+            if (!target->isPrimOp() || target->primOp()->arity <= app.totalArgs()) {
+                callFunction(*v.app().left(), v.app().args(), v, pos);
+                app.resolve(v);
+            }
         }
     }
 }

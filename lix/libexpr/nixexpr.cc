@@ -11,7 +11,7 @@ namespace nix {
 ExprBlackHole eBlackHole;
 
 static Env nullEnv;
-Value::Thunk Value::blackHole{&nullEnv, &eBlackHole};
+Value::Thunk Value::blackHole{{&nullEnv}, &eBlackHole};
 
 // FIXME: remove, because *symbols* are abstract and do not have a single
 //        textual representation; see printIdentifier()

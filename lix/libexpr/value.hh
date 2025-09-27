@@ -245,7 +245,7 @@ struct NewValueAs
 struct Value
 {
 private:
-    uintptr_t raw;
+    mutable uintptr_t raw;
 
 public:
     static constexpr size_t TAG_BITS = 3;
@@ -613,7 +613,7 @@ public:
     }
     inline bool isPrimOpApp() const
     {
-        return internalType() == tApp && app().target()->isPrimOp();
+        return internalType() == tApp && !app().resolved() && app().target()->isPrimOp();
     }
 
     struct alignas(TAG_ALIGN) List
@@ -665,13 +665,31 @@ public:
 
     struct alignas(TAG_ALIGN) App
     {
-        Value * _left;
+        uintptr_t _left;
         size_t _n;
         Value * _args[0];
 
+        bool resolved() const
+        {
+            return _n == 0;
+        }
+
+        void resolve(Value v)
+        {
+            _left = v.raw;
+            _n = 0;
+        }
+
         Value * left() const
         {
-            return _left;
+            return reinterpret_cast<Value *>(_left);
+        }
+
+        Value result() const
+        {
+            Value v;
+            v.raw = _left;
+            return v;
         }
 
         Value * target() const
@@ -727,11 +745,6 @@ public:
         Env * env;
         ExprLambda * fun;
     };
-    struct alignas(TAG_ALIGN) Thunk
-    {
-        Env * env;
-        Expr * expr;
-    };
 
     /**
      * Returns the normal type of a Value. This only returns nThunk if
@@ -740,43 +753,7 @@ public:
      * @param invalidIsThunk Instead of aborting an an invalid (probably
      * 0, so uninitialized) internal type, return `nThunk`.
      */
-    inline ValueType type(bool invalidIsThunk = false) const
-    {
-        switch (internalType()) {
-        case tInt:
-            return nInt;
-        case tBool:
-            return nBool;
-        case tString:
-            return untag<const String *>()->isPath() ? nPath : nString;
-        case tAttrs:
-            return nAttrs;
-        case tList:
-            return nList;
-        case tAuxiliary:
-            switch (untag<const Acb *>()->type) {
-            case Acb::tExternal:
-                return nExternal;
-            case Acb::tFloat:
-                return nFloat;
-            case Acb::tNull:
-                return nNull;
-            case Acb::tPrimOp:
-            case Acb::tLambda:
-                return nFunction;
-            case Acb::tInt:
-                return nInt;
-            }
-            case tThunk:
-                return nThunk;
-            case tApp:
-                return app().target()->isPrimOp() ? nFunction : nThunk;
-            }
-        if (invalidIsThunk)
-            return nThunk;
-        else
-            abort();
-    }
+    inline ValueType type(bool invalidIsThunk = false) const;
 
     inline void mkInt(NixInt::Inner n)
     {
@@ -928,19 +905,14 @@ public:
         return untag<Bindings *>();
     }
 
-    const auto & thunk() const
+    Thunk & thunk() const
     {
-        return *untag<const Thunk *>();
+        return *untag<Thunk *>();
     }
 
-    App & app()
+    App & app() const
     {
         return *untag<App *>();
-    }
-
-    const App & app() const
-    {
-        return *untag<const App *>();
     }
 
     const auto & lambda() const
@@ -971,6 +943,90 @@ public:
         return untag<const Acb *>();
     }
 };
+
+struct alignas(Value::TAG_ALIGN) Value::Thunk
+{
+    union {
+        Env * _env;
+        Value _result;
+    };
+    Expr * expr;
+
+    bool resolved() const
+    {
+        return expr == nullptr;
+    }
+
+    void resolve(Value v)
+    {
+        _result = v;
+        expr = nullptr;
+    }
+
+    Env * env() const
+    {
+        return _env;
+    }
+
+    Value result() const
+    {
+        return _result;
+    }
+};
+
+/**
+    * Returns the normal type of a Value. This only returns nThunk if
+    * the Value hasn't been forceValue'd
+    *
+    * @param invalidIsThunk Instead of aborting an an invalid (probably
+    * 0, so uninitialized) internal type, return `nThunk`.
+    */
+inline ValueType Value::type(bool invalidIsThunk) const
+{
+again:
+    switch (internalType()) {
+    case tInt:
+        return nInt;
+    case tBool:
+        return nBool;
+    case tString:
+        return untag<const String *>()->isPath() ? nPath : nString;
+    case tAttrs:
+        return nAttrs;
+    case tList:
+        return nList;
+    case tAuxiliary:
+        switch (untag<const Acb *>()->type) {
+        case Acb::tExternal:
+            return nExternal;
+        case Acb::tFloat:
+            return nFloat;
+        case Acb::tNull:
+            return nNull;
+        case Acb::tPrimOp:
+        case Acb::tLambda:
+            return nFunction;
+        case Acb::tInt:
+            return nInt;
+        }
+    case tThunk:
+        if (thunk().resolved()) {
+            raw = thunk().result().raw;
+            goto again;
+        }
+        return nThunk;
+    case tApp:
+        if (app().resolved()) {
+            raw = app().result().raw;
+            goto again;
+        }
+        return app().target()->isPrimOp() ? nFunction : nThunk;
+    }
+    if (invalidIsThunk)
+        return nThunk;
+    else
+        abort();
+}
 
 using ValueVector = GcVector<Value *>;
 
