@@ -10,20 +10,24 @@
 
 namespace nix {
 
+inline Value::Value(app_t, EvalMemory & mem, Value & lhs, Value & rhs)
+    : internalType(tApp)
+    , _app_pad(0)
+{
+    _app = static_cast<Value::App *>(mem.allocBytes(sizeof(Value::App) + sizeof(Value *)));
+    _app->_left = &lhs;
+    _app->_n = 1;
+    _app->_args[0] = &rhs;
+}
+
 inline Value::Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value *> args)
     : internalType(tApp)
+    , _app_pad(0)
 {
-    if (args.size() == 1) {
-        _app._left = reinterpret_cast<uintptr_t>(&lhs);
-        _app._right = args[0];
-    } else {
-        auto app =
-            static_cast<Value::AppN *>(mem.allocBytes(sizeof(Value::AppN) + args.size_bytes()));
-        app->nargs = args.size();
-        memcpy(app->args, args.data(), args.size_bytes());
-        _app._left = reinterpret_cast<uintptr_t>(&lhs) | 1;
-        _app._appn = app;
-    }
+    _app = static_cast<Value::App *>(mem.allocBytes(sizeof(Value::App) + args.size_bytes()));
+    _app->_left = &lhs;
+    _app->_n = args.size();
+    memcpy(_app->_args, args.data(), args.size_bytes());
 }
 
 inline Value::Value(thunk_t, EvalMemory & mem, Env & env, Expr & expr)

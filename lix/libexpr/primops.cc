@@ -212,7 +212,7 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
             noPos,
             "while evaluating imported-drv-to-derivation.nix.gen.hh"
         );
-        v.mkApp(*state.ctx.caches.vImportedDrvToDerivation, w);
+        v = {NewValueAs::app, state.ctx.mem, **state.ctx.caches.vImportedDrvToDerivation, *w};
         state.forceAttrs(v, noPos, "while calling imported-drv-to-derivation.nix.gen.hh");
     }
 
@@ -1405,7 +1405,7 @@ static void prim_readDir(EvalState & state, Value * * args, Value & v)
             epath->mkPath(path + name);
             if (!readFileType)
                 readFileType = &state.ctx.builtins.get("readFileType");
-            attr.mkApp(readFileType, epath);
+            attr = {NewValueAs::app, state.ctx.mem, *readFileType, *epath};
         } else {
             // This branch of the conditional is much more likely.
             // Here we just stringize the directory entry type.
@@ -1748,8 +1748,8 @@ static struct LazyPosAcessors {
     {
         Value * posV = state.ctx.mem.allocValue();
         posV->mkInt(pos.id);
-        line.mkApp(&lineOfPos, posV);
-        column.mkApp(&columnOfPos, posV);
+        line = {NewValueAs::app, state.ctx.mem, lineOfPos, *posV};
+        column = {NewValueAs::app, state.ctx.mem, columnOfPos, *posV};
     }
 } makeLazyPosAccessors;
 
@@ -2079,8 +2079,10 @@ static void prim_map(EvalState & state, Value * * args, Value & v)
 
     auto result = state.ctx.mem.newList(args[1]->listSize());
     v = {NewValueAs::list, result};
-    for (unsigned int n = 0; n < v.listSize(); ++n)
-        (result->elems[n] = state.ctx.mem.allocValue())->mkApp(args[0], args[1]->listElems()[n]);
+    for (unsigned int n = 0; n < v.listSize(); ++n) {
+        result->elems[n] = state.ctx.mem.allocValue();
+        *result->elems[n] = {NewValueAs::app, state.ctx.mem, *args[0], *args[1]->listElems()[n]};
+    }
 }
 
 /* Filter a list using a predicate; that is, return a list containing
@@ -2224,7 +2226,8 @@ static void prim_genList(EvalState & state, Value * * args, Value & v)
     for (size_t n = 0; n < len; ++n) {
         auto arg = state.ctx.mem.allocValue();
         arg->mkInt(n);
-        (result->elems[n] = state.ctx.mem.allocValue())->mkApp(args[0], arg);
+        result->elems[n] = state.ctx.mem.allocValue();
+        *result->elems[n] = {NewValueAs::app, state.ctx.mem, *args[0], *arg};
     }
 }
 
@@ -2898,9 +2901,11 @@ void EvalBuiltins::createBaseEnv(const SearchPath & searchPath, const Path & sto
        Null docs because it is documented separately.
        App instead of PrimopApp to have eval immediately force it when accessed.
        */
-    addConstant("derivation", {NewValueAs::app, initializeDerivation, initializeDerivation}, {
-        .type = nFunction,
-    });
+    addConstant(
+        "derivation",
+        {NewValueAs::app, mem, initializeDerivation, initializeDerivation},
+        {.type = nFunction}
+    );
 
     /* Now that we've added all primops, sort the `builtins' set,
        because attribute lookups expect it to be sorted. */

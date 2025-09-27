@@ -110,8 +110,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
     Value args;
     args.mkAttrs(attrs);
 
-    Value topLevel;
-    topLevel.mkApp(&envBuilder, &args);
+    Value topLevel{NewValueAs::app, state.ctx.mem, envBuilder, args};
 
     /* Evaluate it. */
     debug("evaluating user environment builder");

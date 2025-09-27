@@ -605,8 +605,7 @@ Value * EvalBuiltins::addPrimOp(PrimOpDetails && primOp)
         primOp.arity = 1;
         auto vPrimOp = mem.allocValue();
         vPrimOp->mkPrimOp(new PrimOp(std::move(primOp)));
-        Value v;
-        v.mkApp(vPrimOp, vPrimOp);
+        Value v{NewValueAs::app, mem, *vPrimOp, *vPrimOp};
         return addConstant(
             vPrimOp->primOp()->name,
             v,

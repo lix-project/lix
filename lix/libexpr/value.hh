@@ -490,11 +490,7 @@ public:
 
     /// Constructs a nix language value of type "lambda", which represents a
     /// lazy and/or partial application of a function.
-    Value(app_t, Value & lhs, Value & rhs)
-        : internalType(tApp)
-        , _app{._left = reinterpret_cast<uintptr_t>(&lhs), ._right = &rhs}
-    {
-    }
+    Value(app_t, EvalMemory & mem, Value & lhs, Value & rhs);
 
     /// Constructs a nix language value of type "lambda", which represents a
     /// lazy and/or partial application of a function.
@@ -633,29 +629,15 @@ public:
         }
     };
 
-    struct AppN
-    {
-        size_t nargs;
-        Value * args[0];
-
-        std::span<Value *> argsSpan()
-        {
-            return {args, nargs};
-        }
-    };
-
     struct App
     {
-        uintptr_t _left;
-        union
-        {
-            Value * _right;
-            AppN * _appn;
-        };
+        Value * _left;
+        size_t _n;
+        Value * _args[0];
 
         Value * left() const
         {
-            return reinterpret_cast<Value *>(_left & ~uintptr_t(1));
+            return _left;
         }
 
         Value * target() const
@@ -665,13 +647,12 @@ public:
 
         std::span<Value *> args()
         {
-            return _left & 1 ? _appn->argsSpan() : std::span{&_right, 1};
+            return std::span{_args, _n};
         }
 
         size_t totalArgs() const
         {
-            return (_left & 1 ? _appn->nargs : 1)
-                + (left()->isApp() ? left()->app().totalArgs() : 0);
+            return _n + (left()->isApp() ? left()->app().totalArgs() : 0);
         }
     };
 
@@ -741,7 +722,11 @@ public:
             Thunk * _thunk;
             uintptr_t _thunk_pad;
         };
-        App _app;
+        struct
+        {
+            App * _app;
+            uintptr_t _app_pad;
+        };
         struct {
             const Acb * _auxiliary;
             uintptr_t _aux_pad;
@@ -855,11 +840,6 @@ public:
 
     Value & mkAttrs(BindingsBuilder & bindings);
 
-    inline void mkApp(Value * l, Value * r)
-    {
-        *this = {NewValueAs::app, *l, *r};
-    }
-
     void mkPrimOp(PrimOp * p);
 
     inline void mkExternal(ExternalValueBase * e)
@@ -961,12 +941,12 @@ public:
 
     App & app()
     {
-        return _app;
+        return *_app;
     }
 
     const App & app() const
     {
-        return _app;
+        return *_app;
     }
 
     const auto & lambda() const

@@ -1,6 +1,7 @@
 #include "lix/libcmd/cmd-profiles.hh"
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libcmd/common-eval-args.hh"
+#include "lix/libexpr/value.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libutil/terminal.hh"
 #include "lix/libexpr/eval.hh"
@@ -154,7 +155,8 @@ static void getAllExprs(Evaluator & state,
             vArg->mkString(path2.canonical().abs());
             if (seen.size() == maxAttrs)
                 throw Error("too many Nix expressions in directory '%1%'", path);
-            attrs.alloc(attrName).mkApp(&state.builtins.get("import"), vArg);
+            attrs.alloc(attrName
+            ) = {NewValueAs::app, state.mem, state.builtins.get("import"), *vArg};
         }
         else if (st.type == InputAccessor::tDirectory)
             /* `path2' is a directory (with no default.nix in it);
@@ -425,7 +427,7 @@ static void queryInstSources(EvalState & state,
                 Expr & eFun = state.ctx.parseExprFromString(i, CanonPath::fromCwd());
                 Value vFun, vTmp;
                 state.eval(eFun, vFun);
-                vTmp.mkApp(&vFun, &vArg);
+                vTmp = {NewValueAs::app, state.ctx.mem, vFun, vArg};
                 getDerivations(state, vTmp, "", *instSource.autoArgs, elems, true);
             }
 

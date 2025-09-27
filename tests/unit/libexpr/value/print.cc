@@ -102,9 +102,9 @@ TEST_F(ValuePrintingTests, vThunk)
 
 TEST_F(ValuePrintingTests, vApp)
 {
-    Value vApp;
+    EvalMemory mem;
     Value vFn{NewValueAs::null};
-    vApp.mkApp(&vFn, &vFn);
+    Value vApp{NewValueAs::app, mem, vFn, vFn};
 
     test(vApp, "«thunk»");
 }
@@ -142,12 +142,12 @@ TEST_F(ValuePrintingTests, vPrimOp)
 
 TEST_F(ValuePrintingTests, vPrimOpApp)
 {
+    EvalMemory mem;
     PrimOp primOp{{.name = "puppy"}};
     Value vPrimOp;
     vPrimOp.mkPrimOp(&primOp);
 
-    Value vPrimOpApp;
-    vPrimOpApp.mkApp(&vPrimOp, &vPrimOp);
+    Value vPrimOpApp{NewValueAs::app, mem, vPrimOp, vPrimOp};
 
     test(vPrimOpApp, "«partially applied primop puppy»");
 }
@@ -591,12 +591,12 @@ TEST_F(ValuePrintingTests, ansiColorsPrimOp)
 
 TEST_F(ValuePrintingTests, ansiColorsPrimOpApp)
 {
+    EvalMemory mem;
     PrimOp primOp{{.name = "puppy"}};
     Value vPrimOp;
     vPrimOp.mkPrimOp(&primOp);
 
-    Value v;
-    v.mkApp(&vPrimOp, &vPrimOp);
+    Value v{NewValueAs::app, mem, vPrimOp, vPrimOp};
 
     test(v,
          ANSI_BLUE "«partially applied primop puppy»" ANSI_NORMAL,
