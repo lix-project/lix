@@ -27,9 +27,9 @@ RC_GTEST_FIXTURE_PROP(
     prop_opaque_path_round_trip,
     (const SingleDerivedPath::Opaque & o))
 {
-    auto * v = evaluator.mem.allocValue();
-    evaluator.paths.mkStorePathString(o.path, *v);
-    auto d = state.coerceToSingleDerivedPath(noPos, *v, "");
+    Value v;
+    evaluator.paths.mkStorePathString(o.path, v);
+    auto d = state.coerceToSingleDerivedPath(noPos, v, "");
     RC_ASSERT(SingleDerivedPath { o } == d);
 }
 
@@ -41,9 +41,9 @@ RC_GTEST_FIXTURE_PROP(
     prop_derived_path_built_out_path_round_trip,
     (const SingleDerivedPath::Built & b, const StorePath & outPath))
 {
-    auto * v = evaluator.mem.allocValue();
-    state.mkOutputString(*v, b, outPath);
-    auto [d, _] = state.coerceToSingleDerivedPathUnchecked(noPos, *v, "");
+    Value v;
+    state.mkOutputString(v, b, outPath);
+    auto [d, _] = state.coerceToSingleDerivedPathUnchecked(noPos, v, "");
     RC_ASSERT(SingleDerivedPath { b } == d);
 }
 

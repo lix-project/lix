@@ -69,9 +69,9 @@ gdb.execute("handle SIGPWR SIGXCPU ignore")
 
 namespace nix {
 
-RootValue allocRootValue(Value * v)
+RootValue allocRootValue(Value v)
 {
-    return std::allocate_shared<Value *>(TraceableAllocator<Value *>(), v);
+    return std::allocate_shared<Value>(TraceableAllocator<Value>(), v);
 }
 
 // Pretty print types for assertion errors
@@ -1157,12 +1157,12 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
            been substituted into the bodies of the other attributes.
            Hence we need __overrides.) */
         if (hasOverrides) {
-            Value * vOverrides = (*v.attrs())[overrides->second.displ].value;
-            state.forceAttrs(*vOverrides, noPos, "while evaluating the `__overrides` attribute");
-            Bindings * newBnds = state.ctx.mem.allocBindings(capacity + vOverrides->attrs()->size());
+            Value & vOverrides = *(*v.attrs())[overrides->second.displ].value;
+            state.forceAttrs(vOverrides, noPos, "while evaluating the `__overrides` attribute");
+            Bindings * newBnds = state.ctx.mem.allocBindings(capacity + vOverrides.attrs()->size());
             for (auto & i : *v.attrs())
                 newBnds->push_back(i);
-            for (auto & i : *vOverrides->attrs()) {
+            for (auto & i : *vOverrides.attrs()) {
                 ExprAttrs::AttrDefs::iterator j = attrs.find(i.name);
                 if (j != attrs.end()) {
                     (*newBnds)[j->second.displ] = i;
@@ -1507,15 +1507,19 @@ FormalsMatch matchupLambdaAttrs(EvalState & state, Env & env, Displacement & dis
     return result;
 }
 
-Env & SimplePattern::match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos)
+Env & SimplePattern::match(
+    ExprLambda & lambda, EvalState & state, Env & up, Value & arg, const PosIdx pos
+)
 {
     Env & env2(state.ctx.mem.allocEnv(1));
     env2.up = &up;
-    env2.values[0] = arg;
+    env2.values[0] = &arg;
     return env2;
 }
 
-Env & AttrsPattern::match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos)
+Env & AttrsPattern::match(
+    ExprLambda & lambda, EvalState & state, Env & up, Value & arg, const PosIdx pos
+)
 {
     auto & ctx = state.ctx;
 
@@ -1524,27 +1528,23 @@ Env & AttrsPattern::match(ExprLambda & lambda, EvalState & state, Env & up, Valu
     Displacement displ = 0;
 
     try {
-        state.forceAttrs(*arg, lambda.pos, "while evaluating the value passed for the lambda argument");
+        state.forceAttrs(
+            arg, lambda.pos, "while evaluating the value passed for the lambda argument"
+        );
     } catch (Error & e) {
         if (pos) e.addTrace(ctx.positions[pos], "from call site");
         throw;
     }
 
-    if (name)
-        env2.values[displ++] = arg;
+    if (name) {
+        env2.values[displ++] = &arg;
+    }
 
     ///* For each formal argument, get the actual argument.  If
     //   there is no matching actual argument but the formal
     //   argument has a default, use the default. */
-    auto const formalsMatch = matchupLambdaAttrs(
-        state,
-        env2,
-        displ,
-        *this,
-        *arg->attrs(),
-        ctx.symbols
-    );
-
+    auto const formalsMatch =
+        matchupLambdaAttrs(state, env2, displ, *this, *arg.attrs(), ctx.symbols);
 
     if (!formalsMatch.unexpected.empty() || !formalsMatch.missing.empty()) {
         Suggestions sug; // empty suggestions -> no suggestions
@@ -1616,7 +1616,7 @@ void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes,
 
             ExprLambda & lambda(*vCur.lambda().fun);
 
-            Env & env2 = lambda.pattern->match(lambda, *this, *vCur.lambda().env(), args[0], pos);
+            Env & env2 = lambda.pattern->match(lambda, *this, *vCur.lambda().env(), *args[0], pos);
 
             ctx.stats.nrFunctionCalls++;
             if (ctx.stats.countCalls) ctx.stats.addCall(lambda);
@@ -1781,10 +1781,10 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res, PosI
     if (fun.type() == nAttrs) {
         auto found = fun.attrs()->get(ctx.s.functor);
         if (found) {
-            Value * v = ctx.mem.allocValue();
-            callFunction(*found->value, fun, *v, pos);
-            forceValue(*v, pos);
-            return autoCallFunction(args, *v, res, pos);
+            Value v;
+            callFunction(*found->value, fun, v, pos);
+            forceValue(v, pos);
+            return autoCallFunction(args, v, res, pos);
         }
     }
 
@@ -1829,7 +1829,8 @@ https://docs.lix.systems/manual/lix/stable/language/constructs.html#functions)",
         }
     }
 
-    callFunction(fun, ctx.mem.allocValue()->mkAttrs(attrs), res, pos);
+    Value vAttrs{NewValueAs::attrs, attrs.finish()};
+    callFunction(fun, vAttrs, res, pos);
 }
 
 

@@ -8,7 +8,7 @@ namespace nix {
 
 struct AbstractNixRepl : NeverAsync
 {
-    typedef std::vector<std::pair<Value*,std::string>> AnnotatedValues;
+    typedef std::vector<std::pair<Value, std::string>> AnnotatedValues;
 
     static ReplExitStatus
     run(const SearchPath & searchPath,

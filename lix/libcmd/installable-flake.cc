@@ -136,9 +136,9 @@ DerivedPathsWithInfo InstallableFlake::toDerivedPaths(EvalState & state)
     }};
 }
 
-std::pair<Value *, PosIdx> InstallableFlake::toValue(EvalState & state)
+std::pair<Value, PosIdx> InstallableFlake::toValue(EvalState & state)
 {
-    return {&getCursor(state)->forceValue(state), noPos};
+    return {getCursor(state)->forceValue(state), noPos};
 }
 
 std::vector<ref<eval_cache::AttrCursor>>

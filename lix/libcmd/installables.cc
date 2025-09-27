@@ -235,8 +235,7 @@ void SourceExprCommand::completeInstallable(EvalState & state, AddCompletions & 
                 prefix_ = "";
             }
 
-            auto [v, pos] = findAlongAttrPath(state, prefix_, *autoArgs, root);
-            Value &v1(*v);
+            auto [v1, pos] = findAlongAttrPath(state, prefix_, *autoArgs, root);
             state.forceValue(v1, pos);
             Value v2;
             state.autoCallFunction(*autoArgs, v1, v2, pos);
@@ -412,15 +411,15 @@ ref<eval_cache::EvalCache> openEvalCache(
             if (getEnv("NIX_ALLOW_EVAL").value_or("1") == "0")
                 throw Error("not everything is cached, but evaluation is not allowed");
 
-            auto vFlake = state.ctx.mem.allocValue();
-            flake::callFlake(state, *lockedFlake, *vFlake);
+            Value vFlake;
+            flake::callFlake(state, *lockedFlake, vFlake);
 
-            state.forceAttrs(*vFlake, noPos, "while parsing cached flake data");
+            state.forceAttrs(vFlake, noPos, "while parsing cached flake data");
 
-            auto aOutputs = vFlake->attrs()->get(state.ctx.symbols.create("outputs"));
+            auto aOutputs = vFlake.attrs()->get(state.ctx.symbols.create("outputs"));
             assert(aOutputs);
 
-            return aOutputs->value;
+            return *aOutputs->value;
         };
 
     if (fingerprint) {
@@ -465,10 +464,9 @@ Installables SourceExprCommand::parseInstallables(
 
         for (auto & s : ss) {
             auto [prefix, extendedOutputsSpec] = ExtendedOutputsSpec::parse(s);
-            result.push_back(
-                make_ref<InstallableAttrPath>(
-                    InstallableAttrPath::parse(
-                        evaluator, *this, vFile, std::move(prefix), std::move(extendedOutputsSpec))));
+            result.push_back(make_ref<InstallableAttrPath>(InstallableAttrPath::parse(
+                evaluator, *this, *vFile, std::move(prefix), std::move(extendedOutputsSpec)
+            )));
         }
 
     } else {

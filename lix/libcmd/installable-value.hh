@@ -77,7 +77,7 @@ struct InstallableValue : Installable
 
     virtual ~InstallableValue() { }
 
-    virtual std::pair<Value *, PosIdx> toValue(EvalState & state) = 0;
+    virtual std::pair<Value, PosIdx> toValue(EvalState & state) = 0;
 
     /**
      * Get a cursor to each value this Installable could refer to.

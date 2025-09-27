@@ -126,7 +126,7 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
             nix::Bindings &autoArgs, nix::AutoCloseFD &to,
             nix::AutoCloseFD &from, MyArgs &args, nix::AsyncIoRoot &aio) {
 
-    nix::Value *vRoot = [&]() {
+    nix::Value vRoot = [&]() {
         auto state = evaluator->begin(aio);
         if (args.flake) {
             auto [flakeRef, fragment, outputSpec] =
@@ -138,7 +138,7 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
 
             return flake.toValue(*state).first;
         } else {
-            return releaseExprTopLevelValue(*state, autoArgs, args);
+            return *releaseExprTopLevelValue(*state, autoArgs, args);
         }
     }();
 
@@ -168,11 +168,11 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
             nix::JSON{{"attr", attrPathS}, {"attrPath", path}};
         try {
             auto vTmp =
-                nix::findAlongAttrPath(*state, attrPathS, autoArgs, *vRoot)
+                nix::findAlongAttrPath(*state, attrPathS, autoArgs, vRoot)
                     .first;
 
             auto v = evaluator->mem.allocValue();
-            state->autoCallFunction(autoArgs, *vTmp, *v, {});
+            state->autoCallFunction(autoArgs, vTmp, *v, {});
 
             if (v->type() == nix::nAttrs) {
                 if (auto drvInfo = nix::getDerivation(*state, *v, false)) {

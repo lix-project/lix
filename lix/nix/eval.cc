@@ -79,21 +79,26 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
         NixStringContext context;
 
         if (apply) {
-            auto vApply = evaluator->mem.allocValue();
-            state->eval(evaluator->parseExprFromString(*apply, CanonPath::fromCwd()), *vApply);
-            auto vRes = evaluator->mem.allocValue();
-            state->callFunction(*vApply, *v, *vRes, noPos);
+            Value vApply;
+            state->eval(evaluator->parseExprFromString(*apply, CanonPath::fromCwd()), vApply);
+            Value vRes;
+            state->callFunction(vApply, v, vRes, noPos);
             v = vRes;
         }
 
         if (raw) {
             logger->pause();
-            writeFull(STDOUT_FILENO, *state->coerceToString(noPos, *v, context, "while generating the eval command output"));
+            writeFull(
+                STDOUT_FILENO,
+                *state->coerceToString(
+                    noPos, v, context, "while generating the eval command output"
+                )
+            );
         }
 
         else if (json)
         {
-            logger->cout("%s", printValueAsJSON(*state, true, *v, pos, context, false));
+            logger->cout("%s", printValueAsJSON(*state, true, v, pos, context, false));
         }
 
         else
@@ -102,8 +107,8 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
                 "%s",
                 ValuePrinter(
                     *state,
-                    *v,
-                    PrintOptions {
+                    v,
+                    PrintOptions{
                         .force = true,
                         .derivationPaths = true,
                         .errors = ErrorPrintBehavior::ThrowTopLevel,

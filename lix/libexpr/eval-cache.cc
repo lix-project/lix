@@ -341,7 +341,7 @@ EvalCache::EvalCache(
 {
 }
 
-Value * EvalCache::getRootValue(EvalState & state)
+Value & EvalCache::getRootValue(EvalState & state)
 {
     if (!value) {
         debug("getting root value");
@@ -362,8 +362,9 @@ AttrCursor::AttrCursor(
     std::optional<std::pair<AttrId, AttrValue>> && cachedValue)
     : root(root), parent(parent), cachedValue(std::move(cachedValue))
 {
-    if (value)
-        _value = allocRootValue(value);
+    if (value) {
+        _value = allocRootValue(*value);
+    }
 }
 
 AttrKey AttrCursor::getKey()
@@ -386,11 +387,11 @@ Value & AttrCursor::getValue(EvalState & state)
             auto attr = vParent.attrs()->get(state.ctx.symbols.create(parent->second));
             if (!attr)
                 throw Error("attribute '%s' is unexpectedly missing", getAttrPathStr(state));
-            _value = allocRootValue(attr->value);
+            _value = allocRootValue(*attr->value);
         } else
             _value = allocRootValue(root->getRootValue(state));
     }
-    return **_value;
+    return *_value;
 }
 
 std::vector<std::string> AttrCursor::getAttrPath(EvalState & state) const

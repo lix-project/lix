@@ -522,9 +522,10 @@ struct CmdFlakeCheck : FlakeCommand
                     fmt("checking NixOS configuration '%s'", attrPath));
                 Bindings & bindings(*evaluator->mem.allocBindings(0));
                 auto vToplevel = findAlongAttrPath(*state, "config.system.build.toplevel", bindings, v).first;
-                state->forceValue(*vToplevel, pos);
-                if (!state->isDerivation(*vToplevel))
+                state->forceValue(vToplevel, pos);
+                if (!state->isDerivation(vToplevel)) {
                     throw Error("attribute 'config.system.build.toplevel' is not a derivation");
+                }
             } catch (Error & e) {
                 e.addTrace(resolve(pos), HintFmt("while checking the NixOS configuration '%s'", attrPath));
                 reportError(e);
@@ -584,12 +585,12 @@ struct CmdFlakeCheck : FlakeCommand
         {
             Activity act(*logger, lvlInfo, actUnknown, "evaluating flake");
 
-            auto vFlake = evaluator->mem.allocValue();
-            flake::callFlake(*state, flake, *vFlake);
+            Value vFlake;
+            flake::callFlake(*state, flake, vFlake);
 
             enumerateOutputs(
                 *state,
-                *vFlake,
+                vFlake,
                 [&](const std::string_view name, Value & vOutput, const PosIdx pos) {
                     Activity act(*logger, lvlInfo, actUnknown,
                         fmt("checking flake output '%s'", name));

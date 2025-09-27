@@ -12,9 +12,10 @@ namespace nix {
 InstallableAttrPath::InstallableAttrPath(
     ref<eval_cache::CachingEvaluator> state,
     SourceExprCommand & cmd,
-    Value * v,
+    Value & v,
     const std::string & attrPath,
-    ExtendedOutputsSpec extendedOutputsSpec)
+    ExtendedOutputsSpec extendedOutputsSpec
+)
     : InstallableValue(state)
     , cmd(cmd)
     , v(allocRootValue(v))
@@ -22,10 +23,10 @@ InstallableAttrPath::InstallableAttrPath(
     , extendedOutputsSpec(std::move(extendedOutputsSpec))
 { }
 
-std::pair<Value *, PosIdx> InstallableAttrPath::toValue(EvalState & state)
+std::pair<Value, PosIdx> InstallableAttrPath::toValue(EvalState & state)
 {
-    auto [vRes, pos] = findAlongAttrPath(state, attrPath, *cmd.getAutoArgs(*evaluator), **v);
-    state.forceValue(*vRes, pos);
+    auto [vRes, pos] = findAlongAttrPath(state, attrPath, *cmd.getAutoArgs(*evaluator), *v);
+    state.forceValue(vRes, pos);
     return {vRes, pos};
 }
 
@@ -34,7 +35,7 @@ DerivedPathsWithInfo InstallableAttrPath::toDerivedPaths(EvalState & state)
     auto [v, pos] = toValue(state);
 
     if (std::optional derivedPathWithInfo = trySinglePathToDerivedPaths(
-            state, *v, pos, fmt("while evaluating the attribute '%s'", attrPath)
+            state, v, pos, fmt("while evaluating the attribute '%s'", attrPath)
         ))
     {
         return { *derivedPathWithInfo };
@@ -43,7 +44,7 @@ DerivedPathsWithInfo InstallableAttrPath::toDerivedPaths(EvalState & state)
     Bindings & autoArgs = *cmd.getAutoArgs(*evaluator);
 
     DrvInfos drvInfos;
-    getDerivations(state, *v, "", autoArgs, drvInfos, false);
+    getDerivations(state, v, "", autoArgs, drvInfos, false);
 
     // Backward compatibility hack: group results by drvPath. This
     // helps keep .all output together.
@@ -92,9 +93,10 @@ DerivedPathsWithInfo InstallableAttrPath::toDerivedPaths(EvalState & state)
 InstallableAttrPath InstallableAttrPath::parse(
     ref<eval_cache::CachingEvaluator> state,
     SourceExprCommand & cmd,
-    Value * v,
+    Value & v,
     std::string_view prefix,
-    ExtendedOutputsSpec extendedOutputsSpec)
+    ExtendedOutputsSpec extendedOutputsSpec
+)
 {
     return {
         state, cmd, v,

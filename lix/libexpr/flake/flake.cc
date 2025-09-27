@@ -96,7 +96,7 @@ static void expectType(EvalState & state, ValueType type,
 
 static std::pair<std::map<FlakeId, FlakeInput>, std::optional<fetchers::Attrs>> parseFlakeInputs(
     EvalState & state,
-    Value * value,
+    Value & value,
     const PosIdx pos,
     const std::optional<Path> & baseDir,
     InputPath lockRootPath,
@@ -144,11 +144,17 @@ static void parseFlakeInputAttr(EvalState & state, const Attr & attr, fetchers::
 #pragma GCC diagnostic pop
 }
 
-static FlakeInput parseFlakeInput(EvalState & state,
-    const std::string & inputName, Value * value, const PosIdx pos,
-    const std::optional<Path> & baseDir, InputPath lockRootPath, unsigned depth)
+static FlakeInput parseFlakeInput(
+    EvalState & state,
+    const std::string & inputName,
+    Value & value,
+    const PosIdx pos,
+    const std::optional<Path> & baseDir,
+    InputPath lockRootPath,
+    unsigned depth
+)
 {
-    expectType(state, nAttrs, *value, pos);
+    expectType(state, nAttrs, value, pos);
 
     FlakeInput input;
 
@@ -160,7 +166,7 @@ static FlakeInput parseFlakeInput(EvalState & state,
     fetchers::Attrs attrs;
     std::optional<std::string> url;
 
-    for (nix::Attr attr : *(value->attrs())) {
+    for (nix::Attr attr : *(value.attrs())) {
         try {
             if (attr.name == sUrl) {
                 expectType(state, nString, *attr.value, attr.pos);
@@ -172,7 +178,7 @@ static FlakeInput parseFlakeInput(EvalState & state,
             } else if (attr.name == sInputs) {
                 input.overrides =
                     parseFlakeInputs(
-                        state, attr.value, attr.pos, baseDir, lockRootPath, depth + 1, false
+                        state, *attr.value, attr.pos, baseDir, lockRootPath, depth + 1, false
                     )
                         .first;
             } else if (attr.name == sFollows) {
@@ -218,7 +224,7 @@ static FlakeInput parseFlakeInput(EvalState & state,
 
 static std::pair<std::map<FlakeId, FlakeInput>, std::optional<fetchers::Attrs>> parseFlakeInputs(
     EvalState & state,
-    Value * value,
+    Value & value,
     const PosIdx pos,
     const std::optional<Path> & baseDir,
     InputPath lockRootPath,
@@ -228,10 +234,10 @@ static std::pair<std::map<FlakeId, FlakeInput>, std::optional<fetchers::Attrs>> 
 {
     std::map<FlakeId, FlakeInput> inputs;
 
-    expectType(state, nAttrs, *value, pos);
+    expectType(state, nAttrs, value, pos);
 
     std::optional<fetchers::Attrs> selfAttrs = std::nullopt;
-    for (const nix::Attr & inputAttr : *(*value).attrs()) {
+    for (const nix::Attr & inputAttr : *value.attrs()) {
         std::string inputName{state.ctx.symbols[inputAttr.name]};
         if (inputName == "self") {
             experimentalFeatureSettings.require(Xp::FlakeSelfAttrs);
@@ -251,7 +257,7 @@ static std::pair<std::map<FlakeId, FlakeInput>, std::optional<fetchers::Attrs>> 
             inputs.emplace(
                 inputName,
                 parseFlakeInput(
-                    state, inputName, inputAttr.value, inputAttr.pos, baseDir, lockRootPath, depth
+                    state, inputName, *inputAttr.value, inputAttr.pos, baseDir, lockRootPath, depth
                 )
             );
         }
@@ -337,7 +343,7 @@ static Flake getFlake(
 
     if (auto inputs = vInfo.attrs()->get(sInputs)) {
         auto [flakeInputs, selfAttrs] =
-            parseFlakeInputs(state, inputs->value, inputs->pos, flakeDir, lockRootPath, 0, true);
+            parseFlakeInputs(state, *inputs->value, inputs->pos, flakeDir, lockRootPath, 0, true);
         flake.inputs = std::move(flakeInputs);
         flake.selfAttrs = std::move(selfAttrs);
     }
@@ -926,13 +932,17 @@ void callFlake(EvalState & state,
     vRootSubdir->mkString(lockedFlake.flake.lockedRef.subdir);
 
     if (!state.ctx.caches.vCallFlake) {
-        state.ctx.caches.vCallFlake = allocRootValue(state.ctx.mem.allocValue());
-        state.eval(state.ctx.parseExprFromString(
-            #include "call-flake.nix.gen.hh"
-            , CanonPath::root), **state.ctx.caches.vCallFlake);
+        state.ctx.caches.vCallFlake = allocRootValue({});
+        state.eval(
+            state.ctx.parseExprFromString(
+#include "call-flake.nix.gen.hh"
+                , CanonPath::root
+            ),
+            *state.ctx.caches.vCallFlake
+        );
     }
 
-    state.callFunction(**state.ctx.caches.vCallFlake, *vLocks, *vTmp1, noPos);
+    state.callFunction(*state.ctx.caches.vCallFlake, *vLocks, *vTmp1, noPos);
     state.callFunction(*vTmp1, *vRootSrc, *vTmp2, noPos);
     state.callFunction(*vTmp2, *vRootSubdir, vRes, noPos);
 }

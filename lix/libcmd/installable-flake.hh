@@ -55,7 +55,7 @@ struct InstallableFlake : InstallableValue
 
     DerivedPathsWithInfo toDerivedPaths(EvalState & state) override;
 
-    std::pair<Value *, PosIdx> toValue(EvalState & state) override;
+    std::pair<Value, PosIdx> toValue(EvalState & state) override;
 
     /**
      * Get a cursor to every attrpath in getActualAttrPaths() that

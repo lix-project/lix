@@ -384,8 +384,7 @@ bool DrvInfo::queryMetaBool(EvalState & state, const std::string & name, bool de
     return def;
 }
 
-
-void DrvInfo::setMeta(EvalState & state, const std::string & name, Value * v)
+void DrvInfo::setMeta(EvalState & state, const std::string & name, Value & v)
 {
     getMeta(state);
     auto attrs = state.ctx.buildBindings(1 + (meta ? meta->size() : 0));
@@ -394,7 +393,7 @@ void DrvInfo::setMeta(EvalState & state, const std::string & name, Value * v)
         for (auto i : *meta)
             if (i.name != sym)
                 attrs.insert(i);
-    if (v) attrs.insert(sym, v);
+    attrs.insert(sym, &v);
     meta = attrs.finish();
 }
 

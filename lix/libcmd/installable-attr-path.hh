@@ -20,13 +20,14 @@ class InstallableAttrPath : public InstallableValue
     InstallableAttrPath(
         ref<eval_cache::CachingEvaluator> state,
         SourceExprCommand & cmd,
-        Value * v,
+        Value & v,
         const std::string & attrPath,
-        ExtendedOutputsSpec extendedOutputsSpec);
+        ExtendedOutputsSpec extendedOutputsSpec
+    );
 
     std::string what() const override { return attrPath; };
 
-    std::pair<Value *, PosIdx> toValue(EvalState & state) override;
+    std::pair<Value, PosIdx> toValue(EvalState & state) override;
 
     DerivedPathsWithInfo toDerivedPaths(EvalState & state) override;
 
@@ -35,9 +36,10 @@ public:
     static InstallableAttrPath parse(
         ref<eval_cache::CachingEvaluator> state,
         SourceExprCommand & cmd,
-        Value * v,
+        Value & v,
         std::string_view prefix,
-        ExtendedOutputsSpec extendedOutputsSpec);
+        ExtendedOutputsSpec extendedOutputsSpec
+    );
 };
 
 }

@@ -409,7 +409,8 @@ struct Pattern {
 
     virtual std::shared_ptr<const StaticEnv> buildEnv(const StaticEnv * up) = 0;
     virtual void accept(ExprVisitor & ev) = 0;
-    virtual Env & match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos) = 0;
+    virtual Env &
+    match(ExprLambda & lambda, EvalState & state, Env & up, Value & arg, const PosIdx pos) = 0;
 
     virtual void addBindingsToJSON(JSON & out, const SymbolTable & symbols) const = 0;
 };
@@ -424,7 +425,8 @@ struct SimplePattern : Pattern
 
     virtual std::shared_ptr<const StaticEnv> buildEnv(const StaticEnv * up) override;
     virtual void accept(ExprVisitor & ev) override;
-    virtual Env & match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos) override;
+    virtual Env &
+    match(ExprLambda & lambda, EvalState & state, Env & up, Value & arg, const PosIdx pos) override;
 
     virtual void addBindingsToJSON(JSON & out, const SymbolTable & symbols) const override;
 };
@@ -445,7 +447,8 @@ struct AttrsPattern : Pattern
 
     virtual std::shared_ptr<const StaticEnv> buildEnv(const StaticEnv * up) override;
     virtual void accept(ExprVisitor & ev) override;
-    virtual Env & match(ExprLambda & lambda, EvalState & state, Env & up, Value * arg, const PosIdx pos) override;
+    virtual Env &
+    match(ExprLambda & lambda, EvalState & state, Env & up, Value & arg, const PosIdx pos) override;
 
     virtual void addBindingsToJSON(JSON & out, const SymbolTable & symbols) const override;
 

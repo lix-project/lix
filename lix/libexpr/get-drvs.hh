@@ -73,7 +73,7 @@ public:
     std::string queryMetaString(EvalState & state, const std::string & name);
     NixInt queryMetaInt(EvalState & state, const std::string & name, NixInt def);
     bool queryMetaBool(EvalState & state, const std::string & name, bool def);
-    void setMeta(EvalState & state, const std::string & name, Value * v);
+    void setMeta(EvalState & state, const std::string & name, Value & v);
 
     /*
     MetaInfo queryMetaInfo(EvalState & state) const;

@@ -1066,8 +1066,7 @@ using PrimOp = Value::PrimOp;
 /**
  * A value allocated in traceable memory.
  */
-typedef std::shared_ptr<Value *> RootValue;
+typedef std::shared_ptr<Value> RootValue;
 
-RootValue allocRootValue(Value * v);
-
+RootValue allocRootValue(Value v);
 }

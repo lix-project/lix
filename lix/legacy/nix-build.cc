@@ -285,12 +285,12 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
         };
 
         for (auto & i : attrPaths) {
-            Value & v(*findAlongAttrPath(
-                *state,
-                i,
-                takesNixShellAttr(vRoot) ? *autoArgsWithInNixShell : *autoArgs,
-                vRoot
-            ).first);
+            Value v(
+                findAlongAttrPath(
+                    *state, i, takesNixShellAttr(vRoot) ? *autoArgsWithInNixShell : *autoArgs, vRoot
+                )
+                    .first
+            );
             state->forceValue(v, noPos);
             getDerivations(
                 *state,

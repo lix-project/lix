@@ -949,7 +949,7 @@ void NixRepl::loadFiles()
 
     for (auto & [i, what] : getValues()) {
         notice("Loading installable '%1%'...", Magenta(what));
-        addAttrsToScope(*i);
+        addAttrsToScope(i);
     }
 
     loadReplOverlays();

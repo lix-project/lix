@@ -196,18 +196,22 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
         w->mkAttrs(attrs);
 
         if (!state.ctx.caches.vImportedDrvToDerivation) {
-            state.ctx.caches.vImportedDrvToDerivation = allocRootValue(state.ctx.mem.allocValue());
-            state.eval(state.ctx.parseExprFromString(
-                #include "imported-drv-to-derivation.nix.gen.hh"
-                , CanonPath::root), **state.ctx.caches.vImportedDrvToDerivation);
+            state.ctx.caches.vImportedDrvToDerivation = allocRootValue({});
+            state.eval(
+                state.ctx.parseExprFromString(
+#include "imported-drv-to-derivation.nix.gen.hh"
+                    , CanonPath::root
+                ),
+                *state.ctx.caches.vImportedDrvToDerivation
+            );
         }
 
         state.forceFunction(
-            **state.ctx.caches.vImportedDrvToDerivation,
+            *state.ctx.caches.vImportedDrvToDerivation,
             noPos,
             "while evaluating imported-drv-to-derivation.nix.gen.hh"
         );
-        v = {NewValueAs::app, state.ctx.mem, **state.ctx.caches.vImportedDrvToDerivation, *w};
+        v = {NewValueAs::app, state.ctx.mem, *state.ctx.caches.vImportedDrvToDerivation, *w};
         state.forceAttrs(v, noPos, "while calling imported-drv-to-derivation.nix.gen.hh");
     }
 
@@ -425,49 +429,70 @@ struct CompareValues : NeverAsync
 
     CompareValues(EvalState & state, const std::string_view && errorCtx) : state(state), errorCtx(errorCtx) { };
 
-    bool operator () (Value * v1, Value * v2) const
+    bool operator()(Value * v1, Value * v2) const
+    {
+        return (*this)(*v1, *v2, errorCtx);
+    }
+
+    bool operator()(Value & v1, Value & v2) const
     {
         return (*this)(v1, v2, errorCtx);
     }
 
-    bool operator () (Value * v1, Value * v2, std::string_view errorCtx) const
+    bool operator()(Value & v1, Value & v2, std::string_view errorCtx) const
     {
         try {
-            if (v1->type() == nFloat && v2->type() == nInt) {
-                return v1->fpoint() < v2->integer().value;
+            if (v1.type() == nFloat && v2.type() == nInt) {
+                return v1.fpoint() < v2.integer().value;
             }
-            if (v1->type() == nInt && v2->type() == nFloat) {
-                return v1->integer().value < v2->fpoint();
+            if (v1.type() == nInt && v2.type() == nFloat) {
+                return v1.integer().value < v2.fpoint();
             }
-            if (v1->type() != v2->type())
-                state.ctx.errors.make<EvalError>("cannot compare %s with %s", showType(*v1), showType(*v2)).debugThrow();
+            if (v1.type() != v2.type()) {
+                state.ctx.errors
+                    .make<EvalError>("cannot compare %s with %s", showType(v1), showType(v2))
+                    .debugThrow();
+            }
             // Allow selecting a subset of enum values
             #pragma GCC diagnostic push
             #pragma GCC diagnostic ignored "-Wswitch-enum"
-            switch (v1->type()) {
-                case nInt:
-                    return v1->integer() < v2->integer();
-                case nFloat:
-                    return v1->fpoint() < v2->fpoint();
-                case nString:
-                    return v1->str() < v2->str();
-                case nPath:
-                    return strcmp(v1->string().content, v2->string().content) < 0;
-                case nList:
-                    // Lexicographic comparison
-                    for (size_t i = 0;; i++) {
-                        if (i == v2->listSize()) {
-                            return false;
-                        } else if (i == v1->listSize()) {
-                            return true;
-                        } else if (!state.eqValues(*v1->listElems()[i], *v2->listElems()[i], noPos, errorCtx)) {
-                            return (*this)(v1->listElems()[i], v2->listElems()[i], "while comparing two list elements");
-                        }
+            switch (v1.type()) {
+            case nInt:
+                return v1.integer() < v2.integer();
+            case nFloat:
+                return v1.fpoint() < v2.fpoint();
+            case nString:
+                return v1.str() < v2.str();
+            case nPath:
+                return strcmp(v1.string().content, v2.string().content) < 0;
+            case nList:
+                // Lexicographic comparison
+                for (size_t i = 0;; i++) {
+                    if (i == v2.listSize()) {
+                        return false;
+                    } else if (i == v1.listSize()) {
+                        return true;
+                    } else if (!state.eqValues(
+                                   *v1.listElems()[i], *v2.listElems()[i], noPos, errorCtx
+                               ))
+                    {
+                        return (*this)(
+                            *v1.listElems()[i],
+                            *v2.listElems()[i],
+                            "while comparing two list elements"
+                        );
                     }
+                }
                 default:
-                    state.ctx.errors.make<EvalError>("cannot compare %s with %s; values of that type are incomparable", showType(*v1), showType(*v2)).debugThrow();
-            #pragma GCC diagnostic pop
-            }
+                    state.ctx.errors
+                        .make<EvalError>(
+                            "cannot compare %s with %s; values of that type are incomparable",
+                            showType(v1),
+                            showType(v2)
+                        )
+                        .debugThrow();
+#pragma GCC diagnostic pop
+                }
         } catch (Error & e) {
             if (!errorCtx.empty())
                 e.addTrace(nullptr, errorCtx);
@@ -2255,7 +2280,7 @@ static void prim_sort(EvalState & state, Value * * args, Value & v)
         if (args[0]->isPrimOp()) {
             auto ptr = args[0]->primOp()->fun.target<decltype(&prim_lessThan)>();
             if (ptr && *ptr == prim_lessThan)
-                return CompareValues(state, "while evaluating the ordering function passed to builtins.sort")(a, b);
+                return CompareValues(state, "while evaluating the ordering function passed to builtins.sort")(*a, *b);
         }
 
         Value * vs[] = {a, b};
@@ -2493,7 +2518,7 @@ static void prim_lessThan(EvalState & state, Value * * args, Value & v)
     state.forceValue(*args[0], noPos);
     state.forceValue(*args[1], noPos);
     CompareValues comp(state, "");
-    v.mkBool(comp(args[0], args[1]));
+    v.mkBool(comp(*args[0], *args[1]));
 }
 
 

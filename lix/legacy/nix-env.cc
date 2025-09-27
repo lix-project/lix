@@ -200,7 +200,7 @@ static void loadDerivations(EvalState & state, const SourcePath & nixExprPath,
     Value vRoot;
     loadSourceExpr(state, nixExprPath, vRoot);
 
-    Value & v(*findAlongAttrPath(state, pathPrefix, autoArgs, vRoot).first);
+    Value v(findAlongAttrPath(state, pathPrefix, autoArgs, vRoot).first);
 
     getDerivations(state, v, pathPrefix, autoArgs, elems, true);
 
@@ -482,7 +482,7 @@ static void queryInstSources(EvalState & state,
             Value vRoot;
             loadSourceExpr(state, *instSource.nixExprPath, vRoot);
             for (auto & i : args) {
-                Value & v(*findAlongAttrPath(state, i, *instSource.autoArgs, vRoot).first);
+                Value v(findAlongAttrPath(state, i, *instSource.autoArgs, vRoot).first);
                 getDerivations(state, v, "", *instSource.autoArgs, elems, true);
             }
             break;
@@ -519,7 +519,7 @@ static void setMetaFlag(EvalState & state, DrvInfo & drv,
 {
     auto v = state.ctx.mem.allocValue();
     v->mkString(value);
-    drv.setMeta(state, name, v);
+    drv.setMeta(state, name, *v);
 }
 
 static void installDerivations(Globals & globals,

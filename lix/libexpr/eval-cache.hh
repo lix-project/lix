@@ -12,7 +12,7 @@ namespace nix::eval_cache {
 struct AttrDb;
 class AttrCursor;
 
-typedef std::function<Value *(EvalState &)> RootLoader;
+typedef std::function<Value(EvalState &)> RootLoader;
 
 /**
  * EvalState with caching support. Historically this was part of EvalState,
@@ -42,7 +42,7 @@ class EvalCache : public std::enable_shared_from_this<EvalCache>
     RootLoader rootLoader;
     RootValue value;
 
-    Value * getRootValue(EvalState & state);
+    Value & getRootValue(EvalState & state);
 
 public:
 

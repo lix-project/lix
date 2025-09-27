@@ -15,7 +15,7 @@ namespace nix {
 class AttrPathEval : public LibExprTest
 {
 public:
-    std::pair<Value *, PosIdx> testFindAlongAttrPath(std::string expr, std::string path);
+    std::pair<Value, PosIdx> testFindAlongAttrPath(std::string expr, std::string path);
 };
 
 RC_GTEST_PROP(AttrPath, prop_round_trip, ())
@@ -29,7 +29,7 @@ RC_GTEST_PROP(AttrPath, prop_round_trip, ())
     RC_ASSERT(strings == unparsedReparsed);
 }
 
-std::pair<Value *, PosIdx> AttrPathEval::testFindAlongAttrPath(std::string expr, std::string path)
+std::pair<Value, PosIdx> AttrPathEval::testFindAlongAttrPath(std::string expr, std::string path)
 {
     auto v = eval(expr);
     auto bindings = evalState().ctx.buildBindings(0).finish();

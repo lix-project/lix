@@ -8,11 +8,6 @@
 
 namespace nix {
 
-/*
- * Used for `JSONObjectState`
- */
-using ValueMap = GcMap<Symbol, Value *>;
-
 // for more information, refer to
 // https://github.com/nlohmann/json/blob/master/include/nlohmann/detail/input/json_sax.hpp
 class JSONSax : nlohmann::json_sax<JSON> {
@@ -26,49 +21,57 @@ class JSONSax : nlohmann::json_sax<JSON> {
             assert(false && "tried to close toplevel json parser state");
         }
         explicit JSONState(std::unique_ptr<JSONState> && p) : parent(std::move(p)) {}
-        explicit JSONState(Value * v) : v(allocRootValue(v)) {}
+        JSONState() = default;
         JSONState(JSONState & p) = delete;
         Value & value(EvalState & state)
         {
-            if (!v)
-                v = allocRootValue(state.ctx.mem.allocValue());
-            return **v;
+            if (!v) {
+                v = allocRootValue({});
+            }
+            return *v;
         }
         virtual ~JSONState() {}
-        virtual void add() {}
+        virtual void add(EvalState & state) {}
     };
 
     class JSONObjectState : public JSONState {
         using JSONState::JSONState;
-        ValueMap attrs;
+        GcMap<Symbol, Value> attrs;
+        Symbol _key;
         std::unique_ptr<JSONState> resolve(EvalState & state) override
         {
             auto attrs2 = state.ctx.buildBindings(attrs.size());
-            for (auto & i : attrs)
-                attrs2.insert(i.first, i.second);
+            for (auto & i : attrs) {
+                auto v = state.ctx.mem.allocValue();
+                *v = i.second;
+                attrs2.insert(i.first, v);
+            }
             parent->value(state).mkAttrs(attrs2.alreadySorted());
             return std::move(parent);
         }
-        void add() override { v = nullptr; }
+        void add(EvalState & state) override {
+            attrs.insert_or_assign(_key, value(state));
+            v = nullptr;
+        }
     public:
         void key(string_t & name, EvalState & state)
         {
-            attrs.insert_or_assign(state.ctx.symbols.create(name), &value(state));
+            _key = state.ctx.symbols.create(name);
         }
     };
 
     class JSONListState : public JSONState {
-        GcVector<Value *> values;
+        GcVector<Value> values;
         std::unique_ptr<JSONState> resolve(EvalState & state) override
         {
             auto list = state.ctx.mem.newList(values.size());
             parent->value(state) = {NewValueAs::list, list};
             for (size_t n = 0; n < values.size(); ++n) {
-                list->elems[n] = values[n];
+                *(list->elems[n] = state.ctx.mem.allocValue()) = values[n];
             }
             return std::move(parent);
         }
-        void add() override {
+        void add(EvalState & state) override {
             values.push_back(*v);
             v = nullptr;
         }
@@ -83,26 +86,31 @@ class JSONSax : nlohmann::json_sax<JSON> {
     std::unique_ptr<JSONState> rs;
 
 public:
-    JSONSax(EvalState & state, Value & v) : state(state), rs(new JSONState(&v)) {};
+    JSONSax(EvalState & state) : state(state), rs(new JSONState()) {};
+
+    Value result()
+    {
+        return rs->value(state);
+    }
 
     bool null() override
     {
         rs->value(state).mkNull();
-        rs->add();
+        rs->add(state);
         return true;
     }
 
     bool boolean(bool val) override
     {
         rs->value(state).mkBool(val);
-        rs->add();
+        rs->add(state);
         return true;
     }
 
     bool number_integer(number_integer_t val) override
     {
         rs->value(state).mkInt(val);
-        rs->add();
+        rs->add(state);
         return true;
     }
 
@@ -115,21 +123,21 @@ public:
         }
         NixInt::Inner val = val_;
         rs->value(state).mkInt(val);
-        rs->add();
+        rs->add(state);
         return true;
     }
 
     bool number_float(number_float_t val, const string_t & s) override
     {
         rs->value(state).mkFloat(val);
-        rs->add();
+        rs->add(state);
         return true;
     }
 
     bool string(string_t & val) override
     {
         rs->value(state).mkString(val);
-        rs->add();
+        rs->add(state);
         return true;
     }
 
@@ -156,7 +164,7 @@ public:
 
     bool end_object() override {
         rs = rs->resolve(state);
-        rs->add();
+        rs->add(state);
         return true;
     }
 
@@ -179,10 +187,11 @@ public:
 
 void parseJSON(EvalState & state, const std::string_view & s_, Value & v)
 {
-    JSONSax parser(state, v);
+    JSONSax parser(state);
     bool res = JSON::sax_parse(s_, &parser);
     if (!res)
         throw JSONParseError("Invalid JSON Value");
+    v = parser.result();
 }
 
 }
