@@ -192,10 +192,6 @@ class ExternalValueBase
 
 std::ostream & operator << (std::ostream & str, const ExternalValueBase & v);
 
-/** This is just the address of eBlackHole. It exists because eBlackHole has an
- * incomplete type at usage sites so is not possible to cast. */
-extern Expr *eBlackHoleAddr;
-
 struct NewValueAs
 {
     struct integer_t { };
@@ -259,8 +255,12 @@ public:
     struct Acb;
     struct Null;
     struct Lambda;
+    struct Thunk;
 
     static const Null NULL_ACB;
+
+    /** Single, unforceable black hole thunk control block. */
+    static Thunk blackHole;
 
     // Discount `using NewValueAs::*;`
 // NOLINTNEXTLINE(bugprone-macro-parentheses)
@@ -481,10 +481,7 @@ public:
     ///
     /// The thunk stores the environment it will be computed in @ref env, and
     /// the expression that will need to be evaluated @ref expr.
-    Value(thunk_t, Env & env, Expr & expr)
-        : internalType(tThunk)
-        , _thunk({ .env = &env, .expr = &expr })
-    { }
+    Value(thunk_t, EvalMemory & mem, Env & env, Expr & expr);
 
     /// Constructs a nix language value of type "lambda", which represents
     /// a builtin, primitive operation ("primop"), from the primop
@@ -524,10 +521,7 @@ public:
     Value(lambda_t, EvalMemory & mem, Env & env, ExprLambda & lambda);
 
     /// Constructs an evil thunk, whose evaluation represents infinite recursion.
-    explicit Value(blackhole_t)
-        : internalType(tThunk)
-        , _thunk({ .env = nullptr, .expr = eBlackHoleAddr })
-    { }
+    explicit Value(blackhole_t) : internalType(tThunk), _thunk(&blackHole), _thunk_pad(0) {}
 
     explicit Value(const Acb & backing)
         : internalType(tAuxiliary)
@@ -575,7 +569,7 @@ public:
     inline bool isApp() const { return internalType == tApp; };
     inline bool isBlackhole() const
     {
-        return internalType == tThunk && _thunk.expr == eBlackHoleAddr;
+        return internalType == tThunk && _thunk == &blackHole;
     }
 
     // type() == nFunction
@@ -712,6 +706,11 @@ public:
         Env * env;
         ExprLambda * fun;
     };
+    struct Thunk
+    {
+        Env * env;
+        Expr * expr;
+    };
 
     union
     {
@@ -739,9 +738,9 @@ public:
             uintptr_t _list_pad;
         };
         struct {
-            Env * env;
-            Expr * expr;
-        } _thunk;
+            Thunk * _thunk;
+            uintptr_t _thunk_pad;
+        };
         App _app;
         struct {
             const Acb * _auxiliary;
@@ -856,22 +855,9 @@ public:
 
     Value & mkAttrs(BindingsBuilder & bindings);
 
-    inline void mkThunk(Env * e, Expr & ex)
-    {
-        internalType = tThunk;
-        _thunk.env = e;
-        _thunk.expr = &ex;
-    }
-
     inline void mkApp(Value * l, Value * r)
     {
         *this = {NewValueAs::app, *l, *r};
-    }
-
-    inline void mkBlackhole()
-    {
-        internalType = tThunk;
-        _thunk.expr = eBlackHoleAddr;
     }
 
     void mkPrimOp(PrimOp * p);
@@ -970,7 +956,7 @@ public:
 
     const auto & thunk() const
     {
-        return _thunk;
+        return *_thunk;
     }
 
     App & app()

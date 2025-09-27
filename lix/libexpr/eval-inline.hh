@@ -26,6 +26,15 @@ inline Value::Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value *> arg
     }
 }
 
+inline Value::Value(thunk_t, EvalMemory & mem, Env & env, Expr & expr)
+    : internalType(tThunk)
+    , _thunk_pad(0)
+{
+    auto thunk = mem.allocType<Thunk>();
+    *thunk = {.env = &env, .expr = &expr};
+    _thunk = thunk;
+}
+
 inline Value::Value(lambda_t, EvalMemory & mem, Env & env, ExprLambda & lambda)
     : internalType(tAuxiliary)
     , _aux_pad(0)
@@ -106,13 +115,14 @@ Env & EvalMemory::allocEnv(size_t size)
 void EvalState::forceValue(Value & v, const PosIdx pos)
 {
     if (v.isThunk()) {
+        const auto backup = v;
         Env * env = v.thunk().env;
         Expr & expr = *v.thunk().expr;
+        v = Value{NewValueAs::blackhole};
         try {
-            v.mkBlackhole();
             expr.eval(*this, *env, v);
         } catch (...) {
-            v.mkThunk(env, expr);
+            v = backup;
             tryFixupBlackHolePos(v, pos);
             throw;
         }
