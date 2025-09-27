@@ -12,14 +12,14 @@ namespace nix
 static const Value::List emptyListData{.size = 0};
 Value Value::EMPTY_LIST{Value::list_t{}, &emptyListData};
 
-static void copyContextToValue(Value & v, const NixStringContext & context)
+static void copyContextToValue(Value::String & s, const NixStringContext & context)
 {
     if (!context.empty()) {
         size_t n = 0;
-        v._string.context = gcAllocType<char const *>(context.size() + 1);
+        s.context = gcAllocType<char const *>(context.size() + 1);
         for (auto & i : context)
-            v._string.context[n++] = gcCopyStringIfNeeded(i.to_string());
-        v._string.context[n] = 0;
+            s.context[n++] = gcCopyStringIfNeeded(i.to_string());
+        s.context[n] = 0;
     }
 }
 
@@ -60,15 +60,14 @@ void Value::mkString(std::string_view s)
 void Value::mkString(std::string_view s, const NixStringContext & context)
 {
     mkString(s);
-    copyContextToValue(*this, context);
+    copyContextToValue(*const_cast<String *>(_string), context);
 }
 
 void Value::mkStringMove(const char * s, const NixStringContext & context)
 {
     mkString(s);
-    copyContextToValue(*this, context);
+    copyContextToValue(*const_cast<String *>(_string), context);
 }
-
 
 void Value::mkPath(const SourcePath & path)
 {

@@ -213,6 +213,8 @@ public:
      */
     static Value EMPTY_LIST;
 
+    struct String;
+
     // Discount `using NewValueAs::*;`
 // NOLINTNEXTLINE(bugprone-macro-parentheses)
 #define USING_VALUETYPE(name) using name = NewValueAs::name
@@ -275,8 +277,14 @@ public:
     /// enabled), and string and context data copied into that memory.
     Value(string_t, char const * strPtr, char const ** contextPtr = nullptr)
         : internalType(tString)
-        , _string({.content = strPtr, .context = contextPtr})
-    { }
+        , _string_pad(0)
+    {
+        auto block = gcAllocType<String>();
+        *block = {.content = strPtr, .context = contextPtr};
+        _string = block;
+    }
+
+    Value(string_t, const String * str) : internalType(tString), _string(str), _string_pad(0) {}
 
     /// Constructx a nix language value of type "string", with a copy of the
     /// string data viewed by @ref copyFrom.
@@ -285,24 +293,28 @@ public:
     /// performs a dynamic (GC) allocation to do so.
     Value(string_t, std::string_view copyFrom, NixStringContext const & context = {})
         : internalType(tString)
-        , _string({.content = gcCopyStringIfNeeded(copyFrom), .context = nullptr})
+        , _string_pad(0)
     {
+        auto block = gcAllocType<String>();
+        *block = {.content = gcCopyStringIfNeeded(copyFrom), .context = nullptr};
+        _string = block;
+
         if (context.empty()) {
             // It stays nullptr.
             return;
         }
 
         // Copy the context.
-        this->_string.context = gcAllocType<char const *>(context.size() + 1);
+        block->context = gcAllocType<char const *>(context.size() + 1);
 
         size_t n = 0;
         for (NixStringContextElem const & contextElem : context) {
-            this->_string.context[n] = gcCopyStringIfNeeded(contextElem.to_string());
+            block->context[n] = gcCopyStringIfNeeded(contextElem.to_string());
             n += 1;
         }
 
         // Terminator sentinel.
-        this->_string.context[n] = nullptr;
+        block->context[n] = nullptr;
     }
 
     /// Constructx a nix language value of type "string", with the value of the
@@ -316,24 +328,28 @@ public:
     /// to do so.
     Value(string_t, char const * strPtr, NixStringContext const & context)
         : internalType(tString)
-        , _string({.content = strPtr, .context = nullptr})
+        , _string_pad(0)
     {
+        auto block = gcAllocType<String>();
+        *block = {.content = strPtr, .context = nullptr};
+        _string = block;
+
         if (context.empty()) {
             // It stays nullptr
             return;
         }
 
         // Copy the context.
-        this->_string.context = gcAllocType<char const *>(context.size() + 1);
+        block->context = gcAllocType<char const *>(context.size() + 1);
 
         size_t n = 0;
         for (NixStringContextElem const & contextElem : context) {
-            this->_string.context[n] = gcCopyStringIfNeeded(contextElem.to_string());
+            block->context[n] = gcCopyStringIfNeeded(contextElem.to_string());
             n += 1;
         }
 
         // Terminator sentinel.
-        this->_string.context[n] = nullptr;
+        block->context[n] = nullptr;
     }
 
     /// Constructs a nix language value of type "path", with the value of the
@@ -342,20 +358,22 @@ public:
     /// The C-string is not copied; this constructor assumes suitable memory
     /// has already been allocated (with the GC if enabled), and string data
     /// has been copied into that memory.
-    Value(path_t, char const * strPtr)
-        : internalType(tString)
-        , _string{.content = strPtr, .context = String::path}
-    { }
+    Value(path_t, const String * str) : internalType(tString), _string(str), _string_pad(0)
+    {
+        assert(str->isPath());
+    }
 
     /// Constructs a nix language value of type "path", with the path
     /// @ref path.
     ///
     /// The data from @ref path *is* copied, and this constructor performs a
     /// dynamic (GC) allocation to do so.
-    Value(path_t, SourcePath const & path)
-        : internalType(tString)
-        , _string{.content = gcCopyStringIfNeeded(path.canonical().abs()), .context = String::path}
-    { }
+    Value(path_t, SourcePath const & path) : internalType(tString), _string_pad(0)
+    {
+        auto block = gcAllocType<String>();
+        *block = {.content = gcCopyStringIfNeeded(path.canonical().abs()), .context = String::path};
+        _string = block;
+    }
 
     /// Constructs a nix language value of type "list", with element array
     /// @ref items.
@@ -614,8 +632,11 @@ public:
             uintptr_t _bool_pad;
         };
 
-        String _string;
-
+        struct
+        {
+            const String * _string;
+            uintptr_t _string_pad;
+        };
         struct {
             Bindings * _attrs;
             uintptr_t _attrs_pad;
@@ -661,7 +682,7 @@ public:
             case tInt: return nInt;
             case tBool: return nBool;
             case tString:
-                return _string.isPath() ? nPath : nString;
+                return _string->isPath() ? nPath : nString;
             case tNull: return nNull;
             case tAttrs: return nAttrs;
             case tList:
@@ -713,8 +734,9 @@ public:
     inline void mkString(const char * s, const char * * context = 0)
     {
         internalType = tString;
-        _string.content = s;
-        _string.context = context;
+        auto block = gcAllocType<String>();
+        *block = {.content = s, .context = context};
+        _string = block;
     }
 
     void mkString(std::string_view s);
@@ -729,8 +751,9 @@ public:
     {
         clearValue();
         internalType = tString;
-        _string.content = path;
-        _string.context = String::path;
+        auto block = gcAllocType<String>();
+        *block = {.content = path, .context = String::path};
+        _string = block;
     }
 
     inline void mkNull()
@@ -841,14 +864,14 @@ public:
 
     SourcePath path() const
     {
-        assert(internalType == tString && _string.isPath());
-        return SourcePath{CanonPath(_string.content)};
+        assert(internalType == tString && _string->isPath());
+        return SourcePath{CanonPath(_string->content)};
     }
 
     std::string_view str() const
     {
-        assert(internalType == tString && !_string.isPath());
-        return std::string_view(_string.content);
+        assert(internalType == tString && !_string->isPath());
+        return std::string_view(_string->content);
     }
 
     NixInt integer() const
@@ -863,7 +886,7 @@ public:
 
     const auto & string() const
     {
-        return _string;
+        return *_string;
     }
 
     auto attrs() const

@@ -47,6 +47,8 @@ private:
      */
     std::string contents;
 
+    Value::String strcb;
+
     /*
      * A value containing a string that can be immediately passed to the evaluator.
      */
@@ -55,7 +57,8 @@ private:
 public:
     explicit InternedSymbol(std::string_view s)
         : contents(s)
-        , underlyingValue(NewValueAs::string, contents.c_str(), nullptr)
+        , strcb{.content = contents.c_str(), .context = nullptr}
+        , underlyingValue(NewValueAs::string, &strcb)
     {
     }
 

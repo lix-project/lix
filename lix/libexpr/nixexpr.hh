@@ -188,13 +188,21 @@ public:
 struct ExprString : ExprLiteral
 {
     std::string s;
-    ExprString(const PosIdx pos, std::string &&s) : ExprLiteral(pos), s(std::move(s)) { v.mkString(this->s.data()); };
+    Value::String strcb{.content = s.c_str(), .context = nullptr};
+    ExprString(const PosIdx pos, std::string && s) : ExprLiteral(pos), s(std::move(s))
+    {
+        v = {NewValueAs::string, &strcb};
+    }
 };
 
 struct ExprPath : ExprLiteral
 {
     std::string s;
-    ExprPath(const PosIdx pos, std::string s) : ExprLiteral(pos), s(std::move(s)) { v.mkPath(this->s.c_str()); };
+    Value::String strcb{.content = s.c_str(), .context = Value::String::path};
+    ExprPath(const PosIdx pos, std::string s) : ExprLiteral(pos), s(std::move(s))
+    {
+        v = {NewValueAs::path, &strcb};
+    }
 };
 
 typedef uint32_t Level;
