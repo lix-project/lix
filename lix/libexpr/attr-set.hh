@@ -24,8 +24,7 @@ struct Attr
     Symbol name;
     PosIdx pos;
     Value * value;
-    Attr(Symbol name, Value * value, PosIdx pos = noPos)
-        : name(name), pos(pos), value(value) { };
+    Attr(Symbol name, Value * value, PosIdx pos = noPos) : name(name), pos(pos), value(value) {}
     Attr() { };
     bool operator < (const Attr & a) const
     {

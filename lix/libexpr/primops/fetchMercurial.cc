@@ -20,22 +20,45 @@ static void prim_fetchMercurial(EvalState & state, Value * * args, Value & v)
         for (auto & attr : *args[0]->attrs()) {
             std::string_view n(state.ctx.symbols[attr.name]);
             if (n == "url")
-                url = state.coerceToString(attr.pos, *attr.value, context,
-                        "while evaluating the `url` attribute passed to builtins.fetchMercurial",
-                        StringCoercionMode::Strict, false).toOwned();
+                url = state
+                          .coerceToString(
+                              attr.pos,
+                              *attr.value,
+                              context,
+                              "while evaluating the `url` attribute passed to "
+                              "builtins.fetchMercurial",
+                              StringCoercionMode::Strict,
+                              false
+                          )
+                          .toOwned();
             else if (n == "rev") {
                 // Ugly: unlike fetchGit, here the "rev" attribute can
                 // be both a revision or a branch/tag name.
-                auto value = state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the `rev` attribute passed to builtins.fetchMercurial");
-                if (std::regex_match(value.begin(), value.end(), revRegex))
+                auto value = state.forceStringNoCtx(
+                    *attr.value,
+                    attr.pos,
+                    "while evaluating the `rev` attribute passed to builtins.fetchMercurial"
+                );
+                if (std::regex_match(value.begin(), value.end(), revRegex)) {
                     rev = Hash::parseAny(value, HashType::SHA1);
-                else
+                } else
                     ref = value;
             }
             else if (n == "name")
-                name = state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the `name` attribute passed to builtins.fetchMercurial");
-            else
-                state.ctx.errors.make<EvalError>("unsupported argument '%s' to 'fetchMercurial'", state.ctx.symbols[attr.name]).atPos(attr.pos).debugThrow();
+                name = state.forceStringNoCtx(
+                    *attr.value,
+                    attr.pos,
+                    "while evaluating the `name` attribute passed to builtins.fetchMercurial"
+                );
+            else {
+                state.ctx.errors
+                    .make<EvalError>(
+                        "unsupported argument '%s' to 'fetchMercurial'",
+                        state.ctx.symbols[attr.name]
+                    )
+                    .atPos(attr.pos)
+                    .debugThrow();
+            }
         }
 
         if (url.empty())

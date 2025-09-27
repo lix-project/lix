@@ -127,11 +127,16 @@ static void fetchTree(
                 state.ctx.errors.make<EvalError>(
                     "unexpected attribute 'type'"
                 ).atPos(pos).debugThrow();
-            type = state.forceStringNoCtx(*aType->value, aType->pos, "while evaluating the `type` attribute passed to builtins.fetchTree");
-        } else if (!type)
-            state.ctx.errors.make<EvalError>(
-                "attribute 'type' is missing in call to 'fetchTree'"
-            ).atPos(pos).debugThrow();
+            type = state.forceStringNoCtx(
+                *aType->value,
+                aType->pos,
+                "while evaluating the `type` attribute passed to builtins.fetchTree"
+            );
+        } else if (!type) {
+            state.ctx.errors.make<EvalError>("attribute 'type' is missing in call to 'fetchTree'")
+                .atPos(pos)
+                .debugThrow();
+        }
 
         attrs.emplace("type", type.value());
 
@@ -139,17 +144,21 @@ static void fetchTree(
             if (attr.name == state.ctx.s.type) continue;
             state.forceValue(*attr.value, attr.pos);
             if (attr.value->type() == nPath || attr.value->type() == nString) {
-                auto s = state.coerceToString(attr.pos, *attr.value, context, "", StringCoercionMode::Strict, false).toOwned();
+                auto s =
+                    state
+                        .coerceToString(
+                            attr.pos, *attr.value, context, "", StringCoercionMode::Strict, false
+                        )
+                        .toOwned();
                 attrs.emplace(state.ctx.symbols[attr.name],
                     state.ctx.symbols[attr.name] == "url"
                     ? type == "git"
                       ? fixURIForGit(s, state)
                       : fixURI(s, state)
                     : s);
-            }
-            else if (attr.value->type() == nBool)
+            } else if (attr.value->type() == nBool) {
                 attrs.emplace(state.ctx.symbols[attr.name], Explicit<bool>{attr.value->boolean()});
-            else if (attr.value->type() == nInt) {
+            } else if (attr.value->type() == nInt) {
                 auto intValue = attr.value->integer().value;
 
                 if (intValue < 0) {
@@ -158,9 +167,16 @@ static void fetchTree(
                 unsigned long asUnsigned = intValue;
 
                 attrs.emplace(state.ctx.symbols[attr.name], asUnsigned);
-            } else
-                state.ctx.errors.make<TypeError>("fetchTree argument '%s' is %s while a string, Boolean or integer is expected",
-                    state.ctx.symbols[attr.name], showType(*attr.value)).debugThrow();
+            } else {
+                state.ctx.errors
+                    .make<TypeError>(
+                        "fetchTree argument '%s' is %s while a string, Boolean or integer is "
+                        "expected",
+                        state.ctx.symbols[attr.name],
+                        showType(*attr.value)
+                    )
+                    .debugThrow();
+            }
         }
 
         if (!params.allowNameArgument)
@@ -224,14 +240,29 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
         for (auto & attr : *args[0]->attrs()) {
             std::string_view n(state.ctx.symbols[attr.name]);
             if (n == "url")
-                url = state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the url we should fetch");
-            else if (n == "sha256")
-                expectedHash = newHashAllowEmpty(state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the sha256 of the content we should fetch"), HashType::SHA256);
-            else if (n == "name")
-                name = state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the name of the content we should fetch");
-            else
+                url = state.forceStringNoCtx(
+                    *attr.value, attr.pos, "while evaluating the url we should fetch"
+                );
+            else if (n == "sha256") {
+                expectedHash = newHashAllowEmpty(
+                    state.forceStringNoCtx(
+                        *attr.value,
+                        attr.pos,
+                        "while evaluating the sha256 of the content we should fetch"
+                    ),
+                    HashType::SHA256
+                );
+            } else if (n == "name")
+                name = state.forceStringNoCtx(
+                    *attr.value,
+                    attr.pos,
+                    "while evaluating the name of the content we should fetch"
+                );
+            else {
                 state.ctx.errors.make<EvalError>("unsupported argument '%s' to '%s'", n, who)
-                .atPos(pos).debugThrow();
+                    .atPos(pos)
+                    .debugThrow();
+            }
         }
 
         if (!url)

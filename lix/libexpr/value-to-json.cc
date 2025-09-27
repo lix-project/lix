@@ -60,10 +60,13 @@ JSON printValueAsJSON(EvalState & state, bool strict,
                 for (auto & j : names) {
                     const Attr & a(*v.attrs()->get(state.ctx.symbols.create(j)));
                     try {
-                        out[j] = printValueAsJSON(state, strict, *a.value, a.pos, context, copyToStore);
+                        out[j] =
+                            printValueAsJSON(state, strict, *a.value, a.pos, context, copyToStore);
                     } catch (Error & e) {
-                        e.addTrace(state.ctx.positions[a.pos],
-                            HintFmt("while evaluating attribute '%1%'", j));
+                        e.addTrace(
+                            state.ctx.positions[a.pos],
+                            HintFmt("while evaluating attribute '%1%'", j)
+                        );
                         throw;
                     }
                 }

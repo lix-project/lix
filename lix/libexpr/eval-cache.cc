@@ -520,7 +520,8 @@ std::shared_ptr<AttrCursor> AttrCursor::maybeGetAttr(EvalState & state, const st
     }
 
     return make_ref<AttrCursor>(
-        root, std::make_pair(shared_from_this(), name), attr->value, std::move(cachedValue2));
+        root, std::make_pair(shared_from_this(), name), attr->value, std::move(cachedValue2)
+    );
 }
 
 ref<AttrCursor> AttrCursor::getAttr(EvalState & state, const std::string & name)
@@ -683,11 +684,15 @@ std::vector<std::string> AttrCursor::getListOfStrings(EvalState & state)
 
     std::vector<std::string> res;
 
-    for (auto & elem : v.listItems())
-        res.push_back(std::string(state.forceStringNoCtx(*elem, noPos, "while evaluating an attribute for caching")));
+    for (auto & elem : v.listItems()) {
+        res.push_back(std::string(
+            state.forceStringNoCtx(*elem, noPos, "while evaluating an attribute for caching")
+        ));
+    }
 
-    if (root->db)
+    if (root->db) {
         cachedValue = {root->db->setListOfStrings(getKey(), res), res};
+    }
 
     return res;
 }

@@ -467,14 +467,14 @@ TEST_F(ValuePrintingTests, ansiColorsError)
     auto & e = evaluator.parseExprFromString("{ a = throw \"uh oh!\"; }", {CanonPath::root});
     state.eval(e, vError);
 
-    test(*vError.attrs()->begin()->value,
-         ANSI_RED
-         "«error: uh oh!»"
-         ANSI_NORMAL,
-         PrintOptions {
-             .ansiColors = true,
-             .force = true,
-         });
+    test(
+        *vError.attrs()->begin()->value,
+        ANSI_RED "«error: uh oh!»" ANSI_NORMAL,
+        PrintOptions{
+            .ansiColors = true,
+            .force = true,
+        }
+    );
 }
 
 TEST_F(ValuePrintingTests, ansiColorsDerivationError)
@@ -518,12 +518,11 @@ TEST_F(ValuePrintingTests, ansiColorsAssert)
     state.eval(e, v);
 
     ASSERT_EQ(v.type(), nAttrs);
-    test(*v.attrs()->begin()->value,
-         ANSI_RED "«error: assertion failed»" ANSI_NORMAL,
-         PrintOptions {
-             .ansiColors = true,
-             .force = true
-         });
+    test(
+        *v.attrs()->begin()->value,
+        ANSI_RED "«error: assertion failed»" ANSI_NORMAL,
+        PrintOptions{.ansiColors = true, .force = true}
+    );
 }
 
 TEST_F(ValuePrintingTests, ansiColorsList)

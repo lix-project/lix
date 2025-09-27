@@ -49,7 +49,8 @@ class JSONSax : nlohmann::json_sax<JSON> {
             parent->value(state).mkAttrs(attrs2.alreadySorted());
             return std::move(parent);
         }
-        void add(EvalState & state) override {
+        void add(EvalState & state) override
+        {
             attrs.insert_or_assign(_key, value(state));
             v = nullptr;
         }
@@ -71,7 +72,8 @@ class JSONSax : nlohmann::json_sax<JSON> {
             }
             return std::move(parent);
         }
-        void add(EvalState & state) override {
+        void add(EvalState & state) override
+        {
             values.push_back(*v);
             v = nullptr;
         }

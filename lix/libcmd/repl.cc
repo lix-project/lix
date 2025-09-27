@@ -1019,21 +1019,26 @@ Value * NixRepl::replOverlays()
         evalSettings.pureEval.setDefault(prevPureEval);
 
         if (!replInit->isLambda()) {
-            evaluator.errors.make<TypeError>(
-                "Expected `repl-overlays` entry %s to be a lambda but found %s: %s",
-                path,
-                showType(*replInit),
-                ValuePrinter(state, *replInit, errorPrintOptions)
-            )
-            .debugThrow();
+            evaluator.errors
+                .make<TypeError>(
+                    "Expected `repl-overlays` entry %s to be a lambda but found %s: %s",
+                    path,
+                    showType(*replInit),
+                    ValuePrinter(state, *replInit, errorPrintOptions)
+                )
+                .debugThrow();
         }
 
-        if (auto attrs = dynamic_cast<AttrsPattern *>(replInit->lambda().fun->pattern.get()); attrs && !attrs->ellipsis) {
-            evaluator.errors.make<TypeError>(
-                "Expected first argument of %1% to have %2% to allow future versions of Lix to add additional attributes to the argument",
-                "repl-overlays",
-                "..."
-            )
+        if (auto attrs = dynamic_cast<AttrsPattern *>(replInit->lambda().fun->pattern.get());
+            attrs && !attrs->ellipsis)
+        {
+            evaluator.errors
+                .make<TypeError>(
+                    "Expected first argument of %1% to have %2% to allow future versions of Lix to "
+                    "add additional attributes to the argument",
+                    "repl-overlays",
+                    "..."
+                )
                 .atPos(replInit->lambda().fun->pos)
                 .debugThrow();
         }

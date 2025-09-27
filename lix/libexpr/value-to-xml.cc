@@ -43,8 +43,7 @@ static void showAttrs(EvalState & state, bool strict, bool location,
         if (location && a.pos) posToXML(state, xmlAttrs, state.ctx.positions[a.pos]);
 
         XMLOpenElement _(doc, "attr", xmlAttrs);
-        printValueAsXML(state, strict, location,
-            *a.value, doc, context, drvsSeen, a.pos);
+        printValueAsXML(state, strict, location, *a.value, doc, context, drvsSeen, a.pos);
     }
 }
 
@@ -90,14 +89,19 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
                 Path drvPath;
                 a = v.attrs()->get(state.ctx.s.drvPath);
                 if (a) {
-                    if (strict) state.forceValue(*a->value, a->pos);
-                    if (a->value->type() == nString)
+                    if (strict) {
+                        state.forceValue(*a->value, a->pos);
+                    }
+                    if (a->value->type() == nString) {
                         xmlAttrs["drvPath"] = drvPath = a->value->str();
+                    }
                 }
 
                 a = v.attrs()->get(state.ctx.s.outPath);
                 if (a) {
-                    if (strict) state.forceValue(*a->value, a->pos);
+                    if (strict) {
+                        state.forceValue(*a->value, a->pos);
+                    }
                     if (a->value->type() == nString) {
                         xmlAttrs["outPath"] = a->value->str();
                     }
@@ -120,8 +124,9 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
 
         case nList: {
             XMLOpenElement _(doc, "list");
-            for (auto v2 : v.listItems())
+            for (auto v2 : v.listItems()) {
                 printValueAsXML(state, strict, location, *v2, doc, context, drvsSeen, pos);
+            }
             break;
         }
 

@@ -1291,7 +1291,9 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                                 attrs2["type"] = "strings";
                                 XMLOpenElement m(xml, "meta", attrs2);
                                 for (auto elem : v->listItems()) {
-                                    if (elem->type() != nString) continue;
+                                    if (elem->type() != nString) {
+                                        continue;
+                                    }
                                     XMLAttrs attrs3;
                                     attrs3["value"] = elem->str();
                                     xml.writeEmptyElement("string", attrs3);
@@ -1302,7 +1304,9 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                                 Bindings & attrs = *v->attrs();
                                 for (auto &i : attrs) {
                                     const Attr & a(*attrs.get(i.name));
-                                    if(a.value->type() != nString) continue;
+                                    if (a.value->type() != nString) {
+                                        continue;
+                                    }
                                     XMLAttrs attrs3;
                                     attrs3["type"] = globals.state->symbols[i.name];
                                     attrs3["value"] = a.value->str();

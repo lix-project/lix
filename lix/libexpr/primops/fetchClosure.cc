@@ -142,8 +142,7 @@ void prim_fetchClosure(EvalState & state, Value * * args, Value & v)
         }
 
         else if (attrName == "fromStore")
-            fromStoreUrl = state.forceStringNoCtx(*attr.value, attr.pos,
-                    attrHint());
+            fromStoreUrl = state.forceStringNoCtx(*attr.value, attr.pos, attrHint());
 
         else if (attrName == "inputAddressed")
             inputAddressedMaybe = state.forceBool(*attr.value, attr.pos, attrHint());

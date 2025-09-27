@@ -303,15 +303,31 @@ void prim_exec(EvalState & state, Value * * args, Value & v)
     if (count == 0)
         state.ctx.errors.make<EvalError>("at least one argument to 'exec' required").debugThrow();
     NixStringContext context;
-    auto program = state.coerceToString(noPos, *elems[0], context,
-            "while evaluating the first element of the argument passed to builtins.exec",
-            StringCoercionMode::Strict, false).toOwned();
+    auto program =
+        state
+            .coerceToString(
+                noPos,
+                *elems[0],
+                context,
+                "while evaluating the first element of the argument passed to builtins.exec",
+                StringCoercionMode::Strict,
+                false
+            )
+            .toOwned();
     Strings commandArgs;
     for (size_t i = 1; i < count; ++i) {
         commandArgs.push_back(
-                state.coerceToString(noPos, *elems[i], context,
-                        "while evaluating an element of the argument passed to builtins.exec",
-                        StringCoercionMode::Strict, false).toOwned());
+            state
+                .coerceToString(
+                    noPos,
+                    *elems[i],
+                    context,
+                    "while evaluating an element of the argument passed to builtins.exec",
+                    StringCoercionMode::Strict,
+                    false
+                )
+                .toOwned()
+        );
     }
     try {
         auto _ = state.realiseContext(context); // FIXME: Handle CA derivations
@@ -530,11 +546,16 @@ static void prim_genericClosure(EvalState & state, Value * * args, Value & v)
         "in the attrset passed as argument to builtins.genericClosure"
     );
 
-    state.forceList(*startSet->value, noPos, "while evaluating the 'startSet' attribute passed as argument to builtins.genericClosure");
+    state.forceList(
+        *startSet->value,
+        noPos,
+        "while evaluating the 'startSet' attribute passed as argument to builtins.genericClosure"
+    );
 
     UnsafeValueList workSet;
-    for (auto elem : startSet->value->listItems())
+    for (auto elem : startSet->value->listItems()) {
         workSet.push_back(elem);
+    }
 
     if (startSet->value->listSize() == 0) {
         v = *startSet->value;
@@ -548,7 +569,11 @@ static void prim_genericClosure(EvalState & state, Value * * args, Value & v)
         args[0]->attrs(),
         "in the attrset passed as argument to builtins.genericClosure"
     );
-    state.forceFunction(*op->value, noPos, "while evaluating the 'operator' attribute passed as argument to builtins.genericClosure");
+    state.forceFunction(
+        *op->value,
+        noPos,
+        "while evaluating the 'operator' attribute passed as argument to builtins.genericClosure"
+    );
 
     /* Construct the closure by applying the operator to elements of
        `workSet', adding the result to `workSet', continuing until
@@ -572,7 +597,9 @@ static void prim_genericClosure(EvalState & state, Value * * args, Value & v)
         );
         state.forceValue(*key->value, noPos);
 
-        if (!doneKeys.insert(key->value).second) continue;
+        if (!doneKeys.insert(key->value).second) {
+            continue;
+        }
         res.push_back(e);
 
         /* Call the `operator' function with `e' as argument. */
@@ -782,9 +809,15 @@ static void prim_derivationStrict(EvalState & state, Value * * args, Value & v)
 
     std::string drvName;
     try {
-        drvName = state.forceStringNoCtx(*nameAttr->value, noPos, "while evaluating the `name` attribute passed to builtins.derivationStrict");
+        drvName = state.forceStringNoCtx(
+            *nameAttr->value,
+            noPos,
+            "while evaluating the `name` attribute passed to builtins.derivationStrict"
+        );
     } catch (Error & e) {
-        e.addTrace(state.ctx.positions[nameAttr->pos], "while evaluating the derivation attribute 'name'");
+        e.addTrace(
+            state.ctx.positions[nameAttr->pos], "while evaluating the derivation attribute 'name'"
+        );
         throw;
     }
 
@@ -901,34 +934,48 @@ drvName, Bindings * attrs, Value & v)
 
             if (ignoreNulls) {
                 state.forceValue(*i->value, noPos);
-                if (i->value->type() == nNull) continue;
+                if (i->value->type() == nNull) {
+                    continue;
+                }
             }
 
-            if (i->name == state.ctx.s.contentAddressed && state.forceBool(*i->value, noPos, context_below)) {
+            if (i->name == state.ctx.s.contentAddressed
+                && state.forceBool(*i->value, noPos, context_below))
+            {
                 state.ctx.errors.make<EvalError>("ca derivations are not supported in Lix")
                     .debugThrow();
             }
 
-            else if (i->name == state.ctx.s.impure && state.forceBool(*i->value, noPos, context_below)) {
+            else if (i->name == state.ctx.s.impure
+                     && state.forceBool(*i->value, noPos, context_below))
+            {
                 state.ctx.errors.make<EvalError>("impure derivations are not supported in Lix")
                     .debugThrow();
             }
 
             /* The `args' attribute is special: it supplies the
                command-line arguments to the builder. */
-            else if (i->name == state.ctx.s.args) {
+            else if (i->name == state.ctx.s.args)
+            {
                 state.forceList(*i->value, noPos, context_below);
                 for (auto elem : i->value->listItems()) {
-                    auto s = state.coerceToString(noPos, *elem, context,
-                            "while evaluating an element of the argument list",
-                            StringCoercionMode::ToString).toOwned();
+                    auto s = state
+                                 .coerceToString(
+                                     noPos,
+                                     *elem,
+                                     context,
+                                     "while evaluating an element of the argument list",
+                                     StringCoercionMode::ToString
+                                 )
+                                 .toOwned();
                     drv.args.push_back(s);
                 }
             }
 
             /* All other attributes are passed to the builder through
                the environment. */
-            else {
+            else
+            {
 
                 if (jsonObject) {
 
@@ -951,8 +998,9 @@ drvName, Bindings * attrs, Value & v)
                         /* Require ‘outputs’ to be a list of strings. */
                         state.forceList(*i->value, noPos, context_below);
                         Strings ss;
-                        for (auto elem : i->value->listItems())
+                        for (auto elem : i->value->listItems()) {
                             ss.emplace_back(state.forceStringNoCtx(*elem, noPos, context_below));
+                        }
                         handleOutputs(ss);
                     }
 
@@ -1000,17 +1048,26 @@ drvName, Bindings * attrs, Value & v)
                         );
 
                 } else {
-                    auto s = state.coerceToString(noPos, *i->value, context, context_below, StringCoercionMode::ToString).toOwned();
+                    auto s = state
+                                 .coerceToString(
+                                     noPos,
+                                     *i->value,
+                                     context,
+                                     context_below,
+                                     StringCoercionMode::ToString
+                                 )
+                                 .toOwned();
                     drv.env.emplace(key, s);
-                    if (i->name == state.ctx.s.builder) drv.builder = std::move(s);
-                    else if (i->name == state.ctx.s.system) drv.platform = std::move(s);
+                    if (i->name == state.ctx.s.builder) {
+                        drv.builder = std::move(s);
+                    } else if (i->name == state.ctx.s.system)
+                        drv.platform = std::move(s);
                     else if (i->name == state.ctx.s.outputHash) outputHash = std::move(s);
                     else if (i->name == state.ctx.s.outputHashAlgo) outputHashAlgo = std::move(s);
                     else if (i->name == state.ctx.s.outputHashMode) handleHashMode(s);
                     else if (i->name == state.ctx.s.outputs)
                         handleOutputs(tokenizeString<Strings>(s));
                 }
-
             }
 
         } catch (Error & e) {
@@ -1325,7 +1382,9 @@ static void prim_findFile(EvalState & state, Value * * args, Value & v)
     SearchPath searchPath;
 
     for (auto v2 : args[0]->listItems()) {
-        state.forceAttrs(*v2, noPos, "while evaluating an element of the list passed to builtins.findFile");
+        state.forceAttrs(
+            *v2, noPos, "while evaluating an element of the list passed to builtins.findFile"
+        );
 
         std::string prefix;
         auto i = v2->attrs()->get(state.ctx.s.prefix);
@@ -1341,9 +1400,17 @@ static void prim_findFile(EvalState & state, Value * * args, Value & v)
         i = getAttr(state, state.ctx.s.path, v2->attrs(), "in an element of the __nixPath");
 
         NixStringContext context;
-        auto path = state.coerceToString(noPos, *i->value, context,
-                "while evaluating the `path` attribute of an element of the list passed to builtins.findFile",
-                StringCoercionMode::Strict, false).toOwned();
+        auto path = state
+                        .coerceToString(
+                            noPos,
+                            *i->value,
+                            context,
+                            "while evaluating the `path` attribute of an element of the list "
+                            "passed to builtins.findFile",
+                            StringCoercionMode::Strict,
+                            false
+                        )
+                        .toOwned();
 
         try {
             auto rewrites = state.realiseContext(context);
@@ -1627,21 +1694,48 @@ static void prim_path(EvalState & state, Value * * args, Value & v)
 
     for (auto & attr : *args[0]->attrs()) {
         auto & n = state.ctx.symbols[attr.name];
-        if (n == "path")
-            path.emplace(state.coerceToPath(attr.pos, *attr.value, context, "while evaluating the 'path' attribute passed to 'builtins.path'"));
-        else if (attr.name == state.ctx.s.name)
-            name = state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the `name` attribute passed to builtins.path");
-        else if (n == "filter")
-            state.forceFunction(*(filterFun = attr.value), attr.pos, "while evaluating the `filter` parameter passed to builtins.path");
-        else if (n == "recursive")
-            method = FileIngestionMethod { state.forceBool(*attr.value, attr.pos, "while evaluating the `recursive` attribute passed to builtins.path") };
-        else if (n == "sha256")
-            expectedHash = newHashAllowEmpty(state.forceStringNoCtx(*attr.value, attr.pos, "while evaluating the `sha256` attribute passed to builtins.path"), HashType::SHA256);
-        else
-            state.ctx.errors.make<EvalError>(
-                "unsupported argument '%1%' to 'addPath'",
-                state.ctx.symbols[attr.name]
-            ).atPos(attr.pos).debugThrow();
+        if (n == "path") {
+            path.emplace(state.coerceToPath(
+                attr.pos,
+                *attr.value,
+                context,
+                "while evaluating the 'path' attribute passed to 'builtins.path'"
+            ));
+        } else if (attr.name == state.ctx.s.name) {
+            name = state.forceStringNoCtx(
+                *attr.value,
+                attr.pos,
+                "while evaluating the `name` attribute passed to builtins.path"
+            );
+        } else if (n == "filter") {
+            state.forceFunction(
+                *(filterFun = attr.value),
+                attr.pos,
+                "while evaluating the `filter` parameter passed to builtins.path"
+            );
+        } else if (n == "recursive") {
+            method = FileIngestionMethod{state.forceBool(
+                *attr.value,
+                attr.pos,
+                "while evaluating the `recursive` attribute passed to builtins.path"
+            )};
+        } else if (n == "sha256") {
+            expectedHash = newHashAllowEmpty(
+                state.forceStringNoCtx(
+                    *attr.value,
+                    attr.pos,
+                    "while evaluating the `sha256` attribute passed to builtins.path"
+                ),
+                HashType::SHA256
+            );
+        } else {
+            state.ctx.errors
+                .make<EvalError>(
+                    "unsupported argument '%1%' to 'addPath'", state.ctx.symbols[attr.name]
+                )
+                .atPos(attr.pos)
+                .debugThrow();
+        }
     }
     if (!path)
         state.ctx.errors.make<EvalError>(
@@ -1804,7 +1898,11 @@ static void prim_removeAttrs(EvalState & state, Value * * args, Value & v)
     boost::container::small_vector<Attr, 64> names;
     names.reserve(args[1]->listSize());
     for (auto elem : args[1]->listItems()) {
-        state.forceStringNoCtx(*elem, noPos, "while evaluating the values of the second argument passed to builtins.removeAttrs");
+        state.forceStringNoCtx(
+            *elem,
+            noPos,
+            "while evaluating the values of the second argument passed to builtins.removeAttrs"
+        );
         names.emplace_back(state.ctx.symbols.create(elem->str()), nullptr);
     }
     std::sort(names.begin(), names.end());
@@ -1834,11 +1932,18 @@ static void prim_listToAttrs(EvalState & state, Value * * args, Value & v)
     std::set<Symbol> seen;
 
     for (auto v2 : args[0]->listItems()) {
-        state.forceAttrs(*v2, noPos, "while evaluating an element of the list passed to builtins.listToAttrs");
+        state.forceAttrs(
+            *v2, noPos, "while evaluating an element of the list passed to builtins.listToAttrs"
+        );
 
         auto j = getAttr(state, state.ctx.s.name, v2->attrs(), "in a {name=...; value=...;} pair");
 
-        auto name = state.forceStringNoCtx(*j->value, j->pos, "while evaluating the `name` attribute of an element of the list passed to builtins.listToAttrs");
+        auto name = state.forceStringNoCtx(
+            *j->value,
+            j->pos,
+            "while evaluating the `name` attribute of an element of the list passed to "
+            "builtins.listToAttrs"
+        );
 
         auto sym = state.ctx.symbols.create(name);
         if (seen.insert(sym).second) {
@@ -1928,7 +2033,11 @@ static void prim_catAttrs(EvalState & state, Value * * args, Value & v)
     size_t found = 0;
 
     for (auto v2 : args[1]->listItems()) {
-        state.forceAttrs(*v2, noPos, "while evaluating an element in the list passed as second argument to builtins.catAttrs");
+        state.forceAttrs(
+            *v2,
+            noPos,
+            "while evaluating an element in the list passed as second argument to builtins.catAttrs"
+        );
         auto i = v2->attrs()->get(attrName);
         if (i) {
             res[found++] = i->value;
@@ -1999,9 +2108,15 @@ static void prim_zipAttrsWith(EvalState & state, Value * * args, Value & v)
 
     for (unsigned int n = 0; n < listSize; ++n) {
         Value * vElem = listElems[n];
-        state.forceAttrs(*vElem, noPos, "while evaluating a value of the list passed as second argument to builtins.zipAttrsWith");
-        for (auto & attr : *vElem->attrs())
+        state.forceAttrs(
+            *vElem,
+            noPos,
+            "while evaluating a value of the list passed as second argument to "
+            "builtins.zipAttrsWith"
+        );
+        for (auto & attr : *vElem->attrs()) {
             attrsSeen[attr.name].first++;
+        }
     }
 
     auto attrs = state.ctx.buildBindings(attrsSeen.size());
@@ -2148,11 +2263,18 @@ static void prim_elem(EvalState & state, Value * * args, Value & v)
 {
     bool res = false;
     state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.elem");
-    for (auto elem : args[1]->listItems())
-        if (state.eqValues(*args[0], *elem, noPos, "while searching for the presence of the given element in the list")) {
+    for (auto elem : args[1]->listItems()) {
+        if (state.eqValues(
+                *args[0],
+                *elem,
+                noPos,
+                "while searching for the presence of the given element in the list"
+            ))
+        {
             res = true;
             break;
         }
+    }
     v.mkBool(res);
 }
 
@@ -2160,7 +2282,13 @@ static void prim_elem(EvalState & state, Value * * args, Value & v)
 static void prim_concatLists(EvalState & state, Value * * args, Value & v)
 {
     state.forceList(*args[0], noPos, "while evaluating the first argument passed to builtins.concatLists");
-    state.concatLists(v, args[0]->listSize(), args[0]->listElems(), noPos, "while evaluating a value of the list passed to builtins.concatLists");
+    state.concatLists(
+        v,
+        args[0]->listSize(),
+        args[0]->listElems(),
+        noPos,
+        "while evaluating a value of the list passed to builtins.concatLists"
+    );
 }
 
 /* Return the length of a list.  This is an O(1) time operation. */
@@ -2392,8 +2520,9 @@ static void prim_concatMap(EvalState & state, Value * * args, Value & v)
     auto out = result->elems;
     for (unsigned int n = 0, pos = 0; n < nrLists; ++n) {
         auto l = lists[n].listSize();
-        if (l)
+        if (l) {
             memcpy(out + pos, lists[n].listElems(), l * sizeof(Value *));
+        }
         pos += l;
     }
 }
@@ -2716,8 +2845,9 @@ void prim_split(EvalState & state, Value * * args, Value & v)
             }
 
             // Add a string for non-matched suffix characters.
-            if (idx == 2 * len)
+            if (idx == 2 * len) {
                 (result->elems[idx++] = state.ctx.mem.allocValue())->mkString(match.suffix().str());
+            }
         }
 
         assert(idx == 2 * len + 1);
@@ -2740,7 +2870,13 @@ static void prim_concatStringsSep(EvalState & state, Value * * args, Value & v)
 
     for (auto elem : args[1]->listItems()) {
         if (first) first = false; else res += sep;
-        res += *state.coerceToString(noPos, *elem, context, "while evaluating one element of the list of strings to concat passed to builtins.concatStringsSep");
+        res += *state.coerceToString(
+            noPos,
+            *elem,
+            context,
+            "while evaluating one element of the list of strings to concat passed to "
+            "builtins.concatStringsSep"
+        );
     }
 
     v.mkString(res, context);
@@ -2757,8 +2893,13 @@ static void prim_replaceStrings(EvalState & state, Value * * args, Value & v)
 
     std::vector<std::string> from;
     from.reserve(args[0]->listSize());
-    for (auto elem : args[0]->listItems())
-        from.emplace_back(state.forceString(*elem, noPos, "while evaluating one of the strings to replace passed to builtins.replaceStrings"));
+    for (auto elem : args[0]->listItems()) {
+        from.emplace_back(state.forceString(
+            *elem,
+            noPos,
+            "while evaluating one of the strings to replace passed to builtins.replaceStrings"
+        ));
+    }
 
     std::unordered_map<size_t, std::string> cache;
     auto to = args[1]->listItems();
@@ -2779,10 +2920,17 @@ static void prim_replaceStrings(EvalState & state, Value * * args, Value & v)
                 auto v = cache.find(j_index);
                 if (v == cache.end()) {
                     NixStringContext ctx;
-                    auto ts = state.forceString(**j, ctx, noPos, "while evaluating one of the replacement strings passed to builtins.replaceStrings");
+                    auto ts = state.forceString(
+                        **j,
+                        ctx,
+                        noPos,
+                        "while evaluating one of the replacement strings passed to "
+                        "builtins.replaceStrings"
+                    );
                     v = (cache.emplace(j_index, ts)).first;
-                    for (auto& path : ctx)
+                    for (auto & path : ctx) {
                         context.insert(path);
+                    }
                 }
                 res += v->second;
                 if (i->empty()) {

@@ -577,8 +577,9 @@ void EvalBuiltins::addConstant(const std::string & name, const Value & v2, Const
 
            We might know the type of a thunk in advance, so be allowed
            to just write it down in that case. */
-        if (auto gotType = v->type(true); gotType != nThunk)
+        if (auto gotType = v->type(true); gotType != nThunk) {
             assert(info.type == gotType);
+        }
 
         /* Install value the base environment. */
         staticEnv->vars.insert_or_assign(symbols.create(name), baseEnvDispl);
@@ -671,8 +672,9 @@ void printWithBindings(const SymbolTable & st, const Env & env)
 {
     if (env.values[0]->type() == nAttrs) {
         std::set<std::string_view> bindings;
-        for (const auto & attr : *env.values[0]->attrs())
+        for (const auto & attr : *env.values[0]->attrs()) {
             bindings.emplace(st[attr.name]);
+        }
 
         std::cout << "with: ";
         std::cout << ANSI_MAGENTA;
@@ -857,7 +859,9 @@ inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
 {
     for (auto l = var.level; l; --l, env = env->up) ;
 
-    if (!var.fromWith) return env->values[var.displ];
+    if (!var.fromWith) {
+        return env->values[var.displ];
+    }
 
     // This early exit defeats the `maybeThunk` optimization for variables from `with`,
     // The added complexity of handling this appears to be similarly in cost, or
@@ -866,7 +870,11 @@ inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
 
     auto * fromWith = var.fromWith;
     while (1) {
-        forceAttrs(*env->values[0], fromWith->pos, "while evaluating the first subexpression of a with expression");
+        forceAttrs(
+            *env->values[0],
+            fromWith->pos,
+            "while evaluating the first subexpression of a with expression"
+        );
         auto j = env->values[0]->attrs()->get(var.name);
         if (j) {
             if (ctx.stats.countCalls) ctx.stats.attrSelects[j->pos]++;
@@ -984,10 +992,12 @@ Value * ExprVar::maybeThunk(EvalState & state, Env & env)
     Value * v = state.lookupVar(&env, *this, true);
     /* The value might not be initialised in the environment yet.
        In that case, ignore it. */
-    if (v) { state.ctx.stats.nrAvoided++; return v; }
+    if (v) {
+        state.ctx.stats.nrAvoided++;
+        return v;
+    }
     return Expr::maybeThunk(state, env);
 }
-
 
 Value * ExprLiteral::maybeThunk(EvalState & state, Env & env)
 {
@@ -1976,7 +1986,9 @@ void EvalState::concatLists(
         forceList(*lists[n], pos, errorCtx);
         auto l = lists[n]->listSize();
         len += l;
-        if (l) nonEmpty = lists[n];
+        if (l) {
+            nonEmpty = lists[n];
+        }
     }
 
     if (nonEmpty && len == nonEmpty->listSize()) {
@@ -1989,8 +2001,9 @@ void EvalState::concatLists(
     auto out = list->elems;
     for (size_t n = 0, pos = 0; n < nrLists; ++n) {
         auto l = lists[n]->listSize();
-        if (l)
+        if (l) {
             memcpy(out + pos, lists[n]->listElems(), l * sizeof(Value *));
+        }
         pos += l;
     }
 }
@@ -2171,8 +2184,9 @@ void EvalState::forceValueDeep(Value & v)
         }
 
         else if (v.isList()) {
-            for (auto v2 : v.listItems())
+            for (auto v2 : v.listItems()) {
                 recurse(*v2);
+            }
         }
     };
 
@@ -2322,7 +2336,9 @@ bool EvalState::isDerivation(Value & v)
         return false;
     }
     forceValue(*i->value, i->pos);
-    if (i->value->type() != nString) return false;
+    if (i->value->type() != nString) {
+        return false;
+    }
     return i->value->str() == "derivation";
 }
 
@@ -2389,8 +2405,9 @@ BackedStringView EvalState::coerceToString(
                 .withTrace(pos, errorCtx)
                 .debugThrow();
         }
-        return coerceToString(pos, *i->value, context, errorCtx,
-                              mode, copyToStore, canonicalizePath);
+        return coerceToString(
+            pos, *i->value, context, errorCtx, mode, copyToStore, canonicalizePath
+        );
     }
 
     if (v.type() == nExternal) {
@@ -2426,9 +2443,15 @@ BackedStringView EvalState::coerceToString(
             std::string result;
             for (auto [n, v2] : enumerate(v.listItems())) {
                 try {
-                    result += *coerceToString(pos, *v2, context,
-                            "while evaluating one element of the list",
-                            mode, copyToStore, canonicalizePath);
+                    result += *coerceToString(
+                        pos,
+                        *v2,
+                        context,
+                        "while evaluating one element of the list",
+                        mode,
+                        copyToStore,
+                        canonicalizePath
+                    );
                 } catch (Error & e) {
                     e.addTrace(ctx.positions[pos], errorCtx);
                     throw;
@@ -2436,7 +2459,9 @@ BackedStringView EvalState::coerceToString(
                 if (n < v.listSize() - 1
                     /* !!! not quite correct */
                     && (!v2->isList() || v2->listSize() != 0))
+                {
                     result += " ";
+                }
             }
             return result;
         }
@@ -2597,8 +2622,11 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
 
         case nList:
             if (v1.listSize() != v2.listSize()) return false;
-            for (size_t n = 0; n < v1.listSize(); ++n)
-                if (!eqValues(*v1.listElems()[n], *v2.listElems()[n], pos, errorCtx)) return false;
+            for (size_t n = 0; n < v1.listSize(); ++n) {
+                if (!eqValues(*v1.listElems()[n], *v2.listElems()[n], pos, errorCtx)) {
+                    return false;
+                }
+            }
             return true;
 
         case nAttrs: {
@@ -2617,8 +2645,11 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             /* Otherwise, compare the attributes one by one. */
             Bindings::iterator i, j;
             for (i = v1.attrs()->begin(), j = v2.attrs()->begin(); i != v1.attrs()->end(); ++i, ++j)
-                if (i->name != j->name || !eqValues(*i->value, *j->value, pos, errorCtx))
+            {
+                if (i->name != j->name || !eqValues(*i->value, *j->value, pos, errorCtx)) {
                     return false;
+                }
+            }
 
             return true;
         }
