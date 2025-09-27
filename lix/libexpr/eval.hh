@@ -265,11 +265,9 @@ private:
 
     void createBaseEnv(const SearchPath & searchPath, const Path & storeDir);
 
-    Value * addConstant(const std::string & name, const Value & v, Constant info);
+    void addConstant(const std::string & name, const Value & v, Constant info);
 
-    void addConstant(const std::string & name, Value * v, Constant info);
-
-    Value * addPrimOp(PrimOpDetails && primOp);
+    void addPrimOp(PrimOpDetails primOp);
 
     Value prepareNixPath(const SearchPath & searchPath);
 

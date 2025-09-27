@@ -767,7 +767,7 @@ public:
     {};
     struct PrimOp : Acb, PrimOpDetails
     {
-        explicit PrimOp(PrimOpDetails && p) : Acb{tPrimOp}, PrimOpDetails(std::move(p)) {}
+        explicit PrimOp(PrimOpDetails p) : Acb{tPrimOp}, PrimOpDetails(std::move(p)) {}
     };
     struct Int : Acb
     {

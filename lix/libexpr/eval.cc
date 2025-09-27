@@ -563,18 +563,11 @@ Path EvalPaths::toRealPath(const Path & path, const NixStringContext & context)
         : path;
 }
 
-
-Value * EvalBuiltins::addConstant(const std::string & name, const Value & v, Constant info)
+void EvalBuiltins::addConstant(const std::string & name, const Value & v2, Constant info)
 {
-    Value * v2 = mem.allocValue();
-    *v2 = v;
-    addConstant(name, v2, info);
-    return v2;
-}
+    Value * v = mem.allocValue();
+    *v = v2;
 
-
-void EvalBuiltins::addConstant(const std::string & name, Value * v, Constant info)
-{
     auto name2 = name.substr(0, 2) == "__" ? name.substr(2) : name;
 
     constantInfos.push_back({name2, info});
@@ -600,17 +593,17 @@ std::ostream & operator<<(std::ostream & output, const PrimOp & primOp)
     return output;
 }
 
-Value * EvalBuiltins::addPrimOp(PrimOpDetails && primOp)
+void EvalBuiltins::addPrimOp(PrimOpDetails primOp)
 {
     /* Hack to make constants lazy: turn them into a application of
        the primop to a dummy value. */
     if (primOp.arity == 0) {
         primOp.arity = 1;
         auto vPrimOp = mem.allocValue();
-        vPrimOp->mkPrimOp(new PrimOp(std::move(primOp)));
+        vPrimOp->mkPrimOp(new PrimOp(primOp));
         Value v{NewValueAs::app, mem, *vPrimOp, *vPrimOp};
-        return addConstant(
-            vPrimOp->primOp()->name,
+        addConstant(
+            primOp.name,
             v,
             {
                 .type = nFunction,
@@ -628,7 +621,6 @@ Value * EvalBuiltins::addPrimOp(PrimOpDetails && primOp)
     staticEnv->vars.insert_or_assign(auto(envName), baseEnvDispl);
     env.values[baseEnvDispl++] = v;
     env.values[0]->attrs()->push_back(Attr(symbols.create(v->primOp()->name), v));
-    return v;
 }
 
 
