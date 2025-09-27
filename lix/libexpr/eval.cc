@@ -122,6 +122,8 @@ std::string showType(const Value & v)
             switch (v.auxiliary()->type) {
             case Value::Acb::tExternal:
                 return v.external()->showType();
+            case Value::Acb::tFloat:
+                return std::string(showType(v.type()));
             }
 #pragma GCC diagnostic pop
         case tThunk: return v.isBlackhole() ? "a black hole" : "a thunk";

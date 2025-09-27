@@ -542,7 +542,7 @@ template<> struct BuildAST<grammar::v1::expr::float_> {
                 });
             }
         }();
-        s.emplaceExpr<ExprLiteral>(ps.at(in), NewValueAs::floating, v);
+        s.emplaceExpr<ExprFloat>(ps.at(in), NewValueAs::floating, v);
     }
 };
 

@@ -34,7 +34,6 @@ typedef enum {
     tLambda,
     tPrimOp,
     tAuxiliary,
-    tFloat
 } InternalType;
 
 /**
@@ -259,11 +258,13 @@ public:
 
     /// Constructs a nix language value of type "float", with the floating
     /// point value of @ref f.
-    Value(floating_t, NixFloat f)
-        : internalType(tFloat)
-        , _fpoint(f)
-        , _float_pad(0)
-    { }
+    Value(floating_t, NixFloat f) : internalType(tAuxiliary), _aux_pad(0)
+    {
+        auto fp = gcAllocType<Float>();
+        fp->type = Acb::tFloat;
+        fp->value = f;
+        _auxiliary = fp;
+    }
 
     /// Constructs a nix language value of type "bool", with the boolean
     /// value of @ref b.
@@ -638,11 +639,16 @@ public:
     {
         enum {
             tExternal,
+            tFloat,
         } type;
     };
     struct External : Acb
     {
         ExternalValueBase * external;
+    };
+    struct Float : Acb
+    {
+        NixFloat value;
     };
 
     union
@@ -688,10 +694,6 @@ public:
             const Acb * _auxiliary;
             uintptr_t _aux_pad;
         };
-        struct {
-            NixFloat _fpoint;
-            uintptr_t _float_pad;
-        };
     };
 
     /**
@@ -719,8 +721,9 @@ public:
                 switch (_auxiliary->type) {
                 case Acb::tExternal:
                     return nExternal;
+                case Acb::tFloat:
+                    return nFloat;
                 }
-            case tFloat: return nFloat;
             case tThunk:
                 return nThunk;
             case tApp:
@@ -834,9 +837,7 @@ public:
 
     inline void mkFloat(NixFloat n)
     {
-        clearValue();
-        internalType = tFloat;
-        _fpoint = n;
+        *this = {NewValueAs::floating, n};
     }
 
     bool isList() const
@@ -954,7 +955,8 @@ public:
 
     NixFloat fpoint() const
     {
-        return _fpoint;
+        assert(internalType == tAuxiliary && _auxiliary->type == Acb::tFloat);
+        return static_cast<const Float *>(_auxiliary)->value;
     }
 
     const Acb * auxiliary() const

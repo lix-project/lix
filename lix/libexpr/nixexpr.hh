@@ -177,12 +177,25 @@ protected:
 public:
 
     ExprLiteral(const PosIdx pos, NewValueAs::integer_t, NixInt n) : Expr(pos) { v.mkInt(n); };
-    ExprLiteral(const PosIdx pos, NewValueAs::integer_t, NixInt::Inner n) : Expr(pos) { v.mkInt(n); };
-    ExprLiteral(const PosIdx pos, NewValueAs::floating_t, NixFloat nf) : Expr(pos) { v.mkFloat(nf); };
+    ExprLiteral(const PosIdx pos, NewValueAs::integer_t, NixInt::Inner n) : Expr(pos)
+    {
+        v.mkInt(n);
+    }
     Value * maybeThunk(EvalState & state, Env & env) override;
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
+};
+
+struct ExprFloat : ExprLiteral
+{
+    Value::Float f;
+    ExprFloat(const PosIdx pos, NewValueAs::floating_t, double f)
+        : ExprLiteral(pos)
+        , f{{Value::Acb::tFloat}, f}
+    {
+        v = Value(this->f);
+    }
 };
 
 struct ExprString : ExprLiteral
