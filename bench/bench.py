@@ -9,6 +9,7 @@ import tempfile
 import platform
 import shlex
 import textwrap
+import dataclasses
 
 flake_args = ["--extra-experimental-features", "nix-command flakes"]
 cases = {
@@ -64,8 +65,9 @@ arg_parser.add_argument(
 )
 arg_parser.add_argument(
     '--mode',
-    choices=[ "walltime" ] + [ "icount" ] if platform.system() == 'Linux' else [], # perf doesn't run on Darwin
-    default="walltime",
+    nargs='+',
+    choices=[ "walltime", "memory" ] + [ "icount" ] if platform.system() == 'Linux' else [], # perf doesn't run on Darwin
+    default=[ "walltime" ],
 )
 arg_parser.add_argument(
     '--daemon',
@@ -162,6 +164,54 @@ def bench_icount(env):
             print("  relative instructions:", int(instr)/perf_results_for[case][0][1])
             print("\n")
 
+@dataclasses.dataclass
+class MemoryStatistics:
+    envBytes: int
+    listBytes: int
+    setBytes: int
+    valueBytes: int
+    heapBytes: int
+    heapSize: int
+
+def bench_memory(env):
+    path = "bench/bench-memory.json"
+    env = env | {
+        'NIX_SHOW_STATS': '1',
+        'NIX_SHOW_STATS_PATH': path,
+    }
+    results: dict[str, list[tuple[str, MemoryStatistics]]] = {}
+    for case in benchmarks:
+        for build in args.builds:
+            case_command = make_full_command(build, case)
+            commandline = [ "sh", "-c", case_command ]
+            print("running", case_command)
+            subprocess.run(commandline, env=env, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            with open(path) as fd:
+                stats = json.load(fd)
+            results.setdefault(case, []).append((case_command, MemoryStatistics(
+                envBytes=stats['envs']['bytes'],
+                listBytes=stats['list']['bytes'],
+                setBytes=stats['sets']['bytes'],
+                valueBytes=stats['values']['bytes'],
+                heapSize=stats['gc']['heapSize'],
+                heapBytes=stats['gc']['totalBytes'],
+            )))
+
+    print("Benchmarks summary\n---\n")
+    for (case, entries) in results.items():
+        for cmd, stats in entries:
+            print(cmd)
+            print("-" * min(80, len(cmd)))
+            print(f"  env bytes:    {stats.envBytes  :15d}   |  {(stats.envBytes / entries[0][1].envBytes)    :.3f}x")
+            print(f"  list bytes:   {stats.listBytes :15d}   |  {(stats.listBytes / entries[0][1].listBytes)  :.3f}x")
+            print(f"  set bytes:    {stats.setBytes  :15d}   |  {(stats.setBytes / entries[0][1].setBytes)    :.3f}x")
+            if not entries[0][1].valueBytes:
+                print(f"  value bytes:  {0:15d}")
+            else:
+                print(f"  value bytes:  {stats.valueBytes:15d}   |  {(stats.valueBytes / entries[0][1].valueBytes):.3f}x")
+            print(f"  heap alloc'd: {stats.heapBytes :15d}   |  {(stats.heapBytes / entries[0][1].heapBytes)  :.3f}x")
+            print(f"  heap size:    {stats.heapSize  :15d}   |  {(stats.heapSize / entries[0][1].heapSize)    :.3f}x")
+            print("\n")
 
 with tempfile.TemporaryDirectory() as tmp_dir:
     subprocess.run([
@@ -178,7 +228,10 @@ with tempfile.TemporaryDirectory() as tmp_dir:
     ])
     subenv["NIX_DAEMON_SOCKET_PATH"] = f"{tmp_dir}/daemon"
 
-    if args.mode == "walltime":
-        bench_walltime(subenv)
-    else:
-        bench_icount(subenv)
+    for mode in args.mode:
+        if mode == "walltime":
+            bench_walltime(subenv)
+        elif mode == "memory":
+            bench_memory(subenv)
+        else:
+            bench_icount(subenv)
