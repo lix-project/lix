@@ -110,36 +110,38 @@ std::string_view showType(ValueType type, bool withArticle)
 std::string showType(const Value & v)
 {
     // Allow selecting a subset of enum values
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wswitch-enum"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch-enum"
     switch (v.internalType) {
-        case tString: return v.string().context ? "a string with context" : "a string";
-        case tPrimOp:
-            return fmt("the built-in function '%s'", std::string(v.primOp()->name));
-        case tAuxiliary:
+    case tString:
+        return v.string().context ? "a string with context" : "a string";
+    case tAuxiliary:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic error "-Wswitch-enum"
-            switch (v.auxiliary()->type) {
-            case Value::Acb::tExternal:
-                return v.external()->showType();
-            case Value::Acb::tFloat:
-            case Value::Acb::tNull:
-                return std::string(showType(v.type()));
-            }
-#pragma GCC diagnostic pop
-        case tThunk: return v.isBlackhole() ? "a black hole" : "a thunk";
-        case tApp:
-            if (v.isPrimOpApp()) {
-                return fmt(
-                    "the partially applied built-in function '%s'", v.app().target()->primOp()->name
-                );
-            } else {
-                return "a function application";
-            }
-        default:
+        switch (v.auxiliary()->type) {
+        case Value::Acb::tExternal:
+            return v.external()->showType();
+        case Value::Acb::tFloat:
+        case Value::Acb::tNull:
             return std::string(showType(v.type()));
+        case Value::Acb::tPrimOp:
+            return fmt("the built-in function '%s'", v.primOp()->name);
+        }
+#pragma GCC diagnostic pop
+    case tThunk:
+        return v.isBlackhole() ? "a black hole" : "a thunk";
+    case tApp:
+        if (v.isPrimOpApp()) {
+            return fmt(
+                "the partially applied built-in function '%s'", v.app().target()->primOp()->name
+            );
+        } else {
+            return "a function application";
+        }
+    default:
+        return std::string(showType(v.type()));
     }
-    #pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 }
 
 
@@ -588,29 +590,28 @@ void EvalBuiltins::addConstant(const std::string & name, Value * v, Constant inf
     }
 }
 
-
-std::ostream & operator<<(std::ostream & output, PrimOp & primOp)
+std::ostream & operator<<(std::ostream & output, const PrimOp & primOp)
 {
     output << "primop " << primOp.name;
     return output;
 }
 
-Value * EvalBuiltins::addPrimOp(PrimOp && primOp)
+Value * EvalBuiltins::addPrimOp(PrimOpDetails && primOp)
 {
     /* Hack to make constants lazy: turn them into a application of
        the primop to a dummy value. */
     if (primOp.arity == 0) {
         primOp.arity = 1;
         auto vPrimOp = mem.allocValue();
-        vPrimOp->mkPrimOp(new PrimOp(primOp));
+        vPrimOp->mkPrimOp(new PrimOp(std::move(primOp)));
         Value v;
         v.mkApp(vPrimOp, vPrimOp);
         return addConstant(
-            primOp.name,
+            vPrimOp->primOp()->name,
             v,
             {
                 .type = nFunction,
-                .doc = primOp.doc,
+                .doc = vPrimOp->primOp()->doc,
             }
         );
     }
@@ -620,10 +621,10 @@ Value * EvalBuiltins::addPrimOp(PrimOp && primOp)
         primOp.name = primOp.name.substr(2);
 
     Value * v = mem.allocValue();
-    v->mkPrimOp(new PrimOp(primOp));
+    v->mkPrimOp(new PrimOp(std::move(primOp)));
     staticEnv->vars.insert_or_assign(auto(envName), baseEnvDispl);
     env.values[baseEnvDispl++] = v;
-    env.values[0]->attrs()->push_back(Attr(symbols.create(primOp.name), v));
+    env.values[0]->attrs()->push_back(Attr(symbols.create(v->primOp()->name), v));
     return v;
 }
 

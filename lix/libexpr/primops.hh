@@ -33,7 +33,7 @@ struct RegisterPrimOp
      * will get called during EvalState initialization, so there
      * may be primops not yet added and builtins is not yet sorted.
      */
-    RegisterPrimOp(PrimOp && primOp);
+    RegisterPrimOp(PrimOpDetails && primOp);
 };
 
 /* These primops are disabled without enableNativeCode, but plugins

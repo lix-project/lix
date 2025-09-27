@@ -25,10 +25,7 @@ static void copyContextToValue(Value::String & s, const NixStringContext & conte
     }
 }
 
-Value::Value(primop_t, PrimOp & primop)
-    : internalType(tPrimOp)
-    , _primOp(&primop)
-    , _primop_pad(0)
+Value::Value(primop_t, PrimOp & primop) : internalType(tAuxiliary), _auxiliary(&primop), _aux_pad(0)
 {
 }
 
@@ -49,9 +46,7 @@ bool Value::isTrivial() const
 
 void Value::mkPrimOp(PrimOp * p)
 {
-    clearValue();
-    internalType = tPrimOp;
-    _primOp = p;
+    *this = {NewValueAs::primop, *p};
 }
 
 void Value::mkString(std::string_view s)

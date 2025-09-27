@@ -252,12 +252,10 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
     }
 }
 
-static RegisterPrimOp primop_scopedImport(PrimOp {
-    .name = "scopedImport",
-    .arity = 2,
-    .fun = [](EvalState & state, Value * * args, Value & v)
-    {
-        import(state, *args[1], args[0], v);
+static RegisterPrimOp primop_scopedImport(PrimOp{
+    {.name = "scopedImport",
+     .arity = 2,
+     .fun = [](EvalState & state, Value ** args, Value & v) { import(state, *args[1], args[0], v); }
     }
 });
 
@@ -624,11 +622,11 @@ static void prim_addErrorContext(EvalState & state, Value * * args, Value & v)
     }
 }
 
-static RegisterPrimOp primop_addErrorContext(PrimOp {
+static RegisterPrimOp primop_addErrorContext(PrimOp{{
     .name = "__addErrorContext",
     .arity = 2,
     .fun = prim_addErrorContext,
-});
+}});
 
 static void prim_ceil(EvalState & state, Value * * args, Value & v)
 {
@@ -1135,11 +1133,11 @@ drvName, Bindings * attrs, Value & v)
     v.mkAttrs(result);
 }
 
-static RegisterPrimOp primop_derivationStrict(PrimOp {
+static RegisterPrimOp primop_derivationStrict(PrimOp{{
     .name = "derivationStrict",
     .arity = 1,
     .fun = prim_derivationStrict,
-});
+}});
 
 /* Return a placeholder string for the specified output that will be
    substituted by the corresponding output path at build time. For
@@ -1728,14 +1726,15 @@ static void prim_unsafeGetAttrPos(EvalState & state, Value * * args, Value & v)
 // as with black holes this cost is too high to justify another thunk type to check
 // for in the very hot path that is forceValue.
 static struct LazyPosAcessors {
-    PrimOp primop_lineOfPos{.arity = 1, .fun = [](EvalState & state, Value ** args, Value & v) {
-                                v.mkInt(state.ctx.positions[PosIdx(args[0]->integer().value)].line);
-                            }};
-    PrimOp primop_columnOfPos{.arity = 1, .fun = [](EvalState & state, Value ** args, Value & v) {
-                                  v.mkInt(
-                                      state.ctx.positions[PosIdx(args[0]->integer().value)].column
-                                  );
-                              }};
+    PrimOp primop_lineOfPos{{.arity = 1, .fun = [](EvalState & state, Value ** args, Value & v) {
+                                 v.mkInt(state.ctx.positions[PosIdx(args[0]->integer().value)].line
+                                 );
+                             }}};
+    PrimOp primop_columnOfPos{{.arity = 1, .fun = [](EvalState & state, Value ** args, Value & v) {
+                                   v.mkInt(
+                                       state.ctx.positions[PosIdx(args[0]->integer().value)].column
+                                   );
+                               }}};
 
     Value lineOfPos, columnOfPos;
 
@@ -2827,11 +2826,10 @@ static void prim_splitVersion(EvalState & state, Value * * args, Value & v)
 
 RegisterPrimOp::PrimOps * RegisterPrimOp::primOps;
 
-
-RegisterPrimOp::RegisterPrimOp(PrimOp && primOp)
+RegisterPrimOp::RegisterPrimOp(PrimOpDetails && primOp)
 {
     if (!primOps) primOps = new PrimOps;
-    primOps->push_back(std::move(primOp));
+    primOps->emplace_back(std::move(primOp));
 }
 
 
@@ -2879,19 +2877,19 @@ void EvalBuiltins::createBaseEnv(const SearchPath & searchPath, const Path & sto
                 addPrimOp(std::move(primOpAdjusted));
             }
 
-    static PrimOp prim_initializeDerivation{
+    static PrimOp prim_initializeDerivation{{
         .arity = 1,
         .fun =
             [](EvalState & state, Value ** args, Value & v) {
                 char code[] =
-                    #include "primops/derivation.nix.gen.hh"
+#include "primops/derivation.nix.gen.hh"
                     ;
                 auto & expr = *state.ctx.parse(
                     code, sizeof(code), Pos::Hidden{}, {CanonPath::root}, state.ctx.builtins.staticEnv
                 );
                 state.eval(expr, v);
             },
-    };
+    }};
     static Value initializeDerivation{NewValueAs::primop, prim_initializeDerivation};
 
     /* Add a wrapper around the derivation primop that computes the

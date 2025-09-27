@@ -36,52 +36,7 @@ namespace eval_cache {
     class EvalCache;
 }
 
-/**
- * Function that implements a primop.
- */
-using PrimOpImpl = void(EvalState & state, Value ** args, Value & v);
-
-/**
- * Info about a primitive operation, and its implementation
- */
-struct PrimOp
-{
-    /**
-     * Name of the primop. `__` prefix is treated specially.
-     */
-    std::string name;
-
-    /**
-     * Names of the parameters of a primop, for primops that take a
-     * fixed number of arguments to be substituted for these parameters.
-     */
-    std::vector<std::string> args;
-
-    /**
-     * Aritiy of the primop.
-     *
-     * If `args` is not empty, this field will be computed from that
-     * field instead, so it doesn't need to be manually set.
-     */
-    size_t arity = 0;
-
-    /**
-     * Optional free-form documentation about the primop.
-     */
-    const char * doc = nullptr;
-
-    /**
-     * Implementation of the primop.
-     */
-    std::function<PrimOpImpl> fun;
-
-    /**
-     * Optional experimental for this to be gated on.
-     */
-    std::optional<ExperimentalFeature> experimentalFeature;
-};
-
-std::ostream & operator<<(std::ostream & output, PrimOp & primOp);
+std::ostream & operator<<(std::ostream & output, const PrimOp & primOp);
 
 /**
  * Info about a constant
@@ -314,7 +269,7 @@ private:
 
     void addConstant(const std::string & name, Value * v, Constant info);
 
-    Value * addPrimOp(PrimOp && primOp);
+    Value * addPrimOp(PrimOpDetails && primOp);
 
     Value prepareNixPath(const SearchPath & searchPath);
 

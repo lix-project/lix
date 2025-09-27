@@ -21,6 +21,53 @@ namespace nix {
 
 class BindingsBuilder;
 class EvalMemory;
+class EvalState;
+struct Value;
+
+/**
+ * Function that implements a primop.
+ */
+using PrimOpImpl = void(EvalState & state, Value ** args, Value & v);
+
+/**
+ * Info about a primitive operation, and its implementation
+ */
+struct PrimOpDetails
+{
+    /**
+     * Name of the primop. `__` prefix is treated specially.
+     */
+    std::string name;
+
+    /**
+     * Names of the parameters of a primop, for primops that take a
+     * fixed number of arguments to be substituted for these parameters.
+     */
+    std::vector<std::string> args;
+
+    /**
+     * Aritiy of the primop.
+     *
+     * If `args` is not empty, this field will be computed from that
+     * field instead, so it doesn't need to be manually set.
+     */
+    size_t arity = 0;
+
+    /**
+     * Optional free-form documentation about the primop.
+     */
+    const char * doc = nullptr;
+
+    /**
+     * Implementation of the primop.
+     */
+    std::function<PrimOpImpl> fun;
+
+    /**
+     * Optional experimental for this to be gated on.
+     */
+    std::optional<ExperimentalFeature> experimentalFeature;
+};
 
 typedef enum {
     tInt = 1,
@@ -31,7 +78,6 @@ typedef enum {
     tThunk,
     tApp,
     tLambda,
-    tPrimOp,
     tAuxiliary,
 } InternalType;
 
@@ -79,7 +125,6 @@ struct Env;
 struct Expr;
 struct ExprLambda;
 struct ExprBlackHole;
-struct PrimOp;
 class PosIdx;
 struct Pos;
 class StorePath;
@@ -237,6 +282,7 @@ public:
 #undef USING_VALUETYPE
 
     struct List;
+    struct PrimOp;
 
     /// Default constructor which is still used in the codebase but should not
     /// be used in new code. Zero initializes its members.
@@ -537,7 +583,10 @@ public:
 
     // type() == nFunction
     inline bool isLambda() const { return internalType == tLambda; };
-    inline bool isPrimOp() const { return internalType == tPrimOp; };
+    inline bool isPrimOp() const
+    {
+        return internalType == tAuxiliary && _auxiliary->type == Acb::tPrimOp;
+    }
     inline bool isPrimOpApp() const
     {
         return internalType == tApp && app().target()->isPrimOp();
@@ -640,6 +689,7 @@ public:
             tExternal,
             tFloat,
             tNull,
+            tPrimOp,
         } type;
     };
     struct External : Acb
@@ -652,6 +702,10 @@ public:
     };
     struct Null : Acb
     {};
+    struct PrimOp : Acb, PrimOpDetails
+    {
+        explicit PrimOp(PrimOpDetails && p) : Acb{tPrimOp}, PrimOpDetails(std::move(p)) {}
+    };
 
     union
     {
@@ -689,10 +743,6 @@ public:
             ExprLambda * fun;
         } _lambda;
         struct {
-            PrimOp * _primOp;
-            uintptr_t _primop_pad;
-        };
-        struct {
             const Acb * _auxiliary;
             uintptr_t _aux_pad;
         };
@@ -716,7 +766,6 @@ public:
             case tList:
                 return nList;
             case tLambda:
-            case tPrimOp:
                 return nFunction;
             case tAuxiliary:
                 switch (_auxiliary->type) {
@@ -726,6 +775,8 @@ public:
                     return nFloat;
                 case Acb::tNull:
                     return nNull;
+                case Acb::tPrimOp:
+                    return nFunction;
                 }
             case tThunk:
                 return nThunk;
@@ -944,9 +995,10 @@ public:
         return _lambda;
     }
 
-    PrimOp * primOp() const
+    const PrimOp * primOp() const
     {
-        return _primOp;
+        assert(internalType == tAuxiliary && _auxiliary->type == Acb::tPrimOp);
+        return static_cast<const PrimOp *>(_auxiliary);
     }
 
     const ExternalValueBase * external() const
@@ -968,6 +1020,8 @@ public:
 };
 
 using ValueVector = GcVector<Value *>;
+
+using PrimOp = Value::PrimOp;
 
 /**
  * A value allocated in traceable memory.
