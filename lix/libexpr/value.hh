@@ -5,6 +5,7 @@
 #include <climits>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <ranges>
 #include <span>
 
@@ -256,6 +257,7 @@ public:
     struct Null;
     struct Lambda;
     struct Thunk;
+    struct Int;
 
     static const Null NULL_ACB;
 
@@ -284,6 +286,12 @@ public:
     struct List;
     struct PrimOp;
 
+    static bool isTaggableInteger(NixInt i)
+    {
+        return i.value <= (std::numeric_limits<intptr_t>::max() >> 3)
+            && i.value >= (std::numeric_limits<intptr_t>::min() >> 3);
+    }
+
     /// Default constructor which is still used in the codebase but should not
     /// be used in new code. Zero initializes its members.
     [[deprecated]] Value()
@@ -297,11 +305,15 @@ public:
         : internalType(tInt)
         , _empty{ 0, 0 }
     {
-        // the NixInt ctor here is is special because NixInt has a ctor too, so
-        // we're not allowed to have it as an anonymous aggreagte member. we do
-        // however still have the option to clear the data members using _empty
-        // and leaving the second word of data cleared by setting only integer.
-        _integer = i;
+        if (isTaggableInteger(i)) {
+            _integer = i;
+        } else {
+            internalType = tAuxiliary;
+            auto ip = gcAllocType<Int>();
+            ip->type = Acb::tInt;
+            ip->value = i;
+            _auxiliary = ip;
+        }
     }
 
     /// Constructs a nix language value of type "float", with the floating
@@ -666,6 +678,7 @@ public:
             tNull,
             tPrimOp,
             tLambda,
+            tInt,
         } type;
     };
     struct External : Acb
@@ -682,6 +695,11 @@ public:
     {
         explicit PrimOp(PrimOpDetails && p) : Acb{tPrimOp}, PrimOpDetails(std::move(p)) {}
     };
+    struct Int : Acb
+    {
+        NixInt value;
+    };
+
     struct Lambda : Acb
     {
         Env * env;
@@ -761,6 +779,8 @@ public:
                 case Acb::tPrimOp:
                 case Acb::tLambda:
                     return nFunction;
+                case Acb::tInt:
+                    return nInt;
                 }
             case tThunk:
                 return nThunk;
@@ -789,9 +809,7 @@ public:
 
     inline void mkInt(NixInt n)
     {
-        clearValue();
-        internalType = tInt;
-        _integer = n;
+        *this = {NewValueAs::integer, n};
     }
 
     inline void mkBool(bool b)
@@ -916,7 +934,12 @@ public:
 
     NixInt integer() const
     {
-        return _integer;
+        if (internalType == tInt) {
+            return _integer;
+        } else {
+            assert(internalType == tAuxiliary && _auxiliary->type == Acb::tInt);
+            return static_cast<const Int *>(_auxiliary)->value;
+        }
     }
 
     bool boolean() const

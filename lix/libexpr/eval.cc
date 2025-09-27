@@ -124,6 +124,7 @@ std::string showType(const Value & v)
         case Value::Acb::tFloat:
         case Value::Acb::tNull:
         case Value::Acb::tLambda:
+        case Value::Acb::tInt:
             return std::string(showType(v.type()));
         case Value::Acb::tPrimOp:
             return fmt("the built-in function '%s'", v.primOp()->name);

@@ -3,6 +3,10 @@ runner = "eval-okay"
 
 [[test]]
 runner = "eval-okay"
+in = "in-int-range.nix"
+
+[[test]]
+runner = "eval-okay"
 in = "in-override.nix"
 flags = [ "--extra-deprecated-features", "shadow-internal-symbols" ]
 

@@ -1,3 +1,4 @@
+#include "lix/libexpr/nixexpr.hh"
 #include "lix/libutil/canon-path.hh"
 #include "lix/libutil/source-path.hh"
 #include "lix/libutil/terminal.hh"
@@ -94,7 +95,7 @@ TEST_F(ValuePrintingTests, vThunk)
 {
     EvalMemory mem;
     Env env;
-    ExprLiteral e(noPos, NewValueAs::integer, 0);
+    ExprInt e(noPos, 0);
     Value vThunk{NewValueAs::thunk, mem, env, e};
 
     test(vThunk, "«thunk»");
@@ -119,7 +120,9 @@ TEST_F(ValuePrintingTests, vLambda)
     PosTable::Origin origin = evaluator.positions.addOrigin(std::monostate(), 1);
     auto posIdx = evaluator.positions.add(origin, 0);
 
-    ExprLambda eLambda(posIdx, std::make_unique<AttrsPattern>(), std::make_unique<ExprLiteral>(noPos, NewValueAs::integer, 0));
+    ExprLambda eLambda(
+        posIdx, std::make_unique<AttrsPattern>(), std::make_unique<ExprInt>(noPos, 0)
+    );
     eLambda.pattern->name = createSymbol("a");
 
     Value vLambda{NewValueAs::lambda, mem, env, eLambda};
@@ -554,7 +557,9 @@ TEST_F(ValuePrintingTests, ansiColorsLambda)
     PosTable::Origin origin = evaluator.positions.addOrigin(std::monostate(), 1);
     auto posIdx = evaluator.positions.add(origin, 0);
 
-    ExprLambda eLambda(posIdx, std::make_unique<AttrsPattern>(), std::make_unique<ExprLiteral>(noPos, NewValueAs::integer, 0));
+    ExprLambda eLambda(
+        posIdx, std::make_unique<AttrsPattern>(), std::make_unique<ExprInt>(noPos, 0)
+    );
     eLambda.pattern->name = createSymbol("a");
 
     Value vLambda{NewValueAs::lambda, mem, env, eLambda};
@@ -609,7 +614,7 @@ TEST_F(ValuePrintingTests, ansiColorsThunk)
 {
     EvalMemory mem;
     Env env;
-    ExprLiteral e(noPos, NewValueAs::integer, 0);
+    ExprInt e(noPos, 0);
     Value v{NewValueAs::thunk, mem, env, e};
 
     test(v,
