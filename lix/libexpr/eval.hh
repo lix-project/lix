@@ -63,7 +63,7 @@ struct Constant
 
 using ValMap = GcMap<std::string, Value *>;
 
-struct Env
+struct alignas(Value::Acb::TAG_ALIGN) Env
 {
     Env * up;
     Value * values[0];

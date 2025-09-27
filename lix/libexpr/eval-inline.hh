@@ -38,7 +38,7 @@ inline Value::Value(thunk_t, EvalMemory & mem, Env & env, Expr & expr)
 inline Value::Value(lambda_t, EvalMemory & mem, Env & env, ExprLambda & lambda)
 {
     auto lp = mem.allocType<Lambda>();
-    *lp = Lambda{{Acb::tLambda}, &env, &lambda};
+    new (lp) Lambda{env, lambda};
     raw = tag(tAuxiliary, lp);
 }
 

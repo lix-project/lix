@@ -118,7 +118,7 @@ std::string showType(const Value & v)
     case tAuxiliary:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic error "-Wswitch-enum"
-        switch (v.auxiliary()->type) {
+        switch (v.auxiliary()->type()) {
         case Value::Acb::tExternal:
             return v.external()->showType();
         case Value::Acb::tFloat:
@@ -1624,7 +1624,7 @@ void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes,
 
             ExprLambda & lambda(*vCur.lambda().fun);
 
-            Env & env2 = lambda.pattern->match(lambda, *this, *vCur.lambda().env, args[0], pos);
+            Env & env2 = lambda.pattern->match(lambda, *this, *vCur.lambda().env(), args[0], pos);
 
             ctx.stats.nrFunctionCalls++;
             if (ctx.stats.countCalls) ctx.stats.addCall(lambda);
@@ -1821,12 +1821,18 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res, PosI
             if (j) {
                 attrs.insert(*j);
             } else if (!i.def) {
-                ctx.errors.make<MissingArgumentError>(R"(cannot evaluate a function that has an argument without a value ('%1%')
+                ctx.errors
+                    .make<MissingArgumentError>(
+                        R"(cannot evaluate a function that has an argument without a value ('%1%')
 Lix attempted to evaluate a function as a top level expression; in
 this case it must have its arguments supplied either by default
 values, or passed explicitly with '--arg' or '--argstr'. See
-https://docs.lix.systems/manual/lix/stable/language/constructs.html#functions)", ctx.symbols[i.name])
-                    .atPos(i.pos).withFrame(*fun.lambda().env, *fun.lambda().fun).debugThrow();
+https://docs.lix.systems/manual/lix/stable/language/constructs.html#functions)",
+                        ctx.symbols[i.name]
+                    )
+                    .atPos(i.pos)
+                    .withFrame(*fun.lambda().env(), *fun.lambda().fun)
+                    .debugThrow();
             }
         }
     }

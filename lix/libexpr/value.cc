@@ -20,6 +20,13 @@ static_assert(alignof(Value::List) >= Value::TAG_ALIGN);
 static_assert(alignof(Value::Thunk) >= Value::TAG_ALIGN);
 static_assert(alignof(Value::App) >= Value::TAG_ALIGN);
 
+static_assert(alignof(Value::External) >= Value::Acb::TAG_ALIGN);
+static_assert(alignof(Value::Float) >= Value::Acb::TAG_ALIGN);
+static_assert(alignof(Value::Null) >= Value::Acb::TAG_ALIGN);
+static_assert(alignof(Value::PrimOp) >= Value::Acb::TAG_ALIGN);
+static_assert(alignof(Value::Int) >= Value::Acb::TAG_ALIGN);
+static_assert(alignof(Value::Lambda) >= Value::Acb::TAG_ALIGN);
+
 static void copyContextToValue(Value::String & s, const NixStringContext & context)
 {
     if (!context.empty()) {

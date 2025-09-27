@@ -348,7 +348,7 @@ public:
             raw = tInt | (uintptr_t(i.value) << TAG_BITS);
         } else {
             auto ip = gcAllocType<Int>();
-            ip->type = Acb::tInt;
+            ip->raw = Acb::tInt;
             ip->value = i;
             raw = tag(tAuxiliary, ip);
         }
@@ -359,7 +359,7 @@ public:
     Value(floating_t, NixFloat f)
     {
         auto fp = gcAllocType<Float>();
-        fp->type = Acb::tFloat;
+        fp->raw = Acb::tFloat;
         fp->value = f;
         raw = tag(tAuxiliary, fp);
     }
@@ -540,7 +540,7 @@ public:
     Value(external_t, ExternalValueBase & external)
     {
         auto ext = gcAllocType<External>();
-        ext->type = Acb::tExternal;
+        ext->raw = Acb::tExternal;
         ext->external = &external;
         raw = tag(tAuxiliary, ext);
     }
@@ -605,11 +605,11 @@ public:
     // type() == nFunction
     inline bool isLambda() const
     {
-        return internalType() == tAuxiliary && auxiliary()->type == Acb::tLambda;
+        return internalType() == tAuxiliary && auxiliary()->type() == Acb::tLambda;
     };
     inline bool isPrimOp() const
     {
-        return internalType() == tAuxiliary && auxiliary()->type == Acb::tPrimOp;
+        return internalType() == tAuxiliary && auxiliary()->type() == Acb::tPrimOp;
     }
     inline bool isPrimOpApp() const
     {
@@ -712,14 +712,48 @@ public:
     /// these blocks are usually heap-allocated in GC memory space.
     struct alignas(TAG_ALIGN) Acb
     {
-        enum {
+        // NOTE value.cc contains alignment assertions for pointers tagged thusly.
+        // *always* ensure that these assertions match the tag types declared here
+        enum Type {
             tExternal,
             tFloat,
             tNull,
             tPrimOp,
             tLambda,
             tInt,
-        } type;
+        };
+
+        uintptr_t raw;
+
+        static constexpr size_t TAG_BITS = 3;
+        static constexpr size_t TAG_ALIGN = 1 << TAG_BITS;
+        static constexpr uintptr_t TAG_MASK = (1 << TAG_BITS) - 1;
+
+        static uintptr_t tag(Type t, auto v)
+        {
+            if constexpr (std::is_null_pointer_v<decltype(v)>) {
+                return t;
+            } else if constexpr (std::is_pointer_v<decltype(v)>) {
+                return (reinterpret_cast<uintptr_t>(v)) | t;
+            } else {
+                return (static_cast<uintptr_t>(v) << TAG_BITS) | t;
+            }
+        }
+
+        template<typename T>
+        T untag() const
+        {
+            if constexpr (std::is_pointer_v<T>) {
+                return reinterpret_cast<T>(raw & ~TAG_MASK);
+            } else {
+                return static_cast<T>((raw & ~TAG_MASK) >> TAG_BITS);
+            }
+        }
+
+        Type type() const
+        {
+            return Type(raw & TAG_MASK);
+        }
     };
     struct External : Acb
     {
@@ -742,8 +776,14 @@ public:
 
     struct Lambda : Acb
     {
-        Env * env;
         ExprLambda * fun;
+
+        Lambda(Env & env, ExprLambda & fun) : Acb{tag(tLambda, &env)}, fun(&fun) {}
+
+        Env * env() const
+        {
+            return untag<Env *>();
+        }
     };
 
     /**
@@ -885,7 +925,7 @@ public:
             memcpy(&tmp, &raw, sizeof(tmp));
             return NixInt(tmp >> 3);
         } else {
-            assert(internalType() == tAuxiliary && untag<const Acb *>()->type == Acb::tInt);
+            assert(internalType() == tAuxiliary && untag<const Acb *>()->type() == Acb::tInt);
             return untag<const Int *>()->value;
         }
     }
@@ -922,19 +962,19 @@ public:
 
     const PrimOp * primOp() const
     {
-        assert(internalType() == tAuxiliary && untag<const Acb *>()->type == Acb::tPrimOp);
+        assert(internalType() == tAuxiliary && untag<const Acb *>()->type() == Acb::tPrimOp);
         return untag<const PrimOp *>();
     }
 
     const ExternalValueBase * external() const
     {
-        assert(internalType() == tAuxiliary && untag<const Acb *>()->type == Acb::tExternal);
+        assert(internalType() == tAuxiliary && untag<const Acb *>()->type() == Acb::tExternal);
         return untag<const External *>()->external;
     }
 
     NixFloat fpoint() const
     {
-        assert(internalType() == tAuxiliary && untag<const Acb *>()->type == Acb::tFloat);
+        assert(internalType() == tAuxiliary && untag<const Acb *>()->type() == Acb::tFloat);
         return untag<const Float *>()->value;
     }
 
@@ -974,13 +1014,6 @@ struct alignas(Value::TAG_ALIGN) Value::Thunk
     }
 };
 
-/**
-    * Returns the normal type of a Value. This only returns nThunk if
-    * the Value hasn't been forceValue'd
-    *
-    * @param invalidIsThunk Instead of aborting an an invalid (probably
-    * 0, so uninitialized) internal type, return `nThunk`.
-    */
 inline ValueType Value::type(bool invalidIsThunk) const
 {
 again:
@@ -996,7 +1029,7 @@ again:
     case tList:
         return nList;
     case tAuxiliary:
-        switch (untag<const Acb *>()->type) {
+        switch (untag<const Acb *>()->type()) {
         case Acb::tExternal:
             return nExternal;
         case Acb::tFloat:
