@@ -72,15 +72,6 @@ std::string printValue(EvalState & state, Value & v)
     return out.str();
 }
 
-const Value * getPrimOp(const Value &v) {
-    const Value * primOp = &v;
-    while (primOp->isPrimOpApp()) {
-        primOp = primOp->primOpApp().left;
-    }
-    assert(primOp->isPrimOp());
-    return primOp;
-}
-
 std::string_view showType(ValueType type, bool withArticle)
 {
     #define WA(a, w) withArticle ? a " " w : w
@@ -110,13 +101,18 @@ std::string showType(const Value & v)
         case tString: return v.string().context ? "a string with context" : "a string";
         case tPrimOp:
             return fmt("the built-in function '%s'", std::string(v.primOp()->name));
-        case tPrimOpApp:
-            return fmt("the partially applied built-in function '%s'", std::string(getPrimOp(v)->primOp()->name));
         case tExternal: return v.external()->showType();
         case tThunk: return v.isBlackhole() ? "a black hole" : "a thunk";
-        case tApp: return "a function application";
-    default:
-        return std::string(showType(v.type()));
+        case tApp:
+            if (v.isPrimOpApp()) {
+                return fmt(
+                    "the partially applied built-in function '%s'", v.app().target()->primOp()->name
+                );
+            } else {
+                return "a function application";
+            }
+        default:
+            return std::string(showType(v.type()));
     }
     #pragma GCC diagnostic pop
 }
@@ -581,10 +577,14 @@ Value * EvalBuiltins::addPrimOp(PrimOp && primOp)
         vPrimOp->mkPrimOp(new PrimOp(primOp));
         Value v;
         v.mkApp(vPrimOp, vPrimOp);
-        return addConstant(primOp.name, v, {
-            .type = nThunk, // FIXME
-            .doc = primOp.doc,
-        });
+        return addConstant(
+            primOp.name,
+            v,
+            {
+                .type = nFunction,
+                .doc = primOp.doc,
+            }
+        );
     }
 
     auto envName = symbols.create(primOp.name);
@@ -1571,14 +1571,10 @@ void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes,
 
     Value vCur(fun);
 
-    auto makeAppChain = [&]()
-    {
-        vRes = vCur;
-        for (auto arg : args) {
-            auto fun2 = ctx.mem.allocValue();
-            *fun2 = vRes;
-            vRes.mkPrimOpApp(fun2, arg);
-        }
+    auto makeAppChain = [&]() {
+        auto fun2 = ctx.mem.allocValue();
+        *fun2 = vCur;
+        vRes = {NewValueAs::app, ctx.mem, *fun2, args};
     };
 
     const Attr * functor;
@@ -1648,13 +1644,8 @@ void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes,
 
         else if (vCur.isPrimOpApp()) {
             /* Figure out the number of arguments still needed. */
-            size_t argsDone = 0;
-            Value * primOp = &vCur;
-            while (primOp->isPrimOpApp()) {
-                argsDone++;
-                primOp = primOp->primOpApp().left;
-            }
-            assert(primOp->isPrimOp());
+            size_t argsDone = vCur.app().totalArgs();
+            Value * primOp = vCur.app().target();
             auto arity = primOp->primOp()->arity;
             auto argsLeft = arity - argsDone;
 
@@ -1669,8 +1660,11 @@ void EvalState::callFunction(Value & fun, std::span<Value *> args, Value & vRes,
                 // max arity as of writing is 3. even 4 seems excessive though.
                 SmallVector<Value *, 4> vArgs(arity);
                 auto n = argsDone;
-                for (Value * arg = &vCur; arg->isPrimOpApp(); arg = arg->primOpApp().left)
-                    vArgs[--n] = arg->primOpApp().right;
+                for (Value * arg = &vCur; arg->isApp(); arg = arg->app().left()) {
+                    auto curArgs = arg->app().args();
+                    memcpy(&vArgs[n] - curArgs.size(), curArgs.data(), curArgs.size_bytes());
+                    n -= curArgs.size();
+                }
 
                 for (size_t i = 0; i < argsLeft; ++i)
                     vArgs[argsDone + i] = args[i];

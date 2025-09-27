@@ -33,7 +33,6 @@ typedef enum {
     tApp,
     tLambda,
     tPrimOp,
-    tPrimOpApp,
     tExternal,
     tFloat
 } InternalType;
@@ -190,9 +189,6 @@ struct NewValueAs
     struct primop_t { };
     constexpr static primop_t primop{};
 
-    struct primOpApp_t { };
-    constexpr static primOpApp_t primOpApp{};
-
     struct lambda_t { };
     constexpr static lambda_t lambda{};
 
@@ -231,7 +227,6 @@ public:
     USING_VALUETYPE(primop_t);
     USING_VALUETYPE(app_t);
     USING_VALUETYPE(null_t);
-    USING_VALUETYPE(primOpApp_t);
     USING_VALUETYPE(lambda_t);
     USING_VALUETYPE(external_t);
     USING_VALUETYPE(blackhole_t);
@@ -432,14 +427,7 @@ public:
     Value(primop_t, PrimOp & primop);
 
     /// Constructs a nix language value of type "lambda", which represents a
-    /// partially applied primop.
-    Value(primOpApp_t, Value & lhs, Value & rhs)
-        : internalType(tPrimOpApp)
-        , _primOpApp({ .left = &lhs, .right = &rhs })
-    { }
-
-    /// Constructs a nix language value of type "lambda", which represents a
-    /// lazy partial application of another lambda.
+    /// lazy and/or partial application of a function.
     Value(app_t, Value & lhs, Value & rhs)
         : internalType(tApp)
         , _app{._left = reinterpret_cast<uintptr_t>(&lhs), ._right = &rhs}
@@ -447,7 +435,7 @@ public:
     }
 
     /// Constructs a nix language value of type "lambda", which represents a
-    /// lazy partial application of another lambda.
+    /// lazy and/or partial application of a function.
     Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value *> args);
 
     /// Constructs a nix language value of type "external", which is only used
@@ -520,7 +508,10 @@ public:
     // type() == nFunction
     inline bool isLambda() const { return internalType == tLambda; };
     inline bool isPrimOp() const { return internalType == tPrimOp; };
-    inline bool isPrimOpApp() const { return internalType == tPrimOpApp; };
+    inline bool isPrimOpApp() const
+    {
+        return internalType == tApp && app().target()->isPrimOp();
+    }
 
     struct List
     {
@@ -580,6 +571,37 @@ public:
         }
     };
 
+    struct App
+    {
+        uintptr_t _left;
+        union
+        {
+            Value * _right;
+            AppN * _appn;
+        };
+
+        Value * left() const
+        {
+            return reinterpret_cast<Value *>(_left & ~uintptr_t(1));
+        }
+
+        Value * target() const
+        {
+            return left()->isApp() ? left()->app().target() : left();
+        }
+
+        std::span<Value *> args()
+        {
+            return _left & 1 ? _appn->argsSpan() : std::span{&_right, 1};
+        }
+
+        size_t totalArgs() const
+        {
+            return (_left & 1 ? _appn->nargs : 1)
+                + (left()->isApp() ? left()->app().totalArgs() : 0);
+        }
+    };
+
     union
     {
         /// Dummy field, which takes up as much space as the largest union variants
@@ -606,24 +628,7 @@ public:
             Env * env;
             Expr * expr;
         } _thunk;
-        struct {
-            uintptr_t _left;
-            union
-            {
-                Value * _right;
-                AppN * _appn;
-            };
-
-            Value * left() const
-            {
-                return reinterpret_cast<Value *>(_left & ~uintptr_t(1));
-            }
-
-            std::span<Value *> args()
-            {
-                return _left & 1 ? _appn->argsSpan() : std::span{&_right, 1};
-            }
-        } _app;
+        App _app;
         struct
         {
             Env * env;
@@ -633,9 +638,6 @@ public:
             PrimOp * _primOp;
             uintptr_t _primop_pad;
         };
-        struct {
-            Value * left, * right;
-        } _primOpApp;
         struct {
             ExternalValueBase * _external;
             uintptr_t _external_pad;
@@ -664,10 +666,15 @@ public:
             case tAttrs: return nAttrs;
             case tList:
                 return nList;
-            case tLambda: case tPrimOp: case tPrimOpApp: return nFunction;
+            case tLambda:
+            case tPrimOp:
+                return nFunction;
             case tExternal: return nExternal;
             case tFloat: return nFloat;
-            case tThunk: case tApp: return nThunk;
+            case tThunk:
+                return nThunk;
+            case tApp:
+                return app().target()->isPrimOp() ? nFunction : nThunk;
         }
         if (invalidIsThunk)
             return nThunk;
@@ -767,18 +774,6 @@ public:
     }
 
     void mkPrimOp(PrimOp * p);
-
-    inline void mkPrimOpApp(Value * l, Value * r)
-    {
-        internalType = tPrimOpApp;
-        _primOpApp.left = l;
-        _primOpApp.right = r;
-    }
-
-    /**
-     * For a `tPrimOpApp` value, get the original `PrimOp` value.
-     */
-    PrimOp * primOpAppPrimOp() const;
 
     inline void mkExternal(ExternalValueBase * e)
     {
@@ -881,7 +876,12 @@ public:
         return _thunk;
     }
 
-    auto & app()
+    App & app()
+    {
+        return _app;
+    }
+
+    const App & app() const
     {
         return _app;
     }
@@ -894,11 +894,6 @@ public:
     PrimOp * primOp() const
     {
         return _primOp;
-    }
-
-    const auto & primOpApp() const
-    {
-        return _primOpApp;
     }
 
     ExternalValueBase * external() const

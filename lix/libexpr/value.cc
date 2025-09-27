@@ -38,26 +38,11 @@ void Value::print(EvalState & state, std::ostream & str, PrintOptions options)
 
 bool Value::isTrivial() const
 {
-    return
-        internalType != tApp
-        && internalType != tPrimOpApp
+    return internalType != tApp
         && (internalType != tThunk
             || (thunk().expr->try_cast<ExprSet>()
                 && static_cast<ExprSet *>(thunk().expr)->dynamicAttrs.empty())
-            || thunk().expr->try_cast<ExprLambda>()
-            || thunk().expr->try_cast<ExprList>());
-}
-
-PrimOp * Value::primOpAppPrimOp() const
-{
-    Value * left = primOpApp().left;
-    while (left && !left->isPrimOp()) {
-        left = left->primOpApp().left;
-    }
-
-    if (!left)
-        return nullptr;
-    return left->primOp();
+            || thunk().expr->try_cast<ExprLambda>() || thunk().expr->try_cast<ExprList>());
 }
 
 void Value::mkPrimOp(PrimOp * p)

@@ -108,7 +108,11 @@ void EvalState::forceValue(Value & v, const PosIdx pos)
             throw;
         }
     } else if (v.isApp()) {
-        callFunction(*v.app().left(), v.app().args(), v, pos);
+        auto & app = v.app();
+        auto target = app.target();
+        if (!target->isPrimOp() || target->primOp()->arity <= app.totalArgs()) {
+            callFunction(*v.app().left(), v.app().args(), v, pos);
+        }
     }
 }
 

@@ -427,7 +427,7 @@ private:
                 output << "primop";
         } else if (v.isPrimOpApp()) {
             output << "partially applied ";
-            auto primOp = v.primOpAppPrimOp();
+            auto primOp = v.app().target()->primOp();
             if (primOp)
                 output << *primOp;
             else
