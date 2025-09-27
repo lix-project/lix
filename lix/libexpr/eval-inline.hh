@@ -26,6 +26,15 @@ inline Value::Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value *> arg
     }
 }
 
+inline Value::Value(lambda_t, EvalMemory & mem, Env & env, ExprLambda & lambda)
+    : internalType(tAuxiliary)
+    , _aux_pad(0)
+{
+    auto lp = mem.allocType<Lambda>();
+    *lp = Lambda{{Acb::tLambda}, &env, &lambda};
+    _auxiliary = lp;
+}
+
 [[gnu::always_inline]]
 void * EvalMemory::allocBytes(size_t size)
 {

@@ -77,7 +77,6 @@ typedef enum {
     tList,
     tThunk,
     tApp,
-    tLambda,
     tAuxiliary,
 } InternalType;
 
@@ -259,6 +258,7 @@ public:
     struct String;
     struct Acb;
     struct Null;
+    struct Lambda;
 
     static const Null NULL_ACB;
 
@@ -521,10 +521,7 @@ public:
     /// This takes the environment the lambda is closed over @ref env, and
     /// the lambda expression itself @ref lambda, which will not be evaluated
     /// until it is applied.
-    Value(lambda_t, Env & env, ExprLambda & lambda)
-        : internalType(tLambda)
-        , _lambda({ .env = &env, .fun = &lambda })
-    { }
+    Value(lambda_t, EvalMemory & mem, Env & env, ExprLambda & lambda);
 
     /// Constructs an evil thunk, whose evaluation represents infinite recursion.
     explicit Value(blackhole_t)
@@ -582,7 +579,10 @@ public:
     }
 
     // type() == nFunction
-    inline bool isLambda() const { return internalType == tLambda; };
+    inline bool isLambda() const
+    {
+        return internalType == tAuxiliary && _auxiliary->type == Acb::tLambda;
+    };
     inline bool isPrimOp() const
     {
         return internalType == tAuxiliary && _auxiliary->type == Acb::tPrimOp;
@@ -690,6 +690,7 @@ public:
             tFloat,
             tNull,
             tPrimOp,
+            tLambda,
         } type;
     };
     struct External : Acb
@@ -705,6 +706,11 @@ public:
     struct PrimOp : Acb, PrimOpDetails
     {
         explicit PrimOp(PrimOpDetails && p) : Acb{tPrimOp}, PrimOpDetails(std::move(p)) {}
+    };
+    struct Lambda : Acb
+    {
+        Env * env;
+        ExprLambda * fun;
     };
 
     union
@@ -737,11 +743,6 @@ public:
             Expr * expr;
         } _thunk;
         App _app;
-        struct
-        {
-            Env * env;
-            ExprLambda * fun;
-        } _lambda;
         struct {
             const Acb * _auxiliary;
             uintptr_t _aux_pad;
@@ -765,8 +766,6 @@ public:
             case tAttrs: return nAttrs;
             case tList:
                 return nList;
-            case tLambda:
-                return nFunction;
             case tAuxiliary:
                 switch (_auxiliary->type) {
                 case Acb::tExternal:
@@ -776,6 +775,7 @@ public:
                 case Acb::tNull:
                     return nNull;
                 case Acb::tPrimOp:
+                case Acb::tLambda:
                     return nFunction;
                 }
             case tThunk:
@@ -866,13 +866,6 @@ public:
     inline void mkApp(Value * l, Value * r)
     {
         *this = {NewValueAs::app, *l, *r};
-    }
-
-    inline void mkLambda(Env * e, ExprLambda * f)
-    {
-        internalType = tLambda;
-        _lambda.env = e;
-        _lambda.fun = f;
     }
 
     inline void mkBlackhole()
@@ -992,7 +985,8 @@ public:
 
     const auto & lambda() const
     {
-        return _lambda;
+        assert(internalType == tAuxiliary && _auxiliary->type == Acb::tLambda);
+        return *static_cast<const Lambda *>(_auxiliary);
     }
 
     const PrimOp * primOp() const

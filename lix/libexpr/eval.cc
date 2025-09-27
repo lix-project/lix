@@ -123,6 +123,7 @@ std::string showType(const Value & v)
             return v.external()->showType();
         case Value::Acb::tFloat:
         case Value::Acb::tNull:
+        case Value::Acb::tLambda:
             return std::string(showType(v.type()));
         case Value::Acb::tPrimOp:
             return fmt("the built-in function '%s'", v.primOp()->name);
@@ -1433,7 +1434,7 @@ void ExprOpHasAttr::eval(EvalState & state, Env & env, Value & v)
 
 void ExprLambda::eval(EvalState & state, Env & env, Value & v)
 {
-    v.mkLambda(&env, this);
+    v = {NewValueAs::lambda, state.ctx.mem, env, *this};
 }
 
 namespace {

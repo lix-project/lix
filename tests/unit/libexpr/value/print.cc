@@ -110,6 +110,7 @@ TEST_F(ValuePrintingTests, vApp)
 
 TEST_F(ValuePrintingTests, vLambda)
 {
+    EvalMemory mem;
     Env env {
         .up = nullptr,
         .values = { }
@@ -120,8 +121,7 @@ TEST_F(ValuePrintingTests, vLambda)
     ExprLambda eLambda(posIdx, std::make_unique<AttrsPattern>(), std::make_unique<ExprLiteral>(noPos, NewValueAs::integer, 0));
     eLambda.pattern->name = createSymbol("a");
 
-    Value vLambda;
-    vLambda.mkLambda(&env, &eLambda);
+    Value vLambda{NewValueAs::lambda, mem, env, eLambda};
 
     test(vLambda, "«lambda @ «none»:1:1»");
 
@@ -546,6 +546,7 @@ TEST_F(ValuePrintingTests, ansiColorsList)
 
 TEST_F(ValuePrintingTests, ansiColorsLambda)
 {
+    EvalMemory mem;
     Env env {
         .up = nullptr,
         .values = { }
@@ -556,8 +557,7 @@ TEST_F(ValuePrintingTests, ansiColorsLambda)
     ExprLambda eLambda(posIdx, std::make_unique<AttrsPattern>(), std::make_unique<ExprLiteral>(noPos, NewValueAs::integer, 0));
     eLambda.pattern->name = createSymbol("a");
 
-    Value vLambda;
-    vLambda.mkLambda(&env, &eLambda);
+    Value vLambda{NewValueAs::lambda, mem, env, eLambda};
 
     test(vLambda,
          ANSI_BLUE "«lambda @ «none»:1:1»" ANSI_NORMAL,
