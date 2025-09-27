@@ -33,7 +33,7 @@ typedef enum {
     tApp,
     tLambda,
     tPrimOp,
-    tExternal,
+    tAuxiliary,
     tFloat
 } InternalType;
 
@@ -214,6 +214,7 @@ public:
     static Value EMPTY_LIST;
 
     struct String;
+    struct Acb;
 
     // Discount `using NewValueAs::*;`
 // NOLINTNEXTLINE(bugprone-macro-parentheses)
@@ -459,10 +460,14 @@ public:
     /// Constructs a nix language value of type "external", which is only used
     /// by plugins. Do any existing plugins even use this mechanism?
     Value(external_t, ExternalValueBase & external)
-        : internalType(tExternal)
-        , _external(&external)
-        , _external_pad(0)
-    { }
+        : internalType(tAuxiliary)
+        , _aux_pad(0)
+    {
+        auto ep = gcAllocType<External>();
+        ep->type = Acb::tExternal;
+        ep->external = &external;
+        _auxiliary = ep;
+    }
 
     /// Constructs a nix language value of type "lambda", which represents a
     /// run of the mill lambda defined in nix code.
@@ -480,6 +485,13 @@ public:
         : internalType(tThunk)
         , _thunk({ .env = nullptr, .expr = eBlackHoleAddr })
     { }
+
+    explicit Value(const Acb & backing)
+        : internalType(tAuxiliary)
+        , _auxiliary(&backing)
+        , _aux_pad(0)
+    {
+    }
 
     Value(Value const & rhs) = default;
 
@@ -620,6 +632,19 @@ public:
         }
     };
 
+    /// auxiliary control block for values that require more space.
+    /// these blocks are usually heap-allocated in GC memory space.
+    struct Acb
+    {
+        enum {
+            tExternal,
+        } type;
+    };
+    struct External : Acb
+    {
+        ExternalValueBase * external;
+    };
+
     union
     {
         /// Dummy field, which takes up as much space as the largest union variants
@@ -660,8 +685,8 @@ public:
             uintptr_t _primop_pad;
         };
         struct {
-            ExternalValueBase * _external;
-            uintptr_t _external_pad;
+            const Acb * _auxiliary;
+            uintptr_t _aux_pad;
         };
         struct {
             NixFloat _fpoint;
@@ -690,7 +715,11 @@ public:
             case tLambda:
             case tPrimOp:
                 return nFunction;
-            case tExternal: return nExternal;
+            case tAuxiliary:
+                switch (_auxiliary->type) {
+                case Acb::tExternal:
+                    return nExternal;
+                }
             case tFloat: return nFloat;
             case tThunk:
                 return nThunk;
@@ -800,9 +829,7 @@ public:
 
     inline void mkExternal(ExternalValueBase * e)
     {
-        clearValue();
-        internalType = tExternal;
-        _external = e;
+        *this = {NewValueAs::external, *e};
     }
 
     inline void mkFloat(NixFloat n)
@@ -919,14 +946,20 @@ public:
         return _primOp;
     }
 
-    ExternalValueBase * external() const
+    const ExternalValueBase * external() const
     {
-        return _external;
+        assert(internalType == tAuxiliary && _auxiliary->type == Acb::tExternal);
+        return static_cast<const External *>(_auxiliary)->external;
     }
 
     NixFloat fpoint() const
     {
         return _fpoint;
+    }
+
+    const Acb * auxiliary() const
+    {
+        return _auxiliary;
     }
 };
 

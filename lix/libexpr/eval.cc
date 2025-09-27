@@ -116,7 +116,14 @@ std::string showType(const Value & v)
         case tString: return v.string().context ? "a string with context" : "a string";
         case tPrimOp:
             return fmt("the built-in function '%s'", std::string(v.primOp()->name));
-        case tExternal: return v.external()->showType();
+        case tAuxiliary:
+#pragma GCC diagnostic push
+#pragma GCC diagnostic error "-Wswitch-enum"
+            switch (v.auxiliary()->type) {
+            case Value::Acb::tExternal:
+                return v.external()->showType();
+            }
+#pragma GCC diagnostic pop
         case tThunk: return v.isBlackhole() ? "a black hole" : "a thunk";
         case tApp:
             if (v.isPrimOpApp()) {
