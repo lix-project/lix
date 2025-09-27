@@ -37,11 +37,6 @@
 
 namespace nix {
 
-/*
- * Used for `builtins.groupBy`
- */
-using ValueVectorMap = std::map<Symbol, ValueVector>;
-
 /*************************************************************
  * Miscellaneous
  *************************************************************/
@@ -2281,18 +2276,19 @@ static void prim_partition(EvalState & state, Value * * args, Value & v)
     state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.partition");
 
     auto len = args[1]->listSize();
+    auto elems = args[1]->listElems();
 
-    ValueVector right, wrong;
+    std::vector<size_t> right, wrong;
 
     for (size_t n = 0; n < len; ++n) {
-        auto vElem = args[1]->listElems()[n];
+        auto vElem = elems[n];
         state.forceValue(*vElem, noPos);
         Value res;
         state.callFunction(*args[0], *vElem, res, noPos);
         if (state.forceBool(res, noPos, "while evaluating the return value of the partition function passed to builtins.partition"))
-            right.push_back(vElem);
+            right.push_back(n);
         else
-            wrong.push_back(vElem);
+            wrong.push_back(n);
     }
 
     auto attrs = state.ctx.buildBindings(2);
@@ -2301,16 +2297,16 @@ static void prim_partition(EvalState & state, Value * * args, Value & v)
     auto rsize = right.size();
     auto rlist = state.ctx.mem.newList(rsize);
     vRight = {NewValueAs::list, rlist};
-    if (rsize) {
-        memcpy(rlist->elems, right.data(), sizeof(Value *) * rsize);
+    for (auto [i, idx] : enumerate(right)) {
+        rlist->elems[i] = elems[idx];
     }
 
     auto & vWrong = attrs.alloc(state.ctx.s.wrong);
     auto wsize = wrong.size();
     auto wlist = state.ctx.mem.newList(wsize);
     vWrong = {NewValueAs::list, wlist};
-    if (wsize) {
-        memcpy(wlist->elems, wrong.data(), sizeof(Value *) * wsize);
+    for (auto [i, idx] : enumerate(wrong)) {
+        wlist->elems[i] = elems[idx];
     }
 
     v.mkAttrs(attrs);
@@ -2321,15 +2317,17 @@ static void prim_groupBy(EvalState & state, Value * * args, Value & v)
     state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.groupBy");
     state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.groupBy");
 
-    ValueVectorMap attrs;
+    std::map<Symbol, std::vector<size_t>> attrs;
 
-    for (auto vElem : args[1]->listItems()) {
+    auto elems = args[1]->listElems();
+
+    for (auto [i, vElem] : enumerate(args[1]->listItems())) {
         Value res;
         state.callFunction(*args[0], *vElem, res, noPos);
         auto name = state.forceStringNoCtx(res, noPos, "while evaluating the return value of the grouping function passed to builtins.groupBy");
         auto sym = state.ctx.symbols.create(name);
-        auto vector = attrs.try_emplace(sym, ValueVector()).first;
-        vector->second.push_back(vElem);
+        auto vector = attrs.try_emplace(sym, std::vector<size_t>()).first;
+        vector->second.push_back(i);
     }
 
     auto attrs2 = state.ctx.buildBindings(attrs.size());
@@ -2339,7 +2337,9 @@ static void prim_groupBy(EvalState & state, Value * * args, Value & v)
         auto size = i.second.size();
         auto content = state.ctx.mem.newList(size);
         list = {NewValueAs::list, content};
-        memcpy(content->elems, i.second.data(), sizeof(Value *) * size);
+        for (auto [i, idx] : enumerate(i.second)) {
+            content->elems[i] = elems[idx];
+        }
     }
 
     v.mkAttrs(attrs2.alreadySorted());

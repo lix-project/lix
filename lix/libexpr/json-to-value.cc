@@ -1,4 +1,5 @@
 #include "lix/libexpr/json-to-value.hh"
+#include "gc-alloc.hh"
 #include "lix/libexpr/value.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libutil/json.hh"
@@ -57,7 +58,7 @@ class JSONSax : nlohmann::json_sax<JSON> {
     };
 
     class JSONListState : public JSONState {
-        ValueVector values;
+        GcVector<Value *> values;
         std::unique_ptr<JSONState> resolve(EvalState & state) override
         {
             auto list = state.ctx.mem.newList(values.size());

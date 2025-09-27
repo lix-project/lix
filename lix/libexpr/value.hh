@@ -1061,8 +1061,6 @@ again:
         abort();
 }
 
-using ValueVector = GcVector<Value *>;
-
 using PrimOp = Value::PrimOp;
 
 /**
