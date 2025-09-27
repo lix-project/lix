@@ -83,9 +83,9 @@ TEST_F(ValuePrintingTests, tList)
     vTwo.mkInt(2);
 
     Value vList = evaluator.mem.newList(5);
-    vList._bigList.elems[0] = &vOne;
-    vList._bigList.elems[1] = &vTwo;
-    vList._bigList.size = 3;
+    vList._list.elems[0] = &vOne;
+    vList._list.elems[1] = &vTwo;
+    vList._list.size = 3;
 
     test(vList, "[ 1 2 «nullptr» ]");
 }
@@ -261,10 +261,10 @@ TEST_F(ValuePrintingTests, depthList)
     vNested.mkAttrs(builder2.finish());
 
     Value vList = evaluator.mem.newList(5);
-    vList._bigList.elems[0] = &vOne;
-    vList._bigList.elems[1] = &vTwo;
-    vList._bigList.elems[2] = &vNested;
-    vList._bigList.size = 3;
+    vList._list.elems[0] = &vOne;
+    vList._list.elems[1] = &vTwo;
+    vList._list.elems[2] = &vNested;
+    vList._list.size = 3;
 
     test(vList, "[ 1 2 { ... } ]", PrintOptions { .maxDepth = 1 });
     test(vList, "[ 1 2 { nested = { ... }; one = 1; two = 2; } ]", PrintOptions { .maxDepth = 2 });
@@ -534,9 +534,9 @@ TEST_F(ValuePrintingTests, ansiColorsList)
     vTwo.mkInt(2);
 
     Value vList = evaluator.mem.newList(5);
-    vList._bigList.elems[0] = &vOne;
-    vList._bigList.elems[1] = &vTwo;
-    vList._bigList.size = 3;
+    vList._list.elems[0] = &vOne;
+    vList._list.elems[1] = &vTwo;
+    vList._list.size = 3;
 
     test(vList,
          "[ " ANSI_CYAN "1" ANSI_NORMAL " " ANSI_CYAN "2" ANSI_NORMAL " " ANSI_MAGENTA "«nullptr»" ANSI_NORMAL " ]",
@@ -672,9 +672,9 @@ TEST_F(ValuePrintingTests, ansiColorsListRepeated)
     vInner.mkAttrs(innerBuilder.finish());
 
     Value vList = evaluator.mem.newList(3);
-    vList._bigList.elems[0] = &vInner;
-    vList._bigList.elems[1] = &vInner;
-    vList._bigList.size = 2;
+    vList._list.elems[0] = &vInner;
+    vList._list.elems[1] = &vInner;
+    vList._list.size = 2;
 
     test(vList,
          "[ { x = " ANSI_CYAN "0" ANSI_NORMAL "; } " ANSI_MAGENTA "«repeated»" ANSI_NORMAL " ]",
@@ -695,9 +695,9 @@ TEST_F(ValuePrintingTests, listRepeated)
     vInner.mkAttrs(innerBuilder.finish());
 
     Value vList = evaluator.mem.newList(3);
-    vList._bigList.elems[0] = &vInner;
-    vList._bigList.elems[1] = &vInner;
-    vList._bigList.size = 2;
+    vList._list.elems[0] = &vInner;
+    vList._list.elems[1] = &vInner;
+    vList._list.size = 2;
 
     test(vList, "[ { x = 0; } «repeated» ]", PrintOptions { });
     test(vList,
@@ -752,9 +752,9 @@ TEST_F(ValuePrintingTests, ansiColorsListElided)
     vTwo.mkInt(2);
 
     Value vList = evaluator.mem.newList(4);
-    vList._bigList.elems[0] = &vOne;
-    vList._bigList.elems[1] = &vTwo;
-    vList._bigList.size = 2;
+    vList._list.elems[0] = &vOne;
+    vList._list.elems[1] = &vTwo;
+    vList._list.size = 2;
 
     test(vList,
          "[ " ANSI_CYAN "1" ANSI_NORMAL " " ANSI_FAINT "«1 item elided»" ANSI_NORMAL " ]",
@@ -766,8 +766,8 @@ TEST_F(ValuePrintingTests, ansiColorsListElided)
     Value vThree;
     vThree.mkInt(3);
 
-    vList._bigList.elems[2] = &vThree;
-    vList._bigList.size = 3;
+    vList._list.elems[2] = &vThree;
+    vList._list.size = 3;
 
     test(vList,
          "[ " ANSI_CYAN "1" ANSI_NORMAL " " ANSI_FAINT "«2 items elided»" ANSI_NORMAL " ]",

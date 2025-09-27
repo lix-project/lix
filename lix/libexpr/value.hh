@@ -20,7 +20,6 @@ namespace nix {
 
 class BindingsBuilder;
 
-
 typedef enum {
     tInt = 1,
     tBool,
@@ -28,9 +27,7 @@ typedef enum {
     tPath,
     tNull,
     tAttrs,
-    tList1,
-    tList2,
-    tListN,
+    tList,
     tThunk,
     tApp,
     tLambda,
@@ -378,19 +375,9 @@ public:
     /// allocating memory.
     Value(list_t, std::span<Value *> items)
     {
-        if (items.size() == 1) {
-            this->internalType = tList1;
-            this->_smallList[0] = items[0];
-            this->_smallList[1] = nullptr;
-        } else if (items.size() == 2) {
-            this->internalType = tList2;
-            this->_smallList[0] = items[0];
-            this->_smallList[1] = items[1];
-        } else {
-            this->internalType = tListN;
-            this->_bigList.size = items.size();
-            this->_bigList.elems = items.data();
-        }
+        this->internalType = tList;
+        this->_list.size = items.size();
+        this->_list.elems = items.data();
     }
 
     /// Constructs a nix language value of type "list", with an element array
@@ -406,24 +393,12 @@ public:
     >
     Value(list_t, SizedIterableT & items, TransformerT const & transformer)
     {
-        if (items.size() == 1) {
-            this->internalType = tList1;
-            this->_smallList[0] = transformer(*items.begin());
-            this->_smallList[1] = nullptr;
-        } else if (items.size() == 2) {
-            this->internalType = tList2;
-            auto it = items.begin();
-            this->_smallList[0] = transformer(*it);
-            it++;
-            this->_smallList[1] = transformer(*it);
-        } else {
-            this->internalType = tListN;
-            this->_bigList.size = items.size();
-            this->_bigList.elems = gcAllocType<Value *>(items.size());
-            auto it = items.begin();
-            for (size_t i = 0; i < items.size(); i++, it++) {
-                this->_bigList.elems[i] = transformer(*it);
-            }
+        this->internalType = tList;
+        this->_list.size = items.size();
+        this->_list.elems = gcAllocType<Value *>(items.size());
+        auto it = items.begin();
+        for (size_t i = 0; i < items.size(); i++, it++) {
+            this->_list.elems[i] = transformer(*it);
         }
     }
 
@@ -594,8 +569,7 @@ public:
         struct {
             size_t size;
             Value * * elems;
-        } _bigList;
-        Value * _smallList[2];
+        } _list;
         struct {
             Env * env;
             Expr * expr;
@@ -640,7 +614,8 @@ public:
             case tPath: return nPath;
             case tNull: return nNull;
             case tAttrs: return nAttrs;
-            case tList1: case tList2: case tListN: return nList;
+            case tList:
+                return nList;
             case tLambda: case tPrimOp: case tPrimOpApp: return nFunction;
             case tExternal: return nExternal;
             case tFloat: return nFloat;
@@ -720,14 +695,8 @@ public:
     inline void mkList(size_t size)
     {
         clearValue();
-        if (size == 1)
-            internalType = tList1;
-        else if (size == 2)
-            internalType = tList2;
-        else {
-            internalType = tListN;
-            _bigList.size = size;
-        }
+        internalType = tList;
+        _list.size = size;
     }
 
     inline void mkThunk(Env * e, Expr & ex)
@@ -787,22 +756,22 @@ public:
 
     bool isList() const
     {
-        return internalType == tList1 || internalType == tList2 || internalType == tListN;
+        return internalType == tList;
     }
 
     Value * * listElems()
     {
-        return internalType == tList1 || internalType == tList2 ? _smallList : _bigList.elems;
+        return _list.elems;
     }
 
     Value * const * listElems() const
     {
-        return internalType == tList1 || internalType == tList2 ? _smallList : _bigList.elems;
+        return _list.elems;
     }
 
     size_t listSize() const
     {
-        return internalType == tList1 ? 1 : internalType == tList2 ? 2 : _bigList.size;
+        return _list.size;
     }
 
     /**

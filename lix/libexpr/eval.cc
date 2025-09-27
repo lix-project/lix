@@ -858,9 +858,7 @@ Value EvalMemory::newList(size_t size)
 {
     Value v;
     v.mkList(size);
-    if (size > 2) {
-        v._bigList.elems = allocType<Value *>(size);
-    }
+    v._list.elems = allocType<Value *>(size);
     stats.nrListElems += size;
     return v;
 }
