@@ -12,6 +12,8 @@ namespace nix
 static const Value::List emptyListData{.size = 0};
 Value Value::EMPTY_LIST{Value::list_t{}, &emptyListData};
 
+const Value::Null Value::NULL_ACB = {{Value::Acb::tNull}};
+
 static void copyContextToValue(Value::String & s, const NixStringContext & context)
 {
     if (!context.empty()) {

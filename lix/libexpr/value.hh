@@ -26,7 +26,6 @@ typedef enum {
     tInt = 1,
     tBool,
     tString,
-    tNull,
     tAttrs,
     tList,
     tThunk,
@@ -214,6 +213,9 @@ public:
 
     struct String;
     struct Acb;
+    struct Null;
+
+    static const Null NULL_ACB;
 
     // Discount `using NewValueAs::*;`
 // NOLINTNEXTLINE(bugprone-macro-parentheses)
@@ -416,10 +418,7 @@ public:
     }
 
     /// Constructs a nix language value of the singleton type "null".
-    Value(null_t)
-        : internalType(tNull)
-        , _empty{0, 0}
-    { }
+    Value(null_t) : Value(NULL_ACB) {}
 
     /// Constructs a nix language value of type "set", with the attribute
     /// bindings pointed to by @ref bindings.
@@ -640,6 +639,7 @@ public:
         enum {
             tExternal,
             tFloat,
+            tNull,
         } type;
     };
     struct External : Acb
@@ -650,6 +650,8 @@ public:
     {
         NixFloat value;
     };
+    struct Null : Acb
+    {};
 
     union
     {
@@ -710,7 +712,6 @@ public:
             case tBool: return nBool;
             case tString:
                 return _string->isPath() ? nPath : nString;
-            case tNull: return nNull;
             case tAttrs: return nAttrs;
             case tList:
                 return nList;
@@ -723,6 +724,8 @@ public:
                     return nExternal;
                 case Acb::tFloat:
                     return nFloat;
+                case Acb::tNull:
+                    return nNull;
                 }
             case tThunk:
                 return nThunk;
@@ -790,8 +793,7 @@ public:
 
     inline void mkNull()
     {
-        clearValue();
-        internalType = tNull;
+        *this = {NewValueAs::null};
     }
 
     inline void mkAttrs(Bindings * a)

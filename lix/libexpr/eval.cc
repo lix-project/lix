@@ -123,6 +123,7 @@ std::string showType(const Value & v)
             case Value::Acb::tExternal:
                 return v.external()->showType();
             case Value::Acb::tFloat:
+            case Value::Acb::tNull:
                 return std::string(showType(v.type()));
             }
 #pragma GCC diagnostic pop
