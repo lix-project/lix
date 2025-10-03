@@ -88,7 +88,7 @@
         else
           "pre${
             builtins.substring 0 8 (self.lastModifiedDate or self.lastModified or "19700101")
-          }_${self.shortRev or "dirty"}";
+          }-dev_${self.shortRev or "dirty"}";
 
       linux32BitSystems = [ "i686-linux" ];
       linux64BitSystems = [
