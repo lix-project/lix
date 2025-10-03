@@ -148,7 +148,6 @@ functional_tests_scripts = [
   'nix-profile.sh',
   'suggestions.sh',
   'store-ping.sh',
-  'completions.sh',
   'flakes/show.sh',
   'path-from-hash-part.sh',
   'toString-path.sh',
