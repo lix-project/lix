@@ -745,4 +745,17 @@ namespace nix {
             "1 -> one, this -> that");
     }
 
+    TEST(ForeignException, typeInfo)
+    {
+        auto e = [] {
+            try {
+                // NOLINTNEXTLINE(lix-foreign-exceptions)
+                throw std::invalid_argument("foo");
+            } catch (...) {
+                return ForeignException::wrapCurrent();
+            }
+        }();
+        ASSERT_TRUE(e.is<std::invalid_argument>());
+        ASSERT_NE(e.as<std::invalid_argument>(), nullptr);
+    }
 }

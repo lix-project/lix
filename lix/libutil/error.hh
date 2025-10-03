@@ -234,15 +234,32 @@ class ForeignException : public BaseException
 {
     std::shared_ptr<std::string> _what;
 
+    ForeignException(
+        std::string && what, std::exception_ptr && inner, const std::type_info & innerType
+    )
+        : _what(std::make_shared<std::string>(std::move(what)))
+        , inner(std::move(inner)) // NOLINT(bugprone-throw-keyword-missing): this stores exceptions.
+        , innerType(typeid(inner))
+    {
+    }
+
 public:
     const std::exception_ptr inner;
     const std::type_info & innerType;
 
-    explicit ForeignException(const std::exception & inner)
-        : _what(std::make_shared<std::string>(inner.what()))
-        , inner(std::make_exception_ptr(inner))
-        , innerType(typeid(inner))
+    struct Unknown
+    {};
+
+    static ForeignException wrapCurrent()
     {
+        try {
+            std::rethrow_exception(std::current_exception());
+            // NOLINTNEXTLINE(lix-foreign-exceptions): this is foreign exception support code.
+        } catch (std::exception & e) {
+            return {e.what(), std::current_exception(), typeid(e)};
+        } catch (...) {
+            return {"(non-std::exception)", std::current_exception(), typeid(Unknown)};
+        }
     }
 
     [[noreturn]]

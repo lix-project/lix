@@ -112,22 +112,22 @@ T runAsyncUnwrap(Result<T> t)
 }
 }
 
-#define LIX_TRY_AWAIT_CONTEXT_MAP(_l_ctx, _l_map, ...)                            \
-    ({                                                                            \
-        auto _lix_awaited = (_l_map) (co_await (__VA_ARGS__));                    \
-        if (_lix_awaited.has_error()) {                                           \
-            try {                                                                 \
-                _lix_awaited.value();                                             \
-            } catch (::nix::BaseException & e) {                                  \
-                e.addAsyncTrace(::std::source_location::current(), _l_ctx());     \
-                throw;                                                            \
-            } catch (::std::exception & e) { /* NOLINT(lix-foreign-exceptions) */ \
-                ::nix::ForeignException fe(e);                                    \
-                fe.addAsyncTrace(::std::source_location::current(), _l_ctx());    \
-                throw fe;                                                         \
-            }                                                                     \
-        }                                                                         \
-        ::nix::detail::materializeResult(std::move(_lix_awaited));                \
+#define LIX_TRY_AWAIT_CONTEXT_MAP(_l_ctx, _l_map, ...)                         \
+    ({                                                                         \
+        auto _lix_awaited = (_l_map) (co_await (__VA_ARGS__));                 \
+        if (_lix_awaited.has_error()) {                                        \
+            try {                                                              \
+                _lix_awaited.value();                                          \
+            } catch (::nix::BaseException & e) {                               \
+                e.addAsyncTrace(::std::source_location::current(), _l_ctx());  \
+                throw;                                                         \
+            } catch (...) {                                                    \
+                auto fe = ::nix::ForeignException::wrapCurrent();              \
+                fe.addAsyncTrace(::std::source_location::current(), _l_ctx()); \
+                throw fe;                                                      \
+            }                                                                  \
+        }                                                                      \
+        ::nix::detail::materializeResult(std::move(_lix_awaited));             \
     })
 
 #define LIX_TRY_AWAIT_CONTEXT(_l_ctx, ...) \
@@ -167,8 +167,8 @@ try {
 } catch (BaseException & e) {
     e.addAsyncTrace(call_site);
     throw;
-} catch (std::exception & e) { /* NOLINT(lix-foreign-exceptions) */
-    ForeignException fe(e);
+} catch (...) {
+    auto fe = ForeignException::wrapCurrent();
     fe.addAsyncTrace(call_site);
     throw fe;
 }
