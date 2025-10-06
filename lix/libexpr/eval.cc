@@ -46,7 +46,7 @@
 // Ignore all internal signals boehm uses for parallel marking
 // FIXME: Find out how to do this with LLDB for macOS!
 #ifndef __APPLE__
-[[gnu::section(".debug_gdb_scripts"), gnu::used]]
+[[gnu::section(".debug_gdb_scripts"), gnu::used, gnu::aligned(1)]]
 // TODO: We should use `SECTION_SCRIPT_ID_PYTHON_TEXT` from
 // `<gdb/section-scripts.h>` instead of hardcoding 4.
 // But why isn't this header exported by GDB?
